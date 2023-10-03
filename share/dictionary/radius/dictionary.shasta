@@ -25,3 +25,4 @@ VALUE	User-Privilege			Super-User		2
 VALUE	User-Privilege			SSuper-User		3
 
 END-VENDOR	Shasta
+ALIAS Shasta Vendor-Specific.Shasta

@@ -294,3 +294,4 @@ VALUE	Acct-Status-Type		Annex-Line-Seizure	0x0630000f
 VALUE	Acct-Status-Type		Annex-Rlogin-Start	0x06300010
 VALUE	Acct-Status-Type		Annex-Rlogin-Stop	0x06300011
 
+ALIAS Bay-Networks Vendor-Specific.Bay-Networks

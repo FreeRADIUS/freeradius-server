@@ -130,3 +130,4 @@ VALUE	Function			Dialout			2
 VALUE	Function			Lan-To-Lan		3
 
 END-VENDOR	Shiva
+ALIAS Shiva Vendor-Specific.Shiva

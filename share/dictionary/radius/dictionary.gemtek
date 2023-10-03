@@ -20,3 +20,4 @@ ATTRIBUTE	Acct-Session-Octets			25	integer
 ATTRIBUTE	Acct-Session-Gigawords			26	integer
 
 END-VENDOR Gemtek
+ALIAS Gemtek Vendor-Specific.Gemtek

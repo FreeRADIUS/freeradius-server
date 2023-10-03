@@ -37,3 +37,4 @@ ATTRIBUTE	Session-Terminate-End-Of-Day		10	string
 ATTRIBUTE	Billing-Class-Of-Service		11	string
 
 END-VENDOR	WISPr
+ALIAS WISPr Vendor-Specific.WISPr

@@ -17,3 +17,4 @@ BEGIN-VENDOR	BT
 ATTRIBUTE	SID-Auth				1	string
 
 END-VENDOR	BT
+ALIAS BT Vendor-Specific.BT

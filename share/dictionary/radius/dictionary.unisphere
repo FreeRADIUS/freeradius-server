@@ -373,3 +373,4 @@ VALUE	PPP-Ingress-Only		disabled		0
 VALUE	PPP-Ingress-Only		enabled			1
 
 END-VENDOR	Unisphere
+ALIAS Unisphere Vendor-Specific.Unisphere

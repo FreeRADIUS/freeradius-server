@@ -37,3 +37,4 @@ ATTRIBUTE	Asterisk-Unique-ID			117	string
 ATTRIBUTE	Asterisk-User-Field			118	string
 
 END-VENDOR	Digium
+ALIAS Digium Vendor-Specific.Digium

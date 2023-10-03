@@ -72,3 +72,4 @@ VALUE	Canopy-UserLevel		INSTALL			2
 VALUE	Canopy-UserLevel		ADMIN			3
 
 END-VENDOR Motorola
+ALIAS Motorola Vendor-Specific.Motorola

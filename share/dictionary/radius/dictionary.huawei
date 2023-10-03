@@ -233,3 +233,4 @@ ATTRIBUTE	Version					254	string
 ATTRIBUTE	Product-ID				255	string
 
 END-VENDOR	Huawei
+ALIAS Huawei Vendor-Specific.Huawei

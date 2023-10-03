@@ -23,3 +23,4 @@ ATTRIBUTE	Admin-Role				1	string
 
 END-VENDOR      Xirrus
 
+ALIAS Xirrus Vendor-Specific.Xirrus

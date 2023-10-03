@@ -55,3 +55,4 @@ ATTRIBUTE	Tenant-Identification			41	string
 ATTRIBUTE	Host-Port-AVPair			42	string
 
 END-VENDOR Fortinet
+ALIAS Fortinet Vendor-Specific.Fortinet

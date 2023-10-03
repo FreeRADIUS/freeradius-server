@@ -91,3 +91,4 @@ ATTRIBUTE	Subscriber-Profile			252	string
 ATTRIBUTE	Product-ID				255	string
 
 END-VENDOR	H3C
+ALIAS H3C Vendor-Specific.H3C

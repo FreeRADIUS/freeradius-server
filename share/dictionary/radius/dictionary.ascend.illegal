@@ -430,3 +430,4 @@ VALUE	X-Ascend-Data-Svc		Switched-ATM		69
 VALUE	X-Ascend-Data-Svc		Switched-FR		70
 VALUE	X-Ascend-Force-56		Force-56-No		0
 VALUE	X-Ascend-Force-56		Force-56-Yes		1
+ALIAS  Vendor-Specific.

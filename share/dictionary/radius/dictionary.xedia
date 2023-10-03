@@ -24,3 +24,4 @@ ATTRIBUTE	Client-Firewall-Setting			7	integer
 ATTRIBUTE	Save-Password				8	integer
 
 END-VENDOR	Xedia
+ALIAS Xedia Vendor-Specific.Xedia

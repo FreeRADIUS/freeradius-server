@@ -17,3 +17,4 @@ ATTRIBUTE	SSID					103	string
 ATTRIBUTE	Role					104	string
 
 END-VENDOR Adtran
+ALIAS Adtran Vendor-Specific.Adtran

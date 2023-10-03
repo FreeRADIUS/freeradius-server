@@ -16,3 +16,4 @@ BEGIN-VENDOR	Mellanox
 ATTRIBUTE	Local-User-Name				1	string
 
 END-VENDOR      Mellanox
+ALIAS Mellanox Vendor-Specific.Mellanox

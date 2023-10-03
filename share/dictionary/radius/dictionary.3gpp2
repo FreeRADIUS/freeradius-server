@@ -196,3 +196,4 @@ ATTRIBUTE	IP-Ver-Authorised			172	integer
 ATTRIBUTE	MIPv4-Mesg-Id				173	string
 
 END-VENDOR 3GPP2
+ALIAS 3GPP2 Vendor-Specific.3GPP2

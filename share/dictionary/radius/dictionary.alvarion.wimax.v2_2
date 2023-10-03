@@ -34,3 +34,4 @@ ATTRIBUTE	Ref-R3-IF-Name				.1	string
 ATTRIBUTE	DHCP-Option-Container			.2	string
 
 END-VENDOR 	Alvarion
+ALIAS Alvarion Vendor-Specific.Alvarion

@@ -115,3 +115,4 @@ VALUE	Fabric-Attach-Client-Trust	Fabric-Attach-Switch-Trust-All 1
 VALUE	Fabric-Attach-Client-Trust	Fabric-Attach-Switch-Trust-Restricted 2
 
 END-VENDOR	Nortel
+ALIAS Nortel Vendor-Specific.Nortel

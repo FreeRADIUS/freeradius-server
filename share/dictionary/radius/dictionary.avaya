@@ -31,3 +31,4 @@ VALUE	PortPriority-Type		Type-6			6
 VALUE	PortPriority-Type		Type-7			7
 
 END-VENDOR	Avaya-Cajun-p330
+ALIAS Avaya-Cajun-p330 Vendor-Specific.Avaya-Cajun-p330

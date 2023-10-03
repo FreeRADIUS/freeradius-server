@@ -39,3 +39,4 @@ END-VENDOR	Nokia
 #
 #	This is an incredibly stupid way of encoding the data.
 #
+ALIAS Nokia Vendor-Specific.Nokia

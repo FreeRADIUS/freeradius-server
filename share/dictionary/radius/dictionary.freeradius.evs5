@@ -41,3 +41,4 @@ ATTRIBUTE	802_1X-EAPoL-Key-Msg		2	octets
 #MEMBER		WPA-Key-Data			octets length=uint16
 
 END-VENDOR	FreeRADIUS
+

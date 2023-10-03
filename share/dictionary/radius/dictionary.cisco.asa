@@ -368,3 +368,4 @@ VALUE	WebVPN-URL-Entry-Enable		Disabled		0
 VALUE	WebVPN-URL-Entry-Enable		Enabled			1
 
 END-VENDOR      Cisco-ASA
+ALIAS Cisco-ASA Vendor-Specific.Cisco-ASA

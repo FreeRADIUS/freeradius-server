@@ -14,3 +14,4 @@ BEGIN-VENDOR	Lantronix
 ATTRIBUTE	User-Attributes				1	string
 
 END-VENDOR Lantronix
+ALIAS Lantronix Vendor-Specific.Lantronix

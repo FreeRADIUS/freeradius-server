@@ -32,3 +32,4 @@ VALUE	Privilege-Level			NOC-User		2
 VALUE	Privilege-Level			Super-User		3
 
 END-VENDOR    DragonWave
+ALIAS DragonWave Vendor-Specific.DragonWave

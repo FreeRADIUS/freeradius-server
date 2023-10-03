@@ -59,3 +59,4 @@ VALUE	MAC-Based-Vlan-QoS		QoS_priority_6		6
 VALUE	MAC-Based-Vlan-QoS		QoS_priority_7		7
 
 END-VENDOR	Foundry
+ALIAS Foundry Vendor-Specific.Foundry

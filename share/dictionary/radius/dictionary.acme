@@ -229,3 +229,4 @@ ATTRIBUTE	Custom-VSA-230				230	string
 ATTRIBUTE	User-Class				254	string
 
 END-VENDOR Acme
+ALIAS Acme Vendor-Specific.Acme

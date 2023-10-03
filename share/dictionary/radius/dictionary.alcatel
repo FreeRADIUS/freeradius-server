@@ -99,3 +99,4 @@ VALUE	Client-Assign-DNS		DNS-Assign-No		0
 VALUE	Client-Assign-DNS		DNS-Assign-Yes		1
 
 END-VENDOR	Alcatel
+ALIAS Alcatel Vendor-Specific.Alcatel

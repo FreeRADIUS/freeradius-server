@@ -22,3 +22,4 @@ BEGIN-VENDOR	Zeus
 ATTRIBUTE	ZXTM-Group				1	string
 
 END-VENDOR Zeus
+ALIAS Zeus Vendor-Specific.Zeus

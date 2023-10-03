@@ -24,3 +24,4 @@ ATTRIBUTE	MSISDN					3	string
 ATTRIBUTE	Proxy					4	string
 
 END-VENDOR	Garderos
+ALIAS Garderos Vendor-Specific.Garderos

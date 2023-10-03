@@ -94,3 +94,4 @@ ATTRIBUTE	Webfilter-Destination			115	string
 ATTRIBUTE	Webfilter-Domain			116	string
 
 END-VENDOR                             ASN
+ALIAS ASN Vendor-Specific.ASN

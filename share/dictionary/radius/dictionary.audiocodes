@@ -21,3 +21,4 @@ VALUE	ACL-Auth-Level			ACL-Auth-AdminLevel	100
 VALUE	ACL-Auth-Level			ACL-Auth-SecurityAdminLevel 200
 
 END-VENDOR	AudioCodes
+ALIAS AudioCodes Vendor-Specific.AudioCodes

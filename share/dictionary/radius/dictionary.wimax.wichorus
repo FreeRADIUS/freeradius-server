@@ -390,3 +390,4 @@ ATTRIBUTE	vDHCP-RK-Lifetime			77	integer
 # About 10 more attributes in 1.3
 
 END-VENDOR	WiMAX
+ALIAS WiMAX Vendor-Specific.WiMAX

@@ -132,3 +132,4 @@ ATTRIBUTE	IPT-Time-Stamp				126	integer
 ATTRIBUTE	User-Name-Info				127	integer
 
 END-VENDOR	Ericsson
+ALIAS Ericsson Vendor-Specific.Ericsson

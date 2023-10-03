@@ -27,3 +27,4 @@ ATTRIBUTE	Motorola-Canopy-HPSDLDR			234	string
 ATTRIBUTE	Motorola-Canopy-HIGHERBW		235	string
 ATTRIBUTE	Motorola-Canopy-CIRENABLE		236	string
 
+ALIAS  Vendor-Specific.

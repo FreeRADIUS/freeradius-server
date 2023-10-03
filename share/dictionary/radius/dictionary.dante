@@ -18,3 +18,4 @@ ATTRIBUTE	Default-TTL				1	integer
 
 END-VENDOR DANTE
 
+ALIAS DANTE Vendor-Specific.DANTE

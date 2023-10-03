@@ -452,3 +452,4 @@ ATTRIBUTE	Modem-Disconnect-Reason			20118	integer
 ATTRIBUTE	Retrain-Reason				20119	integer
 
 END-VENDOR	Lucent
+ALIAS Lucent Vendor-Specific.Lucent

@@ -54,3 +54,4 @@ ATTRIBUTE	Remanent-Volume-Type			251	integer
 ATTRIBUTE	Web-COA					252	integer
 
 END-VENDOR	NetElastic
+ALIAS NetElastic Vendor-Specific.NetElastic

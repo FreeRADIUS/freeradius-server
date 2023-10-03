@@ -29,3 +29,4 @@ ATTRIBUTE	Auth-Logout-Time			8	integer
 ATTRIBUTE	Auth-Time-Diff				9	integer
 ATTRIBUTE	Auth-BW-Usage				10	integer
 END-VENDOR Walabi
+ALIAS Walabi Vendor-Specific.Walabi

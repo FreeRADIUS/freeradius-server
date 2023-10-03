@@ -22,3 +22,4 @@ VALUE	SUI-role			camiantUser		102
 VALUE	SUI-role			camiantService		104
 
 END-VENDOR	Camiant
+ALIAS Camiant Vendor-Specific.Camiant

@@ -32,3 +32,4 @@ ATTRIBUTE	IPSec-Client-Firewall			15	integer
 ATTRIBUTE	IPSec-Client-Subnet			16	string
 
 END-VENDOR	SpringTide
+ALIAS SpringTide Vendor-Specific.SpringTide

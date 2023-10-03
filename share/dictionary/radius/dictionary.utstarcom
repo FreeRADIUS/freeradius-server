@@ -43,3 +43,4 @@ ATTRIBUTE	ONU-Admin_status			188	integer
 ATTRIBUTE	ONU-FW-SC-Upgrade			189	integer
 
 END-VENDOR	UTStarcom
+ALIAS UTStarcom Vendor-Specific.UTStarcom

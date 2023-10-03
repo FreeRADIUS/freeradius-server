@@ -207,3 +207,4 @@ VALUE	Policy-Decision-Status		Policy-Approved		1
 VALUE	Policy-Decision-Status		Policy-Denied		2
 
 END-VENDOR CableLabs
+ALIAS CableLabs Vendor-Specific.CableLabs

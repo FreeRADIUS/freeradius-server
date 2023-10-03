@@ -1200,3 +1200,4 @@ VALUE	Visiting-Sub-Use-GGSN		Deny			0
 VALUE	Visiting-Sub-Use-GGSN		Accept			1
 
 END-VENDOR	Starent
+ALIAS Starent Vendor-Specific.Starent

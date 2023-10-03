@@ -28,3 +28,4 @@ VALUE	Splash				Show			1
 VALUE	Splash				No-Show			0
 
 END-VENDOR	ValemountNetworks
+ALIAS ValemountNetworks Vendor-Specific.ValemountNetworks

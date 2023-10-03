@@ -47,3 +47,4 @@ ATTRIBUTE	BW-User-Realm				36	string
 ATTRIBUTE	BW-Operator-Name			37	string
 
 END-VENDOR      Boingo
+ALIAS Boingo Vendor-Specific.Boingo

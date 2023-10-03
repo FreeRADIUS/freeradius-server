@@ -17,3 +17,4 @@ BEGIN-VENDOR	Meinberg
 ATTRIBUTE	Management-Privilege-Level		1	integer
 
 END-VENDOR     Meinberg
+ALIAS Meinberg Vendor-Specific.Meinberg

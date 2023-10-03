@@ -19,3 +19,4 @@ ATTRIBUTE	Port-Default-VLAN-ID			1	integer
 ATTRIBUTE	Port-Voice-VLAN-ID			2	integer
 
 END-VENDOR      Nexans
+ALIAS Nexans Vendor-Specific.Nexans

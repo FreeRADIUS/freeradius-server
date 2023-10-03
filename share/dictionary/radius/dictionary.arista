@@ -27,3 +27,4 @@ VALUE	WebAuth				start			1
 VALUE	WebAuth				complete		2
 
 END-VENDOR   Arista
+ALIAS Arista Vendor-Specific.Arista

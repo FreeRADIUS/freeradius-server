@@ -42,3 +42,4 @@ VALUE	Auth-Role			Admin			3
 VALUE	Auth-Role			Super-user		4
 
 END-VENDOR	Prosoft
+ALIAS Prosoft Vendor-Specific.Prosoft

@@ -52,3 +52,4 @@ VALUE	Max-Uplink-Rate			QAM64_3/4		9
 VALUE	Max-Uplink-Rate			QAM64_5/6		10
 
 END-VENDOR	Purewave
+ALIAS Purewave Vendor-Specific.Purewave

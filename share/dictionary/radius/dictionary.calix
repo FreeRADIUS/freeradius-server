@@ -39,3 +39,4 @@ VALUE	CMS-Threshold-Event-Filter	Disabled	0
 VALUE	CMS-Threshold-Event-Filter	Enabled	1
 
 END-VENDOR	Calix
+ALIAS Calix Vendor-Specific.Calix

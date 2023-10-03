@@ -32,3 +32,4 @@ VALUE	QOS-Level			Gold			1
 VALUE	QOS-Level			Platinum		2
 
 END-VENDOR Airespace
+ALIAS Airespace Vendor-Specific.Airespace

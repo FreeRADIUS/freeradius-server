@@ -18,3 +18,4 @@ ATTRIBUTE	IP-Downloadable-ACL-Name		3	string
 ATTRIBUTE	Redirect-URL				4	string
 
 END-VENDOR	Pica8
+ALIAS Pica8 Vendor-Specific.Pica8

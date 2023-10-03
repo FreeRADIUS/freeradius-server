@@ -31,3 +31,4 @@ ATTRIBUTE	Proxy-Identifier			3	string
 ATTRIBUTE	Proxy-Location			4	string
 
 END-VENDOR	SmartShareSystems
+ALIAS SmartShareSystems Vendor-Specific.SmartShareSystems

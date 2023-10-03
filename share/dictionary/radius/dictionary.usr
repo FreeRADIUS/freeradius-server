@@ -1617,3 +1617,4 @@ VALUE	CW-Trans-Cld-Party-E164-Type	Abbreviated-Number	6
 VALUE	CW-Trans-Cld-Party-E164-Type	Reserved		7
 
 END-VENDOR USR
+ALIAS USR Vendor-Specific.USR

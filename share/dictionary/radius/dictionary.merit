@@ -16,3 +16,4 @@ ATTRIBUTE	User-Id					222	string
 ATTRIBUTE	User-Realm				223	string
 
 END-VENDOR	Merit
+ALIAS Merit Vendor-Specific.Merit

@@ -27,3 +27,4 @@ VALUE	Disconnect-Code-Local		Unavailable-Voice-Channel 10
 VALUE	Disconnect-Code-Local		RADIUS-Server-Unavailable 11
 
 END-VENDOR	Eltex
+ALIAS Eltex Vendor-Specific.Eltex

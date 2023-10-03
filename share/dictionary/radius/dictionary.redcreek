@@ -22,3 +22,4 @@ ATTRIBUTE	Tunneled-DomainName			12	string
 ATTRIBUTE	Tunneled-Search-List			13	string
 
 END-VENDOR	RedCreek
+ALIAS RedCreek Vendor-Specific.RedCreek

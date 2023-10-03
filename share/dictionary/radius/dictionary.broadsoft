@@ -376,3 +376,4 @@ ATTRIBUTE	FMFM-Call-Push-FAC-Result		348	string
 ATTRIBUTE	SCC-Cause				349	string
 
 END-VENDOR	BroadSoft
+ALIAS BroadSoft Vendor-Specific.BroadSoft

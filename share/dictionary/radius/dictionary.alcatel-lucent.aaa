@@ -86,3 +86,4 @@ VALUE	Delta-Session			False			0
 VALUE	Delta-Session			True			1
 
 END-VENDOR	ALU-AAA
+ALIAS ALU-AAA Vendor-Specific.ALU-AAA

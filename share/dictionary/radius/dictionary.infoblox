@@ -20,3 +20,4 @@ ATTRIBUTE	Product-Name				8	string
 ATTRIBUTE	Group-Info				9	string
 
 END-VENDOR	Infoblox
+ALIAS Infoblox Vendor-Specific.Infoblox

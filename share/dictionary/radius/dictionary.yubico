@@ -23,3 +23,4 @@ ATTRIBUTE	Yubikey-Random				6	integer
 ATTRIBUTE	Yubikey-OTP				7	string
 
 END-VENDOR	Yubico
+ALIAS Yubico Vendor-Specific.Yubico

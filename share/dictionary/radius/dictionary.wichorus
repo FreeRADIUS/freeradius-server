@@ -25,3 +25,4 @@ ATTRIBUTE	User-Privilege				2	string
 #ATTRIBUTE	Host-IP			2	ipaddr
 
 END-VENDOR 	Wichorus
+ALIAS Wichorus Vendor-Specific.Wichorus

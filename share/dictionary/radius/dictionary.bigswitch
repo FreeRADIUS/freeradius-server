@@ -16,3 +16,4 @@ ATTRIBUTE	User-Role				1	string
 ATTRIBUTE	AVPair					2	string
 
 END-VENDOR	Big-Switch-Networks
+ALIAS Big-Switch-Networks Vendor-Specific.Big-Switch-Networks

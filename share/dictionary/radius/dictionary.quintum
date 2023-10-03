@@ -51,3 +51,4 @@ ATTRIBUTE	Trunkid-In				230	string
 ATTRIBUTE	Trunkid-Out				231	string
 
 END-VENDOR	Quintum
+ALIAS Quintum Vendor-Specific.Quintum

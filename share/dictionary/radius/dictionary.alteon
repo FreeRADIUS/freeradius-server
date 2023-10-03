@@ -33,3 +33,4 @@ VALUE	Service-Type			Slboper			254
 VALUE	Service-Type			User			255
 
 END-VENDOR	Alteon
+ALIAS Alteon Vendor-Specific.Alteon

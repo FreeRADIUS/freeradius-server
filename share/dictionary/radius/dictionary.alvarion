@@ -311,3 +311,4 @@ ATTRIBUTE	Breezecom-Attr10			10	string
 ATTRIBUTE	Breezecom-Attr11			11	string
 
 END-VENDOR	Alvarion
+ALIAS Alvarion Vendor-Specific.Alvarion

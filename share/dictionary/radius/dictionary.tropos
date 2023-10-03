@@ -53,3 +53,4 @@ ATTRIBUTE	Longitude				31	string
 #VALUE          Unicast-Cipher        WPA2-AES-CCMP            1027076
 
 END-VENDOR	Tropos
+ALIAS Tropos Vendor-Specific.Tropos

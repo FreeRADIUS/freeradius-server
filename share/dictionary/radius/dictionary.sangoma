@@ -113,3 +113,4 @@ VALUE	Hangupcause			User-Not-Registered	606
 #
 
 END-VENDOR	NetBorder
+ALIAS NetBorder Vendor-Specific.NetBorder

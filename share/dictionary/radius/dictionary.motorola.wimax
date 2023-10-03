@@ -35,3 +35,4 @@ ATTRIBUTE	WiMAX-VLAN-ID				65	octets
 ATTRIBUTE	Accounting-Message			80	string
 
 END-VENDOR    Motorola
+ALIAS Motorola Vendor-Specific.Motorola

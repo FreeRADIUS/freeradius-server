@@ -43,3 +43,4 @@ ATTRIBUTE	SNMP-Config-Change			3	string
 ATTRIBUTE	User-Level				4	integer
 
 END-VENDOR	Riverstone
+ALIAS Riverstone Vendor-Specific.Riverstone

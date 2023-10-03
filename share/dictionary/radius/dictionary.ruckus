@@ -160,3 +160,4 @@ VALUE	Accounting-Status		Accounting-Off		0
 
 END-VENDOR Ruckus
 
+ALIAS Ruckus Vendor-Specific.Ruckus

@@ -45,3 +45,4 @@ VALUE	redirect-Pool			VLANmismatch		8
 
 END-VENDOR      Cnergee
 
+ALIAS Cnergee Vendor-Specific.Cnergee

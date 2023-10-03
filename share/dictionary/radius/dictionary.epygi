@@ -119,3 +119,4 @@ VALUE	CallDisconnectReason		Disconected-by-CAC	3
 VALUE	CallDisconnectReason		Other			4
 
 END-VENDOR	Epygi
+ALIAS Epygi Vendor-Specific.Epygi

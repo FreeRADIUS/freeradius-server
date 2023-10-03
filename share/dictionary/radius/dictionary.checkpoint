@@ -14,3 +14,4 @@ ATTRIBUTE	Gaia-User-Role				229	string
 ATTRIBUTE	Gaia-SuperUser-Access			230	integer
 
 END-VENDOR	CheckPoint
+ALIAS CheckPoint Vendor-Specific.CheckPoint

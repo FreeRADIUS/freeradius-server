@@ -24,3 +24,4 @@ ATTRIBUTE	LNS-IP-Address				7	ipaddr
 ATTRIBUTE	CLI-User-Permission-ID			8	string
 
 END-VENDOR  Cosine
+ALIAS Cosine Vendor-Specific.Cosine

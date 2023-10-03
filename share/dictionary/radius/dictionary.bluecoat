@@ -25,3 +25,4 @@ VALUE	Authorization			Read-Only-Access	1
 VALUE	Authorization			Read-Write-Access	2
 
 END-VENDOR      BlueCoat
+ALIAS BlueCoat Vendor-Specific.BlueCoat

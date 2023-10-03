@@ -55,3 +55,4 @@ ATTRIBUTE	Ip-Host-Addr				60	string
 ATTRIBUTE	Product-ID				255	string
 
 END-VENDOR	3com
+ALIAS 3com Vendor-Specific.3com

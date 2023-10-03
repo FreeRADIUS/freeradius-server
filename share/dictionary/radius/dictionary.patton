@@ -153,3 +153,4 @@ VALUE	Disconnect-Cause		Protocol-error-unspecified 0x6F
 VALUE	Disconnect-Cause		Internetworking-unspecified 0x7F
 
 END-VENDOR	Patton
+ALIAS Patton Vendor-Specific.Patton

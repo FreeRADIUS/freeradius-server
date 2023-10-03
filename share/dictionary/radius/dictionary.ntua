@@ -44,3 +44,4 @@ VALUE	UserLogon-Restriction		Anonymous-User		1
 VALUE	UserLogon-Restriction		Admin-User		2
 
 END-VENDOR	NTUA
+ALIAS NTUA Vendor-Specific.NTUA

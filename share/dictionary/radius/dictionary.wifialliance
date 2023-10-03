@@ -85,3 +85,4 @@ ATTRIBUTE	HS20-Session-Information-URL		5	octets
 ATTRIBUTE	HS20-Roaming-Consortium			6	octets
 
 END-VENDOR    WiFi-Alliance
+ALIAS WiFi-Alliance Vendor-Specific.WiFi-Alliance

@@ -8,3 +8,4 @@ VENDOR		Force10				6027
 BEGIN-VENDOR	Force10
 ATTRIBUTE	AVPair					1	string
 END-VENDOR	Force10
+ALIAS Force10 Vendor-Specific.Force10

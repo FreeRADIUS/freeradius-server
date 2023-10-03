@@ -20,3 +20,4 @@ ATTRIBUTE	FTP-Group-Names				14	string
 ATTRIBUTE	FTP-Group-Ids				15	string
 
 END-VENDOR	Unix
+ALIAS Unix Vendor-Specific.Unix

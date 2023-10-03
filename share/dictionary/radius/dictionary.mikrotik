@@ -57,3 +57,4 @@ VALUE	Wireless-VLANID-Type		802.1q			0
 VALUE	Wireless-VLANID-Type		802.1ad			1
 
 END-VENDOR	Mikrotik
+ALIAS Mikrotik Vendor-Specific.Mikrotik

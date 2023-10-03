@@ -149,3 +149,4 @@ END-VENDOR      SG
 
 VALUE	Acct-Status-Type		Service-Start		0x09960001
 VALUE	Acct-Status-Type		Service-Stop		0x09960002
+ALIAS SG Vendor-Specific.SG

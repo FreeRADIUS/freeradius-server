@@ -53,3 +53,4 @@ VALUE	Login-Source			Console			128
 VALUE	Login-Source			All			240
 
 END-VENDOR	Symbol
+ALIAS Symbol Vendor-Specific.Symbol

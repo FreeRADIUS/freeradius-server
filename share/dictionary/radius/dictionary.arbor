@@ -19,3 +19,4 @@ BEGIN-VENDOR	Arbor
 ATTRIBUTE	Privilege-Level				1	string
 
 END-VENDOR Arbor
+ALIAS Arbor Vendor-Specific.Arbor

@@ -29,3 +29,4 @@ ATTRIBUTE	IKE-Conf-Name				64	string
 ATTRIBUTE	IKE-Cmd					65	string
 
 END-VENDOR	ipUnplugged
+ALIAS ipUnplugged Vendor-Specific.ipUnplugged

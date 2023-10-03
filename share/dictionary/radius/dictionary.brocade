@@ -25,3 +25,4 @@ ATTRIBUTE	Cmd					8	string
 
 END-VENDOR      Brocade
 
+ALIAS Brocade Vendor-Specific.Brocade

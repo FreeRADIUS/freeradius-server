@@ -19,3 +19,4 @@ BEGIN-VENDOR	Slipstream
 ATTRIBUTE	Auth					1	string
 
 END-VENDOR	Slipstream
+ALIAS Slipstream Vendor-Specific.Slipstream

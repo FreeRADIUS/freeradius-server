@@ -514,3 +514,4 @@ ATTRIBUTE	Visited-Interface-Id-PMIP6		137	ifid
 ATTRIBUTE	Visited-IPv4-HoA-PMIP6-2		138	ipaddr
 
 END-VENDOR	WiMAX
+ALIAS WiMAX Vendor-Specific.WiMAX

@@ -112,3 +112,4 @@ END-VENDOR	HP
 VALUE	Service-Type			Oper			252
 VALUE	Service-Type			User			255
 
+ALIAS HP Vendor-Specific.HP

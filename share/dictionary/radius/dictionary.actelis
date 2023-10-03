@@ -17,3 +17,4 @@ BEGIN-VENDOR	Actelis
 ATTRIBUTE	Privilege				1	string
 
 END-VENDOR	Actelis
+ALIAS Actelis Vendor-Specific.Actelis

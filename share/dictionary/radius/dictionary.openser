@@ -43,3 +43,4 @@ VALUE	Sip-Method			INVITE			1
 VALUE	Sip-Method			CANCEL			2
 VALUE	Sip-Method			ACK			4
 VALUE	Sip-Method			BYE			8
+ALIAS  Vendor-Specific.

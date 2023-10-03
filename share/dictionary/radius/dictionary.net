@@ -131,3 +131,4 @@ ATTRIBUTE	Time-And-Day				163	string
 ATTRIBUTE	Log-Time				164	string
 
 END-VENDOR	NET
+ALIAS NET Vendor-Specific.NET

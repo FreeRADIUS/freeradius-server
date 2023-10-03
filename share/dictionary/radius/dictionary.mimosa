@@ -38,3 +38,4 @@ ATTRIBUTE	Syslog-Port				28	integer
 ATTRIBUTE	Syslog-Protocol				29	string
 
 END-VENDOR Mimosa
+ALIAS Mimosa Vendor-Specific.Mimosa

@@ -65,3 +65,4 @@ VALUE	NAT-Log-Options			Syslog-Off		8
 VALUE	Multicast-Client		On			1
 
 END-VENDOR	Livingston
+ALIAS Livingston Vendor-Specific.Livingston

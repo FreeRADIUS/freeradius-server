@@ -37,3 +37,4 @@ ATTRIBUTE	Hotspot					3	string
 ATTRIBUTE	UFP					4	string
 
 END-VENDOR    SofaWare
+ALIAS SofaWare Vendor-Specific.SofaWare

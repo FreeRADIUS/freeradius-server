@@ -18,3 +18,4 @@ ATTRIBUTE	C62351-8-Revision			4	integer
 ATTRIBUTE	62351-8-ValidFrom			5	string
 ATTRIBUTE	62351-8-ValidTo				6	string
 END-VENDOR IEC
+ALIAS IEC Vendor-Specific.IEC

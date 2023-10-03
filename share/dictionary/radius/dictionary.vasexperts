@@ -91,3 +91,4 @@ VALUE	DHCPv6-Request			Rebind			6
 # Attributes 250 - 255 are dedicated to the customer's private use and are not used (ignored) by pcrf
 
 END-VENDOR      VasExperts
+ALIAS VasExperts Vendor-Specific.VasExperts

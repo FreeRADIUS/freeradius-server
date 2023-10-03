@@ -46,3 +46,4 @@ VALUE	IP-Upsell			PublicPool		1
 
 END-VENDOR	Nomadix
 
+ALIAS Nomadix Vendor-Specific.Nomadix

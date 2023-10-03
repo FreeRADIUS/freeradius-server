@@ -51,3 +51,4 @@ VALUE	Auth-Type			Local-Radius		7
 VALUE	Auth-Type			Proxy-Radius		8
 
 END-VENDOR	Azaire
+ALIAS Azaire Vendor-Specific.Azaire

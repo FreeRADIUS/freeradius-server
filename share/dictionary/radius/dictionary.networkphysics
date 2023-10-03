@@ -18,3 +18,4 @@ ATTRIBUTE	NetSensory-Privilege			33	string
 #VALUE		NetSensory-Privilege		Administrative	'npadmin'
 
 END-VENDOR	NetworkPhysics
+ALIAS NetworkPhysics Vendor-Specific.NetworkPhysics

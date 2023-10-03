@@ -162,3 +162,4 @@ VALUE	Partitioning-Strip-Realm	ON			1
 VALUE	Partitioning-Strip-Realm	OFF			0
 
 END-VENDOR Altiga
+ALIAS Altiga Vendor-Specific.Altiga

@@ -38,3 +38,4 @@ ATTRIBUTE	CS-Acc-Level				254	integer
 ATTRIBUTE	CS-Priv-Level				255	integer
 
 END-VENDOR	Ciena
+ALIAS Ciena Vendor-Specific.Ciena

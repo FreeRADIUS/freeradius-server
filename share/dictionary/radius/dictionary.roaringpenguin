@@ -30,3 +30,4 @@ ATTRIBUTE	MOTM					4	string
 ATTRIBUTE	Max-Sessions-Per-User			5	integer
 
 END-VENDOR	Roaring-Penguin
+ALIAS Roaring-Penguin Vendor-Specific.Roaring-Penguin

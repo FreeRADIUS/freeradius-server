@@ -43,3 +43,4 @@ VALUE	NAT-Type			NAT			1
 VALUE	NAT-Type			NAPT			2
 
 END-VENDOR	Issanni
+ALIAS Issanni Vendor-Specific.Issanni

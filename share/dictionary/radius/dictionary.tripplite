@@ -64,3 +64,4 @@ ATTRIBUTE	Message					3	string
 ATTRIBUTE	User-Role				4	string
 
 END-VENDOR TrippLite
+ALIAS TrippLite Vendor-Specific.TrippLite

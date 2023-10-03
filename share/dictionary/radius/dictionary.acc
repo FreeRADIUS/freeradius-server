@@ -260,3 +260,4 @@ VALUE	Igmp-Version			V1			1
 VALUE	Igmp-Version			V2			2
 
 END-VENDOR	ACC
+ALIAS ACC Vendor-Specific.ACC

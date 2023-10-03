@@ -63,3 +63,4 @@ ATTRIBUTE	User-Group				3	string
 # ATTRIBUTE User-Groups		4	string	SonicWall.
 
 END-VENDOR	SonicWall
+ALIAS SonicWall Vendor-Specific.SonicWall

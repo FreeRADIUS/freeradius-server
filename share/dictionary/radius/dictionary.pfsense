@@ -18,3 +18,4 @@ ATTRIBUTE	Bandwidth-Max-Down			2	integer
 ATTRIBUTE	Max-Total-Octets			3	integer
 
 END-VENDOR	pfSense
+ALIAS pfSense Vendor-Specific.pfSense

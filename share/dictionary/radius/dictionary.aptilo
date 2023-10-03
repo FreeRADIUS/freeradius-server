@@ -153,3 +153,4 @@ VALUE	NAS-Capabilities		CoA-Login		1
 VALUE	Debug-Option			Simulate-EAP-TLS	1
 
 END-VENDOR 	Aptilo
+ALIAS Aptilo Vendor-Specific.Aptilo

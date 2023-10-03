@@ -168,3 +168,4 @@ MEMBER		Usage-Data-DL				uint64
 MEMBER		Usage-Data-UL				uint64
 
 END-VENDOR	3GPP
+ALIAS 3GPP Vendor-Specific.3GPP

@@ -21,3 +21,4 @@ BEGIN-VENDOR	Navini
 ATTRIBUTE	AVPair					1	string
 
 END-VENDOR	Navini
+ALIAS Navini Vendor-Specific.Navini

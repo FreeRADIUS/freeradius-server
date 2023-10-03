@@ -49,3 +49,4 @@ VALUE	Multi-Link-Flag			False			0
 #VALUE		Acct-Authentic		File			10
 #VALUE		Acct-Authentic		Local-VPN		11
 
+ALIAS  Vendor-Specific.

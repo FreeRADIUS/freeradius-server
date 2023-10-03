@@ -45,3 +45,4 @@ ATTRIBUTE	Admin-Repl-Site-Access			8	string	# Comma-separated list of sites
 ATTRIBUTE	Admin-Account-Type			9	string	# RO or RW
 
 END-VENDOR      Equallogic
+ALIAS Equallogic Vendor-Specific.Equallogic

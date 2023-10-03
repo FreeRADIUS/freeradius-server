@@ -18,3 +18,4 @@ ATTRIBUTE	SP-Country				10	string
 ATTRIBUTE	Monitoring-Inflate			11	string
 
 END-VENDOR      TERENA
+ALIAS TERENA Vendor-Specific.TERENA

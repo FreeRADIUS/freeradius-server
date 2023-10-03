@@ -77,3 +77,4 @@ ATTRIBUTE	Output-Packets				.5	integer
 ATTRIBUTE	Walled-Garden-State			160	integer
 
 END-VENDOR	Cambium
+ALIAS Cambium Vendor-Specific.Cambium

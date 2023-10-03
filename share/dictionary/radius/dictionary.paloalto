@@ -27,3 +27,4 @@ ATTRIBUTE	Client-Hostname				9	string
 ATTRIBUTE	GlobalProtect-Client-Version		10	string
 
 END-VENDOR	PaloAlto
+ALIAS PaloAlto Vendor-Specific.PaloAlto

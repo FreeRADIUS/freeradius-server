@@ -120,3 +120,4 @@ VALUE	KW-UE-Capabilities		CSG-Capable		0
 VALUE	KW-UE-Capabilities		Not-CSG-Capable		1
 
 END-VENDOR      Kineto
+ALIAS Kineto Vendor-Specific.Kineto

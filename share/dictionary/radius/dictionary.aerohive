@@ -75,3 +75,4 @@ VALUE	Extreme-Auth-Source		Service			1
 VALUE	Extreme-Auth-Source		Non-Service		2
 
 END-VENDOR      Aerohive
+ALIAS Aerohive Vendor-Specific.Aerohive

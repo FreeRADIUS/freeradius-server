@@ -41,3 +41,4 @@ VALUE	Inhibit-Pmrept			Y			1
 
 END-VENDOR	Covaro
 
+ALIAS Covaro Vendor-Specific.Covaro

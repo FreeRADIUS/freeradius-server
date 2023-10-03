@@ -18,3 +18,4 @@ BEGIN-VENDOR	Centec
 ATTRIBUTE	Exec-Privilege				1	integer
 
 END-VENDOR      Centec
+ALIAS Centec Vendor-Specific.Centec

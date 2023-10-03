@@ -55,3 +55,4 @@ ATTRIBUTE	Device-Name				152	string
 ATTRIBUTE	Device-Location				153	string
 
 END-VENDOR	Xylan
+ALIAS Xylan Vendor-Specific.Xylan

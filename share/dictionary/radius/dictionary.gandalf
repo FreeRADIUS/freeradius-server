@@ -106,3 +106,4 @@ VALUE	Modem-Required-2		Disabled		1
 VALUE	Modem-Required-2		Enabled			2
 
 END-VENDOR	Gandalf
+ALIAS Gandalf Vendor-Specific.Gandalf

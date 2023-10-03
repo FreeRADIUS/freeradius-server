@@ -14,3 +14,4 @@ ATTRIBUTE	AVPair					0	string
 ATTRIBUTE	Intercept				1	integer
 
 END-VENDOR	Colubris
+ALIAS Colubris Vendor-Specific.Colubris

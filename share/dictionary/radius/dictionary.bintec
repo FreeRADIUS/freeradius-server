@@ -45,3 +45,4 @@ VALUE	Framed-Protocol			Bintec-X75-PPP		0x0110000b
 VALUE	Framed-Protocol			Bintec-X75BTX-PPP	0x0110000c
 VALUE	Framed-Protocol			Bintec-X25-NOSIG	0x0110000d
 VALUE	Framed-Protocol			Bintec-X25-PPP-OPT	0x0110000e
+ALIAS BinTec Vendor-Specific.BinTec

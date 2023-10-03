@@ -20,3 +20,4 @@ ATTRIBUTE	Accounting-Info				4	string
 ATTRIBUTE	Login-Option				5	string
 
 END-VENDOR	Telebit
+ALIAS Telebit Vendor-Specific.Telebit

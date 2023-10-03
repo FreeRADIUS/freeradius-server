@@ -17,3 +17,4 @@ ATTRIBUTE	Expiration				9	string
 ATTRIBUTE	SessionTimeout				10	integer
 ATTRIBUTE	Wan-Interface				11	string
 END-VENDOR fdXtended
+ALIAS fdXtended Vendor-Specific.fdXtended

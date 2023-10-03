@@ -20,3 +20,4 @@ BEGIN-VENDOR	Clavister
 ATTRIBUTE	User-Group				1	string
 
 END-VENDOR	Clavister
+ALIAS Clavister Vendor-Specific.Clavister

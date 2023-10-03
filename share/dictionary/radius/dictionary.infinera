@@ -11,3 +11,4 @@ ATTRIBUTE	User-Category				1	string
 ATTRIBUTE	ENM-User-Category			2	string
 
 END-VENDOR      Infinera
+ALIAS Infinera Vendor-Specific.Infinera

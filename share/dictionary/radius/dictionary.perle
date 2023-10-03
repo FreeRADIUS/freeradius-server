@@ -525,3 +525,4 @@ VALUE	Line-Access-Port-49		Read-Output-Input	6
 VALUE	Line-Access-Port-49		Read-Output-Input-Write	7
 
 END-VENDOR	Perle
+ALIAS Perle Vendor-Specific.Perle

@@ -90,3 +90,4 @@ VALUE	Framed-Protocol			CAPWAP			0x48f90001
 
 VALUE	Service-Type			CAPWAP-WTP		0x48f90001
 VALUE	Service-Type			CAPWAP-STA		0x48f90002
+ALIAS Travelping Vendor-Specific.Travelping

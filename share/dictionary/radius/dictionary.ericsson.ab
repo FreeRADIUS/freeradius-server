@@ -450,3 +450,4 @@ ATTRIBUTE	Acct-Input-IPv6-Gigawords		224	integer
 ATTRIBUTE	Acct-Output-IPv6-Gigawords		225	integer
 
 END-VENDOR	Ericsson-AB
+ALIAS Ericsson-AB Vendor-Specific.Ericsson-AB

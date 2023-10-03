@@ -169,3 +169,6 @@ VALUE	Extended-Quarantine-State	Unknown			3
 VALUE	Extended-Quarantine-State	No-Data			4
 
 END-VENDOR Microsoft
+
+ALIAS		Microsoft Vendor-Specific.Microsoft
+

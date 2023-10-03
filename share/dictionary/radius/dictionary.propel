@@ -18,3 +18,4 @@ ATTRIBUTE	Client-NAS-IP-Address			4	ipaddr
 ATTRIBUTE	Client-Source-ID			5	integer
 ATTRIBUTE	Content-Filter-ID			6	integer
 END-VENDOR	Propel
+ALIAS Propel Vendor-Specific.Propel

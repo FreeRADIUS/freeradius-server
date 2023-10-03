@@ -44,3 +44,4 @@ ATTRIBUTE	Dest-No					130	string
 ATTRIBUTE	DDI					131	string
 
 END-VENDOR	ITK
+ALIAS ITK Vendor-Specific.ITK

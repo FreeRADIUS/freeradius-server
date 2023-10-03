@@ -1381,3 +1381,4 @@ VALUE	WSG-MIP-Simple-IP-Fallback	No			0
 VALUE	WSG-MIP-Simple-IP-Fallback	Yes			1
 
 END-VENDOR	Starent
+ALIAS Starent Vendor-Specific.Starent

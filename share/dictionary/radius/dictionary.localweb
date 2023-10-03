@@ -33,3 +33,4 @@ ATTRIBUTE	Acct-Rx-Mgmt				231	integer
 ATTRIBUTE	Reauth-Counter				240	integer
 
 END-VENDOR	Local-Web
+ALIAS Local-Web Vendor-Specific.Local-Web

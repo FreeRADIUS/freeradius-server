@@ -35,3 +35,4 @@ VALUE	Admin-Privilege			Read-Only-Admin		4
 VALUE	Admin-Privilege			Read-Only-VSYS-Admin	5
 
 END-VENDOR	Netscreen
+ALIAS Netscreen Vendor-Specific.Netscreen

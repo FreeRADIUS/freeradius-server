@@ -35,3 +35,4 @@ VALUE	Netlogin-Only			Disabled		0
 VALUE	Netlogin-Only			Enabled			1
 
 END-VENDOR	Extreme
+ALIAS Extreme Vendor-Specific.Extreme

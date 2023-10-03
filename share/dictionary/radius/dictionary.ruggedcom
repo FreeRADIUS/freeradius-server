@@ -11,3 +11,4 @@ BEGIN-VENDOR	RuggedCom
 ATTRIBUTE	Privilege-level				2	string
 
 END-VENDOR RuggedCom
+ALIAS RuggedCom Vendor-Specific.RuggedCom

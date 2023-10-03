@@ -29,3 +29,4 @@ ATTRIBUTE	Admin-Group				35	string
 ATTRIBUTE	Extra-Blob				64	string
 
 END-VENDOR	EfficientIP
+ALIAS EfficientIP Vendor-Specific.EfficientIP

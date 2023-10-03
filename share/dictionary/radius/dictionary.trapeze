@@ -49,3 +49,4 @@ ATTRIBUTE	Allowed-Devices				20	string
 ATTRIBUTE	Device-Group				21	string
 
 END-VENDOR	Trapeze
+ALIAS Trapeze Vendor-Specific.Trapeze

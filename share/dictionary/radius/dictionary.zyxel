@@ -26,3 +26,4 @@ VALUE	Callback-Phone-Source		Preconfigured		0
 VALUE	Callback-Phone-Source		User			1
 
 END-VENDOR Zyxel
+ALIAS Zyxel Vendor-Specific.Zyxel

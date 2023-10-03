@@ -66,3 +66,4 @@ VALUE	CTPView-OS-Group		System_Admin		2
 VALUE	CTPView-OS-Group		Auditor			3
 
 END-VENDOR	Juniper
+ALIAS Juniper Vendor-Specific.Juniper

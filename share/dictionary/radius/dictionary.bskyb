@@ -24,3 +24,4 @@ ATTRIBUTE	Wifi-Replicated-Packet			7	string
 ATTRIBUTE	Wifi-Protocol-Restriction		8	integer
 
 END-VENDOR	BSkyB
+ALIAS BSkyB Vendor-Specific.BSkyB

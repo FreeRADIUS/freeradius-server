@@ -40,3 +40,4 @@ VALUE	Service-Type			Card			5
 VALUE	Service-Type			NetworkOnly		6
 
 END-VENDOR APC
+ALIAS APC Vendor-Specific.APC

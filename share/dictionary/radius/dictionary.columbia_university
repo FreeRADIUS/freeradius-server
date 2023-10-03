@@ -25,3 +25,4 @@ VALUE	Sip-Method			REGISTER		2
 VALUE	Sip-Method			OTHER			3
 
 END-VENDOR	Columbia-University
+ALIAS Columbia-University Vendor-Specific.Columbia-University

@@ -17,3 +17,4 @@ ATTRIBUTE	Suggested-Rule-Space			30	string
 ATTRIBUTE	Suggested-Secondary-Rule-Space		31	string
 
 END-VENDOR      Ericsson-Packet-Core-Networks
+ALIAS Ericsson-Packet-Core-Networks Vendor-Specific.Ericsson-Packet-Core-Networks

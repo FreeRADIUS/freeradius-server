@@ -49,3 +49,4 @@ VALUE	User-Mobile-Operator		HS-Mobile-ChinaUnicom	2
 VALUE	User-Mobile-Operator		HS-Mobile-ChinaTelecom	3
 
 END-VENDOR      Hillstone
+ALIAS Hillstone Vendor-Specific.Hillstone

@@ -18,3 +18,4 @@ ATTRIBUTE	AM-Status-HTMLFile			4	string
 ATTRIBUTE	AM-HTTP-Proxy-Port			5	integer
 
 END-VENDOR IEA-Software
+ALIAS IEA-Software Vendor-Specific.IEA-Software

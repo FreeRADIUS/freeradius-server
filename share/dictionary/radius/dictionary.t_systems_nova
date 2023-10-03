@@ -33,3 +33,4 @@ ATTRIBUTE	Visiting-Provider-Code			14	string
 ATTRIBUTE	UnknownAVP				15	string
 
 END-VENDOR T-Systems-Nova
+ALIAS T-Systems-Nova Vendor-Specific.T-Systems-Nova

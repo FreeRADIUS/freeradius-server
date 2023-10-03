@@ -2085,3 +2085,4 @@ VALUE	TurboCell-OpMode		Satellite-NT		3
 # ----------------------------------------------
 
 END-VENDOR	KarlNet
+ALIAS KarlNet Vendor-Specific.KarlNet

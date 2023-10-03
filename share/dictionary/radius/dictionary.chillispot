@@ -38,3 +38,4 @@ END-VENDOR	ChilliSpot
 # (ChilliSpot Only - CoovaChilli uses Service-Type = Administrative-User)
 VALUE	Service-Type			ChilliSpot-Authorize-Only 0x38df0001
 
+ALIAS ChilliSpot Vendor-Specific.ChilliSpot

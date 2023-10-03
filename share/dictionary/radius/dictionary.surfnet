@@ -19,3 +19,4 @@ ATTRIBUTE	Service-Identifier			2	string
 ATTRIBUTE	Service-Provider			3	string
 
 END-VENDOR	Surfnet
+ALIAS Surfnet Vendor-Specific.Surfnet

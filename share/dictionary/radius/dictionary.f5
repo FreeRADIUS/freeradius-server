@@ -51,3 +51,4 @@ VALUE	LTM-User-Console		Disabled		0
 VALUE	LTM-User-Console		Enabled			1
 
 END-VENDOR   F5
+ALIAS F5 Vendor-Specific.F5

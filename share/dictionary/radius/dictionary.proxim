@@ -93,3 +93,4 @@ ATTRIBUTE	E1-SU-Allow-Untag-Mgmt			68	integer
 ATTRIBUTE	E2-SU-Allow-Untag-Mgmt			69	integer
 
 END-VENDOR 	Proxim
+ALIAS Proxim Vendor-Specific.Proxim

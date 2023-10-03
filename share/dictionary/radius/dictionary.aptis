@@ -183,3 +183,4 @@ ATTRIBUTE	Xmit-Rate				255	integer
 #ATTRIBUTE	PPP-StacMode		0x852103ef	integer
 
 END-VENDOR Aptis
+ALIAS Aptis Vendor-Specific.Aptis

@@ -51,3 +51,4 @@ ATTRIBUTE	LoginHost-Dest				250	string
 ATTRIBUTE	Tunnel-Decision-IP			251	string
 
 END-VENDOR	infonet
+ALIAS infonet Vendor-Specific.infonet

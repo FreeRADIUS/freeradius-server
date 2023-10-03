@@ -23,3 +23,4 @@ ATTRIBUTE	Group-Ids				15	string
 ATTRIBUTE	User-Groups				16	string
 
 END-VENDOR Citrix
+ALIAS Citrix Vendor-Specific.Citrix

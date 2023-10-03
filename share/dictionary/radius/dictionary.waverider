@@ -57,3 +57,4 @@ VALUE	Rf-Power			p_25			11
 VALUE	Rf-Power			p_26			12
 
 END-VENDOR Waverider
+ALIAS Waverider Vendor-Specific.Waverider

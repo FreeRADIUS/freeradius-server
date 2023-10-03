@@ -39,3 +39,4 @@ ATTRIBUTE	Auth-Level-NM			101	string
 
 END-VENDOR	Adva
 
+ALIAS Adva Vendor-Specific.Adva

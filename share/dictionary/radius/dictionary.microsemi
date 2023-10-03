@@ -23,3 +23,4 @@ ATTRIBUTE	Fallback-User-Group			6	string
 ATTRIBUTE	Network-Element-Group			7	string
 
 END-VENDOR	Microsemi
+ALIAS Microsemi Vendor-Specific.Microsemi

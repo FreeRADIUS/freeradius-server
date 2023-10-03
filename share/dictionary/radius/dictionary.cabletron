@@ -27,3 +27,4 @@ VALUE	Protocol-Callable		BR-IPX-Callable		6
 VALUE	Protocol-Callable		IP-BR-IPX-Callable	7
 
 END-VENDOR	Cabletron
+ALIAS Cabletron Vendor-Specific.Cabletron

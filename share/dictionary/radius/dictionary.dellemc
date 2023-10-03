@@ -18,3 +18,4 @@ ATTRIBUTE	Group-Name				2	string
 
 END-VENDOR DellEMC
 
+ALIAS DellEMC Vendor-Specific.DellEMC

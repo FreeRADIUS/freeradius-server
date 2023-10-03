@@ -72,3 +72,4 @@ ATTRIBUTE	Rate-Ctrl-PBS-Down-v6			236	integer
 ATTRIBUTE	QoS-Profile-Down-v6			237	string
 
 END-VENDOR      ZTE
+ALIAS ZTE Vendor-Specific.ZTE

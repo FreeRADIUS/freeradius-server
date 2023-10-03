@@ -55,3 +55,4 @@ VALUE	Mail-Authtype			CRAM-MD4		8
 VALUE	Mail-Authtype			CRAM-SHA1		9
 
 END-VENDOR Sandy
+ALIAS Sandy Vendor-Specific.Sandy

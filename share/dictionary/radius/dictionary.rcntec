@@ -17,3 +17,4 @@ ATTRIBUTE	RPCM-Group				1	string
 ATTRIBUTE	RPCM-Session-Expire			2	integer
 
 END-VENDOR	RCNTEC
+ALIAS RCNTEC Vendor-Specific.RCNTEC
