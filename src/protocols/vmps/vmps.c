@@ -44,9 +44,8 @@ typedef struct {
 /*
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/usr.sbin/tcpdump/print-vqp.c
  *
- *  Some of how it works:
- *
- *  http://www.hackingciscoexposed.com/pdf/chapter12.pdf
+ *  Chapter 12 of Hacking Cisco Networks Exposed (Vladimirov, Gavrilenko,
+ *  and Mikhailovsky, McGraw-Hill 2005)  describes some of how it works.
  *
  * VLAN Query Protocol (VQP)
  *
