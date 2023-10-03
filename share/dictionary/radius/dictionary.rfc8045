@@ -31,3 +31,8 @@ ATTRIBUTE	Range-End				.10	integer
 ATTRIBUTE	Local-Id				.11	string
 
 ATTRIBUTE	IP-Port-Forwarding-Map			241.7	tlv clone=Extended-Attribute-1.IP-Port-Range
+
+
+ALIAS		IP-Port-Limit-Info	Extended-Attribute-1.IP-Port-Limit-Info
+ALIAS		IP-Port-Range		Extended-Attribute-1.IP-Port-Range
+ALIAS		IP-Port-Forwarding-Map	Extended-Attribute-1.IP-Port-Forwarding-Map
