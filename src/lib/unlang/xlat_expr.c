@@ -407,7 +407,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 			a = &one;
 
-			switch (a->type) {
+			switch (b->type) {
 			case FR_TYPE_STRING:
 				fr_value_box_strdup_shallow(a, NULL, "", false);
 				break;
@@ -430,7 +430,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 			b = &two;
 
-			switch (b->type) {
+			switch (a->type) {
 			case FR_TYPE_STRING:
 				fr_value_box_strdup_shallow(b, NULL, "", false);
 				break;
