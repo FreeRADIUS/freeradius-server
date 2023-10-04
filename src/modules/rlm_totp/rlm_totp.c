@@ -77,9 +77,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	CONF_SECTION *conf = mctx->inst->conf;
 
 	inst->name = cf_section_name2(conf);
-		if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	return 0;
 }
@@ -163,7 +161,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		our_keylen = len;
 	}
 
-	if (fr_totp_cmp(&inst->totp, request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, secret->vb_strvalue) != 0) RETURN_MODULE_FAIL;
+	if (fr_totp_cmp(&inst->totp, request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, user_password->vb_strvalue) != 0) RETURN_MODULE_FAIL;
 
 	RETURN_MODULE_OK;
 }
