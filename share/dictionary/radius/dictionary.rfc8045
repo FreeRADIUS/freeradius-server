@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -32,7 +32,6 @@ ATTRIBUTE	Local-Id				.11	string
 
 ATTRIBUTE	IP-Port-Forwarding-Map			241.7	tlv clone=Extended-Attribute-1.IP-Port-Range
 
-
-ALIAS		IP-Port-Limit-Info	Extended-Attribute-1.IP-Port-Limit-Info
-ALIAS		IP-Port-Range		Extended-Attribute-1.IP-Port-Range
-ALIAS		IP-Port-Forwarding-Map	Extended-Attribute-1.IP-Port-Forwarding-Map
+ALIAS		IP-Port-Limit-Info			Extended-Attribute-1.IP-Port-Limit-Info
+ALIAS		IP-Port-Range				Extended-Attribute-1.IP-Port-Range
+ALIAS		IP-Port-Forwarding-Map			Extended-Attribute-1.IP-Port-Forwarding-Map
