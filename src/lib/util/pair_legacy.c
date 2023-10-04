@@ -152,6 +152,11 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			my_ctx = *relative_vp;
 		} else {
 			/*
+			 *	Be nice to people who expect to see '&' everywhere.
+			 */
+			if (*p == '&') p++;
+
+			/*
 			 *	We can find an attribute from the parent, but if the path is fully specified,
 			 *	then we reset any relative VP.  So that the _next_ line we parse cannot use
 			 *	".foo = bar" to get a relative attribute which was used when parsing _this_
