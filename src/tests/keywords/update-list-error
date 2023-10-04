@@ -10,10 +10,6 @@ update {
 }
 
 update {
-	&reply += `/path/to/foo bar baz`
-}
-
-update {
 	&request := nope		# ERROR
 }
 
