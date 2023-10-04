@@ -197,20 +197,7 @@ while (@ARGV) {
 
             my $value = $2;
             my $type = $3;
-            my $stuff = $4;
-
-            #
-            #  See if it's old format, with the vendor at the end of
-            #  the line.  If so, make it the new format.
-            #
-            if (defined $vendor && $stuff =~ /$vendor/) {
-                if ($begin_vendor == 0) {
-                    push @output, "BEGIN-VENDOR\t$vendor\n\n";
-                    $begin_vendor = 1;
-                }
-                $stuff =~ s/$vendor//;
-                $stuff =~ s/\s+$//;
-            }
+            my $refs = $4;
 
             #
             #  The numerical value doesn't start with ".".
@@ -231,7 +218,7 @@ while (@ARGV) {
 #                }
 #            }
 
-            push @output, "ATTRIBUTE\t$name$tabs$value\t$type$stuff\n";
+            push @output, "ATTRIBUTE\t$name$tabs$value\t$type$refs\n";
             next;
         }
 
