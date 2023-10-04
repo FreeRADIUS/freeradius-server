@@ -39,13 +39,13 @@ typedef struct {
 
 static const call_env_t call_env[] = {
 	{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, rlm_totp_call_env_t, secret,
-			     "&control.TOTP.Secret", T_BARE_WORD, false, false, false) },
+			     "&control.TOTP.Secret", T_BARE_WORD, false, true, false) },
 
 	{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, rlm_totp_call_env_t, key,
-			     "&control.TOTP.key", T_BARE_WORD, false, false, false) },
+			     "&control.TOTP.key", T_BARE_WORD, false, true, false) },
 
 	{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, rlm_totp_call_env_t, user_password,
-			     "&request.TOTP.From-User", T_BARE_WORD, false, false, false) },
+			     "&request.TOTP.From-User", T_BARE_WORD, false, true, false) },
 
 	CALL_ENV_TERMINATOR
 };
