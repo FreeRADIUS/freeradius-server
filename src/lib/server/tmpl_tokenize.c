@@ -1579,13 +1579,13 @@ fr_slen_t tmpl_attr_ref_afrom_unresolved_substr(TALLOC_CTX *ctx, tmpl_attr_error
  *	Add attr_ref when we've parsed an intermediate dictionary name
  *	which is itself a ref.
  */
-static void tmpl_attr_ref_fixup(TALLOC_CTX *ctx, tmpl_t *vpt, fr_dict_attr_t const *da)
+static void tmpl_attr_ref_fixup(TALLOC_CTX *ctx, tmpl_t *vpt, fr_dict_attr_t const *da, fr_dict_attr_t const *parent)
 {
 	tmpl_attr_t *ar;
 
 	if (tmpl_attr_tail_da(vpt) == da) return;
 
-	if (!da->parent->flags.is_root) tmpl_attr_ref_fixup(ctx, vpt, da->parent);
+	if (da->parent != parent) tmpl_attr_ref_fixup(ctx, vpt, da->parent, parent);
 
 	MEM(ar = talloc(ctx, tmpl_attr_t));
 	*ar = (tmpl_attr_t) {
@@ -1687,7 +1687,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 			our_parent = da->parent;
 
 			if (!our_parent->flags.is_root) {
-				tmpl_attr_ref_fixup(ctx, vpt, our_parent);
+				tmpl_attr_ref_fixup(ctx, vpt, our_parent, fr_dict_root(da->dict));
 			}
 		}
 	} else {
@@ -1757,6 +1757,10 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 */
 		fr_assert(our_parent != NULL);
 
+		if (da->parent != our_parent) {
+			tmpl_attr_ref_fixup(ctx, vpt, da->parent, our_parent);
+		}
+
 		goto alloc_ar;
 	}
 
@@ -1799,7 +1803,7 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	reference.
 		 */
 		da = fr_dict_attr_child_by_num(namespace, oid);
-		if (da) goto  alloc_ar;
+		if (da) goto alloc_ar;
 
 		if (!at_rules->allow_unknown) {
 		disallow_unknown:
