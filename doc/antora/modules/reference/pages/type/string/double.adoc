@@ -101,7 +101,7 @@ The output strings here are completely different than for the previous
 examples.  The output data type is `octets`, and not `string`.
 
 If the goal is to have the _raw_ `octets` data inserted into a
-`string`, you must use the `%{string:...}` expansion.  This expansion
+`string`, you must cast the octets to a string value.  That process
 will copy the input `octets` value to a the output, changing the data
 type to `string`.  The value is left alone.
 
@@ -109,7 +109,7 @@ type to `string`.  The value is left alone.
 [source,unlang]
 ----
 "User-Name is %{Tmp-Octets-0}"
-"User-Name is %{string:%{Tmp-Octets-0}}"
+"User-Name is %{(string) &Tmp-Octets-0}"
 ----
 
 if the `&Tmp-Octets-0` attribute has value `0x666f6f` (`foo`)
