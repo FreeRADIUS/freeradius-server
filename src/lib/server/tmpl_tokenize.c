@@ -1732,6 +1732,16 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 				}
 			}
 			ar = NULL;
+
+		} else {
+			/*
+			 *	We had an alias in the same namespace,
+			 *	go add more things in.
+			 */
+			if (da->parent != our_parent) {
+				fr_assert(namespace == our_parent);
+				tmpl_attr_ref_fixup(ctx, vpt, da->parent, our_parent);
+			}
 		}
 	}
 
@@ -1756,11 +1766,6 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 *	reference.
 		 */
 		fr_assert(our_parent != NULL);
-
-		if (da->parent != our_parent) {
-			tmpl_attr_ref_fixup(ctx, vpt, da->parent, our_parent);
-		}
-
 		goto alloc_ar;
 	}
 
