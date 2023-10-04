@@ -99,7 +99,7 @@ server vmps {
 		#  NOTE: If you have VLAN's in a database, you can `select`
 		#  the VLAN name based on the MAC address.
 		#
-#		&reply.VLAN-Name = "%{sql:select ... where mac='%{MAC-Address}'}"
+#		&reply.VLAN-Name = %sql("select ... where mac='%{MAC-Address}'")
 	}
 
 	#

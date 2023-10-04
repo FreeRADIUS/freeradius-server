@@ -1128,7 +1128,7 @@ send Access-Accept {
 	#  Service-Type = Authorize-Only.
 	#
 #	if (!&reply.State) {
-#		&reply.State := "0x%{randstr:16h}"
+#		&reply.State := "0x%randstr(16h)"
 #	}
 
 	#

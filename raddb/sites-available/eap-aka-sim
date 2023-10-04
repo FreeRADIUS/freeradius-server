@@ -530,7 +530,7 @@ server eap-aka-sim {
 	#
 	#  - The encrypt expansions of the `rlm_cipher` module.
 	#  - The `%(3gpp_pseudonym_encrypt:)` expansion.
-	#  - The `%{rand:}` expansion.
+	#  - The `%randstr()` expansion.
 	#
 	#  NOTE: Add a `&reply.Next-Pseudonym-Id` attribute in this section to
 	#  avoid having the permanent Id of the SIM exposed during subsequent
