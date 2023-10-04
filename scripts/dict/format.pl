@@ -156,15 +156,20 @@ while (@ARGV) {
         #
         #  Remember if we did BEGIN-VENDOR format=
         #
-        if (/^BEGIN-VENDOR\s+([-\w]+)\s+(format=[-\w]+)/) {
+        if (/^BEGIN-VENDOR\s+([-\w]+)\s+(.+)/) {
+	    my $tabs;
+
             $begin_vendor = 1;
             if (!defined $vendor) {
                 $vendor = $1;
             } elsif ($vendor ne $1) {
                 # do something smart
             }
+	    if ($2) {
+		$tabs = tabs(32,$vendor);
+	    }
 
-            push @output, "BEGIN-VENDOR\t$vendor $2\n";
+            push @output, "BEGIN-VENDOR\t$vendor$tabs$2\n";
             next;
         }
 
