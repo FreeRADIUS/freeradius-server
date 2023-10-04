@@ -27,7 +27,7 @@ if (!("%(length:%{Tmp-String-1})" == 42)) {
 	test_fail
 }
 
-&Tmp-String-8 := "%{string:%{Tmp-Octets-0}}"
+&Tmp-String-8 := "%{(string) %{Tmp-Octets-0}}"
 if (!(&Tmp-String-8 == "i have scary embedded things\000 inside me")) {
 	test_fail
 }
@@ -36,7 +36,7 @@ if (!(&Tmp-String-0 == "i have scary embedded things\000 inside me")) {
 	test_fail
 }
 
-&Tmp-String-8 := "%{string:%{Tmp-Octets-1}}"
+&Tmp-String-8 := "%{(string) %{Tmp-Octets-1}}"
 if (!(&Tmp-String-8 == "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°")) {
 	test_fail
 }
@@ -76,10 +76,9 @@ if (!(&Tmp-String-2[1] == "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°")) {
 #
 #  Other data types
 #
-&Tmp-String-0 := "%{string:&Tmp-IP-Address-0}"
-if (!("%(length:%{Tmp-String-0})" == 17)) {
+&Tmp-String-0 := "%{(string) &Tmp-IP-Address-0}"
+if (!(%(length:%{Tmp-String-0}) == 9)) {
 	test_fail
 }
-
 
 success

@@ -706,20 +706,6 @@ String lengths and arrays
 Similar to a Unix shell, there are ways to reference string lengths,
 and the second or more instance of an attribute in a list.  If you
 need more than this functionality, we suggest using a real language.
-.IP %{strlen:string}
-The number of characters in "string".  If "string" does not exist,
-then the length also does not exist, instead of being zero.
-
-The "string" is expanded before the length is taken.
-
-.IP %(integer:Value)
-The integer value of the Value.
-
-e.g. If a request contains "Service-Type = Login-User", the expansion
-of %(integer:%{Service-Type}) will yield "1".
-
-.IP %{hex:Attribute-Name}
-The hex value of the Attribute-Name, as a series of hex digits.
 
 e.g. If a request contains "Framed-IP-Address = 127.0.0.1", the expansion
 of %{hex:Framed-IP-Address} will yield "0x7f000001".
