@@ -54,7 +54,7 @@ authenticate step1 {
 	#
 	#  Set the random number to save.
 	#
-	&session-state.Tmp-Integer-0 := "%{randstr:n}"
+	&session-state.Tmp-Integer-0 := "%randstr(n)"
 	&reply.Reply-Message := &session-state.Tmp-Integer-0
 
 	#

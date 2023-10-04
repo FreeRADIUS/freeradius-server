@@ -139,7 +139,7 @@ mschap {
 	#  WARNING: Be VERY careful when editing the following line!
 	#  Change the path, and ideally nothing else.
 	#
-#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key  --allow-mschapv2 --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%mschap(Challenge):-00} --nt-response=%{%mschap(NT-Response):-00}"
+#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key  --allow-mschapv2 --username=%{&Stripped-User-Name || &User-Name || 'None'} --challenge=%{%mschap(Challenge) || 00} --nt-response=%{%mschap(NT-Response) || 00}"
 
 	#
 	#  ntlm_auth_timeout:: Time to wait for `ntlm_auth` to run.
@@ -335,8 +335,9 @@ mschap {
 		#
 		#  TIP: We give both examples here, but *only one should be used*.
 		#
-#		local_cpw = "%exec(/path/to/script %mschap(User-Name) %{MS-CHAP-New-Password.Cleartext})"
-#		local_cpw = "%sql(UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='Password.NT'}"
+#		local_cpw = %exec('/path/to/script', %mschap(User-Name), %{MS-CHAP-New-Password.Cleartext})
+		local_cpw = %sql("UPDATE radcheck set value='%{MS-CHAP-New-NT-Password}' where username='%{User-Name}' and attribute='Password.NT'")
+
 	}
 
 	#

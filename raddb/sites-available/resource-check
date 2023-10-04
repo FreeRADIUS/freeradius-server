@@ -70,14 +70,13 @@
 #
 #        pap
 #    }
-#
 #    ...
+#    }
 #
 #
 #  The configuration for this virtual server follows and should be amended as
-#  required...
+#  required.
 #
-
 
 #
 #  Listen on a local port for Server-Status requests that trigger the resource
@@ -119,7 +118,7 @@ recv Status-Server {
 	#  interval to avoid buildup of checks when resources do not respond.
 	#  See rlm_exec for details.
 	#
-	if ("%{sql:SELECT pg_is_in_recovery()}" != "f") {
+	if ("%sql('SELECT pg_is_in_recovery()')" != "f") {
 
 		#  Fail the db_online module, if it isn't already
 		if ("%{db_online:}" != "fail") {
