@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -75,4 +75,4 @@ VALUE	Extreme-Auth-Source		Service			1
 VALUE	Extreme-Auth-Source		Non-Service		2
 
 END-VENDOR      Aerohive
-ALIAS Aerohive Vendor-Specific.Aerohive
+ALIAS		Aerohive				Vendor-Specific.Aerohive

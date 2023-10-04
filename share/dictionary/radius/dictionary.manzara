@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -32,4 +32,4 @@ END-VENDOR Manzara
 #  Poaching on the standard space is wrong.
 #
 VALUE	Acct-Status-Type		One-Time		17
-ALIAS Manzara Vendor-Specific.Manzara
+ALIAS		Manzara					Vendor-Specific.Manzara

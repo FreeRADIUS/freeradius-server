@@ -129,4 +129,4 @@ VALUE	PoE-Allocate-By-Method		Class			1
 VALUE	PoE-Allocate-By-Method		Usage			2
 
 END-VENDOR Aruba
-ALIAS Aruba Vendor-Specific.Aruba
+ALIAS		Aruba					Vendor-Specific.Aruba

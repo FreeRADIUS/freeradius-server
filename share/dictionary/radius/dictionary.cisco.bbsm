@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -14,4 +14,4 @@ VENDOR		Cisco-BBSM			5263
 BEGIN-VENDOR	Cisco-BBSM
 ATTRIBUTE	Bandwidth				1	integer
 END-VENDOR  Cisco-BBSM
-ALIAS Cisco-BBSM Vendor-Specific.Cisco-BBSM
+ALIAS		Cisco-BBSM				Vendor-Specific.Cisco-BBSM

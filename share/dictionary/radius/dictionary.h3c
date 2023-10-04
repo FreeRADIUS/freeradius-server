@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -91,4 +91,4 @@ ATTRIBUTE	Subscriber-Profile			252	string
 ATTRIBUTE	Product-ID				255	string
 
 END-VENDOR	H3C
-ALIAS H3C Vendor-Specific.H3C
+ALIAS		H3C					Vendor-Specific.H3C

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ###########################################################
@@ -17,4 +17,4 @@ ATTRIBUTE	RPCM-Group				1	string
 ATTRIBUTE	RPCM-Session-Expire			2	integer
 
 END-VENDOR	RCNTEC
-ALIAS RCNTEC Vendor-Specific.RCNTEC
+ALIAS		RCNTEC					Vendor-Specific.RCNTEC

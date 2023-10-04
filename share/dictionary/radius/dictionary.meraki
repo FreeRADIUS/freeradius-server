@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -15,4 +15,4 @@ ATTRIBUTE	Ap-Name					3	string
 ATTRIBUTE	Ap-Tags					4	string
 
 END-VENDOR      Meraki
-ALIAS Meraki Vendor-Specific.Meraki
+ALIAS		Meraki					Vendor-Specific.Meraki

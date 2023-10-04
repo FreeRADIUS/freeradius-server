@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -91,4 +91,4 @@ VALUE	DHCPv6-Request			Rebind			6
 # Attributes 250 - 255 are dedicated to the customer's private use and are not used (ignored) by pcrf
 
 END-VENDOR      VasExperts
-ALIAS VasExperts Vendor-Specific.VasExperts
+ALIAS		VasExperts				Vendor-Specific.VasExperts

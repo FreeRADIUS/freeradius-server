@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -138,8 +138,8 @@ VALUE	Wimax-Mobility-Features-Supported Mobility		1
 VALUE	Wimax-Mobility-Features-Supported Sleep			2
 VALUE	Wimax-Mobility-Features-Supported Idle			4
 VALUE	Wimax-Mobility-Features-Supported NoMobility		4294967294
-VALUE	Wimax-Mobility-Features-Supported NoSleep		4294967293
-VALUE	Wimax-Mobility-Features-Supported NoIdle		4294967291
+VALUE	Wimax-Mobility-Features-Supported NoSleep			4294967293
+VALUE	Wimax-Mobility-Features-Supported NoIdle			4294967291
 VALUE	Wimax-Node-Disconnect		Enable			0
 VALUE	Wimax-Node-Disconnect		Disable			1
 VALUE	Wimax-Service-Flow-Modification	On			2
@@ -149,4 +149,4 @@ END-VENDOR      SG
 
 VALUE	Acct-Status-Type		Service-Start		0x09960001
 VALUE	Acct-Status-Type		Service-Stop		0x09960002
-ALIAS SG Vendor-Specific.SG
+ALIAS		SG					Vendor-Specific.SG

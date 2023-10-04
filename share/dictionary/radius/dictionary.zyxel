@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -26,4 +26,4 @@ VALUE	Callback-Phone-Source		Preconfigured		0
 VALUE	Callback-Phone-Source		User			1
 
 END-VENDOR Zyxel
-ALIAS Zyxel Vendor-Specific.Zyxel
+ALIAS		Zyxel					Vendor-Specific.Zyxel

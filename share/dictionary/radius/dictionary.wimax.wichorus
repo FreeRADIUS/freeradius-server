@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -390,4 +390,4 @@ ATTRIBUTE	vDHCP-RK-Lifetime			77	integer
 # About 10 more attributes in 1.3
 
 END-VENDOR	WiMAX
-ALIAS WiMAX Vendor-Specific.WiMAX
+ALIAS		WiMAX					Vendor-Specific.WiMAX

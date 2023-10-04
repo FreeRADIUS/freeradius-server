@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -19,4 +19,4 @@ ATTRIBUTE	Port-Default-VLAN-ID			1	integer
 ATTRIBUTE	Port-Voice-VLAN-ID			2	integer
 
 END-VENDOR      Nexans
-ALIAS Nexans Vendor-Specific.Nexans
+ALIAS		Nexans					Vendor-Specific.Nexans

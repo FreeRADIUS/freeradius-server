@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -37,4 +37,4 @@ ATTRIBUTE	Session-Terminate-End-Of-Day		10	string
 ATTRIBUTE	Billing-Class-Of-Service		11	string
 
 END-VENDOR	WISPr
-ALIAS WISPr Vendor-Specific.WISPr
+ALIAS		WISPr					Vendor-Specific.WISPr

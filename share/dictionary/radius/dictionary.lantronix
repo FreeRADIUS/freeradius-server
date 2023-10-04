@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 # dictionary.lantronix
@@ -14,4 +14,4 @@ BEGIN-VENDOR	Lantronix
 ATTRIBUTE	User-Attributes				1	string
 
 END-VENDOR Lantronix
-ALIAS Lantronix Vendor-Specific.Lantronix
+ALIAS		Lantronix				Vendor-Specific.Lantronix

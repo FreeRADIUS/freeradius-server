@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -560,4 +560,4 @@ ATTRIBUTE	Radius-Py				242	octets
 ATTRIBUTE	Force-DHCP-Relay			244	string
 
 END-VENDOR	Nokia-SR
-ALIAS Nokia-SR Vendor-Specific.Nokia-SR
+ALIAS		Nokia-SR				Vendor-Specific.Nokia-SR

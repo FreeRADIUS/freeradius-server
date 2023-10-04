@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -29,4 +29,4 @@ ATTRIBUTE	IKE-Conf-Name				64	string
 ATTRIBUTE	IKE-Cmd					65	string
 
 END-VENDOR	ipUnplugged
-ALIAS ipUnplugged Vendor-Specific.ipUnplugged
+ALIAS		ipUnplugged				Vendor-Specific.ipUnplugged

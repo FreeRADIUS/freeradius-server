@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -49,4 +49,4 @@ VALUE	User-Mobile-Operator		HS-Mobile-ChinaUnicom	2
 VALUE	User-Mobile-Operator		HS-Mobile-ChinaTelecom	3
 
 END-VENDOR      Hillstone
-ALIAS Hillstone Vendor-Specific.Hillstone
+ALIAS		Hillstone				Vendor-Specific.Hillstone

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -113,4 +113,4 @@ VALUE	Hangupcause			User-Not-Registered	606
 #
 
 END-VENDOR	Freeswitch
-ALIAS Freeswitch Vendor-Specific.Freeswitch
+ALIAS		Freeswitch				Vendor-Specific.Freeswitch

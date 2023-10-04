@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -8,4 +8,4 @@ VENDOR		Force10				6027
 BEGIN-VENDOR	Force10
 ATTRIBUTE	AVPair					1	string
 END-VENDOR	Force10
-ALIAS Force10 Vendor-Specific.Force10
+ALIAS		Force10					Vendor-Specific.Force10

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -40,4 +40,4 @@ VALUE	Service-Type			Card			5
 VALUE	Service-Type			NetworkOnly		6
 
 END-VENDOR APC
-ALIAS APC Vendor-Specific.APC
+ALIAS		APC					Vendor-Specific.APC

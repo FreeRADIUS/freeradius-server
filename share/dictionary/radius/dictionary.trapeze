@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -49,4 +49,4 @@ ATTRIBUTE	Allowed-Devices				20	string
 ATTRIBUTE	Device-Group				21	string
 
 END-VENDOR	Trapeze
-ALIAS Trapeze Vendor-Specific.Trapeze
+ALIAS		Trapeze					Vendor-Specific.Trapeze

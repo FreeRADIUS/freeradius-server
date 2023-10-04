@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #  Kineto Wireless Dictionary
@@ -95,8 +95,8 @@ ATTRIBUTE	KW-UE-MEMBERSHIP-STATUS			0xff95	octets
 
 #ATTRIBUTE KW-HNB-LOC-INFO-MACRO-COVERAGE-IND
 
-VALUE	KW-HNB-LOC-INFO-MACRO-COVERAGE-IND GERAN		0
-VALUE	KW-HNB-LOC-INFO-MACRO-COVERAGE-IND UTRAN		1
+VALUE	KW-HNB-LOC-INFO-MACRO-COVERAGE-IND GERAN			0
+VALUE	KW-HNB-LOC-INFO-MACRO-COVERAGE-IND UTRAN			1
 VALUE	KW-HNB-LOC-INFO-MACRO-COVERAGE-IND NONE			2
 
 #ATTRIBUTE  KW-HNB-LOC-INFO-GEO-COORDINATES
@@ -106,8 +106,8 @@ VALUE	KW-HNB-LOC-INFO-GEO-COORDINATES	South			1
 
 #ATTRIBUTE  KW-HNB-LOC-INFO-ALTITUDE-Direction
 
-VALUE	KW-HNB-LOC-INFO-ALTITUDE-Direction Height		0
-VALUE	KW-HNB-LOC-INFO-ALTITUDE-Direction Depth		1
+VALUE	KW-HNB-LOC-INFO-ALTITUDE-Direction Height			0
+VALUE	KW-HNB-LOC-INFO-ALTITUDE-Direction Depth			1
 
 #ATTRIBUTE  KW-UE-Capabilities
 VALUE	KW-UE-Capabilities		R99			0
@@ -120,4 +120,4 @@ VALUE	KW-UE-Capabilities		CSG-Capable		0
 VALUE	KW-UE-Capabilities		Not-CSG-Capable		1
 
 END-VENDOR      Kineto
-ALIAS Kineto Vendor-Specific.Kineto
+ALIAS		Kineto					Vendor-Specific.Kineto

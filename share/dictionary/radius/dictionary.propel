@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -18,4 +18,4 @@ ATTRIBUTE	Client-NAS-IP-Address			4	ipaddr
 ATTRIBUTE	Client-Source-ID			5	integer
 ATTRIBUTE	Content-Filter-ID			6	integer
 END-VENDOR	Propel
-ALIAS Propel Vendor-Specific.Propel
+ALIAS		Propel					Vendor-Specific.Propel

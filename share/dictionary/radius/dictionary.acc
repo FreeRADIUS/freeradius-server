@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -260,4 +260,4 @@ VALUE	Igmp-Version			V1			1
 VALUE	Igmp-Version			V2			2
 
 END-VENDOR	ACC
-ALIAS ACC Vendor-Specific.ACC
+ALIAS		ACC					Vendor-Specific.ACC

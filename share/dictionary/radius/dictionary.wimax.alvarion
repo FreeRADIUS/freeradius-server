@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -514,4 +514,4 @@ ATTRIBUTE	Visited-Interface-Id-PMIP6		137	ifid
 ATTRIBUTE	Visited-IPv4-HoA-PMIP6-2		138	ipaddr
 
 END-VENDOR	WiMAX
-ALIAS WiMAX Vendor-Specific.WiMAX
+ALIAS		WiMAX					Vendor-Specific.WiMAX

@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -45,4 +45,4 @@ VALUE	Framed-Protocol			Bintec-X75-PPP		0x0110000b
 VALUE	Framed-Protocol			Bintec-X75BTX-PPP	0x0110000c
 VALUE	Framed-Protocol			Bintec-X25-NOSIG	0x0110000d
 VALUE	Framed-Protocol			Bintec-X25-PPP-OPT	0x0110000e
-ALIAS BinTec Vendor-Specific.BinTec
+ALIAS		BinTec					Vendor-Specific.BinTec

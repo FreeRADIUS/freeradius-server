@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -19,4 +19,4 @@ BEGIN-VENDOR	Riverbed
 ATTRIBUTE	Local-User				1	string
 
 END-VENDOR    Riverbed
-ALIAS Riverbed Vendor-Specific.Riverbed
+ALIAS		Riverbed				Vendor-Specific.Riverbed

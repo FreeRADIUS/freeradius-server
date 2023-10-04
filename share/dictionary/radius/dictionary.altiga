@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -137,8 +137,8 @@ VALUE	L2TP-Encryption-G		L2TP-40/128-Stateless-Req 14
 VALUE	L2TP-Encryption-G		L2TP-40/128-Enc/Statls-Req 15
 
 VALUE	Argument-Authentication-Server-Type FirstActiveServer	1
-VALUE	Argument-Authentication-Server-Type RADIUS		1
-VALUE	Argument-Authentication-Server-Type LDAP		2
+VALUE	Argument-Authentication-Server-Type RADIUS			1
+VALUE	Argument-Authentication-Server-Type LDAP			2
 VALUE	Argument-Authentication-Server-Type NT			3
 VALUE	Argument-Authentication-Server-Type SDI			4
 VALUE	Argument-Authentication-Server-Type Internal		5
@@ -162,4 +162,4 @@ VALUE	Partitioning-Strip-Realm	ON			1
 VALUE	Partitioning-Strip-Realm	OFF			0
 
 END-VENDOR Altiga
-ALIAS Altiga Vendor-Specific.Altiga
+ALIAS		Altiga					Vendor-Specific.Altiga

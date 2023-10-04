@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -72,4 +72,4 @@ VALUE	Canopy-UserLevel		INSTALL			2
 VALUE	Canopy-UserLevel		ADMIN			3
 
 END-VENDOR Motorola
-ALIAS Motorola Vendor-Specific.Motorola
+ALIAS		Motorola				Vendor-Specific.Motorola

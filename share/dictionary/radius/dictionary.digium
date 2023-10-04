@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -37,4 +37,4 @@ ATTRIBUTE	Asterisk-Unique-ID			117	string
 ATTRIBUTE	Asterisk-User-Field			118	string
 
 END-VENDOR	Digium
-ALIAS Digium Vendor-Specific.Digium
+ALIAS		Digium					Vendor-Specific.Digium

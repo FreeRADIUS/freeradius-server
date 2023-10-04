@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -21,4 +21,4 @@ VALUE	ACL-Auth-Level			ACL-Auth-AdminLevel	100
 VALUE	ACL-Auth-Level			ACL-Auth-SecurityAdminLevel 200
 
 END-VENDOR	AudioCodes
-ALIAS AudioCodes Vendor-Specific.AudioCodes
+ALIAS		AudioCodes				Vendor-Specific.AudioCodes

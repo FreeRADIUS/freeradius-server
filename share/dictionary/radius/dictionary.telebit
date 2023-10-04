@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -20,4 +20,4 @@ ATTRIBUTE	Accounting-Info				4	string
 ATTRIBUTE	Login-Option				5	string
 
 END-VENDOR	Telebit
-ALIAS Telebit Vendor-Specific.Telebit
+ALIAS		Telebit					Vendor-Specific.Telebit

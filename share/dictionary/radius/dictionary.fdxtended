@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 VENDOR		fdXtended			34536
@@ -17,4 +17,4 @@ ATTRIBUTE	Expiration				9	string
 ATTRIBUTE	SessionTimeout				10	integer
 ATTRIBUTE	Wan-Interface				11	string
 END-VENDOR fdXtended
-ALIAS fdXtended Vendor-Specific.fdXtended
+ALIAS		fdXtended				Vendor-Specific.fdXtended

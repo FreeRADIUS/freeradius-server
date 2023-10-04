@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -27,4 +27,4 @@ ATTRIBUTE	Client-Hostname				9	string
 ATTRIBUTE	GlobalProtect-Client-Version		10	string
 
 END-VENDOR	PaloAlto
-ALIAS PaloAlto Vendor-Specific.PaloAlto
+ALIAS		PaloAlto				Vendor-Specific.PaloAlto

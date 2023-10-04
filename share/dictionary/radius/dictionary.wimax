@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -104,8 +104,8 @@ VALUE	ASN-Ethernet-Service-Capabilities eFA			4
 ATTRIBUTE	VCSN-Ethernet-Service-Capabilities	.10	byte
 VALUE	VCSN-Ethernet-Service-Capabilities eCFF-IPv4-Transport	1
 VALUE	VCSN-Ethernet-Service-Capabilities eCFF-IPv6-Transport	2
-VALUE	VCSN-Ethernet-Service-Capabilities eHAv4		4
-VALUE	VCSN-Ethernet-Service-Capabilities eHAv6		8
+VALUE	VCSN-Ethernet-Service-Capabilities eHAv4			4
+VALUE	VCSN-Ethernet-Service-Capabilities eHAv6			8
 
 ATTRIBUTE	Authorized-Ethernet-Services		.11	byte
 
@@ -488,15 +488,15 @@ ATTRIBUTE	Classifier-Action			84.9.8	byte
 
 ATTRIBUTE	Classifier-Eth-Option			84.9.9	tlv
 
-ATTRIBUTE	Eth-Proto-Type				84.9.9.1 tlv
+ATTRIBUTE	Eth-Proto-Type				84.9.9.1	tlv
 ATTRIBUTE	Ethertype				.1	short
 ATTRIBUTE	Type-DSAP				.2	byte
 
-ATTRIBUTE	Eth-VLAN-Id				84.9.9.2 tlv
+ATTRIBUTE	Eth-VLAN-Id				84.9.9.2	tlv
 ATTRIBUTE	S-VID					.1	integer
 ATTRIBUTE	C-VID					.2	integer
 
-ATTRIBUTE	Eth-Priority-Range			84.9.9.3 tlv
+ATTRIBUTE	Eth-Priority-Range			84.9.9.3	tlv
 ATTRIBUTE	Low					.1	byte
 ATTRIBUTE	High					.2	byte
 ATTRIBUTE	XXX					.4	byte
@@ -555,4 +555,4 @@ ATTRIBUTE	Visited-Interface-Id-PMIP6		137	ifid
 ATTRIBUTE	Visited-IPv4-HoA-PMIP6-2		138	ipaddr
 
 END-VENDOR	WiMAX
-ALIAS WiMAX Vendor-Specific.WiMAX
+ALIAS		WiMAX					Vendor-Specific.WiMAX

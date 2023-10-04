@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -55,4 +55,4 @@ VALUE	Mail-Authtype			CRAM-MD4		8
 VALUE	Mail-Authtype			CRAM-SHA1		9
 
 END-VENDOR Sandy
-ALIAS Sandy Vendor-Specific.Sandy
+ALIAS		Sandy					Vendor-Specific.Sandy

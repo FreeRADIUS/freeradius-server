@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -19,4 +19,4 @@ ATTRIBUTE	Service-Identifier			2	string
 ATTRIBUTE	Service-Provider			3	string
 
 END-VENDOR	Surfnet
-ALIAS Surfnet Vendor-Specific.Surfnet
+ALIAS		Surfnet					Vendor-Specific.Surfnet

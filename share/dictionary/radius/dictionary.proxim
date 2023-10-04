@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -93,4 +93,4 @@ ATTRIBUTE	E1-SU-Allow-Untag-Mgmt			68	integer
 ATTRIBUTE	E2-SU-Allow-Untag-Mgmt			69	integer
 
 END-VENDOR 	Proxim
-ALIAS Proxim Vendor-Specific.Proxim
+ALIAS		Proxim					Vendor-Specific.Proxim

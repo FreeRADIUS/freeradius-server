@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -114,7 +114,7 @@ MEMBER		TAC					uint16
 STRUCT	ECGI				Type			129
 MEMBER		ECI					octets[4]
 
-STRUCT	TAI-ECGI				Type		130
+STRUCT	TAI-ECGI			Type			130
 MEMBER		TAC					uint16
 MEMBER		PLMN-ID					octets[3]
 MEMBER		ECI					octets[4]
@@ -168,4 +168,4 @@ MEMBER		Usage-Data-DL				uint64
 MEMBER		Usage-Data-UL				uint64
 
 END-VENDOR	3GPP
-ALIAS 3GPP Vendor-Specific.3GPP
+ALIAS		3GPP					Vendor-Specific.3GPP

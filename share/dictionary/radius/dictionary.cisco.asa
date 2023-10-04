@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -185,7 +185,7 @@ VALUE	ClientType			L2TP/IPsec-SSL-VPN	5
 VALUE	ClientType			AnyConnect-Client-IPSec-VPN-IKEv2 6
 
 VALUE	Extended-Authentication-On-Rekey Disabled		0
-VALUE	Extended-Authentication-On-Rekey Enabled		1
+VALUE	Extended-Authentication-On-Rekey Enabled			1
 
 VALUE	IE-Proxy-Bypass-Local		None			0
 VALUE	IE-Proxy-Bypass-Local		Local			1
@@ -239,10 +239,10 @@ VALUE	IPsec-Mode-Config		Enabled			1
 VALUE	IPsec-Over-UDP			Disabled		0
 VALUE	IPsec-Over-UDP			Enabled			1
 
-VALUE	IPsec-Required-Client-Firewall-Capability None		0
-VALUE	IPsec-Required-Client-Firewall-Capability Policy-Remotely-Defined 1
-VALUE	IPsec-Required-Client-Firewall-Capability Policy-Pushed	2
-VALUE	IPsec-Required-Client-Firewall-Capability Policy-from-Server 4
+VALUE	IPsec-Required-Client-Firewall-Capability None			0
+VALUE	IPsec-Required-Client-Firewall-Capability Policy-Remotely-Defined	1
+VALUE	IPsec-Required-Client-Firewall-Capability Policy-Pushed		2
+VALUE	IPsec-Required-Client-Firewall-Capability Policy-from-Server	4
 
 VALUE	IPsec-Split-Tunneling-Policy	No-Split-Tunneling	0
 VALUE	IPsec-Split-Tunneling-Policy	Split-Tunneling		1
@@ -266,7 +266,7 @@ VALUE	PPTP-MPPC-Compression		Enabled			1
 VALUE	Required-Client-Firewall-Vendor-Code Cisco-CIC		1
 VALUE	Required-Client-Firewall-Vendor-Code Zone-Labs		2
 VALUE	Required-Client-Firewall-Vendor-Code NetworkICE		3
-VALUE	Required-Client-Firewall-Vendor-Code Sygate		4
+VALUE	Required-Client-Firewall-Vendor-Code Sygate			4
 VALUE	Required-Client-Firewall-Vendor-Code Cisco-IPSA		5
 
 VALUE	Required-Individual-User-Auth	Disabled		0
@@ -318,7 +318,7 @@ VALUE	WebVPN-File-Access-Enable	Disabled		0
 VALUE	WebVPN-File-Access-Enable	Enabled			1
 
 VALUE	WebVPN-File-Server-Browsing-Enable Disabled		0
-VALUE	WebVPN-File-Server-Browsing-Enable Enabled		1
+VALUE	WebVPN-File-Server-Browsing-Enable Enabled			1
 
 VALUE	WebVPN-File-Server-Entry-Enable	Disabled		0
 VALUE	WebVPN-File-Server-Entry-Enable	Enabled			1
@@ -332,14 +332,14 @@ VALUE	WebVPN-HTTP-Compression		Deflate-Compression	1
 VALUE	WebVPN-Port-Forwarding-Enable	Disabled		0
 VALUE	WebVPN-Port-Forwarding-Enable	Enabled			1
 
-VALUE	WebVPN-Port-Forwarding-Exchange-Proxy-Enable Disabled	0
-VALUE	WebVPN-Port-Forwarding-Exchange-Proxy-Enable Enabled	1
+VALUE	WebVPN-Port-Forwarding-Exchange-Proxy-Enable Disabled		0
+VALUE	WebVPN-Port-Forwarding-Exchange-Proxy-Enable Enabled			1
 
 VALUE	WebVPN-Port-Forwarding-HTTP-Proxy Disabled		0
-VALUE	WebVPN-Port-Forwarding-HTTP-Proxy Enabled		1
+VALUE	WebVPN-Port-Forwarding-HTTP-Proxy Enabled			1
 
 VALUE	WebVPNSmart-Card-Removal-Disconnect Disabled		0
-VALUE	WebVPNSmart-Card-Removal-Disconnect Enabled		1
+VALUE	WebVPNSmart-Card-Removal-Disconnect Enabled			1
 
 VALUE	WebVPN-Smart-Tunnel-Auto-Start	Disabled		0
 VALUE	WebVPN-Smart-Tunnel-Auto-Start	Enabled			1
@@ -348,8 +348,8 @@ VALUE	WebVPN-Smart-Tunnel-Auto-Start	AutoStart		2
 VALUE	WebVPN-SSL-VPN-Client-Enable	Disabled		0
 VALUE	WebVPN-SSL-VPN-Client-Enable	Enabled			1
 
-VALUE	WebVPN-SSL-VPN-Client-Keep-Installation Disabled	0
-VALUE	WebVPN-SSL-VPN-Client-Keep-Installation Enabled		1
+VALUE	WebVPN-SSL-VPN-Client-Keep-Installation Disabled		0
+VALUE	WebVPN-SSL-VPN-Client-Keep-Installation Enabled			1
 
 VALUE	WebVPN-SSL-VPN-Client-Required	Disabled		0
 VALUE	WebVPN-SSL-VPN-Client-Required	Enabled			1
@@ -368,4 +368,4 @@ VALUE	WebVPN-URL-Entry-Enable		Disabled		0
 VALUE	WebVPN-URL-Entry-Enable		Enabled			1
 
 END-VENDOR      Cisco-ASA
-ALIAS Cisco-ASA Vendor-Specific.Cisco-ASA
+ALIAS		Cisco-ASA				Vendor-Specific.Cisco-ASA

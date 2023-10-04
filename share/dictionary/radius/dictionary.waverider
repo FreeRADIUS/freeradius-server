@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -57,4 +57,4 @@ VALUE	Rf-Power			p_25			11
 VALUE	Rf-Power			p_26			12
 
 END-VENDOR Waverider
-ALIAS Waverider Vendor-Specific.Waverider
+ALIAS		Waverider				Vendor-Specific.Waverider

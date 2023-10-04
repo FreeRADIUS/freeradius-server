@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -28,4 +28,4 @@ ATTRIBUTE	Moonshot-MSTID-Namespace		142	string
 ATTRIBUTE	Moonshot-MSTID-TargetedId		143	string
 ATTRIBUTE	Moonshot-OTP-Secret			144	string
 END-VENDOR UKERNA
-ALIAS UKERNA Vendor-Specific.UKERNA
+ALIAS		UKERNA					Vendor-Specific.UKERNA

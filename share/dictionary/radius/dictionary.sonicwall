@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -63,4 +63,4 @@ ATTRIBUTE	User-Group				3	string
 # ATTRIBUTE User-Groups		4	string	SonicWall.
 
 END-VENDOR	SonicWall
-ALIAS SonicWall Vendor-Specific.SonicWall
+ALIAS		SonicWall				Vendor-Specific.SonicWall

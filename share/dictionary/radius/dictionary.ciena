@@ -1,6 +1,7 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
 #
 ##############################################################################
 #
@@ -38,4 +39,4 @@ ATTRIBUTE	CS-Acc-Level				254	integer
 ATTRIBUTE	CS-Priv-Level				255	integer
 
 END-VENDOR	Ciena
-ALIAS Ciena Vendor-Specific.Ciena
+ALIAS		Ciena					Vendor-Specific.Ciena

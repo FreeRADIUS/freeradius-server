@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -27,4 +27,4 @@ VALUE	WebAuth				start			1
 VALUE	WebAuth				complete		2
 
 END-VENDOR   Arista
-ALIAS Arista Vendor-Specific.Arista
+ALIAS		Arista					Vendor-Specific.Arista

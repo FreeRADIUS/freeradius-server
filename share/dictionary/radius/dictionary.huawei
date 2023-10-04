@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -233,4 +233,4 @@ ATTRIBUTE	Version					254	string
 ATTRIBUTE	Product-ID				255	string
 
 END-VENDOR	Huawei
-ALIAS Huawei Vendor-Specific.Huawei
+ALIAS		Huawei					Vendor-Specific.Huawei

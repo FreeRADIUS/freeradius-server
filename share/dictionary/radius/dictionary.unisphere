@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -373,4 +373,4 @@ VALUE	PPP-Ingress-Only		disabled		0
 VALUE	PPP-Ingress-Only		enabled			1
 
 END-VENDOR	Unisphere
-ALIAS Unisphere Vendor-Specific.Unisphere
+ALIAS		Unisphere				Vendor-Specific.Unisphere

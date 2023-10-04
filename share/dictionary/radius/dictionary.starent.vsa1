@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -1200,4 +1200,4 @@ VALUE	Visiting-Sub-Use-GGSN		Deny			0
 VALUE	Visiting-Sub-Use-GGSN		Accept			1
 
 END-VENDOR	Starent
-ALIAS Starent Vendor-Specific.Starent
+ALIAS		Starent					Vendor-Specific.Starent

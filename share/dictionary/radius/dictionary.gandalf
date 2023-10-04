@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #  Gandalf dictionary
@@ -106,4 +106,4 @@ VALUE	Modem-Required-2		Disabled		1
 VALUE	Modem-Required-2		Enabled			2
 
 END-VENDOR	Gandalf
-ALIAS Gandalf Vendor-Specific.Gandalf
+ALIAS		Gandalf					Vendor-Specific.Gandalf

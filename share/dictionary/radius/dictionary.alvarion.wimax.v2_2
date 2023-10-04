@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -34,4 +34,4 @@ ATTRIBUTE	Ref-R3-IF-Name				.1	string
 ATTRIBUTE	DHCP-Option-Container			.2	string
 
 END-VENDOR 	Alvarion
-ALIAS Alvarion Vendor-Specific.Alvarion
+ALIAS		Alvarion				Vendor-Specific.Alvarion

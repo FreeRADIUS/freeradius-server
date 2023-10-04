@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -153,4 +153,4 @@ VALUE	NAS-Capabilities		CoA-Login		1
 VALUE	Debug-Option			Simulate-EAP-TLS	1
 
 END-VENDOR 	Aptilo
-ALIAS Aptilo Vendor-Specific.Aptilo
+ALIAS		Aptilo					Vendor-Specific.Aptilo

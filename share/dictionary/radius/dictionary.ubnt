@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -56,4 +56,4 @@ ATTRIBUTE	Station-Keyid				6	string	encrypt=2
 # aka. aaa.%d.radius_acct_send_keyid.status=enabled in UniFi configuration
 
 END-VENDOR	UBNT
-ALIAS UBNT Vendor-Specific.UBNT
+ALIAS		UBNT					Vendor-Specific.UBNT

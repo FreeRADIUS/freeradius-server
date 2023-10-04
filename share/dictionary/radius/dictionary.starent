@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -1381,4 +1381,4 @@ VALUE	WSG-MIP-Simple-IP-Fallback	No			0
 VALUE	WSG-MIP-Simple-IP-Fallback	Yes			1
 
 END-VENDOR	Starent
-ALIAS Starent Vendor-Specific.Starent
+ALIAS		Starent					Vendor-Specific.Starent

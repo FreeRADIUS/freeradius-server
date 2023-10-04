@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -94,4 +94,4 @@ ATTRIBUTE	Webfilter-Destination			115	string
 ATTRIBUTE	Webfilter-Domain			116	string
 
 END-VENDOR                             ASN
-ALIAS ASN Vendor-Specific.ASN
+ALIAS		ASN					Vendor-Specific.ASN

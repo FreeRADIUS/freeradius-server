@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -450,4 +450,4 @@ ATTRIBUTE	Acct-Input-IPv6-Gigawords		224	integer
 ATTRIBUTE	Acct-Output-IPv6-Gigawords		225	integer
 
 END-VENDOR	Ericsson-AB
-ALIAS Ericsson-AB Vendor-Specific.Ericsson-AB
+ALIAS		Ericsson-AB				Vendor-Specific.Ericsson-AB

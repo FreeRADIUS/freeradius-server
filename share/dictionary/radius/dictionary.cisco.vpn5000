@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -20,4 +20,4 @@ ATTRIBUTE	VPN-Password				5	string
 ATTRIBUTE	Echo					6	integer
 ATTRIBUTE	Client-Assigned-IPX			7	integer
 END-VENDOR  Cisco-VPN5000
-ALIAS Cisco-VPN5000 Vendor-Specific.Cisco-VPN5000
+ALIAS		Cisco-VPN5000				Vendor-Specific.Cisco-VPN5000

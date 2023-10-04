@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -294,4 +294,4 @@ VALUE	Acct-Status-Type		Annex-Line-Seizure	0x0630000f
 VALUE	Acct-Status-Type		Annex-Rlogin-Start	0x06300010
 VALUE	Acct-Status-Type		Annex-Rlogin-Stop	0x06300011
 
-ALIAS Bay-Networks Vendor-Specific.Bay-Networks
+ALIAS		Bay-Networks				Vendor-Specific.Bay-Networks

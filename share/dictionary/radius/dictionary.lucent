@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -452,4 +452,4 @@ ATTRIBUTE	Modem-Disconnect-Reason			20118	integer
 ATTRIBUTE	Retrain-Reason				20119	integer
 
 END-VENDOR	Lucent
-ALIAS Lucent Vendor-Specific.Lucent
+ALIAS		Lucent					Vendor-Specific.Lucent

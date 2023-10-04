@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -43,4 +43,4 @@ ATTRIBUTE	IKEv2-DNS-Domain			27	string
 ATTRIBUTE	Load-Balancer				28	string
 
 END-VENDOR   Lancom
-ALIAS Lancom Vendor-Specific.Lancom
+ALIAS		Lancom					Vendor-Specific.Lancom

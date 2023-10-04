@@ -1,6 +1,7 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
 #
 ##############################################################################
 #
@@ -25,18 +26,18 @@ VALUE	User-Level			Operate_Control		2
 VALUE	User-Level			Reserved		1
 VALUE	User-Level			Retrieve		0
 
-ATTRIBUTE	UUM-User-Level			102	integer
+ATTRIBUTE	UUM-User-Level				102	integer
 
-VALUE	UUM-User-Level		Root			5
-VALUE	UUM-User-Level		Admin			4
-VALUE	UUM-User-Level		Provision		3
-VALUE	UUM-User-Level		Operator		2
-VALUE	UUM-User-Level		Reserved		1
-VALUE	UUM-User-Level		Monitor			0
+VALUE	UUM-User-Level			Root			5
+VALUE	UUM-User-Level			Admin			4
+VALUE	UUM-User-Level			Provision		3
+VALUE	UUM-User-Level			Operator		2
+VALUE	UUM-User-Level			Reserved		1
+VALUE	UUM-User-Level			Monitor			0
 
 # ADVA Network Manager settings
-ATTRIBUTE	Auth-Level-NM			101	string
+ATTRIBUTE	Auth-Level-NM				101	string
 
 END-VENDOR	Adva
 
-ALIAS Adva Vendor-Specific.Adva
+ALIAS		Adva					Vendor-Specific.Adva

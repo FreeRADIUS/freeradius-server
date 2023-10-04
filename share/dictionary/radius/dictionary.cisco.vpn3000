@@ -242,4 +242,4 @@ VALUE	Smart-Tunnel-Auto		Enabled			1
 VALUE	Smart-Tunnel-Auto		Auto			2
 
 END-VENDOR	Cisco-VPN3000
-ALIAS Cisco-VPN3000 Vendor-Specific.Cisco-VPN3000
+ALIAS		Cisco-VPN3000				Vendor-Specific.Cisco-VPN3000

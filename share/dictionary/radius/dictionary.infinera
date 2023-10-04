@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -11,4 +11,4 @@ ATTRIBUTE	User-Category				1	string
 ATTRIBUTE	ENM-User-Category			2	string
 
 END-VENDOR      Infinera
-ALIAS Infinera Vendor-Specific.Infinera
+ALIAS		Infinera				Vendor-Specific.Infinera

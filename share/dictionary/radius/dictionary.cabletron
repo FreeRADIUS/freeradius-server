@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -27,4 +27,4 @@ VALUE	Protocol-Callable		BR-IPX-Callable		6
 VALUE	Protocol-Callable		IP-BR-IPX-Callable	7
 
 END-VENDOR	Cabletron
-ALIAS Cabletron Vendor-Specific.Cabletron
+ALIAS		Cabletron				Vendor-Specific.Cabletron

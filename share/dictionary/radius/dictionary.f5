@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 ##############################################################################
@@ -51,4 +51,4 @@ VALUE	LTM-User-Console		Disabled		0
 VALUE	LTM-User-Console		Enabled			1
 
 END-VENDOR   F5
-ALIAS F5 Vendor-Specific.F5
+ALIAS		F5					Vendor-Specific.F5

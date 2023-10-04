@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -32,4 +32,4 @@ VALUE	QOS-Level			Gold			1
 VALUE	QOS-Level			Platinum		2
 
 END-VENDOR Airespace
-ALIAS Airespace Vendor-Specific.Airespace
+ALIAS		Airespace				Vendor-Specific.Airespace

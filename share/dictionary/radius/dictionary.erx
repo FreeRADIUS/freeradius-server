@@ -431,4 +431,4 @@ VALUE	PON-Access-Type			WDM-PON			5
 VALUE	PON-Access-Type			UNKNOWN			7
 
 END-VENDOR	ERX
-ALIAS ERX Vendor-Specific.ERX
+ALIAS		ERX					Vendor-Specific.ERX
