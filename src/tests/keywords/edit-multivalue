@@ -40,4 +40,13 @@ if !(&Filter-Id[#] == 3) {
 	test_fail
 }
 
+#
+#  List by reference
+#
+&foo := ""
+&foo += &Filter-Id[*]
+if !(&foo == "abc") {
+	test_fail
+}
+
 success
