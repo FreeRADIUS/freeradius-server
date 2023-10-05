@@ -1735,6 +1735,12 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 
 		} else {
 			/*
+			 *	If we searched in a local dictionary, but found a real attribute
+			 *	switch the namespace.
+			 */
+			if (!da->flags.local && namespace->flags.local) namespace = our_parent = fr_dict_root(da->dict);
+
+			/*
 			 *	We had an alias in the same namespace,
 			 *	go add more things in.
 			 */
