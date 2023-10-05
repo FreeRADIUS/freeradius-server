@@ -2190,6 +2190,11 @@ int fr_value_calc_nary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t type, 
 		calc = calc_int64;
 		break;
 
+	case FR_TYPE_TIME_DELTA:
+		if ((op != T_ADD) && (op != T_SUB)) goto invalid_type;
+		calc = calc_time_delta;
+		break;
+
 	case FR_TYPE_FLOAT32:
 		calc = calc_float32;
 		break;
