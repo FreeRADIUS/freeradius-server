@@ -674,6 +674,21 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		if (single) goto done;
 
 		/*
+		 *	Now that the attribute has been created, go apply the rest of the values to the attribute.
+		 */
+		if (!((map->op == T_OP_EQ) || (map->op == T_OP_SET))) {
+			box = fr_dcursor_next(&cursor);
+			if (!box) goto done;
+
+			goto apply_op;
+		}
+
+		if (current->lhs.vp->da->flags.local) {
+			RWDEBUG("Ignoring extra values for local variable");
+			goto done;
+		}
+
+		/*
 		 *	Loop over the remaining items, adding the VPs we've just created.
 		 */
 		while ((box = fr_dcursor_next(&cursor)) != NULL) {
@@ -702,6 +717,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	if (!current->lhs.vp) return -1;
 #endif
 
+apply_op:
 	/*
 	 *	All other operators are "modify in place", of the existing current->lhs.vp
 	 */

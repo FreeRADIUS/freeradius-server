@@ -1,0 +1,43 @@
+string foo
+string bar
+string baz
+
+&baz = "a,b,c,d,e"
+
+#
+#  Append, don't create multiple versions
+#
+&bar += %explode(%{baz}, ',')
+
+if !(&bar == "abcde") {
+	test_fail
+}
+
+#
+#  This is a warning.  We only create one copy of "foo".
+#
+#  We cannot have multiple copies of local variables.  There's no real
+#  reason why, but for now it's safer to be limited.
+#
+&foo := %explode(%{baz}, ',')
+if !(&foo[#] == 1) {
+	test_fail
+}
+
+#
+#  Append
+#
+&Reply-Message = "foo"
+
+&Reply-Message += { "a", "b", "c" }
+
+if !(&Reply-Message == "fooabc") {
+	test_fail
+}
+
+&Filter-Id := { "a", "b", "c" }
+if !(&Filter-Id[#] == 3) {
+	test_fail
+}
+
+success
