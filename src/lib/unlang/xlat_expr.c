@@ -379,6 +379,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	int rcode;
 	fr_value_box_t	*dst, *a, *b;
+	fr_value_box_t one, two;
 
 	MEM(dst = fr_value_box_alloc_null(ctx));
 
@@ -393,51 +394,33 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(!a || (a->type == FR_TYPE_GROUP));
 	fr_assert(!b || (b->type == FR_TYPE_GROUP));
 
-	if (fr_comparison_op[op]) {
-		if (!a || !b) return XLAT_ACTION_FAIL;
+	fr_assert(!fr_comparison_op[op]);
 
-		rcode = fr_value_calc_list_cmp(dst, dst, &a->vb_group, op, &b->vb_group);
-	} else {
-		fr_value_box_t one, two;
-
-		if (fr_value_box_list_num_elements(&a->vb_group) > 1) {
-			REDEBUG("Expected one value as the first argument, got %d",
-				fr_value_box_list_num_elements(&a->vb_group));
-			return XLAT_ACTION_FAIL;
-		}
-		a = fr_value_box_list_head(&a->vb_group);
-
-		if (fr_value_box_list_num_elements(&b->vb_group) > 1) {
-			REDEBUG("Expected one value as the second argument, got %d",
-				fr_value_box_list_num_elements(&b->vb_group));
-			return XLAT_ACTION_FAIL;
-		}
-		b = fr_value_box_list_head(&b->vb_group);
-
-		if (!a && !b) return XLAT_ACTION_FAIL;
-
-		if (!a) {
-			if (!fr_type_is_numeric(b->type) && (b->type != FR_TYPE_STRING) && (b->type != FR_TYPE_OCTETS)) {
-				REDEBUG("First argument is missing");
-				return XLAT_ACTION_FAIL;
-			}
-
-			a = &one;
-			fr_value_box_init_zero(a, b->type);
-		}
-
-		if (!b) {
-			if (!fr_type_is_numeric(a->type) && (a->type != FR_TYPE_STRING) && (a->type != FR_TYPE_OCTETS)) {
-				REDEBUG("Second argument is missing");
-				return XLAT_ACTION_FAIL;
-			}
-
-			b = &two;
-			fr_value_box_init_zero(b, a->type);
-		}
-
-		rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
+	if (fr_value_box_list_num_elements(&a->vb_group) > 1) {
+		REDEBUG("Expected one value as the first argument, got %d",
+			fr_value_box_list_num_elements(&a->vb_group));
+		return XLAT_ACTION_FAIL;
 	}
+	a = fr_value_box_list_head(&a->vb_group);
+
+	if (fr_value_box_list_num_elements(&b->vb_group) > 1) {
+		REDEBUG("Expected one value as the second argument, got %d",
+			fr_value_box_list_num_elements(&b->vb_group));
+		return XLAT_ACTION_FAIL;
+	}
+	b = fr_value_box_list_head(&b->vb_group);
+
+	if (!a) {
+		a = &one;
+		fr_value_box_init_zero(a, b->type);
+	}
+
+	if (!b) {
+		b = &two;
+		fr_value_box_init_zero(b, a->type);
+	}
+
+	rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
 	if (rcode < 0) {
 		RPEDEBUG("Failed calculating result, returning NULL");
 		goto done;
@@ -480,12 +463,51 @@ static xlat_arg_parser_t const binary_cmp_xlat_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				 UNUSED xlat_ctx_t const *xctx,
+				 request_t *request, fr_value_box_list_t *in,
+				 fr_token_t op)
+{
+	int rcode;
+	fr_value_box_t	*dst, *a, *b;
+
+	MEM(dst = fr_value_box_alloc_null(ctx));
+
+	/*
+	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
+	 */
+	a = fr_value_box_list_head(in);
+	b = fr_value_box_list_next(in, a);
+
+	if (!a && !b) return XLAT_ACTION_FAIL;
+
+	fr_assert(a->type == FR_TYPE_GROUP);
+	fr_assert(b->type == FR_TYPE_GROUP);
+
+	fr_assert(fr_comparison_op[op]);
+
+	rcode = fr_value_calc_list_cmp(dst, dst, &a->vb_group, op, &b->vb_group);
+	if (rcode < 0) {
+		RPEDEBUG("Failed calculating result, returning NULL");
+		goto done;
+	}
+
+	fr_assert(dst->type == FR_TYPE_BOOL);
+	dst->enumv = attr_expr_bool_enum;
+
+done:
+	fr_dcursor_append(out, dst);
+	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
+	return XLAT_ACTION_DONE;
+}
+
+
 #define XLAT_CMP_FUNC(_name, _op)  \
 static xlat_action_t xlat_func_ ## _name(TALLOC_CTX *ctx, fr_dcursor_t *out, \
 				   xlat_ctx_t const *xctx, \
 				   request_t *request, fr_value_box_list_t *in)  \
 { \
-	return xlat_binary_op(ctx, out, xctx, request, in, _op, FR_TYPE_BOOL, attr_expr_bool_enum); \
+	return xlat_cmp_op(ctx, out, xctx, request, in, _op); \
 }
 
 XLAT_CMP_FUNC(cmp_eq,  T_OP_CMP_EQ)
