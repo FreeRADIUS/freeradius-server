@@ -1268,6 +1268,70 @@ static size_t command_calc(command_result_t *result, command_file_ctx_t *cc,
 	RETURN_OK(slen);
 }
 
+/** Perform calculations on multi-valued ops
+ *
+ */
+static size_t command_calc_nary(command_result_t *result, command_file_ctx_t *cc,
+				char *data, UNUSED size_t data_used, char *in, size_t inlen)
+{
+	fr_value_box_t *group, *a, *out;
+	size_t match_len;
+	fr_type_t type;
+	fr_token_t op;
+	char const *p, *value, *end;
+	size_t slen;
+
+	group = talloc_zero(cc->tmp_ctx, fr_value_box_t);
+	fr_value_box_init(group, FR_TYPE_GROUP, NULL, false);
+
+	p = in;
+	end = in + inlen;
+
+	/*
+	 *	Multi-valued operations
+	 */
+	op = token2op[(uint8_t) p[0]];
+	if (op == T_INVALID) {
+		fr_strerror_printf("Unknown operator '%c'", p[0]);
+		RETURN_PARSE_ERROR(0);
+	}
+	p++;
+
+	while (p < end) {
+		fr_skip_whitespace(p);
+
+		a = talloc_zero(group, fr_value_box_t);
+
+		match_len = parse_typed_value(result, a, &value, p, end - p);
+		if (match_len == 0) return 0; /* errors have already been updated */
+
+		fr_value_box_list_insert_tail(&group->vb_group, a);
+
+		p += match_len;
+
+		if (strncmp(p, "->", 2) == 0) break;
+	}
+
+	out = talloc_zero(cc->tmp_ctx, fr_value_box_t);
+
+	if (strncmp(p, "->", 2) != 0) RETURN_PARSE_ERROR(0);
+	p += 2;
+	fr_skip_whitespace(p);
+
+	type = fr_table_value_by_longest_prefix(&match_len, fr_type_table, p, end - p, FR_TYPE_MAX);
+	if (type == FR_TYPE_MAX) RETURN_PARSE_ERROR(0);
+
+
+	if (fr_value_calc_nary_op(cc->tmp_ctx, out, type, op, group) < 0) {
+		RETURN_OK_WITH_ERROR();
+	}
+
+	slen = fr_value_box_print(&FR_SBUFF_OUT(data, COMMAND_OUTPUT_MAX), out, NULL);
+	if (slen <= 0) RETURN_OK_WITH_ERROR();
+
+	RETURN_OK(slen);
+}
+
 /** Change the working directory
  *
  */
@@ -2868,6 +2932,11 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ L("calc "),		&(command_entry_t){
 					.func = command_calc,
 					.usage = "calc <type1> <value1> <operator> <type2> <value2> -> <output-type>",
+					.description = "Perform calculations on value boxes",
+				}},
+	{ L("calc_nary "), &(command_entry_t){
+					.func = command_calc_nary,
+					.usage = "calc_nary op <type1> <value1> <type2> <value2> ... -> <output-type>",
 					.description = "Perform calculations on value boxes",
 				}},
 	{ L("cd "),		&(command_entry_t){

@@ -38,6 +38,8 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 
 int fr_value_calc_unary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t op, fr_value_box_t const *src) CC_HINT(nonnull(1));
 
+int fr_value_calc_nary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t type, fr_token_t op, fr_value_box_t const *group) CC_HINT(nonnull(2,5));
+
 int fr_value_calc_list_op(TALLOC_CTX *ctx, fr_value_box_t *box, fr_token_t op, fr_value_box_list_t const *list);
 
 int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_list_t const *list1, fr_token_t op, fr_value_box_list_t const *list2) CC_HINT(nonnull);

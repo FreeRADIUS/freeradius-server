@@ -348,6 +348,23 @@ flags:
 	return 0;
 }
 
+static void fr_value_box_init_zero(fr_value_box_t *vb, fr_type_t type)
+{
+	switch (type) {
+	case FR_TYPE_STRING:
+		fr_value_box_strdup_shallow(vb, NULL, "", false);
+		break;
+
+	case FR_TYPE_OCTETS:
+		fr_value_box_memdup_shallow(vb, NULL, (void const *) "", 0, false);
+		break;
+
+	default:
+		fr_value_box_init(vb, type, NULL, false);
+		break;
+	}
+}
+
 static xlat_arg_parser_t const binary_op_xlat_args[] = {
 	{ .required = false, .type = FR_TYPE_VOID },
 	{ .required = false, .type = FR_TYPE_VOID },
@@ -406,20 +423,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 
 			a = &one;
-
-			switch (b->type) {
-			case FR_TYPE_STRING:
-				fr_value_box_strdup_shallow(a, NULL, "", false);
-				break;
-
-			case FR_TYPE_OCTETS:
-				fr_value_box_memdup_shallow(a, NULL, (void const *) "", 0, false);
-				break;
-
-			default:
-				fr_value_box_init(a, b->type, NULL, false);
-				break;
-			}
+			fr_value_box_init_zero(a, b->type);
 		}
 
 		if (!b) {
@@ -429,20 +433,7 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			}
 
 			b = &two;
-
-			switch (a->type) {
-			case FR_TYPE_STRING:
-				fr_value_box_strdup_shallow(b, NULL, "", false);
-				break;
-
-			case FR_TYPE_OCTETS:
-				fr_value_box_memdup_shallow(b, NULL, (void const *) "", 0, false);
-				break;
-
-			default:
-				fr_value_box_init(b, a->type, NULL, false);
-				break;
-			}
+			fr_value_box_init_zero(b, a->type);
 		}
 
 		rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
@@ -842,7 +833,7 @@ typedef struct {
 	fr_value_box_list_t	list;
 } xlat_logical_rctx_t;
 
-static fr_slen_t xlat_expr_print_logical(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
+static fr_slen_t xlat_expr_print_nary(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
 	xlat_logical_inst_t *inst = instance;
@@ -1667,7 +1658,7 @@ do { \
 	if (unlikely((xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _func_name, FR_TYPE_VOID)) == NULL)) return -1; \
 	xlat_func_async_instantiate_set(xlat, xlat_instantiate_ ## _func_name, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
-	xlat_func_print_set(xlat, xlat_expr_print_ ## _func_name); \
+	xlat_func_print_set(xlat, xlat_expr_print_nary); \
 	xlat_purify_func_set(xlat, xlat_expr_logical_purify); \
 	xlat->token = _op; \
 } while (0)
@@ -1788,6 +1779,14 @@ static const fr_sbuff_term_elem_t binary_ops[T_TOKEN_LAST] = {
  *	Which are logical operations
  */
 static const bool logical_ops[T_TOKEN_LAST] = {
+	[T_LAND] = true,
+	[T_LOR] = true,
+};
+
+/*
+ *	These operators can take multiple arguments.
+ */
+static const bool multivalue_ops[T_TOKEN_LAST] = {
 	[T_LAND] = true,
 	[T_LOR] = true,
 };
@@ -2705,7 +2704,9 @@ redo:
 			fr_sbuff_set(&our_in, &m_rhs);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
+	}
 
+	if (multivalue_ops[op]) {
 		if ((lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
 			xlat_func_append_arg(lhs, rhs, cond);
 
@@ -2714,7 +2715,7 @@ redo:
 			goto redo;
 		}
 
-		if (reparse_rcode(head, &lhs, true) < 0) goto fail_lhs;
+		if (logical_ops[op]) if (reparse_rcode(head, &lhs, true) < 0) goto fail_lhs;
 		goto purify;
 	}
 

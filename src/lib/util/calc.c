@@ -2091,6 +2091,145 @@ done:
 	return handle_result(hint, op, rcode);
 }
 
+/** Calculate DST = OP { A, B, C, ... }
+ *
+ *  The result is written to DST only *after* it has been calculated.
+ *  So it's safe to pass DST as one of the inputs.  DST should already
+ *  exist.
+ */
+int fr_value_calc_nary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t type, fr_token_t op, fr_value_box_t const *group)
+{
+	fr_value_box_t out, *vb;
+	fr_binary_op_t calc;
+
+	if (group->type != FR_TYPE_GROUP) {
+		fr_strerror_const("Invalid type passed to multivalue calculation");
+		return -1;
+	}
+
+	if (fr_type_is_structural(type)) {
+	invalid_type:
+		fr_strerror_printf("Invalid operation %s for data type %s", fr_tokens[op], fr_type_to_str(type));
+		return -1;
+	}
+
+	if (type == FR_TYPE_STRING) {
+		fr_sbuff_t *sbuff;
+		bool secret = false;
+		bool tainted = false;
+
+		if (op != T_ADD) goto invalid_type;
+
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&sbuff, 1024, (1 << 16));
+
+		if (fr_value_box_list_concat_as_string(&tainted, &secret, sbuff, UNCONST(fr_value_box_list_t *, &group->vb_group), NULL, 0, NULL, FR_VALUE_BOX_LIST_NONE, false) < 0) return -1;
+
+		if (fr_value_box_bstrndup(ctx, dst, NULL, fr_sbuff_start(sbuff), fr_sbuff_used(sbuff), tainted) < 0) return -1;
+
+		fr_value_box_set_secret(dst, secret);
+
+		return 0;		
+	}
+
+	if (type == FR_TYPE_OCTETS) {
+		fr_dbuff_t *dbuff;
+		bool secret = false;
+		bool tainted = false;
+
+		if (op != T_ADD) goto invalid_type;
+
+		FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, (1 << 16));
+
+		if (fr_value_box_list_concat_as_octets(&tainted, &secret, dbuff, UNCONST(fr_value_box_list_t *, &group->vb_group), NULL, 0, FR_VALUE_BOX_LIST_NONE, false) < 0) return -1;
+
+		if (fr_value_box_memdup(ctx, dst, NULL, fr_dbuff_start(dbuff), fr_dbuff_used(dbuff), tainted) < 0) return -1;
+
+		fr_value_box_set_secret(dst, secret);
+
+		return 0;		
+	}
+
+	/*
+	 *	Can't add or multiply booleans.
+	 */
+	if ((type == FR_TYPE_BOOL) && !((op == T_AND) || (op == T_OR) || (op == T_XOR))) goto unsupported;
+
+	switch (op) {
+	case T_ADD:
+	case T_MUL:
+	case T_AND:
+	case T_OR:
+	case T_XOR:
+		break;
+
+	default:
+		goto invalid_type;
+	}
+
+	/*
+	 *	Strings and octets are different.
+	 */
+	if (!fr_type_is_numeric(type)) {
+	unsupported:
+		fr_strerror_printf("Not yet supported operation %s for data type %s", fr_tokens[op], fr_type_to_str(type));
+		return -1;
+	}
+
+	switch (type) {
+	case FR_TYPE_UINT8:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+		calc = calc_uint64;
+		break;
+
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+		calc = calc_int64;
+		break;
+
+	case FR_TYPE_FLOAT32:
+		calc = calc_float32;
+		break;
+
+	case FR_TYPE_FLOAT64:
+		calc = calc_float64;
+		break;
+
+	default:
+		goto unsupported;
+	}
+
+	vb = fr_value_box_list_head(&group->vb_group);
+	if (!vb) {
+		fr_strerror_printf("Empty input is invalid");
+		return -1;
+	}
+
+	if (fr_value_box_cast(ctx, &out, type, NULL, vb) < 0) return -1;
+
+	while ((vb = fr_value_box_list_next(&group->vb_group, vb)) != NULL) {
+		int rcode;
+		fr_value_box_t box;
+
+		if (vb->type == type) {
+			rcode = calc(ctx, &out, &out, op, vb);
+			if (rcode < 0) return rcode;
+
+		} else {
+			if (fr_value_box_cast(ctx, &box, type, NULL, vb) < 0) return -1;
+
+			rcode = calc(ctx, &out, &out, op, &box);
+			if (rcode < 0) return rcode;
+		}
+	}
+
+	return fr_value_box_copy(ctx, dst, &out);
+}
+
+
 #define T(_x) [T_OP_ ## _x ## _EQ] = T_ ## _x
 
 static const fr_token_t assignment2op[T_TOKEN_LAST] = {

@@ -1,0 +1,35 @@
+#
+#  Calculate multi-value operations
+#
+calc_nary + uint8 1 uint16 2 uint32 3 -> uint32
+match 6
+
+calc_nary & uint8 255 uint16 192 uint32 127 -> uint8
+match 64
+
+calc_nary + string "foo " string "bar " string "baz" -> string
+match foo bar baz
+
+calc_nary + string "foo " octets 0x7e4a5a string "baz" -> string
+match foo ~JZbaz
+
+calc_nary + ipaddr 127.0.0.1 uint32 45 string "baz" -> string
+match 127.0.0.145baz
+
+calc_nary + octets 0xabcdef -> octets
+match 0xabcdef
+
+calc_nary + octets 0xabcdef octets 0x11223344 -> octets
+match 0xabcdef11223344
+
+calc_nary + octets 0xabcdef string "a" -> octets
+match 0xabcdef61
+
+calc_nary + octets 0xabcdef ipaddr 127.0.0.1 -> octets
+match 0xabcdef7f000001
+
+calc_nary + octets 0xabcdef ipaddr 127.0.0.1 string "foo" -> octets
+match 0xabcdef7f000001666f6f
+
+count
+match 20
