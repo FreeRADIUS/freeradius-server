@@ -690,19 +690,28 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_sqlite_t);
 	bool			exists;
 	struct stat		buf;
+	int			fd;
+	char const		*r;
 
 	if (!inst->filename) {
 		MEM(inst->filename = talloc_typed_asprintf(inst, "%s/%s",
 							   main_config->raddb_dir, config->sql_db));
 	}
 
-	/* coverity[fs_check_call] */
-	if (stat(inst->filename, &buf) == 0) {
+	/*
+	 *	mod_bootstrap() will try to create the database if it doesn't exist, up to and
+	 * 	including creating the directory it should live in, in which case we get to call
+	 * 	fr_dirfd() again. Hence failing this first fr_dirfd() just means the database isn't there.
+	 */
+	if (fr_dirfd(&fd, &r, inst->filename) < 0) {
+		exists = false;
+	} else if (fstatat(fd, r, &buf, 0) == 0) {
 		exists = true;
 	} else if (errno == ENOENT) {
 		exists = false;
 	} else {
 		ERROR("Database exists, but couldn't be opened: %s", fr_syserror(errno));
+		close(fd);
 		return -1;
 	}
 
@@ -738,6 +747,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 			return -1;
 		}
+		(void) fr_dirfd(&fd, &r, inst->filename);
 
 		status = sqlite3_open_v2(inst->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
@@ -786,10 +796,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		if (ret < 0) {
 		unlink:
-			if ((unlink(inst->filename) < 0) && (errno != ENOENT)) {
+			if ((unlinkat(fd, r, 0) < 0) && (errno != ENOENT)) {
 				ERROR("Error removing partially initialised database: %s",
 				      fr_syserror(errno));
 			}
+			close(fd);
 			return -1;
 		}
 #else
@@ -798,6 +809,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 #endif
 	}
 
+	close(fd);
 	return 0;
 }
 
