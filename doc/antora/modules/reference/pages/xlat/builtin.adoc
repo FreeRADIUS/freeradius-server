@@ -320,6 +320,9 @@ Used to join two or more attributes, separated by an optional delimiter.
 
 .Return: _string_
 
+In most cases, `%concat(...)` is only useful inside of a dynamically
+expanded string.  If you need to concatenate strings together in a policy, just use `+`.
+
 .Example
 
 [source,unlang]
@@ -342,6 +345,17 @@ Used to join two or more attributes, separated by an optional delimiter.
 aaa, bb, c
 aaa,bb,c
 ```
+
+.Using "+"
+[source,unlang]
+----
+string foo
+
+&foo += { "a", "c", "c", "d" } # abcd
+
+&foo += &control.Tmp-String-0[*]
+----
+
 
 === %explode(<&ref> <delim>)
 
