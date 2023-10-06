@@ -177,7 +177,7 @@ The following backend modules have an built in authorization method:
 - `rest`
 - `sql`
 
-The redis module has a string expansion %{redis:<command>} which can be used
+The redis module has a string expansion %redis(<command>) which can be used
 to retrieve a single value from the datastore.
 
 Call the backend module's authorize method (or run an appropriate expansion) to

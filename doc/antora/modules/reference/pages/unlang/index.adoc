@@ -101,7 +101,7 @@ attributes, databases, and scripts.
 .Example
 [source,unlang]
 ----
-&reply.Framed-IP-Address := "%{sql:SELECT static_ip from table WHERE user = '%{User-Name}'}"
+&reply.Framed-IP-Address := %sql("SELECT static_ip from table WHERE user = '%{User-Name}'")
 ----
 
 == Data Types

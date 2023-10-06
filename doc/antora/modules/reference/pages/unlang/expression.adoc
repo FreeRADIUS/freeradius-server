@@ -112,7 +112,7 @@ deprecated.
 
 [source,unlang]
 ----
-&NAS-Port-Id = (uint32) "%{sql: SELECT...}" + 4
+&NAS-Port-Id = (uint32) "%sql("SELECT...") + 4
 ----
 
 == Errors

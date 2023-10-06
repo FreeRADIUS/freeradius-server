@@ -14,7 +14,7 @@ expression is an IP address.  It could instead be interpreted as a string
 
 [source,unlang]
 ----
-if ("%{sql:SELECT ipaddress FROM table WHERE user=%{User-Name}}" == 192.0.2.1) }
+if (%sql("SELECT ipaddress FROM table WHERE user=%{User-Name}") == 192.0.2.1) }
     ....
 }
 ----
@@ -42,7 +42,7 @@ We can add a cast to the above example, as follows:
 .Example
 [source,unlang]
 ----
-if ("%{sql:SELECT ipaddress FROM table WHERE user=%{User-Name}}" == (ipaddr)192.0.2.1) }
+if (%sql("SELECT ipaddress FROM table WHERE user=%{User-Name}") == (ipaddr)192.0.2.1) }
     ....
 }
 ----
@@ -113,7 +113,7 @@ Casting any data type to `string` means _printing_ the data type to a
 string, and assigning the resulting value to the `string`.  For a
 value of typ e `octets`, this means that the output is a hex string,
 prefixed with `0x`.  In order to get the "raw" hex values of an
-`octets` data type, the `%{hex:...}` expansion is used.  It prints out
+`octets` data type, the `%hex(...)` expansion is used.  It prints out
 the hex value of its input, without the leading `0x` characters.
 
 Casting a `string` value to another data type means _parsing_ the

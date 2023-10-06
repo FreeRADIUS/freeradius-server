@@ -328,7 +328,7 @@ The above example has the same result as the earlier example of adding
 ====
 [source,unlang]
 ----
-&reply += "%{sql:SELECT pairs FROM pair_table WHERE username = '%{User-Name}'}"
+&reply += "sql("SELECT pairs FROM pair_table WHERE username = '%{User-Name}'")
 ----
 ====
 

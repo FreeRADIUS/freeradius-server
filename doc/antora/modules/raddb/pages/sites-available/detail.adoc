@@ -19,6 +19,11 @@ says "load the detail file processor, and not the typical
 RADIUS UDP / TCP socket IO.
 
 
+Overrides the default transport prefix set by
+namespace and loads the detail reader code.
+
+
+
 Types of packets we are reading.
 
 
@@ -200,6 +205,7 @@ The detail file reader runs the normal RADIUS / DHCP / etc. processing sections.
 
 
 
+
 We handled the packet successfully.  Run the "send ok" section.
 
 
@@ -237,6 +243,7 @@ server detail {
 	namespace = radius
 	directory = ${radacctdir}/detail
 	listen detail {
+		proto = detail
 		type = Accounting-Request
 #		priority = 1
 		file {
@@ -258,7 +265,12 @@ server detail {
 		}
 	}
 recv Accounting-Request {
-	&request.Acct-Delay-Time := "%{expr:%{%{Acct-Delay-Time}:-0} + %c - %(integer:%{%{Event-Timestamp}:-%{Packet-Original-Timestamp}})}"
+	if (!&Event-Timestamp) {
+		&Event-Timestamp := &Packet-Original-Timestamp
+	}
+	if (&Event-Timestamp < %c) {
+		&request.Acct-Delay-Time += %c - &Event-Timestamp
+	}
 	ok
 }
 send Accounting-Response {

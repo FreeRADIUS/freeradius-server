@@ -43,7 +43,7 @@ several options for the arguments, in particular username and domain:
 
 * `–username=%{User-Name}` - this will fail if you’re using realms or
 host-based auth
-* `–username=%(mschap:User-Name)` - this will fail if using using suffix
+* `–username=%mschap(User-Name)` - this will fail if using using suffix
 i.e. user@domain
 
 You’ll need to fit this to your local needs.
@@ -132,7 +132,7 @@ For example, you might use an SQL stored procedure to change passwords::
 ```
 mschap {
   passchange {
-    local_cpw = %{sql:select change_password('%{User-Name}','%{MS-CHAP-New-NT-Password}')}'
+    local_cpw = %sql("select change_password('%{User-Name}','%{MS-CHAP-New-NT-Password}')")
   }
 }
 ```
@@ -167,8 +167,7 @@ This allows you to do things like::
 . update via
 
 ```
-SQL local_cpw = %{sql:update radcheck set value='%{MS-CHAP-New-NT-Password}' where username=%{User-Name} and
-attribute=’Password.NT'}
+SQL local_cpw = %sql("update radcheck set value='%{MS-CHAP-New-NT-Password}' where username=%{User-Name} and attribute=’Password.NT'")
 ```
 
 Or:
@@ -176,7 +175,7 @@ Or:
 . update via exec/script
 
 ```
-local_cpw = `%(exec:/my/script %{User-Name} %{MS-CHAP-New-Password.Cleartext})`
+local_cpw = `%exec('/my/script', %{User-Name}, %{MS-CHAP-New-Password.Cleartext})`
 ```
 
 WARNING: Wherever possible, you should use `MS-CHAP-New-NT-Password`. The

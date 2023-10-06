@@ -129,12 +129,12 @@ listen {
 }
 recv Status-Server {
 	if ("%sql('SELECT pg_is_in_recovery()')" != "f") {
-		if ("%{db_online:}" != "fail") {
-			%{db_online:fail}
+		if (%db_online() != "fail") {
+			%db_online(fail)
 		}
 	} else {
-		if ("%{db_online:}" != "alive") {
-			%{db_online:alive}
+		if (%db_online() != "alive") {
+			%db_online(alive)
 		}
 	}
 }

@@ -630,10 +630,10 @@ update reply {
 }
 ```
 
-In v4, you can remove the `update`, and also remove the double quotes:
+In v4, you can remove the `update`, and rewrite the SQL call to:
 
 ```
-&reply.Framed-IP-Address := %{sql:SELECT ...}
+&reply.Framed-IP-Address := %sql("SELECT ...")
 ```
 
 Using double quotes everywhere means that every bit of data gets
@@ -720,7 +720,7 @@ The following modules are new in v4.
 
 This module handles the `%{client:..}` xlat expansions.
 
-The `Client-Shortname` attribute has been removed.  You should use `%{client:shortname}` instead.
+The `Client-Shortname` attribute has been removed.  You should use `%client(shortname)` instead.
 
 === rlm_radius
 
@@ -819,15 +819,18 @@ checks to see if you want to execute the module.
 
 === rlm_expr
 
-Allow `&Attr-Name[*]` to mean _sum_. Previously, it just referred to
-the first attribute.
+The `expr` module is no longer necessary and has been removed.
 
-Using `%{expr:0 + &Attr-Name[*]}` will cause it to return the sum of
-the values of all attributes with the given name.
+The xref:reference:xlat/index.adoc[xlat] expansions just support math
+natively.  For example:
 
-Note that `%{expr:1 * &Attr-Name[*]}` does _not_ mean repeated
-multiplication. Instead, the sum of the attributes is taken as before,
-and then the result is multiplied by one.
+```
+&Reply-Message := "1 + 2 = %{1 + 2}"
+```
+
+will return the string `1 + 2 = 3`.  The contents of the expansion can
+be any math or condition.  Attribute assignments in expansions are not
+supported.
 
 === rlm_expiration
 
@@ -837,14 +840,18 @@ attribute should continue to work the same as with v3.
 
 === rlm_ldap
 
-The `ldap` module provides an expansion `%{ldap.memberof:<name>}` instead of
+The `ldap` module provides an expansion `%ldap.memberof(<name>)` instead of
 `LDAP-Group` for dynamically testing group membership.  The old method of
 
 ```
-LDAP-Group == "foo"
+if (LDAP-Group == "foo") { ...
 ```
 
-will no longer work.
+will no longer work.  Instead, use
+
+```
+if (%ldap.memberof(foo)) { ...
+```
 
 The cacheing of group membership into attributes in the `control` list is
 still available, so
@@ -876,9 +883,7 @@ names to lowercase:
 
 ```
 recv Access-Request {
-	update request {
-		&Stripped-User-Name := "%{tolower:%{User-Name}}"
-	}
+	&Stripped-User-Name := %tolower(%{User-Name})
 	...
 }
 ```
@@ -907,11 +912,11 @@ that it is now possible to do group comparisons based on regular
 expressions.
 
 It is possible to force a dynamic group lookup via the expansion
-`%{sql.group:foo}`.  This expansion returns `true` if the user is a
+`%sql.group(foo)`.  This expansion returns `true` if the user is a
 member of that SQL group, and `false` otherwise.
 
 ```
-if (%{sql.group:sales}) {
+if (%sql.group(sales)) {
    ...
 }
 ```
@@ -998,7 +1003,7 @@ more information.
 
 === rlm_unix
 
-The `unix` module uses an expansion `%{unix.group:<name>}` instead of
+The `unix` module uses an expansion `%unix.group(<name>)` instead of
 `Unix-Group`, `Group` or `Group-Name`.  The old method of doing
 
 ```
@@ -1009,7 +1014,7 @@ will no longer work.
 
 === rlm_winbind
 
-The `winbind` module uses an expansion `%{winbind.group:<name>}` instead of
+The `winbind` module uses an expansion `%(winbind.group(<name>)` instead of
 `Winbind-Group == <name>`.
 
 == Deleted Modules
@@ -1044,13 +1049,13 @@ result in an error.
 
 Many "virtual" or "fake" attributes have been removed or renamed.
 
-`&Module-Return-Code` should be replaced by `%(interpreter:rcode)`.
+`&Module-Return-Code` should be replaced by `%interpreter(rcode)`.
 
 `&Response-Packet-Type` should be replaced by `&reply.Packet-Type`.
 
-`&Virtual-Server` should be replaced by `%(interpreter:server)`.
+`&Virtual-Server` should be replaced by `%interpreter(server)`.
 
-`&Packet-Authentication-Vector` should be replaced by `%{radius.packet.vector:}`.
+`&Packet-Authentication-Vector` should be replaced by `%radius.packet.vector()`.
 
 `&Packet-Dst-IP-Address` and `&Packet-Dst-IPv6-Address` should be replaced by `&Net.Dst.IP`.
 
