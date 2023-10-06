@@ -1978,7 +1978,7 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	It's a negative cache entry.  Just delete it.
 	 */
 	if (client->state == PR_CLIENT_NAK) {
-		DEBUG("proto_%s - deleting NAK client connection %s", inst->app_io->common.name, connection->name);
+		DEBUG("proto_%s - deleting NAK client %pV", inst->app_io->common.name, fr_box_ipaddr(client->src_ipaddr));
 
 	delete_client:
 		fr_assert(client->packets == 0);
