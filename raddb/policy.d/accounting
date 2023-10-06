@@ -85,13 +85,13 @@ insert_acct_class {
 #
 acct_counters64.preacct {
 	if (!&Acct-Input-Gigawords) {
-		&request.Acct-Input-Octets64 := "%{%{Acct-Input-Octets}:-0}"
+		&request.Acct-Input-Octets64 := "%{&Acct-Input-Octets || 0}"
 	}
 	else {
 		&request.Acct-Input-Octets64 =  (((uint64) &Acct-Input-Gigawords) << 32) | (uint64) &Acct-Input-Octets
 	}
 	if (!&Acct-Output-Gigawords) {
-		&request.Acct-Output-Octets64 := "%{%{Acct-Output-Octets}:-0}"
+		&request.Acct-Output-Octets64 := "%{&Acct-Output-Octets || 0}"
 	}
 	else {
 		&request.Acct-Output-Octets64 = (((uint64) &Acct-Output-Gigawords) << 32) | (uint64) &Acct-Output-Octets

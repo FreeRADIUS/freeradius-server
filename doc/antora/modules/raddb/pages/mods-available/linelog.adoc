@@ -349,7 +349,7 @@ Don't log anything for other `link:https://freeradius.org/rfc/rfc2866.html#Acct-
 linelog {
 #	delimiter = "\n"
 	format = "This is a log message for %{User-Name}"
-	reference = "messages.%{%{reply.Packet-Type}:-default}"
+	reference = "messages.%{&reply.Packet-Type || default}"
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
 		Access-Accept = "Sent accept: %{User-Name}"
@@ -402,7 +402,7 @@ linelog log_accounting {
 		filename = ${logdir}/linelog-accounting
 		permissions = 0600
 	}
-	reference = "Accounting-Request.%{%{Acct-Status-Type}:-unknown}"
+	reference = "Accounting-Request.%{&Acct-Status-Type || unknown}"
 	Accounting-Request {
 		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
 		Stop = "Disconnect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address}) %{Acct-Session-Time} seconds"
