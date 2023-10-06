@@ -657,8 +657,18 @@ match false
 condition (&User-Name == "bob") && (false)
 match false
 
+#
+#  This could return a string of the User-Name, *or* a boolean true.
+#
+condition &User-Name || true
+match (&User-Name || true)
+
+#
+#  The evaluator does not know that the LHS returns a boolean, so it
+#  can't optimize it.
+#
 condition (&User-Name == "bob") || (true)
-match true
+match ((&User-Name == "bob") || true)
 
 #
 #  A && (B || C) is not the same as (A && B) || C, for 0/1/1
@@ -670,4 +680,4 @@ condition (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
 count
-match 305
+match 307

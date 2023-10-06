@@ -241,41 +241,32 @@ static bool is_truthy(xlat_exp_t *node, bool *out)
  *	Do some optimizations.
  *
  */
-static xlat_exp_t *logical_peephole_optimize(xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
+static xlat_exp_t *peephole_optimize_lor(xlat_exp_t *lhs,  xlat_exp_t *rhs)
 {
 	bool value;
 
 	/*
-	 *	@todo - check for tail of LHS
-	 *		&& tail is truthy, then remove tail, and call ourselves recursively
-	 *		if there's a new node, it becomes the new tail.  Otherwise
-	 *		we append the rhs to the lhs args.
+	 *	LHS isn't truthy, we can't do anything.  If the LHS
+	 *	passes, we return the value of the LHS.
 	 *
-	 *	lhs->call.args->flags.can_purify |= rhs->flags.can_purify | rhs->flags.pure;
-	 *	lhs->flags.can_purify = lhs->call.args->flags.can_purify;
+	 *	FOO || ... --> FOO || ...
 	 */
 	if (!is_truthy(lhs, &value)) {
-		xlat_exp_t *tmp;
-
-		if (!is_truthy(rhs, &value)) return NULL;
-
-		tmp = lhs;
-		lhs = rhs;
-		rhs = tmp;
+		/*
+		 *	FOO || 0 --> FOO much of the time
+		 *	FOO || 1 --> FOO much of the time
+		 *
+		 *	@todo - if the LHS is a function AND the LHS returns a boolean, THEN we can optimized
+		 *	the "FOO || 1" case to just "1".
+		 */
+		return NULL;
 	}
-
-	/*
-	 *	1 && FOO   --> FOO
-	 *	0 && FOO   --> 0
-	 *	FOO && BAR --> FOO && BAR
-	 */
 
 	/*
 	 *	1 || FOO   --> 1
 	 *	0 || FOO   --> FOO
-	 *	FOO || BAR --> FOO || BAR
 	 */
-	if (value == (op != T_LAND)) {
+	if (value) {
 		talloc_free(rhs);
 		return lhs;
 	}
@@ -284,6 +275,48 @@ static xlat_exp_t *logical_peephole_optimize(xlat_exp_t *lhs, fr_token_t op, xla
 	return rhs;
 }
 
+
+/*
+ *	Do some optimizations.
+ *
+ */
+static xlat_exp_t *peephole_optimize_land(xlat_exp_t *lhs, xlat_exp_t *rhs)
+{
+	bool value;
+
+	/*
+	 *	LHS isn't truthy
+	 *
+	 *	FOO && ... --> FOO && ...
+	 */
+	if (!is_truthy(lhs, &value)) {
+		/*
+		 *	FOO && 0 --> 0
+		 *	FOO && 1 --> FOO
+		 */
+		if (!is_truthy(rhs, &value)) return NULL;
+
+		if (!value) {
+			talloc_free(lhs);
+			return rhs;
+		}
+
+		talloc_free(rhs);
+		return lhs;
+	}
+
+	/*
+	 *	0 && FOO   --> 0
+	 *	1 && FOO   --> FOO
+	 */
+	if (!value) {
+		talloc_free(rhs);
+		return lhs;
+	}
+
+	talloc_free(lhs);
+	return rhs;
+}
 
 /*
  *	Do peephole optimizations.
@@ -350,7 +383,6 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 	/*
 	 *	The tmpl_tokenize code takes care of resolving the data if there's a cast.
 	 */
-
 	lhs_box = xlat_value_box(lhs);
 	if (!lhs_box) return 0;
 
@@ -374,10 +406,20 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 
 int xlat_purify_op(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_t *lhs, fr_token_t op, xlat_exp_t *rhs)
 {
-	if ((op == T_LAND) || (op == T_LOR)) {
+	if (op == T_LOR) {
 		xlat_exp_t *node;
 
-		node = logical_peephole_optimize(lhs, op, rhs);
+		node = peephole_optimize_lor(lhs, rhs);
+		if (!node) return 0;
+
+		*out = node;
+		return 1;
+	}
+
+	if (op == T_LAND) {
+		xlat_exp_t *node;
+
+		node = peephole_optimize_land(lhs, rhs);
 		if (!node) return 0;
 
 		*out = node;
