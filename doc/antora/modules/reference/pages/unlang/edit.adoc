@@ -86,7 +86,7 @@ retrieving data from a database.
 [source,unlang]
 ----
 group {
-    &reply.Reply-Message += %(sql:SELECT ...)
+    &reply.Reply-Message += %sql("SELECT ...")
     &reply.Filter-Id := "foo"
 }
 ----

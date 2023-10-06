@@ -38,7 +38,7 @@ Local variables _cannot_ be deleted.  When the current scope exits, the local va
 if (&User-Name == "bob") {
     uint32 len
 
-    &len := %(length:%{User-Name})
+    &len := %length(%{User-Name})
 
     &Reply-Message := "Length of %{User-Name} is %{len}"
 }
@@ -60,13 +60,13 @@ if (&User-Name == "bob") {
     }
 
     #  "len" is created, and can now be used
-    &len := %(length:%{User-Name})
+    &len := %length(%{User-Name})
 
     &Reply-Message := "Length of %{User-Name} is %{len}"
 }
 ----
 
-The variable declaration and assignment must be sepaarted.  Constructions like `uint32 len = %(length:%{User-Name})` are not allowed.
+The variable declaration and assignment must be sepaarted.  Constructions like `uint32 len = %length(%{User-Name})` are not allowed.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
