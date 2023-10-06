@@ -83,7 +83,7 @@ redis_ippool {
 	#  Otherwise the client hardware address must be used. To comply with
 	#  this requirement use the following:
 	#
-#	owner = "%{%{Client-Identifier}:-%{Client-Hardware-Address}}"
+#	owner = "%{&Client-Identifier || &Client-Hardware-Address}"
 
 	#
 	#  For purposes such as IP assignment using a RADIUS Framed-IP-Address
@@ -102,7 +102,7 @@ redis_ippool {
 	#
 	#  requested_address:: The IP address being renewed or released.
 	#
-	requested_address = "%{%{Requested-IP-Address}:-%{Net.Src.IP}}"
+	requested_address = "%{&Requested-IP-Address || &Net.Src.IP}"
 
 	#
 	#  ipv4_integer:: Whether IPv4 addresses should be cast to integers, for renew operations.

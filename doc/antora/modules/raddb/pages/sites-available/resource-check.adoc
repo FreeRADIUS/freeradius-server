@@ -68,12 +68,12 @@ uses the control module, for example:
 
       pap
   }
-
   ...
+  }
 
 
 The configuration for this virtual server follows and should be amended as
-required...
+required.
 
 
 
@@ -128,7 +128,7 @@ listen {
 	type = Status-Server
 }
 recv Status-Server {
-	if ("%{sql:SELECT pg_is_in_recovery()}" != "f") {
+	if ("%sql('SELECT pg_is_in_recovery()')" != "f") {
 		if ("%{db_online:}" != "fail") {
 			%{db_online:fail}
 		}

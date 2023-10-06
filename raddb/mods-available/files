@@ -35,7 +35,7 @@ files {
 	#
 	#  The content of this attribute is used to match the `name` of the entry.
 	#
-#	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+#	key = "%{&Stripped-User-Name || &User-Name}"
 
 	#
 	#  filename:: The old `users` style file is now located here.

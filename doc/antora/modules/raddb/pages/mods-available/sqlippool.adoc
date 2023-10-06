@@ -77,7 +77,7 @@ For DHCPv4 the owner will likely be specified by:
   * `%{dhcpv4.Client-Hardware-Address}` which binds the lease to the
   mac address of the user's device.
 
-  * `%{%{dhcpv4.Client-Identifier}:-%{dhcpv4.Client-Hardware-Address}}`
+  * `%{&dhcpv4.Client-Identifier || &dhcpv4.Client-Hardware-Address}`
   which binds the lease to either the custom identifier set by the
   DHCP client, or if this is absent, the mac address of the user's
   device.
@@ -109,7 +109,7 @@ requested_address:: The IP address being renewed or released.
 For RADIUS the requested_address will almost always be `%{radius.Framed-IP-Address}`.
 
 For DHCPv4 the requested_address will almost always be
-`%{%{dhcpv4.Requested-IP-Address}:-%{dhcpv4.Client-IP-Address}}`.
+`%{&dhcpv4.Requested-IP-Address || &dhcpv4.Client-IP-Address}`.
 
 
 
@@ -161,10 +161,10 @@ sqlippool {
 	pool_name = IP-Pool.Name
 	allocated_address_attr = radius.Framed-IP-Address
 	owner = "%{radius.Calling-Station-ID}"
-#	owner = "%{%{dhcpv4.Client-Identifier}:-%{dhcpv4.Client-Hardware-Address}}"
+#	owner = "%{&dhcpv4.Client-Identifier || &dhcpv4.Client-Hardware-Address}"
 	requested_address = "%{radius.Framed-IP-Address}"
-#	requested_address = "%{%{dhcpv4.Requested-IP-Address}:-%{dhcpv4.Client-IP-Address}}"
-	gateway = "%{%{radius.NAS-Identifier}:-%{radius.NAS-IP-Address}}"
+#	requested_address = "%{&dhcpv4.Requested-IP-Address || &dhcpv4.Client-IP-Address}"
+	gateway = "%{&radius.NAS-Identifier || &radius.NAS-IP-Address}"
 	messages {
 		exists = "Existing IP: %{reply.${..allocated_address_attr}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 		success = "Allocated IP: %{reply.${..allocated_address_attr}} from %{control.IP-Pool.Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"

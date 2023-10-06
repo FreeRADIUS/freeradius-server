@@ -128,7 +128,7 @@ NOTE: You may need to edit `raddb/dictionary` to add the `Expire-After` attribut
 #	sqlcounter <name> {
 #	sql_module_instance = sql_foo
 #	reset = 12h
-#	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+#	key = "%{&Stripped-User-Name || &User-Name}"
 #	if (&control.Daily-Session-Time > 3600) {
 #		 &Reply-Message := "You've used up more than one hour today"
 #		 reject
@@ -141,7 +141,7 @@ sqlcounter dailycounter {
 	counter_name = &control.Daily-Session-Time
 	check_name = &control.Max-Daily-Session
 	reply_name = &reply.Session-Timeout
-	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+	key = "%{&Stripped-User-Name || &User-Name}"
 	reset = daily
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }

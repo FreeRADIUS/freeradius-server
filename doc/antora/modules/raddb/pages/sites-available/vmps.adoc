@@ -121,7 +121,7 @@ server vmps {
 		&reply.Error-Code = No-Error
 		&reply.Cookie = &MAC-Address
 		&reply.VLAN-Name = "please_use_real_vlan_here"
-#		&reply.VLAN-Name = "%{sql:select ... where mac='%{MAC-Address}'}"
+#		&reply.VLAN-Name = %sql("select ... where mac='%{MAC-Address}'")
 	}
 	send Join-Response {
 		ok

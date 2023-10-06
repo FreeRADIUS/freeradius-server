@@ -69,7 +69,7 @@
 #  The `query` parameter specifies the SQL query used to get the current Counter value
 #  from the database.
 #
-#	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+#	key = "%{&Stripped-User-Name || &User-Name}"
 #
 #  reset_period_start_name::  The name of the attribute which is used to store the
 #  time that the current reset period started.
@@ -112,7 +112,7 @@ sqlcounter dailycounter {
 	counter_name = &control.Daily-Session-Time
 	check_name = &control.Max-Daily-Session
 	reply_name = &reply.Session-Timeout
-	key = "%{%{Stripped-User-Name}:-%{User-Name}}"
+	key = "%{&Stripped-User-Name || &User-Name}"
 
 	reset = daily
 

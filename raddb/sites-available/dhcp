@@ -212,7 +212,7 @@ recv Request {
 #	dhcp_sqlippool
 
 	if (ok) {
-		&reply.Your-IP-Address := "%{%{request.Requested-IP-Address}:-%{request.Client-IP-Address}}"
+		&reply.Your-IP-Address := "%{&request.Requested-IP-Address || &request.Client-IP-Address}"
 	}
 
 	#  If Message-Type is not set, returning "ok" or

@@ -83,7 +83,7 @@ rediswho {
 	#  ### Start
 	#
 	Start {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{&NAS-IP-Address || &NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
 		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
 		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
@@ -92,7 +92,7 @@ rediswho {
 	#  ### Interim-Update
 	#
 	Interim-Update {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{&NAS-IP-Address || &NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
 		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
 		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
@@ -101,7 +101,7 @@ rediswho {
 	#  ### Stop
 	#
 	Stop {
-		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
+		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{&NAS-IP-Address || &NAS-IPv6-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
 		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
 		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}

@@ -73,7 +73,7 @@ received.
 
 ```
 delay {
-	delay = 1.0
+	delay = 1.0s
 #	force_reschedule = no
 #	relative = no
 }

@@ -313,7 +313,7 @@ recv Request {
 #	&control.IP-Pool.Name := "local"
 #	dhcp_sqlippool
 	if (ok) {
-		&reply.Your-IP-Address := "%{%{request.Requested-IP-Address}:-%{request.Client-IP-Address}}"
+		&reply.Your-IP-Address := "%{&request.Requested-IP-Address || &request.Client-IP-Address}"
 	}
 #	ok
 }
@@ -327,9 +327,9 @@ recv Inform {
 	ok
 }
 #recv Inform {
-#	&reply.Packet-Dst-Port = 67
+#	&reply.Net.Dst.Port = 67
 #	&reply.Message-Type = Ack
-#	&reply.Server-Identifier = "%{Packet-Dst-IP-Address}"
+#	&reply.Server-Identifier = "%{Net.Dst.IP}"
 #	&reply.Site-specific-28 = 0x0a00
 #	ok
 #}

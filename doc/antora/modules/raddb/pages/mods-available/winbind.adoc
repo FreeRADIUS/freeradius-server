@@ -151,10 +151,10 @@ increase lifetime/idle_timeout.
 
 ```
 winbind {
-	username = "%{%{Stripped-User-Name}:-%{User-Name}}"
+	username = "%{&Stripped-User-Name || &User-Name}"
 #	domain = ""
 	group {
-		search_username = "%{%{Stripped-User-Name}:-%{User-Name}}"
+		search_username = "%{&Stripped-User-Name || &User-Name}"
 #		add_domain = yes
 	}
 	pool {

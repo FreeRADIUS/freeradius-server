@@ -106,7 +106,7 @@ listen {
 		require_client_cert = yes
 		verify {
 		}
-		psk_query = "%{psksql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
+		psk_query = %psksql("select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'")
 	}
 	virtual_server = abfab-idp
 	clients = radsec-abfab

@@ -88,7 +88,7 @@ sqlippool {
 	#  * `%{dhcpv4.Client-Hardware-Address}` which binds the lease to the
 	#    mac address of the user's device.
 	#
-	#  * `%{%{dhcpv4.Client-Identifier}:-%{dhcpv4.Client-Hardware-Address}}`
+	#  * `%{&dhcpv4.Client-Identifier || &dhcpv4.Client-Hardware-Address}`
 	#    which binds the lease to either the custom identifier set by the
 	#    DHCP client, or if this is absent, the mac address of the user's
 	#    device.
@@ -114,7 +114,7 @@ sqlippool {
 
 #       owner = "%{radius.Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{radius.Calling-Station-Id}"
 
-#	owner = "%{%{dhcpv4.Client-Identifier}:-%{dhcpv4.Client-Hardware-Address}}"
+#	owner = "%{&dhcpv4.Client-Identifier || &dhcpv4.Client-Hardware-Address}"
 
 	#
 	#  requested_address:: The IP address being renewed or released.
@@ -122,11 +122,11 @@ sqlippool {
 	#  For RADIUS the requested_address will almost always be `%{radius.Framed-IP-Address}`.
 	#
 	#  For DHCPv4 the requested_address will almost always be
-	#  `%{%{dhcpv4.Requested-IP-Address}:-%{dhcpv4.Client-IP-Address}}`.
+	#  `%{&dhcpv4.Requested-IP-Address || &dhcpv4.Client-IP-Address}`.
 	#
 	requested_address = "%{radius.Framed-IP-Address}"
 
-#	requested_address = "%{%{dhcpv4.Requested-IP-Address}:-%{dhcpv4.Client-IP-Address}}"
+#	requested_address = "%{&dhcpv4.Requested-IP-Address || &dhcpv4.Client-IP-Address}"
 
 	#
 	#  gateway:: The device controlling access to the network or relaying
@@ -140,7 +140,7 @@ sqlippool {
 	#  For DHCPv4, this device is recorded so that we can respond correctly
 	#  to lease queries.
 	#
-	gateway = "%{%{radius.NAS-Identifier}:-%{radius.NAS-IP-Address}}"
+	gateway = "%{&radius.NAS-Identifier || &radius.NAS-IP-Address}"
 
 #       gateway = "%{dhcpv4.Gateway-IP-Address}"
 

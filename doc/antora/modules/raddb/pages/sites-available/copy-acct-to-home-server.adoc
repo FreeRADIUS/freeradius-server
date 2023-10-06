@@ -1,3 +1,5 @@
+WARNING: This configuration file has not been updated for v4,
+          and therefore WILL NOT WORK.  Please do not use it.
 
 
 

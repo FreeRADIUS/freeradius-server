@@ -25,6 +25,15 @@ oracle, postgresql, sqlite and unixodbc.
 
 
 
+NOTE: Temporarily (2023-08-27), the check items only support "real"
+attributes.  This limitation will be removed when the module is
+rewritten to support maps (for assignments) and xlat expressions
+(for conditions).
+
+The module also does not support xlat expansions on the RHS.
+
+
+
 ## Configuration Settings
 
 
@@ -296,7 +305,7 @@ groups to the `control` list.  The "group_attribute" can then be used to check g
 That check will be done internally, and will not result in a database lookup.  This also means that
 it is now possible to do group comparisons based on regular expressions.
 
-It is possible to force a dynamic group lookup via the expansion `%{sql.group:foo}`.  This
+It is possible to force a dynamic group lookup via the expansion `%sql.group(foo)`.  This
 expansion returns `true` if the user is a member of that SQL group, and `false` otherwise.
 
 NOTE: The `SQL-Group` attribute is only available after the SQL module has been run.

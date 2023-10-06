@@ -158,7 +158,7 @@ Uncomment if the NAS does not expect User-Name
 Call the radius client module instance for the NAS-IP-Address
 
 
-Repeat this for each NAS
+Repeat this block for each NAS
 
 
 
@@ -168,7 +168,7 @@ Increment count of sent updates
 
 
 
-Likely a missing "case" if we can't map NAS-IP-Address to a module
+Likely a missing "case" block if we can't map NAS-IP-Address to a module
 
 
 
@@ -218,30 +218,30 @@ server coa {
 		}
 	}
 	recv CoA-Request {
-#		&control.Tmp-String-0 := "%{sql:SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
-#		&control.Tmp-String-0 := "%{sql:SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a}"
+#		&control.Tmp-String-0 := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+#		&control.Tmp-String-0 := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 		&control.Tmp-Integer-0 := 0
-		if ("%(explode:&control.Tmp-String-0 |)") {
+		if ("%explode(&control.Tmp-String-0, '|')") {
 			foreach &control.Tmp-String-0 {
 				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
-					&control.Tmp-IP-Address-0 := "%{1}"
-					&control.Tmp-String-1 := "%{2}"
+					&control.NAS-IP-Address := "%{1}"
+					&control.Acct-Session-Id := "%{2}"
 					subrequest CoA-Request {
 						&request := &parent.request
-						&request.Acct-Session-Id := &parent.control.Tmp-String-1
+						&request.Acct-Session-Id := &parent.control.Acct-Session-Id
 						&request.Event-Timestamp := "%l"
 						&request.Message-Authenticator := 0x00
 						&request -= &SQL-User-Name[*]
 						&request -= &Acct-Delay-Time[*]
 						&request -= &Proxy-State[*]
-						switch &parent.control.Tmp-IP-Address-0 {
+						switch &parent.control.NAS-IP-Address {
 							case "192.0.2.1" {
 								&parent.control.Tmp-Integer-0 += 1
 								radius-originate-coa-192.0.2.1
 							}
-							case {
+							default {
 								&parent.control += {
-									&Reply-Message = "Missing map for NAS: %{parent.control.Tmp-IP-Address-0}"
+									&Reply-Message = "Missing map for NAS: %{parent.control.NAS-IP-Address}"
 								}
 							}
 						}  # subrequest

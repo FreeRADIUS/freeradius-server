@@ -191,7 +191,7 @@ couchbase {
 #		send_hello = "false"
 #		detailed_errcodes = "true"
 	}
-	acct_key = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}"
+	acct_key = "radacct_%{&Acct-Unique-Session-Id || &Acct-Session-Id}"
 	doctype = "radacct"
 	expire = 2592000
 	update {
@@ -222,7 +222,7 @@ couchbase {
 		&Acct-Output-Gigawords	= 'outputGigawords'
 		&Event-Timestamp	= 'lastUpdated'
 	}
-	user_key = "raduser_%md5(%tolower(%{%{Stripped-User-Name}:-%{User-Name}}))"
+	user_key = "raduser_%md5(%tolower(%{&Stripped-User-Name || &User-Name}))"
 #	read_clients = no
 	client {
 		view = "_design/client/_view/by_id"

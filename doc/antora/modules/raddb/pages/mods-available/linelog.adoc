@@ -72,6 +72,14 @@ Pairs may be attributes attribute reference `&User-Name` , `xlat`, `literal` or 
 
 
 
+header:: Optional header line format for file output
+
+If the destination is "file" and header is set, then this
+is expanded and output as the first line when a new file
+is created.
+
+
+
 destination:: What should be done with log messages.
 
 May be one of:
@@ -129,13 +137,12 @@ a limited range should set this to `yes`.
 The connection pool for TCP and Unix socket connections.
 
 
-start::
+start:: Connections to create during module instantiation.
 
-Connections to create during module instantiation.
 If the server cannot create specified number of
 connections during instantiation it will exit.
-Set to 0 to allow the server to `start` without the
-web service being available.
+Set to `0` to allow the server to start without the
+external service being available.
 
 
 
@@ -148,12 +155,15 @@ max:: Maximum number of connections.
 If these connections are all in use and a new one
 is requested, the request will NOT get a connection.
 
-Setting `max` to LESS than the number of threads means
+Setting `max` to *LESS* than the number of threads means
 that some threads may starve, and you will see errors
-like 'No connections available and at `max` connection limit'
+like _No connections available and at max connection limit_.
 
 Setting `max` to MORE than the number of threads means
 that there are more connections than necessary.
+
+If `max` is not specified, then it defaults to the number
+of workers configured.
 
 
 
@@ -346,6 +356,7 @@ linelog {
 		Access-Reject = "Sent reject: %{User-Name}"
 		Access-Challenge = "Sent challenge: %{User-Name}"
 	}
+#	header = ""
 	destination = file
 	file {
 		filename = ${logdir}/linelog
@@ -396,9 +407,9 @@ linelog log_accounting {
 		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
 		Stop = "Disconnect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address}) %{Acct-Session-Time} seconds"
 		Interim-Update = ""
-		Accounting-On = "NAS %%{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just came online"
-		Accounting-Off = "NAS %{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) just went offline"
-		unknown = "NAS %{Net.Src.IP} (%{%{NAS-IP-Address}:-%{NAS-IPv6-Address}}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
+		Accounting-On = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) just came online"
+		Accounting-Off = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) just went offline"
+		unknown = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
 	}
 }
 ```

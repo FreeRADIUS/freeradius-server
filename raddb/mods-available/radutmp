@@ -37,7 +37,7 @@ radutmp {
 	#  structure is small, around `32` characters, so that will limit
 	#  the possible choices of keys.
 	#
-	#  TIP: You may want instead: `%{%{Stripped-User-Name}:-%{User-Name}}`.
+	#  TIP: You may want instead: `%{&Stripped-User-Name || &User-Name}`.
 	#
 	username = %{User-Name}
 

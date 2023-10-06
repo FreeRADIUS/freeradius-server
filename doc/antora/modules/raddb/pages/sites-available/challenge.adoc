@@ -6,6 +6,7 @@
 
 
 
+
 If there's no State attribute, then this is the request from
 the user.
 
@@ -40,13 +41,16 @@ Do PAP authentication with the password.
 #	to be "hello".  The server will send them a challenge
 #	consisting of a random number 0..9.  The user has to respond
 #	with that number.
-listen {
-	type = auth
-	ipaddr = *
-	port = 2000
-	virtual_server = challenge
-}
 server challenge {
+	namespace = radius
+	listen {
+		type = Access-Request
+		transport = udp
+		udp {
+			ipaddr = *
+			port = 2000
+		}
+	}
 recv Access-Request {
 	if (!&State) {
 		&control.Auth-Type := Step1
@@ -59,7 +63,7 @@ recv Access-Request {
 }
 authenticate step1 {
 	pap
-	&session-state.Tmp-Integer-0 := "%{randstr:n}"
+	&session-state.Tmp-Integer-0 := "%randstr(n)"
 	&reply.Reply-Message := &session-state.Tmp-Integer-0
 	challenge
 }

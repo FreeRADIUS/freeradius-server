@@ -1443,7 +1443,7 @@ send Access-Challenge {
 }
 send Access-Accept {
 #	if (!&reply.State) {
-#		&reply.State := "0x%{randstr:16h}"
+#		&reply.State := "0x%randstr(16h)"
 #	}
 	&reply += &session-state
 	eap

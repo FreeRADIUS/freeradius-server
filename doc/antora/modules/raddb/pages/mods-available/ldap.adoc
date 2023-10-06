@@ -825,8 +825,8 @@ ldap {
 #	edir_autz = no
 	user {
 		base_dn = "${..base_dn}"
-		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
-#		filter = "(&(objectClass=user)(sAMAccountName=%{%{Stripped-User-Name}:-%{User-Name}})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
+		filter = "(uid=%{&Stripped-User-Name || &User-Name})"
+#		filter = "(&(objectClass=user)(sAMAccountName=%{&Stripped-User-Name || &User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 		sasl {
 #			mech = 'PLAIN'
 #			authname = &User-Name
@@ -846,7 +846,7 @@ ldap {
 		filter = '(objectClass=posixGroup)'
 #		scope = 'sub'
 #		name_attribute = cn
-#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
+#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{&Stripped-User-Name || &User-Name}))"
 		membership_attribute = 'memberOf'
 #		cacheable_name = 'no'
 #		cacheable_dn = 'no'

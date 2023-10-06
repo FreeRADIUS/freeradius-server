@@ -247,7 +247,7 @@ ldap {
 		#  filter:: Filter for user objects, should be specific enough
 		#  to identify a single user object.
 		#
-		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
+		filter = "(uid=%{&Stripped-User-Name || &User-Name})"
 
 		#  For Active Directory nested group, you should comment out the previous 'filter = ...'
 		#  and use the below. Where 'group' is the group you are querying for.
@@ -260,7 +260,7 @@ ldap {
 		#
 		#  See: https://social.technet.microsoft.com/wiki/contents/articles/5392.active-directory-ldap-syntax-filters.aspx
 		#
-#		filter = "(&(objectClass=user)(sAMAccountName=%{%{Stripped-User-Name}:-%{User-Name}})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
+#		filter = "(&(objectClass=user)(sAMAccountName=%{&Stripped-User-Name || &User-Name})(memberOf:1.2.840.113556.1.4.1941:=cn=group,${..base_dn}))"
 
 		#
 		#  sasl { ... }:: SASL parameters to use for user binds
@@ -408,7 +408,7 @@ ldap {
 		#  That is, group objects with attributes that identify
 		#  members (the inverse of `membership_attribute`).
 		#
-#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
+#		membership_filter = "(|(member=%{control.Ldap-UserDn})(memberUid=%{&Stripped-User-Name || &User-Name}))"
 
 		#
 		#  membership_attribute:: The attribute, in user objects, which contain
