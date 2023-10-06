@@ -1102,6 +1102,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 		break;
 
 	case LDAP_RESULT_NO_RESULT:
+	case LDAP_RESULT_BAD_DN:
 		goto finish;
 
 	default:
