@@ -19,5 +19,10 @@ in an expression.  This approach also means that nested alternation is no longer
 &Reply-Message := "Hello %{&NAS-Identifier || &User-Name || 'none'}"
 ----
 
+[NOTE]
+====
+Any strings in an alternation like above must be quoted.  Numbers and IP addresses do not need to be quoted.
+====
+
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
