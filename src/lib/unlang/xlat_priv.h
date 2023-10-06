@@ -186,6 +186,8 @@ struct xlat_exp_head_s {
 	bool			instantiated;	//!< temporary flag until we fix more things
 	fr_dict_t const		*dict;		//!< dictionary for this xlat
 
+	fr_event_list_t		*el;		//! for run-time xlats
+
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.
 	int			line;		//!< Line where the xlat was alocated.
