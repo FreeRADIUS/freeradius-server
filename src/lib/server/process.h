@@ -416,7 +416,7 @@ RESUME(new_client)
 		break;
 
 	default:
-		cs = inst->sections.add_client;
+		cs = inst->sections.deny_client;
 		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
 		break;
 	}
