@@ -479,7 +479,7 @@ static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	a = fr_value_box_list_head(in);
 	b = fr_value_box_list_next(in, a);
 
-	if (!a && !b) return XLAT_ACTION_FAIL;
+	if (!a || !b) return XLAT_ACTION_FAIL;
 
 	fr_assert(a->type == FR_TYPE_GROUP);
 	fr_assert(b->type == FR_TYPE_GROUP);
