@@ -361,11 +361,11 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 int xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
 {
 	if (!t_rules || !t_rules->xlat.runtime_el) {
-		fr_assert(!t_rules->at_runtime);
+		fr_assert(!t_rules || !t_rules->at_runtime);
 		return xlat_bootstrap(head);
 	}
 
-	fr_assert(t_rules->at_runtime);
+	fr_assert(t_rules && t_rules->at_runtime);
 	return xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
 }
 
