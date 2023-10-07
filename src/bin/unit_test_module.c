@@ -455,8 +455,20 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
 			xlat_exp_head_t		*head = NULL;
 			fr_sbuff_parse_rules_t	p_rules = { .escapes = &fr_value_unescape_double };
+			tmpl_rules_t		t_rules = (tmpl_rules_t) {
+								.attr = {
+									.dict_def = dict_protocol,
+									.list_def = request_attr_request,
+									.allow_unresolved = true,
+								},
+								.xlat = {
+									.runtime_el = el,
+								},
+								.at_runtime = true,
+								};
 
-			slen = xlat_tokenize_ephemeral(xlat_ctx, &head, el, &line, &p_rules, NULL);
+
+			slen = xlat_tokenize(xlat_ctx, &head, &line, &p_rules, &t_rules);
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);
 				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen, fr_strerror());

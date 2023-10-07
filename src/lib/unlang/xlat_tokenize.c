@@ -1630,68 +1630,6 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
 }
 
 
-/** Tokenize an xlat expansion at runtime
- *
- * This is used for runtime parsing of xlat expansions, such as those we receive from datastores
- * like LDAP or SQL.
- *
- * @param[in] ctx	to allocate dynamic buffers in.
- * @param[out] out	the head of the xlat list / tree structure.
- * @param[in] el	for registering any I/O handlers.
- * @param[in] in	the format string to expand.
- * @param[in] p_rules	from the encompassing grammar.
- * @param[in] t_rules	controlling how attribute references are parsed.
- * @return
- *	- >0 on success.
- *	- 0 and *head == NULL - Parse failure on first char.
- *	- 0 and *head != NULL - Zero length expansion
- *	- <0 the negative offset of the parse failure.
- */
-fr_slen_t xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **out,
-				  fr_event_list_t *el, fr_sbuff_t *in,
-			          fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
-{
-	fr_sbuff_t	our_in = FR_SBUFF(in);
-	tmpl_rules_t	our_t_rules = {};
-	xlat_exp_head_t *head;
-
-	MEM(head = xlat_exp_head_alloc(ctx));
-
-	if (t_rules) {
-		head->dict = t_rules->attr.dict_def;
-		our_t_rules = *t_rules;
-	}
-
-	our_t_rules.xlat.runtime_el = el;
-
-	fr_strerror_clear();	/* Clear error buffer */
-	if (xlat_tokenize_input(head, &our_in, p_rules, &our_t_rules) < 0) {
-		talloc_free(head);
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
-
-	/*
-	 *	Zero length expansion, return a zero length node.
-	 */
-	if (!xlat_exp_head(head)) {
-		*out = head;
-		return 0;
-	}
-
-	/*
-	 *	Create ephemeral instance data for the xlat
-	 */
-	if (xlat_instantiate_ephemeral(head, el) < 0) {
-		fr_strerror_const("Failed performing ephemeral instantiation for xlat");
-		talloc_free(head);
-		return 0;
-	}
-
-	*out = head;
-
-	FR_SBUFF_SET_RETURN(in, &our_in);
-}
-
 /** Tokenize an xlat expansion into a series of XLAT_TYPE_CHILD arguments
  *
  * @param[in] ctx		to allocate nodes in.  Note: All nodes will be
@@ -1922,6 +1860,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 			fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
+	int rcode;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t	*head;
 
@@ -1939,7 +1878,12 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_exp_head(head) && (xlat_bootstrap(head) < 0)) {
+	if (!t_rules || !t_rules->xlat.runtime_el) {
+		rcode = xlat_bootstrap(head);
+	} else {
+		rcode = xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
+	}
+	if (rcode < 0) {
 		talloc_free(head);
 		return 0;
 	}

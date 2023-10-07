@@ -3041,14 +3041,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			xlat_exp_head_t	*head = NULL;
 
 			vpt = tmpl_alloc_null(ctx);
-			if (!t_rules->at_runtime) {
-				slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
-			} else {
-				slen = xlat_tokenize_ephemeral(vpt, &head,
-							       t_rules->xlat.runtime_el, &our_in,
-							       p_rules, t_rules);
-			}
-
+			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 			if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
@@ -3216,12 +3209,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		if (!t_rules->at_runtime) {
-			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
-		} else {
-			slen = xlat_tokenize_ephemeral(vpt, &head, t_rules->xlat.runtime_el,
-						       &our_in, p_rules, t_rules);
-		}
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
@@ -3314,14 +3302,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		if (!t_rules->at_runtime) {
-			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
-		} else {
-			slen = xlat_tokenize_ephemeral(vpt, &head,
-						       t_rules->xlat.runtime_el, &our_in,
-						       p_rules, t_rules);
-		}
-
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
 		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*

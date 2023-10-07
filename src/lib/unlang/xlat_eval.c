@@ -1497,15 +1497,19 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 	/*
 	 *	Give better errors than the old code.
 	 */
-	len = xlat_tokenize_ephemeral(ctx, &head, unlang_interpret_event_list(request),
-				      &FR_SBUFF_IN(fmt, strlen(fmt)),
-				      NULL,
-				      &(tmpl_rules_t){
-				      	.attr = {
-				      		.dict_def = request->dict,
-						.list_def = request_attr_request,
-				      	}
-				      });
+	len = xlat_tokenize(ctx, &head,
+			    &FR_SBUFF_IN(fmt, strlen(fmt)),
+			    NULL,
+			    &(tmpl_rules_t){
+				    .attr = {
+					    .dict_def = request->dict,
+					    .list_def = request_attr_request,
+				    },
+				    .xlat = {
+					    .runtime_el = unlang_interpret_event_list(request),
+				    },
+				    .at_runtime = true,
+			    });
 	if (len == 0) {
 		if (*out) {
 			**out = '\0';
