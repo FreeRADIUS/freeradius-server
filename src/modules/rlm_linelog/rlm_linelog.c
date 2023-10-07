@@ -670,6 +670,9 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 					 		.allow_unknown = true,
 					 		.allow_unresolved = false,
 					 	},
+						.xlat = {
+							.runtime_el = unlang_interpret_event_list(request),
+						},
 					 	.at_runtime = true
 					 });
 		if (!vpt) {

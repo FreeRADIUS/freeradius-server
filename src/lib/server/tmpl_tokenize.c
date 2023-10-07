@@ -3277,9 +3277,18 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	Ensure any xlats produced are bootstrapped
 		 *	so that their instance data will be created.
 		 */
-		if (!t_rules->at_runtime && head && (xlat_bootstrap(head) < 0)) {
-			fr_strerror_const("Failed to bootstrap xlat");
-			FR_SBUFF_ERROR_RETURN(&our_in);
+		if (head) {
+			int rcode;
+
+			if (!t_rules->at_runtime) {
+				rcode = xlat_bootstrap(head);
+			} else {
+				rcode = xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
+			}
+			if (rcode < 0) {
+				fr_strerror_const("Failed to bootstrap xlat");
+				FR_SBUFF_ERROR_RETURN(&our_in);
+			}
 		}
 
 		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
