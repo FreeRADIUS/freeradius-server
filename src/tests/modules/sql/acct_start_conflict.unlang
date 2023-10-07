@@ -5,7 +5,7 @@
 #
 #  Clear out old data
 #
-"%{sql:delete_from_radacct '00000003'}"
+"%{sql:${delete_from_radacct} '00000003'}"
 
 #
 #  Insert the Accounting-Request start
