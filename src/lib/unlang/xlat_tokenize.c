@@ -995,11 +995,7 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 		MEM(node = xlat_exp_alloc(head, XLAT_TMPL, NULL, 0));
 		MEM(node->vpt = tmpl_alloc(node, TMPL_TYPE_XLAT, T_BARE_WORD, "", 1));
 
-		if (t_rules->xlat.runtime_el) {
-			ret = xlat_tokenize_ephemeral_expression(node->vpt, &child, t_rules->xlat.runtime_el, in, &attr_p_rules, t_rules);
-		} else {
-			ret = xlat_tokenize_expression(node->vpt, &child, in, &attr_p_rules, t_rules);
-		}
+		ret = xlat_tokenize_expression(node->vpt, &child, in, &attr_p_rules, t_rules);
 		if (ret <= 0) {
 			talloc_free(node);
 			return ret;

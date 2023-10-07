@@ -2819,22 +2819,24 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 	ssize_t			dec_len;
 	xlat_exp_head_t		*head = NULL;
 	size_t			input_len = strlen(in), escaped_len;
-
-	if (!el) {
-		fr_strerror_const("Flag '-p' not used.  xlat_purify is disabled");
-		goto return_error;
-	}
-
-	dec_len = xlat_tokenize_ephemeral_expression(cc->tmp_ctx, &head, el, &FR_SBUFF_IN(in, input_len), NULL,
-					   &(tmpl_rules_t) {
+	tmpl_rules_t		t_rules = (tmpl_rules_t) {
 						   .attr = {
-							.dict_def = cc->tmpl_rules.attr.dict_def ?
+							   .dict_def = cc->tmpl_rules.attr.dict_def ?
 							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 							.list_def = request_attr_request,
 						   },
 						   .xlat = cc->tmpl_rules.xlat,
-				   });
+						   .at_runtime = true,
+					   };
+
+	if (!el) {
+		fr_strerror_const("Flag '-p' not used.  xlat_purify is disabled");
+		goto return_error;
+	}
+	t_rules.xlat.runtime_el = el;
+
+	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL, &t_rules);
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
 

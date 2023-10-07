@@ -2833,6 +2833,7 @@ static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
 static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 						   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool cond)
 {
+	int rcode;
 	ssize_t slen;
 	fr_sbuff_parse_rules_t *bracket_rules = NULL;
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
@@ -2907,7 +2908,12 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_bootstrap(head) < 0) {
+	if (!t_rules || !t_rules->xlat.runtime_el) {
+		rcode = xlat_bootstrap(head);
+	} else {
+		rcode = xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
+	}
+	if (rcode < 0) {
 		talloc_free(head);
 		return -1;
 	}
@@ -2919,8 +2925,6 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 fr_slen_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
-	fr_assert(!t_rules || !t_rules->xlat.runtime_el);
-
 	return xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, false);
 }
 
@@ -2928,105 +2932,6 @@ fr_slen_t xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbu
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	return xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, true);
-}
-
-
-/** Tokenize an xlat expression at runtime
- *
- * This function is only for testing.  It should be deleted when
- * expressions are integrated into the main xlat parser.
- *
- * @param[in] ctx	to allocate dynamic buffers in.
- * @param[out] out	the head of the xlat list / tree structure.
- * @param[in] el	for registering any I/O handlers.
- * @param[in] in	the format string to expand.
- * @param[in] p_rules	from the encompassing grammar.
- * @param[in] t_rules	controlling how attribute references are parsed.
- * @return
- *	- >0 on success.
- *	- 0 and *head == NULL - Parse failure on first char.
- *	- 0 and *head != NULL - Zero length expansion
- *	- <0 the negative offset of the parse failure.
- */
-fr_slen_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out,
-					     fr_event_list_t *el, fr_sbuff_t *in,
-					     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
-{
-	ssize_t slen;
-	fr_sbuff_parse_rules_t *bracket_rules = NULL;
-	fr_sbuff_parse_rules_t *terminal_rules = NULL;
-	tmpl_rules_t my_rules = { };
-	xlat_exp_head_t *head;
-	xlat_exp_t *node = NULL;
-
-	/*
-	 *	Whatever the caller passes, ensure that we have a
-	 *	terminal rule which ends on operators, and a terminal
-	 *	rule which ends on ')'.
-	 */
-	MEM(bracket_rules = talloc_zero(ctx, fr_sbuff_parse_rules_t));
-	MEM(terminal_rules = talloc_zero(ctx, fr_sbuff_parse_rules_t));
-	if (p_rules) {
-		*bracket_rules = *p_rules;
-		*terminal_rules = *p_rules;
-
-		if (p_rules->terminals) {
-			MEM(terminal_rules->terminals = fr_sbuff_terminals_amerge(terminal_rules,
-										  p_rules->terminals,
-										  &operator_terms));
-		} else {
-			terminal_rules->terminals = &operator_terms;
-		}
-	} else {
-		terminal_rules->terminals = &operator_terms;
-	}
-	MEM(bracket_rules->terminals = fr_sbuff_terminals_amerge(bracket_rules,
-								 terminal_rules->terminals,
-								 &bracket_terms));
-	MEM(head = xlat_exp_head_alloc(ctx));
-
-	if (t_rules) {
-		my_rules = *t_rules;
-		head->dict = t_rules->attr.dict_def;
-	}
-
-	my_rules.xlat.runtime_el = el;
-	my_rules.at_runtime = true;
-
-	slen = tokenize_expression(head, &node, in, terminal_rules, &my_rules, T_INVALID, bracket_rules, p_rules, false);
-	talloc_free(bracket_rules);
-	talloc_free(terminal_rules);
-
-	if (slen < 0) {
-		talloc_free(head);
-		FR_SBUFF_ERROR_RETURN(in);
-	}
-
-	if (!node) {
-		*out = head;
-		return slen;
-	}
-
-	/*
-	 *	Convert raw rcodes to xlat's.
-	 */
-	if (reparse_rcode(head, &node, true) < 0) {
-		talloc_free(head);
-		return -1;
-	}
-
-	xlat_exp_insert_tail(head, node);
-
-	/*
-	 *	Create ephemeral instance data for the xlat
-	 */
-	if (xlat_instantiate_ephemeral(head, el) < 0) {
-		talloc_free(head);
-		return -1;
-	}
-
-	*out = head;
-	return slen;
 }
 
 /**  Allow callers to see if an xlat is truthy

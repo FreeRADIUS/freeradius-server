@@ -392,11 +392,6 @@ fr_slen_t	xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_s
 fr_slen_t	xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
-fr_slen_t	xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **head,
-						   fr_event_list_t *el,
-						   fr_sbuff_t *in,
-						   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
-
 fr_slen_t	xlat_tokenize_ephemeral(TALLOC_CTX *ctx, xlat_exp_head_t **head,
 					fr_event_list_t *el, fr_sbuff_t *in,
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);

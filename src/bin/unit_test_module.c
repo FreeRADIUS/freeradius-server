@@ -494,17 +494,20 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 			TALLOC_CTX		*xlat_ctx = talloc_init_const("xlat");
 			xlat_exp_head_t		*head = NULL;
 
-			slen = xlat_tokenize_ephemeral_expression(xlat_ctx, &head, el,
-								  &line,
-								  NULL,
-								  &(tmpl_rules_t) {
-									  .attr = {
-										  .dict_def = dict_protocol,
-										  .list_def = request_attr_request,
-										  .allow_unresolved = true,
-									  }
-								  }
-								);
+			slen = xlat_tokenize_expression(xlat_ctx, &head,
+							&line,
+							NULL,
+							&(tmpl_rules_t) {
+								.attr = {
+									.dict_def = dict_protocol,
+									.list_def = request_attr_request,
+									.allow_unresolved = true,
+								},
+								.xlat = {
+									.runtime_el = el,
+								},
+								.at_runtime = true,
+							});
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);
 				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen, fr_strerror());
