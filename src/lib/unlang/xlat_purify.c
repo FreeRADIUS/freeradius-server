@@ -255,10 +255,25 @@ static xlat_exp_t *peephole_optimize_lor(xlat_exp_t *lhs,  xlat_exp_t *rhs)
 		/*
 		 *	FOO || 0 --> FOO much of the time
 		 *	FOO || 1 --> FOO much of the time
-		 *
-		 *	@todo - if the LHS is a function AND the LHS returns a boolean, THEN we can optimized
-		 *	the "FOO || 1" case to just "1".
 		 */
+		if (!is_truthy(rhs, &value)) return NULL;
+
+		/*
+		 *	BOOL || 1 --> 1
+		 *
+		 *	Because if the LHS is 1, then we return the LHS (1)
+		 *	On the other hand, it the LHS is 0, then we return
+		 *	the RHS, which is also 1.
+		 *
+		 *	But we can't do
+		 *
+		 *	<type> || 1 --> 1
+		 */
+		if (value && (lhs->type == XLAT_FUNC) && (lhs->call.func->return_type == FR_TYPE_BOOL)) {
+			talloc_free(lhs);
+			return rhs;
+		}
+
 		return NULL;
 	}
 

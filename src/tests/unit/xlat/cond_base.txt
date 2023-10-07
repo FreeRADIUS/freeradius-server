@@ -110,7 +110,7 @@ xlat_purify (!"foo" == "bar")
 match ERROR offset 2: Operator '!' is only applied to the left hand side of the '==' operation, add (..) to evaluate the operation first
 
 xlat_purify ((!"foo") == "bar")
-match NULL
+match (!"foo" == "bar")
 
 xlat_purify ((!"foo") == false)
 match true
@@ -251,9 +251,9 @@ xlat_purify (ipaddr)127.0.0.1 == "127.0.0.1"
 match true
 
 # LHS is IPaddr, RHS is string (malformed IP address).
-# Condition code attempts to cast md4 hash to IP address resulting in an invalid comparison
+# We can only fail this at run-time.
 xlat_purify (ipaddr)127.0.0.1 == "%{md4: 127.0.0.1}"
-match NULL
+match (127.0.0.1 == %(cast:string "%{md4: 127.0.0.1}"))
 
 #
 #  Bare %{...} is allowed.
@@ -261,7 +261,7 @@ match NULL
 
 # Invalid cast from octets to ipaddr.
 xlat_purify (ipaddr)127.0.0.1 == %{md4:127.0.0.1}
-match NULL
+match (127.0.0.1 == %{md4:127.0.0.1})
 
 xlat_purify (ipaddr)127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
 match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'})
@@ -271,7 +271,7 @@ match true
 
 # Invalid cast from octets to ether.
 xlat_purify (ether)00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
-match NULL
+match (00:11:22:33:44:55 == %(cast:string "%{md4:00:11:22:33:44:55}"))
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'

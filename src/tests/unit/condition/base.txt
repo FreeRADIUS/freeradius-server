@@ -668,7 +668,7 @@ match (&User-Name || true)
 #  can't optimize it.
 #
 condition (&User-Name == "bob") || (true)
-match ((&User-Name == "bob") || true)
+match true
 
 #
 #  A && (B || C) is not the same as (A && B) || C, for 0/1/1

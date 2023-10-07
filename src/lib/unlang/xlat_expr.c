@@ -471,8 +471,6 @@ static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	int rcode;
 	fr_value_box_t	*dst, *a, *b;
 
-	MEM(dst = fr_value_box_alloc_null(ctx));
-
 	/*
 	 *	Each argument is a FR_TYPE_GROUP, with one or more elements in a list.
 	 */
@@ -486,16 +484,18 @@ static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	fr_assert(fr_comparison_op[op]);
 
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+
 	rcode = fr_value_calc_list_cmp(dst, dst, &a->vb_group, op, &b->vb_group);
 	if (rcode < 0) {
-		RPEDEBUG("Failed calculating result, returning NULL");
-		goto done;
+		talloc_free(dst);
+		RPEDEBUG("Failed calculating result, returning fail");
+		return XLAT_ACTION_FAIL;
 	}
 
 	fr_assert(dst->type == FR_TYPE_BOOL);
 	dst->enumv = attr_expr_bool_enum;
 
-done:
 	fr_dcursor_append(out, dst);
 	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 	return XLAT_ACTION_DONE;
@@ -1666,7 +1666,7 @@ do { \
 #undef XLAT_REGISTER_BINARY_CMP
 #define XLAT_REGISTER_BINARY_CMP(_op, _name) \
 do { \
-	if (unlikely((xlat = xlat_func_register(NULL, "cmp_" STRINGIFY(_name), xlat_func_cmp_ ## _name, FR_TYPE_VOID)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(NULL, "cmp_" STRINGIFY(_name), xlat_func_cmp_ ## _name, FR_TYPE_BOOL)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, binary_cmp_xlat_args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 	xlat_func_print_set(xlat, xlat_expr_print_binary); \
