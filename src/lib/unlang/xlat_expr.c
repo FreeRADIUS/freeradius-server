@@ -2919,6 +2919,8 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 fr_slen_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
+	fr_assert(!t_rules || !t_rules->xlat.runtime_el);
+
 	return xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, false);
 }
 
@@ -2982,7 +2984,6 @@ fr_slen_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **
 								 terminal_rules->terminals,
 								 &bracket_terms));
 	MEM(head = xlat_exp_head_alloc(ctx));
-	head->el = el;
 
 	if (t_rules) {
 		my_rules = *t_rules;
