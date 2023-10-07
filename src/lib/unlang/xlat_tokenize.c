@@ -585,6 +585,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 		goto error;
 	}
 	xlat_flags_merge(&node->flags, &node->call.args->flags);
+	node->call.args->el = head->el;
 
 	/*
 	 *	Check we have all the required arguments

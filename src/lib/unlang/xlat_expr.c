@@ -2982,7 +2982,7 @@ fr_slen_t xlat_tokenize_ephemeral_expression(TALLOC_CTX *ctx, xlat_exp_head_t **
 								 terminal_rules->terminals,
 								 &bracket_terms));
 	MEM(head = xlat_exp_head_alloc(ctx));
-
+	head->el = el;
 
 	if (t_rules) {
 		my_rules = *t_rules;
