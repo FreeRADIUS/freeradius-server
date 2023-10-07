@@ -348,9 +348,31 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 	return 0;
 }
 
+
+/** Bootstrap static xlats, or instantiate ephemeral ones.
+ *
+ *  @note - this function should be called when we have a
+ *  #tmpl_rules_t.  i.e. instead of calling xlat_bootstrap() or
+ *  xlat_instantiate_ephemeral()
+ *
+ * @param[in] head of xlat tree to create instance data for.
+ * @param[in] t_rules parsing rules with #fr_event_list_t
+ */
+int xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
+{
+	if (!t_rules || !t_rules->xlat.runtime_el) {
+		fr_assert(!t_rules->at_runtime);
+		return xlat_bootstrap(head);
+	}
+
+	fr_assert(t_rules->at_runtime);
+	return xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
+}
+
 /** Create instance data for "ephemeral" xlats
  *
- * @note This must only be used for xlats created at runtime.
+ * @note This function should only be called from routines which get
+ * passed a #request_t.
  *
  * @param[in] head of xlat tree to create instance data for.
  * @param[in] el event list used to run any instantiate data
@@ -587,9 +609,9 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
 
 /** Create instance data for "permanent" xlats
  *
- * @note This must only be used for xlats created during startup.
+ * @note This must only be used for xlats which are read from the configuration files.
  *	 IF THIS IS CALLED FOR XLATS TOKENIZED AT RUNTIME YOU WILL LEAK LARGE AMOUNTS OF MEMORY.
- *	 USE xlat_instantiate_request() INSTEAD.
+ *	 If the caller has a #tmpl_rules_t, it should call xlat_finalize() instead.
  *
  * @param[in] head of xlat tree to create instance data for.
  */

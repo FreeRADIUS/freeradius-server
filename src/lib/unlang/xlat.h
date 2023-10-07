@@ -466,6 +466,8 @@ int		xlat_bootstrap(xlat_exp_head_t *root);
 
 void		xlat_instances_free(void);
 
+int		xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules); /* xlat_bootstrap() or xlat_instantiate_ephemeral() */
+
 /*
  *	xlat_purify.c
  */

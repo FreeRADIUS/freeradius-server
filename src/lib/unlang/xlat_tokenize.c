@@ -1860,7 +1860,6 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 			fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
-	int rcode;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t	*head;
 
@@ -1881,12 +1880,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (!t_rules || !t_rules->xlat.runtime_el) {
-		rcode = xlat_bootstrap(head);
-	} else {
-		rcode = xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
-	}
-	if (rcode < 0) {
+	if (xlat_finalize(head, t_rules) < 0) {
 		talloc_free(head);
 		return 0;
 	}

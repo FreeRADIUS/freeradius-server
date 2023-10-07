@@ -2833,7 +2833,6 @@ static const fr_sbuff_term_t operator_terms = FR_SBUFF_TERMS(
 static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 						   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool cond)
 {
-	int rcode;
 	ssize_t slen;
 	fr_sbuff_parse_rules_t *bracket_rules = NULL;
 	fr_sbuff_parse_rules_t *terminal_rules = NULL;
@@ -2908,12 +2907,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (!t_rules || !t_rules->xlat.runtime_el) {
-		rcode = xlat_bootstrap(head);
-	} else {
-		rcode = xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
-	}
-	if (rcode < 0) {
+	if (xlat_finalize(head, t_rules) < 0) {
 		talloc_free(head);
 		return -1;
 	}
