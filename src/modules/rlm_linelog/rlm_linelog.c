@@ -57,6 +57,7 @@ RCSID("$Id$")
 typedef enum {
 	LINELOG_DST_INVALID = 0,
 	LINELOG_DST_FILE,				//!< Log to a file.
+	LINELOG_DST_REQUEST,				//!< Log to the request->log
 	LINELOG_DST_SYSLOG,				//!< Log to syslog.
 	LINELOG_DST_UNIX,				//!< Log via Unix socket.
 	LINELOG_DST_UDP,				//!< Log via UDP.
@@ -67,6 +68,7 @@ typedef enum {
 
 static fr_table_num_sorted_t const linefr_log_dst_table[] = {
 	{ L("file"),	LINELOG_DST_FILE	},
+	{ L("request"),	LINELOG_DST_REQUEST	},
 	{ L("stderr"),	LINELOG_DST_STDERR	},
 	{ L("stdout"),	LINELOG_DST_STDOUT	},
 	{ L("syslog"),	LINELOG_DST_SYSLOG	},
@@ -245,6 +247,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 	 */
 	case LINELOG_DST_INVALID:
 	case LINELOG_DST_FILE:
+	case LINELOG_DST_REQUEST:
 	case LINELOG_DST_SYSLOG:
 	case LINELOG_DST_STDOUT:
 	case LINELOG_DST_STDERR:
@@ -420,6 +423,18 @@ static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct i
 		if (ret < 0) goto write_fail;
 
 		exfile_close(inst->file.ef, fd);
+	}
+		break;
+
+	case LINELOG_DST_REQUEST:
+	{
+		size_t i;
+
+		ret = 0;
+		for (i = 0; i < vector_len; i++) {
+			RINFO("%.*s", (int)vector_p[i].iov_len, (char *)vector_p[i].iov_base);
+			ret += vector_p[i].iov_len;
+		}
 	}
 		break;
 

@@ -86,14 +86,21 @@ May be one of:
 
 [options="header,autowidth"]
 |===
-| Option | Description
-| file   | Write to a file.
-| syslog | Send via the system's syslog() function.
-| file   | Write to a file - NYI.
-| tcp    | Write to a TCP socket.
-| udp    | Write to a UDP socket.
-| unix   | Write to a UNIX socket.
+| Option  | Description
+| file    | Write to a file.
+| request | Write to the logging destination of the current request
+| stdout  | Write to stdout
+| stderr  | Write to stderr
+| syslog  | Send via the system's syslog() function.
+| tcp     | Write to a TCP socket.
+| udp     | Write to a UDP socket.
+| unix    | Write to a UNIX socket.
 |===
+
+The `stdout` and `stderr` destinations are likely to work only when
+the server is running in debug mode.  When the server is running in
+background mode, both `stdout` and `stderr` are usually redirected
+to `/dev/null`.
 
 
 
@@ -349,7 +356,7 @@ Don't log anything for other `link:https://freeradius.org/rfc/rfc2866.html#Acct-
 linelog {
 #	delimiter = "\n"
 	format = "This is a log message for %{User-Name}"
-	reference = "messages.%{&reply.Packet-Type || default}"
+	reference = "messages.%{&reply.Packet-Type || 'default'}"
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
 		Access-Accept = "Sent accept: %{User-Name}"
@@ -402,7 +409,7 @@ linelog log_accounting {
 		filename = ${logdir}/linelog-accounting
 		permissions = 0600
 	}
-	reference = "Accounting-Request.%{&Acct-Status-Type || unknown}"
+	reference = "Accounting-Request.%{&Acct-Status-Type || 'unknown'}"
 	Accounting-Request {
 		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
 		Stop = "Disconnect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address}) %{Acct-Session-Time} seconds"

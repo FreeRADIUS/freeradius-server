@@ -100,13 +100,21 @@ linelog {
 	#
 	#  [options="header,autowidth"]
 	#  |===
-	#  | Option | Description
-	#  | file   | Write to a file.
-	#  | syslog | Send via the system's syslog() function.
-	#  | tcp    | Write to a TCP socket.
-	#  | udp    | Write to a UDP socket.
-	#  | unix   | Write to a UNIX socket.
+	#  | Option  | Description
+	#  | file    | Write to a file.
+	#  | request | Write to the logging destination of the current request
+	#  | stdout  | Write to stdout
+	#  | stderr  | Write to stderr
+	#  | syslog  | Send via the system's syslog() function.
+	#  | tcp     | Write to a TCP socket.
+	#  | udp     | Write to a UDP socket.
+	#  | unix    | Write to a UNIX socket.
 	#  |===
+	#
+	#  The `stdout` and `stderr` destinations are likely to work only when
+	#  the server is running in debug mode.  When the server is running in
+	#  background mode, both `stdout` and `stderr` are usually redirected
+	#  to `/dev/null`.
 	#
 	destination = file
 
