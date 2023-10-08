@@ -905,89 +905,6 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
-/** Dynamically evaluate an expression string
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_expr(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    UNUSED xlat_ctx_t const *xctx,
-				    request_t *request, fr_value_box_list_t *args)
-{
-	/*
-	 *	These are escaping rules applied to the
-	 *	input string. They're mostly here to
-	 *	allow \% and \\ to work.
-	 *
-	 *	Everything else should be passed in as
-	 *	unescaped data.
-	 */
-	static fr_sbuff_unescape_rules_t const escape_rules = {
-		.name = "xlat",
-		.chr = '\\',
-		.subs = {
-			['%'] = '%',
-			['\\'] = '\\',
-		},
-		.do_hex = false,
-		.do_oct = false
-	};
-
-	xlat_eval_rctx_t	*rctx;
-	fr_value_box_t		*arg;
-
-	XLAT_ARGS(args, &arg);
-
-	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_eval_rctx_t));
-
-	/*
-	 *	Parse the input as an expression.
-	 */
-	if (xlat_tokenize_expression(rctx,
-				     &rctx->ex,
-				     &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
-				     &(fr_sbuff_parse_rules_t){
-					     .escapes = &escape_rules
-				     },
-				     &(tmpl_rules_t){
-					     .attr = {
-						     .dict_def = request->dict,
-						     .list_def = request_attr_request,
-						     .allow_unknown = false,
-						     .allow_unresolved = false,
-						     .allow_foreign = false,
-					     },
-					     .xlat = {
-						     .runtime_el = unlang_interpret_event_list(request),
-					     },
-					     .at_runtime = true,
-				     }
-				     ) < 0) {
-		RPEDEBUG("Failed parsing expansion");
-	error:
-		talloc_free(rctx);
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Call the resolution function so we produce
-	 *	good errors about what function was
-	 *	unresolved.
-	 */
-	if (rctx->ex->flags.needs_resolving &&
-	    (xlat_resolve(rctx->ex, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
-		RPEDEBUG("Unresolved expansion functions in expansion");
-		goto error;
-
-	}
-
-	if (unlang_xlat_yield(request, xlat_eval_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) goto error;
-
-	if (unlang_xlat_push(ctx, &rctx->last_success, (fr_value_box_list_t *)out->dlist,
-			     request, rctx->ex, UNLANG_SUB_FRAME) < 0) goto error;
-
-	return XLAT_ACTION_PUSH_UNLANG;
-}
-
 static xlat_arg_parser_t const xlat_func_pad_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
 	{ .required = true, .single = true, .type = FR_TYPE_UINT64 },
@@ -2682,7 +2599,7 @@ static xlat_arg_parser_t const xlat_func_time_args[] = {
  * Example:
 @verbatim
 update reply {
-	&Reply-Message := "%{expr:%{time:now} - %{time:request}}
+	&Reply-Message := "%{%{time:now} - %{time:request}}"
 }
 @endverbatim
  *
@@ -3361,7 +3278,6 @@ do { \
 	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);
 	XLAT_REGISTER_MONO("urlunquote", xlat_func_urlunquote, FR_TYPE_STRING, xlat_func_urlunquote_arg);
 	XLAT_REGISTER_MONO("eval", xlat_func_eval, FR_TYPE_VOID, xlat_func_eval_arg);
-	XLAT_REGISTER_MONO("expr", xlat_func_expr, FR_TYPE_VOID, xlat_func_eval_arg);
 
 #undef XLAT_REGISTER_MONO
 #define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
