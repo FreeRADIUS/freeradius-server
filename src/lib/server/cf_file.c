@@ -1642,7 +1642,10 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		 */
 		stack->fill = UNCONST(char *, p);
 		rcode = cf_file_fill(stack);
-		if (rcode < 0) return NULL;
+		if (rcode < 0) {
+			cf_log_err("Failed parsing condition");
+			return NULL;
+		}
 	}
 
 	fr_assert((size_t) slen < (stack->bufsize - 1));
