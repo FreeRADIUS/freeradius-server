@@ -36,7 +36,7 @@ if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Addre
 #
 #  Verify the IP hash has been set
 #
-if !(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}, 'device'") == '00:11:22:33:44:55') {
+if !(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}", 'device') == '00:11:22:33:44:55') {
 	test_fail
 }
 
