@@ -923,6 +923,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (!inst->pool) return -1;
 		break;
 
+	case LINELOG_DST_REQUEST:
 	case LINELOG_DST_STDOUT:
 	case LINELOG_DST_STDERR:
 		break;
