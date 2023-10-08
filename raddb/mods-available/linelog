@@ -103,7 +103,6 @@ linelog {
 	#  | Option | Description
 	#  | file   | Write to a file.
 	#  | syslog | Send via the system's syslog() function.
-	#  | file   | Write to a file - NYI.
 	#  | tcp    | Write to a TCP socket.
 	#  | udp    | Write to a UDP socket.
 	#  | unix   | Write to a UNIX socket.
