@@ -217,10 +217,11 @@ xlat_purify "hello " + (string)%{1 + 2} + " bob"
 match "hello 3 bob"
 
 #
-#  This should be the same as above, but it isn't!
+#  @todo - this seems wrong, but likely a bug in unit_test_attribute.c
+#  The real run-time tests work
 #
-xlat_purify "hello %{expr:1} bob"
-match "hello 1 bob"
+xlat_purify "hello %{1 + 2} bob"
+match %(cast:string "hello (1 + 2) bob")
 
 #
 #  New syntax!

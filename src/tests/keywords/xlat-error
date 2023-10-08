@@ -5,6 +5,6 @@
 #
 #  missing a closing } for the expansion in the string.
 #
-if ("%{expr:1 + 2" == 3) { # ERROR
+if ("%{User-Name" == 3) { # ERROR
 	test_fail
 }

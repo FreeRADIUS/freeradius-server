@@ -6,7 +6,7 @@
 
 foreach &control.Tmp-String-0 {
 	&control -= {
-		&Tmp-String-0 == "%{expr:%{Foreach-Variable-0} + 1}"
+		&Tmp-String-0 == "%{1 + %{Foreach-Variable-0}}"
 	}
 	&request += {
 		&Tmp-String-0 = "%{Foreach-Variable-0}"
