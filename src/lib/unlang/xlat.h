@@ -450,8 +450,6 @@ void		xlat_exp_head_verify(xlat_exp_head_t const *head);
 /*
  *	xlat_inst.c
  */
-int		xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el) CC_HINT(nonnull(1));
-
 xlat_thread_inst_t *xlat_thread_instance_find(xlat_exp_t const *node);
 
 int		xlat_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el);
@@ -462,11 +460,9 @@ void		xlat_thread_detach(void);
 
 int		xlat_bootstrap_func(xlat_exp_t *node);
 
-int		xlat_bootstrap(xlat_exp_head_t *root);
+int		xlat_bootstrap(xlat_exp_head_t *root, tmpl_rules_t const *t_rules);
 
 void		xlat_instances_free(void);
-
-int		xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules); /* xlat_bootstrap() or xlat_instantiate_ephemeral() */
 
 /*
  *	xlat_purify.c

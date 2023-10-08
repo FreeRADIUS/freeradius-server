@@ -2907,7 +2907,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_finalize(head, t_rules) < 0) {
+	if (xlat_bootstrap(head, t_rules) < 0) {
 		talloc_free(head);
 		return -1;
 	}

@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
 
+static int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el);
+
 /** Holds instance data created by xlat_instantiate
  */
 static fr_heap_t *xlat_inst_tree;
@@ -349,26 +351,6 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 }
 
 
-/** Bootstrap static xlats, or instantiate ephemeral ones.
- *
- *  @note - this function should be called when we have a
- *  #tmpl_rules_t.  i.e. instead of calling xlat_bootstrap() or
- *  xlat_instantiate_ephemeral()
- *
- * @param[in] head of xlat tree to create instance data for.
- * @param[in] t_rules parsing rules with #fr_event_list_t
- */
-int xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
-{
-	if (!t_rules || !t_rules->xlat.runtime_el) {
-		fr_assert(!t_rules || !t_rules->at_runtime);
-		return xlat_bootstrap(head);
-	}
-
-	fr_assert(t_rules && t_rules->at_runtime);
-	return xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
-}
-
 /** Create instance data for "ephemeral" xlats
  *
  * @note This function should only be called from routines which get
@@ -377,7 +359,7 @@ int xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
  * @param[in] head of xlat tree to create instance data for.
  * @param[in] el event list used to run any instantiate data
  */
-int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el)
+static int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el)
 {
 	int ret;
 
@@ -614,10 +596,16 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
  *	 If the caller has a #tmpl_rules_t, it should call xlat_finalize() instead.
  *
  * @param[in] head of xlat tree to create instance data for.
+ * @param[in] t_rules parsing rules with #fr_event_list_t
  */
-int xlat_bootstrap(xlat_exp_head_t *head)
+int xlat_bootstrap(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
 {
 	int ret;
+
+	/*
+	 *	Runtime xlats get ephemeral instantiation
+	 */
+	if (t_rules && t_rules->xlat.runtime_el) return xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
 
 	/*
 	 *	If thread instantiate has been called, it's too late to
