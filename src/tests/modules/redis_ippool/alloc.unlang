@@ -25,28 +25,26 @@ if !(&reply.Framed-IP-Address == 192.168.0.1) {
 #
 #  Check ZSCORE
 #
-&Tmp-Date-0 := "%l"
-
-if ("%{expr:%(redis:ZSCORE "{%{control.IP-Pool.Name}}:pool" %{reply.Framed-IP-Address}) - %(integer:%{Tmp-Date-0})}" < 20) {
+if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") - %l) < 20) {
 	test_fail
 }
 
-if ("%{expr:%(redis:ZSCORE "{%{control.IP-Pool.Name}}:pool" %{reply.Framed-IP-Address}) - %(integer:%{Tmp-Date-0})}" > 40) {
+if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") - %l) > 40) {
 	test_fail
 }
 
 #
 #  Verify the IP hash has been set
 #
-if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} 'device')" == '00:11:22:33:44:55') {
+if !(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}, 'device'") == '00:11:22:33:44:55') {
 	test_fail
 }
 
-if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gateway)" == '127.0.0.1') {
+if !(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}", 'gateway') == '127.0.0.1') {
 	test_fail
 }
 
-if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} range)" == '192.168.0.0') {
+if !(%redis('HGET', "{%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}", 'range') == '192.168.0.0') {
 	test_fail
 }
 
@@ -57,7 +55,7 @@ if !(&reply.IP-Pool.Range == '192.168.0.0') {
 #
 #  Verify the lease has been associated with the device
 #
-if !(&reply.Framed-IP-Address == "%(redis:GET {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})") {
+if !(&reply.Framed-IP-Address == %redis('GET', "{%{control.IP-Pool.Name}}:device:%{Calling-Station-ID}")) {
 	test_fail
 }
 
@@ -106,7 +104,7 @@ if !(&Framed-IP-Address == &reply.Framed-IP-Address) {
 #  The fudge factor is to allow for delays running ippool tool and script interpretation
 #  as we should be allocating the same lesase as before, but its TTL could be slightly lower.
 #
-if ("%{expr:&Session-Timeout - &reply.Session-Timeout}" > 5) {
+if ((&Session-Timeout - &reply.Session-Timeout) > 5) {
 	test_fail
 }
 
