@@ -989,13 +989,17 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 		char *fmt;
 		xlat_exp_t *node;
 		xlat_exp_head_t *child;
+		tmpl_rules_t my_rules = *t_rules;
 
 		fr_sbuff_set(in, &s_m);		/* backtrack to the start of the expression */
 
 		MEM(node = xlat_exp_alloc(head, XLAT_TMPL, NULL, 0));
 		MEM(node->vpt = tmpl_alloc(node, TMPL_TYPE_XLAT, T_BARE_WORD, "", 1));
 
-		ret = xlat_tokenize_expression(node->vpt, &child, in, &attr_p_rules, t_rules);
+		my_rules.enumv = NULL;
+		my_rules.cast = FR_TYPE_NULL;
+
+		ret = xlat_tokenize_expression(node->vpt, &child, in, &attr_p_rules, &my_rules);
 		if (ret <= 0) {
 			talloc_free(node);
 			return ret;

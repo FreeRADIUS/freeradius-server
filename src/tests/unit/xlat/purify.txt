@@ -193,14 +193,16 @@ match !%{rcode:'fail'}
 #
 #  Casts and such
 #
-xlat_purify (string)(%{expr:1})
-match "1"
+#  @todo - xlat_tokenize() does not call purify
+#
+xlat_purify (string)(%{1 + 2})
+match %(cast:string (1 + 2))
 
 #
 #  This is a different code path than the above.
 #
-xlat_purify (string)%{expr:1}
-match "1"
+xlat_purify (string)%{1 + 2}
+match %(cast:string (1 + 2))
 
 xlat_purify "hello"
 match "hello"
@@ -208,11 +210,11 @@ match "hello"
 #
 #  String concatenation
 #
-xlat_purify "hello " + (string)%{expr:1}
-match "hello 1"
+xlat_purify "hello " + (string)%{1 + 2}
+match "hello 3"
 
-xlat_purify "hello " + (string)%{expr:1} + " bob"
-match "hello 1 bob"
+xlat_purify "hello " + (string)%{1 + 2} + " bob"
+match "hello 3 bob"
 
 #
 #  This should be the same as above, but it isn't!
