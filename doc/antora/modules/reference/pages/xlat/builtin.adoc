@@ -441,7 +441,7 @@ Serialize attributes as comma-delimited string.
 .Output
 
 ```
-Serialize output: Tmp-String-0 = \"This is a string\"Tmp-String-0 = \"This is another one\"
+Serialize output: Tmp-String-0 = "\"This is a string\", Tmp-String-0 = \"This is another one\""
 ```
 
 === %randstr( ...)
@@ -505,7 +505,7 @@ it. This definition is only available in version 2.1.10 and later.
 toupper of caipirinha is CAIPIRINHA
 ```
 
-== String Conversion
+== Data Conversion
 
 === %base64.encode( ... )
 
@@ -1001,6 +1001,33 @@ group {
 This kind of math works well for "tomorrow", but it is less useful for
 "next week Monday", or "start of next month".  The `%nexttime(...)`
 expansion above should be used for those time operations.
+
+== Logging
+
+=== %log.debug(<string>)
+
+Logs a message at a DEBUG level.  This function returns nothing.
+
+[source,unlang]
+----
+%log.debug("Now processing %interpreter(...filename):%interpreter(...line)")
+----
+
+The DEBUG messages are printed only when the server has the debug flag set.
+
+=== %log.info(<string>)
+
+Logs a message at a INFO level.  This function returns nothing.
+
+[source,unlang]
+----
+%log.info("Doing something useful now")
+----
+
+The INFO messages are always logged.  We suggest using these messages
+only to log special or unusual events.  Producing multiple log
+messages per packet is not recommended, and can have a surprisingly
+large (and negative) impact on performance.
 
 == Deprecated or removed Expansions.
 
