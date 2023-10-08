@@ -287,7 +287,7 @@ static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
 	 */
 	node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 	if (!func) {
-		if (!t_rules || !t_rules->attr.allow_unresolved) {
+		if (!t_rules || !t_rules->attr.allow_unresolved || t_rules->at_runtime) {
 			fr_strerror_const("Unresolved expansion functions are not allowed here");
 			goto bad_function;
 		}
@@ -545,7 +545,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 */
 	node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 	if (!func) {
-		if (!t_rules || !t_rules->attr.allow_unresolved) {
+		if (!t_rules || !t_rules->attr.allow_unresolved || t_rules->at_runtime) {
 			fr_strerror_const("Unresolved expansion functions are not allowed here");
 			goto bad_function;
 		}
@@ -705,7 +705,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 	 */
 	node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
 	if (!func) {
-		if (!t_rules || !t_rules->attr.allow_unresolved) {
+		if (!t_rules || !t_rules->attr.allow_unresolved|| t_rules->at_runtime) {
 			fr_strerror_const("Unresolved expansion functions are not allowed here");
 			fr_sbuff_set(in, &m_s);		/* backtrack */
 			fr_sbuff_marker_release(&m_s);
