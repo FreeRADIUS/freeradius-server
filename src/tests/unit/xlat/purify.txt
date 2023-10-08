@@ -67,8 +67,8 @@ match true
 xlat_purify &Service-Type == Framed-User
 match (&Service-Type == Framed-User)
 
-#xlat_purify 1 + (&Service-Type == Framed-User)
-#match (1 + (&Service-Type == Framed-User))
+xlat_purify 1 + (&Service-Type == Framed-User)
+match (1 + (&Service-Type == Framed-User))
 
 #
 #  Strings of various forms
@@ -259,4 +259,4 @@ xlat_purify %md5("foo")
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
 count
-match 114
+match 116

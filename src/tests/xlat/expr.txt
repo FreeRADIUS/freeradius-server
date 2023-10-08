@@ -72,21 +72,6 @@ match NULL
 #match ERROR expanding xlat: Cannot perform any operations for destination type ether
 
 #
-#  Execute external programs.
-#
-xlat_expr `/bin/echo foo %n`
-match foo 0
-
-#
-#  Linux has /bin/false, and /usr/bin/test
-#  OSX has /usr/bin/false, and /bin/test
-#
-#  However, they both have /bin/rm !
-#
-xlat_expr `/bin/rm this_file_should_not_exist_if_it_does_too_bad_for_you`
-match ERROR expanding xlat: Program failed with status 1
-
-#
 #  NAS-IP-Address doesn't exist.
 #
 xlat_expr -&NAS-IP-Address

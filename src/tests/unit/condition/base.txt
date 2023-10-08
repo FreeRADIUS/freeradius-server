@@ -202,9 +202,6 @@ match (&Framed-IP-Address <= 192.168.0.0/16)
 condition &User-Name == "bob"
 match (&User-Name == "bob")
 
-condition &User-Name == `bob`
-match (&User-Name == `bob`)
-
 condition &User-Name == 'bob'
 match (&User-Name == 'bob')
 
@@ -405,9 +402,6 @@ match %{rcode:'fail'}
 
 condition ("a")
 match "a"
-
-condition (`a`)
-match `a`
 
 condition (&User-Name)
 match &User-Name
@@ -680,4 +674,4 @@ condition (&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message)
 match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 
 count
-match 307
+match 303

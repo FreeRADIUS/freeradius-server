@@ -200,9 +200,6 @@ match (&Framed-IP-Address <= 192.168.0.0/16)
 xlat_purify &User-Name == "bob"
 match (&User-Name == "bob")
 
-xlat_purify &User-Name == `bob`
-match (&User-Name == `bob`)
-
 xlat_purify &User-Name == 'bob'
 match (&User-Name == 'bob')
 
@@ -407,9 +404,6 @@ match 'a'
 
 xlat_purify ("a")
 match "a"
-
-xlat_purify (`a`)
-match `a`
 
 xlat_purify (&User-Name)
 match &User-Name
@@ -767,4 +761,4 @@ xlat_purify (192.168.0.1 !== 192.168.0.2)
 match true
 
 count
-match 328
+match 324
