@@ -321,7 +321,11 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 *	we return.
 		 */
 		head->flags = node->flags;
-		xlat_bootstrap(head, NULL);
+		if (xlat_bootstrap(head, NULL) < 0) {
+			PERROR("Failed boostrapping function \"%s\"",
+			       xrf->func->name);
+			goto error;
+		}
 		xri->ex[num++] = head;
 	}
 
