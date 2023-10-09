@@ -1133,8 +1133,7 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 
 /** See if the input is truthy or not.
  *
- *  @param[in]     ctx  talloc ctx
- *  @param[in,out] dst	value-box containing the output box
+ *  @param[in]     rctx our ctx
  *  @param[in]     in   list of value-boxes to check
  *  @return
  *	- false on failure
@@ -1142,7 +1141,7 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
  *
  *  Empty lists are not truthy.
  */
-static bool xlat_logical_or(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box_list_t const *in)
+static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const *in)
 {
 	fr_value_box_t *found = NULL;
 
@@ -1156,7 +1155,7 @@ static bool xlat_logical_or(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box_
 	 */
 	fr_value_box_list_foreach(in, box) {
 		if (fr_box_is_group(box)) {
-			if (!xlat_logical_or(ctx, dst, &box->vb_group)) return false;
+			if (!xlat_logical_or(rctx, &box->vb_group)) return false;
 			continue;			
 		}
 
@@ -1176,12 +1175,12 @@ static bool xlat_logical_or(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box_
 		return false;
 	}
 
-	if (!*dst) {
-		MEM(*dst = fr_value_box_alloc_null(ctx));
+	if (!rctx->box) {
+		MEM(rctx->box = fr_value_box_alloc_null(rctx->ctx));
 	} else {
-		fr_value_box_clear(*dst);
+		fr_value_box_clear(rctx->box);
 	}
-	fr_value_box_copy(*dst, *dst, found);
+	fr_value_box_copy(rctx->box, rctx->box, found);
 
 	return true;
 }
@@ -1212,7 +1211,7 @@ static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *
 	 *	(a, b, c) || (d, e, f) == a || b || c || d || e || f
 	 */
-	match = xlat_logical_or(rctx->ctx, &rctx->box, &rctx->list);
+	match = xlat_logical_or(rctx, &rctx->list);
 	if (match) goto done;
 
 	fr_value_box_list_talloc_free(&rctx->list);
@@ -1239,8 +1238,7 @@ static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 /** See if the input is truthy or not.
  *
- *  @param[in]     ctx  talloc ctx
- *  @param[in,out] dst	value-box containing the output box
+ *  @param[in]     rctx our ctx
  *  @param[in]     in   list of value-boxes to check
  *  @return
  *	- false on failure
@@ -1248,7 +1246,7 @@ static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  *  Empty lists are not truthy.
  */
-static bool xlat_logical_and(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box_list_t const *in)
+static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t const *in)
 {
 	fr_value_box_t *found = NULL;
 
@@ -1262,7 +1260,7 @@ static bool xlat_logical_and(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box
 	 */
 	fr_value_box_list_foreach(in, box) {
 		if (fr_box_is_group(box)) {
-			if (!xlat_logical_or(ctx, dst, &box->vb_group)) return false;
+			if (!xlat_logical_or(rctx, &box->vb_group)) return false;
 			continue;			
 		}
 
@@ -1283,12 +1281,12 @@ static bool xlat_logical_and(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box
 		return false;
 	}
 
-	if (!*dst) {
-		MEM(*dst = fr_value_box_alloc_null(ctx));
+	if (!rctx->box) {
+		MEM(rctx->box = fr_value_box_alloc_null(rctx));
 	} else {
-		fr_value_box_clear(*dst);
+		fr_value_box_clear(rctx->box);
 	}
-	fr_value_box_copy(*dst, *dst, found);
+	fr_value_box_copy(rctx->box, rctx->box, found);
 
 	return true;
 }
@@ -1319,7 +1317,7 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *
 	 *	(a, b, c) && (d, e, f) == a && b && c && d && e && f
 	 */
-	match = xlat_logical_and(rctx->ctx, &rctx->box, &rctx->list);
+	match = xlat_logical_and(rctx, &rctx->list);
 	if (!match) return XLAT_ACTION_FAIL;
 
 	fr_value_box_list_talloc_free(&rctx->list);
