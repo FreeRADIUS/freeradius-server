@@ -1175,6 +1175,8 @@ static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const
 		return false;
 	}
 
+	if (!found) return false;
+
 	if (!rctx->box) {
 		MEM(rctx->box = fr_value_box_alloc_null(rctx->ctx));
 	} else {
@@ -1280,6 +1282,8 @@ static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t cons
 		 */
 		return false;
 	}
+
+	if (!found) return false;
 
 	if (!rctx->box) {
 		MEM(rctx->box = fr_value_box_alloc_null(rctx));
