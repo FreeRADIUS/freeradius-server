@@ -6,7 +6,7 @@
 #
 &Tmp-String-0 := "IA-PD.IAID = 11"
 
-if (!("%{map:%{Tmp-String-0}}" == 1)) {
+if (!("%map(%{Tmp-String-0})" == 1)) {
 	test_fail
 }
 

@@ -21,7 +21,7 @@ if (fail) {
 
 linelog_escapes
 &Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-&Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
+&Tmp-String-1 := "%hex(%{Tmp-String-0})"
 
 #
 #  Note that there's a '5f6e' here, which is "\n"
@@ -53,7 +53,7 @@ else {
 
 linelog_escapes
 &Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-&Tmp-String-1 := "%{hex:%{Tmp-String-0}}"
+&Tmp-String-1 := "%hex(%{Tmp-String-0})"
 
 if (&Tmp-String-1 == '666f6f0a626172') {
 	test_pass

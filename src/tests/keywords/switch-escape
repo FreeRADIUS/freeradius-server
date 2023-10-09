@@ -1,6 +1,6 @@
 &Tmp-String-0 := 'foo'
 
-switch "%{tolower:%{Tmp-String-0}}" {
+switch "%tolower(%{Tmp-String-0})" {
 	case 'foo' {
 		success
 	}

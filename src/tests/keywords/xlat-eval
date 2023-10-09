@@ -11,7 +11,7 @@
 #
 #  Verify non string types are treated as literals
 #
-if (!("%{eval:%{Tmp-Integer-0}}" == 4)) {
+if (!("%eval(%{Tmp-Integer-0})" == 4)) {
 	test_fail
 }
 
@@ -22,7 +22,7 @@ if (!("%{eval:%{Tmp-Integer-0[1]}}" == 8)) {
 #
 #  Check double expansion works
 #
-if (!("%{eval:%{Tmp-String-0}}" == 'foo')) {
+if (!("%eval(%{Tmp-String-0})" == 'foo')) {
 	test_fail
 }
 

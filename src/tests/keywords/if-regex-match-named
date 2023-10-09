@@ -29,7 +29,7 @@ if (!(&Module-Failure-Message[*] == "No previous named regex capture group")) {
 &request -= &Module-Failure-Message[*]
 
 # Check failure when no previous capture - numbered group
-if ("%{regex:%{Tmp-Integer-1}}") {
+if ("%regex(%{Tmp-Integer-1})") {
 	test_fail
 }
 
@@ -117,7 +117,7 @@ if (&User-Name =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+
 	&Tmp-Integer-6 := 6
 	&Tmp-Integer-7 := 7
 
-	&Tmp-String-0 := "%{regex:%{Tmp-Integer-7}}_%{regex:%{Tmp-Integer-6}}_%{regex:%{Tmp-Integer-5}}_%{regex:%{Tmp-Integer-4}}_%{regex:%{Tmp-Integer-3}}_%{regex:%{Tmp-Integer-2}}_%{regex:%{Tmp-Integer-1}}_%{regex:%{Tmp-Integer-0}}"
+	&Tmp-String-0 := "%regex(%{Tmp-Integer-7})_%regex(%{Tmp-Integer-6})_%regex(%{Tmp-Integer-5})_%regex(%{Tmp-Integer-4})_%regex(%{Tmp-Integer-3})_%regex(%{Tmp-Integer-2})_%regex(%{Tmp-Integer-1})_%regex(%{Tmp-Integer-0})"
 	if (!(&Tmp-String-0 == '7_6_5_4_3_2_1_1_2_3_4_5_6_7')) {
 		test_fail
 	}

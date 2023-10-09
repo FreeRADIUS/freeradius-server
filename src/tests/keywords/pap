@@ -39,7 +39,7 @@ if (reject) {
 #  Hex encoded SSHA password
 #
 &control := {
-	&Password.With-Header = "{ssha}%{hex:%{sha1:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
+	&Password.With-Header = "{ssha}%{hex:%{sha1:%{User-Password}%{Tmp-String-0}}}%hex(%{Tmp-String-0})"
 }
 
 pap.authorize
@@ -54,11 +54,11 @@ if (reject) {
 #  Base64 encoded SSHA password
 #
 &control := {
-	 &Tmp-String-1 = "%{hex:%{sha1:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
+	 &Tmp-String-1 = "%{hex:%{sha1:%{User-Password}%{Tmp-String-0}}}%hex(%{Tmp-String-0})"
 }
 
 # To Binary
-&control.Tmp-Octets-0 := "%{bin:%{control.Tmp-String-1}}"
+&control.Tmp-Octets-0 := "%bin(%{control.Tmp-String-1})"
 
 # To Base64
 &control.Tmp-String-1 := "%(base64.encode:%{control.Tmp-Octets-0})"
@@ -76,11 +76,11 @@ if (reject) {
 #  Base64 of Base64 encoded SSHA password
 #
 &control := {
-	&Tmp-String-1 = "%{hex:%{sha1:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
+	&Tmp-String-1 = "%{hex:%{sha1:%{User-Password}%{Tmp-String-0}}}%hex(%{Tmp-String-0})"
 }
 
 # To Binary
-&control.Tmp-Octets-0 := "%{bin:%{control.Tmp-String-1}}"
+&control.Tmp-Octets-0 := "%bin(%{control.Tmp-String-1})"
 
 # To Base64
 &control.Tmp-String-1 := "{ssha}%(base64.encode:%{control.Tmp-Octets-0})"

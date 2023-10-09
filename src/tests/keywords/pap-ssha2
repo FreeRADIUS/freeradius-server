@@ -21,7 +21,7 @@ if (!('${feature.tls}' == 'yes')) {
 #  Hex encoded SSHA2-512 password
 #
 &control += {
-	&Password.With-Header = "{ssha512}%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
+	&Password.With-Header = "{ssha512}%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%hex(%{Tmp-String-0})"
 }
 
 pap.authorize
@@ -37,10 +37,10 @@ if (reject) {
 #
 #  Base64 encoded SSHA2-512 password
 #
-&control.Tmp-String-1 := "%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
+&control.Tmp-String-1 := "%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%hex(%{Tmp-String-0})"
 
 # To Binary
-&control.Tmp-Octets-0 := "%{bin:%{control.Tmp-String-1}}"
+&control.Tmp-Octets-0 := "%bin(%{control.Tmp-String-1})"
 
 # To Base64
 &control.Tmp-String-1 := "%(base64.encode:%{control.Tmp-Octets-0})"
@@ -62,10 +62,10 @@ if (reject) {
 #
 #  Base64 of Base64 encoded SSHA2-512 password
 #
-&control.Tmp-String-1 := "%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%{hex:%{Tmp-String-0}}"
+&control.Tmp-String-1 := "%{hex:%{sha2_512:%{User-Password}%{Tmp-String-0}}}%hex(%{Tmp-String-0})"
 
 # To Binary
-&control.Tmp-Octets-0 := "%{bin:%{control.Tmp-String-1}}"
+&control.Tmp-Octets-0 := "%bin(%{control.Tmp-String-1})"
 
 # To Base64
 &control.Tmp-String-1 := "{ssha512}%(base64.encode:%{control.Tmp-Octets-0})"
@@ -87,7 +87,7 @@ if (reject) {
 #
 #  Base64 of SHA2-384 password (in SHA2-Password)
 #
-&control.Password.SHA2 := "%{hex:%{sha2_384:%{User-Password}}}"
+&control.Password.SHA2 := "%{hex:%sha2_384(%{User-Password})}"
 
 pap.authorize
 pap.authenticate {
@@ -104,7 +104,7 @@ if (reject) {
 #
 #  Base64 of SHA2-256 password (in SHA2-256-Password)
 #
-&control.Password.SHA2-256 := "%{hex:%{sha2_256:%{User-Password}}}"
+&control.Password.SHA2-256 := "%{hex:%sha2_256(%{User-Password})}"
 
 pap.authorize
 pap.authenticate {
@@ -119,7 +119,7 @@ if (reject) {
 #
 #  Base64 of SHA2-224 password (in SHA2-224-Password - No hex armour)
 #
-&control.Password.SHA2-224 := "%{sha2_224:%{User-Password}}"
+&control.Password.SHA2-224 := "%sha2_224(%{User-Password})"
 
 pap.authorize
 pap.authenticate {

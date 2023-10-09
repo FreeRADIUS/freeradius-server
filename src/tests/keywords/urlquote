@@ -11,11 +11,11 @@
 }
 
 &request += {
-	&Tmp-String-1 = "%{urlquote:%{Tmp-String-0}}"
-	&Tmp-String-3 = "%{urlquote:%{Tmp-String-2}}"
-	&Tmp-String-5 = "%{urlquote:%{Tmp-String-4}}"
-	&Tmp-String-7 = "%{urlunquote:%{Tmp-String-6}}"
-	&Tmp-String-9 = "%{urlunquote:%{Tmp-String-8}}"
+	&Tmp-String-1 = "%urlquote(%{Tmp-String-0})"
+	&Tmp-String-3 = "%urlquote(%{Tmp-String-2})"
+	&Tmp-String-5 = "%urlquote(%{Tmp-String-4})"
+	&Tmp-String-7 = "%urlunquote(%{Tmp-String-6})"
+	&Tmp-String-9 = "%urlunquote(%{Tmp-String-8})"
 }
 
 
@@ -39,7 +39,7 @@ if (!(&Tmp-String-9 == &Tmp-String-4)) {
 	test_fail
 }
 
-&Tmp-String-1 := "%{urlunquote:%{Tmp-String-0}}"
+&Tmp-String-1 := "%urlunquote(%{Tmp-String-0})"
 
 &request -= &Tmp-String-2[*]
 &Tmp-String-2 := "%{urlunquote:%%E,123}"

@@ -76,7 +76,7 @@ if (%{sql.group:groups_group_d} != false) {
 #
 &Tmp-String-0 := 'groups_group_b'
 
-if !(%{sql.group:%{Tmp-String-0}} == yes) {
+if !(%sql.group(%{Tmp-String-0}) == yes) {
 	test_fail
 }
 
