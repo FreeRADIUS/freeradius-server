@@ -11,7 +11,7 @@
 
 
 &request += {
-	&Tmp-Octets-1 = "%{md5:This is a string\n}"
+	&Tmp-Octets-1 = "%md5('This is a string\n')"
 	&Tmp-Octets-2 = "%{md5:%{Tmp-String-0}}"
 	&Tmp-Octets-3 = "%{md5:%{request.Tmp-String-0}}"
 	&Tmp-Octets-4 = "%{md5:%{request.Tmp-Octets-0}}"

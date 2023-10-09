@@ -54,20 +54,20 @@ else {
 #
 #  Test paircmp group comparisons
 #
-if (%{sql.group:groups_group_a} != false) {
+if (%sql.group('groups_group_a') != false) {
 	test_fail
 }
 
-if (%{sql.group:groups_group_b} != true) {
+if (%sql.group('groups_group_b') != true) {
 	test_fail
 }
 
-if (%{sql.group:groups_group_c} != true) {
+if (%sql.group('groups_group_c') != true) {
 	test_fail
 }
 
 # Non-existent group
-if (%{sql.group:groups_group_d} != false) {
+if (%sql.group('groups_group_d') != false) {
 	test_fail
 }
 

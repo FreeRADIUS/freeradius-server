@@ -1,4 +1,4 @@
-&Tmp-String-0 := "%{rand:-1}"
+&Tmp-String-0 := "%rand('-1')"
 
 #
 #  Negative limit should have failed assignment
@@ -7,7 +7,7 @@ if !(&Tmp-String-0 == "") {
 	test_fail
 }
 
-&Tmp-String-0 := "%{rand:hello world}"
+&Tmp-String-0 := "%rand('hello world')"
 
 #
 #  Invalid limit should have failed assignment

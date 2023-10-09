@@ -10,7 +10,7 @@
 }
 
 &request += {
-	&Tmp-Octets-2 = "%{sha1:This is a string\n}"
+	&Tmp-Octets-2 = "%sha1('This is a string\n')"
 	&Tmp-Octets-3 = "%{sha1:%{Tmp-String-0}}"
 	&Tmp-Octets-4 = "%{sha1:%{request.Tmp-String-0}}"
 	&Tmp-Octets-5 = "%{sha1:%{request.Tmp-Octets-9}}"
