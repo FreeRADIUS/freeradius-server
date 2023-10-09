@@ -106,27 +106,21 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 
 	case XLAT_FUNC:
 	{
-		char			open = '{', close = '}';
 		bool			first_done = false;
 		fr_sbuff_t 		our_out;
 		fr_slen_t		slen;
 
-		if (node->call.func->input_type == XLAT_INPUT_ARGS) {
-			open = '(';
-			close = ')';
-		}
-
 		/*
 		 *	No arguments, just print an empty function.
 		 */
-		if (!xlat_exp_head(node->call.args)) return fr_sbuff_in_sprintf(out, "%%%c%s:%c", open, node->call.func->name, close);
+		if (!xlat_exp_head(node->call.args)) return fr_sbuff_in_sprintf(out, "%%%s()", node->call.func->name);
 
 		our_out = FR_SBUFF(out);
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%%%c%s:", open, node->call.func->name);
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%%%s(", node->call.func->name);
 
 		xlat_exp_foreach(node->call.args, arg) {
 			if ((first_done) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
-				FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
+				FR_SBUFF_IN_CHAR_RETURN(&our_out, ',');
 			}
 
 			slen = xlat_fmt_print(&our_out, arg);
@@ -135,7 +129,7 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 			first_done = true;
 		}
 
-		FR_SBUFF_IN_CHAR_RETURN(&our_out, close);
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ')');
 		return fr_sbuff_set(out, &our_out);
 	}
 
@@ -188,10 +182,7 @@ static inline void xlat_debug_log_expansion(request_t *request, xlat_exp_t const
 	 *	well as the original fmt string.
 	 */
 	if ((node->type == XLAT_FUNC) && !xlat_is_literal(node->call.args)) {
-		RDEBUG2("| %%%c%s:%pM%c",
-			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
-			node->call.func->name, args,
-			(node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
+		RDEBUG2("| %%%s(%pM)", node->call.func->name, args);
 	} else {
 		fr_sbuff_t *agg;
 
@@ -846,10 +837,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		xa = resume(ctx, out, XLAT_CTX(node->call.inst->data, t->data, t->mctx, NULL, rctx), request, result);
 		VALUE_BOX_LIST_VERIFY(result);
 
-		RDEBUG2("| %%%c%s:...%c",
-			(node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
-			node->call.func->name,
-			(node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
+		RDEBUG2("| %%%s(...)", node->call.func->name);
 	}
 
 	switch (xa) {
@@ -920,11 +908,9 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		t = xlat_thread_instance_find(node);
 		fr_assert(t);
 
-		XLAT_DEBUG("** [%i] %s(func-async) - %%%c%s:%pM%c",
+		XLAT_DEBUG("** [%i] %s(func-async) - %%%s(%pM)",
 			   unlang_interpret_stack_depth(request), __FUNCTION__,
-			   (node->call.func->input_type == XLAT_INPUT_ARGS) ? '(' : '{',
-			   node->fmt, result,
-			   (node->call.func->input_type == XLAT_INPUT_ARGS) ? ')' : '}');
+			   node->fmt, result);
 
 		VALUE_BOX_LIST_VERIFY(result);
 
