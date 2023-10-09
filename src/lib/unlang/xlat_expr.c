@@ -844,6 +844,7 @@ XLAT_REGEX_FUNC(reg_ne,  T_OP_REG_NE)
 
 typedef struct {
 	bool		stop_on_match;
+	xlat_func_t	callback;
 	int		argc;
 	xlat_exp_head_t	**argv;
 } xlat_logical_inst_t;
@@ -896,20 +897,6 @@ static fr_slen_t xlat_expr_print_nary(fr_sbuff_t *out, xlat_exp_t const *node, v
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
 
 	return fr_sbuff_used_total(out) - at_in;
-}
-
-/*
- *	Each argument is it's own head, because we do NOT always want
- *	to go to the next argument.
- */
-static int xlat_instantiate_logical(xlat_inst_ctx_t const *xctx)
-{
-	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
-
-	inst->argc = xlat_flatten_compiled_argv(inst, &inst->argv, xctx->ex->call.args);
-	inst->stop_on_match = (xctx->ex->call.func->token == T_LOR);
-
-	return 0;
 }
 
 /*
@@ -1113,75 +1100,6 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	return 0;
 }
 
-/** See if the input is truthy or not.
- *
- *  @param[in]     ctx  talloc ctx
- *  @param[in,out] dst	value-box containing the output box
- *  @param[in]     in   list of value-boxes to check
- *  @param[in] logical_or whether or not we're checking for ||.  false is &&
- *  @return
- *	- false if no match.
- *	- true for match, with dst updated to contain the relevant box.
- *
- *  Empty lists are not truthy.
- */
-static bool xlat_logical_match(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box_list_t const *in, bool logical_or)
-{
-	fr_value_box_t *last = NULL;
-
-	/*
-	 *	Empty lists are !truthy.
-	 */
-	if (!fr_value_box_list_num_elements(in)) return false;
-
-	/*
-	 *	Loop over the input list.  If the box is a group, then do this recursively.
-	 */
-	fr_value_box_list_foreach(in, box) {
-		if (fr_box_is_group(box)) {
-			if (!xlat_logical_match(ctx, dst, &box->vb_group, logical_or)) return false;
-			continue;
-		}
-
-		if (logical_or) {
-			if (fr_value_box_is_truthy(box)) {
-				last = box; /* stop at the first matching one, and return it. */
-				break;
-			}
-
-			continue;
-		}
-
-		/*
-		 *	Must be logical &&
-		 */
-		if (fr_value_box_is_truthy(box)) {
-			last = box;
-			continue;
-		}
-
-		/*
-		 *	Stop on the first "false"
-		 */
-		return false;
-	}
-
-	if (last) {
-		if (!*dst) {
-			MEM(*dst = fr_value_box_alloc_null(ctx));
-		} else {
-			fr_value_box_clear(*dst);
-		}
-		fr_value_box_copy(*dst, *dst, last);
-	}
-
-	return true;
-}
-
-static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					 xlat_ctx_t const *xctx,
-					 request_t *request, fr_value_box_list_t *in);
-
 /** Process one argument of a logical operation.
  *
  *  If we see a list in a truthy context, then we DON'T expand the list.  Instead, we return a bool which
@@ -1200,7 +1118,7 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 	/*
 	 *	Push the xlat onto the stack for expansion.
 	 */
-	if (unlang_xlat_yield(request, xlat_logical_resume, NULL, 0, rctx) != XLAT_ACTION_YIELD) {
+	if (unlang_xlat_yield(request, inst->callback, NULL, 0, rctx) != XLAT_ACTION_YIELD) {
 	fail:
 		talloc_free(rctx->box);
 		talloc_free(rctx);
@@ -1213,12 +1131,67 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
-/*
- *  We've evaluated an expression.  Let's see if we need to continue.
+/** See if the input is truthy or not.
+ *
+ *  @param[in]     ctx  talloc ctx
+ *  @param[in,out] dst	value-box containing the output box
+ *  @param[in]     in   list of value-boxes to check
+ *  @return
+ *	- false on failure
+ *	- true for match, with dst updated to contain the relevant box.
+ *
+ *  Empty lists are not truthy.
  */
-static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					 xlat_ctx_t const *xctx,
-					 request_t *request, fr_value_box_list_t *in)
+static bool xlat_logical_or(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box_list_t const *in)
+{
+	fr_value_box_t *found = NULL;
+
+	/*
+	 *	Empty lists are !truthy.
+	 */
+	if (!fr_value_box_list_num_elements(in)) return false;
+
+	/*
+	 *	Loop over the input list.  If the box is a group, then do this recursively.
+	 */
+	fr_value_box_list_foreach(in, box) {
+		if (fr_box_is_group(box)) {
+			if (!xlat_logical_or(ctx, dst, &box->vb_group)) return false;
+			continue;			
+		}
+
+		/*
+		 *	Remember the last box we found.
+		 *
+		 *	If it's truthy, then we stop immediately.
+		 */
+		if (fr_value_box_is_truthy(box)) {
+			found = box;
+			break;
+		}
+
+		/*
+		 *	Stop on the first "false"
+		 */
+		return false;
+	}
+
+	if (!*dst) {
+		MEM(*dst = fr_value_box_alloc_null(ctx));
+	} else {
+		fr_value_box_clear(*dst);
+	}
+	fr_value_box_copy(*dst, *dst, found);
+
+	return true;
+}
+
+/*
+ *  We've evaluated an expression.  Let's see if we need to continue with ||
+ */
+static xlat_action_t xlat_logical_or_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					    xlat_ctx_t const *xctx,
+					    request_t *request, fr_value_box_list_t *in)
 {
 	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
 	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
@@ -1239,20 +1212,10 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *
 	 *	(a, b, c) || (d, e, f) == a || b || c || d || e || f
 	 */
-	match = xlat_logical_match(rctx->ctx, &rctx->box, &rctx->list, inst->stop_on_match);
-	if (!match) {
-		/*
-		 *	we didn't match, (&&), so we're done.
-		 */
-		if (!inst->stop_on_match) goto done;
-	}
+	match = xlat_logical_or(rctx->ctx, &rctx->box, &rctx->list);
+	if (match) goto done;
 
 	fr_value_box_list_talloc_free(&rctx->list);
-
-	/*
-	 *	If we stop on the first match, and we got a "true" match we're done.
-	 */
-	if (inst->stop_on_match && match && rctx->box && fr_value_box_is_truthy(rctx->box)) goto done;
 
 	rctx->current++;
 
@@ -1261,19 +1224,6 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (rctx->current >= inst->argc) {
 	done:
-		if (!inst->stop_on_match) {
-			fr_assert(rctx->box);
-
-			/*
-			 *      If nothing matches, we return a "false" box.
-			 */
-			if (rctx->box->type != FR_TYPE_BOOL) {
-				fr_value_box_clear(rctx->box);
-				fr_value_box_init(rctx->box, FR_TYPE_BOOL, NULL, false);
-			}
-			rctx->box->vb_bool = false;
-		}
-
 		/*
 		 *	Otherwise we stop on failure, with the boolean
 		 *	we just updated.
@@ -1286,6 +1236,134 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return xlat_logical_process_arg(ctx, out, xctx, request, in);
 }
+
+/** See if the input is truthy or not.
+ *
+ *  @param[in]     ctx  talloc ctx
+ *  @param[in,out] dst	value-box containing the output box
+ *  @param[in]     in   list of value-boxes to check
+ *  @return
+ *	- false on failure
+ *	- true for match, with dst updated to contain the relevant box.
+ *
+ *  Empty lists are not truthy.
+ */
+static bool xlat_logical_and(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box_list_t const *in)
+{
+	fr_value_box_t *found = NULL;
+
+	/*
+	 *	Empty lists are !truthy.
+	 */
+	if (!fr_value_box_list_num_elements(in)) return false;
+
+	/*
+	 *	Loop over the input list.  If the box is a group, then do this recursively.
+	 */
+	fr_value_box_list_foreach(in, box) {
+		if (fr_box_is_group(box)) {
+			if (!xlat_logical_or(ctx, dst, &box->vb_group)) return false;
+			continue;			
+		}
+
+		/*
+		 *	Remember the last box we found.
+		 *
+		 *	If it's truthy, then we keep going either
+		 *	until the end, or until we get a "false".
+		 */
+		if (fr_value_box_is_truthy(box)) {
+			found = box;
+			continue;
+		}
+
+		/*
+		 *	Stop on the first "false"
+		 */
+		return false;
+	}
+
+	if (!*dst) {
+		MEM(*dst = fr_value_box_alloc_null(ctx));
+	} else {
+		fr_value_box_clear(*dst);
+	}
+	fr_value_box_copy(*dst, *dst, found);
+
+	return true;
+}
+
+/*
+ *  We've evaluated an expression.  Let's see if we need to continue with &&
+ */
+static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					     xlat_ctx_t const *xctx,
+					     request_t *request, fr_value_box_list_t *in)
+{
+	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
+	xlat_logical_rctx_t	*rctx = talloc_get_type_abort(xctx->rctx, xlat_logical_rctx_t);
+	bool			match;
+
+	/*
+	 *	If one of the expansions fails, then we fail the
+	 *	entire thing.
+	 */
+	if (!rctx->last_success) {
+		talloc_free(rctx->box);
+		talloc_free(rctx);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Recursively check groups.  i.e. we effectively flatten each list.
+	 *
+	 *	(a, b, c) && (d, e, f) == a && b && c && d && e && f
+	 */
+	match = xlat_logical_and(rctx->ctx, &rctx->box, &rctx->list);
+	if (!match) return XLAT_ACTION_FAIL;
+
+	fr_value_box_list_talloc_free(&rctx->list);
+
+	rctx->current++;
+
+	/*
+	 *	Nothing to expand, return the final value we saw.
+	 */
+	if (rctx->current >= inst->argc) {
+		/*
+		 *	Otherwise we stop on failure, with the boolean
+		 *	we just updated.
+		 */
+		fr_assert(rctx->box != NULL);
+		fr_dcursor_append(out, rctx->box);
+
+		talloc_free(rctx);
+		return XLAT_ACTION_DONE;
+	}
+
+	return xlat_logical_process_arg(ctx, out, xctx, request, in);
+}
+
+/*
+ *	Each argument is it's own head, because we do NOT always want
+ *	to go to the next argument.
+ */
+static int xlat_instantiate_logical(xlat_inst_ctx_t const *xctx)
+{
+	xlat_logical_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_logical_inst_t);
+
+	inst->argc = xlat_flatten_compiled_argv(inst, &inst->argv, xctx->ex->call.args);
+	if (xctx->ex->call.func->token == T_LOR) {
+		inst->callback = xlat_logical_or_resume;
+		inst->stop_on_match = true;
+	} else {
+		inst->callback = xlat_logical_and_resume;
+		inst->stop_on_match = false;
+	}
+
+	return 0;
+}
+
 
 /** Process logical &&, ||
  *

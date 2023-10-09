@@ -14,4 +14,13 @@ if !((&Tmp-Integer-1 == 1) || (&Tmp-Integer-0 == 1)) {
 	test_fail
 }
 
+#
+#  Neither of these exists, so the resulting string should be empty
+#
+&Tmp-String-0 := "%{&Tmp-String-1 || &Tmp-String-1}"
+
+if !(&Tmp-String-0 == '') {
+	test_fail
+}
+
 success

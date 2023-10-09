@@ -7,14 +7,11 @@
 }
 
 #
-#  ! (true && true) --> false
+#  (true && true) --> true
 #
-#  But we don't want to complicate the condition, so
-#  instead we use an "else"
+#  But if it's false, then we have an issue.
 #
 if !((&Tmp-Integer-0 == 0) && (&Tmp-Integer-1 == 1)) {
-	# do nothing on "false"
-} else {
 	test_fail
 }
 
@@ -29,6 +26,14 @@ if ((&Tmp-Integer-0 == 1) && (&Tmp-Integer-1 == 1)) {
 #  true && false -> false
 #
 if ((&Tmp-Integer-0 == 0) && (&Tmp-Integer-1 == 0)) {
+	test_fail
+}
+
+&control.Tmp-String-0 := { "bob", "oof" }
+
+if ((&control.Tmp-String-0[0] == 'bob') && (&control.Tmp-String-0[1] == 'oof')) {
+	# OK
+} else {
 	test_fail
 }
 
