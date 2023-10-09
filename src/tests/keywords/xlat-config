@@ -2,7 +2,7 @@
 # PRE: if
 #
 
-&Tmp-String-0 := "%(config:modules.test.boolean)"
+&Tmp-String-0 := "%config(modules.test.boolean)"
 if (!(&Tmp-String-0 == "no")) {
 	test_fail
 }

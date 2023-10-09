@@ -17,7 +17,7 @@ subrequest Access-Request {
 }
 
 # Cancel parent with active subrequest, will run on next timer service
-%(cancel:100ms)
+%cancel(100ms)
 subrequest Access-Request {
 	%(delay_10s:1s)
 }

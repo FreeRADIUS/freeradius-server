@@ -1,14 +1,14 @@
 #
 #  PRE: if
 #
-#  Note the test for %(interpreter:.line) is sensitive to the position of the
+#  Note the test for %interpreter(.line) is sensitive to the position of the
 #  instruction we're running.
 #
 
-&Tmp-String-0 := "%(interpreter:.filename)"
-&Tmp-Integer-0 := "%(interpreter:.line)"
-&Tmp-String-1 := "%(interpreter:.name)"
-&Tmp-String-2 := "%(interpreter:.type)"
+&Tmp-String-0 := "%interpreter(.filename)"
+&Tmp-Integer-0 := "%interpreter(.line)"
+&Tmp-String-1 := "%interpreter(.name)"
+&Tmp-String-2 := "%interpreter(.type)"
 
 if (!(&Tmp-String-0 == "src/tests/keywords/xlat-interpreter")) {
 	test_fail
