@@ -7,7 +7,7 @@ if (('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) {
 	}
 
 # Check failure when no previous capture - full capture
-if ("%{regex:}") {
+if (%regex()) {
 	test_fail
 }
 
@@ -18,7 +18,7 @@ if (!(&Module-Failure-Message[*] == "No previous regex capture")) {
 &request -= &Module-Failure-Message[*]
 
 # Check failure when no previous capture - named group
-if ("%regex(foo)") {
+if (%regex(foo)) {
 	test_fail
 }
 
@@ -29,7 +29,7 @@ if (!(&Module-Failure-Message[*] == "No previous named regex capture group")) {
 &request -= &Module-Failure-Message[*]
 
 # Check failure when no previous capture - numbered group
-if ("%regex(%{Tmp-Integer-1})") {
+if (%regex(%{Tmp-Integer-1})) {
 	test_fail
 }
 
