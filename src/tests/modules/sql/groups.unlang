@@ -2,29 +2,29 @@
 #  Clear out old data
 #
 
-"%{sql:DELETE FROM radgroupcheck WHERE groupname = 'groups_group_a'}"
-"%{sql:DELETE FROM radgroupcheck WHERE groupname = 'groups_group_b'}"
-"%{sql:DELETE FROM radgroupcheck WHERE groupname = 'groups_group_c'}"
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'groups_group_a'")
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'groups_group_b'")
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'groups_group_c'")
 
-"%{sql:DELETE FROM radgroupreply WHERE groupname = 'groups_group_a'}"
-"%{sql:DELETE FROM radgroupreply WHERE groupname = 'groups_group_b'}"
-"%{sql:DELETE FROM radgroupreply WHERE groupname = 'groups_group_c'}"
+%sql("DELETE FROM radgroupreply WHERE groupname = 'groups_group_a'")
+%sql("DELETE FROM radgroupreply WHERE groupname = 'groups_group_b'")
+%sql("DELETE FROM radgroupreply WHERE groupname = 'groups_group_c'")
 
-"%{sql:DELETE FROM radusergroup WHERE priority = 1000}"
+%sql("DELETE FROM radusergroup WHERE priority = 1000")
 
 #
 #  Insert new test data
 #
-"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_a', 'groups_group_a', 1000)}"
-"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_b', 'groups_group_b', 1000)}"
-"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_a', 'groups_group_c', 1000)}"
-"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_b', 'groups_group_c', 1000)}"
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_a', 'groups_group_a', 1000)")
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_b', 'groups_group_b', 1000)")
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_a', 'groups_group_c', 1000)")
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_user_b', 'groups_group_c', 1000)")
 
-"%{sql:INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_a', 'Password.Cleartext', ':=', 'UserAPassword')}"
-"%{sql:INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_b', 'Password.Cleartext', ':=', 'UserBPassword')}"
+%sql("INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_a', 'Password.Cleartext', ':=', 'UserAPassword')")
+%sql("INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('groups_group_b', 'Password.Cleartext', ':=', 'UserBPassword')")
 
-"%{sql:INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('groups_group_a', 'Reply-Message', ':=', 'Hello User A')}"
-"%{sql:INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('groups_group_b', 'Reply-Message', ':=', 'Hello User B')}"
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('groups_group_a', 'Reply-Message', ':=', 'Hello User A')")
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('groups_group_b', 'Reply-Message', ':=', 'Hello User B')")
 
 #
 #  Run SQL

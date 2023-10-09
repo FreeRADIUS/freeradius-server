@@ -1,18 +1,18 @@
 #
 #  Clear out old data
 #
-"%{sql:${delete_from_radacct} '00000004'}"
+%sql("${delete_from_radacct} '00000004'")
 
 sql.accounting
 if (!ok) {
 	test_fail
 }
 
-if ("%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000004'}" != "1") {
+if (%sql("SELECT count(*) FROM radacct WHERE AcctSessionId = '00000004'") != "1") {
 	test_fail
 }
 
-if ("%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000004'}" != "30") {
+if (%sql("SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000004'") != "30") {
 	test_fail
 }
 

@@ -1,6 +1,6 @@
 # Clear out any rows with priority 0 (each test should use a different
 # priority, so they don't interfere with each other).
-"%{sql:DELETE FROM radusergroup WHERE priority <= 1}"
+%sql("DELETE FROM radusergroup WHERE priority <= 1")
 
 # Module should return NOOP if there's no result set to work with
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1' {
@@ -25,7 +25,7 @@ if (&control.Tmp-Integer-0) {
 }
 
 # Insert our first test row
-"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('bob', 'bar', 0)}"
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('bob', 'bar', 0)")
 
 # Retrieve our test row
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
@@ -55,7 +55,7 @@ if !(&control.Tmp-Integer-0 == 0) {
 &control -= &Tmp-Integer-0[*]
 
 # Insert our second test row
-"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 1)}"
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 1)")
 
 # Retrieve our test row(s) - With := we should get the values from the second row
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {

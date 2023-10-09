@@ -9,10 +9,10 @@ else {
 	test_fail
 }
 
-if ("%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'}" != "1") {
+if (%sql("SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'") != "1") {
 	test_fail
 }
 
-if ("%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'}" != "30") {
+if (%sql("SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'") != "30") {
 	test_pass
 }
