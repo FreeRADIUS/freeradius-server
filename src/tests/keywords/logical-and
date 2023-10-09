@@ -9,7 +9,12 @@
 #
 #  ! (true && true) --> false
 #
+#  But we don't want to complicate the condition, so
+#  instead we use an "else"
+#
 if !((&Tmp-Integer-0 == 0) && (&Tmp-Integer-1 == 1)) {
+	# do nothing on "false"
+} else {
 	test_fail
 }
 

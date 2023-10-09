@@ -849,6 +849,7 @@ typedef struct {
 } xlat_logical_inst_t;
 
 typedef struct {
+	TALLOC_CTX		*ctx;
 	bool			last_success;
 	fr_value_box_t		*box;		//!< output value-box
 	int			current;
@@ -1114,7 +1115,8 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 
 /** See if the input is truthy or not.
  *
- *  @param[in,out] dst	pre-initialized value-box containing the output box
+ *  @param[in]     ctx  talloc ctx
+ *  @param[in,out] dst	value-box containing the output box
  *  @param[in]     in   list of value-boxes to check
  *  @param[in] logical_or whether or not we're checking for ||.  false is &&
  *  @return
@@ -1123,7 +1125,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
  *
  *  Empty lists are not truthy.
  */
-static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *in, bool logical_or)
+static bool xlat_logical_match(TALLOC_CTX *ctx, fr_value_box_t **dst, fr_value_box_list_t const *in, bool logical_or)
 {
 	fr_value_box_t *last = NULL;
 
@@ -1137,7 +1139,7 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 	 */
 	fr_value_box_list_foreach(in, box) {
 		if (fr_box_is_group(box)) {
-			if (!xlat_logical_match(dst, &box->vb_group, logical_or)) return false;
+			if (!xlat_logical_match(ctx, dst, &box->vb_group, logical_or)) return false;
 			continue;
 		}
 
@@ -1165,7 +1167,11 @@ static bool xlat_logical_match(fr_value_box_t **dst, fr_value_box_list_t const *
 	}
 
 	if (last) {
-		fr_value_box_clear(*dst);
+		if (!*dst) {
+			MEM(*dst = fr_value_box_alloc_null(ctx));
+		} else {
+			fr_value_box_clear(*dst);
+		}
 		fr_value_box_copy(*dst, *dst, last);
 	}
 
@@ -1233,17 +1239,8 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *
 	 *	(a, b, c) || (d, e, f) == a || b || c || d || e || f
 	 */
-	match = xlat_logical_match(&rctx->box, &rctx->list, inst->stop_on_match);
+	match = xlat_logical_match(rctx->ctx, &rctx->box, &rctx->list, inst->stop_on_match);
 	if (!match) {
-		/*
-		 *	If nothing matches, we return a "false" box.
-		 */
-		if (rctx->box->type != FR_TYPE_BOOL) {
-			fr_value_box_clear(rctx->box);
-			fr_value_box_init(rctx->box, FR_TYPE_BOOL, NULL, false);
-		}
-		rctx->box->vb_bool = false;
-
 		/*
 		 *	we didn't match, (&&), so we're done.
 		 */
@@ -1255,7 +1252,7 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If we stop on the first match, and we got a "true" match we're done.
 	 */
-	if (inst->stop_on_match && match && fr_value_box_is_truthy(rctx->box)) goto done;
+	if (inst->stop_on_match && match && rctx->box && fr_value_box_is_truthy(rctx->box)) goto done;
 
 	rctx->current++;
 
@@ -1264,11 +1261,24 @@ static xlat_action_t xlat_logical_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (rctx->current >= inst->argc) {
 	done:
+		if (!inst->stop_on_match) {
+			fr_assert(rctx->box);
+
+			/*
+			 *      If nothing matches, we return a "false" box.
+			 */
+			if (rctx->box->type != FR_TYPE_BOOL) {
+				fr_value_box_clear(rctx->box);
+				fr_value_box_init(rctx->box, FR_TYPE_BOOL, NULL, false);
+			}
+			rctx->box->vb_bool = false;
+		}
+
 		/*
 		 *	Otherwise we stop on failure, with the boolean
 		 *	we just updated.
 		 */
-		fr_dcursor_append(out, rctx->box);
+		if (rctx->box) fr_dcursor_append(out, rctx->box);
 
 		talloc_free(rctx);
 		return XLAT_ACTION_DONE;
@@ -1285,10 +1295,18 @@ static xlat_action_t xlat_func_logical(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       request_t *request, fr_value_box_list_t *in)
 {
 	xlat_logical_rctx_t	*rctx;
+	xlat_logical_inst_t const *inst = talloc_get_type_abort_const(xctx->inst, xlat_logical_inst_t);
 
 	MEM(rctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), xlat_logical_rctx_t));
+	rctx->ctx = ctx;
 	rctx->current = 0;
-	MEM(rctx->box = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+
+	if (inst->stop_on_match) {
+		rctx->box = NULL;
+	} else {
+		MEM(rctx->box = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+		rctx->box->vb_bool = true;
+	}
 	fr_value_box_list_init(&rctx->list);
 
 	(UNCONST(xlat_ctx_t *, xctx))->rctx = rctx; /* ensure it's there before a resume! */
