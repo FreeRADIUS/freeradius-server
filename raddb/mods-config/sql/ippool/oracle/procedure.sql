@@ -22,7 +22,7 @@
 --		 '${gateway}', \
 --		 '${owner}', \
 --		 ${offer_duration}, \
---		 '%{${requested_address}:-0.0.0.0}'
+--		 '%{${requested_address} || 0.0.0.0}'
 --	 ) FROM dual"
 -- allocate_update = ""
 -- allocate_commit = ""

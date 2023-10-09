@@ -22,7 +22,7 @@
 --              @v_gateway = '${gateway}', \
 --              @v_owner = '${owner}', \
 --              @v_lease_duration = ${offer_duration}, \
---              @v_requested_address = '%{${requested_address}:-0.0.0.0}' \
+--              @v_requested_address = '%{${requested_address} || 0.0.0.0}' \
 --      "
 -- allocate_update = ""
 -- allocate_commit = ""
