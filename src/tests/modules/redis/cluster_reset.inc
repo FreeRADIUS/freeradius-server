@@ -28,9 +28,9 @@
 	&Tmp-Integer-0 = 21
 }
 
-&control.Tmp-String-0 := "1-%{randstr:aaaaaaaa}"
-&control.Tmp-String-1 := "2-%{randstr:aaaaaaaa}"
-&control.Tmp-String-2 := "3-%{randstr:aaaaaaaa}"
+&control.Tmp-String-0 := "1-%randstr('aaaaaaaa')"
+&control.Tmp-String-1 := "2-%randstr('aaaaaaaa')"
+&control.Tmp-String-2 := "3-%randstr('aaaaaaaa')"
 
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 	&control.Tmp-String-8 := 'scripts/ci/redis-setup.sh'

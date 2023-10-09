@@ -2,7 +2,7 @@
 #  PRE: update if
 #
 
-&Tmp-String-0 := "%{idn:example.com}"
+&Tmp-String-0 := "%idn('example.com')"
 &Tmp-String-1 := "%{idn:èxâmpłé.com}"
 &Tmp-String-2 := "%{idn:пример.com}"
 &Tmp-String-3 := "%{idn:παράδειγμα.com}"

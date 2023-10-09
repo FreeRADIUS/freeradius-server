@@ -1,5 +1,5 @@
 if (&User-Name == 'test') {
-	&User-Password := "%{randstr:bbbbbbbbbbbbbbbb}"
+	&User-Password := "%randstr('bbbbbbbbbbbbbbbb')"
 	&control.Password.Cleartext := "%{User-Password}"
 
 	pap.authorize

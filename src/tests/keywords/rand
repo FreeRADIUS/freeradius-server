@@ -16,7 +16,7 @@ if !(&Tmp-String-0 == "") {
 	test_fail
 }
 
-&Tmp-Integer-0 := %{rand:123}
+&Tmp-Integer-0 := %rand('123')
 
 if (!&Tmp-Integer-0) {
 	test_fail

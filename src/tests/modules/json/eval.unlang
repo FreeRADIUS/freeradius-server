@@ -422,7 +422,7 @@ if !(&Tmp-Integer-0 == 2147483647) {
 {\
 	\"foo.bar\": \"baz\" \
 }"
-&Tmp-String-2 := "%{taint:foo.bar}"
+&Tmp-String-2 := "%taint('foo.bar')"
 
 map json &Tmp-String-0 {
 	&Tmp-String-1 := "$.%{Tmp-String-2}"
