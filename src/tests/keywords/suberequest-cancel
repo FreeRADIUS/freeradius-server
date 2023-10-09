@@ -4,14 +4,14 @@
 
 # Cancel in subrequest
 subrequest Access-Request {
-	%(cancel:)
+	%cancel()
 	test_fail
 }
 
 # Cancel in nested subrequest
 subrequest Access-Request {
 	subrequest Access-Request {
-		%(cancel:)
+		%cancel()
 		test_fail
 	}
 }
@@ -19,7 +19,7 @@ subrequest Access-Request {
 # Cancel parent with active subrequest, will run on next timer service
 %cancel(100ms)
 subrequest Access-Request {
-	%(delay_10s:1s)
+	%delay_10s(1s)
 }
 
 test_fail

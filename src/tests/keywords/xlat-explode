@@ -16,11 +16,11 @@
 }
 
 &request += {
-	&Tmp-String-1 = "%(concat:%(explode:%{Class} |) ,)"
-	&Tmp-String-2 = "%(concat:%(explode:%{Calling-Station-ID} |) ,)"
-	&Tmp-String-3 = "%(concat:%(explode:%{control.User-Name[*]} |) ,)"
-	&Tmp-String-4 = "%(concat:%(explode:%{control.Reply-Message} |) ,)"
-	&Tmp-String-5 = "%(concat:%(explode:%{control.Tmp-String-0} '. ') ,)"
+	&Tmp-String-1 = "%concat(%explode(%{Class}, '|'), ',')"
+	&Tmp-String-2 = "%concat(%explode(%{Calling-Station-ID}, '|'), ',')"
+	&Tmp-String-3 = "%concat(%explode(%{control.User-Name[*]}, |), ',')"
+	&Tmp-String-4 = "%concat(%explode(%{control.Reply-Message}, |), ',')"
+	&Tmp-String-5 = "%concat(%explode(%{control.Tmp-String-0}, '. '), ',')"
 }
 
 debug_all

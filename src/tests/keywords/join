@@ -28,13 +28,13 @@ debug_request
 #
 #  @todo - fix this...
 #
-&control.Tmp-String-1 := "%(concat:%(join:%{control.[*]} %{request.Tmp-IP-Address-0}) '. ')"
+&control.Tmp-String-1 := %concat(%join(%{control.[*]}, %{request.Tmp-IP-Address-0}), '. ')
 
 if (!(&control.Tmp-String-1 == "bob. hello. ab c. de fg. 123. 192.168.1.254")) {
 	test_fail
 }
 
-&control.Tmp-String-2 := "%(concat:%(join:%{control.Tmp-String-0[*]} %{control.Tmp-Integer-0}) ,)"
+&control.Tmp-String-2 := %concat(%join(%{control.Tmp-String-0[*]}, %{control.Tmp-Integer-0}), ',')
 if (!(&control.Tmp-String-2 == "ab c,de fg,123")) {
 	test_fail
 }
