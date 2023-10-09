@@ -57,7 +57,7 @@ acct_unique {
 	#  wireless environment).
 	#
 	if ("%string(Class)" =~ /${policy.class_value_prefix}([0-9a-f]{32})/i) {
-		&request.Acct-Unique-Session-Id := "%hex(%md5(%string(%{1},%{Acct-Session-ID})))"
+		&request.Acct-Unique-Session-Id := %hex(%md5(%string(%{1},%{Acct-Session-ID})))
 	}
 
 	#
@@ -67,7 +67,7 @@ acct_unique {
 	#  is not included
 	#
 	else {
-		&request.Acct-Unique-Session-Id := "%hex(%md5(%string(%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{&NAS-IPv6-Address || &NAS-IP-Address},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port})))"
+		&request.Acct-Unique-Session-Id := %hex(%md5(%string(%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{&NAS-IPv6-Address || &NAS-IP-Address},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port})))
 	}
 }
 
@@ -85,13 +85,13 @@ insert_acct_class {
 #
 acct_counters64.preacct {
 	if (!&Acct-Input-Gigawords) {
-		&request.Acct-Input-Octets64 := "%{&Acct-Input-Octets || 0}"
+		&request.Acct-Input-Octets64 := %{&Acct-Input-Octets || 0}
 	}
 	else {
 		&request.Acct-Input-Octets64 =  (((uint64) &Acct-Input-Gigawords) << 32) | (uint64) &Acct-Input-Octets
 	}
 	if (!&Acct-Output-Gigawords) {
-		&request.Acct-Output-Octets64 := "%{&Acct-Output-Octets || 0}"
+		&request.Acct-Output-Octets64 := %{&Acct-Output-Octets || 0}
 	}
 	else {
 		&request.Acct-Output-Octets64 = (((uint64) &Acct-Output-Gigawords) << 32) | (uint64) &Acct-Output-Octets
