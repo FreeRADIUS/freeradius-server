@@ -4,6 +4,6 @@
 &request -= &Tmp-String-0[*]
 &request -= &Tmp-String-1[*]
 
-&Tmp-String-2 := "%{%{Tmp-String-0[0]}:-%{Tmp-String-1[0]}}%(delay_10s:)"
+&Tmp-String-2 := "%{&Tmp-String-0[0] || &Tmp-String-1[0]}%(delay_10s:)"
 
 success

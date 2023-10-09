@@ -15,8 +15,8 @@ if (!("%(debug:%{Tmp-Integer-0})" == "%{Tmp-Integer-0}")) {
 }
 
 # Check for 'splosions
-"%{%{control.Password.Cleartext}:-%{control.User-Name}}"
-"%{%{control.User-Name}:-%{control.Password.Cleartext}}"
+"%{&control.Password.Cleartext || &control.User-Name}"
+"%{&control.User-Name || &control.Password.Cleartext}"
 
 if (&control.Password.Cleartext =~ /(h)(e)(l)(l)(o)/) {
 	"%{0}"
