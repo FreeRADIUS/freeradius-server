@@ -92,7 +92,7 @@ version_component()
 	commit_depth)
 		out=$(\
 			cat ${commit_depth_file} 2> /dev/null || \
-			(${in_repo} && ${git} describe --tags --match 'branch_*' --match 'release_*' | cut -d '-' -f 2) || \
+			(${in_repo} && ${git} describe --tags --match 'branch_*' --match 'release_*' | cut -s -d '-' -f 2) || \
 			echo "${commit_depth}" \
 		)
 	;;
