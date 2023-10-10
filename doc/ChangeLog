@@ -1,4 +1,4 @@
-FreeRADIUS 4.0.0 Sun 10 Jul 2016 15:48:14 EDT urgency=medium
+FreeRADIUS 4.0~alpha1 Tue 10 Oct 2023 12:00:00 EDT urgency=medium
 	Feature improvements
 	* For upgrade instructions, see doc/upgrade/index.adoc
 	* "authorize", "authenticate", "preacct", etc.

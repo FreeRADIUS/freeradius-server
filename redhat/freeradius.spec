@@ -39,7 +39,7 @@
 %bcond_with thread_sanitizer
 %bcond_with undefined_behaviour_sanitizer
 
-%global _version 4.0
+%global _version 4.0~alpha1
 
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
