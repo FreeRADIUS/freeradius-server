@@ -28,6 +28,7 @@ release_file=RELEASE
 version_major=4
 version_minor=0
 version_incrm=
+version_prerelease=
 commit=
 commit_depth=
 is_release=0
@@ -51,6 +52,8 @@ usage()
 	echo "component may be one of:"
 	echo "major             Major version component from ${version_file}."
 	echo "minor             Minor version component from ${version_file}."
+	echo "incrm             Incremental version component from ${version_file}."
+	echo "prerelease        Pre-release version component from ${version_file}."
 	echo "commit            Short (8 hexit) commit hash."
 	echo "commit_depth      How many commit since the last tag."
 	echo "is_release        true if the current commit has been tagged as a release, else false."
@@ -67,18 +70,23 @@ version_component()
 	for c in "$@"; do
 	case "$c" in
 	major)
-		out=$(cut -f1 -d. 2>/dev/null < ${version_file})
+		out=$(cut -f1 -d~ 2>/dev/null < ${version_file} | cut -f1 -d.)
 		if [ -z "${out}" ]; then out="${version_major}"; fi
 	;;
 
 	minor)
-		out=$(cut -f2 -d. 2>/dev/null < ${version_file})
+		out=$(cut -f1 -d~ 2>/dev/null < ${version_file} | cut -f2 -d.)
 		if [ -z "${out}" ]; then out="${version_minor}"; fi
 	;;
 
 	incrm)
-		out=$(cut -f3 -d. 2>/dev/null < ${version_file})
+		out=$(cut -f1 -d~ 2>/dev/null < ${version_file} | cut -f3 -d.)
 		if [ -z "${out}" ]; then out="${version_incrm}"; fi
+	;;
+
+	prerelease)
+		out=$(cut -s -f2 -d~ 2>/dev/null < ${version_file})
+		if [ -z "${out}" ]; then out="$version_prerelease"; fi
 	;;
 
 	commit)
