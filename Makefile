@@ -467,8 +467,16 @@ dist-check: redhat/freeradius.spec debian/changelog
 		mv redhat/.foo redhat/freeradius.spec; \
 		echo Updated redhat/freeradius.spec '_version' to $(PKG_VERSION); \
 	fi
+	@if [ `head -n 1 doc/ChangeLog | awk '/^FreeRADIUS/{print $$2}'` != "$(PKG_VERSION)" ]; then \
+		echo doc/ChangeLog needs to be updated; \
+		exit 1; \
+	fi
 	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/).*//'` != "$(PKG_VERSION)" ]; then \
 		echo debian/changelog needs to be updated; \
+		exit 1; \
+	fi
+	@if [ `grep version doc/antora/antora.yml | sed 's/^.*version: //'` != "'$(PKG_VERSION)'" ]; then \
+		echo doc/antora/antora.yml needs to be updated with: version '$(PKG_VERSION)'; \
 		exit 1; \
 	fi
 
