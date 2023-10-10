@@ -21,6 +21,7 @@ content:
     branches:
 # latest v4 tree
       - HEAD
+      - release_4_0_alpha1
 # latest v3.0 dev branch HEAD
       - v3.0.x
 # latest v3.2 dev branch HEAD for upcoming release
