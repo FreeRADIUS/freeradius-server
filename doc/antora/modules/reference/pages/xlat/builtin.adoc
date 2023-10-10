@@ -149,21 +149,21 @@ characters.  These dots allow the expansion to refer to the current
 request via a `name`, or the parent request via `.name`.  If there is
 no parent, the expansion returns the string `<underflow>`.
 
-=== %interpeter(module)
+=== %interpeter('module')
 
 The current module being executed.  If the expansions is done in an
 `unlang` statement and outside of any module, it returns the name of
 the previous module which was executed.
 
-=== %interpeter(processing_stage)
+=== %interpeter('processing_stage')
 
 Which section of a virtual server is processing the request.
 
-=== %interpeter(rcode)
+=== %interpeter('rcode')
 
 The current interpreter return code, e.g. `handle`, or `ok`, etc.
 
-=== %interpeter(server)
+=== %interpeter('server')
 
 The name of the virtual server which is running the request.
 
@@ -180,8 +180,8 @@ on configuration file references.
 
 [source,unlang]
 ----
-"Server installed in %config(prefix)"
-"Module rlm_exec.shell_escape = %config(modules.exec.shell_escape)"
+"Server installed in %config('prefix')"
+"Module rlm_exec.shell_escape = %config('modules.exec.shell_escape')"
 ----
 
 .Output
@@ -314,7 +314,7 @@ Failure in test at line /path/raddb/sites-enaled/default:231
 
 == String manipulation
 
-=== %concat(<&ref:[idx]> <delim>)
+=== %concat(<&ref:[idx]>, <delim>)
 
 Used to join two or more attributes, separated by an optional delimiter.
 
@@ -334,8 +334,8 @@ expanded string.  If you need to concatenate strings together in a policy, just 
 }
 
 &reply += {
-    &Reply-Message = "%concat(%{control.Tmp-String-0[*]} ', ')"
-    &Reply-Message = "%concat(%{control.Tmp-String-0[*]} ,)"
+    &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ', ')"
+    &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ',')"
 }
 ----
 
@@ -357,7 +357,7 @@ string foo
 ----
 
 
-=== %explode(<&ref> <delim>)
+=== %explode(<&ref>, <delim>)
 
 Split an string into multiple new strings based on a delimiter.
 
@@ -371,7 +371,7 @@ This expansion is the opposite of `%concat( ... )`.
 ----
 &control.Tmp-String-0 := "bob.toba@domain.com"
 
-&control.Tmp-String-1 := "%explode(&control.Tmp-String-0 @)"
+&control.Tmp-String-1 := "%explode(&control.Tmp-String-0, '@')"
 
 &reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
 ----
@@ -382,7 +382,7 @@ This expansion is the opposite of `%concat( ... )`.
 Welcome bob.toba
 ```
 
-=== %lpad(<string> <val> <char>)
+=== %lpad(<string>, <val>, <char>)
 
 Left-pad a string.
 
@@ -394,7 +394,7 @@ Left-pad a string.
 ----
 &control.Tmp-String-0 := "123"
 
-&reply.Reply-Message := "Maximum should be %lpad(%{control.Tmp-String-0} 11 0)"
+&reply.Reply-Message := "Maximum should be %lpad(%{control.Tmp-String-0}, 11, '0')"
 ----
 
 .Output
@@ -403,7 +403,7 @@ Left-pad a string.
 Maximum should be 00000000123
 ```
 
-=== %rpad(<string> <val> <char>)
+=== %rpad(<string>, <val>, <char>)
 
 Right-pad a string.
 
@@ -415,7 +415,7 @@ Right-pad a string.
 ----
 &control.Tmp-String-0 := "123"
 
-&reply.Reply-Message := "Maximum should be %rpad(%{control.Tmp-String-0} 11 0)"
+&reply.Reply-Message := "Maximum should be %rpad(%{control.Tmp-String-0}, 11, '0')"
 ----
 
 .Output
@@ -660,7 +660,7 @@ The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\37
 The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-=== %hmacsha1(<shared_key> <string>)
+=== %hmacsha1(<shared_key>, <string>)
 
 Generate `HMAC-SHA1` of string.
 
@@ -672,7 +672,7 @@ Generate `HMAC-SHA1` of string.
 ----
 &control.Tmp-String-0 := "mykey"
 &control.Tmp-String-1 := "Caipirinha"
-&control.Tmp-Octets-0 := "%hmacsha1(%{control.Tmp-String-0} %{control.Tmp-String-1})"
+&control.Tmp-Octets-0 := "%hmacsha1(%{control.Tmp-String-0}, %{control.Tmp-String-1})"
 
 &reply += {
     &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
@@ -687,7 +687,7 @@ The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\3
 The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
 ```
 
-=== %md5( ... }
+=== %md5( ... )
 
 Dynamically expands the string and performs an MD5 hash on it. The
 result is binary data.
@@ -851,31 +851,7 @@ With the current time at 16:18, `%nexttime(1h)` will expand to `2520`.
 You should wait for 2520s
 ```
 
-=== +%pack(%{Attribute-Name}%{Attribute-Name}...)+
-
-Pack multiple multiple attributes and/or literals into a binary string.
-For best results, each attribute passed to `pack` should be fixed size.
-That is, not data type `octets` or `string` as the length of those values
-will not be encoded.
-
-See also the `unpack` module, which is the inverse to `pack`.
-
-.Return: _octets_
-
-.Example
-
-[source,unlang]
-----
-&reply.Class := "%pack(%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
-----
-
-.Output
-
-```
-You should wait for 2520s
-```
-
-### %sub(<subject> /<regex>/[flags] <replace>)
+### %sub(<subject>, /<regex>/[flags], <replace>)
 
 Substitute text just as easily as it can match it, even using regex patterns.
 
@@ -886,7 +862,7 @@ Substitute text just as easily as it can match it, even using regex patterns.
 [source,unlang]
 ----
 &control.Tmp-String-0 := "Caipirinha is a light and refreshing drink!"
-&reply.Reply-Message := "%sub(%{control.Tmp-String-0} / / ,)"
+&reply.Reply-Message := "%sub(%{control.Tmp-String-0}, / /, ',')"
 ----
 
 .Output
@@ -963,7 +939,7 @@ group {
     date tomorrow
     time_delta time_of_day
 
-    &now := %time(request)
+    &now := %time('request')
 
     #  We are this many seconds into one day
     &time_of_day := &now % (time_delta) 1d
@@ -985,7 +961,7 @@ group {
     date tomorrow
     time_delta time_of_day
 
-    &now := %time(request)
+    &now := %time('request')
 
     #  We are this many seconds into one day
     &time_of_day := &now % (time_delta) 1d
@@ -994,7 +970,7 @@ group {
     &tomorrow := &now - &time_of_day + (time_delta) 1d
 
     #  add in the time zone offset
-    &tomorrow += %time(offset)
+    &tomorrow += %time('offset')
 }
 ----
 
@@ -1047,6 +1023,33 @@ This expansion has been removed.  Instead, just use `%{(integer) ...}` with math
 [source,unlang]
 ----
 &reply.Reply-Message := "Value of Service-Type is %{(integer) &Service-Type}"
+----
+
+=== +%pack(%{Attribute-Name}%{Attribute-Name}...)+
+
+Pack multiple multiple attributes and/or literals into a binary string.
+For best results, each attribute passed to `pack` should be fixed size.
+That is, not data type `octets` or `string` as the length of those values
+will not be encoded.
+
+See also the `unpack` module, which is the inverse to `pack`.
+
+.Return: _octets_
+
+.Example
+
+[source,unlang]
+----
+&reply.Class := "%pack(%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
+----
+
+It is easier to just use casting and string append:
+
+.Better example
+
+[source,unlang]
+----
+&reply.Class := (octets) &Framed-IP-Address + (octets) &NAS-IP-Address.
 ----
 
 === %string(...)
