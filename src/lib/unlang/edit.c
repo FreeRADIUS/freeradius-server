@@ -980,8 +980,8 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	 *	Fast path: child is empty, we don't need to do anything.
 	 */
 	if (fr_dlist_empty(&map->child.head)) {
-		if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
-			REDEBUG("%s[%d] Cannot assign empty list to a normal data type", MAP_INFO);
+		if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type) && (map->op != T_OP_SET)) {
+			REDEBUG("%s[%d] Cannot assign a list to the '%s' data type", MAP_INFO, fr_type_to_str(tmpl_attr_tail_da(current->lhs.vpt)->type));
 			return -1;
 		}
 

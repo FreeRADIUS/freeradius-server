@@ -1586,6 +1586,12 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 		if (map_list_afrom_cs(map, &map->child, cs, &t_rules, NULL, NULL, 256) < 0) {
 			goto fail;
 		}
+
+		if ((map->op != T_OP_SET) && !map_list_num_elements(&map->child)) {
+			cf_log_err(cs, "Cannot use operator '%s' for assigning empty list to '%s' data type.",
+				   fr_tokens[map->op], fr_type_to_str(parent_da->type));
+			goto fail;
+		}
 	}
 	/*
 	 *	Do basic sanity checks and resolving.
