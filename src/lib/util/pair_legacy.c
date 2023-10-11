@@ -220,11 +220,15 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			if (err == FR_DICT_ATTR_NOTFOUND) {
 				uint8_t const *q;
 
-			notfound:
-				for (q = (uint8_t const *) p; q < (uint8_t const *) end && fr_dict_attr_allowed_chars[*q]; q++) {
-					/* nothing */
+				if (!fr_dict_attr_allowed_chars[(unsigned char) *p]) {
+					fr_strerror_printf("Invalid character '%c' in attribute name at %s", *p, p);
+				} else {
+				notfound:
+					for (q = (uint8_t const *) p; q < (uint8_t const *) end && fr_dict_attr_allowed_chars[*q]; q++) {
+						/* nothing */
+					}
+					fr_strerror_printf("Unknown attribute \"%.*s\" for parent \"%s\"", (int) (q - ((uint8_t const *) p)), p, my_parent->name);
 				}
-				fr_strerror_printf("Unknown attribute \"%.*s\" for parent \"%s\"", (int) (q - ((uint8_t const *) p)), p, my_parent->name);
 			}
 		error:
 			fr_dict_unknown_free(&da_unknown);
