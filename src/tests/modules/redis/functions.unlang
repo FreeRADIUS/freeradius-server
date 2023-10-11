@@ -37,7 +37,7 @@ if (!(%(redis.multiline:0 1) == 1)) {
 }
 
 # Bad call
-if (%(redis.multiline:10) != '') {
+if %redis.multiline(10) {
 	test_fail
 }
 
