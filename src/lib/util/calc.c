@@ -1915,8 +1915,8 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 			 *	No idea what to do. :(
 			 */
 			if (hint == FR_TYPE_NULL) {
-				fr_strerror_printf("Unable to automatically determine output data type for inputs %s and %s",
-						   fr_type_to_str(a->type), fr_type_to_str(b->type));
+				fr_strerror_printf("Invalid operation on data types - '%s' %s '%s'",
+						   fr_type_to_str(a->type), fr_tokens[op], fr_type_to_str(b->type));
 				goto done;
 			}
 
