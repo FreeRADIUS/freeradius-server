@@ -15,7 +15,8 @@ attributes.
 ...
 
 &list1 := &list2
-&list1 += { ... }
+&list1 += { &attribute = value, ... }
+&list1 += " attribute = value, ... "
 ...
 ----
 
@@ -313,6 +314,9 @@ assignment.  This funtionality is most useful for putting attribute
 lists into a database, and then reading them back when a request is
 processed.
 
+Note that the pairs in the string _cannot_ have list qualifiers.  That
+is, `&reply += "request.foo ..."` is not allowed.
+
 .Assigning attributes taken from a string
 ====
 [source,unlang]
@@ -324,7 +328,7 @@ processed.
 The above example has the same result as the earlier example of adding
 `Filter-Id` to the `reply`, using an "in-place" list.
 
-.Append the contents of the `request` list to the `reply` list.
+.Append pairs read from SQL to the reply
 ====
 [source,unlang]
 ----
