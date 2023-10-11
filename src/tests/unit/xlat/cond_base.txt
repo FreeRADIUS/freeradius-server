@@ -34,7 +34,7 @@ match ERROR offset 4: Unexpected text after enum value.  Expected operator
 #  0 - 111 is smaller than zero, and Service-Type is uint32.
 #
 xlat_purify (&Service-Type == 000-111)
-match (&Service-Type == NULL)
+match (&Service-Type == (0 - 111))
 
 xlat_purify (ok FOO handled)
 match ERROR offset 5: Invalid operator

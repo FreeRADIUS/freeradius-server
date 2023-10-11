@@ -68,8 +68,7 @@ match 256
 
 # Cannot perform any operations for destination type ether
 xlat_expr 00:01:02:03:04:05 ^ 11:22:33:44:55:66
-match NULL
-#match ERROR expanding xlat: Cannot perform any operations for destination type ether
+match ERROR expanding xlat: Invalid operation on data types - 'ether' ^ 'ether'
 
 #
 #  NAS-IP-Address doesn't exist.

@@ -422,8 +422,8 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	rcode = fr_value_calc_binary_op(dst, dst, default_type, a, op, b);
 	if (rcode < 0) {
-		RPEDEBUG("Failed calculating result, returning NULL");
-		goto done;
+		talloc_free(dst);
+		return XLAT_ACTION_FAIL;
 	}
 
 	/*
@@ -432,7 +432,6 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (enumv) dst->enumv = enumv;
 
-done:
 	fr_dcursor_append(out, dst);
 	VALUE_BOX_LIST_VERIFY((fr_value_box_list_t *)out->dlist);
 	return XLAT_ACTION_DONE;
@@ -458,14 +457,14 @@ XLAT_BINARY_FUNC(op_rshift, T_RSHIFT)
 XLAT_BINARY_FUNC(op_lshift, T_LSHIFT)
 
 static xlat_arg_parser_t const binary_cmp_xlat_args[] = {
-	{ .required = true, .type = FR_TYPE_VOID },
-	{ .required = true, .type = FR_TYPE_VOID },
+	{ .required = false, .type = FR_TYPE_VOID },
+	{ .required = false, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
 static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
-				 request_t *request, fr_value_box_list_t *in,
+				 UNUSED request_t *request, fr_value_box_list_t *in,
 				 fr_token_t op)
 {
 	int rcode;
@@ -489,7 +488,6 @@ static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rcode = fr_value_calc_list_cmp(dst, dst, &a->vb_group, op, &b->vb_group);
 	if (rcode < 0) {
 		talloc_free(dst);
-		RPEDEBUG("Failed calculating result, returning fail");
 		return XLAT_ACTION_FAIL;
 	}
 
@@ -1435,8 +1433,8 @@ static xlat_action_t xlat_func_unary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	rcode = fr_value_calc_unary_op(dst, dst, op, vb);
 	if ((rcode < 0) || fr_type_is_null(dst->type)) {
-		RPEDEBUG("Failed calculating result, returning NULL");
-		fr_value_box_init_null(dst);
+		talloc_free(dst);
+		return XLAT_ACTION_FAIL;
 	}
 
 	fr_dcursor_append(out, dst);
