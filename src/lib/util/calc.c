@@ -2528,6 +2528,25 @@ int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_li
 	}
 
 	/*
+	 *	Both lists are empty, they should be equal when checked for equality.
+	 */
+	if ((fr_value_box_list_num_elements(list1) == 0) &&
+	    (fr_value_box_list_num_elements(list2) == 0)) {
+		switch (op) {
+		case T_OP_CMP_EQ:
+		case T_OP_LE:
+		case T_OP_GE:
+			invert = !invert;
+			break;
+
+		default:
+			break;
+		}
+
+		goto done;
+	}
+
+	/*
 	 *	Emulate v3.  :(
 	 */
 	fr_value_box_list_foreach(list1, a) {
@@ -2550,8 +2569,9 @@ int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_li
 	}
 
 	/*
-	 *	No match.
+	 *	No match,
 	 */
+done:
 	fr_value_box_clear(dst);
 	fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false); // @todo - add enum!
 	dst->vb_bool = invert;

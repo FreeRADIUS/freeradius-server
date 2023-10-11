@@ -1,0 +1,45 @@
+#
+#  Test empty lists, or xlat failures.
+#
+#	{} == {} --> true
+#
+if !(%test.fail() == %test.fail()) {
+	test_fail
+}
+
+#
+#	{} != {} --> false
+#
+if (%test.fail() != %test.fail()) {
+	test_fail
+}
+
+#
+#	{} <= {} --> true
+#
+if !(%test.fail() <= %test.fail()) {
+	test_fail
+}
+
+#
+#	{} < {} --> false
+#
+if (%test.fail() < %test.fail()) {
+	test_fail
+}
+
+#
+#	{} >= {} --> true
+#
+if !(%test.fail() >= %test.fail()) {
+	test_fail
+}
+
+#
+#	{} > {} --> false
+#
+if (%test.fail() > %test.fail()) {
+	test_fail
+}
+
+success
