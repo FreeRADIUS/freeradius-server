@@ -1236,7 +1236,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			continue;
 
 		case XLAT_FUNC:
-			XLAT_DEBUG("** [%i] %s(func) - %%{%s:...}", unlang_interpret_stack_depth(request), __FUNCTION__,
+			XLAT_DEBUG("** [%i] %s(func) - %%%s(...)", unlang_interpret_stack_depth(request), __FUNCTION__,
 				   node->fmt);
 
 			/*
