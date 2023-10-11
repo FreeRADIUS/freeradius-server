@@ -401,6 +401,22 @@ static xlat_action_t test_xlat_passthrough(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
+static xlat_arg_parser_t const test_xlat_fail_args[] = {
+	{ .required = false, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+
+/** Always return XLAT_ACTION_FAIL
+ */
+static xlat_action_t test_xlat_fail(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				    UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
+				    UNUSED fr_value_box_list_t *in)
+{
+	return XLAT_ACTION_FAIL;
+}
+
+
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_test_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_test_t);
@@ -467,6 +483,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	if (!(xlat = xlat_func_register_module(inst, mctx, "passthrough", test_xlat_passthrough, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, test_xlat_passthrough_args);
+
+	if (!(xlat = xlat_func_register_module(inst, mctx, "fail", test_xlat_fail, FR_TYPE_VOID))) return -1;
+	xlat_func_args_set(xlat, test_xlat_fail_args);
 
 	return 0;
 }
