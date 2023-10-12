@@ -250,6 +250,9 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 					      packet_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) return slen;
 		if (!slen) break;
+
+		fr_assert(slen <= (p - end));
+
 		p += slen;
 	}
 
