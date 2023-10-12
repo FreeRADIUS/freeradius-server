@@ -234,18 +234,17 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 	int i, count;
 	uint8_t const *p = rr;
 
+	/*
+	 *	The header has a count of how many records we need to decode.
+	 */
 	count = fr_nbo_to_uint16(counter);
 	FR_PROTO_TRACE("Decoding %u of %s", count, attr->name);
+
 	/* coverity[tainted_data] */
-	for (i = 0; i < count; i++) {
+	for (i = 0; (i < count) && (p < end); i++) {
 		ssize_t slen;
 
 		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - %s %d/%d", attr->name, i, count);
-
-		if (p >= end) {
-			fr_strerror_printf("%s structure at count %d/%d overflows the packet", attr->name, i, count);
-			return -(p - rr);
-		}
 
 		slen = fr_struct_from_network(ctx, out, attr, p, end - p, true,
 					      packet_ctx, decode_value_trampoline, decode_tlv_trampoline);
