@@ -171,6 +171,12 @@ server detail {
 			#  Whether or not the detail.work file reader
 			#  retransmits packets which have failed.
 			#
+			#  If this configuration item is set to `no`, then
+			#  the reader will ignore any failures, and will
+			#  go to the next entry as soon as the current
+			#  entry is finished, even if it failed to process
+			#  that entry.
+			#
 			#  default = yes
 			#
 			retransmit = yes
