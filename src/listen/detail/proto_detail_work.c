@@ -543,7 +543,6 @@ static void work_retransmit(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, vo
 	proto_detail_work_thread_t     	*thread = track->parent;
 
 	DEBUG("%s - retransmitting packet %d", thread->name, track->id);
-	track->retry.count++;
 
 	fr_dlist_insert_tail(&thread->list, track);
 
