@@ -59,13 +59,11 @@ if (!("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} rang
 }
 
 # Check the ZSCORE - releasing an address sets the ZSCORE to now - 1
-&Tmp-Date-0 := "%c"
-
-if (%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) > %(integer:%{Tmp-Date-0})) {
+if (%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) > %c) {
 	test_fail
 }
 
-if (%(integer:%{Tmp-Date-0}) - %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) > 10) {
+if ((%c - %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) > 10)) {
 	test_fail
 }
 

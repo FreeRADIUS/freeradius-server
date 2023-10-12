@@ -85,8 +85,7 @@ if ("%(redis:EXISTS {%{control.IP-Pool.Name}}:device:%{Calling-Station-ID})" != 
 }
 
 # Check the ZSCORE
-&Tmp-Date-0 := "%l"
-if ("%(redis:ZSCORE {%{control.IP-Pool.Name}%}:pool %{reply.Framed-IP-Address})" > %(integer:%{Tmp-Date-0})) {
+if ("%(redis:ZSCORE {%{control.IP-Pool.Name}%}:pool %{reply.Framed-IP-Address})" > %l) {
 	test_fail
 }
 
