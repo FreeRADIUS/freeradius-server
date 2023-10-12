@@ -92,9 +92,9 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	if (internal == parent) internal = NULL;
 
 	/*
-	 *	We allow an empty line.
+	 *	Zero data, or empty line.
 	 */
-	if (buffer[0] == 0) {
+	if ((buffer == end) || (buffer[0] == 0)) {
 		*token = T_EOL;
 		return 0;
 	}
