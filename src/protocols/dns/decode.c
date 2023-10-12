@@ -251,7 +251,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 		if (slen < 0) return slen;
 		if (!slen) break;
 
-		fr_assert(slen <= (p - end));
+		fr_assert(slen <= (end - p));
 
 		p += slen;
 	}
