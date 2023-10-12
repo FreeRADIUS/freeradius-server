@@ -23,12 +23,12 @@ class_value_prefix = 'ai:'
 #	result in the string `192.0.2.1`, but will instead be
 #	represented internally as 32-bits of binary data `c0000201`.
 #	The MD5 hash of those inputs will then be different.
-#	We fix this issue by using `%string(..}` to convert the
+#	We fix this issue by using `%string(..)` to convert the
 #	inputs to MD5 into printable string form.
 #
-#	Similarly, the output of `%md5(..}` is binary safe, and is
+#	Similarly, the output of `%md5(..)` is binary safe, and is
 #	therefore a binary blob.  We therefore convert the output
-#	of it to a printable string via `%hex(...}`
+#	of it to a printable string via `%hex(...)`
 #
 acct_unique {
 	#
