@@ -21,16 +21,16 @@ if (%sql("SELECT ipaddress FROM table WHERE user=%{User-Name}") == 192.0.2.1) }
 
 Since there is no attribute reference on either side of the `==`
 operator, the interpreter has no way of knowing that the string
-`192.0.2.1` is an IP address.  There is unfortunately no way of
-_always_ parsing strings in order to automatically determine which
-data type to use.  Any such automatic parsing would work most of the
-time, but it would have error cases where the parsing was incorrect.
+`192.0.2.1` is an IP address.  In most cases, the interpreter will
+guess correctly.  Howerver, there is no way of _always_ parsing
+strings in order to automatically determine which data type to use.
+Any such automatic parsing works most of the time, but it does have
+error cases where the parsing may be incorrect.
 
-The solution is to resolve these ambiguities by allowing the values to
-be cast to a particular type.  Casting a value to a type tells the
-interpreter how that value should be parsed.  Casting is done by
-prefixing a value with the type name, surrounded by brackets;
-`(...)`.
+The solution to resolving these ambiguities is by allowing the values
+to be `cast` to a particular type.  Casting a value to a type tells
+the interpreter how that value should be parsed.  Casting is done by
+prefixing a value with the type name, surrounded by brackets; `(...)`.
 
 .Syntax
 ----
@@ -48,18 +48,18 @@ if (%sql("SELECT ipaddress FROM table WHERE user=%{User-Name}") == (ipaddr)192.0
 ----
 
 In this example, we prefix the IP address with the string `(ipaddr)`.
-The interpreter then knows that the value `192.0.2.` should be
+The interpreter then knows that the value `192.0.2.1` should be
 interpreted as the data type `ipaddr`, and not as the literal string
-`"192.0.2."`.
-
-For a full list of data types which can be used in a cast, please see
-the xref:type/all_types.adoc[list of data types] page, and the
-"Basic Type Types" section.
+`"192.0.2.1"`.
 
 In most cases, the server can automatically determine what data type
 to use.  The cast syntax is used when either the data type is
 ambiguous, or when data should be normalized prior to comparison, or
 when a specific data type is required.
+
+For a full list of data types which can be used in a cast, please see
+the xref:type/all_types.adoc[list of data types] page, and the
+"Basic Type Types" section.
 
 == Casting Behavior
 
@@ -111,7 +111,7 @@ received from the network.  For example, casting the `octets` string
 
 Casting any data type to `string` means _printing_ the data type to a
 string, and assigning the resulting value to the `string`.  For a
-value of typ e `octets`, this means that the output is a hex string,
+value of type `octets`, this means that the output is a hex string,
 prefixed with `0x`.  In order to get the "raw" hex values of an
 `octets` data type, the `%hex(...)` expansion is used.  It prints out
 the hex value of its input, without the leading `0x` characters.
@@ -121,6 +121,51 @@ string as that data type.
 
 See xref:type/string/double.adoc[double-quoted strings] for examples
 of how double-quoted strings are used.
+
+=== Lists
+
+When a cast is applied to a list, the cast is applied _individually to
+each entry in the list_.  This behavior is most noticable when calling
+a function, or looping over a set of attributes.
+
+The following example will first create two `Reply-Message` attributes
+in the request.  It will then copy all of those attributes to the
+reply.
+
+.Example Copying Attributes
+[source,unlang]
+----
+&control.Reply-Message := { "one", "two" }
+
+&reply.Reply-Message := &control.Reply-Message[*]
+----
+
+The following example will take an input string `"192.168.0.1"`, split
+it on the `'.'` character, and then assign it to the `Tmp-Integer-0`
+attribute.  The result will be four copies of the `Tmp-Integer-0`
+attribute, which each carry one octet of the IP address.
+
+.Example Creating multiple Attributes
+----
+&Tmp-Integer-0 := %explode("192.168.0.1", '.')
+----
+
+If you need to cast an entire list to a value, then the value being
+cast should be surrounded by brackets.
+
+In the following example, the `%explode()` function will return a list
+of four values: `{"192", "168", "0", "1"}`.  Casting that to a string
+causes the values to be merged together, The resulting string is
+`"19216801"`.
+
+If you need to add text in between each list entry, see the
+`%concat()` function in the xref:xlat/builtin.adoc[built-in
+expansions] list.
+
+.Example Creating multiple Attributes
+----
+&reply.Reply-Message := (string) (%explode("192.168.0.1", '.'))
+----
 
 === Other Data Types
 

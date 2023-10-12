@@ -1,7 +1,6 @@
 #
 # PRE: if
 #
-
 # this fails, so the next edit is merged in and fails, too.
 &control -= &Password
 
@@ -10,10 +9,41 @@
 	&User-Password = &request.User-Password
 	&Tmp-String-0 = "ab c"
 	&Tmp-String-0 = "de fg"
+#	&Tmp-Integer-0 = { 123, 456 }  # @todo - Doesn't work :(
 	&Tmp-Integer-0 = 123
+	&Tmp-Integer-1 = 456
+	&Tmp-Integer-1 = 789
 }
 
+#
+#  &ref could return a list.
+#  (&ref) means "treat the list as one value"
+#  (string) (&ref) casts that one value to a string
+#    and returns one string
+#
+&Tmp-String-2 := %{(string) (&control.Tmp-Integer-1[*])}
+if !(&Tmp-String-2 == "456789") {
+	test_fail
+}
+
+#
+#  &ref could return a list.
+#  (&ref) means "treat the list as one value"
+#  (string) (&ref) casts each value to a string
+#    and returns a list of strings
+#
+&Tmp-String-2 := %{(string) &control.Tmp-Integer-1[*]}
+if !(&Tmp-String-2[0] == "456") {
+	test_fail
+}
+
+if !(&Tmp-String-2[1] == "789") {
+	test_fail
+}
+
+&control -= &Tmp-Integer-1[*]
 ok	# separate updates
+
 
 &control += {
 	&Tmp-String-1 = %concat(%{control.[*]}, ', ')
