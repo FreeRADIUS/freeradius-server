@@ -747,14 +747,14 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 		pthread_mutex_unlock(&thread->file_parent->worker_mutex);
 	}
 
-	DEBUG("Closing and deleting detail worker file %s", thread->name);
+	DEBUG("Closing %sdetail worker file %s", thread->outstanding == 0 ? "and deleting " : "", thread->name);
 
 #ifdef NOTE_REVOKE
 	fr_event_fd_delete(thread->el, thread->fd, FR_EVENT_FILTER_VNODE);
 #endif
 	fr_event_fd_delete(thread->el, thread->fd, FR_EVENT_FILTER_IO);
 
-	unlink(thread->filename_work);
+	if (thread->outstanding == 0) unlink(thread->filename_work);
 
 	close(thread->fd);
 	thread->fd = -1;
