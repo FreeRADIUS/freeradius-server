@@ -98,7 +98,7 @@ static xlat_arg_parser_t const xlat_func_debug_args[] = {
  *
  * Example:
 @verbatim
-"%(debug:3)"
+%debug(3)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -266,7 +266,7 @@ void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
  *
  * Example:
 @verbatim
-"%(debug_attr:&request[*])"
+%debug_attr(&request)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -354,7 +354,7 @@ static xlat_arg_parser_t const xlat_func_explode_args[] = {
 /** Split a string into multiple new strings based on a delimiter
  *
 @verbatim
-%(explode:<string> <delim>)
+%explode(<string>, <delim>)
 @endverbatim
  *
  * Example:
@@ -362,7 +362,7 @@ static xlat_arg_parser_t const xlat_func_explode_args[] = {
 update request {
 	&Tmp-String-1 := "a,b,c"
 }
-"%(concat:%(explode:%{Tmp-String-1} ,) |)" == "a|b|c"
+"%concat(%explode(%{Tmp-String-1}, ','), '|')" == "a|b|c"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -445,7 +445,7 @@ static xlat_arg_parser_t const xlat_func_immutable_attr_args[] = {
  *
  * Example:
 @verbatim
-"%(immutable:&request.State[*])"
+%immutable(&request.State[*])
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -506,7 +506,7 @@ static xlat_arg_parser_t const xlat_func_integer_args[] = {
 update request {
 	&Tmp-IP-Address-0 := "127.0.0.5"
 }
-"%(integer:%{Tmp-IP-Address-0})" == 2130706437
+%integer(%{Tmp-IP-Address-0}) == 2130706437
 @endverbatim
  * @ingroup xlat_functions
  */
@@ -687,7 +687,7 @@ static xlat_arg_parser_t const xlat_func_map_arg[] = {
  *
  * e.g.
 @verbatim
-%{map:&User-Name := 'foo'}
+%map("&User-Name := 'foo'")
 @endverbatim
  *
  * Allows sets of modifications to be cached and then applied.
@@ -916,7 +916,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	Parse the input as a literal expansion
 	 */
 	if (xlat_tokenize(rctx,
-			  &rctx->ex, 
+			  &rctx->ex,
 			  &FR_SBUFF_IN(arg->vb_strvalue, arg->vb_length),
 			  &(fr_sbuff_parse_rules_t){
 				  .escapes = &escape_rules
@@ -970,12 +970,12 @@ static xlat_arg_parser_t const xlat_func_pad_args[] = {
 /** lpad a string
  *
 @verbatim
-%(rpad:&Attribute-Name <length> [<fill>])
+%lpad(%{Attribute-Name},  <length> [, <fill>])
 @endverbatim
  *
  * Example: (User-Name = "foo")
 @verbatim
-"%(rpad:%{User-Name} 5 x)" == "xxfoo"
+%lpad(%{User-Name}, 5 'x') == "xxfoo"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1068,12 +1068,12 @@ static xlat_action_t xlat_func_lpad(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 /** Right pad a string
  *
 @verbatim
-%(rpad:&Attribute-Name <length> [<fill>])
+%rpad(%{Attribute-Name}, <length> [, <fill>])
 @endverbatim
  *
  * Example: (User-Name = "foo")
 @verbatim
-"%(rpad:%{User-Name} 5 x)" == "fooxx"
+%rpad(%{User-Name}, 5 'x') == "fooxx"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1157,7 +1157,7 @@ static xlat_arg_parser_t const xlat_func_base64_encode_arg[] = {
  *
  * Example:
 @verbatim
-"%(base64.encode:foo)" == "Zm9v"
+%base64.encode("foo") == "Zm9v"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1206,7 +1206,7 @@ static xlat_arg_parser_t const xlat_func_base64_decode_arg[] = {
  *
  * Example:
 @verbatim
-"%(base64.decode:Zm9v)" == "foo"
+%base64.decode("Zm9v") == "foo"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1254,7 +1254,7 @@ static xlat_arg_parser_t const xlat_func_bin_arg[] = {
  *
  * Example:
 @verbatim
-"%{bin:666f6f626172}" == "foobar"
+%bin("666f6f626172") == "foobar"
 @endverbatim
  *
  * @see #xlat_func_hex
@@ -1326,7 +1326,7 @@ static xlat_arg_parser_t const xlat_func_cast_args[] = {
  *
  * Example:
 @verbatim
-%(cast:string %{request[*]}) results in all of the input boxes being cast to string/
+%cast('string', %{request[*]}) results in all of the input boxes being cast to string/
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1450,9 +1450,9 @@ static xlat_arg_parser_t const xlat_func_concat_args[] = {
  *
  * Example:
 @verbatim
-"%(concat:%{request.[*]} ,)" == "<attr1value>,<attr2value>,<attr3value>,..."
-"%(concat:%{Tmp-String-0[*]} '. ')" == "<str1value>. <str2value>. <str3value>. ..."
-"%(concat:%(join:%{User-Name} %{Calling-Station-Id}) ', ')" == "bob, aa:bb:cc:dd:ee:ff"
+%concat(%{request.[*]}, ',') == "<attr1value>,<attr2value>,<attr3value>,..."
+%concat(%{Tmp-String-0[*]}, '. ') == "<str1value>. <str2value>. <str3value>. ..."
+%concat(%join(%{User-Name}, %{Calling-Station-Id}), ', ') == "bob, aa:bb:cc:dd:ee:ff"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1499,7 +1499,7 @@ static xlat_arg_parser_t const xlat_func_hex_arg[] = {
  *
  * Example:
 @verbatim
-"%{hex:foobar}" == "666f6f626172"
+%hex("foobar") == "666f6f626172"
 @endverbatim
  *
  * @see #xlat_func_bin
@@ -1576,7 +1576,7 @@ static xlat_arg_parser_t const xlat_hmac_args[] = {
  *
  * Example:
 @verbatim
-"%(hmacmd5:%{string:foo} %{string:bar})" == "0x31b6db9e5eb4addb42f1a6ca07367adc"
+%hmacmd5(%{string:foo}, %{string:bar}) == "0x31b6db9e5eb4addb42f1a6ca07367adc"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1594,7 +1594,7 @@ static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * Example:
 @verbatim
-"%(hmacsha1:%{string:foo} %{string:bar})" == "0x85d155c55ed286a300bd1cf124de08d87e914f3a"
+%hmacsha1(%{string:foo}, %{string:bar}) == "0x85d155c55ed286a300bd1cf124de08d87e914f3a"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1673,8 +1673,8 @@ static xlat_arg_parser_t const xlat_func_length_args[] = {
  *
  * Example:
 @verbatim
-"%(length:foobar)" == 6
-"%(length:%{bin:0102030005060708})" == 8
+%length(foobar) == 6
+%length(%bin("0102030005060708")) == 8
 @endverbatim
  *
  * @see #xlat_func_strlen
@@ -1707,7 +1707,7 @@ static xlat_arg_parser_t const xlat_func_md4_arg[] = {
  *
  * Example:
 @verbatim
-"%{md4:foo}" == "0ac6700c491d70fb8650940b1ca1e4b2"
+%md4("foo") == "0ac6700c491d70fb8650940b1ca1e4b2"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1747,7 +1747,7 @@ static xlat_arg_parser_t const xlat_func_md5_arg[] = {
  *
  * Example:
 @verbatim
-"%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
+%md5("foo") == "acbd18db4cc2f85cedef654fccc4a4d8"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1784,15 +1784,15 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 @verbatim
 exec echo {
   ...
-  program = "/bin/echo %{module:}"
+  program = "/bin/echo %module()"
   ...
 }
 @endverbatim
  *
  * Example:
 @verbatim
-"%{module:}" == "" (outside a module)
-"%{module:}" == "ldap" (in the ldap module)
+%module() == "" (outside a module)
+%module() == "ldap" (in the ldap module)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1828,7 +1828,7 @@ static xlat_arg_parser_t const xlat_func_pack_arg[] = {
  *
  * Example:
 @verbatim
-"%{pack:%{Attr-Foo}%{Attr-bar}" == packed hex values of the attributes
+%pack(%{Attr-Foo}%{Attr-bar}) == packed hex values of the attributes
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1862,8 +1862,8 @@ static xlat_arg_parser_t const xlat_func_pairs_args[] = {
  *
  * Example:
 @verbatim
-"%(pairs:request.[*])" == 'User-Name = "foo"User-Password = "bar"'
-"%(concat:%(pairs:request.[*]) ', ')" == 'User-Name = "foo", User-Password = "bar"'
+%pairs(request.[*]) == 'User-Name = "foo"User-Password = "bar"'
+%concat(%pairs(request.[*]), ', ') == 'User-Name = "foo", User-Password = "bar"'
 @endverbatim
  *
  * @see #xlat_func_concat
@@ -1926,11 +1926,11 @@ static xlat_arg_parser_t const xlat_func_rand_arg[] = {
 
 /** Generate a random integer value
  *
- * For "N = %{rand:MAX}", 0 <= N < MAX
+ * For "N = %rand(MAX)", 0 <= N < MAX
  *
  * Example:
 @verbatim
-"%{rand:100}" == 42
+%rand(100) == 42
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1983,10 +1983,10 @@ static xlat_arg_parser_t const xlat_func_randstr_arg[] = {
  *
  * Example:
 @verbatim
-"%{randstr:CCCC!!cccnnn}" == "IPFL>{saf874"
-"%{randstr:42o}" == "yHdupUwVbdHprKCJRYfGbaWzVwJwUXG9zPabdGAhM9"
-"%{hex:%{randstr:bbbb}}" == "a9ce04f3"
-"%{hex:%{randstr:8b}}" == "fe165529f9f66839"
+%randstr("CCCC!!cccnnn") == "IPFL>{saf874"
+%randstr("42o") == "yHdupUwVbdHprKCJRYfGbaWzVwJwUXG9zPabdGAhM9"
+%hex(%randstr("bbbb")) == "a9ce04f3"
+%hex(%randstr("8b")) == "fe165529f9f66839"
 @endverbatim
  * @ingroup xlat_functions
  */
@@ -2167,7 +2167,7 @@ static xlat_action_t xlat_func_randstr(TALLOC_CTX *ctx, fr_dcursor_t *out,
 if ("foo" =~ /^(?<name>.*)/) {
         noop
 }
-"%{regex:name}" == "foo"
+%regex(name) == "foo"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -2280,7 +2280,7 @@ static xlat_arg_parser_t const xlat_func_sha_arg[] = {
  *
  * Example:
 @verbatim
-"%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+%sha1(foo) == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -2317,7 +2317,7 @@ static xlat_action_t xlat_func_sha1(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * Example:
 @verbatim
-"%{sha2_256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+%sha2_256(foo) == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -2415,7 +2415,7 @@ static xlat_arg_parser_t const xlat_func_strlen_arg[] = {
  *
  * Example:
 @verbatim
-"%{strlen:foo}" == 3
+%strlen(foo) == 3
 @endverbatim
  *
  * @see #xlat_func_length
@@ -2451,12 +2451,12 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * Called when %(subst:) pattern begins with "/"
  *
 @verbatim
-%(subst:<subject> /<regex>/[flags] <replace>)
+%subst(<subject>, /<regex>/[flags], <replace>)
 @endverbatim
  *
  * Example: (User-Name = "foo")
 @verbatim
-"%(subst:%{User-Name} /oo.*$/ un)" == "fun"
+%subst(%{User-Name}, /oo.*$/, 'un') == "fun"
 @endverbatim
  *
  * @see #xlat_func_subst
@@ -2551,12 +2551,12 @@ static xlat_arg_parser_t const xlat_func_subst_args[] = {
 /** Perform regex substitution
  *
 @verbatim
-%(sub:<subject> <pattern> <replace>)
+%sub(<subject>, <pattern>, <replace>)
 @endverbatim
  *
  * Example: (User-Name = "foobar")
 @verbatim
-"%(sub:%{User-Name} oo un)" == "funbar"
+%sub(%{User-Name}, 'oo', 'un') == "funbar"
 @endverbatim
  *
  * @see xlat_func_subst_regex
@@ -2648,13 +2648,13 @@ static xlat_arg_parser_t const xlat_func_time_args[] = {
  *  Note that all operations are UTC.
  *
 @verbatim
-%(time:)
+%time()
 @endverbatim
  *
  * Example:
 @verbatim
 update reply {
-	&Reply-Message := "%{%{time:now} - %{time:request}}"
+	&Reply-Message := "%{%time(now) - %time(request)}"
 }
 @endverbatim
  *
@@ -2775,7 +2775,7 @@ static xlat_arg_parser_t const xlat_change_case_arg[] = {
  *
  * Example:
 @verbatim
-"%{tolower:Bar}" == "bar"
+%tolower("Bar") == "bar"
 @endverbatim
  *
  * Probably only works for ASCII
@@ -2794,7 +2794,7 @@ static xlat_action_t xlat_func_tolower(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * Example:
 @verbatim
-"%{toupper:Foo}" == "FOO"
+%toupper("Foo") == "FOO"
 @endverbatim
  *
  * Probably only works for ASCII
@@ -2818,7 +2818,7 @@ static xlat_arg_parser_t const xlat_func_urlquote_arg[] = {
  *
  * Example:
 @verbatim
-"%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
+%urlquote("http://example.org/") == "http%3A%47%47example.org%47"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -2902,7 +2902,7 @@ static xlat_arg_parser_t const xlat_func_urlunquote_arg[] = {
  *
  * Example:
 @verbatim
-"%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
+%urlunquote("http%%3A%%47%%47example.org%%47") == "http://example.org/"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -2978,7 +2978,7 @@ static xlat_arg_parser_t const protocol_decode_xlat_args[] = {
  *
  * Example:
 @verbatim
-%(dhcpv4.decode:%{Tmp-Octets-0})
+%dhcpv4.decode(%{Tmp-Octets-0})
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -3035,7 +3035,7 @@ static xlat_arg_parser_t const protocol_encode_xlat_args[] = {
  *
  * Example:
 @verbatim
-%(dhcpv4.encode:&request[*])
+%dhcpv4.encode(&request[*])
 @endverbatim
  *
  * @ingroup xlat_functions
