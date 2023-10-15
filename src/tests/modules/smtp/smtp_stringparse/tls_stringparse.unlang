@@ -32,8 +32,7 @@ echo $?"` == "1") {
 	test_fail
 }
 
-if !(`/bin/sh -c "cat build/ci/exim4/mail/stringparse_test_receiver | \
-grep -E 'Subject: for Bob'"`) {
+if !(`/bin/sh -c "grep -E 'Subject: for Bob' build/ci/exim4/mail/stringparse_test_receiver"`) {
 	test_fail
 }
 

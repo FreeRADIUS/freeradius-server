@@ -44,9 +44,9 @@ echo $?"` == "1") {
 # Pull out the base64 encoded test, decode it, trim line endings
 # Compare the result with the expected output
 #
-if !(`/bin/sh -c "cat build/ci/exim4/mail/smtp_attachment_receiver | \
-grep -E '^[A-Za-z0-9+/]{4}*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$' | base64 -d | tr -d '\r\n' | \
-grep -f build/ci/exim4/testfile"`){
+if !(`/bin/sh -c "grep -E '^[A-Za-z0-9+/]{4}*([A-Za-z0-9+/]{4}|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{2}==)$' build/ci/exim4/mail/smtp_attachment_receiver | \
+      base64 -d | tr -d '\r\n' | \
+      grep -f build/ci/exim4/testfile"`) {
 	test_fail
 }
 
