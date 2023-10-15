@@ -74,7 +74,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 			goto error;
 		}
 
-		fr_value_box_aprint(value_pool, &value, tmpl_value(map->rhs), &fr_value_escape_single);
+		fr_value_box_aprint_quoted(value_pool, &value, tmpl_value(map->rhs), T_DOUBLE_QUOTED_STRING);
 		if (!value) goto error;
 
 		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
