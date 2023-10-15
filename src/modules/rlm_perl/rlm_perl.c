@@ -280,7 +280,7 @@ static int perl_vblist_to_av(AV *av, fr_value_box_list_t *head) {
 			char	buffer[1024];
 			ssize_t	slen;
 
-			slen = fr_value_box_print_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vb, T_BARE_WORD);
+			slen = fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vb, NULL);
 			if (slen < 0) return -1;
 			sv = newSVpvn(buffer, (size_t)slen);
 		}
