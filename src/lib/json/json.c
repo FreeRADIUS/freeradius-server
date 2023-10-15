@@ -190,10 +190,9 @@ int fr_json_object_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, json_objec
 
 /** Convert boxed value_box to a JSON object
  *
- * @param[in] ctx	to allocate temporary buffers in
  * @param[in] data	to convert.
  */
-json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *data)
+json_object *json_object_from_value_box(fr_value_box_t const *data)
 {
 	/*
 	 *	We're converting to PRESENTATION format
@@ -211,18 +210,14 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 	default:
 	do_string:
 	{
-		char		*p;
-		json_object	*obj;
+		char		buffer[64];
+		fr_sbuff_t	sbuff = FR_SBUFF_IN(buffer, sizeof(buffer));
 
-		fr_value_box_aprint(ctx, &p, data, NULL);
-		if (!p) return NULL;
+		if (fr_value_box_print(&sbuff, data, NULL) <= 0) return NULL;
 
-		obj = json_object_new_string_len(p, talloc_array_length(p) - 1);
-		talloc_free(p);
-
-		return obj;
+		return json_object_new_string_len(buffer, fr_sbuff_used(&sbuff));
 	}
-
+ 
 	case FR_TYPE_STRING:
 		return json_object_new_string_len(data->vb_strvalue, data->vb_length);
 
@@ -267,6 +262,9 @@ json_object *json_object_from_value_box(TALLOC_CTX *ctx, fr_value_box_t const *d
 	case FR_TYPE_SIZE:
 		return json_object_new_int64(data->vb_size);
 #endif
+
+	case FR_TYPE_STRUCTURAL:
+		return NULL;
 	}
 }
 
@@ -338,7 +336,7 @@ fr_slen_t fr_json_str_from_value(fr_sbuff_t *out, fr_value_box_t *vb, bool inclu
 					break;
 
 				case '\\':
-					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\\\");
+<					FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "\\\\");
 					break;
 
 				case '/':
@@ -505,14 +503,14 @@ static int json_afrom_value_box(TALLOC_CTX *ctx, json_object **out,
 	}
 
 	if (format && format->value.always_string) {
-		if (fr_value_box_cast(ctx, &vb_str, FR_TYPE_STRING, NULL, vb) == 0) {
-			vb = &vb_str;
-		} else {
+		if (fr_value_box_cast(ctx, &vb_str, FR_TYPE_STRING, NULL, vb) < 0) {
 			return -1;
 		}
+
+		vb = &vb_str;
 	}
 
-	MEM(obj = json_object_from_value_box(ctx, vb));
+	MEM(obj = json_object_from_value_box(vb));
 
 	if (format && format->value.always_string) {
 		fr_value_box_clear(&vb_str);
