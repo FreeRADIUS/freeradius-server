@@ -50,6 +50,9 @@ RCSID("$Id$")
 #  include <openssl/evp.h>
 #endif
 
+#include <sys/stat.h>
+#include <fcntl.h>
+
 static char const hextab[] = "0123456789abcdef";
 
 /** Return a VP from the specified request.
@@ -316,6 +319,211 @@ static xlat_action_t xlat_func_debug_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcur
 
 	return XLAT_ACTION_DONE;
 }
+
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wgnu-designator"
+#endif
+
+static const fr_sbuff_escape_rules_t xlat_filename_escape = {
+	.name = "filename",
+	.chr = '_',
+	.do_utf8 = true,
+	.do_hex = true,
+
+	.esc = {
+		[ 0x00 ... 0x2f ] = true,		// special characters, '.', '/', etc.
+		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
+		[ 0x5b ... 0x5e ] = true,		// [\]^
+		[ 0x60 ] = true,			// back-tick
+		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
+	},
+};
+
+/** Escape the paths as necessary
+ *
+ */
+static ssize_t xlat_file_escape_path(fr_sbuff_t *in, fr_value_box_list_t *list)
+{
+	fr_sbuff_t our_in = FR_SBUFF(in);
+	char buffer[256];
+
+	fr_value_box_list_foreach(list, vb) {
+		if (vb->type == FR_TYPE_GROUP) {
+			if (xlat_file_escape_path(&our_in, &vb->vb_group) < 0) return -1;
+			continue;
+		}
+
+		fr_assert(fr_type_is_leaf(vb->type));
+
+		/*
+		 *	Untainted values get passed through, as do
+		 *	base integer types.
+		 */
+		if (!vb->tainted || (vb->type == FR_TYPE_OCTETS) || fr_type_is_integer(vb->type)) {
+			fr_value_box_print(&our_in, vb, NULL);
+			continue;
+		}
+
+		if (vb->type == FR_TYPE_STRING) {
+			fr_value_box_print(&our_in, vb, &xlat_filename_escape);
+			continue;
+		}
+
+		/*
+		 *	Ethernet addresses have ':'.  IP prefixes have '/'.  Floats have '+' and '-' in them.
+		 *	Dates have spaces.
+		 *
+		 *	We use an intermediate buffer to print the type, and then copy it to the output
+		 *	buffer, escaping it along the way.
+		 */
+		fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vb, NULL);
+		fr_sbuff_in_escape(&our_in, buffer, strlen(buffer), &xlat_filename_escape);
+	}
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
+}
+
+static const char *xlat_file_name(fr_value_box_list_t *in)
+{
+	fr_sbuff_t	*path;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&path, 256, PATH_MAX + 1);
+
+	if (xlat_file_escape_path(path, in) < 0) return NULL;
+
+	if (fr_sbuff_in_char(path, '\0') < 0) return NULL; /* file functions take NUL delimited strings */
+
+	return fr_sbuff_start(path);
+}
+
+static xlat_arg_parser_t const xlat_func_file_exists_args[] = {
+	{ .required = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   UNUSED request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t *dst;
+	char const	*filename;
+	struct stat	buf;
+
+	filename = xlat_file_name(in);
+	if (!filename) return XLAT_ACTION_FAIL;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	dst->vb_bool = (stat(filename, &buf) == 0);
+
+	return XLAT_ACTION_DONE;
+}
+
+
+static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 UNUSED xlat_ctx_t const *xctx,
+					 request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t *dst;
+	char const	*filename;
+	ssize_t		len;
+	int		fd;
+	char		*p, buffer[256];
+
+	filename = xlat_file_name(in);
+	if (!filename) return XLAT_ACTION_FAIL;
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		REDEBUG3("Failed opening file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+
+	len = read(fd, buffer, sizeof(buffer));
+	if (len < 0) {
+		REDEBUG3("Failed reading file %s - %s", filename, fr_syserror(errno));
+		close(fd);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Find the first CR/LF, but bail if we get any weird characters.
+	 */
+	for (p = buffer; p < (buffer + len); p++) {
+		if ((*p == '\r') || (*p == '\n')) {
+			break;
+		}
+
+		if ((*p < ' ') && (*p != '\t')) {
+		invalid:
+			REDEBUG("Invalid text in file %s", filename);
+			close(fd);
+			return XLAT_ACTION_FAIL;
+		}
+	}
+
+	if ((p - buffer) >= len) goto invalid;
+	close(fd);
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+	if (fr_value_box_bstrndup(dst, dst, NULL, buffer, p - buffer, false) < 0) {
+		talloc_free(dst);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, dst);
+
+	return XLAT_ACTION_DONE;
+}
+
+
+static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t *dst;
+	char const	*filename;
+	struct stat	buf;
+
+	filename = xlat_file_name(in);
+	if (!filename) return XLAT_ACTION_FAIL;
+
+	if (stat(filename, &buf) < 0) {
+		REDEBUG3("Failed checking file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_UINT64, NULL)); /* off_t is signed, but file sizes shouldn't be negative */
+	fr_dcursor_append(out, dst);
+
+	dst->vb_uint64 = buf.st_size;
+
+	return XLAT_ACTION_DONE;
+}
+
+
+static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t *dst;
+	char const	*filename;
+
+	filename = xlat_file_name(in);
+	if (!filename) return XLAT_ACTION_FAIL;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, dst);
+
+	dst->vb_bool = (unlink(filename) == 0);
+	if (!dst->vb_bool) {
+		REDEBUG3("Failed unlinking file %s - %s", filename, fr_syserror(errno));
+	}
+
+	return XLAT_ACTION_DONE;
+}
+
 
 static xlat_action_t xlat_func_untaint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       UNUSED xlat_ctx_t const *xctx,
@@ -3249,6 +3457,10 @@ do { \
 	XLAT_REGISTER_ARGS("cast", xlat_func_cast, FR_TYPE_VOID, xlat_func_cast_args);
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, FR_TYPE_STRING, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, FR_TYPE_STRING, xlat_func_explode_args);
+	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_exists_args);
+	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_exists_args);
+	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_BOOL, xlat_func_file_exists_args);
+	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_exists_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, FR_TYPE_VOID, xlat_func_integer_args);
