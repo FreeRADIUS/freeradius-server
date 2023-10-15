@@ -425,6 +425,8 @@ static int radsnmp_get_response(int fd,
 	      vp;
 	      vp = fr_dcursor_next(&cursor)) {
 	      	fr_dict_attr_t const *common;
+		fr_value_box_t copy;
+
 	      	/*
 	      	 *	We only care about TLV attributes beneath our root
 	      	 */
@@ -521,13 +523,21 @@ static int radsnmp_get_response(int fd,
 			io_vector[4].iov_len = vp->vp_length;
 			break;
 
+		case FR_TYPE_STRUCTURAL:
+			fr_assert(0);
+			return -1;
+
 		default:
 			/*
-			 *	We call fr_value_box_print with a NULL da pointer
-			 *	because we always need return integer values not
-			 *	value aliases.
+			 *	We need the integer values, not the
+			 *	enum names.  So we copy the box, and
+			 *	nuke the enum ptr.
 			 */
-			slen = fr_value_box_print(&FR_SBUFF_OUT(value_buff, sizeof(value_buff)), &vp->data, NULL);
+			fr_value_box_copy_shallow(NULL, &copy, &vp->data);
+			copy.enumv = NULL;
+
+			slen = fr_value_box_print(&FR_SBUFF_OUT(value_buff, sizeof(value_buff)), &copy, NULL);
+
 			if (slen < 0) {
 				fr_strerror_const("Insufficient fixed value buffer");
 				return -1;
