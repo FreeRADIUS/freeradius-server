@@ -37,7 +37,8 @@ echo $?"` == "1") {
 	test_fail
 }
 
-if !(`/bin/sh -c "grep -E 'Most Body' build/ci/exim4/mail/crln_test_receiver"`) {
+if !(`/bin/sh -c "cat build/ci/exim4/mail/crln_test_receiver | \
+grep -E 'Most Body'"`) {
 	test_fail
 }
 
