@@ -5113,9 +5113,12 @@ ssize_t fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  * in a database, in all other instances it's better to use
  * #fr_value_box_print_quoted.
  *
+ * @note - this function does NOT respect tainting!  The escaping rules
+ * are ONLY for escaping quotation characters, CR, LF, etc.
+ *
  * @param[in] out	Where to write the printed string.
  * @param[in] data	Value box to print.
- * @param[in] e_rules	To apply to FR_TYPE_STRING types.
+ * @param[in] e_rules	To apply to FR_TYPE_STRING types, for escaping quotation characters _only_.
  *			Is not currently applied to any other box type.
  */
 ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff_escape_rules_t const *e_rules)

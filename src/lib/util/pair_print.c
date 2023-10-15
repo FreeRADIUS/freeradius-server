@@ -167,9 +167,7 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 			FALL_THROUGH;
 
 		case FR_TYPE_DATE:
-			FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
-			FR_SBUFF_RETURN(fr_value_box_print, &our_out, &vp->data, &fr_value_escape_double);
-			FR_SBUFF_IN_CHAR_RETURN(&our_out, '"');
+			FR_SBUFF_RETURN(fr_value_box_print_quoted, &our_out, &vp->data, T_DOUBLE_QUOTED_STRING);
 			break;
 
 		case FR_TYPE_OCTETS:

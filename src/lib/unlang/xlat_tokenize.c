@@ -1460,9 +1460,7 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		if (node->quote == T_BARE_WORD) {
 			FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, e_rules);
 		} else {
-			FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
-			FR_SBUFF_RETURN(fr_value_box_print, out, &node->data, fr_value_escape_by_quote[node->quote]);
-			FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
+			FR_SBUFF_RETURN(fr_value_box_print_quoted, out, &node->data, node->quote);
 		}
 		goto done;
 
