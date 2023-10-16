@@ -115,21 +115,14 @@ else {
 	test_fail
 }
 
-group {
-	&Tmp-String-0 := `/bin/sh -c "test ! -e $ENV{MODULE_TEST_DIR}/test_b.log"`
-
-	actions {
-		fail = 1
-	}
-}
-if (fail) {
+if %file.exists("$ENV{MODULE_TEST_DIR}/test_b.log") {
 	test_fail
 }
 else {
 	test_pass
 }
+ok
 
-#  Check ref still works (with an exec)
 &control.Tmp-String-0 := 'test_exec'
 
 linelog_ref
@@ -244,7 +237,7 @@ else {
 %file.rm("$ENV{MODULE_TEST_DIR}/test_d.log")
 
 #  Remove old log files
-%file.rm("$ENV{MODULE_TEST_DIR}/test_d.log")
+%file.rm("$ENV{MODULE_TEST_DIR}/test_e.log")
 
 # Set attribute used in header line
 &control.Tmp-String-1 := "%t"
@@ -280,7 +273,7 @@ else {
 	test_fail
 }
 
-&Tmp-Integer-0 := `/bin/sh -c "cat $ENV{MODULE_TEST_DIR}/test_e.log | wc -l"`
+&Tmp-Integer-0 := `/bin/sh -c "wc -l < $ENV{MODULE_TEST_DIR}/test_e.log"`
 
 if (&Tmp-Integer-0 == 3) {
 	test_pass
