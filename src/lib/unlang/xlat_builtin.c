@@ -501,7 +501,7 @@ static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 	}
 
-	if ((p - buffer) >= len) goto invalid;
+	if ((p - buffer) > len) goto invalid;
 	close(fd);
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
@@ -537,6 +537,117 @@ static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_dcursor_append(out, dst);
 
 	dst->vb_uint64 = buf.st_size;
+
+	return XLAT_ACTION_DONE;
+}
+
+
+static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					 UNUSED xlat_ctx_t const *xctx,
+					 request_t *request, fr_value_box_list_t *in)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*filename;
+	ssize_t		len;
+	size_t		count = 0;
+	off_t		offset;
+	int		fd;
+	int		n, r;
+	char		*p, *end, *found, buffer[256];
+
+	XLAT_ARGS(in, &vb);
+	filename = xlat_file_name(vb);
+	if (!filename) return XLAT_ACTION_FAIL;
+
+	fd = open(filename, O_RDONLY);
+	if (fd < 0) {
+		REDEBUG3("Failed opening file %s - %s", filename, fr_syserror(errno));
+		return XLAT_ACTION_FAIL;
+	}
+
+	offset = lseek(fd, 0, SEEK_END);
+	if (offset < 0) {
+		REDEBUG3("Failed seeking to end of file %s - %s", filename, fr_syserror(errno));
+		goto fail;
+	}
+
+	if (offset > (off_t) sizeof(buffer)) {
+		offset -= sizeof(buffer);
+	} else {
+		offset = 0;
+	}
+
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		REDEBUG3("Failed seeking backwards from end of file %s - %s", filename, fr_syserror(errno));
+		goto fail;
+	}
+
+	len = read(fd, buffer, sizeof(buffer));
+	if (len < 0) {
+	fail:
+		REDEBUG3("Failed reading file %s - %s", filename, fr_syserror(errno));
+		close(fd);
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (len == 0) {
+		found = buffer;	/* count is zero, so who cares */
+		goto done;
+	}
+
+	n = r = 0;		/* be agnostic over CR / LF */
+
+	end = buffer + len;
+	found = NULL;
+
+	/*
+	 *	Nuke any trailing CR/LF
+	 */
+	p = end - 1;
+	while (p >= buffer) {
+		if (*p == '\r') {
+			r++;
+
+			if (r == 2) break;
+
+			end = p;
+
+		} else if (*p == '\n') {
+			n++;
+
+			if (n == 2) break;
+			end = p;
+
+		} else {
+			if (!r) r++; /* if we didn't get a CR/LF at EOF, pretend we did */
+			if (!n) n++;
+
+			found = p;
+		}
+
+		p--;
+	}
+
+	/*
+	 *	The buffer was only one line of CR/LF.
+	 */
+	if (!found) {
+		found = buffer;
+		goto done;
+	}
+
+	count = (end - found);
+
+done:
+	close(fd);
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+	if (fr_value_box_bstrndup(dst, dst, NULL, found, count, false) < 0) {
+		talloc_free(dst);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, dst);
 
 	return XLAT_ACTION_DONE;
 }
@@ -3549,8 +3660,9 @@ do { \
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, FR_TYPE_STRING, xlat_func_explode_args);
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_exists_args);
 	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_exists_args);
-	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_BOOL, xlat_func_file_exists_args);
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_exists_args);
+	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_exists_args);
+	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_exists_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, FR_TYPE_VOID, xlat_func_integer_args);

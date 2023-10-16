@@ -38,6 +38,22 @@ string line
 ----
 ====
 
+== %file.rm(_string_)
+
+.Return: _bool_
+
+This function removes a file.  If the file exists and could be removed, it returns `true`.  Otherwise if the file does not exist, or if the file could not be removed, it returns `false.
+
+.Removing a file
+====
+[source,unlang]
+----
+if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
+	%file.rm("/var/log/radius.log")
+}
+----
+====
+
 == %file.size(_string_)
 
 .Return: _uint64_
@@ -53,19 +69,19 @@ if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
 }
 ----
 
-== %file.rm(_string_)
+== %file.tail(_string_)
 
-.Return: _bool_
+.Return: _string_
 
-This function removes a file.  If the file exists and could be removed, it returns `true`.  Otherwise if the file does not exist, or if the file could not be removed, it returns `false.
+This function returns the last line of the file.  If the file does not exist, or if the line is more than 256 characters in length, it fails and nothing is returned.
 
-.Removing a file
+.Returning the first line of a file
 ====
 [source,unlang]
 ----
-if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
-	%file.rm("/var/log/radius.log")
-}
+string line
+
+&line := %file.tail("/var/log/radius.log")
 ----
 ====
 
