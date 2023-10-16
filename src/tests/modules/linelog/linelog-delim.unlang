@@ -6,7 +6,7 @@
 %file.rm("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
 linelog_fmt_delim
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
 if (&Tmp-String-0 == 'bob, ') {
 	test_pass
@@ -17,7 +17,7 @@ else {
 
 #  Check strings are appended
 linelog_fmt_delim
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
 if (&Tmp-String-0 == 'bob, bob, ') {
 	test_pass

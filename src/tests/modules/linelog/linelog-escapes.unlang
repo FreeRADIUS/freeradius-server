@@ -11,7 +11,7 @@
 &control.Tmp-String-1 := 'foo\nbar'
 
 linelog_escapes
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
 &Tmp-String-1 := "%hex(%{Tmp-String-0})"
 
 #
@@ -25,7 +25,7 @@ else {
 	test_fail
 }
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
 
 #
 #  This is left alone, and not "\n" --> 0x0a, too.
@@ -53,7 +53,7 @@ else {
 	test_fail
 }
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log")
 
 if (&Tmp-String-0 == "bar") {
 	test_pass

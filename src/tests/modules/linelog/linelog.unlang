@@ -9,7 +9,7 @@
 &control.Tmp-String-0 := 'test_default'
 
 linelog_fmt_and_ref
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 if (&Tmp-String-0 == 'bob default') {
 	test_pass
@@ -23,7 +23,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 if (&Tmp-String-0 == 'bob exec') {
 	test_pass
@@ -47,7 +47,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 if (&Tmp-String-0 == 'bob') {
 	test_pass
@@ -61,7 +61,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 if (&Tmp-String-0 == 'bob xlat') {
 	test_pass
@@ -75,7 +75,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 if (&Tmp-String-0 == '%{User-Name} literal') {
 	test_pass
@@ -89,7 +89,7 @@ else {
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 if (&Tmp-String-0 == '') {
 	test_pass
@@ -134,7 +134,7 @@ else {
 
 linelog_ref
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_b.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_b.log")
 
 if (&Tmp-String-0 == 'bob exec') {
 	test_pass
@@ -153,7 +153,7 @@ else {
 &control.Tmp-String-0 := '.messages.test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
 
 if (&Tmp-String-0 == 'bob xlat') {
 	test_pass
@@ -166,7 +166,7 @@ else {
 &control.Tmp-String-0 := 'test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
 
 if (&Tmp-String-0 == 'bob') {
 	test_pass
@@ -179,7 +179,7 @@ else {
 &control.Tmp-String-0 := 'messages.test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
 
 if (&Tmp-String-0 == 'bob xlat') {
 	test_pass
@@ -201,7 +201,7 @@ else {
 	test_fail
 }
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
 
 if (&Tmp-String-0 == 'bob xlat') {
 	test_pass
@@ -231,7 +231,7 @@ else {
 
 linelog_fmt
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_d.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_d.log")
 
 if (&Tmp-String-0 == 'bob') {
 	test_pass
@@ -260,7 +260,7 @@ else {
 	test_fail
 }
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_e.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_e.log")
 
 if (&Tmp-String-0 == 'bob,olobobob') {
 	test_pass
@@ -271,7 +271,7 @@ else {
 
 linelog_header
 
-&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_e.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_e.log")
 
 if (&Tmp-String-0 == 'bob,olobobob') {
 	test_pass
