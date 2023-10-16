@@ -63,6 +63,7 @@
 
 ** xref:xlat/index.adoc[Dynamic Expansion]
 *** xref:xlat/alternation.adoc[Alternation Syntax]
+*** xref:xlat/deprecated.adoc[Deprecated Functions]
 *** xref:xlat/file.adoc[File handling]
 *** xref:xlat/function.adoc[Function Syntax]
 *** xref:xlat/builtin.adoc[Built-in Expansions]

@@ -1,0 +1,66 @@
+= Deprecated or removed Expansions.
+
+There are a number of expansions in v3 which have been either
+deprecated or removed in v4.  The following text explains why these
+functions were removed, and what functionality has replaced them.
+
+== %expr(...)
+
+This expansion has been removed.  Instead, just use `%{ ... }`.
+
+[source,unlang]
+----
+&reply.Reply-Message := "The 1 + 2 = %{1 + 2}"
+----
+
+== %integer(...)
+
+This expansion has been removed.  Instead, just use `%{(integer) ...}` with math inside of the brackets.
+
+[source,unlang]
+----
+&reply.Reply-Message := "Value of Service-Type is %{(integer) &Service-Type}"
+----
+
+=== +%pack(%{Attribute-Name}%{Attribute-Name}...)+
+
+Pack multiple multiple attributes and/or literals into a binary string.
+For best results, each attribute passed to `pack` should be fixed size.
+That is, not data type `octets` or `string` as the length of those values
+will not be encoded.
+
+See also the `unpack` module, which is the inverse to `pack`.
+
+.Return: _octets_
+
+.Example
+
+[source,unlang]
+----
+&reply.Class := "%pack(%{reply.Framed-IP-Address}%{NAS-IP-Address}}"
+----
+
+It is easier to just use casting and string append:
+
+.Better example
+
+[source,unlang]
+----
+&reply.Class := (octets) &Framed-IP-Address + (octets) &NAS-IP-Address.
+----
+
+== %string(...)
+
+This expansion has been removed.  Instead, just use `%{(string) ...}` with an expression inside of the brackets.
+
+[source,unlang]
+----
+&reply.Reply-Message := "The printable version of Class is %{(string) &Class}"
+----
+
+== %strlen( ... )
+
+This expansion is deprecated and will be removed.  Just use `%length(...)` instead.
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
