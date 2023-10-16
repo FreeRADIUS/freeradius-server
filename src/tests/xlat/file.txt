@@ -19,5 +19,11 @@ match {baz is good}
 xlat_expr %file.tail('src/tests/xlat/file/three')
 match {but it was good}
 
+xlat_expr %file.tail('src/tests/xlat/file/three', 1)
+match {but it was good}
+
+xlat_expr %file.tail('src/tests/xlat/file/three', 2)
+match {who was very baaad\012but it was good}
+
 xlat_expr %file.size('src/tests/xlat/file/three')
 match {64}

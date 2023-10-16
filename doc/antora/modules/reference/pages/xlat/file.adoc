@@ -69,11 +69,13 @@ if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
 }
 ----
 
-== %file.tail(_string_)
+== %file.tail(_string_, [ _uint32_ ])
 
 .Return: _string_
 
 This function returns the last line of the file.  If the file does not exist, or if the line is more than 256 characters in length, it fails and nothing is returned.
+
+The function takes an optional second argument, which is the number of lines which should be returned.  The maximum number of lines which will be returned is limited to 15.
 
 .Returning the first line of a file
 ====
@@ -82,6 +84,8 @@ This function returns the last line of the file.  If the file does not exist, or
 string line
 
 &line := %file.tail("/var/log/radius.log")
+
+&line := %file.tail("/var/log/radius.log", 2)
 ----
 ====
 

@@ -432,10 +432,17 @@ static const char *xlat_file_name(fr_value_box_t *vb)
 	return fr_sbuff_start(path);
 }
 
-static xlat_arg_parser_t const xlat_func_file_exists_args[] = {
+static xlat_arg_parser_t const xlat_func_file_name_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
+
+static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
+	{ .required = true, .type = FR_TYPE_STRING },	
+	{ .required = false, .type = FR_TYPE_UINT32 },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
@@ -546,16 +553,16 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
 					 request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t *dst, *vb;
+	fr_value_box_t *dst, *vb, *num = NULL;
 	char const	*filename;
 	ssize_t		len;
 	size_t		count = 0;
 	off_t		offset;
 	int		fd;
-	int		n, r;
+	int		n, r, stop = 2;
 	char		*p, *end, *found, buffer[256];
 
-	XLAT_ARGS(in, &vb);
+	XLAT_ARGS(in, &vb, &num);
 	filename = xlat_file_name(vb);
 	if (!filename) return XLAT_ACTION_FAIL;
 
@@ -597,26 +604,51 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	n = r = 0;		/* be agnostic over CR / LF */
 
-	end = buffer + len;
+	/*
+	 *	Clamp number of lines to a reasonable value.  They
+	 *	still all have to fit into 256 characters, though.
+	 *
+	 *	@todo - have a large thread-local temporary buffer for this stuff.
+	 */
+	if (num) {
+		fr_assert(num->type == FR_TYPE_GROUP);
+		fr_assert(fr_value_box_list_num_elements(&num->vb_group) == 1);
+
+		num = fr_value_box_list_head(&num->vb_group);
+		fr_assert(num->type == FR_TYPE_UINT32);
+
+		if (!num->vb_uint32) {
+			stop = 2;
+		} else if (num->vb_uint32 < 15) {
+			stop = num->vb_uint64 + 1;
+		} else {
+			stop = 16;
+		}
+	} else {
+		stop = 2;
+	}
+
+	end = NULL;
 	found = NULL;
 
 	/*
 	 *	Nuke any trailing CR/LF
 	 */
-	p = end - 1;
+	p = buffer + len - 1;
 	while (p >= buffer) {
 		if (*p == '\r') {
 			r++;
 
-			if (r == 2) break;
+			if (r == stop) break;
 
-			end = p;
+			if (!end) end = p;
 
 		} else if (*p == '\n') {
 			n++;
 
-			if (n == 2) break;
-			end = p;
+			if (n == stop) break;
+
+			if (!end) end = p;
 
 		} else {
 			if (!r) r++; /* if we didn't get a CR/LF at EOF, pretend we did */
@@ -627,6 +659,8 @@ static xlat_action_t xlat_func_file_tail(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		p--;
 	}
+
+	if (!end) end = buffer + len;
 
 	/*
 	 *	The buffer was only one line of CR/LF.
@@ -3658,11 +3692,11 @@ do { \
 	XLAT_REGISTER_ARGS("cast", xlat_func_cast, FR_TYPE_VOID, xlat_func_cast_args);
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, FR_TYPE_STRING, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, FR_TYPE_STRING, xlat_func_explode_args);
-	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_exists_args);
-	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_exists_args);
-	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_exists_args);
-	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_exists_args);
-	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_exists_args);
+	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.size", xlat_func_file_size, FR_TYPE_UINT64, xlat_func_file_name_args);
+	XLAT_REGISTER_ARGS("file.tail", xlat_func_file_tail, FR_TYPE_STRING, xlat_func_file_name_count_args);
 	XLAT_REGISTER_ARGS("hmacmd5", xlat_func_hmac_md5, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("hmacsha1", xlat_func_hmac_sha1, FR_TYPE_OCTETS, xlat_hmac_args);
 	XLAT_REGISTER_ARGS("integer", xlat_func_integer, FR_TYPE_VOID, xlat_func_integer_args);

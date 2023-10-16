@@ -43,7 +43,7 @@ else {
 &control.Tmp-String-1 := "foo\nbar"
 
 linelog_escapes
-&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_escapes.log", 2)
 &Tmp-String-1 := "%hex(%{Tmp-String-0})"
 
 if (&Tmp-String-1 == '666f6f0a626172') {
