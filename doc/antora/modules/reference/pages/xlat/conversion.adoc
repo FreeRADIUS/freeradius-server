@@ -1,0 +1,130 @@
+= Data Conversion
+
+The following functions perform conversion to/from different types of data encoding.
+
+== %base64.encode( ... )
+
+Encode a string using Base64.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "Caipirinha"
+&reply.Reply-Message := "The base64 of %{control.Tmp-String-0} is %base64.encode(%{control.Tmp-String-0})"
+----
+
+.Output
+
+```
+The base64 of foo is Q2FpcGlyaW5oYQ==
+```
+
+== %base64.decode( ... )
+
+Decode a string previously encoded using Base64.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "Q2FpcGlyaW5oYQ=="
+&reply.Reply-Message := "The base64.decode of %{control.Tmp-String-0} is %base64.decode(%{control.Tmp-String-0})"
+----
+
+.Output
+
+```
+The base64.decode of Q2FpcGlyaW5oYQ== is Caipirinha
+```
+
+== %bin( ... )
+
+Convert string to binary.
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "10"
+&reply.Reply-Message := "The %{control.Tmp-String-0} in binary is %bin(%{control.Tmp-String-0})"
+----
+
+.Output
+
+```
+The 10 in binary is \020
+```
+
+== %hex( ... )
+
+Convert to hex.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "12345"
+&reply.Reply-Message := "The value of %{control.Tmp-String-0} in hex is %hex(%{control.Tmp-String-0})"
+----
+
+.Output
+
+```
+The value of 12345 in hex is 3132333435
+```
+
+== %urlquote( ... )
+
+Quote URL special characters.
+
+.Return: _string_.
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "http://example.org/"
+&reply += {
+	&Reply-Message = "The urlquote of %{control.Tmp-String-0} is %urlquote(%{control.Tmp-String-0})"
+}
+----
+
+.Output
+
+```
+The urlquote of http://example.org/ is http%3A%2F%2Fexample.org%2F
+```
+
+== %urlunquote( ... )
+
+Unquote URL special characters.
+
+.Return: _string_.
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "http%%3A%%2F%%2Fexample.org%%2F" # Attention for the double %.
+&reply += {
+	&Reply-Message = "The urlunquote of %{control.Tmp-String-0} is %urlunquote(%{control.Tmp-String-0})"
+}
+----
+
+.Output
+
+```
+The urlunquote of http%3A%2F%2Fexample.org%2F is http://example.org/
+```
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

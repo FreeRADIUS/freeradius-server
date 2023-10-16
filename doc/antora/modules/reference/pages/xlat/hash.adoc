@@ -1,0 +1,135 @@
+= Hashing
+
+The following functions perform hashing.
+
+Note that the server supports insecure hashing methods such as MD5 and
+SHA1.  These functions are here for historical compatibility and
+completeness.
+
+== %hmacmd5(<shared_key>, <string>)
+
+Generate `HMAC-MD5` of string.
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "mykey"
+&control.Tmp-String-1 := "Caipirinha"
+&reply.control.Tmp-Octets-0 := "%hmacmd5(%{control.Tmp-String-0} %{control.Tmp-String-1})"
+
+&reply += {
+    &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    &Reply-Message = "The HMAC-MD5 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0)"
+}
+----
+
+.Output
+
+```
+The HMAC-MD5 of Caipirinha in octets is \317}\264@K\216\371\035\304\367\202,c\376\341\203
+The HMAC-MD5 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
+```
+
+== %hmacsha1(<shared_key>, <string>)
+
+Generate `HMAC-SHA1` of string.
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "mykey"
+&control.Tmp-String-1 := "Caipirinha"
+&control.Tmp-Octets-0 := "%hmacsha1(%{control.Tmp-String-0}, %{control.Tmp-String-1})"
+
+&reply += {
+    &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in octets is %{control.Tmp-Octets-0}"
+    &Reply-Message = "The HMAC-SHA1 of %{control.Tmp-String-1} in hex is %hex(control.Tmp-Octets-0}"
+}
+----
+
+.Output
+
+```
+The HMAC-SHA1 of Caipirinha in octets is \311\007\212\234j\355\207\035\225\256\372ʙ>R\"\341\351O)
+The HMAC-SHA1 of Caipirinha in hex is 636f6e74726f6c3a546d702d4f63746574732d30
+```
+
+== %md5( ... )
+
+Dynamically expands the string and performs an MD5 hash on it. The
+result is binary data.
+
+.Return: _binary data_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "Caipirinha"
+&reply += {
+    &Reply-Message = "md5 of %{control.Tmp-String-0} is octal=%md5(%{control.Tmp-String-0})"
+    &Reply-Message = "md5 of %{control.Tmp-String-0} is hex=%hex(%md5(%{control.Tmp-String-0}))"
+}
+----
+
+.Output
+
+```
+md5 of Caipirinha is octal=\024\204\013md||\230\243\3472\3703\330n\251
+md5 of Caipirinha is hex=14840b6d647c7c98a3e732f833d86ea9
+```
+
+=== Other Hashing Functions
+
+The following hashes are supported for all versions of OpenSSL.
+
+* `%md2( ... }`
+* `%md4( ... }`
+* `%md5( ... }`
+* `%sha1( ... }`
+* `%sha224( ... }`
+* `%sha256( ... }`
+* `%sha384( ... }`
+* `%sha512( ... }`
+
+The following hashes are supported for when OpenSSL 1.1.1 or greater
+is installed.  This version adds support for the `sha3` and `blake`
+families of digest functions.
+
+* `%blake2s_256( ... )`
+* `%blake2b_512( ... )`
+* `%sha2_224( ... )`
+* `%sha2_256( ... )`
+* `%sha2_384( ... )`
+* `%sha2_512( ... )`
+* `%sha3_224( ... )`
+* `%sha3_256( ... )`
+* `%sha3_384( ... )`
+* `%sha3_512( ... )`
+
+.Return: _octal_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "Caipirinha"
+&reply += {
+    &Reply-Message = "The md5 of %{control.Tmp-String-0} in octal is %md5(%{control.Tmp-String-0}}"
+    &Reply-Message = "The md5 of %{control.Tmp-String-0} in hex is %hex(%md5(%{control.Tmp-String-0}}}"
+}
+----
+
+.Output
+
+```
+The md5 of Caipirinha in octal is \024\204\013md||\230\243\3472\3703\330n\251
+The md5 of Caipirinha in hex is 14840b6d647c7c98a3e732f833d86ea9
+```
+
