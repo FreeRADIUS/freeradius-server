@@ -1486,15 +1486,14 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 			goto done;
 		}
 
-		if (tmpl_is_xlat(node->vpt)) {
-			xlat_print(out, tmpl_xlat(node->vpt), fr_value_escape_by_quote[node->quote]);
-			goto done;
-		}
-
-		if (tmpl_contains_xlat(node->vpt)) { /* exec */
-			FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
-			xlat_print(out, tmpl_xlat(node->vpt), fr_value_escape_by_quote[node->quote]);
-			FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
+		if (tmpl_contains_xlat(node->vpt)) { /* xlat and exec */
+			if (node->vpt->quote == T_BARE_WORD) {
+				xlat_print(out, tmpl_xlat(node->vpt), NULL);
+			} else {
+				FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
+				xlat_print(out, tmpl_xlat(node->vpt), fr_value_escape_by_quote[node->quote]);
+				FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
+			}
 			goto done;
 		}
 

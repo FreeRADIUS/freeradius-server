@@ -35,7 +35,7 @@ xlat_expr (uint32) 1 << 31
 match 2147483648
 
 xlat_expr %n
-match {0}
+match 0
 
 xlat_expr &Net.Src.IP =~ /^127.0/
 match true
@@ -122,7 +122,7 @@ match foo baz bar
 #  The User-Name has to exist
 #
 xlat_expr %{User-Name}
-match {bob}
+match bob
 
 #
 #  We're not hashing the string value of the attribute reference

@@ -2463,30 +2463,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 */
 
 	/*
-	 *	Don't keep an intermediate tmpl for xlats.  Just hoist
-	 *	the xlat to be a child of this node. Exec and regexes
-	 *	are left alone, as they are handled by different code.
-	 */
-	if (tmpl_is_xlat(vpt) || tmpl_is_xlat_unresolved(vpt)) {
-		xlat_exp_head_t *xlat = tmpl_xlat(vpt);
-		xlat_exp_t	*arg = NULL;
-
-		XLAT_HEAD_VERIFY(xlat);
-
-		MEM(arg = xlat_exp_alloc(head, XLAT_GROUP, vpt->name, strlen(vpt->name)));
-
-		talloc_steal(arg->group, xlat);
-		arg->group = xlat;
-		arg->quote = quote;
-		arg->flags = xlat->flags;
-
-		talloc_free(node);	/* also frees tmpl, leaving just the xlat */
-		node = arg;
-
-		goto done;
-	}
-
-	/*
 	 *	Try and add any unknown attributes to the dictionary immediately.  This means any future
 	 *	references will all point to the same da.
 	 */
@@ -2520,7 +2496,16 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	node->quote = quote;
 	xlat_exp_set_name_buffer_shallow(node, vpt->name);
 
-	node->flags.pure = tmpl_is_data(node->vpt);
+	if (tmpl_is_data(node->vpt)) {
+			node->flags.pure = true;
+
+	} else if (tmpl_contains_xlat(node->vpt)) {
+		node->flags = tmpl_xlat(vpt)->flags;
+
+	} else {
+		node->flags.pure = false;
+	}
+
 	node->flags.constant = node->flags.pure;
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
 

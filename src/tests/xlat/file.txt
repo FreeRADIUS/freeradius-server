@@ -1,29 +1,35 @@
 xlat_expr %file.head('src/tests/xlat/file/one')
-match {foo}
+match foo
 
 #
 #  No LF at the end of the line
 #
 xlat_expr %file.head('src/tests/xlat/file/one-no-lf')
-match {foo}
+match foo
 
 xlat_expr %file.head('src/tests/xlat/file/two')
-match {foo bar}
+match foo bar
 
 xlat_expr %file.tail('src/tests/xlat/file/two')
-match {baz is good}
+match baz is good
 
 xlat_expr %file.tail('src/tests/xlat/file/two-no-lf')
-match {baz is good}
+match baz is good
 
 xlat_expr %file.tail('src/tests/xlat/file/three')
-match {but it was good}
+match but it was good
 
 xlat_expr %file.tail('src/tests/xlat/file/three', 1)
-match {but it was good}
+match but it was good
 
 xlat_expr %file.tail('src/tests/xlat/file/three', 2)
-match {who was very baaad\012but it was good}
+match who was very baaad\012but it was good
 
 xlat_expr %file.size('src/tests/xlat/file/three')
-match {64}
+match 64
+
+xlat_expr %file.exists('src/tests/xlat/file/three')
+match yes
+
+xlat_expr %file.exists('src/tests/xlat/file/no-such-file')
+match no

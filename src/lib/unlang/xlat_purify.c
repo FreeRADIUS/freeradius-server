@@ -77,6 +77,18 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 		if (!node->flags.can_purify) continue;
 
 		switch (node->type) {
+		case XLAT_TMPL:
+			if (tmpl_is_xlat(node->vpt)) {
+				xlat_exp_head_t *child = tmpl_xlat(node->vpt);
+
+				rcode = xlat_purify_list(child, request);
+				if (rcode < 0) return rcode;
+
+				node->flags = child->flags;
+				break;
+			}
+			FALL_THROUGH;
+
 		default:
 			fr_strerror_printf("Internal error - cannot purify xlat");
 			return -1;
