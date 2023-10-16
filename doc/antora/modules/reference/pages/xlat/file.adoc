@@ -1,0 +1,73 @@
+= File Handling functions
+
+The file handling functions allow for a limited number of operations on files.
+
+The filenames can be taken from `tainted` sources, in which cases special characters such as '`/`' and '`$`' are escaped.  Any special character is replaced with an underscore, followed by the hex value of the character.  Valid UTF-8 characters are allowed.
+
+For example, the `tainted` string `user@freeradius.org/..` will turn into the filename `user@freeradius.org_2f..`.  This operation renders the filename "safe" for operations on the local file system.  It is not possible for `tainted` data to create files, or to perform directory traversal attacks.
+
+== %file.exists(_string_)
+
+.Return: _bool_
+
+This function returns `true` if a file exists, or `false` if the file does not exist.
+
+.Checking if a file exists
+====
+[source,unlang]
+----
+if %file.exists("/var/log/radius.log") {
+	# do things...
+}
+----
+====
+
+== %file.head(_string_)
+
+.Return: _string_
+
+This function returns the first line of the file.  If the file does not exist, or if the line is more than 256 characters in length, it fails and nothing is returned.
+
+.Returning the first line of a file
+====
+[source,unlang]
+----
+string line
+
+&line := %file.head("/var/log/radius.log")
+----
+====
+
+== %file.size(_string_)
+
+.Return: _uint64_
+
+This function checks the size of a file.
+
+.Checking the size of a file
+====
+[source,unlang]
+----
+if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
+	%log.info("The log file is getting large!")
+}
+----
+
+== %file.rm(_string_)
+
+.Return: _bool_
+
+This function removes a file.  If the file exists and could be removed, it returns `true`.  Otherwise if the file does not exist, or if the file could not be removed, it returns `false.
+
+.Removing a file
+====
+[source,unlang]
+----
+if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
+	%file.rm("/var/log/radius.log")
+}
+----
+====
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

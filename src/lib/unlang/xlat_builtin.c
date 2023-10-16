@@ -331,6 +331,22 @@ static const fr_sbuff_escape_rules_t xlat_filename_escape = {
 	.do_hex = true,
 
 	.esc = {
+		[ 0x00 ... 0x2d ] = true,		// special characters, but not '.'
+		[ 0x2f ] = true,			// /
+		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
+		[ 0x5b ... 0x5e ] = true,		// [\]^
+		[ 0x60 ] = true,			// back-tick
+		[ 0x7b ... 0xff ] = true,		// {|}, and all chars which have high bit set, but aren't UTF-8
+	},
+};
+
+static const fr_sbuff_escape_rules_t xlat_filename_escape_dots = {
+	.name = "filename",
+	.chr = '_',
+	.do_utf8 = true,
+	.do_hex = true,
+
+	.esc = {
 		[ 0x00 ... 0x2f ] = true,		// special characters, '.', '/', etc.
 		[ 0x3A ... 0x3f ] = true,		// :;<=>?, but not "@"
 		[ 0x5b ... 0x5e ] = true,		// [\]^
@@ -342,54 +358,74 @@ static const fr_sbuff_escape_rules_t xlat_filename_escape = {
 /** Escape the paths as necessary
  *
  */
-static ssize_t xlat_file_escape_path(fr_sbuff_t *in, fr_value_box_list_t *list)
+static ssize_t xlat_file_escape_path(fr_sbuff_t *in, fr_value_box_t *vb)
 {
 	fr_sbuff_t our_in = FR_SBUFF(in);
 	char buffer[256];
 
-	fr_value_box_list_foreach(list, vb) {
-		if (vb->type == FR_TYPE_GROUP) {
-			if (xlat_file_escape_path(&our_in, &vb->vb_group) < 0) return -1;
-			continue;
+	if (vb->type == FR_TYPE_GROUP) {
+		fr_value_box_list_foreach(&vb->vb_group, box) {
+			if (xlat_file_escape_path(&our_in, box) < 0) return -1;
 		}
 
-		fr_assert(fr_type_is_leaf(vb->type));
-
-		/*
-		 *	Untainted values get passed through, as do
-		 *	base integer types.
-		 */
-		if (!vb->tainted || (vb->type == FR_TYPE_OCTETS) || fr_type_is_integer(vb->type)) {
-			fr_value_box_print(&our_in, vb, NULL);
-			continue;
-		}
-
-		if (vb->type == FR_TYPE_STRING) {
-			fr_value_box_print(&our_in, vb, &xlat_filename_escape);
-			continue;
-		}
-
-		/*
-		 *	Ethernet addresses have ':'.  IP prefixes have '/'.  Floats have '+' and '-' in them.
-		 *	Dates have spaces.
-		 *
-		 *	We use an intermediate buffer to print the type, and then copy it to the output
-		 *	buffer, escaping it along the way.
-		 */
-		fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vb, NULL);
-		fr_sbuff_in_escape(&our_in, buffer, strlen(buffer), &xlat_filename_escape);
+		goto done;
 	}
 
+	fr_assert(fr_type_is_leaf(vb->type));
+
+	/*
+	 *	Untainted values get passed through, as do base integer types.
+	 */
+	if (!vb->tainted || (vb->type == FR_TYPE_OCTETS) || fr_type_is_integer(vb->type)) {
+		fr_value_box_print(&our_in, vb, NULL);
+		goto done;
+	}
+
+	/*
+	 *	If the tainted string has a leading '.', then escape _all_ periods in it.  This is so that we
+	 *	don't accidentally allow a "safe" value to end with '/', and then an "unsafe" value contains
+	 *	"..", and we now have a directory traversal attack.
+	 *
+	 *	The escape rules will escape '/' in unsafe strings, so there's no possibility for an unsafe
+	 *	string to either end with a '/', or to contain "/.." itself.
+	 *
+	 *	Allowing '.' in the middle of the string means we can have filenames based on realms, such as
+	 *	"log/aland@freeradius.org".
+	 */
+	if (vb->type == FR_TYPE_STRING) {
+		if (vb->vb_length == 0) goto done;
+
+		if (vb->vb_strvalue[0] == '.') {
+			fr_value_box_print(&our_in, vb, &xlat_filename_escape_dots);
+		} else {
+			fr_value_box_print(&our_in, vb, &xlat_filename_escape);
+		}
+		goto  done;
+	}
+
+	/*
+	 *	Ethernet addresses have ':'.  IP prefixes have '/'.  Floats have '+' and '-' in them.
+	 *	Dates have pretty much all of that, plus spaces.
+	 *
+	 *	Lesson: print dates as %Y() or %l().
+	 *
+	 *	We use an intermediate buffer to print the type, and then copy it to the output
+	 *	buffer, escaping it along the way.
+	 */
+	fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vb, NULL);
+	fr_sbuff_in_escape(&our_in, buffer, strlen(buffer), &xlat_filename_escape);
+
+done:
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
 
-static const char *xlat_file_name(fr_value_box_list_t *in)
+static const char *xlat_file_name(fr_value_box_t *vb)
 {
 	fr_sbuff_t	*path;
 
 	FR_SBUFF_TALLOC_THREAD_LOCAL(&path, 256, PATH_MAX + 1);
 
-	if (xlat_file_escape_path(path, in) < 0) return NULL;
+	if (xlat_file_escape_path(path, vb) < 0) return NULL;
 
 	if (fr_sbuff_in_char(path, '\0') < 0) return NULL; /* file functions take NUL delimited strings */
 
@@ -403,13 +439,14 @@ static xlat_arg_parser_t const xlat_func_file_exists_args[] = {
 
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
-					   UNUSED request_t *request, fr_value_box_list_t *in)
+					   UNUSED request_t *request, fr_value_box_list_t *args)
 {
-	fr_value_box_t *dst;
+	fr_value_box_t *dst, *vb;
 	char const	*filename;
 	struct stat	buf;
 
-	filename = xlat_file_name(in);
+	XLAT_ARGS(args, &vb);
+	filename = xlat_file_name(vb);
 	if (!filename) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
@@ -425,13 +462,14 @@ static xlat_action_t xlat_func_file_head(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 UNUSED xlat_ctx_t const *xctx,
 					 request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t *dst;
+	fr_value_box_t *dst, *vb;
 	char const	*filename;
 	ssize_t		len;
 	int		fd;
 	char		*p, buffer[256];
 
-	filename = xlat_file_name(in);
+	XLAT_ARGS(in, &vb);
+	filename = xlat_file_name(vb);
 	if (!filename) return XLAT_ACTION_FAIL;
 
 	fd = open(filename, O_RDONLY);
@@ -482,11 +520,12 @@ static xlat_action_t xlat_func_file_size(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
 					   request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t *dst;
+	fr_value_box_t *dst, *vb;
 	char const	*filename;
 	struct stat	buf;
 
-	filename = xlat_file_name(in);
+	XLAT_ARGS(in, &vb);
+	filename = xlat_file_name(vb);
 	if (!filename) return XLAT_ACTION_FAIL;
 
 	if (stat(filename, &buf) < 0) {
@@ -507,10 +546,11 @@ static xlat_action_t xlat_func_file_rm(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
 					   request_t *request, fr_value_box_list_t *in)
 {
-	fr_value_box_t *dst;
+	fr_value_box_t *dst, *vb;
 	char const	*filename;
 
-	filename = xlat_file_name(in);
+	XLAT_ARGS(in, &vb);
+	filename = xlat_file_name(vb);
 	if (!filename) return XLAT_ACTION_FAIL;
 
 	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
@@ -570,7 +610,7 @@ static xlat_arg_parser_t const xlat_func_explode_args[] = {
 update request {
 	&Tmp-String-1 := "a,b,c"
 }
-"%concat(%explode(%{Tmp-String-1}, ','), '|')" == "a|b|c"
+"%concat(%explode(%{Tmp-String-1}, ','), '|')" == "a|b|c"g
 @endverbatim
  *
  * @ingroup xlat_functions

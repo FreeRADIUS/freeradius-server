@@ -63,7 +63,8 @@
 
 ** xref:xlat/index.adoc[Dynamic Expansion]
 *** xref:xlat/alternation.adoc[Alternation Syntax]
-*** xref:xlat/function.adoc[Functions]
+*** xref:xlat/file.adoc[File handling]
+*** xref:xlat/function.adoc[Function Syntax]
 *** xref:xlat/builtin.adoc[Built-in Expansions]
 *** xref:xlat/character.adoc[Single Letter Expansions]
 *** xref:xlat/attribute.adoc[Attribute References]
