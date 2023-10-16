@@ -880,7 +880,7 @@ static xlat_arg_parser_t const xlat_func_log_arg[] = {
  *
  * Example:
 @verbatim
-%log("foo") == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+%log("This is an informational message")
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -905,7 +905,7 @@ static xlat_action_t xlat_func_log_info(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
  *
  * Example:
 @verbatim
-%log.debug("foo") == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+%log.debug("This is a message")
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -921,6 +921,56 @@ static xlat_action_t xlat_func_log_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurs
 	if (!vb) return XLAT_ACTION_DONE;
 
 	RDEBUG("%s", vb->vb_strvalue);
+
+	return XLAT_ACTION_DONE;
+}
+
+
+/** Log something at DEBUG level.
+ *
+ * Example:
+@verbatim
+%log.err("Big errror here")
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_log_err(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					 UNUSED xlat_ctx_t const *xctx,
+					 request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+
+	XLAT_ARGS(args, &vb);
+
+	if (!vb) return XLAT_ACTION_DONE;
+
+	REDEBUG("%s", vb->vb_strvalue);
+
+	return XLAT_ACTION_DONE;
+}
+
+
+/** Log something at WARNlevel.
+ *
+ * Example:
+@verbatim
+%log.warn("Maybe something bad happened") 
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_log_warn(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					 UNUSED xlat_ctx_t const *xctx,
+					 request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+
+	XLAT_ARGS(args, &vb);
+
+	if (!vb) return XLAT_ACTION_DONE;
+
+	RWDEBUG("%s", vb->vb_strvalue);
 
 	return XLAT_ACTION_DONE;
 }
@@ -3525,7 +3575,9 @@ do { \
 	XLAT_REGISTER_ARGS("debug_attr", xlat_func_debug_attr, FR_TYPE_NULL, xlat_func_debug_attr_args);
 	XLAT_REGISTER_ARGS("immutable", xlat_func_immutable_attr, FR_TYPE_NULL, xlat_func_immutable_attr_args);
 	XLAT_REGISTER_ARGS("log.debug", xlat_func_log_debug, FR_TYPE_NULL, xlat_func_log_arg);
+	XLAT_REGISTER_ARGS("log.err", xlat_func_log_err, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("log.info", xlat_func_log_info, FR_TYPE_NULL, xlat_func_log_arg);
+	XLAT_REGISTER_ARGS("log.warn", xlat_func_log_warn, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, FR_TYPE_STRING, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);

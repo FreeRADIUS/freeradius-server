@@ -1,0 +1,54 @@
+= Logging Functions
+
+These functions perform logging at various levels.
+
+We suggest using these messages only to log special or unusual events.
+Producing multiple log messages per packet is not recommended, and can
+have a surprisingly large (and negative) impact on performance.
+
+== %log.debug(_string_)
+
+Logs a message at a DEBUG level.  This function returns nothing.
+
+[source,unlang]
+----
+%log.debug("Now processing %interpreter(...filename):%interpreter(...line)")
+----
+
+The DEBUG messages are printed only when the server has the debug flag set.
+
+== %log.err(_string_)
+
+Logs a message at a ERROR level.  This function returns nothing.
+
+[source,unlang]
+----
+%log.err("Something very bad happened")
+----
+
+The ERROR messages are always logged.
+
+== %log.info(_string_)
+
+Logs a message at a INFO level.  This function returns nothing.
+
+[source,unlang]
+----
+%log.info("Doing something useful now")
+----
+
+The INFO messages are always logged.
+
+== %log.watn(_string_)
+
+Logs a message at a WARN level.  This function returns nothing.
+
+[source,unlang]
+----
+%log.warn("Something bad might be happening")
+----
+
+The WARN messages are always logged.
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
