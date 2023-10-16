@@ -34,6 +34,7 @@
 
 #include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/pair.h>
@@ -939,6 +940,40 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	return state->recv(p_result, mctx, request);
 }
 
+static xlat_arg_parser_t const xlat_func_radius_request_verify_args[] = {
+        { .required = true, .single = true, .type = FR_TYPE_OCTETS },
+        XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Validates a request against a know shared secret
+ *
+ * Designed for the specific purpose of verifying dynamic clients
+ * against a know shared secret.
+ *
+ * Example:
+@verbatim
+%radius_request_verify(<secret>)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_radius_request_verify(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+                                                     request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t  *secret, *vb;
+
+	XLAT_ARGS(args, &secret);
+
+	if (request->dict != dict_radius) return XLAT_ACTION_FAIL;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	vb->vb_bool = (fr_radius_verify(request->packet->data, NULL, secret->vb_octets,
+                                        secret->vb_length, true) == 0) ? true : false;
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	process_radius_t	*inst = talloc_get_type_abort(mctx->inst->data, process_radius_t);
@@ -956,6 +991,18 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	inst->server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
 	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
+
+	return 0;
+}
+
+static int mod_load(void)
+{
+	xlat_t	*xlat;
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "radius_request_verify", xlat_func_radius_request_verify,
+						 FR_TYPE_BOOL)))) return -1;
+
+	xlat_func_args_set(xlat, xlat_func_radius_request_verify_args);
 
 	return 0;
 }
@@ -1294,6 +1341,7 @@ fr_process_module_t process_radius = {
 		.config		= config,
 		.inst_size	= sizeof(process_radius_t),
 
+		.onload		= mod_load,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
