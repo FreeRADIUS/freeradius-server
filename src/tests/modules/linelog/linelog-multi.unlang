@@ -3,16 +3,7 @@
 #
 #  Remove old log files
 #
-group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`
-
-	actions {
-		fail = 1
-	}
-}
-if (fail) {
-	ok
-}
+%file.rm("$ENV{MODULE_TEST_DIR}/test_multi.log")
 
 #  Check multiple string type attributes are logged correctly
 &control.Tmp-String-0 := 'test_multi_str'
@@ -73,4 +64,4 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_multi.log"`
+%file.rm("$ENV{MODULE_TEST_DIR}/test_multi.log")

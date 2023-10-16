@@ -3,16 +3,7 @@
 #
 #  Remove old log files
 #
-group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`
-
-	actions {
-		fail = 1
-	}
-}
-if (fail) {
-	ok
-}
+%file.rm("$ENV{MODULE_TEST_DIR}/test_escapes.log");
 
 #  Raw attribute value should be written out without further molestation.
 #  Because the value is wrapped in '' the \n is left as \n.
@@ -20,7 +11,7 @@ if (fail) {
 &control.Tmp-String-1 := 'foo\nbar'
 
 linelog_escapes
-&Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+&Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
 &Tmp-String-1 := "%hex(%{Tmp-String-0})"
 
 #
@@ -74,4 +65,4 @@ else {
 #  Fixme... needs completing. Too many broken escaping things.
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+%file.rm("$ENV{MODULE_TEST_DIR}/test_escapes.log");

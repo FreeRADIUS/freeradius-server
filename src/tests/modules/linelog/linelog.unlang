@@ -3,16 +3,7 @@
 #
 #  Remove old log files
 #
-group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
-
-	actions {
-		fail = 1
-	}
-}
-if (fail) {
-	ok
-}
+%file.rm("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 #  Check linelog fails over to the default message (an xlat expansion)
 &control.Tmp-String-0 := 'test_default'
@@ -42,7 +33,7 @@ else {
 }
 
 #  Check it's not overwriting the same line repeatedly
-&Tmp-String-0 := `/bin/sh -c "head -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
+&Tmp-String-0 := %file.head("$ENV{MODULE_TEST_DIR}/test_a.log");
 
 if (&Tmp-String-0 == 'bob default') {
 	test_pass
@@ -108,19 +99,10 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
+%file.rm("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 #  Remove old log files
-group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
-
-	actions {
-		fail = 1
-	}
-}
-if (fail) {
-	ok
-}
+%file.rm("$ENV{MODULE_TEST_DIR}/test_b.log")
 
 #  Check behaviour when we don't have a default configured (should not create new file)
 &control.Tmp-String-0 := 'test_default'
@@ -162,19 +144,10 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
+%file.rm("$ENV{MODULE_TEST_DIR}/test_b.log")
 
 #  Remove old log files
-group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
-
-	actions {
-		fail = 1
-	}
-}
-if (fail) {
-	ok
-}
+%file.rm("$ENV{MODULE_TEST_DIR}/test_c.log")
 
 #  Check behaviour using an attribute ref as a path
 &control.Tmp-String-0 := '.messages.test_xlat'
@@ -251,19 +224,11 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
+%file.rm("$ENV{MODULE_TEST_DIR}/test_c.log")
 
 #  Remove old log files
-group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
+%file.rm("$ENV{MODULE_TEST_DIR}/test_d.log")
 
-	actions {
-		fail = 1
-	}
-}
-if (fail) {
-	ok
-}
 linelog_fmt
 
 &Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_d.log"`
@@ -276,26 +241,17 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
+%file.rm("$ENV{MODULE_TEST_DIR}/test_d.log")
 
 #  Remove old log files
-group {
-	&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_e.log"`
-
-	actions {
-		fail = 1
-	}
-}
-if (fail) {
-	ok
-}
+%file.rm("$ENV{MODULE_TEST_DIR}/test_d.log")
 
 # Set attribute used in header line
 &control.Tmp-String-1 := "%t"
 
 linelog_header
 
-&Tmp-String-0 := `/bin/sh -c "head -n1 $ENV{MODULE_TEST_DIR}/test_e.log"`
+&Tmp-String-0 := %file.head("$ENV{MODULE_TEST_DIR}/test_e.log")
 
 if (&Tmp-String-0 == "Log started %{control.Tmp-String-1}") {
 	test_pass
@@ -334,4 +290,4 @@ else {
 }
 
 #  Remove the file
-&Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_e.log"`
+%file.rm("$ENV{MODULE_TEST_DIR}/test_e.log")
