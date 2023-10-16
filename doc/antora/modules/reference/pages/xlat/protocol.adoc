@@ -1,0 +1,85 @@
+= Encoders and Decoders
+
+These functions perform encoding and decoding of data for the
+networking protocols.  These expansions can be used to manually encode
+and decode raw data.
+
+In general, however, we recommend updating the dictionaries to
+automatically handle the information.  The dictionaries support
+structures, bit fields, and many many more features than previous
+versions of FreeRADIUS.  There are few situations where manual
+encoding and decoding is necessary.
+
+That being said, the main use of these expansions is for the
+"internal" protocol.  This is a virtual protocol which can encode and
+decode any attribute from any protocol.
+
+If you need to store attributes in an external database, then it is
+possible to encode them via `%internal.encode(...)`.  The result will
+be an opaque hex string which can be treated as an opaque blob, and
+stored externally.  Then, when the data is needed again, it can be
+turned back into attributes via `%internal.decode(...)`.
+
+== %PROTO.decode(_octets_)
+
+Decodes the input octers as the named protocol.  The input can also be
+an attribute reference, which is usually a reference to an attribute
+of type `octets.
+
+Each `PROTO.decode` function is automatically registered for every
+protocol which is used by the server.
+
+Note that the output attributes _must_ come from the same dictionary
+as the `request` they are being added to.  For example, you cannot use
+`dhcpv4.decode` inside of a virtual server which has `namespace =
+radius`.  Doing so would result in DHCPv4 attributes being inside of a
+RADIUS virtual server, which is not allowed.
+
+.Return: _integer_
+
+It returns the number of attributes which were decoded.
+
+.Example
+
+[source,unlang]
+----
+%dhcpv4.decode(0x520d0103abcdef0206010203040506)
+%radius.decode(0x010641424344)
+----
+
+.Output
+
+```
+&Relay-Agent-Information.Circuit-Id = 0xabcdef, &Relay-Agent-Information.Remote-Id = 0x010203040506
+&User-Name = "ABCD"
+```
+
+== %PROTO.encode(_list_)
+
+Encodes _list_ as the named protocol.  The _list_ can also be a series of attributes.
+
+The `PROTO.encode` expansion is automatically registered for every
+protocol which is used by the server.
+
+.Return: _octets_
+
+It returns the raw encoded data
+
+.Example
+
+[source,unlang]
+----
+%dhcpv4.encode("&Relay-Agent-Information.Circuit-Id = 0xabcdef, &Relay-Agent-Information.Remote-Id = 0x010203040506")
+%radius.encode("&User-Name = 'ABCD'")
+&Tmp-Octets-1 := %dhcpv4.encode(&request.Relay-Agent-Information.[*])
+----
+
+.Output
+
+```
+0x520d0103abcdef0206010203040506
+0x010641424344
+```
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

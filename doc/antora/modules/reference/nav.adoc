@@ -67,6 +67,7 @@
 *** xref:xlat/file.adoc[File handling]
 *** xref:xlat/function.adoc[Function Syntax]
 *** xref:xlat/log.adoc[Logging Functions]
+*** xref:xlat/protocol.adoc[Protocol Encoding and Decoding]
 *** xref:xlat/builtin.adoc[Built-in Expansions]
 *** xref:xlat/character.adoc[Single Letter Expansions]
 *** xref:xlat/attribute.adoc[Attribute References]
