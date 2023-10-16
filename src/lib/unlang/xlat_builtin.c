@@ -362,6 +362,7 @@ static ssize_t xlat_file_escape_path(fr_sbuff_t *in, fr_value_box_t *vb)
 {
 	fr_sbuff_t our_in = FR_SBUFF(in);
 	char buffer[256];
+	fr_sbuff_t buffer_sbuff = FR_SBUFF_OUT(buffer, sizeof(buffer));
 
 	if (vb->type == FR_TYPE_GROUP) {
 		fr_value_box_list_foreach(&vb->vb_group, box) {
@@ -412,8 +413,9 @@ static ssize_t xlat_file_escape_path(fr_sbuff_t *in, fr_value_box_t *vb)
 	 *	We use an intermediate buffer to print the type, and then copy it to the output
 	 *	buffer, escaping it along the way.
 	 */
-	fr_value_box_print(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vb, NULL);
-	fr_sbuff_in_escape(&our_in, buffer, strlen(buffer), &xlat_filename_escape);
+	fr_value_box_print(&buffer_sbuff, vb, NULL);
+	fr_sbuff_in_escape(&our_in, fr_sbuff_start(&buffer_sbuff), strlen(fr_sbuff_start(&buffer_sbuff)),
+			   &xlat_filename_escape);
 
 done:
 	FR_SBUFF_SET_RETURN(in, &our_in);
@@ -1100,7 +1102,7 @@ static xlat_action_t xlat_func_log_err(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
  *
  * Example:
 @verbatim
-%log.warn("Maybe something bad happened") 
+%log.warn("Maybe something bad happened")
 @endverbatim
  *
  * @ingroup xlat_functions
