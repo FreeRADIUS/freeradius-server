@@ -144,14 +144,14 @@ static int mod_open(fr_listen_t *li)
 		oflag = O_RDONLY;
 #endif
 		li->fd = thread->fd = open(inst->directory, oflag);
+		if (thread->fd < 0) {
+			cf_log_err(inst->cs, "Failed opening %s: %s", inst->directory, fr_syserror(errno));
+			return -1;
+		}
 	} else {
-		li->fd = thread->fd = open("/dev/null", O_RDONLY);
+		li->fd = thread->fd = -1;
+		li->non_socket_listener = true;
 	}
-	if (thread->fd < 0) {
-		cf_log_err(inst->cs, "Failed opening %s: %s", inst->directory, fr_syserror(errno));
-		return -1;
-	}
-
 	thread->inst = inst;
 	thread->name = talloc_typed_asprintf(thread, "detail_file which will read files matching %s", inst->filename);
 	thread->vnode_fd = -1;
@@ -759,7 +759,7 @@ static int mod_close(fr_listen_t *li)
 	 *	"copy timer from -> to, which means we only have to
 	 *	delete our child event loop from the parent on close.
 	 */
-	close(thread->fd);
+	if (thread->fd >= 0) close(thread->fd);
 
 	if (thread->vnode_fd >= 0) {
 		if (thread->nr) {

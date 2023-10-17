@@ -421,12 +421,22 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 		return 0;
 	}
 
-	/*
-	 *	Watch the directory for changes.
-	 */
-	if (!fr_schedule_directory_add(sc, li)) {
-		talloc_free(li);
-		return -1;
+	if (li->non_socket_listener) {
+		/*
+		 *	Add listener.  Will insert polling timer.
+		 */
+		if (!fr_schedule_listen_add(sc, li)) {
+			talloc_free(li);
+			return -1;
+		}
+	} else {
+		/*
+		 *	Watch the directory for changes.
+		 */
+		if (!fr_schedule_directory_add(sc, li)) {
+			talloc_free(li);
+			return -1;
+		}
 	}
 
 	DEBUG("Listening on %s bound to virtual server %s",
