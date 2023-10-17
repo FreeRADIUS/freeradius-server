@@ -899,7 +899,7 @@ static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *pare
 static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, int argc,
 				       fr_dict_attr_flags_t const *base_flags)
 {
-	bool			set_relative_attr = true;
+	bool			set_relative_attr;
 
 	ssize_t			slen;
 	unsigned int		attr;
@@ -932,11 +932,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	}
 
 	/*
-	 *	Relative OIDs apply ONLY to attributes of type 'tlv'.
-	 */
-	if (type != FR_TYPE_TLV) set_relative_attr = false;
-
-	/*
 	 *	A non-relative ATTRIBUTE definition means that it is
 	 *	in the context of the previous BEGIN-FOO.  So we
 	 *	unwind the stack to match.
@@ -959,6 +954,11 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 			if (slen <= 0) return -1;
 		}
 
+		/*
+		 *	We allow relative attributes only for TLVs.
+		 */
+		set_relative_attr = (type == FR_TYPE_TLV);
+
 	} else {
 		if (!ctx->relative_attr) {
 			fr_strerror_const("Unknown parent for partial OID");
@@ -966,10 +966,11 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		}
 
 		parent = ctx->relative_attr;
-		set_relative_attr = false;
 
 		slen = fr_dict_attr_by_oid_legacy(ctx->dict, &parent, &attr, argv[1]);
 		if (slen <= 0) return -1;
+
+		set_relative_attr = false;
 	}
 
 	if (!fr_cond_assert(parent)) return -1;	/* Should have provided us with a parent */
@@ -1029,18 +1030,9 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 */
 	da = dict_attr_child_by_num(parent, attr);
 	if (!da) {
-		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+		fr_strerror_printf("Failed to find attribute number %u we just added to parent %s.", attr, parent->name);
 		return -1;
 	}
-
-#ifndef NDEBUG
-	if (!dict_attr_by_name(NULL, parent, argv[0])) {
-		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
-		return -1;
-	}
-#endif
-
-	if (set_relative_attr) ctx->relative_attr = da;
 
 	if (dict_process_ref(ctx, parent, da, ref) < 0) return -1;
 
@@ -1054,6 +1046,8 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	} else {
 		memcpy(&ctx->value_attr, &da, sizeof(da));
 	}
+
+	if (set_relative_attr) ctx->relative_attr = da;
 
 	return 0;
 }
@@ -1145,7 +1139,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 	da = dict_attr_by_name(NULL, parent, argv[0]);
 	if (!da) {
-		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+		fr_strerror_printf("Failed to find attribute '%s' we just added to parent %s", argv[0], parent->name);
 		return -1;
 	}
 
@@ -1160,6 +1154,12 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 		ctx->value_attr = NULL;
 	} else {
 		memcpy(&ctx->value_attr, &da, sizeof(da));
+	}
+
+	if (type == FR_TYPE_TLV) {
+		ctx->relative_attr = da;
+	} else {
+		ctx->relative_attr = NULL;
 	}
 
 	return 0;
@@ -1248,16 +1248,9 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	 */
 	da = dict_attr_child_by_num(parent, attr);
 	if (!da) {
-		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
+		fr_strerror_printf("Failed to find attribute number %u we just added to parent %s", attr, parent->name);
 		return -1;
 	}
-
-#ifndef NDEBUG
-	if (!dict_attr_by_name(NULL, parent, argv[0])) {
-		fr_strerror_printf("Failed to find attribute '%s' we just added.", argv[0]);
-		return -1;
-	}
-#endif
 
 	memcpy(&ctx->value_attr, &da, sizeof(da));
 

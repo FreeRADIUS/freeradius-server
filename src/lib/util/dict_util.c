@@ -1080,7 +1080,10 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	 *	The parent has children by name only, not by number.  Don't even bother trying to track
 	 *	numbers, except for VENDOR in root, and MEMBER of a struct.
 	 */
-	if (!parent->flags.is_root && parent->flags.name_only && (parent->type != FR_TYPE_STRUCT)) return 0;
+	if (!parent->flags.is_root && parent->flags.name_only &&
+	    (parent->type != FR_TYPE_STRUCT) && (parent->type != FR_TYPE_TLV)) {
+		return 0;
+	}
 
 	/*
 	 *	We only allocate the pointer array *if* the parent has children.
@@ -1269,6 +1272,9 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	fr_dict_attr_t const	*old;
 	fr_dict_attr_flags_t	our_flags = *flags;
 	bool			self_allocated = false;
+#ifndef NDEBUG
+	fr_dict_attr_t		const *da;
+#endif
 
 	if (unlikely(dict->read_only)) {
 		fr_strerror_printf("%s dictionary has been marked as read only", fr_dict_root(dict)->name);
@@ -1330,6 +1336,22 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	Add in by number
 	 */
 	if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, parent), n) < 0) goto error;
+
+#ifndef NDEBUG
+	/*
+	 *	Check if we added the attribute
+	 */
+	da = dict_attr_child_by_num(parent, n->attr);
+	if (!da) {
+		fr_strerror_printf("FATAL - Failed to find attribute number %u we just added to parent %s.", n->attr, parent->name);
+		return -1;
+	}
+
+	if (!dict_attr_by_name(NULL, parent, n->name)) {
+		fr_strerror_printf("FATAL - Failed to find attribute '%s' we just added to parent %s.", n->name, parent->name);
+		return -1;
+	}
+#endif
 
 	/*
 	 *	If it's a group attribute, the default
