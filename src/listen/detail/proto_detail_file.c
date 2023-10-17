@@ -94,6 +94,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	return inst->parent->work_io->decode(inst->parent->work_io_instance, request, data, data_len);
 }
 
+#if 0
 static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_time_t request_time,
 			 UNUSED uint8_t *buffer, UNUSED size_t buffer_len, UNUSED size_t written)
 {
@@ -107,6 +108,7 @@ static ssize_t mod_write(UNUSED fr_listen_t *li, UNUSED void *packet_ctx, UNUSED
 	return thread->listen->app_io->write(thread->listen, packet_ctx, request_time, buffer, buffer_len, written);
 #endif
 }
+#endif
 
 static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 {
@@ -798,7 +800,7 @@ fr_app_io_t proto_detail_file = {
 	.close			= mod_close,
 	.vnode			= mod_vnode_extend,
 	.decode			= mod_decode,
-	.write			= mod_write,
+//	.write			= mod_write,
 	.event_list_set		= mod_event_list_set,
 	.get_name		= mod_name,
 };
