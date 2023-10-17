@@ -76,7 +76,7 @@ $(BUILD_DIR)/tests/unit/xlat/purify.txt $(filter $(BUILD_DIR)/tests/unit/xlat/co
 #
 #  And the actual script to run each test.
 #
-$(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute
+$(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute $(top_srcdir)/src/tests/unit/dictionary
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
 	${Q}if ! $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
