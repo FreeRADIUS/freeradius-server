@@ -767,11 +767,6 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 		talloc_free(thread->listen);
 	}
 
-	if (inst->parent->exit_when_done) {
-		fr_event_list_t *el = main_loop_event_list();
-		fr_event_loop_exit(el, 1);
-	}
-
 	return 0;
 }
 
