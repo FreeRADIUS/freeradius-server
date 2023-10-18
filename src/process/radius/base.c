@@ -1024,7 +1024,7 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "radius_secret_verify", xlat_func_radius_secret_verify,
+	if (unlikely(!(xlat = xlat_func_register(NULL, "radius.secret.verify", xlat_func_radius_secret_verify,
 						 FR_TYPE_BOOL)))) return -1;
 
 	xlat_func_args_set(xlat, xlat_func_radius_secret_verify_args);
