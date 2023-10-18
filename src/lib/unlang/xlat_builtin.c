@@ -3759,10 +3759,10 @@ do { \
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 
 	if (unlikely((xlat = xlat_func_register(ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
 
 	if (unlikely((xlat = xlat_func_register(ctx, "taint", xlat_func_taint, FR_TYPE_VOID)) == NULL)) return -1;
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
 
 	/*
 	 *	All of these functions are pure.
