@@ -720,7 +720,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 		node->call.input_type = func->input_type;
 	}
 
-	(void) fr_sbuff_next(in); /* skip the ')' */
+	(void) fr_sbuff_next(in); /* skip the '(' */
 
 	/*
 	 *	Now parse the child nodes that form the
@@ -1694,6 +1694,36 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		fr_sbuff_set(&m, &our_in);	/* Record start of argument */
 		argc++;
 
+#if 0
+		if (comma) {
+			fr_assert(p_rules && p_rules->terminals);
+
+			MEM(node = xlat_exp_alloc(head, XLAT_GROUP, NULL, 0));
+			if (xlat_tokenize_expression(node, &node->group, &our_in, p_rules, t_rules) <= 0) goto error;
+
+			fmt = talloc_bstrndup(node, fr_sbuff_current(&m), fr_sbuff_behind(&m));
+			xlat_exp_set_name_buffer_shallow(node, fmt);
+
+			node->flags = node->group->flags;
+			node->quote = T_BARE_WORD;
+
+			xlat_debug(node);
+
+			xlat_exp_insert_tail(head, node);
+			fr_sbuff_set(&m, &our_in);
+
+			if (fr_sbuff_next_if_char(&our_in, ',')) {
+				fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+				continue;
+			}
+
+			if (fr_sbuff_is_char(&our_in, ')')) break;
+
+			fr_strerror_printf("Unexpected text after argument %d", argc);
+			goto error;
+		}
+#endif
+
 		fr_sbuff_out_by_longest_prefix(&slen, &quote, xlat_quote_table, &our_in, T_BARE_WORD);
 
 		/*
@@ -1807,9 +1837,9 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		fr_sbuff_set(&m, &our_in);
 		len = fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
-		/*
-		 *	Commas are in the list of terminals, but we skip over them,
-		 */
+               /*
+		*	Commas are in the list of terminals, but we skip over them,
+		*/
 		if (comma) {
 			fr_assert(p_rules && p_rules->terminals);
 
