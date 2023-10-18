@@ -151,6 +151,7 @@ static int mod_open(fr_listen_t *li)
 	} else {
 		li->fd = thread->fd = -1;
 		li->non_socket_listener = true;
+		li->needs_full_setup = true;
 	}
 	thread->inst = inst;
 	thread->name = talloc_typed_asprintf(thread, "detail_file which will read files matching %s", inst->filename);

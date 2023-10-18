@@ -43,6 +43,10 @@ struct fr_listen {
 	bool			track_duplicates;	//!< do we track duplicate packets?
 	bool			no_write_callback;     	//!< sometimes we don't need to do writes
 	bool			non_socket_listener;	//!< special internal listener that does not use sockets.
+	bool			needs_full_setup;	//!< Set to true to avoid the short cut when adding the listener.
+							///< Added for rlm_detail which requires inst->parent->sc to be
+							///< populated when event_list_set callback is run which doesn't
+							///< happen if the short cut is taken.
 
 	size_t			default_message_size;	//!< copied from app_io, but may be changed
 	size_t			num_messages;		//!< for the message ring buffer

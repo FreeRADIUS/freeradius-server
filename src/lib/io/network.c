@@ -240,7 +240,7 @@ int fr_network_listen_add(fr_network_t *nr, fr_listen_t *li)
 	/*
 	 *	Skip a bunch of work if we're already in the network thread.
 	 */
-	if (is_network_thread(nr)) {
+	if (is_network_thread(nr) && !li->needs_full_setup) {
 		return fr_network_listen_add_self(nr, li);
 	}
 
