@@ -446,6 +446,29 @@ static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
 };
 
 
+static xlat_action_t xlat_func_file_escape(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					   UNUSED xlat_ctx_t const *xctx,
+					   UNUSED request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t *dst, *vb;
+	char const	*filename;
+
+	XLAT_ARGS(args, &vb);
+	filename = xlat_file_name(vb);
+	if (!filename) return XLAT_ACTION_FAIL;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+	if (fr_value_box_bstrndup(dst, dst, NULL, filename, strlen(filename), false) < 0) {
+		talloc_free(dst);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_dcursor_append(out, dst);
+
+	return XLAT_ACTION_DONE;
+}
+
+
 static xlat_action_t xlat_func_file_exists(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					   UNUSED xlat_ctx_t const *xctx,
 					   UNUSED request_t *request, fr_value_box_list_t *args)
@@ -3694,6 +3717,7 @@ do { \
 	XLAT_REGISTER_ARGS("cast", xlat_func_cast, FR_TYPE_VOID, xlat_func_cast_args);
 	XLAT_REGISTER_ARGS("concat", xlat_func_concat, FR_TYPE_STRING, xlat_func_concat_args);
 	XLAT_REGISTER_ARGS("explode", xlat_func_explode, FR_TYPE_STRING, xlat_func_explode_args);
+	XLAT_REGISTER_ARGS("file.escape", xlat_func_file_escape, FR_TYPE_STRING, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.exists", xlat_func_file_exists, FR_TYPE_BOOL, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.head", xlat_func_file_head, FR_TYPE_STRING, xlat_func_file_name_args);
 	XLAT_REGISTER_ARGS("file.rm", xlat_func_file_rm, FR_TYPE_BOOL, xlat_func_file_name_args);
