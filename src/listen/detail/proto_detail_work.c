@@ -734,6 +734,8 @@ static int mod_open(fr_listen_t *li)
 
 static int mod_close_internal(proto_detail_work_thread_t *thread)
 {
+	proto_detail_work_t const	*inst = talloc_get_type_abort_const(thread->inst, proto_detail_work_t);
+
 	/*
 	 *	One less worker...  we check for "0" because of the
 	 *	hacks in proto_detail which let us start up with
@@ -763,6 +765,17 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 	 */
 	if (thread->listen) {
 		talloc_free(thread->listen);
+	}
+
+	if (inst->parent->exit_when_done) {
+		INFO("Done reading detail files, process will now exit");
+
+		/*
+		 *	The least hacky way of signalling that the server
+		 *	should exit.  This is an almost identical code
+		 *	path as receiving a SIGTERM.
+		 */
+		main_loop_signal_raise(RADIUS_SIGNAL_SELF_TERM);
 	}
 
 	return 0;

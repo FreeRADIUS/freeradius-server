@@ -68,7 +68,7 @@ typedef struct proto_detail_work_s proto_detail_file_t;
  */
 typedef struct proto_detail_work_thread_s proto_detail_file_thread_t;
 
-static void work_init(proto_detail_file_thread_t *thread);
+static void work_init(proto_detail_file_thread_t *thread, bool triggered_by_delete);
 static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx);
 
 static const CONF_PARSER file_listen_config[] = {
@@ -122,7 +122,7 @@ static void mod_vnode_extend(fr_listen_t *li, UNUSED uint32_t fflags)
 
 	if (thread->ev) fr_event_timer_delete(&thread->ev);
 
-	work_init(thread);
+	work_init(thread, false);
 }
 
 /** Open a detail listener
@@ -232,7 +232,7 @@ static void work_retry_timer(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, v
 {
 	proto_detail_file_thread_t *thread = talloc_get_type_abort(uctx, proto_detail_file_thread_t);
 
-	work_init(thread);
+	work_init(thread, false);
 }
 
 /*
@@ -456,11 +456,23 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 	 *	"move", which both deletes the old file, and creates
 	 *	the new one.
 	 */
-	work_init(thread);
+	work_init(thread, true);
 }
 
 
-static void work_init(proto_detail_file_thread_t *thread)
+/** Start processing a new work file
+ *
+ * @param[in] thread			the thread instance.
+ * @param[in] triggered_by_delete	true if this was trigged by a vnode_delete.
+ *					When a new file is moved over a workfile
+ *					vnode delete can serve as an indication
+ *					that new data is available.
+ *					It can also mean however, that the file
+ *					has just been deleted, so we shouldn't
+ *					treat this failure to open the new file
+ *					as a fatal error.
+ */
+static void work_init(proto_detail_file_thread_t *thread, bool triggered_by_delete)
 {
 	proto_detail_file_t const *inst = thread->inst;
 	int fd, rcode;
@@ -516,6 +528,12 @@ retry:
 		 *	looking for another "detail" file.
 		 */
 		if (!inst->poll_interval) return;
+
+		/*
+		 *	File really was deleted, and didn't have
+		 *	anything moved over the top.
+		 */
+		if (triggered_by_delete) return;
 
 delay:
 		/*
@@ -575,7 +593,7 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, UNUSED void
 	thread->el = el;
 
 	if (inst->immediate) {
-		work_init(thread);
+		work_init(thread, false);
 		return;
 	}
 
