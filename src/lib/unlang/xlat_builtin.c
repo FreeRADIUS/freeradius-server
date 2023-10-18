@@ -755,9 +755,16 @@ static xlat_action_t xlat_func_taint(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	fr_value_box_t *vb;
 
-	fr_value_box_list_taint(in);
 	while ((vb = fr_value_box_list_pop_head(in)) != NULL) {
-		fr_dcursor_append(out, vb);
+		fr_value_box_t *child;
+
+		fr_assert(vb->type == FR_TYPE_GROUP);
+
+		while ((child = fr_value_box_list_pop_head(&vb->vb_group)) != NULL) {
+			child->tainted = true;
+
+			fr_dcursor_append(out, child);
+		}
 	}
 
 	return XLAT_ACTION_DONE;
