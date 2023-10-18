@@ -687,14 +687,16 @@ finish:
  *  comparing the signature in the packet with the one we calculated.
  *  If they differ, there's a problem.
  *
- * @param packet the raw RADIUS packet (request or response)
- * @param original the raw original request (if this is a response)
- * @param secret the shared secret
- * @param secret_len the length of the secret
+ * @param[in] packet		the raw RADIUS packet (request or response)
+ * @param[in] original		the raw original request (if this is a response)
+ * @param[in] secret		the shared secret
+ * @param[in] secret_len	the length of the secret
  * @param[in] require_ma	whether we require Message-Authenticator.
  * @return
- *	- <0 on error
- *	- 0 on success
+ *	- -2 if the message authenticator or request authenticator was invalid.
+ *	- -1 if we were unable to verify the shared secret, or the packet
+ *	     was in some other way malformed.
+ *	- 0 on success.
  */
 int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		     uint8_t const *secret, size_t secret_len, bool require_ma)
@@ -781,7 +783,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
 
 		fr_strerror_const("invalid Message-Authenticator (shared secret is incorrect)");
-		return -1;
+		return -2;
 	}
 
 	/*
@@ -802,7 +804,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 		} else {
 			fr_strerror_const("invalid Request Authenticator (shared secret is incorrect)");
 		}
-		return -1;
+		return -2;
 	}
 
 	return 0;

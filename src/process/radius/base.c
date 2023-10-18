@@ -31,6 +31,8 @@
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/state.h>
+#include <freeradius-devel/server/log.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/unlang/interpret.h>
@@ -940,7 +942,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	return state->recv(p_result, mctx, request);
 }
 
-static xlat_arg_parser_t const xlat_func_radius_request_verify_args[] = {
+static xlat_arg_parser_t const xlat_func_radius_secret_verify_args[] = {
         { .required = true, .single = true, .type = FR_TYPE_OCTETS },
         XLAT_ARG_PARSER_TERMINATOR
 };
@@ -952,23 +954,46 @@ static xlat_arg_parser_t const xlat_func_radius_request_verify_args[] = {
  *
  * Example:
 @verbatim
-%radius_request_verify(<secret>)
+%radius_secret_verify(<secret>)
 @endverbatim
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_radius_request_verify(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
-                                                     request_t *request, fr_value_box_list_t *args)
+static xlat_action_t xlat_func_radius_secret_verify(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+                                                    request_t *request, fr_value_box_list_t *args)
 {
 	fr_value_box_t  *secret, *vb;
+	int		ret;
+	bool		require_ma = false;
 
 	XLAT_ARGS(args, &secret);
 
 	if (request->dict != dict_radius) return XLAT_ACTION_FAIL;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
-	vb->vb_bool = (fr_radius_verify(request->packet->data, NULL, secret->vb_octets,
-                                        secret->vb_length, true) == 0) ? true : false;
+
+	/*
+	 *	Only Access-Requests require a Message-Authenticator.
+	 *	All the other packet types are signed using the
+	 *	authenticator field.
+	 */
+	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) require_ma = true;
+
+	ret = fr_radius_verify(request->packet->data, NULL, secret->vb_octets, secret->vb_length, require_ma);
+	switch (ret) {
+	case 0:
+		vb->vb_bool = true;
+		break;
+
+	case -1:
+		RPEDEBUG("Failed verifying secret");
+		return XLAT_ACTION_FAIL;
+
+	case -2:
+		RPDEBUG2("Provided secret was not used to sign this packet");
+		vb->vb_bool = false;
+		break;
+	}
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -999,10 +1024,10 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "radius_request_verify", xlat_func_radius_request_verify,
+	if (unlikely(!(xlat = xlat_func_register(NULL, "radius_secret_verify", xlat_func_radius_secret_verify,
 						 FR_TYPE_BOOL)))) return -1;
 
-	xlat_func_args_set(xlat, xlat_func_radius_request_verify_args);
+	xlat_func_args_set(xlat, xlat_func_radius_secret_verify_args);
 
 	return 0;
 }
