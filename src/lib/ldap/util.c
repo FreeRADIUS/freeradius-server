@@ -71,7 +71,7 @@ size_t fr_ldap_escape_func(UNUSED request_t *request, char *out, size_t outlen, 
 {
 	size_t left = outlen;
 
-	if (*in && ((*in == ' ') || (*in == '#'))) goto encode;
+	if ((*in == ' ') || (*in == '#')) goto encode;
 
 	while (*in) {
 		/*
