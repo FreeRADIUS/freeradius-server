@@ -412,9 +412,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t		m_lhs, m_rhs, m_op;
 	fr_sbuff_term_t const		*tt = p_rules ? p_rules->terminals : NULL;
-	map_t				*parent, *new_parent, *child;
-	tmpl_rules_t			our_lhs_rules;
-
+	map_t				*parent, *new_parent;
 
 	if (parent_p) {
 		new_parent = parent = *parent_p;
@@ -442,6 +440,8 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 
 	default:
 	{
+		tmpl_rules_t our_lhs_rules;
+
 		if (lhs_rules) {
 			our_lhs_rules = *lhs_rules;
 		} else {
@@ -591,26 +591,6 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 				fr_strerror_const("Expected '{' after structural attribute");
 				goto error;
 			}
-
-			fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
-
-			if (lhs_rules) {
-				our_lhs_rules = *lhs_rules;
-			} else {
-				memset(&our_lhs_rules, 0, sizeof(our_lhs_rules));
-			}
-			our_lhs_rules.attr.namespace = tmpl_attr_tail_da(map->lhs);
-
-			if (map_afrom_attr_str(map, &child, fr_sbuff_current(&our_in), &our_lhs_rules, rhs_rules) < 0) {
-				fr_sbuff_set(&our_in, &m_rhs);
-				fr_strerror_const("Failed parsing map contents");
-				goto error;
-			}
-			map_list_insert_tail(&map->child, child);
-
-			/*
-			 *	@todo - check for commas and repeat?
-			 */
 
 			fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
