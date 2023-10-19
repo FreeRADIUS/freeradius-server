@@ -607,7 +607,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 */
 			if (!fr_sbuff_next_if_char(&our_in, '}')) {
 				fr_sbuff_set(&our_in, &m_rhs);
-				fr_strerror_const("No matching '}'");
+				fr_strerror_const("Unexpected text before '}'");
 				goto error;
 			}
 
