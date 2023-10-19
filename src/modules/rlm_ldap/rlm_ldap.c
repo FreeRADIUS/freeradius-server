@@ -446,6 +446,11 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	if (vb->safe == FR_VALUE_BOX_SAFE(1)) return 0;
 
 	/*
+	 *	Ensure the box is a string before we attempt to escape it
+	 */
+	fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, vb->enumv);
+
+	/*
 	 *	Maximum space needed for output would be 3 times the input if every
 	 *	char needed escaping
 	 */
