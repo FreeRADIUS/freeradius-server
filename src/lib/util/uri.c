@@ -55,6 +55,15 @@ int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void
 		}
 
 		/*
+		 *	Ensure boxes are strings before attempting to escape.
+		 */
+		if (unlikely(uri_vb->type != FR_TYPE_STRING)) {
+			if (fr_value_box_cast_in_place(uri_vb, uri_vb, FR_TYPE_STRING, uri_vb->enumv) < 0) {
+				fr_strerror_printf_push("Unable to cast %pV to a string", uri_vb);
+			}
+		}
+
+		/*
 		 *	Tainted boxes can only belong to a single part of the URI
 		 */
 		if (uri_vb->tainted) {
