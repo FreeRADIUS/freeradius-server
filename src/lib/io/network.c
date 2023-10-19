@@ -1316,11 +1316,8 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *listen)
 	/*
 	 *	Non-socket listeners just get told about the event
 	 *	list, and nothing else.
-	 *	In very specific cases a listener app_io may only
-	 *	have a close, so look for both open and close to
-	 *	determine what this is.
 	 */
-	if (listen->non_socket_listener || (!listen->app_io->open && !listen->app_io->close)) {
+	if (listen->non_socket_listener) {
 		fr_assert(listen->app_io->event_list_set != NULL);
 		fr_assert(!listen->app_io->read);
 		fr_assert(!listen->app_io->write);

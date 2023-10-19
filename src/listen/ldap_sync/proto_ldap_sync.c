@@ -254,6 +254,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 	li->app = &proto_ldap_sync;
 	li->app_instance = instance;
 	li->server_cs = inst->server_cs;
+	li->non_socket_listener = true;
 
 	/*
 	 *	Set configurable parameters for message ring buffer.
