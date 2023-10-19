@@ -1408,6 +1408,21 @@ create_attrs:
 	fr_pair_list_append(&vendor->vp_group, &tlv_tmp);
 
 	/*
+	 *	Hacks for tags.  The tagged VSAs don't go into the
+	 *	root, they go into the Tag-# attribute.  But we only
+	 *	know that after we've created the parents.  So clean up if necessary.
+	 *
+	 *	@todo - maybe cache these somewhere to avoid bouncing.
+	 */
+	if (fr_pair_list_num_elements(&vendor->vp_group) == 0) {
+		if (fr_pair_list_num_elements(&vsa->vp_group) == 1) { /* only the vendor */
+			fr_pair_delete(out, vsa);
+		} else {
+			fr_pair_delete(&vsa->vp_group, vendor);
+		}
+	}
+
+	/*
 	 *	When the unknown attributes were created by
 	 *	decode_vsa_internal, the hierachy between that unknown
 	 *	attribute and first known attribute was cloned
@@ -1792,7 +1807,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	} else {
 		fr_assert(packet_ctx->tags != NULL);
 		fr_assert(packet_ctx->tags[tag] != NULL);
-		vp = fr_pair_afrom_da(packet_ctx->tags[tag]->parent, parent);
+		vp = fr_pair_afrom_da_nested(packet_ctx->tags[tag]->parent, &packet_ctx->tags[tag]->parent->vp_group, parent);
 	}
 	if (!vp) return -1;
 
@@ -1905,14 +1920,8 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	vp->vp_tainted = true;
 
-	if (!tag) {
-		fr_pair_append(out, vp);
-		return attr_len;
-	}
+	if (!tag) fr_pair_append(out, vp);
 
-	fr_assert(packet_ctx->tags != NULL);
-	fr_assert(packet_ctx->tags[tag] != NULL);
-	fr_pair_append(&packet_ctx->tags[tag]->parent->vp_group, vp);
 	return attr_len;
 }
 
