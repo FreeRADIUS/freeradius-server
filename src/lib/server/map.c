@@ -581,6 +581,10 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 */
 			if (map->op == T_OP_CMP_TRUE) goto parse_rhs;
 
+			fr_strerror_const("Structural attributes are not supported");
+			goto error;
+
+#if 0
 			/*
 			 *	@todo - check for, and allow '&'
 			 *	attribute references.  If found, then
@@ -621,6 +625,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 *	of the RHS parsing.
 			 */
 			goto check_for_child;
+#endif
 
 		default:
 			break;
@@ -709,7 +714,9 @@ parse_rhs:
 		}
 	}
 
+#if 0
 check_for_child:
+#endif
 	/*
 	 *	Add this map to to the parents list.  Note that the
 	 *	caller will have to check for this!
