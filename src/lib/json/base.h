@@ -102,15 +102,15 @@ typedef struct {
  * If an attribute appears only once then the value will normally
  * be written as an object. When an attribute appears more than
  * once then the values will be added as an array instead. Setting
- * **value_as_array** will ensure that values are always written as
+ * **value_is_always_array** will ensure that values are always written as
  * an array, even if containing only a single entry.
  *
- * Example with output_mode `JSON_MODE_OBJECT_SIMPLE` and `value_as_array` is false:
+ * Example with output_mode `JSON_MODE_OBJECT_SIMPLE` and `value_is_always_array` is false:
 @verbatim
 {"User-Name":"john","Filter-Id":["f1","f2"]}
 @endverbatim
  *
- * Example with output_mode `JSON_MODE_OBJECT_SIMPLE` and `value_as_array` is true:
+ * Example with output_mode `JSON_MODE_OBJECT_SIMPLE` and `value_is_always_array` is true:
 @verbatim
 {"User-Name":["john"],"Filter-Id":["f1","f2"]}
 @endverbatim
@@ -145,7 +145,7 @@ typedef struct {
  *
  */
 typedef struct {
-	bool	value_as_array;	//!< Use JSON array for multiple attribute values.
+	bool	value_is_always_array;	//!< Use JSON array for multiple attribute values.
 	bool	enum_as_int;	//!< Output enums as value, not their string representation.
 	bool	always_string;	//!< Output all data types as strings.
 } fr_json_format_value_t;

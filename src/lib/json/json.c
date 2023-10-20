@@ -44,7 +44,7 @@ size_t fr_json_format_table_len = NUM_ELEMENTS(fr_json_format_table);
 
 static fr_json_format_t const default_json_format = {
 	.attr = { .prefix = NULL },
-	.value = { .value_as_array = true },
+	.value = { .value_is_always_array = true },
 	.output_mode = JSON_MODE_OBJECT
 };
 
@@ -54,7 +54,7 @@ static CONF_PARSER const json_format_attr_config[] = {
 };
 
 static CONF_PARSER const json_format_value_config[] = {
-	{ FR_CONF_OFFSET("single_value_as_array", FR_TYPE_BOOL, fr_json_format_value_t, value_as_array), .dflt = "no" },
+	{ FR_CONF_OFFSET("single_value_as_array", FR_TYPE_BOOL, fr_json_format_value_t, value_is_always_array), .dflt = "no" },
 	{ FR_CONF_OFFSET("enum_as_integer", FR_TYPE_BOOL, fr_json_format_value_t, enum_as_int), .dflt = "no" },
 	{ FR_CONF_OFFSET("always_string", FR_TYPE_BOOL, fr_json_format_value_t, always_string), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
@@ -217,7 +217,7 @@ json_object *json_object_from_value_box(fr_value_box_t const *data)
 
 		return json_object_new_string_len(buffer, fr_sbuff_used(&sbuff));
 	}
- 
+
 	case FR_TYPE_STRING:
 		return json_object_new_string_len(data->vb_strvalue, data->vb_length);
 
@@ -544,7 +544,7 @@ static inline ssize_t attr_name_with_prefix(fr_sbuff_t *out, fr_dict_attr_t cons
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':');
 	}
 
-	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, NULL, da, false);
+	FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, da->name, da->name_len);
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
@@ -575,14 +575,14 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
 			if (verbose) WARN("attribute name prefix not valid in output_mode 'array_of_values' and will be ignored");
 			ret = false;
 		}
-		if (format->value.value_as_array) {
-			if (verbose) WARN("'value_as_array' not valid in output_mode 'array_of_values' and will be ignored");
+		if (format->value.value_is_always_array) {
+			if (verbose) WARN("'value_is_always_array' not valid in output_mode 'array_of_values' and will be ignored");
 			ret = false;
 		}
 		return ret;
 	case JSON_MODE_ARRAY_OF_NAMES:
-		if (format->value.value_as_array) {
-			if (verbose) WARN("'value_as_array' not valid in output_mode 'array_of_names' and will be ignored");
+		if (format->value.value_is_always_array) {
+			if (verbose) WARN("'value_is_always_array' not valid in output_mode 'array_of_names' and will be ignored");
 			ret = false;
 		}
 		if (format->value.enum_as_int) {
@@ -604,6 +604,12 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
 	return false;
 }
 
+#define INVALID_TYPE \
+do { \
+	fr_assert(0); \
+	fr_strerror_printf("Invalid type %s for attribute %s", fr_type_to_str(vp->vp_type), vp->da->name); \
+	return NULL; \
+} while (0)
 
 /** Returns a JSON object representation of a list of value pairs
  *
@@ -613,6 +619,24 @@ bool fr_json_format_verify(fr_json_format_t const *format, bool verbose)
  *
  * This function generates the "object" format, JSON_MODE_OBJECT.
  * @see fr_json_format_s
+ *
+@verbatim
+{
+	"<attribute0>":{
+		"type":"<type0>",
+		"value":[<value0>,<value1>,<valueN>]		// if value_is_always_array is true
+	},							// or
+	"<attribute1>":{
+		"type":"<type1>",
+		"value":<value0>				// if value_is_always_array is false
+								// and there is only one value
+	},
+	"<attributeN>":{
+		"type":"<typeN>",
+		"value":[...]
+	}
+}
+@endverbatim
  *
  * @param[in] ctx	Talloc context.
  * @param[in] vps	a list of value pairs.
@@ -640,13 +664,6 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 
 		if (vp->vp_raw) continue;
 
-		switch (vp->vp_type) {
-		case FR_TYPE_LEAF:
-			break;
-		default:
-			continue;
-		}
-
 		/*
 		 *	Get attribute name and value.
 		 */
@@ -655,17 +672,53 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 			return NULL;
 		}
 
-		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
-			fr_strerror_const("Failed to convert attribute value to JSON object");
-		error:
-			json_object_put_assert(obj);
+		switch (vp->vp_type) {
+		case FR_TYPE_LEAF:
+			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+				fr_strerror_const("Failed to convert attribute value to JSON object");
+			error:
+				json_object_put_assert(obj);
 
-			return NULL;
+				return NULL;
+			}
+			break;
+		/*
+		 *	For nested attributes we recurse.  The nesting is represented
+		 *	as a table, either as the single value, or as an element in
+		 *	an array.
+		 *
+		 *	...
+		 *	"value" : { "nested_attr" : { "type" : "<nested_type>", "value" : "<nested_attr_value>" } }
+		 *	...
+		 *
+		 *	...
+		 *	"value" : [ { "nested_attr" : { "type" : "<nested_type>", "value" : "<nested_attr_value>" } } ]
+		 *	...
+		 *
+		 *	The formatting of nested attributes and their structure is
+		 *	identical to top level attributes.
+		 */
+		case FR_TYPE_STRUCTURAL:
+			value = json_object_afrom_pair_list(ctx, &vp->vp_group, format);
+			break;
+
+		default:
+			INVALID_TYPE;
 		}
 
 		/*
-		 *	Look in the table to see if we already have
-		 *	a key for the attribute we're working on.
+		 *	Look in the table to see if we already have a key for the attribute
+		 *	we're working on.
+		 *
+		 *	If we don't we create a new object in either the form:
+		 *
+		 *	"<attribute>": {
+		 *		"type": "<type>",
+		 *		"value": [<value>]		// if value_is_always_array is true
+		 *						// or
+		 *		"value": <value>		// if value_is_always_array is false
+		 *						// and there is only one value
+		 *	}
 		 */
 		if (!json_object_object_get_ex(obj, fr_sbuff_start(&attr_name), &vp_object)) {
 			/*
@@ -683,52 +736,49 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
 			/*
 			 *	Create a "value" array to hold any attribute values for this attribute...
 			 */
-			if (format->value.value_as_array) {
+			if (format->value.value_is_always_array) {
 				MEM(values = json_object_new_array());
 				json_object_object_add_ex(vp_object, "value", values, JSON_C_OBJECT_KEY_IS_CONSTANT);
-			} else {
-				/*
-				 *	...unless this is the first time we've seen the attribute and
-				 *	value_as_array is false, in which case just add the value directly
-				 *	and move on to the next attribute.
-				 */
-				json_object_object_add_ex(vp_object, "value", value, JSON_C_OBJECT_KEY_IS_CONSTANT);
+				json_object_array_add(values, value);
 				continue;
 			}
-		} else {
-			/*
-			 *	Find the 'values' array to add the current value to.
-			 */
-			if (!fr_cond_assert(json_object_object_get_ex(vp_object, "value", &values))) {
-				fr_strerror_const("Inconsistent JSON tree");
-				goto error;
-			}
 
 			/*
-			 *	If value_as_array is no set then "values" may not be an array, so it will
-			 *	need converting to an array to add this extra attribute.
+			 *	...or just add the value directly.
 			 */
-			if (!format->value.value_as_array) {
-				json_type		type;
-				struct json_object	*convert_value = values;
+			json_object_object_add_ex(vp_object, "value", value, JSON_C_OBJECT_KEY_IS_CONSTANT);
 
-				/* Check "values" type */
-				type = json_object_get_type(values);
-
-				/* It wasn't an array, so turn it into one with the old value as the first entry */
-				if (type != json_type_array) {
-					MEM(values = json_object_new_array());
-					json_object_array_add(values, json_object_get(convert_value));
-					json_object_object_del(vp_object, "value");
-					json_object_object_add_ex(vp_object, "value", values,
-								  JSON_C_OBJECT_KEY_IS_CONSTANT);
-				}
-			}
+			continue;	/* Next attribute! */
 		}
 
 		/*
-		 *	Append to the JSON array.
+		 *	Find the 'values' array to add the current value to.
 		 */
+		if (!fr_cond_assert(json_object_object_get_ex(vp_object, "value", &values))) {
+			fr_strerror_const("Inconsistent JSON tree");
+			goto error;
+		}
+
+		/*
+		 *	If value_is_always_array is no set then "values" may not be an array, so it will
+		 *	need converting to an array to add this extra attribute.
+		 */
+		if (!format->value.value_is_always_array) {
+			json_type		type;
+			struct json_object	*convert_value = values;
+
+			/* Check "values" type */
+			type = json_object_get_type(values);
+
+			/* It wasn't an array, so turn it into one with the old value as the first entry */
+			if (type != json_type_array) {
+				MEM(values = json_object_new_array());
+				json_object_array_add(values, json_object_get(convert_value));
+				json_object_object_del(vp_object, "value");
+				json_object_object_add_ex(vp_object, "value", values,
+								JSON_C_OBJECT_KEY_IS_CONSTANT);
+			}
+		}
 		json_object_array_add(values, value);
 	}
 
@@ -744,6 +794,16 @@ static json_object *json_object_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t 
  *
  * This function generates the "simple object" format, JSON_MODE_OBJECT_SIMPLE.
  * @see fr_json_format_s
+ *
+@verbatim
+{
+	"<attribute0>":[<value0>,<value1>,<valueN>]	// if value_is_always_array is true
+							// or
+	"<attribute1>":<value0>				// if value_is_always_array is false,
+							// and there is only one value
+	"<attributeN>":[<value0>,<value1>,<valueN>]
+}
+@endverbatim
  *
  * @param[in] ctx	Talloc context.
  * @param[in] vps	a list of value pairs.
@@ -782,11 +842,37 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 			return NULL;
 		}
 
-		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
-			fr_strerror_const("Failed to convert attribute value to JSON object");
+		switch (vp->vp_type) {
+		case FR_TYPE_LEAF:
+			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+				fr_strerror_const("Failed to convert attribute value to JSON object");
+				json_object_put_assert(obj);
 
-			json_object_put_assert(obj);
-			return NULL;
+				return NULL;
+			}
+			break;
+		/*
+		 *	For nested attributes we recurse.  The nesting is represented
+		 *	as a table, either as the single value, or as an element in
+		 *	an array.
+		 *
+		 *	...
+		 *	"<parent>" : { "<nested_attr>" : <nested_attr_value> }
+		 *	...
+		 *
+		 *	...
+		 *	"<parent>" : [ { "<nested_attr>" : "<nested_attr_value>" } ]
+		 *	...
+		 *
+		 *	The formatting of nested attributes and their structure is
+		 *	identical to top level attributes.
+		 */
+		case FR_TYPE_STRUCTURAL:
+			value = json_smplobj_afrom_pair_list(ctx, &vp->vp_group, format);
+			break;
+
+		default:
+			INVALID_TYPE;
 		}
 
 		/*
@@ -794,7 +880,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		 *	if not then create a new one.
 		 */
 		if (!json_object_object_get_ex(obj, fr_sbuff_start(&attr_name), &vp_object)) {
-			if (format->value.value_as_array) {
+			if (format->value.value_is_always_array) {
 				/*
 				 *	We have been asked to ensure /all/ values are lists,
 				 *	even if there's only one attribute.
@@ -834,7 +920,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 		if (add_single) {
 			/*
 			 *	Only ever used the first time adding a new
-			 *	attribute when "value_as_array" is not set.
+			 *	attribute when "value_is_always_array" is not set.
 			 */
 			json_object_object_add(obj, fr_sbuff_start(&attr_name), value);
 		} else {
@@ -881,7 +967,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 	 *	If attribute values should be in a list format, then keep track
 	 *	of the attributes we've previously seen in a JSON object.
 	 */
-	if (format->value.value_as_array) {
+	if (format->value.value_is_always_array) {
 		seen_attributes = json_object_new_object();
 	}
 
@@ -904,13 +990,24 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 			return NULL;
 		}
 
-		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
-			fr_strerror_const("Failed to convert attribute value to JSON object");
-			json_object_put_assert(obj);
-			return NULL;
+		switch (vp->vp_type) {
+		case FR_TYPE_LEAF:
+			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+				fr_strerror_const("Failed to convert attribute value to JSON object");
+				json_object_put_assert(obj);
+				return NULL;
+			}
+			break;
+
+		case FR_TYPE_STRUCTURAL:
+			value = json_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			break;
+
+		default:
+			INVALID_TYPE;
 		}
 
-		if (format->value.value_as_array) {
+		if (format->value.value_is_always_array) {
 			/*
 			 *	Try and find this attribute in the "seen_attributes" object. If it is
 			 *	there then get the "values" array to add this attribute value to.
@@ -923,7 +1020,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 		 *	to an array of an existing attribute but haven't seen it before, then we need
 		 *	to create a new JSON object for this attribute.
 		 */
-		if (!format->value.value_as_array || !already_seen) {
+		if (!format->value.value_is_always_array || !already_seen) {
 			/*
 			 * Create object and add it to top-level array
 			 */
@@ -940,7 +1037,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 			json_object_object_add_ex(attrobj, "type", type_name, JSON_C_OBJECT_KEY_IS_CONSTANT);
 		}
 
-		if (format->value.value_as_array) {
+		if (format->value.value_is_always_array) {
 			/*
 			 *	We're adding values to an array for the first copy of this attribute
 			 *	that we saw. First time around we need to create an array.
@@ -974,7 +1071,7 @@ static struct json_object *json_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_l
 	/*
 	 *	No longer need the "seen_attributes" object, it was just used for tracking.
 	 */
-	if (format->value.value_as_array) {
+	if (format->value.value_is_always_array) {
 		json_object_put_assert(seen_attributes);
 	}
 
@@ -1020,10 +1117,21 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
 
 		if (vp->vp_raw) continue;
 
-		if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
-			fr_strerror_const("Failed to convert attribute value to JSON object");
-			json_object_put_assert(obj);
-			return NULL;
+		switch (vp->vp_type) {
+		case FR_TYPE_LEAF:
+			if (json_afrom_value_box(ctx, &value, vp, format) < 0) {
+				fr_strerror_const("Failed to convert attribute value to JSON object");
+				json_object_put_assert(obj);
+				return NULL;
+			}
+			break;
+
+		case FR_TYPE_STRUCTURAL:
+			value = json_value_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			break;
+
+		default:
+			INVALID_TYPE;
 		}
 
 		json_object_array_add(obj, value);
@@ -1067,8 +1175,8 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
 	for (vp = fr_pair_list_head(vps);
 	     vp;
 	     vp = fr_pair_list_next(vps, vp)) {
-		fr_sbuff_t		attr_name;
 		struct json_object	*value;
+		fr_sbuff_t		attr_name;
 
 		if (vp->vp_raw) continue;
 
@@ -1076,8 +1184,20 @@ static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ct
 		if (attr_name_with_prefix(&attr_name, vp->da, format) < 0) {
 			return NULL;
 		}
-
 		value = json_object_new_string(fr_sbuff_start(&attr_name));
+
+		switch (vp->vp_type) {
+		case FR_TYPE_LEAF:
+			break;
+
+		case FR_TYPE_STRUCTURAL:
+			json_object_array_add(obj, value);
+			value = json_attr_array_afrom_pair_list(ctx, &vp->vp_group, format);
+			break;
+
+		default:
+			INVALID_TYPE;
+		}
 
 		json_object_array_add(obj, value);
 	}
