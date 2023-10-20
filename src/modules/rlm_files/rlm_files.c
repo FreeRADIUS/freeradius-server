@@ -226,6 +226,27 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			}
 
 			/*
+			 *	Check for Fall-Through in the reply list.  If so, delete it and set the flag
+			 *	in the entry.
+			 *
+			 *	Note that we don't free "map", as the map functions usually make the "next"
+			 *	map be talloc parented from the current one.  So freeing this one will likely
+			 *	free all subsequent maps.
+			 */
+			if (da == attr_fall_through) {
+				map_t *prev;
+
+				if (tmpl_is_data(map->rhs) && (tmpl_value_type(map->rhs) == FR_TYPE_BOOL)) {
+					entry->fall_through = tmpl_value(map->rhs)->vb_bool;
+				}
+
+				prev = map_list_prev(&entry->reply, map);
+				(void) map_list_remove(&entry->reply, map);
+				map = prev;
+				continue;
+			}
+
+			/*
 			 *	If we allow list qualifiers in
 			 *	users_file.c, then this module also
 			 *	needs to be updated.  Ensure via an
@@ -457,7 +478,7 @@ redo:
 		map_t *map = NULL;
 		PAIR_LIST const *pl;
 		fr_pair_list_t list;
-		bool fall_through, next_shortest_prefix;
+		bool next_shortest_prefix;
 		bool match = true;
 
 		/*
@@ -538,7 +559,6 @@ redo:
 
 		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, pl->filename);
 		found = true;
-		fall_through = false;
 		next_shortest_prefix = false;
 
 		/*
@@ -560,18 +580,6 @@ redo:
 				}
 
 				/*
-				 *	Check for Fall-Through in the
-				 *	reply list.  If so, don't copy
-				 *	the attribute over to the reply
-				 */
-				vp = fr_pair_list_head(&tmp_list);
-				if (vp->da == attr_fall_through) {
-					fall_through = vp->vp_bool;
-					fr_pair_list_free(&tmp_list);
-					continue;
-				}
-
-				/*
 				 *	And do the same checks for prefix tries.
 				 */
 				if (trie && (keylen > 0)) {
@@ -587,7 +595,7 @@ redo:
 			}
 		}
 
-		if (fall_through) {
+		if (pl->fall_through) {
 			continue;
 		}
 

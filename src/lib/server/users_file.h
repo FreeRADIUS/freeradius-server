@@ -40,6 +40,7 @@ typedef struct pair_list {
 	map_list_t		check;		//!< List of maps for comparison / modifying control list
 	map_list_t		reply;		//!< List of maps for modifying reply list
 	int			order;		//!< Sequence of entry in source file
+	bool			fall_through;	//!< go to the next one
 	char const		*filename;	//!< Filename entry read from
 	int			lineno;		//!< Line number entry read from
 	fr_dlist_t		entry;		//!< Entry in dlist of PAIR_LIST with matching name
