@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/edit.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/unlang/tmpl.h>
+#include <freeradius-devel/unlang/edit.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include "edit_priv.h"
 
@@ -62,7 +63,7 @@ struct edit_map_s {
 	edit_map_t		*parent;
 	edit_map_t		*child;
 
-	map_list_t const	*map_head;
+	map_list_t const	*map_list;
 	map_t const		*map;			//!< the map to evaluate
 
 	bool			temporary_pair_list;
@@ -79,10 +80,12 @@ struct edit_map_s {
  *
  */
 struct unlang_frame_state_edit_s {
-	fr_edit_list_t		*el;				//!< edit list
+	fr_edit_list_t		*el;			//!< edit list
+	bool			*success;		//!< whether or not the edit succeeded
+
 	rindent_t		indent;
 
-	edit_map_t		*current;			//!< what we're currently doing.
+	edit_map_t		*current;		//!< what we're currently doing.
 	edit_map_t		first;
 };
 
@@ -824,7 +827,7 @@ static int next_map(UNUSED request_t *request, UNUSED unlang_frame_state_edit_t 
 	current->lhs.vpt = NULL;
 	current->rhs.vpt = NULL;
 
-	current->map = map_list_next(current->map_head, current->map);
+	current->map = map_list_next(current->map_list, current->map);
 	current->func = expand_lhs;
 
 	/*
@@ -1007,8 +1010,8 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	 *	parent vp.  Any child pairs which aren't used will be freed.
 	 */
 	child->el = NULL;
-	child->map_head = &map->child;
-	child->map = map_list_head(child->map_head);
+	child->map_list = &map->child;
+	child->map = map_list_head(child->map_list);
 	child->func = expand_lhs;
 
 	if (fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
@@ -1499,10 +1502,12 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				*p_result = RLM_MODULE_NOOP;
 
 				/*
-				 *	Expansions, etc. are SOFT
-				 *	failures, which simply don't
-				 *	apply the operations.
+				 *	Expansions, etc. failures are SOFT failures, which undo the edit
+				 *	operations, but otherwise do not affect the interpreter.
+				 *
+				 *	However, if the caller asked for the actual result, return that, too.
 				 */
+				if (state->success) *state->success = false;
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
 
@@ -1522,11 +1527,44 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 	}
 
 	/*
-	 *	Freeing the edit list will automatically commit the edits.
+	 *	Freeing the edit list will automatically commit the edits.  i.e. trash the undo list, and
+	 *	leave the edited pairs in place.
 	 */
 
 	*p_result = RLM_MODULE_NOOP;
+	if (state->success) *state->success = true;
 	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static void edit_state_init_internal(request_t *request, unlang_frame_state_edit_t *state, fr_edit_list_t *el, map_list_t const *map_list)
+{
+	edit_map_t			*current = &state->first;
+
+	state->current = current;
+	fr_value_box_list_init(&current->lhs.result);
+	fr_value_box_list_init(&current->rhs.result);
+
+	/*
+	 *	The edit list creates a local pool which should
+	 *	generally be large enough for most edits.
+	 */
+	if (!el) {
+		MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(map_list)));
+	}
+
+	current->ctx = state;
+	current->el = state->el;
+	current->map_list = map_list;
+	current->map = map_list_head(current->map_list);
+	fr_pair_list_init(&current->rhs.pair_list);
+	current->func = expand_lhs;
+	current->check_lhs = check_lhs;
+	current->expanded_lhs = expanded_lhs_attribute;
+
+	/*
+	 *	Save current indentation for the error path.
+	 */
+	RINDENT_SAVE(&state->indent, request);
 }
 
 /** Execute an update block
@@ -1545,31 +1583,8 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 {
 	unlang_edit_t			*edit = unlang_generic_to_edit(frame->instruction);
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
-	edit_map_t			*current = &state->first;
 
-	state->current = current;
-	fr_value_box_list_init(&current->lhs.result);
-	fr_value_box_list_init(&current->rhs.result);
-
-	/*
-	 *	The edit list creates a local pool which should
-	 *	generally be large enough for most edits.
-	 */
-	MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(&edit->maps)));
-
-	current->ctx = state;
-	current->el = state->el;
-	current->map_head = &edit->maps;
-	current->map = map_list_head(current->map_head);
-	fr_pair_list_init(&current->rhs.pair_list);
-	current->func = expand_lhs;
-	current->check_lhs = check_lhs;
-	current->expanded_lhs = expanded_lhs_attribute;
-
-	/*
-	 *	Save current indentation for the error path.
-	 */
-	RINDENT_SAVE(&state->indent, request);
+	edit_state_init_internal(request, state, NULL, &edit->maps);
 
 	/*
 	 *	Call process_edit to do all of the work.
@@ -1578,6 +1593,64 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 	return process_edit(p_result, request, frame);
 }
 
+
+/** Push a map onto the stack for edit evaluation
+ *
+ *  If the "success" variable returns "false", the caller should free the edit list.  At which point all edits will be undone.
+ *
+ * @param[in] request		The current request.
+ * @param[out] success		Whether or not the edit succeeded
+ * @param[in] el		Edit list which can be used to apply multiple edits
+ * @param[in] map_list		The map list to process
+ */
+int unlang_edit_push(request_t *request, bool *success, fr_edit_list_t *el, map_list_t const *map_list)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame;
+	unlang_frame_state_edit_t	*state;
+
+	unlang_edit_t			*edit;
+
+	static unlang_t edit_instruction = {
+		.type = UNLANG_TYPE_EDIT,
+		.name = "edit",
+		.debug_name = "edit",
+		.actions = {
+			.actions = {
+				[RLM_MODULE_REJECT]	= 0,
+				[RLM_MODULE_FAIL]	= 0,
+				[RLM_MODULE_OK]		= 0,
+				[RLM_MODULE_HANDLED]	= 0,
+				[RLM_MODULE_INVALID]	= 0,
+				[RLM_MODULE_DISALLOW]	= 0,
+				[RLM_MODULE_NOTFOUND]	= 0,
+				[RLM_MODULE_NOOP]	= 0,
+				[RLM_MODULE_UPDATED]	= 0
+			},
+			.retry = RETRY_INIT,
+		},
+	};
+
+	MEM(edit = talloc(stack, unlang_edit_t));
+	*edit = (unlang_edit_t) {
+		.self = edit_instruction,
+	};
+	map_list_init(&edit->maps);
+
+	/*
+	 *	Push a new edit frame onto the stack
+	 */
+	if (unlang_interpret_push(request, unlang_edit_to_generic(edit),
+				  RLM_MODULE_NOT_SET, UNLANG_NEXT_STOP, false) < 0) return -1;
+
+	frame = &stack->frame[stack->depth];
+	state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
+
+	edit_state_init_internal(request, state, el, map_list);
+	state->success = success;
+
+	return 0;
+}
 
 void unlang_edit_init(void)
 {
