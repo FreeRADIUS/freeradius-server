@@ -1597,7 +1597,10 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 
 /** Push a map onto the stack for edit evaluation
  *
- *  If the "success" variable returns "false", the caller should free the edit list.  At which point all edits will be undone.
+ *  If the "success" variable returns "false", the caller should call fr_edit_list_abort().
+ *
+ *  If the "success" variable returns "true", the caller can free the edit list (or rely on talloc to do that)
+ *  and the transaction will be finalized.
  *
  * @param[in] request		The current request.
  * @param[out] success		Whether or not the edit succeeded
