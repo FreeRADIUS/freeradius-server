@@ -1496,11 +1496,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			if (rcode < 0) {
 				RINDENT_RESTORE(request, &state->indent);
 
-				fr_edit_list_abort(state->el);
-				TALLOC_FREE(frame->state);
-				repeatable_clear(frame);
-				*p_result = RLM_MODULE_NOOP;
-
 				/*
 				 *	Expansions, etc. failures are SOFT failures, which undo the edit
 				 *	operations, but otherwise do not affect the interpreter.
@@ -1508,6 +1503,12 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				 *	However, if the caller asked for the actual result, return that, too.
 				 */
 				if (state->success) *state->success = false;
+
+				fr_edit_list_abort(state->el);
+				TALLOC_FREE(frame->state);
+				repeatable_clear(frame);
+				*p_result = RLM_MODULE_NOOP;
+
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
 
