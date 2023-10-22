@@ -1512,7 +1512,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 
 	slen = tmpl_afrom_attr_str(map, NULL, &map->lhs, name, &t_rules);
 	if (slen <= 0) {
-		cf_log_err(cs, "Failed parsing list reference %s", name);
+		cf_log_err(cs, "Failed parsing list reference %s - %s", name, fr_strerror());
 	fail:
 		talloc_free(edit_free);
 		return NULL;
