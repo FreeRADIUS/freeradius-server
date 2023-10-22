@@ -867,7 +867,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	 *
 	 *	The we just apply the assignment to the LHS, over-writing it's value.
 	 */
-	if ((map->op == T_OP_SET) && (tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC)) {
+	if ((map->op == T_OP_SET) && ((tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) || !current->map->rhs)) {
 		tmpl_dcursor_ctx_t cc;
 		fr_dcursor_t cursor;
 		bool first = fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type);
@@ -1313,7 +1313,8 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		 *
 		 *	because foo[3] is a single leaf value, not a list.
 		 */
-		if (!map->rhs && fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
+		if (!map->rhs && fr_type_is_leaf(tmpl_attr_tail_da(current->lhs.vpt)->type) &&
+		    (map_list_num_elements(&map->child) > 0)) {
 			RWDEBUG("Cannot set one entry to multiple values for %s", current->lhs.vpt->name);
 			return -1;
 		}
