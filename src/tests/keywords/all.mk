@@ -65,7 +65,7 @@ endif
 #
 
 #  Tests for the "update" keyword
-KEYWORD_UPDATE_TESTS := update-attr-ref-null update-error-3 update-group-error update-null-value-assign update-remove-index update-filter vendor-specific-error 
+KEYWORD_UPDATE_TESTS := update-error-3 update-group-error update-null-value-assign update-remove-index update-filter vendor-specific-error
 
 # Tests for rewriting "udpate"
 KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-list-error update-remove-list update-prepend unknown-update update-error update-error-2 update-exec-error update-list-null-rhs update-exec

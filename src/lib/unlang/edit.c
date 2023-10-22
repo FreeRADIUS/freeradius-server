@@ -493,6 +493,77 @@ done:
 	return rcode;
 }
 
+static int edit_set_eq(request_t *request, edit_map_t *current, bool delete)
+{
+	tmpl_dcursor_ctx_t cc;
+	fr_dcursor_t cursor;
+	bool first = fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type);
+
+	while (true) {
+		int err;
+		fr_pair_t *vp, *parent;
+
+		/*
+		 *	Reinitialize the cursor for every VP.  This is because
+		 *	fr_dcursor_remove() does not work with tmpl_dcursors, as the
+		 *	tmpl_dcursor code does not set the "remove" callback.
+		 *
+		 *	Once that's implemented, we also need to update the edit list API to
+		 *	allow for "please delete children"?
+		 */
+		vp = tmpl_dcursor_init(&err, current->ctx, &cc, &cursor, request, current->lhs.vpt);
+		if (!vp) break;
+
+		/*
+		 *	For structural attributes, we leave the first one, and delete the subsequent
+		 *	ones.  That way we leave the main lists alone ("request", "reply", "control", etc.)
+		 *
+		 *	For leaf attributes, we just skip this step, as "first" is always "false".
+		 */
+		if (first) {
+			first = false;
+			if (fr_edit_list_free_pair_children(current->el, vp) < 0) return -1;
+			vp = fr_dcursor_next(&cursor);
+			if (!vp) goto clear;
+			continue;
+
+		} else if (fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
+			/*
+			 *	We skipped the first structural member, so keep skipping it for all of the next vps.
+			 */
+			vp = fr_dcursor_next(&cursor);
+			if (!vp) {
+			clear:
+				tmpl_dcursor_clear(&cc);
+				break;
+			}
+		}
+
+		parent = fr_pair_parent(vp);
+		fr_assert(parent != NULL);
+
+		/*
+		 *	We can't delete these ones.
+		 */
+		fr_assert(vp != request->pair_list.request);
+		fr_assert(vp != request->pair_list.reply);
+		fr_assert(vp != request->pair_list.control);
+		fr_assert(vp != request->pair_list.state);
+
+		/*
+		 *	Delete if we're not over-riding a particular value.
+		 */
+		if (delete) {
+			if (fr_edit_list_pair_delete(current->el, &parent->vp_group, vp) < 0) return -1;
+			tmpl_dcursor_clear(&cc);
+		} else {
+			goto clear;
+		}
+	}
+
+	return 0;
+}
+
 /*
  *	Apply the edits to a leaf attribute.  First we figure out where the results come from:
  *
@@ -592,7 +663,10 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		vp = tmpl_dcursor_init(&err, request, &cc, &pair_cursor, request, current->rhs.vpt);
 		if (!vp) {
 			tmpl_dcursor_clear(&cc);
-			return 0;
+
+			if (map->op != T_OP_SET) return 0;
+
+			return edit_set_eq(request, current, true);
 		}
 
 		box = fr_pair_dcursor_nested_init(&cursor, &pair_cursor); // the list is unused
@@ -867,65 +941,11 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	 *
 	 *	The we just apply the assignment to the LHS, over-writing it's value.
 	 */
-	if ((map->op == T_OP_SET) && ((tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) || !current->map->rhs)) {
-		tmpl_dcursor_ctx_t cc;
-		fr_dcursor_t cursor;
-		bool first = fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type);
-
-		while (true) {
-			int err;
-			fr_pair_t *vp, *parent;
-
-			/*
-			 *	Reinitialize the cursor for every VP.  This is because
-			 *	fr_dcursor_remove() does not work with tmpl_dcursors, as the
-			 *	tmpl_dcursor code does not set the "remove" callback.
-			 *
-			 *	Once that's implemented, we also need to update the edit list API to
-			 *	allow for "please delete children"?
-			 */
-			vp = tmpl_dcursor_init(&err, current->ctx, &cc, &cursor, request, current->lhs.vpt);
-			if (!vp) break;
-
-			/*
-			 *	For structural attributes, we leave the first one, and delete the subsequent
-			 *	ones.  That way we leave the main lists alone ("request", "reply", "control", etc.)
-			 *
-			 *	For leaf attributes, we just skip this step, as "first" is always "false".
-			 */
-			if (first) {
-				first = false;
-				if (fr_edit_list_free_pair_children(current->el, vp) < 0) return -1;
-				vp = fr_dcursor_next(&cursor);
-				if (!vp) goto clear;
-				continue;
-
-			} else if (fr_type_is_structural(tmpl_attr_tail_da(current->lhs.vpt)->type)) {
-				/*
-				 *	We skipped the first structural member, so keep skipping it for all of the next vps.
-				 */
-				vp = fr_dcursor_next(&cursor);
-				if (!vp) {
-				clear:
-					tmpl_dcursor_clear(&cc);
-					break;
-				}
-			}
-
-			parent = fr_pair_parent(vp);
-			fr_assert(parent != NULL);
-
-			/*
-			 *	We can't delete these ones.
-			 */
-			fr_assert(vp != request->pair_list.request);
-			fr_assert(vp != request->pair_list.reply);
-			fr_assert(vp != request->pair_list.control);
-			fr_assert(vp != request->pair_list.state);
-
-			if (fr_edit_list_pair_delete(current->el, &parent->vp_group, vp) < 0) return -1;
-			tmpl_dcursor_clear(&cc);
-		}
+	if ((map->op == T_OP_SET) &&
+	    ((tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) || (tmpl_attr_tail_num(current->lhs.vpt) > 0) ||
+	     !current->map->rhs)) {
+		if (edit_set_eq(request, current,
+				(tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) || !current->map->rhs) < 0) return -1;
 	}
 
 	/*
@@ -1495,8 +1515,6 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				XDEBUG("MAP %s ...", state->current->map->lhs->name);
 			} else {
 				XDEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
-
-				XDEBUG("\t%08x", state->current->map->rhs->type);
 			}
 
 			rcode = state->current->func(request, state, state->current);

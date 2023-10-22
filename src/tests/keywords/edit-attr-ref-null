@@ -3,12 +3,13 @@
 #
 #  Form attribute references with xlats
 #
-update request {
-	&Tmp-String-0 += 'foo'
-	&Tmp-String-0 += 'bar'
-	&Tmp-String-1 += 'baz'
-	&control.[*] !* ANY
+&request += {
+	&Tmp-String-0 = 'foo'
+	&Tmp-String-0 = 'bar'
+	&Tmp-String-1 = 'baz'
 }
+
+&control = {}
 
 if (!(%{Tmp-String-0[#]} == 2)) {
 	test_fail
@@ -18,16 +19,17 @@ if (!(&Tmp-String-0[0] == 'foo')) {
 	test_fail
 }
 
+#
 # Delete an attribute by assigning a non-existent attribute to it
 #
-#  @fixme - EDIT - the new method is to simply omit the assignment
-#
-update {
-	&Tmp-String-0[1] := &Reply-Message
-}
+&Tmp-String-0[1] := &Reply-Message
 
 # Should only remove 'bar'
-if (!(&Tmp-String-0[0] == 'foo')) {
+if !(&Tmp-String-0[0] == 'foo') {
+	test_fail
+}
+
+if (!(&Tmp-String-0[#] == 1)) {
 	test_fail
 }
 
@@ -40,9 +42,7 @@ if (&Tmp-String-0[2]) {
 	test_fail
 }
 
-update {
-	&Tmp-String-0 := &Reply-Message
-}
+&Tmp-String-0 := &Reply-Message
 
 # All instances should be removed
 if (&Tmp-String-0) {
