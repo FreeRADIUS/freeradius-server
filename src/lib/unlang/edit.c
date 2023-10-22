@@ -518,7 +518,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	bool single = false, pair = false;
 	map_t const *map = current->map;
 
-	XDEBUG("apply_edits_to_list %s", map->lhs->name);
+	XDEBUG("apply_edits_to_leaf %s", map->lhs->name);
 
 	if (!tmpl_is_attr(current->lhs.vpt)) {
 		REDEBUG("%s[%d] The left side of an assignment must be an attribute reference", MAP_INFO);
