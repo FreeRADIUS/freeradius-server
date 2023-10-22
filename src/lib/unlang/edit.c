@@ -35,9 +35,11 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include "edit_priv.h"
 
+#undef XDEBUG
 #if 1
-#undef DEBUG
-#define DEBUG(...)
+#define XDEBUG(...)
+#else
+#define XDEBUG DEBUG2
 #endif
 
 typedef struct {
@@ -266,6 +268,8 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 	map_t const *map = current->map;
 	tmpl_dcursor_ctx_t cc;
 	fr_dcursor_t cursor;
+
+	XDEBUG("apply_edits_to_list %s", map->lhs->name);
 
 	/*
 	 *	RHS is a sublist, go apply that.
@@ -513,6 +517,8 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 	fr_dcursor_t pair_cursor;
 	bool single = false, pair = false;
 	map_t const *map = current->map;
+
+	XDEBUG("apply_edits_to_list %s", map->lhs->name);
 
 	if (!tmpl_is_attr(current->lhs.vpt)) {
 		REDEBUG("%s[%d] The left side of an assignment must be an attribute reference", MAP_INFO);
@@ -844,7 +850,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 {
 	map_t const *map = current->map;
 
-	DEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
+	XDEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
 	/*
 	 *	:= is "remove all matching, and then add".  So if even if we don't add anything, we still remove things.
@@ -972,7 +978,7 @@ static int expand_rhs_list(request_t *request, unlang_frame_state_edit_t *state,
 	map_t const *map = current->map;
 	edit_map_t *child;
 
-	DEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
+	XDEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
 	/*
 	 *	If there's no RHS tmpl, then the RHS is a child list.
@@ -1053,7 +1059,7 @@ static int expand_rhs(request_t *request, unlang_frame_state_edit_t *state, edit
 
 	if (!map->rhs) return expand_rhs_list(request, state, current);
 
-	DEBUG("%s map %s %s %s", __FUNCTION__, map->lhs->name, fr_tokens[map->op], map->rhs->name);
+	XDEBUG("%s map %s %s %s", __FUNCTION__, map->lhs->name, fr_tokens[map->op], map->rhs->name);
 
 	/*
 	 *	Turn the RHS into a tmpl_t.  This can involve just referencing an existing
@@ -1086,7 +1092,7 @@ static int check_lhs_value(request_t *request, unlang_frame_state_edit_t *state,
 
 	fr_assert(current->parent);
 
-	DEBUG("%s map %s", __FUNCTION__, map->lhs->name);
+	XDEBUG("%s map %s", __FUNCTION__, map->lhs->name);
 
 	if (tmpl_is_data(map->lhs)) {
 		vpt = map->lhs;
@@ -1227,7 +1233,7 @@ static int check_lhs_nested(request_t *request, unlang_frame_state_edit_t *state
 
 	fr_assert(current->parent != NULL);
 
-	DEBUG("%s map %s", __FUNCTION__, map->lhs->name);
+	XDEBUG("%s map %s", __FUNCTION__, map->lhs->name);
 
 	/*
 	 *	Don't create the leaf.  The apply_edits_to_leaf() function will create them after the RHS has
@@ -1447,7 +1453,7 @@ static int expand_lhs(request_t *request, unlang_frame_state_edit_t *state, edit
 	int rcode;
 	map_t const *map = current->map;
 
-	DEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
+	XDEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
 	fr_assert(fr_value_box_list_empty(&current->lhs.result));	/* Should have been consumed */
 	fr_assert(fr_value_box_list_empty(&current->rhs.result));	/* Should have been consumed */
@@ -1485,11 +1491,11 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 			int rcode;
 
 			if (!state->current->map->rhs) {
-				DEBUG("MAP %s ...", state->current->map->lhs->name);
+				XDEBUG("MAP %s ...", state->current->map->lhs->name);
 			} else {
-				DEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
+				XDEBUG("MAP %s ... %s", state->current->map->lhs->name, state->current->map->rhs->name);
 
-				DEBUG("\t%08x", state->current->map->rhs->type);
+				XDEBUG("\t%08x", state->current->map->rhs->type);
 			}
 
 			rcode = state->current->func(request, state, state->current);
