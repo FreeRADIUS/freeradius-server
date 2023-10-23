@@ -5,6 +5,8 @@ update reply {
 	#
 	#  Update the contents of a group
 	#
+	#  This was parsed in the old edit code, but never did anything!
+	#
 	&Tmp-Group-0 := {	# ERROR
 		Tmp-String-0 = "foo"
 	}
