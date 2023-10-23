@@ -57,14 +57,13 @@ endif
 #  All of the "update" tests which should also be run with "-S rewrite_update=yes"
 #
 #  update-remove-index		Remove by index _and_ value.  Not implemented in edit code
-#  update-filter		lots of errors
 #
 
 #  Tests for the "update" keyword
-KEYWORD_UPDATE_TESTS :=   update-remove-index update-filter 
+KEYWORD_UPDATE_TESTS :=   update-remove-index 
 
 # Tests for rewriting "update"
-KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-list-error update-remove-list update-prepend unknown-update update-error update-error-2 update-exec-error update-list-null-rhs update-exec update-error-3 update-group-error update-null-value-assign vendor-specific-error
+KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-list-error update-remove-list update-prepend unknown-update update-error update-error-2 update-exec-error update-list-null-rhs update-exec update-error-3 update-group-error update-null-value-assign vendor-specific-error update-filter
 
 #
 #  Migration support.  Some of the tests don't run under the new

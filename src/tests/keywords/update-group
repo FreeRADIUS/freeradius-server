@@ -5,9 +5,13 @@ update reply {
 	#
 	#  Update the contents of a group
 	#
-	&Tmp-Group-0 := {
+	&Tmp-Group-0 := {	# ERROR
 		Tmp-String-0 = "foo"
 	}
+}
+
+if !&reply.Tmp-Group-0.Tmp-String-0 {
+	test_fail
 }
 
 success
