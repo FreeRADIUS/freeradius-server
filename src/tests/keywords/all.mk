@@ -57,18 +57,16 @@ endif
 #  All of the "update" tests which should also be run with "-S rewrite_update=yes"
 #
 #  update-attr-ref-null		&foo := &bar, where bar doesn't exist.  Now does nothing
-#  update-error-3		is now a run-time error instead of parse error
-#  update-group-error		error is on a different line
 #  update-null-value-assign	foo := "%{...}" should be an empty string
-#  update-remove-index		used to do???, now is parse-time error
+#  update-remove-index		Remove by index _and_ value.  Not implemented in edit code
 #  update-filter		lots of errors
 #
 
 #  Tests for the "update" keyword
-KEYWORD_UPDATE_TESTS := update-error-3 update-group-error update-null-value-assign update-remove-index update-filter vendor-specific-error
+KEYWORD_UPDATE_TESTS :=  update-null-value-assign update-remove-index update-filter vendor-specific-error
 
-# Tests for rewriting "udpate"
-KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-list-error update-remove-list update-prepend unknown-update update-error update-error-2 update-exec-error update-list-null-rhs update-exec
+# Tests for rewriting "update"
+KEYWORD_UPDATE_REWRITE_TESTS := update-all update-array update-delete update-remove-any update-group update-hex update-remove-value update-index update-list-error update-remove-list update-prepend unknown-update update-error update-error-2 update-exec-error update-list-null-rhs update-exec update-error-3 update-group-error
 
 #
 #  Migration support.  Some of the tests don't run under the new

@@ -1047,6 +1047,11 @@ static unlang_t *compile_update_to_edit(unlang_t *parent, unlang_compile_t *unla
 		fr_token_t	op;
 		char const	*attr, *value, *end;
 
+		if (cf_item_is_section(ci)) {
+			cf_log_err(ci, "Cannot specify subsections for 'update'");
+			return NULL;
+		}
+
 		if (!cf_item_is_pair(ci)) continue;
 
 		cp = cf_item_to_pair(ci);

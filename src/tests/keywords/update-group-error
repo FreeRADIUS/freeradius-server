@@ -2,14 +2,12 @@
 #  PRE: update
 #
 update reply {
-	&Tmp-String-0 := "foo"
+#	&Tmp-String-0 := "foo"
 
 	#
 	#  This is a string, so it's NOT allowed.
 	#
-	#  @fixme - EDIT - the error is now on the first line
-	#
-	&Tmp-String-1 := {
-		Tmp-String-2 := "1.0" # ERROR
+	&Tmp-String-1 := { # ERROR
+		Tmp-String-2 := "1.0"
 	}
 }
