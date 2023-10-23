@@ -11,11 +11,6 @@
 #
 &request.Tmp-IP-Address-0[1] := {}
 
-#
-#  Attribute 'Tmp-IP-Address[1]' not found.
-#
-#&request -= &Tmp-IP-Address[1]
-
 if (&Tmp-IP-Address-0[#] != 1) {
 	test_fail
 }
