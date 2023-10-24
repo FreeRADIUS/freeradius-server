@@ -679,12 +679,10 @@ finish:
 
 static void python_interpreter_free(PyThreadState *interp)
 {
-DIAG_OFF(deprecated-declarations)
-	PyEval_AcquireLock();
+	PyEval_RestoreThread(interp);
 	PyThreadState_Swap(interp);
 	Py_EndInterpreter(interp);
-	PyEval_ReleaseLock();
-DIAG_ON(deprecated-declarations)
+	PyEval_SaveThread();
 }
 
 /** Destroy a thread state
@@ -1117,7 +1115,21 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		python_dlhandle = dlopen_libpython(RTLD_NOW | RTLD_GLOBAL);
 		if (!python_dlhandle) WARN("Failed loading libpython symbols into global symbol table");
 
-#if PY_VERSION_HEX >= 0x03050000
+#if PY_VERSION_HEX > 0x030a0000
+		PyStatus status;
+
+		PyConfig config;
+		PyConfig_InitIsolatedConfig(&config); /* Isolated config: Don't override signal handlers - noop on subs calls */
+
+		wchar_t  *name;
+		MEM(name = Py_DecodeLocale(main_config.name, NULL)); /* The value of argv[0] as a wide char string */
+		status = PyConfig_SetString(&config, &config.program_name, name);
+		if (PyStatus_Exception(status)) {
+			PyConfig_Clear(&config);
+			return -1;
+	}
+		PyMem_RawFree(name);
+#elif PY_VERSION_HEX >= 0x03050000
 		{
 			wchar_t  *name;
 
@@ -1134,8 +1146,17 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		}
 #endif
 
+#if PY_VERSION_HEX > 0x030a0000
+		status = Py_InitializeFromConfig(&config);
+		if (PyStatus_Exception(status)) {
+			PyConfig_Clear(&config);
+			return -1;
+		}
+		PyConfig_Clear(&config);
+#else
 		Py_InitializeEx(0);			/* Don't override signal handlers - noop on subs calls */
 		PyEval_InitThreads(); 			/* This also grabs a lock (which we then need to release) */
+#endif
 		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
 		locked = true;
 	}
