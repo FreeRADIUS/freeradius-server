@@ -65,7 +65,7 @@ fields can be accessed using 'map' as shown in the example below.
 [source, unlang]
 ----
 map json "%rest(GET http://example.org/api/user/%{User-Name})" {
-  &Tmp-Integer-0  := '$.account number'
+  &Foo            := '$.account number'
   &Group          += '$.groups.*'
 }
 ----
@@ -157,8 +157,9 @@ NOTE: Validate parser for everything except unions and expressions.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := '$.my.json.payload[1]'
-&reply.Reply-Message := "Validation of %{control.Tmp-String-0} is %json_jpath_validate($.my.json.payload[1])"
+string payload
+payload := '$.my.json.payload[1]'
+&reply.Reply-Message := "Validation of %{payload} is %json_jpath_validate($.my.json.payload[1])"
 ----
 
 .Output
@@ -177,8 +178,9 @@ Escapes string for use as a JSON string.
 
 [source,unlang]
 ----
-&control.Tmp-String-0 := "caipirinha/gelada"
-&reply.Reply-Message := "The string %{control.Tmp-String-0} should be %json_quote(%{control.Tmp-String-0}) to be a valid JSON string."
+string path
+&path := "caipirinha/gelada"
+&reply.Reply-Message := "The string %{path} should be %json_quote(%{path}) to be a valid JSON string."
 ----
 
 .Output

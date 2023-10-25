@@ -176,7 +176,7 @@ csv {
 	#
 	update reply {
 	       &Reply-Message := 'color'
-	       &Tmp-Integer-0 := 'count'
+	       &Foo := 'count'
 	}
 
 	#

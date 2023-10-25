@@ -71,10 +71,10 @@ Allowed values are:
 [options="header,autowidth"]
 |===
 | Pairs         | Description
-| request       | attributes from the request
-| config        | attributes from the configuration items list
-| reply         | attributes from the reply
-| session-state | attributes that persist over multiple request/response rounds.
+| &request       | attributes from the request
+| &config        | attributes from the configuration items list
+| &reply         | attributes from the reply
+| &session-state | attributes that persist over multiple request/response rounds.
 |===
 
 
@@ -115,9 +115,9 @@ thereby saving resources.
 ```
 exec echo {
 	wait = yes
-	program = "/bin/echo Tmp-String-0 := %{User-Name}"
-	input_pairs = request
-	output_pairs = reply
+	program = "/bin/echo Filter-Id := %{User-Name}"
+	input_pairs = &request
+	output_pairs = &reply
 	shell_escape = yes
 #	timeout = 10
 }

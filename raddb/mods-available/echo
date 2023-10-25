@@ -63,7 +63,7 @@ exec echo {
 	#  Dynamic translation is done on this field, so things like
 	#  the following example will work.
 	#
-	program = "/bin/echo Tmp-String-0 := %{User-Name}"
+	program = "/bin/echo Filter-Id := %{User-Name}"
 
 	#
 	#  input_pairs:: The attributes which are placed into the
