@@ -19,11 +19,17 @@
 }
 
 redundant {
+	uint32 foo
+
 	group {
+		&foo := 1
 		fail
 	}
 
 	group {
+		if !(&foo == 1) {
+			test_fail
+		}
 		success
 	}
 }

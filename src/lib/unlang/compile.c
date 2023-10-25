@@ -1745,6 +1745,9 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 	case UNLANG_TYPE_TIMEOUT:
 	case UNLANG_TYPE_LIMIT:
 	case UNLANG_TYPE_POLICY:
+	case UNLANG_TYPE_REDUNDANT:
+	case UNLANG_TYPE_LOAD_BALANCE:
+	case UNLANG_TYPE_REDUNDANT_LOAD_BALANCE:
 		break;
 
 	default:
@@ -3527,7 +3530,7 @@ static unlang_t *compile_else(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
  *	redundant, load-balance and parallel have limits on what can
  *	go in them.
  */
-static int validate_limited_subsection(CONF_SECTION *cs, char const *name)
+static bool validate_limited_subsection(CONF_SECTION *cs, char const *name)
 {
 	CONF_ITEM *ci;
 
@@ -3556,21 +3559,24 @@ static int validate_limited_subsection(CONF_SECTION *cs, char const *name)
 			    (strcmp(name1, "elsif") == 0)) {
 				cf_log_err(ci, "%s sections cannot contain a \"%s\" statement",
 				       name, name1);
-				return 0;
+				return false;
 			}
 			continue;
 		}
 
 		if (cf_item_is_pair(ci)) {
 			CONF_PAIR *cp = cf_item_to_pair(ci);
+
+			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) return true;
+
 			if (cf_pair_value(cp) != NULL) {
 				cf_log_err(cp, "Unknown keyword '%s', or invalid location", cf_pair_attr(cp));
-				return 0;
+				return false;
 			}
 		}
 	}
 
-	return 1;
+	return true;
 }
 
 
