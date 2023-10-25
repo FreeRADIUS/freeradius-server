@@ -1519,7 +1519,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				status = RS_RTX;
 				original->rt_rsp++;
 
-				fr_radius_packet_free(&original->linked);	/* Also frees vps */
+				/*
+				 *	Explicitly free VPs first so list maintains integrity - it is reused below
+				 */
+				fr_pair_list_free(&original->link_vps);
+				fr_radius_packet_free(&original->linked);
 				fr_event_timer_delete(&original->event);
 			/*
 			 *	...nope it's the first response to a request.
