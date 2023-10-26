@@ -55,6 +55,359 @@ static fr_sbuff_term_t const 	bareword_terminals =
 					L("||"),		/* Logical operator */
 				);
 
+static fr_table_num_sorted_t const pair_assignment_op_table[] = {
+	{ L("+="),	T_OP_ADD_EQ		},
+	{ L("="),	T_OP_EQ			},
+};
+static ssize_t pair_assignment_op_table_len = NUM_ELEMENTS(pair_assignment_op_table);
+
+/*
+ *	Stop parsing bare words at whitespace, comma, or end of list.
+ *
+ *	Note that we don't allow escaping of bare words here, as that screws up parsing of raw attributes with
+ *	0x... prefixes.
+ */
+static fr_sbuff_parse_rules_t const bareword_unquoted = {
+	.terminals = &FR_SBUFF_TERMS(
+		L("\t"),
+		L("\n"),
+		L(" "),
+		L(","),
+		L("}")
+	)
+};
+
+
+static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in)
+{
+	char quote;
+	ssize_t slen;
+	fr_sbuff_parse_rules_t const *rules;
+
+	if (fr_sbuff_next_if_char(in, '"')) {
+		rules = &value_parse_rules_double_quoted;
+		quote = '"';
+
+	} else if (fr_sbuff_next_if_char(in, '`')) {
+		rules = &value_parse_rules_backtick_quoted;
+		quote = '`';
+
+#if 0
+	} else if (fr_sbuff_next_if_char(in, '\'')) {
+		/*
+		 *	We don't support backticks here.
+		 */
+		rules = &value_parse_rules_single_quoted;
+		quote = '\'';
+#endif
+	} else {
+		rules = &bareword_unquoted;
+		quote = '\0';
+	}
+
+	slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, in, rules, false);
+	if (slen <= 0) return slen - (quote != 0);
+
+	if (quote && !fr_sbuff_next_if_char(in, quote)) {
+		fr_strerror_const("Unterminated string");
+		return 0;
+	}
+
+	return slen + ((quote != 0) << 1);
+}
+
+fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t *relative,
+				    fr_sbuff_t *in)
+{
+	int			i, components;
+	bool			raw = false;
+	bool			raw_octets = false;
+	fr_token_t		op;
+	fr_slen_t		slen;
+	fr_pair_t		*vp;
+	fr_dict_attr_t const	*internal = NULL;
+	fr_sbuff_marker_t	lhs_m, rhs_m;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+
+redo:
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+	if (fr_dict_internal()) internal = fr_dict_root(fr_dict_internal());
+	if (internal == root->da) internal = NULL;
+
+	/*
+	 *	Relative attributes start from the input list / parent.
+	 *
+	 *	Absolute attributes start from the root list / parent.
+	 *
+	 *	Once we decide where we are coming from, all subsequent operations are on the "relative"
+	 *	structure.
+	 */
+	if (!fr_sbuff_next_if_char(&our_in, '.')) {
+		*relative = *root;
+
+		/*
+		 *	Be nice to people who expect to see '&' everywhere.
+		 */
+		(void) fr_sbuff_next_if_char(&our_in, '&');
+
+		/*
+		 *	Raw attributes can only be at our root.
+		 *
+		 *	"raw.foo" means that SOME component of the OID is raw.  But the starting bits might be known.
+		 */
+		if (fr_sbuff_is_str_literal(&our_in, "raw.")) {
+			if (!root->da->flags.is_root) {
+				fr_strerror_const("Parsing must start from dict root for raw attributes to work");
+				return fr_sbuff_error(&our_in);
+			}
+
+			raw = true;
+			fr_sbuff_advance(&our_in, 4);
+		}
+	} else if (!relative->ctx || !relative->da || !relative->list) {
+		fr_strerror_const("The '.Attribute' syntax can only be used if the previous attribute is structural, and the line ends with ','");
+		return 0;
+	}
+
+	/*
+	 *	Set the LHS marker to be after any initial '.'
+	 */
+	fr_sbuff_marker(&lhs_m, &our_in);
+
+	/*
+	 *	Skip over the attribute name.  We need to get the operator _before_ creating the VPs.
+	 */
+	components = 0;
+	do {
+		if (fr_sbuff_adv_past_allowed(&our_in, SIZE_MAX, fr_dict_attr_allowed_chars, NULL) == 0) break;
+		components++;
+	} while (fr_sbuff_next_if_char(&our_in, '.'));
+
+	/*
+	 *	Couldn't find anything.
+	 */
+	if (!components) {
+		fr_strerror_const("Empty input");
+		return 0;
+	}
+
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+	/*
+	 *	Look for the operator.
+	 */
+	fr_sbuff_out_by_longest_prefix(&slen, &op, pair_assignment_op_table, &our_in, T_INVALID);
+	if (op == T_INVALID) {
+		fr_strerror_const("Expecting operator");
+		return fr_sbuff_error(&our_in);
+	}
+
+	/*
+	 *	Skip past whitespace, and set a marker at the RHS.  Then reset the input to the LHS attribute
+	 *	name, so that we can go back and parse / create the attributes.
+	 */
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+	fr_sbuff_marker(&rhs_m, &our_in);
+
+	/*
+	 *	Peek ahead to see if the final element is defined to be structural, but the caller instead
+	 *	wants to parse it as raw octets.
+	 */
+	if (raw) raw_octets = fr_sbuff_is_str_literal(&our_in, "0x");
+
+	fr_sbuff_set(&our_in, &lhs_m);
+
+	/*
+	 *	Parse each OID component, creating pairs along the way.
+	 */
+	i = 1;
+	do {
+		fr_dict_attr_err_t	err;
+		fr_dict_attr_t const	*da = NULL;
+		fr_dict_attr_t const	*da_unknown = NULL;
+
+		slen = fr_dict_oid_component(&err, &da, relative->da, &our_in, &bareword_terminals);
+		if (err == FR_DICT_ATTR_NOTFOUND) {
+			if (raw) {
+				if (fr_sbuff_is_digit(&our_in)) {
+					fr_pair_t *parent_vp;
+
+					slen = fr_dict_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in);
+					if (slen < 0) return fr_sbuff_error(&our_in) + slen;
+
+					/*
+					 *	The unknown da starts its parenting from the root of the
+					 *	dictionary!  The _first_ call to this function must start at
+					 *	the root.
+					 */
+					fr_assert(root->da->flags.is_root);
+
+					vp = fr_pair_afrom_da_nested(root->ctx, root->list, da_unknown);
+					fr_dict_unknown_free(&da_unknown);
+
+					if (!vp) return fr_sbuff_error(&our_in);
+
+					/*
+					 *	Now that the above function has jumped ahead a few levels,
+					 *	ensure that the relative structure is set correctly.
+					 */
+					parent_vp = fr_pair_parent(vp);
+					fr_assert(parent_vp);
+
+					relative->ctx = parent_vp;
+					relative->da = parent_vp->da;
+					relative->list = &parent_vp->vp_group;
+					goto parse_rhs;
+				}
+
+				/*
+				 *	@todo - it isn't found, return a descriptive error.
+				 */
+				fr_strerror_printf("Unknown child attribute for parent %s", relative->da->name);
+				return fr_sbuff_error(&our_in);
+			}
+
+			if (internal) {
+				slen = fr_dict_oid_component(&err, &da, internal, &our_in, &bareword_terminals);
+			}
+		}
+
+		if (err != FR_DICT_ATTR_OK) {
+			fr_strerror_printf("Unknown child attribute for parent %s", relative->da->name);
+			return fr_sbuff_error(&our_in) + slen;
+		}
+		fr_assert(da != NULL);
+
+		/*
+		 *	Intermediate components are always found / created.  The final component is
+		 *	always appended, no matter the operator.
+		 */
+		if (i < components) {
+			if (fr_pair_find_or_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
+				return fr_sbuff_error(&our_in);
+			}
+
+			/*
+			 *	We had a raw type and we're passing
+			 *	raw octets to it.  We don't care if
+			 *	its structural or anything else.  Just
+			 *	create the raw attribute.
+			 */
+		} else if (raw_octets) {
+			if (!da_unknown) da_unknown = fr_dict_unknown_attr_afrom_da(NULL, da);
+			if (!da_unknown) return fr_sbuff_error(&our_in);
+
+			fr_assert(da_unknown->type == FR_TYPE_OCTETS);
+
+			if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da_unknown) < 0) {
+				fr_dict_unknown_free(&da_unknown);
+				return fr_sbuff_error(&our_in);
+			}
+			fr_dict_unknown_free(&da_unknown);
+			fr_assert(vp->vp_type == FR_TYPE_OCTETS);
+
+			/*
+			 *	Just create the leaf attribute.
+			 */
+		} else if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
+			return fr_sbuff_error(&our_in);
+		}
+
+		fr_assert(vp != NULL);
+
+		/*
+		 *	Reset the parsing to the new namespace if necessary.
+		 *
+		 *	@todo - struct && key members <sigh>
+		 */
+		switch (vp->vp_type) {
+		case FR_TYPE_STRUCT:
+		case FR_TYPE_TLV:
+		case FR_TYPE_VSA:
+		case FR_TYPE_VENDOR:
+			relative->ctx = vp;
+			relative->da = vp->da;
+			relative->list = &vp->vp_group;
+			break;
+
+			/*
+			 *	Groups reset the namespace to the da referenced by the group.
+			 *
+			 *	Internal groups get their namespace to the root namespace.
+			 */
+		case FR_TYPE_GROUP:
+			relative->ctx = vp;
+			relative->da = fr_dict_attr_ref(vp->da);
+			if (relative->da == internal) {
+				relative->da = fr_dict_root(root->da->dict);
+			}
+			relative->list = &vp->vp_group;
+			break;
+
+		default:
+			fr_assert(!fr_dict_attr_is_key_field(vp->da));
+			break;
+		}
+
+		i++;
+	} while (fr_sbuff_next_if_char(&our_in, '.'));
+
+	/*
+	 *	Reset the parser to the RHS so that we can parse the value.
+	 */
+parse_rhs:
+	fr_sbuff_set(&our_in, &rhs_m);
+
+	/*
+	 *	The RHS is a list, go parse the nested attributes.
+	 */
+	if (fr_sbuff_next_if_char(&our_in, '{')) {
+		fr_pair_parse_t child = (fr_pair_parse_t) {
+			.depth = relative->depth + 1,
+		};
+
+		if (!fr_type_is_structural(vp->vp_type)) {
+			fr_strerror_const("Cannot assign list to leaf data type");
+			return fr_sbuff_error(&our_in);
+		}
+
+		while (true) {
+			fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
+
+			if (fr_sbuff_is_char(&our_in, '}')) {
+				break;
+			}
+
+			slen = fr_pair_list_afrom_substr(relative, &child, &our_in);
+			if (!slen) break;
+
+			if (slen < 0) return fr_sbuff_error(&our_in) + slen;
+		}
+
+		if (!fr_sbuff_next_if_char(&our_in, '}')) {
+			fr_strerror_const("Failed to end list with '}'");
+			return fr_sbuff_error(&our_in);
+		}
+
+		goto done;
+	}
+
+	if (fr_type_is_structural(vp->vp_type)) {
+		fr_strerror_const("Cannot assign value to structural data type");
+		return fr_sbuff_error(&our_in);
+	}
+
+	slen = fr_pair_value_from_substr(vp, &our_in);
+	if (slen <= 0) return fr_sbuff_error(&our_in) + slen;
+
+done:
+	if (fr_sbuff_next_if_char(&our_in, ',')) goto redo;
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
+}
+
 /** Read one line of attribute/value pairs into a list.
  *
  * The line may specify multiple attributes separated by commas.
@@ -75,8 +428,8 @@ static fr_sbuff_term_t const 	bareword_terminals =
  *	- <= 0 on failure.
  *	- The number of bytes of name consumed on success.
  */
-static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, fr_pair_t *parent_vp, char const *buffer, char const *end,
-					 fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp)
+static ssize_t pair_parse_legacy(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, fr_pair_t *parent_vp, char const *buffer, char const *end,
+				      fr_pair_list_t *list, fr_token_t *token, unsigned int depth, fr_pair_t **relative_vp)
 {
 	fr_pair_t		*vp = NULL;
 	fr_pair_t		*my_relative_vp;
@@ -338,7 +691,7 @@ static ssize_t fr_pair_list_afrom_substr(TALLOC_CTX *ctx, fr_dict_attr_t const *
 			 */
 			my_relative_vp = NULL;
 
-			slen = fr_pair_list_afrom_substr(vp, vp->da, vp, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
+			slen = pair_parse_legacy(vp, vp->da, vp, p, end, &vp->vp_group, &last_token, depth + 1, &my_relative_vp);
 			if (slen <= 0) {
 				goto error;
 			}
@@ -471,7 +824,7 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 
 	fr_pair_list_init(&tmp_list);
 
-	if (fr_pair_list_afrom_substr(ctx, parent, NULL, buffer, buffer + len, &tmp_list, &token, 0, &relative_vp) < 0) {
+	if (pair_parse_legacy(ctx, parent, NULL, buffer, buffer + len, &tmp_list, &token, 0, &relative_vp) < 0) {
 		fr_pair_list_free(&tmp_list);
 		return T_INVALID;
 	}
@@ -528,7 +881,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		/*
 		 *	Call our internal function, instead of the public wrapper.
 		 */
-		if (fr_pair_list_afrom_substr(ctx, fr_dict_root(dict), NULL, buf, buf + strlen(buf), &tmp_list, &last_token, 0, &relative_vp) < 0) {
+		if (pair_parse_legacy(ctx, fr_dict_root(dict), NULL, buf, buf + strlen(buf), &tmp_list, &last_token, 0, &relative_vp) < 0) {
 			goto fail;
 		}
 
