@@ -1687,7 +1687,7 @@ have_client:
 				DEBUG("Client %pV is still being dynamically defined.  "
 				      "Caching this packet until the client has been defined",
 				      fr_box_ipaddr(client->src_ipaddr));
-				goto done;
+				return 0;
 			}
 
 			/*
