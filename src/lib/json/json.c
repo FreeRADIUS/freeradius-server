@@ -1156,7 +1156,7 @@ static struct json_object *json_value_array_afrom_pair_list(TALLOC_CTX *ctx, fr_
  * @param[in] format	Formatting control, must be set.
  * @return JSON object with the generated representation.
  */
-static struct json_object *json_attr_array_afrom_pair_list(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps,
+static struct json_object *json_attr_array_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t *vps,
 							   fr_json_format_t const *format)
 {
 	fr_pair_t		*vp;
