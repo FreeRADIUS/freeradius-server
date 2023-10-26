@@ -5002,7 +5002,7 @@ parse:
 		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	case FR_TYPE_NULL:
-		if (!rules->escapes && fr_sbuff_adv_past_str_literal(in, "NULL")) {
+		if (!rules->escapes && fr_sbuff_adv_past_str_literal(&our_in, "NULL")) {
 			fr_value_box_init(dst, dst_type, dst_enumv, tainted);
 			FR_SBUFF_SET_RETURN(in, &our_in);
 		}
@@ -5018,16 +5018,35 @@ parse:
 	}
 
 	/*
-	 *	It's a fixed size src->dst_type, copy to a temporary buffer and
-	 *	\0 terminate.
+	 *	We may have terminals.  If so, respect them.
 	 */
-	if (fr_sbuff_remaining(in) >= sizeof(buffer)) {
-		fr_strerror_const("Temporary buffer too small");
-		return -1;
-	}
+	if (rules && rules->terminals) {
+		size_t len;
 
-	memcpy(buffer, fr_sbuff_current(in), fr_sbuff_remaining(in));
-	buffer[fr_sbuff_remaining(in)] = '\0';
+		len = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(buffer, sizeof(buffer)), &our_in, SIZE_MAX,
+						  rules->terminals, rules->escapes);
+		if (len >= sizeof(buffer)) goto too_small;
+
+		fprintf(stderr, "BUFFER IS %zu %s\n", len, buffer);
+		buffer[len] = '\0';
+
+	} else {
+		/*
+		 *	It's a fixed size src->dst_type, copy to a temporary buffer and
+		 *	\0 terminate.
+		 *
+		 *	@todo - note that this brute-force copy means that the input sbuff
+		 *	is NOT advanced, and this function will return 0, even though it parsed data!
+		 */
+		if (fr_sbuff_remaining(in) >= sizeof(buffer)) {
+		too_small:
+			fr_strerror_const("Temporary buffer too small");
+			return -1;
+		}
+
+		memcpy(buffer, fr_sbuff_current(in), fr_sbuff_remaining(in));
+		buffer[fr_sbuff_remaining(in)] = '\0';
+	}
 
 	switch (dst_type) {
 	case FR_TYPE_DATE:
