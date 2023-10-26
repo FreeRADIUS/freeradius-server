@@ -1995,7 +1995,7 @@ fr_dict_attr_t const *fr_dict_attr_by_oid(fr_dict_attr_err_t *err, fr_dict_attr_
 	fr_sbuff_t		sbuff = FR_SBUFF_IN(oid, strlen(oid));
 	fr_dict_attr_t const	*da;
 
-	fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff, NULL);
+	if (fr_dict_attr_by_oid_substr(err, &da, parent, &sbuff, NULL) <= 0) return NULL;
 	if (err && *err != FR_DICT_ATTR_OK) return NULL;
 
 	/*
