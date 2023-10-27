@@ -41,10 +41,10 @@ int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict,
 
 void		fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op);
 
-typedef struct {
-	TALLOC_CTX	*ctx;
-	fr_dict_attr_t const *da;
-	fr_pair_list_t	*list;
+typedef struct fr_pair_parse_s {
+	TALLOC_CTX		*ctx;
+	fr_dict_attr_t const	*da;
+	fr_pair_list_t		*list;
 } fr_pair_parse_t;
 
 fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t *relative,
