@@ -121,8 +121,7 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 				    fr_sbuff_t *in)
 {
 	int			i, components;
-	bool			raw = false;
-	bool			raw_octets = false;
+	bool			raw, raw_octets;
 	bool			was_relative = false;
 	bool			append;
 	fr_token_t		op;
@@ -139,6 +138,7 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 
 redo:
 	append = true;
+	raw = raw_octets = false;
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
@@ -244,6 +244,8 @@ redo:
 					slen = fr_dict_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in);
 					if (slen < 0) return fr_sbuff_error(&our_in) + slen;
 
+					fr_assert(da_unknown);
+
 					/*
 					 *	The unknown da starts its parenting from the root of the
 					 *	dictionary!  The _first_ call to this function must start at
@@ -260,8 +262,8 @@ redo:
 					if (!vp) return fr_sbuff_error(&our_in);
 
 					/*
-					 *	Now that the above function has jumped ahead a few levels,
-					 *	ensure that the relative structure is set correctly.
+					 *	The above function MAY have jumped ahead a few levels, ensure
+					 *	that the relative structure is set correctly.
 					 */
 					parent_vp = fr_pair_parent(vp);
 					fr_assert(parent_vp);
@@ -296,8 +298,11 @@ redo:
 		 */
 		if (i < components) {
 			if (append) {
-				if (fr_pair_find_or_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
-					return fr_sbuff_error(&our_in);
+				vp = fr_pair_find_last_by_da(relative->list, NULL, da);
+				if (!vp) {
+					if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
+						return fr_sbuff_error(&our_in);
+					}
 				}
 			} else {
 				vp = fr_pair_afrom_da(relative->ctx, da);
@@ -328,20 +333,52 @@ redo:
 			/*
 			 *	Just create the leaf attribute.
 			 */
-		} else if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
-			return fr_sbuff_error(&our_in);
+		} else if (da->parent->type == FR_TYPE_STRUCT) {
+			fr_pair_t *tail = fr_pair_list_tail(relative->list);
+
+			/*
+			 *	If the structure member is _less_ than the last one, go create a new structure
+			 *	in the grandparent.
+			 */
+			if (tail && (tail->da->attr >= da->attr) && !da->flags.array) {
+				fr_pair_t *parent_vp, *grand_vp;
+
+				parent_vp = fr_pair_list_parent(relative->list);
+				if (!parent_vp) goto leaf;
+
+				fr_assert(da->parent == parent_vp->da);
+
+				grand_vp = fr_pair_parent(parent_vp);
+				if (!grand_vp) goto leaf;
+
+				/*
+				 *	Create a new parent in the context of the grandparent.
+				 */
+				if (fr_pair_append_by_da(grand_vp, &vp, &grand_vp->vp_group, parent_vp->da) < 0) {
+					return fr_sbuff_error(&our_in);
+				}
+
+				relative->ctx = vp;
+				fr_assert(relative->da == vp->da);
+				relative->list = &vp->vp_group;
+			}
+
+			goto leaf;
+		} else {
+		leaf:
+			if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
+				return fr_sbuff_error(&our_in);
+			}
 		}
 
 		fr_assert(vp != NULL);
 
 		/*
 		 *	Reset the parsing to the new namespace if necessary.
-		 *
-		 *	@todo - struct && key members <sigh>
 		 */
 		switch (vp->vp_type) {
-		case FR_TYPE_STRUCT:
 		case FR_TYPE_TLV:
+		case FR_TYPE_STRUCT:
 		case FR_TYPE_VSA:
 		case FR_TYPE_VENDOR:
 			relative->ctx = vp;
