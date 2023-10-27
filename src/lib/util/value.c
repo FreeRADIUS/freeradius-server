@@ -5027,7 +5027,6 @@ parse:
 						  rules->terminals, rules->escapes);
 		if (len >= sizeof(buffer)) goto too_small;
 
-		fprintf(stderr, "BUFFER IS %zu %s\n", len, buffer);
 		buffer[len] = '\0';
 
 	} else {
