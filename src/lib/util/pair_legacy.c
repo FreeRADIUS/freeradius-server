@@ -129,6 +129,8 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 	fr_sbuff_marker_t	lhs_m, rhs_m;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 
+	if (!root->ctx || !root->da || !root->list) return 0;
+
 redo:
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
@@ -364,9 +366,7 @@ parse_rhs:
 	 *	The RHS is a list, go parse the nested attributes.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '{')) {
-		fr_pair_parse_t child = (fr_pair_parse_t) {
-			.depth = relative->depth + 1,
-		};
+		fr_pair_parse_t child = (fr_pair_parse_t) { };
 
 		if (!fr_type_is_structural(vp->vp_type)) {
 			fr_strerror_const("Cannot assign list to leaf data type");

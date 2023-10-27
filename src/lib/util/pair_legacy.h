@@ -45,7 +45,6 @@ typedef struct {
 	TALLOC_CTX	*ctx;
 	fr_dict_attr_t const *da;
 	fr_pair_list_t	*list;
-	int		depth;
 } fr_pair_parse_t;
 
 fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t *relative,
