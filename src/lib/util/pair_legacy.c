@@ -88,17 +88,18 @@ static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in)
 		rules = &value_parse_rules_double_quoted;
 		quote = '"';
 
-	} else if (fr_sbuff_next_if_char(in, '`')) {
-		rules = &value_parse_rules_backtick_quoted;
-		quote = '`';
+	} else if (fr_sbuff_next_if_char(in, '\'')) {
+		rules = &value_parse_rules_single_quoted;
+		quote = '\'';
 
 #if 0
-	} else if (fr_sbuff_next_if_char(in, '\'')) {
 		/*
 		 *	We don't support backticks here.
 		 */
-		rules = &value_parse_rules_single_quoted;
-		quote = '\'';
+	} else if (fr_sbuff_next_if_char(in, '\'')) {
+		rules = &value_parse_rules_backtick_quoted;
+		quote = '`';
+
 #endif
 	} else {
 		rules = &bareword_unquoted;
@@ -106,7 +107,7 @@ static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in)
 	}
 
 	slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, in, rules, false);
-	if (slen <= 0) return slen - (quote != 0);
+	if (slen < 0) return slen - (quote != 0);
 
 	if (quote && !fr_sbuff_next_if_char(in, quote)) {
 		fr_strerror_const("Unterminated string");
@@ -159,11 +160,6 @@ redo:
 		 *	"raw.foo" means that SOME component of the OID is raw.  But the starting bits might be known.
 		 */
 		if (fr_sbuff_is_str_literal(&our_in, "raw.")) {
-			if (!root->da->flags.is_root) {
-				fr_strerror_const("Parsing must start from dict root for raw attributes to work");
-				return fr_sbuff_error(&our_in);
-			}
-
 			raw = true;
 			fr_sbuff_advance(&our_in, 4);
 		}
@@ -244,7 +240,10 @@ redo:
 					 *	dictionary!  The _first_ call to this function must start at
 					 *	the root.
 					 */
-					fr_assert(root->da->flags.is_root);
+					if (!root->da->flags.is_root) {
+						fr_strerror_const("Parsing must start from dict root for raw attributes to work");
+						return fr_sbuff_error(&our_in);
+					}
 
 					vp = fr_pair_afrom_da_nested(root->ctx, root->list, da_unknown);
 					fr_dict_unknown_free(&da_unknown);
@@ -349,7 +348,20 @@ redo:
 			break;
 
 		default:
-			fr_assert(!fr_dict_attr_is_key_field(vp->da));
+			/*
+			 *	Key fields have children in their namespace, but the children go into the
+			 *	parents context and list.
+			 */
+			if (fr_dict_attr_is_key_field(vp->da)) {
+				fr_pair_t *parent_vp;
+
+				parent_vp = fr_pair_parent(vp);
+				fr_assert(parent_vp);
+
+				relative->ctx = parent_vp;
+				relative->da = vp->da;
+				relative->list = &parent_vp->vp_group;
+			}
 			break;
 		}
 
