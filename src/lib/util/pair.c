@@ -699,6 +699,30 @@ fr_pair_t *fr_pair_find_by_da(fr_pair_list_t const *list, fr_pair_t const *prev,
 	return NULL;
 }
 
+/** Find the last pair with a matching da
+ *
+ * @param[in] list	to search in.
+ * @param[in] prev	the previous attribute in the list.
+ * @param[in] da	the previous da to find.
+ * @return
+ *	- first matching fr_pair_t.
+ *	- NULL if no fr_pair_ts match.
+ *
+ * @hidecallergraph
+ */
+fr_pair_t *fr_pair_find_last_by_da(fr_pair_list_t const *list, fr_pair_t const *prev, fr_dict_attr_t const *da)
+{
+	fr_pair_t *vp = UNCONST(fr_pair_t *, prev);
+
+	if (fr_pair_list_empty(list)) return NULL;
+
+	PAIR_LIST_VERIFY(list);
+
+	while ((vp = fr_pair_list_prev(list, vp))) if (da == vp->da) return vp;
+
+	return NULL;
+}
+
 /** Find a pair with a matching da at a given index
  *
  * @param[in] list	to search in.
