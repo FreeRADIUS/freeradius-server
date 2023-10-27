@@ -123,6 +123,8 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 	int			i, components;
 	bool			raw = false;
 	bool			raw_octets = false;
+	bool			was_relative = false;
+	bool			append;
 	fr_token_t		op;
 	fr_slen_t		slen;
 	fr_pair_t		*vp;
@@ -132,11 +134,13 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 
 	if (!root->ctx || !root->da || !root->list) return 0;
 
-redo:
-	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
-
 	if (fr_dict_internal()) internal = fr_dict_root(fr_dict_internal());
 	if (internal == root->da) internal = NULL;
+
+redo:
+	append = true;
+
+	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
 	/*
 	 *	Relative attributes start from the input list / parent.
@@ -148,6 +152,9 @@ redo:
 	 */
 	if (!fr_sbuff_next_if_char(&our_in, '.')) {
 		*relative = *root;
+
+		append = !was_relative;
+		was_relative = false;
 
 		/*
 		 *	Be nice to people who expect to see '&' everywhere.
@@ -165,7 +172,9 @@ redo:
 		}
 	} else if (!relative->ctx || !relative->da || !relative->list) {
 		fr_strerror_const("The '.Attribute' syntax can only be used if the previous attribute is structural, and the line ends with ','");
-		return 0;
+		return -1;
+	} else {
+		was_relative = true;
 	}
 
 	/*
@@ -286,8 +295,15 @@ redo:
 		 *	always appended, no matter the operator.
 		 */
 		if (i < components) {
-			if (fr_pair_find_or_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
-				return fr_sbuff_error(&our_in);
+			if (append) {
+				if (fr_pair_find_or_append_by_da(relative->ctx, &vp, relative->list, da) < 0) {
+					return fr_sbuff_error(&our_in);
+				}
+			} else {
+				vp = fr_pair_afrom_da(relative->ctx, da);
+				if (!vp) return fr_sbuff_error(&our_in);
+
+				fr_pair_append(relative->list, vp);
 			}
 
 			/*
