@@ -239,39 +239,44 @@ redo:
 		if (err == FR_DICT_ATTR_NOTFOUND) {
 			if (raw) {
 				if (fr_sbuff_is_digit(&our_in)) {
-					fr_pair_t *parent_vp;
-
 					slen = fr_dict_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in);
 					if (slen < 0) return fr_sbuff_error(&our_in) + slen;
 
 					fr_assert(da_unknown);
 
 					/*
-					 *	The unknown da starts its parenting from the root of the
-					 *	dictionary!  The _first_ call to this function must start at
-					 *	the root.
+					 *	Append from the root list, starting at the root depth.
 					 */
-					if (!root->da->flags.is_root) {
-						fr_strerror_const("Parsing must start from dict root for raw attributes to work");
-						return fr_sbuff_error(&our_in);
-					}
-
-					vp = fr_pair_afrom_da_nested(root->ctx, root->list, da_unknown);
+					vp = fr_pair_afrom_da_depth_nested(root->ctx, root->list, da_unknown,
+									   root->da->depth);
 					fr_dict_unknown_free(&da_unknown);
 
 					if (!vp) return fr_sbuff_error(&our_in);
 
-					/*
-					 *	The above function MAY have jumped ahead a few levels, ensure
-					 *	that the relative structure is set correctly.
-					 */
-					parent_vp = fr_pair_parent(vp);
-					fr_assert(parent_vp);
+					PAIR_VERIFY(vp);
 
-					relative->ctx = parent_vp;
-					relative->da = parent_vp->da;
-					relative->list = &parent_vp->vp_group;
-					goto parse_rhs;
+					/*
+					 *	The above function MAY have jumped ahead a few levels.  Ensure
+					 *	that the relative structure is set correctly for the parent,
+					 *	but only if the parent changed.
+					 */
+					if (relative->da != vp->da->parent) {
+						fr_pair_t *parent_vp;
+
+						parent_vp = fr_pair_parent(vp);
+						fr_assert(parent_vp);
+
+						relative->ctx = parent_vp;
+						relative->da = parent_vp->da;
+						relative->list = &parent_vp->vp_group;
+					}
+
+					/*
+					 *	Update the new relative information for the current VP, which
+					 *	may be structural, or a key field.
+					 */
+					fr_assert(!fr_sbuff_is_char(&our_in, '.')); /* be sure the loop exits */
+					goto update_relative;
 				}
 
 				/*
@@ -373,6 +378,7 @@ redo:
 
 		fr_assert(vp != NULL);
 
+	update_relative:
 		/*
 		 *	Reset the parsing to the new namespace if necessary.
 		 */
@@ -424,7 +430,6 @@ redo:
 	/*
 	 *	Reset the parser to the RHS so that we can parse the value.
 	 */
-parse_rhs:
 	fr_sbuff_set(&our_in, &rhs_m);
 
 	/*
@@ -460,7 +465,7 @@ parse_rhs:
 	}
 
 	if (fr_type_is_structural(vp->vp_type)) {
-		fr_strerror_const("Cannot assign value to structural data type");
+		fr_strerror_printf("Group list for %s MUST start with '{'", vp->da->name);
 		return fr_sbuff_error(&our_in);
 	}
 
@@ -468,6 +473,8 @@ parse_rhs:
 	if (slen <= 0) return fr_sbuff_error(&our_in) + slen;
 
 done:
+	PAIR_VERIFY(vp);
+
 	if (fr_sbuff_next_if_char(&our_in, ',')) goto redo;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
