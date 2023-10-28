@@ -12,7 +12,7 @@ decode-pair -
 match Tag-1 = { Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } } }
 
 pair Tag-2 = { &Vendor-Specific.Unisphere.Service-Activate = "PPPOE_SERVICE(3072000,2048000)" }
-match Tag-2 = { Vendor-Specific.Unisphere.Service-Activate = "PPPOE_SERVICE(3072000,2048000)" }
+match Tag-2 = { Vendor-Specific = { Unisphere = { Service-Activate = "PPPOE_SERVICE(3072000,2048000)" } } }
 
 encode-pair Tag-2 = { Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED" }
 match 1a 12 00 00 13 0a 41 0c 02 55 4e 50 4f 4c 49 43 45 44
@@ -27,27 +27,17 @@ decode-pair -
 match Tag-1 = { Tunnel-Private-Group-Id = "foo", Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } } }
 
 
-#
-#  This returns "Service-Activate", but ignores Tag-1
-#
-#  fr_pair_list_afrom_str() calls fr_dict_attr_by_oid_substr() which just
-#  ends up finding the leaf.  So if there are intermediate groups, they are
-#  skipped.w
-#
-#pair Tag-1.Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED"
-#match Tag-1 = { Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } } }
+pair Tag-1.Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED"
+match Tag-1 = { Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } } }
 
-#encode-pair Tag-1.Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED"
-#match 1a 12 00 00 13 0a 41 0c 01 55 4e 50 4f 4c 49 43 45 44
+encode-pair Tag-1.Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED"
+match 1a 12 00 00 13 0a 41 0c 01 55 4e 50 4f 4c 49 43 45 44
 
-#decode-pair -
-#match Tag1 = { Vendor-Specific = { Unsiphere = { Service-Activate = "UNPLOICED" } } }
+decode-pair -
+match Tag-1 = { Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } } }
 
-#
-#  This doesn't work for the same reason as Tag-1 above.
-#
-#pair Tmp-Group-0.Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED"
-#match Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } }
+pair Tmp-Group-0.Vendor-Specific.Unisphere.Service-Activate = "UNPOLICED"
+match Tmp-Group-0 = { Vendor-Specific = { Unisphere = { Service-Activate = "UNPOLICED" } } }
 
 count
-match 17
+match 25

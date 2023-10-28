@@ -1850,8 +1850,10 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 	size_t		iterations = 0;
 	fr_dict_t const	*dict;
+	fr_pair_parse_t	root, relative;
 
 	fr_pair_list_init(&head);
+
 	slen = load_test_point_by_command((void **)&tp, p, "tp_encode_pair");
 	if (!tp) {
 		fr_strerror_const_push("Failed locating encode testpoint");
@@ -1885,11 +1887,21 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 	}
 
 	dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
-	if (fr_pair_list_afrom_str(cc->tmp_ctx, fr_dict_root(dict),
-				   p, in + inlen - p, &head) != T_EOL) {
+
+	root = (fr_pair_parse_t) {
+		.ctx = cc->tmp_ctx,
+		.da = fr_dict_root(dict),
+		.list = &head,
+	};
+	relative = (fr_pair_parse_t) { };
+
+	slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(p, inlen - (p - in)));
+	if (slen <= 0) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
+
+	 PAIR_LIST_VERIFY(&head);
 
 	/*
 	 *	Outer loop implements truncate test
@@ -2074,6 +2086,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 
 	fr_pair_list_t	head;
 	fr_dict_t const *dict;
+	fr_pair_parse_t	root, relative;
 
 	fr_pair_list_init(&head);
 
@@ -2093,8 +2106,16 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	}
 
 	dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
-	if (fr_pair_list_afrom_str(cc->tmp_ctx, fr_dict_root(dict),
-				   p, in + inlen - p, &head) != T_EOL) {
+
+	root = (fr_pair_parse_t) {
+		.ctx = cc->tmp_ctx,
+		.da = fr_dict_root(dict),
+		.list = &head,
+	};
+	relative = (fr_pair_parse_t) { };
+
+	slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(p, inlen - (p - in)));
+	if (slen <= 0) {
 		CLEAR_TEST_POINT(cc);
 		RETURN_OK_WITH_ERROR();
 	}
@@ -2428,10 +2449,20 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 	fr_pair_list_t 	head;
 	ssize_t		slen;
 	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+	fr_pair_parse_t	root, relative;
 
 	fr_pair_list_init(&head);
 
-	if (fr_pair_list_afrom_str(NULL, fr_dict_root(dict), in, inlen, &head) != T_EOL) {
+	root = (fr_pair_parse_t) {
+		.ctx = cc->tmp_ctx,
+		.da = fr_dict_root(dict),
+		.list = &head,
+	};
+	relative = (fr_pair_parse_t) { };
+
+	slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(in, inlen));
+	if (slen <= 0) {
+//		fr_strerror_printf_push_head("ERROR offset %d", (int) -slen);
 		fr_pair_list_free(&head);
 		RETURN_OK_WITH_ERROR();
 	}
