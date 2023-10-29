@@ -286,7 +286,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 	if (!current->rhs.vpt) {
 		fr_value_box_t *box;
 		fr_dict_attr_t const *da;
-		fr_token_t token;
+		fr_pair_parse_t root, relative;
 
 		if (tmpl_is_data(map->rhs)) {
 			box = tmpl_value(map->rhs);
@@ -316,9 +316,6 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			}
 		}
 
-		da = tmpl_attr_tail_da(current->lhs.vpt);
-		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
-
 		children = &current->rhs.pair_list;
 
 		/*
@@ -326,14 +323,19 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		 *	parent VP.  Because we're going to be moving them to the parent VP at some
 		 *	point.  The ones which aren't moved will get deleted in this function.
 		 */
-		token = fr_pair_list_afrom_str(current->ctx, da, box->vb_strvalue, box->vb_length, children);
-		if (token == T_INVALID) {
-			RPEDEBUG("Failed parsing string '%pV' as attribute list", box);
-			return -1;
-		}
+		da = tmpl_attr_tail_da(current->lhs.vpt);
+		if (fr_type_is_group(da->type)) da = fr_dict_root(request->dict);
 
-		if (token != T_EOL) {
-			REDEBUG("%s[%d] Failed to parse the entire string.", MAP_INFO);
+		root = (fr_pair_parse_t) {
+			.ctx = current->ctx,
+			.da = da,
+			.list = children,
+			.allow_compare = true,
+		};
+		relative = (fr_pair_parse_t) { };
+
+		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(box->vb_strvalue, box->vb_length)) < 0) {
+			RPEDEBUG("Failed parsing string '%pV' as attribute list", box);
 			return -1;
 		}
 

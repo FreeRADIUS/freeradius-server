@@ -61,6 +61,19 @@ static fr_table_num_sorted_t const pair_assignment_op_table[] = {
 };
 static ssize_t pair_assignment_op_table_len = NUM_ELEMENTS(pair_assignment_op_table);
 
+static fr_table_num_sorted_t const pair_comparison_op_table[] = {
+	{ L("!="),	T_OP_NE			},
+	{ L("+="),	T_OP_ADD_EQ		},
+	{ L(":="),	T_OP_SET		},
+	{ L("<"),	T_OP_LT			},
+	{ L("<="),	T_OP_LE			},
+	{ L("="),	T_OP_EQ			},
+	{ L("=="),	T_OP_CMP_EQ		},
+	{ L(">"),	T_OP_GT			},
+	{ L(">="),	T_OP_GE			}
+};
+static size_t pair_comparison_op_table_len = NUM_ELEMENTS(pair_comparison_op_table);
+
 /*
  *	Stop parsing bare words at whitespace, comma, or end of list.
  *
@@ -204,7 +217,11 @@ redo:
 	/*
 	 *	Look for the operator.
 	 */
-	fr_sbuff_out_by_longest_prefix(&slen, &op, pair_assignment_op_table, &our_in, T_INVALID);
+	if (relative->allow_compare) {
+		fr_sbuff_out_by_longest_prefix(&slen, &op, pair_comparison_op_table, &our_in, T_INVALID);
+	} else {
+		fr_sbuff_out_by_longest_prefix(&slen, &op, pair_assignment_op_table, &our_in, T_INVALID);
+	}
 	if (op == T_INVALID) {
 		fr_strerror_const("Expecting operator");
 		return fr_sbuff_error(&our_in);
@@ -427,6 +444,12 @@ redo:
 		i++;
 	} while (fr_sbuff_next_if_char(&our_in, '.'));
 
+	if (relative->allow_compare) {
+		vp->op = op;
+	} else {
+		vp->op = T_OP_EQ;
+	}
+
 	/*
 	 *	Reset the parser to the RHS so that we can parse the value.
 	 */
@@ -436,7 +459,9 @@ redo:
 	 *	The RHS is a list, go parse the nested attributes.
 	 */
 	if (fr_sbuff_next_if_char(&our_in, '{')) {
-		fr_pair_parse_t child = (fr_pair_parse_t) { };
+		fr_pair_parse_t child = (fr_pair_parse_t) {
+			.allow_compare = root->allow_compare,
+		};
 
 		if (!fr_type_is_structural(vp->vp_type)) {
 			fr_strerror_const("Cannot assign list to leaf data type");
