@@ -478,7 +478,7 @@ int radius_exec_program_legacy(char *out, size_t outlen,
 	pid_t pid;
 	int stdout_pipe;
 	pid_t child_pid;
-	int status, ret = 0;
+	int status;
 	ssize_t len;
 	char answer[4096];
 
@@ -545,7 +545,7 @@ wait:
 					fr_box_strvalue_len(answer, len));
 			}
 
-			return ret < 0 ? ret : status;
+			return status;
 		}
 	}
 
