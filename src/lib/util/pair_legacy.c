@@ -57,6 +57,7 @@ static fr_sbuff_term_t const 	bareword_terminals =
 
 static fr_table_num_sorted_t const pair_assignment_op_table[] = {
 	{ L("+="),	T_OP_ADD_EQ		},
+	{ L(":="),	T_OP_EQ			},
 	{ L("="),	T_OP_EQ			},
 };
 static ssize_t pair_assignment_op_table_len = NUM_ELEMENTS(pair_assignment_op_table);
@@ -501,6 +502,13 @@ done:
 	PAIR_VERIFY(vp);
 
 	if (fr_sbuff_next_if_char(&our_in, ',')) goto redo;
+
+	if (relative->allow_crlf) {
+		size_t len;
+
+		len = fr_sbuff_adv_past_allowed(&our_in, SIZE_MAX, sbuff_char_line_endings, NULL);
+		if (len > 0) goto redo;
+	}
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }

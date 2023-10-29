@@ -46,6 +46,7 @@ typedef struct fr_pair_parse_s {
 	fr_dict_attr_t const	*da;
 	fr_pair_list_t		*list;
 	bool			allow_compare;
+	bool			allow_crlf;
 } fr_pair_parse_t;
 
 fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t *relative,

@@ -3552,65 +3552,26 @@ static fr_pair_t *pair_alloc_parent(fr_pair_t *in, fr_pair_t *item, fr_dict_attr
  */
 void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t const *dict, fr_value_box_t *box)
 {
-	int comma = 0;
-	char *p, *end, *last_comma = NULL;
+	fr_pair_parse_t root, relative;
 
 	fr_assert(box->type == FR_TYPE_STRING);
 
-	/*
-	 *	HACK: Replace '\n' with ',' so that
-	 *	fr_pair_list_afrom_str() can parse the buffer in
-	 *	one go (the proper way would be to
-	 *	fix fr_pair_list_afrom_str(), but oh well).
-	 *
-	 *	Note that we can mangle box->vb_strvalue, as it's
-	 *	getting discarded immediately after this modification.
-	 */
-	memcpy(&p, &box->vb_strvalue, sizeof(p)); /* const issues */
-	end = p + talloc_array_length(box->vb_strvalue) - 1;
+	root = (fr_pair_parse_t) {
+		.ctx = ctx,
+		.da = fr_dict_root(dict),
+		.list = out,
+		.allow_crlf = true,
+	};
+	relative = (fr_pair_parse_t) { };
 
-	while (p < end) {
-		/*
-		 *	Replace the first \n by a comma, and remaining
-		 *	ones by a space.
-		 */
-		if (*p == '\n') {
-			if (comma) {
-				*(p++) = ' ';
-			} else {
-				*p = ',';
-				last_comma = p;
-				p++;
-			}
-
-			comma = 0;
-			continue;
-		}
-
-		if (*p == ',') {
-			comma++;
-			last_comma = p;
-			p++;
-			continue;
-		}
-
-		last_comma = NULL;
-		p++;
-	}
-
-	/*
-	 *	Don't end with a trailing comma
-	 */
-	if (last_comma) *last_comma = '\0';
-
-	if (fr_pair_list_afrom_str(ctx, fr_dict_root(dict), box->vb_strvalue, box->vb_length, out) == T_INVALID) {
+	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(box->vb_strvalue, box->vb_length)) < 0) {
 		return;
 	}
 
 	/*
 	 *	Mark the attributes as tainted.
 	 */
-	fr_pair_list_tainted(out);
+	if (box->tainted) fr_pair_list_tainted(out);
 }
 
 static const char spaces[] = "                                                                                                                                ";
