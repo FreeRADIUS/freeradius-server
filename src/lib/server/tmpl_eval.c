@@ -314,7 +314,7 @@ ssize_t _tmpl_to_type(void *out,
 			return -1;
 		}
 
-		if (radius_exec_program_legacy(request, (char *)buff, bufflen, NULL, request, vpt->name, NULL,
+		if (radius_exec_program_legacy((char *)buff, bufflen, request, vpt->name, NULL,
 					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) return -1;
 		fr_value_box_strdup_shallow(&value_to_cast, NULL, (char *)buff, true);
 		src_type = FR_TYPE_STRING;
@@ -592,7 +592,7 @@ ssize_t _tmpl_to_atype(TALLOC_CTX *ctx, void *out,
 		RDEBUG4("EXPAND TMPL EXEC");
 
 		MEM(fr_value_box_bstr_alloc(tmp_ctx, &buff, &value, NULL, 1024, true));
-		if (radius_exec_program_legacy(request, buff, 1024, NULL, request, vpt->name, NULL,
+		if (radius_exec_program_legacy(buff, 1024, request, vpt->name, NULL,
 					true, false, fr_time_delta_from_sec(EXEC_TIMEOUT)) != 0) {
 		error:
 			talloc_free(tmp_ctx);

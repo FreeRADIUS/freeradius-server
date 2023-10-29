@@ -1433,7 +1433,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, fr_pair_list_t *out, request_t *reque
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call fr_pair_value_from_str on the output of the script.
 	 */
-	result = radius_exec_program_legacy(ctx, answer, sizeof(answer), NULL,
+	result = radius_exec_program_legacy(answer, sizeof(answer),
 				     request, map->rhs->name, input_pairs ? input_pairs : NULL,
 				     true, true, fr_time_delta_from_sec(EXEC_TIMEOUT));
 	talloc_free(expanded);

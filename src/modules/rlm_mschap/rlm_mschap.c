@@ -1251,7 +1251,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 		/*
 		 *	Run the program, and expect that we get 16
 		 */
-		result = radius_exec_program_legacy(request, buffer, sizeof(buffer), NULL, request, inst->ntlm_auth, NULL,
+		result = radius_exec_program_legacy(buffer, sizeof(buffer), request, inst->ntlm_auth, NULL,
 					     true, true, inst->ntlm_auth_timeout);
 		if (result != 0) {
 			char *p;

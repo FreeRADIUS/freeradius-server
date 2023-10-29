@@ -41,9 +41,9 @@ pid_t	radius_start_program_legacy(int *stdin_fd, int *stdout_fd, int *stderr_fd,
 int	radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout,
 				char *answer, int left);
 
-int	radius_exec_program_legacy(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_t *output_pairs,
+int	radius_exec_program_legacy(char *out, size_t outlen,
 			    request_t *request, char const *cmd, fr_pair_list_t *input_pairs,
-			    bool exec_wait, bool shell_escape, fr_time_delta_t timeout) CC_HINT(nonnull (5, 6));
+			    bool exec_wait, bool shell_escape, fr_time_delta_t timeout) CC_HINT(nonnull (3, 4));
 
 #ifdef __cplusplus
 }

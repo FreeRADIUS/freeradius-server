@@ -456,11 +456,8 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
 
 /** Execute a program.
  *
- * @param[in,out] ctx to allocate new fr_pair_t (s) in.
  * @param[out] out buffer to append plaintext (non valuepair) output.
  * @param[in] outlen length of out buffer.
- * @param[out] output_pairs list of value pairs - Data on child's stdout will be parsed and
- *	added into this list of value pairs.
  * @param[in] request Current request (may be NULL).
  * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv
  *	part is xlat'ed.
@@ -474,15 +471,13 @@ int radius_readfrom_program_legacy(int fd, pid_t pid, fr_time_delta_t timeout, c
  *	- exit code if exec_wait!=0.
  *	- -1 on failure.
  */
-int radius_exec_program_legacy(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pair_list_t *output_pairs,
+int radius_exec_program_legacy(char *out, size_t outlen,
 			       request_t *request, char const *cmd, fr_pair_list_t *input_pairs,
 			       bool exec_wait, bool shell_escape, fr_time_delta_t timeout)
 {
 	pid_t pid;
 	int stdout_pipe;
-	char *p;
 	pid_t child_pid;
-	int comma = 0;
 	int status, ret = 0;
 	ssize_t len;
 	char answer[4096];
@@ -522,51 +517,7 @@ int radius_exec_program_legacy(TALLOC_CTX *ctx, char *out, size_t outlen, fr_pai
 		goto wait;
 	}
 
-	/*
-	 *	Parse the output, if any.
-	 */
-	if (output_pairs) {
-		fr_pair_list_t vps;
-
-		fr_pair_list_init(&vps);
-		/*
-		 *	HACK: Replace '\n' with ',' so that
-		 *	fr_pair_list_afrom_str() can parse the buffer in
-		 *	one go (the proper way would be to
-		 *	fix fr_pair_list_afrom_str(), but oh well).
-		 */
-		for (p = answer; *p; p++) {
-			if (*p == '\n') {
-				*p = comma ? ' ' : ',';
-				p++;
-				comma = 0;
-			}
-			if (*p == ',') {
-				comma++;
-			}
-		}
-
-		/*
-		 *	Replace any trailing comma by a NUL.
-		 */
-		if (answer[len - 1] == ',') {
-			answer[--len] = '\0';
-		}
-
-		if (fr_pair_list_afrom_str(ctx, fr_dict_root(request->dict), answer, sizeof(answer), &vps) == T_INVALID) {
-			RPERROR("Failed parsing output from: %s", cmd);
-			if (out) strlcpy(out, answer, len);
-			ret = -1;
-		}
-
-		/*
-		 *	We want to mark the new attributes as tainted,
-		 *	but not the existing ones.
-		 */
-		fr_pair_list_tainted(&vps);
-		fr_pair_list_append(output_pairs, &vps);
-
-	} else if (out) {
+	if (out) {
 		/*
 		 *	We've not been told to extract output pairs,
 		 *	just copy the programs output to the out
