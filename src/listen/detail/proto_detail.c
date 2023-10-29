@@ -200,6 +200,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_pair_list_t		tmp_list;
 	fr_dcursor_t		cursor;
 	time_t			timestamp = 0;
+	fr_pair_parse_t root, relative;
 
 	RHEXDUMP3(data, data_len, "proto_detail decode packet");
 
@@ -299,7 +300,45 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		 *	Ensure temporary list is empty before each use
 		 */
 		fr_pair_list_free(&tmp_list);
-		if ((fr_pair_list_afrom_str(request->request_ctx, fr_dict_root(request->dict), (char const *) p, (data + data_len) - p, &tmp_list) > 0) && !fr_pair_list_empty(&tmp_list)) {
+
+		/*
+		 *	Reinitialize every time.
+		 *
+		 *	@todo - maybe we want to keep "relative' around between lines?
+		 *	So that the detail file reader can read:
+		 *
+		 *		foo = {}
+		 *		.bar = baz
+		 *
+		 *	and get
+		 *
+		 *		foo = { bar = baz }
+		 *
+		 *	But doing that would require updating the
+		 *	detail file writer to track parent / child
+		 *	relationships, which we're not yet prepared to
+		 *	do.
+		 *
+		 *	@todo - this also doesn't create nested attributes properly,
+		 *	as the write will write:
+		 *
+		 *		foo.bar = baz
+		 *
+		 *	and then the final pair "foo" is _appended_ to the input list, without paying
+		 *	any attention to what's going on!
+		 *
+		 *	We likely just want to pass in request_pairs the parse function, AND also don't
+		 *	mash "relative" between calls.
+		 */
+		root = (fr_pair_parse_t) {
+			.ctx = request->request_ctx,
+			.da = fr_dict_root(request->dict),
+			.list = &tmp_list,
+		};
+		relative = (fr_pair_parse_t) { };
+
+		if ((fr_pair_list_afrom_substr(&root, &relative,
+					       &FR_SBUFF_IN((char const *) p, (data + data_len) - p)) > 0) && !fr_pair_list_empty(&tmp_list)) {
 			vp = fr_pair_list_head(&tmp_list);
 			fr_pair_list_append(&request->request_pairs, &tmp_list);
 		} else {
