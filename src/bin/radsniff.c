@@ -2090,10 +2090,17 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 
 static int rs_build_filter(fr_pair_list_t *out, char const *filter)
 {
-	fr_token_t code;
+	fr_pair_parse_t root, relative;
 
-	code = fr_pair_list_afrom_str(conf, fr_dict_root(dict_radius), filter, strlen(filter), out);
-	if (code == T_INVALID) {
+	root = (fr_pair_parse_t) {
+		.ctx = conf,
+		.da = fr_dict_root(dict_radius),
+		.list = out,
+		.allow_compare = true,
+	};
+	relative = (fr_pair_parse_t) { };
+
+	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(filter, strlen(filter))) <= 0) {
 		fr_perror("Invalid RADIUS filter \"%s\"", filter);
 		return -1;
 	}
