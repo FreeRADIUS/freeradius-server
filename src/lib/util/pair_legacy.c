@@ -959,10 +959,9 @@ fr_token_t fr_pair_list_afrom_str(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
  */
 int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list_t *out, FILE *fp, bool *pfiledone)
 {
-	fr_token_t	last_token = T_EOL;
-	bool		found = false;
 	fr_pair_list_t tmp_list;
-	fr_pair_t	*relative_vp = NULL;
+	fr_pair_parse_t	root, relative;
+	bool		found = false;
 	char		buf[8192];
 
 	/*
@@ -972,12 +971,21 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 	 */
 	fr_pair_list_init(&tmp_list);
 
+	root = (fr_pair_parse_t) {
+		.ctx = ctx,
+		.da = fr_dict_root(dict),
+		.list = &tmp_list,
+		.allow_crlf = true,
+		.allow_compare = true,
+	};
+	relative = (fr_pair_parse_t) { };
+
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		/*
 		 *      If we get a '\n' by itself, we assume that's
 		 *      the end of that VP list.
 		 */
-		if (buf[0] == '\n') {
+		if ((buf[0] == '\n') || (buf[0] == '\r')) {
 			if (found) {
 				*pfiledone = false;
 				break;
@@ -991,41 +999,16 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		if (buf[0] == '#') continue;
 
 		/*
-		 *	Call our internal function, instead of the public wrapper.
-		 */
-		if (pair_parse_legacy(ctx, fr_dict_root(dict), NULL, buf, buf + strlen(buf), &tmp_list, &last_token, 0, &relative_vp) < 0) {
-			goto fail;
-		}
-
-		/*
-		 *	@todo - rely on actually checking the syntax, and "OK" result, instead of guessing.
+		 *	Leave "relative" between calls, so that we can do:
 		 *
-		 *	The main issue is that it's OK to read no
-		 *	attributes on a particular line, but only if
-		 *	it's comments.
+		 *		foo = {}
+		 *		.bar = baz
+		 *
+		 *	and get
+		 *
+		 *		foo = { bar = baz }
 		 */
-		if (!fr_pair_list_num_elements(&tmp_list)) {
-			/*
-			 *	This is allowed for relative attributes.
-			 */
-			if (relative_vp) {
-				if (last_token != T_COMMA) relative_vp = NULL;
-				continue;
-			}
-
-			/*
-			 *	Blank line by itself, with no relative
-			 *	VP, and no output attributes means
-			 *	that we stop reading the file.
-			 */
-			if (last_token == T_EOL) break;
-
-		fail:
-			/*
-			 *	Didn't read anything, but the previous
-			 *	line wasn't EOL.  The input file has a
-			 *	format error.
-			 */
+		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(buf, strlen(buf))) <= 0) {
 			*pfiledone = false;
 			fr_pair_list_free(&tmp_list);
 			return -1;
