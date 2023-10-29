@@ -424,6 +424,16 @@ ENV {
 	#
 #	BAR
 
+
+	#
+	#  If the server needs kerberos credentials, then they can be placed
+	#  into the following keytab file.
+	#
+	#  This also permits the server to use those credentials when it is
+	#  run in debug mode.
+	#
+#	KRB5_CLIENT_KTNAME = ${raddbdir}/radiusd.keytab
+
 	#
 	#  `LD_PRELOAD` is special.  It is normally set before the
 	#  application runs, and is interpreted by the dynamic linker.
