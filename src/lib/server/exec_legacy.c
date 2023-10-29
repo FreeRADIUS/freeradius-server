@@ -537,7 +537,7 @@ wait:
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
-			if ((status != 0) || (ret < 0)) {
+			if (status != 0) {
 				RERROR("Program returned code (%d) and output \"%pV\"", status,
 				       fr_box_strvalue_len(answer, len));
 			} else {
