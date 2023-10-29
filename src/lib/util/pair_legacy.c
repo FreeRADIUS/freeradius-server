@@ -151,6 +151,8 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 	if (fr_dict_internal()) internal = fr_dict_root(fr_dict_internal());
 	if (internal == root->da) internal = NULL;
 
+	if (fr_sbuff_remaining(&our_in) == 0) return 0;
+
 redo:
 	append = true;
 	raw = raw_octets = false;
@@ -513,7 +515,7 @@ done:
 		keep_going |= (len > 0);
 	}
 
-	keep_going &= (fr_sbuff_remaining(&our_in) > 0);
+	keep_going &= ((fr_sbuff_remaining(&our_in) > 0) || (fr_sbuff_extend(&our_in) > 0));
 
 	if (keep_going) goto redo;
 
@@ -582,7 +584,7 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 		 *
 		 *		foo = { bar = baz }
 		 */
-		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(buf, strlen(buf))) <= 0) {
+		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(buf, strlen(buf))) < 0) {
 			*pfiledone = false;
 			fr_pair_list_free(&tmp_list);
 			return -1;
