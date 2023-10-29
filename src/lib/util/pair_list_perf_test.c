@@ -181,7 +181,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 	fr_pair_t	*vp, *next;
 	int		i;
 	size_t		j;
-	fr_token_t	ret;
+	ssize_t		slen;
 	fr_pair_t	**vp_array;
 	size_t		input_count;
 
@@ -197,14 +197,23 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 	 *  repetition.
 	 */
 	for (i = 0; i < reps; i++) {
+		fr_pair_parse_t root, relative;
+
+		root = (fr_pair_parse_t) {
+			.ctx = ctx,
+			.da = fr_dict_root(dict),
+			.list = &list,
+		};
+		relative = (fr_pair_parse_t) { };
+
 		strcpy(prep_pairs, pairs);
 		p = prep_pairs;
 		while ((p = strchr(p, '#'))) {
 			*p = (char)(i + 48);
 		}
-		ret = fr_pair_list_afrom_str(ctx, fr_dict_root(dict), prep_pairs, strlen(prep_pairs), &list);
-		if (ret == T_INVALID) fr_perror("pair_list_perf_tests");
-		TEST_ASSERT(ret != T_INVALID);
+		slen = fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(prep_pairs, strlen(prep_pairs)));
+		if (slen <= 0) fr_perror("pair_list_perf_tests");
+		TEST_ASSERT(slen > 0);
 
 		input_count = fr_pair_list_num_elements(&list);
 

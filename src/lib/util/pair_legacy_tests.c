@@ -80,16 +80,26 @@ static void test_init(void)
 	if (fr_pair_test_list_alloc(autofree, &test_pairs, NULL) < 0) goto error;
 }
 
-static void test_fr_pair_list_afrom_str(void)
+static void test_fr_pair_list_afrom_substr(void)
 {
 	fr_pair_t      *vp;
+	ssize_t		len;
 	fr_pair_list_t list;
 	char const     *buffer = "Test-Uint32-0 = 123, Test-String-0 = \"Testing123\"";
+	fr_pair_parse_t root, relative;
+
+	root = (fr_pair_parse_t) {
+		.ctx = autofree,
+		.da = fr_dict_root(test_dict),
+		.list = &list,
+	};
+	relative = (fr_pair_parse_t) { };
 
 	fr_pair_list_init(&list);
+	len = strlen(buffer);
 
-	TEST_CASE("Create 'vp' using fr_pair_list_afrom_str()");
-	TEST_CHECK(fr_pair_list_afrom_str(autofree, fr_dict_root(test_dict), buffer, strlen(buffer), &list) == T_EOL);
+	TEST_CASE("Create 'vp' using fr_pair_list_afrom_substr()");
+	TEST_CHECK(fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(buffer, len)) == len);
 
 	TEST_CASE("Looking for Test-Uint32-0");
 	TEST_CHECK((vp = fr_pair_find_by_da(&list, NULL, fr_dict_attr_test_uint32)) != NULL);
@@ -209,7 +219,7 @@ TEST_LIST = {
 	/*
 	 *	Legacy calls
 	 */
-	{ "fr_pair_list_afrom_str",  test_fr_pair_list_afrom_str },
+	{ "fr_pair_list_afrom_substr",  test_fr_pair_list_afrom_substr },
 	{ "fr_pair_list_afrom_file", test_fr_pair_list_afrom_file },
 	{ "fr_pair_list_move_op",       test_fr_pair_list_move_op },
 
