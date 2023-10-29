@@ -4718,6 +4718,11 @@ parse:
 					fr_sbuff_out_aunescape_until(ctx, &buff, &our_in, SIZE_MAX,
 								     rules->terminals, rules->escapes);
 
+					if (talloc_array_length(buff) == 1) {
+						talloc_free(buff);
+						goto zero;
+					}
+
 					bin = talloc_realloc(ctx, buff, uint8_t, talloc_array_length(buff) - 1);
 					if (unlikely(!bin)) {
 						fr_strerror_const("Failed trimming string buffer");
@@ -4734,6 +4739,7 @@ parse:
 				 *	arrays normally
 				 */
 				} else {
+				zero:
 					bin = talloc_zero_array(ctx, uint8_t, 0);
 				}
 
