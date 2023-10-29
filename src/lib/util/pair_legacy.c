@@ -138,6 +138,7 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 	bool			raw, raw_octets;
 	bool			was_relative = false;
 	bool			append;
+	bool			keep_going;
 	fr_token_t		op;
 	fr_slen_t		slen;
 	fr_pair_t		*vp;
@@ -297,11 +298,7 @@ redo:
 					goto update_relative;
 				}
 
-				/*
-				 *	@todo - it isn't found, return a descriptive error.
-				 */
-				fr_strerror_printf("Unknown child attribute for parent %s", relative->da->name);
-				return fr_sbuff_error(&our_in);
+				goto notfound;
 			}
 
 			if (internal) {
@@ -310,8 +307,14 @@ redo:
 		}
 
 		if (err != FR_DICT_ATTR_OK) {
-			fr_strerror_printf("Unknown child attribute for parent %s", relative->da->name);
-			return fr_sbuff_error(&our_in) + slen;
+		notfound:
+			fr_sbuff_marker(&rhs_m, &our_in);
+			fr_sbuff_adv_past_allowed(&our_in, SIZE_MAX, fr_dict_attr_allowed_chars, NULL);
+
+			fr_strerror_printf("Unknown attribute \"%.*s\" for parent \"%s\"",
+					   (int) fr_sbuff_diff(&our_in, &rhs_m), fr_sbuff_current(&rhs_m),
+					   relative->da->name);
+			return fr_sbuff_error(&our_in);
 		}
 		fr_assert(da != NULL);
 
@@ -501,14 +504,18 @@ redo:
 done:
 	PAIR_VERIFY(vp);
 
-	if (fr_sbuff_next_if_char(&our_in, ',')) goto redo;
+	keep_going = fr_sbuff_next_if_char(&our_in, ',');
 
 	if (relative->allow_crlf) {
 		size_t len;
 
 		len = fr_sbuff_adv_past_allowed(&our_in, SIZE_MAX, sbuff_char_line_endings, NULL);
-		if (len > 0) goto redo;
+		keep_going |= (len > 0);
 	}
+
+	keep_going &= (fr_sbuff_remaining(&our_in) > 0);
+
+	if (keep_going) goto redo;
 
 	FR_SBUFF_SET_RETURN(in, &our_in);
 }
