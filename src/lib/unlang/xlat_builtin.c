@@ -2253,37 +2253,6 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
-static xlat_arg_parser_t const xlat_func_pack_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_OCTETS },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
-/** Pack multiple things together
- *
- * Example:
-@verbatim
-%pack(%{Attr-Foo}%{Attr-bar}) == packed hex values of the attributes
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_pack(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    UNUSED xlat_ctx_t const *xctx,
-				    UNUSED request_t *request, fr_value_box_list_t *in)
-{
-	fr_value_box_t	*vb;
-
-	/*
-	 *	Input boxes are already cast to FR_TYPE_OCTETS and concatenated
-	 *	by the input argument parser - so simply move to the output
-	 */
-	vb = fr_value_box_list_pop_head(in);
-	fr_dcursor_append(out, vb);
-
-	return XLAT_ACTION_DONE;
-}
-
-
 static xlat_arg_parser_t const xlat_func_pairs_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -3746,7 +3715,6 @@ do { \
 	XLAT_REGISTER_MONO("map", xlat_func_map, FR_TYPE_INT8, xlat_func_map_arg);
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
-	XLAT_REGISTER_MONO("pack", xlat_func_pack, FR_TYPE_OCTETS, xlat_func_pack_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	if (unlikely((xlat = xlat_func_register(ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);

@@ -8,7 +8,7 @@
 }
 
 
-&Tmp-Octets-0 := %pack(%{Framed-IP-Address}%{NAS-Port}%{NAS-IP-Address})
+&Tmp-Octets-0 := (octets) &Framed-IP-Address + (octets) &NAS-Port + (octets) &NAS-IP-Address
 
 if (!(&Tmp-Octets-0 == 0x7f000001000008407f000002)) {
 	test_fail
