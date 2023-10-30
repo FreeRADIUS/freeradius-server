@@ -2253,47 +2253,6 @@ static xlat_action_t xlat_func_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 
-/** Prints the name of the current module processing the request
- *
- * For example will expand to "echo" (not "exec") in
-@verbatim
-exec echo {
-  ...
-  program = "/bin/echo %module()"
-  ...
-}
-@endverbatim
- *
- * Example:
-@verbatim
-%module() == "" (outside a module)
-%module() == "ldap" (in the ldap module)
-@endverbatim
- *
- * @ingroup xlat_functions
- */
-static xlat_action_t xlat_func_module(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      UNUSED xlat_ctx_t const *xctx,
-				      request_t *request, UNUSED fr_value_box_list_t *in)
-{
-	fr_value_box_t	*vb = NULL;
-
-	/*
-	 *	Don't do anything if we're outside of a module
-	 */
-	if (!request->module || !*request->module) return XLAT_ACTION_DONE;
-
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	if (fr_value_box_strdup(vb, vb, NULL, request->module, false) < 0) {
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_dcursor_append(out, vb);
-
-	return XLAT_ACTION_DONE;
-}
-
 static xlat_arg_parser_t const xlat_func_pack_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_OCTETS },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -3829,9 +3788,6 @@ do { \
 
 	XLAT_REGISTER_MONO("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
 	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
-
-	if (unlikely((xlat = xlat_func_register(ctx, "module", xlat_func_module, FR_TYPE_STRING)) == NULL)) return -1;
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 
 	return xlat_register_expressions();
 }

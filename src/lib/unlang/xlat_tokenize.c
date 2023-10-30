@@ -525,7 +525,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	XLAT_DEBUG("FUNC-ARGS <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
 	/*
-	 *	%(module:args)
+	 *	%(function:args)
 	 */
 	fr_sbuff_marker(&m_s, in);
 	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
