@@ -602,7 +602,7 @@ void log_module_failure_msg(request_t *request, char const *fmt, ...)
 	va_end(ap);
 }
 
-/** Martial variadic log arguments into a va_list and pass to normal logging functions
+/** Marshal variadic log arguments into a va_list and pass to normal logging functions
  *
  * @see log_request_error for more details.
  *
@@ -629,7 +629,7 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 	va_end(ap);
 }
 
-/** Martial variadic log arguments into a va_list and pass to error logging functions
+/** Marshal variadic log arguments into a va_list and pass to error logging functions
  *
  * This could all be done in a macro, but it turns out some implementations of the
  * variadic macros do not work at all well if the va_list being written to is further
