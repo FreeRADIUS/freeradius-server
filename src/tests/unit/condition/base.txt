@@ -455,8 +455,8 @@ condition (ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
 match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
-condition (ether)&Tmp-uint64-0 == "%{module: foo}"
-match ((ether)&Tmp-uint64-0 == %(cast:string "%{module: foo}"))
+condition (ether)&Tmp-uint64-0 == "%interpreter('foo')"
+match ((ether)&Tmp-uint64-0 == %(cast:string "%(interpreter:'foo')"))
 
 condition (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
