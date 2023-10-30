@@ -92,7 +92,7 @@ static fr_sbuff_parse_rules_t const bareword_unquoted = {
 };
 
 
-static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in)
+static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in, bool tainted)
 {
 	char quote;
 	ssize_t slen;
@@ -106,21 +106,19 @@ static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in)
 		rules = &value_parse_rules_single_quoted;
 		quote = '\'';
 
-#if 0
 		/*
 		 *	We don't support backticks here.
 		 */
-	} else if (fr_sbuff_next_if_char(in, '\'')) {
-		rules = &value_parse_rules_backtick_quoted;
-		quote = '`';
+	} else if (fr_sbuff_is_char(in, '\'')) {
+		fr_strerror_const("Backticks are not supported here");
+		return 0;
 
-#endif
 	} else {
 		rules = &bareword_unquoted;
 		quote = '\0';
 	}
 
-	slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, in, rules, false);
+	slen = fr_value_box_from_substr(vp, &vp->data, vp->da->type, vp->da, in, rules, tainted);
 	if (slen < 0) return slen - (quote != 0);
 
 	if (quote && !fr_sbuff_next_if_char(in, quote)) {
@@ -131,6 +129,17 @@ static ssize_t fr_pair_value_from_substr(fr_pair_t *vp, fr_sbuff_t *in)
 	return slen + ((quote != 0) << 1);
 }
 
+/**  Parse a #fr_pair_list_t from a substring
+ *
+ * @param[in] root	where we start parsing from
+ * @param[in,out] relative where we left off, or where we should continue from
+ * @param[in] in	input sbuff
+ * @return
+ *	- <0 on error
+ *	- 0 on no input
+ *	- >0 on how many bytes of input we read
+ *
+ */
 fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t *relative,
 				    fr_sbuff_t *in)
 {
@@ -156,6 +165,7 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 redo:
 	append = true;
 	raw = raw_octets = false;
+	relative->last_char = 0;
 
 	fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, NULL);
 
@@ -500,19 +510,26 @@ redo:
 		return fr_sbuff_error(&our_in);
 	}
 
-	slen = fr_pair_value_from_substr(vp, &our_in);
+	slen = fr_pair_value_from_substr(vp, &our_in, relative->tainted);
 	if (slen <= 0) return fr_sbuff_error(&our_in) + slen;
 
 done:
 	PAIR_VERIFY(vp);
 
-	keep_going = fr_sbuff_next_if_char(&our_in, ',');
+	keep_going = false;
+	if (fr_sbuff_next_if_char(&our_in, ',')) {
+		keep_going = true;
+		relative->last_char = ',';
+	}
 
 	if (relative->allow_crlf) {
 		size_t len;
 
 		len = fr_sbuff_adv_past_allowed(&our_in, SIZE_MAX, sbuff_char_line_endings, NULL);
-		keep_going |= (len > 0);
+		if (len) {
+			keep_going |= true;
+			if (!relative->last_char) relative->last_char = '\n';
+		}
 	}
 
 	keep_going &= ((fr_sbuff_remaining(&our_in) > 0) || (fr_sbuff_extend(&our_in) > 0));

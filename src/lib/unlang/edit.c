@@ -331,6 +331,7 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			.da = da,
 			.list = children,
 			.allow_compare = true,
+			.tainted = box->tainted,
 		};
 		relative = (fr_pair_parse_t) { };
 

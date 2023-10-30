@@ -41,10 +41,12 @@ void		fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t 
 
 typedef struct fr_pair_parse_s {
 	TALLOC_CTX		*ctx;
-	fr_dict_attr_t const	*da;
-	fr_pair_list_t		*list;
-	bool			allow_compare;
-	bool			allow_crlf;
+	fr_dict_attr_t const	*da;		//!< root da to start parsing from
+	fr_pair_list_t		*list;		//!< list where output is placed
+	bool			allow_compare;	//!< allow comparison operators
+	bool			allow_crlf;	//!< allow CRLF, and treat like comma
+	bool			tainted;	//!< source is tainted
+	char			last_char;	//!< last character we read - ',', '\n', or 0 for EOF
 } fr_pair_parse_t;
 
 fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t *relative,

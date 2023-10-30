@@ -3561,17 +3561,13 @@ void fr_pair_list_afrom_box(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_t cons
 		.da = fr_dict_root(dict),
 		.list = out,
 		.allow_crlf = true,
+		.tainted = box->tainted,
 	};
 	relative = (fr_pair_parse_t) { };
 
 	if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(box->vb_strvalue, box->vb_length)) < 0) {
 		return;
 	}
-
-	/*
-	 *	Mark the attributes as tainted.
-	 */
-	if (box->tainted) fr_pair_list_tainted(out);
 }
 
 static const char spaces[] = "                                                                                                                                ";
