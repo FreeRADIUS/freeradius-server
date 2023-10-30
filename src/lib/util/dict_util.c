@@ -4373,6 +4373,11 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	}
 
 	/*
+	 *	Anything can go into internal groups.
+	 */
+	if ((parent->type == FR_TYPE_GROUP) && parent->flags.internal) return true;
+
+	/*
 	 *	Protocol attributes have to be in the same dictionary.
 	 *
 	 *	Unless they're a cross-protocol grouping attribute.
