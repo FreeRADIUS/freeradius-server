@@ -273,7 +273,7 @@ else {
 	test_fail
 }
 
-&Tmp-Integer-0 := `/bin/sh -c "wc -l < $ENV{MODULE_TEST_DIR}/test_e.log"`
+&Tmp-Integer-0 := %exec('/bin/sh', '-c', "wc -l < $ENV{MODULE_TEST_DIR}/test_e.log")
 
 if (&Tmp-Integer-0 == 3) {
 	test_pass

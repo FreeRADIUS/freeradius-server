@@ -2,7 +2,7 @@
 #  Sync calls should always return a zero length string
 #  because we don't wait for the response.
 #
-&Tmp-String-0 := `/bin/sh -c 'echo hello'`
+&Tmp-String-0 := %exec('/bin/sh', '-c', 'echo hello')
 if (&Tmp-String-0 != 'hello') {
 	test_fail
 } else {
@@ -12,7 +12,7 @@ if (&Tmp-String-0 != 'hello') {
 #
 #  @todo - list over-rides are not allowed!
 #
-&control += `/bin/sh -c "echo Reply-Message := \'hello\'"`
+&control += %exec('/bin/sh', '-c', "echo Reply-Message := \'hello\'")
 
 if (&control.Reply-Message != 'hello') {
 	test_fail
