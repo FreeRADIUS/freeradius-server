@@ -315,15 +315,6 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		}
 
 		switch (packet[0]) {
-		case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
-		case FR_RADIUS_CODE_DISCONNECT_ACK:
-		case FR_RADIUS_CODE_DISCONNECT_NAK:
-		case FR_RADIUS_CODE_COA_ACK:
-		case FR_RADIUS_CODE_COA_NAK:
-			if (!original) goto need_original;
-			if (original[0] == FR_RADIUS_CODE_STATUS_SERVER) goto do_ack;
-			FALL_THROUGH;
-
 		case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
 		case FR_RADIUS_CODE_DISCONNECT_REQUEST:
 		case FR_RADIUS_CODE_COA_REQUEST:
@@ -333,7 +324,11 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		case FR_RADIUS_CODE_ACCESS_REJECT:
 		case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		do_ack:
+		case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+		case FR_RADIUS_CODE_DISCONNECT_ACK:
+		case FR_RADIUS_CODE_DISCONNECT_NAK:
+		case FR_RADIUS_CODE_COA_ACK:
+		case FR_RADIUS_CODE_COA_NAK:
 			if (!original) goto need_original;
 			memcpy(packet + 4, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
 			break;
