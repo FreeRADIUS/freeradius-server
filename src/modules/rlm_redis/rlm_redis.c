@@ -317,7 +317,7 @@ static xlat_arg_parser_t const redis_node_xlat_args[] = {
 /** Return the node that is currently servicing a particular key
  *
 @verbatim
-%(redis.node:<key> [<index>])
+%redis.node(<key>[, <index>])
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -581,7 +581,7 @@ static xlat_arg_parser_t const redis_args[] = {
 /** Xlat to make calls to redis
  *
 @verbatim
-%(redis:<redis command>)
+%redis(<redis command>)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -867,7 +867,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_args_set(xlat, redis_args);
 
 	/*
-	 *	%(redis.node:<key>[ idx])
+	 *	%redis.node(<key>[, idx])
 	 */
 	if (unlikely((xlat = xlat_func_register_module(inst, mctx, "node", redis_node_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_node_xlat_args);

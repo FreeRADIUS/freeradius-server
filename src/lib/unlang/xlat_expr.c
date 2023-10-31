@@ -1154,7 +1154,7 @@ static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const
 	fr_value_box_list_foreach(in, box) {
 		if (fr_box_is_group(box)) {
 			if (!xlat_logical_or(rctx, &box->vb_group)) return false;
-			continue;			
+			continue;
 		}
 
 		/*
@@ -1261,7 +1261,7 @@ static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t cons
 	fr_value_box_list_foreach(in, box) {
 		if (fr_box_is_group(box)) {
 			if (!xlat_logical_or(rctx, &box->vb_group)) return false;
-			continue;			
+			continue;
 		}
 
 		/*
@@ -1488,7 +1488,7 @@ static xlat_action_t xlat_func_unary_complement(TALLOC_CTX *ctx, fr_dcursor_t *o
  *  xlat_tokenize() just makes all unknown arguments into XLAT_BOX, of data type FR_TYPE_STRING.  Whereas
  *  xlat_tokenize_expr() calls tmpl_afrom_substr(), which tries hard to create a particular data type.
  *
- *  This function fixes up calls of the form %(op_add: 3 4), which normally passes 2 arguments of "3" and "4",
+ *  This function fixes up calls of the form %op_add(3, 4), which normally passes 2 arguments of "3" and "4",
  *  so that the arguments are instead passed as integers 3 and 4.
  *
  *  This fixup isn't *strictly* necessary, but it's good to have no surprises in the code, if the user creates

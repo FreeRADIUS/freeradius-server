@@ -161,7 +161,7 @@ static xlat_arg_parser_t const xlat_icmp_args[] = {
  *
  * Example (ping 192.0.2.1):
 @verbatim
-"%(icmp:192.0.2.1)"
+%icmp(192.0.2.1)
 @endverbatim
  *
  * @ingroup xlat_functions

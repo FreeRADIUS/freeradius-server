@@ -935,12 +935,12 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	 *	If we deleted the attribute when processing the LHS, then you couldn't reference an attribute
 	 *	in it's own assignment:
 	 *
-	 *		&foo := %(tolower:foo)
+	 *		&foo := %tolower(foo)
 	 *
 	 *	so we have to delay the deletion until the RHS has been fully expanded.  But we don't always
 	 *	delete everything. e.g. if the map is:
 	 *
-	 *		&foo[1] := %(tolower:foo[1])
+	 *		&foo[1] := %tolower(foo[1])
 	 *
 	 *	The we just apply the assignment to the LHS, over-writing it's value.
 	 */

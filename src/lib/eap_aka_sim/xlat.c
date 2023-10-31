@@ -41,7 +41,7 @@ static xlat_arg_parser_t const aka_sim_xlat_id_method_xlat_args[] = {
 /** Returns the SIM method EAP-SIM or EAP-AKA hinted at by the user identifier
  *
 @verbatim
-%(aka_sim_id_method:%{id_attr})
+%aka_sim_id_method(%{id_attr})
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -98,7 +98,7 @@ static xlat_arg_parser_t const aka_sim_xlat_id_type_xlat_args[] = {
 /** Returns the type of identity used
  *
 @verbatim
-%(aka_sim_id_type:%{id_attr})
+%aka_sim_id_type(%{id_attr})
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -154,7 +154,7 @@ static xlat_arg_parser_t const aka_sim_id_3gpp_temporary_id_key_index_xlat_args[
 /** Returns the key index from a 3gpp temporary id
  *
 @verbatim
-%(3gpp_temporary_id_key_index:%{id_attr})
+%3gpp_temporary_id_key_index(%{id_attr})
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -193,7 +193,7 @@ xlat_arg_parser_t aka_sim_3gpp_temporary_id_decrypt_xlat_args[] = {
 /** Decrypt a 3gpp temporary id
  *
  @verbatim
- %(3gpp_temporary_id_decrypt:<id> <key>)
+ %3gpp_temporary_id_decrypt(<id> <key>)
  @endverbatim
  *
  * The pseudonym is in the format
@@ -337,7 +337,7 @@ xlat_arg_parser_t aka_sim_3gpp_temporary_id_encrypt_xlat_args[] = {
 /** Encrypts a 3gpp pseudonym
  *
 @verbatim
-%(3gpp_temporary_id_encrypt:<id> <key> <index> [(pseudonym|fastauth)])
+%3gpp_temporary_id_encrypt(<id>, <key>, <index>, [(pseudonym|fastauth)])
 @endverbatim
  *
  * @ingroup xlat_functions

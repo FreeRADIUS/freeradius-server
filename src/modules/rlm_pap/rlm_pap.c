@@ -795,7 +795,7 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_lm(rlm_rcode_t *p_result,
 		RETURN_MODULE_INVALID;
 	}
 
-	len = xlat_eval(charbuf, sizeof(charbuf), request, "%(mschap:LM-Hash %{User-Password})", NULL, NULL);
+	len = xlat_eval(charbuf, sizeof(charbuf), request, "%mschap(LM-Hash, %{User-Password})", NULL, NULL);
 	if (len < 0) RETURN_MODULE_FAIL;
 
 	if ((fr_base16_decode(NULL, &digest_dbuff, &FR_SBUFF_IN(charbuf, len), false) !=

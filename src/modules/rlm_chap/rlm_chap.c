@@ -121,7 +121,7 @@ static xlat_arg_parser_t const xlat_func_chap_password_args[] = {
  *
  * Example:
 @verbatim
-"%(chap.password:<password>)" == 0x<id><md5_hash>
+%chap.password(<password>) == 0x<id><md5_hash>
 @endverbatim
  *
  * @ingroup xlat_functions

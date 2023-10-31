@@ -42,7 +42,7 @@ static xlat_arg_parser_t const unpack_xlat_args[] = {
  *
  * Example:
 @verbatim
-%(unpack:%{Class} 0 integer)
+%unpack(%{Class}, 0, integer)
 @endverbatim
  * Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
  *

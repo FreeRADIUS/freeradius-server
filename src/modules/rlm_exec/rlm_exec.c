@@ -122,7 +122,7 @@ static xlat_arg_parser_t const exec_xlat_args[] = {
  *
  * Example:
 @verbatim
-"%(exec:/bin/echo hello)" == "hello"
+%exec('/bin/echo', 'hello') == "hello"
 @endverbatim
  *
  * Exactly one request is consumed during the process lifetime,

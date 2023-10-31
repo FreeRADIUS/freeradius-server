@@ -607,7 +607,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 /** Parse an xlat function and its child argument
  *
  * Parses a function call string in the format
- * @verbatim %{<func>:<argument>} @endverbatim
+ * @verbatim %<func>(<argument>) @endverbatim
  *
  * @return
  *	- 0 if the string was parsed into a function.
@@ -689,7 +689,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 		 *	Anything else, it must be a full function name.
 		 */
 		fr_sbuff_set(in, &m_s);
-	}	      
+	}
 
 	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
 
@@ -1237,7 +1237,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			TALLOC_FREE(node); /* nope, couldn't use it */
 			if (xlat_tokenize_function_args(head, in, t_rules) < 0) goto error;
 			continue;
-		}		
+		}
 
 		/*
 		 *	More migration hacks: allow %foo(...)

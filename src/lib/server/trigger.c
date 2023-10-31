@@ -272,7 +272,7 @@ static unlang_action_t trigger_run(rlm_rcode_t *p_result, UNUSED int *priority, 
  * @param[in] name		the path relative to the global trigger section ending in the trigger name
  *				e.g. module.ldap.pool.start.
  * @param[in] rate_limit	whether to rate limit triggers.
- * @param[in] args		to make available via the @verbatim %(trigger:<arg>) @endverbatim xlat.
+ * @param[in] args		to make available via the @verbatim %trigger(<arg>) @endverbatim xlat.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

@@ -33,7 +33,7 @@ static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Xlat for %(attr_by_num:\<number\>)
+/** Xlat for %attr_by_num(\<number\>)
  *
  * @ingroup xlat_functions
  */
@@ -67,7 +67,7 @@ static xlat_arg_parser_t const xlat_dict_attr_by_oid_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Xlat for %(attr_by_oid:\<oid\>)
+/** Xlat for %attr_by_oid(\<oid\>)
  *
  * @ingroup xlat_functions
  */

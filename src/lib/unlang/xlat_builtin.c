@@ -440,7 +440,7 @@ static xlat_arg_parser_t const xlat_func_file_name_args[] = {
 };
 
 static xlat_arg_parser_t const xlat_func_file_name_count_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING },	
+	{ .required = true, .type = FR_TYPE_STRING },
 	{ .required = false, .type = FR_TYPE_UINT32 },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -1242,7 +1242,7 @@ static xlat_arg_parser_t const xlat_func_next_time_args[] = {
 
 /** Calculate number of seconds until the next n hour(s), day(s), week(s), year(s).
  *
- * For example, if it were 16:18 %(nexttime:1h) would expand to 2520.
+ * For example, if it were 16:18 %nexttime(1h) would expand to 2520.
  *
  * The envisaged usage for this function is to limit sessions so that they don't
  * cross billing periods. The output of the xlat should be combined with %{rand:} to create
@@ -2851,7 +2851,7 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 #ifdef HAVE_REGEX_PCRE2
 /** Perform regex substitution TODO CHECK
  *
- * Called when %(subst:) pattern begins with "/"
+ * Called when %subst() pattern begins with "/"
  *
 @verbatim
 %subst(<subject>, /<regex>/[flags], <replace>)

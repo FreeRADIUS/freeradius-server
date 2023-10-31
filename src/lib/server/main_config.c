@@ -556,7 +556,7 @@ static xlat_arg_parser_t const xlat_config_args[] = {
 /** xlat to get config values
  *
 @verbatim
-%(config:section.subsection.attribute)
+%config(section.subsection.attribute)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1390,7 +1390,7 @@ do {\
 	if (!client_list_parse_section(cs, 0, false)) goto failure;
 
 	/*
-	 *	Register the %(config:section.subsection) xlat function.
+	 *	Register the %config(section.subsection) xlat function.
 	 */
 	if (unlikely((xlat = xlat_func_register(NULL, "config", xlat_config, FR_TYPE_STRING)) == NULL)) goto failure;
 	xlat_func_args_set(xlat, xlat_config_args);

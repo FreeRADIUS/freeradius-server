@@ -775,7 +775,7 @@ static xlat_arg_parser_t const cipher_rsa_verify_xlat_arg[] = {
  * Arguments are @verbatim(<signature>, <plaintext>...)@endverbatim
  *
 @verbatim
-%(<inst>.verify:<signature> <plaintext>...)
+%<inst>.verify(<signature> <plaintext>...)
 @endverbatim
  *
  * If multiple arguments are provided (after @verbatim<signature>@endverbatim)
@@ -809,7 +809,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (in_head->type != FR_TYPE_OCTETS) {
 		REDEBUG("Signature argument wrong type, expected %s, got %s.  "
-			"Use %%(base64.decode:<text>) or %%{hex_decode:<text>} if signature is armoured",
+			"Use %%base64.decode(<text>) or %%hex_decode(<text>) if signature is armoured",
 			fr_type_to_str(FR_TYPE_OCTETS),
 			fr_type_to_str(in_head->type));
 		return XLAT_ACTION_FAIL;
@@ -890,7 +890,7 @@ static xlat_arg_parser_t const cipher_certificate_xlat_args[] = {
  * Arguments are @verbatim(<digest>)@endverbatim
  *
 @verbatim
-%(<inst>.certificate:fingerprint <digest>)
+%<inst>.certificate(fingerprint, <digest>)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -939,7 +939,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /** Return the serial of the public certificate
  *
 @verbatim
-%(<inst>.certificate:serial)
+%<inst>.certificate(serial)
 @endverbatim
  *
  * @ingroup xlat_functions

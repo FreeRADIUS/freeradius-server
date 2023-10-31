@@ -226,7 +226,7 @@ static xlat_arg_parser_t const xlat_client_args[] = {
  *
  * Example:
 @verbatim
-%(client:foo [<ipaddr>])
+%client(foo, [<ipaddr>])
 @endverbatim
  *
  * @ingroup xlat_functions
