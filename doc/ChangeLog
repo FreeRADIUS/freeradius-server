@@ -18,6 +18,8 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	  top of the "clients.conf" file for more information.
 	* Add "time_since" xlat to calculate elapsed time in seconds, milliseconds
 	  and microseconds.
+	* radclient prints packets as hex when using -xxx
+	* document KRB5_CLIENT_KTNAME in the "env" section of radiusd.conf.
 
 	Bug fixes
 	* Fix corner case with empty defaults in rlm_files.  Fixes #5035
@@ -41,6 +43,8 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	  update Acct-Delay-Time with extreme values.
 	* The detail module now has a "dates_as_integer" configuration item.
 	  See mods-available/detail for more information.
+	* Fix issue where Message-Authenticator was calculated incorrectly for
+	  CoA / Disconnect ACK and NAK packets.
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
