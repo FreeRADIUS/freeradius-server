@@ -1945,7 +1945,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		/*
 		 *	Do not encode Message-Authenticator for RADIUS/1.1
 		 */
-		if ((reply->da->vendor == 0) && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+		if (packet->radiusv11 && (reply->da->vendor == 0) && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
 			reply = reply->next;
 			continue;
 		}
@@ -1954,7 +1954,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		/*
 		 *	Do not encode Original-Packet-Code for RADIUS/1.1
 		 */
-		if (reply->da->vendor == ((unsigned int) PW_EXTENDED_ATTRIBUTE_1 << 24) && (reply->da->attr == 4)) {
+		if (packet->radiusv11 && reply->da->vendor == ((unsigned int) PW_EXTENDED_ATTRIBUTE_1 << 24) && (reply->da->attr == 4)) {
 			reply = reply->next;
 			continue;
 		}
