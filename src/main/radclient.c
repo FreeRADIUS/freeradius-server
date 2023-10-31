@@ -1053,6 +1053,9 @@ static int send_one_packet(rc_request_t *request)
 
 	if (fr_log_fp) {
 		fr_packet_header_print(fr_log_fp, request->packet, false);
+
+		if (fr_debug_lvl > 2) rad_print_hex(request->packet);
+
 		if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, request->packet->vps);
 	}
 
@@ -1100,6 +1103,8 @@ static int recv_one_packet(int wait_time)
 #endif
 		return -1;	/* bad packet */
 	}
+
+	if (fr_debug_lvl > 2) rad_print_hex(reply);
 
 	packet_p = fr_packet_list_find_byreply(pl, reply);
 	if (!packet_p) {
