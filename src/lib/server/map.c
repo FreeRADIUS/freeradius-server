@@ -196,7 +196,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		rhs_rules = &my_rhs_rules;
 
 		da = tmpl_attr_tail_da(map->lhs);
-		if (edit && fr_type_is_leaf(da->type)) my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
+		if (edit) my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
 		break;
 	}
 
@@ -245,6 +245,18 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	} else {
 		slen = talloc_array_length(value) - 1;
 	}
+
+	/*
+	 *	If we're assigning to a structural attribute, AND the
+	 *	RHS side is a string, THEN don't parse the RHS as a
+	 *	"group".  The edit code will take the string, create
+	 *	pairs, and work on that.
+	 */
+	if (edit && my_rhs_rules.enumv && fr_type_is_structural(my_rhs_rules.enumv->type) &&
+	    ((type == T_DOUBLE_QUOTED_STRING) || (type == T_BACK_QUOTED_STRING) || (type == T_SINGLE_QUOTED_STRING))) {
+		my_rhs_rules.enumv = NULL;
+	}
+
 
 	slen = tmpl_afrom_substr(map, &map->rhs,
 				 &FR_SBUFF_IN(value, slen),

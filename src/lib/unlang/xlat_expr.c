@@ -2720,14 +2720,25 @@ redo:
 	XLAT_DEBUG("    operator <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
 	fr_sbuff_out_by_longest_prefix(&slen, &op, expr_assignment_op_table, &our_in, T_INVALID);
 	if (op == T_INVALID) {
+		fr_strerror_const("Invalid operator");
 		talloc_free(lhs);
-		fr_strerror_printf("Invalid operator");
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	if (!binary_ops[op].str) {
-		fr_strerror_printf("Invalid operator");
+		fr_strerror_const("Invalid operator");
 		fr_sbuff_set(&our_in, &m_op);
+		talloc_free(lhs);
+		FR_SBUFF_ERROR_RETURN(&our_in);
+	}
+
+	/*
+	 *	We can't (yet) do &list1 = &list2 + &list3
+	 */
+	if (fr_binary_op[op] && t_rules->enumv && fr_type_is_structural(t_rules->enumv->type)) {
+		fr_strerror_const("Invalid operator for structural attribute");
+		fr_sbuff_set(&our_in, &m_op);
+		talloc_free(lhs);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
