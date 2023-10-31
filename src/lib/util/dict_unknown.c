@@ -324,6 +324,11 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
 		return NULL;
 	}
 
+	if (parent->depth >= FR_DICT_MAX_TLV_STACK) {
+		fr_strerror_const("Attribute depth is too large");
+		return NULL;
+	}
+
 	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_TLV,
 			       &(dict_attr_args_t){ .flags = &flags });
 }
@@ -350,6 +355,11 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t c
 				   __FUNCTION__,
 				   num,
 				   fr_type_to_str(parent->type));
+		return NULL;
+	}
+
+	if (parent->depth >= FR_DICT_MAX_TLV_STACK) {
+		fr_strerror_const("Attribute depth is too large");
 		return NULL;
 	}
 
