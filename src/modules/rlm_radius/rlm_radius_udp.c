@@ -38,6 +38,13 @@ RCSID("$Id$")
 #include "rlm_radius.h"
 #include "track.h"
 
+/*
+ * Macro to simplify checking packets before calling decode(), so that
+ * it gets a known valid length and no longer calls fr_radius_ok() itself.
+ */
+#define check(_handle, _len_p) fr_radius_ok((_handle)->buffer, (size_t *)(_len_p), \
+					    (_handle)->thread->inst->parent->max_attributes, false, NULL)
+
 /** Static configuration for the module.
  *
  */
@@ -574,6 +581,8 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		      h->module_name, u->id, h->buffer[1]);
 		return;
 	}
+
+	if (!check(h, &slen)) return;
 
 	if (decode(h, &reply, &code,
 		   h, h->status_request, h->status_u, u->packet + RADIUS_AUTH_VECTOR_OFFSET,
@@ -1149,17 +1158,12 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 {
 	rlm_radius_udp_t const *inst = h->thread->inst;
 	size_t			packet_len;
-	decode_fail_t		reason;
 	uint8_t			code;
 	uint8_t			original[RADIUS_HEADER_LENGTH];
 
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
 	packet_len = data_len;
-	if (!fr_radius_ok(data, &packet_len, inst->parent->max_attributes, false, &reason)) {
-		RWARN("Ignoring malformed packet");
-		return reason;
-	}
 
 	RHEXDUMP3(data, packet_len, "Read packet");
 
@@ -2383,6 +2387,12 @@ static void request_demux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tco
 		/*
 		 *	Validate and decode the incoming packet
 		 */
+
+		if (!check(h, &slen)) {
+			RWARN("Ignoring malformed packet");
+			continue;
+		}
+
 		reason = decode(request->reply_ctx, &reply, &code, h, request, u, rr->vector, h->buffer, (size_t)slen);
 		if (reason != DECODE_FAIL_NONE) continue;
 
