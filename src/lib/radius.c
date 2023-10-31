@@ -2067,11 +2067,7 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 		case PW_CODE_ACCOUNTING_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
-		case PW_CODE_DISCONNECT_ACK:
-		case PW_CODE_DISCONNECT_NAK:
 		case PW_CODE_COA_REQUEST:
-		case PW_CODE_COA_ACK:
-		case PW_CODE_COA_NAK:
 			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 			break;
 
@@ -2079,6 +2075,10 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		case PW_CODE_ACCESS_ACCEPT:
 		case PW_CODE_ACCESS_REJECT:
 		case PW_CODE_ACCESS_CHALLENGE:
+		case PW_CODE_DISCONNECT_ACK:
+		case PW_CODE_DISCONNECT_NAK:
+		case PW_CODE_COA_ACK:
+		case PW_CODE_COA_NAK:
 			memcpy(hdr->vector, original->vector, AUTH_VECTOR_LEN);
 			break;
 
