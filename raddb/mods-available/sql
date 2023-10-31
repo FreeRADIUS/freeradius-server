@@ -329,6 +329,14 @@ sql {
 	#  The group attribute is used in the "authorize_group_check_query" and "authorize_group_check_query"
 	#  to select entries which match that particular group.
 	#
+	#  After all groups in SQL have been run, the module looks for `&control.User-Profile`, and runs
+	#  those profiles for "authorize_group_check_query" and "authorize_group_check_query".  i.e. a user
+	#  profile is essentially a group.
+	#
+	#  These group queries can also update `&control.User-Profile`, which lets you have a group
+	#  create a "fall through" to a DEFAULT group.  However, these groups are _not_ cross-checked against
+	#  each other.  So it is possible to create loops, which is highly not recommended.
+	#
 	#  If caching is enabled, then the module is done looping over groups, the module adds the names of
 	#  groups to the `control` list.  The "group_attribute" can then be used to check group membership.
 	#  That check will be done internally, and will not result in a database lookup.  This also means that

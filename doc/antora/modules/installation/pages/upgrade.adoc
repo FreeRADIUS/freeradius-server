@@ -925,8 +925,9 @@ will return `true`.
 
 ==== Profiles
 
-The `default_user_profile` and the `User-Profile` attributes have been
-removed.  No one used them, as that behavior was already supported by the group functionality.
+The `default_user_profile` has been removed.  No one used it, as that
+behavior was already supported by the group functionality.  See
+rlm_sql and `User-Profile` for new, and superior, behavior.
 
 ==== rlm_sql_mysql
 
