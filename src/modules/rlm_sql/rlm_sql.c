@@ -127,6 +127,7 @@ fr_dict_autoload_t rlm_sql_dict[] = {
 
 static fr_dict_attr_t const *attr_fall_through;
 static fr_dict_attr_t const *attr_sql_user_name;
+static fr_dict_attr_t const *attr_user_profile;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_expr_bool_enum;
 
@@ -134,6 +135,7 @@ extern fr_dict_attr_autoload_t rlm_sql_dict_attr[];
 fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_sql_user_name, .name = "SQL-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_user_profile, .name = "User-Profile", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ NULL }
@@ -1013,6 +1015,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	rlm_sql_grouplist_t	*head = NULL, *entry = NULL;
 	int			rows;
+	fr_pair_t		*vp;
 
 	fr_assert(request->packet != NULL);
 
@@ -1047,6 +1050,20 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 	RDEBUG2("User found in the group table");
 
 	for (entry = head; entry != NULL; entry = entry->next) {
+		if (sql_check_groupmemb(inst, request, handle, entry->name, do_fall_through, &rcode) < 0) {
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
+
+		if (*do_fall_through != FALL_THROUGH_YES) break;
+	}
+
+	/*
+	 *	Apply user profiles
+	 */
+	for (vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_user_profile);
+	     vp != NULL;
+	     vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_user_profile)) {
 		if (sql_check_groupmemb(inst, request, handle, entry->name, do_fall_through, &rcode) < 0) {
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
