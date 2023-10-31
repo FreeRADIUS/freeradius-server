@@ -69,12 +69,7 @@ Processing continues to the next group if any of the following conditions are me
 - There was not a match for the last group’s check items OR
 - Fall-Through was set in the last group’s reply items
 
-(The above is exactly the same as in the users file.)
-
-Finally, if the user has a User-Profile attribute set or the Default Profile
-configuration item is set for the sql module, then the above group
-processing steps are repeated for the groups that the profile is a member of.
-
+The above is exactly the same as in the `users` file.
 
 === Example with groups
 

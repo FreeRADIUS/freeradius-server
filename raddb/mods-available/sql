@@ -171,16 +171,6 @@ sql {
 #	read_groups = yes
 
 	#
-	#  read_profiles:: Read the profiles from the database.
-	#
-	#  If set to `yes`, we read profiles unless `Fall-Through = no` in the groupreply table.
-	#  If set to `no` we do not read profiles unless `Fall-Through = yes` in the groupreply table.
-	#
-	#  Default is `yes`.
-	#
-#	read_profiles = yes
-
-	#
 	#  logfile:: Write SQL queries to a logfile.
 	#
 	#  This is potentially useful for tracing issues with authorization queries.

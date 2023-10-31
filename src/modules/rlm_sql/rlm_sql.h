@@ -97,9 +97,6 @@ typedef struct {
 
 	char const		*group_attribute;		//!< Name of the group attribute.
 
-	char const		*default_profile;		//!< Default profile to use if no other
-								//!< profiles were configured.
-
 	char const		*authorize_check_query;		//!< Query used get check VPs for a user.
 	char const 		*authorize_reply_query;		//!< Query used get reply VPs for a user.
 	char const		*authorize_group_check_query;	//!< Query used get check VPs for a group.
@@ -112,10 +109,6 @@ typedef struct {
 								//!< If false, Fall-Through = yes is required
 								//!< in the previous reply list to process
 								//!< groups.
-	bool			read_profiles;			//!< Read user profiles by default.
-								//!< If false, Fall-Through = yes is required
-								//!< in the previous reply list to process
-								//!< profiles.
 	char const		*logfile;			//!< Keep a log of all SQL queries executed
 								//!< Useful for batch insertion with the
 								//!< NULL drivers.

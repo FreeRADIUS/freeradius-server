@@ -923,6 +923,11 @@ if (%sql.group(sales)) {
 
 will return `true`.
 
+==== Profiles
+
+The `default_user_profile` and the `User-Profile` attributes have been
+removed.  No one used them, as that behavior was already supported by the group functionality.
+
 ==== rlm_sql_mysql
 
 Now calls `mysql_real_escape_string` and no longer produces

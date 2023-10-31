@@ -14,7 +14,7 @@ slow down your accounting.
 * Use the users file to only set default profiles. Do not place any
 users there. Keep it as small as possible. Always set default attributes
 in the users file and don’t fill the user entries in ldap/sql with
-default values. In general the ldap/sql user profiles should contain
+default values. In general the ldap user profiles should contain
 user attributes only in special user cases.
 * Tune thread pool parameters to match your size requirements. Set
 `max_requests_per_server` to zero to avoid server thread restarts.

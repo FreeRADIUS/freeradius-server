@@ -91,11 +91,9 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("password", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_sql_config_t, sql_password), .dflt = "" },
 	{ FR_CONF_OFFSET("radius_db", FR_TYPE_STRING, rlm_sql_config_t, sql_db), .dflt = "radius" },
 	{ FR_CONF_OFFSET("read_groups", FR_TYPE_BOOL, rlm_sql_config_t, read_groups), .dflt = "yes" },
-	{ FR_CONF_OFFSET("read_profiles", FR_TYPE_BOOL, rlm_sql_config_t, read_profiles), .dflt = "yes" },
 	{ FR_CONF_OFFSET("sql_user_name", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
 	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_sql_config_t, group_attribute) },
 	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, logfile) },
-	{ FR_CONF_OFFSET("default_user_profile", FR_TYPE_STRING, rlm_sql_config_t, default_profile), .dflt = "" },
 	{ FR_CONF_OFFSET("open_query", FR_TYPE_STRING, rlm_sql_config_t, connect_query) },
 
 	{ FR_CONF_OFFSET("authorize_check_query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_check_query) },
@@ -129,7 +127,6 @@ fr_dict_autoload_t rlm_sql_dict[] = {
 
 static fr_dict_attr_t const *attr_fall_through;
 static fr_dict_attr_t const *attr_sql_user_name;
-static fr_dict_attr_t const *attr_user_profile;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_expr_bool_enum;
 
@@ -137,7 +134,6 @@ extern fr_dict_attr_autoload_t rlm_sql_dict_attr[];
 fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ .out = &attr_fall_through, .name = "Fall-Through", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_sql_user_name, .name = "SQL-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_user_profile, .name = "User-Profile", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ NULL }
@@ -1279,7 +1275,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	fr_pair_list_t		check_tmp;
 	fr_pair_list_t		reply_tmp;
-	fr_pair_t 		*user_profile = NULL;
 
 	bool			user_found = false;
 
@@ -1295,7 +1290,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	fr_assert(request->reply != NULL);
 
 	if (!inst->config.authorize_check_query && !inst->config.authorize_reply_query &&
-	    !inst->config.read_groups && !inst->config.read_profiles) {
+	    !inst->config.read_groups) {
 		RWDEBUG("No authorization checks configured, returning noop");
 
 		RETURN_MODULE_NOOP;
@@ -1410,8 +1405,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 
 	/*
-	 *	Neither group checks or profiles will work without
-	 *	a group membership query.
+	 *	group checks require a group membership query.
 	 */
 	if (!inst->config.groupmemb_query) goto release;
 
@@ -1449,62 +1443,8 @@ skip_reply:
 	}
 
 	/*
-	 *	Repeat the above process with the default profile or User-Profile
-	 */
-	if ((do_fall_through == FALL_THROUGH_YES) ||
-	    (inst->config.read_profiles && (do_fall_through == FALL_THROUGH_DEFAULT))) {
-		rlm_rcode_t	ret;
-		char const	*profile;
-
-		/*
-		 *  Check for a default_profile or for a User-Profile.
-		 */
-		RDEBUG3("... falling-through to profile processing");
-		user_profile = fr_pair_find_by_da(&request->control_pairs, NULL, attr_user_profile);
-
-		profile = user_profile ?
-				      user_profile->vp_strvalue :
-				      inst->config.default_profile;
-
-		if (!profile || !*profile) goto release;
-
-		RDEBUG2("Checking profile %s", profile);
-
-		if (sql_set_user(inst, request, profile) < 0) {
-			REDEBUG("Error setting profile");
-			rcode = RLM_MODULE_FAIL;
-			goto error;
-		}
-
-		rlm_sql_process_groups(&ret, inst, request, &handle, &do_fall_through);
-		switch (ret) {
-		/*
-		 *	Nothing bad happened, continue...
-		 */
-		case RLM_MODULE_UPDATED:
-			rcode = RLM_MODULE_UPDATED;
-			FALL_THROUGH;
-
-		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
-			FALL_THROUGH;
-
-		case RLM_MODULE_NOOP:
-			user_found = true;
-			break;
-
-		case RLM_MODULE_NOTFOUND:
-			break;
-
-		default:
-			rcode = ret;
-			goto release;
-		}
-	}
-
-	/*
 	 *	At this point the key (user) hasn't be found in the check table, the reply table
-	 *	or the group mapping table, and there was no matching profile.
+	 *	or the group mapping table.
 	 */
 release:
 	if (!user_found) rcode = RLM_MODULE_NOTFOUND;
