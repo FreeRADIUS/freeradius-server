@@ -893,7 +893,7 @@ static bool paircmp(request_t *request, fr_pair_list_t *check_list)
 }
 	    
 static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
-			       char const *group_name,
+			       fr_pair_t *sql_group, char const *group_name,
 			       sql_fall_through_t *do_fall_through, rlm_rcode_t *rcode)
 {
 	bool		added;
@@ -905,6 +905,8 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 	added = false;
 	fr_pair_list_init(&check_tmp);
 	fr_pair_list_init(&reply_tmp);
+
+	fr_pair_value_strdup(sql_group, group_name, true);
 
 	if (inst->config.authorize_group_check_query) {
 		/*
@@ -1015,7 +1017,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	rlm_sql_grouplist_t	*head = NULL, *entry = NULL;
 	int			rows;
-	fr_pair_t		*vp;
+	fr_pair_t		*vp, *sql_group;
 
 	fr_assert(request->packet != NULL);
 
@@ -1049,8 +1051,10 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 
 	RDEBUG2("User found in the group table");
 
+	MEM(pair_update_request(&sql_group, inst->group_da) >= 0);
+
 	for (entry = head; entry != NULL; entry = entry->next) {
-		if (sql_check_groupmemb(inst, request, handle, entry->name, do_fall_through, &rcode) < 0) {
+		if (sql_check_groupmemb(inst, request, handle, sql_group, entry->name, do_fall_through, &rcode) < 0) {
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -1064,7 +1068,7 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 	for (vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_user_profile);
 	     vp != NULL;
 	     vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_user_profile)) {
-		if (sql_check_groupmemb(inst, request, handle, entry->name, do_fall_through, &rcode) < 0) {
+		if (sql_check_groupmemb(inst, request, handle, sql_group, vp->vp_strvalue, do_fall_through, &rcode) < 0) {
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
 		}
@@ -1073,6 +1077,8 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 	}
 
 finish:
+	fr_pair_delete(&request->request_pairs, sql_group);
+
 	talloc_free(head);
 	pair_delete_request(inst->group_da);
 
