@@ -890,7 +890,120 @@ static bool paircmp(request_t *request, fr_pair_list_t *check_list)
 	return true;
 }
 	    
+static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
+			       char const *group_name,
+			       sql_fall_through_t *do_fall_through, rlm_rcode_t *rcode)
+{
+	bool		added;
+	int		rows;
+	fr_pair_t	*vp;
+	char		*expanded = NULL;
+	fr_pair_list_t	check_tmp, reply_tmp;
 
+	added = false;
+	fr_pair_list_init(&check_tmp);
+	fr_pair_list_init(&reply_tmp);
+
+	if (inst->config.authorize_group_check_query) {
+		/*
+		 *	Expand the group query
+		 */
+		if (xlat_aeval(request, &expanded, request, inst->config.authorize_group_check_query,
+			       inst->sql_escape_func, *handle) < 0) {
+			REDEBUG("Error generating query");
+			return -1;
+		}
+
+		rows = sql_getvpdata(request->control_ctx, inst, request, handle, &check_tmp, expanded);
+		TALLOC_FREE(expanded);
+		if (rows < 0) {
+			REDEBUG("Error retrieving check pairs for group %s", group_name);
+			return -1;
+		}
+
+		/*
+		 *	If we got check rows we need to process them before we decide to
+		 *	process the reply rows
+		 */
+		if ((rows > 0) && !paircmp(request,&check_tmp)) {
+			fr_pair_list_free(&check_tmp);
+			return 0;
+		}
+
+		RDEBUG2("Group \"%s\": Conditional check items matched", group_name);
+		if (*rcode == RLM_MODULE_NOOP) *rcode = RLM_MODULE_OK;
+
+		RDEBUG2("Group \"%s\": Merging assignment check items", group_name);
+		RINDENT();
+		for (vp = fr_pair_list_head(&check_tmp);
+		     vp;
+		     vp = fr_pair_list_next(&check_tmp, vp)) {
+			if (!fr_assignment_op[vp->op]) continue;
+
+			*rcode = RLM_MODULE_UPDATED;
+			RDEBUG2("&%pP", vp);
+		}
+		REXDENT();
+		radius_pairmove(request, &request->control_pairs, &check_tmp);
+
+		fr_pair_list_free(&check_tmp);
+
+		if (inst->config.cache_groups) {
+			MEM(pair_update_control(&vp, inst->group_da) >= 0);
+			fr_pair_value_strdup(vp, group_name, true);
+			added = true;
+		}
+	}
+
+	if (inst->config.authorize_group_reply_query) {
+		/*
+		 *	Now get the reply pairs since the paircmp matched
+		 */
+		if (xlat_aeval(request, &expanded, request, inst->config.authorize_group_reply_query,
+			       inst->sql_escape_func, *handle) < 0) {
+			REDEBUG("Error generating query");
+			return -1;
+		}
+
+		rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &reply_tmp, expanded);
+		TALLOC_FREE(expanded);
+		if (rows < 0) {
+			REDEBUG("Error retrieving reply pairs for group %s", group_name);
+			return -1;
+		}
+
+		if (rows == 0) {
+			*do_fall_through = FALL_THROUGH_DEFAULT;
+			return 0;
+		}
+
+		fr_assert(!fr_pair_list_empty(&reply_tmp)); /* coverity, among others */
+		*do_fall_through = fall_through(&reply_tmp);
+
+		RDEBUG2("Group \"%s\": Merging reply items", group_name);
+		*rcode = RLM_MODULE_UPDATED;
+
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
+
+		radius_pairmove(request, &request->reply_pairs, &reply_tmp);
+		fr_pair_list_free(&reply_tmp);
+
+		/*
+		 *	If there's no reply query configured, then we assume
+		 *	FALL_THROUGH_NO, which is the same as the users file if you
+		 *	had no reply attributes.
+		 */
+	} else {
+		*do_fall_through = FALL_THROUGH_DEFAULT;
+	}
+
+	if (inst->config.cache_groups && !added) {
+		MEM(pair_update_control(&vp, inst->group_da) >= 0);
+		fr_pair_value_strdup(vp, group_name, true);
+	}
+
+	return 0;
+}
 
 
 static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
@@ -898,16 +1011,10 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 					      sql_fall_through_t *do_fall_through)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	fr_pair_list_t		check_tmp, reply_tmp;
-	fr_pair_t		*sql_group = NULL;
 	rlm_sql_grouplist_t	*head = NULL, *entry = NULL;
-
-	char			*expanded = NULL;
 	int			rows;
 
 	fr_assert(request->packet != NULL);
-	fr_pair_list_init(&check_tmp);
-	fr_pair_list_init(&reply_tmp);
 
 	if (!inst->config.groupmemb_query) {
 		RWARN("Cannot do check groups when group_membership_query is not set");
@@ -939,129 +1046,14 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 
 	RDEBUG2("User found in the group table");
 
-	/*
-	 *	Add the Sql-Group attribute to the request list so we know
-	 *	which group we're retrieving attributes for
-	 */
-	MEM(pair_update_request(&sql_group, inst->group_da) >= 0);
-
-	entry = head;
-	do {
-		bool added;
-		fr_pair_t	*vp;
-
-	next:
-		fr_assert(entry != NULL);
-		fr_pair_value_strdup(sql_group, entry->name, true);
-		added = false;
-
-		if (inst->config.authorize_group_check_query) {
-			/*
-			 *	Expand the group query
-			 */
-			if (xlat_aeval(request, &expanded, request, inst->config.authorize_group_check_query,
-					 inst->sql_escape_func, *handle) < 0) {
-				REDEBUG("Error generating query");
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
-
-			rows = sql_getvpdata(request->control_ctx, inst, request, handle, &check_tmp, expanded);
-			TALLOC_FREE(expanded);
-			if (rows < 0) {
-				REDEBUG("Error retrieving check pairs for group %s", entry->name);
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
-
-			/*
-			 *	If we got check rows we need to process them before we decide to
-			 *	process the reply rows
-			 */
-			if ((rows > 0) && !paircmp(request,&check_tmp)) {
-				fr_pair_list_free(&check_tmp);
-				entry = entry->next;
-
-				if (!entry) break;
-
-				goto next;	/* != continue */
-			}
-
-			RDEBUG2("Group \"%s\": Conditional check items matched", entry->name);
-			rcode = RLM_MODULE_OK;
-
-			RDEBUG2("Group \"%s\": Merging assignment check items", entry->name);
-			RINDENT();
-			for (vp = fr_pair_list_head(&check_tmp);
-			     vp;
-			     vp = fr_pair_list_next(&check_tmp, vp)) {
-			 	if (!fr_assignment_op[vp->op]) continue;
-
-				rcode = RLM_MODULE_UPDATED;
-			 	RDEBUG2("&%pP", vp);
-			}
-			REXDENT();
-			radius_pairmove(request, &request->control_pairs, &check_tmp);
-
-			fr_pair_list_free(&check_tmp);
-
-			if (inst->config.cache_groups) {
-				MEM(pair_update_control(&vp, inst->group_da) >= 0);
-				fr_pair_value_strdup(vp, entry->name, true);
-				added = true;
-			}
+	for (entry = head; entry != NULL; entry = entry->next) {
+		if (sql_check_groupmemb(inst, request, handle, entry->name, do_fall_through, &rcode) < 0) {
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
 		}
 
-		if (inst->config.authorize_group_reply_query) {
-			/*
-			 *	Now get the reply pairs since the paircmp matched
-			 */
-			if (xlat_aeval(request, &expanded, request, inst->config.authorize_group_reply_query,
-					 inst->sql_escape_func, *handle) < 0) {
-				REDEBUG("Error generating query");
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
-
-			rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &reply_tmp, expanded);
-			TALLOC_FREE(expanded);
-			if (rows < 0) {
-				REDEBUG("Error retrieving reply pairs for group %s", entry->name);
-				rcode = RLM_MODULE_FAIL;
-				goto finish;
-			}
-
-			if (rows == 0) {
-				*do_fall_through = FALL_THROUGH_DEFAULT;
-				continue;
-			}
-
-			fr_assert(!fr_pair_list_empty(&reply_tmp)); /* coverity, among others */
-			*do_fall_through = fall_through(&reply_tmp);
-
-			RDEBUG2("Group \"%s\": Merging reply items", entry->name);
-			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_UPDATED;
-
-			log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
-
-			radius_pairmove(request, &request->reply_pairs, &reply_tmp);
-			fr_pair_list_free(&reply_tmp);
-		/*
-		 *	If there's no reply query configured, then we assume
-		 *	FALL_THROUGH_NO, which is the same as the users file if you
-		 *	had no reply attributes.
-		 */
-		} else {
-			*do_fall_through = FALL_THROUGH_DEFAULT;
-		}
-
-		if (inst->config.cache_groups && !added) {
-			MEM(pair_update_control(&vp, inst->group_da) >= 0);
-			fr_pair_value_strdup(vp, entry->name, true);
-		}
-
-		entry = entry->next;
-	} while (entry != NULL && (*do_fall_through == FALL_THROUGH_YES));
+		if (*do_fall_through != FALL_THROUGH_YES) break;
+	}
 
 finish:
 	talloc_free(head);
