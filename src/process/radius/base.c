@@ -1190,8 +1190,8 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DISCONNECT_NAK
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.send = send_generic,
-		.resume = resume_generic_radius_response,
+		.recv = recv_generic,
+		.resume = resume_recv_generic,
 		.section_offset = offsetof(process_radius_sections_t, disconnect_request),
 	},
 	[ FR_RADIUS_CODE_DISCONNECT_ACK ] = {
