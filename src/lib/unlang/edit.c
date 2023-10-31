@@ -463,9 +463,18 @@ apply_list:
 	}
 	RDEBUG2("}");
 
+	fr_pair_list_foreach(children, child) {
+		if (!fr_dict_attr_can_contain(current->lhs.vp->da, child->da)) {
+			RDEBUG("Cannot perform assignment: Attribute \"%s\" is not a child of parent \"%s\"",
+			       child->da->name, current->lhs.vp->da->name);
+			rcode = -1;
+			goto done;
+		}
+	}
+
 	if (current->el) {
 		rcode = fr_edit_list_apply_list_assignment(current->el, current->lhs.vp, map->op, children, copy_vps);
-		if (rcode < 0) RPERROR("Failed performing list '%s' operation", fr_tokens[map->op]);
+		if (rcode < 0) RPEDEBUG("Failed performing list '%s' operation", fr_tokens[map->op]);
 
 	} else {
 		fr_assert(map->op == T_OP_EQ);
@@ -475,7 +484,7 @@ apply_list:
 			fr_assert(fr_pair_list_empty(&current->rhs.pair_list));
 
 			if (fr_pair_list_copy(current->lhs.vp, &current->rhs.pair_list, children) < 0) {
-				rcode = 01;
+				rcode = -1;
 				goto done;
 			}
 			children = &current->rhs.pair_list;
