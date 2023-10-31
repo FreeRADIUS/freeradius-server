@@ -30,12 +30,13 @@
 #  system we use that in preference.  To always build eapol_test, set
 #  FORCE_BUILD=1 in the environment.
 #
+#: ${HOSTAPD_REPO:="http://w1.fi/hostap.git"}
 
 : ${BUILD_DIR:="${HOSTAPD_BUILD_DIR}"}
 TMP_BUILD_DIR="${BUILD_DIR}"
 : ${TMP_BUILD_DIR:="$(mktemp -d -t eapol_test.XXXXX)"}
 : ${HOSTAPD_DIR:="${TMP_BUILD_DIR}/hostapd"}
-: ${HOSTAPD_REPO:="http://w1.fi/hostap.git"}
+: ${HOSTAPD_REPO:="git@git.networkradius.com:hostap.git"}
 : ${HOSTAPD_GIT_TAG:="hostap_2_10"}
 : ${WPA_SUPPLICANT_DIR:="${HOSTAPD_DIR}/wpa_supplicant"}
 
