@@ -114,7 +114,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	ssize_t		slen;
 	fr_token_t	type;
 	fr_dict_attr_t const *da;
-	tmpl_rules_t	my_rhs_rules;
+	tmpl_rules_t	my_rhs_rules = {};
 	tmpl_rules_t const *rhs_rules = input_rhs_rules;
 	TALLOC_CTX	*child_ctx = NULL;
 
