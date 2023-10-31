@@ -195,7 +195,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		}
 		rhs_rules = &my_rhs_rules;
 
-		da = tmpl_attr_tail_da(map->lhs);
 		if (edit) my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
 		break;
 	}
@@ -252,7 +251,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	 *	"group".  The edit code will take the string, create
 	 *	pairs, and work on that.
 	 */
-	if (edit && my_rhs_rules.enumv && fr_type_is_structural(my_rhs_rules.enumv->type) &&
+	if (edit && (rhs_rules == &my_rhs_rules) && my_rhs_rules.enumv && fr_type_is_structural(my_rhs_rules.enumv->type) &&
 	    ((type == T_DOUBLE_QUOTED_STRING) || (type == T_BACK_QUOTED_STRING) || (type == T_SINGLE_QUOTED_STRING))) {
 		my_rhs_rules.enumv = NULL;
 	}
