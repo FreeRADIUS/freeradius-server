@@ -269,7 +269,7 @@ _Generic((_table), \
 #define TABLE_TYPE_NEEDLE_LEN_FUNC(_our_table_type, _our_name) \
 static inline size_t _our_name(_our_table_type table, size_t table_len) \
 { \
-	size_t i, max; \
+	size_t i, max = 0; \
 	for (i = 0; i < table_len; i++) if (table->name.len > max) max = table->name.len; \
 	return max; \
 }
