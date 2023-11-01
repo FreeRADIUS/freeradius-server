@@ -48,6 +48,7 @@ static inline void line_error_marker(char const *src_file, int src_line,
 	end = fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n');
 	if (!end) end = fr_sbuff_end(sbuff);
 	fr_sbuff_set(sbuff, &start);
+	fr_sbuff_marker_release(&start);
 
 	fr_log_marker(LOG_DST, L_ERR, src_file, src_line,
 		      fr_sbuff_start(sbuff), end - fr_sbuff_start(sbuff),
@@ -71,6 +72,7 @@ static inline void line_error_marker_adj(char const *src_file, int src_line,
 	end = fr_sbuff_adv_to_chr(sbuff, SIZE_MAX, '\n');
 	if (!end) end = fr_sbuff_end(sbuff);
 	fr_sbuff_set(sbuff, &start);
+	fr_sbuff_marker_release(&start);
 
 	fr_log_marker(LOG_DST, L_ERR, src_file, src_line,
 		      fr_sbuff_current(sbuff), end - fr_sbuff_current(sbuff),
@@ -301,6 +303,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		bool		leading_spaces;
 		PAIR_LIST	*t;
 
+		fr_sbuff_extend_lowat(NULL, &sbuff, 1024);
+
 		/*
 		 *	If the line is empty or has only comments,
 		 *	then we don't care about leading spaces.
@@ -389,6 +393,8 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		comma = false;
 
 check_item:
+		fr_sbuff_extend_lowat(NULL, &sbuff, 1024);
+
 		/*
 		 *	Skip spaces before the item, and allow the
 		 *	check list to end on comment or LF.
@@ -521,6 +527,8 @@ setup_reply:
 		comma = false;
 
 reply_item:
+		fr_sbuff_extend_lowat(NULL, &sbuff, 1024);
+
 		/*
 		 *	Reply items start with spaces.  If there's no
 		 *	spaces, then the current entry is done.  Add
