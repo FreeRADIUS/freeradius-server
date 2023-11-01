@@ -55,8 +55,3 @@ files {
 	acctusersfile = ${moddir}/accounting
 	preproxy_usersfile = ${moddir}/pre-proxy
 }
-
-files subnet {
-	key = %{Framed-IP-Address}
-	filename = ${confdir}/subnet_policies
-}
