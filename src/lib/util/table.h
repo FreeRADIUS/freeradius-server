@@ -266,6 +266,37 @@ _Generic((_table), \
 	 fr_table_num_indexed_t const *		: fr_table_indexed_str_by_num 			\
 )(_table, _table ## _len, _number, _def)
 
+#define TABLE_TYPE_NEEDLE_LEN_FUNC(_our_table_type, _our_name) \
+static inline size_t _our_name(_our_table_type table, size_t table_len) \
+{ \
+	size_t i, max; \
+	for (i = 0; i < table_len; i++) if (table->name.len > max) max = table->name.len; \
+	return max; \
+}
+
+TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_num_sorted_t const *, fr_table_num_sorted_max_needle_len);
+TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_num_ordered_t const *, fr_table_num_ordered_max_needle_len);
+TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_ptr_sorted_t const *, fr_table_ptr_sorted_max_needle_len);
+TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_ptr_ordered_t const *, fr_table_ptr_ordered_max_needle_len);
+TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_num_indexed_bit_pos_t const *, fr_table_num_indexed_bit_pos_max_needle_len);
+TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_num_indexed_t const *, fr_table_num_indexed_max_needle_len);
+
+#define fr_table_max_needle_len(_table) \
+_Generic((_table), \
+	 fr_table_num_sorted_t const *		: fr_table_num_sorted_max_needle_len,		\
+	 fr_table_num_ordered_t const *		: fr_table_num_ordered_max_needle_len,		\
+	 fr_table_num_sorted_t *		: fr_table_num_sorted_max_needle_len,		\
+	 fr_table_num_ordered_t *		: fr_table_num_ordered_max_needle_len,		\
+	 fr_table_ptr_sorted_t const *		: fr_table_ptr_sorted_max_needle_len,		\
+	 fr_table_ptr_ordered_t const *		: fr_table_ptr_ordered_max_needle_len,		\
+	 fr_table_ptr_sorted_t *		: fr_table_ptr_sorted_max_needle_len,		\
+	 fr_table_ptr_ordered_t *		: fr_table_ptr_ordered_max_needle_len,		\
+	 fr_table_num_indexed_bit_pos_t *	: fr_table_num_indexed_bit_pos_max_needle_len, 	\
+	 fr_table_num_indexed_bit_pos_t const *	: fr_table_num_indexed_bit_pos_max_needle_len, 	\
+	 fr_table_num_indexed_t *		: fr_table_num_indexed_max_needle_len, 		\
+	 fr_table_num_indexed_t const *		: fr_table_num_indexed_max_needle_len 		\
+)(_table, _table ## _len)
+
 #ifdef __cplusplus
 }
 #endif

@@ -1449,6 +1449,7 @@ size_t	fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 #define fr_sbuff_out_by_longest_prefix(_match_len, _out, _table, _sbuff, _def) \
 do { \
 	size_t		_match_len_tmp; \
+	fr_sbuff_extend_lowat(NULL, _sbuff, fr_table_max_needle_len(_table)); \
 	*(_out) = fr_table_value_by_longest_prefix(&_match_len_tmp, _table, \
 						   fr_sbuff_current(_sbuff), fr_sbuff_remaining(_sbuff), \
 						   _def); \
