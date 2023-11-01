@@ -700,7 +700,7 @@ size_t fr_sbuff_out_bstrncpy(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 
 		remaining = (len - fr_sbuff_used_total(&our_in));
 
-		if (!fr_sbuff_extend(&our_in)) break;
+		if (!fr_sbuff_extend_lowat(NULL, &our_in, 32)) break;
 
 		chunk_len = fr_sbuff_remaining(&our_in);
 		if (chunk_len > remaining) chunk_len = remaining;
@@ -741,7 +741,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 		ssize_t copied;
 
 		remaining = (len - fr_sbuff_used_total(&our_in));
-		if (remaining && !fr_sbuff_extend(&our_in)) return 0;
+		if (remaining && !fr_sbuff_extend_lowat(NULL, &our_in, 32)) return 0;
 
 		chunk_len = fr_sbuff_remaining(&our_in);
 		if (chunk_len > remaining) chunk_len = remaining;
@@ -788,7 +788,7 @@ size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len
 		char	*p;
 		char	*end;
 
-		if (!fr_sbuff_extend(&our_in)) break;
+		if (!fr_sbuff_extend_lowat(NULL, &our_in, 32)) break;
 
 		p = fr_sbuff_current(&our_in);
 		end = CONSTRAINED_END(&our_in, len, fr_sbuff_used_total(&our_in));
@@ -1748,7 +1748,7 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool
 	while (total < len) {
 		char *end;
 
-		if (!fr_sbuff_extend(sbuff)) break;
+		if (!fr_sbuff_extend_lowat(NULL, sbuff, 32)) break;
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		p = sbuff->p;
@@ -1923,7 +1923,7 @@ char *fr_sbuff_adv_to_chr(fr_sbuff_t *sbuff, size_t len, char c)
 		char const	*found;
 		char		*end;
 
-		if (!fr_sbuff_extend(&our_sbuff)) break;
+		if (!fr_sbuff_extend_lowat(NULL, &our_sbuff, 32)) break;
 
 		end = CONSTRAINED_END(sbuff, len, total);
 		found = memchr(our_sbuff.p, c, end - our_sbuff.p);
