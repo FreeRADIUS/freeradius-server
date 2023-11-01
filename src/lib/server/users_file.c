@@ -303,8 +303,6 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		bool		leading_spaces;
 		PAIR_LIST	*t;
 
-		fr_sbuff_extend_lowat(NULL, &sbuff, 1024);
-
 		/*
 		 *	If the line is empty or has only comments,
 		 *	then we don't care about leading spaces.
@@ -393,8 +391,6 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		comma = false;
 
 check_item:
-		fr_sbuff_extend_lowat(NULL, &sbuff, 1024);
-
 		/*
 		 *	Skip spaces before the item, and allow the
 		 *	check list to end on comment or LF.
@@ -527,8 +523,6 @@ setup_reply:
 		comma = false;
 
 reply_item:
-		fr_sbuff_extend_lowat(NULL, &sbuff, 1024);
-
 		/*
 		 *	Reply items start with spaces.  If there's no
 		 *	spaces, then the current entry is done.  Add
