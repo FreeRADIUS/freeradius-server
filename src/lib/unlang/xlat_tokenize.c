@@ -1186,6 +1186,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			 *	Free our temporary array of terminals
 			 */
 			if (tokens != &terminals) talloc_free(tokens);
+			fr_sbuff_marker_release(&m_s);
 			return -1;
 		}
 
@@ -1211,8 +1212,10 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			xlat_exp_insert_tail(head, node);
 
 			node = NULL;
+			fr_sbuff_marker_release(&m_s);
 			continue;
 		}
+
 
 		/*
 		 *	We have parsed as much as we can as unescaped
@@ -1227,6 +1230,8 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		if (fr_sbuff_adv_past_str_literal(in, "%{")) {
 			TALLOC_FREE(node); /* nope, couldn't use it */
 			if (xlat_tokenize_expansion(head, in, t_rules) < 0) goto error;
+		next:
+			fr_sbuff_marker_release(&m_s);
 			continue;
 		}
 
@@ -1236,7 +1241,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		if (fr_sbuff_adv_past_str_literal(in, "%(")) {
 			TALLOC_FREE(node); /* nope, couldn't use it */
 			if (xlat_tokenize_function_args(head, in, t_rules) < 0) goto error;
-			continue;
+			goto next;
 		}
 
 		/*
@@ -1259,7 +1264,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			 *	Tokenize the function arguments using the new method.
 			 */
 			if (xlat_tokenize_function_new(head, in, t_rules) < 0) goto error;
-			continue;
+			goto next;
 		}
 
 		/*
@@ -1267,6 +1272,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		 */
 		TALLOC_FREE(node);
 		XLAT_DEBUG("VALUE-BOX <-- (empty)");
+		fr_sbuff_marker_release(&m_s);
 		break;
 	}
 
