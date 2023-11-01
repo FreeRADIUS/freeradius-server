@@ -1,0 +1,8 @@
+#
+#  We don't care if this does anything.
+#  We just want to know if the file can be read.
+#  
+#  The default buffer size in users_file.c is 8K, and the subnet3 file
+#  is larger than that.
+#
+test_pass
