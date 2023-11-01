@@ -277,6 +277,7 @@ static inline size_t _our_name(_our_table_type table, size_t table_len) \
 TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_num_sorted_t const *, fr_table_num_sorted_max_needle_len)
 TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_num_ordered_t const *, fr_table_num_ordered_max_needle_len)
 TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_ptr_sorted_t const *, fr_table_ptr_sorted_max_needle_len)
+TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_ptr_ordered_t const *, fr_table_ptr_ordered_max_needle_len)
 TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_num_indexed_bit_pos_t const *, fr_table_num_indexed_bit_pos_max_needle_len)
 TABLE_TYPE_NEEDLE_LEN_FUNC(fr_table_num_indexed_t const *, fr_table_num_indexed_max_needle_len)
 
