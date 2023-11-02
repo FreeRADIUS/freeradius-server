@@ -428,6 +428,8 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 
 	node = xlat_exp_head(arg->group);
 
+	if (!node) return -1;
+
 	/*
 	 *	@todo - check arg_p->single, and complain.
 	 */
