@@ -1397,7 +1397,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 			goto error;
 		}
 	} else {
-		str = talloc_strdup(ctx, "");
+		str = talloc_typed_strdup(ctx, "");
 	}
 	talloc_free(pool);	/* Memory should be in new ctx */
 
