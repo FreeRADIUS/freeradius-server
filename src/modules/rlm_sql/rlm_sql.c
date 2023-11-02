@@ -436,13 +436,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 
 	for (i = 0; i < MAX_SQL_FIELD_INDEX; i++) field_index[i] = -1;
 
-	/*
-	 *	Add SQL-User-Name attribute just in case it is needed
-	 *	We could search the string fmt for SQL-User-Name to see if this is
-	 * 	needed or not
-	 */
-	sql_set_user(inst, request, NULL);
-
 	handle = fr_pool_connection_get(inst->pool, request);		/* connection pool should produce error */
 	if (!handle) {
 		RETURN_MODULE_FAIL;
@@ -891,7 +884,7 @@ static bool paircmp(request_t *request, fr_pair_list_t *check_list)
 	 */
 	return true;
 }
-	    
+
 static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
 			       fr_pair_t *sql_group, char const *group_name,
 			       sql_fall_through_t *do_fall_through, rlm_rcode_t *rcode)
