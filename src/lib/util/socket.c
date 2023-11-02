@@ -568,7 +568,11 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
 }
 #endif /* WITH_SYS_UN_H */
 
+#if defined SO_BINDTODEVICE || defined IP_BOUND_IF
 static inline CC_HINT(always_inline) int socket_bind_ifname(int sockfd, char const *ifname)
+#else
+static inline CC_HINT(always_inline) int socket_bind_ifname(UNUSED int sockfd, UNUSED char const *ifname)
+#endif
 {
 #if defined(SO_BINDTODEVICE)
 	if (setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, ifname, strlen(ifname)) < 0) {

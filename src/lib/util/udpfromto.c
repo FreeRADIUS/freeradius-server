@@ -401,6 +401,7 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 	 *	with a socket which is bound to something other than
 	 *	INADDR_ANY
 	 */
+	{
 	struct sockaddr bound;
 	socklen_t bound_len = sizeof(bound);
 
@@ -420,6 +421,7 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 			from = NULL;
 		}
 		break;
+	}
 	}
 #endif	/* !__FreeBSD__ */
 
