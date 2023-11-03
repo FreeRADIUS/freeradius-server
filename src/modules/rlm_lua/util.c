@@ -202,12 +202,30 @@ void fr_lua_util_jit_log_error(char const *msg)
 int fr_lua_util_jit_log_register(lua_State *L)
 {
 	char const *search_path;
-	char *lua_str;
+	char *lua_str, *ctx = NULL;
 	int ret;
 
 	fr_assert(fr_lua_mctx);
 
 	search_path = dl_module_search_path();
+
+	/*
+	 *	If the search path contains multiple directories find where the library is.
+	 */
+	if (strchr(search_path, ':')) {
+		char *paths, *path, *file, *p;
+		ctx = paths = talloc_typed_strdup(NULL, search_path);
+		while ((path = strsep(&paths, ":")) != NULL) {
+			p = strrchr(path, '/');
+			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
+			file = talloc_typed_asprintf(ctx, "%s%clibfreeradius-lua%s", path, FR_DIR_SEP, DL_EXTENSION);
+			if (access(file, F_OK) == 0) {
+				search_path = path;
+				break;
+			}
+		}
+	}
+
 	lua_str = talloc_asprintf(NULL, "\
 		ffi = require(\"ffi\")\
 		ffi.cdef [[\
@@ -243,6 +261,7 @@ int fr_lua_util_jit_log_register(lua_State *L)
 		", search_path, FR_DIR_SEP, DL_EXTENSION);
 	ret = luaL_dostring(L, lua_str);
 	talloc_free(lua_str);
+	TALLOC_FREE(ctx);
 	if (ret != 0) {
 		ERROR("Failed setting up FFI: %s",
 		      lua_gettop(L) ? lua_tostring(L, -1) : "Unknown error");
