@@ -479,6 +479,9 @@ static int _lua_list_iterator(lua_State *L)
 
 	/* Packet list should be light user data too at some point... */
 	vp = fr_dcursor_current(cursor);
+
+	/* Nested attributes are not currently supported */
+	while (vp && fr_type_is_structural(vp->da->type)) vp = fr_dcursor_next(cursor);
 	if(!vp) {
 		lua_pushnil(L);
 		return 1;
