@@ -53,9 +53,9 @@ dnl #
 LUA_COMPAT_VERSION=5.1
 
 dnl #
-dnl # First look in the directory structure for LuaJIT 2.0
+dnl # First look in the directory structure for LuaJIT 2.1
 dnl #
-LUA_VERSION=jit-2.0
+LUA_VERSION=jit-2.1
 AX_LUA_HEADERS
 dnl #
 dnl # ... then fall back to standard Lua if we can't find LuaJIT

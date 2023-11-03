@@ -73,7 +73,7 @@ jobs:
             libmemcached         \
             libpcap              \
             lua52                \
-            luajit               \
+            luajit-devel         \
             mysql80-client       \
             net-snmp             \
             openldap25-client    \

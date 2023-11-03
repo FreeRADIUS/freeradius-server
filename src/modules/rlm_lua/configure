@@ -3515,7 +3515,7 @@ fi
 
 LUA_COMPAT_VERSION=5.1
 
-LUA_VERSION=jit-2.0
+LUA_VERSION=jit-2.1
 
 ac_header= ac_cache=
 for ac_item in $ac_header_c_list
