@@ -11,6 +11,7 @@ on:
 env:
   HOSTAPD_BUILD_DIR: eapol_test.ci
   HOSTAPD_GIT_TAG: hostap_2_10
+  NO_PERFORMANCE_TESTS: yes
 
 jobs:
   freebsd-build:
@@ -58,7 +59,7 @@ jobs:
         sync_files: runner-to-vm
         memory: 4G
         hypervisor: qemu
-        environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG
+        environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG NO_PERFORMANCE_TESTS
         run: |
           sudo pkg install -y    \
             curl                 \
