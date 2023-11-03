@@ -530,7 +530,7 @@ static int _lua_pair_accessor_init(lua_State *L)
 
 	attr = lua_tostring(L, -1);
 	if (!attr) {
-		REDEBUG("Failed retrieving field name \"%s\"", attr);
+		REDEBUG("Failed retrieving field name from lua stack");
 		return -1;
 	}
 
