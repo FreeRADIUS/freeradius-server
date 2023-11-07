@@ -3278,7 +3278,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	so that their instance data will be created.
 		 */
 		if (head) {
-			if (xlat_bootstrap(head, t_rules) < 0) {
+			if (xlat_finalize(head, t_rules) < 0) {
 				fr_strerror_const("Failed to bootstrap xlat");
 				FR_SBUFF_ERROR_RETURN(&our_in);
 			}

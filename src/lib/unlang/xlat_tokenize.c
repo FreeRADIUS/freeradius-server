@@ -1923,7 +1923,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_bootstrap(head, t_rules) < 0) {
+	if (xlat_finalize(head, t_rules) < 0) {
 		talloc_free(head);
 		return 0;
 	}
@@ -2107,7 +2107,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			 *	Add the freshly resolved function
 			 *	to the bootstrap tree.
 			 */
-			if (xlat_bootstrap_func(node) < 0) return -1;
+			if (xlat_instance_register_func(node) < 0) return -1;
 
 			/*
 			 *	The function is now resolved, so we go through the normal process of resolving

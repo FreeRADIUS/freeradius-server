@@ -940,7 +940,7 @@ check:
 
 	if (!*result) return true;
 
-	xlat_inst_remove(parent);
+	xlat_instance_unregister_func(parent);
 
 	xlat_exp_set_type(parent, XLAT_BOX);
 	fr_value_box_copy(parent, &parent->data, box);
@@ -1081,7 +1081,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 	fr_assert(group != NULL);
 	talloc_steal(node, group);
 
-	xlat_inst_remove(node);
+	xlat_instance_unregister_func(node);
 	xlat_exp_set_type(node, XLAT_GROUP);
 
 	/* re-print, with purified nodes removed */
@@ -2999,7 +2999,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_bootstrap(head, t_rules) < 0) {
+	if (xlat_finalize(head, t_rules) < 0) {
 		talloc_free(head);
 		return -1;
 	}

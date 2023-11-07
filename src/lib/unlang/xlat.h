@@ -458,9 +458,11 @@ int		xlat_instantiate(void);
 
 void		xlat_thread_detach(void);
 
-int		xlat_bootstrap_func(xlat_exp_t *node);
+int		xlat_instance_unregister_func(xlat_exp_t *node);
 
-int		xlat_bootstrap(xlat_exp_head_t *root, tmpl_rules_t const *t_rules);
+int		xlat_instance_register_func(xlat_exp_t *node);
+
+int		xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules); /* xlat_instance_register() or xlat_instantiate_ephemeral() */
 
 void		xlat_instances_free(void);
 

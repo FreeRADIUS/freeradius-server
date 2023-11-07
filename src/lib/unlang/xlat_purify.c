@@ -170,7 +170,7 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			/*
 			 *	The function call becomes a GROUP of boxes
 			 */
-			xlat_inst_remove(node);
+			xlat_instance_unregister_func(node);
 			xlat_exp_set_type(node, XLAT_GROUP);	/* Frees the argument list */
 
 			xlat_value_list_to_xlat(node->group, &list);

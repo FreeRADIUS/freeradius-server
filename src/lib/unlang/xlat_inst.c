@@ -31,8 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
 
-static int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el);
-
 /** Holds instance data created by xlat_instantiate
  */
 static fr_heap_t *xlat_inst_tree;
@@ -350,7 +348,6 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
 	return 0;
 }
 
-
 /** Create instance data for "ephemeral" xlats
  *
  * @note This function should only be called from routines which get
@@ -359,7 +356,7 @@ static int _xlat_instantiate_ephemeral_walker(xlat_exp_t *node, void *uctx)
  * @param[in] head of xlat tree to create instance data for.
  * @param[in] el event list used to run any instantiate data
  */
-static int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el)
+static inline CC_HINT(always_inline) int xlat_instantiate_ephemeral(xlat_exp_head_t *head, fr_event_list_t *el)
 {
 	int ret;
 
@@ -491,7 +488,7 @@ static int xlat_instantiate_init(void)
 	return 0;
 }
 
-/** Call instantiation functions for "permanent" xlats
+/** Call instantiation functions for all registered, "permanent" xlats
  *
  * Should be called after all the permanent xlats have been tokenised/bootstrapped.
  */
@@ -526,18 +523,58 @@ int xlat_instantiate(void)
 	return 0;
 }
 
+/** Remove a node from the list of xlat instance data
+ *
+ * @note This is primarily used during "purification", to remove xlats which are no longer used.
+ *
+ * @param[in] node	to remove instance data for.
+ */
+int xlat_instance_unregister_func(xlat_exp_t *node)
+{
+	int ret;
+
+	fr_assert(node->type == XLAT_FUNC);
+	fr_assert(!node->call.func->detach);
+	fr_assert(!node->call.func->thread_detach);
+
+	if (node->call.inst) {
+		ret = fr_heap_extract(&xlat_inst_tree, node->call.inst);
+		if (ret < 0) return ret;
+
+		talloc_set_destructor(node->call.inst, NULL);
+		TALLOC_FREE(node->call.inst);
+	}
+
+	if (node->call.thread_inst) {
+		if (!node->call.ephemeral) {
+			ret = fr_heap_extract(&xlat_thread_inst_tree, node->call.thread_inst);
+			if (ret < 0) return ret;
+		}
+
+		talloc_set_destructor(node->call.thread_inst, NULL);
+		TALLOC_FREE(node->call.inst);
+	}
+
+	return 0;
+}
+
 /** Callback for creating "permanent" instance data for a #xlat_exp_t
  *
  * This function records the #xlat_exp_t requiring instantiation but does
  * not call the instantiation function.  This is to allow for a clear separation
  * between the module instantiation phase and the xlat instantiation phase.
  *
+ * @note This is very similar to #xlat_instance_register but does not walk the
+ *	 children of the node.  This is primarily used to register individual
+ *	 nodes for instantiation and when an xlat function is resolved in a
+ *	 subsequent resolution pass and needs to be registered for instantiation.
+ *
  * @param[in] node	to create "permanent" instance data for.
  * @return
  *	- 0 if instantiation functions were successful.
  *	- -1 if either instantiation function failed.
  */
-int xlat_bootstrap_func(xlat_exp_t *node)
+int xlat_instance_register_func(xlat_exp_t *node)
 {
 	static uint64_t call_id;
 	xlat_call_t *call = &node->call;
@@ -573,7 +610,7 @@ int xlat_bootstrap_func(xlat_exp_t *node)
 	return 0;
 }
 
-static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
+static int _xlat_inst_walker(xlat_exp_t *node, UNUSED void *uctx)
 {
 	/*
 	 *	tmpl_tokenize() instantiates ephemeral xlats.  So for
@@ -586,7 +623,7 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
 	if (node->type != XLAT_FUNC) return 0; /* skip it */
 
 
-	return xlat_bootstrap_func(node);
+	return xlat_instance_register_func(node);
 }
 
 /** Create instance data for "permanent" xlats
@@ -595,17 +632,12 @@ static int _xlat_bootstrap_walker(xlat_exp_t *node, UNUSED void *uctx)
  *	 IF THIS IS CALLED FOR XLATS TOKENIZED AT RUNTIME YOU WILL LEAK LARGE AMOUNTS OF MEMORY.
  *	 If the caller has a #tmpl_rules_t, it should call xlat_finalize() instead.
  *
- * @param[in] head of xlat tree to create instance data for.
- * @param[in] t_rules parsing rules with #fr_event_list_t
+ * @param[in] head	of xlat tree to create instance data for.  Will walk the entire tree
+ *		   	registering all the xlat function calls for later instantiation.
  */
-int xlat_bootstrap(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
+static inline CC_HINT(always_inline) int xlat_instance_register(xlat_exp_head_t *head)
 {
 	int ret;
-
-	/*
-	 *	Runtime xlats get ephemeral instantiation
-	 */
-	if (t_rules && t_rules->xlat.runtime_el) return xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
 
 	/*
 	 *	If thread instantiate has been called, it's too late to
@@ -625,11 +657,25 @@ int xlat_bootstrap(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
 	 *	Walk an expression registering all the function calls
 	 *	so that we can instantiate them later.
 	 */
-	ret = xlat_eval_walk(head, _xlat_bootstrap_walker, XLAT_INVALID, NULL);
+	ret = xlat_eval_walk(head, _xlat_inst_walker, XLAT_INVALID, NULL);
 	if (ret < 0) return ret;
 
 	head->instantiated = true;
 	return 0;
+}
+
+/** Bootstrap static xlats, or instantiate ephemeral ones.
+ *
+ * @param[in] head of xlat tree to create instance data for.
+ * @param[in] t_rules parsing rules with #fr_event_list_t
+ */
+int xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
+{
+	if (!t_rules || !t_rules->at_runtime) {
+		fr_assert(!t_rules || !t_rules->xlat.runtime_el);
+		return xlat_instance_register(head);
+	}
+	return xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
 }
 
 /** Walk over all registered instance data and free them explicitly
@@ -648,36 +694,4 @@ void xlat_instances_free(void)
 	 *	still a heap to pass to fr_heap_pop.
 	 */
 	while (xlat_inst_tree && (xi = fr_heap_pop(&xlat_inst_tree))) talloc_free(xi);
-}
-
-/** Remove a node from the list of xlat instance data
- *
- */
-int xlat_inst_remove(xlat_exp_t *node)
-{
-	int ret;
-
-	fr_assert(node->type == XLAT_FUNC);
-	fr_assert(!node->call.func->detach);
-	fr_assert(!node->call.func->thread_detach);
-
-	if (node->call.inst) {
-		ret = fr_heap_extract(&xlat_inst_tree, node->call.inst);
-		if (ret < 0) return ret;
-
-		talloc_set_destructor(node->call.inst, NULL);
-		TALLOC_FREE(node->call.inst);
-	}
-
-	if (node->call.thread_inst) {
-		if (!node->call.ephemeral) {
-			ret = fr_heap_extract(&xlat_thread_inst_tree, node->call.thread_inst);
-			if (ret < 0) return ret;
-		}
-
-		talloc_set_destructor(node->call.thread_inst, NULL);
-		TALLOC_FREE(node->call.inst);
-	}
-
-	return 0;
 }

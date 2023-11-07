@@ -184,7 +184,11 @@ struct xlat_exp_head_s {
 	fr_dlist_head_t		dlist;
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
 	bool			instantiated;	//!< temporary flag until we fix more things
-	fr_dict_t const		*dict;		//!< dictionary for this xlat
+	fr_dict_t const		*dict;		//!< Records the namespace this xlat was created in.
+						///< Used by the purify code to run fake requests in
+						///< the correct namespace, and passed to instantiation
+						///< functions in case the xlat needs to perform runtime
+						///< resolution of attributes (as with %eval()).
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.
@@ -341,11 +345,6 @@ int		xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node,
 				fr_sbuff_escape_rules_t const *e_rules);
-
-/*
- *	xlat_inst.c
- */
-int		xlat_inst_remove(xlat_exp_t *node);
 
 #ifdef __cplusplus
 }
