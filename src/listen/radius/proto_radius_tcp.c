@@ -134,7 +134,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	/*
 	 *	We MUST always start with a known RADIUS packet.
 	 */
-	if ((buffer[0] == 0) || (buffer[0] > FR_RADIUS_CODE_MAX)) {
+	if ((buffer[0] == 0) || (buffer[0] >= FR_RADIUS_CODE_MAX)) {
 		DEBUG("proto_radius_tcp got invalid packet code %d", buffer[0]);
 		thread->stats.total_unknown_types++;
 		return -1;
