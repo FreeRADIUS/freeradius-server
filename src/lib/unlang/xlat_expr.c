@@ -1755,7 +1755,7 @@ do { \
 	xlat_func_args_set(xlat, binary_op_xlat_args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 	xlat_func_print_set(xlat, xlat_expr_print_binary); \
-	xlat_func_async_instantiate_set(xlat, xlat_function_args_to_tmpl, NULL, NULL, NULL); \
+	xlat_func_instantiate_set(xlat, xlat_function_args_to_tmpl, NULL, NULL, NULL); \
 	xlat->token = _op; \
 } while (0)
 
@@ -1774,7 +1774,7 @@ do { \
 #define XLAT_REGISTER_NARY_OP(_op, _name, _func_name) \
 do { \
 	if (unlikely((xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _func_name, FR_TYPE_VOID)) == NULL)) return -1; \
-	xlat_func_async_instantiate_set(xlat, xlat_instantiate_ ## _func_name, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
+	xlat_func_instantiate_set(xlat, xlat_instantiate_ ## _func_name, xlat_ ## _func_name ## _inst_t, NULL, NULL); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 	xlat_func_print_set(xlat, xlat_expr_print_nary); \
 	xlat_purify_func_set(xlat, xlat_expr_logical_purify); \
@@ -1787,7 +1787,7 @@ do { \
 	if (unlikely((xlat = xlat_func_register(NULL, STRINGIFY(_name), xlat_func_ ## _name, FR_TYPE_VOID)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, regex_op_xlat_args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
-	xlat_func_async_instantiate_set(xlat, xlat_instantiate_regex, xlat_regex_inst_t, NULL, NULL); \
+	xlat_func_instantiate_set(xlat, xlat_instantiate_regex, xlat_regex_inst_t, NULL, NULL); \
 	xlat_func_print_set(xlat, xlat_expr_print_regex); \
 	xlat->token = _op; \
 } while (0)
@@ -1846,7 +1846,7 @@ int xlat_register_expressions(void)
 
 	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg);
 	XLAT_REGISTER_MONO("exists", xlat_func_exists, xlat_func_exists_arg);
-	xlat_func_async_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
+	xlat_func_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
 	xlat_func_print_set(xlat, xlat_expr_print_exists);
 
 	/*

@@ -3567,7 +3567,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_decode_xlat, FR_TYPE_UINT32)) == NULL)) return -1;
 		xlat_func_args_set(xlat, protocol_decode_xlat_args);
 		/* coverity[suspicious_sizeof] */
-		xlat_func_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
+		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_decode_t *, NULL, tp_decode);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 
@@ -3584,7 +3584,7 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 		if (unlikely((xlat = xlat_func_register(NULL, buffer, protocol_encode_xlat, FR_TYPE_OCTETS)) == NULL)) return -1;
 		xlat_func_args_set(xlat, protocol_encode_xlat_args);
 		/* coverity[suspicious_sizeof] */
-		xlat_func_async_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
+		xlat_func_instantiate_set(xlat, protocol_xlat_instantiate, fr_test_point_pair_encode_t *, NULL, tp_encode);
 		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 	}
 

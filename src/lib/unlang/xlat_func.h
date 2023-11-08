@@ -80,12 +80,12 @@ void		xlat_purify_func_set(xlat_t *xlat, xlat_purify_t func);
  * @param[in] _detach		A destructor callback.
  * @param[in] _uctx		to pass to _instantiate and _detach callbacks.
  */
-#define	xlat_func_async_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
-	_xlat_func_async_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
-void _xlat_func_async_instantiate_set(xlat_t const *xlat,
-				      xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
-				      xlat_detach_t detach,
-				      void *uctx);
+#define	xlat_func_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
+	_xlat_func_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
+void _xlat_func_instantiate_set(xlat_t const *xlat,
+				xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
+				xlat_detach_t detach,
+				void *uctx);
 
 /** Set a callback for thread-specific instantiation of xlat functions
  *
@@ -95,13 +95,13 @@ void _xlat_func_async_instantiate_set(xlat_t const *xlat,
  * @param[in] _detach		A destructor callback.
  * @param[in] _uctx		to pass to _instantiate and _detach callbacks.
  */
-#define	xlat_func_async_thread_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
-	_xlat_func_async_thread_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
-void _xlat_func_async_thread_instantiate_set(xlat_t const *xlat,
-					     xlat_thread_instantiate_t thread_instantiate,
-					     char const *thread_inst_type, size_t thread_inst_size,
-					     xlat_thread_detach_t thread_detach,
-					     void *uctx);
+#define	xlat_func_thread_instantiate_set(_xlat, _instantiate, _inst_struct, _detach, _uctx) \
+	_xlat_func_thread_instantiate_set(_xlat, _instantiate, #_inst_struct, sizeof(_inst_struct), _detach, _uctx)
+void _xlat_func_thread_instantiate_set(xlat_t const *xlat,
+				       xlat_thread_instantiate_t thread_instantiate,
+				       char const *thread_inst_type, size_t thread_inst_size,
+				       xlat_thread_detach_t thread_detach,
+				       void *uctx);
 
 void		xlat_func_unregister(char const *name);
 void		xlat_func_unregister_module(dl_module_inst_t const *inst);

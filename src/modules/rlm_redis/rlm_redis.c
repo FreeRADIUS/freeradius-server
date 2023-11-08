@@ -882,7 +882,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	talloc_foreach(inst->lua.funcs, func) {
 		if (unlikely((xlat = xlat_func_register_module(inst, mctx, func->name, redis_lua_func_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 		xlat_func_args_set(xlat, redis_lua_func_args);
-		xlat_func_async_instantiate_set(xlat, redis_lua_func_instantiate, redis_lua_func_inst_t, NULL, func);
+		xlat_func_instantiate_set(xlat, redis_lua_func_instantiate, redis_lua_func_inst_t, NULL, func);
 	}
 
 	return 0;

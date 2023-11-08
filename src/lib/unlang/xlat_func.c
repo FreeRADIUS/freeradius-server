@@ -451,7 +451,7 @@ void xlat_purify_func_set(xlat_t *xlat, xlat_purify_t func)
  * @param[in] detach		Called when an xlat_exp_t is freed.
  * @param[in] uctx		Passed to the instantiation function.
  */
-void _xlat_func_async_instantiate_set(xlat_t const *xlat,
+void _xlat_func_instantiate_set(xlat_t const *xlat,
 				 xlat_instantiate_t instantiate, char const *inst_type, size_t inst_size,
 				 xlat_detach_t detach,
 				 void *uctx)
@@ -479,7 +479,7 @@ void _xlat_func_async_instantiate_set(xlat_t const *xlat,
  * @param[in] thread_detach		Called when the thread is freed.
  * @param[in] uctx			Passed to the thread instantiate function.
  */
-void _xlat_func_async_thread_instantiate_set(xlat_t const *xlat,
+void _xlat_func_thread_instantiate_set(xlat_t const *xlat,
 					xlat_thread_instantiate_t thread_instantiate,
 				        char const *thread_inst_type, size_t thread_inst_size,
 				        xlat_thread_detach_t thread_detach,

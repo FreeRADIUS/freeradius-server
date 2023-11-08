@@ -492,7 +492,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		return -1;
 	}
 	xlat_func_flags_set(xlat, flags);
-	xlat_func_async_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
+	xlat_func_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
 	if (args) xlat_func_args_set(xlat, xlat_redundant_args);
 
 	return 0;
