@@ -34,10 +34,32 @@ if (!(%eval("\%{Tmp-String-1[%{Tmp-Integer-0[2]}]}") == 'bar')) {
 }
 
 #
-#  Check yielding works
+#  Check yielding works (regression test?)
 #
 if ((time_delta)%reschedule() > 1s) {
 	test_fail
+}
+
+#
+#  Verify eval can find local attributes
+#
+group {
+	uint32 idx
+	string stackstr
+
+	&idx := 1
+
+	if (!(%eval("\%{Tmp-String-1[%{idx}]}") == 'bar')) {
+		test_fail
+	}
+
+	&stackstr := { 'foo' }
+
+	&idx := 2
+
+	if (!(%eval("\%{stackstr}") == 'foo')) {
+		test_fail
+	}
 }
 
 success
