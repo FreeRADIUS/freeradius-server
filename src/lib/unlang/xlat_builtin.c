@@ -1348,6 +1348,19 @@ static xlat_action_t xlat_eval_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_
 	return xa;
 }
 
+typedef struct {
+	fr_dict_t const	*namespace;	//!< Namespace we use for evaluating runtime expansions
+} xlat_eval_inst_t;
+
+static int xlat_eval_instantiate(xlat_inst_ctx_t const *xctx)
+{
+	xlat_eval_inst_t *inst = talloc_get_type_abort(xctx->inst, xlat_eval_inst_t);
+
+	inst->namespace = xctx->ex->call.dict;
+
+	return 0;
+}
+
 static xlat_arg_parser_t const xlat_func_eval_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -1358,9 +1371,11 @@ static xlat_arg_parser_t const xlat_func_eval_arg[] = {
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				    UNUSED xlat_ctx_t const *xctx,
+				    xlat_ctx_t const *xctx,
 				    request_t *request, fr_value_box_list_t *args)
 {
+	xlat_eval_inst_t *inst = talloc_get_type_abort(xctx->inst, xlat_eval_inst_t);
+
 	/*
 	 *	These are escaping rules applied to the
 	 *	input string. They're mostly here to
@@ -1398,7 +1413,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			  },
 			  &(tmpl_rules_t){
 				  .attr = {
-					  .dict_def = request->dict,
+					  .dict_def = inst->namespace,
 					  .list_def = request_attr_request,
 					  .allow_unknown = false,
 					  .allow_unresolved = false,
@@ -3745,6 +3760,7 @@ do { \
 	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);
 	XLAT_REGISTER_MONO("urlunquote", xlat_func_urlunquote, FR_TYPE_STRING, xlat_func_urlunquote_arg);
 	XLAT_REGISTER_MONO("eval", xlat_func_eval, FR_TYPE_VOID, xlat_func_eval_arg);
+	xlat_func_instantiate_set(xlat, xlat_eval_instantiate, xlat_eval_inst_t, NULL, NULL);
 
 #undef XLAT_REGISTER_MONO
 #define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
