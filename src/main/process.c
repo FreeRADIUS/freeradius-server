@@ -4199,7 +4199,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		when.tv_sec++;
 
 		if (timercmp(&now, &when, <)) {
-			DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d proto TCP - ID: %d",
+			DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d - ID: %d",
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
