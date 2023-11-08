@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/util/calc.h>
+#include <freeradius-devel/util/dict.h>
 
 static void xlat_value_list_to_xlat(xlat_exp_head_t *head, fr_value_box_list_t *list)
 {
@@ -130,8 +131,21 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			 */
 			if (!node->flags.pure) {
 				if (node->call.func->purify) {
-					if (node->call.func->purify(node, node->call.inst->data, request) < 0) return -1;
+					fr_dict_t const *dict = request->dict;
 
+					/*
+					 *	Swap in the node specific dictionary.
+					 *
+					 *	The previous code stored the dictionary in the xlat_exp_head_t,
+					 *	and whilst this wasn't wrong, it was duplicative.
+					 *
+					 *	This allows future code to create inline definitions of local
+					 *	attributes, and have them work correctly, as more deeply nested
+					 *	expressions would swap in the correct dictionary.
+					 */
+					request->dict = node->call.dict;
+					if (node->call.func->purify(node, node->call.inst->data, request) < 0) return -1;
+					request->dict = dict;
 				} else {
 					if (xlat_purify_list(node->call.args, request) < 0) return -1;
 				}
@@ -207,7 +221,7 @@ int xlat_purify(xlat_exp_head_t *head, unlang_interpret_t *intp)
 
 	if (!head->flags.can_purify) return 0;
 
-	request = request_alloc_internal(NULL, (&(request_init_args_t){ .namespace = head->dict }));
+	request = request_alloc_internal(NULL, (&(request_init_args_t){ .namespace = fr_dict_internal() }));
 	if (!request) return -1;
 
 	if (intp) unlang_interpret_set(request, intp);

@@ -2958,11 +2958,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 								 &bracket_terms));
 
 	MEM(head = xlat_exp_head_alloc(ctx));
-	if (t_rules) {
-		head->dict = t_rules->attr.dict_def;
-	} else {
-		t_rules = &my_rules;
-	}
+	if (!t_rules) t_rules = &my_rules;
 
 	slen = tokenize_expression(head, &node, in, terminal_rules, t_rules, T_INVALID, bracket_rules, p_rules, cond);
 	talloc_free(bracket_rules);

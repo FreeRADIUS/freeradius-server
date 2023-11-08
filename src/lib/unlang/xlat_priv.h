@@ -124,6 +124,12 @@ typedef struct {
 	xlat_t const		*func;			//!< The xlat expansion to expand format with.
 	xlat_exp_head_t		*args;			//!< arguments to the function call
 
+	fr_dict_t const		*dict;			//!< Records the namespace this xlat call was created in.
+							///< Used by the purify code to run fake requests in
+							///< the correct namespace, and accessible to instantiation
+							///< functions in case the xlat needs to perform runtime
+							///< resolution of attributes (as with %eval()).
+
 	xlat_inst_t		*inst;			//!< Instance data for the #xlat_t.
 	xlat_thread_inst_t	*thread_inst;		//!< Thread specific instance.
 							///< ONLY USED FOR EPHEMERAL XLATS.
@@ -132,8 +138,6 @@ typedef struct {
 							///< into the instance tree.
 	xlat_input_type_t	input_type;		//!< The input type used inferred from the
 							///< bracketing style.
-
-	fr_dict_t const		*dict;			//!< Dictionary to use when resolving call env tmpls
 } xlat_call_t;
 
 /** An xlat expansion node
@@ -147,7 +151,6 @@ struct xlat_exp_s {
 	fr_token_t		quote;		//!< Type of quoting around XLAT_GROUP types.
 
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
-
 	xlat_type_t _CONST	type;		//!< type of this expansion.
 
 #ifndef NDEBUG
@@ -184,11 +187,6 @@ struct xlat_exp_head_s {
 	fr_dlist_head_t		dlist;
 	xlat_flags_t		flags;		//!< Flags that control resolution and evaluation.
 	bool			instantiated;	//!< temporary flag until we fix more things
-	fr_dict_t const		*dict;		//!< Records the namespace this xlat was created in.
-						///< Used by the purify code to run fake requests in
-						///< the correct namespace, and passed to instantiation
-						///< functions in case the xlat needs to perform runtime
-						///< resolution of attributes (as with %eval()).
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.

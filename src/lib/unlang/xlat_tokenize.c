@@ -1672,8 +1672,6 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	xlat_exp_head_t			*head;
 
 	MEM(head = xlat_exp_head_alloc(ctx));
-	if (t_rules) head->dict = t_rules->attr.dict_def;
-
 	if (p_rules && p_rules->terminals) {
 		tmp_p_rules = (fr_sbuff_parse_rules_t){	/* Stack allocated due to CL scope */
 			.terminals = fr_sbuff_terminals_amerge(NULL, p_rules->terminals,
@@ -1908,7 +1906,6 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 	if (t_rules) {
-		head->dict = t_rules->attr.dict_def;
 		fr_assert(!t_rules->at_runtime || t_rules->xlat.runtime_el); /* if it's at runtime, we need an event list */
 	}
 
