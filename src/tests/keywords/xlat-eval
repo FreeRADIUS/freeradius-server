@@ -53,9 +53,7 @@ group {
 		test_fail
 	}
 
-	&stackstr := { 'foo' }
-
-	&idx := 2
+	&stackstr := 'foo'
 
 	if (!(%eval("\%{stackstr}") == 'foo')) {
 		test_fail
