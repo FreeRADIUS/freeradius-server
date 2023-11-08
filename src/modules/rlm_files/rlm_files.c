@@ -564,7 +564,7 @@ redo:
 		/*
 		 *	Move the control items over, too.
 		 */
-		fr_pair_list_move_op(&request->control_pairs, &list, T_OP_ADD_EQ);
+		radius_pairmove(request, &request->control_pairs, &list);
 
 		/* ctx may be reply */
 		if (!map_list_empty(&pl->reply)) {

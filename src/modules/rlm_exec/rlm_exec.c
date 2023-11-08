@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/util/debug.h>
-#include <freeradius-devel/util/pair_legacy.h>
+#include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/module.h>
@@ -289,7 +289,7 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 			ctx = tmpl_list_ctx(request, tmpl_list(inst->output_list));
 
 			fr_pair_list_afrom_box(ctx, &vps, request->dict, box);
-			if (!fr_pair_list_empty(&vps)) fr_pair_list_move_op(output_pairs, &vps, T_OP_ADD_EQ);
+			if (!fr_pair_list_empty(&vps)) radius_pairmove(request, output_pairs, &vps);
 
 			fr_value_box_list_talloc_free(&m->box);	/* has been consumed */
 		}
