@@ -56,6 +56,7 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 {
 	if (!vp) return -1;
 
+#if PTRDIFF_MAX < INT64_MAX
 #define IN_RANGE_INTEGER_SIGNED(_x) \
 	do { \
 		if ((((int64_t)(_x)) < PTRDIFF_MIN) || (((int64_t)(_x)) > PTRDIFF_MAX)) { \
@@ -73,6 +74,15 @@ static int fr_lua_marshall(request_t *request, lua_State *L, fr_pair_t const *vp
 			return -1; \
 		} \
 	} while (0)
+#else
+#define IN_RANGE_INTEGER_SIGNED(_x) \
+        do { \
+        } while (0)
+
+#define IN_RANGE_INTEGER_UNSIGNED(_x) \
+        do { \
+        } while (0)
+#endif
 
 #define IN_RANGE_FLOAT_SIGNED(_x) \
 	do { \
