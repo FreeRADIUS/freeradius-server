@@ -1,20 +1,33 @@
 #!/usr/bin/env bash
 
 urlencode() {
-  local string="${1}"
-  local strlen=${#string}
-  local encoded=""
-  local pos c o
+    local string="${1}"
+    local strlen=${#string}
+    local encoded=""
+    local pos c o
 
-  for (( pos=0 ; pos<strlen ; pos++ )); do
-     c=${string:$pos:1}
-     case "$c" in
-        [-_.~a-zA-Z0-9] ) o="${c}" ;;
-        * )               printf -v o '%%%02x' "'$c"
-     esac
-     encoded+="${o}"
-  done
-  echo "${encoded}"
+    for (( pos=0 ; pos<strlen ; pos++ )); do
+        c=${string:$pos:1}
+        case "$c" in
+            [-_.~a-zA-Z0-9] )
+                o="${c}" ;;
+            *)
+                printf -v o '%%%02x' "'$c"
+        esac
+        encoded+="${o}"
+    done
+    echo "${encoded}"
+}
+
+VERBOSE=true
+error () {
+    echo "$@" 1>&2
+}
+
+debug () {
+    if $VERBOSE; then
+        echo "$@"
+    fi
 }
 
 # Allow setup script to work with homebrew too
@@ -26,13 +39,35 @@ suffix=$(echo "${0##*/}" | sed -E 's/^ldap(.*)-setup.sh$/\1/')
 [ -e "/tmp/slapd${suffix}.pid" ] && kill $(cat /tmp/slapd${suffix}.pid)
 
 base_dir="/tmp/ldap${suffix}"
+
+#
+# Command line options to override the default template values
+#
+while getopts 's:b:' opt; do
+    case "$opt" in
+    b)
+        base_dir="$OPTARG"
+        ;;
+
+    s)
+        socket_path="$OPTARG"
+        ;;
+
+    *)
+        error "Usage: $0 [-b base_dir] [-s socket_path]"
+        exit 1
+        ;;
+    esac
+done
+shift "$(($OPTIND -1))"
+
 cert_dir="${base_dir}/certs"
 data_dir="${base_dir}/db"
 schema_dir="${base_dir}/schema"
 socket_path="${base_dir}/socket"
 socket_url=ldapi://$(urlencode "${socket_path}")
 
-echo "base_dir \"${base_dir}\""
+debug "base_dir \"${base_dir}\""
 
 # Clean out any existing DB
 rm -rf "${data_dir}"
