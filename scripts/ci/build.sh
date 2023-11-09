@@ -46,7 +46,7 @@ cat "./src/include/autoconf.h"
 #  Build the server
 #
 echo "Starting compilation"
-make -j8
+make -j$(nproc)
 
 #
 #  If this is not a Coverity build (which would duplicate the parameters of another build)
@@ -55,7 +55,7 @@ make -j8
 if [ "${COVERITY_SCAN_BRANCH}" != 1 -a "${CC}" = 'clang' ]; then
     echo "Starting clang scan"
     # Restrict to two cores (provided by Travis) for now...
-    make -j2 scan && [ "$(find build/plist/ -name *.html)" = '' ];
+    make -j$(nproc) scan && [ "$(find build/plist/ -name *.html)" = '' ];
 fi
 
 #
