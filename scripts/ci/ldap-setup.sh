@@ -40,9 +40,6 @@ rm -rf "${data_dir}"
 # Create directory we can write DB files to
 mkdir -p "${data_dir}"
 
-# Ensure the unix socket is created with the correct permissions
-touch "${socket_path}"
-
 # Change db location to /tmp as we can't write to /var
 sed -i -e "s/\/var\/lib\/ldap/\/tmp\/ldap${suffix}\/db/" src/tests/salt-test-server/salt/ldap/base${suffix}.ldif
 
