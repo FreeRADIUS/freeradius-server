@@ -54,7 +54,6 @@ make -j$(nproc)
 #
 if [ "${COVERITY_SCAN_BRANCH}" != 1 -a "${CC}" = 'clang' ]; then
     echo "Starting clang scan"
-    # Restrict to two cores (provided by Travis) for now...
     make -j$(nproc) scan && [ "$(find build/plist/ -name *.html)" = '' ];
 fi
 
