@@ -64,7 +64,7 @@ shift "$(($OPTIND -1))"
 cert_dir="${base_dir}/certs"
 data_dir="${base_dir}/db"
 schema_dir="${base_dir}/schema"
-socket_path="${base_dir}/socket"
+[ -z ${socket_path+x} ] && socket_path="${base_dir}/socket"
 socket_url=ldapi://$(urlencode "${socket_path}")
 
 debug "base_dir \"${base_dir}\""
