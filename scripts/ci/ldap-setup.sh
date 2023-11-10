@@ -69,11 +69,20 @@ socket_url=ldapi://$(urlencode "${socket_path}")
 
 debug "base_dir \"${base_dir}\""
 
-# Clean out any existing DB
+# Clean out any existing data
 rm -rf "${data_dir}"
 
+# Clean out any old certificates
+rm -rf "${cert_dir}"
+
+# Create the base dir
+mkdir -p "${base_dir}" || exit $?
+
+# Create directory for certs
+mkdir -p "${cert_dir}" || exit $?
+
 # Create directory we can write DB files to
-mkdir -p "${data_dir}"
+mkdir -p "${data_dir}" || exit $?
 
 # Change db location to /tmp as we can't write to /var
 sed -i -e "s/\/var\/lib\/ldap/\/tmp\/ldap${suffix}\/db/" src/tests/salt-test-server/salt/ldap/base${suffix}.ldif
@@ -101,10 +110,6 @@ else
     exit 1
 fi
 
-# Clean out any old certificates
-rm -rf "${cert_dir}"
-# Create certificate directory
-mkdir -p "${cert_dir}"
 # Ensure we have some certs generated
 make -C raddb/certs
 
@@ -121,8 +126,12 @@ else
     ldaps_port=$((6360+${suffix}))
 fi
 
+# Copy the config over to the base_dir.  There seems to be some issues with actions runners
+# not allowing file access outside of /etc/ldap, so we copy the config to the specified base_dir.
+cp "scripts/ci/ldap/slapd${suffix}.conf" "${base_dir}/slapd.conf"
+
 # Start slapd
-slapd -d any -h "ldap://127.0.0.1:${ldap_port}/ ldaps://127.0.0.1:${ldaps_port}/ ${socket_url}" -f scripts/ci/ldap/slapd${suffix}.conf 2>&1 > ${base_dir}/slapd.log &
+slapd -d any -h "ldap://127.0.0.1:${ldap_port}/ ldaps://127.0.0.1:${ldaps_port}/ ${socket_url}" -f "${base_dir}/slapd.conf" 2>&1 > ${base_dir}/slapd.log &
 
 # Wait for LDAP to start
 sleep 1
