@@ -381,7 +381,7 @@ rpm: rpmbuild/SOURCES/freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 		echo "ERROR: Required depdendencies not found, install them with: yum-builddep redhat/freeradius.spec"; \
 		exit 1; \
 	fi
-	${Q}QA_RPATHS=0x0003 rpmbuild --define "_topdir `pwd`/rpmbuild" -bb redhat/freeradius.spec
+	${Q}QA_RPATHS=0x0003 rpmbuild --define "_topdir `pwd`/rpmbuild" -bb $(RPMBUILD_FLAGS) redhat/freeradius.spec
 
 #
 #  Developer checks
