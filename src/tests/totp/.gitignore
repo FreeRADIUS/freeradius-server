@@ -1,0 +1,4 @@
+# We use foo.txt.in to generate foo.txt
+*.txt
+# We use foo.out.in to generate foo.out
+*.out
