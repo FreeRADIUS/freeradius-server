@@ -325,7 +325,7 @@ it without paying attention to the sockets or clients you want to add
 later, and without adding a second virtual server. Once it works, then
 add the second virtual server.
 
-If you want to re-use the previously defined sockets with the second
+If you want to reuse the previously defined sockets with the second
 virtual server, then you will need one or more global "client"
 sections. Those clients will contain a "virtual_server = …" entry that
 will direct requests from those clients to the appropriate virtual

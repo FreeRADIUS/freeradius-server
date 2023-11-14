@@ -98,7 +98,7 @@ device, on subsequent allocation requests.  With some database backends
 `alloc_existing` and `alloc_find` queries, reducing round trips
 to the database and improving performance.
 
-. The module returns `updated` to indicate that it was successfull in
+. The module returns `updated` to indicate that it was successful in
 allocating an IP address.
 
 . After some additional processing (modules, `unlang`, etc.),
@@ -118,7 +118,7 @@ updated based on the configured `lease_duration`. This update extends
 the initial lease to the configured `lease_duration` in case the event
 that the Accounting Start request was delayed.
 
-. The module returns `updated` to indicate that it was successfull in
+. The module returns `updated` to indicate that it was successful in
 updating the state of the IP address.
 
 . After some additional processing (modules, `unlang`, etc.),
@@ -136,7 +136,7 @@ uses the configured `pool_key` and NAS identifier in order to identify
 which entry in the `radippool` table to update.  The `expiry_time` is
 updated based on the configured `lease_duration`.
 
-. The module returns `updated` to indicate that it was successfull in
+. The module returns `updated` to indicate that it was successful in
 updating the state of the IP address.
 
 . After some additional processing (modules, `unlang`, etc.),
@@ -157,7 +157,7 @@ or device was associated with that address.  The result is that on
 subsequent allocations, it is possible to re-allocate the same IP
 address to the same user or device.
 
-. The module returns `updated` to indicate that it was successfull in
+. The module returns `updated` to indicate that it was successful in
 updating the state of the IP address.
 
 . After some additional processing (modules, `unlang`, etc.),
@@ -174,10 +174,10 @@ FreeRADIUS.  After some processing (modules. `unlang`, etc.), the
 uses the `NAS-IP-Address` in order to identify all leases in the
 `radippool` table which belong to the NAS in question.  The leases are
 cleared, and the IP addresses are immediately released for further
-allocation.  This proces effectively returns all IP address occupied
+allocation.  This process effectively returns all IP address occupied
 by the dropped sessions back into the pool.
 
-. The module returns `updated` to indicate that it was successfull in
+. The module returns `updated` to indicate that it was successful in
 updating the state of the IP addresses.
 
 . After some additional processing (modules, `unlang`, etc.),
@@ -217,7 +217,7 @@ http://lists.freeradius.org/mailman/listinfo/freeradius-users[freeradius-users]
 mailing list.  Please also read the
 https://wiki.freeradius.org/list-help[list help] instructions, for
 what information we need in order to help you.  This information is
-typically an explantion of what you are trying to achieve, what
+typically an explanation of what you are trying to achieve, what
 exactly isn't working and provide the full debugging output for a
 relevant test run.
 
@@ -1103,7 +1103,7 @@ identifying devices. In some cases a circuit-specific identifier such as
 CAUTION: However, a circuit-specific identifier is unsuitable if there are
 multiple hosts on the circuit with which you issue individual addresses (for
 example when using PPPoE passthrough to provide unique sessions to firewalls
-behind a seperate CPE modem.) In this case the "device" must be thought of not
+behind a separate CPE modem.) In this case the "device" must be thought of not
 as the circuit but the individual hosts behind it.
 
 The `Calling-Station-Id` attribute may contain host specific information (such

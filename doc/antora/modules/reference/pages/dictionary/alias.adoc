@@ -42,7 +42,7 @@ file.
 == v3 Compatible names
 
 All of the attributes have been renamed from v3.  This change was
-necessary in order to support new funtionality in v4.  The unfortunate
+necessary in order to support new functionality in v4.  The unfortunate
 side effect of this change is that all of the names which are
 currently in SQL, LDAP, and the "files" module for use with v3, are
 incompatible with v4.
@@ -56,7 +56,7 @@ old ones were not.
 The "old" names were all in flat lists, so that `User-Name` appeared
 next to `Cisco-AVPAir`.  This organization was simple enough to work
 for 20 years, but its time has come.  The new names are hierarchical,
-and are contained in "parent" attributes.  This arrangment does not
+and are contained in "parent" attributes.  This arrangement does not
 ysyakky change the length of most attribute names.
 
 For v4, the `Cisco-AVPair` attribute is called `AVPair`, and it lives
@@ -85,12 +85,12 @@ definition in the v3 dictionaries.
 
 You will need to add a `$INCLUDE` line for each vendor-specific
 dictionary which is used by your local system.  The default v4
-dictionaries do not enable all of v3 compatibilty names.
+dictionaries do not enable all of v3 compatibility names.
 
 Yes, we recognize that this process is a bit of work.  However, we
 wish to encourage everyone using v4 to upgrade to using the new v4
 features.  Our experience shows that if we automatically enable
-"compatibility functions", then those compatiblity functions will
+"compatibility functions", then those compatibility functions will
 be used for a decade.  So we need to find a balance between
 upgrades and ongoing support.  Easy upgrades will mean complex
 ongoing support.  Complex upgrades make ongoing support easier, but

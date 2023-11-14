@@ -291,7 +291,7 @@ You should instead just use a normal configuration variable for
 that.
 
 
-Set environment varable `FOO` to value '/bar/baz'.
+Set environment variable `FOO` to value '/bar/baz'.
 
 NOTE: Note that you MUST use '='.  You CANNOT use '+=' to append
 values.

@@ -35,7 +35,7 @@ Q: How can I say passwd to add attribute even if it’s value is empty?
 
 A: set `ignore_empty` to `no` in module configuration.
 
-== Acknowlegements
+== Acknowledgements
 
 * ZARAZA, mailto:3APA3A@security.nnov.ru[3APA3A@security.nnov.ru]
 * Michael Chernyakhovsky mailto:mike@mgn.ru[mike@mgn.ru]

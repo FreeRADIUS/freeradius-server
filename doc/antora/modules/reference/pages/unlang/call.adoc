@@ -12,7 +12,7 @@ The `call` statement will run the current request through another
 virtual server.  Once that virtual server is complete, the request
 will continue being processed in the original virtual server.
 
-<server>::  The virtual server which wil process the request.
+<server>::  The virtual server which will process the request.
 +
 The called virtual server must have the same `namespace` value as the
 calling virtual server.

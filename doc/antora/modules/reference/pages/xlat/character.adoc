@@ -21,7 +21,7 @@ decimal number.
 Note that creating a "fractional" time from an expansion like `%c.%C`
 should only be used when creating strings, such as for logging.  If
 you need to calculate time differences, the time values should be left
-as type `date`, and then you can substract two dates to get a
+as type `date`, and then you can subtract two dates to get a
 `time_delta`.  That `time_delta` can then be printed in an appropriate
 precision and scale.
 

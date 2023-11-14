@@ -1,4 +1,4 @@
-= Tunning Guide
+= Tuning Guide
 
 == Main Server
 

@@ -1,5 +1,5 @@
 $(function () {
-    // Add a new container for the tocify toc into the existing toc so we can re-use its
+    // Add a new container for the tocify toc into the existing toc so we can reuse its
     // styling
     $("#toc").append("<div id='generated-toc'></div>");
     $("#generated-toc").tocify({

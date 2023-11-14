@@ -18,7 +18,7 @@ The `parallel` section is most useful for running modules which call
 external systems and wait for a reply.  When modules are run in
 series, the first module must run to completion, and only then can the
 second and subsequent modules be executed.  With parallel, the first
-module is run, and then as soon as that module yeilds in order to wait
+module is run, and then as soon as that module yields in order to wait
 for an event, the second module can immediately run.
 
 Each child subsection is executed using a

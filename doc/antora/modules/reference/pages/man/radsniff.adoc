@@ -109,7 +109,7 @@ The following options are for statistics gathering.
   The instance name passed to the collectd plugin.
 
 *-O server*::
-  Write output statics to the named collectd server.
+  Write output statistics to the named collectd server.
 
 *-T timeout*::
   The timeout in milliseconds before the request is considered

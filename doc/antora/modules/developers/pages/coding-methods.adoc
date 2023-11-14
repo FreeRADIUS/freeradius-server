@@ -26,7 +26,7 @@ Variables and functions should have names. Calling them `x`, `xx`,
 and `xxx` makes your life hell. Even `foo` and `i` are
 problematic.
 
-Avoid smurfs. Don’t re-use struct names in field names, i. e.
+Avoid smurfs. Don’t reuse struct names in field names, i. e.
 
 [source,c]
 ----

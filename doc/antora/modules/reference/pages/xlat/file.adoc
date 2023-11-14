@@ -14,7 +14,7 @@ This function returns an escaped or "safe" version of the input string.
 
 In some cases, as when using `%exec(...)`, it is impossible to determine which arguments are filenames, and which are simple strings.  This function allows the server to safely pass in a filename to external programs.
 
-The returned filename is guaranteed to be safe to use.  Any portion of the filename which is taken from a "safe" source (i.e. configuration files, etc. controlled by an administator) is used as-is.  Any portion of the filename which is taken from an "unsafe" source (i.e. network apckets) is escaped.  The result is that characters like `/` in unsafe inputs cannot be used to perform directory traversal attacks.
+The returned filename is guaranteed to be safe to use.  Any portion of the filename which is taken from a "safe" source (i.e. configuration files, etc. controlled by an administrator) is used as-is.  Any portion of the filename which is taken from an "unsafe" source (i.e. network apckets) is escaped.  The result is that characters like `/` in unsafe inputs cannot be used to perform directory traversal attacks.
 
 .Safely pass a filename to `%exec(...)`
 ====

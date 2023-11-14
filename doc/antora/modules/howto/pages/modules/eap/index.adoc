@@ -56,7 +56,7 @@ events happen in addition to the above EAP events.
 . The RADIUS server sends the key for this session (Session key) to the
 AP.
 . The AP encrypts its Broadcast key with the Session key
-. The AP sends the encypted key to the supplicant
+. The AP sends the encrypted key to the supplicant
 . The supplicant decrypts the Broadcast key with the Session key and the
 session continues using the Broadcast and Session keys until the session
 ends.
@@ -320,7 +320,7 @@ the server can have only one default `EAP-Type`, as above.
 
 Once `EAP-Identity` response is received by the server, based on the
 `default_eap_type`, the server will send a new request (`MD5-Challenge`
-request incase of md5, `TLS-START` request incase of tls) to the
+request in case of md5, `TLS-START` request in case of tls) to the
 supplicant. If the supplicant is `rfc2284` compliant and does not support
 the `EAP-Type` sent by the server then it sends `EAP-Acknowledge` with the
 supported `EAP-Type`. If this `EAP-Type` is supported by the server then it
@@ -361,7 +361,7 @@ int detach(void **type_arg);
 required resources.
 
 `initiate()` function begins the conversation when EAP-Identity
-response is received. Incase of EAP-MD5, `initiate()` function sends
+response is received. In case of EAP-MD5, `initiate()` function sends
 the challenge.
 
 `authenticate()` function uses specific EAP-Type authentication

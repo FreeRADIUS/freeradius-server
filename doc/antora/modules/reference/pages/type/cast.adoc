@@ -1,7 +1,7 @@
 = Casts
 
 Values can be *cast* from one data type to another.  However, this
-cast only changes the _type_ of the data, it does not change the datas
+cast only changes the _type_ of the data, it does not change the data's
 _value_.  That is, a cast allows you to convert an `octets` data type
 to a `string`, but the resulting `string` may still contain
 non-printable characters.
@@ -22,7 +22,7 @@ if (%sql("SELECT ipaddress FROM table WHERE user=%{User-Name}") == 192.0.2.1) }
 Since there is no attribute reference on either side of the `==`
 operator, the interpreter has no way of knowing that the string
 `192.0.2.1` is an IP address.  In most cases, the interpreter will
-guess correctly.  Howerver, there is no way of _always_ parsing
+guess correctly.  However, there is no way of _always_ parsing
 strings in order to automatically determine which data type to use.
 Any such automatic parsing works most of the time, but it does have
 error cases where the parsing may be incorrect.
@@ -125,7 +125,7 @@ of how double-quoted strings are used.
 === Lists
 
 When a cast is applied to a list, the cast is applied _individually to
-each entry in the list_.  This behavior is most noticable when calling
+each entry in the list_.  This behavior is most noticeable when calling
 a function, or looping over a set of attributes.
 
 The following example will first create two `Reply-Message` attributes

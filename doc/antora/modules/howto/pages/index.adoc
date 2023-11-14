@@ -2,7 +2,7 @@
 
 The documents in this section describe how to perform various common tasks with
 FreeRADIUS. They also provide worked examples on using the various modules in
-common deployment scenarions.
+common deployment scenarios.
 
 If you have a topic you'd like to see included in the list of howtos, contact
 the developers on the

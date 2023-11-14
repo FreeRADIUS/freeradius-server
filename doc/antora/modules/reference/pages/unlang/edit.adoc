@@ -119,12 +119,12 @@ the list operations are simple, and well defined.
 |=====
 | Operator | Description
 | =        | Set the list to the contents of the _<rhs>_, if the _<list>_ does not exist.  If the list already exists, nothing is done.  If the list does not exist, it is created, and the contents set to the value of the _<rhs>_
-| :=       | Override the list to the contents with the _<rhs>_.  If the list already exists, its value is over-written.  If the list does not exist, it is created, and the contents set to thex value of the _<rhs>_
+| :=       | Override the list to the contents with the _<rhs>_.  If the list already exists, its value is over-written.  If the list does not exist, it is created, and the contents set to the value of the _<rhs>_
 | +=       | Perform list append operation.  The contents of the _<rhs>_ are appended to the _<list>_.  The resulting list is _<list><rhs>_.
 | ^=       | Perform a list prepend operation.  The contents of the _<rhs>_ are prepended to the _<list>_.  The resulting list is _<rhs><list>_.
 | -=       | Remove attributes from the _<list>_ which match the _<rhs>_ attribute or list.
 | \|=       | Perform a list union.  The resulting list has all of the contents of the original _<list>_, and the _<rhs>_ list.
-| &=       | Perform a list intersection.  The resulting list has only the attributes which are in both the origianl _<list>_, and the _<rhs>_ list.
+| &=       | Perform a list intersection.  The resulting list has only the attributes which are in both the original _<list>_, and the _<rhs>_ list.
 | >=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<list>_, and of all _<rhs>_ list attributes which are not already in _<list>_.
 | \<=       | Perform a priority merge of two lists. The resulting list has all of the contents of the original _<rhs>_, and of all _<list>_ list attributes which are not in _<rhs>_ are left alone..
 |=====
@@ -185,7 +185,7 @@ This operation can best be understood as a two-step process:
 
 1. Create a temporary "in-place" list from the _<rhs>_ of the edit
 operation.  This "in-place" list is not associated with any previous
-list, but instead exists on its own, independt of anything else.  As
+list, but instead exists on its own, independent of anything else.  As
 such, there is no need to use operators for the _<rhs>_ list.
 Instead, the attributes for this list are created in order, exactly as they are
 given.
@@ -286,7 +286,7 @@ hacks.
 
 For now, regular expression operators are not supported.
 
-=== List to List Operatons
+=== List to List Operations
 
 Lists can also be copied using the operators.
 
@@ -310,7 +310,7 @@ copies all of the `request` list contents to the `reply` list.
 === Parsing strings as lists
 
 It is also possible to have strings on the _<rhs>_ of a list
-assignment.  This funtionality is most useful for putting attribute
+assignment.  This functionality is most useful for putting attribute
 lists into a database, and then reading them back when a request is
 processed.
 
@@ -411,7 +411,7 @@ The operators also apply to variable-sized values.
 |=====
 | Operator | Description
 | =        | Set the attribute to the contents of the _<rhs>_, if the _<attribute>_ does not exist.  If the attribute already exists, nothing is done.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
-| :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to thex value of the _<rhs>_
+| :=       | Override the attribute with the contents with the _<rhs>_.  If the attribute already exists, its value is over-written.  If the attribute does not exist, it is created, and the contents set to the value of the _<rhs>_
 | +=       | Perform string append.  The contents of the _<rhs>_ are appended to the _<attribute>_.
 | -=       | Inverse of string append. The contents of the _<rhs>_ are deleted from from the _<attribute>_, if the `_<rhs>_` is a suffix of _<attribute>_ 
 | ^=       | For `string`, performs a "prepend" operation.  The contents of the _<rhs>_ are prepended to the _<attribute>_.  This is the opposite of `+=`.

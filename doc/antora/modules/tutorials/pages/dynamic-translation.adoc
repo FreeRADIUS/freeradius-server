@@ -103,7 +103,7 @@ multiplied by the value of the "UID" of the RADIUS server.
 
 == Further considerations
 
-Run-time variables allow inter-module calling. The administator may perform LDAP
+Run-time variables allow inter-module calling. The administrator may perform LDAP
 queries and SQL queries to use database information in other modules.
 
 Unfortunately, the format of the string is module-dependent. This limitation

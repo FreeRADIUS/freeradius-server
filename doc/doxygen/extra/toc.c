@@ -11,7 +11,7 @@
 FreeRADIUS is a high-performance modular RADIUS server, supporting PAP, CHAP,
 EAP (including EAP-TLS, EAP-TTLS, EAP-PEAP with EAP-MSCHAP) and a very flexible
 configuration model, including conditional request processing, querying of
-LDAP and SQL databases, exection of external scripts and more.
+LDAP and SQL databases, execution of external scripts and more.
 
 FreeRADIUS uses a thread pool to serve requests. Each request is processed
 synchronously, and processing passes through a series of stages, and a list

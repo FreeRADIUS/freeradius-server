@@ -68,7 +68,7 @@ comparisons, for all attributes and data types.
 
 Values can be xref:type/cast.adoc[cast] from one data type to another.
 However, this cast only changes the _type_ of the data, it does not
-change the datas _value_.  That is, a cast allows you to convert an
+change the data's _value_.  That is, a cast allows you to convert an
 `octets` data type to a `string`, but the resulting `string` may still
 contain non-printable characters.
 

@@ -88,7 +88,7 @@ changing one thing will break something else.
 +
 Saving a copy of the configuration means that you can always revert
 the your changes to a "known working" version.  It doesn't matter how
-the files are saved.  You cna use a revision control system like
+the files are saved.  You can use a revision control system like
 `git`, or `tar` files, or even just copying the files to a different
 directory (named for the current time/date).
 +

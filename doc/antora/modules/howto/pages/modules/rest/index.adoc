@@ -11,7 +11,7 @@ module to communicate with a REST service.
 == xref:modules/rest/fixed_data.adoc[Calling REST endpoints with fixed data formats]
 
 The REST module was developed to allow business logic to be separated out into a
-separate discreet service.  This reduces the role of FreeRADIUS to a translation
+separate discrete service.  This reduces the role of FreeRADIUS to a translation
 daemon, receiving packets from the network and presenting them in JSON or POST
 format for consumption by the API, then parsing a JSON or POST response, and
 translating that back into a network packet.
