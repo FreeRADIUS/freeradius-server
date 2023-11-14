@@ -235,7 +235,7 @@ static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_pa
 	    (eap_packet->code != FR_EAP_CODE_RESPONSE) ||
 	    (eap_packet->data[0] != FR_EAP_METHOD_IDENTITY)) return NULL;
 
-	len = fr_nbo_to_uint16(eap_packet->length);
+	len = talloc_array_length((uint8_t *) eap_packet);
 
 	/*
 	 *  Note: The minimum length here is 5.
