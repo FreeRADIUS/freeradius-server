@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/dl_module.h>
+#include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -39,7 +40,6 @@ extern module_rlm_t rlm_cache;
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_VOID, rlm_cache_t, driver_submodule), .dflt = "rbtree",
 			 .func = module_rlm_submodule_parse },
-	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_cache_config_t, key) },
 	{ FR_CONF_OFFSET("ttl", FR_TYPE_TIME_DELTA, rlm_cache_config_t, ttl), .dflt = "500s" },
 	{ FR_CONF_OFFSET("max_entries", FR_TYPE_UINT32, rlm_cache_config_t, max_entries), .dflt = "0" },
 
@@ -47,6 +47,20 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("epoch", FR_TYPE_INT32, rlm_cache_config_t, epoch), .dflt = "0" },
 	{ FR_CONF_OFFSET("add_stats", FR_TYPE_BOOL, rlm_cache_config_t, stats), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
+};
+
+typedef struct {
+	fr_value_box_t	*key;
+} cache_call_env_t;
+
+static const call_method_env_t cache_common_env = {
+	.inst_size = sizeof(cache_call_env_t),
+	.inst_type = "cache_call_env_t",
+	.env = (call_env_t[]) {
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, cache_call_env_t, key,
+				     NULL, T_INVALID, true, false, true) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -202,7 +216,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, request_t *request, rlm_
  */
 static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out,
 				  rlm_cache_t const *inst, request_t *request,
-				  rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
+				  rlm_cache_handle_t **handle, fr_value_box_t const *key)
 {
 	cache_status_t ret;
 
@@ -211,7 +225,7 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
 	*out = NULL;
 
 	for (;;) {
-		ret = inst->driver->find(&c, &inst->config, inst->driver_submodule->dl_inst->data, request, *handle, key, key_len);
+		ret = inst->driver->find(&c, &inst->config, inst->driver_submodule->dl_inst->data, request, *handle, key);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			RDEBUG2("Reconnecting...");
@@ -222,7 +236,7 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
 			break;
 
 		case CACHE_MISS:
-			RDEBUG2("No cache entry found for \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
+			RDEBUG2("No cache entry found for \"%pV\"", key);
 			RETURN_MODULE_NOTFOUND;
 
 		default:
@@ -239,23 +253,23 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
 	 */
 	if (fr_unix_time_lt(c->expires, fr_time_to_unix_time(request->packet->timestamp))) {
 		RDEBUG2("Found entry for \"%pV\", but it expired %pV ago at %pV (packet received %pV).  Removing it",
-			fr_box_strvalue_len((char const *)key, key_len),
+			key,
 			fr_box_time_delta(fr_unix_time_sub(fr_time_to_unix_time(request->packet->timestamp), c->expires)),
 			fr_box_date(c->expires),
 			fr_box_time(request->packet->timestamp));
 
 	expired:
-		inst->driver->expire(&inst->config, inst->driver_submodule->dl_inst->data, request, handle, c->key, c->key_len);
+		inst->driver->expire(&inst->config, inst->driver_submodule->dl_inst->data, request, handle, key);
 		cache_free(inst, &c);
 		RETURN_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
 
 	if (fr_unix_time_lt(c->created, fr_unix_time_from_sec(inst->config.epoch))) {
 		RDEBUG2("Found entry for \"%pV\", but it was created before the current epoch.  Removing it",
-			fr_box_strvalue_len((char const *)key, key_len));
+			key);
 		goto expired;
 	}
-	RDEBUG2("Found entry for \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
+	RDEBUG2("Found entry for \"%pV\"", key);
 
 	c->hits++;
 	*out = c;
@@ -272,11 +286,10 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
  */
 static unlang_action_t cache_expire(rlm_rcode_t *p_result,
 				    rlm_cache_t const *inst, request_t *request,
-				    rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
+				    rlm_cache_handle_t **handle, fr_value_box_t const *key)
 {
 	RDEBUG2("Expiring cache entry");
-	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_submodule->dl_inst->data, request,
-					      *handle, key, key_len)) {
+	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_submodule->dl_inst->data, request, *handle, key)) {
 	case CACHE_RECONNECT:
 		if (cache_reconnect(handle, inst, request) == 0) continue;
 		FALL_THROUGH;
@@ -301,7 +314,7 @@ static unlang_action_t cache_expire(rlm_rcode_t *p_result,
  */
 static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 				    rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle,
-				    uint8_t const *key, size_t key_len, fr_time_delta_t ttl)
+				    fr_value_box_t const *key, fr_time_delta_t ttl)
 {
 	map_t			const *map = NULL;
 	map_t			*c_map;
@@ -323,8 +336,11 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 		RETURN_MODULE_FAIL;
 	}
 	map_list_init(&c->maps);
-	c->key = talloc_memdup(c, key, key_len);
-	c->key_len = key_len;
+	if (unlikely(fr_value_box_copy(c, &c->key, key) < 0)) {
+		RERROR("Failed copying key");
+		talloc_free(c);
+		RETURN_MODULE_FAIL;
+	}
 
 	/*
 	 *	All in NSEC resolution
@@ -540,6 +556,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 {
 	rlm_cache_entry_t	*c = NULL;
 	rlm_cache_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 
 	rlm_cache_handle_t	*handle;
 
@@ -549,20 +566,11 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	bool			merge = true, insert = true, expire = false, set_ttl = false;
 	int			exists = -1;
 
-	uint8_t			buffer[1024];
-	uint8_t const		*key;
-	ssize_t			key_len;
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
 	fr_time_delta_t		ttl = inst->config.ttl;
 
-	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, inst->config.key, NULL, NULL);
-	if (key_len < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	if (key_len == 0) {
+	if (env->key->vb_length == 0) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_INVALID;
 	}
@@ -581,7 +589,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 			RETURN_MODULE_FAIL;
 		}
 
-		cache_find(&rcode, &c, inst, request, &handle, key, key_len);
+		cache_find(&rcode, &c, inst, request, &handle, env->key);
 		if (rcode == RLM_MODULE_FAIL) goto finish;
 		fr_assert(!inst->driver->acquire || handle);
 
@@ -628,7 +636,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	 *	recording whether the entry existed.
 	 */
 	if (merge) {
-		cache_find(&rcode, &c, inst, request, &handle, key, key_len);
+		cache_find(&rcode, &c, inst, request, &handle, env->key);
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 			goto finish;
@@ -661,7 +669,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 			rlm_rcode_t tmp;
 
 			fr_assert(!set_ttl);
-			cache_expire(&tmp, inst, request, &handle, key, key_len);
+			cache_expire(&tmp, inst, request, &handle, env->key);
 			switch (tmp) {
 			case RLM_MODULE_FAIL:
 				rcode = RLM_MODULE_FAIL;
@@ -693,7 +701,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	if ((exists < 0) && (insert || set_ttl)) {
 		rlm_rcode_t tmp;
 
-		cache_find(&tmp, &c, inst, request, &handle, key, key_len);
+		cache_find(&tmp, &c, inst, request, &handle, env->key);
 		switch (tmp) {
 		case RLM_MODULE_FAIL:
 			rcode = RLM_MODULE_FAIL;
@@ -749,7 +757,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	if (insert && (exists == 0)) {
 		rlm_rcode_t tmp;
 
-		cache_insert(&tmp, inst, request, &handle, key, key_len, ttl);
+		cache_insert(&tmp, inst, request, &handle, env->key, ttl);
 		switch (tmp) {
 		case RLM_MODULE_FAIL:
 			rcode = RLM_MODULE_FAIL;
@@ -818,23 +826,17 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	rlm_cache_entry_t 		*c = NULL;
 	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_cache_t);
+	cache_call_env_t		*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
 	rlm_cache_handle_t		*handle = NULL;
 
 	ssize_t				slen;
 
 	fr_value_box_t			*attr = fr_value_box_list_head(in);
-	uint8_t				buffer[1024];
-	uint8_t const			*key;
-	ssize_t				key_len;
 	fr_value_box_t			*vb;
 
 	tmpl_t				*target = NULL;
 	map_t				*map = NULL;
 	rlm_rcode_t			rcode = RLM_MODULE_NOOP;
-
-	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, inst->config.key, NULL, NULL);
-	if (key_len < 0) return XLAT_ACTION_FAIL;
 
 	slen = tmpl_afrom_attr_substr(ctx, NULL, &target,
 				      &FR_SBUFF_IN(attr->vb_strvalue, attr->vb_length),
@@ -856,7 +858,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	cache_find(&rcode, &c, inst, request, &handle, key, key_len);
+	cache_find(&rcode, &c, inst, request, &handle, env->key);
 	switch (rcode) {
 	case RLM_MODULE_OK:		/* found */
 		break;
@@ -929,6 +931,294 @@ static void cache_unref(request_t *request, rlm_cache_t const *inst, rlm_cache_e
 	}
 }
 
+/** Get the status by ${key} (without load)
+ *
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_NOTFOUND on cache miss.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static unlang_action_t CC_HINT(nonnull) mod_method_status(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	rlm_cache_entry_t 	*entry = NULL;
+	rlm_cache_handle_t 	*handle = NULL;
+
+	DEBUG3("Calling %s.status", mctx->inst->name);
+
+	if (env->key->vb_length == 0) {
+		REDEBUG("Zero length key string is invalid");
+		RETURN_MODULE_FAIL;
+	}
+
+	/* Good to go? */
+	if (cache_acquire(&handle, inst, request) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+
+	fr_assert(!inst->driver->acquire || handle);
+
+	cache_find(&rcode, &entry, inst, request, &handle, env->key);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	rcode = (entry) ? RLM_MODULE_OK : RLM_MODULE_NOTFOUND;
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Load the avps by ${key}.
+ *
+ * @return
+ *	- #RLM_MODULE_UPDATED on success.
+ *	- #RLM_MODULE_NOTFOUND on cache miss.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static unlang_action_t CC_HINT(nonnull) mod_method_load(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	rlm_cache_entry_t 	*entry = NULL;
+	rlm_cache_handle_t 	*handle = NULL;
+
+	DEBUG3("Calling %s.load", mctx->inst->name);
+
+	if (env->key->vb_length == 0) {
+		REDEBUG("Zero length key string is invalid");
+		RETURN_MODULE_FAIL;
+	}
+
+	/* Good to go? */
+	if (cache_acquire(&handle, inst, request) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+
+	cache_find(&rcode, &entry, inst, request, &handle, env->key);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (!entry) {
+		WARN("Entry not found to load");
+		rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	rcode = cache_merge(inst, request, entry);
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Create and insert a cache entry
+ *
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_UPDATED if we merged the cache entry.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	fr_time_delta_t		ttl;
+	bool 			expire = false;
+	rlm_cache_entry_t 	*entry = NULL;
+	rlm_cache_handle_t 	*handle = NULL;
+	fr_pair_t		*vp;
+
+	DEBUG3("Calling %s.store", mctx->inst->name);
+
+	if (env->key->vb_length == 0) {
+		REDEBUG("Zero length key string is invalid");
+		RETURN_MODULE_FAIL;
+	}
+
+	/* Good to go? */
+	if (cache_acquire(&handle, inst, request) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+
+	/* Process the TTL */
+	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
+	if (vp) {
+		if (vp->vp_int32 == 0) {
+			expire = true;
+		} else if (vp->vp_int32 < 0) {
+			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
+		/* Updating the TTL */
+		} else {
+			ttl = fr_time_delta_from_sec(vp->vp_int32);
+		}
+
+		DEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(ttl), vp->vp_int32);
+	}
+
+	/*
+	 *	We can only alter the TTL on an entry if it exists.
+	 */
+	cache_find(&rcode, &entry, inst, request, &handle, env->key);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (rcode == RLM_MODULE_OK) {
+		fr_assert(entry != NULL);
+
+		DEBUG3("Updating the TTL -> %pV", fr_box_time_delta(ttl));
+
+		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
+
+		cache_set_ttl(&rcode, inst, request, &handle, entry);
+		if (rcode == RLM_MODULE_FAIL) goto finish;
+	}
+
+	/*
+	 *	Expire the entry if told to, and we either don't know whether
+	 *	it exists, or we know it does.
+	 *
+	 *	We only expire if we're not inserting, as driver insert methods
+	 *	should perform upserts.
+	 */
+	if (expire) {
+		DEBUG4("Set the cache expire");
+
+		cache_expire(&rcode, inst, request, &handle, env->key);
+		if (rcode == RLM_MODULE_FAIL) goto finish;
+	}
+
+	/*
+	 *	Inserts are upserts, so we don't care about the
+	 *	entry state, just that we're not meant to be
+	 *	setting the TTL, which precludes performing an
+	 *	insert.
+	 */
+	cache_insert(&rcode, inst, request, &handle, env->key, ttl);
+	if (rcode == RLM_MODULE_OK) rcode = RLM_MODULE_UPDATED;
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Delete the entries by ${key}
+ *
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_NOTFOUND on cache miss.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static unlang_action_t CC_HINT(nonnull) mod_method_clear(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	rlm_cache_entry_t 	*entry = NULL;
+	rlm_cache_handle_t 	*handle = NULL;
+
+	DEBUG3("Calling %s.clear", mctx->inst->name);
+
+	if (env->key->vb_length == 0) {
+		REDEBUG("Zero length key string is invalid");
+		RETURN_MODULE_FAIL;
+	}
+
+	/* Good to go? */
+	if (cache_acquire(&handle, inst, request) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+
+	cache_find(&rcode, &entry, inst, request, &handle, env->key);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (!entry) {
+		WARN("Entry not found to delete");
+		rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	cache_expire(&rcode, inst, request, &handle, env->key);
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Change the TTL on an existing entry.
+ *
+ * @return
+ *	- #RLM_MODULE_UPDATED on success.
+ *	- #RLM_MODULE_NOTFOUND on cache miss.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	fr_time_delta_t		ttl;
+	rlm_cache_entry_t 	*entry = NULL;
+	rlm_cache_handle_t 	*handle = NULL;
+	fr_pair_t		*vp;
+
+	DEBUG3("Calling %s.ttl", mctx->inst->name);
+
+	if (env->key->vb_length == 0) {
+		REDEBUG("Zero length key string is invalid");
+		RETURN_MODULE_FAIL;
+	}
+
+	/* Good to go? */
+	if (cache_acquire(&handle, inst, request) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+
+	/* Process the TTL */
+	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
+	if (vp) {
+		if (vp->vp_int32 < 0) {
+			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
+		/* Updating the TTL */
+		} else {
+			ttl = fr_time_delta_from_sec(vp->vp_int32);
+		}
+
+		DEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(inst->config.ttl), vp->vp_int32);
+	}
+
+	/*
+	 *	We can only alter the TTL on an entry if it exists.
+	 */
+	cache_find(&rcode, &entry, inst, request, &handle, env->key);
+	if (rcode == RLM_MODULE_FAIL) goto finish;
+
+	if (rcode == RLM_MODULE_OK) {
+		fr_assert(entry != NULL);
+
+		DEBUG3("Updating the TTL -> %pV", fr_box_time_delta(ttl));
+
+		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
+
+		cache_set_ttl(&rcode, inst, request, &handle, entry);
+		if (rcode == RLM_MODULE_FAIL) goto finish;
+
+		rcode = RLM_MODULE_UPDATED;
+	}
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	RETURN_MODULE_RCODE(rcode);
+}
+
 /** Free any memory allocated under the instance
  *
  */
@@ -949,33 +1239,6 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
-/** Register module xlats
- *
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_cache_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t );
-	xlat_t		*xlat;
-
-	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->dl_inst->module->common;
-
-	/*
-	 *	Non optional fields and callbacks
-	 */
-	fr_assert(inst->driver->common.name);
-	fr_assert(inst->driver->find);
-	fr_assert(inst->driver->insert);
-	fr_assert(inst->driver->expire);
-
-	/*
-	 *	Register the cache xlat function
-	 */
-	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, cache_xlat, FR_TYPE_VOID);
-	xlat_func_args_set(xlat, cache_xlat_args);
-
-	return 0;
-}
-
 /** Create a new rlm_cache_instance
  *
  */
@@ -984,8 +1247,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_cache_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
 	CONF_SECTION	*update;
-
-	fr_assert(inst->config.key);
 
 	if (!fr_time_delta_ispos(inst->config.ttl)) {
 		cf_log_err(conf, "Must set 'ttl' to non-zero");
@@ -1031,332 +1292,32 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-/** Get the status by ${key} (without load)
+/** Register module xlats
  *
- * @return
- *	- #RLM_MODULE_OK on success.
- *	- #RLM_MODULE_NOTFOUND on cache miss.
- *	- #RLM_MODULE_FAIL on failure.
  */
-static unlang_action_t CC_HINT(nonnull) mod_method_status(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	uint8_t			buffer[1024];
-	uint8_t const		*key;
-	ssize_t			key_len;
-	rlm_cache_entry_t 	*entry = NULL;
-	rlm_cache_handle_t 	*handle = NULL;
+	rlm_cache_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t );
+	xlat_t		*xlat;
 
-	DEBUG3("Calling %s.status", mctx->inst->name);
-
-	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, inst->config.key, NULL, NULL);
-	if (key_len < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	if (key_len == 0) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_MODULE_FAIL;
-	}
-
-	/* Good to go? */
-	if (cache_acquire(&handle, inst, request) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	fr_assert(!inst->driver->acquire || handle);
-
-	cache_find(&rcode, &entry, inst, request, &handle, key, key_len);
-	if (rcode == RLM_MODULE_FAIL) goto finish;
-
-	rcode = (entry) ? RLM_MODULE_OK : RLM_MODULE_NOTFOUND;
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/** Load the avps by ${key}.
- *
- * @return
- *	- #RLM_MODULE_UPDATED on success.
- *	- #RLM_MODULE_NOTFOUND on cache miss.
- *	- #RLM_MODULE_FAIL on failure.
- */
-static unlang_action_t CC_HINT(nonnull) mod_method_load(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	uint8_t			buffer[1024];
-	uint8_t const		*key;
-	ssize_t			key_len;
-	rlm_cache_entry_t 	*entry = NULL;
-	rlm_cache_handle_t 	*handle = NULL;
-
-	DEBUG3("Calling %s.load", mctx->inst->name);
-
-	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, inst->config.key, NULL, NULL);
-	if (key_len < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	if (key_len == 0) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_MODULE_FAIL;
-	}
-
-	/* Good to go? */
-	if (cache_acquire(&handle, inst, request) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	cache_find(&rcode, &entry, inst, request, &handle, key, key_len);
-	if (rcode == RLM_MODULE_FAIL) goto finish;
-
-	if (!entry) {
-		WARN("Entry not found to load");
-		rcode = RLM_MODULE_NOTFOUND;
-		goto finish;
-	}
-
-	rcode = cache_merge(inst, request, entry);
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/** Create and insert a cache entry
- *
- * @return
- *	- #RLM_MODULE_OK on success.
- *	- #RLM_MODULE_UPDATED if we merged the cache entry.
- *	- #RLM_MODULE_FAIL on failure.
- */
-static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	uint8_t			buffer[1024];
-	uint8_t const		*key;
-	ssize_t			key_len;
-	fr_time_delta_t		ttl;
-	bool 			expire = false;
-	rlm_cache_entry_t 	*entry = NULL;
-	rlm_cache_handle_t 	*handle = NULL;
-	fr_pair_t		*vp;
-
-	DEBUG3("Calling %s.store", mctx->inst->name);
-
-	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, inst->config.key, NULL, NULL);
-	if (key_len < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	if (key_len == 0) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_MODULE_FAIL;
-	}
-
-	/* Good to go? */
-	if (cache_acquire(&handle, inst, request) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	/* Process the TTL */
-	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
-	if (vp) {
-		if (vp->vp_int32 == 0) {
-			expire = true;
-		} else if (vp->vp_int32 < 0) {
-			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
-		/* Updating the TTL */
-		} else {
-			ttl = fr_time_delta_from_sec(vp->vp_int32);
-		}
-
-		DEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(ttl), vp->vp_int32);
-	}
+	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->dl_inst->module->common;
 
 	/*
-	 *	We can only alter the TTL on an entry if it exists.
+	 *	Non optional fields and callbacks
 	 */
-	cache_find(&rcode, &entry, inst, request, &handle, key, key_len);
-	if (rcode == RLM_MODULE_FAIL) goto finish;
-
-	if (rcode == RLM_MODULE_OK) {
-		fr_assert(entry != NULL);
-
-		DEBUG3("Updating the TTL -> %pV", fr_box_time_delta(ttl));
-
-		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
-
-		cache_set_ttl(&rcode, inst, request, &handle, entry);
-		if (rcode == RLM_MODULE_FAIL) goto finish;
-	}
+	fr_assert(inst->driver->common.name);
+	fr_assert(inst->driver->find);
+	fr_assert(inst->driver->insert);
+	fr_assert(inst->driver->expire);
 
 	/*
-	 *	Expire the entry if told to, and we either don't know whether
-	 *	it exists, or we know it does.
-	 *
-	 *	We only expire if we're not inserting, as driver insert methods
-	 *	should perform upserts.
+	 *	Register the cache xlat function
 	 */
-	if (expire) {
-		DEBUG4("Set the cache expire");
+	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, cache_xlat, FR_TYPE_VOID);
+	xlat_func_args_set(xlat, cache_xlat_args);
+	xlat_func_call_env_set(xlat, &cache_common_env);
 
-		cache_expire(&rcode, inst, request, &handle, key, key_len);
-		if (rcode == RLM_MODULE_FAIL) goto finish;
-	}
-
-	/*
-	 *	Inserts are upserts, so we don't care about the
-	 *	entry state, just that we're not meant to be
-	 *	setting the TTL, which precludes performing an
-	 *	insert.
-	 */
-	cache_insert(&rcode, inst, request, &handle, key, key_len, ttl);
-	if (rcode == RLM_MODULE_OK) rcode = RLM_MODULE_UPDATED;
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/** Delete the entries by ${key}
- *
- * @return
- *	- #RLM_MODULE_OK on success.
- *	- #RLM_MODULE_NOTFOUND on cache miss.
- *	- #RLM_MODULE_FAIL on failure.
- */
-static unlang_action_t CC_HINT(nonnull) mod_method_clear(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	uint8_t			buffer[1024];
-	uint8_t const		*key;
-	ssize_t			key_len;
-	rlm_cache_entry_t 	*entry = NULL;
-	rlm_cache_handle_t 	*handle = NULL;
-
-	DEBUG3("Calling %s.clear", mctx->inst->name);
-
-	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, inst->config.key, NULL, NULL);
-	if (key_len < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	if (key_len == 0) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_MODULE_FAIL;
-	}
-
-	/* Good to go? */
-	if (cache_acquire(&handle, inst, request) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	cache_find(&rcode, &entry, inst, request, &handle, key, key_len);
-	if (rcode == RLM_MODULE_FAIL) goto finish;
-
-	if (!entry) {
-		WARN("Entry not found to delete");
-		rcode = RLM_MODULE_NOTFOUND;
-		goto finish;
-	}
-
-	cache_expire(&rcode, inst, request, &handle, key, key_len);
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/** Change the TTL on an existing entry.
- *
- * @return
- *	- #RLM_MODULE_UPDATED on success.
- *	- #RLM_MODULE_NOTFOUND on cache miss.
- *	- #RLM_MODULE_FAIL on failure.
- */
-static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	uint8_t			buffer[1024];
-	uint8_t const		*key;
-	ssize_t			key_len;
-	fr_time_delta_t		ttl;
-	rlm_cache_entry_t 	*entry = NULL;
-	rlm_cache_handle_t 	*handle = NULL;
-	fr_pair_t		*vp;
-
-	DEBUG3("Calling %s.ttl", mctx->inst->name);
-
-	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			      request, inst->config.key, NULL, NULL);
-	if (key_len < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	if (key_len == 0) {
-		REDEBUG("Zero length key string is invalid");
-		RETURN_MODULE_FAIL;
-	}
-
-	/* Good to go? */
-	if (cache_acquire(&handle, inst, request) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	/* Process the TTL */
-	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
-	if (vp) {
-		if (vp->vp_int32 < 0) {
-			ttl = fr_time_delta_from_sec(-(vp->vp_int32));
-		/* Updating the TTL */
-		} else {
-			ttl = fr_time_delta_from_sec(vp->vp_int32);
-		}
-
-		DEBUG3("Overwriting the default TTL %pV -> %d", fr_box_time_delta(inst->config.ttl), vp->vp_int32);
-	}
-
-	/*
-	 *	We can only alter the TTL on an entry if it exists.
-	 */
-	cache_find(&rcode, &entry, inst, request, &handle, key, key_len);
-	if (rcode == RLM_MODULE_FAIL) goto finish;
-
-	if (rcode == RLM_MODULE_OK) {
-		fr_assert(entry != NULL);
-
-		DEBUG3("Updating the TTL -> %pV", fr_box_time_delta(ttl));
-
-		entry->expires = fr_unix_time_add(fr_time_to_unix_time(request->packet->timestamp), ttl);
-
-		cache_set_ttl(&rcode, inst, request, &handle, entry);
-		if (rcode == RLM_MODULE_FAIL) goto finish;
-
-		rcode = RLM_MODULE_UPDATED;
-	}
-
-finish:
-	cache_unref(request, inst, entry, handle);
-
-	RETURN_MODULE_RCODE(rcode);
+	return 0;
 }
 
 /*
@@ -1379,12 +1340,12 @@ module_rlm_t rlm_cache = {
 		.detach		= mod_detach
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "status", .name2 = CF_IDENT_ANY,		.method = mod_method_status },
-		{ .name1 = "load", .name2 = CF_IDENT_ANY,		.method = mod_method_load   },
-		{ .name1 = "store", .name2 = CF_IDENT_ANY,		.method = mod_method_store  },
-		{ .name1 = "clear", .name2 = CF_IDENT_ANY,		.method = mod_method_clear  },
-		{ .name1 = "ttl", .name2 = CF_IDENT_ANY,		.method = mod_method_ttl    },
-		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_cache_it      },
+		{ .name1 = "status", .name2 = CF_IDENT_ANY,		.method = mod_method_status,	.method_env = &cache_common_env },
+		{ .name1 = "load", .name2 = CF_IDENT_ANY,		.method = mod_method_load,	.method_env = &cache_common_env },
+		{ .name1 = "store", .name2 = CF_IDENT_ANY,		.method = mod_method_store,	.method_env = &cache_common_env },
+		{ .name1 = "clear", .name2 = CF_IDENT_ANY,		.method = mod_method_clear,	.method_env = &cache_common_env },
+		{ .name1 = "ttl", .name2 = CF_IDENT_ANY,		.method = mod_method_ttl,	.method_env = &cache_common_env },
+		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_cache_it,		.method_env = &cache_common_env },
 		MODULE_NAME_TERMINATOR
 	}
 };

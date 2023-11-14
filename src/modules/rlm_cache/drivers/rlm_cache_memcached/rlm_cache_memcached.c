@@ -29,6 +29,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/value.h>
 
 #include "../../rlm_cache.h"
 #include "../../serialize.h"
@@ -157,7 +158,7 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
-				       request_t *request, void *handle, uint8_t const *key, size_t key_len)
+				       request_t *request, void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_memcached_handle_t *mandle = handle;
 
@@ -170,7 +171,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	rlm_cache_entry_t	*c;
 
-	from_store = memcached_get(mandle->handle, (char const *)key, key_len, &len, &flags, &mret);
+	from_store = memcached_get(mandle->handle, (char const *)key->vb_strvalue, key->vb_length, &len, &flags, &mret);
 	if (!from_store) {
 		if (mret == MEMCACHED_NOTFOUND) return CACHE_MISS;
 
@@ -182,16 +183,19 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	RDEBUG2("Retrieved %zu bytes from memcached", len);
 	RDEBUG2("%s", from_store);
 
-	c = talloc_zero(NULL, rlm_cache_entry_t);
+	MEM(c = talloc_zero(NULL, rlm_cache_entry_t));
 	ret = cache_deserialize(c, request->dict, from_store, len);
 	free(from_store);
 	if (ret < 0) {
 		RPERROR("Invalid entry");
+	error:
 		talloc_free(c);
 		return CACHE_ERROR;
 	}
-	c->key = talloc_memdup(c, key, key_len);
-	c->key_len = key_len;
+	if (unlikely(fr_value_box_copy(c, &c->key, key) < 0)) {
+		RERROR("Failed copying key");
+		goto error;
+	}
 
 	*out = c;
 
@@ -221,7 +225,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		return CACHE_ERROR;
 	}
 
-	ret = memcached_set(mandle->handle, (char const *)c->key, c->key_len,
+	ret = memcached_set(mandle->handle, (char const *)c->key.vb_strvalue, c->key.vb_length,
 		            to_store ? to_store : "",
 		            to_store ? talloc_array_length(to_store) - 1 : 0, fr_unix_time_to_sec(c->expires), 0);
 	talloc_free(pool);
@@ -240,13 +244,13 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, UNUSED void *instance,
-					 request_t *request, void *handle, uint8_t const *key, size_t key_len)
+					 request_t *request, void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_memcached_handle_t *mandle = handle;
 
 	memcached_return_t ret;
 
-	ret = memcached_delete(mandle->handle, (char const *)key, key_len, 0);
+	ret = memcached_delete(mandle->handle, (char const *)key->vb_strvalue, key->vb_length, 0);
 	switch (ret) {
 	case MEMCACHED_SUCCESS:
 		return CACHE_OK;

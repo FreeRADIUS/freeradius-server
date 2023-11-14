@@ -24,6 +24,7 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/value.h>
 #include "../../rlm_cache.h"
 
 typedef struct {
@@ -48,7 +49,7 @@ static int8_t cache_entry_cmp(void const *one, void const *two)
 {
 	rlm_cache_entry_t const *a = one, *b = two;
 
-	MEMCMP_RETURN(a, b, key, key_len);
+	MEMCMP_RETURN(a, b, key.vb_strvalue, key.vb_length);
 	return 0;
 }
 
@@ -153,9 +154,10 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
-				       request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+				       request_t *request, UNUSED void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_entry_t find = {};
 
 	rlm_cache_entry_t *c;
 
@@ -171,10 +173,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		talloc_free(c);
 	}
 
+	fr_value_box_copy_shallow(NULL, &find.key, key);
+
 	/*
 	 *	Is there an entry for this key?
 	 */
-	c = fr_rb_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
+	c = fr_rb_find(driver->cache, &find);
 	if (!c) {
 		*out = NULL;
 		return CACHE_MISS;
@@ -192,14 +196,17 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
 					 request_t *request, UNUSED void *handle,
-					 uint8_t const *key, size_t key_len)
+					 fr_value_box_t const *key)
 {
 	rlm_cache_rbtree_t *driver = talloc_get_type_abort(instance, rlm_cache_rbtree_t);
+	rlm_cache_entry_t find = {};
 	rlm_cache_entry_t *c;
 
 	if (!request) return CACHE_ERROR;
 
-	c = fr_rb_find(driver->cache, &(rlm_cache_entry_t){ .key = key, .key_len = key_len });
+	fr_value_box_copy_shallow(NULL, &find.key, key);
+
+	c = fr_rb_find(driver->cache, &find);
 	if (!c) return CACHE_MISS;
 
 	fr_heap_extract(&driver->heap, c);
@@ -231,7 +238,7 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	 *	Allow overwriting
 	 */
 	if (!fr_rb_insert(driver->cache, c)) {
-		status = cache_entry_expire(config, instance, request, handle, c->key, c->key_len);
+		status = cache_entry_expire(config, instance, request, handle, &c->key);
 		if ((status != CACHE_OK) && !fr_cond_assert(0)) return CACHE_ERROR;
 
 		if (!fr_rb_insert(driver->cache, c)) {

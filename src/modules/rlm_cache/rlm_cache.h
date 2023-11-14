@@ -49,7 +49,6 @@ typedef enum {
  * rlm_cache instance data.
  */
 typedef struct {
-	tmpl_t			*key;			//!< What to expand to get the value of the key.
 	fr_time_delta_t		ttl;			//!< How long an entry is valid for.
 	uint32_t		max_entries;		//!< Maximum entries allowed.
 	int32_t			epoch;			//!< Time after which entries are considered valid.
@@ -74,8 +73,7 @@ typedef struct {
 } rlm_cache_t;
 
 typedef struct {
-	uint8_t const		*key;			//!< Key used to identify entry.
-	size_t			key_len;		//!< Length of key data.
+	fr_value_box_t		key;			//!< Key used to identify entry.
 	long long int		hits;			//!< How many times the entry has been retrieved.
 	fr_unix_time_t		created;		//!< When the entry was created.
 	fr_unix_time_t		expires;		//!< When the entry expires.
@@ -117,7 +115,6 @@ typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
  * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
  *	#cache_acquire_t callback was provided.
  * @param[in] key to use to lookup cache entry
- * @param[in] key_len the length of the key string.
  * @return
  *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
  *	- #CACHE_ERROR - If the lookup couldn't be completed.
@@ -126,7 +123,7 @@ typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
  */
 typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_config_t const *config,
 					      void *instance, request_t *request, void *handle,
-					      uint8_t const *key, size_t key_len);
+					      fr_value_box_t const *key);
 
 /** Insert an entry into the cache
  *
@@ -169,7 +166,6 @@ typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config,
  * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
  *	#cache_acquire_t callback was provided.
  * @param[in] key of entry to expire.
- * @param[in] key_len the length of the key string.
  * @return
  *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
  *	- #CACHE_ERROR - If the entry couldn't be expired.
@@ -178,7 +174,7 @@ typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config,
  */
 typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_config_t const *config, void *instance,
 						request_t *request, void *handle,
-						uint8_t const *key, size_t key_len);
+						fr_value_box_t const *key);
 
 /** Update the ttl of an entry in the cace
  *

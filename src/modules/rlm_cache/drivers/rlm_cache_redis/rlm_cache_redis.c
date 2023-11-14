@@ -25,6 +25,7 @@
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/value.h>
 
 #include "../../rlm_cache.h"
 #include <freeradius-devel/redis/base.h>
@@ -121,7 +122,7 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *instance,
-				       request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+				       request_t *request, UNUSED void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_redis_t		*driver = instance;
 	size_t				i;
@@ -139,19 +140,19 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	rlm_cache_entry_t		*c;
 
 	map_list_init(&head);
-	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, key, key_len, false);
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, (uint8_t const *)key->vb_strvalue, key->vb_length, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
 		/*
 		 *	Grab all the data for this hash, should return an array
 		 *	of alternating keys/values which we then convert into maps.
 		 */
-		RDEBUG3("LRANGE %pV 0 -1", fr_box_strvalue_len((char const *)key, key_len));
-		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key, key_len);
+		RDEBUG3("LRANGE %pV 0 -1", key);
+		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key->vb_strvalue, key->vb_length);
 		status = fr_redis_command_status(conn, reply);
 	}
 	if (s_ret != REDIS_RCODE_SUCCESS) {
-		RERROR("Failed retrieving entry for key \"%pV\"", fr_box_strvalue_len((char const *)key, key_len));
+		RERROR("Failed retrieving entry for key \"%pV\"", key);
 
 	error:
 		fr_redis_reply_free(&reply);
@@ -236,8 +237,8 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		talloc_free(map);
 	}
 
-	c->key = talloc_memdup(c, key, key_len);
-	c->key_len = key_len;
+	if (unlikely(fr_value_box_copy(c, &c->key, key) < 0)) goto error;
+
 	map_list_move(&c->maps, &head);
 	*out = c;
 
@@ -322,8 +323,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	*argv_p++ = command;
 	*argv_len_p++ = sizeof(command) - 1;
 
-	*argv_p++ = (char const *)c->key;
-	*argv_len_p++ = c->key_len;
+	*argv_p++ = (char const *)c->key.vb_strvalue;
+	*argv_len_p++ = c->key.vb_length;
 
 	/*
 	 *	Add the maps to the command string in reverse order
@@ -354,7 +355,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	RDEBUG3("Pipelining commands");
 
-	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, c->key, c->key_len, false);
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, (uint8_t const *)c->key.vb_strvalue, c->key.vb_length, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
 		/*
@@ -372,9 +373,9 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			pipelined++;
 		}
 
-		RDEBUG3("DEL \"%pV\"", fr_box_strvalue_len((char const *)c->key, c->key_len));
+		RDEBUG3("DEL \"%pV\"", &c->key);
 
-		if (redisAppendCommand(conn->handle, "DEL %b", c->key, c->key_len) != REDIS_OK) goto append_error;
+		if (redisAppendCommand(conn->handle, "DEL %b", (uint8_t const *)c->key.vb_strvalue, c->key.vb_length) != REDIS_OK) goto append_error;
 		pipelined++;
 
 		if (RDEBUG_ENABLED3) {
@@ -393,10 +394,9 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		 */
 		if (fr_unix_time_ispos(c->expires)) {
 			RDEBUG3("EXPIREAT \"%pV\" %" PRIu64,
-				fr_box_strvalue_len((char const *)c->key, c->key_len),
+				&c->key,
 				fr_unix_time_to_sec(c->expires));
-			if (redisAppendCommand(conn->handle, "EXPIREAT %b %" PRIu64, c->key,
-					       c->key_len,
+			if (redisAppendCommand(conn->handle, "EXPIREAT %b %" PRIu64, (uint8_t const *)c->key.vb_strvalue, (size_t)c->key.vb_length,
 					       fr_unix_time_to_sec(c->expires)) != REDIS_OK) goto append_error;
 			pipelined++;
 			RDEBUG3("EXEC");
@@ -430,7 +430,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *instance,
-					 request_t *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
+					 request_t *request, UNUSED void *handle, fr_value_box_t const *key)
 {
 	rlm_cache_redis_t		*driver = instance;
 	fr_redis_cluster_state_t	state;
@@ -440,10 +440,10 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 	int				s_ret;
 	cache_status_t			cache_status;
 
-	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, key, key_len, false);
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, (uint8_t const *)key->vb_strvalue, key->vb_length, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
-	     	reply = redisCommand(conn->handle, "DEL %b", key, key_len);
+	     	reply = redisCommand(conn->handle, "DEL %b", (uint8_t const *)key->vb_strvalue, key->vb_length);
 	     	status = fr_redis_command_status(conn, reply);
 	}
 
