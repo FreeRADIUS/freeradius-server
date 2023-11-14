@@ -4392,7 +4392,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	component.
 	 */
 	if (!method) {
-		cf_log_err(ci, "Failed compiling %s - %s", inst->module->name, fr_strerror());
+		cf_log_err(ci, "Failed compiling %s - no method matching calling section found", inst->module->name);
 		return NULL;
 	}
 
