@@ -64,7 +64,7 @@ users.
 FreeRADIUS is distributed with a schema extension which introduces a
 `data_usage_by_period` table containing data usage keyed by time-period and
 user, and provides the means of running an update process to correctly populate
-this table, either by calling a stored procedure or running a seperate script:
+this table, either by calling a stored procedure or running a separate script:
 
  [raddb]/mods-config/sql/main/[database]/process-radacct.sql
 

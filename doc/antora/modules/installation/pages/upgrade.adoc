@@ -53,7 +53,7 @@ Much of the information in this section is also in the
 `raddb/dictionary` file
 
 All of the attributes have been renamed from v3.  This change was
-necessary in order to support new funtionality in v4.  The
+necessary in order to support new functionality in v4.  The
 unfortunate side effect of this change is that all of the names in
 SQL, LDAP, and the `files` module are incompatible with v4.
 
@@ -94,14 +94,14 @@ definition in the v3 dictionaries.
 
 You will need to add a `$INCLUDE` line for each vendor-specific
 dictionary which is used by your local system.  The default v4
-dictionaries do not enable all of v3 compatibilty names.  The reason
+dictionaries do not enable all of v3 compatibility names.  The reason
 is simple: the alias names _mostly_ work, in most situations.  But
 there are situations where the aliases do not behave correctly.
 
 We recognize that this process is a bit of work.  However, we wish to
 encourage everyone using v4 to upgrade to using the new v4 features.
 Our experience shows that if we automatically enable "compatibility
-features", then those compatiblity features will be used for a decade,
+features", then those compatibility features will be used for a decade,
 and no one will upgrade to use the new features.  So we need to find a
 balance between upgrades and ongoing support.  Easy upgrades will mean
 complex ongoing support.  Complex upgrades make ongoing support
@@ -756,7 +756,7 @@ The following modules exhibit changed behaviour.
 into the current request. It defaults to `no`. The primary use case,
 is if you’re using xlat expansions in the cache module itself to
 retrieve information for caching, and need the result of those
-expensions to be available immediately.
+expansions to be available immediately.
 
 Two new control attributes `&control.Cache-Allow-Merge` and
 `&control.Cache-Allow-Insert` have been added. These control whether
@@ -853,7 +853,7 @@ will no longer work.  Instead, use
 if (%ldap.memberof(foo)) { ...
 ```
 
-The cacheing of group membership into attributes in the `control` list is
+The caching of group membership into attributes in the `control` list is
 still available, so
 
 ```

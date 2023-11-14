@@ -120,7 +120,7 @@ ldap_bind: Confidentiality required (13)
 If you're not sure which encryption method is used (LDAPS or StartTLS) try
 each of them in turn.
 
-In order to configure either encryption method you will need to have acces
+In order to configure either encryption method you will need to have access
 to the certificate chain for the certificate the LDAP server presents.
 
 See the section below on retrieving certificate chains if you don't have

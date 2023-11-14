@@ -8,7 +8,7 @@
 - Shifting data out of sbuffs is expensive because we need to update every nested sbuff, and every marker associated with them.
 - Passing terminals and unescape callbacks into functions leads to massive complexity, and needing to allocate memory to allocate merged tables of token sequences.
 - Last matched token isn't stored anywhere, so the caller of a parsing function needs to check the current position of an sbuff against its tokens.
-- Returning negative offsets to indicate error positions dosn't work when there are transform functions in the sbuff chain.
+- Returning negative offsets to indicate error positions doesn't work when there are transform functions in the sbuff chain.
 
 ## Fixes
 ### Marker release
@@ -30,7 +30,7 @@ typedef struct {
 In almost every instance a "legacy" C function that's operating on a standard C buffer takes a `buffer` and a `length`.
 
 Direct access into the sbuff should be restricted, and a macro should be provided that provides both the length of the
-data and a pointer into the sbuff as consective function arguments.  This prevents assignments to C pointers as this will
+data and a pointer into the sbuff as consecutive function arguments.  This prevents assignments to C pointers as this will
 result in a syntax error.
 
 [source,c]
@@ -169,12 +169,12 @@ as they will never need to be updated during shifts.  marker's offsets remain re
 
 If `sbuff->offset < sbuff->start`, this event would trigger a backtrack.
 
-### Pasing terminal sequences and escape rules into functions is awful
+### Parsing terminal sequences and escape rules into functions is awful
 
 Text transformation must be transparent to the parsing function, anything else will not function correctly, or will add
 horendous complexity.
 
-A trasnformation sbuff takes data from its parent, transforms it, and places it in and output buffer.  The transform sbuff's
+A transformation sbuff takes data from its parent, transforms it, and places it in and output buffer.  The transform sbuff's
 offsets are valid for its output buffer only.
 
 A terminal sbuff takes requests for more data and scans the stream coming from its parent sbuff for terminal sequences.

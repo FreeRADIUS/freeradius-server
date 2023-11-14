@@ -202,7 +202,7 @@ the module was defined as `json jdoc {...}`, then the xlat name will be
 
 The xlat should be passed a list of attributes to encode. Each attribute
 (after template expansion) will be added to a list of attributes to include
-in the JSON document. If any of the attributes given are preceeded with a `!`
+in the JSON document. If any of the attributes given are preceded with a `!`
 then they are removed from the list. Once all attributes have been processed,
 the JSON document will be created using this list.
 

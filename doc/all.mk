@@ -186,7 +186,7 @@ install.doxygen: $(R)$(docdir)/doxygen/html/index.html
 
 
 #
-#  Add the doxygen files to the install targt
+#  Add the doxygen files to the install target
 #
 install.doc: install.doxygen
 

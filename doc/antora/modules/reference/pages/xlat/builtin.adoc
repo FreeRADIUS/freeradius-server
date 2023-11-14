@@ -220,7 +220,7 @@ If no argument is passed, it returns the current time.  Otherwise if the argumen
 This expansion should be used in preference to the xref:xlat/character.adoc[single letter expansions] `%l`.  That expansion returns integer seconds, and is not suitable for millisecond or microsecond resolution.
 ====
 
-Due to limitations in the underlying time funtions (both system and
+Due to limitations in the underlying time functions (both system and
 FreeRADIUS), previous versions of FreeRADIUS did not always handle
 dates correctly.  When print dates, the time zone information would
 sometimes not be printed, or the time zone would sometimes be ignored

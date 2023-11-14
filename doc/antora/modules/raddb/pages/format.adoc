@@ -112,7 +112,7 @@ that the double quoted strings can expand variable references. Please
 see the <<Variable References>> section for more information.
 
 The contents of a double-quoted can be interpreted as a string, a
-number, or an IP address, depending on the configuration varible.
+number, or an IP address, depending on the configuration variable.
 
 .Double-Quoted Strings
 ====
@@ -143,7 +143,7 @@ be otherwise difficult to represent.
 == Configuration Sections
 
 A _configuration section_ is allows named variables to be collected
-togther in a logical group.  Configuration sections can also contain
+together in a logical group.  Configuration sections can also contain
 other configuration sections, to any depth of nesting.
 
 A configuration section begins with a section name, followed on the
@@ -160,7 +160,7 @@ same line by an open bracket `{`.  A section ends with a close bracket
 <name>:: The name of this configuration section.  The set of allowed
 names depends on the context.
 
-<instance>:: An optional secton name.
+<instance>:: An optional section name.
 
 [ statements ]:: Zero or more statements, including comments, variable
 assignments, and other sections.

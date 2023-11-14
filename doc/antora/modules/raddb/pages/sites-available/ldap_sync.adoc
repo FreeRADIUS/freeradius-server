@@ -30,10 +30,10 @@ However, when an object is deleted from the directory, the entry which is
 received only contains the DN, or, if the deletion is reported as part of
 the initial refresh phase it may only be the UUID.
 
-Active Direcory
+Active Directory
 ---------------
 Active Directory will only provide updates from the time the query started;
-there is no mechanism to catch up on changes which occured while the
+there is no mechanism to catch up on changes which occurred while the
 client was not connected.  In addition it is not possible to apply a
 filter to the query so that only a subset of objects are considered.
 
@@ -177,7 +177,7 @@ Search scope, may be 'base', 'one', 'sub' or 'children'
 
 Specify a map of LDAP attributes to FreeRADIUS dictionary attributes.
 
-The result of this map determines how attriubtes from the LDAP
+The result of this map determines how attributes from the LDAP
 query are presented in the requests processed by the various
 "recv" sections below.
 
@@ -186,7 +186,7 @@ This is a very limited form of map:
  - the right hand side is LDAP attributes which will be
    included in the query.
  - only = and += are valid operators with = setting a
-   single instance of the attriubte and += setting as
+   single instance of the attribute and += setting as
    many as the LDAP query returns.
 
 Protocol specific attributes must be qualified e.g. &Proto.radius.User-Name
@@ -217,7 +217,7 @@ specified in this configuration.  The key limitation is
 The only extensible match filters supported are the Active
 Directory bitwise AND and OR.
 
-A suitable filter, to only receive notificaitons regarding
+A suitable filter, to only receive notifications regarding
 normal user accounts could be:
 
   (userAccountControl:1.2.840.113556.1.4.803:=512)

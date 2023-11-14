@@ -95,7 +95,7 @@ codes are used to indicate errors.
 | code          | meaning           | comment                                                  |
 |---------------|-------------------|----------------------------------------------------------|
 | `200`         | Success           | We received a valid response from the RADIUS server.     |
-| `500`         | Script failure    | An internal error ocurred in the healthcheck script.     |
+| `500`         | Script failure    | An internal error occurred in the healthcheck script.     |
 | `502`         | Invalid response  | Either the response packet was malformed or failed validation (bad shared secret), or `require_ack` was enabled, and the response contained a NAK response like `Access-Reject`. |
 | `504`         | Timeout           | No response received from the RADIUS server.             |
 

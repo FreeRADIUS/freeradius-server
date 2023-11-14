@@ -51,7 +51,7 @@ executing the `files` module to provide an alternative source of credentials.
 [TIP]
 ====
 You may need to modify the return code priorities of the
-xref:raddb:mods-available/sometimes.adoc[somtimes] module.
+xref:raddb:mods-available/sometimes.adoc[sometimes] module.
 ====
 
 If the policies are correct you will see that FreeRADIUS returns an

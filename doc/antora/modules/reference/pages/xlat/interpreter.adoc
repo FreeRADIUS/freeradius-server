@@ -26,7 +26,7 @@ recv Access-Request {
 }
 ----
 
-.Output (_extra informations only for that condition_)
+.Output (_extra information only for that condition_)
 
 ```
 ...
@@ -81,7 +81,7 @@ recv Access-Request {
 == State
 
 The state of the interpreter can be queried via the
-`%interpeter(<name>)` expansion.  The individual expansions are
+`%interpreter(<name>)` expansion.  The individual expansions are
 documented below.
 
 Each expansion given here can be prefixed with one or more dot (`.`)
@@ -92,34 +92,34 @@ no parent, the expansion returns the string `<underflow>`.
 For example `'filename'` is the name of the current file being
 executed, while `'..filename'` is the filename of the parent request.
 
-== %interpeter('filename')
+== %interpreter('filename')
 
 Which filename is currently being executed.
 
-== %interpeter('line')
+== %interpreter('line')
 
 The line number in the current file being executed.
 
-== %interpeter('processing_stage')
+== %interpreter('processing_stage')
 
 Which section of a virtual server is processing the request.
 
 
-== %interpeter('module')
+== %interpreter('module')
 
 The current module being executed.  If the expansions is done in an
 `unlang` statement and outside of any module, it returns the name of
 the previous module which was executed.
 
-== %interpeter('processing_stage')
+== %interpreter('processing_stage')
 
 Which section of a virtual server is processing the request.
 
-== %interpeter('rcode')
+== %interpreter('rcode')
 
 The current interpreter return code, e.g. `handle`, or `ok`, etc.
 
-== %interpeter('server')
+== %interpreter('server')
 
 The name of the virtual server which is running the request.
 

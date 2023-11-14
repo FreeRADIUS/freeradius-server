@@ -53,7 +53,7 @@ After installing OpenLDAP, `slapd` (the main OpenLDAP daemon) needs to be
 switched to using OLC (on-line configuration).
 
 OLC provides an LDAP based interface for dynamically changing OpenLDAP's
-configuration at runtime. OLC also allows more programatic manipulation of
+configuration at runtime. OLC also allows more programmatic manipulation of
 OpenLDAP's configuration, which is the primary reason for using it in this
 example.
 
@@ -73,7 +73,7 @@ include         ${OPENLDAP_PATH}/etc/openldap/schema/core.schema
 pidfile         ${OPENLDAP_PATH}/var/run/slapd.pid
 argsfile        ${OPENLDAP_PATH}/var/run/slapd.args
 
-# Provide a defintion for the OLC database
+# Provide a definition for the OLC database
 database config
 # Allow access to the root user only
 access to * by dn.exact="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage

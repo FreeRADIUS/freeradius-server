@@ -88,7 +88,7 @@ $INCLUDE $\{confdir}/sqlcounter.conf
 …some other entries here…
 
 [3] Make sure to have the sqlcounter names under authorize section like
-the followings:
+the following:
 
 ```
 recv Access-Request {
@@ -156,6 +156,6 @@ radcheck VALUES (’`,’test0003',`Max-Monthly-Session',`10800',`:=');
 ```
 
 NOTE: The `Max-All-Session`, `Max-Daily-Session` and `Max-Monthly-Session` are
-definied in `sqlcounter.conf`
+defined in `sqlcounter.conf`
 
 WARNING: Accounting must be done via sql or this will not work.

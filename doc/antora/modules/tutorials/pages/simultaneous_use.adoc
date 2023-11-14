@@ -45,7 +45,7 @@ authentication attempt fails.
 
 After running the `bob-acct-stop.sh` script, you should run the
 `bob-login-two.sh` script again, to verify that the other login attempt
-is now permitted to succed.
+is now permitted to succeed.
 
 == Questions
 

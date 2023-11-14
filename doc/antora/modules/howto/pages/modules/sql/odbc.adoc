@@ -11,7 +11,7 @@ reason to use ODBC.
 ODBC is a library specification for accessing multiple data sources using a
 common API. FreeRADIUS uses the unixODBC implementation of ODBC and the data
 source is normally hosted by a database server. The ODBC implementation is
-seperate from FreeRADIUS with a discrete configuration that must be configured
+separate from FreeRADIUS with a discrete configuration that must be configured
 and tested first.
 
 Since FreeRADIUS is not interfacing directly with the backend database the

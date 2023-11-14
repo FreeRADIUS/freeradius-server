@@ -16,7 +16,7 @@ EOF
 
 ==== Access-Accept
 
-If this works you should see `radclient` report `Access-Accept` almostly immediately without delay:
+If this works you should see `radclient` report `Access-Accept` almost immediately without delay:
 
 [source,log]
 ----
@@ -136,7 +136,7 @@ Here FreeRADIUS describes it:
 
 This occurs as the LDAP credentials used by FreeRADIUS to connect to the LDAP server is *unable* to extract a the `userPassword` attribute; as could been seen from the example `ldapsearch` command provided earlier.
 
-You have two options avaliable to you here (`Ctrl-C` the running FreeRADIUS server, make the change and restart):
+You have two options available to you here (`Ctrl-C` the running FreeRADIUS server, make the change and restart):
 
  . change the permissions of the LDAP credentials used so that FreeRADIUS can read the LDAP `userPassword` attribute
  ** this is the recommended option
@@ -203,6 +203,6 @@ Here FreeRADIUS is describes it:
  ** it finds no suitable password RADIUS attributes to use
  ** as it makes no changes, the module returns `noop`
  . the authenticate section runs and hands off to `ldap` as `&control.Auth-Type = ldap` was set earlier
- ** attemps to LDAP bind as `uid=john,ou=people,dc=example,dc=com`
+ ** attempts to LDAP bind as `uid=john,ou=people,dc=example,dc=com`
  ** successful so `ok` is returned
  . we return `Access-Accept` as `ok` was returned to unlang

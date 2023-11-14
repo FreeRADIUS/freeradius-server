@@ -44,7 +44,7 @@ desired outcome. At a high level, the subject areas describe:
 * xref:developers:index.adoc[Developer documentation].
 
 This organization means that for example, the `ldap` module will have
-documention located in multiple places. We feel that organizing the
+documentation located in multiple places. We feel that organizing the
 documentation by desired _goal_ is better than the alternatives.
 
 Within each section, the documentation is split into small pages, which

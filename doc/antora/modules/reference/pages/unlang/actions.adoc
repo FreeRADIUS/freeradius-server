@@ -41,7 +41,7 @@ a number greater than or equal to 0, or a named action.
 |=====
 | Action 	| Description
 | break		| "break" out of the parent block and stop processing it.
-| default	| Use the defaut priority for this rcode.
+| default	| Use the default priority for this rcode.
 | reject	| return a `reject` rcode.
 | retry		| re-run the section, as given by the the `retry` subsection.
 | return	| return out of the parent block and stop processing it.

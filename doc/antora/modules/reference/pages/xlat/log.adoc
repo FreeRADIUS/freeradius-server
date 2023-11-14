@@ -39,7 +39,7 @@ Logs a message at a INFO level.  This function returns nothing.
 
 The INFO messages are always logged.
 
-== %log.watn(_string_)
+== %log.warn(_string_)
 
 Logs a message at a WARN level.  This function returns nothing.
 

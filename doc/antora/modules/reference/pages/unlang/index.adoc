@@ -78,7 +78,7 @@ xref:unlang/local.adoc[Local variables] can be defined, so that the
 local `dictionary` file no longer needs to be modified.
 
 Most request packets will result in reply packets that contain
-additional information for the requestor.  Attribute editing allows
+additional information for the requester.  Attribute editing allows
 policies to add attributes to requests, replies, or to other places.
 
 .Example

@@ -71,7 +71,7 @@ ATTRIBUTE baz 3 ipv4addr
 
 == Enum
 
-In some cases, attributes need to re-use the same set of `VALUE` statements.
+In some cases, attributes need to reuse the same set of `VALUE` statements.
 The `enum=...` flag allows an attribute to copy enumerated vl
 
 The `enum` flag can only be used for "leaf" data types.  i.e. ones

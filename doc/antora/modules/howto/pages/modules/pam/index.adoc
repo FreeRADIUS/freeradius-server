@@ -55,7 +55,7 @@ required /lib/security/pam_unix_session.so
 ```
 
 If you don’t want to run your freeradius server in debug mode as root
-(ie, run as an unpriviledged user) you will need to run freeradius with
+(ie, run as an unprivileged user) you will need to run freeradius with
 a group membership that is able to read the /etc/shadow file - otherwise
 pam will be unable to read the /etc/shadow file and will fail. I suggest
 a group called `shadow' or the like.

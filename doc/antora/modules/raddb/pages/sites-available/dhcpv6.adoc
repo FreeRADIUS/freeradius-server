@@ -206,7 +206,7 @@ internal state of the server.
 
 It's recommended to only enable this config item
 for debugging, or in conjunction with
-move_failure_message_to_parent where the upsteam
+move_failure_message_to_parent where the upstream
 relay is trusted and secure.
 
 

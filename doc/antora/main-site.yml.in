@@ -1,6 +1,6 @@
 #
 #  Used by the GitHub Actions "Documentation" job to build
-#  the FreeRADIUS web site docuementation on each push. To
+#  the FreeRADIUS web site documentation on each push. To
 #  generate the site locally use 'make docsite' in the top
 #  level directory, not this file.
 #

@@ -46,7 +46,7 @@ python {
 * `func_detach` is passed no parameters, returns module return value.
 * If functions returns None (plain `return' no return), default to
 RLM_OK
-* Python instantation function can return -1 to signal failure and abort
+* Python instantiation function can return -1 to signal failure and abort
 startup.
 
 Available to module:
