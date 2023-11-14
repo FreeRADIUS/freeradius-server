@@ -3375,7 +3375,7 @@ static int request_will_proxy(REQUEST *request)
 	home = home_server_ldb(realmname, pool, request);
 
 	if (!home) {
-		REDEBUG2("Failed to find live home server: Cancelling proxy");
+		REDEBUG2("Failed to find live home server for realm %s: Cancelling proxy", realmname);
 		return -1;
 	}
 
