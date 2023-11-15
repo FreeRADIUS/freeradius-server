@@ -38,4 +38,5 @@ MAKE_ARGS := RADIUSD_BIN=$(RADIUSD_BIN) PORT=$(PORT) SECRET="$(SECRET)" DICT_PAT
 
 .PHONY: package-test
 package-test:
+	cp -r $(RADDB_PATH)/certs/* raddb/certs
 	$(MAKE) -C src/tests $(MAKE_ARGS) tests.eap
