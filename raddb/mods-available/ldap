@@ -767,7 +767,7 @@ ldap {
 	#
 	#  This connection pool is used for LDAP queries run as the administrative user.
 	#
-	#  All LDAP operations are perfomed asynchronously, meaning that many queries
+	#  All LDAP operations are performed asynchronously, meaning that many queries
 	#  can be active on a single connection simultaneously.
 	#
 	pool {
@@ -816,7 +816,7 @@ ldap {
 		#
 		#  open_delay:: Open delay (in seconds).
 		#
-		#  How long must we be above the target utilisation for connections to be openned.
+		#  How long must we be above the target utilisation for connections to be opened.
 #		open_delay = 0.2
 
 		#

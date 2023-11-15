@@ -83,10 +83,16 @@ stopped by setting the following to `no`.
 The default is `yes`
 
 
+
+password_attribute:: Which attribute in the request should be used as
+the user's password when performing PAP authentication.
+
+
 == Default Configuration
 
 ```
 pap {
 #	normalise = no
+#	password_attribute = &User-Password
 }
 ```

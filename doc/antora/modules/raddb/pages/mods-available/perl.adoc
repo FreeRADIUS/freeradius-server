@@ -14,6 +14,10 @@ NOTE: Uncomment any `func_*` configuration items below which are
 included in your module. If the module is called for a section which
 does not have a function defined, it will return `noop`.
 
+WARNING: The Perl module does _not_ as yet support nested attributes,
+or even flat attributes which have parents.  e.g. Vendor-Specific.Cisco.AVPair.
+We hope to fix that soon.
+
 
 
 ## Configuration Settings
@@ -77,15 +81,6 @@ want to use function names other than the defaults.
 
 
 
-func_start_accounting::
-func_stop_accounting::
-
-Uncomment the following lines if you wish to use separate functions
-for `Start` and `Stop` accounting packets.
-In that case, the `func_accounting` function is not called.
-
-
-
 config { ... }::
 
 You can define configuration items (and nested sub-sections) in perl `config { ... }`
@@ -115,8 +110,6 @@ perl {
 #	func_post_proxy = post_proxy
 #	func_post_auth = post_auth
 #	func_detach = detach
-#	func_start_accounting = accounting_start
-#	func_stop_accounting = accounting_stop
 #	config {
 #		name = "value"
 #		sub-config {

@@ -75,6 +75,7 @@ authentication and accounting.
 
 
 
+
 Receive a CoA request
 
 
@@ -110,7 +111,6 @@ Keep a count of what we send.
 
 
 Split the string and split into pieces.
-
 
 
 
@@ -217,12 +217,16 @@ server coa {
 			port = 3799
 		}
 	}
+	dictionary {
+		   uint32 sent-counter
+		   string user-session
+	}
 	recv CoA-Request {
-#		&control.Tmp-String-0 := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
-#		&control.Tmp-String-0 := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
-		&control.Tmp-Integer-0 := 0
-		if ("%explode(&control.Tmp-String-0, '|')") {
-			foreach &control.Tmp-String-0 {
+#		&control.user-session := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+#		&control.user-session := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+		&control.sent-counter := 0
+		if ("%explode(&control.user-session, '|')") {
+			foreach &control.user-session {
 				if ("%{Foreach-Variable-0}" =~ /([^#]*)#(.*)/) {
 					&control.NAS-IP-Address := "%{1}"
 					&control.Acct-Session-Id := "%{2}"
@@ -236,7 +240,7 @@ server coa {
 						&request -= &Proxy-State[*]
 						switch &parent.control.NAS-IP-Address {
 							case "192.0.2.1" {
-								&parent.control.Tmp-Integer-0 += 1
+								&parent.control.sent-counter += 1
 								radius-originate-coa-192.0.2.1
 							}
 							default {
@@ -249,9 +253,9 @@ server coa {
 				}
 			}  # foreach session
 		}
-		if (&control.Tmp-Integer-0) {
+		if (&control.sent-counter) {
 			&reply += {
-				&Reply-Message = "Sent updates for %{control.Tmp-Integer-0} active sessions"
+				&Reply-Message = "Sent updates for %{control.sent-counter} active sessions"
 			}
 			ok
 		} else {

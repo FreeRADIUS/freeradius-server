@@ -275,7 +275,7 @@ server dhcpv6 {
 	all_dhcp_servers_and_relays = FF02::1:2
 	interface = en0
 	port = 547
-	listen {
+	listen all_dhcp_servers_and_relays {
 		type = Solicit
 		type = Request
 		transport = udp
@@ -286,7 +286,7 @@ server dhcpv6 {
 #			src_ipaddr = ${ipaddr}
 		}
 	}
-	listen {
+	listen local_network {
 		type = Request
 		type = Information-Request
 		transport = udp

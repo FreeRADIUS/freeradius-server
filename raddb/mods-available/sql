@@ -198,7 +198,7 @@ sql {
 	#
 	#  [NOTE]
 	#  ====
-	#  If you want to have multiple SQL modules re-use the same connection pool, use `pool = name`
+	#  If you want to have multiple SQL modules reuse the same connection pool, use `pool = name`
 	#  instead of a `pool` section.
 	#
 	#  e.g:

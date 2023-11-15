@@ -30,7 +30,7 @@
 #  program which is executed.
 #
 #  The attributes from the list referenced in the `input_pairs`
-#  configuraton item will be placed into environment variables of the executed
+#  configuration item will be placed into environment variables of the executed
 #  program.
 #
 #  Alternatively, by setting the `program` item of the module configuration,

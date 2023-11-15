@@ -3,7 +3,115 @@
 
 
 
+
 namespace:: Needs to be "tacacs" for TACACS+ functionality.
+
+
+
+### TACACS+ Configuration
+
+All of the configuration for processing TACAC+ packets goes here.
+
+
+#### Access-Request subsection
+
+This section contains configuration which is
+specific to processing `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets.
+
+Similar sections can be added, but are not
+necessary for Accounting-Request (and other)
+packets.  At this time, there is no configuration
+needed for other packet types.
+
+
+log:: Logging configuration for TACACS+ authentication
+
+
+stripped_names:: Log the full
+`link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]` attribute, as it was
+found in the request.
+
+allowed values: {no, yes}
+
+
+
+auth:: Log authentication requests
+to the log file.
+
+allowed values: {no, yes}
+
+
+
+auth_goodpass:: Log "good"
+passwords with the authentication
+requests.
+
+allowed values: {no, yes}
+
+
+
+auth_badpass:: Log "bad"
+passwords with the authentication
+requests.
+
+allowed values: {no, yes}
+
+
+
+msg_goodpass::
+msg_badpass::
+
+Log additional text at the end of the "Login OK" messages.
+for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
+configurations above have to be set to "yes".
+
+The strings below are dynamically expanded, which means that
+you can put anything you want in them.  However, note that
+this expansion can be slow, and can negatively impact server
+performance.
+
+
+
+msg_denied::
+
+The message when the user exceeds the Simultaneous-Use limit.
+
+
+
+session:: Controls how ongoing
+(multi-round) sessions are handled
+
+This section is only useful for ASCII authentications.
+It is the only authentication type which supports
+sending challenges for further data.
+
+
+max:: The maximum number of concurrent ongoing sessions
+
+
+
+max_rounds: The maximum number of round trips which are allowed
+
+This is only enforced for `Authentication-Type = ASCII`, when
+the server replies with `GetUser` or `GetPass` or `GetData`.
+
+Some broken clients will send packets in a loop, forever.
+This configuration helps to catch and prevent that.
+
+
+
+timeout:: How long to wait before expiring a
+session.
+
+The timer starts when a response
+with a state value is sent.  The
+timer stops when a request
+containing the previously sent
+state value is received.
+
+
+
+There is currently no configuration for other packet types.
 
 
 
@@ -12,8 +120,7 @@ type:: The type of packet to accept.
 Multiple types can be accepted by using multiple
 lines of `type = ...`.
 
-As described in RFC https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.5,
-the packet types are:
+As described in https://tools.ietf.org/html/rfc8907[RFC 8907], the packet types are:
 
 
 
@@ -62,6 +169,62 @@ src_ipaddr:: IP we open our socket on.
 
 
 
+limit:: limits for this socket.
+
+The `limit` section contains configuration items
+which enforce various limits on the socket.  These
+limits are usually transport-specific.
+
+Limits are used to prevent "run-away" problems.
+
+
+max_connections:: The maximum number of
+connected sockets which will be accepted
+for this listener.
+
+Each connection opens a new socket, so be
+aware of system file descriptor
+limitations.
+
+If the listeners do not use connected
+sockets (e.g. TCP), then this configuration
+item is ignored.
+
+
+
+idle_timeout:: Time after which idle
+connections are deleted.
+
+Useful range of values: 5 to 600
+
+
+
+## Clients
+
+A virtual server can have multiple `client` definitions.  These clients take priority
+over  the global `client` definitions.
+
+See the main `clients.conf` file for documentation on the `client` section.
+
+
+
+This has to be specified for all TACACS+ clients.
+
+There is no standard for TACACS+ over UDP.
+
+
+
+The TACACS+ key, or secret.  If a secret is defined, then
+it will be used.  All packets coming from this client MUST be
+encrypted with the shared secret.
+
+The `secret` configuration item can be omitted or deleted,
+in which case all of the information (including passwords)
+are sent over the network in the clear.  This practice is
+not recommended.
+
+
+
 ## Authentication-Start
 
 
@@ -70,7 +233,12 @@ src_ipaddr:: IP we open our socket on.
 
 
 
-Set _our_ authentication method to the _requested_ one.
+In general, it is not necessary to set `Auth-Type` here.  The packet header
+contains a TACACS `Authentication-Type` with value `PAP`, `CHAP`, etc.  That value will
+be used automatically.
+
+The only reason to set `Auth-Type` here is when you want to use a custom
+authentication method, such as `ldap`.
 
 
 
@@ -78,11 +246,25 @@ Set _our_ authentication method to the _requested_ one.
 
 
 
-Do challenge-response here.
+The automatic state machine will ensure that both User-Name
+and User-Password have been provided by this point making
+ASCII authentication equivalent to PAP.
+
+Alternatively, if extra data is required, set
+&reply.Authentication-Status := Getdata
+to request the extra data, which will be in &User-Message in
+the next packet (if the client provides it)
 
 
 
 ### Send
+
+
+
+
+With ASCII methods, GetUser and GetPass typically send a prompt
+for the client to present to the user.
+
 
 
 
@@ -96,10 +278,6 @@ This should handle ASCII methods as PAP with challenge-response.
 
 
 https://tools.ietf.org/id/draft-ietf-opsawg-07.html#rfc.section.4.3
-
-
-
-### Send
 
 
 
@@ -138,6 +316,7 @@ Stops a session
 
 
 
+
 NOTE: Proxying of TACACS+ requests is NOT supported.
 
 
@@ -146,8 +325,27 @@ NOTE: Proxying of TACACS+ requests is NOT supported.
 ```
 #	As of version 4.0.0, the server also supports the TACACS+
 #	protocol.
+#	https://www.rfc-editor.org/rfc/rfc8907
 server tacacs {
 	namespace = tacacs
+	tacacs {
+		Authentication {
+			log {
+				stripped_names = no
+				auth = no
+				auth_goodpass = no
+				auth_badpass = no
+#				msg_goodpass = ""
+#				msg_badpass = ""
+				msg_denied = "You are already logged in - access denied"
+			}
+			session {
+#				max = 4096
+				max_rounds = 4
+#				timeout = 15
+			}
+		}
+	}
 	listen {
 		type = Authentication-Start
 		type = Authentication-Continue
@@ -163,40 +361,50 @@ server tacacs {
 #			send_buff = 1048576
 #			src_ipaddr = ""
 		}
+		limit {
+			max_connections = 256
+			idle_timeout = 60.0
+		}
 	}
- 	recv Authentication-Start {
+	client tacacs {
+		ipaddr = 127.0.0.1
+		proto = tcp
+		secret = testing123
+	}
+	recv Authentication-Start {
 		-sql
-		&control.Auth-Type := &Authentication-Type
 	}
 	authenticate PAP {
-		tacacs_pap
+		pap
 	}
 	authenticate CHAP {
-		tacacs_chap
+		chap
 	}
 	authenticate MSCHAP {
-		tacacs_mschap
+		mschap
 	}
 	authenticate MSCHAPv2 {
-		tacacs_mschap
+		mschap
 	}
 	authenticate ASCII {
-		fail
+		pap
 	}
-	send Authentication-Start-Reply {
-		if (&Authentication-Status == Pass) {
-			&reply.Server-Message := "Hello %{User-Name}"
-		}
+	send Authentication-Pass {
+		&reply.Server-Message := "Hello %{User-Name}"
+	}
+	send Authentication-Fail {
+		&reply.Server-Message := "Failed login!"
+	}
+	send Authentication-GetUser {
+		&reply.Server-Message := "Username:"
+	}
+	send Authentication-GetPass {
+		&reply.Server-Message := "Password:"
 	}
 	recv Authentication-Continue {
 		"%{Authentication-Continue-Flags}"
 		"%{User-Message}"
 		"%{Data}"
-	}
-	send Authentication-Continue-Reply {
-		if (&Authentication-Status == Pass) {
-			&reply.Server-Message := "Hello %{User-Name}"
-		}
 	}
 	recv Authorization-Request {
 		"%{Authentication-Method}"
@@ -206,13 +414,13 @@ server tacacs {
 		"%{User-Name}"
 		"%{Client-Port}"
 		"%{Remote-Address}"
-		"%{ArgumentList}"
+		"%{Argument-List}"
 	}
-	send Authorization-Reply {
+	send Authorization-Pass-Add {
 		&reply.Authorization-Status := Pass-Add
 		&reply.Server-Message := "authorization-response-server"
 		&reply.Data := "authorization-response-data"
-		&reply.ArgumentList := "key1=var1"
+		&reply.Argument-List := "key1=var1"
 	}
 	recv Accounting-Request {
 		detail
@@ -225,10 +433,11 @@ server tacacs {
 	}
 	accounting Stop {
 	}
-	send Accounting-Reply {
-		&reply.Accounting-Status := Success
+	send Accounting-Success {
 		&reply.Server-Message := "Success"
-		&reply.Data := 0x00
+	}
+	send Accounting-Error {
+		&reply.Server-Message := "Error"
 	}
 }
 ```

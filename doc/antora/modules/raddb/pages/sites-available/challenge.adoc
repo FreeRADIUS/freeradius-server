@@ -7,6 +7,7 @@
 
 
 
+
 If there's no State attribute, then this is the request from
 the user.
 
@@ -43,6 +44,9 @@ Do PAP authentication with the password.
 #	with that number.
 server challenge {
 	namespace = radius
+	dictionary {
+		uint32 challenge-string
+	}
 	listen {
 		type = Access-Request
 		transport = udp
@@ -58,13 +62,13 @@ recv Access-Request {
 	}
 	else {
 		&control.Auth-Type := Step2
-		&control.Password.Cleartext := &session-state.Tmp-Integer-0
+		&control.Password.Cleartext := &session-state.challenge-string
 	}
 }
 authenticate step1 {
 	pap
-	&session-state.Tmp-Integer-0 := "%randstr(n)"
-	&reply.Reply-Message := &session-state.Tmp-Integer-0
+	&session-state.challenge-string := "%randstr(n)"
+	&reply.Reply-Message := "Please enter %{session-state.challenge-string}: "
 	challenge
 }
 authenticate step2 {

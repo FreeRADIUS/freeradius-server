@@ -65,7 +65,7 @@ See the example in `raddb/sites-available/default`.
 
 ```
 detail auth_log {
-	filename = ${radacctdir}/%{Net.Src.IP-Address}/auth-detail-%Y-%m-%d
+	filename = ${radacctdir}/%{Net.Src.IP}/auth-detail-%Y-%m-%d
 	permissions = 0600
 	suppress {
 		User-Password

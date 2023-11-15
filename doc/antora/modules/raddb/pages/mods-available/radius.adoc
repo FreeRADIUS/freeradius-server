@@ -108,8 +108,13 @@ If the home server does not respond to proxied packets, the
 module starts pinging the home server with these packets.
 
 
-type:: You can specify any type of packet here, though
-Status-Server is recommended.
+type:: You can specify any type of request packet here,
+e.g. 'Access-Request', 'Accounting-Request' or
+'Status-Server'.
+
+Status-Server is recommended as other packet types may
+be interpreted incorrectly, or proxied to a remote
+server defeting the purpose of the status check
 
 If you specify another type of packet, it MUST be listed
 as an allowed `type`, above.
@@ -139,7 +144,6 @@ WARNING: Do NOT do SQL queries, LDAP queries, dynamic
 expansions, etc. in this section.  The contents are
 created when a connection is opened, and are not
 changeable after that.
-
 
 
 
@@ -444,16 +448,18 @@ radius {
 #	originate = no
 	status_check {
 		type = Status-Server
-#		&request.User-Name := "test-user"
-#		&request.User-Password := "this-is-not-a-real-password"
-#		&request.NAS-Identifier := "Status check.  Are you alive?"
-#		&request.Event-Timestamp = 0
+#		update request {
+#			&User-Name := "test-user"
+#			&User-Password := "this-is-not-a-real-password"
+#			&NAS-Identifier := "Status check.  Are you alive?"
+#			&Event-Timestamp = 0
+#		}
 	}
 	response_window = 15
 	zombie_period = 10
 	revive_interval = 3600
 	pool {
-		start = 1
+		start = 0
 		min = 1
 		max = 8
 		connecting = 1

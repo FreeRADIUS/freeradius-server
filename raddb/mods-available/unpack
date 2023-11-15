@@ -28,8 +28,8 @@
 #
 #  data::
 #
-#  Either `octets` or `string` type data, litteral or expanded attributes.
-#  If `string` type data contains a representaion of hex data, e.g. 0xabcdef
+#  Either `octets` or `string` type data, literal or expanded attributes.
+#  If `string` type data contains a representation of hex data, e.g. 0xabcdef
 #  that is first converted to `octets`.
 #
 #  offset::
