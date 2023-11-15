@@ -311,7 +311,7 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	 */
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) {
-		RWARN("Module %s became unblocked", sp->modinst->entry->name);
+		RWARN("Module %s(%s) became unblocked", sp->modinst->name, sp->modinst->entry->name);
 	}
 
  fail:
