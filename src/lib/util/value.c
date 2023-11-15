@@ -5151,7 +5151,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 
-	if (data->enumv && data->enumv->name) {
+	if (data->enumv && data->enumv->flags.has_value) {
 		char const *name;
 
 		name = fr_dict_enum_name_by_value(data->enumv, data);
