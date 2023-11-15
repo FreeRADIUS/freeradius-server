@@ -119,9 +119,10 @@ filter_username {
 #
 filter_password {
 	if (&User-Password && \
-	   (&User-Password != "%string(User-Password}")) {
-		&request.Tmp-String-0 := %string(User-Password)
-		&request.User-Password := %string(Tmp-String-0)
+	   (&User-Password != "%string(User-Password)")) {
+		string tmp
+		&tmp := %string(User-Password)
+		&request.User-Password := %string(tmp)
 	 }
 }
 
