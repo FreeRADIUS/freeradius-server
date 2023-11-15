@@ -170,6 +170,7 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel
 	     -e 's/= inner-tunnel/= eap-test-inner-tunnel/;s/use_tunneled_reply = no/use_tunneled_reply = yes/' \
 	     -e 's/enable = no/enable = yes/' \
 	     -e 's/^\(.*\)persist_dir =/  persist_dir =/' \
+	     -e 's/#.*softfail =.*/softfail = yes/' \
 	     -e 's/tls_min_version = "1.2"/tls_min_version = "1.0"/' \
 	     -e '$(if $(TLS1_3),s/tls_max_version = "1.2"/tls_max_version = "1.3"/)' \
 	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT${SECLEVEL}"/' \
@@ -215,7 +216,23 @@ radiusd.kill:
 #
 ifneq "$(EAPOL_TEST)" ""
 EAP_FILES        = eap-md5.conf
-EAP_TLS_FILES    = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+EAP_FILES       += eap-mschapv2.conf
+
+EAP_TLS_FILES    = eap-tls.conf
+EAP_TLS_FILES   += eap-ttls-eap-gtc.conf
+EAP_TLS_FILES   += eap-ttls-eap-mschapv2.conf
+EAP_TLS_FILES   += eap-ttls-eap-tls.conf
+EAP_TLS_FILES   += eap-ttls-mschapv2.conf
+EAP_TLS_FILES   += eap-ttls-pap.conf
+EAP_TLS_FILES   += peap-client-mschapv2.conf
+EAP_TLS_FILES   += peap-eap-tls.conf
+EAP_TLS_FILES   += peap-gtc.conf
+EAP_TLS_FILES   += peap-mschapv2.conf
+
+#EAP_TLS_FILES   += eap-fast.conf		# disabled in default config
+#EAP_TLS_FILES   += eap-pwd.conf		# disabled in default config
+#EAP_TLS_FILES   += eap-teap-mschapv2.conf	# not configured in eapol_test
+
 EAP_TLS_VERSIONS = 1.1 1.2
 EAP_TLS_DISABLE_STRING = tls_disable_tlsv1_0=1 tls_disable_tlsv1_1=1 tls_disable_tlsv1_2=1
 
@@ -314,7 +331,7 @@ EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,
 tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
 else
 tests.eap:
-	${Q}echo "EAPOL Tests is disabled"
+	${Q}echo "EAP tests are disabled"
 endif # we have eapol_test built
 
 # kill the server (if it's running)
