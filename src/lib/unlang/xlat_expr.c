@@ -226,10 +226,6 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
 	xlat_print_node(out, node->call.args, child, e_rules); /* prints a space after the first argument */
 
-	/*
-	 *	@todo - when things like "+" support more than 2 arguments, print them all out
-	 *	here.
-	 */
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
 
