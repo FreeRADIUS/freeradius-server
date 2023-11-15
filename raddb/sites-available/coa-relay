@@ -101,6 +101,11 @@ server coa {
 		}
 	}
 
+	dictionary {
+		   uint32 sent-counter
+		   string user-session
+	}
+
 	#
 	#  Receive a CoA request
 	#
@@ -127,25 +132,24 @@ server coa {
 		#
 		#  Example MySQL lookup
 		#
-#		&control.Tmp-String-0 := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+#		&control.user-session := %sql("SELECT IFNULL(GROUP_CONCAT(CONCAT(nasipaddress,'#',acctsessionid) separator '|'),'') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 
 		#
 		#  Example PostgreSQL lookup
 		#
-#		&control.Tmp-String-0 := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
+#		&control.user-session := %sql("SELECT STRING_AGG(CONCAT(nasipaddress,'#',acctsessionid),'|') FROM (SELECT * FROM radacct WHERE ('%{User-Name}'='' OR UserName='%{User-Name}') AND ('%{Acct-Session-Id}'='' OR acctsessionid = '%{Acct-Session-Id}') AND AcctStopTime IS NULL) a")
 
 		#
 		#  Keep a count of what we send.
 		#
-		&control.Tmp-Integer-0 := 0
+		&control.sent-counter := 0
 
 		#
 		#  Split the string and split into pieces.
 		#
-		if ("%explode(&control.Tmp-String-0, '|')") {
+		if ("%explode(&control.user-session, '|')") {
 
-			foreach &control.Tmp-String-0 {
-
+			foreach &control.user-session {
 				#
 				#  Send an update for each session we find.
 				#
@@ -210,7 +214,7 @@ server coa {
 								#
 								#  Increment count of sent updates
 								#
-								&parent.control.Tmp-Integer-0 += 1
+								&parent.control.sent-counter += 1
 
 								radius-originate-coa-192.0.2.1
 
@@ -237,9 +241,9 @@ server coa {
 		#
 		#  Report what we did
 		#
-		if (&control.Tmp-Integer-0) {
+		if (&control.sent-counter) {
 			&reply += {
-				&Reply-Message = "Sent updates for %{control.Tmp-Integer-0} active sessions"
+				&Reply-Message = "Sent updates for %{control.sent-counter} active sessions"
 			}
 
 			ok
