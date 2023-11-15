@@ -14,6 +14,10 @@
 server challenge {
 	namespace = radius
 
+	dictionary {
+		uint32 challenge-string
+	}
+
 	listen {
 		type = Access-Request
 		transport = udp
@@ -41,7 +45,7 @@ recv Access-Request {
 		#  saved in the session-state list.
 		#
 		&control.Auth-Type := Step2
-		&control.Password.Cleartext := &session-state.Tmp-Integer-0
+		&control.Password.Cleartext := &session-state.challenge-string
 	}
 }
 
@@ -54,8 +58,8 @@ authenticate step1 {
 	#
 	#  Set the random number to save.
 	#
-	&session-state.Tmp-Integer-0 := "%randstr(n)"
-	&reply.Reply-Message := &session-state.Tmp-Integer-0
+	&session-state.challenge-string := "%randstr(n)"
+	&reply.Reply-Message := "Please enter %{session-state.challenge-string}: "
 
 	#
 	#  Send an Access-Challenge.
