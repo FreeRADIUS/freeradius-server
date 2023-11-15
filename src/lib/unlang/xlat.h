@@ -48,8 +48,8 @@ typedef enum {
 	XLAT_INPUT_ARGS				//!< Ingests a number of arguments
 } xlat_input_type_t;
 
-typedef struct xlat_inst xlat_inst_t;
-typedef struct xlat_thread_inst xlat_thread_inst_t;
+typedef struct xlat_inst_s xlat_inst_t;
+typedef struct xlat_thread_inst_s xlat_thread_inst_t;
 
 #include <freeradius-devel/server/request.h>
 
@@ -71,7 +71,7 @@ typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t out
 /** Instance data for an xlat expansion node
  *
  */
-struct xlat_inst {
+struct xlat_inst_s {
 	fr_heap_index_t		idx;		//!< Entry in heap of xlat instances.
 						///< Identical instances are used for
 						///< global instance data and thread-specific
@@ -79,15 +79,13 @@ struct xlat_inst {
 
 	xlat_exp_t		*node;		//!< Node this data relates to.
 	void			*data;		//!< xlat node specific instance data.
-	call_env_parsed_head_t	call_env_parsed;	//!< The per call parsed environment.
-	TALLOC_CTX		*call_env_ctx;	//!< A talloc pooled object for parsed call env
-						///< to be allocated from.
+	call_env_t const 	*call_env;	//!< Per call environment.
 };
 
 /** Thread specific instance data for xlat expansion node
  *
  */
-struct xlat_thread_inst {
+struct xlat_thread_inst_s {
 	fr_heap_index_t		idx;		//!< Entry in heap of xlat thread instances.
 						///< Identical instances are used for
 						///< global instance data and thread-specific

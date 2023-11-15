@@ -4399,8 +4399,6 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	MEM(single = talloc_zero(parent, unlang_module_t));
 	single->instance = inst;
 	single->method = method;
-	single->method_env = method_env;
-
 	c = unlang_module_to_generic(single);
 	c->parent = parent;
 	c->next = NULL;
@@ -4424,38 +4422,18 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	Parse the method environment for this module / method
 	 */
 	if (method_env) {
-		size_t	count, names_len = 0;
+		fr_assert_msg(method_env->inst_size, "Method environment for module %s, method %s %s declared, "
+			      "but no inst_size set",
+			      inst->module->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
 
-		/*
-		 *	Firstly assess how many parsed env there will be and create a talloc pool to hold them.
-		 *	The pool size is a rough estimate based on each tmpl also allocating at least two children,
-		 *	for which we allow twice the length of the value to be parsed.
-		 */
-		count = call_env_count(&names_len, inst->dl_inst->conf, method_env->env);
-
-		/*
-		 *  Pre-allocated headers:
-		 *	1 header for the call_env_parsed_t, 1 header for the tmpl_t, 1 header for the name,
-		 *	one header for the value.
-		 *
-		 *  Pre-allocated memory:
-		 *	((sizeof(call_env_parsed_t) + sizeof(tmpl_t)) * count) + (names of tmpls * 2)... Not sure what
-		 *	the * 2 is for, maybe for slop?
-		 */
-		MEM(single->call_env_ctx = _talloc_pooled_object(single, 0, "call_env_ctx", count * 4,
-						((sizeof(call_env_parsed_t) + sizeof(tmpl_t)) * count) + (names_len * 2)));
-
-		call_env_parsed_init(&single->call_env_parsed);
-		if (call_env_parse(single->call_env_ctx, &single->call_env_parsed, single->self.name,
-				   unlang_ctx->rules ? unlang_ctx->rules->attr.dict_def : fr_dict_internal(),
-				   inst->dl_inst->conf, method_env->env) < 0) {
+		single->call_env = call_env_alloc(single, single->self.name, method_env,
+						  unlang_ctx->rules ? unlang_ctx->rules->attr.dict_def : fr_dict_internal(),
+						  inst->dl_inst->conf);
+		if (!single->call_env) {
 		error:
 			talloc_free(c);
 			return NULL;
 		}
-		fr_assert_msg(method_env->inst_size, "Method environment for module %s, method %s %s declared, "
-			      "but no inst_size set",
-			      inst->module->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
 	}
 
 	/*

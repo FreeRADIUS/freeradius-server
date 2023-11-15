@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include <talloc.h>
 #include "call_env.h"
 
 
@@ -93,7 +94,7 @@ call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void
  */
 typedef struct {
 	call_env_result_t			*result;		//!< Where to write the return code of callenv expansion.
-	call_env_parsed_head_t const	*parsed;		//!< Head of the parsed list of tmpls to expand.
+	call_env_t const			*call_env;		//!< Call env being expanded.
 	call_env_parsed_t const			*last_expanded;		//!< The last expanded tmpl.
 	fr_value_box_list_t			tmpl_expanded;		//!< List to write value boxes to as tmpls are expanded.
 	void					**data;			//!< Final destination structure for value boxes.
@@ -111,7 +112,7 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	call_env_parsed_t const	*env = NULL;
 	void		**out;
 
-	while ((call_env_ctx->last_expanded = call_env_parsed_next(call_env_ctx->parsed, call_env_ctx->last_expanded))) {
+	while ((call_env_ctx->last_expanded = call_env_parsed_next(&call_env_ctx->call_env->pairs, call_env_ctx->last_expanded))) {
 		env = call_env_ctx->last_expanded;
 		fr_assert(env != NULL);
 
@@ -196,7 +197,7 @@ tmpl_only:
 		return UNLANG_ACTION_FAIL;
 	}
 
-	if (!call_env_parsed_next(call_env_ctx->parsed, env)) {
+	if (!call_env_parsed_next(&call_env_ctx->call_env->pairs, env)) {
 		if (call_env_ctx->result) *call_env_ctx->result = CALL_ENV_SUCCESS;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -212,20 +213,19 @@ tmpl_only:
  * @param[out] env_result	Where to write the result of the callenv expansion.  May be NULL
  * @param[in,out] env_data	Where the destination structure should be created.
  * @param[in] call_env		Call environment being expanded.
- * @param[in] call_env_parsed	Parsed tmpls for the call environment.
  */
-unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *env_result, void **env_data, call_env_method_t const *call_env,
-				call_env_parsed_head_t const *call_env_parsed)
+unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *env_result, void **env_data,
+				call_env_t const *call_env)
 {
 	call_env_ctx_t	*call_env_ctx;
 
 	MEM(call_env_ctx = talloc_zero(ctx, call_env_ctx_t));
-	MEM(*env_data = talloc_zero_array(ctx, uint8_t, call_env->inst_size));
-	talloc_set_name_const(*env_data, call_env->inst_type);
+	MEM(*env_data = talloc_zero_array(ctx, uint8_t, call_env->method->inst_size));
+	talloc_set_name_const(*env_data, call_env->method->inst_type);
 	call_env_ctx->result = env_result;
 	if (env_result) *env_result = CALL_ENV_INVALID;	/* Make sure we ran to completion*/
 	call_env_ctx->data = env_data;
-	call_env_ctx->parsed = call_env_parsed;
+	call_env_ctx->call_env = call_env;
 	fr_value_box_list_init(&call_env_ctx->tmpl_expanded);
 
 	return unlang_function_push(request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,
@@ -247,6 +247,7 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
  *	- 0 on success;
  *	- <0 on failure;
  */
+ static inline CC_HINT(always_inline)
 int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
 		   CONF_SECTION const *cs, call_env_parser_t const *call_env) {
 	CONF_PAIR const		*cp, *next;
@@ -367,10 +368,13 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
  * @param[in] call_env		to parse.
  * @return Number of parsed_call_env expected to be required.
  */
+static inline CC_HINT(always_inline)
 size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env_parser_t const *call_env)
 {
 	size_t	pair_count, tmpl_count = 0;
 	CONF_PAIR const	*cp;
+
+	*names_len = 0;
 
 	while (call_env->name) {
 		if (FR_BASE_TYPE(call_env->type) == FR_TYPE_SUBSECTION) {
@@ -397,4 +401,54 @@ size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env_parser
 	}
 
 	return tmpl_count;
+}
+
+/** Given a call_env_method, parse all call_env_pair_t in the context of a specific call to an xlat or module method
+ *
+ * @param[in] ctx		to allocate the call_env_t in.
+ * @param[in] name		Module name for error messages.
+ * @param[in] call_env_method	containing the call_env_pair_t to evaluate against the specified CONF_SECTION.
+ * @param[in] namespace		to pass to the tmpl tokenizer when parsing pairs from the specified CONF_SECTION.
+ * @param[in] cs		to parse in the context of the call.
+ * @return
+ *	- A new call_env_t on success.
+ * 	- NULL on failure.
+ */
+call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
+			   fr_dict_t const *namespace, CONF_SECTION *cs)
+{
+	unsigned int	count;
+	size_t		names_len;
+	call_env_t	*call_env;
+
+	/*
+	 *	Only used if caller doesn't use a more specific assert
+	 */
+	fr_assert_msg(call_env_method->inst_size, "inst_size 0 for %s, method_env (%p)", name, call_env_method);
+
+	/*
+	 *	Firstly assess how many parsed env there will be and create a talloc pool to hold them.
+	 *	The pool size is a rough estimate based on each tmpl also allocating at least two children,
+	 *	for which we allow twice the length of the value to be parsed.
+	 */
+	count = call_env_count(&names_len, cs, call_env_method->env);
+
+	/*
+	 *  Pre-allocated headers:
+	 *	1 header for the call_env_pair_parsed_t, 1 header for the tmpl_t, 1 header for the name,
+	 *	one header for the value.
+	 *
+	 *  Pre-allocated memory:
+	 *	((sizeof(call_env_pair_parsed_t) + sizeof(tmpl_t)) * count) + (names of tmpls * 2)... Not sure what
+	 *	the * 2 is for, maybe for slop?
+	 */
+	MEM(call_env = talloc_pooled_object(ctx, call_env_t, count * 4, (sizeof(call_env_parser_t) + sizeof(tmpl_t)) * count + names_len * 2));
+	call_env->method = call_env_method;
+	call_env_parsed_init(&call_env->pairs);
+	if (call_env_parse(call_env, &call_env->pairs, name, namespace, cs, call_env_method->env) < 0) {
+		talloc_free(call_env);
+		return NULL;
+	}
+
+	return call_env;
 }

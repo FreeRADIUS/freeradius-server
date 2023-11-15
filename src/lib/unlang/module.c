@@ -911,9 +911,9 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		goto done;
 	}
 
-	if (mc->method_env) {
+	if (mc->call_env) {
 		if (!state->env_data) {
-			ua = call_env_expand(state, request, &state->env_result, &state->env_data, mc->method_env, &mc->call_env_parsed);
+			ua = call_env_expand(state, request, &state->env_result, &state->env_data, mc->call_env);
 			switch (ua) {
 			case UNLANG_ACTION_FAIL:
 				goto fail;

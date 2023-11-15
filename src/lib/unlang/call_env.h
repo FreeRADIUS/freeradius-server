@@ -34,6 +34,7 @@ extern "C" {
 typedef struct call_env_parser_s	call_env_parser_t;
 typedef struct call_env_parsed_s	call_env_parsed_t;
 typedef struct call_env_method_s	call_env_method_t;
+typedef struct call_env_s		call_env_t;
 
 FR_DLIST_TYPES(call_env_parsed)
 FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry_t)
@@ -119,9 +120,16 @@ FR_DLIST_FUNCS(call_env_parsed, call_env_parsed_t, entry)
 	.inst_type = STRINGIFY(_inst) \
 
 struct call_env_method_s {
-	size_t			inst_size;	//!< Size of per call env.
-	char const		*inst_type;	//!< Type of per call env.
-	call_env_parser_t const	*env;		//!< Parsing rules for call method env.
+	size_t				inst_size;	//!< Size of per call env.
+	char const			*inst_type;	//!< Type of per call env.
+	call_env_parser_t const		*env;		//!< Parsing rules for call method env.
+};
+
+/** Structure containing both a talloc pool, a list of parsed call_env_pairs
+ */
+struct call_env_s {
+	call_env_parsed_head_t		pairs;			//!< The per call parsed call environment.
+	call_env_method_t const		*method;		//!< The method this call env is for.
 };
 
 /** Derive whether tmpl can only emit a single box.
@@ -237,13 +245,10 @@ _Generic((((_s *)NULL)->_f), \
 		.required = _required \
 	}
 
-unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *result, void **env_data, call_env_method_t const *call_env,
-				call_env_parsed_head_t const *call_env_parsed);
+unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *result, void **env_data, call_env_t const *call_env);
 
-int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
-		   CONF_SECTION const *cs, call_env_parser_t const *call_env) CC_HINT(nonnull);
-
-size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env_parser_t const *call_env);
+call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
+			   fr_dict_t const *namespace, CONF_SECTION *cs) CC_HINT(nonnull(3,4,5));
 
 #ifdef __cplusplus
 }
