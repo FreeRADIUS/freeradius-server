@@ -393,7 +393,7 @@ int xlat_func_mono_set(xlat_t *x, xlat_arg_parser_t const args[])
  * @param[in,out] x		to have it's module method env registered.
  * @param[in] env		to be registered.
  */
-void xlat_func_call_env_set(xlat_t *x, call_method_env_t const *env)
+void xlat_func_call_env_set(xlat_t *x, call_env_method_t const *env)
 {
 	x->call_env = env;
 }

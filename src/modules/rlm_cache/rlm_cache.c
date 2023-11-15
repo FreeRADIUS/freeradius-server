@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/call_env.h>
 
 #include "rlm_cache.h"
 
@@ -53,10 +54,9 @@ typedef struct {
 	fr_value_box_t	*key;
 } cache_call_env_t;
 
-static const call_method_env_t cache_common_env = {
-	.inst_size = sizeof(cache_call_env_t),
-	.inst_type = "cache_call_env_t",
-	.env = (call_env_t[]) {
+static const call_env_method_t cache_method_env = {
+	FR_CALL_ENV_METHOD_OUT(cache_call_env_t),
+	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, cache_call_env_t, key,
 				     NULL, T_INVALID, true, false, true) },
 		CALL_ENV_TERMINATOR
@@ -1315,7 +1315,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, cache_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, cache_xlat_args);
-	xlat_func_call_env_set(xlat, &cache_common_env);
+	xlat_func_call_env_set(xlat, &cache_method_env);
 
 	return 0;
 }
@@ -1340,12 +1340,12 @@ module_rlm_t rlm_cache = {
 		.detach		= mod_detach
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "status", .name2 = CF_IDENT_ANY,		.method = mod_method_status,	.method_env = &cache_common_env },
-		{ .name1 = "load", .name2 = CF_IDENT_ANY,		.method = mod_method_load,	.method_env = &cache_common_env },
-		{ .name1 = "store", .name2 = CF_IDENT_ANY,		.method = mod_method_store,	.method_env = &cache_common_env },
-		{ .name1 = "clear", .name2 = CF_IDENT_ANY,		.method = mod_method_clear,	.method_env = &cache_common_env },
-		{ .name1 = "ttl", .name2 = CF_IDENT_ANY,		.method = mod_method_ttl,	.method_env = &cache_common_env },
-		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_cache_it,		.method_env = &cache_common_env },
+		{ .name1 = "status", .name2 = CF_IDENT_ANY,		.method = mod_method_status,	.method_env = &cache_method_env },
+		{ .name1 = "load", .name2 = CF_IDENT_ANY,		.method = mod_method_load,	.method_env = &cache_method_env },
+		{ .name1 = "store", .name2 = CF_IDENT_ANY,		.method = mod_method_store,	.method_env = &cache_method_env },
+		{ .name1 = "clear", .name2 = CF_IDENT_ANY,		.method = mod_method_clear,	.method_env = &cache_method_env },
+		{ .name1 = "ttl", .name2 = CF_IDENT_ANY,		.method = mod_method_ttl,	.method_env = &cache_method_env },
+		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_cache_it,		.method_env = &cache_method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };

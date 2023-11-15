@@ -126,7 +126,7 @@ struct module_method_name_s {
 	char const			*name2;			//!< The packet type i.e Access-Request, Access-Reject.
 
 	module_method_t			method;			//!< Module method to call
-	call_method_env_t const		*method_env;		//!< Call specific conf parsing.
+	call_env_method_t const		*method_env;		//!< Call specific conf parsing.
 };
 
 #define MODULE_NAME_TERMINATOR { NULL }

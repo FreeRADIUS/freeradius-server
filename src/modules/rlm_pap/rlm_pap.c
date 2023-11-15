@@ -38,6 +38,8 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/sha1.h>
 
+#include <freeradius-devel/unlang/call_env.h>
+
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.password.h>
 
 #include <ctype.h>
@@ -85,17 +87,14 @@ typedef struct {
 	tmpl_t		*password_tmpl;
 } pap_call_env_t;
 
-static const call_env_t pap_call_env[] = {
-	{ FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, pap_call_env_t, password,
-	  password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) },
-
-	CALL_ENV_TERMINATOR
-};
-
-static const call_method_env_t pap_method_env = {
+static const call_env_method_t pap_method_env = {
 	.inst_size = sizeof(pap_call_env_t),
 	.inst_type = "pap_call_env_t",
-	.env = pap_call_env
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, pap_call_env_t, password,
+		  password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static fr_dict_t const *dict_freeradius;

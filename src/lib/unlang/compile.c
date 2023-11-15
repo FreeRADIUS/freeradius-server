@@ -4368,7 +4368,7 @@ check_for_loop:
 
 static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
-				call_method_env_t const *method_env, char const *realname)
+				call_env_method_t const *method_env, char const *realname)
 {
 	module_rlm_t const *mrlm = module_rlm_from_module(inst->module);
 	unlang_t *c;
@@ -4424,16 +4424,26 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	Parse the method environment for this module / method
 	 */
 	if (method_env) {
-		size_t	count, vallen = 0;
+		size_t	count, names_len = 0;
 
 		/*
 		 *	Firstly assess how many parsed env there will be and create a talloc pool to hold them.
 		 *	The pool size is a rough estimate based on each tmpl also allocating at least two children,
 		 *	for which we allow twice the length of the value to be parsed.
 		 */
-		count = call_env_count(&vallen, inst->dl_inst->conf, method_env->env);
+		count = call_env_count(&names_len, inst->dl_inst->conf, method_env->env);
+
+		/*
+		 *  Pre-allocated headers:
+		 *	1 header for the call_env_parsed_t, 1 header for the tmpl_t, 1 header for the name,
+		 *	one header for the value.
+		 *
+		 *  Pre-allocated memory:
+		 *	((sizeof(call_env_parsed_t) + sizeof(tmpl_t)) * count) + (names of tmpls * 2)... Not sure what
+		 *	the * 2 is for, maybe for slop?
+		 */
 		MEM(single->call_env_ctx = _talloc_pooled_object(single, 0, "call_env_ctx", count * 4,
-						(sizeof(call_env_parsed_t) + sizeof(tmpl_t)) * count + vallen * 2));
+						((sizeof(call_env_parsed_t) + sizeof(tmpl_t)) * count) + (names_len * 2)));
 
 		call_env_parsed_init(&single->call_env_parsed);
 		if (call_env_parse(single->call_env_ctx, &single->call_env_parsed, single->self.name,
@@ -4506,7 +4516,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	bool			policy;
 	unlang_op_compile_t	compile;
 	unlang_t		*c;
-	call_method_env_t const	*method_env = NULL;
+	call_env_method_t const	*method_env = NULL;
 
 	if (cf_item_is_section(ci)) {
 		cs = cf_item_to_section(ci);

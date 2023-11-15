@@ -40,6 +40,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
 
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/xlat.h>
@@ -69,7 +70,7 @@ typedef struct {
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for users.
 } ldap_xlat_profile_call_env_t;
 
-static const call_env_t sasl_call_env[] = {
+static const call_env_parser_t sasl_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_mech,
 			     NULL, T_INVALID, false, false, false) },
 	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_authname,
@@ -89,7 +90,7 @@ static CONF_PARSER profile_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const call_env_t autz_profile_call_env[] = {
+static const call_env_parser_t autz_profile_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, ldap_autz_call_env_t, default_profile,
 			     NULL, T_INVALID, false, false, true) },
 	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_call_env_t, profile_filter,
@@ -113,7 +114,7 @@ static CONF_PARSER user_config[] = {
 };
 
 #define user_call_env(_prefix, _struct, ...) \
-static const call_env_t _prefix ## _user_call_env[] = { \
+static const call_env_parser_t _prefix ## _user_call_env[] = { \
 	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, _struct, user_base, \
 			     "", T_SINGLE_QUOTED_STRING, true, false, true) }, \
 	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, _struct, user_filter, \
@@ -151,13 +152,13 @@ static CONF_PARSER group_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const call_env_t autz_group_call_env[] = {
+static const call_env_parser_t autz_group_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_call_env_t, group_base,
 			     NULL, T_INVALID, false, false, true) },
 	CALL_ENV_TERMINATOR
 };
 
-static const call_env_t memberof_group_call_env[] = {
+static const call_env_parser_t memberof_group_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_xlat_memberof_call_env_t, group_base,
 			       NULL, T_INVALID, false, false, true) },
 	CALL_ENV_TERMINATOR
@@ -213,19 +214,17 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const call_method_env_t authenticate_method_env = {
-	.inst_size = sizeof(ldap_auth_call_env_t),
-	.inst_type = "ldap_auth_call_env_t",
-	.env = (call_env_t[]) {
+static const call_env_method_t authenticate_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ldap_auth_call_env_t),
+	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env, true) },
 		CALL_ENV_TERMINATOR
 	}
 };
 
-static const call_method_env_t authorize_method_env = {
-	.inst_size = sizeof(ldap_autz_call_env_t),
-	.inst_type = "ldap_autz_call_env_t",
-	.env = (call_env_t[]) {
+static const call_env_method_t authorize_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ldap_autz_call_env_t),
+	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env, true) },
 		{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env, false) },
 		{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env, false) },
@@ -233,31 +232,28 @@ static const call_method_env_t authorize_method_env = {
 	}
 };
 
-static const call_method_env_t usermod_method_env = {
-	.inst_size = sizeof(ldap_usermod_call_env_t),
-	.inst_type = "ldap_usermod_call_env_t",
-	.env = (call_env_t[]) {
+static const call_env_method_t usermod_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ldap_usermod_call_env_t),
+	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env, true) },
 		CALL_ENV_TERMINATOR
 	}
 };
 
-static const call_method_env_t xlat_memberof_method_env = {
-	.inst_size = sizeof(ldap_xlat_memberof_call_env_t),
-	.inst_type = "ldap_xlat_memberof_call_env_t",
-	.env = (call_env_t[]) {
+static const call_env_method_t xlat_memberof_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ldap_xlat_memberof_call_env_t),
+	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_SUBSECTION("user", NULL, memberof_user_call_env, true) },
 		{ FR_CALL_ENV_SUBSECTION("group", NULL, memberof_group_call_env, false) },
 		CALL_ENV_TERMINATOR
 	}
 };
 
-static const call_method_env_t xlat_profile_method_env = {
-	.inst_size = sizeof(ldap_xlat_profile_call_env_t),
-	.inst_type = "ldap_xlat_profile_call_env_t",
-	.env = (call_env_t[]) {
+static const call_env_method_t xlat_profile_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ldap_xlat_profile_call_env_t),
+	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_SUBSECTION("profile", NULL,
-					 ((call_env_t[])  {
+					 ((call_env_parser_t[])  {
 						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_xlat_profile_call_env_t, profile_filter,
 								     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
 						CALL_ENV_TERMINATOR

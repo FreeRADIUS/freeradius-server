@@ -31,9 +31,9 @@ extern "C" {
 
 #include <freeradius-devel/util/dlist.h>
 
-typedef struct call_env_s		call_env_t;
+typedef struct call_env_parser_s	call_env_parser_t;
 typedef struct call_env_parsed_s	call_env_parsed_t;
-typedef struct call_method_env_s	call_method_env_t;
+typedef struct call_env_method_s	call_env_method_t;
 
 FR_DLIST_TYPES(call_env_parsed)
 FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry_t)
@@ -63,7 +63,7 @@ typedef enum {
  * This allows the conf pairs to be evaluated within the appropriate context
  * and use the appropriate dictionaries for where the module is in use.
  */
-struct call_env_s {
+struct call_env_parser_s {
 	char const	*name;		//!< Of conf pair to pass to tmpl_tokenizer.
 	char const	*dflt;		//!< Default string to pass to the tmpl_tokenizer if no CONF_PAIR found.
 	fr_token_t	dflt_quote;	//!< Default quoting for the default string.
@@ -92,7 +92,7 @@ struct call_env_s {
 
 		struct {
 			char const		*ident2;	//!< Second identifier for a section
-			call_env_t const	*subcs;		//!< Nested definitions for subsection.
+			call_env_parser_t const	*subcs;		//!< Nested definitions for subsection.
 			bool			required;	//!< Section is required.
     		} section;
   	};
@@ -101,21 +101,27 @@ struct call_env_s {
 #define CALL_ENV_TERMINATOR { NULL }
 
 struct call_env_parsed_s {
-	call_env_parsed_entry_t	entry;		//!< Entry in list of parsed call_env.
-	tmpl_t			*tmpl;		//!< Tmpl produced from parsing conf pair.
-	size_t			opt_count;	//!< Number of instances found of this option.
-	size_t			multi_index;	//!< Array index for this instance.
-	call_env_t const	*rule;		//!< Used to produce this.
-	bool			tmpl_only;	//!< Don't evaluate before module / xlat call.
-						///< Only the tmpl reference is needed.
+	call_env_parsed_entry_t	entry;		//!< Entry in list of parsed call_env_parsers.
+	tmpl_t				*tmpl;		//!< Tmpl produced from parsing conf pair.
+	size_t				count;		//!< Number of CONF_PAIRs found, matching the #call_env_parser_t.
+	size_t				multi_index;	//!< Array index for this instance.
+	call_env_parser_t const		*rule;		//!< Used to produce this.
+	bool				tmpl_only;	//!< Don't evaluate before module / xlat call.
+							///< Only the tmpl reference is needed.
 };
 
 FR_DLIST_FUNCS(call_env_parsed, call_env_parsed_t, entry)
 
-struct call_method_env_s {
+/** Helper macro for populating the size/type fields of a #call_env_method_t from the output structure type
+ */
+#define FR_CALL_ENV_METHOD_OUT(_inst) \
+	.inst_size = sizeof(_inst), \
+	.inst_type = STRINGIFY(_inst) \
+
+struct call_env_method_s {
 	size_t			inst_size;	//!< Size of per call env.
 	char const		*inst_type;	//!< Type of per call env.
-	call_env_t const	*env;		//!< Parsing rules for call method env.
+	call_env_parser_t const	*env;		//!< Parsing rules for call method env.
 };
 
 /** Derive whether tmpl can only emit a single box.
@@ -177,15 +183,17 @@ _Generic((((_s *)NULL)->_f), \
 	.offset = offsetof(_struct, _field), \
 	.dflt = _dflt, \
 	.dflt_quote = _dflt_quote, \
-	.pair = { .required = _required, \
-		  .concat = FR_CALL_ENV_CONCAT(_concat, _cast_type), \
-		  .single = FR_CALL_ENV_SINGLE(_struct, _field, _concat), \
-		  .multi = FR_CALL_ENV_MULTI(_struct, _field), \
-		  .nullable = _nullable, \
-		  .type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
-		  .size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
-		  .type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
-		  .tmpl_offset = -1 }
+	.pair = { \
+		.required = _required, \
+		.concat = FR_CALL_ENV_CONCAT(_concat, _cast_type), \
+		.single = FR_CALL_ENV_SINGLE(_struct, _field, _concat), \
+		.multi = FR_CALL_ENV_MULTI(_struct, _field), \
+		.nullable = _nullable, \
+		.type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
+		.size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
+		.type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
+		.tmpl_offset = -1 \
+	}
 
 /** Version of the above which sets optional field for pointer to tmpl
  */
@@ -195,15 +203,17 @@ _Generic((((_s *)NULL)->_f), \
 	.offset = offsetof(_struct, _field), \
 	.dflt = _dflt, \
 	.dflt_quote = _dflt_quote, \
-	.pair = { .required = _required, \
-		  .concat = FR_CALL_ENV_CONCAT(_concat, _cast_type), \
-		  .single = FR_CALL_ENV_SINGLE(_struct, _field, _concat), \
-		  .multi = FR_CALL_ENV_MULTI(_struct, _field), \
-		  .nullable = _nullable, \
-		  .type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
-		  .size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
-		  .type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
-		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
+	.pair = { \
+		.required = _required, \
+		.concat = FR_CALL_ENV_CONCAT(_concat, _cast_type), \
+		.single = FR_CALL_ENV_SINGLE(_struct, _field, _concat), \
+		.multi = FR_CALL_ENV_MULTI(_struct, _field), \
+		.nullable = _nullable, \
+		.type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
+		.size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
+		.type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
+		.tmpl_offset = offsetof(_struct, _tmpl_field) \
+	}
 
 /** Version of the above which only sets the field for a pointer to the tmpl
  */
@@ -212,24 +222,28 @@ _Generic((((_s *)NULL)->_f), \
 	.type = _cast_type, \
 	.dflt = _dflt, \
 	.dflt_quote = _dflt_quote, \
-	.pair = { .required = _required, \
-		  .type = CALL_ENV_TYPE_TMPL_ONLY, \
-		  .tmpl_offset = offsetof(_struct, _tmpl_field) }
+	.pair = { \
+		.required = _required, \
+		.type = CALL_ENV_TYPE_TMPL_ONLY, \
+		.tmpl_offset = offsetof(_struct, _tmpl_field) \
+	}
 
 #define FR_CALL_ENV_SUBSECTION(_name, _ident2, _subcs, _required ) \
 	.name = _name, \
 	.type = FR_TYPE_SUBSECTION, \
-	.section = { .ident2 = _ident2, \
-		     .subcs = _subcs, \
-		     .required = _required }
+	.section = { \
+		.ident2 = _ident2, \
+		.subcs = _subcs, \
+		.required = _required \
+	}
+
+unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *result, void **env_data, call_env_method_t const *call_env,
+				call_env_parsed_head_t const *call_env_parsed);
 
 int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
-		   CONF_SECTION const *cs, call_env_t const *call_env) CC_HINT(nonnull);
+		   CONF_SECTION const *cs, call_env_parser_t const *call_env) CC_HINT(nonnull);
 
-size_t call_env_count(size_t *vallen, CONF_SECTION const *cs, call_env_t const *call_env);
-
-unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *result, void **env_data, call_method_env_t const *call_env,
-				call_env_parsed_head_t const *call_env_parsed);
+size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env_parser_t const *call_env);
 
 #ifdef __cplusplus
 }

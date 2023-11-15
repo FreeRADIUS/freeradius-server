@@ -34,11 +34,13 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/module.h>
+
 /*
  *	Define a structure for our module configuration.
  */
@@ -66,16 +68,13 @@ typedef struct {
 	tmpl_t	*program;
 } exec_call_env_t;
 
-static const call_env_t exec_call_env[] = {
-	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("program", FR_TYPE_STRING, exec_call_env_t, program, NULL,
-				       T_BACK_QUOTED_STRING, false), .pair.force_quote = true },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_method_env_t exec_method_env = {
-	.inst_size = sizeof(exec_call_env_t),
-	.inst_type = "exec_call_env_t",
-	.env = exec_call_env
+static const call_env_method_t exec_method_env = {
+	FR_CALL_ENV_METHOD_OUT(exec_call_env_t),
+	.env = (call_env_parser_t[]){
+		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("program", FR_TYPE_STRING, exec_call_env_t, program, NULL,
+					       T_BACK_QUOTED_STRING, false), .pair.force_quote = true },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,

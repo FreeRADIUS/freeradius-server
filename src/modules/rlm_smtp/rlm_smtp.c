@@ -32,6 +32,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/util/slab.h>
 
+#include <freeradius-devel/unlang/call_env.h>
+
 static fr_dict_t const 	*dict_radius; /*dictionary for radius protocol*/
 static fr_dict_t const 	*dict_freeradius;
 
@@ -1246,18 +1248,15 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static const call_env_t call_env[] = {
-	{ FR_CALL_ENV_TMPL_OFFSET("username", FR_TYPE_STRING, rlm_smtp_env_t, username, username_tmpl, NULL,
-				T_DOUBLE_QUOTED_STRING, false, true, true) },
-	{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, rlm_smtp_env_t, password, NULL,
-				T_DOUBLE_QUOTED_STRING, false, true, true) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_method_env_t method_env = {
-	.inst_size = sizeof(rlm_smtp_env_t),
-	.inst_type = "rlm_smtp_env_t",
-	.env = call_env
+static const call_env_method_t method_env = {
+	FR_CALL_ENV_METHOD_OUT(rlm_smtp_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_TMPL_OFFSET("username", FR_TYPE_STRING, rlm_smtp_env_t, username, username_tmpl, NULL,
+					  T_DOUBLE_QUOTED_STRING, false, true, true) },
+		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, rlm_smtp_env_t, password, NULL,
+				     T_DOUBLE_QUOTED_STRING, false, true, true) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 /*

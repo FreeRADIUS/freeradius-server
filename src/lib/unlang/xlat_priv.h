@@ -88,7 +88,7 @@ typedef struct xlat_s {
 	xlat_input_type_t	input_type;		//!< Type of input used.
 	xlat_arg_parser_t const	*args;			//!< Definition of args consumed.
 
-	call_method_env_t const	*call_env;		//!< Optional tmpl expansions performed before calling the
+	call_env_method_t const	*call_env;		//!< Optional tmpl expansions performed before calling the
 							///< xlat.  Typically used for xlats which refer to tmpls
 							///< in their module config.
 

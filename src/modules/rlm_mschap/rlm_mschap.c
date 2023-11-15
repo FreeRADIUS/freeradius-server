@@ -23,6 +23,7 @@
  */
 
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
+
 RCSID("$Id$")
 
 #define LOG_PREFIX mctx->inst->name
@@ -41,6 +42,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/sha1.h>
 
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <sys/wait.h>
@@ -131,14 +133,13 @@ static const CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-#define MSCHAP_CALL_ENV(_x) static const call_env_t _x ## _attr_call_env[] = { \
-	{ FR_CALL_ENV_SUBSECTION("attributes", NULL, _x ## _call_env, true) }, \
-	CALL_ENV_TERMINATOR \
-}; \
-static const call_method_env_t mschap_ ## _x ## _method_env = { \
-	.inst_size = sizeof(mschap_ ## _x ## _call_env_t), \
-	.inst_type = "mschap_" STRINGIFY(_x) "_call_env_t", \
-	.env = _x ## _attr_call_env \
+#define MSCHAP_CALL_ENV(_x) \
+static const call_env_method_t mschap_ ## _x ## _method_env = { \
+	FR_CALL_ENV_METHOD_OUT(mschap_ ## _x ## _call_env_t), \
+	.env = (call_env_parser_t[]){ \
+		{ FR_CALL_ENV_SUBSECTION("attributes", NULL, _x ## _call_env, true) }, \
+		CALL_ENV_TERMINATOR \
+	} \
 }
 
 #define MSCHAP_COMMON_CALL_ENV(_x) \
@@ -160,7 +161,7 @@ typedef struct {
 	tmpl_t const	*chap2_response;
 } mschap_xlat_call_env_t;
 
-static const call_env_t xlat_call_env[] = {
+static const call_env_parser_t xlat_call_env[] = {
 	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("username", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, mschap_xlat_call_env_t,
 				       username, "&User-Name", T_BARE_WORD, true) },
 	MSCHAP_COMMON_CALL_ENV(xlat),
@@ -169,7 +170,7 @@ static const call_env_t xlat_call_env[] = {
 
 MSCHAP_CALL_ENV(xlat);
 
-static const call_env_t auth_call_env[] = {
+static const call_env_parser_t auth_call_env[] = {
 	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("username", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, mschap_auth_call_env_t,
 				       username, "&User-Name", T_BARE_WORD, true) },
 	MSCHAP_COMMON_CALL_ENV(auth),
@@ -192,7 +193,7 @@ typedef struct {
 	tmpl_t const	*chap2_cpw;
 } mschap_autz_call_env_t;
 
-static const call_env_t autz_call_env[] = {
+static const call_env_parser_t autz_call_env[] = {
 	MSCHAP_COMMON_CALL_ENV(autz),
 	MSCHAP_OPT_CALL_ENV(chap2_cpw, autz),
 	CALL_ENV_TERMINATOR

@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/users_file.h>
 #include <freeradius-devel/util/htrie.h>
+#include <freeradius-devel/unlang/call_env.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -702,17 +703,16 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
  *	@todo - Whilst this causes `key` to be evaluated on a per-call basis,
  *	it is still evaluated during module instantiation to determine the tree type in use
  *	so more restructuring is needed to make the module protocol agnostic.
+ *
+ *	Or we need to regenerate the tree on every call.
  */
-static const call_env_t call_env[] = {
-	{ FR_CALL_ENV_OFFSET("key", FR_TYPE_VOID, rlm_files_env_t, key, "%{%{Stripped-User-Name}:-%{User-Name}}",
-			     T_DOUBLE_QUOTED_STRING, true, false, false) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_method_env_t method_env = {
-	.inst_size = sizeof(rlm_files_env_t),
-	.inst_type = "rlm_files_env_t",
-	.env = call_env
+static const call_env_method_t method_env = {
+	FR_CALL_ENV_METHOD_OUT(rlm_files_env_t),
+	.env = (call_env_parser_t[]){
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_VOID, rlm_files_env_t, key, "%{%{Stripped-User-Name} || %{User-Name}}",
+				     T_DOUBLE_QUOTED_STRING, true, false, false) },
+		CALL_ENV_TERMINATOR
+	},
 };
 
 /* globally exported name */
