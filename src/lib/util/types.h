@@ -217,6 +217,19 @@ typedef enum {
 	_mid(FR_TYPE_TLV) \
 	_end(FR_TYPE_VENDOR)
 
+/** Hack for truthiness check
+ *
+ * - VSAs
+ * - Structs
+ * - TLVs
+ * - Vendors
+ */
+#define FR_TYPE_STRUCTURAL_EXCEPT_GROUP_DEF(_beg, _mid, _end) \
+	_beg(FR_TYPE_VSA) \
+	_mid(FR_TYPE_STRUCT) \
+	_mid(FR_TYPE_TLV) \
+	_end(FR_TYPE_VENDOR)
+
 /** Match all non value types in case statements
  *
  * - Groups
@@ -279,6 +292,7 @@ typedef enum {
 #define FR_TYPE_QUOTED				FR_TYPE_QUOTED_DEF(CASE_BEG, CASE_MID, CASE_END)
 
 #define FR_TYPE_STRUCTURAL_EXCEPT_VSA		FR_TYPE_STRUCTURAL_EXCEPT_VSA_DEF(CASE_BEG, CASE_MID, CASE_END)
+#define FR_TYPE_STRUCTURAL_EXCEPT_GROUP		FR_TYPE_STRUCTURAL_EXCEPT_GROUP_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_STRUCTURAL			FR_TYPE_STRUCTURAL_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_LEAF				FR_TYPE_LEAF_DEF(CASE_BEG, CASE_MID, CASE_END)
 #define FR_TYPE_NON_LEAF			FR_TYPE_NON_LEAF_DEF(CASE_BEG, CASE_MID, CASE_END)
