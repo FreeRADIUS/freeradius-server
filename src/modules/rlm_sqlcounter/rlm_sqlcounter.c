@@ -83,7 +83,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlcounter_t, query) },
 	{ FR_CONF_OFFSET("reset", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, reset) },
 
-	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name}:-%{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 
 	{ FR_CONF_OFFSET("reset_period_start_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, start_attr),
 	  .dflt = "&control.${.:instance}-Start" },
