@@ -3268,7 +3268,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	too.
 		 */
 		slen = xlat_tokenize_argv(vpt, &head, &our_in, p_rules, t_rules, false, false);
-		if (slen < 0) {
+		if ((slen <= 0) || !head) {
 			talloc_free(vpt);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -3277,11 +3277,9 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	Ensure any xlats produced are bootstrapped
 		 *	so that their instance data will be created.
 		 */
-		if (head) {
-			if (xlat_finalize(head, t_rules) < 0) {
-				fr_strerror_const("Failed to bootstrap xlat");
-				FR_SBUFF_ERROR_RETURN(&our_in);
-			}
+		if (xlat_finalize(head, t_rules) < 0) {
+			fr_strerror_const("Failed to bootstrap xlat");
+			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
 		if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
