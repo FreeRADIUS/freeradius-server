@@ -93,8 +93,8 @@ match ((1 < 2) || (4 > 3) || (4 == 4) || (1 < 2))
 xlat_expr &Filter-Id
 match &Filter-Id
 
-xlat_expr %{md5:foo} + "foo"
-match  (%{md5:foo} + "foo")
+xlat_expr %md5('foo') + "foo"
+match  (%md5('foo') + "foo")
 
 #  We can name the xlat's, tho we don't need to
 xlat_expr %(op_add:4 3) + 6
@@ -111,7 +111,7 @@ xlat_expr 1 < 2 < 3
 match ((1 < 2) < 3)
 
 xlat_expr (uint32) %(concat:1 2)
-match %(cast:uint32 %(concat:1 2))
+match %cast(uint32, %concat(1, 2))
 
 #
 # Mashing multiple brackets together.  The brackets are removed as
@@ -136,10 +136,10 @@ xlat_expr 5 + 5 - 10
 match ((5 + 5) - 10)
 
 xlat_expr (integer) &Service-Type
-match %(cast:uint32 &Service-Type)
+match %cast(uint32, &Service-Type)
 
 xlat_expr (uint32) (&Service-Type)
-match %(cast:uint32 &Service-Type)
+match %cast(uint32, &Service-Type)
 
 count
 match 69

@@ -67,8 +67,8 @@ match ERROR offset 4: Missing closing brace
 xlat %{Tunnel-Password}
 match %{Tunnel-Password}
 
-xlat %{test:bar}
-match %{test:bar}
+xlat %test('bar')
+match %test('bar')
 
 xlat %{Tunnel-Password}
 match %{Tunnel-Password}
@@ -121,8 +121,8 @@ match \"%{reply.Vendor-Specific.3GPP.IMSI[2]}\"
 xlat /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 match /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 
-xlat %(length:)
-match %(length:)
+xlat %length()
+match %length()
 
 xlat %(length:
 match ERROR offset 10: Missing closing brace
@@ -137,7 +137,7 @@ xlat \"%t\t%{NAS-IP-Address}\"
 match \"%t\t%{NAS-IP-Address}\"
 
 xlat \"foo %test('foo')\"
-match \"foo %{test:'foo'}\"
+match \"foo %test('foo')\"
 
 #
 #  Alternations
@@ -163,8 +163,8 @@ match ERROR offset 3: Missing expansion function
 xlat %{:bar}
 match ERROR offset 3: Missing expansion function
 
-xlat %{foo: bar}
-match ERROR offset 3: Unresolved expansion functions are not allowed here
+xlat %foo(' bar')
+match ERROR offset 2: Unresolved expansion functions are not allowed here
 
 xlat %{[}
 match ERROR offset 3: Missing attribute name
@@ -242,16 +242,16 @@ xlat_argv echo hello %{Tmp-String-0}:1234 world
 match [0]{ echo }, [1]{ hello }, [2]{ %{Tmp-String-0}:1234 }, [3]{ world }
 
 xlat %(debug: 5)
-match %(debug: 5)
+match %debug(, 5)
 
 xlat %(debug: "foo")
-match %(debug: "foo")
+match %debug(, "foo")
 
 #
 #  This is correct.
 #
 xlat %(rpad:&User-Name 5 x)
-match %(rpad:&User-Name 5 x)
+match %rpad(&User-Name, 5, x)
 
 #
 #  The second argument should be an integer.
@@ -265,23 +265,26 @@ match ERROR offset 24: Failed parsing argument 1 as type 'uint64'
 #
 #  Argument quoting
 #
-xlat %{md5:"arg"}
-match %{md5:"arg"}
+xlat %md5('"arg"')
+match %md5('"arg"')
 
-xlat %{md5:"arg}"}
-match %{md5:"arg}"}
+xlat %md5('"arg')"}
+match %md5('"arg')\"}
 
-xlat %{md5:"arg}
-match ERROR offset 12: Missing closing '"'
+xlat %md5('"arg')
+match %md5('"arg')
 
-xlat %{md5:"arg\""}
-match %{md5:"arg\""}
+#
+#  @todo - ??? not sure here
+#
+xlat %md5('"arg\""')
+match  %md5('"arg\\""')
 
 xlat %{md5:'arg'}
-match %{md5:'arg'}
+match %md5('arg')
 
 xlat %{md5:'arg"'}
-match %{md5:'arg"'}
+match %md5('arg"')
 
 count
 match 157

@@ -211,7 +211,7 @@ static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, 
 	size_t	at_in = fr_sbuff_used_total(out);
 
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
-	xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules);
+	xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules, 0);
 
 	return fr_sbuff_used_total(out) - at_in;
 }
@@ -224,7 +224,7 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	fr_assert(child != NULL);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
-	xlat_print_node(out, node->call.args, child, e_rules); /* prints a space after the first argument */
+	xlat_print_node(out, node->call.args, child, e_rules, 0); /* prints a space after the first argument */
 
 	FR_SBUFF_IN_STRCPY_RETURN(out, fr_tokens[node->call.func->token]);
 	FR_SBUFF_IN_CHAR_RETURN(out, ' ');
@@ -232,7 +232,7 @@ static fr_slen_t xlat_expr_print_binary(fr_sbuff_t *out, xlat_exp_t const *node,
 	child = xlat_exp_next(node->call.args, child);
 	fr_assert(child != NULL);
 
-	xlat_print_node(out, node->call.args, child, e_rules);
+	xlat_print_node(out, node->call.args, child, e_rules, 0);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, ')');
 
@@ -534,7 +534,7 @@ static fr_slen_t xlat_expr_print_regex(fr_sbuff_t *out, xlat_exp_t const *node, 
 	fr_assert(child != NULL);
 
 	FR_SBUFF_IN_CHAR_RETURN(out, '(');
-	xlat_print_node(out, node->call.args, child, e_rules);
+	xlat_print_node(out, node->call.args, child, e_rules, 0);
 
 	/*
 	 *	A space is printed after the first argument only if
@@ -868,7 +868,7 @@ static fr_slen_t xlat_expr_print_nary(fr_sbuff_t *out, xlat_exp_t const *node, v
 		fr_assert(head != NULL);
 
 		xlat_exp_foreach(head, child) {
-			xlat_print_node(out, head, child, e_rules);
+			xlat_print_node(out, head, child, e_rules, 0);
 
 			if (!xlat_exp_next(head, child)) break;
 
@@ -1597,7 +1597,7 @@ static fr_slen_t xlat_expr_print_exists(fr_sbuff_t *out, xlat_exp_t const *node,
 	if (inst->xlat) {
 		xlat_print(out, inst->xlat, e_rules);
 	} else {
-		xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules);
+		xlat_print_node(out, node->call.args, xlat_exp_head(node->call.args), e_rules, 0);
 	}
 
 	return fr_sbuff_used_total(out) - at_in;

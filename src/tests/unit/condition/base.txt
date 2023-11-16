@@ -62,7 +62,7 @@ match ERROR offset 5: Invalid operator
 
 # sillyness is OK, but cleaned up.
 condition ((((((ok))))))
-match %{rcode:'ok'}
+match %rcode('ok')
 
 #
 #  Extra braces get squashed
@@ -71,10 +71,10 @@ condition (&User-Name == &User-Password)
 match (&User-Name == &User-Password)
 
 condition (!ok)
-match !%{rcode:'ok'}
+match !%rcode('ok')
 
 condition !(ok)
-match !%{rcode:'ok'}
+match !%rcode('ok')
 
 condition !!ok
 match ERROR offset 2: Double operator is invalid
@@ -83,7 +83,7 @@ match ERROR offset 2: Double operator is invalid
 # @todo - peephole - do optimization to get rid of double negation?
 #
 condition !(!ok)
-match !!%{rcode:'ok'}
+match !!%rcode('ok')
 
 #
 #  These next two are identical after normalization
@@ -112,15 +112,15 @@ match ((a == b) || (c == d))
 #match ERROR offset 23: Unexpected closing brace
 
 condition (handled && (&Packet-Type == Access-Challenge))
-match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
+match (%rcode('handled') && (&Packet-Type == Access-Challenge))
 
 # This is OK, without the braces
 condition handled && &Packet-Type == Access-Challenge
-match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
+match (%rcode('handled') && (&Packet-Type == Access-Challenge))
 
 # and this, though it's not a good idea.
 condition handled &&&Packet-Type == Access-Challenge
-match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
+match (%rcode('handled') && (&Packet-Type == Access-Challenge))
 
 condition &reply == &request
 match ERROR offset 1: Cannot use list references in condition
@@ -224,7 +224,7 @@ match  (&Session-Timeout == '10')
 # Except for dates, which can be humanly readable!
 # This one is be an expansion, so it's left as-is.
 condition &Event-Timestamp == "January 1, 2012 %{blah}"
-match (&Event-Timestamp == %(cast:string "January 1, 2012 %{blah}"))
+match (&Event-Timestamp == %cast(string, "January 1, 2012 %{blah}"))
 
 # This one is NOT an expansion, so it's parsed into normal form
 condition &Event-Timestamp == 'January 1, 2012'
@@ -247,23 +247,23 @@ match (&NAS-Port == X)
 condition (ipaddr)127.0.0.1 == "127.0.0.1"
 match true
 
-condition (ipaddr)127.0.0.1 == "%{md4: 127.0.0.1}"
-match (127.0.0.1 == %(cast:string "%{md4: 127.0.0.1}"))
+condition (ipaddr)127.0.0.1 == "%md4(' 127.0.0.1')"
+match (127.0.0.1 == %cast(string, "%md4(' 127.0.0.1')"))
 
 #
 #  Bare %{...} is allowed.
 #
-condition (ipaddr)127.0.0.1 == %{md4:127.0.0.1}
-match (127.0.0.1 == %{md4:127.0.0.1})
+condition (ipaddr)127.0.0.1 == %md4('127.0.0.1')
+match (127.0.0.1 == %md4('127.0.0.1'))
 
-condition (ipaddr)127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
-match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'})
+condition (ipaddr)127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'")
+match (127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'"))
 
 condition (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
-condition (ether) 00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
-match (00:11:22:33:44:55 == %(cast:string "%{md4:00:11:22:33:44:55}"))
+condition (ether) 00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
+match (00:11:22:33:44:55 == %cast(string, "%md4('00:11:22:33:44:55')"))
 
 condition (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'
@@ -316,11 +316,11 @@ match true
 condition ('foo' == 'foo')
 match true
 
-condition ("foo" == "%{md4: foo}")
-match ("foo" == %(cast:string "%{md4: foo}"))
+condition ("foo" == "%md4(' foo')")
+match ("foo" == %cast(string, "%md4(' foo')"))
 
-condition ("foo bar" == "%{md4: foo}")
-match ("foo bar" == %(cast:string "%{md4: foo}"))
+condition ("foo bar" == "%md4(' foo')")
+match ("foo bar" == %cast(string, "%md4(' foo')"))
 
 condition ("foo" == "bar")
 match false
@@ -336,8 +336,8 @@ match false
 condition (&User-Name == "bob")
 match (&User-Name == "bob")
 
-condition (&User-Name == "%{md4: blah}")
-match (&User-Name == %(cast:string "%{md4: blah}"))
+condition (&User-Name == "%md4(' blah')")
+match (&User-Name == %cast(string, "%md4(' blah')"))
 
 condition (ipaddr)127.0.0.1 == 2130706433
 match true
@@ -392,13 +392,13 @@ match ERROR offset 1: Unexpected text - attribute names must prefixed with '&'
 #  Module return codes are OK
 #
 condition (ok)
-match %{rcode:'ok'}
+match %rcode('ok')
 
 condition (handled)
-match %{rcode:'handled'}
+match %rcode('handled')
 
 condition (fail)
-match %{rcode:'fail'}
+match %rcode('fail')
 
 condition ("a")
 match "a"
@@ -421,8 +421,8 @@ condition (string)"foo" == &User-Name
 match ("foo" == &User-Name)
 
 # This used to be expr, but expr isn't a builtin, so it failed...
-condition (integer)"%{md4: 1 + 1}" < &NAS-Port
-match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
+condition (integer)"%md4(' 1 + 1')" < &NAS-Port
+match (%cast(uint32, "%md4(' 1 + 1')") < &NAS-Port)
 
 #
 #  The string gets parsed as an IP address.
@@ -456,7 +456,7 @@ match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
 condition (ether)&Tmp-uint64-0 == "%interpreter('foo')"
-match ((ether)&Tmp-uint64-0 == %(cast:string "%(interpreter:'foo')"))
+match ((ether)&Tmp-uint64-0 == %cast(string, "%interpreter('foo')"))
 
 condition (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
@@ -492,11 +492,11 @@ match &Foo-Bar
 #	data &Acct-Input-Octets > &Session-Timeout
 #
 condition &Acct-Input-Octets > "%{Session-Timeout}"
-match (&Acct-Input-Octets > %(cast:string "%{Session-Timeout}"))
+match (&Acct-Input-Octets > %cast(string, "%{Session-Timeout}"))
 
 #  Separate types aren't optimized
 condition &Acct-Input-Octets-64 > "%{Session-Timeout}"
-match (&Acct-Input-Octets-64 > %(cast:string "%{Session-Timeout}"))
+match (&Acct-Input-Octets-64 > %cast(string, "%{Session-Timeout}"))
 
 #
 #  Parse OIDs into known attributes, where possible.

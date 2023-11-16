@@ -1360,7 +1360,7 @@ void xlat_debug_head(xlat_exp_head_t const *head)
 }
 
 ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node,
-			fr_sbuff_escape_rules_t const *e_rules)
+			fr_sbuff_escape_rules_t const *e_rules, char c)
 {
 	ssize_t			slen;
 	size_t			at_in = fr_sbuff_used_total(out);
@@ -1374,7 +1374,10 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		xlat_print(out, node->group, fr_value_escape_by_quote[node->quote]);
 		if (node->quote != T_BARE_WORD) FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->quote]);
 
-		if (xlat_exp_next(head, node)) FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
+		if (xlat_exp_next(head, node)) {
+			if (c) FR_SBUFF_IN_CHAR_RETURN(out, c);
+			FR_SBUFF_IN_CHAR_RETURN(out, ' ');      /* Add ' ' between args */
+		}
 		goto done;
 
 	case XLAT_BOX:
@@ -1468,8 +1471,8 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 	/*
 	 *	Now print %(...) or %{...}
 	 */
-	if ((node->type == XLAT_FUNC) && (node->call.func->input_type == XLAT_INPUT_ARGS)) {
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%(");
+	if ((node->type == XLAT_FUNC) || (node->type == XLAT_FUNC_UNRESOLVED)) {
+		FR_SBUFF_IN_CHAR_RETURN(out, '%'); /* then the name */
 		close = ')';
 	} else {
 		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%{");
@@ -1496,21 +1499,20 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 	case XLAT_FUNC:
 		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->call.func->name);
-		FR_SBUFF_IN_CHAR_RETURN(out, ':');
+		FR_SBUFF_IN_CHAR_RETURN(out, '(');
 
-		if (xlat_exp_head(node->call.args)) {
-			slen = xlat_print(out, node->call.args, &xlat_escape);
-			if (slen < 0) return slen;
-		}
-		break;
+		goto print_args;
 
 	case XLAT_FUNC_UNRESOLVED:
 		FR_SBUFF_IN_BSTRCPY_BUFFER_RETURN(out, node->fmt);
-		FR_SBUFF_IN_CHAR_RETURN(out, ':');
+		FR_SBUFF_IN_CHAR_RETURN(out, '(');
 
+	print_args:
 		if (xlat_exp_head(node->call.args)) {
-			slen = xlat_print(out, node->call.args, &xlat_escape);
-			if (slen < 0) return slen;
+			xlat_exp_foreach(node->call.args, child) {
+				slen = xlat_print_node(out, node->call.args, child, &xlat_escape, ',');
+				if (slen < 0) return slen;
+			}
 		}
 		break;
 
@@ -1539,7 +1541,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
 	size_t			at_in = fr_sbuff_used_total(out);
 
 	xlat_exp_foreach(head, node) {
-		slen = xlat_print_node(out, head, node, e_rules);
+		slen = xlat_print_node(out, head, node, e_rules, 0);
 		if (slen < 0) return slen - (fr_sbuff_used_total(out) - at_in);
 	}
 

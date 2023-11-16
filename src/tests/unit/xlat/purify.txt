@@ -112,7 +112,7 @@ match 2
 xlat_purify &Filter-Id
 match &Filter-Id
 
-xlat_purify %{md5:foo} + "bar"
+xlat_purify %md5('foo') + "bar"
 match 0xacbd18db4cc2f85cedef654fccc4a4d8626172
 
 #  We can name the xlat's, tho we don't need to
@@ -188,7 +188,7 @@ xlat_purify ~fail
 match ERROR offset 6: Invalid operation on module return code
 
 xlat_purify !fail
-match !%{rcode:'fail'}
+match !%rcode('fail')
 
 #
 #  Casts and such
@@ -196,13 +196,13 @@ match !%{rcode:'fail'}
 #  @todo - xlat_tokenize() does not call purify
 #
 xlat_purify (string)(%{1 + 2})
-match %(cast:string (1 + 2))
+match %cast(string, (1 + 2))
 
 #
 #  This is a different code path than the above.
 #
 xlat_purify (string)%{1 + 2}
-match %(cast:string (1 + 2))
+match %cast(string, (1 + 2))
 
 xlat_purify "hello"
 match "hello"
@@ -221,14 +221,14 @@ match "hello 3 bob"
 #  The real run-time tests work
 #
 xlat_purify "hello %{1 + 2} bob"
-match %(cast:string "hello (1 + 2) bob")
+match %cast(string, "hello (1 + 2) bob")
 
 #
 #  New syntax!
 #
 migrate xlat_new_functions = yes
 
-xlat_purify %{md5:foo}
+xlat_purify %md5('foo')
 match 0xacbd18db4cc2f85cedef654fccc4a4d8
 
 xlat_purify %explode("a,b,c,d", ',')
@@ -250,7 +250,7 @@ match 0x5e153571422b69cf5c5f7ce5f03985b5
 #  This is a reference to the contents of &User-Name
 #
 xlat_purify %md5(&User-Name)
-match %{md5:&User-Name}
+match %md5(&User-Name)
 
 
 xlat_purify %md5('foo')

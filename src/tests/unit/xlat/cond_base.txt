@@ -125,10 +125,10 @@ match Passed in 67 characters, but only parsed 66 characters
 #  Truthy strings get omitted.
 #
 xlat_purify ('handled' && (&Packet-Type == Access-Challenge))
-match  (&Packet-Type == Access-Challenge)
+match (&Packet-Type == Access-Challenge)
 
 xlat_purify (handled && (&Packet-Type == Access-Challenge))
-match (%{rcode:'handled'} && (&Packet-Type == Access-Challenge))
+match (%rcode('handled') && (&Packet-Type == Access-Challenge))
 
 # This is OK, without the braces
 xlat_purify 'handled' && &Packet-Type == Access-Challenge
@@ -222,7 +222,7 @@ match (&Session-Timeout == '10')
 # This one is be an expansion, so it's left as-is.
 #
 xlat_purify &Event-Timestamp == "January 1, 2012 %{User-Name}"
-match (&Event-Timestamp == %(cast:string "January 1, 2012 %{User-Name}"))
+match (&Event-Timestamp == %cast(string, "January 1, 2012 %{User-Name}"))
 
 # This one is NOT an expansion, so it's parsed into normal form
 xlat_purify &Event-Timestamp == 'January 1 2012'
@@ -249,26 +249,26 @@ match true
 
 # LHS is IPaddr, RHS is string (malformed IP address).
 # We can only fail this at run-time.
-xlat_purify (ipaddr)127.0.0.1 == "%{md4: 127.0.0.1}"
-match (127.0.0.1 == %(cast:string "%{md4: 127.0.0.1}"))
+xlat_purify (ipaddr)127.0.0.1 == "%md4(' 127.0.0.1')"
+match (127.0.0.1 == %cast(string, "%md4(' 127.0.0.1')"))
 
 #
 #  Bare %{...} is allowed.
 #
 
 # Invalid cast from octets to ipaddr.
-xlat_purify (ipaddr)127.0.0.1 == %{md4:127.0.0.1}
-match (127.0.0.1 == %{md4:127.0.0.1})
+xlat_purify (ipaddr)127.0.0.1 == %md4('127.0.0.1')
+match (127.0.0.1 == %md4('127.0.0.1'))
 
 xlat_purify (ipaddr)127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
-match (127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'})
+match (127.0.0.1 == %md4( SELECT user FROM table WHERE user='%{User-Name}'))
 
 xlat_purify (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true
 
 # Invalid cast from octets to ether.
-xlat_purify (ether)00:11:22:33:44:55 == "%{md4:00:11:22:33:44:55}"
-match (00:11:22:33:44:55 == %(cast:string "%{md4:00:11:22:33:44:55}"))
+xlat_purify (ether)00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
+match (00:11:22:33:44:55 == %cast(string, "%md4('00:11:22:33:44:55')"))
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'
@@ -314,10 +314,10 @@ match true
 #
 #  MD4 hash is not equal to other things
 #
-xlat_purify ("foo" == "%{md4: foo}")
+xlat_purify ("foo" == "%md4(' foo')")
 match false
 
-xlat_purify ("foo bar" == "%{md4: foo}")
+xlat_purify ("foo bar" == "%md4(' foo')")
 match false
 
 xlat_purify ("foo" == "bar")
@@ -334,11 +334,11 @@ match false
 xlat_purify (&User-Name == "bob")
 match (&User-Name == "bob")
 
-xlat_purify (&User-Name == %{md4: blah})
+xlat_purify (&User-Name == %md4(' blah'))
 match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 #  and without the double quotes.
-xlat_purify (&User-Name == %{md4: blah})
+xlat_purify (&User-Name == %md4(' blah'))
 match (&User-Name == 0x544924d05ec4481925ba3749a096a0a7)
 
 xlat_purify (ipaddr)127.0.0.1 == 2130706433
@@ -429,8 +429,8 @@ match ("foo" == &User-Name)
 #
 #  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
 #
-xlat_purify (integer)"%{md4: 1 + 1}" < &NAS-Port
-match (%(cast:uint32 "%{md4: 1 + 1}") < &NAS-Port)
+xlat_purify (integer)"%md4(' 1 + 1')" < &NAS-Port
+match (%cast(uint32, "%md4(' 1 + 1')") < &NAS-Port)
 
 #
 #  The string gets parsed as an IP address.
@@ -463,7 +463,7 @@ match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
 xlat_purify (ether)&Tmp-uint64-0 == "%interpreter('foo')"
-match  ((ether)&Tmp-uint64-0 == %(cast:string "%(interpreter:'foo')"))
+match  ((ether)&Tmp-uint64-0 == %cast(string, "%interpreter('foo')"))
 
 xlat_purify (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
@@ -492,7 +492,7 @@ match (&User-Name[n] == "bob")
 #match &Foo-Bar
 
 xlat_purify &Acct-Input-Octets > "%{Session-Timeout}"
-match (&Acct-Input-Octets > %(cast:string "%{Session-Timeout}"))
+match (&Acct-Input-Octets > %cast(string, "%{Session-Timeout}"))
 
 xlat_purify &Acct-Input-Octets > &Session-Timeout
 match (&Acct-Input-Octets > &Session-Timeout)
@@ -716,16 +716,16 @@ match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 #  rcode tests
 #
 xlat_purify handled && (&User-Name == "bob")
-match (%{rcode:'handled'} && (&User-Name == "bob"))
+match (%rcode('handled') && (&User-Name == "bob"))
 
 xlat_purify (&User-Name == "bob") && (&User-Password == "bob") && handled
-match ((&User-Name == "bob") && (&User-Password == "bob") && %{rcode:'handled'})
+match ((&User-Name == "bob") && (&User-Password == "bob") && %rcode('handled'))
 
 xlat_purify handledx
 match ERROR offset 1: Unexpected text - attribute names must prefixed with '&'
 
 xlat_purify handled
-match %{rcode:'handled'}
+match %rcode('handled')
 
 #
 #  Automatic casting
