@@ -26,9 +26,31 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/dlist.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
+
+typedef struct {
+	uint8_t const	*key;
+	size_t		keylen;
+	char const	*passwd;
+	time_t		when;
+	bool		unlisted;
+	void		*instance;
+	fr_dlist_t	dlist;
+} totp_dedup_t;
+
+#ifdef HAVE_PTHREAD_H
+#include <pthread.h>
+
+#define PTHREAD_MUTEX_LOCK(_x) pthread_mutex_lock(&((_x)->mutex))
+#define PTHREAD_MUTEX_UNLOCK(_x) pthread_mutex_unlock(&((_x)->mutex))
+#else
+#define PTHREAD_MUTEX_LOCK(_x)
+#define PTHREAD_MUTEX_UNLOCK(_x)
+#endif
+
 
 /* Define a structure for the configuration variables */
 typedef struct rlm_totp_t {
@@ -37,6 +59,11 @@ typedef struct rlm_totp_t {
         uint32_t	otp_length;		//!< forced to 6 or 8
         uint32_t	lookback_steps;		//!< number of steps to look back
         uint32_t	lookback_interval;	//!< interval in seconds between steps
+	rbtree_t	*dedup_tree;
+	fr_dlist_t	dedup_list;
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t	mutex;
+#endif
 } rlm_totp_t;
 
 #ifndef TESTING
@@ -195,6 +222,38 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
         return 0;
 }
 
+static int dedup_cmp(void const *one, void const *two)
+{
+	int rcode;
+	totp_dedup_t const *a = one;
+	totp_dedup_t const *b = two;
+
+	if (a->keylen < b->keylen) return -1;
+	if (a->keylen > b->keylen) return +1;
+
+	rcode = memcmp(a->key , b->key, a->keylen);
+	if (rcode != 0) return rcode;
+
+	/*
+	 *	The user can enter multiple keys
+	 */
+	return strcmp(a->passwd, b->passwd);
+}
+
+static void dedup_free(void *data)
+{
+	totp_dedup_t *dedup = data;
+	rlm_totp_t *inst = dedup->instance;
+
+	if (!dedup->unlisted) {
+		PTHREAD_MUTEX_LOCK(inst);
+		fr_dlist_entry_unlink(&dedup->dlist);
+		PTHREAD_MUTEX_UNLOCK(inst);
+	}
+
+	free(dedup);
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -222,8 +281,26 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 
 	if (inst->otp_length == 7) inst->otp_length = 8;
 
+	inst->dedup_tree = rbtree_create(instance, dedup_cmp, dedup_free, 0);
+	if (!inst->dedup_tree) return -1;
+
+	fr_dlist_entry_init(&inst->dedup_list);
+#ifdef HAVE_PTHREAD_H
+	(void) pthread_mutex_init(&inst->mutex, NULL);
+#endif
+
 	return 0;
 }
+
+#ifdef HAVE_PTHREAD_H
+static int mod_detach(void *instance)
+{
+	rlm_totp_t *inst = instance;
+
+	pthread_mutex_destroy(&inst->mutex);
+	return 0;
+}
+#endif
 #endif
 
 /*
@@ -301,6 +378,67 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 
 #ifndef TESTING
 
+static inline CC_HINT(nonnull) totp_dedup_t *fr_dlist_head(fr_dlist_t const *head)
+{
+	if (head->prev == head) return NULL;
+
+	return (totp_dedup_t *) (((uintptr_t) head->next) - offsetof(totp_dedup_t, dlist));
+}
+
+
+static bool totp_reused(void *instance, time_t now, uint8_t const *key, size_t keylen, char const *passwd)
+{
+	rlm_totp_t *inst = instance;
+	totp_dedup_t *dedup, my_dedup;
+
+	my_dedup.key = key;
+	my_dedup.keylen = keylen;
+	my_dedup.passwd = passwd;
+
+	PTHREAD_MUTEX_LOCK(inst);
+
+	/*
+	 *	Expire the oldest entries before searching for an entry in the tree.
+	 */
+	while (true) {
+		dedup = fr_dlist_head(&inst->dedup_list);
+		if (!dedup) break;
+
+		if ((now - dedup->when) < (inst->lookback_steps * inst->lookback_interval)) break;
+
+		dedup->unlisted = true;
+		fr_dlist_entry_unlink(&dedup->dlist);
+		(void) rbtree_deletebydata(inst->dedup_tree, dedup);
+	}
+
+	/*
+	 *	Was this key and TOTP reused?
+	 */
+	dedup = rbtree_finddata(inst->dedup_tree, &my_dedup);
+	if (dedup) {
+		PTHREAD_MUTEX_UNLOCK(inst);
+		return true;
+	}
+
+	dedup = calloc(sizeof(*dedup), 1);
+	if (!dedup) {
+		PTHREAD_MUTEX_UNLOCK(inst);
+		return false;
+	}
+
+	dedup->key = key;
+	dedup->keylen = keylen;
+	dedup->passwd = passwd;
+	dedup->when = now;
+	dedup->instance = inst;
+
+	fr_dlist_insert_tail(&inst->dedup_list, &dedup->dlist);
+	(void) rbtree_insert(inst->dedup_tree, dedup);
+	PTHREAD_MUTEX_UNLOCK(inst);
+
+	return false;
+}
+
 /*
  *  Do the authentication
  */
@@ -347,8 +485,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	if (totp_cmp(request, now, key, keylen, password->vp_strvalue, instance) == 0) {
-		     return RLM_MODULE_OK;
+		/*
+		 *	Forbid using a key more than once.
+		 */
+		if (totp_reused(instance, now, key, keylen, password->vp_strvalue)) return RLM_MODULE_FAIL;
+
+		return RLM_MODULE_OK;
 	}
+
+	/*
+	 *	Bad keys don't affect the cache.
+	 */
 	return RLM_MODULE_FAIL;
 }
 
@@ -371,6 +518,9 @@ module_t rlm_totp = {
 	.config         = module_config,
 	.bootstrap      = mod_bootstrap,
 	.instantiate    = mod_instantiate,
+#ifdef HAVE_PTHREAD_H
+	.detach		= mod_detach,
+#endif
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 	},
