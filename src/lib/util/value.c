@@ -6063,11 +6063,11 @@ bool fr_value_box_is_truthy(fr_value_box_t const *in)
 
 	switch (in->type) {
 	case FR_TYPE_NULL:
+	case FR_TYPE_STRUCTURAL_EXCEPT_GROUP:
 		return false;
 
-	case FR_TYPE_STRUCTURAL:
-		if (in->type == FR_TYPE_GROUP) return (fr_value_box_list_num_elements(&in->vb_group) > 0);
-		return false;
+	case FR_TYPE_GROUP:
+		return (fr_value_box_list_num_elements(&in->vb_group) > 0);
 
 	case FR_TYPE_BOOL:
 		return in->vb_bool;

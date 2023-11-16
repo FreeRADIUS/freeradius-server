@@ -1114,40 +1114,17 @@ int dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
 	 *	Attributes are inserted into the bin in order of their attribute
 	 *	numbers to allow slightly more efficient lookups.
 	 */
-	bin = &children[child->attr & 0xff];
-	for (;;) {
-		bool child_is_struct = false;
-		bool bin_is_struct = false;
-
-		if (!*bin) break;
-
+	for (bin = &children[child->attr & 0xff]; *bin; bin = &(*bin)->next) {
 		/*
 		 *	Workaround for vendors that overload the RFC space.
 		 *	Structural attributes always take priority.
 		 */
-		switch (child->type) {
-		case FR_TYPE_STRUCTURAL:
-			child_is_struct = true;
-			break;
-
-		default:
-			break;
-		}
-
-		switch ((*bin)->type) {
-		case FR_TYPE_STRUCTURAL:
-			bin_is_struct = true;
-			break;
-
-		default:
-			break;
-		}
+		bool child_is_struct = fr_type_is_structural(child->type);
+		bool bin_is_struct = fr_type_is_structural((*bin)->type);
 
 		if (child_is_struct && !bin_is_struct) break;
-		else if (fr_dict_vendor_num_by_da(child) <= fr_dict_vendor_num_by_da(*bin)) break;	/* Prioritise RFC attributes */
-		else if (child->attr <= (*bin)->attr) break;
-
-		bin = &(*bin)->next;
+		if (fr_dict_vendor_num_by_da(child) <= fr_dict_vendor_num_by_da(*bin)) break;	/* Prioritise RFC attributes */
+		if (child->attr <= (*bin)->attr) break;
 	}
 
 	memcpy(&this, &bin, sizeof(this));
