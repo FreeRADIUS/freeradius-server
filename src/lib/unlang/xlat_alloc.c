@@ -66,11 +66,6 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 	 *	Free existing lists if present
 	 */
 	if (node->type != 0) switch (node->type) {
-	case XLAT_ALTERNATE:
-		TALLOC_FREE(node->alternate[0]);
-		TALLOC_FREE(node->alternate[1]);
-		break;
-
 	case XLAT_GROUP:
 		TALLOC_FREE(node->group);
 		break;
@@ -90,11 +85,6 @@ void _xlat_exp_set_type(NDEBUG_LOCATION_ARGS xlat_exp_t *node, xlat_type_t type)
 	 *	Alloc new lists to match the type
 	 */
 	switch (type) {
-	case XLAT_ALTERNATE:
-		node->alternate[0] = _xlat_exp_head_alloc(NDEBUG_LOCATION_VALS node);
-		node->alternate[1] = _xlat_exp_head_alloc(NDEBUG_LOCATION_VALS node);
-		break;
-
 	case XLAT_GROUP:
 		node->group = _xlat_exp_head_alloc(NDEBUG_LOCATION_VALS node);
 		break;
@@ -156,11 +146,6 @@ xlat_exp_t *_xlat_exp_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, xlat_type_t ty
 	 *	need to allocate for this node type.
 	 */
 	switch (type) {
-	case XLAT_ALTERNATE:
-		extra_hdrs = 2;
-		extra = sizeof(xlat_exp_head_t) * 2;
-		break;
-
 	case XLAT_GROUP:
 		extra_hdrs = 1;
 		extra = sizeof(xlat_exp_head_t);
@@ -258,14 +243,8 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 		 *	Ensure the format string is valid...  At this point
 		 *	they should all be talloc'd strings.
 		 */
-		if (p->type == XLAT_ALTERNATE) {
-			/* Alternates don't have format strings */
-			MEM(node = xlat_exp_alloc_null(ctx));
-			xlat_exp_set_type(node, XLAT_ALTERNATE);
-		} else {
-			MEM(node = xlat_exp_alloc(ctx, p->type,
-						  talloc_get_type_abort_const(p->fmt, char), talloc_array_length(p->fmt) - 1));
-		}
+		MEM(node = xlat_exp_alloc(ctx, p->type,
+					  talloc_get_type_abort_const(p->fmt, char), talloc_array_length(p->fmt) - 1));
 
 		node->quote = p->quote;
 		node->flags = p->flags;
@@ -320,13 +299,6 @@ static int CC_HINT(nonnull) _xlat_copy_internal(NDEBUG_LOCATION_ARGS TALLOC_CTX 
 			break;
 #endif
 
-		case XLAT_ALTERNATE:
-			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
-							 node, node->alternate[0], p->alternate[0]) < 0)) goto error;
-			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
-							 node, node->alternate[1], p->alternate[1]) < 0)) goto error;
-			break;
-
 		case XLAT_GROUP:
 			if (unlikely(_xlat_copy_internal(NDEBUG_LOCATION_VALS
 							 node, node->group, p->group) < 0)) goto error;
@@ -358,12 +330,6 @@ void xlat_exp_verify(xlat_exp_t const *node)
 	(void)talloc_get_type_abort_const(node, xlat_exp_t);
 
 	switch (node->type) {
-	case XLAT_ALTERNATE:
-		xlat_exp_head_verify(node->alternate[0]);
-		xlat_exp_head_verify(node->alternate[1]);
-		fr_assert(!node->fmt);
-		return;
-
 	case XLAT_GROUP:
 		xlat_exp_head_verify(node->group);
 		(void)talloc_get_type_abort_const(node->fmt, char);

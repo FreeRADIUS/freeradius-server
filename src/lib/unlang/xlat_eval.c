@@ -133,30 +133,6 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 		return fr_sbuff_set(out, &our_out);
 	}
 
-	case XLAT_ALTERNATE:
-	{
-		fr_sbuff_t 	our_out = FR_SBUFF(out);
-		fr_slen_t	slen;
-
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "%{");
-
-		xlat_exp_foreach(node->alternate[0], child) {
-			slen = xlat_fmt_print(&our_out, child);
-			if (slen < 0) return slen - fr_sbuff_used(&our_out);
-		}
-
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, ":-");
-
-		xlat_exp_foreach(node->alternate[1], child) {
-			slen = xlat_fmt_print(&our_out, child);
-			if (slen < 0) return slen - fr_sbuff_used(&our_out);
-		}
-
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "}");
-
-		return fr_sbuff_set(out, &our_out);
-	}
-
 	default:
 		return 0;
 	}
@@ -880,8 +856,6 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *				Once evaluation is complete, the caller
  *				should call us with the same #xlat_exp_t and the
  *				result of the nested evaluation in result.
- * @param[in,out] alternate	Whether we processed, or have previously processed
- *				the alternate.
  * @param[in] request		the current request.
  * @param[in] head		of the list to evaluate
  * @param[in,out] in		xlat node to evaluate.  Advanced as we process
@@ -890,7 +864,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @param[in] result		of a previous nested evaluation.
  */
 xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				     xlat_exp_head_t const **child, bool *alternate,
+				     xlat_exp_head_t const **child,
 				     request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in,
 				     void *env_data, fr_value_box_list_t *result)
 {
@@ -971,44 +945,6 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			RINDENT();
 			break;
 		}
-	}
-		break;
-
-	case XLAT_ALTERNATE:
-	{
-		fr_assert(alternate);
-
-		/*
-		 *	No result from the first child, try the alternate
-		 */
-		if (fr_value_box_list_empty(result)) {
-			/*
-			 *	Already tried the alternate
-			 */
-			if (*alternate) {
-				XLAT_DEBUG("** [%i] %s(alt-second) - string empty, null expansion, continuing...",
-					   unlang_interpret_stack_depth(request), __FUNCTION__);
-				*alternate = false;	/* Reset */
-
-				xlat_debug_log_expansion(request, *in, NULL, __LINE__);
-				xlat_debug_log_result(request, *in, NULL);		/* Record the fact it's NULL */
-				break;
-			}
-
-			XLAT_DEBUG("** [%i] %s(alt-first) - string empty, evaluating alternate",
-				   unlang_interpret_stack_depth(request), __FUNCTION__);
-			*child = (*in)->alternate[1];
-			*alternate = true;
-
-			return XLAT_ACTION_PUSH_CHILD;
-		}
-
-		*alternate = false;	/* Reset */
-
-		xlat_debug_log_expansion(request, *in, NULL, __LINE__);
-		xlat_debug_log_list_result(request, *in, result);
-
-		fr_value_box_list_move((fr_value_box_list_t *)out->dlist, result);
 	}
 		break;
 
@@ -1253,7 +1189,7 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 			 *	If there's no children we can just
 			 *	call the function directly.
 			 */
-			xa = xlat_frame_eval_repeat(ctx, out, child, NULL, request, head, in, NULL, &result);
+			xa = xlat_frame_eval_repeat(ctx, out, child, request, head, in, NULL, &result);
 			if (xa != XLAT_ACTION_DONE || (!*in)) goto finish;
 			continue;
 
@@ -1278,15 +1214,6 @@ xlat_action_t xlat_frame_eval(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_exp_head_
 		}
 			continue;
 #endif
-
-		case XLAT_ALTERNATE:
-			XLAT_DEBUG("** [%i] %s(alternate)", unlang_interpret_stack_depth(request), __FUNCTION__);
-			fr_assert(node->alternate[0] != NULL);
-			fr_assert(node->alternate[1] != NULL);
-
-			*child = node->alternate[0];
-			xa = XLAT_ACTION_PUSH_CHILD;
-			goto finish;
 
 		case XLAT_GROUP:
 			XLAT_DEBUG("** [%i] %s(child) - %%{%s ...}", unlang_interpret_stack_depth(request), __FUNCTION__,
@@ -1678,26 +1605,6 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 				ret = walker(node, uctx);
 				if (ret < 0) return ret;
 			}
-			break;
-
-		case XLAT_ALTERNATE:
-			if (!type || (type & XLAT_ALTERNATE)) {
-				ret = walker(node, uctx);
-				if (ret < 0) return ret;
-				if (ret > 0) continue;
-			}
-
-			/*
-			 *	Evaluate the first child
-			 */
-			ret = xlat_eval_walk(node->alternate[0], walker, type, uctx);
-			if (ret < 0) return ret;
-
-			/*
-			 *	Evaluate the alternate expansion path
-			 */
-			ret = xlat_eval_walk(node->alternate[1], walker, type, uctx);
-			if (ret < 0) return ret;
 			break;
 
 		case XLAT_GROUP:

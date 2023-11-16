@@ -40,17 +40,6 @@ match {literal%{User-Password}literal}
 xlat \%{literal%{User-Password}literal}
 match \%{literal%{User-Password}literal}
 
-xlat literal%{%{User-Password}:-literal}
-match literal%{%{User-Password}:-literal}
-
-xlat literal%{%{User-Password}:-\%{lit}eral}
-match literal%{%{User-Password}:-\%{lit}eral}
-
-xlat literal%{%{User-Password}:-%{User-Name}\%literal}
-match literal%{%{User-Password}:-%{User-Name}\%literal}
-
-xlat literal%{%{User-Password}:-\%literal}
-match literal%{%{User-Password}:-\%literal}
 #
 #  Regex capture groups
 #
@@ -147,70 +136,17 @@ match \"%t\tfoo\"
 xlat \"%t\t%{NAS-IP-Address}\"
 match \"%t\t%{NAS-IP-Address}\"
 
-xlat \"foo %{test:foo}\"
-match \"foo %{test:foo}\"
+xlat \"foo %test('foo')\"
+match \"foo %{test:'foo'}\"
 
 #
 #  Alternations
 #
-xlat %{%{foo}:-%{bar}}
+xlat %{%{foo} || %{bar}}
 match ERROR offset 5: Unresolved attributes not allowed in expansions here
 
-xlat %{%{User-Name}:-%{bar}}
-match ERROR offset 19: Unresolved attributes not allowed in expansions here
-
-xlat %{%{User-Name}:-bar}
-match %{%{User-Name}:-bar}
-
-xlat foo %{%{User-Name}:-bar} baz
-match foo %{%{User-Name}:-bar} baz
-
-xlat %{%{test:bar}:-%{User-Name}}
-match %{%{test:bar}:-%{User-Name}}
-
-xlat %{%{test:bar}:-%{%{User-Name}:-bar}}
-match %{%{test:bar}:-%{%{User-Name}:-bar}}
-
-xlat %{%{User-Name}:-}
-match %{%{User-Name}:-}
-
-xlat %{%{Operator-Name}:-}
-match %{%{Operator-Name}:-}
-
-xlat %{%{%{User-Name}:-foo}:-bar}
-match %{%{%{User-Name}:-foo}:-bar}
-
-xlat %{%{%{User-Name}:-foo}:-%{%{test:bar}:-%{User-Name}}}
-match %{%{%{User-Name}:-foo}:-%{%{test:bar}:-%{User-Name}}}
-
-xlat %{:-}
-match ERROR offset 3: First item in alternation cannot be empty
-
-xlat %{:-%{User-Name}}
-match ERROR offset 3: First item in alternation cannot be empty
-
-xlat %{%{}:-}
-match ERROR offset 5: Empty expression is invalid
-
-xlat %{%{}:-foo}
-match ERROR offset 5: Empty expression is invalid
-
-xlat %{%{User-Name}:-
-match ERROR offset 17: Missing closing brace
-
-# Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
-xlat %{%{User-Name}:-foo
-match ERROR offset 20: Missing closing brace
-
-xlat %{%{User-Name}:}
-match ERROR offset 15: Expected ':-' after first expansion
-
-xlat %{%{User-Name}}
-match ERROR offset 15: Expected ':-' after first expansion
-
-xlat %{%{User-Name}:-}
-match %{%{User-Name}:-}
-
+xlat %{%{User-Name} || %{bar}}
+match ERROR offset 21: Unresolved attributes not allowed in expansions here
 
 #
 #  Empty and malformed expansions
@@ -266,7 +202,7 @@ match ERROR offset 14: Missing closing brace
 
 # Issue seen in the wild that caused an SEGV during pass2
 xlat %{%{control.IP-Pool.Name}:%{reply.IP-Pool.Range}
-match ERROR offset 26: Expected ':-' after first expansion
+match ERROR offset 49: Missing closing brace
 
 #
 #  API to split xlat strings into argv-style arguments.
@@ -348,4 +284,4 @@ xlat %{md5:'arg"'}
 match %{md5:'arg"'}
 
 count
-match 199
+match 157

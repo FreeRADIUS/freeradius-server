@@ -109,7 +109,6 @@ typedef enum {
 #ifdef HAVE_REGEX
 	XLAT_REGEX		= 0x0080,		//!< regex reference %{1}, etc.
 #endif
-	XLAT_ALTERNATE		= 0x0100,		//!< xlat conditional syntax :-
 	XLAT_GROUP		= 0x0200		//!< encapsulated string of xlats
 } xlat_type_t;
 
@@ -159,8 +158,6 @@ struct xlat_exp_s {
 #endif
 
 	union {
-		xlat_exp_head_t	*alternate[2];	//!< alternate expansions
-
 		xlat_exp_head_t	*group;		//!< children of a group
 
 		/** An tmpl_t reference
@@ -306,7 +303,7 @@ xlat_action_t	xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				       fr_value_box_list_t *result, xlat_func_t resume, void *rctx);
 
 xlat_action_t	xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				       xlat_exp_head_t const **child, bool *alternate,
+				       xlat_exp_head_t const **child,
 				       request_t *request, xlat_exp_head_t const *head, xlat_exp_t const **in,
 				       void *env_data, fr_value_box_list_t *result) CC_HINT(nonnull(1,2,3,5));
 

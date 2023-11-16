@@ -51,8 +51,6 @@ typedef struct {
 	 */
 	fr_value_box_list_t	out;				//!< Head of the result of a nested
 								///< expansion.
-	bool			alternate;			//!< record which alternate branch we
-								///< previously took.
 	xlat_func_t		resume;				//!< called on resume
 	xlat_func_signal_t	signal;				//!< called on signal
 	fr_signal_t		sigmask;			//!< Signals to block
@@ -326,7 +324,7 @@ static unlang_action_t unlang_xlat_repeat(rlm_rcode_t *p_result, request_t *requ
 	}
 
 	xa = xlat_frame_eval_repeat(state->ctx, &state->values, &child,
-				    &state->alternate, request, state->head, &state->exp, state->env_data, &state->out);
+				    request, state->head, &state->exp, state->env_data, &state->out);
 	switch (xa) {
 	case XLAT_ACTION_PUSH_CHILD:
 		fr_assert(child);

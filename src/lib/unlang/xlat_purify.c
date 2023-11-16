@@ -101,29 +101,6 @@ int xlat_purify_list(xlat_exp_head_t *head, request_t *request)
 			node->flags = node->group->flags;
 			break;
 
-
-		case XLAT_ALTERNATE:
-			if (node->alternate[0]->flags.can_purify) {
-				rcode = xlat_purify_list(node->alternate[0], request);
-				if (rcode < 0) return rcode;
-			}
-			node->flags = node->alternate[0]->flags;
-
-			/*
-			 *	@todo - If the RHS of the alternation
-			 *	is now pure, then we can statically
-			 *	evaluate it, and replace this node
-			 *	with the children.  But only if the
-			 *	child list is not empty.
-			 */
-
-			if (node->alternate[1]->flags.can_purify) {
-				rcode = xlat_purify_list(node->alternate[1], request);
-				if (rcode < 0) return rcode;
-			}
-			xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
-			break;
-
 		case XLAT_FUNC:
 			/*
 			 *	If the node is not pure, then maybe there's a callback to purify it, OR maybe

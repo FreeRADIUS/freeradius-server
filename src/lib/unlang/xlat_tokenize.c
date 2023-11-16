@@ -118,59 +118,6 @@ static fr_sbuff_parse_rules_t const xlat_new_arg_rules = {
 static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
-static inline int xlat_tokenize_alternation(xlat_exp_head_t *head, fr_sbuff_t *in,
-					    tmpl_rules_t const *t_rules, bool func_args)
-{
-	xlat_exp_t	*node;
-
-	XLAT_DEBUG("ALTERNATE <-- %pV", fr_box_strvalue_len(fr_sbuff_current(in), fr_sbuff_remaining(in)));
-
-	node = xlat_exp_alloc(head, XLAT_ALTERNATE, NULL, 0);
-	if (func_args) {
-		if (xlat_tokenize_function_args(node->alternate[0], in, t_rules) < 0) {
-		error:
-			talloc_free(node);
-			return -1;
-		}
-	} else {
-		if (xlat_tokenize_expansion(node->alternate[0], in, t_rules) < 0) goto error;
-	}
-
-	if (!fr_sbuff_adv_past_str_literal(in, ":-")) {
-		fr_strerror_const("Expected ':-' after first expansion");
-		goto error;
-	}
-	node->flags = node->alternate[0]->flags;
-
-	/*
-	 *	Allow the RHS to be empty as a special case.
-	 */
-	if (fr_sbuff_next_if_char(in, '}')) goto done;
-
-	/*
-	 *	Parse the alternate expansion.
-	 */
-	if (xlat_tokenize_input(node->alternate[1], in,
-				&xlat_expansion_rules, t_rules) < 0) goto error;
-
-	if (!fr_sbuff_next_if_char(in, '}')) {
-		fr_strerror_const("Missing closing brace");
-		goto error;
-	}
-
-	if (!xlat_exp_head(node->alternate[1])) {
-		fr_strerror_const("Empty expansion is invalid");
-		goto error;
-	}
-
-	xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
-
-done:
-	xlat_exp_insert_tail(head, node);
-
-	return 0;
-}
-
 #ifdef HAVE_REGEX
 /** Parse an xlat reference
  *
@@ -913,28 +860,6 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 
 	XLAT_DEBUG("EXPANSION <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
 
-	/*
-	 *	%{...}:-bar}
-	 */
-	if (fr_sbuff_adv_past_str_literal(in, "%{")) {
-		return xlat_tokenize_alternation(head, in, t_rules, false);
-	}
-
-	/*
-	 *	%(...):-bar}
-	 */
-	if (fr_sbuff_adv_past_str_literal(in, "%(")) {
-		return xlat_tokenize_alternation(head, in, t_rules, true);
-	}
-
-	/*
-	 *	:-bar}
-	 */
-	if (fr_sbuff_is_str_literal(in, ":-")) {
-		fr_strerror_const("First item in alternation cannot be empty");
-		return -2;
-	}
-
 #ifdef HAVE_REGEX
 	fr_sbuff_marker(&s_m, in);
 	len = fr_sbuff_adv_past_allowed(in, SIZE_MAX, sbuff_char_class_uint, NULL);
@@ -1392,15 +1317,6 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 		break;
 #endif
 
-	case XLAT_ALTERNATE:
-		DEBUG("XLAT-IF {");
-		_xlat_debug_head(node->alternate[0], depth);
-		DEBUG("}");
-		DEBUG("XLAT-ELSE {");
-		_xlat_debug_head(node->alternate[1], depth);
-		DEBUG("}");
-		break;
-
 	case XLAT_INVALID:
 		DEBUG("XLAT-INVALID");
 		break;
@@ -1596,18 +1512,6 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 			slen = xlat_print(out, node->call.args, &xlat_escape);
 			if (slen < 0) return slen;
 		}
-		break;
-
-	case XLAT_ALTERNATE:
-		slen = xlat_print(out, node->alternate[0], &xlat_escape);
-		if (slen < 0) return slen;
-
-		FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, ":-");
-		slen = xlat_print(out, node->alternate[1], &xlat_escape);
-		if (slen < 0) return slen;
-		break;
-
-		fr_assert_fail(NULL);
 		break;
 
 	case XLAT_INVALID:
@@ -2035,19 +1939,6 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 		case XLAT_GROUP:
 			if (xlat_resolve(node->group, xr_rules) < 0) return -1;
 			node->flags = node->group->flags;
-			break;
-
-		/*
-		 *	Alternate expansion a || b
-		 *
-		 *	Do resolution for a OR b
-		 */
-		case XLAT_ALTERNATE:
-			if ((xlat_resolve(node->alternate[0], xr_rules) < 0) ||
-			    (xlat_resolve(node->alternate[1], xr_rules) < 0)) return -1;
-
-			node->flags = node->alternate[0]->flags;
-			xlat_flags_merge(&node->flags, &node->alternate[1]->flags);
 			break;
 
 		/*

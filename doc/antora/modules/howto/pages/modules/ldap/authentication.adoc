@@ -33,7 +33,7 @@ On the FreeRADIUS debug terminal side, you should see something like:
 ----
 ...
 (0)    ldap - Reserved connection (0)
-(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
+(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name} || %{User-Name}})
 (0)    ldap - --> (uid=john)
 (0)    ldap - Performing search in "dc=example,dc=com" with filter "(uid=john)", scope "sub"
 (0)    ldap - Waiting for search result...
@@ -103,7 +103,7 @@ You should now look to the output of the debugging from the FreeRADIUS terminal 
 [source,log]
 ----
 (0)    ldap - Reserved connection (0)
-(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
+(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name} || %{User-Name}})
 (0)    ldap - --> (uid=john)
 (0)    ldap - Performing search in "dc=example,dc=com" with filter "(uid=john)", scope "sub"
 (0)    ldap - Waiting for search result...
@@ -159,7 +159,7 @@ If you use LDAP bind'ing to perform user authentication, then when `radclient` r
 [source,log]
 ----
 (0)    ldap - Reserved connection (0)
-(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name}:-%{User-Name}})
+(0)    ldap - EXPAND (uid=%{%{Stripped-User-Name} || %{User-Name}})
 (0)    ldap - --> (uid=john)
 (0)    ldap - Performing search in "dc=example,dc=com" with filter "(uid=john)", scope "sub"
 (0)    ldap - Waiting for search result...
