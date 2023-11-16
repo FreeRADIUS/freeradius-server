@@ -1,30 +1,19 @@
-/*
- * Below are modeling functions that use Coverity functions (the __coverity_*__())
- * to tell it the functions' intent.
+/* Coverity Scan model
  *
- * Summary: there doesn't appear to be any way we can run cov-make-library, which
- * leaves us with uploading it via the Coverity web page. We found out the hard
- * way that just preprocessing won't cut it. Coverity can't handle the expansions
- * of some of the macro usage in FreeRADIUS. In fact, one (open source) Coverity
- * modeling file says in comments that you *can't* include header files.
+ * This is a modeling file for Coverity Scan. Modeling helps to avoid false
+ * positives.
  *
- * That said... coverity models only describe the modeled functions' effects that
- * matter to coverity. There's an example in the Coverity docs modeling a function
- * that calls fopen(), and it actually typedefs FILE as an empty structure. It works..
- * because coverity is told what happens only in terms of the FILE * fopen() returns.
+ * - A model file can't #include any header files.
+ * - Therefore only some built-in primitives like int, char and void are
+ *   available but not wchar_t, NULL etc.
+ * - Modeling doesn't need full structs and typedefs. Rudimentary structs
+ *   and similar types are sufficient.
+ * - An uninitialized local pointer is not an error. It signifies that the
+ *   variable could be either NULL or have some data.
  *
- * We can't always get away with that. For example, initializing a value box, if
- * successful, writes sizeof(fr_value_box_t) bytes, so coverity has to know enough
- * to accurately determine that. We may find other issues as well... ah! If the models
- * keep things symbolic, maybe we CAN get away with only mentioning referenced fields.
- *
- * All this leads to possible coupling between the declarations and typedefs herein
- * and the real ones in FreeRADIUS header files, so that changes in the latter may
- * require changes to the former. So... We will declare ONLY what the modeling functions
- * need, mentioning their source, until we find out that more is necessary.
- *
- * NOTE: Any time this file changes, it must be reuploaded via the coverity scan web
- * interface.
+ * Coverity Scan doesn't pick up modifications automatically. The model file
+ * must be uploaded by an admin in the analysis settings of
+ * https://scan.coverity.com/projects/freeradius-freeradius-server?tab=analysis_settings
  */
 
 typedef unsigned char bool;
@@ -37,60 +26,6 @@ typedef unsigned long int size_t;
 
 typedef union {
 } pthread_mutex_t;
-
-/* from src/lib/server/exfile.[ch] */
-
-typedef struct exfile_s {
-	pthread_mutex_t		mutex;
-	bool			locking;
-} exfile_t;
-
-static int exfile_open_lock(exfile_t *ef, char const *filename, mode_t permissions, off_t *offset)
-{
-    int result;
-
-    if (result > 0) __coverity_exclusive_lock_acquire__((void *) &ef->mutex);
-    return result;
-}
-
-static int exfile_close_lock(exfile_t *ef, int fd)
-{
-    int result;
-
-    __coverity_exclusive_lock_release__((void *) &ef->mutex);
-    return result;
-}
-
-/* from src/lib/server/pool.[ch] */
-
-typedef struct {
-} request_t;
-
-typedef struct {
-	pthread_mutex_t	mutex;
-} fr_pool_t;
-
-typedef struct {
-} fr_pool_connection_t;
-
-typedef struct {
-} fr_time_t;
-
-static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *request, fr_time_t now, bool in_use, bool unlock)
-{
-	fr_pool_connection_t *result;
-
-	if (result && !unlock)  __coverity_exclusive_lock_acquire__((void *) &pool->mutex);
-	return result;
-}
-
-static fr_pool_connection_t *connection_find(fr_pool_t *pool, void *conn)
-{
-	fr_pool_connection_t *result;
-
-	if (result)  __coverity_exclusive_lock_acquire__((void *) &pool->mutex);
-	return result;
-}
 
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
@@ -204,9 +139,50 @@ typedef struct {
 typedef struct {
 }	fr_dict_attr_flags_t;
 
-static void fr_value_box_init(fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
+ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 {
-	__coverity_writeall__(vb);
+	ssize_t	result;
+
+	if (result >= 0) __coverity_write_buffer_bytes__(out->p, result);
+
+	return result;
+}
+
+size_t fr_sbuff_out_bstrncpy_allowed(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				     bool const allowed[static UINT8_MAX + 1])
+{
+	size_t	result;
+
+	__coverity_write_buffer_bytes__(out->p, result + 1);
+
+	return result;
+}
+
+typedef struct {
+} 	fr_sbuff_term_t;
+typedef struct {
+} 	fr_sbuff_unescape_rules_t;
+
+size_t fr_sbuff_out_bstrncpy_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				   fr_sbuff_term_t const *tt,
+				   fr_sbuff_unescape_rules_t const *u_rules)
+{
+	size_t	result;
+
+	__coverity_write_buffer_bytes__(out->p, result + 1);
+
+	return result;
+}
+
+size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
+				   fr_sbuff_term_t const *tt,
+				   fr_sbuff_unescape_rules_t const *u_rules)
+{
+	size_t	result;
+
+	__coverity_write_buffer_bytes__(out->p, result + 1);
+
+	return result;
 }
 
 ssize_t fr_dict_attr_oid_print(fr_sbuff_t *out,
@@ -230,6 +206,9 @@ ssize_t fr_dict_attr_flags_print(fr_sbuff_t *out, fr_dict_t const *dict, fr_type
 
 	return result;
 }
+
+typedef struct {
+} request_t;
 
 typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
@@ -272,4 +251,20 @@ fr_slen_t tmpl_print(fr_sbuff_t *out, tmpl_t const *vpt,
 void fr_md5_calc(uint8_t out[static MD5_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
 {
 	__coverity_write_buffer_bytes__(out, MD5_DIGEST_LENGTH);
+}
+
+typedef struct {
+} decode_fail_t;
+
+bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
+                  uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
+{
+	bool result;
+
+	if (result) {
+		__coverity_mark_pointee_as_sanitized__(&packet, TAINTED_SCALAR_GENERIC);
+		__coverity_mark_pointee_as_sanitized__(packet, TAINTED_SCALAR_GENERIC);
+		__coverity_mark_pointee_as_sanitized__(packet_len_p, TAINTED_SCALAR_GENERIC);
+	}
+	return result;
 }
