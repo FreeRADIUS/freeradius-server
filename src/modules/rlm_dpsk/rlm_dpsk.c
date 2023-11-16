@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/dlist.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <openssl/ssl.h>
@@ -88,38 +89,6 @@ typedef struct eapol_attr_t {
 	uint8_t		header[4];		// 02030075
 	eapol_key_frame_t frame;
 } CC_HINT(__packed__) eapol_attr_t;
-
-/*
- *	We have an internal cache, keyed by (mac + ssid).
- *
- *	It returns the PMK and PSK for the user.
- */
-typedef struct fr_dlist_s fr_dlist_t;
-
-struct fr_dlist_s {
-	fr_dlist_t	*prev;
-	fr_dlist_t	*next;
-};
-
-static inline void fr_dlist_entry_init(fr_dlist_t *entry)
-{
-	entry->prev = entry->next = entry;
-}
-
-static inline CC_HINT(nonnull) void fr_dlist_entry_unlink(fr_dlist_t *entry)
-{
-	entry->prev->next = entry->next;
-	entry->next->prev = entry->prev;
-	entry->prev = entry->next = entry;
-}
-
-static inline CC_HINT(nonnull) void fr_dlist_insert_tail(fr_dlist_t *head, fr_dlist_t *entry)
-{
-	entry->next = head;
-	entry->prev = head->prev;
-	head->prev->next = entry;
-	head->prev = entry;
-}
 
 #ifdef HAVE_PTHREAD_H
 #define PTHREAD_MUTEX_LOCK pthread_mutex_lock
@@ -182,11 +151,11 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static inline CC_HINT(nonnull) rlm_dpsk_cache_t *fr_dlist_tail(fr_dlist_t const *head)
+static inline CC_HINT(nonnull) rlm_dpsk_cache_t *fr_dlist_head(fr_dlist_t const *head)
 {
 	if (head->prev == head) return NULL;
 
-	return (rlm_dpsk_cache_t *) (((uintptr_t) head->prev) - offsetof(rlm_dpsk_cache_t, dlist));
+	return (rlm_dpsk_cache_t *) (((uintptr_t) head->next) - offsetof(rlm_dpsk_cache_t, dlist));
 }
 
 static void rdebug_hex(REQUEST *request, char const *prefix, uint8_t const *data, int len)
@@ -698,7 +667,7 @@ make_digest:
 			 */
 			if (rbtree_num_elements(inst->cache) > inst->cache_size) {
 				PTHREAD_MUTEX_LOCK(&inst->mutex);
-				entry = fr_dlist_tail(&inst->head);
+				entry = fr_dlist_head(&inst->head);
 				PTHREAD_MUTEX_UNLOCK(&inst->mutex);
 
 				rbtree_deletebydata(inst->cache, entry);
