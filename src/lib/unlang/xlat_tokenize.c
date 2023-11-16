@@ -948,6 +948,7 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 		tmpl_set_xlat(node->vpt, child);
 		xlat_exp_insert_tail(head, node);
 
+		child->flags.xlat = true;
 		node->flags = child->flags;
 		fr_assert(tmpl_xlat(node->vpt) != NULL);
 
@@ -1415,7 +1416,9 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 
 		if (tmpl_contains_xlat(node->vpt)) { /* xlat and exec */
 			if (node->vpt->quote == T_BARE_WORD) {
+				if (node->flags.xlat) FR_SBUFF_IN_CHAR_RETURN(out, '%', '{');
 				xlat_print(out, tmpl_xlat(node->vpt), NULL);
+				if (node->flags.xlat) FR_SBUFF_IN_CHAR_RETURN(out, '}');
 			} else {
 				FR_SBUFF_IN_CHAR_RETURN(out, fr_token_quote[node->vpt->quote]);
 				xlat_print(out, tmpl_xlat(node->vpt), fr_value_escape_by_quote[node->quote]);

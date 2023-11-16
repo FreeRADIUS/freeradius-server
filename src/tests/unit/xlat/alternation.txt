@@ -6,19 +6,19 @@ proto-dictionary radius
 #  but which print out as ( ... )
 #
 xlat literal%{%{User-Password} || 'literal'}
-match literal%{%{User-Password} || 'literal'}
+match literal%{(%{User-Password} || 'literal')}
 
 xlat %{%{User-Name} || "bar"}
-match %{%{User-Name} || "bar"}
+match %{(%{User-Name} || "bar")}
 
 xlat foo %{%{User-Name} || 'bar'} baz
-match foo %{%{User-Name} || 'bar'} baz
+match foo %{(%{User-Name} || 'bar')} baz
 
 xlat %{%{test:bar} || %{User-Name}}
-match %{%{test:bar} || %{User-Name}}
+match %{(%test(bar) || %{User-Name})}
 
 xlat %{%{test:bar} || %{%{User-Name} || 'bar'}}
-match %{%{test:bar} || %{%{User-Name} || 'bar'}}
+match %{(%test(bar) || %{(%{User-Name} || 'bar')})}
 
 xlat %{%{User-Name} || }
 match ERROR offset 19: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
@@ -27,10 +27,10 @@ xlat %{%{Operator-Name} || }
 match ERROR offset 23: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat %{%{%{User-Name} || 'foo'} || 'bar'}
-match %{%{%{User-Name} || 'foo'} || 'bar'}
+match %{(%{(%{User-Name} || 'foo')} || 'bar')}
 
 xlat %{%{%{User-Name} || 'foo'} || %{%{test:bar} || %{User-Name}}}
-match %{%{%{User-Name} || 'foo'} || %{%{test:bar} || %{User-Name}}}
+match %{(%{(%{User-Name} || 'foo')} || %{(%test(bar) || %{User-Name})})}
 
 xlat %{ || }
 match ERROR offset 4: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
@@ -52,7 +52,7 @@ xlat %{%{User-Name} || 'foo'
 match ERROR offset 24: Missing closing brace
 
 xlat %{%{User-Name}:}
-match %{User-Name}:
+match %{%{User-Name}:}
 
 count
-match foo
+match 33

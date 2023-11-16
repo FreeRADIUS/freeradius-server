@@ -116,6 +116,7 @@ typedef struct {
 	bool			can_purify;	//!< if the xlat has a pure function with pure arguments.
 
 	bool			constant;	//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
+	bool			xlat;		//!< it's an xlat wrapper
 } xlat_flags_t;
 
 extern fr_table_num_sorted_t const xlat_action_table[];
