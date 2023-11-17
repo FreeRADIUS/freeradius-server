@@ -187,15 +187,15 @@ match ERROR offset 7: Unexpected text - attribute names must prefixed with '&'
 xlat %{foo bar}
 match ERROR offset 7: Invalid operator
 
-xlat %{test:
-match ERROR offset 8: Missing closing brace
+xlat %test(
+match ERROR offset 7: Missing closing brace
 
-xlat %{test:%{User-Name
-match ERROR offset 19: Missing closing brace
+xlat %test(%{User-Name)
+match ERROR offset 18: Unexpected text - attribute names must prefixed with '&'
 
 # Discuss - Not sure the offset/message is correct here, but not sure if we can determine the correct offset either
-xlat %{test:%{User-Name}
-match ERROR offset 20: Missing closing brace
+xlat %test(%{User-Name}
+match ERROR offset 19: Unexpected text after argument 1
 
 xlat %{myfirstxlat
 match ERROR offset 14: Missing closing brace
@@ -241,17 +241,20 @@ match ERROR offset 44: Unexpected text after enum value.  Expected operator
 xlat_argv echo hello %{Tmp-String-0}:1234 world
 match [0]{ echo }, [1]{ hello }, [2]{ %{Tmp-String-0}:1234 }, [3]{ world }
 
-xlat %(debug: 5)
-match %debug(, 5)
+xlat %debug(5)
+match %debug(5)
 
-xlat %(debug: "foo")
-match %debug(, "foo")
+xlat %debug( 5)
+match %debug(5)
+
+xlat %debug("foo")
+match %debug("foo")
 
 #
 #  This is correct.
 #
-xlat %(rpad:&User-Name 5 x)
-match %rpad(&User-Name, 5, x)
+xlat %rpad(&User-Name, 5, 'x')
+match %rpad(&User-Name, 5, 'x')
 
 #
 #  The second argument should be an integer.
@@ -259,8 +262,8 @@ match %rpad(&User-Name, 5, x)
 #  @todo - parsing - we don't currently track string offsets for intermediate nodes,
 #  so the "offset 23" is wrong.  It also doesn't say *which* string is wrong.  We'll fix that later.
 #
-xlat %(rpad:&User-Name foo x)
-match ERROR offset 24: Failed parsing argument 1 as type 'uint64'
+xlat %rpad(&User-Name, foo, 'x')
+match ERROR offset 28: Failed parsing argument 1 as type 'uint64'
 
 #
 #  Argument quoting
@@ -287,4 +290,4 @@ xlat %{md5:'arg"'}
 match %md5('arg"')
 
 count
-match 157
+match 159

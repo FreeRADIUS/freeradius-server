@@ -1,5 +1,5 @@
 &Tmp-String-0 := "Hello world!"
-&Tmp-Octets-0 := "%{cipher_rsa.sign:%{Tmp-String-0}}"
+&Tmp-Octets-0 := %cipher_rsa.sign(%{Tmp-String-0})
 
 if (!&Tmp-Octets-0) {
 	test_fail
@@ -12,7 +12,7 @@ if ((octets)&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
 #
 #  Pass the signature and the original message to the verification function
 #
-&Tmp-String-0 := "%(cipher_rsa.verify:%{Tmp-Octets-0} %{Tmp-String-0})"
+&Tmp-String-0 := %cipher_rsa.verify(%{Tmp-Octets-0}, %{Tmp-String-0})
 
 if (&Tmp-String-0 != 'yes') {
 	test_fail
@@ -22,7 +22,7 @@ if (&Tmp-String-0 != 'yes') {
 #  Verification should now fail
 #
 &Tmp-String-0 := "Goodbye world!"
-&Tmp-String-0 := "%(cipher_rsa.verify:%{Tmp-Octets-0} %{Tmp-String-0})"
+&Tmp-String-0 := %cipher_rsa.verify(%{Tmp-Octets-0}, %{Tmp-String-0})
 
 if (&Tmp-String-0 != 'no') {
 	test_fail
@@ -32,7 +32,7 @@ if (&Tmp-String-0 != 'no') {
 #  Repeat tests to ensure there are no issues with EVP_PKEY_CTX reuse
 #
 &Tmp-String-0 := "Hello nurse!"
-&Tmp-Octets-0 := "%{cipher_rsa.sign:%{Tmp-String-0}}"
+&Tmp-Octets-0 := %cipher_rsa.sign(%{Tmp-String-0})
 
 if (!&Tmp-Octets-0) {
 	test_fail
@@ -45,7 +45,7 @@ if ((octets)&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
 #
 #  Pass the signature and the original message to the verification function
 #
-&Tmp-String-0 := "%(cipher_rsa.verify:%{Tmp-Octets-0} %{Tmp-String-0})"
+&Tmp-String-0 := %cipher_rsa.verify(%{Tmp-Octets-0}, %{Tmp-String-0})
 
 if (&Tmp-String-0 != 'yes') {
 	test_fail
@@ -55,7 +55,7 @@ if (&Tmp-String-0 != 'yes') {
 #  Verification should now fail
 #
 &Tmp-String-0 := "Goodbye nurse!"
-&Tmp-String-0 := "%(cipher_rsa.verify:%{Tmp-Octets-0} %{Tmp-String-0})"
+&Tmp-String-0 := %cipher_rsa.verify(%{Tmp-Octets-0}, %{Tmp-String-0})
 
 if (&Tmp-String-0 != 'no') {
 	test_fail
