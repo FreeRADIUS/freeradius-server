@@ -41,7 +41,7 @@ RCSID("$Id$")
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_lua_t, module), NULL},
 	{ FR_CONF_OFFSET("func_instantiate", FR_TYPE_STRING, rlm_lua_t, func_instantiate), NULL},
 	{ FR_CONF_OFFSET("func_detach", FR_TYPE_STRING, rlm_lua_t, func_detach), NULL},

@@ -79,9 +79,9 @@ struct proto_cron_tab_s {
 };
 
 
-static int time_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int time_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static const CONF_PARSER crontab_listen_config[] = {
+static const conf_parser_t crontab_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, proto_cron_crontab_t, filename) },
 
 	{ FR_CONF_OFFSET("timespec", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_cron_crontab_t, spec),
@@ -280,7 +280,7 @@ static size_t time_names_len = NUM_ELEMENTS(time_names);
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	proto_cron_crontab_t       	*inst = talloc_get_type_abort(parent, proto_cron_crontab_t);
 	CONF_PAIR		*cp = cf_item_to_pair(ci);

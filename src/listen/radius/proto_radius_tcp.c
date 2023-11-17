@@ -70,7 +70,7 @@ typedef struct {
 } proto_radius_tcp_t;
 
 
-static const CONF_PARSER networks_config[] = {
+static const conf_parser_t networks_config[] = {
 	{ FR_CONF_OFFSET("allow", FR_TYPE_COMBO_IP_PREFIX | FR_TYPE_MULTI, proto_radius_tcp_t, allow) },
 	{ FR_CONF_OFFSET("deny", FR_TYPE_COMBO_IP_PREFIX | FR_TYPE_MULTI, proto_radius_tcp_t, deny) },
 
@@ -78,7 +78,7 @@ static const CONF_PARSER networks_config[] = {
 };
 
 
-static const CONF_PARSER tcp_listen_config[] = {
+static const conf_parser_t tcp_listen_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, proto_radius_tcp_t, ipaddr) },
 	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, proto_radius_tcp_t, ipaddr) },
 	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, proto_radius_tcp_t, ipaddr) },

@@ -109,21 +109,21 @@ static fr_rb_tree_t *server_section_name_tree = NULL;
 
 static int8_t server_section_name_cmp(void const *one, void const *two);
 
-static int namespace_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int namespace_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
-static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+static int namespace_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
-static const CONF_PARSER server_on_read_config[] = {
+static const conf_parser_t server_on_read_config[] = {
 	{ FR_CONF_OFFSET("namespace", FR_TYPE_VOID | FR_TYPE_REQUIRED, fr_virtual_server_t, process_mi),
 			.on_read = namespace_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
 
-const CONF_PARSER virtual_servers_on_read_config[] = {
+const conf_parser_t virtual_servers_on_read_config[] = {
 	/*
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
@@ -136,7 +136,7 @@ const CONF_PARSER virtual_servers_on_read_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER server_config[] = {
+static const conf_parser_t server_config[] = {
 	{ FR_CONF_OFFSET("namespace", FR_TYPE_VOID | FR_TYPE_REQUIRED, fr_virtual_server_t, process_mi),
 			 .func = namespace_parse },
 
@@ -149,7 +149,7 @@ static const CONF_PARSER server_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-const CONF_PARSER virtual_servers_config[] = {
+const conf_parser_t virtual_servers_config[] = {
 	/*
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
@@ -180,7 +180,7 @@ const CONF_PARSER virtual_servers_config[] = {
  *	- -1 on failure.
  */
 static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			     CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	CONF_PAIR			*cp = cf_item_to_pair(ci);
 	CONF_SECTION			*server_cs = cf_item_to_section(cf_parent(ci));
@@ -232,7 +232,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
  *
  *  This callback exists only as a place-holder to ensure that the
  *  listen_on_read function is called.  The conf file routines won't
- *  recurse into every CONF_PARSER section to check if there's an
+ *  recurse into every conf_parser_t section to check if there's an
  *  "on_read" callback.  So this place-holder is a signal.
  *
  * @param[in] ctx	to allocate data in.
@@ -245,7 +245,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
  *	- -1 on failure.
  */
 static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			  UNUSED CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			  UNUSED CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	return 0;
 }
@@ -283,7 +283,7 @@ int add_compile_list(CONF_SECTION *cs, virtual_server_compile_t const *compile_l
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
@@ -339,7 +339,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	fr_virtual_listen_t	*listener = talloc_get_type_abort(out, fr_virtual_listen_t); /* Pre-allocated for us */
 	CONF_SECTION		*listener_cs = cf_item_to_section(ci);
@@ -462,7 +462,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
  *	- -1 on failure.
  */
 static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	fr_virtual_server_t	*server = talloc_get_type_abort(out, fr_virtual_server_t);
 	CONF_SECTION		*server_cs = cf_item_to_section(ci);
@@ -777,7 +777,7 @@ CONF_SECTION *virtual_server_by_child(CONF_SECTION *section)
  *
  */
 int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	CONF_SECTION	*server_cs;
 

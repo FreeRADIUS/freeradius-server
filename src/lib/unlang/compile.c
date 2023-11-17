@@ -1934,7 +1934,7 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 		}
 
 		/*
-		 *	We don't use CONF_PARSER here for various
+		 *	We don't use conf_parser_t here for various
 		 *	magical reasons.
 		 */
 		if (strcmp(name, "initial_rtx_time") == 0) {

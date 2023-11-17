@@ -76,7 +76,7 @@ typedef struct {
 	fr_time_t	last_reset;
 } rlm_sqlcounter_t;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, sqlmod_inst) },
 
 

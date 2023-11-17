@@ -47,7 +47,7 @@ typedef struct {
 	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_peap_t;
 
-static CONF_PARSER submodule_config[] = {
+static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_peap_t, tls_conf_name) },
 
 	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", FR_TYPE_BOOL, rlm_eap_peap_t, NULL), .dflt = "no" },

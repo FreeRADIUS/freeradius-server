@@ -49,9 +49,9 @@ typedef struct {
 } eap_auth_rctx_t;
 
 static int submodule_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+			  CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 static fr_table_num_sorted_t const require_identity_realm_table[] = {
 	{ L("nai"),	REQUIRE_REALM_NAI	},
@@ -60,7 +60,7 @@ static fr_table_num_sorted_t const require_identity_realm_table[] = {
 };
 static size_t require_identity_realm_table_len = NUM_ELEMENTS(require_identity_realm_table);
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("require_identity_realm", FR_TYPE_VOID, rlm_eap_t, require_realm),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){ .table = require_identity_realm_table, .len = &require_identity_realm_table_len },
@@ -131,7 +131,7 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
  *	- -1 on failure.
  */
 static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
-			   CONF_ITEM *ci, CONF_PARSER const *rule)
+			   CONF_ITEM *ci, conf_parser_t const *rule)
 {	char const	*name = cf_pair_value(cf_item_to_pair(ci));
 	char		*our_name = NULL;
 	char		*p;
@@ -206,7 +206,7 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
  *	- -1 on failure.
  */
 static int eap_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			  CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const	*default_method_name = cf_pair_value(cf_item_to_pair(ci));
 	eap_type_t	method;

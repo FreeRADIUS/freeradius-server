@@ -42,8 +42,8 @@ DIAG_ON(documentation-deprecated-sync)
 extern "C" {
 #endif
 
-extern CONF_PARSER const kafka_base_consumer_config[];
-extern CONF_PARSER const kafka_base_producer_config[];
+extern conf_parser_t const kafka_base_consumer_config[];
+extern conf_parser_t const kafka_base_producer_config[];
 
 #ifdef __cplusplus
 }

@@ -161,7 +161,7 @@ struct udp_request_s {
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, dst_ipaddr), },
 	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, dst_ipaddr) },

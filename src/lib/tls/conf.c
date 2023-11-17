@@ -44,7 +44,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "base.h"
 #include "log.h"
 
-static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /** Certificate formats
  *
@@ -80,7 +80,7 @@ static fr_table_num_sorted_t const verify_mode_table[] = {
 };
 static size_t verify_mode_table_len = NUM_ELEMENTS(verify_mode_table);
 
-static CONF_PARSER tls_cache_config[] = {
+static conf_parser_t tls_cache_config[] = {
 	{ FR_CONF_OFFSET("mode", FR_TYPE_UINT32, fr_tls_cache_conf_t, mode),
 			 .func = tls_conf_parse_cache_mode,
 			 .uctx = &(cf_table_parse_ctx_t){
@@ -109,7 +109,7 @@ static CONF_PARSER tls_cache_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER tls_chain_config[] = {
+static conf_parser_t tls_chain_config[] = {
 	{ FR_CONF_OFFSET("format", FR_TYPE_VOID, fr_tls_chain_conf_t, file_format),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){
@@ -134,7 +134,7 @@ static CONF_PARSER tls_chain_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER tls_verify_config[] = {
+static conf_parser_t tls_verify_config[] = {
 	{ FR_CONF_OFFSET("mode", FR_TYPE_VOID, fr_tls_verify_conf_t, mode),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){
@@ -155,7 +155,7 @@ static CONF_PARSER tls_verify_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-CONF_PARSER fr_tls_server_config[] = {
+conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_VOID, fr_tls_conf_t, virtual_server), .func = virtual_server_cf_parse },
 
 	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI, fr_tls_conf_t, chains),
@@ -206,7 +206,7 @@ CONF_PARSER fr_tls_server_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-CONF_PARSER fr_tls_client_config[] = {
+conf_parser_t fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET("chain", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, fr_tls_conf_t, chains),
 	  .subcs_size = sizeof(fr_tls_chain_conf_t), .subcs_type = "fr_tls_chain_conf_t",
 	  .subcs = tls_chain_config },
@@ -246,7 +246,7 @@ CONF_PARSER fr_tls_client_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	fr_tls_conf_t	*conf = talloc_get_type_abort((uint8_t *)parent - offsetof(fr_tls_conf_t, cache), fr_tls_conf_t);
 	int		cache_mode;

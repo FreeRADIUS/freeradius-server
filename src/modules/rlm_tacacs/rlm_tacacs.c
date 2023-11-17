@@ -30,12 +30,12 @@ RCSID("$Id$")
 
 #include "rlm_tacacs.h"
 
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /*
  *	Retransmission intervals for the packets we support.
  */
-static CONF_PARSER retry_config[] = {
+static conf_parser_t retry_config[] = {
 	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, fr_retry_config_t, irt), .dflt = STRINGIFY(2) },
 	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, fr_retry_config_t, mrt), .dflt = STRINGIFY(16) },
 	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, fr_retry_config_t, mrc), .dflt = STRINGIFY(5) },
@@ -46,7 +46,7 @@ static CONF_PARSER retry_config[] = {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static CONF_PARSER const module_config[] = {
+static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, rlm_tacacs_t, io_submodule),
 	  .func = module_rlm_submodule_parse },
 
@@ -96,7 +96,7 @@ fr_dict_attr_autoload_t rlm_tacacs_dict_attr[] = {
  *	- -1 on failure.
  */
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+		      CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	fr_dict_enum_value_t const	*type_enum;

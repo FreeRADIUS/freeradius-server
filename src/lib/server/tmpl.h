@@ -58,7 +58,7 @@
  * functions may be used. These functions evaluate the VPT, execing, and xlat expanding
  * as necessary. In the case of #TMPL_TYPE_ATTR, and #FR_TYPE_STRING or #FR_TYPE_OCTETS
  * #tmpl_expand will return a pointer to the raw #fr_pair_t buffer. This can be very
- * useful when using the #FR_TYPE_TMPL type in #CONF_PARSER structs, as it allows the
+ * useful when using the #FR_TYPE_TMPL type in #conf_parser_t structs, as it allows the
  * user to determine whether they want the module to sanitise the value using presentation
  * format specific #xlat_escape_legacy_t function, or to operate on the raw value.
  *

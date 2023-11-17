@@ -113,7 +113,7 @@ typedef struct {
 						//!< appear to work with NDB cluster
 } rlm_sql_mysql_t;
 
-static CONF_PARSER tls_config[] = {
+static conf_parser_t tls_config[] = {
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_ca_file) },
 	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
@@ -146,7 +146,7 @@ static CONF_PARSER tls_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER driver_config[] = {
+static const conf_parser_t driver_config[] = {
 	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 
 	{ FR_CONF_OFFSET("warnings", FR_TYPE_STRING, rlm_sql_mysql_t, warnings_str), .dflt = "auto" },

@@ -85,22 +85,22 @@ typedef struct {
 	fr_redis_cluster_t	*cluster;				//!< Redis cluster.
 } rlm_redis_t;
 
-static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static CONF_PARSER module_lua_func[] = {
+static conf_parser_t module_lua_func[] = {
 	{ FR_CONF_OFFSET("body", FR_TYPE_STRING, redis_lua_func_t, body), .func = lua_func_body_parse },
 	{ FR_CONF_OFFSET("read_only", FR_TYPE_BOOL, redis_lua_func_t, read_only) },
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER module_lua[] = {
+static conf_parser_t module_lua[] = {
 	{ FR_CONF_SUBSECTION_ALLOC("function", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
 				   rlm_redis_lua_t, funcs, module_lua_func),
 				   .subcs_type = "redis_lua_func_t", .ident2 = CF_IDENT_ANY },
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER module_config[] = {
+static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_SUBSECTION("lua", 0, rlm_redis_t, lua, module_lua) },
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR
@@ -109,7 +109,7 @@ static CONF_PARSER module_config[] = {
 /** Do basic processing for a lua function body and compute its sha1 hash
  *
  */
-static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int			ret;
 	redis_lua_func_t	*func = talloc_get_type_abort(parent, redis_lua_func_t);

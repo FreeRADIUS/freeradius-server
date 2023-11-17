@@ -64,7 +64,7 @@ typedef struct {
 /*
  *      A mapping of configuration file names to internal variables.
  */
-static const CONF_PARSER mod_config[] = {
+static const conf_parser_t mod_config[] = {
 	/*
 	 *	If a STRINGPREP profile other than NAMEPREP is ever desired,
 	 *	we can implement an option, and it will default to NAMEPREP settings.

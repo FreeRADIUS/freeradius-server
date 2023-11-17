@@ -185,7 +185,7 @@ fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
 #define PROCESS_STATE_EXTRA_FIELDS	fr_value_box_t const **status_codes[RLM_MODULE_NUMCODES];
 #include <freeradius-devel/server/process.h>
 
-static CONF_PARSER dhcpv6_process_config[] = {
+static conf_parser_t dhcpv6_process_config[] = {
 	{ FR_CONF_OFFSET("status_code_on_success", FR_TYPE_BOOL, process_dhcpv6_t, status_code_on_success), .dflt = "no" },
 	{ FR_CONF_OFFSET("send_failure_message", FR_TYPE_BOOL, process_dhcpv6_t, send_failure_message), .dflt = "no" },
 	{ FR_CONF_OFFSET("move_failure_message_to_parent", FR_TYPE_BOOL, process_dhcpv6_t, move_failure_message_to_parent), .dflt = "yes" },

@@ -40,7 +40,7 @@ typedef struct {
 	char const *allowed_chars;
 } rlm_escape_t;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("safe_characters", FR_TYPE_STRING, rlm_escape_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 	CONF_PARSER_TERMINATOR
 };

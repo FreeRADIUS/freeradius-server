@@ -119,7 +119,7 @@ typedef struct {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("tmpl", FR_TYPE_TMPL, rlm_test_t, tmpl), .dflt = "&Tmp-String-0", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("tmpl_m", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_test_t, tmpl_m), .dflt = "&Tmp-String-0", .quote = T_DOUBLE_QUOTED_STRING },
 

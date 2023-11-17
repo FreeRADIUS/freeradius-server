@@ -29,17 +29,17 @@
 #include "proto_dns.h"
 
 extern fr_app_t proto_dns;
-static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static const CONF_PARSER priority_config[] = {
+static const conf_parser_t priority_config[] = {
 	{ FR_CONF_OFFSET("query", FR_TYPE_VOID, proto_dns_t, priorities[FR_DNS_QUERY]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	CONF_PARSER_TERMINATOR
 };
 
 
-static CONF_PARSER const limit_config[] = {
+static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, proto_dns_t, io.idle_timeout), .dflt = "30.0" } ,
 
 	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_dns_t, io.max_connections), .dflt = "1024" } ,
@@ -57,7 +57,7 @@ static CONF_PARSER const limit_config[] = {
 /** How to parse a DNS listen section
  *
  */
-static CONF_PARSER const proto_dns_config[] = {
+static conf_parser_t const proto_dns_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_MULTI | FR_TYPE_NOT_EMPTY, proto_dns_t,
 			  allowed_types), .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_dns_t, io.submodule),
@@ -96,7 +96,7 @@ fr_dict_attr_autoload_t proto_dns_dict_attr[] = {
  *	- -1 on failure.
  */
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
-		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+		      CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	proto_dns_t		*inst = talloc_get_type_abort(parent, proto_dns_t);
 	fr_dict_enum_value_t		*dv;
@@ -130,7 +130,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
  *	- -1 on failure.
  */
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_module_inst_t	*parent_inst;

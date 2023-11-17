@@ -148,7 +148,7 @@ typedef struct {
  * 	Used to ensure that only strings are being set to the tmpl_t ** output
  */
 static int cf_table_parse_tmpl(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			       CONF_ITEM *ci, CONF_PARSER const *rule)
+			       CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int 			ret = 0;
 	ssize_t			slen;
@@ -212,7 +212,7 @@ finish:
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, rlm_smtp_t, uri) },
 	{ FR_CONF_OFFSET("template_directory", FR_TYPE_STRING, rlm_smtp_t, template_dir) },
 	{ FR_CONF_OFFSET("attachments", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_smtp_t, attachments),

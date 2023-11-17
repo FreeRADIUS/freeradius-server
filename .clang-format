@@ -15,7 +15,7 @@ SortIncludes: false
 # Indents braced list initialisers correctly, with a space
 # after the opening brace, and before the closing brace.
 #
-# static CONF_PARSER group_config[] = {
+# static conf_parser_t group_config[] = {
 #	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, groupobj_filter) }
 # };
 #

@@ -38,7 +38,7 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_cache;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_VOID, rlm_cache_t, driver_submodule), .dflt = "rbtree",
 			 .func = module_rlm_submodule_parse },
 	{ FR_CONF_OFFSET("ttl", FR_TYPE_TIME_DELTA, rlm_cache_config_t, ttl), .dflt = "500s" },

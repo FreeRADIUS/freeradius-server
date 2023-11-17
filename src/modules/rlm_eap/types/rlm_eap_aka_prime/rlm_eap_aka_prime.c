@@ -36,7 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/debug.h>
 
-static CONF_PARSER submodule_config[] = {
+static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_VOID, eap_aka_sim_module_conf_t, virtual_server), .func = virtual_server_cf_parse },
 
 	CONF_PARSER_TERMINATOR

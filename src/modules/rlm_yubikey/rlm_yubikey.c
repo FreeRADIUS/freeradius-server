@@ -30,14 +30,14 @@ RCSID("$Id$")
 #include "rlm_yubikey.h"
 
 #ifdef HAVE_YKCLIENT
-static const CONF_PARSER validation_config[] = {
+static const conf_parser_t validation_config[] = {
 	{ FR_CONF_OFFSET("client_id", FR_TYPE_UINT32, rlm_yubikey_t, client_id), .dflt = 0 },
 	{ FR_CONF_OFFSET("api_key", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_yubikey_t, api_key) },
 	CONF_PARSER_TERMINATOR
 };
 #endif
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("id_length", FR_TYPE_UINT32, rlm_yubikey_t, id_len), .dflt = "12" },
 	{ FR_CONF_OFFSET("split", FR_TYPE_BOOL, rlm_yubikey_t, split), .dflt = "yes" },
 	{ FR_CONF_OFFSET("decrypt", FR_TYPE_BOOL, rlm_yubikey_t, decrypt), .dflt = "no" },

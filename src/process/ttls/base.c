@@ -165,7 +165,7 @@ typedef struct {
 #define PROCESS_INST			process_ttls_t
 #include <freeradius-devel/server/process.h>
 
-static const CONF_PARSER session_config[] = {
+static const conf_parser_t session_config[] = {
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, process_ttls_session_t, timeout), .dflt = "15" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, process_ttls_session_t, max), .dflt = "4096" },
 	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, process_ttls_session_t, state_server_id) },
@@ -173,7 +173,7 @@ static const CONF_PARSER session_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER log_config[] = {
+static const conf_parser_t log_config[] = {
 	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, process_ttls_auth_log_t, stripped_names), .dflt = "no" },
 	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, process_ttls_auth_log_t, auth), .dflt = "no" },
 	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, process_ttls_auth_log_t, auth_badpass), .dflt = "no" },
@@ -185,7 +185,7 @@ static const CONF_PARSER log_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER auth_config[] = {
+static const conf_parser_t auth_config[] = {
 	{ FR_CONF_OFFSET_SUBSECTION("log,", 0, process_ttls_auth_t, log, log_config) },
 
 	{ FR_CONF_OFFSET_SUBSECTION("session", 0, process_ttls_auth_t, session, session_config )},
@@ -193,7 +193,7 @@ static const CONF_PARSER auth_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER config[] = {
+static const conf_parser_t config[] = {
 	{ FR_CONF_OFFSET_SUBSECTION("Access-Request", 0, process_ttls_t, auth, auth_config) },
 
 	CONF_PARSER_TERMINATOR

@@ -31,20 +31,20 @@
 
 extern fr_app_t proto_bfd;
 
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /** How to parse a BFD listen section
  *
  */
-static CONF_PARSER const proto_bfd_config[] = {
+static conf_parser_t const proto_bfd_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_bfd_t, io.submodule),
 	  .func = transport_parse },
 
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER peer_config[] = {
+static const conf_parser_t peer_config[] = {
 	{ FR_CONF_OFFSET("min_transmit_interval", FR_TYPE_TIME_DELTA, bfd_session_t, desired_min_tx_interval ) },
 	{ FR_CONF_OFFSET("min_receive_interval", FR_TYPE_TIME_DELTA, bfd_session_t, required_min_rx_interval ) },
 	{ FR_CONF_OFFSET("max_timeouts", FR_TYPE_UINT32, bfd_session_t, detect_multi ) },
@@ -106,7 +106,7 @@ static int8_t client_cmp(void const *one, void const *two)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_module_inst_t	*parent_inst;
@@ -158,7 +158,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	int			auth_type;

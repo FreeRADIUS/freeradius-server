@@ -122,7 +122,7 @@ typedef void (*dl_module_unload_t)(void);
 		char const			*name;		\
 		size_t				inst_size;	\
 		char const			*inst_type;	\
-		CONF_PARSER const		*config;        \
+		conf_parser_t const		*config;        \
 		dl_module_onload_t		onload;         \
 		dl_module_unload_t		unload;		\
 		module_detach_t			detach;		\

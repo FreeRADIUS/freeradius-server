@@ -33,7 +33,7 @@ extern fr_app_t proto_arp;
 /** How to parse an ARP listen section
  *
  */
-static CONF_PARSER const proto_arp_config[] = {
+static conf_parser_t const proto_arp_config[] = {
 	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_arp_t, num_messages) } ,
 
 	{ FR_CONF_OFFSET("active", FR_TYPE_BOOL, proto_arp_t, active), .dflt = "false" } ,

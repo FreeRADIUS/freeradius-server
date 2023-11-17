@@ -57,7 +57,7 @@ typedef enum {
 
 /** Per method call config
  *
- * Similar to a CONF_PARSER used to hold details of conf pairs
+ * Similar to a conf_parser_t used to hold details of conf pairs
  * which are evaluated per call for each module method / xlat.
  *
  * This allows the conf pairs to be evaluated within the appropriate context

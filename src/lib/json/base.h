@@ -217,7 +217,7 @@ typedef struct {
  *
  */
 struct fr_json_format_s {
-	char const		*output_mode_str;	//!< For CONF_PARSER only.
+	char const		*output_mode_str;	//!< For conf_parser_t only.
 
 	json_mode_type_t	output_mode;		//!< Determine the format of JSON document
 							//!< to generate.
@@ -230,7 +230,7 @@ struct fr_json_format_s {
 
 typedef struct fr_json_format_s fr_json_format_t;
 
-extern CONF_PARSER const fr_json_format_config[];
+extern conf_parser_t const fr_json_format_config[];
 
 
 /* jpath .c */

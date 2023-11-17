@@ -58,7 +58,7 @@ typedef struct {
 	bool		error;		//!< True if pam_conv failed.
 } rlm_pam_data_t;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("pam_auth", FR_TYPE_STRING, rlm_pam_t, pam_auth_name) },
 	CONF_PARSER_TERMINATOR
 };

@@ -70,7 +70,7 @@ static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
 char const *rest_no_proxy = "*";
 
 static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	static fr_table_num_sorted_t const disable_proxy_table[] = {
 		{ L("no"), 	1 },
@@ -88,7 +88,7 @@ static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 	return 0;
 }
 
-static const CONF_PARSER section_config[] = {
+static const conf_parser_t section_config[] = {
 	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rest_section_t, uri), .dflt = "" },
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy), .func = rest_proxy_parse },
 	{ FR_CONF_OFFSET("method", FR_TYPE_STRING, rlm_rest_section_t, method_str), .dflt = "GET" },
@@ -114,7 +114,7 @@ static const CONF_PARSER section_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER xlat_config[] = {
+static const conf_parser_t xlat_config[] = {
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, rlm_rest_section_t, proxy), .func = rest_proxy_parse },
 
 	/* User authentication */
@@ -136,7 +136,7 @@ static const CONF_PARSER xlat_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIME_DELTA, rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, rlm_rest_t, connect_proxy), .func = rest_proxy_parse },
 	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_VOID, rlm_rest_t, http_negotiation),
@@ -942,7 +942,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	return unlang_module_yield(request, mod_post_auth_result, rest_io_module_signal, ~FR_SIGNAL_CANCEL, handle);
 }
 
-static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, CONF_PARSER const *config_items,
+static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser_t const *config_items,
 			     rlm_rest_section_t *config, char const *name)
 {
 	CONF_SECTION *cs;

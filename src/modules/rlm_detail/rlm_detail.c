@@ -71,9 +71,9 @@ typedef struct {
 } rlm_detail_t;
 
 int detail_group_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
-		       CONF_ITEM *ci, CONF_PARSER const *rule);
+		       CONF_ITEM *ci, conf_parser_t const *rule);
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Net.Src.IP}/detail" },
 	{ FR_CONF_OFFSET("header", FR_TYPE_TMPL | FR_TYPE_XLAT, rlm_detail_t, header),
 	  .dflt = "%t", .quote = T_DOUBLE_QUOTED_STRING },
@@ -151,7 +151,7 @@ static void CC_HINT(nonnull) fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
  *
  */
 int detail_group_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
-		       CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+		       CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const 			*group;
 	char				*endptr;

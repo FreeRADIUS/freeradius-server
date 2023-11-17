@@ -100,7 +100,7 @@ static libpython_global_config_t libpython_global_config = {
 	.path_include_default = true
 };
 
-static CONF_PARSER const python_global_config[] = {
+static conf_parser_t const python_global_config[] = {
 	{ FR_CONF_OFFSET("path", FR_TYPE_STRING, libpython_global_config_t, path) },
 	{ FR_CONF_OFFSET("path_include_default", FR_TYPE_BOOL, libpython_global_config_t, path_include_default) },
 	CONF_PARSER_TERMINATOR
@@ -144,7 +144,7 @@ global_lib_autoinst_t const * const rlm_python_lib[] = {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static CONF_PARSER module_config[] = {
+static conf_parser_t module_config[] = {
 
 #define A(x) { FR_CONF_OFFSET("mod_" #x, FR_TYPE_STRING, rlm_python_t, x.module_name), .dflt = "${.module}" }, \
 	{ FR_CONF_OFFSET("func_" #x, FR_TYPE_STRING, rlm_python_t, x.function_name) },

@@ -135,7 +135,7 @@ typedef struct {
 } linelog_conn_t;
 
 
-static const CONF_PARSER file_config[] = {
+static const conf_parser_t file_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, rlm_linelog_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_linelog_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_linelog_t, file.group_str) },
@@ -143,32 +143,32 @@ static const CONF_PARSER file_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER syslog_config[] = {
+static const conf_parser_t syslog_config[] = {
 	{ FR_CONF_OFFSET("facility", FR_TYPE_STRING, rlm_linelog_t, syslog.facility) },
 	{ FR_CONF_OFFSET("severity", FR_TYPE_STRING, rlm_linelog_t, syslog.severity), .dflt = "info" },
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER unix_config[] = {
+static const conf_parser_t unix_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, rlm_linelog_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER udp_config[] = {
+static const conf_parser_t udp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, linelog_net_t, port) },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER tcp_config[] = {
+static const conf_parser_t tcp_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, linelog_net_t, port) },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_linelog_t, log_dst_str) },
 
 	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, rlm_linelog_t, delimiter), .dflt = "\n" },

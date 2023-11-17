@@ -184,7 +184,7 @@ _Generic((_ct), \
 #  define FR_CONF_TYPE_CHECK(_type, _c_type, _ptr_or_offset) _ptr_or_offset
 #endif
 
-/** CONF_PARSER which parses a single CONF_PAIR, writing the result to a field in a struct
+/** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
@@ -196,7 +196,7 @@ _Generic((_ct), \
 	.type = _type, \
 	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field))
 
-/** CONF_PARSER which parses a single CONF_PAIR, writing the result to a field in a struct, recording if a default was used in `<_field>`_is_set
+/** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct, recording if a default was used in `<_field>`_is_set
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
@@ -209,7 +209,7 @@ _Generic((_ct), \
 	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
 	.is_set_offset = offsetof(_struct, _field ## _is_set)
 
-/** CONF_PARSER which populates a sub-struct using a CONF_SECTION
+/** conf_parser_t which populates a sub-struct using a CONF_SECTION
  *
  * @param[in] _name		of the CONF_SECTION to search for.
  * @param[in] _flags		any additional flags to set.
@@ -223,7 +223,7 @@ _Generic((_ct), \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs
 
-/** CONF_PARSER which parses a single CONF_PAIR producing a single global result
+/** conf_parser_t which parses a single CONF_PAIR producing a single global result
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
@@ -234,7 +234,7 @@ _Generic((_ct), \
 	.type = _type, \
 	.data = FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p)
 
-/** CONF_PARSER which parses a single CONF_PAIR producing a single global result, recording if a default was used in `<_res_p>`_is_set
+/** conf_parser_t which parses a single CONF_PAIR producing a single global result, recording if a default was used in `<_res_p>`_is_set
  *
  * @note is set state is recorded in variable `<_res_p>`_is_set.
  *
@@ -249,7 +249,7 @@ _Generic((_ct), \
 	.is_set_ptr = _res_p ## _is_set
 #  define FR_ITEM_POINTER(_type, _res_p) _type, FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p)
 
-/** A CONF_PARSER multi-subsection
+/** A conf_parser_t multi-subsection
  *
  * Parse multiple instance of a subsection, allocating an array of structs
  * to hold the result.
@@ -258,7 +258,7 @@ _Generic((_ct), \
  * @param _type		Must be FR_TYPE_SUBSECTION | FR_TYPE_MULTI and any optional flags.
  * @param _struct	instance data struct.
  * @param _field	field in instance data struct.
- * @param _subcs	CONF_PARSER array to use to parse subsection data.
+ * @param _subcs	conf_parser_t array to use to parse subsection data.
  */
 #  define FR_CONF_SUBSECTION_ALLOC(_name, _type, _struct, _field, _subcs) \
 	.name = _name, \
@@ -267,7 +267,7 @@ _Generic((_ct), \
 	.subcs = _subcs, \
 	.subcs_size = sizeof(**(((_struct *)0)->_field))
 
-/** CONF_PARSER entry which doesn't fill in a pointer or offset, but relies on functions to record values
+/** conf_parser_t entry which doesn't fill in a pointer or offset, but relies on functions to record values
  *
  * @param[in] _name		name of pair to search for.
  * @param[in] _type		base type to parse pair as.
@@ -280,7 +280,7 @@ _Generic((_ct), \
 	.func = _func, \
 	.dflt_func = _dflt_func
 
-/** CONF_PARSER entry which runs CONF_PARSER entries for a subsection without any output
+/** conf_parser_t entry which runs conf_parser_t entries for a subsection without any output
  *
  * @param[in] _name		of pair to search for.
  * @param[in] _flags		any extra flags to add.
@@ -291,7 +291,7 @@ _Generic((_ct), \
 	.type = FR_TYPE_SUBSECTION, \
 	.subcs = _subcs
 
-/** CONF_PARSER entry which raises an error if a matching CONF_PAIR is found
+/** conf_parser_t entry which raises an error if a matching CONF_PAIR is found
  *
  * @param[in] _name		of pair to search for.
  * @param[in] _type		type, mostly unused.
@@ -314,7 +314,7 @@ _Generic((_ct), \
  */
 #define FR_TYPE_HIDDEN     	0
 
-/** @name #CONF_PARSER type flags
+/** @name #conf_parser_t type flags
  *
  * These flags should be or'd with another FR_TYPE_* value to create validation
  * rules for the #cf_pair_parse function.
@@ -352,7 +352,7 @@ _Generic((_ct), \
 #define FR_BASE_TYPE(_t)		(0xff & (_t))
 /** @} */
 
-/** @name #CONF_PARSER flags checks
+/** @name #conf_parser_t flags checks
  *
  * @{
  */
@@ -427,7 +427,7 @@ do {\
 
 extern bool check_config;
 
-typedef struct CONF_PARSER CONF_PARSER;
+typedef struct conf_parser_t conf_parser_t;
 
 /** Callback for performing custom parsing of a #CONF_SECTION or CONF_PAIR
  *
@@ -440,7 +440,7 @@ typedef struct CONF_PARSER CONF_PARSER;
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+typedef int (*cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /** Callback for producing dynamic defaults from 3rd party libraries
  *
@@ -453,7 +453,7 @@ typedef int (*cf_parse_t)(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *c
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule);
+typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule);
 
 /** Defines a #CONF_PAIR to C data type mapping
  *
@@ -464,7 +464,7 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  *
  * Example with #FR_CONF_OFFSET :
  @code{.c}
-   static CONF_PARSER module_config[] = {
+   static conf_parser_t module_config[] = {
    	{ FR_CONF_OFFSET("example", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, example_instance_t, example), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
@@ -472,7 +472,7 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  *
  * Example with #FR_CONF_POINTER :
  @code{.c}
-   static CONF_PARSER global_config[] = {
+   static conf_parser_t global_config[] = {
    	{ FR_CONF_POINTER("example", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, &my_global), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
@@ -483,7 +483,7 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  * @see cf_section_parse
  * @see cf_pair_parse
  */
-struct CONF_PARSER {
+struct conf_parser_t {
 	char const	*name;			//!< Name of the #CONF_ITEM to parse.
 	char const	*ident2;		//!< Second identifier for #CONF_SECTION.
 
@@ -528,9 +528,9 @@ struct CONF_PARSER {
 		};
 
 		struct {
-			struct CONF_PARSER const *subcs;//!< When type is set to #FR_TYPE_SUBSECTION, should
+			struct conf_parser_t const *subcs;//!< When type is set to #FR_TYPE_SUBSECTION, should
 							//!< be a pointer to the start of another array of
-							//!< #CONF_PARSER structs, forming the subsection.
+							//!< #conf_parser_t structs, forming the subsection.
 			size_t		subcs_size;	//!< If non-zero, allocate structs of this size to hold
 							//!< the parsed data.
 			char const	*subcs_type;	//!< Set a specific talloc type for subcs structures.
@@ -548,7 +548,7 @@ typedef struct {
 #define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
-#define CONF_PARSER_PARTIAL_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
+#define conf_parser_t_PARTIAL_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
 					  .offset = 1, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
 #define CF_FILE_NONE   (0)
@@ -556,15 +556,15 @@ typedef struct {
 #define CF_FILE_CONFIG (1 << 2)
 #define CF_FILE_MODULE (1 << 3)
 
-void		cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, CONF_PARSER const *rule);
+void		cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t const *rule);
 
 /*
  *	Type validation and conversion
  */
-int		cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CONF_PARSER const *rule)
+int		cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, conf_parser_t const *rule)
 		CC_HINT(nonnull(2, 3, 4));
 
-int		cf_pair_parse_value(TALLOC_CTX *ctx, void *out, void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
+int		cf_pair_parse_value(TALLOC_CTX *ctx, void *out, void *base, CONF_ITEM *ci, conf_parser_t const *rule)
 		CC_HINT(nonnull(2, 4, 5));
 
 int		cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
@@ -576,27 +576,27 @@ int		cf_section_parse_pass2(void *base, CONF_SECTION *cs);
  *	Runtime parse rules
  */
 #define		cf_section_rule_push(_cs, _rule) _cf_section_rule_push(_cs, _rule, __FILE__, __LINE__)
-int		_cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const *filename, int lineno);
+int		_cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char const *filename, int lineno);
 #define		cf_section_rules_push(_cs, _rule) _cf_section_rules_push(_cs, _rule, __FILE__, __LINE__)
-int		_cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char const *filename, int lineno);
+int		_cf_section_rules_push(CONF_SECTION *cs, conf_parser_t const *rules, char const *filename, int lineno);
 
 /*
  *	Generic parsing callback functions
  */
 int		cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			 	   CONF_ITEM *ci, CONF_PARSER const *rule);
+			 	   CONF_ITEM *ci, conf_parser_t const *rule);
 
 int		cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-				      CONF_ITEM *ci, CONF_PARSER const *rule);
+				      CONF_ITEM *ci, conf_parser_t const *rule);
 
 int		cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-				     CONF_ITEM *ci, CONF_PARSER const *rule);
+				     CONF_ITEM *ci, conf_parser_t const *rule);
 
 int		cf_parse_uid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, CONF_PARSER const *rule);
+			     CONF_ITEM *ci, conf_parser_t const *rule);
 
 int		cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, CONF_PARSER const *rule);
+			     CONF_ITEM *ci, conf_parser_t const *rule);
 
 #ifdef __cplusplus
 }

@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/ldap/base.h>
 #include <freeradius-devel/ldap/conf.h>
 
-CONF_PARSER const fr_ldap_sasl_mech_static[] = {
+conf_parser_t const fr_ldap_sasl_mech_static[] = {
 	{ FR_CONF_OFFSET("mech", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, fr_ldap_sasl_t, mech) },
 	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, fr_ldap_sasl_t, proxy) },
 	{ FR_CONF_OFFSET("realm", FR_TYPE_STRING, fr_ldap_sasl_t, realm) },
@@ -37,7 +37,7 @@ CONF_PARSER const fr_ldap_sasl_mech_static[] = {
 /*
  *	TLS Configuration
  */
-CONF_PARSER const fr_ldap_tls_config[] = {
+conf_parser_t const fr_ldap_tls_config[] = {
 	/*
 	 *	Deprecated attributes
 	 */
@@ -66,7 +66,7 @@ CONF_PARSER const fr_ldap_tls_config[] = {
  *
  *	Note that these overlap a bit with the connection pool code!
  */
-CONF_PARSER const fr_ldap_option_config[] = {
+conf_parser_t const fr_ldap_option_config[] = {
 	/*
 	 *	Pool config items
 	 */
@@ -110,4 +110,3 @@ CONF_PARSER const fr_ldap_option_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
-

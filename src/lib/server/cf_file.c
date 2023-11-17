@@ -1974,7 +1974,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		    char *buff, char const *filename, int lineno)
 {
 	CONF_DATA const *cd;
-	CONF_PARSER *rule;
+	conf_parser_t *rule;
 	CONF_PAIR *cp;
 	bool pass2 = false;
 
@@ -2031,7 +2031,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	cf_lineno_set(cp, lineno);
 	cp->pass2 = pass2;
 
-	cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, attr);
+	cd = cf_data_find(CF_TO_ITEM(parent), conf_parser_t, attr);
 	if (!cd) return 0;
 
 	rule = cf_data_value(cd);

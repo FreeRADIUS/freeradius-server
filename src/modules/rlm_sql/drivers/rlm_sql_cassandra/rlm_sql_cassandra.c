@@ -193,14 +193,14 @@ static fr_table_num_sorted_t const verify_cert_table[] = {
 };
 static size_t verify_cert_table_len = NUM_ELEMENTS(verify_cert_table);
 
-static CONF_PARSER load_balance_dc_aware_config[] = {
+static conf_parser_t load_balance_dc_aware_config[] = {
 	{ FR_CONF_OFFSET("local_dc", FR_TYPE_STRING, rlm_sql_cassandra_t, lbdc_local_dc) },
 	{ FR_CONF_OFFSET("hosts_per_remote_dc", FR_TYPE_UINT32, rlm_sql_cassandra_t, lbdc_hosts_per_remote_dc), .dflt = "0" },
 	{ FR_CONF_OFFSET("allow_remote_dcs_for_local_cl", FR_TYPE_BOOL, rlm_sql_cassandra_t, lbdc_allow_remote_dcs_for_local_cl), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER latency_aware_routing_config[] = {
+static conf_parser_t latency_aware_routing_config[] = {
 	{ FR_CONF_OFFSET("exclusion_threshold", FR_TYPE_FLOAT64, rlm_sql_cassandra_t, lar_exclusion_threshold), .dflt = "2.0" },
 	{ FR_CONF_OFFSET("scale", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, lar_scale), .dflt = "0.1" },
 	{ FR_CONF_OFFSET("retry_period", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, lar_retry_period), .dflt = "10" },
@@ -209,7 +209,7 @@ static CONF_PARSER latency_aware_routing_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER tls_config[] = {
+static conf_parser_t tls_config[] = {
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, rlm_sql_cassandra_t, tls_ca_file) },
 	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, rlm_sql_cassandra_t, tls_certificate_file) },
 	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, rlm_sql_cassandra_t, tls_private_key_file) },
@@ -219,7 +219,7 @@ static CONF_PARSER tls_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER driver_config[] = {
+static const conf_parser_t driver_config[] = {
 	{ FR_CONF_OFFSET("consistency", FR_TYPE_STRING, rlm_sql_cassandra_t, consistency_str), .dflt = "quorum" },
 
 	{ FR_CONF_OFFSET("protocol_version", FR_TYPE_UINT32, rlm_sql_cassandra_t, protocol_version) },

@@ -31,8 +31,8 @@
 #include "proto_detail.h"
 
 extern fr_app_t proto_detail;
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 #if 0
 /*
@@ -47,7 +47,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
 /** How to parse a Detail listen section
  *
  */
-static CONF_PARSER const proto_detail_config[] = {
+static conf_parser_t const proto_detail_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_detail_t,
 			  type), .func = type_parse },
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_detail_t, io_submodule),
@@ -110,7 +110,7 @@ fr_dict_attr_autoload_t proto_detail_dict_attr[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	proto_detail_t		*inst = talloc_get_type_abort(parent, proto_detail_t);
 	fr_dict_enum_value_t const	*type_enum;
@@ -158,7 +158,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
  *	- -1 on failure.
  */
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_module_inst_t	*parent_inst;

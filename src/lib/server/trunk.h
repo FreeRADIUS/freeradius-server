@@ -358,7 +358,7 @@ struct fr_trunk_connection_pub_s {
 /** Config parser definitions to populate a fr_trunk_conf_t
  *
  */
-extern CONF_PARSER const fr_trunk_config[];
+extern conf_parser_t const fr_trunk_config[];
 #endif
 
 /** Allocate a new connection for the trunk

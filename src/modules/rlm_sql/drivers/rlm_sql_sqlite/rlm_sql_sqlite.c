@@ -60,7 +60,7 @@ typedef struct {
 	bool		bootstrap;
 } rlm_sql_sqlite_t;
 
-static const CONF_PARSER driver_config[] = {
+static const conf_parser_t driver_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_REQUIRED, rlm_sql_sqlite_t, filename) },
 	CONF_PARSER_TERMINATOR
 };

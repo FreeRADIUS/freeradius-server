@@ -33,9 +33,9 @@
 
 extern fr_app_t proto_ldap_sync;
 
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static CONF_PARSER const ldap_sync_search_config[] = {
+static conf_parser_t const ldap_sync_search_config[] = {
 	{ FR_CONF_OFFSET("base_dn", FR_TYPE_STRING, sync_config_t, base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
 
 	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, sync_config_t, filter) },
@@ -47,7 +47,7 @@ static CONF_PARSER const ldap_sync_search_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const proto_ldap_sync_config[] = {
+static conf_parser_t const proto_ldap_sync_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_ldap_sync_t, io_submodule),
 	  .func = transport_parse },
 
@@ -103,7 +103,7 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
  *	- -1 on failure.
  */
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_module_inst_t	*parent_inst;

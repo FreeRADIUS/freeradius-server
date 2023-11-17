@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/interpret.h>
 
 static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 /*
  *	EAP-GTC is just ASCII data carried inside of the EAP session.
@@ -43,7 +43,7 @@ typedef struct {
 	fr_dict_enum_value_t const	*auth_type;
 } rlm_eap_gtc_t;
 
-static CONF_PARSER submodule_config[] = {
+static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("challenge", FR_TYPE_STRING, rlm_eap_gtc_t, challenge), .dflt = "Password: " },
 	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, rlm_eap_gtc_t, auth_type), .func = auth_type_parse,  .dflt = "pap" },
 	CONF_PARSER_TERMINATOR
@@ -83,7 +83,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
  *	- -1 on failure.
  */
 static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
 

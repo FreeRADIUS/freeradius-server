@@ -82,7 +82,7 @@ static const call_env_parser_t sasl_call_env[] = {
 	CALL_ENV_TERMINATOR
 };
 
-static CONF_PARSER profile_config[] = {
+static conf_parser_t profile_config[] = {
 	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, profile_scope), .dflt = "base",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, rlm_ldap_t, profile_attr) },
@@ -101,7 +101,7 @@ static const call_env_parser_t autz_profile_call_env[] = {
 /*
  *	User configuration
  */
-static CONF_PARSER user_config[] = {
+static conf_parser_t user_config[] = {
 	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, userobj_scope), .dflt = "sub",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
 	{ FR_CONF_OFFSET("sort_by", FR_TYPE_STRING, rlm_ldap_t, userobj_sort_by) },
@@ -136,7 +136,7 @@ user_call_env(memberof, ldap_xlat_memberof_call_env_t);
 /*
  *	Group configuration
  */
-static CONF_PARSER group_config[] = {
+static conf_parser_t group_config[] = {
 	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, groupobj_filter) },
 	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, groupobj_scope), .dflt = "sub",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len }  },
@@ -167,12 +167,12 @@ static const call_env_parser_t memberof_group_call_env[] = {
 /*
  *	Reference for accounting updates
  */
-static const CONF_PARSER acct_section_config[] = {
+static const conf_parser_t acct_section_config[] = {
 	{ FR_CONF_OFFSET("reference", FR_TYPE_STRING | FR_TYPE_XLAT, ldap_acct_section_t, reference), .dflt = "." },
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	/*
 	 *	Pool config items
 	 */

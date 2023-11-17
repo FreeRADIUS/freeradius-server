@@ -63,7 +63,7 @@ typedef struct {
 } rlm_eap_ttls_t;
 
 
-static CONF_PARSER submodule_config[] = {
+static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_ttls_t, tls_conf_name) },
 	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", FR_TYPE_BOOL, rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_DEPRECATED("use_tunneled_reply", FR_TYPE_BOOL, rlm_eap_ttls_t, NULL), .dflt = "no" },

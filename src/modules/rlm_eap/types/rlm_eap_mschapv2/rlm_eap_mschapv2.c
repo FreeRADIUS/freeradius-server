@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include "eap_mschapv2.h"
 
 static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 typedef struct {
 	bool			with_ntdomain_hack;
@@ -43,7 +43,7 @@ typedef struct {
 	fr_dict_enum_value_t		*auth_type;
 } rlm_eap_mschapv2_t;
 
-static CONF_PARSER submodule_config[] = {
+static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, rlm_eap_mschapv2_t, with_ntdomain_hack), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("auth_type", FR_TYPE_VOID, rlm_eap_mschapv2_t, auth_type), .func = auth_type_parse, .dflt = "mschap" },
@@ -145,7 +145,7 @@ static void mppe_keys_store(request_t *request, mschapv2_opaque_t *data)
  *	- -1 on failure.
  */
 static int auth_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const	*auth_type = cf_pair_value(cf_item_to_pair(ci));
 

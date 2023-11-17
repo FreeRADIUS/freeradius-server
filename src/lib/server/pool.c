@@ -39,7 +39,7 @@ RCSID("$Id$")
 typedef struct fr_pool_connection_s fr_pool_connection_t;
 
 static int connection_check(fr_pool_t *pool, request_t *request);
-static int max_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule);
+static int max_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule);
 
 /** An individual connection within the connection pool
  *
@@ -148,7 +148,7 @@ struct fr_pool_s {
 	fr_pool_state_t	state;			//!< Stats and state of the connection pool.
 };
 
-static const CONF_PARSER pool_config[] = {
+static const conf_parser_t pool_config[] = {
 	{ FR_CONF_OFFSET("start", FR_TYPE_UINT32, fr_pool_t, start), .dflt = "0" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_pool_t, min), .dflt = "0" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_pool_t, max), .dflt_func = max_dflt },
@@ -166,7 +166,7 @@ static const CONF_PARSER pool_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int max_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int max_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule)
 {
 	char		*strvalue;
 

@@ -287,7 +287,7 @@ struct fr_trunk_s {
 	/** @} */
 };
 
-static CONF_PARSER const fr_trunk_config_request[] = {
+static conf_parser_t const fr_trunk_config_request[] = {
 	{ FR_CONF_OFFSET("per_connection_max", FR_TYPE_UINT32, fr_trunk_conf_t, max_req_per_conn), .dflt = "2000" },
 	{ FR_CONF_OFFSET("per_connection_target", FR_TYPE_UINT32, fr_trunk_conf_t, target_req_per_conn), .dflt = "1000" },
 	{ FR_CONF_OFFSET("free_delay", FR_TYPE_TIME_DELTA, fr_trunk_conf_t, req_cleanup_delay), .dflt = "10.0" },
@@ -295,7 +295,7 @@ static CONF_PARSER const fr_trunk_config_request[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const fr_trunk_config_connection[] = {
+static conf_parser_t const fr_trunk_config_connection[] = {
 	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, fr_connection_conf_t, connection_timeout), .dflt = "3.0" },
 	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIME_DELTA, fr_connection_conf_t, reconnection_delay), .dflt = "1" },
 
@@ -303,7 +303,7 @@ static CONF_PARSER const fr_trunk_config_connection[] = {
 };
 
 #ifndef TRUNK_TESTS
-CONF_PARSER const fr_trunk_config[] = {
+conf_parser_t const fr_trunk_config[] = {
 	{ FR_CONF_OFFSET("start", FR_TYPE_UINT16, fr_trunk_conf_t, start), .dflt = "5" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT16, fr_trunk_conf_t, min), .dflt = "1" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT16, fr_trunk_conf_t, max), .dflt = "5" },

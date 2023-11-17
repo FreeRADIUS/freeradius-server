@@ -48,7 +48,7 @@ typedef struct {
 /** How to parse an ARP listen section
  *
  */
-static CONF_PARSER const arp_listen_config[] = {
+static conf_parser_t const arp_listen_config[] = {
 	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, proto_arp_ethernet_t,
 			  interface), .dflt = "eth0" },
 

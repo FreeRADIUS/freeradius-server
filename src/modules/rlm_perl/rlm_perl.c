@@ -91,7 +91,7 @@ static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the gl
 #define RLM_PERL_CONF(_x) { FR_CONF_OFFSET("func_" STRINGIFY(_x), FR_TYPE_STRING, rlm_perl_t, func_##_x), \
 			   .data = NULL, .dflt = STRINGIFY(_x), .quote = T_INVALID }
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_perl_t, module) },
 
 	RLM_PERL_CONF(authorize),

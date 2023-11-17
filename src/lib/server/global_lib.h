@@ -37,7 +37,7 @@ typedef void (*lib_free_t)(void);
  */
 typedef struct {
 	char const 		*name;			//!<  Name of library and section within global config
-	CONF_PARSER const	*config;		//!<  Config parser for this library's global options
+	conf_parser_t const	*config;		//!<  Config parser for this library's global options
 	void			*inst;			//!<  Module data to parse global config into
 	lib_init_t		init;			//!<  Callback to initialise library
 	lib_free_t		free;			//!<  Callback to free library

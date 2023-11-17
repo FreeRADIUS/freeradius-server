@@ -42,7 +42,7 @@ typedef struct {
 	SSL_CTX		*ssl_ctx;		//!< Thread local SSL_CTX.
 } rlm_eap_tls_thread_t;
 
-static CONF_PARSER submodule_config[] = {
+static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_tls_t, tls_conf_name) },
 
 	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, rlm_eap_tls_t, req_client_cert), .dflt = "yes" },

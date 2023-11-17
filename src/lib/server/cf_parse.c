@@ -40,13 +40,13 @@ RCSID("$Id$")
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/types.h>
 
-static CONF_PARSER conf_term = CONF_PARSER_TERMINATOR;
+static conf_parser_t conf_term = CONF_PARSER_TERMINATOR;
 static char const parse_spaces[] = "                                                                                                                                                                                                                                              ";
 
 #define PAIR_SPACE(_cs) ((_cs->depth + 1) * 2)
 #define SECTION_SPACE(_cs) (_cs->depth * 2)
 
-void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, CONF_PARSER const *rule)
+void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t const *rule)
 {
 	char const	*value;
 	char		*tmp = NULL;
@@ -123,7 +123,7 @@ void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, CONF_PARSER const *rul
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CONF_PARSER const *rule)
+int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, conf_parser_t const *rule)
 {
 	fr_type_t	type = FR_BASE_TYPE(rule->type);
 
@@ -170,7 +170,7 @@ int cf_pair_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, CONF_PAIR *cp, CO
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, CONF_PARSER const *rule)
+int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int		ret = 0;
 	bool		cant_be_empty, tmpl;
@@ -305,7 +305,7 @@ finish:
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cf_pair_default(CONF_PAIR **out, void *parent, CONF_SECTION *cs, CONF_PARSER const *rule)
+static int cf_pair_default(CONF_PAIR **out, void *parent, CONF_SECTION *cs, conf_parser_t const *rule)
 
 {
 	int		lineno = 0;
@@ -364,7 +364,7 @@ static int cf_pair_default(CONF_PAIR **out, void *parent, CONF_SECTION *cs, CONF
 	return 1;
 }
 
-static int cf_pair_unescape(CONF_PAIR *cp, CONF_PARSER const *rule)
+static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 {
 	fr_type_t type;
 	char const *p;
@@ -455,7 +455,7 @@ static int cf_pair_unescape(CONF_PAIR *cp, CONF_PARSER const *rule)
  *	- -2 if deprecated.
  */
 static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *out, void *base,
-						        CONF_SECTION *cs, CONF_PARSER const *rule)
+						        CONF_SECTION *cs, conf_parser_t const *rule)
 {
 	bool		required, deprecated;
 	size_t		count = 0;
@@ -567,7 +567,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			int		ret;
 			void		*entry;
 			TALLOC_CTX	*value_ctx = array;
-			
+
 			/*
 			 *	Figure out where to write the output
 			 */
@@ -647,7 +647,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 
 /** Parses a #CONF_PAIR into a C data type, with a default value.
  *
- * Takes fields from a #CONF_PARSER struct and uses them to parse the string value
+ * Takes fields from a #conf_parser_t struct and uses them to parse the string value
  * of a #CONF_PAIR into a C data type matching the type argument.
  *
  * The format of the types are the same as #fr_value_box_t types.
@@ -717,7 +717,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
 		  unsigned int type, void *data, char const *dflt, fr_token_t dflt_quote)
 {
-	CONF_PARSER rule = {
+	conf_parser_t rule = {
 		.name = name,
 		.type = type,
 		.dflt = dflt,
@@ -736,7 +736,7 @@ int cf_pair_parse(TALLOC_CTX *ctx, CONF_SECTION *cs, char const *name,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const *rule)
+static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t const *rule)
 {
 	CONF_PAIR *cp;
 
@@ -778,7 +778,7 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER const
 
 		/*
 		 *	If there's no subsection in the
-		 *	config, BUT the CONF_PARSER wants one,
+		 *	config, BUT the conf_parser_t wants one,
 		 *	then create an empty one.  This is so
 		 *	that we can track the strings,
 		 *	etc. allocated in the subsection.
@@ -869,14 +869,14 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
  *	- -1 on general error.
  *	- -2 if a deprecated #CONF_ITEM was found.
  */
-static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECTION *cs, CONF_PARSER const *rule)
+static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECTION *cs, conf_parser_t const *rule)
 {
 	CONF_SECTION		*subcs = NULL;
 	int			count = 0, i = 0, ret;
 
 	fr_type_t		type = rule->type;
 	size_t			subcs_size = rule->subcs_size;
-	CONF_PARSER const	*rules = rule->subcs;
+	conf_parser_t const	*rules = rule->subcs;
 
 	uint8_t			**array = NULL;
 
@@ -1015,8 +1015,8 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 	/*
 	 *	Loop over all the children of the section
 	 */
-	while ((rule_cd = cf_data_find_next(cs, rule_cd, CONF_PARSER, CF_IDENT_ANY))) {
-		CONF_PARSER	*rule;
+	while ((rule_cd = cf_data_find_next(cs, rule_cd, conf_parser_t, CF_IDENT_ANY))) {
+		conf_parser_t	*rule;
 		bool		*is_set = NULL;
 
 		rule = cf_data_value(rule_cd);
@@ -1182,10 +1182,10 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 {
 	CONF_DATA const *rule_cd = NULL;
 
-	while ((rule_cd = cf_data_find_next(cs, rule_cd, CONF_PARSER, CF_IDENT_ANY))) {
+	while ((rule_cd = cf_data_find_next(cs, rule_cd, conf_parser_t, CF_IDENT_ANY))) {
 		bool		attribute, multi, is_tmpl, is_xlat;
 		CONF_PAIR	*cp;
-		CONF_PARSER	*rule;
+		conf_parser_t	*rule;
 		void		*data;
 		int		type;
 		fr_dict_t const	*dict = NULL;
@@ -1233,7 +1233,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 
 		/*
 		 *	Find the CONF_PAIR, may still not exist if there was
-		 *	no default set for the CONF_PARSER.
+		 *	no default set for the conf_parser_t.
 		 */
 		cp = cf_pair_find(cs, rule->name);
 		if (!cp) continue;
@@ -1370,7 +1370,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
  *	- 0 on success.
  *	- -1 if the rules added conflict.
  */
-int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const *filename, int lineno)
+int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char const *filename, int lineno)
 {
 	char const *name1, *name2;
 
@@ -1390,11 +1390,11 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 	 *
 	 *	Fixme maybe?.. Can't have a section and pair with the same name.
 	 */
-	if (!_cf_data_add_static(CF_TO_ITEM(cs), rule, "CONF_PARSER", name1, filename, lineno)) {
+	if (!_cf_data_add_static(CF_TO_ITEM(cs), rule, "conf_parser_t", name1, filename, lineno)) {
 		CONF_DATA const *cd;
-		CONF_PARSER *old;
+		conf_parser_t *old;
 
-		cd = cf_data_find(CF_TO_ITEM(cs), CONF_PARSER, name1);
+		cd = cf_data_find(CF_TO_ITEM(cs), conf_parser_t, name1);
 		old = cf_data_value(cd);
 		fr_assert(old != NULL);
 
@@ -1447,7 +1447,7 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
 		}
 
 		cf_log_err(cs, "Data of type %s with name \"%s\" already exists. "
-		           "Existing data added %s[%i]", "CONF_PARSER",
+		           "Existing data added %s[%i]", "conf_parser_t",
 			   name1, cd->item.filename, cd->item.lineno);
 
 		cf_debug(cs);
@@ -1467,9 +1467,9 @@ int _cf_section_rule_push(CONF_SECTION *cs, CONF_PARSER const *rule, char const 
  *	- 0 on success.
  *	- -1 on failure.
  */
-int _cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char const *filename, int lineno)
+int _cf_section_rules_push(CONF_SECTION *cs, conf_parser_t const *rules, char const *filename, int lineno)
 {
-	CONF_PARSER const *rule_p;
+	conf_parser_t const *rule_p;
 
 	if (!cs || !rules) return 0;
 
@@ -1494,7 +1494,7 @@ int _cf_section_rules_push(CONF_SECTION *cs, CONF_PARSER const *rules, char cons
  *
  */
 int cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-		       CONF_ITEM *ci, CONF_PARSER const *rule)
+		       CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int				num;
 	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
@@ -1510,7 +1510,7 @@ int cf_table_parse_int(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  *
  */
 int cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			 CONF_ITEM *ci, CONF_PARSER const *rule)
+			 CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int32_t				num;
 	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
@@ -1526,7 +1526,7 @@ int cf_table_parse_int32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  *
  */
 int cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			  CONF_ITEM *ci, CONF_PARSER const *rule)
+			  CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int32_t				num;
 	cf_table_parse_ctx_t const	*parse_ctx = rule->uctx;
@@ -1546,7 +1546,7 @@ int cf_table_parse_uint32(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent
  * Type should be FR_TYPE_VOID, struct field should be a uid_t.
  */
 int cf_parse_uid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-		 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+		 CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	if (fr_perm_uid_from_str(ctx, (uid_t *)out, cf_pair_value(cf_item_to_pair(ci))) < 0) {
 		cf_log_perr(ci, "Failed resolving UID");
@@ -1561,7 +1561,7 @@ int cf_parse_uid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  * Type should be FR_TYPE_VOID, struct field should be a gid_t.
  */
 int cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-		 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+		 CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	if (fr_perm_gid_from_str(ctx, (gid_t *)out, cf_pair_value(cf_item_to_pair(ci))) < 0) {
 		cf_log_perr(ci, "Failed resolving GID");
@@ -1570,4 +1570,3 @@ int cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 	return 0;
 }
-

@@ -293,9 +293,9 @@ static int8_t module_instance_data_cmp(void const *one, void const *two)
 	return CMP(a, b);
 }
 
-/** Generic callback for CONF_PARSER to load a submodule
+/** Generic callback for conf_parser_t to load a submodule
  *
- * CONF_PARSER entry should point to a module_instance_t field in the instance data
+ * conf_parser_t entry should point to a module_instance_t field in the instance data
  *
  * @param[in] ctx	unused.
  * @param[out] out	A pointer to a pointer to a module_instance_t.
@@ -309,7 +309,7 @@ static int8_t module_instance_data_cmp(void const *one, void const *two)
  *	- -1 if we failed to load the submodule.
  */
 int module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
-			   CONF_ITEM *ci, CONF_PARSER const *rule)
+			   CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));

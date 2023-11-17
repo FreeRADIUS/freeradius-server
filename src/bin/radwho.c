@@ -56,7 +56,7 @@ static struct radutmp_config_t {
 	char const *radutmp_fn;
 } radutmpconfig;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
   { FR_CONF_POINTER("filename", FR_TYPE_FILE_INPUT, &radutmpconfig.radutmp_fn), .dflt = RADUTMP },
   CONF_PARSER_TERMINATOR
 };

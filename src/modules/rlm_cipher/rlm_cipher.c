@@ -45,16 +45,16 @@ RCSID("$Id$")
 #include <openssl/x509.h>
 
 static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+			     CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-					 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+					 CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+			     CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 static int cipher_rsa_private_key_file_load(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+					    CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule);
+					    CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 typedef enum {
 	RLM_CIPHER_TYPE_INVALID = 0,
@@ -193,7 +193,7 @@ typedef struct {
 /** Configuration for the RSA-PCKS1-OAEP padding scheme
  *
  */
-static const CONF_PARSER rsa_oaep_config[] = {
+static const conf_parser_t rsa_oaep_config[] = {
 	{ FR_CONF_OFFSET("oaep_digest", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_oaep_t, oaep_digest), .func = digest_type_parse, .dflt = "sha256" },
 	{ FR_CONF_OFFSET("mgf1_digest", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, cipher_rsa_oaep_t, mgf1_digest), .func = digest_type_parse, .dflt = "sha256" },
 	{ FR_CONF_OFFSET("label", FR_TYPE_STRING, cipher_rsa_oaep_t, label) },
@@ -204,7 +204,7 @@ static const CONF_PARSER rsa_oaep_config[] = {
 /** Configuration for the RSA cipher type
  *
  */
-static const CONF_PARSER rsa_config[] = {
+static const conf_parser_t rsa_config[] = {
 	{ FR_CONF_OFFSET("verify_mode", FR_TYPE_VOID, cipher_rsa_t, verify_mode),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){
@@ -232,7 +232,7 @@ static const CONF_PARSER rsa_config[] = {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY, rlm_cipher_t, type), .func = cipher_type_parse, .dflt = "rsa" },
 	{ FR_CONF_OFFSET("rsa", FR_TYPE_SUBSECTION, rlm_cipher_t, rsa),
 			 .subcs_size = sizeof(cipher_rsa_t), .subcs_type = "cipher_rsa_t", .subcs = (void const *) rsa_config },
@@ -252,7 +252,7 @@ static const CONF_PARSER module_config[] = {
  *	- -1 on failure.
  */
 static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			     CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	EVP_MD const	*md;
 	char const	*type_str;
@@ -281,7 +281,7 @@ static int digest_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *par
  *	- -1 on failure.
  */
 static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-					 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+					 CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	int		type;
 	char const	*type_str;
@@ -309,7 +309,7 @@ static int cipher_rsa_padding_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUS
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	cipher_type_t	type;
 	char const	*type_str;
@@ -402,7 +402,7 @@ static int _x509_cert_free(X509 *cert)
  *	- 0 on success.
  */
 static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, void *parent,
-					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+					    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	FILE		*fp;
 	char const	*filename;
@@ -461,7 +461,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, void *pa
  *	- 0 on success.
  */
 static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, void *parent,
-					    CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+					    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	FILE		*fp;
 	char const	*filename;

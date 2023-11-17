@@ -39,7 +39,7 @@ typedef struct {
 	tmpl_t	*key;
 } rlm_sometimes_t;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("rcode", FR_TYPE_STRING, rlm_sometimes_t, rcode_str), .dflt = "fail" },
 	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("percentage", FR_TYPE_FLOAT32, rlm_sometimes_t, percentage), .dflt = "0" },

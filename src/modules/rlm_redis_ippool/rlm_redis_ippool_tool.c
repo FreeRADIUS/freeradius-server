@@ -93,7 +93,7 @@ typedef struct {
 	uint64_t		static_1d;	//!< Static leases that should renew in the next day.
 } ippool_tool_stats_t;
 
-static CONF_PARSER redis_config[] = {
+static conf_parser_t redis_config[] = {
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR
 };

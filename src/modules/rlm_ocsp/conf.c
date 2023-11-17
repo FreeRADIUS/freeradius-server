@@ -1,5 +1,5 @@
 #ifdef HAVE_OPENSSL_OCSP_H
-static CONF_PARSER ocsp_config[] = {
+static conf_parser_t ocsp_config[] = {
 	{ FR_CONF_OFFSET("enable", FR_TYPE_BOOL, fr_tls_ocsp_conf_t, enable), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, fr_tls_ocsp_conf_t, cache_server) },

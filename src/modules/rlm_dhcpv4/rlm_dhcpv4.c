@@ -82,7 +82,7 @@ typedef struct {
 	uint32_t		xid;			//!< XID
 } rlm_dhcpv4_thread_t;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, rlm_dhcpv4_t, config.ipaddr), },
 	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, rlm_dhcpv4_t, config.ipaddr) },
 

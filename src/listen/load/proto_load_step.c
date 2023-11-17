@@ -77,7 +77,7 @@ struct proto_load_step_s {
 };
 
 
-static const CONF_PARSER load_listen_config[] = {
+static const conf_parser_t load_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, proto_load_step_t, filename) },
 	{ FR_CONF_OFFSET("csv", FR_TYPE_STRING, proto_load_step_t, csv) },
 

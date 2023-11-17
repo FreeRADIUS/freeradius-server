@@ -72,7 +72,7 @@ typedef struct {
 	int		col_count;	//!< Number of columns associated with the result set
 } rlm_sql_oracle_conn_t;
 
-static const CONF_PARSER spool_config[] = {
+static const conf_parser_t spool_config[] = {
 	{ FR_CONF_OFFSET("stmt_cache_size", FR_TYPE_UINT32, rlm_sql_oracle_t, stmt_cache_size), .dflt = "32" },
 	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, rlm_sql_oracle_t, spool_timeout), .dflt = "0" },
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, rlm_sql_oracle_t, spool_min), .dflt = "1" },
@@ -81,7 +81,7 @@ static const CONF_PARSER spool_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER driver_config[] = {
+static const conf_parser_t driver_config[] = {
 	{ FR_CONF_POINTER("spool", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) spool_config },
 	CONF_PARSER_TERMINATOR
 };

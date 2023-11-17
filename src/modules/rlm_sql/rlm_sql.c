@@ -48,7 +48,7 @@ extern module_rlm_t rlm_sql;
 /*
  *	So we can do pass2 xlat checks on the queries.
  */
-static const CONF_PARSER query_config[] = {
+static const conf_parser_t query_config[] = {
 	{ FR_CONF_OFFSET("query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_MULTI, rlm_sql_config_t, accounting.query) },
 	CONF_PARSER_TERMINATOR
 };
@@ -57,7 +57,7 @@ static const CONF_PARSER query_config[] = {
  *	For now hard-code the subsections.  This isn't perfect, but it
  *	helps the average case.
  */
-static const CONF_PARSER type_config[] = {
+static const conf_parser_t type_config[] = {
 	{ FR_CONF_POINTER("accounting-on", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) query_config },
 	{ FR_CONF_POINTER("accounting-off", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) query_config },
 	{ FR_CONF_POINTER("start", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) query_config },
@@ -66,7 +66,7 @@ static const CONF_PARSER type_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER acct_config[] = {
+static const conf_parser_t acct_config[] = {
 	{ FR_CONF_OFFSET("reference", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, accounting.reference), .dflt = ".query" },
 	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, accounting.logfile) },
 
@@ -74,7 +74,7 @@ static const CONF_PARSER acct_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER postauth_config[] = {
+static const conf_parser_t postauth_config[] = {
 	{ FR_CONF_OFFSET("reference", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, postauth.reference), .dflt = ".query" },
 	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sql_config_t, postauth.logfile) },
 
@@ -82,7 +82,7 @@ static const CONF_PARSER postauth_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("driver", FR_TYPE_VOID, rlm_sql_t, driver_submodule), .dflt = "null",
 			 .func = module_rlm_submodule_parse },
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */

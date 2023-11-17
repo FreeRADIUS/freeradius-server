@@ -51,14 +51,14 @@ typedef struct {
 	char const		*expire;	//!< Command for expiring entries.
 } rlm_rediswho_t;
 
-static CONF_PARSER section_config[] = {
+static conf_parser_t section_config[] = {
 	{ FR_CONF_OFFSET("insert", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_rediswho_t, insert) },
 	{ FR_CONF_OFFSET("trim", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
 	{ FR_CONF_OFFSET("expire", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_rediswho_t, expire) },
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER module_config[] = {
+static conf_parser_t module_config[] = {
 	REDIS_COMMON_CONFIG,
 
 	{ FR_CONF_OFFSET("trim_count", FR_TYPE_INT32, rlm_rediswho_t, trim_count), .dflt = "-1" },

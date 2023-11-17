@@ -793,7 +793,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 
 	if (parent) {
 		CONF_DATA const *cd;
-		CONF_PARSER *rule;
+		conf_parser_t *rule;
 
 		/*
 		 *	Look up the parents parsing rules for itself.
@@ -802,13 +802,13 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 		 *	happens, we push the child parsing rules to
 		 *	this new child.
 		 */
-		cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, cf_section_name1(parent));
+		cd = cf_data_find(CF_TO_ITEM(parent), conf_parser_t, cf_section_name1(parent));
 		if (cd) {
 			rule = cf_data_value(cd);
 
 			if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
 			    rule->on_read && rule->subcs) {
-				CONF_PARSER const *rule_p;
+				conf_parser_t const *rule_p;
 
 				for (rule_p = rule->subcs; rule_p->name; rule_p++) {
 					if ((FR_BASE_TYPE(rule_p->type) == FR_TYPE_SUBSECTION) &&
@@ -835,7 +835,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 		 *	child rules for this section, and then do the
 		 *	on_read callback.
 		 */
-		cd = cf_data_find(CF_TO_ITEM(parent), CONF_PARSER, name1);
+		cd = cf_data_find(CF_TO_ITEM(parent), conf_parser_t, name1);
 		if (cd) {
 			rule = cf_data_value(cd);
 			if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
@@ -1762,9 +1762,9 @@ CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const
 	found = _cf_data_find(ci, type, name);
 	if (found) {
 		/*
-		 *	Suppress these, as it's OK for the CONF_PARSER in main_config.c
+		 *	Suppress these, as it's OK for the conf_parser_t in main_config.c
        		 */
-		if (strcmp(type, "CONF_PARSER") == 0) return NULL;
+		if (strcmp(type, "conf_parser_t") == 0) return NULL;
 
 		cf_log_err(ci, "Data of type %s with name \"%s\" already exists.  Existing data added %s[%i]", type,
 			   name, found->item.filename, found->item.lineno);

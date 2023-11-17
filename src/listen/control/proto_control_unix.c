@@ -81,7 +81,7 @@ typedef struct {
 	bool				peercred;		//!< whether we use peercred or not
 } proto_control_unix_t;
 
-static const CONF_PARSER unix_listen_config[] = {
+static const conf_parser_t unix_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_control_unix_t, filename),
 	.dflt = "${run_dir}/radiusd.sock}" },
 	{ FR_CONF_OFFSET("uid", FR_TYPE_STRING, proto_control_unix_t, uid_name) },

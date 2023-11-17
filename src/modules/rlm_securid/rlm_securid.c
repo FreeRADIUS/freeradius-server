@@ -41,7 +41,7 @@ typedef enum {
 } SECURID_AUTH_RC;
 
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("timer_expire", FR_TYPE_UINT32, rlm_securid_t, timer_limit), .dflt = "600" },
 	{ FR_CONF_OFFSET("max_sessions", FR_TYPE_UINT32, rlm_securid_t, max_sessions), .dflt = "2048" },
 	{ FR_CONF_OFFSET("max_trips_per_session", FR_TYPE_UINT32, rlm_securid_t, max_trips_per_session) },

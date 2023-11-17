@@ -71,7 +71,7 @@ typedef struct proto_detail_work_thread_s proto_detail_file_thread_t;
 static void work_init(proto_detail_file_thread_t *thread, bool triggered_by_delete);
 static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx);
 
-static const CONF_PARSER file_listen_config[] = {
+static const conf_parser_t file_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_file_t, filename ) },
 
 	{ FR_CONF_OFFSET("filename_work", FR_TYPE_STRING, proto_detail_file_t, filename_work ) },

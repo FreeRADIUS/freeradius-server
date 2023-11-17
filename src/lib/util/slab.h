@@ -30,9 +30,9 @@ extern "C" {
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/event.h>
 
-/** CONF_PARSER entries to populate user configurable slab values
+/** conf_parser_t entries to populate user configurable slab values
  */
-#define FR_SLAB_CONFIG_CONF_PARSER \
+#define FR_SLAB_CONFIG_conf_parser_t \
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_slab_config_t, min_elements), .dflt = "10" }, \
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_slab_config_t, max_elements), .dflt = "100" }, \
 	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_TIME_DELTA, fr_slab_config_t, interval), .dflt = "30s" }, \

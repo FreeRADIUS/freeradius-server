@@ -43,7 +43,7 @@ typedef struct {
 	fr_pool_t	*pool;
 } rlm_cache_memcached_t;
 
-static const CONF_PARSER driver_config[] = {
+static const conf_parser_t driver_config[] = {
 	{ FR_CONF_OFFSET("options", FR_TYPE_STRING, rlm_cache_memcached_t, options), .dflt = "--SERVER=localhost" },
 	CONF_PARSER_TERMINATOR
 };

@@ -9,9 +9,9 @@
 
 #include <freeradius-devel/ldap/base.h>
 
-extern CONF_PARSER const fr_ldap_sasl_mech_static[];
-extern CONF_PARSER const fr_ldap_tls_config[];
-extern CONF_PARSER const fr_ldap_option_config[];
+extern conf_parser_t const fr_ldap_sasl_mech_static[];
+extern conf_parser_t const fr_ldap_tls_config[];
+extern conf_parser_t const fr_ldap_option_config[];
 
 /*
  *  Macro for including common LDAP configuration items

@@ -41,7 +41,7 @@ RCSID("$Id$")
 /**
  * Client Configuration
  */
-static const CONF_PARSER client_config[] = {
+static const conf_parser_t client_config[] = {
 	{ FR_CONF_OFFSET("view", FR_TYPE_STRING, rlm_couchbase_t, client_view), .dflt = "_design/client/_view/by_name" },
 	CONF_PARSER_TERMINATOR
 };
@@ -49,7 +49,7 @@ static const CONF_PARSER client_config[] = {
 /**
  * Module Configuration
  */
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_couchbase_t, server_raw) },
 	{ FR_CONF_OFFSET("bucket", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_couchbase_t, bucket) },
 	{ FR_CONF_OFFSET("username", FR_TYPE_STRING, rlm_couchbase_t, username) },

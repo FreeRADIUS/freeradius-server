@@ -123,8 +123,8 @@ typedef struct {
 	fr_time_delta_t		connect_timeout;
 } fr_curl_conn_config_t;
 
-extern CONF_PARSER	 	fr_curl_tls_config[];
-extern CONF_PARSER		fr_curl_conn_config[];
+extern conf_parser_t	 	fr_curl_tls_config[];
+extern conf_parser_t		fr_curl_conn_config[];
 extern global_lib_autoinst_t	fr_curl_autoinst;
 
 int			fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle,

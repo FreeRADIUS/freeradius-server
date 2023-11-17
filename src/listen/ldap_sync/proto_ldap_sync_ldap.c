@@ -44,7 +44,7 @@ USES_APPLE_DEPRECATED_API
 extern fr_app_io_t proto_ldap_sync_ldap;
 extern fr_app_io_t proto_ldap_sync_child;
 
-static CONF_PARSER const proto_ldap_sync_ldap_config[] = {
+static conf_parser_t const proto_ldap_sync_ldap_config[] = {
 	/*
 	 *	LDAP server definition
 	 */

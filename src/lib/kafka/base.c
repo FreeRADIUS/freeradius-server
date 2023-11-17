@@ -125,7 +125,7 @@ fr_kafka_topic_conf_t *kafka_topic_conf_from_cs(CONF_SECTION *cs)
  *      - -1 on failure.
  */
 static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, char const *value,
-				    fr_token_t quote, CONF_PARSER const *rule)
+				    fr_token_t quote, conf_parser_t const *rule)
 {
 	char				tmp[sizeof("18446744073709551615b")];
 	fr_kafka_conf_ctx_t const	*kctx = rule->uctx;
@@ -201,7 +201,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int kafka_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule)
 {
 	char				buff[1024];
 	size_t				buff_len = sizeof(buff);
@@ -283,7 +283,7 @@ static int kafka_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr
  *	- 0 on success.
  *      - -1 on failure.
  */
-static int kafka_topic_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int kafka_topic_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule)
 {
 	char				buff[1024];
 	size_t				buff_len = sizeof(buff);
@@ -321,7 +321,7 @@ static int kafka_topic_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *
 	return 0;
 }
 
-static int kafka_config_parse_single(char const **out, CONF_PAIR *cp, CONF_PARSER const *rule)
+static int kafka_config_parse_single(char const **out, CONF_PAIR *cp, conf_parser_t const *rule)
 {
 	fr_value_box_t			vb = FR_VALUE_BOX_INITIALISER_NULL(vb);
 	fr_kafka_conf_ctx_t const	*kctx = rule->uctx;
@@ -421,7 +421,7 @@ static int kafka_config_parse_single(char const **out, CONF_PAIR *cp, CONF_PARSE
  *      - -1 on failure
  */
 static int kafka_config_parse(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *base,
-			      CONF_ITEM *ci, CONF_PARSER const *rule)
+			      CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	fr_kafka_conf_ctx_t const	*kctx = rule->uctx;
 	CONF_ITEM			*parent = cf_parent(ci);
@@ -493,7 +493,7 @@ static int kafka_config_parse(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *ba
  *      - -1 on failure
  */
 static int kafka_topic_config_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *base,
-				    CONF_ITEM *ci, CONF_PARSER const *rule)
+				    CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	fr_kafka_conf_ctx_t const	*kctx = rule->uctx;
 	CONF_ITEM			*parent = cf_parent(ci);
@@ -523,7 +523,7 @@ static int kafka_topic_config_parse(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UN
  *
  */
 static int kafka_topic_new(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *base,
-			   CONF_ITEM *ci, CONF_PARSER const *rule)
+			   CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	fr_kafka_conf_ctx_t const	*kctx = rule->uctx;
 	CONF_ITEM			*parent = cf_parent(ci);
@@ -538,7 +538,7 @@ static int kafka_topic_new(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void
 }
 #endif
 
-static CONF_PARSER const kafka_sasl_oauth_config[] = {
+static conf_parser_t const kafka_sasl_oauth_config[] = {
 	{ FR_CONF_FUNC("oauthbearer_conf", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.oauthbearer.config", .empty_default = true }},
 
@@ -548,7 +548,7 @@ static CONF_PARSER const kafka_sasl_oauth_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const kafka_sasl_kerberos_config[] = {
+static conf_parser_t const kafka_sasl_kerberos_config[] = {
 	/*
 	 *	Service principal
 	 */
@@ -582,7 +582,7 @@ static CONF_PARSER const kafka_sasl_kerberos_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const kafka_sasl_config[] = {
+static conf_parser_t const kafka_sasl_config[] = {
 	/*
 	 *	SASL mechanism
 	 */
@@ -616,7 +616,7 @@ static fr_table_ptr_sorted_t kafka_check_cert_cn_table[] = {
 };
 static size_t kafka_check_cert_cn_table_len = NUM_ELEMENTS(kafka_check_cert_cn_table);
 
-static CONF_PARSER const kafka_tls_config[] = {
+static conf_parser_t const kafka_tls_config[] = {
 	/*
 	 *	Cipher suite list in OpenSSL's format
 	 */
@@ -675,7 +675,7 @@ static CONF_PARSER const kafka_tls_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const kafka_connection_config[] = {
+static conf_parser_t const kafka_connection_config[] = {
 	/*
 	 *	Socket timeout
 	 */
@@ -752,7 +752,7 @@ static CONF_PARSER const kafka_connection_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const kafka_version_config[] = {
+static conf_parser_t const kafka_version_config[] = {
 	/*
 	 *	Request the API version from connected brokers
 	 */
@@ -780,7 +780,7 @@ static CONF_PARSER const kafka_version_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const kafka_metadata_config[] = {
+static conf_parser_t const kafka_metadata_config[] = {
 	/*
 	 *	Interval between attempts to refresh metadata from brokers
 	 */
@@ -845,7 +845,7 @@ static CONF_PARSER const kafka_metadata_config[] = {
 	{ FR_CONF_SUBSECTION_GLOBAL("tls", 0, kafka_tls_config) }, \
 	{ FR_CONF_SUBSECTION_GLOBAL("sasl", 0, kafka_sasl_config) }
 
-static CONF_PARSER const kafka_consumer_group_config[] = {
+static conf_parser_t const kafka_consumer_group_config[] = {
 	/*
 	 *	Group consumer is a member of
 	 */
@@ -886,7 +886,7 @@ static CONF_PARSER const kafka_consumer_group_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const kafka_base_consumer_topic_config[] = {
+static conf_parser_t const kafka_base_consumer_topic_config[] = {
 	/*
 	 *	How many messages we process at a time
 	 *
@@ -915,13 +915,13 @@ static CONF_PARSER const kafka_base_consumer_topic_config[] = {
  * }
  *
  */
-static CONF_PARSER const kafka_base_consumer_topics_config[] = {
+static conf_parser_t const kafka_base_consumer_topics_config[] = {
 	{ FR_CONF_SUBSECTION_GLOBAL(CF_IDENT_ANY, FR_TYPE_MULTI, kafka_base_consumer_topic_config) },
 
 	CONF_PARSER_TERMINATOR
 };
 
-CONF_PARSER const kafka_base_consumer_config[] = {
+conf_parser_t const kafka_base_consumer_config[] = {
 	BASE_CONFIG,
 	{ FR_CONF_SUBSECTION_GLOBAL("group", 0, kafka_consumer_group_config) },
 
@@ -1026,7 +1026,7 @@ CONF_PARSER const kafka_base_consumer_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const kafka_base_producer_topic_config[] = {
+static conf_parser_t const kafka_base_producer_topic_config[] = {
 	/*
 	 *	This field indicates the number of acknowledgements the leader
 	 *	broker must receive from ISR brokers before responding to the request.
@@ -1077,13 +1077,13 @@ static CONF_PARSER const kafka_base_producer_topic_config[] = {
  * }
  *
  */
-static CONF_PARSER const kafka_base_producer_topics_config[] = {
+static conf_parser_t const kafka_base_producer_topics_config[] = {
 	{ FR_CONF_SUBSECTION_GLOBAL(CF_IDENT_ANY, 0, kafka_base_producer_topic_config) },
 
 	CONF_PARSER_TERMINATOR
 };
 
-CONF_PARSER const kafka_base_producer_config[] = {
+conf_parser_t const kafka_base_producer_config[] = {
 	BASE_CONFIG,
 
 	/*

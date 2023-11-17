@@ -40,7 +40,7 @@ typedef struct {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("delay", FR_TYPE_TMPL, rlm_delay_t, delay) },
 	{ FR_CONF_OFFSET("relative", FR_TYPE_BOOL, rlm_delay_t, relative), .dflt = "no" },
 	{ FR_CONF_OFFSET("force_reschedule", FR_TYPE_BOOL, rlm_delay_t, force_reschedule), .dflt = "no" },

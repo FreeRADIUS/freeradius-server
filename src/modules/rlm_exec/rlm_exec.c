@@ -54,7 +54,7 @@ typedef struct {
 	bool			timeout_is_set;
 } rlm_exec_t;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("wait", FR_TYPE_BOOL, rlm_exec_t, wait), .dflt = "yes" },
 	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_TMPL, rlm_exec_t, input_list) },
 	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_TMPL, rlm_exec_t, output_list) },

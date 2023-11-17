@@ -77,12 +77,12 @@ typedef struct {
 	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
 } rlm_redis_ippool_t;
 
-static CONF_PARSER redis_config[] = {
+static conf_parser_t redis_config[] = {
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER module_config[] = {
+static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, rlm_redis_ippool_t, wait_timeout) },
 

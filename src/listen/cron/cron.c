@@ -28,10 +28,10 @@
 #include "proto_cron.h"
 
 extern fr_app_t proto_cron;
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int time_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int time_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static CONF_PARSER const limit_config[] = {
+static conf_parser_t const limit_config[] = {
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
@@ -44,7 +44,7 @@ static CONF_PARSER const limit_config[] = {
 /** How to parse a CRON listen section
  *
  */
-static CONF_PARSER const proto_cron_config[] = {
+static conf_parser_t const proto_cron_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_cron_t,
 			  type), .func = type_parse },
 
@@ -78,7 +78,7 @@ fr_dict_autoload_t proto_cron_dict[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	proto_cron_t		*inst = talloc_get_type_abort(parent, proto_cron_t);
 	fr_dict_enum_t const	*type_enum;
@@ -276,7 +276,7 @@ static size_t time_names_len = NUM_ELEMENTS(time_names);
  *
  *	https://github.com/staticlibs/ccronexpr/blob/master/ccronexpr.c
  */
-static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 //	proto_cron_t		*inst = talloc_get_type_abort(parent, proto_cron_t);
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
@@ -310,7 +310,7 @@ static int time_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CO
 	if (parse_field(ci, &p, "day of month", 1, 31) < 0) return -1;
 	if (parse_field(ci, &p, "month", 1,12) < 0) return -1;
 	if (parse_field(ci, &p, "day of week", 0, 6) < 0) return -1;
-	
+
 	fr_skip_whitespace(p);
 
 	if (*p) {
@@ -376,7 +376,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 	DEBUG(951, 951, "Listening on %s bound to virtual server %s",
 	      li->name, cf_section_name2(li->server_cs));
 
-	inst->listen = li;	/* Probably won't need it, but doesn't hurt */	
+	inst->listen = li;	/* Probably won't need it, but doesn't hurt */
 	inst->sc = sc;
 
 	return 0;

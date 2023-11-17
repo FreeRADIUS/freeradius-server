@@ -424,7 +424,7 @@ static fr_ipaddr_t cl_ipaddr;
 static char const *cl_srcipaddr = NULL;
 static char const *hs_proto = NULL;
 
-static CONF_PARSER limit_config[] = {
+static conf_parser_t limit_config[] = {
 	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, fr_client_t, limit.max_connections), .dflt = "16" },
 
 	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, fr_client_t, limit.lifetime), .dflt = "0" },
@@ -433,7 +433,7 @@ static CONF_PARSER limit_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER client_config[] = {
+static const conf_parser_t client_config[] = {
 	{ FR_CONF_POINTER("ipaddr", FR_TYPE_COMBO_IP_PREFIX, &cl_ipaddr) },
 	{ FR_CONF_POINTER("ipv4addr", FR_TYPE_IPV4_PREFIX, &cl_ipaddr) },
 	{ FR_CONF_POINTER("ipv6addr", FR_TYPE_IPV6_PREFIX, &cl_ipaddr) },

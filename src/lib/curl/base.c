@@ -51,7 +51,7 @@ static fr_table_num_sorted_t const fr_curl_sslcode_table[] = {
 };
 static size_t fr_curl_sslcode_table_len = NUM_ELEMENTS(fr_curl_sslcode_table);
 
-CONF_PARSER fr_curl_tls_config[] = {
+conf_parser_t fr_curl_tls_config[] = {
 	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, fr_curl_tls_t, ca_file) },
 	{ FR_CONF_OFFSET("ca_issuer_file", FR_TYPE_FILE_INPUT, fr_curl_tls_t, ca_issuer_file) },
 	{ FR_CONF_OFFSET("ca_path", FR_TYPE_FILE_INPUT, fr_curl_tls_t, ca_path) },
@@ -72,14 +72,14 @@ CONF_PARSER fr_curl_tls_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER reuse_curl_conn_config[] = {
+static conf_parser_t reuse_curl_conn_config[] = {
 	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_slab_config_t, min_elements), .dflt = "10" },
 	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_slab_config_t, max_elements), .dflt = "100" },
 	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_TIME_DELTA, fr_slab_config_t, interval), .dflt = "30s" },
 	CONF_PARSER_TERMINATOR
 };
 
-CONF_PARSER fr_curl_conn_config[] = {
+conf_parser_t fr_curl_conn_config[] = {
 	{ FR_CONF_OFFSET("reuse", FR_TYPE_SUBSECTION, fr_curl_conn_config_t, reuse), .subcs = (void const *) reuse_curl_conn_config },
 	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, fr_curl_conn_config_t, connect_timeout), .dflt = "3.0" },
 	CONF_PARSER_TERMINATOR

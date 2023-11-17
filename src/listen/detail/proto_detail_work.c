@@ -64,7 +64,7 @@ typedef struct {
 	fr_dlist_t			entry;			//!< for the retransmission list
 } fr_detail_entry_t;
 
-static CONF_PARSER limit_config[] = {
+static conf_parser_t limit_config[] = {
 	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.irt), .dflt = STRINGIFY(2) },
 	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, proto_detail_work_t, retry_config.mrt), .dflt = STRINGIFY(16) },
 
@@ -81,7 +81,7 @@ static CONF_PARSER limit_config[] = {
 };
 
 
-static const CONF_PARSER file_listen_config[] = {
+static const conf_parser_t file_listen_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_detail_work_t, filename_work ) },
 
 	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, proto_detail_work_t, track_progress ) },

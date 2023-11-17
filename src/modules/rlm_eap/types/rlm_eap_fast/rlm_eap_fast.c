@@ -61,7 +61,7 @@ typedef struct {
 } rlm_eap_fast_t;
 
 
-static CONF_PARSER submodule_config[] = {
+static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, rlm_eap_fast_t, tls_conf_name) },
 
 	{ FR_CONF_OFFSET("default_provisioning_eap_type", FR_TYPE_STRING, rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },

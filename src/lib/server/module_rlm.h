@@ -101,7 +101,7 @@ CONF_SECTION		*module_rlm_by_name_virtual(char const *asked_name);
  * @{
  */
 int			module_rlm_submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
-						   CONF_ITEM *ci, CONF_PARSER const *rule);
+						   CONF_ITEM *ci, conf_parser_t const *rule);
 /** @} */
 
 /** @name Module and module thread initialisation and instantiation

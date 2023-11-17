@@ -84,25 +84,25 @@ fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
  *
  **********************************************************************/
 
-static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,CONF_ITEM *ci, CONF_PARSER const *rule);
-static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,CONF_ITEM *ci, conf_parser_t const *rule);
+static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule);
+static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule);
 
-static int lib_dir_on_read(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int lib_dir_on_read(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /*
  *	Log destinations
  */
-static const CONF_PARSER initial_log_config[] = {
+static const conf_parser_t initial_log_config[] = {
 	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING, main_config_t, log_dest), .dflt = "files" },
 	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_VOID, main_config_t, syslog_facility), .dflt = "daemon",
 		.func = cf_table_parse_int,
@@ -121,7 +121,7 @@ static const CONF_PARSER initial_log_config[] = {
 /*
  *	Basic configuration for the server.
  */
-static const CONF_PARSER initial_server_config[] = {
+static const conf_parser_t initial_server_config[] = {
 	{ FR_CONF_POINTER("log", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) initial_log_config },
 
 	CONF_PARSER_TERMINATOR
@@ -130,7 +130,7 @@ static const CONF_PARSER initial_server_config[] = {
 /*
  *	Basic configuration for the server.
  */
-static const CONF_PARSER lib_dir_on_read_config[] = {
+static const conf_parser_t lib_dir_on_read_config[] = {
 	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, main_config_t, prefix), .dflt = "/usr/local" },
 
 	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, main_config_t, log_dates_utc) },
@@ -148,7 +148,7 @@ static const CONF_PARSER lib_dir_on_read_config[] = {
  *	items, we can parse the rest of the configuration items.
  *
  **********************************************************************/
-static const CONF_PARSER log_config[] = {
+static const conf_parser_t log_config[] = {
 	{ FR_CONF_OFFSET("colourise", FR_TYPE_BOOL, main_config_t, do_colourise) },
 	{ FR_CONF_OFFSET("line_number", FR_TYPE_BOOL, main_config_t, log_line_number) },
 	{ FR_CONF_OFFSET("timestamp", FR_TYPE_BOOL, main_config_t, log_timestamp) },
@@ -157,7 +157,7 @@ static const CONF_PARSER log_config[] = {
 };
 
 
-static const CONF_PARSER resources[] = {
+static const conf_parser_t resources[] = {
 	/*
 	 *	Don't set a default here.  It's set in the code, below.  This means that
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
@@ -168,7 +168,7 @@ static const CONF_PARSER resources[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER thread_config[] = {
+static const conf_parser_t thread_config[] = {
 	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, main_config_t, max_networks), .dflt = STRINGIFY(1),
 	  .func = num_networks_parse },
 	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, main_config_t, max_workers), .dflt = STRINGIFY(0),
@@ -187,7 +187,7 @@ static const CONF_PARSER thread_config[] = {
 /*
  *	Migration configuration.
  */
-static const CONF_PARSER migrate_config[] = {
+static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, forbid_update) },
 
@@ -198,14 +198,14 @@ static const CONF_PARSER migrate_config[] = {
 /*
  *	Migration configuration.
  */
-static const CONF_PARSER interpret_config[] = {
+static const conf_parser_t interpret_config[] = {
 	{ FR_CONF_OFFSET("countup_instructions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, main_config_t, ins_countup) },
 	{ FR_CONF_OFFSET("max_instructions", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, main_config_t, ins_max) },
 	CONF_PARSER_TERMINATOR
 };
 #endif
 
-static const CONF_PARSER server_config[] = {
+static const conf_parser_t server_config[] = {
 	/*
 	 *	FIXME: 'prefix' is the ONLY one which should be
 	 *	configured at compile time.  Hard-coding it here is
@@ -258,7 +258,7 @@ static const CONF_PARSER server_config[] = {
  *	permissions.
  *
  **********************************************************************/
-static const CONF_PARSER security_config[] = {
+static const conf_parser_t security_config[] = {
 #ifdef HAVE_SETUID
 	{ FR_CONF_OFFSET_IS_SET("user", FR_TYPE_VOID, main_config_t, uid), .func = cf_parse_uid },
 	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, main_config_t, gid), .func = cf_parse_gid },
@@ -277,7 +277,7 @@ static const CONF_PARSER security_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER switch_users_config[] = {
+static const conf_parser_t switch_users_config[] = {
 	{ FR_CONF_POINTER("security", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) security_config },
 
 	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, main_config_t, name), .func = name_parse },							/* DO NOT SET DEFAULT */
@@ -300,7 +300,7 @@ static const CONF_PARSER switch_users_config[] = {
 };
 
 static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
-				 CONF_ITEM *ci, CONF_PARSER const *rule)
+				 CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int	ret;
 
@@ -312,7 +312,7 @@ static int reverse_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
 }
 
 static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
-				  CONF_ITEM *ci, CONF_PARSER const *rule)
+				  CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int	ret;
 
@@ -324,7 +324,7 @@ static int hostname_lookups_parse(TALLOC_CTX *ctx, void *out, void *parent,
 }
 
 static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent,
-				  CONF_ITEM *ci, CONF_PARSER const *rule)
+				  CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int	ret;
 	size_t	value;
@@ -342,7 +342,7 @@ static int talloc_pool_size_parse(TALLOC_CTX *ctx, void *out, void *parent,
 }
 
 static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
-				  CONF_ITEM *ci, CONF_PARSER const *rule)
+				  CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int		ret;
 	fr_time_delta_t	value;
@@ -360,7 +360,7 @@ static int max_request_time_parse(TALLOC_CTX *ctx, void *out, void *parent,
 }
 
 static int lib_dir_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *parent,
-			 CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+			 CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	CONF_PAIR	*cp = cf_item_to_pair(ci);
 	char const	*value;
@@ -391,7 +391,7 @@ static int lib_dir_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void
  *
  */
 static int name_parse(TALLOC_CTX *ctx, void *out, void *parent,
-		      CONF_ITEM *ci, CONF_PARSER const *rule)
+		      CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	main_config_t *config = parent;
 
@@ -405,7 +405,7 @@ static int name_parse(TALLOC_CTX *ctx, void *out, void *parent,
 }
 
 static int num_networks_parse(TALLOC_CTX *ctx, void *out, void *parent,
-			      CONF_ITEM *ci, CONF_PARSER const *rule)
+			      CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int		ret;
 	uint32_t	value;
@@ -450,7 +450,7 @@ uint32_t num_workers_auto(main_config_t *conf, CONF_ITEM *parent)
 	return value;
 }
 
-static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, CONF_PARSER const *rule)
+static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	int		ret;
 	uint32_t	value;
@@ -474,7 +474,7 @@ static int num_workers_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	return 0;
 }
 
-static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, CONF_PARSER const *rule)
+static int num_workers_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule)
 {
 	char		*strvalue;
 	uint32_t	value;

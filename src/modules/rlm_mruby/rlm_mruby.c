@@ -52,7 +52,7 @@ typedef struct {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_mruby_t, filename) },
 	{ FR_CONF_OFFSET("module", FR_TYPE_STRING, rlm_mruby_t, module_name), .dflt = "Radiusd" },
 	CONF_PARSER_TERMINATOR

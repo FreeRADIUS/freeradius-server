@@ -1100,7 +1100,7 @@ static bool log_timestamp_is_set;
 /*
  *	Parse an fr_log_t configuration.
  */
-static const CONF_PARSER log_config[] = {
+static const conf_parser_t log_config[] = {
 	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, &log_destination), .dflt = "files" },
 #if 0
 	/*

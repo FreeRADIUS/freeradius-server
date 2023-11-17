@@ -33,8 +33,8 @@ extern "C" {
 #include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/util/dict.h>
 
-extern const CONF_PARSER virtual_servers_config[];
-extern const CONF_PARSER virtual_servers_on_read_config[];
+extern const conf_parser_t virtual_servers_config[];
+extern const conf_parser_t virtual_servers_on_read_config[];
 
 /** @name Namespace management
  *
@@ -60,7 +60,7 @@ CONF_SECTION	*virtual_server_find(char const *name) CC_HINT(nonnull);
 CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section) CC_HINT(nonnull);
 
 int		virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
-					CONF_ITEM *ci, CONF_PARSER const *rule) CC_HINT(nonnull(2,4));
+					CONF_ITEM *ci, conf_parser_t const *rule) CC_HINT(nonnull(2,4));
 /** @} */
 
 fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);

@@ -81,7 +81,7 @@ typedef struct {
 	pthread_mutex_t		mutex;
 } rlm_stats_thread_t;
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 

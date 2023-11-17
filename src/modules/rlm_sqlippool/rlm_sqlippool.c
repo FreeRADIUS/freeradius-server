@@ -95,7 +95,7 @@ typedef struct {
 
 } rlm_sqlippool_t;
 
-static CONF_PARSER message_config[] = {
+static conf_parser_t message_config[] = {
 	{ FR_CONF_OFFSET("exists", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, log_exists) },
 	{ FR_CONF_OFFSET("success", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, log_success) },
 	{ FR_CONF_OFFSET("clear", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, log_clear) },
@@ -104,7 +104,7 @@ static CONF_PARSER message_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER module_config[] = {
+static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, rlm_sqlippool_t, sql_instance_name), .dflt = "sql" },
 
 	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, rlm_sqlippool_t, lease_duration), .dflt = "86400" },

@@ -51,7 +51,7 @@ typedef struct {
 #define MPPE_KEY_LEN    32
 #define MSK_EMSK_LEN    (2 * MPPE_KEY_LEN)
 
-static CONF_PARSER submodule_config[] = {
+static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("group", FR_TYPE_UINT32, rlm_eap_pwd_t, group), .dflt = "19" },
 	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
 	{ FR_CONF_OFFSET("server_id", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_eap_pwd_t, server_id) },
@@ -596,4 +596,3 @@ rlm_eap_submodule_t rlm_eap_pwd = {
 	.provides	= { FR_EAP_METHOD_PWD },
 	.session_init	= mod_session_init,	/* Create the initial request */
 };
-

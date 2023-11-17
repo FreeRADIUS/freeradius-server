@@ -37,14 +37,14 @@ RCSID("$Id$")
 #include <grp.h>
 #include <wbclient.h>
 
-static const CONF_PARSER group_config[] = {
+static const conf_parser_t group_config[] = {
 	{ FR_CONF_OFFSET("search_username", FR_TYPE_TMPL, rlm_winbind_t, group_username) },
 	{ FR_CONF_OFFSET("add_domain", FR_TYPE_BOOL, rlm_winbind_t, group_add_domain), .dflt = "yes" },
 	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, rlm_winbind_t, group_attribute) },
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("username", FR_TYPE_TMPL, rlm_winbind_t, wb_username) },
 	{ FR_CONF_OFFSET("domain", FR_TYPE_TMPL, rlm_winbind_t, wb_domain) },
 	{ FR_CONF_POINTER("group", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) group_config },

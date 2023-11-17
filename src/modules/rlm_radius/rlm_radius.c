@@ -31,18 +31,18 @@ RCSID("$Id$")
 
 #include "rlm_radius.h"
 
-static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
-static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static CONF_PARSER const status_check_config[] = {
+static conf_parser_t const status_check_config[] = {
 	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, rlm_radius_t, status_check),
 	  .func = status_check_type_parse },
 
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const status_check_update_config[] = {
+static conf_parser_t const status_check_update_config[] = {
 	{ FR_CONF_OFFSET("update", FR_TYPE_SUBSECTION | FR_TYPE_REQUIRED, rlm_radius_t, status_check_map),
 	  .ident2 = CF_IDENT_ANY,
 	  .func = status_check_update_parse },
@@ -54,7 +54,7 @@ static CONF_PARSER const status_check_update_config[] = {
 /*
  *	Retransmission intervals for the packets we support.
  */
-static CONF_PARSER auth_config[] = {
+static conf_parser_t auth_config[] = {
 	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_ACCESS_REQUEST].irt), .dflt = STRINGIFY(2) },
 	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrt), .dflt = STRINGIFY(16) },
 	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_RADIUS_CODE_ACCESS_REQUEST].mrc), .dflt = STRINGIFY(5) },
@@ -62,7 +62,7 @@ static CONF_PARSER auth_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER acct_config[] = {
+static conf_parser_t acct_config[] = {
 	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].irt), .dflt = STRINGIFY(2) },
 	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrt), .dflt = STRINGIFY(5) },
 	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_RADIUS_CODE_ACCOUNTING_REQUEST].mrc), .dflt = STRINGIFY(1) },
@@ -70,7 +70,7 @@ static CONF_PARSER acct_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER status_config[] = {
+static conf_parser_t status_config[] = {
 	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_STATUS_SERVER].irt), .dflt = STRINGIFY(2) },
 	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_STATUS_SERVER].mrt), .dflt = STRINGIFY(5) },
 	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_RADIUS_CODE_STATUS_SERVER].mrc), .dflt = STRINGIFY(5) },
@@ -78,7 +78,7 @@ static CONF_PARSER status_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER coa_config[] = {
+static conf_parser_t coa_config[] = {
 	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_COA_REQUEST].irt), .dflt = STRINGIFY(2) },
 	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_COA_REQUEST].mrt), .dflt = STRINGIFY(16) },
 	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_RADIUS_CODE_COA_REQUEST].mrc), .dflt = STRINGIFY(5) },
@@ -86,7 +86,7 @@ static CONF_PARSER coa_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER disconnect_config[] = {
+static conf_parser_t disconnect_config[] = {
 	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].irt), .dflt = STRINGIFY(2) },
 	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, rlm_radius_t, retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrt), .dflt = STRINGIFY(16) },
 	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, rlm_radius_t, retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrc), .dflt = STRINGIFY(5) },
@@ -98,7 +98,7 @@ static CONF_PARSER disconnect_config[] = {
 /*
  *	A mapping of configuration file names to internal variables.
  */
-static CONF_PARSER const module_config[] = {
+static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, rlm_radius_t, io_submodule),
 	  .func = module_rlm_submodule_parse },
 
@@ -126,7 +126,7 @@ static CONF_PARSER const module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static CONF_PARSER const type_interval_config[FR_RADIUS_CODE_MAX] = {
+static conf_parser_t const type_interval_config[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_ACCESS_REQUEST] = { FR_CONF_POINTER("Access-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) auth_config },
 
 	[FR_RADIUS_CODE_ACCOUNTING_REQUEST] = { FR_CONF_POINTER("Accounting-Request", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) acct_config },
@@ -169,7 +169,7 @@ fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
  *	- -1 on failure.
  */
 static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-		      CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+		      CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
@@ -229,7 +229,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  *	- -1 on failure.
  */
 static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-				   CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+				   CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*type_str = cf_pair_value(cf_item_to_pair(ci));
 	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
@@ -287,7 +287,7 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
  *	- -1 on failure.
  */
 static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-				     CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+				     CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	int			rcode;
 	CONF_SECTION		*cs;

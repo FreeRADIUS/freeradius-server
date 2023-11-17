@@ -81,7 +81,7 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 #define ACB_AUTOLOCK	0x04000000	//!< Account auto locked.
 #define ACB_FR_EXPIRED	0x00020000	//!< Password Expired.
 
-static const CONF_PARSER passchange_config[] = {
+static const conf_parser_t passchange_config[] = {
 	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw) },
 	{ FR_CONF_OFFSET("ntlm_auth_username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_username) },
 	{ FR_CONF_OFFSET("ntlm_auth_domain", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
@@ -89,7 +89,7 @@ static const CONF_PARSER passchange_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER winbind_config[] = {
+static const conf_parser_t winbind_config[] = {
 	{ FR_CONF_OFFSET("username", FR_TYPE_TMPL, rlm_mschap_t, wb_username) },
 	{ FR_CONF_OFFSET("domain", FR_TYPE_TMPL, rlm_mschap_t, wb_domain) },
 #ifdef WITH_AUTH_WINBIND
@@ -98,7 +98,7 @@ static const CONF_PARSER winbind_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const CONF_PARSER module_config[] = {
+static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, rlm_mschap_t, normify), .dflt = "yes" },
 
 	/*

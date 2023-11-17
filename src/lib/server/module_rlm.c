@@ -914,13 +914,13 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	return 0;
 }
 
-/** Generic CONF_PARSER func for loading drivers
+/** Generic conf_parser_t func for loading drivers
  *
  */
 int module_rlm_submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
-			       CONF_ITEM *ci, CONF_PARSER const *rule)
+			       CONF_ITEM *ci, conf_parser_t const *rule)
 {
-	CONF_PARSER our_rule = *rule;
+	conf_parser_t our_rule = *rule;
 
 	our_rule.uctx = &rlm_modules;
 

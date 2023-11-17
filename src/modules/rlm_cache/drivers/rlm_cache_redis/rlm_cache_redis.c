@@ -30,7 +30,7 @@
 #include "../../rlm_cache.h"
 #include <freeradius-devel/redis/base.h>
 #include <freeradius-devel/redis/cluster.h>
-static CONF_PARSER driver_config[] = {
+static conf_parser_t driver_config[] = {
 	REDIS_COMMON_CONFIG,
 	CONF_PARSER_TERMINATOR
 };

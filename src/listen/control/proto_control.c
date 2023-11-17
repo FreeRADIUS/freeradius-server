@@ -27,9 +27,9 @@
 #include "proto_control.h"
 
 extern fr_app_t proto_control;
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, CONF_PARSER const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
-static CONF_PARSER const limit_config[] = {
+static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, proto_control_t, io.idle_timeout), .dflt = "30.0" } ,
 	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIME_DELTA, proto_control_t, io.nak_lifetime), .dflt = "30.0" } ,
 
@@ -49,7 +49,7 @@ static CONF_PARSER const limit_config[] = {
 /** How to parse a CONTROL listen section
  *
  */
-static CONF_PARSER const proto_control_config[] = {
+static conf_parser_t const proto_control_config[] = {
 	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_control_t, io.submodule),
 	  .func = transport_parse },
 
@@ -76,7 +76,7 @@ fr_dict_autoload_t proto_control_dict[] = {
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED CONF_PARSER const *rule)
+static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	dl_module_inst_t	*parent_inst;
