@@ -26,7 +26,7 @@ ldapssl.authenticate
 
 ldapssl.send
 
-&Tmp-String-0 := "%{ldapssl:ldaps:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description}"
+&Tmp-String-0 := %ldapssl("ldaps:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description")
 
 if (!(&Tmp-String-0 == "User %{User-Name} authenticated")) {
 	test_fail
