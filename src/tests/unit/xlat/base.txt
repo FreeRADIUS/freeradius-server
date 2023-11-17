@@ -125,10 +125,10 @@ xlat %length()
 match %length()
 
 xlat %length(
-match ERROR offset 10: Missing closing brace
+match ERROR offset 9: Missing closing brace
 
 xlat %length(1 + 2
-match ERROR offset 15: Missing closing brace
+match ERROR offset 11: Unexpected text after argument 1
 
 xlat \"%t\tfoo\"
 match \"%t\tfoo\"
