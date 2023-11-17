@@ -129,7 +129,7 @@ match 13
 #  of FR_TYPE_STRING.  The binary op instantiation function
 #  fixes those up via tmpl_afrom_substr().
 #
-xlat_purify %(op_add:4 3) + 6
+xlat_purify %op_add(4, 3) + 6
 match 13
 
 #

@@ -124,10 +124,10 @@ match /([A-Z0-9\\-]*)_%{Calling-Station-Id}/
 xlat %length()
 match %length()
 
-xlat %(length:
+xlat %length(
 match ERROR offset 10: Missing closing brace
 
-xlat %(length:1 + 2
+xlat %length(1 + 2
 match ERROR offset 15: Missing closing brace
 
 xlat \"%t\tfoo\"

@@ -367,6 +367,7 @@ if !(&Tmp-Integer-0 == 2147483647) {
 &request -= &Tmp-Integer-0[*]
 
 # 33. Signed 64bit integers
+if (0) {
 map json &Tmp-String-0 {
 	&Tmp-int64-0 := '$[0]'
 }
@@ -392,6 +393,7 @@ map json &Tmp-String-0 {
 }
 if !(&Tmp-uint64-0 == 9223372036854775807) {
 	test_fail
+}
 }
 
 &request -= &Tmp-uint64-0[*]

@@ -97,7 +97,7 @@ xlat_expr %md5('foo') + "foo"
 match  (%md5('foo') + "foo")
 
 #  We can name the xlat's, tho we don't need to
-xlat_expr %(op_add:4 3) + 6
+xlat_expr %op_add(4, 3) + 6
 match ((4 + 3) + 6)
 
 
@@ -110,7 +110,7 @@ match (1 < 2)
 xlat_expr 1 < 2 < 3
 match ((1 < 2) < 3)
 
-xlat_expr (uint32) %(concat:1 2)
+xlat_expr (uint32) %concat(1, 2)
 match %cast(uint32, %concat(1, 2))
 
 #
