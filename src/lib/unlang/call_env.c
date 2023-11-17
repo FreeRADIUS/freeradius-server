@@ -98,7 +98,7 @@ typedef struct {
 	call_env_parsed_t const			*last_expanded;		//!< The last expanded tmpl.
 	fr_value_box_list_t			tmpl_expanded;		//!< List to write value boxes to as tmpls are expanded.
 	void					**data;			//!< Final destination structure for value boxes.
-} call_env_ctx_t;
+} call_env_rctx_t;
 
 static unlang_action_t call_env_expand_repeat(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
 
@@ -107,13 +107,13 @@ static unlang_action_t call_env_expand_repeat(rlm_rcode_t *p_result, int *priori
  */
 static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	call_env_ctx_t	*call_env_ctx = talloc_get_type_abort(uctx, call_env_ctx_t);
+	call_env_rctx_t	*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
 	TALLOC_CTX	*ctx;
 	call_env_parsed_t const	*env = NULL;
 	void		**out;
 
-	while ((call_env_ctx->last_expanded = call_env_parsed_next(&call_env_ctx->call_env->parsed, call_env_ctx->last_expanded))) {
-		env = call_env_ctx->last_expanded;
+	while ((call_env_rctx->last_expanded = call_env_parsed_next(&call_env_rctx->call_env->parsed, call_env_rctx->last_expanded))) {
+		env = call_env_rctx->last_expanded;
 		fr_assert(env != NULL);
 
 		if (!env->tmpl_only) break;
@@ -121,16 +121,16 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 		/*
 		 *	If we only need the tmpl, just set the pointer and move the next.
 		 */
-		out = (void **)((uint8_t *)*call_env_ctx->data + env->rule->pair.tmpl_offset);
+		out = (void **)((uint8_t *)*call_env_rctx->data + env->rule->pair.tmpl_offset);
 		*out = env->tmpl;
 	}
 
-	if (!call_env_ctx->last_expanded) {	/* No more! */
-		if (call_env_ctx->result) *call_env_ctx->result = CALL_ENV_SUCCESS;
+	if (!call_env_rctx->last_expanded) {	/* No more! */
+		if (call_env_rctx->result) *call_env_rctx->result = CALL_ENV_SUCCESS;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	ctx = *call_env_ctx->data;
+	ctx = *call_env_rctx->data;
 
 	fr_assert(env != NULL);
 
@@ -138,21 +138,21 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	 *	Multi pair options should allocate boxes in the context of the array
 	 */
 	if (env->rule->pair.multi) {
-		out = (void **)((uint8_t *)(*call_env_ctx->data) + env->rule->offset);
+		out = (void **)((uint8_t *)(*call_env_rctx->data) + env->rule->offset);
 
 		/*
 		 *	For multi pair options, allocate the array before expanding the first entry.
 		 */
 		if (env->multi_index == 0) {
 			void *array;
-			MEM(array = _talloc_zero_array((*call_env_ctx->data), env->rule->pair.size,
+			MEM(array = _talloc_zero_array((*call_env_rctx->data), env->rule->pair.size,
 						       env->count, env->rule->pair.type_name));
 			*out = array;
 		}
 		ctx = *out;
 	}
 
-	if (unlang_tmpl_push(ctx, &call_env_ctx->tmpl_expanded, request, call_env_ctx->last_expanded->tmpl,
+	if (unlang_tmpl_push(ctx, &call_env_rctx->tmpl_expanded, request, call_env_rctx->last_expanded->tmpl,
 			     NULL) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
@@ -166,18 +166,18 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 					      request_t *request, void *uctx)
 {
 	void			*out = NULL, *tmpl_out = NULL;
-	call_env_ctx_t		*call_env_ctx = talloc_get_type_abort(uctx, call_env_ctx_t);
+	call_env_rctx_t		*call_env_rctx = talloc_get_type_abort(uctx, call_env_rctx_t);
 	call_env_parsed_t	const *env;
 	call_env_result_t	result;
 
-	env = call_env_ctx->last_expanded;
+	env = call_env_rctx->last_expanded;
 	if (!env) return UNLANG_ACTION_CALCULATE_RESULT;
 
 	if (env->tmpl_only) goto tmpl_only;
 	/*
 	 *	Find the location of the output
 	 */
-	out = ((uint8_t*)(*call_env_ctx->data)) + env->rule->offset;
+	out = ((uint8_t*)(*call_env_rctx->data)) + env->rule->offset;
 
 	/*
 	 *	If this is a multi pair option, the output is an array.
@@ -189,21 +189,21 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 	}
 
 tmpl_only:
-	if (env->rule->pair.tmpl_offset >= 0) tmpl_out = ((uint8_t *)*call_env_ctx->data) + env->rule->pair.tmpl_offset;
+	if (env->rule->pair.tmpl_offset >= 0) tmpl_out = ((uint8_t *)*call_env_rctx->data) + env->rule->pair.tmpl_offset;
 
-	result = call_env_value_parse(*call_env_ctx->data, request, out, tmpl_out, env, &call_env_ctx->tmpl_expanded);
+	result = call_env_value_parse(*call_env_rctx->data, request, out, tmpl_out, env, &call_env_rctx->tmpl_expanded);
 	if (result != CALL_ENV_SUCCESS) {
-		if (call_env_ctx->result) *call_env_ctx->result = result;
+		if (call_env_rctx->result) *call_env_rctx->result = result;
 		return UNLANG_ACTION_FAIL;
 	}
 
-	if (!call_env_parsed_next(&call_env_ctx->call_env->parsed, env)) {
-		if (call_env_ctx->result) *call_env_ctx->result = CALL_ENV_SUCCESS;
+	if (!call_env_parsed_next(&call_env_rctx->call_env->parsed, env)) {
+		if (call_env_rctx->result) *call_env_rctx->result = CALL_ENV_SUCCESS;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	return unlang_function_push(request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,
-				    call_env_ctx);
+				    call_env_rctx);
 }
 
 /** Initialise the expansion of a call environment
@@ -217,19 +217,19 @@ tmpl_only:
 unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *env_result, void **env_data,
 				call_env_t const *call_env)
 {
-	call_env_ctx_t	*call_env_ctx;
+	call_env_rctx_t	*call_env_rctx;
 
-	MEM(call_env_ctx = talloc_zero(ctx, call_env_ctx_t));
+	MEM(call_env_rctx = talloc_zero(ctx, call_env_rctx_t));
 	MEM(*env_data = talloc_zero_array(ctx, uint8_t, call_env->method->inst_size));
 	talloc_set_name_const(*env_data, call_env->method->inst_type);
-	call_env_ctx->result = env_result;
+	call_env_rctx->result = env_result;
 	if (env_result) *env_result = CALL_ENV_INVALID;	/* Make sure we ran to completion*/
-	call_env_ctx->data = env_data;
-	call_env_ctx->call_env = call_env;
-	fr_value_box_list_init(&call_env_ctx->tmpl_expanded);
+	call_env_rctx->data = env_data;
+	call_env_rctx->call_env = call_env;
+	fr_value_box_list_init(&call_env_rctx->tmpl_expanded);
 
 	return unlang_function_push(request, call_env_expand_start, call_env_expand_repeat, NULL, 0, UNLANG_SUB_FRAME,
-				    call_env_ctx);
+				    call_env_rctx);
 }
 
 /** Parse per call env
