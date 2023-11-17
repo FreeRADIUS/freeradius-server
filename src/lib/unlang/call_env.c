@@ -112,7 +112,7 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	call_env_parsed_t const	*env = NULL;
 	void		**out;
 
-	while ((call_env_ctx->last_expanded = call_env_parsed_next(&call_env_ctx->call_env->pairs, call_env_ctx->last_expanded))) {
+	while ((call_env_ctx->last_expanded = call_env_parsed_next(&call_env_ctx->call_env->parsed, call_env_ctx->last_expanded))) {
 		env = call_env_ctx->last_expanded;
 		fr_assert(env != NULL);
 
@@ -197,7 +197,7 @@ tmpl_only:
 		return UNLANG_ACTION_FAIL;
 	}
 
-	if (!call_env_parsed_next(&call_env_ctx->call_env->pairs, env)) {
+	if (!call_env_parsed_next(&call_env_ctx->call_env->parsed, env)) {
 		if (call_env_ctx->result) *call_env_ctx->result = CALL_ENV_SUCCESS;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -444,8 +444,8 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 	 */
 	MEM(call_env = talloc_pooled_object(ctx, call_env_t, count * 4, (sizeof(call_env_parser_t) + sizeof(tmpl_t)) * count + names_len * 2));
 	call_env->method = call_env_method;
-	call_env_parsed_init(&call_env->pairs);
-	if (call_env_parse(call_env, &call_env->pairs, name, namespace, cs, call_env_method->env) < 0) {
+	call_env_parsed_init(&call_env->parsed);
+	if (call_env_parse(call_env, &call_env->parsed, name, namespace, cs, call_env_method->env) < 0) {
 		talloc_free(call_env);
 		return NULL;
 	}

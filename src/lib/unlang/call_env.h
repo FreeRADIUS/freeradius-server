@@ -102,7 +102,7 @@ struct call_env_parser_s {
 #define CALL_ENV_TERMINATOR { NULL }
 
 struct call_env_parsed_s {
-	call_env_parsed_entry_t	entry;		//!< Entry in list of parsed call_env_parsers.
+	call_env_parsed_entry_t		entry;		//!< Entry in list of parsed call_env_parsers.
 	tmpl_t				*tmpl;		//!< Tmpl produced from parsing conf pair.
 	size_t				count;		//!< Number of CONF_PAIRs found, matching the #call_env_parser_t.
 	size_t				multi_index;	//!< Array index for this instance.
@@ -128,7 +128,7 @@ struct call_env_method_s {
 /** Structure containing both a talloc pool, a list of parsed call_env_pairs
  */
 struct call_env_s {
-	call_env_parsed_head_t		pairs;			//!< The per call parsed call environment.
+	call_env_parsed_head_t		parsed;			//!< The per call parsed call environment.
 	call_env_method_t const		*method;		//!< The method this call env is for.
 };
 
