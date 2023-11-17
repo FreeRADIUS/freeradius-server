@@ -243,7 +243,9 @@ static int dedup_cmp(void const *one, void const *two)
 static void dedup_free(void *data)
 {
 	totp_dedup_t *dedup = data;
+#ifdef HAVE_PTHREAD_H
 	rlm_totp_t *inst = dedup->instance;
+#endif
 
 	if (!dedup->unlisted) {
 		PTHREAD_MUTEX_LOCK(inst);
