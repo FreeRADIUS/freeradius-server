@@ -38,7 +38,7 @@ src/include/autoconf.sed: src/include/autoconf.h
 #
 
 # Find the RFC dictionaries, and add them to the list to be converted
-DICT := $(wildcard $(addsuffix /dictionary.rfc*,$(addprefix share/dictionary/,$(PROTOCOLS))))
+DICT := $(filter-out %~,$(wildcard $(addsuffix /dictionary.rfc*,$(addprefix share/dictionary/,$(PROTOCOLS)))))
 
 # Find internal dictionaries and add them to the list to be converte
 DICT += $(wildcard $(addsuffix /dictionary.freeradius*,$(addprefix share/dictionary/,$(PROTOCOLS))))
@@ -118,7 +118,7 @@ src/freeradius-devel:
 #
 #  Ensure we set up the build environment
 #
-BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC)
+BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY))
 scan: $(BOOTSTRAP_BUILD)
 
 #
