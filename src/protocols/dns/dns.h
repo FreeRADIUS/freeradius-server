@@ -76,6 +76,7 @@ typedef struct {
 enum {
 	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DNS strings
 	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
+	FLAG_ENCODE_DNS_LABEL_UNCOMPRESSED,    		//!< encode as uncompressed DNS label
 };
 
 typedef struct {

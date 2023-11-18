@@ -424,6 +424,7 @@ void fr_dns_global_free(void)
 
 static fr_table_num_ordered_t const subtype_table[] = {
 	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
+	{ L("uncompressed"),			FLAG_ENCODE_DNS_LABEL_UNCOMPRESSED },
 };
 
 
