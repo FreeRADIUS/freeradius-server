@@ -25,6 +25,8 @@
  */
 RCSIDH(cf_parse_h, "$Id$")
 
+typedef struct conf_parser_s conf_parser_t;
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -427,8 +429,6 @@ do {\
 
 extern bool check_config;
 
-typedef struct conf_parser_t conf_parser_t;
-
 /** Callback for performing custom parsing of a #CONF_SECTION or CONF_PAIR
  *
  * @param[in] ctx	to allocate any data in.
@@ -483,7 +483,7 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  * @see cf_section_parse
  * @see cf_pair_parse
  */
-struct conf_parser_t {
+struct conf_parser_s {
 	char const	*name;			//!< Name of the #CONF_ITEM to parse.
 	char const	*ident2;		//!< Second identifier for #CONF_SECTION.
 
@@ -528,7 +528,7 @@ struct conf_parser_t {
 		};
 
 		struct {
-			struct conf_parser_t const *subcs;//!< When type is set to #FR_TYPE_SUBSECTION, should
+			conf_parser_t	const *subcs;//!< When type is set to #FR_TYPE_SUBSECTION, should
 							//!< be a pointer to the start of another array of
 							//!< #conf_parser_t structs, forming the subsection.
 			size_t		subcs_size;	//!< If non-zero, allocate structs of this size to hold
