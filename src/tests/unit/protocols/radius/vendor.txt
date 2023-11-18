@@ -139,5 +139,11 @@ match 1a 0f 00 00 1a 99 01 09 02 07 03 05 ab cd ef
 decode-pair -
 match Vendor-Specific = { raw.6809 = { raw.1 = { raw.2 = { raw.3 = 0xabcdef } } } }
 
+encode-pair Aruba.MPSK-Lookup-Info = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxy"
+match 1a d8 00 00 39 e7 42 d2 ee 96 71 b2 0c 85 02 62 68 3e 7f 5c 78 6c fa f3 a9 c4 a5 ff 9a be 21 a2 d3 49 0a 21 4a 52 31 f5 d2 bc 00 94 49 bb 4b 04 e9 1b 95 45 00 04 f5 b7 38 65 58 f5 bf bc bd 25 7b b5 1d f6 6a 3b 01 b6 65 a1 33 4c 02 e6 1d e2 55 b9 88 45 30 2e 44 cb 67 69 b1 5c c1 ff ba 5c 56 95 f8 25 95 49 87 20 dd 43 5c f2 3b ae 37 e6 fa 32 01 46 2a 64 8f bb ac 3a bc 9c 64 a8 5e d6 27 da 3a d7 05 a4 0b bb 56 f8 ce 73 39 96 fa 69 8f 32 90 13 5e c2 bb 38 47 a8 31 51 b9 99 61 b1 ee 09 d7 b8 88 b8 3b 33 40 6e 5f 70 e1 0d 16 45 5c 63 91 0d 20 40 14 57 48 1a c1 c8 79 75 7b 47 23 af 25 b7 d9 92 71 a4 ee 09 4b f8 5e 83 2d 3b 8c 8a 98 b2 a7 97 44 7f
+
+decode-pair -
+match  Vendor-Specific = { Aruba = { MPSK-Lookup-Info = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxy" } }
+
 count
-match 66
+match 70

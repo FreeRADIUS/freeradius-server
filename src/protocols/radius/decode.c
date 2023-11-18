@@ -204,11 +204,10 @@ ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret
 	size_t		n, secretlen;
 
 	/*
-	 *	The RFC's say that the maximum is 128.
-	 *	The buffer we're putting it into above is 254, so
-	 *	we don't need to do any length checking.
+	 *	The RFC's say that the maximum is 128, but where we
+	 *	come from, we don't need limits.
 	 */
-	if (pwlen > 128) pwlen = 128;
+	if (pwlen > RADIUS_MAX_PASS_LENGTH) pwlen = RADIUS_MAX_PASS_LENGTH;
 
 	/*
 	 *	Catch idiots.

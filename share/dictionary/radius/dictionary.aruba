@@ -84,7 +84,7 @@ ATTRIBUTE	Device-Traffic-Class			63	integer
 
 ATTRIBUTE	PVLAN-Port-Type				64	integer
 ATTRIBUTE	Network-Test				65	integer
-ATTRIBUTE	MPSK-Lookup-Info			66	string
+ATTRIBUTE	MPSK-Lookup-Info			66	string encrypt=1
 ATTRIBUTE	AVPair					67	string
 ATTRIBUTE	DPP-Service-Type			68	integer
 
