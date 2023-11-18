@@ -59,7 +59,7 @@ module_rlm_t rlm_utf8 = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "utf8",
-		.type		= MODULE_TYPE_THREAD_SAFE
+		.flags		= MODULE_TYPE_THREAD_SAFE
 	},
 	.method_names = (module_method_name_t[]){
 		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_utf8_clean },

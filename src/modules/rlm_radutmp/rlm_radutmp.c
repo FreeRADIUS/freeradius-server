@@ -562,7 +562,7 @@ module_rlm_t rlm_radutmp = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "radutmp",
-		.type		= MODULE_TYPE_THREAD_UNSAFE,
+		.flags		= MODULE_TYPE_THREAD_UNSAFE,
 		.inst_size	= sizeof(rlm_radutmp_t),
 		.config		= module_config
 	},

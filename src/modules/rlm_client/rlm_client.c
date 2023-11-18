@@ -381,7 +381,7 @@ module_rlm_t rlm_client = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "dynamic_clients",
-		.type		= MODULE_TYPE_THREAD_SAFE,		/* type */
+		.flags		= MODULE_TYPE_THREAD_SAFE,		/* type */
 		.onload		= mod_load,
 		.unload		= mod_unload
 	},

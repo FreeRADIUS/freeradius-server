@@ -1064,7 +1064,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 		 *	Compile the default "actions" subsection, which includes retries.
 		 */
 		actions = cf_section_find(subcs, "actions", NULL);
-		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->module->type & MODULE_TYPE_RETRY) != 0)) goto error;
+		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->module->flags & MODULE_TYPE_RETRY) != 0)) goto error;
 	}
 
 	/*

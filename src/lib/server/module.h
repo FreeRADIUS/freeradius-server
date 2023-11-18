@@ -44,13 +44,16 @@ typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
 typedef struct module_list_t			module_list_t;
 
-#define MODULE_TYPE_THREAD_SAFE		(0 << 0) 	//!< Module is threadsafe.
-#define MODULE_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
-							//!< Server will protect calls
-							//!< with mutex.
-#define MODULE_TYPE_RESUMABLE     	(1 << 2) 	//!< does yield / resume
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) {
+	MODULE_TYPE_THREAD_SAFE	= (0 << 0), 	//!< Module is threadsafe.
+	MODULE_TYPE_THREAD_UNSAFE = (1 << 0), 	//!< Module is not threadsafe.
+						//!< Server will protect calls with mutex.
+	MODULE_TYPE_RESUMABLE	= (1 << 2), 	//!< does yield / resume
 
-#define MODULE_TYPE_RETRY     		(1 << 3) 	//!< can handle retries
+	MODULE_TYPE_RETRY 	= (1 << 3) 	//!< can handle retries
+} module_flags_t;
+DIAG_ON(attributes)
 
 /** Module section callback
  *
@@ -141,7 +144,7 @@ struct module_s {
 
 	module_instantiate_t		bootstrap;
 	module_instantiate_t		instantiate;
-	int				type;	/* flags */
+	int				flags;	/* flags */
 	module_thread_instantiate_t	thread_instantiate;
 	module_thread_detach_t		thread_detach;
 	char const			*thread_inst_type;

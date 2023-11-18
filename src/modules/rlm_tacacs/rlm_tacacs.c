@@ -256,7 +256,7 @@ module_rlm_t rlm_tacacs = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "tacacs",
-		.type		= MODULE_TYPE_THREAD_SAFE | MODULE_TYPE_RESUMABLE,
+		.flags		= MODULE_TYPE_THREAD_SAFE | MODULE_TYPE_RESUMABLE,
 		.inst_size	= sizeof(rlm_tacacs_t),
 		.config		= module_config,
 

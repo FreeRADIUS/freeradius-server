@@ -496,7 +496,7 @@ module_rlm_t rlm_krb5 = {
 #ifdef KRB5_IS_THREAD_SAFE
 		.type		= MODULE_TYPE_THREAD_SAFE,
 #else
-		.type		= MODULE_TYPE_THREAD_UNSAFE,
+		.flags		= MODULE_TYPE_THREAD_UNSAFE,
 #endif
 		.inst_size	= sizeof(rlm_krb5_t),
 		.config		= module_config,

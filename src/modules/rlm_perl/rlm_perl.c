@@ -1170,7 +1170,7 @@ module_rlm_t rlm_perl = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "perl",
-		.type			= MODULE_TYPE_THREAD_SAFE,
+		.flags			= MODULE_TYPE_THREAD_SAFE,
 		.inst_size		= sizeof(rlm_perl_t),
 
 		.config			= module_config,

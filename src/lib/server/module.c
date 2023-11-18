@@ -896,7 +896,7 @@ static int _module_instance_free(module_instance_t *mi)
 	/*
 	 *	mi->module may be NULL if we failed loading the module
 	 */
-	if (mi->module && ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0)) {
+	if (mi->module && ((mi->module->flags & MODULE_TYPE_THREAD_UNSAFE) != 0)) {
 #ifndef NDEBUG
 		int ret;
 
@@ -1047,7 +1047,7 @@ module_instance_t *module_alloc(module_list_t *ml,
 	 *	Do this here so the destructor can trylock the mutex
 	 *	correctly even if bootstrap/instantiation fails.
 	 */
-	if ((mi->module->type & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
+	if ((mi->module->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
 	talloc_set_destructor(mi, _module_instance_free);
 
 	mi->name = talloc_typed_strdup(mi, qual_inst_name);

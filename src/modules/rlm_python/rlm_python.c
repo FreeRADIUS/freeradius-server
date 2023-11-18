@@ -1170,7 +1170,7 @@ module_rlm_t rlm_python = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "python",
-		.type			= MODULE_TYPE_THREAD_SAFE,
+		.flags			= MODULE_TYPE_THREAD_SAFE,
 
 		.inst_size		= sizeof(rlm_python_t),
 		.thread_inst_size	= sizeof(rlm_python_thread_t),

@@ -4464,7 +4464,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	if (cf_item_is_section(ci) &&
 	    !unlang_compile_actions(&c->actions, cf_item_to_section(ci),
-				    (inst->module->type & MODULE_TYPE_RETRY) != 0)) goto error;
+				    (inst->module->flags & MODULE_TYPE_RETRY) != 0)) goto error;
 
 	return c;
 }

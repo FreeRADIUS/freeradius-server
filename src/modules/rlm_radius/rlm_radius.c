@@ -655,7 +655,7 @@ module_rlm_t rlm_radius = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "radius",
-		.type		= MODULE_TYPE_THREAD_SAFE | MODULE_TYPE_RESUMABLE,
+		.flags		= MODULE_TYPE_THREAD_SAFE | MODULE_TYPE_RESUMABLE,
 		.inst_size	= sizeof(rlm_radius_t),
 		.config		= module_config,
 

@@ -160,7 +160,7 @@ module_rlm_t rlm_unpack = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "unpack",
-		.type		= MODULE_TYPE_THREAD_SAFE,
+		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.onload		= mod_load,
 		.unload		= mod_unload
 	}
