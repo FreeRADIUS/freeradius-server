@@ -46,3 +46,9 @@ original null
 encode ERX-LI-Action = off
 decode -
 data ERX-LI-Action = off
+
+encode Aruba-MPSK-Lookup-Info = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+data 1a c8 00 00 39 e7 42 c2 c5 6f 16 e5 de 2d 2a 2d d3 0e ac 92 12 c5 97 af 8e 08 f0 92 b4 45 4d 24 5d 73 16 a8 5a cd 78 0a f2 5e 7f e5 e1 fe 95 79 ee 2e 5b 0e ac bf fd 8c 15 da 9c 59 1d 53 5b 76 49 e9 71 4d d7 00 1c 04 65 51 cb 35 66 81 36 0d 25 ab 23 3b 67 5a 30 f8 0d 66 2b bf 97 f5 18 03 34 79 7a 22 11 c1 02 78 94 b0 26 62 13 4a c1 9c 77 6f b8 7c 29 ee 8b 61 14 de 90 b6 94 3f d0 01 00 57 6d 48 2a 59 f3 d4 57 d2 04 af 4e 64 0b 11 31 9e 63 49 f3 fa 61 4d c9 38 88 d1 89 3f 2a 10 d3 8f a0 5d 46 5f 0a b1 2f 9a 70 fa 35 79 c7 a6 68 69 28 98 49 d5 7a 29 9d dc 3d 2f 43 52 f5 12 b3 bf 61 80 2e 7a 3a 0c
+
+decode -
+data Aruba-MPSK-Lookup-Info = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
