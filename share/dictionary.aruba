@@ -82,7 +82,7 @@ ATTRIBUTE	Aruba-Device-Traffic-Class		63	integer
 
 ATTRIBUTE	Aruba-PVLAN-Port-Type			64	integer
 ATTRIBUTE	Aruba-Network-Test			65	integer
-ATTRIBUTE	Aruba-MPSK-Lookup-Info			66	string
+ATTRIBUTE	Aruba-MPSK-Lookup-Info			66	string encrypt=1
 ATTRIBUTE	Aruba-AVPair				67	string
 ATTRIBUTE	Aruba-DPP-Service-Type			68	integer
 

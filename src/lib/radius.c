@@ -536,7 +536,7 @@ static void make_secret(uint8_t *digest, uint8_t const *vector,
 	fr_md5_destroy(&context);
 }
 
-#define MAX_PASS_LEN (128)
+#define MAX_PASS_LEN (256)
 static void make_passwd(uint8_t *output, ssize_t *outlen,
 			uint8_t const *input, size_t inlen,
 			char const *secret, uint8_t const *vector)
@@ -3938,7 +3938,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	VALUE_PAIR *vp;
 	uint8_t const *data = start;
 	char *p;
-	uint8_t buffer[256];
+	uint8_t buffer[MAX_PASS_LEN];
 
 	/*
 	 *	FIXME: Attrlen can be larger than 253 for extended attrs!
@@ -4054,7 +4054,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 					     attrlen, secret,
 					     packet->vector);
 			}
-			buffer[253] = '\0';
+			buffer[attrlen] = '\0';
 
 			/*
 			 *	MS-CHAP-MPPE-Keys are 24 octets, and
@@ -4761,7 +4761,7 @@ int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
 	 */
 	len = *pwlen;
 
-	if (len > 128) len = 128;
+	if (len > MAX_STRING_LEN) len = MAX_STRING_LEN;
 
 	if (len == 0) {
 		memset(passwd, 0, AUTH_PASS_LEN);
@@ -4819,13 +4819,6 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 	uint8_t	digest[AUTH_VECTOR_LEN];
 	int	i;
 	size_t	n, secretlen;
-
-	/*
-	 *	The RFC's say that the maximum is 128.
-	 *	The buffer we're putting it into above is 254, so
-	 *	we don't need to do any length checking.
-	 */
-	if (pwlen > 128) pwlen = 128;
 
 	/*
 	 *	Catch idiots.
