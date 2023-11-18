@@ -2985,7 +2985,7 @@ void cf_file_free(CONF_SECTION *cs)
 /** Set the euid/egid used when performing file checks
  *
  * Sets the euid, and egid used when cf_file_check is called to check
- * permissions on conf items of type #FR_TYPE_FILE_INPUT.
+ * permissions on conf items of type #CONF_FLAG_FILE_INPUT
  *
  * @note This is probably only useful for the freeradius daemon itself.
  *

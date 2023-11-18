@@ -73,10 +73,10 @@ typedef struct {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, rlm_imap_t, uri) },
-	{ FR_CONF_OFFSET("timeout",FR_TYPE_TIME_DELTA, rlm_imap_t, timeout), .dflt = "5.0" },
-	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_imap_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
-	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, rlm_imap_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
+	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, 0, rlm_imap_t, uri) },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_imap_t, timeout), .dflt = "5.0" },
+	{ FR_CONF_OFFSET("tls", 0, CONF_FLAG_SUBSECTION, rlm_imap_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
+	{ FR_CONF_OFFSET("connection", 0, CONF_FLAG_SUBSECTION, rlm_imap_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
 	CONF_PARSER_TERMINATOR
 };
 

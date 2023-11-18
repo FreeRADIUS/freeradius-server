@@ -71,29 +71,29 @@ typedef struct {
 } ldap_xlat_profile_call_env_t;
 
 static const call_env_parser_t sasl_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_mech,
+	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, 0, ldap_auth_call_env_t, user_sasl_mech,
 			     NULL, T_INVALID, false, false, false) },
-	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_authname,
+	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, 0, ldap_auth_call_env_t, user_sasl_authname,
 			     NULL, T_INVALID, false, false, false) },
-	{ FR_CALL_ENV_OFFSET("proxy", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_proxy,
+	{ FR_CALL_ENV_OFFSET("proxy", FR_TYPE_STRING, 0, ldap_auth_call_env_t, user_sasl_proxy,
 			     NULL, T_INVALID, false, true, false) },
-	{ FR_CALL_ENV_OFFSET("realm", FR_TYPE_STRING, ldap_auth_call_env_t, user_sasl_realm,
+	{ FR_CALL_ENV_OFFSET("realm", FR_TYPE_STRING, 0, ldap_auth_call_env_t, user_sasl_realm,
 			     NULL, T_INVALID, false, true, false) },
 	CALL_ENV_TERMINATOR
 };
 
 static conf_parser_t profile_config[] = {
-	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, profile_scope), .dflt = "base",
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, 0, rlm_ldap_t, profile_scope), .dflt = "base",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
-	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, rlm_ldap_t, profile_attr) },
-	{ FR_CONF_OFFSET("attribute_suspend", FR_TYPE_STRING, rlm_ldap_t, profile_attr_suspend) },
+	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, 0, rlm_ldap_t, profile_attr) },
+	{ FR_CONF_OFFSET("attribute_suspend", FR_TYPE_STRING, 0, rlm_ldap_t, profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const call_env_parser_t autz_profile_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, ldap_autz_call_env_t, default_profile,
+	{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, 0, ldap_autz_call_env_t, default_profile,
 			     NULL, T_INVALID, false, false, true) },
-	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_autz_call_env_t, profile_filter,
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, 0, ldap_autz_call_env_t, profile_filter,
 			     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
 	CALL_ENV_TERMINATOR
 };
@@ -102,29 +102,29 @@ static const call_env_parser_t autz_profile_call_env[] = {
  *	User configuration
  */
 static conf_parser_t user_config[] = {
-	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, userobj_scope), .dflt = "sub",
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, 0, rlm_ldap_t, userobj_scope), .dflt = "sub",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
-	{ FR_CONF_OFFSET("sort_by", FR_TYPE_STRING, rlm_ldap_t, userobj_sort_by) },
+	{ FR_CONF_OFFSET("sort_by", FR_TYPE_STRING, 0, rlm_ldap_t, userobj_sort_by) },
 
-	{ FR_CONF_OFFSET("access_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_access_attr) },
-	{ FR_CONF_OFFSET("access_positive", FR_TYPE_BOOL, rlm_ldap_t, access_positive), .dflt = "yes" },
-	{ FR_CONF_OFFSET("access_value_negate", FR_TYPE_STRING, rlm_ldap_t, access_value_negate), .dflt = "false" },
-	{ FR_CONF_OFFSET("access_value_suspend", FR_TYPE_STRING, rlm_ldap_t, access_value_suspend), .dflt = "suspended" },
+	{ FR_CONF_OFFSET("access_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, userobj_access_attr) },
+	{ FR_CONF_OFFSET("access_positive", FR_TYPE_BOOL, 0, rlm_ldap_t, access_positive), .dflt = "yes" },
+	{ FR_CONF_OFFSET("access_value_negate", FR_TYPE_STRING, 0, rlm_ldap_t, access_value_negate), .dflt = "false" },
+	{ FR_CONF_OFFSET("access_value_suspend", FR_TYPE_STRING, 0, rlm_ldap_t, access_value_suspend), .dflt = "suspended" },
 	CONF_PARSER_TERMINATOR
 };
 
 #define user_call_env(_prefix, _struct, ...) \
 static const call_env_parser_t _prefix ## _user_call_env[] = { \
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, _struct, user_base, \
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, 0, _struct, user_base, \
 			     "", T_SINGLE_QUOTED_STRING, true, false, true) }, \
-	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, _struct, user_filter, \
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, 0, _struct, user_filter, \
 			     NULL, T_INVALID, false, true, true) }, \
 	##__VA_ARGS__, \
 	CALL_ENV_TERMINATOR \
 }
 
 user_call_env(auth, ldap_auth_call_env_t, { FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env, false) },
-	      { FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, ldap_auth_call_env_t, password,
+	      { FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING, CONF_FLAG_ATTRIBUTE, ldap_auth_call_env_t, password,
 		password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) } );
 
 user_call_env(autz, ldap_autz_call_env_t);
@@ -137,29 +137,29 @@ user_call_env(memberof, ldap_xlat_memberof_call_env_t);
  *	Group configuration
  */
 static conf_parser_t group_config[] = {
-	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, groupobj_filter) },
-	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, rlm_ldap_t, groupobj_scope), .dflt = "sub",
+	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, 0, rlm_ldap_t, groupobj_filter) },
+	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, 0, rlm_ldap_t, groupobj_scope), .dflt = "sub",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len }  },
 
-	{ FR_CONF_OFFSET("name_attribute", FR_TYPE_STRING, rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
-	{ FR_CONF_OFFSET("membership_attribute", FR_TYPE_STRING, rlm_ldap_t, userobj_membership_attr) },
-	{ FR_CONF_OFFSET("membership_filter", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_ldap_t, groupobj_membership_filter) },
-	{ FR_CONF_OFFSET("cacheable_name", FR_TYPE_BOOL, rlm_ldap_t, cacheable_group_name), .dflt = "no" },
-	{ FR_CONF_OFFSET("cacheable_dn", FR_TYPE_BOOL, rlm_ldap_t, cacheable_group_dn), .dflt = "no" },
-	{ FR_CONF_OFFSET("cache_attribute", FR_TYPE_STRING, rlm_ldap_t, cache_attribute) },
-	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, rlm_ldap_t, group_attribute) },
-	{ FR_CONF_OFFSET("allow_dangling_group_ref", FR_TYPE_BOOL, rlm_ldap_t, allow_dangling_group_refs), .dflt = "no" },
+	{ FR_CONF_OFFSET("name_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
+	{ FR_CONF_OFFSET("membership_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, userobj_membership_attr) },
+	{ FR_CONF_OFFSET("membership_filter", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_ldap_t, groupobj_membership_filter) },
+	{ FR_CONF_OFFSET("cacheable_name", FR_TYPE_BOOL, 0, rlm_ldap_t, cacheable_group_name), .dflt = "no" },
+	{ FR_CONF_OFFSET("cacheable_dn", FR_TYPE_BOOL, 0, rlm_ldap_t, cacheable_group_dn), .dflt = "no" },
+	{ FR_CONF_OFFSET("cache_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, cache_attribute) },
+	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, group_attribute) },
+	{ FR_CONF_OFFSET("allow_dangling_group_ref", FR_TYPE_BOOL, 0, rlm_ldap_t, allow_dangling_group_refs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const call_env_parser_t autz_group_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_autz_call_env_t, group_base,
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, 0, ldap_autz_call_env_t, group_base,
 			     NULL, T_INVALID, false, false, true) },
 	CALL_ENV_TERMINATOR
 };
 
 static const call_env_parser_t memberof_group_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, ldap_xlat_memberof_call_env_t, group_base,
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, 0, ldap_xlat_memberof_call_env_t, group_base,
 			       NULL, T_INVALID, false, false, true) },
 	CALL_ENV_TERMINATOR
 };
@@ -168,7 +168,7 @@ static const call_env_parser_t memberof_group_call_env[] = {
  *	Reference for accounting updates
  */
 static const conf_parser_t acct_section_config[] = {
-	{ FR_CONF_OFFSET("reference", FR_TYPE_STRING | FR_TYPE_XLAT, ldap_acct_section_t, reference), .dflt = "." },
+	{ FR_CONF_OFFSET("reference", FR_TYPE_STRING, CONF_FLAG_XLAT, ldap_acct_section_t, reference), .dflt = "." },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -176,39 +176,39 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	Pool config items
 	 */
-	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_MULTI, rlm_ldap_t, handle_config.server_str) },	/* Do not set to required */
+	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_ldap_t, handle_config.server_str) },	/* Do not set to required */
 
 	/*
 	 *	Common LDAP conf parsers
 	 */
 	FR_LDAP_COMMON_CONF(rlm_ldap_t),
 
-	{ FR_CONF_OFFSET("valuepair_attribute", FR_TYPE_STRING, rlm_ldap_t, valuepair_attr) },
+	{ FR_CONF_OFFSET("valuepair_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, valuepair_attr) },
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
-	{ FR_CONF_OFFSET("session_tracking", FR_TYPE_BOOL, rlm_ldap_t, session_tracking), .dflt = "no" },
+	{ FR_CONF_OFFSET("session_tracking", FR_TYPE_BOOL, 0, rlm_ldap_t, session_tracking), .dflt = "no" },
 #endif
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
-	{ FR_CONF_OFFSET("edir", FR_TYPE_BOOL, rlm_ldap_t, edir) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("edir", FR_TYPE_BOOL, 0, rlm_ldap_t, edir) }, /* NULL defaults to "no" */
 
 	/*
 	 *	Attempt to bind with the cleartext password we got from eDirectory
 	 *	Universal password for additional authorization checks.
 	 */
-	{ FR_CONF_OFFSET("edir_autz", FR_TYPE_BOOL, rlm_ldap_t, edir_autz) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("edir_autz", FR_TYPE_BOOL, 0, rlm_ldap_t, edir_autz) }, /* NULL defaults to "no" */
 #endif
 
-	{ FR_CONF_POINTER("user", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) user_config },
+	{ FR_CONF_POINTER("user", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) user_config },
 
-	{ FR_CONF_POINTER("group", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) group_config },
+	{ FR_CONF_POINTER("group", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) group_config },
 
-	{ FR_CONF_POINTER("profile", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) profile_config },
+	{ FR_CONF_POINTER("profile", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) profile_config },
 
-	{ FR_CONF_OFFSET("pool", FR_TYPE_SUBSECTION, rlm_ldap_t, trunk_conf), .subcs = (void const *) fr_trunk_config },
+	{ FR_CONF_OFFSET("pool", 0, CONF_FLAG_SUBSECTION, rlm_ldap_t, trunk_conf), .subcs = (void const *) fr_trunk_config },
 
-	{ FR_CONF_OFFSET("bind_pool", FR_TYPE_SUBSECTION, rlm_ldap_t, bind_trunk_conf),
+	{ FR_CONF_OFFSET("bind_pool", 0, CONF_FLAG_SUBSECTION, rlm_ldap_t, bind_trunk_conf),
 	  .subcs = (void const *) fr_trunk_config },
 
 	CONF_PARSER_TERMINATOR
@@ -254,7 +254,7 @@ static const call_env_method_t xlat_profile_method_env = {
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_SUBSECTION("profile", NULL,
 					 ((call_env_parser_t[])  {
-						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, ldap_xlat_profile_call_env_t, profile_filter,
+						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, 0, ldap_xlat_profile_call_env_t, profile_filter,
 								     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
 						CALL_ENV_TERMINATOR
 					 }),

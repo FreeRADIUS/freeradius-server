@@ -33,9 +33,9 @@ extern "C" {
 /** conf_parser_t entries to populate user configurable slab values
  */
 #define FR_SLAB_CONFIG_conf_parser_t \
-	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, fr_slab_config_t, min_elements), .dflt = "10" }, \
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, fr_slab_config_t, max_elements), .dflt = "100" }, \
-	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_TIME_DELTA, fr_slab_config_t, interval), .dflt = "30s" }, \
+	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, 0, fr_slab_config_t, min_elements), .dflt = "10" }, \
+	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, 0, fr_slab_config_t, max_elements), .dflt = "100" }, \
+	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_TIME_DELTA, 0, fr_slab_config_t, interval), .dflt = "30s" }, \
 
 /** Tuneable parameters for slabs
  */

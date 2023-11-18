@@ -130,48 +130,48 @@ typedef struct {
 
 
 static const conf_parser_t file_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_OUTPUT | FR_TYPE_XLAT, rlm_logtee_t, file.name) },
-	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, rlm_logtee_t, file.permissions), .dflt = "0600" },
-	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, rlm_logtee_t, file.group_str) },
-	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, rlm_logtee_t, file.escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
+	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, 0, rlm_logtee_t, file.permissions), .dflt = "0600" },
+	{ FR_CONF_OFFSET("group", FR_TYPE_STRING, 0, rlm_logtee_t, file.group_str) },
+	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, 0, rlm_logtee_t, file.escape), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t unix_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT, rlm_logtee_t, unix_sock.path) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_logtee_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t udp_config[] = {
-	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, logtee_net_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, logtee_net_t, port) },
+	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, 0, logtee_net_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, 0, logtee_net_t, port) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t tcp_config[] = {
-	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, logtee_net_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, logtee_net_t, port) },
+	{ FR_CONF_OFFSET("server", FR_TYPE_COMBO_IP_ADDR, 0, logtee_net_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, 0, logtee_net_t, port) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_logtee_t, log_dst_str) },
-	{ FR_CONF_OFFSET("buffer_depth", FR_TYPE_SIZE, rlm_logtee_t, buffer_depth), .dflt = "10000" },
+	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_logtee_t, log_dst_str) },
+	{ FR_CONF_OFFSET("buffer_depth", FR_TYPE_SIZE, 0, rlm_logtee_t, buffer_depth), .dflt = "10000" },
 
-	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, rlm_logtee_t, delimiter), .dflt = "\n" },
-	{ FR_CONF_OFFSET("format", FR_TYPE_TMPL, rlm_logtee_t, log_fmt), .dflt = "%n - %s", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("delimiter", FR_TYPE_STRING, 0, rlm_logtee_t, delimiter), .dflt = "\n" },
+	{ FR_CONF_OFFSET("format", 0, CONF_FLAG_TMPL, rlm_logtee_t, log_fmt), .dflt = "%n - %s", .quote = T_DOUBLE_QUOTED_STRING },
 
 	/*
 	 *	Log destinations
 	 */
-	{ FR_CONF_POINTER("file", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) file_config },
-	{ FR_CONF_POINTER("unix", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) unix_config },
-	{ FR_CONF_OFFSET("tcp", FR_TYPE_SUBSECTION, rlm_logtee_t, tcp), .subcs= (void const *) tcp_config },
-	{ FR_CONF_OFFSET("udp", FR_TYPE_SUBSECTION, rlm_logtee_t, udp), .subcs = (void const *) udp_config },
+	{ FR_CONF_POINTER("file", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) file_config },
+	{ FR_CONF_POINTER("unix", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) unix_config },
+	{ FR_CONF_OFFSET("tcp", 0, CONF_FLAG_SUBSECTION, rlm_logtee_t, tcp), .subcs= (void const *) tcp_config },
+	{ FR_CONF_OFFSET("udp", 0, CONF_FLAG_SUBSECTION, rlm_logtee_t, udp), .subcs = (void const *) udp_config },
 
-	{ FR_CONF_OFFSET("connection_timeout", FR_TYPE_TIME_DELTA, rlm_logtee_t, connection_timeout), .dflt = "1.0" },
-	{ FR_CONF_OFFSET("reconnection_delay", FR_TYPE_TIME_DELTA, rlm_logtee_t, reconnection_delay), .dflt = "1.0" },
+	{ FR_CONF_OFFSET("connection_timeout", FR_TYPE_TIME_DELTA, 0, rlm_logtee_t, connection_timeout), .dflt = "1.0" },
+	{ FR_CONF_OFFSET("reconnection_delay", FR_TYPE_TIME_DELTA, 0, rlm_logtee_t, reconnection_delay), .dflt = "1.0" },
 
 	CONF_PARSER_TERMINATOR
 };

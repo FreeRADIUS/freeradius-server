@@ -55,12 +55,12 @@ typedef struct {
 } rlm_exec_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("wait", FR_TYPE_BOOL, rlm_exec_t, wait), .dflt = "yes" },
-	{ FR_CONF_OFFSET("input_pairs", FR_TYPE_TMPL, rlm_exec_t, input_list) },
-	{ FR_CONF_OFFSET("output_pairs", FR_TYPE_TMPL, rlm_exec_t, output_list) },
-	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, rlm_exec_t, shell_escape), .dflt = "yes" },
-	{ FR_CONF_OFFSET("env_inherit", FR_TYPE_BOOL, rlm_exec_t, env_inherit), .dflt = "no" },
-	{ FR_CONF_OFFSET_IS_SET("timeout", FR_TYPE_TIME_DELTA, rlm_exec_t, timeout) },
+	{ FR_CONF_OFFSET("wait", FR_TYPE_BOOL, 0, rlm_exec_t, wait), .dflt = "yes" },
+	{ FR_CONF_OFFSET("input_pairs", 0, CONF_FLAG_TMPL, rlm_exec_t, input_list) },
+	{ FR_CONF_OFFSET("output_pairs", 0, CONF_FLAG_TMPL, rlm_exec_t, output_list) },
+	{ FR_CONF_OFFSET("shell_escape", FR_TYPE_BOOL, 0, rlm_exec_t, shell_escape), .dflt = "yes" },
+	{ FR_CONF_OFFSET("env_inherit", FR_TYPE_BOOL, 0, rlm_exec_t, env_inherit), .dflt = "no" },
+	{ FR_CONF_OFFSET_IS_SET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -71,7 +71,7 @@ typedef struct {
 static const call_env_method_t exec_method_env = {
 	FR_CALL_ENV_METHOD_OUT(exec_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("program", FR_TYPE_STRING, exec_call_env_t, program, NULL,
+		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("program", FR_TYPE_STRING, 0, exec_call_env_t, program, NULL,
 					       T_BACK_QUOTED_STRING, false), .pair.force_quote = true },
 		CALL_ENV_TERMINATOR
 	}

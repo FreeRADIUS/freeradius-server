@@ -77,25 +77,25 @@ typedef struct {
 } rlm_sqlcounter_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, sqlmod_inst) },
+	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_sqlcounter_t, sqlmod_inst) },
 
 
-	{ FR_CONF_OFFSET("query", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlcounter_t, query) },
-	{ FR_CONF_OFFSET("reset", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_sqlcounter_t, reset) },
+	{ FR_CONF_OFFSET("query", FR_TYPE_STRING, CONF_FLAG_XLAT | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, query) },
+	{ FR_CONF_OFFSET("reset", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_sqlcounter_t, reset) },
 
-	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL | FR_TYPE_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("key", 0, CONF_FLAG_TMPL | CONF_FLAG_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 
-	{ FR_CONF_OFFSET("reset_period_start_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, start_attr),
+	{ FR_CONF_OFFSET("reset_period_start_name", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE, rlm_sqlcounter_t, start_attr),
 	  .dflt = "&control.${.:instance}-Start" },
-	{ FR_CONF_OFFSET("reset_period_end_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, end_attr),
+	{ FR_CONF_OFFSET("reset_period_end_name", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE, rlm_sqlcounter_t, end_attr),
 	  .dflt = "&control.${.:instance}-End" },
 
 	/* Just used to register a paircmp against */
-	{ FR_CONF_OFFSET("counter_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
-	{ FR_CONF_OFFSET("check_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_sqlcounter_t, limit_attr) },
+	{ FR_CONF_OFFSET("counter_name", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
+	{ FR_CONF_OFFSET("check_name", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, limit_attr) },
 
 	/* Attribute to write remaining session to */
-	{ FR_CONF_OFFSET("reply_name", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE, rlm_sqlcounter_t, reply_attr) },
+	{ FR_CONF_OFFSET("reply_name", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE, rlm_sqlcounter_t, reply_attr) },
 	CONF_PARSER_TERMINATOR
 };
 

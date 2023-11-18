@@ -82,53 +82,53 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 #define ACB_FR_EXPIRED	0x00020000	//!< Password Expired.
 
 static const conf_parser_t passchange_config[] = {
-	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw) },
-	{ FR_CONF_OFFSET("ntlm_auth_username", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_username) },
-	{ FR_CONF_OFFSET("ntlm_auth_domain", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
-	{ FR_CONF_OFFSET("local_cpw", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, local_cpw) },
+	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw) },
+	{ FR_CONF_OFFSET("ntlm_auth_username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_username) },
+	{ FR_CONF_OFFSET("ntlm_auth_domain", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
+	{ FR_CONF_OFFSET("local_cpw", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, local_cpw) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t winbind_config[] = {
-	{ FR_CONF_OFFSET("username", FR_TYPE_TMPL, rlm_mschap_t, wb_username) },
-	{ FR_CONF_OFFSET("domain", FR_TYPE_TMPL, rlm_mschap_t, wb_domain) },
+	{ FR_CONF_OFFSET("username", 0, CONF_FLAG_TMPL, rlm_mschap_t, wb_username) },
+	{ FR_CONF_OFFSET("domain", 0, CONF_FLAG_TMPL, rlm_mschap_t, wb_domain) },
 #ifdef WITH_AUTH_WINBIND
-	{ FR_CONF_OFFSET("retry_with_normalised_username", FR_TYPE_BOOL, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
+	{ FR_CONF_OFFSET("retry_with_normalised_username", FR_TYPE_BOOL, 0, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
 #endif
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, rlm_mschap_t, normify), .dflt = "yes" },
+	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, 0, rlm_mschap_t, normify), .dflt = "yes" },
 
 	/*
 	 *	Cache the password by default.
 	 */
-	{ FR_CONF_OFFSET("use_mppe", FR_TYPE_BOOL, rlm_mschap_t, use_mppe), .dflt = "yes" },
-	{ FR_CONF_OFFSET("require_encryption", FR_TYPE_BOOL, rlm_mschap_t, require_encryption), .dflt = "no" },
-	{ FR_CONF_OFFSET("require_strong", FR_TYPE_BOOL, rlm_mschap_t, require_strong), .dflt = "no" },
-	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
-	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_mschap_t, ntlm_auth) },
-	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_TIME_DELTA, rlm_mschap_t, ntlm_auth_timeout) },
+	{ FR_CONF_OFFSET("use_mppe", FR_TYPE_BOOL, 0, rlm_mschap_t, use_mppe), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_encryption", FR_TYPE_BOOL, 0, rlm_mschap_t, require_encryption), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_strong", FR_TYPE_BOOL, 0, rlm_mschap_t, require_strong), .dflt = "no" },
+	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, 0, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
+	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_auth) },
+	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_TIME_DELTA, 0, rlm_mschap_t, ntlm_auth_timeout) },
 
-	{ FR_CONF_POINTER("passchange", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
-	{ FR_CONF_OFFSET("allow_retry", FR_TYPE_BOOL, rlm_mschap_t, allow_retry), .dflt = "yes" },
-	{ FR_CONF_OFFSET("retry_msg", FR_TYPE_STRING, rlm_mschap_t, retry_msg) },
+	{ FR_CONF_POINTER("passchange", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
+	{ FR_CONF_OFFSET("allow_retry", FR_TYPE_BOOL, 0, rlm_mschap_t, allow_retry), .dflt = "yes" },
+	{ FR_CONF_OFFSET("retry_msg", FR_TYPE_STRING, 0, rlm_mschap_t, retry_msg) },
 
 
 #ifdef __APPLE__
-	{ FR_CONF_OFFSET("use_open_directory", FR_TYPE_BOOL, rlm_mschap_t, open_directory), .dflt = "yes" },
+	{ FR_CONF_OFFSET("use_open_directory", FR_TYPE_BOOL, 0, rlm_mschap_t, open_directory), .dflt = "yes" },
 #endif
 
-	{ FR_CONF_POINTER("winbind", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) winbind_config },
+	{ FR_CONF_POINTER("winbind", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) winbind_config },
 
 	/*
 	 *	These are now in a subsection above.
 	 */
-	{ FR_CONF_OFFSET("winbind_username", FR_TYPE_TMPL | FR_TYPE_DEPRECATED, rlm_mschap_t, wb_username) },
-	{ FR_CONF_OFFSET("winbind_domain", FR_TYPE_TMPL | FR_TYPE_DEPRECATED, rlm_mschap_t, wb_domain) },
+	{ FR_CONF_DEPRECATED("winbind_username", 0, CONF_FLAG_TMPL, rlm_mschap_t, wb_username) },
+	{ FR_CONF_DEPRECATED("winbind_domain", 0, CONF_FLAG_TMPL, rlm_mschap_t, wb_domain) },
 #ifdef WITH_AUTH_WINBIND
-	{ FR_CONF_OFFSET("winbind_retry_with_normalised_username", FR_TYPE_BOOL | FR_TYPE_DEPRECATED, rlm_mschap_t, wb_retry_with_normalised_username) },
+	{ FR_CONF_DEPRECATED("winbind_retry_with_normalised_username", FR_TYPE_BOOL, 0, rlm_mschap_t, wb_retry_with_normalised_username) },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -143,15 +143,15 @@ static const call_env_method_t mschap_ ## _x ## _method_env = { \
 }
 
 #define MSCHAP_COMMON_CALL_ENV(_x) \
-{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap_challenge", FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, mschap_ ## _x ## _call_env_t, \
+{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap_challenge", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, mschap_ ## _x ## _call_env_t, \
 			       chap_challenge, "&Vendor-Specific.Microsoft.CHAP-Challenge", T_BARE_WORD, true) }, \
-{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap_response", FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, mschap_ ## _x ## _call_env_t, \
+{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap_response", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, mschap_ ## _x ## _call_env_t, \
 			       chap_response, "&Vendor-Specific.Microsoft.CHAP-Response", T_BARE_WORD, true) }, \
-{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap2_response", FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, mschap_ ## _x ## _call_env_t, \
+{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap2_response", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, mschap_ ## _x ## _call_env_t, \
 			       chap2_response, "&Vendor-Specific.Microsoft.CHAP2-Response", T_BARE_WORD, true) }
 
 #define MSCHAP_OPT_CALL_ENV(_opt, _x) \
-{ FR_CALL_ENV_TMPL_ONLY_OFFSET(STRINGIFY(_opt), FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, mschap_ ## _x ## _call_env_t, \
+{ FR_CALL_ENV_TMPL_ONLY_OFFSET(STRINGIFY(_opt), FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, mschap_ ## _x ## _call_env_t, \
 			       _opt, NULL, T_INVALID, false) }
 
 typedef struct {
@@ -162,7 +162,7 @@ typedef struct {
 } mschap_xlat_call_env_t;
 
 static const call_env_parser_t xlat_call_env[] = {
-	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("username", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, mschap_xlat_call_env_t,
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("username", FR_TYPE_STRING, CONF_FLAG_ATTRIBUTE, mschap_xlat_call_env_t,
 				       username, "&User-Name", T_BARE_WORD, true) },
 	MSCHAP_COMMON_CALL_ENV(xlat),
 	CALL_ENV_TERMINATOR
@@ -171,7 +171,7 @@ static const call_env_parser_t xlat_call_env[] = {
 MSCHAP_CALL_ENV(xlat);
 
 static const call_env_parser_t auth_call_env[] = {
-	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("username", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, mschap_auth_call_env_t,
+	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("username", FR_TYPE_STRING, CONF_FLAG_ATTRIBUTE, mschap_auth_call_env_t,
 				       username, "&User-Name", T_BARE_WORD, true) },
 	MSCHAP_COMMON_CALL_ENV(auth),
 	MSCHAP_OPT_CALL_ENV(chap2_success, auth),

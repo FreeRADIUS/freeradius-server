@@ -88,11 +88,11 @@ static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the gl
 /*
  *	A mapping of configuration file names to internal variables.
  */
-#define RLM_PERL_CONF(_x) { FR_CONF_OFFSET("func_" STRINGIFY(_x), FR_TYPE_STRING, rlm_perl_t, func_##_x), \
+#define RLM_PERL_CONF(_x) { FR_CONF_OFFSET("func_" STRINGIFY(_x), FR_TYPE_STRING, 0, rlm_perl_t, func_##_x), \
 			   .data = NULL, .dflt = STRINGIFY(_x), .quote = T_INVALID }
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_perl_t, module) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
 
 	RLM_PERL_CONF(authorize),
 	RLM_PERL_CONF(authenticate),
@@ -101,7 +101,7 @@ static const conf_parser_t module_config[] = {
 	RLM_PERL_CONF(preacct),
 	RLM_PERL_CONF(detach),
 
-	{ FR_CONF_OFFSET("perl_flags", FR_TYPE_STRING, rlm_perl_t, perl_flags) },
+	{ FR_CONF_OFFSET("perl_flags", FR_TYPE_STRING, 0, rlm_perl_t, perl_flags) },
 
 	CONF_PARSER_TERMINATOR
 };

@@ -48,7 +48,7 @@ typedef void _mismatch_bool_m;		//!< Dummy type used to indicate FR_TYPE_*/C typ
 typedef void _mismatch_bool;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_char_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_char;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
-typedef void _mismatch_double_m;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
+typedef void _mismatch_double_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_double;		//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_ethernet_m;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
 typedef void _mismatch_ethernet;	//!< Dummy type used to indicate FR_TYPE_*/C type mismatch.
@@ -99,129 +99,133 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
  * @param _ct data type of global or struct field, obtained with ``__typeof__``.
  * @param _p Pointer or offset.
  */
-#  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SUBSECTION), _p, \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_VOID), _p, \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && !((_t) & FR_TYPE_MULTI), \
+#  define FR_CONF_FLAG_CHECK(_t, _f, _ct, _p) \
+__builtin_choose_expr(((_f) & CONF_FLAG_SUBSECTION), _p, \
+__builtin_choose_expr((_t == FR_TYPE_VOID), _p, \
+__builtin_choose_expr((_t == FR_TYPE_SIZE) && !((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), size_t *), _p, (_mismatch_size) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_SIZE) && ((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_SIZE) && ((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), size_t **), _p, (_mismatch_size_m) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_DATE) && !((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_DATE) && !((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), time_t *), _p, (_mismatch_time) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_DATE) && ((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_DATE) && ((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), time_t **), _p, (_mismatch_time_m) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && !((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_TIME_DELTA) && !((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), fr_time_delta_t *), _p, (_mismatch_time_delta) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_TIME_DELTA) && ((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_TIME_DELTA) && ((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), fr_time_delta_t **), _p, (_mismatch_time_delta_m) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && !((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_ETHERNET) && !((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t(*)[6]), _p, (_mismatch_ethernet) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_ETHERNET) && ((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_ETHERNET) && ((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t ***), _p, (_mismatch_ethernet_m) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && !((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_IFID) && !((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t(*)[8]), _p, (_mismatch_ifid) 0), \
-__builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_IFID) && ((_t) & FR_TYPE_MULTI), \
+__builtin_choose_expr((_t == FR_TYPE_IFID) && ((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t ***), _p, (_mismatch_ifid_m) 0), \
 _Generic((_ct), \
-	tmpl_t **	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && !((_t) & FR_TYPE_MULTI), \
+	tmpl_t **	: __builtin_choose_expr(((_f) & CONF_FLAG_TMPL) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
-	tmpl_t ***	: __builtin_choose_expr(((_t) & FR_TYPE_TMPL) && ((_t) & FR_TYPE_MULTI), \
+	tmpl_t ***	: __builtin_choose_expr(((_f) & CONF_FLAG_TMPL) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_tmpl_m) 0), \
-	char const **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_STRING) && !((_t) & FR_TYPE_MULTI), \
+	char const **	: __builtin_choose_expr((_t == FR_TYPE_STRING) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_char) 0), \
-	char const ***	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_STRING) && ((_t) & FR_TYPE_MULTI), \
+	char const ***	: __builtin_choose_expr((_t == FR_TYPE_STRING) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_char_m) 0), \
-	bool *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_BOOL) && !((_t) & FR_TYPE_MULTI), \
+	bool *		: __builtin_choose_expr((_t == FR_TYPE_BOOL) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_bool) 0), \
-	bool **		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_BOOL) && ((_t) & FR_TYPE_MULTI), \
+	bool **		: __builtin_choose_expr((_t == FR_TYPE_BOOL) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_bool_m) 0), \
-	uint32_t * 	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT32) && !((_t) & FR_TYPE_MULTI), \
+	uint32_t * 	: __builtin_choose_expr((_t == FR_TYPE_UINT32) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint32) 0), \
-	uint32_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT32) && ((_t) & FR_TYPE_MULTI), \
+	uint32_t **	: __builtin_choose_expr((_t == FR_TYPE_UINT32) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint32_m) 0), \
-	fr_ipaddr_t *	: __builtin_choose_expr(((FR_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_PREFIX) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) || \
-						!((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr) 0), \
-	fr_ipaddr_t **	: __builtin_choose_expr(((FR_BASE_TYPE(_t) == FR_TYPE_IPV4_ADDR) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_IPV4_PREFIX) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_ADDR) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_IPV6_PREFIX) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_PREFIX) || \
-						(FR_BASE_TYPE(_t) == FR_TYPE_COMBO_IP_ADDR)) && \
-						((_t) & FR_TYPE_MULTI), _p, (_mismatch_fripaddr_m) 0), \
-	uint8_t const **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && !((_t) & FR_TYPE_MULTI), \
+	fr_ipaddr_t *	: __builtin_choose_expr(((_t == FR_TYPE_IPV4_ADDR) || \
+						(_t == FR_TYPE_IPV4_PREFIX) || \
+						(_t == FR_TYPE_IPV6_ADDR) || \
+						(_t == FR_TYPE_IPV6_PREFIX) || \
+						(_t == FR_TYPE_COMBO_IP_PREFIX) || \
+						(_t == FR_TYPE_COMBO_IP_ADDR)) || \
+						!((_f) & CONF_FLAG_MULTI), _p, (_mismatch_fripaddr) 0), \
+	fr_ipaddr_t **	: __builtin_choose_expr(((_t == FR_TYPE_IPV4_ADDR) || \
+						(_t == FR_TYPE_IPV4_PREFIX) || \
+						(_t == FR_TYPE_IPV6_ADDR) || \
+						(_t == FR_TYPE_IPV6_PREFIX) || \
+						(_t == FR_TYPE_COMBO_IP_PREFIX) || \
+						(_t == FR_TYPE_COMBO_IP_ADDR)) && \
+						((_f) & CONF_FLAG_MULTI), _p, (_mismatch_fripaddr_m) 0), \
+	uint8_t const **	: __builtin_choose_expr((_t == FR_TYPE_OCTETS) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t const ***: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_OCTETS) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t const ***: __builtin_choose_expr((_t == FR_TYPE_OCTETS) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
-	uint8_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT8) && !((_t) & FR_TYPE_MULTI), \
+	uint8_t *	: __builtin_choose_expr((_t == FR_TYPE_UINT8) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint8) 0), \
-	uint8_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT8) && ((_t) & FR_TYPE_MULTI), \
+	uint8_t **	: __builtin_choose_expr((_t == FR_TYPE_UINT8) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint8_m) 0), \
-	uint16_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT16) && !((_t) & FR_TYPE_MULTI), \
+	uint16_t *	: __builtin_choose_expr((_t == FR_TYPE_UINT16) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint16) 0), \
-	uint16_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT16) && ((_t) & FR_TYPE_MULTI), \
+	uint16_t **	: __builtin_choose_expr((_t == FR_TYPE_UINT16) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint16_m) 0), \
-	int32_t	*	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_INT32) && !((_t) & FR_TYPE_MULTI), \
+	int32_t	*	: __builtin_choose_expr((_t == FR_TYPE_INT32) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_int32) 0), \
-	int32_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_INT32) && ((_t) & FR_TYPE_MULTI), \
+	int32_t **	: __builtin_choose_expr((_t == FR_TYPE_INT32) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_int32_m) 0), \
-	uint64_t *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT64) && !((_t) & FR_TYPE_MULTI), \
+	uint64_t *	: __builtin_choose_expr((_t == FR_TYPE_UINT64) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint64) 0), \
-	uint64_t **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_UINT64) && ((_t) & FR_TYPE_MULTI), \
+	uint64_t **	: __builtin_choose_expr((_t == FR_TYPE_UINT64) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_uint64_m) 0), \
-	float *		: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && !((_t) & FR_TYPE_MULTI), \
+	float *		: __builtin_choose_expr((_t == FR_TYPE_FLOAT32) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_float) 0), \
-	float **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT32) && ((_t) & FR_TYPE_MULTI), \
+	float **	: __builtin_choose_expr((_t == FR_TYPE_FLOAT32) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_float_m) 0), \
-	double *	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT64) && !((_t) & FR_TYPE_MULTI), \
+	double *	: __builtin_choose_expr((_t == FR_TYPE_FLOAT64) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_double) 0), \
-	double **	: __builtin_choose_expr((FR_BASE_TYPE(_t) == FR_TYPE_FLOAT64) && ((_t) & FR_TYPE_MULTI), \
+	double **	: __builtin_choose_expr((_t == FR_TYPE_FLOAT64) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_double_m) 0), \
 	default: (conf_type_mismatch)0)))))))))))))
 #else
-#  define FR_CONF_TYPE_CHECK(_type, _c_type, _ptr_or_offset) _ptr_or_offset
+#  define FR_CONF_FLAG_CHECK(_type, _flags, _c_type, _ptr_or_offset) _ptr_or_offset
 #endif
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[in] _flags		controlling parsing behaviour.
  * @param[in] _struct		contaning the field to write the result to.
  * @param[in] _field		to write the result to.
  */
-#  define FR_CONF_OFFSET(_name, _type, _struct, _field) \
-	.name = _name, \
-	.type = _type, \
-	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field))
+#  define FR_CONF_OFFSET(_name, _type, _flags, _struct, _field) \
+	.name1 = _name, \
+	.type = (_type), \
+	.flags = (_flags), \
+	.offset = FR_CONF_FLAG_CHECK((_type), (_flags), &(((_struct *)NULL)->_field), offsetof(_struct, _field))
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct, recording if a default was used in `<_field>`_is_set
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[in] _flags		controlling parsing behaviour.
  * @param[in] _struct		contaning the field to write the result to.
  * @param[in] _field		to write the result to.
  */
-#  define FR_CONF_OFFSET_IS_SET(_name, _type, _struct, _field) \
-	.name = _name, \
-	.type = (_type) | FR_TYPE_IS_SET, \
-	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
+#  define FR_CONF_OFFSET_IS_SET(_name, _type, _flags, _struct, _field) \
+	.name1 = _name, \
+	.type = (_type), \
+	.flags = CONF_FLAG_IS_SET | (_flags), \
+	.offset = FR_CONF_FLAG_CHECK((_type), (_flags), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
 	.is_set_offset = offsetof(_struct, _field ## _is_set)
 
 /** conf_parser_t which populates a sub-struct using a CONF_SECTION
  *
  * @param[in] _name		of the CONF_SECTION to search for.
- * @param[in] _flags		any additional flags to set.
+ * @param[in] _flags		controlling parsing behaviour.
  * @param[in] _struct		containing the sub-struct to populate.
  * @param[in] _field		containing the sub-struct to populate.
  * @param[in] _subcs		CONF_SECTION to parse.
  */
 #  define FR_CONF_OFFSET_SUBSECTION(_name, _flags, _struct, _field, _subcs) \
-	.name = _name, \
-	.type = (FR_TYPE_SUBSECTION | _flags), \
+	.name1 = _name, \
+	.flags = CONF_FLAG_SUBSECTION | (_flags), \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs
 
@@ -229,12 +233,14 @@ _Generic((_ct), \
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[in] _flags		controlling parsing behaviour.
  * @param[out] _res_p		pointer to a global var, where the result will be written.
  */
-#  define FR_CONF_POINTER(_name, _type, _res_p) \
-	.name = _name, \
-	.type = _type, \
-	.data = FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p)
+#  define FR_CONF_POINTER(_name, _type, _flags, _res_p) \
+	.name1 = _name, \
+	.type = (_type), \
+	.flags = (_flags), \
+	.data = FR_CONF_FLAG_CHECK((_type), (_flags), (_res_p), _res_p)
 
 /** conf_parser_t which parses a single CONF_PAIR producing a single global result, recording if a default was used in `<_res_p>`_is_set
  *
@@ -242,30 +248,34 @@ _Generic((_ct), \
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
+ * @param[in] _flags		controlling parsing behaviour.
  * @param[out] _res_p		pointer to a global var, where the result will be written.
  */
-#  define FR_CONF_POINTER_IS_SET(_name, _type, _res_p) \
-	.name = _name, \
-	.type = (_type) | FR_TYPE_IS_SET, \
-	.data = FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p), \
+#  define FR_CONF_POINTER_IS_SET(_name, _type, _flags, _res_p) \
+	.name1 = _name, \
+	.type = (_type), \
+	.flags = CONF_FLAG_IS_SET | (_flags), \
+	.data = FR_CONF_FLAG_CHECK((_type), (_flags), (_res_p), _res_p), \
 	.is_set_ptr = _res_p ## _is_set
-#  define FR_ITEM_POINTER(_type, _res_p) _type, FR_CONF_TYPE_CHECK((_type), (_res_p), _res_p)
+#  define FR_ITEM_POINTER(_type, _res_p) _type, FR_CONF_FLAG_CHECK((_type), 0, (_res_p), _res_p)
 
 /** A conf_parser_t multi-subsection
  *
  * Parse multiple instance of a subsection, allocating an array of structs
  * to hold the result.
  *
- * @param _name		name of subsection to search for.
- * @param _type		Must be FR_TYPE_SUBSECTION | FR_TYPE_MULTI and any optional flags.
- * @param _struct	instance data struct.
- * @param _field	field in instance data struct.
- * @param _subcs	conf_parser_t array to use to parse subsection data.
+ * @param[in] _name	name of subsection to search for.
+ * @param[in] _type	the output type.
+ * @param[in] _flags	flags controlling parsing behaviour.
+ * @param[in] _struct	instance data struct.
+ * @param[in] _field	field in instance data struct.
+ * @param[in] _subcs	conf_parser_t array to use to parse subsection data.
  */
-#  define FR_CONF_SUBSECTION_ALLOC(_name, _type, _struct, _field, _subcs) \
-	.name = _name, \
+#  define FR_CONF_SUBSECTION_ALLOC(_name, _type, _flags, _struct, _field, _subcs) \
+	.name1 = _name, \
 	.type = (_type), \
-	.offset = FR_CONF_TYPE_CHECK((_type), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
+	.flags = (_flags), \
+	.offset = FR_CONF_FLAG_CHECK((_type), (_flags), &(((_struct *)NULL)->_field), offsetof(_struct, _field)), \
 	.subcs = _subcs, \
 	.subcs_size = sizeof(**(((_struct *)0)->_field))
 
@@ -273,43 +283,40 @@ _Generic((_ct), \
  *
  * @param[in] _name		name of pair to search for.
  * @param[in] _type		base type to parse pair as.
+ * @param[in] _flags	f	lags controlling parsing behaviour.
  * @param[in] _func		to use to record value.
  * @param[in] _dflt_func	to use to get defaults from a 3rd party library.
  */
-#  define FR_CONF_FUNC(_name, _type, _func, _dflt_func) \
-	.name = _name, \
-	.type = _type, \
+#  define FR_CONF_FUNC(_name, _type, _flags, _func, _dflt_func) \
+	.name1 = _name, \
+	.type = (_type), \
+	.flags = (_flags), \
 	.func = _func, \
 	.dflt_func = _dflt_func
 
 /** conf_parser_t entry which runs conf_parser_t entries for a subsection without any output
  *
  * @param[in] _name		of pair to search for.
- * @param[in] _flags		any extra flags to add.
+ * @param[in] _flags		flags controlling parsing behaviour.
  * @param[in] _subcs		to use to get defaults from a 3rd party library.
  */
 #  define FR_CONF_SUBSECTION_GLOBAL(_name, _flags, _subcs) \
-	.name = _name, \
-	.type = FR_TYPE_SUBSECTION, \
+	.name1 = _name, \
+	.flags = CONF_FLAG_SUBSECTION | (_flags), \
 	.subcs = _subcs
 
 /** conf_parser_t entry which raises an error if a matching CONF_PAIR is found
  *
  * @param[in] _name		of pair to search for.
  * @param[in] _type		type, mostly unused.
+ * @param[in] _flags		flags controlling parsing behaviour.
  * @param[in] _struct		where the result was previously written.
  * @param[in] _field		in the struct where the result was previously written.
  */
-#define FR_CONF_DEPRECATED(_name, _type, _struct, _field) \
-	.name = _name, \
-	.type = (_type) | FR_TYPE_DEPRECATED
-
-/*
- *  Instead of putting the information into a configuration structure,
- *  the configuration file routines MAY just parse it directly into
- *  user-supplied variables.
- */
-#define FR_TYPE_SUBSECTION	102
+#define FR_CONF_DEPRECATED(_name, _type, _flags, _struct, _field) \
+	.name1 = _name, \
+	.type = (_type ), \
+	.flags = (_flags) | CONF_FLAG_DEPRECATED
 
 /*
  *	It's a developer option and should be used carefully.
@@ -321,71 +328,76 @@ _Generic((_ct), \
  * These flags should be or'd with another FR_TYPE_* value to create validation
  * rules for the #cf_pair_parse function.
  *
- * @note File FR_TYPE_FILE_* types have a base type of string, so they're validated
- *	 correctly by the config parser.
  * @{
  */
-#define FR_TYPE_DEPRECATED		(1 << 10) 			//!< If a matching #CONF_PAIR is found,
+DIAG_OFF(attribute)
+typedef enum CC_HINT(flag_enum) {
+	CONF_FLAG_SUBSECTION		= (1 << 9),			//!< Instead of putting the information into a
+									///< configuration structure, the configuration
+									///< file routines MAY just parse it directly into
+									///< user-supplied variables.
+	CONF_FLAG_DEPRECATED 		= (1 << 10), 			//!< If a matching #CONF_PAIR is found,
 									//!< error out with a deprecated message.
-#define FR_TYPE_REQUIRED		(1 << 11) 			//!< Error out if no matching #CONF_PAIR
+	CONF_FLAG_REQUIRED		= (1 << 11), 			//!< Error out if no matching #CONF_PAIR
 									//!< is found, and no dflt value is set.
-#define FR_TYPE_ATTRIBUTE		(1 << 12) 			//!< Value must resolve to attribute in dict
-									//!< (deprecated, use #FR_TYPE_TMPL).
-#define FR_TYPE_SECRET			(1 << 13)			 //!< Only print value if debug level >= 3.
+	CONF_FLAG_ATTRIBUTE		= (1 << 12), 			//!< Value must resolve to attribute in dict
+									//!< (deprecated, use #CONF_FLAG_TMPL).
+	CONF_FLAG_SECRET		= (1 << 13),			 //!< Only print value if debug level >= 3.
 
-#define FR_TYPE_FILE_INPUT		((1 << 14) | FR_TYPE_STRING)	//!< File matching value must exist,
+	CONF_FLAG_FILE_INPUT		= (1 << 14),			//!< File matching value must exist,
 								     	//!< and must be readable.
-#define FR_TYPE_FILE_OUTPUT		((1 << 15) | FR_TYPE_STRING)	//!< File matching value must exist,
+	CONF_FLAG_FILE_OUTPUT		= (1 << 15),			//!< File matching value must exist,
 									//!< and must be writable.
 
-#define FR_TYPE_XLAT			(1 << 16) 			//!< string will be dynamically expanded.
-#define FR_TYPE_TMPL			(1 << 17) 			//!< CONF_PAIR should be parsed as a template.
+	CONF_FLAG_XLAT			= (1 << 16), 			//!< string will be dynamically expanded.
+	CONF_FLAG_TMPL			= (1 << 17), 			//!< CONF_PAIR should be parsed as a template.
 
-#define FR_TYPE_MULTI			(1 << 18) 			//!< CONF_PAIR can have multiple copies.
-#define FR_TYPE_NOT_EMPTY		(1 << 19)			//!< CONF_PAIR is required to have a non zero
+	CONF_FLAG_MULTI			= (1 << 18), 			//!< CONF_PAIR can have multiple copies.
+	CONF_FLAG_NOT_EMPTY		= (1 << 19),			//!< CONF_PAIR is required to have a non zero
 									//!< length value.
-#define FR_TYPE_FILE_EXISTS		((1 << 20) | FR_TYPE_STRING)	//!< File matching value must exist
+	CONF_FLAG_FILE_EXISTS		= (1 << 20),			//!< File matching value must exist
 
-#define FR_TYPE_IS_SET			(1 << 21)			//!< Write whether this config item was
+	CONF_FLAG_IS_SET		= (1 << 21),			//!< Write whether this config item was
 									//!< left as the default to is_set_offset
 									//!< or is_set_ptr.
-#define FR_TYPE_OK_MISSING     		(1 << 22) 			//!< OK if it's missing
+	CONF_FLAG_OK_MISSING     	= (1 << 22), 			//!< OK if it's missing
+} conf_parser_flags_t;
+DIAG_ON(attribute)
 
-#define FR_BASE_TYPE(_t)		(0xff & (_t))
 /** @} */
 
 /** @name #conf_parser_t flags checks
  *
  * @{
  */
-#define fr_rule_deprecated(_rule)	((_rule)->type & FR_TYPE_DEPRECATED)
+#define fr_rule_deprecated(_rule)	((_rule)->flags & CONF_FLAG_DEPRECATED)
 
-#define fr_rule_required(_rule)		((_rule)->type & FR_TYPE_REQUIRED)
+#define fr_rule_required(_rule)		((_rule)->flags & CONF_FLAG_REQUIRED)
 
-#define fr_rule_secret(_rule)		((_rule)->type & FR_TYPE_SECRET)
+#define fr_rule_secret(_rule)		((_rule)->flags & CONF_FLAG_SECRET)
 
-#define fr_rule_file_input(_rule)	(((_rule)->type & FR_TYPE_FILE_INPUT) == FR_TYPE_FILE_INPUT)
+#define fr_rule_file_input(_rule)	((_rule)->flags & CONF_FLAG_FILE_INPUT)
 
-#define fr_rule_file_output(_rule)	(((_rule)->type & FR_TYPE_FILE_OUTPUT) == FR_TYPE_FILE_OUTPUT)
+#define fr_rule_file_output(_rule)	((_rule)->flags & CONF_FLAG_FILE_OUTPUT)
 
 
-#define fr_rule_multi(_rule)		((_rule)->type & FR_TYPE_MULTI)
+#define fr_rule_multi(_rule)		((_rule)->flags & CONF_FLAG_MULTI)
 
-#define fr_rule_not_empty(_rule)	((_rule)->type & FR_TYPE_NOT_EMPTY)
+#define fr_rule_not_empty(_rule)	((_rule)->flags & CONF_FLAG_NOT_EMPTY)
 
-#define fr_rule_is_set(_rule)		((_rule)->type & FR_TYPE_IS_SET)
+#define fr_rule_is_set(_rule)		((_rule)->flags & CONF_FLAG_IS_SET)
 
-#define fr_rule_ok_missing(_rule)	((_rule)->type & FR_TYPE_OK_MISSING)
+#define fr_rule_ok_missing(_rule)	((_rule)->flags & CONF_FLAG_OK_MISSING)
 
-#define fr_rule_file_exists(_rule)	(((_rule)->type & FR_TYPE_FILE_EXISTS) == FR_TYPE_FILE_EXISTS)
+#define fr_rule_file_exists(_rule)	((_rule)->flags & CONF_FLAG_FILE_EXISTS)
 
 #define fr_rule_dflt(_rule)		((_rule)->dflt || (_rule)->dflt_func)
 
-#define fr_rule_is_attribute(_rule)	((_rule)->type & FR_TYPE_ATTRIBUTE)
+#define fr_rule_is_attribute(_rule)	((_rule)->flags & CONF_FLAG_ATTRIBUTE)
 
-#define fr_rule_is_xlat(_rule)		((_rule)->type & FR_TYPE_XLAT)
+#define fr_rule_is_xlat(_rule)		((_rule)->flags & CONF_FLAG_XLAT)
 
-#define fr_rule_is_tmpl(_rule)		((_rule)->type & FR_TYPE_TMPL)
+#define fr_rule_is_tmpl(_rule)		((_rule)->flags & CONF_FLAG_TMPL)
 /** @} */
 
 #define FR_SIZE_COND_CHECK(_name, _var, _cond, _new)\
@@ -465,7 +477,7 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  * Example with #FR_CONF_OFFSET :
  @code{.c}
    static conf_parser_t module_config[] = {
-   	{ FR_CONF_OFFSET("example", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, example_instance_t, example), .dflt = "default_value" },
+   	{ FR_CONF_OFFSET("example", FR_TYPE_STRING | CONF_FLAG_NOT_EMPTY, 0, 0, example_instance_t, example), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
  @endcode
@@ -473,7 +485,7 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  * Example with #FR_CONF_POINTER :
  @code{.c}
    static conf_parser_t global_config[] = {
-   	{ FR_CONF_POINTER("example", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY, &my_global), .dflt = "default_value" },
+   	{ FR_CONF_POINTER("example", FR_TYPE_STRING | CONF_FLAG_NOT_EMPTY, 0, 0, 0, &my_global), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
  @endcode
@@ -484,29 +496,30 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  * @see cf_pair_parse
  */
 struct conf_parser_s {
-	char const	*name;			//!< Name of the #CONF_ITEM to parse.
-	char const	*ident2;		//!< Second identifier for #CONF_SECTION.
+	char const		*name1;			//!< Name of the #CONF_ITEM to parse.
+	char const		*name2;			//!< Second identifier for #CONF_SECTION.
 
-	uint32_t	type;			//!< A #fr_type_t value, may be or'd with one or more FR_TYPE_* flags.
-						//!< @see cf_pair_parse.
+	fr_type_t		type;			//!< An #fr_type_t value, controls the output type.
 
-	size_t		offset;			//!< Relative offset of field or structure to write the parsed value to.
-						//!< When #type is set to #FR_TYPE_SUBSECTION, may be used to specify
-						//!< a base offset to add to all offsets contained within the
-						//!< subsection.
-						//!< @note Must be used exclusively to #data.
+	conf_parser_flags_t	flags;			//!< Flags which control parsing behaviour.
 
-	void		*data;			//!< Pointer to a static variable to write the parsed value to.
-						//!< @note Must be used exclusively to #offset.
+	size_t			offset;			//!< Relative offset of field or structure to write the parsed value to.
+							//!< When #flags is set to #CONF_FLAG_SUBSECTION, may be used to specify
+							//!< a base offset to add to all offsets contained within the
+							//!< subsection.
+							//!< @note Must be used exclusively to #data.
 
-	cf_parse_t	func;			//!< Override default parsing behaviour for the specified type with
-						//!< a custom parsing function.
+	void			*data;			//!< Pointer to a static variable to write the parsed value to.
+							//!< @note Must be used exclusively to #offset.
 
-	cf_parse_t	on_read;		//!< Function to call as the item is being read, just after
-						//!< it has been allocated and initialized.
+	cf_parse_t		func;			//!< Override default parsing behaviour for the specified type with
+							//!< a custom parsing function.
 
-	void const	*uctx;			//!< User data accessible by the #cf_parse_t func.  Useful for
-						///< building reusable functions.
+	cf_parse_t		on_read;		//!< Function to call as the item is being read, just after
+							//!< it has been allocated and initialized.
+
+	void const		*uctx;			//!< User data accessible by the #cf_parse_t func.  Useful for
+							///< building reusable functions.
 
 	/** Where to write status if FR_TYPE_IS_DEFAULT is set
 	 *
@@ -528,7 +541,7 @@ struct conf_parser_s {
 		};
 
 		struct {
-			conf_parser_t	const *subcs;//!< When type is set to #FR_TYPE_SUBSECTION, should
+			conf_parser_t	const *subcs;	//!< When #CONF_FLAG_SUBSECTION is set, should
 							//!< be a pointer to the start of another array of
 							//!< #conf_parser_t structs, forming the subsection.
 			size_t		subcs_size;	//!< If non-zero, allocate structs of this size to hold
@@ -545,10 +558,10 @@ typedef struct {
 	size_t			*len;
 } cf_table_parse_ctx_t;
 
-#define CONF_PARSER_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
+#define CONF_PARSER_TERMINATOR	{ .name1 = NULL, .type = ~(UINT32_MAX - 1), \
 				  .offset = 0, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
-#define conf_parser_t_PARTIAL_TERMINATOR	{ .name = NULL, .type = ~(UINT32_MAX - 1), \
+#define CONF_PARSER_PARTIAL_TERMINATOR	{ .name1 = NULL, .type = ~(UINT32_MAX - 1), \
 					  .offset = 1, .data = NULL, .dflt = NULL, .quote = T_INVALID }
 
 #define CF_FILE_NONE   (0)

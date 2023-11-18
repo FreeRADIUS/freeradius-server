@@ -153,7 +153,7 @@ static int cf_table_parse_tmpl(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	int 			ret = 0;
 	ssize_t			slen;
 	int			type = rule->type;
-	bool 			tmpl = (type & FR_TYPE_TMPL);
+	bool 			tmpl = (type & CONF_FLAG_TMPL);
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	tmpl_t			*vpt;
 
@@ -213,25 +213,25 @@ finish:
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, rlm_smtp_t, uri) },
-	{ FR_CONF_OFFSET("template_directory", FR_TYPE_STRING, rlm_smtp_t, template_dir) },
-	{ FR_CONF_OFFSET("attachments", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_smtp_t, attachments),
+	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, 0, rlm_smtp_t, uri) },
+	{ FR_CONF_OFFSET("template_directory", FR_TYPE_STRING, 0, rlm_smtp_t, template_dir) },
+	{ FR_CONF_OFFSET("attachments", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, attachments),
 		.func = cf_table_parse_tmpl, .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("sender_address", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_smtp_t, sender_address),
+	{ FR_CONF_OFFSET("sender_address", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, sender_address),
 		.func = cf_table_parse_tmpl},
-	{ FR_CONF_OFFSET("envelope_address", FR_TYPE_STRING, rlm_smtp_t, envelope_address) },
-	{ FR_CONF_OFFSET("recipients", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_smtp_t, recipient_addrs),
+	{ FR_CONF_OFFSET("envelope_address", FR_TYPE_STRING, 0, rlm_smtp_t, envelope_address) },
+	{ FR_CONF_OFFSET("recipients", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, recipient_addrs),
 		.func = cf_table_parse_tmpl, .dflt = "&SMTP-Recipients[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("TO", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_smtp_t, to_addrs), .func = cf_table_parse_tmpl,
+	{ FR_CONF_OFFSET("TO", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, to_addrs), .func = cf_table_parse_tmpl,
 		.dflt = "&SMTP-TO[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("CC", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_smtp_t, cc_addrs),
+	{ FR_CONF_OFFSET("CC", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, cc_addrs),
 		.func = cf_table_parse_tmpl, .dflt = "&SMTP-CC[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("BCC", FR_TYPE_TMPL | FR_TYPE_MULTI, rlm_smtp_t, bcc_addrs),
+	{ FR_CONF_OFFSET("BCC", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, bcc_addrs),
 		.func = cf_table_parse_tmpl, .dflt = "&SMTP-BCC[*]", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_smtp_t, timeout) },
-	{ FR_CONF_OFFSET("set_date", FR_TYPE_BOOL, rlm_smtp_t, set_date), .dflt = "yes" },
-	{ FR_CONF_OFFSET("tls", FR_TYPE_SUBSECTION, rlm_smtp_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
-	{ FR_CONF_OFFSET("connection", FR_TYPE_SUBSECTION, rlm_smtp_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_smtp_t, timeout) },
+	{ FR_CONF_OFFSET("set_date", FR_TYPE_BOOL, 0, rlm_smtp_t, set_date), .dflt = "yes" },
+	{ FR_CONF_OFFSET("tls", 0, CONF_FLAG_SUBSECTION, rlm_smtp_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
+	{ FR_CONF_OFFSET("connection", 0, CONF_FLAG_SUBSECTION, rlm_smtp_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1251,9 +1251,9 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_smtp_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_TMPL_OFFSET("username", FR_TYPE_STRING, rlm_smtp_env_t, username, username_tmpl, NULL,
+		{ FR_CALL_ENV_TMPL_OFFSET("username", FR_TYPE_STRING, 0, rlm_smtp_env_t, username, username_tmpl, NULL,
 					  T_DOUBLE_QUOTED_STRING, false, true, true) },
-		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, rlm_smtp_env_t, password, NULL,
+		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, 0, rlm_smtp_env_t, password, NULL,
 				     T_DOUBLE_QUOTED_STRING, false, true, true) },
 		CALL_ENV_TERMINATOR
 	}

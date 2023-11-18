@@ -48,7 +48,7 @@ static conf_parser_t const proto_ldap_sync_ldap_config[] = {
 	/*
 	 *	LDAP server definition
 	 */
-	{ FR_CONF_OFFSET("server", FR_TYPE_STRING | FR_TYPE_REQUIRED, proto_ldap_sync_ldap_t, server) },
+	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_ldap_sync_ldap_t, server) },
 
 	/*
 	 *	Common LDAP conf parsers
@@ -58,8 +58,8 @@ static conf_parser_t const proto_ldap_sync_ldap_config[] = {
 	/*
 	 *	Network tunable parameters
 	 */
-	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, proto_ldap_sync_ldap_t, recv_buff) },
-	{ FR_CONF_OFFSET("max_outstanding", FR_TYPE_UINT32, proto_ldap_sync_ldap_t, max_outstanding), .dflt = "65536" },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_ldap_sync_ldap_t, recv_buff) },
+	{ FR_CONF_OFFSET("max_outstanding", FR_TYPE_UINT32, 0, proto_ldap_sync_ldap_t, max_outstanding), .dflt = "65536" },
 
 	CONF_PARSER_TERMINATOR
 };

@@ -35,13 +35,13 @@
 #include <freeradius-devel/server/process.h>
 
 static conf_parser_t submodule_config[] = {
-	{ FR_CONF_OFFSET("network_name", FR_TYPE_STRING, eap_aka_sim_process_conf_t, network_name ) },
-	{ FR_CONF_OFFSET("request_identity", FR_TYPE_VOID, eap_aka_sim_process_conf_t, request_identity ),
+	{ FR_CONF_OFFSET("network_name", FR_TYPE_STRING, 0, eap_aka_sim_process_conf_t, network_name ) },
+	{ FR_CONF_OFFSET("request_identity", FR_TYPE_VOID, 0, eap_aka_sim_process_conf_t, request_identity ),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_aka_sim_id_request_table, .len = &fr_aka_sim_id_request_table_len }},
-	{ FR_CONF_OFFSET("strip_permanent_identity_hint", FR_TYPE_BOOL, eap_aka_sim_process_conf_t,
+	{ FR_CONF_OFFSET("strip_permanent_identity_hint", FR_TYPE_BOOL, 0, eap_aka_sim_process_conf_t,
 			 strip_permanent_identity_hint ), .dflt = "yes" },
-	{ FR_CONF_OFFSET("ephemeral_id_length", FR_TYPE_SIZE, eap_aka_sim_process_conf_t, ephemeral_id_length ), .dflt = "14" },	/* 14 for compatibility */
-	{ FR_CONF_OFFSET("protected_success", FR_TYPE_BOOL, eap_aka_sim_process_conf_t, protected_success ), .dflt = "no" },
+	{ FR_CONF_OFFSET("ephemeral_id_length", FR_TYPE_SIZE, 0, eap_aka_sim_process_conf_t, ephemeral_id_length ), .dflt = "14" },	/* 14 for compatibility */
+	{ FR_CONF_OFFSET("protected_success", FR_TYPE_BOOL, 0, eap_aka_sim_process_conf_t, protected_success ), .dflt = "no" },
 
 	CONF_PARSER_TERMINATOR
 };

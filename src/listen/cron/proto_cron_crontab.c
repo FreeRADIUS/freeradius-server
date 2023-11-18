@@ -82,9 +82,9 @@ struct proto_cron_tab_s {
 static int time_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t crontab_listen_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, proto_cron_crontab_t, filename) },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_crontab_t, filename) },
 
-	{ FR_CONF_OFFSET("timespec", FR_TYPE_STRING | FR_TYPE_NOT_EMPTY | FR_TYPE_REQUIRED, proto_cron_crontab_t, spec),
+	{ FR_CONF_OFFSET("timespec", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_crontab_t, spec),
 	  		.func = time_parse },
 
 	CONF_PARSER_TERMINATOR

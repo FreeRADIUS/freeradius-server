@@ -194,84 +194,84 @@ static fr_table_num_sorted_t const verify_cert_table[] = {
 static size_t verify_cert_table_len = NUM_ELEMENTS(verify_cert_table);
 
 static conf_parser_t load_balance_dc_aware_config[] = {
-	{ FR_CONF_OFFSET("local_dc", FR_TYPE_STRING, rlm_sql_cassandra_t, lbdc_local_dc) },
-	{ FR_CONF_OFFSET("hosts_per_remote_dc", FR_TYPE_UINT32, rlm_sql_cassandra_t, lbdc_hosts_per_remote_dc), .dflt = "0" },
-	{ FR_CONF_OFFSET("allow_remote_dcs_for_local_cl", FR_TYPE_BOOL, rlm_sql_cassandra_t, lbdc_allow_remote_dcs_for_local_cl), .dflt = "no" },
+	{ FR_CONF_OFFSET("local_dc", FR_TYPE_STRING, 0, rlm_sql_cassandra_t, lbdc_local_dc) },
+	{ FR_CONF_OFFSET("hosts_per_remote_dc", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, lbdc_hosts_per_remote_dc), .dflt = "0" },
+	{ FR_CONF_OFFSET("allow_remote_dcs_for_local_cl", FR_TYPE_BOOL, 0, rlm_sql_cassandra_t, lbdc_allow_remote_dcs_for_local_cl), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t latency_aware_routing_config[] = {
-	{ FR_CONF_OFFSET("exclusion_threshold", FR_TYPE_FLOAT64, rlm_sql_cassandra_t, lar_exclusion_threshold), .dflt = "2.0" },
-	{ FR_CONF_OFFSET("scale", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, lar_scale), .dflt = "0.1" },
-	{ FR_CONF_OFFSET("retry_period", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, lar_retry_period), .dflt = "10" },
-	{ FR_CONF_OFFSET("update_rate", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, lar_update_rate), .dflt = "0.1" },
-	{ FR_CONF_OFFSET("min_measured", FR_TYPE_UINT64, rlm_sql_cassandra_t, lar_min_measured), .dflt = "50" },
+	{ FR_CONF_OFFSET("exclusion_threshold", FR_TYPE_FLOAT64, 0, rlm_sql_cassandra_t, lar_exclusion_threshold), .dflt = "2.0" },
+	{ FR_CONF_OFFSET("scale", FR_TYPE_TIME_DELTA, 0, rlm_sql_cassandra_t, lar_scale), .dflt = "0.1" },
+	{ FR_CONF_OFFSET("retry_period", FR_TYPE_TIME_DELTA, 0, rlm_sql_cassandra_t, lar_retry_period), .dflt = "10" },
+	{ FR_CONF_OFFSET("update_rate", FR_TYPE_TIME_DELTA, 0, rlm_sql_cassandra_t, lar_update_rate), .dflt = "0.1" },
+	{ FR_CONF_OFFSET("min_measured", FR_TYPE_UINT64, 0, rlm_sql_cassandra_t, lar_min_measured), .dflt = "50" },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_FILE_INPUT, rlm_sql_cassandra_t, tls_ca_file) },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_FILE_INPUT, rlm_sql_cassandra_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_FILE_INPUT, rlm_sql_cassandra_t, tls_private_key_file) },
-	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING | FR_TYPE_SECRET, rlm_sql_cassandra_t, tls_private_key_password) },
+	{ FR_CONF_OFFSET("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING, CONF_FLAG_SECRET, rlm_sql_cassandra_t, tls_private_key_password) },
 
-	{ FR_CONF_OFFSET("verify_cert", FR_TYPE_STRING, rlm_sql_cassandra_t, tls_verify_cert_str) },
+	{ FR_CONF_OFFSET("verify_cert", FR_TYPE_STRING, 0, rlm_sql_cassandra_t, tls_verify_cert_str) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t driver_config[] = {
-	{ FR_CONF_OFFSET("consistency", FR_TYPE_STRING, rlm_sql_cassandra_t, consistency_str), .dflt = "quorum" },
+	{ FR_CONF_OFFSET("consistency", FR_TYPE_STRING, 0, rlm_sql_cassandra_t, consistency_str), .dflt = "quorum" },
 
-	{ FR_CONF_OFFSET("protocol_version", FR_TYPE_UINT32, rlm_sql_cassandra_t, protocol_version) },
+	{ FR_CONF_OFFSET("protocol_version", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, protocol_version) },
 
-	{ FR_CONF_OFFSET("connections_per_host", FR_TYPE_UINT32, rlm_sql_cassandra_t, connections_per_host) },
+	{ FR_CONF_OFFSET("connections_per_host", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, connections_per_host) },
 
 /*
  * The below functions was deprecated in 2.10
  */
 #if (CASS_VERSION_MAJOR >= 2 && CASS_VERSION_MINOR >= 10)
-	{ FR_CONF_DEPRECATED("connections_per_host_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, connections_per_host_max) },
-	{ FR_CONF_DEPRECATED("io_flush_requests_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_flush_requests_max) },
+	{ FR_CONF_DEPRECATED("connections_per_host_max", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, connections_per_host_max) },
+	{ FR_CONF_DEPRECATED("io_flush_requests_max", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, io_flush_requests_max) },
 
-	{ FR_CONF_DEPRECATED("pending_requests_high", FR_TYPE_UINT32, rlm_sql_cassandra_t, pending_requests_high) },
-	{ FR_CONF_DEPRECATED("pending_requests_low", FR_TYPE_UINT32, rlm_sql_cassandra_t, pending_requests_low) },
+	{ FR_CONF_DEPRECATED("pending_requests_high", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, pending_requests_high) },
+	{ FR_CONF_DEPRECATED("pending_requests_low", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, pending_requests_low) },
 
-	{ FR_CONF_DEPRECATED("write_bytes_high", FR_TYPE_UINT32, rlm_sql_cassandra_t, write_bytes_high) },
-	{ FR_CONF_DEPRECATED("write_bytes_low", FR_TYPE_UINT32, rlm_sql_cassandra_t, write_bytes_low) },
+	{ FR_CONF_DEPRECATED("write_bytes_high", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, write_bytes_high) },
+	{ FR_CONF_DEPRECATED("write_bytes_low", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, write_bytes_low) },
 
-	{ FR_CONF_DEPRECATED("spawn_threshold", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_threshold) },
-	{ FR_CONF_DEPRECATED("spawn_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_max) },
-	{ FR_CONF_OFFSET_IS_SET("spawn_retry_delay", FR_TYPE_TIME_DELTA | FR_TYPE_DEPRECATED, rlm_sql_cassandra_t, spawn_retry_delay) },
+	{ FR_CONF_DEPRECATED("spawn_threshold", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, spawn_threshold) },
+	{ FR_CONF_DEPRECATED("spawn_max", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, spawn_max) },
+	{ FR_CONF_DEPRECATED("spawn_retry_delay", FR_TYPE_TIME_DELTA, 0, rlm_sql_cassandra_t, spawn_retry_delay) },
 #else
-	{ FR_CONF_OFFSET("connections_per_host_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, connections_per_host_max) },
-	{ FR_CONF_OFFSET("io_flush_requests_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_flush_requests_max) },
+	{ FR_CONF_OFFSET("connections_per_host_max", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, connections_per_host_max) },
+	{ FR_CONF_OFFSET("io_flush_requests_max", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, io_flush_requests_max) },
 
-	{ FR_CONF_OFFSET("pending_requests_high", FR_TYPE_UINT32, rlm_sql_cassandra_t, pending_requests_high) },
-	{ FR_CONF_OFFSET("pending_requests_low", FR_TYPE_UINT32, rlm_sql_cassandra_t, pending_requests_low) },
+	{ FR_CONF_OFFSET("pending_requests_high", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, pending_requests_high) },
+	{ FR_CONF_OFFSET("pending_requests_low", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, pending_requests_low) },
 
-	{ FR_CONF_OFFSET("write_bytes_high", FR_TYPE_UINT32, rlm_sql_cassandra_t, write_bytes_high) },
-	{ FR_CONF_OFFSET("write_bytes_low", FR_TYPE_UINT32, rlm_sql_cassandra_t, write_bytes_low) },
+	{ FR_CONF_OFFSET("write_bytes_high", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, write_bytes_high) },
+	{ FR_CONF_OFFSET("write_bytes_low", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, write_bytes_low) },
 
-	{ FR_CONF_OFFSET("spawn_threshold", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_threshold) },
-	{ FR_CONF_OFFSET("spawn_max", FR_TYPE_UINT32, rlm_sql_cassandra_t, spawn_max) },
-	{ FR_CONF_OFFSET_IS_SET("spawn_retry_delay", FR_TYPE_TIME_DELTA, rlm_sql_cassandra_t, spawn_retry_delay) },
+	{ FR_CONF_OFFSET("spawn_threshold", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, spawn_threshold) },
+	{ FR_CONF_OFFSET("spawn_max", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, spawn_max) },
+	{ FR_CONF_OFFSET_IS_SET("spawn_retry_delay", FR_TYPE_TIME_DELTA, 0, rlm_sql_cassandra_t, spawn_retry_delay) },
 #endif
 
-	{ FR_CONF_OFFSET("io_threads", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_threads) },
-	{ FR_CONF_OFFSET("io_queue_size", FR_TYPE_UINT32, rlm_sql_cassandra_t, io_queue_size) },
+	{ FR_CONF_OFFSET("io_threads", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, io_threads) },
+	{ FR_CONF_OFFSET("io_queue_size", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, io_queue_size) },
 
-	{ FR_CONF_OFFSET("event_queue_size", FR_TYPE_UINT32, rlm_sql_cassandra_t, event_queue_size) },
+	{ FR_CONF_OFFSET("event_queue_size", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, event_queue_size) },
 
-	{ FR_CONF_POINTER("load_balance_dc_aware", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) load_balance_dc_aware_config },
-	{ FR_CONF_OFFSET("load_balance_round_robin", FR_TYPE_BOOL, rlm_sql_cassandra_t, load_balance_round_robin), .dflt = "no" },
+	{ FR_CONF_POINTER("load_balance_dc_aware", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) load_balance_dc_aware_config },
+	{ FR_CONF_OFFSET("load_balance_round_robin", FR_TYPE_BOOL, 0, rlm_sql_cassandra_t, load_balance_round_robin), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("token_aware_routing", FR_TYPE_BOOL, rlm_sql_cassandra_t, token_aware_routing), .dflt = "yes" },
-	{ FR_CONF_POINTER("latency_aware_routing", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) latency_aware_routing_config },
+	{ FR_CONF_OFFSET("token_aware_routing", FR_TYPE_BOOL, 0, rlm_sql_cassandra_t, token_aware_routing), .dflt = "yes" },
+	{ FR_CONF_POINTER("latency_aware_routing", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) latency_aware_routing_config },
 
-	{ FR_CONF_OFFSET("tcp_keepalive", FR_TYPE_UINT32, rlm_sql_cassandra_t, tcp_keepalive) },
-	{ FR_CONF_OFFSET("tcp_nodelay", FR_TYPE_BOOL, rlm_sql_cassandra_t, tcp_nodelay), .dflt = "no" },
+	{ FR_CONF_OFFSET("tcp_keepalive", FR_TYPE_UINT32, 0, rlm_sql_cassandra_t, tcp_keepalive) },
+	{ FR_CONF_OFFSET("tcp_nodelay", FR_TYPE_BOOL, 0, rlm_sql_cassandra_t, tcp_nodelay), .dflt = "no" },
 
-	{ FR_CONF_POINTER("tls", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
 };
 

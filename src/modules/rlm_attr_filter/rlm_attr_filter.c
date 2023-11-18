@@ -48,9 +48,9 @@ typedef struct {
 } rlm_attr_filter_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_FILE_INPUT | FR_TYPE_REQUIRED, rlm_attr_filter_t, filename) },
-	{ FR_CONF_OFFSET("key", FR_TYPE_TMPL, rlm_attr_filter_t, key), .dflt = "&Realm", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("relaxed", FR_TYPE_BOOL, rlm_attr_filter_t, relaxed), .dflt = "no" },
+	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_attr_filter_t, filename) },
+	{ FR_CONF_OFFSET("key", 0, CONF_FLAG_TMPL, rlm_attr_filter_t, key), .dflt = "&Realm", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("relaxed", FR_TYPE_BOOL, 0, rlm_attr_filter_t, relaxed), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

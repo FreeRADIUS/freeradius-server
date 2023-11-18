@@ -36,8 +36,8 @@ typedef struct {
 } rlm_date_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("format", FR_TYPE_STRING, rlm_date_t, fmt), .dflt = "%b %e %Y %H:%M:%S %Z" },
-	{ FR_CONF_OFFSET("utc", FR_TYPE_BOOL, rlm_date_t, utc), .dflt = "no" },
+	{ FR_CONF_OFFSET("format", FR_TYPE_STRING, 0, rlm_date_t, fmt), .dflt = "%b %e %Y %H:%M:%S %Z" },
+	{ FR_CONF_OFFSET("utc", FR_TYPE_BOOL, 0, rlm_date_t, utc), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

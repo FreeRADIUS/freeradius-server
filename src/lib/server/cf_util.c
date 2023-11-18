@@ -806,14 +806,14 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 		if (cd) {
 			rule = cf_data_value(cd);
 
-			if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
+			if ((rule->flags & CONF_FLAG_SUBSECTION) &&
 			    rule->on_read && rule->subcs) {
 				conf_parser_t const *rule_p;
 
-				for (rule_p = rule->subcs; rule_p->name; rule_p++) {
-					if ((FR_BASE_TYPE(rule_p->type) == FR_TYPE_SUBSECTION) &&
+				for (rule_p = rule->subcs; rule_p->name1; rule_p++) {
+					if ((rule_p->flags & CONF_FLAG_SUBSECTION) &&
 					    rule->on_read &&
-					    (strcmp(rule_p->name, name1) == 0)) {
+					    (strcmp(rule_p->name1, name1) == 0)) {
 						if (_cf_section_rule_push(cs, rule_p,
 									  cd->item.filename, cd->item.lineno) < 0) {
 						error:
@@ -838,7 +838,7 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 		cd = cf_data_find(CF_TO_ITEM(parent), conf_parser_t, name1);
 		if (cd) {
 			rule = cf_data_value(cd);
-			if ((FR_BASE_TYPE(rule->type) == FR_TYPE_SUBSECTION) &&
+			if ((rule->flags & CONF_FLAG_SUBSECTION) &&
 			    rule->on_read) {
 				if (cf_section_rules_push(cs, rule->subcs) < 0) goto error;
 				if (rule->on_read(ctx, NULL, NULL, cf_section_to_item(cs), rule) < 0) goto error;

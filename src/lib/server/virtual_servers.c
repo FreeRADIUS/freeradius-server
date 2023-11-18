@@ -117,7 +117,7 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 static const conf_parser_t server_on_read_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_VOID | FR_TYPE_REQUIRED, fr_virtual_server_t, process_mi),
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, fr_virtual_server_t, process_mi),
 			.on_read = namespace_on_read },
 
 	CONF_PARSER_TERMINATOR
@@ -128,21 +128,21 @@ const conf_parser_t virtual_servers_on_read_config[] = {
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
 	 */
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers),
+	{ FR_CONF_POINTER("server", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI, &virtual_servers),
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
-			  .subcs = (void const *) server_on_read_config, .ident2 = CF_IDENT_ANY,
+			  .subcs = (void const *) server_on_read_config, .name2 = CF_IDENT_ANY,
 			  .on_read = server_on_read },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t server_config[] = {
-	{ FR_CONF_OFFSET("namespace", FR_TYPE_VOID | FR_TYPE_REQUIRED, fr_virtual_server_t, process_mi),
+	{ FR_CONF_OFFSET("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, fr_virtual_server_t, process_mi),
 			 .func = namespace_parse },
 
-	{ FR_CONF_OFFSET("listen", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
+	{ FR_CONF_OFFSET("listen", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI,
 			 fr_virtual_server_t, listeners),
-			 .ident2 = CF_IDENT_ANY,
+			 .name2 = CF_IDENT_ANY,
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
 
@@ -154,9 +154,9 @@ const conf_parser_t virtual_servers_config[] = {
 	 *	Not really ok if it's missing but we want to
 	 *	let logic elsewhere handle the issue.
 	 */
-	{ FR_CONF_POINTER("server", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING, &virtual_servers),
+	{ FR_CONF_POINTER("server", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI, &virtual_servers),
 			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
-			  .subcs = (void const *) server_config, .ident2 = CF_IDENT_ANY,
+			  .subcs = (void const *) server_config, .name2 = CF_IDENT_ANY,
 			  .func = server_parse },
 
 	CONF_PARSER_TERMINATOR
@@ -1023,7 +1023,7 @@ virtual_server_method_t const *virtual_server_section_methods(char const *name1,
 
 /** Define a values for Auth-Type attributes by the sections present in a virtual-server
  *
- * The ident2 value of any sections found will be converted into values of the specified da.
+ * The.name2 value of any sections found will be converted into values of the specified da.
  *
  * @param[in] server_cs		The virtual server containing the sections.
  * @param[in] subcs_name	of the subsection to search for.

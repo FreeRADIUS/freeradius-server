@@ -34,9 +34,9 @@ extern fr_app_t proto_arp;
  *
  */
 static conf_parser_t const proto_arp_config[] = {
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_arp_t, num_messages) } ,
+	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, 0, proto_arp_t, num_messages) } ,
 
-	{ FR_CONF_OFFSET("active", FR_TYPE_BOOL, proto_arp_t, active), .dflt = "false" } ,
+	{ FR_CONF_OFFSET("active", FR_TYPE_BOOL, 0, proto_arp_t, active), .dflt = "false" } ,
 
 	CONF_PARSER_TERMINATOR
 };

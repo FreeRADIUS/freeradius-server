@@ -52,27 +52,27 @@ typedef struct {
 } rlm_rediswho_t;
 
 static conf_parser_t section_config[] = {
-	{ FR_CONF_OFFSET("insert", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_rediswho_t, insert) },
-	{ FR_CONF_OFFSET("trim", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
-	{ FR_CONF_OFFSET("expire", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_XLAT, rlm_rediswho_t, expire) },
+	{ FR_CONF_OFFSET("insert", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, insert) },
+	{ FR_CONF_OFFSET("trim", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
+	{ FR_CONF_OFFSET("expire", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, expire) },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t module_config[] = {
 	REDIS_COMMON_CONFIG,
 
-	{ FR_CONF_OFFSET("trim_count", FR_TYPE_INT32, rlm_rediswho_t, trim_count), .dflt = "-1" },
+	{ FR_CONF_OFFSET("trim_count", FR_TYPE_INT32, 0, rlm_rediswho_t, trim_count), .dflt = "-1" },
 
 	/*
 	 *	These all smash the same variables, because we don't care about them right now.
 	 *	In 3.1, we should have a way of saying "parse a set of sub-sections according to a template"
 	 */
-	{ FR_CONF_POINTER("Start", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Interim-Update", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Stop", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Accounting-On", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Accounting-Off", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
-	{ FR_CONF_POINTER("Failed", FR_TYPE_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Start", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Interim-Update", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Stop", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Accounting-On", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Accounting-Off", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
+	{ FR_CONF_POINTER("Failed", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = section_config },
 
 	CONF_PARSER_TERMINATOR
 };

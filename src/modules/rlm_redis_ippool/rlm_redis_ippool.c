@@ -83,21 +83,21 @@ static conf_parser_t redis_config[] = {
 };
 
 static conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, rlm_redis_ippool_t, wait_num) },
-	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, rlm_redis_ippool_t, wait_timeout) },
+	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, 0, rlm_redis_ippool_t, wait_num) },
+	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, 0, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_DEPRECATED("ip_address", FR_TYPE_TMPL | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
+	{ FR_CONF_DEPRECATED("ip_address", 0, CONF_FLAG_TMPL | CONF_FLAG_REQUIRED, rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_DEPRECATED("reply_attr", FR_TYPE_TMPL | FR_TYPE_ATTRIBUTE | FR_TYPE_REQUIRED, rlm_redis_ippool_t, NULL) },
+	{ FR_CONF_DEPRECATED("reply_attr", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_OFFSET("ipv4_integer", FR_TYPE_BOOL, rlm_redis_ippool_t, ipv4_integer) },
-	{ FR_CONF_OFFSET("copy_on_update", FR_TYPE_BOOL, rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("ipv4_integer", FR_TYPE_BOOL, 0, rlm_redis_ippool_t, ipv4_integer) },
+	{ FR_CONF_OFFSET("copy_on_update", FR_TYPE_BOOL, 0, rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
 
 	/*
 	 *	Split out to allow conversion to universal ippool module with
 	 *	minimum of config changes.
 	 */
-	{ FR_CONF_POINTER("redis", FR_TYPE_SUBSECTION, NULL), .subcs = redis_config },
+	{ FR_CONF_POINTER("redis", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = redis_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -183,24 +183,24 @@ typedef struct {
 static const call_env_method_t redis_ippool_alloc_method_env = {
 	FR_CALL_ENV_METHOD_OUT(redis_ippool_alloc_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, pool_name,
+		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, 0, redis_ippool_alloc_call_env_t, pool_name,
 				     NULL, T_INVALID, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, owner,
+		{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, 0, redis_ippool_alloc_call_env_t, owner,
 				     NULL, T_INVALID, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, gateway_id,
+		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, 0, redis_ippool_alloc_call_env_t, gateway_id,
 				     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
-		{ FR_CALL_ENV_OFFSET("offer_time", FR_TYPE_UINT32, redis_ippool_alloc_call_env_t, offer_time,
+		{ FR_CALL_ENV_OFFSET("offer_time", FR_TYPE_UINT32, 0, redis_ippool_alloc_call_env_t, offer_time,
 				     NULL, T_INVALID, false, false, false) },
-		{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, redis_ippool_alloc_call_env_t, lease_time,
+		{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, 0, redis_ippool_alloc_call_env_t, lease_time,
 				     NULL, T_INVALID, true, false, false) },
-		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_alloc_call_env_t, requested_address,
+		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, 0, redis_ippool_alloc_call_env_t, requested_address,
 				     "%{%{Requested-IP-Address} || %{Net.Src.IP}}", T_DOUBLE_QUOTED_STRING,
 				     true, true, false) },
-		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", FR_TYPE_ATTRIBUTE, redis_ippool_alloc_call_env_t,
+		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", 0, CONF_FLAG_ATTRIBUTE, redis_ippool_alloc_call_env_t,
 					       allocated_address_attr, NULL, T_INVALID, true ) },
-		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("range_attr", FR_TYPE_ATTRIBUTE, redis_ippool_alloc_call_env_t,
+		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("range_attr", 0, CONF_FLAG_ATTRIBUTe, redis_ippool_alloc_call_env_t,
 					       range_attr, "&reply.IP-Pool.Range", T_BARE_WORD, true) },
-		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("expiry_attr", FR_TYPE_ATTRIBUTE, redis_ippool_alloc_call_env_t,
+		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("expiry_attr", 0, CONF_FLAG_ATTRIBUTE, redis_ippool_alloc_call_env_t,
 					       expiry_attr, NULL, T_INVALID, false) },
 		CALL_ENV_TERMINATOR
 	}
@@ -209,22 +209,22 @@ static const call_env_method_t redis_ippool_alloc_method_env = {
 static const call_env_method_t redis_ippool_update_method_env = {
 	FR_CALL_ENV_METHOD_OUT(redis_ippool_update_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_update_call_env_t, pool_name,
+		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, 0, redis_ippool_update_call_env_t, pool_name,
 				     NULL, T_INVALID, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, redis_ippool_update_call_env_t, owner,
+		{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, 0, redis_ippool_update_call_env_t, owner,
 				     NULL, T_INVALID, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_update_call_env_t, gateway_id,
+		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, 0, redis_ippool_update_call_env_t, gateway_id,
 				     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
-		{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, redis_ippool_update_call_env_t, lease_time,
+		{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, 0, redis_ippool_update_call_env_t, lease_time,
 				     NULL, T_INVALID, true, false, false) },
-		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_update_call_env_t, requested_address,
+		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, 0, redis_ippool_update_call_env_t, requested_address,
 				     "%{%{Requested-IP-Address} || %{Net.Src.IP}}", T_DOUBLE_QUOTED_STRING,
 				     true, true, false) },
-		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", FR_TYPE_ATTRIBUTE, redis_ippool_update_call_env_t,
+		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("allocated_address_attr", 0, CONF_FLAG_ATTRIBUTE, redis_ippool_update_call_env_t,
 					       allocated_address_attr, NULL, T_INVALID, true ) },
-		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("range_attr", FR_TYPE_ATTRIBUTE, redis_ippool_update_call_env_t,
+		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("range_attr", 0, CONF_FLAG_ATTRIBUTE, redis_ippool_update_call_env_t,
 					       range_attr, "&reply.IP-Pool.Range", T_BARE_WORD, true) },
-		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("expiry_attr", FR_TYPE_ATTRIBUTE, redis_ippool_update_call_env_t,
+		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("expiry_attr", 0, CONF_FLAG_ATTRIBUTE, redis_ippool_update_call_env_t,
 					       expiry_attr, NULL, T_INVALID, false) },
 		CALL_ENV_TERMINATOR
 	}
@@ -233,13 +233,13 @@ static const call_env_method_t redis_ippool_update_method_env = {
 static const call_env_method_t redis_ippool_release_method_env = {
 	FR_CALL_ENV_METHOD_OUT(redis_ippool_release_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_release_call_env_t, pool_name,
+		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, 0, redis_ippool_release_call_env_t, pool_name,
 				     NULL, T_INVALID, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, redis_ippool_release_call_env_t, owner,
+		{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, 0, redis_ippool_release_call_env_t, owner,
 				     NULL, T_INVALID, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_release_call_env_t, gateway_id,
+		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, 0, redis_ippool_release_call_env_t, gateway_id,
 				     "", T_SINGLE_QUOTED_STRING, false, true, true ) },
-		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, redis_ippool_release_call_env_t, requested_address,
+		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, 0, redis_ippool_release_call_env_t, requested_address,
 				     "%{%{Requested-IP-Address} || %{Net.Src.IP}}", T_DOUBLE_QUOTED_STRING,
 				     true, true, false) },
 		CALL_ENV_TERMINATOR
@@ -249,9 +249,9 @@ static const call_env_method_t redis_ippool_release_method_env = {
 static const call_env_method_t redis_ippool_bulk_release_method_env = {
 	FR_CALL_ENV_METHOD_OUT(redis_ippool_bulk_release_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, redis_ippool_bulk_release_call_env_t, pool_name,
+		{ FR_CALL_ENV_OFFSET("pool_name", FR_TYPE_STRING, 0, redis_ippool_bulk_release_call_env_t, pool_name,
 				NULL, T_INVALID, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, redis_ippool_bulk_release_call_env_t, gateway_id,
+		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, 0, redis_ippool_bulk_release_call_env_t, gateway_id,
 				"", T_SINGLE_QUOTED_STRING, false, true, true ) },
 		CALL_ENV_TERMINATOR
 	}

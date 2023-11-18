@@ -78,7 +78,7 @@ typedef struct {
 typedef unlang_action_t (*pap_auth_func_t)(rlm_rcode_t *p_result, rlm_pap_t const *inst, request_t *request, fr_pair_t const *, fr_value_box_t const *);
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, rlm_pap_t, normify), .dflt = "yes" },
+	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, 0, rlm_pap_t, normify), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -91,7 +91,7 @@ static const call_env_method_t pap_method_env = {
 	.inst_size = sizeof(pap_call_env_t),
 	.inst_type = "pap_call_env_t",
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, pap_call_env_t, password,
+		{ FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING, CONF_FLAG_ATTRIBUTE, pap_call_env_t, password,
 		  password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) },
 		CALL_ENV_TERMINATOR
 	}

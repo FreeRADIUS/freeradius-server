@@ -38,7 +38,7 @@ typedef struct {
 } rlm_chap_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("min_challenge_len", FR_TYPE_SIZE, rlm_chap_t, min_challenge_len), .dflt = "16" },
+	{ FR_CONF_OFFSET("min_challenge_len", FR_TYPE_SIZE, 0, rlm_chap_t, min_challenge_len), .dflt = "16" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -49,7 +49,7 @@ typedef struct {
 static const call_env_method_t chap_xlat_method_env = { \
 	FR_CALL_ENV_METHOD_OUT(chap_xlat_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("chap_challenge", FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, chap_xlat_call_env_t,
+		{ FR_CALL_ENV_OFFSET("chap_challenge", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_xlat_call_env_t,
 				     chap_challenge, "&Chap-Challenge", T_BARE_WORD, true, true, true) },
 		CALL_ENV_TERMINATOR
 	}
@@ -64,9 +64,9 @@ typedef struct {
 static const call_env_method_t chap_autz_method_env = { \
 	FR_CALL_ENV_METHOD_OUT(chap_autz_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("chap_password", FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, chap_autz_call_env_t,
+		{ FR_CALL_ENV_OFFSET("chap_password", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_autz_call_env_t,
 				     chap_password, "&Chap-Password", T_BARE_WORD, true, true, true) },
-		{ FR_CALL_ENV_TMPL_OFFSET("chap_challenge", FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, chap_autz_call_env_t,
+		{ FR_CALL_ENV_TMPL_OFFSET("chap_challenge", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_autz_call_env_t,
 					  chap_challenge, chap_challenge_tmpl, "&Chap-Challenge", T_BARE_WORD, true, true, true) },
 		CALL_ENV_TERMINATOR
 	}
@@ -81,11 +81,11 @@ typedef struct {
 static const call_env_method_t chap_auth_method_env = { \
 	FR_CALL_ENV_METHOD_OUT(chap_auth_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING | FR_TYPE_ATTRIBUTE, chap_auth_call_env_t,
+		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CONF_FLAG_ATTRIBUTE, chap_auth_call_env_t,
 				     username, "&User-Name", T_BARE_WORD, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("chap_password", FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, chap_auth_call_env_t,
+		{ FR_CALL_ENV_OFFSET("chap_password", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_auth_call_env_t,
 				     chap_password, "&Chap-Password", T_BARE_WORD, true, true, true) },
-		{ FR_CALL_ENV_OFFSET("chap_challenge", FR_TYPE_OCTETS | FR_TYPE_ATTRIBUTE, chap_auth_call_env_t,
+		{ FR_CALL_ENV_OFFSET("chap_challenge", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_auth_call_env_t,
 				     chap_challenge, "&Chap-Challenge", T_BARE_WORD, true, true, true) },
 		CALL_ENV_TERMINATOR
 	}

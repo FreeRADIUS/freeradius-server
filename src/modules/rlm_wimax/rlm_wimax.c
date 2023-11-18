@@ -45,7 +45,7 @@ typedef struct {
 } rlm_wimax_t;
 
 static const conf_parser_t module_config[] = {
-  { FR_CONF_OFFSET("delete_mppe_keys", FR_TYPE_BOOL, rlm_wimax_t, delete_mppe_keys), .dflt = "no" },
+  { FR_CONF_OFFSET("delete_mppe_keys", FR_TYPE_BOOL, 0, rlm_wimax_t, delete_mppe_keys), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

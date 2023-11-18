@@ -96,75 +96,75 @@ typedef struct {
 } rlm_sqlippool_t;
 
 static conf_parser_t message_config[] = {
-	{ FR_CONF_OFFSET("exists", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, log_exists) },
-	{ FR_CONF_OFFSET("success", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, log_success) },
-	{ FR_CONF_OFFSET("clear", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, log_clear) },
-	{ FR_CONF_OFFSET("failed", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, log_failed) },
-	{ FR_CONF_OFFSET("nopool", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, log_nopool) },
+	{ FR_CONF_OFFSET("exists", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, log_exists) },
+	{ FR_CONF_OFFSET("success", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, log_success) },
+	{ FR_CONF_OFFSET("clear", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, log_clear) },
+	{ FR_CONF_OFFSET("failed", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, log_failed) },
+	{ FR_CONF_OFFSET("nopool", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, log_nopool) },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, rlm_sqlippool_t, sql_name), .dflt = "sql" },
+	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, 0, rlm_sqlippool_t, sql_name), .dflt = "sql" },
 
-	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
+	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, 0, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
 
-	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, rlm_sqlippool_t, pool_name) },
+	{ FR_CONF_OFFSET("pool_name", FR_TYPE_STRING, 0, rlm_sqlippool_t, pool_name) },
 
-	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_NOT_EMPTY, rlm_sqlippool_t, allocated_address_attr) },
+	{ FR_CONF_OFFSET("allocated_address_attr", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_sqlippool_t, allocated_address_attr) },
 
-	{ FR_CONF_OFFSET("requested_address", FR_TYPE_TMPL, rlm_sqlippool_t, requested_address) },
+	{ FR_CONF_OFFSET("requested_address", 0, CONF_FLAG_TMPL, rlm_sqlippool_t, requested_address) },
 
-	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
-
-
-	{ FR_CONF_OFFSET("alloc_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_begin), .dflt = "START TRANSACTION" },
-
-	{ FR_CONF_OFFSET("alloc_existing", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_existing) },
-
-	{ FR_CONF_OFFSET("alloc_requested", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_requested) },
-
-	{ FR_CONF_OFFSET("alloc_find", FR_TYPE_STRING | FR_TYPE_XLAT | FR_TYPE_REQUIRED, rlm_sqlippool_t, alloc_find) },
-
-	{ FR_CONF_OFFSET("alloc_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, alloc_update) },
-
-	{ FR_CONF_OFFSET("alloc_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, alloc_commit), .dflt = "COMMIT" },
+	{ FR_CONF_OFFSET("default_pool", FR_TYPE_STRING, 0, rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
 
-	{ FR_CONF_OFFSET("pool_check", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, pool_check) },
+	{ FR_CONF_OFFSET("alloc_begin", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_begin), .dflt = "START TRANSACTION" },
+
+	{ FR_CONF_OFFSET("alloc_existing", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_existing) },
+
+	{ FR_CONF_OFFSET("alloc_requested", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_requested) },
+
+	{ FR_CONF_OFFSET("alloc_find", FR_TYPE_STRING, CONF_FLAG_XLAT | CONF_FLAG_REQUIRED, rlm_sqlippool_t, alloc_find) },
+
+	{ FR_CONF_OFFSET("alloc_update", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_update) },
+
+	{ FR_CONF_OFFSET("alloc_commit", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_commit), .dflt = "COMMIT" },
 
 
-	{ FR_CONF_OFFSET("update_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, update_begin) },
-
-	{ FR_CONF_OFFSET("update_free", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, update_free) },
-
-	{ FR_CONF_OFFSET("update_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, update_update) },
-
-	{ FR_CONF_OFFSET("update_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, update_commit) },
+	{ FR_CONF_OFFSET("pool_check", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, pool_check) },
 
 
-	{ FR_CONF_OFFSET("release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_begin) },
+	{ FR_CONF_OFFSET("update_begin", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, update_begin) },
 
-	{ FR_CONF_OFFSET("release_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, release_clear) },
+	{ FR_CONF_OFFSET("update_free", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, update_free) },
 
-	{ FR_CONF_OFFSET("release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, release_commit) },
+	{ FR_CONF_OFFSET("update_update", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, update_update) },
 
-
-	{ FR_CONF_OFFSET("bulk_release_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulk_release_begin) },
-
-	{ FR_CONF_OFFSET("bulk_release_clear", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, bulk_release_clear) },
-
-	{ FR_CONF_OFFSET("bulk_release_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, bulk_release_commit) },
+	{ FR_CONF_OFFSET("update_commit", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, update_commit) },
 
 
-	{ FR_CONF_OFFSET("mark_begin", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_begin) },
+	{ FR_CONF_OFFSET("release_begin", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, release_begin) },
 
-	{ FR_CONF_OFFSET("mark_update", FR_TYPE_STRING | FR_TYPE_XLAT , rlm_sqlippool_t, mark_update) },
+	{ FR_CONF_OFFSET("release_clear", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, release_clear) },
 
-	{ FR_CONF_OFFSET("mark_commit", FR_TYPE_STRING | FR_TYPE_XLAT, rlm_sqlippool_t, mark_commit) },
+	{ FR_CONF_OFFSET("release_commit", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, release_commit) },
 
 
-	{ FR_CONF_POINTER("messages", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) message_config },
+	{ FR_CONF_OFFSET("bulk_release_begin", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, bulk_release_begin) },
+
+	{ FR_CONF_OFFSET("bulk_release_clear", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, bulk_release_clear) },
+
+	{ FR_CONF_OFFSET("bulk_release_commit", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, bulk_release_commit) },
+
+
+	{ FR_CONF_OFFSET("mark_begin", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, mark_begin) },
+
+	{ FR_CONF_OFFSET("mark_update", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, mark_update) },
+
+	{ FR_CONF_OFFSET("mark_commit", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sqlippool_t, mark_commit) },
+
+
+	{ FR_CONF_POINTER("messages", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) message_config },
 	CONF_PARSER_TERMINATOR
 };
 

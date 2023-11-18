@@ -82,8 +82,8 @@ static const conf_parser_t mod_config[] = {
 	 *	be used.
 	 */
 
-	{ FR_CONF_OFFSET("allow_unassigned", FR_TYPE_BOOL, rlm_idn_t, allow_unassigned), .dflt = "no" },
-	{ FR_CONF_OFFSET("use_std3_ascii_rules", FR_TYPE_BOOL, rlm_idn_t, use_std3_ascii_rules), .dflt = "yes" },
+	{ FR_CONF_OFFSET("allow_unassigned", FR_TYPE_BOOL, 0, rlm_idn_t, allow_unassigned), .dflt = "no" },
+	{ FR_CONF_OFFSET("use_std3_ascii_rules", FR_TYPE_BOOL, 0, rlm_idn_t, use_std3_ascii_rules), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 

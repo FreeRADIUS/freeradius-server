@@ -88,15 +88,15 @@ typedef struct {
 static int lua_func_body_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static conf_parser_t module_lua_func[] = {
-	{ FR_CONF_OFFSET("body", FR_TYPE_STRING, redis_lua_func_t, body), .func = lua_func_body_parse },
-	{ FR_CONF_OFFSET("read_only", FR_TYPE_BOOL, redis_lua_func_t, read_only) },
+	{ FR_CONF_OFFSET("body", FR_TYPE_STRING, 0, redis_lua_func_t, body), .func = lua_func_body_parse },
+	{ FR_CONF_OFFSET("read_only", FR_TYPE_BOOL, 0, redis_lua_func_t, read_only) },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t module_lua[] = {
-	{ FR_CONF_SUBSECTION_ALLOC("function", FR_TYPE_SUBSECTION | FR_TYPE_MULTI | FR_TYPE_OK_MISSING,
+	{ FR_CONF_SUBSECTION_ALLOC("function", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI,
 				   rlm_redis_lua_t, funcs, module_lua_func),
-				   .subcs_type = "redis_lua_func_t", .ident2 = CF_IDENT_ANY },
+				   .subcs_type = "redis_lua_func_t", .name2 = CF_IDENT_ANY },
 	CONF_PARSER_TERMINATOR
 };
 

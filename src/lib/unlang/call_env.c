@@ -57,7 +57,7 @@ call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void
 	 *	Concatenate multiple boxes if needed
 	 */
 	if (env->rule->pair.concat &&
-	    fr_value_box_list_concat_in_place(vb, vb, tmpl_expanded, FR_BASE_TYPE(env->rule->type),
+	    fr_value_box_list_concat_in_place(vb, vb, tmpl_expanded, env->rule->type,
 					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0 ) {
 		RPEDEBUG("Failed concatenating values for %s", env->rule->name);
 		return CALL_ENV_INVALID;
@@ -257,7 +257,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 	fr_type_t		type;
 
 	while (call_env->name) {
-		if (FR_BASE_TYPE(call_env->type) == FR_TYPE_SUBSECTION) {
+		if (call_env->flags & CONF_FLAG_SUBSECTION) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, call_env->name, call_env->section.ident2);
 			if (!subcs) {
@@ -308,7 +308,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				quote = call_env->dflt_quote;
 			}
 
-			type = FR_BASE_TYPE(call_env->type);
+			type = call_env->type;
 			if (tmpl_afrom_substr(call_env_parsed, &call_env_parsed->tmpl, &FR_SBUFF_IN(value, len),
 					      quote, NULL, &(tmpl_rules_t){
 							.cast = (type == FR_TYPE_VOID ? FR_TYPE_NULL : type),
@@ -330,7 +330,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			case TMPL_TYPE_DATA:
 			case TMPL_TYPE_EXEC:
 			case TMPL_TYPE_XLAT:
-				if (call_env->type & FR_TYPE_ATTRIBUTE) {
+				if (call_env->type & CONF_FLAG_ATTRIBUTE) {
 					cf_log_perr(cp, "'%s' expands to %s - attribute reference required", value,
 					   	    fr_table_str_by_value(tmpl_type_table, call_env_parsed->tmpl->type,
 						    			  "<INVALID>"));
@@ -375,7 +375,7 @@ static size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env
 	*names_len = 0;
 
 	while (call_env->name) {
-		if (FR_BASE_TYPE(call_env->type) == FR_TYPE_SUBSECTION) {
+		if (call_env->flags & CONF_FLAG_SUBSECTION) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, call_env->name, call_env->section.ident2);
 			if (!subcs) goto next;

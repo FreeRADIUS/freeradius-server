@@ -42,13 +42,13 @@ typedef struct {
 static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_totp_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, rlm_totp_call_env_t, secret,
+		{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, 0, rlm_totp_call_env_t, secret,
 				     "&control.TOTP.Secret", T_BARE_WORD, false, true, false) },
 
-		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, rlm_totp_call_env_t, key,
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, 0, rlm_totp_call_env_t, key,
 				     "&control.TOTP.key", T_BARE_WORD, false, true, false) },
 
-		{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, rlm_totp_call_env_t, user_password,
+		{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, 0, rlm_totp_call_env_t, user_password,
 				     "&request.TOTP.From-User", T_BARE_WORD, false, true, false) },
 
 		CALL_ENV_TERMINATOR
@@ -63,10 +63,10 @@ typedef struct rlm_totp_t {
 
 /* Map configuration file names to internal variables */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("time_step", FR_TYPE_UINT32, rlm_totp_t, totp.time_step), .dflt = "30" },
-	{ FR_CONF_OFFSET("otp_length", FR_TYPE_UINT32, rlm_totp_t, totp.otp_length), .dflt = "6" },
-	{ FR_CONF_OFFSET("lookback_steps", FR_TYPE_UINT32, rlm_totp_t, totp.lookback_steps), .dflt = "1" },
-	{ FR_CONF_OFFSET("lookback_interval", FR_TYPE_UINT32, rlm_totp_t, totp.lookback_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("time_step", FR_TYPE_UINT32, 0, rlm_totp_t, totp.time_step), .dflt = "30" },
+	{ FR_CONF_OFFSET("otp_length", FR_TYPE_UINT32, 0, rlm_totp_t, totp.otp_length), .dflt = "6" },
+	{ FR_CONF_OFFSET("lookback_steps", FR_TYPE_UINT32, 0, rlm_totp_t, totp.lookback_steps), .dflt = "1" },
+	{ FR_CONF_OFFSET("lookback_interval", FR_TYPE_UINT32, 0, rlm_totp_t, totp.lookback_interval), .dflt = "30" },
 	CONF_PARSER_TERMINATOR
 };
 

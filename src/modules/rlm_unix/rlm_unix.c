@@ -53,7 +53,7 @@ typedef struct {
 } rlm_unix_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("radwtmp", FR_TYPE_FILE_OUTPUT, rlm_unix_t, radwtmp) },
+	{ FR_CONF_OFFSET("radwtmp", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_unix_t, radwtmp) },
 	CONF_PARSER_TERMINATOR
 };
 

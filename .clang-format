@@ -16,7 +16,7 @@ SortIncludes: false
 # after the opening brace, and before the closing brace.
 #
 # static conf_parser_t group_config[] = {
-#	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, rlm_ldap_t, groupobj_filter) }
+#	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, 0, rlm_ldap_t, groupobj_filter) }
 # };
 #
 ContinuationIndentWidth: 8

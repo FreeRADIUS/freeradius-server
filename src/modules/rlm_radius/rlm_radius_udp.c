@@ -162,25 +162,25 @@ struct udp_request_s {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, dst_ipaddr), },
-	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_radius_udp_t, dst_ipaddr), },
+	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_radius_udp_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_radius_udp_t, dst_ipaddr) },
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, rlm_radius_udp_t, dst_port) },
+	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, 0, rlm_radius_udp_t, dst_port) },
 
-	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING | FR_TYPE_REQUIRED, rlm_radius_udp_t, secret) },
+	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_radius_udp_t, secret) },
 
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, rlm_radius_udp_t, interface) },
+	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, 0, rlm_radius_udp_t, interface) },
 
-	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, rlm_radius_udp_t, recv_buff) },
-	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, rlm_radius_udp_t, send_buff) },
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, rlm_radius_udp_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, rlm_radius_udp_t, send_buff) },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, rlm_radius_udp_t, max_packet_size), .dflt = "4096" },
-	{ FR_CONF_OFFSET("max_send_coalesce", FR_TYPE_UINT16, rlm_radius_udp_t, max_send_coalesce), .dflt = "1024" },
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, rlm_radius_udp_t, max_packet_size), .dflt = "4096" },
+	{ FR_CONF_OFFSET("max_send_coalesce", FR_TYPE_UINT16, 0, rlm_radius_udp_t, max_send_coalesce), .dflt = "1024" },
 
-	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_radius_udp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET("src_ipv4addr", FR_TYPE_IPV4_ADDR, rlm_radius_udp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET("src_ipv6addr", FR_TYPE_IPV6_ADDR, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
 
 	CONF_PARSER_TERMINATOR
 };

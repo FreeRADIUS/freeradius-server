@@ -69,7 +69,8 @@ struct call_env_parser_s {
 	char const	*dflt;		//!< Default string to pass to the tmpl_tokenizer if no CONF_PAIR found.
 	fr_token_t	dflt_quote;	//!< Default quoting for the default string.
 
-	uint32_t	type;		//!< To cast boxes to. Also contains flags controlling parser behaviour.
+	fr_type_t	type;		//!< To cast boxes to. Also contains flags controlling parser behaviour.
+	conf_parser_flags_t	flags;		//!< Flags controlling parser behaviour.
 
 	size_t		offset;		//!< Where to write results in the output structure when the tmpls are evaluated.
 
@@ -155,8 +156,8 @@ _Generic((((_s *)NULL)->_f), \
 /** Only FR_TYPE_STRING and FR_TYPE_OCTETS can be concatenated.
  */
 #define FR_CALL_ENV_CONCAT(_c, _ct) \
-__builtin_choose_expr(FR_BASE_TYPE(_ct) == FR_TYPE_STRING, _c, \
-__builtin_choose_expr(FR_BASE_TYPE(_ct) == FR_TYPE_OCTETS, _c, \
+__builtin_choose_expr(_ct == FR_TYPE_STRING, _c, \
+__builtin_choose_expr(_ct == FR_TYPE_OCTETS, _c, \
 __builtin_choose_expr(_c, (void)0, false)))
 
 /** Mapping from field types to destination type enum
@@ -185,7 +186,7 @@ _Generic((((_s *)NULL)->_f), \
 	fr_value_box_list_t *		: "fr_value_box_list_t" \
 )
 
-#define FR_CALL_ENV_OFFSET(_name, _cast_type, _struct, _field, _dflt, _dflt_quote, _required, _nullable, _concat) \
+#define FR_CALL_ENV_OFFSET(_name, _cast_type, _flags, _struct, _field, _dflt, _dflt_quote, _required, _nullable, _concat) \
 	.name = _name, \
 	.type = _cast_type, \
 	.offset = offsetof(_struct, _field), \
@@ -205,7 +206,7 @@ _Generic((((_s *)NULL)->_f), \
 
 /** Version of the above which sets optional field for pointer to tmpl
  */
-#define FR_CALL_ENV_TMPL_OFFSET(_name, _cast_type, _struct, _field, _tmpl_field, _dflt, _dflt_quote, _required, _nullable, _concat) \
+#define FR_CALL_ENV_TMPL_OFFSET(_name, _cast_type, _flags, _struct, _field, _tmpl_field, _dflt, _dflt_quote, _required, _nullable, _concat) \
 	.name = _name, \
 	.type = _cast_type, \
 	.offset = offsetof(_struct, _field), \
@@ -225,7 +226,7 @@ _Generic((((_s *)NULL)->_f), \
 
 /** Version of the above which only sets the field for a pointer to the tmpl
  */
-#define FR_CALL_ENV_TMPL_ONLY_OFFSET(_name, _cast_type, _struct, _tmpl_field, _dflt, _dflt_quote, _required) \
+#define FR_CALL_ENV_TMPL_ONLY_OFFSET(_name, _cast_type, _flags, _struct, _tmpl_field, _dflt, _dflt_quote, _required) \
 	.name = _name, \
 	.type = _cast_type, \
 	.dflt = _dflt, \
@@ -238,7 +239,7 @@ _Generic((((_s *)NULL)->_f), \
 
 #define FR_CALL_ENV_SUBSECTION(_name, _ident2, _subcs, _required ) \
 	.name = _name, \
-	.type = FR_TYPE_SUBSECTION, \
+	.flags = CONF_FLAG_SUBSECTION, \
 	.section = { \
 		.ident2 = _ident2, \
 		.subcs = _subcs, \

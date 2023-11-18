@@ -129,7 +129,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
 {
 	char				tmp[sizeof("18446744073709551615b")];
 	fr_kafka_conf_ctx_t const	*kctx = rule->uctx;
-	fr_type_t			type = FR_BASE_TYPE(rule->type);
+	fr_type_t			type = rule->type;
 
 	/*
 	 *	Apply any mappings available, but default back
@@ -184,7 +184,7 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
 		break;
 	}
 
-	MEM(*out = cf_pair_alloc(cs, rule->name, value, T_OP_EQ, T_BARE_WORD, quote));
+	MEM(*out = cf_pair_alloc(cs, rule->name1, value, T_OP_EQ, T_BARE_WORD, quote));
 	cf_pair_mark_parsed(*out);	/* Don't re-parse this */
 
 	return 0;
@@ -218,7 +218,7 @@ static int kafka_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr
 		if (ret == RD_KAFKA_CONF_UNKNOWN) {
 			if (kctx->empty_default) return 0;
 
-			cf_log_debug(cs, "No default available for \"%s\" - \"%s\"", rule->name, kctx->property);
+			cf_log_debug(cs, "No default available for \"%s\" - \"%s\"", rule->name1, kctx->property);
 			return 0;	/* Not an error */
 		}
 
@@ -226,7 +226,7 @@ static int kafka_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr
 		return -1;
 	}
 #if 0
-	cf_log_debug(cs, "Retrieved dflt \"%s\" for \"%s\" - \"%s\"", buff, rule->name, kctx->property);
+	cf_log_debug(cs, "Retrieved dflt \"%s\" for \"%s\" - \"%s\"", buff, rule->name1, kctx->property);
 #endif
 	value = buff;
 
@@ -300,7 +300,7 @@ static int kafka_topic_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *
 		if (ret == RD_KAFKA_CONF_UNKNOWN) {
 			if (kctx->empty_default) return 0;
 
-			cf_log_debug(cs, "No default available for \"%s\" - \"%s\"", rule->name, kctx->property);
+			cf_log_debug(cs, "No default available for \"%s\" - \"%s\"", rule->name1, kctx->property);
 			return 0;	/* Not an error */
 		}
 
@@ -309,7 +309,7 @@ static int kafka_topic_config_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *
 		return -1;
 	}
 #if 0
-	cf_log_debug(cs, "Retrieved dflt \"%s\" for \"%s\" - \"%s\"", buff, rule->name, kctx->property);
+	cf_log_debug(cs, "Retrieved dflt \"%s\" for \"%s\" - \"%s\"", buff, rule->name1, kctx->property);
 #endif
 	value = buff;
 
@@ -325,7 +325,7 @@ static int kafka_config_parse_single(char const **out, CONF_PAIR *cp, conf_parse
 {
 	fr_value_box_t			vb = FR_VALUE_BOX_INITIALISER_NULL(vb);
 	fr_kafka_conf_ctx_t const	*kctx = rule->uctx;
-	fr_type_t			type = FR_BASE_TYPE(rule->type);
+	fr_type_t			type = rule->type;
 	static _Thread_local char	buff[sizeof("18446744073709551615")];
 	static _Thread_local fr_sbuff_t	sbuff;
 
@@ -446,13 +446,13 @@ static int kafka_config_parse(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *ba
 
 		FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 256, SIZE_MAX);
 
-		count = cf_pair_count(cs,  rule->name);
+		count = cf_pair_count(cs,  rule->name1);
 		if (count <= 1) goto do_single;
 
 		MEM(array = talloc_array(ctx, char const *, count));
 		for (cp_p = cp, i = 0;
 		     cp_p;
-		     cp_p = cf_pair_find_next(cs, cp_p, rule->name), i++) {
+		     cp_p = cf_pair_find_next(cs, cp_p, rule->name1), i++) {
 			if (kafka_config_parse_single(&array[i], cp_p, rule) < 0) return -1;
 			cf_pair_mark_parsed(cp_p);
 		}
@@ -539,10 +539,10 @@ static int kafka_topic_new(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void
 #endif
 
 static conf_parser_t const kafka_sasl_oauth_config[] = {
-	{ FR_CONF_FUNC("oauthbearer_conf", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("oauthbearer_conf", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.oauthbearer.config", .empty_default = true }},
 
-	{ FR_CONF_FUNC("unsecure_jwt", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("unsecure_jwt", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "enable.sasl.oauthbearer.unsecure.jwt" }},
 
 	CONF_PARSER_TERMINATOR
@@ -552,31 +552,31 @@ static conf_parser_t const kafka_sasl_kerberos_config[] = {
 	/*
 	 *	Service principal
 	 */
-	{ FR_CONF_FUNC("service_name", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("service_name", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.kerberos.service.name" }},
 
 	/*
 	 *	Principal
 	 */
-	{ FR_CONF_FUNC("principal", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("principal", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.kerberos.principal" }},
 
 	/*
 	 *	knit cmd
 	 */
-	{ FR_CONF_FUNC("kinit_cmd", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("kinit_cmd", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.kerberos.kinit.cmd" }},
 
 	/*
 	 *	keytab
 	 */
-	{ FR_CONF_FUNC("keytab", FR_TYPE_STRING | FR_TYPE_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("keytab", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.kerberos.kinit.keytab", .empty_default = true }},
 
 	/*
 	 *	How long between key refreshes
 	 */
-	{ FR_CONF_FUNC("refresh_delay", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("refresh_delay", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.kerberos.min.time.before.relogin" }},
 
 	CONF_PARSER_TERMINATOR
@@ -586,19 +586,19 @@ static conf_parser_t const kafka_sasl_config[] = {
 	/*
 	 *	SASL mechanism
 	 */
-	{ FR_CONF_FUNC("mech", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("mech", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.mechanism" }},
 
 	/*
 	 *	Static SASL username
 	 */
-	{ FR_CONF_FUNC("username", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("username", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.username", .empty_default = true }},
 
 	/*
 	 *	Static SASL password
 	 */
-	{ FR_CONF_FUNC("password", FR_TYPE_STRING | FR_TYPE_SECRET, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("password", FR_TYPE_STRING, CONF_FLAG_SECRET, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sasl.password", .empty_default = true }},
 
 	{ FR_CONF_SUBSECTION_GLOBAL("kerberos", 0, kafka_sasl_kerberos_config) },
@@ -620,55 +620,55 @@ static conf_parser_t const kafka_tls_config[] = {
 	/*
 	 *	Cipher suite list in OpenSSL's format
 	 */
-	{ FR_CONF_FUNC("cipher_list", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("cipher_list", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.cipher.suites", .empty_default = true }},
 
 	/*
 	 *	Curves list in OpenSSL's format
 	 */
-	{ FR_CONF_FUNC("curve_list", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("curve_list", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.curves.list", .empty_default = true }},
 
 	/*
 	 *	Curves list in OpenSSL's format
 	 */
-	{ FR_CONF_FUNC("sigalg_list", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("sigalg_list", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.sigalgs.list", .empty_default = true }},
 
 	/*
 	 *	Sets the full path to a CA certificate (used to validate
 	 *	the certificate the server presents).
 	 */
-	{ FR_CONF_FUNC("ca_file", FR_TYPE_STRING | FR_TYPE_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.ca.location", .empty_default = true }},
 
 	/*
 	 *	Location of the CRL file.
 	 */
-	{ FR_CONF_FUNC("crl_file", FR_TYPE_STRING | FR_TYPE_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("crl_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.crl.location", .empty_default = true }},
 
 	/*
 	 *	Sets the path to the public certificate file we present
 	 *	to the servers.
 	 */
-	{ FR_CONF_FUNC("certificate_file", FR_TYPE_STRING | FR_TYPE_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.certificate.location", .empty_default = true }},
 
 	/*
 	 *	Sets the path to the private key for our public
 	 *	certificate.
 	 */
-	{ FR_CONF_FUNC("private_key_file", FR_TYPE_STRING | FR_TYPE_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.key.location", .empty_default = true }},
 
 	/*
 	 *	Enable or disable certificate validation
 	 */
-	{ FR_CONF_FUNC("require_cert", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("require_cert", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "enable.ssl.certificate.verification" }},
 
-	{ FR_CONF_FUNC("check_cert_cn", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("check_cert_cn", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "ssl.endpoint.identification.algorithm",
 	  				  .mapping = kafka_check_cert_cn_table,
 	  				  .mapping_len = &kafka_check_cert_cn_table_len }},
@@ -679,74 +679,74 @@ static conf_parser_t const kafka_connection_config[] = {
 	/*
 	 *	Socket timeout
 	 */
-	{ FR_CONF_FUNC("timeout", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("timeout", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "socket.timeout.ms" }},
 
 	/*
 	 *	Close broker connections after this period.
 	 */
-	{ FR_CONF_FUNC("idle_timeout", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("idle_timeout", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "connections.max.idle.ms" }},
 
 	/*
 	 *	Maximum requests in flight (per connection).
 	 */
-	{ FR_CONF_FUNC("max_requests_in_flight", FR_TYPE_UINT64, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("max_requests_in_flight", FR_TYPE_UINT64, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "max.in.flight.requests.per.connection" }},
 
 	/*
 	 *	Socket send buffer.
 	 */
-	{ FR_CONF_FUNC("send_buff", FR_TYPE_UINT64, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("send_buff", FR_TYPE_UINT64, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "socket.send.buffer.bytes" }},
 
 	/*
 	 *	Socket recv buffer.
 	 */
-	{ FR_CONF_FUNC("recv_buff", FR_TYPE_UINT64, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("recv_buff", FR_TYPE_UINT64, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "socket.receive.buffer.bytes" }},
 
 	/*
 	 *	If true, send TCP keepalives
 	 */
-	{ FR_CONF_FUNC("keepalive", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("keepalive", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "socket.keepalive.enable" }},
 
 	/*
 	 *	If true, disable nagle algorithm
 	 */
-	{ FR_CONF_FUNC("nodelay", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("nodelay", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "socket.nagle.disable" }},
 
 	/*
 	 *	How long the DNS resolver cache is valid for
 	 */
-	{ FR_CONF_FUNC("resolver_cache_ttl", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("resolver_cache_ttl", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "broker.address.ttl" }},
 
 	/*
 	 *	Should we use A records, AAAA records or either
 	 *	when resolving broker addresses
 	 */
-	{ FR_CONF_FUNC("resolver_addr_family", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("resolver_addr_family", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "broker.address.family" }},
 
 	/*
 	 *	How many failures before we reconnect the connection
 	 */
-	{ FR_CONF_FUNC("reconnection_failure_count", FR_TYPE_UINT32, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("reconnection_failure_count", FR_TYPE_UINT32, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "socket.max.fails" }},
 
 	/*
 	 *	Initial time to wait before reconnecting.
 	 */
-	{ FR_CONF_FUNC("reconnection_delay_initial", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("reconnection_delay_initial", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "reconnect.backoff.ms" }},
 
 	/*
 	 *	Max time to wait before reconnecting.
 	 */
-	{ FR_CONF_FUNC("reconnection_delay_max", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("reconnection_delay_max", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "reconnect.backoff.max.ms" }},
 
 	CONF_PARSER_TERMINATOR
@@ -756,25 +756,25 @@ static conf_parser_t const kafka_version_config[] = {
 	/*
 	 *	Request the API version from connected brokers
 	 */
-	{ FR_CONF_FUNC("request", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("request", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "api.version.request" }},
 
 	/*
 	 *	How long to wait for a version response.
 	 */
-	{ FR_CONF_FUNC("timeout", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("timeout", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "api.version.request.timeout.ms" }},
 
 	/*
 	 *	How long to wait before retrying a version request.
 	 */
-	{ FR_CONF_FUNC("retry_delay", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("retry_delay", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "api.version.fallback.ms" }},
 
 	/*
 	 *	Default version to use if the version request fails.
 	 */
-	{ FR_CONF_FUNC("default", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("default", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "broker.version.fallback" }},
 
 	CONF_PARSER_TERMINATOR
@@ -784,60 +784,60 @@ static conf_parser_t const kafka_metadata_config[] = {
 	/*
 	 *	Interval between attempts to refresh metadata from brokers
 	 */
-	{ FR_CONF_FUNC("refresh_interval", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("refresh_interval", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "topic.metadata.refresh.interval.ms" }},
 
 	/*
 	 *	Interval between attempts to refresh metadata from brokers
 	 */
-	{ FR_CONF_FUNC("max_age", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("max_age", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "metadata.max.age.ms" }},
 
 	/*
 	 *	 Used when a topic loses its leader
 	 */
-	{ FR_CONF_FUNC("fast_refresh_interval", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("fast_refresh_interval", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "topic.metadata.refresh.fast.interval.ms" }},
 
 	/*
 	 *	 Used when a topic loses its leader to prevent spurious metadata changes
 	 */
-	{ FR_CONF_FUNC("max_propagation", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("max_propagation", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "topic.metadata.propagation.max.ms" }},
 
 	/*
 	 *	Use sparse metadata requests which use less bandwidth maps
 	 */
-	{ FR_CONF_FUNC("refresh_sparse", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("refresh_sparse", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "topic.metadata.refresh.sparse" }},
 
 	/*
 	 *	List of topics to ignore
 	 */
-	{ FR_CONF_FUNC("blacklist", FR_TYPE_STRING | FR_TYPE_MULTI, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("blacklist", FR_TYPE_STRING, CONF_FLAG_MULTI, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "topic.blacklist", .string_sep = ",", .empty_default = true }},
 
 	CONF_PARSER_TERMINATOR
 };
 
 #define BASE_CONFIG \
-	{ FR_CONF_FUNC("server", FR_TYPE_STRING | FR_TYPE_REQUIRED | FR_TYPE_MULTI, kafka_config_parse, kafka_config_dflt), \
+	{ FR_CONF_FUNC("server", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, kafka_config_parse, kafka_config_dflt), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "metadata.broker.list", .string_sep = "," }}, \
-	{ FR_CONF_FUNC("client_id", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt), \
+	{ FR_CONF_FUNC("client_id", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "client.id" }}, \
-	{ FR_CONF_FUNC("rack_id", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt), \
+	{ FR_CONF_FUNC("rack_id", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "client.rack" }}, \
-	{ FR_CONF_FUNC("request_max_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt), \
+	{ FR_CONF_FUNC("request_max_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "message.max.bytes" }}, \
-	{ FR_CONF_FUNC("request_copy_max_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt), \
+	{ FR_CONF_FUNC("request_copy_max_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "message.copy.max.bytes" }}, \
-	{ FR_CONF_FUNC("response_max_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt), \
+	{ FR_CONF_FUNC("response_max_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "receive.message.max.bytes" }}, \
-	{ FR_CONF_FUNC("feature", FR_TYPE_STRING | FR_TYPE_MULTI, kafka_config_parse, kafka_config_dflt), \
+	{ FR_CONF_FUNC("feature", FR_TYPE_STRING, CONF_FLAG_MULTI, kafka_config_parse, kafka_config_dflt), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "builtin.features", .string_sep = "," }}, \
-	{ FR_CONF_FUNC("debug", FR_TYPE_STRING | FR_TYPE_MULTI, kafka_config_parse, kafka_config_dflt), \
+	{ FR_CONF_FUNC("debug", FR_TYPE_STRING, CONF_FLAG_MULTI, kafka_config_parse, kafka_config_dflt), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "debug", .string_sep = "," }}, \
-	{ FR_CONF_FUNC("plugin", FR_TYPE_STRING | FR_TYPE_MULTI, kafka_config_parse, NULL), \
+	{ FR_CONF_FUNC("plugin", FR_TYPE_STRING, CONF_FLAG_MULTI, kafka_config_parse, NULL), \
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "plugin.library.paths", .string_sep = ";" }}, \
 	{ FR_CONF_SUBSECTION_GLOBAL("metadata", 0, kafka_metadata_config) }, \
 	{ FR_CONF_SUBSECTION_GLOBAL("version", 0, kafka_version_config) }, \
@@ -849,37 +849,37 @@ static conf_parser_t const kafka_consumer_group_config[] = {
 	/*
 	 *	Group consumer is a member of
 	 */
-	{ FR_CONF_FUNC("id", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("id", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "group.id" }},
 
 	/*
 	 *	A unique identifier of the consumer instance provided by the end user
 	 */
-	{ FR_CONF_FUNC("instance_id", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("instance_id", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "group.instance.id" }},
 
 	/*
 	 *	Range or roundrobin
 	 */
-	{ FR_CONF_FUNC("partition_assignment_strategy", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("partition_assignment_strategy", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "partition.assignment.strategy" }},
 
 	/*
 	 *	Client group session and failure detection timeout.
 	 */
-	{ FR_CONF_FUNC("session_timeout", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("session_timeout", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "session.timeout.ms" }},
 
 	/*
 	 *	Group session keepalive heartbeat interval.
 	 */
-	{ FR_CONF_FUNC("heartbeat_interval", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("heartbeat_interval", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "heartbeat.interval.ms" }},
 
 	/*
 	 *	How often to query for the current client group coordinator
 	 */
-	{ FR_CONF_FUNC("coordinator_query_interval", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("coordinator_query_interval", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "coordinator.query.interval.ms" }},
 
 
@@ -892,14 +892,14 @@ static conf_parser_t const kafka_base_consumer_topic_config[] = {
 	 *
 	 *	High numbers may starve the worker thread
 	 */
-	{ FR_CONF_FUNC("max_messages_per_cycle", FR_TYPE_UINT32, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("max_messages_per_cycle", FR_TYPE_UINT32, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "consume.callback.max.messages" }},
 
 	/*
 	 *	Action to take when there is no initial offset
 	 *	in offset store or the desired offset is out of range.
 	 */
-	{ FR_CONF_FUNC("auto_offset_reset", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("auto_offset_reset", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "auto.offset.reset" }},
 
 	CONF_PARSER_TERMINATOR
@@ -916,7 +916,7 @@ static conf_parser_t const kafka_base_consumer_topic_config[] = {
  *
  */
 static conf_parser_t const kafka_base_consumer_topics_config[] = {
-	{ FR_CONF_SUBSECTION_GLOBAL(CF_IDENT_ANY, FR_TYPE_MULTI, kafka_base_consumer_topic_config) },
+	{ FR_CONF_SUBSECTION_GLOBAL(CF_IDENT_ANY, CONF_FLAG_MULTI, kafka_base_consumer_topic_config) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -928,97 +928,97 @@ conf_parser_t const kafka_base_consumer_config[] = {
 	/*
 	 *	Maximum allowed time between calls to consume messages.
 	 */
-	{ FR_CONF_FUNC("max_poll_interval", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("max_poll_interval", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "max.poll.interval.ms" }},
 
 	/*
 	 *	Toggle auto commit
 	 */
-	{ FR_CONF_FUNC("auto_commit", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("auto_commit", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "enable_auto.commit" }},
 
 	/*
 	 *	Auto commit interval
 	 */
-	{ FR_CONF_FUNC("auto_commit_interval", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("auto_commit_interval", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "auto.commit.interval.ms" }},
 
 	/*
 	 *	Automatically store offset of last message provided to application.
 	 */
-	{ FR_CONF_FUNC("auto_offset_store", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("auto_offset_store", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "enable.auto.offset.store" }},
 
 	/*
 	 *	Minimum number of messages per topic+partition librdkafka tries to
 	 *	maintain in the local consumer queue.
 	 */
-	{ FR_CONF_FUNC("queued_messages_min", FR_TYPE_UINT64, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("queued_messages_min", FR_TYPE_UINT64, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "queued.min.messages" }},
 
 	/*
 	 *	Maximum size of queued pre-fetched messages in the local consumer queue.
 	 */
-	{ FR_CONF_FUNC("queued_messages_max_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("queued_messages_max_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "queued.max.messages.kbytes", .size_scale = 1024 }},
 
 	/*
 	 *	 Maximum time the broker may wait to fill the Fetch response.
 	 */
-	{ FR_CONF_FUNC("fetch_wait_max", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("fetch_wait_max", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "fetch.wait.max.ms" }},
 
 	/*
 	 *	Initial maximum number of bytes per topic+partition to request when
 	 *      fetching messages from the broker.
 	 */
-	{ FR_CONF_FUNC("fetch_message_max_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("fetch_message_max_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "fetch.message.max.bytes" }},
 
 	/*
 	 *	Initial maximum number of bytes per topic+partition to request when
 	 *	fetching messages from the broker.
 	 */
-	{ FR_CONF_FUNC("fetch_partition_max_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("fetch_partition_max_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "max.partition.fetch.bytes" }},
 
 	/*
 	 *	Maximum amount of data the broker shall return for a Fetch request.
 	 */
-	{ FR_CONF_FUNC("fetch_max_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("fetch_max_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "fetch.max.bytes" }},
 
 	/*
 	 *	 Minimum number of bytes the broker responds with.
 	 */
-	{ FR_CONF_FUNC("fetch_min_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("fetch_min_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "fetch.min.bytes" }},
 
 	/*
 	 *	How long to postpone the next fetch request for a topic+partition
 	 *	in case of a fetch error.
 	 */
-	{ FR_CONF_FUNC("fetch_error_backoff", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("fetch_error_backoff", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "fetch.error.backoff.ms" }},
 
 	/*
 	 *	Controls how to read messages written transactionally
 	 */
-	{ FR_CONF_FUNC("isolation_level", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("isolation_level", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "isolation.level" }},
 
 	/*
 	 *	Verify CRC32 of consumed messages, ensuring no on-the-wire or
 	 *	on-disk corruption to the messages occurred.
 	 */
-	{ FR_CONF_FUNC("check_crcs", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("check_crcs", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "check.crcs" }},
 
 	/*
 	 *	Allow automatic topic creation on the broker when subscribing
 	 *	to or assigning non-existent topics
 	 */
-	{ FR_CONF_FUNC("auto_create_topic", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("auto_create_topic", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "allow.auto.create.topics" }},
 
 	{ FR_CONF_SUBSECTION_GLOBAL("topic", 0, kafka_base_consumer_topics_config) }, \
@@ -1031,37 +1031,37 @@ static conf_parser_t const kafka_base_producer_topic_config[] = {
 	 *	This field indicates the number of acknowledgements the leader
 	 *	broker must receive from ISR brokers before responding to the request.
 	 */
-	{ FR_CONF_FUNC("request_required_acks", FR_TYPE_INT16, kafka_topic_config_parse, kafka_topic_config_dflt),
+	{ FR_CONF_FUNC("request_required_acks", FR_TYPE_INT16, 0, kafka_topic_config_parse, kafka_topic_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "request.required.acks" }},
 
 	/*
 	 *	medium	The ack timeout of the producer request in milliseconds
 	 */
-	{ FR_CONF_FUNC("request_timeout", FR_TYPE_TIME_DELTA, kafka_topic_config_parse, kafka_topic_config_dflt),
+	{ FR_CONF_FUNC("request_timeout", FR_TYPE_TIME_DELTA, 0, kafka_topic_config_parse, kafka_topic_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "request.timeout.ms" }},
 
 	/*
 	 *	Local message timeout
 	 */
-	{ FR_CONF_FUNC("message_timeout", FR_TYPE_TIME_DELTA, kafka_topic_config_parse, kafka_topic_config_dflt),
+	{ FR_CONF_FUNC("message_timeout", FR_TYPE_TIME_DELTA, 0, kafka_topic_config_parse, kafka_topic_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "message.timeout.ms" }},
 
 	/*
 	 *	Partitioning strategy
 	 */
-	{ FR_CONF_FUNC("partitioner", FR_TYPE_STRING, kafka_topic_config_parse, kafka_topic_config_dflt),
+	{ FR_CONF_FUNC("partitioner", FR_TYPE_STRING, 0, kafka_topic_config_parse, kafka_topic_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "partitioner" }},
 
 	/*
 	 *	compression codec to use for compressing message sets.
 	 */
-	{ FR_CONF_FUNC("compression_type", FR_TYPE_STRING, kafka_topic_config_parse, kafka_topic_config_dflt),
+	{ FR_CONF_FUNC("compression_type", FR_TYPE_STRING, 0, kafka_topic_config_parse, kafka_topic_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "compression.type" }},
 
 	/*
 	 *	compression level to use
 	 */
-	{ FR_CONF_FUNC("compression_level", FR_TYPE_INT8, kafka_topic_config_parse, kafka_topic_config_dflt),
+	{ FR_CONF_FUNC("compression_level", FR_TYPE_INT8, 0, kafka_topic_config_parse, kafka_topic_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "compression.level" }},
 
 	CONF_PARSER_TERMINATOR
@@ -1089,7 +1089,7 @@ conf_parser_t const kafka_base_producer_config[] = {
 	/*
 	 *	Enables the transactional producer
 	 */
-	{ FR_CONF_FUNC("transactional_id", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("transactional_id", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "transactional.id", .empty_default = true }},
 
 	/*
@@ -1097,7 +1097,7 @@ conf_parser_t const kafka_base_producer_config[] = {
 	 *	coordinator will wait for a transaction status update from the
 	 *	producer before proactively aborting the ongoing transaction.
 	 */
-	{ FR_CONF_FUNC("transaction_timeout", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("transaction_timeout", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "transaction.timeout.ms" }},
 
 	/*
@@ -1105,73 +1105,73 @@ conf_parser_t const kafka_base_producer_config[] = {
 	 *	successfully produced exactly once and in the original produce
 	 *	order.
 	 */
-	{ FR_CONF_FUNC("idempotence", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("idempotence", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "enable.idempotence" }},
 
 	/*
 	 *	When set to true, any error that could result in a gap in the
 	 *	produced message series when a batch of messages fails.
 	 */
-	{ FR_CONF_FUNC("gapless_guarantee", FR_TYPE_BOOL, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("gapless_guarantee", FR_TYPE_BOOL, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "enable.gapless.guarantee" }},
 
 	/*
 	 *	Maximum number of messages allowed on the producer queue.
 	 *	This queue is shared by all topics and partitions.
 	 */
-	{ FR_CONF_FUNC("queue_max_messages", FR_TYPE_UINT32, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("queue_max_messages", FR_TYPE_UINT32, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "queue.buffering.max.messages" }},
 
 	/*
 	 *	Maximum total message size sum allowed on the producer queue.
 	 */
-	{ FR_CONF_FUNC("queue_max_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("queue_max_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "queue.buffering.max.kbytes", .size_scale = 1024 }},
 
 	/*
 	 *	How long we wait to aggregate messages
 	 */
-	{ FR_CONF_FUNC("queue_max_delay", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("queue_max_delay", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "queue.buffering.max.ms" }},
 
 	/*
 	 *	How many times we resend a message
 	 */
-	{ FR_CONF_FUNC("message_retry_max", FR_TYPE_UINT32, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("message_retry_max", FR_TYPE_UINT32, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "message.send.max.retries" }},
 
 	/*
 	 *	The backoff time in milliseconds before retrying a protocol request.
 	 */
-	{ FR_CONF_FUNC("message_retry_interval", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("message_retry_interval", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "retry.backoff.ms" }},
 
 	/*
 	 *	The threshold of outstanding not yet transmitted broker requests
 	 *      needed to backpressure the producer's message accumulator.
 	 */
-	{ FR_CONF_FUNC("backpressure_threshold", FR_TYPE_UINT32, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("backpressure_threshold", FR_TYPE_UINT32, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "queue.buffering.backpressure.threshold" }},
 
 	/*
 	 *	compression codec to use for compressing message sets.
 	 */
-	{ FR_CONF_FUNC("compression_type", FR_TYPE_STRING, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("compression_type", FR_TYPE_STRING, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "compression.type" }},
 
 	/*
 	 *	Maximum size (in bytes) of all messages batched in one MessageSet
 	 */
-	{ FR_CONF_FUNC("batch_size", FR_TYPE_SIZE, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("batch_size", FR_TYPE_SIZE, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "batch.size" }},
 
 	/*
 	 *	Delay in milliseconds to wait to assign new sticky partitions for each topic
 	 */
-	{ FR_CONF_FUNC("sticky_partition_delay", FR_TYPE_TIME_DELTA, kafka_config_parse, kafka_config_dflt),
+	{ FR_CONF_FUNC("sticky_partition_delay", FR_TYPE_TIME_DELTA, 0, kafka_config_parse, kafka_config_dflt),
 	  .uctx = &(fr_kafka_conf_ctx_t){ .property = "sticky.partitioning.linger.ms" }},
 
-	{ FR_CONF_SUBSECTION_GLOBAL("topic", FR_TYPE_MULTI, kafka_base_producer_topics_config) }, \
+	{ FR_CONF_SUBSECTION_GLOBAL("topic", CONF_FLAG_MULTI, kafka_base_producer_topics_config) }, \
 
 	CONF_PARSER_TERMINATOR
 };

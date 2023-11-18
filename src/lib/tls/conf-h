@@ -61,21 +61,21 @@ typedef enum {
  *
  */
 typedef struct {
-	int		file_format;			//!< Whether the file is expected to be PEM encoded.
-							///< This allows us to load multiple chained PEM certificates
-							///< from a single file.
+	int				file_format;			//!< Whether the file is expected to be PEM encoded.
+									///< This allows us to load multiple chained PEM certificates
+									///< from a single file.
 
-	char const	*certificate_file;		//!< Path to certificate.
+	char const			*certificate_file;		//!< Path to certificate.
 
-	char const	*password;			//!< Password to decrypt the certificate(s).
-	char const	*private_key_file;		//!< Path to certificate.
+	char const			*password;			//!< Password to decrypt the certificate(s).
+	char const			*private_key_file;		//!< Path to certificate.
 
-	char const	**ca_files;			//!< Extra certificates to load.
-	fr_tls_chain_verify_mode_t	verify_mode;	//!< How hard we try to build up a complete certificate
-							///< chain.
-	bool		include_root_ca;		//!< Include the root ca in the chain we built.
+	char const			**ca_files;			//!< Extra certificates to load.
+	fr_tls_chain_verify_mode_t	verify_mode;			//!< How hard we try to build up a complete certificate
+									///< chain.
+	bool				include_root_ca;		//!< Include the root ca in the chain we built.
 
-	fr_unix_time_t	valid_until;			//!< The certificate in the chain which expires the earliest.
+	fr_unix_time_t			valid_until;			//!< The certificate in the chain which expires the earliest.
 } fr_tls_chain_conf_t;
 
 /** Control what types of session resumption we allow

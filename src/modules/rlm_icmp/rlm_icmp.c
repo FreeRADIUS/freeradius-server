@@ -104,9 +104,9 @@ static uint16_t icmp_checksum(uint8_t *data, size_t data_len, uint16_t checksum)
 }
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, rlm_icmp_t, interface) },
-	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, rlm_icmp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, rlm_icmp_t, timeout), .dflt = "1s" },
+	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, 0, rlm_icmp_t, interface) },
+	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_icmp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_icmp_t, timeout), .dflt = "1s" },
 	CONF_PARSER_TERMINATOR
 };
 

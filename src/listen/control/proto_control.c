@@ -30,18 +30,18 @@ extern fr_app_t proto_control;
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static conf_parser_t const limit_config[] = {
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, proto_control_t, io.idle_timeout), .dflt = "30.0" } ,
-	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIME_DELTA, proto_control_t, io.nak_lifetime), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, 0, proto_control_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIME_DELTA, 0, proto_control_t, io.nak_lifetime), .dflt = "30.0" } ,
 
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, proto_control_t, io.max_connections), .dflt = "1024" } ,
-	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, proto_control_t, io.max_clients), .dflt = "256" } ,
-	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, proto_control_t, io.max_pending_packets), .dflt = "256" } ,
+	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, 0, proto_control_t, io.max_connections), .dflt = "1024" } ,
+	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, 0, proto_control_t, io.max_clients), .dflt = "256" } ,
+	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, 0, proto_control_t, io.max_pending_packets), .dflt = "256" } ,
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, proto_control_t, max_packet_size) } ,
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, proto_control_t, num_messages) } ,
+	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_control_t, max_packet_size) } ,
+	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, 0, proto_control_t, num_messages) } ,
 
 	CONF_PARSER_TERMINATOR
 };
@@ -50,10 +50,10 @@ static conf_parser_t const limit_config[] = {
  *
  */
 static conf_parser_t const proto_control_config[] = {
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, proto_control_t, io.submodule),
+	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, 0, proto_control_t, io.submodule),
 	  .func = transport_parse },
 
-	{ FR_CONF_POINTER("limit", FR_TYPE_SUBSECTION, NULL), .subcs = (void const *) limit_config },
+	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	CONF_PARSER_TERMINATOR
 };
 
