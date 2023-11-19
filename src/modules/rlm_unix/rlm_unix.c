@@ -377,10 +377,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	fr_pair_t		*vp;
 	FILE			*fp;
 	struct utmp		ut;
-	time_t			t;
+	uint64_t       		t;
 	char			buf[64];
 	char const		*s = NULL;
-	int			delay = 0;
 	int			status = -1;
 	int			nas_address = 0;
 	int			framed_address = 0;
@@ -459,9 +458,16 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 			port_seen = true;
 
 		} else if (vp->da == attr_acct_delay_time) {
+			uint32_t delay;
+
 			delay = vp->vp_uint32;
+
+			if (t < delay) return RLM_MODULE_FAIL;
+
+			t -= delay;
 		}
 	}
+	if (t > UINT32_MAX) return RLM_MODULE_FAIL;
 
 	/*
 	 *	We don't store !root sessions, or sessions
@@ -505,9 +511,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	}
 #endif
 #ifdef USE_UTMPX
-	ut.ut_xtime = t - delay;
+	ut.ut_xtime = t;
 #else
-	ut.ut_time = t - delay;
+	ut.ut_time = t;
 #endif
 #ifdef USER_PROCESS
 	/*
