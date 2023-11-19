@@ -709,13 +709,14 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	Decode to produce fr_pair_ts from the default field
+	 *	Decode the request to produce fr_pair_t's from the headers.
 	 */
 	if (fr_debug_lvl) {
 		if (fr_debug_lvl > 1) fr_dhcpv4_print_hex(stdout, packet->data, packet->data_len);
 
-		fr_dhcpv4_decode(packet, &reply_vps, packet->data, packet->data_len, &packet->code);
-		dhcp_packet_debug(packet, &packet_vps, false);
+		(void) fr_dhcpv4_decode(packet, &reply_vps, packet->data, packet->data_len, &packet->code);
+		dhcp_packet_debug(packet, &reply_vps, false);
+		fr_pair_list_free(&reply_vps);
 	}
 
 #ifdef HAVE_LIBPCAP
