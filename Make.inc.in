@@ -91,6 +91,11 @@ INSTALL_SCRIPT	= ${INSTALL_PROGRAM}
 INSTALLSTRIP	= @INSTALLSTRIP@
 
 #
+#  For clang16+.  Shut up a bunch of C++ complaints which are fine for C.b
+#
+# CFLAGS += -Wno-reserved-identifier -Wno-c2x-extensions -Wno-cast-function-type-strict -Wno-extra-semi-stmt -Wno-unsafe-buffer-usage
+
+#
 #  Linker arguments for libraries searched for by the main
 #  configure script.
 #
