@@ -685,17 +685,13 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 
 				} else if (in) {
 					fr_value_box_aprint(NULL, &subst, in, e_rules);
-					if (!subst) {
-						talloc_free(out);
-						va_end(ap_p);
-						va_end(ap_q);
-						return NULL;
-					}
 				} else {
 					subst = talloc_typed_strdup(NULL, "(null)");
 				}
 
 			do_splice:
+				if (!subst) goto oom;
+
 				p++;
 
 				/*
@@ -719,15 +715,15 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 					out = out_tmp;
 
 					out_tmp = talloc_strdup_append_buffer(out, subst);
-					TALLOC_FREE(subst);
 					if (!out_tmp) goto oom;
+					TALLOC_FREE(subst);
 					out = out_tmp;
 
 					va_end(ap_p);		/* one time use only */
 				} else {
 					out_tmp = talloc_strdup_append_buffer(out, subst);
-					TALLOC_FREE(subst);
 					if (!out_tmp) goto oom;
+					TALLOC_FREE(subst);
 					out = out_tmp;
 				}
 
@@ -743,8 +739,6 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 
 				if (!in) {
 					subst = talloc_strdup(NULL, "(null)");
-					if (!subst) goto oom;
-
 					goto do_splice;
 				}
 
