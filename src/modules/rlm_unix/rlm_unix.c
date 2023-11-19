@@ -462,12 +462,12 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 			delay = vp->vp_uint32;
 
-			if (t < delay) return RLM_MODULE_FAIL;
+			if (t < delay) RETURN_MODULE_FAIL;
 
 			t -= delay;
 		}
 	}
-	if (t > UINT32_MAX) return RLM_MODULE_FAIL;
+	if (t > UINT32_MAX) RETURN_MODULE_FAIL;
 
 	/*
 	 *	We don't store !root sessions, or sessions
