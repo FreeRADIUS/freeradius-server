@@ -707,7 +707,7 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 					oom:
 						fr_strerror_const("Out of memory");
 						talloc_free(out);
-						talloc_free(subst);
+						TALLOC_FREE(subst);
 						va_end(ap_p);
 						va_end(ap_q);
 						return NULL;
