@@ -408,7 +408,7 @@ static void _sql_greatest(sqlite3_context *ctx, int num_values, sqlite3_value **
 	sqlite3_result_int64(ctx, max);
 }
 
-static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
+static sql_rcode_t CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 					    UNUSED fr_time_delta_t timeout)
 {
 	rlm_sql_sqlite_conn_t	*conn;
