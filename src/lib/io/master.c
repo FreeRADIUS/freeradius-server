@@ -785,20 +785,21 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	Add the connection to the set of connections for this
 	 *	client.
 	 */
+	pthread_mutex_lock(&client->mutex);
 	if (client->ht) {
-		pthread_mutex_lock(&client->mutex);
 		if (nak) (void) fr_hash_table_delete(client->ht, nak);
 		ret = fr_hash_table_insert(client->ht, connection);
 		client->ready_to_delete = false;
-		pthread_mutex_unlock(&client->mutex);
 
 		if (!ret) {
+			pthread_mutex_unlock(&client->mutex);
 			ERROR("proto_%s - Failed inserting connection into tracking table.  "
 			      "Closing it, and discarding all packets for connection %s.",
 			      inst->app_io->common.name, connection->name);
 			goto cleanup;
 		}
 	}
+	pthread_mutex_unlock(&client->mutex);
 
 	/*
 	 *	It's a NAK client.  Set the state to NAK, and don't
