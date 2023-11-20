@@ -1245,9 +1245,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
 	 */
 	inst->sql_set_user		= sql_set_user;
-	inst->sql_query			= rlm_sql_query;
-	inst->sql_select_query		= rlm_sql_select_query;
-	inst->sql_fetch_row		= rlm_sql_fetch_row;
+	inst->query			= rlm_sql_query;
+	inst->select			= rlm_sql_select_query;
+	inst->fetch_row			= rlm_sql_fetch_row;
 
 	/*
 	 *	Either use the module specific escape function
