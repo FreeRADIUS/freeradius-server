@@ -41,11 +41,11 @@ RCSID("$Id$")
  */
 typedef struct {
 	char const      *name;
-	char const	*sql_instance_name;
+	char const	*sqlance_name;
 
 	uint32_t	lease_duration;
 
-	rlm_sql_t const	*sql_inst;
+	rlm_sql_t const	*sql;
 
 	char const	*pool_name;
 	fr_dict_attr_t const *allocated_address_da; //!< the attribute for IP address allocation
@@ -105,7 +105,7 @@ static conf_parser_t message_config[] = {
 };
 
 static conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, rlm_sqlippool_t, sql_instance_name), .dflt = "sql" },
+	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, rlm_sqlippool_t, sqlance_name), .dflt = "sql" },
 
 	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
 
@@ -306,9 +306,9 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	 */
 	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
 
-	if (xlat_aeval(request, &expanded, request, query, data->sql_inst->sql_escape_func, *handle) < 0) return -1;
+	if (xlat_aeval(request, &expanded, request, query, data->sql->sql_escape_func, *handle) < 0) return -1;
 
-	ret = data->sql_inst->query(data->sql_inst, request, handle, expanded);
+	ret = data->sql->query(data->sql, request, handle, expanded);
 	talloc_free(expanded);
 	if (ret < 0){
 		return -1;
@@ -319,9 +319,9 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	 */
 	if (!*handle) return -1;
 
-	affected = (data->sql_inst->driver->sql_affected_rows)(*handle, &data->sql_inst->config);
+	affected = (data->sql->driver->sql_affected_rows)(*handle, &data->sql->config);
 
-	(data->sql_inst->driver->sql_finish_query)(*handle, &data->sql_inst->config);
+	(data->sql->driver->sql_finish_query)(*handle, &data->sql->config);
 
 	return affected;
 }
@@ -355,10 +355,10 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	/*
 	 *	Do an xlat on the provided string
 	 */
-	if (xlat_aeval(request, &expanded, request, query, data->sql_inst->sql_escape_func, *handle) < 0) {
+	if (xlat_aeval(request, &expanded, request, query, data->sql->sql_escape_func, *handle) < 0) {
 		return 0;
 	}
-	retval = data->sql_inst->select(data->sql_inst, request, handle, expanded);
+	retval = data->sql->select(data->sql, request, handle, expanded);
 	talloc_free(expanded);
 
 	if ((retval != 0) || !*handle) {
@@ -366,7 +366,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 		return 0;
 	}
 
-	if (data->sql_inst->fetch_row(&row, data->sql_inst, request, handle) < 0) {
+	if (data->sql->fetch_row(&row, data->sql, request, handle) < 0) {
 		REDEBUG("Failed fetching query result");
 		goto finish;
 	}
@@ -391,7 +391,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	retval = rlen;
 
 finish:
-	(data->sql_inst->driver->sql_finish_select_query)(*handle, &data->sql_inst->config);
+	(data->sql->driver->sql_finish_select_query)(*handle, &data->sql->config);
 
 	return retval;
 }
@@ -399,7 +399,7 @@ finish:
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_sqlippool_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	inst->name = talloc_asprintf(inst, "%s - %s", mctx->inst->name, inst->sql_instance_name);
+	inst->name = talloc_asprintf(inst, "%s - %s", mctx->inst->name, inst->sqlance_name);
 
 	return 0;
 }
@@ -416,7 +416,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	module_instance_t	*sql_inst;
+	module_instance_t	*sql;
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
 	char const		*pool_name = NULL;
@@ -427,10 +427,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	} else {
 		inst->pool_name = talloc_typed_strdup(inst, "ippool");
 	}
-	sql_inst = module_rlm_by_name(NULL, inst->sql_instance_name);
-	if (!sql_inst) {
+	sql = module_rlm_by_name(NULL, inst->sqlance_name);
+	if (!sql) {
 		cf_log_err(conf, "failed to find sql instance named %s",
-			   inst->sql_instance_name);
+			   inst->sqlance_name);
 		return -1;
 	}
 
@@ -460,11 +460,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	inst->sql_inst = (rlm_sql_t *) sql_inst->dl_inst->data;
+	inst->sql = (rlm_sql_t *) sql->dl_inst->data;
 
-	if (strcmp(talloc_get_name(inst->sql_inst), "rlm_sql_t") != 0) {
+	if (strcmp(talloc_get_name(inst->sql), "rlm_sql_t") != 0) {
 		cf_log_err(conf, "Module \"%s\" is not an instance of the rlm_sql module",
-			      inst->sql_instance_name);
+			      inst->sqlance_name);
 		return -1;
 	}
 
@@ -521,13 +521,13 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		return do_logging(p_result, inst, request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
 
-	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	handle = fr_pool_connection_get(inst->sql->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
 		RETURN_MODULE_FAIL;
 	}
 
-	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
 	}
 
@@ -597,7 +597,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 							  (char *) NULL, 0);
 			if (!handle) RETURN_MODULE_FAIL;
 
-			fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+			fr_pool_connection_release(inst->sql->pool, request, handle);
 
 			if (allocation_len) {
 
@@ -624,7 +624,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 
 		}
 
-		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+		fr_pool_connection_release(inst->sql->pool, request, handle);
 
 		RDEBUG2("IP address could not be allocated");
 		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
@@ -640,7 +640,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 
 		talloc_free(vp);
 		RDEBUG2("Invalid IP number [%s] returned from instbase query.", allocation);
-		fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+		fr_pool_connection_release(inst->sql->pool, request, handle);
 		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
 
@@ -651,7 +651,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 			      allocation, allocation_len) < 0) {
 	error:
 		talloc_free(vp);
-		if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+		if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -660,7 +660,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	RDEBUG2("Allocated IP %s", allocation);
 	fr_pair_append(&request->reply_pairs, vp);
 
-	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
 	return do_logging(p_result, inst, request, inst->log_success, RLM_MODULE_OK);
 }
@@ -674,13 +674,13 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 	rlm_sql_handle_t	*handle;
 	int			affected;
 
-	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	handle = fr_pool_connection_get(inst->sql->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
 		RETURN_MODULE_FAIL;
 	}
 
-	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
 	}
 
@@ -697,13 +697,13 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 
 	if (affected < 0) {
 	error:
-		if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+		if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 		RETURN_MODULE_FAIL;
 	}
 
 	DO_PART(update_commit);
 
-	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
 	if (affected > 0) {
 		/*
@@ -726,13 +726,13 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
 
-	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	handle = fr_pool_connection_get(inst->sql->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
 		RETURN_MODULE_FAIL;
 	}
 
-	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
 	}
 
@@ -740,11 +740,11 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 	DO_PART(release_clear);
 	DO_PART(release_commit);
 
-	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_OK;
 
 	error:
-	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_FAIL;
 }
 
@@ -756,13 +756,13 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, 
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
 
-	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	handle = fr_pool_connection_get(inst->sql->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
 		RETURN_MODULE_FAIL;
 	}
 
-	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
 	}
 
@@ -770,11 +770,11 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, 
 	DO_PART(bulk_release_clear);
 	DO_PART(bulk_release_commit);
 
-	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_OK;
 
 	error:
-	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_FAIL;
 }
 
@@ -787,13 +787,13 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
 
-	handle = fr_pool_connection_get(inst->sql_inst->pool, request);
+	handle = fr_pool_connection_get(inst->sql->pool, request);
 	if (!handle) {
 		REDEBUG("Failed reserving SQL connection");
 		RETURN_MODULE_FAIL;
 	}
 
-	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
 	}
 
@@ -801,11 +801,11 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 	DO_PART(mark_update);
 	DO_PART(mark_commit);
 
-	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_OK;
 
 	error:
-	if (handle) fr_pool_connection_release(inst->sql_inst->pool, request, handle);
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_FAIL;
 }
 
