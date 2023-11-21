@@ -433,7 +433,9 @@ static int _thread_local_list_free(fr_atexit_list_t *list)
 	ATEXIT_DEBUG("%s - Freeing _Thread_local destructor list %p",  __FUNCTION__, list);
 
 	fr_dlist_talloc_free(&list->head);	/* Free in order */
+	pthread_mutex_lock(&fr_atexit_global_mutex);
 	list->e->func = NULL;			/* Disarm the global entry that'd free the thread-specific list */
+	pthread_mutex_unlock(&fr_atexit_global_mutex);
 	return 0;
 }
 

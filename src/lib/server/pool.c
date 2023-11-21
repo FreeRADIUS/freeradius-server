@@ -411,15 +411,6 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	while (pool->state.reconnecting) pthread_cond_wait(&pool->done_reconnecting, &pool->mutex);
 
 	/*
-	 *	Unlock the mutex while we try to open a new
-	 *	connection.  If there are issues with the back-end,
-	 *	opening a new connection may take a LONG time.  In
-	 *	that case, we want the other connections to continue
-	 *	to be used.
-	 */
-	pthread_mutex_unlock(&pool->mutex);
-
-	/*
 	 *	The true value for pending_window is the smaller of
 	 *	free connection slots, or pool->pending_window.
 	 */
@@ -427,6 +418,15 @@ static fr_pool_connection_t *connection_spawn(fr_pool_t *pool, request_t *reques
 	if (pool->pending_window < pending_window) pending_window = pool->pending_window;
 	ROPTIONAL(RDEBUG2, DEBUG2, "Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
 		  number, pool->state.pending, pending_window);
+
+	/*
+	 *	Unlock the mutex while we try to open a new
+	 *	connection.  If there are issues with the back-end,
+	 *	opening a new connection may take a LONG time.  In
+	 *	that case, we want the other connections to continue
+	 *	to be used.
+	 */
+	pthread_mutex_unlock(&pool->mutex);
 
 	/*
 	 *	Allocate a new top level ctx for the create callback
@@ -735,8 +735,10 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	close_connection:
 		/*
 		 *	Don't close connections too often, in order to
-		 *	prevent flapping.
+		 *	prevent flapping. Coverity doesn't notice that
+		 * 	all callers have the lock, so we annotate the issue.
 		 */
+		/* coverity[missing_lock] */
 		if (fr_time_lt(now, fr_time_add(pool->state.last_spawned, pool->delay_interval))) goto manage_connections;
 
 		/*
