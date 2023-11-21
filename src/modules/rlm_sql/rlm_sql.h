@@ -181,25 +181,25 @@ typedef struct {
 
 	int		number;				//! for safe operations
 
-	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
-				       fr_time_delta_t timeout);
+	sql_rcode_t	(*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
+					   fr_time_delta_t timeout);
 
-	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query);
-	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query);
-	sql_rcode_t (*sql_store_result)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query);
+	sql_rcode_t	(*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query);
+	sql_rcode_t	(*sql_store_result)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
-	int (*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-	int (*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-	int (*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	int		(*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	int		(*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	int		(*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
-	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-	sql_rcode_t (*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 	sql_error_t	sql_error;				//!< Get any errors from the previous query.
 
-	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 	xlat_escape_legacy_t	sql_escape_func;
 } rlm_sql_driver_t;
