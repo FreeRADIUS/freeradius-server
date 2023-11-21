@@ -770,7 +770,7 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 {
 	bool rcode = false;
 	rlm_sql_handle_t	*handle;
-	rlm_sql_grouplist_t	*head, *entry;
+	rlm_sql_grouplist_t	*entry, *head = NULL;
 
 	/*
 	 *	Set, escape, and check the user attr here
@@ -792,6 +792,7 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	 *	Get the list of groups this user is a member of
 	 */
 	if (sql_get_grouplist(inst, &handle, request, &head) < 0) {
+		talloc_free(head);
 		REDEBUG("Error getting group membership");
 		fr_pool_connection_release(inst->pool, request, handle);
 		return false;
@@ -1039,10 +1040,11 @@ static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
 	 */
 	rows = sql_get_grouplist(inst, handle, request, &head);
 	if (rows < 0) {
+		talloc_free(head);
 		REDEBUG("Error retrieving group list");
-
 		RETURN_MODULE_FAIL;
 	}
+
 	if (rows == 0) {
 		RDEBUG2("User not found in any groups");
 		goto do_nothing;
