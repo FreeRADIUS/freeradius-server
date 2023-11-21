@@ -1128,7 +1128,7 @@ static xlat_action_t xlat_func_log_err(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 }
 
 
-/** Log something at WARNlevel.
+/** Log something at WARN level.
  *
  * Example:
 @verbatim
@@ -1149,6 +1149,45 @@ static xlat_action_t xlat_func_log_warn(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 
 	RWDEBUG("%s", vb->vb_strvalue);
 
+	return XLAT_ACTION_DONE;
+}
+
+static xlat_arg_parser_t const xlat_func_log_dst_args[] = {
+	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = false, .type = FR_TYPE_UINT32 },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Change the log destination to the named one
+ *
+ * Example:
+@verbatim
+%log.destination('foo')
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+				       UNUSED xlat_ctx_t const *xctx,
+				       request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*dst, *lvl;
+	fr_log_t *log;
+	uint32_t level = 2;
+
+	XLAT_ARGS(args, &dst, &lvl);
+
+	if (!dst || !*dst->vb_strvalue) {
+		request_log_prepend(request, NULL, L_DBG_LVL_OFF);
+		return XLAT_ACTION_DONE;
+	}
+
+	log = log_dst_by_name(dst->vb_strvalue);
+	if (!log) return XLAT_ACTION_FAIL;
+
+	if (lvl) level = lvl->vb_uint32;
+
+	request_log_prepend(request, log, level);
 	return XLAT_ACTION_DONE;
 }
 
@@ -3700,6 +3739,7 @@ do { \
 	XLAT_REGISTER_ARGS("log.err", xlat_func_log_err, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("log.info", xlat_func_log_info, FR_TYPE_NULL, xlat_func_log_arg);
 	XLAT_REGISTER_ARGS("log.warn", xlat_func_log_warn, FR_TYPE_NULL, xlat_func_log_arg);
+	XLAT_REGISTER_ARGS("log.destination", xlat_func_log_dst, FR_TYPE_STRING, xlat_func_log_dst_args);
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, FR_TYPE_STRING, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
