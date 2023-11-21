@@ -431,17 +431,17 @@ static int count_connections(UNUSED uint8_t const *key, UNUSED size_t keylen, vo
 	fr_io_client_t *client = talloc_get_type_abort(data, fr_io_client_t);
 	int connections;
 
-	/*
-	 *	This client has no connections, skip the mutex lock.
-	 */
-	if (!client->ht) return 0;
-
-	fr_assert(client->use_connected);
-
 	pthread_mutex_lock(&client->mutex);
+
+	if (!client->ht) {
+		pthread_mutex_unlock(&client->mutex);
+		return 0;
+	}
+
 	connections = fr_hash_table_num_elements(client->ht);
 	pthread_mutex_unlock(&client->mutex);
 
+	fr_assert(client->use_connected);
 	*((uint32_t *) ctx) += connections;
 
 	return 0;
@@ -1993,11 +1993,9 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		if (connection) {
 			fr_io_client_t *parent = connection->parent;
 
-			if (parent->ht) {
-				pthread_mutex_lock(&parent->mutex);
-				(void) fr_hash_table_delete(parent->ht, connection);
-				pthread_mutex_unlock(&parent->mutex);
-			}
+			pthread_mutex_lock(&parent->mutex);
+			if (parent->ht) (void) fr_hash_table_delete(parent->ht, connection);
+			pthread_mutex_unlock(&parent->mutex);
 
 			/*
 			 *	Mark the connection as dead, and tell
@@ -2607,11 +2605,9 @@ static int mod_close(fr_listen_t *li)
 	 *	Remove connection from parent hash table
 	 */
 	parent = connection->parent;
-	if (parent->ht) {
-		pthread_mutex_lock(&parent->mutex);
-		(void) fr_hash_table_delete(parent->ht, connection);
-		pthread_mutex_unlock(&parent->mutex);
-	}
+	pthread_mutex_lock(&parent->mutex);
+	if (parent->ht) (void) fr_hash_table_delete(parent->ht, connection);
+	pthread_mutex_unlock(&parent->mutex);
 
 	/*
 	 *	Clean up listener
