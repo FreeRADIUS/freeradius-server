@@ -215,20 +215,14 @@ struct sql_inst {
 	module_instance_t	*driver_submodule;	//!< Driver's submodule.
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
-	int (*sql_set_user)(rlm_sql_t const *inst, request_t *request, char const *username);
-	xlat_escape_legacy_t sql_escape_func;
-	sql_rcode_t (*query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
-	sql_rcode_t (*select)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
-	sql_rcode_t (*fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
+	int			(*sql_set_user)(rlm_sql_t const *inst, request_t *request, char const *username);
+	xlat_escape_legacy_t	sql_escape_func;
+	sql_rcode_t		(*query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
+	sql_rcode_t		(*select)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
+	sql_rcode_t		(*fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
-};
-
-typedef struct rlm_sql_grouplist_s rlm_sql_grouplist_t;
-struct rlm_sql_grouplist_s {
-	char			*name;
-	rlm_sql_grouplist_t	*next;
 };
 
 void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);

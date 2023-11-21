@@ -709,6 +709,13 @@ int sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username
  */
 #define sql_unset_user(_i, _r) fr_pair_delete_by_da(&_r->request_pairs, _i->sql_user)
 
+
+typedef struct rlm_sql_grouplist_s rlm_sql_grouplist_t;
+struct rlm_sql_grouplist_s {
+	char			*name;
+	rlm_sql_grouplist_t	*next;
+};
+
 static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, request_t *request,
 			     rlm_sql_grouplist_t **phead)
 {
