@@ -618,13 +618,15 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		 char const *file, int line, char const *fmt, ...)
 {
 	va_list		ap;
-	log_dst_t	*dst_p;
+	log_dst_t	*dst;
 
 	if (!request->log.dst) return;
 
 	va_start(ap, fmt);
-	for (dst_p = request->log.dst; dst_p; dst_p = dst_p->next) {
-		dst_p->func(type, lvl, request, file, line, fmt, ap, dst_p->uctx);
+	for (dst = request->log.dst; dst; dst = dst->next) {
+		if (lvl < dst->lvl) continue;
+
+		dst->func(type, lvl, request, file, line, fmt, ap, dst->uctx);
 	}
 	va_end(ap);
 }

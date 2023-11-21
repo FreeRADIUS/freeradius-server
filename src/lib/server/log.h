@@ -65,6 +65,7 @@ typedef	void (*log_func_t)(fr_log_type_t type, fr_log_lvl_t lvl, request_t *requ
 struct log_dst {
 	log_func_t	func;		//!< Function to call to log to this destination.
 	void		*uctx;		//!< Context to pass to the logging function.
+	fr_log_lvl_t	lvl;		//!< Log messages with lvl >= to this should be logged.
 	log_dst_t	*next;		//!< Next logging destination.
 };
 
