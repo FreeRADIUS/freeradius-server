@@ -260,8 +260,8 @@ match (127.0.0.1 == %cast(string, "%md4(' 127.0.0.1')"))
 xlat_purify (ipaddr)127.0.0.1 == %md4('127.0.0.1')
 match (127.0.0.1 == %md4('127.0.0.1'))
 
-xlat_purify (ipaddr)127.0.0.1 == %{md4: SELECT user FROM table WHERE user='%{User-Name}'}
-match (127.0.0.1 == %md4( SELECT user FROM table WHERE user='%{User-Name}'))
+xlat_purify (ipaddr)127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'")
+match (127.0.0.1 == %md4("SELECT user FROM table WHERE user='%{User-Name}'"))
 
 xlat_purify (ether) 00:11:22:33:44:55 == "00:11:22:33:44:55"
 match true

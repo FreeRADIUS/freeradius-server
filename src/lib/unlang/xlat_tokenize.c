@@ -97,11 +97,6 @@ static fr_sbuff_escape_rules_t const xlat_escape = {
  * The caller sets the literal parse rules for outside of expansions when they
  * call xlat_tokenize.
  */
-static fr_sbuff_parse_rules_t const xlat_expansion_rules = {
-	.escapes = &xlat_unescape,
-	.terminals = &FR_SBUFF_TERM("}")	/* These get merged with other literal terminals */
-};
-
 static fr_sbuff_parse_rules_t const xlat_multi_arg_rules = {
 	.escapes = &xlat_unescape,
 	.terminals = &FR_SBUFF_TERM(")")	/* These get merged with other literal terminals */
@@ -189,176 +184,6 @@ bool const xlat_func_chars[UINT8_MAX + 1] = {
 	['.'] = true, ['-'] = true, ['_'] = true,
 };
 
-
-/** Parse an xlat function and its child argument
- *
- * Parses a function call string in the format
- * @verbatim %{<func>:<argument>} @endverbatim
- *
- * @return
- *	- 0 if the string was parsed into a function.
- *	- <0 on parse error.
- */
-static inline int xlat_tokenize_function_mono(xlat_exp_head_t *head,
-					      fr_sbuff_t *in,
-					      tmpl_rules_t const *t_rules)
-{
-	xlat_exp_t		*node, *arg_group;
-	xlat_t			*func;
-	fr_sbuff_marker_t	m_s;
-
-	/*
-	 *	Special characters, spaces, etc. cannot be
-	 *	module names.
-	 */
-	XLAT_DEBUG("FUNC-MONO <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
-
-	/*
-	 *	%{module:args}
-	 */
-	fr_sbuff_marker(&m_s, in);
-	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
-
-	if (!fr_sbuff_is_char(in, ':')) {
-		fr_strerror_const("Can't find function/argument separator");
-	bad_function:
-		fr_sbuff_set(in, &m_s);		/* backtrack */
-		fr_sbuff_marker_release(&m_s);
-		return -1;
-	}
-
-	func = xlat_func_find(fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
-
-	/*
-	 *	Allocate a node to hold the function
-	 */
-	node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
-	if (!func) {
-		if (!t_rules || !t_rules->attr.allow_unresolved || t_rules->at_runtime) {
-			fr_strerror_const("Unresolved expansion functions are not allowed here");
-			goto bad_function;
-		}
-		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
-		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
-	} else {
-		if (func->input_type == XLAT_INPUT_ARGS) {
-			fr_strerror_const("Function takes defined arguments and should "
-					  "be called using %(func:args) syntax");
-		error:
-			talloc_free(node);
-			return -1;
-		}
-		node->call.func = func;
-		if (t_rules) node->call.dict = t_rules->attr.dict_def;
-		node->flags = func->flags;
-	}
-
-	/*
-	 *	Record the calling style, this is useful
-	 *	for checking later with unresolved
-	 *	functions, for printing accurate debug
-	 *	info, and for weird xlats like the
-	 *	redundant xlat
-	 */
-	node->call.input_type = XLAT_INPUT_MONO;
-
-	fr_sbuff_next(in);			/* Skip the ':' */
-	XLAT_DEBUG("FUNC-ARGS <-- %s ... %.*s", node->fmt, (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
-
-	fr_sbuff_set(&m_s, in);
-
-	/*
-	 *	Allocate a top level group to hold all
-	 *	the argument fragments.  This gives us
-	 *	somewhere to store the quoting.
-	 */
-	arg_group = xlat_exp_alloc(node->call.args, XLAT_GROUP, NULL, 0);
-
-	/*
-	 *	It's the escape char.  We can't start
-	 *	a quoted string.
-	 */
-	if (fr_sbuff_is_char(in, xlat_expansion_rules.escapes->chr)) {
-	bareword:
-		arg_group->quote = T_BARE_WORD;
-
-		if (xlat_tokenize_input(arg_group->group, in, &xlat_expansion_rules, t_rules) < 0) {
-			goto error;
-		}
-
-		xlat_flags_merge(&arg_group->flags, &arg_group->group->flags);
-	/*
-	 *	Support passing the monolithic argument
-	 *	as a string.
-	 */
-	} else if (fr_sbuff_next_if_char(in, '\'')) {
-		char		*str;
-		ssize_t 	slen;
-		xlat_exp_t	*literal;
-
-		arg_group->quote = T_SINGLE_QUOTED_STRING;
-
-		literal = xlat_exp_alloc(arg_group, XLAT_BOX, NULL, 0);
-
-		/*
-		 *	Find the next token
-		 */
-		slen = fr_sbuff_out_aunescape_until(literal, &str, in, SIZE_MAX,
-						    value_parse_rules_single_quoted.terminals,
-						    value_parse_rules_single_quoted.escapes);
-		if (slen < 0) goto error;
-
-		xlat_exp_set_name_buffer_shallow(literal, str);
-		fr_value_box_strdup_shallow(&literal->data, NULL, str, false);
-		literal->flags.constant = true;
-		fr_assert(literal->flags.pure);
-		xlat_exp_insert_tail(arg_group->group, literal);
-
-		if (!fr_sbuff_next_if_char(in, '\'')) {
-			fr_strerror_const("Missing closing \"'\"");
-			goto error;
-		}
-	} else if (fr_sbuff_next_if_char(in, '"')) {
-		arg_group->quote = T_DOUBLE_QUOTED_STRING;
-
-		if (xlat_tokenize_input(arg_group->group, in,
-					 &value_parse_rules_double_quoted, t_rules) < 0) {
-			goto error;
-		}
-		if (!fr_sbuff_next_if_char(in, '"')) {
-			fr_strerror_const("Missing closing '\"'");
-			goto error;
-		}
-	} else {
-		goto bareword;
-	}
-	xlat_exp_set_name(arg_group, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
-	xlat_exp_insert_tail(node->call.args, arg_group);
-
-	fr_sbuff_marker_release(&m_s);
-
-	/*
-	 *	Check there's input if it's needed
-	 */
-	if ((node->type == XLAT_FUNC) && (xlat_validate_function_mono(node) < 0)) goto error;
-
-	if (!fr_sbuff_next_if_char(in, '}')) {
-		fr_strerror_const("Missing closing brace");
-		goto error;
-	}
-
-	xlat_flags_merge(&node->flags, &node->call.args->flags);
-
-	if (!func) {
-		node->flags.can_purify = node->call.args->flags.can_purify;
-	} else {
-		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
-	}
-
-	xlat_exp_insert_tail(head, node);
-
-	return 0;
-}
 
 static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg)
 {
@@ -1012,12 +837,6 @@ check_for_attr:
 	 *      Hint token is a ':' it's an xlat function %{<func>:<args}
 	 */
 	switch (hint) {
-	case ':':
-		fr_sbuff_set(in, &s_m);		/* backtrack */
-		fr_sbuff_marker_release(&s_m);
-
-		return xlat_tokenize_function_mono(head, in, t_rules);
-
 	/*
 	 *	Hint token is a:
 	 *	- '[' - Which is an attribute index, so it must be an attribute.

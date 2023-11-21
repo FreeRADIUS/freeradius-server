@@ -283,10 +283,10 @@ match %md5('"arg')
 xlat %md5('"arg\""')
 match  %md5('"arg\\""')
 
-xlat %{md5:'arg'}
+xlat %md5('arg')
 match %md5('arg')
 
-xlat %{md5:'arg"'}
+xlat %md5('arg"')
 match %md5('arg"')
 
 count
