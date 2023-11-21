@@ -335,6 +335,8 @@ int		request_detach(request_t *child);
 int		request_global_init(void);
 void		request_global_free(void);
 
+void		request_log_prepend(request_t *request, fr_log_t *log, fr_log_lvl_t lvl);
+
 #ifdef WITH_VERIFY_PTR
 void		request_verify(char const *file, int line, request_t const *request);	/* only for special debug builds */
 #endif

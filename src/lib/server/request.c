@@ -83,6 +83,61 @@ static inline void CC_HINT(always_inline) request_log_init_orphan(request_t *req
 	}
 	request->log.dst->func = vlog_request;
 	request->log.dst->uctx = &default_log;
+	request->log.dst->lvl = fr_debug_lvl;
+}
+
+/** Prepend another logging destination to the list.
+ *
+
+ * @param request	the request
+ * @param log_dst	the logging destination
+ * @param lvl		the new request debug lvl
+ */
+void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl)
+{
+	log_dst_t *dst;
+
+	if (lvl == L_DBG_LVL_DISABLE) {
+		while (request->log.dst) {
+			dst = request->log.dst->next;
+			talloc_free(request->log.dst);
+			request->log.dst = dst;
+		}
+
+		return;
+	}
+
+	/*
+	 *	Disable any debug destinations which have actual debug output.
+	 */
+	if (lvl == L_DBG_LVL_OFF) {
+		log_dst_t **last;
+
+		if (!request->log.dst) return;
+
+		last = &request->log.dst;
+		while (*last) {
+			dst = *last;
+			if (dst->lvl > L_DBG_LVL_OFF) {
+				dst = dst->next;
+				free(*last);
+			}
+
+			last = &(dst->next);
+		}
+
+		return;
+	}
+
+	MEM(dst = talloc_zero(request, log_dst_t));
+
+	dst->func = vlog_request;
+	dst->uctx = log_dst;
+
+	dst->lvl = request->log.lvl;
+	dst->next = request->log.dst;
+
+	request->log.dst = dst;
 }
 
 static inline void CC_HINT(always_inline) request_log_init_child(request_t *child, request_t const *parent)
