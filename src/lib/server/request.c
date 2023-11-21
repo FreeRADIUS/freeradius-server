@@ -108,19 +108,18 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 	}
 
 	/*
-	 *	Disable any debug destinations which have actual debug output.
+	 *	Remove a particular log destination.
 	 */
 	if (lvl == L_DBG_LVL_OFF) {
 		log_dst_t **last;
 
-		if (!request->log.dst) return;
-
 		last = &request->log.dst;
 		while (*last) {
 			dst = *last;
-			if (dst->lvl > L_DBG_LVL_OFF) {
-				dst = dst->next;
-				free(*last);
+			if (dst->uctx = log_dst) {
+				*last = dst->next;
+				free(dst);
+				return;
 			}
 
 			last = &(dst->next);
@@ -129,6 +128,19 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 		return;
 	}
 
+	/*
+	 *	Change the debug level of an existing destination.
+	 */
+	for (dst = &request->log.dst; dst != NULL; dst = dst->next) {
+		if (dst->uctx == log_dst) {
+			dst->lvl = lvl;
+			return;
+		}
+	}
+
+	/*
+	 *	Not found, add a new log destination.
+	 */
 	MEM(dst = talloc_zero(request, log_dst_t));
 
 	dst->func = vlog_request;
