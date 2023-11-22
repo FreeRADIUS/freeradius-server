@@ -301,6 +301,13 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		.sent = false,
 	};
 
+	if (RDEBUG_ENABLED) {
+		RDEBUG("Sending %s XID %08X to %pV:%d", dhcp_message_types[code], request->packet->id, &vp->data, port);
+		RINDENT();
+		log_request_pair_list(L_DBG_LVL_1, request, NULL, &request->request_pairs, NULL);
+		REXDENT();
+	}
+
 	rcode = fr_udp_queue_write(d, t->uq, t->buffer, data_len, &vp->vp_ip, port, d);
 	if (rcode > 0) {
 		talloc_free(d);
