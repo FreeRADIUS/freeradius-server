@@ -1194,7 +1194,7 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 
 	if (lvl) level = lvl->vb_uint32;
 
-	if (!file || (log->dst != L_DST_FILES)) {
+	if (!file || ((log->dst != L_DST_NULL) && (log->dst != L_DST_FILES))) {
 		request_log_prepend(request, log, level);
 		return XLAT_ACTION_DONE;
 	}
@@ -1207,6 +1207,7 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	/*
 	 *	Open the new filename.
 	 */
+	dbg->dst = L_DST_FILES;
 	dbg->file = talloc_strdup(dbg, file->vb_strvalue);
 	dbg->fd = open(dbg->file, O_WRONLY | O_CREAT | O_CLOEXEC);
 	if (!dbg->fd) {

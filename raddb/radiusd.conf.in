@@ -322,6 +322,32 @@ log {
 }
 
 #
+#  Perform debug logging to a special file.
+#
+#  This log section is generally used for per-request debug logging.
+#  For example, the following function calls can be placed in an
+#  `unlang` block, where it will:
+#
+#	* delete any pre-exising debug log for this user
+#	  do not do this for EAP sessions, as they use multiple round trips.
+#	* use the 'log debug' section as a template
+#	* set the debug level for this request to '2'
+#	* over-ride the log file, and set it to be based on the `User-Name`.
+#
+#  The file will be closed when the request exits.  It is the admins
+#  responsibility to ensure that the debug files are periodically cleaned up.
+#  The server does not do this automatically.
+#
+#	%file.rm("${logdir}/debug/%{User-Name}.log")
+#	%log.destination('debug', 2, "${logdir}/debug/%{User-Name}.log")
+#
+log debug {
+	destination = null
+	colourise = no
+	timestamp = yes
+}
+
+#
 #  .ENVIRONMENT VARIABLES
 #
 #  You can reference environment variables using an expansion like

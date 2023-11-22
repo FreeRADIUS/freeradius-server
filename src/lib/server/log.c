@@ -1205,6 +1205,9 @@ int log_parse_section(CONF_SECTION *cs)
 		talloc_set_destructor(log, _log_free);
 		break;
 
+	case L_DST_NULL:
+		break;
+
 	default:		/* look for stdout / stderr? */
 		talloc_const_free(log_destination);
 		log_destination = NULL;
