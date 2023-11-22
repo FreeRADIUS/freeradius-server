@@ -1,41 +1,74 @@
 #  -*- text -*-
 ######################################################################
 #
-#	This is a virtual server that handles DHCP relaying
+#	This is a virtual server that handles DHCPv4 relaying
 #
 #	Only one server can listen on a socket, so you cannot
 #	do DHCP relaying && run a DHCP server at the same time.
 #
+#	Configure an instance of the dhcpv4 module in order to use
+#	this virtual server - that module provides DHCPv4 client
+#	and relay functionality.
+#
 ######################################################################
 
 server dhcp.eth1 {
-	listen {
+	namespace = dhcpv4
+
+listen {
+	type = Discover
+	type = Request
+	type = Inform
+	type = Release
+	type = Decline
+
+	transport = udp
+
+	#
+	#  See sample dhcp virtual server for details of
+	#  these options.
+	#
+	udp {
 		ipaddr = *
 		port = 67
-		type = dhcp
 		interface = eth1
+		src_ip_addr = 127.0.0.1
+		broadcast = no
 	}
+}
 
-	#  Packets received on the socket will be processed through one
-	#  of the following sections, named after the DHCP packet type.
-	#  See dictionary.dhcp for the packet types.
-	dhcp Discover {
-		#  IP Address of the DHCP server
-		&control.Relay-To-IP-Address := 192.0.2.2
+#
+#  Packets received on the socket will be processed through one
+#  of the following sections, named after the DHCP packet type.
+#  See dictionary.dhcp for the packet types.
+#
+recv Discover {
+	#  IP Address of the DHCP server
+	&control.Net.Dst.IP := 192.0.2.2
 
-		#  IP Address of the DHCP relay (ourselves)
-		&request.Gateway-IP-Address := 192.0.2.1
+	#  IP Address of the DHCP relay (where the reply should go to)
+	#  If requests are coming from an upstream relay, this will
+	#  already be set in the packet
+	&request.Gateway-IP-Address := 192.0.2.1
 
-		ok
-	}
+	#  Call the dhcpv4 module to do the relay
+	dhcpv4
 
-	dhcp Request {
-		#  IP Address of the DHCP server
-		&control.Relay-To-IP-Address := 192.0.2.2
+	#  The DHCP Offer will come from the relay host
+	do_not_respond
+}
 
-		#  IP Address of the Gateway server
-		&request.Gateway-IP-Address := 192.0.2.2
+#
+#  A repeat of the Discover section to handle Request packets
+#  This can be repeated for Inform, Release and Decline as required.
+#
+recv Request {
+	&control.Net.Dst.IP := 192.0.2.2
 
-		ok
-	}
+	&request.Gateway-IP-Address := 192.0.2.1
+
+	dhcpv4
+
+	do_not_respond
+}
 }
