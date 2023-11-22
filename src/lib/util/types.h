@@ -400,10 +400,10 @@ _Generic(&(_ct), \
 	int32_t **		: FR_TYPE_INT32, \
 	int64_t	*		: FR_TYPE_INT64, \
 	int64_t **		: FR_TYPE_INT64, \
-	float *			: FR_TYPE_FLOAT, \
-	float **		: FR_TYPE_FLOAT , \
-	double *		: FR_TYPE_DOUBLE, \
-	double **		: FR_TYPE_DOUBLE)
+	float *			: FR_TYPE_FLOAT32, \
+	float **		: FR_TYPE_FLOAT32, \
+	double *		: FR_TYPE_FLOAT64, \
+	double **		: FR_TYPE_FLOAT64)
 
 extern fr_table_num_ordered_t const fr_type_table[];
 extern size_t fr_type_table_len;

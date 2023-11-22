@@ -331,7 +331,7 @@ _Generic((_ct), \
  *
  * @{
  */
-DIAG_OFF(attribute)
+DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	CONF_FLAG_SUBSECTION		= (1 << 9),			//!< Instead of putting the information into a
 									///< configuration structure, the configuration
@@ -363,7 +363,7 @@ typedef enum CC_HINT(flag_enum) {
 									//!< or is_set_ptr.
 	CONF_FLAG_OK_MISSING     	= (1 << 22), 			//!< OK if it's missing
 } conf_parser_flags_t;
-DIAG_ON(attribute)
+DIAG_ON(attributes)
 
 /** @} */
 
