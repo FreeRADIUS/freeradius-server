@@ -116,7 +116,7 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 		last = &request->log.dst;
 		while (*last) {
 			dst = *last;
-			if (dst->uctx = log_dst) {
+			if (dst->uctx == log_dst) {
 				*last = dst->next;
 				free(dst);
 				return;
@@ -131,7 +131,7 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 	/*
 	 *	Change the debug level of an existing destination.
 	 */
-	for (dst = &request->log.dst; dst != NULL; dst = dst->next) {
+	for (dst = request->log.dst; dst != NULL; dst = dst->next) {
 		if (dst->uctx == log_dst) {
 			dst->lvl = lvl;
 			return;
