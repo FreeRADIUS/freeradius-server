@@ -247,9 +247,8 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
  *	- 0 on success;
  *	- <0 on failure;
  */
- static inline CC_HINT(always_inline)
-int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
-		   CONF_SECTION const *cs, call_env_parser_t const *call_env) {
+static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *dict_def,
+			  CONF_SECTION const *cs, call_env_parser_t const *call_env) {
 	CONF_PAIR const		*cp, *next;
 	call_env_parsed_t	*call_env_parsed;
 	ssize_t			len, count, multi_index;
