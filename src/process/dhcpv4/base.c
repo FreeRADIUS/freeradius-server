@@ -55,7 +55,6 @@ fr_dict_attr_autoload_t process_dhcpv4_dict_attr[] = {
  */
 static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
 {
-	size_t i;
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];
 #endif
@@ -85,21 +84,6 @@ static void dhcpv4_packet_debug(request_t *request, fr_radius_packet_t *packet, 
 		       packet->socket.inet.ifindex ? " " : ""
 #endif
 		       );
-
-	/*
-	 *	Print the fields in the header, too.
-	 */
-	RINDENT();
-	for (i = 0; i < dhcp_header_attrs_len; i++) {
-		fr_pair_t *vp;
-
-		if (!*dhcp_header_attrs[i]) continue;
-
-		vp = fr_pair_find_by_da(list, NULL, *dhcp_header_attrs[i]);
-		if (!vp) continue;
-		RDEBUGX(L_DBG_LVL_1, "%pP", vp);
-	}
-	REXDENT();
 
 	if (received || request->parent) {
 		log_request_pair_list(L_DBG_LVL_1, request, NULL, list, NULL);
