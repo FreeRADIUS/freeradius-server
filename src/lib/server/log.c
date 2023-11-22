@@ -1174,13 +1174,23 @@ int log_parse_section(CONF_SECTION *cs)
 		talloc_const_free(log_destination);
 		log_destination = NULL;
 
-		/*
-		 *	Call openlog only once, when the
-		 *	program starts.
-		 */
-//		openlog(config->name, LOG_PID, config->syslog_facility);
+		if (fr_log_init_syslog(log) < 0) goto error;
 		break;
 #endif
+
+	case L_DST_STDOUT:
+		talloc_const_free(log_destination);
+		log_destination = NULL;
+
+		if (fr_log_init_std(log, L_DST_STDOUT) < 0) goto error;
+		break;
+
+	case L_DST_STDERR:
+		talloc_const_free(log_destination);
+		log_destination = NULL;
+
+		if (fr_log_init_std(log, L_DST_STDERR) < 0) goto error;
+		break;
 
 	case L_DST_FILES:
 		talloc_const_free(log_destination);
@@ -1208,7 +1218,7 @@ int log_parse_section(CONF_SECTION *cs)
 	case L_DST_NULL:
 		break;
 
-	default:		/* look for stdout / stderr? */
+	default:
 		talloc_const_free(log_destination);
 		log_destination = NULL;
 
