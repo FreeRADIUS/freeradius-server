@@ -106,6 +106,30 @@ typedef struct {
 } rlm_smtp_t;
 
 /*
+ *	A mapping of configuration file names to internal variables.
+ */
+static const conf_parser_t module_config[] = {
+	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, 0, rlm_smtp_t, uri) },
+	{ FR_CONF_OFFSET("template_directory", FR_TYPE_STRING, 0, rlm_smtp_t, template_dir) },
+	{ FR_CONF_OFFSET("attachments", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, attachments), .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
+	{ FR_CONF_OFFSET("sender_address", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, sender_address) },
+	{ FR_CONF_OFFSET("envelope_address", FR_TYPE_STRING, 0, rlm_smtp_t, envelope_address) },
+	{ FR_CONF_OFFSET("recipients", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, recipient_addrs),
+		.dflt = "&SMTP-Recipients[*]", .quote = T_BARE_WORD},
+	{ FR_CONF_OFFSET("TO", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, to_addrs),
+		.dflt = "&SMTP-TO[*]", .quote = T_BARE_WORD},
+	{ FR_CONF_OFFSET("CC", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, cc_addrs),
+		.dflt = "&SMTP-CC[*]", .quote = T_BARE_WORD},
+	{ FR_CONF_OFFSET("BCC", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, bcc_addrs),
+		.dflt = "&SMTP-BCC[*]", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_smtp_t, timeout) },
+	{ FR_CONF_OFFSET("set_date", FR_TYPE_BOOL, 0, rlm_smtp_t, set_date), .dflt = "yes" },
+	{ FR_CONF_OFFSET("tls", 0, CONF_FLAG_SUBSECTION, rlm_smtp_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
+	{ FR_CONF_OFFSET("connection", 0, CONF_FLAG_SUBSECTION, rlm_smtp_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
+	CONF_PARSER_TERMINATOR
+};
+
+/*
  *	Two types of SMTP connections are used:
  *	 - persistent - where the connection can be left established as the same
  *			authentication is used for all mails sent.
@@ -143,97 +167,6 @@ typedef struct {
 	char 			time_str[60];
 	curl_mime		*mime;
 } fr_mail_ctx_t;
-
-/*
- * 	Used to ensure that only strings are being set to the tmpl_t ** output
- */
-static int cf_table_parse_tmpl(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			       CONF_ITEM *ci, conf_parser_t const *rule)
-{
-	int 			ret = 0;
-	ssize_t			slen;
-	int			type = rule->type;
-	bool 			tmpl = (type & CONF_FLAG_TMPL);
-	CONF_PAIR		*cp = cf_item_to_pair(ci);
-	tmpl_t			*vpt;
-
-	static tmpl_rules_t	rules = {
-					.attr = {
-						.allow_unknown = true,
-						.allow_unresolved = true,
-						.allow_foreign = true
-					}
-				};
-	rules.attr.list_def = request_attr_request;
-
-	if (!tmpl) {
-		cf_log_err(cp, "Failed parsing attribute reference");
-		ret = -1;
-		goto finish;
-	}
-
-	slen = tmpl_afrom_substr(cp, &vpt, &FR_SBUFF_IN(cf_pair_value(cp), strlen(cf_pair_value(cp))),
-				 cf_pair_value_quote(cp),
-				 value_parse_rules_unquoted[cf_pair_value_quote(cp)],
-				 &rules);
-
-	/* There was an error */
-	if (!vpt) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
-
-		cf_log_err(cp, "Failed parsing attribute reference:");
-		cf_log_err(cp, "%s", text);
-		cf_log_perr(cp, "%s^", spaces);
-
-		talloc_free(spaces);
-		talloc_free(text);
-		/* Return error */
-		ret = -1;
-		goto finish;
-	}
-
-	/* Only string values should be used for SMTP components */
-	if(tmpl_expanded_type(vpt) != FR_TYPE_STRING) {
-		cf_log_err(cp, "Attribute reference must be a string");
-		ret = -1;
-		goto finish;
-	}
-
-	*(tmpl_t **)out = vpt;
-
-	cp->parsed = true;
-
-finish:
-	return ret;
-}
-
-/*
- *	A mapping of configuration file names to internal variables.
- */
-static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, 0, rlm_smtp_t, uri) },
-	{ FR_CONF_OFFSET("template_directory", FR_TYPE_STRING, 0, rlm_smtp_t, template_dir) },
-	{ FR_CONF_OFFSET("attachments", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, attachments),
-		.func = cf_table_parse_tmpl, .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("sender_address", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, sender_address),
-		.func = cf_table_parse_tmpl},
-	{ FR_CONF_OFFSET("envelope_address", FR_TYPE_STRING, 0, rlm_smtp_t, envelope_address) },
-	{ FR_CONF_OFFSET("recipients", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, recipient_addrs),
-		.func = cf_table_parse_tmpl, .dflt = "&SMTP-Recipients[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("TO", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, to_addrs), .func = cf_table_parse_tmpl,
-		.dflt = "&SMTP-TO[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("CC", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, cc_addrs),
-		.func = cf_table_parse_tmpl, .dflt = "&SMTP-CC[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("BCC", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, bcc_addrs),
-		.func = cf_table_parse_tmpl, .dflt = "&SMTP-BCC[*]", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_smtp_t, timeout) },
-	{ FR_CONF_OFFSET("set_date", FR_TYPE_BOOL, 0, rlm_smtp_t, set_date), .dflt = "yes" },
-	{ FR_CONF_OFFSET("tls", 0, CONF_FLAG_SUBSECTION, rlm_smtp_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
-	{ FR_CONF_OFFSET("connection", 0, CONF_FLAG_SUBSECTION, rlm_smtp_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
-	CONF_PARSER_TERMINATOR
-};
 
 /*
  * 	Adds every element associated with a dict_attr to a curl_slist
