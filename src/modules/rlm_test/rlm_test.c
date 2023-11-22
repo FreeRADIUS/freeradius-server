@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/inet.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 /*
@@ -71,8 +72,8 @@ typedef struct {
 
 	fr_ipaddr_t	ipaddr;
 
-	time_t		date;
-	time_t		*date_m;
+	fr_time_t	date;
+	fr_time_t	*date_m;
 
 	uint8_t const	*octets;
 	uint8_t const	**octets_m;
@@ -80,7 +81,7 @@ typedef struct {
 	uint8_t		byte;
 	uint8_t		*byte_m;
 
-	uint8_t		ifid[8];
+	fr_ifid_t	ifid;
 	/*
 	 *	clang correctly performs type compatibility checks between
 	 *	arrays with a specific length, but for pointers to pointers
@@ -91,15 +92,15 @@ typedef struct {
 	 *	So the "multi" variants of ethernet and ifid buffers, must
 	 *	be a **.
 	 */
-	uint8_t		**ifid_m;
+	fr_ifid_t	*ifid_m;
 	uint16_t	shortint;
 	uint16_t	*shortint_m;
 
-	uint8_t		ethernet[6];
+	fr_ethernet_t	ethernet;
 	/*
 	 *	See above...
 	 */
-	uint8_t		**ethernet_m;
+	fr_ethernet_t	*ethernet_m;
 
 	int32_t		int32;
 	int32_t		*int32_m;

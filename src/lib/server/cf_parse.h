@@ -95,9 +95,10 @@ typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid FR_TYP
  *
  * @note The warnings/errors emitted are usually awful.
  *
- * @param _t a #fr_type_t value with optional ``FR_TYPE_*`` flags.
- * @param _ct data type of global or struct field, obtained with ``__typeof__``.
- * @param _p Pointer or offset.
+ * @param[in] _t	a #fr_type_t value.
+ * @param[in] _f	additional flags that control parsing.
+ * @param[in] _ct	data type of global or struct field, obtained with ``__typeof__``.
+ * @param[in] _p	Pointer or offset.
  */
 #  define FR_CONF_FLAG_CHECK(_t, _f, _ct, _p) \
 __builtin_choose_expr(((_f) & CONF_FLAG_SUBSECTION), _p, \
@@ -106,23 +107,23 @@ __builtin_choose_expr((_t == FR_TYPE_SIZE) && !((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), size_t *), _p, (_mismatch_size) 0), \
 __builtin_choose_expr((_t == FR_TYPE_SIZE) && ((_f) & CONF_FLAG_MULTI), \
 	__builtin_choose_expr(IS_COMPATIBLE((_ct), size_t **), _p, (_mismatch_size_m) 0), \
-__builtin_choose_expr((_t == FR_TYPE_DATE) && !((_f) & CONF_FLAG_MULTI), \
-	__builtin_choose_expr(IS_COMPATIBLE((_ct), time_t *), _p, (_mismatch_time) 0), \
-__builtin_choose_expr((_t == FR_TYPE_DATE) && ((_f) & CONF_FLAG_MULTI), \
-	__builtin_choose_expr(IS_COMPATIBLE((_ct), time_t **), _p, (_mismatch_time_m) 0), \
-__builtin_choose_expr((_t == FR_TYPE_TIME_DELTA) && !((_f) & CONF_FLAG_MULTI), \
-	__builtin_choose_expr(IS_COMPATIBLE((_ct), fr_time_delta_t *), _p, (_mismatch_time_delta) 0), \
-__builtin_choose_expr((_t == FR_TYPE_TIME_DELTA) && ((_f) & CONF_FLAG_MULTI), \
-	__builtin_choose_expr(IS_COMPATIBLE((_ct), fr_time_delta_t **), _p, (_mismatch_time_delta_m) 0), \
-__builtin_choose_expr((_t == FR_TYPE_ETHERNET) && !((_f) & CONF_FLAG_MULTI), \
-	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t(*)[6]), _p, (_mismatch_ethernet) 0), \
-__builtin_choose_expr((_t == FR_TYPE_ETHERNET) && ((_f) & CONF_FLAG_MULTI), \
-	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t ***), _p, (_mismatch_ethernet_m) 0), \
-__builtin_choose_expr((_t == FR_TYPE_IFID) && !((_f) & CONF_FLAG_MULTI), \
-	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t(*)[8]), _p, (_mismatch_ifid) 0), \
-__builtin_choose_expr((_t == FR_TYPE_IFID) && ((_f) & CONF_FLAG_MULTI), \
-	__builtin_choose_expr(IS_COMPATIBLE((_ct), uint8_t ***), _p, (_mismatch_ifid_m) 0), \
 _Generic((_ct), \
+	fr_time_t *	: __builtin_choose_expr((_t == FR_TYPE_DATE) && !((_f) & CONF_FLAG_MULTI), \
+			_p, (_mismatch_time) 0), \
+	fr_time_t **	: __builtin_choose_expr((_t == FR_TYPE_DATE) && ((_f) & CONF_FLAG_MULTI), \
+			_p, (_mismatch_time_m) 0), \
+	fr_ethernet_t *	: __builtin_choose_expr((_t == FR_TYPE_ETHERNET) && !((_f) & CONF_FLAG_MULTI), \
+			_p, (_mismatch_ethernet) 0), \
+	fr_ethernet_t ** : __builtin_choose_expr((_t == FR_TYPE_ETHERNET) && ((_f) & CONF_FLAG_MULTI), \
+			_p, (_mismatch_ethernet_m) 0), \
+	fr_ifid_t *	: __builtin_choose_expr((_t == FR_TYPE_IFID) && !((_f) & CONF_FLAG_MULTI), \
+			_p, (_mismatch_ifid) 0), \
+	fr_ifid_t **	: __builtin_choose_expr((_t == FR_TYPE_IFID) && ((_f) & CONF_FLAG_MULTI), \
+			_p, (_mismatch_ifid_m) 0), \
+	fr_time_delta_t *: __builtin_choose_expr((_t == FR_TYPE_TIME_DELTA) && !((_f) & CONF_FLAG_MULTI), \
+			_p, (_mismatch_time_delta) 0), \
+	fr_time_delta_t **: __builtin_choose_expr((_t == FR_TYPE_TIME_DELTA) && ((_f) & CONF_FLAG_MULTI), \
+			_p, (_mismatch_time_delta_m) 0), \
 	tmpl_t **	: __builtin_choose_expr(((_f) & CONF_FLAG_TMPL) && !((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_vp_tmpl) 0), \
 	tmpl_t ***	: __builtin_choose_expr(((_f) & CONF_FLAG_TMPL) && ((_f) & CONF_FLAG_MULTI), \
@@ -181,7 +182,7 @@ _Generic((_ct), \
 			_p, (_mismatch_double) 0), \
 	double **	: __builtin_choose_expr((_t == FR_TYPE_FLOAT64) && ((_f) & CONF_FLAG_MULTI), \
 			_p, (_mismatch_double_m) 0), \
-	default: (conf_type_mismatch)0)))))))))))))
+	default: (conf_type_mismatch)0)))))
 #else
 #  define FR_CONF_FLAG_CHECK(_type, _flags, _c_type, _ptr_or_offset) _ptr_or_offset
 #endif
