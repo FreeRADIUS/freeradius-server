@@ -368,8 +368,7 @@ int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *
  * @param[in] call_env		to parse.
  * @return Number of parsed_call_env expected to be required.
  */
-static inline CC_HINT(always_inline)
-size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env_parser_t const *call_env)
+static size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env_parser_t const *call_env)
 {
 	size_t	pair_count, tmpl_count = 0;
 	CONF_PAIR const	*cp;
