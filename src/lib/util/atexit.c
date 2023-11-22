@@ -411,7 +411,17 @@ do_threads:
  */
 bool fr_atexit_is_exiting(void)
 {
+#ifdef HAVE_PTHREADS
+	bool save_is_exiting;
+
+	pthread_mutex_lock(&fr_atexit_global_mutex);
+	save_is_exiting = is_exiting;
+	pthread_mutex_unlock(&fr_atexit_global_mutex);
+
+	return save_is_exiting;
+#else
 	return is_exiting;
+#endif
 }
 
 #ifdef HAVE_PTHREADS
