@@ -169,7 +169,7 @@ module_rlm_t rlm_lua = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "lua",
-		.type			= MODULE_TYPE_THREAD_SAFE,
+		.flags			= MODULE_TYPE_THREAD_SAFE,
 		.inst_size		= sizeof(rlm_lua_t),
 
 		.thread_inst_size	= sizeof(rlm_lua_thread_t),

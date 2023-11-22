@@ -494,7 +494,7 @@ module_rlm_t rlm_krb5 = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "krb5",
 #ifdef KRB5_IS_THREAD_SAFE
-		.type		= MODULE_TYPE_THREAD_SAFE,
+		.flags		= MODULE_TYPE_THREAD_SAFE,
 #else
 		.flags		= MODULE_TYPE_THREAD_UNSAFE,
 #endif
