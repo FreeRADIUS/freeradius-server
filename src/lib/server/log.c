@@ -1136,25 +1136,24 @@ static const conf_parser_t log_config[] = {
  */
 int log_parse_section(CONF_SECTION *cs)
 {
-	fr_log_track_t *dst, find;
+	fr_log_track_t *dst;
 	fr_log_t *log;
 	char const *name;
 
 	name = cf_section_name2(cs);
 	if (!name) name = cf_section_name1(cs);
 
-	memset(&find, 0, sizeof(find));
-	find.name = name;
-
-	dst = fr_rb_find(dst_tree, &find);
-	if (!dst) {
+	dst = fr_rb_find(dst_tree, &(fr_log_track_t) {
+			.name = name,
+		});
+	if (dst) {
 		fr_strerror_printf("Cannot add duplicate log destination '%s'", name);
 		return -1;
 	}
 
 	MEM(log = talloc_zero(dst_tree, fr_log_t));
 
-	if (cf_section_rule_push(cs, log_config) < 0) {
+	if (cf_section_rules_push(cs, log_config) < 0) {
 	error:
 		talloc_free(log);
 		return -1;
@@ -1179,7 +1178,6 @@ int log_parse_section(CONF_SECTION *cs)
 		 *	Call openlog only once, when the
 		 *	program starts.
 		 */
-		fr_assert(0);
 //		openlog(config->name, LOG_PID, config->syslog_facility);
 		break;
 #endif
@@ -1193,8 +1191,9 @@ int log_parse_section(CONF_SECTION *cs)
 			goto error;
 		}
 
-		find.log = log;
-		dst = fr_rb_find(filename_tree, &find);
+		dst = fr_rb_find(filename_tree, &(fr_log_track_t) {
+				.log = log,
+			});
 		if (dst) {
 			fr_strerror_printf("The log destination '%s' is already logging to file %s",
 					   dst->name, log->file);
