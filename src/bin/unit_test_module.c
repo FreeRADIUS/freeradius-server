@@ -861,10 +861,6 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (log_global_init(&default_log, false) < 0) {
-		EXIT_WITH_FAILURE;
-	}
-
 	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
 		EXIT_WITH_FAILURE;
 	}
@@ -1185,11 +1181,6 @@ cleanup:
 	 *	scheduler.
 	 */
 	fr_atexit_thread_trigger_all();
-
-	/*
-	 *	Free request specific logging infrastructure
-	 */
-	log_global_free();
 
 	server_free();
 
