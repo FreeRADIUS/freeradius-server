@@ -624,7 +624,7 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 
 	va_start(ap, fmt);
 	for (dst = request->log.dst; dst; dst = dst->next) {
-		if (lvl < dst->lvl) continue;
+		if (lvl > dst->lvl) continue;
 
 		dst->func(type, lvl, request, file, line, fmt, ap, dst->uctx);
 	}
