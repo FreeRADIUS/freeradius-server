@@ -41,7 +41,7 @@ RCSID("$Id$")
  */
 typedef struct {
 	char const      *name;
-	char const	*sqlance_name;
+	char const	*sql_name;
 
 	uint32_t	lease_duration;
 
@@ -105,7 +105,7 @@ static conf_parser_t message_config[] = {
 };
 
 static conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, rlm_sqlippool_t, sqlance_name), .dflt = "sql" },
+	{ FR_CONF_OFFSET("sql_module_instance", FR_TYPE_STRING, rlm_sqlippool_t, sql_name), .dflt = "sql" },
 
 	{ FR_CONF_OFFSET("lease_duration", FR_TYPE_UINT32, rlm_sqlippool_t, lease_duration), .dflt = "86400" },
 
@@ -399,7 +399,7 @@ finish:
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_sqlippool_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	inst->name = talloc_asprintf(inst, "%s - %s", mctx->inst->name, inst->sqlance_name);
+	inst->name = talloc_asprintf(inst, "%s - %s", mctx->inst->name, inst->sql_name);
 
 	return 0;
 }
@@ -427,10 +427,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	} else {
 		inst->pool_name = talloc_typed_strdup(inst, "ippool");
 	}
-	sql = module_rlm_by_name(NULL, inst->sqlance_name);
+	sql = module_rlm_by_name(NULL, inst->sql_name);
 	if (!sql) {
 		cf_log_err(conf, "failed to find sql instance named %s",
-			   inst->sqlance_name);
+			   inst->sql_name);
 		return -1;
 	}
 
@@ -464,7 +464,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (strcmp(talloc_get_name(inst->sql), "rlm_sql_t") != 0) {
 		cf_log_err(conf, "Module \"%s\" is not an instance of the rlm_sql module",
-			      inst->sqlance_name);
+			      inst->sql_name);
 		return -1;
 	}
 
