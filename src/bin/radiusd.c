@@ -823,11 +823,6 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *  Redirect stderr/stdout as appropriate.
-	 */
-	if (log_global_init(&default_log, config->daemonize) < 0) EXIT_WITH_FAILURE;
-
-	/*
 	 *	Start the network / worker threads.
 	 */
 	{

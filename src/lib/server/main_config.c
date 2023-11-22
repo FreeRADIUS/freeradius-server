@@ -1373,6 +1373,14 @@ do {\
 	fr_assert(config->root_cs == NULL);
 
 	/*
+	 *  Redirect stderr/stdout as appropriate.
+	 */
+	if (log_global_init(&default_log, config->daemonize) < 0) {
+		cf_log_err(cs, "Failed initializing logging");
+		goto failure;
+	}
+
+	/*
 	 *	Load different logging destinations.
 	 */
 	for (subcs = cf_section_find_next(cs, NULL, "log", CF_IDENT_ANY);
