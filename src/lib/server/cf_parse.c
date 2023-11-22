@@ -799,8 +799,8 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 	if (cp && cp->parsed) return 0;
 
 	if ((rule->type != FR_TYPE_STRING) &&
-	    (rule->type != CONF_FLAG_FILE_INPUT) &&
-	    (rule->type != CONF_FLAG_FILE_OUTPUT)) {
+	    (!(rule->flags & CONF_FLAG_FILE_INPUT)) &&
+	    (!(rule->flags & CONF_FLAG_FILE_OUTPUT))) {
 		return 0;
 	}
 
