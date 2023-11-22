@@ -1087,12 +1087,6 @@ cleanup:
 	 */
 	fr_atexit_thread_trigger_all();
 
-	/*
-	 *  Frees request specific logging resources which is OK
-	 *  because all the requests will have been stopped.
-	 */
-	log_global_free();
-
 	fr_snmp_free();
 
 	server_free();

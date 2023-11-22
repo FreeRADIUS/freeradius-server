@@ -1428,6 +1428,12 @@ do {\
 int main_config_free(main_config_t **config)
 {
 	/*
+	 *  Frees request specific logging resources which is OK
+	 *  because all the requests will have been stopped.
+	 */
+	log_global_free();
+
+	/*
 	 *	Clean up the configuration data
 	 *	structures.
 	 */
