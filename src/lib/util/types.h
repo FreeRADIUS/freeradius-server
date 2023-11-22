@@ -359,6 +359,52 @@ extern bool const fr_type_non_leaf[FR_TYPE_MAX + 1];
 #define fr_type_is_non_leaf(_x)			(fr_type_non_leaf[_x])
 /** @} */
 
+/** Given a variable, return the equivalent FR_TYPE_* value
+ *
+ * @note Does not work for:
+ * - size_t / FR_TYPE_SIZE - Conflicts with other integers on many systems.
+ * - fr_ipaddr_t - Too many potential type mappings.
+ * - tmpl_t - Not an FR_TYPE_*.
+ *
+ * @param[in] _ct variable to translate.
+ */
+#  define FR_CTYPE_TO_TYPE(_ct) \
+_Generic(&(_ct), \
+	fr_ethernet_t *		: FR_TYPE_ETHERNET, \
+	fr_ethernet_t **	: FR_TYPE_ETHERNET, \
+	fr_ifid_t *		: FR_TYPE_IFID, \
+	fr_ifid_t **		: FR_TYPE_IFID, \
+	fr_time_t *		: FR_TYPE_DATE, \
+	fr_time_t **		: FR_TYPE_DATE, \
+	fr_time_delta_t *	: FR_TYPE_TIME_DELTA, \
+	fr_time_delta_t **	: FR_TYPE_TIME_DELTA, \
+	char const **		: FR_TYPE_STRING, \
+	char const ***		: FR_TYPE_STRING, \
+	bool *			: FR_TYPE_BOOL, \
+	bool **			: FR_TYPE_BOOL, \
+	uint8_t const **	: FR_TYPE_OCTETS, \
+	uint8_t const ***	: FR_TYPE_OCTETS, \
+	uint8_t *		: FR_TYPE_UINT8, \
+	uint8_t **		: FR_TYPE_UINT8, \
+	uint16_t *		: FR_TYPE_UINT16, \
+	uint16_t **		: FR_TYPE_UINT16, \
+	uint32_t * 		: FR_TYPE_UINT32, \
+	uint32_t **		: FR_TYPE_UINT32, \
+	uint64_t *		: FR_TYPE_UINT64, \
+	uint64_t **		: FR_TYPE_UINT64, \
+	int8_t	*		: FR_TYPE_INT8, \
+	int8_t **		: FR_TYPE_INT8, \
+	int16_t	*		: FR_TYPE_INT16, \
+	int16_t **		: FR_TYPE_INT16, \
+	int32_t	*		: FR_TYPE_INT32, \
+	int32_t **		: FR_TYPE_INT32, \
+	int64_t	*		: FR_TYPE_INT64, \
+	int64_t **		: FR_TYPE_INT64, \
+	float *			: FR_TYPE_FLOAT, \
+	float **		: FR_TYPE_FLOAT , \
+	double *		: FR_TYPE_DOUBLE, \
+	double **		: FR_TYPE_DOUBLE)
+
 extern fr_table_num_ordered_t const fr_type_table[];
 extern size_t fr_type_table_len;
 
