@@ -1152,9 +1152,16 @@ static xlat_action_t xlat_func_log_warn(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	return XLAT_ACTION_DONE;
 }
 
+static int _log_dst_free(fr_log_t *log)
+{
+	close(log->fd);
+	return 0;
+}
+
 static xlat_arg_parser_t const xlat_func_log_dst_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
 	{ .required = false, .type = FR_TYPE_UINT32 },
+	{ .required = false, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1171,11 +1178,11 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 				       UNUSED xlat_ctx_t const *xctx,
 				       request_t *request, fr_value_box_list_t *args)
 {
-	fr_value_box_t	*dst, *lvl;
-	fr_log_t *log;
+	fr_value_box_t	*dst, *lvl, *file;
+	fr_log_t *log, *dbg;
 	uint32_t level = 2;
 
-	XLAT_ARGS(args, &dst, &lvl);
+	XLAT_ARGS(args, &dst, &lvl, &file);
 
 	if (!dst || !*dst->vb_strvalue) {
 		request_log_prepend(request, NULL, L_DBG_LVL_OFF);
@@ -1187,7 +1194,33 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 
 	if (lvl) level = lvl->vb_uint32;
 
-	request_log_prepend(request, log, level);
+	if (!file || (log->dst != L_DST_FILES)) {
+		request_log_prepend(request, log, level);
+		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	Clone it.
+	 */
+	MEM(dbg = talloc_memdup(request, log, sizeof(*log)));
+
+	/*
+	 *	Open the new filename.
+	 */
+	dbg->file = talloc_strdup(dbg, file->vb_strvalue);
+	dbg->fd = open(dbg->file, O_WRONLY | O_CREAT | O_CLOEXEC);
+	if (!dbg->fd) {
+		REDEBUG("Failed opening %s - %s", dbg->file, fr_syserror(errno));
+		talloc_free(dbg);
+		return XLAT_ACTION_DONE;
+	}
+
+	/*
+	 *	Ensure that we close the file handle when done.
+	 */
+	talloc_set_destructor(dbg, _log_dst_free);
+
+	request_log_prepend(request, dbg, level);
 	return XLAT_ACTION_DONE;
 }
 
