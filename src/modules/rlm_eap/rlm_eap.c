@@ -111,7 +111,7 @@ static int dedup_cmp(void const *a, void const *b)
 	if (!one->dedup && two->dedup) return -1;
 	if (one->dedup && !two->dedup) return +1;
 
-	if (!one->dedup && two->dedup) return 0;
+	if (!one->dedup && !two->dedup) return 0;
 
 	return strcmp(one->dedup, two->dedup);
 }
