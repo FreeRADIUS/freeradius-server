@@ -629,6 +629,9 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         %{autoconf_mod_with rlm_mruby} \
         %{autoconf_mod_with rlm_opendirectory} \
         %{autoconf_mod_with rlm_python} \
+%if 0%{?rhel} < 9
+        --with-rlm-python-config-bin=/usr/bin/python3.8-config \
+%endif
         %{autoconf_mod_with rlm_securid} \
         %{autoconf_mod_with rlm_sigtran} \
         %{autoconf_mod_with rlm_sql_oracle} \
