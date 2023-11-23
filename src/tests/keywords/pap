@@ -24,7 +24,7 @@ if (reject) {
 #
 &Tmp-String-1 := "{clear}%{User-Password}"
 &control := {
-	&Password.With-Header = "%(base64.encode:%{Tmp-String-1})"
+	&Password.With-Header = %base64.encode(%{Tmp-String-1})
 }
 
 pap.authorize
