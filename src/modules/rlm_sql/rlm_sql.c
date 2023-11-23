@@ -49,7 +49,7 @@ extern module_rlm_t rlm_sql;
  *	So we can do pass2 xlat checks on the queries.
  */
 static const conf_parser_t query_config[] = {
-	{ FR_CONF_OFFSET("query", FR_TYPE_STRING, CONF_FLAG_MULTI | CONF_FLAG_XLAT, rlm_sql_config_t, accounting.query) },
+	{ FR_CONF_OFFSET_FLAGS("query", FR_TYPE_STRING, CONF_FLAG_MULTI | CONF_FLAG_XLAT, rlm_sql_config_t, accounting.query) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -67,47 +67,47 @@ static const conf_parser_t type_config[] = {
 };
 
 static const conf_parser_t acct_config[] = {
-	{ FR_CONF_OFFSET("reference", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, accounting.reference), .dflt = ".query" },
-	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, accounting.logfile) },
+	{ FR_CONF_OFFSET_FLAGS("reference", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, accounting.reference), .dflt = ".query" },
+	{ FR_CONF_OFFSET_FLAGS("logfile", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, accounting.logfile) },
 
 	{ FR_CONF_POINTER("type", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) type_config },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t postauth_config[] = {
-	{ FR_CONF_OFFSET("reference", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, postauth.reference), .dflt = ".query" },
-	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, postauth.logfile) },
+	{ FR_CONF_OFFSET_FLAGS("reference", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, postauth.reference), .dflt = ".query" },
+	{ FR_CONF_OFFSET_FLAGS("logfile", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, postauth.logfile) },
 
-	{ FR_CONF_OFFSET("query", FR_TYPE_STRING, CONF_FLAG_MULTI | CONF_FLAG_XLAT, rlm_sql_config_t, postauth.query) },
+	{ FR_CONF_OFFSET_FLAGS("query", FR_TYPE_STRING, CONF_FLAG_MULTI | CONF_FLAG_XLAT, rlm_sql_config_t, postauth.query) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("driver", FR_TYPE_VOID, 0, rlm_sql_t, driver_submodule), .dflt = "null",
+	{ FR_CONF_OFFSET_FLAGS("driver", FR_TYPE_VOID, 0, rlm_sql_t, driver_submodule), .dflt = "null",
 			 .func = module_rlm_submodule_parse },
-	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, 0, rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT32, 0, rlm_sql_config_t, sql_port), .dflt = "0" },
-	{ FR_CONF_OFFSET("login", FR_TYPE_STRING, 0, rlm_sql_config_t, sql_login), .dflt = "" },
-	{ FR_CONF_OFFSET("password", FR_TYPE_STRING, CONF_FLAG_SECRET, rlm_sql_config_t, sql_password), .dflt = "" },
-	{ FR_CONF_OFFSET("radius_db", FR_TYPE_STRING, 0, rlm_sql_config_t, sql_db), .dflt = "radius" },
-	{ FR_CONF_OFFSET("read_groups", FR_TYPE_BOOL, 0, rlm_sql_config_t, read_groups), .dflt = "yes" },
-	{ FR_CONF_OFFSET("sql_user_name", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
-	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, 0, rlm_sql_config_t, group_attribute) },
-	{ FR_CONF_OFFSET("logfile", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, logfile) },
-	{ FR_CONF_OFFSET("open_query", FR_TYPE_STRING, 0, rlm_sql_config_t, connect_query) },
+	{ FR_CONF_OFFSET("server", rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */
+	{ FR_CONF_OFFSET("port", rlm_sql_config_t, sql_port), .dflt = "0" },
+	{ FR_CONF_OFFSET("login", rlm_sql_config_t, sql_login), .dflt = "" },
+	{ FR_CONF_OFFSET_FLAGS("password", FR_TYPE_STRING, CONF_FLAG_SECRET, rlm_sql_config_t, sql_password), .dflt = "" },
+	{ FR_CONF_OFFSET("radius_db", rlm_sql_config_t, sql_db), .dflt = "radius" },
+	{ FR_CONF_OFFSET("read_groups", rlm_sql_config_t, read_groups), .dflt = "yes" },
+	{ FR_CONF_OFFSET_FLAGS("sql_user_name", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
+	{ FR_CONF_OFFSET("group_attribute", rlm_sql_config_t, group_attribute) },
+	{ FR_CONF_OFFSET_FLAGS("logfile", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_sql_config_t, logfile) },
+	{ FR_CONF_OFFSET("open_query", rlm_sql_config_t, connect_query) },
 
-	{ FR_CONF_OFFSET("authorize_check_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_check_query) },
-	{ FR_CONF_OFFSET("authorize_reply_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_reply_query) },
+	{ FR_CONF_OFFSET_FLAGS("authorize_check_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_check_query) },
+	{ FR_CONF_OFFSET_FLAGS("authorize_reply_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_reply_query) },
 
-	{ FR_CONF_OFFSET("authorize_group_check_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_group_check_query) },
-	{ FR_CONF_OFFSET("authorize_group_reply_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_group_reply_query) },
-	{ FR_CONF_OFFSET("group_membership_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, groupmemb_query) },
-	{ FR_CONF_OFFSET("safe_characters", FR_TYPE_STRING, 0, rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
+	{ FR_CONF_OFFSET_FLAGS("authorize_group_check_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_group_check_query) },
+	{ FR_CONF_OFFSET_FLAGS("authorize_group_reply_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_group_reply_query) },
+	{ FR_CONF_OFFSET_FLAGS("group_membership_query", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, groupmemb_query) },
+	{ FR_CONF_OFFSET("safe_characters", rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{ FR_CONF_OFFSET("query_timeout", FR_TYPE_TIME_DELTA, 0, rlm_sql_config_t, query_timeout) },
+	{ FR_CONF_OFFSET("query_timeout", rlm_sql_config_t, query_timeout) },
 
 	{ FR_CONF_POINTER("accounting", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) acct_config },
 

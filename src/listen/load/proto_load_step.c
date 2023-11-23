@@ -78,18 +78,18 @@ struct proto_load_step_s {
 
 
 static const conf_parser_t load_listen_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_load_step_t, filename) },
-	{ FR_CONF_OFFSET("csv", FR_TYPE_STRING, 0, proto_load_step_t, csv) },
+	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_load_step_t, filename) },
+	{ FR_CONF_OFFSET("csv", proto_load_step_t, csv) },
 
-	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, 0, proto_load_step_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
+	{ FR_CONF_OFFSET("max_attributes", proto_load_step_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) } ,
 
-	{ FR_CONF_OFFSET("start_pps", FR_TYPE_UINT32, 0, proto_load_step_t, load.start_pps) },
-	{ FR_CONF_OFFSET("max_pps", FR_TYPE_UINT32, 0, proto_load_step_t, load.max_pps) },
-	{ FR_CONF_OFFSET("duration", FR_TYPE_TIME_DELTA, 0, proto_load_step_t, load.duration) },
-	{ FR_CONF_OFFSET("step", FR_TYPE_UINT32, 0, proto_load_step_t, load.step) },
-	{ FR_CONF_OFFSET("max_backlog", FR_TYPE_UINT32, 0, proto_load_step_t, load.milliseconds) },
-	{ FR_CONF_OFFSET("parallel", FR_TYPE_UINT32, 0, proto_load_step_t, load.parallel) },
-	{ FR_CONF_OFFSET("repeat", FR_TYPE_BOOL, 0, proto_load_step_t, repeat) },
+	{ FR_CONF_OFFSET("start_pps", proto_load_step_t, load.start_pps) },
+	{ FR_CONF_OFFSET("max_pps", proto_load_step_t, load.max_pps) },
+	{ FR_CONF_OFFSET("duration", proto_load_step_t, load.duration) },
+	{ FR_CONF_OFFSET("step", proto_load_step_t, load.step) },
+	{ FR_CONF_OFFSET("max_backlog", proto_load_step_t, load.milliseconds) },
+	{ FR_CONF_OFFSET("parallel", proto_load_step_t, load.parallel) },
+	{ FR_CONF_OFFSET("repeat", proto_load_step_t, repeat) },
 
 	CONF_PARSER_TERMINATOR
 };

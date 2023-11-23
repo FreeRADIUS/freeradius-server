@@ -187,7 +187,62 @@ _Generic((_ct), \
 #  define FR_CONF_FLAG_CHECK(_type, _flags, _c_type, _ptr_or_offset) _ptr_or_offset
 #endif
 
+#define CONF_CTYPE_TO_FLAGS(_ct) \
+_Generic(&(_ct), \
+	tmpl_t **		: CONF_FLAG_TMPL, \
+	tmpl_t ***		: CONF_FLAG_TMPL | CONF_FLAG_MULTI, \
+	xlat_t **		: CONF_FLAG_XLAT, \
+	xlat_t ***		: CONF_FLAG_XLAT | CONF_FLAG_MULTI, \
+	fr_ethernet_t *		: 0, \
+	fr_ethernet_t **	: CONF_FLAG_MULTI, \
+	fr_ifid_t *		: 0, \
+	fr_ifid_t **		: CONF_FLAG_MULTI, \
+	fr_time_t *		: 0, \
+	fr_time_t **		: CONF_FLAG_MULTI, \
+	fr_time_delta_t *	: 0, \
+	fr_time_delta_t **	: CONF_FLAG_MULTI, \
+	char const **		: 0, \
+	char const ***		: CONF_FLAG_MULTI, \
+	bool *			: 0, \
+	bool **			: CONF_FLAG_MULTI, \
+	uint8_t const **	: 0, \
+	uint8_t const ***	: CONF_FLAG_MULTI, \
+	uint8_t *		: 0, \
+	uint8_t **		: CONF_FLAG_MULTI, \
+	uint16_t *		: 0, \
+	uint16_t **		: CONF_FLAG_MULTI, \
+	uint32_t * 		: 0, \
+	uint32_t **		: CONF_FLAG_MULTI, \
+	uint64_t *		: 0, \
+	uint64_t **		: CONF_FLAG_MULTI, \
+	int8_t *		: 0, \
+	int8_t **		: CONF_FLAG_MULTI, \
+	int16_t	*		: 0, \
+	int16_t **		: CONF_FLAG_MULTI, \
+	int32_t	*		: 0, \
+	int32_t **		: CONF_FLAG_MULTI, \
+	int64_t	*		: 0, \
+	int64_t **		: CONF_FLAG_MULTI, \
+	float *			: 0, \
+	float **		: CONF_FLAG_MULTI, \
+	double *		: 0, \
+	double **		: CONF_FLAG_MULTI)
+
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
+ *
+ * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _field		to write the result to.
+ */
+#  define FR_CONF_OFFSET(_name, _struct, _field)  \
+	FR_CONF_OFFSET_FLAGS(_name, \
+			     FR_CTYPE_TO_TYPE((((_struct *)NULL)->_field)), \
+			     CONF_CTYPE_TO_FLAGS((((_struct *)NULL)->_field)),\
+			     _struct, _field)
+
+/** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
+ *
+ * This variant takes output type and flags manually, instead of determining them automatically.
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
@@ -195,7 +250,7 @@ _Generic((_ct), \
  * @param[in] _struct		contaning the field to write the result to.
  * @param[in] _field		to write the result to.
  */
-#  define FR_CONF_OFFSET(_name, _type, _flags, _struct, _field) \
+#  define FR_CONF_OFFSET_FLAGS(_name, _type, _flags, _struct, _field) \
 	.name1 = _name, \
 	.type = (_type), \
 	.flags = (_flags), \
@@ -314,10 +369,9 @@ _Generic((_ct), \
  * @param[in] _struct		where the result was previously written.
  * @param[in] _field		in the struct where the result was previously written.
  */
-#define FR_CONF_DEPRECATED(_name, _type, _flags, _struct, _field) \
+#define FR_CONF_DEPRECATED(_name, _struct, _field) \
 	.name1 = _name, \
-	.type = (_type ), \
-	.flags = (_flags) | CONF_FLAG_DEPRECATED
+	.flags = CONF_FLAG_DEPRECATED
 
 /*
  *	It's a developer option and should be used carefully.
@@ -478,7 +532,7 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  * Example with #FR_CONF_OFFSET :
  @code{.c}
    static conf_parser_t module_config[] = {
-   	{ FR_CONF_OFFSET("example", FR_TYPE_STRING | CONF_FLAG_NOT_EMPTY, 0, 0, example_instance_t, example), .dflt = "default_value" },
+   	{ FR_CONF_OFFSET_FLAGS("example", FR_TYPE_STRING | CONF_FLAG_NOT_EMPTY, 0, 0, example_instance_t, example), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
  @endcode

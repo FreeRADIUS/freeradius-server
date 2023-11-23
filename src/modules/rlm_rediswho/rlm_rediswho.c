@@ -52,16 +52,16 @@ typedef struct {
 } rlm_rediswho_t;
 
 static conf_parser_t section_config[] = {
-	{ FR_CONF_OFFSET("insert", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, insert) },
-	{ FR_CONF_OFFSET("trim", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
-	{ FR_CONF_OFFSET("expire", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, expire) },
+	{ FR_CONF_OFFSET_FLAGS("insert", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, insert) },
+	{ FR_CONF_OFFSET_FLAGS("trim", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
+	{ FR_CONF_OFFSET_FLAGS("expire", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, expire) },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t module_config[] = {
 	REDIS_COMMON_CONFIG,
 
-	{ FR_CONF_OFFSET("trim_count", FR_TYPE_INT32, 0, rlm_rediswho_t, trim_count), .dflt = "-1" },
+	{ FR_CONF_OFFSET("trim_count", rlm_rediswho_t, trim_count), .dflt = "-1" },
 
 	/*
 	 *	These all smash the same variables, because we don't care about them right now.

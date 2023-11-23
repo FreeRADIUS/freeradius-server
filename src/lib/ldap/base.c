@@ -97,8 +97,8 @@ static fr_libldap_global_config_t libldap_global_config = {
 };
 
 static conf_parser_t const ldap_global_config[] = {
-	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, CONF_FLAG_FILE_EXISTS, fr_libldap_global_config_t, tls_random_file) },
-	{ FR_CONF_OFFSET("ldap_debug", FR_TYPE_UINT32, 0, fr_libldap_global_config_t, ldap_debug), .dflt = "0x0000" },
+	{ FR_CONF_OFFSET_FLAGS("random_file", FR_TYPE_STRING, CONF_FLAG_FILE_EXISTS, fr_libldap_global_config_t, tls_random_file) },
+	{ FR_CONF_OFFSET("ldap_debug", fr_libldap_global_config_t, ldap_debug), .dflt = "0x0000" },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -131,16 +131,16 @@ typedef struct {
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
-	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, fr_redis_conf_t, hostname) }, \
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, 0, fr_redis_conf_t, port), .dflt = "6379" }, \
-	{ FR_CONF_OFFSET("database", FR_TYPE_UINT32, 0, fr_redis_conf_t, database), .dflt = "0" }, \
-	{ FR_CONF_OFFSET("use_tls", FR_TYPE_BOOL, 0, fr_redis_conf_t, use_tls), .dflt = "no" }, \
-	{ FR_CONF_OFFSET("use_cluster_map", FR_TYPE_BOOL, 0, fr_redis_conf_t, use_cluster_map), .dflt = "yes" }, \
-	{ FR_CONF_OFFSET("username", FR_TYPE_STRING, 0, fr_redis_conf_t, username) }, \
-	{ FR_CONF_OFFSET("password", FR_TYPE_STRING, CONF_FLAG_SECRET, fr_redis_conf_t, password) }, \
-	{ FR_CONF_OFFSET("max_nodes", FR_TYPE_UINT8, 0, fr_redis_conf_t, max_nodes), .dflt = "20" }, \
-	{ FR_CONF_OFFSET("max_alt", FR_TYPE_UINT32, 0, fr_redis_conf_t, max_alt), .dflt = "3" }, \
-	{ FR_CONF_OFFSET("max_redirects", FR_TYPE_UINT32, 0, fr_redis_conf_t, max_redirects), .dflt = "2" }
+	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_MULTI, fr_redis_conf_t, hostname) }, \
+	{ FR_CONF_OFFSET("port", fr_redis_conf_t, port), .dflt = "6379" }, \
+	{ FR_CONF_OFFSET("database", fr_redis_conf_t, database), .dflt = "0" }, \
+	{ FR_CONF_OFFSET("use_tls", fr_redis_conf_t, use_tls), .dflt = "no" }, \
+	{ FR_CONF_OFFSET("use_cluster_map", fr_redis_conf_t, use_cluster_map), .dflt = "yes" }, \
+	{ FR_CONF_OFFSET("username", fr_redis_conf_t, username) }, \
+	{ FR_CONF_OFFSET_FLAGS("password", FR_TYPE_STRING, CONF_FLAG_SECRET, fr_redis_conf_t, password) }, \
+	{ FR_CONF_OFFSET("max_nodes", fr_redis_conf_t, max_nodes), .dflt = "20" }, \
+	{ FR_CONF_OFFSET("max_alt", fr_redis_conf_t, max_alt), .dflt = "3" }, \
+	{ FR_CONF_OFFSET("max_redirects", fr_redis_conf_t, max_redirects), .dflt = "2" }
 
 void		fr_redis_version_print(void);
 

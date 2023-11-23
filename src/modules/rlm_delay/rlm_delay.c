@@ -41,9 +41,9 @@ typedef struct {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("delay", 0, CONF_FLAG_TMPL, rlm_delay_t, delay) },
-	{ FR_CONF_OFFSET("relative", FR_TYPE_BOOL, 0, rlm_delay_t, relative), .dflt = "no" },
-	{ FR_CONF_OFFSET("force_reschedule", FR_TYPE_BOOL, 0, rlm_delay_t, force_reschedule), .dflt = "no" },
+	{ FR_CONF_OFFSET("delay", rlm_delay_t, delay) },
+	{ FR_CONF_OFFSET("relative", rlm_delay_t, relative), .dflt = "no" },
+	{ FR_CONF_OFFSET("force_reschedule", rlm_delay_t, force_reschedule), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

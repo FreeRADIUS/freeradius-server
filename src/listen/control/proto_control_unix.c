@@ -82,16 +82,16 @@ typedef struct {
 } proto_control_unix_t;
 
 static const conf_parser_t unix_listen_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_control_unix_t, filename),
+	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_control_unix_t, filename),
 	.dflt = "${run_dir}/radiusd.sock}" },
-	{ FR_CONF_OFFSET("uid", FR_TYPE_STRING, 0, proto_control_unix_t, uid_name) },
-	{ FR_CONF_OFFSET("gid", FR_TYPE_STRING, 0, proto_control_unix_t, gid_name) },
-	{ FR_CONF_OFFSET("mode", FR_TYPE_STRING, 0, proto_control_unix_t, mode_name) },
-	{ FR_CONF_OFFSET("peercred", FR_TYPE_BOOL, 0, proto_control_unix_t, peercred), .dflt = "yes" },
+	{ FR_CONF_OFFSET("uid", proto_control_unix_t, uid_name) },
+	{ FR_CONF_OFFSET("gid", proto_control_unix_t, gid_name) },
+	{ FR_CONF_OFFSET("mode", proto_control_unix_t, mode_name) },
+	{ FR_CONF_OFFSET("peercred", proto_control_unix_t, peercred), .dflt = "yes" },
 
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_control_unix_t, recv_buff) },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_control_unix_t, max_packet_size), .dflt = "4096" } ,
+	{ FR_CONF_OFFSET("max_packet_size", proto_control_unix_t, max_packet_size), .dflt = "4096" } ,
 
 	CONF_PARSER_TERMINATOR
 };

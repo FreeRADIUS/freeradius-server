@@ -42,7 +42,7 @@ RCSID("$Id$")
  * Client Configuration
  */
 static const conf_parser_t client_config[] = {
-	{ FR_CONF_OFFSET("view", FR_TYPE_STRING, 0, rlm_couchbase_t, client_view), .dflt = "_design/client/_view/by_name" },
+	{ FR_CONF_OFFSET("view", rlm_couchbase_t, client_view), .dflt = "_design/client/_view/by_name" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -50,17 +50,17 @@ static const conf_parser_t client_config[] = {
  * Module Configuration
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_couchbase_t, server_raw) },
-	{ FR_CONF_OFFSET("bucket", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_couchbase_t, bucket) },
-	{ FR_CONF_OFFSET("username", FR_TYPE_STRING, 0, rlm_couchbase_t, username) },
-	{ FR_CONF_OFFSET("password", FR_TYPE_STRING, 0, rlm_couchbase_t, password) },
+	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_couchbase_t, server_raw) },
+	{ FR_CONF_OFFSET_FLAGS("bucket", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_couchbase_t, bucket) },
+	{ FR_CONF_OFFSET("username", rlm_couchbase_t, username) },
+	{ FR_CONF_OFFSET("password", rlm_couchbase_t, password) },
 
-	{ FR_CONF_OFFSET("acct_key", 0, CONF_FLAG_TMPL, rlm_couchbase_t, acct_key), .dflt = "radacct_%{%{Acct-Unique-Session-Id} || %{Acct-Session-Id}}", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("doctype", FR_TYPE_STRING, 0, rlm_couchbase_t, doctype), .dflt = "radacct" },
-	{ FR_CONF_OFFSET("expire", FR_TYPE_UINT32, 0, rlm_couchbase_t, expire), .dflt = 0 },
+	{ FR_CONF_OFFSET("acct_key", rlm_couchbase_t, acct_key), .dflt = "radacct_%{%{Acct-Unique-Session-Id} || %{Acct-Session-Id}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("doctype", rlm_couchbase_t, doctype), .dflt = "radacct" },
+	{ FR_CONF_OFFSET("expire", rlm_couchbase_t, expire), .dflt = 0 },
 
-	{ FR_CONF_OFFSET("user_key", 0, CONF_FLAG_TMPL, rlm_couchbase_t, user_key), .dflt = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name} || %{User-Name}}}}", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("read_clients", FR_TYPE_BOOL, 0, rlm_couchbase_t, read_clients) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("user_key", rlm_couchbase_t, user_key), .dflt = "raduser_%md5(%tolower(%{Stripped-User-Name} || %{User-Name}))", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("read_clients", rlm_couchbase_t, read_clients) }, /* NULL defaults to "no" */
 	{ FR_CONF_POINTER("client", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) client_config },
 	CONF_PARSER_TERMINATOR
 };

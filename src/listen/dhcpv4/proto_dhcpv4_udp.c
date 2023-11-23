@@ -78,32 +78,32 @@ typedef struct {
 
 
 static const conf_parser_t networks_config[] = {
-	{ FR_CONF_OFFSET("allow", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_dhcpv4_udp_t, allow) },
-	{ FR_CONF_OFFSET("deny", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_dhcpv4_udp_t, deny) },
+	{ FR_CONF_OFFSET_FLAGS("allow", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_dhcpv4_udp_t, allow) },
+	{ FR_CONF_OFFSET_FLAGS("deny", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_dhcpv4_udp_t, deny) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 
 static const conf_parser_t udp_listen_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, 0, proto_dhcpv4_udp_t, ipaddr) },
-	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, 0, proto_dhcpv4_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET_FLAGS("ipaddr", FR_TYPE_IPV4_ADDR, 0, proto_dhcpv4_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, proto_dhcpv4_udp_t, ipaddr) },
 
-	{ FR_CONF_OFFSET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, proto_dhcpv4_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, proto_dhcpv4_udp_t, src_ipaddr) },
 
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, 0, proto_dhcpv4_udp_t, interface) },
-	{ FR_CONF_OFFSET("port_name", FR_TYPE_STRING, 0, proto_dhcpv4_udp_t, port_name) },
+	{ FR_CONF_OFFSET("interface", proto_dhcpv4_udp_t, interface) },
+	{ FR_CONF_OFFSET("port_name", proto_dhcpv4_udp_t, port_name) },
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, 0, proto_dhcpv4_udp_t, port) },
+	{ FR_CONF_OFFSET("port", proto_dhcpv4_udp_t, port) },
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_dhcpv4_udp_t, recv_buff) },
 
-	{ FR_CONF_OFFSET("broadcast", FR_TYPE_BOOL, 0, proto_dhcpv4_udp_t, broadcast) } ,
+	{ FR_CONF_OFFSET("broadcast", proto_dhcpv4_udp_t, broadcast) } ,
 
-	{ FR_CONF_OFFSET("dynamic_clients", FR_TYPE_BOOL, 0, proto_dhcpv4_udp_t, dynamic_clients) } ,
+	{ FR_CONF_OFFSET("dynamic_clients", proto_dhcpv4_udp_t, dynamic_clients) } ,
 	{ FR_CONF_POINTER("networks", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) networks_config },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_dhcpv4_udp_t, max_packet_size), .dflt = "4096" } ,
-       	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, 0, proto_dhcpv4_udp_t, max_attributes), .dflt = STRINGIFY(DHCPV4_MAX_ATTRIBUTES) } ,
+	{ FR_CONF_OFFSET("max_packet_size", proto_dhcpv4_udp_t, max_packet_size), .dflt = "4096" } ,
+       	{ FR_CONF_OFFSET("max_attributes", proto_dhcpv4_udp_t, max_attributes), .dflt = STRINGIFY(DHCPV4_MAX_ATTRIBUTES) } ,
 
 	CONF_PARSER_TERMINATOR
 };

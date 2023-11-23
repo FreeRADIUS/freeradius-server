@@ -36,10 +36,10 @@ static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
  *	Retransmission intervals for the packets we support.
  */
 static conf_parser_t retry_config[] = {
-	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, 0, fr_retry_config_t, irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, 0, fr_retry_config_t, mrt), .dflt = STRINGIFY(16) },
-	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, 0, fr_retry_config_t, mrc), .dflt = STRINGIFY(5) },
-	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, 0, fr_retry_config_t, mrd), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("initial_rtx_time", fr_retry_config_t, irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", fr_retry_config_t, mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("max_rtx_count", fr_retry_config_t, mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("max_rtx_duration", fr_retry_config_t, mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -47,23 +47,23 @@ static conf_parser_t retry_config[] = {
  *	A mapping of configuration file names to internal variables.
  */
 static conf_parser_t const module_config[] = {
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, 0, rlm_tacacs_t, io_submodule),
+	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, rlm_tacacs_t, io_submodule),
 	  .func = module_rlm_submodule_parse },
 
-	{ FR_CONF_OFFSET("type", FR_TYPE_UINT32, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_tacacs_t, types),
+	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_UINT32, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_tacacs_t, types),
 	  .func = type_parse },
 
-	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, 0, rlm_tacacs_t, max_attributes), .dflt = STRINGIFY(FR_MAX_ATTRIBUTES) },
+	{ FR_CONF_OFFSET("max_attributes", rlm_tacacs_t, max_attributes), .dflt = STRINGIFY(FR_MAX_ATTRIBUTES) },
 
-	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, 0, rlm_tacacs_t, response_window), .dflt = STRINGIFY(20) },
+	{ FR_CONF_OFFSET("response_window", rlm_tacacs_t, response_window), .dflt = STRINGIFY(20) },
 
-	{ FR_CONF_OFFSET("zombie_period", FR_TYPE_TIME_DELTA, 0, rlm_tacacs_t, zombie_period), .dflt = STRINGIFY(40) },
+	{ FR_CONF_OFFSET("zombie_period", rlm_tacacs_t, zombie_period), .dflt = STRINGIFY(40) },
 
-	{ FR_CONF_OFFSET("revive_interval", FR_TYPE_TIME_DELTA, 0, rlm_tacacs_t, revive_interval) },
+	{ FR_CONF_OFFSET("revive_interval", rlm_tacacs_t, revive_interval) },
 
-	{ FR_CONF_OFFSET("pool", 0, CONF_FLAG_SUBSECTION, rlm_tacacs_t, trunk_conf), .subcs = (void const *) fr_trunk_config, },
+	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_tacacs_t, trunk_conf, fr_trunk_config ) },
 
-	{ FR_CONF_OFFSET("retry", 0, CONF_FLAG_SUBSECTION, rlm_tacacs_t, retry), .subcs = (void const *) retry_config },
+	{ FR_CONF_OFFSET_SUBSECTION("retry", 0, rlm_tacacs_t, retry, retry_config ) },
 
 	CONF_PARSER_TERMINATOR
 };

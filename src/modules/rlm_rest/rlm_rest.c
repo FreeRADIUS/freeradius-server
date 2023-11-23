@@ -89,68 +89,68 @@ static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 }
 
 static const conf_parser_t section_config[] = {
-	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, uri), .dflt = "" },
-	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, 0, rlm_rest_section_t, proxy), .func = rest_proxy_parse },
-	{ FR_CONF_OFFSET("method", FR_TYPE_STRING, 0, rlm_rest_section_t, method_str), .dflt = "GET" },
-	{ FR_CONF_OFFSET("header", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
-	{ FR_CONF_OFFSET("body", FR_TYPE_STRING, 0, rlm_rest_section_t, body_str), .dflt = "none" },
-	{ FR_CONF_OFFSET("data", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, data) },
-	{ FR_CONF_OFFSET("force_to", FR_TYPE_STRING, 0, rlm_rest_section_t, force_to_str) },
+	{ FR_CONF_OFFSET_FLAGS("uri", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, uri), .dflt = "" },
+	{ FR_CONF_OFFSET("proxy", rlm_rest_section_t, proxy), .func = rest_proxy_parse },
+	{ FR_CONF_OFFSET("method", rlm_rest_section_t, method_str), .dflt = "GET" },
+	{ FR_CONF_OFFSET_FLAGS("header", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
+	{ FR_CONF_OFFSET("body", rlm_rest_section_t, body_str), .dflt = "none" },
+	{ FR_CONF_OFFSET_FLAGS("data", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, data) },
+	{ FR_CONF_OFFSET("force_to", rlm_rest_section_t, force_to_str) },
 
 	/* User authentication */
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, 0, rlm_rest_section_t, auth),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
-	{ FR_CONF_OFFSET("username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, username) },
-	{ FR_CONF_OFFSET("password", FR_TYPE_STRING, CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
-	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, 0, rlm_rest_section_t, require_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET_FLAGS("username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, username) },
+	{ FR_CONF_OFFSET_FLAGS("password", FR_TYPE_STRING, CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
+	{ FR_CONF_OFFSET("require_auth", rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_rest_section_t, timeout), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, 0, rlm_rest_section_t, chunk), .dflt = "0" },
-	{ FR_CONF_OFFSET("max_body_in", FR_TYPE_SIZE, 0, rlm_rest_section_t, max_body_in), .dflt = "16k" },
+	{ FR_CONF_OFFSET("timeout", rlm_rest_section_t, timeout), .dflt = "4.0" },
+	{ FR_CONF_OFFSET("chunk", rlm_rest_section_t, chunk), .dflt = "0" },
+	{ FR_CONF_OFFSET_FLAGS("max_body_in", FR_TYPE_SIZE, 0, rlm_rest_section_t, max_body_in), .dflt = "16k" },
 
 	/* TLS Parameters */
-	{ FR_CONF_OFFSET("tls", 0, CONF_FLAG_SUBSECTION, rlm_rest_section_t, tls), .subcs = (void const *) fr_curl_tls_config },
+	{ FR_CONF_OFFSET_SUBSECTION("tls", 0, rlm_rest_section_t, tls, fr_curl_tls_config) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t xlat_config[] = {
-	{ FR_CONF_OFFSET("proxy", FR_TYPE_STRING, 0, rlm_rest_section_t, proxy), .func = rest_proxy_parse },
+	{ FR_CONF_OFFSET("proxy", rlm_rest_section_t, proxy), .func = rest_proxy_parse },
 
 	/* User authentication */
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, 0, rlm_rest_section_t, auth),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
 
-	{ FR_CONF_OFFSET("header", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
+	{ FR_CONF_OFFSET_FLAGS("header", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
 
-	{ FR_CONF_OFFSET("username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, username) },
-	{ FR_CONF_OFFSET("password", FR_TYPE_STRING, CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
-	{ FR_CONF_OFFSET("require_auth", FR_TYPE_BOOL, 0, rlm_rest_section_t, require_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET_FLAGS("username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, username) },
+	{ FR_CONF_OFFSET_FLAGS("password", FR_TYPE_STRING, CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
+	{ FR_CONF_OFFSET("require_auth", rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_rest_section_t, timeout), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", FR_TYPE_UINT32, 0, rlm_rest_section_t, chunk), .dflt = "0" },
+	{ FR_CONF_OFFSET("timeout", rlm_rest_section_t, timeout), .dflt = "4.0" },
+	{ FR_CONF_OFFSET("chunk", rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
-	{ FR_CONF_OFFSET("tls", 0, CONF_FLAG_SUBSECTION, rlm_rest_section_t, tls), .subcs = (void const *) fr_curl_tls_config },
+	{ FR_CONF_OFFSET_SUBSECTION("tls", 0, rlm_rest_section_t, tls, fr_curl_tls_config) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_DEPRECATED("connect_timeout", FR_TYPE_TIME_DELTA, 0, rlm_rest_t, connect_timeout) },
-	{ FR_CONF_OFFSET("connect_proxy", FR_TYPE_STRING, 0, rlm_rest_t, connect_proxy), .func = rest_proxy_parse },
-	{ FR_CONF_OFFSET("http_negotiation", FR_TYPE_VOID, 0, rlm_rest_t, http_negotiation),
+	{ FR_CONF_DEPRECATED("connect_timeout", rlm_rest_t, connect_timeout) },
+	{ FR_CONF_OFFSET("connect_proxy", rlm_rest_t, connect_proxy), .func = rest_proxy_parse },
+	{ FR_CONF_OFFSET_FLAGS("http_negotiation", FR_TYPE_VOID, 0, rlm_rest_t, http_negotiation),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_negotiation_table, .len = &http_negotiation_table_len }, .dflt = "default" },
 
-	{ FR_CONF_OFFSET("connection", 0, CONF_FLAG_SUBSECTION, rlm_rest_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
+	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, rlm_rest_t, conn_config, fr_curl_conn_config) },
 
 #ifdef CURLPIPE_MULTIPLEX
-	{ FR_CONF_OFFSET("multiplex", FR_TYPE_BOOL, 0, rlm_rest_t, multiplex), .dflt = "yes" },
+	{ FR_CONF_OFFSET("multiplex", rlm_rest_t, multiplex), .dflt = "yes" },
 #endif
 
 #ifndef NDEBUG
-	{ FR_CONF_OFFSET("fail_header_decode", FR_TYPE_BOOL, 0, rlm_rest_t, fail_header_decode), .dflt = "no" },
-	{ FR_CONF_OFFSET("fail_body_decode", FR_TYPE_BOOL, 0, rlm_rest_t, fail_body_decode), .dflt = "no" },
+	{ FR_CONF_OFFSET("fail_header_decode", rlm_rest_t, fail_header_decode), .dflt = "no" },
+	{ FR_CONF_OFFSET("fail_body_decode", rlm_rest_t, fail_body_decode), .dflt = "no" },
 #endif
 
 	CONF_PARSER_TERMINATOR

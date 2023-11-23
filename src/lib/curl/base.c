@@ -52,36 +52,36 @@ static fr_table_num_sorted_t const fr_curl_sslcode_table[] = {
 static size_t fr_curl_sslcode_table_len = NUM_ELEMENTS(fr_curl_sslcode_table);
 
 conf_parser_t fr_curl_tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_file) },
-	{ FR_CONF_OFFSET("ca_issuer_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_issuer_file) },
-	{ FR_CONF_OFFSET("ca_path", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_path) },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, private_key_file) },
-	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING, CONF_FLAG_SECRET, fr_curl_tls_t, private_key_password) },
-	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, 0, fr_curl_tls_t, random_file) },
-	{ FR_CONF_OFFSET("require_cert", FR_TYPE_VOID, 0, fr_curl_tls_t, require_cert),
+	{ FR_CONF_OFFSET_FLAGS("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_issuer_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_issuer_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_password", FR_TYPE_STRING, CONF_FLAG_SECRET, fr_curl_tls_t, private_key_password) },
+	{ FR_CONF_OFFSET("random_file", fr_curl_tls_t, random_file) },
+	{ FR_CONF_OFFSET_FLAGS("require_cert", FR_TYPE_VOID, 0, fr_curl_tls_t, require_cert),
        		.func = cf_table_parse_int,
        		.uctx = &(cf_table_parse_ctx_t){
        			.table = fr_curl_sslcode_table,
        			.len = &fr_curl_sslcode_table_len
        		},
 		.dflt = "allow" },
-	{ FR_CONF_OFFSET("check_cert", FR_TYPE_BOOL, 0, fr_curl_tls_t, check_cert), .dflt = "yes" },
-	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_BOOL, 0, fr_curl_tls_t, check_cert_cn), .dflt = "yes" },
-	{ FR_CONF_OFFSET("extract_cert_attrs", FR_TYPE_BOOL, 0, fr_curl_tls_t, extract_cert_attrs), .dflt = "no" },
+	{ FR_CONF_OFFSET("check_cert", fr_curl_tls_t, check_cert), .dflt = "yes" },
+	{ FR_CONF_OFFSET("check_cert_cn", fr_curl_tls_t, check_cert_cn), .dflt = "yes" },
+	{ FR_CONF_OFFSET("extract_cert_attrs", fr_curl_tls_t, extract_cert_attrs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t reuse_curl_conn_config[] = {
-	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, 0, fr_slab_config_t, min_elements), .dflt = "10" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, 0, fr_slab_config_t, max_elements), .dflt = "100" },
-	{ FR_CONF_OFFSET("cleanup_interval", FR_TYPE_TIME_DELTA, 0, fr_slab_config_t, interval), .dflt = "30s" },
+	{ FR_CONF_OFFSET("min", fr_slab_config_t, min_elements), .dflt = "10" },
+	{ FR_CONF_OFFSET("max", fr_slab_config_t, max_elements), .dflt = "100" },
+	{ FR_CONF_OFFSET("cleanup_interval", fr_slab_config_t, interval), .dflt = "30s" },
 	CONF_PARSER_TERMINATOR
 };
 
 conf_parser_t fr_curl_conn_config[] = {
-	{ FR_CONF_OFFSET("reuse", 0, CONF_FLAG_SUBSECTION, fr_curl_conn_config_t, reuse), .subcs = (void const *) reuse_curl_conn_config },
-	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, 0, fr_curl_conn_config_t, connect_timeout), .dflt = "3.0" },
+	{ FR_CONF_OFFSET_SUBSECTION("reuse", 0, fr_curl_conn_config_t, reuse, reuse_curl_conn_config) },
+	{ FR_CONF_OFFSET("connect_timeout", fr_curl_conn_config_t, connect_timeout), .dflt = "3.0" },
 	CONF_PARSER_TERMINATOR
 };
 

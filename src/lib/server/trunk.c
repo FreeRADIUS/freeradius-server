@@ -288,35 +288,35 @@ struct fr_trunk_s {
 };
 
 static conf_parser_t const fr_trunk_config_request[] = {
-	{ FR_CONF_OFFSET("per_connection_max", FR_TYPE_UINT32, 0, fr_trunk_conf_t, max_req_per_conn), .dflt = "2000" },
-	{ FR_CONF_OFFSET("per_connection_target", FR_TYPE_UINT32, 0, fr_trunk_conf_t, target_req_per_conn), .dflt = "1000" },
-	{ FR_CONF_OFFSET("free_delay", FR_TYPE_TIME_DELTA, 0, fr_trunk_conf_t, req_cleanup_delay), .dflt = "10.0" },
+	{ FR_CONF_OFFSET("per_connection_max", fr_trunk_conf_t, max_req_per_conn), .dflt = "2000" },
+	{ FR_CONF_OFFSET("per_connection_target", fr_trunk_conf_t, target_req_per_conn), .dflt = "1000" },
+	{ FR_CONF_OFFSET("free_delay", fr_trunk_conf_t, req_cleanup_delay), .dflt = "10.0" },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t const fr_trunk_config_connection[] = {
-	{ FR_CONF_OFFSET("connect_timeout", FR_TYPE_TIME_DELTA, 0, fr_connection_conf_t, connection_timeout), .dflt = "3.0" },
-	{ FR_CONF_OFFSET("reconnect_delay", FR_TYPE_TIME_DELTA, 0, fr_connection_conf_t, reconnection_delay), .dflt = "1" },
+	{ FR_CONF_OFFSET("connect_timeout", fr_connection_conf_t, connection_timeout), .dflt = "3.0" },
+	{ FR_CONF_OFFSET("reconnect_delay", fr_connection_conf_t, reconnection_delay), .dflt = "1" },
 
 	CONF_PARSER_TERMINATOR
 };
 
 #ifndef TRUNK_TESTS
 conf_parser_t const fr_trunk_config[] = {
-	{ FR_CONF_OFFSET("start", FR_TYPE_UINT16, 0, fr_trunk_conf_t, start), .dflt = "5" },
-	{ FR_CONF_OFFSET("min", FR_TYPE_UINT16, 0, fr_trunk_conf_t, min), .dflt = "1" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT16, 0, fr_trunk_conf_t, max), .dflt = "5" },
-	{ FR_CONF_OFFSET("connecting", FR_TYPE_UINT16, 0, fr_trunk_conf_t, connecting), .dflt = "2" },
-	{ FR_CONF_OFFSET("uses", FR_TYPE_UINT64, 0, fr_trunk_conf_t, max_uses), .dflt = "0" },
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, 0, fr_trunk_conf_t, lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("start", fr_trunk_conf_t, start), .dflt = "5" },
+	{ FR_CONF_OFFSET("min", fr_trunk_conf_t, min), .dflt = "1" },
+	{ FR_CONF_OFFSET("max", fr_trunk_conf_t, max), .dflt = "5" },
+	{ FR_CONF_OFFSET("connecting", fr_trunk_conf_t, connecting), .dflt = "2" },
+	{ FR_CONF_OFFSET("uses", fr_trunk_conf_t, max_uses), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", fr_trunk_conf_t, lifetime), .dflt = "0" },
 
-	{ FR_CONF_OFFSET("open_delay", FR_TYPE_TIME_DELTA, 0, fr_trunk_conf_t, open_delay), .dflt = "0.2" },
-	{ FR_CONF_OFFSET("close_delay", FR_TYPE_TIME_DELTA, 0, fr_trunk_conf_t, close_delay), .dflt = "10.0" },
+	{ FR_CONF_OFFSET("open_delay", fr_trunk_conf_t, open_delay), .dflt = "0.2" },
+	{ FR_CONF_OFFSET("close_delay", fr_trunk_conf_t, close_delay), .dflt = "10.0" },
 
-	{ FR_CONF_OFFSET("manage_interval", FR_TYPE_TIME_DELTA, 0, fr_trunk_conf_t, manage_interval), .dflt = "0.2" },
+	{ FR_CONF_OFFSET("manage_interval", fr_trunk_conf_t, manage_interval), .dflt = "0.2" },
 
-	{ FR_CONF_OFFSET("connection", 0, CONF_FLAG_SUBSECTION, fr_trunk_conf_t, conn_conf), .subcs = (void const *) fr_trunk_config_connection, .subcs_size = sizeof(fr_trunk_config_connection) },
+	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, fr_trunk_conf_t, conn_conf, fr_trunk_config_connection), .subcs_size = sizeof(fr_trunk_config_connection) },
 	{ FR_CONF_POINTER("request", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) fr_trunk_config_request },
 
 	CONF_PARSER_TERMINATOR

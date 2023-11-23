@@ -49,10 +49,10 @@ typedef struct {
  *
  */
 static conf_parser_t const arp_listen_config[] = {
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY, proto_arp_ethernet_t,
+	{ FR_CONF_OFFSET_FLAGS("interface", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY, proto_arp_ethernet_t,
 			  interface), .dflt = "eth0" },
 
-	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, 0, proto_arp_ethernet_t, filter) },
+	{ FR_CONF_OFFSET("filter", proto_arp_ethernet_t, filter) },
 
 	CONF_PARSER_TERMINATOR
 };

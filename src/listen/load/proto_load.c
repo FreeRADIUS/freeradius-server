@@ -37,23 +37,23 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
  *
  */
 static conf_parser_t const proto_load_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_load_t,
+	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_load_t,
 			  type), .func = type_parse },
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, 0, proto_load_t, io.submodule),
+	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_load_t, io.submodule),
 	  .func = transport_parse, .dflt = "step" },
 
 	/*
 	 *	Add this as a synonym so normal humans can understand it.
 	 */
-	{ FR_CONF_OFFSET("max_entry_size", FR_TYPE_UINT32, 0, proto_load_t, max_packet_size) } ,
+	{ FR_CONF_OFFSET("max_entry_size", proto_load_t, max_packet_size) } ,
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_load_t, max_packet_size) } ,
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, 0, proto_load_t, num_messages) } ,
+	{ FR_CONF_OFFSET("max_packet_size", proto_load_t, max_packet_size) } ,
+	{ FR_CONF_OFFSET("num_messages", proto_load_t, num_messages) } ,
 
-	{ FR_CONF_OFFSET("priority", FR_TYPE_UINT32, 0, proto_load_t, priority) },
+	{ FR_CONF_OFFSET("priority", proto_load_t, priority) },
 
 	CONF_PARSER_TERMINATOR
 };

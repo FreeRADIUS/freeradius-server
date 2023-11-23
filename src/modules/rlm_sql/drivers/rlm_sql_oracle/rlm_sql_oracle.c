@@ -73,11 +73,11 @@ typedef struct {
 } rlm_sql_oracle_conn_t;
 
 static const conf_parser_t spool_config[] = {
-	{ FR_CONF_OFFSET("stmt_cache_size", FR_TYPE_UINT32, 0, rlm_sql_oracle_t, stmt_cache_size), .dflt = "32" },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, 0, rlm_sql_oracle_t, spool_timeout), .dflt = "0" },
-	{ FR_CONF_OFFSET("min", FR_TYPE_UINT32, 0, rlm_sql_oracle_t, spool_min), .dflt = "1" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, 0, rlm_sql_oracle_t, spool_max), .dflt = "2" },
-	{ FR_CONF_OFFSET("inc", FR_TYPE_UINT32, 0, rlm_sql_oracle_t, spool_inc), .dflt = "1" },
+	{ FR_CONF_OFFSET("stmt_cache_size", rlm_sql_oracle_t, stmt_cache_size), .dflt = "32" },
+	{ FR_CONF_OFFSET("timeout", rlm_sql_oracle_t, spool_timeout), .dflt = "0" },
+	{ FR_CONF_OFFSET("min", rlm_sql_oracle_t, spool_min), .dflt = "1" },
+	{ FR_CONF_OFFSET("max", rlm_sql_oracle_t, spool_max), .dflt = "2" },
+	{ FR_CONF_OFFSET("inc", rlm_sql_oracle_t, spool_inc), .dflt = "1" },
 	CONF_PARSER_TERMINATOR
 };
 

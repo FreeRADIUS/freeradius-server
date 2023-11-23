@@ -207,22 +207,22 @@ typedef struct {
 #include <freeradius-devel/server/process.h>
 
 static const conf_parser_t session_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, process_tacacs_auth_t, session_timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, 0, process_tacacs_auth_t, max_session), .dflt = "4096" },
-	{ FR_CONF_OFFSET("max_rounds", FR_TYPE_UINT32, 0, process_tacacs_auth_t, max_rounds), .dflt = "4" },
-	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, 0, process_tacacs_auth_t, state_server_id) },
+	{ FR_CONF_OFFSET("timeout", process_tacacs_auth_t, session_timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", process_tacacs_auth_t, max_session), .dflt = "4096" },
+	{ FR_CONF_OFFSET("max_rounds", process_tacacs_auth_t, max_rounds), .dflt = "4" },
+	{ FR_CONF_OFFSET("state_server_id", process_tacacs_auth_t, state_server_id) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t log_config[] = {
-	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, 0, process_tacacs_auth_t, log_stripped_names), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, 0, process_tacacs_auth_t, log_auth), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, 0, process_tacacs_auth_t, log_auth_badpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_goodpass", FR_TYPE_BOOL, 0,process_tacacs_auth_t,  log_auth_goodpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, 0, process_tacacs_auth_t, auth_badpass_msg) },
-	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, 0, process_tacacs_auth_t, auth_goodpass_msg) },
-	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, 0, process_tacacs_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
+	{ FR_CONF_OFFSET("stripped_names", process_tacacs_auth_t, log_stripped_names), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth", process_tacacs_auth_t, log_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_badpass", process_tacacs_auth_t, log_auth_badpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_goodpass", process_tacacs_auth_t,  log_auth_goodpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("msg_badpass", process_tacacs_auth_t, auth_badpass_msg) },
+	{ FR_CONF_OFFSET("msg_goodpass", process_tacacs_auth_t, auth_goodpass_msg) },
+	{ FR_CONF_OFFSET("msg_denied", process_tacacs_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
 
 	CONF_PARSER_TERMINATOR
 };

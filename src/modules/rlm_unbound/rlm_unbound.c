@@ -69,10 +69,10 @@ typedef struct {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_unbound_t, filename), .dflt = "${modconfdir}/unbound/default.conf" },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_UINT32, 0, rlm_unbound_t, timeout), .dflt = "3000" },
-	{ FR_CONF_OFFSET("resolvconf", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_unbound_t, resolvconf) },
-	{ FR_CONF_OFFSET("hosts", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_unbound_t, hosts) },
+	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_unbound_t, filename), .dflt = "${modconfdir}/unbound/default.conf" },
+	{ FR_CONF_OFFSET("timeout", rlm_unbound_t, timeout), .dflt = "3000" },
+	{ FR_CONF_OFFSET_FLAGS("resolvconf", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_unbound_t, resolvconf) },
+	{ FR_CONF_OFFSET_FLAGS("hosts", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_unbound_t, hosts) },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -83,15 +83,15 @@ static conf_parser_t redis_config[] = {
 };
 
 static conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("wait_num", FR_TYPE_UINT32, 0, rlm_redis_ippool_t, wait_num) },
-	{ FR_CONF_OFFSET("wait_timeout", FR_TYPE_TIME_DELTA, 0, rlm_redis_ippool_t, wait_timeout) },
+	{ FR_CONF_OFFSET("wait_num", rlm_redis_ippool_t, wait_num) },
+	{ FR_CONF_OFFSET("wait_timeout", rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_DEPRECATED("ip_address", 0, CONF_FLAG_TMPL | CONF_FLAG_REQUIRED, rlm_redis_ippool_t, NULL) },
+	{ FR_CONF_DEPRECATED("ip_address", rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_DEPRECATED("reply_attr", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_redis_ippool_t, NULL) },
+	{ FR_CONF_DEPRECATED("reply_attr", rlm_redis_ippool_t, NULL) },
 
-	{ FR_CONF_OFFSET("ipv4_integer", FR_TYPE_BOOL, 0, rlm_redis_ippool_t, ipv4_integer) },
-	{ FR_CONF_OFFSET("copy_on_update", FR_TYPE_BOOL, 0, rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("ipv4_integer", rlm_redis_ippool_t, ipv4_integer) },
+	{ FR_CONF_OFFSET("copy_on_update", rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
 
 	/*
 	 *	Split out to allow conversion to universal ippool module with

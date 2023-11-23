@@ -36,26 +36,26 @@ extern fr_app_t proto_ldap_sync;
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static conf_parser_t const ldap_sync_search_config[] = {
-	{ FR_CONF_OFFSET("base_dn", FR_TYPE_STRING, 0, sync_config_t, base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("base_dn", sync_config_t, base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
 
-	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, 0, sync_config_t, filter) },
+	{ FR_CONF_OFFSET("filter", sync_config_t, filter) },
 
-	{ FR_CONF_OFFSET("scope", FR_TYPE_STRING, 0, sync_config_t, scope_str), .dflt = "sub" },
+	{ FR_CONF_OFFSET("scope", sync_config_t, scope_str), .dflt = "sub" },
 	/* For persistent search directories, setting this to "no" will load the whole directory. */
-	{ FR_CONF_OFFSET("changes_only", FR_TYPE_BOOL, 0, sync_config_t, changes_only), .dflt = "yes" },
+	{ FR_CONF_OFFSET("changes_only", sync_config_t, changes_only), .dflt = "yes" },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t const proto_ldap_sync_config[] = {
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, 0, proto_ldap_sync_t, io_submodule),
+	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_ldap_sync_t, io_submodule),
 	  .func = transport_parse },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_ldap_sync_t, max_packet_size) },
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, 0, proto_ldap_sync_t, num_messages) },
-	{ FR_CONF_OFFSET("cookie_interval", FR_TYPE_TIME_DELTA, 0, proto_ldap_sync_t, cookie_interval), .dflt = "10" },
-	{ FR_CONF_OFFSET("cookie_changes", FR_TYPE_UINT32, 0, proto_ldap_sync_t, cookie_changes), .dflt = "100" },
-	{ FR_CONF_OFFSET("retry_interval", FR_TYPE_TIME_DELTA, 0, proto_ldap_sync_t, retry_interval), .dflt = "1" },
+	{ FR_CONF_OFFSET("max_packet_size", proto_ldap_sync_t, max_packet_size) },
+	{ FR_CONF_OFFSET("num_messages", proto_ldap_sync_t, num_messages) },
+	{ FR_CONF_OFFSET("cookie_interval", proto_ldap_sync_t, cookie_interval), .dflt = "10" },
+	{ FR_CONF_OFFSET("cookie_changes", proto_ldap_sync_t, cookie_changes), .dflt = "100" },
+	{ FR_CONF_OFFSET("retry_interval", proto_ldap_sync_t, retry_interval), .dflt = "1" },
 
 	/*
 	 *	Areas of the DIT to listen on

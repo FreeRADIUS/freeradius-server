@@ -425,11 +425,11 @@ static char const *cl_srcipaddr = NULL;
 static char const *hs_proto = NULL;
 
 static conf_parser_t limit_config[] = {
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, 0, fr_client_t, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("max_connections", fr_client_t, limit.max_connections), .dflt = "16" },
 
-	{ FR_CONF_OFFSET("lifetime", FR_TYPE_TIME_DELTA, 0, fr_client_t, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", fr_client_t, limit.lifetime), .dflt = "0" },
 
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, 0, fr_client_t, limit.idle_timeout), .dflt = "30s" },
+	{ FR_CONF_OFFSET("idle_timeout", fr_client_t, limit.idle_timeout), .dflt = "30s" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -440,18 +440,18 @@ static const conf_parser_t client_config[] = {
 
 	{ FR_CONF_POINTER("src_ipaddr", FR_TYPE_STRING, 0, &cl_srcipaddr) },
 
-	{ FR_CONF_OFFSET("secret", FR_TYPE_STRING, CONF_FLAG_SECRET, fr_client_t, secret) },
-	{ FR_CONF_OFFSET("shortname", FR_TYPE_STRING, 0, fr_client_t, shortname) },
+	{ FR_CONF_OFFSET_FLAGS("secret", FR_TYPE_STRING, CONF_FLAG_SECRET, fr_client_t, secret) },
+	{ FR_CONF_OFFSET("shortname", fr_client_t, shortname) },
 
-	{ FR_CONF_OFFSET("nas_type", FR_TYPE_STRING, 0, fr_client_t, nas_type) },
+	{ FR_CONF_OFFSET("nas_type", fr_client_t, nas_type) },
 
-	{ FR_CONF_OFFSET("track_connections", FR_TYPE_BOOL, 0, fr_client_t, use_connected) },
+	{ FR_CONF_OFFSET("track_connections", fr_client_t, use_connected) },
 
-	{ FR_CONF_OFFSET("require_message_authenticator", FR_TYPE_BOOL, 0, fr_client_t, message_authenticator) },
+	{ FR_CONF_OFFSET("require_message_authenticator", fr_client_t, message_authenticator) },
 
-	{ FR_CONF_OFFSET("dedup_authenticator", FR_TYPE_BOOL, 0, fr_client_t, dedup_authenticator) },
+	{ FR_CONF_OFFSET("dedup_authenticator", fr_client_t, dedup_authenticator) },
 
-	{ FR_CONF_OFFSET("response_window", FR_TYPE_TIME_DELTA, 0, fr_client_t, response_window) },
+	{ FR_CONF_OFFSET("response_window", fr_client_t, response_window) },
 
 	{ FR_CONF_POINTER("proto", FR_TYPE_STRING, 0, &hs_proto) },
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },

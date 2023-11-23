@@ -95,9 +95,9 @@ typedef struct {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_isc_dhcp_t, filename) },
-	{ FR_CONF_OFFSET("debug", FR_TYPE_BOOL, 0, rlm_isc_dhcp_t, debug) },
-	{ FR_CONF_OFFSET("pedantic", FR_TYPE_BOOL, 0, rlm_isc_dhcp_t, pedantic) },
+	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_isc_dhcp_t, filename) },
+	{ FR_CONF_OFFSET("debug", rlm_isc_dhcp_t, debug) },
+	{ FR_CONF_OFFSET("pedantic", rlm_isc_dhcp_t, pedantic) },
 	CONF_PARSER_TERMINATOR
 };
 

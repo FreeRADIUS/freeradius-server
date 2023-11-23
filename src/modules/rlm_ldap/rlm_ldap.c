@@ -83,10 +83,10 @@ static const call_env_parser_t sasl_call_env[] = {
 };
 
 static conf_parser_t profile_config[] = {
-	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, 0, rlm_ldap_t, profile_scope), .dflt = "base",
+	{ FR_CONF_OFFSET("scope", rlm_ldap_t, profile_scope), .dflt = "base",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
-	{ FR_CONF_OFFSET("attribute", FR_TYPE_STRING, 0, rlm_ldap_t, profile_attr) },
-	{ FR_CONF_OFFSET("attribute_suspend", FR_TYPE_STRING, 0, rlm_ldap_t, profile_attr_suspend) },
+	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile_attr) },
+	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -102,14 +102,14 @@ static const call_env_parser_t autz_profile_call_env[] = {
  *	User configuration
  */
 static conf_parser_t user_config[] = {
-	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, 0, rlm_ldap_t, userobj_scope), .dflt = "sub",
+	{ FR_CONF_OFFSET("scope", rlm_ldap_t, userobj_scope), .dflt = "sub",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
-	{ FR_CONF_OFFSET("sort_by", FR_TYPE_STRING, 0, rlm_ldap_t, userobj_sort_by) },
+	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, userobj_sort_by) },
 
-	{ FR_CONF_OFFSET("access_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, userobj_access_attr) },
-	{ FR_CONF_OFFSET("access_positive", FR_TYPE_BOOL, 0, rlm_ldap_t, access_positive), .dflt = "yes" },
-	{ FR_CONF_OFFSET("access_value_negate", FR_TYPE_STRING, 0, rlm_ldap_t, access_value_negate), .dflt = "false" },
-	{ FR_CONF_OFFSET("access_value_suspend", FR_TYPE_STRING, 0, rlm_ldap_t, access_value_suspend), .dflt = "suspended" },
+	{ FR_CONF_OFFSET("access_attribute", rlm_ldap_t, userobj_access_attr) },
+	{ FR_CONF_OFFSET("access_positive", rlm_ldap_t, access_positive), .dflt = "yes" },
+	{ FR_CONF_OFFSET("access_value_negate", rlm_ldap_t, access_value_negate), .dflt = "false" },
+	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, access_value_suspend), .dflt = "suspended" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -137,18 +137,18 @@ user_call_env(memberof, ldap_xlat_memberof_call_env_t);
  *	Group configuration
  */
 static conf_parser_t group_config[] = {
-	{ FR_CONF_OFFSET("filter", FR_TYPE_STRING, 0, rlm_ldap_t, groupobj_filter) },
-	{ FR_CONF_OFFSET("scope", FR_TYPE_INT32, 0, rlm_ldap_t, groupobj_scope), .dflt = "sub",
+	{ FR_CONF_OFFSET("filter", rlm_ldap_t, groupobj_filter) },
+	{ FR_CONF_OFFSET("scope", rlm_ldap_t, groupobj_scope), .dflt = "sub",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len }  },
 
-	{ FR_CONF_OFFSET("name_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
-	{ FR_CONF_OFFSET("membership_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, userobj_membership_attr) },
-	{ FR_CONF_OFFSET("membership_filter", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_ldap_t, groupobj_membership_filter) },
-	{ FR_CONF_OFFSET("cacheable_name", FR_TYPE_BOOL, 0, rlm_ldap_t, cacheable_group_name), .dflt = "no" },
-	{ FR_CONF_OFFSET("cacheable_dn", FR_TYPE_BOOL, 0, rlm_ldap_t, cacheable_group_dn), .dflt = "no" },
-	{ FR_CONF_OFFSET("cache_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, cache_attribute) },
-	{ FR_CONF_OFFSET("group_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, group_attribute) },
-	{ FR_CONF_OFFSET("allow_dangling_group_ref", FR_TYPE_BOOL, 0, rlm_ldap_t, allow_dangling_group_refs), .dflt = "no" },
+	{ FR_CONF_OFFSET("name_attribute", rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
+	{ FR_CONF_OFFSET("membership_attribute", rlm_ldap_t, userobj_membership_attr) },
+	{ FR_CONF_OFFSET_FLAGS("membership_filter", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_ldap_t, groupobj_membership_filter) },
+	{ FR_CONF_OFFSET("cacheable_name", rlm_ldap_t, cacheable_group_name), .dflt = "no" },
+	{ FR_CONF_OFFSET("cacheable_dn", rlm_ldap_t, cacheable_group_dn), .dflt = "no" },
+	{ FR_CONF_OFFSET("cache_attribute", rlm_ldap_t, cache_attribute) },
+	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group_attribute) },
+	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, allow_dangling_group_refs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -168,7 +168,7 @@ static const call_env_parser_t memberof_group_call_env[] = {
  *	Reference for accounting updates
  */
 static const conf_parser_t acct_section_config[] = {
-	{ FR_CONF_OFFSET("reference", FR_TYPE_STRING, CONF_FLAG_XLAT, ldap_acct_section_t, reference), .dflt = "." },
+	{ FR_CONF_OFFSET_FLAGS("reference", FR_TYPE_STRING, CONF_FLAG_XLAT, ldap_acct_section_t, reference), .dflt = "." },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -176,28 +176,28 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	Pool config items
 	 */
-	{ FR_CONF_OFFSET("server", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_ldap_t, handle_config.server_str) },	/* Do not set to required */
+	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_ldap_t, handle_config.server_str) },	/* Do not set to required */
 
 	/*
 	 *	Common LDAP conf parsers
 	 */
 	FR_LDAP_COMMON_CONF(rlm_ldap_t),
 
-	{ FR_CONF_OFFSET("valuepair_attribute", FR_TYPE_STRING, 0, rlm_ldap_t, valuepair_attr) },
+	{ FR_CONF_OFFSET("valuepair_attribute", rlm_ldap_t, valuepair_attr) },
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
-	{ FR_CONF_OFFSET("session_tracking", FR_TYPE_BOOL, 0, rlm_ldap_t, session_tracking), .dflt = "no" },
+	{ FR_CONF_OFFSET("session_tracking", rlm_ldap_t, session_tracking), .dflt = "no" },
 #endif
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
-	{ FR_CONF_OFFSET("edir", FR_TYPE_BOOL, 0, rlm_ldap_t, edir) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("edir", rlm_ldap_t, edir) }, /* NULL defaults to "no" */
 
 	/*
 	 *	Attempt to bind with the cleartext password we got from eDirectory
 	 *	Universal password for additional authorization checks.
 	 */
-	{ FR_CONF_OFFSET("edir_autz", FR_TYPE_BOOL, 0, rlm_ldap_t, edir_autz) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("edir_autz", rlm_ldap_t, edir_autz) }, /* NULL defaults to "no" */
 #endif
 
 	{ FR_CONF_POINTER("user", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) user_config },
@@ -206,10 +206,9 @@ static const conf_parser_t module_config[] = {
 
 	{ FR_CONF_POINTER("profile", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) profile_config },
 
-	{ FR_CONF_OFFSET("pool", 0, CONF_FLAG_SUBSECTION, rlm_ldap_t, trunk_conf), .subcs = (void const *) fr_trunk_config },
+	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_ldap_t, trunk_conf, fr_trunk_config ) },
 
-	{ FR_CONF_OFFSET("bind_pool", 0, CONF_FLAG_SUBSECTION, rlm_ldap_t, bind_trunk_conf),
-	  .subcs = (void const *) fr_trunk_config },
+	{ FR_CONF_OFFSET_SUBSECTION("bind_pool", 0, rlm_ldap_t, bind_trunk_conf, fr_trunk_config ) },
 
 	CONF_PARSER_TERMINATOR
 };

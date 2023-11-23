@@ -65,28 +65,28 @@ typedef struct {
 } fr_detail_entry_t;
 
 static conf_parser_t limit_config[] = {
-	{ FR_CONF_OFFSET("initial_rtx_time", FR_TYPE_TIME_DELTA, 0, proto_detail_work_t, retry_config.irt), .dflt = STRINGIFY(2) },
-	{ FR_CONF_OFFSET("max_rtx_time", FR_TYPE_TIME_DELTA, 0, proto_detail_work_t, retry_config.mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("initial_rtx_time", proto_detail_work_t, retry_config.irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("max_rtx_time", proto_detail_work_t, retry_config.mrt), .dflt = STRINGIFY(16) },
 
 	/*
 	 *	Retransmit indefinitely, as v2 and v3 did.
 	 */
-	{ FR_CONF_OFFSET("max_rtx_count", FR_TYPE_UINT32, 0, proto_detail_work_t, retry_config.mrc), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_rtx_count", proto_detail_work_t, retry_config.mrc), .dflt = STRINGIFY(0) },
 	/*
 	 *	...again same as v2 and v3.
 	 */
-	{ FR_CONF_OFFSET("max_rtx_duration", FR_TYPE_TIME_DELTA, 0, proto_detail_work_t, retry_config.mrd), .dflt = STRINGIFY(0) },
-	{ FR_CONF_OFFSET("max_outstanding", FR_TYPE_UINT16, 0, proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
+	{ FR_CONF_OFFSET("max_rtx_duration", proto_detail_work_t, retry_config.mrd), .dflt = STRINGIFY(0) },
+	{ FR_CONF_OFFSET("max_outstanding", proto_detail_work_t, max_outstanding), .dflt = STRINGIFY(1) },
 	CONF_PARSER_TERMINATOR
 };
 
 
 static const conf_parser_t file_listen_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_detail_work_t, filename_work ) },
+	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_detail_work_t, filename_work ) },
 
-	{ FR_CONF_OFFSET("track", FR_TYPE_BOOL, 0, proto_detail_work_t, track_progress ) },
+	{ FR_CONF_OFFSET("track", proto_detail_work_t, track_progress ) },
 
-	{ FR_CONF_OFFSET("retransmit", FR_TYPE_BOOL, 0, proto_detail_work_t, retransmit ), .dflt = "yes" },
+	{ FR_CONF_OFFSET("retransmit", proto_detail_work_t, retransmit ), .dflt = "yes" },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	CONF_PARSER_TERMINATOR

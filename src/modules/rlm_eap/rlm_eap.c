@@ -61,22 +61,22 @@ static fr_table_num_sorted_t const require_identity_realm_table[] = {
 static size_t require_identity_realm_table_len = NUM_ELEMENTS(require_identity_realm_table);
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("require_identity_realm", FR_TYPE_VOID, 0, rlm_eap_t, require_realm),
+	{ FR_CONF_OFFSET_FLAGS("require_identity_realm", FR_TYPE_VOID, 0, rlm_eap_t, require_realm),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){ .table = require_identity_realm_table, .len = &require_identity_realm_table_len },
 			 .dflt = "nai" },
 
 	{ FR_CONF_OFFSET_IS_SET("default_eap_type", FR_TYPE_VOID, 0, rlm_eap_t, default_method), .func = eap_type_parse },
 
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, rlm_eap_t, type_submodules),
+	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, rlm_eap_t, type_submodules),
 			 .func = submodule_parse },
 
-	{ FR_CONF_OFFSET("ignore_unknown_eap_types", FR_TYPE_BOOL, 0, rlm_eap_t, ignore_unknown_types), .dflt = "no" },
+	{ FR_CONF_OFFSET("ignore_unknown_eap_types", rlm_eap_t, ignore_unknown_types), .dflt = "no" },
 
-	{ FR_CONF_DEPRECATED("timer_expire", FR_TYPE_UINT32, 0, rlm_eap_t, timer_limit), .dflt = "60" },
-	{ FR_CONF_DEPRECATED("cisco_accounting_username_bug", FR_TYPE_BOOL, 0, rlm_eap_t,
+	{ FR_CONF_DEPRECATED("timer_expire", rlm_eap_t, timer_limit), .dflt = "60" },
+	{ FR_CONF_DEPRECATED("cisco_accounting_username_bug", rlm_eap_t,
 			     cisco_accounting_username_bug), .dflt = "no" },
-	{ FR_CONF_DEPRECATED("max_sessions", FR_TYPE_UINT32, 0, rlm_eap_t, max_sessions), .dflt = "2048" },
+	{ FR_CONF_DEPRECATED("max_sessions", rlm_eap_t, max_sessions), .dflt = "2048" },
 	CONF_PARSER_TERMINATOR
 };
 

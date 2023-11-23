@@ -43,11 +43,11 @@ typedef struct {
 } rlm_eap_tls_thread_t;
 
 static conf_parser_t submodule_config[] = {
-	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, 0, rlm_eap_tls_t, tls_conf_name) },
+	{ FR_CONF_OFFSET("tls", rlm_eap_tls_t, tls_conf_name) },
 
-	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, 0, rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
-	{ FR_CONF_OFFSET("include_length", FR_TYPE_BOOL, 0, rlm_eap_tls_t, include_length), .dflt = "yes" },
-	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, 0, rlm_eap_tls_t, virtual_server) },
+	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
+	{ FR_CONF_OFFSET("include_length", rlm_eap_tls_t, include_length), .dflt = "yes" },
+	{ FR_CONF_OFFSET("virtual_server", rlm_eap_tls_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 

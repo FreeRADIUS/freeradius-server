@@ -101,8 +101,8 @@ static libpython_global_config_t libpython_global_config = {
 };
 
 static conf_parser_t const python_global_config[] = {
-	{ FR_CONF_OFFSET("path", FR_TYPE_STRING, 0, libpython_global_config_t, path) },
-	{ FR_CONF_OFFSET("path_include_default", FR_TYPE_BOOL, 0, libpython_global_config_t, path_include_default) },
+	{ FR_CONF_OFFSET("path", libpython_global_config_t, path) },
+	{ FR_CONF_OFFSET("path_include_default", libpython_global_config_t, path_include_default) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -146,8 +146,8 @@ global_lib_autoinst_t const * const rlm_python_lib[] = {
  */
 static conf_parser_t module_config[] = {
 
-#define A(x) { FR_CONF_OFFSET("mod_" #x, FR_TYPE_STRING, 0, rlm_python_t, x.module_name), .dflt = "${.module}" }, \
-	{ FR_CONF_OFFSET("func_" #x, FR_TYPE_STRING, 0, rlm_python_t, x.function_name) },
+#define A(x) { FR_CONF_OFFSET("mod_" #x, rlm_python_t, x.module_name), .dflt = "${.module}" }, \
+	{ FR_CONF_OFFSET("func_" #x, rlm_python_t, x.function_name) },
 
 	A(instantiate)
 	A(authorize)

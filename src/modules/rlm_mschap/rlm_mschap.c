@@ -82,42 +82,42 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 #define ACB_FR_EXPIRED	0x00020000	//!< Password Expired.
 
 static const conf_parser_t passchange_config[] = {
-	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw) },
-	{ FR_CONF_OFFSET("ntlm_auth_username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_username) },
-	{ FR_CONF_OFFSET("ntlm_auth_domain", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
-	{ FR_CONF_OFFSET("local_cpw", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, local_cpw) },
+	{ FR_CONF_OFFSET_FLAGS("ntlm_auth", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw) },
+	{ FR_CONF_OFFSET_FLAGS("ntlm_auth_username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_username) },
+	{ FR_CONF_OFFSET_FLAGS("ntlm_auth_domain", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
+	{ FR_CONF_OFFSET_FLAGS("local_cpw", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, local_cpw) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t winbind_config[] = {
-	{ FR_CONF_OFFSET("username", 0, CONF_FLAG_TMPL, rlm_mschap_t, wb_username) },
-	{ FR_CONF_OFFSET("domain", 0, CONF_FLAG_TMPL, rlm_mschap_t, wb_domain) },
+	{ FR_CONF_OFFSET("username", rlm_mschap_t, wb_username) },
+	{ FR_CONF_OFFSET("domain", rlm_mschap_t, wb_domain) },
 #ifdef WITH_AUTH_WINBIND
-	{ FR_CONF_OFFSET("retry_with_normalised_username", FR_TYPE_BOOL, 0, rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
+	{ FR_CONF_OFFSET("retry_with_normalised_username", rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
 #endif
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, 0, rlm_mschap_t, normify), .dflt = "yes" },
+	{ FR_CONF_OFFSET("normalise", rlm_mschap_t, normify), .dflt = "yes" },
 
 	/*
 	 *	Cache the password by default.
 	 */
-	{ FR_CONF_OFFSET("use_mppe", FR_TYPE_BOOL, 0, rlm_mschap_t, use_mppe), .dflt = "yes" },
-	{ FR_CONF_OFFSET("require_encryption", FR_TYPE_BOOL, 0, rlm_mschap_t, require_encryption), .dflt = "no" },
-	{ FR_CONF_OFFSET("require_strong", FR_TYPE_BOOL, 0, rlm_mschap_t, require_strong), .dflt = "no" },
-	{ FR_CONF_OFFSET("with_ntdomain_hack", FR_TYPE_BOOL, 0, rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
-	{ FR_CONF_OFFSET("ntlm_auth", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_auth) },
-	{ FR_CONF_OFFSET("ntlm_auth_timeout", FR_TYPE_TIME_DELTA, 0, rlm_mschap_t, ntlm_auth_timeout) },
+	{ FR_CONF_OFFSET("use_mppe", rlm_mschap_t, use_mppe), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_encryption", rlm_mschap_t, require_encryption), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_strong", rlm_mschap_t, require_strong), .dflt = "no" },
+	{ FR_CONF_OFFSET("with_ntdomain_hack", rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
+	{ FR_CONF_OFFSET_FLAGS("ntlm_auth", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_auth) },
+	{ FR_CONF_OFFSET("ntlm_auth_timeout", rlm_mschap_t, ntlm_auth_timeout) },
 
 	{ FR_CONF_POINTER("passchange", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) passchange_config },
-	{ FR_CONF_OFFSET("allow_retry", FR_TYPE_BOOL, 0, rlm_mschap_t, allow_retry), .dflt = "yes" },
-	{ FR_CONF_OFFSET("retry_msg", FR_TYPE_STRING, 0, rlm_mschap_t, retry_msg) },
+	{ FR_CONF_OFFSET("allow_retry", rlm_mschap_t, allow_retry), .dflt = "yes" },
+	{ FR_CONF_OFFSET("retry_msg", rlm_mschap_t, retry_msg) },
 
 
 #ifdef __APPLE__
-	{ FR_CONF_OFFSET("use_open_directory", FR_TYPE_BOOL, 0, rlm_mschap_t, open_directory), .dflt = "yes" },
+	{ FR_CONF_OFFSET("use_open_directory", rlm_mschap_t, open_directory), .dflt = "yes" },
 #endif
 
 	{ FR_CONF_POINTER("winbind", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) winbind_config },
@@ -125,10 +125,10 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	These are now in a subsection above.
 	 */
-	{ FR_CONF_DEPRECATED("winbind_username", 0, CONF_FLAG_TMPL, rlm_mschap_t, wb_username) },
-	{ FR_CONF_DEPRECATED("winbind_domain", 0, CONF_FLAG_TMPL, rlm_mschap_t, wb_domain) },
+	{ FR_CONF_DEPRECATED("winbind_username", rlm_mschap_t, wb_username) },
+	{ FR_CONF_DEPRECATED("winbind_domain", rlm_mschap_t, wb_domain) },
 #ifdef WITH_AUTH_WINBIND
-	{ FR_CONF_DEPRECATED("winbind_retry_with_normalised_username", FR_TYPE_BOOL, 0, rlm_mschap_t, wb_retry_with_normalised_username) },
+	{ FR_CONF_DEPRECATED("winbind_retry_with_normalised_username", rlm_mschap_t, wb_retry_with_normalised_username) },
 #endif
 	CONF_PARSER_TERMINATOR
 };

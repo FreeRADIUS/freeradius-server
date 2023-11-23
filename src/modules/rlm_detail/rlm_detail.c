@@ -74,14 +74,14 @@ int detail_group_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 		       CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Net.Src.IP}/detail" },
-	{ FR_CONF_OFFSET("header", 0, CONF_FLAG_TMPL | CONF_FLAG_XLAT, rlm_detail_t, header),
+	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Net.Src.IP}/detail" },
+	{ FR_CONF_OFFSET_FLAGS("header", 0, CONF_FLAG_TMPL | CONF_FLAG_XLAT, rlm_detail_t, header),
 	  .dflt = "%t", .quote = T_DOUBLE_QUOTED_STRING },
-	{ FR_CONF_OFFSET("permissions", FR_TYPE_UINT32, 0, rlm_detail_t, perm), .dflt = "0600" },
+	{ FR_CONF_OFFSET("permissions", rlm_detail_t, perm), .dflt = "0600" },
 	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, 0, rlm_detail_t, group), .func = detail_group_parse },
-	{ FR_CONF_OFFSET("locking", FR_TYPE_BOOL, 0, rlm_detail_t, locking), .dflt = "no" },
-	{ FR_CONF_OFFSET("escape_filenames", FR_TYPE_BOOL, 0, rlm_detail_t, escape), .dflt = "no" },
-	{ FR_CONF_OFFSET("log_packet_header", FR_TYPE_BOOL, 0, rlm_detail_t, log_srcdst), .dflt = "no" },
+	{ FR_CONF_OFFSET("locking", rlm_detail_t, locking), .dflt = "no" },
+	{ FR_CONF_OFFSET("escape_filenames", rlm_detail_t, escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("log_packet_header", rlm_detail_t, log_srcdst), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -1109,7 +1109,7 @@ static const conf_parser_t log_config[] = {
 	 *	@todo - once we allow this, also check that there's only _one_ destination
 	 *	which uses syslog_facility.
 	 */
-	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_VOID, 0, main_config_t, syslog_facility), .dflt = "daemon",
+	{ FR_CONF_OFFSET_FLAGS("syslog_facility", FR_TYPE_VOID, 0, main_config_t, syslog_facility), .dflt = "daemon",
 		.func = cf_table_parse_int,
 		.uctx = &(cf_table_parse_ctx_t){
 			.table = syslog_facility_table,
@@ -1118,11 +1118,11 @@ static const conf_parser_t log_config[] = {
 	},
 #endif
 	{ FR_CONF_POINTER_IS_SET("timestamp", FR_TYPE_BOOL, 0, &log_timestamp) },
-	{ FR_CONF_OFFSET("file", FR_TYPE_STRING, 0, fr_log_t, file), },
-	{ FR_CONF_OFFSET("colourise", FR_TYPE_BOOL, 0, fr_log_t, colourise) },
-	{ FR_CONF_OFFSET("line_number", FR_TYPE_BOOL, 0, fr_log_t, line_number) },
-	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, 0, fr_log_t, dates_utc) },
-	{ FR_CONF_OFFSET("print_level", FR_TYPE_BOOL, 0, fr_log_t, print_level) },
+	{ FR_CONF_OFFSET("file", fr_log_t, file), },
+	{ FR_CONF_OFFSET("colourise", fr_log_t, colourise) },
+	{ FR_CONF_OFFSET("line_number", fr_log_t, line_number) },
+	{ FR_CONF_OFFSET("use_utc", fr_log_t, dates_utc) },
+	{ FR_CONF_OFFSET("print_level", fr_log_t, print_level) },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -38,7 +38,7 @@ typedef struct {
 } rlm_chap_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("min_challenge_len", FR_TYPE_SIZE, 0, rlm_chap_t, min_challenge_len), .dflt = "16" },
+	{ FR_CONF_OFFSET_FLAGS("min_challenge_len", FR_TYPE_SIZE, 0, rlm_chap_t, min_challenge_len), .dflt = "16" },
 	CONF_PARSER_TERMINATOR
 };
 

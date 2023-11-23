@@ -31,17 +31,17 @@ RCSID("$Id$")
 
 #ifdef HAVE_YKCLIENT
 static const conf_parser_t validation_config[] = {
-	{ FR_CONF_OFFSET("client_id", FR_TYPE_UINT32, 0, rlm_yubikey_t, client_id), .dflt = 0 },
-	{ FR_CONF_OFFSET("api_key", FR_TYPE_STRING, CONF_FLAG_SECRET, rlm_yubikey_t, api_key) },
+	{ FR_CONF_OFFSET("client_id", rlm_yubikey_t, client_id), .dflt = 0 },
+	{ FR_CONF_OFFSET_FLAGS("api_key", FR_TYPE_STRING, CONF_FLAG_SECRET, rlm_yubikey_t, api_key) },
 	CONF_PARSER_TERMINATOR
 };
 #endif
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("id_length", FR_TYPE_UINT32, 0, rlm_yubikey_t, id_len), .dflt = "12" },
-	{ FR_CONF_OFFSET("split", FR_TYPE_BOOL, 0, rlm_yubikey_t, split), .dflt = "yes" },
-	{ FR_CONF_OFFSET("decrypt", FR_TYPE_BOOL, 0, rlm_yubikey_t, decrypt), .dflt = "no" },
-	{ FR_CONF_OFFSET("validate", FR_TYPE_BOOL, 0, rlm_yubikey_t, validate), .dflt = "no" },
+	{ FR_CONF_OFFSET("id_length", rlm_yubikey_t, id_len), .dflt = "12" },
+	{ FR_CONF_OFFSET("split", rlm_yubikey_t, split), .dflt = "yes" },
+	{ FR_CONF_OFFSET("decrypt", rlm_yubikey_t, decrypt), .dflt = "no" },
+	{ FR_CONF_OFFSET("validate", rlm_yubikey_t, validate), .dflt = "no" },
 #ifdef HAVE_YKCLIENT
 	{ FR_CONF_POINTER("validation", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) validation_config },
 #endif

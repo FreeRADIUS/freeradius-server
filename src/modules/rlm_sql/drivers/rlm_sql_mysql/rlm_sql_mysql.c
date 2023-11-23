@@ -114,19 +114,19 @@ typedef struct {
 } rlm_sql_mysql_t;
 
 static conf_parser_t tls_config[] = {
-	{ FR_CONF_OFFSET("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_file) },
-	{ FR_CONF_OFFSET("ca_path", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
 
 #if HAVE_CRL_OPTIONS
-	{ FR_CONF_OFFSET("crl_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_file) },
-	{ FR_CONF_OFFSET("crl_path", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_path) },
+	{ FR_CONF_OFFSET_FLAGS("crl_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_file) },
+	{ FR_CONF_OFFSET_FLAGS("crl_path", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_path) },
 #endif
 	/*
 	 *	MySQL Specific TLS attributes
 	 */
-	{ FR_CONF_OFFSET("cipher", FR_TYPE_STRING, 0, rlm_sql_mysql_t, tls_cipher) },
+	{ FR_CONF_OFFSET("cipher", rlm_sql_mysql_t, tls_cipher) },
 
 	/*
 	 *	The closest thing we have to these options in other modules is
@@ -137,10 +137,10 @@ static conf_parser_t tls_config[] = {
 	 *	has provided an invalid list of flags.
 	 */
 #if HAVE_TLS_OPTIONS
-	{ FR_CONF_OFFSET("tls_required", FR_TYPE_BOOL, 0, rlm_sql_mysql_t, tls_required) },
+	{ FR_CONF_OFFSET("tls_required", rlm_sql_mysql_t, tls_required) },
 #  if HAVE_TLS_VERIFY_OPTIONS
-	{ FR_CONF_OFFSET("check_cert", FR_TYPE_BOOL, 0, rlm_sql_mysql_t, tls_check_cert) },
-	{ FR_CONF_OFFSET("check_cert_cn", FR_TYPE_BOOL, 0, rlm_sql_mysql_t, tls_check_cert_cn) },
+	{ FR_CONF_OFFSET("check_cert", rlm_sql_mysql_t, tls_check_cert) },
+	{ FR_CONF_OFFSET("check_cert_cn", rlm_sql_mysql_t, tls_check_cert_cn) },
 #  endif
 #endif
 	CONF_PARSER_TERMINATOR
@@ -149,7 +149,7 @@ static conf_parser_t tls_config[] = {
 static const conf_parser_t driver_config[] = {
 	{ FR_CONF_POINTER("tls", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 
-	{ FR_CONF_OFFSET("warnings", FR_TYPE_STRING, 0, rlm_sql_mysql_t, warnings_str), .dflt = "auto" },
+	{ FR_CONF_OFFSET("warnings", rlm_sql_mysql_t, warnings_str), .dflt = "auto" },
 	CONF_PARSER_TERMINATOR
 };
 

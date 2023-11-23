@@ -42,15 +42,15 @@ RCSID("$Id$")
  *	buffer over-flows.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_lua_t, module), NULL},
-	{ FR_CONF_OFFSET("func_instantiate", FR_TYPE_STRING, 0, rlm_lua_t, func_instantiate), NULL},
-	{ FR_CONF_OFFSET("func_detach", FR_TYPE_STRING, 0, rlm_lua_t, func_detach), NULL},
-	{ FR_CONF_OFFSET("func_authorize", FR_TYPE_STRING, 0, rlm_lua_t, func_authorize), NULL},
-	{ FR_CONF_OFFSET("func_authenticate", FR_TYPE_STRING, 0, rlm_lua_t, func_authenticate), NULL},
-	{ FR_CONF_OFFSET("func_accounting", FR_TYPE_STRING, 0, rlm_lua_t, func_accounting), NULL},
-	{ FR_CONF_OFFSET("func_preacct", FR_TYPE_STRING, 0, rlm_lua_t, func_preacct), NULL},
-	{ FR_CONF_OFFSET("func_xlat", FR_TYPE_STRING, 0, rlm_lua_t, func_xlat), NULL},
-	{ FR_CONF_OFFSET("func_post_auth", FR_TYPE_STRING, 0, rlm_lua_t, func_post_auth), NULL},
+	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_lua_t, module), NULL},
+	{ FR_CONF_OFFSET("func_instantiate", rlm_lua_t, func_instantiate), NULL},
+	{ FR_CONF_OFFSET("func_detach", rlm_lua_t, func_detach), NULL},
+	{ FR_CONF_OFFSET("func_authorize", rlm_lua_t, func_authorize), NULL},
+	{ FR_CONF_OFFSET("func_authenticate", rlm_lua_t, func_authenticate), NULL},
+	{ FR_CONF_OFFSET("func_accounting", rlm_lua_t, func_accounting), NULL},
+	{ FR_CONF_OFFSET("func_preacct", rlm_lua_t, func_preacct), NULL},
+	{ FR_CONF_OFFSET("func_xlat", rlm_lua_t, func_xlat), NULL},
+	{ FR_CONF_OFFSET("func_post_auth", rlm_lua_t, func_post_auth), NULL},
 
 	CONF_PARSER_TERMINATOR
 };

@@ -78,7 +78,7 @@ typedef struct {
 typedef unlang_action_t (*pap_auth_func_t)(rlm_rcode_t *p_result, rlm_pap_t const *inst, request_t *request, fr_pair_t const *, fr_value_box_t const *);
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("normalise", FR_TYPE_BOOL, 0, rlm_pap_t, normify), .dflt = "yes" },
+	{ FR_CONF_OFFSET("normalise", rlm_pap_t, normify), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 

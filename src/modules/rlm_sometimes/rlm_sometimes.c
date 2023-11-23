@@ -40,9 +40,9 @@ typedef struct {
 } rlm_sometimes_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("rcode", FR_TYPE_STRING, 0, rlm_sometimes_t, rcode_str), .dflt = "fail" },
-	{ FR_CONF_OFFSET("key", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("percentage", FR_TYPE_FLOAT32, 0, rlm_sometimes_t, percentage), .dflt = "0" },
+	{ FR_CONF_OFFSET("rcode", rlm_sometimes_t, rcode_str), .dflt = "fail" },
+	{ FR_CONF_OFFSET_FLAGS("key", 0, CONF_FLAG_TMPL | CONF_FLAG_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("percentage", rlm_sometimes_t, percentage), .dflt = "0" },
 	CONF_PARSER_TERMINATOR
 };
 

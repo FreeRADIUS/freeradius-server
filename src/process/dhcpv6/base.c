@@ -186,9 +186,9 @@ fr_dict_enum_autoload_t process_dhcpv6_dict_enum[] = {
 #include <freeradius-devel/server/process.h>
 
 static conf_parser_t dhcpv6_process_config[] = {
-	{ FR_CONF_OFFSET("status_code_on_success", FR_TYPE_BOOL, 0, process_dhcpv6_t, status_code_on_success), .dflt = "no" },
-	{ FR_CONF_OFFSET("send_failure_message", FR_TYPE_BOOL, 0, process_dhcpv6_t, send_failure_message), .dflt = "no" },
-	{ FR_CONF_OFFSET("move_failure_message_to_parent", FR_TYPE_BOOL, 0, process_dhcpv6_t, move_failure_message_to_parent), .dflt = "yes" },
+	{ FR_CONF_OFFSET("status_code_on_success", process_dhcpv6_t, status_code_on_success), .dflt = "no" },
+	{ FR_CONF_OFFSET("send_failure_message", process_dhcpv6_t, send_failure_message), .dflt = "no" },
+	{ FR_CONF_OFFSET("move_failure_message_to_parent", process_dhcpv6_t, move_failure_message_to_parent), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 

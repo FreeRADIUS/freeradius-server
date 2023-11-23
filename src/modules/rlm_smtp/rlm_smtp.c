@@ -109,23 +109,19 @@ typedef struct {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("uri", FR_TYPE_STRING, 0, rlm_smtp_t, uri) },
-	{ FR_CONF_OFFSET("template_directory", FR_TYPE_STRING, 0, rlm_smtp_t, template_dir) },
-	{ FR_CONF_OFFSET("attachments", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, attachments), .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("sender_address", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, sender_address) },
-	{ FR_CONF_OFFSET("envelope_address", FR_TYPE_STRING, 0, rlm_smtp_t, envelope_address) },
-	{ FR_CONF_OFFSET("recipients", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, recipient_addrs),
-		.dflt = "&SMTP-Recipients[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("TO", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, to_addrs),
-		.dflt = "&SMTP-TO[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("CC", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, cc_addrs),
-		.dflt = "&SMTP-CC[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("BCC", 0, CONF_FLAG_TMPL | CONF_FLAG_MULTI, rlm_smtp_t, bcc_addrs),
-		.dflt = "&SMTP-BCC[*]", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_smtp_t, timeout) },
-	{ FR_CONF_OFFSET("set_date", FR_TYPE_BOOL, 0, rlm_smtp_t, set_date), .dflt = "yes" },
-	{ FR_CONF_OFFSET("tls", 0, CONF_FLAG_SUBSECTION, rlm_smtp_t, tls), .subcs = (void const *) fr_curl_tls_config },//!<loading the tls values
-	{ FR_CONF_OFFSET("connection", 0, CONF_FLAG_SUBSECTION, rlm_smtp_t, conn_config), .subcs = (void const *) fr_curl_conn_config },
+	{ FR_CONF_OFFSET("uri", rlm_smtp_t, uri) },
+	{ FR_CONF_OFFSET("template_directory", rlm_smtp_t, template_dir) },
+	{ FR_CONF_OFFSET("attachments", rlm_smtp_t, attachments), .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
+	{ FR_CONF_OFFSET("sender_address", rlm_smtp_t, sender_address) },
+	{ FR_CONF_OFFSET("envelope_address", rlm_smtp_t, envelope_address) },
+	{ FR_CONF_OFFSET("recipients", rlm_smtp_t, recipient_addrs), .dflt = "&SMTP-Recipients[*]", .quote = T_BARE_WORD},
+	{ FR_CONF_OFFSET("TO", rlm_smtp_t, to_addrs), .dflt = "&SMTP-TO[*]", .quote = T_BARE_WORD},
+	{ FR_CONF_OFFSET("CC", rlm_smtp_t, cc_addrs), .dflt = "&SMTP-CC[*]", .quote = T_BARE_WORD},
+	{ FR_CONF_OFFSET("BCC", rlm_smtp_t, bcc_addrs), .dflt = "&SMTP-BCC[*]", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("timeout", rlm_smtp_t, timeout) },
+	{ FR_CONF_OFFSET("set_date", rlm_smtp_t, set_date), .dflt = "yes" },
+	{ FR_CONF_OFFSET_SUBSECTION("tls", 0, rlm_smtp_t, tls, fr_curl_tls_config) },//!<loading the tls values
+	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, rlm_smtp_t, conn_config, fr_curl_conn_config) },
 	CONF_PARSER_TERMINATOR
 };
 

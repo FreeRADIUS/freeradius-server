@@ -194,9 +194,9 @@ typedef struct {
  *
  */
 static const conf_parser_t rsa_oaep_config[] = {
-	{ FR_CONF_OFFSET("oaep_digest", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_oaep_t, oaep_digest), .func = digest_type_parse, .dflt = "sha256" },
-	{ FR_CONF_OFFSET("mgf1_digest", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_oaep_t, mgf1_digest), .func = digest_type_parse, .dflt = "sha256" },
-	{ FR_CONF_OFFSET("label", FR_TYPE_STRING, 0, cipher_rsa_oaep_t, label) },
+	{ FR_CONF_OFFSET_FLAGS("oaep_digest", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_oaep_t, oaep_digest), .func = digest_type_parse, .dflt = "sha256" },
+	{ FR_CONF_OFFSET_FLAGS("mgf1_digest", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_oaep_t, mgf1_digest), .func = digest_type_parse, .dflt = "sha256" },
+	{ FR_CONF_OFFSET("label", cipher_rsa_oaep_t, label) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -205,7 +205,7 @@ static const conf_parser_t rsa_oaep_config[] = {
  *
  */
 static const conf_parser_t rsa_config[] = {
-	{ FR_CONF_OFFSET("verify_mode", FR_TYPE_VOID, 0, cipher_rsa_t, verify_mode),
+	{ FR_CONF_OFFSET_FLAGS("verify_mode", FR_TYPE_VOID, 0, cipher_rsa_t, verify_mode),
 			 .func = cf_table_parse_int,
 			 .uctx = &(cf_table_parse_ctx_t){
 			 	.table = cipher_cert_verify_mode_table,
@@ -213,18 +213,18 @@ static const conf_parser_t rsa_config[] = {
 			 },
 			 .dflt = "hard" }, /* Must come before certificate file */
 
-	{ FR_CONF_OFFSET("private_key_password", FR_TYPE_STRING, CONF_FLAG_SECRET, cipher_rsa_t, private_key_password) },	/* Must come before private_key */
-	{ FR_CONF_OFFSET("private_key_file", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_t, private_key_file), .func = cipher_rsa_private_key_file_load },
-	{ FR_CONF_OFFSET("certificate_file", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_t, certificate_file), .func = cipher_rsa_certificate_file_load },
+	{ FR_CONF_OFFSET_FLAGS("private_key_password", FR_TYPE_STRING, CONF_FLAG_SECRET, cipher_rsa_t, private_key_password) },	/* Must come before private_key */
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_t, private_key_file), .func = cipher_rsa_private_key_file_load },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_t, certificate_file), .func = cipher_rsa_certificate_file_load },
 
-	{ FR_CONF_OFFSET("random_file", FR_TYPE_STRING, 0, cipher_rsa_t, random_file) },
+	{ FR_CONF_OFFSET("random_file", cipher_rsa_t, random_file) },
 
-	{ FR_CONF_OFFSET("signature_digest", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_t, sig_digest), .func = digest_type_parse, .dflt = "sha256" },
+	{ FR_CONF_OFFSET_FLAGS("signature_digest", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_t, sig_digest), .func = digest_type_parse, .dflt = "sha256" },
 
-	{ FR_CONF_OFFSET("padding_type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_t, padding), .func = cipher_rsa_padding_type_parse, .dflt = "pkcs" },
+	{ FR_CONF_OFFSET_FLAGS("padding_type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, cipher_rsa_t, padding), .func = cipher_rsa_padding_type_parse, .dflt = "pkcs" },
 
-	{ FR_CONF_OFFSET("oaep", 0, CONF_FLAG_SUBSECTION, cipher_rsa_t, oaep),
-			 .subcs_size = sizeof(cipher_rsa_oaep_t), .subcs_type = "cipher_rsa_oaep_t", .subcs = (void const *) rsa_oaep_config },
+	{ FR_CONF_OFFSET_SUBSECTION("oaep", 0, cipher_rsa_t, oaep, rsa_oaep_config),
+			 .subcs_size = sizeof(cipher_rsa_oaep_t), .subcs_type = "cipher_rsa_oaep_t" },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -233,9 +233,8 @@ static const conf_parser_t rsa_config[] = {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, rlm_cipher_t, type), .func = cipher_type_parse, .dflt = "rsa" },
-	{ FR_CONF_OFFSET("rsa", 0, CONF_FLAG_SUBSECTION, rlm_cipher_t, rsa),
-			 .subcs_size = sizeof(cipher_rsa_t), .subcs_type = "cipher_rsa_t", .subcs = (void const *) rsa_config },
+	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, rlm_cipher_t, type), .func = cipher_type_parse, .dflt = "rsa" },
+	{ FR_CONF_OFFSET_SUBSECTION("rsa", 0, rlm_cipher_t, rsa, rsa_config), .subcs_size = sizeof(cipher_rsa_t), .subcs_type = "cipher_rsa_t" },
 
 	CONF_PARSER_TERMINATOR
 };

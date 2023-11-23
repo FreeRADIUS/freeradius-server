@@ -33,22 +33,22 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, c
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t priority_config[] = {
-	{ FR_CONF_OFFSET("query", FR_TYPE_VOID, 0, proto_dns_t, priorities[FR_DNS_QUERY]),
+	{ FR_CONF_OFFSET_FLAGS("query", FR_TYPE_VOID, 0, proto_dns_t, priorities[FR_DNS_QUERY]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	CONF_PARSER_TERMINATOR
 };
 
 
 static conf_parser_t const limit_config[] = {
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, 0, proto_dns_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("idle_timeout", proto_dns_t, io.idle_timeout), .dflt = "30.0" } ,
 
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, 0, proto_dns_t, io.max_connections), .dflt = "1024" } ,
+	{ FR_CONF_OFFSET("max_connections", proto_dns_t, io.max_connections), .dflt = "1024" } ,
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_dns_t, max_packet_size) } ,
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, 0, proto_dns_t, num_messages) } ,
+	{ FR_CONF_OFFSET("max_packet_size", proto_dns_t, max_packet_size) } ,
+	{ FR_CONF_OFFSET("num_messages", proto_dns_t, num_messages) } ,
 	{ FR_CONF_POINTER("priority", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) priority_config },
 
 	CONF_PARSER_TERMINATOR
@@ -58,9 +58,9 @@ static conf_parser_t const limit_config[] = {
  *
  */
 static conf_parser_t const proto_dns_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, proto_dns_t,
+	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, proto_dns_t,
 			  allowed_types), .func = type_parse },
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, 0, proto_dns_t, io.submodule),
+	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_dns_t, io.submodule),
 	  .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },

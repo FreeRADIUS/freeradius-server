@@ -49,23 +49,21 @@ static fr_json_format_t const default_json_format = {
 };
 
 static conf_parser_t const json_format_attr_config[] = {
-	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, 0, fr_json_format_attr_t, prefix) },
+	{ FR_CONF_OFFSET("prefix", fr_json_format_attr_t, prefix) },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t const json_format_value_config[] = {
-	{ FR_CONF_OFFSET("single_value_as_array", FR_TYPE_BOOL, 0, fr_json_format_value_t, value_is_always_array), .dflt = "no" },
-	{ FR_CONF_OFFSET("enum_as_integer", FR_TYPE_BOOL, 0, fr_json_format_value_t, enum_as_int), .dflt = "no" },
-	{ FR_CONF_OFFSET("always_string", FR_TYPE_BOOL, 0, fr_json_format_value_t, always_string), .dflt = "no" },
+	{ FR_CONF_OFFSET("single_value_as_array", fr_json_format_value_t, value_is_always_array), .dflt = "no" },
+	{ FR_CONF_OFFSET("enum_as_integer", fr_json_format_value_t, enum_as_int), .dflt = "no" },
+	{ FR_CONF_OFFSET("always_string", fr_json_format_value_t, always_string), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
 conf_parser_t const fr_json_format_config[] = {
-	{ FR_CONF_OFFSET("output_mode", FR_TYPE_STRING, 0, fr_json_format_t, output_mode_str), .dflt = "object" },
-	{ FR_CONF_OFFSET("attribute", 0, CONF_FLAG_SUBSECTION, fr_json_format_t, attr),
-		.subcs = (void const *) json_format_attr_config },
-	{ FR_CONF_OFFSET("value", 0, CONF_FLAG_SUBSECTION, fr_json_format_t, value),
-		.subcs = (void const *) json_format_value_config },
+	{ FR_CONF_OFFSET("output_mode", fr_json_format_t, output_mode_str), .dflt = "object" },
+	{ FR_CONF_OFFSET_SUBSECTION("attribute", 0, fr_json_format_t, attr, json_format_attr_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("value", 0, fr_json_format_t, value, json_format_value_config) },
 
 	CONF_PARSER_TERMINATOR
 };

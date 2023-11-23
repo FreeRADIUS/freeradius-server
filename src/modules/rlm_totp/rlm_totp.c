@@ -63,10 +63,10 @@ typedef struct rlm_totp_t {
 
 /* Map configuration file names to internal variables */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("time_step", FR_TYPE_UINT32, 0, rlm_totp_t, totp.time_step), .dflt = "30" },
-	{ FR_CONF_OFFSET("otp_length", FR_TYPE_UINT32, 0, rlm_totp_t, totp.otp_length), .dflt = "6" },
-	{ FR_CONF_OFFSET("lookback_steps", FR_TYPE_UINT32, 0, rlm_totp_t, totp.lookback_steps), .dflt = "1" },
-	{ FR_CONF_OFFSET("lookback_interval", FR_TYPE_UINT32, 0, rlm_totp_t, totp.lookback_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("time_step", rlm_totp_t, totp.time_step), .dflt = "30" },
+	{ FR_CONF_OFFSET("otp_length", rlm_totp_t, totp.otp_length), .dflt = "6" },
+	{ FR_CONF_OFFSET("lookback_steps", rlm_totp_t, totp.lookback_steps), .dflt = "1" },
+	{ FR_CONF_OFFSET("lookback_interval", rlm_totp_t, totp.lookback_interval), .dflt = "30" },
 	CONF_PARSER_TERMINATOR
 };
 

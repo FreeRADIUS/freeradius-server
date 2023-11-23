@@ -166,21 +166,21 @@ typedef struct {
 #include <freeradius-devel/server/process.h>
 
 static const conf_parser_t session_config[] = {
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, process_ttls_session_t, timeout), .dflt = "15" },
-	{ FR_CONF_OFFSET("max", FR_TYPE_UINT32, 0, process_ttls_session_t, max), .dflt = "4096" },
-	{ FR_CONF_OFFSET("state_server_id", FR_TYPE_UINT8, 0, process_ttls_session_t, state_server_id) },
+	{ FR_CONF_OFFSET("timeout", process_ttls_session_t, timeout), .dflt = "15" },
+	{ FR_CONF_OFFSET("max", process_ttls_session_t, max), .dflt = "4096" },
+	{ FR_CONF_OFFSET("state_server_id", process_ttls_session_t, state_server_id) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t log_config[] = {
-	{ FR_CONF_OFFSET("stripped_names", FR_TYPE_BOOL, 0, process_ttls_auth_log_t, stripped_names), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth", FR_TYPE_BOOL, 0, process_ttls_auth_log_t, auth), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_badpass", FR_TYPE_BOOL, 0, process_ttls_auth_log_t, auth_badpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_goodpass", FR_TYPE_BOOL, 0,process_ttls_auth_log_t,  auth_goodpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("msg_badpass", FR_TYPE_STRING, 0, process_ttls_auth_log_t, auth_badpass_msg) },
-	{ FR_CONF_OFFSET("msg_goodpass", FR_TYPE_STRING, 0, process_ttls_auth_log_t, auth_goodpass_msg) },
-	{ FR_CONF_OFFSET("msg_denied", FR_TYPE_STRING, 0, process_ttls_auth_log_t, denied_msg), .dflt = "You are already logged in - access denied" },
+	{ FR_CONF_OFFSET("stripped_names", process_ttls_auth_log_t, stripped_names), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth", process_ttls_auth_log_t, auth), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_badpass", process_ttls_auth_log_t, auth_badpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("auth_goodpass", process_ttls_auth_log_t,  auth_goodpass), .dflt = "no" },
+	{ FR_CONF_OFFSET("msg_badpass", process_ttls_auth_log_t, auth_badpass_msg) },
+	{ FR_CONF_OFFSET("msg_goodpass", process_ttls_auth_log_t, auth_goodpass_msg) },
+	{ FR_CONF_OFFSET("msg_denied", process_ttls_auth_log_t, denied_msg), .dflt = "You are already logged in - access denied" },
 
 	CONF_PARSER_TERMINATOR
 };

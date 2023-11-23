@@ -35,8 +35,8 @@ static conf_parser_t const limit_config[] = {
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_cron_t, max_packet_size) } ,
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, 0, proto_cron_t, num_messages) } ,
+	{ FR_CONF_OFFSET("max_packet_size", proto_cron_t, max_packet_size) } ,
+	{ FR_CONF_OFFSET("num_messages", proto_cron_t, num_messages) } ,
 
 	CONF_PARSER_TERMINATOR
 };
@@ -45,15 +45,15 @@ static conf_parser_t const limit_config[] = {
  *
  */
 static conf_parser_t const proto_cron_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t,
+	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t,
 			  type), .func = type_parse },
 
-	{ FR_CONF_OFFSET("when", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t, spec),
+	{ FR_CONF_OFFSET_FLAGS("when", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t, spec),
 	  		.func = time_parse },
 
-	{ FR_CONF_OFFSET("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_t, filename ) },
+	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_t, filename ) },
 
-	{ FR_CONF_OFFSET("priority", FR_TYPE_UINT32, 0, proto_cron_t, priority) },
+	{ FR_CONF_OFFSET("priority", proto_cron_t, priority) },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	CONF_PARSER_TERMINATOR

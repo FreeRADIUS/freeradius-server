@@ -33,39 +33,39 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, c
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t priority_config[] = {
-	{ FR_CONF_OFFSET("Solicit", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_SOLICIT]),
+	{ FR_CONF_OFFSET_FLAGS("Solicit", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_SOLICIT]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Request", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_REQUEST]),
+	{ FR_CONF_OFFSET_FLAGS("Request", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_REQUEST]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Renew", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_RENEW]),
+	{ FR_CONF_OFFSET_FLAGS("Renew", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_RENEW]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Rebind", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_REBIND]),
+	{ FR_CONF_OFFSET_FLAGS("Rebind", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_REBIND]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Release", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_RELEASE]),
+	{ FR_CONF_OFFSET_FLAGS("Release", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_RELEASE]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Decline", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_DECLINE]),
+	{ FR_CONF_OFFSET_FLAGS("Decline", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_DECLINE]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Information-Request", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_INFORMATION_REQUEST]),
+	{ FR_CONF_OFFSET_FLAGS("Information-Request", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_INFORMATION_REQUEST]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET("Relay-Forward", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_RELAY_FORWARD]),
+	{ FR_CONF_OFFSET_FLAGS("Relay-Forward", FR_TYPE_VOID, 0, proto_dhcpv6_t, priorities[FR_DHCPV6_RELAY_FORWARD]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t const limit_config[] = {
-	{ FR_CONF_OFFSET("cleanup_delay", FR_TYPE_TIME_DELTA, 0, proto_dhcpv6_t, io.cleanup_delay), .dflt = "5.0" } ,
-	{ FR_CONF_OFFSET("idle_timeout", FR_TYPE_TIME_DELTA, 0, proto_dhcpv6_t, io.idle_timeout), .dflt = "30.0" } ,
-	{ FR_CONF_OFFSET("nak_lifetime", FR_TYPE_TIME_DELTA, 0, proto_dhcpv6_t, io.nak_lifetime), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("cleanup_delay", proto_dhcpv6_t, io.cleanup_delay), .dflt = "5.0" } ,
+	{ FR_CONF_OFFSET("idle_timeout", proto_dhcpv6_t, io.idle_timeout), .dflt = "30.0" } ,
+	{ FR_CONF_OFFSET("nak_lifetime", proto_dhcpv6_t, io.nak_lifetime), .dflt = "30.0" } ,
 
-	{ FR_CONF_OFFSET("max_connections", FR_TYPE_UINT32, 0, proto_dhcpv6_t, io.max_connections), .dflt = "1024" } ,
-	{ FR_CONF_OFFSET("max_clients", FR_TYPE_UINT32, 0, proto_dhcpv6_t, io.max_clients), .dflt = "256" } ,
-	{ FR_CONF_OFFSET("max_pending_packets", FR_TYPE_UINT32, 0, proto_dhcpv6_t, io.max_pending_packets), .dflt = "256" } ,
+	{ FR_CONF_OFFSET("max_connections", proto_dhcpv6_t, io.max_connections), .dflt = "1024" } ,
+	{ FR_CONF_OFFSET("max_clients", proto_dhcpv6_t, io.max_clients), .dflt = "256" } ,
+	{ FR_CONF_OFFSET("max_pending_packets", proto_dhcpv6_t, io.max_pending_packets), .dflt = "256" } ,
 
 	/*
 	 *	For performance tweaking.  NOT for normal humans.
 	 */
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_dhcpv6_t, max_packet_size) } ,
-	{ FR_CONF_OFFSET("num_messages", FR_TYPE_UINT32, 0, proto_dhcpv6_t, num_messages) } ,
+	{ FR_CONF_OFFSET("max_packet_size", proto_dhcpv6_t, max_packet_size) } ,
+	{ FR_CONF_OFFSET("num_messages", proto_dhcpv6_t, num_messages) } ,
 	{ FR_CONF_POINTER("priority", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) priority_config },
 
 	CONF_PARSER_TERMINATOR
@@ -75,9 +75,9 @@ static conf_parser_t const limit_config[] = {
  *
  */
 static conf_parser_t const proto_dhcpv6_config[] = {
-	{ FR_CONF_OFFSET("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, proto_dhcpv6_t,
+	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, proto_dhcpv6_t,
 			  allowed_types), .func = type_parse },
-	{ FR_CONF_OFFSET("transport", FR_TYPE_VOID, 0, proto_dhcpv6_t, io.submodule),
+	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_dhcpv6_t, io.submodule),
 	  .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },

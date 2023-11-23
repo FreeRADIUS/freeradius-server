@@ -70,27 +70,27 @@ typedef struct {
 
 
 static const conf_parser_t networks_config[] = {
-	{ FR_CONF_OFFSET("allow", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_dns_udp_t, allow) },
-	{ FR_CONF_OFFSET("deny", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_dns_udp_t, deny) },
+	{ FR_CONF_OFFSET_FLAGS("allow", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_dns_udp_t, allow) },
+	{ FR_CONF_OFFSET_FLAGS("deny", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_dns_udp_t, deny) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 
 static const conf_parser_t udp_listen_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, proto_dns_udp_t, ipaddr) },
-	{ FR_CONF_OFFSET("ipv6addr", FR_TYPE_IPV6_ADDR, 0, proto_dns_udp_t, ipaddr) },
-	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, 0, proto_dns_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, proto_dns_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, proto_dns_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, proto_dns_udp_t, ipaddr) },
 
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, 0, proto_dns_udp_t, interface) },
+	{ FR_CONF_OFFSET("interface", proto_dns_udp_t, interface) },
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, 0, proto_dns_udp_t, port), .dflt = "547"  },
+	{ FR_CONF_OFFSET("port", proto_dns_udp_t, port), .dflt = "547"  },
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_dns_udp_t, recv_buff) },
 
 	{ FR_CONF_POINTER("networks", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) networks_config },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, proto_dns_udp_t, max_packet_size), .dflt = "576" } ,
-	{ FR_CONF_OFFSET("max_attributes", FR_TYPE_UINT32, 0, proto_dns_udp_t, max_attributes), .dflt = STRINGIFY(DNS_MAX_ATTRIBUTES) } ,
+	{ FR_CONF_OFFSET("max_packet_size", proto_dns_udp_t, max_packet_size), .dflt = "576" } ,
+	{ FR_CONF_OFFSET("max_attributes", proto_dns_udp_t, max_attributes), .dflt = STRINGIFY(DNS_MAX_ATTRIBUTES) } ,
 
 	CONF_PARSER_TERMINATOR
 };

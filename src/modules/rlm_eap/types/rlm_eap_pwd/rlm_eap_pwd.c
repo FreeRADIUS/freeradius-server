@@ -52,9 +52,9 @@ typedef struct {
 #define MSK_EMSK_LEN    (2 * MPPE_KEY_LEN)
 
 static conf_parser_t submodule_config[] = {
-	{ FR_CONF_OFFSET("group", FR_TYPE_UINT32, 0, rlm_eap_pwd_t, group), .dflt = "19" },
-	{ FR_CONF_OFFSET("fragment_size", FR_TYPE_UINT32, 0, rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
-	{ FR_CONF_OFFSET("server_id", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_eap_pwd_t, server_id) },
+	{ FR_CONF_OFFSET("group", rlm_eap_pwd_t, group), .dflt = "19" },
+	{ FR_CONF_OFFSET("fragment_size", rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
+	{ FR_CONF_OFFSET_FLAGS("server_id", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_eap_pwd_t, server_id) },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -62,18 +62,18 @@ typedef struct {
 
 
 static conf_parser_t submodule_config[] = {
-	{ FR_CONF_OFFSET("tls", FR_TYPE_STRING, 0, rlm_eap_fast_t, tls_conf_name) },
+	{ FR_CONF_OFFSET("tls", rlm_eap_fast_t, tls_conf_name) },
 
-	{ FR_CONF_OFFSET("default_provisioning_eap_type", FR_TYPE_STRING, 0, rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },
+	{ FR_CONF_OFFSET("default_provisioning_eap_type", rlm_eap_fast_t, default_provisioning_method_name), .dflt = "mschapv2" },
 
-	{ FR_CONF_OFFSET("virtual_server", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_fast_t, virtual_server) },
-	{ FR_CONF_OFFSET("cipher_list", FR_TYPE_STRING, 0, rlm_eap_fast_t, cipher_list) },
+	{ FR_CONF_OFFSET_FLAGS("virtual_server", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_fast_t, virtual_server) },
+	{ FR_CONF_OFFSET("cipher_list", rlm_eap_fast_t, cipher_list) },
 
-	{ FR_CONF_OFFSET("require_client_cert", FR_TYPE_BOOL, 0, rlm_eap_fast_t, req_client_cert), .dflt = "no" },
+	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_fast_t, req_client_cert), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("pac_lifetime", FR_TYPE_TIME_DELTA, 0, rlm_eap_fast_t, pac_lifetime), .dflt = "604800" },
-	{ FR_CONF_OFFSET("authority_identity", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_eap_fast_t, authority_identity) },
-	{ FR_CONF_OFFSET("pac_opaque_key", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_eap_fast_t, pac_opaque_key) },
+	{ FR_CONF_OFFSET("pac_lifetime", rlm_eap_fast_t, pac_lifetime), .dflt = "604800" },
+	{ FR_CONF_OFFSET_FLAGS("authority_identity", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_eap_fast_t, authority_identity) },
+	{ FR_CONF_OFFSET_FLAGS("pac_opaque_key", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_eap_fast_t, pac_opaque_key) },
 
 	CONF_PARSER_TERMINATOR
 };

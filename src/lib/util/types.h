@@ -392,7 +392,7 @@ _Generic(&(_ct), \
 	uint32_t **		: FR_TYPE_UINT32, \
 	uint64_t *		: FR_TYPE_UINT64, \
 	uint64_t **		: FR_TYPE_UINT64, \
-	int8_t	*		: FR_TYPE_INT8, \
+	int8_t *		: FR_TYPE_INT8, \
 	int8_t **		: FR_TYPE_INT8, \
 	int16_t	*		: FR_TYPE_INT16, \
 	int16_t **		: FR_TYPE_INT16, \
@@ -403,7 +403,8 @@ _Generic(&(_ct), \
 	float *			: FR_TYPE_FLOAT32, \
 	float **		: FR_TYPE_FLOAT32, \
 	double *		: FR_TYPE_FLOAT64, \
-	double **		: FR_TYPE_FLOAT64)
+	double **		: FR_TYPE_FLOAT64, \
+	default			: FR_TYPE_VOID )
 
 extern fr_table_num_ordered_t const fr_type_table[];
 extern size_t fr_type_table_len;

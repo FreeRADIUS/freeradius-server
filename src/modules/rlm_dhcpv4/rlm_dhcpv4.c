@@ -83,19 +83,19 @@ typedef struct {
 } rlm_dhcpv4_thread_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("ipaddr", FR_TYPE_IPV4_ADDR, 0, rlm_dhcpv4_t, config.ipaddr), },
-	{ FR_CONF_OFFSET("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_dhcpv4_t, config.ipaddr) },
+	{ FR_CONF_OFFSET_FLAGS("ipaddr", FR_TYPE_IPV4_ADDR, 0, rlm_dhcpv4_t, config.ipaddr), },
+	{ FR_CONF_OFFSET_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_dhcpv4_t, config.ipaddr) },
 
-	{ FR_CONF_OFFSET("port", FR_TYPE_UINT16, 0, rlm_dhcpv4_t, config.port), .dflt = "68" },
+	{ FR_CONF_OFFSET("port", rlm_dhcpv4_t, config.port), .dflt = "68" },
 
-	{ FR_CONF_OFFSET("interface", FR_TYPE_STRING, 0, rlm_dhcpv4_t, config.interface) },
+	{ FR_CONF_OFFSET("interface", rlm_dhcpv4_t, config.interface) },
 
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, rlm_dhcpv4_t, config.send_buff) },
 
-	{ FR_CONF_OFFSET("max_packet_size", FR_TYPE_UINT32, 0, rlm_dhcpv4_t, max_packet_size), .dflt = "576" },
-	{ FR_CONF_OFFSET("max_queued_packets", FR_TYPE_UINT32, 0, rlm_dhcpv4_t, config.max_queued_packets), .dflt = "65536" },
+	{ FR_CONF_OFFSET("max_packet_size", rlm_dhcpv4_t, max_packet_size), .dflt = "576" },
+	{ FR_CONF_OFFSET("max_queued_packets", rlm_dhcpv4_t, config.max_queued_packets), .dflt = "65536" },
 
-	{ FR_CONF_OFFSET("timeout", FR_TYPE_TIME_DELTA, 0, rlm_dhcpv4_t, config.max_queued_time), .dflt = "0" },
+	{ FR_CONF_OFFSET("timeout", rlm_dhcpv4_t, config.max_queued_time), .dflt = "0" },
 
 	CONF_PARSER_TERMINATOR
 };

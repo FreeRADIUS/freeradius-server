@@ -103,18 +103,18 @@ static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, c
  *	Log destinations
  */
 static const conf_parser_t initial_log_config[] = {
-	{ FR_CONF_OFFSET("destination", FR_TYPE_STRING, 0, main_config_t, log_dest), .dflt = "files" },
-	{ FR_CONF_OFFSET("syslog_facility", FR_TYPE_VOID, 0, main_config_t, syslog_facility), .dflt = "daemon",
+	{ FR_CONF_OFFSET("destination", main_config_t, log_dest), .dflt = "files" },
+	{ FR_CONF_OFFSET_FLAGS("syslog_facility", FR_TYPE_VOID, 0, main_config_t, syslog_facility), .dflt = "daemon",
 		.func = cf_table_parse_int,
 			.uctx = &(cf_table_parse_ctx_t){
 				.table = syslog_facility_table,
 				.len = &syslog_facility_table_len
 			}
 		},
-	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, 0, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
-	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, 0, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
-	{ FR_CONF_OFFSET("file", FR_TYPE_STRING, 0, main_config_t, log_file), .dflt = "${logdir}/radius.log" },
-	{ FR_CONF_OFFSET("suppress_secrets", FR_TYPE_BOOL, 0, main_config_t, suppress_secrets), .dflt = "no" },
+	{ FR_CONF_OFFSET("local_state_dir", main_config_t, local_state_dir), .dflt = "${prefix}/var"},
+	{ FR_CONF_OFFSET("logdir", main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
+	{ FR_CONF_OFFSET("file", main_config_t, log_file), .dflt = "${logdir}/radius.log" },
+	{ FR_CONF_OFFSET("suppress_secrets", main_config_t, suppress_secrets), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -131,12 +131,12 @@ static const conf_parser_t initial_server_config[] = {
  *	Basic configuration for the server.
  */
 static const conf_parser_t lib_dir_on_read_config[] = {
-	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, 0, main_config_t, prefix), .dflt = "/usr/local" },
+	{ FR_CONF_OFFSET("prefix", main_config_t, prefix), .dflt = "/usr/local" },
 
-	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, 0, main_config_t, log_dates_utc) },
+	{ FR_CONF_OFFSET("use_utc", main_config_t, log_dates_utc) },
 	{ FR_CONF_OFFSET_IS_SET("timestamp", FR_TYPE_BOOL, 0, main_config_t, log_timestamp) },
 
-	{ FR_CONF_OFFSET("libdir", FR_TYPE_STRING, 0, main_config_t, lib_dir), .dflt = "${prefix}/lib",
+	{ FR_CONF_OFFSET("libdir", main_config_t, lib_dir), .dflt = "${prefix}/lib",
 	  .on_read = lib_dir_on_read },
 
 	CONF_PARSER_TERMINATOR
@@ -149,10 +149,10 @@ static const conf_parser_t lib_dir_on_read_config[] = {
  *
  **********************************************************************/
 static const conf_parser_t log_config[] = {
-	{ FR_CONF_OFFSET("colourise", FR_TYPE_BOOL, 0, main_config_t, do_colourise) },
-	{ FR_CONF_OFFSET("line_number", FR_TYPE_BOOL, 0, main_config_t, log_line_number) },
-	{ FR_CONF_OFFSET("timestamp", FR_TYPE_BOOL, 0, main_config_t, log_timestamp) },
-	{ FR_CONF_OFFSET("use_utc", FR_TYPE_BOOL, 0, main_config_t, log_dates_utc) },
+	{ FR_CONF_OFFSET("colourise", main_config_t, do_colourise) },
+	{ FR_CONF_OFFSET("line_number", main_config_t, log_line_number) },
+	{ FR_CONF_OFFSET("timestamp", main_config_t, log_timestamp) },
+	{ FR_CONF_OFFSET("use_utc", main_config_t, log_dates_utc) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -163,22 +163,22 @@ static const conf_parser_t resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_OFFSET("talloc_pool_size", FR_TYPE_SIZE | FR_TYPE_HIDDEN, 0, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
-	{ FR_CONF_OFFSET("talloc_memory_report", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_FLAGS("talloc_pool_size", FR_TYPE_SIZE | FR_TYPE_HIDDEN, 0, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_FLAGS("talloc_memory_report", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t thread_config[] = {
-	{ FR_CONF_OFFSET("num_networks", FR_TYPE_UINT32, 0, main_config_t, max_networks), .dflt = STRINGIFY(1),
+	{ FR_CONF_OFFSET("num_networks", main_config_t, max_networks), .dflt = STRINGIFY(1),
 	  .func = num_networks_parse },
-	{ FR_CONF_OFFSET("num_workers", FR_TYPE_UINT32, 0, main_config_t, max_workers), .dflt = STRINGIFY(0),
+	{ FR_CONF_OFFSET("num_workers", main_config_t, max_workers), .dflt = STRINGIFY(0),
 	  .func = num_workers_parse, .dflt_func = num_workers_dflt },
 
-	{ FR_CONF_OFFSET("stats_interval", FR_TYPE_TIME_DELTA | FR_TYPE_HIDDEN, 0, main_config_t, stats_interval), },
+	{ FR_CONF_OFFSET_FLAGS("stats_interval", FR_TYPE_TIME_DELTA | FR_TYPE_HIDDEN, 0, main_config_t, stats_interval), },
 
 #ifdef WITH_TLS
-	{ FR_CONF_OFFSET("openssl_async_pool_init", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_init), .dflt = "64" },
-	{ FR_CONF_OFFSET("openssl_async_pool_max", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_max), .dflt = "1024" },
+	{ FR_CONF_OFFSET_FLAGS("openssl_async_pool_init", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_init), .dflt = "64" },
+	{ FR_CONF_OFFSET_FLAGS("openssl_async_pool_max", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_max), .dflt = "1024" },
 #endif
 
 	CONF_PARSER_TERMINATOR
@@ -188,8 +188,8 @@ static const conf_parser_t thread_config[] = {
  *	Migration configuration.
  */
 static const conf_parser_t migrate_config[] = {
-	{ FR_CONF_OFFSET("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, rewrite_update) },
-	{ FR_CONF_OFFSET("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, forbid_update) },
+	{ FR_CONF_OFFSET_FLAGS("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, rewrite_update) },
+	{ FR_CONF_OFFSET_FLAGS("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, forbid_update) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -199,8 +199,8 @@ static const conf_parser_t migrate_config[] = {
  *	Migration configuration.
  */
 static const conf_parser_t interpret_config[] = {
-	{ FR_CONF_OFFSET("countup_instructions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, ins_countup) },
-	{ FR_CONF_OFFSET("max_instructions", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, 0, main_config_t, ins_max) },
+	{ FR_CONF_OFFSET_FLAGS("countup_instructions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, ins_countup) },
+	{ FR_CONF_OFFSET_FLAGS("max_instructions", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, 0, main_config_t, ins_max) },
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -213,20 +213,20 @@ static const conf_parser_t server_config[] = {
 	 *	hard-coded defines for the locations of the various
 	 *	files.
 	 */
-	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, 0, main_config_t, prefix), .dflt = "/usr/local" },
-	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, 0, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
-	{ FR_CONF_OFFSET("sbin_dir", FR_TYPE_STRING, 0, main_config_t, sbin_dir), .dflt = "${prefix}/sbin"},
-	{ FR_CONF_OFFSET("logdir", FR_TYPE_STRING, 0, main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
-	{ FR_CONF_OFFSET("run_dir", FR_TYPE_STRING, 0, main_config_t, run_dir), .dflt = "${local_state_dir}/run/${name}"},
-	{ FR_CONF_OFFSET("radacctdir", FR_TYPE_STRING, 0, main_config_t, radacct_dir), .dflt = "${logdir}/radacct" },
-	{ FR_CONF_OFFSET("panic_action", FR_TYPE_STRING, 0, main_config_t, panic_action) },
-	{ FR_CONF_OFFSET("reverse_lookups", FR_TYPE_BOOL, 0, main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
-	{ FR_CONF_OFFSET("hostname_lookups", FR_TYPE_BOOL, 0, main_config_t, hostname_lookups), .dflt = "yes", .func = hostname_lookups_parse },
-	{ FR_CONF_OFFSET("max_request_time", FR_TYPE_TIME_DELTA, 0, main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
-	{ FR_CONF_OFFSET("pidfile", FR_TYPE_STRING, 0, main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
+	{ FR_CONF_OFFSET("prefix", main_config_t, prefix), .dflt = "/usr/local" },
+	{ FR_CONF_OFFSET("local_state_dir", main_config_t, local_state_dir), .dflt = "${prefix}/var"},
+	{ FR_CONF_OFFSET("sbin_dir", main_config_t, sbin_dir), .dflt = "${prefix}/sbin"},
+	{ FR_CONF_OFFSET("logdir", main_config_t, log_dir), .dflt = "${local_state_dir}/log"},
+	{ FR_CONF_OFFSET("run_dir", main_config_t, run_dir), .dflt = "${local_state_dir}/run/${name}"},
+	{ FR_CONF_OFFSET("radacctdir", main_config_t, radacct_dir), .dflt = "${logdir}/radacct" },
+	{ FR_CONF_OFFSET("panic_action", main_config_t, panic_action) },
+	{ FR_CONF_OFFSET("reverse_lookups", main_config_t, reverse_lookups), .dflt = "no", .func = reverse_lookups_parse },
+	{ FR_CONF_OFFSET("hostname_lookups", main_config_t, hostname_lookups), .dflt = "yes", .func = hostname_lookups_parse },
+	{ FR_CONF_OFFSET("max_request_time", main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
+	{ FR_CONF_OFFSET("pidfile", main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
-	{ FR_CONF_OFFSET("debug_level", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, 0, main_config_t, debug_level), .dflt = "0" },
-	{ FR_CONF_OFFSET("max_requests", FR_TYPE_UINT32, 0, main_config_t, max_requests), .dflt = "0" },
+	{ FR_CONF_OFFSET_FLAGS("debug_level", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, 0, main_config_t, debug_level), .dflt = "0" },
+	{ FR_CONF_OFFSET("max_requests", main_config_t, max_requests), .dflt = "0" },
 
 	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
 
@@ -263,11 +263,11 @@ static const conf_parser_t security_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("user", FR_TYPE_VOID, 0, main_config_t, uid), .func = cf_parse_uid },
 	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, 0, main_config_t, gid), .func = cf_parse_gid },
 #endif
-	{ FR_CONF_OFFSET("chroot", FR_TYPE_STRING, 0, main_config_t, chroot_dir) },
-	{ FR_CONF_OFFSET("allow_core_dumps", FR_TYPE_BOOL, 0, main_config_t, allow_core_dumps), .dflt = "no" },
+	{ FR_CONF_OFFSET("chroot", main_config_t, chroot_dir) },
+	{ FR_CONF_OFFSET("allow_core_dumps", main_config_t, allow_core_dumps), .dflt = "no" },
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
-	{ FR_CONF_OFFSET("allow_vulnerable_openssl", FR_TYPE_STRING, 0, main_config_t, allow_vulnerable_openssl), .dflt = "no" },
+	{ FR_CONF_OFFSET("allow_vulnerable_openssl", main_config_t, allow_vulnerable_openssl), .dflt = "no" },
 #endif
 
 #ifdef WITH_TLS
@@ -280,22 +280,22 @@ static const conf_parser_t security_config[] = {
 static const conf_parser_t switch_users_config[] = {
 	{ FR_CONF_POINTER("security", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) security_config },
 
-	{ FR_CONF_OFFSET("name", FR_TYPE_STRING, 0, main_config_t, name), .func = name_parse },							/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET("name", main_config_t, name), .func = name_parse },							/* DO NOT SET DEFAULT */
 
-	{ FR_CONF_OFFSET("prefix", FR_TYPE_STRING, 0, main_config_t, prefix), .dflt = "/usr/local" },
-	{ FR_CONF_OFFSET("local_state_dir", FR_TYPE_STRING, 0, main_config_t, local_state_dir), .dflt = "${prefix}/var"},
+	{ FR_CONF_OFFSET("prefix", main_config_t, prefix), .dflt = "/usr/local" },
+	{ FR_CONF_OFFSET("local_state_dir", main_config_t, local_state_dir), .dflt = "${prefix}/var"},
 
-	{ FR_CONF_OFFSET("run_dir", FR_TYPE_STRING, 0, main_config_t, run_dir), .dflt = "${local_state_dir}/run/${name}"},
+	{ FR_CONF_OFFSET("run_dir", main_config_t, run_dir), .dflt = "${local_state_dir}/run/${name}"},
 
 	/*
 	 *	For backwards compatibility.
 	 */
 #ifdef HAVE_SETUID
-	{ FR_CONF_DEPRECATED("user", FR_TYPE_VOID, 0, main_config_t, uid) },
-	{ FR_CONF_DEPRECATED("group", FR_TYPE_VOID, 0, main_config_t, gid) },
+	{ FR_CONF_DEPRECATED("user", main_config_t, uid) },
+	{ FR_CONF_DEPRECATED("group", main_config_t, gid) },
 #endif
-	{ FR_CONF_DEPRECATED("chroot", FR_TYPE_STRING, 0, main_config_t, NULL) },
-	{ FR_CONF_DEPRECATED("allow_core_dumps", FR_TYPE_BOOL, 0, main_config_t, NULL) },
+	{ FR_CONF_DEPRECATED("chroot", main_config_t, NULL) },
+	{ FR_CONF_DEPRECATED("allow_core_dumps", main_config_t, NULL) },
 	CONF_PARSER_TERMINATOR
 };
 
