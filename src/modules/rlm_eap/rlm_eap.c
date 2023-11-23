@@ -40,6 +40,7 @@ static const CONF_PARSER module_config[] = {
 	{ "cisco_accounting_username_bug", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, mod_accounting_username_bug), "no" },
 	{ "allow_empty_identities", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_t, allow_empty_identities), NULL },
 	{ "max_sessions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_t, max_sessions), "2048" },
+	{ "dedup_key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_t, dedup_key), "" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -99,6 +100,21 @@ static int eap_handler_cmp(void const *a, void const *b)
 	return 0;
 }
 
+/*
+ *	Compare two handlers by dedup keu
+ */
+static int dedup_cmp(void const *a, void const *b)
+{
+	eap_handler_t const *one = a;
+	eap_handler_t const *two = b;
+
+	if (!one->dedup && two->dedup) return -1;
+	if (one->dedup && !two->dedup) return +1;
+
+	if (!one->dedup && two->dedup) return 0;
+
+	return strcmp(one->dedup, two->dedup);
+}
 
 /*
  * read the config section and load all the eap authentication types present.
@@ -256,6 +272,16 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		return -1;
 	}
 #endif
+
+	if (!inst->dedup_key || !*inst->dedup_key) {
+		return 0;
+	}
+
+	inst->dedup_tree = rbtree_create(NULL, dedup_cmp, NULL,  0);
+	if (!inst->dedup_tree) {
+		ERROR("rlm_eap (%s): Cannot initialize dedup tree", inst->xlat_name);
+		return -1;
+	}
 
 	return 0;
 }

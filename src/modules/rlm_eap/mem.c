@@ -119,9 +119,10 @@ static int _eap_handler_free(eap_handler_t *handler)
 /*
  * Allocate a new eap_handler_t
  */
-eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
+eap_handler_t *eap_handler_alloc(rlm_eap_t *inst, REQUEST *request)
 {
-	eap_handler_t	*handler;
+	eap_handler_t	*handler, *old;
+	char buffer[256];
 
 	handler = talloc_zero(NULL, eap_handler_t);
 	if (!handler) {
@@ -132,6 +133,20 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 
 	/* Doesn't need to be inside the critical region */
 	talloc_set_destructor(handler, _eap_handler_free);
+
+	if (!inst->dedup_tree) return handler;
+
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->dedup_key, NULL, NULL) < 0) return handler;
+
+	handler->dedup = talloc_strdup(handler, buffer);
+
+	/*
+	 *	Delete any old handler
+	 */
+	PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
+	old = rbtree_finddata(inst->dedup_tree, handler);
+	if (old) talloc_free(old);
+	PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
 
 	return handler;
 }
@@ -171,6 +186,8 @@ static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
 {
 	rbnode_t *node;
 
+	if (inst->dedup_tree) (void) rbtree_deletebydata(inst->dedup_tree, handler);
+
 	node = rbtree_find(inst->session_tree, handler);
 	if (!node) return NULL;
 
@@ -182,6 +199,7 @@ static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
 	       handler->state[2], handler->state[3],
 	       handler->state[4], handler->state[5],
 	       handler->state[6], handler->state[7]);
+
 	/*
 	 *	Delete old handler from the tree.
 	 */

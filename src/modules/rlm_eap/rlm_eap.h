@@ -67,10 +67,14 @@ typedef struct rlm_eap {
 
 	uint32_t	max_sessions;
 
+	char const	*dedup_key;
+
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
 	pthread_mutex_t	handler_mutex;
 #endif
+
+	rbtree_t	*dedup_tree;
 
 	char const	*xlat_name; /* no xlat's yet */
 	fr_randctx	rand_pool;
@@ -103,7 +107,7 @@ eap_handler_t 	*eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST
 
 /* Memory Management */
 EAP_DS      	*eap_ds_alloc(eap_handler_t *handler);
-eap_handler_t 	*eap_handler_alloc(rlm_eap_t *inst);
+eap_handler_t 	*eap_handler_alloc(rlm_eap_t *inst, REQUEST *request);
 void	    	eap_ds_free(EAP_DS **eap_ds);
 int 	    	eaplist_add(rlm_eap_t *inst, eap_handler_t *handler) CC_HINT(nonnull);
 eap_handler_t 	*eaplist_find(rlm_eap_t *inst, REQUEST *request, eap_packet_raw_t *eap_packet);

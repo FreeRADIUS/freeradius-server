@@ -60,7 +60,6 @@ typedef enum operation_t {
 	PROCESS
 } operation_t;
 
-
 /*
  * eap_handler_t is the interface for any EAP-Type.
  * Each handler contains information for one specific EAP-Type.
@@ -104,6 +103,8 @@ typedef struct _eap_handler {
 	REQUEST		*request;
 
 	char const     	*identity;	//!< User name from EAP-Identity
+
+	char const	*dedup;		//!< dedup key
 
 	EAP_DS 		*prev_eapds;
 	EAP_DS 		*eap_ds;

@@ -1216,7 +1216,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       }
 	       }
 	} else {		/* packet was EAP identity */
-		handler = eap_handler_alloc(inst);
+		handler = eap_handler_alloc(inst, request);
 		if (!handler) {
 			goto error;
 		}
