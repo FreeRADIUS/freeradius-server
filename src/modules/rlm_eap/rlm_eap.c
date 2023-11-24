@@ -101,9 +101,9 @@ static int eap_handler_cmp(void const *a, void const *b)
 }
 
 /*
- *	Compare two handlers by dedup keu
+ *	Compare two handlers by dedup key
  */
-static int dedup_cmp(void const *a, void const *b)
+static int CC_HINT(nonnull) dedup_cmp(void const *a, void const *b)
 {
 	eap_handler_t const *one = a;
 	eap_handler_t const *two = b;
