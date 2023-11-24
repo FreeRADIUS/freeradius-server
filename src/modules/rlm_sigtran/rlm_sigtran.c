@@ -150,7 +150,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_POINTER("sccp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) sccp_config },
 	{ FR_CONF_POINTER("map", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) map_config },
 
-	{ FR_CONF_OFFSET("imsi", 0, CONF_FLAG_TMPL | CONF_FLAG_REQUIRED, rlm_sigtran_t, imsi) },
+	{ FR_CONF_OFFSET_FLAGS("imsi", CONF_FLAG_REQUIRED, rlm_sigtran_t, imsi) },
 
 	CONF_PARSER_TERMINATOR
 };
