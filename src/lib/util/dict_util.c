@@ -2762,6 +2762,10 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 
 	*out = NULL;
 
+#ifdef STATIC_ANALYZER
+	memset(buffer, 0, sizeof(buffer));
+#endif
+
 	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
 					    &our_name, SIZE_MAX,
 					    fr_dict_attr_allowed_chars);
