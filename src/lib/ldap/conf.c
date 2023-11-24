@@ -28,7 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/ldap/conf.h>
 
 conf_parser_t const fr_ldap_sasl_mech_static[] = {
-	{ FR_CONF_OFFSET_FLAGS("mech", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY, fr_ldap_sasl_t, mech) },
+	{ FR_CONF_OFFSET_FLAGS("mech", CONF_FLAG_NOT_EMPTY, fr_ldap_sasl_t, mech) },
 	{ FR_CONF_OFFSET("proxy", fr_ldap_sasl_t, proxy) },
 	{ FR_CONF_OFFSET("realm", fr_ldap_sasl_t, realm) },
 	CONF_PARSER_TERMINATOR
@@ -41,13 +41,13 @@ conf_parser_t const fr_ldap_tls_config[] = {
 	/*
 	 *	Deprecated attributes
 	 */
-	{ FR_CONF_OFFSET_FLAGS("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_ca_file) },
 
-	{ FR_CONF_OFFSET_FLAGS("ca_path", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_ca_path) },
 
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_certificate_file) },
 
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, fr_ldap_config_t, tls_private_key_file) },
 
 	/*
 	 *	LDAP Specific TLS attributes

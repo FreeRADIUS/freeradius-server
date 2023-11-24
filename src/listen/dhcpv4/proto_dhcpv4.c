@@ -34,19 +34,19 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, c
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t priority_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("Discover", FR_TYPE_VOID, 0, proto_dhcpv4_t, priorities[FR_DHCP_DISCOVER]),
+	{ FR_CONF_OFFSET("Discover", proto_dhcpv4_t, priorities[FR_DHCP_DISCOVER]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET_FLAGS("Request", FR_TYPE_VOID, 0, proto_dhcpv4_t, priorities[FR_DHCP_REQUEST]),
+	{ FR_CONF_OFFSET("Request", proto_dhcpv4_t, priorities[FR_DHCP_REQUEST]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET_FLAGS("Decline", FR_TYPE_VOID, 0, proto_dhcpv4_t, priorities[FR_DHCP_DECLINE]),
+	{ FR_CONF_OFFSET("Decline", proto_dhcpv4_t, priorities[FR_DHCP_DECLINE]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET_FLAGS("Release", FR_TYPE_VOID, 0, proto_dhcpv4_t, priorities[FR_DHCP_RELEASE]),
+	{ FR_CONF_OFFSET("Release", proto_dhcpv4_t, priorities[FR_DHCP_RELEASE]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET_FLAGS("Inform", FR_TYPE_VOID, 0, proto_dhcpv4_t, priorities[FR_DHCP_INFORM]),
+	{ FR_CONF_OFFSET("Inform", proto_dhcpv4_t, priorities[FR_DHCP_INFORM]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET_FLAGS("Lease-Query", FR_TYPE_VOID, 0, proto_dhcpv4_t, priorities[FR_DHCP_LEASE_QUERY]),
+	{ FR_CONF_OFFSET("Lease-Query", proto_dhcpv4_t, priorities[FR_DHCP_LEASE_QUERY]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
-	{ FR_CONF_OFFSET_FLAGS("Bulk-Lease-Query", FR_TYPE_VOID, 0, proto_dhcpv4_t, priorities[FR_DHCP_BULK_LEASE_QUERY]),
+	{ FR_CONF_OFFSET("Bulk-Lease-Query", proto_dhcpv4_t, priorities[FR_DHCP_BULK_LEASE_QUERY]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
 	CONF_PARSER_TERMINATOR
 };
@@ -74,10 +74,8 @@ static conf_parser_t const limit_config[] = {
  *
  */
 static conf_parser_t const proto_dhcpv4_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, proto_dhcpv4_t,
-			  allowed_types), .func = type_parse },
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_dhcpv4_t, io.submodule),
-	  .func = transport_parse },
+	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_dhcpv4_t, allowed_types), .func = type_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_dhcpv4_t, io.submodule), .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 

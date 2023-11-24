@@ -45,13 +45,13 @@ static conf_parser_t const limit_config[] = {
  *
  */
 static conf_parser_t const proto_cron_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t,
+	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t,
 			  type), .func = type_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("when", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t, spec),
+	{ FR_CONF_OFFSET_FLAGS("when", CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t, spec),
 	  		.func = time_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_t, filename ) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, proto_cron_t, filename ) },
 
 	{ FR_CONF_OFFSET("priority", proto_cron_t, priority) },
 

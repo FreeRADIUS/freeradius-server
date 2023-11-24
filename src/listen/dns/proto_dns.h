@@ -32,7 +32,7 @@
 typedef struct {
 	fr_io_instance_t		io;				//!< wrapper for IO abstraction
 
-	char				**allowed_types;		//!< names for for 'type = ...'
+	char const			**allowed_types;		//!< names for for 'type = ...'
 	bool				allowed[FR_DNS_CODE_MAX];	//!< indexed by value
 
 	uint32_t			max_packet_size;		//!< for message ring buffer.

@@ -48,7 +48,7 @@ static conf_parser_t const ldap_sync_search_config[] = {
 };
 
 static conf_parser_t const proto_ldap_sync_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_ldap_sync_t, io_submodule),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_ldap_sync_t, io_submodule),
 	  .func = transport_parse },
 
 	{ FR_CONF_OFFSET("max_packet_size", proto_ldap_sync_t, max_packet_size) },

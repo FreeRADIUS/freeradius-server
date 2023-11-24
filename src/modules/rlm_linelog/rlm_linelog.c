@@ -136,7 +136,7 @@ typedef struct {
 
 
 static const conf_parser_t file_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_linelog_t, file.name) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_linelog_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", rlm_linelog_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", rlm_linelog_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_linelog_t, file.escape), .dflt = "no" },
@@ -150,26 +150,26 @@ static const conf_parser_t syslog_config[] = {
 };
 
 static const conf_parser_t unix_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_linelog_t, unix_sock.path) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_linelog_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t udp_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, linelog_net_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", linelog_net_t, port) },
 	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t tcp_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, linelog_net_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, linelog_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", linelog_net_t, port) },
 	{ FR_CONF_OFFSET("timeout", linelog_net_t, timeout), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("destination", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_linelog_t, log_dst_str) },
+	{ FR_CONF_OFFSET_FLAGS("destination", CONF_FLAG_REQUIRED, rlm_linelog_t, log_dst_str) },
 
 	{ FR_CONF_OFFSET("delimiter", rlm_linelog_t, delimiter), .dflt = "\n" },
 	{ FR_CONF_OFFSET("format", rlm_linelog_t, log_src) },

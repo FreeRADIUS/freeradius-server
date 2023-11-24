@@ -58,8 +58,8 @@ typedef struct {
 } rlm_radutmp_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_OUTPUT, rlm_radutmp_t, filename), .dflt = RADUTMP },
-	{ FR_CONF_OFFSET_FLAGS("username", FR_TYPE_STRING, CONF_FLAG_SECRET, rlm_radutmp_t, username), .dflt = "%{User-Name}" },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_OUTPUT, rlm_radutmp_t, filename), .dflt = RADUTMP },
+	{ FR_CONF_OFFSET_FLAGS("username", CONF_FLAG_SECRET, rlm_radutmp_t, username), .dflt = "%{User-Name}" },
 	{ FR_CONF_OFFSET("check_with_nas", rlm_radutmp_t, check_nas), .dflt = "yes" },
 	{ FR_CONF_OFFSET("permissions", rlm_radutmp_t, permission), .dflt = "0644" },
 	{ FR_CONF_OFFSET("caller_id", rlm_radutmp_t, caller_id_ok), .dflt = "no" },

@@ -82,7 +82,7 @@ static conf_parser_t limit_config[] = {
 
 
 static const conf_parser_t file_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_detail_work_t, filename_work ) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, proto_detail_work_t, filename_work ) },
 
 	{ FR_CONF_OFFSET("track", proto_detail_work_t, track_progress ) },
 

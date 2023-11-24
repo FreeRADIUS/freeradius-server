@@ -46,7 +46,7 @@ typedef struct {
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("with_ntdomain_hack", rlm_eap_mschapv2_t, with_ntdomain_hack), .dflt = "no" },
 
-	{ FR_CONF_OFFSET_FLAGS("auth_type", FR_TYPE_VOID, 0, rlm_eap_mschapv2_t, auth_type), .func = auth_type_parse, .dflt = "mschap" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("auth_type", FR_TYPE_VOID, 0, rlm_eap_mschapv2_t, auth_type), .func = auth_type_parse, .dflt = "mschap" },
 	{ FR_CONF_OFFSET("send_error", rlm_eap_mschapv2_t, send_error), .dflt = "no" },
 	{ FR_CONF_OFFSET("identity", rlm_eap_mschapv2_t, identity) },
 	CONF_PARSER_TERMINATOR

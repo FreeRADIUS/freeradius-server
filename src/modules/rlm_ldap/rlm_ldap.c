@@ -143,7 +143,7 @@ static conf_parser_t group_config[] = {
 
 	{ FR_CONF_OFFSET("name_attribute", rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
 	{ FR_CONF_OFFSET("membership_attribute", rlm_ldap_t, userobj_membership_attr) },
-	{ FR_CONF_OFFSET_FLAGS("membership_filter", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_ldap_t, groupobj_membership_filter) },
+	{ FR_CONF_OFFSET_FLAGS("membership_filter", CONF_FLAG_XLAT, rlm_ldap_t, groupobj_membership_filter) },
 	{ FR_CONF_OFFSET("cacheable_name", rlm_ldap_t, cacheable_group_name), .dflt = "no" },
 	{ FR_CONF_OFFSET("cacheable_dn", rlm_ldap_t, cacheable_group_dn), .dflt = "no" },
 	{ FR_CONF_OFFSET("cache_attribute", rlm_ldap_t, cache_attribute) },
@@ -168,7 +168,7 @@ static const call_env_parser_t memberof_group_call_env[] = {
  *	Reference for accounting updates
  */
 static const conf_parser_t acct_section_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("reference", FR_TYPE_STRING, CONF_FLAG_XLAT, ldap_acct_section_t, reference), .dflt = "." },
+	{ FR_CONF_OFFSET_FLAGS("reference", CONF_FLAG_XLAT, ldap_acct_section_t, reference), .dflt = "." },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -176,7 +176,7 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	Pool config items
 	 */
-	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_ldap_t, handle_config.server_str) },	/* Do not set to required */
+	{ FR_CONF_OFFSET_FLAGS("server", CONF_FLAG_MULTI, rlm_ldap_t, handle_config.server_str) },	/* Do not set to required */
 
 	/*
 	 *	Common LDAP conf parsers

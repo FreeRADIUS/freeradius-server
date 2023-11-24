@@ -79,17 +79,17 @@ typedef struct {
 
 
 static const conf_parser_t networks_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("allow", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_radius_udp_t, allow) },
-	{ FR_CONF_OFFSET_FLAGS("deny", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_radius_udp_t, deny) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("allow", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_radius_udp_t, allow) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("deny", FR_TYPE_COMBO_IP_PREFIX , CONF_FLAG_MULTI, proto_radius_udp_t, deny) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 
 static const conf_parser_t udp_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, proto_radius_udp_t, ipaddr) },
-	{ FR_CONF_OFFSET_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, proto_radius_udp_t, ipaddr) },
-	{ FR_CONF_OFFSET_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, proto_radius_udp_t, ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, proto_radius_udp_t, ipaddr) },
 
 	{ FR_CONF_OFFSET_IS_SET("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, proto_radius_udp_t, src_ipaddr) },
 

@@ -82,10 +82,10 @@ unlang_action_t od_mschap_auth(rlm_rcode_t *p_result, request_t *request, fr_pai
 #define ACB_FR_EXPIRED	0x00020000	//!< Password Expired.
 
 static const conf_parser_t passchange_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ntlm_auth", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw) },
-	{ FR_CONF_OFFSET_FLAGS("ntlm_auth_username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_username) },
-	{ FR_CONF_OFFSET_FLAGS("ntlm_auth_domain", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
-	{ FR_CONF_OFFSET_FLAGS("local_cpw", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, local_cpw) },
+	{ FR_CONF_OFFSET_FLAGS("ntlm_auth", CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw) },
+	{ FR_CONF_OFFSET_FLAGS("ntlm_auth_username", CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_username) },
+	{ FR_CONF_OFFSET_FLAGS("ntlm_auth_domain", CONF_FLAG_XLAT, rlm_mschap_t, ntlm_cpw_domain) },
+	{ FR_CONF_OFFSET_FLAGS("local_cpw", CONF_FLAG_XLAT, rlm_mschap_t, local_cpw) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -108,7 +108,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("require_encryption", rlm_mschap_t, require_encryption), .dflt = "no" },
 	{ FR_CONF_OFFSET("require_strong", rlm_mschap_t, require_strong), .dflt = "no" },
 	{ FR_CONF_OFFSET("with_ntdomain_hack", rlm_mschap_t, with_ntdomain_hack), .dflt = "yes" },
-	{ FR_CONF_OFFSET_FLAGS("ntlm_auth", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_mschap_t, ntlm_auth) },
+	{ FR_CONF_OFFSET_FLAGS("ntlm_auth", CONF_FLAG_XLAT, rlm_mschap_t, ntlm_auth) },
 	{ FR_CONF_OFFSET("ntlm_auth_timeout", rlm_mschap_t, ntlm_auth_timeout) },
 
 	{ FR_CONF_POINTER("passchange", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) passchange_config },

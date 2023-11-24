@@ -37,9 +37,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
  *
  */
 static conf_parser_t const proto_cron_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t,
+	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t,
 			  type), .func = type_parse },
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_cron_t, io.submodule),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_cron_t, io.submodule),
 	  .func = transport_parse, .dflt = "crontab" },
 
 	/*

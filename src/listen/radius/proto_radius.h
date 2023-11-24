@@ -39,7 +39,6 @@ typedef struct {
 
 	uint32_t			priorities[FR_RADIUS_CODE_MAX];	//!< priorities for individual packets
 
-	char				**allowed_types;		//!< names for for 'type = ...'
+	char const			**allowed_types;		//!< names for for 'type = ...'
 	bool				allowed[FR_RADIUS_CODE_MAX];
 } proto_radius_t;
-

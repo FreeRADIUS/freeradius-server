@@ -230,18 +230,6 @@ _Generic(&(_ct), \
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
  *
- * @param[in] _name		of the CONF_PAIR to search for.
- * @param[in] _struct		contaning the field to write the result to.
- * @param[in] _field		to write the result to.
- */
-#  define FR_CONF_OFFSET(_name, _struct, _field)  \
-	FR_CONF_OFFSET_FLAGS(_name, \
-			     FR_CTYPE_TO_TYPE((((_struct *)NULL)->_field)), \
-			     CONF_CTYPE_TO_FLAGS((((_struct *)NULL)->_field)),\
-			     _struct, _field)
-
-/** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
- *
  * This variant takes output type and flags manually, instead of determining them automatically.
  *
  * @param[in] _name		of the CONF_PAIR to search for.
@@ -250,11 +238,38 @@ _Generic(&(_ct), \
  * @param[in] _struct		contaning the field to write the result to.
  * @param[in] _field		to write the result to.
  */
-#  define FR_CONF_OFFSET_FLAGS(_name, _type, _flags, _struct, _field) \
+#  define FR_CONF_OFFSET_TYPE_FLAGS(_name, _type, _flags, _struct, _field) \
 	.name1 = _name, \
 	.type = (_type), \
 	.flags = (_flags), \
 	.offset = FR_CONF_FLAG_CHECK((_type), (_flags), &(((_struct *)NULL)->_field), offsetof(_struct, _field))
+
+/** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
+ *
+ * This variant takes additional flags, and will add CONF_FLAG_MULTI automatically if the field is an array.
+ *
+ * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _flags		controlling parsing behaviour.
+ * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _field		to write the result to.
+ */
+#  define FR_CONF_OFFSET_FLAGS(_name, _flags, _struct, _field)  \
+	FR_CONF_OFFSET_TYPE_FLAGS(_name, \
+				  FR_CTYPE_TO_TYPE((((_struct *)NULL)->_field)), \
+				  (_flags) | CONF_CTYPE_TO_FLAGS((((_struct *)NULL)->_field)),\
+				  _struct, _field)
+
+/** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
+ *
+ * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _field		to write the result to.
+ */
+#  define FR_CONF_OFFSET(_name, _struct, _field)  \
+	FR_CONF_OFFSET_TYPE_FLAGS(_name, \
+				  FR_CTYPE_TO_TYPE((((_struct *)NULL)->_field)), \
+				  CONF_CTYPE_TO_FLAGS((((_struct *)NULL)->_field)),\
+				  _struct, _field)
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct, recording if a default was used in `<_field>`_is_set
  *
@@ -373,11 +388,6 @@ _Generic(&(_ct), \
 	.name1 = _name, \
 	.flags = CONF_FLAG_DEPRECATED
 
-/*
- *	It's a developer option and should be used carefully.
- */
-#define FR_TYPE_HIDDEN     	0
-
 /** @name #conf_parser_t type flags
  *
  * These flags should be or'd with another FR_TYPE_* value to create validation
@@ -387,7 +397,9 @@ _Generic(&(_ct), \
  */
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
-	CONF_FLAG_SUBSECTION		= (1 << 9),			//!< Instead of putting the information into a
+	CONF_FLAG_HIDDEN		= 0,				//!< Used by scripts to ommit items from the
+									///< generated documentation.
+	CONF_FLAG_SUBSECTION		= (1 << 1),			//!< Instead of putting the information into a
 									///< configuration structure, the configuration
 									///< file routines MAY just parse it directly into
 									///< user-supplied variables.
@@ -532,7 +544,7 @@ typedef int (*cf_dflt_t)(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_tok
  * Example with #FR_CONF_OFFSET :
  @code{.c}
    static conf_parser_t module_config[] = {
-   	{ FR_CONF_OFFSET_FLAGS("example", FR_TYPE_STRING | CONF_FLAG_NOT_EMPTY, 0, 0, example_instance_t, example), .dflt = "default_value" },
+   	{ FR_CONF_OFFSET_TYPE_FLAGS("example", FR_TYPE_STRING | CONF_FLAG_NOT_EMPTY, 0, 0, example_instance_t, example), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
  @endcode

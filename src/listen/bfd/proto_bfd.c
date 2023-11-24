@@ -38,7 +38,7 @@ static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
  *
  */
 static conf_parser_t const proto_bfd_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_bfd_t, io.submodule),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_bfd_t, io.submodule),
 	  .func = transport_parse },
 
 	CONF_PARSER_TERMINATOR
@@ -50,7 +50,7 @@ static const conf_parser_t peer_config[] = {
 	{ FR_CONF_OFFSET("max_timeouts", bfd_session_t, detect_multi ) },
 	{ FR_CONF_OFFSET("demand", bfd_session_t, demand_mode ) },
 
-	{ FR_CONF_OFFSET_FLAGS("auth_type", FR_TYPE_VOID, 0, bfd_session_t, auth_type ),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("auth_type", FR_TYPE_VOID, 0, bfd_session_t, auth_type ),
 	.func = auth_type_parse },
 
 	{ FR_CONF_OFFSET("port", bfd_session_t, port ) },

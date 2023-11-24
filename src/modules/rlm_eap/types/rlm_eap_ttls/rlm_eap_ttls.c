@@ -67,7 +67,7 @@ static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("tls", rlm_eap_ttls_t, tls_conf_name) },
 	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", rlm_eap_ttls_t, NULL), .dflt = "no" },
 	{ FR_CONF_DEPRECATED("use_tunneled_reply", rlm_eap_ttls_t, NULL), .dflt = "no" },
-	{ FR_CONF_OFFSET_FLAGS("virtual_server", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_ttls_t, virtual_server) },
+	{ FR_CONF_OFFSET_FLAGS("virtual_server", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_ttls_t, virtual_server) },
 	{ FR_CONF_OFFSET("include_length", rlm_eap_ttls_t, include_length), .dflt = "yes" },
 	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_ttls_t, req_client_cert), .dflt = "no" },
 	CONF_PARSER_TERMINATOR

@@ -54,7 +54,7 @@ typedef struct {
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("group", rlm_eap_pwd_t, group), .dflt = "19" },
 	{ FR_CONF_OFFSET("fragment_size", rlm_eap_pwd_t, fragment_size), .dflt = "1020" },
-	{ FR_CONF_OFFSET_FLAGS("server_id", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_eap_pwd_t, server_id) },
+	{ FR_CONF_OFFSET_FLAGS("server_id", CONF_FLAG_REQUIRED, rlm_eap_pwd_t, server_id) },
 	CONF_PARSER_TERMINATOR
 };
 

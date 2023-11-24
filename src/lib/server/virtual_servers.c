@@ -117,7 +117,7 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 static const conf_parser_t server_on_read_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, fr_virtual_server_t, process_mi),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, fr_virtual_server_t, process_mi),
 			.on_read = namespace_on_read },
 
 	CONF_PARSER_TERMINATOR
@@ -137,10 +137,10 @@ const conf_parser_t virtual_servers_on_read_config[] = {
 };
 
 static const conf_parser_t server_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, fr_virtual_server_t, process_mi),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, fr_virtual_server_t, process_mi),
 			 .func = namespace_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("listen", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI,
+	{ FR_CONF_OFFSET_TYPE_FLAGS("listen", FR_TYPE_VOID, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI,
 			 fr_virtual_server_t, listeners),
 			 .name2 = CF_IDENT_ANY,
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",

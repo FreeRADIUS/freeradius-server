@@ -104,7 +104,7 @@ static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, c
  */
 static const conf_parser_t initial_log_config[] = {
 	{ FR_CONF_OFFSET("destination", main_config_t, log_dest), .dflt = "files" },
-	{ FR_CONF_OFFSET_FLAGS("syslog_facility", FR_TYPE_VOID, 0, main_config_t, syslog_facility), .dflt = "daemon",
+	{ FR_CONF_OFFSET("syslog_facility", main_config_t, syslog_facility), .dflt = "daemon",
 		.func = cf_table_parse_int,
 			.uctx = &(cf_table_parse_ctx_t){
 				.table = syslog_facility_table,
@@ -163,8 +163,8 @@ static const conf_parser_t resources[] = {
 	 *	the config item will *not* get printed out in debug mode, so that no one knows
 	 *	it exists.
 	 */
-	{ FR_CONF_OFFSET_FLAGS("talloc_pool_size", FR_TYPE_SIZE | FR_TYPE_HIDDEN, 0, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
-	{ FR_CONF_OFFSET_FLAGS("talloc_memory_report", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_TYPE_FLAGS("talloc_pool_size", FR_TYPE_SIZE, CONF_FLAG_HIDDEN, main_config_t, talloc_pool_size), .func = talloc_pool_size_parse },			/* DO NOT SET DEFAULT */
+	{ FR_CONF_OFFSET_FLAGS("talloc_memory_report", CONF_FLAG_HIDDEN, main_config_t, talloc_memory_report) },						/* DO NOT SET DEFAULT */
 	CONF_PARSER_TERMINATOR
 };
 
@@ -174,11 +174,11 @@ static const conf_parser_t thread_config[] = {
 	{ FR_CONF_OFFSET("num_workers", main_config_t, max_workers), .dflt = STRINGIFY(0),
 	  .func = num_workers_parse, .dflt_func = num_workers_dflt },
 
-	{ FR_CONF_OFFSET_FLAGS("stats_interval", FR_TYPE_TIME_DELTA | FR_TYPE_HIDDEN, 0, main_config_t, stats_interval), },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("stats_interval", FR_TYPE_TIME_DELTA | CONF_FLAG_HIDDEN, 0, main_config_t, stats_interval), },
 
 #ifdef WITH_TLS
-	{ FR_CONF_OFFSET_FLAGS("openssl_async_pool_init", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_init), .dflt = "64" },
-	{ FR_CONF_OFFSET_FLAGS("openssl_async_pool_max", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_max), .dflt = "1024" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("openssl_async_pool_init", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_init), .dflt = "64" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("openssl_async_pool_max", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_max), .dflt = "1024" },
 #endif
 
 	CONF_PARSER_TERMINATOR
@@ -188,8 +188,8 @@ static const conf_parser_t thread_config[] = {
  *	Migration configuration.
  */
 static const conf_parser_t migrate_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("rewrite_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, rewrite_update) },
-	{ FR_CONF_OFFSET_FLAGS("forbid_update", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, forbid_update) },
+	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
+	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -199,8 +199,8 @@ static const conf_parser_t migrate_config[] = {
  *	Migration configuration.
  */
 static const conf_parser_t interpret_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("countup_instructions", FR_TYPE_BOOL | FR_TYPE_HIDDEN, 0, main_config_t, ins_countup) },
-	{ FR_CONF_OFFSET_FLAGS("max_instructions", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, 0, main_config_t, ins_max) },
+	{ FR_CONF_OFFSET_FLAGS("countup_instructions", CONF_FLAG_HIDDEN, main_config_t, ins_countup) },
+	{ FR_CONF_OFFSET_FLAGS("max_instructions", CONF_FLAG_HIDDEN, main_config_t, ins_max) },
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -225,7 +225,7 @@ static const conf_parser_t server_config[] = {
 	{ FR_CONF_OFFSET("max_request_time", main_config_t, max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME), .func = max_request_time_parse },
 	{ FR_CONF_OFFSET("pidfile", main_config_t, pid_file), .dflt = "${run_dir}/radiusd.pid"},
 
-	{ FR_CONF_OFFSET_FLAGS("debug_level", FR_TYPE_UINT32 | FR_TYPE_HIDDEN, 0, main_config_t, debug_level), .dflt = "0" },
+	{ FR_CONF_OFFSET_FLAGS("debug_level", CONF_FLAG_HIDDEN, main_config_t, debug_level), .dflt = "0" },
 	{ FR_CONF_OFFSET("max_requests", main_config_t, max_requests), .dflt = "0" },
 
 	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },

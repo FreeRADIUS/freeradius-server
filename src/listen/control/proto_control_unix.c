@@ -82,7 +82,7 @@ typedef struct {
 } proto_control_unix_t;
 
 static const conf_parser_t unix_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_control_unix_t, filename),
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, proto_control_unix_t, filename),
 	.dflt = "${run_dir}/radiusd.sock}" },
 	{ FR_CONF_OFFSET("uid", proto_control_unix_t, uid_name) },
 	{ FR_CONF_OFFSET("gid", proto_control_unix_t, gid_name) },

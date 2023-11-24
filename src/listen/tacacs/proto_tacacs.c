@@ -51,23 +51,21 @@ static conf_parser_t const limit_config[] = {
 };
 
 static const conf_parser_t priority_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("Authentication-Start", FR_TYPE_VOID, 0, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
+	{ FR_CONF_OFFSET("Authentication-Start", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET_FLAGS("Authentication-Continue", FR_TYPE_VOID, 0, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
+	{ FR_CONF_OFFSET("Authentication-Continue", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHEN]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET_FLAGS("Authorization-Request", FR_TYPE_VOID, 0, proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHOR]),
+	{ FR_CONF_OFFSET("Authorization-Request", proto_tacacs_t, priorities[FR_TAC_PLUS_AUTHOR]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET_FLAGS("Accounting-Request", FR_TYPE_VOID, 0, proto_tacacs_t, priorities[FR_TAC_PLUS_ACCT]),
+	{ FR_CONF_OFFSET("Accounting-Request", proto_tacacs_t, priorities[FR_TAC_PLUS_ACCT]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t proto_tacacs_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, proto_tacacs_t, allowed_types),
-	  .func = type_parse },
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_tacacs_t, io.submodule),
-	  .func = transport_parse },
+	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_tacacs_t, allowed_types), .func = type_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_tacacs_t, io.submodule), .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	{ FR_CONF_POINTER("priority", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) priority_config },

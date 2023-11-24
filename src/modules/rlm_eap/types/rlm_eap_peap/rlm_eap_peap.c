@@ -58,7 +58,7 @@ static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("proxy_tunneled_request_as_eap", rlm_eap_peap_t, proxy_tunneled_request_as_eap), .dflt = "yes" },
 #endif
 
-	{ FR_CONF_OFFSET_FLAGS("virtual_server", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_peap_t, virtual_server) },
+	{ FR_CONF_OFFSET_FLAGS("virtual_server", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_peap_t, virtual_server) },
 
 	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_peap_t, req_client_cert), .dflt = "no" },
 

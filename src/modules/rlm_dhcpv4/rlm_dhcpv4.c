@@ -83,8 +83,8 @@ typedef struct {
 } rlm_dhcpv4_thread_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ipaddr", FR_TYPE_IPV4_ADDR, 0, rlm_dhcpv4_t, config.ipaddr), },
-	{ FR_CONF_OFFSET_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_dhcpv4_t, config.ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_IPV4_ADDR, 0, rlm_dhcpv4_t, config.ipaddr), },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_dhcpv4_t, config.ipaddr) },
 
 	{ FR_CONF_OFFSET("port", rlm_dhcpv4_t, config.port), .dflt = "68" },
 

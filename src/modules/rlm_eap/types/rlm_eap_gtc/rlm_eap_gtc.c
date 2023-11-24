@@ -45,7 +45,7 @@ typedef struct {
 
 static conf_parser_t submodule_config[] = {
 	{ FR_CONF_OFFSET("challenge", rlm_eap_gtc_t, challenge), .dflt = "Password: " },
-	{ FR_CONF_OFFSET_FLAGS("auth_type", FR_TYPE_VOID, 0, rlm_eap_gtc_t, auth_type), .func = auth_type_parse,  .dflt = "pap" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("auth_type", FR_TYPE_VOID, 0, rlm_eap_gtc_t, auth_type), .func = auth_type_parse,  .dflt = "pap" },
 	CONF_PARSER_TERMINATOR
 };
 

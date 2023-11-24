@@ -131,22 +131,22 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("boolean_m", rlm_test_t, boolean_m), .dflt = "no" },
 
 	{ FR_CONF_OFFSET("integer", rlm_test_t, integer), .dflt = "1" },
-	{ FR_CONF_OFFSET_FLAGS("integer_m", FR_TYPE_UINT32 , CONF_FLAG_MULTI, rlm_test_t, integer_m), .dflt = "2" },
+	{ FR_CONF_OFFSET_FLAGS("integer_m" , CONF_FLAG_MULTI, rlm_test_t, integer_m), .dflt = "2" },
 
-	{ FR_CONF_OFFSET_FLAGS("ipv4_addr", FR_TYPE_IPV4_ADDR, 0, rlm_test_t, ipv4_addr), .dflt = "*" },
-	{ FR_CONF_OFFSET_FLAGS("ipv4_addr_m", FR_TYPE_IPV4_ADDR, CONF_FLAG_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "*" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_addr", FR_TYPE_IPV4_ADDR, 0, rlm_test_t, ipv4_addr), .dflt = "*" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_addr_m", FR_TYPE_IPV4_ADDR, CONF_FLAG_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "*" },
 
-	{ FR_CONF_OFFSET_FLAGS("ipv4_prefix", FR_TYPE_IPV4_PREFIX, 0, rlm_test_t, ipv4_addr), .dflt = "192.168.0.1/24" },
-	{ FR_CONF_OFFSET_FLAGS("ipv4_prefix_m", FR_TYPE_IPV4_PREFIX, CONF_FLAG_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "192.168.0.1/24" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix", FR_TYPE_IPV4_PREFIX, 0, rlm_test_t, ipv4_addr), .dflt = "192.168.0.1/24" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4_prefix_m", FR_TYPE_IPV4_PREFIX, CONF_FLAG_MULTI, rlm_test_t, ipv4_addr_m), .dflt = "192.168.0.1/24" },
 
-	{ FR_CONF_OFFSET_FLAGS("ipv6_addr", FR_TYPE_IPV6_ADDR, 0, rlm_test_t, ipv6_addr), .dflt = "*" },
-	{ FR_CONF_OFFSET_FLAGS("ipv6_addr_m", FR_TYPE_IPV6_ADDR, CONF_FLAG_MULTI, rlm_test_t, ipv6_addr_m), .dflt = "*" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6_addr", FR_TYPE_IPV6_ADDR, 0, rlm_test_t, ipv6_addr), .dflt = "*" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6_addr_m", FR_TYPE_IPV6_ADDR, CONF_FLAG_MULTI, rlm_test_t, ipv6_addr_m), .dflt = "*" },
 
-	{ FR_CONF_OFFSET_FLAGS("ipv6_prefix", FR_TYPE_IPV6_PREFIX, 0, rlm_test_t, ipv6_prefix), .dflt = "::1/128" },
-	{ FR_CONF_OFFSET_FLAGS("ipv6_prefix_m", FR_TYPE_IPV6_PREFIX, CONF_FLAG_MULTI, rlm_test_t, ipv6_prefix_m), .dflt = "::1/128" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6_prefix", FR_TYPE_IPV6_PREFIX, 0, rlm_test_t, ipv6_prefix), .dflt = "::1/128" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6_prefix_m", FR_TYPE_IPV6_PREFIX, CONF_FLAG_MULTI, rlm_test_t, ipv6_prefix_m), .dflt = "::1/128" },
 
-	{ FR_CONF_OFFSET_FLAGS("combo", FR_TYPE_COMBO_IP_ADDR, 0, rlm_test_t, combo_ipaddr), .dflt = "::1/128" },
-	{ FR_CONF_OFFSET_FLAGS("combo_m", FR_TYPE_COMBO_IP_ADDR, CONF_FLAG_MULTI, rlm_test_t, combo_ipaddr_m), .dflt = "::1/128" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("combo", FR_TYPE_COMBO_IP_ADDR, 0, rlm_test_t, combo_ipaddr), .dflt = "::1/128" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("combo_m", FR_TYPE_COMBO_IP_ADDR, CONF_FLAG_MULTI, rlm_test_t, combo_ipaddr_m), .dflt = "::1/128" },
 
 	{ FR_CONF_OFFSET("date", rlm_test_t, date) },
 	{ FR_CONF_OFFSET("date_m", rlm_test_t, date_m) },

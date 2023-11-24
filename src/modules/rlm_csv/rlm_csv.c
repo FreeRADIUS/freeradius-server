@@ -79,12 +79,12 @@ struct rlm_csv_entry_s {
  *	A mapping of configuration file names to internal variables.
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, filename) },
-	{ FR_CONF_OFFSET_FLAGS("delimiter", FR_TYPE_STRING, CONF_FLAG_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, filename) },
+	{ FR_CONF_OFFSET_FLAGS("delimiter", CONF_FLAG_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
 	{ FR_CONF_OFFSET("fields", rlm_csv_t, fields) },
 	{ FR_CONF_OFFSET("header", rlm_csv_t, header) },
 	{ FR_CONF_OFFSET("allow_multiple_keys", rlm_csv_t, allow_multiple_keys) },
-	{ FR_CONF_OFFSET_FLAGS("index_field", FR_TYPE_STRING, CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, index_field_name) },
+	{ FR_CONF_OFFSET_FLAGS("index_field", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_csv_t, index_field_name) },
 	{ FR_CONF_OFFSET("key", rlm_csv_t, key) },
 	CONF_PARSER_TERMINATOR
 };

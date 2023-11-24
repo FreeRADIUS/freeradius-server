@@ -50,7 +50,7 @@ static conf_parser_t const limit_config[] = {
  *
  */
 static conf_parser_t const proto_control_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_control_t, io.submodule),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_control_t, io.submodule),
 	  .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },

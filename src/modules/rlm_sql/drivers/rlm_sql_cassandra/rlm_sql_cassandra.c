@@ -210,10 +210,10 @@ static conf_parser_t latency_aware_routing_config[] = {
 };
 
 static conf_parser_t tls_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_ca_file) },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_certificate_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_private_key_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_password", FR_TYPE_STRING, CONF_FLAG_SECRET, rlm_sql_cassandra_t, tls_private_key_password) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, rlm_sql_cassandra_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, rlm_sql_cassandra_t, tls_private_key_password) },
 
 	{ FR_CONF_OFFSET("verify_cert", rlm_sql_cassandra_t, tls_verify_cert_str) },
 	CONF_PARSER_TERMINATOR

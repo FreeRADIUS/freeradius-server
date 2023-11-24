@@ -50,8 +50,8 @@ static const conf_parser_t client_config[] = {
  * Module Configuration
  */
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_couchbase_t, server_raw) },
-	{ FR_CONF_OFFSET_FLAGS("bucket", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_couchbase_t, bucket) },
+	{ FR_CONF_OFFSET_FLAGS("server", CONF_FLAG_REQUIRED, rlm_couchbase_t, server_raw) },
+	{ FR_CONF_OFFSET_FLAGS("bucket", CONF_FLAG_REQUIRED, rlm_couchbase_t, bucket) },
 	{ FR_CONF_OFFSET("username", rlm_couchbase_t, username) },
 	{ FR_CONF_OFFSET("password", rlm_couchbase_t, password) },
 

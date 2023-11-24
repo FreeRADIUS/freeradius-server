@@ -33,7 +33,7 @@ static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, c
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t priority_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("query", FR_TYPE_VOID, 0, proto_dns_t, priorities[FR_DNS_QUERY]),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("query", FR_TYPE_VOID, 0, proto_dns_t, priorities[FR_DNS_QUERY]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
 	CONF_PARSER_TERMINATOR
 };
@@ -58,9 +58,8 @@ static conf_parser_t const limit_config[] = {
  *
  */
 static conf_parser_t const proto_dns_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, proto_dns_t,
-			  allowed_types), .func = type_parse },
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_dns_t, io.submodule),
+	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_dns_t, allowed_types), .func = type_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_dns_t, io.submodule),
 	  .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },

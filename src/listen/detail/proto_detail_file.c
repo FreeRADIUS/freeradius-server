@@ -72,7 +72,7 @@ static void work_init(proto_detail_file_thread_t *thread, bool triggered_by_dele
 static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, void *ctx);
 
 static const conf_parser_t file_listen_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_detail_file_t, filename ) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, proto_detail_file_t, filename ) },
 
 	{ FR_CONF_OFFSET("filename_work", proto_detail_file_t, filename_work ) },
 

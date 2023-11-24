@@ -36,14 +36,14 @@ static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pare
 static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static conf_parser_t const status_check_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, 0, rlm_radius_t, status_check),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, 0, rlm_radius_t, status_check),
 	  .func = status_check_type_parse },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static conf_parser_t const status_check_update_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("update", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_REQUIRED, rlm_radius_t, status_check_map),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("update", FR_TYPE_VOID, CONF_FLAG_SUBSECTION | CONF_FLAG_REQUIRED, rlm_radius_t, status_check_map),
 	  .name2 = CF_IDENT_ANY,
 	  .func = status_check_update_parse },
 	{ FR_CONF_OFFSET("num_answers_to_alive", rlm_radius_t, num_answers_to_alive), .dflt = STRINGIFY(3) },
@@ -99,10 +99,10 @@ static conf_parser_t disconnect_config[] = {
  *	A mapping of configuration file names to internal variables.
  */
 static conf_parser_t const module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, rlm_radius_t, io_submodule),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, rlm_radius_t, io_submodule),
 	  .func = module_rlm_submodule_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_UINT32, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
+	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
 	{ FR_CONF_OFFSET("replicate", rlm_radius_t, replicate) },

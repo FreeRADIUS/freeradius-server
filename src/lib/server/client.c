@@ -440,7 +440,7 @@ static const conf_parser_t client_config[] = {
 
 	{ FR_CONF_POINTER("src_ipaddr", FR_TYPE_STRING, 0, &cl_srcipaddr) },
 
-	{ FR_CONF_OFFSET_FLAGS("secret", FR_TYPE_STRING, CONF_FLAG_SECRET, fr_client_t, secret) },
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_SECRET, fr_client_t, secret) },
 	{ FR_CONF_OFFSET("shortname", fr_client_t, shortname) },
 
 	{ FR_CONF_OFFSET("nas_type", fr_client_t, nas_type) },

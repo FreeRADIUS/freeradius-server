@@ -92,7 +92,7 @@ static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the gl
 			   .data = NULL, .dflt = STRINGIFY(_x), .quote = T_INVALID }
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT | CONF_FLAG_REQUIRED, rlm_perl_t, module) },
 
 	RLM_PERL_CONF(authorize),
 	RLM_PERL_CONF(authenticate),

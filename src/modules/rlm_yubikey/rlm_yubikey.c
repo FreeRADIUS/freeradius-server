@@ -32,7 +32,7 @@ RCSID("$Id$")
 #ifdef HAVE_YKCLIENT
 static const conf_parser_t validation_config[] = {
 	{ FR_CONF_OFFSET("client_id", rlm_yubikey_t, client_id), .dflt = 0 },
-	{ FR_CONF_OFFSET_FLAGS("api_key", FR_TYPE_STRING, CONF_FLAG_SECRET, rlm_yubikey_t, api_key) },
+	{ FR_CONF_OFFSET_FLAGS("api_key", CONF_FLAG_SECRET, rlm_yubikey_t, api_key) },
 	CONF_PARSER_TERMINATOR
 };
 #endif

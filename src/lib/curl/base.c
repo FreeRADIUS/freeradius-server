@@ -52,14 +52,14 @@ static fr_table_num_sorted_t const fr_curl_sslcode_table[] = {
 static size_t fr_curl_sslcode_table_len = NUM_ELEMENTS(fr_curl_sslcode_table);
 
 conf_parser_t fr_curl_tls_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ca_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_file) },
-	{ FR_CONF_OFFSET_FLAGS("ca_issuer_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_issuer_file) },
-	{ FR_CONF_OFFSET_FLAGS("ca_path", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_path) },
-	{ FR_CONF_OFFSET_FLAGS("certificate_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, certificate_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_file", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, fr_curl_tls_t, private_key_file) },
-	{ FR_CONF_OFFSET_FLAGS("private_key_password", FR_TYPE_STRING, CONF_FLAG_SECRET, fr_curl_tls_t, private_key_password) },
+	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_issuer_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_issuer_file) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, certificate_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, private_key_file) },
+	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_curl_tls_t, private_key_password) },
 	{ FR_CONF_OFFSET("random_file", fr_curl_tls_t, random_file) },
-	{ FR_CONF_OFFSET_FLAGS("require_cert", FR_TYPE_VOID, 0, fr_curl_tls_t, require_cert),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("require_cert", FR_TYPE_VOID, 0, fr_curl_tls_t, require_cert),
        		.func = cf_table_parse_int,
        		.uctx = &(cf_table_parse_ctx_t){
        			.table = fr_curl_sslcode_table,

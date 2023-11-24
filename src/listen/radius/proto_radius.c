@@ -52,15 +52,15 @@ static conf_parser_t const limit_config[] = {
 };
 
 static const conf_parser_t priority_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("Access-Request", FR_TYPE_VOID, 0, proto_radius_t, priorities[FR_RADIUS_CODE_ACCESS_REQUEST]),
+	{ FR_CONF_OFFSET("Access-Request", proto_radius_t, priorities[FR_RADIUS_CODE_ACCESS_REQUEST]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "high" },
-	{ FR_CONF_OFFSET_FLAGS("Accounting-Request", FR_TYPE_VOID, 0, proto_radius_t, priorities[FR_RADIUS_CODE_ACCOUNTING_REQUEST]),
+	{ FR_CONF_OFFSET("Accounting-Request", proto_radius_t, priorities[FR_RADIUS_CODE_ACCOUNTING_REQUEST]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
-	{ FR_CONF_OFFSET_FLAGS("CoA-Request", FR_TYPE_VOID, 0, proto_radius_t, priorities[FR_RADIUS_CODE_COA_REQUEST]),
+	{ FR_CONF_OFFSET("CoA-Request", proto_radius_t, priorities[FR_RADIUS_CODE_COA_REQUEST]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "normal" },
-	{ FR_CONF_OFFSET_FLAGS("Disconnect-Request", FR_TYPE_VOID, 0, proto_radius_t, priorities[FR_RADIUS_CODE_DISCONNECT_REQUEST]),
+	{ FR_CONF_OFFSET("Disconnect-Request", proto_radius_t, priorities[FR_RADIUS_CODE_DISCONNECT_REQUEST]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "low" },
-	{ FR_CONF_OFFSET_FLAGS("Status-Server", FR_TYPE_VOID, 0, proto_radius_t, priorities[FR_RADIUS_CODE_STATUS_SERVER]),
+	{ FR_CONF_OFFSET("Status-Server", proto_radius_t, priorities[FR_RADIUS_CODE_STATUS_SERVER]),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = channel_packet_priority, .len = &channel_packet_priority_len }, .dflt = "now" },
 
 	CONF_PARSER_TERMINATOR
@@ -70,9 +70,8 @@ static const conf_parser_t priority_config[] = {
  *
  */
 static conf_parser_t const proto_radius_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI, proto_radius_t,
-			  allowed_types), .func = type_parse },
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, proto_radius_t, io.submodule),
+	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_radius_t, allowed_types), .func = type_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_radius_t, io.submodule),
 	  .func = transport_parse },
 
 	/*

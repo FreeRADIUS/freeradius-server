@@ -47,10 +47,10 @@ static conf_parser_t retry_config[] = {
  *	A mapping of configuration file names to internal variables.
  */
 static conf_parser_t const module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("transport", FR_TYPE_VOID, 0, rlm_tacacs_t, io_submodule),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, rlm_tacacs_t, io_submodule),
 	  .func = module_rlm_submodule_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("type", FR_TYPE_UINT32, CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_tacacs_t, types),
+	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_tacacs_t, types),
 	  .func = type_parse },
 
 	{ FR_CONF_OFFSET("max_attributes", rlm_tacacs_t, max_attributes), .dflt = STRINGIFY(FR_MAX_ATTRIBUTES) },

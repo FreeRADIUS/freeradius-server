@@ -162,13 +162,13 @@ struct udp_request_s {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_radius_udp_t, dst_ipaddr), },
-	{ FR_CONF_OFFSET_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_radius_udp_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_radius_udp_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_radius_udp_t, dst_ipaddr), },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_radius_udp_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_radius_udp_t, dst_ipaddr) },
 
 	{ FR_CONF_OFFSET("port", rlm_radius_udp_t, dst_port) },
 
-	{ FR_CONF_OFFSET_FLAGS("secret", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_radius_udp_t, secret) },
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED, rlm_radius_udp_t, secret) },
 
 	{ FR_CONF_OFFSET("interface", rlm_radius_udp_t, interface) },
 
@@ -178,9 +178,9 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_udp_t, max_packet_size), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_udp_t, max_send_coalesce), .dflt = "1024" },
 
-	{ FR_CONF_OFFSET_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET_FLAGS("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
 
 	CONF_PARSER_TERMINATOR
 };

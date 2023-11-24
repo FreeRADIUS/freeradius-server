@@ -89,25 +89,25 @@ static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 }
 
 static const conf_parser_t section_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("uri", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, uri), .dflt = "" },
+	{ FR_CONF_OFFSET_FLAGS("uri", CONF_FLAG_XLAT, rlm_rest_section_t, uri), .dflt = "" },
 	{ FR_CONF_OFFSET("proxy", rlm_rest_section_t, proxy), .func = rest_proxy_parse },
 	{ FR_CONF_OFFSET("method", rlm_rest_section_t, method_str), .dflt = "GET" },
-	{ FR_CONF_OFFSET_FLAGS("header", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
+	{ FR_CONF_OFFSET_FLAGS("header", CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
 	{ FR_CONF_OFFSET("body", rlm_rest_section_t, body_str), .dflt = "none" },
-	{ FR_CONF_OFFSET_FLAGS("data", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, data) },
+	{ FR_CONF_OFFSET_FLAGS("data", CONF_FLAG_XLAT, rlm_rest_section_t, data) },
 	{ FR_CONF_OFFSET("force_to", rlm_rest_section_t, force_to_str) },
 
 	/* User authentication */
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, 0, rlm_rest_section_t, auth),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
-	{ FR_CONF_OFFSET_FLAGS("username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, username) },
-	{ FR_CONF_OFFSET_FLAGS("password", FR_TYPE_STRING, CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
+	{ FR_CONF_OFFSET_FLAGS("username", CONF_FLAG_XLAT, rlm_rest_section_t, username) },
+	{ FR_CONF_OFFSET_FLAGS("password", CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", rlm_rest_section_t, timeout), .dflt = "4.0" },
 	{ FR_CONF_OFFSET("chunk", rlm_rest_section_t, chunk), .dflt = "0" },
-	{ FR_CONF_OFFSET_FLAGS("max_body_in", FR_TYPE_SIZE, 0, rlm_rest_section_t, max_body_in), .dflt = "16k" },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("max_body_in", FR_TYPE_SIZE, 0, rlm_rest_section_t, max_body_in), .dflt = "16k" },
 
 	/* TLS Parameters */
 	{ FR_CONF_OFFSET_SUBSECTION("tls", 0, rlm_rest_section_t, tls, fr_curl_tls_config) },
@@ -121,10 +121,10 @@ static const conf_parser_t xlat_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, 0, rlm_rest_section_t, auth),
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
 
-	{ FR_CONF_OFFSET_FLAGS("header", FR_TYPE_STRING, CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
+	{ FR_CONF_OFFSET_FLAGS("header", CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
 
-	{ FR_CONF_OFFSET_FLAGS("username", FR_TYPE_STRING, CONF_FLAG_XLAT, rlm_rest_section_t, username) },
-	{ FR_CONF_OFFSET_FLAGS("password", FR_TYPE_STRING, CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
+	{ FR_CONF_OFFSET_FLAGS("username", CONF_FLAG_XLAT, rlm_rest_section_t, username) },
+	{ FR_CONF_OFFSET_FLAGS("password", CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
 	{ FR_CONF_OFFSET("require_auth", rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
@@ -139,8 +139,10 @@ static const conf_parser_t xlat_config[] = {
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_DEPRECATED("connect_timeout", rlm_rest_t, connect_timeout) },
 	{ FR_CONF_OFFSET("connect_proxy", rlm_rest_t, connect_proxy), .func = rest_proxy_parse },
-	{ FR_CONF_OFFSET_FLAGS("http_negotiation", FR_TYPE_VOID, 0, rlm_rest_t, http_negotiation),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_negotiation_table, .len = &http_negotiation_table_len }, .dflt = "default" },
+	{ FR_CONF_OFFSET("http_negotiation", rlm_rest_t, http_negotiation),
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = http_negotiation_table, .len = &http_negotiation_table_len },
+	  .dflt = "default" },
 
 	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, rlm_rest_t, conn_config, fr_curl_conn_config) },
 

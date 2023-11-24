@@ -130,7 +130,7 @@ typedef struct {
 
 
 static const conf_parser_t file_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_logtee_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", rlm_logtee_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", rlm_logtee_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_logtee_t, file.escape), .dflt = "no" },
@@ -138,26 +138,26 @@ static const conf_parser_t file_config[] = {
 };
 
 static const conf_parser_t unix_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", FR_TYPE_STRING, CONF_FLAG_FILE_INPUT, rlm_logtee_t, unix_sock.path) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_logtee_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t udp_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, logtee_net_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, logtee_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", logtee_net_t, port) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t tcp_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, logtee_net_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("server", FR_TYPE_COMBO_IP_ADDR, 0, logtee_net_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET("port", logtee_net_t, port) },
 
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("destination", FR_TYPE_STRING, CONF_FLAG_REQUIRED, rlm_logtee_t, log_dst_str) },
-	{ FR_CONF_OFFSET_FLAGS("buffer_depth", FR_TYPE_SIZE, 0, rlm_logtee_t, buffer_depth), .dflt = "10000" },
+	{ FR_CONF_OFFSET_FLAGS("destination", CONF_FLAG_REQUIRED, rlm_logtee_t, log_dst_str) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("buffer_depth", FR_TYPE_SIZE, 0, rlm_logtee_t, buffer_depth), .dflt = "10000" },
 
 	{ FR_CONF_OFFSET("delimiter", rlm_logtee_t, delimiter), .dflt = "\n" },
 	{ FR_CONF_OFFSET("format", rlm_logtee_t, log_fmt), .dflt = "%n - %s", .quote = T_DOUBLE_QUOTED_STRING },

@@ -48,7 +48,7 @@ static conf_parser_t const proto_ldap_sync_ldap_config[] = {
 	/*
 	 *	LDAP server definition
 	 */
-	{ FR_CONF_OFFSET_FLAGS("server", FR_TYPE_STRING, CONF_FLAG_REQUIRED, proto_ldap_sync_ldap_t, server) },
+	{ FR_CONF_OFFSET_FLAGS("server", CONF_FLAG_REQUIRED, proto_ldap_sync_ldap_t, server) },
 
 	/*
 	 *	Common LDAP conf parsers

@@ -1109,7 +1109,7 @@ static const conf_parser_t log_config[] = {
 	 *	@todo - once we allow this, also check that there's only _one_ destination
 	 *	which uses syslog_facility.
 	 */
-	{ FR_CONF_OFFSET_FLAGS("syslog_facility", FR_TYPE_VOID, 0, main_config_t, syslog_facility), .dflt = "daemon",
+	{ FR_CONF_OFFSET("syslog_facility", main_config_t, syslog_facility), .dflt = "daemon",
 		.func = cf_table_parse_int,
 		.uctx = &(cf_table_parse_ctx_t){
 			.table = syslog_facility_table,

@@ -153,9 +153,9 @@ struct udp_request_s {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_tacacs_tcp_t, dst_ipaddr), },
-	{ FR_CONF_OFFSET_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_tacacs_tcp_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_tacacs_tcp_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_tacacs_tcp_t, dst_ipaddr), },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_tacacs_tcp_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_tacacs_tcp_t, dst_ipaddr) },
 
 	{ FR_CONF_OFFSET("port", rlm_tacacs_tcp_t, dst_port) },
 
@@ -169,9 +169,9 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("max_packet_size", rlm_tacacs_tcp_t, max_packet_size), .dflt = STRINGIFY(FR_MAX_PACKET_SIZE) },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_tacacs_tcp_t, max_send_coalesce), .dflt = "1024" },
 
-	{ FR_CONF_OFFSET_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_tacacs_tcp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET_FLAGS("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_tacacs_tcp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_tacacs_tcp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_tacacs_tcp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_tacacs_tcp_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_tacacs_tcp_t, src_ipaddr) },
 
 	CONF_PARSER_TERMINATOR
 };
