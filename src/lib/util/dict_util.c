@@ -2755,9 +2755,11 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 	fr_dict_attr_t const	*da;
 	size_t			len;
 	fr_dict_attr_t const	*ref;
+	char const		*p;
 	char			buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1 + 1];	/* +1 \0 +1 for "too long" */
 	fr_sbuff_t		our_name = FR_SBUFF(name);
 	fr_hash_table_t		*namespace;
+
 	*out = NULL;
 
 	len = fr_sbuff_out_bstrncpy_allowed(&FR_SBUFF_OUT(buffer, sizeof(buffer)),
@@ -2770,6 +2772,19 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 	}
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_const("Attribute name too long");
+		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
+		FR_SBUFF_ERROR_RETURN(&our_name);
+	}
+
+	/*
+	 *	Do a second pass, ensuring that the name has at least one alpha-numeric character.
+	 */
+	for (p = buffer; p < (buffer + len); p++) {
+		if (sbuff_char_alpha_num[(uint8_t) *p]) break;
+	}
+
+	if ((size_t) (p - buffer) == len) {
+		fr_strerror_const("Invalid attribute name");
 		if (err) *err = FR_DICT_ATTR_PARSE_ERROR;
 		FR_SBUFF_ERROR_RETURN(&our_name);
 	}
@@ -4104,6 +4119,7 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 {
 	char const *p = name, *end;
 	bool unknown = false;
+	bool alnum = false;
 
 	if (len < 0) len = strlen(name);
 
@@ -4128,7 +4144,15 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 
 			return -(p - name);
 		}
+
+		alnum |= sbuff_char_alpha_num[(uint8_t)*p];
+
 		p++;
+	}
+
+	if (!alnum) {
+		fr_strerror_const("Invalid attribute name");
+		return -1;
 	}
 
 	return len;
@@ -4137,6 +4161,7 @@ ssize_t fr_dict_valid_name(char const *name, ssize_t len)
 ssize_t fr_dict_valid_oid_str(char const *name, ssize_t len)
 {
 	char const *p = name, *end;
+	bool alnum = false;
 
 	if (len < 0) len = strlen(name);
 	end = p + len;
@@ -4148,8 +4173,12 @@ ssize_t fr_dict_valid_oid_str(char const *name, ssize_t len)
 
 			return -(p - name);
 		}
+
+		alnum |= sbuff_char_alpha_num[(uint8_t)*p];
 		p++;
 	} while (p < end);
+
+	if (!alnum) return 0;
 
 	return len;
 }
