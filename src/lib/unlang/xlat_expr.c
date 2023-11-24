@@ -2461,7 +2461,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		p = vpt->name + talloc_array_length(vpt->name) - 2;
 		if ((*p == ':') && fr_sbuff_is_char(&our_in, '-')) {
 			fr_sbuff_set(&our_in, fr_sbuff_current(&our_in) - 2);
-			fr_strerror_const("Alternation is no longer supported.  Use '%{a && b}' instead of '%{a:-b}'");
+			fr_strerror_const("Alternation is no longer supported.  Use '%{a || b}' instead of '%{a:-b}'");
 			goto error;
 		}
 	}
