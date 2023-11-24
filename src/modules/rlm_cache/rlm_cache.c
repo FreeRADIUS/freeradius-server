@@ -38,6 +38,8 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_cache;
 
+static int update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
+
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_cache_t, driver_submodule), .dflt = "rbtree",
 			 .func = module_rlm_submodule_parse },
@@ -51,13 +53,15 @@ static const conf_parser_t module_config[] = {
 };
 
 typedef struct {
-	fr_value_box_t	*key;
+	fr_value_box_t		*key;			//!< To lookup the cache entry with.
+	map_list_t		*maps;			//!< Attribute map applied to cache entries.
 } cache_call_env_t;
 
 static const call_env_method_t cache_method_env = {
 	FR_CALL_ENV_METHOD_OUT(cache_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, cache_call_env_t, key) },
+		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_REQUIRED, update_section_parse) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -313,7 +317,7 @@ static unlang_action_t cache_expire(rlm_rcode_t *p_result,
  */
 static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 				    rlm_cache_t const *inst, request_t *request, rlm_cache_handle_t **handle,
-				    fr_value_box_t const *key, fr_time_delta_t ttl)
+				    fr_value_box_t const *key, map_list_t const *maps, fr_time_delta_t ttl)
 {
 	map_t			const *map = NULL;
 	map_t			*c_map;
@@ -354,7 +358,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	 *	gathering fr_pair_ts to cache.
 	 */
 	pool = talloc_pool(NULL, 2048);
-	while ((map = map_list_next(&inst->maps, map))) {
+	while ((map = map_list_next(maps, map))) {
 		fr_pair_list_t	to_cache;
 
 		fr_pair_list_init(&to_cache);
@@ -526,21 +530,6 @@ static unlang_action_t cache_set_ttl(rlm_rcode_t *p_result,
 			RETURN_MODULE_FAIL;
 		}
 	}
-}
-
-/** Verify that a map in the cache section makes sense
- *
- */
-static int cache_verify(map_t *map, void *ctx)
-{
-	if (unlang_fixup_update(map, ctx) < 0) return -1;
-
-	if (!tmpl_is_attr(map->lhs)) {
-		cf_log_err(map->ci, "Destination must be an attribute ref or a list");
-		return -1;
-	}
-
-	return 0;
 }
 
 /** Do caching checks
@@ -756,7 +745,7 @@ static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, modu
 	if (insert && (exists == 0)) {
 		rlm_rcode_t tmp;
 
-		cache_insert(&tmp, inst, request, &handle, env->key, ttl);
+		cache_insert(&tmp, inst, request, &handle, env->key, env->maps, ttl);
 		switch (tmp) {
 		case RLM_MODULE_FAIL:
 			rcode = RLM_MODULE_FAIL;
@@ -1097,7 +1086,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	 *	setting the TTL, which precludes performing an
 	 *	insert.
 	 */
-	cache_insert(&rcode, inst, request, &handle, env->key, ttl);
+	cache_insert(&rcode, inst, request, &handle, env->key, env->maps, ttl);
 	if (rcode == RLM_MODULE_OK) rcode = RLM_MODULE_UPDATED;
 
 finish:
@@ -1238,6 +1227,62 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
+/** Verify that a map in the cache section makes sense
+ *
+ */
+static int cache_verify(map_t *map, void *uctx)
+{
+	if (unlang_fixup_update(map, uctx) < 0) return -1;
+
+	if (!tmpl_is_attr(map->lhs)) {
+		cf_log_err(map->ci, "Destination must be an attribute ref or a list");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+{
+	map_list_t		*maps;
+	CONF_SECTION		*update = cf_item_to_section(ci);
+	call_env_parsed_t	*call_env_parsed;
+
+	MEM(call_env_parsed = call_env_parsed_add(ctx, out,
+						  &(call_env_parser_t){ FR_CALL_ENV_PARSE_ONLY_OFFSET("update", FR_TYPE_VOID, 0, cache_call_env_t, maps)}));
+
+	MEM(maps = talloc_zero(call_env_parsed, map_list_t));
+
+	/*
+	 *	Make sure the users don't screw up too badly.
+	 */
+	{
+		tmpl_rules_t	parse_rules = {
+			.attr = {
+				.dict_def = namespace,
+				.list_def = request_attr_request,
+				.allow_wildcard = true,
+				.allow_foreign = true	/* Because we don't know where we'll be called */
+			}
+		};
+
+		map_list_init(maps);
+		if (map_afrom_cs(ctx, maps, update,
+				 &parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
+			return -1;
+		}
+	}
+
+	if (map_list_empty(maps)) {
+		cf_log_err(update, "Update section must not be empty");
+		return -1;
+	}
+
+	call_env_parsed_set_data(call_env_parsed, maps);
+
+	return 0;
+}
+
 /** Create a new rlm_cache_instance
  *
  */
@@ -1245,7 +1290,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_cache_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
-	CONF_SECTION	*update;
 
 	if (!fr_time_delta_ispos(inst->config.ttl)) {
 		cf_log_err(conf, "Must set 'ttl' to non-zero");
@@ -1254,37 +1298,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	if (inst->config.epoch != 0) {
 		cf_log_err(conf, "Must not set 'epoch' in the configuration files");
-		return -1;
-	}
-
-	update = cf_section_find(conf, "update", CF_IDENT_ANY);
-	if (!update) {
-		cf_log_err(conf, "Must have an 'update' section in order to cache anything");
-		return -1;
-	}
-
-	/*
-	 *	Make sure the users don't screw up too badly.
-	 */
-	{
-		tmpl_rules_t	parse_rules = {
-			.attr = {
-				.list_def = request_attr_request,
-				.allow_wildcard = true,
-				.allow_foreign = true	/* Because we don't know where we'll be called */
-			}
-		};
-
-		map_list_init(&inst->maps);
-		if (map_afrom_cs(inst, &inst->maps, update,
-				 &parse_rules, &parse_rules, cache_verify, inst, MAX_ATTRMAP) < 0) {
-			return -1;
-		}
-	}
-
-	if (map_list_empty(&inst->maps)) {
-		cf_log_err(conf, "Cache config must contain an update section, and "
-			      "that section must not be empty");
 		return -1;
 	}
 

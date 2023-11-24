@@ -72,7 +72,7 @@ typedef struct {
 static const call_env_method_t exec_method_env = {
 	FR_CALL_ENV_METHOD_OUT(exec_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_TMPL_ONLY_OFFSET("program", FR_TYPE_STRING, CALL_ENV_FLAG_FORCE_QUOTE, exec_call_env_t, program), .pair.dflt_quote = T_BACK_QUOTED_STRING },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("program", FR_TYPE_STRING, CALL_ENV_FLAG_FORCE_QUOTE, exec_call_env_t, program), .pair.dflt_quote = T_BACK_QUOTED_STRING },
 		CALL_ENV_TERMINATOR
 	}
 };

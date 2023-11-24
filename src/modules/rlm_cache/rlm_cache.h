@@ -67,9 +67,6 @@ typedef struct {
 
 	module_instance_t	*driver_submodule;	//!< Driver's instance data.
 	rlm_cache_driver_t const *driver;		//!< Driver's exported interface.
-
-	map_list_t		maps;			//!< Attribute map applied to users.
-							//!< and profiles.
 } rlm_cache_t;
 
 typedef struct {

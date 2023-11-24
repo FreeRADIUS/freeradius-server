@@ -71,7 +71,7 @@ static const call_env_method_t chap_autz_method_env = { \
 				     CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
 				     chap_autz_call_env_t, chap_password),
 				     .pair.dflt = "&Chap-Password", .pair.dflt_quote = T_BARE_WORD },
-		{ FR_CALL_ENV_TMPL_OFFSET("chap_challenge", FR_TYPE_OCTETS,
+		{ FR_CALL_ENV_PARSE_OFFSET("chap_challenge", FR_TYPE_OCTETS,
 					  CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
 					  chap_autz_call_env_t, chap_challenge, chap_challenge_tmpl),
 					  .pair.dflt = "&Chap-Challenge", .pair.dflt_quote = T_BARE_WORD },

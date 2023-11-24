@@ -179,7 +179,7 @@ static const call_env_method_t authenticate_method_env = {
 		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
 					 ((call_env_parser_t[]) {
 						USER_CALL_ENV_COMMON(ldap_auth_call_env_t),
-						{ FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING,
+						{ FR_CALL_ENV_PARSE_OFFSET("password_attribute", FR_TYPE_STRING,
 									  CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
 									  ldap_auth_call_env_t, password, password_tmpl),
 									  .pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },

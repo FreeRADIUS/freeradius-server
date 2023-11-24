@@ -143,15 +143,15 @@ static const call_env_method_t mschap_ ## _x ## _method_env = { \
 }
 
 #define MSCHAP_COMMON_CALL_ENV(_x) \
-{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap_challenge", FR_TYPE_OCTETS, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_ ## _x ## _call_env_t, chap_challenge), \
+{ FR_CALL_ENV_PARSE_ONLY_OFFSET("chap_challenge", FR_TYPE_OCTETS, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_ ## _x ## _call_env_t, chap_challenge), \
 			       .pair.dflt = "&Vendor-Specific.Microsoft.CHAP-Challenge", .pair.dflt_quote = T_BARE_WORD }, \
-{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap_response", FR_TYPE_OCTETS, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_ ## _x ## _call_env_t, chap_response), \
+{ FR_CALL_ENV_PARSE_ONLY_OFFSET("chap_response", FR_TYPE_OCTETS, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_ ## _x ## _call_env_t, chap_response), \
 			       .pair.dflt = "&Vendor-Specific.Microsoft.CHAP-Response", .pair.dflt_quote = T_BARE_WORD }, \
-{ FR_CALL_ENV_TMPL_ONLY_OFFSET("chap2_response", FR_TYPE_OCTETS, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_ ## _x ## _call_env_t, chap2_response), \
+{ FR_CALL_ENV_PARSE_ONLY_OFFSET("chap2_response", FR_TYPE_OCTETS, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_ ## _x ## _call_env_t, chap2_response), \
 			       .pair.dflt = "&Vendor-Specific.Microsoft.CHAP2-Response", .pair.dflt_quote = T_BARE_WORD }
 
 #define MSCHAP_OPT_CALL_ENV(_opt, _x) \
-{ FR_CALL_ENV_TMPL_ONLY_OFFSET(STRINGIFY(_opt), FR_TYPE_OCTETS, CALL_ENV_FLAG_ATTRIBUTE, mschap_ ## _x ## _call_env_t, _opt) }
+{ FR_CALL_ENV_PARSE_ONLY_OFFSET(STRINGIFY(_opt), FR_TYPE_OCTETS, CALL_ENV_FLAG_ATTRIBUTE, mschap_ ## _x ## _call_env_t, _opt) }
 
 typedef struct {
 	tmpl_t const	*username;
@@ -161,7 +161,7 @@ typedef struct {
 } mschap_xlat_call_env_t;
 
 static const call_env_parser_t xlat_call_env[] = {
-	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_xlat_call_env_t, username), .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
+	{ FR_CALL_ENV_PARSE_ONLY_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_xlat_call_env_t, username), .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
 	MSCHAP_COMMON_CALL_ENV(xlat),
 	CALL_ENV_TERMINATOR
 };
@@ -169,7 +169,7 @@ static const call_env_parser_t xlat_call_env[] = {
 MSCHAP_CALL_ENV(xlat);
 
 static const call_env_parser_t auth_call_env[] = {
-	{ FR_CALL_ENV_TMPL_ONLY_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_auth_call_env_t, username), .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
+	{ FR_CALL_ENV_PARSE_ONLY_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_auth_call_env_t, username), .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
 	MSCHAP_COMMON_CALL_ENV(auth),
 	MSCHAP_OPT_CALL_ENV(chap2_success, auth),
 	MSCHAP_OPT_CALL_ENV(chap_mppe_keys, auth),
