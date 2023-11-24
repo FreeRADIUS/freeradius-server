@@ -57,8 +57,7 @@ typedef struct {
 static const call_env_method_t cache_method_env = {
 	FR_CALL_ENV_METHOD_OUT(cache_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, 0, cache_call_env_t, key,
-				     NULL, T_INVALID, true, false, true) },
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, cache_call_env_t, key) },
 		CALL_ENV_TERMINATOR
 	}
 };

@@ -54,7 +54,7 @@ typedef struct {
 static conf_parser_t section_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("insert", CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, insert) },
 	{ FR_CONF_OFFSET_FLAGS("trim", CONF_FLAG_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
-	{ FR_CONF_OFFSET_FLAGS("expire", CONF_FLAG_REQUIRED | CONF_FLAG_XLAT, rlm_rediswho_t, expire) },
+	{ FR_CONF_OFFSET_FLAGS("expire", CONF_FLAG_REQUIRED, rlm_rediswho_t, expire) },
 	CONF_PARSER_TERMINATOR
 };
 

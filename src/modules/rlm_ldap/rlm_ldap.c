@@ -71,14 +71,10 @@ typedef struct {
 } ldap_xlat_profile_call_env_t;
 
 static const call_env_parser_t sasl_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, 0, ldap_auth_call_env_t, user_sasl_mech,
-			     NULL, T_INVALID, false, false, false) },
-	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, 0, ldap_auth_call_env_t, user_sasl_authname,
-			     NULL, T_INVALID, false, false, false) },
-	{ FR_CALL_ENV_OFFSET("proxy", FR_TYPE_STRING, 0, ldap_auth_call_env_t, user_sasl_proxy,
-			     NULL, T_INVALID, false, true, false) },
-	{ FR_CALL_ENV_OFFSET("realm", FR_TYPE_STRING, 0, ldap_auth_call_env_t, user_sasl_realm,
-			     NULL, T_INVALID, false, true, false) },
+	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_mech) },
+	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_authname) },
+	{ FR_CALL_ENV_OFFSET("proxy", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_proxy) },
+	{ FR_CALL_ENV_OFFSET("realm", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_realm) },
 	CALL_ENV_TERMINATOR
 };
 
@@ -88,14 +84,6 @@ static conf_parser_t profile_config[] = {
 	{ FR_CONF_OFFSET("attribute", rlm_ldap_t, profile_attr) },
 	{ FR_CONF_OFFSET("attribute_suspend", rlm_ldap_t, profile_attr_suspend) },
 	CONF_PARSER_TERMINATOR
-};
-
-static const call_env_parser_t autz_profile_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, 0, ldap_autz_call_env_t, default_profile,
-			     NULL, T_INVALID, false, false, true) },
-	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, 0, ldap_autz_call_env_t, profile_filter,
-			     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
-	CALL_ENV_TERMINATOR
 };
 
 /*
@@ -112,26 +100,6 @@ static conf_parser_t user_config[] = {
 	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, access_value_suspend), .dflt = "suspended" },
 	CONF_PARSER_TERMINATOR
 };
-
-#define user_call_env(_prefix, _struct, ...) \
-static const call_env_parser_t _prefix ## _user_call_env[] = { \
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, 0, _struct, user_base, \
-			     "", T_SINGLE_QUOTED_STRING, true, false, true) }, \
-	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, 0, _struct, user_filter, \
-			     NULL, T_INVALID, false, true, true) }, \
-	##__VA_ARGS__, \
-	CALL_ENV_TERMINATOR \
-}
-
-user_call_env(auth, ldap_auth_call_env_t, { FR_CALL_ENV_SUBSECTION("sasl", NULL, sasl_call_env, false) },
-	      { FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING, CONF_FLAG_ATTRIBUTE, ldap_auth_call_env_t, password,
-		password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) } );
-
-user_call_env(autz, ldap_autz_call_env_t);
-
-user_call_env(usermod, ldap_usermod_call_env_t);
-
-user_call_env(memberof, ldap_xlat_memberof_call_env_t);
 
 /*
  *	Group configuration
@@ -150,18 +118,6 @@ static conf_parser_t group_config[] = {
 	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group_attribute) },
 	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, allow_dangling_group_refs), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
-};
-
-static const call_env_parser_t autz_group_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, 0, ldap_autz_call_env_t, group_base,
-			     NULL, T_INVALID, false, false, true) },
-	CALL_ENV_TERMINATOR
-};
-
-static const call_env_parser_t memberof_group_call_env[] = {
-	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, 0, ldap_xlat_memberof_call_env_t, group_base,
-			       NULL, T_INVALID, false, false, true) },
-	CALL_ENV_TERMINATOR
 };
 
 /*
@@ -213,10 +169,23 @@ static const conf_parser_t module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#define USER_CALL_ENV_COMMON(_struct) \
+	{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, _struct, user_base), .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING }, \
+	{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, _struct, user_filter), .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING }
+
 static const call_env_method_t authenticate_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_auth_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION("user", NULL, auth_user_call_env, true) },
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
+					 ((call_env_parser_t[]) {
+						USER_CALL_ENV_COMMON(ldap_auth_call_env_t),
+						{ FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING,
+									  CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
+									  ldap_auth_call_env_t, password, password_tmpl),
+									  .pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+						{ FR_CALL_ENV_SUBSECTION("sasl", NULL, CALL_ENV_FLAG_NONE, sasl_call_env) },
+						CALL_ENV_TERMINATOR
+					 })) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -224,9 +193,23 @@ static const call_env_method_t authenticate_method_env = {
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_autz_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION("user", NULL, autz_user_call_env, true) },
-		{ FR_CALL_ENV_SUBSECTION("group", NULL, autz_group_call_env, false) },
-		{ FR_CALL_ENV_SUBSECTION("profile", NULL, autz_profile_call_env, false) },
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
+					 ((call_env_parser_t[]) {
+						USER_CALL_ENV_COMMON(ldap_autz_call_env_t),
+						CALL_ENV_TERMINATOR
+					 })) },
+		{ FR_CALL_ENV_SUBSECTION("group", NULL, CALL_ENV_FLAG_NONE,
+					 ((call_env_parser_t[]) {
+						{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, group_base) },
+						CALL_ENV_TERMINATOR
+					 })) },
+		{ FR_CALL_ENV_SUBSECTION("profile", NULL, CALL_ENV_FLAG_NONE,
+					 ((call_env_parser_t[]) {
+						{ FR_CALL_ENV_OFFSET("default", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, default_profile) },
+						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, profile_filter),
+								.pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },	//!< Correct filter for when the DN is known.
+						CALL_ENV_TERMINATOR
+					 } )) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -234,7 +217,12 @@ static const call_env_method_t authorize_method_env = {
 static const call_env_method_t usermod_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_usermod_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION("user", NULL, usermod_user_call_env, true) },
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
+					 ((call_env_parser_t[]) {
+						USER_CALL_ENV_COMMON(ldap_usermod_call_env_t),
+						CALL_ENV_TERMINATOR
+					 })) },
+
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -242,8 +230,16 @@ static const call_env_method_t usermod_method_env = {
 static const call_env_method_t xlat_memberof_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_xlat_memberof_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION("user", NULL, memberof_user_call_env, true) },
-		{ FR_CALL_ENV_SUBSECTION("group", NULL, memberof_group_call_env, false) },
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
+					 ((call_env_parser_t[]) {
+						USER_CALL_ENV_COMMON(ldap_xlat_memberof_call_env_t),
+						CALL_ENV_TERMINATOR
+					 })) },
+		{ FR_CALL_ENV_SUBSECTION("group", NULL, CALL_ENV_FLAG_NONE,
+					 ((call_env_parser_t[]) {
+						{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_memberof_call_env_t, group_base) },
+						CALL_ENV_TERMINATOR
+					 })) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -251,13 +247,12 @@ static const call_env_method_t xlat_memberof_method_env = {
 static const call_env_method_t xlat_profile_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_xlat_profile_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION("profile", NULL,
+		{ FR_CALL_ENV_SUBSECTION("profile", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[])  {
-						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, 0, ldap_xlat_profile_call_env_t, profile_filter,
-								     "(&)", T_SINGLE_QUOTED_STRING, false, false, true ) },	//!< Correct filter for when the DN is known.
+						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_profile_call_env_t, profile_filter),
+								     .pair.dflt = "(&)", .pair.dflt_quote = T_SINGLE_QUOTED_STRING }, //!< Correct filter for when the DN is known.
 						CALL_ENV_TERMINATOR
-					 }),
-					 false) },
+					 })) },
 		CALL_ENV_TERMINATOR
 	}
 };

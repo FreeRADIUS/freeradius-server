@@ -91,8 +91,9 @@ static const call_env_method_t pap_method_env = {
 	.inst_size = sizeof(pap_call_env_t),
 	.inst_type = "pap_call_env_t",
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING, CONF_FLAG_ATTRIBUTE, pap_call_env_t, password,
-		  password_tmpl, "&User-Password", T_BARE_WORD, true, true, true) },
+		{ FR_CALL_ENV_TMPL_OFFSET("password_attribute", FR_TYPE_STRING,
+					  CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
+					  pap_call_env_t, password, password_tmpl), .pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
 };

@@ -42,14 +42,14 @@ typedef struct {
 static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_totp_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, 0, rlm_totp_call_env_t, secret,
-				     "&control.TOTP.Secret", T_BARE_WORD, false, true, false) },
+		{ FR_CALL_ENV_OFFSET("secret", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_totp_call_env_t, secret),
+				     .pair.dflt = "&control.TOTP.Secret", .pair.dflt_quote = T_BARE_WORD },
 
-		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, 0, rlm_totp_call_env_t, key,
-				     "&control.TOTP.key", T_BARE_WORD, false, true, false) },
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_totp_call_env_t, key),
+				     .pair.dflt = "&control.TOTP.key", .pair.dflt_quote = T_BARE_WORD },
 
-		{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, 0, rlm_totp_call_env_t, user_password,
-				     "&request.TOTP.From-User", T_BARE_WORD, false, true, false) },
+		{ FR_CALL_ENV_OFFSET("user_password", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_totp_call_env_t, user_password),
+				     .pair.dflt = "&request.TOTP.From-User", .pair.dflt_quote = T_BARE_WORD },
 
 		CALL_ENV_TERMINATOR
 	}

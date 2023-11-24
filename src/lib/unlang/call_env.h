@@ -54,7 +54,59 @@ typedef enum {
 	CALL_ENV_TYPE_VALUE_BOX = 1,
 	CALL_ENV_TYPE_VALUE_BOX_LIST,
 	CALL_ENV_TYPE_TMPL_ONLY
-} call_env_dest_t;
+} call_env_dst_t;
+
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) {
+	CALL_ENV_FLAG_NONE 		= 0,
+	CALL_ENV_FLAG_REQUIRED 		= 1,			//!< Tmpl must produce output or section is required.
+	CALL_ENV_FLAG_CONCAT 		= (1 << 1),		//!< If the tmpl produced multiple boxes they should be concatenated.
+	CALL_ENV_FLAG_SINGLE 		= (1 << 2),		//!< If the tmpl produces more than one box this is an error.
+	CALL_ENV_FLAG_MULTI 		= (1 << 3),		//!< Multiple instances of the conf pairs are allowed.  Resulting
+								///< boxes are stored in an array - one entry per conf pair.
+	CALL_ENV_FLAG_NULLABLE 		= (1 << 4),		//!< Tmpl expansions are allowed to produce no output.
+	CALL_ENV_FLAG_FORCE_QUOTE 	= (1 << 5),		//!< Force quote method when parsing tmpl.  This is for corner cases
+								///< where tmpls should always be parsed with a particular quoting
+								///< regardless of how they are in the config file.  E.g. the `program`
+								///< option of `rlm_exec` should always be parsed as T_BACK_QUOTED_STRING.
+	CALL_ENV_FLAG_ATTRIBUTE		= (1 << 6),		//!< Tmpl must contain an attribute reference.
+	CALL_ENV_FLAG_SUBSECTION	= (1 << 7)		//!< This is a subsection.
+} call_env_flags_t;
+DIAG_ON(attributes)
+
+
+/** @name #conf_parser_t flags checks
+ *
+ * @{
+ */
+/** Evaluates to true if flags are valid for a pair
+ *
+ * @param[in] _flags to evaluate
+ */
+#define call_env_pair_flags(_flags)		(((_flags) & (CALL_ENV_FLAG_SUBSECTION)) == 0)
+
+/** Evaluates to true if flags are valid for a subsection
+ *
+ * @param[in] _flags to evaluate
+ */
+#define call_env_subsection_flags(_flags)	(((_flags) & (CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_MULTI | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_FORCE_QUOTE | CALL_ENV_FLAG_ATTRIBUTE)) == 0)
+
+#define call_env_required(_flags)		((_flags) & CALL_ENV_FLAG_REQUIRED)
+
+#define call_env_concat(_flags)			((_flags) & CALL_ENV_FLAG_CONCAT)
+
+#define call_env_single(_flags)			((_flags) & CALL_ENV_FLAG_SINGLE)
+
+#define call_env_multi(_flags)			((_flags) & CALL_ENV_FLAG_MULTI)
+
+#define call_env_nullable(_flags)		((_flags) & CALL_ENV_FLAG_NULLABLE)
+
+#define call_env_force_quote(_flags)		((_flags) & CALL_ENV_FLAG_FORCE_QUOTE)
+
+#define call_env_attribute(_flags)		((_flags) & CALL_ENV_FLAG_ATTRIBUTE)
+
+#define call_env_is_subsection(_flags)		((_flags) & CALL_ENV_FLAG_SUBSECTION)
+/** @} */
 
 /** Per method call config
  *
@@ -65,37 +117,29 @@ typedef enum {
  * and use the appropriate dictionaries for where the module is in use.
  */
 struct call_env_parser_s {
-	char const	*name;		//!< Of conf pair to pass to tmpl_tokenizer.
-	char const	*dflt;		//!< Default string to pass to the tmpl_tokenizer if no CONF_PAIR found.
-	fr_token_t	dflt_quote;	//!< Default quoting for the default string.
+	char const		*name;			//!< Of conf pair to pass to tmpl_tokenizer.
+	call_env_flags_t	flags;			//!< Flags controlling parser behaviour.
 
-	fr_type_t	type;		//!< To cast boxes to. Also contains flags controlling parser behaviour.
-	conf_parser_flags_t	flags;		//!< Flags controlling parser behaviour.
-
-	size_t		offset;		//!< Where to write results in the output structure when the tmpls are evaluated.
+	ssize_t			parsed_offset;		//!< Where to write the result of the parsing phase.
+							///< This is usually a tmpl_t, but could be other things when a callback
+							///< function is used to parse the CONF_SECTION or CONF_PAIR.
 
 	union {
 		struct {
-			bool		required;	//!< Tmpl must produce output
-			bool		concat;		//!< If the tmpl produced multiple boxes they should be concatenated.
-			bool		single;		//!< If the tmpl produces more than one box this is an error.
-			bool		multi;		//!< Multiple instances of the conf pairs are allowed.  Resulting
-							///< boxes are stored in an array - one entry per conf pair.
-			bool		nullable;	//!< Tmpl expansions are allowed to produce no output.
-			bool		force_quote;	//!< Force quote method when parsing tmpl.  This is for corner cases
-							///< where tmpls should always be parsed with a particular quoting
-							///< regardless of how they are in the config file.  E.g. the `program`
-							///< option of `rlm_exec` should always be parsed as T_BACK_QUOTED_STRING.
-			call_env_dest_t	type;		//!< Type of structure boxes will be written to.
-			size_t		size;		//!< Size of structure boxes will be written to.
-			char const	*type_name;	//!< Name of structure type boxes will be written to.
-			ssize_t		tmpl_offset;	//!< Where to write pointer to tmpl in the output structure.  Optional.
+			fr_type_t	cast_type;		//!< To cast boxes to. Also contains flags controlling parser behaviour.
+
+			call_env_dst_t	type;			//!< Type of structure boxes will be written to.
+			size_t		size;			//!< Size of structure boxes will be written to.
+			char const	*type_name;		//!< Name of structure type boxes will be written to.
+			size_t		result_offset;		//!< Where to write the result of evaluating the tmpl_t produced in the parsing phase.
+
+			char const	*dflt;			//!< Default string to pass to the tmpl_tokenizer if no CONF_PAIR found.
+			fr_token_t	dflt_quote;		//!< Quoting for the default string.
 		} pair;
 
 		struct {
 			char const		*ident2;	//!< Second identifier for a section
 			call_env_parser_t const	*subcs;		//!< Nested definitions for subsection.
-			bool			required;	//!< Section is required.
     		} section;
   	};
 };
@@ -137,20 +181,20 @@ struct call_env_s {
  */
 #define FR_CALL_ENV_SINGLE(_s, _f, _c) \
 _Generic((((_s *)NULL)->_f), \
-	fr_value_box_t			: __builtin_choose_expr(_c, false, true), \
-	fr_value_box_t *		: __builtin_choose_expr(_c, false, true), \
-	fr_value_box_list_t		: false, \
-	fr_value_box_list_t *		: false \
+	fr_value_box_t			: __builtin_choose_expr(_c, CALL_ENV_FLAG_NONE, CALL_ENV_FLAG_SINGLE), \
+	fr_value_box_t *		: __builtin_choose_expr(_c, CALL_ENV_FLAG_NONE, CALL_ENV_FLAG_SINGLE), \
+	fr_value_box_list_t		: CALL_ENV_FLAG_NONE, \
+	fr_value_box_list_t *		: CALL_ENV_FLAG_SINGLE \
 )
 
 /** Derive whether multi conf pairs are allowed from target field type.
  */
 #define FR_CALL_ENV_MULTI(_s, _f) \
 _Generic((((_s *)NULL)->_f), \
-	fr_value_box_t			: false, \
-	fr_value_box_t *		: true, \
-	fr_value_box_list_t		: false, \
-	fr_value_box_list_t *		: true \
+	fr_value_box_t			: CALL_ENV_FLAG_NONE, \
+	fr_value_box_t *		: CALL_ENV_FLAG_MULTI, \
+	fr_value_box_list_t		: CALL_ENV_FLAG_NONE, \
+	fr_value_box_list_t *		: CALL_ENV_FLAG_MULTI \
 )
 
 /** Only FR_TYPE_STRING and FR_TYPE_OCTETS can be concatenated.
@@ -186,64 +230,57 @@ _Generic((((_s *)NULL)->_f), \
 	fr_value_box_list_t *		: "fr_value_box_list_t" \
 )
 
-#define FR_CALL_ENV_OFFSET(_name, _cast_type, _flags, _struct, _field, _dflt, _dflt_quote, _required, _nullable, _concat) \
+typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
+
+#define CALL_ENV_FLAGS(_cast_type, _flags, _struct, _field) \
+	(FR_CALL_ENV_CONCAT((_flags & CALL_ENV_FLAG_CONCAT), _cast_type) | \
+			FR_CALL_ENV_SINGLE(_struct, _field, (_flags & CALL_ENV_FLAG_CONCAT)) | \
+			FR_CALL_ENV_MULTI(_struct, _field) |\
+			((_flags) & ~CALL_ENV_FLAG_CONCAT)) \
+
+#define FR_CALL_ENV_OFFSET(_name, _cast_type, _flags, _struct, _field) \
 	.name = _name, \
-	.type = _cast_type, \
-	.offset = offsetof(_struct, _field), \
-	.dflt = _dflt, \
-	.dflt_quote = _dflt_quote, \
+	.flags = CALL_ENV_FLAGS(_cast_type, _flags, _struct, _field), \
+	.parsed_offset = -1, \
 	.pair = { \
-		.required = _required, \
-		.concat = FR_CALL_ENV_CONCAT(_concat, _cast_type), \
-		.single = FR_CALL_ENV_SINGLE(_struct, _field, _concat), \
-		.multi = FR_CALL_ENV_MULTI(_struct, _field), \
-		.nullable = _nullable, \
+		.cast_type = _cast_type, \
 		.type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
 		.size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
 		.type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
-		.tmpl_offset = -1 \
+		.result_offset = offsetof(_struct, _field), \
 	}
 
 /** Version of the above which sets optional field for pointer to tmpl
  */
-#define FR_CALL_ENV_TMPL_OFFSET(_name, _cast_type, _flags, _struct, _field, _tmpl_field, _dflt, _dflt_quote, _required, _nullable, _concat) \
+#define FR_CALL_ENV_TMPL_OFFSET(_name, _cast_type, _flags, _struct, _field, _tmpl_field) \
 	.name = _name, \
-	.type = _cast_type, \
-	.offset = offsetof(_struct, _field), \
-	.dflt = _dflt, \
-	.dflt_quote = _dflt_quote, \
+	.flags = CALL_ENV_FLAGS(_cast_type, _flags, _struct, _field), \
+	.parsed_offset = offsetof(_struct, _tmpl_field), \
 	.pair = { \
-		.required = _required, \
-		.concat = FR_CALL_ENV_CONCAT(_concat, _cast_type), \
-		.single = FR_CALL_ENV_SINGLE(_struct, _field, _concat), \
-		.multi = FR_CALL_ENV_MULTI(_struct, _field), \
-		.nullable = _nullable, \
+		.cast_type = _cast_type, \
 		.type = FR_CALL_ENV_DST_TYPE(_struct, _field), \
 		.size = FR_CALL_ENV_DST_SIZE(_struct, _field), \
 		.type_name = FR_CALL_ENV_DST_TYPE_NAME(_struct, _field), \
-		.tmpl_offset = offsetof(_struct, _tmpl_field) \
+		.result_offset = offsetof(_struct, _field), \
 	}
 
 /** Version of the above which only sets the field for a pointer to the tmpl
  */
-#define FR_CALL_ENV_TMPL_ONLY_OFFSET(_name, _cast_type, _flags, _struct, _tmpl_field, _dflt, _dflt_quote, _required) \
+#define FR_CALL_ENV_TMPL_ONLY_OFFSET(_name, _cast_type, _flags, _struct, _tmpl_field) \
 	.name = _name, \
-	.type = _cast_type, \
-	.dflt = _dflt, \
-	.dflt_quote = _dflt_quote, \
+	.flags = _flags, \
+	.parsed_offset = offsetof(_struct, _tmpl_field), \
 	.pair = { \
-		.required = _required, \
-		.type = CALL_ENV_TYPE_TMPL_ONLY, \
-		.tmpl_offset = offsetof(_struct, _tmpl_field) \
+		.cast_type = _cast_type, \
+		.type = CALL_ENV_TYPE_TMPL_ONLY \
 	}
 
-#define FR_CALL_ENV_SUBSECTION(_name, _ident2, _subcs, _required ) \
+#define FR_CALL_ENV_SUBSECTION(_name, _ident2, _flags, _subcs ) \
 	.name = _name, \
-	.flags = CONF_FLAG_SUBSECTION, \
+	.flags = CALL_ENV_FLAG_SUBSECTION | (_flags), \
 	.section = { \
 		.ident2 = _ident2, \
 		.subcs = _subcs, \
-		.required = _required \
 	}
 
 unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *result, void **env_data, call_env_t const *call_env);

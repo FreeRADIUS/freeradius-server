@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/password.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/util/chap.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/call_env.h>
@@ -49,8 +50,10 @@ typedef struct {
 static const call_env_method_t chap_xlat_method_env = { \
 	FR_CALL_ENV_METHOD_OUT(chap_xlat_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("chap_challenge", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_xlat_call_env_t,
-				     chap_challenge, "&Chap-Challenge", T_BARE_WORD, true, true, true) },
+		{ FR_CALL_ENV_OFFSET("chap_challenge", FR_TYPE_OCTETS,
+				     CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
+				     chap_xlat_call_env_t,
+				     chap_challenge), .pair.dflt = "&Chap-Challenge", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -64,10 +67,14 @@ typedef struct {
 static const call_env_method_t chap_autz_method_env = { \
 	FR_CALL_ENV_METHOD_OUT(chap_autz_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("chap_password", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_autz_call_env_t,
-				     chap_password, "&Chap-Password", T_BARE_WORD, true, true, true) },
-		{ FR_CALL_ENV_TMPL_OFFSET("chap_challenge", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_autz_call_env_t,
-					  chap_challenge, chap_challenge_tmpl, "&Chap-Challenge", T_BARE_WORD, true, true, true) },
+		{ FR_CALL_ENV_OFFSET("chap_password", FR_TYPE_OCTETS,
+				     CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
+				     chap_autz_call_env_t, chap_password),
+				     .pair.dflt = "&Chap-Password", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_TMPL_OFFSET("chap_challenge", FR_TYPE_OCTETS,
+					  CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
+					  chap_autz_call_env_t, chap_challenge, chap_challenge_tmpl),
+					  .pair.dflt = "&Chap-Challenge", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -81,12 +88,18 @@ typedef struct {
 static const call_env_method_t chap_auth_method_env = { \
 	FR_CALL_ENV_METHOD_OUT(chap_auth_call_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CONF_FLAG_ATTRIBUTE, chap_auth_call_env_t,
-				     username, "&User-Name", T_BARE_WORD, true, false, true) },
-		{ FR_CALL_ENV_OFFSET("chap_password", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_auth_call_env_t,
-				     chap_password, "&Chap-Password", T_BARE_WORD, true, true, true) },
-		{ FR_CALL_ENV_OFFSET("chap_challenge", FR_TYPE_OCTETS, CONF_FLAG_ATTRIBUTE, chap_auth_call_env_t,
-				     chap_challenge, "&Chap-Challenge", T_BARE_WORD, true, true, true) },
+		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING,
+				     CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT,
+				     chap_auth_call_env_t, username),
+				     .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("chap_password", FR_TYPE_OCTETS,
+				     CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
+				     chap_auth_call_env_t, chap_password),
+				     .pair.dflt = "&Chap-Password", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("chap_challenge", FR_TYPE_OCTETS,
+				     CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT,
+				     chap_auth_call_env_t, chap_challenge),
+				     .pair.dflt = "&Chap-Challenge", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
 	}
 };

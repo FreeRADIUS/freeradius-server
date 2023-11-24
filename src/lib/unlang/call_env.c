@@ -46,7 +46,7 @@ call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void
 
 	vb = fr_value_box_list_head(tmpl_expanded);
 	if (!vb) {
-		if (!env->rule->pair.nullable) {
+		if (!call_env_nullable(env->rule->flags)) {
 			RPEDEBUG("Failed to evaluate required module option %s = %s", env->rule->name, env->tmpl->name);
 			return CALL_ENV_MISSING;
 		}
@@ -56,14 +56,14 @@ call_env_result_t call_env_value_parse(TALLOC_CTX *ctx, request_t *request, void
 	/*
 	 *	Concatenate multiple boxes if needed
 	 */
-	if (env->rule->pair.concat &&
-	    fr_value_box_list_concat_in_place(vb, vb, tmpl_expanded, env->rule->type,
+	if (call_env_concat(env->rule->flags) &&
+	    fr_value_box_list_concat_in_place(vb, vb, tmpl_expanded, env->rule->pair.cast_type,
 					      FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0 ) {
 		RPEDEBUG("Failed concatenating values for %s", env->rule->name);
 		return CALL_ENV_INVALID;
 	}
 
-	if (env->rule->pair.single && (fr_value_box_list_num_elements(tmpl_expanded) > 1)) {
+	if (call_env_single(env->rule->flags) && (fr_value_box_list_num_elements(tmpl_expanded) > 1)) {
 		RPEDEBUG("%d values found for %s.  Only one is allowed",
 			 fr_value_box_list_num_elements(tmpl_expanded), env->rule->name);
 		return CALL_ENV_INVALID;
@@ -121,7 +121,7 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 		/*
 		 *	If we only need the tmpl, just set the pointer and move the next.
 		 */
-		out = (void **)((uint8_t *)*call_env_rctx->data + env->rule->pair.tmpl_offset);
+		out = (void **)((uint8_t *)*call_env_rctx->data + env->rule->parsed_offset);
 		*out = env->tmpl;
 	}
 
@@ -137,8 +137,8 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 	/*
 	 *	Multi pair options should allocate boxes in the context of the array
 	 */
-	if (env->rule->pair.multi) {
-		out = (void **)((uint8_t *)(*call_env_rctx->data) + env->rule->offset);
+	if (call_env_multi(env->rule->flags)) {
+		out = (void **)((uint8_t *)(*call_env_rctx->data) + env->rule->pair.result_offset);
 
 		/*
 		 *	For multi pair options, allocate the array before expanding the first entry.
@@ -177,19 +177,19 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 	/*
 	 *	Find the location of the output
 	 */
-	out = ((uint8_t*)(*call_env_rctx->data)) + env->rule->offset;
+	out = ((uint8_t*)(*call_env_rctx->data)) + env->rule->pair.result_offset;
 
 	/*
 	 *	If this is a multi pair option, the output is an array.
 	 *	Find the correct offset in the array
 	 */
-	if (env->rule->pair.multi) {
+	if (call_env_multi(env->rule->flags)) {
 		void *array = *(void **)out;
 		out = ((uint8_t *)array) + env->rule->pair.size * env->multi_index;
 	}
 
 tmpl_only:
-	if (env->rule->pair.tmpl_offset >= 0) tmpl_out = ((uint8_t *)*call_env_rctx->data) + env->rule->pair.tmpl_offset;
+	if (env->rule->parsed_offset >= 0) tmpl_out = ((uint8_t *)*call_env_rctx->data) + env->rule->parsed_offset;
 
 	result = call_env_value_parse(*call_env_rctx->data, request, out, tmpl_out, env, &call_env_rctx->tmpl_expanded);
 	if (result != CALL_ENV_SUCCESS) {
@@ -257,11 +257,11 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 	fr_type_t		type;
 
 	while (call_env->name) {
-		if (call_env->flags & CONF_FLAG_SUBSECTION) {
+		if (call_env_is_subsection(call_env->flags)) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, call_env->name, call_env->section.ident2);
 			if (!subcs) {
-				if (!call_env->section.required) goto next;
+				if (!call_env_required(call_env->flags)) goto next;
 				cf_log_err(cs, "Module %s missing required section %s", name, call_env->name);
 				return -1;
 			}
@@ -272,8 +272,8 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 
 		cp = cf_pair_find(cs, call_env->name);
 
-		if (!cp && !call_env->dflt) {
-			if (!call_env->pair.required) goto next;
+		if (!cp && !call_env->pair.dflt) {
+			if (!call_env_required(call_env->flags)) goto next;
 
 			cf_log_err(cs, "Module %s missing required option %s", name, call_env->name);
 			return -1;
@@ -283,7 +283,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 		 *	Check for additional conf pairs and error
 		 *	if there is one and multi is not allowed.
 		 */
-		if (!call_env->pair.multi && ((next = cf_pair_find_next(cs, cp, call_env->name)))) {
+		if (!call_env_multi(call_env->flags) && ((next = cf_pair_find_next(cs, cp, call_env->name)))) {
 			cf_log_err(cf_pair_to_item(next), "Invalid duplicate configuration item '%s'", call_env->name);
 			return -1;
 		}
@@ -301,14 +301,14 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			if (cp) {
 				value = cf_pair_value(cp);
 				len = talloc_array_length(value) - 1;
-				quote = call_env->pair.force_quote ? call_env->dflt_quote : cf_pair_value_quote(cp);
+				quote = call_env_force_quote(call_env->flags) ? call_env->pair.dflt_quote : cf_pair_value_quote(cp);
 			} else {
-				value = call_env->dflt;
+				value = call_env->pair.dflt;
 				len = strlen(value);
-				quote = call_env->dflt_quote;
+				quote = call_env->pair.dflt_quote;
 			}
 
-			type = call_env->type;
+			type = call_env->pair.cast_type;
 			if (tmpl_afrom_substr(call_env_parsed, &call_env_parsed->tmpl, &FR_SBUFF_IN(value, len),
 					      quote, NULL, &(tmpl_rules_t){
 							.cast = (type == FR_TYPE_VOID ? FR_TYPE_NULL : type),
@@ -330,7 +330,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			case TMPL_TYPE_DATA:
 			case TMPL_TYPE_EXEC:
 			case TMPL_TYPE_XLAT:
-				if (call_env->type & CONF_FLAG_ATTRIBUTE) {
+				if (call_env_attribute(call_env->flags)) {
 					cf_log_perr(cp, "'%s' expands to %s - attribute reference required", value,
 					   	    fr_table_str_by_value(tmpl_type_table, call_env_parsed->tmpl->type,
 						    			  "<INVALID>"));
@@ -375,7 +375,7 @@ static size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env
 	*names_len = 0;
 
 	while (call_env->name) {
-		if (call_env->flags & CONF_FLAG_SUBSECTION) {
+		if (call_env_is_subsection(call_env->flags)) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, call_env->name, call_env->section.ident2);
 			if (!subcs) goto next;
@@ -389,9 +389,9 @@ static size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env
 			pair_count++;
 			*names_len += talloc_array_length(cf_pair_value(cp));
 		}
-		if (!pair_count && call_env->dflt) {
+		if (!pair_count && call_env->pair.dflt) {
 			pair_count = 1;
-			*names_len += strlen(call_env->dflt);
+			*names_len += strlen(call_env->pair.dflt);
 		}
 		tmpl_count += pair_count;
 	next:

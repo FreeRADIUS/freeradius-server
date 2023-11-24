@@ -709,8 +709,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_files_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_VOID, 0, rlm_files_env_t, key, "%{%{Stripped-User-Name} || %{User-Name}}",
-				     T_DOUBLE_QUOTED_STRING, true, false, false) },
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_VOID, CALL_ENV_FLAG_REQUIRED, rlm_files_env_t, key),
+				     .pair.dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		CALL_ENV_TERMINATOR
 	},
 };
