@@ -2450,6 +2450,20 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		 *	attributes... they sort of deserve what they get.
 		 */
 		if (tmpl_is_data_unresolved(vpt) && (tmpl_resolve(vpt, NULL) < 0)) goto error;
+	} else {
+		/*
+		 *	Catch the old case of alternation :(
+		 */
+		char const *p;
+
+		fr_assert(talloc_array_length(vpt->name) > 1);
+
+		p = vpt->name + talloc_array_length(vpt->name) - 2;
+		if ((*p == ':') && fr_sbuff_is_char(&our_in, '-')) {
+			fr_sbuff_set(&our_in, fr_sbuff_current(&our_in) - 2);
+			fr_strerror_const("Alternation is no longer supported.  Use '%{a && b}' instead of '%{a:-b}'");
+			goto error;
+		}
 	}
 
 	fr_sbuff_skip_whitespace(&our_in);

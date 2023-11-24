@@ -1,0 +1,1 @@
+&request.Acct-Unique-Session-Id := %hex(%md5(%string(%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{%{NAS-IPv6-Address}:-%{NAS-IP-Address}},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port}))) # ERROR
