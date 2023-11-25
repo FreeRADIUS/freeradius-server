@@ -24,14 +24,6 @@ typedef struct {
 } ldap_acct_section_t;
 
 typedef struct {
-	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
-							//!< attribute and one of our password reference attributes.
-
-	/*
-	 *	RADIUS attribute to LDAP attribute maps
-	 */
-	map_list_t	user_map; 			//!< Attribute map applied to users and profiles.
-
 	/*
 	 *	Options
 	 */
@@ -141,6 +133,11 @@ typedef struct {
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for profiles.
+
+	map_list_t	*user_map;			//!< Attribute map applied to users and profiles.
+
+	fr_value_box_t 	const *expect_password;		//!< True if the user_map included a mapping between an LDAP
+							//!< attribute and one of our password reference attributes.
 } ldap_autz_call_env_t;
 
 /** Call environment used in group membership xlat
@@ -252,7 +249,7 @@ int rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t 
 
 ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry);
 
-void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_thread_trunk_t const *ttrunk);
+void rlm_ldap_check_reply(request_t *request, char const *inst_name, bool expect_password, fr_ldap_thread_trunk_t const *ttrunk);
 
 /*
  *	groups.c - Group membership functions.

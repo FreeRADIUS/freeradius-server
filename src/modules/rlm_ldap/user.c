@@ -239,22 +239,21 @@ ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *req
  *
  * Checks to see if after the LDAP to RADIUS mapping has been completed that a reference password.
  *
- * @param[in] mctx	rlm_ldap configuration.
- * @param[in] request	Current request.
- * @param[in] ttrunk	the connection thread trunk.
+ * @param[in] request		Current request.
+ * @param[in] expect_password	Whether we should be expecting a password.
+ * @param[in] ttrunk		the connection thread trunk.
  */
-void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_thread_trunk_t const *ttrunk)
+void rlm_ldap_check_reply(request_t *request, char const *inst_name, bool expect_password, fr_ldap_thread_trunk_t const *ttrunk)
 {
-	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
-	fr_pair_t 	*parent;
+	fr_pair_t 		*parent;
 
-   /*
+       /*
 	*	More warning messages for people who can't be bothered to read the documentation.
 	*
 	*	Expect_password is set when we process the mapping, and is only true if there was a mapping between
 	*	an LDAP attribute and a password reference attribute in the control list.
 	*/
-	if (!inst->expect_password || !RDEBUG_ENABLED2) return;
+	if (!expect_password || !RDEBUG_ENABLED2) return;
 
 	parent = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_password);
 	if (!parent) parent = request->control_ctx;
@@ -271,9 +270,9 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 			RWDEBUG2("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
 			RWDEBUG2("!!!  - Configure authentication via wbclient (mschapv2 only)");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				 mctx->inst->name);
+				 inst_name);
 			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-				 mctx->inst->name);
+				 inst_name);
 			RWDEBUG2("!!!    (pap only)");
 
 			break;
@@ -285,9 +284,9 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 			RWDEBUG2("!!!  - Set 'edir = yes' and enable the universal password feature on your");
 			RWDEBUG2("!!!    eDir server (recommended)");
 			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-				 mctx->inst->name);
+				 inst_name);
 			RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-				 mctx->inst->name);
+				 inst_name);
 			RWDEBUG("!!!    (pap only)");
 			break;
 
@@ -300,9 +299,9 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 				RWDEBUG2("!!!    \"%s\" has permission to read that password attribute (recommended)",
 					 ttrunk->config.admin_identity);
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-					 mctx->inst->name);
+					 inst_name);
 				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-					 mctx->inst->name);
+					 inst_name);
 				RWDEBUG2("!!!    (pap only)");
 			} else {
 				RWDEBUG2("!!! No \"known good\" password added");
@@ -312,9 +311,9 @@ void rlm_ldap_check_reply(module_ctx_t const *mctx, request_t *request, fr_ldap_
 				RWDEBUG2("!!!    'identity' is set to the DN of an account that has permission to read");
 				RWDEBUG2("!!!    that password attribute");
 				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-					 mctx->inst->name);
+					 inst_name);
 				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-					 mctx->inst->name);
+					 inst_name);
 				RWDEBUG2("!!!    (pap only)");
 			}
 			break;

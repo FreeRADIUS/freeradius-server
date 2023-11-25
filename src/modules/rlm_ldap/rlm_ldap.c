@@ -50,7 +50,7 @@ USES_APPLE_DEPRECATED_API
 
 typedef struct {
 	fr_value_box_t	password;
-	tmpl_t		*password_tmpl;
+	tmpl_t const	*password_tmpl;
 	fr_value_box_t	user_base;
 	fr_value_box_t	user_filter;
 	fr_value_box_t	user_sasl_mech;
@@ -68,7 +68,10 @@ typedef struct {
  */
 typedef struct {
 	fr_value_box_t	profile_filter;			//!< Filter to use when searching for users.
+	map_list_t	*profile_map;			//!< List of maps to apply to the profile.
 } ldap_xlat_profile_call_env_t;
+
+static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
 
 static const call_env_parser_t sasl_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_mech) },
@@ -190,9 +193,21 @@ static const call_env_method_t authenticate_method_env = {
 	}
 };
 
+/** Parameters to allow ldap_update_section_parse to be reused
+ */
+typedef struct {
+	size_t		map_offset;
+	ssize_t		expect_password_offset;
+} ldap_update_rules_t;
+
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_autz_call_env_t),
 	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_NONE, ldap_update_section_parse),
+					      .uctx = &(ldap_update_rules_t){
+						.map_offset = offsetof(ldap_autz_call_env_t, user_map),
+					      	.expect_password_offset = offsetof(ldap_autz_call_env_t, expect_password)
+					      } },
 		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
 					 ((call_env_parser_t[]) {
 						USER_CALL_ENV_COMMON(ldap_autz_call_env_t),
@@ -247,6 +262,11 @@ static const call_env_method_t xlat_memberof_method_env = {
 static const call_env_method_t xlat_profile_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_xlat_profile_call_env_t),
 	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_NONE, ldap_update_section_parse),
+					      .uctx = &(ldap_update_rules_t){
+						.map_offset = offsetof(ldap_xlat_profile_call_env_t, profile_map),
+					      	.expect_password_offset = -1
+					      } },
 		{ FR_CALL_ENV_SUBSECTION("profile", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[])  {
 						{ FR_CALL_ENV_OFFSET("filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_profile_call_env_t, profile_filter),
@@ -1035,7 +1055,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	/*
 	 *	Synchronous expansion of maps (fixme!)
 	 */
-	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, &inst->user_map, inst->valuepair_attr) < 0) goto error;
+	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, env_data->profile_map, inst->valuepair_attr) < 0) goto error;
 	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
 					  handle_config->admin_password, request, handle_config);
 	if (host) ldap_memfree(host);
@@ -1644,13 +1664,13 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_MAP:
-		if (!map_list_empty(&inst->user_map) || inst->valuepair_attr) {
+		if (!map_list_empty(call_env->user_map) || inst->valuepair_attr) {
 			RDEBUG2("Processing user attributes");
 			RINDENT();
 			if (fr_ldap_map_do(request, inst->valuepair_attr,
 					   &autz_ctx->expanded, autz_ctx->entry) > 0) rcode = RLM_MODULE_UPDATED;
 			REXDENT();
-			rlm_ldap_check_reply(&(module_ctx_t){.inst = autz_ctx->dlinst}, request, autz_ctx->ttrunk);
+			rlm_ldap_check_reply(request, autz_ctx->dlinst->name, call_env->expect_password->vb_bool, autz_ctx->ttrunk);
 		}
 	}
 
@@ -1698,7 +1718,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	for many things besides searching for users.
 	 */
 
-	if (fr_ldap_map_expand(autz_ctx, expanded, request, &inst->user_map, inst->valuepair_attr) < 0) {
+	if (fr_ldap_map_expand(autz_ctx, expanded, request, call_env->user_map, inst->valuepair_attr) < 0) {
 	fail:
 		talloc_free(autz_ctx);
 		RETURN_MODULE_FAIL;
@@ -2259,6 +2279,85 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+{
+	map_list_t			*maps;
+	CONF_SECTION			*update = cf_item_to_section(ci);
+	ldap_update_rules_t const	*ur = rule->uctx;
+
+	bool				expect_password;
+
+	/*
+	 *	Build the attribute map
+	 */
+	{
+		map_t const		*map = NULL;
+		tmpl_attr_t const	*ar;
+		call_env_parsed_t	*parsed;
+		tmpl_rules_t		parse_rules = {
+						.attr = {
+							.dict_def = namespace,
+							.list_def = request_attr_request,
+						}
+					};
+
+		MEM(parsed = call_env_parsed_add(ctx, out,
+						 &(call_env_parser_t){
+							.name = "update",
+							.flags = CALL_ENV_FLAG_PARSE_ONLY,
+							.pair = {
+								.parsed = {
+									.offset = ur->map_offset,
+									.type = CALL_ENV_PARSE_TYPE_VOID
+								}
+							}
+						 }));
+		MEM(maps = talloc_zero(parsed, map_list_t));
+
+		if (map_afrom_cs(maps, maps, update, &parse_rules, &parse_rules, fr_ldap_map_verify, NULL, LDAP_MAX_ATTRMAP) < 0) {
+			call_env_parsed_free(out, parsed);
+			return -1;
+		}
+		/*
+		 *	Check map to see if a password is being retrieved.
+		 *	fr_ldap_map_verify ensures that all maps have attributes on the LHS.
+		 *	All passwords have a common parent attribute of attr_password
+		 */
+		while ((map = map_list_next(maps, map))) {
+			ar = tmpl_attr_tail(map->lhs);
+			if (ar->da->parent == attr_password) {
+				expect_password = true;
+				break;
+			}
+		}
+	}
+
+	/*
+	 *	Write out whether we expect a password to be returned from the ldap data
+	 */
+	if (ur->expect_password_offset >= 0) {
+		call_env_parsed_t *parsed;
+		fr_value_box_t *vb;
+
+		MEM(parsed = call_env_parsed_add(ctx, out,
+						 &(call_env_parser_t){
+							.name = "expect_password",
+							.flags = CALL_ENV_FLAG_PARSE_ONLY,
+							.pair = {
+								.parsed = {
+									.offset = ur->expect_password_offset,
+									.type = CALL_ENV_PARSE_TYPE_VALUE_BOX
+								}
+							}
+						 }));
+		MEM(vb = fr_value_box_alloc(parsed, FR_TYPE_BOOL, NULL));
+		vb->vb_bool = expect_password;
+		call_env_parsed_set_value(parsed, vb);
+	}
+
+	return 0;
+}
+
 /** Instantiate the module
  *
  * Creates a new instance of the module reading parameters from a configuration section.
@@ -2272,11 +2371,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	size_t		i;
 
-	CONF_SECTION	*options, *update;
+	CONF_SECTION	*options;
 	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
-
-	map_list_init(&inst->user_map);
 
 	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
@@ -2454,40 +2551,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		} else {
 			cf_log_err(conf, "Invalid 'tls.tls_min_version' value \"%s\"", inst->handle_config.tls_min_version_str);
 			goto error;
-		}
-	}
-
-	/*
-	 *	Build the attribute map
-	 */
-	{
-		map_t const		*map = NULL;
-		tmpl_attr_t const	*ar;
-		tmpl_rules_t	parse_rules = {
-			.attr = {
-				.list_def = request_attr_request,
-				.allow_foreign = true	/* Because we don't know where we'll be called */
-			}
-		};
-
-		update = cf_section_find(conf, "update", NULL);
-		if (update && (map_afrom_cs(inst, &inst->user_map, update,
-					    &parse_rules, &parse_rules, fr_ldap_map_verify, NULL,
-					    LDAP_MAX_ATTRMAP) < 0)) {
-			return -1;
-		}
-
-		/*
-		 *	Check map to see if a password is being retrieved.
-		 *	fr_ldap_map_verify ensures that all maps have attributes on the LHS.
-		 *	All passwords have a common parent attribute of attr_password
-		 */
-		while ((map = map_list_next(&inst->user_map, map))) {
-			ar = tmpl_attr_tail(map->lhs);
-			if (ar->da->parent == attr_password) {
-				inst->expect_password = true;
-				break;
-			}
 		}
 	}
 
