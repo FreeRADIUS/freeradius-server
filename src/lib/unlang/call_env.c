@@ -300,7 +300,7 @@ int call_env_parsed_valid(call_env_parsed_t const *parsed, CONF_ITEM const *ci, 
 {
 	tmpl_t const *tmpl;
 
-	if (rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_VOID) return 0;
+	if (rule->pair.parsed.type != CALL_ENV_PARSE_TYPE_TMPL) return 0;
 
 	tmpl = parsed->data.tmpl;
 	switch (tmpl->type) {
