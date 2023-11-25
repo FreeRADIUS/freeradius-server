@@ -2285,7 +2285,7 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 	CONF_SECTION			*update = cf_item_to_section(ci);
 	ldap_update_rules_t const	*ur = rule->uctx;
 
-	bool				expect_password;
+	bool				expect_password = false;
 
 	/*
 	 *	Build the attribute map
