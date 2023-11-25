@@ -339,7 +339,7 @@ int call_env_parsed_valid(call_env_parsed_t const *parsed, CONF_ITEM const *ci, 
 static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, fr_dict_t const *namespace,
 			  CONF_SECTION const *cs, call_env_parser_t const *rule) {
 	CONF_PAIR const		*cp, *next;
-	call_env_parsed_t	*call_env_parsed;
+	call_env_parsed_t	*call_env_parsed = NULL;
 	ssize_t			count, multi_index;
 	fr_type_t		type;
 
@@ -362,6 +362,9 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				 *	after the callback returns.
 				 */
 				call_env_parsed_t *last = call_env_parsed_tail(parsed);
+
+				count = 0;
+				multi_index = 0;
 
 				if (rule->section.func(ctx, parsed, namespace, cf_section_to_item(subcs), rule) < 0) {
 					cf_log_perr(cs, "Failed parsing configuration section %s", rule->name);
