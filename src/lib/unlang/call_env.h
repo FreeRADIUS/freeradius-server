@@ -390,6 +390,8 @@ void call_env_parsed_set_value(call_env_parsed_t *parsed, fr_value_box_t const *
 
 void call_env_parsed_set_data(call_env_parsed_t *parsed, void const *data);
 
+void call_env_parsed_set_multi_index(call_env_parsed_t *parsed, size_t count, size_t index);
+
 void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr);
 
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,

@@ -368,32 +368,23 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				 */
 				call_env_parsed_t *last = call_env_parsed_tail(parsed);
 
-				count = 0;
-				multi_index = 0;
-
 				if (rule->section.func(ctx, parsed, namespace, cf_section_to_item(subcs), rule) < 0) {
 					cf_log_perr(cs, "Failed parsing configuration section %s", rule->name);
 					talloc_free(call_env_parsed);
 					return -1;
 				}
 
+				/*
+				 *	We _could_ fix up count and multi_index on behalf of
+				 *	the callback, but there's no guarantee that all call_env_parsed_t
+				 *	are related to each other, so we don't.
+				 */
 				call_env_parsed = last;
 				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
 					if (call_env_parsed_valid(call_env_parsed, cf_section_to_item(subcs), rule) < 0) {
 						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s", rule->name);
 						return -1;
 					}
-					count++; /* Get the total */
-				}
-
-				/*
-				 *	Now fixup the count and multi_index for each entry
-				 *	produced by the subsection callback.
-				 */
-				call_env_parsed = last;
-				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
-					call_env_parsed->count = count;
-					call_env_parsed->multi_index = multi_index++;
 				}
 				goto next;
 			}
@@ -580,6 +571,9 @@ call_env_parsed_t *call_env_parsed_add(TALLOC_CTX *ctx, call_env_parsed_head_t *
 
 /** Assign a tmpl to a call_env_parsed_t
  *
+ * @note Intended to be used by subsection callbacks to add a tmpl to be
+ *	evaluated during the call.
+ *
  * @param[in] parsed		to assign the tmpl to.
  * @param[in] tmpl		to assign.
  */
@@ -590,6 +584,9 @@ void call_env_parsed_set_tmpl(call_env_parsed_t *parsed, tmpl_t const *tmpl)
 };
 
 /** Assign a value box to a call_env_parsed_t
+ *
+ * @note Intended to be used by subsection callbacks to set a static boxed
+ *	value to be written out to the result structure.
  *
  * @param[in] parsed		to assign the tmpl to.
  * @param[in] vb		to assign.
@@ -602,6 +599,9 @@ void call_env_parsed_set_value(call_env_parsed_t *parsed, fr_value_box_t const *
 
 /** Assign data to a call_env_parsed_t
  *
+ * @note Intended to be used by subsection callbacks to set arbitrary data
+ *       to be written out to the result structure.
+ *
  * @param[in] parsed		to assign the tmpl to.
  * @param[in] data		to assign.
  */
@@ -611,7 +611,26 @@ void call_env_parsed_set_data(call_env_parsed_t *parsed, void const *data)
 	parsed->data.ptr = data;
 };
 
+/** Assign a count and index to a call_env_parsed_t
+ *
+ * @note Intended to be used by subsection callbacks to indicate related
+ *	call_env_parsed_t.
+ *
+ * @param[in] parsed		to modify metadata of.
+ * @param[in] count		to assign.
+ * @param[in] index		to assign.
+ */
+void call_env_parsed_set_multi_index(call_env_parsed_t *parsed, size_t count, size_t index)
+{
+	fr_assert_msg(call_env_multi(parsed->rule->flags), "Rule must indicate parsed output is a multi pair");
+	parsed->multi_index = index;
+	parsed->count = count;
+}
+
 /** Remove a call_env_parsed_t from the list of parsed call envs
+ *
+ * @note Indended to be used by subsection callbacks to remove a call_env_parsed_t
+ *	from the list of parsed call envs (typically on error).
  *
  * @param[in] parsed		to remove parsed data from.
  * @param[in] ptr		to remove.
