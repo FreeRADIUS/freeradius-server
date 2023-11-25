@@ -378,7 +378,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				}
 
 				call_env_parsed = last;
-				while ((call_env_parsed = call_env_parsed_prev(parsed, call_env_parsed))) {
+				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
 					if (call_env_parsed_valid(call_env_parsed, cf_section_to_item(subcs), rule) < 0) {
 						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s", rule->name);
 						return -1;
@@ -391,7 +391,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				 *	produced by the subsection callback.
 				 */
 				call_env_parsed = last;
-				while ((call_env_parsed = call_env_parsed_prev(parsed, call_env_parsed))) {
+				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
 					call_env_parsed->count = count;
 					call_env_parsed->multi_index = multi_index++;
 				}
