@@ -38,7 +38,7 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_cache;
 
-static int update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
+static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_cache_t, driver_submodule), .dflt = "rbtree",
@@ -61,7 +61,7 @@ static const call_env_method_t cache_method_env = {
 	FR_CALL_ENV_METHOD_OUT(cache_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, cache_call_env_t, key) },
-		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_REQUIRED, update_section_parse) },
+		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_REQUIRED, cache_update_section_parse) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -1242,7 +1242,7 @@ static int cache_verify(map_t *map, void *uctx)
 	return 0;
 }
 
-static int update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
 {
 	map_list_t		*maps;
 	CONF_SECTION		*update = cf_item_to_section(ci);
@@ -1267,7 +1267,7 @@ static int update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr
 		};
 
 		map_list_init(maps);
-		if (map_afrom_cs(ctx, maps, update,
+		if (map_afrom_cs(maps, maps, update,
 				 &parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 			return -1;
 		}
