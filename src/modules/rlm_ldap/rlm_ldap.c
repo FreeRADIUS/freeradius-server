@@ -352,6 +352,14 @@ static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+static inline CC_HINT(always_inline)
+bool ldap_map_list_empty(map_list_t *maps)
+{
+	if (!maps) return true;
+
+	return map_list_empty(maps);
+}
+
 /** Escape LDAP string
  *
  * @ingroup xlat_functions
@@ -1055,7 +1063,8 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	/*
 	 *	Synchronous expansion of maps (fixme!)
 	 */
-	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, env_data->profile_map, inst->valuepair_attr) < 0) goto error;
+	if (!ldap_map_list_empty(env_data->profile_map) &&
+	    (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, env_data->profile_map, inst->valuepair_attr) < 0)) goto error;
 	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
 					  handle_config->admin_password, request, handle_config);
 	if (host) ldap_memfree(host);
@@ -1664,7 +1673,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_MAP:
-		if (!map_list_empty(call_env->user_map) || inst->valuepair_attr) {
+		if (!ldap_map_list_empty(call_env->user_map) || inst->valuepair_attr) {
 			RDEBUG2("Processing user attributes");
 			RINDENT();
 			if (fr_ldap_map_do(request, inst->valuepair_attr,
@@ -1717,8 +1726,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	User-Password here.  LDAP authorization can be used
 	 *	for many things besides searching for users.
 	 */
-
-	if (fr_ldap_map_expand(autz_ctx, expanded, request, call_env->user_map, inst->valuepair_attr) < 0) {
+	if (!ldap_map_list_empty(call_env->user_map) &&
+	    (fr_ldap_map_expand(autz_ctx, expanded, request, call_env->user_map, inst->valuepair_attr) < 0)) {
 	fail:
 		talloc_free(autz_ctx);
 		RETURN_MODULE_FAIL;
@@ -2312,7 +2321,9 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 								}
 							}
 						 }));
-		MEM(maps = talloc_zero(parsed, map_list_t));
+
+		MEM(maps = talloc(parsed, map_list_t));
+		map_list_init(maps);
 
 		if (map_afrom_cs(maps, maps, update, &parse_rules, &parse_rules, fr_ldap_map_verify, NULL, LDAP_MAX_ATTRMAP) < 0) {
 			call_env_parsed_free(out, parsed);
@@ -2330,6 +2341,7 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 				break;
 			}
 		}
+		call_env_parsed_set_data(parsed, maps);
 	}
 
 	/*

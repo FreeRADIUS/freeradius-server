@@ -1259,9 +1259,10 @@ static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *o
 
 	MEM(parsed = call_env_parsed_add(ctx, out,
 					 &(call_env_parser_t){ FR_CALL_ENV_PARSE_ONLY_OFFSET("update", FR_TYPE_VOID, 0, cache_call_env_t, maps)}));
-	MEM(maps = talloc_zero(parsed, map_list_t));
 
+	MEM(maps = talloc(parsed, map_list_t));
 	map_list_init(maps);
+
 	if (map_afrom_cs(maps, maps, update,
 				&parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 	error:
