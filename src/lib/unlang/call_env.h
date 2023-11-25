@@ -380,8 +380,15 @@ typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
 		.func = _func \
 	}
 
+/** @name Expand a call_env_t
+ * @{
+ */
 unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *result, void **env_data, call_env_t const *call_env);
+/** @} */
 
+/** @name Functions to be used by the section callbacks to add parsed data.
+ * @{
+ */
 call_env_parsed_t *call_env_parsed_add(TALLOC_CTX *ctx, call_env_parsed_head_t *head, call_env_parser_t const *rule);
 
 void call_env_parsed_set_tmpl(call_env_parsed_t *parsed, tmpl_t const *tmpl);
@@ -393,9 +400,14 @@ void call_env_parsed_set_data(call_env_parsed_t *parsed, void const *data);
 void call_env_parsed_set_multi_index(call_env_parsed_t *parsed, size_t count, size_t index);
 
 void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr);
+/** @} */
 
+/** @name Allocate a new call env
+ * @{
+ */
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
 			   fr_dict_t const *namespace, CONF_SECTION *cs) CC_HINT(nonnull(3,4,5));
+/** @} */
 
 #ifdef __cplusplus
 }
