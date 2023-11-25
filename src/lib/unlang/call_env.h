@@ -281,8 +281,8 @@ _Generic((((_s *)NULL)->_f), \
 typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
 
 #define CALL_ENV_FLAGS(_cast_type, _flags, _struct, _field) \
-	(FR_CALL_ENV_CONCAT((_flags & CALL_ENV_FLAG_CONCAT), _cast_type) | \
-			FR_CALL_ENV_SINGLE(_struct, _field, (_flags & CALL_ENV_FLAG_CONCAT)) | \
+	(FR_CALL_ENV_CONCAT(((_flags) & CALL_ENV_FLAG_CONCAT), _cast_type) | \
+			FR_CALL_ENV_SINGLE(_struct, _field, ((_flags) & CALL_ENV_FLAG_CONCAT)) | \
 			FR_CALL_ENV_MULTI(_struct, _field) |\
 			((_flags) & ~CALL_ENV_FLAG_CONCAT)) \
 
