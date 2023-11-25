@@ -40,8 +40,9 @@ struct call_env_parsed_s {
 	call_env_parsed_entry_t		entry;		//!< Entry in list of parsed call_env_parsers.
 
 	union {
-		tmpl_t				*tmpl;		//!< Tmpl produced from parsing conf pair.
-		void				*ptr;		//!< Data produced from parsing conf pair.
+		tmpl_t const			*tmpl;		//!< Tmpl produced from parsing conf pair.
+		fr_value_box_t const		*vb;		//!< Value box produced from parsing conf pair.
+		void const			*ptr;		//!< Data produced from parsing conf pair.
 	} data;
 
 	size_t				count;		//!< Number of CONF_PAIRs found, matching the #call_env_parser_t.
@@ -59,7 +60,7 @@ call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out
 {
 	fr_value_box_t	*vb;
 
-	if (tmpl_out) *tmpl_out = env->data.tmpl;
+	if (tmpl_out) *tmpl_out = UNCONST(tmpl_t *, env->data.tmpl);
 	if (call_env_parse_only(env->rule->flags)) return CALL_ENV_SUCCESS;
 
 	vb = fr_value_box_list_head(tmpl_expanded);
@@ -152,19 +153,23 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 			out = (void **)((uint8_t *)*call_env_rctx->data + env->rule->pair.parsed.offset);
 			switch (env->rule->pair.parsed.type) {
 			case CALL_ENV_PARSE_TYPE_TMPL:
-				*out = env->data.tmpl;
+				*out = UNCONST(tmpl_t *, env->data.tmpl);
 				break;
 
+			case CALL_ENV_PARSE_TYPE_VALUE_BOX:
+				*out = UNCONST(fr_value_box_t *, env->data.vb);
+				continue;	/* Can't evaluate these */
+
 			case CALL_ENV_PARSE_TYPE_VOID:
-				*out = env->data.ptr;
-				break;
+				*out = UNCONST(void *, env->data.ptr);
+				continue;	/* Can't evaluate these */
 			}
 		}
 
 		/*
 		 *	If this is not parse_only, we need to expand the tmpl.
 		 */
-		if (!call_env_parse_only(env->rule->flags)) break;
+		if ((env->rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_TMPL) && !call_env_parse_only(env->rule->flags)) break;
 	}
 
 	if (!call_env_rctx->last_expanded) {	/* No more! */
@@ -293,7 +298,7 @@ call_env_parsed_t *call_env_parsed_alloc(TALLOC_CTX *ctx, call_env_parser_t cons
 static inline CC_HINT(always_inline)
 int call_env_parsed_valid(call_env_parsed_t const *parsed, CONF_ITEM const *ci, call_env_parser_t const *rule)
 {
-	tmpl_t *tmpl;
+	tmpl_t const *tmpl;
 
 	if (rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_VOID) return 0;
 
@@ -461,8 +466,11 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 					return -1;
 				}
 			} else {
+				tmpl_t *parsed_tmpl;
+
 				type = rule->pair.cast_type;
-				if (tmpl_afrom_substr(call_env_parsed, &call_env_parsed->data.tmpl,
+
+				if (tmpl_afrom_substr(call_env_parsed, &parsed_tmpl,
 						      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
 						      cf_pair_value_quote(to_parse), NULL, &(tmpl_rules_t){
 								.cast = ((type == FR_TYPE_VOID) ? FR_TYPE_NULL : type),
@@ -473,6 +481,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 						}) < 0) {
 					goto error;
 				}
+				call_env_parsed->data.tmpl = parsed_tmpl;
 			}
 
 			/*
@@ -574,10 +583,21 @@ call_env_parsed_t *call_env_parsed_add(TALLOC_CTX *ctx, call_env_parsed_head_t *
  * @param[in] parsed		to assign the tmpl to.
  * @param[in] tmpl		to assign.
  */
-void call_env_parsed_set_tmpl(call_env_parsed_t *parsed, tmpl_t *tmpl)
+void call_env_parsed_set_tmpl(call_env_parsed_t *parsed, tmpl_t const *tmpl)
 {
 	fr_assert_msg(parsed->rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_TMPL, "Rule must indicate parsed output is a tmpl_t");
 	parsed->data.tmpl = tmpl;
+};
+
+/** Assign a value box to a call_env_parsed_t
+ *
+ * @param[in] parsed		to assign the tmpl to.
+ * @param[in] vb		to assign.
+ */
+void call_env_parsed_set_value(call_env_parsed_t *parsed, fr_value_box_t const *vb)
+{
+	fr_assert_msg(parsed->rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_VALUE_BOX, "Rule must indicate parsed output is a value box");
+	parsed->data.vb = vb;
 };
 
 /** Assign data to a call_env_parsed_t
@@ -585,11 +605,22 @@ void call_env_parsed_set_tmpl(call_env_parsed_t *parsed, tmpl_t *tmpl)
  * @param[in] parsed		to assign the tmpl to.
  * @param[in] data		to assign.
  */
-void call_env_parsed_set_data(call_env_parsed_t *parsed, void *data)
+void call_env_parsed_set_data(call_env_parsed_t *parsed, void const *data)
 {
 	fr_assert_msg(parsed->rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_VOID, "Rule must indicate parsed output is a void *");
 	parsed->data.ptr = data;
 };
+
+/** Remove a call_env_parsed_t from the list of parsed call envs
+ *
+ * @param[in] parsed		to remove parsed data from.
+ * @param[in] ptr		to remove.
+ */
+void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr)
+{
+	call_env_parsed_remove(parsed, ptr);
+	talloc_free(ptr);
+}
 
 /** Given a call_env_method, parse all call_env_pair_t in the context of a specific call to an xlat or module method
  *

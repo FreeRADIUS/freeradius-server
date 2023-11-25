@@ -54,6 +54,7 @@ typedef enum {
  */
 typedef enum {
 	CALL_ENV_PARSE_TYPE_TMPL = 1,				//!< Output of the parsing phase is a tmpl_t.
+	CALL_ENV_PARSE_TYPE_VALUE_BOX,				//!< Output of the parsing phase is a single value box (static data).
 	CALL_ENV_PARSE_TYPE_VOID				//!< Output of the parsing phase is undefined (a custom structure).
 } call_env_parse_type_t;
 
@@ -191,6 +192,8 @@ struct call_env_parser_s {
 			call_env_parse_section_t	func;		//!< Callback for parsing CONF_SECTION.
     		} section;
   	};
+
+	void const *uctx;				//!< User context for callback functions.
 };
 
 #define CALL_ENV_TERMINATOR { NULL }
@@ -218,7 +221,10 @@ struct call_env_s {
  */
 #define CALL_ENV_PARSE_TYPE(_s, _f) \
 _Generic((((_s *)NULL)->_f), \
+	tmpl_t const *			: CALL_ENV_PARSE_TYPE_TMPL, \
 	tmpl_t *			: CALL_ENV_PARSE_TYPE_TMPL, \
+	fr_value_box_t const *		: CALL_ENV_PARSE_TYPE_VALUE_BOX, \
+	fr_value_box_t *		: CALL_ENV_PARSE_TYPE_VALUE_BOX, \
 	default				: CALL_ENV_PARSE_TYPE_VOID \
 )
 
@@ -378,9 +384,13 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
 
 call_env_parsed_t *call_env_parsed_add(TALLOC_CTX *ctx, call_env_parsed_head_t *head, call_env_parser_t const *rule);
 
-void call_env_parsed_set_tmpl(call_env_parsed_t *parsed, tmpl_t *tmpl);
+void call_env_parsed_set_tmpl(call_env_parsed_t *parsed, tmpl_t const *tmpl);
 
-void call_env_parsed_set_data(call_env_parsed_t *parsed, void *data);
+void call_env_parsed_set_value(call_env_parsed_t *parsed, fr_value_box_t const *vb);
+
+void call_env_parsed_set_data(call_env_parsed_t *parsed, void const *data);
+
+void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr);
 
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
 			   fr_dict_t const *namespace, CONF_SECTION *cs) CC_HINT(nonnull(3,4,5));
