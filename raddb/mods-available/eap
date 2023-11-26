@@ -33,6 +33,28 @@ eap {
 	#
 	timer_expire = 60
 
+	#
+	#  Some supplicants may misbehave by starting many thousands
+	#  of EAP sessions, but never finishing them.  These sessions
+	#  can cause the server to hit 'max_sessions' very quickly.
+	#  The 'timer_expire' configuration above does not help as
+	#  much as it could, because the old (duplicate) session
+	#  should be deleted as soon as the new one comes in.
+	#
+	#  If you set the 'dedup_key' below, whenever the EAP module
+	#  starts a new session, it will check for a previous session
+	#  which has the same dedup key.  If a previous session
+	#  is found, it is deleted.
+	#
+	#  Setting this configuration item may cause issues if the
+	#  same device uses multiple EAP sessions at the same time.
+	#  But that device behavior should be rare to non-existent.
+	#
+	#  The configuration item is commented out so that upgrades
+	#  do not change existing behavior.
+	#
+#	dedup_key = "%{Calling-Station-Id}
+
 	#  There are many EAP types, but the server has support
 	#  for only a limited subset.  If the server receives
 	#  a request for an EAP type it does not support, then
