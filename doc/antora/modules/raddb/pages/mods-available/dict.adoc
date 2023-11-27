@@ -1,0 +1,91 @@
+
+
+
+
+= Dict Module
+
+The `dict` module registers expansions which query the dictionaries.
+
+
+## Expansions
+
+The following expansions allow querying the dictionaries.
+
+### %dict.attr(_<string>_)
+
+Takes an attribute name, and returns the canonicalized name of the attribute.
+
+If the attribute does not exist, nothing is returned.
+
+.Return: _string_
+
+### %dict.attr.by.num(_<uint32>_)
+
+Takes an attribute number, and returns the canonicalized name of the attribute.
+
+If the attribute does not exist, nothing is returned.
+
+This function is useful only for "top level" attributes such as `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`.
+Where the attribute is nested, use `%dict.attr.by.oid()` instead.
+
+.Return: _string_
+
+### %dict.attr.by.oid(_<string>_)
+
+Takes a full OID reference (e.g. `26.9.1`), and returns the name of
+the attribute.
+
+If the attribute does not exist, nothing is returned.
+
+.Return: _string_
+
+### %dict.attr.num(_<string>_)
+
+Takes an attribute name, and returns the number of the attribute.
+
+If the attribute does not exist, nothing is returned.
+
+Note that only the _final_ attribute number is returned.  For example, the OID
+for `Vendor-Specific.Cisco.AVPair` is `26.9.1`.  This function will return
+`1`, and not the full OID.
+
+.Return: _uint32_
+
+### %dict.attr.type(_<string>_)
+
+Takes an attribute name, and returns the data type of the attribute.
+
+If the attribute does not exist, nothing is returned.
+
+.Return: _string_
+
+### %dict.vendor(_<string>_)
+
+Takes an vendor name, and returns the canonicalized name of the vendor.
+
+If the vendor does not exist, nothing is returned.
+
+.Return: _string_
+
+### %dict.vendor.by.num(_<uint32>_)
+
+Takes an vendor number, and returns the canonicalized name of the vendor.
+
+If the vendor does not exist, nothing is returned.
+
+.Return: _string_
+
+
+
+## Configuration Settings
+
+This module takes no configuration.
+
+
+
+== Default Configuration
+
+```
+dict {
+}
+```

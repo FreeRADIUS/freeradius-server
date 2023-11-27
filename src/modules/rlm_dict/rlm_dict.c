@@ -216,6 +216,27 @@ static xlat_action_t xlat_attr_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+/** Return the data type of an attribute reference
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_attr_type(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				   UNUSED xlat_ctx_t const *xctx,
+				   request_t *request, fr_value_box_list_t *in)
+{
+	fr_pair_t	*vp;
+	fr_value_box_t	*attr = fr_value_box_list_head(in);
+	fr_value_box_t	*vb;
+
+	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	fr_value_box_strdup(vb, vb, vp->da, fr_type_to_str(vp->vp_type), false);
+	fr_dcursor_append(out, vb);
+	return XLAT_ACTION_DONE;
+}
+
 #define XLAT_REGISTER(_name, _func, _type, _args) \
 if (unlikely(!(xlat = xlat_func_register(NULL, _name, _func, _type)))) return -1; \
 xlat_func_args_set(xlat, _args)
@@ -224,24 +245,24 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	XLAT_REGISTER("attr_by_num", xlat_dict_attr_by_num, FR_TYPE_STRING, xlat_dict_attr_by_num_args);
-	XLAT_REGISTER("attr_by_oid", xlat_dict_attr_by_oid, FR_TYPE_STRING, xlat_dict_attr_by_oid_args);
-	XLAT_REGISTER("vendor", xlat_vendor, FR_TYPE_STRING, xlat_vendor_args);
-	XLAT_REGISTER("vendor_num", xlat_vendor_num, FR_TYPE_UINT32, xlat_vendor_num_args);
-	XLAT_REGISTER("attr", xlat_attr, FR_TYPE_STRING, xlat_attr_args);
-	XLAT_REGISTER("attr_num", xlat_attr_num, FR_TYPE_UINT32, xlat_attr_num_args);
-
+	XLAT_REGISTER("dict.attr.by.num", xlat_dict_attr_by_num, FR_TYPE_STRING, xlat_dict_attr_by_num_args);
+	XLAT_REGISTER("dict.attr.by.oid", xlat_dict_attr_by_oid, FR_TYPE_STRING, xlat_dict_attr_by_oid_args);
+	XLAT_REGISTER("dict.vendor", xlat_vendor, FR_TYPE_STRING, xlat_vendor_args);
+	XLAT_REGISTER("dict.vendor.num", xlat_vendor_num, FR_TYPE_UINT32, xlat_vendor_num_args);
+	XLAT_REGISTER("dict.attr", xlat_attr, FR_TYPE_STRING, xlat_attr_args);
+	XLAT_REGISTER("dict.attr.num", xlat_attr_num, FR_TYPE_UINT32, xlat_attr_num_args);
+	XLAT_REGISTER("dict.attr.type", xlat_attr_type, FR_TYPE_STRING, xlat_attr_args);
 	return 0;
 }
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("attr_by_num");
-	xlat_func_unregister("attr_by_oid");
-	xlat_func_unregister("vendor");
-	xlat_func_unregister("vendor_num");
-	xlat_func_unregister("attr");
-	xlat_func_unregister("attr_num");
+	xlat_func_unregister("dict.attr.by.num");
+	xlat_func_unregister("dict.attr.by.oid");
+	xlat_func_unregister("dict.vendor");
+	xlat_func_unregister("dict.vendor.num");
+	xlat_func_unregister("dict.attr");
+	xlat_func_unregister("dict.attr.num");
 }
 
 extern module_rlm_t rlm_dict;
