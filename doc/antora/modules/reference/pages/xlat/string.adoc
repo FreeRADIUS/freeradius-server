@@ -192,3 +192,5 @@ it. This definition is only available in version 2.1.10 and later.
 toupper of caipirinha is CAIPIRINHA
 ```
 
+// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
