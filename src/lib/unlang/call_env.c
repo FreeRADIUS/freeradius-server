@@ -581,7 +581,7 @@ void call_env_parsed_set_tmpl(call_env_parsed_t *parsed, tmpl_t const *tmpl)
 {
 	fr_assert_msg(parsed->rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_TMPL, "Rule must indicate parsed output is a tmpl_t");
 	parsed->data.tmpl = tmpl;
-};
+}
 
 /** Assign a value box to a call_env_parsed_t
  *
@@ -595,7 +595,7 @@ void call_env_parsed_set_value(call_env_parsed_t *parsed, fr_value_box_t const *
 {
 	fr_assert_msg(parsed->rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_VALUE_BOX, "Rule must indicate parsed output is a value box");
 	parsed->data.vb = vb;
-};
+}
 
 /** Assign data to a call_env_parsed_t
  *
@@ -609,7 +609,7 @@ void call_env_parsed_set_data(call_env_parsed_t *parsed, void const *data)
 {
 	fr_assert_msg(parsed->rule->pair.parsed.type == CALL_ENV_PARSE_TYPE_VOID, "Rule must indicate parsed output is a void *");
 	parsed->data.ptr = data;
-};
+}
 
 /** Assign a count and index to a call_env_parsed_t
  *
