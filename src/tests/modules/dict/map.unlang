@@ -56,11 +56,11 @@ if (%dict.vendor.num('Reply-Message') != 0) {
 	test_fail
 }
 
-if (%dict.attr.type ('User-Name') != 'string') {
+if (%dict.attr.type('User-Name') != 'string') {
 	test_fail
 }
 
-if (%dict.attr.type ('Vendor-Specific') != 'vendor') {
+if (%dict.attr.type('Vendor-Specific') != 'vsa') {
 	test_fail
 }
 
