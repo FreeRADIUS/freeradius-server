@@ -20,6 +20,8 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	  and microseconds.
 	* radclient prints packets as hex when using -xxx
 	* document KRB5_CLIENT_KTNAME in the "env" section of radiusd.conf.
+	* Allow for 'encrypt=1' attributes to be longer than 128 characters.
+	* Add "dedup_key" for misbehaving supplicants.  See mods-available/eap
 
 	Bug fixes
 	* Fix corner case with empty defaults in rlm_files.  Fixes #5035
