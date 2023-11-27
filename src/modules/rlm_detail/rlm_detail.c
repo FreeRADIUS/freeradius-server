@@ -418,7 +418,9 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	outfd = exfile_open(inst->ef, buffer, inst->perm, NULL);
 	if (outfd < 0) {
 		RPERROR("Couldn't open file %s", buffer);
-		RETURN_MODULE_FAIL;
+		*p_result = RLM_MODULE_FAIL;
+		/* coverity[missing_unlock] */
+		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
 	if (inst->group_is_set) {
