@@ -240,19 +240,20 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 		handler = inst->session_head;
 		if (!handler) break;
 
-		RDEBUG("Expiring EAP session with state "
-		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
-		       handler->state[0], handler->state[1],
-		       handler->state[2], handler->state[3],
-		       handler->state[4], handler->state[5],
-		       handler->state[6], handler->state[7]);
-
 		/*
 		 *	Expire entries from the start of the list.
 		 *	They should be the oldest ones.
 		 */
 		if ((timestamp - handler->timestamp) > (int)inst->timer_limit) {
 			rbnode_t *node;
+
+			RDEBUG("Expiring EAP session with state "
+			       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
+			       handler->state[0], handler->state[1],
+			       handler->state[2], handler->state[3],
+			       handler->state[4], handler->state[5],
+			       handler->state[6], handler->state[7]);
+
 			node = rbtree_find(inst->session_tree, handler);
 			rad_assert(node != NULL);
 			rbtree_delete(inst->session_tree, node);
