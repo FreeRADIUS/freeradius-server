@@ -291,6 +291,23 @@ sql {
 		#
 		#  Setting 'max' to MORE than the number of threads means
 		#  that there are more connections than necessary.
+		#
+		#  The setting here should be lower than the maximum
+		#  number of connections allowed by the database.
+		#
+		#  i.e. There is no point in telling FreeRADIUS to use
+		#  64 connections, while the database is limited to 32
+		#  connections.  That configuration will cause the
+		#  server to be "starved" of connections, and it will
+		#  block during normal operations, even when the
+		#  database is largely idle.
+		#
+		#  At the same time, if the database is slow, there is
+		#  no point in increasing "max".  More connections
+		#  will just cause the database to run more slowly.
+		#  The correct fix for a slow database is to fix it, so
+		#  that it responds to FreeRADIUS quickly.
+		#
 		max = ${thread[pool].max_servers}
 
 		#  Spare connections to be left idle
