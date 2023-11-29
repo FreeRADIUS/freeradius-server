@@ -13,7 +13,7 @@
 ## Fixes
 ### Marker release
 
-Current sbuffs require markers to be tracked because the marker's pointer needs to be updated is the sbuff is shifted,
+Current sbuffs require markers to be tracked because the marker's pointer needs to be updated as the sbuff is shifted,
 
 Using offsets relative to the start of the current sbuff removes the tracking requirement and means that the markers no longer need to be updated.
 
