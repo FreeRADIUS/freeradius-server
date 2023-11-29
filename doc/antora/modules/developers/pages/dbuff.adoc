@@ -45,7 +45,7 @@ the use of the buffer.  The functions normally return the number of
 bytes which have been used, so that the caller can adjust the pointer
 and length (adding to the former and subtracting from the latter).
 
-This method works, but there are some limitations
+This method works, but there are some limitations:
 
 * For encoders the buffer cannot be extended, which means the length
   of the buffer must be determined prior to calling the encoder.
@@ -68,7 +68,7 @@ the `fr_dbuff_t` structure in the source. The structure contains:
   operating on the same buffer are members of a singly linked list.
 
 The Encoding and decoding functions are passed pointers to dbuffs.
-Each function does its' work, updates the pointer to the next byte,
+Each function does its work, updates the pointer to the next byte,
 and then returns.  The caller can then just encode / decode multiple
 tokens in a row, with minimal additional overhead.
 
@@ -170,7 +170,7 @@ FR_DBUFF_FOO_RETURN(dbuff, ...);
 instead of
 [source,c]
 ----
-f ((val = fr_dbuff_foo(dbuff, ...) < 0) return val;
+if ((val = fr_dbuff_foo(dbuff, ...) < 0) return val;
 ----
 
 letting one return an error to the caller without cluttering the code.
