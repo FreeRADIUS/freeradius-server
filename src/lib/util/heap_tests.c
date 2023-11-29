@@ -208,7 +208,7 @@ static void heap_iter(void)
 	fr_heap_foreach(hp, heap_thing, item) {
 		TEST_CHECK((data_set & (1U << item->data)) == 0);
 		data_set |= (1U << item->data);
-	}}
+	}
 	TEST_CHECK(data_set == ((1U << HEAP_ITER_SIZE) - 1U));
 
 	talloc_free(hp);
