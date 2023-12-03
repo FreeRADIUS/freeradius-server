@@ -19,3 +19,4 @@ once, and not in each module.
 | Configuration | Description
 | xref:global.d/ldap.adoc[ldap]         | LDAP debugging flags
 | xref:global.d/python.adoc[python]	| Python path variables
+|=====

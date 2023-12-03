@@ -89,6 +89,7 @@ if (%file.size("/var/log/radius.log") > (((uint64)1) << 20)) {
 	%log.info("The log file is getting large!")
 }
 ----
+====
 
 == %file.tail(_string_, [ _uint32_ ])
 

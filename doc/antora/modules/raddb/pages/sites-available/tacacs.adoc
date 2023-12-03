@@ -1,7 +1,16 @@
 
 
+= The tacacs Virtual Server
+
+The `tacacs` virtual server processes TACACS+ packets.
 
 
+
+
+
+## The Virtual Server
+
+This is the `tacacs` virtual server.
 
 
 namespace:: Needs to be "tacacs" for TACACS+ functionality.
@@ -323,8 +332,6 @@ NOTE: Proxying of TACACS+ requests is NOT supported.
 == Default Configuration
 
 ```
-#	As of version 4.0.0, the server also supports the TACACS+
-#	protocol.
 #	https://www.rfc-editor.org/rfc/rfc8907
 server tacacs {
 	namespace = tacacs

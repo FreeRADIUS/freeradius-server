@@ -1,8 +1,11 @@
 #  -*- text -*-
 ######################################################################
 #
-#	As of version 4.0.0, the server also supports the TACACS+
-#	protocol.
+#######################################################################
+#
+#  = The tacacs Virtual Server
+#
+#  The `tacacs` virtual server processes TACACS+ packets.
 #
 #	https://www.rfc-editor.org/rfc/rfc8907
 #
@@ -10,6 +13,11 @@
 #
 ######################################################################
 
+#
+#  ## The Virtual Server
+#
+#  This is the `tacacs` virtual server.
+#
 server tacacs {
 	#
 	#  namespace:: Needs to be "tacacs" for TACACS+ functionality.
