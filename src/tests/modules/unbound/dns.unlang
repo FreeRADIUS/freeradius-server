@@ -27,7 +27,7 @@ if (&result_ipaddr != 192.168.1.1) {
 	test_fail
 }
 
-&result_string := %dns('1.1.168.192.in-addr.arpa',PTR)
+&result_string := %dns('1.1.168.192.in-addr.arpa', 'PTR')
 
 if (&result_string != 'www.example.com') {
 	test_fail
@@ -57,7 +57,7 @@ if (&Module-Failure-Message != "Can't resolve zero length host") {
 
 # Will return multiple records, though not in a defined sequence.
 # Each returned record is a pair of priority and host values.
-&Filter-Id := %dns(example.com,MX)
+&Filter-Id := %dns(example.com, 'MX')
 
 if !(((&Filter-Id[0] == '10') && (&Filter-Id[1] == 'mail.example.com') && (&Filter-Id[2] == '20') && (&Filter-Id[3] == 'mail2.example.com')) || ((&Filter-Id[2] == '10') && (&Filter-Id[3] == 'mail.example.com') && (&Filter-Id[0] == '20') && (&Filter-Id[1] == 'mail2.example.com'))) {
 	test_fail
