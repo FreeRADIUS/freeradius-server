@@ -587,21 +587,6 @@ void vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 	talloc_free(p);
 }
 
-/** Add a module failure message fr_pair_tE to the request
- *
- * @param[in] request	The current request.
- * @param[in] fmt	with printf style substitution tokens.
- * @param[in] ...	Substitution arguments.
- */
-void log_module_failure_msg(request_t *request, char const *fmt, ...)
-{
-	va_list ap;
-
-	va_start(ap, fmt);
-	vlog_module_failure_msg(request, fmt, ap);
-	va_end(ap);
-}
-
 /** Marshal variadic log arguments into a va_list and pass to normal logging functions
  *
  * @see log_request_error for more details.

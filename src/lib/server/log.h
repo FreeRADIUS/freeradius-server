@@ -110,9 +110,6 @@ void	log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 		    char const *fmt, ...)
 		    CC_HINT(format (printf, 6, 7)) CC_HINT(nonnull (3, 6));
 
-void	log_module_failure_msg(request_t *request, char const *fmt, ...)
-	CC_HINT(format (printf, 2, 3));
-
 void	vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 	CC_HINT(format (printf, 2, 0));
 

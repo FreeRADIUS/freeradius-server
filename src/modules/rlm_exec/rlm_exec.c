@@ -215,15 +215,13 @@ static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box
 	if (status > 9) {
 		REDEBUG("Program returned invalid code (greater than max rcode) (%i > 9): %pV",
 			status, box);
-		goto fail;
+		return RLM_MODULE_FAIL;
 	}
 
 	rcode = status2rcode[status];
 
 	if (rcode == RLM_MODULE_FAIL) {
-	fail:
-
-		if (box) log_module_failure_msg(request, "%pV", box);
+		if (box) RDEBUG(request, "Program failed with output: %pV", box);
 
 		return RLM_MODULE_FAIL;
 	}
