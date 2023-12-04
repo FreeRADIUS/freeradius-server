@@ -209,6 +209,15 @@ static void *fr_openssl_talloc(size_t len, char const *file, NDEBUG_UNUSED int l
 	static char const *async_file;
 	void *chunk;
 
+	if (!file) {
+		chunk = talloc_array(ssl_talloc_ctx, uint8_t, len);
+
+#ifndef NDEBUG
+		talloc_set_name(chunk, "fr_openssl_talloc");
+#endif
+		return chunk;
+	}
+
 	/*
 	 *	Cache the filename pointer for the async_posix.c
 	 *	source file, so we can figure out when we're
