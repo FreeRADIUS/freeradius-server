@@ -131,8 +131,8 @@ static const conf_parser_t sccp_config[] = {
 	{ FR_CONF_OFFSET("ai8", rlm_sigtran_t, conn_conf.sccp_ai8) },
 	{ FR_CONF_OFFSET("route_on_ssn", rlm_sigtran_t, conn_conf.sccp_route_on_ssn) },
 
-	{ FR_CONF_OFFSET_SUBSECTION("called", 0, rlm_sigtran_t, conn_conf.sccp_called, .subcs = sccp_address) },
-	{ FR_CONF_OFFSET_SUBSECTION("calling", 0, rlm_sigtran_t, conn_conf.sccp_calling, .subcs = sccp_address) },
+	{ FR_CONF_OFFSET_SUBSECTION("called", 0, rlm_sigtran_t, conn_conf.sccp_called, sccp_address) },
+	{ FR_CONF_OFFSET_SUBSECTION("calling", 0, rlm_sigtran_t, conn_conf.sccp_calling, sccp_address) },
 
 	CONF_PARSER_TERMINATOR
 };
