@@ -43,7 +43,7 @@ if !(&reply.Framed-IP-Address == 192.168.0.10) {
 #
 #  Check the ZSCORE hasn't changed
 #
-if !(%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) == %{zscore}) {
+if !(%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) == %{zscore}) {
 	test_fail
 }
 
@@ -98,7 +98,7 @@ if !(%redis(GET, {%{control.IP-Pool.Name}}:device:11:22:33:44:55:66) == '192.168
 	test_fail
 }
 
-&zscore := %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool 192.168.0.1)
+&zscore := %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1)
 if !(&zscore < (uint64)0x10000000000000) {
 	test_fail
 }
