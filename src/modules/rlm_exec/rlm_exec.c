@@ -221,7 +221,7 @@ static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box
 	rcode = status2rcode[status];
 
 	if (rcode == RLM_MODULE_FAIL) {
-		if (box) RDEBUG(request, "Program failed with output: %pV", box);
+		if (box) RDEBUG("Program failed with output: %pV", box);
 
 		return RLM_MODULE_FAIL;
 	}
