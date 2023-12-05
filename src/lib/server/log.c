@@ -554,7 +554,7 @@ finish:
  * @param[in] fmt	with printf style substitution tokens.
  * @param[in] ap	Substitution arguments.
  */
-void vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
+static void vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 {
 	char		*p;
 	fr_pair_t	*vp;
@@ -563,6 +563,8 @@ void vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 	if (!fmt || !request || !request->packet) return;
 
 	fr_assert(attr_module_failure_message);
+
+	MEM(pair_prepend_request(&vp, attr_module_failure_message) >= 0);
 
 	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
@@ -574,17 +576,15 @@ void vlog_module_failure_msg(request_t *request, char const *fmt, va_list ap)
 	 *  running unit tests which generate errors under CI.
 	 */
 	va_copy(aq, ap);
-	p = fr_vasprintf(request, fmt, aq);
+	p = fr_vasprintf(vp, fmt, aq);
 	va_end(aq);
 
-	MEM(pair_prepend_request(&vp, attr_module_failure_message) >= 0);
 	if (request->module && (request->module[0] != '\0')) {
 		fr_pair_value_aprintf(vp, "%s: %s", request->module, p);
+		talloc_free(p);
 	} else {
-		fr_pair_value_strdup(vp, p, false);
+		fr_pair_value_strdup_shallow(vp, p, true);
 	}
-
-	talloc_free(p);
 }
 
 /** Marshal variadic log arguments into a va_list and pass to normal logging functions
