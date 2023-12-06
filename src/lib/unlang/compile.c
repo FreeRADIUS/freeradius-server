@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/dict.h>
 
 #include "call_priv.h"
 #include "caller_priv.h"
@@ -3805,13 +3806,15 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	unlang_compile_t		unlang_ctx2;
 
 	tmpl_rules_t			t_rules;
+	fr_dict_autoload_talloc_t	*dict_ref = NULL;
 
 	fr_dict_t const			*dict;
 	fr_dict_attr_t const		*da = NULL;
 	fr_dict_enum_value_t const	*type_enum = NULL;
 
+	char 				*namespace = NULL;
 	char const			*packet_name = NULL;
-	char				*p, *namespace = NULL;
+	char				*p;
 
 	tmpl_t				*vpt = NULL, *src_vpt = NULL, *dst_vpt = NULL;
 
@@ -3899,9 +3902,12 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 
 		dict = fr_dict_by_protocol_name(namespace);
 		if (!dict) {
-			cf_log_err(cs, "Unknown namespace '%s'", namespace);
-			talloc_free(namespace);
-			return NULL;
+			dict_ref = fr_dict_autoload_talloc(NULL, &dict, namespace);
+			if (!dict_ref) {
+				cf_log_err(cs, "Unknown namespace '%s'", namespace);
+				talloc_free(namespace);
+				return NULL;
+			}
 		}
 	}
 
@@ -3912,8 +3918,10 @@ get_packet_type:
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict), "Packet-Type");
 	if (!da) {
 		cf_log_err(cs, "No such attribute 'Packet-Type' in namespace '%s'", fr_dict_root(dict)->name);
-		talloc_free(vpt);
+	error:
 		talloc_free(namespace);
+		talloc_free(vpt);
+		talloc_free(dict_ref);
 		return NULL;
 	}
 
@@ -3922,12 +3930,14 @@ get_packet_type:
 		if (!type_enum) {
 			cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
 				   packet_name, fr_dict_root(dict)->name);
-			talloc_free(vpt);
-			talloc_free(namespace);
-			return NULL;
+			goto error;
 		}
 	}
-	talloc_free(namespace);		/* no longer needed */
+
+	/*
+	 *	No longer needed
+	 */
+	talloc_free(namespace);
 
 	/*
 	 *	Source and destination arguments
@@ -3944,9 +3954,7 @@ get_packet_type:
 						 cf_section_argv_quote(cs, 0), NULL, unlang_ctx->rules);
 			if (!src_vpt) {
 				cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing src");
-			error:
-				talloc_free(vpt);
-				return NULL;
+				goto error;
 			}
 
 			if (!tmpl_contains_attr(src_vpt)) {
@@ -4020,7 +4028,16 @@ get_packet_type:
 	g = unlang_generic_to_group(c);
 	gext = unlang_group_to_subrequest(g);
 
+	if (dict_ref) {
+		/*
+		 *	Parent the dictionary reference correctly now that we
+		 *	have the section with the dependency.  This should
+		 *	be fast as dict_ref has no siblings.
+		 */
+		talloc_steal(gext, dict_ref);
+	}
 	if (vpt) gext->vpt = talloc_steal(gext, vpt);
+
 	gext->dict = dict;
 	gext->attr_packet_type = da;
 	gext->type_enum = type_enum;
@@ -4112,13 +4129,15 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_t			*c;
 
 	unlang_group_t			*g;
-	unlang_caller_t		*gext;
+	unlang_caller_t			*gext;
 
 	fr_token_t			type;
 	char const     			*name;
 	fr_dict_t const			*dict;
 	unlang_compile_t		unlang_ctx2;
 	tmpl_rules_t			parent_rules, t_rules;
+
+	fr_dict_autoload_talloc_t	*dict_ref = NULL;
 
 	static unlang_ext_t const 	caller_ext = {
 						.type = UNLANG_TYPE_CALLER,
@@ -4140,8 +4159,11 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 
 	dict = fr_dict_by_protocol_name(name);
 	if (!dict) {
-		cf_log_err(cs, "Unknown protocol '%s'", name);
-		return NULL;
+		dict_ref = fr_dict_autoload_talloc(NULL, &dict, name);
+		if (!dict_ref) {
+			cf_log_perr(cs, "Unknown protocol '%s'", name);
+			return NULL;
+		}
 	}
 
 	/*
@@ -4162,7 +4184,10 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	unlang_ctx2.section_name2 = name;
 
 	c = compile_section(parent, &unlang_ctx2, cs, &caller_ext);
-	if (!c) return NULL;
+	if (!c) {
+		talloc_free(dict_ref);
+		return NULL;
+	}
 
 	/*
 	 *	Set the virtual server name, which tells unlang_call()
@@ -4171,6 +4196,15 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	g = unlang_generic_to_group(c);
 	gext = unlang_group_to_caller(g);
 	gext->dict = dict;
+
+	if (dict_ref) {
+		/*
+		 *	Parent the dictionary reference correctly now that we
+		 *	have the section with the dependency.  This should
+		 *	be fast as dict_ref has no siblings.
+		 */
+		talloc_steal(gext, dict_ref);
+	}
 
 	if (!g->num_children) {
 		talloc_free(c);
