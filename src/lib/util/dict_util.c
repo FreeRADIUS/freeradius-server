@@ -3737,6 +3737,68 @@ int _fr_dict_autofree(fr_dict_autoload_t const *to_free, char const *dependent)
 	return 0;
 }
 
+/** Structure used to managed the lifetime of a dictionary
+ *
+ * This should only be used when dictionaries are being dynamically loaded during
+ * compilation.  It should not be used to load dictionaries at runtime, or if
+ * modules need to load dicitonaries (use static fr_dict_autoload_t defs).
+
+ */
+struct fr_dict_autoload_talloc_s {
+	fr_dict_autoload_t load[2];		//!< Autoloader def.
+	char const *dependent;			//!< Dependent that loaded the dictionary.
+};
+
+/** Talloc destructor to automatically free dictionaries
+ *
+ * @param[in] to_free	dictionary autoloader definition describing the dictionary to free.
+ */
+static int _fr_dict_autoload_talloc_free(fr_dict_autoload_talloc_t const *to_free)
+{
+	return _fr_dict_autofree(to_free->load, to_free->dependent);
+}
+
+/** Autoload a dictionary and bind the lifetime to a talloc chunk
+ *
+ * Mainly useful for resolving "forward" references from unlang immediately.
+ *
+ * @note If the talloc chunk is freed it does not mean the dictionary will
+ *	 be immediately freeed.  It will be freed when all other references
+ *	 to the dictionary are gone.
+ *
+ * @parma[in] ctx	to bind the dictionary lifetime to.
+ * @parma[in] proto	to load.
+ * @param[in] dependent to register this reference to.  Will be dupd.
+ */
+fr_dict_autoload_talloc_t *_fr_dict_autoload_talloc(TALLOC_CTX *ctx, fr_dict_t const **out, char const *proto, char const *dependent)
+{
+	fr_dict_autoload_talloc_t *dict_ref;
+	int ret;
+
+	dict_ref = talloc(ctx, fr_dict_autoload_talloc_t);
+	if (unlikely(dict_ref == NULL)) {
+	oom:
+		fr_strerror_const("Out of memory");
+		return NULL;
+	}
+
+	dict_ref->load[0] = (fr_dict_autoload_t){ .proto = proto, .out = out};
+	dict_ref->load[1] = (fr_dict_autoload_t){ NULL };
+	dict_ref->dependent = talloc_strdup(dict_ref, dependent);
+	if (unlikely(dict_ref->dependent == NULL)) {
+		talloc_free(dict_ref);
+		goto oom;
+	}
+
+	ret = _fr_dict_autoload(dict_ref->load, dependent);
+	if (ret < 0) {
+		talloc_free(dict_ref);
+		return NULL;
+	}
+
+	return dict_ref;
+}
+
 /** Callback to automatically resolve enum values
  *
  * @param[in] module	being loaded.

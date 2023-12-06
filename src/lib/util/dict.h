@@ -66,6 +66,8 @@ typedef struct value_box_s fr_value_box_t;
 #  define DA_VERIFY(_x)		fr_cond_assert(_x)
 #endif
 
+typedef struct fr_dict_autoload_talloc_s fr_dict_autoload_talloc_t;
+
 /** Values of the encryption flags
  */
 typedef struct {
@@ -616,6 +618,9 @@ int			_fr_dict_autoload(fr_dict_autoload_t const *to_load, char const *dependent
 
 #define			fr_dict_autofree(_to_free) _fr_dict_autofree(_to_free, __FILE__)
 int			_fr_dict_autofree(fr_dict_autoload_t const *to_free, char const *dependent);
+
+#define			fr_dict_autoload_talloc(_ctx, _dict_out, _proto) _fr_dict_autoload_talloc(_ctx, _dict_out, _proto, __FILE__)
+fr_dict_autoload_talloc_t *_fr_dict_autoload_talloc(TALLOC_CTX *ctx, fr_dict_t const **out, char const *proto, char const *dependent);
 
 int			fr_dl_dict_enum_autoload(dl_t const *module, void *symbol, void *user_ctx);
 
