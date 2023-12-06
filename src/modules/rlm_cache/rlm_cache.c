@@ -38,7 +38,7 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_cache;
 
-static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
+static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_cache_t, driver_submodule), .dflt = "rbtree",
@@ -1242,20 +1242,11 @@ static int cache_verify(map_t *map, void *uctx)
 	return 0;
 }
 
-static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
 {
 	CONF_SECTION		*update = cf_item_to_section(ci);
 	call_env_parsed_t	*parsed;
 	map_list_t		*maps;
-
-	tmpl_rules_t	parse_rules = {
-		.attr = {
-			.dict_def = namespace,
-			.list_def = request_attr_request,
-			.allow_wildcard = true,
-			.allow_foreign = true	/* Because we don't know where we'll be called */
-		}
-	};
 
 	MEM(parsed = call_env_parsed_add(ctx, out,
 					 &(call_env_parser_t){ FR_CALL_ENV_PARSE_ONLY_OFFSET("update", FR_TYPE_VOID, 0, cache_call_env_t, maps)}));
@@ -1264,7 +1255,7 @@ static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *o
 	map_list_init(maps);
 
 	if (map_afrom_cs(maps, maps, update,
-				&parse_rules, &parse_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
+			 t_rules, t_rules, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 	error:
 		call_env_parsed_free(out, parsed);
 		return -1;

@@ -253,8 +253,26 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 			      "Method environment for module %s, xlat %s declared, "
 			      "but no inst_size set", call->func->mctx->inst->name, call->func->name);
 
+		/*
+		 *	FIXME - This is wrong, we should pass in the tmpl_rule_t
+		 *	from the compiler call.  But it would be prohibitively
+		 *	memory inefficient to copy it on every xlat call, and it
+		 *	only exists for the duration of the compilation phase
+		 *	because many elements are stack allocated.  The correct
+		 *	fix is to allocate all tmpl_rules_t on the heap.
+		 *	OR just bite the bullet and duplicate the whole nested
+		 *	rules structure for every xlat node.
+		 *
+		 *	Because of this hack, outer. and parent. will not work
+		 *	within xlat call envs.
+		 */
 		xi->call_env = call_env_alloc(xi, call->func->name, call->func->call_env_method,
-					      call->dict, call->func->mctx->inst->conf);
+					      &(tmpl_rules_t){
+							.attr = {
+									.dict_def = call->dict,
+									.list_def = request_attr_request
+							}
+					      }, call->func->mctx->inst->conf);
 		if (!xi->call_env) {
 			talloc_free(xi);
 			return NULL;

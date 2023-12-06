@@ -71,7 +71,7 @@ typedef struct {
 	map_list_t	*profile_map;			//!< List of maps to apply to the profile.
 } ldap_xlat_profile_call_env_t;
 
-static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
+static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
 
 static const call_env_parser_t sasl_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_mech) },
@@ -2288,7 +2288,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
 {
 	map_list_t			*maps;
 	CONF_SECTION			*update = cf_item_to_section(ci);
@@ -2303,12 +2303,6 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 		map_t const		*map = NULL;
 		tmpl_attr_t const	*ar;
 		call_env_parsed_t	*parsed;
-		tmpl_rules_t		parse_rules = {
-						.attr = {
-							.dict_def = namespace,
-							.list_def = request_attr_request,
-						}
-					};
 
 		MEM(parsed = call_env_parsed_add(ctx, out,
 						 &(call_env_parser_t){
@@ -2325,7 +2319,7 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 		MEM(maps = talloc(parsed, map_list_t));
 		map_list_init(maps);
 
-		if (map_afrom_cs(maps, maps, update, &parse_rules, &parse_rules, fr_ldap_map_verify, NULL, LDAP_MAX_ATTRMAP) < 0) {
+		if (map_afrom_cs(maps, maps, update, t_rules, t_rules, fr_ldap_map_verify, NULL, LDAP_MAX_ATTRMAP) < 0) {
 			call_env_parsed_free(out, parsed);
 			return -1;
 		}

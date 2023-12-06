@@ -4427,7 +4427,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			      inst->module->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
 
 		single->call_env = call_env_alloc(single, single->self.name, method_env,
-						  unlang_ctx->rules ? unlang_ctx->rules->attr.dict_def : fr_dict_internal(),
+						  unlang_ctx->rules,
 						  inst->dl_inst->conf);
 		if (!single->call_env) {
 		error:

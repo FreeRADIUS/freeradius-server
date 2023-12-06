@@ -124,14 +124,14 @@ DIAG_ON(attributes)
  *
  * @param[in] ctx		to allocate any data in.
  * @param[out] out		Where to write the result of parsing.
- * @param[in] namespace		we're operating in.
+ * @param[in] t_rules		we're parsing attributes with.  Contains the default dictionary and nested 'caller' tmpl_rules_t.
  * @param[in] ci		The #CONF_SECTION or #CONF_PAIR to parse.
  * @param[in] rule		Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, fr_dict_t const *namespace, CONF_ITEM *ci, call_env_parser_t const *rule);
+typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_parser_t const *rule);
 
 /** Callback for performing custom parsing of a #CONF_SECTION
  *
@@ -141,14 +141,14 @@ typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, fr_dict_t const
  *
  * @param[in] ctx		to allocate any data in.
  * @param[out] out		Where to write the result of parsing.
- * @param[in] namespace		we're operating in.
+ * @param[in] t_rules		we're parsing attributes with.  Contains the default dictionary and nested 'caller' tmpl_rules_t.
  * @param[in] ci		The #CONF_SECTION or #CONF_PAIR to parse.
  * @param[in] rule		Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*call_env_parse_section_t)(TALLOC_CTX *ctx, call_env_parsed_head_t *out, fr_dict_t const *namespace, CONF_ITEM *ci, call_env_parser_t const *rule);
+typedef int (*call_env_parse_section_t)(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_parser_t const *rule);
 
 /** Per method call config
  *
@@ -406,7 +406,7 @@ void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr
  * @{
  */
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
-			   fr_dict_t const *namespace, CONF_SECTION *cs) CC_HINT(nonnull(3,4,5));
+			   tmpl_rules_t const *rules, CONF_SECTION *cs) CC_HINT(nonnull(3,4,5));
 /** @} */
 
 #ifdef __cplusplus
