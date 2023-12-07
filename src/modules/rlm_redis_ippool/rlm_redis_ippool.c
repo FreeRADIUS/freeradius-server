@@ -192,7 +192,7 @@ static const call_env_method_t redis_ippool_alloc_method_env = {
 				      redis_ippool_alloc_call_env_t, gateway_id ), .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
 		{ FR_CALL_ENV_OFFSET("offer_time", FR_TYPE_UINT32, CALL_ENV_FLAG_NONE, redis_ippool_alloc_call_env_t, offer_time ) },
 		{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, CALL_ENV_FLAG_REQUIRED, redis_ippool_alloc_call_env_t, lease_time) },
-		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE, redis_ippool_alloc_call_env_t, requested_address ),
+		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_COMBO_IP_ADDR, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE, redis_ippool_alloc_call_env_t, requested_address ),
 				     .pair.dflt = "%{%{Requested-IP-Address} || %{Net.Src.IP}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("allocated_address_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_alloc_call_env_t, allocated_address_attr) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("range_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_alloc_call_env_t, range_attr),
@@ -210,7 +210,7 @@ static const call_env_method_t redis_ippool_update_method_env = {
 		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, redis_ippool_update_call_env_t, gateway_id),
 				     .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
 		{ FR_CALL_ENV_OFFSET("lease_time", FR_TYPE_UINT32, CALL_ENV_FLAG_REQUIRED,  redis_ippool_update_call_env_t, lease_time) },
-		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE, redis_ippool_update_call_env_t, requested_address),
+		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_COMBO_IP_ADDR, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE, redis_ippool_update_call_env_t, requested_address),
 				     .pair.dflt = "%{%{Requested-IP-Address} || %{Net.Src.IP}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("allocated_address_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_update_call_env_t, allocated_address_attr) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("range_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, redis_ippool_update_call_env_t, range_attr),
@@ -227,7 +227,7 @@ static const call_env_method_t redis_ippool_release_method_env = {
 		{ FR_CALL_ENV_OFFSET("owner", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, redis_ippool_release_call_env_t, owner) },
 		{ FR_CALL_ENV_OFFSET("gateway", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, redis_ippool_release_call_env_t, gateway_id),
 				     .pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
-		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE, redis_ippool_release_call_env_t, requested_address),
+		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_COMBO_IP_ADDR, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE, redis_ippool_release_call_env_t, requested_address),
 				     .pair.dflt = "%{%{Requested-IP-Address} || %{Net.Src.IP}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		CALL_ENV_TERMINATOR
 	}
@@ -1132,20 +1132,13 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
 	redis_ippool_update_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_update_call_env_t);
-	fr_ipaddr_t			ip;
 
 	CHECK_POOL_NAME
-
-	if (fr_inet_pton(&ip, env->requested_address.vb_strvalue, env->requested_address.vb_length,
-			 AF_UNSPEC, false, true) < 0) {
-		RPEDEBUG("Failed parsing address");
-		RETURN_MODULE_FAIL;
-	}
 
 	ippool_action_print(request, POOL_ACTION_UPDATE, L_DBG_LVL_2, &env->pool_name,
 			    &env->requested_address, &env->owner, &env->gateway_id, env->lease_time.vb_uint32);
 	switch (redis_ippool_update(inst, request, env,
-				    &ip, &env->owner,
+				    &env->requested_address.datum.ip, &env->owner,
 				    &env->gateway_id,
 				    env->lease_time.vb_uint32)) {
 	case IPPOOL_RCODE_SUCCESS:
@@ -1166,7 +1159,7 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 				.rhs = &ip_rhs
 			};
 
-			fr_value_box_copy_shallow(NULL, &ip_rhs.data.literal, &env->requested_address);
+			fr_value_box_copy(NULL, &ip_rhs.data.literal, &env->requested_address);
 
 			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) RETURN_MODULE_FAIL;
 		}
@@ -1201,19 +1194,12 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 {
 	rlm_redis_ippool_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_redis_ippool_t);
 	redis_ippool_release_call_env_t	*env = talloc_get_type_abort(mctx->env_data, redis_ippool_release_call_env_t);
-	fr_ipaddr_t			ip;
 
 	CHECK_POOL_NAME
 
-	if (fr_inet_pton(&ip, env->requested_address.vb_strvalue, env->requested_address.vb_length,
-			 AF_UNSPEC, false, true) < 0) {
-		RPEDEBUG("Failed parsing address");
-		RETURN_MODULE_FAIL;
-	}
-
 	ippool_action_print(request, POOL_ACTION_RELEASE, L_DBG_LVL_2, &env->pool_name,
 			    &env->requested_address, &env->owner, &env->gateway_id, 0);
-	switch (redis_ippool_release(inst, request, &env->pool_name, &ip, &env->owner)) {
+	switch (redis_ippool_release(inst, request, &env->pool_name, &env->requested_address.datum.ip, &env->owner)) {
 	case IPPOOL_RCODE_SUCCESS:
 		RDEBUG2("IP address \"%pV\" released", &env->requested_address);
 		RETURN_MODULE_UPDATED;
