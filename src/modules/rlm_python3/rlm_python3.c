@@ -387,6 +387,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 		ERROR("%s:%d, vp->da->name: %s", __func__, __LINE__, vp->da->name);
 		if (PyErr_Occurred()) {
 			python_error_log();
+			PyErr_Clear();
 		}
 		
 		return -1;
@@ -567,6 +568,7 @@ static rlm_rcode_t do_python_single(REQUEST *request, PyObject *pFunc, char cons
 		ERROR("%s:%d, %s - pRet is NULL", __func__, __LINE__, funcname);
 		if (PyErr_Occurred()) {
 			python_error_log();
+			PyErr_Clear();
 		}
 		ret = RLM_MODULE_FAIL;
 		goto finish;
@@ -674,6 +676,13 @@ finish:
 	if (ret == RLM_MODULE_FAIL) {
 		ERROR("%s:%d, %s - RLM_MODULE_FAIL", __func__, __LINE__, funcname);
 	}
+
+	if (PyErr_Occurred()) {
+		ERROR("Unhandled Python exception (see below); clearing.");
+		python_error_log();
+		PyErr_Clear();
+	}
+
 	return ret;
 }
 
