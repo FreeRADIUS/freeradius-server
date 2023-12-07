@@ -143,6 +143,33 @@ match 2001:d00::/24
 calc ipv6addr 2001:DB8::1 & octets 0xffffffff000000000000000000000000
 match 2001:db8::/32
 
+#
+#  Comparisons
+#
+calc ipv4prefix 127/8 > ipv4addr 127.0.0.1 -> bool
+match yes
+
+calc ipv4prefix 127/8 > ipv4addr 192.168.0.1 -> bool
+match no
+
+#
+#  combo-ip
+#
+calc combo-prefix 127/8 > ipv4addr 127.0.0.1 -> bool
+match yes
+
+calc combo-prefix 127/8 > ipv4addr 192.168.0.1 -> bool
+match no
+
+calc combo-prefix 127/8 > combo-ip 127.0.0.1 -> bool
+match yes
+
+calc combo-prefix 127/8 > combo-ip 192.168.0.1 -> bool
+match no
+
+calc combo-prefix 127/8 > ipv6addr 2001:DB8::1 -> bool
+match Cannot compare IPv4 with IPv6 address
+
 ######################################################################
 #
 #  Float
@@ -173,4 +200,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 76
+match 90
