@@ -4363,7 +4363,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 *	and should be suppressed by the proxy.
 		 */
 		when = request->proxy->timestamp;
-		when.tv_sec++;
+		when.tv_sec += main_config.proxy_dedup_window;
 
 		if (timercmp(&now, &when, <)) {
 			DEBUG2("Suppressing duplicate proxied request (too fast) to home server %s port %d - ID: %d",

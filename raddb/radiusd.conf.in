@@ -270,6 +270,27 @@ hostname_lookups = no
 #postauth_client_lost = no
 
 #
+#  Some NASes will aggressively retransmit packets, and cause a DoS of
+#  the RADIUS infrastructure.  They should follow he recommended
+#  retransmission behavior of RFC 5080 Section 2.2.2, but it seems
+#  that only (some) RADIUS servers follow that guidance.
+#
+#  When a duplicate packet is received from the NAS, the server will
+#  see when the last retransmission was done.  If it is within the
+#  "proxy_dedup_window", the retransmitted packet is dropped.
+#
+#  i.e. There is zero benefit to sending the same RADIUS packet
+#  multiple times in one second.  There is, in fact, serious harm
+#  in doing so.  Aggressive retransmissions can result in network
+#  congestion, and ultimately failure of the RADIUS infrastructure.
+#
+#  This behavior *cannot* be disabled.
+#
+#  Allowed values here are 1..10.  Only integers are supported.
+#
+#proxy_dedup_window = 1
+
+#
 #  Logging section.  The various "log_*" configuration items
 #  will eventually be moved here.
 #

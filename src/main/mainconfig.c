@@ -195,6 +195,7 @@ static const CONF_PARSER server_config[] = {
 	{ "panic_action", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.panic_action), NULL},
 	{ "hostname_lookups", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &fr_dns_lookups), "no" },
 	{ "max_request_time", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.max_request_time), STRINGIFY(MAX_REQUEST_TIME) },
+	{ "proxy_dedup_window", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.proxy_dedup_window), "1" },
 	{ "cleanup_delay", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.cleanup_delay), STRINGIFY(CLEANUP_DELAY) },
 	{ "max_requests", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.max_requests), STRINGIFY(MAX_REQUESTS) },
 	{ "postauth_client_lost", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.postauth_client_lost), "no" },
@@ -1144,6 +1145,10 @@ do {\
 	if ((main_config.reject_delay.tv_sec != 0) || (main_config.reject_delay.tv_usec != 0)) {
 		FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, >=, 1, 0);
 	}
+
+	FR_INTEGER_BOUND_CHECK("proxy_dedup_window", main_config.proxy_dedup_window, <=, 10);
+	FR_INTEGER_BOUND_CHECK("proxy_dedup_window", main_config.proxy_dedup_window, >=, 1);
+
 	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, 10, 0);
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 30);

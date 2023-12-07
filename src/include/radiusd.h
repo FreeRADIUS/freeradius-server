@@ -141,6 +141,8 @@ typedef struct main_config {
 	uint32_t	cleanup_delay;			//!< How long before cleaning up cached responses.
 	uint32_t	max_requests;
 
+	uint32_t       	proxy_dedup_window;		//!< suppress duplicate retransmitssions from a NAS
+
 	bool		postauth_client_lost;		//!< Whether to run Post-Auth-Type Client-Lost section
 
 	uint32_t	debug_level;
