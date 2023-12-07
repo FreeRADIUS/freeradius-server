@@ -3413,6 +3413,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 		ssize_t slen;
 
 		tmpl_rules_t t_rules = (tmpl_rules_t) {
+			.parent = unlang_ctx->rules->parent,
 			.attr = {
 				.dict_def = xr_rules.tr_rules->dict_def,
 				.list_def = request_attr_request,

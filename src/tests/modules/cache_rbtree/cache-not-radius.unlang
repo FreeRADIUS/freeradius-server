@@ -5,6 +5,7 @@ subrequest dhcpv4.Discover {
 		caller dhcpv4 {
 			&parent.Gateway-IP-Address = 127.0.0.1
 			&parent.control.Your-IP-Address = 127.0.0.2
+			&outer.control.Framed-IP-Address = 127.0.0.3
 
 			cache_not_radius
 			if (!ok) {
@@ -13,6 +14,14 @@ subrequest dhcpv4.Discover {
 
 			cache_not_radius
 			if (!updated) {
+				reject
+			}
+
+			if (!&parent.Your-IP-Address) {
+				reject
+			}
+
+			if (!&outer.Framed-IP-Address) {
 				reject
 			}
 		}

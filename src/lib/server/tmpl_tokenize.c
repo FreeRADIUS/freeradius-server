@@ -610,16 +610,27 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 		/*
 		 *	If the caller is asking for a namespace, then walk back up the tmpl_rules_t to find a parent namespace.
 		 */
-		if (namespace && (ref == REQUEST_PARENT) && t_rules->parent) {
+		if (namespace && t_rules->parent) {
 			t_rules = t_rules->parent;
 
-			if (t_rules->attr.namespace) {
-				*namespace = t_rules->attr.namespace;
-			} else if (t_rules->attr.dict_def) {
-				*namespace = fr_dict_root(t_rules->attr.dict_def);
+			switch (ref) {
+			case REQUEST_OUTER:
+				while (t_rules->parent) t_rules = t_rules->parent;	/* Walk back to the root */
+				FALL_THROUGH;
 
-			} else {
-				*namespace = NULL;
+			case REQUEST_PARENT:
+				if (t_rules->attr.namespace) {
+					*namespace = t_rules->attr.namespace;
+				} else if (t_rules->attr.dict_def) {
+					*namespace = fr_dict_root(t_rules->attr.dict_def);
+
+				} else {
+					*namespace = NULL;
+				}
+				break;
+
+			default:
+				break;
 			}
 		}
 
