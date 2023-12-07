@@ -196,18 +196,40 @@ static const bool type_cast_table[FR_TYPE_MAX][FR_TYPE_MAX] = {
 		O(IPV4_PREFIX),
 		O(IPV6_ADDR),
 		O(IPV6_PREFIX),
-		O(UINT32), /* ipv4 addresses are uint32 */
+		O(COMBO_IP_ADDR),
+		O(COMBO_IP_PREFIX),
+		O(UINT32), 		/* ipv4 addresses are uint32 */
 	},
 	[FR_TYPE_IPV4_PREFIX] = {
-		O(IPV4_ADDR),	/* if the prefix is /32 */
+		O(IPV4_ADDR),		/* if the prefix is /32 */
 		O(IPV6_ADDR),
 		O(IPV6_PREFIX),
+		O(COMBO_IP_ADDR),
+		O(COMBO_IP_PREFIX)
 	},
 	[FR_TYPE_IPV6_ADDR] = {
 		O(IPV6_PREFIX),
+		O(COMBO_IP_ADDR),
+		O(COMBO_IP_PREFIX)
 	},
 	[FR_TYPE_IPV6_PREFIX] = {
-		O(IPV6_ADDR),	/* if the prefix is /128 */
+		O(IPV6_ADDR),		/* if the prefix is /128 */
+		O(COMBO_IP_ADDR),
+		O(COMBO_IP_PREFIX)
+	},
+	[FR_TYPE_COMBO_IP_ADDR] = {
+		O(IPV4_ADDR),
+		O(IPV4_PREFIX),
+		O(IPV6_ADDR),
+		O(IPV6_PREFIX),
+		O(COMBO_IP_PREFIX)
+	},
+	[FR_TYPE_COMBO_IP_PREFIX] = {
+		O(IPV4_ADDR),
+		O(IPV4_PREFIX),
+		O(IPV6_ADDR),
+		O(IPV6_PREFIX),
+		O(COMBO_IP_ADDR)	/* if the prefix is /128 or /32 */
 	},
 
 	[FR_TYPE_ETHERNET] = {
