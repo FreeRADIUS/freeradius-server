@@ -888,24 +888,42 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 	switch (a->type) {
 	case FR_TYPE_IPV4_ADDR:
 		switch (b->type) {
+		case FR_TYPE_COMBO_IP_ADDR:
+			if (b->vb_ip.af != AF_INET) goto fail_cmp_v4;
+			FALL_THROUGH;
+
 		case FR_TYPE_IPV4_ADDR:		/* IPv4 and IPv4 */
 			goto cmp;
+
+		case FR_TYPE_COMBO_IP_PREFIX:
+			if (b->vb_ip.af != AF_INET) goto fail_cmp_v4;
+			FALL_THROUGH;
 
 		case FR_TYPE_IPV4_PREFIX:	/* IPv4 and IPv4 Prefix */
 			return fr_value_box_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->vb_ip.addr.v4.s_addr,
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v4.s_addr);
 
 		default:
+		fail_cmp_v4:
 			fr_strerror_const("Cannot compare IPv4 with IPv6 address");
 			return -1;
 		}
 
 	case FR_TYPE_IPV4_PREFIX:		/* IPv4 and IPv4 Prefix */
+	cmp_prefix_v4:
 		switch (b->type) {
+		case FR_TYPE_COMBO_IP_ADDR:
+			if (b->vb_ip.af != AF_INET) goto fail_cmp_v4;
+			FALL_THROUGH;
+
 		case FR_TYPE_IPV4_ADDR:
 			return fr_value_box_cidr_cmp_op(op, 4, a->vb_ip.prefix,
 						     (uint8_t const *) &a->vb_ip.addr.v4.s_addr,
 						     32, (uint8_t const *) &b->vb_ip.addr.v4);
+
+		case FR_TYPE_COMBO_IP_PREFIX:
+			if (b->vb_ip.af != AF_INET) goto fail_cmp_v4;
+			FALL_THROUGH;
 
 		case FR_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
 			return fr_value_box_cidr_cmp_op(op, 4, a->vb_ip.prefix,
@@ -919,24 +937,42 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 
 	case FR_TYPE_IPV6_ADDR:
 		switch (b->type) {
+		case FR_TYPE_COMBO_IP_ADDR:
+			if (b->vb_ip.af != AF_INET6) goto fail_cmp_v6;
+			FALL_THROUGH;
+
 		case FR_TYPE_IPV6_ADDR:		/* IPv6 and IPv6 */
 			goto cmp;
+
+		case FR_TYPE_COMBO_IP_PREFIX:
+			if (b->vb_ip.af != AF_INET6) goto fail_cmp_v6;
+			FALL_THROUGH;
 
 		case FR_TYPE_IPV6_PREFIX:	/* IPv6 and IPv6 Preifx */
 			return fr_value_box_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->vb_ip.addr.v6,
 						     b->vb_ip.prefix, (uint8_t const *) &b->vb_ip.addr.v6);
 
 		default:
+		fail_cmp_v6:
 			fr_strerror_const("Cannot compare IPv6 with IPv4 address");
 			return -1;
 		}
 
 	case FR_TYPE_IPV6_PREFIX:
+	cmp_prefix_v6:
 		switch (b->type) {
+		case FR_TYPE_COMBO_IP_ADDR:
+			if (b->vb_ip.af != AF_INET6) goto fail_cmp_v6;
+			FALL_THROUGH;
+
 		case FR_TYPE_IPV6_ADDR:		/* IPv6 Prefix and IPv6 */
 			return fr_value_box_cidr_cmp_op(op, 16, a->vb_ip.prefix,
 						     (uint8_t const *) &a->vb_ip.addr.v6,
 						     128, (uint8_t const *) &b->vb_ip.addr.v6);
+
+		case FR_TYPE_COMBO_IP_PREFIX:
+			if (b->vb_ip.af != AF_INET6) goto fail_cmp_v6;
+			FALL_THROUGH;
 
 		case FR_TYPE_IPV6_PREFIX:	/* IPv6 Prefix and IPv6 */
 			return fr_value_box_cidr_cmp_op(op, 16, a->vb_ip.prefix,
@@ -947,6 +983,18 @@ int fr_value_box_cmp_op(fr_token_t op, fr_value_box_t const *a, fr_value_box_t c
 			fr_strerror_const("Cannot compare IPv6 with IPv4 address");
 			return -1;
 		}
+
+	case FR_TYPE_COMBO_IP_ADDR:
+		if (a->vb_ip.af != b->vb_ip.af) goto fail_cmp_v4; /* as good as any */
+
+		goto cmp;
+
+	case FR_TYPE_COMBO_IP_PREFIX:
+		if (a->vb_ip.af != b->vb_ip.af) goto fail_cmp_v4; /* as good as any */
+
+		if (a->vb_ip.af == AF_INET) goto cmp_prefix_v4;
+
+		goto cmp_prefix_v6;
 
 	default:
 	cmp:
