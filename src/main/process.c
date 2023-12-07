@@ -1591,9 +1591,14 @@ static void request_finish(REQUEST *request, int action)
 #ifdef WITH_PROXY
 		/*
 		 *	If we timed out a proxy packet, don't delay
-		 *	the reject any more.
+		 *	the reject any more.  Or, if we proxied it to
+		 *	a real home server, then don't delay it.
+		 *
+		 *	We don't want to have each proxy in a chain
+		 *	adding their own reject delay, which would
+		 *	result in N*reject_delays being applied.
 		 */
-		if (request->proxy && !request->proxy_reply) {
+		if (request->proxy && (!request->proxy_reply || request->proxy->dst_port != 0)) {
 			request->response_delay.tv_sec = 0;
 			request->response_delay.tv_usec = 0;
 		}
