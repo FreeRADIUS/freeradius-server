@@ -41,10 +41,10 @@ if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 #
 #  Reset the cluster
 #
-&Tmp-String-0 := `%{control.Tmp-String-8} stop`
-&Tmp-String-0 := `%{control.Tmp-String-8} clean`
-&Tmp-String-0 := `%{control.Tmp-String-8} start`
-&Tmp-String-0 := `%{control.Tmp-String-8} create`
+&Tmp-String-0 := %exec(%{control.Tmp-String-8}, stop)
+&Tmp-String-0 := %exec(%{control.Tmp-String-8}, clean)
+&Tmp-String-0 := %exec(%{control.Tmp-String-8}, start)
+&Tmp-String-0 := %exec(%{control.Tmp-String-8}, create)
 
 #
 #  Determine when initial synchronisation has been completed
