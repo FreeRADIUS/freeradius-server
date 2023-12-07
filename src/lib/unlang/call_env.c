@@ -22,11 +22,13 @@
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
+
 RCSID("$Id$")
 
 #include <freeradius-devel/server/log.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
@@ -414,8 +416,18 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 		if (count == 0) count = 1;
 
 		for (multi_index = 0; multi_index < count; multi_index++) {
-			CONF_PAIR *tmp_cp = NULL;
-			CONF_PAIR const *to_parse;
+			CONF_PAIR		*tmp_cp = NULL;
+			CONF_PAIR const		*to_parse;
+			tmpl_rules_t		our_rules = {};
+			fr_type_t 		type = rule->pair.cast_type;
+
+			if (t_rules) {
+				our_rules.parent = t_rules->parent;
+				our_rules.attr.dict_def = t_rules->attr.dict_def;
+			}
+
+			our_rules.attr.list_def = request_attr_request;
+			our_rules.cast = ((type == FR_TYPE_VOID) ? FR_TYPE_NULL : type);
 
 			call_env_parsed = call_env_parsed_alloc(ctx, rule);
 			call_env_parsed->count = count;
@@ -448,7 +460,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			 *	result structure.
 			 */
 			if (rule->pair.func) {
-				if (unlikely(rule->pair.func(ctx, &call_env_parsed->data, t_rules, cf_pair_to_item(to_parse), rule) < 0)) {
+				if (unlikely(rule->pair.func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), rule) < 0)) {
 				error:
 					cf_log_perr(to_parse, "Failed to parse configuration item '%s = %s'", rule->name, cf_pair_value(to_parse));
 					talloc_free(call_env_parsed);
@@ -460,7 +472,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 
 				if (tmpl_afrom_substr(call_env_parsed, &parsed_tmpl,
 						      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
-						      cf_pair_value_quote(to_parse), NULL, t_rules) < 0) {
+						      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) {
 					goto error;
 				}
 				call_env_parsed->data.tmpl = parsed_tmpl;
