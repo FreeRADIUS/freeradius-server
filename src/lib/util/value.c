@@ -4671,7 +4671,6 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	static fr_sbuff_parse_rules_t	default_rules;
 	fr_sbuff_t			*unescaped = NULL;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
-	fr_ipaddr_t			addr;
 	fr_slen_t			slen;
 	char				buffer[256];
 
@@ -4844,6 +4843,9 @@ parse:
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
+	{
+	fr_ipaddr_t	addr;
+
 	case FR_TYPE_IPV4_ADDR:
 	{
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
@@ -4953,6 +4955,7 @@ parse:
 				  fr_hostname_lookups, true) < 0) return -1;
 	}
 		goto finish;
+	}
 
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
