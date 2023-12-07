@@ -4671,8 +4671,9 @@ ssize_t fr_value_box_from_substr(TALLOC_CTX *ctx, fr_value_box_t *dst,
 	static fr_sbuff_parse_rules_t	default_rules;
 	fr_sbuff_t			*unescaped = NULL;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
-	char				buffer[256];
+	fr_ipaddr_t			addr;
 	fr_slen_t			slen;
+	char				buffer[256];
 
 	if (!rules) rules = &default_rules;
 
@@ -4845,7 +4846,6 @@ parse:
 
 	case FR_TYPE_IPV4_ADDR:
 	{
-		fr_ipaddr_t addr;
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
 		if (!name_len) return 0;
 
@@ -4879,7 +4879,6 @@ parse:
 
 	case FR_TYPE_IPV6_ADDR:
 	{
-		fr_ipaddr_t addr;
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
 		if (!name_len) return 0;
 
@@ -4920,7 +4919,6 @@ parse:
 
 	case FR_TYPE_COMBO_IP_ADDR:
 	{
-		fr_ipaddr_t addr;
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
 		if (!name_len) return 0;
 
