@@ -1,0 +1,24 @@
+# Verify that the cache update and key sections work with foreign attributes
+
+subrequest dhcpv4.Discover {
+	subrequest radius.Access-Request {
+		caller dhcpv4 {
+			&parent.Gateway-IP-Address = 127.0.0.1
+			&parent.control.Your-IP-Address = 127.0.0.2
+
+			cache_not_radius
+			if (!ok) {
+				reject
+			}
+
+			cache_not_radius
+			if (!updated) {
+				reject
+			}
+		}
+	}
+}
+
+if (updated) {
+	&control.Auth-Type := Accept
+}
