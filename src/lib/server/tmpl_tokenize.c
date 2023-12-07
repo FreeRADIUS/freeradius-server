@@ -623,7 +623,6 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 					*namespace = t_rules->attr.namespace;
 				} else if (t_rules->attr.dict_def) {
 					*namespace = fr_dict_root(t_rules->attr.dict_def);
-
 				} else {
 					*namespace = NULL;
 				}
