@@ -4809,6 +4809,7 @@ parse:
 		 *	print them this way.
 		 */
 		if (addr.prefix != 32) {
+		fail_ipv4_prefix:
 			fr_strerror_printf("Invalid IPv4 mask length \"/%i\".  Only \"/32\" permitted "
 					   "for non-prefix types", addr.prefix);
 			return -1;
@@ -4849,6 +4850,7 @@ parse:
 		 *	print them this way.
 		 */
 		if (addr.prefix != 128) {
+		fail_ipv6_prefix:
 			fr_strerror_printf("Invalid IPv6 mask length \"/%i\".  Only \"/128\" permitted "
 					   "for non-prefix types", addr.prefix);
 			return -1;
@@ -4865,6 +4867,44 @@ parse:
 
 		if (fr_inet_pton6(&dst->vb_ip, fr_sbuff_current(in), name_len,
 				  fr_hostname_lookups, false, true) < 0) return -1;
+	}
+		goto finish;
+
+	case FR_TYPE_COMBO_IP_ADDR:
+	{
+		fr_ipaddr_t addr;
+		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
+		if (!name_len) return 0;
+
+		/*
+		 *	Parse scope, too.
+		 */
+		if (fr_sbuff_next_if_char(&our_in, '%')) {
+			name_len += fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_uint, rules->terminals);
+		}
+
+		if (fr_inet_pton(&addr, fr_sbuff_current(in), name_len, AF_UNSPEC,
+				 fr_hostname_lookups, true) < 0) return -1;
+
+		if ((addr.af == AF_INET) && (addr.prefix != 32)) {
+			goto fail_ipv4_prefix;
+		}
+
+		if ((addr.af == AF_INET6) && (addr.prefix != 128)) {
+			goto fail_ipv6_prefix;
+		}
+
+		memcpy(&dst->vb_ip, &addr, sizeof(dst->vb_ip));
+	}
+		goto finish;
+
+	case FR_TYPE_COMBO_IP_PREFIX:
+	{
+		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
+		if (!name_len) return 0;
+
+		if (fr_inet_pton(&dst->vb_ip, fr_sbuff_current(in), name_len, AF_UNSPEC,
+				  fr_hostname_lookups, true) < 0) return -1;
 	}
 		goto finish;
 
