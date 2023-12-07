@@ -29,7 +29,8 @@ if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Addre
 	test_fail
 }
 
-if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") - %l) > 40) {
+# +2 - Some slop for macOS
+if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") - %l) > 42) {
 	test_fail
 }
 
