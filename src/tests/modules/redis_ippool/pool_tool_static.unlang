@@ -98,7 +98,7 @@ if !(%(redis:GET {%{control.IP-Pool.Name}}:device:11:22:33:44:55:66) == '192.168
 }
 
 &Tmp-uint64-1 := %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool 192.168.0.1)
-if !(&Tmp-uint64-1 < %(cast:uint64 0x10000000000000)) {
+if !(&Tmp-uint64-1 < (uint64)0x10000000000000) {
 	test_fail
 }
 
