@@ -1115,16 +1115,32 @@ static int cast_ipv4_addr(fr_value_box_t *out, fr_value_box_t const *in)
 				   fr_type_to_str(in->type));
 		return -1;
 
+	case FR_TYPE_COMBO_IP_ADDR:
+		if (in->vb_ip.af == AF_INET6) goto cast_ipv6_addr;
+
+		fr_value_box_init(out, FR_TYPE_IPV4_ADDR, NULL, in->tainted);
+		out->vb_ip = in->vb_ip;
+		break;
+
+	case FR_TYPE_COMBO_IP_PREFIX:
+		if (in->vb_ip.af == AF_INET6) goto cast_ipv6_prefix;
+
+		fr_value_box_init(out, FR_TYPE_IPV4_PREFIX, NULL, in->tainted);
+		out->vb_ip = in->vb_ip;
+		break;
+
 	case FR_TYPE_IPV4_PREFIX:
 	case FR_TYPE_IPV4_ADDR:
 		fr_value_box_copy(NULL, out, in);
 		break;
 
 	case FR_TYPE_IPV6_ADDR:
+	cast_ipv6_addr:
 		if (fr_value_box_cast(NULL, out, FR_TYPE_IPV4_ADDR, NULL, in) < 0) return -1;
 		break;
 
 	case FR_TYPE_IPV6_PREFIX:
+	cast_ipv6_prefix:
 		if (fr_value_box_cast(NULL, out, FR_TYPE_IPV4_PREFIX, NULL, in) < 0) return -1;
 		break;
 
@@ -1295,16 +1311,33 @@ static int cast_ipv6_addr(fr_value_box_t *out, fr_value_box_t const *in)
 				   fr_type_to_str(in->type));
 		return -1;
 
+	case FR_TYPE_COMBO_IP_ADDR:
+		if (in->vb_ip.af == AF_INET) goto cast_ipv4_addr;
+
+		fr_value_box_init(out, FR_TYPE_IPV4_ADDR, NULL, in->tainted);
+		out->vb_ip = in->vb_ip;
+		break;
+
+	case FR_TYPE_COMBO_IP_PREFIX:
+		if (in->vb_ip.af == AF_INET) goto cast_ipv4_prefix;
+
+		fr_value_box_init(out, FR_TYPE_IPV4_PREFIX, NULL, in->tainted);
+		out->vb_ip = in->vb_ip;
+		break;
+
+
 	case FR_TYPE_IPV6_PREFIX:
 	case FR_TYPE_IPV6_ADDR:
 		fr_value_box_copy(NULL, out, in);
 		break;
 
 	case FR_TYPE_IPV4_ADDR:
+	cast_ipv4_addr:
 		if (fr_value_box_cast(NULL, out, FR_TYPE_IPV6_ADDR, NULL, in) < 0) return -1;
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
+	cast_ipv4_prefix:
 		if (fr_value_box_cast(NULL, out, FR_TYPE_IPV6_PREFIX, NULL, in) < 0) return -1;
 		break;
 
