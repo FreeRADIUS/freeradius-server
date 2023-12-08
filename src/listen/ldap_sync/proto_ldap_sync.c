@@ -74,6 +74,7 @@ fr_dict_autoload_t proto_ldap_sync_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_ldap_sync_packet_id;
+static fr_dict_attr_t const *attr_ldap_sync;
 static fr_dict_attr_t const *attr_ldap_sync_cookie;
 static fr_dict_attr_t const *attr_ldap_sync_dn;
 static fr_dict_attr_t const *attr_ldap_sync_scope;
@@ -83,6 +84,7 @@ static fr_dict_attr_t const *attr_packet_type;
 extern fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[];
 fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 	{ .out = &attr_ldap_sync_packet_id, .name = "Sync-Packet-ID", .type = FR_TYPE_UINT32, .dict = &dict_ldap_sync },
+	{ .out = &attr_ldap_sync, .name = "LDAP-Sync", .type = FR_TYPE_TLV, .dict = &dict_ldap_sync },
 	{ .out = &attr_ldap_sync_cookie, .name = "LDAP-Sync.Cookie", .type = FR_TYPE_OCTETS, .dict = &dict_ldap_sync },
 	{ .out = &attr_ldap_sync_dn, .name = "LDAP-Sync.DN", .type = FR_TYPE_STRING, .dict = &dict_ldap_sync },
 	{ .out = &attr_ldap_sync_scope, .name = "LDAP-Sync.Scope", .type = FR_TYPE_UINT32, .dict = &dict_ldap_sync },
@@ -194,7 +196,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	fr_dbuff_t	dbuff;
-	fr_pair_t	*vp = NULL;
+	fr_pair_t	*sync_vp = NULL, *vp = NULL;
 	fr_pair_list_t	pairs;
 	TALLOC_CTX	*local = NULL;
 
@@ -216,10 +218,12 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	 */
 	if (request->reply->code != FR_LDAP_SYNC_CODE_COOKIE_LOAD_RESPONSE) goto send;
 
-	vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_ldap_sync_cookie);
+	sync_vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_ldap_sync);
+	if (!sync_vp) goto send;
+	vp = fr_pair_find_by_da(&sync_vp->vp_group, NULL, attr_ldap_sync_cookie);
 	if ((vp) && (vp->data.vb_length > 0)) {
-		fr_pair_remove(&request->reply_pairs, vp);
-		fr_pair_steal_append(local, &pairs, vp);
+		fr_pair_remove(&request->reply_pairs, sync_vp);
+		fr_pair_steal_append(local, &pairs, sync_vp);
 	}
 
 send:
