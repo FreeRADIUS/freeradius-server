@@ -179,6 +179,7 @@ static unlang_action_t unlang_tmpl_exec_wait_resume(rlm_rcode_t *p_result, reque
 			  false,
 			  (state->out != NULL), state,
 			  state->args.exec.timeout) < 0) {
+		RPEDEBUG("Failed executing program");
 		*p_result = RLM_MODULE_FAIL;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}

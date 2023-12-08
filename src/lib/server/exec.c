@@ -843,9 +843,9 @@ static void exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
 	request_t	*request = exec->request;
 
 	if (exec->stdout_fd < 0) {
-		REDEBUG("Timeout waiting for program to exit - killing it and failing the request");
+		fr_strerror_const("Timeout waiting for program to exit - killing it and failing the request");
 	} else {
-		REDEBUG("Timeout running program - killing it and failing the request");
+		fr_strerror_const("Timeout running program - killing it and failing the request");
 	}
 	exec->failed = true;
 
