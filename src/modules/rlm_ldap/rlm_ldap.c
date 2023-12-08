@@ -2288,7 +2288,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_parser_t const *rule)
 {
 	map_list_t			*maps;
 	CONF_SECTION			*update = cf_item_to_section(ci);
