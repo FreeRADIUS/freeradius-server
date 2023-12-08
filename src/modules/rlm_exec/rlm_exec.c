@@ -84,6 +84,11 @@ static xlat_action_t exec_xlat_oneshot_wait_resume(TALLOC_CTX *ctx, fr_dcursor_t
 	fr_exec_state_t	*exec = talloc_get_type_abort(xctx->rctx, fr_exec_state_t);
 	fr_value_box_t	*vb;
 
+	if (exec->failed == FR_EXEC_FAIL_TIMEOUT) {
+		RPEDEBUG("Execution of external program failed");
+		return XLAT_ACTION_FAIL;
+	}
+
 	/*
 	 *	Allow a return code of 3 as success to match the behaviour of
 	 *	inline module calls.

@@ -12,7 +12,7 @@ if (&Tmp-String-0 != 'hello') {
 &request -= &Tmp-String-0
 &Tmp-String-0 := "%(exec_sync:/bin/sleep 10)"
 
-if (&Module-Failure-Message[*] != "Timeout running program - killing it and failing the request") {
+if (&Module-Failure-Message[*] != "Execution of external program failed: Timeout running program") {
 	test_fail
 }
 

@@ -842,11 +842,12 @@ static void exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void 
 	fr_exec_state_t *exec = uctx; /* may not be talloced */
 
 	if (exec->stdout_fd < 0) {
-		fr_strerror_const("Timeout waiting for program to exit - killing it and failing the request");
+		fr_strerror_const("Timeout waiting for program to exit");
 	} else {
-		fr_strerror_const("Timeout running program - killing it and failing the request");
+		fr_strerror_const("Timeout running program");
 	}
-	exec->failed = true;
+
+	exec->failed = FR_EXEC_FAIL_TIMEOUT;
 
 	fr_exec_oneshot_cleanup(exec, SIGKILL);
 	unlang_interpret_mark_runnable(exec->request);
@@ -876,7 +877,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
 			REDEBUG("Too much output from program - killing it and failing the request");
 
 		error:
-			exec->failed = true;
+			exec->failed = FR_EXEC_FAIL_TOO_MUCH_DATA;
 			fr_exec_oneshot_cleanup(exec, SIGKILL);
 			break;
 		}

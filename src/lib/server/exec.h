@@ -44,6 +44,12 @@ extern "C" {
 extern "C" {
 #endif
 
+typedef enum {
+	FR_EXEC_FAIL_NONE = 0,
+	FR_EXEC_FAIL_TOO_MUCH_DATA,
+	FR_EXEC_FAIL_TIMEOUT,
+} fr_exec_fail_t;
+
 typedef struct {
 	fr_sbuff_t			stdout_buff;	//!< Expandable buffer to store process output.
 	fr_sbuff_uctx_talloc_t		stdout_tctx;	//!< sbuff talloc ctx data.
@@ -65,7 +71,7 @@ typedef struct {
 
 	fr_event_timer_t const		*ev;		//!< for timing out the child
 	fr_event_pid_t const   		*ev_pid;	//!< for cleaning up the process
-	bool				failed;		//!< due to exec timeout or buffer overflow
+	fr_exec_fail_t 			failed;		//!< what kind of failure
 
 	int				status;		//!< return code of the program
 
