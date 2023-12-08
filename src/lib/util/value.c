@@ -4843,11 +4843,9 @@ parse:
 		FR_SBUFF_SET_RETURN(in, &our_in);
 	}
 
-	{
-	fr_ipaddr_t	addr;
-
 	case FR_TYPE_IPV4_ADDR:
 	{
+		fr_ipaddr_t	addr;
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
 		if (!name_len) return 0;
 
@@ -4881,6 +4879,7 @@ parse:
 
 	case FR_TYPE_IPV6_ADDR:
 	{
+		fr_ipaddr_t addr;
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
 		if (!name_len) return 0;
 
@@ -4921,6 +4920,7 @@ parse:
 
 	case FR_TYPE_COMBO_IP_ADDR:
 	{
+		fr_ipaddr_t addr;
 		size_t name_len = fr_sbuff_adv_past_allowed(&our_in, fr_sbuff_remaining(&our_in), sbuff_char_class_hostname, rules->terminals);
 		if (!name_len) return 0;
 
@@ -4955,7 +4955,6 @@ parse:
 				  fr_hostname_lookups, true) < 0) return -1;
 	}
 		goto finish;
-	}
 
 	case FR_TYPE_UINT8:
 	case FR_TYPE_UINT16:
