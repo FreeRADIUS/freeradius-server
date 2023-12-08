@@ -1892,6 +1892,13 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	return tmpl_attr_ref_afrom_unresolved_substr(ctx, err, vpt, our_parent, namespace, name, at_rules);
 
 alloc_ar:
+	/*
+	 *	We have a da, remove any of the errors recorded from failed
+	 *	searches to find the attribute to avoid misleading messages
+	 *	if something else fails.
+	 */
+	fr_strerror_clear();
+
 	MEM(ar = talloc(ctx, tmpl_attr_t));
 	*ar = (tmpl_attr_t) {
 		.ar_num = NUM_UNSPEC,
