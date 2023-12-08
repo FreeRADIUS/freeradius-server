@@ -242,7 +242,7 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 	 *	so it's fine to swap the parent_da.
 	 */
 	if (internal) {
-		if (!parent_da->flags.is_root) {
+		if (!parent_da->flags.is_root && !(parent_da->type == FR_TYPE_GROUP)) {
 			fr_strerror_printf("%s: Internal flag can only be set on top level attribute", __FUNCTION__);
 			return PAIR_DECODE_FATAL_ERROR;
 		}
