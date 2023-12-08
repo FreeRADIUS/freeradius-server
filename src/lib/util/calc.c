@@ -138,6 +138,48 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		[FR_TYPE_FLOAT64] = FR_TYPE_IPV6_ADDR,
 	},
 
+	[FR_TYPE_COMBO_IP_ADDR] = {
+		[FR_TYPE_IPV6_PREFIX] = FR_TYPE_COMBO_IP_PREFIX,
+
+		[FR_TYPE_BOOL] =   FR_TYPE_COMBO_IP_ADDR,
+
+		[FR_TYPE_UINT8] =   FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_UINT16] =  FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_UINT32] =  FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_UINT64] =  FR_TYPE_COMBO_IP_ADDR,
+
+		[FR_TYPE_SIZE] =    FR_TYPE_COMBO_IP_ADDR,
+
+		[FR_TYPE_INT8] =    FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_INT16] =   FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_INT32] =   FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_INT64] =   FR_TYPE_COMBO_IP_ADDR,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_FLOAT64] = FR_TYPE_COMBO_IP_ADDR,
+	},
+
+	[FR_TYPE_COMBO_IP_PREFIX] = {
+		[FR_TYPE_IPV6_PREFIX] = FR_TYPE_COMBO_IP_PREFIX,
+
+		[FR_TYPE_BOOL] =   FR_TYPE_COMBO_IP_ADDR,
+
+		[FR_TYPE_UINT8] =   FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_UINT16] =  FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_UINT32] =  FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_UINT64] =  FR_TYPE_COMBO_IP_ADDR,
+
+		[FR_TYPE_SIZE] =    FR_TYPE_COMBO_IP_ADDR,
+
+		[FR_TYPE_INT8] =    FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_INT16] =   FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_INT32] =   FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_INT64] =   FR_TYPE_COMBO_IP_ADDR,
+
+		[FR_TYPE_FLOAT32] = FR_TYPE_COMBO_IP_ADDR,
+		[FR_TYPE_FLOAT64] = FR_TYPE_COMBO_IP_ADDR,
+	},
+
 	/*
 	 *	Bools and to pretty much any numerical type result in
 	 *	the other integer.
@@ -1177,7 +1219,7 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 	fr_value_box_t one, two;
 	fr_value_box_t *a, *b;
 
-	fr_assert(dst->type == FR_TYPE_IPV4_ADDR);
+	fr_assert((dst->type == FR_TYPE_IPV4_ADDR) || (dst->type == FR_TYPE_COMBO_IP_ADDR));
 
 	if (cast_ipv4_addr(&one, in1) < 0) return -1;
 	a = &one;
@@ -1226,7 +1268,7 @@ static int calc_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 	int prefix;
 	fr_value_box_t one, two, tmp;
 
-	fr_assert(dst->type == FR_TYPE_IPV4_PREFIX);
+	fr_assert((dst->type == FR_TYPE_IPV4_PREFIX) || (dst->type == FR_TYPE_COMBO_IP_PREFIX));
 
 	switch (op) {
 	case T_AND:
@@ -1376,7 +1418,7 @@ static int calc_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 	int i;
 	uint64_t mask;
 
-	fr_assert(dst->type == FR_TYPE_IPV6_ADDR);
+	fr_assert((dst->type == FR_TYPE_IPV6_ADDR) || (dst->type == FR_TYPE_COMBO_IP_ADDR));
 
 	if (cast_ipv6_addr(&one, in1) < 0) return -1;
 	a = &one;
@@ -1462,7 +1504,7 @@ static int calc_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 	uint8_t const *pa, *pb;
 	uint8_t *pdst;
 
-	fr_assert(dst->type == FR_TYPE_IPV6_PREFIX);
+	fr_assert((dst->type == FR_TYPE_IPV6_PREFIX) || (dst->type == FR_TYPE_COMBO_IP_PREFIX));
 
 	if (a->type == FR_TYPE_OCTETS) {
 		if (a->vb_length != (128 / 8)) {
@@ -1513,6 +1555,30 @@ static int calc_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 
 	return 0;
 }
+
+#define is_ipv6(_x) (((_x)->type == FR_TYPE_IPV6_ADDR) || ((_x)->type == FR_TYPE_IPV6_PREFIX) || ((((_x)->type == FR_TYPE_COMBO_IP_ADDR) || ((_x)->type == FR_TYPE_COMBO_IP_PREFIX)) && ((_x)->vb_ip.af == AF_INET6)))
+
+static int calc_combo_ip_addr(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2)
+{
+	/*
+	 *	IPv6 is better than IPv4!
+	 */
+	if (is_ipv6(in1) || is_ipv6(in2)) {
+		return calc_ipv6_addr(ctx, dst, in1, op, in2);
+	}
+
+	return calc_ipv4_addr(ctx, dst, in1, op, in2);
+}
+
+static int calc_combo_ip_prefix(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2)
+{
+	if (is_ipv6(in1) || is_ipv6(in2)) {
+		return calc_ipv6_prefix(ctx, dst, in1, op, in2);
+	}
+
+	return calc_ipv4_prefix(ctx, dst, in1, op, in2);
+}
+
 
 static int calc_float32(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *in1, fr_token_t op, fr_value_box_t const *in2)
 {
@@ -1775,6 +1841,9 @@ static int calc_int64(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const
 
 typedef int (*fr_binary_op_t)(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_t const *a, fr_token_t op, fr_value_box_t const *b);
 
+/** Map output type to its associated function
+ *
+ */
 static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_BOOL]		= calc_bool,
 
@@ -1783,8 +1852,12 @@ static const fr_binary_op_t calc_type[FR_TYPE_MAX + 1] = {
 
 	[FR_TYPE_IPV4_ADDR]	= calc_ipv4_addr,
 	[FR_TYPE_IPV4_PREFIX]	= calc_ipv4_prefix,
+
 	[FR_TYPE_IPV6_ADDR]	= calc_ipv6_addr,
 	[FR_TYPE_IPV6_PREFIX]	= calc_ipv6_prefix,
+
+	[FR_TYPE_COMBO_IP_ADDR]	= calc_combo_ip_addr,
+	[FR_TYPE_COMBO_IP_PREFIX] = calc_combo_ip_prefix,
 
 	[FR_TYPE_UINT8]		= calc_uint64,
 	[FR_TYPE_UINT16]       	= calc_uint64,
