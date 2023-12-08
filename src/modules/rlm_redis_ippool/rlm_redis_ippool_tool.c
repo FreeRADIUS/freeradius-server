@@ -134,6 +134,7 @@ do { \
 	_p += strlcpy((char *)_p, _ip_str, sizeof(_buff) - (_p - _buff)); \
 } while (0)
 
+#if 0
 #define IPPOOL_BUILD_OWNER_KEY(_buff, _p, _key, _key_len, _owner) \
 do { \
 	ssize_t _slen; \
@@ -148,6 +149,7 @@ do { \
 	_p += (size_t)_slen;\
 	_p += strlcpy((char *)_p, _owner, sizeof(_buff) - (_p - _buff)); \
 } while (0)
+#endif
 
 #define EOL "\n"
 
