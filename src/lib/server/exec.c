@@ -840,7 +840,6 @@ static void exec_reap(fr_event_list_t *el, pid_t pid, int status, void *uctx)
 static void exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_exec_state_t *exec = uctx; /* may not be talloced */
-	request_t	*request = exec->request;
 
 	if (exec->stdout_fd < 0) {
 		fr_strerror_const("Timeout waiting for program to exit - killing it and failing the request");
