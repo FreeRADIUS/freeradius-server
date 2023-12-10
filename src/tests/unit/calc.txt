@@ -176,6 +176,10 @@ match 127.0.0.1
 calc combo-prefix 127/8 + uint8 1 -> combo-ip
 match 127.0.0.1
 
+# auto-upcast
+calc combo-prefix 127/8 + uint8 1 -> null
+match 127.0.0.1
+
 calc ipv4addr 192.168.2.1 & uint32 0xffff0000 -> combo-prefix
 match 192.168.0.0/16
 
@@ -209,4 +213,4 @@ calc string "2" += string "test"
 match 2test
 
 count
-match 96
+match 98
