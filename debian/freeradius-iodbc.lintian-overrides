@@ -1,5 +1,0 @@
-freeradius-iodbc: binary-or-shlib-defines-rpath
-
-# There's plenty in the description of this package to identify
-# what it does.
-freeradius-iodbc: extended-description-is-probably-too-short

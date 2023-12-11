@@ -8,7 +8,6 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libcap-dev,
  libgdbm-dev,
- libiodbc2-dev,
  libjson0 | libjson-c2 | libjson-c3 | libjson-c4 | libjson-c5,
  libjson0-dev | libjson-c-dev,
  libkrb5-dev | heimdal-dev,
@@ -31,7 +30,8 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  libmemcached-dev,
  libhiredis-dev,
  python3-dev, @PYTWODEPS@
- samba-dev | samba4-dev
+ samba-dev | samba4-dev,
+ unixodbc-dev
 Section: net
 Priority: optional
 Maintainer: Network RADIUS SARL <info@networkradius.com>
@@ -159,11 +159,11 @@ Description: MySQL module for FreeRADIUS server
  The FreeRADIUS server can use MySQL to authenticate users and do accounting,
  and this module is necessary for that.
 
-Package: freeradius-iodbc
+Package: freeradius-unixodbc
 Architecture: any
 Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
-Description: iODBC module for FreeRADIUS server
- The FreeRADIUS server can use iODBC to access databases to authenticate users
+Description: unixODBC module for FreeRADIUS server
+ The FreeRADIUS server can use unixODBC to access databases to authenticate users
  and do accounting, and this module is necessary for that.
 
 Package: freeradius-redis
