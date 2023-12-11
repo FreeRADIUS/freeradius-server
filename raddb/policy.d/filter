@@ -118,12 +118,18 @@ filter_username {
 #  This policy filters them out.
 #
 filter_password {
-	if (&User-Password && \
-	   (&User-Password != "%string(User-Password)")) {
-		string tmp
-		&tmp := %string(User-Password)
-		&request.User-Password := %string(tmp)
-	 }
+	if &User-Password {
+   		group tmp
+		octets delim
+
+		#
+		#  Because "\000" yields "zero length delimiter is not allowed"
+		#
+		&delim = 0x00
+		&tmp.User-Password := %explode(%{User-Password}, "%{delim}")
+
+		&User-Password := &tmp.User-Password[0]
+	}
 }
 
 filter_inner_identity {
