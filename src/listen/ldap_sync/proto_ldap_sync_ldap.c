@@ -749,6 +749,97 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
 	return 0;
 }
 
+/** Send a fake packet to run the "load Cookie" section
+ *
+ * @param ctx		Context to allocate temporary pairs in.
+ * @param inst		LDAP sync configuration.
+ * @param sync_no	Id of the sync whose.
+ * @param thread	Thread specific LDAP sync data.
+ * @return
+ *	- 0 on success
+ *	- -1 on failure
+ */
+static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t const *inst, size_t sync_no,
+				       proto_ldap_sync_ldap_thread_t *thread) {
+	size_t			j, len;
+	sync_config_t		*config = inst->parent->sync_config[sync_no];
+	fr_pair_list_t		pairs;
+	fr_pair_t		*vp;
+	fr_dbuff_t		*dbuff;
+	fr_ldap_connection_t	*ldap_conn = thread->conn->h;
+
+	fr_pair_list_init(&pairs);
+	fr_pair_list_copy(ctx, &pairs, &config->sync_pairs);
+
+	/*
+	 *	Ensure we have access to the thread instance
+	 *	in for the demux callbacks
+	 */
+	inst->parent->sync_config[sync_no]->user_ctx = thread;
+
+	/*
+	 *	Assess the namingContext which applies to this sync
+	 */
+	for (j = 0; j < talloc_array_length(ldap_conn->directory->naming_contexts); j++) {
+		len = strlen(ldap_conn->directory->naming_contexts[j]);
+		if (strlen(config->base_dn) < len) continue;
+
+		if (strncasecmp(&config->base_dn[strlen(config->base_dn)-len],
+				ldap_conn->directory->naming_contexts[j],
+				strlen(ldap_conn->directory->naming_contexts[j])) == 0) {
+			config->root_dn = ldap_conn->directory->naming_contexts[j];
+			break;
+		}
+	}
+
+	/*
+	 *	Set up callbacks based on directory type.
+	 */
+	switch (ldap_conn->directory->sync_type) {
+	case FR_LDAP_SYNC_RFC4533:
+		config->init = rfc4533_sync_init;
+		config->entry = rfc4533_sync_search_entry;
+		config->intermediate = rfc4533_sync_intermediate;
+		config->refresh = rfc4533_sync_refresh_required;
+		break;
+
+	case FR_LDAP_SYNC_PERSISTENT_SEARCH:
+		config->init = persistent_sync_state_init;
+		config->entry = persistent_sync_search_entry;
+		break;
+
+	case FR_LDAP_SYNC_ACTIVE_DIRECTORY:
+		config->init = active_directory_sync_state_init;
+		config->entry = active_directory_sync_search_entry;
+		break;
+
+	default:
+		fr_assert(0);
+	}
+
+	fr_pair_list_append_by_da(ctx, vp, &pairs, attr_packet_type,
+				  (uint32_t)FR_LDAP_SYNC_CODE_COOKIE_LOAD, false);
+	if (!vp) return -1;
+	fr_pair_list_append_by_da(ctx, vp, &pairs, attr_ldap_sync_packet_id, (uint32_t)sync_no, false);
+	if (!vp) return -1;
+
+	if (config->root_dn) {
+		fr_pair_list_append_by_da_parent_len(ctx, vp, &pairs, attr_ldap_sync_root_dn,
+						     config->root_dn, strlen(config->root_dn), false);
+		if (!vp) return -1;
+	}
+
+	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
+
+	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) return -1;
+
+	if (fr_network_listen_send_packet(thread->nr, thread->li, thread->li,
+					  fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff),
+					  fr_time(), NULL) < 0) return -1;
+	fr_pair_list_free(&pairs);
+	return 0;
+}
+
 /** LDAP sync mod_write for child listener
  *
  * Handle any returned data after the worker has processed the packet and,
@@ -925,9 +1016,6 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 	LDAPMessage			*result;
 
 	size_t				i;
-	fr_dbuff_t			*dbuff;
-	fr_pair_list_t			pairs;
-	fr_pair_t			*vp;
 	TALLOC_CTX			*local = NULL;
 
 	/*
@@ -968,7 +1056,6 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 
 	DEBUG2("Starting sync(s)");
 
-	fr_pair_list_init(&pairs);
 	local = talloc_new(NULL);
 
 	/*
@@ -976,76 +1063,7 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 	 *	the load Cookie section in order to retrieve the cookie
 	 */
 	for (i = 0; i < talloc_array_length(inst->parent->sync_config); i++) {
-		size_t		j, len;
-		sync_config_t	*config = inst->parent->sync_config[i];
-
-		fr_pair_list_copy(local, &pairs, &config->sync_pairs);
-		/*
-		 *	Ensure we have access to the thread instance
-		 *	in for the demux callbacks
-		 */
-		inst->parent->sync_config[i]->user_ctx = thread;
-
-		/*
-		 *	Assess the namingContext which applies to this sync
-		 */
-		for (j = 0; j < talloc_array_length(ldap_conn->directory->naming_contexts); j++) {
-			len = strlen(ldap_conn->directory->naming_contexts[j]);
-			if (strlen(config->base_dn) < len) continue;
-
-			if (strncasecmp(&config->base_dn[strlen(config->base_dn)-len],
-					ldap_conn->directory->naming_contexts[j],
-					strlen(ldap_conn->directory->naming_contexts[j])) == 0) {
-				config->root_dn = ldap_conn->directory->naming_contexts[j];
-				break;
-			}
-		}
-
-		/*
-		 *	Set up callbacks based on directory type.
-		 */
-		switch (ldap_conn->directory->sync_type) {
-		case FR_LDAP_SYNC_RFC4533:
-			config->init = rfc4533_sync_init;
-			config->entry = rfc4533_sync_search_entry;
-			config->intermediate = rfc4533_sync_intermediate;
-			config->refresh = rfc4533_sync_refresh_required;
-			break;
-
-		case FR_LDAP_SYNC_PERSISTENT_SEARCH:
-			config->init = persistent_sync_state_init;
-			config->entry = persistent_sync_search_entry;
-			break;
-
-		case FR_LDAP_SYNC_ACTIVE_DIRECTORY:
-			config->init = active_directory_sync_state_init;
-			config->entry = active_directory_sync_search_entry;
-			break;
-
-		default:
-			fr_assert(0);
-		}
-
-		fr_pair_list_append_by_da(local, vp, &pairs, attr_packet_type,
-					  (uint32_t)FR_LDAP_SYNC_CODE_COOKIE_LOAD, false);
-		if (!vp) goto error;
-		fr_pair_list_append_by_da(local, vp, &pairs, attr_ldap_sync_packet_id, (uint32_t)i, false);
-		if (!vp) goto error;
-
-		if (config->root_dn) {
-			fr_pair_list_append_by_da_parent_len(local, vp, &pairs, attr_ldap_sync_root_dn,
-							     config->root_dn, strlen(config->root_dn), false);
-			if (!vp) goto error;
-		}
-
-		FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
-
-		if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
-
-		if (fr_network_listen_send_packet(thread->nr, thread->li, thread->li,
-						  fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff),
-						  fr_time(), NULL) < 0) goto error;
-		fr_pair_list_free(&pairs);
+		if (proto_ldap_cookie_load_send(local, inst, i, thread) < 0) goto error;
 	}
 
 	talloc_free(dir_ctx);
