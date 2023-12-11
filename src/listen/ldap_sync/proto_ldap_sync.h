@@ -132,6 +132,8 @@ struct sync_config_s {
 	CONF_SECTION		*cs;			//!< Config section where this sync was defined.
 							//!< Used for logging.
 
+	fr_event_timer_t const	*ev;			//!< Event for retrying cookie load
+
 	/*
 	 *	Callbacks for various events
 	 */

@@ -121,6 +121,14 @@ typedef struct {
 	int			msgid;
 } proto_ldap_dir_ctx;
 
+/** Context for "load Cookie" retry timed event
+ */
+typedef struct {
+	proto_ldap_sync_ldap_thread_t	*thread;
+	proto_ldap_sync_ldap_t const	*inst;
+	size_t				sync_no;
+} proto_ldap_cookie_load_retry_ctx;
+
 /** Compare two sync state structures on msgid
  *
  * @param[in] one first sync to compare.
@@ -840,6 +848,26 @@ static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t c
 	return 0;
 }
 
+/** Timer event to retry running "load Cookie" on failures
+ *
+ */
+static void proto_ldap_cookie_load_retry(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx) {
+	proto_ldap_cookie_load_retry_ctx  *retry_ctx = talloc_get_type_abort(uctx, proto_ldap_cookie_load_retry_ctx);
+
+	DEBUG2("Retrying \"load Cookie\" for sync no %ld", retry_ctx->sync_no);
+	if (proto_ldap_cookie_load_send(retry_ctx, retry_ctx->inst, retry_ctx->sync_no,
+					retry_ctx->thread) < 0) {
+		ERROR("Failed retrying \"load Cookie\".  Will try again in %pV seconds",
+		      fr_box_time_delta(retry_ctx->inst->handle_config.reconnection_delay));
+		(void) fr_event_timer_in(retry_ctx->thread->conn->h, el,
+					 &retry_ctx->inst->parent->sync_config[retry_ctx->sync_no]->ev,
+					 retry_ctx->inst->handle_config.reconnection_delay,
+					 proto_ldap_cookie_load_retry, retry_ctx);
+		return;
+	}
+	talloc_free(retry_ctx);
+}
+
 /** LDAP sync mod_write for child listener
  *
  * Handle any returned data after the worker has processed the packet and,
@@ -927,6 +955,26 @@ static ssize_t proto_ldap_child_mod_write(fr_listen_t *li, void *packet_ctx, UNU
 			ret = -1;
 			goto finish;
 		}
+	}
+		break;
+
+	case FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL:
+	{
+		proto_ldap_cookie_load_retry_ctx *retry_ctx;
+
+		ERROR("Load Cookie failed for sync %d, retrying in %pV seconds", packet_id,
+		      fr_box_time_delta(inst->handle_config.reconnection_delay));
+
+		MEM(retry_ctx = talloc(thread, proto_ldap_cookie_load_retry_ctx));
+		*retry_ctx = (proto_ldap_cookie_load_retry_ctx){
+			.thread = thread,
+			.inst = inst,
+			.sync_no = packet_id,
+		};
+
+		(void) fr_event_timer_in(thread->conn->h, thread->el, &inst->parent->sync_config[packet_id]->ev,
+					 inst->handle_config.reconnection_delay,
+					 proto_ldap_cookie_load_retry, retry_ctx);
 	}
 		break;
 
