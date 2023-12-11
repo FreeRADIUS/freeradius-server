@@ -88,7 +88,7 @@
 #  other modifications to the user will result in a notification which
 #  can include the memberOf attribute.
 #
-#  Instead group membeship changes are reported as changes to the group object.
+#  Instead group membership changes are reported as changes to the group object.
 #
 #
 #  Each virtual-server may have multiple listen sections, with each

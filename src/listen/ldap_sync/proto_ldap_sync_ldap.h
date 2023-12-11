@@ -103,10 +103,10 @@ typedef struct {
 
 	uint32_t			ldap_debug;		//!< Debug flag for the SDK.
 
-	uint32_t			recv_buff;		//!< How big the kernel's recive buffer should be
+	uint32_t			recv_buff;		//!< How big the kernel's receive buffer should be
 	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
 
-	uint32_t			max_outstanding;	//!< Maximun number of outstanding packets.
+	uint32_t			max_outstanding;	//!< Maximum number of outstanding packets.
 } proto_ldap_sync_ldap_t;
 
 typedef struct {
