@@ -373,6 +373,8 @@ server ldap_sync {
 #			&csn := %ldap("ldap:///%{LDAP-Sync.Directory-Root-DN}?contextCSN?base")
 #			if (&csn) {
 #				&reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
+#			} else {
+#				fail
 #			}
 #		}
 	}
