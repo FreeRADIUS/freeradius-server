@@ -777,7 +777,7 @@ static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t c
 	fr_ldap_connection_t	*ldap_conn = thread->conn->h;
 
 	fr_pair_list_init(&pairs);
-	fr_pair_list_copy(ctx, &pairs, &config->sync_pairs);
+	if (unlikely(fr_pair_list_copy(ctx, &pairs, &config->sync_pairs) < 0)) return -1;
 
 	/*
 	 *	Ensure we have access to the thread instance
