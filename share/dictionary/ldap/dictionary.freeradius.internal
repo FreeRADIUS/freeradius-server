@@ -22,8 +22,9 @@ VALUE	Packet-Type			Delete			4
 VALUE	Packet-Type			Response		5
 VALUE	Packet-Type			Cookie-Load		6
 VALUE	Packet-Type			Cookie-Load-Response	7
-VALUE	Packet-Type			Cookie-Store		8
-VALUE	Packet-Type			Cookie-Store-Response	9
+VALUE	Packet-Type			Cookie-Load-Fail	8
+VALUE	Packet-Type			Cookie-Store		9
+VALUE	Packet-Type			Cookie-Store-Response	10
 VALUE	Packet-Type			Do-Not-Respond		255
 
 ATTRIBUTE	Sync-Packet-ID				1001	integer

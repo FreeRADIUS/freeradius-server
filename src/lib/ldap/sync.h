@@ -45,6 +45,8 @@ typedef enum {
 							//!< Before the sync starts, request any previously stored cookie.
 	FR_LDAP_SYNC_CODE_COOKIE_LOAD_RESPONSE	= FR_PACKET_TYPE_VALUE_COOKIE_LOAD_RESPONSE,
 							//!< Response with the returned cookie.
+	FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL	= FR_PACKET_TYPE_VALUE_COOKIE_LOAD_FAIL,
+							//!< Response when coolie load fails
 	FR_LDAP_SYNC_CODE_COOKIE_STORE		= FR_PACKET_TYPE_VALUE_COOKIE_STORE,
 							//!< The server has sent a new cookie.
 	FR_LDAP_SYNC_CODE_COOKIE_STORE_RESPONSE	= FR_PACKET_TYPE_VALUE_COOKIE_STORE_RESPONSE,

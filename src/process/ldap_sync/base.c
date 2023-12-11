@@ -157,6 +157,12 @@ static fr_process_state_t const process_state[] = {
 		.resume = resume_send_generic,
 	},
 	[ FR_LDAP_SYNC_CODE_COOKIE_LOAD ] = {
+		.packet_type = {
+			[RLM_MODULE_FAIL]     = FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL,
+			[RLM_MODULE_INVALID]  = FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL,
+			[RLM_MODULE_REJECT]   = FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL,
+			[RLM_MODULE_DISALLOW] = FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL
+		},
 		.default_reply = FR_LDAP_SYNC_CODE_COOKIE_LOAD_RESPONSE,
 		.rcode = RLM_MODULE_NOOP,
 		.recv = recv_generic,
@@ -167,6 +173,11 @@ static fr_process_state_t const process_state[] = {
 		.rcode = RLM_MODULE_NOOP,
 		.send = send_generic,
 		.resume = resume_send_generic,
+	},
+	[ FR_LDAP_SYNC_CODE_COOKIE_LOAD_FAIL ] = {
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic
 	},
 	[ FR_LDAP_SYNC_CODE_COOKIE_STORE ] = {
 		.default_reply = FR_LDAP_SYNC_CODE_COOKIE_STORE_RESPONSE,
