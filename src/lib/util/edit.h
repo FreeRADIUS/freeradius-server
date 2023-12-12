@@ -33,11 +33,11 @@ extern "C" {
 
 typedef struct fr_edit_list_s fr_edit_list_t;
 
-fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint);
+fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint, fr_edit_list_t *parent);
 
 void fr_edit_list_abort(fr_edit_list_t *el);
 
-#define fr_edit_list_commit(_x) talloc_free(_x)
+void fr_edit_list_commit(fr_edit_list_t *el);
 
 /*
  *	Functions to modify #fr_pair_t

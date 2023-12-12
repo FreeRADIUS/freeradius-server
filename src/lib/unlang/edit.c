@@ -1587,7 +1587,7 @@ static void edit_state_init_internal(request_t *request, unlang_frame_state_edit
 	 *	generally be large enough for most edits.
 	 */
 	if (!el) {
-		MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(map_list)));
+		MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(map_list), NULL));
 	}
 
 	current->ctx = state;

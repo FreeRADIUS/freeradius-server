@@ -58,6 +58,7 @@ typedef enum {
 	FR_EDIT_VALUE,			//!< edit a VP in place
 	FR_EDIT_CLEAR,			//!< clear the children of a structural entry.
 	FR_EDIT_INSERT,			//!< insert a VP into a list, after another one.
+	FR_EDIT_CHILD,			//!< child edit list
 } fr_edit_op_t;
 
 #if 0
@@ -72,6 +73,28 @@ static const char *edit_names[4] = {
 	"insert",
 };
 #endif
+
+/** Track one particular edit.
+ */
+typedef struct {
+	fr_edit_op_t	op;		//!< edit operation to perform
+	fr_dlist_t	entry;		//!< linked list of edits
+
+	fr_pair_t	*vp;		//!< pair edited, deleted, or inserted
+
+	union {
+		union {
+			fr_value_box_t	data;	//!< original data
+			fr_pair_list_t	children;  //!< original child list, for "clear"
+			fr_edit_list_t	*child_edit;
+		};
+
+		struct {
+			fr_pair_list_t	*list; //!< parent list
+			fr_pair_t	*ref;	//!< reference pair for delete, insert before/after
+		};
+	};
+} fr_edit_t;
 
 /** Track a series of edits.
  *
@@ -89,28 +112,10 @@ struct fr_edit_list_s {
 	 *	later edit.
 	 */
 	fr_pair_list_t	deleted_pairs;
+
+	fr_edit_list_t	*parent;	//!< for nested transactions
+	fr_edit_t	*e;		//!< so we don't have to loop over parent edits on abort
 };
-
-/** Track one particular edit.
- */
-typedef struct {
-	fr_edit_op_t	op;		//!< edit operation to perform
-	fr_dlist_t	entry;		//!< linked list of edits
-
-	fr_pair_t	*vp;		//!< pair edited, deleted, or inserted
-
-	union {
-		union {
-			fr_value_box_t	data;	//!< original data
-			fr_pair_list_t	children;  //!< original child list, for "clear"
-		};
-
-		struct {
-			fr_pair_list_t	*list; //!< parent list
-			fr_pair_t	*ref;	//!< reference pair for delete, insert before/after
-		};
-	};
-} fr_edit_t;
 
 typedef struct {
 	fr_dlist_t	entry;
@@ -170,6 +175,10 @@ static int edit_undo(fr_edit_t *e)
 		 */
 		fr_pair_delete(e->list, vp);
 		break;
+
+	case FR_EDIT_CHILD:
+		fr_edit_list_abort(e->child_edit);
+		break;
 	}
 
 	return 0;
@@ -210,6 +219,14 @@ void fr_edit_list_abort(fr_edit_list_t *el)
 		 */
 	}
 
+	/*
+	 *	There's a parent, we remove ourselves from the parent undo list.
+	 */
+	if (el->parent) {
+		fr_dlist_remove(&el->parent->undo, el->e);
+		talloc_free(el->e);
+	}
+
 	talloc_free(el);
 }
 
@@ -233,6 +250,8 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	fr_assert(el != NULL);
 	fr_assert(vp != NULL);
+
+	fr_assert(op != FR_EDIT_CHILD); /* only used by fr_edit_alloc() */
 
 	/*
 	 *	When we insert a structural type, we also want to
@@ -449,6 +468,10 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 			e->op = FR_EDIT_DELETE;
 			fr_dlist_remove(&el->undo, e);
 			goto delete;
+
+		case FR_EDIT_CHILD: /* e->vp==NULL, so this should never happen */
+			fr_assert(0);
+			return -1;
 		}
 	} /* loop over existing edits */
 
@@ -464,6 +487,7 @@ static int edit_record(fr_edit_list_t *el, fr_edit_op_t op, fr_pair_t *vp, fr_pa
 
 	switch (op) {
 	case FR_EDIT_INVALID:
+	case FR_EDIT_CHILD:
 	fail:
 		talloc_free(e);
 		return -1;
@@ -739,6 +763,10 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 			fr_assert(fr_type_is_leaf(e->vp->vp_type));
 			fr_value_box_clear(&e->data);
 			break;
+
+		case FR_EDIT_CHILD:
+			talloc_free(e->child_edit);
+			break;
 		}
 	}
 
@@ -749,9 +777,27 @@ static int _edit_list_destructor(fr_edit_list_t *el)
 	return 0;
 }
 
-fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint)
+/** Allocate an edit list.
+ *
+ *  Edit lists can be nested.  If the child list commits, then it does nothing
+ *  until the parent list commits.  On the other hand, if the child list aborts,
+ *  then the parent list might continue.
+ *
+ * @param ctx		talloc context.  Ignored if parent!=NULL
+ * @param hint		how many edits we are likely to allocate
+ * @param parent	a parent edit list
+ */
+fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint, fr_edit_list_t *parent)
 {
 	fr_edit_list_t *el;
+	fr_edit_t *e;
+
+	/*
+	 *	If we have nested transactions, then allocate this
+	 *	list in the context of the parent.  Otherwise it will
+	 *	be freed too soon.
+	 */
+	if (parent) ctx = parent;
 
 	el = talloc_zero_pooled_object(ctx, fr_edit_list_t, hint, hint * sizeof(fr_edit_t));
 	if (!el) return NULL;
@@ -763,7 +809,40 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint)
 
 	talloc_set_destructor(el, _edit_list_destructor);
 
+	el->parent = parent;
+
+	if (!parent) return el;
+
+	e = talloc_zero(parent, fr_edit_t);
+	if (!e) {
+		talloc_free(el);
+		return NULL;
+	}
+
+	/*
+	 *	Insert the child into the tail of the current edit list.
+	 */
+	e->op = FR_EDIT_CHILD;
+	e->vp = NULL;
+	e->child_edit = el;
+
+	fr_dlist_insert_tail(&parent->undo, e);
+	el->e = e;
+
 	return el;
+}
+
+/** Commit an edit list.
+ *
+ *  If there are nested transactions, then this transaction is
+ *  committed only when the parent transaction has been commited.
+ *
+ */
+void fr_edit_list_commit(fr_edit_list_t *el)
+{
+	if (el->parent) return;
+
+	talloc_free(el);
 }
 
 /** Notes
