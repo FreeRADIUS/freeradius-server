@@ -1,6 +1,7 @@
 #
 # PRE: update if
 #
+
 &request -= &Packet-Type[*]
 
 &Tmp-Group-0 += {
@@ -9,6 +10,21 @@
 	&Tmp-Octets-0 = 0x000504030201
 	&Tmp-Integer-0 = 7331
 }
+
+#
+#  string pairs
+#
+#  @todo - this doesn't work.  tmpl_afrom_attr_substr() doesn't check
+#  the tail da, or the parent of the tail.
+#
+#&pairs := %{(string) %{Tmp-Group-0.[*]}}
+
+#
+#  However, this does "work".  It returns a concatenated string
+#  of the _values_ of the attributes, which doesn't include th
+#  attribute names.
+#
+#&pairs := %cast('string', %{Tmp-Group-0.[*]})
 
 &request += {
 	&Tmp-String-1 = "%concat(%pairs(Tmp-Group-0.[*]), ', ')"
