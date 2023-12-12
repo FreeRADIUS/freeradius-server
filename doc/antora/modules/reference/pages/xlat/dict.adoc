@@ -1,0 +1,200 @@
+= Dictionary Lookups
+
+The following functions perform lookups based on dictionary names and numbers.
+
+The functions are defined in the `dict` module.  It must be listed in
+the `mods-enabled/` directory in order for the expansions to work.
+
+== %concat(<&ref:[idx]>, <delim>)
+
+Used to join two or more attributes, separated by an optional delimiter.
+
+.Return: _string_
+
+In most cases, `%concat(...)` is only useful inside of a dynamically
+expanded string.  If you need to concatenate strings together in a policy, just use `+`.
+
+.Example
+
+[source,unlang]
+----
+&control += {
+	&Tmp-String-0 = "aaa"
+	&Tmp-String-0 = "bb"
+	&Tmp-String-0 = "c"
+}
+
+&reply += {
+    &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ', ')"
+    &Reply-Message = "%concat(%{control.Tmp-String-0[*]}, ',')"
+}
+----
+
+.Output
+
+```
+aaa, bb, c
+aaa,bb,c
+```
+
+.Using "+"
+[source,unlang]
+----
+string foo
+
+&foo += { "a", "c", "c", "d" } # abcd
+
+&foo += &control.Tmp-String-0[*]
+----
+
+== %explode(<&ref>, <delim>)
+
+Split an string into multiple new strings based on a delimiter.
+
+This expansion is the opposite of `%concat( ... )`.
+
+.Return: _the number exploded list of strings_.
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "bob.toba@domain.com"
+
+&control.Tmp-String-1 := "%explode(&control.Tmp-String-0, '@')"
+
+&reply.Reply-Message := "Welcome %{control.Tmp-String-1[0]}"
+----
+
+.Output
+
+```
+Welcome bob.toba
+```
+
+== %lpad(<string>, <val>, <char>)
+
+Left-pad a string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "123"
+
+&reply.Reply-Message := "Maximum should be %lpad(%{control.Tmp-String-0}, 11, '0')"
+----
+
+.Output
+
+```
+Maximum should be 00000000123
+```
+
+== %rpad(<string>, <val>, <char>)
+
+Right-pad a string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "123"
+
+&reply.Reply-Message := "Maximum should be %rpad(%{control.Tmp-String-0}, 11, '0')"
+----
+
+.Output
+
+```
+Maximum should be 12300000000
+```
+
+== %pairs(<list>.[*])
+
+Serialize attributes as comma-delimited string.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := { "This is a string", "This is another one" }
+&reply.Reply-Message := "Serialize output: %pairs(&control.[*])"
+----
+
+.Output
+
+```
+Serialize output: Tmp-String-0 = "\"This is a string\", Tmp-String-0 = \"This is another one\""
+```
+
+== %randstr( ...)
+
+Get random string built from character classes.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&reply.Reply-Message := "The random string output is %randstr(aaaaaaaa}"
+----
+
+.Output
+
+```
+The random string output is 4Uq0gPyG
+```
+
+== %tolower( ... )
+
+Dynamically expands the string and returns the lowercase version of
+it. This definition is only available in version 2.1.10 and later.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "CAIPIRINHA"
+&reply.Reply-Message := "tolower of %{control.Tmp-String-0} is %tolower(%{control.Tmp-String-0})"
+----
+
+.Output
+
+```
+tolower of CAIPIRINHA is caipirinha
+```
+
+== %toupper( ... )
+
+Dynamically expands the string and returns the uppercase version of
+it. This definition is only available in version 2.1.10 and later.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&control.Tmp-String-0 := "caipirinha"
+&reply.Reply-Message := "toupper of %{control.Tmp-String-0} is " + %toupper(%{control.Tmp-String-0})
+----
+
+.Output
+
+```
+toupper of caipirinha is CAIPIRINHA
+```
+
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
