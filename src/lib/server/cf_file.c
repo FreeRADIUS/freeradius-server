@@ -2435,12 +2435,15 @@ check_for_eol:
 		char const *ptr2 = ptr;
 
 		/*
-		 *	In most cases, this is just one word.  In some cases it's not.  So we peek ahead to see.
+		 *	If the RHS is an expression (foo) or function %foo(), then mark it up as an expression.
 		 */
-		if ((*ptr != '(') && (cf_get_token(parent, &ptr2, &value_token, buff[2], stack->bufsize,
-						   frame->filename, frame->lineno) == 0)) {
+		if ((*ptr == '(') || (*ptr == '%')) {
+			/* nothing  */
+
+		} else if (cf_get_token(parent, &ptr2, &value_token, buff[2], stack->bufsize,
+					frame->filename, frame->lineno) == 0) {
 			/*
-			 *	The thing after the token is "end of line" in some format, so it's fine.
+			 *	We have one token (bare word), followed by EOL.  It's just a token.
 			 */
 			fr_skip_whitespace(ptr2);
 			if (terminal_end_line[(uint8_t) *ptr2]) {
