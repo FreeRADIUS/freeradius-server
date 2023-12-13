@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/edit.h>
+#include <freeradius-devel/unlang/transaction.h>
 #include <freeradius-devel/unlang/unlang_priv.h>
 #include "edit_priv.h"
 
@@ -84,6 +85,7 @@ struct edit_map_s {
 struct unlang_frame_state_edit_s {
 	fr_edit_list_t		*el;			//!< edit list
 	bool			*success;		//!< whether or not the edit succeeded
+	bool			ours;
 
 	rindent_t		indent;
 
@@ -1541,7 +1543,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				 */
 				if (state->success) *state->success = false;
 
-				fr_edit_list_abort(state->el);
+				if (state->ours) fr_edit_list_abort(state->el);
 				TALLOC_FREE(frame->state);
 				repeatable_clear(frame);
 				*p_result = RLM_MODULE_NOOP;
@@ -1588,6 +1590,10 @@ static void edit_state_init_internal(request_t *request, unlang_frame_state_edit
 	 */
 	if (!el) {
 		MEM(state->el = fr_edit_list_alloc(state, map_list_num_elements(map_list), NULL));
+		state->ours = true;
+	} else {
+		state->el = el;
+		state->ours = false;
 	}
 
 	current->ctx = state;
@@ -1621,8 +1627,9 @@ static unlang_action_t unlang_edit_state_init(rlm_rcode_t *p_result, request_t *
 {
 	unlang_edit_t			*edit = unlang_generic_to_edit(frame->instruction);
 	unlang_frame_state_edit_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_edit_t);
+	fr_edit_list_t			*el = unlang_interpret_edit_list(request);
 
-	edit_state_init_internal(request, state, NULL, &edit->maps);
+	edit_state_init_internal(request, state, el, &edit->maps);
 
 	/*
 	 *	Call process_edit to do all of the work.

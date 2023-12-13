@@ -44,6 +44,7 @@ RCSID("$Id$")
 #include "edit_priv.h"
 #include "timeout_priv.h"
 #include "limit_priv.h"
+#include "transaction_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -455,6 +456,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_SWITCH:
 		case UNLANG_TYPE_TIMEOUT:
 		case UNLANG_TYPE_LIMIT:
+		case UNLANG_TYPE_TRANSACTION:
 			g = unlang_generic_to_group(c);
 			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
 			unlang_dump(g->children, depth + 1);
@@ -2169,6 +2171,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 	case UNLANG_TYPE_ELSIF:
 	case UNLANG_TYPE_GROUP:
 	case UNLANG_TYPE_TIMEOUT:
+	case UNLANG_TYPE_TRANSACTION:
 		break;
 
 	default:
@@ -2454,6 +2457,7 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	fr_assert(unlang_ctx->rules != NULL);
 	fr_assert(unlang_ctx->rules->attr.list_def);
+
 	/*
 	 *	We always create a group, even if the section is empty.
 	 */
@@ -2541,6 +2545,121 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 	return compile_section(parent, unlang_ctx, cs, &group);
 }
+
+static fr_table_num_sorted_t transaction_keywords[] = {
+	{ L("case"),		1 },
+	{ L("else"),		1 },
+	{ L("elsif"),		1 },
+	{ L("foreach"),		1 },
+	{ L("group"),		1 },
+	{ L("if"),		1 },
+	{ L("limit"),		1 },
+	{ L("load-balance"),	1 },
+	{ L("redundant"), 	1 },
+	{ L("redundant-load-balance"), 1 },
+	{ L("switch"),		1 },
+	{ L("timeout"),		1 },
+	{ L("transaction"),	1 },
+};
+static int transaction_keywords_len = NUM_ELEMENTS(transaction_keywords);
+
+/** Limit the operations which can appear in a transaction.
+ *
+ *  We probably want this to be
+ */
+static bool transaction_ok(CONF_SECTION *cs, bool *all_edits)
+{
+	CONF_ITEM *ci = NULL;
+
+	while ((ci = cf_item_next(cs, ci)) != NULL) {
+		char const *name;
+
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *subcs;
+
+			subcs = cf_item_to_section(ci);
+			name = cf_section_name1(subcs);
+
+			if (strcmp(name, "actions") == 0) continue;
+
+			/*
+			 *	Definitely an attribute editing thing.
+			 */
+			if (*name == '&') continue;
+
+			if (fr_table_value_by_str(transaction_keywords, name, -1) < 0) goto fail;
+
+			*all_edits = false;
+
+			if (!transaction_ok(subcs, all_edits)) return false;
+
+			continue;
+
+		} else if (cf_item_is_pair(ci)) {
+			CONF_PAIR *cp;
+
+			cp = cf_item_to_pair(ci);
+			name = cf_pair_attr(cp);
+
+			if (*name == '&') continue;
+
+			/*
+			 *	Allow rcodes via the "always" module.
+			 */
+			if (fr_table_value_by_str(mod_rcode_table, name, -1) >= 0) {
+				*all_edits = false;
+				continue;
+			}
+
+			/*
+			 *	For now, don't support expansions on the LHS.
+			 *
+			 *	And don't support in-line functions.
+			 */
+		fail:
+			cf_log_err(ci, "Unexpected contents in 'transaction'");
+			return false;
+		} else {
+			continue;
+		}
+	}
+
+	return true;
+}
+
+static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	unlang_t *c;
+	bool all_edits = true;
+	unlang_compile_t unlang_ctx2;
+
+	static unlang_ext_t const transaction = {
+		.type = UNLANG_TYPE_TRANSACTION,
+		.len = sizeof(unlang_transaction_t),
+		.type_name = "unlang_transaction_t",
+	};
+
+	if (!transaction_ok(cs, &all_edits)) return NULL;
+
+	/*
+	 *	Any failure is return, not continue.
+	 */
+	compile_copy_context(&unlang_ctx2, unlang_ctx, unlang_ctx->component);
+
+	unlang_ctx2.actions.actions[RLM_MODULE_REJECT] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_FAIL] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_INVALID] = MOD_ACTION_RETURN;
+	unlang_ctx2.actions.actions[RLM_MODULE_DISALLOW] = MOD_ACTION_RETURN;
+
+	unlang_ctx2.all_edits = all_edits;
+
+	c = compile_section(parent, &unlang_ctx2, cs, &transaction);
+	if (!c || (c == UNLANG_IGNORE)) return c;
+
+	c->type = UNLANG_TYPE_TRANSACTION;
+	return c;
+}
+
 
 static int8_t case_cmp(void const *one, void const *two)
 {
@@ -4502,6 +4621,7 @@ static fr_table_ptr_sorted_t unlang_section_keywords[] = {
 	{ L("subrequest"),	(void *) compile_subrequest },
 	{ L("switch"),		(void *) compile_switch },
 	{ L("timeout"),		(void *) compile_timeout },
+	{ L("transaction"),	(void *) compile_transaction },
 	{ L("update"),		(void *) compile_update },
 };
 static int unlang_section_keywords_len = NUM_ELEMENTS(unlang_section_keywords);

@@ -30,6 +30,7 @@ following keywords:
 * `elsif`
 * `group`
 * `timeout`
+* `transaction`
 
 == Priorities
 

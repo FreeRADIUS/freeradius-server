@@ -1,0 +1,35 @@
+#
+# PRE: if
+#
+string foo
+string bar
+
+transaction {
+	&foo := "hello"
+
+	fail
+
+	&bar := "nope"
+
+	actions {
+		fail = 1
+	}
+}
+
+#
+#  This shouldn't have been applied
+#
+if &bar {
+	test_fail
+}
+
+#
+#  This should get rolled back, too!
+#
+if &foo {
+	test_fail
+} else {
+	ok		# force auth success for the test framework
+}
+
+success

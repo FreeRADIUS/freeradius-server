@@ -21,6 +21,7 @@ looping, etc.
 | xref:unlang/if.adoc[if]           | Check for a condition, and execute a sub-policy if it matches.
 | xref:unlang/return.adoc[return]   | Immediately stop processing a section.
 | xref:unlang/switch.adoc[switch]   | Check for multiple values.
+| xref:unlang/transaction.adoc[transaction]   | Group operations into a transaction which can be reverted on failure.
 |=====
 
 == Attribute Editing Keywords

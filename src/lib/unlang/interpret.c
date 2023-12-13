@@ -525,6 +525,7 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 		DUMP_STACK;
 
 		fr_assert(instruction->debug_name != NULL); /* if this happens, all bets are off. */
+		fr_assert(unlang_ops[instruction->type].interpret != NULL);
 
 		REQUEST_VERIFY(request);
 

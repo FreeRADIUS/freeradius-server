@@ -1,0 +1,69 @@
+= The transaction Statement
+
+.Syntax
+[source,unlang]
+----
+transaction {
+    [ statements ]
+}
+----
+
+The `transaction` statement collects a series of statements into a
+single transaction.  If the block returns an error such as `fail`,
+`reject`, `invalid`, or `disallow`, any attribute changes which have
+been made will be reverted.
+
+[ statements ]:: The `unlang` commands which will be executed.
+
+== Caveats
+
+The `transaction` keyword currently has some major limitations.
+
+The first limitation is that most processing sections have a default
+action of `return` for failures.  This setting means that failures
+cause the server to stop processing the entire section.  The
+`transaction` keyword is no different.
+
+If instead the server should continue processing the next statement
+after the `transaction`, then the `transaction` section must finish
+with an xref:unlang/actions.adoc[actions] subsection, as given in the
+example below.  This subsection over-ride sthe default action of
+`return` for failures, and allows processing to continue after the
+`transaction`.
+
+The second limitation of `transaction` is that it can only revert
+attribute editing which is done via the xref:unlang/edit.adoc[edit]
+statements.  If a module performs attribute editing (e.g. `sql`,
+`files`, etc.), then those edits are not reverted.
+
+Similarly, a `transaction` cannot undo operations on external
+databases.  For example, any data which was inserted into `sql` during
+a `transaction` statement will remain in `sql`.
+
+.Examples
+
+[source,unlang]
+----
+transaction {
+    &reply.Filter-Id := %exec
+    sql
+
+    actions {
+        fail = 1
+    }
+}
+----
+
+The last entry in a `transaction` section can also be an xref:unlang/actions.adoc[actions] subsection.
+
+== Grouping Edits
+
+The `transaction` keyword can be used to group multiple
+xref:unlang/edit.adoc[edit] instructions.  When edit instructions are
+grouped, then the edits are done in an atomic transaction.  That is,
+either all of the edits succeed, or none of them do.
+
+For now, the only purpose of `transaction` is to group edits.
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.
