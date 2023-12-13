@@ -59,8 +59,8 @@ These over-rides use the same syntax as the
 xref:unlang/actions.adoc[actions] subsection.
 
 Module priority overrides are specified in a block inline with the module call.
-The format of an override is `<rcode> = (0+|<rcode>|return)` - That is,
-a number greater than or equal to 0, the priority of another rcode, or the special
+The format of an override is `<rcode> = ([0-9]+|<rcode>|return)` - That is,
+a decimal number greater than or equal to 0, the priority of another rcode, or the special
 priority `return` which causes the current section to immediately exit.
 
 [source, unlang]
@@ -85,7 +85,6 @@ ldap { <1>
 
 See the xref:unlang/actions.adoc[actions] page for more information on
 the syntax of the `actions` section.
-
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

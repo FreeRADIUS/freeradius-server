@@ -29,6 +29,11 @@ following keywords:
 * `else`
 * `elsif`
 * `group`
+* `timeout`
+
+== Priorities
+
+Higher numbers mean higher priorities.  An rcode of `fail` with priority `3` will over-ride an rcode of `ok` with priority `1`,
 
 == Override Syntax
 
