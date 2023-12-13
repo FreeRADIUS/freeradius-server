@@ -243,9 +243,10 @@ static inline char const *rlm_find_user_dn_cached(request_t *request)
 	return vp->vp_strvalue;
 }
 
-int rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t *request, fr_value_box_t *base,
-			     fr_value_box_t *filter_box, fr_ldap_thread_trunk_t *ttrunk, char const *attrs[],
-			     fr_ldap_query_t **query_out);
+unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst, request_t *request,
+					 fr_value_box_t *base, fr_value_box_t *filter_box,
+					 fr_ldap_thread_trunk_t *ttrunk, char const *attrs[],
+					 fr_ldap_query_t **query_out);
 
 ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry);
 

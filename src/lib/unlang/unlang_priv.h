@@ -565,7 +565,7 @@ int		unlang_interpret_push(request_t *request, unlang_t const *instruction,
 				      rlm_rcode_t default_rcode, bool do_next_sibling, bool top_frame)
 				      CC_HINT(warn_unused_result);
 
-int		unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,
+unlang_action_t	unlang_interpret_push_children(rlm_rcode_t *p_result, request_t *request,
 					       rlm_rcode_t default_rcode, bool do_next_sibling)
 					       CC_HINT(warn_unused_result);
 
