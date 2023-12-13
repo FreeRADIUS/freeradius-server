@@ -31,6 +31,8 @@
 
 #include <fcntl.h>
 
+static fr_internal_encode_ctx_t	encode_ctx = { .allow_name_only = true };
+
 extern fr_app_t proto_ldap_sync;
 
 static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
@@ -227,7 +229,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	}
 
 send:
-	if (fr_internal_encode_list(&dbuff, &pairs, NULL) < 0) goto error;
+	if (fr_internal_encode_list(&dbuff, &pairs, &encode_ctx) < 0) goto error;
 	talloc_free(local);
 
 	return fr_dbuff_used(&dbuff);

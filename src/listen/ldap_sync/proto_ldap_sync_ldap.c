@@ -41,6 +41,8 @@ USES_APPLE_DEPRECATED_API
 #include "persistent_search.h"
 #include "active_directory.h"
 
+static fr_internal_encode_ctx_t	encode_ctx = { .allow_name_only = true };
+
 extern fr_app_io_t proto_ldap_sync_ldap;
 extern fr_app_io_t proto_ldap_sync_child;
 
@@ -322,7 +324,7 @@ int ldap_sync_cookie_send(sync_packet_ctx_t *sync_packet_ctx)
 		if (!vp) goto error;
 	}
 
-	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) goto error;
+	if (fr_internal_encode_list(dbuff, &pairs, &encode_ctx) < 0) goto error;
 	talloc_free(local);
 
 	if (fr_network_listen_send_packet(thread->nr, thread->li, thread->li, fr_dbuff_buff(dbuff),
@@ -354,7 +356,7 @@ static int ldap_sync_entry_send_network(sync_packet_ctx_t *sync_packet_ctx)
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
 
-	if (fr_internal_encode_list(dbuff, &sync_packet_ctx->pairs, NULL) < 0) return -1;
+	if (fr_internal_encode_list(dbuff, &sync_packet_ctx->pairs, &encode_ctx) < 0) return -1;
 	if (fr_network_listen_send_packet(thread->nr, thread->li, thread->li, fr_dbuff_buff(dbuff),
 					  fr_dbuff_used(dbuff), fr_time(), sync_packet_ctx) < 0) return -1;
 
@@ -839,7 +841,7 @@ static int proto_ldap_cookie_load_send(TALLOC_CTX *ctx, proto_ldap_sync_ldap_t c
 
 	FR_DBUFF_TALLOC_THREAD_LOCAL(&dbuff, 1024, 4096);
 
-	if (fr_internal_encode_list(dbuff, &pairs, NULL) < 0) return -1;
+	if (fr_internal_encode_list(dbuff, &pairs, &encode_ctx) < 0) return -1;
 
 	if (fr_network_listen_send_packet(thread->nr, thread->li, thread->li,
 					  fr_dbuff_buff(dbuff), fr_dbuff_used(dbuff),

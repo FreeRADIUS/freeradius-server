@@ -31,6 +31,9 @@
 #include <freeradius-devel/util/net.h>
 #include <freeradius-devel/util/proto.h>
 
+
+static fr_internal_encode_ctx_t	default_encode_ctx = { };
+
 /** We use the same header for all types
  *
  */
@@ -50,18 +53,27 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 			       fr_da_stack_t *da_stack, unsigned int depth,
 			       fr_dcursor_t *cursor, void *encode_ctx)
 {
-	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_dbuff_marker_t	enc_field, len_field, value_field;
-	fr_dbuff_t		value_dbuff;
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_pair_t		*vp = fr_dcursor_current(cursor);
-	bool			unknown = false, internal = false;
+	fr_dbuff_t			work_dbuff = FR_DBUFF(dbuff);
+	fr_dbuff_marker_t		enc_field, len_field, value_field;
+	fr_dbuff_t			value_dbuff;
+	fr_dict_attr_t const		*da = da_stack->da[depth];
+	fr_pair_t			*vp = fr_dcursor_current(cursor);
+	bool				unknown = false, internal = false;
 
-	ssize_t			slen;
-	size_t			flen, vlen, mlen;
+	ssize_t				slen;
+	size_t				flen, vlen, mlen;
 
-	uint8_t			buff[sizeof(uint64_t)];
-	uint8_t			enc_byte = 0;
+	uint8_t				buff[sizeof(uint64_t)];
+	uint8_t				enc_byte = 0;
+	fr_internal_encode_ctx_t	*our_encode_ctx = encode_ctx;
+
+	if (!our_encode_ctx) our_encode_ctx = &default_encode_ctx;
+
+	/*
+	 *	Silently skip name only attributes if we're writing
+	 *	to a database or cache.
+	 */
+	if (!our_encode_ctx->allow_name_only && vp->da->flags.name_only) return 0;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 

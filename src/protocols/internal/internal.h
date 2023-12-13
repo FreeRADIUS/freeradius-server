@@ -32,6 +32,15 @@
 #define FR_INTERNAL_FLAG_UNKNOWN	0x80
 #define FR_INTERNAL_FLAG_INTERNAL	0x40
 
+typedef struct {
+	bool	allow_name_only;	//!< Allow name only pairs.  This should be set
+					///< to true when encoding data that's being
+					///< passed between threads in the same process.
+					///< It should be set to false when encoding
+					///< data that's stored in an external database
+					///< or in the cache module.
+} fr_internal_encode_ctx_t;
+
 /*
  * $Id$
  *
