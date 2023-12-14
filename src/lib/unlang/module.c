@@ -715,12 +715,8 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 
 	fr_assert(state->resume != NULL);
 
-	/*
-	 *	Lock is noop unless instance->mutex is set.
-	 */
-	request->module = mc->instance->name;
-
 	resume = state->resume;
+
 	/*
 	 *	The module *MUST* explicitly set the resume
 	 *	function when yielding or pushing children
@@ -728,6 +724,9 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	 */
 	state->resume = NULL;
 
+	/*
+	 *	Lock is noop unless instance->mutex is set.
+	 */
 	safe_lock(mc->instance);
 	ua = resume(&state->rcode, MODULE_CTX(mc->instance->dl_inst, state->thread->data,
 					      state->env_data, state->rctx), request);
