@@ -1546,7 +1546,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 				if (state->ours) fr_edit_list_abort(state->el);
 				TALLOC_FREE(frame->state);
 				repeatable_clear(frame);
-				*p_result = RLM_MODULE_NOOP;
+				*p_result = RLM_MODULE_FAIL;
 
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}

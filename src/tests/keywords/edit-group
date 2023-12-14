@@ -6,7 +6,7 @@
 #  ALl of these edits are grouped.  So if one of them fails, all of
 #  them are rolled back.
 #
-group {
+transaction {
 	&Tmp-String-0 := "foo"
 	&Tmp-String-1 -= "bar" # fails, no existing Tmp-String-1
 	&Tmp-String-2 := "bar"
@@ -27,7 +27,7 @@ if (&Tmp-String-2) {
 #
 #  All of these succeed individually, so all of them should succeed.
 #
-group {
+transaction {
 	&Tmp-String-0 := "foo"
 	&Tmp-String-1 := "yup"
 	&Tmp-String-2 := "bar"

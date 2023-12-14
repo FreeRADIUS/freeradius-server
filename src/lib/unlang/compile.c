@@ -94,7 +94,6 @@ typedef struct {
 	rlm_components_t	component;
 	char const		*section_name1;
 	char const		*section_name2;
-	bool			all_edits;
 	unlang_actions_t	actions;
 	tmpl_rules_t const	*rules;
 } unlang_compile_t;
@@ -1443,13 +1442,10 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 }
 
 /** Compile one edit section.
- *
- *  Edits which are adjacent to one another are automatically merged
- *  into one larger edit transaction.
  */
-static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_SECTION *cs)
+static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	unlang_edit_t		*edit, *edit_free;
+	unlang_edit_t		*edit;
 	unlang_t		*c, *out = UNLANG_IGNORE;
 	map_t			*map;
 	char const		*name;
@@ -1484,29 +1480,20 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
-	c = *prev;
-	edit = edit_free = NULL;
+	edit = talloc_zero(parent, unlang_edit_t);
+	if (!edit) return NULL;
 
-	if (c && (c->type == UNLANG_TYPE_EDIT)) {
-		edit = unlang_generic_to_edit(c);
+	c = out = unlang_edit_to_generic(edit);
+	c->parent = parent;
+	c->next = NULL;
+	c->name = cf_section_name1(cs);
+	c->debug_name = c->name;
+	c->type = UNLANG_TYPE_EDIT;
+	c->ci = CF_TO_ITEM(cs);
 
-	} else {
-		edit = talloc_zero(parent, unlang_edit_t);
-		if (!edit) return NULL;
+	map_list_init(&edit->maps);
 
-		c = out = unlang_edit_to_generic(edit);
-		c->parent = parent;
-		c->next = NULL;
-		c->name = cf_section_name1(cs);
-		c->debug_name = c->name;
-		c->type = UNLANG_TYPE_EDIT;
-		c->ci = CF_TO_ITEM(cs);
-
-		map_list_init(&edit->maps);
-		edit_free = edit;
-
-		compile_action_defaults(c, unlang_ctx);
-	}
+	compile_action_defaults(c, unlang_ctx);
 
 	/*
 	 *	Allocate the map and initialize it.
@@ -1522,7 +1509,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 	if (slen <= 0) {
 		cf_log_err(cs, "Failed parsing list reference %s - %s", name, fr_strerror());
 	fail:
-		talloc_free(edit_free);
+		talloc_free(edit);
 		return NULL;
 	}
 
@@ -1614,18 +1601,15 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 
 	map_list_insert_tail(&edit->maps, map);
 
-	*prev = c;
 	return out;
 }
 
 /** Compile one edit pair
  *
- *  Edits which are adjacent to one another are automatically merged
- *  into one larger edit transaction.
  */
-static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ctx, unlang_t **prev, CONF_PAIR *cp)
+static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_PAIR *cp)
 {
-	unlang_edit_t		*edit, *edit_free;
+	unlang_edit_t		*edit;
 	unlang_t		*c = NULL, *out = UNLANG_IGNORE;
 	map_t			*map;
 	int			num;
@@ -1640,32 +1624,20 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	t_rules.attr.allow_unknown = true;
 	RULES_VERIFY(&t_rules);
 
-	/*
-	 *	Auto-merge pairs only if they're all in a group.
-	 */
-	if (unlang_ctx->all_edits) c = *prev;
-	edit = edit_free = NULL;
+	edit = talloc_zero(parent, unlang_edit_t);
+	if (!edit) return NULL;
 
-	if (c && (c->type == UNLANG_TYPE_EDIT)) {
-		edit = unlang_generic_to_edit(c);
+	c = out = unlang_edit_to_generic(edit);
+	c->parent = parent;
+	c->next = NULL;
+	c->name = cf_pair_attr(cp);
+	c->debug_name = c->name;
+	c->type = UNLANG_TYPE_EDIT;
+	c->ci = CF_TO_ITEM(cp);
 
-	} else {
-		edit = talloc_zero(parent, unlang_edit_t);
-		if (!edit) return NULL;
+	map_list_init(&edit->maps);
 
-		c = out = unlang_edit_to_generic(edit);
-		c->parent = parent;
-		c->next = NULL;
-		c->name = cf_pair_attr(cp);
-		c->debug_name = c->name;
-		c->type = UNLANG_TYPE_EDIT;
-		c->ci = CF_TO_ITEM(cp);
-
-		map_list_init(&edit->maps);
-		edit_free = edit;
-
-		compile_action_defaults(c, unlang_ctx);
-	}
+	compile_action_defaults(c, unlang_ctx);
 
 	op = cf_pair_operator(cp);
 	if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
@@ -1679,7 +1651,7 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	 */
 	if (map_afrom_cp(edit, &map, map_list_tail(&edit->maps), cp, &t_rules, NULL, true) < 0) {
 	fail:
-		talloc_free(edit_free);
+		talloc_free(edit);
 		return NULL;
 	}
 
@@ -1711,7 +1683,6 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 
 	map_list_insert_tail(&edit->maps, map);
 
-	*prev = c;
 	return out;
 }
 
@@ -2189,7 +2160,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	unlang_t	*c, *single;
 	bool		was_if = false;
 	char const	*skip_else = NULL;
-	unlang_t	*edit = NULL;
 	unlang_compile_t *unlang_ctx;
 	unlang_compile_t unlang_ctx2;
 	tmpl_rules_t	t_rules;
@@ -2234,7 +2204,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	In-line attribute editing.
 			 */
 			if (*name == '&') {
-				single = compile_edit_section(c, unlang_ctx, &edit, subcs);
+				single = compile_edit_section(c, unlang_ctx, subcs);
 				if (!single) {
 					talloc_free(c);
 					return NULL;
@@ -2242,11 +2212,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 
 				goto add_child;
 			}
-
-			/*
-			 *	Only merge edits if they're all in a group { ... }
-			 */
-			if (!unlang_ctx->all_edits) edit = NULL;
 
 			if (strcmp(name, "actions") == 0) {
 				if (!compile_action_subsection(c, g->cs, subcs)) {
@@ -2316,7 +2281,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	In-line attribute editing is not supported.
 			 */
 			if (*attr == '&') {
-				single = compile_edit_pair(c, unlang_ctx, &edit, cp);
+				single = compile_edit_pair(c, unlang_ctx, cp);
 				if (!single) {
 					talloc_free(c);
 					return NULL;
@@ -2324,8 +2289,6 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 
 				goto add_child;
 			}
-
-			edit = NULL; /* no longer doing implicit merging of edits */
 
 			/*
 			 *	Variable definition.
@@ -2493,10 +2456,6 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	CONF_ITEM *ci = NULL;
-	bool all_edits = true;
-	unlang_compile_t unlang_ctx2;
-
 	static unlang_ext_t const group = {
 		.type = UNLANG_TYPE_GROUP,
 		.len = sizeof(unlang_group_t),
@@ -2504,44 +2463,6 @@ static unlang_t *compile_group(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	};
 
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
-
-	if (!unlang_ctx->all_edits) {
-		while ((ci = cf_item_next(cs, ci)) != NULL) {
-			char const *name;
-
-			if (cf_item_is_section(ci)) {
-				CONF_SECTION *subcs;
-
-				subcs = cf_item_to_section(ci);
-				name = cf_section_name1(subcs);
-
-			} else if (cf_item_is_pair(ci)) {
-				CONF_PAIR *cp;
-
-				cp = cf_item_to_pair(ci);
-				name = cf_pair_attr(cp);
-
-			} else {
-				continue;
-			}
-
-			if (*name != '&') {
-				all_edits = false;
-				break;
-			}
-		}
-
-		/*
-		 *	The parent wasn't all edits, but we are.  Set
-		 *	the "all edits" flag, and recurse.
-		 */
-		if (all_edits) {
-			compile_copy_context(&unlang_ctx2, unlang_ctx, unlang_ctx->component);
-			unlang_ctx2.all_edits = true;
-
-			return compile_section(parent, &unlang_ctx2, cs, &group);
-		}
-	}
 
 	return compile_section(parent, unlang_ctx, cs, &group);
 }
@@ -2564,10 +2485,8 @@ static fr_table_num_sorted_t transaction_keywords[] = {
 static int transaction_keywords_len = NUM_ELEMENTS(transaction_keywords);
 
 /** Limit the operations which can appear in a transaction.
- *
- *  We probably want this to be
  */
-static bool transaction_ok(CONF_SECTION *cs, bool *all_edits)
+static bool transaction_ok(CONF_SECTION *cs)
 {
 	CONF_ITEM *ci = NULL;
 
@@ -2589,9 +2508,7 @@ static bool transaction_ok(CONF_SECTION *cs, bool *all_edits)
 
 			if (fr_table_value_by_str(transaction_keywords, name, -1) < 0) goto fail;
 
-			*all_edits = false;
-
-			if (!transaction_ok(subcs, all_edits)) return false;
+			if (!transaction_ok(subcs)) return false;
 
 			continue;
 
@@ -2607,7 +2524,6 @@ static bool transaction_ok(CONF_SECTION *cs, bool *all_edits)
 			 *	Allow rcodes via the "always" module.
 			 */
 			if (fr_table_value_by_str(mod_rcode_table, name, -1) >= 0) {
-				*all_edits = false;
 				continue;
 			}
 
@@ -2631,7 +2547,6 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 {
 	unlang_group_t *g;
 	unlang_t *c;
-	bool all_edits = true;
 	unlang_compile_t unlang_ctx2;
 
 	static unlang_ext_t const transaction = {
@@ -2644,8 +2559,7 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 	 *	The transaction is empty, ignore it.
 	 */
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
-
-	if (!transaction_ok(cs, &all_edits)) return NULL;
+	if (!transaction_ok(cs)) return NULL;
 
 	/*
 	 *	Any failure is return, not continue.
@@ -2656,8 +2570,6 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 	unlang_ctx2.actions.actions[RLM_MODULE_FAIL] = MOD_ACTION_RETURN;
 	unlang_ctx2.actions.actions[RLM_MODULE_INVALID] = MOD_ACTION_RETURN;
 	unlang_ctx2.actions.actions[RLM_MODULE_DISALLOW] = MOD_ACTION_RETURN;
-
-	unlang_ctx2.all_edits = all_edits;
 
 	/*
 	 *	We always create a group, even if the section is empty.

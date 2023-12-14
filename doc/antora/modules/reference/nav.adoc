@@ -29,6 +29,7 @@
 **** xref:unlang/subrequest.adoc[subrequest]
 **** xref:unlang/switch.adoc[switch]
 **** xref:unlang/timeout.adoc[timeout]
+**** xref:unlang/transaction.adoc[transaction]
 **** xref:unlang/update.adoc[update]
 
 *** xref:unlang/module.adoc[Modules]

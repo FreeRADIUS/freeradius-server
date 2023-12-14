@@ -24,9 +24,9 @@ if !(&NAS-Port == 1813) {
 #
 #  Try to edit it.  The value shouldn't change.
 #
-#  @todo - we don't have run-time exceptions... maybe this should return "fail"?
-#
-&NAS-Port += 1
+transaction {
+	&NAS-Port += 1
+}
 if !(&NAS-Port == 1813) {
 	test_fail
 }
