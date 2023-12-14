@@ -2183,7 +2183,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 }
 
 
-static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ctx_in)
+static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ctx_in, bool set_action_defaults)
 {
 	CONF_ITEM	*ci = NULL;
 	unlang_t	*c, *single;
@@ -2439,7 +2439,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	 *	Set the default actions, if they haven't already been
 	 *	set by an "actions" section above.
 	 */
-	compile_action_defaults(c, unlang_ctx);
+	if (set_action_defaults) compile_action_defaults(c, unlang_ctx);
 
 	return c;
 }
@@ -2487,7 +2487,7 @@ static unlang_t *compile_section(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		MEM(c->debug_name = talloc_typed_asprintf(c, "%s %s", name1, name2));
 	}
 
-	return compile_children(g, unlang_ctx);
+	return compile_children(g, unlang_ctx, true);
 }
 
 
@@ -2629,6 +2629,7 @@ static bool transaction_ok(CONF_SECTION *cs, bool *all_edits)
 
 static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
+	unlang_group_t *g;
 	unlang_t *c;
 	bool all_edits = true;
 	unlang_compile_t unlang_ctx2;
@@ -2638,6 +2639,11 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 		.len = sizeof(unlang_transaction_t),
 		.type_name = "unlang_transaction_t",
 	};
+
+	/*
+	 *	The transaction is empty, ignore it.
+	 */
+	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
 
 	if (!transaction_ok(cs, &all_edits)) return NULL;
 
@@ -2653,10 +2659,27 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 
 	unlang_ctx2.all_edits = all_edits;
 
-	c = compile_section(parent, &unlang_ctx2, cs, &transaction);
-	if (!c || (c == UNLANG_IGNORE)) return c;
+	/*
+	 *	We always create a group, even if the section is empty.
+	 */
+	g = group_allocate(parent, cs, &transaction);
+	if (!g) return NULL;
 
-	c->type = UNLANG_TYPE_TRANSACTION;
+	c = unlang_group_to_generic(g);
+	c->debug_name = c->name = cf_section_name1(cs);
+
+	if (!compile_children(g, &unlang_ctx2, false)) return NULL;
+
+	/*
+	 *	The default for a failed transaction is to continue on
+	 *	failure.
+	 */
+	if (!c->actions.actions[RLM_MODULE_FAIL])     c->actions.actions[RLM_MODULE_FAIL] = 1;
+	if (!c->actions.actions[RLM_MODULE_INVALID])  c->actions.actions[RLM_MODULE_INVALID] = 1;
+	if (!c->actions.actions[RLM_MODULE_DISALLOW]) c->actions.actions[RLM_MODULE_DISALLOW] = 1;
+
+	compile_action_defaults(c, unlang_ctx);
+
 	return c;
 }
 

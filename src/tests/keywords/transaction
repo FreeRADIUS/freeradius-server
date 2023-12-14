@@ -10,10 +10,6 @@ transaction {
 	fail
 
 	&bar := "nope"
-
-	actions {
-		fail = 1
-	}
 }
 
 #
