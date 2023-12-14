@@ -2339,3 +2339,17 @@ void cf_item_free_children(CONF_ITEM *ci)
 		child = fr_dlist_talloc_free_item(&ci->children, child);
 	}
 }
+
+void _cf_canonicalize_error(CONF_ITEM *ci, ssize_t slen, char const *msg, char const *str)
+{
+	char *spaces, *text;
+
+	fr_canonicalize_error(ci, &spaces, &text, slen, str);
+
+	cf_log_err(ci, "%s", msg);
+	cf_log_err(ci, "%s", text);
+	cf_log_perr(ci, "%s^", spaces);
+
+	talloc_free(spaces);
+	talloc_free(text);
+}

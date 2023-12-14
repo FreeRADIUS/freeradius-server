@@ -336,6 +336,10 @@ void		_cf_log_perr_by_child(fr_log_type_t type, CONF_SECTION const *parent, char
 
 #define		cf_debug(_cf) _cf_debug(CF_TO_ITEM(_cf))
 void		_cf_debug(CONF_ITEM const *ci);
+
+#define		cf_canonicalize_error(_ci, _slen, _msg, _str) _cf_canonicalize_error(CF_TO_ITEM(_ci), _slen, _msg, _str)
+void		_cf_canonicalize_error(CONF_ITEM *ci, ssize_t slen, char const *msg, char const *str);
+
 #ifdef __cplusplus
 }
 #endif
