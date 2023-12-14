@@ -508,9 +508,7 @@ unlang_action_t unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 	/*
 	 *	Push the xlat function
 	 */
-	if (unlang_tmpl_push(ctx, out, request, vpt, args) < 0) {
-		return UNLANG_ACTION_STOP_PROCESSING;
-	}
+	if (unlang_tmpl_push(ctx, out, request, vpt, args) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
