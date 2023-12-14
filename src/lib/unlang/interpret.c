@@ -724,14 +724,13 @@ unlang_frame_action_t frame_eval(request_t *request, unlang_stack_frame_t *frame
 			default:
 				break;
 			}
-
-			FALL_THROUGH;
+			break;
 
 		/*
 		 *	Execute the next instruction in this frame
 		 */
 		case UNLANG_ACTION_EXECUTE_NEXT:
-			if ((ua == UNLANG_ACTION_EXECUTE_NEXT) && unlang_ops[instruction->type].debug_braces) {
+			if (unlang_ops[instruction->type].debug_braces) {
 				REXDENT();
 				RDEBUG2("}");
 			}
