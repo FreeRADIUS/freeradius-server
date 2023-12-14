@@ -1585,19 +1585,10 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		 *	Parse failures not at EOL are real errors.
 		 */
 		if (!eol) {
-			char *spaces, *text;
-
 			slen = 0;
 			fr_strerror_const("Unexpected EOF");
 	error:
-			fr_canonicalize_error(cs, &spaces, &text, slen, ptr);
-
-			cf_log_err(cs, "Parse error in condition");
-			cf_log_err(cs, "%s", text);
-			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
-
-			talloc_free(spaces);
-			talloc_free(text);
+			cf_canonicalize_error(cs, slen, "Parse error in condition", ptr);
 			talloc_free(cs);
 			return NULL;
 		}

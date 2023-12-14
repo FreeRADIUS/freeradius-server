@@ -2744,18 +2744,8 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 				 NULL,
 				 &t_rules);
 	if (!gext->vpt) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-		cf_log_err(cs, "Syntax error");
-		cf_log_err(cs, "%s", name2);
-		cf_log_err(cs, "%s^ %s", spaces, text);
-
+		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'switch'", name2);
 		talloc_free(g);
-		talloc_free(spaces);
-		talloc_free(text);
-
 		return NULL;
 	}
 
@@ -2953,17 +2943,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 					 NULL,
 					 &t_rules);
 		if (!vpt) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-			cf_log_err(cs, "Syntax error");
-			cf_log_err(cs, "%s", name2);
-			cf_log_err(cs, "%s^ %s", spaces, text);
-
-			talloc_free(spaces);
-			talloc_free(text);
-
+			cf_canonicalize_error(cs, slen, "Failed parsing argument to 'case'", name2);
 			return NULL;
 		}
 
@@ -3081,18 +3061,8 @@ static unlang_t *compile_timeout(unlang_t *parent, unlang_compile_t *unlang_ctx,
 					 NULL,
 					 &t_rules);
 		if (!vpt) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-			cf_log_err(cs, "Syntax error");
-			cf_log_err(cs, "%s", name2);
-			cf_log_err(cs, "%s^ %s", spaces, text);
-
+			cf_canonicalize_error(cs, slen, "Failed parsing argument to 'timeout'", name2);
 			talloc_free(g);
-			talloc_free(spaces);
-			talloc_free(text);
-
 			return NULL;
 		}
 
@@ -3187,19 +3157,9 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 				 NULL,
 				 &t_rules);
 	if (!vpt) {
-		char *spaces, *text;
-
 	syntax_error:
-		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-		cf_log_err(cs, "Syntax error");
-		cf_log_err(cs, "%s", name2);
-		cf_log_err(cs, "%s^ %s", spaces, text);
-
+		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'foreach'", name2);
 		talloc_free(g);
-		talloc_free(spaces);
-		talloc_free(text);
-
 		return NULL;
 	}
 
@@ -3303,17 +3263,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				 NULL,
 				 &t_rules);
 	if (!vpt) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-		cf_log_err(cs, "Syntax error");
-		cf_log_err(cs, "%s", name2);
-		cf_log_err(cs, "%s^ %s", spaces, text);
-
-		talloc_free(spaces);
-		talloc_free(text);
-
+		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'foreach'", name2);
 		return NULL;
 	}
 
@@ -3478,18 +3428,8 @@ static unlang_t *compile_tmpl(unlang_t *parent,
 				 NULL,
 				 unlang_ctx->rules);
 	if (!vpt) {
-		char *spaces, *text;
-
-		fr_canonicalize_error(cp, &spaces, &text, slen, fr_strerror());
-
-		cf_log_err(cp, "Syntax error");
-		cf_log_err(cp, "%s", p);
-		cf_log_err(cp, "%s^ %s", spaces, text);
-
+		cf_canonicalize_error(cp, slen, "Failed parsing expansion", p);
 		talloc_free(ut);
-		talloc_free(spaces);
-		talloc_free(text);
-
 		return NULL;
 	}
 	ut->tmpl = vpt;	/* const issues */
@@ -3547,16 +3487,7 @@ static unlang_t *compile_if_subsection(unlang_t *parent, unlang_compile_t *unlan
 
 		slen = xlat_tokenize_condition(cs, &head, &FR_SBUFF_IN(name2, strlen(name2)), &p_rules, &t_rules);
 		if (slen <= 0) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(cs, &spaces, &text, slen, name2);
-
-			cf_log_err(cs, "Parse error in condition.");
-			cf_log_err(cs, "%s", text);
-			cf_log_err(cs, "%s^ %s", spaces, fr_strerror());
-
-			talloc_free(spaces);
-			talloc_free(text);
+			cf_canonicalize_error(cs, slen, "Failed parsing condition", name2);
 			return NULL;
 		}
 
@@ -3788,18 +3719,8 @@ static unlang_t *compile_load_balance_subsection(unlang_t *parent, unlang_compil
 					 NULL,
 					 &t_rules);
 		if (!gext->vpt) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-			cf_log_err(cs, "Syntax error");
-			cf_log_err(cs, "%s", name2);
-			cf_log_err(cs, "%s^ %s", spaces, text);
-
+			cf_canonicalize_error(cs, slen, "Failed parsing argument", name2);
 			talloc_free(g);
-			talloc_free(spaces);
-			talloc_free(text);
-
 			return NULL;
 		}
 

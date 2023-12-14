@@ -230,16 +230,9 @@ int cf_pair_parse_value(TALLOC_CTX *ctx, void *out, UNUSED void *base, CONF_ITEM
 		if (cp->rhs_quote == T_BARE_WORD) {
 			slen = tmpl_cast_from_substr(&rules, &sbuff);
 			if (slen < 0) {
-				char *spaces, *text;
 			tmpl_error:
-				fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
-
-				cf_log_err(cp, "Failed parsing attribute reference:");
-				cf_log_err(cp, "%s", text);
-				cf_log_perr(cp, "%s^", spaces);
-
-				talloc_free(spaces);
-				talloc_free(text);
+				cf_canonicalize_error(cp, slen, "Failed parsing attribute reference",
+						      cp->value);
 				goto error;
 			}
 			fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, NULL);

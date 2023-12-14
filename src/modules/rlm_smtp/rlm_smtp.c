@@ -994,15 +994,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			slen = fr_sbuff_out_aunescape_until(NULL, &unescaped_value,
 				&FR_SBUFF_IN(value, talloc_array_length(value) - 1), SIZE_MAX, p_rules->terminals, p_rules->escapes);
 			if (slen < 0) {
-				char *spaces, *text;
 			parse_error:
-				cf_log_err(ci, "Failed to parse value %s", value);
-				fr_canonicalize_error(inst, &spaces, &text, slen, value);
-				cf_log_err(cp, "%s", text);
-				cf_log_perr(cp, "%s^", spaces);
-
-				talloc_free(spaces);
-				talloc_free(text);
+				cf_canonicalize_error(ci, slen, "Failed parsing value", value);
 				goto error;
 			}
 			value = unescaped_value;

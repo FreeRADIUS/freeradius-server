@@ -434,11 +434,11 @@ int trigger_exec(unlang_interpret_t *intp,
 	if (slen <= 0) {
 		char *spaces, *text;
 
-		fr_canonicalize_error(trigger, &spaces, &text, slen, fr_strerror());
+		fr_canonicalize_error(trigger, &spaces, &text, slen, trigger->command);
 
-		cf_log_err(cp, "Syntax error");
-		cf_log_err(cp, "%s", trigger->command);
-		cf_log_err(cp, "%s^ %s", spaces, text);
+		cf_log_err(cp, "Failed parsing trigger command");
+		cf_log_err(cp, "%s", text);
+		cf_log_perr(cp, "%s^", spaces);
 
 		talloc_free(request);
 		talloc_free(spaces);
