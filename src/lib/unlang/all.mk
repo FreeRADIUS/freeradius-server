@@ -4,6 +4,7 @@ SOURCES	:=	base.c \
 		call.c \
 		call_env.c \
 		caller.c \
+		catch.c \
 		compile.c \
 		condition.c \
 		detach.c \
@@ -25,6 +26,7 @@ SOURCES	:=	base.c \
 		switch.c \
 		timeout.c \
 		tmpl.c \
+		try.c \
 		transaction.c \
 		xlat.c \
 		xlat_alloc.c \

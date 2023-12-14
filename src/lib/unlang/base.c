@@ -123,6 +123,8 @@ int unlang_init_global(void)
 	unlang_timeout_init();
 	unlang_limit_init();
 	unlang_transaction_init();
+	unlang_try_init();
+	unlang_catch_init();
 
 	instance_count++;
 

@@ -973,7 +973,6 @@ static unlang_group_t empty_group = {
 	},
 };
 
-
 /** Push a configuration section onto the request stack for later interpretation.
  *
  */

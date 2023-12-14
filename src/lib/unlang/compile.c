@@ -456,6 +456,8 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		case UNLANG_TYPE_TIMEOUT:
 		case UNLANG_TYPE_LIMIT:
 		case UNLANG_TYPE_TRANSACTION:
+		case UNLANG_TYPE_TRY:
+		case UNLANG_TYPE_CATCH: /* @todo - print out things we catch, too */
 			g = unlang_generic_to_group(c);
 			DEBUG("%.*s%s {", depth, unlang_spaces, c->debug_name);
 			unlang_dump(g->children, depth + 1);
