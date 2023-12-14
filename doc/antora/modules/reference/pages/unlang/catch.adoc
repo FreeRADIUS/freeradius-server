@@ -1,0 +1,34 @@
+= The catch Statement
+
+.Syntax
+[source,unlang]
+----
+try {
+    ...
+}
+catch {
+    [ statements ]
+}
+----
+
+The `catch` statement runs a series of substatements in a block, but only if the previous xref:unlang/try.adoc[try] failed. 
+
+[ statements ]:: The `unlang` commands which will be executed.  A
+`catch` block can be empty.
+
+.Example
+
+[source,unlang]
+----
+try {
+	sql
+}
+catch {
+	# ... run only if sql failed
+}
+----
+
+There is some overlap in functionality between `try` / xref:unlang/catch.adoc[catch] and xref:unlang/redundant.adoc[redundant].  The main difference (TODO) is that a xref:unlang/catch.adoc[catch] statement can catch specific actions.
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

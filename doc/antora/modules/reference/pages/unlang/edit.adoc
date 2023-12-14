@@ -26,6 +26,12 @@ In version 4, the `update` statement has been deprecated.  Using
 will simply not work with them.  We recommend switching to the new
 edit syntax, which is more powerful, and less verbose.
 
+Unlike version 3, attribute editing can result in a `fail` return
+code.  That is, edits either return `noop` on success, or `fail` on failure.
+
+In most cases, an edit failure will result in the processing section
+exiting, and returning `fail`.  This behavior can be overriden with a xref:unlang/transaction.adoc[transaction], or a xref:unlang/try.adoc[try] / xref:unlang/catch.adoc[catch] block.
+
 An edit statement has the following standard syntax:
 
 .Syntax
@@ -77,23 +83,11 @@ and do not result in any changes.
 
 === Grouping Edits
 
-Multiple attributes may be grouped into a set by using the `group`
-keyword.  When changes are done in a `group`, then either all of the
+Multiple attributes may be grouped into a set by using the xref:unlang/transaction.adoc[transaction]
+keyword.  When changes are done in a `transaction`, then either all of the
 changes are applied, or none of them are applied.  This functionality
 is best used to conditionally apply attribute changes, generally when
 retrieving data from a database.
-
-.Grouping multiple edits
-[source,unlang]
-----
-group {
-    &reply.Reply-Message += %sql("SELECT ...")
-    &reply.Filter-Id := "foo"
-}
-----
-
-If the above SQL `select` statement fails, then then
-`&reply.Filter-Id` attribute will not exist.
 
 == List Editing
 

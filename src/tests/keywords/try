@@ -1,0 +1,24 @@
+#
+#  PRE: if
+#
+string foo
+string bar
+
+try {
+	&foo := "hello"
+
+	fail
+
+	&bar := "nope"
+}
+catch {
+	if &foo != "hello" {
+		test_fail
+	}
+
+	if &bar {
+		test_fail
+	}
+
+	success
+}

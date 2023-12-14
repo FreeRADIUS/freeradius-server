@@ -15,6 +15,7 @@ looping, etc.
 | Keyword | Description
 | xref:unlang/break.adoc[break]     | Exit early from a `foreach` loop.
 | xref:unlang/case.adoc[case]       | Match inside of a `switch`.
+| xref:unlang/catch.adoc[catch]     | catch an error from a previous "try"
 | xref:unlang/else.adoc[else]       | Do something when an `if` does not match.
 | xref:unlang/elsif.adoc[elsif]     | Check for condition when a previous `if` does not match.
 | xref:unlang/foreach.adoc[foreach] | Loop over a list of attributes.
@@ -22,6 +23,7 @@ looping, etc.
 | xref:unlang/return.adoc[return]   | Immediately stop processing a section.
 | xref:unlang/switch.adoc[switch]   | Check for multiple values.
 | xref:unlang/transaction.adoc[transaction]   | Group operations into a transaction which can be reverted on failure.
+| xref:unlang/try.adoc[try]         | try / catch blocks
 |=====
 
 == Attribute Editing Keywords

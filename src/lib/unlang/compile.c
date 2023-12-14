@@ -45,6 +45,8 @@ RCSID("$Id$")
 #include "timeout_priv.h"
 #include "limit_priv.h"
 #include "transaction_priv.h"
+#include "try_priv.h"
+#include "catch_priv.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -2573,9 +2575,6 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 	unlang_ctx2.actions.actions[RLM_MODULE_INVALID] = MOD_ACTION_RETURN;
 	unlang_ctx2.actions.actions[RLM_MODULE_DISALLOW] = MOD_ACTION_RETURN;
 
-	/*
-	 *	We always create a group, even if the section is empty.
-	 */
 	g = group_allocate(parent, cs, &transaction);
 	if (!g) return NULL;
 
@@ -2595,6 +2594,77 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 	compile_action_defaults(c, unlang_ctx);
 
 	return c;
+}
+
+static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	unlang_group_t *g;
+	unlang_t *c;
+	CONF_SECTION *next;
+
+	static unlang_ext_t const ext = {
+		.type = UNLANG_TYPE_TRY,
+		.len = sizeof(unlang_try_t),
+		.type_name = "unlang_try_t",
+	};
+
+	/*
+	 *	The transaction is empty, ignore it.
+	 */
+	if (!cf_item_next(cs, NULL)) {
+		cf_log_err(cs, "'try' sections cannot be empty");
+		return NULL;
+	}
+
+	next = cf_section_next(cf_item_to_section(cf_parent(cs)), cs);
+	if (!next || (strcmp(cf_section_name1(next), "catch") != 0)) {
+		cf_log_err(cs, "'try' sections must be followed by a 'catch'");
+		return NULL;
+	}
+
+	g = group_allocate(parent, cs, &ext);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+	c->debug_name = c->name = cf_section_name1(cs);
+
+	return compile_children(g, unlang_ctx, true);
+}
+
+static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
+{
+	unlang_group_t *g;
+	unlang_t *c;
+
+	static unlang_ext_t const ext = {
+		.type = UNLANG_TYPE_CATCH,
+		.len = sizeof(unlang_catch_t),
+		.type_name = "unlang_catch_t",
+	};
+
+	g = group_allocate(parent, cs, &ext);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
+	c->debug_name = c->name = cf_section_name1(cs);
+
+	/*
+	 *	No arg2: catch all errors
+	 */
+	if (!cf_section_name2(cs)) {
+		unlang_catch_t *ca = unlang_group_to_catch(g);
+
+		ca->catching[RLM_MODULE_REJECT] = true;
+		ca->catching[RLM_MODULE_FAIL] = true;
+		ca->catching[RLM_MODULE_INVALID] = true;
+		ca->catching[RLM_MODULE_DISALLOW] = true;
+	}
+
+	/*
+	 *	@todo - Else parse and limit the things we catch
+	 */
+
+	return compile_children(g, unlang_ctx, true);
 }
 
 
@@ -4465,6 +4535,7 @@ static fr_table_ptr_sorted_t unlang_section_keywords[] = {
 	{ L("call"),		(void *) compile_call },
 	{ L("caller"),		(void *) compile_caller },
 	{ L("case"),		(void *) compile_case },
+	{ L("catch"),		(void *) compile_catch },
 	{ L("else"),		(void *) compile_else },
 	{ L("elsif"),		(void *) compile_elsif },
 	{ L("foreach"),		(void *) compile_foreach },
@@ -4480,6 +4551,7 @@ static fr_table_ptr_sorted_t unlang_section_keywords[] = {
 	{ L("switch"),		(void *) compile_switch },
 	{ L("timeout"),		(void *) compile_timeout },
 	{ L("transaction"),	(void *) compile_transaction },
+	{ L("try"),		(void *) compile_try },
 	{ L("update"),		(void *) compile_update },
 };
 static int unlang_section_keywords_len = NUM_ELEMENTS(unlang_section_keywords);

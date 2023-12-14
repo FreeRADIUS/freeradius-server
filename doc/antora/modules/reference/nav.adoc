@@ -9,6 +9,7 @@
 **** xref:unlang/call.adoc[call]
 **** xref:unlang/caller.adoc[caller]
 **** xref:unlang/case.adoc[case]
+**** xref:unlang/catch.adoc[catch]
 **** xref:unlang/detach.adoc[detach]
 **** xref:unlang/edit.adoc[editing]
 **** xref:unlang/else.adoc[else]
@@ -30,6 +31,7 @@
 **** xref:unlang/switch.adoc[switch]
 **** xref:unlang/timeout.adoc[timeout]
 **** xref:unlang/transaction.adoc[transaction]
+**** xref:unlang/try.adoc[try]
 **** xref:unlang/update.adoc[update]
 
 *** xref:unlang/module.adoc[Modules]
