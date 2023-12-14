@@ -46,7 +46,9 @@ transaction {
 }
 ----
 
-The last entry in a `transaction` section can also be an xref:unlang/actions.adoc[actions] subsection.  If set, those actions over-ride any previously set defaults.
+The last entry in a `transaction` section can also be an
+xref:unlang/actions.adoc[actions] subsection.  If set, those actions
+over-ride any previously set defaults.
 
 == Grouping Edits
 
@@ -55,7 +57,9 @@ xref:unlang/edit.adoc[edit] instructions.  When edit instructions are
 grouped, then the edits are done in an atomic transaction.  That is,
 either all of the edits succeed, or none of them do.
 
-For now, the only purpose of `transaction` is to group edits.  If a module is used inside of 
+For now, the only purpose of `transaction` is to group edits.  None of
+the modules support transactions.  If a module is used inside of a
+transaction, the server will return an error, and will not start.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
