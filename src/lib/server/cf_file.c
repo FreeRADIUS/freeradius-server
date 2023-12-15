@@ -1970,7 +1970,7 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 	if (argc) {
 		int i;
 
-		css->argv = talloc_array(css, char const *, argc);
+		css->argv = talloc_array(css, char const *, argc + 1);
 		css->argv_quote = talloc_array(css, fr_token_t, argc);
 		css->argc = argc;
 
