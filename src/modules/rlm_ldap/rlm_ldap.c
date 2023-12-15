@@ -203,7 +203,7 @@ typedef struct {
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_autz_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_NONE, ldap_update_section_parse),
+		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_PARSE_MISSING, ldap_update_section_parse),
 					      .uctx = &(ldap_update_rules_t){
 						.map_offset = offsetof(ldap_autz_call_env_t, user_map),
 					      	.expect_password_offset = offsetof(ldap_autz_call_env_t, expect_password)
@@ -262,7 +262,7 @@ static const call_env_method_t xlat_memberof_method_env = {
 static const call_env_method_t xlat_profile_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_xlat_profile_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_NONE, ldap_update_section_parse),
+		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_PARSE_MISSING, ldap_update_section_parse),
 					      .uctx = &(ldap_update_rules_t){
 						.map_offset = offsetof(ldap_xlat_profile_call_env_t, profile_map),
 					      	.expect_password_offset = -1
