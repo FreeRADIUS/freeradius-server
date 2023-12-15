@@ -1063,8 +1063,8 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	/*
 	 *	Synchronous expansion of maps (fixme!)
 	 */
-	if (!ldap_map_list_empty(env_data->profile_map) &&
-	    (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, env_data->profile_map, inst->valuepair_attr) < 0)) goto error;
+	if (fr_ldap_map_expand(xlat_ctx, &xlat_ctx->expanded, request, env_data->profile_map,
+			       inst->valuepair_attr) < 0) goto error;
 	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
 					  handle_config->admin_password, request, handle_config);
 	if (host) ldap_memfree(host);
@@ -1726,8 +1726,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	User-Password here.  LDAP authorization can be used
 	 *	for many things besides searching for users.
 	 */
-	if (!ldap_map_list_empty(call_env->user_map) &&
-	    (fr_ldap_map_expand(autz_ctx, expanded, request, call_env->user_map, inst->valuepair_attr) < 0)) {
+	if (fr_ldap_map_expand(autz_ctx, expanded, request, call_env->user_map, inst->valuepair_attr) < 0) {
 	fail:
 		talloc_free(autz_ctx);
 		RETURN_MODULE_FAIL;
