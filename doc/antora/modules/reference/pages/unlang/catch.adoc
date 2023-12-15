@@ -20,17 +20,27 @@ The `catch` statement runs a series of substatements in a block, but only if the
 
 If no rcode is given the `catch` statement matches all of the codes listed above.  Otherwise, the `catch` statement matches one of the listed rcodes.
 
-Multiple `catch` statements cam ne given 
+Multiple `catch` statements can be placed one after the other, to `catch` different errors.  Only one of the statements will be executed.  Once a `catch` statement is finished, the interpreter will skip all trailing `catch` statements, and continue execution 
 
 .Example
 
 [source,unlang]
 ----
 try {
-	sql
+    sql           # returns "fail"
 }
-catch {
-	# ... run only if sql failed
+catch disallow {  # skipped when "fail"
+    ...
+}
+
+catch fail {
+    # ... run only if sql failed
+
+    ok            # over-ride the "fail" code
+}
+
+catch invalid {   # skipped after "catch fail" is run.
+	...
 }
 ----
 
@@ -40,6 +50,8 @@ The xref:unlang/redundant.adoc[redundant] statement should be used to run
 one of many similar modules.  For example, the xref:unlang/redundant.adoc[redundant] statement could be used to choose one of four different `sql` modules in a fail-over fashion.
 
 In contrast, the `try` / `catch` statements should be used for more complex policies, when the intention is to run one policy, and then do something completely different if a failure occurs.
+
+The `try` / `catch` statements can also run different statements for each failure code, which is not possible with xref:unlang/redundant.adoc[redundant].
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
