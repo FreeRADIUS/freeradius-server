@@ -80,7 +80,10 @@ typedef enum CC_HINT(flag_enum) {
 								///< option of `rlm_exec` should always be parsed as T_BACK_QUOTED_STRING.
 	CALL_ENV_FLAG_PARSE_ONLY	= (1 << 6),		//!< The result of parsing will not be evaluated at runtime.
 	CALL_ENV_FLAG_ATTRIBUTE		= (1 << 7),		//!< Tmpl must contain an attribute reference.
-	CALL_ENV_FLAG_SUBSECTION	= (1 << 8)		//!< This is a subsection.
+	CALL_ENV_FLAG_SUBSECTION	= (1 << 8),		//!< This is a subsection.
+	CALL_ENV_FLAG_PARSE_MISSING	= (1 << 9)		//!< If this subsection is missing, still parse it.  Useful for cases where
+								///< there is a callback which always needs to be run to set up required
+								///< data structures.
 } call_env_flags_t;
 DIAG_ON(attributes)
 
@@ -99,7 +102,7 @@ DIAG_ON(attributes)
  *
  * @param[in] _flags to evaluate
  */
-#define call_env_subsection_flags(_flags)	(((_flags) & (CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_MULTI | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_FORCE_QUOTE | CALL_ENV_FLAG_ATTRIBUTE)) == 0)
+#define call_env_subsection_flags(_flags)	(((_flags) & (CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_MULTI | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_FORCE_QUOTE | CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_PARSE_MISSING)) == 0)
 
 #define call_env_required(_flags)		((_flags) & CALL_ENV_FLAG_REQUIRED)
 
@@ -118,6 +121,8 @@ DIAG_ON(attributes)
 #define call_env_attribute(_flags)		((_flags) & CALL_ENV_FLAG_ATTRIBUTE)
 
 #define call_env_is_subsection(_flags)		((_flags) & CALL_ENV_FLAG_SUBSECTION)
+
+#define call_env_parse_missing(_flags)		((_flags) & CALL_ENV_FLAG_PARSE_MISSING)
 /** @} */
 
 /** Callback for performing custom parsing of a #CONF_PAIR

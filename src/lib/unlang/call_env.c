@@ -353,7 +353,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 		if (call_env_is_subsection(rule->flags)) {
 			CONF_SECTION const *subcs;
 			subcs = cf_section_find(cs, rule->name, rule->section.ident2);
-			if (!subcs) {
+			if (!subcs && !call_env_parse_missing(rule->flags)) {
 				if (!call_env_required(rule->flags)) goto next;
 				cf_log_err(cs, "Module %s missing required section \"%s\"", name, rule->name);
 				return -1;
