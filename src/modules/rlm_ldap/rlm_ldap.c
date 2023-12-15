@@ -2310,7 +2310,8 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 		MEM(maps = talloc(parsed, map_list_t));
 		map_list_init(maps);
 
-		if (map_afrom_cs(maps, maps, update, t_rules, t_rules, fr_ldap_map_verify, NULL, LDAP_MAX_ATTRMAP) < 0) {
+		if (update && (map_afrom_cs(maps, maps, update, t_rules, t_rules, fr_ldap_map_verify,
+					    NULL, LDAP_MAX_ATTRMAP)) < 0) {
 			call_env_parsed_free(out, parsed);
 			return -1;
 		}
