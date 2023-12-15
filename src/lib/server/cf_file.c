@@ -1897,6 +1897,98 @@ alloc_section:
 	return cf_section_to_item(css);
 }
 
+static CONF_ITEM *process_catch(cf_stack_t *stack)
+{
+	CONF_SECTION	*css;
+	int		argc = 0;
+	char const	*ptr = stack->ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+	char		*name2 = NULL;
+	char		*argv[RLM_MODULE_NUMCODES];
+
+	while (true) {
+		char const *p;
+		size_t len;
+
+		fr_skip_whitespace(ptr);
+
+		/*
+		 *      We have an open bracket, it's the end of the "catch" statement.
+		 */
+		if (*ptr == '{') {
+			ptr++;
+			break;
+		}
+
+		/*
+		 *	The arguments have to be short, unquoted words.
+		 */
+		p = ptr;
+		while (isalpha((uint8_t) *ptr)) ptr++;
+
+		len = ptr - p;
+		if (len > 16) {
+			ERROR("%s[%d]: Invalid syntax for 'catch' - unknown rcode '%s'",
+			      frame->filename, frame->lineno, p);
+			return NULL;
+		}
+
+		if ((*ptr != '{') && !isspace((uint8_t) *ptr)) {
+			ERROR("%s[%d]: Invalid syntax for 'catch' - unexpected text at '%s'",
+			      frame->filename, frame->lineno, ptr);
+			return NULL;
+		}
+
+		if (!name2) {
+			name2 = talloc_strndup(NULL, p, len);
+			continue;
+		}
+
+		if (argc > RLM_MODULE_NUMCODES) {
+			ERROR("%s[%d]: Invalid syntax for 'catch' - too many arguments at'%s'",
+			      frame->filename, frame->lineno, ptr);
+			return NULL;
+		}
+
+		argv[argc++] = talloc_strndup(name2, p, len);
+	}
+
+	css = cf_section_alloc(parent, parent, "catch", name2);
+	if (!css) {
+		talloc_free(name2);
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
+	css->name2_quote = T_BARE_WORD;
+	css->allow_unlang = 1;
+
+	css->argc = argc;
+	if (argc) {
+		int i;
+
+		css->argv = talloc_array(css, char const *, argc);
+		css->argv_quote = talloc_array(css, fr_token_t, argc);
+		css->argc = argc;
+
+		for (i = 0; i < argc; i++) {
+			css->argv[i] = talloc_typed_strdup(css->argv, argv[i]);
+			css->argv_quote[i] = T_BARE_WORD;
+		}
+
+		css->argv[argc] = NULL;
+	}
+	talloc_free(name2);
+
+	stack->ptr = ptr;
+	frame->special = css;
+
+	return cf_section_to_item(css);
+}
+
 static int add_section_pair(CONF_SECTION **parent, char const **attr, char const *dot, char *buffer, size_t buffer_len, char const *filename, int lineno)
 {
 	CONF_SECTION *cs;
@@ -2035,6 +2127,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 }
 
 static fr_table_ptr_sorted_t unlang_keywords[] = {
+	{ L("catch"),		(void *) process_catch },
 	{ L("elsif"),		(void *) process_if },
 	{ L("if"),		(void *) process_if },
 	{ L("map"),		(void *) process_map },

@@ -11,7 +11,10 @@ try {
 
 	&bar := "nope"
 }
-catch {
+catch disallow {
+	test_fail
+}
+catch ok reject fail {
 	if &foo != "hello" {
 		test_fail
 	}

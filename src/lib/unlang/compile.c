@@ -2559,10 +2559,16 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 		.type_name = "unlang_transaction_t",
 	};
 
+	if (cf_section_name2(cs) != NULL) {
+		cf_log_err(cs, "Unexpected argument to 'transaction' section");
+		return NULL;
+	}
+
 	/*
 	 *	The transaction is empty, ignore it.
 	 */
 	if (!cf_item_next(cs, NULL)) return UNLANG_IGNORE;
+
 	if (!transaction_ok(cs)) return NULL;
 
 	/*
@@ -2616,6 +2622,11 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		return NULL;
 	}
 
+	if (cf_section_name2(cs) != NULL) {
+		cf_log_err(cs, "Unexpected argument to 'try' section");
+		return NULL;
+	}
+
 	next = cf_section_next(cf_item_to_section(cf_parent(cs)), cs);
 	if (!next || (strcmp(cf_section_name1(next), "catch") != 0)) {
 		cf_log_err(cs, "'try' sections must be followed by a 'catch'");
@@ -2631,10 +2642,31 @@ static unlang_t *compile_try(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	return compile_children(g, unlang_ctx, true);
 }
 
+static int catch_argv(CONF_SECTION *cs, unlang_catch_t *ca, char const *name)
+{
+	int rcode;
+
+	rcode = fr_table_value_by_str(mod_rcode_table, name, -1);
+	if (rcode < 0) {
+		cf_log_err(cs, "Unknown rcode '%s'.", name);
+		return -1;
+	}
+
+	if (ca->catching[rcode]) {
+		cf_log_err(cs, "Duplicate rcode '%s'.", name);
+		return -1;
+	}
+
+	ca->catching[rcode] = true;
+
+	return 0;
+}
+
 static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
 	unlang_group_t *g;
 	unlang_t *c;
+	unlang_catch_t *ca;
 
 	static unlang_ext_t const ext = {
 		.type = UNLANG_TYPE_CATCH,
@@ -2648,16 +2680,32 @@ static unlang_t *compile_catch(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 	c = unlang_group_to_generic(g);
 	c->debug_name = c->name = cf_section_name1(cs);
 
+	ca = unlang_group_to_catch(g);
+
 	/*
 	 *	No arg2: catch all errors
 	 */
 	if (!cf_section_name2(cs)) {
-		unlang_catch_t *ca = unlang_group_to_catch(g);
-
 		ca->catching[RLM_MODULE_REJECT] = true;
 		ca->catching[RLM_MODULE_FAIL] = true;
 		ca->catching[RLM_MODULE_INVALID] = true;
 		ca->catching[RLM_MODULE_DISALLOW] = true;
+
+	} else {
+		int i;
+		char const *name = cf_section_name2(cs);
+
+		if (catch_argv(cs, ca, name) < 0) {
+			talloc_free(c);
+			return NULL;
+		}
+
+		for (i = 0; (name = cf_section_argv(cs, i)) != NULL; i++) {
+			if (catch_argv(cs, ca, name) < 0) {
+				talloc_free(c);
+				return NULL;
+			}
+		}
 	}
 
 	/*
