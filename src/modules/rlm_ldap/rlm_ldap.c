@@ -352,14 +352,6 @@ static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-static inline CC_HINT(always_inline)
-bool ldap_map_list_empty(map_list_t *maps)
-{
-	if (!maps) return true;
-
-	return map_list_empty(maps);
-}
-
 /** Escape LDAP string
  *
  * @ingroup xlat_functions
@@ -1673,7 +1665,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_MAP:
-		if (!ldap_map_list_empty(call_env->user_map) || inst->valuepair_attr) {
+		if (!map_list_empty(call_env->user_map) || inst->valuepair_attr) {
 			RDEBUG2("Processing user attributes");
 			RINDENT();
 			if (fr_ldap_map_do(request, inst->valuepair_attr,
