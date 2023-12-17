@@ -113,6 +113,10 @@ addcontrol  Reply-Message += "success2"
 regex	NAS-Identifier =~ /der/, Password.Cleartext := "testing123"
 	Reply-Message := "wonderful"
 
+vendor	Password.Cleartext := "we_are_so_smart"
+	Cisco.AVPair := "1",
+	Cisco.AVPair += "2"
+
 DEFAULT	User-Name == "cmp_eq",  Password.Cleartext := "hopping"
 	Reply-Message := "success-cmp_eq"
 

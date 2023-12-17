@@ -331,32 +331,32 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 
 	switch (map->op) {
 	case T_OP_CMP_FALSE:	/* delete all */
-		fr_pair_delete_by_da(list, da);
+		fr_pair_delete_by_da_nested(list, da);
 		break;
 
 	case T_OP_EQ:		/* set only if not already exist */
-		vp = fr_pair_find_by_da(list, NULL, da);
+		vp = fr_pair_find_by_da_nested(list, NULL, da);
 		if (vp) return 0;
 		goto add;
 
 	case T_OP_SET:		/* delete all and set one */
-		fr_pair_delete_by_da(list, da);
+		fr_pair_delete_by_da_nested(list, da);
 		FALL_THROUGH;
 
 	case T_OP_ADD_EQ:	/* append one */
 	add:
-		vp = fr_pair_afrom_da(ctx, da);
+		vp = fr_pair_afrom_da_nested(ctx, list, da);
 		if (!vp) return -1;
 
 		if (fr_value_box_copy(vp, &vp->data, tmpl_value(map->rhs)) < 0) {
 			talloc_free(vp);
 			return -1;
 		}
-
-		fr_pair_append(list, vp);
 		break;
 
 	case T_OP_PREPEND:	/* prepend one */
+		fr_assert(0);	/* doesn't work with nested? */
+
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) return -1;
 
@@ -369,7 +369,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 		break;
 
 	case T_OP_SUB_EQ:		/* delete if match */
-		vp = fr_pair_find_by_da(list, NULL, da);
+		vp = fr_pair_find_by_da_nested(list, NULL, da);
 		if (!vp) break;
 
 	redo_sub:
@@ -379,7 +379,9 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {
-			fr_pair_delete(list, vp);
+			fr_pair_list_t *parent = fr_pair_parent_list(vp);
+
+			fr_pair_delete(parent, vp);
 		}
 
 		if (!next) break;
@@ -389,7 +391,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 	case T_OP_CMP_EQ:      	/* replace if not == */
 	case T_OP_LE:		/* replace if not <= */
 	case T_OP_GE:		/* replace if not >= */
-		vp = fr_pair_find_by_da(list, NULL, da);
+		vp = fr_pair_find_by_da_nested(list, NULL, da);
 		if (!vp) goto add;
 
 	redo_filter:
@@ -402,7 +404,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 			}
 		}
 
-		vp = fr_pair_find_by_da(list, vp, da);
+		vp = fr_pair_find_by_da_nested(list, vp, da);
 		if (vp) goto redo_filter;
 		break;
 

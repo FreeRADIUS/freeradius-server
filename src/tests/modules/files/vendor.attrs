@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "vendor"
+User-Password = "we_are_so_smart"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Vendor-Specific == { Cisco == { AVPair == "1", AVPair == "2" } }
+
