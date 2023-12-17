@@ -139,6 +139,12 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
 				      filename, entry->lineno, map->lhs->name);
 				return -1;
 			}
+
+			if (!tmpl_is_data(map->rhs)) {
+				ERROR("%s[%d] Right side of filter %s is not a static value",
+				      filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
 		}
 	}
 
