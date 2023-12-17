@@ -71,11 +71,7 @@ subreply  Password.Cleartext := "testing123"
 
 filterreply  Password.Cleartext := "testing123"
              Reply-Message := "success1",
-             Reply-Message += "success2",
-             Fall-Through = yes
-
-filterreply  Password.Cleartext := "testing123"
-             Reply-Message !* ANY
+             Reply-Message += "success2"
 
 overwritereply  Password.Cleartext := "testing123"
                 Reply-Message := "firstpass",
