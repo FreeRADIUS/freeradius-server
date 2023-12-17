@@ -27,12 +27,15 @@
 RCSIDH(pairmove_h, "$Id$")
 
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/map.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void	radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *from) CC_HINT(nonnull);
+
+int	fr_pairmove_map(request_t *request, map_t const *map);
 
 #ifdef __cplusplus
 }

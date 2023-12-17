@@ -307,3 +307,109 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	talloc_free(edited);
 	talloc_free(deleted);
 }
+
+/** Move a map using the operators from the old pairmove API.
+ *
+ */
+int fr_pairmove_map(request_t *request, map_t const *map)
+{
+	int rcode;
+	fr_pair_t *vp, *next;
+	fr_dict_attr_t const *da;
+	fr_pair_list_t *list;
+	TALLOC_CTX *ctx;
+
+	/*
+	 *	Finds both the correct ctx and nested list.
+	 */
+	tmpl_pair_list_and_ctx(ctx, list, request, tmpl_request(map->lhs), tmpl_list(map->lhs));
+	if (!ctx) return -1;
+
+	da = tmpl_attr_tail_da(map->lhs);
+
+	fr_assert(tmpl_is_data(map->rhs));
+
+	switch (map->op) {
+	case T_OP_CMP_FALSE:	/* delete all */
+		fr_pair_delete_by_da(list, da);
+		break;
+
+	case T_OP_EQ:		/* set only if not already exist */
+		vp = fr_pair_find_by_da(list, NULL, da);
+		if (vp) return 0;
+		goto add;
+
+	case T_OP_SET:		/* delete all and set one */
+		fr_pair_delete_by_da(list, da);
+		FALL_THROUGH;
+
+	case T_OP_ADD_EQ:	/* append one */
+	add:
+		vp = fr_pair_afrom_da(ctx, da);
+		if (!vp) return -1;
+
+		if (fr_value_box_copy(vp, &vp->data, tmpl_value(map->rhs)) < 0) {
+			talloc_free(vp);
+			return -1;
+		}
+
+		fr_pair_append(list, vp);
+		break;
+
+	case T_OP_PREPEND:	/* prepend one */
+		vp = fr_pair_afrom_da(ctx, da);
+		if (!vp) return -1;
+
+		if (fr_value_box_copy(vp, &vp->data, tmpl_value(map->rhs)) < 0) {
+			talloc_free(vp);
+			return -1;
+		}
+
+		fr_pair_prepend(list, vp);
+		break;
+
+	case T_OP_SUB_EQ:		/* delete if match */
+		vp = fr_pair_find_by_da(list, NULL, da);
+		if (!vp) break;
+
+	redo_sub:
+		next = fr_pair_find_by_da(list, vp, da);
+		rcode = fr_value_box_cmp_op(T_OP_CMP_EQ, &vp->data, tmpl_value(map->rhs));
+
+		if (rcode < 0) return -1;
+
+		if (rcode == 1) {
+			fr_pair_delete(list, vp);
+		}
+
+		if (!next) break;
+		vp = next;
+		goto redo_sub;
+
+	case T_OP_CMP_EQ:      	/* replace if not == */
+	case T_OP_LE:		/* replace if not <= */
+	case T_OP_GE:		/* replace if not >= */
+		vp = fr_pair_find_by_da(list, NULL, da);
+		if (!vp) goto add;
+
+	redo_filter:
+		rcode = fr_value_box_cmp_op(map->op, &vp->data, tmpl_value(map->rhs));
+		if (rcode < 0) return -1;
+
+		if (rcode == 0) {
+			if (fr_value_box_copy(vp, &vp->data, tmpl_value(map->rhs)) < 0) {
+				return -1;
+			}
+		}
+
+		vp = fr_pair_find_by_da(list, vp, da);
+		if (vp) goto redo_filter;
+		break;
+
+	default:
+		fr_assert(0);
+		break;
+	}
+
+	return 0;
+}

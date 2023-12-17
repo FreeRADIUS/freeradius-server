@@ -128,6 +128,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	fr_htrie_t *tree;
 	fr_htrie_type_t htype;
 	fr_value_box_t *box;
+	map_t		*reply_head;
 
 	if (!filename) {
 		*ptree = NULL;
@@ -148,7 +149,10 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	entry = NULL;
 	while ((entry = fr_dlist_next(&users.head, entry))) {
 		map_t *map = NULL;
+		map_t *prev;
 		fr_dict_attr_t const *da;
+
+		reply_head = NULL;
 
 		/*
 		 *	Look for improper use of '=' in the
@@ -181,26 +185,20 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			}
 
 			/*
-			 *	Ignore attributes which are set
-			 *	properly.
+			 *	Move assignment operations to the reply list.
 			 */
-			if (map->op != T_OP_EQ) {
-				continue;
-			}
+			switch (map->op) {
+			case T_OP_EQ:
+			case T_OP_SET:
+			case T_OP_ADD_EQ:
+				prev = map_list_remove(&entry->check, map);
+				map_list_insert_after(&entry->reply, reply_head, map);
+				reply_head = map;
+				map = prev;
+				break;
 
-			/*
-			 *	If it's a vendor attribute,
-			 *	or it's a wire protocol,
-			 *	ensure it has '=='.
-			 */
-			if ((fr_dict_vendor_num_by_da(da) != 0) ||
-			    (da->attr < 0x100)) {
-				WARN("%s[%d] Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for key %s",
-				     entry->filename, entry->lineno,
-				     da->name, da->name,
-				     entry->name);
-				map->op = T_OP_CMP_EQ;
-				continue;
+			default:
+				break;
 			}
 		} /* end of loop over check items */
 
@@ -220,6 +218,12 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			}
 			da = tmpl_attr_tail_da(map->lhs);
 
+			if (map->op == T_OP_CMP_FALSE) {
+				ERROR("%s[%d] Invalid operator '!*' for reply item %s",
+				      entry->filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
+
 			if ((htype != FR_HTRIE_TRIE) && (da == attr_next_shortest_prefix)) {
 				ERROR("%s[%d] Cannot use %s when key is not an IP / IP prefix",
 				      entry->filename, entry->lineno, da->name);
@@ -235,8 +239,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			 *	free all subsequent maps.
 			 */
 			if (da == attr_fall_through) {
-				map_t *prev;
-
 				if (tmpl_is_data(map->rhs) && (tmpl_value_type(map->rhs) == FR_TYPE_BOOL)) {
 					entry->fall_through = tmpl_value(map->rhs)->vb_bool;
 				}
@@ -246,15 +248,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				map = prev;
 				continue;
 			}
-
-			/*
-			 *	If we allow list qualifiers in
-			 *	users_file.c, then this module also
-			 *	needs to be updated.  Ensure via an
-			 *	assertion that they do not get out of
-			 *	sync.
-			 */
-			fr_assert(tmpl_list(map->lhs) == request_attr_reply);
 		}
 	}
 
@@ -475,10 +468,8 @@ redo:
 	 *	Find the entry for the user.
 	 */
 	while (user_pl || default_pl) {
-		fr_pair_t *vp;
 		map_t *map = NULL;
 		PAIR_LIST const *pl;
-		fr_pair_list_t list;
 		bool next_shortest_prefix;
 		bool match = true;
 
@@ -508,14 +499,10 @@ redo:
 			default_pl = fr_dlist_next(&default_list->head, default_pl);
 		}
 
-		fr_pair_list_init(&list);
-
 		/*
-		 *	Realize the map to a list of VPs
+		 *	Run the check items.
 		 */
 		while ((map = map_list_next(&pl->check, map))) {
-			fr_pair_list_t tmp_list;
-
 			RDEBUG3("    %s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
 
 			/*
@@ -528,23 +515,15 @@ redo:
 			case T_OP_EQ:
 			case T_OP_SET:
 			case T_OP_ADD_EQ:
-				fr_pair_list_init(&tmp_list);
-				if (map_to_vp(request->control_ctx, &tmp_list, request, map, NULL) < 0) {
-					fr_pair_list_free(&list);
-					RPWARN("Failed parsing check item, skipping entry");
-					match = false;
-					break;
-				}
-
-				fr_pair_list_append(&list, &tmp_list);
-				break;
+				fr_assert(0);
+				return -1;
 
 				/*
 				 *	Evaluate the map, including regexes.
 				 */
 			default:
 				if (!files_eval_map(request, map)) {
-					RDEBUG3("    failed match - %s", fr_strerror());
+					RDEBUG3("    failed match");
 					match = false;
 				}
 				break;
@@ -553,46 +532,31 @@ redo:
 			if (!match) break;
 		}
 
-		if (!match) {
-			fr_pair_list_free(&list);
-			continue;
-		}
+		if (!match) continue;
 
 		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, pl->filename);
 		found = true;
 		next_shortest_prefix = false;
 
-		/*
-		 *	Move the control items over, too.
-		 */
-		radius_pairmove(request, &request->control_pairs, &list);
-
 		/* ctx may be reply */
 		if (!map_list_empty(&pl->reply)) {
 			map = NULL;
-			while ((map = map_list_next(&pl->reply, map))) {
-				fr_pair_list_t tmp_list;
-				fr_pair_list_init(&tmp_list);
-				if (map->op == T_OP_CMP_FALSE) continue;
 
-				if (map_to_vp(request->reply_ctx, &tmp_list, request, map, NULL) < 0) {
+			while ((map = map_list_next(&pl->reply, map))) {
+				/*
+				 *	Do Fall-Through style checks for prefix tries.
+				 */
+				if (trie && (keylen > 0) && (tmpl_attr_tail_da(map->lhs) == attr_next_shortest_prefix)) {
+					fr_assert(tmpl_is_data(map->rhs));
+
+					next_shortest_prefix = tmpl_value(map->rhs)->vb_bool;
+					continue;
+				}
+
+				if (fr_pairmove_map(request, map) < 0) {
 					RPWARN("Failed parsing map for reply item %s, skipping it", map->lhs->name);
 					break;
 				}
-
-				/*
-				 *	And do the same checks for prefix tries.
-				 */
-				if (trie && (keylen > 0)) {
-					vp = fr_pair_list_head(&tmp_list);
-					if (vp->da == attr_next_shortest_prefix) {
-						next_shortest_prefix = vp->vp_bool;
-						fr_pair_list_free(&tmp_list);
-						continue;
-					}
-				}
-
-				radius_pairmove(request, &request->reply_pairs, &tmp_list);
 			}
 		}
 
