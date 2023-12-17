@@ -149,8 +149,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 	entry = NULL;
 	while ((entry = fr_dlist_next(&users.head, entry))) {
 		map_t *map = NULL;
-		map_t *prev;
+		map_t *prev, *next_map;
 		fr_dict_attr_t const *da;
+		map_t *sub_head, *set_head;
 
 		reply_head = NULL;
 
@@ -203,14 +204,22 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		} /* end of loop over check items */
 
 		/*
+		 *	Note that we also re-arrange any control items which are in the reply item list.
+		 */
+		sub_head = set_head = NULL;
+
+		/*
 		 *	Look for server configuration items
 		 *	in the reply list.
 		 *
 		 *	It's a common enough mistake, that it's
 		 *	worth doing.
 		 */
-		map = NULL;
-		while ((map = map_list_next(&entry->reply, map))) {
+		for (map = map_list_head(&entry->reply);
+		     map != NULL;
+		     map = next_map) {
+			next_map = map_list_next(&entry->reply, map);
+
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of reply item %s is not an attribute",
 				      entry->filename, entry->lineno, map->lhs->name);
@@ -243,9 +252,33 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 					entry->fall_through = tmpl_value(map->rhs)->vb_bool;
 				}
 
-				prev = map_list_prev(&entry->reply, map);
 				(void) map_list_remove(&entry->reply, map);
-				map = prev;
+				continue;
+			}
+
+			/*
+			 *	Removals are applied before anything else.
+			 */
+			if (map->op == T_OP_SUB_EQ) {
+				if (sub_head == map) continue;
+
+				(void) map_list_remove(&entry->reply, map);
+				map_list_insert_after(&entry->reply, sub_head, map);
+				sub_head = map;
+				continue;
+			}
+
+			/*
+			 *	Over-rides are applied after deletions.
+			 */
+			if (map->op == T_OP_SET) {
+				if (set_head == map) continue;
+
+				if (!set_head) set_head = sub_head;
+
+				(void) map_list_remove(&entry->reply, map);
+				map_list_insert_after(&entry->reply, set_head, map);
+				set_head = map;
 				continue;
 			}
 		}
