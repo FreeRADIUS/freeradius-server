@@ -372,7 +372,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		vp = fr_pair_afrom_da_nested(ctx, list, da);
 		if (!vp) goto fail;
 
-		if (fr_value_box_copy(vp, &vp->data, box) < 0) {
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) {
 		fail_vp:
 			talloc_free(vp);
 		fail:
@@ -387,7 +387,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) goto fail;
 
-		if (fr_value_box_copy(vp, &vp->data, box) < 0) goto fail_vp;
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail_vp;
 
 		fr_pair_prepend(list, vp);
 		break;
@@ -423,7 +423,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		if (rcode < 0) goto fail;
 
 		if (rcode == 0) {
-			if (fr_value_box_copy(vp, &vp->data, box) < 0) goto fail;
+			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 		}
 
 		vp = fr_pair_find_by_da_nested(list, vp, da);
