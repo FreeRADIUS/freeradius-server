@@ -131,6 +131,12 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
 				return -1;
 			}
 
+			if (tmpl_list(map->rhs) != request_attr_reply) {
+				ERROR("%s[%d] Left side of filter %s is not in the reply list",
+				      filename, entry->lineno, map->lhs->name);
+				return -1;
+			}
+
 			/*
 			 *	Make sure that bad things don't happen.
 			 */

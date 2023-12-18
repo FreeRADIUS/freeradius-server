@@ -520,7 +520,13 @@ setup_reply:
 		 *	Setup the reply items.
 		 */
 		lhs_rules.attr.list_def = request_attr_reply;
+
+		lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO;
+		lhs_rules.attr.list_presence = TMPL_ATTR_LIST_ALLOW;
+
 		comma = false;
+
+		rhs_rules.attr.list_presence = TMPL_ATTR_LIST_REQUIRE;
 
 reply_item:
 		/*
@@ -590,18 +596,9 @@ next_reply_item:
 		}
 
 		/*
-		 *	RHS can be NULL if it's a structural type.
+		 *	We no longer really care what the RHS is, or what the list is on the LHS.  The caller
+		 *	takes care of checking that for us.
 		 */
-		if (new_map->rhs) {
-			if (!tmpl_is_data(new_map->rhs) && !tmpl_is_exec(new_map->rhs) &&
-			    !tmpl_contains_xlat(new_map->rhs)) {
-				ERROR("%s[%d]: Invalid RHS '%s' for reply item",
-				      file, lineno, new_map->rhs->name);
-				goto fail_entry;
-			}
-		}
-
-		fr_assert(tmpl_list(new_map->lhs) == request_attr_reply);
 
 		if (!new_map->parent) map_list_insert_tail(&t->reply, new_map);
 

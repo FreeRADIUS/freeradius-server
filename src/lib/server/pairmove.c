@@ -318,6 +318,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 	fr_dict_attr_t const *da;
 	fr_pair_list_t *list;
 	TALLOC_CTX *ctx;
+	fr_value_box_t const *box;
 
 	/*
 	 *	Finds both the correct ctx and nested list.
@@ -327,7 +328,23 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 
 	da = tmpl_attr_tail_da(map->lhs);
 
-	fr_assert(tmpl_is_data(map->rhs));
+	if (tmpl_is_data(map->rhs)) {
+		box = tmpl_value(map->rhs);
+
+	} else if (tmpl_is_attr(map->rhs)) {
+		if (tmpl_find_vp(&vp, request, map->rhs) < 0) return -1;
+
+		if (vp->vp_type != da->type) {
+			fr_strerror_const("Incompatible data types");
+			return -1;
+		}
+
+		box = &vp->data;
+
+	} else {
+		fr_strerror_const("Unknown RHS");
+		return -1;
+	}
 
 	switch (map->op) {
 	case T_OP_CMP_FALSE:	/* delete all */
@@ -348,7 +365,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 		vp = fr_pair_afrom_da_nested(ctx, list, da);
 		if (!vp) return -1;
 
-		if (fr_value_box_copy(vp, &vp->data, tmpl_value(map->rhs)) < 0) {
+		if (fr_value_box_copy(vp, &vp->data, box) < 0) {
 			talloc_free(vp);
 			return -1;
 		}
@@ -360,7 +377,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) return -1;
 
-		if (fr_value_box_copy(vp, &vp->data, tmpl_value(map->rhs)) < 0) {
+		if (fr_value_box_copy(vp, &vp->data, box) < 0) {
 			talloc_free(vp);
 			return -1;
 		}
@@ -374,7 +391,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 
 	redo_sub:
 		next = fr_pair_find_by_da(list, vp, da);
-		rcode = fr_value_box_cmp_op(T_OP_CMP_EQ, &vp->data, tmpl_value(map->rhs));
+		rcode = fr_value_box_cmp_op(T_OP_CMP_EQ, &vp->data, box);
 
 		if (rcode < 0) return -1;
 
@@ -395,11 +412,11 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 		if (!vp) goto add;
 
 	redo_filter:
-		rcode = fr_value_box_cmp_op(map->op, &vp->data, tmpl_value(map->rhs));
+		rcode = fr_value_box_cmp_op(map->op, &vp->data, box);
 		if (rcode < 0) return -1;
 
 		if (rcode == 0) {
-			if (fr_value_box_copy(vp, &vp->data, tmpl_value(map->rhs)) < 0) {
+			if (fr_value_box_copy(vp, &vp->data, box) < 0) {
 				return -1;
 			}
 		}

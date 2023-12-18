@@ -117,6 +117,13 @@ vendor	Password.Cleartext := "we_are_so_smart"
 	Cisco.AVPair := "1",
 	Cisco.AVPair += "2"
 
+#
+#  Compare attribute references
+#
+attrref	Password.Cleartext := "hopefully"
+	Reply-Message := &request.Filter-Id,
+	&control.Filter-Id := "foo"
+
 DEFAULT	User-Name == "cmp_eq",  Password.Cleartext := "hopping"
 	Reply-Message := "success-cmp_eq"
 

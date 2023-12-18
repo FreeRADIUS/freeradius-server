@@ -1,0 +1,11 @@
+#
+#  Test inter-attribute comparisons
+#
+files
+
+#
+#  The "reply" items can now update any list.
+#
+if (&control.Filter-Id != "foo") {
+	test_fail
+}

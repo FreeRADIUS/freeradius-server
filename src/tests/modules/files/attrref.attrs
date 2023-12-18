@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "attrref"
+User-Password = "hopefully"
+Filter-Id = "hello"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == 'hello'

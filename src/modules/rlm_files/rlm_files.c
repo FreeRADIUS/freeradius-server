@@ -175,14 +175,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 			 */
 			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
 				fr_assert(tmpl_is_regex(map->rhs));
-
-			/*
-			 *	Disallow inter-attribute comparisons.
-			 */
-			} else if (!tmpl_is_data(map->rhs)) {
-				ERROR("%s[%d] Right side of check item %s is not a leaf value",
-				      entry->filename, entry->lineno, map->lhs->name);
-				return -1;
 			}
 
 			/*
@@ -198,7 +190,24 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				map = prev;
 				break;
 
+			case T_OP_REG_EQ:
+			case T_OP_REG_NE:
+				if (tmpl_contains_xlat(map->rhs)) {
+					ERROR("%s[%d] Right side of check item %s is not a static value",
+					      entry->filename, entry->lineno, map->lhs->name);
+					return -1;
+				}
+				break;
+
 			default:
+				/*
+				 *	Comparisons must be with data.
+				 */
+				if (!tmpl_is_data(map->rhs)) {
+					ERROR("%s[%d] Right side of check item %s is not a leaf value",
+					      entry->filename, entry->lineno, map->lhs->name);
+					return -1;
+				}
 				break;
 			}
 		} /* end of loop over check items */
@@ -235,6 +244,17 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 
 			if ((htype != FR_HTRIE_TRIE) && (da == attr_next_shortest_prefix)) {
 				ERROR("%s[%d] Cannot use %s when key is not an IP / IP prefix",
+				      entry->filename, entry->lineno, da->name);
+				return -1;
+			}
+
+			/*
+			 *	Regex assignments aren't allowed.
+			 *
+			 *	Execs are being deprecated.
+			 */
+			if (tmpl_contains_regex(map->rhs) || tmpl_is_exec(map->rhs)) {
+				ERROR("%s[%d] Invalid right-hand side of assignment for attribute %s",
 				      entry->filename, entry->lineno, da->name);
 				return -1;
 			}
