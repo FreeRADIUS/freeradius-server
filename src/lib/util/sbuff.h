@@ -1775,6 +1775,10 @@ SBUFF_IS_FUNC(alpha, isalpha((uint8_t) *p))
 #define fr_sbuff_is_alpha(_sbuff_or_marker) \
 	SBUFF_IS_GENERIC(_sbuff_or_marker, alpha)
 
+SBUFF_IS_FUNC(alnum, isalnum((uint8_t) *p))
+#define fr_sbuff_is_alnum(_sbuff_or_marker) \
+	SBUFF_IS_GENERIC(_sbuff_or_marker, alnum)
+
 SBUFF_IS_FUNC(space, isspace((uint8_t) *p))
 #define fr_sbuff_is_space(_sbuff_or_marker) \
 	SBUFF_IS_GENERIC(_sbuff_or_marker, space)
