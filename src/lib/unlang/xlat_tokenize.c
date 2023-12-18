@@ -998,7 +998,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			/*
 			 *	% non-alphanumeric, create a value-box for just the "%" character.
 			 */
-			if (!fr_sbuff_is_alpha(in)) {
+			if (!fr_sbuff_is_alnum(in)) {
 				if (fr_sbuff_next_if_char(in, '%')) { /* nothing */ }
 
 				str = talloc_typed_strdup(node, "%");
