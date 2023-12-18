@@ -156,11 +156,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 		reply_head = NULL;
 
 		/*
-		 *	Look for improper use of '=' in the
-		 *	check items.  They should be using
-		 *	'==' for on-the-wire RADIUS attributes,
-		 *	and probably ':=' for server
-		 *	configuration items.
+		 *	Do various sanity checks.
 		 */
 		while ((map = map_list_next(&entry->check, map))) {
 			if (!tmpl_is_attr(map->lhs)) {
@@ -168,7 +164,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				      entry->filename, entry->lineno, map->lhs->name);
 				return -1;
 			}
-			da = tmpl_attr_tail_da(map->lhs);
 
 			/*
 			 *	Disallow regexes for now.
