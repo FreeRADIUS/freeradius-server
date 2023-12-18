@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/regex.h>
 #include <math.h>
 #include "calc.h"
 
@@ -1933,6 +1934,20 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 
 		op = T_OP_NE;
 		break;
+
+	case T_OP_REG_EQ:
+	case T_OP_REG_NE:
+		if (b->type != FR_TYPE_STRING) {
+			fr_strerror_const("Invalid type for regular expression");
+			return -1;
+		}
+
+		rcode = fr_regex_cmp_op(op, a, b);
+		if (rcode < 0) return rcode;
+
+		fr_value_box_init(dst, FR_TYPE_BOOL, NULL, false); /* @todo - enum */
+		dst->vb_bool = (rcode != 0);
+		return 0;
 
 	default:
 		break;

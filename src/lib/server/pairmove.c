@@ -483,24 +483,6 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 	}
 
 	/*
-	 *	The RHS is a compiled regex, which we don't yet
-	 *	support.  So just re-parse it at run time for
-	 *	programmer laziness.
-	 */
-	if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
-		if (box->type != FR_TYPE_STRING) {
-			fr_strerror_const("Invalid type for regular expression");
-			return -1;
-		}
-
-		rcode = fr_regex_cmp_op(map->op, &vp->data, box);
-		TALLOC_FREE(to_free);
-		if (rcode < 0) return rcode;
-
-		return (rcode == 1);
-	}
-
-	/*
 	 *	Let the calculation code do upcasting as necessary.
 	 */
 	rcode = fr_value_calc_binary_op(request, &dst, FR_TYPE_BOOL, &vp->data, map->op, box);
