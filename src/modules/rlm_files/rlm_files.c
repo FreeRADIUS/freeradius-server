@@ -185,24 +185,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptre
 				map = prev;
 				break;
 
-			case T_OP_REG_EQ:
-			case T_OP_REG_NE:
-				if (tmpl_contains_xlat(map->rhs)) {
-					ERROR("%s[%d] Right side of check item %s is not a static value",
-					      entry->filename, entry->lineno, map->lhs->name);
-					return -1;
-				}
-				break;
-
 			default:
-				/*
-				 *	Comparisons must be with data.
-				 */
-				if (!tmpl_is_data(map->rhs)) {
-					ERROR("%s[%d] Right side of check item %s is not a leaf value",
-					      entry->filename, entry->lineno, map->lhs->name);
-					return -1;
-				}
 				break;
 			}
 		} /* end of loop over check items */
@@ -439,30 +422,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static bool files_eval_map(request_t *request, map_t *map)
-{
-	fr_pair_t *vp;
-
-	fr_assert(tmpl_is_attr(map->lhs));
-	fr_assert(fr_comparison_op[map->op]);
-
-	if (tmpl_find_vp(&vp, request, map->lhs) < 0) return false;
-
-	/*
-	 *	The RHS is a compiled regex, which we don't yet
-	 *	support.  So just re-parse it at run time for
-	 *	programmer laziness.
-	 */
-	if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
-		return (fr_regex_cmp_op(map->op, &vp->data, fr_box_strvalue(map->rhs->name)) == 1);
-	}
-
-	fr_assert(tmpl_is_data(map->rhs));
-
-	return (fr_value_box_cmp_op(map->op, &vp->data, tmpl_value(map->rhs)) == 1);
-}
-
-
 /*
  *	Common code called by everything below.
  */
@@ -551,6 +510,8 @@ redo:
 		 *	Run the check items.
 		 */
 		while ((map = map_list_next(&pl->check, map))) {
+			int rcode;
+
 			RDEBUG3("    %s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
 
 			/*
@@ -570,7 +531,14 @@ redo:
 				 *	Evaluate the map, including regexes.
 				 */
 			default:
-				if (!files_eval_map(request, map)) {
+				rcode = radius_legacy_map_cmp(request, map);
+				if (rcode < 0) {
+					RPWARN("Failed parsing map for check item %s, skipping it", map->lhs->name);
+					match = false;
+					break;
+				}
+
+				if (!rcode) {
 					RDEBUG3("    failed match");
 					match = false;
 				}
@@ -601,7 +569,7 @@ redo:
 					continue;
 				}
 
-				if (fr_pairmove_map(request, map) < 0) {
+				if (radius_legacy_map_apply(request, map) < 0) {
 					RPWARN("Failed parsing map for reply item %s, skipping it", map->lhs->name);
 					break;
 				}

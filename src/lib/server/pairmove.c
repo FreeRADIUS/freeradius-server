@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/server/pairmove.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
@@ -308,10 +309,10 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	talloc_free(deleted);
 }
 
-/** Move a map using the operators from the old pairmove API.
+/** Move a map using the operators from the old pairmove functionality.
  *
  */
-int fr_pairmove_map(request_t *request, map_t const *map)
+int radius_legacy_map_apply(request_t *request, map_t const *map)
 {
 	int rcode;
 	fr_pair_t *vp, *next;
@@ -437,4 +438,74 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 success:
 	TALLOC_FREE(to_free);
 	return 0;
+}
+
+int radius_legacy_map_cmp(request_t *request, map_t const *map)
+{
+	int rcode;
+	fr_pair_t *vp;
+	fr_value_box_t const *box;
+	fr_value_box_t *to_free = NULL;
+	fr_value_box_t dst;
+
+	fr_assert(tmpl_is_attr(map->lhs));
+	fr_assert(fr_comparison_op[map->op]);
+
+	if (tmpl_find_vp(&vp, request, map->lhs) < 0) {
+		return 0;
+	}
+
+	if (tmpl_is_data(map->rhs)) {
+		box = tmpl_value(map->rhs);
+
+	} else if (tmpl_is_attr(map->rhs)) {
+		fr_pair_t *rhs;
+
+		if (tmpl_find_vp(&rhs, request, map->rhs) < 0) return -1;
+
+		box = &rhs->data;
+
+	} else if (tmpl_contains_xlat(map->rhs)) {
+		if (tmpl_aexpand(request, &to_free, request, map->rhs, NULL, NULL) < 0) return -1;
+
+		box = to_free;
+
+	} else if (tmpl_is_regex(map->rhs)) {
+		/*
+		 *	@todo - why box it and parse it again, when we can just run the regex?
+		 */
+		box = fr_box_strvalue(map->rhs->name);
+
+	} else {
+		fr_strerror_const("Unknown RHS");
+		return -1;
+	}
+
+	/*
+	 *	The RHS is a compiled regex, which we don't yet
+	 *	support.  So just re-parse it at run time for
+	 *	programmer laziness.
+	 */
+	if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
+		if (box->type != FR_TYPE_STRING) {
+			fr_strerror_const("Invalid type for regular expression");
+			return -1;
+		}
+
+		rcode = fr_regex_cmp_op(map->op, &vp->data, box);
+		TALLOC_FREE(to_free);
+		if (rcode < 0) return rcode;
+
+		return (rcode == 1);
+	}
+
+	/*
+	 *	Let the calculation code do upcasting as necessary.
+	 */
+	rcode = fr_value_calc_binary_op(request, &dst, FR_TYPE_BOOL, &vp->data, map->op, box);
+	TALLOC_FREE(to_free);
+
+	if (rcode < 0) return rcode;
+
+	return dst.vb_bool;
 }

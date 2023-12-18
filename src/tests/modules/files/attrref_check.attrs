@@ -1,0 +1,16 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "attrref_check"
+User-Password = "whoops"
+Filter-Id = "magic"
+NAS-Identifier = "magic"
+NAS-IP-Address = 127.0.0.1
+Calling-Station-Id = "127.0.0.1"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == 'success'

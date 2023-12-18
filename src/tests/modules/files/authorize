@@ -127,6 +127,12 @@ attrref	Password.Cleartext := "hopefully"
 xlat	Password.Cleartext := "open"
 	Reply-Message := "Hello, %{User-Name}"
 
+#
+#  Inter-attribute comparisons and xlats for comparisons
+#
+attrref_check Filter-Id == &NAS-Identifier, NAS-IP-Address == "%{Calling-Station-Id}", Password.Cleartext := "whoops"
+	      Reply-Message := "success"
+
 DEFAULT	User-Name == "cmp_eq",  Password.Cleartext := "hopping"
 	Reply-Message := "success-cmp_eq"
 

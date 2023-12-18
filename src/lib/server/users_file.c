@@ -273,9 +273,9 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	lhs_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = dict,
-			.prefix = TMPL_ATTR_REF_PREFIX_NO,
+			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 			.list_def = request_attr_request,
-			.list_presence = TMPL_ATTR_LIST_FORBID,
+			.list_presence = TMPL_ATTR_LIST_ALLOW,
 
 			/*
 			 *	Otherwise the tmpl code returns 0 when asked
@@ -292,7 +292,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 			.dict_def = dict,
 			.prefix = TMPL_ATTR_REF_PREFIX_YES,
 			.list_def = request_attr_request,
-			.list_presence = TMPL_ATTR_LIST_FORBID,
+			.list_presence = TMPL_ATTR_LIST_ALLOW,
 		}
 	};
 
@@ -443,13 +443,6 @@ check_item:
 			goto do_insert;
 		}
 
-		if (!tmpl_is_data(new_map->rhs) && !tmpl_is_exec(new_map->rhs) &&
-		    !tmpl_contains_xlat(new_map->rhs)) {
-			ERROR("%s[%d]: Invalid RHS '%s' for check item",
-			      file, lineno, new_map->rhs->name);
-			goto fail_entry;
-		}
-
 	do_insert:
 		fr_assert(!new_map->parent);
 		map_list_insert_tail(&t->check, new_map);
@@ -521,13 +514,9 @@ setup_reply:
 		 */
 		lhs_rules.attr.list_def = request_attr_reply;
 
-		lhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_AUTO;
-		lhs_rules.attr.list_presence = TMPL_ATTR_LIST_ALLOW;
-
 		comma = false;
 
 		rhs_rules.attr.list_def = request_attr_request;
-		rhs_rules.attr.list_presence = TMPL_ATTR_LIST_ALLOW;
 
 reply_item:
 		/*
