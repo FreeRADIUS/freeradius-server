@@ -104,8 +104,7 @@ strings `00` and `0` are different.
 
 === Compatibility
 
-For compatibility with version 3, the `<cast>` syntax is also
-supported.  We recommend, however, that people use the new syntax.
+The `<cast>` syntax of version 3 is no longer supported.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
