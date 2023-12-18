@@ -446,7 +446,7 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 	fr_pair_t *vp;
 	fr_value_box_t const *box;
 	fr_value_box_t *to_free = NULL;
-	fr_value_box_t dst;
+	fr_value_box_t dst, str;
 
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(fr_comparison_op[map->op]);
@@ -474,7 +474,8 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 		/*
 		 *	@todo - why box it and parse it again, when we can just run the regex?
 		 */
-		box = fr_box_strvalue(map->rhs->name);
+		fr_value_box_strdup_shallow(&str, NULL, map->rhs->name, false);
+		box = &str;
 
 	} else {
 		fr_strerror_const("Unknown RHS");
