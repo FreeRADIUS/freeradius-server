@@ -825,11 +825,10 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (unlang_xlat_yield(request, xlat_null_resume, NULL, 0, NULL) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 
 		fr_dcursor_next(out);		/* Wind to the start of this functions output */
-		RDEBUG2("| --> %pV", fr_dcursor_current(out));
-		if (node->call.func &&
-		    !xlat_process_return(request, node->call.func, (fr_value_box_list_t *)out->dlist,
-					 fr_dcursor_current(out))) {
-			return XLAT_ACTION_FAIL;
+		if (node->call.func) {
+			RDEBUG2("| --> %pV", fr_dcursor_current(out));
+			if (!xlat_process_return(request, node->call.func, (fr_value_box_list_t *)out->dlist,
+					 fr_dcursor_current(out))) return XLAT_ACTION_FAIL;
 		}
 
 		/*
