@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "xlat"
+User-Password = "open"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == 'Hello, xlat'

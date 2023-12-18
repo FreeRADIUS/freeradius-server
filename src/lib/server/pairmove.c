@@ -318,6 +318,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 	fr_dict_attr_t const *da;
 	fr_pair_list_t *list;
 	TALLOC_CTX *ctx;
+	fr_value_box_t *to_free = NULL;
 	fr_value_box_t const *box;
 
 	/*
@@ -341,6 +342,11 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 
 		box = &vp->data;
 
+	} else if (tmpl_is_xlat(map->rhs)) {
+		if (tmpl_aexpand(ctx, &to_free, request, map->rhs, NULL, NULL) < 0) return -1;
+
+		box = to_free;
+
 	} else {
 		fr_strerror_const("Unknown RHS");
 		return -1;
@@ -353,7 +359,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 
 	case T_OP_EQ:		/* set only if not already exist */
 		vp = fr_pair_find_by_da_nested(list, NULL, da);
-		if (vp) return 0;
+		if (vp) goto success;
 		goto add;
 
 	case T_OP_SET:		/* delete all and set one */
@@ -363,10 +369,13 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 	case T_OP_ADD_EQ:	/* append one */
 	add:
 		vp = fr_pair_afrom_da_nested(ctx, list, da);
-		if (!vp) return -1;
+		if (!vp) goto fail;
 
 		if (fr_value_box_copy(vp, &vp->data, box) < 0) {
+		fail_vp:
 			talloc_free(vp);
+		fail:
+			TALLOC_FREE(to_free);
 			return -1;
 		}
 		break;
@@ -375,12 +384,9 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 		fr_assert(0);	/* doesn't work with nested? */
 
 		vp = fr_pair_afrom_da(ctx, da);
-		if (!vp) return -1;
+		if (!vp) goto fail;
 
-		if (fr_value_box_copy(vp, &vp->data, box) < 0) {
-			talloc_free(vp);
-			return -1;
-		}
+		if (fr_value_box_copy(vp, &vp->data, box) < 0) goto fail_vp;
 
 		fr_pair_prepend(list, vp);
 		break;
@@ -393,7 +399,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 		next = fr_pair_find_by_da(list, vp, da);
 		rcode = fr_value_box_cmp_op(T_OP_CMP_EQ, &vp->data, box);
 
-		if (rcode < 0) return -1;
+		if (rcode < 0) goto fail;
 
 		if (rcode == 1) {
 			fr_pair_list_t *parent = fr_pair_parent_list(vp);
@@ -413,12 +419,10 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 
 	redo_filter:
 		rcode = fr_value_box_cmp_op(map->op, &vp->data, box);
-		if (rcode < 0) return -1;
+		if (rcode < 0) goto fail;
 
 		if (rcode == 0) {
-			if (fr_value_box_copy(vp, &vp->data, box) < 0) {
-				return -1;
-			}
+			if (fr_value_box_copy(vp, &vp->data, box) < 0) goto fail;
 		}
 
 		vp = fr_pair_find_by_da_nested(list, vp, da);
@@ -430,5 +434,7 @@ int fr_pairmove_map(request_t *request, map_t const *map)
 		break;
 	}
 
+success:
+	TALLOC_FREE(to_free);
 	return 0;
 }

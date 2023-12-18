@@ -124,6 +124,9 @@ attrref	Password.Cleartext := "hopefully"
 	Reply-Message := &request.Filter-Id,
 	&control.Filter-Id := "foo"
 
+xlat	Password.Cleartext := "open"
+	Reply-Message := "Hello, %{User-Name}"
+
 DEFAULT	User-Name == "cmp_eq",  Password.Cleartext := "hopping"
 	Reply-Message := "success-cmp_eq"
 

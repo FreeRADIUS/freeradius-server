@@ -526,7 +526,8 @@ setup_reply:
 
 		comma = false;
 
-		rhs_rules.attr.list_presence = TMPL_ATTR_LIST_REQUIRE;
+		rhs_rules.attr.list_def = request_attr_request;
+		rhs_rules.attr.list_presence = TMPL_ATTR_LIST_ALLOW;
 
 reply_item:
 		/*
