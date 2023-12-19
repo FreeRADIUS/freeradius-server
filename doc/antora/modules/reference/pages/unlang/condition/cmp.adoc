@@ -36,6 +36,8 @@ only exceptions are the xref:unlang/condition/regex.adoc[regular expression] ope
 which interpret the `lhs` as a printable string, and the `rhs` as a
 regular expression.
 
+Comparisons can be done across differing data types.  Comparng a `uint8` value to an `uint16` value will "just work", as the data types will be automatically converted before any comparison is done.
+
 == IP Address Comparisons
 
 The type-specific comparisons operate as expected for most data types.

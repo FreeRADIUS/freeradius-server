@@ -395,6 +395,8 @@ Similarly, subtracting two 'ipv4addr' data types results in a
 numerical value.  Adding a `time_delta` or `integer` to a `date` will
 result in a `date`.
 
+Similarly, assignments and/or modifications can be done across differing data types.  Adding a `uint8` value to an `uint16` value will "just work", as the data types will be automatically converted before assignments or operations are done.
+
 === Operations on `string` and `octet` Data Types
 
 The operators also apply to variable-sized values.
