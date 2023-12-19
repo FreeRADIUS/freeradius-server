@@ -38,29 +38,25 @@ typedef struct {
 	tmpl_t *key;
 	fr_type_t	key_data_type;
 
-	char const *filename;
-	fr_htrie_t *common;
+	char const *common_filename;
+	fr_htrie_t *common_htrie;
 	PAIR_LIST_LIST *common_def;
 
-	/* autz */
-	char const *usersfile;
-	fr_htrie_t *users;
-	PAIR_LIST_LIST *users_def;
+	char const *recv_filename;
+	fr_htrie_t *recv_htrie;
+	PAIR_LIST_LIST *recv_pl;
 
-	/* authenticate */
-	char const *auth_usersfile;
-	fr_htrie_t *auth_users;
-	PAIR_LIST_LIST *auth_users_def;
+	char const *auth_filename;
+	fr_htrie_t *auth_htrie;
+	PAIR_LIST_LIST *auth_pl;
 
-	/* preacct */
-	char const *acct_usersfile;
-	fr_htrie_t *acct_users;
-	PAIR_LIST_LIST *acct_users_def;
+	char const *recv_acct_filename;
+	fr_htrie_t *recv_acct_users;
+	PAIR_LIST_LIST *recv_acct_pl;
 
-	/* post-authenticate */
-	char const *postauth_usersfile;
-	fr_htrie_t *postauth_users;
-	PAIR_LIST_LIST *postauth_users_def;
+	char const *send_filename;
+	fr_htrie_t *send_htrie;
+	PAIR_LIST_LIST *send_pl;
 } rlm_files_t;
 
 typedef struct {
@@ -90,11 +86,11 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_files_t, filename) },
-	{ FR_CONF_OFFSET_FLAGS("usersfile", CONF_FLAG_FILE_INPUT, rlm_files_t, usersfile) },
-	{ FR_CONF_OFFSET_FLAGS("acctusersfile", CONF_FLAG_FILE_INPUT, rlm_files_t, acct_usersfile) },
-	{ FR_CONF_OFFSET_FLAGS("auth_usersfile", CONF_FLAG_FILE_INPUT, rlm_files_t, auth_usersfile) },
-	{ FR_CONF_OFFSET_FLAGS("postauth_usersfile", CONF_FLAG_FILE_INPUT, rlm_files_t, postauth_usersfile) },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_files_t, common_filename) },
+	{ FR_CONF_OFFSET_FLAGS("recv_filename", CONF_FLAG_FILE_INPUT, rlm_files_t, recv_filename) },
+	{ FR_CONF_OFFSET_FLAGS("acct_filename", CONF_FLAG_FILE_INPUT, rlm_files_t, recv_acct_filename) },
+	{ FR_CONF_OFFSET_FLAGS("auth_filename", CONF_FLAG_FILE_INPUT, rlm_files_t, auth_filename) },
+	{ FR_CONF_OFFSET_FLAGS("send_filename", CONF_FLAG_FILE_INPUT, rlm_files_t, send_filename) },
 	{ FR_CONF_OFFSET_FLAGS("key", CONF_FLAG_NOT_EMPTY, rlm_files_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 	CONF_PARSER_TERMINATOR
 };
@@ -118,7 +114,7 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 	return fr_value_box_to_key(out, outlen, ((PAIR_LIST_LIST const *)a)->box);
 }
 
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault, fr_type_t data_type)
+static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault, fr_type_t data_type)
 {
 	int rcode;
 	PAIR_LIST_LIST users;
@@ -411,13 +407,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 #undef READFILE
-#define READFILE(_x, _y, _d) if (getusersfile(inst, inst->_x, &inst->_y, &inst->_d, inst->key_data_type) != 0) do { ERROR("Failed reading %s", inst->_x); return -1;} while (0)
+#define READFILE(_x, _y, _d) if (getrecv_filename(inst, inst->_x, &inst->_y, &inst->_d, inst->key_data_type) != 0) do { ERROR("Failed reading %s", inst->_x); return -1;} while (0)
 
-	READFILE(filename, common, common_def);
-	READFILE(usersfile, users, users_def);
-	READFILE(acct_usersfile, acct_users, acct_users_def);
-	READFILE(auth_usersfile, auth_users, auth_users_def);
-	READFILE(postauth_usersfile, postauth_users, postauth_users_def);
+	READFILE(common_filename, common_htrie, common_def);
+	READFILE(recv_filename, recv_htrie, recv_pl);
+	READFILE(recv_acct_filename, recv_acct_users, recv_acct_pl);
+	READFILE(auth_filename, auth_htrie, auth_pl);
+	READFILE(send_filename, send_htrie, send_pl);
 
 	return 0;
 }
@@ -639,14 +635,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
 	return file_common(p_result, inst, env_data, request,
-			   inst->users ? inst->users : inst->common,
-			   inst->users ? inst->users_def : inst->common_def);
+			   inst->recv_htrie ? inst->recv_htrie : inst->common_htrie,
+			   inst->recv_htrie ? inst->recv_pl : inst->common_def);
 }
 
 
 /*
- *	Pre-Accounting - read the acct_users file for check_items and
- *	config. Reply items are Not Recommended(TM) in acct_users,
+ *	Pre-Accounting - read the recv_acct_users file for check_items and
+ *	config. Reply items are Not Recommended(TM) in recv_acct_users,
  *	except for Fallthrough, which should work
  */
 static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -655,8 +651,8 @@ static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, modul
 	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
 	return file_common(p_result, inst, env_data, request,
-			   inst->acct_users ? inst->acct_users : inst->common,
-			   inst->acct_users ? inst->acct_users_def : inst->common_def);
+			   inst->recv_acct_users ? inst->recv_acct_users : inst->common_htrie,
+			   inst->recv_acct_users ? inst->recv_acct_pl : inst->common_def);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -665,8 +661,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
 	return file_common(p_result, inst, env_data, request,
-			   inst->auth_users ? inst->auth_users : inst->common,
-			   inst->auth_users ? inst->auth_users_def : inst->common_def);
+			   inst->auth_htrie ? inst->auth_htrie : inst->common_htrie,
+			   inst->auth_htrie ? inst->auth_pl : inst->common_def);
 }
 
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
@@ -675,8 +671,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
 	return file_common(p_result, inst, env_data, request,
-			   inst->postauth_users ? inst->postauth_users : inst->common,
-			   inst->postauth_users ? inst->postauth_users_def : inst->common_def);
+			   inst->send_htrie ? inst->send_htrie : inst->common_htrie,
+			   inst->send_htrie ? inst->send_pl : inst->common_def);
 }
 
 /*
@@ -706,12 +702,6 @@ module_rlm_t rlm_files = {
 		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){
-		/*
-		 *	Hack to support old configurations
-		 */
-		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
-		  .method_env = &method_env	},
-
 		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct,
 		  .method_env = &method_env	},
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,

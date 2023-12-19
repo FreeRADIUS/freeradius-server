@@ -27,16 +27,22 @@ The content of this attribute is used to match the `name` of the entry.
 
 filename:: The old `users` style file is now located here.
 
-
-
-usersfile:: This is accepted for backwards compatibility
-It will be removed in a future release.
+If no other filenames are specified, the module uses this file.
 
 
 
-WARNING: These are accepted for backwards compatibility.
-They will be renamed in a future release.
+Optional files
 
+The following filenames are optional.
+
+
+recv_filename:: The file to run in any "recv" section
+
+send_filename:: The file to run in any "send" section
+
+auth_filename:: The file to run in any "authenticate" section
+
+acct_filename:: The file to run in any "recv Accounting-Request" section
 
 == Default Configuration
 
@@ -45,8 +51,9 @@ files {
 	moddir = ${modconfdir}/${.:instance}
 #	key = "%{&Stripped-User-Name || &User-Name}"
 	filename = ${moddir}/authorize
-#	usersfile = ${moddir}/authorize
-	acctusersfile = ${moddir}/accounting
-	preproxy_usersfile = ${moddir}/pre-proxy
+#	recv_filename =  ${moddir}/recv
+#	send_filename =  ${moddir}/send
+#	auth_filename =  ${moddir}/authenticate
+#	acct_filename =  ${moddir}/accounting
 }
 ```
