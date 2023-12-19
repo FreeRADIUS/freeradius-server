@@ -857,7 +857,6 @@ fi
 %doc %{_mandir}/man5/dictionary.5.gz
 %doc %{_mandir}/man5/radiusd.conf.5.gz
 %doc %{_mandir}/man5/unlang.5.gz
-%doc %{_mandir}/man5/users.5.gz
 %doc %{_mandir}/man8/radcrypt.8.gz
 %doc %{_mandir}/man8/raddebug.8.gz
 %doc %{_mandir}/man8/radmin.8.gz
