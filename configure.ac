@@ -2163,7 +2163,7 @@ if test "x$ac_cv_header_execinfo_h" = "xyes"; then
       #include <execinfo.h>
     ]], [[
       void *sym[1];
-      backtrace_symbols(&sym, sizeof(sym)) ]])],[
+      backtrace_symbols(sym, sizeof(sym)) ]])],[
       AC_MSG_RESULT(yes)
       ac_cv_lib_execinfo_backtrace_symbols="yes"
     ],[
