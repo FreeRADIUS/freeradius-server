@@ -452,8 +452,11 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 	fr_assert(fr_comparison_op[map->op]);
 
 	if (tmpl_find_vp(&vp, request, map->lhs) < 0) {
+		if (map->op == T_OP_CMP_FALSE) return true;		
 		return 0;
 	}
+
+	if (map->op == T_OP_CMP_TRUE) return false;
 
 	if (tmpl_is_data(map->rhs)) {
 		box = tmpl_value(map->rhs);

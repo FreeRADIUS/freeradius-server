@@ -158,6 +158,19 @@ It is not possible in the `users` file to create, compare, or edit a structural 
 
 The list of comparison operators for check items is given in the xref:reference:unlang/condition/cmp.adoc[conditional comparisons] page.  However, the `users` file format does not support casting in a comparison.
 
+As a special case for compatibility with previous versions, the `users` file also supports two additional comparison operators:
+
+.Additional Comparison Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| =*       | Matches if the attribute exists, no matter what the value is.
+| !*       | Matches if the attribute does not exist, no matter what the value is.
+|=====
+
+Due to limitations of the `users` file format, a value must be specified for these additional comparison operators.  The best practice is to use a meaningless special value `ANY`, such as `Framed-IP-Address !* ANY`.
+
 The assignment operators follow the behavior of the `user` file, and *do not* follow the new xref:reference:unlang/edit.adoc[editing operators] behavior.  The reason for this mismatch is that we prefer to not break backwards compatibility for the `users` file.  Both because of how how the operators work, and because using the new-style operators in the `users` format would require changing the `users` file format so much that it would be unrecognizable, and likely not usable.
 
 As a result, the attribute editing operators for the `users` file follow the old-style functionality, as documented below.
