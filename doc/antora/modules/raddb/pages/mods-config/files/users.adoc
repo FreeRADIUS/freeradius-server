@@ -1,0 +1,214 @@
+= The users file
+
+The `users` file is managed by the xref:raddb:mods-available/files.adoc[files] module.  The format largely goes back to the original Livingston RADIUS server in 1991!
+
+While the format is still called `users` for historical reasons, the name of the file is controlled by the configuration of the xref:raddb:mods-available/files.adoc[files] module, and can therefore something other than `users`.
+
+The format is text-based.  Empty lines, and lines which begin with a
+comment (`#`) or whitespace plus a comment are ignored.  All other
+text has to follow a fixed format:
+
+.users file format
+----
+name	... check items ...
+	... reply items ...,
+	... reply items ...
+----
+
+name:: The name of the entry.  It must be an unquoted string such as `john`.  The xref:raddb:mods-available/files.adoc[files] module configuration expands the `key` configuration item, and then uses the result to match the `name` of the entry.
+
+check items:: A comma-separated list of attributes to use for conditional matches, such as `Framed-IP-Address == 192.0.2.1`, or `NAS-IP-Address == 192.0.2.2, NAS-Port = 15`.  Multiple conditions are matched with a logical "and".  There is no way to use a logical "or" between conditions.
++
+The conditional matching must be done via comparison operators such as `==`, `<`, `<=`, etc.
++
+The list of check items can be empty, in which case the first line of the entry contains the `name`, and nothing more.
+
+reply items:: A comma-separated list of attributes which are added to the reply, such as `Reply-Message := "Hello"`, or `Filter-Id := "foo", Filter-Id += "bar"`.
++
+The list of reply items can span multiple line, in which case each intermediate line must end with a comma, and the last line of the reply items must not end with a comma.
++
+Each line containing reply items must begin with a tab character.
++
+The list of reply items can be empty, in which case there must be a blank line after the line which contains the `name` and check items.
+
+There is no limit to the size of the file or number of entries in it, other than available memory.  The file is read and cached when the server starts, and cannot be changed while the server is running.
+
+== Processing
+
+The file is processed by finding one or more matching entries, subject to the additional functionality described below.
+
+The entries are placed into a data structure which nest leverages the data type of the `key`:
+
+IP addresses and prefixes:: Patricia trie.
+
+string, octets, date, time_delta:: balanced binary tree.
+
+structural types:: not allowed
+
+all other data types:: hash.
+
+These data structures allow the module to operate extremely quickly.  When doing performance tests, there is very little difference between a `users` file which contains one entry, and a `users` file which contains a million entries.
+
+Where multiple entries are matched, the entries are matched in the order that they appear in the file.  That is, they are matched from the top of the file to the bottom of the file.
+
+=== The $INCLUDE directive
+
+As a special case, the line can begin with the name `$INCLUDE`.  The `$INCLUDE` name must be followed by a filename.
+
+.Example
+----
+$INCLUDE next_users_file
+----
+
+The `$INCLUDE` directive reads another file into the current `users` file, as if the contents had been included in-place in the original file.
+
+The filename can be absolute, and begin with `/`.  That usage is not recommended.
+
+If the filename does not begin with `/`, it is a relative filename.  The module reads the file which is relative to the current file being processed.  For example, if the current file is `/etc/raddb/mods-config/files/users` and that file contains a directive `$INCLUDE next`, the file which will be read is `/etc/raddb/mods-config/files/next`.
+
+The `$INCLUDE` can be nested to any depth, subject only to available memory.  The module does not cross-reference `$INCLUDE` files, so it is possible for a file to `$INCLUDE` itself in an infinite loop.  This practice is not recommended.  When this misconfiguration happens, the server will run out of memory processing the file, and then exit.
+
+The purpose of `$INCLUDE` is to allow the `users` file to be broken up into multiple logical pieces.  For example, a system mayneed to generate multiple different types of `users ` file entries, depending on the type of user.  These different entries may be placed into different files, so that each different file can be regenerated independently.
+
+=== Matching an entry
+
+An entry is said to match if the `name` field matches.  Once the entry matches, the module looks for and processes any check items.
+
+The check items are matched using the same operations as for xref:reference:unlang/condition/cmp.adoc[conditional comparisons].
+
+NOTE: Only conditional comparisons are allowed, the rest of the conditional syntax such as nested conditions `(...)` or `||` and `&&` are not permitted.
+
+If the check items all match, the module adds the reply items (if any) to the request.
+
+For historical compatibility, the check item list also supports some attribute assignments.  Any check item which uses an assignment operator (`=`, `:=`, etc.) is added to the `control` list.
+
+=== Fall-Through
+
+When processing the reply items, the attribute `Fall-Through = yes` has special meaning. If it is found in list of reply items, then the module will continue processing the `users` file, and will look for a subsequent matching entry.
+
+The `Fall-Through` attribute is most commonly used to apply rules to specific users, but then also apply generic rules, as in the example below.
+
+.Example
+----
+bob	Password.Cleartext := "hello"
+	Framed-IP-Address := 192.0.2.1,
+	Fall-Through = yes
+
+DEFAULT
+	Reply-Message := "Hello %{User-Name}"
+----
+
+In this example, the user `bob` will have both the `Framed-IP-Address` and `Reply-Message` attributes added in any reply.
+
+=== Next-Shortest-Prefix
+
+If the `key` field is an IP address or prefix data type, the module tracks the prefix.  When an entry matches, the `Next-Shortest-Prefix` attribute is also checked.  If set to `yes`, the module will decrease the value of the prefix, and look for a matching entry.  i.e. the "next shortest prefix" after the current one.
+
+The interaction between `Fall-Through` and `Next-Shortest-Prefix` allows the `users` file to match both multiple entries for the current `key` value, and also to apply rules to entire networks.  However, the reply items should only contain one of `Fall-Through` or `Next-Shortest-Prefix`.  If both appear in the reply item list, the `Next-Shortest-Prefix` attribute is ignored.
+
+.Example
+----
+192.0.2.1
+	Filter-Id := "foo",
+	Next-Shortest-Prefix = yes
+
+192.0.0.0/8
+	Reply-Message = "In the 192 network"
+----
+
+In this example, a `key` of `192.0.2.1` will both a `Filter-Id` attribute, and a `Reply-Message` attribute.  In contrast, a `key` of `192.0.2.255` will only return a `Reply-Message` attribute.
+
+=== The DEFAULT name
+
+If no entry matches, the special name `DEFAULT` will be matched.  The `DEFAULT` entry can also match if a previous `name` matched, and the reply items contained `Fall-Through = yes`, or `Next-Shortest-Prefix = yes`.
+
+We recommend not using `DEFAULT` when the `key` is an IP address or prefix.  It is better instead to use a network and mask, such as `192.0.2/24`, or `0/0`.
+
+=== Recommendations
+
+Entries which reject requests should go at the top of the file, and
+should not use `Fall-Through` item.  Entries for specific users who do
+not have a `Fall-Through`, should come next.  Any `DEFAULT` entries
+should usually come last.  This ordering means that it will be easier
+to debug policies, and understand how the file works.
+
+== Check and Reply item format
+
+Each check item or reply item must follow the same format, which is shown in the examples above.  The format is an attribute name, followed by an operator, and then a value.
+
+attribute:: An attribute name such as `Framed-IP-Address`
+
+operator:: A comparison operator (for check items), or an assignment operator.  See the "Item Operators" section for a list of operators abd their meaning.
+
+value:: A value such as `192.0.2.1`, `15`, or string `"foo"`.  Values can also be attribute references.  See the "Item Values" section below for more information.
+
+=== Item Attributes
+
+The `attribute` name for an item can be a simple name such as `Filter-Id`.  The name can also be an xref:reference:unlang/attr.adoc[attribute reference] such as `reply.Reply-Message`.
+
+Attribute references are supported for both the check items and reply items.
+
+The default list for the check items is `control`.  Specifying another list means that the comparison is done instead on the referenced attribute.
+
+The default list for the reply items is `reply`.  Specifying another list means that the other list is updated, instead of the `reply` list.
+
+It is not possible in the `users` file to create, compare, or edit a structural data type such as `struct` or `tlv`.  Instead, the relevant leaf or child attribute has to be created, which will automatically create the parent.
+
+=== Item Operators
+
+The list of comparison operators for check items is given in the xref:reference:unlang/condition/cmp.adoc[conditional comparisons] page.  However, the `users` file format does not support casting in a comparison.
+
+The assignment operators follow the behavior of the `user` file, and *do not* follow the new xref:reference:unlang/edit.adoc[editing operators] behavior.  The reason for this mismatch is that we prefer to not break backwards compatibility for the `users` file.  Both because of how how the operators work, and because using the new-style operators in the `users` format would require changing the `users` file format so much that it would be unrecognizable, and likely not usable.
+
+As a result, the attribute editing operators for the `users` file follow the old-style functionality, as documented below.
+
+.Attribute Editing Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| =        | Set the attribute to the contents of the value, if the given attribute does not exist.  If the attribute already exists, nothing is done.  If the attribute does not exist, it is created, and the contents set to the given value.
+| :=       | Delete all existing copies of the named attribute, and create a new attribute with the contents set to the given value.
+| +=       | Create the attribute using the given value, and append the attribute to the list (insert at tail).
+| ^=       | Create the attribute using the given value, and prepend the attribute to the list (insert at head).
+| -=       | Delete all attributes which match the given value.
+|=====
+
+There are also _filtering_ operators.  These operators ensure that the
+value of the attribute passes the filter.  If the attribute being
+filtered does not exist, it is created.
+
+.Attribute Filtering Operators
+[options="header"]
+[cols="10%,90%"]
+|=====
+| Operator | Description
+| \<=       | Ensure that the attribute exists, and has value less than or equal to the given value.
+| >=       | Ensure that the attribute exists, and has value greater than than or equal to the given value.
+|=====
+
+If the value does not pass the filter comparison, its value is replaced with the value from the filter comparison.
+
+=== Item Values
+
+The values for items can be a simple value such as `192.0.2.1`, an xref:reference:xlat/index.adoc[xlat] string to expand such as `"Hello %{User-Name}"`, or an xref:reference:unlang/attr.adoc[attribute reference] such as `&request.Filter-Id`.
+
+The attribute references should have an `&` prefix, to more clearly separate them from enumeration values such as `Service-Type := Framed-User`.
+
+References can be to an attribute which has a different data type than the attribute named on the left-hand side of the check item or reply item.  In which case the values will be automatically cast to the correct type, as documented in the xref:reference:unlang/condition/cmp.adoc[conditional comparison] and ref:reference:unlang/edit.adoc[edit] pages.
+
+.Example
+----
+#
+#  Match "bob", but only if he's logging in from this particular NAS
+#  Send a user-specific Reply-Message, and ACK any Framed-IP-Address
+#  which was requested.
+#
+bob	NAS-IP-Address == 192.0.2.1, Password.Cleartext := "hello"
+	Reply-Message := "Hello %{User-Name}",
+	Framed-IP-Address := &request.Framed-IP-Address
+----
+
+
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// This documentation was developed by Network RADIUS SAS.

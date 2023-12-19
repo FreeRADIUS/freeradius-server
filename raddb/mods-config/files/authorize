@@ -1,42 +1,30 @@
 #
 # 	Configuration file for the rlm_files module.
-# 	Please see rlm_files(5) manpage for more information.
+# 	Please see rlm_files documentation for more information.
 #
 # 	This file contains authentication security and configuration
 #	information for each user.  Accounting requests are NOT processed
-#	through this file.  Instead, see 'accounting', in this directory.
+#	through this file.  Instead, see the 'accounting' file in this directory.
 #
-#	The first field is the user's name and can be up to
-#	253 characters in length.  This is followed (on the same line) with
-#	the list of authentication requirements for that user.  This can
-#	include password, comm server name, comm server port number, protocol
-#	type.
+#	The first field is the user's name, followed (on the same
+#	line) with the list of check items for that user.  The next
+#	lines are reply items, which must begin with tabs.
 #
 #	If you are not sure why a particular reply is being sent by the
 #	server, then run the server in debugging mode (radiusd -X), and
 #	you will see which entries in this file are matched.
 #
-#	When an authentication request is received from the comm server,
-#	these values are tested. Only the first match is used unless the
-#	"Fall-Through" variable is set to "Yes".
+#	The special attribute Fall-Through is used to control whether or not
+#	multiple entries match.
 #
-#	A special user named "DEFAULT" matches on all usernames.
-#	You can have several DEFAULT entries. All entries are processed
-#	in the order they appear in this file. The first entry that
-#	matches the login-request will stop processing unless you use
-#	the Fall-Through variable.
-#
-#	Indented (with the tab character) lines following the first
-#	line indicate the configuration values to be passed back to
-#	the comm server to allow the initiation of a user session.
-#	This can include things like the PPP configuration values
-#	or the host to log the user onto.
+#	A special entry "DEFAULT" matches all entries.  You can have
+#	several DEFAULT entries. All entries are processed in the
+#	order they appear in this file. The first entry that matches
+#	the login-request will stop processing unless you use the
+#	Fall-Through variable.
 #
 #	You can include another `users' file with `$INCLUDE users.other'
 
-#
-#	For a list of RADIUS attributes, and links to their definitions,
-#	see: http://www.freeradius.org/rfc/attributes.html
 #
 #	Entries below this point are examples included in the server for
 #	educational purposes. They may be deleted from the deployed
