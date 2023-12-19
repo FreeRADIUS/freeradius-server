@@ -148,7 +148,7 @@ sub process_file {
 				$links{$key} = "$opt_a/$key.adoc";
 			}
 			elsif ($key =~ /^sites-available\/./) {
-				$links{$key} = "$opt_a/$key.adoc";
+			    	$links{$key} = "$opt_a/$key.adoc";
 			}
 
 			#
@@ -200,6 +200,8 @@ sub process_file {
 		} else {
 			$line =~ s,RFC (\d+),https://tools.ietf.org/html/rfc${1}\[RFC $1\],g;
 		}
+
+		$line =~ s,doc/antora/modules/([^/]+)/pages/(.*)/([^/]+).adoc,xref:$1:$2/$3.adoc[$3],g;
 
 		if (!$print_code) {
 		    if ($raw && $was_raw) {
