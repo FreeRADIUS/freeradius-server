@@ -9,8 +9,8 @@
 #
 #  The `users` file as located in `raddb/mods-config/files/authorize`. (Livingston-style format).
 #
-#  See the asciidoc documentation in the `raddb/mods-config/files/users` file for information
-#  on the format of the `users` file, and how it operates.
+#  See the in the xref:raddb:mods-config/files/users.adoc[users] file documention for information
+#  on the format of the input file, and how it operates.
 #
 
 #

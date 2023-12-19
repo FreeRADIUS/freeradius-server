@@ -19,7 +19,7 @@ name:: The name of the entry.  It must be an unquoted string such as `john`.  Th
 
 check items:: A comma-separated list of attributes to use for conditional matches, such as `Framed-IP-Address == 192.0.2.1`, or `NAS-IP-Address == 192.0.2.2, NAS-Port = 15`.  Multiple conditions are matched with a logical "and".  There is no way to use a logical "or" between conditions.
 +
-The conditional matching must be done via comparison operators such as `==`, `<`, `<=`, etc.
+The conditional matching must be done via comparison operators such as `==`, `<`, `\<=`, etc.
 +
 The list of check items can be empty, in which case the first line of the entry contains the `name`, and nothing more.
 
@@ -43,9 +43,9 @@ IP addresses and prefixes:: Patricia trie.
 
 string, octets, date, time_delta:: balanced binary tree.
 
-structural types:: not allowed
-
 all other data types:: hash.
+
+structural types:: not allowed
 
 These data structures allow the module to operate extremely quickly.  When doing performance tests, there is very little difference between a `users` file which contains one entry, and a `users` file which contains a million entries.
 
@@ -72,13 +72,13 @@ The purpose of `$INCLUDE` is to allow the `users` file to be broken up into mult
 
 === Matching an entry
 
-An entry is said to match if the `name` field matches.  Once the entry matches, the module looks for and processes any check items.
+An entry is found by searching for the matching `name` field.  Once the entry is found, the module looks for and processes any check items.
 
 The check items are matched using the same operations as for xref:reference:unlang/condition/cmp.adoc[conditional comparisons].
 
 NOTE: Only conditional comparisons are allowed, the rest of the conditional syntax such as nested conditions `(...)` or `||` and `&&` are not permitted.
 
-If the check items all match, the module adds the reply items (if any) to the request.
+If all of the check items, the module adds the reply items (if any) to the request.
 
 For historical compatibility, the check item list also supports some attribute assignments.  Any check item which uses an assignment operator (`=`, `:=`, etc.) is added to the `control` list.
 
@@ -104,7 +104,7 @@ In this example, the user `bob` will have both the `Framed-IP-Address` and `Repl
 
 If the `key` field is an IP address or prefix data type, the module tracks the prefix.  When an entry matches, the `Next-Shortest-Prefix` attribute is also checked.  If set to `yes`, the module will decrease the value of the prefix, and look for a matching entry.  i.e. the "next shortest prefix" after the current one.
 
-The interaction between `Fall-Through` and `Next-Shortest-Prefix` allows the `users` file to match both multiple entries for the current `key` value, and also to apply rules to entire networks.  However, the reply items should only contain one of `Fall-Through` or `Next-Shortest-Prefix`.  If both appear in the reply item list, the `Next-Shortest-Prefix` attribute is ignored.
+The interaction between `Fall-Through` and `Next-Shortest-Prefix` allows the `users` file to match both multiple entries for the current `key` value, and also to apply rules to entire networks.  However, the reply items for one entry should only contain one of `Fall-Through` or `Next-Shortest-Prefix`.  If both appear in a reply item list, the `Next-Shortest-Prefix` attribute is ignored.
 
 .Example
 ----
@@ -138,7 +138,7 @@ Each check item or reply item must follow the same format, which is shown in the
 
 attribute:: An attribute name such as `Framed-IP-Address`
 
-operator:: A comparison operator (for check items), or an assignment operator.  See the "Item Operators" section for a list of operators abd their meaning.
+operator:: A comparison operator (for check items), or an assignment operator.  See the "Item Operators" section for a list of operators and their meaning.
 
 value:: A value such as `192.0.2.1`, `15`, or string `"foo"`.  Values can also be attribute references.  See the "Item Values" section below for more information.
 
@@ -208,7 +208,6 @@ bob	NAS-IP-Address == 192.0.2.1, Password.Cleartext := "hello"
 	Reply-Message := "Hello %{User-Name}",
 	Framed-IP-Address := &request.Framed-IP-Address
 ----
-
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
