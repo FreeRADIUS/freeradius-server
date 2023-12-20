@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-#  -*- coding: utf-8 -*-
 #  Copyright 2019 NetworkRADIUS SARL (legal@networkradius.com)
 #  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 #
@@ -21,8 +20,6 @@
 #  - verify if the jlibtool and unit_test_attribute exist
 #  - check if we could call dhcpv6_tp_decode_pair direct from libfreeradius-dhcpv6.{so,dylib}
 #
-
-from __future__ import print_function
 
 import argparse
 import os

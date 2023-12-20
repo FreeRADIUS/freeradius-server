@@ -6,8 +6,6 @@
 # Copyright 2023 The FreeRADIUS Project
 #
 
-from __future__ import print_function
-
 import argparse
 import binascii
 import configparser
