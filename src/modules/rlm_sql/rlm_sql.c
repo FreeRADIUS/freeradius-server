@@ -913,8 +913,20 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 					continue;
 				}
 
+				if (!fr_comparison_op[map->op]) {
+					REDEBUG("Invalid operator '%s'", fr_tokens[map->op]);
+					goto fail;
+				}
+
+				if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
+				    (map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
+					REDEBUG("Invalid comparison for structural type");
+					goto fail;
+				}
+
 				RDEBUG2("    &%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
 				if (radius_legacy_map_cmp(request, map) != 1) {
+				fail:
 					map_list_talloc_free(&check_tmp);
 					map_list_talloc_free(&reply_tmp);
 					return 0;
@@ -1371,8 +1383,20 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 					continue;
 				}
 
+				if (!fr_comparison_op[map->op]) {
+					REDEBUG("Invalid operator '%s'", fr_tokens[map->op]);
+					goto fail;
+				}
+
+				if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
+				    (map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
+					REDEBUG("Invalid comparison for structural type");
+					goto fail;
+				}
+
 				RDEBUG2("    &%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
 				if (radius_legacy_map_cmp(request, map) != 1) {
+				fail:
 					map_list_talloc_free(&check_tmp);
 					map_list_talloc_free(&reply_tmp);
 					RDEBUG2("failed match: skipping this entry");
