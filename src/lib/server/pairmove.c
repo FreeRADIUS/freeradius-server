@@ -326,7 +326,28 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	 *	Finds both the correct ctx and nested list.
 	 */
 	tmpl_pair_list_and_ctx(ctx, list, request, tmpl_request(map->lhs), tmpl_list(map->lhs));
-	if (!ctx) return -1;
+	if (!ctx) {
+		switch (map->op) {
+		case T_OP_CMP_FALSE:
+			return 1;
+
+		case T_OP_CMP_TRUE:
+			return 0;
+
+		case T_OP_EQ:
+		case T_OP_SET:
+		case T_OP_ADD_EQ:
+		case T_OP_PREPEND:
+		case T_OP_CMP_EQ:
+		case T_OP_LE:
+		case T_OP_GE:
+			if (tmpl_find_or_add_vp(&vp, request, map->lhs) < 0) return -1;
+			break;
+
+		default:
+			return -1;
+		}
+	}
 
 	da = tmpl_attr_tail_da(map->lhs);
 
