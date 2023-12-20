@@ -79,7 +79,7 @@ $(foreach x, $(FILES), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/l
 #
 #  sql_foo depends on rlm_sql, too.
 #
-$(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(patsubst %,$(BUILD_DIR)/lib/rlm_sql.la,$(patsubst %/,%,$(firstword $(subst /, ,$(dir $x)))))))
+$(foreach x, $(filter sql_%,$(FILES)), $(eval $$(OUTPUT.$(TEST))/$x: $(BUILD_DIR)/lib/local/rlm_sql.la))
 
 #
 #  Files in the output dir depend on the unit tests
