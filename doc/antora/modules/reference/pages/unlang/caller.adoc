@@ -26,7 +26,7 @@ subrequest.  It is largely equivalent to something like:
 
 [source,unlang]
 ----
-if (parant && parent dictionary is RADIUS) {
+if (parent && parent dictionary is RADIUS) {
     ... statements ...
 }
 ----
