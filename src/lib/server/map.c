@@ -2504,13 +2504,6 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 	 */
 	if (!fr_type_is_leaf(my_rules.enumv->type)) {
 		my_rules.enumv = NULL;
-
-		if (!*rhs) {
-			*out = map;
-			return 0;
-		}
-
-		fr_assert(0);
 	}
 
 	/*
@@ -2532,6 +2525,12 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
 					 quote, value_parse_rules_quoted[quote], &my_rules);
 		if (slen <= 0) goto error;
+
+	} else if (!rhs[0]) {
+		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_BARE_WORD, "", 0));
+
+		(void) fr_value_box_strdup(map->rhs, tmpl_value(map->rhs), NULL, "", false);
+
 	} else {
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);

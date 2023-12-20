@@ -982,11 +982,7 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 		for (map = map_list_head(&reply_tmp);
 		     map != NULL;
 		     map = map_list_next(&reply_tmp, map)) {
-			if (map->rhs) {
-				RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
-			} else {
-				RDEBUG2("&%s %s {}", map->lhs->name, fr_tokens[map->op]);
-			}
+			RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
 
 			if (radius_legacy_map_apply(request, map) < 0) {
 				RPEDEBUG("Failed applying reply item");
@@ -1444,12 +1440,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		for (map = map_list_head(&reply_tmp);
 		     map != NULL;
 		     map = map_list_next(&reply_tmp, map)) {
+			RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
 
-			if (map->rhs) {
-				RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
-			} else {
-				RDEBUG2("&%s %s {}", map->lhs->name, fr_tokens[map->op]);
-			}
 			if (radius_legacy_map_apply(request, map) < 0) {
 				RPEDEBUG("Failed applying reply item");
 				map_list_talloc_free(&reply_tmp);

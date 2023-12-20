@@ -309,13 +309,9 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	talloc_free(deleted);
 }
 
-/** Move a map using the operators from the old pairmove functionality.
- *
- */
-int radius_legacy_map_apply(request_t *request, map_t const *map)
+static int radius_legacy_map_apply_structural(request_t *request, map_t const *map)
 {
-	int rcode;
-	fr_pair_t *vp, *next;
+	fr_pair_t *vp = NULL;
 	fr_dict_attr_t const *da;
 	fr_pair_list_t *list;
 	TALLOC_CTX *ctx;
@@ -324,17 +320,167 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 
 	/*
 	 *	Finds both the correct ctx and nested list.
+	 *
+	 *	Note that we have to cover the case *both* of a missing VP, and a missing parent list.
+	 *	This call can return the parent list, even if the VP itself is missing.
 	 */
 	tmpl_pair_list_and_ctx(ctx, list, request, tmpl_request(map->lhs), tmpl_list(map->lhs));
 	if (unlikely(!list)) return -1;
 	if (!ctx) {
+		/*
+		 *	The parent is missing, so add the parent and then the VP.
+		 */
 		switch (map->op) {
-		case T_OP_CMP_FALSE:
-			return 1;
+		case T_OP_EQ:
+		case T_OP_SET:
+		case T_OP_ADD_EQ:
+		case T_OP_PREPEND:
+			if (tmpl_find_or_add_vp(&vp, request, map->lhs) < 0) return -1;
+			break;
 
-		case T_OP_CMP_TRUE:
-			return 0;
+		default:	/* can't filter values or delete matching values for structural types */
+			return -1;
+		}
+	}
 
+	da = tmpl_attr_tail_da(map->lhs);
+
+	if (tmpl_is_attr(map->rhs)) {
+		fr_pair_t *rhs;
+
+		if (tmpl_find_vp(&rhs, request, map->rhs) < 0) return -1;
+
+		if (rhs->vp_type != da->type) {
+			fr_strerror_const("Incompatible data types");
+			return -1;
+		}
+
+		/*
+		 *	We just created this VP, so it's empty.  Copy the children of the RHS list to the LHS
+		 *	list.
+		 */
+		if (vp) goto copy_children;
+
+		/*
+		 *	The VP didn't exist, create it if necessary and then do the operation.
+		 */
+		switch (map->op) {
+		case T_OP_EQ:		/* set only if not already exist */
+			vp = fr_pair_find_by_da_nested(list, NULL, da);
+			if (vp) return 0;
+			goto add_vp;
+
+		case T_OP_SET:		/* delete all and append one */
+			fr_pair_delete_by_da_nested(list, da);
+			FALL_THROUGH;
+
+		case T_OP_ADD_EQ:	/* append one */
+		add_vp:
+			vp = fr_pair_afrom_da_nested(ctx, list, da);
+			if (!vp) return -1;
+			break;
+
+		copy_children:
+			return fr_pair_list_copy(vp, &vp->vp_group, &rhs->vp_group);
+
+		default:
+			break;
+		}
+
+		fr_strerror_const("Invalid operator for assignment");
+		return -1;
+
+	} else if (tmpl_is_data(map->rhs)) {
+		box = tmpl_value(map->rhs);
+
+	} else if (tmpl_is_xlat(map->rhs)) {
+		if (tmpl_aexpand(ctx, &to_free, request, map->rhs, NULL, NULL) < 0) return -1;
+
+		box = to_free;
+
+	} else {
+		fr_strerror_const("Unknown RHS");
+		return -1;
+	}
+
+	if (box->type != FR_TYPE_STRING) {
+		fr_strerror_const("Cannot parse child list");
+		TALLOC_FREE(to_free);
+		return -1;
+	}
+
+	/*
+	 *	We added a VP which hadn't previously existed.  Therefore just set the value and return.
+	 */
+	if (vp) goto child_list;
+
+	/*
+	 *	The parent exists, but the VP may not exist.  Perform the relevant operations.
+	 */
+	switch (map->op) {
+	case T_OP_EQ:		/* set only if not already exist */
+		vp = fr_pair_find_by_da_nested(list, NULL, da);
+		if (vp) break;
+		goto add;
+
+	case T_OP_SET:		/* delete all and append one */
+		fr_pair_delete_by_da_nested(list, da);
+		FALL_THROUGH;
+
+	case T_OP_ADD_EQ:	/* append one */
+	add:
+		vp = fr_pair_afrom_da_nested(ctx, list, da);
+		if (!vp) {
+			TALLOC_FREE(to_free);
+			return -1;
+		}
+
+	child_list:
+		/*
+		 *	There's no child list, this list is therefore empty.
+		 */
+		if (!box->vb_strvalue[0]) break;
+
+		fr_assert(0);
+		break;
+
+	default:
+		fr_strerror_const("Invalid operator for assignment");
+		return -1;
+	}
+
+	TALLOC_FREE(to_free);
+	return 0;
+}
+
+
+/** Move a map using the operators from the old pairmove functionality.
+ *
+ */
+int radius_legacy_map_apply(request_t *request, map_t const *map)
+{
+	int rcode;
+	fr_pair_t *vp = NULL, *next;
+	fr_dict_attr_t const *da;
+	fr_pair_list_t *list;
+	TALLOC_CTX *ctx;
+	fr_value_box_t *to_free = NULL;
+	fr_value_box_t const *box;
+
+	if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) return radius_legacy_map_apply_structural(request, map);
+
+	/*
+	 *	Finds both the correct ctx and nested list.
+	 *
+	 *	Note that we have to cover the case *both* of a missing VP, and a missing parent list.
+	 *	This call can return the parent list, even if the VP itself is missing.
+	 */
+	tmpl_pair_list_and_ctx(ctx, list, request, tmpl_request(map->lhs), tmpl_list(map->lhs));
+	if (!ctx) {
+		/*
+		 *	The parent is missing, so add the parent and then the VP.
+		 */
+		switch (map->op) {
 		case T_OP_EQ:
 		case T_OP_SET:
 		case T_OP_ADD_EQ:
@@ -348,6 +494,9 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 			if (tmpl_find_or_add_vp(&vp, request, map->lhs) < 0) return -1;
 			break;
 
+		case T_OP_SUB_EQ: /* delete nothing == nothing */
+			return 0;
+
 		default:
 			return -1;
 		}
@@ -355,24 +504,20 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 
 	da = tmpl_attr_tail_da(map->lhs);
 
-	if (fr_type_is_structural(da->type)) {
-		if (!map->rhs) return 0;
-
-		fr_assert(0);
-	}
-
 	if (tmpl_is_data(map->rhs)) {
 		box = tmpl_value(map->rhs);
 
 	} else if (tmpl_is_attr(map->rhs)) {
-		if (tmpl_find_vp(&vp, request, map->rhs) < 0) return -1;
+		fr_pair_t *rhs;
 
-		if (vp->vp_type != da->type) {
+		if (tmpl_find_vp(&rhs, request, map->rhs) < 0) return -1;
+
+		if (rhs->vp_type != da->type) {
 			fr_strerror_const("Incompatible data types");
 			return -1;
 		}
 
-		box = &vp->data;
+		box = &rhs->data;
 
 	} else if (tmpl_is_xlat(map->rhs)) {
 		if (tmpl_aexpand(ctx, &to_free, request, map->rhs, NULL, NULL) < 0) return -1;
@@ -384,17 +529,21 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		return -1;
 	}
 
-	switch (map->op) {
-	case T_OP_CMP_FALSE:	/* delete all */
-		fr_pair_delete_by_da_nested(list, da);
-		break;
+	/*
+	 *	We added a VP which hadn't previously existed.  Therefore just set the value and return.
+	 */
+	if (vp) goto cast_value;
 
+	/*
+	 *	The parent exists, but the VP may not exist.  Perform the relevant operations.
+	 */
+	switch (map->op) {
 	case T_OP_EQ:		/* set only if not already exist */
 		vp = fr_pair_find_by_da_nested(list, NULL, da);
-		if (vp) goto success;
+		if (vp) break;
 		goto add;
 
-	case T_OP_SET:		/* delete all and set one */
+	case T_OP_SET:		/* delete all and append one */
 		fr_pair_delete_by_da_nested(list, da);
 		FALL_THROUGH;
 
@@ -403,9 +552,8 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		vp = fr_pair_afrom_da_nested(ctx, list, da);
 		if (!vp) goto fail;
 
+	cast_value:
 		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) {
-		fail_vp:
-			talloc_free(vp);
 		fail:
 			TALLOC_FREE(to_free);
 			return -1;
@@ -418,7 +566,10 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		vp = fr_pair_afrom_da(ctx, da);
 		if (!vp) goto fail;
 
-		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail_vp;
+		if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) {
+			talloc_free(vp);
+			goto fail;
+		}
 
 		fr_pair_prepend(list, vp);
 		break;
@@ -446,6 +597,8 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	case T_OP_CMP_EQ:      	/* replace if not == */
 	case T_OP_LE:		/* replace if not <= */
 	case T_OP_GE:		/* replace if not >= */
+		if (vp) goto copy;
+
 		vp = fr_pair_find_by_da_nested(list, NULL, da);
 		if (!vp) goto add;
 
@@ -454,6 +607,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		if (rcode < 0) goto fail;
 
 		if (rcode == 0) {
+		copy:
 			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 		}
 
@@ -462,11 +616,10 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		break;
 
 	default:
-		fr_assert(0);
-		break;
+		fr_strerror_const("Invalid operator for assignment");
+		return -1;
 	}
 
-success:
 	TALLOC_FREE(to_free);
 	return 0;
 }
@@ -488,6 +641,11 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 	}
 
 	if (map->op == T_OP_CMP_TRUE) return false;
+
+	if (fr_type_is_structural(vp->vp_type)) {
+		fr_strerror_const("Invalid comparison for structural type");
+		return -1;
+	}
 
 	if (tmpl_is_data(map->rhs)) {
 		box = tmpl_value(map->rhs);
