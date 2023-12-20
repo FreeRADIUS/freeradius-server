@@ -226,7 +226,7 @@ struct sql_inst {
 };
 
 void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
-int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, map_list_t *out, char const *query, fr_dict_attr_t const *list);
+int		sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, map_list_t *out, char const *query, fr_dict_attr_t const *list);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t const *section, char const *query) CC_HINT(nonnull (1, 2, 4));
 sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
 sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));

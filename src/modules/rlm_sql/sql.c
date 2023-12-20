@@ -556,7 +556,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
+int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
 		  map_list_t *out, char const *query, fr_dict_attr_t const *list)
 {
 	rlm_sql_row_t	row;

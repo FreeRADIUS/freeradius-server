@@ -888,7 +888,7 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 			return -1;
 		}
 
-		rows = sql_getvpdata(request->control_ctx, inst, request, handle, &check_tmp, expanded, request_attr_request);
+		rows = sql_get_map_list(request->control_ctx, inst, request, handle, &check_tmp, expanded, request_attr_request);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Error retrieving check pairs for group %s", group_name);
@@ -949,7 +949,7 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 			return -1;
 		}
 
-		rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &reply_tmp, expanded, request_attr_reply);
+		rows = sql_get_map_list(request->reply_ctx, inst, request, handle, &reply_tmp, expanded, request_attr_reply);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Error retrieving reply pairs for group %s", group_name);
@@ -1338,7 +1338,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			RETURN_MODULE_RCODE(rcode);
 		}
 
-		rows = sql_getvpdata(request->control_ctx, inst, request, &handle, &check_tmp, expanded, request_attr_request);
+		rows = sql_get_map_list(request->control_ctx, inst, request, &handle, &check_tmp, expanded, request_attr_request);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Failed getting check attributes");
@@ -1399,7 +1399,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			goto error;
 		}
 
-		rows = sql_getvpdata(request->reply_ctx, inst, request, &handle, &reply_tmp, expanded, request_attr_reply);
+		rows = sql_get_map_list(request->reply_ctx, inst, request, &handle, &reply_tmp, expanded, request_attr_reply);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting reply attributes");
