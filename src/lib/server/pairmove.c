@@ -326,6 +326,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	 *	Finds both the correct ctx and nested list.
 	 */
 	tmpl_pair_list_and_ctx(ctx, list, request, tmpl_request(map->lhs), tmpl_list(map->lhs));
+	if (unlikely(!list)) return -1;
 	if (!ctx) {
 		switch (map->op) {
 		case T_OP_CMP_FALSE:
@@ -482,7 +483,7 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 	fr_assert(fr_comparison_op[map->op]);
 
 	if (tmpl_find_vp(&vp, request, map->lhs) < 0) {
-		if (map->op == T_OP_CMP_FALSE) return true;		
+		if (map->op == T_OP_CMP_FALSE) return true;
 		return 0;
 	}
 
