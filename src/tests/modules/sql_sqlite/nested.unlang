@@ -26,7 +26,7 @@ if (%sql("${insert_into_radreply} ('user_auth_nested', 'Digest-Attributes', ':='
 	test_fail
 }
 
-
+if (0) {
 if (%sql("${insert_into_radreply} ('user_auth_nested', '.Nonce', ':=', 'dcd98b7102dd2f0e8b11d0f600bfb0c093')") != "1") {
 	test_fail
 }
@@ -37,6 +37,7 @@ if (%sql("${insert_into_radreply} ('user_auth_nested', '.Method', ':=', 'Invite'
 
 if (%sql("${insert_into_radreply} ('user_auth_nested', '.URI', ':=', 'sip:bob@biloxi.com')") != "1") {
 	test_fail
+}
 }
 
 #

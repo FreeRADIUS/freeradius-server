@@ -338,6 +338,9 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		case T_OP_SET:
 		case T_OP_ADD_EQ:
 		case T_OP_PREPEND:
+			if (tmpl_find_or_add_vp(&vp, request, map->lhs) < 0) return -1;
+			break;
+
 		case T_OP_CMP_EQ:
 		case T_OP_LE:
 		case T_OP_GE:
@@ -350,6 +353,12 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	}
 
 	da = tmpl_attr_tail_da(map->lhs);
+
+	if (fr_type_is_structural(da->type)) {
+		if (!map->rhs) return 0;
+
+		fr_assert(0);
+	}
 
 	if (tmpl_is_data(map->rhs)) {
 		box = tmpl_value(map->rhs);
