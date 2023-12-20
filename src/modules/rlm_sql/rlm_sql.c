@@ -144,12 +144,35 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 /*
  *	Fall-Through checking function from rlm_files.c
  */
-static sql_fall_through_t fall_through(fr_pair_list_t *vps)
+static sql_fall_through_t fall_through(map_list_t *maps)
 {
-	fr_pair_t *tmp;
-	tmp = fr_pair_find_by_da(vps, NULL, attr_fall_through);
+	bool rcode;
+	map_t *map, *next;
 
-	return tmp ? tmp->vp_uint32 : FALL_THROUGH_DEFAULT;
+	for (map = map_list_head(maps);
+	     map != NULL;
+	     map = next) {
+		next = map_list_next(maps, map);
+
+		fr_assert(tmpl_is_attr(map->lhs));
+
+		if (tmpl_attr_tail_da(map->lhs) == attr_fall_through) {
+			(void) map_list_remove(maps, map);
+
+			if (tmpl_is_data(map->rhs)) {
+				fr_assert(tmpl_value_type(map->rhs) == FR_TYPE_BOOL);
+
+				rcode = tmpl_value(map->rhs)->vb_bool;
+			} else {
+				rcode = false;
+			}
+
+			talloc_free(map);
+			return rcode;
+		}
+	}
+
+	return  FALL_THROUGH_DEFAULT;
 }
 
 /*
@@ -839,60 +862,6 @@ static xlat_action_t sql_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-/*
- *	Simplified version of the old paircmp()
- *
- *	It does not support xlat expansions on the RHS of check items.  That limitation will be
- *	removed when this code is rewritten to support maps (for assignment) and xlat expressions (for
- *	conditions).
- */
-static bool paircmp(request_t *request, fr_pair_list_t *check_list)
-{
-	fr_pair_t *vp = NULL;
-
-	fr_pair_list_foreach(check_list, check) {
-		/*
-		 *	If the user is setting a configuration value, then don't bother comparing it to any
-		 *	attributes sent to us by the user.  It ALWAYS matches.
-		 */
-		if (!fr_comparison_op[check->op]) continue;
-
-	next_vp:
-		vp = fr_pair_find_by_da(&request->request_pairs, vp, check->da);
-		if (!vp) {
-			/*
-			 *	Matches if the VP doesn't exist.
-			 */
-			if (check->op == T_OP_CMP_FALSE) continue;
-
-			/*
-			 *	Otherwise doesn't match.
-			 */
-			return false;
-		}
-
-		/*
-		 *	We didn't want it, but it exists.
-		 */
-		if (check->op == T_OP_CMP_FALSE) return false;
-
-		/*
-		 *	We want it, and it exists.  We don't care what value it has.
-		 */
-		if (check->op == T_OP_CMP_TRUE) continue;
-
-		/*
-		 *	This attribute doesn't match.  Maybe there's another one which does match?
-		 */
-		if (fr_value_box_cmp_op(check->op, &vp->data, &check->data) != 1) goto next_vp;
-	}
-
-	/*
-	 *	Everything matched, we're OK.
-	 */
-	return true;
-}
-
 static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
 			       fr_pair_t *sql_group, char const *group_name,
 			       sql_fall_through_t *do_fall_through, rlm_rcode_t *rcode)
@@ -901,11 +870,11 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 	int		rows;
 	fr_pair_t	*vp;
 	char		*expanded = NULL;
-	fr_pair_list_t	check_tmp, reply_tmp;
+	map_list_t	check_tmp, reply_tmp;
 
 	added = false;
-	fr_pair_list_init(&check_tmp);
-	fr_pair_list_init(&reply_tmp);
+	map_list_init(&check_tmp);
+	map_list_init(&reply_tmp);
 
 	fr_pair_value_strdup(sql_group, group_name, true);
 
@@ -919,7 +888,7 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 			return -1;
 		}
 
-		rows = sql_getvpdata(request->control_ctx, inst, request, handle, &check_tmp, expanded);
+		rows = sql_getvpdata(request->control_ctx, inst, request, handle, &check_tmp, expanded, request_attr_request);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Error retrieving check pairs for group %s", group_name);
@@ -930,28 +899,36 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 		 *	If we got check rows we need to process them before we decide to
 		 *	process the reply rows
 		 */
-		if ((rows > 0) && !paircmp(request,&check_tmp)) {
-			fr_pair_list_free(&check_tmp);
-			return 0;
+		if (rows > 0) {
+			map_t *map, *next;
+
+			for (map = map_list_head(&check_tmp);
+			     map != NULL;
+			     map = next) {
+				next = map_list_next(&check_tmp, map);
+
+				if (fr_assignment_op[map->op]) {
+					(void) map_list_remove(&check_tmp, map);
+					map_list_insert_tail(&reply_tmp, map);
+					continue;
+				}
+
+				RDEBUG2("    &%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
+				if (radius_legacy_map_cmp(request, map) != 1) {
+					map_list_talloc_free(&check_tmp);
+					map_list_talloc_free(&reply_tmp);
+					return 0;
+				}
+			}
+
+			RDEBUG2("Group \"%s\": Conditional check items matched", group_name);
+		} else {
+			RDEBUG2("Group \"%s\": Conditional check items matched (empty)", group_name);
 		}
 
-		RDEBUG2("Group \"%s\": Conditional check items matched", group_name);
 		if (*rcode == RLM_MODULE_NOOP) *rcode = RLM_MODULE_OK;
 
-		RDEBUG2("Group \"%s\": Merging assignment check items", group_name);
-		RINDENT();
-		for (vp = fr_pair_list_head(&check_tmp);
-		     vp;
-		     vp = fr_pair_list_next(&check_tmp, vp)) {
-			if (!fr_assignment_op[vp->op]) continue;
-
-			*rcode = RLM_MODULE_UPDATED;
-			RDEBUG2("&%pP", vp);
-		}
-		REXDENT();
-		radius_pairmove(request, &request->control_pairs, &check_tmp);
-
-		fr_pair_list_free(&check_tmp);
+		map_list_talloc_free(&check_tmp);
 
 		if (inst->config.cache_groups) {
 			MEM(pair_update_control(&vp, inst->group_da) >= 0);
@@ -961,6 +938,8 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 	}
 
 	if (inst->config.authorize_group_reply_query) {
+		map_t *map;
+
 		/*
 		 *	Now get the reply pairs since the paircmp matched
 		 */
@@ -970,7 +949,7 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 			return -1;
 		}
 
-		rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &reply_tmp, expanded);
+		rows = sql_getvpdata(request->reply_ctx, inst, request, handle, &reply_tmp, expanded, request_attr_reply);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Error retrieving reply pairs for group %s", group_name);
@@ -982,16 +961,26 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 			return 0;
 		}
 
-		fr_assert(!fr_pair_list_empty(&reply_tmp)); /* coverity, among others */
+		fr_assert(!map_list_empty(&reply_tmp)); /* coverity, among others */
 		*do_fall_through = fall_through(&reply_tmp);
 
 		RDEBUG2("Group \"%s\": Merging reply items", group_name);
 		*rcode = RLM_MODULE_UPDATED;
 
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
+		for (map = map_list_head(&reply_tmp);
+		     map != NULL;
+		     map = map_list_next(&reply_tmp, map)) {
+			// @todo - print thingies
 
-		radius_pairmove(request, &request->reply_pairs, &reply_tmp);
-		fr_pair_list_free(&reply_tmp);
+			RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
+			if (radius_legacy_map_apply(request, map) < 0) {
+				RPEDEBUG("Failed applying reply item");
+				map_list_talloc_free(&reply_tmp);
+				return -1;
+			}
+		}
+
+		map_list_talloc_free(&reply_tmp);
 
 		/*
 		 *	If there's no reply query configured, then we assume
@@ -1290,8 +1279,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
 	rlm_sql_handle_t	*handle;
 
-	fr_pair_list_t		check_tmp;
-	fr_pair_list_t		reply_tmp;
+	map_list_t		check_tmp;
+	map_list_t		reply_tmp;
 
 	bool			user_found = false;
 
@@ -1301,8 +1290,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	char			*expanded = NULL;
 
-	fr_pair_list_init(&check_tmp);
-	fr_pair_list_init(&reply_tmp);
+	map_list_init(&check_tmp);
+	map_list_init(&reply_tmp);
 	fr_assert(request->packet != NULL);
 	fr_assert(request->reply != NULL);
 
@@ -1334,16 +1323,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
 	if (inst->config.authorize_check_query) {
-		fr_pair_t	*vp;
-
 		if (xlat_aeval(request, &expanded, request, inst->config.authorize_check_query,
 				 inst->sql_escape_func, handle) < 0) {
 			REDEBUG("Failed generating query");
 			rcode = RLM_MODULE_FAIL;
 
 		error:
-			fr_pair_list_free(&check_tmp);
-			fr_pair_list_free(&reply_tmp);
+			map_list_talloc_free(&check_tmp);
+			map_list_talloc_free(&reply_tmp);
 			sql_unset_user(inst, request);
 
 			fr_pool_connection_release(inst->pool, request, handle);
@@ -1351,7 +1338,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			RETURN_MODULE_RCODE(rcode);
 		}
 
-		rows = sql_getvpdata(request->control_ctx, inst, request, &handle, &check_tmp, expanded);
+		rows = sql_getvpdata(request->control_ctx, inst, request, &handle, &check_tmp, expanded, request_attr_request);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("Failed getting check attributes");
@@ -1366,27 +1353,41 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 */
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
-		if (!paircmp(request, &check_tmp)) {
-			fr_pair_list_free(&check_tmp);
-			goto skip_reply;
-		}
 
-		RDEBUG2("Conditional check items matched, merging assignment check items");
-		RINDENT();
-		for (vp = fr_pair_list_head(&check_tmp);
-		     vp;
-		     vp = fr_pair_list_next(&check_tmp, vp)) {
-			if (!fr_assignment_op[vp->op]) continue;
-			RDEBUG2("&%pP", vp);
+		if (rows > 0) {
+			map_t *map, *next;
+
+			for (map = map_list_head(&check_tmp);
+			     map != NULL;
+			     map = next) {
+				next = map_list_next(&check_tmp, map);
+
+				if (fr_assignment_op[map->op]) {
+					(void) map_list_remove(&check_tmp, map);
+					map_list_insert_tail(&reply_tmp, map);
+					continue;
+				}
+
+				RDEBUG2("    &%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
+				if (radius_legacy_map_cmp(request, map) != 1) {
+					map_list_talloc_free(&check_tmp);
+					map_list_talloc_free(&reply_tmp);
+					RDEBUG2("failed match: skipping this entry");
+					goto skip_reply;
+				}
+			}
+
+			RDEBUG2("Conditional check items matched");
+		} else {
+			RDEBUG2("Conditional check items matched (empty)");
 		}
-		REXDENT();
-		radius_pairmove(request, &request->control_pairs, &check_tmp);
 
 		rcode = RLM_MODULE_OK;
-		fr_pair_list_free(&check_tmp);
+		map_list_talloc_free(&check_tmp);
 	}
 
 	if (inst->config.authorize_reply_query) {
+		map_t *map;
 
 		/*
 		 *	Now get the reply pairs since the paircmp matched
@@ -1398,7 +1399,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			goto error;
 		}
 
-		rows = sql_getvpdata(request->reply_ctx, inst, request, &handle, &reply_tmp, expanded);
+		rows = sql_getvpdata(request->reply_ctx, inst, request, &handle, &reply_tmp, expanded, request_attr_reply);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting reply attributes");
@@ -1413,12 +1414,23 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RDEBUG2("User found in radreply table, merging reply items");
 		user_found = true;
 
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, &reply_tmp, NULL);
+		for (map = map_list_head(&reply_tmp);
+		     map != NULL;
+		     map = map_list_next(&reply_tmp, map)) {
 
-		radius_pairmove(request, &request->reply_pairs, &reply_tmp);
+			RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
+			if (radius_legacy_map_apply(request, map) < 0) {
+				RPEDEBUG("Failed applying reply item");
+				map_list_talloc_free(&reply_tmp);
+				rcode = RLM_MODULE_FAIL;
+				goto error;
+			}
+		}
+
+		map_list_talloc_free(&reply_tmp);
 
 		rcode = RLM_MODULE_OK;
-		fr_pair_list_free(&reply_tmp);
+		map_list_talloc_free(&reply_tmp);
 	}
 
 	/*

@@ -2473,7 +2473,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 	}
 
 	if (lhs[0] == '.') {
-		fr_strerror_const("SHIT");
+		fr_strerror_const("Nested is not supported!");
 		return -1;
 	}
 

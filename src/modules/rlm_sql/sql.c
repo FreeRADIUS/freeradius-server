@@ -105,6 +105,7 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
 	return handle;
 }
 
+#if 0
 /*************************************************************************
  *
  *	Function: sql_pair_afrom_row
@@ -280,6 +281,7 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 
 	return 0;
 }
+#endif
 
 /** Call the driver's sql_fetch_row function
  *
@@ -555,12 +557,33 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_
  *
  *************************************************************************/
 int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
-		  fr_pair_list_t *out, char const *query)
+		  map_list_t *out, char const *query, fr_dict_attr_t const *list)
 {
 	rlm_sql_row_t	row;
 	int		rows = 0;
 	sql_rcode_t	rcode;
-	fr_pair_t	*relative_vp = NULL;
+//	fr_pair_t	*relative_vp = NULL;
+	tmpl_rules_t	lhs_rules = (tmpl_rules_t) {
+		.attr = {
+			.dict_def = request->dict,
+			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+			.list_def = list,
+			.list_presence = TMPL_ATTR_LIST_ALLOW,
+
+			/*
+			 *	Otherwise the tmpl code returns 0 when asked
+			 *	to parse unknown names.  So we say "please
+			 *	parse unknown names as unresolved attributes",
+			 *	and then do a second pass to complain that the
+			 *	thing isn't known.
+			 */
+			.allow_unresolved = false
+		}
+	};
+	tmpl_rules_t	rhs_rules = lhs_rules;
+
+	rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_YES;
+	rhs_rules.attr.list_def = request_attr_request;
 
 	fr_assert(request);
 
@@ -568,13 +591,15 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rl
 	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
-		if (sql_pair_afrom_row(ctx, request, out, row, &relative_vp) != 0) {
-			REDEBUG("Error parsing user data from database result");
+		map_t *map;
 
+		if (map_afrom_fields(ctx, &map, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
+			RPEDEBUG("Error parsing user data from database result");
 			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
-
 			return -1;
 		}
+		map_list_insert_tail(out, map);
+
 		rows++;
 	}
 	(inst->driver->sql_finish_select_query)(*handle, &inst->config);
