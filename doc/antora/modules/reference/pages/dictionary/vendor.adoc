@@ -15,7 +15,7 @@ These codes are assigned by the Internet Assigned Numbers Authority
 
 <name>:: The name of the vendor.
 
-<numver>:: The number associated with the vendor.
+<number>:: The number associated with the vendor.
 
 <option>:: The protocol-specific option associated with the vendor definition.
 +

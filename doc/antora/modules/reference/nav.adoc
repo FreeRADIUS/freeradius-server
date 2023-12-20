@@ -82,7 +82,7 @@
 **** xref:xlat/pairs.adoc[Print attributes]
 **** xref:xlat/rpad.adoc[Right pad]
 **** xref:xlat/randstr.adoc[Random strings]
-**** xref:xlat/tolower.adoc[Conver to lowercase]
+**** xref:xlat/tolower.adoc[Convert to lowercase]
 **** xref:xlat/toupper.adoc[Convert to uppercase]
 *** xref:xlat/builtin.adoc[Built-in Expansions]
 *** xref:xlat/character.adoc[Single Letter Expansions]

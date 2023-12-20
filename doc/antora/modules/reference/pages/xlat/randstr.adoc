@@ -8,7 +8,7 @@ Build strings of random chars, useful for generating tokens and passcodes
 Format similar to the Perl module `String::Random`.
 
 Format characters may include the following, and may be
-preceeded by an integer repetition count:
+preceded by an integer repetition count:
 
 .Character Classes
 [options="header"]
