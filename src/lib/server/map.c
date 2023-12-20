@@ -2526,12 +2526,16 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 					 quote, value_parse_rules_quoted[quote], &my_rules);
 		if (slen <= 0) goto error;
 
-	} else if (!rhs[0]) {
-		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_BARE_WORD, "", 0));
+	} else if (!rhs[0] || !my_rules.enumv || (my_rules.enumv->type == FR_TYPE_STRING)) {
 
-		(void) fr_value_box_strdup(map->rhs, tmpl_value(map->rhs), NULL, "", false);
+		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_BARE_WORD, rhs, strlen(rhs)));
+
+		(void) fr_value_box_strdup(map->rhs, tmpl_value(map->rhs), NULL, rhs, false);
 
 	} else {
+		/*
+		 *	Parse it as the given data type.
+		 */
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
 		if (slen <= 0) goto error;

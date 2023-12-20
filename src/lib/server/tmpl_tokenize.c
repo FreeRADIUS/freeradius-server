@@ -3014,6 +3014,8 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	 */
 	if (t_rules->at_runtime) return 0;
 
+	ERROR("UNRESOLVED %d", __LINE__);
+
 	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
 		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 	vpt->data.unescaped = str;
@@ -3222,12 +3224,24 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
-		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
-			  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
-		vpt->data.unescaped = str;
-		*out = vpt;
+		slen = fr_sbuff_used(&our_in);
 
-		FR_SBUFF_SET_RETURN(in, &our_in);
+	data_unresolved:
+		if (t_rules->at_runtime) {
+			tmpl_init(vpt, TMPL_TYPE_DATA, quote,
+				  fr_sbuff_start(&our_in), slen, t_rules);
+
+			/*
+			 *	@todo - we have no idea if this is tainted or not.
+			 */
+			fr_value_box_strdup_shallow(tmpl_value(vpt), t_rules->enumv, str, false);
+			break;
+		}
+
+		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
+			  fr_sbuff_start(&our_in), slen, t_rules);
+		vpt->data.unescaped = str;
+		break;
 
 	case T_SINGLE_QUOTED_STRING:
 		/*
@@ -3242,9 +3256,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
 						    p_rules ? p_rules->terminals : NULL,
 						    p_rules ? p_rules->escapes : NULL);
-		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen, t_rules);
-		vpt->data.unescaped = str;
-		break;
+		goto data_unresolved;
 
 	case T_DOUBLE_QUOTED_STRING:
 	{
@@ -3275,11 +3287,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			 */
 			if (xlat_to_string(vpt, &str, &head)) {
 				TALLOC_FREE(head);
-
-				tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
-				         fr_sbuff_start(&our_in), slen, t_rules);
-				vpt->data.unescaped = str;	/* Store the unescaped string for parsing later */
-				break;
+				goto data_unresolved;
 			}
 		}
 

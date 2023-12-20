@@ -317,6 +317,7 @@ static int radius_legacy_map_apply_structural(request_t *request, map_t const *m
 	TALLOC_CTX *ctx;
 	fr_value_box_t *to_free = NULL;
 	fr_value_box_t const *box;
+	fr_pair_parse_t root, relative;
 
 	/*
 	 *	Finds both the correct ctx and nested list.
@@ -431,6 +432,7 @@ static int radius_legacy_map_apply_structural(request_t *request, map_t const *m
 	add:
 		vp = fr_pair_afrom_da_nested(ctx, list, da);
 		if (!vp) {
+		fail:
 			TALLOC_FREE(to_free);
 			return -1;
 		}
@@ -441,7 +443,22 @@ static int radius_legacy_map_apply_structural(request_t *request, map_t const *m
 		 */
 		if (!box->vb_strvalue[0]) break;
 
-		fr_assert(0);
+		/*
+		 *	Parse the string as a list of pairs.
+		 */
+		root = (fr_pair_parse_t) {
+			.ctx = vp,
+			.da = vp->da,
+			.list = &vp->vp_group,
+			.allow_compare = false,
+			.tainted = box->tainted,
+		};
+		relative = (fr_pair_parse_t) { };
+
+		if (fr_pair_list_afrom_substr(&root, &relative, &FR_SBUFF_IN(box->vb_strvalue, box->vb_length)) < 0) {
+			RPEDEBUG("Failed parsing string '%pV' as attribute list", box);
+			goto fail;
+		}
 		break;
 
 	default:

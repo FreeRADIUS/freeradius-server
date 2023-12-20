@@ -22,7 +22,7 @@ if (%sql("${insert_into_radreply} ('user_auth_nested', 'Idle-Timeout', ':=', '36
 	test_fail
 }
 
-if (%sql("${insert_into_radreply} ('user_auth_nested', 'Digest-Attributes', ':=', '')") != "1") {
+if (%sql("${insert_into_radreply} ('user_auth_nested', 'Digest-Attributes', ':=', 'Nonce = \"dcd98b7102dd2f0e8b11d0f600bfb0c093\", Method = \"Invite\", URI = \"sip:bob@biloxi.com\"')") != "1") {
 	test_fail
 }
 
