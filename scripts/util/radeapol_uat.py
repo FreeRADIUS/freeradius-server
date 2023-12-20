@@ -82,7 +82,7 @@ def convert_keyval2json(_paylaod, out_as_list=False):
 				self[key].extend(value)
 			else:
 				dlog(6, "MultiOrderedDict: create key={} val={}".format(key, value))
-				super(MultiOrderedDict, self).__setitem__(key, value)
+				super().__setitem__(key, value)
 
 	class MultiOrderedDicttoList(dict):
 	    """
@@ -97,7 +97,7 @@ def convert_keyval2json(_paylaod, out_as_list=False):
 	                items.append(new)
 	        else:
 	            dlog(6, "MultiOrderedDicttoList: create key={} value={}".format(key, value))
-	            super(MultiOrderedDicttoList, self).__setitem__(key, value)
+	            super().__setitem__(key, value)
 	dlog(6, "convert_keyval2json(): input='{}'".format(_paylaod))
 
 	if out_as_list:
