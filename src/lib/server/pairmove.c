@@ -326,7 +326,6 @@ static int radius_legacy_map_apply_structural(request_t *request, map_t const *m
 	 *	This call can return the parent list, even if the VP itself is missing.
 	 */
 	tmpl_pair_list_and_ctx(ctx, list, request, tmpl_request(map->lhs), tmpl_list(map->lhs));
-	if (unlikely(!list)) return -1;
 	if (!ctx) {
 		/*
 		 *	The parent is missing, so add the parent and then the VP.
