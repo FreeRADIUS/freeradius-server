@@ -2987,6 +2987,13 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 		}
 	}
 
+	/*
+	 *	Either there's no enum, or the enum name didn't match one of the listed ones.  There's no
+	 *	point in waiting for an enum which might be declared later.  That's not possible, so we fall
+	 *	back to parsing the various data types.
+	 */
+	if (t_rules->at_runtime) return 0;
+
 	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
 		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 	vpt->data.unescaped = str;
@@ -3078,6 +3085,21 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		if (!fr_type_is_null(t_rules->cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
 										    t_rules, true, p_rules);
+
+		/*
+		 *	We're at runtime and have a data type.  Just parse it as that data type, without doing
+		 *	endless "maybe it's this thing" attempts.
+		 */
+		if (t_rules->at_runtime && t_rules->enumv) {
+			tmpl_rules_t my_t_rules = *t_rules;
+
+			fr_assert(fr_type_is_leaf(t_rules->enumv->type));
+
+			my_t_rules.cast = my_t_rules.enumv->type;
+
+			return tmpl_afrom_value_substr(ctx, out, in, quote,
+						       &my_t_rules, true, p_rules);
+		}
 
 		/*
 		 *	See if it's a boolean value
