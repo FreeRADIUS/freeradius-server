@@ -178,7 +178,7 @@ def main():
                 'ack ': 'ack/',
                 r'rtx \(([1-5].?)\)': r'rtx/\1',
                 ' ': '_',
-                '\+': 'plus',
+                r'\+': 'plus',
                 '/s$': '',
             }
             for label in row.keys():
