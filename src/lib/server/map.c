@@ -2424,3 +2424,127 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
 	talloc_free(rhs);
 	talloc_free(value);
 }
+
+/** Convert a fr_pair_t into a map
+ *
+ * @param[in] ctx		where to allocate the map.
+ * @param[out] out		Where to write the new map (must be freed with talloc_free()).
+ * @param[in] lhs		of map
+ * @param[in] op		of map
+ * @param[in] rhs		of map
+ * @param[in] lhs_rules		for parsing the LHS
+ * @param[in] rhs_rules		for parsing the RHS
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *op, char const *rhs,
+		     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
+{
+	ssize_t slen;
+	fr_token_t quote;
+	map_t *map;
+	tmpl_rules_t my_rules;
+
+	map = map_alloc(ctx, NULL);
+	if (!map) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+
+	map->op = fr_table_value_by_str(fr_tokens_table, op, T_INVALID);
+	if ((map->op == T_INVALID) || (!fr_assignment_op[map->op] && !fr_comparison_op[map->op])) {
+		fr_strerror_printf("Invalid operator '%s'", op);
+		goto error;
+	}
+
+	my_rules = *lhs_rules;
+	lhs_rules = &my_rules;
+
+	/*
+	 *	We're only called from SQL.  If the default list is request, then we only use that for
+	 *	comparisons.  We rewrite assignments to use the control list.
+	 *
+	 *	@todo - as we expand the use of this function, perhaps add another argument which controls
+	 *	this flag.
+	 */
+	if (fr_assignment_op[map->op] && (lhs_rules->attr.list_def == request_attr_request)) {
+		my_rules.attr.list_def = request_attr_control;
+	}
+
+	if (lhs[0] == '.') {
+		fr_strerror_const("SHIT");
+		return -1;
+	}
+
+	/*
+	 *	Allocate the LHS, which must be an attribute.
+	 *
+	 *	@todo - track relative attributes, which begin with a '.'
+	 */
+	slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, lhs, lhs_rules);
+	if (slen <= 0) {
+	error:
+		talloc_free(map);
+		return -1;
+	}
+
+	if (tmpl_attr_tail_is_unknown(map->lhs) && tmpl_attr_unknown_add(map->lhs) < 0) {
+		fr_strerror_printf("Failed creating attribute %s", map->lhs->name);
+		goto error;
+	}
+
+	my_rules = *rhs_rules;
+	my_rules.at_runtime = true;
+	my_rules.enumv = tmpl_attr_tail_da(map->lhs);
+
+	/*
+	 *	LHS is a structureal type.  The RHS is either empty (create empty LHS), or it's a string
+	 *	containing a list of attributes to create.
+	 */
+	if (!fr_type_is_leaf(my_rules.enumv->type)) {
+		my_rules.enumv = NULL;
+
+		if (!*rhs) {
+			*out = map;
+			return 0;
+		}
+
+		fr_assert(0);
+	}
+
+	/*
+	 *	If we have a string, where the *entire* string is
+	 *	quoted, then tokenize it that way,
+	 *
+	 *	@todo - if the string starts with '(' OR '%' OR
+	 *	doesn't begin with a quote, BUT contains spaces, then
+	 *	parse it as an xlat expression!
+	 */
+	if (rhs[0] == '"') {
+		quote = T_DOUBLE_QUOTED_STRING;
+		goto parse_quoted;
+
+	} else if (rhs[0] == '\'') {
+		quote = T_SINGLE_QUOTED_STRING;
+
+	parse_quoted:
+		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
+					 quote, value_parse_rules_quoted[quote], &my_rules);
+		if (slen <= 0) goto error;
+	} else {
+		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
+					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
+		if (slen <= 0) goto error;
+
+		fr_assert(!tmpl_needs_resolving(map->rhs));
+	}
+
+	/*
+	 *	@todo - check that the entire string was parsed.
+	 */
+
+	*out = map;
+
+	return 0;
+}
