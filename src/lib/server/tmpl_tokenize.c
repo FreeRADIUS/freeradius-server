@@ -2384,17 +2384,37 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	fr_value_box_t	tmp;
+	fr_type_t	cast;
 	tmpl_t		*vpt;
 
-	if (!fr_type_is_leaf(t_rules->cast)) {
-		fr_strerror_printf("%s is not a valid cast type",
-				   fr_type_to_str(t_rules->cast));
+	/*
+	 *	If it's cast, we can parse it as a string.
+	 *
+	 *	OR, if it's run-time and we have an data type (even if
+	 *	we don't use the enum names), then we can parse it as
+	 *	that data type.  Because we know there's no
+	 *	possibility for an enum to be defined at run-time.
+	 */
+	cast = t_rules->cast;
+	if (fr_type_is_null(cast)) {
+		if (!t_rules->at_runtime || !t_rules->enumv) return 0;
+
+		/*
+		 *	We're at runtime and have a data type.  Just parse it as that data type, without doing
+		 *	endless "maybe it's this thing" attempts.
+		 */
+		cast = t_rules->enumv->type;
+	}
+
+	if (!fr_type_is_leaf(cast)) {
+		fr_strerror_printf("%s is not a valid data type for leaf values",
+				   fr_type_to_str(cast));
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	vpt = tmpl_alloc_null(ctx);
 	if (fr_value_box_from_substr(vpt, &tmp,
-				     t_rules->cast, allow_enum ? t_rules->enumv : NULL,
+				     cast, allow_enum ? t_rules->enumv : NULL,
 				     &our_in, p_rules, false) < 0) {
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_in);
@@ -3083,23 +3103,8 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		/*
 		 *	Deal with explicit casts...
 		 */
-		if (!fr_type_is_null(t_rules->cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
-										    t_rules, true, p_rules);
-
-		/*
-		 *	We're at runtime and have a data type.  Just parse it as that data type, without doing
-		 *	endless "maybe it's this thing" attempts.
-		 */
-		if (t_rules->at_runtime && t_rules->enumv) {
-			tmpl_rules_t my_t_rules = *t_rules;
-
-			fr_assert(fr_type_is_leaf(t_rules->enumv->type));
-
-			my_t_rules.cast = my_t_rules.enumv->type;
-
-			return tmpl_afrom_value_substr(ctx, out, in, quote,
-						       &my_t_rules, true, p_rules);
-		}
+		slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, true, p_rules);
+		if (slen > 0) return slen;
 
 		/*
 		 *	See if it's a boolean value
@@ -3230,9 +3235,9 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	to a specific data type immediately
 		 *	as they cannot contain expansions.
 		 */
-		if (!fr_type_is_null(t_rules->cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
-										    t_rules, false,
-										    p_rules);
+		slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, false, p_rules);
+		if (slen > 0) return slen;
+
 		vpt = tmpl_alloc_null(ctx);
 		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
 						    p_rules ? p_rules->terminals : NULL,
@@ -3257,12 +3262,10 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	type, then do the conversion now.
 		 */
 		if (xlat_is_literal(head)) {
-			if (!fr_type_is_null(t_rules->cast)) {
-				talloc_free(vpt);		/* Also frees any nodes */
-
-				return tmpl_afrom_value_substr(ctx, out,
-							       in, quote,
-							       t_rules, false, p_rules);
+			slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, false, p_rules);
+			if (slen > 0) {
+				talloc_free(vpt);
+				return slen;
 			}
 
 			/*
