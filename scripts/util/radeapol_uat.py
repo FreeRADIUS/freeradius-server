@@ -575,7 +575,7 @@ def eapol_client(_args, _ifname, _count, _res, _i, _config):
 	dlog(4, "request.STATUS: {}".format(json.dumps(status, indent=4)))
 
 	if not fail and status["wpa_state"] == "COMPLETED":
-		_res.put("PASS {}".format((i + 1)))
+		_res.put("PASS {}".format(i + 1))
 	else:
 		_res.put("FAIL {}".format(i))
 
