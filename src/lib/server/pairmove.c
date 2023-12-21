@@ -336,6 +336,11 @@ static int radius_legacy_map_apply_structural(request_t *request, map_t const *m
 		case T_OP_ADD_EQ:
 		case T_OP_PREPEND:
 			if (tmpl_find_or_add_vp(&vp, request, map->lhs) < 0) return -1;
+
+#ifdef STATIC_ANALYZER
+			if (!vp) return -1;
+#endif
+
 			break;
 
 		default:	/* can't filter values or delete matching values for structural types */
