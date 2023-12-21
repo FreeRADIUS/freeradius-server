@@ -123,7 +123,7 @@ sslarch=linux-ppc64
 # ia64, x86_64, ppc are OK by default
 # Configure the build tree.  Override OpenSSL defaults with known-good defaults
 # usable on all platforms.  The Configure script already knows to use -fPIC and
-# RPM_OPT_FLAGS, so we can skip specifiying them here.
+# RPM_OPT_FLAGS, so we can skip specifying them here.
 ./Configure \
 	--prefix=%{_prefix} --openssldir=%{_sysconfdir}/pki/tls ${sslflags} \
 	zlib enable-camellia enable-seed enable-rfc3779 \

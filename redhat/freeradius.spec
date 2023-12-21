@@ -33,7 +33,7 @@
 # Enable asserts and additional debugging
 %bcond_with developer
 
-# Enable various clang/gcc debugging tool sypport
+# Enable various clang/gcc debugging tool support
 %bcond_with address_sanitizer
 %bcond_with leak_sanitizer
 %bcond_with thread_sanitizer
