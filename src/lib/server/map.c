@@ -592,11 +592,21 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 *
 			 *	Which is a damned hack.
 			 */
-			if (map->op == T_OP_CMP_TRUE) goto parse_rhs;
+			if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) goto parse_rhs;
 
-			fr_strerror_const("Structural attributes are not supported");
-			goto error;
+			if (fr_comparison_op[map->op]) {
+				fr_sbuff_set(&our_in, &m_op);
+				fr_strerror_const("Comparison operators cannot be used for structural attributes");
+				goto error;
+			}
 
+			/*
+			 *	radius_legacy_map_cmp() and radius_legacy_map_apply() both support structural
+			 *	attributes with RHS strings.  And this function is only called from
+			 *	users_file.c.  The consumers of the users file only call the radius legacy map
+			 *	functions.
+			 */
+			goto parse_rhs;
 #if 0
 			/*
 			 *	@todo - check for, and allow '&'

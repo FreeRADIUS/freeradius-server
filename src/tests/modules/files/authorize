@@ -133,6 +133,9 @@ xlat	Password.Cleartext := "open"
 attrref_check Filter-Id == &NAS-Identifier, NAS-IP-Address == "%{Calling-Station-Id}", Password.Cleartext := "whoops"
 	      Reply-Message := "success"
 
+digest	Password.Cleartext := "woo"
+	Digest-Attributes := 'Nonce = "dcd98b7102dd2f0e8b11d0f600bfb0c093", Method = "Invite", URI = "sip:bob@biloxi.com"'
+
 DEFAULT	User-Name == "cmp_eq",  Password.Cleartext := "hopping"
 	Reply-Message := "success-cmp_eq"
 

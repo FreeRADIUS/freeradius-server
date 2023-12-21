@@ -152,7 +152,39 @@ The default list for the check items is `control`.  Specifying another list mean
 
 The default list for the reply items is `reply`.  Specifying another list means that the other list is updated, instead of the `reply` list.
 
-It is not possible in the `users` file to create, compare, or edit a structural data type such as `struct` or `tlv`.  Instead, the relevant leaf or child attribute has to be created, which will automatically create the parent.
+==== Structural Data Types
+
+Structural data types such as `tlv`, `group`, and `struct` are handled somewhat oddly in the `users` file.  The reason for this behavior is due to the limitations of the `users` file format.  In constrast, nested attributes are handled simply and clearly by the new xref:reference:unlang/edit.adoc[edit] functionality.  If there is any confusion or uncertainty about how the `users` file operates, we recommend just using the new xref:reference:unlang/edit.adoc[edit] functionality.
+
+It is not possible to perform comparisons structural data types.  It is only possible to create and edit them.
+
+Care should be taken when using `+=` with structural attributes.  Unlike the xref:reference:unlang/edit.adoc[edit] operations `+=` here means _create a new structural attribute and append it_.  The `+=` operator does not mean _append the child attributes to the structural attribute_.  The most common issue seen with using `+=` is where it creates two `Vendor-Specific` attributes, which will cause problems.
+
+The solution instead is to use `:=` when referring to structural attributes by name, or instead using the name of a leaf attribute (e.g. `Vendor-Specific.Cisco.AVPair`), and then using `+=` on the leaf.
+
+In most situations, the simplest approach for structural data types is to just create the leaf attributes.  e.g. `&foo.bar.baz := 5`.  If any parent attribute is missing, it will be automatically created.  That is, operations on leaf types will just "do the right thing" most of the time, so there is no need to explicitly refer to a structural data type by name.
+
+There are some situations where it is useful to refer to structural attributes by name, as given in the examples below.
+
+Structural attributes can be copied from another attribute.  Both source and destination attributes must have the same data type.
+
+.Copying a Structural attribute by name
+----
+bob	Password.Cleartext := "hello"
+	Vendor-Specific.Cisco := &control.Vendor-Specific.Cisco
+----
+
+This example copies the `Vendor-Specific.Cisco` group from the `&control` list.  If the attribute does not exist in the control list, nothing is done.
+
+Structural attributes can be created from a string, as with the xref:reference:unlang/edit.adoc[edit] funtionality.
+
+.Creating a Structural attribute from a string
+----
+bob	Password.Cleartext := "hello"
+	Vendor-Specific.Cisco := "AVPair = 'hello'"
+----
+
+This example creates the reply attribute `Vendor-Specific.Cisco.AVPair`, with value `hello`.  If the parent attributes `Vendor-Specific` or `Cisco` do not exist, they are created.
 
 === Item Operators
 

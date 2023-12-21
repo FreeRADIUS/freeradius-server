@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "digest"
+User-Password = "woo"
+NAS-IP-Address = "1.2.3.4"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Digest-Attributes == { Nonce == "dcd98b7102dd2f0e8b11d0f600bfb0c093", Method == "Invite", URI == "sip:bob@biloxi.com" }
