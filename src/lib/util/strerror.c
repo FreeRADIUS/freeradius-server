@@ -754,7 +754,12 @@ void fr_perror(char const *fmt, ...)
 		talloc_free(prefix);
 	} else {
 		if (!error) return;
-		fprintf(stderr, "%s\n", prefix);
+    		if (prefix) {
+        	fprintf(stderr, "%s\n", prefix);
+        	talloc_free(prefix);
+    		} else {
+        	fprintf(stderr, "%s\n", error);
+    		}
 	}
 
 	while ((error = fr_strerror_marker_pop(&subject, &offset))) {
