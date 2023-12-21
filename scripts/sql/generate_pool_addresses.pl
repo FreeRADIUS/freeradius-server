@@ -127,7 +127,7 @@
 #
 #      Will create a pool from a sparsely populated IPv4 range for a /16
 #      network (maximum of 65.536 addresses), populating the range with 10,000
-#      addreses. The effective size of the pool can be increased in future by
+#      addresses. The effective size of the pool can be increased in future by
 #      increasing the capacity of the range with:
 #
 #    generate_pool_addresses.pl main_pool 10.66.0.0 10.66.255.255 20000
@@ -300,7 +300,7 @@ sub handle_range {
 
 	if ($range_size < $capacity) {
 		$capacity = "$range_size";
-		warn "WARNING: Insufficent IPs in the range. Will create $capacity entries.";
+		warn "WARNING: Insufficient IPs in the range. Will create $capacity entries.";
 	}
 
 	# Prune the entries to only those within the specified range
@@ -344,7 +344,7 @@ sub handle_range {
 #  the size of the range. It becomes slower as the population of a range nears
 #  the range's limit since it is harder to choose a free address at random.
 #
-#  It is useful for selecting a handful of addresses from an enourmous IPv6 /64
+#  It is useful for selecting a handful of addresses from an enormous IPv6 /64
 #  network for example.
 #
 sub sparse_fill {

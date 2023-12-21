@@ -1,5 +1,5 @@
   The files in this directory replace the old FreeRADIUS SNMP
-implementantion with a new one.
+implementation with a new one.
 
 net-radius-freeradius-dictionary.diff
 	Patch to enable the Perl Net::RADIUS module to read the

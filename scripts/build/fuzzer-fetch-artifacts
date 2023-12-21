@@ -35,7 +35,7 @@ Usage:
 
                  This mode will download the specified artifact and extract the
                  reproducers that it contains. (The list of available fuzzer
-                 artifacts is ouput by the preceeding mode.)
+                 artifacts is output by the preceding mode.)
 
   artifact-zip - "path/to/downloaded/artifact/fuzzer-radius-701e5be.zip"
 

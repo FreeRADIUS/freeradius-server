@@ -43,7 +43,7 @@ RUN rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
 
 
 #
-#  Documentation build dependecies
+#  Documentation build dependencies
 #
 
 #  - doxygen & JSON.pm
@@ -96,7 +96,7 @@ RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.c
 
 
 #
-#  Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
+#  Use LTB's openldap packages instead of the distribution version to avoid linking against NSS
 #
 RUN echo $'[ltb-project]\n\
 name=LTB project packages\n\

@@ -17,7 +17,7 @@ def buildClosures(arg) {
         closures[value] = { testEnv_str ->
             def(dir,testEnv) = testEnv_str.split(":")
             stage("$testEnv") {
-                // Docker needs full privileges and capabilites to run the tests
+                // Docker needs full privileges and capabilities to run the tests
                 // This passes the necessary arguments to "docker run"
                 travisImage.inside("--privileged --cap-add=ALL") {
                     checkout([$class: 'GitSCM',\

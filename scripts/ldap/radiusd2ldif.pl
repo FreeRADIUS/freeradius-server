@@ -79,7 +79,7 @@ my $debug = $opt_d;
 
 my %passwords;
 # This might or might not be necessary depending if your LDAP server
-# when importing from ldif introduces crypted passwords in the LDAP db
+# when importing from ldif introduces encrypted passwords in the LDAP db
 # (not necessary for Netscape's Directory Server)
 read_passwds ($opt_f) if $opt_f;
 
@@ -198,7 +198,7 @@ $mapping{'framed-ip-route'} = "radiusFramedRoute";
 $mapping{'framed-netmask'} = "radiusFramedIPNetmask";
 $mapping{'user-service'} = "radiusServiceType";
 # Since this might not change they could be placed in the DEFAULT
-# user insted of the LDAP
+# user instead of the LDAP
 #$mapping{'ascend-metric'} = "radiusAscendMetric";
 #$mapping{'ascend-idle-limit'} = "radiusAscendIdleLimit";
 # But this really ought to be there :
@@ -289,7 +289,7 @@ if ( $group ) {
 exit 0;
 
 sub read_passwds {
-# Reads passwords from a file in order to get the crypted
+# Reads passwords from a file in order to get the encrypted
 # version, the file must be of the following format:
 # password	cryptedversion
 	my ($file)=@_;

@@ -37,7 +37,7 @@ RUN apt-get update && \
 
 
 #
-#  Documentation build dependecies
+#  Documentation build dependencies
 #
 
 #  - doxygen & JSON.pm

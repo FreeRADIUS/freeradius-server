@@ -6,7 +6,7 @@
 #  installed by the distribution packaging.
 #
 #  We want the run-time environment to be lean, typical of a fresh system
-#  installation so that we catch any missing runtime dependancies, assets
+#  installation so that we catch any missing runtime dependencies, assets
 #  missing from the packages, issues with the dynamic loader, etc.
 #
 #  Therefore we skip the usual build framework so that we do not have so
