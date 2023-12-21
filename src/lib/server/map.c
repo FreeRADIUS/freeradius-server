@@ -35,6 +35,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
+#include <freeradius-devel/unlang/interpret.h>
+
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/pair_legacy.h>
@@ -2429,6 +2431,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
  *
  * @param[in] ctx		where to allocate the map.
  * @param[out] out		Where to write the new map (must be freed with talloc_free()).
+ * @param[in] request		the request
  * @param[in] lhs		of map
  * @param[in] op		of map
  * @param[in] rhs		of map
@@ -2438,7 +2441,7 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *op, char const *rhs,
+int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, request_t *request, char const *lhs, char const *op, char const *rhs,
 		     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
 	ssize_t slen;
@@ -2496,6 +2499,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 
 	my_rules = *rhs_rules;
 	my_rules.at_runtime = true;
+	my_rules.xlat.runtime_el = unlang_interpret_event_list(request);
 	my_rules.enumv = tmpl_attr_tail_da(map->lhs);
 
 	/*
@@ -2519,12 +2523,36 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 		goto parse_quoted;
 
 	} else if (rhs[0] == '\'') {
+		size_t len;
+
 		quote = T_SINGLE_QUOTED_STRING;
 
 	parse_quoted:
-		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
+		len = strlen(rhs + 1);
+		if (len == 1) {
+			if (rhs[1] != rhs[0]) {
+				fr_strerror_const("Invalid string on right side");
+				return -1;
+			}
+
+			rhs = "";
+			goto alloc_empty;
+		}
+
+		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs + 1, len - 1),
 					 quote, value_parse_rules_quoted[quote], &my_rules);
-		if (slen <= 0) goto error;
+		if (slen < 0) goto error;
+
+		if (slen == 0) {
+			rhs = "";
+			goto alloc_empty;
+		}
+
+		ERROR("CONVERT %s --> %s", rhs, map->rhs->name);
+
+		/*
+		 *	Ignore any extra data after the string.
+		 */
 
 	} else if (rhs[0] == '&') {
 		/*
@@ -2539,8 +2567,10 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 		if (slen <= 0) goto error;
 
 	} else if (!rhs[0] || !my_rules.enumv || (my_rules.enumv->type == FR_TYPE_STRING)) {
+		quote = T_BARE_WORD;
 
-		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_BARE_WORD, rhs, strlen(rhs)));
+	alloc_empty:
+		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, quote, rhs, strlen(rhs)));
 
 		(void) fr_value_box_strdup(map->rhs, tmpl_value(map->rhs), NULL, rhs, false);
 
@@ -2551,8 +2581,17 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
 		if (slen <= 0) goto error;
+	}
 
-		fr_assert(!tmpl_needs_resolving(map->rhs));
+	if (tmpl_needs_resolving(map->rhs)) {
+		tmpl_res_rules_t tr_rules = (tmpl_res_rules_t) {
+			.dict_def = lhs_rules->attr.dict_def,
+			.enumv = tmpl_attr_tail_da(map->lhs)
+		};
+
+		fr_assert(tmpl_is_data_unresolved(map->rhs));
+
+		if (tmpl_resolve(map->rhs, &tr_rules) < 0) goto error;
 	}
 
 	/*

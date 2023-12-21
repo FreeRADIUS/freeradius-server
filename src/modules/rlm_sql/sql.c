@@ -593,7 +593,7 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
 		map_t *map;
 
-		if (map_afrom_fields(ctx, &map, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
+		if (map_afrom_fields(ctx, &map, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
 			RPEDEBUG("Error parsing user data from database result");
 			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
 			return -1;
