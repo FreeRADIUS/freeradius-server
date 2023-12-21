@@ -50,7 +50,7 @@ fields are left to be populated with their database defaults.
 .SH OPTIONS
 
 .IP \-c\ \fIcapacity\fP
-Number of IP addreses to populate the pool with.  Defaults to 65536,
+Number of IP addresses to populate the pool with.  Defaults to 65536,
 or the maximum number that can be provisioned between the start and
 end of the range.
 .IP \-d\ \fIdialect\fP
@@ -64,7 +64,7 @@ is specified, then \fBrlm_sqlippool_tool\fP will parse the configuration
 and attempt to talk directly to the database server specified in
 the FreeRADIUS configuration.
 .IP \-i\ \fIinstance\fP
-Used in conjuction with -f.  Specifies the name of the sql module
+Used in conjunction with -f.  Specifies the name of the sql module
 instance to parse in the FreeRADIUS configuration.  Defaults to \fIsql\fP.
 .IP \-p\ \fIpool_name\fP
 The pool name to populate.
@@ -74,7 +74,7 @@ are allowed.
 .IP \-t\ \fItable_name\fP
 Name of the table in the database to populate.
 .IP \-x\ \fIexisting_ips_file\fP
-A file containing exsiting IP addresses in the pool.  Use of this allows
+A file containing existing IP addresses in the pool.  Use of this allows
 for more controlled growth of a sparesly populated pool.
 .IP \-y\ \fIpool_defs_yaml_file\fP
 A YAML formatted file containing specifications for a number of pools.
