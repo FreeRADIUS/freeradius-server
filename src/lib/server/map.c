@@ -434,7 +434,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	}
 
 	*out = NULL;
-	MEM(map = map_alloc(ctx, parent));
+	MEM(map = map_alloc(ctx, NULL));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
@@ -757,10 +757,13 @@ parse_rhs:
 check_for_child:
 #endif
 	/*
-	 *	Add this map to to the parents list.  Note that the
-	 *	caller will have to check for this!
+	 *	Add this map to to the parents list.  Note that the caller
+	 *	will have to check for this, but checking if map->parent
+	 *	exists.
 	 */
 	if (is_child && parent) {
+		(void) talloc_steal(parent, map);
+		map->parent = parent;
 		map_list_insert_tail(&parent->child, map);
 	}
 
