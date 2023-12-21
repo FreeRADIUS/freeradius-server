@@ -2384,37 +2384,17 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	fr_value_box_t	tmp;
-	fr_type_t	cast;
 	tmpl_t		*vpt;
 
-	/*
-	 *	If it's cast, we can parse it as a string.
-	 *
-	 *	OR, if it's run-time and we have an data type (even if
-	 *	we don't use the enum names), then we can parse it as
-	 *	that data type.  Because we know there's no
-	 *	possibility for an enum to be defined at run-time.
-	 */
-	cast = t_rules->cast;
-	if (fr_type_is_null(cast)) {
-		if (!t_rules->at_runtime || !t_rules->enumv) return 0;
-
-		/*
-		 *	We're at runtime and have a data type.  Just parse it as that data type, without doing
-		 *	endless "maybe it's this thing" attempts.
-		 */
-		cast = t_rules->enumv->type;
-	}
-
-	if (!fr_type_is_leaf(cast)) {
-		fr_strerror_printf("%s is not a valid data type for leaf values",
-				   fr_type_to_str(cast));
+	if (!fr_type_is_leaf(t_rules->cast)) {
+		fr_strerror_printf("%s is not a valid cast type",
+				   fr_type_to_str(t_rules->cast));
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	vpt = tmpl_alloc_null(ctx);
 	if (fr_value_box_from_substr(vpt, &tmp,
-				     cast, allow_enum ? t_rules->enumv : NULL,
+				     t_rules->cast, allow_enum ? t_rules->enumv : NULL,
 				     &our_in, p_rules, false) < 0) {
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_in);
@@ -3014,8 +2994,6 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	 */
 	if (t_rules->at_runtime) return 0;
 
-	ERROR("UNRESOLVED %d", __LINE__);
-
 	tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, T_BARE_WORD,
 		  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 	vpt->data.unescaped = str;
@@ -3105,8 +3083,23 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		/*
 		 *	Deal with explicit casts...
 		 */
-		slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, true, p_rules);
-		if (slen != 0) return slen;
+		if (!fr_type_is_null(t_rules->cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
+										    t_rules, true, p_rules);
+
+		/*
+		 *	We're at runtime and have a data type.  Just parse it as that data type, without doing
+		 *	endless "maybe it's this thing" attempts.
+		 */
+		if (t_rules->at_runtime && t_rules->enumv) {
+			tmpl_rules_t my_t_rules = *t_rules;
+
+			fr_assert(fr_type_is_leaf(t_rules->enumv->type));
+
+			my_t_rules.cast = my_t_rules.enumv->type;
+
+			return tmpl_afrom_value_substr(ctx, out, in, quote,
+						       &my_t_rules, true, p_rules);
+		}
 
 		/*
 		 *	See if it's a boolean value
@@ -3224,24 +3217,12 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
 
-		slen = fr_sbuff_used(&our_in);
-
-	data_unresolved:
-		if (t_rules->at_runtime) {
-			tmpl_init(vpt, TMPL_TYPE_DATA, quote,
-				  fr_sbuff_start(&our_in), slen, t_rules);
-
-			/*
-			 *	@todo - we have no idea if this is tainted or not.
-			 */
-			fr_value_box_strdup_shallow(tmpl_value(vpt), t_rules->enumv, str, false);
-			break;
-		}
-
 		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
-			  fr_sbuff_start(&our_in), slen, t_rules);
+			  fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 		vpt->data.unescaped = str;
-		break;
+		*out = vpt;
+
+		FR_SBUFF_SET_RETURN(in, &our_in);
 
 	case T_SINGLE_QUOTED_STRING:
 		/*
@@ -3249,14 +3230,16 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	to a specific data type immediately
 		 *	as they cannot contain expansions.
 		 */
-		slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, false, p_rules);
-		if (slen != 0) return slen;
-
+		if (!fr_type_is_null(t_rules->cast)) return tmpl_afrom_value_substr(ctx, out, in, quote,
+										    t_rules, false,
+										    p_rules);
 		vpt = tmpl_alloc_null(ctx);
 		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
 						    p_rules ? p_rules->terminals : NULL,
 						    p_rules ? p_rules->escapes : NULL);
-		goto data_unresolved;
+		tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote, fr_sbuff_start(&our_in), slen, t_rules);
+		vpt->data.unescaped = str;
+		break;
 
 	case T_DOUBLE_QUOTED_STRING:
 	{
@@ -3274,10 +3257,12 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	type, then do the conversion now.
 		 */
 		if (xlat_is_literal(head)) {
-			slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, false, p_rules);
-			if (slen != 0) {
-				talloc_free(vpt);
-				return slen;
+			if (!fr_type_is_null(t_rules->cast)) {
+				talloc_free(vpt);		/* Also frees any nodes */
+
+				return tmpl_afrom_value_substr(ctx, out,
+							       in, quote,
+							       t_rules, false, p_rules);
 			}
 
 			/*
@@ -3287,7 +3272,11 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			 */
 			if (xlat_to_string(vpt, &str, &head)) {
 				TALLOC_FREE(head);
-				goto data_unresolved;
+
+				tmpl_init(vpt, TMPL_TYPE_DATA_UNRESOLVED, quote,
+				         fr_sbuff_start(&our_in), slen, t_rules);
+				vpt->data.unescaped = str;	/* Store the unescaped string for parsing later */
+				break;
 			}
 		}
 
