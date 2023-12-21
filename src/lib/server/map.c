@@ -2526,6 +2526,18 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, char const *lhs, char const *
 					 quote, value_parse_rules_quoted[quote], &my_rules);
 		if (slen <= 0) goto error;
 
+	} else if (rhs[0] == '&') {
+		/*
+		 *	No enums here.
+		 */
+		fr_assert(my_rules.attr.prefix == TMPL_ATTR_REF_PREFIX_YES);
+		fr_assert(my_rules.attr.list_def == request_attr_request);
+
+		my_rules.enumv = NULL;
+
+		slen = tmpl_afrom_attr_str(map, NULL, &map->rhs, rhs, &my_rules);
+		if (slen <= 0) goto error;
+
 	} else if (!rhs[0] || !my_rules.enumv || (my_rules.enumv->type == FR_TYPE_STRING)) {
 
 		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_BARE_WORD, rhs, strlen(rhs)));
