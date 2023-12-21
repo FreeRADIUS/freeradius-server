@@ -166,7 +166,7 @@ for LOGDD in $(ls $LOG_DIR | egrep "$DATE_EXPR"); do
 			DEBUG "Error creating archive for '$LOGFP'"
 			exit 65
 		elif ! rm -rf $LOGDD; then
-			DEBUG "Error removing uncompresed directory"
+			DEBUG "Error removing uncompressed directory"
 			exit 65
 		fi
 	fi

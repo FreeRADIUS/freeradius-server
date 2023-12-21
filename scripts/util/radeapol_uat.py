@@ -311,7 +311,7 @@ The directory containing the tests may have multiple subdirectories to group the
 	)
 	parser.add_argument("-i",
 						dest = "iter",
-						help = "Number of interations. (default: {})".format(DEFAULT_INTERATIONS),
+						help = "Number of iterations. (default: {})".format(DEFAULT_INTERATIONS),
 						type = int,
 						required = False,
 						default = DEFAULT_INTERATIONS
@@ -368,7 +368,7 @@ The directory containing the tests may have multiple subdirectories to group the
 	print("* Verbose:         {}".format(args.verbose))
 	if args.verbose >= 1:
 		print("* Parallel:        {}".format(args.parallel))
-		print("* Interations:     {}".format(args.iter))
+		print("* Iterations:      {}".format(args.iter))
 		print("* dict_dir:        {}".format(args.dict_dir))
 		print("* eapol_test_bin:  {}".format(args.eapol_test_bin))
 		print("* eapol_test ctrl: {}".format(args.eapol_ctrl))

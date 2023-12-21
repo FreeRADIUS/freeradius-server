@@ -102,7 +102,7 @@
 #  different SQL dialects.
 #
 #  The SQL first creates a temporary table to insert the new pools into,
-#  inserts the addresses, then removes any exisitng entries from the pool
+#  inserts the addresses, then removes any existing entries from the pool
 #  table that do not exist in the new pool.  Finally any new entries that
 #  don't exist in the existing pool table are copied from the temporary
 #  table.
@@ -127,7 +127,7 @@
 #
 #      Will create a pool from a sparsely populated IPv4 range for a /16
 #      network (maximum of 65.536 addresses), populating the range with 10,000
-#      addreses. With SQL output suitable for MySQL.
+#      addresses. With SQL output suitable for MySQL.
 #      The effective size of the pool can be increased in future by increasing
 #      the capacity of the range with:
 #
@@ -540,7 +540,7 @@ sub handle_range {
 
 	if ($range_size < $capacity) {
 		$capacity = "$range_size";
-		warn 'WARNING: Insufficent IPs in the range. Will create '.$capacity.' entries.';
+		warn 'WARNING: Insufficient IPs in the range. Will create '.$capacity.' entries.';
 	}
 
 	#  Prune the entries to only those within the specified range
@@ -583,7 +583,7 @@ sub handle_range {
 #  the size of the range. It becomes slower as the population of a range nears
 #  the range's limit since it is harder to choose a free address at random.
 #
-#  It is useful for selecting a handful of addresses from an enourmous IPv6 /64
+#  It is useful for selecting a handful of addresses from an enormous IPv6 /64
 #  network for example.
 #
 sub sparse_fill {

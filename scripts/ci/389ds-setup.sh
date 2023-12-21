@@ -74,12 +74,12 @@ fi
 #    cat <<EOF > permissions.ldif
 #    dn: dc=example,dc=com
 #    changetype: modify
-#    add: aci
-#    aci: (targetattr="*")(target="ldap:///dc=example,dc=com")(version 3.0; acl "allow whatever"; allow (all)(userdn="ldap:///uid=manager,ou=people,dc=example,dc=com");)
+#    add: acpi
+#    acpi: (targetattr="*")(target="ldap:///dc=example,dc=com")(version 3.0; acl "allow whatever"; allow (all)(userdn="ldap:///uid=manager,ou=people,dc=example,dc=com");)
 #    EOF
 #
 #    ldapmodify -D 'cn=Directory Manager' -w secret123 -H "ldap://threeds:3389/" -x -f permissions.ldif
 #
 #  List ACLs:
-#    ldapsearch -D 'cn=Directory Manager' -w secret123 -H "ldap://threeds:3389/" -x -b 'dc=example,dc=com' '(aci=*)' aci
+#    ldapsearch -D 'cn=Directory Manager' -w secret123 -H "ldap://threeds:3389/" -x -b 'dc=example,dc=com' '(acpi=*)' acpi
 #

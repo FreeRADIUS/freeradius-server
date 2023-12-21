@@ -36,7 +36,7 @@ from __future__ import with_statement
 # - C=x.x.x.x: Ignored packet sniffed from unknown client.
 # - D: Dropped sniffed packet due to processing bottleneck. Consider
 #      increasing THREADS.
-# - I: Invalid/unparseable packet sniffed.
+# - I: Invalid/unparsable packet sniffed.
 # - Mreq: Response was sniffed without sniffing a corresponding request.
 # - Mresp: Request was sniffed without sniffing a corresponding response.
 # - T: Request to test server timed out.
