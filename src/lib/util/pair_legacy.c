@@ -619,8 +619,8 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
 
 /** Move pairs from source list to destination list respecting operator
  *
- * @note This function does some additional magic that's probably not needed
- *	 in most places. Consider using radius_pairmove in server code.
+ * @note This function does some additional magic that's probably not needed in most places. Consider using
+ *	 radius_legacy_map_cmp() and radius_legacy_map_apply() instead.
  *
  * @note fr_pair_list_free should be called on the head of the source list to free
  *	 unmoved attributes (if they're no longer needed).
@@ -628,8 +628,6 @@ int fr_pair_list_afrom_file(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_pair_list
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
  * @param[in] op operator for list move.
- *
- * @see radius_pairmove
  */
 void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t op)
 {
