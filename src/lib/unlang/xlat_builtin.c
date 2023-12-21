@@ -2461,7 +2461,7 @@ static xlat_arg_parser_t const xlat_func_randstr_arg[] = {
  * Format similar to String::Random.
  *
  * Format characters may include the following, and may be
- * preceeded by a repetition count:
+ * preceded by a repetition count:
  * - "c"	lowercase letters
  * - "C" 	uppercase letters
  * - "n" 	numbers

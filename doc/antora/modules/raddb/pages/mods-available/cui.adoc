@@ -91,9 +91,9 @@ sql cuisql {
 	}
 #	logfile = ${logdir}/cuilog.sql
 	pool {
-		start = 5
+		start = 0
 		min = 4
-#		max =
+		max = 10
 		spare = 3
 		uses = 0
 		lifetime = 0

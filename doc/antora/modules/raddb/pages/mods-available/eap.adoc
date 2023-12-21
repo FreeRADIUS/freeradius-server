@@ -212,7 +212,7 @@ the following sections:
 |===
 
 More information about the various sections can be found in
-link:../../../../../../sites-available/tls.adoc[sites-available/tls].
+link:../sites-available/tls.adoc[sites-available/tls].
 
 
 auto_chain::
@@ -862,7 +862,7 @@ Both `copy_request_to_tunnel` and `use_tunneled_reply` have been
 removed in v4.0.
 
 See the new policy `copy_request_to_tunnel` in
-link:../../../../../../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
+link:../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
 for more information.
 ====
 
@@ -971,7 +971,7 @@ Both `copy_request_to_tunnel` and `use_tunneled_reply` have been
 removed in v4.0.
 
 See the new policy `copy_request_to_tunnel` in
-link:../../../../../../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
+link:../sites-available/inner-tunnel.adoc[sites-available/inner-tunnel], and in `policy.d/eap`
 for more information.
 ====
 

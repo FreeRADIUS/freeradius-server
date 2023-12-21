@@ -86,7 +86,7 @@ does not result in notification of changes to the users, even though
 other modifications to the user will result in a notification which
 can include the memberOf attribute.
 
-Instead group membeship changes are reported as changes to the group object.
+Instead group membership changes are reported as changes to the group object.
 
 
 Each virtual-server may have multiple listen sections, with each
@@ -284,9 +284,11 @@ Called for a sync when:
 - If a connection experiences an error and needs to be restarted.
 
 The section may return one of the following/codes attributes:
-- ok/updated and &reply.LDAP-Sync.Cookie to indicate a cookie value was loaded.
-- noop to indicate that no cookie was found.
-- Any other code to indicate failure.
+- fail / invalid / reject / disallow to indicate failure.  The section will be
+  retried after a delay (the ldap reconnection delay).  The sync query will not be started until
+  this section succeeds.
+- Any other code with &reply.LDAP-Sync.Cookie populated to indicate a cookie value was loaded.
+- Any other code without &reply.LDAP-Sync.Cookie populated to indicate no cookie was found.
 
 
 
@@ -490,10 +492,7 @@ server ldap_sync {
 #		if (!&reply.LDAP-Sync.Cookie) {
 #			string csn
 #			&csn := %ldap("ldap:///%{LDAP-Sync.Directory-Root-DN}?contextCSN?base")
-#			if (&csn) {
-#				&reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
-#				updated
-#			}
+#			&reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
 #		}
 	}
 	store Cookie {

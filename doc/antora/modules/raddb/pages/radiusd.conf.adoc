@@ -2,7 +2,7 @@
 
 
 
-= FreeRADIUS server configuration file - 4.0.0
+= FreeRADIUS server configuration file - @RADIUSD_VERSION_STRING@
 
 Read `man radiusd` before editing this file.  See the section
 titled DEBUGGING.  It outlines a method where you can quickly
@@ -271,6 +271,36 @@ The exact values permitted here are _OS-dependent_.  You probably
 don't want to change this.
 
 
+Suppress "secret" values when printing them in debug mode.
+
+
+Setting this to "yes" means that the server prints a series
+of dots:
+
+.......
+
+instead of the value, for attributes which contain secret
+information.  e.g. User-Name, Tunnel-Password, etc.
+
+This configuration is disabled by default.  It is extremely
+important for administrators to be able to debug user logins
+by seeing what is actually being sent.
+
+
+
+Perform debug logging to a special file.
+
+This log section is generally used for per-request debug logging.
+For example, the following function calls can be placed in an
+`unlang` block, where it will:
+
+
+The file will be closed when the request exits.  It is the admins
+responsibility to ensure that the debug files are periodically cleaned up.
+The server does not do this automatically.
+
+
+
 
 .ENVIRONMENT VARIABLES
 
@@ -299,6 +329,14 @@ values.
 
 
 Delete environment variable `BAR`.
+
+
+
+If the server needs kerberos credentials, then they can be placed
+into the following keytab file.
+
+This also permits the server to use those credentials when it is
+run in debug mode.
 
 
 
@@ -360,8 +398,8 @@ initialized, it does a `chdir` to `${logdir}`.  This means
 that it should be impossible to break out of the chroot.
 
 If you are worried about security issues related to this
-use of chdir, then simply ensure that the "raddb" directory
-is inside of the chroot, end be sure to do "cd raddb"
+use of chdir, then simply ensure that the `raddb` directory
+is inside of the chroot, and be sure to do `cd raddb`
 BEFORE starting the server.
 
 If the server is statically linked, then the only files
@@ -477,8 +515,8 @@ at least one, and no more than 128.  Since each request is
 non-blocking, there is no reason to run hundreds of threads
 as in v3.
 
-When set to 0 the number of workers will be set from the number
-of cores available on the system.
+Defaults to the number of cores available on the system, or,
+1, if this cannot be determined.
 
 
 
@@ -514,6 +552,36 @@ the `trigger.conf` file.
 
 Each library which has global settings will have its own configuration
 file in global.d
+
+
+
+.Migration Flags
+
+These flags are only for the "alpha" release of v4.  They will be
+removed (and made into errors!) in the final release.
+
+Some of these flags can also be passed on the command line as
+`-S flag=value`.
+
+
+rewrite_update:: Rewrite old `update` sections to use the new
+"edit" code.
+
+When this flag is set to `true`, the server will read the
+`update` section, and swap the internal implementation to
+use the new code.  The configuration file can still contain
+the `update` keyword.
+
+Not all `update` sections can be automatically converted.
+If the conversion process does not work, then the server
+will produce an error instead of doing the wrong thing.
+
+
+
+forbid_update:: Forbid the use of the `update` keyword.
+
+This flag allows us to remove the last bits of the v2
+configuration from the server.
 
 
 
@@ -618,7 +686,7 @@ For more documentation on virtual servers, see:
 == Default Configuration
 
 ```
-prefix = /Users/alandekok/git/wrapper//install
+prefix = /usr/local
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
@@ -647,10 +715,24 @@ log {
 #	timestamp = no
 	file = ${logdir}/radius.log
 	syslog_facility = daemon
+#	suppress_secrets = no
+}
+#	* delete any pre-exising debug log for this user
+#	  do not do this for EAP sessions, as they use multiple round trips.
+#	* use the 'log debug' section as a template
+#	* set the debug level for this request to '2'
+#	* over-ride the log file, and set it to be based on the `link:https://freeradius.org/rfc/rfc2865.html#User-Name[User-Name]`.
+#	%file.rm("${logdir}/debug/%{User-Name}.log")
+#	%log.destination('debug', 2, "${logdir}/debug/%{User-Name}.log")
+log debug {
+	destination = null
+	colourise = no
+	timestamp = yes
 }
 ENV {
 #	FOO = '/bar/baz'
 #	BAR
+#	KRB5_CLIENT_KTNAME = ${raddbdir}/radiusd.keytab
 #	LD_PRELOAD = /path/to/library1.so
 #	LD_PRELOAD = /path/to/library2.so
 }
@@ -676,6 +758,10 @@ thread pool {
 #$INCLUDE trigger.conf
 global {
 	$INCLUDE global.d/
+}
+migrate {
+	rewrite_update = false
+	forbid_update = false
 }
 modules {
 #	$INCLUDE mods-enabled/sql

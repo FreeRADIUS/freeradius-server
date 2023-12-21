@@ -124,7 +124,7 @@
 #  _VENDOR_ is the name of the vendor, which is taken from the `VENDOR`
 #  definition in the v3 dictionaries.
 #
-#  You will need to add a `$INCLUD`E line for each vendor-specific
+#  You will need to add a `$INCLUDE` line for each vendor-specific
 #  dictionary which is used by your local system.  The default v4
 #  dictionaries do not enable all of v3 compatibility names.
 #

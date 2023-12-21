@@ -37,7 +37,7 @@ start:: Connections to create during module instantiation.
 If the server cannot create specified number of
 connections during instantiation it will exit.
 Set to `0` to allow the server to start without the
-KDC being available.
+external service being available.
 
 
 
@@ -56,6 +56,9 @@ like _No connections available and at max connection limit_.
 
 Setting `max` to MORE than the number of threads means
 that there are more connections than necessary.
+
+If `max` is not specified, then it defaults to the number
+of workers configured.
 
 
 

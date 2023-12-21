@@ -247,7 +247,7 @@ as prefix/suffix stripping, or comparisons.
 == Default Configuration
 
 ```
-prefix = /Users/alandekok/git/wrapper//install
+prefix = /usr/local
 exec_prefix = ${prefix}
 sysconfdir = ${prefix}/etc
 localstatedir = ${prefix}/var
@@ -296,7 +296,9 @@ server radrelay {
 		load_factor = 90
 	}
 	recv Accounting-Request {
-		&control.Proxy-To-Realm := "radrelay"
+		update control {
+			Proxy-To-Realm := "radrelay"
+		}
 	}
 }
 ```

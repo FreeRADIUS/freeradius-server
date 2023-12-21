@@ -232,19 +232,6 @@ This configuration is commented out in the
 default configuration.  Uncomment it, and configure
 the correct paths below to enable it.
 
-A temporary directory where the client
-certificates are stored.  This directory
-MUST be owned by the UID of the server,
-and MUST not be accessible by any other
-users.  When the server starts, it will do
-"chmod go-rwx" on the directory, for
-security reasons.  The directory MUST
-exist when the server starts.
-
-You should also delete all of the files
-in the directory when the server starts.
-   		tmpdir = /tmp/radiusd
-
 The command used to verify the client cert.
 We recommend using the OpenSSL command-line
 tool.
