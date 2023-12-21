@@ -431,7 +431,7 @@ dnl   sed -e 's%src/modules/.*/% (sub)- %; s%.*/%- %' |\
 dnl   awk '{print "                            "$0}']))
 
 AC_ARG_ENABLE(strict-dependencies,
-[  --enable-strict-dependencies  fail configure on lack of module dependancy.])
+[  --enable-strict-dependencies  fail configure on lack of module dependency.])
 
 AC_ARG_ENABLE(werror,
 [  --enable-werror         causes the build to fail if any warnings are generated.],
@@ -1970,7 +1970,7 @@ if test "x$developer" = "xyes"; then
   fi
 
   dnl #
-  dnl #  Can't use mutliple -fsanitize flags, so we need to combine
+  dnl #  Can't use multiple -fsanitize flags, so we need to combine
   dnl #  the values into one.
   dnl #
   fsanitizeflags=
@@ -2653,7 +2653,7 @@ case "$target" in
     dnl #  and LLDB throws an EXC_BAD_INSTRUCTION exception.
     dnl #
     dnl #  OpenSSL installs a SIGILL handler to catch the signal but this
-    dnl #  is also overriden by lldb.
+    dnl #  is also overridden by lldb.
     dnl #
     dnl #  To allow us to debug on macOS + LLDB + ARM we need to ignore
     dnl #  this exception and ignore SIGILL.

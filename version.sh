@@ -105,7 +105,7 @@ version_component()
 		)
 	;;
 
-	# - If $RELEASE is set, that takes precendence
+	# - If $RELEASE is set, that takes precedence
 	# - Otherwise if a RELEASE file is present, then release = 1.
 	# - If we're in a git repo
 	#    - If there's a release_* tag matching the current commit,

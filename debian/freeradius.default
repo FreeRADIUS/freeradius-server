@@ -1,4 +1,4 @@
-# Options passed to the FreeRADIUS deamon.
+# Options passed to the FreeRADIUS daemon.
 #
 FREERADIUS_OPTIONS=""
 
