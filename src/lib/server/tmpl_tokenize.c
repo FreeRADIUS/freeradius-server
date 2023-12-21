@@ -3106,7 +3106,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	Deal with explicit casts...
 		 */
 		slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, true, p_rules);
-		if (slen > 0) return slen;
+		if (slen != 0) return slen;
 
 		/*
 		 *	See if it's a boolean value
@@ -3250,7 +3250,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	as they cannot contain expansions.
 		 */
 		slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, false, p_rules);
-		if (slen > 0) return slen;
+		if (slen != 0) return slen;
 
 		vpt = tmpl_alloc_null(ctx);
 		slen = fr_sbuff_out_aunescape_until(vpt, &str, &our_in, SIZE_MAX,
@@ -3275,7 +3275,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 */
 		if (xlat_is_literal(head)) {
 			slen = tmpl_afrom_value_substr(ctx, out, in, quote, t_rules, false, p_rules);
-			if (slen > 0) {
+			if (slen != 0) {
 				talloc_free(vpt);
 				return slen;
 			}
