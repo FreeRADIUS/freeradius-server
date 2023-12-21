@@ -387,12 +387,12 @@ fr_sbuff_parse_rules_t const *map_parse_rules_quoted[T_TOKEN_LAST] = {
 
 /** Parse sbuff into (which may contain refs) to map_t.
  *
- * Treats the left operand as an attribute reference
- * @verbatim<request>.<list>.<attribute>@endverbatim
+ * This function uses the legacy operator meanings.  The maps created here
+ * should only be used with radius_legacy_map_cmp() and
+ * radius_legacy_map_apply()
  *
- * Treatment of left operand depends on quotation, barewords are treated as
- * attribute references, double quoted values are treated as expandable strings,
- * single quoted values are treated as literal strings.
+ * The left operand MUST be an attribute reference
+ * @verbatim<request>.<list>.<attribute>@endverbatim
  *
  *  The op_table should be #cond_cmp_op_table for check items, and
  *  #map_assignment_op_table for reply items.
@@ -443,15 +443,11 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	fr_sbuff_marker(&m_lhs, &our_in);
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
 	switch (token) {
-	case T_SOLIDUS_QUOTED_STRING:
-	case T_DOUBLE_QUOTED_STRING:
-	case T_BACK_QUOTED_STRING:
-	case T_SINGLE_QUOTED_STRING:
-		slen = tmpl_afrom_substr(map, &map->lhs, &our_in, token,
-					 value_parse_rules_quoted[token], lhs_rules);
-		break;
-
 	default:
+		fr_strerror_const("Expected attribute reference, not string");
+		goto error;
+
+	case T_BARE_WORD:
 	{
 		tmpl_rules_t our_lhs_rules;
 
@@ -560,6 +556,26 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	if (map->op == T_INVALID) {
 		fr_strerror_const("Invalid operator");
 		goto error_adj;
+	}
+
+	/*
+	 *	This function is ONLY called for legacy operators.
+	 *
+	 *	radius_legacy_map_cmp() and radius_legacy_map_apply() do not support complex
+	 *	comparisons or updates.
+	 */
+	if (parent) {
+		if (fr_comparison_op[map->op]) {
+			fr_sbuff_set(&our_in, &m_op);
+			fr_strerror_const("Comparison operators cannot be used inside of structural data types");
+			goto error;
+		}
+
+		if (map->op != T_OP_EQ) {
+			fr_sbuff_set(&our_in, &m_op);
+			fr_strerror_const("Invalid operator inside of structural data type - must be '='");
+			goto error;
+		}
 	}
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
