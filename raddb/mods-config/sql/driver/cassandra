@@ -89,7 +89,7 @@ cassandra {
 		# Number of hosts used at each remote dc (default 0).
 #		hosts_per_remote_dc = 0
 
-		# Allow remote hosts to be used in no local dc hosts are avaiable and the
+		# Allow remote hosts to be used if no local dc hosts are available and the
 		# consistency level is 'local_one' or 'local_quorum' (default no).
 #		allow_remote_dcs_for_local_cl = no
 	}

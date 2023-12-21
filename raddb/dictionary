@@ -39,7 +39,7 @@
 #
 #  v4 also supports a `dictionary { ... }` subsection in a virtual
 #  server.  If the attributes are used only in one virtual server,
-#  they shuld be defined there.
+#  they should be defined there.
 #
 
 #
@@ -85,7 +85,7 @@
 #  ## v3 Compatible names.
 #
 #  All of the attributes have been renamed from v3.  This change was
-#  necessary in order to support new funtionality in v4.  The
+#  necessary in order to support new functionality in v4.  The
 #  unfortunate side effect of this change is that all of the names in
 #  SQL, LDAP, and the "files" module are incompatible with v4.
 #
@@ -131,7 +131,7 @@
 #  Yes, we recognize that this process is a bit of work.  However, we
 #  wish to encourage everyone using v4 to upgrade to using the new v4
 #  features.  Our experience shows that if we automatically enable
-#  "compatibility functions", then those compatiblity functions will
+#  "compatibility functions", then those compatibility functions will
 #  be used for a decade.  So we need to find a balance between
 #  upgrades and ongoing support.  Easy upgrades will mean complex
 #  ongoing support.  Complex upgrades make ongoing support easier, but

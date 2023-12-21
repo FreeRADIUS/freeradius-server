@@ -115,7 +115,7 @@ CREATE TABLE StopTelephony (
 	processed		BOOLEAN DEFAULT false
 );
 
--- You can have more than one record that is identical except for CiscoNASPort if you have a dial peer hungroup
+-- You can have more than one record that is identical except for CiscoNASPort if you have a dial peer huntgroup
 -- configured for multiple PRIs.
 create UNIQUE index stoptelephonycombo on stoptelephony (AcctTime, nasipaddress, CallID, CiscoNASPort);
 
@@ -180,7 +180,7 @@ CREATE TRUSTED LANGUAGE "plpgsql" HANDLER "plpgsql_call_handler";
 -- We therefore do not bother to strip asterisks (*) from timestamps, as you NEED ntp setup
 -- unless you don't care about billing at all!
 --
---  * Example useage:
+--  * Example usage:
 --      insert into mytable values (strip_dot('.16:46:02.356 EET Wed Dec 11 2002'));
 --
 CREATE OR REPLACE FUNCTION strip_dot (VARCHAR) RETURNS TIMESTAMPTZ AS '
