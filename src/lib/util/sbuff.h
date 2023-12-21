@@ -51,7 +51,7 @@ extern "C" {
 typedef ssize_t fr_slen_t;
 typedef struct fr_sbuff_s fr_sbuff_t;
 typedef struct fr_sbuff_ptr_s fr_sbuff_marker_t;
-typedef size_t(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, size_t req_extenison);
+typedef size_t(*fr_sbuff_extend_t)(fr_sbuff_t *sbuff, size_t req_extension);
 
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/strerror.h>
