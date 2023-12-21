@@ -227,7 +227,7 @@ void fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix)
  * found and a record for AF_INET6 exists that record will be returned.
  *
  * If fallback is specified and af is AF_INET6, and a record with AF_INET4 exists
- * that record will be returned inseted.
+ * that record will be returned inserted.
  *
  * @param[out] out Where to write result.
  * @param[in] af To search for in preference.

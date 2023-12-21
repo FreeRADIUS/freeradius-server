@@ -84,7 +84,7 @@ struct ss7_application {
 
 	/* various hacks/quirks to deal with broken equipment */
 	/*
-	 * Some equipments do not look into the codec list but only the
+	 * Some equipment do not look into the codec list but only the
 	 * size of it.
 	 */
 	unsigned fixed_ass_cmpl_reply : 1;

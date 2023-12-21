@@ -301,13 +301,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	if (inst->app_io->common.instantiate &&
 	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
-		cf_log_err(conf, "Instantation failed for \"%s\"", inst->app_io->common.name);
+		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
 
 	/*
 	 *	These configuration items are not printed by default,
-	 *	because normal people shouln't be touching them.
+	 *	because normal people shouldn't be touching them.
 	 */
 	if (!inst->max_packet_size) inst->max_packet_size = inst->app_io->default_message_size;
 	if (!inst->num_messages) inst->num_messages = 2;

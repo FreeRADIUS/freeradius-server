@@ -466,7 +466,7 @@ static void mod_vnode_delete(fr_event_list_t *el, int fd, UNUSED int fflags, voi
 /** Start processing a new work file
  *
  * @param[in] thread			the thread instance.
- * @param[in] triggered_by_delete	true if this was trigged by a vnode_delete.
+ * @param[in] triggered_by_delete	true if this was triggered by a vnode_delete.
  *					When a new file is moved over a workfile
  *					vnode delete can serve as an indication
  *					that new data is available.

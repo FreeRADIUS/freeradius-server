@@ -47,7 +47,7 @@
  */
 #define VLAN_VID_UNPACK(_vlan)		((htons((_vlan)->tag_control) & 0x0fff))
 
-/** Pack the PCP (Priority Code Point) DEI (Drop Eligable Indicator) and VID (VLAN ID)
+/** Pack the PCP (Priority Code Point) DEI (Drop Eligible Indicator) and VID (VLAN ID)
  *
  * Packs the PCP, DEI and VID into the TCI (Tag control information). Output will be a 16bit integer
  * in network byte order.

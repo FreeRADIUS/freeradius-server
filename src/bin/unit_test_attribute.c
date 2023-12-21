@@ -1153,7 +1153,7 @@ static size_t command_include(command_result_t *result, command_file_ctx_t *cc,
 	RETURN_OK(0);
 }
 
-/** Determine if unresolved atttributes are allowed
+/** Determine if unresolved attributes are allowed
  *
  */
 static size_t command_allow_unresolved(command_result_t *result, command_file_ctx_t *cc,
@@ -3074,7 +3074,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 				}},
 	{ L("max-buffer-size"),   &(command_entry_t){
 					.func = command_max_buffer_size,
-					.usage = "max-buffer-size[ <intger>]",
+					.usage = "max-buffer-size[ <integer>]",
 					.description = "Limit the maximum temporary buffer space available for any command which uses it"
 				}},
 	{ L("migrate "),	&(command_entry_t){

@@ -2799,7 +2799,7 @@ STATE_GUARD(common_challenge)
  * - If the previous section returned a failure rcode, enter the FAILURE-NOTIFICATION state.
  * - ...or call a function to process the contents of the AKA-Identity message, mainly the AT_IDENTITY value.
  * - If the message does not contain AT_IDENTITY, then enter the FAILURE-NOTIFICATION state.
- * - If the user requested another identity, re-enter the AKA-Identity sate.
+ * - If the user requested another identity, re-enter the AKA-Identity state.
  * - ...or continue based on the value of &Identity-Type which was added by #aka_identity,
  *   and possibly modified by the user.
  *   - Fastauth - Enter the REAUTHENTICATION state.
@@ -3066,7 +3066,7 @@ STATE_GUARD(aka_identity)
  * - If the previous section returned a failure rcode, enter the FAILURE-NOTIFICATION state.
  * - ...or call a function to process the contents of the SIM-Start message, mainly the AT_IDENTITY value.
  * - If the message does not contain AT_IDENTITY, then enter the FAILURE-NOTIFICATION state.
- * - If the user requested another identity, re-enter the SIM-START sate.
+ * - If the user requested another identity, re-enter the SIM-START state.
  * - ...or continue based on the value of &Identity-Type which was added by #sim_start,
  *   and possibly modified by the user.
  *   - Fastauth

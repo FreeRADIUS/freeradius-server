@@ -243,7 +243,7 @@ static void test_fr_pair_raw_from_pair(void)
 	TEST_CASE("Validating PAIR_VERIFY()");
 	PAIR_VERIFY(vp);
 
-	TEST_CASE("Converting regular 'vp' as unkown");
+	TEST_CASE("Converting regular 'vp' as unknown");
 	TEST_CHECK(fr_pair_raw_from_pair(vp, &value, 1) == 0);
 
 	TEST_CASE("Checking if a real 'raw' vp");

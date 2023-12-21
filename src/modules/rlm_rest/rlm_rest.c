@@ -467,7 +467,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (!randle) return XLAT_ACTION_FAIL;
 
 	/*
-	 *	Walk the incomming boxes, assessing where each is in the URI,
+	 *	Walk the incoming boxes, assessing where each is in the URI,
 	 *	escaping tainted ones where needed.  Following each space in the
 	 *	input a new VB group is started.
 	 */

@@ -89,7 +89,7 @@ void fr_proto_da_stack_print(char const *file, int line, char const *func, fr_da
 
 /** Implements the default iterator to encode pairs belonging to a specific dictionary that are not internal
  *
- * @param[in] list	to itterate over.
+ * @param[in] list	to iterate over.
  * @param[in] current	The fr_pair_t cursor->current.  Will be advanced and checked to
  *			see if it matches the specified fr_dict_t.
  * @param[in] uctx	The fr_dict_t to search for.

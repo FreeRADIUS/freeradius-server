@@ -350,7 +350,7 @@ BIO *fr_tls_bio_dbuff_thread_local(TALLOC_CTX *ctx, size_t init, size_t max)
 		return bd->bio;
 	}
 
-	fr_assert_msg(!tls_bio_talloc_agg->dbuff_out.buff, "BIO not finialised");
+	fr_assert_msg(!tls_bio_talloc_agg->dbuff_out.buff, "BIO not finalised");
 	MEM(fr_dbuff_init_talloc(ctx, &bd->dbuff_out, &bd->tctx, init, max));	/* Where we read from */
 	bd->dbuff_in = FR_DBUFF_BIND_END_ABS(&bd->dbuff_out);			/* Where we write to */
 

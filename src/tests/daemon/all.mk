@@ -54,7 +54,7 @@ $(BUILD_DIR)/tests/tmux.key:
 	${Q}echo $(TMUX_KEY) > $@
 
 #
-#  Stupid 'make' doesn' know how to create directories.
+#  Stupid 'make' doesn't know how to create directories.
 #
 .PHONY: $(BUILD_DIR)/tests/daemon/
 $(BUILD_DIR)/tests/daemon/:

@@ -67,7 +67,7 @@ sub authenticate {
 	if ($RAD_REQUEST{'User-Name'} =~ /^baduser/i) {
 		# Reject user and tell him why
 		$RAD_REPLY{'Reply-Message'} = "Denied access by rlm_perl function";
-		# For testing return NOTFOUND - returning REJECT immediatly rejects the packet so fails the test
+		# For testing return NOTFOUND - returning REJECT immediately rejects the packet so fails the test
 		return RLM_MODULE_NOTFOUND;
 	} else {
 		# Accept user and set some attribute

@@ -428,7 +428,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	}
 
 	/*
-	 *	FIXME: Go to an LRU system.  This prevents ID re-use
+	 *	FIXME: Go to an LRU system.  This prevents ID reuse
 	 *	for as long as possible.  The main problem with that
 	 *	approach is that it requires us to populate the
 	 *	LRU/FIFO when we add a new socket, or a new destination,

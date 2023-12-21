@@ -1046,7 +1046,7 @@ static int xlat_expr_logical_purify(xlat_exp_t *node, void *instance, request_t 
 		}
 
 		/*
-		 *	Start searching from the next entry, OR start seaching from where we left off before.
+		 *	Start searching from the next entry, OR start searching from where we left off before.
 		 */
 		if (j < 0) j = i + 1;
 
@@ -2355,7 +2355,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 		/*
 		 *	We've parsed one "thing", so we stop.  The
-		 *	next thing shoud be an operator, not another
+		 *	next thing should be an operator, not another
 		 *	value.
 		 */
 		*out_c = '\0';

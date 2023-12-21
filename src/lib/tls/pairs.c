@@ -249,7 +249,7 @@ skip_alt:
 
 	/*
 	 *	Grab the X509 extensions, and create attributes out of them.
-	 *	For laziness, we re-use the OpenSSL names
+	 *	For laziness, we reuse the OpenSSL names
 	 */
 	if (sk_X509_EXTENSION_num(ext_list) > 0) {
 		int			i;

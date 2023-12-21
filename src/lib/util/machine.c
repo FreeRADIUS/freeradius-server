@@ -290,7 +290,7 @@ static int state_post(fr_machine_t *m, int state)
  *
  * @param m	The state machine
  * @return
- *	- 0 for "no transition has occured"
+ *	- 0 for "no transition has occurred"
  *	- >0 for "we are in a new state".
  *	-<0 for "error, you should tear down the state machine".
  *
@@ -609,7 +609,7 @@ void fr_machine_resume(fr_machine_t *m)
  * @param m	The state machine
  * @param signal the signal to send to the state machne
  * @return
- *	- 0 for "no transition has occured"
+ *	- 0 for "no transition has occurred"
  *	- >0 for "we are in a new state".
  *	-<0 for "error, you should tear down the state machine".
  *

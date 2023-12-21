@@ -349,7 +349,7 @@ void _fr_dbuff_init(fr_dbuff_t *out, uint8_t const *start, uint8_t const *end, b
  * @param[out] _out		Pointer to buffer to parse
  * @param[in] _start		Start of the buffer to parse.
  * @param[in] _len_or_end	Either an end pointer or the length
- *				of the buffer we're deconding.
+ *				of the buffer we're decoding.
  */
 #define fr_dbuff_init(_out, _start, _len_or_end) \
 _fr_dbuff_init(_out, \
@@ -566,7 +566,7 @@ do { \
 /** @name Extension requests
  *
  * These functions/macros may be used to request that the underlying buffer is
- * either extended to accomodate more data, or that data is shifted out of the
+ * either extended to accommodate more data, or that data is shifted out of the
  * buffer, and that the buffer is refilled.
  *
  * @{
@@ -1767,7 +1767,7 @@ FR_DBUFF_OUT_DEF(int64)
 /** Copy data from a dbuff or marker to a fixed sized C type
  *
  * @param[out] _out			Where to write the data.  If out is an integer type
- *					a byteswap will be performed if native endianess
+ *					a byteswap will be performed if native endianness
  *      				is not big endian.
  * @param[in] _dbuff_or_marker		to copy data from. Will be advanced by the number
  *					of bytes consumed, i.e. if out is a uin16_t *,

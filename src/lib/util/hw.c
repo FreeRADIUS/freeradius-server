@@ -96,7 +96,7 @@ uint32_t fr_hw_num_cores_active(void)
 	/*
 	 *	Catch Linux weirdness.
 	 *
-	 *	You'd think this'd be enough to quiet clang scan,
+	 *	You'd think this would be enough to quiet clang scan,
 	 *	but it's not.
 	 */
 	if (unlikely((tsibs == 0) || (lcores == 0) || (lcores > tsibs))) {

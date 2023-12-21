@@ -464,7 +464,7 @@ int compute_password_element (request_t *request, pwd_session_t *session, uint16
 	}
 
 	/*
-	* now we can savely construct PWE
+	* now we can safely construct PWE
 	*/
 	BN_bin2bn(xbuf, primebytelen, x_candidate);
 	do_equation(session->group, y_sqrd, x_candidate, bnctx);

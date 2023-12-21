@@ -350,7 +350,7 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
  * If attr and vendor match a dictionary entry then a VP with that #fr_dict_attr_t
  * will be returned.
  *
- * If attr or vendor are uknown will call dict_attruknown to create a dynamic
+ * If attr or vendor are unknown will call dict_attruknown to create a dynamic
  * #fr_dict_attr_t of #FR_TYPE_OCTETS.
  *
  * Which type of #fr_dict_attr_t the #fr_pair_t was created with can be determined by
@@ -634,7 +634,7 @@ static void *fr_pair_iter_next_by_da(fr_dlist_head_t *list, void *current, void 
 
 /** Iterate over pairs which are decedents of the specified da
  *
- * @param[in] list	to itterate over.
+ * @param[in] list	to iterate over.
  * @param[in] current	The fr_pair_t cursor->current.  Will be advanced and checked to
  *			see if it matches the specified fr_dict_attr_t.
  * @param[in] uctx	The fr_dict_attr_t to search for.

@@ -161,7 +161,7 @@ bool fr_atomic_queue_push(fr_atomic_queue_t *aq, void *data)
 		int64_t seq, diff;
 
 		entry = &aq->entry[ head % aq->size ];
-		seq = aquire(entry->seq);
+		seq = acquire(entry->seq);
 		diff = (seq - head);
 
 		/*
@@ -225,7 +225,7 @@ bool fr_atomic_queue_pop(fr_atomic_queue_t *aq, void **p_data)
 		int64_t diff;
 
 		entry = &aq->entry[ tail % aq->size ];
-		seq = aquire(entry->seq);
+		seq = acquire(entry->seq);
 
 		diff = (seq - (tail + 1));
 

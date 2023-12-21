@@ -132,7 +132,7 @@ static int udp_read_cb(struct osmo_fd *fd)
 		mtp_link_failure(link);
 		goto exit;
 	} else if (hdr->data_type > UDP_DATA_MSU_PRIO_3) {
-		LOGP(DINP, LOGL_ERROR, "Link failue on %d/%s of %d/%s.\n",
+		LOGP(DINP, LOGL_ERROR, "Link failure on %d/%s of %d/%s.\n",
 		     link->nr, link->name, link->set->nr, link->set->name);
 		mtp_link_failure(link);
 		goto exit;

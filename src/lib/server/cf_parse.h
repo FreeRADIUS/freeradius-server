@@ -235,7 +235,7 @@ _Generic(&(_ct), \
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
  * @param[in] _flags		controlling parsing behaviour.
- * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _struct		containing the field to write the result to.
  * @param[in] _field		to write the result to.
  */
 #  define FR_CONF_OFFSET_TYPE_FLAGS(_name, _type, _flags, _struct, _field) \
@@ -250,7 +250,7 @@ _Generic(&(_ct), \
  *
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _flags		controlling parsing behaviour.
- * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _struct		containing the field to write the result to.
  * @param[in] _field		to write the result to.
  */
 #  define FR_CONF_OFFSET_FLAGS(_name, _flags, _struct, _field)  \
@@ -262,7 +262,7 @@ _Generic(&(_ct), \
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
  *
  * @param[in] _name		of the CONF_PAIR to search for.
- * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _struct		containing the field to write the result to.
  * @param[in] _field		to write the result to.
  */
 #  define FR_CONF_OFFSET(_name, _struct, _field)  \
@@ -276,7 +276,7 @@ _Generic(&(_ct), \
  * @param[in] _name		of the CONF_PAIR to search for.
  * @param[in] _type		to parse the CONF_PAIR as.
  * @param[in] _flags		controlling parsing behaviour.
- * @param[in] _struct		contaning the field to write the result to.
+ * @param[in] _struct		containing the field to write the result to.
  * @param[in] _field		to write the result to.
  */
 #  define FR_CONF_OFFSET_IS_SET(_name, _type, _flags, _struct, _field) \
@@ -397,7 +397,7 @@ _Generic(&(_ct), \
  */
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
-	CONF_FLAG_HIDDEN		= 0,				//!< Used by scripts to ommit items from the
+	CONF_FLAG_HIDDEN		= 0,				//!< Used by scripts to omit items from the
 									///< generated documentation.
 	CONF_FLAG_SUBSECTION		= (1 << 1),			//!< Instead of putting the information into a
 									///< configuration structure, the configuration

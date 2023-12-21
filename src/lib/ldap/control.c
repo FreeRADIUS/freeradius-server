@@ -34,7 +34,7 @@ USES_APPLE_DEPRECATED_API
 /** Merge connection and call specific client and server controls
  *
  * LDAP_OPT_CLIENT_CONTROLS and LDAP_OPT_SERVER_CONTROLS are useless
- * because they're overriden in their entirety if any call specific
+ * because they're overridden in their entirety if any call specific
  * controls are specified.
  *
  * @param[out] serverctrls_out	Where to write serverctrls.

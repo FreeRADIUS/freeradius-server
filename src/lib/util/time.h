@@ -521,7 +521,7 @@ static inline int64_t fr_unix_time_to_day(fr_unix_time_t delta)
 	return (fr_unix_time_unwrap(delta) / NSEC) / 386400;
 }
 
-/** Covert a time_t into out internal fr_unix_time_t
+/** Convert a time_t into out internal fr_unix_time_t
  *
  * Our internal unix time representation is unsigned and in nanoseconds which
  * is different from time_t which is signed and has seconds resolution.

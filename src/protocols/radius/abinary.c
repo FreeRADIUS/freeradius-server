@@ -218,7 +218,7 @@ typedef struct {
  *	value:		A value to compare against the masked bits at
  *			offset in a users packet.
  *
- *	compNeq:	Defines type of comarison (Equal or Notequal)
+ *	compNeq:	Defines type of comparison (Equal or Notequal)
  *			default is Equal.
  *
  *	fill:		Round things out to a dword boundary

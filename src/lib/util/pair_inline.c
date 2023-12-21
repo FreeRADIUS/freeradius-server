@@ -157,7 +157,7 @@ _INLINE size_t fr_pair_list_num_elements(fr_pair_list_t const *list)
  *
  * @param[in] list to get the head from
  *
- * @return the pointer to the dlist wihin the pair list.
+ * @return the pointer to the dlist within the pair list.
  */
 _INLINE fr_dlist_head_t *fr_pair_list_to_dlist(fr_pair_list_t const *list)
 {

@@ -1,5 +1,5 @@
 /*
- * Represet M3UA client (and later server) links
+ * Represent M3UA client (and later server) links
  */
 #pragma once
 

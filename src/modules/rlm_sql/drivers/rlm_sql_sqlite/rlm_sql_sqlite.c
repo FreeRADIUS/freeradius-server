@@ -164,7 +164,7 @@ static sql_rcode_t sql_check_error(sqlite3 *db, int status)
  *
  * @param db handle to extract error from (may be NULL).
  * @param status to check (if unused, set to SQLITE_OK).
- * @param fmt to preprend.
+ * @param fmt to prepend.
  * @param ... arguments to fmt.
  */
 static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
@@ -546,7 +546,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	TALLOC_FREE(handle->row);
 
 	/*
-	 *	Executes the SQLite query and interates over the results
+	 *	Executes the SQLite query and iterates over the results
 	 */
 	status = sqlite3_step(conn->statement);
 

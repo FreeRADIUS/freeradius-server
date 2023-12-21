@@ -254,7 +254,7 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
 lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
 {
 	lcb_error_t error;                         /* couchbase command return */
-	lcb_server_stats_cmd_t cmd;                /* server stats command stuct */
+	lcb_server_stats_cmd_t cmd;                /* server stats command struct */
 	const lcb_server_stats_cmd_t *commands[1]; /* server stats commands array */
 
 	/* init commands */
@@ -288,7 +288,7 @@ lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
 lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *document, int expire)
 {
 	lcb_error_t error;                  /* couchbase command return */
-	lcb_store_cmd_t cmd;                /* store command stuct */
+	lcb_store_cmd_t cmd;                /* store command struct */
 	const lcb_store_cmd_t *commands[1]; /* store commands array */
 
 	/* init commands */

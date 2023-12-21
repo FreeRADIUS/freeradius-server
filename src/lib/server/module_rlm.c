@@ -347,7 +347,7 @@ fr_pool_t *module_rlm_connection_pool_init(CONF_SECTION *module,
 	/*
 	 *	We're reusing pool data add it to our local config
 	 *	section. This allows other modules to transitively
-	 *	re-use a pool through this module.
+	 *	reuse a pool through this module.
 	 */
 	if (mycs != cs) {
 		DEBUG4("%s: Copying pool reference %p from config item \"%s.pool\" to config item \"%s.pool\"",
@@ -534,7 +534,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 		 *	module as "foo" in the configuration.  If the
 		 *	module exports a "recv bar" method, and the
 		 *	virtual server has a "recv bar" processing
-		 *	section, then they shoul match.
+		 *	section, then they should match.
 		 *
 		 *	Unfortunately, this process is O(N*M).
 		 *	Luckily, we only do it if all else fails, so
@@ -966,7 +966,7 @@ int modules_rlm_instantiate(void)
  * @param[in] root of the server configuration.
  * @return
  *	- 0 if all modules were bootstrapped successfully.
- *	- -1 if a module/virtual module failed to boostrap.
+ *	- -1 if a module/virtual module failed to bootstrap.
  */
 int modules_rlm_bootstrap(CONF_SECTION *root)
 {

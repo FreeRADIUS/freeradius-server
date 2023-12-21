@@ -288,7 +288,7 @@ static bool dns_label_compress(uint8_t const *packet, uint8_t const *start, uint
 	 *	Note that by design, next > end.  We don't care about
 	 *	the size of the buffer we put "label" into.  We only
 	 *	care that all bytes of "label" are valid, and we don't
-	 *	access memroy after "label".
+	 *	access memory after "label".
 	 */
 
 	/*
@@ -978,7 +978,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 *	... an entire domain name or a list of
 			 *	labels at the end of a domain name is
 			 *	replaced with a pointer to a prior
-			 *	occurance of the same name.
+			 *	occurrence of the same name.
 			 *	...
 			 *
 			 *	Note the key word PRIOR.  If we

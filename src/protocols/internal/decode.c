@@ -369,7 +369,7 @@ ssize_t fr_internal_decode_pair_dbuff(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_d
  * @param out		list to append pairs to
  * @param parent	attribute within which which to decode
  * @param dbuff		to parse
- * @param decode_ctx	to pass to decoder funtion
+ * @param decode_ctx	to pass to decoder function
  * @return
  *	- bytes of dbuff consumed
  *	- < 0 on error

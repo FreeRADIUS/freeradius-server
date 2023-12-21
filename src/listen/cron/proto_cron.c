@@ -189,7 +189,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
  *
  * @param[in] instance	Ctx data for this application.
  * @param[in] sc	to add our file descriptor to.
- * @param[in] conf	Listen section parsed to give us isntance.
+ * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

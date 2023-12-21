@@ -39,7 +39,7 @@ struct request_data_s {
 	void		*opaque;		//!< Opaque data.
 	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
 	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the request is freed
-	bool		persist;		//!< Whether this data should be transfered to a session_entry_t
+	bool		persist;		//!< Whether this data should be transferred to a session_entry_t
 						//!< after we're done processing this request.
 
 #ifndef NDEBUG

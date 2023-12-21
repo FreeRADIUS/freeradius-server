@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Common functions for test files which need to programatically create test dictionaries
+/** Common functions for test files which need to programmatically create test dictionaries
  *
  * @file src/lib/util/dict_test.c
  *

@@ -27,7 +27,7 @@ update request {
 	&Tmp-String-0 ^= 'boink'
 }
 
-# The prepended value should be first followd by the other two
+# The prepended value should be first followed by the other two
 if (!((&Tmp-String-0[0] == 'boink')) || (!(&Tmp-String-0[1] == 'foo')) || (!(%{Tmp-String-0[2]} == 'baz'))) {
 	test_fail
 }
@@ -65,7 +65,7 @@ update control {
 #	&control.Tmp-String-0 ^= &Tmp-String-0
 #}
 
-# (Temporary method to acheive the same - as per issue noted above)
+# (Temporary method to achieve the same - as per issue noted above)
 update {
 	&control ^= &request
 }

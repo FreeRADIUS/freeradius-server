@@ -810,7 +810,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 }
 
 /*
- *	Check Accounting packets for their accoutning status
+ *	Check Accounting packets for their accounting status
  *	Call the relevant module based on the status
  */
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

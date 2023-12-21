@@ -973,7 +973,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 				return 0;
 			}
 
-			ERROR("%s[%d]: Failed expanding '%s' - No matchin files", frame->filename, frame->lineno,
+			ERROR("%s[%d]: Failed expanding '%s' - No matching files", frame->filename, frame->lineno,
 			      value);
 			return -1;
 		}
@@ -2614,7 +2614,7 @@ added_pair:
 	/*
 	 *	Skip semicolon if we see it after a
 	 *	CONF_PAIR.  Also allow comma for
-	 *	backwards compatablity with secret
+	 *	backwards compatibility with secret
 	 *	things in v3.
 	 */
 	if ((*ptr == ';') || (*ptr == ',')) {

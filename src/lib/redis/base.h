@@ -85,7 +85,7 @@ extern size_t redis_rcodes_len;
  * be returned to the redis cluster code.
  */
 typedef enum {
-	REDIS_RCODE_SUCCESS = 0,		//!< Operation was successfull.
+	REDIS_RCODE_SUCCESS = 0,		//!< Operation was successful.
 	REDIS_RCODE_ERROR = -1,			//!< Unrecoverable library/server error.
 	REDIS_RCODE_TRY_AGAIN = -2,		//!< Try the operation again.
 	REDIS_RCODE_RECONNECT = -3,		//!< Transitory error, caller should retry the operation

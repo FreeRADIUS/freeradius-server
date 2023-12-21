@@ -167,7 +167,7 @@ if (%json_jpath_validate("$[0][1]") != '7:$[0][1]') {
 	test_fail
 }
 
-# 33. Expect success - Nested array with multiple indicies
+# 33. Expect success - Nested array with multiple indices
 if (%json_jpath_validate("$[0][1,2]") != '9:$[0][1,2]') {
 	test_fail
 }

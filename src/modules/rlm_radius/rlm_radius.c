@@ -250,7 +250,7 @@ static int status_check_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED voi
 	code = type_enum->value->vb_uint32;
 
 	/*
-	 *	Cheat, and re-use the "type" array for allowed packet
+	 *	Cheat, and reuse the "type" array for allowed packet
 	 *	types.
 	 */
 	if (!code ||

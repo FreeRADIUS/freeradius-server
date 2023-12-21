@@ -505,7 +505,7 @@ fr_slen_t fr_time_delta_to_str(fr_sbuff_t *out, fr_time_delta_t delta, fr_time_r
 
 	/*
 	 *	If there's nothing after the decimal point,
-	 *	trunctate the decimal point.  i.e. Don't print
+	 *	truncate the decimal point.  i.e. Don't print
 	 *	"5."
 	 */
 	if (*q == '.') {

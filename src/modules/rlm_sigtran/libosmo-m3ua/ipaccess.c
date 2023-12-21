@@ -117,7 +117,7 @@ struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error)
 
 	msgb_put(msg, ret);
 
-	/* then read te length as specified in header */
+	/* then read the length as specified in header */
 	msg->l2h = msg->data + sizeof(*hh);
 	len = ntohs(hh->len);
 	ret = recv(bfd->fd, msg->l2h, len, 0);

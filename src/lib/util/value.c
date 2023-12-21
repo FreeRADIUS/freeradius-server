@@ -29,7 +29,7 @@
  *
  * - NETWORK format is the format we send/receive on the wire.  It is not a perfect representation
  *   of data packing for all protocols, so you will likely need to overload conversion for some types.
- *   - fr_value_box_to_network is used to covert INTERNAL format data to generic NETWORK format data.
+ *   - fr_value_box_to_network is used to convert INTERNAL format data to generic NETWORK format data.
  *     For uint32s, IP addresses etc... This means BIG ENDIAN uint8 ordering.
  *   - fr_value_box_from_network is used to convert packet buffer fragments in NETWORK format to
  *     INTERNAL format.
@@ -503,7 +503,7 @@ fr_sbuff_parse_rules_t const value_parse_rules_backtick_unquoted = {
  * data from external data sources like SQL databases and REST APIs.
  *
  * They do not include terminals to stop parsing as it assumes the values
- * are discreet, and not wrapped in quotes.
+ * are discrete, and not wrapped in quotes.
  */
 fr_sbuff_parse_rules_t const *value_parse_rules_unquoted[T_TOKEN_LAST] = {
 	[T_BARE_WORD]			= &value_parse_rules_bareword_unquoted,
@@ -1337,7 +1337,7 @@ size_t fr_value_box_network_length(fr_value_box_t const *value)
  *
  * #FR_TYPE_SIZE is not encodable, as it is system specific.
  *
- * This function will not encode stuctural types (TLVs, VSAs etc...).  These are usually
+ * This function will not encode structural types (TLVs, VSAs etc...).  These are usually
  * specific to the protocol anyway.
  *
  *  All of the dictionary rules are respected.  string/octets can have
@@ -3471,7 +3471,7 @@ int fr_value_box_cast_in_place(TALLOC_CTX *ctx, fr_value_box_t *vb,
 {
 	fr_value_box_t tmp;
 	/*
-	 *	Store list poiters to restore later - fr_value_box_cast clears them
+	 *	Store list pointers to restore later - fr_value_box_cast clears them
 	 */
 	fr_value_box_entry_t entry = vb->entry;
 
@@ -4560,7 +4560,7 @@ void fr_value_box_increment(fr_value_box_t *vb)
  * @param[in] tainted		Whether the value came from a trusted source.
  * @return
  *	- >= 0 on success (number of bytes parsed).
- *	- < 0 on error (where the parse error ocurred).
+ *	- < 0 on error (where the parse error occurred).
  */
 static inline CC_HINT(always_inline)
 fr_slen_t fr_value_box_from_numeric_substr(fr_value_box_t *dst, fr_type_t dst_type,
@@ -5519,7 +5519,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 
 	/*
 	 *	Free the boxes last so if there's
-	 *	an issue concating them, everything
+	 *	an issue concatenating them, everything
 	 *	is still in a known state.
 	 */
 	fr_value_box_list_foreach_safe(list, vb) {
@@ -5621,7 +5621,7 @@ ssize_t fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff
 
 	/*
 	 *	Free the boxes last so if there's
-	 *	an issue concating them, everything
+	 *	an issue concatenating them, everything
 	 *	is still in a known state.
 	 */
 	fr_value_box_list_foreach_safe(list, vb) {

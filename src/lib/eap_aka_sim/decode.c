@@ -512,7 +512,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 /** Create any kind of VP from the attribute contents
  *
  * @param[in] ctx		to allocate new attributes in.
- * @param[in] out		to addd new attributes to.
+ * @param[in] out		to add new attributes to.
  * @param[in] parent		the current attribute we're processing.
  * @param[in] data		to parse. Points to the data field of the attribute.
  * @param[in] attr_len		length of the attribute being parsed.

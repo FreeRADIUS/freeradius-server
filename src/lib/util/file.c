@@ -107,7 +107,7 @@ static ssize_t _fr_mkdir(int *fd_out, char *start, char *path, mode_t mode, fr_m
 	 *	exist.  Look for the LAST path name.  Try
 	 *	to create that.  If there's an error, we leave
 	 *	the path path as the one at which the
-	 *	error occured.
+	 *	error occurred.
 	 */
 	p = strrchr(path, FR_DIR_SEP);
 	if (!p || (p == path)) return start - path;	/* last path component and we've previously failed */

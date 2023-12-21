@@ -174,7 +174,7 @@ static unlang_action_t list_mod_create(rlm_rcode_t *p_result, request_t *request
 
 		case UNLANG_UPDATE_MAP_EXPANDED_LHS:
 			/*
-			 *	map_to_list_mod() already concatentates the LHS, so we don't need to do it here.
+			 *	map_to_list_mod() already concatenates the LHS, so we don't need to do it here.
 			 */
 			if (!map->rhs) goto next;
 

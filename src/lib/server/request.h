@@ -185,7 +185,7 @@ struct request_s {
 						//!< and responses.
 	fr_dict_t const		*dict;		//!< Dictionary of the protocol that this request belongs to.
 
-	fr_pair_t		*pair_root;	//!< Root atribute which contains the
+	fr_pair_t		*pair_root;	//!< Root attribute which contains the
 						///< other list attributes as children.
 
 	/** Pair lists associated with the request

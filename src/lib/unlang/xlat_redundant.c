@@ -322,7 +322,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 		 */
 		head->flags = node->flags;
 		if (xlat_finalize(head, NULL) < 0) {
-			PERROR("Failed boostrapping function \"%s\"",
+			PERROR("Failed bootstrapping function \"%s\"",
 			       xrf->func->name);
 			goto error;
 		}

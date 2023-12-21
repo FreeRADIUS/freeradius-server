@@ -182,7 +182,7 @@ static int ss7_app_setup_stp(struct ss7_application *app,
 		return -1;
 	}
 
-	/* veryify the MTP Linkset */
+	/* verify the MTP Linkset */
 	src = mtp_link_set_num(app->bsc, src_num);
 	if (!src) {
 		LOGP(DINP, LOGL_ERROR,
@@ -199,11 +199,11 @@ static int ss7_app_setup_stp(struct ss7_application *app,
 		return -3;
 	}
 
-	/* veryify the MTP Linkset */
+	/* verify the MTP Linkset */
 	dst = mtp_link_set_num(app->bsc, dst_num);
 	if (!dst) {
 		LOGP(DINP, LOGL_ERROR,
-		     "SS7 %d/%s destionation linkset not found with nr: %d.\n",
+		     "SS7 %d/%s destination linkset not found with nr: %d.\n",
 		     app->nr, app->name, dst_num);
 		return -2;
 	}
@@ -257,7 +257,7 @@ static int ss7_app_setup_relay(struct ss7_application *app, int type,
 		return -1;
 	}
 
-	/* veryify the MTP Linkset */
+	/* verify the MTP Linkset */
 	mtp = mtp_link_set_num(app->bsc, src_num);
 	if (!mtp) {
 		LOGP(DINP, LOGL_ERROR,

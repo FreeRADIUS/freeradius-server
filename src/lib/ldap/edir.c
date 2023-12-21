@@ -45,7 +45,7 @@ USES_APPLE_DEPRECATED_API
 #define NMAS_E_ACCESS_NOT_ALLOWED	(NMAS_E_BASE-59)	/* -1659 0xFFFFF985 */
 #define NMAS_E_INVALID_SPM_REQUEST	(NMAS_E_BASE-97)	/* -1697 0xFFFFF95F */
 
-/* OID of LDAP extenstion calls to read Universal Password */
+/* OID of LDAP extension calls to read Universal Password */
 #define NMASLDAP_GET_PASSWORD_REQUEST     "2.16.840.1.113719.1.39.42.100.13"
 #define NMASLDAP_GET_PASSWORD_RESPONSE    "2.16.840.1.113719.1.39.42.100.14"
 

@@ -321,7 +321,7 @@ sub strip_username {
 #	between Acct-Session-ID so can't be used to identify and 802.1X session (we ignore it).
 #
 #	If a session matching the username is found on the port specified, and the 
-#	session is still active then thats good enough...
+#	session is still active then that's good enough...
 #
 #	Author: Arran Cudbard-Bell <arran.cudbard-bell@freeradius.org>
 #
@@ -624,7 +624,7 @@ sub portslave_finger {
 	while(<FD>) {
 		#
 		#	Check for ^Port. If we don't see it we
-		#	wont get confused by non-portslave-finger
+		#	won't get confused by non-portslave-finger
 		#	output too.
 		#
 		if (/^Port/) {
@@ -1188,7 +1188,7 @@ sub bay_finger {		# ARGV: 1=nas_ip, 2=nas_port, 3=login, 4=sessid
 # and tunnel ID's are for a given Virtual-Access interface to construct
 # the following OID: .1.3.6.1.4.1.9.10.24.1.3.2.1.2.2.$tunID.$sessID
 # Then gets the username from that OID.
-# Make sure you set the $realm variable at the begining of the file if
+# Make sure you set the $realm variable at the beginning of the file if
 # needed. The new type for naslist is cisco_l2tp
 
 sub find_l2tp_login
@@ -1256,7 +1256,7 @@ sub mikrotik_snmp {
   # We want  mtxrInterfaceStatsName from MIKROTIK-MIB
   $oid = "1.3.6.1.4.1.14988.1.1.14.1.1.2";
 
-  # Mikrotik doesnt give port IDs correctly to RADIUS :(
+  # Mikrotik doesn't give port IDs correctly to RADIUS :(
   # practically this would limit us to a simple only-one user limit for
   # this script to work properly.
   @output = snmpwalk_prog($ARGV[1], $password, "$oid");
@@ -1293,7 +1293,7 @@ sub mikrotik_telnet {
   ($login, $password) = naspasswd($terminalserver, 1);
   return 2 if ($password eq "");
 
-  # MikroTik routeros doesnt tell us to which port the user is connected
+  # MikroTik router doesn't tell us to which port the user is connected
   # practically this would limit us to a simple only-one user limit for
   # this script to work properly.
   $t = new Net::Telnet (Timeout => 5,
@@ -1320,8 +1320,8 @@ sub mikrotik_telnet {
   $t->waitfor('/\[.*@.*\] > /');
 
   # It is not possible to get the line numbers etc.
-  # Thus we cant support if simultaneous-use is over 1
-  # At least I was using pppoe so it wasnt possible.
+  # Thus we can't support if simultaneous-use is over 1
+  # At least I was using pppoe so it wasn't possible.
   $t->print('ppp active print column name detail');
 
   # Somehow routeros echo'es our commands 2 times. We dont want to mix
@@ -1343,7 +1343,7 @@ sub mikrotik_telnet {
 
   #check for # of $user in output
   #the output includes only one = between name and username so we can
-  #safely use it as a seperator.
+  #safely use it as a separator.
 
 #disabled until mikrotik starts to send newline after each line...
 #  @output = $output;
@@ -1389,7 +1389,7 @@ sub redback_telnet {
 	return 2;
     }
 
-    # Get loggin information
+    # Get login information
     ($root, $password) = naspasswd($terminalserver, 1);
     return 2 if ($password eq "");
 

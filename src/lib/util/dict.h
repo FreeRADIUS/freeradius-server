@@ -274,7 +274,7 @@ typedef enum {
 	FR_DICT_ATTR_NOTFOUND		= -1,			//!< Attribute couldn't be found.
 	FR_DICT_ATTR_PROTOCOL_NOTFOUND	= -2,			//!< Protocol couldn't be found.
 	FR_DICT_ATTR_PARSE_ERROR	= -3,			//!< Attribute string couldn't be parsed
-	FR_DICT_ATTR_INTERNAL_ERROR	= -4,			//!< Internal error ocurred.
+	FR_DICT_ATTR_INTERNAL_ERROR	= -4,			//!< Internal error occurred.
 	FR_DICT_ATTR_OOM		= -5,			//!< Memory allocation error.
 	FR_DICT_ATTR_NOT_DESCENDENT	= -6,			//!< Attribute is not a descendent of the parent
 								///< attribute.
@@ -347,7 +347,7 @@ extern bool const	fr_dict_enum_allowed_chars[UINT8_MAX + 1];
 #include <freeradius-devel/util/dict_ext.h>
 /** @} */
 
-/** @name Programatically create dictionary attributes and values
+/** @name Programmatically create dictionary attributes and values
  *
  * @{
  */

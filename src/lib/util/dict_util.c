@@ -1932,7 +1932,7 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
  * @note Will leave the sbuff pointing at the component the error occurred at
  *	 so that the caller can attempt to process the component in another way.
  *	 An err pointer should be provided in order to determine if an error
- *	 ocurred.
+ *	 occurred.
  *
  * @param[out] err		The parsing error that occurred.
  * @param[out] out		The deepest attribute we resolved.
@@ -2250,7 +2250,7 @@ bool fr_dict_compatible(fr_dict_t const *dict1, fr_dict_t const *dict2)
  * @param[in] da	The vendor attribute.
  * @return
  *	- The vendor.
- *	- NULL if no vendor with that number was regitered for this protocol.
+ *	- NULL if no vendor with that number was registered for this protocol.
  */
 fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
 {
@@ -2272,7 +2272,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_da(fr_dict_attr_t const *da)
  * @param[in] name		to search for.
  * @return
  *	- The vendor.
- *	- NULL if no vendor with that name was regitered for this protocol.
+ *	- NULL if no vendor with that name was registered for this protocol.
  */
 fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const *name)
 {
@@ -2295,7 +2295,7 @@ fr_dict_vendor_t const *fr_dict_vendor_by_name(fr_dict_t const *dict, char const
  * @param[in] vendor_pen	to search for.
  * @return
  *	- The vendor.
- *	- NULL if no vendor with that number was regitered for this protocol.
+ *	- NULL if no vendor with that number was registered for this protocol.
  */
 fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t const *dict, uint32_t vendor_pen)
 {
@@ -2574,7 +2574,7 @@ fr_slen_t dict_attr_search_qualified(fr_dict_attr_err_t *err, fr_dict_attr_t con
  * This function will search through all loaded dictionaries, or a subset of
  * loaded dictionaries, for a matching attribute in the top level namespace.
  *
- * This attribute may be qualified with `<protcol>.` to selection an attribute
+ * This attribute may be qualified with `<protocol>.` to selection an attribute
  * in a specific case.
  *
  * @note If calling this function from the server any list or request qualifiers
@@ -2638,7 +2638,7 @@ fr_slen_t fr_dict_attr_search_by_name_substr(fr_dict_attr_err_t *err, fr_dict_at
  * @note If calling this function from the server any list or request qualifiers
  *  should be stripped first.
  *
- * @note err should be checked to determine if a parse error ocurred.
+ * @note err should be checked to determine if a parse error occurred.
  *
  * @param[out] err		Why parsing failed. May be NULL.
  *				@see fr_dict_attr_err_t
@@ -2667,7 +2667,7 @@ fr_slen_t fr_dict_attr_search_by_qualified_oid_substr(fr_dict_attr_err_t *err, f
  * @note If calling this function from the server any list or request qualifiers
  *  should be stripped first.
  *
- * @note err should be checked to determine if a parse error ocurred.
+ * @note err should be checked to determine if a parse error occurred.
  *
  * @param[out] err		Why parsing failed. May be NULL.
  *				@see fr_dict_attr_err_t
@@ -2781,7 +2781,7 @@ fr_slen_t fr_dict_attr_by_name_substr(fr_dict_attr_err_t *err, fr_dict_attr_t co
 	}
 
 	/*
-	 *	Do a second pass, ensuring that the name has at least one alpha-numeric character.
+	 *	Do a second pass, ensuring that the name has at least one alphanumeric character.
 	 */
 	for (p = buffer; p < (buffer + len); p++) {
 		if (sbuff_char_alpha_num[(uint8_t) *p]) break;
@@ -3741,7 +3741,7 @@ int _fr_dict_autofree(fr_dict_autoload_t const *to_free, char const *dependent)
  *
  * This should only be used when dictionaries are being dynamically loaded during
  * compilation.  It should not be used to load dictionaries at runtime, or if
- * modules need to load dicitonaries (use static fr_dict_autoload_t defs).
+ * modules need to load dictionaries (use static fr_dict_autoload_t defs).
 
  */
 struct fr_dict_autoload_talloc_s {
@@ -3763,11 +3763,11 @@ static int _fr_dict_autoload_talloc_free(fr_dict_autoload_talloc_t const *to_fre
  * Mainly useful for resolving "forward" references from unlang immediately.
  *
  * @note If the talloc chunk is freed it does not mean the dictionary will
- *	 be immediately freeed.  It will be freed when all other references
+ *	 be immediately freed.  It will be freed when all other references
  *	 to the dictionary are gone.
  *
- * @parma[in] ctx	to bind the dictionary lifetime to.
- * @parma[in] proto	to load.
+ * @param[in] ctx	to bind the dictionary lifetime to.
+ * @param[in] proto	to load.
  * @param[in] dependent to register this reference to.  Will be dupd.
  */
 fr_dict_autoload_talloc_t *_fr_dict_autoload_talloc(TALLOC_CTX *ctx, fr_dict_t const **out, char const *proto, char const *dependent)

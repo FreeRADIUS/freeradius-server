@@ -58,7 +58,7 @@ typedef struct {
 	char const			*uri;		//!< URI of imap server
 	fr_time_delta_t 		timeout;	//!< Timeout for connection and server response
 	fr_curl_tls_t			tls;
-	fr_curl_conn_config_t		conn_config;	//!< Re-usable CURL handle config
+	fr_curl_conn_config_t		conn_config;	//!< Reusable CURL handle config
 } rlm_imap_t;
 
 FR_SLAB_TYPES(imap, fr_curl_io_request_t)
@@ -146,7 +146,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_r
  *		timeout information
  *		and TLS information
  *
- *	Then it queues the request and yeilds until a response is given
+ *	Then it queues the request and yields until a response is given
  *	When it responds, mod_authenticate_resume is called.
  */
 static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

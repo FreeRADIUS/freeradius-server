@@ -147,7 +147,7 @@ fr_client_list_t *client_list_init(CONF_SECTION *cs)
 #ifdef WITH_TRIE
 /*
  *	@todo - either support client definitions where "proto = *",
- *	or udpate this code to allow for that.  i.e. we create yet
+ *	or update this code to allow for that.  i.e. we create yet
  *	another set of v4/v6 tries, for "proto = *" clients.  And then
  *	do lookups there, too.  Or, just unify the udp/tcp tries, and
  *	instead do post-processing?  Though those two clients can have
@@ -762,7 +762,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 					       &FR_DBUFF_TMP(bin, bin_len),
 					       &FR_SBUFF_IN(value + 2, hex_len), false);
 			if (converted < (bin_len - 1)) {
-				cf_log_err(cs, "Invalide hex string in shared secret");
+				cf_log_err(cs, "Invalid hex string in shared secret");
 				goto error;
 			}
 

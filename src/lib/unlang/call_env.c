@@ -632,7 +632,7 @@ void call_env_parsed_set_multi_index(call_env_parsed_t *parsed, size_t count, si
 
 /** Remove a call_env_parsed_t from the list of parsed call envs
  *
- * @note Indended to be used by subsection callbacks to remove a call_env_parsed_t
+ * @note Intended to be used by subsection callbacks to remove a call_env_parsed_t
  *	from the list of parsed call envs (typically on error).
  *
  * @param[in] parsed		to remove parsed data from.

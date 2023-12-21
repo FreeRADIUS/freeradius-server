@@ -41,7 +41,7 @@ extern "C" {
 typedef struct {
 	dl_module_inst_t const		*inst;		//!< Dynamic loader API handle for the module.
 	void				*thread;	//!< Thread specific instance data.
-	void				*env_data;	//!< Per call enviornment data.
+	void				*env_data;	//!< Per call environment data.
 	void				*rctx;		//!< Resume ctx that a module previously set.
 } module_ctx_t;
 

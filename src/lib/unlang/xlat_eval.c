@@ -18,7 +18,7 @@
  * $Id$
  *
  * @file xlat_eval.c
- * @brief String expansion ("translation").  Evaluation of pre-parsed xlat epxansions.
+ * @brief String expansion ("translation").  Evaluation of pre-parsed xlat expansions.
  *
  * @copyright 2018-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2000,2006 The FreeRADIUS server project

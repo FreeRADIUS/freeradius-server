@@ -28,7 +28,7 @@ SUBMAKEFILES := $(FILES)
 $(TEST): test.ldap_sync.dir $(patsubst %/all.mk,test.ldap_sync/%,$(FILES))
 
 #
-#  Ensure diretory for "touch" files exists
+#  Ensure directory for "touch" files exists
 #
 test.ldap_sync.dir:
 	${Q}mkdir -p $(BUILD_DIR)/tests/test.ldap_sync

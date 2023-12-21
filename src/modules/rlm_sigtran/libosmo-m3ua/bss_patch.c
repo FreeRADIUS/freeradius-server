@@ -392,7 +392,7 @@ void bss_rewrite_header_for_msc(int rc, struct msgb *target, struct msgb *inpt, 
 	}
 }
 
-/* it is asssumed that the SCCP stack checked the size */
+/* it is assumed that the SCCP stack checked the size */
 static int patch_address(uint32_t offset, int pc, struct msgb *msg)
 {
 	struct sccp_called_party_address *party;

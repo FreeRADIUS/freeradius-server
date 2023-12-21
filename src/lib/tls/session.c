@@ -1088,7 +1088,7 @@ finish:
  */
 int fr_tls_session_alert(UNUSED request_t *request, fr_tls_session_t *session, uint8_t level, uint8_t description)
 {
-	if (session->alerts_sent > 3) return -1;		/* Some kind of sate machine brokenness */
+	if (session->alerts_sent > 3) return -1;		/* Some kind of state machine brokenness */
 
 	/*
 	 *	Ignore less severe alerts
@@ -1286,7 +1286,7 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
  *
  * @param[in] request	being cancelled.
  * @param[in] action	we're being signalled with.
- * @param[in] uctx	the SSL * to cancell.
+ * @param[in] uctx	the SSL * to cancel.
  */
 static void tls_session_async_handshake_signal(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {

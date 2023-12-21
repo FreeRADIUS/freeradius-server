@@ -61,7 +61,7 @@ static void _copy_double_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmp
 }
 
 
-/** Allocates a stats template which describes a single guage/counter
+/** Allocates a stats template which describes a single gauge/counter
  *
  * This is just intended to simplify allocating a fairly complex memory structure
  * src and dst pointers must be set
@@ -70,7 +70,7 @@ static void _copy_double_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmp
  * @param conf Radsniff configuration.
  * @param plugin_instance usually the type of packet (in our case).
  * @param type string, the name of a collection of stats e.g. exchange
- * @param type_instance the name of the counter/guage within the collection e.g. latency.
+ * @param type_instance the name of the counter/gauge within the collection e.g. latency.
  * @param stats structure to derive statistics from.
  * @param values Value templates used to populate lcc_value_list.
  * @return

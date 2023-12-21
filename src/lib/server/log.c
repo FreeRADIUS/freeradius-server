@@ -620,7 +620,7 @@ void log_request(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
  *
  * This could all be done in a macro, but it turns out some implementations of the
  * variadic macros do not work at all well if the va_list being written to is further
- * up the stack (which is required as you still need a function to convert the elipses
+ * up the stack (which is required as you still need a function to convert the ellipsis
  * into a va_list).
  *
  * So, we use this small wrapper function instead, which will hopefully guarantee

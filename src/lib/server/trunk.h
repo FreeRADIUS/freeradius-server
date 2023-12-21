@@ -254,7 +254,7 @@ typedef struct {
 	size_t			req_pool_size;		//!< The size of the talloc pool allocated with the treq.
 
 	bool			always_writable;	//!< Set to true if our ability to write requests to
-							///< a connection handle is not dependant on the state
+							///< a connection handle is not dependent on the state
 							///< of the underlying connection, i.e. if the library
 							///< used to implement the connection can always receive
 							///< and buffer new requests irrespective of the state
@@ -558,7 +558,7 @@ typedef void (*fr_trunk_request_cancel_mux_t)(fr_event_list_t *el,
  *
  * If the treq (trunk request) is in the FR_TRUNK_REQUEST_STATE_PARTIAL or
  * FR_TRUNK_REQUEST_STATE_SENT states, this callback will be called prior
- * to moving the treq to a new connection, requeueing the tre or freeing
+ * to moving the treq to a new connection, requeueing the treq or freeing
  * the treq.
  *
  * The treq, and any associated resources, should be

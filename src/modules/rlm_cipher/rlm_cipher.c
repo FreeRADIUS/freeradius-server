@@ -239,7 +239,7 @@ static const conf_parser_t module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Calls EVP_get_digestbyname() to covert the digest type
+/** Calls EVP_get_digestbyname() to convert the digest type
  *
  * @param[in] ctx	to allocate data in.
  * @param[out] out	EVP_MD representing the OpenSSL digest type.

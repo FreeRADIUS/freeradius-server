@@ -2791,7 +2791,7 @@ static int dict_from_file(fr_dict_t *dict,
 
 /** (Re-)Initialize the special internal dictionary
  *
- * This dictionary has additional programatically generated attributes added to it,
+ * This dictionary has additional programmatically generated attributes added to it,
  * and is checked in addition to the protocol specific dictionaries.
  *
  * @note The dictionary pointer returned in out must have its reference counter

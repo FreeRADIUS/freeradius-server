@@ -1326,7 +1326,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 #ifdef WITH_SASL
 		ldap_auth_call_env_t *call_env = auth_ctx->call_env;
 
-		RDEBUG2("Login attept using identity \"%pV\"", &call_env->user_sasl_authname);
+		RDEBUG2("Login attempt using identity \"%pV\"", &call_env->user_sasl_authname);
 
 		return fr_ldap_sasl_bind_auth_async(request, auth_ctx->thread, call_env->user_sasl_mech.vb_strvalue,
 						 call_env->user_sasl_authname.vb_strvalue,
@@ -1394,7 +1394,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	};
 
 	/*
-	 *	Check for a cahed copy of the DN
+	 *	Check for a cached copy of the DN
 	 */
 	auth_ctx->dn = rlm_find_user_dn_cached(request);
 
@@ -1425,15 +1425,15 @@ static unlang_action_t mod_authorize_start(UNUSED rlm_rcode_t *p_result, UNUSED 
 
 /** Resume function called after each potential yield in LDAP authorization
  *
- * Some operations may or may not yeild.  E.g. if group membership is
+ * Some operations may or may not yield.  E.g. if group membership is
  * read from an attribute returned with the user object and is already
- * in the correct form, that will not yeild.
+ * in the correct form, that will not yield.
  * Hence, each state may fall through to the next.
  *
  * @param p_result	Result of current authorization.
  * @param priority	Unused.
  * @param request	Current request.
- * @param uctx		Current authrorization context.
+ * @param uctx		Current authorization context.
  * @return One of the RLM_MODULE_* values.
  */
 static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
@@ -1531,7 +1531,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			autz_ctx->dn = rlm_find_user_dn_cached(request);
 
 			/*
-			 *	Retrive universal password
+			 *	Retrieve universal password
 			 */
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			autz_ctx->status = LDAP_AUTZ_EDIR_BIND;
@@ -1848,7 +1848,7 @@ static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *pri
 
 /** Modify user's object in LDAP
  *
- * Process a modifcation map to update a user object in the LDAP directory.
+ * Process a modification map to update a user object in the LDAP directory.
  *
  * @param[out] p_result		the result of the modification.
  * @param[in] inst		rlm_ldap instance.

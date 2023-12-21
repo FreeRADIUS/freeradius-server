@@ -360,7 +360,7 @@ static void master_process(TALLOC_CTX *ctx)
 				MPRINT1("Master ignoring packet (data length %zd)\n", data_size);
 
 			discard:
-				fr_message_done(&cd->m); /* yeah, re-use it for the next packet... */
+				fr_message_done(&cd->m); /* yeah, reuse it for the next packet... */
 				continue;
 			}
 

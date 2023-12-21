@@ -386,7 +386,7 @@ static int binary_peephole_optimize(TALLOC_CTX *ctx, xlat_exp_t **out, xlat_exp_
 	/*
 	 *	value op attribute
 	 *
-	 *	We just swap LHS and RHS without caring about the operator, because wee don't use the
+	 *	We just swap LHS and RHS without caring about the operator, because we don't use the
 	 *	operator, and the caller has no idea that we swapped the pointers..
 	 */
 	if ((rhs->type == XLAT_TMPL) && tmpl_is_attr(rhs->vpt) &&

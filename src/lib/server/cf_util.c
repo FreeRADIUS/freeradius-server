@@ -549,7 +549,7 @@ CONF_ITEM *_cf_parent(CONF_ITEM const *ci)
  *
  * @param[in] ci	to return the location of.
  * @return
- *	- -1 if the #CONF_ITEM was created programatically.
+ *	- -1 if the #CONF_ITEM was created programmatically.
  *	- >= 0 where in the config file the line was parsed from.
  */
 int _cf_lineno(CONF_ITEM const *ci)
@@ -563,7 +563,7 @@ int _cf_lineno(CONF_ITEM const *ci)
  *
  * @param[in] ci	to return the location of.
  * @return
- *	- NULL if the #CONF_ITEM was created programatically.
+ *	- NULL if the #CONF_ITEM was created programmatically.
  *	- The path of the config file the #CONF_ITEM was located in.
  */
 char const *_cf_filename(CONF_ITEM const *ci)

@@ -87,7 +87,7 @@ fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
 
 /** Handle authorization requests using Couchbase document data
  *
- * Attempt to fetch the document assocaited with the requested user by
+ * Attempt to fetch the document associated with the requested user by
  * using the deterministic key defined in the configuration.  When a valid
  * document is found it will be parsed and the containing value pairs will be
  * injected into the request.
@@ -434,7 +434,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 /** Initialize the rlm_couchbase module
  *
- * Intialize the module and create the initial Couchbase connection pool.
+ * Initialize the module and create the initial Couchbase connection pool.
  *
  * @param  mctx     The module instance.
  * @return

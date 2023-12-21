@@ -909,7 +909,7 @@ static json_object *json_smplobj_afrom_pair_list(TALLOC_CTX *ctx, fr_pair_list_t
 
 				/*
 				 *	Existing key will have refcount decremented
-				 *	and will be freed if thise drops to zero.
+				 *	and will be freed if this drops to zero.
 				 */
 				json_object_object_add(obj, fr_sbuff_start(&attr_name), values);
 			}

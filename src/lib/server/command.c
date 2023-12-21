@@ -77,7 +77,7 @@ static int split(char **input, char **output, bool syntax_string);
 
 /*
  *	Hacks for simplicity.  These data types aren't allowed as
- *	parameters, so we can re-use them for something else.
+ *	parameters, so we can reuse them for something else.
  */
 
 // our fixed string.  Any data type LESS than this must be a real data type

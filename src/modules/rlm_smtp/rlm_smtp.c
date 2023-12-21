@@ -103,7 +103,7 @@ typedef struct {
 	header_list_t		header_list;		//!< List of SMTP headers to add to emails.
 	bool 			set_date;
 
-	fr_curl_conn_config_t	conn_config;		//!< Re-usable CURL handle config
+	fr_curl_conn_config_t	conn_config;		//!< Reusable CURL handle config
 } rlm_smtp_t;
 
 /*
@@ -771,7 +771,7 @@ static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t
  *		Email header and body
  *		File attachments
  *
- *	Then it queues the request and yeilds until a response is given
+ *	Then it queues the request and yields until a response is given
  *	When it responds, smtp_io_module_resume is called.
  */
 static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)

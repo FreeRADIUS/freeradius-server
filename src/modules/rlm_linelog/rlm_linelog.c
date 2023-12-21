@@ -902,7 +902,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	case LINELOG_DST_UNIX:
 #ifndef HAVE_SYS_UN_H
-		cf_log_err(conf, "Unix sockets are not supported on this sytem");
+		cf_log_err(conf, "Unix sockets are not supported on this system");
 		return -1;
 #else
 		inst->pool = module_rlm_connection_pool_init(cf_section_find(conf, "unix", NULL),

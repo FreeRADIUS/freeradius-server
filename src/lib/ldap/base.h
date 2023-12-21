@@ -201,7 +201,7 @@ typedef struct {
 							///< rootDSE.
 	char const		*version_str;		//!< As returned from the vendorVersion attribute in the
 							///< rootDSE.
-	fr_ldap_directory_type_t type;			///< Cannonical server implementation.
+	fr_ldap_directory_type_t type;			///< Canonical server implementation.
 
 	bool			cleartext_password;	//!< Whether the server will return the user's plaintext
 							///< password.
@@ -475,9 +475,9 @@ typedef struct fr_ldap_referral_s {
 	fr_dlist_t		entry;		//!< Entry in list of possible referrals
 	fr_ldap_query_t		*query;		//!< Query this referral relates to
 	LDAPURLDesc		*referral_url;	//!< URL for the referral
-	char			*host_uri;	//!< Host URI used for referral conneciton
+	char			*host_uri;	//!< Host URI used for referral connection
 	char const		*identity;	//!< Bind identity for referral connection
-	char const		*password;	//!< Bind password for referral connecition
+	char const		*password;	//!< Bind password for referral connection
 	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this referral should use
 	request_t		*request;	//!< Request this referral relates to
 } fr_ldap_referral_t;
@@ -577,7 +577,7 @@ struct ldap_filter_s {
 typedef enum {
 	LDAP_PROC_REFERRAL = 2,				//!< LDAP server returned referral URLs.
 	LDAP_PROC_CONTINUE = 1,				//!< Operation is in progress.
-	LDAP_PROC_SUCCESS = 0,				//!< Operation was successfull.
+	LDAP_PROC_SUCCESS = 0,				//!< Operation was successful.
 
 	LDAP_PROC_ERROR	= -1,				//!< Unrecoverable library/server error.
 

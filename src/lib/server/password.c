@@ -43,7 +43,7 @@ RCSID("$Id$")
 
 typedef enum {
 	PASSWORD_CLEARTEXT = 0,			//!< Variable length.
-	PASSWORD_HASH,				//!< Fixed lenth.
+	PASSWORD_HASH,				//!< Fixed length.
 	PASSWORD_HASH_SALTED,			//!< Fixed length hash, variable length salt.
 	PASSWORD_HASH_VARIABLE			//!< Variable length everything.
 } password_type_t;
@@ -242,7 +242,7 @@ static fr_pair_t *password_process_sha3(TALLOC_CTX *ctx, request_t *request, fr_
 #endif
 static fr_pair_t *password_process_header(TALLOC_CTX *ctx, request_t *request, fr_pair_t *known_good);
 
-/** Metdata for various password attributes
+/** Metadata for various password attributes
  *
  */
 static password_info_t password_info[] = {
@@ -936,7 +936,7 @@ static fr_pair_t *password_normalise_and_recheck(TALLOC_CTX *ctx, request_t *req
 /** Find a "known good" password in the control list of a request
  *
  * Searches for a "known good" password attribute, and applies any processing
- * and normification operations to it, returning a new mormalised fr_pair_t.
+ * and normification operations to it, returning a new normalised fr_pair_t.
  *
  * The ctx passed in should be freed when the caller is done with the returned
  * fr_pair_t, or alternatively, a persistent ctx may be used and the value

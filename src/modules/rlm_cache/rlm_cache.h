@@ -173,7 +173,7 @@ typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_config_t const *config,
 						request_t *request, void *handle,
 						fr_value_box_t const *key);
 
-/** Update the ttl of an entry in the cace
+/** Update the ttl of an entry in the cache
  *
  * @note This callback optional. If it's not specified the cache code will expire and
  *	 recreate the entry with a new TTL.

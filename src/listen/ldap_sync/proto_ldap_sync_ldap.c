@@ -272,7 +272,7 @@ finish:
 	(void) fr_event_timer_in(sync, el, &sync->cookie_ev, sync->inst->cookie_interval, ldap_sync_cookie_event, sync);
 }
 
-/** Enque a new cookie store packet
+/** Enqueue a new cookie store packet
  *
  * Create a new internal packet containing the cookie we received from the LDAP server.
  * This allows the administrator to store the cookie and provide it on a future call to
@@ -599,7 +599,7 @@ static int proto_ldap_child_mod_close(fr_listen_t *li)
  *
  *   - Sync Info Message with syncInfoValue of syncIdSet can reference
  *     multiple directory entries.
- *   - Various sync related messages can inculde a new cookie in
+ *   - Various sync related messages can include a new cookie in
  *     addition to their other data.
  */
 static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_ctx, UNUSED fr_time_t *recv_time_p, UNUSED uint8_t *buffer,

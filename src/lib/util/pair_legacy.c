@@ -699,7 +699,7 @@ void fr_pair_list_move_op(fr_pair_list_t *to, fr_pair_list_t *from, fr_token_t o
 			if (!found) goto do_add;
 
 			/*
-			 *	Delete *all* matching attribues.
+			 *	Delete *all* matching attributes.
 			 */
 			fr_pair_delete_by_da(to, found->da);
 			goto do_add;

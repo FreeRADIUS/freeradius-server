@@ -142,7 +142,7 @@ static void handle_local_sccp(struct mtp_link_set *set, struct msgb *inpt, struc
 		struct sccp_connection_request *cr;
 		struct msgb *msg;
 
-		LOGP(DINP, LOGL_NOTICE, "Handling CR localy.\n");
+		LOGP(DINP, LOGL_NOTICE, "Handling CR locally.\n");
 		cr = (struct sccp_connection_request *) inpt->l2h;
 		msg = create_sccp_refuse(&cr->source_local_reference);
 		if (msg) {

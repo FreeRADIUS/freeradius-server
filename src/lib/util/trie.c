@@ -558,7 +558,7 @@ static fr_trie_node_t *trie_node_alloc(TALLOC_CTX *ctx, int bits)
 /** Free a fr_trie_t
  *
  *  We can't use talloc_free(), because we can't talloc_parent the
- *  nodes frome each other, as talloc_steal() is O(N).  So, we just
+ *  nodes from each other, as talloc_steal() is O(N).  So, we just
  *  recurse manually.
  */
 static void trie_free(fr_trie_t *trie)
@@ -824,7 +824,7 @@ static CC_HINT(nonnull(2)) fr_trie_node_t *trie_node_split(TALLOC_CTX *ctx, fr_t
 
 	/*
 	 *	Note that we do NOT free "node".  The caller still
-	 *	needs it for some activies.
+	 *	needs it for some activities.
 	 */
 	return split;
 }

@@ -153,7 +153,7 @@ typedef union {
  *
  * fr_type_t should be an enumeration of the values in this union.
  *
- * Don't change the order of the fields below without checing that the output of radsize doesn't change.
+ * Don't change the order of the fields below without checking that the output of radsize doesn't change.
  */
 struct value_box_s {
 	/** Type and flags should appear together for packing efficiency
@@ -571,7 +571,7 @@ void _fr_value_box_init(NDEBUG_LOCATION_ARGS fr_value_box_t *vb, fr_type_t type,
 
 /** Initialise an empty/null box that will be filled later
  *
- * @param[in] _vb	to initalise.
+ * @param[in] _vb	to initialise.
  */
 #define fr_value_box_init_null(_vb) _fr_value_box_init(NDEBUG_LOCATION_EXP _vb, FR_TYPE_NULL, NULL, false)
 
@@ -910,7 +910,7 @@ DEF_UNBOXING_FUNC(double, float64, FR_TYPE_FLOAT64)
 
 DEF_UNBOXING_FUNC(fr_unix_time_t, date, FR_TYPE_DATE)
 
-/** Unbox simple types peforming type checks
+/** Unbox simple types performing type checks
  *
  * @param[out] _var	to write to.
  * @param[in] _box	to unbox.

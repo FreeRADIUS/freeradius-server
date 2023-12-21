@@ -151,7 +151,7 @@ static unlang_action_t radutmp_zap(rlm_rcode_t *p_result, request_t *request, ch
 			RETURN_MODULE_FAIL;
 		}
 	}
-	close(fd);	/* and implicitely release the locks */
+	close(fd);	/* and implicitly release the locks */
 
 	RETURN_MODULE_OK;
 }
@@ -550,7 +550,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	talloc_free(filename);
 
 	if (fd > -1) {
-		close(fd);	/* and implicitely release the locks */
+		close(fd);	/* and implicitly release the locks */
 	}
 
 	RETURN_MODULE_RCODE(rcode);
