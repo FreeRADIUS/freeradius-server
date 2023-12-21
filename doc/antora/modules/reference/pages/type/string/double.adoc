@@ -46,7 +46,7 @@ represent in datastores, or the FreeRADIUS configuration files.
 | `\t`                | Horizontal tab (0x09)
 | `\"`                | Double quote (0x22)
 | `\x<hex><hex>`      | A byte whose numerical value is given by `<hex><hex>` interpreted as a hexadecimal number.
-| `\x<oct><oct><oct>` | A byte whose numerical value is given by `<oct><oct><oct>` interpreted as an octal number.
+| `\<oct><oct><oct>`  | A byte whose numerical value is given by `<oct><oct><oct>` interpreted as an octal number.
 |=====
 
 == Methods of Creating Strings
