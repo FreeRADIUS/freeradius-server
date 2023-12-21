@@ -32,7 +32,7 @@ freeradius MODULE-IDENTITY
 radiusd OBJECT-IDENTITY
 	STATUS  current
 	DESCRIPTION
-		"radiusd is the RADIUS protocol deamon of the FreeRADIUS
+		"radiusd is the RADIUS protocol daemon of the FreeRADIUS
 		project."
 	::= { freeradius 1 }
 

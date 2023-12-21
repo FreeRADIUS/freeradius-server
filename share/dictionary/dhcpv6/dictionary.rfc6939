@@ -110,7 +110,7 @@ STRUCT	Infiniband			Type			32
 MEMBER		Address					octets
 
 STRUCT	CAI-TIA-102			Type			33
-MEMBER		Addres					octets
+MEMBER		Address					octets
 
 STRUCT	Wiegand-Interface		Type			34
 MEMBER		Address					octets
