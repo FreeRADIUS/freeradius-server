@@ -72,10 +72,6 @@ clean: clean.doc
 CONF_FILES := $(filter-out %~,$(wildcard raddb/*conf raddb/mods-available/* raddb/sites-available/* raddb/dictionary))
 BASE_ADOC_FILES := $(wildcard doc/*.adoc doc/*/*.adoc doc/*/*/*.adoc) doc/raddb/mods-available/all_modules.adoc
 
-# don't automatically re-build raddb/ -> doc/*.adoc
-ifneq "$(findstring asciidoc,$(MAKECMDGOALS))" ""
-AUTO_ADOC_FILES := $(patsubst raddb/%,doc/raddb/%.adoc,$(CONF_FILES))
-endif
 ADOC_FILES	:= $(BASE_ADOC_FILES) $(AUTO_ADOC_FILES)
 PDF_FILES := $(patsubst doc/%.adoc,doc/%.pdf,$(ADOC_FILES))
 HTML_FILES := $(filter %html,$(patsubst doc/%.adoc,doc/%.html,$(ADOC_FILES)) \
@@ -207,6 +203,11 @@ doc/antora/modules/raddb/pages/%.adoc: raddb/%
 	${Q}perl -pi -e 's/^# ([^ \t])/#  $$1/;s/^([ \t]+)# ([^ \t])/$$1#  $$2/;s/[ \t]+$$//' $^
 	${Q}./scripts/asciidoc/conf2adoc -t -a ${top_srcdir}/asciidoc -o $@ < $^
 
+#
+#  Simple rule for lazy people.
+#
+.PHONY: doc.raddb
+doc.raddb: $(patsubst raddb/%,doc/antora/modules/raddb/pages/%.adoc,$(CONF_FILES))
 
 #
 #  antora rebuilds the entire documentation site on each run
