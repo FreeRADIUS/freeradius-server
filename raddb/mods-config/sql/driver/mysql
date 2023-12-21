@@ -18,6 +18,6 @@ mysql {
 #
 	# If yes, (or auto and libmysqlclient reports warnings are
 	# available), will retrieve and log additional warnings from
-	# the server if an error has occured. Defaults to 'auto'
+	# the server if an error has occurred. Defaults to 'auto'
 	warnings = auto
 }

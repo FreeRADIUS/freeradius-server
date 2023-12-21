@@ -368,7 +368,7 @@ log debug {
 #
 ENV {
 	#
-	#  Set environment varable `FOO` to value '/bar/baz'.
+	#  Set environment variable `FOO` to value '/bar/baz'.
 	#
 	#  NOTE: Note that you MUST use '='.  You CANNOT use '+=' to append
 	#  values.

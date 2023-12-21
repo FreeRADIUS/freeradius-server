@@ -6,7 +6,7 @@ expiration {
 		time_delta timeout
 
 		#
-		#  %l is "when the server received the reuest"
+		#  %l is "when the server received the request"
 		#
 		if (&control.Expiration < %l) {
 			disallow

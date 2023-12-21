@@ -159,7 +159,7 @@ $$;
 --  this strategy leaves them open and records the NAS reload time in the
 --  nasreload table.
 --
---  Where applicable, the onus is on the administator to:
+--  Where applicable, the onus is on the administrator to:
 --
 --    * Consider the nas reload times when deriving a list of
 --      active/inactive sessions, and when determining the duration of sessions

@@ -39,7 +39,7 @@ AS
 
 		-- MS SQL lacks a "SELECT FOR UPDATE" statement, and its table
 		-- hints do not provide a direct means to implement the row-level
-		-- read lock needed to guarentee that concurrent queries do not
+		-- read lock needed to guarantee that concurrent queries do not
 		-- select the same Framed-IP-Address for allocation to distinct
 		-- users.
 		--

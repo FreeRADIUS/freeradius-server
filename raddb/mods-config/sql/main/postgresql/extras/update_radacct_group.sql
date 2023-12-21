@@ -3,7 +3,7 @@
 --
 -- OPTIONAL Postgresql trigger for FreeRADIUS
 --
--- This trigger updates fills in the groupname field (which doesnt come in Accounting packets)
+-- This trigger updates fills in the groupname field (which doesn't come in Accounting packets)
 -- by querying the radusergroup table.
 -- This makes it easier to do group summary reports, however note that it does add some extra
 -- database load to 50% of your SQL accounting queries. If you dont care about group summary

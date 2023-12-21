@@ -42,7 +42,7 @@ acct_unique {
 	#  Acct-Unique-Session-Id, but this may cause problems
 	#  with NAS that carry Class values across between
 	#  multiple linked sessions.  So we rehash class with
-	#  Acct-Session-ID to provide a truely unique session
+	#  Acct-Session-ID to provide a truly unique session
 	#  identifier.
 	#
 	#  Using a Class/Session-ID combination is more robust
