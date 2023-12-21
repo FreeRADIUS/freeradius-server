@@ -51,7 +51,7 @@ ATTRIBUTE	Stats4-Unknown-Types			.8	integer64
 #
 #  These count request and response packets for each type of packet.
 #  There is just one attribute for all of these counters.  We trust
-#  that the reader is knowledgable enough to know which ones are
+#  that the reader is knowledgeable enough to know which ones are
 #  requests, and which ones are responses.
 #
 ATTRIBUTE	Stats4-Packet-Counters			15.9	TLV

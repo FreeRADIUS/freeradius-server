@@ -471,7 +471,7 @@ VALUE	Syslog-Tap			On-Raw			1
 VALUE	Syslog-Tap			On-Framed		2
 VALUE	Syslog-Tap			Unknown			4294967295
 
-#	Event Indentifiers
+#	Event Identifiers
 
 VALUE	Event-Id			Module-Inserted		6
 VALUE	Event-Id			Module-Removed		7
