@@ -262,6 +262,20 @@ static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, mod
 	RETURN_MODULE_OK;
 }
 
+static fr_sbuff_parse_rules_t const rhs_term = {
+	.escapes = &(fr_sbuff_unescape_rules_t){
+		.chr = '\\',
+		.do_hex = true,
+		.do_oct = false
+	},
+	.terminals = &FR_SBUFF_TERMS(
+		L(""),
+		L("\t"),
+		L("\n"),
+		L(","),
+	)
+};
+
 /** Process the exit code and output of a short lived process
  *
  */
@@ -280,20 +294,67 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		if (inst->output_list && !fr_value_box_list_empty(&m->box)) {
-			TALLOC_CTX *ctx;
-			fr_pair_list_t vps, *output_pairs;
+			ssize_t slen;
+			map_t *map;
 			fr_value_box_t *box = fr_value_box_list_head(&m->box);
+			fr_sbuff_t	in = FR_SBUFF_IN(box->vb_strvalue, box->vb_length);
+			tmpl_rules_t	lhs_rules = (tmpl_rules_t) {
+				.attr = {
+					.dict_def = request->dict,
+					.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
+					.list_def = tmpl_list(inst->output_list),
+					.list_presence = TMPL_ATTR_LIST_ALLOW,
 
-			fr_pair_list_init(&vps);
-			output_pairs = tmpl_list_head(request, tmpl_list(inst->output_list));
-			fr_assert(output_pairs != NULL);
+					/*
+					 *	Otherwise the tmpl code returns 0 when asked
+					 *	to parse unknown names.  So we say "please
+					 *	parse unknown names as unresolved attributes",
+					 *	and then do a second pass to complain that the
+					 *	thing isn't known.
+					 */
+					.allow_unresolved = false
+				}
+			};
+			tmpl_rules_t	rhs_rules = lhs_rules;
 
-			ctx = tmpl_list_ctx(request, tmpl_list(inst->output_list));
+			rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_YES;
+			rhs_rules.attr.list_def = request_attr_request;
+			rhs_rules.at_runtime = true;
+			rhs_rules.xlat.runtime_el = unlang_interpret_event_list(request);
 
-			fr_pair_list_afrom_box(ctx, &vps, request->dict, box);
-			if (!fr_pair_list_empty(&vps)) radius_pairmove(request, output_pairs, &vps);
+			while (true) {
+				slen = map_afrom_substr(request, &map, NULL, &in,
+							map_assignment_op_table, map_assignment_op_table_len,
+							&lhs_rules, &rhs_rules, &rhs_term);
+				if (slen < 0) {
+					RPEDEBUG("Failed parsing exec output string");
+					break;
+				}
+				if (!slen) {
+					RDEBUG("Stopping due to no input at %.*s", (int) fr_sbuff_remaining(&in), fr_sbuff_current(&in));
+					break;
+				}
 
-			fr_value_box_list_talloc_free(&m->box);	/* has been consumed */
+				RDEBUG("applying %s %s %s",
+				       map->lhs->name, fr_tokens[map->op], map->rhs->name);
+
+				if (radius_legacy_map_apply(request, map) < 0) {
+					RPEDEBUG("Failed applying assignment");
+
+					TALLOC_FREE(map);
+					return -1;
+				}
+				TALLOC_FREE(map);
+
+				fr_sbuff_adv_past_whitespace(&in, SIZE_MAX, NULL);
+
+				if (!fr_sbuff_remaining(&in)) break;
+
+				/*
+				 *	Allow commas between attributes
+				 */
+				(void) fr_sbuff_next_if_char(&in, ',');
+			}
 		}
 		break;
 
