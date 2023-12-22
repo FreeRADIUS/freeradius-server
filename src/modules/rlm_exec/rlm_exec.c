@@ -335,6 +335,10 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 					break;
 				}
 
+#ifdef STATIC_ANALYZER
+				if (!map) return -1;
+#endif
+
 				RDEBUG("applying %s %s %s",
 				       map->lhs->name, fr_tokens[map->op], map->rhs->name);
 
