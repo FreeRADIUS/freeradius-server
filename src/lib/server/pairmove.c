@@ -626,7 +626,6 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		if (rcode < 0) goto fail;
 
 		if (rcode == 0) {
-		copy:
 			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
 		}
 
