@@ -524,28 +524,6 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	/*
-	 *	Check for, and skip, the trailing quote if we had a leading quote.
-	 */
-	if (token != T_BARE_WORD) {
-		if (!fr_sbuff_is_char(&our_in, fr_token_quote[token])) {
-			fr_strerror_const("Unexpected end of quoted string");
-			goto error;
-		}
-
-		fr_sbuff_advance(&our_in, 1);
-
-		/*
-		 *	The tmpl code does NOT return tmpl_type_data
-		 *	for string data without xlat.  Instead, it
-		 *	creates TMPL_TYPE_DATA_UNRESOLVED.
-		 */
-		if (tmpl_resolve(map->lhs, NULL) < 0) {
-			fr_sbuff_set(&our_in, &m_lhs);	/* Marker points to LHS */
-			goto error;
-		}
-	}
-
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 	fr_sbuff_marker(&m_op, &our_in);
 
