@@ -562,7 +562,7 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 	rlm_sql_row_t	row;
 	int		rows = 0;
 	sql_rcode_t	rcode;
-//	fr_pair_t	*relative_vp = NULL;
+	map_t		*parent = NULL;
 	tmpl_rules_t	lhs_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = request->dict,
@@ -593,12 +593,12 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
 		map_t *map;
 
-		if (map_afrom_fields(ctx, &map, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
+		if (map_afrom_fields(ctx, &map, &parent, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
 			RPEDEBUG("Error parsing user data from database result");
 			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
 			return -1;
 		}
-		map_list_insert_tail(out, map);
+		if (!map->parent) map_list_insert_tail(out, map);
 
 		rows++;
 	}

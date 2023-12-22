@@ -425,12 +425,12 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t		m_lhs, m_rhs, m_op;
 	fr_sbuff_term_t const		*tt = p_rules ? p_rules->terminals : NULL;
-	map_t				*parent, *new_parent;
+	map_t				*parent;
 
 	if (parent_p) {
-		new_parent = parent = *parent_p;
+		parent = *parent_p;
 	} else {
-		new_parent = parent = NULL;
+		parent = NULL;
 	}
 
 	*out = NULL;
@@ -481,7 +481,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 */
 			while (fr_sbuff_next_if_char(&our_in, '.')) {
 				if (!parent) goto no_parent;
-				new_parent = parent = parent->parent;
+				parent = parent->parent;
 			}
 
 			/*
@@ -506,7 +506,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 *	attribute MUST come from the
 			 *	root of the dictionary tree.
 			 */
-			new_parent = parent = NULL;
+			parent = NULL;
 		}
 
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
@@ -745,7 +745,7 @@ check_for_child:
 		map_list_insert_tail(&parent->child, map);
 	}
 
-	if (parent_p) *parent_p = new_parent;
+	if (parent_p) *parent_p = parent;
 
 	MAP_VERIFY(map);
 	*out = map;
@@ -2438,9 +2438,10 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
  *
  * @param[in] ctx		where to allocate the map.
  * @param[out] out		Where to write the new map (must be freed with talloc_free()).
+ * @param[in,out] parent_p	the parent map, updated for relative maps
  * @param[in] request		the request
  * @param[in] lhs		of map
- * @param[in] op		of map
+ * @param[in] op_str		operator for map
  * @param[in] rhs		of map
  * @param[in] lhs_rules		for parsing the LHS
  * @param[in] rhs_rules		for parsing the RHS
@@ -2448,24 +2449,20 @@ void map_debug_log(request_t *request, map_t const *map, fr_pair_t const *vp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, request_t *request, char const *lhs, char const *op, char const *rhs,
+int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *request,
+		     char const *lhs, char const *op_str, char const *rhs,
 		     tmpl_rules_t const *lhs_rules, tmpl_rules_t const *rhs_rules)
 {
-	ssize_t slen;
-	fr_token_t quote;
-	map_t *map;
-	tmpl_rules_t my_rules;
+	ssize_t		slen;
+	fr_token_t	quote, op;
+	map_t		*map;
+	map_t		*parent = *parent_p;
+	tmpl_rules_t	my_rules;
 
-	map = map_alloc(ctx, NULL);
-	if (!map) {
-		fr_strerror_const("Out of memory");
+	op = fr_table_value_by_str(fr_tokens_table, op_str, T_INVALID);
+	if ((op == T_INVALID) || (!fr_assignment_op[op] && !fr_comparison_op[op])) {
+		fr_strerror_printf("Invalid operator '%s'", op_str);
 		return -1;
-	}
-
-	map->op = fr_table_value_by_str(fr_tokens_table, op, T_INVALID);
-	if ((map->op == T_INVALID) || (!fr_assignment_op[map->op] && !fr_comparison_op[map->op])) {
-		fr_strerror_printf("Invalid operator '%s'", op);
-		goto error;
 	}
 
 	my_rules = *lhs_rules;
@@ -2476,23 +2473,76 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, request_t *request, char cons
 	 *	comparisons.  We rewrite assignments to use the control list.
 	 *
 	 *	@todo - as we expand the use of this function, perhaps add another argument which controls
-	 *	this flag.
+	 *	this flag.  But this function already has parameter overload :(
 	 */
-	if (fr_assignment_op[map->op] && (lhs_rules->attr.list_def == request_attr_request)) {
+	if (fr_assignment_op[op] && (lhs_rules->attr.list_def == request_attr_request)) {
 		my_rules.attr.list_def = request_attr_control;
 	}
 
-	if (lhs[0] == '.') {
-		fr_strerror_const("Nested is not supported!");
-		return -1;
+	/*
+	 *	One '.' means "the current parent".
+	 */
+	if (*lhs == '.') {
+		if (!parent) {
+		no_parent:
+			fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
+			return -1;
+		}
+		lhs++;
+
+		/*
+		 *	Multiple '.' means "go to our parents parent".
+		 */
+		while (*lhs == '.') {
+			if (!parent) goto no_parent;
+
+			parent = parent->parent;
+			lhs++;
+		}
+
+		/*
+		 *	Child elements can only be "=".
+		 */
+		if (parent) {
+			if (fr_comparison_op[op]) {
+				fr_strerror_const("Comparison operators cannot be used inside of structural data types");
+				return -1;
+			}
+
+			if (op != T_OP_EQ) {
+				fr_strerror_const("Invalid operator inside of structural data type - must be '='");
+				return -1;
+			}
+		}
 	}
 
+	MEM(map = map_alloc(ctx, parent));
+	map->op = op;
+
 	/*
-	 *	Allocate the LHS, which must be an attribute.
-	 *
-	 *	@todo - track relative attributes, which begin with a '.'
+	 *	Start looking in the correct parent, not in whatever we were handed.
 	 */
-	slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, lhs, lhs_rules);
+	if (parent) {
+		fr_assert(tmpl_is_attr(parent->lhs));
+		my_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
+
+		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &FR_SBUFF_IN(lhs, strlen(lhs)),
+					      &map_parse_rules_bareword_quoted, lhs_rules);
+	} else {
+		/*
+		 *	There's no '.', so this
+		 *	attribute MUST come from the
+		 *	root of the dictionary tree.
+		 */
+		parent = NULL;
+
+		/*
+		 *	Allocate the LHS, which must be an attribute.
+		 *
+		 *	@todo - track relative attributes, which begin with a '.'
+		 */
+		slen = tmpl_afrom_attr_str(ctx, NULL, &map->lhs, lhs, lhs_rules);
+	}
 	if (slen <= 0) {
 	error:
 		talloc_free(map);
@@ -2604,8 +2654,8 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, request_t *request, char cons
 	/*
 	 *	@todo - check that the entire string was parsed.
 	 */
-
 	*out = map;
+	*parent_p = parent;
 
 	return 0;
 }
