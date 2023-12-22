@@ -84,8 +84,6 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, 0x00);
 
-	fr_assert(!da->flags.name_only);
-
 	switch (vp->vp_type) {
 	/*
 	 *	Only leaf attributes can be tainted
