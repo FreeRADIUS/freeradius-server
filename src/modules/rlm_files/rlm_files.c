@@ -508,7 +508,7 @@ redo:
 		while ((map = map_list_next(&pl->check, map))) {
 			int rcode;
 
-			RDEBUG3("    %s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
+			RDEBUG3("    %s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs ? map->rhs->name : "{ ... }");
 
 			/*
 			 *	Control items get realized to VPs, and

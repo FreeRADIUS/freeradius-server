@@ -309,6 +309,53 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 	talloc_free(deleted);
 }
 
+static int radius_legacy_map_to_vp(request_t *request, fr_pair_t *parent, map_t const *map)
+{
+	fr_pair_t *vp;
+	fr_dict_attr_t const *da;
+	fr_value_box_t *box, *to_free = NULL;
+
+	RDEBUG("  %s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
+
+	da = tmpl_attr_tail_da(map->lhs);
+	fr_assert(fr_type_is_leaf(da->type));
+
+	if (tmpl_is_data(map->rhs)) {
+		box = tmpl_value(map->rhs);
+
+	} else if (tmpl_is_attr(map->rhs)) {
+		fr_pair_t *rhs;
+
+		if (tmpl_find_vp(&rhs, request, map->rhs) < 0) return -1;
+
+		if (rhs->vp_type != da->type) {
+			fr_strerror_const("Incompatible data types");
+			return -1;
+		}
+
+		box = &rhs->data;
+
+	} else if (tmpl_is_xlat(map->rhs)) {
+		if (tmpl_aexpand(parent, &to_free, request, map->rhs, NULL, NULL) < 0) return -1;
+
+		box = to_free;
+
+	} else {
+		fr_strerror_const("Unknown RHS");
+		return -1;
+	}
+
+	if (fr_pair_append_by_da(parent, &vp, &parent->vp_group, da) < 0) return -1;
+
+	if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) {
+		TALLOC_FREE(to_free);
+		return -1;
+	}
+
+	TALLOC_FREE(to_free);
+	return 0;
+}
+
 static int radius_legacy_map_apply_structural(request_t *request, map_t const *map)
 {
 	fr_pair_t *vp = NULL;
@@ -350,7 +397,53 @@ static int radius_legacy_map_apply_structural(request_t *request, map_t const *m
 
 	da = tmpl_attr_tail_da(map->lhs);
 
-	if (tmpl_is_attr(map->rhs)) {
+	if (!map->rhs) {
+		map_t *child;
+
+		/*
+		 *	We didn't create it above, so we need to create it now.
+		 */
+		if (!vp) {
+			switch (map->op) {
+			case T_OP_EQ:
+				if (tmpl_find_vp(&vp, request, map->lhs) < 0) return -1;
+				if (vp) return 0;
+				goto add_list;
+
+			case T_OP_SET:
+				fr_pair_delete_by_da_nested(list, da);
+				FALL_THROUGH;
+
+			case T_OP_ADD_EQ:
+			case T_OP_PREPEND:
+			add_list:
+				if (tmpl_find_or_add_vp(&vp, request, map->lhs) < 0) return -1;
+#ifdef STATIC_ANALYZER
+				if (!vp) return -1;
+#endif
+				break;
+
+			default:
+				fr_strerror_const("Invalid operator for list assignment");
+				return -1;
+			}
+		}
+
+		/*
+		 *	Convert the child maps to VPs.  We know that
+		 *	we just created the pair, so there's no reason
+		 *	to apply operators to the children.
+		 */
+		for (child = map_list_next(&map->child, NULL);
+		     child != NULL;
+		     child = map_list_next(&map->child, child)) {
+			fr_assert(child->op == T_OP_EQ);
+			if (radius_legacy_map_to_vp(request, vp, child) < 0) return -1;
+		}
+
+		return 0;
+
+	} else if (tmpl_is_attr(map->rhs)) {
 		fr_pair_t *rhs;
 
 		if (tmpl_find_vp(&rhs, request, map->rhs) < 0) return -1;

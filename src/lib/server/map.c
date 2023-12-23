@@ -2605,8 +2605,6 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 			goto alloc_empty;
 		}
 
-		ERROR("CONVERT %s --> %s", rhs, map->rhs->name);
-
 		/*
 		 *	Ignore any extra data after the string.
 		 */
@@ -2626,9 +2624,16 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	} else if (!rhs[0] || !my_rules.enumv || (my_rules.enumv->type == FR_TYPE_STRING)) {
 		quote = T_BARE_WORD;
 
+		if (tmpl_attr_tail_da_is_structural(map->lhs) && !*rhs) goto done;
+
 	alloc_empty:
 		MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, quote, rhs, strlen(rhs)));
 
+		/*
+		 *	Create it when we have
+		 *
+		 *		my-struct = ""
+		 */
 		(void) fr_value_box_strdup(map->rhs, tmpl_value(map->rhs), NULL, rhs, false);
 
 	} else {
@@ -2654,8 +2659,22 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 	/*
 	 *	@todo - check that the entire string was parsed.
 	 */
+
+done:
+	/*
+	 *	If the tail is a leaf, we don't change parent.
+	 *	Otherwise the structural attribute is the new parent.
+	 */
+	if (tmpl_attr_tail_da_is_leaf(map->lhs)) {
+		*parent_p = parent;
+	} else {
+		*parent_p = map;
+	}
+
+	MAP_VERIFY(map);
+
+	if (parent) map_list_insert_tail(&parent->child, map);
 	*out = map;
-	*parent_p = parent;
 
 	return 0;
 }
