@@ -338,7 +338,6 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	request->reply->id = request->packet->id;
 	request->reply->code = 0; /* UNKNOWN code */
 	memcpy(request->reply->vector, request->packet->vector, sizeof(request->reply->vector));
-	fr_pair_list_init(&request->reply_pairs);
 	request->reply->data = NULL;
 	request->reply->data_len = 0;
 
