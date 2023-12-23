@@ -747,6 +747,13 @@ check_for_child:
 
 	if (parent_p) *parent_p = parent;
 
+	/*
+	 *	Xlat expansions are cast to strings for structural data types.
+	 */
+	if (tmpl_attr_tail_da_is_structural(map->lhs) && (tmpl_is_xlat(map->rhs))) {
+		tmpl_cast_set(map->rhs, FR_TYPE_STRING);
+	}
+
 	MAP_VERIFY(map);
 	*out = map;
 
@@ -2643,6 +2650,13 @@ int map_afrom_fields(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, request_t *
 		slen = tmpl_afrom_substr(map, &map->rhs, &FR_SBUFF_IN(rhs, strlen(rhs)),
 					 T_BARE_WORD, value_parse_rules_unquoted[T_BARE_WORD], &my_rules);
 		if (slen <= 0) goto error;
+
+		/*
+		 *	Xlat expansions are cast to strings for structural data types.
+		 */
+		if (tmpl_attr_tail_da_is_structural(map->lhs) && (tmpl_is_xlat(map->rhs))) {
+			tmpl_cast_set(map->rhs, FR_TYPE_STRING);
+		}
 	}
 
 	if (tmpl_needs_resolving(map->rhs)) {
