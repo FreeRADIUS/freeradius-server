@@ -770,6 +770,22 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	return 0;
 }
 
+int radius_legacy_map_list_apply(request_t *request, map_list_t const *list)
+{
+	map_t const *map;
+
+	for (map = map_list_head(list);
+	     map != NULL;
+	     map = map_list_next(list, map)) {
+		RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op],
+			map->rhs ? map->rhs->name : "{ ... }");
+
+		if (radius_legacy_map_apply(request, map) < 0) return -1;
+	}
+
+	return 0;
+}
+
 int radius_legacy_map_cmp(request_t *request, map_t const *map)
 {
 	int rcode;

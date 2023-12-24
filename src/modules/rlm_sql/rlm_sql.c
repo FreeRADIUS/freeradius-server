@@ -951,8 +951,6 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 	}
 
 	if (inst->config.authorize_group_reply_query) {
-		map_t *map;
-
 		/*
 		 *	Now get the reply pairs since the paircmp matched
 		 */
@@ -980,16 +978,10 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 		RDEBUG2("Group \"%s\": Merging reply items", group_name);
 		*rcode = RLM_MODULE_UPDATED;
 
-		for (map = map_list_head(&reply_tmp);
-		     map != NULL;
-		     map = map_list_next(&reply_tmp, map)) {
-			RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
-
-			if (radius_legacy_map_apply(request, map) < 0) {
-				RPEDEBUG("Failed applying reply item");
-				map_list_talloc_free(&reply_tmp);
-				return -1;
-			}
+		if (radius_legacy_map_list_apply(request, &reply_tmp) < 0) {
+			RPEDEBUG("Failed applying reply item");
+			map_list_talloc_free(&reply_tmp);
+			return -1;
 		}
 
 		map_list_talloc_free(&reply_tmp);
@@ -1411,8 +1403,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 
 	if (inst->config.authorize_reply_query) {
-		map_t *map;
-
 		/*
 		 *	Now get the reply pairs since the paircmp matched
 		 */
@@ -1438,18 +1428,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RDEBUG2("User found in radreply table, merging reply items");
 		user_found = true;
 
-		for (map = map_list_head(&reply_tmp);
-		     map != NULL;
-		     map = map_list_next(&reply_tmp, map)) {
-			RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op],
-					map->rhs ? map->rhs->name : "{ ... }");
-
-			if (radius_legacy_map_apply(request, map) < 0) {
-				RPEDEBUG("Failed applying reply item");
-				map_list_talloc_free(&reply_tmp);
-				rcode = RLM_MODULE_FAIL;
-				goto error;
-			}
+		if (radius_legacy_map_list_apply(request, &reply_tmp) < 0) {
+			RPEDEBUG("Failed applying reply item");
+			map_list_talloc_free(&reply_tmp);
+			rcode = RLM_MODULE_FAIL;
+			goto error;
 		}
 
 		map_list_talloc_free(&reply_tmp);

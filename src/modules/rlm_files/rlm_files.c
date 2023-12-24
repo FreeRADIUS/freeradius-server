@@ -488,7 +488,6 @@ redo:
 	while (user_pl || default_pl) {
 		map_t *map = NULL;
 		PAIR_LIST const *pl;
-		bool next_shortest_prefix;
 		bool match = true;
 
 		/*
@@ -563,20 +562,11 @@ redo:
 
 		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, pl->filename);
 		found = true;
-		next_shortest_prefix = false;
 
 		/* ctx may be reply */
-		if (!map_list_empty(&pl->reply)) {
-			map = NULL;
-
-			while ((map = map_list_next(&pl->reply, map))) {
-				if (radius_legacy_map_apply(request, map) < 0) {
-					RPWARN("Failed parsing map for reply item %s, skipping it", map->lhs->name);
-					break;
-				}
-			}
-
-			next_shortest_prefix = pl->next_shortest_prefix;
+		if (radius_legacy_map_list_apply(request, &pl->reply) < 0) {
+			RPWARN("Failed parsing map for reply item %s", map->lhs->name);
+			RETURN_MODULE_FAIL;
 		}
 
 		if (pl->fall_through) {
@@ -594,7 +584,7 @@ redo:
 		 *	We're doing patricia tries, but we've been
 		 *	told to not walk back up the trie, OR we're at the top of the tree.  Stop.
 		 */
-		if (!next_shortest_prefix || (keylen == 0)) {
+		if (!pl->next_shortest_prefix || (keylen == 0)) {
 			break;
 		}
 

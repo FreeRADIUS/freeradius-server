@@ -37,6 +37,8 @@ void	radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 
 int	radius_legacy_map_apply(request_t *request, map_t const *map) CC_HINT(nonnull);
 
+int	radius_legacy_map_list_apply(request_t *request, map_list_t const *list) CC_HINT(nonnull);
+
 int	radius_legacy_map_cmp(request_t *request, map_t const *map) CC_HINT(nonnull);
 
 #ifdef __cplusplus

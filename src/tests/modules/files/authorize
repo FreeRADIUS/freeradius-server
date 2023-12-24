@@ -74,7 +74,9 @@ filterreply  Password.Cleartext := "testing123"
              Reply-Message += "success2"
 
 overwritereply  Password.Cleartext := "testing123"
-                Reply-Message := "firstpass",
+                Reply-Message := "firstpass1",
+                Reply-Message += "firstpass2",
+                Reply-Message += "firstpass3",
                 Fall-Through = yes
 
 overwritereply  Password.Cleartext := "testing123"
