@@ -657,7 +657,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	case T_OP_SUB_EQ:	/* delete if match, otherwise ignore */
 		if (fr_type_is_structural(da->type)) {
 		invalid_operator:
-			fr_strerror_printf("Invalid operator '%s' for structural type", fr_type_to_str(vp->vp_type));
+			fr_strerror_printf("Invalid operator '%s' for structural type", fr_type_to_str(da->type));
 			return -1;
 		}
 
