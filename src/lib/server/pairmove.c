@@ -544,7 +544,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	 */
 	switch (map->op) {
 	case T_OP_EQ:
-		if (tmpl_find_vp(&vp, request, map->lhs) < 0) return -1;
+		if (tmpl_find_vp(&vp, request, map->lhs) < -1) return -1;
 		if (vp) return 0;
 		goto add;
 
@@ -570,7 +570,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		 *	We're editing a specific number.  It must exist, otherwise the edit does nothing.
 		 */
 		if ((num >= 0) || (num == NUM_LAST)) {
-			if (tmpl_find_vp(&vp, request, map->lhs) < 0) return -1;
+			if (tmpl_find_vp(&vp, request, map->lhs) < -1) return -1;
 
 			if (!vp) return 0;
 
@@ -650,7 +650,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	case T_OP_GE:		/* replace if not >= */
 		if (fr_type_is_structural(da->type)) goto invalid_operator;
 
-		if (tmpl_find_vp(&vp, request, map->lhs) < 0) return -1;
+		if (tmpl_find_vp(&vp, request, map->lhs) < -1) return -1;
 		if (!vp) goto add;
 		break;
 
@@ -661,7 +661,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 			return -1;
 		}
 
-		if (tmpl_find_vp(&vp, request, map->lhs) < 0) return -1;
+		if (tmpl_find_vp(&vp, request, map->lhs) < -1) return -1;
 		if (!vp) return 0;
 		break;
 
@@ -685,7 +685,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	 *
 	 *	Note that
 	 *
-	 *		&foo = %tolower(&foo)
+	 *		&foo := %tolower(&foo)
 	 *
 	 *	works, as we save the value above in the T_OP_SET handler.  So we don't delete it.
 	 */
