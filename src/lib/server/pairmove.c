@@ -509,7 +509,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	int16_t			num;
 	int			err, rcode;
 	bool			added = false;
-	fr_pair_t		*vp = NULL, *next;
+	fr_pair_t		*vp = NULL, *next, *parent;
 	fr_dict_attr_t const	*da;
 	fr_pair_list_t		*list;
 	TALLOC_CTX		*ctx;
@@ -529,18 +529,6 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 
 	/*
 	 *	These operations are the same for both leaf and structural types.
-	 *
-	 *	@todo - we need to expose some of the unlang/edit.c functions, so that
-	 *	we can:
-	 *
-	 *	* respect the tmpls, foo[0].bar[1],baz.
-	 *	* leverage the edit / undo list
-	 *
-	 *	For now, just hack it up until the code has stabilized.
-	 *
-	 *	Or, call unlang_edit_push() for maps which are '=' and ':='.  That should simplify this code
-	 *	substantially.  However, the callers (rlm_files and rlm_sql) don't yet expect to see this
-	 *	function return PUSHED_CHILD.  So for now, we have to hack it up a bit.
 	 */
 	switch (map->op) {
 	case T_OP_EQ:
@@ -566,12 +554,12 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 			return -1;
 		}
 
+		vp = tmpl_dcursor_init(&err, ctx, &cc, &cursor, request, map->lhs);
+
 		/*
 		 *	We're editing a specific number.  It must exist, otherwise the edit does nothing.
 		 */
 		if ((num >= 0) || (num == NUM_LAST)) {
-			if (tmpl_find_vp(&vp, request, map->lhs) < -1) return -1;
-
 			if (!vp) return 0;
 
 			if (fr_type_is_leaf(vp->vp_type)) {
@@ -589,20 +577,30 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		    (da == request_attr_reply) ||
 		    (da == request_attr_control) ||
 		    (da == request_attr_state)) {
-			if (tmpl_find_vp(&vp, request, map->lhs) < 0) return -1;
-
 			fr_assert(vp != NULL);
 
 			if (fr_edit_list_free_pair_children(el, vp) < 0) return -1;
 			break;
 		}
 
+		if (!vp) goto add;
+
 		/*
-		 *	Delete all existing attributes.
+		 *	Delete the first attribute we found.
+		 */
+		parent = fr_pair_parent(vp);
+		fr_assert(parent != NULL);
+
+		if (fr_edit_list_pair_delete(el, &parent->vp_group, vp) < 0) return -1;
+		tmpl_dcursor_clear(&cc);
+
+		/*
+		 *	Delete all existing attributes.  Note that we re-initialize the cursor every time,
+		 *	because creating "&foo := baz" means deleting ALL existing "foo".  But we can't use
+		 *	the tmpl as a cursor, because the tmpl containst NUM_UNSPEC, and the cursor needs
+		 *	NUM_ALL.  So we have to delete all existing attributes, and then add a new one.
 		 */
 		while (true) {
-			fr_pair_t *parent;
-
 			vp = tmpl_dcursor_init(&err, ctx, &cc, &cursor, request, map->lhs);
 			if (!vp) break;
 
@@ -626,7 +624,6 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		vp = tmpl_dcursor_build_init(&err, ctx, &cc, &cursor, request, map->lhs, legacy_pair_build, &lp);
 		tmpl_dcursor_clear(&cc);
 		if (!vp) {
-			fr_assert(0);
 			RWDEBUG("Failed creating attribute %s", map->lhs->name);
 			return -1;
 		}
@@ -635,11 +632,11 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		 *	If we're adding and one already exists, create a new one in the same context.
 		 */
 		if ((map->op == T_OP_ADD_EQ) && !lp.vp) {
-			fr_pair_t *parent = fr_pair_parent(vp);
+			parent = fr_pair_parent(vp);
 			fr_assert(parent != NULL);
 
 			MEM(vp = fr_pair_afrom_da(parent, da));
-			fr_pair_append(&parent->vp_group, vp);
+			if (fr_edit_list_insert_pair_tail(el, &parent->vp_group, vp) < 0) return -1;
 		}
 
 		added = true;
@@ -674,6 +671,9 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 
 	/*
 	 *	We don't support operations on structural types.  Just creation, and assign values.
+	 *
+	 *	The code above has ensured that the structural type has been either saved or cleared via the
+	 *	edit list, so the next function doesn't need to do that.
 	 */
 	if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) {
 		fr_assert(added);
@@ -752,9 +752,9 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 			if (rcode < 0) goto fail;
 
 			if (rcode == 1) {
-				fr_pair_list_t *parent = fr_pair_parent_list(vp);
+				fr_pair_list_t *parent_list = fr_pair_parent_list(vp);
 
-				fr_pair_delete(parent, vp);
+			        if (fr_edit_list_pair_delete(el, parent_list, vp) < 0) goto fail;
 			}
 			break;
 
