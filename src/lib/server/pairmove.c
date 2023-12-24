@@ -26,9 +26,12 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/pairmove.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
+
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/calc.h>
-#include <freeradius-devel/server/pairmove.h>
+#include <freeradius-devel/util/edit.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -456,13 +459,55 @@ static int CC_HINT(nonnull) radius_legacy_map_apply_structural(request_t *reques
 	return 0;
 }
 
+typedef struct {
+	fr_edit_list_t	*el;
+	fr_pair_t	*vp;	/* the one we created */
+} legacy_pair_build_t;
+
+/** Build the relevant pairs at each level.
+ *
+ *  See edit_list_pair_build() for similar code.
+ */
+static fr_pair_t *legacy_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_dict_attr_t const *da, void *uctx)
+{
+	fr_pair_t *vp;
+	legacy_pair_build_t *lp = uctx;
+
+	vp = fr_pair_afrom_da(parent, da);
+	if (!vp) return NULL;
+
+	if (fr_edit_list_insert_pair_tail(lp->el, &parent->vp_group, vp) < 0) {
+		talloc_free(vp);
+		return NULL;
+	}
+
+	/*
+	 *	Tell the cursor that we appended a pair.  This
+	 *	function only gets called when we've ran off of the
+	 *	end of the list, and can't find the thing we're
+	 *	looking for.  So it's safe at set the current one
+	 *	here.
+	 *
+	 *	@todo - mainly only because we don't allow creating
+	 *	foo[4] when there's <3 matching entries.  i.e. the
+	 *	"arrays" here are really lists, so we can't create
+	 *	"holes" in the list.
+	 */
+	fr_dcursor_set_current(cursor, vp);
+
+	lp->vp = vp;
+
+	return vp;
+}
+
 
 /** Move a map using the operators from the old pairmove functionality.
  *
  */
 int radius_legacy_map_apply(request_t *request, map_t const *map)
 {
-	int			rcode;
+	int16_t			num;
+	int			err, rcode;
 	bool			added = false;
 	fr_pair_t		*vp = NULL, *next;
 	fr_dict_attr_t const	*da;
@@ -470,6 +515,9 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	TALLOC_CTX		*ctx;
 	fr_value_box_t		*to_free = NULL;
 	fr_value_box_t const	*box;
+	fr_edit_list_t		*el = NULL;
+	tmpl_dcursor_ctx_t	cc;
+	fr_dcursor_t		cursor;
 
 	/*
 	 *	Find out where this attribute exists, or should exist.
@@ -501,13 +549,101 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		goto add;
 
 	case T_OP_SET:
-		fr_pair_delete_by_da_nested(list, da);
+		/*
+		 *	Set a value.  Note that we might do
+		 *
+		 *		&foo[1] := 1
+		 *
+		 *	In which case we don't want to delete the attribute, we just want to replace its
+		 *	value.
+		 *
+		 *	@todo - we can't do &foo[*].bar[*].baz = 1, as that's an implicit cursor, and we don't
+		 *	do that.
+		 */
+		num = tmpl_attr_tail_num(map->lhs);
+		if (num == NUM_COUNT) {
+			fr_strerror_const("Invalid count in attribute reference");
+			return -1;
+		}
+
+		/*
+		 *	We're editing a specific number.  It must exist, otherwise the edit does nothing.
+		 */
+		if ((num >= 0) || (num == NUM_LAST)) {
+			if (tmpl_find_vp(&vp, request, map->lhs) < 0) return -1;
+
+			if (!vp) return 0;
+
+			if (fr_type_is_leaf(vp->vp_type)) {
+				if (fr_edit_list_save_pair_value(el, vp) < 0) return -1;
+			} else {
+				if (fr_edit_list_free_pair_children(el, vp) < 0) return -1;
+			}
+			break;
+		}
+
+		/*
+		 *	We don't delete the main lists, we just modify their contents.
+		 */
+		if ((da == request_attr_request) ||
+		    (da == request_attr_reply) ||
+		    (da == request_attr_control) ||
+		    (da == request_attr_state)) {
+			if (tmpl_find_vp(&vp, request, map->lhs) < 0) return -1;
+
+			fr_assert(vp != NULL);
+
+			if (fr_edit_list_free_pair_children(el, vp) < 0) return -1;
+			break;
+		}
+
+		/*
+		 *	Delete all existing attributes.
+		 */
+		while (true) {
+			fr_pair_t *parent;
+
+			vp = tmpl_dcursor_init(&err, ctx, &cc, &cursor, request, map->lhs);
+			if (!vp) break;
+
+			parent = fr_pair_parent(vp);
+			fr_assert(parent != NULL);
+
+			if (fr_edit_list_pair_delete(el, &parent->vp_group, vp) < 0) return -1;
+			tmpl_dcursor_clear(&cc);
+		}
 		FALL_THROUGH;
 
 	case T_OP_ADD_EQ:
 	add:
-		MEM(vp = fr_pair_afrom_da_nested(ctx, list, da));
+	{
+		legacy_pair_build_t	lp = (legacy_pair_build_t) {
+			.el = el,
+			.vp = NULL,
+		};
+
+		fr_strerror_clear();
+		vp = tmpl_dcursor_build_init(&err, ctx, &cc, &cursor, request, map->lhs, legacy_pair_build, &lp);
+		tmpl_dcursor_clear(&cc);
+		if (!vp) {
+			fr_assert(0);
+			RWDEBUG("Failed creating attribute %s", map->lhs->name);
+			return -1;
+		}
+
+		/*
+		 *	If we're adding and one already exists, create a new one in the same context.
+		 */
+		if ((map->op == T_OP_ADD_EQ) && !lp.vp) {
+			fr_pair_t *parent = fr_pair_parent(vp);
+			fr_assert(parent != NULL);
+
+			MEM(vp = fr_pair_afrom_da(parent, da));
+			fr_pair_append(&parent->vp_group, vp);
+		}
+
 		added = true;
+	}
 		break;
 
 	case T_OP_LE:		/* replace if not <= */
@@ -534,11 +670,12 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 		return -1;
 	}
 
+	fr_assert(vp);
+
 	/*
 	 *	We don't support operations on structural types.  Just creation, and assign values.
 	 */
 	if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type)) {
-		fr_assert(vp);
 		fr_assert(added);
 		return radius_legacy_map_apply_structural(request, map, vp);
 	}
@@ -546,12 +683,11 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	/*
 	 *	We have now found the RHS.  Expand it.
 	 *
-	 *	@todo - not that the "delete then expand" means that we can't assign things
-	 *	to themselves.  e.g. as with
+	 *	Note that
 	 *
 	 *		&foo = %tolower(&foo)
 	 *
-	 *	For now we live with it.
+	 *	works, as we save the value above in the T_OP_SET handler.  So we don't delete it.
 	 */
 	if (tmpl_is_data(map->rhs)) {
 		box = tmpl_value(map->rhs);
