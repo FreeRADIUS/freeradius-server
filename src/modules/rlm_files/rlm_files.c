@@ -216,12 +216,6 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 				return -1;
 			}
 
-			if ((htype != FR_HTRIE_TRIE) && (da == attr_next_shortest_prefix)) {
-				ERROR("%s[%d] Cannot use %s when key is not an IP / IP prefix",
-				      entry->filename, entry->lineno, da->name);
-				return -1;
-			}
-
 			/*
 			 *	Regex assignments aren't allowed.
 			 *
@@ -233,6 +227,24 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 				return -1;
 			}
 
+			if (da == attr_next_shortest_prefix) {
+				if (htype != FR_HTRIE_TRIE) {
+					ERROR("%s[%d] Cannot use %s when key is not an IP / IP prefix",
+					      entry->filename, entry->lineno, da->name);
+					return -1;
+				}
+
+				if (!tmpl_is_data(map->rhs) || (tmpl_value_type(map->rhs) != FR_TYPE_BOOL)) {
+					ERROR("%s[%d] Value for %s must be static boolean",
+					      entry->filename, entry->lineno, da->name);
+					return -1;
+				}
+
+				entry->next_shortest_prefix = tmpl_value(map->rhs)->vb_bool;
+				(void) map_list_remove(&entry->reply, map);
+				continue;
+			}
+
 			/*
 			 *	Check for Fall-Through in the reply list.  If so, delete it and set the flag
 			 *	in the entry.
@@ -242,10 +254,13 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 			 *	free all subsequent maps.
 			 */
 			if (da == attr_fall_through) {
-				if (tmpl_is_data(map->rhs) && (tmpl_value_type(map->rhs) == FR_TYPE_BOOL)) {
-					entry->fall_through = tmpl_value(map->rhs)->vb_bool;
+				if (!tmpl_is_data(map->rhs) || (tmpl_value_type(map->rhs) != FR_TYPE_BOOL)) {
+					ERROR("%s[%d] Value for %s must be static boolean",
+					      entry->filename, entry->lineno, da->name);
+					return -1;
 				}
 
+				entry->fall_through = tmpl_value(map->rhs)->vb_bool;
 				(void) map_list_remove(&entry->reply, map);
 				continue;
 			}
@@ -555,21 +570,13 @@ redo:
 			map = NULL;
 
 			while ((map = map_list_next(&pl->reply, map))) {
-				/*
-				 *	Do Fall-Through style checks for prefix tries.
-				 */
-				if (trie && (keylen > 0) && (tmpl_attr_tail_da(map->lhs) == attr_next_shortest_prefix)) {
-					fr_assert(tmpl_is_data(map->rhs));
-
-					next_shortest_prefix = tmpl_value(map->rhs)->vb_bool;
-					continue;
-				}
-
 				if (radius_legacy_map_apply(request, map) < 0) {
 					RPWARN("Failed parsing map for reply item %s, skipping it", map->lhs->name);
 					break;
 				}
 			}
+
+			next_shortest_prefix = pl->next_shortest_prefix;
 		}
 
 		if (pl->fall_through) {
