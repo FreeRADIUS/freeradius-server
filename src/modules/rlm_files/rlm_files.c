@@ -565,7 +565,7 @@ redo:
 
 		/* ctx may be reply */
 		if (radius_legacy_map_list_apply(request, &pl->reply) < 0) {
-			RPWARN("Failed parsing map for reply item %s", map->lhs->name);
+			RPWARN("Failed parsing reply item");
 			RETURN_MODULE_FAIL;
 		}
 
