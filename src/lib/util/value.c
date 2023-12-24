@@ -545,22 +545,26 @@ fr_sbuff_parse_rules_t const value_parse_rules_bareword_quoted = {
 
 fr_sbuff_parse_rules_t const value_parse_rules_double_quoted = {
 	.escapes = &fr_value_unescape_double,
-	.terminals = &FR_SBUFF_TERM("\"")
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("\""))
 };
 
 fr_sbuff_parse_rules_t const value_parse_rules_single_quoted = {
 	.escapes = &fr_value_unescape_single,
-	.terminals = &FR_SBUFF_TERM("'")
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("'"))
 };
 
 fr_sbuff_parse_rules_t const value_parse_rules_solidus_quoted = {
 	.escapes = &fr_value_unescape_solidus,
-	.terminals = &FR_SBUFF_TERM("/")
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("/"))
 };
 
 fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted = {
 	.escapes = &fr_value_unescape_backtick,
-	.terminals = &FR_SBUFF_TERM("`")
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("`"))
 };
 
 /** Parse rules for quoted strings

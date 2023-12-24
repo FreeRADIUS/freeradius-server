@@ -504,7 +504,7 @@ static fr_pair_t *legacy_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_
 /** Move a map using the operators from the old pairmove functionality.
  *
  */
-int radius_legacy_map_apply(request_t *request, map_t const *map)
+int radius_legacy_map_apply(request_t *request, map_t const *map, fr_edit_list_t *el)
 {
 	int16_t			num;
 	int			err, rcode;
@@ -515,7 +515,6 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	TALLOC_CTX		*ctx;
 	fr_value_box_t		*to_free = NULL;
 	fr_value_box_t const	*box;
-	fr_edit_list_t		*el = NULL;
 	tmpl_dcursor_ctx_t	cc;
 	fr_dcursor_t		cursor;
 
@@ -770,7 +769,7 @@ int radius_legacy_map_apply(request_t *request, map_t const *map)
 	return 0;
 }
 
-int radius_legacy_map_list_apply(request_t *request, map_list_t const *list)
+int radius_legacy_map_list_apply(request_t *request, map_list_t const *list, fr_edit_list_t *el)
 {
 	map_t const *map;
 
@@ -780,7 +779,10 @@ int radius_legacy_map_list_apply(request_t *request, map_list_t const *list)
 		RDEBUG2("&%s %s %s", map->lhs->name, fr_tokens[map->op],
 			map->rhs ? map->rhs->name : "{ ... }");
 
-		if (radius_legacy_map_apply(request, map) < 0) return -1;
+		if (radius_legacy_map_apply(request, map, el) < 0) {
+			RPEDEBUG("Failed applying result");
+			return -1;
+		}
 	}
 
 	return 0;

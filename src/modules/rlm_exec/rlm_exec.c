@@ -342,7 +342,7 @@ static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, modul
 				RDEBUG("applying %s %s %s",
 				       map->lhs->name, fr_tokens[map->op], map->rhs->name);
 
-				if (radius_legacy_map_apply(request, map) < 0) {
+				if (radius_legacy_map_apply(request, map, NULL) < 0) {
 					RPEDEBUG("Failed applying assignment");
 
 					TALLOC_FREE(map);

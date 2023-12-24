@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/users_file.h>
 #include <freeradius-devel/util/htrie.h>
 #include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/transaction.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -445,10 +446,14 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, UNUSED rlm_files_t con
 	PAIR_LIST_LIST		my_list;
 	uint8_t			key_buffer[16], *key;
 	size_t			keylen = 0;
+	fr_edit_list_t		*el, *child;
 
 	if (!tree && !default_list) RETURN_MODULE_NOOP;
 
 	RDEBUG2("Looking for key \"%pV\"", &env->key);
+
+	el = unlang_interpret_edit_list(request);
+	MEM(child = fr_edit_list_alloc(request, 50, el));
 
 	if (tree) {
 		my_list.name = NULL;
@@ -535,7 +540,7 @@ redo:
 			case T_OP_SET:
 			case T_OP_ADD_EQ:
 				fr_assert(0);
-				return -1;
+				goto fail;
 
 				/*
 				 *	Evaluate the map, including regexes.
@@ -544,8 +549,9 @@ redo:
 				rcode = radius_legacy_map_cmp(request, map);
 				if (rcode < 0) {
 					RPWARN("Failed parsing map for check item %s, skipping it", map->lhs->name);
-					match = false;
-					break;
+				fail:
+					fr_edit_list_abort(child);
+					RETURN_MODULE_FAIL;
 				}
 
 				if (!rcode) {
@@ -564,9 +570,9 @@ redo:
 		found = true;
 
 		/* ctx may be reply */
-		if (radius_legacy_map_list_apply(request, &pl->reply) < 0) {
+		if (radius_legacy_map_list_apply(request, &pl->reply, child) < 0) {
 			RPWARN("Failed parsing reply item");
-			RETURN_MODULE_FAIL;
+			goto fail;
 		}
 
 		if (pl->fall_through) {
@@ -612,11 +618,13 @@ redo:
 	/*
 	 *	See if we succeeded.
 	 */
-	if (!found)
+	if (!found) {
+		fr_edit_list_abort(child);
 		RETURN_MODULE_NOOP; /* on to the next module */
+	}
 
+	fr_edit_list_commit(child);
 	RETURN_MODULE_OK;
-
 }
 
 

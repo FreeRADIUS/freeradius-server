@@ -1,0 +1,12 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "undo"
+User-Password = "hello"
+NAS-IP-Address = 192.0.2.1
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

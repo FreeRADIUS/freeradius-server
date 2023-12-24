@@ -1,0 +1,11 @@
+try {
+	files
+}
+catch fail {
+	#
+	#  Make it accept, but the accept should be empty!
+	#  see undo.attrs
+	#
+	&control.Password.Cleartext := "hello"
+	ok
+}

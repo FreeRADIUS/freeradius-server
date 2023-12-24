@@ -978,7 +978,7 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 		RDEBUG2("Group \"%s\": Merging reply items", group_name);
 		*rcode = RLM_MODULE_UPDATED;
 
-		if (radius_legacy_map_list_apply(request, &reply_tmp) < 0) {
+		if (radius_legacy_map_list_apply(request, &reply_tmp, NULL) < 0) {
 			RPEDEBUG("Failed applying reply item");
 			map_list_talloc_free(&reply_tmp);
 			return -1;
@@ -1428,7 +1428,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RDEBUG2("User found in radreply table, merging reply items");
 		user_found = true;
 
-		if (radius_legacy_map_list_apply(request, &reply_tmp) < 0) {
+		if (radius_legacy_map_list_apply(request, &reply_tmp, NULL) < 0) {
 			RPEDEBUG("Failed applying reply item");
 			map_list_talloc_free(&reply_tmp);
 			rcode = RLM_MODULE_FAIL;

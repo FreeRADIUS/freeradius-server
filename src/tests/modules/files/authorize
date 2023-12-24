@@ -141,6 +141,21 @@ digest	Password.Cleartext := "woo"
 DEFAULT	User-Name == "cmp_eq",  Password.Cleartext := "hopping"
 	Reply-Message := "success-cmp_eq"
 
+#
+#  Do something, and then undo it
+#
+undo	Password.Cleartext := "hello"
+	Reply-Message := "hello %{User-Name}",
+	Fall-Through := yes
+
+#
+#  This should fail, which means that the previous Reply-Message
+#  gets deleted as part of the "undo" operation.
+#
+undo
+	Framed-IP-Address := "this is not an IP address"
+
+
 $INCLUDE cmp
 
 DEFAULT	Password.Cleartext := "stuffnsuch"
