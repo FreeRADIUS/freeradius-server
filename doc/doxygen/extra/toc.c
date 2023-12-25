@@ -35,7 +35,7 @@ cd freeradius-server
 git fetch origin v4.0.x:v4.0.x
 git checkout v4.0.x
 @endcode
-- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v4.0.x
+- Web: https://github.com/FreeRADIUS/freeradius-server/tree/v4.0.x
 
 @subsection branch_32x 3.2.x stable + feature branch
 
@@ -45,7 +45,7 @@ cd freeradius-server
 git fetch origin v3.2.x:v3.2.x
 git checkout v3.2.x
 @endcode
-- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x
+- Web: https://github.com/FreeRADIUS/freeradius-server/tree/v3.2.x
 
 @subsection branch_30x 3.0.x stable branch
 
@@ -58,7 +58,7 @@ cd freeradius-server
 git fetch origin v3.0.x:v3.0.x
 git checkout v3.0.x
 @endcode
-- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x
+- Web: https://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x
 
 @subsection branch_2xx 2.x.x EOL branch
 
@@ -71,7 +71,7 @@ cd freeradius-server
 git fetch origin v2.x.x:v2.x.x
 git checkout v2.x.x
 @endcode
-- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v2.x.x
+- Web: https://github.com/FreeRADIUS/freeradius-server/tree/v2.x.x
 
 @subsection branch_1xx 1.1.x EOL branch
 
@@ -84,11 +84,11 @@ cd freeradius-server
 git fetch origin v2.x.x:v2.x.x
 git checkout v2.x.x
 @endcode
-- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v1.1.x
+- Web: https://github.com/FreeRADIUS/freeradius-server/tree/v1.1.x
 
 @section main_website Website
 
-- http://www.freeradius.org
+- https://freeradius.org
 
 @section mailinglist Mailing lists
 
@@ -99,8 +99,8 @@ This list is for users of the server
 @code
 freeradius-users@lists.freeradius.org
 @endcode
-- Archives: http://lists.freeradius.org/pipermail/freeradius-users/
-- List info: http://freeradius.org/list/users.html
+- Archives: https://lists.freeradius.org/pipermail/freeradius-users/
+- List info: https://freeradius.org/support/
 
 @subsection dev_list FreeRADIUS-devel
 
@@ -112,7 +112,7 @@ read both, and will answer your questions there if they have the time.
 @code
 freeradius-devel@lists.freeradius.org
 @endcode
-- Archives: http://lists.freeradius.org/pipermail/freeradius-devel/
-- List info: http://freeradius.org/list/devel.html
+- Archives: https://lists.freeradius.org/pipermail/freeradius-devel/
+- List info: https://freeradius.org/support/
 
 */

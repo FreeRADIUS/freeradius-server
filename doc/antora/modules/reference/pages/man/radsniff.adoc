@@ -124,4 +124,4 @@ radiusd(8), pcap(3)
 
 == AUTHOR
 
-The FreeRADIUS Server Project (http://www.freeradius.org)
+The FreeRADIUS Server Project (https://freeradius.org)

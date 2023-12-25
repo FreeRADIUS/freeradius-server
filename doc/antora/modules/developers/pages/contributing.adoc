@@ -49,7 +49,7 @@ be broken out into another, separate, commit.
 See the following links for more details about submitting via github:
 
 * https://help.github.com/articles/fork-a-repo
-* http://wiki.freeradius.org/contributing/GitHub
+* https://wiki.freeradius.org/contributing/GitHub
 
 == Submitting patches via email
 

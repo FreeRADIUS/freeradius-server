@@ -70,8 +70,8 @@ which includes WARNINGs about common issues, and suggestions for how
 they may be fixed.
 
 The debug output is explained in detail in the
-[radiusd-X](http://wiki.freeradius.org/radiusd-X) page on the
-[wiki](http://wiki.freeradius.org).
+[radiusd-X](https://wiki.freeradius.org/radiusd-X) page on the
+[wiki](https://wiki.freeradius.org).
 
 Many questions are answered on the Wiki:
 
@@ -87,7 +87,7 @@ the FreeRADIUS mailing lists.
 <https://freeradius.org/support/>
 
 Instructions for what to post on the mailing list are [on the
-wiki](http://wiki.freeradius.org/list-help).  Please note that we DO
+wiki](https://wiki.freeradius.org/list-help).  Please note that we DO
 recommend posting the output of `radiusd -X`.  That information shows
 what the server is doing when it receives packets, and how it
 processes those packets.

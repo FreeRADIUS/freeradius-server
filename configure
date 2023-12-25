@@ -614,7 +614,7 @@ PACKAGE_TARNAME='freeradius'
 PACKAGE_VERSION='$Id$'
 PACKAGE_STRING='freeradius $Id$'
 PACKAGE_BUGREPORT='http://bugs.freeradius.org'
-PACKAGE_URL='http://www.freeradius.org'
+PACKAGE_URL='https://freeradius.org'
 
 ac_unique_file="src/bin/radiusd.c"
 # Factoring default headers for most tests.

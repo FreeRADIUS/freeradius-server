@@ -82,7 +82,7 @@ To view debug output, append `--log.level=debug`.
 
 === See also
 
-elasticsearch web site: http://www.elastic.co/
+elasticsearch web site: https://www.elastic.co/
 
 The configuration examples presented here have been tested with the
 following software versions:

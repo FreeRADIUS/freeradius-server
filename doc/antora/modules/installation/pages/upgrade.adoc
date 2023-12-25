@@ -892,7 +892,7 @@ recv Access-Request {
 
 `REST-HTTP-Code` is now inserted into the `&request.` list instead
 of the `&reply.` list, to be compliant with the
-http://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
+https://wiki.freeradius.org/guide/List-Usage[list usage] guidelines.
 
 === rlm_sql
 

@@ -337,7 +337,7 @@ respond with `EAP-Acknowledge` (`EAP-MD5`). Server now responds with
 EAP, EAP-MD5, and EAP-MSCHAPv2 do not require any additional packages.
 Freeradius contains all the required packages.
 
-For EAP-TLS, EAP-TTLS, and PEAP, OPENSSL, http://www.openssl.org/, is
+For EAP-TLS, EAP-TTLS, and PEAP, OPENSSL, https://www.openssl.org/, is
 required to be installed. Any version from 0.9.7, should fairly work
 with this module.
 
