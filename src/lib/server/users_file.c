@@ -335,24 +335,11 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 		}
 
 		/*
-		 *	$INCLUDE filename
+		 *	$INCLUDE filename.  This will do some sanity checks, and then add the new entries to
+		 *	the tail of the current list.
 		 */
 		if (fr_sbuff_is_str(&sbuff, "$INCLUDE", 8)) {
-			/*
-			 *	Temporary list for include entries to be read into
-			 */
-			PAIR_LIST_LIST tmp_list;
-
-			pairlist_list_init(&tmp_list);
-			if (users_include(ctx, dict, &sbuff, &tmp_list, file, lineno, order) < 0) goto fail;
-
-			/*
-			 *	The file may have read no entries, one
-			 *	entry, or it may be a linked list of
-			 *	entries.  Move the to the end of the
-			 *	main list.
-			 */
-			fr_dlist_move(&list->head, &tmp_list.head);
+			if (users_include(ctx, dict, &sbuff, list, file, lineno, order) < 0) goto fail;
 
 			if (fr_sbuff_next_if_char(&sbuff, '\n')) {
 				lineno++;
