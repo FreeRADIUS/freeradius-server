@@ -2,7 +2,7 @@
 
 
 
-= ADFAB PSK Module
+= ABFAB PSK Module
 
 The `abfab_psk_sql` module is used to authorize PSK from `link:https://tools.ietf.org/html/rfc7831[ABFAB]` trust router.
 

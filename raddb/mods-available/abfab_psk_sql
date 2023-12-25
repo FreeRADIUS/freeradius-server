@@ -5,7 +5,7 @@
 
 #######################################################################
 #
-#  = ADFAB PSK Module
+#  = ABFAB PSK Module
 #
 #  The `abfab_psk_sql` module is used to authorize PSK from `ABFAB` trust router.
 #
