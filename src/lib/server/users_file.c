@@ -274,7 +274,6 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 	}
 
 	fr_sbuff_init_file(&sbuff, &fctx, buffer, sizeof(buffer), fp, SIZE_MAX);
-	relative_map = NULL;
 
 	lhs_rules = (tmpl_rules_t) {
 		.attr = {
@@ -505,6 +504,8 @@ setup_reply:
 		comma = false;
 
 		rhs_rules.attr.list_def = request_attr_request;
+
+		relative_map = NULL;
 
 reply_item:
 		/*
