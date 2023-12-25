@@ -37,6 +37,9 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
+static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list,
+				  bool complain, int *order);
+
 static inline void line_error_marker(char const *src_file, int src_line,
 				     char const *user_file, int user_line,
 				     fr_sbuff_t *sbuff, char const *error)
@@ -146,7 +149,7 @@ static fr_sbuff_parse_rules_t const rhs_term = {
  *	Caller saw a $INCLUDE at the start of a line.
  */
 static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbuff, PAIR_LIST_LIST *list,
-			 char const *file, int lineno)
+			 char const *file, int lineno, int *order)
 {
 	size_t		len;
 	char		*newfile, *p, c;
@@ -226,7 +229,7 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	/*
 	 *	Read the $INCLUDEd file recursively.
 	 */
-	if (pairlist_read(ctx, dict, newfile, list, 0) != 0) {
+	if (pairlist_read_internal(ctx, dict, newfile, list, false, order) != 0) {
 		ERROR("%s[%d]: Could not read included file %s: %s",
 		      file, lineno, newfile, fr_syserror(errno));
 		talloc_free(newfile);
@@ -237,14 +240,19 @@ static int users_include(TALLOC_CTX *ctx, fr_dict_t const *dict, fr_sbuff_t *sbu
 	return 0;
 }
 
+int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list)
+{
+	int order = 0;
+
+	return pairlist_read_internal(ctx, dict, file, list, true, &order);
+}
 
 /*
  *	Read the users file. Return a PAIR_LIST.
  */
-int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, int complain)
+static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR_LIST_LIST *list, bool complain, int *order)
 {
 	char			*q;
-	int			order = 0;
 	int			lineno		= 1;
 	map_t			*new_map, *relative_map;
 	FILE			*fp;
@@ -261,9 +269,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 	 *	more useful...
 	 */
 	if ((fp = fopen(file, "r")) == NULL) {
-		if (!complain) return -1;
-
-		ERROR("Couldn't open %s for reading: %s", file, fr_syserror(errno));
+		if (complain) ERROR("Couldn't open %s for reading: %s", file, fr_syserror(errno));
 		return -1;
 	}
 
@@ -338,19 +344,14 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 			PAIR_LIST_LIST tmp_list;
 
 			pairlist_list_init(&tmp_list);
-			if (users_include(ctx, dict, &sbuff, &tmp_list, file, lineno) < 0) goto fail;
+			if (users_include(ctx, dict, &sbuff, &tmp_list, file, lineno, order) < 0) goto fail;
 
 			/*
 			 *	The file may have read no entries, one
 			 *	entry, or it may be a linked list of
-			 *	entries.  Set the order of the entries
-			 *	then move them to the end of the main list.
+			 *	entries.  Move the to the end of the
+			 *	main list.
 			 */
-			t = NULL;
-			while ((t = fr_dlist_next(&tmp_list.head, t))) {
-				t->order = order++;
-			}
-
 			fr_dlist_move(&list->head, &tmp_list.head);
 
 			if (fr_sbuff_next_if_char(&sbuff, '\n')) {
@@ -375,7 +376,7 @@ int pairlist_read(TALLOC_CTX *ctx, fr_dict_t const *dict, char const *file, PAIR
 		map_list_init(&t->reply);
 		t->filename = filename;
 		t->lineno = lineno;
-		t->order = order++;
+		t->order = (*order)++;
 
 		/*
 		 *	Copy the name from the entry.

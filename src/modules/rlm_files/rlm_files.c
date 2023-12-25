@@ -133,7 +133,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 	}
 
 	pairlist_list_init(&users);
-	rcode = pairlist_read(ctx, dict_radius, filename, &users, 1);
+	rcode = pairlist_read(ctx, dict_radius, filename, &users);
 	if (rcode < 0) {
 		return -1;
 	}
