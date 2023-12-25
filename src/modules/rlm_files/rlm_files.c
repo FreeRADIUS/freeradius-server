@@ -203,7 +203,6 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 		     map != NULL;
 		     map = next_map) {
 			next_map = map_list_next(&entry->reply, map);
-
 			if (!tmpl_is_attr(map->lhs)) {
 				ERROR("%s[%d] Left side of reply item %s is not an attribute",
 				      entry->filename, entry->lineno, map->lhs->name);
@@ -211,9 +210,9 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 			}
 			da = tmpl_attr_tail_da(map->lhs);
 
-			if (map->op == T_OP_CMP_FALSE) {
-				ERROR("%s[%d] Invalid operator '!*' for reply item %s",
-				      entry->filename, entry->lineno, map->lhs->name);
+			if (fr_comparison_op[map->op] && (map->op != T_OP_LE) && (map->op != T_OP_GE)) {
+				ERROR("%s[%d] Invalid operator reply item %s %s ...",
+				      entry->filename, entry->lineno, map->lhs->name, fr_tokens[map->op]);
 				return -1;
 			}
 

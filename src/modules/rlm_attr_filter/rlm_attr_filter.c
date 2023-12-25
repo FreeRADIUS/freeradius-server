@@ -137,6 +137,12 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
 				return -1;
 			}
 
+			if (fr_assignment_op[map->op]) {
+				ERROR("%s[%d] Filter %s contains invalid operator '%s'",
+				      filename, entry->lineno, map->lhs->name, fr_tokens[map->op]);
+				return -1;
+			}
+
 			/*
 			 *	Make sure that bad things don't happen.
 			 */

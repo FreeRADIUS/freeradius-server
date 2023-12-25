@@ -527,15 +527,17 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		fr_strerror_const("Invalid operator");
 		goto error_adj;
 	}
-
+	
 	/*
-	 *	This function is ONLY called for legacy operators.
+	 *	Validate operators for check items.
 	 *
-	 *	radius_legacy_map_cmp() and radius_legacy_map_apply() do not support complex
-	 *	comparisons or updates.
+	 *	We can have comparison operators for reply items, as the rlm_attr_filter module
+	 *	uses that.
+	 *
+	 *	However, we can't do comparisons on structural entries, except for existence checks.
 	 */
-	if (tmpl_attr_tail_da_is_structural(map->lhs)) {
-		if (fr_comparison_op[map->op]) {
+	if (!parent_p && tmpl_attr_tail_da_is_structural(map->lhs)) {
+		if (fr_comparison_op[map->op] && (map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
 			fr_sbuff_set(&our_in, &m_op);
 			fr_strerror_const("Comparison operators cannot be used inside of structural data types");
 			goto error;
@@ -563,6 +565,7 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		case FR_TYPE_STRUCTURAL:
 			if ((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)) {
 				fr_sbuff_set(&our_in, &m_op);
+				fr_assert(0);
 				fr_strerror_const("Regular expressions cannot be used for structural attributes");
 				goto error;
 			}
