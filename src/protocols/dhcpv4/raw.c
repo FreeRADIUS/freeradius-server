@@ -53,7 +53,7 @@
  * @param[in] ifindex		of the interface we're binding to.
  * @return
  *	- >= 0 a file descriptor to read/write packets on.
- *	- <0 an error ocurred.
+ *	- <0 an error occurred.
  */
 int fr_dhcpv4_raw_socket_open(struct sockaddr_ll *link_layer, int ifindex)
 {
@@ -206,7 +206,7 @@ fr_radius_packet_t *fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *li
 	sock_len = sizeof(struct sockaddr_ll);
 	data_len = recvfrom(sockfd, raw_packet, MAX_PACKET_SIZE, 0, (struct sockaddr *)link_layer, &sock_len);
 
-	data_offset = ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE; /* DHCP data datas after Ethernet, IP, UDP */
+	data_offset = ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE; /* DHCP data after Ethernet, IP, UDP */
 
 	if (data_len <= data_offset) DISCARD_RP("Payload (%d) smaller than required for layers 2+3+4", (int)data_len);
 

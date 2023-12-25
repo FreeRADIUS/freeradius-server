@@ -215,7 +215,7 @@ static NEVER_RETURNS void exec_child_legacy(request_t *request, char **argv, cha
  * @param[in] cmd		Command to execute. This is parsed into argv[]
  *				parts, then each individual argv part is
  *				xlat'ed.
- * @param[in] request		Current reuqest
+ * @param[in] request		Current request
  * @param[in] exec_wait		set to true to read from or write to child.
  * @param[in] input_pairs	list of value pairs - these will be put into
  *				the environment variables of the child.

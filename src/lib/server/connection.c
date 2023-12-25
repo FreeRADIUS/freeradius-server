@@ -616,7 +616,7 @@ uint64_t fr_connection_get_num_timed_out(fr_connection_t const *conn)
 
 /** The requisite period of time has passed, try and re-open the connection
  *
- * @param[in] el	the time event ocurred on.
+ * @param[in] el	the time event occurred on.
  * @param[in] now	The current time.
  * @param[in] uctx	The #fr_connection_t the fd is associated with.
  */
@@ -685,7 +685,7 @@ static void connection_state_enter_closed(fr_connection_t *conn)
  *
  * Connection wasn't opened within the configured period of time
  *
- * @param[in] el	the time event ocurred on.
+ * @param[in] el	the time event occurred on.
  * @param[in] now	The current time.
  * @param[in] uctx	The #fr_connection_t the fd is associated with.
  */

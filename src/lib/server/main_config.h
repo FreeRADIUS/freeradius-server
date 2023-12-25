@@ -101,7 +101,7 @@ struct main_config_s {
 
 #ifdef HAVE_SETUID
 	uid_t		server_uid;			//!< UID we're running as.
-	gid_t		server_gid;			//!< GID we're runing as.
+	gid_t		server_gid;			//!< GID we're running as.
 	uid_t		uid;				//!< UID we should run as.
 	bool		uid_is_set;
 	gid_t		gid;				//!< GID we should run as.

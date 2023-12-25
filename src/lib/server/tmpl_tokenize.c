@@ -1952,7 +1952,7 @@ do_suffix:
 			 *	If the ref is outside of the internal namespace, then we use it.
 			 *
 			 *	If the ref is inside of the internal namespace (e.g. "request"), then we do
-			 *	somthing else.
+			 *	something else.
 			 *
 			 *	If we were given a root dictionary on input, use that.  We have to follow this
 			 *	dictionary because this function calls itself recursively, WITHOUT updating
@@ -3820,7 +3820,7 @@ static inline CC_HINT(always_inline) int tmpl_attr_resolve(tmpl_t *vpt, tmpl_res
 	if (!dict_def || tr_rules->force_dict_def) dict_def = tr_rules->dict_def;
 
 	/*
-	 *	First component is special becase we may need
+	 *	First component is special because we may need
 	 *	to search for it in multiple dictionaries.
 	 *
 	 *	This emulates what's done in the initial
@@ -4237,7 +4237,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	TMPL_ATTR_VERIFY(vpt);
 }
 
-/** Covert the leaf attribute of a tmpl to a unknown/raw type
+/** Convert the leaf attribute of a tmpl to a unknown/raw type
  *
  */
 void tmpl_attr_to_raw(tmpl_t *vpt)
@@ -4551,7 +4551,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 			 *	For refs we skip the attribute pointed to be the ref
 			 *	and just print its children.
 			 *
-			 * 	In addtion skip printing "request." in most cases.
+			 * 	In addition skip printing "request." in most cases.
 			 */
 			if ((stack.da[depth] == request_attr_request) && tmpl_attr_list_next(tmpl_attr(vpt), ar) &&
 			    (ar->filter.type == TMPL_ATTR_FILTER_TYPE_NONE)) continue;
@@ -4644,7 +4644,7 @@ fr_slen_t tmpl_attr_print(fr_sbuff_t *out, tmpl_t const *vpt, tmpl_attr_prefix_t
 /** Print a #tmpl_t to a string
  *
  * This function should primarily be used for regenerating vpt->name when the contents
- * of the #tmpl_t is changed programatically, or when the #tmpl_t is being serialized
+ * of the #tmpl_t is changed programmatically, or when the #tmpl_t is being serialized
  * in some non-standard way, i.e. as a value for a field in a database.
  *
  * This function is the direct counterpart to #tmpl_afrom_substr.
@@ -4815,7 +4815,7 @@ do { \
 
 /** Verify the attribute reference in a tmpl_t make sense
  *
- * @note If the attribute refernece is is invalid, causes the server to exit.
+ * @note If the attribute reference is is invalid, causes the server to exit.
  *
  * @param file obtained with __FILE__.
  * @param line obtained with __LINE__.
@@ -5407,7 +5407,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	simple parse that isn't wrong.  We therefore
 		 *	accept most anything that's vaguely well
 		 *	formed, and rely on the next stage to do a
-		 *	more rigourous check.
+		 *	more rigorous check.
 		 */
 	skip_string:
 		*out = p;

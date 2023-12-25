@@ -154,7 +154,7 @@ struct xlat_exp_s {
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.
-	int			line;		//!< Line where the xlat was alocated.
+	int			line;		//!< Line where the xlat was allocated.
 #endif
 
 	union {
@@ -187,7 +187,7 @@ struct xlat_exp_head_s {
 
 #ifndef NDEBUG
 	char const * _CONST	file;		//!< File where the xlat was allocated.
-	int			line;		//!< Line where the xlat was alocated.
+	int			line;		//!< Line where the xlat was allocated.
 #endif
 };
 

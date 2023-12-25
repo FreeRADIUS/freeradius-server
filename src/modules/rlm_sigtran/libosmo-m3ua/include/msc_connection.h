@@ -65,7 +65,7 @@ struct msc_connection {
 	struct osmo_timer_list ping_timeout;
 	struct osmo_timer_list pong_timeout;
 
-	/* mgcp messgaes */
+	/* mgcp messages */
 	struct mgcp_callagent mgcp_agent;
 
 	/* application pointer */

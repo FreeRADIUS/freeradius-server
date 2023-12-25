@@ -788,7 +788,7 @@ static fr_radius_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSE
 
 	fr_hmac_sha1(binding->compound_mac, (uint8_t *)binding, sizeof(*binding), t->cmk, EAP_FAST_CMK_LEN);
 	if (memcmp(binding->compound_mac, cmac, sizeof(cmac))) {
-		RDEBUG2("Crypto-Binding TLV mis-match");
+		RDEBUG2("Crypto-Binding TLV mismatch");
 		RHEXDUMP3((uint8_t const *) binding->compound_mac,
                 sizeof(binding->compound_mac), "Calculated Compound MAC");
 		return FR_RADIUS_CODE_ACCESS_REJECT;

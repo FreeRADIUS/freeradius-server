@@ -99,7 +99,7 @@ static request_t *request_fake_alloc(void)
  *	due to the ability to add multiple instances of each attribute for the
  *	pair list performance tests.
  *
- * 	So, when entering strings to build tmpls, ensure the top level attriubutes
+ * 	So, when entering strings to build tmpls, ensure the top level attributes
  *	all end -0.
  *
  *	The same applies to immediate children of group attributes since they will
@@ -268,7 +268,7 @@ static void test_level_1_one_all(void)
 }
 
 /*
- *	One instance of attribute at the top level - search for non-existant
+ *	One instance of attribute at the top level - search for non-existent
  */
 static void test_level_1_one_missing(void)
 {

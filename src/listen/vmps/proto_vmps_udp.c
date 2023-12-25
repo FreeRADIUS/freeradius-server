@@ -383,7 +383,7 @@ static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_in
 	if (ret != 0) return ret;
 
 	/*
-	 *	Then ordered by opcode, which is usally the same.
+	 *	Then ordered by opcode, which is usually the same.
 	 */
 	return (a->opcode < b->opcode) - (a->opcode > b->opcode);
 }

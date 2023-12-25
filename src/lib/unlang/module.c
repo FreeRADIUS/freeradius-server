@@ -432,7 +432,7 @@ int unlang_module_set_resume(request_t *request, module_method_t resume)
  * the resumption frame and execute the xlat interpreter.
  *
  * When the xlat interpreter finishes, and pops the xlat frame, the unlang interpreter
- * will then call the module resumption frame, allowing the module to continue exectuion.
+ * will then call the module resumption frame, allowing the module to continue execution.
  *
  * @param[in] ctx		To allocate talloc value boxes and values in.
  * @param[out] p_success	Whether xlat evaluation was successful.
@@ -478,7 +478,7 @@ unlang_action_t unlang_module_yield_to_xlat(TALLOC_CTX *ctx, bool *p_success, fr
  * the resumption frame and execute the tmpl expansion.
  *
  * When the tmpl interpreter finishes, and pops the tmpl frame, the unlang interpreter
- * will then call the module resumption frame, allowing the module to continue exectuion.
+ * will then call the module resumption frame, allowing the module to continue execution.
  *
  * @param[in] ctx		To allocate talloc value boxes and values in.
  * @param[out] out		Where to write the result of the expansion.

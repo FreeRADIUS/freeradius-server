@@ -583,7 +583,7 @@ static int _module_thread_inst_list_free(void *tilp)
  * The majority of modules will have a single set of thread-specific instance data.
  *
  * An exception is dynamic modules, which may have multiple sets of thread-specific instance data tied to
- * a sepcific dynamic use of that module.
+ * a specific dynamic use of that module.
  *
  * @param[in] ctx	Talloc ctx to bind thread specific data to.
  * @param[out] out	Where to write the allocated #module_thread_instance_t.
@@ -616,7 +616,7 @@ static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t *
 		rmi = module_root(mi);
 
 		/*
-		 *	Fixup the type name, incase something calls
+		 *	Fixup the type name, in case something calls
 		 *	talloc_get_type_abort() on it...
 		 */
 		if (!mi->module->thread_inst_type) {
@@ -751,7 +751,7 @@ int module_instantiate(module_instance_t *instance)
  * Allows the module to initialise connection pools, and complete any registrations that depend on
  * attributes created during the bootstrap phase.
  *
- * @param[in] ml containing modules ot instantiate.
+ * @param[in] ml containing modules to instantiate.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

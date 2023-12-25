@@ -938,7 +938,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 	 *
 	 *	Ensure that the module has a "map" entry in its module
 	 *	header?  Or ensure that the map is registered in the
-	 *	"boostrap" phase, so that it's always available here.
+	 *	"bootstrap" phase, so that it's always available here.
 	 */
 	if (!pass2_fixup_map_rhs(g, unlang_ctx->rules)) goto error;
 
@@ -1907,7 +1907,7 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 		value = cf_pair_value(cp);
 
 		if (!value) {
-			cf_log_err(csi, "Retry configuration must specifiy a value");
+			cf_log_err(csi, "Retry configuration must specify a value");
 			return false;
 		}
 
@@ -2076,7 +2076,7 @@ static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 	/*
 	 *	If we're compiling an empty section, then the
-	 *	*intepreter* type is GROUP, even if the *debug names*
+	 *	*interpreter* type is GROUP, even if the *debug names*
 	 *	are something else.
 	 */
 	g = group_allocate(parent, cs, ext);

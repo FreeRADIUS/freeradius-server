@@ -145,7 +145,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	 *	Anything else: fail.
 	 *
 	 *	Also, remove the session from the cache so that
-	 *	the client can't re-use it.
+	 *	the client can't reuse it.
 	 */
 	default:
 		fr_tls_cache_deny(request, tls_session);

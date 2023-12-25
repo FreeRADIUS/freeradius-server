@@ -4,7 +4,7 @@
 #  TODO
 #  A number of these tests return multiple values - either arrays, or hashes.
 #  Currently xlats have all returned values concatenated into a single value box -
-#  once multiple retuned boxes are handled to produce multiple attributes the tests
+#  once multiple returned boxes are handled to produce multiple attributes the tests
 #  will need amending.
 
 &Tmp-String-0 := "hello,goodbye,welcome,farewell"

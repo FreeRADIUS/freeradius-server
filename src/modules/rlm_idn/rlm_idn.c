@@ -71,7 +71,7 @@ static const conf_parser_t mod_config[] = {
 	 *	...and if we want raw punycode or to tweak Bootstring parameters,
 	 *	we can do similar things.  All defaults should result in IDNA
 	 *	ToASCII with the use_std3_ascii_rules flag set, allow_unassigned unset,
-	 *	because that is the forseeable use case.
+	 *	because that is the foreseeable use case.
 	 *
 	 *	Note that doing anything much different will require choosing the
 	 *	appropriate libidn API functions, as we currently call the IDNA

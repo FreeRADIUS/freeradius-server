@@ -674,7 +674,7 @@ int main(int argc, char *argv[])
 	 *	will stay permanently as "activating".
 	 *
 	 *	We detect this condition and warn about it here, using the
-	 *	presence of the NOTIFY_SOCKET envrionmental variable to determine
+	 *	presence of the NOTIFY_SOCKET environmental variable to determine
 	 *	whether we're running under systemd.
 	 */
 	if (getenv("NOTIFY_SOCKET")) INFO("Built without support for systemd watchdog, but running under systemd");
@@ -1080,7 +1080,7 @@ cleanup:
 	/*
 	 *	Ensure all thread local memory is cleaned up
 	 *	before we start cleaning up global resources.
-	 *	This is necessay for single threaded mode
+	 *	This is necessary for single threaded mode
 	 *	to ensure that thread local resources that
 	 *	depend on global resources are freed at the
 	 *	appropriate time.

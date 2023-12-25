@@ -11,7 +11,7 @@ subrequest RADIUS.Access-Request {
 		test_fail
 	}
 
-	# We shouldnt magically acquire new proxy state values
+	# We shouldn't magically acquire new proxy state values
 	if (&reply.Proxy-State) {
 		test_fail
 	}

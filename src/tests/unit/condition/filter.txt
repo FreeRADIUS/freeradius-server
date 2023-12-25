@@ -33,7 +33,7 @@ match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
 #
 #  And we do not (yet) allow for filters on leaf attributes.  See
 #
-#  @todo - feature - allowe expressions in tmpl_attr_parse_filter(()
+#  @todo - feature - allow expressions in tmpl_attr_parse_filter(()
 #
 condition &User-Name[&User-Name == 'bar'] == "foo"
 match ERROR offset 12: Invalid filter - cannot use filter on leaf attributes

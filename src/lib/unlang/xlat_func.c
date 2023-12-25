@@ -184,7 +184,7 @@ xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
 
 /** Register an xlat function for a module
  *
- * @param[in] ctx		Used to automate deregistration of the xlat fnction.
+ * @param[in] ctx		Used to automate deregistration of the xlat function.
  * @param[in] mctx		Instantiation context from the module.
  *				Will be duplicated and passed to future xlat calls.
  * @param[in] name		of the xlat.
@@ -279,7 +279,7 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 
 /** Register an xlat function
  *
- * @param[in] ctx		Used to automate deregistration of the xlat fnction.
+ * @param[in] ctx		Used to automate deregistration of the xlat function.
  * @param[in] name		of the xlat.
  * @param[in] func		to register.
  * @param[in] return_type	what type of output the xlat function will produce.
@@ -314,7 +314,7 @@ static inline int xlat_arg_parser_validate(xlat_t *x, xlat_arg_parser_t const *a
 	if (arg->variadic) {
 		if (!fr_cond_assert_msg(last, "%s - variadic can only be set on the last argument", x->name)) return -1;
 		if (!fr_cond_assert_msg(!arg->required, "%s - required can't be set on a variadic argument. "
-					"Set required in the preceeding entry", x->name)) return -1;
+					"Set required in the preceding entry", x->name)) return -1;
 	}
 
 	if (arg->always_escape) {

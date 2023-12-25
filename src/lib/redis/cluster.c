@@ -111,7 +111,7 @@
  *
  *   #cluster_map_get and #cluster_map_apply, perform the operations described
  *   above. The get function, issues the 'cluster slots' command and performs validation, the
- *   apply function processes and applys the map.
+ *   apply function processes and applies the map.
  *
  *   Failing to apply a map is not a fatal error at runtime, and is only fatal on startup if
  *   pool.start > 0.
@@ -217,7 +217,7 @@ struct fr_redis_cluster_node_s {
 	fr_socket_t		pending_addr;		//!< New node address to be applied when the pool
 							//!< is reconnected.
 
-	fr_redis_cluster_t	*cluster;		//!< Commmon configuration (database number,
+	fr_redis_cluster_t	*cluster;		//!< Common configuration (database number,
 							//!< password, etc..).
 	fr_pool_t		*pool;			//!< Pool associated with this node.
 	CONF_SECTION		*pool_cs;		//!< Pool configuration section associated with node.
@@ -1829,7 +1829,7 @@ finish:
  * - May perform a temporary redirect on receiving a #REDIS_RCODE_ASK status.
  * - May reserve a new connection on receiving a #REDIS_RCODE_RECONNECT status.
  *
- * If a remap is in progress, has ocurred within the last second, has recently failed,
+ * If a remap is in progress, has occurred within the last second, has recently failed,
  * or fails, the '-MOVE' will be treated as a temporary redirect (-ASK).
  *
  * This allows the server to be more responsive during remaps, as unless the worker has been
@@ -2335,7 +2335,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 
 		tls_conf = fr_tls_conf_parse_client(tls_cs);
 		if (!tls_conf) {
-			ERROR("%s - Failed to parse TLS configuation", cluster->log_prefix);
+			ERROR("%s - Failed to parse TLS configuration", cluster->log_prefix);
 			talloc_free(cluster);
 			return NULL;
 		}

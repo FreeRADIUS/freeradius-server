@@ -1107,7 +1107,7 @@ static xlat_action_t xlat_func_log_debug(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurs
  *
  * Example:
 @verbatim
-%log.err("Big errror here")
+%log.err("Big error here")
 @endverbatim
  *
  * @ingroup xlat_functions

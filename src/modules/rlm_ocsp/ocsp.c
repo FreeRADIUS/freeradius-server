@@ -61,7 +61,7 @@ typedef enum {
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
-/** Extract components of OCSP responser URL from a certificate
+/** Extract components of OCSP responder URL from a certificate
  *
  * @param[in] cert to extract URL from.
  * @param[out] host_out Portion of the URL (must be freed with free()).

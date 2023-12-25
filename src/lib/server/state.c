@@ -151,7 +151,7 @@ struct fr_state_tree_s {
 	fr_rb_tree_t		*tree;				//!< rbtree used to lookup state value.
 	fr_dlist_head_t		to_expire;			//!< Linked list of entries to free.
 
-	fr_time_delta_t		timeout;			//!< How long to wait before cleaning up state entires.
+	fr_time_delta_t		timeout;			//!< How long to wait before cleaning up state entries.
 
 	bool			thread_safe;			//!< Whether we lock the tree whilst modifying it.
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
@@ -549,7 +549,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, request_t *r
 	}
 
 	/*
-	 *	Link it to the end of the list, which is implicitely
+	 *	Link it to the end of the list, which is implicitly
 	 *	ordered by cleanup time.
 	 */
 	fr_dlist_insert_tail(&state->to_expire, entry);
@@ -702,7 +702,7 @@ int fr_state_to_request(fr_state_tree_t *state, request_t *request)
 	 *
 	 *	If the request is freed, it's freed immediately.
 	 *
-	 *	Otherwise, if there's another round, we re-use
+	 *	Otherwise, if there's another round, we reuse
 	 *	the state entry and insert it back into the
 	 *	tree.
 	 */

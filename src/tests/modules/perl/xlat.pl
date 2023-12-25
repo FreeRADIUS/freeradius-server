@@ -51,7 +51,7 @@ sub xlatscalar2array {
 	return split(/ /, $_[0]);
 }
 
-# Take an arbitary number of scalars and retun an array of array refs
+# Take an arbitrary number of scalars and return an array of array refs
 sub xlatscalar2arrayref {
 	my @array;
 	for (my $i = 0; $i <= $#_; $i++) {

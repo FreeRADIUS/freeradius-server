@@ -1346,7 +1346,7 @@ do {\
 	/*
 	 *	Reset the colourisation state.  The configuration
 	 *	files can disable colourisation if the terminal
-	 *	supports it.  The configation files *cannot* enable
+	 *	supports it.  The configuration files *cannot* enable
 	 *	colourisation if the terminal window doesn't support
 	 *	it.
 	 */

@@ -673,7 +673,7 @@ int fr_edit_list_replace_pair(fr_edit_list_t *el, fr_pair_list_t *list, fr_pair_
 	/*
 	 *	We call edit_record() twice, which involves two
 	 *	complete passes over the edit list.  That's fine,
-	 *	either the edit list is small, OR we will eventially
+	 *	either the edit list is small, OR we will eventually
 	 *	put the VPs to be edited into an RB tree.
 	 */
 	if (edit_record(el, FR_EDIT_INSERT, vp, list, to_replace) < 0) return -1;
@@ -835,7 +835,7 @@ fr_edit_list_t *fr_edit_list_alloc(TALLOC_CTX *ctx, int hint, fr_edit_list_t *pa
 /** Commit an edit list.
  *
  *  If there are nested transactions, then this transaction is
- *  committed only when the parent transaction has been commited.
+ *  committed only when the parent transaction has been committed.
  *
  */
 void fr_edit_list_commit(fr_edit_list_t *el)

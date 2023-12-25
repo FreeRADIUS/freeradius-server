@@ -1560,7 +1560,7 @@ static int parse_subnet(rlm_isc_dhcp_tokenizer_t *state, rlm_isc_dhcp_info_t *in
 		rlm_isc_dhcp_info_t *old;
 
 		/*
-		 *	Duplicate or overlapping "subnet" entries aren't allowd.
+		 *	Duplicate or overlapping "subnet" entries aren't allowed.
 		 */
 		old = fr_trie_lookup_by_key(parent->subnets, &(info->argv[0]->vb_ipv4addr), bits);
 		if (old) {

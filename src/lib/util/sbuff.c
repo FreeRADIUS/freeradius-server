@@ -1124,7 +1124,7 @@ fr_slen_t fr_sbuff_out_bool(bool *out, fr_sbuff_t *in)
 	return -1;
 }
 
-/** Used to define a number parsing functions for singed integers
+/** Used to define a number parsing functions for signed integers
  *
  * @param[in] _name	Function suffix.
  * @param[in] _type	Output type.
@@ -1192,7 +1192,7 @@ SBUFF_PARSE_INT_DEF(int32, int32_t, INT32_MIN, INT32_MAX, 11, 0)
 SBUFF_PARSE_INT_DEF(int64, int64_t, INT64_MIN, INT64_MAX, 20, 0)
 SBUFF_PARSE_INT_DEF(ssize, ssize_t, SSIZE_MIN, SSIZE_MAX, 20, 0)
 
-/** Used to define a number parsing functions for singed integers
+/** Used to define a number parsing functions for signed integers
  *
  * @param[in] _name	Function suffix.
  * @param[in] _type	Output type.
@@ -1785,7 +1785,7 @@ size_t fr_sbuff_adv_past_allowed(fr_sbuff_t *sbuff, size_t len, bool
 			*	normally stop at the "-".  However, we will still stop at "Framed-=User", as
 			*	"-=" may be a terminal sequence.
 			*
-			*	There is no perfect solution here, other than to fix the input grammer so that
+			*	There is no perfect solution here, other than to fix the input grammar so that
 			*	it has no ambiguity.  Since we can't do that, we choose to err on the side of
 			*	allowing the existing grammar, where it makes sense
 			*/
@@ -2041,7 +2041,7 @@ char *fr_sbuff_adv_to_strcase(fr_sbuff_t *sbuff, size_t len, char const *needle,
  * @param[in] sbuff	to search for char in.
  * @param[in] c		char to search for.
  * @return
- *	- true and avance if the next character matches.
+ *	- true and advance if the next character matches.
  *	- false and don't advance if the next character doesn't match.
  */
 bool fr_sbuff_next_if_char(fr_sbuff_t *sbuff, char c)
@@ -2062,7 +2062,7 @@ bool fr_sbuff_next_if_char(fr_sbuff_t *sbuff, char c)
  * @param[in] sbuff	to search for char in.
  * @param[in] c		char to search for.
  * @return
- *	- true and avance unless the character matches.
+ *	- true and advance unless the character matches.
  *	- false and don't advance if the next character matches.
  */
 bool fr_sbuff_next_unless_char(fr_sbuff_t *sbuff, char c)

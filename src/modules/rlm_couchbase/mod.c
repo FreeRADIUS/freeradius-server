@@ -17,7 +17,7 @@
 /**
  * $Id$
  *
- * @brief Utillity functions used in the module.
+ * @brief Utility functions used in the module.
  * @file mod.c
  *
  * @author Aaron Hurt (ahurt@anbcs.com)
@@ -195,7 +195,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
 
 /** Check the health of a connection handle
  *
- * Attempt to determing the state of the Couchbase connection by requesting
+ * Attempt to determine the state of the Couchbase connection by requesting
  * a cluster statistics report.  Mark the connection as failed if the request
  * returns anything other than success.
  *
@@ -238,7 +238,7 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, rlm_couchbase_t *inst)
 {
 	CONF_SECTION *cs;                   /* module config list */
 	CONF_ITEM *ci;                      /* config item */
-	CONF_PAIR *cp;                      /* conig pair */
+	CONF_PAIR *cp;                      /* config pair */
 	const char *attribute, *element;    /* attribute and element names */
 
 	/* find update list */
@@ -854,7 +854,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 				cf_section_alloc(NULL, NULL, "client", vkey);
 
 		if (client_map_section(client, map, _get_client_value, cookie->jobj) < 0) {
-			/* free config setion */
+			/* free config section */
 			talloc_free(client);
 			/* set return */
 			retval = -1;
@@ -868,7 +868,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		c = client_afrom_cs(NULL, client, false, 0);
 		if (!c) {
 			ERROR("failed to allocate client");
-			/* free config setion */
+			/* free config section */
 			talloc_free(client);
 			/* set return */
 			retval = -1;

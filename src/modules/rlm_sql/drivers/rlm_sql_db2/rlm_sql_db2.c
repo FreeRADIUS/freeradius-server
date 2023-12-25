@@ -77,7 +77,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 
 	/* Set the connection timeout */
 #if 0
-	/* Not suported ? */
+	/* Not supported ? */
 	SQLSetConnectAttr(conn->dbc_handle, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 #endif
 

@@ -274,7 +274,7 @@ int fr_redis_reply_to_value_box(TALLOC_CTX *ctx, fr_value_box_t *out, redisReply
 		FALL_THROUGH;
 
 #if HIREDIS_MAJOR >= 1
-	case REDIS_REPLY_BIGNUM:	/* FIXME - Could try and conver to integer ? */
+	case REDIS_REPLY_BIGNUM:	/* FIXME - Could try and convert to integer ? */
 #endif
 	case REDIS_REPLY_STRING:
 	case REDIS_REPLY_STATUS:

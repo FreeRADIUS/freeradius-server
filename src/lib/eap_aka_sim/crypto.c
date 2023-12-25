@@ -127,7 +127,7 @@ int fr_aka_sim_crypto_init_checkcode(TALLOC_CTX *ctx, fr_aka_sim_checkcode_t **c
 		return -1;
 	}
 	if (EVP_DigestInit_ex((*checkcode)->md_ctx, md, NULL) != 1) {
-		fr_tls_strerror_printf("Failed intialising MD ctx");
+		fr_tls_strerror_printf("Failed initialising MD ctx");
 		goto error;
 	}
 
@@ -629,7 +629,7 @@ int fr_aka_sim_crypto_umts_kdf_0(fr_aka_sim_keys_t *keys)
 	Key = CK || IK
 	FC = 0x20
 	P0 = access network identity (3GPP TS 24.302)
-	L0 = length of acceess network identity (2 octets, big endian)
+	L0 = length of access network identity (2 octets, big endian)
 	P1 = SQN xor AK (if AK is not used, AK is treated as 000..0
 	L1 = 0x00 0x06
  @endverbatim

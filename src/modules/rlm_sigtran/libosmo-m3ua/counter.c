@@ -37,7 +37,7 @@ static const struct rate_ctr_desc mtp_lset_cfg_description[] = {
 static const struct rate_ctr_desc mtp_link_cfg_description[] = {
 	[MTP_LNK_IN]		= { "total.in",       "Messages in        "},
 	[MTP_LNK_OUT]		= { "total.out",      "Messages out       "},
-	[MTP_LNK_ERROR]		= { "total.error",    "Errors occured     "},
+	[MTP_LNK_ERROR]		= { "total.error",    "Errors occurred    "},
 	[MTP_LNK_DRP]		= { "total.dropped",  "Messages dropped   "},
 	[MTP_LNK_SLTM_TOUT]	= { "sltm.timeouts",  "SLTM timeouts      "},
 };

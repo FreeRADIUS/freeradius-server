@@ -92,7 +92,7 @@ static int lib_init_call(global_lib_inst_t *lib)
  *
  * @param to_init	Array of autoinit structures detailing libraries to initialise
  * @return
- *	- 0 on succcess
+ *	- 0 on success
  *	- -1 on failure
  */
 static int lib_auto_instantiate(global_lib_autoinst_t * const *to_init)

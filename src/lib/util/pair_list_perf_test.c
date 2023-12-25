@@ -220,7 +220,7 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 		if ((i == 0) && (perc > 0) && (reps > 0)) {
 			fr_pair_t	*new_vp;
 			/*
-			 *  Copy the required number of attributes from the first itteration
+			 *  Copy the required number of attributes from the first iteration
 			 *  to use for duplicating attributes to required percentage.
 			 *  Duplicates are at the beginning of the source list
 			 */
@@ -237,13 +237,13 @@ static void pair_list_init(TALLOC_CTX *ctx, fr_pair_t ***out, fr_dict_t const *d
 
 		if (i == 0) {
 			/*
-			 *  On the first itteration, just move the test pairs to the final list
+			 *  On the first iteration, just move the test pairs to the final list
 			 */
 			fr_pair_list_append(&full_list, &list);
 		} else {
 			/*
-			 *  With subsequent itterations, replicate the duplicates from the first
-			 *  itteration to maintain the percentage of attribute repeats
+			 *  With subsequent iterations, replicate the duplicates from the first
+			 *  iteration to maintain the percentage of attribute repeats
 			 */
 			vp = fr_pair_list_head(&dups);
 			fr_pair_sublist_copy(ctx, &full_list, &dups, vp, 0);

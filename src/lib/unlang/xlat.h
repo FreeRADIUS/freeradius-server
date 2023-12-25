@@ -348,7 +348,7 @@ typedef int (*xlat_thread_detach_t)(xlat_thread_inst_ctx_t const *xctx);
  *
  *
  * @param[in] XLAT_ARGS_N	the name of the macro to expand.
- *				Created by concating ``XLAT_ARGS_ + <number of variadic arguments>``.
+ *				Created by concatenating ``XLAT_ARGS_ + <number of variadic arguments>``.
  * @param[in] _list		The input list of value boxes.
  * @param[in] ...		The variadic arguments themselves.
  */

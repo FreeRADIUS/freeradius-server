@@ -528,7 +528,7 @@ static void test_unescape_until(void)
 	/*
 	 *	Escapes and substitution
 	 */
-	TEST_CASE("Escape with substition to same char");
+	TEST_CASE("Escape with substitution to same char");
 	fr_sbuff_init_in(&sbuff, in_escapes, sizeof(in_escapes) - 1);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("g"), &pipe_rules);
@@ -536,7 +536,7 @@ static void test_unescape_until(void)
 	TEST_CHECK_STRCMP(escape_out, "i am a |t|est string");
 	TEST_CHECK_STRCMP(sbuff.p, "");
 
-	TEST_CASE("Escape with substition to different char");
+	TEST_CASE("Escape with substitution to different char");
 	fr_sbuff_init_in(&sbuff, in_escapes, sizeof(in_escapes) - 1);
 	slen = fr_sbuff_out_unescape_until(&FR_SBUFF_OUT(escape_out, sizeof(escape_out)), &sbuff, SIZE_MAX,
 					   &FR_SBUFF_TERM("g"), &pipe_rules_sub);
@@ -1324,7 +1324,7 @@ static void test_adv_to_utf8(void)
 	p = fr_sbuff_adv_to_chr_utf8(&sbuff, SIZE_MAX, "🍆 ");
 	TEST_CHECK(p == NULL);
 
-	TEST_CASE("Check for token at the end of the string within len contraints");
+	TEST_CASE("Check for token at the end of the string within len constraints");
 	fr_sbuff_init_in(&sbuff, in, sizeof(in) - 1);
 	p = fr_sbuff_adv_to_chr_utf8(&sbuff, (sizeof("🥺🥺🥺🥺🍪😀") - 1), "😀");
 	TEST_CHECK(p == sbuff.start + (sizeof("🥺🥺🥺🥺🍪") - 1));

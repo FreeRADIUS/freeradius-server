@@ -39,7 +39,7 @@ typedef enum {
 	JPATH_SELECTOR_INVALID = 0,
 	JPATH_SELECTOR_ROOT,			//!< Jump to the root of the document.
 	JPATH_SELECTOR_CURRENT,			//!< Continue at the current node in the document.
-	JPATH_SELECTOR_WILDCARD,		//!< Wildcard, operate over all array indicies, or fields
+	JPATH_SELECTOR_WILDCARD,		//!< Wildcard, operate over all array indices, or fields
 	JPATH_SELECTOR_FIELD,			//!< A field, current JSON node must be an object.
 	JPATH_SELECTOR_INDEX,			//!< Array index, current JSON node must be an array.
 	JPATH_SELECTOR_SLICE,			//!< Array slice, current JSON node must be an array.
@@ -539,7 +539,7 @@ static ssize_t jpath_expr_parse(UNUSED jpath_selector_t *selector, UNUSED char c
  * @param inlen length of in.
  * @return
  *	- > 0 on success.
- *	- <= 0 on error (* -1 to get offset error ocurred at).
+ *	- <= 0 on error (* -1 to get offset error occurred at).
  */
 static ssize_t jpath_array_parse(jpath_selector_t *selector, char const *in, size_t inlen)
 {
@@ -808,7 +808,7 @@ static size_t jpath_selector_parse(fr_jpath_node_t *node, char const *in, size_t
  *
  * @return
  *	- > 0 on success.
- *	- <= 0 on error (* -1 to get offset error ocurred at).
+ *	- <= 0 on error (* -1 to get offset error occurred at).
  */
 ssize_t fr_jpath_parse(TALLOC_CTX *ctx, fr_jpath_node_t **head, char const *in, size_t inlen)
 {

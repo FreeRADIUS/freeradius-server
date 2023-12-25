@@ -517,7 +517,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 	/*
 	 *	3.6. Encryption
 	 *
-	 *	If there's a secret, we alway decrypt the packets.
+	 *	If there's a secret, we always decrypt the packets.
 	 */
 	if (secret && packet_is_encrypted(pkt)) {
 		size_t length;

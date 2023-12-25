@@ -671,7 +671,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 		/*
 		 *	This is "const", and the user can't
-		 *	touch it.  So we just re-use the same
+		 *	touch it.  So we just reuse the same
 		 *	configuration everywhere.
 		 */
 		connection->child->app_io_instance = inst->app_io_instance;
@@ -3019,7 +3019,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 
 		/*
 		 *	This is "const", and the user can't
-		 *	touch it.  So we just re-use the same
+		 *	touch it.  So we just reuse the same
 		 *	configuration everywhere.
 		 */
 		child->app_io_instance = inst->app_io_instance;

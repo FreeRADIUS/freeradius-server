@@ -19,7 +19,7 @@
  * $Id$
  *
  * @file persistent_search.h
- * @brief Callback routines for direcories implementing persistent search
+ * @brief Callback routines for directories implementing persistent search
  *
  * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */

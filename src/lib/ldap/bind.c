@@ -33,7 +33,7 @@ USES_APPLE_DEPRECATED_API
  * @param[in] el	the event occurred in.
  * @param[in] fd	the event occurred on.
  * @param[in] flags	from kevent.
- * @param[in] fd_errno	The error that ocurred.
+ * @param[in] fd_errno	The error that occurred.
  * @param[in] uctx	Connection config and handle.
  */
 static void _ldap_bind_io_error(UNUSED fr_event_list_t *el, UNUSED int fd,

@@ -18,14 +18,14 @@ if (!(&control.Tmp-String-1 == "Sample text response\n")) {
 	test_fail
 }
 
-# Take host from incomming packet
+# Take host from incoming packet
 &control.Tmp-String-1 := "%(rest:http://%{Login-IP-Host}:%{Tmp-Integer-0}/test.txt)"
 
 if (!(&REST-HTTP-Status-Code == 200) || !(&control.Tmp-String-1 == "Sample text response\n")) {
 	test_fail
 }
 
-# Port is not allowed from incomming packet
+# Port is not allowed from incoming packet
 &control.Tmp-String-1 := "%(rest:http://%{Tmp-String-0}:%{NAS-Port}/test.txt)"
 
 if (!(&Module-Failure-Message == "Failed escaping URI: Tainted value not allowed for port") || !(&control.Tmp-String-1 == "")) {

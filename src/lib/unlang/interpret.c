@@ -293,7 +293,7 @@ static void instruction_timeout_handler(UNUSED fr_event_list_t *el, UNUSED fr_ti
 /** Update the current result after each instruction, and after popping each stack frame
  *
  * @param[in] request		The current request.
- * @param[in] frame		The curren stack frame.
+ * @param[in] frame		The current stack frame.
  * @param[in,out] result	The current section result.
  * @param[in,out] priority	The current section priority.
  * @return
@@ -500,7 +500,7 @@ finalize:
 /** Evaluates all the unlang nodes in a section
  *
  * @param[in] request		The current request.
- * @param[in] frame		The curren stack frame.
+ * @param[in] frame		The current stack frame.
  * @param[in,out] result	The current section result.
  * @param[in,out] priority	The current section priority.
  * @return
@@ -1314,7 +1314,7 @@ bool unlang_request_is_cancelled(request_t const *request)
  *
  * @param[in] request		The current request.
  * @return
- *	- true if the request is resumable (i.e. has yeilded)
+ *	- true if the request is resumable (i.e. has yielded)
  *	- false if the request is not resumable (i.e. has not yielded)
  */
 bool unlang_interpret_is_resumable(request_t *request)

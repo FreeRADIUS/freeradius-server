@@ -267,7 +267,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		MPRINT("LINE   :%s", p);
 
 		/*
-		 *	Skip this for backwards compatability.
+		 *	Skip this for backwards compatibility.
 		 */
 		if (strncasecmp((char const *) p, "Request-Authenticator", 21) == 0) goto next;
 
@@ -401,7 +401,7 @@ static int mod_priority_set(void const *instance, UNUSED uint8_t const *buffer, 
  *
  * @param[in] instance	Ctx data for this application.
  * @param[in] sc	to add our file descriptor to.
- * @param[in] conf	Listen section parsed to give us isntance.
+ * @param[in] conf	Listen section parsed to give us instance.
  * @return
  *	- 0 on success.
  *	- -1 on failure.

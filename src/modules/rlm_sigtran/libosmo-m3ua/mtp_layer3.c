@@ -174,7 +174,7 @@ static struct msgb *mtp_sccp_alloc_scmg(struct mtp_link_set *set,
 	/* this appears to be round robin or such.. */
 	hdr->addr = MTP_ADDR(sls % 16, set->dpc, set->sccp_opc);
 
-	/* generate the UDT message... libsccp does not offer formating yet */
+	/* generate the UDT message... libsccp does not offer formatting yet */
 	udt = (struct sccp_data_unitdata *) msgb_put(out, sizeof(*udt));
 	udt->type = SCCP_MSG_TYPE_UDT;
 	udt->proto_class = SCCP_PROTOCOL_CLASS_0;

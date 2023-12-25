@@ -456,7 +456,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 
 	/*
 	 *	Code of 0 is not understood.
-	 *	Code of 16 or greate is not understood.
+	 *	Code of 16 or greater is not understood.
 	 */
 	if ((packet[0] == 0) ||
 	    (packet[0] >= FR_RADIUS_CODE_MAX)) {
@@ -662,7 +662,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_ma && !seen_ma) {
-		FR_DEBUG_STRERROR_PRINTF("we equire Message-Authenticator attribute, but it is not in the packet");
+		FR_DEBUG_STRERROR_PRINTF("we require Message-Authenticator attribute, but it is not in the packet");
 		failure = DECODE_FAIL_MA_MISSING;
 		goto finish;
 	}

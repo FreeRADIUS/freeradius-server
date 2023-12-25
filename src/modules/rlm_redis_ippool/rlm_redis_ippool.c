@@ -530,7 +530,7 @@ static void ippool_action_print(request_t *request, ippool_action_t action,
 
 	/*
 	 *	Ordering is important, needs to be LIFO
-	 *	for proper talloc pool re-use.
+	 *	for proper talloc pool reuse.
 	 */
 	talloc_free(device_str);
 	talloc_free(gateway_str);

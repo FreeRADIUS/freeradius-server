@@ -124,7 +124,7 @@ typedef fr_connection_state_t (*fr_connection_init_t)(void **h_out, fr_connectio
  * @param[in] h		Handle that was successfully opened.
  * @param[in] uctx	User context.
  * @return
- *	- #FR_CONNECTION_STATE_CONNECTED	if the handle is useable.
+ *	- #FR_CONNECTION_STATE_CONNECTED	if the handle is usable.
  *	- #FR_CONNECTION_STATE_FAILED		if the handle is unusable.
  */
 typedef fr_connection_state_t (*fr_connection_open_t)(fr_event_list_t *el, void *h, void *uctx);

@@ -176,7 +176,7 @@ static int sigtran_m3ua_route_from_conf(UNUSED TALLOC_CTX *ctx,
  *
  * @note The final version needs to be much more complex.  We can only have one
  *	event loop per instance of rlm_sigtran, so we need to record link references
- *	and re-use existing SCTP/MTP3 connections where appropriate.
+ *	and reuse existing SCTP/MTP3 connections where appropriate.
  *
  * @param[in] ctx	to allocate connection data in.
  * @param[out] out	where to write the new sigtran connection.

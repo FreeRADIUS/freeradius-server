@@ -15,7 +15,7 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** Resouce pool management using slabs of memory
+/** Resource pool management using slabs of memory
  *
  * @file src/lib/util/slab.h
  *

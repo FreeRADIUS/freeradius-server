@@ -462,7 +462,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	/*
 	 *	The unbound context needs to be "finalised" to fix its settings.
 	 *	The API does not expose a method to do this, rather it happens on first
-	 *	use.  A quick workround is to delete data which won't be present
+	 *	use.  A quick workaround is to delete data which won't be present
 	 */
 	ub_ctx_data_remove(t->ev_b->ub, "notar33lsite.foo123.nottld A 127.0.0.1");
 

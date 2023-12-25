@@ -63,7 +63,7 @@ CREATE INDEX radacct_start_user_idx ON radacct (AcctStartTime, UserName);
 -- There was WAAAY too many indexes previously. This combo index
 -- should take care of the most common searches.
 -- I have commented out all the old indexes, but left them in case
--- someone wants them. I don't recomend anywone use them all at once
+-- someone wants them. I don't recommend anywone use them all at once
 -- as they will slow down your DB too much.
 --  - pnixon 2003-07-13
 --

@@ -666,7 +666,7 @@ static void fr_event_fd_noop(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED i
  * @param[in] prev		Previous set of functions mapped to filters.
  * @return
  *	- >= 0 the number of changes written to out.
- *	- < 0 an error ocurred.
+ *	- < 0 an error occurred.
  */
 static ssize_t fr_event_build_evset(
 #ifndef WITH_EVENT_DEBUG
@@ -1219,7 +1219,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
  * @param[in] error	function to call when an error occurs on the fd.
  * @param[in] uctx	to pass to handler.
  * @return
- *	- 0 on succes.
+ *	- 0 on success.
  *	- -1 on failure.
  */
 int _fr_event_fd_insert(NDEBUG_LOCATION_ARGS
@@ -1467,7 +1467,7 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 	}
 
 	/*
-	 *	If there is an event, re-use it instead of freeing it
+	 *	If there is an event, reuse it instead of freeing it
 	 *	and allocating a new one.  This is to reduce memory
 	 *	churn for repeat events.
 	 */
@@ -1872,7 +1872,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 		/*
 		 *	Failed adding waiter for process, but process has not completed...
 		 *
-		 *	This weird, but seems to happen on macOS ocassionally.
+		 *	This weird, but seems to happen on macOS occasionally.
 		 *
 		 *	Add an event to run early exit...
 		 *

@@ -142,7 +142,7 @@ incoming RADIUS packets.
 
 Platforms:: MacOS, Linux, FreeBSD
 
-Rationale:: As there are no ACKs required this tests mesures the rate at which rlm_radius + transport can send
+Rationale:: As there are no ACKs required this tests measures the rate at which rlm_radius + transport can send
 packets. On Linux and FreeBSD we'd expect an exceptionally high packet rate in this mode as we coalesce multiple
 outbound packets and send them using single system call
 (`sendmmsg` for datagrams, and aggregated buffers + `write` for streams).
@@ -380,10 +380,10 @@ You will need to use different subrequest types to produce the different packet 
 ** Verify No Message-Authenticator attribute is present
 * Send a <<CoA-Request>>
 ** Verify packet is well formed.
-** Verify Message-Authenticator attribue is present.
+** Verify Message-Authenticator attribute is present.
 * Send a <<Disconnect-Request>>
 ** Verify packet is well formed.
-** Verify Message-Authenticator attribue is present.
+** Verify Message-Authenticator attribute is present.
 
 === 3.2. Outbound packet buffer overrun
 

@@ -102,7 +102,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 
 	try_again:
 	/*
-	 *	Try again query when deadlock, beacuse in any case it
+	 *	Try again query when deadlock, because in any case it
 	 *	will be retried.
 	 */
 	if (fb_sql_query(conn, query)) {

@@ -119,7 +119,7 @@ struct fr_rb_tree_s {
 
 /** Initialises a red black tree
  *
- * This variant initates an #fr_rb_node_t on the heap.  This allows the data structure
+ * This variant initiates an #fr_rb_node_t on the heap.  This allows the data structure
  * to be inserted into multiple trees.
  *
  * @param[out] _tree		to initialise.
@@ -139,7 +139,7 @@ struct fr_rb_tree_s {
 /** Initialises a red black that verifies elements are of a specific talloc type
  *
  * This variant stores #fr_rb_node_t data inline with the data structure to avoid
- * initating #fr_rb_node_t on the heap.
+ * initiating #fr_rb_node_t on the heap.
  *
  * It is suitable for use where the data structure will only be inserted into a
  * fixed set of trees.
@@ -162,7 +162,7 @@ struct fr_rb_tree_s {
 /** Initialises a red black tree
  *
  * This variant stores #fr_rb_node_t data inline with the data structure to avoid
- * initating #fr_rb_node_t on the heap.
+ * initiating #fr_rb_node_t on the heap.
  *
  * It is suitable for use where the data structure will only be inserted into a
  * fixed set of trees.

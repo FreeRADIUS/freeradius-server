@@ -500,7 +500,7 @@ static void logtee_it(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,
 
 finish:
 	/*
-	 *	Don't free, we re-use the fr_pair_ts for the next message
+	 *	Don't free, we reuse the fr_pair_ts for the next message
 	 */
 	vp = fr_dcursor_remove(&cursor);
 	if (!fr_cond_assert(vp == t->lvl)) fr_dcursor_append(&cursor, vp);
@@ -630,7 +630,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	case LOGTEE_DST_UNIX:
 #ifndef HAVE_SYS_UN_H
-		cf_log_err(conf, "Unix sockets are not supported on this sytem");
+		cf_log_err(conf, "Unix sockets are not supported on this system");
 		return -1;
 #endif
 

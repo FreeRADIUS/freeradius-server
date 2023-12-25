@@ -236,7 +236,7 @@ int fr_message_done(fr_message_t *m)
  * @param[in] m the message to be localized
  * @param[in] message_size the size of the message, including the fr_message_t
  * @return
- *	- NULL on allocation errror
+ *	- NULL on allocation error
  *	- a newly localized message
  */
 fr_message_t *fr_message_localize(TALLOC_CTX *ctx, fr_message_t *m, size_t message_size)
@@ -921,7 +921,7 @@ cleanup:
  *  almost immediately fr_message_alloc().  Multiple calls in series
  *  to fr_message_reserve() MUST NOT be done.  The caller could also
  *  just call fr_ring_buffer_alloc(m->rb, size) if they wanted, and
- *  then udpate m->data_size by hand...
+ *  then update m->data_size by hand...
  *
  *  The message is returned
  *

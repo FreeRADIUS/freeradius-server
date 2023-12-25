@@ -477,7 +477,7 @@ static bool ldap_filter_node_eval(ldap_filter_t *node, fr_ldap_connection_t *con
 
 				/*
 				 *	Walk the value (v) and test (t), comparing until
-				 *	there is a mis-match or the end of one is reached.
+				 *	there is a mismatch or the end of one is reached.
 				 */
 				while ((v <= v_end) && (t <= t_end)) {
 					/*

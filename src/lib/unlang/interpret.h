@@ -63,23 +63,23 @@ typedef void (*unlang_request_stop_t)(request_t *request, void *uctx);
 
 /** Signal the owner of the interpreter that a request has yielded
  *
- * This is called whenever a request has given control back to the interpeter.
+ * This is called whenever a request has given control back to the interpreter.
  */
 typedef void (*unlang_request_yield_t)(request_t *request, void *uctx);
 
-/** Signal the owner of the interpeter that a request is ready to be resumed
+/** Signal the owner of the interpreter that a request is ready to be resumed
  *
  * This is called any time a yielded request has resumed.
  */
 typedef void (*unlang_request_resume_t)(request_t *request, void *uctx);
 
-/** Signal the owner of the interpeter that a request is now runnable
+/** Signal the owner of the interpreter that a request is now runnable
  *
  * This is called any time a yielded request has been marked runnable.
  */
 typedef void (*unlang_request_runnable_t)(request_t *request, void *uctx);
 
-/** Signal the owner of the interpeter that a request is now runnable
+/** Signal the owner of the interpreter that a request is now runnable
  *
  * This is called any time a yielded request has been marked runnable.
  */

@@ -26,7 +26,7 @@ if (!(%{control.Tmp-Integer-0[#]} == 4)) {
 }
 
 #
-#  We can't check order, as there's offically no guarantee on the
+#  We can't check order, as there's officially no guarantee on the
 #  order in which child sections will be evaluated.
 #
 

@@ -208,7 +208,7 @@ static void test_reuse_reset(void)
 
 	/*
 	 *	Releasing the first element should reset the destructor
-	 *	so releasing this re-use of it will not update the result
+	 *	so releasing this reuse of it will not update the result
 	 *	of the initial release.
 	 */
 	if (test_elements[4]) test_elements[4]->name = talloc_strdup(test_elements[4], "Different length string");
@@ -259,7 +259,7 @@ static void test_reuse_noreset(void)
 	if (test_elements[0] && test_elements[2]) TEST_CHECK(test_elements[2]->name == test_elements[0]->name);
 
 	/*
-	 *	Replace the element's string so that the callback on relase has
+	 *	Replace the element's string so that the callback on release has
 	 *	a different string to work on.
 	 */
 	if (test_elements[2]) talloc_free(test_elements[2]->name);

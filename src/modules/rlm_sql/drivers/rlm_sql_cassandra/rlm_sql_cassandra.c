@@ -687,7 +687,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 
 	/*
 	 *	Clear our local log buffer, and free any messages which weren't
-	 *	reconfiged (so we don't leak memory).
+	 *	reconfigured (so we don't leak memory).
 	 */
 	talloc_free_children(conn->log_ctx);
 	memset(&conn->last_error, 0, sizeof(conn->last_error));

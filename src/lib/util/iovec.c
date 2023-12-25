@@ -54,7 +54,7 @@ fr_slen_t fr_concatv(fr_dbuff_t *out, struct iovec vector[], int iovcnt)
  *
  * @note Should only be used on nonblocking file descriptors.
  * @note Socket should likely be closed on timeout.
- * @note iovec may be modified in such a way that it's not re-usable.
+ * @note iovec may be modified in such a way that it's not reusable.
  * @note Leaves errno set to the last error that occurred.
  *
  * @param fd to write to.

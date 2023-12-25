@@ -19,7 +19,7 @@
  * $Id$
  *
  * @file unlang/try_priv.h
- * @brief Declarations for unlang trys
+ * @brief Declaration for unlang try
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */

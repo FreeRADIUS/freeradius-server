@@ -398,7 +398,7 @@ if !(&Tmp-uint64-0 == 9223372036854775807) {
 
 &request -= &Tmp-uint64-0[*]
 
-# 36. Multiple array indicies
+# 36. Multiple array indices
 map json &Tmp-String-0 {
 	&Tmp-Signed-0 += '$[3][0,1]'
 }

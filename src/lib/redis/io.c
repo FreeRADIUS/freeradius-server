@@ -74,7 +74,7 @@ static void _redis_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNUSE
 	fr_connection_t const	*conn = talloc_get_type_abort_const(uctx, fr_connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
-	DEBUG4("redis handle %p - FD %i now readble", h, fd);
+	DEBUG4("redis handle %p - FD %i now readable", h, fd);
 
 	redisAsyncHandleRead(h->ac);
 }

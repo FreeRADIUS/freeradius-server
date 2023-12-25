@@ -26,7 +26,7 @@
 #include "proto_bfd.h"
 
 typedef struct {
-	fr_client_t			client;			//!< might as well re-use this, others need it
+	fr_client_t			client;			//!< might as well reuse this, others need it
 
 	uint16_t			port;			//!< peer port where packets are sent to
 

@@ -19,7 +19,7 @@
  * $Id$
  *
  * @file rfc4533.h
- * @brief Callback routines for direcories implementing RFC 4533
+ * @brief Callback routines for directories implementing RFC 4533
  *
  * @copyright 2022 Network RADIUS SAS (legal@networkradius.com)
  */

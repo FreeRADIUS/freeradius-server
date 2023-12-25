@@ -248,7 +248,7 @@ fr_type_t tmpl_expanded_type(tmpl_t const *vpt)
  *
  * Depending what arguments are passed, either copies the value to buff, or writes a pointer
  * to a string buffer to out. This allows the most efficient access to the value resolved by
- * the #tmpl_t, avoiding unecessary string copies.
+ * the #tmpl_t, avoiding unnecessary string copies.
  *
  * @note This function is used where raw string values are needed, which may mean the string
  *	returned may be binary data or contain unprintable chars. #fr_snprint or #fr_asprint

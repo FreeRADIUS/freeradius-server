@@ -1,7 +1,7 @@
 TACACS_BUILD_DIR  := $(BUILD_DIR)/tests/tacacs
 
 #
-#	We need the 'tacacs_plus' Python3 module to excute TACACS+ tests
+#	We need the 'tacacs_plus' Python3 module to execute TACACS+ tests
 #	i.e: Needed by ./scripts/tacacs/tacacs_client
 #
 $(TACACS_BUILD_DIR)/depends.mk:

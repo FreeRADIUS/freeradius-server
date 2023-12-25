@@ -642,7 +642,7 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 
 	/*
 	 *	This should never happen, and probably means that
-	 *	some sort of memory corruption has occured.
+	 *	some sort of memory corruption has occurred.
 	 */
 	if (unlikely(decr_len > (AKA_SIM_IMSI_MAX_LEN + 1))) {
 		fr_strerror_printf("Decrypted data len invalid.  Expected %i bytes, got %zu bytes",

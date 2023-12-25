@@ -578,7 +578,7 @@ size_t	fr_sbuff_shift(fr_sbuff_t *sbuff, size_t shift);
 
 size_t	fr_sbuff_extend_file(fr_sbuff_t *sbuff, size_t extension);
 
-size_t	fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extenison);
+size_t	fr_sbuff_extend_talloc(fr_sbuff_t *sbuff, size_t extension);
 
 int	fr_sbuff_trim_talloc(fr_sbuff_t *sbuff, size_t len);
 

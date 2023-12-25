@@ -175,7 +175,7 @@ static void rlm_perl_close_handles(void **handles)
 
 /*
  *	This is wrapper for fr_log
- *	Now users can call radiusd::log(level,msg) wich is the same
+ *	Now users can call radiusd::log(level,msg) which is the same
  *	as calling fr_log from C code.
  */
 static XS(XS_radiusd_log)
@@ -200,7 +200,7 @@ static XS(XS_radiusd_log)
 }
 
 /*
- *	This is a wraper for xlat_aeval
+ *	This is a wrapper for xlat_aeval
  *	Now users are able to get data that is accessible only via xlat
  *	e.g. %client(...)
  *	Call syntax is radiusd::xlat(string), string will be handled the
@@ -990,7 +990,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  *
- *	Setup a hashes wich we will use later
+ *	Setup a hashes which we will use later
  *	parse a module and give it a chance to live
  *
  */
@@ -1028,7 +1028,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Allocate a new perl interpreter to do the parsing
 	 */
 	if ((inst->perl = perl_alloc()) == NULL) {
-		ERROR("No memory for allocating new perl interpretor!");
+		ERROR("No memory for allocating new perl interpreter!");
 		return -1;
 	}
 	perl_construct(inst->perl);	/* ...and initialise it */

@@ -840,7 +840,7 @@ int fr_trunk_del_watch(fr_trunk_t *trunk, fr_trunk_state_t state, fr_trunk_watch
  * @param[in] oneshot	Should this watcher only be run once.
  * @param[in] uctx	Context to pass to function.
  * @return
- *	- NULL if an invlaid state is passed.
+ *	- NULL if an invalid state is passed.
  *	- A new watch entry handle on success.
  */
 fr_trunk_watch_entry_t *fr_trunk_add_watch(fr_trunk_t *trunk, fr_trunk_state_t state,
@@ -1919,7 +1919,7 @@ done:
 /** Move requests off of a connection and requeue elsewhere
  *
  * @note We don't re-queue on draining or draining to free, as requests should have already been
- *	 moved off of te connection.  It's also dangerous as the trunk management code main
+ *	 moved off of the connection.  It's also dangerous as the trunk management code main
  *	 clean up a connection in this state when it's run on re-queue, and then the caller
  *	 may try and access a now freed connection.
  *
@@ -4429,7 +4429,7 @@ static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t
 	 *	In the case of TRUNK_CONN_DRAINING_TO_FREE the trunk
 	 *	management code should spawn a new connection to takes its place.
 	 *
-	 *	Connections placed in the DRAINING_TO_FREE sate are being
+	 *	Connections placed in the DRAINING_TO_FREE state are being
 	 *	closed preemptively to deal with bugs on the server we're
 	 *	talking to, or misconfigured firewalls which are trashing
 	 *	TCP/UDP connection states.

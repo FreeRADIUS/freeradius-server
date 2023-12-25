@@ -1048,7 +1048,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 
 	case 1:
 		/*
-		 *	Lenght fields are set to zero, because they
+		 *	Length fields are set to zero, because they
 		 *	will get over-ridden later.
 		 */
 		fr_dbuff_marker(&vsa_length_field, &work_dbuff);

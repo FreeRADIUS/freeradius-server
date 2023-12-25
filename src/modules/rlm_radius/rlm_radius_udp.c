@@ -312,7 +312,7 @@ static void udp_request_reset(udp_request_t *u)
 	u->can_retransmit = false;
 }
 
-/** Reset a status_check packet, ready to re-use
+/** Reset a status_check packet, ready to reuse
  *
  */
 static void status_check_reset(udp_handle_t *h, udp_request_t *u)
@@ -1794,7 +1794,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	packet, then u->rr MUST already have been
 		 *	deleted in the request_cancel() function
 		 *	or request_release_conn() function when
-		 *	the REQUEUE signal was recevied.
+		 *	the REQUEUE signal was received.
 		 */
 		if (!u->packet || !u->can_retransmit) {
 			fr_assert(!u->rr);

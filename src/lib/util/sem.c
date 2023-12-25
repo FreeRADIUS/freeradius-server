@@ -399,7 +399,7 @@ static bool sem_check_gid(char const *file, int proj_id,
 
 /** Returns a semid for the semaphore associated with the file
  *
- * @param[in] file		to get or create sempahore from.
+ * @param[in] file		to get or create semaphore from.
  * @param[in] proj_id		if 0 will default to '0xf4ee4a31'.
  * @param[in] uid		that should own the semaphore.
  * @param[in] gid		that should own the semaphore.

@@ -52,7 +52,7 @@ void mtp_link_down(struct mtp_link *link)
 	link->was_up = 0;
 	one_up = is_one_up(link->set);
 
-	/* our linkset is now unsuable */
+	/* our linkset is now unusable */
 	if (was_up && !one_up)
 		mtp_linkset_down(link->set);
 	link->clear_queue(link);

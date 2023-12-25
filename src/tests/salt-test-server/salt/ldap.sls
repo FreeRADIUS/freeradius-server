@@ -1,7 +1,7 @@
 {% if grains['os'] == 'Ubuntu' %}
 
 # In Ubuntu 14.10, openldap comes with a broken AppArmor profile (can't connect through socket)
-# Disable AppArmor alltogether
+# Disable AppArmor altogether
 /etc/init.d/apparmor teardown:
    cmd.run
 

@@ -370,7 +370,7 @@ static int mod_track_compare(void const *instance, UNUSED void *thread_instance,
 	if (ret != 0) return ret;
 
 	/*
-	 *	Then ordered by code, which is usally the same.
+	 *	Then ordered by code, which is usually the same.
 	 */
 	return (a[0] < b[0]) - (a[0] > b[0]);
 }

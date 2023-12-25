@@ -603,7 +603,7 @@ int fr_exec_fork_wait(pid_t *pid_p,
  * @param[in] request		currently being processed, may be NULL.
  * @param[in] args		to call as a fr_value_box_list_t.  Program will
  *      			be the first box and arguments in the subsequent boxes.
- * @param[in] env_pairs		list of pairs to be presented as evironment variables
+ * @param[in] env_pairs		list of pairs to be presented as environment variables
  *				to the child.
  * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
  *				escaping to all environmental variable values.
@@ -948,7 +948,7 @@ static void exec_stdout_read(UNUSED fr_event_list_t *el, int fd, int flags, void
  * @param[in] request		currently being processed, may be NULL.
  * @param[in] args		to call as a fr_value_box_list_t.  Program will
  *      			be the first box and arguments in the subsequent boxes.
- * @param[in] env_pairs		list of pairs to be presented as evironment variables
+ * @param[in] env_pairs		list of pairs to be presented as environment variables
  *				to the child.
  * @param[in] env_escape	Wrap string values in double quotes, and apply doublequote
  *				escaping to all environmental variable values.

@@ -476,7 +476,7 @@ int tls_ctx_version_set(
 	 *	TLS1_3_VERSION is available in OpenSSL 1.1.1.
 	 *
 	 *	TLS1_4_VERSION does not exist yet.  But we allow it
-	 *	only if it is explictly permitted by the
+	 *	only if it is explicitly permitted by the
 	 *	administrator.
 	 */
 	if (conf->tls_max_version > (float) 0.0) {
@@ -937,7 +937,7 @@ post_ca:
 #endif
 
 	/*
-	 *	Set eliptical curve crypto configuration.
+	 *	Set elliptical curve crypto configuration.
 	 */
 #ifndef OPENSSL_NO_ECDH
 	if (ctx_ecdh_curve_set(ctx, conf->ecdh_curve, conf->disable_single_dh_use) < 0) goto error;

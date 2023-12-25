@@ -933,7 +933,7 @@ again:
 		{
 			SESSION_ID(sess_id, tls_cache->load.sess);
 
-			RDEBUG3("Session ID %pV - Session ownership transfered to libssl", &sess_id);
+			RDEBUG3("Session ID %pV - Session ownership transferred to libssl", &sess_id);
 			*copy = 0;
 			tls_cache->load.sess = NULL;
 		}
@@ -1412,7 +1412,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 
 		/*
 		 *	If keys is NULL, then OpenSSL returns the expected
-		 *	key length, which may be different across diferent
+		 *	key length, which may be different across different
 		 *	flavours/versions of OpenSSL.
 		 *
 		 *	We could calculate this in conf.c, but, if in future

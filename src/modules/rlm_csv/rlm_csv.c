@@ -691,7 +691,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		 *	map to which entries.
 		 *
 		 *	Some fields are unused, so there isn't a 1-1
-		 *	mapping betweeen CSV file fields, and fields
+		 *	mapping between CSV file fields, and fields
 		 *	in the map.
 		 */
 		if (last_field && (*p == ',') && (strcmp(p + 1, inst->index_field_name) == 0)) {

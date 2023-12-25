@@ -25,7 +25,7 @@
  *
  * The following macros must be defined before this header is included:
  *
- * - PROCESS_INST			the type fo structure that holds instance data for the process module.
+ * - PROCESS_INST			the type of structure that holds instance data for the process module.
  * - PROCESS_PACKET_TYPE		an enum, or generic type (uint32) that can hold
  *					all valid packet types.
  * - PROCESS_PACKET_CODE_VALID		the name of a macro or function which accepts one argument

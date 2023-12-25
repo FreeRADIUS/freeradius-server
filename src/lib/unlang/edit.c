@@ -1189,7 +1189,7 @@ static int expanded_lhs_value(request_t *request, unlang_frame_state_edit_t *sta
 	fr_assert(current->parent);
 
 	if (!box) {
-		RWDEBUG("Failed exapnding result");
+		RWDEBUG("Failed expanding result");
 		return -1;
 	}
 
@@ -1354,7 +1354,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 		/*
 		 *	For "+=", if there's no existing attribute, create one, and rewrite the operator we
 		 *	apply to ":=".  Which also means moving the operator be in edit_map_t, and then updating the
-		 *	"apply" funtions above to use that for the operations, but map->op for printing.
+		 *	"apply" functions above to use that for the operations, but map->op for printing.
 		 *
 		 *	This allows "foo += 4" to set "foo := 4" when the attribute doesn't exist.  It also allows us
 		 *	to do list appending to an empty list.  But likely only for strings, octets, and numbers.

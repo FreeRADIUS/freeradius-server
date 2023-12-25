@@ -163,7 +163,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	case EAP_TLS_RECORD_RECV_COMPLETE:
                 /*
                  *     TLSv1.3 makes application data immediately
-                 *     avaliable when the handshake is finished.
+                 *     available when the handshake is finished.
                  */
 		if (SSL_is_init_finished(tls_session->ssl) && (peap->status == PEAP_STATUS_INVALID)) {
 			peap->status = PEAP_STATUS_TUNNEL_ESTABLISHED;

@@ -1423,7 +1423,7 @@ create_attrs:
 
 	/*
 	 *	When the unknown attributes were created by
-	 *	decode_vsa_internal, the hierachy between that unknown
+	 *	decode_vsa_internal, the hierarchy between that unknown
 	 *	attribute and first known attribute was cloned
 	 *	meaning we can now free the unknown vendor.
 	 */
@@ -1895,7 +1895,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	case FR_TYPE_OCTETS:
 		/*
 		 *	This attribute SHOULD have fixed size, but it
-		 *	doesn't.  Therefor it's malformed.
+		 *	doesn't.  Therefore it's malformed.
 		 */
 		if (parent->flags.length && (data_len != parent->flags.length)) goto raw;
 		FALL_THROUGH;
@@ -1962,7 +1962,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	/*
 	 *	If we don't have a tag root already, then record where
-	 *	we're putting the top level attributes and add tha tags
+	 *	we're putting the top level attributes and add the tags
 	 *	there.
 	 */
 	if (!packet_ctx->tag_root) {

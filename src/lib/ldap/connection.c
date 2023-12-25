@@ -265,7 +265,7 @@ fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
 	/*
 	 *	Ensure the fd is invalid to start with, preventing
 	 *	attempts to remove fd events if the server is shut down
-	 *	before the LDAP conneciton is established
+	 *	before the LDAP connection is established
 	 */
 	c->fd = -1;
 
@@ -482,7 +482,7 @@ static void ldap_request_cancel(UNUSED fr_connection_t *conn, void *preq, UNUSED
  *
  * Inform the remote LDAP server that we no longer want responses to specific queries.
  *
- * @param[in] el	For timer mangement.
+ * @param[in] el	For timer management.
  * @param[in] tconn	The trunk connection handle
  * @param[in] conn	The specific connection queries will be cancelled on
  * @param[in] uctx	Context provided to fr_trunk_alloc
@@ -624,7 +624,7 @@ static void ldap_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connec
  *
  * @param[in] tconn		Trunk handle.
  * @param[in] el		Event list which will be used for I/O and timer events.
- * @param[in] conn_conf		Configuration of the connnection.
+ * @param[in] conn_conf		Configuration of the connection.
  * @param[in] log_prefix	What to prefix log messages with.
  * @param[in] uctx		User context passed to fr_trunk_alloc.
  */

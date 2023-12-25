@@ -26,7 +26,7 @@
 static const struct log_info_cat default_categories[] = {
 	[DINP] = {
 		.name = "DINP",
-		.description = "A-bis Intput Subsystem",
+		.description = "A-bis Input Subsystem",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DSCCP] = {
