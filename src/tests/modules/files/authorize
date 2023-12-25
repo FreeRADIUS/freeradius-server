@@ -160,3 +160,18 @@ $INCLUDE cmp
 
 DEFAULT	Password.Cleartext := "stuffnsuch"
 	Reply-Message := "success-default"
+
+#
+#  These just have to parse, they don't (yet) have tests
+#
+notyet	Password.Cleartext := "hello"
+	Vendor-Specific = {},
+	.Cisco = {},
+	.AVPair += "Hello"
+
+notyet	Password.Cleartext := "hello"
+	Vendor-Specific = {},
+	.Cisco = {},
+	.AVPair += "Hello",
+	..HP = {},
+	.Privilege-Level += 1

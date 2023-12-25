@@ -421,7 +421,6 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	ssize_t				slen;
 	fr_token_t			token;
 	map_t				*map;
-	bool				is_child;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	fr_sbuff_marker_t		m_lhs, m_rhs, m_op;
 	fr_sbuff_term_t const		*tt = p_rules ? p_rules->terminals : NULL;
@@ -437,8 +436,6 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	MEM(map = map_alloc(ctx, NULL));
 
 	(void)fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
-
-	is_child = false;
 
 	fr_sbuff_marker(&m_lhs, &our_in);
 	fr_sbuff_out_by_longest_prefix(&slen, &token, cond_quote_table, &our_in, T_BARE_WORD);
@@ -462,53 +459,48 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 		 *	parents list.  Allow for "..foo" to refer to
 		 *	the grandparent list.
 		 */
-		if (our_lhs_rules.attr.prefix == TMPL_ATTR_REF_PREFIX_NO) {
+		if (our_lhs_rules.attr.prefix != TMPL_ATTR_REF_PREFIX_YES) {
 			/*
-			 *	One '.' means "the current parent".
+			 *	Absolute references are from the root.
 			 */
-			if (fr_sbuff_next_if_char(&our_in, '.')) {
-				if (!parent) {
-				no_parent:
-					fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
-					goto error;
-				}
+			if (!fr_sbuff_next_if_char(&our_in, '.')) {
+				parent = NULL;
+				goto lhs_root;
+			}
 
-				is_child = true;
+			/*
+			 *	Relative references must have a parent.
+			 */
+			if (!parent) {
+				fr_strerror_const("Unexpected location for relative attribute - no parent attribute exists");
+				goto error;
 			}
 
 			/*
 			 *	Multiple '.' means "go to our parents parent".
 			 */
 			while (fr_sbuff_next_if_char(&our_in, '.')) {
-				if (!parent) goto no_parent;
+				if (!parent) {
+					fr_strerror_const("Too many '.' in relative reference");
+					goto error;
+				}
 				parent = parent->parent;
 			}
 
-			/*
-			 *	Allow this as a "WTF, why not".
-			 */
-			if (!parent) is_child = false;
+			if (!parent) goto lhs_root;
 
 			/*
 			 *	Start looking in the correct parent, not in whatever we were handed.
 			 */
-			if (is_child) {
-				fr_assert(tmpl_is_attr(parent->lhs));
-				our_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
+			fr_assert(tmpl_is_attr(parent->lhs));
+			our_lhs_rules.attr.namespace = tmpl_attr_tail_da(parent->lhs);
 
-				slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
-							      &map_parse_rules_bareword_quoted, &our_lhs_rules);
-				break;
-			}
-
-			/*
-			 *	There's no '.', so this
-			 *	attribute MUST come from the
-			 *	root of the dictionary tree.
-			 */
-			parent = NULL;
+			slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
+						      &map_parse_rules_bareword_quoted, &our_lhs_rules);
+			break;
 		}
 
+	lhs_root:
 		slen = tmpl_afrom_attr_substr(map, NULL, &map->lhs, &our_in,
 					      &map_parse_rules_bareword_quoted, &our_lhs_rules);
 		break;
@@ -542,16 +534,10 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 	 *	radius_legacy_map_cmp() and radius_legacy_map_apply() do not support complex
 	 *	comparisons or updates.
 	 */
-	if (parent) {
+	if (tmpl_attr_tail_da_is_structural(map->lhs)) {
 		if (fr_comparison_op[map->op]) {
 			fr_sbuff_set(&our_in, &m_op);
 			fr_strerror_const("Comparison operators cannot be used inside of structural data types");
-			goto error;
-		}
-
-		if (map->op != T_OP_EQ) {
-			fr_sbuff_set(&our_in, &m_op);
-			fr_strerror_const("Invalid operator inside of structural data type - must be '='");
 			goto error;
 		}
 	}
@@ -600,31 +586,14 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			 *	users_file.c.  The consumers of the users file only call the radius legacy map
 			 *	functions.
 			 */
-			goto parse_rhs;
-#if 0
-			/*
-			 *	@todo - check for, and allow '&'
-			 *	attribute references.  If found, then
-			 *	we're copying an attribute on the RHS.
-			 */
 			if (!fr_sbuff_next_if_char(&our_in, '{')) {
-				fr_sbuff_set(&our_in, &m_rhs);
-				fr_strerror_const("Expected '{' after structural attribute");
-				goto error;
+				goto parse_rhs;
 			}
 
 			fr_sbuff_adv_past_whitespace(&our_in, SIZE_MAX, tt);
 
 			/*
-			 *	Peek at the next character.  If it's
-			 *	'}', stop.  Otherwise, call ourselves
-			 *	recursively, with a special flag
-			 *	saying '.' is no longer necessary.
-			 *
-			 *	We could put the flag into
-			 *	tmpl_rules_t, but it's likely the
-			 *	wrong place, as tmpl_rules_t doesn't
-			 *	contain the parent map.
+			 *	Peek at the next character.  If it's '}', stop.
 			 */
 			if (!fr_sbuff_next_if_char(&our_in, '}')) {
 				fr_sbuff_set(&our_in, &m_rhs);
@@ -633,16 +602,16 @@ ssize_t map_afrom_substr(TALLOC_CTX *ctx, map_t **out, map_t **parent_p, fr_sbuf
 			}
 
 			/*
-			 *	We are the new parent
+			 *	@todo - call ourselves recursively, with a special flag saying '.' is no
+			 *	longer necessary.  And that we need to stop on '}'
 			 */
-			new_parent = map;
 
 			/*
-			 *	We've parsed the RHS, so skip the rest
-			 *	of the RHS parsing.
+			 *	Create an empty RHS.
 			 */
+			MEM(map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, T_SINGLE_QUOTED_STRING, "", 0));
+			(void) fr_value_box_strdup(map->rhs, tmpl_value(map->rhs), NULL, "", false);
 			goto check_for_child;
-#endif
 
 		default:
 			break;
@@ -731,21 +700,25 @@ parse_rhs:
 		}
 	}
 
-#if 0
 check_for_child:
-#endif
 	/*
 	 *	Add this map to to the parents list.  Note that the caller
 	 *	will have to check for this, but checking if map->parent
 	 *	exists.
 	 */
-	if (is_child && parent) {
+	if (parent) {
 		(void) talloc_steal(parent, map);
 		map->parent = parent;
 		map_list_insert_tail(&parent->child, map);
 	}
 
-	if (parent_p) *parent_p = parent;
+	if (parent_p) {
+		if (tmpl_attr_tail_da_is_structural(map->lhs)) {
+			*parent_p = map;
+		} else {
+			*parent_p = parent;
+		}
+	}
 
 	/*
 	 *	Xlat expansions are cast to strings for structural data types.
