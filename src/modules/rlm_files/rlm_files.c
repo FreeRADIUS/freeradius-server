@@ -606,7 +606,10 @@ redo:
 		do {
 			keylen--;
 			user_list = fr_trie_lookup_by_key(tree->store, key, keylen);
-			if (!user_list) continue;
+			if (!user_list) {
+				user_pl = NULL;
+				continue;
+			}
 
 			user_pl = fr_dlist_head(&user_list->head);
 			RDEBUG("Found matching shorter subnet %s at key length %ld", user_pl->name, keylen);
