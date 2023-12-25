@@ -121,7 +121,7 @@ major version upgrade.
 == Getting Started with FreeRADIUS
 
 FreeRADIUS can be installed using the pre-built packages available
-from https://networkradius.com/packages/[Network RADIUS,
+from https://packages.networkradius.com[Network RADIUS,
 window="_blank"]. That page contains packages for all common OS
 distributions.  New packages are available as soon as a new version
 has been released.  Packages for older releases are also available for
@@ -133,7 +133,7 @@ xref:installation:index.adoc[installation guide] for instructions.
 WARNING: Many Operating System distributions ship versions of FreeRADIUS
 which are years out of date. Those versions may contain bugs which have
 been fixed in newer releases. We recommend using the
-https://networkradius.com/packages/[Network RADIUS, window="_blank"] packages where
+https://packages.networkradius.com[Network RADIUS, window="_blank"] packages where
 possible.
 
 Administrators who are new to FreeRADIUS should read the
