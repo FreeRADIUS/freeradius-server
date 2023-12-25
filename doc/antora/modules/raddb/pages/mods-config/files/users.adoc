@@ -4,6 +4,8 @@ The `users` file is managed by the xref:raddb:mods-available/files.adoc[files] m
 
 While the format is still called `users` for historical reasons, the name of the file is controlled by the configuration of the xref:raddb:mods-available/files.adoc[files] module, and can therefore something other than `users`.
 
+== Format
+
 The format is text-based.  Empty lines, and lines which begin with a
 comment (`#`) or whitespace plus a comment are ignored.  All other
 text has to follow a fixed format:
@@ -19,7 +21,7 @@ name:: The name of the entry.  It must be an unquoted string such as `john`.  Th
 
 check items:: A comma-separated list of attributes to use for conditional matches, such as `Framed-IP-Address == 192.0.2.1`, or `NAS-IP-Address == 192.0.2.2, NAS-Port = 15`.  Multiple conditions are matched with a logical "and".  There is no way to use a logical "or" between conditions.
 +
-The conditional matching must be done via comparison operators such as `==`, `<`, `\<=`, etc.
+The conditional matching must be done via comparison operators such as `==`, `<`, `\<=`, `>`, `>=`, etc.
 +
 The list of check items can be empty, in which case the first line of the entry contains the `name`, and nothing more.
 
@@ -27,33 +29,15 @@ reply items:: A comma-separated list of attributes which are added to the reply,
 +
 The list of reply items can span multiple line, in which case each intermediate line must end with a comma, and the last line of the reply items must not end with a comma.
 +
-Each line containing reply items must begin with a tab character.
+Each line which contains reply items must begin with a tab character.
 +
 The list of reply items can be empty, in which case there must be a blank line after the line which contains the `name` and check items.
 
 There is no limit to the size of the file or number of entries in it, other than available memory.  The file is read and cached when the server starts, and cannot be changed while the server is running.
 
-== Processing
-
-The file is processed by finding one or more matching entries, subject to the additional functionality described below.
-
-The entries are placed into a data structure which nest leverages the data type of the `key`:
-
-IP addresses and prefixes:: Patricia trie.
-
-string, octets, date, time_delta:: balanced binary tree.
-
-all other data types:: hash.
-
-structural types:: not allowed
-
-These data structures allow the module to operate extremely quickly.  When doing performance tests, there is very little difference between a `users` file which contains one entry, and a `users` file which contains a million entries.
-
-Where multiple entries are matched, the entries are matched in the order that they appear in the file.  That is, they are matched from the top of the file to the bottom of the file.
-
 === The $INCLUDE directive
 
-As a special case, the line can begin with the name `$INCLUDE`.  The `$INCLUDE` name must be followed by a filename.
+As a special case, the line can begin with the name `$INCLUDE`.  The `$INCLUDE` name must be followed by a filename.  An `$INCLUDE` must be in the same location where a `name` and check items entry is expected.  It is not possible to put an `$INCLUDE` in the list of reply items.
 
 .Example
 ----
@@ -70,21 +54,41 @@ The `$INCLUDE` can be nested to any depth, subject only to available memory.  Th
 
 The purpose of `$INCLUDE` is to allow the `users` file to be broken up into multiple logical pieces.  For example, a system mayneed to generate multiple different types of `users ` file entries, depending on the type of user.  These different entries may be placed into different files, so that each different file can be regenerated independently.
 
+== Processing
+
+The file is processed by using a `key` to find one or more matching entries, subject to the additional functionality described below.
+
+The entries are placed into a data structure which best leverages the data type of the `key`:
+
+IP addresses and prefixes:: Patricia trie.
+
+string, octets, date, time_delta:: balanced binary tree.
+
+all other data types:: hash.
+
+structural types:: not allowed
+
+These data structures allow the module to operate extremely quickly.  When doing performance tests, there is very little difference between a `users` file which contains one entry, and a `users` file which contains a million entries.
+
+Where multiple entries are matched, the entries are matched in the order that they appear in the file.  That is, they are matched from the top of the file to the bottom of the file.
+
 === Matching an entry
 
-An entry is found by searching for the matching `name` field.  Once the entry is found, the module looks for and processes any check items.
+An entry is found by using the `key` to find a matching `name` field.  Once the entry is found, the module looks for and processes any check items.  If no matching entry is found, the special `name` of `DEFAULT` is searched for.  If no `DEFAULT` is found, processing of the `users` file stops.
 
-The check items are matched using the same operations as for xref:reference:unlang/condition/cmp.adoc[conditional comparisons].
+Once an entry is found, the check items are matched.  The list of check items can have zero, one, or many attribute comparisons listed.  If no comparisons are listed, then the entry matches.  Otherwise, all check items must match in order to continue processing the reply items.
 
-NOTE: Only conditional comparisons are allowed, the rest of the conditional syntax such as nested conditions `(...)` or `||` and `&&` are not permitted.
+The check items are matched using the same operations as for xref:reference:unlang/condition/cmp.adoc[conditional comparisons].  If there are multiple check items, they are matched with a logical "and".  There is no way to use a logical "or" between conditions.
 
-If all of the check items, the module adds the reply items (if any) to the request.
+NOTE: Only comparisons are allowed, the rest of the conditional syntax such as nested conditions `(...)` or `||` and `&&` are not permitted.
+
+If all of the check items, the module adds the reply items (if any) to the request.  The reply items are added using the historival operator assignments.  See the <<Item Operators>> section below for more information.
 
 For historical compatibility, the check item list also supports some attribute assignments.  Any check item which uses an assignment operator (`=`, `:=`, etc.) is added to the `control` list.
 
 === Fall-Through
 
-When processing the reply items, the attribute `Fall-Through = yes` has special meaning. If it is found in list of reply items, then the module will continue processing the `users` file, and will look for a subsequent matching entry.
+When processing the reply items, the attribute `Fall-Through = yes` has special meaning. If it is found in list of reply items, then the module will continue processing the `users` file, and will look for a subsequent matching entry.  That is, an entry which is later in the file.
 
 The `Fall-Through` attribute is most commonly used to apply rules to specific users, but then also apply generic rules, as in the example below.
 
@@ -138,9 +142,9 @@ Each check item or reply item must follow the same format, which is shown in the
 
 attribute:: An attribute name such as `Framed-IP-Address`
 
-operator:: A comparison operator (for check items), or an assignment operator.  See the "Item Operators" section for a list of operators and their meaning.
+operator:: A comparison operator (for check items), or an assignment operator.  See the <<Item Operators>> section for a list of operators and their meaning.
 
-value:: A value such as `192.0.2.1`, `15`, or string `"foo"`.  Values can also be attribute references.  See the "Item Values" section below for more information.
+value:: A value such as `192.0.2.1`, `15`, or string `"foo"`.  Values can also be attribute references.  See the <<Item Values>> section below for more information.
 
 === Item Attributes
 
@@ -176,7 +180,7 @@ bob	Password.Cleartext := "hello"
 
 This example copies the `Vendor-Specific.Cisco` group from the `&control` list.  If the attribute does not exist in the control list, nothing is done.
 
-Structural attributes can be created from a string, as with the xref:reference:unlang/edit.adoc[edit] funtionality.  Note that the string should not contain brackets such as `"{ AVPair = 'hello' }".
+Structural attributes can be created from a string, as with the xref:reference:unlang/edit.adoc[edit] funtionality.  Note that the string should not contain brackets such as `"{ AVPair = 'hello' }"`.
 
 .Creating a Structural attribute from a string
 ----
@@ -186,27 +190,27 @@ bob	Password.Cleartext := "hello"
 
 This example creates the reply attribute `Vendor-Specific.Cisco.AVPair`, with value `hello`.  If the parent attributes `Vendor-Specific` or `Cisco` do not exist, they are created.
 
-As the right-hand side is a double-quoted string, it is expanded via the normal xref:reference:xlat/index.adoc[xlat] process as discussed below in "Item Values".
+As the right-hand side is a double-quoted string, it is expanded via the normal xref:reference:xlat/index.adoc[xlat] process as discussed below in <<Item Values>>.
 
 All of the attributes in the double-quoted string *must* use the `=` operator.  Other operators are not supported.
 
 ==== Relative Attribute References
 
-The format of the `users` file is not well suited for structural data types.  The xref:reference:unlang/edit.adoc[edit] functionality supports nested lists such as `&foo = { &bar = 1 }`.  Instead, the "dotted" notation of attribute references is leveraged, to create _relative_ attribute refefences.  The example below shows how relative attribute references can be used.
+The format of the `users` file is not well suited for structural data types.  The xref:reference:unlang/edit.adoc[edit] functionality supports nested lists such as `&foo = { &bar = 1 }`.  That format cannot be supported here.  Instead, the "dotted" notation of attribute references is leveraged to create _relative_ attribute refefences.  The example below shows how relative attribute references can be used.
 
 .Creating Relative Attributes
 ----
 bob	Password.Cleartext := "hello"
-	Vendor-Specific = "",
-	.Cisco = "",
+	Vendor-Specific = {},
+	.Cisco = {},
 	.AVPair += "Hello"
 ----
 
-In the above example, the reply items start out with a reference to a structural attribute which is at the "root" of the attribure tree.  In this case, the attribute is `Vendor-Specific`.  The assignment uses the `=` operator, which creates the attribute if it does not already exist.  If the `Vendor-Specific` attribute exists, no changes are made.  The value assigned is an empty string, which (if necessary) will create an empty `Vendor-Specific` attribute.
+In the above example, the reply items start out with a reference to a structural attribute which is at the "root" of the attribure tree.  In this case, the attribute is `Vendor-Specific`.  The assignment uses the `=` operator, which creates the attribute if it does not already exist.  If the `Vendor-Specific` attribute exists, no changes are made.  The value assigned is an empty list, which (if necessary) will create an empty `Vendor-Specific` attribute.
 
 The next line contains a _relative_ attribute reference: `.Cisco`.  The attribute reference is _relative_ because it begins with a `.` character.  The relative attribute must be a child of the previous structural attribute, in this case `Vendor-Specific`.
 
-As with `Vendor-Specific`, and `.Cisco` attribute uses the `=` operator, and an empty string to create the `Cisco` attribute inside of the `Vendor-Specific` one.
+As with `Vendor-Specific`, and `.Cisco` attribute uses the `=` operator, and an empty list to create the `Cisco` attribute inside of the `Vendor-Specific` one.  An empty string `""` will also be accepted here.
 
 The final line contains `.AVPair += "Hello"`.  This line also contains a _relative_ attribute reference.  It creates a `AVPair` attribute inside of the `Cisco` attribute, and then assigns the value `"Hello"` to it.  The created attribute is appended to the tail of the `Cisco` list, due to the use of the `+=` operator.
 
@@ -221,14 +225,14 @@ The relative attributes work fairly simply, subject to the following rules:
 .Using multiple '.'
 ----
 bob	Password.Cleartext := "hello"
-	Vendor-Specific = "",
-	.Cisco = "",
+	Vendor-Specific = {},
+	.Cisco = {},
 	.AVPair += "Hello",
-	..HP = "",
+	..HP = {},
 	.Privilege-Level += 1
 ----
 
-In general, intermediate relative attributes should use `= ""`, as with the `.Cisco` example above.  The final "leaf" attribute should use `+=`.
+In general, intermediate relative structural attributes should use `= {}`, as with the `.Cisco` example above.  This assignment will create the attribute if needed, but will not modify existing attributes.  The final relative "leaf" attribute should use `+=`.
 
 === Item Operators
 
