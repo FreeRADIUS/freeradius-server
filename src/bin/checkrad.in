@@ -1293,7 +1293,7 @@ sub mikrotik_telnet {
   ($login, $password) = naspasswd($terminalserver, 1);
   return 2 if ($password eq "");
 
-  # MikroTik router doesn't tell us to which port the user is connected
+  # MikroTik RouterOS doesn't tell us to which port the user is connected
   # practically this would limit us to a simple only-one user limit for
   # this script to work properly.
   $t = new Net::Telnet (Timeout => 5,
