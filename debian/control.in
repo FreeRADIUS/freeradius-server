@@ -42,7 +42,7 @@ Priority: optional
 Maintainer: Network RADIUS SARL <info@networkradius.com>
 Uploaders: Stephen Gran <sgran@debian.org>, Mark Hymers <mhy@debian.org>
 Standards-Version: 3.9.6
-Homepage: http://www.freeradius.org/
+Homepage: https://freeradius.org/
 
 Package: freeradius
 Architecture: any

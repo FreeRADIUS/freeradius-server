@@ -4,7 +4,7 @@ so we can't ship them in Debian main.  They are all available from the
 original freeradius tarball, available at
 ftp://ftp.freeradius.org/pub/radius/
 and from
-http://www.rfc-editor.org/
+https://www.rfc-editor.org/
 
 Sorry for the inconvenience.
 

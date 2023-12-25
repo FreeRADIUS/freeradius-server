@@ -213,7 +213,7 @@ FreeRADIUS]. If anything goes wrong, it should be trivial to revert
 any recent changes.  Then, consider what went wrong by examining the
 debug output.  If the issues are still clear, then ask a question on
 the
-http://lists.freeradius.org/mailman/listinfo/freeradius-users[freeradius-users]
+https://lists.freeradius.org/mailman/listinfo/freeradius-users[freeradius-users]
 mailing list.  Please also read the
 https://wiki.freeradius.org/list-help[list help] instructions, for
 what information we need in order to help you.  This information is

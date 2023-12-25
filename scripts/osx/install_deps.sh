@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #
-#  Licensed under CC-BY-ND 4.0 - http://creativecommons.org/licenses/by-nd/4.0/
+#  Licensed under CC-BY-ND 4.0 - https://creativecommons.org/licenses/by-nd/4.0/
 #
 #  Copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
 #

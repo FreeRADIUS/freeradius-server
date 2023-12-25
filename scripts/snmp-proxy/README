@@ -22,7 +22,7 @@ make sure snmpd is agentx master (snmpd.conf):
 
 Download the module from
 
-	 http://search.cpan.org/dist/Net-Radius/
+	 https://metacpan.org/dist/Net-Radius
 
 Extract it in this directory:
 

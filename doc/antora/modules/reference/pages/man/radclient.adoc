@@ -176,4 +176,4 @@ radiusd(8)
 
 == AUTHOR
 
-The FreeRADIUS Server Project (http://www.freeradius.org)
+The FreeRADIUS Server Project (https://freeradius.org)

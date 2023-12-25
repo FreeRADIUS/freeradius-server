@@ -20,7 +20,7 @@ The GitHub issue tracker is for non-security related defect reports, feature req
 pull-requests ONLY.
 
 It is not for support requests or questions regarding configuration/operation of the server, they
-belong on the [users mailing list](http://freeradius.org/list/users.html).
+belong on the [users mailing list](https://freeradius.org/support/).
 
 Raising support requests or questions as issues will result in them being closed and locked.  If you
 continue to raise these questions as issues you will be banned from the FreeRADIUS project's GitHub
@@ -35,7 +35,7 @@ exploited.  This ensures that patches can be developed before the exploit is mad
 ### Before reporting a defect
 
 Verify it's still present in the Git HEAD.  Checkout the appropriate branch for the version of the
-server you're working with, as listed [here](http://doc.freeradius.org), build the server and attempt
+server you're working with, as listed [here](https://doc.freeradius.org), build the server and attempt
 to reproduce your issue.
 
 The [ChangeLog](https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/doc/ChangeLog) for the
@@ -63,7 +63,7 @@ If you're developing a new feature, module, or writing large amounts of code to 
 a member of the FreeRADIUS development team first.  For simpler one or two line fixes go ahead and
 open a pull-request immediately.
 
-The dev team can be contacted via the [devel mailing list](http://freeradius.org/list/devel.html),
+The dev team can be contacted via the [devel mailing list](https://freeradius.org/support/),
 or via GitHub by using the GitHub issue tracker.
 
 Contacting the dev team gives us the opportunity to offer feedback.  We may have a solution to your
@@ -71,12 +71,12 @@ problem that doesn't require additional code, or may have ideas as to how your p
 in a way that will better fit with the long-term vision for the server.
 
 Once you've got the go ahead, please read through the
-[coding standards document](http://wiki.freeradius.org/contributing/coding-standards).
+[coding standards document](https://wiki.freeradius.org/contributing/coding-standards).
 
 If you're creating a new module you may wish to read the
-[module creation guide](http://wiki.freeradius.org/contributing/Modules3).
+[module creation guide](https://wiki.freeradius.org/contributing/Modules3).
 
-You may also wish to utilise the [doxygen site](http://doc.freeradius.org) to review code documentation.
+You may also wish to utilise the [doxygen site](https://doc.freeradius.org) to review code documentation.
 
 The doxygen site contains the complete reference of all API functions with doxygen headers as well
 as structs and callback declarations.  <https://doc.freeradius.org> is updated within one minute of each
@@ -84,7 +84,7 @@ commit to the master branch of the freeradius-server repository.
 
 Finally, this file was written to be displayed automatically on the GitHub issue tracker, so
 Git/GitHub knowledge is assumed.  If you're wondering what a pull-request is, this document may be of
-some use <http://wiki.freeradius.org/contributing/GitHub>.
+some use <https://wiki.freeradius.org/contributing/GitHub>.
 
 
 ## Continuous Integration Tests (CIT)
