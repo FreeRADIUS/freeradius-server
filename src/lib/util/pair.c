@@ -1041,6 +1041,7 @@ fr_pair_t *fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp)
 	 */
 	if (!vp) {
 		vp = fr_pair_list_head(list);
+		if (!vp) goto next_parent_sibling;
 
 	next_sibling:
 		if (fr_type_is_leaf(vp->vp_type)) return vp;
@@ -1056,8 +1057,10 @@ fr_pair_t *fr_pair_list_iter_leaf(fr_pair_list_t *list, fr_pair_t *vp)
 	/*
 	 *	Go to the next sibling in the parent list of vp.
 	 */
-redo:
+next_parent_sibling:
 	parent_list = fr_pair_parent_list(vp);
+	if (!parent_list) return NULL;
+
 	next = fr_pair_list_next(parent_list, vp);
 	if (!next) {
 		/*
@@ -1068,7 +1071,7 @@ redo:
 		parent = fr_pair_parent(vp);
 		fr_assert(&parent->vp_group == parent_list);
 		vp = parent;
-		goto redo;
+		goto next_parent_sibling;
 	}
 
 	/*
