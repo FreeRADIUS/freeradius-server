@@ -178,6 +178,7 @@ are defined by the protocol.  The `send` section is called only for informationa
 
 
 
+
 Sneak in more data after a BFD packet!
 
 
@@ -230,9 +231,10 @@ send Init {
 	ok
 }
 send Up {
+#	octets more-data
 	ok
 #	&reply.Additional-Data := {
-#		&Tmp-Octets-0 := 0xabcdef
+#		&more-data := 0xabcdef
 #	}
 }
 }

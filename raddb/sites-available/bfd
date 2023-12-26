@@ -224,13 +224,15 @@ send Init {
 #  ### Send "Up" packets to the peer.
 #
 send Up {
+#	octets more-data
+
 	ok
 
 	#
 	#  Sneak in more data after a BFD packet!
 	#
 #	&reply.Additional-Data := {
-#		&Tmp-Octets-0 := 0xabcdef
+#		&more-data := 0xabcdef
 #	}
 }
 
