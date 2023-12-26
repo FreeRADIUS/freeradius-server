@@ -100,6 +100,11 @@ See /etc/raddb/mods-available/ldap for more detailed descriptions of
 configuration items.
 
 
+
+Local attributes which are used to cache results from LDAP
+
+
+
 The LDAP server to connect to.
 
 May be prefixed with:
@@ -425,6 +430,11 @@ The return code of this section is ignored (for now).
 ```
 server ldap_sync {
 	namespace = ldap_sync
+	dictionary {
+		string	member
+		uint64	user-acct-control
+		string	last-known-parent
+	}
 	listen  {
 		transport = ldap
 		ldap {
@@ -464,7 +474,7 @@ server ldap_sync {
 #			filter = "(objectClass=groupOfNames)"
 #			scope = "sub"
 #			update {
-#				&Tmp-String-0 += "member"
+#				&member += "member"
 #			}
 #		}
 #		sync {
@@ -473,7 +483,7 @@ server ldap_sync {
 #			scope = 'sub'
 #			update {
 #				&Proto.radius.User-Name = 'sAMAccountName'
-#				&Tmp-Integer-0 = 'userAccountControl'
+#				&user-acct-control = 'userAccountControl'
 #			}
 #		}
 #		sync {
@@ -482,8 +492,8 @@ server ldap_sync {
 #			scope = "one"
 #			update {
 #				&Proto.radius.User-Name = 'sAMAccountName'
-#				&Tmp-Integer-0 = 'userAccountControl'
-#				&Tmp-String-0 = 'lastKnownParent'
+#				&user-acct-control = 'userAccountControl'
+#				&last-known-parent = 'lastKnownParent'
 #			}
 #		}
 	}

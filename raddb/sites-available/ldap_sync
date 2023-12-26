@@ -103,6 +103,16 @@
 #
 server ldap_sync {
 	namespace = ldap_sync
+
+	#
+	#  Local attributes which are used to cache results from LDAP
+	#
+	dictionary {
+		string	member
+		uint64	user-acct-control
+		string	last-known-parent
+	}
+
 	listen  {
 		transport = ldap
 
@@ -242,7 +252,7 @@ server ldap_sync {
 			#  FreeRADIUS attributes.
 			#
 #			update {
-#				&Tmp-String-0 += "member"
+#				&member += "member"
 #			}
 #		}
 
@@ -294,7 +304,7 @@ server ldap_sync {
 #
 #			update {
 #				&Proto.radius.User-Name = 'sAMAccountName'
-#				&Tmp-Integer-0 = 'userAccountControl'
+#				&user-acct-control = 'userAccountControl'
 #			}
 #		}
 
@@ -316,8 +326,8 @@ server ldap_sync {
 #
 #			update {
 #				&Proto.radius.User-Name = 'sAMAccountName'
-#				&Tmp-Integer-0 = 'userAccountControl'
-#				&Tmp-String-0 = 'lastKnownParent'
+#				&user-acct-control = 'userAccountControl'
+#				&last-known-parent = 'lastKnownParent'
 #			}
 #		}
 	}
