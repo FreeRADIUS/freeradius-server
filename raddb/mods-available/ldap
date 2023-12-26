@@ -894,12 +894,8 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  update control {
-#      &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
-#  }
-#  update reply {
-#      &Reply-Message := "The LDAP url is %ldap_escape(%{control.Tmp-String-0}}"
-#  }
+#  &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  &reply.Reply-Message := "The LDAP url is %ldap_escape(%{my-string}}"
 #  ----
 #
 #  .Output
@@ -918,12 +914,8 @@ ldap {
 #
 #  [source,unlang]
 #  ----
-#  update control {
-#      &Tmp-String-0 := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
-#  }
-#  update reply {
-#      &Reply-Message := "The LDAP url is %ldap_unescape(%{control.Tmp-String-0})"
-#  }
+#  &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
+#  &reply.Reply-Message := "The LDAP url is %ldap_unescape(%{my-string})"
 #  ----
 #
 #  .Output
