@@ -176,7 +176,7 @@ csv {
 	#
 	update reply {
 	       &Reply-Message := 'color'
-	       &Foo := 'count'
+	       &my-integer := 'count'
 	}
 
 	#
@@ -190,7 +190,7 @@ csv {
 	#
 	#	map csv &User-Name {
 	#		&reply.Reply-Message := 'color'
-	#		&Tmp-Integer-0 := 'count'
+	#		&my-integer := 'count'
 	#	}
 	#
 	#  This map does the same operations as the key / update
