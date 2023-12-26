@@ -256,6 +256,7 @@ $INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.travelping
 $INCLUDE dictionary.tripplite
+$INCLUDE dictionary.tplink
 $INCLUDE dictionary.tropos
 $INCLUDE dictionary.ubnt
 $INCLUDE dictionary.ukerna
