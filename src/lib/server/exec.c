@@ -130,8 +130,12 @@ int exec_pair_to_env(char **env_p, size_t env_len,
 	size_t			i, j;
 	fr_dcursor_t		cursor;
 	fr_dict_attr_t const	*da;
-	fr_pair_t		*vp;
 	fr_sbuff_t		sbuff = FR_SBUFF_BIND_CURRENT(env_sbuff);
+
+	if (!env_pairs) {
+		env_p[0] = NULL;
+		return 0;
+	}
 
 	/*
 	 *	Set up the environment variables in the
@@ -139,11 +143,8 @@ int exec_pair_to_env(char **env_p, size_t env_len,
 	 *	hold mutexes.  They might be locked when we fork,
 	 *	and will remain locked in the child.
 	 */
-	for (vp = fr_pair_list_head(env_pairs), i = 0;
-	     vp && (i < env_len - 1);
-	     vp = fr_pair_list_next(env_pairs, vp), i++) {
-		if (!fr_type_is_leaf(vp->vp_type)) continue;
-
+	i = 0;
+	fr_pair_list_foreach_leaf(env_pairs, vp) {
 		fr_sbuff_marker(&env_m[i], &sbuff);
 
 	     	if (fr_sbuff_in_strcpy(&sbuff, vp->da->name) <= 0) {
@@ -162,7 +163,7 @@ int exec_pair_to_env(char **env_p, size_t env_len,
 		for (; p < fr_sbuff_current(&sbuff); p++) {
 			if (isalpha((uint8_t)*p)) *p = toupper((uint8_t) *p);
 			else if (*p == '-') *p = '_';
-			else if (isdigit((uint8_t)*p)) continue;
+			else if (isdigit((uint8_t)*p)) goto next;
 			else *p = '_';
 		}
 
@@ -204,6 +205,10 @@ int exec_pair_to_env(char **env_p, size_t env_len,
 			fr_strerror_printf("Out of buffer space");
 			return -1;
 		}
+
+	next:
+		i++;
+		if (i == (env_len - 1)) break;
 	}
 
 	/*
@@ -217,8 +222,10 @@ int exec_pair_to_env(char **env_p, size_t env_len,
 
 	da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_EXEC_EXPORT);
 	if (da) {
+		fr_pair_t *vp;
+
 		for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->control_pairs, da);
-		     vp && (i < (env_len - 1));
+		     vp;
 		     vp = fr_dcursor_next(&cursor)) {
 			env_p[i++] = UNCONST(char *, vp->vp_strvalue);
 		}
