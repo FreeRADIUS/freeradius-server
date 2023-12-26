@@ -128,6 +128,30 @@ If no entry matches, the special name `DEFAULT` will be matched.  The `DEFAULT` 
 
 We recommend not using `DEFAULT` when the `key` is an IP address or prefix.  It is better instead to use a network and mask, such as `192.0.2/24`, or `0/0`.
 
+=== Success or Failure
+
+When the `users` file has no matches (even `DEFAULT`), the `files` module returns `noop`.  If one or more entries matched, then the module returns `ok`.  Note that it will return `ok` even if no reply items are added.
+
+When there is a failure processing the `users` file, the module returns `fail`.  This situation can happen when the attribute assigment refers to a list which does not exist in the current context (e.g. `parent.foo := ...`), or when the value is a dynamic expansion which fails.
+
+When the module returns `fail`, then any changes which might have been made are reverted.  The result is just the same as if the module never matched any entries.  For example, the `users` file below contains an SQL module query which might fail:
+
+.Revert on Failure
+----
+DEFAULT
+	Reply-Message += "Default matched",
+	Fall-Through = yes
+
+DEFAULT
+	Reply-Message += "%sql(SELECT ...)"
+----
+
+When this file is processed, the first `DEFAULT` entry will match, and a `Reply-Message` will be added to the reply.  The debug output will also show that the first `DEFAULT` entry matched.  However, when the second entry matches, the `sql` module may not be able to make a connection to the database  When that happens, the expansion will fail.  The module will then return `fail`.
+
+Even though the first `DEFAULT` entry matched, the reply _will not_ contain an attribute Reply-Message = "Default matched"`.  That is because on failure, the module will "undo" any changes it made, using the same framework as supported for the xref:reference:unlang/transaction.adoc[transaction] keyword.
+
+This behavior is different from previous versions, where all intermediate changes would remain, even if the module returned `fail`.
+
 === Recommendations
 
 Entries which reject requests should go at the top of the file, and
@@ -192,7 +216,7 @@ This example creates the reply attribute `Vendor-Specific.Cisco.AVPair`, with va
 
 As the right-hand side is a double-quoted string, it is expanded via the normal xref:reference:xlat/index.adoc[xlat] process as discussed below in <<Item Values>>.
 
-All of the attributes in the double-quoted string *must* use the `=` operator.  Other operators are not supported.
+All of the attributes inside of the double-quoted string *must* use the `=` operator.  Other operators are not supported.
 
 ==== Relative Attribute References
 
@@ -288,7 +312,7 @@ The values for items can be a simple value such as `192.0.2.1`, an xref:referenc
 
 The attribute references should have an `&` prefix, to more clearly separate them from enumeration values such as `Service-Type := Framed-User`.
 
-References can be to an attribute which has a different data type than the attribute named on the left-hand side of the check item or reply item.  In which case the values will be automatically cast to the correct type, as documented in the xref:reference:unlang/condition/cmp.adoc[conditional comparison] and ref:reference:unlang/edit.adoc[edit] pages.
+References can be to an attribute which has a different data type than the attribute named on the left-hand side of the check item or reply item.  In which case the values will be automatically cast to the correct type, as documented in the xref:reference:unlang/condition/cmp.adoc[conditional comparison] and xref:reference:unlang/edit.adoc[edit] pages.
 
 .Example
 ----
