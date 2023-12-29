@@ -13,7 +13,7 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* Add auto_escape to sample SQL module config
 	* Add 'if not exists' to mysql create table queries. ref #5032 (#5137)
 	* Add lookback and more configuration to totp.  See mods-available/totp
-	* Update dictionary.aruba
+	* Update dictionary.aruba; add dictionary.tplink
 	* Added "radsecret" program which generates strong secrets.  See the
 	  top of the "clients.conf" file for more information.
 	* Add "time_since" xlat to calculate elapsed time in seconds, milliseconds
