@@ -421,8 +421,9 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 				PyErr_Clear();
 				return -1;
 			}
+		} else {
+		    return -1;
 		}
-		return -1;
 	}
 
 	PyTuple_SET_ITEM(pPair, 1, pStr);
