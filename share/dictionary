@@ -309,6 +309,7 @@ $INCLUDE dictionary.telebit
 $INCLUDE dictionary.telkom
 $INCLUDE dictionary.telrad
 $INCLUDE dictionary.terena
+$INCLUDE dictionary.tplink
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.travelping
 $INCLUDE dictionary.tripplite
