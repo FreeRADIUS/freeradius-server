@@ -411,6 +411,8 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 					if (PyErr_Occurred()) {
 						python_error_log();
 						PyErr_Clear();
+					} else {
+						ERROR("%s:%d - PyBytes_FromString returned NULL but didn't throw an exception", __func__, __LINE__);
 					}
 					return -1;
 				}
@@ -422,7 +424,8 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 				return -1;
 			}
 		} else {
-		    return -1;
+			ERROR("%s:%d - PyUnicode_FromString returned NULL but didn't throw an exception", __func__, __LINE__);
+			return -1;
 		}
 	}
 
