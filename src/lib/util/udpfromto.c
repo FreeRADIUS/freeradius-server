@@ -89,27 +89,32 @@ RCSID("$Id$")
 #  endif
 #endif
 
-int udpfromto_init(int s)
+int udpfromto_init(int s, int af)
 {
 	int proto = 0, flag = 0, opt = 1;
-	struct sockaddr_storage si;
-	socklen_t si_len = sizeof(si);
 
 	errno = ENOSYS;
 
-	/*
-	 *	Static analyzer doesn't see that getsockname initialises
-	 *	the memory passed to it.
-	 */
+	if (af == AF_UNSPEC) {
+		struct sockaddr_storage si;
+		socklen_t si_len = sizeof(si);
+
+		/*
+		 *	Static analyzer doesn't see that getsockname initialises
+		 *	the memory passed to it.
+		 */
 #ifdef STATIC_ANALYZER
-	memset(&si, 0, sizeof(si));
+		memset(&si, 0, sizeof(si));
 #endif
 
-	if (getsockname(s, (struct sockaddr *) &si, &si_len) < 0) {
-		return -1;
+		if (getsockname(s, (struct sockaddr *) &si, &si_len) < 0) {
+			return -1;
+		}
+
+		af = si.ss_family;
 	}
 
-	if (si.ss_family == AF_INET) {
+	if (af == AF_INET) {
 #ifdef HAVE_IP_PKTINFO
 		/*
 		 *	Linux
@@ -131,7 +136,7 @@ int udpfromto_init(int s)
 #endif
 
 #if defined(AF_INET6) && defined(IPV6_PKTINFO)
-	} else if (si.ss_family == AF_INET6) {
+	} else if (af == AF_INET6) {
 		/*
 		 *	This should actually be standard IPv6
 		 */
@@ -575,7 +580,7 @@ int main(int argc, char **argv)
 
 	/* parent: server */
 	server_socket = socket(PF_INET, SOCK_DGRAM, 0);
-	if (udpfromto_init(server_socket) != 0) {
+	if (udpfromto_init(server_socket, AF_INET) != 0) {
 		perror("udpfromto_init\n");
 		waitpid(pid, NULL, WNOHANG);
 		return 0;
@@ -617,7 +622,7 @@ int main(int argc, char **argv)
 client:
 	close(server_socket);
 	client_socket = socket(PF_INET, SOCK_DGRAM, 0);
-	fr_assert_fatal_msg(udpfromto_init(client_socket) != 0, "udpfromto_init - %s", fr_syserror(errno));
+	fr_assert_fatal_msg(udpfromto_init(client_socket, AF_INET) != 0, "udpfromto_init - %s", fr_syserror(errno));
 
 	/* bind client on different port */
 	in.sin_port = htons(port+1);

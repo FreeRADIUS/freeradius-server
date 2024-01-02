@@ -917,7 +917,7 @@ int fr_socket_server_udp(fr_ipaddr_t const *src_ipaddr, uint16_t *src_port, char
 	/*
 	 *	Initialize udpfromto for UDP sockets.
 	 */
-	if (udpfromto_init(sockfd) != 0) {
+	if (udpfromto_init(sockfd, src_ipaddr->af) != 0) {
 		fr_strerror_printf("Failed initializing udpfromto: %s", fr_syserror(errno));
 		goto error;
 	}
