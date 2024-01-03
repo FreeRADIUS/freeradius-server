@@ -360,7 +360,7 @@ DIAG_ON(sign-compare)
 
 #ifdef SO_TIMESTAMPNS
 		if (when && (cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMPNS)) {
-			*when = fr_time_from_timespec((struct timeval *)CMSG_DATA(cmsg));
+			*when = fr_time_from_timespec((struct timespec *)CMSG_DATA(cmsg));
 		}
 #endif
 	}
