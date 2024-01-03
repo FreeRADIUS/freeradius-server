@@ -2445,7 +2445,7 @@ int fr_value_calc_assignment_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_token_t
 		}
 	}
 
-	if (rcode < 0) handle_result(dst->type, op, rcode);
+	if (rcode < 0) return handle_result(dst->type, op, rcode);
 
 	return 0;
 }
