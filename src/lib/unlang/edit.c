@@ -778,7 +778,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		}
 
 		if (current->lhs.vp->da->flags.local) {
-			RWDEBUG("Ignoring extra values for local variable");
+			if (fr_dcursor_next_peek(&cursor)) RWDEBUG("Ignoring extra values for local variable");
 			goto done;
 		}
 
