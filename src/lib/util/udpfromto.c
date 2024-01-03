@@ -357,6 +357,12 @@ DIAG_ON(sign-compare)
 			*when = fr_time_from_timeval((struct timeval *)CMSG_DATA(cmsg));
 		}
 #endif
+
+#ifdef SO_TIMESTAMPNS
+		if (when && (cmsg->cmsg_level == SOL_IP) && (cmsg->cmsg_type == SO_TIMESTAMPNS)) {
+			*when = fr_time_from_timespec((struct timeval *)CMSG_DATA(cmsg));
+		}
+#endif
 	}
 
 	if (when && fr_time_eq(*when, fr_time_wrap(0))) *when = fr_time();
