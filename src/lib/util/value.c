@@ -2375,6 +2375,9 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 					   src->vb_ip.prefix);
 			return -1;
 		}
+		FALL_THROUGH;
+
+	case FR_TYPE_IPV4_ADDR:		/* Needed for handling combo addresses */
 		memcpy(&dst->vb_ip.addr.v4, &src->vb_ip.addr.v4, sizeof(dst->vb_ip.addr.v4));
 		break;
 
@@ -2463,6 +2466,10 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	dst->vb_ip.scope_id = 0;
 
 	switch (src_type) {
+	case FR_TYPE_IPV4_PREFIX:		/* Needed for handling combo prefixes */
+		dst->vb_ip.prefix = src->vb_ip.prefix;
+		FALL_THROUGH;
+
 	case FR_TYPE_IPV4_ADDR:
 		memcpy(&dst->vb_ip, &src->vb_ip, sizeof(dst->vb_ip));
 		break;
@@ -2620,6 +2627,9 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 					   src->vb_ip.prefix);
 			return -1;
 		}
+		FALL_THROUGH;
+
+	case FR_TYPE_IPV6_ADDR:		/* Needed for handling combo addresses */
 		memcpy(dst->vb_ip.addr.v6.s6_addr, src->vb_ip.addr.v6.s6_addr,
 		       sizeof(dst->vb_ip.addr.v6.s6_addr));
 		dst->vb_ip.scope_id = src->vb_ip.scope_id;
@@ -2713,10 +2723,15 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	}
 		break;
 
+	case FR_TYPE_IPV6_PREFIX:		/* Needed for handling combo prefixes */
+		dst->vb_ip.prefix = src->vb_ip.prefix;
+		goto v6_common;
+
 	case FR_TYPE_IPV6_ADDR:
+		dst->vb_ip.prefix = 128;
+	v6_common:
 		memcpy(dst->vb_ip.addr.v6.s6_addr, src->vb_ip.addr.v6.s6_addr,
 		       sizeof(dst->vb_ip.addr.v6.s6_addr));
-		dst->vb_ip.prefix = 128;
 		dst->vb_ip.scope_id = src->vb_ip.scope_id;
 		break;
 
