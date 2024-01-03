@@ -1,25 +1,26 @@
 #
 # PRE: if
 #
-&Tmp-String-0	:= "AbCdE"
-&Tmp-String-0	:= %tolower(%{Tmp-String-0})
-&Tmp-String-1	:= %tolower(AAbbCCdd)
+string test_string
+string dummy_string
+
+&test_string	:= "AbCdE"
+&test_string	:= %tolower(%{test_string})
+
+if !(&test_string == "abcde") {
+	test_fail
+}
+
+&test_string	:= %tolower(AAbbCCdd)
+if !(&test_string == "aabbccdd") {
+	test_fail
+}
 
 #
 #  Doesn't exist
 #
-&Tmp-String-2	:= "%tolower(%{Tmp-String-9})"
-
-
-if (!(&Tmp-String-0 == "abcde")) {
-	test_fail
-}
-
-if (!(&Tmp-String-1 == "aabbccdd")) {
-	test_fail
-}
-
-if !(&Tmp-String-2 == "") {
+&test_string	:= "%tolower(%{dummy_string})"
+if !(&test_string == "") {
 	test_fail
 }
 

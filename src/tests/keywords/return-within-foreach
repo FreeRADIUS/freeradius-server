@@ -2,14 +2,14 @@
 #  PRE: if return foreach
 #
 &control += {
-	&Tmp-Integer-0 = 0
-	&Tmp-Integer-0 = 1
-	&Tmp-Integer-0 = 2
-	&Tmp-Integer-0 = 3
+	&NAS-Port = 0
+	&NAS-Port = 1
+	&NAS-Port = 2
+	&NAS-Port = 3
 }
 
 group {
-	foreach &control.Tmp-Integer-0 {
+	foreach &control.NAS-Port {
 		if ("%{Foreach-Variable-0}" == '2') {
 			accept
 			success

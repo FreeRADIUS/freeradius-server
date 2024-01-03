@@ -1,21 +1,22 @@
 #
 # PRE: if
 #
-&Tmp-String-0	:= "AbCdE"
+string test_string
+string dummy_string
 
-&Tmp-String-0	:= %toupper(%{Tmp-String-0})
-&Tmp-String-1	:= %toupper(AAbbCCdd)
-&Tmp-String-2	:= "%toupper(%{Tmp-String-9})"
-
-if (!(&Tmp-String-0 == "ABCDE")) {
+&test_string	:= "AbCdE"
+&test_string	:= %toupper(%{test_string})
+if (!(&test_string == "ABCDE")) {
 	test_fail
 }
 
-if (!(&Tmp-String-1 == "AABBCCDD")) {
+&test_string	:= %toupper(AAbbCCdd)
+if (!(&test_string == "AABBCCDD")) {
 	test_fail
 }
 
-if !(&Tmp-String-2 == "") {
+&test_string	:= "%toupper(%{dummy_string})"
+if !(&test_string == "") {
 	test_fail
 }
 

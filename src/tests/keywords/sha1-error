@@ -1,10 +1,12 @@
-&Tmp-String-1 := "hello"
+string test_string
+octets result_octets
+&test_string := "hello"
 
 #
 #  SHA1 HMAC with missing key should fail
 #
-&Tmp-Octets-1 := %hmacsha1(%{Tmp-String-1}, ) # ERROR
-if &Tmp-Octets-1 {
+&result_octets := %hmacsha1(%{test_string}, ) # ERROR
+if &result_octets {
 	test_fail
 }
 success

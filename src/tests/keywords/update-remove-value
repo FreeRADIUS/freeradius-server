@@ -3,94 +3,94 @@
 #
 
 update {
-	&Tmp-String-0 := 'foobarbaz'
-	&Tmp-Integer-0 := 123456789
-	&Tmp-IP-Address-0 := 192.0.2.1
-	&Tmp-IP-Address-0 += 192.0.2.2
-	&Tmp-IP-Address-0 += 192.0.2.3
-	&Tmp-IP-Address-0 += 192.0.2.4
-	&control.Tmp-IP-Address-0 := 192.0.2.1
-	&control.Tmp-IP-Address-0 += 192.0.2.3
+	&Filter-Id := 'foobarbaz'
+	&NAS-Port := 123456789
+	&Framed-IP-Address := 192.0.2.1
+	&Framed-IP-Address += 192.0.2.2
+	&Framed-IP-Address += 192.0.2.3
+	&Framed-IP-Address += 192.0.2.4
+	&control.Framed-IP-Address := 192.0.2.1
+	&control.Framed-IP-Address += 192.0.2.3
 }
 
-if (!((&Tmp-IP-Address-0[0] == 192.0.2.1)) || \
-	(!(&Tmp-IP-Address-0[1] == 192.0.2.2)) || \
-	(!(&Tmp-IP-Address-0[2] == 192.0.2.3)) || \
-	(!(&Tmp-IP-Address-0[3] == 192.0.2.4))) {
+if (!((&Framed-IP-Address[0] == 192.0.2.1)) || \
+	(!(&Framed-IP-Address[1] == 192.0.2.2)) || \
+	(!(&Framed-IP-Address[2] == 192.0.2.3)) || \
+	(!(&Framed-IP-Address[3] == 192.0.2.4))) {
 	test_fail
 }
 
-# Remove Tmp-IP-Address-0 with a specific value
+# Remove Framed-IP-Address with a specific value
 update {
-	&Tmp-IP-Address-0 -= 192.0.2.1
+	&Framed-IP-Address -= 192.0.2.1
 }
 
-# Only the 2nd, 3rd and 4th Tmp-IP-Address attributes should still be in the list
-if (!((&Tmp-IP-Address-0[0] == 192.0.2.2)) || \
-	(!(&Tmp-IP-Address-0[1] == 192.0.2.3)) || \
-	(!(&Tmp-IP-Address-0[2] == 192.0.2.4)) || \
-	(&Tmp-IP-Address-0[3])) {
+# Only the 2nd, 3rd and 4th Framed-IP-Address attributes should still be in the list
+if (!((&Framed-IP-Address[0] == 192.0.2.2)) || \
+	(!(&Framed-IP-Address[1] == 192.0.2.3)) || \
+	(!(&Framed-IP-Address[2] == 192.0.2.4)) || \
+	(&Framed-IP-Address[3])) {
 	test_fail
 }
 
-# Remove Tmp-IP-Address-0 with a specific value (somewhere in the middle)
+# Remove Framed-IP-Address with a specific value (somewhere in the middle)
 update {
-	&Tmp-IP-Address-0 -= 192.0.2.3
+	&Framed-IP-Address -= 192.0.2.3
 }
 
-# Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
-if (!((&Tmp-IP-Address-0[0] == 192.0.2.2)) || \
-	(!(&Tmp-IP-Address-0[1] == 192.0.2.4)) || \
-	(&Tmp-IP-Address-0[2])) {
+# Only the 1st, and 3rd Framed-IP-Address attributes should still be in the list
+if (!((&Framed-IP-Address[0] == 192.0.2.2)) || \
+	(!(&Framed-IP-Address[1] == 192.0.2.4)) || \
+	(&Framed-IP-Address[2])) {
 	test_fail
 }
 
-# Remove Tmp-IP-Address-0 with a specific value (which doesn't exist)
+# Remove Framed-IP-Address with a specific value (which doesn't exist)
 update {
-	&Tmp-IP-Address-0 -= 192.0.2.3
+	&Framed-IP-Address -= 192.0.2.3
 }
 
-# Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
-if (!((&Tmp-IP-Address-0[0] == 192.0.2.2)) || \
-	(!(&Tmp-IP-Address-0[1] == 192.0.2.4)) || \
-	(&Tmp-IP-Address-0[2])) {
+# Only the 1st, and 3rd Framed-IP-Address attributes should still be in the list
+if (!((&Framed-IP-Address[0] == 192.0.2.2)) || \
+	(!(&Framed-IP-Address[1] == 192.0.2.4)) || \
+	(&Framed-IP-Address[2])) {
 	test_fail
 }
 
-# Remove Tmp-IP-Address-4 (which doesn't exist - more to check for SEGV/assert)
+# Remove NAS-IP-Address (which doesn't exist - more to check for SEGV/assert)
 update {
-	&Tmp-IP-Address-4 -= 192.0.2.3
+	&NAS-IP-Address -= 192.0.2.3
 }
 
-# Remove Tmp-IP-Address-0 with a specific value
+# Remove Framed-IP-Address with a specific value
 update {
-	&Tmp-IP-Address-0 -= 192.0.2.4
+	&Framed-IP-Address -= 192.0.2.4
 }
 
-# Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
-if (!((&Tmp-IP-Address-0[0] == 192.0.2.2)) || \
-	(&Tmp-IP-Address-0[1])) {
+# Only the 1st, and 3rd Framed-IP-Address attributes should still be in the list
+if (!((&Framed-IP-Address[0] == 192.0.2.2)) || \
+	(&Framed-IP-Address[1])) {
 	test_fail
 }
 
-# Remove Tmp-IP-Address-0 with a specific value
+# Remove Framed-IP-Address with a specific value
 update {
-	&Tmp-IP-Address-0 -= 192.0.2.2
+	&Framed-IP-Address -= 192.0.2.2
 }
 
-# Only the 1st, and 3rd Tmp-IP-Address attributes should still be in the list
-#  and the Tmp-IP-Addres-0 attribute should be deleted
-if (&Tmp-IP-Address-0) {
+# Only the 1st, and 3rd Framed-IP-Address attributes should still be in the list
+#  and the Framed-IP-Addres-0 attribute should be deleted
+if (&Framed-IP-Address) {
 	test_fail
 }
 
-# Non Tmp-IP-Address-0 address attributes should still be in the request list
-if (!((&Tmp-String-0 == 'foobarbaz')) || (!(&Tmp-Integer-0 == 123456789))) {
+# Non Framed-IP-Address address attributes should still be in the request list
+if (!((&Filter-Id == 'foobarbaz')) || (!(&NAS-Port == 123456789))) {
 	test_fail
 }
 
 # But there should still be some in the control list
-if (!((&control.Tmp-IP-Address-0[0] == 192.0.2.1)) || (!(&control.Tmp-IP-Address-0[1] == 192.0.2.3))) {
+if (!((&control.Framed-IP-Address[0] == 192.0.2.1)) || (!(&control.Framed-IP-Address[1] == 192.0.2.3))) {
 	test_fail
 }
 

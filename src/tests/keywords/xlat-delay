@@ -1,20 +1,21 @@
 #
 # PRE: update
 #
+float32 result_float
 
 # This is mainly a smoke test... i.e. if it crashes there's smoke
 
 %delay_10s()	# Should 'blip' the request
 
-&Tmp-Float-0 := %delay_10s(0.1)
-if (!&Tmp-Float-0) {
+&result_float := %delay_10s(0.1)
+if (!&result_float) {
 	fail
 }
 
 #
 # Check the delay was ~100ms
 #
-if (&Tmp-Float-0 < 0.1) {
+if (&result_float < 0.1) {
 	fail
 }
 

@@ -1,34 +1,34 @@
 &request += {
-	&Tmp-String-0 = "foo"
-	&Tmp-String-0 = "bar"
-	&Tmp-String-0 = "baz"
+	&Filter-Id = "foo"
+	&Filter-Id = "bar"
+	&Filter-Id = "baz"
 }
 
-&Tmp-String-0[1] := "yellow"
+&Filter-Id[1] := "yellow"
 
-if (!("%{Tmp-String-0[*]}" == "fooyellowbaz")) {
+if (!("%{Filter-Id[*]}" == "fooyellowbaz")) {
 	test_fail
 }
 
-&Tmp-String-0[2] += "red"
+&Filter-Id[2] += "red"
 
-if (!("%{Tmp-String-0[*]}" == "fooyellowbazred")) {
+if (!("%{Filter-Id[*]}" == "fooyellowbazred")) {
 	test_fail
 }
 
-&Tmp-String-0[2] -= "red"
+&Filter-Id[2] -= "red"
 
-if (!("%{Tmp-String-0[*]}" == "fooyellowbaz")) {
+if (!("%{Filter-Id[*]}" == "fooyellowbaz")) {
 	test_fail
 }
 
-&Tmp-String-0[0] := "oof"
-if (!("%{Tmp-String-0[*]}" == "oofyellowbaz")) {
+&Filter-Id[0] := "oof"
+if (!("%{Filter-Id[*]}" == "oofyellowbaz")) {
 	test_fail
 }
 
-&Tmp-String-0[1] := "bar"
-if (!("%{Tmp-String-0[*]}" == "oofbarbaz")) {
+&Filter-Id[1] := "bar"
+if (!("%{Filter-Id[*]}" == "oofbarbaz")) {
 	test_fail
 }
 

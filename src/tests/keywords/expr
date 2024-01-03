@@ -1,6 +1,9 @@
 #
 #  PRE: if
 #
+uint32 test_integer1
+uint32 test_integer2
+date test_date
 
 #
 #  Simple
@@ -25,30 +28,29 @@ if !(1 + 2 * 3 + 4 == 11) {
 #
 #  attribute references
 #
-&Tmp-Integer-0 := 1
-&Tmp-Integer-1 := 3
-&Tmp-Integer-2 := 4
-&Tmp-Date-0 := "%l"
+&test_integer1 := 3
+&test_integer2 := 4
+&test_date := "%l"
 
-if (!(%{ 1 + 2 * &Tmp-Integer-1 + 4} == 11)) {
+if (!(%{ 1 + 2 * &test_integer1 + 4} == 11)) {
 	test_fail
 }
-if !(1 + 2 * &Tmp-Integer-1 + 4 == 11) {
-	test_fail
-}
-
-
-if (!(%{ 1 + 2 * (&Tmp-Integer-1 + 4)} == 15)) {
-	test_fail
-}
-if !(1 + 2 * (&Tmp-Integer-1 + 4) == 15) {
+if !(1 + 2 * &test_integer1 + 4 == 11) {
 	test_fail
 }
 
-if (!(%{ 1 + 2 * (&Tmp-Integer-1 + &Tmp-Integer-2)} == 15)) {
+
+if (!(%{ 1 + 2 * (&test_integer1 + 4)} == 15)) {
 	test_fail
 }
-if !(1 + 2 * (&Tmp-Integer-1 + &Tmp-Integer-2) == 15) {
+if !(1 + 2 * (&test_integer1 + 4) == 15) {
+	test_fail
+}
+
+if (!(%{ 1 + 2 * (&test_integer1 + &test_integer2)} == 15)) {
+	test_fail
+}
+if !(1 + 2 * (&test_integer1 + &test_integer2) == 15) {
 	test_fail
 }
 
@@ -94,10 +96,10 @@ if !(((1 << 2) | 1) == 5) {	# needs extra () to resolve precedence
 	test_fail
 }
 
-if ("%{ &Tmp-Date-0}" <= 0) {
+if ("%{ &test_date}" <= 0) {
 	test_fail
 }
-if (&Tmp-Date-0 <= 0) {
+if (&test_date <= 0) {
 	test_fail
 }
 
@@ -111,10 +113,10 @@ if !(6 + -(1 + 3) == 2) {
 	test_fail
 }
 
-if (!(%{ 6 * -&Tmp-Integer-2} == -24)) {
+if (!(%{ 6 * -&test_integer2} == -24)) {
 	test_fail
 }
-if !(6 * -&Tmp-Integer-2 == -24) {
+if !(6 * -&test_integer2 == -24) {
 	test_fail
 }
 

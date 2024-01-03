@@ -1,56 +1,62 @@
 #
 #  PRE: if
 #
+uint32 test_integer
+uint32 result_integer
+string result_string1
+string result_string2
+date test_date
+
 # Use pre-defined date and time
-&Tmp-Integer-0 := 1506101100
+&test_integer := 1506101100
 
 # Convert to string representation
-&Tmp-String-0 := %date(%{Tmp-Integer-0})
+&result_string1 := %date(%{test_integer})
 
 # Some systems report GMT some UTC...
-if (!(&Tmp-String-0 == "Fri 22 Sep 17:25:00 GMT 2017")) && (!(&Tmp-String-0 == "Fri 22 Sep 17:25:00 UTC 2017")) {
+if (!(&result_string1 == "Fri 22 Sep 17:25:00 GMT 2017")) && (!(&result_string1 == "Fri 22 Sep 17:25:00 UTC 2017")) {
 	test_fail
 }
 
 # Convert string to integer
-&Tmp-Integer-1 := %date(%{Tmp-String-0})
+&result_integer := %date(%{result_string1})
 
 
-if (!(&Tmp-Integer-1 == &Tmp-Integer-0)) {
+if (!(&result_integer == &test_integer)) {
 	test_fail
 }
 
 # Compare two methods of reading request timestamp in local timezone
-&Tmp-String-0 := %localdate(request)
-&Tmp-String-1 := %S
+&result_string1 := %localdate(request)
+&result_string2 := %S
 
-if (!(&Tmp-String-0 == &Tmp-String-1)) {
+if (!(&result_string1 == &result_string2)) {
 	test_fail
 }
 
 # Convert different string format
-&Tmp-String-2 := "2017-09-22 17:25:00"
+&result_string1 := "2017-09-22 17:25:00"
 
-&Tmp-Integer-2 := %sqldate(%{Tmp-String-2})
+&result_integer := %sqldate(%{result_string1})
 
-if (!(&Tmp-Integer-2 == &Tmp-Integer-0)) {
+if (!(&result_integer == &test_integer)) {
 	test_fail
 }
 
 # Use a date attribute
-&Tmp-Date-0 := 1659985459
-&Tmp-String-2 := %sqldate(%{Tmp-Date-0})
+&test_date := 1659985459
+&result_string1 := %sqldate(%{test_date})
 
-if !(&Tmp-String-2 == '2022-08-08 19:04:19') {
+if !(&result_string1 == '2022-08-08 19:04:19') {
 	test_fail
 }
 
 # Invalid format
-&Tmp-String-3 := '201-32-22 17:25:00'
-&Tmp-String-4 := %sqldate(%{Tmp-String-3})
+&result_string1 := '201-32-22 17:25:00'
+&result_string2 := %sqldate(%{result_string1})
 
 # This shouldn't exist, as the RHS above is NULL, and therefore the assignment will fail
-if (&Tmp-String-4) {
+if (&result_string2) {
 	test_fail
 }
 
@@ -60,9 +66,9 @@ if (!(&Module-Failure-Message == "Failed to parse time string \"201-32-22 17:25:
 
 # Invalid type
 &NAS-IP-Address := "192.168.1.1"
-&Tmp-String-5 := %date(%{NAS-IP-Address})
+&result_string2 := %date(%{NAS-IP-Address})
 
-if (&Tmp-String-5) {
+if (&result_string2) {
 	test_fail
 }
 

@@ -1,8 +1,10 @@
 #
 #  PRE: if
 #
+uint32 test_integer
+string dummy_string
 
-&Tmp-Integer-0 := "%debug(4)"
+&test_integer := "%debug(4)"
 
 # Check debug level is now 4
 if (!(%debug(3) == 4)) {
@@ -10,12 +12,12 @@ if (!(%debug(3) == 4)) {
 }
 
 # Call with NULL arg, should report current level
-if (!(%debug(%{Tmp-String-8}) == 3)) {
+if (!(%debug(%{dummy_string}) == 3)) {
 	test_fail
 }
 
 # ...and again
-if (!(%debug(%{Tmp-String-8}) == 3)) {
+if (!(%debug(%{dummy_string}) == 3)) {
 	test_fail
 }
 

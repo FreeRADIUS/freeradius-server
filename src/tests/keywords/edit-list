@@ -2,10 +2,10 @@
 # PRE: edit
 #
 
-&control.Tmp-String-0 := "foo"
+&control.Filter-Id := "foo"
 
 #  Doesn't exist
-if (&Tmp-String-0) {
+if (&Filter-Id) {
 	test_fail
 }
 
@@ -13,14 +13,14 @@ if (&Tmp-String-0) {
 &request += &control
 
 #  Does exist, and is the last attribute
-if (!&Tmp-String-0[n]) {
+if (!&Filter-Id[n]) {
 	test_fail
 }
 
-&request -= &Tmp-String-0[*]
+&request -= &Filter-Id[*]
 
 #  Doesn't exist
-if (&Tmp-String-0) {
+if (&Filter-Id) {
 	test_fail
 }
 
@@ -28,15 +28,15 @@ if (&Tmp-String-0) {
 &request ^= &control
 
 #  Does exist, and is at offset 0
-if (!&Tmp-String-0[0]) {
+if (!&Filter-Id[0]) {
 	test_fail
 }
 
-&request -= &Tmp-String-0[*]
-&control.Tmp-String-0 := { "a", "b", "c", "d" }
+&request -= &Filter-Id[*]
+&control.Filter-Id := { "a", "b", "c", "d" }
 
-&request += &control.Tmp-String-0[*]
-if (!(%{request.Tmp-String-0[#]} == 4)) {
+&request += &control.Filter-Id[*]
+if (!(%{request.Filter-Id[#]} == 4)) {
 	test_fail
 }
 

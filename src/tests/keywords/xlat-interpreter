@@ -4,25 +4,27 @@
 #  Note the test for %interpreter(.line) is sensitive to the position of the
 #  instruction we're running.
 #
+string result_string
+uint32 result_integer
 
-&Tmp-String-0 := "%interpreter(.filename)"
-&Tmp-Integer-0 := "%interpreter(.line)"
-&Tmp-String-1 := "%interpreter(.name)"
-&Tmp-String-2 := "%interpreter(.type)"
+&result_string := "%interpreter(.filename)"
+&result_integer := "%interpreter(.line)"
 
-if (!(&Tmp-String-0 == "src/tests/keywords/xlat-interpreter")) {
+if (!(&result_string == "src/tests/keywords/xlat-interpreter")) {
 	test_fail
 }
 
-if (!(&Tmp-String-1 == "&Tmp-String-1")) {
+&result_string := "%interpreter(.name)"
+if (!(&result_string == "&result_string")) {
 	test_fail
 }
 
-if (!(&Tmp-String-2 == "edit")) {
+&result_string := "%interpreter(.type)"
+if (!(&result_string == "edit")) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-0 == 9)) {
+if (!(&result_integer == 11)) {
 	test_fail
 }
 

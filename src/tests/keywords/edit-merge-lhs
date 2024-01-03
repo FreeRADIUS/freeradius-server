@@ -8,23 +8,23 @@
 #	= A' MERGE B' if A and B are lists
 #
 
-&Tmp-String-0 := "foo"
-&control.Tmp-String-0 := "bar"
+&Filter-Id := "foo"
+&control.Filter-Id := "bar"
 
 # merge
 &request <= &control
 
-if (!&Tmp-String-0) {
+if (!&Filter-Id) {
 	test_fail
 }
 
 # we want the *control* version
-if (!(&Tmp-String-0 == "bar")) {
+if (!(&Filter-Id == "bar")) {
 	test_fail
 }
 
 #  and the original value should not be there
-if (&Tmp-String-0 == "foo") {
+if (&Filter-Id == "foo") {
 	test_fail
 }
 

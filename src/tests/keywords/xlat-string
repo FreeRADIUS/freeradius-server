@@ -1,71 +1,74 @@
 #
 # PRE: if
 #
-&request += {
-	&Tmp-Octets-0 = 0x5c5c
-	&Tmp-Octets-1 = 0x49206c696b6520636869636b656e2049206c696b65206c69766572
-	&Tmp-Octets-2 = 0x490049
-	&Tmp-Octets-3 = 0x00
-	&Tmp-Octets-4 = 0x7465737431
-	&Tmp-Octets-5 = 0x7465737432
-}
+octets test_octets1
+octets test_octets2
+octets test_octets3
+octets test_octets4
+octets test_octets5
+octets test_octets6
+string result_string
 
-&request += {
-	&Tmp-String-0 = %{(string) %{Tmp-Octets-0}}
-	&Tmp-String-1 = %{(string) %{Tmp-Octets-1}}
-	&Tmp-String-2 = %{(string) %{Tmp-Octets-2}}
-	&Tmp-String-3 = %{(string) %{Tmp-Octets-3}}
-}
+&test_octets1 := 0x5c5c
+&test_octets2 := 0x49206c696b6520636869636b656e2049206c696b65206c69766572
+&test_octets3 := 0x490049
+&test_octets4 = 0x00
+&test_octets5 = 0x7465737431
+&test_octets6 = 0x7465737432
 
-if (!(&Tmp-String-0 == "\\\\")) {
+&result_string := %{(string) %{test_octets1}}
+if (!(&result_string == "\\\\")) {
 	test_fail
 }
 
 #
 #  Test interpolation between string expansions and strings
 #
-if (!("%{(string) %{Tmp-Octets-4}}%{(string) %{Tmp-Octets-5}}" == "test1test2")) {
+if (!("%{(string) %{test_octets5}}%{(string) %{test_octets6}}" == "test1test2")) {
 	test_fail
 }
 
 #
 #  convert to string and then concatenate
 #
-if (!(%{(string) %{Tmp-Octets-4}} + %{(string) %{Tmp-Octets-5}} == "test1test2")) {
+if (!(%{(string) %{test_octets5}} + %{(string) %{test_octets6}} == "test1test2")) {
 	test_fail
 }
 
 #
 #  concatenate, and then convert to string
 #
-if (!(%{(string) (%{Tmp-Octets-4} + %{Tmp-Octets-5})} == "test1test2")) {
+if (!(%{(string) (%{test_octets5} + %{test_octets6})} == "test1test2")) {
 	test_fail
 }
 
 #
 #  We don't need %{(string) ...) either.
 #
-if !("%{(string) &Tmp-Octets-4}%{(string) &Tmp-Octets-5}" == "test1test2") {
+if !("%{(string) &test_octets5}%{(string) &test_octets6}" == "test1test2") {
 	test_fail
 }
 
-if (!("test0%{(string) %{Tmp-Octets-4}}%{(string) %{Tmp-Octets-5}}" == "test0test1test2")) {
+if (!("test0%{(string) %{test_octets5}}%{(string) %{test_octets6}}" == "test0test1test2")) {
 	test_fail
 }
 
-if (!("%{(string) %{Tmp-Octets-4}}%{(string) %{Tmp-Octets-5}}test3" == "test1test2test3")) {
+if (!("%{(string) %{test_octets5}}%{(string) %{test_octets6}}test3" == "test1test2test3")) {
 	test_fail
 }
 
-if !(&Tmp-String-1 == 'I like chicken I like liver') {
+&result_string := %{(string) %{test_octets2}}
+if !(&result_string == 'I like chicken I like liver') {
 	test_fail
 }
 
-if (!(&Tmp-String-2 == "I\000I")) {
+&result_string := %{(string) %{test_octets3}}
+if (!(&result_string == "I\000I")) {
 	test_fail
 }
 
-if (!(&Tmp-String-3 == "\000")) {
+&result_string := %{(string) %{test_octets4}}
+if (!(&result_string == "\000")) {
 	test_fail
 }
 

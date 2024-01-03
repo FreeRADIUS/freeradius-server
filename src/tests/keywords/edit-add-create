@@ -1,15 +1,19 @@
 #
 #  Add to something which doesn't exist
 #
+string test_string
+uint32 test_integer1
+uint32 test_integer2
+uint32 test_integer3
 
-&Tmp-Integer-0 += 4
-if !(&Tmp-Integer-0 == 4) {
+&test_integer1 += 4
+if !(&test_integer1 == 4) {
 	test_fail
 }
 
 
-&Tmp-String-0 += "bar"
-if !(&Tmp-String-0 == "bar") {
+&test_string += "bar"
+if !(&test_string == "bar") {
 	test_fail
 }
 
@@ -25,11 +29,11 @@ if !(&Tmp-Group-0.Filter-Id == "foo") {
 	test_fail
 }
 
-&Tmp-Integer-1 := 3
-&Tmp-Integer-2 := 4
+&test_integer2 := 3
+&test_integer3 := 4
 
-&Tmp-Integer-0 += &Tmp-Integer-2 - &Tmp-Integer-1
-if !(&Tmp-Integer-0 == 5) {
+&test_integer1 += &test_integer3 - &test_integer2
+if !(&test_integer1 == 5) {
 	test_fail
 }
 

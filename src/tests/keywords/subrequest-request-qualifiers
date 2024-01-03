@@ -13,15 +13,15 @@ subrequest Access-Request {
 			&User-Name := "joe"
 
 			&outer.request += {
-				&Tmp-String-0 = &current.User-Name
-				&Tmp-String-1 = &parent.User-Name
-				&Tmp-String-2 = &parent.parent.User-Name
-				&Tmp-String-3 = &parent.parent.parent.User-Name
-				&Tmp-String-4 = &outer.User-Name
-				&Tmp-String-5 = &current.outer.User-Name
-				&Tmp-String-6 = &parent.current.outer.User-Name
-				&Tmp-String-7 = "%{parent.parent.parent.parent.User-Name}"
-				&Tmp-String-8 = "%{outer.parent.User-Name}"
+				&Filter-Id = &current.User-Name
+				&Filter-Id = &parent.User-Name
+				&Filter-Id = &parent.parent.User-Name
+				&Filter-Id = &parent.parent.parent.User-Name
+				&Filter-Id = &outer.User-Name
+				&Filter-Id = &current.outer.User-Name
+				&Filter-Id = &parent.current.outer.User-Name
+				&Filter-Id = "%{parent.parent.parent.parent.User-Name}"
+				&Filter-Id = "%{outer.parent.User-Name}"
 			}
 		}
 	}
@@ -31,39 +31,39 @@ if !(&Outer-Realm-Name == 'testing123') {
 	test_fail
 }
 
-if !(&Tmp-String-0 == 'joe') {
+if !(&Filter-Id[0] == 'joe') {
 	test_fail
 }
 
-if !(&Tmp-String-1 == 'jim') {
+if !(&Filter-Id[1] == 'jim') {
 	test_fail
 }
 
-if !(&Tmp-String-2 == 'obo') {
+if !(&Filter-Id[2] == 'obo') {
 	test_fail
 }
 
-if !(&Tmp-String-3 == 'bob') {
+if !(&Filter-Id[3] == 'bob') {
 	test_fail
 }
 
-if !(&Tmp-String-4 == 'bob') {
+if !(&Filter-Id[4] == 'bob') {
 	test_fail
 }
 
-if !(&Tmp-String-5 == 'bob') {
+if !(&Filter-Id[5] == 'bob') {
 	test_fail
 }
 
-if !(&Tmp-String-6 == 'bob') {
+if !(&Filter-Id[6] == 'bob') {
 	test_fail
 }
 
-if !(&Tmp-String-7 == "") {
+if !(&Filter-Id[7] == "") {
 	test_fail
 }
 
-if !(&Tmp-String-8 == "") {
+if !(&Filter-Id[8] == "") {
 	test_fail
 }
 

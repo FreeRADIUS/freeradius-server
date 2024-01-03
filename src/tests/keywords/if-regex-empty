@@ -35,14 +35,14 @@ if ("%{1}") {
 #  Check assignment of regex null-match
 #
 if (&control.Password.Cleartext =~ /hell(o)(.*)/) {
-	&control.Tmp-String-1 := "%{2}"
+	&control.Filter-Id := "%{2}"
 }
 
-if (!&control.Tmp-String-1) {
+if (!&control.Filter-Id) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-1 == "")) {
+if (!(&control.Filter-Id == "")) {
 	test_fail
 }
 

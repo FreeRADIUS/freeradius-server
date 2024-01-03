@@ -1,13 +1,14 @@
 #
 # PRE: xlat-delay
 #
+float32 a
 
 #
 #  Set a timeout which will fire, and cause the block to fail.
 #
 redundant {
 	timeout 0.01s {
-		&Tmp-Float-0 := %delay_10s(0.1)
+		&a := %delay_10s(0.1)
 		test_fail
 	}
 
@@ -18,7 +19,7 @@ redundant {
 
 redundant {
 	timeout "0.01" {
-		&Tmp-Float-0 := %delay_10s(0.1)
+		&a := %delay_10s(0.1)
 		test_fail
 	}
 

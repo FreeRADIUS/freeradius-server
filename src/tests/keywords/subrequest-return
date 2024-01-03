@@ -1,19 +1,19 @@
 subrequest Access-Request {
-	&parent.request.Tmp-String-0 := "testing1234"
+	&parent.request.Filter-Id := "testing1234"
 
 	return
 
 	#
 	#  Should be ignored
 	#
-	&parent.request.Tmp-String-1 := "testing1234"
+	&parent.request.Reply-Message := "testing1234"
 }
 
-if (&Tmp-String-1) {
+if (&Reply-Message) {
 	test_fail
 }
 
-if (!(&Tmp-String-0 == "testing1234")) {
+if (!(&Filter-Id == "testing1234")) {
 	test_fail
 }
 

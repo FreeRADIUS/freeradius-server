@@ -1,6 +1,7 @@
-&Tmp-String-0 := 'foo'
+string test_string
+&test_string := 'foo'
 
-switch "%tolower(%{Tmp-String-0})" {
+switch "%tolower(%{test_string})" {
 	case 'foo' {
 		success
 	}
@@ -14,7 +15,7 @@ switch "%tolower(%{Tmp-String-0})" {
 	}
 }
 
-switch "%{Tmp-String-0}" {
+switch "%{test_string}" {
 	case 'foo' {
 		success
 	}

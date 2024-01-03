@@ -4,48 +4,48 @@
 #  Form attribute references with xlats
 #
 &request += {
-	&Tmp-String-0 = 'foo'
-	&Tmp-String-0 = 'bar'
-	&Tmp-String-1 = 'baz'
+	&Filter-Id = 'foo'
+	&Filter-Id = 'bar'
+	&Calling-Station-Id = 'baz'
 }
 
 &control = {}
 
-if (!(%{Tmp-String-0[#]} == 2)) {
+if (!(%{Filter-Id[#]} == 2)) {
 	test_fail
 }
 
-if (!(&Tmp-String-0[0] == 'foo')) {
+if (!(&Filter-Id[0] == 'foo')) {
 	test_fail
 }
 
 #
 # Delete an attribute by assigning a non-existent attribute to it
 #
-&Tmp-String-0[1] := &Reply-Message
+&Filter-Id[1] := &Reply-Message
 
 # Should only remove 'bar'
-if !(&Tmp-String-0[0] == 'foo') {
+if !(&Filter-Id[0] == 'foo') {
 	test_fail
 }
 
-if (!(&Tmp-String-0[#] == 1)) {
+if (!(&Filter-Id[#] == 1)) {
 	test_fail
 }
 
 # Nothing should exist for this attribute.
-if (&Tmp-String-0[1]) {
+if (&Filter-Id[1]) {
 	test_fail
 }
 
-if (&Tmp-String-0[2]) {
+if (&Filter-Id[2]) {
 	test_fail
 }
 
-&Tmp-String-0 := &Reply-Message
+&Filter-Id := &Reply-Message
 
 # All instances should be removed
-if (&Tmp-String-0) {
+if (&Filter-Id) {
 	test_fail
 }
 

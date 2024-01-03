@@ -1,16 +1,18 @@
 # Set debug to something high, recording the old level
-&Tmp-Integer-0 := "%debug(4)"
+uint32 test_integer
+
+&test_integer := %debug(4)
 
 # Check debug level is now 4
-if (!("%debug(4)" == 4)) {
+if (!(%debug(4) == 4)) {
 	test_fail
 }
 
 # Set debug back to the original level
-"%debug(%{Tmp-Integer-0})"
+%debug(%{test_integer})
 
 # Read out the current debug level to verify it changed
-if (!("%debug(%{Tmp-Integer-0})" == "%{Tmp-Integer-0}")) {
+if (!(%debug(%{test_integer}) == "%{test_integer}")) {
 	test_fail
 }
 

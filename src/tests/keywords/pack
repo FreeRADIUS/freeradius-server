@@ -1,6 +1,8 @@
 #
 #  PRE: if
 #
+octets result_octets
+
 &request += {
 	&Framed-IP-Address = 127.0.0.1
 	&NAS-Port = 2112
@@ -8,18 +10,18 @@
 }
 
 
-&Tmp-Octets-0 := (octets) &Framed-IP-Address + (octets) &NAS-Port + (octets) &NAS-IP-Address
+&result_octets := (octets) &Framed-IP-Address + (octets) &NAS-Port + (octets) &NAS-IP-Address
 
-if (!(&Tmp-Octets-0 == 0x7f000001000008407f000002)) {
+if (!(&result_octets == 0x7f000001000008407f000002)) {
 	test_fail
 }
 
 #
 #  With octet addition, we don't need %pack() any more!
 #
-&Tmp-Octets-0 := (octets) &Framed-IP-Address + (octets) &NAS-Port + (octets) &NAS-IP-Address
+&result_octets := (octets) &Framed-IP-Address + (octets) &NAS-Port + (octets) &NAS-IP-Address
 
-if (!(&Tmp-Octets-0 == 0x7f000001000008407f000002)) {
+if (!(&result_octets == 0x7f000001000008407f000002)) {
 	test_fail
 }
 

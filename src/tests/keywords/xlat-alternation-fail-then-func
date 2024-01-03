@@ -1,9 +1,10 @@
 #
 #  Everything null
 #
-&request -= &Tmp-String-0[*]
-&request -= &Tmp-String-1[*]
+string result_string
+&request -= &Filter-Id[*]
+&request -= &NAS-Identifier[*]
 
-&Tmp-String-2 := "%{&Tmp-String-0[0] || &Tmp-String-1[0]}%delay_10s()"
+&result_string := "%{&Filter-Id[0] || &NAS-Identifier[0]}%delay_10s()"
 
 success

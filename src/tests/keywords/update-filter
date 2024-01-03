@@ -2,13 +2,13 @@
 #  PRE: update
 #
 update control {
-	&Tmp-Integer-0 := 5
-	&Tmp-Integer-0 += 10
-	&Tmp-Integer-0 += 15
-	&Tmp-Integer-0 += 20
-	&Tmp-String-0 := 'foo'
-	&Tmp-String-0 += 'baz'
-	&Tmp-String-0 += 'boink'
+	&NAS-Port := 5
+	&NAS-Port += 10
+	&NAS-Port += 15
+	&NAS-Port += 20
+	&Filter-Id := 'foo'
+	&Filter-Id += 'baz'
+	&Filter-Id += 'boink'
 }
 
 # Reset the request list
@@ -22,18 +22,18 @@ update control {
 #  Integer ==
 #
 update request {
-	&Tmp-Integer-0 == 10
+	&NAS-Port == 10
 }
 
-if (!(&Tmp-Integer-0[0] == 10)) {
+if (!(&NAS-Port[0] == 10)) {
 	test_fail
 }
 
-if (!(%{Tmp-Integer-0[#]} == 1)) {
+if (!(%{NAS-Port[#]} == 1)) {
 	test_fail
 }
 
-if (!(%{Tmp-String-0[#]} == 3)) {
+if (!(%{Filter-Id[#]} == 3)) {
 	test_fail
 }
 
@@ -44,14 +44,14 @@ if (!(%{Tmp-String-0[#]} == 3)) {
 #  String ==
 #
 update request {
-	&Tmp-String-0 == 'baz'
+	&Filter-Id == 'baz'
 }
 
-if (!(&Tmp-String-0[0] == 'baz')) {
+if (!(&Filter-Id[0] == 'baz')) {
 	test_fail
 }
 
-if (!(%{Tmp-String-0[#]} == 1)) {
+if (!(%{Filter-Id[#]} == 1)) {
 	test_fail
 }
 
@@ -62,18 +62,18 @@ if (!(%{Tmp-String-0[#]} == 1)) {
 #  Integer <
 #
 update request {
-	&Tmp-Integer-0 < 10
+	&NAS-Port < 10
 }
 
-if (!(&Tmp-Integer-0[0] == 5)) {
+if (!(&NAS-Port[0] == 5)) {
 	test_fail
 }
 
-if (!(%{Tmp-Integer-0[#]} == 1)) {
+if (!(%{NAS-Port[#]} == 1)) {
 	test_fail
 }
 
-if (!(%{Tmp-String-0[#]} == 3)) {
+if (!(%{Filter-Id[#]} == 3)) {
 	test_fail
 }
 
@@ -84,23 +84,23 @@ if (!(%{Tmp-String-0[#]} == 3)) {
 #  Integer >
 #
 update request {
-	&Tmp-Integer-0 > 10
+	&NAS-Port > 10
 }
 
-if (!(&Tmp-Integer-0[0] == 15)) {
+if (!(&NAS-Port[0] == 15)) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-0[1] == 20)) {
+if (!(&NAS-Port[1] == 20)) {
 	test_fail
 }
 
 
-if (!(%{Tmp-Integer-0[#]} == 2)) {
+if (!(%{NAS-Port[#]} == 2)) {
 	test_fail
 }
 
-if (!(%{Tmp-String-0[#]} == 3)) {
+if (!(%{Filter-Id[#]} == 3)) {
 	test_fail
 }
 
@@ -112,22 +112,22 @@ if (!(%{Tmp-String-0[#]} == 3)) {
 #  Integer <=
 #
 update request {
-	&Tmp-Integer-0 <= 10
+	&NAS-Port <= 10
 }
 
-if (!(&Tmp-Integer-0[0] == 5)) {
+if (!(&NAS-Port[0] == 5)) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-0[1] == 10)) {
+if (!(&NAS-Port[1] == 10)) {
 	test_fail
 }
 
-if (!(%{Tmp-Integer-0[#]} == 2)) {
+if (!(%{NAS-Port[#]} == 2)) {
 	test_fail
 }
 
-if (!(%{Tmp-String-0[#]} == 3)) {
+if (!(%{Filter-Id[#]} == 3)) {
 	test_fail
 }
 
@@ -138,26 +138,26 @@ if (!(%{Tmp-String-0[#]} == 3)) {
 #  Integer >=
 #
 update request {
-	&Tmp-Integer-0 >= 10
+	&NAS-Port >= 10
 }
 
-if (!(&Tmp-Integer-0[0] == 10)) {
+if (!(&NAS-Port[0] == 10)) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-0[1] == 15)) {
+if (!(&NAS-Port[1] == 15)) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-0[2] == 20)) {
+if (!(&NAS-Port[2] == 20)) {
 	test_fail
 }
 
-if (!(%{Tmp-Integer-0[#]} == 3)) {
+if (!(%{NAS-Port[#]} == 3)) {
 	test_fail
 }
 
-if (!(%{Tmp-String-0[#]} == 3)) {
+if (!(%{Filter-Id[#]} == 3)) {
 	test_fail
 }
 
@@ -168,26 +168,26 @@ if (!(%{Tmp-String-0[#]} == 3)) {
 #  Integer !=
 #
 update request {
-	&Tmp-Integer-0 != 10
+	&NAS-Port != 10
 }
 
-if (!(&Tmp-Integer-0[0] == 5)) {
+if (!(&NAS-Port[0] == 5)) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-0[1] == 15)) {
+if (!(&NAS-Port[1] == 15)) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-0[2] == 20)) {
+if (!(&NAS-Port[2] == 20)) {
 	test_fail
 }
 
-if (!(%{Tmp-Integer-0[#]} == 3)) {
+if (!(%{NAS-Port[#]} == 3)) {
 	test_fail
 }
 
-if (!(%{Tmp-String-0[#]} == 3)) {
+if (!(%{Filter-Id[#]} == 3)) {
 	test_fail
 }
 
@@ -195,22 +195,22 @@ if (!(%{Tmp-String-0[#]} == 3)) {
 &request := &control
 
 update request {
-	&Tmp-String-1 := 'baz'
-	&Tmp-String-1 += 'boink'
+	&Callback-Id := 'baz'
+	&Callback-Id += 'boink'
 }
 
 #
 #  String (Intersection)
 #
 update request {
-	&Tmp-String-0 == &Tmp-String-1[0]
+	&Filter-Id == &Callback-Id[0]
 }
 
-if (!(&Tmp-String-0[0] == &Tmp-String-1[0])) {
+if (!(&Filter-Id[0] == &Callback-Id[0])) {
 	test_fail
 }
 
-if (!(%{Tmp-String-0[#]} == 1)) {
+if (!(%{Filter-Id[#]} == 1)) {
 	test_fail
 }
 

@@ -4,20 +4,20 @@
 #  Test the map xlat
 #
 &request += {
-	&Tmp-String-0 = '&control.Tmp-String-0 := \'testing123\''
-	&Tmp-String-1 = "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
-	&Tmp-String-1 = "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
+	&Filter-Id = '&control.Filter-Id := \'testing123\''
+	&NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
+	&NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
 }
 
-if (!("%map(%{Tmp-String-0})" == 1)) {
+if (!("%map(%{Filter-Id})" == 1)) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-0 == 'testing123')) {
+if (!(&control.Filter-Id == 'testing123')) {
 	test_fail
 }
 
-foreach &Tmp-String-1[*] {
+foreach &NAS-Port-Id[*] {
 	if (!("%map(%{Foreach-Variable-0})" == 1)) {
 		test_fail
 	}

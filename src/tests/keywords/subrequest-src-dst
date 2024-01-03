@@ -10,18 +10,18 @@ subrequest Access-Request &request &reply.Tmp-Group-0 {
 		test_fail
 	}
 
-	&reply.Tmp-String-0 := 'hello from subrequest'
+	&reply.Filter-Id := 'hello from subrequest'
 }
 
 if (!&reply.Tmp-Group-0) {
 	test_fail
 }
 
-if (!&reply.Tmp-Group-0.Tmp-String-0) {
+if (!&reply.Tmp-Group-0.Filter-Id) {
 	test_fail
 }
 
-if !(&reply.Tmp-Group-0.Tmp-String-0 == 'hello from subrequest') {
+if !(&reply.Tmp-Group-0.Filter-Id == 'hello from subrequest') {
 	test_fail
 }
 

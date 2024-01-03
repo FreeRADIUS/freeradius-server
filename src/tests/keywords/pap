@@ -1,8 +1,12 @@
 #
 # PRE: edit-list-remove if
 #
+string salt
+string result_string
+octets result_octets
+
 &control := {}
-&Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
+&salt := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
 
 #
 #  Unencoded Password.Cleartext in password with header
@@ -22,9 +26,9 @@ if (reject) {
 #
 #  Base64 encoded Password.Cleartext in password with header
 #
-&Tmp-String-1 := "{clear}%{User-Password}"
+&result_string := "{clear}%{User-Password}"
 &control := {
-	&Password.With-Header = %base64.encode(%{Tmp-String-1})
+	&Password.With-Header = %base64.encode(%{result_string})
 }
 
 pap.authorize
@@ -39,7 +43,7 @@ if (reject) {
 #  Hex encoded SSHA password
 #
 &control := {
-	&Password.With-Header = "{ssha}%hex(%sha1(%{User-Password}%{Tmp-String-0}))%hex(%{Tmp-String-0})"
+	&Password.With-Header = "{ssha}%hex(%sha1(%{User-Password}%{salt}))%hex(%{salt})"
 }
 
 pap.authorize
@@ -53,20 +57,19 @@ if (reject) {
 #
 #  Base64 encoded SSHA password
 #
-&control := {
-	 &Tmp-String-1 = "%hex(%sha1(%{User-Password}%{Tmp-String-0}))%hex(%{Tmp-String-0})"
-}
+&result_string := "%hex(%sha1(%{User-Password}%{salt}))%hex(%{salt})"
 
 # To Binary
-&control.Tmp-Octets-0 := "%bin(%{control.Tmp-String-1})"
+&result_octets := "%bin(%{result_string})"
 
 # To Base64
-&control.Tmp-String-1 := "%base64.encode(%{control.Tmp-Octets-0})"
-&control.Password.With-Header := "{ssha}%{control.Tmp-String-1}"
+&result_string := "%base64.encode(%{result_octets})"
+&control.Password.With-Header := "{ssha}%{result_string}"
 
 pap.authorize
 pap.authenticate {
 	reject = 1
+	fail = 2
 }
 if (reject) {
 	test_fail
@@ -75,16 +78,14 @@ if (reject) {
 #
 #  Base64 of Base64 encoded SSHA password
 #
-&control := {
-	&Tmp-String-1 = "%hex(%sha1(%{User-Password}%{Tmp-String-0}))%hex(%{Tmp-String-0})"
-}
+&result_string := "%hex(%sha1(%{User-Password}%{salt}))%hex(%{salt})"
 
 # To Binary
-&control.Tmp-Octets-0 := "%bin(%{control.Tmp-String-1})"
+&result_octets := "%bin(%{result_string})"
 
 # To Base64
-&control.Tmp-String-1 := "{ssha}%base64.encode(%{control.Tmp-Octets-0})"
-&control.Password.With-Header := "%base64.encode(%{control.Tmp-String-1})"
+&result_string := "{ssha}%base64.encode(%{result_octets})"
+&control.Password.With-Header := "%base64.encode(%{result_string})"
 
 pap.authorize
 pap.authenticate {

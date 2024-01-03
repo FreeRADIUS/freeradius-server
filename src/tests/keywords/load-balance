@@ -5,78 +5,81 @@
 #
 #  Should distribute load between the modules.
 #
-&request += {
-	&Tmp-Integer-0 = 0
-	&Tmp-Integer-1 = 0
+uint32 count1
+uint32 count2
 
-	&Tmp-Integer-2 = 0		# 0
-	&Tmp-Integer-2 = 1
-	&Tmp-Integer-2 = 2
-	&Tmp-Integer-2 = 3
-	&Tmp-Integer-2 = 4
-	&Tmp-Integer-2 = 5
-	&Tmp-Integer-2 = 6
-	&Tmp-Integer-2 = 7
-	&Tmp-Integer-2 = 8
-	&Tmp-Integer-2 = 9		# 10
-	&Tmp-Integer-2 = 0
-	&Tmp-Integer-2 = 1
-	&Tmp-Integer-2 = 2
-	&Tmp-Integer-2 = 3
-	&Tmp-Integer-2 = 4
-	&Tmp-Integer-2 = 5
-	&Tmp-Integer-2 = 6
-	&Tmp-Integer-2 = 7
-	&Tmp-Integer-2 = 8
-	&Tmp-Integer-2 = 9		# 20
-	&Tmp-Integer-2 = 0
-	&Tmp-Integer-2 = 1
-	&Tmp-Integer-2 = 2
-	&Tmp-Integer-2 = 3
-	&Tmp-Integer-2 = 4
-	&Tmp-Integer-2 = 5
-	&Tmp-Integer-2 = 6
-	&Tmp-Integer-2 = 7
-	&Tmp-Integer-2 = 8
-	&Tmp-Integer-2 = 9		# 30
-	&Tmp-Integer-2 = 0
-	&Tmp-Integer-2 = 1
-	&Tmp-Integer-2 = 2
-	&Tmp-Integer-2 = 3
-	&Tmp-Integer-2 = 4
-	&Tmp-Integer-2 = 5
-	&Tmp-Integer-2 = 6
-	&Tmp-Integer-2 = 7
-	&Tmp-Integer-2 = 8
-	&Tmp-Integer-2 = 9		# 40
-	&Tmp-Integer-2 = 0
-	&Tmp-Integer-2 = 1
-	&Tmp-Integer-2 = 2
-	&Tmp-Integer-2 = 3
-	&Tmp-Integer-2 = 4
-	&Tmp-Integer-2 = 5
-	&Tmp-Integer-2 = 6
-	&Tmp-Integer-2 = 7
-	&Tmp-Integer-2 = 8
-	&Tmp-Integer-2 = 9		# 49
+&count1 := 0
+&count2 := 0
+
+&request += {
+	&NAS-Port = 0		# 0
+	&NAS-Port = 1
+	&NAS-Port = 2
+	&NAS-Port = 3
+	&NAS-Port = 4
+	&NAS-Port = 5
+	&NAS-Port = 6
+	&NAS-Port = 7
+	&NAS-Port = 8
+	&NAS-Port = 9		# 10
+	&NAS-Port = 0
+	&NAS-Port = 1
+	&NAS-Port = 2
+	&NAS-Port = 3
+	&NAS-Port = 4
+	&NAS-Port = 5
+	&NAS-Port = 6
+	&NAS-Port = 7
+	&NAS-Port = 8
+	&NAS-Port = 9		# 20
+	&NAS-Port = 0
+	&NAS-Port = 1
+	&NAS-Port = 2
+	&NAS-Port = 3
+	&NAS-Port = 4
+	&NAS-Port = 5
+	&NAS-Port = 6
+	&NAS-Port = 7
+	&NAS-Port = 8
+	&NAS-Port = 9		# 30
+	&NAS-Port = 0
+	&NAS-Port = 1
+	&NAS-Port = 2
+	&NAS-Port = 3
+	&NAS-Port = 4
+	&NAS-Port = 5
+	&NAS-Port = 6
+	&NAS-Port = 7
+	&NAS-Port = 8
+	&NAS-Port = 9		# 40
+	&NAS-Port = 0
+	&NAS-Port = 1
+	&NAS-Port = 2
+	&NAS-Port = 3
+	&NAS-Port = 4
+	&NAS-Port = 5
+	&NAS-Port = 6
+	&NAS-Port = 7
+	&NAS-Port = 8
+	&NAS-Port = 9		# 49
 }
 
 #
 #  Loop 0..9
 #
-foreach &Tmp-Integer-2 {
+foreach &NAS-Port {
 	load-balance {
 		group {
-			&Tmp-Integer-0 += 1
+			&count1 += 1
 			&request += {
-				&Tmp-String-0 = "Picked group 1 - %{Tmp-Integer-0} time(s)"
+				&Reply-Message = "Picked group 1 - %{count1} time(s)"
 			}
 			ok
 		}
 		group {
-			&Tmp-Integer-1 += 1
+			&count2 += 1
 			&request += {
-				&Tmp-String-1 = "Picked group 2 %{Tmp-Integer-1} Time(s)"
+				&Reply-Message = "Picked group 2 %{count2} Time(s)"
 			}
 			ok
 		}
@@ -86,11 +89,11 @@ foreach &Tmp-Integer-2 {
 # The chances of one group being used over another 50 times by random occurrence
 # is quite small, and if this happens repeatedly, it's likely there's a bug in
 # the load-balance code or random number generator.
-if ((&Tmp-Integer-0 == 0) || (&Tmp-Integer-1 == 0)) {
+if ((&count1 == 0) || (&count2 == 0)) {
 	test_fail
 }
 
-if !(&Tmp-Integer-0 + &Tmp-Integer-1 == 50) {
+if !(&count1 + &count2 == 50) {
 	test_fail
 }
 

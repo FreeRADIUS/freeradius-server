@@ -1,12 +1,12 @@
 #
 #  PRE: subrequest
 #
-&control.Tmp-String-0 := "Access-Request"
+&control.Filter-Id := "Access-Request"
 
 #
 #  Subrequest with an attribute reference
 #
-subrequest &control.Tmp-String-0 {
+subrequest &control.Filter-Id {
 	&parent.control.User-Name := 'bob'
 
 	success

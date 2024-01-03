@@ -1,21 +1,21 @@
 #
 #  PRE: if
 #
+string test_string1
+string test_string2
 
 #
 #  Strings which are expanded in a regex have regex special
 #  characters escaped.  Because the input strings are unsafe.
 #
-&request += {
-	&Tmp-String-0 = "%taint(example.com)"
-	&Tmp-String-1 = "%taint(exampleXcom)"
-}
+&test_string1 := "%taint(example.com)"
+&test_string2 := "%taint(exampleXcom)"
 
-if ("exampleXcom" =~ /%{Tmp-String-0}/) {
+if ("exampleXcom" =~ /%{test_string1}/) {
 	test_fail
 }
 
-elsif (&Tmp-String-1 =~ /%{Tmp-String-0}/) {
+if (&test_string2 =~ /%{test_string1}/) {
 	test_fail
 }
 

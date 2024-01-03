@@ -1,31 +1,34 @@
-&Tmp-String-0 := "%rand('-1')"
+string result_string
+uint32 result_integer
+
+&result_string := "%rand('-1')"
 
 #
 #  Negative limit should have failed assignment
 #
-if !(&Tmp-String-0 == "") {
+if !(&result_string == "") {
 	test_fail
 }
 
-&Tmp-String-0 := "%rand('hello world')"
+&result_string := "%rand('hello world')"
 
 #
 #  Invalid limit should have failed assignment
 #
-if !(&Tmp-String-0 == "") {
+if !(&result_string == "") {
 	test_fail
 }
 
-&Tmp-Integer-0 := %rand('123')
+&result_integer := %rand('123')
 
-if (!&Tmp-Integer-0) {
+if (!&result_integer) {
 	test_fail
 }
 
 #
 #  Make sure random number is within limit
 #
-if (&Tmp-Integer-0 < 0 || &Tmp-Integer-0 > 123) {
+if (&result_integer < 0 || &result_integer > 123) {
 	test_fail
 }
 

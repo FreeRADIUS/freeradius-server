@@ -1,46 +1,51 @@
 #
 #  PRE: if edit
 #
+octets test_octets
+string test_string
+ipaddr result_ipaddr
+uint32 result_integer
+string result_string
+
 &Framed-IP-Address := 127.0.0.1
-&Tmp-Octets-0 := &Framed-IP-Address
+&test_octets := &Framed-IP-Address
 
-&Tmp-String-0 := "%unpack(%{Tmp-Octets-0}, 0, 'ipaddr')"
-&Tmp-IP-Address-0 := "%unpack(%{Tmp-Octets-0}, 0, 'ipaddr')"
+&test_string := "%unpack(%{test_octets}, 0, 'ipaddr')"
+&result_ipaddr := "%unpack(%{test_octets}, 0, 'ipaddr')"
 
-if !(&Tmp-String-0 == "127.0.0.1") {
+if !(&test_string == "127.0.0.1") {
 	test_fail
 }
 
-if !(&Tmp-IP-Address-0 == 127.0.0.1) {
+if !(&result_ipaddr == 127.0.0.1) {
 	test_fail
 }
 
-&Tmp-Octets-0 := 0x000001020304
-&Tmp-Integer-0 := "%unpack(%{Tmp-Octets-0}, 4, 'uint16')"
+&test_octets := 0x000001020304
+&result_integer := "%unpack(%{test_octets}, 4, 'uint16')"
 
 # Octets 4 and 5 == 0x0304 == 772
-if ~(&Tmp-Integer-0 == 772) {
+if ~(&result_integer == 772) {
 	test_fail
 }
 
 # truncation
-&Tmp-String-0 := "0x0011223344556677"
-&Tmp-String-1 := "%unpack(%{Tmp-String-0}, 0, 'ether')"
-if !(&Tmp-String-1 == "00:11:22:33:44:55") {
+&test_string := "0x0011223344556677"
+&result_string := "%unpack(%{test_string}, 0, 'ether')"
+if !(&result_string == "00:11:22:33:44:55") {
 	test_fail
 }
 
-&Tmp-String-0 := "0x48656C6C6F"
-&Tmp-String-1 := "%unpack(%{Tmp-String-0}, 0, 'string')"
-if !(&Tmp-String-1 == "Hello") {
+&test_string := "0x48656C6C6F"
+&result_string := "%unpack(%{test_string}, 0, 'string')"
+if !(&result_string == "Hello") {
 	test_fail
 }
 
 # Offset beyond data length
-&request -= &Tmp-String-1[*]
-&Tmp-String-1 := "%unpack(%{Tmp-String-0}, 10, 'string')"
+&result_string := "%unpack(%{test_string}, 10, 'string')"
 
-if !(&Tmp-String-1 == "") {
+if !(&result_string == "") {
 	test_fail
 }
 
@@ -50,8 +55,8 @@ if (!(&Module-Failure-Message == "unpack offset 10 is larger than input data len
 &request -= &Module-Failure-Message[*]
 
 # Invalid destination data type
-&Tmp-String-1 := "%unpack(%{Tmp-String-0}, 0, 'thing')"
-if !(&Tmp-String-1 == "") {
+&result_string := "%unpack(%{test_string}, 0, 'thing')"
+if !(&result_string == "") {
 	test_fail
 }
 
@@ -60,8 +65,8 @@ if (!(&Module-Failure-Message == "Invalid data type 'thing'")) {
 }
 
 # Invalid source data type
-&Tmp-String-1 := "%unpack(%{Tmp-Integer-0}, 0, 'string')"
-if !(&Tmp-String-1 == "") {
+&result_string := "%unpack(%{result_integer}, 0, 'string')"
+if !(&result_string == "") {
 	test_fail
 }
 
@@ -71,10 +76,10 @@ if (!(&Module-Failure-Message == "unpack requires the input attribute to be 'str
 &request -= &Module-Failure-Message[*]
 
 # Invalid hex string
-&Tmp-String-0 := '0x014sdgw'
-&Tmp-String-1 := "%unpack(%{Tmp-String-0}, 0, 'string')"
+&test_string := '0x014sdgw'
+&result_string := "%unpack(%{test_string}, 0, 'string')"
 
-if !(&Tmp-String-1 == "") {
+if !(&result_string == "") {
 	test_fail
 }
 
@@ -84,10 +89,10 @@ if (!(&Module-Failure-Message == "Invalid hex string in '0x014sdgw'")) {
 &request -= &Module-Failure-Message[*]
 
 # Zero length hex string
-&Tmp-String-0 := '0x'
-&Tmp-String-1 := "%unpack(%{Tmp-String-0}, 0, 'string')"
+&test_string := '0x'
+&result_string := "%unpack(%{test_string}, 0, 'string')"
 
-if !(&Tmp-String-1 == "") {
+if !(&result_string == "") {
 	test_fail
 }
 

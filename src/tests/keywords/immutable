@@ -3,6 +3,8 @@
 #
 #  They can't be modified or deleted.
 #
+uint32 test_integer
+
 &NAS-Port := 1812
 
 #
@@ -42,13 +44,13 @@ if !(&NAS-Port == 1813) {
 #
 #  We can copy the immutable value.  The copy is mutable.
 #
-&Tmp-Integer-0 := &NAS-Port
-if !(&Tmp-Integer-0 == 1813) {
+&test_integer := &NAS-Port
+if !(&test_integer == 1813) {
 	test_fail
 }
 
-&Tmp-Integer-0 += 1
-if !(&Tmp-Integer-0 == 1814) {
+&test_integer += 1
+if !(&test_integer == 1814) {
 	test_fail
 }
 

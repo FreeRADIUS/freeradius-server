@@ -10,23 +10,23 @@
 #  &request, etc. for now.  We should support more.
 #
 &control.Tmp-Group-0 := {
-	&Tmp-Integer-0 = 1
+	&NAS-Port = 1
 }
 
-if (!&control.Tmp-Group-0.Tmp-Integer-0) {
+if (!&control.Tmp-Group-0.NAS-Port) {
 	test_fail
 }
 
-if (!(&control.Tmp-Group-0.Tmp-Integer-0 == 1)) {
+if (!(&control.Tmp-Group-0.NAS-Port == 1)) {
 	test_fail
 }
 
 #
 #  Edit it in place.
 #
-&control.Tmp-Group-0.Tmp-Integer-0 += 5
+&control.Tmp-Group-0.NAS-Port += 5
 
-if (!(&control.Tmp-Group-0.Tmp-Integer-0 == 6)) {
+if (!(&control.Tmp-Group-0.NAS-Port == 6)) {
 	test_fail
 }
 
@@ -35,9 +35,9 @@ if (!(&control.Tmp-Group-0.Tmp-Integer-0 == 6)) {
 #
 #  @todo - look FIRST for attributes in the current group?
 #
-&control.Tmp-Group-0 -= &control.Tmp-Group-0.Tmp-Integer-0
+&control.Tmp-Group-0 -= &control.Tmp-Group-0.NAS-Port
 
-if (&control.Tmp-Group-0.Tmp-Integer-0) {
+if (&control.Tmp-Group-0.NAS-Port) {
 	test_fail
 }
 
@@ -49,10 +49,10 @@ if (&control.Tmp-Group-0.Tmp-Integer-0) {
 #  Append something to it
 #
 &control.Tmp-Group-0 += {
-	&Tmp-IP-Address-0 = 127.0.0.1
+	&Framed-IP-Address = 127.0.0.1
 }
 
-if (!(&control.Tmp-Group-0.Tmp-IP-Address-0 == 127.0.0.1)) {
+if (!(&control.Tmp-Group-0.Framed-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 
@@ -60,14 +60,14 @@ if (!(&control.Tmp-Group-0.Tmp-IP-Address-0 == 127.0.0.1)) {
 #  Multiple members
 #
 &control.Tmp-Group-0 += {
-	&Tmp-Octets-0 = 0xabcdef
+	&Class = 0xabcdef
 }
 
-if (!(&control.Tmp-Group-0.Tmp-IP-Address-0 == 127.0.0.1)) {
+if (!(&control.Tmp-Group-0.Framed-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 
-if (!(&control.Tmp-Group-0.Tmp-Octets-0 == 0xabcdef)) {
+if (!(&control.Tmp-Group-0.Class == 0xabcdef)) {
 	test_fail
 }
 

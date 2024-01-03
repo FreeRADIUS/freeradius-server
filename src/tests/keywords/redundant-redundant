@@ -3,29 +3,32 @@
 #  Nested redundant blocks.
 #
 #
-&request += {
-	&Tmp-Integer-2 = 0
-	&Tmp-Integer-3 = 0
-	&Tmp-Integer-4 = 0
-	&Tmp-Integer-5 = 0
-}
+uint32 count1
+uint32 count2
+uint32 count3
+uint32 count4
+
+&count1 = 0
+&count2 = 0
+&count3 = 0
+&count4 = 0
 
 redundant {
 	redundant-load-balance {
 		group {
-			&Tmp-Integer-2 += 1
+			&count1 += 1
 			fail
 		}
 		group {
-			&Tmp-Integer-3 += 1
+			&count2 += 1
 			fail
 		}
 		group {
-			&Tmp-Integer-4 += 1
+			&count3 += 1
 			fail
 		}
 		group {
-			&Tmp-Integer-5 += 1
+			&count4 += 1
 			fail
 		}
 	}
@@ -41,21 +44,21 @@ if (!ok) {
 	return
 }
 
-if (!(&Tmp-Integer-2 == 1)) {
+if (!(&count1 == 1)) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-3 == 1)) {
-	test_fail
-	return
-}
-
-if (!(&Tmp-Integer-4 == 1)) {
+if (!(&count2 == 1)) {
 	test_fail
 	return
 }
 
-if (!(&Tmp-Integer-5 == 1)) {
+if (!(&count3 == 1)) {
+	test_fail
+	return
+}
+
+if (!(&count4 == 1)) {
 	test_fail
 	return
 }

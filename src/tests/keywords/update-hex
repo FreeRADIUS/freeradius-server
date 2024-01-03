@@ -5,18 +5,18 @@
 #
 
 update {
-	&Tmp-String-0 := 0x626f62
+	&Filter-Id := 0x626f62
 }
 
-if (!(&Tmp-String-0 == 'bob')) {
+if (!(&Filter-Id == 'bob')) {
 	test_fail
 }
 
 update {
-	&Tmp-String-0 := '0x626f62'
+	&Filter-Id := '0x626f62'
 }
 
-if (!(&Tmp-String-0 == '0x626f62')) {
+if (!(&Filter-Id == '0x626f62')) {
 	test_fail
 }
 

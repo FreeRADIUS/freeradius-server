@@ -2,10 +2,10 @@
 # PRE: edit-list
 #
 
-&control.Tmp-String-0 := "foo"
+&control.Filter-Id := "foo"
 
 #  must exist
-if (!&control.Tmp-String-0) {
+if (!&control.Filter-Id) {
 	test_fail
 }
 
@@ -15,7 +15,7 @@ if (!&control.Tmp-String-0) {
 &control := {}
 
 #  must not exist
-if (&control.Tmp-String-0) {
+if (&control.Filter-Id) {
 	test_fail
 }
 

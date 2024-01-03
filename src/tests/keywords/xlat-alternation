@@ -1,64 +1,62 @@
 #
 # PRE:
 #
+string result_string
 
-&Tmp-String-0 := "foo"
-&Tmp-String-1 := "bar"
+&Filter-Id := "foo"
+&NAS-Identifier := "bar"
 
 #
 #  First choice
 #
-&Tmp-String-2 := "%{&Tmp-String-0 || &Tmp-String-1}"
-if (!(&Tmp-String-2 == 'foo')) {
+&result_string := "%{&Filter-Id || &NAS-Identifier}"
+if (!(&result_string == 'foo')) {
 	test_fail
 }
 
 #
 #  Second choice
 #
-&request -= &Tmp-String-0[*]
-&Tmp-String-2 := "%{&Tmp-String-0 || &Tmp-String-1}"
-if (!(&Tmp-String-2 == 'bar')) {
+&request -= &Filter-Id[*]
+&result_string := "%{&Filter-Id || &NAS-Identifier}"
+if (!(&result_string == 'bar')) {
 	test_fail
 }
 
 #
 #  Multiple things in an alternation
 #
-&Tmp-String-2 := %{%{Tmp-String-0} || "%{Tmp-String-1} foo"}
-if (!(&Tmp-String-2 == 'bar foo')) {
+&result_string := %{%{Filter-Id} || "%{NAS-Identifier} foo"}
+if (!(&result_string == 'bar foo')) {
 	test_fail
 }
 
 #
 #  Alternation is empty
 #
-&Tmp-String-2 := "%{&Tmp-String-0 || ''}"
-if (!(&Tmp-String-2 == '')) {
+&result_string := "%{&Filter-Id || ''}"
+if (!(&result_string == '')) {
 	test_fail
 }
 
 #
 #  Everything null
 #
-&request -= &Tmp-String-1[*]
-&request -= &Tmp-String-2[*]
+&request -= &NAS-Identifier[*]
 
 #
 #  Both sides are failing, so the assignment returns a NULL string
 #
-&Tmp-String-2 := "%{&Tmp-String-0 || &Tmp-String-1}"
-if (!(&Tmp-String-2 == "")) {
+&result_string := "%{&Filter-Id || &NAS-Identifier}"
+if (!(&result_string == "")) {
 	test_fail
 }
 
 #
 #  And unquoted results return nothing.
 #
-&request -= &Tmp-String-2[*]
-
-&Tmp-String-2 := %{&Tmp-String-0 || &Tmp-String-1}
-if (&Tmp-String-2) {
+&result_string := %{&Filter-Id || &NAS-Identifier}
+if (&result_string) {
 	test_fail
 }
 

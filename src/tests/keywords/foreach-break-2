@@ -1,17 +1,18 @@
 #
 #  PRE: foreach foreach-break
 #
+string test_string
 
-&Tmp-String-0 := "ABCDEF_8"
+&test_string := "ABCDEF_8"
 
 #
-#  This creates a bunch of Tmp-String-0 attributes.
+#  This creates a bunch of User-Name attributes.
 #
-&control.Tmp-String-0 := { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g" }
+&control.User-Name := { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c", "d", "e", "f", "g" }
 
-foreach &control.Tmp-String-0 {
-	if ("%{Tmp-String-0[*]}" =~ /([A-Z0-9\-]*)_%{Foreach-Variable-0}/) {
-		&Tmp-String-0 := "%{1}"
+foreach &control.User-Name {
+	if ("%{test_string}" =~ /([A-Z0-9\-]*)_%{Foreach-Variable-0}/) {
+		&test_string := "%{1}"
 		success
 		break
 	}

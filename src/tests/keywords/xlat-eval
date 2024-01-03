@@ -1,35 +1,35 @@
 &request += {
-	&Tmp-String-1  = 'foo'
-	&Tmp-String-1  = 'bar'
-	&Tmp-Integer-0 = '4'
-	&Tmp-Integer-0 = '8'
-	&Tmp-Integer-0 = '1'
+	&Filter-Id  = 'foo'
+	&Filter-Id  = 'bar'
+	&NAS-Port = '4'
+	&NAS-Port = '8'
+	&NAS-Port = '1'
 
-	&Tmp-String-0 = '%{Tmp-String-1}'
+	&Reply-Message = '%{Filter-Id}'
 }
 
 #
 #  Verify non string types are treated as literals
 #
-if (!("%eval(%{Tmp-Integer-0})" == 4)) {
+if (!("%eval(%{NAS-Port})" == 4)) {
 	test_fail
 }
 
-if (!(%eval(%{Tmp-Integer-0[1]}) == 8)) {
+if (!(%eval(%{NAS-Port[1]}) == 8)) {
 	test_fail
 }
 
 #
 #  Check double expansion works
 #
-if (!(%eval(%{Tmp-String-0}) == 'foo')) {
+if (!(%eval(%{Reply-Message}) == 'foo')) {
 	test_fail
 }
 
 #
 #  Using an attribute as a dynamic index for another attribute
 #
-if (!(%eval("\%{Tmp-String-1[%{Tmp-Integer-0[2]}]}") == 'bar')) {
+if (!(%eval("\%{Filter-Id[%{NAS-Port[2]}]}") == 'bar')) {
 	test_fail
 }
 
@@ -49,7 +49,7 @@ group {
 
 	&idx := 1
 
-	if (!(%eval("\%{Tmp-String-1[%{idx}]}") == 'bar')) {
+	if (!(%eval("\%{Filter-Id[%{idx}]}") == 'bar')) {
 		test_fail
 	}
 

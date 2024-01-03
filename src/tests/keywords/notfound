@@ -1,11 +1,12 @@
 #
 #  PRE: if
 #
+string dummy_string
 
 #
 #  This doesn't exist, so  the condition shouldn't match.
 #
-if (&Tmp-String-0 == "foo") {
+if (&dummy_string == "foo") {
 	test_fail
 }
 else {
@@ -15,7 +16,7 @@ else {
 #
 # Since the middle part doesn't match, "NOT" the middle part SHOULD match.
 #
-if (!(&Tmp-String-0 == "foo")) {
+if (!(&dummy_string == "foo")) {
 	ok
 }
 else {

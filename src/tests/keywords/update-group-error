@@ -2,12 +2,11 @@
 #  PRE: update
 #
 update reply {
-#	&Tmp-String-0 := "foo"
 
 	#
 	#  This is a string, so it's NOT allowed.
 	#
-	&Tmp-String-1 := { # ERROR
-		Tmp-String-2 := "1.0"
+	&Filter-Id := { # ERROR
+		Reply-Message := "1.0"
 	}
 }

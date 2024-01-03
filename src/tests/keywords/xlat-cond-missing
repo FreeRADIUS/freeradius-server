@@ -1,11 +1,11 @@
 &request += {
-	&Tmp-IP-Address-0 = 192.0.2.1
-	&Tmp-IP-Address-0 = 192.0.2.2
-	&Tmp-IP-Address-0 = 192.0.2.3
-	&Tmp-IP-Address-0 = 192.0.2.4
+	&Framed-IP-Address = 192.0.2.1
+	&Framed-IP-Address = 192.0.2.2
+	&Framed-IP-Address = 192.0.2.3
+	&Framed-IP-Address = 192.0.2.4
 }
 
-if (%{Tmp-IP-Address-0[#]} != 4) {
+if (%{Framed-IP-Address[#]} != 4) {
 	test_fail
 }
 
@@ -16,7 +16,7 @@ if (%{Tmp-IP-Address-0[#]} != 4) {
 #  for the existence of the attribute.  But... the syntax allows it, so
 #  it should work.
 #
-if !("%{Tmp-IP-Address-0[4]}" == '') {
+if !("%{Framed-IP-Address[4]}" == '') {
 	test_fail
 }
 

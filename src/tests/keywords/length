@@ -1,108 +1,117 @@
 #
 # PRE: hex
 #
-&request += {
-	&Tmp-String-0	= '\
+string test_string
+octets test_octets
+ipaddr test_ipaddr
+uint32 test_integer
+ifid test_ifid
+ipv6addr test_ipv6addr
+ipv6prefix test_ipv6prefix
+byte test_byte
+uint16 test_short
+ether test_ether
+uint64 test_int64
+ipv4prefix test_ipv4prefix
+uint32 result_int
+
+&test_string := '\
 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'
-	&Tmp-String-2	= '9870'
-	&Tmp-Octets-0	= 0x39383731
-	&Tmp-IP-Address-0	= 57.56.55.50
-	&Tmp-Integer-0	= 959985460
-	&Tmp-Cast-IfId	= '0000:0000:3938:3737'
-	&Tmp-Cast-IPv6Addr	= '::3938:3738'
-	&Tmp-Cast-IPv6Prefix = '::3938:3739/128'
-	&Tmp-Cast-Byte	= 58
-	&Tmp-Cast-Short	= 14139
-	&Tmp-Cast-Ether	= 00:00:39:38:37:3c
-	&Tmp-Cast-Integer64  = 1152921505566832445
-	&Tmp-Cast-IPv4Prefix = 57.56.55.62/32
-}
 
-if (!(%length(%{Tmp-String-0}) == 260)) {
+if (!(%length(%{test_string}) == 260)) {
 	test_fail
 }
 
-&request += {
-	&Tmp-uint64-0	= %length(%{Tmp-String-2})  # Tmp-Integer-0 is defined and used below for Tmp-Integer-4
-	&Tmp-Integer-1	= %length(%{Tmp-Octets-0})
-	&Tmp-Integer-2	= %length(%{Tmp-IP-Address-0})
-	&Tmp-Integer-3	= %length('hello, world')
-	&Tmp-Integer-4	= %length(%{Tmp-Integer-0})
-	&Tmp-Integer-6	= %length(%{Tmp-Cast-Ifid})
-	&Tmp-Integer-7	= %length(%{Tmp-Cast-IPv6Addr})
-	&Tmp-Integer-8	= %length(%{Tmp-Cast-IPv6Prefix})
-	&Tmp-Integer-9	= %length(%{Tmp-Cast-Byte})
-}
+&test_string := '9870'
+&test_octets := 0x39383731
+&test_ipaddr := 57.56.55.50
+&test_integer := 959985460
+&test_ifid := '0000:0000:3938:3737'
+&test_ipv6addr := '::3938:3738'
+&test_ipv6prefix = '::3938:3739/128'
+&test_byte := 58
+&test_short := 14139
+&test_ether := 00:00:39:38:37:3c
+&test_int64 := 1152921505566832445
+&test_ipv4prefix := 57.56.55.62/32
 
 # String - bin 0x39383730
-if (!(&Tmp-uint64-0 == 4)) {
+&result_int := %length(%{test_string})
+if (!(&result_int == 4)) {
 	test_fail
 }
 
 # Octets - bin 0x39383731
-if (!(&Tmp-Integer-1 == 4)) {
+&result_int := %length(%{test_octets})
+if (!(&result_int == 4)) {
 	test_fail
 }
 
 # IP Address - bin 0x39383732
-if (!(&Tmp-Integer-2 == 4)) {
+&result_int := %length(%{test_ipaddr})
+if (!(&result_int == 4)) {
 	test_fail
 }
 
 # String - "hello, world"
-if (!(&Tmp-Integer-3 == 12)) {
+&result_int := %length('hello, world')
+if (!(&result_int == 12)) {
 	test_fail
 }
 
 # Integer - bin 0x39383734
-if (!(&Tmp-Integer-4 == 4)) {
+&result_int := %length(%{test_integer})
+if (!(&result_int == 4)) {
 	test_fail
 }
 
 # ifid - bin 0x0000000039383737
-if (!(&Tmp-Integer-6 == 8)) {
+&result_int := %length(%{test_ifid})
+if (!(&result_int == 8)) {
 	test_fail
 }
 
 # ipv6addr - bin 0x00000000000000000000000039383738
-if (!(&Tmp-Integer-7 == 16)) {
+&result_int := %length(%{test_ipv6addr})
+if (!(&result_int == 16)) {
 	test_fail
 }
 
 # ipv6addrprefix - bin 0x8000000000000000000000000039383739
-if (!(&Tmp-Integer-8 == 17)) {
+&result_int := %length(%{test_ipv6prefix})
+if (!(&result_int == 17)) {
 	test_fail
 }
 
 # byte - bin 0x3a
-if (!(&Tmp-Integer-9 == 1)) {
+&result_int := %length(%{test_byte})
+if (!(&result_int == 1)) {
 	test_fail
 }
 
-&Tmp-Integer-0	:= %length(%{Tmp-Cast-Short})
-&Tmp-Integer-1	:= %length(%{Tmp-Cast-Ether})
-&Tmp-Integer-2	:= %length(%{Tmp-Cast-Integer64})
-&Tmp-Integer-3	:= %length(%{Tmp-Cast-IPv4Prefix})
-
 # short - bin 0x373b
-if (!(&Tmp-Integer-0 == 2)) {
+&result_int := %length(%{test_short})
+if (!(&result_int == 2)) {
 	test_fail
 }
 
 # ethernet - bin 0x00003938373c
-if (!(&Tmp-Integer-1 == 6)) {
+&result_int := %length(%{test_ether})
+if (!(&result_int == 6)) {
 	test_fail
 }
 
 # integer64 - bin 0x100000003938373d
-if (!(&Tmp-Integer-2 == 8)) {
+&result_int := %length(%{test_int64})
+if (!(&result_int == 8)) {
 	test_fail
 }
 
 # ipv4prefix - bin 0x203938373e
-if (!(&Tmp-Integer-3 == 5)) {
+&result_int := %length(%{test_ipv4prefix})
+if (!(&result_int == 5)) {
 	test_fail
 }
 

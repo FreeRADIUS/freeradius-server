@@ -2,13 +2,13 @@
 #  PRE: if return foreach
 #
 &control += {
-	&Tmp-Integer-0 = 0
-	&Tmp-Integer-0 = 1
-	&Tmp-Integer-0 = 2
-	&Tmp-Integer-0 = 3
+	&NAS-Port = 0
+	&NAS-Port = 1
+	&NAS-Port = 2
+	&NAS-Port = 3
 }
 
-foreach &control.Tmp-Integer-0 {
+foreach &control.NAS-Port {
 	policy_return
 
 	# Should continue executing
@@ -17,16 +17,16 @@ foreach &control.Tmp-Integer-0 {
 	}
 
 	&control -= {
-		&Tmp-Integer-0 == "%{Foreach-Variable-0}"
+		&NAS-Port == "%{Foreach-Variable-0}"
 	}
 }
 
 # Everything should have been removed except
-# the last incidence of &Tmp-Integer-0
-if (!&control.Tmp-Integer-0) {
+# the last incidence of &NAS-Port
+if (!&control.NAS-Port) {
 	test_fail
 }
-if (!(&control.Tmp-Integer-0[0] == 2)) {
+if (!(&control.NAS-Port[0] == 2)) {
 	test_fail
 }
 

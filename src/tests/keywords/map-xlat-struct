@@ -4,9 +4,11 @@
 #
 #  Test the map xlat
 #
-&Tmp-String-0 := "IA-PD.IAID = 11"
+string test_string
 
-if (!("%map(%{Tmp-String-0})" == 1)) {
+&test_string := "IA-PD.IAID = 11"
+
+if (!("%map(%{test_string})" == 1)) {
 	test_fail
 }
 

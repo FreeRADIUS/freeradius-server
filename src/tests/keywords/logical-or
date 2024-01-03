@@ -1,25 +1,26 @@
 #
 #  PRE: edit
 #
-&request += {
-	&Tmp-Integer-0 = 0
-	&Tmp-Integer-1 = 1
-}
+uint32 test_integer1
+uint32 test_integer2
 
-if !((&Tmp-Integer-0 == 1) || (&Tmp-Integer-1 == 1)) {
+&test_integer1 := 0
+&test_integer2 := 1
+
+if !((&test_integer1 == 1) || (&test_integer2 == 1)) {
 	test_fail
 }
 
-if !((&Tmp-Integer-1 == 1) || (&Tmp-Integer-0 == 1)) {
+if !((&test_integer2 == 1) || (&test_integer1 == 1)) {
 	test_fail
 }
 
 #
 #  Neither of these exists, so the resulting string should be empty
 #
-&Tmp-String-0 := "%{&Tmp-String-1 || &Tmp-String-1}"
+&Filter-Id := "%{&NAS-Port-Id || &NAS-Port-Id}"
 
-if !(&Tmp-String-0 == '') {
+if !(&Filter-Id == '') {
 	test_fail
 }
 

@@ -3,134 +3,134 @@
 #
 
 &request += {
-	&Tmp-String-0 = 'foo'
-	&Tmp-String-0 = 'bar'
-	&Tmp-String-0 = 'baz'
+	&Filter-Id = 'foo'
+	&Filter-Id = 'bar'
+	&Filter-Id = 'baz'
 
-	&Tmp-String-1 = 'GROUP ADMINISTRATORS'
-	&Tmp-String-1 = 'GROUP STUDENTS'
-	&Tmp-String-1 = 'GROUP PEONS'
+	&NAS-Port-Id = 'GROUP ADMINISTRATORS'
+	&NAS-Port-Id = 'GROUP STUDENTS'
+	&NAS-Port-Id = 'GROUP PEONS'
 
-	&Tmp-String-2 = 'PEONS'
-	&Tmp-String-2 = 'STUDENTS'
-	&Tmp-String-2 = 'ADMINISTRATORS'
+	&Reply-Message = 'PEONS'
+	&Reply-Message = 'STUDENTS'
+	&Reply-Message = 'ADMINISTRATORS'
 
-	&Tmp-String-3 = 'no'
-	&Tmp-String-3 = 'no'
-	&Tmp-String-3 = 'yes'
+	&Callback-Id = 'no'
+	&Callback-Id = 'no'
+	&Callback-Id = 'yes'
 
-	&Tmp-Integer-0 = 1
-	&Tmp-Integer-0 = 2
-	&Tmp-Integer-0 = 5
+	&NAS-Port = 1
+	&NAS-Port = 2
+	&NAS-Port = 5
 }
 
 &control += {
-	&Tmp-String-0 = 'foo'
-	&Tmp-String-0 = 'bar'
-	&Tmp-String-0 = 'baz'
+	&Filter-Id = 'foo'
+	&Filter-Id = 'bar'
+	&Filter-Id = 'baz'
 
-	&Tmp-String-1 = 'boink'
-	&Tmp-String-1 = 'tard'
-	&Tmp-String-1 = 'dink'
-	&Tmp-String-1 = 'slink'
+	&NAS-Port-Id = 'boink'
+	&NAS-Port-Id = 'tard'
+	&NAS-Port-Id = 'dink'
+	&NAS-Port-Id = 'slink'
 
-	&Tmp-Integer-0 = 01
-	&Tmp-Integer-0 = 02
-	&Tmp-Integer-0 = 05
-	&Tmp-Integer-0 = 04
+	&NAS-Port = 01
+	&NAS-Port = 02
+	&NAS-Port = 05
+	&NAS-Port = 04
 
-	&Tmp-Integer-1 = 10
-	&Tmp-Integer-1 = 20
-	&Tmp-Integer-1 = 30
+	&Port-Limit = 10
+	&Port-Limit = 20
+	&Port-Limit = 30
 }
 
 #
 #  Mmmm O(N^2)
 #
-if (!(&Tmp-String-0[*] == &control.Tmp-String-0[*])) {
+if (!(&Filter-Id[*] == &control.Filter-Id[*])) {
 	test_fail
 }
 
-if (&Tmp-String-0[*] == &control.Tmp-String-1[*]) {
+if (&Filter-Id[*] == &control.NAS-Port-Id[*]) {
 	test_fail
 }
 
-if (&Tmp-String-1[*] == &control.Tmp-String-0[*]) {
+if (&NAS-Port-Id[*] == &control.Filter-Id[*]) {
 	test_fail
 }
 
 #
 #  Integer comparison and normalisation
 #
-if (!(&Tmp-Integer-0 == &control.Tmp-Integer-0)) {
+if (!(&NAS-Port == &control.NAS-Port)) {
 	test_fail
 }
 
 #
-#  if any value of request.Tmp-Integer-0 > any value of
-#  request.Tmp-Integer-1 then evaluate to true
+#  if any value of request.NAS-Port > any value of
+#  request.Port-Limit then evaluate to true
 #
-if (&Tmp-Integer-0[*] > &control.Tmp-Integer-1[*]) {
+if (&NAS-Port[*] > &control.Port-Limit[*]) {
 	test_fail
 }
 
 #
 #  Compiled regex comparisons
 #
-if (&Tmp-String-1[*] !~ /PEONS$/) {
+if (&NAS-Port-Id[*] !~ /PEONS$/) {
 	test_fail
 }
 
-if (&control.Tmp-String-1 =~ /PEONS$/) {
+if (&control.NAS-Port-Id =~ /PEONS$/) {
 	test_fail
 }
 
-if (&control.Tmp-String-1 =~ /DINKS$/) {
+if (&control.NAS-Port-Id =~ /DINKS$/) {
 	test_fail
 }
 
 #
 #  Dynamic regex comparisons
 #
-if (&Tmp-String-1[*] !~ /%{Tmp-String-2[0]}$/) {
+if (&NAS-Port-Id[*] !~ /%{Reply-Message[0]}$/) {
 	test_fail
 }
 
-if (&Tmp-String-1 =~ /%{Tmp-String-2[1]}$/) {
+if (&NAS-Port-Id =~ /%{Reply-Message[1]}$/) {
 	test_fail
 }
 
-if !(&Tmp-String-1 =~ /%{Tmp-String-2[2]}$/) {
+if !(&NAS-Port-Id =~ /%{Reply-Message[2]}$/) {
 	test_fail
 }
 
-if (&Tmp-String-1 =~ /%{Tmp-String-2[#]}$/) {
+if (&NAS-Port-Id =~ /%{Reply-Message[#]}$/) {
 	test_fail
 }
 
 #
 #  XLAT virtual comparisons
 #
-if (!(&control.Tmp-Integer-0[*] == %{control.Tmp-Integer-0[#]})) {
+if (!(&control.NAS-Port[*] == %{control.NAS-Port[#]})) {
 	test_fail
 }
 
 #
 #  Literal comparisons
 #
-if (!(&control.Tmp-String-1[*] == 'boink')) {
+if (!(&control.NAS-Port-Id[*] == 'boink')) {
 	test_fail
 }
 
-if (&control.Tmp-String-1[*] == 'foo') {
+if (&control.NAS-Port-Id[*] == 'foo') {
 	test_fail
 }
 
-if (&Tmp-Integer-0[*] > 10) {
+if (&NAS-Port[*] > 10) {
 	test_fail
 }
 
-if (!(&Tmp-Integer-0[*] < 10)) {
+if (!(&NAS-Port[*] < 10)) {
 	test_fail
 }
 

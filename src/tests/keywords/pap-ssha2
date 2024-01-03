@@ -1,6 +1,9 @@
 #
 # PRE: update if pap
 #
+string salt
+string result_string
+octets result_octets
 
 #
 #  @todo - When fully converted, this crashes on ubsan issues.
@@ -15,13 +18,13 @@ if (!('${feature.tls}' == 'yes')) {
 }
 
 &control := {}
-&Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
+&salt := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
 
 #
 #  Hex encoded SSHA2-512 password
 #
 &control += {
-	&Password.With-Header = "{ssha512}%hex(%sha2_512(%{User-Password}%{Tmp-String-0}))%hex(%{Tmp-String-0})"
+	&Password.With-Header = "{ssha512}%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 }
 
 pap.authorize
@@ -37,16 +40,16 @@ if (reject) {
 #
 #  Base64 encoded SSHA2-512 password
 #
-&control.Tmp-String-1 := "%hex(%sha2_512(%{User-Password}%{Tmp-String-0}))%hex(%{Tmp-String-0})"
+&result_string := "%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 
 # To Binary
-&control.Tmp-Octets-0 := "%bin(%{control.Tmp-String-1})"
+&result_octets := "%bin(%{result_string})"
 
 # To Base64
-&control.Tmp-String-1 := "%base64.encode(%{control.Tmp-Octets-0})"
+&result_string := "%base64.encode(%{result_octets})"
 
 &control += {
-	&Password.With-Header = "{ssha512}%{control.Tmp-String-1}"
+	&Password.With-Header = "{ssha512}%{result_string}"
 }
 
 pap.authorize
@@ -62,16 +65,16 @@ if (reject) {
 #
 #  Base64 of Base64 encoded SSHA2-512 password
 #
-&control.Tmp-String-1 := "%hex(%sha2_512(%{User-Password}%{Tmp-String-0}))%hex(%{Tmp-String-0})"
+&result_string := "%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 
 # To Binary
-&control.Tmp-Octets-0 := "%bin(%{control.Tmp-String-1})"
+&result_octets := "%bin(%{result_string})"
 
 # To Base64
-&control.Tmp-String-1 := "{ssha512}%base64.encode(%{control.Tmp-Octets-0})"
+&result_string := "{ssha512}%base64.encode(%{result_octets})"
 
 &control += {
-	&Password.With-Header = "%base64.encode(%{control.Tmp-String-1})"
+	&Password.With-Header = "%base64.encode(%{result_string})"
 }
 
 pap.authorize

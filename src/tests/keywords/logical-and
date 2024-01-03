@@ -1,37 +1,38 @@
 #
 #  PRE: edit
 #
-&request += {
-	&Tmp-Integer-0 = 0
-	&Tmp-Integer-1 = 1
-}
+uint32 test_integer1
+uint32 test_integer2
+
+&test_integer1 := 0
+&test_integer2 := 1
 
 #
 #  (true && true) --> true
 #
 #  But if it's false, then we have an issue.
 #
-if !((&Tmp-Integer-0 == 0) && (&Tmp-Integer-1 == 1)) {
+if !((&test_integer1 == 0) && (&test_integer2 == 1)) {
 	test_fail
 }
 
 #
 #  false && true --> false
 #
-if ((&Tmp-Integer-0 == 1) && (&Tmp-Integer-1 == 1)) {
+if ((&test_integer1 == 1) && (&test_integer2 == 1)) {
 	test_fail
 }
 
 #
 #  true && false -> false
 #
-if ((&Tmp-Integer-0 == 0) && (&Tmp-Integer-1 == 0)) {
+if ((&test_integer1 == 0) && (&test_integer2 == 0)) {
 	test_fail
 }
 
-&control.Tmp-String-0 := { "bob", "oof" }
+&control.Filter-Id := { "bob", "oof" }
 
-if ((&control.Tmp-String-0[0] == 'bob') && (&control.Tmp-String-0[1] == 'oof')) {
+if ((&control.Filter-Id[0] == 'bob') && (&control.Filter-Id[1] == 'oof')) {
 	# OK
 } else {
 	test_fail

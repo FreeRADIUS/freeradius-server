@@ -1,7 +1,10 @@
 # cat /dev/urandom | env LC_CTYPE=C tr -cd 'a-f0-9' | head -c <n>
 
 # 8192 - 0x (2) - '' (2) there are unlikely to be any static buffers this big outside of the conffile parser
-&Tmp-Octets-0 := 0x\
+octets test_octets
+string result_string
+
+&test_octets := 0x\
 d8abccb7834711af1de1812be2579febe946f5d7beef6fa5c7074c0cb917e9b91e23e14b016f27610097c16c0e0fad88176e077b24198c770746159\
 05b8810d1c8b774d98889fa5c6027cde5e9c56dd4f7c48298c7713aeca5ba5dcfd506032ad05b1396f50e825b633d5a6af0dce6181b640287e03a65\
 8734df46a86341556f28455b3f377313a5a2ac8c8267b8a5de559b95f9b493a68b9e0278485f9e3914d702b2b7b90ee85ff393461f197386d09b836\
@@ -73,18 +76,18 @@ a02f4a3ab98d75992d68a15d393387fe9ef01041569570ad6fe884764e55567311bcacfcffae7655
 3ae4bcef324b9a3f47ba5c835b54a010ca42f3b9cc5368278c148c9b02ea8c4c9f244fd49f
 
 # Actual length of octet string is 4083 bytes
-if (!(%length(%{Tmp-Octets-0}) == 4083)) {
+if (!(%length(%{test_octets}) == 4083)) {
 	test_fail
 }
 
 # Octets are expanded to 8168 hexits
-if !("0x%hex(%{Tmp-Octets-0})" =~ /^0x([0-9a-f]+)$/) {
+if !("0x%hex(%{test_octets})" =~ /^0x([0-9a-f]+)$/) {
 	test_fail
 }
 
-&Tmp-String-0 := "%{1}"
+&result_string := "%{1}"
 
-if (!("%length(%{Tmp-String-0})" == 8166)) {
+if (!("%length(%{result_string})" == 8166)) {
 	test_fail
 }
 

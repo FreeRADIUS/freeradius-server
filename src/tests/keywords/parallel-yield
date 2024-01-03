@@ -6,11 +6,11 @@
 parallel {
 	reschedule
 	group {
-		&parent.request.Tmp-String-0 := 'foo'
+		&parent.request.Filter-Id := 'foo'
 	}
 }
 
-if (!(&Tmp-String-0 == 'foo')) {
+if (!(&Filter-Id == 'foo')) {
 	test_fail
 }
 

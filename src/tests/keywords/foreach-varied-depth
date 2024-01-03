@@ -2,34 +2,34 @@
 #  PRE: foreach
 #
 &control += {
-	&Tmp-String-0 = "ssid=ABCDEF"
-	&Tmp-String-0 = "ssid=GHIJKL"
+	&Filter-Id = "ssid=ABCDEF"
+	&Filter-Id = "ssid=GHIJKL"
 }
 
 if (&User-Name) {
-	foreach &control.Tmp-String-0 {
+	foreach &control.Filter-Id {
 		if ("%{Foreach-Variable-0}" =~ /(.*)/) {
-			&control.Tmp-String-1 := "%{1}"
+			&control.Calling-Station-Id := "%{1}"
 		}
 	}
 }
 
-if (!(&control.Tmp-String-1 == 'ssid=GHIJKL')) {
+if (!(&control.Calling-Station-Id == 'ssid=GHIJKL')) {
 	test_fail
 }
 
-&control -= &Tmp-String-1[*]
+&control -= &Calling-Station-Id[*]
 
-foreach &control.Tmp-String-0 {
+foreach &control.Filter-Id {
 	if ("%{Foreach-Variable-0}" =~ /(.*)/) {
-		&control.Tmp-String-1 := "%{1}"
+		&control.Calling-Station-Id := "%{1}"
 	}
 }
 
-if (!(&control.Tmp-String-1 == 'ssid=GHIJKL')) {
+if (!(&control.Calling-Station-Id == 'ssid=GHIJKL')) {
 	test_fail
 }
 
-&control -= &Tmp-String-1[*]
+&control -= &Calling-Station-Id[*]
 
 success

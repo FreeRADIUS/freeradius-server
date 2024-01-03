@@ -1,44 +1,45 @@
 #
 #  PRE: if return
 #
+string test_string
 
-&Tmp-String-0 = "test"
+&test_string = "test"
 
 #
 #	rpad tests
 #
-if (!(%rpad(%{Tmp-String-0}, 7) == "test   ")) {
+if (!(%rpad(%{test_string}, 7) == "test   ")) {
 	test_fail
 }
 
-if (!(%rpad(%{Tmp-String-0}, 2) == "test")) {
+if (!(%rpad(%{test_string}, 2) == "test")) {
 	test_fail
 }
 
-if (!(%rpad(%{Tmp-String-0}, 7, 'x') == "testxxx")) {
+if (!(%rpad(%{test_string}, 7, 'x') == "testxxx")) {
 	test_fail
 }
 
-if (!(%rpad(%{Tmp-String-0}, 7, 'xy') == "testxyx")) {
+if (!(%rpad(%{test_string}, 7, 'xy') == "testxyx")) {
 	test_fail
 }
 
 #
 #	lpad tests
 #
-if (!(%lpad(%{Tmp-String-0}, 7) == "   test")) {
+if (!(%lpad(%{test_string}, 7) == "   test")) {
 	test_fail
 }
 
-if (!(%lpad(%{Tmp-String-0}, 2) == "test")) {
+if (!(%lpad(%{test_string}, 2) == "test")) {
 	test_fail
 }
 
-if (!(%lpad(%{Tmp-String-0}, 7, 'x') == "xxxtest")) {
+if (!(%lpad(%{test_string}, 7, 'x') == "xxxtest")) {
 	test_fail
 }
 
-if (!(%lpad(%{Tmp-String-0}, 7, 'xy') == "xyxtest")) {
+if (!(%lpad(%{test_string}, 7, 'xy') == "xyxtest")) {
 	test_fail
 }
 

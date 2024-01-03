@@ -1,46 +1,46 @@
-&Tmp-String-0 := "foo"
+&Filter-Id := "foo"
 
 update request {
-	&Tmp-String-0 !* ANY
+	&Filter-Id !* ANY
 }
 
-if (&Tmp-String-0) {
+if (&Filter-Id) {
 	test_fail
 }
 
-&Tmp-String-0 := "foo"
-&reply.Tmp-String-0 := "bar"
+&Filter-Id := "foo"
+&reply.Filter-Id := "bar"
 
 update {
-	&request.Tmp-String-0 !* ANY
+	&request.Filter-Id !* ANY
 	&reply.[*] !* ANY
 }
 
-if (&Tmp-String-0) {
+if (&Filter-Id) {
 	test_fail
 }
 
-if (&reply.Tmp-String-0) {
-	test_fail
-}
-
-update reply {
-	&Tmp-Integer-0 := 12
-}
-
-if (!&reply.Tmp-Integer-0) {
+if (&reply.Filter-Id) {
 	test_fail
 }
 
 update reply {
-	&Tmp-Integer-0 += 13
+	&NAS-Port := 12
 }
 
-if (!(&reply.Tmp-Integer-0[0] == 12)) {
+if (!&reply.NAS-Port) {
 	test_fail
 }
 
-if (!(&reply.Tmp-Integer-0[1] == 13)) {
+update reply {
+	&NAS-Port += 13
+}
+
+if (!(&reply.NAS-Port[0] == 12)) {
+	test_fail
+}
+
+if (!(&reply.NAS-Port[1] == 13)) {
 	test_fail
 }
 

@@ -1,38 +1,33 @@
 #
 #  PRE: if
 #
-
-&request += {
-	# Dotted Quad
-	&Tmp-IP-Address-0 = 127.0.0.1
-
-	# Dotted Quad with prefix
-	&Tmp-IP-Address-1 = 127.0.0.2/32
-
-	# Hex (0x)
-	&Tmp-IP-Address-2 = 0x7f000003
-
-	# Decimal
-	&Tmp-IP-Address-3 = 2130706436
-}
+ipaddr result_ipaddr
 
 if (!(&NAS-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 
-if (!(&Tmp-IP-Address-0 == 127.0.0.1)) {
+# Dotted Quad
+&result_ipaddr := 127.0.0.1
+if (!(&result_ipaddr == 127.0.0.1)) {
 	test_fail
 }
 
-if (!(&Tmp-IP-Address-1 == 127.0.0.2)) {
+# Dotted Quad with prefix
+&result_ipaddr := 127.0.0.2/32
+if (!(&result_ipaddr == 127.0.0.2)) {
 	test_fail
 }
 
-if (!(&Tmp-IP-Address-2 == 127.0.0.3)) {
+# Hex (0x)
+&result_ipaddr := 0x7f000003
+if (!(&result_ipaddr == 127.0.0.3)) {
 	test_fail
 }
 
-if (!(&Tmp-IP-Address-3 == 127.0.0.4)) {
+# Decimal
+&result_ipaddr := 2130706436
+if (!(&result_ipaddr == 127.0.0.4)) {
 	test_fail
 }
 

@@ -4,12 +4,12 @@
 
 
 #
-#  Tmp-Octets-1 doesn't exist, so Tmp-Octets-0 shouldn't be created
+#  State doesn't exist, so Class shouldn't be created
 #
 update request {
-	&Tmp-Octets-0 := &Tmp-Octets-1
+	&Class := &State
 }
-if (&Tmp-Octets-0) {
+if (&Class) {
 	test_fail
 }
 
@@ -18,12 +18,12 @@ if (&Tmp-Octets-0) {
 #
 #
 update request {
-	&Tmp-String-0 := "%{Reply-Message}"
+	&Filter-Id := "%{Reply-Message}"
 }
-if (!&Tmp-String-0) {
+if (!&Filter-Id) {
 	test_fail
 }
-if (!(&Tmp-String-0 == '')) {
+if (!(&Filter-Id == '')) {
 	test_fail
 }
 
@@ -33,9 +33,9 @@ if (!(&Tmp-String-0 == '')) {
 #  @fixme - EDIT - the new method is to simply omit the assignment
 #
 update request {
-	&Tmp-Octets-0 := "%{Reply-Message}"
+	&Class := "%{Reply-Message}"
 }
-if (!(&Tmp-Octets-0 == "")) {
+if (!(&Class == "")) {
 	test_fail
 }
 

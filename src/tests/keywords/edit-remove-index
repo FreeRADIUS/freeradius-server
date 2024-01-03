@@ -2,20 +2,20 @@
 #  PRE: if edit
 #
 &request += {
-	&Tmp-IP-Address-0 = 192.0.2.1
-	&Tmp-IP-Address-0 = 192.0.2.2
+	&Framed-IP-Address = 192.0.2.1
+	&Framed-IP-Address = 192.0.2.2
 }
 
 #
 #  Delete only the second one
 #
-&request.Tmp-IP-Address-0[1] := {}
+&request.Framed-IP-Address[1] := {}
 
-if (&Tmp-IP-Address-0[#] != 1) {
+if (&Framed-IP-Address[#] != 1) {
 	test_fail
 }
 
-if !(&Tmp-IP-Address-0[0] == 192.0.2.1) {
+if !(&Framed-IP-Address[0] == 192.0.2.1) {
 	test_fail
 }
 

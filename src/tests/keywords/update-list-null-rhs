@@ -4,9 +4,9 @@
 #  Form attribute references with xlats
 #
 update request {
-	&Tmp-String-0 += 'foo'
-	&Tmp-String-0 += 'bar'
-	&Tmp-String-1 += 'baz'
+	&Filter-Id += 'foo'
+	&Filter-Id += 'bar'
+	&Reply-Message += 'baz'
 
 	#
 	#  @fixme - EDIT - how the heck did this ever work?
@@ -14,7 +14,7 @@ update request {
 	&control !* ANY
 }
 
-if (!(&Tmp-String-0[0] == 'foo')) {
+if (!(&Filter-Id[0] == 'foo')) {
 	test_fail
 }
 
@@ -23,7 +23,7 @@ update {
 	&request := &control
 }
 
-if (&Tmp-String-0 || &Tmp-String-1) {
+if (&Filter-Id || &Reply-Message) {
 	test_fail
 }
 

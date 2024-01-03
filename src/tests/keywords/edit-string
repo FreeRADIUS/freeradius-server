@@ -1,26 +1,27 @@
 #
 #  PRE: edit
 #
-&Tmp-String-0 := "foo"
-&Tmp-String-0 ^= "bar"
+string test_string
+&test_string := "foo"
+&test_string ^= "bar"
 
-if (!(&Tmp-String-0 == "barfoo")) {
+if (!(&test_string == "barfoo")) {
 	test_fail
 }
 
-&Tmp-String-0 := "foo"
-&Tmp-String-0 += "bar"
+&test_string := "foo"
+&test_string += "bar"
 
-if (!(&Tmp-String-0 == "foobar")) {
+if (!(&test_string == "foobar")) {
 	test_fail
 }
 
 #
 #  Subtract is the inverse of add.
 #
-&Tmp-String-0 -= "bar"
+&test_string -= "bar"
 
-if (!(&Tmp-String-0 == "foo")) {
+if (!(&test_string == "foo")) {
 	test_fail
 }
 

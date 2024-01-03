@@ -1,50 +1,41 @@
 #
 # PRE: if
 #
-&request += {
-	&Tmp-String-0 = "This is a string\n"
-	&Tmp-Octets-0 = 0x000504030201
-	&Tmp-String-1 = "what do ya want for nothing?"
-	&Tmp-String-2 = "Jefe"
-	&Tmp-String-3 = ""
-}
+string test_string
+string dummy_string
+octets test_octets
+octets result_octets
 
-
-&request += {
-	&Tmp-Octets-1 = %md4("This is a string\n")
-	&Tmp-Octets-2 = %md4("%{Tmp-String-0}")
-	&Tmp-Octets-3 = %md4("%{request.Tmp-String-0}")
-	&Tmp-Octets-4 = %md4("%{request.Tmp-Octets-0}")
-	&Tmp-Octets-5 = %md4("%{Tmp-String-9}")
-}
+&test_string := "This is a string\n"
+&test_octets := 0x000504030201
 
 #
 #  Put "This is a string" into a file and call "md4sum" on it.
 #  You should get this string.
 #
-if (!(&Tmp-Octets-1 == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
+&result_octets := %md4("This is a string\n")
+if (!(&result_octets == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
 	test_fail
 }
 
-if (!(&Tmp-Octets-2 == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
-	test_fail
-}
-
-if (!(&Tmp-Octets-3 == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
-	test_fail
-}
-
-#
-#  MD5 should also be able to cope with references to octet attributes
-#
-if (!(&Tmp-Octets-4 == 0xac3ed17b3cf19ec38352ec534a932fc6)) {
+&result_octets := %md4("%{test_string}")
+if (!(&result_octets == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
 	test_fail
 }
 
 #
-#  MD5 of null string is d41d8cd98f00b204e9800998ecf8427e
+#  MD4 should also be able to cope with references to octet attributes
 #
-if (!(&Tmp-Octets-5 == 0x31d6cfe0d16ae931b73c59d7e0c089c0)) {
+&result_octets := %md4("%{test_octets}")
+if (!(&result_octets == 0xac3ed17b3cf19ec38352ec534a932fc6)) {
+	test_fail
+}
+
+#
+#  MD4 of null string is d41d8cd98f00b204e9800998ecf8427e
+#
+&result_octets := %md4("%{dummy_string}")
+if (!(&result_octets == 0x31d6cfe0d16ae931b73c59d7e0c089c0)) {
 	test_fail
 }
 

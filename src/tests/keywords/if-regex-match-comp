@@ -1,5 +1,6 @@
 # PRE: if
 #
+string test_string
 
 # Non matching on attribute ref
 if !(&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
@@ -65,42 +66,42 @@ if (&Service-Type =~ /^framed-user$/) {
 	test_fail
 }
 
-&Tmp-String-0 := "foo\nbar"
+&test_string := "foo\nbar"
 
 # compiled - ref - multiline
-if !(&Tmp-String-0 =~ /^foo$/m) {
+if !(&test_string =~ /^foo$/m) {
 	test_fail
 }
 
 # compiled - ref - non-multiline
-if (&Tmp-String-0 =~ /^foo$/) {
+if (&test_string =~ /^foo$/) {
 	test_fail
 }
 
 # compiled - ref - non-multiline
 # Not all POSIX implementations support the \n character classes
 # so only run this test if the server was built with libpcre.
-if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) && !(&Tmp-String-0 =~ /^foo\nbar$/)) {
+if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) && !(&test_string =~ /^foo\nbar$/)) {
 	test_fail
 }
 
 # compiled - ref - multiline
-if !(&Tmp-String-0 =~ /^bar$/m) {
+if !(&test_string =~ /^bar$/m) {
 	test_fail
 }
 
 # compiled - ref - multiline - sensitive
-if (&Tmp-String-0 =~ /^BAR$/m) {
+if (&test_string =~ /^BAR$/m) {
 	test_fail
 }
 
 # compiled - ref - multiline - insensitive
-if !(&Tmp-String-0 =~ /^BAR$/mi) {
+if !(&test_string =~ /^BAR$/mi) {
 	test_fail
 }
 
 # compiled - ref - multiline - insensitive (flag order reversed)
-if !(&Tmp-String-0 =~ /^BAR$/im) {
+if !(&test_string =~ /^BAR$/im) {
 	test_fail
 }
 

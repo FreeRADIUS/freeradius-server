@@ -1,16 +1,20 @@
-&Tmp-String-0 := "foo"
-&Tmp-String-1 := &Tmp-String-0
-&Tmp-String-2 := "Tmp-String-0"
+string test_string1
+string test_string2
+string test_string3
+
+&test_string1 := "foo"
+&test_string2 := &test_string1
+&test_string3 := "test_string1"
 
 # foo, bar, "foo", "foo"
-&Tmp-String-3 := { &Tmp-String-0, "bar", "%{Tmp-String-0}", %{Tmp-String-2} }
+&Filter-Id := { &test_string1, "bar", "%{test_string1}", %{test_string3} }
 
 
-if (!(%{Tmp-String-3[#]} == 4)) {
+if (!(%{Filter-Id[#]} == 4)) {
 	test_fail
 }
 
-if (!("%{Tmp-String-3[*]}" == "foobarfooTmp-String-0")) {
+if (!("%{Filter-Id[*]}" == "foobarfootest_string1")) {
 	test_fail
 }
 

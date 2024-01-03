@@ -8,11 +8,11 @@ update reply {
 	#  This was parsed in the old edit code, but never did anything!
 	#
 	&Tmp-Group-0 := {	# ERROR
-		Tmp-String-0 = "foo"
+		Filter-Id = "foo"
 	}
 }
 
-if !&reply.Tmp-Group-0.Tmp-String-0 {
+if !&reply.Tmp-Group-0.Filter-Id {
 	test_fail
 }
 

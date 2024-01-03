@@ -3,30 +3,30 @@
 #
 
 &request += {
-	&Tmp-Octets-0 = 0x00
-	&Tmp-String-0 = "foo"
-	&Tmp-Integer-0 = 1
+	&Class = 0x00
+	&Filter-Id = "foo"
+	&NAS-Port = 1
 }
 
 #  Does exist
-if (!&Tmp-String-0) {
+if (!&Filter-Id) {
 	test_fail
 }
 
 # Remove the first one
-&request -= &Tmp-String-0
+&request -= &Filter-Id
 
 #  Does not exist
-if (&Tmp-String-0) {
+if (&Filter-Id) {
 	test_fail
 }
 
 # Other things still exist
-if (!&Tmp-Octets-0) {
+if (!&Class) {
 	test_fail
 }
 
-if (!&Tmp-Integer-0) {
+if (!&NAS-Port) {
 	test_fail
 }
 
@@ -34,39 +34,39 @@ if (!&Tmp-Integer-0) {
 #  Add multiple of the same type
 #
 &request += {
-	&Tmp-String-0 = "foo"
-	&Tmp-String-0 = "bar"
-	&Tmp-String-0 = "baz"
+	&Filter-Id = "foo"
+	&Filter-Id = "bar"
+	&Filter-Id = "baz"
 }
 
-if (!&Tmp-String-0) {
+if (!&Filter-Id) {
 	test_fail
 }
 
-&request -= &Tmp-String-0[0]
+&request -= &Filter-Id[0]
 
 #  the first one has been removed
-if (!(&Tmp-String-0[0] == "bar")) {
+if (!(&Filter-Id[0] == "bar")) {
 	test_fail
 }
 
 # Other things still exist
-if (!&Tmp-Octets-0) {
+if (!&Class) {
 	test_fail
 }
 
-if (!&Tmp-Integer-0) {
+if (!&NAS-Port) {
 	test_fail
 }
 
-&request -= &Tmp-String-0[*]
+&request -= &Filter-Id[*]
 
 # Does not exist
-if (&Tmp-String-0) {
+if (&Filter-Id) {
 	test_fail
 }
 
-&Tmp-String-0 := { "foo", "bar", "baz" }
+&Filter-Id := { "foo", "bar", "baz" }
 
 #
 #  Remove one by value.
@@ -75,30 +75,30 @@ if (&Tmp-String-0) {
 #  as a condition?  For now, it's an exact match. :(
 #
 &request -= {
-	&Tmp-String-0 == "bar"
+	&Filter-Id == "bar"
 }
 
-if (!(&Tmp-String-0[0] == "foo")) {
+if (!(&Filter-Id[0] == "foo")) {
 	test_fail
 }
 
-if (!(&Tmp-String-0[1] == "baz")) {
+if (!(&Filter-Id[1] == "baz")) {
 	test_fail
 }
 
-if (&Tmp-String-0[2]) {
+if (&Filter-Id[2]) {
 	test_fail
 }
 
 #
 #  Remove via in-place list, too.
 #
-&request -= "Tmp-String-0 == 'foo'"
-if (!(&Tmp-String-0[0] == "baz")) {
+&request -= "Filter-Id == 'foo'"
+if (!(&Filter-Id[0] == "baz")) {
 	test_fail
 }
 
-if (&Tmp-String-0[1]) {
+if (&Filter-Id[1]) {
 	test_fail
 }
 

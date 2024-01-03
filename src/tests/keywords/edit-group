@@ -1,26 +1,29 @@
 #
 #  PRE: edit
 #
+string test_string1
+string test_string2
+string test_string3
 
 #
 #  ALl of these edits are grouped.  So if one of them fails, all of
 #  them are rolled back.
 #
 transaction {
-	&Tmp-String-0 := "foo"
-	&Tmp-String-1 -= "bar" # fails, no existing Tmp-String-1
-	&Tmp-String-2 := "bar"
+	&test_string1 := "foo"
+	&test_string2 -= "bar" # fails, no existing test_string2
+	&test_string3 := "bar"
 }
 
-if (&Tmp-String-0) {
+if (&test_string1) {
 	test_fail
 }
 
-if (&Tmp-String-1) {
+if (&test_string2) {
 	test_fail
 }
 
-if (&Tmp-String-2) {
+if (&test_string3) {
 	test_fail
 }
 
@@ -28,20 +31,20 @@ if (&Tmp-String-2) {
 #  All of these succeed individually, so all of them should succeed.
 #
 transaction {
-	&Tmp-String-0 := "foo"
-	&Tmp-String-1 := "yup"
-	&Tmp-String-2 := "bar"
+	&test_string1 := "foo"
+	&test_string2 := "yup"
+	&test_string3 := "bar"
 }
 
-if (!(&Tmp-String-0 == "foo")) {
+if (!(&test_string1 == "foo")) {
 	test_fail
 }
 
-if (!(&Tmp-String-1 == "yup")) {
+if (!(&test_string2 == "yup")) {
 	test_fail
 }
 
-if (!(&Tmp-String-2 == "bar")) {
+if (!(&test_string3 == "bar")) {
 	test_fail
 }
 

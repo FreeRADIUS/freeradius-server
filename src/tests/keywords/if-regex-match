@@ -1,19 +1,23 @@
 # PRE: if
 #
-&Tmp-Integer-0 := '123456789'
+string test_string
+string dummy_string
+uint32 test_integer
+
+&test_integer := '123456789'
 
 # Non matching on attribute ref
-if !(&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+if !(&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{test_string}/) {
 	test_fail
 }
 
 # Matching on xlat expanded value
-if !("%{User-Name}" =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+if !("%{User-Name}" =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{test_string}/) {
 	test_fail
 }
 
 # Matching on attribute ref with capture groups
-if (&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{Tmp-String-0}/) {
+if (&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])%{test_string}/) {
 	# Test all the capture groups
 	&reply.User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
 }
@@ -22,7 +26,7 @@ else {
 }
 
 # Checking capture groups are cleared out correctly
-if (&User-Name =~ /^([0-9])_%{Tmp-String-0}/) {
+if (&User-Name =~ /^([0-9])_%{test_string}/) {
 	if (!("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" == '1_1')) {
 		test_fail
 	}
@@ -32,7 +36,7 @@ else {
 }
 
 # Checking capture groups are cleared out correctly when there are no matches
-if (&User-Name =~ /^.%{Tmp-String-0}/) {
+if (&User-Name =~ /^.%{test_string}/) {
 	if (!("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" == '1')) {
 		test_fail
 	}
@@ -62,68 +66,68 @@ else {
 }
 
 # uncompiled - ref - insensitive
-if !(&Calling-Station-Id =~ /:roamyroam%{Tmp-String-0}$/i) {
+if !(&Calling-Station-Id =~ /:roamyroam%{test_string}$/i) {
 	test_fail
 }
 
 # uncompiled - expansion - insensitive
-if !(&Calling-Station-Id =~ /:roamyroam%{Tmp-String-0}$/i) {
+if !(&Calling-Station-Id =~ /:roamyroam%{test_string}$/i) {
 	test_fail
 }
 
 # uncompiled - enum - ref - insensitive
-if !(&Service-Type =~ /^framed-user%{Tmp-String-0}$/i) {
+if !(&Service-Type =~ /^framed-user%{test_string}$/i) {
 	test_fail
 }
 
 # uncompiled - enum - expansion - insensitive
-if !("%{Service-Type}" =~ /^framed-user%{Tmp-String-0}$/i) {
+if !("%{Service-Type}" =~ /^framed-user%{test_string}$/i) {
 	test_fail
 }
 
 # uncompiled - enum - ref
-if (&Service-Type =~ /^framed-user%{Tmp-String-0}$/) {
+if (&Service-Type =~ /^framed-user%{test_string}$/) {
 	test_fail
 }
 
 # uncompiled - integer - ref
-if !(&Tmp-Integer-0 =~ /%{Tmp-Integer-0}/) {
+if !(&test_integer =~ /%{test_integer}/) {
 	test_fail
 }
 
-&Tmp-String-0 := "foo\nbar"
+&test_string := "foo\nbar"
 
 # uncompiled - ref - multiline
-if !(&Tmp-String-0 =~ /^foo$%{Tmp-String-8}/m) {
+if !(&test_string =~ /^foo$%{dummy_string}/m) {
 	test_fail
 }
 
 # uncompiled - ref - non-multiline
-if (&Tmp-String-0 =~ /^foo$%{Tmp-String-8}/) {
+if (&test_string =~ /^foo$%{dummy_string}/) {
 	test_fail
 }
 
 # uncompiled - ref - non-multiline
-if !(&Tmp-String-0 =~ /^foo\nbar%{Tmp-String-8}$/) {
+if !(&test_string =~ /^foo\nbar%{dummy_string}$/) {
 	test_fail
 }
 
 # uncompiled - ref - multiline
-if !(&Tmp-String-0 =~ /^bar%{Tmp-String-8}$/m) {
+if !(&test_string =~ /^bar%{dummy_string}$/m) {
 	test_fail
 }
 
 # uncompiled - ref - multiline - sensitive
-if (&Tmp-String-0 =~ /^BAR%{Tmp-String-8}$/m) {
+if (&test_string =~ /^BAR%{dummy_string}$/m) {
 	test_fail
 }
 
 # uncompiled - ref - multiline - insensitive
-if !(&Tmp-String-0 =~ /^BAR%{Tmp-String-8}$/mi) {
+if !(&test_string =~ /^BAR%{dummy_string}$/mi) {
 	test_fail
 }
 
 # uncompiled - ref - multiline - insensitive (flag order reversed)
-if !(&Tmp-String-0 =~ /^BAR%{Tmp-String-8}$/im) {
+if !(&test_string =~ /^BAR%{dummy_string}$/im) {
 	test_fail
 }

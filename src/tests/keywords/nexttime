@@ -1,32 +1,33 @@
 #
 #  PRE: expr
 #
+uint32 result_integer
 
 #
 #  Calculations based on month and year are not consistent due to
 #  different numbers of days involved.  Check hour / day / week
 #
 
-&Tmp-Integer-0 := "%{%nexttime(2h) - %nexttime(1h)}"
+&result_integer := "%{%nexttime(2h) - %nexttime(1h)}"
 
 # We have a fudge factor of 1 second either way
-if ((&Tmp-Integer-0 < 3599) || (&Tmp-Integer-0 > 3601)) {
+if ((&result_integer < 3599) || (&result_integer > 3601)) {
 	test_fail
 }
 
 #
 #  Day
 #
-&Tmp-Integer-0 := "%{%nexttime(3d) - %nexttime(1d)}"
-if ((&Tmp-Integer-0 < 172799) || (&Tmp-Integer-0 > 172801)) {
+&result_integer := "%{%nexttime(3d) - %nexttime(1d)}"
+if ((&result_integer < 172799) || (&result_integer > 172801)) {
 	test_fail
 }
 
 #
 #  Week
 #
-&Tmp-Integer-0 := "%{%nexttime(4w) - %nexttime(2w)}"
-if ((&Tmp-Integer-0 < 1209599) || (&Tmp-Integer-0 > 1209601)) {
+&result_integer := "%{%nexttime(4w) - %nexttime(2w)}"
+if ((&result_integer < 1209599) || (&result_integer > 1209601)) {
 	test_fail
 }
 

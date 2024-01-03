@@ -1,27 +1,27 @@
 parallel {
 	group {
 		&parent.control += {
-			&Tmp-Integer-0 = 1
+			&NAS-Port = 1
 		}
 	}
 	group {
 		&parent.control += {
-			&Tmp-Integer-0 = 3
+			&NAS-Port = 3
 		}
 	}
 	group {
 		&parent.control += {
-			&Tmp-Integer-0 = 5
+			&NAS-Port = 5
 		}
 	}
 	group {
 		&parent.control += {
-			&Tmp-Integer-0 = 7
+			&NAS-Port = 7
 		}
 	}
 }
 
-if (!(%{control.Tmp-Integer-0[#]} == 4)) {
+if (!(%{control.NAS-Port[#]} == 4)) {
 	test_fail
 }
 

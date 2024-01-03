@@ -1,6 +1,6 @@
 &control := {
-	&Tmp-IP-Address-0 = 192.0.2.1
-	&Tmp-IP-Address-0 = 192.0.2.2
+	&Framed-IP-Address = 192.0.2.1
+	&Framed-IP-Address = 192.0.2.2
 }
 
 if !(%{control.[#]} == 2) {
@@ -29,17 +29,17 @@ if !("%{control.[*]}" == '192.0.2.1192.0.2.2') {
 # Try calling these xlats in mapping too, they may get optimised to VPTs which is a
 # different code path.
 &request += {
-	&Tmp-IP-Address-1 = %{control.[1]}
-	&Tmp-IP-Address-1 = %{control.[0]}
-	&Tmp-String-0	= %concat(%{control.[*]}, ',')
-	&Tmp-Integer-0 = %{control.[#]}
+	&NAS-IP-Address = %{control.[1]}
+	&NAS-IP-Address = %{control.[0]}
+	&Filter-Id	= %concat(%{control.[*]}, ',')
+	&NAS-Port = %{control.[#]}
 }
 
-if !(&Tmp-String-0 == '192.0.2.1,192.0.2.2') {
+if !(&Filter-Id == '192.0.2.1,192.0.2.2') {
 	test_fail
 }
 
-if !(&Tmp-Integer-0 == 2) {
+if !(&NAS-Port == 2) {
 	test_fail
 }
 
