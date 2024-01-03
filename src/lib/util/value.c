@@ -2291,6 +2291,23 @@ static inline int fr_value_box_cast_to_octets(TALLOC_CTX *ctx, fr_value_box_t *d
 	}
 }
 
+#define CAST_IP_FIX_COMBO 	\
+	case FR_TYPE_COMBO_IP_ADDR: \
+		if (src->vb_ip.af == AF_INET) { \
+			src_type = FR_TYPE_IPV4_ADDR; \
+		} else if (src->vb_ip.af == AF_INET6) { \
+			src_type = FR_TYPE_IPV6_ADDR; \
+		} \
+		break; \
+	case FR_TYPE_COMBO_IP_PREFIX: \
+		if (src->vb_ip.af == AF_INET) { \
+			src_type = FR_TYPE_IPV4_PREFIX; \
+		} else if (src->vb_ip.af == AF_INET6) { \
+			src_type = FR_TYPE_IPV6_PREFIX; \
+		} \
+		break
+
+
 /** Convert any supported type to an IPv4 address
  *
  * Allowed input types are:
@@ -2310,13 +2327,17 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
+	fr_type_t src_type = src->type;
+
 	fr_assert(dst_type == FR_TYPE_IPV4_ADDR);
 
-	switch (src->type) {
+	switch (src_type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
 					     NULL, src->tainted);
+
+	CAST_IP_FIX_COMBO;
 
 	default:
 		break;
@@ -2330,7 +2351,7 @@ static inline int fr_value_box_cast_to_ipv4addr(TALLOC_CTX *ctx, fr_value_box_t 
 	dst->vb_ip.prefix = 32;
 	dst->vb_ip.scope_id = 0;
 
-	switch (src->type) {
+	switch (src_type) {
 	case FR_TYPE_IPV6_ADDR:
 		if (memcmp(src->vb_ip.addr.v6.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
 		bad_v6_prefix_map:
@@ -2419,13 +2440,16 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 						  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						  fr_value_box_t const *src)
 {
+	fr_type_t src_type = src->type;
 	fr_assert(dst_type == FR_TYPE_IPV4_PREFIX);
 
-	switch (src->type) {
+	switch (src_type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
 					     NULL, src->tainted);
+
+	CAST_IP_FIX_COMBO;
 
 	default:
 		break;
@@ -2438,7 +2462,7 @@ static inline int fr_value_box_cast_to_ipv4prefix(TALLOC_CTX *ctx, fr_value_box_
 	dst->vb_ip.af = AF_INET;
 	dst->vb_ip.scope_id = 0;
 
-	switch (src->type) {
+	switch (src_type) {
 	case FR_TYPE_IPV4_ADDR:
 		memcpy(&dst->vb_ip, &src->vb_ip, sizeof(dst->vb_ip));
 		break;
@@ -2528,15 +2552,19 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 						fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						fr_value_box_t const *src)
 {
+	fr_type_t src_type = src->type;
+
 	static_assert((sizeof(v4_v6_map) + sizeof(src->vb_ip.addr.v4)) <=
 		      sizeof(src->vb_ip.addr.v6), "IPv6 storage too small");
 	fr_assert(dst_type == FR_TYPE_IPV6_ADDR);
 
-	switch (src->type) {
+	switch (src_type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
 					     NULL, src->tainted);
+
+	CAST_IP_FIX_COMBO;
 
 	default:
 		break;
@@ -2549,7 +2577,7 @@ static inline int fr_value_box_cast_to_ipv6addr(TALLOC_CTX *ctx, fr_value_box_t 
 	dst->vb_ip.af = AF_INET6;
 	dst->vb_ip.prefix = 128;
 
-	switch (src->type) {
+	switch (src_type) {
 	case FR_TYPE_IPV4_ADDR:
 	{
 		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
@@ -2636,13 +2664,17 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 						  fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 						  fr_value_box_t const *src)
 {
+	fr_type_t src_type = src->type;
+
 	fr_assert(dst_type == FR_TYPE_IPV6_PREFIX);
 
-	switch (src->type) {
+	switch (src_type) {
 	case FR_TYPE_STRING:
 		return fr_value_box_from_str(ctx, dst, dst_type, dst_enumv,
 					     src->vb_strvalue, src->vb_length,
 					     NULL, src->tainted);
+
+	CAST_IP_FIX_COMBO;
 
 	default:
 		break;
@@ -2654,7 +2686,7 @@ static inline int fr_value_box_cast_to_ipv6prefix(TALLOC_CTX *ctx, fr_value_box_
 	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
 	dst->vb_ip.af = AF_INET6;
 
-	switch (src->type) {
+	switch (src_type) {
 	case FR_TYPE_IPV4_ADDR:
 	{
 		uint8_t *p = dst->vb_ip.addr.v6.s6_addr;
