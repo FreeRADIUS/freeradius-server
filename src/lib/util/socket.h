@@ -75,6 +75,7 @@ typedef struct {
 			char const *path;		//!< Unix socket path.
 		} unix;
 	};
+	int af;			//!< AF_INET, AF_INET6, or AF_UNIX
 	int proto;		//!< Protocol.
 
 	int fd;			//!< File descriptor if this is a live socket.
@@ -87,7 +88,7 @@ typedef struct {
  *	- true if it is.
  *	- false if it's not.
  */
-static inline bool fr_socket_is_inet(int proto)
+static inline bool fr_socket_proto_is_known(int proto)
 {
 	/*
 	 *	Check the protocol is sane
@@ -123,21 +124,10 @@ static inline void fr_socket_addr_swap(fr_socket_t *dst, fr_socket_t const *src)
 
 	if (dst != src) *dst = tmp;	/* copy non-address fields over */
 
-	switch (src->proto) {
-	case IPPROTO_UDP:
-	case IPPROTO_TCP:
-#ifdef IPPROTO_SCTP
-	case IPPROTO_SCTP:
-#endif
-		dst->inet.dst_ipaddr = tmp.inet.src_ipaddr;
-		dst->inet.dst_port = tmp.inet.src_port;
-		dst->inet.src_ipaddr = tmp.inet.dst_ipaddr;
-		dst->inet.src_port = tmp.inet.dst_port;
-		break;
-
-	default:
-		return;
-	}
+	dst->inet.dst_ipaddr = tmp.inet.src_ipaddr;
+	dst->inet.dst_port = tmp.inet.src_port;
+	dst->inet.src_ipaddr = tmp.inet.dst_ipaddr;
+	dst->inet.src_port = tmp.inet.dst_port;
 }
 
 /** Initialise a fr_socket_t for connecting to a remote host using a specific src interface, address and port
@@ -163,9 +153,10 @@ static inline fr_socket_t *fr_socket_addr_init_inet(fr_socket_t *addr,
 						    int ifindex, fr_ipaddr_t const *src_ipaddr, int src_port,
 						    fr_ipaddr_t const *dst_ipaddr, int dst_port)
 {
-	if (!fr_socket_is_inet(proto)) return NULL;
+	if (!fr_socket_proto_is_known(proto)) return NULL;
 
 	*addr = (fr_socket_t){
+		.af = src_ipaddr->af,
 		.proto = proto,
 		.inet = {
 			.ifindex = ifindex,
@@ -222,9 +213,10 @@ static inline fr_socket_t *fr_socket_addr_alloc_inet(TALLOC_CTX *ctx, int proto,
 static inline fr_socket_t *fr_socket_addr_init_inet_src(fr_socket_t *addr,
 							int proto, int ifindex, fr_ipaddr_t const *ipaddr, int port)
 {
-	if (!fr_socket_is_inet(proto)) return NULL;
+	if (!fr_socket_proto_is_known(proto)) return NULL;
 
 	*addr = (fr_socket_t){
+		.af = ipaddr->af,
 		.proto = proto,
 		.inet = {
 			.ifindex = ifindex,
@@ -267,9 +259,10 @@ static inline fr_socket_t *fr_socket_addr_alloc_inet_src(TALLOC_CTX *ctx, int pr
  */
 static inline fr_socket_t *fr_socket_addr_init_inet_dst(fr_socket_t *addr, int proto, fr_ipaddr_t const *ipaddr, int port)
 {
-	if (!fr_socket_is_inet(proto)) return NULL;
+	if (!fr_socket_proto_is_known(proto)) return NULL;
 
 	*addr = (fr_socket_t){
+		.af = ipaddr->af,
 		.proto = proto,
 		.inet = {
 			.dst_ipaddr = *ipaddr,
