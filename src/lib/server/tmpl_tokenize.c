@@ -2188,13 +2188,14 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	/*
 	 *	Local variables cannot be given a list modifier.
 	 */
-	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt) && tmpl_attr_tail_da(vpt)->flags.local) {
-		tmpl_attr_t *ar;
+	if (tmpl_is_attr(vpt) && tmpl_attr_tail_da(vpt)) {
+		tmpl_attr_t	*ar = tmpl_attr_list_head(tmpl_attr(vpt));
+		bool		is_local = ar->ar_da->flags.local;
 
-		for (ar = tmpl_attr_list_head(tmpl_attr(vpt));
-		     ar != NULL;
+		for (; ar != NULL;
 		     ar = tmpl_attr_list_next(tmpl_attr(vpt), ar)) {
-			if (ar->ar_da->flags.local) continue;
+			if (!ar->ar_da->flags.local ||
+			    (ar->ar_da->flags.local && is_local)) continue;
 
 			fr_strerror_printf("Local attributes cannot be used in any list");
 			if (err) *err = TMPL_ATTR_ERROR_FOREIGN_NOT_ALLOWED;
@@ -2205,19 +2206,20 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		/*
 		 *	That being said, local variables are named "foo", but are always put into the local list.
 		 */
-		MEM(ar = talloc(vpt, tmpl_attr_t));
-		*ar = (tmpl_attr_t){
-			.ar_type = TMPL_ATTR_TYPE_NORMAL,
-			.ar_da = request_attr_local,
-			.ar_parent = fr_dict_root(fr_dict_internal())
-		};
+		if (is_local) {
+			MEM(ar = talloc(vpt, tmpl_attr_t));
+			*ar = (tmpl_attr_t){
+				.ar_type = TMPL_ATTR_TYPE_NORMAL,
+				.ar_da = request_attr_local,
+				.ar_parent = fr_dict_root(fr_dict_internal())
+			};
 
-
-		/*
-		 *	Prepend the local list ref so it gets evaluated
-		 *	first.
-		 */
-		tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
+			/*
+			 *	Prepend the local list ref so it gets evaluated
+			 *	first.
+			 */
+			tmpl_attr_list_insert_head(tmpl_attr(vpt), ar);
+		}
 	}
 
 	/*
