@@ -1900,14 +1900,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	if ((hint != FR_TYPE_NULL) && !fr_type_is_leaf(hint)) return invalid_type(hint);
 
 	/*
-	 *	Any operation on NULL types is itself a NULL type.
-	 */
-	if ((a->type == FR_TYPE_NULL) || (b->type == FR_TYPE_NULL)) {
-		fr_value_box_init_null(dst);
-		return 0;
-	}
-
-	/*
 	 *	Casting to structural types should be a parse error,
 	 *	and not a run-time calculation error.
 	 */
@@ -1952,7 +1944,6 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 	default:
 		break;
 	}
-
 
 	fr_value_box_init_null(&one);
 	fr_value_box_init_null(&two);
