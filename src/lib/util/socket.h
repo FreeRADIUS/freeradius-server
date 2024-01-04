@@ -64,11 +64,11 @@ typedef struct {
 	union {
 		struct {
 			int		ifindex;	//!< Source interface to bind to or originate the packet from.
-			fr_ipaddr_t	src_ipaddr;	//!< IP address to bind to, or originate the packet from.
 			uint16_t	src_port;	//!< Port to bind to, or originate the packet from.
-
-			fr_ipaddr_t	dst_ipaddr;	//!< IP address to connect to, or send the packet to.
 			uint16_t	dst_port;	//!< Port to connect to or send the packet to.
+
+			fr_ipaddr_t	src_ipaddr;	//!< IP address to bind to, or originate the packet from.
+			fr_ipaddr_t	dst_ipaddr;	//!< IP address to connect to, or send the packet to.
 		} inet;
 
 		struct {
