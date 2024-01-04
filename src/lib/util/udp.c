@@ -32,7 +32,7 @@ RCSID("$Id$")
 
 /** Send a packet via a UDP socket.
  *
- * @param[in] socket		we're reading from.
+ * @param[in] sock		we're reading from.
  * @param[in] flags		to pass to send(), or sendto()
  * @param[in] data		to data to send
  * @param[in] data_len		length of data to send
@@ -40,28 +40,25 @@ RCSID("$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-int udp_send(fr_socket_t const *socket, int flags, void *data, size_t data_len)
+int udp_send(fr_socket_t const *sock, int flags, void *data, size_t data_len)
 {
 	int ret;
 
-	if (unlikely(socket->proto != IPPROTO_UDP)) {
-		fr_strerror_printf("Invalid proto type %u", socket->proto);
-		return -1;
-	}
+	fr_assert(sock->proto == IPPROTO_UDP);
 
 	if (flags & UDP_FLAGS_CONNECTED) {
-		ret = (send(socket->fd, data, data_len, 0) == (ssize_t)data_len) ? 0 : -1;
+		ret = (send(sock->fd, data, data_len, 0) == (ssize_t)data_len) ? 0 : -1;
 	} else {
 		struct sockaddr_storage	dst, src;
 		socklen_t		sizeof_dst, sizeof_src;
 
 		if (fr_ipaddr_to_sockaddr(&dst, &sizeof_dst,
-					  &socket->inet.dst_ipaddr, socket->inet.dst_port) < 0) return -1;
+					  &sock->inet.dst_ipaddr, sock->inet.dst_port) < 0) return -1;
 		if (fr_ipaddr_to_sockaddr(&src, &sizeof_src,
-					  &socket->inet.src_ipaddr, socket->inet.src_port) < 0) return -1;
+					  &sock->inet.src_ipaddr, sock->inet.src_port) < 0) return -1;
 
-		ret = sendfromto(socket->fd, data, data_len, 0,
-				 socket->inet.ifindex,
+		ret = sendfromto(sock->fd, data, data_len, 0,
+				 sock->inet.ifindex,
 				 (struct sockaddr *)&src, sizeof_src,
 				 (struct sockaddr *)&dst, sizeof_dst);
 	}

@@ -430,14 +430,14 @@ static void fr_network_suspend(fr_network_t *nr)
 		{ 0 }
 	};
 	fr_rb_iter_inorder_t	iter;
-	fr_network_socket_t		*socket;
+	fr_network_socket_t	*s;
 
 	if (nr->suspended) return;
 
-	for (socket = fr_rb_iter_init_inorder(&iter, nr->sockets);
-	     socket;
-	     socket = fr_rb_iter_next_inorder(&iter)) {
-		fr_event_filter_update(socket->nr->el, socket->listen->fd, FR_EVENT_FILTER_IO, pause_read);
+	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	     s != NULL;
+	     s = fr_rb_iter_next_inorder(&iter)) {
+		fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, pause_read);
 	}
 	nr->suspended = true;
 }
@@ -449,14 +449,14 @@ static void fr_network_unsuspend(fr_network_t *nr)
 		{ 0 }
 	};
 	fr_rb_iter_inorder_t	iter;
-	fr_network_socket_t		*socket;
+	fr_network_socket_t	*s;
 
 	if (!nr->suspended) return;
 
-	for (socket = fr_rb_iter_init_inorder(&iter, nr->sockets);
-	     socket;
-	     socket = fr_rb_iter_next_inorder(&iter)) {
-		fr_event_filter_update(socket->nr->el, socket->listen->fd, FR_EVENT_FILTER_IO, resume_read);
+	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	     s != NULL;
+	     s = fr_rb_iter_next_inorder(&iter)) {
+		fr_event_filter_update(s->nr->el, s->listen->fd, FR_EVENT_FILTER_IO, resume_read);
 	}
 	nr->suspended = false;
 }
@@ -2034,17 +2034,17 @@ static int cmd_socket_list(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_c
 {
 	fr_network_t const		*nr = ctx;
 	fr_rb_iter_inorder_t	iter;
-	fr_network_socket_t		*socket;
+	fr_network_socket_t		*s;
 
 	// @todo - note that this isn't thread-safe!
 
-	for (socket = fr_rb_iter_init_inorder(&iter, nr->sockets);
-	     socket;
-	     socket = fr_rb_iter_next_inorder(&iter)) {
-		if (!socket->listen->app_io->get_name) {
-			fprintf(fp, "%s\n", socket->listen->app_io->common.name);
+	for (s = fr_rb_iter_init_inorder(&iter, nr->sockets);
+	     s != NULL;
+	     s = fr_rb_iter_next_inorder(&iter)) {
+		if (!s->listen->app_io->get_name) {
+			fprintf(fp, "%s\n", s->listen->app_io->common.name);
 		} else {
-			fprintf(fp, "%d\t%s\n", socket->number, socket->listen->app_io->get_name(socket->listen));
+			fprintf(fp, "%d\t%s\n", s->number, s->listen->app_io->get_name(s->listen));
 		}
 	}
 	return 0;
