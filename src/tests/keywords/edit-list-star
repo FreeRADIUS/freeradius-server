@@ -1,21 +1,24 @@
 #
 #  PRE: edit-leaf-star
 #
-&Tmp-Group-0.NAS-Port := { 1, 3, 5, 7, 11 }
+group test_group1
+group test_group2
+
+&test_group1.NAS-Port := { 1, 3, 5, 7, 11 }
 &Port-Limit := 0
 
 #
 #  Do operations on sets of inputs.
 #
-&Port-Limit += &Tmp-Group-0.NAS-Port[*]
+&Port-Limit += &test_group1.NAS-Port[*]
 if (!(&Port-Limit == 27)) {
 	test_fail
 }
 
-&Tmp-Group-1 := &Tmp-Group-0
+&test_group2 := &test_group1
 &Port-Limit := 0
 
-&Port-Limit += &Tmp-Group-1.NAS-Port[*]
+&Port-Limit += &test_group2.NAS-Port[*]
 if (!(&Port-Limit == 27)) {
 	test_fail
 }

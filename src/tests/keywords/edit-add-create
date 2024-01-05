@@ -5,6 +5,7 @@ string test_string
 uint32 test_integer1
 uint32 test_integer2
 uint32 test_integer3
+group test_group
 
 &test_integer1 += 4
 if !(&test_integer1 == 4) {
@@ -17,15 +18,15 @@ if !(&test_string == "bar") {
 	test_fail
 }
 
-&Tmp-Group-0 += {
+&test_group += {
 	&Filter-Id = "foo"
 }
 
-if !&Tmp-Group-0 {
+if !&test_group {
 	test_fail
 }
 
-if !(&Tmp-Group-0.Filter-Id == "foo") {
+if !(&test_group.Filter-Id == "foo") {
 	test_fail
 }
 
