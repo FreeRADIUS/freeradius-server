@@ -1,6 +1,7 @@
 #
 #  Test static IP allocation using redis_ippool
 #
+uint64 zscore
 $INCLUDE cluster_reset.inc
 
 &control.IP-Pool.Name := 'test_tool_static'
@@ -8,12 +9,12 @@ $INCLUDE cluster_reset.inc
 #
 #  Add a dynamic IP addresses
 #
-&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+%exec(./build/bin/local/rlm_redis_ippool_tool, -a, 192.168.0.1/32, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
 
 #
 #  Add a static IP assigned to the calling station in the request
 #
-&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -A 192.168.0.10/32 -O aa:bb:cc:dd:ee:ff $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+%exec(./build/bin/local/rlm_redis_ippool_tool, -A, 192.168.0.10/32, -O, aa:bb:cc:dd:ee:ff, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
 
 #
 #  Check allocation
@@ -32,37 +33,37 @@ if !(&reply.Framed-IP-Address == 192.168.0.10) {
 #
 #  Fetch the ZSCORE now on the address
 #
-&Tmp-uint64-0 := %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address})
+&zscore := %redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address})
 
 #
 #  Attempt to re-assign static lease
 #
-&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -A 192.168.0.10/32 -O aa:bb:cc:dd:ee:ff $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+%exec(./build/bin/local/rlm_redis_ippool_tool, -A, 192.168.0.10/32, -O, aa:bb:cc:dd:ee:ff, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
 
 #
 #  Check the ZSCORE hasn't changed
 #
-if !(%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) == %{Tmp-uint64-0}) {
+if !(%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool %{reply.Framed-IP-Address}) == %{zscore}) {
 	test_fail
 }
 
 #
 #  Remove the static assignment - leaves the lease with its remaining time to expire
 #
-&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -U 192.168.0.10/32 -O aa:bb:cc:dd:ee:ff $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name}`
+%exec(./build/bin/local/rlm_redis_ippool_tool, -U, 192.168.0.10/32, -O, aa:bb:cc:dd:ee:ff, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name})
 
 #
 #  Attempt to assign the address to another device - should fail
 #
-&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -A 192.168.0.10/32 -O aa:bb:cc:dd:ee:00 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+%exec(./build/bin/local/rlm_redis_ippool_tool, -A, 192.168.0.10/32, -O, aa:bb:cc:dd:ee:00, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
 
 #
 #  Check the original device is still assigned to the address
 #
-if !(%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.10 'device') == 'aa:bb:cc:dd:ee:ff') {
+if !(%redis(HGET, {%{control.IP-Pool.Name}}:ip:192.168.0.10, 'device') == 'aa:bb:cc:dd:ee:ff') {
 	test_fail
 }
-if !(%(redis:GET {%{control.IP-Pool.Name}}:device:aa:bb:cc:dd:ee:ff) == '192.168.0.10') {
+if !(%redis(GET, {%{control.IP-Pool.Name}}:device:aa:bb:cc:dd:ee:ff) == '192.168.0.10') {
 	test_fail
 }
 
@@ -85,39 +86,39 @@ if !(&reply.Framed-IP-Address == 192.168.0.1) {
 #
 #  Attempt to statically assign this to another device
 #
-&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -A 192.168.0.1/32 -O aa:bb:cc:dd:ee:00 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+%exec(./build/bin/local/rlm_redis_ippool_tool, -A, 192.168.0.1/32, -O, aa:bb:cc:dd:ee:00, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
 
 #
 #  Check the original device is still assigned to the address and the lease is dynamic
 #
-if !(%(redis:HGET {%{control.IP-Pool.Name}}:ip:192.168.0.1 'device') == %{Calling-Station-Id}) {
+if !(%redis(HGET, {%{control.IP-Pool.Name}}:ip:192.168.0.1, 'device') == %{Calling-Station-Id}) {
 	test_fail
 }
-if !(%(redis:GET {%{control.IP-Pool.Name}}:device:11:22:33:44:55:66) == '192.168.0.1') {
+if !(%redis(GET, {%{control.IP-Pool.Name}}:device:11:22:33:44:55:66) == '192.168.0.1') {
 	test_fail
 }
 
-&Tmp-uint64-1 := %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool 192.168.0.1)
-if !(&Tmp-uint64-1 < (uint64)0x10000000000000) {
+&zscore := %(redis:ZSCORE {%{control.IP-Pool.Name}}:pool 192.168.0.1)
+if !(&zscore < (uint64)0x10000000000000) {
 	test_fail
 }
 
 #
 #  Now assign it as a static lease for the current device
 #
-&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -A 192.168.0.1/32 -O %{Calling-Station-Id} $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+%exec(./build/bin/local/rlm_redis_ippool_tool, -A, 192.168.0.1/32, -O, %{Calling-Station-Id}, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
 
 #
 #  Check that the ZSCORE is maintained, simply with the static bit set
 #
-if !(%(redis:ZSCORE {%{control.IP-Pool.Name}}:pool 192.168.0.1) == (&Tmp-uint64-1 + %(cast:uint64 0x10000000000000))) {
+if !(%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1) == (&zscore + %(cast:uint64 0x10000000000000))) {
 	test_fail
 }
 
 #
 #  And that the expiry is now removed on the device
 #
-if ("%(redis:TTL {%{control.IP-Pool.Name}}:device:%{Calling-Station-Id})" != '-1') {
+if (%redis(TTL, {%{control.IP-Pool.Name}}:device:%{Calling-Station-Id}) != '-1') {
 	test_fail
 }
 

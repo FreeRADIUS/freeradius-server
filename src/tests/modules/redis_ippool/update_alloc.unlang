@@ -8,7 +8,7 @@ $INCLUDE cluster_reset.inc
 #
 #  Add IP addresses
 #
-&Tmp-String-0 := `./build/bin/local/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control.IP-Pool.Name} 192.168.0.0`
+%exec(./build/bin/local/rlm_redis_ippool_tool, -a, 192.168.0.1/32, $ENV{REDIS_IPPOOL_TEST_SERVER}:30001, %{control.IP-Pool.Name}, 192.168.0.0)
 
 # 1. Check allocation
 redis_ippool
@@ -30,7 +30,7 @@ if !(&reply.Session-Timeout == 60) {
 }
 
 # 4. Verify the gateway was set
-if !("%(redis:HGET {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address} gateway)" == '127.0.0.1') {
+if !(%redis(HGET, {%{control.IP-Pool.Name}}:ip:%{reply.Framed-IP-Address}, gateway) == '127.0.0.1') {
 	test_fail
 }
 
