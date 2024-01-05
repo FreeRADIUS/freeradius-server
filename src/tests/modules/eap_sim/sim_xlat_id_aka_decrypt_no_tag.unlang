@@ -15,7 +15,7 @@ if (%aka_sim_id_type(%{User-Name}) != 'permanent') {
 #
 #  1.2 - Get the original IMSI back again sans tag
 #
-&control.Tmp-String-1 := "%(3gpp_temporary_id_decrypt:%{control.User-Name} %{control.Tmp-String-0} false)"
+&control.Tmp-String-1 := %3gpp_temporary_id_decrypt(%{control.User-Name}, %{control.Tmp-String-0}, 'false')
 
 if ("%{User-Name}" =~ /^0(.*)/) {
 	if (!&control.Tmp-String-1 || (&control.Tmp-String-1 == '') || (%{control.Tmp-String-1} != "%{1}")) {
