@@ -1,78 +1,77 @@
+ipaddr result_ipaddr
+string result_string
+
 #  Use builtin "local" zone
-&Tmp-IP-Address-0 := %dns('localhost','A')
+&result_ipaddr := %dns('localhost', 'A')
 
-if (&Tmp-IP-Address-0 != 127.0.0.1) {
+if (&result_ipaddr != 127.0.0.1) {
 	test_fail
 }
 
-&Tmp-String-0 := %dns('localhost', 'AAAA')
+&result_string := %dns('localhost', 'AAAA')
 
-if (&Tmp-String-0 != "::1") {
+if (&result_string != '::1') {
 	test_fail
 }
 
-&Tmp-String-1 := %dns(1.0.0.127.in-addr.arpa, 'PTR')
+&result_string := %dns('1.0.0.127.in-addr.arpa', 'PTR')
 
-if (&Tmp-String-1 != "localhost") {
+if (&result_string != 'localhost') {
 	test_fail
 }
 
 #  Use local data in module config to allow for dotted names
-&Tmp-IP-Address-0 := %dns('www.example.com', 'A')
+&result_ipaddr := %dns('www.example.com', 'A')
 
-if (&Tmp-IP-Address-0 != 192.168.1.1) {
+if (&result_ipaddr != 192.168.1.1) {
 	test_fail
 }
 
-&Tmp-String-0 := %dns(1.1.168.192.in-addr.arpa,PTR)
+&result_string := %dns('1.1.168.192.in-addr.arpa',PTR)
 
-if (&Tmp-String-0 != "www.example.com") {
+if (&result_string != 'www.example.com') {
 	test_fail
 }
 
 # Try a real, known, network response
 # Temporarily disabled while there is a bug in unbound
-#&Tmp-String-0 := %dns('8.8.8.8.in-addr.arpa', 'PTR')
+#&result_string := %dns('8.8.8.8.in-addr.arpa', 'PTR')
 
-#if (&Tmp-String-0 != "dns.google") {
+#if (&result_string != 'dns.google') {
 #	test_fail
 #}
 
 # Invalid query
-&Tmp-String-0 := %dns('www.example.com', 'ABC')
+&result_string := %dns('www.example.com', 'ABC')
 
 if (&Module-Failure-Message != "Invalid / unsupported DNS query type") {
 	test_fail
 }
 
-&Tmp-String-0 := ""
-&Tmp-String-1 := %dns(%{Tmp-String-0}, 'A')
+&result_string := ''
+&result_string := %dns(%{result_string}, 'A')
 
 if (&Module-Failure-Message != "Can't resolve zero length host") {
 	test_fail
 }
 
-#
-#  Mash all of the results into a string
-#
-&Tmp-String-1 := "%dns('example.com', 'MX')"
+# Will return multiple records, though not in a defined sequence.
+# Each returned record is a pair of priority and host values.
+&Filter-Id := %dns(example.com,MX)
 
-# Until we can handle multiple boxes in xlat expansion, the results
-# are concatenated into a single string
-# DNS results are not in a specified order
-if ((&Tmp-String-1 != '10mail.example.com20mail2.example.com') && (&Tmp-String-1 != '20mail2.example.com10mail.example.com')) {
+if !(((&Filter-Id[0] == '10') && (&Filter-Id[1] == 'mail.example.com') && (&Filter-Id[2] == '20') && (&Filter-Id[3] == 'mail2.example.com')) || ((&Filter-Id[2] == '10') && (&Filter-Id[3] == 'mail.example.com') && (&Filter-Id[0] == '20') && (&Filter-Id[1] == 'mail2.example.com'))) {
 	test_fail
 }
 
 # Just return a single record
 # As results are not in a specified order, it could be either.
-&Tmp-String-1 := "%dns(example.com,MX,1)"
+&Filter-Id := %dns(example.com,MX,1)
 
-if ((&Tmp-String-1 != '10mail.example.com') && (&Tmp-String-1 != '20mail2.example.com')) {
+if !(((&Filter-Id[0] == '10') && (&Filter-Id[1] == 'mail.example.com')) || ((&Filter-Id[0] == '20') && (&Filter-Id[1] == 'mail2.example.com'))) {
 	test_fail
 }
 
-&Tmp-String-1 := %dns('n0nex1stent.d0ma1n', 'A')
+&result_string := %dns('n0nex1stent.d0ma1n', 'A')
 
 # Running this on macOS produces a timeout due to the nonexistent TLD
 if ((&Module-Failure-Message != "dns - Nonexistent domain name") && (&Module-Failure-Message != "Timeout waiting for DNS resolution")) {
