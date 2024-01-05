@@ -399,9 +399,9 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 				if (fr_aka_sim_crypto_finalise_checkcode(vp, &checkcode, mod_session->checkcode_state) < 0) {
 					RPWDEBUG("Failed calculating checkcode");
 					pair_delete_control(vp);
+				} else {
+					fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
 				}
-				fr_pair_value_memdup_buffer_shallow(vp, checkcode, false);	/* Buffer already in the correct ctx */
-
 			}
 			FALL_THROUGH;
 
