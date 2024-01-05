@@ -1,12 +1,12 @@
 #
 #  PRE:
 #
-&Tmp-String-0 := 'testkey1'
+&Filter-Id := 'testkey1'
 
 #
 # 0.  Basic store and retrieve
 #
-&control.Tmp-String-1 := 'cache me'
+&control.Callback-Id := 'cache me'
 
 cache.store
 if (!updated) {
@@ -14,7 +14,7 @@ if (!updated) {
 }
 
 # 1. Check the module didn't perform a merge
-if (&Tmp-String-1) {
+if (&Callback-Id) {
 	test_fail
 }
 
@@ -31,12 +31,12 @@ if (!updated) {
 }
 
 # 4.
-if (&Tmp-String-1 != &control.Tmp-String-1) {
+if (&Callback-Id != &control.Callback-Id) {
 	test_fail
 }
 
 # 5. Retrieving the entry should not expire it
-&request -= &Tmp-String-1[*]
+&request -= &Callback-Id[*]
 
 cache.load
 if (!updated) {
@@ -44,7 +44,7 @@ if (!updated) {
 }
 
 # 6.
-if (&Tmp-String-1 != &control.Tmp-String-1) {
+if (&Callback-Id != &control.Callback-Id) {
 	test_fail
 }
 
@@ -80,11 +80,11 @@ if (&Cache-TTL) {
 }
 
 # 14.
-if (&Tmp-String-1 != &control.Tmp-String-1) {
+if (&Callback-Id != &control.Callback-Id) {
 	test_fail
 }
 
-&control.Tmp-String-1 := 'cache me2'
+&control.Callback-Id := 'cache me2'
 
 # 18. Updating the Cache-TTL shouldn't make things go boom (we can't really check if it works)
 &control.Cache-TTL := 666
@@ -94,8 +94,8 @@ if (!updated) {
 	test_fail
 }
 
-# 19. Request Tmp-String-1 shouldn't have been updated yet
-if (&Tmp-String-1 == &control.Tmp-String-1) {
+# 19. Request Callback-Id shouldn't have been updated yet
+if (&Callback-Id == &control.Callback-Id) {
 	test_fail
 }
 
@@ -107,8 +107,8 @@ if (!updated) {
 	test_fail
 }
 
-# 21. Request Tmp-String-1 still shouldn't have been updated yet
-if (&Tmp-String-1 == &control.Tmp-String-1) {
+# 21. Request Callback-Id still shouldn't have been updated yet
+if (&Callback-Id == &control.Callback-Id) {
 	test_fail
 }
 
@@ -118,13 +118,13 @@ if (!updated) {
 	test_fail
 }
 
-# 23. Request Tmp-String-1 should now have been updated
-if (&Tmp-String-1 != &control.Tmp-String-1) {
+# 23. Request Callback-Id should now have been updated
+if (&Callback-Id != &control.Callback-Id) {
 	test_fail
 }
 
 # 24. Check Cache-Merge = yes works as expected (should update current request)
-&control.Tmp-String-1 := 'cache me3'
+&control.Callback-Id := 'cache me3'
 &control.Cache-TTL := -2
 &control.Cache-Merge-New := yes
 
@@ -133,8 +133,8 @@ if (!updated) {
 	test_fail
 }
 
-# 25. Request Tmp-String-1 should now have been updated
-if (&Tmp-String-1 != &control.Tmp-String-1) {
+# 25. Request Callback-Id should now have been updated
+if (&Callback-Id != &control.Callback-Id) {
 	test_fail
 }
 
