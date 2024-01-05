@@ -1,5 +1,5 @@
 # Verify parsing works correctly with an unquoted xlat
-map json %(test.passthrough:"{ \"foo\":\"bar\" }" {}) {
+map json %test.passthrough("{ \"foo\":\"bar\" }",{}) {
 	&Tmp-String-0 := '$.foo'
 }
 

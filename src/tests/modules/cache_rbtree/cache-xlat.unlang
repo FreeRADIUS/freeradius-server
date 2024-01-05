@@ -9,14 +9,13 @@ if (!ok) {
         test_fail
 }
 
-&request.Tmp-String-2 := "%(cache:request.Tmp-String-1)"
+&request.Tmp-String-2 := %cache(request.Tmp-String-1)
 
 if (&Tmp-String-2 != &control.Tmp-String-1) {
         test_fail
 }
 
-&Tmp-String-3 := "%(cache:request.Tmp-String-4)"
-
+&Tmp-String-3 := "%cache(request.Tmp-String-4)"
 if (&Tmp-String-3 != "") {
         test_fail
 }
@@ -24,9 +23,9 @@ if (&Tmp-String-3 != "") {
 # Regression test for deadlock on notfound
 &Tmp-String-0 := 'testkey0'
 
-&Tmp-String-3 := "%(cache:request.Tmp-String-4)"
+&Tmp-String-3 := %cache(request.Tmp-String-4)
 
 # Would previously deadlock
-&Tmp-String-4 := "%(cache:request.Tmp-String-4)"
+&Tmp-String-4 := %cache(request.Tmp-String-4)
 
 test_pass
