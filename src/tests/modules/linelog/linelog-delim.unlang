@@ -1,3 +1,5 @@
+string test_string
+
 &control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 
 #
@@ -6,9 +8,9 @@
 %file.rm("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
 linelog_fmt_delim
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
-if (&Tmp-String-0 == 'bob, ') {
+if (&test_string == 'bob, ') {
 	test_pass
 }
 else {
@@ -17,9 +19,9 @@ else {
 
 #  Check strings are appended
 linelog_fmt_delim
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_delim.log")
 
-if (&Tmp-String-0 == 'bob, bob, ') {
+if (&test_string == 'bob, bob, ') {
 	test_pass
 }
 else {

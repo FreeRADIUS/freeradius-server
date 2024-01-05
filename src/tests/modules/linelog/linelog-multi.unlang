@@ -1,3 +1,5 @@
+string test_string
+
 &control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 
 #
@@ -6,7 +8,7 @@
 %file.rm("$ENV{MODULE_TEST_DIR}/test_multi.log")
 
 #  Check multiple string type attributes are logged correctly
-&control.Tmp-String-0 := 'test_multi_str'
+&control.Filter-Id := 'test_multi_str'
 
 &control += {
 	&Reply-Message = '0'
@@ -23,45 +25,38 @@
 }
 
 linelog_ref_multi
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_multi.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_multi.log")
 
-if (&Tmp-String-0 == '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ') {
-	test_pass
-}
-else {
+if !(&test_string == '0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ') {
 	test_fail
 }
 
 # Check octet type attributes are logged in raw form
 &control += {
-	&Tmp-Octets-0 = 0x686970706f	# Hippo
-	&Tmp-Octets-0 = 0x0a		# new line
-	&Tmp-Octets-0 = 0x626c6970706f	# Blippo
+	&Class = 0x686970706f	# Hippo
+	&Class = 0x0a		# new line
+	&Class = 0x626c6970706f	# Blippo
 }
 
-&control.Tmp-String-0 := 'test_multi_octets'
+&control.Filter-Id := 'test_multi_octets'
 
 linelog_ref_multi
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_multi.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_multi.log")
 
-if (&Tmp-String-0 == ', blippo, ') {
-	test_pass
-}
-else {
+if !(&test_string == ', blippo, ') {
 	test_fail
 }
 
 #  When no attributes that match are available, linelog should return noop
-&control.Tmp-String-0 := 'test_empty'
+&control.Filter-Id := 'test_empty'
 
 linelog_ref_multi
-if (noop) {
-	test_pass
-}
-else {
+if !(noop) {
 	test_fail
 }
 
 #  Remove the file
 %file.rm("$ENV{MODULE_TEST_DIR}/test_multi.log")
+
+test_pass

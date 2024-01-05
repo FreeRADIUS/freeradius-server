@@ -1,3 +1,6 @@
+string test_string
+uint32 test_integer
+
 &control.Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 
 #
@@ -6,95 +9,74 @@
 %file.rm("$ENV{MODULE_TEST_DIR}/test_a.log")
 
 #  Check linelog fails over to the default message (an xlat expansion)
-&control.Tmp-String-0 := 'test_default'
+&control.Filter-Id := 'test_default'
 
 linelog_fmt_and_ref
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
-if (&Tmp-String-0 == 'bob default') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob default') {
 	test_fail
 }
 
 #  Check linelog adds a newline at the end of each message (also tests if execs pointed to by refs work)
-&control.Tmp-String-0 := 'test_exec'
+&control.Filter-Id := 'test_exec'
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
-if (&Tmp-String-0 == 'bob exec') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob exec') {
 	test_fail
 }
 
 #  Check it's not overwriting the same line repeatedly
-&Tmp-String-0 := %file.head("$ENV{MODULE_TEST_DIR}/test_a.log");
+&test_string := %file.head("$ENV{MODULE_TEST_DIR}/test_a.log");
 
-if (&Tmp-String-0 == 'bob default') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob default') {
 	test_fail
 }
 
 #  Check linelog can use attrs pointed to by refs
-&control.Tmp-String-0 := 'test_attr'
+&control.Filter-Id := 'test_attr'
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
-if (&Tmp-String-0 == 'bob') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob') {
 	test_fail
 }
 
 #  Check linelog can use xlats pointed to by refs
-&control.Tmp-String-0 := 'test_xlat'
+&control.Filter-Id := 'test_xlat'
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
-if (&Tmp-String-0 == 'bob xlat') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob xlat') {
 	test_fail
 }
 
 #  Check linelog can use literals pointed to by refs
-&control.Tmp-String-0 := 'test_literal'
+&control.Filter-Id := 'test_literal'
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
-if (&Tmp-String-0 == '%{User-Name} literal') {
-	test_pass
-}
-else {
+if !(&test_string == '%{User-Name} literal') {
 	test_fail
 }
 
 #  Check linelog can use empty conf pairs
-&control.Tmp-String-0 := 'test_empty'
+&control.Filter-Id := 'test_empty'
 
 linelog_fmt_and_ref
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_a.log")
 
-if (&Tmp-String-0 == '') {
-	test_pass
-}
-else {
+if !(&test_string == '') {
 	test_fail
 }
 
@@ -105,13 +87,10 @@ else {
 %file.rm("$ENV{MODULE_TEST_DIR}/test_b.log")
 
 #  Check behaviour when we don't have a default configured (should not create new file)
-&control.Tmp-String-0 := 'test_default'
+&control.Filter-Id := 'test_default'
 
 linelog_ref
-if (noop) {
-	test_pass
-}
-else {
+if !(noop) {
 	test_fail
 }
 
@@ -123,16 +102,13 @@ else {
 }
 ok
 
-&control.Tmp-String-0 := 'test_exec'
+&control.Filter-Id := 'test_exec'
 
 linelog_ref
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_b.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_b.log")
 
-if (&Tmp-String-0 == 'bob exec') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob exec') {
 	test_fail
 }
 
@@ -143,76 +119,58 @@ else {
 %file.rm("$ENV{MODULE_TEST_DIR}/test_c.log")
 
 #  Check behaviour using an attribute ref as a path
-&control.Tmp-String-0 := '.messages.test_xlat'
+&control.Filter-Id := '.messages.test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
 
-if (&Tmp-String-0 == 'bob xlat') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob xlat') {
 	test_fail
 }
 
 #  Check behaviour using an attribute ref (non existent path, with default also an attribute ref)
-&control.Tmp-String-0 := 'test_xlat'
+&control.Filter-Id := 'test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
 
-if (&Tmp-String-0 == 'bob') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob') {
 	test_fail
 }
 
 #  Check '.' is always prefixed to the path
-&control.Tmp-String-0 := 'messages.test_xlat'
+&control.Filter-Id := 'messages.test_xlat'
 
 linelog_fmt_and_ref_attr
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
 
-if (&Tmp-String-0 == 'bob xlat') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob xlat') {
 	test_fail
 }
 
 #  Check '..' results in a 'fail' (can't go up one level)
-&control.Tmp-String-0 := '..messages.test_attr'
+&control.Filter-Id := '..messages.test_attr'
 
 linelog_fmt_and_ref_attr {
 	fail = 1
 }
-if (fail) {
-	test_pass
-}
-else {
+if !(fail) {
 	test_fail
 }
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_c.log")
 
-if (&Tmp-String-0 == 'bob xlat') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob xlat') {
 	test_fail
 }
 
 #  Check '.messages' results in a 'fail' (messages is a section)
-&control.Tmp-String-0 := '.messages'
+&control.Filter-Id := '.messages'
 
 linelog_fmt_and_ref_attr {
 	fail = 1
 }
-if (fail) {
-	test_pass
-}
-else {
+if !(fail) {
 	test_fail
 }
 
@@ -224,12 +182,9 @@ else {
 
 linelog_fmt
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_d.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_d.log")
 
-if (&Tmp-String-0 == 'bob') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob') {
 	test_fail
 }
 
@@ -240,45 +195,33 @@ else {
 %file.rm("$ENV{MODULE_TEST_DIR}/test_e.log")
 
 # Set attribute used in header line
-&control.Tmp-String-1 := "%t"
+&control.Callback-Id := "%t"
 
 linelog_header
 
-&Tmp-String-0 := %file.head("$ENV{MODULE_TEST_DIR}/test_e.log")
+&test_string := %file.head("$ENV{MODULE_TEST_DIR}/test_e.log")
 
-if (&Tmp-String-0 == "Log started %{control.Tmp-String-1}") {
-	test_pass
-}
-else {
+if !(&test_string == "Log started %{control.Callback-Id}") {
 	test_fail
 }
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_e.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_e.log")
 
-if (&Tmp-String-0 == 'bob,olobobob') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob,olobobob') {
 	test_fail
 }
 
 linelog_header
 
-&Tmp-String-0 := %file.tail("$ENV{MODULE_TEST_DIR}/test_e.log")
+&test_string := %file.tail("$ENV{MODULE_TEST_DIR}/test_e.log")
 
-if (&Tmp-String-0 == 'bob,olobobob') {
-	test_pass
-}
-else {
+if !(&test_string == 'bob,olobobob') {
 	test_fail
 }
 
-&Tmp-Integer-0 := %exec('/bin/sh', '-c', "wc -l < $ENV{MODULE_TEST_DIR}/test_e.log")
+&test_integer := %exec('/bin/sh', '-c', "wc -l < $ENV{MODULE_TEST_DIR}/test_e.log")
 
-if (&Tmp-Integer-0 == 3) {
-	test_pass
-}
-else {
+if !(&test_integer == 3) {
 	test_fail
 }
 
