@@ -1,58 +1,40 @@
 #
 #  Include from Redis cluster tests to get clusters back into a known state
 #
+string clusterctrl
+string redisserver
+string data1
+string data2
+string data3
 
 # Some values we need for startup
-&control += {
-	&Tmp-Integer-0 = 0
-	&Tmp-Integer-0 = 1
-	&Tmp-Integer-0 = 2
-	&Tmp-Integer-0 = 3
-	&Tmp-Integer-0 = 4
-	&Tmp-Integer-0 = 5
-	&Tmp-Integer-0 = 6
-	&Tmp-Integer-0 = 7
-	&Tmp-Integer-0 = 8
-	&Tmp-Integer-0 = 9
-	&Tmp-Integer-0 = 10
-	&Tmp-Integer-0 = 11
-	&Tmp-Integer-0 = 12
-	&Tmp-Integer-0 = 13
-	&Tmp-Integer-0 = 14
-	&Tmp-Integer-0 = 15
-	&Tmp-Integer-0 = 16
-	&Tmp-Integer-0 = 17
-	&Tmp-Integer-0 = 18
-	&Tmp-Integer-0 = 19
-	&Tmp-Integer-0 = 20
-	&Tmp-Integer-0 = 21
-}
+&control.Filter-Id := { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 }
 
-&control.Tmp-String-0 := "1-%randstr('aaaaaaaa')"
-&control.Tmp-String-1 := "2-%randstr('aaaaaaaa')"
-&control.Tmp-String-2 := "3-%randstr('aaaaaaaa')"
+&data1 := "1-%randstr('aaaaaaaa')"
+&data2 := "2-%randstr('aaaaaaaa')"
+&data3 := "3-%randstr('aaaaaaaa')"
 
 if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
-	&control.Tmp-String-8 := 'scripts/ci/redis-setup.sh'
+	&clusterctrl := 'scripts/ci/redis-setup.sh'
 } else {
-	&control.Tmp-String-8 := "$ENV{REDIS_CLUSTER_CONTROL}"
+	&clusterctrl := $ENV{REDIS_CLUSTER_CONTROL}
 }
 
 #
 #  Reset the cluster
 #
-&Tmp-String-0 := %exec(%{control.Tmp-String-8}, stop)
-&Tmp-String-0 := %exec(%{control.Tmp-String-8}, clean)
-&Tmp-String-0 := %exec(%{control.Tmp-String-8}, start)
-&Tmp-String-0 := %exec(%{control.Tmp-String-8}, create)
+%exec(%{clusterctrl}, stop)
+%exec(%{clusterctrl}, clean)
+%exec(%{clusterctrl}, start)
+%exec(%{clusterctrl}, create)
 
 #
 #  Determine when initial synchronisation has been completed
 #
-&Tmp-String-0 := $ENV{REDIS_TEST_SERVER}
+&redisserver := $ENV{REDIS_TEST_SERVER}
 
-if (!&Tmp-String-0 || (&Tmp-String-0 == '')) {
-	&Tmp-String-0 := "$ENV{REDIS_IPPOOL_TEST_SERVER}"
+if (!&redisserver || (&redisserver == '')) {
+	&redisserver := "$ENV{REDIS_IPPOOL_TEST_SERVER}"
 }
 
 #  Test nodes should be running on
@@ -62,23 +44,23 @@ if (!&Tmp-String-0 || (&Tmp-String-0 == '')) {
 #  - 127.0.0.1:30005 - slave
 #  - 127.0.0.1:30003 - master [10923-16383]
 #  - 127.0.0.1:30006 - slave
-foreach &control.Tmp-Integer-0 {
+foreach &control.Filter-Id {
 	#
 	#  Force a remap as the slaves don't show up in the cluster immediately
 	#
-	if ("%(redis.remap:%{Tmp-String-0}:30001)" == 'success') {
+	if (%redis.remap(%{redisserver}:30001) == 'success') {
 		#  Hashes to Redis cluster node master 0 (1)
-		if (("%(redis:SET b "%{control.Tmp-String-0}")" == 'OK') && \
-		    ("%(redis:SET c "%{control.Tmp-String-1}")" == 'OK') && \
-		    ("%(redis:SET d "%{control.Tmp-String-2}")" == 'OK')) {
+		if ((%redis(SET, b, %{data1}) == 'OK') && \
+		    (%redis(SET, c, %{data2}) == 'OK') && \
+		    (%redis(SET, d, %{data3}) == 'OK')) {
 			#
 			#  The actual node to keyslot mapping seems to be somewhat random
 			#  so we now need to figure out which slave each of those keys
 			#  ended up on.
 			#
-			if (("%(redis:-@%(redis.node:b 1) GET b)" == "%{control.Tmp-String-0}") && \
-			    ("%(redis:-@%(redis.node:c 1) GET c)" == "%{control.Tmp-String-1}") && \
-			    ("%(redis:-@%(redis.node:d 1) GET d)" == "%{control.Tmp-String-2}")) {
+			if ((%redis(-@%(redis.node:b 1), GET, b) == %{data1}) && \
+			    (%redis(-@%(redis.node:c 1), GET, c) == %{data2}) && \
+			    (%redis(-@%(redis.node:d 1), GET, d) == %{data3})) {
 				break
 			}
 		}
@@ -96,7 +78,7 @@ foreach &control.Tmp-Integer-0 {
 	#  If the cluster is still not behaving
 	#  abandon the test to avoid false negatives
 	#
-	if ("%{Foreach-Variable-0}" == 20) {
+	if (%{Foreach-Variable-0} == 20) {
 		test_fail
 		return
 	}
