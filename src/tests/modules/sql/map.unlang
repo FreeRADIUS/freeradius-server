@@ -1,26 +1,30 @@
 # Clear out any rows with priority 0 (each test should use a different
 # priority, so they don't interfere with each other).
+string sqlcmd
+string userfield
+string groupfield
+
 %sql("DELETE FROM radusergroup WHERE priority <= 1")
 
 # Module should return NOOP if there's no result set to work with
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1' {
-	&control.Tmp-String-0	:= 'username'
-	&control.Tmp-String-1	:= 'groupname'
-	&control.Tmp-Integer-0	:= 'priority'
+	&control.User-Name	:= 'username'
+	&control.Filter-Id	:= 'groupname'
+	&control.NAS-Port	:= 'priority'
 }
 if (!noop) {
 	test_fail
 }
 
-if (&control.Tmp-String-0) {
+if (&control.User-Name) {
 	test_fail
 }
 
-if (&control.Tmp-String-1) {
+if (&control.Filter-Id) {
 	test_fail
 }
 
-if (&control.Tmp-Integer-0) {
+if (&control.NAS-Port) {
 	test_fail
 }
 
@@ -29,95 +33,95 @@ if (&control.Tmp-Integer-0) {
 
 # Retrieve our test row
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
-	&control.Tmp-String-0	:= 'username'
-	&control.Tmp-String-1	:= 'groupname'
-	&control.Tmp-Integer-0	:= 'priority'
+	&control.User-Name	:= 'username'
+	&control.Filter-Id	:= 'groupname'
+	&control.NAS-Port	:= 'priority'
 }
 if (!updated) {
 	test_fail
 }
 
-if !(&control.Tmp-String-0 == 'bob') {
+if !(&control.User-Name == 'bob') {
 	test_fail
 }
 
-if !(&control.Tmp-String-1 == 'bar') {
+if !(&control.Filter-Id == 'bar') {
 	test_fail
 }
 
-if !(&control.Tmp-Integer-0 == 0) {
+if !(&control.NAS-Port == 0) {
 	test_fail
 }
 
 # Clear the control list
-&control -= &Tmp-String-0[*]
-&control -= &Tmp-String-1[*]
-&control -= &Tmp-Integer-0[*]
+&control -= &User-Name[*]
+&control -= &Filter-Id[*]
+&control -= &NAS-Port[*]
 
 # Insert our second test row
 %sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 1)")
 
 # Retrieve our test row(s) - With := we should get the values from the second row
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
-	&control.Tmp-String-0	:= 'username'
-	&control.Tmp-String-1	:= 'groupname'
-	&control.Tmp-Integer-0	:= 'priority'
+	&control.User-Name	:= 'username'
+	&control.Filter-Id	:= 'groupname'
+	&control.NAS-Port	:= 'priority'
 }
 
 if (!updated) {
 	test_fail
 }
 
-if !(&control.Tmp-String-0 == 'oof') {
+if !(&control.User-Name == 'oof') {
 	test_fail
 }
 
-if !(&control.Tmp-String-1 == 'rab') {
+if !(&control.Filter-Id == 'rab') {
 	test_fail
 }
 
-if !(&control.Tmp-Integer-0 == 1) {
+if !(&control.NAS-Port == 1) {
 	test_fail
 }
 
 # Clear the control list
-&control -= &Tmp-String-0[*]
-&control -= &Tmp-String-1[*]
-&control -= &Tmp-Integer-0[*]
+&control -= &User-Name[*]
+&control -= &Filter-Id[*]
+&control -= &NAS-Port[*]
 
 # Retrieve our test row(s) - With = we should get the values from the first row
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
-	&control.Tmp-String-0	= 'username'
-	&control.Tmp-String-1	= 'groupname'
-	&control.Tmp-Integer-0	= 'priority'
+	&control.User-Name	= 'username'
+	&control.Filter-Id	= 'groupname'
+	&control.NAS-Port	= 'priority'
 }
 
 if (!updated) {
 	test_fail
 }
 
-if !(&control.Tmp-String-0 == 'bob') {
+if !(&control.User-Name == 'bob') {
 	test_fail
 }
 
-if !(&control.Tmp-String-1 == 'bar') {
+if !(&control.Filter-Id == 'bar') {
 	test_fail
 }
 
-if !(&control.Tmp-Integer-0 == 0) {
+if !(&control.NAS-Port == 0) {
 	test_fail
 }
 
 # Clear the control list
-&control -= &Tmp-String-0[*]
-&control -= &Tmp-String-1[*]
-&control -= &Tmp-Integer-0[*]
+&control -= &User-Name[*]
+&control -= &Filter-Id[*]
+&control -= &NAS-Port[*]
 
 # Retrieve our test row(s) - With ^= we should get the values from the second row then the first
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
-	&control.Tmp-String-0	^= 'username'
-	&control.Tmp-String-1	^= 'groupname'
-	&control.Tmp-Integer-0	^= 'priority'
+	&control.User-Name	^= 'username'
+	&control.Filter-Id	^= 'groupname'
+	&control.NAS-Port	^= 'priority'
 }
 
 if (!updated) {
@@ -126,57 +130,57 @@ if (!updated) {
 
 debug_control
 
-if ((&control.Tmp-String-0[0] != 'oof') || (&control.Tmp-String-0[1] != 'bob')) {
+if ((&control.User-Name[0] != 'oof') || (&control.User-Name[1] != 'bob')) {
 	test_fail
 }
 
-if ((&control.Tmp-String-1[0] != 'rab') || (&control.Tmp-String-1[1] != 'bar')) {
+if ((&control.Filter-Id[0] != 'rab') || (&control.Filter-Id[1] != 'bar')) {
 	test_fail
 }
 
-if ((&control.Tmp-Integer-0[0] != 1) || (&control.Tmp-Integer-0[1] != 0)) {
+if ((&control.NAS-Port[0] != 1) || (&control.NAS-Port[1] != 0)) {
 	test_fail
 }
 
 # Clear the control list
-&control -= &Tmp-String-0[*]
-&control -= &Tmp-String-1[*]
-&control -= &Tmp-Integer-0[*]
+&control -= &User-Name[*]
+&control -= &Filter-Id[*]
+&control -= &NAS-Port[*]
 
 # Retrieve our test row(s) - With += we should get the values from both rows
 map sql 'SELECT * FROM radusergroup WHERE priority <= 1 ORDER BY priority' {
-	&control.Tmp-String-0	+= 'username'
-	&control.Tmp-String-1	+= 'groupname'
-	&control.Tmp-Integer-0	+= 'priority'
+	&control.User-Name	+= 'username'
+	&control.Filter-Id	+= 'groupname'
+	&control.NAS-Port	+= 'priority'
 }
 
-if !("%{control.Tmp-String-0[#]}" == 2) {
+if !("%{control.User-Name[#]}" == 2) {
 	test_fail
 }
 
-if !("%{control.Tmp-String-1[#]}" == 2) {
+if !("%{control.Filter-Id[#]}" == 2) {
 	test_fail
 }
 
-if !("%{control.Tmp-Integer-0[#]}" == 2) {
+if !("%{control.NAS-Port[#]}" == 2) {
 	test_fail
 }
 
-if ((&control.Tmp-String-0[0] == 'bob') && (&control.Tmp-String-0[1] == 'oof')) {
+if ((&control.User-Name[0] == 'bob') && (&control.User-Name[1] == 'oof')) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ((&control.Tmp-String-1[0] == 'bar') && (&control.Tmp-String-1[1] == 'rab')) {
+if ((&control.Filter-Id[0] == 'bar') && (&control.Filter-Id[1] == 'rab')) {
 	test_pass
 }
 else {
 	test_fail
 }
 
-if ((&control.Tmp-Integer-0[0] == 0) && (&control.Tmp-Integer-0[1] == 1)) {
+if ((&control.NAS-Port[0] == 0) && (&control.NAS-Port[1] == 1)) {
 	test_pass
 }
 else {
@@ -184,14 +188,14 @@ else {
 }
 
 # Clear the control list
-&control -= &Tmp-String-0[*]
-&control -= &Tmp-String-1[*]
-&control -= &Tmp-Integer-0[*]
+&control -= &User-Name[*]
+&control -= &Filter-Id[*]
+&control -= &NAS-Port[*]
 
 # Retrieve the username column only (should result in noop because not in map)
 map sql 'SELECT username FROM radusergroup WHERE priority = 0' {
-	&control.Tmp-String-1	+= 'groupname'
-	&control.Tmp-Integer-0	+= 'priority'
+	&control.Filter-Id	+= 'groupname'
+	&control.NAS-Port	+= 'priority'
 }
 
 if (!noop) {
@@ -200,85 +204,85 @@ if (!noop) {
 
 # Retrieve test row with specific username (using xlat'd query)
 map sql "SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%{User-Name}'" {
-	&control.Tmp-String-0	= 'username'
-	&control.Tmp-String-1	= 'groupname'
-	&control.Tmp-Integer-0	= 'priority'
+	&control.User-Name	= 'username'
+	&control.Filter-Id	= 'groupname'
+	&control.NAS-Port	= 'priority'
 }
 
 if (!updated) {
 	test_fail
 }
 
-if !(&control.Tmp-String-0 == 'bob') {
+if !(&control.User-Name == 'bob') {
 	test_fail
 }
 
-if !(&control.Tmp-String-1 == 'bar') {
+if !(&control.Filter-Id == 'bar') {
 	test_fail
 }
 
-if !(&control.Tmp-Integer-0 == 0) {
+if !(&control.NAS-Port == 0) {
 	test_fail
 }
 
-&Tmp-String-0 := "SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%{User-Name}'"
+&sqlcmd := "SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%{User-Name}'"
 
 # Clear the control list
-&control -= &Tmp-String-0[*]
-&control -= &Tmp-String-1[*]
-&control -= &Tmp-Integer-0[*]
+&control -= &User-Name[*]
+&control -= &Filter-Id[*]
+&control -= &NAS-Port[*]
 
 # Retrieve test row with specific username (using ref'd query)
-map sql &Tmp-String-0 {
-	&control.Tmp-String-0	= 'username'
-	&control.Tmp-String-1	= 'groupname'
-	&control.Tmp-Integer-0	= 'priority'
+map sql &sqlcmd {
+	&control.User-Name	= 'username'
+	&control.Filter-Id	= 'groupname'
+	&control.NAS-Port	= 'priority'
 }
 
 if (!updated) {
 	test_fail
 }
 
-if !(&control.Tmp-String-0 == 'bob') {
+if !(&control.User-Name == 'bob') {
 	test_fail
 }
 
-if !(&control.Tmp-String-1 == 'bar') {
+if !(&control.Filter-Id == 'bar') {
 	test_fail
 }
 
-if !(&control.Tmp-Integer-0 == 0) {
+if !(&control.NAS-Port == 0) {
 	test_fail
 }
 
 # Clear the control list
-&control -= &Tmp-String-0[*]
-&control -= &Tmp-String-1[*]
-&control -= &Tmp-Integer-0[*]
+&control -= &User-Name[*]
+&control -= &Filter-Id[*]
+&control -= &NAS-Port[*]
 
-&Tmp-String-0 := 'username'
-&Tmp-String-1 := 'name'
+&userfield := 'username'
+&groupfield := 'name'
 
 # Retrieve our test row(s) - Using different RHS types
 map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
-	&control.Tmp-String-0	= &Tmp-String-0
-	&control.Tmp-String-1	= "group%{Tmp-String-1}"
-	&control.Tmp-Integer-0	= `/bin/echo priority`
+	&control.User-Name	= &userfield
+	&control.Filter-Id	= "group%{groupfield}"
+	&control.NAS-Port	= `/bin/echo priority`
 }
 
 if (!updated) {
 	test_fail
 }
 
-if !(&control.Tmp-String-0 == 'bob') {
+if !(&control.User-Name == 'bob') {
 	test_fail
 }
 
-if !(&control.Tmp-String-1 == 'bar') {
+if !(&control.Filter-Id == 'bar') {
 	test_fail
 }
 
-if !(&control.Tmp-Integer-0 == 0) {
+if !(&control.NAS-Port == 0) {
 	test_fail
 }
 

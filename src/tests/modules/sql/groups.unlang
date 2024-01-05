@@ -1,6 +1,7 @@
 #
 #  Clear out old data
 #
+string groupname
 
 %sql("DELETE FROM radgroupcheck WHERE groupname = 'groups_group_a'")
 %sql("DELETE FROM radgroupcheck WHERE groupname = 'groups_group_b'")
@@ -30,24 +31,15 @@
 #  Run SQL
 #
 sql
-if (updated) {
-	test_pass
-}
-else {
+if (!updated) {
 	test_fail
 }
 
-if (&control.Password.Cleartext == &User-Password) {
-	test_pass
-}
-else {
+if !(&control.Password.Cleartext == &User-Password) {
 	test_fail
 }
 
-if (&reply.Reply-Message == "Hello User B") {
-	test_pass
-}
-else {
+if !(&reply.Reply-Message == "Hello User B") {
 	test_fail
 }
 
@@ -74,9 +66,9 @@ if (%sql.group('groups_group_d') != false) {
 #
 #  Test paircmp group comparisons with dynamic expansions
 #
-&Tmp-String-0 := 'groups_group_b'
+&groupname := 'groups_group_b'
 
-if !(%sql.group(%{Tmp-String-0}) == yes) {
+if !(%sql.group(%{groupname}) == yes) {
 	test_fail
 }
 
