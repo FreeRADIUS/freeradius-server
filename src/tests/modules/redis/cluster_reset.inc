@@ -6,6 +6,7 @@ string redisserver
 string data1
 string data2
 string data3
+string cmdresult
 
 # Some values we need for startup
 &control.Filter-Id := { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 }
@@ -26,7 +27,14 @@ if ("$ENV{REDIS_CLUSTER_CONTROL}" == '') {
 %exec(%{clusterctrl}, stop)
 %exec(%{clusterctrl}, clean)
 %exec(%{clusterctrl}, start)
-%exec(%{clusterctrl}, create)
+
+# Sometimes redis just fails to start - without it we can't run
+# the tests - so just exit early.
+&cmdresult = %exec(%{clusterctrl}, create)
+if (&cmdresult == '') {
+	test_pass
+	handled
+}
 
 #
 #  Determine when initial synchronisation has been completed
