@@ -219,13 +219,10 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 
 		if ((fr_type_t) type->value == vp->vp_type) goto next_type;
 
-		switch (type->value) {
-		case FR_TYPE_NON_LEAF:	/* Skip everything that's not a value */
-			goto next_type;
-
-		default:
-			break;
-		}
+		/*
+		 *	Don't cast TO structural, or FROM structural types.
+		 */
+		if (!fr_type_is_leaf(type->value) || !fr_type_is_leaf(vp->vp_type)) goto next_type;
 
 		MEM(dst = fr_value_box_alloc_null(vp));
 		/* We expect some to fail */
