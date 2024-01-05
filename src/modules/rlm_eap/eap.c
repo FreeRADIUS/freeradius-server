@@ -803,7 +803,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	    ((eap_msg->vp_octets[4] == 0) ||
 	     (eap_msg->vp_octets[4] >= PW_EAP_MAX_TYPES) ||
 	     (!inst->methods[eap_msg->vp_octets[4]]))) {
-		RDEBUG2("Ignoring Unknown EAP type");
+		RDEBUG2("Ignoring Unknown EAP type %02x", eap_msg->vp_octets[4]);
 		return EAP_NOOP;
 	}
 
