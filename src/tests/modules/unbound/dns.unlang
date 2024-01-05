@@ -52,7 +52,10 @@ if (&Module-Failure-Message != "Can't resolve zero length host") {
 	test_fail
 }
 
-&Tmp-String-1 := %dns('example.com', 'MX')
+#
+#  Mash all of the results into a string
+#
+&Tmp-String-1 := "%dns('example.com', 'MX')"
 
 # Until we can handle multiple boxes in xlat expansion, the results
 # are concatenated into a single string
@@ -69,7 +72,7 @@ if ((&Tmp-String-1 != '10mail.example.com') && (&Tmp-String-1 != '20mail2.exampl
 	test_fail
 }
 
-&Tmp-String-1 := %dns(n0nex1stent.d0ma1n,A)
+&Tmp-String-1 := %dns('n0nex1stent.d0ma1n', 'A')
 
 # Running this on macOS produces a timeout due to the nonexistent TLD
 if ((&Module-Failure-Message != "dns - Nonexistent domain name") && (&Module-Failure-Message != "Timeout waiting for DNS resolution")) {
