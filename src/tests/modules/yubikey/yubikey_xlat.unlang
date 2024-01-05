@@ -1,20 +1,23 @@
-&Tmp-String-0 := "vvrbuctetdhc"
-&Tmp-String-1 := "%modhextohex(%{Tmp-String-0})"
+string test_string
+string result_string
 
-if (&Tmp-String-1 != "ffc1e0d3d260") {
+&test_string := 'vvrbuctetdhc'
+&result_string := %modhextohex(%{test_string})
+
+if (&result_string != 'ffc1e0d3d260') {
 	test_fail
 }
 
 #  Invalid modhex string - not even length
-&Tmp-String-0 := "vvrbuctetdh"
+&test_string := 'vvrbuctetdh'
 
-&Tmp-String-1 := "%modhextohex(%{Tmp-String-0})"
+&result_string := %modhextohex(%{test_string})
 
 if (ok) {
 	test_fail
 }
 
-if (&Tmp-String-1 != "") {
+if (&result_string) {
 	test_fail
 }
 
@@ -23,15 +26,15 @@ if (&Module-Failure-Message != "Modhex string invalid") {
 }
 
 #  Invalid modhex string - invalid characters
-&Tmp-String-0 := "vxrbmctetdhc"
+&test_string := 'vxrbmctetdhc'
 
-&Tmp-String-1 := "%modhextohex(%{Tmp-String-0})"
+&result_string := %modhextohex(%{test_string})
 
 if (ok) {
 	test_fail
 }
 
-if (&Tmp-String-1 != "") {
+if (&result_string) {
 	test_fail
 }
 
