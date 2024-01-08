@@ -1,3 +1,5 @@
+string test_string
+
 #
 #  Run the "ldapssl" module - an instance of ldap using an ssl connection
 #  PRE: acct
@@ -26,9 +28,9 @@ ldapssl.authenticate
 
 ldapssl.send
 
-&Tmp-String-0 := %ldapssl("ldaps:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description")
+&test_string := %ldapssl("ldaps:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description")
 
-if (!(&Tmp-String-0 == "User %{User-Name} authenticated")) {
+if (!(&test_string == "User %{User-Name} authenticated")) {
 	test_fail
 }
 

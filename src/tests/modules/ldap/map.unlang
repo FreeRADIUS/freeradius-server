@@ -1,27 +1,27 @@
 map ldap "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)" {
-	&Tmp-String-0 := 'radiusFramedIPNetmask'
-	&Tmp-String-1 += 'entryDN'
+	&Framed-IP-Netmask := 'radiusFramedIPNetmask'
+	&Filter-Id += 'entryDN'
 }
 
 if (!updated) {
 	test_fail
 }
 
-if (!(&Tmp-String-0 == '255.255.255.0')) {
+if (!(&Framed-IP-Netmask == '255.255.255.0')) {
 	test_fail
 }
 
-if (!(&Tmp-String-1[*] == 'cn=radprofile,ou=profiles,dc=example,dc=com')) {
+if (!(&Filter-Id[*] == 'cn=radprofile,ou=profiles,dc=example,dc=com')) {
 	test_fail
 }
 
-if (!(&Tmp-String-1[*] == 'cn=profile1,ou=profiles,dc=example,dc=com')) {
+if (!(&Filter-Id[*] == 'cn=profile1,ou=profiles,dc=example,dc=com')) {
 	test_fail
 }
 
 map ldap "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=notARealObject)" {
-	&Tmp-String-0 := 'radiusFramedIPNetmask'
-	&Tmp-String-1 += 'entryDN'
+	&Framed-IP-Netmask := 'radiusFramedIPNetmask'
+	&Filter-Id += 'entryDN'
 }
 
 if (!notfound) {
@@ -29,14 +29,14 @@ if (!notfound) {
 }
 
 map ldapldapi "ldapi://%%2Ftmp%%2Fldap%%2Fsocket/ou=people,dc=example,dc=com??sub?(uid=John)" {
-	&Tmp-String-2 := 'displayName'
+	&Filter-Id := 'displayName'
 }
 
 if (!updated) {
 	test_fail
 }
 
-if !(&Tmp-String-2 == 'John Doe') {
+if !(&Filter-Id == 'John Doe') {
 	test_fail
 }
 

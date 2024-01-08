@@ -1,3 +1,4 @@
+string test_string
 #
 #  Run the "ldap" module
 #  PRE: auth
@@ -8,9 +9,9 @@ if (!ok) {
         test_fail
 }
 
-&Tmp-String-0 := %ldap("ldap://$ENV{TEST_SERVER}/uid=bob,ou=people,dc=example,dc=com?description")
+&test_string := %ldap("ldap://$ENV{TEST_SERVER}/uid=bob,ou=people,dc=example,dc=com?description")
 
-if (&Tmp-String-0 != "User bob is online") {
+if (&test_string != "User bob is online") {
         test_fail
 }
 
