@@ -1,64 +1,51 @@
-&Tmp-String-0 := "Hello world!"
-&Tmp-Octets-0 := %cipher_rsa.encrypt(%{Tmp-String-0})
+string test_string1
+string test_string2
+octets test_octets1
+octets test_octets2
 
-if (!&Tmp-Octets-0) {
+&test_string1 := "Hello world!"
+&test_octets1 := %cipher_rsa.encrypt(%{test_string1})
+
+if (!&test_octets1) {
 	test_fail
 }
-else {
-	test_pass
-}
 
-if ((octets)&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
+if ((octets)&test_string1 == &test_octets1) {
 	test_fail
 }
-else {
-	test_pass
-}
 
-&Tmp-String-1 := %cipher_rsa.decrypt(%{Tmp-Octets-0})
+&test_string2 := %cipher_rsa.decrypt(%{test_octets1})
 
-if (&Tmp-String-0 != &Tmp-String-1) {
+if (&test_string1 != &test_string2) {
 	test_fail
-}
-else {
-	test_pass
 }
 
 #
 #  Padding scheme should ensure ciphertext is not consistent
 #
-&Tmp-Octets-1 := %cipher_rsa.encrypt(%{Tmp-String-0})
+&test_octets2 := %cipher_rsa.encrypt(%{test_string1})
 
-if (&Tmp-Octets-0 == &Tmp-Octets-1) {
+if (&test_octets1 == &test_octets2) {
 	test_fail
-}
-else {
-	test_pass
 }
 
 #
 #  Repeat tests to ensure there are no issues with EVP_PKEY_CTX reuse
 #
-&Tmp-String-0 := "Goodbye world!"
-&Tmp-Octets-0 := %cipher_rsa.encrypt(%{Tmp-String-0})
+&test_string1 := "Goodbye world!"
+&test_octets1 := %cipher_rsa.encrypt(%{test_string1})
 
-if (!&Tmp-Octets-0) {
+if (!&test_octets1) {
 	test_fail
 }
-else {
-	test_pass
-}
 
-if ((octets)&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
+if ((octets)&test_string1 == &test_octets1) {
 	test_fail
 }
-else {
-	test_pass
-}
 
-&Tmp-String-1 := %cipher_rsa.decrypt(%{Tmp-Octets-0})
+&test_string2 := %cipher_rsa.decrypt(%{test_octets1})
 
-if (&Tmp-String-0 != &Tmp-String-1) {
+if (&test_string1 != &test_string2) {
 	test_fail
 }
 else {

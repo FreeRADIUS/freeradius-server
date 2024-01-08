@@ -1,63 +1,66 @@
-&Tmp-String-0 := "Hello world!"
-&Tmp-Octets-0 := %cipher_rsa.sign(%{Tmp-String-0})
+string test_string
+octets test_octets
 
-if (!&Tmp-Octets-0) {
+&test_string := "Hello world!"
+&test_octets := %cipher_rsa.sign(%{test_string})
+
+if (!&test_octets) {
 	test_fail
 }
 
-if ((octets)&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
+if ((octets)&test_string[0] == &test_octets[0]) {
 	test_fail
 }
 
 #
 #  Pass the signature and the original message to the verification function
 #
-&Tmp-String-0 := %cipher_rsa.verify(%{Tmp-Octets-0}, %{Tmp-String-0})
+&test_string := %cipher_rsa.verify(%{test_octets}, %{test_string})
 
-if (&Tmp-String-0 != 'yes') {
+if (&test_string != 'yes') {
 	test_fail
 }
 
 #
 #  Verification should now fail
 #
-&Tmp-String-0 := "Goodbye world!"
-&Tmp-String-0 := %cipher_rsa.verify(%{Tmp-Octets-0}, %{Tmp-String-0})
+&test_string := "Goodbye world!"
+&test_string := %cipher_rsa.verify(%{test_octets}, %{test_string})
 
-if (&Tmp-String-0 != 'no') {
+if (&test_string != 'no') {
 	test_fail
 }
 
 #
 #  Repeat tests to ensure there are no issues with EVP_PKEY_CTX reuse
 #
-&Tmp-String-0 := "Hello nurse!"
-&Tmp-Octets-0 := %cipher_rsa.sign(%{Tmp-String-0})
+&test_string := "Hello nurse!"
+&test_octets := %cipher_rsa.sign(%{test_string})
 
-if (!&Tmp-Octets-0) {
+if (!&test_octets) {
 	test_fail
 }
 
-if ((octets)&Tmp-String-0[0] == &Tmp-Octets-0[0]) {
+if ((octets)&test_string[0] == &test_octets[0]) {
 	test_fail
 }
 
 #
 #  Pass the signature and the original message to the verification function
 #
-&Tmp-String-0 := %cipher_rsa.verify(%{Tmp-Octets-0}, %{Tmp-String-0})
+&test_string := %cipher_rsa.verify(%{test_octets}, %{test_string})
 
-if (&Tmp-String-0 != 'yes') {
+if (&test_string != 'yes') {
 	test_fail
 }
 
 #
 #  Verification should now fail
 #
-&Tmp-String-0 := "Goodbye nurse!"
-&Tmp-String-0 := %cipher_rsa.verify(%{Tmp-Octets-0}, %{Tmp-String-0})
+&test_string := "Goodbye nurse!"
+&test_string := %cipher_rsa.verify(%{test_octets}, %{test_string})
 
-if (&Tmp-String-0 != 'no') {
+if (&test_string != 'no') {
 	test_fail
 }
 
