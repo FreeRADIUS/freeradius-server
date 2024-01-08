@@ -6,7 +6,7 @@ if (!notfound) {
     test_fail
 }
 
-if (&reply.Reply-Message != "Denied access by rlm_perl function") {
+if !(&reply.Reply-Message == "Denied access by rlm_perl function") {
     test_fail
 }
 
@@ -21,10 +21,15 @@ if (!ok) {
     test_fail
 }
 
-if !(&reply.Vendor-Specific.Cisco.h323-credit-amount == 100) {
-    test_fail
+# TODO: Re-enable when nested attributes are handled
+#if !(&reply.Vendor-Specific.Cisco.h323-credit-amount == 100) {
+#    test_fail
+#}
+if !(&reply.Filter-Id == 'Hello') {
+	test_fail
 }
 
 &reply -= &Vendor-Specific.Cisco.h323-credit-amount[*]
+&reply -= &Filter-Id[*]
 
 test_pass

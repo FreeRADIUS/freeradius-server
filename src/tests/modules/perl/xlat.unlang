@@ -1,75 +1,85 @@
+string test_string
+string result_string
+uint32 result_integer
+
 #
 #  PRE: update
 #
-#  TODO
-#  A number of these tests return multiple values - either arrays, or hashes.
-#  Currently xlats have all returned values concatenated into a single value box -
-#  once multiple returned boxes are handled to produce multiple attributes the tests
-#  will need amending.
 
-&Tmp-String-0 := "hello,goodbye,welcome,farewell"
-&Tmp-String-1 := "foo,bar"
-&Tmp-String-2 := "%(perl_xlat:xlat %{Tmp-String-0})"
+&Filter-Id := 'hello,goodbye,welcome,farewell'
+&test_string := 'foo,bar'
+&Callback-Id := %perl_xlat('xlat', %{Filter-Id})
 
-if (&Tmp-String-2 != "hello|goodbye|welcome|farewell") {
+if (&Callback-Id != 'hello|goodbye|welcome|farewell') {
 	test_fail
 }
 
 # Check for multiple arguments to perl function
-&Tmp-String-3 := "%(perl_xlat:xlat %{Tmp-String-0} %{Tmp-String-1})"
+&result_string := %perl_xlat('xlat', %{Filter-Id}, %{test_string})
 
-if (&Tmp-String-3 != "hello|goodbye|welcome|farewell#foo|bar") {
+if (&result_string != 'hello|goodbye|welcome|farewell#foo|bar') {
 	test_fail
 }
 
-&Tmp-Integer-0 := "%(perl_xlat:add 1 2 3)"
+&result_integer := %perl_xlat('add', 1, 2, 3)
 
-if (&Tmp-Integer-0 != 6) {
+if (&result_integer != 6) {
 	test_fail
 }
 
-&Tmp-String-0 := "hello"
+&Filter-Id := 'hello'
 &request += {
-	&Tmp-String-0 = "goodbye"
-	&Tmp-String-0 = "welcome"
+	&Filter-Id = 'goodbye'
+	&Filter-Id = 'welcome'
 }
 
 # Pass a list as an array
-&Tmp-String-2 := "%(perl_xlat:xlatarray %{Tmp-String-0[*]})"
+&Callback-Id := %perl_xlat('xlatarray', %{Filter-Id[*]})
 
-if (&Tmp-String-2 != "hello|goodbye|welcome") {
+if (&Callback-Id != 'hello|goodbye|welcome') {
 	test_fail
 }
 
-&Tmp-String-0 := "aa bb cc dd ee"
+&Filter-Id := 'aa bb cc dd ee'
 
 # Expect an array of returned values
-&Tmp-String-2 := "%(perl_xlat:xlatscalar2array %{Tmp-String-0})"
+&Callback-Id := %perl_xlat('xlatscalar2array', %{Filter-Id})
 
-if (&Tmp-String-2 != "aabbccddee") {
+if (&Callback-Id[#] != 5) {
+	test_fail
+}
+if !((&Callback-Id[0] == 'aa') && (&Callback-Id[1] == 'bb') && (&Callback-Id[2] == 'cc') && (&Callback-Id[3] == 'dd') && (&Callback-Id[4] == 'ee')) {
 	test_fail
 }
 
-&Tmp-String-1 := "ff gg hh ii"
+&test_string := 'ff gg hh ii'
 
 # Expect an array of array ref returned values
-&Tmp-String-2 := "%(perl_xlat:xlatscalar2arrayref %{Tmp-String-0} %{Tmp-String-1})"
+&Callback-Id := %perl_xlat('xlatscalar2arrayref', %{Filter-Id}, %{test_string})
 
-if (&Tmp-String-2 != "aabbccddeeffgghhii") {
+if (&Callback-Id[#] != 9) {
+	test_fail
+}
+if !((&Callback-Id[0] == 'aa') && (&Callback-Id[1] == 'bb') && (&Callback-Id[2] == 'cc') && (&Callback-Id[3] == 'dd') && (&Callback-Id[4] == 'ee') && (&Callback-Id[5] == 'ff') && (&Callback-Id[6] == 'gg') && (&Callback-Id[7] == 'hh') && (&Callback-Id[8] == 'ii')) {
 	test_fail
 }
 
-&Tmp-String-0 := "a"
+&Filter-Id := 'a'
 &request += {
-	&Tmp-String-0 = "b"
-	&Tmp-String-0 = "c"
+	&Filter-Id = 'b'
+	&Filter-Id = 'c'
 }
 
 # Returns a hash with each element in the provided array converted to Vn->value
-&Tmp-String-2 := "%(perl_xlat:xlatarray2hash %{Tmp-String-0[*]})"
+&Callback-Id := %perl_xlat('xlatarray2hash', %{Filter-Id[*]})
 
-# Note: hashes don't have a defined sequence so these are all the possible return values
-if (&Tmp-String-2 != "V1aV2bV3c") && (&Tmp-String-2 != "V1aV3cV2b") && (&Tmp-String-2 != "V2bV1aV3c") && (&Tmp-String-2 != "V2bV3cV1a") && (&Tmp-String-2 != "V3cV1aV2b") && (&Tmp-String-2 != "V3cV2bV1a") {
+if (&Callback-Id[#] != 6) {
+	test_fail
+}
+
+# Note: hashes don't have a defined sequence so these are all the possible return values - mashed to single strings for simplicity's sake
+&result_string := "%{Callback-Id[*]}"
+if (&result_string != "V1aV2bV3c") && (&result_string != "V1aV3cV2b") && (&result_string != "V2bV1aV3c") && (&result_string != "V2bV3cV1a") && (&result_string != "V3cV1aV2b") && (&result_string != "V3cV2bV1a") {
 	test_fail
 }
 
