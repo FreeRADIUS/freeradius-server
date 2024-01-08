@@ -1,3 +1,6 @@
+string test_string
+string result_string
+
 if (%aka_sim_id_method(%{User-Name}) != 'AKA') {
 	test_fail
 }
@@ -9,16 +12,16 @@ if (%aka_sim_id_type(%{User-Name}) != 'permanent') {
 #
 #  1.1 - Encrypt the permanent ID
 #
-&control.Tmp-String-0 := '1420032219455259'
-&control.User-Name := %3gpp_temporary_id_encrypt(%{User-Name},%{control.Tmp-String-0},6)
+&test_string := '1420032219455259'
+&control.User-Name := %3gpp_temporary_id_encrypt(%{User-Name},%{test_string},6)
 
 #
 #  1.2 - Get the original IMSI back again sans tag
 #
-&control.Tmp-String-1 := %3gpp_temporary_id_decrypt(%{control.User-Name}, %{control.Tmp-String-0}, 'false')
+&result_string := %3gpp_temporary_id_decrypt(%{control.User-Name}, %{test_string}, 'false')
 
 if ("%{User-Name}" =~ /^0(.*)/) {
-	if (!&control.Tmp-String-1 || (&control.Tmp-String-1 == '') || (%{control.Tmp-String-1} != "%{1}")) {
+	if (!&result_string || (&result_string == '') || (%{result_string} != "%{1}")) {
 		test_fail
 	}
 }
