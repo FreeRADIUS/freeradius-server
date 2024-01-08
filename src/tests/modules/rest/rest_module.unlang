@@ -1,5 +1,5 @@
-# Pre-set Tmp-String-2 to check correct operator behaviour
-&control.Tmp-String-2 := "foo"
+# Pre-set Login-LAT-Node to check correct operator behaviour
+&control.Login-LAT-Node := "foo"
 
 # Test "authorize" rest call.  Uses http to a GET end point
 rest
@@ -10,15 +10,15 @@ if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-0 == "authorize")) {
+if (!(&control.Filter-Id == "authorize")) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-1 == "GET")) {
+if (!(&control.Callback-Id == "GET")) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-1[*] == "/user/<username>/mac/<client>")) {
+if (!(&control.Callback-Id[*] == "/user/<username>/mac/<client>")) {
 	test_fail
 }
 
@@ -26,19 +26,20 @@ if (!(&control.User-Name == "Bob")) {
 	test_fail
 }
 
-# The "op" for setting Tmp-String-2 is ^=
-if (!(&control.Tmp-String-2[0] == "Bob") || !(&control.Tmp-String-2[1] == "foo")) {
+# The "op" for setting Login-LAT-Node is ^=
+if (!(&control.Login-LAT-Node[0] == "Bob") || !(&control.Login-LAT-Node[1] == "foo")) {
 	test_fail
 }
 
 # Reset control attributes
-&control -= &Tmp-String-0[*]
-&control -= &Tmp-String-1[*]
+&control -= &Filter-Id[*]
+&control -= &Callback-Id[*]
 &control -= &User-Name[*]
 
 # Pre-fill NAS-IP-Address to check operator behaviour
 &control.NAS-IP-Address := "10.0.0.10"
-
+test_pass
+handled
 # Test "accounting" rest call.  Uses https to a POST end point
 rest.accounting
 
@@ -46,15 +47,15 @@ if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-0 == "accounting")) {
+if (!(&control.Filter-Id == "accounting")) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-1 == "POST")) {
+if (!(&control.Callback-Id == "POST")) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-1[*] == "/user/<username>/mac/<client>")) {
+if (!(&control.Callback-Id[*] == "/user/<username>/mac/<client>")) {
 	test_fail
 }
 
@@ -62,7 +63,7 @@ if (!(&control.User-Name == "Bob")) {
 	test_fail
 }
 
-if (!(&control.Tmp-String-2[0] == "Bob") || !(&control.Tmp-String-2[1] == "Bob") || !(&control.Tmp-String-2[2] == "foo")) {
+if (!(&control.Login-LAT-Node[0] == "Bob") || !(&control.Login-LAT-Node[1] == "Bob") || !(&control.Login-LAT-Node[2] == "foo")) {
 	test_fail
 }
 

@@ -93,8 +93,8 @@ end
 Api.endpoint('POST', '/user/<username>/mac/<client>',
     function(body, keyData)
         local returnData = {}
-        returnData["control.Tmp-String-0"] = uriArgs.section
-        returnData["control.Tmp-String-1"] = {
+        returnData["control.Filter-Id"] = uriArgs.section
+        returnData["control.Callback-Id"] = {
             reqMethod,
             reqPath
         }
@@ -106,7 +106,7 @@ Api.endpoint('POST', '/user/<username>/mac/<client>',
             op = "+=",
             value = body.NAS or body['NAS-IP-Address'].value
         }
-        returnData["control.Tmp-String-2"] = {
+        returnData["control.Login-LAT-Node"] = {
             op = "^=",
             value = keyData.username
         }
@@ -118,8 +118,8 @@ Api.endpoint('POST', '/user/<username>/mac/<client>',
 Api.endpoint('GET', '/user/<username>/mac/<client>',
     function(body, keyData)
         local returnData = {}
-        returnData["control.Tmp-String-0"] = uriArgs.section
-        returnData["control.Tmp-String-1"] = {
+        returnData["control.Filter-Id"] = uriArgs.section
+        returnData["control.Callback-Id"] = {
             reqMethod,
             reqPath
         }
@@ -127,7 +127,7 @@ Api.endpoint('GET', '/user/<username>/mac/<client>',
             op = ":=",
             value = keyData.username
         }
-        returnData["control.Tmp-String-2"] = {
+        returnData["control.Login-LAT-Node"] = {
             op = "^=",
             value = keyData.username
         }
