@@ -1,12 +1,12 @@
-&Tmp-String-0 := 'test0'
-&Tmp-String-1 := 'test1'
+&Filter-Id := 'test0'
+&Callback-Id := 'test1'
 
 compound_key
 if (!ok) {
 	test_fail
 }
-
-if (!(&control.Tmp-String-0 == 'matched')) {
+debug_all
+if (!(&control.Realm == 'matched')) {
 	test_fail
 }
 

@@ -1,9 +1,10 @@
-&control.Tmp-String-0 := %ping(127.0.0.1)
+string test_string
+&test_string := %ping(127.0.0.1)
 
 #
 #  @todo - conditions do not yet support YIELD
 #
-if (&control.Tmp-String-0 == "yes") {
+if (&test_string == "yes") {
 	&control.Password.Cleartext := "hello"
 
 	&reply += {
