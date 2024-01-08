@@ -1,34 +1,39 @@
-&Tmp-String-0 := "Hello\n"
-if (!(%json_quote(%{Tmp-String-0}) == "\"Hello\\n\"")) {
+string test_string
+uint32 test_integer
+ipaddr test_ipaddr
+string dummy_string
+
+&test_string := "Hello\n"
+if (!(%json_quote(%{test_string}) == "\"Hello\\n\"")) {
 	test_fail
 }
 
-&Tmp-String-0 := "Hello\nbob"
-if (!(%json_quote(%{Tmp-String-0}) == "\"Hello\\nbob\"")) {
+&test_string := "Hello\nbob"
+if (!(%json_quote(%{test_string}) == "\"Hello\\nbob\"")) {
 	test_fail
 }
 
-&Tmp-String-0 := "\nHello\nbob"
-if (!(%json_quote(%{Tmp-String-0}) == "\"\\nHello\\nbob\"")) {
+&test_string := "\nHello\nbob"
+if (!(%json_quote(%{test_string}) == "\"\\nHello\\nbob\"")) {
 	test_fail
 }
 
-&Tmp-String-0 := "Hello!"
-if (!(%json_quote(%{Tmp-String-0}) == '"Hello!"')) {
+&test_string := "Hello!"
+if (!(%json_quote(%{test_string}) == '"Hello!"')) {
 	test_fail
 }
 
-&Tmp-Integer-0 := 123456
-if (!(%json_quote(%{Tmp-Integer-0}) == '123456')) {
+&test_integer := 123456
+if (!(%json_quote(%{test_integer}) == '123456')) {
 	test_fail
 }
 
-&Tmp-IP-Address-0 := 127.0.0.1
-if (!(%json_quote(%{Tmp-IP-Address-0}) == '"127.0.0.1"')) {
+&test_ipaddr := 127.0.0.1
+if (!(%json_quote(%{test_ipaddr}) == '"127.0.0.1"')) {
 	test_fail
 }
 
-if (!(%json_quote(%{Tmp-String-1}) == 'null')) {
+if (!(%json_quote(%{dummy_string}) == 'null')) {
 	test_fail
 }
 

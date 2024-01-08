@@ -1,15 +1,15 @@
 
 # In the original failure parsing the mac-address results in a "trailing garbage" error
 map json '{"externalId":"10000000001","osFamily":"IOS","macAddress":"6C:4D:73:8B:51:00","guid":"Enrollment-000000000-0000-0000-0000-000000000000","isRevoked":false,"configurationType":"HS2R1","certificateSerialNumber":"0000c92c8d4896458ecfb70323d5cf81ddc0000","isExpired":false}' {
-	&Tmp-String-0 := '$.externalId'
-	&Tmp-Ethernet-0 := '$.macAddress'
+	&Filter-Id := '$.externalId'
+	&Vendor-Specific.Fortinet.WirelessController-Device-MAC := '$.macAddress'
 }
 
-if (&Tmp-String-0 != "10000000001") {
+if !(&Filter-Id == "10000000001") {
 	test_fail
 }
 
-if (&Tmp-Ethernet-0 != 6C:4D:73:8B:51:00) {
+if (&Vendor-Specific.Fortinet.WirelessController-Device-MAC != 6C:4D:73:8B:51:00) {
 	test_fail
 }
 
