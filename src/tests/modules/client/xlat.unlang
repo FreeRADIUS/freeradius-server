@@ -1,38 +1,39 @@
-&Tmp-String-0 := "%client('nas_type')"
+string test_string
 
-if (&Tmp-String-0 != 'a_type') {
+&test_string := "%client('nas_type')"
+
+if (&test_string != 'a_type') {
         test_fail
 }
 
-&Tmp-String-0 := "%client('nas_type',127.0.0.1)"
+&test_string := "%client('nas_type',127.0.0.1)"
 
-if (&Tmp-String-0 != 'a_type') {
+if (&test_string != 'a_type') {
         test_fail
 }
 
-&Tmp-String-0 := "%client('nas_type',127.0.0.2)"
+&test_string := "%client('nas_type',127.0.0.2)"
 
-if (&Tmp-String-0 != 'b_type') {
+if (&test_string != 'b_type') {
         test_fail
 }
 
-&Tmp-String-0 := "%client('nas_type',127.0.0.5)"
+&test_string := "%client('nas_type',127.0.0.5)"
 
-if (&Tmp-String-0 != 'b_type') {
+if (&test_string != 'b_type') {
 	test_fail
 }
 
 #
 #  Test non-existent client properties
 #
-&Tmp-String-3 := "%client('non-existent-attr')"
-&Tmp-String-4 := "%client('non-existing-attr2')"
-
-if !(&Tmp-String-3 == "") {
+&test_string := "%client('non-existent-attr')"
+if !(&test_string == "") {
 	test_fail
 }
 
-if !(&Tmp-String-4 == "") {
+&test_string := "%client('non-existing-attr2')"
+if !(&test_string == "") {
 	test_fail
 }
 
