@@ -1,12 +1,12 @@
+string test_string
+
 #
 #  Sync calls should always return a zero length string
 #  because we don't wait for the response.
 #
-&Tmp-String-0 := %exec('/bin/sh', '-c', 'echo hello')
-if (&Tmp-String-0 != 'hello') {
+&test_string := %exec('/bin/sh', '-c', 'echo hello')
+if (&test_string != 'hello') {
 	test_fail
-} else {
-	test_pass
 }
 
 #

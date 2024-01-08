@@ -1,33 +1,33 @@
+string test_string
+
 #
 #  Sync calls return the response
 #
-&Tmp-String-0 := %exec_sync('/bin/sh', '-c', "echo 'hello'")
-if (&Tmp-String-0 != 'hello') {
+&test_string := %exec_sync('/bin/sh', '-c', "echo 'hello'")
+if (&test_string != 'hello') {
 	test_fail
 }
 
 #
 #  Call something which will take longer than the timeout
 #
-&request -= &Tmp-String-0
 &request -= &Module-Failure-Message
 
-&Tmp-String-0 := %exec_sync('/bin/sleep', '10')
+&test_string := %exec_sync('/bin/sleep', '10')
 
 if (&Module-Failure-Message != "Execution of external program failed: Timeout running program") {
 	test_fail
 }
 
-if &Tmp-String-0  {
+if &test_string  {
 	test_fail
 }
 
-&request -= &Tmp-String-0
 &request -= &Module-Failure-Message
 
-&Tmp-String-0 := %exec_sync('/bin/sh', "$ENV{MODULE_TEST_DIR}/fail.sh")
+&test_string := %exec_sync('/bin/sh', "$ENV{MODULE_TEST_DIR}/fail.sh")
 
-if &Tmp-String-0 {
+if &test_string {
 	test_fail
 }
 
@@ -40,7 +40,7 @@ if (&Module-Failure-Message != "Execution of external program returned 7") {
 #
 exec_sync_mod
 
-if ((!&control.Tmp-String-0) || (&control.Tmp-String-0 != 'welcome')) {
+if ((!&control.Called-Station-Id) || (&control.Called-Station-Id != 'welcome')) {
 	test_fail
 }
 
@@ -51,11 +51,11 @@ if ((!&control.Tmp-String-0) || (&control.Tmp-String-0 != 'welcome')) {
 #
 exec_sync_attrs
 
-if ((!&control.Tmp-String-1) || (&control.Tmp-String-1 != 'tony')) {
+if ((!&control.Filter-Id) || (&control.Filter-Id != 'tony')) {
 	test_fail
 }
 
-if ((!&control.Tmp-String-2) || (&control.Tmp-String-2 != 'aabbccddeeff')) {
+if ((!&control.Callback-Id) || (&control.Callback-Id != 'aabbccddeeff')) {
 	test_fail
 }
 
@@ -71,17 +71,17 @@ if (notfound) {
 	test_fail
 }
 
-if (&control.Tmp-String-3 == "Failure") {
+if (&control.NAS-Identifier == "Failure") {
 	test_fail
 }
 
-&control -= &Tmp-String-1[*]
+&control -= &Filter-Id[*]
 #
 #  Call a module which uses an xlat function in its arguments
 #
 exec_sync_xlat_args
 
-if !(&control.Tmp-String-1 == 'TONY') {
+if !(&control.Filter-Id == 'TONY') {
 	test_fail
 }
 
