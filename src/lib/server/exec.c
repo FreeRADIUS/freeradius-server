@@ -847,16 +847,26 @@ static void exec_reap(fr_event_list_t *el, pid_t pid, int status, void *uctx)
 static void exec_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_exec_state_t *exec = uctx; /* may not be talloced */
+	bool		exit_timeout;
 
-	if (exec->stdout_fd < 0) {
+	/*
+	 *	Some race conditions cause fr_exec_oneshot_cleanup to insert
+	 *	a new event, which calls fr_strerror_clear(), resulting in
+	 *	inconsistent error messages.
+	 *	Recording the condition to drive the error message here and
+	 *	then setting after tidying up keeps things consistent.
+	 */
+	exit_timeout = (exec->stdout_fd < 0);
+
+	exec->failed = FR_EXEC_FAIL_TIMEOUT;
+	fr_exec_oneshot_cleanup(exec, SIGKILL);
+
+	if (exit_timeout) {
 		fr_strerror_const("Timeout waiting for program to exit");
 	} else {
 		fr_strerror_const("Timeout running program");
 	}
 
-	exec->failed = FR_EXEC_FAIL_TIMEOUT;
-
-	fr_exec_oneshot_cleanup(exec, SIGKILL);
 	unlang_interpret_mark_runnable(exec->request);
 }
 
