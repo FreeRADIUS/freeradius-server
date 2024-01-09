@@ -1309,7 +1309,7 @@ static int check_lhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	current->lhs.create = false;
 	current->lhs.vp = NULL;
 
-	DEBUG3("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
+	XDEBUG("%s map %s %s ...", __FUNCTION__, map->lhs->name, fr_tokens[map->op]);
 
 	/*
 	 *	Create the attribute, including any necessary parents.
