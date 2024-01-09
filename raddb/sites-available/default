@@ -1105,6 +1105,24 @@ post-auth {
 #  Only a few modules currently have this method.
 #
 pre-proxy {
+	#  Some supplicants will aggressively retry after an Access-Reject,
+	#  contrary to standards. You can avoid sending excessive load to home
+	#  servers that based on recent history is likely to only result in
+	#  further authentication failures by calling the proxy_rate_limit
+	#  module here and in the post-proxy section.
+	#
+	#  If a request is send too soon after a home server returned an
+	#  Access-Reject, then instead of proxying a request a Access-Reject
+	#  will be returned.
+	#
+	#  The principle is to expend a small amount of resources at the edge
+	#  (an in-memory cache of recent rejects for calling stations) to
+	#  defend the limited processing and network resources at the core.
+	#
+	#  The strategy can be tuned in the module configuration.
+	#
+#	proxy_rate_limit
+
 	# Before proxing the request add an Operator-Name attribute identifying
 	# if the operator-name is found for this client.
 	# No need to uncomment this if you have already enabled this in
@@ -1162,6 +1180,12 @@ post-proxy {
 	#  servers.
 	#
 #	eap
+
+	#  If proxied requests are to be rate limited, then the
+	#  proxy_rate_limit module must be called here to maintain a
+	#  record of proxy responses.
+	#
+#	proxy_rate_limit
 
 	#
 	#  If the server tries to proxy a request and fails, then the

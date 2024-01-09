@@ -25,6 +25,7 @@ rlm_pap
 rlm_passwd
 rlm_perl
 rlm_preprocess
+rlm_proxy_rate_limit
 rlm_python
 rlm_python3
 rlm_radutmp

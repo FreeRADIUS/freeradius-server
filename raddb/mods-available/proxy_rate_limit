@@ -1,0 +1,85 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  This module performs rate limiting on proxied packets.
+#
+#  In some cases, a home server does not delay Access-Reject packets.
+#  Badly behaved end-user devices may then try to authenticate many
+#  hundreds of times a second.  This behavior is effectively a denial
+#  of service (DoS) attack on the RADIUS infastructure.
+#
+#  This module tracks Access-Reject packets based on a key.  If the
+#  device is trying to authenticate too many times in quick
+#  succession, the module will return a reject rather than proxying
+#  the packet.  These Access-Requests will not be proxied for a
+#  configurable period of time, which is the "suppression period".
+#
+#  Access-Reject responses from home servers for proxied requests are
+#  store in a local tracking structure, keyed by username + supplicant
+#  MAC. IDs are tracked to identify retransmission of the most recent
+#  request.  There should be few issues with lock contention, as the
+#  tracking structure is designed carefully to avoid locks, or use
+#  multiple distinct locks.
+#
+#  Prior to proxying a request (in the pre-proxy section), the
+#  tracking structure is queried. If an activate entry exists for the
+#  device, then an Access-Reject will be sent and proxying will be
+#  cancelled. Multiple requests arriving within the same second from a
+#  device will cause the suppression period to the extended.
+#
+#  When a request is proxied, if the reponse from the home server (in
+#  the post-proxy section) is Access-Reject, then the device will be
+#  added to the corresponding tracking table.  If the device does not
+#  quickly re-authenticate, then the tracking tavble entry is
+#  discarded.
+#
+#  However, if multiple requests arrive for the same device within the
+#  same second, the module start rate-limiting requests as described
+#  above.
+#
+
+#
+#  Update the "pre-proxy" section to list the "proxy_rate_limit" module:
+#
+#	pre-proxy {
+#		...
+#		proxy_rate_limit
+#		...
+#	}
+#
+#  And update the "post-proxy" section to list the "proxy_rate_limit" module:
+#
+#	post-proxy {
+#		...
+#		proxy_rate_limit
+#		...
+#	}
+#
+
+#
+#  The module configuration.
+#
+proxy_rate_limit {
+	#
+	#  The key used to track entries.
+	#
+	#  For now, the key is not configurable, and is hard-coded to be the expansion below.
+	#
+#	key = "%{User-Name}%{Calling-Station-Id}
+
+	#
+	#  This limits the maximum number of entries which are
+	#  tracked.  If the table becomes full, then older entries
+	#  will be evicted to make room for new entries.
+	#
+	max_entries = 2048
+
+	#
+	#  The idle timeout period, or lifetime of entries.  If we do
+	#  not see packets for a device within this time limit, then
+	#  the entry is expired.
+	#
+	idle_timeout = 10
+}
