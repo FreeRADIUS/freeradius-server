@@ -1,0 +1,56 @@
+# Call yubikey module to split OTP from password
+yubikey
+
+if !(&User-Password == 'hello') {
+	test_fail
+}
+if !(&Yubikey-OTP) {
+	test_fail
+}
+if !(&Yubikey-Public-Id == 'ddddgciilcjk') {
+	test_fail
+}
+
+update control {
+	&Yubikey-Counter := 1
+	&Yubikey-Key := 0xb8c56af07ff79b2230e04ab8891784ce
+}
+
+# Call module in authenticate mode to decrypt OTP
+yubikey.authenticate
+
+# Check all the attributes have been created
+if !(&Yubikey-Private-Id == 0x1dfc67f97828) {
+	test_fail
+}
+if !(&Yubikey-Timestamp) {
+	test_fail
+}
+if !(&Yubikey-Counter == 258) {
+	test_fail
+}
+if !(&Yubikey-Random) {
+	test_fail
+}
+
+
+# Increase the known "counter" value to detect a replay attack
+update {
+	&control:Yubikey-Counter := &Yubikey-Counter
+}
+
+yubikey.authenticate {
+	reject = 1
+}
+
+# Replay attack should result in a reject and a suitable module failure
+if !(reject) {
+	test_fail
+}
+debug_all
+
+if !(&Module-Failure-Message == 'yubikey: Replay attack detected! Counter value 258, is lt or eq to last known counter value 258') {
+	test_fail
+}
+
+test_pass
