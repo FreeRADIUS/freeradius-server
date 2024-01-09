@@ -74,6 +74,7 @@ jobs:
             libidn               \
             libmemcached         \
             libpcap              \
+            libyubikey           \
             lua52                \
             luajit-devel         \
             mysql80-client       \

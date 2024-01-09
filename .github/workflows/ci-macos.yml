@@ -93,6 +93,7 @@ jobs:
           json-c \
           libidn \
           libmemcached \
+          libyubikey \
           llvm@14 \
           luajit \
           mariadb \
