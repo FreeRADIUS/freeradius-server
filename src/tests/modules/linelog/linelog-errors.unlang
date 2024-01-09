@@ -1,0 +1,63 @@
+#
+#  Test some of the failure paths in linelog
+#
+
+#  Module config missing both format and reference
+linelog_missing {
+	fail = 1
+}
+
+if (!fail) {
+	test_fail
+}
+
+#  References are not allowed to go to parent config sections
+&control.Filter-Id := '..messages.valid'
+
+linelog_missingref {
+	fail = 1
+}
+
+if (!fail) {
+	test_fail
+}
+if !(&Module-Failure-Message == 'linelog_missingref: Invalid path "..messages.valid"') {
+	test_fail
+}
+
+#  Missing config items fall back to the default (which is not set)
+&control.Filter-Id := '.message.valid'
+
+linelog_missingref
+
+if (!noop) {
+	test_fail
+}
+
+#  Pointing at a config section is not valid
+&control.Filter-Id := '.messages'
+
+linelog_missingref {
+	fail = 1
+}
+
+if !(&Module-Failure-Message == 'linelog_missingref: Path ".messages" resolves to a section (should be a pair)') {
+	test_fail
+}
+
+#  Valid reference, but the message points to an attribute that doesn't exist - so no output
+&control.Filter-Id := 'messages.valid'
+
+linelog_missingref
+
+if (!noop) {
+	test_fail
+}
+
+# None of these should have written output
+if %file.exists("$ENV{MODULE_TEST_DIR}/test_missing.log") {
+	%file.rm("$ENV{MODULE_TEST_DIR}/test_missing.log")
+	test_fail
+}
+
+test_pass
