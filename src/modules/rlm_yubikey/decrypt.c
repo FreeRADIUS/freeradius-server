@@ -106,7 +106,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	 *	Combine the two counter fields together so we can do
 	 *	replay attack checks.
 	 */
-	counter = (yubikey_counter(token.ctr) << 16) | token.use;
+	counter = (yubikey_counter(token.ctr) << 8) | token.use;
 
 	vp = fr_pair_make(request->packet, &request->packet->vps, "Yubikey-Counter", NULL, T_OP_SET);
 	if (!vp) {
