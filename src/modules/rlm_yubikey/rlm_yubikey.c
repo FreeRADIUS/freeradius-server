@@ -77,19 +77,16 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 	size_t i;
 	char *c1, *c2;
 
-	for (i = 0; i < len; i++) {
-		if (modhex[i << 1] == '\0') {
-			break;
-		}
+	for (i = 0; i < len; i += 2) {
+		if (modhex[i] == '\0') break;
 
 		/*
 		 *	We only deal with whole bytes
 		 */
-		if (modhex[(i << 1) + 1] == '\0')
-			return -1;
+		if (modhex[i + 1] == '\0') return -1;
 
-		if (!(c1 = memchr(modhextab, tolower((uint8_t) modhex[i << 1]), 16)) ||
-		    !(c2 = memchr(modhextab, tolower((uint8_t) modhex[(i << 1) + 1]), 16)))
+		if (!(c1 = memchr(modhextab, tolower((uint8_t) modhex[i]), 16)) ||
+		    !(c2 = memchr(modhextab, tolower((uint8_t) modhex[i + 1]), 16)))
 			return -1;
 
 		hex[i] = hextab[c1 - modhextab];
@@ -122,6 +119,10 @@ static ssize_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char 
 		REDEBUG("Modhex string invalid");
 
 		return -1;
+	}
+
+	if (len < (ssize_t) outlen) {
+		out[len] = '\0';
 	}
 
 	return len;
