@@ -14,13 +14,13 @@ VENDOR		Yubico				41482
 
 BEGIN-VENDOR	Yubico
 
-ATTRIBUTE	Yubikey-Key				1	octets
+ATTRIBUTE	Yubikey-Key				1	octets secret
 ATTRIBUTE	Yubikey-Public-ID			2	string
-ATTRIBUTE	Yubikey-Private-ID			3	octets
+ATTRIBUTE	Yubikey-Private-ID			3	octets secret
 ATTRIBUTE	Yubikey-Counter				4	integer
 ATTRIBUTE	Yubikey-Timestamp			5	integer
 ATTRIBUTE	Yubikey-Random				6	integer
-ATTRIBUTE	Yubikey-OTP				7	string
+ATTRIBUTE	Yubikey-OTP				7	string secret
 
 END-VENDOR	Yubico
 ALIAS		Yubico					Vendor-Specific.Yubico
