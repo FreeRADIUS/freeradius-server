@@ -15,10 +15,11 @@ RCSIDH(rlm_mschap_h, "$Id$")
 
 /* Method of authentication we are going to use */
 typedef enum {
-	AUTH_INTERNAL		= 0,
-	AUTH_NTLMAUTH_EXEC	= 1
+	AUTH_INTERNAL		= 0, /* MS-CHAP-Use-NTLM-Auth = no */
+	AUTH_NTLMAUTH_EXEC	= 1, /* MS-CHAP-Use-NTLM-Auth = yes */
+	AUTH_AUTO		= 2, /* MS-CHAP-Use-NTLM-Auth = auto */
 #ifdef WITH_AUTH_WINBIND
-	,AUTH_WBCLIENT       	= 2
+	,AUTH_WBCLIENT       	= 3
 #endif
 } MSCHAP_AUTH_METHOD;
 

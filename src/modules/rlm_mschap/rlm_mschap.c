@@ -228,7 +228,7 @@ fr_dict_attr_autoload_t rlm_mschap_dict_attr[] = {
 	{ .out = &attr_ms_chap_new_cleartext_password, .name = "MS-CHAP-New-Cleartext-Password", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_new_nt_password, .name = "MS-CHAP-New-NT-Password", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_peer_challenge, .name = "MS-CHAP-Peer-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
-	{ .out = &attr_ms_chap_use_ntlm_auth, .name = "MS-CHAP-Use-NTLM-Auth", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
+	{ .out = &attr_ms_chap_use_ntlm_auth, .name = "MS-CHAP-Use-NTLM-Auth", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
 	{ .out = &attr_ms_chap_user_name, .name = "MS-CHAP-User-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_nt_password, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_smb_account_ctrl_text, .name = "SMB-Account-Ctrl-Text", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -1212,6 +1212,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 
 	switch (method) {
 	case AUTH_INTERNAL:
+	case AUTH_AUTO:
 	/*
 	 *	Do normal authentication.
 	 */
@@ -1220,6 +1221,8 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 		 *	No password: can't do authentication.
 		 */
 		if (!password) {
+			if (method == AUTH_AUTO) goto do_ntlm;
+
 			REDEBUG("FAILED: No Password.NT/LM.  Cannot perform authentication");
 			return -1;
 		}
@@ -1238,6 +1241,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 		break;
 		}
 	case AUTH_NTLMAUTH_EXEC:
+	do_ntlm:
 	/*
 	 *	Run ntlm_auth
 	 */
@@ -2104,7 +2108,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 */
 	if (method != AUTH_INTERNAL) {
 		fr_pair_t *vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ms_chap_use_ntlm_auth);
-		if (vp && vp->vp_bool == false) method = AUTH_INTERNAL;
+		if (vp && (vp->vp_uint8 <= AUTH_AUTO)) method = vp->vp_uint8;
 	}
 
 	/*
@@ -2318,6 +2322,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	switch (inst->method) {
 	case AUTH_INTERNAL:
 		DEBUG("Using internal authentication");
+		break;
+	case AUTH_AUTO:
+		DEBUG("Using auto password or ntlm_auth");
 		break;
 	case AUTH_NTLMAUTH_EXEC:
 		DEBUG("Authenticating by calling 'ntlm_auth'");

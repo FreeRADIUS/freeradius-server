@@ -1,5 +1,5 @@
 # -*- text -*-
-# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# Copyright (C) 2024 The FreeRADIUS Server project and contributors
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 # Version $Id$
 #
@@ -131,7 +131,12 @@ ATTRIBUTE	Module-Failure-Message			1038	string
 ATTRIBUTE	Rewrite-Rule				1039	string
 # 1040 was Digest-HA1
 
-ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1041	bool
+ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1041	uint8
+
+VALUE	MS-CHAP-Use-NTLM-Auth		No			0
+VALUE	MS-CHAP-Use-NTLM-Auth		Yes			1
+VALUE	MS-CHAP-Use-NTLM-Auth		Auto			2
+
 ATTRIBUTE	NTLM-User-Name				1042	string
 ATTRIBUTE	MS-CHAP-User-Name			1043	string
 
