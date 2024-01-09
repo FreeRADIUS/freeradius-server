@@ -93,13 +93,6 @@ typedef struct {
 	char const		*delimiter;		//!< Line termination string (usually \n).
 	size_t			delimiter_len;		//!< Length of line termination string.
 
-	tmpl_t			*log_src;		//!< Source of log messages.
-
-	tmpl_t			*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
-							///< log messages).
-
-	tmpl_t			*log_head;		//!< Header to add to each new log file.
-
 	linefr_log_dst_t	log_dst;		//!< Logging destination.
 	char const		*log_dst_str;		//!< Logging destination string.
 
@@ -172,9 +165,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("destination", CONF_FLAG_REQUIRED, rlm_linelog_t, log_dst_str) },
 
 	{ FR_CONF_OFFSET("delimiter", rlm_linelog_t, delimiter), .dflt = "\n" },
-	{ FR_CONF_OFFSET("format", rlm_linelog_t, log_src) },
-	{ FR_CONF_OFFSET("reference", rlm_linelog_t, log_ref) },
-	{ FR_CONF_OFFSET("header", rlm_linelog_t, log_head) },
 
 	/*
 	 *	Log destinations
@@ -197,6 +187,34 @@ static const conf_parser_t module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+typedef struct {
+	tmpl_t const	*fmt_tmpl;
+	fr_value_box_t	reference;
+	tmpl_t const	*ref_tmpl;
+	tmpl_t const	*head_tmpl;
+} linelog_call_env_t;
+
+static const call_env_method_t linelog_method_env = {
+	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, linelog_call_env_t, fmt_tmpl) },
+		{ FR_CALL_ENV_PARSE_OFFSET("reference", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, reference, ref_tmpl) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, linelog_call_env_t, head_tmpl) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+typedef struct {
+	tmpl_t const	*head_tmpl;
+} linelog_xlat_call_env_t;
+
+static const call_env_method_t linelog_xlat_method_env = {
+	FR_CALL_ENV_METHOD_OUT(linelog_xlat_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, linelog_xlat_call_env_t, head_tmpl) },
+		CALL_ENV_TERMINATOR
+	}
+};
 
 static int _mod_conn_free(linelog_conn_t *conn)
 {
@@ -325,7 +343,8 @@ static void linelog_hexdump(request_t *request, struct iovec *vector_p, size_t v
 	RHEXDUMP3(fr_dbuff_start(agg), fr_dbuff_used(agg), "%s", msg);
 }
 
-static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct iovec *vector_p, size_t vector_len, bool with_delim)
+static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct iovec *vector_p, size_t vector_len,
+			 bool with_delim, tmpl_t const *head_tmpl)
 {
 	int 			ret = 0;
 	linelog_conn_t		*conn;
@@ -376,13 +395,13 @@ static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct i
 		 *	of the file then expand the format and write it out before
 		 *	writing the actual log entries.
 		 */
-		if (inst->log_head && (offset == 0)) {
+		if (head_tmpl && (offset == 0)) {
 			char 		head[4096];
 			char		*head_value;
 			struct iovec	head_vector_s[2];
 			size_t		head_vector_len;
 
-			slen = tmpl_expand(&head_value, head, sizeof(head), request, inst->log_head,
+			slen = tmpl_expand(&head_value, head, sizeof(head), request, head_tmpl,
 					  linelog_escape_func, NULL);
 			if (slen < 0) {
 				exfile_close(inst->file.ef, fd);
@@ -554,6 +573,7 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				  fr_value_box_list_t *args)
 {
 	rlm_linelog_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_linelog_t);
+	linelog_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, linelog_xlat_call_env_t);
 	struct iovec		vector[2];
 	size_t			i = 0;
 	bool			with_delim;
@@ -572,7 +592,7 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		vector[i].iov_len = inst->delimiter_len;
 		i++;
 	}
-	slen = linelog_write(inst, request, vector, i, with_delim);
+	slen = linelog_write(inst, request, vector, i, with_delim, call_env->head_tmpl);
 	if (slen < 0) return XLAT_ACTION_FAIL;
 
 	MEM(wrote = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL));
@@ -597,13 +617,15 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_linelog_t);
+	linelog_call_env_t		*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
 	CONF_SECTION			*conf = mctx->inst->conf;
 
 	char				buff[4096];
 
 	char				*p = buff;
 	char const			*value;
-	tmpl_t				empty, *vpt = NULL, *vpt_p = NULL;
+	tmpl_t				empty, *vpt = NULL;
+	tmpl_t const			*vpt_p = NULL;
 	rlm_rcode_t			rcode = RLM_MODULE_OK;
 	ssize_t				slen;
 
@@ -612,8 +634,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 	size_t				vector_len;
 	bool				with_delim;
 
-
-	if (!inst->log_src && !inst->log_ref) {
+	if (!call_env->fmt_tmpl && !call_env->ref_tmpl) {
 		cf_log_err(conf, "A 'format', or 'reference' configuration item must be set to call this module");
 		RETURN_MODULE_FAIL;
 	}
@@ -623,21 +644,15 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 	buff[2] = '\0';
 
 	/*
-	 *	Expand log_ref to a config path, using the module
+	 *	'reference' expanded to a value.  Use as a config path, using the module
 	 *	configuration section as the root.
 	 */
-	if (inst->log_ref) {
+	if (call_env->reference.type == FR_TYPE_STRING) {
 		CONF_ITEM	*ci;
 		CONF_PAIR	*cp;
 		char const	*tmpl_str;
-		char const	*path;
 
-		if (tmpl_expand(&path, buff + 1, sizeof(buff) - 1,
-				request, inst->log_ref, linelog_escape_func, NULL) < 0) {
-			RETURN_MODULE_FAIL;
-		}
-
-		if (path != buff + 1) strlcpy(buff + 1, path, sizeof(buff) - 1);
+		strlcpy(buff + 1, call_env->reference.vb_strvalue, sizeof(buff) - 1);
 
 		if (buff[1] == '.') p++;
 
@@ -700,7 +715,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 		/*
 		 *	Use the default format string
 		 */
-		if (!inst->log_src) {
+		if (!call_env->fmt_tmpl) {
 			RDEBUG2("No default message configured");
 			RETURN_MODULE_NOOP;
 		}
@@ -708,7 +723,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 		 *	Use the pre-parsed format template
 		 */
 		RDEBUG2("Using default message");
-		vpt_p = inst->log_src;
+		vpt_p = call_env->fmt_tmpl;
 	}
 
 build_vector:
@@ -796,7 +811,7 @@ build_vector:
 		goto finish;
 	}
 
-	rcode = linelog_write(inst, request, vector_p, vector_len, with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
+	rcode = linelog_write(inst, request, vector_p, vector_len, with_delim, call_env->head_tmpl) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
 
 finish:
 	talloc_free(vpt);
@@ -951,6 +966,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, linelog_xlat, FR_TYPE_SIZE);
 	xlat_func_mono_set(xlat, linelog_xlat_args);
+	xlat_func_call_env_set(xlat, &linelog_xlat_method_env);
 
 	return 0;
 }
@@ -970,7 +986,8 @@ module_rlm_t rlm_linelog = {
 		.detach		= mod_detach
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_do_linelog },
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_do_linelog,
+		  .method_env = &linelog_method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };
