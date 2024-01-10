@@ -19,7 +19,7 @@ typedef enum {
 	AUTH_NTLMAUTH_EXEC	= 1, /* MS-CHAP-Use-NTLM-Auth = yes */
 	AUTH_AUTO		= 2, /* MS-CHAP-Use-NTLM-Auth = auto */
 #ifdef WITH_AUTH_WINBIND
-	,AUTH_WBCLIENT       	= 3
+	AUTH_WBCLIENT       	= 3
 #endif
 } MSCHAP_AUTH_METHOD;
 
