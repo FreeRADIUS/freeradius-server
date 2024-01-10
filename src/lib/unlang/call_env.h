@@ -188,6 +188,8 @@ struct call_env_parser_s {
 
 				call_env_parse_type_t		type;		//!< What type of output the parsing phase is expected to produce.
 			} parsed;
+
+			tmpl_escape_t			escape;		//!< Escape method to use when evaluating tmpl_t.
 		} pair;
 
 		struct {

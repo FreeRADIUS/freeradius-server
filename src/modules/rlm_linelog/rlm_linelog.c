@@ -27,9 +27,18 @@ RCSID("$Id$")
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/tmpl.h>
+#include <freeradius-devel/unlang/module.h>
+
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/iovec.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/print.h>
+#include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/types.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 
@@ -53,6 +62,8 @@ RCSID("$Id$")
 #endif
 
 #include <sys/uio.h>
+
+static void linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx);
 
 typedef enum {
 	LINELOG_DST_INVALID = 0,
@@ -188,30 +199,29 @@ static const conf_parser_t module_config[] = {
 };
 
 typedef struct {
-	tmpl_t const	*fmt_tmpl;
-	fr_value_box_t	reference;
-	tmpl_t const	*ref_tmpl;
-	tmpl_t const	*head_tmpl;
+	tmpl_t			*log_src;		//!< Source of log messages.
+
+	fr_value_box_t		*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
+							///< log messages).
+
+	fr_value_box_t		*log_head;		//!< Header to add to each new log file.
+
 } linelog_call_env_t;
 
 static const call_env_method_t linelog_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, linelog_call_env_t, fmt_tmpl) },
-		{ FR_CALL_ENV_PARSE_OFFSET("reference", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, reference, ref_tmpl) },
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, linelog_call_env_t, head_tmpl) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY, linelog_call_env_t, log_src), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_ref), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
 		CALL_ENV_TERMINATOR
 	}
 };
 
-typedef struct {
-	tmpl_t const	*head_tmpl;
-} linelog_xlat_call_env_t;
-
 static const call_env_method_t linelog_xlat_method_env = {
-	FR_CALL_ENV_METHOD_OUT(linelog_xlat_call_env_t),
+	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, linelog_xlat_call_env_t, head_tmpl) },
+		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -309,28 +319,19 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
  * - Return is escaped as ``\\r``.
  * - All other unprintables are escaped as @verbatim \<oct><oct><oct> @endverbatim.
  *
- * @param request The current request.
- * @param out Where to write the escaped string.
- * @param outlen Length of the output buffer.
- * @param in String to escape.
- * @param arg unused.
+ * @param vb		Value box to escape.
  */
 /*
  *	Escape unprintable characters.
  */
-static size_t linelog_escape_func(UNUSED request_t *request,
-		char *out, size_t outlen, char const *in,
-		UNUSED void *arg)
+static void linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx)
 {
-	if (outlen == 0) return 0;
+	char *escaped;
 
-	if (outlen == 1) {
-		*out = '\0';
-		return 0;
-	}
+	if (vb->vb_length == 0) return;
 
-
-	return fr_snprint(out, outlen, in, -1, 0);
+	MEM(escaped = fr_asprint(vb, vb->vb_strvalue, vb->vb_length, 0));
+	fr_value_box_strdup_shallow_replace(vb, escaped, talloc_strlen(escaped));
 }
 
 static void linelog_hexdump(request_t *request, struct iovec *vector_p, size_t vector_len, char const *msg)
@@ -343,8 +344,7 @@ static void linelog_hexdump(request_t *request, struct iovec *vector_p, size_t v
 	RHEXDUMP3(fr_dbuff_start(agg), fr_dbuff_used(agg), "%s", msg);
 }
 
-static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct iovec *vector_p, size_t vector_len,
-			 bool with_delim, tmpl_t const *head_tmpl)
+static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *call_env, request_t *request, struct iovec *vector_p, size_t vector_len, bool with_delim)
 {
 	int 			ret = 0;
 	linelog_conn_t		*conn;
@@ -360,7 +360,6 @@ static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct i
 		char		path[2048];
 		off_t		offset;
 		char		*p;
-		ssize_t 	slen;
 
 		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
 			ret = -1;
@@ -395,22 +394,12 @@ static int linelog_write(rlm_linelog_t const *inst, request_t *request, struct i
 		 *	of the file then expand the format and write it out before
 		 *	writing the actual log entries.
 		 */
-		if (head_tmpl && (offset == 0)) {
-			char 		head[4096];
-			char		*head_value;
+		if (call_env->log_head && (offset == 0)) {
 			struct iovec	head_vector_s[2];
 			size_t		head_vector_len;
 
-			slen = tmpl_expand(&head_value, head, sizeof(head), request, head_tmpl,
-					  linelog_escape_func, NULL);
-			if (slen < 0) {
-				exfile_close(inst->file.ef, fd);
-				ret = -1;
-				goto finish;
-			}
-
-			memcpy(&head_vector_s[0].iov_base, &head_value, sizeof(head_vector_s[0].iov_base));
-			head_vector_s[0].iov_len = slen;
+			memcpy(&head_vector_s[0].iov_base, &call_env->log_head->vb_strvalue, sizeof(head_vector_s[0].iov_base));
+			head_vector_s[0].iov_len = call_env->log_head->vb_length;
 
 			if (!with_delim) {
 				head_vector_len = 1;
@@ -572,13 +561,14 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				  xlat_ctx_t const *xctx, request_t *request,
 				  fr_value_box_list_t *args)
 {
-	rlm_linelog_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_linelog_t);
-	linelog_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, linelog_xlat_call_env_t);
-	struct iovec		vector[2];
-	size_t			i = 0;
-	bool			with_delim;
-	fr_value_box_t		*msg, *wrote;
-	ssize_t			slen;
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_linelog_t);
+	linelog_call_env_t const	*call_env = talloc_get_type_abort(xctx->env_data, linelog_call_env_t);
+
+	struct iovec			vector[2];
+	size_t				i = 0;
+	bool				with_delim;
+	fr_value_box_t			*msg, *wrote;
+	ssize_t				slen;
 
 	XLAT_ARGS(args, &msg);
 
@@ -592,7 +582,7 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		vector[i].iov_len = inst->delimiter_len;
 		i++;
 	}
-	slen = linelog_write(inst, request, vector, i, with_delim, call_env->head_tmpl);
+	slen = linelog_write(inst, call_env, request, vector, i, with_delim);
 	if (slen < 0) return XLAT_ACTION_FAIL;
 
 	MEM(wrote = fr_value_box_alloc(ctx, FR_TYPE_SIZE, NULL));
@@ -601,6 +591,67 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_dcursor_insert(out, wrote);
 
 	return XLAT_ACTION_DONE;
+}
+
+typedef struct {
+	fr_value_box_list_t	expanded;	//!< The result of expanding the fmt tmpl
+	bool			with_delim;	//!< Whether to add a delimiter
+} rlm_linelog_rctx_t;
+
+static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_linelog_t);
+	linelog_call_env_t const	*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
+	rlm_linelog_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, rlm_linelog_rctx_t);
+	struct iovec			*vector;
+	struct iovec			*vector_p;
+	size_t				vector_len;
+
+	vector_len = fr_value_box_list_num_elements(&rctx->expanded);
+	if (vector_len == 0) {
+		RDEBUG2("No data to write");
+		RETURN_MODULE_NOOP;
+	}
+
+	/*
+	 *	Add extra space for the delimiter
+	 */
+	if (rctx->with_delim) vector_len *= 2;
+
+	MEM(vector = vector_p = talloc_array(rctx, struct iovec, vector_len));
+	fr_value_box_list_foreach(&rctx->expanded, vb) {
+		switch(vb->type) {
+		default:
+			if (unlikely(fr_value_box_cast_in_place(rctx, vb, FR_TYPE_STRING, vb->enumv) < 0)) {
+				REDEBUG("Failed casting value to string");
+				RETURN_MODULE_FAIL;
+			}
+			FALL_THROUGH;
+
+		case FR_TYPE_STRING:
+			vector_p->iov_base = UNCONST(char *, vb->vb_strvalue);
+			vector_p->iov_len = vb->vb_length;
+			vector_p++;
+			break;
+
+		case FR_TYPE_OCTETS:
+			vector_p->iov_base = UNCONST(char *, vb->vb_octets);
+			vector_p->iov_len = vb->vb_length;
+			vector_p++;
+			break;
+		}
+
+		/*
+		 *	Don't add the delim for the last element
+		 */
+		if (rctx->with_delim) {
+			memcpy(&vector_p->iov_base, &(inst->delimiter), sizeof(vector_p->iov_base));
+			vector_p->iov_len = inst->delimiter_len;
+			vector_p++;
+		}
+	}
+
+	RETURN_MODULE_RCODE(linelog_write(inst, call_env, request, vector, vector_len, rctx->with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK);
 }
 
 /** Write a linelog message
@@ -617,24 +668,18 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_linelog_t);
-	linelog_call_env_t		*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
+	linelog_call_env_t const	*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
 	CONF_SECTION			*conf = mctx->inst->conf;
 
 	char				buff[4096];
-
 	char				*p = buff;
-	char const			*value;
-	tmpl_t				empty, *vpt = NULL;
-	tmpl_t const			*vpt_p = NULL;
-	rlm_rcode_t			rcode = RLM_MODULE_OK;
+	tmpl_t				empty, *vpt = NULL, *vpt_p = NULL;
 	ssize_t				slen;
-
-	struct iovec			vector_s[2];
-	struct iovec			*vector = NULL, *vector_p;
-	size_t				vector_len;
 	bool				with_delim;
 
-	if (!call_env->fmt_tmpl && !call_env->ref_tmpl) {
+	TALLOC_CTX			*frame_ctx = unlang_interpret_frame_talloc_ctx(request);
+
+	if (!call_env->log_src && !call_env->log_ref) {
 		cf_log_err(conf, "A 'format', or 'reference' configuration item must be set to call this module");
 		RETURN_MODULE_FAIL;
 	}
@@ -644,15 +689,16 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 	buff[2] = '\0';
 
 	/*
-	 *	'reference' expanded to a value.  Use as a config path, using the module
+	 *	Expand log_ref to a config path, using the module
 	 *	configuration section as the root.
 	 */
-	if (call_env->reference.type == FR_TYPE_STRING) {
+	if (call_env->log_ref) {
 		CONF_ITEM	*ci;
 		CONF_PAIR	*cp;
 		char const	*tmpl_str;
 
-		strlcpy(buff + 1, call_env->reference.vb_strvalue, sizeof(buff) - 1);
+		memcpy(buff + 1, call_env->log_ref->vb_strvalue, call_env->log_ref->vb_length);
+		buff[call_env->log_ref->vb_length + 1] = '\0';
 
 		if (buff[1] == '.') p++;
 
@@ -689,7 +735,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 		 *	Alloc a template from the value of the CONF_PAIR
 		 *	using request as the context (which will hopefully avoid an alloc).
 		 */
-		slen = tmpl_afrom_substr(request, &vpt,
+		slen = tmpl_afrom_substr(frame_ctx, &vpt,
 					 &FR_SBUFF_IN(tmpl_str, talloc_array_length(tmpl_str) - 1),
 					 cf_pair_value_quote(cp),
 					 NULL,
@@ -709,13 +755,18 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 			REMARKER(tmpl_str, -slen, "%s", fr_strerror());
 			RETURN_MODULE_FAIL;
 		}
+		if (tmpl_resolve(vpt, NULL) < 0) {
+			RPERROR("Runtime resolution of tmpl failed");
+			talloc_free(vpt);
+			RETURN_MODULE_FAIL;
+		}
 		vpt_p = vpt;
 	} else {
 	default_msg:
 		/*
 		 *	Use the default format string
 		 */
-		if (!call_env->fmt_tmpl) {
+		if (!call_env->log_src) {
 			RDEBUG2("No default message configured");
 			RETURN_MODULE_NOOP;
 		}
@@ -723,7 +774,7 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, mo
 		 *	Use the pre-parsed format template
 		 */
 		RDEBUG2("Using default message");
-		vpt_p = call_env->fmt_tmpl;
+		vpt_p = call_env->log_src;
 	}
 
 build_vector:
@@ -740,8 +791,11 @@ build_vector:
 		tmpl_dcursor_ctx_t	cc;
 		fr_pair_t		*vp;
 		int			alloced = VECTOR_INCREMENT, i;
+		struct iovec		*vector = NULL, *vector_p;
+		size_t			vector_len;
+		rlm_rcode_t		rcode = RLM_MODULE_OK;
 
-		MEM(vector = talloc_array(request, struct iovec, alloced));
+		MEM(vector = talloc_array(frame_ctx, struct iovec, alloced));
 		for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt_p), i = 0;
 		     vp;
 		     vp = fr_dcursor_next(&cursor), i++) {
@@ -749,7 +803,7 @@ build_vector:
 			if ((with_delim && ((i + 1) >= alloced)) ||
 			    (i >= alloced)) {
 				alloced += VECTOR_INCREMENT;
-				MEM(vector = talloc_realloc(request, vector, struct iovec, alloced));
+				MEM(vector = talloc_realloc(frame_ctx, vector, struct iovec, alloced));
 			}
 
 			switch (vp->vp_type) {
@@ -777,47 +831,34 @@ build_vector:
 		tmpl_dcursor_clear(&cc);
 		vector_p = vector;
 		vector_len = i;
+
+		if (vector_len == 0) {
+			RDEBUG2("No data to write");
+			rcode = RLM_MODULE_NOOP;
+		} else {
+			rcode = linelog_write(inst, call_env, request, vector_p, vector_len, with_delim) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
+		}
+
+		talloc_free(vpt);
+		talloc_free(vector);
+
+		RETURN_MODULE_RCODE(rcode);
 	}
-		break;
 
 	/*
-	 *	Log a single thing.
+	 *	Log a format string.  We need to yield as this might contain asynchronous expansions.
 	 */
 	default:
-		slen = tmpl_expand(&value, buff, sizeof(buff), request, vpt_p, linelog_escape_func, NULL);
-		if (slen < 0) {
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
+	{
+		rlm_linelog_rctx_t *rctx;
 
-		/* iov_base is not declared as const *sigh* */
-		memcpy(&vector_s[0].iov_base, &value, sizeof(vector_s[0].iov_base));
-		vector_s[0].iov_len = slen;
+		MEM(rctx = talloc(frame_ctx, rlm_linelog_rctx_t));
+		fr_value_box_list_init(&rctx->expanded);
+		rctx->with_delim = with_delim;
 
-		if (!with_delim) {
-			vector_len = 1;
-		} else {
-			memcpy(&vector_s[1].iov_base, &(inst->delimiter), sizeof(vector_s[1].iov_base));
-			vector_s[1].iov_len = inst->delimiter_len;
-			vector_len = 2;
-		}
-
-		vector_p = &vector_s[0];
+		return unlang_module_yield_to_tmpl(rctx, &rctx->expanded, request, vpt_p, NULL, mod_do_linelog_resume, NULL, 0, rctx);
 	}
-
-	if (vector_len == 0) {
-		RDEBUG2("No data to write");
-		rcode = RLM_MODULE_NOOP;
-		goto finish;
 	}
-
-	rcode = linelog_write(inst, request, vector_p, vector_len, with_delim, call_env->head_tmpl) < 0 ? RLM_MODULE_FAIL : RLM_MODULE_OK;
-
-finish:
-	talloc_free(vpt);
-	talloc_free(vector);
-
-	RETURN_MODULE_RCODE(rcode);
 }
 
 
@@ -966,7 +1007,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, linelog_xlat, FR_TYPE_SIZE);
 	xlat_func_mono_set(xlat, linelog_xlat_args);
-	xlat_func_call_env_set(xlat, &linelog_xlat_method_env);
+	xlat_func_call_env_set(xlat, &linelog_xlat_method_env );
 
 	return 0;
 }
@@ -986,8 +1027,7 @@ module_rlm_t rlm_linelog = {
 		.detach		= mod_detach
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_do_linelog,
-		  .method_env = &linelog_method_env },
+		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY, .method = mod_do_linelog, .method_env = &linelog_method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };

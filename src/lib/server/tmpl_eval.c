@@ -1276,6 +1276,7 @@ done:
 int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 {
 	fr_type_t cast = tmpl_rules_cast(vpt);
+	bool did_concat = false;
 
 	if (fr_type_is_structural(cast)) {
 		fr_strerror_printf("Cannot cast to structural type '%s'", fr_type_to_str(cast));
@@ -1299,6 +1300,10 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 		vb = fr_value_box_list_head(list);
 		if (!vb) return 0;
 
+		if (tmpl_escape_pre_concat(vpt)) {
+			fr_value_box_list_escape_in_place(list, vpt->rules.escape.func, vpt->rules.escape.uctx);
+		}
+
 		slen = fr_value_box_list_concat_in_place(vb, vb, list, FR_TYPE_STRING,
 							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
 		if (slen < 0) return -1;
@@ -1312,6 +1317,8 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 		 *	result.
 		 */
 		if (fr_type_is_null(cast) || fr_type_is_string(cast)) return 0;
+
+		did_concat = true;
 	}
 		break;
 
@@ -1329,6 +1336,17 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 	fr_value_box_list_foreach_safe(list, vb) {
 		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) return -1;
 	}}
+
+	/*
+	 *	...and finally, apply the escape function
+	 *	if necessary.  This is done last so that
+	 *	the escape function gets boxes of the type
+	 *	it expects.
+	 */
+	if ((!did_concat && tmpl_escape_pre_concat(vpt)) || tmpl_escape_post_concat(vpt)) {
+		fr_value_box_list_escape_in_place(list, vpt->rules.escape.func, vpt->rules.escape.uctx);
+	}
+
 	VALUE_BOX_LIST_VERIFY(list);
 
 	return 0;

@@ -38,12 +38,23 @@ suffix=$(echo "${0##*/}" | sed -E 's/^ldap(.*)-setup.sh$/\1/')
 # Kill any old processes
 [ -e "/tmp/slapd${suffix}.pid" ] && kill $(cat /tmp/slapd${suffix}.pid)
 
+# Set the default basedir based on the suffix of $0
 base_dir="/tmp/ldap${suffix}"
+
+# Default FreeRADIUS schemas
+default_aux_schema_src=(
+    "doc/schemas/ldap/openldap/freeradius-policy.schema"
+    "doc/schemas/ldap/openldap/freeradius-radius.schema"
+    "doc/schemas/ldap/openldap/freeradius-clients.schema"
+)
+
+# Start with no aux schemas, if the user doesn't specify any we copy the default schemas
+aux_schema_src=()
 
 #
 # Command line options to override the default template values
 #
-while getopts 's:b:' opt; do
+while getopts 'b:s:S:' opt; do
     case "$opt" in
     b)
         base_dir="$OPTARG"
@@ -53,8 +64,12 @@ while getopts 's:b:' opt; do
         socket_path="$OPTARG"
         ;;
 
+    S)
+        schema_src+=("$OPTARG")
+        ;;
+
     *)
-        error "Usage: $0 [-b base_dir] [-s socket_path]"
+        error "Usage: $0 [-b base_dir] [-s socket_path] [-S schema_src]"
         exit 1
         ;;
     esac
@@ -65,6 +80,8 @@ cert_dir="${base_dir}/certs"
 data_dir="${base_dir}/db"
 schema_dir="${base_dir}/schema"
 [ -z ${socket_path+x} ] && socket_path="${base_dir}/socket"
+[ ${#aux_schema_src[@]} -eq 0 ] && aux_schema_src=(${default_aux_schema_src[*]})
+
 socket_url=ldapi://$(urlencode "${socket_path}")
 
 debug "base_dir \"${base_dir}\""
@@ -91,24 +108,36 @@ sed -i -e "s/\/var\/lib\/ldap/\/tmp\/ldap${suffix}\/db/" src/tests/salt-test-ser
 if [ -d "${schema_dir}" ]; then
     echo "Schema dir already linked"
 # Debian
-elif [ -d /etc/ldap/schema ]; then
-    ln -fs /etc/ldap/schema "${schema_dir}"
+if [ -d /etc/ldap/schema ]; then
+    schema_src_dir="/etc/ldap/schema"
 # Symas packages
 elif [ -d /opt/symas/etc/openldap/schema ]; then
-    ln -fs /opt/symas/etc/openldap/schema "${schema_dir}"
+    schema_src_dir="/opt/symas/etc/openldap/schema"
 # Redhat
 elif [ -d /etc/openldap/schema ]; then
-    ln -fs /etc/openldap/schema "${schema_dir}"
+    schema_src_dir="/etc/openldap/schema"
 # macOS (homebrew x86)
 elif [ -d /usr/local/etc/openldap/schema ]; then
-    ln -fs /usr/local/etc/openldap/schema "${schema_dir}"
+    schema_src_dir="/usr/local/etc/openldap/schema"
 # macOS (homebrew ARM)
 elif [ -d /opt/homebrew/opt/openldap/schema ]; then
-    ln -fs /opt/homebrew/opt/openldap/schema "${schema_dir}"
+    schema_src_dir="/opt/homebrew/opt/openldap/schema"
 else
     echo "Can't locate OpenLDAP schema dir"
     exit 1
 fi
+
+# Copy all schemas over to the schema dir, so they're all available for inclusion
+# we don't overwrite any existing files to avoid overwriting developer changes.
+for i in ${schema_src_dir}/*; do
+    # Only copy in schema files that don't already exist
+    cp -n "${i}" "${schema_dir}/"
+done
+
+# Copy over the auxilliary schemas
+for i in "${aux_schema_src[@]}" do
+    cp -n "${i}" "${schema_dir}/"
+done
 
 # Ensure we have some certs generated
 make -C raddb/certs
@@ -128,7 +157,7 @@ fi
 
 # Copy the config over to the base_dir.  There seems to be some issues with actions runners
 # not allowing file access outside of /etc/ldap, so we copy the config to the specified base_dir.
-cp "scripts/ci/ldap/slapd${suffix}.conf" "${base_dir}/slapd.conf"
+cp -n "scripts/ci/ldap/slapd${suffix}.conf" "${base_dir}/slapd.conf"
 
 # Start slapd
 slapd -d any -h "ldap://127.0.0.1:${ldap_port}/ ldaps://127.0.0.1:${ldaps_port}/ ${socket_url}" -f "${base_dir}/slapd.conf" 2>&1 > ${base_dir}/slapd.log &

@@ -424,6 +424,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			if (t_rules) {
 				our_rules.parent = t_rules->parent;
 				our_rules.attr.dict_def = t_rules->attr.dict_def;
+				our_rules.escape = rule->pair.escape;	/* Escape rules will now get embedded in the tmpl_t and used at evaluation */
 			}
 
 			our_rules.attr.list_def = request_attr_request;

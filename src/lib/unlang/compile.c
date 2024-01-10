@@ -516,15 +516,17 @@ static int unlang_fixup_map(map_t *map, UNUSED void *ctx)
 	}
 
 	switch (map->rhs->type) {
-	case TMPL_TYPE_DATA_UNRESOLVED:
 	case TMPL_TYPE_XLAT_UNRESOLVED:
+	case TMPL_TYPE_DATA_UNRESOLVED:
+	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
 		break;
 
 	default:
-		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec");
+		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec, got type %s",
+		           tmpl_type_to_str(map->rhs->type));
 		return -1;
 	}
 
@@ -1438,7 +1440,8 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 		break;
 
 	default:
-		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec");
+		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec, got type %s",
+		           tmpl_type_to_str(map->rhs->type));
 		return -1;
 	}
 

@@ -616,6 +616,26 @@ fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_typ
 
 /** @} */
 
+/** @name Escape functions
+ *
+ * Apply a tranformation to a value box or list of value boxes.
+ *
+ * @{
+ */
+
+ /** Escape a value box
+  *
+  * @param[in] vb	to escape.
+  * @param[in] uctx	user context to pass to the escape function.
+  */
+typedef void (*fr_value_box_escape_t)(fr_value_box_t *vb, void *uctx);
+
+void fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape, void *uctx)
+				  CC_HINT(nonnull(1,2));
+void fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape, void *uctx)
+				       CC_HINT(nonnull(1,2));
+/** @} */
+
 /** @name Convenience functions
  *
  * These macros and inline functions simplify working
@@ -1072,6 +1092,9 @@ int		fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t 
 void		fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 					    char const *src, bool tainted)
 		CC_HINT(nonnull(1,3));
+
+void 		fr_value_box_strdup_shallow_replace(fr_value_box_t *vb, char const *src, ssize_t len)
+		CC_HINT(nonnull);
 /** @} */
 
 /** @name Assign and manipulate binary-safe strings

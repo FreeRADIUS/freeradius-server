@@ -75,6 +75,55 @@ extern "C" {
 
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/value.h>
+
+/** When to apply escaping
+ */
+typedef enum {
+	TMPL_ESCAPE_PRE_CONCAT = 0,			//!< Pre-concatenation escaping is useful for
+							///< DSLs where elements of the expansion are
+							///< static, specified by the user, and other parts
+							///< are dynamic, which may or may not need to be
+							///< escaped based on which "safe" flags are applied
+							///< to the box.  When using this mode, the escape
+							///< function must be able to handle boxes of a type
+							///< other than the cast type, possibly performing
+							///< a cast itself if necessary.
+
+	TMPL_ESCAPE_POST_CONCAT				//!< Post-concatenation escaping is useful for when
+							///< we don't want to allow the user to bypass escaping
+							///< for any part of the value.
+							///< Here all boxes are guaranteed to be of the cast type.
+} tmpl_escape_mode_t;
+
+/** Escaping rules for tmpls
+ *
+ */
+typedef struct {
+	fr_value_box_escape_t		func;		//!< How to escape when returned from evaluation.
+							///< Currently only used for async evaluation.
+	void				*uctx;		//!< User context for escape function.
+
+	tmpl_escape_mode_t		mode;		//!< Whether to apply escape function after
+							///< concatenation, i.e. to the final output
+							///< of the tmpl.  If false, then the escaping
+							///< is performed on each value box
+							///< individually prior to concatenation and
+							///< prior to casting.
+							///< If no concatenation is performed, then
+							///< the escaping is performed on each box individually.
+
+} tmpl_escape_t;
+
+/** See if we should perform output escaping before concatenation
+ *
+ */
+#define tmpl_escape_pre_concat(_tmpl)	((_tmpl)->rules.escape.func && ((_tmpl)->rules.escape.mode == TMPL_ESCAPE_PRE_CONCAT))
+
+/** See if we should perform output escaping after concatenation
+ *
+ */
+#define tmpl_escape_post_concat(_tmpl)	((_tmpl)->rules.escape.func && ((_tmpl)->rules.escape.mode == TMPL_ESCAPE_POST_CONCAT))
 
 /** The maximum number of request references allowed
  *
@@ -349,6 +398,8 @@ struct tmpl_rules_s {
 	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
 							///< Instantiated xlats are not added to the global
 							///< trees, regexes are not JIT'd.
+
+	tmpl_escape_t		escape;		//!< How escaping should be handled during evaluation.
 };
 
 /** Similar to tmpl_rules_t, but used to specify parameters that may change during subsequent resolution passes
@@ -578,9 +629,9 @@ struct tmpl_s {
 		};
 	} data;
 
-	tmpl_rules_t	_CONST		rules;	//!< The rules that were used when creating the tmpl.
-						///< These are useful for multiple resolution passes as
-						///< they ensure the correct parsing rules are applied.
+	tmpl_rules_t		_CONST	rules;		//!< The rules that were used when creating the tmpl.
+							///< These are useful for multiple resolution passes as
+							///< they ensure the correct parsing rules are applied.
 };
 
 /** Describes the current extents of a pair tree in relation to the tree described by a tmpl_t
@@ -1147,6 +1198,8 @@ void			tmpl_set_name_shallow(tmpl_t *vpt, fr_token_t quote, char const *name, ss
 void			tmpl_set_name(tmpl_t *vpt, fr_token_t quote, char const *name, ssize_t len) CC_HINT(nonnull);
 
 void			tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict) CC_HINT(nonnull);
+
+void 			tmpl_set_escape(tmpl_t *vpt, tmpl_escape_t const *escape) CC_HINT(nonnull);
 
 void			tmpl_set_xlat(tmpl_t *vpt, xlat_exp_head_t *xlat) CC_HINT(nonnull);
 

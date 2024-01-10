@@ -3974,6 +3974,8 @@ int fr_value_box_asprintf(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_dict_attr_t c
 
 /** Assign a buffer containing a nul terminated string to a box, but don't copy it
  *
+ * @note Input string will not be duplicated.
+ *
  * @param[in] dst	to assign string to.
  * @param[in] enumv	Aliases for values.
  * @param[in] src	to copy string from.
@@ -3985,6 +3987,21 @@ void fr_value_box_strdup_shallow(fr_value_box_t *dst, fr_dict_attr_t const *enum
 	fr_value_box_init(dst, FR_TYPE_STRING, enumv, tainted);
 	dst->vb_strvalue = src;
 	dst->vb_length = strlen(src);
+}
+
+/** Free the existing buffer (if talloced) associated with the valuebox, and replace it with a new one
+ *
+ * @note Input string will not be duplicated.
+ *
+ * @param[in] vb	to replace string in.
+ * @param[in] src	to assign string from.
+ * @param[in] len	of src.
+ */
+void fr_value_box_strdup_shallow_replace(fr_value_box_t *vb, char const *src, ssize_t len)
+{
+	fr_value_box_clear_value(vb);
+	vb->vb_strvalue = src;
+	vb->vb_length = len < 0 ? strlen(src) : len;
 }
 
 /** Alloc and assign an empty \0 terminated string to a #fr_value_box_t
@@ -5858,6 +5875,42 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 	fr_value_box_set_secret(out, secret);
 
 	return 0;
+}
+
+/** Escape a single value box in place
+ *
+ * @note Applies recurssively to the children of group boxes.
+ *
+ * @param[in] vb		to escape.
+ * @param[in] escape		function to apply to the value box.
+ * @param[in] uctx		user context to pass to the escape function.
+ */
+void fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape, void *uctx)
+{
+	switch (vb->type) {
+	case FR_TYPE_GROUP:
+		fr_value_box_list_escape_in_place(&vb->vb_group, escape, uctx);
+		break;
+
+	default:
+		escape(vb, uctx);
+		break;
+	}
+}
+
+/** Escape a list of value boxes in place
+ *
+ * @note Applies recurssively to the children of group boxes.
+ *
+ * @param[in] list		to escape.
+ * @param[in] escape		function to apply to the value box.
+ * @param[in] uctx		user context to pass to the escape function.
+ */
+void fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape, void *uctx)
+{
+	fr_value_box_list_foreach(list, vb) {
+		fr_value_box_escape_in_place(vb, escape, uctx);
+	}
 }
 
 /** Removes a single layer of nesting, moving all children into the parent list

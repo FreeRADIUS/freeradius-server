@@ -23,12 +23,12 @@
  * @copyright 2021 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/server/exec.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/value.h>
 #include "tmpl_priv.h"
 #include <signal.h>
 
@@ -253,8 +253,8 @@ push:
  *				in which case the result is discarded.
  * @param[in] request		The current request.
  * @param[in] tmpl		the tmpl to expand
- * @param[in] args		where the status of exited programs will be stored.
- *				Used only for #TMPL_TYPE_EXEC.
+ * @param[in] args		additional controls for expanding #TMPL_TYPE_EXEC,
+ * 				and where the status of exited programs will be stored.
  */
 int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request,
 		     tmpl_t const *tmpl, unlang_tmpl_args_t *args)
@@ -286,7 +286,7 @@ int unlang_tmpl_push(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	};
 
 	if (tmpl_needs_resolving(tmpl)) {
-		REDEBUG("Expansion %s needs to be resolved before it is used.", tmpl->name);
+		REDEBUG("Expansion \"%pV\" needs to be resolved before it is used", fr_box_strvalue_len(tmpl->name, tmpl->len));
 		return -1;
 	}
 

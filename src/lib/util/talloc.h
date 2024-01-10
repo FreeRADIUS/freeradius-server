@@ -204,6 +204,7 @@ void		**talloc_array_null_strip(void **array);
 
 fr_slen_t	talloc_array_concat(fr_sbuff_t *out, char const * const *array, char const *sep);
 
+
 /** Free const'd memory
  *
  * @param[in] ptr	to free.
@@ -268,6 +269,16 @@ static inline void *_talloc_list_get_type_abort(void *head, size_t offset, char 
 #else
 #  define talloc_get_type_abort_const talloc_get_type_abort
 #endif
+
+/** Returns the length of a talloc array containing a string
+ *
+ * @param[in] s	to return the length of.
+ */
+static inline size_t talloc_strlen(char const *s)
+{
+	char const *our_s = talloc_get_type_abort_const(s, char);
+	return talloc_array_length(our_s) - 1;
+}
 
 TALLOC_CTX		*talloc_autofree_context_global(void);
 TALLOC_CTX		*talloc_autofree_context_thread_local(void);

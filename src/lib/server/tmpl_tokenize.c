@@ -810,6 +810,16 @@ void tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict)
 	vpt->rules.attr.dict_def = dict;
 }
 
+/** Set escape parameters for the tmpl output
+ *
+ * @parma[in] vpt	to alter.
+ * @param[in] escape	to set.
+ */
+void tmpl_set_escape(tmpl_t *vpt, tmpl_escape_t const *escape)
+{
+	vpt->rules.escape = *escape;
+}
+
 /** Change the default dictionary in the tmpl's resolution rules
  *
  * @param[in] vpt	to alter.
@@ -2387,16 +2397,19 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	fr_value_box_t	tmp;
 	tmpl_t		*vpt;
+	fr_type_t	cast = FR_TYPE_STRING;
 
-	if (!fr_type_is_leaf(t_rules->cast)) {
+	if (!fr_type_is_null(t_rules->cast)) cast = t_rules->cast;
+
+	if (!fr_type_is_leaf(cast)) {
 		fr_strerror_printf("%s is not a valid cast type",
-				   fr_type_to_str(t_rules->cast));
+				   fr_type_to_str(cast));
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
 	vpt = tmpl_alloc_null(ctx);
 	if (fr_value_box_from_substr(vpt, &tmp,
-				     t_rules->cast, allow_enum ? t_rules->enumv : NULL,
+				     cast, allow_enum ? t_rules->enumv : NULL,
 				     &our_in, p_rules, false) < 0) {
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_in);
@@ -2408,7 +2421,7 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 
 	*out = vpt;
 
-	if (tmpl_rules_cast(vpt) == tmpl_value_type(vpt)) vpt->rules.cast = FR_TYPE_NULL;
+	if (cast == tmpl_value_type(vpt)) vpt->rules.cast = FR_TYPE_NULL;
 
 	TMPL_VERIFY(vpt);
 
