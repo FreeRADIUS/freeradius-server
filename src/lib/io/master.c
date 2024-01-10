@@ -1383,7 +1383,7 @@ redo:
 			(void) getsockname(accept_fd, (struct sockaddr *) &saremote, &salen);
 			(void) fr_ipaddr_from_sockaddr(&address.socket.inet.dst_ipaddr, &address.socket.inet.dst_port,
 						       &saremote, salen);
-			address.socket.proto = inst->ipproto;
+			address.socket.type = (inst->ipproto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 			address.socket.fd = accept_fd;
 		}
 

@@ -544,7 +544,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		request->packet->socket.inet.src_port = client_port;
 		request->packet->socket.inet.dst_ipaddr = server_ipaddr;
 		request->packet->socket.inet.dst_port = server_port;
-		request->packet->socket.proto = ipproto;
+		request->packet->socket.type = (ipproto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 
 		request->files = files;
 		request->packet->id = last_used_id;

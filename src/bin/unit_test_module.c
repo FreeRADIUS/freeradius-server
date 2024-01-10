@@ -141,7 +141,7 @@ static request_t *request_from_internal(TALLOC_CTX *ctx)
 	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
 
 	request->packet->socket = (fr_socket_t){
-		.proto = IPPROTO_UDP,
+		.type = SOCK_DGRAM,
 		.inet = {
 			.src_ipaddr = {
 				.af = AF_INET,
@@ -259,7 +259,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	fr_pair_delete_by_da(&request->request_pairs, attr_packet_type);
 
 	request->packet->socket = (fr_socket_t){
-		.proto = IPPROTO_UDP,
+		.type = SOCK_DGRAM,
 		.inet = {
 			.src_ipaddr = {
 				.af = AF_INET,

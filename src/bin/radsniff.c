@@ -1400,7 +1400,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	packet->data_len = header->caplen - (p - data);
 	memcpy(&packet->data, &p, sizeof(packet->data));
 
-	packet->socket.proto = IPPROTO_UDP;
+	packet->socket.type = SOCK_DGRAM;
 
 	/*
 	 *	Populate IP/UDP fields from PCAP data

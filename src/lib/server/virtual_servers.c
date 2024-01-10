@@ -675,9 +675,16 @@ static int8_t listen_addr_cmp(void const *one, void const *two)
 	if (a->app_io_addr && !b->app_io_addr) return +1;
 
 	/*
+	 *	Address family
+	 */
+	CMP_RETURN(a, b, app_io_addr->af);
+
+	fr_assert((a->app_io_addr->af == AF_INET) || ((a->app_io_addr->af == AF_INET6)));
+
+	/*
 	 *	UDP vs TCP
 	 */
-	CMP_RETURN(a, b, app_io_addr->proto);
+	CMP_RETURN(a, b, app_io_addr->type);
 
 	/*
 	 *	Check ports.

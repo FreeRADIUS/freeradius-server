@@ -44,7 +44,7 @@ int udp_send(fr_socket_t const *sock, int flags, void *data, size_t data_len)
 {
 	int ret;
 
-	fr_assert(sock->proto == IPPROTO_UDP);
+	fr_assert(sock->type == SOCK_DGRAM);
 
 	if (flags & UDP_FLAGS_CONNECTED) {
 		ret = (send(sock->fd, data, data_len, 0) == (ssize_t)data_len) ? 0 : -1;
@@ -161,7 +161,7 @@ ssize_t udp_recv(int sockfd, int flags,
 	 */
 	*socket_out = (fr_socket_t){
 		.fd = sockfd,
-		.proto = IPPROTO_UDP
+		.type = SOCK_DGRAM,
 	};
 
 	/*

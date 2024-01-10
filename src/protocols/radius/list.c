@@ -222,7 +222,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	memset(ps, 0, sizeof(*ps));
 	ps->ctx = ctx;
-	ps->socket.proto = proto;
+	ps->socket.type = (proto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 
 	/*
 	 *	Get address family, etc. first, so we know if we
@@ -333,7 +333,7 @@ fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_
 	/*
 	 *	TCP sockets are always bound to the correct src/dst IP/port
 	 */
-	if (ps->socket.proto == IPPROTO_TCP) {
+	if (ps->socket.type == SOCK_STREAM) {
 		fr_socket_addr_swap(&reply->socket, &ps->socket);
 		my_request.socket = ps->socket;
 	} else {
@@ -397,6 +397,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 {
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
+	int type;
 	fr_packet_socket_t *ps= NULL;
 
 	if ((request->socket.inet.dst_ipaddr.af == AF_UNSPEC) ||
@@ -452,6 +453,8 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		id = request->id;
 	start_i = fr_rand() & SOCKOFFSET_MASK;
 
+	type = (proto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
+
 #define ID_i ((i + start_i) & SOCKOFFSET_MASK)
 	for (i = 0; i < MAX_SOCKETS; i++) {
 		if (pl->sockets[ID_i].socket.fd == -1) continue; /* paranoia */
@@ -470,7 +473,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 */
 		if (ps->num_outgoing == 256) continue;
 
-		if (ps->socket.proto != proto) continue;
+		if (ps->socket.type != type) continue;
 
 		/*
 		 *	Address families don't match, skip it.
@@ -682,7 +685,7 @@ fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint3
 
 		if (!FD_ISSET(pl->sockets[start].socket.fd, set)) continue;
 
-		if (pl->sockets[start].socket.proto == IPPROTO_TCP) {
+		if (pl->sockets[start].socket.type == SOCK_STREAM) {
 			packet = fr_tcp_recv(pl->sockets[start].socket.fd, false);
 		} else
 			packet = fr_radius_packet_recv(NULL, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
@@ -695,7 +698,7 @@ fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint3
 		 */
 
 		pl->last_recv = start;
-		packet->socket.proto = pl->sockets[start].socket.proto;
+		packet->socket.type = pl->sockets[start].socket.type;
 		return packet;
 	} while (start != pl->last_recv);
 

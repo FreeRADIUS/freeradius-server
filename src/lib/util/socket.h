@@ -76,7 +76,7 @@ typedef struct {
 		} unix;
 	};
 	int af;			//!< AF_INET, AF_INET6, or AF_UNIX
-	int proto;		//!< Protocol.
+	int type;		//!< SOCK_STREAM, SOCK_DGRAM, etc.
 
 	int fd;			//!< File descriptor if this is a live socket.
 } fr_socket_t;
@@ -157,7 +157,7 @@ static inline fr_socket_t *fr_socket_addr_init_inet(fr_socket_t *addr,
 
 	*addr = (fr_socket_t){
 		.af = src_ipaddr->af,
-		.proto = proto,
+		.type = (proto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM,
 		.inet = {
 			.ifindex = ifindex,
 			.src_ipaddr = *src_ipaddr,
@@ -217,7 +217,7 @@ static inline fr_socket_t *fr_socket_addr_init_inet_src(fr_socket_t *addr,
 
 	*addr = (fr_socket_t){
 		.af = ipaddr->af,
-		.proto = proto,
+		.type = (proto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM,
 		.inet = {
 			.ifindex = ifindex,
 			.src_ipaddr = *ipaddr,
@@ -263,7 +263,7 @@ static inline fr_socket_t *fr_socket_addr_init_inet_dst(fr_socket_t *addr, int p
 
 	*addr = (fr_socket_t){
 		.af = ipaddr->af,
-		.proto = proto,
+		.type = (proto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM,
 		.inet = {
 			.dst_ipaddr = *ipaddr,
 			.dst_port = port

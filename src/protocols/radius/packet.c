@@ -488,7 +488,7 @@ int fr_radius_packet_send(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	 *	If the socket is TCP, call write().  Calling sendto()
 	 *	is allowed on some platforms, but it's not nice.
 	 */
-	if (packet->socket.proto == IPPROTO_TCP) {
+	if (packet->socket.type == SOCK_STREAM) {
 		ssize_t ret;
 
 		ret = write(packet->socket.fd, packet->data, packet->data_len);
@@ -515,7 +515,7 @@ void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *pa
 	if (!packet->data) return;
 
 	fr_log(log, L_DBG, file, line, "  Socket   : %d", packet->socket.fd);
-	fr_log(log, L_DBG, file, line, "  Proto    : %d", packet->socket.proto);
+	fr_log(log, L_DBG, file, line, "  Proto    : %d", (packet->socket.type == SOCK_STREAM) ? IPPROTO_TCP : IPPROTO_UDP);
 
 	if ((packet->socket.inet.src_ipaddr.af == AF_INET) || (packet->socket.inet.src_ipaddr.af == AF_INET6)) {
 		fr_log(log, L_DBG, file, line, "  Src IP   : %pV", fr_box_ipaddr(packet->socket.inet.src_ipaddr));
