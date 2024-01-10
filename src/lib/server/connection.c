@@ -1083,6 +1083,12 @@ static void connection_state_enter_init(fr_connection_t *conn)
 		connection_state_enter_connecting(conn);
 		return;
 
+	case FR_CONNECTION_STATE_CONNECTED:
+		conn->is_closed = false;	/* We now have a handle */
+		WATCH_POST(conn);		/* Only call if we successfully initialised the handle */
+		connection_state_enter_connected(conn);
+		return;
+
 	/*
 	 *	Initialisation callback failed
 	 */
