@@ -4001,7 +4001,7 @@ void fr_value_box_strdup_shallow_replace(fr_value_box_t *vb, char const *src, ss
 {
 	fr_value_box_clear_value(vb);
 	vb->vb_strvalue = src;
-	vb->vb_length = len < 0 ? strlen(src) : len;
+	vb->vb_length = len < 0 ? strlen(src) : (size_t)len;
 }
 
 /** Alloc and assign an empty \0 terminated string to a #fr_value_box_t
@@ -6328,5 +6328,3 @@ void fr_value_box_debug(fr_value_box_t const *vb)
 {
 	_fr_value_box_debug(vb, 0, -1);
 }
-
-
