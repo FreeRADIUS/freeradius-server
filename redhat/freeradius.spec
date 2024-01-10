@@ -334,6 +334,7 @@ Requires: symas-openldap-clients
 BuildRequires: symas-openldap-devel
 %else
 %if 0%{?rhel}%{?fedora} < 9
+AutoReqProv: no
 Requires: openldap-ltb
 BuildRequires: openldap-ltb
 %else
