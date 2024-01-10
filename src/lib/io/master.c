@@ -1532,12 +1532,20 @@ do_read:
 			 */
 			network = fr_trie_lookup_by_key(inst->networks, &address.socket.inet.src_ipaddr.addr,
 						 address.socket.inet.src_ipaddr.prefix);
-			if (!network) goto ignore;
+			if (!network) {
+				DEBUG3("Source IP %pV is outside of 'allowed' network range",
+				       fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				goto ignore;
+			}
 
 			/*
 			 *	It exists, but it's a "deny" rule, ignore it.
 			 */
-			if (network->af == AF_UNSPEC) goto ignore;
+			if (network->af == AF_UNSPEC) {
+				DEBUG3("Source IP %pV is forbidden by the 'deny' network range",
+				       fr_box_ipaddr(address.socket.inet.src_ipaddr));
+				goto ignore;
+			}
 
 			/*
 			 *	Allocate our local radclient as a
