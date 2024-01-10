@@ -4042,7 +4042,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	uint16_t		conn_count;
 	fr_trunk_state_t	new_state;
 
-	DEBUG3("Managing trunk");
+	DEBUG4("Managing trunk");
 
 	/*
 	 *	Cleanup requests in our request cache which
@@ -4114,7 +4114,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		if ((trunk->conf.connecting > 0) &&
 		    (fr_trunk_connection_count_by_state(trunk, FR_TRUNK_CONN_CONNECTING) >=
 		     trunk->conf.connecting)) {
-			DEBUG3("Not opening connection - Too many (%u) connections in the connecting state",
+			DEBUG4("Not opening connection - Too many (%u) connections in the connecting state",
 			       trunk->conf.connecting);
 			return;
 		}
@@ -4126,7 +4126,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	one available connection.
 		 */
 		if (conn_count && fr_time_gt(fr_time_add(trunk->pub.last_above_target, trunk->conf.open_delay), now)) {
-			DEBUG3("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
+			DEBUG4("Not opening connection - Need to be above target for %pVs.  It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
 			       fr_box_time_delta(fr_time_sub(now, trunk->pub.last_above_target)));
 			return;	/* too soon */
@@ -4141,7 +4141,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	any new connections.
 		 */
 		if ((trunk->conf.max > 0) && (conn_count >= trunk->conf.max)) {
-			DEBUG3("Not opening connection - Have %u connections, need %u or below",
+			DEBUG4("Not opening connection - Have %u connections, need %u or below",
 			       conn_count, trunk->conf.max);
 			return;
 		}
@@ -4152,7 +4152,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	load.
 		 */
 		if (!req_count) {
-			DEBUG3("Not opening connection - No outstanding requests");
+			DEBUG4("Not opening connection - No outstanding requests");
 			return;
 		}
 
@@ -4163,7 +4163,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		if (conn_count > 0) {
 			average = ROUND_UP_DIV(req_count, (conn_count + 1));
 			if (average < trunk->conf.target_req_per_conn) {
-				DEBUG3("Not opening connection - Would leave us below our target requests "
+				DEBUG4("Not opening connection - Would leave us below our target requests "
 				       "per connection (now %u, after open %u)",
 				       ROUND_UP_DIV(req_count, conn_count), average);
 				return;
@@ -4193,14 +4193,14 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	could be immediately re-activated.
 		 */
 		if (fr_time_gt(fr_time_add(trunk->pub.last_open, trunk->conf.open_delay), now)) {
-			DEBUG3("Not opening connection - Need to wait %pVs before opening another connection.  "
+			DEBUG4("Not opening connection - Need to wait %pVs before opening another connection.  "
 			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf.open_delay),
 			       fr_box_time_delta(fr_time_sub(now, trunk->pub.last_open)));
 			return;
 		}
 
-		DEBUG3("Opening connection - Above target requests per connection (now %u, target %u)",
+		DEBUG4("Opening connection - Above target requests per connection (now %u, target %u)",
 		       ROUND_UP_DIV(req_count, conn_count), trunk->conf.target_req_per_conn);
 		/* last_open set by trunk_connection_spawn */
 		(void)trunk_connection_spawn(trunk, now);
@@ -4212,7 +4212,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 	 */
 	else if (fr_time_gt(trunk->pub.last_below_target, trunk->pub.last_above_target)) {
 		if (fr_time_gt(fr_time_add(trunk->pub.last_below_target, trunk->conf.close_delay), now)) {
-			DEBUG3("Not closing connection - Need to be below target for %pVs. It's been %pVs",
+			DEBUG4("Not closing connection - Need to be below target for %pVs. It's been %pVs",
 			       fr_box_time_delta(trunk->conf.close_delay),
 			       fr_box_time_delta(fr_time_sub(now, trunk->pub.last_below_target)));
 			return;	/* too soon */
@@ -4221,18 +4221,18 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		trunk_requests_per_connection(&conn_count, &req_count, trunk, now, true);
 
 		if (!conn_count) {
-			DEBUG3("Not closing connection - No connections to close!");
+			DEBUG4("Not closing connection - No connections to close!");
 			return;
 		}
 
 		if ((trunk->conf.min > 0) && ((conn_count - 1) < trunk->conf.min)) {
-			DEBUG3("Not closing connection - Have %u connections, need %u or above",
+			DEBUG4("Not closing connection - Have %u connections, need %u or above",
 			       conn_count, trunk->conf.min);
 			return;
 		}
 
 		if (!req_count) {
-			DEBUG3("Closing connection - No outstanding requests");
+			DEBUG4("Closing connection - No outstanding requests");
 			goto close;
 		}
 
@@ -4245,7 +4245,7 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 *	log file churn.
 		 */
 		if (conn_count == 1) {
-			DEBUG3("Not closing connection - Would leave connections "
+			DEBUG4("Not closing connection - Would leave connections "
 			       "and there are still %u outstanding requests", req_count);
 			return;
 		}
@@ -4256,17 +4256,17 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		 */
 		average = ROUND_UP_DIV(req_count, (conn_count - 1));
 		if (average > trunk->conf.target_req_per_conn) {
-			DEBUG3("Not closing connection - Would leave us above our target requests per connection "
+			DEBUG4("Not closing connection - Would leave us above our target requests per connection "
 			       "(now %u, after close %u)", ROUND_UP_DIV(req_count, conn_count), average);
 			return;
 		}
 
-		DEBUG3("Closing connection - Below target requests per connection (now %u, target %u)",
+		DEBUG4("Closing connection - Below target requests per connection (now %u, target %u)",
 		       ROUND_UP_DIV(req_count, conn_count), trunk->conf.target_req_per_conn);
 
 	close:
 		if (fr_time_gt(fr_time_add(trunk->pub.last_closed, trunk->conf.close_delay), now)) {
-			DEBUG3("Not closing connection - Need to wait %pVs before closing another connection.  "
+			DEBUG4("Not closing connection - Need to wait %pVs before closing another connection.  "
 			       "It's been %pVs",
 			       fr_box_time_delta(trunk->conf.close_delay),
 			       fr_box_time_delta(fr_time_sub(now, trunk->pub.last_closed)));
