@@ -59,7 +59,7 @@ else
 
 	dnl # Convert -I to -isystem to get rid of warnings about issues in Python headers
 	dnl # Strip -systemroot
-	dnl # Strip optimisation flags (-O[0-9]?). We decide our optimisation level, not python.
+	dnl # Strip optimisation flags (-O[0-9|fast]?). We decide our optimisation level, not python.
 	dnl # -D_FORTIFY_SOURCE needs -O.
 	dnl # Strip debug symbol flags (-g[0-9]?). We decide on debugging symbols, not python
 	dnl # Strip -W*, we decide what warnings are important
@@ -73,7 +73,7 @@ else
 	mod_cflags=`echo " $python_cflags" | sed -e '\
 		s/ -I/ -isystem/g;\
 		s/ -isysroot[[ =]]\{0,1\}[[^-]]*/ /g;\
-		s/ -O[[^[[:blank:]]]]*/ /g;\
+		s/ -O[[^[[:blank:]]*]]*/ /g;\
 		s/ -Wp,-D_FORTIFY_SOURCE=[[[:digit:]]]/ /g;\
 		s/ -g[[^ ]]*/ /g;\
 		s/ -W[[^ ]]*/ /g;\
