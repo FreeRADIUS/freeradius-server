@@ -729,13 +729,14 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 		VALUE_PAIR *vp, *proxy;
 
 		vp = fr_pair_find_by_num(request->reply->vps, PW_STATE, 0, TAG_ANY);
+		fr_assert(vp != NULL);
+
 		proxy = fr_pair_find_by_num(request->proxy_reply->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	We can't delete state, and we can't change it when proxying.
 		 */
-		if (proxy) {
-			fr_assert(vp != NULL);
+		if (proxy && vp) {
 			fr_assert(vp->vp_length == proxy->vp_length);
 			fr_assert(memcmp(vp->vp_octets, proxy->vp_octets, vp->vp_length) == 0);
 		}
