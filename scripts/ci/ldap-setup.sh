@@ -105,8 +105,8 @@ mkdir -p "${data_dir}" || exit $?
 sed -i -e "s/\/var\/lib\/ldap/\/tmp\/ldap${suffix}\/db/" src/tests/salt-test-server/salt/ldap/base${suffix}.ldif
 
 # Create a directory we can link schema files into
-if [ -d "${schema_dir}" ]; then
-    echo "Schema dir already linked"
+mkdir -p "${schema_dir}" || exit $?
+
 # Debian
 if [ -d /etc/ldap/schema ]; then
     schema_src_dir="/etc/ldap/schema"
@@ -135,7 +135,7 @@ for i in ${schema_src_dir}/*; do
 done
 
 # Copy over the auxilliary schemas
-for i in "${aux_schema_src[@]}" do
+for i in "${aux_schema_src[@]}" ; do
     cp -n "${i}" "${schema_dir}/"
 done
 
