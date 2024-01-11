@@ -106,6 +106,7 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_syn
 		char *bv_val;
 		struct berval bvc;
 
+		HEXDUMP2(cookie, talloc_array_length(cookie), "Sync starting with cookie: ");
 		memcpy(&bv_val, &cookie, sizeof(bv_val));
 
 		bvc.bv_val = bv_val;
