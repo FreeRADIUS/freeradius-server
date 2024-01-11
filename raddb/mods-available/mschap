@@ -51,15 +51,48 @@ mschap {
 	#  and the mschap module will do the authentication itself,
 	#  without calling ntlm_auth.
 	#
-	#  Be VERY careful when editing the following line!
+	#  This authentication can go wrong for a number of reasons:
+	#    1) the user does not exist in AD
+	#    2) the password entered by the user is not the same as
+	#      what is in AD
+	#    3) some magic MS-CHAP data is wrong.
 	#
-	#  You can also try setting the user name as:
+	#  These situations can be checked by running ntlm_auth
+	#  from the command line with a name and a password:
+	#
+	#	ntlm_auth --username=NAME --password=PASSWORD
+	#
+	#  If that works, you know both that the user exists, and the
+	#  password is correct.  You also know what AD expects for the
+	#  username,
+	#
+	#  There is often confusion between different formats of the
+	#  username.  Is it "user", or "user@domain" or "DOMAIN\\user"?
+	#  The answer is "that depends on your local AD system".
+	#
+	#  One solution is to use this for the username:
 	#
 	#	... --username=%{mschap:User-Name} ...
 	#
 	#  In that case, the mschap module will look at the User-Name
 	#  attribute, and do prefix/suffix checks in order to obtain
 	#  the "best" user name for the request.
+	#
+	#  Another option is to use the Stripped-User-Name, as in the
+	#  example configuration below.
+	#
+	#  You can test which format works by running the server in
+	#  debug mode, and copying the hex strings from the
+	#  --challenge=... and --nt-response=... output.
+	#
+	#  Then, run ntlm_auth from the command line, using the same
+	#  command-line options as given below.  Since you can't
+	#  change the challenge or nt-response strings, try changing
+	#  the --username=... parameter.  Try different formats for
+	#  the username until one works.
+	#
+	#  That is the username format which you need to configure
+	#  here.
 	#
 	#  For Samba 4, you should also set the "ntlm auth" parameter
 	#  in the Samba configuration:
