@@ -40,6 +40,7 @@ typedef struct state_entry_t {
 	struct state_entry_t *next;
 
 	int		tries;
+	bool		proxied;
 
 	TALLOC_CTX		*ctx;
 	VALUE_PAIR		*vps;
@@ -447,6 +448,8 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 			entry->state[8] = entry->state[2] ^ (((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
 			entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
 			entry->state[12] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
+
+			fr_assert(!entry->proxied);
 		}
 
 		/*
@@ -463,6 +466,13 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 			x = fr_rand();
 			memcpy(entry->state + (i * 4), &x, sizeof(x));
 		}
+	} else {
+		/*
+		 *	There is a pre-existing State.  It may be from
+		 *	another server, in which case we don't want to
+		 *	mangle external State
+		 */
+		entry->proxied = (request->proxy && (request->proxy->dst_port != 0));
 	}
 
 	/*
@@ -499,7 +509,7 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 
 	/*	Make unique for different virtual servers handling same request
 	 */
-	if (request->server) {
+	if (request->server && !entry->proxied) {
 		/*
 		 *	Make unique for different virtual servers handling same request
 		 */
@@ -667,7 +677,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 		if (vp) return true;
 
 		/*
-		 *
+		 *	Create a State and add it to the packet.
 		 */
 		for (i = 0; i < sizeof(buffer) / sizeof(x); i++) {
 			x = fr_rand();
@@ -713,6 +723,21 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 	fr_state_cleanup(cleanup_list);
+
+#ifdef WITH_VERIFY_PTR
+	if (request->proxy_reply && (request->proxy_reply->dst_port != 0)) {
+		VALUE_PAIR *vp, *proxy;
+
+		vp = fr_pair_find_by_num(request->reply->vps, PW_STATE, 0, TAG_ANY);
+		fr_assert(vp != NULL);
+
+		proxy = fr_pair_find_by_num(request->proxy_reply->vps, PW_STATE, 0, TAG_ANY);
+		fr_assert(vp != NULL);
+
+		fr_assert(vp->vp_length == proxy->vp_length);
+		fr_assert(memcmp(vp->vp_octets, proxy->vp_octets, vp->vp_length) == 0);
+	}
+#endif
 
 	VERIFY_REQUEST(request);
 	return true;
