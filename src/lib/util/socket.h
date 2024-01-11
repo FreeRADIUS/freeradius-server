@@ -72,7 +72,10 @@ typedef struct {
 		} inet;
 
 		struct {
-			char const *path;		//!< Unix socket path.
+			char const	*path;		//!< Unix socket path.
+			mode_t	   	perm;
+			uid_t		uid;
+			gid_t		gid;
 		} unix;
 	};
 	int af;			//!< AF_INET, AF_INET6, or AF_UNIX
