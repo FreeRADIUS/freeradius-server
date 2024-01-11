@@ -36,15 +36,14 @@ $(OUTPUT)/%: $(DIR)/% | $(TEST).trigger_clear $(TEST).radiusd_kill $(TEST).radiu
 	${Q}rm -f $(OUT_DIR)/$(OUT).out
 
 #	Wait for the sync to start before applying changes
-#	${Q}i=0; while [ $$i -lt 100 ] ; \
-#		do if [ -e $(OUT_DIR)/sync_started ];	\
-#		then					\
-#		break;					\
-#		fi;					\
-#		sleep .1;				\
-#		i=$$((i+1));				\
-#	done;
-	${Q}sleep 1
+	${Q}i=0; while [ $$i -lt 100 ] ; \
+		do if [ -e $(OUT_DIR)/sync_started ];	\
+		then					\
+		break;					\
+		fi;					\
+		sleep .1;				\
+		i=$$((i+1));				\
+	done;
 
 	${Q}$<
 	${Q}i=0; while [ $$i -lt 600 ] ; \
