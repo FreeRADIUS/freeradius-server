@@ -245,8 +245,8 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	XLAT_REGISTER("dict.attr.by.num", xlat_dict_attr_by_num, FR_TYPE_STRING, xlat_dict_attr_by_num_args);
-	XLAT_REGISTER("dict.attr.by.oid", xlat_dict_attr_by_oid, FR_TYPE_STRING, xlat_dict_attr_by_oid_args);
+	XLAT_REGISTER("dict.attr.by_num", xlat_dict_attr_by_num, FR_TYPE_STRING, xlat_dict_attr_by_num_args);
+	XLAT_REGISTER("dict.attr.by_oid", xlat_dict_attr_by_oid, FR_TYPE_STRING, xlat_dict_attr_by_oid_args);
 	XLAT_REGISTER("dict.vendor", xlat_vendor, FR_TYPE_STRING, xlat_vendor_args);
 	XLAT_REGISTER("dict.vendor.num", xlat_vendor_num, FR_TYPE_UINT32, xlat_vendor_num_args);
 	XLAT_REGISTER("dict.attr", xlat_attr, FR_TYPE_STRING, xlat_attr_args);
@@ -257,8 +257,8 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("dict.attr.by.num");
-	xlat_func_unregister("dict.attr.by.oid");
+	xlat_func_unregister("dict.attr.by_num");
+	xlat_func_unregister("dict.attr.by_oid");
 	xlat_func_unregister("dict.vendor");
 	xlat_func_unregister("dict.vendor.num");
 	xlat_func_unregister("dict.attr");

@@ -2,25 +2,25 @@
 
 &Reply-Message := 'foo'
 
-if (%dict.attr.by.num(1) != 'User-Name') {
+if (%dict.attr.by_num(1) != 'User-Name') {
 	test_fail
 }
 
-if (%dict.attr.by.oid(1) != 'User-Name') {
-	test_fail
-}
-
-# Should fail
-if (%dict.attr.by.oid(26) != 'Vendor-Specific') {
+if (%dict.attr.by_oid(1) != 'User-Name') {
 	test_fail
 }
 
 # Should fail
-if (%dict.attr.by.oid(26.11344) != 'FreeRADIUS') {
+if (%dict.attr.by_oid(26) != 'Vendor-Specific') {
 	test_fail
 }
 
-if (%dict.attr.by.oid(26.11344.1) != 'Proxied-To') {
+# Should fail
+if (%dict.attr.by_oid(26.11344) != 'FreeRADIUS') {
+	test_fail
+}
+
+if (%dict.attr.by_oid(26.11344.1) != 'Proxied-To') {
 	test_fail
 }
 
