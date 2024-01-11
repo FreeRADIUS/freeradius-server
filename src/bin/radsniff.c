@@ -2163,6 +2163,15 @@ static void _unmark_link(void *request)
 	this->in_link_tree = false;
 }
 
+/** Exit the event loop after a given timeout.
+ *
+ */
+static void timeout_event(fr_event_list_t *el, UNUSED fr_time_t now_t, UNUSED void *ctx)
+{
+	fr_event_loop_exit(el, 1);
+}
+
+
 #ifdef HAVE_COLLECTDC_H
 /** Re-open the collectd socket
  *
@@ -2279,6 +2288,7 @@ static NEVER_RETURNS void usage(int status)
 	fprintf(output, "  -R <filter>           RADIUS attribute response filter.\n");
 	fprintf(output, "  -s <secret>           RADIUS secret.\n");
 	fprintf(output, "  -S                    Write PCAP data to stdout.\n");
+	fprintf(output, "  -t <timeout>          Stop after <timeout> seconds.\n");
 	fprintf(output, "  -v                    Show program version information and exit.\n");
 	fprintf(output, "  -w <file>             Write output packets to file.\n");
 	fprintf(output, "  -x                    Print more debugging information.\n");
@@ -2311,6 +2321,8 @@ int main(int argc, char *argv[])
 	int			port = FR_AUTH_UDP_PORT;
 
 	int			c;
+	unsigned int		timeout = 0;
+	fr_event_timer_t const	*timeout_ev = NULL;
 	char const		*raddb_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	TALLOC_CTX		*autofree;
@@ -2365,7 +2377,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((c = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:Z:")) != -1) {
+	while ((c = getopt(argc, argv, "ab:c:C:d:D:e:Ef:hi:I:l:L:mp:P:qr:R:s:St:vw:xXW:T:P:N:O:Z:")) != -1) {
 		switch (c) {
 		case 'a':
 		{
@@ -2498,6 +2510,10 @@ int main(int argc, char *argv[])
 		case 's':
 			talloc_free(conf->radius_secret);
 			conf->radius_secret = talloc_strdup(conf, optarg);
+			break;
+
+		case 't':
+			timeout = atoi(optarg);
 			break;
 
 		case 'S':
@@ -3088,13 +3104,19 @@ int main(int argc, char *argv[])
 				goto finish;
 			}
 		}
+
+		if (timeout) {
+			if (fr_event_timer_in(NULL, events, &timeout_ev, fr_time_delta_from_sec(timeout),
+					      timeout_event, NULL) < 0) {
+				ERROR("Failed inserting timeout event");
+			}
+		}
 	}
 
 	/*
 	 *	If we just have the pipe, then exit.
 	 */
 	if (fr_event_list_num_fds(events) == 1) goto finish;
-
 
 	/*
 	 *	Do this as late as possible so we can return an error code if something went wrong.
