@@ -7,9 +7,9 @@ server eap-aka-prime {
 
 	recv Identity-Response {
 #		%debug_attr(&session-state.)
-		if (!&session-state.Tmp-String-0) {
+		if (!&session-state.Stripped-User-Name) {
 			&reply.Any-ID-Req := yes
-			&session-state.Tmp-String-0 := yes
+			&session-state.Stripped-User-Name := yes
 		}
 		ok
 	}
