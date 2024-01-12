@@ -53,18 +53,18 @@ match (&User-Name =~ /@|\\/)
 xlat_purify &User-Name =~ /^([^\\]*)\\(.*)$/
 match (&User-Name =~ /^([^\\]*)\\(.*)$/)
 
-xlat_purify &Tmp-Integer-0 =~ /%{Tmp-Integer-1} foo/
-match (&Tmp-Integer-0 =~ /%{Tmp-Integer-1} foo/)
+xlat_purify &NAS-Port =~ /%{Login-TCP-Port} foo/
+match (&NAS-Port =~ /%{Login-TCP-Port} foo/)
 
 #
 #  If they're dumb enough to add a cast, then it will be just cast again
 #  to "string" before the regular expression is evaluated.
 #
-xlat_purify (integer)&Tmp-String-0 =~ /foo/
-match ((uint32)&Tmp-String-0 =~ /foo/)
+xlat_purify (integer)&Filter-Id =~ /foo/
+match ((uint32)&Filter-Id =~ /foo/)
 
-xlat_purify &Tmp-String-0 =~ <integer>/foo/
-match ERROR offset 18: Expected regular expression
+xlat_purify &Filter-Id =~ <integer>/foo/
+match ERROR offset 15: Expected regular expression
 
 xlat_expr %{33}
 match ERROR offset 3: Invalid regex reference.  Must be in range 0-32

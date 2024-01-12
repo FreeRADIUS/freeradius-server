@@ -62,16 +62,16 @@ match &User-Name =~ /^([^\\]*)\\(.*)$/
 #
 #  Non-integer types get cast to string.
 #
-condition &Tmp-Integer-0 =~ /%{Tmp-Integer-0}/
-match <string>&Tmp-Integer-0 =~ /%{Tmp-Integer-0}/
+condition &NAS-Port =~ /%{NAS-Port}/
+match <string>&NAS-Port =~ /%{NAS-Port}/
 
 #
 #  Cannot add a bad cast
 #
-condition <integer>&Tmp-String-0 =~ /foo/
+condition <integer>&Filter-Id =~ /foo/
 match ERROR offset 10: Casts cannot be used with regular expressions
 
-condition &Tmp-String-0 =~ <integer>/foo/
+condition &Filter-Id =~ <integer>/foo/
 match ERROR offset 28: Casts cannot be used with regular expressions
 
 

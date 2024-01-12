@@ -238,8 +238,8 @@ xlat_argv /bin/sh "foo bar" "%{User-Name} %{Filter-Id"
 match ERROR offset 44: Unexpected text after enum value.  Expected operator
 
 # and text immediately after a variable expansion
-xlat_argv echo hello %{Tmp-String-0}:1234 world
-match [0]{ echo }, [1]{ hello }, [2]{ %{Tmp-String-0}:1234 }, [3]{ world }
+xlat_argv echo hello %{Filter-Id}:1234 world
+match [0]{ echo }, [1]{ hello }, [2]{ %{Filter-Id}:1234 }, [3]{ world }
 
 xlat %debug(5)
 match %debug(5)

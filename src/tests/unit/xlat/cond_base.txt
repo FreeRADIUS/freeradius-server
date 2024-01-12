@@ -441,16 +441,16 @@ match (&Filter-Id == &Framed-IP-Address)
 xlat_purify (ipaddr)127.0.0.1 == &Filter-Id
 match (127.0.0.1 == &Filter-Id)
 
-xlat_purify &Tmp-uint64-0 == &request.Tmp-String-0
-match (&Tmp-uint64-0 == &request.Tmp-String-0)
+xlat_purify &Acct-Input-Octets64 == &request.Callback-Id
+match (&Acct-Input-Octets64 == &request.Callback-Id)
 
-xlat_purify &Tmp-uint64-0 == &reply.Tmp-String-0
-match (&Tmp-uint64-0 == &reply.Tmp-String-0)
+xlat_purify &Acct-Input-Octets64 == &reply.Callback-Id
+match (&Acct-Input-Octets64 == &reply.Callback-Id)
 
 #
 #  Casting attributes of different size
 #
-xlat_purify (ipaddr)&Tmp-uint64-0 == &Framed-IP-Address
+xlat_purify (ipaddr)&Acct-Input-Octets64 == &Framed-IP-Address
 match ERROR offset 9: Cannot cast type 'uint64' to 'ipaddr'
 
 #
@@ -462,8 +462,8 @@ xlat_purify (ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address
 match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
-xlat_purify (ether)&Tmp-uint64-0 == "%interpreter('foo')"
-match  ((ether)&Tmp-uint64-0 == %cast(string, "%interpreter('foo')"))
+xlat_purify (ether)&Acct-Input-Octets64 == "%interpreter('foo')"
+match  ((ether)&Acct-Input-Octets64 == %cast(string, "%interpreter('foo')"))
 
 xlat_purify (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
@@ -498,8 +498,8 @@ xlat_purify &Acct-Input-Octets > &Session-Timeout
 match (&Acct-Input-Octets > &Session-Timeout)
 
 #  Separate types aren't optimized
-xlat_purify &Tmp-uint64-0 > &Session-Timeout
-match (&Tmp-uint64-0 > &Session-Timeout)
+xlat_purify &Acct-Input-Octets64 > &Session-Timeout
+match (&Acct-Input-Octets64 > &Session-Timeout)
 
 #
 #  Parse OIDs into known attributes, where possible.
