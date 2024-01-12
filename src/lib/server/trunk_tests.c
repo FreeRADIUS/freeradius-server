@@ -1527,6 +1527,7 @@ static void test_connection_levels_max(void)
 	 *	Like test_connection_start_on_enqueue(), you have to process the backlog
 	 *	to start the chain of events.
 	 */
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
@@ -1584,12 +1585,14 @@ static void test_connection_levels_max(void)
 	/*
 	 *	Looping I/O
 	 */
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
 	/*
 	 *	Receiving responses
 	 */
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
