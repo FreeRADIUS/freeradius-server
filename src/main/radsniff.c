@@ -1804,6 +1804,15 @@ static void _unmark_link(void *request)
 	this->in_link_tree = false;
 }
 
+/** Exit the event loop after a given timeout.
+ *
+ */
+static void timeout_event(UNUSED void *ctx)
+{
+	fr_event_loop_exit(events, 1);
+}
+
+
 #ifdef HAVE_COLLECTDC_H
 /** Re-open the collectd socket
  *
@@ -1919,6 +1928,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -R <filter>           RADIUS attribute response filter.\n");
 	fprintf(output, "  -s <secret>           RADIUS secret.\n");
 	fprintf(output, "  -S                    Write PCAP data to stdout.\n");
+	fprintf(output, "  -t <timeout>          Stop after <timeout> seconds.\n");
 	fprintf(output, "  -v                    Show program version information.\n");
 	fprintf(output, "  -w <file>             Write output packets to file.\n");
 	fprintf(output, "  -x                    Print more debugging information.\n");
@@ -1947,6 +1957,8 @@ int main(int argc, char *argv[])
 	char buffer[1024];
 
 	int opt;
+	unsigned int		timeout = 0;
+	fr_event_t		*timeout_ev = NULL;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 
@@ -1999,7 +2011,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:Ff:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:Ff:hi:I:l:L:mp:P:qr:R:s:St:vw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
 		case 'a':
 		{
@@ -2118,6 +2130,10 @@ int main(int argc, char *argv[])
 
 		case 's':
 			conf->radius_secret = optarg;
+			break;
+
+		case 't':
+			timeout = atoi(optarg);
 			break;
 
 		case 'S':
@@ -2569,7 +2585,7 @@ int main(int argc, char *argv[])
 	 *	Setup and enter the main event loop. Who needs libev when you can roll your own...
 	 */
 	 {
-		struct timeval now;
+		struct timeval now, when;
 		rs_update_t update;
 
 		char *buff;
@@ -2632,17 +2648,26 @@ int main(int argc, char *argv[])
 			update.stats = &stats;
 			update.in = in;
 
-			now.tv_sec += conf->stats.interval;
-			now.tv_usec = 0;
-			if (!fr_event_insert(events, rs_stats_process, (void *) &update, &now, &event)) {
+			when = now;
+			when.tv_sec += conf->stats.interval;
+			when.tv_usec = 0;
+			if (!fr_event_insert(events, rs_stats_process, (void *) &update, &when, &event)) {
 				ERROR("Failed inserting stats event");
 			}
 
 			INFO("Muting stats for the next %i milliseconds (warmup)", conf->stats.timeout);
-			rs_tv_add_ms(&now, conf->stats.timeout, &stats.quiet);
+			rs_tv_add_ms(&when, conf->stats.timeout, &stats.quiet);
+		}
+
+		if (timeout) {
+			when = now;
+			when.tv_sec += timeout;
+
+			if (!fr_event_insert(events, timeout_event, NULL, &when, &timeout_ev)) {
+				ERROR("Failed inserting timeout event");
+			}
 		}
 	}
-
 
 	/*
 	 *	Do this as late as possible so we can return an error code if something went wrong.
