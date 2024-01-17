@@ -8,12 +8,12 @@ BEGIN-VENDOR	TPLink
 
 ATTRIBUTE	TPLink-Recv-limit			1	integer
 ATTRIBUTE	TPLink-Xmit-limit			2	integer
-ATTRIBUTE	TPLink-Authentication-FindKey		3	Octets
-ATTRIBUTE	TPLink-Authentication-FoundKey		4	Octets
-ATTRIBUTE	TPLink-User-Command			5	String
-ATTRIBUTE	TPLink-Site				6	String
-ATTRIBUTE	TPLink-Omada				7	String
-ATTRIBUTE	TPLink-Redirect-Url			8	String
+ATTRIBUTE	TPLink-Authentication-FindKey		3	octets
+ATTRIBUTE	TPLink-Authentication-FoundKey		4	octets
+ATTRIBUTE	TPLink-User-Command			5	string
+ATTRIBUTE	TPLink-Site				6	string
+ATTRIBUTE	TPLink-Omada				7	string
+ATTRIBUTE	TPLink-Redirect-Url			8	string
 ATTRIBUTE	TPLink-Portal-Access-Status		9	integer
 
 END-VENDOR TPLink
