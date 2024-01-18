@@ -232,9 +232,9 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 {
 	ssize_t		len;
-	int		statement_cnt = 0;
+	int		statement_len, statement_cnt = 0;
 	char		*buffer;
-	char		*p, *q;
+	char const	*p;
 	int		cl;
 	FILE		*f;
 	struct stat	finfo;
@@ -308,7 +308,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 			if ((*p != 0x0a) && (*p != 0x0d) && (*p != '\t')) break;
 			cl = 1;
 		} else {
-			cl = fr_utf8_char((uint8_t *) p, -1);
+			cl = fr_utf8_char((uint8_t const *) p, -1);
 			if (!cl) break;
 		}
 	}
@@ -319,21 +319,13 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 		return -1;
 	}
 
-	/*
-	 *	Statement delimiter is ;\n
-	 */
 	p = buffer;
-	while ((q = strchr(p, ';'))) {
-		if ((q[1] != '\n') && (q[1] != '\0')) {
-			p = q + 1;
-			statement_cnt++;
-			continue;
-		}
-
+	while (*p) {
+		statement_len = len - (p - buffer);
 #ifdef HAVE_SQLITE3_PREPARE_V2
-		status = sqlite3_prepare_v2(db, p, q - p, &statement, &z_tail);
+		status = sqlite3_prepare_v2(db, p, statement_len, &statement, &z_tail);
 #else
-		status = sqlite3_prepare(db, p, q - p, &statement, &z_tail);
+		status = sqlite3_prepare(db, p, statement_len, &statement, &z_tail);
 #endif
 
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
@@ -341,6 +333,11 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 			talloc_free(buffer);
 			return -1;
 		}
+
+		/*
+		 *	No SQL statement was found
+		 */
+		if (!statement) break;
 
 		status = sqlite3_step(statement);
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
@@ -358,7 +355,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 		}
 
 		statement_cnt++;
-		p = q + 1;
+		p = z_tail;
 	}
 
 	talloc_free(buffer);
