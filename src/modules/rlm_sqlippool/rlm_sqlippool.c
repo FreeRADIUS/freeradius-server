@@ -191,81 +191,6 @@ fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
 	{ NULL }
 };
 
-/*
- *	Replace %<whatever> in a string.
- *
- *	%P	pool_name
- *	%I	param
- *	%J	lease_duration
- *
- */
-static int sqlippool_expand(char * out, int outlen, char const * fmt,
-			    rlm_sqlippool_t const *data, char * param, int param_len)
-{
-	char *q;
-	char const *p;
-	char tmp[40]; /* For temporary storing of integers */
-
-	q = out;
-	for (p = fmt; *p ; p++) {
-		int freespace;
-		int c;
-
-		/* Calculate freespace in output */
-		freespace = outlen - (q - out);
-		if (freespace <= 1)
-			break;
-
-		c = *p;
-		if (c != '%') {
-			*q++ = *p;
-			continue;
-		}
-
-		if (*++p == '\0') {
-			break;
-		}
-
-		if (c == '%') {
-			switch (*p) {
-			case 'P': /* pool name */
-				strlcpy(q, data->pool_name, freespace);
-				q += strlen(q);
-				break;
-			case 'I': /* IP address */
-				if (param && param_len > 0) {
-					if (param_len > freespace) {
-						strlcpy(q, param, freespace);
-						q += strlen(q);
-					}
-					else {
-						memcpy(q, param, param_len);
-						q += param_len;
-					}
-				}
-				break;
-			case 'J': /* lease duration */
-				snprintf(tmp, sizeof(tmp), "%u", data->lease_duration);
-				strlcpy(q, tmp, freespace);
-				q += strlen(q);
-				break;
-
-			default:
-				*q++ = '%';
-				*q++ = *p;
-				break;
-			}
-		}
-	}
-	*q = '\0';
-
-#if 0
-	DEBUG2("sqlippool_expand: \"%s\"", out);
-#endif
-
-	return strlen(out);
-}
-
 /** Perform a single sqlippool query
  *
  * Mostly wrapper around sql_query which does some special sqlippool sequence substitutions and expands
@@ -282,10 +207,8 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
  *	- < 0 on error.
  */
 static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
-			     rlm_sqlippool_t const *data, request_t *request,
-			     char *param, int param_len)
+			     rlm_sqlippool_t const *data, request_t *request)
 {
-	char query[MAX_QUERY_LEN];
 	char *expanded = NULL;
 
 	int ret;
@@ -301,12 +224,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 	 */
 	if (!handle || !*handle) return -1;
 
-	/*
-	 *	@todo this needs to die (should just be done in xlat expansion)
-	 */
-	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
-
-	if (xlat_aeval(request, &expanded, request, query, data->sql->sql_escape_func, *handle) < 0) return -1;
+	if (xlat_aeval(request, &expanded, request, fmt, data->sql->sql_escape_func, *handle) < 0) return -1;
 
 	ret = data->sql->query(data->sql, request, handle, expanded);
 	talloc_free(expanded);
@@ -329,40 +247,34 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 /*
  *	Don't repeat yourself
  */
-#define DO_PART(_x) if(sqlippool_command(inst->_x, &handle, inst, request, NULL, 0) <0) goto error
+#define DO_PART(_x) if(sqlippool_command(inst->_x, &handle, inst, request) <0) goto error
 
 /*
  * Query the database expecting a single result row
  */
 static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen, char const *fmt,
 							  rlm_sql_handle_t **handle, rlm_sqlippool_t *data,
-							  request_t *request, char *param, int param_len)
+							  request_t *request)
 {
-	char query[MAX_QUERY_LEN];
 	char *expanded = NULL;
 
 	int rlen, retval;
 
 	rlm_sql_row_t row;
 
-	/*
-	 *	@todo this needs to die (should just be done in xlat expansion)
-	 */
-	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
-
 	*out = '\0';
 
 	/*
 	 *	Do an xlat on the provided string
 	 */
-	if (xlat_aeval(request, &expanded, request, query, data->sql->sql_escape_func, *handle) < 0) {
+	if (xlat_aeval(request, &expanded, request, fmt, data->sql->sql_escape_func, *handle) < 0) {
 		return 0;
 	}
 	retval = data->sql->select(data->sql, request, handle, expanded);
 	talloc_free(expanded);
 
 	if ((retval != 0) || !*handle) {
-		REDEBUG("database query error on '%s'", query);
+		REDEBUG("database query error on '%s'", fmt);
 		return 0;
 	}
 
@@ -540,7 +452,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	if (inst->alloc_existing && *inst->alloc_existing) {
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 						  inst->alloc_existing, &handle,
-						  inst, request, (char *) NULL, 0);
+						  inst, request);
 		if (!handle) RETURN_MODULE_FAIL;
 	} else {
 		allocation_len = 0;
@@ -561,7 +473,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		if (slen > 0) {
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 							  inst->alloc_requested, &handle,
-							  inst, request, (char *) NULL, 0);
+							  inst, request);
 			if (!handle) RETURN_MODULE_FAIL;
 		}
 	}
@@ -573,7 +485,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	if (allocation_len == 0) {
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 						  inst->alloc_find, &handle,
-						  inst, request, (char *) NULL, 0);
+						  inst, request);
 		if (!handle) RETURN_MODULE_FAIL;
 	}
 
@@ -593,8 +505,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 			 *Let's check if the pool exists at all
 			 */
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-							  inst->pool_check, &handle, inst, request,
-							  (char *) NULL, 0);
+							  inst->pool_check, &handle, inst, request);
 			if (!handle) RETURN_MODULE_FAIL;
 
 			fr_pool_connection_release(inst->sql->pool, request, handle);
@@ -647,8 +558,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	/*
 	 *	UPDATE
 	 */
-	if (sqlippool_command(inst->alloc_update, &handle, inst, request,
-			      allocation, allocation_len) < 0) {
+	if (sqlippool_command(inst->alloc_update, &handle, inst, request) < 0) {
 	error:
 		talloc_free(vp);
 		if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
@@ -693,7 +603,7 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 	 */
 	DO_PART(update_free);
 
-	affected = sqlippool_command(inst->update_update, &handle, inst, request, NULL, 0);
+	affected = sqlippool_command(inst->update_update, &handle, inst, request);
 
 	if (affected < 0) {
 	error:
