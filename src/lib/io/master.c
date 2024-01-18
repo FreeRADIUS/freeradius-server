@@ -1905,12 +1905,6 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 	}
 
 	/*
-	 *	No dynamic clients AND no packet cleanups?  We don't
-	 *	need timers.
-	 */
-	if (inst->dynamic_clients && !fr_time_delta_ispos(inst->cleanup_delay)) return;
-
-	/*
 	 *	Set event list and network side for this socket.
 	 */
 	if (!connection) {
