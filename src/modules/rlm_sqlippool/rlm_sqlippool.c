@@ -248,6 +248,12 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
  *	Don't repeat yourself
  */
 #define DO_PART(_x) if(sqlippool_command(inst->_x, &handle, inst, request) <0) goto error
+#define RESERVE_CONNECTION(_handle, _pool, _request) _handle = fr_pool_connection_get(_pool, _request); \
+	if (!_handle) { \
+		REDEBUG("Failed reserving SQL connection"); \
+		RETURN_MODULE_FAIL; \
+	}
+
 
 /*
  * Query the database expecting a single result row
@@ -433,11 +439,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		return do_logging(p_result, inst, request, inst->log_nopool, RLM_MODULE_NOOP);
 	}
 
-	handle = fr_pool_connection_get(inst->sql->pool, request);
-	if (!handle) {
-		REDEBUG("Failed reserving SQL connection");
-		RETURN_MODULE_FAIL;
-	}
+	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
 	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
@@ -584,11 +586,7 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 	rlm_sql_handle_t	*handle;
 	int			affected;
 
-	handle = fr_pool_connection_get(inst->sql->pool, request);
-	if (!handle) {
-		REDEBUG("Failed reserving SQL connection");
-		RETURN_MODULE_FAIL;
-	}
+	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
 	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
@@ -636,11 +634,7 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
 
-	handle = fr_pool_connection_get(inst->sql->pool, request);
-	if (!handle) {
-		REDEBUG("Failed reserving SQL connection");
-		RETURN_MODULE_FAIL;
-	}
+	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
 	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
@@ -666,11 +660,7 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, 
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
 
-	handle = fr_pool_connection_get(inst->sql->pool, request);
-	if (!handle) {
-		REDEBUG("Failed reserving SQL connection");
-		RETURN_MODULE_FAIL;
-	}
+	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
 	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
@@ -697,11 +687,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
 
-	handle = fr_pool_connection_get(inst->sql->pool, request);
-	if (!handle) {
-		REDEBUG("Failed reserving SQL connection");
-		RETURN_MODULE_FAIL;
-	}
+	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
 	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
 		RETURN_MODULE_FAIL;
