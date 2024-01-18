@@ -206,5 +206,7 @@ ATTRIBUTE	Queue-Use-Percentage			183	integer
 ATTRIBUTE	Stats-Last-Packet-Recv			184	date
 ATTRIBUTE	Stats-Last-Packet-Sent			185	date
 
+Attribute	Acct-Unique-Session-Id			186	string
+
 END-VENDOR FreeRADIUS
 ALIAS		FreeRADIUS				Vendor-Specific.FreeRADIUS
