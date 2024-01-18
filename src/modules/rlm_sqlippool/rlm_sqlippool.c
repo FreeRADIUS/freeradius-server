@@ -876,11 +876,12 @@ module_rlm_t rlm_sqlippool = {
 		{ .name1 = "recv",		.name2 = "Release",		.method = mod_release },
 		{ .name1 = "recv",		.name2 = "Decline",		.method = mod_mark },
 
-		{ .name1 = "ippool",		.name2 = "alloc",		.method = mod_alloc },
-		{ .name1 = "ippool",		.name2 = "update",		.method = mod_update },
-		{ .name1 = "ippool",		.name2 = "release",		.method = mod_release },
-		{ .name1 = "ippool",		.name2 = "bulk-release",	.method = mod_bulk_release },
-		{ .name1 = "ippool",		.name2 = "mark",		.method = mod_mark },
+		{ .name1 = "allocate",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
+		{ .name1 = "update",		.name2 = CF_IDENT_ANY,		.method = mod_update },
+		{ .name1 = "renew",		.name2 = CF_IDENT_ANY,		.method = mod_update },
+		{ .name1 = "release",		.name2 = CF_IDENT_ANY,		.method = mod_release },
+		{ .name1 = "bulk-release",	.name2 = CF_IDENT_ANY,		.method = mod_bulk_release },
+		{ .name1 = "mark",		.name2 = CF_IDENT_ANY,		.method = mod_mark },
 
 		MODULE_NAME_TERMINATOR
 	}
