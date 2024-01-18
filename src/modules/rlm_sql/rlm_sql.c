@@ -200,9 +200,15 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 
 	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
+	error:
 		fr_value_box_clear_value(vb);
 		return -1;
 	}
+
+	/*
+	 *	Escaping functions work on strings - ensure the box is a string
+	 */
+	if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) goto error;
 
 	/*
 	 *	Maximum escaped length is 3 * original - if every character needs escaping
