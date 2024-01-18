@@ -203,7 +203,7 @@ fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
  * @param param ip address string.
  * @param param_len ip address string len.
  * @return
- *	- 0 on success.
+ *	- number of affected rows on success.
  *	- < 0 on error.
  */
 static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
