@@ -414,7 +414,7 @@ static unlang_action_t do_logging(rlm_rcode_t *p_result, UNUSED rlm_sqlippool_t 
 
 
 /*
- *	Allocate an IP number from the pool.
+ *	Allocate an IP address from the pool.
  */
 static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
@@ -552,7 +552,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		DO_PART(alloc_commit);
 
 		talloc_free(vp);
-		RDEBUG2("Invalid IP number [%s] returned from instbase query.", allocation);
+		RDEBUG2("Invalid IP address [%s] returned from database query.", allocation);
 		fr_pool_connection_release(inst->sql->pool, request, handle);
 		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
 	}
