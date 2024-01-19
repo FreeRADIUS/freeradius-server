@@ -44,7 +44,6 @@ typedef struct {
 
 	rlm_sql_t const	*sql;
 
-	char const	*pool_name;
 	fr_dict_attr_t const *allocated_address_da; //!< the attribute for IP address allocation
 	char const	*allocated_address_attr;	//!< name of the IP address attribute
 	tmpl_t		*requested_address;	//!< name of the requested IP address attribute
@@ -85,8 +84,6 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
 
 	{ FR_CONF_OFFSET("lease_duration", rlm_sqlippool_t, lease_duration), .dflt = "86400" },
-
-	{ FR_CONF_OFFSET("pool_name", rlm_sqlippool_t, pool_name) },
 
 	{ FR_CONF_OFFSET_FLAGS("allocated_address_attr", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_sqlippool_t, allocated_address_attr) },
 
@@ -302,14 +299,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	module_instance_t	*sql;
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
-	char const		*pool_name = NULL;
 
-	pool_name = cf_section_name2(conf);
-	if (pool_name != NULL) {
-		inst->pool_name = talloc_typed_strdup(inst, pool_name);
-	} else {
-		inst->pool_name = talloc_typed_strdup(inst, "ippool");
-	}
 	sql = module_rlm_by_name(NULL, inst->sql_name);
 	if (!sql) {
 		cf_log_err(conf, "failed to find sql instance named %s",
