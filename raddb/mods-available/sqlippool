@@ -45,9 +45,9 @@ sqlippool {
 	offer_duration = 60
 
 	#
-	#  pool_name: The attribute in the `control` list which contains the pool name.
+	#  pool_name: The attribute which contains the pool name.
 	#
-	pool_name = IP-Pool.Name
+	pool_name = &control.IP-Pool.Name
 
 	#
 	#  allocated_address_attr:: List and attribute where the allocated address is written to.

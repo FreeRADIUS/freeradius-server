@@ -68,6 +68,13 @@ typedef struct {
 	char const	*mark_update;		//!< SQL query to mark an IP.
 } rlm_sqlippool_t;
 
+typedef struct {
+	fr_value_box_t	pool_name;			//!< Name of pool address will be allocated from.
+	tmpl_t		*pool_name_tmpl;		//!< Tmpl used to expand pool_name
+	tmpl_t		*allocated_address_attr;	//!< Attribute to populate with allocated IP.
+	fr_value_box_t	allocated_address;		//!< Existing value for allocated IP.
+} ippool_alloc_call_env_t;
+
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
 
@@ -104,23 +111,6 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("mark_update", CONF_FLAG_XLAT, rlm_sqlippool_t, mark_update) },
 
 	CONF_PARSER_TERMINATOR
-};
-
-static fr_dict_t const *dict_freeradius;
-
-extern fr_dict_autoload_t rlm_sqlippool_dict[];
-fr_dict_autoload_t rlm_sqlippool_dict[] = {
-	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ NULL }
-};
-
-static fr_dict_attr_t const *attr_pool_name;
-
-extern fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[];
-fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
-	{ .out = &attr_pool_name, .name = "IP-Pool.Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
-	{ NULL }
 };
 
 /** Perform a single sqlippool query
@@ -315,8 +305,8 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		RETURN_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_pool_name) == NULL) {
-		RDEBUG2("No %s defined", attr_pool_name->name);
+	if (env->pool_name.type == FR_TYPE_NULL) {
+		RDEBUG2("No %s defined", env->pool_name_tmpl->name);
 
 		RETURN_MODULE_NOOP;
 	}
@@ -564,6 +554,9 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 static const call_env_method_t sqlippool_alloc_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ippool_alloc_call_env_t),
 	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_PARSE_OFFSET("pool_name", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+	     				   ippool_alloc_call_env_t, pool_name, pool_name_tmpl),
+					   .pair.dflt = "&control.IP-Pool.Name", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_PARSE_OFFSET("allocated_address_attr", FR_TYPE_VOID,
 					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE,
 					   ippool_alloc_call_env_t, allocated_address, allocated_address_attr) },
