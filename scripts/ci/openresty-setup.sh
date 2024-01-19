@@ -1,16 +1,20 @@
 #!/bin/sh -e
 #
-# ### This is a script to setup an openresty web server for testing rlm_smtp
+# ### This is a script to setup an openresty web server for testing rlm_rest
 #
+
+# on macOS brew tap openresty/brew && brew install openresty
 
 #
 # Declare the important path variables
 #
+PATH="/opt/homebrew/opt/openresty/bin:${PATH}"
 
 # Base Directories
 BASEDIR=$(git rev-parse --show-toplevel)
-BUILDDIR="${BASEDIR}/build/ci/openresty"
 CIDIR="${BASEDIR}/scripts/ci"
+
+BUILDDIR="${BASEDIR}/build/ci/openresty"
 
 # Directories for openresty processes
 ROOTDIR="${BUILDDIR}/html"
@@ -22,6 +26,15 @@ PASSWORD="whatever"
 
 # Important files for running openresty
 CONF="${BUILDDIR}/nginx.conf"
+
+# Find the mime.types file
+MIME_TYPES_LOCATIONS="/usr/local/openresty/nginx/conf/mime.types /opt/homebrew/etc/openresty/mime.types /usr/local/etc/nginx/mime.types /etc/nginx/mime.types"
+for i in ${MIME_TYPES_LOCATIONS}; do
+	if [ -e "${i}" ]; then
+		MIME_TYPES="${i}"
+		break
+	fi
+done
 
 #
 # Prepare the directories and files needed for running openresty
@@ -60,7 +73,7 @@ events {
 }
 
 http {
-    include       /usr/local/openresty/nginx/conf/mime.types;
+    include       ${MIME_TYPES};
     default_type  text/plain;
 
     sendfile      on;
