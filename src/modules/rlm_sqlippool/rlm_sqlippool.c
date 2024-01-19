@@ -252,7 +252,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	}
 
 	if (!row) {
-		REDEBUG("SQL query did not return any results");
+		RDEBUG2("SQL query did not return any results");
 		goto finish;
 	}
 
@@ -263,7 +263,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 
 	rlen = strlen(row[0]);
 	if (rlen >= outlen) {
-		RDEBUG2("insufficient string space");
+		REDEBUG("The first column of the result was too long (%d)", rlen);
 		goto finish;
 	}
 
