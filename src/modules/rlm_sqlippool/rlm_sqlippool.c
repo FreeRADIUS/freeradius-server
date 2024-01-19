@@ -667,7 +667,6 @@ module_rlm_t rlm_sqlippool = {
 		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
 		/*
 		 *	RADIUS specific
 		 */
@@ -678,6 +677,9 @@ module_rlm_t rlm_sqlippool = {
 		{ .name1 = "accounting",	.name2 = "accounting-on",	.method = mod_bulk_release },
 		{ .name1 = "accounting",	.name2 = "accounting-off",	.method = mod_bulk_release },
 
+		/*
+		 *	DHCPv4
+		 */
 		{ .name1 = "recv",		.name2 = "Discover",		.method = mod_alloc },
 		{ .name1 = "recv",		.name2 = "Request",		.method = mod_update },
 		{ .name1 = "recv",		.name2 = "Confirm",		.method = mod_update },
@@ -686,6 +688,15 @@ module_rlm_t rlm_sqlippool = {
 		{ .name1 = "recv",		.name2 = "Release",		.method = mod_release },
 		{ .name1 = "recv",		.name2 = "Decline",		.method = mod_mark },
 
+		/*
+		 *	Generic
+		 */
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_update },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
+
+		/*
+		 *	Named methods matching module operations
+		 */
 		{ .name1 = "allocate",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
 		{ .name1 = "update",		.name2 = CF_IDENT_ANY,		.method = mod_update },
 		{ .name1 = "renew",		.name2 = CF_IDENT_ANY,		.method = mod_update },
