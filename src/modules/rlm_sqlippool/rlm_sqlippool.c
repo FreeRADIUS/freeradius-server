@@ -42,8 +42,6 @@ typedef struct {
 
 	rlm_sql_t const	*sql;
 
-	fr_dict_attr_t const *allocated_address_da; //!< the attribute for IP address allocation
-	char const	*allocated_address_attr;	//!< name of the IP address attribute
 	tmpl_t		*requested_address;	//!< name of the requested IP address attribute
 
 						/* Alloc sequence */
@@ -72,8 +70,6 @@ typedef struct {
 
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
-
-	{ FR_CONF_OFFSET_FLAGS("allocated_address_attr", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_sqlippool_t, allocated_address_attr) },
 
 	{ FR_CONF_OFFSET("requested_address", rlm_sqlippool_t, requested_address) },
 
@@ -279,25 +275,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	inst->allocated_address_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius,
-									  inst->allocated_address_attr, false, false);
-	if (!inst->allocated_address_da) {
-		cf_log_perr(conf, "Failed resolving attribute");
-		return -1;
-	}
-
-	switch (inst->allocated_address_da->type) {
-	default:
-		cf_log_err(conf, "Cannot use non-IP attributes for 'allocated_address_attr = %s'", inst->allocated_address_attr);
-		return -1;
-
-	case FR_TYPE_IPV4_ADDR:
-	case FR_TYPE_IPV4_PREFIX:
-	case FR_TYPE_IPV6_ADDR:
-	case FR_TYPE_IPV6_PREFIX:
-		break;
-	}
-
 	if (inst->requested_address) {
 		if (!tmpl_is_xlat(inst->requested_address)) {
 			cf_log_err(conf, "requested_address must be a double quoted expansion, not %s",
@@ -322,21 +299,23 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
+	ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_alloc_call_env_t);
 	char			allocation[FR_MAX_STRING_LEN];
 	int			allocation_len;
-	fr_pair_t		*vp = NULL;
 	rlm_sql_handle_t	*handle;
+	tmpl_t			ip_rhs;
+	map_t			ip_map;
 
 	/*
-	 *	If there is a Framed-IP-Address attribute in the reply do nothing
+	 *	If the allocated IP attribute already exists, do nothing
 	 */
-	if (fr_pair_find_by_da(&request->reply_pairs, NULL, inst->allocated_address_da) != NULL) {
-		RDEBUG2("%s already exists", inst->allocated_address_da->name);
+	if (env->allocated_address.type) {
+		RDEBUG2("%s already exists (%pV)", env->allocated_address_attr->name, &env->allocated_address);
 
 		RETURN_MODULE_NOOP;
 	}
 
-	if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_name) == NULL) {
+	if (fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_pool_name) == NULL) {
 		RDEBUG2("No %s defined", attr_pool_name->name);
 
 		RETURN_MODULE_NOOP;
@@ -446,11 +425,17 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	 *	See if we can create the VP from the returned data.  If not,
 	 *	error out.  If so, add it to the list.
 	 */
-	MEM(vp = fr_pair_afrom_da(request->reply_ctx, inst->allocated_address_da));
-	if (fr_pair_value_from_str(vp, allocation, allocation_len, NULL, true) < 0) {
+	ip_map = (map_t) {
+		.lhs = env->allocated_address_attr,
+		.op = T_OP_SET,
+		.rhs = &ip_rhs
+	};
+
+	tmpl_init_shallow(&ip_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0, NULL);
+	fr_value_box_bstrndup_shallow(&ip_map.rhs->data.literal, NULL, allocation, allocation_len, false);
+	if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
 		DO_PART(alloc_commit);
 
-		talloc_free(vp);
 		RDEBUG2("Invalid IP address [%s] returned from database query.", allocation);
 		fr_pool_connection_release(inst->sql->pool, request, handle);
 		RETURN_MODULE_NOOP;
@@ -461,7 +446,6 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	 */
 	if (sqlippool_command(inst->alloc_update, &handle, inst, request) < 0) {
 	error:
-		talloc_free(vp);
 		if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 		RETURN_MODULE_FAIL;
 	}
@@ -469,7 +453,6 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	DO_PART(alloc_commit);
 
 	RDEBUG2("Allocated IP %s", allocation);
-	fr_pair_append(&request->reply_pairs, vp);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
@@ -578,6 +561,16 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 	RETURN_MODULE_FAIL;
 }
 
+static const call_env_method_t sqlippool_alloc_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ippool_alloc_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_PARSE_OFFSET("allocated_address_attr", FR_TYPE_VOID,
+					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE,
+					   ippool_alloc_call_env_t, allocated_address, allocated_address_attr) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -602,7 +595,8 @@ module_rlm_t rlm_sqlippool = {
 		/*
 		 *	RADIUS specific
 		 */
-		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc },
+		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc,
+		  .method_env = &sqlippool_alloc_method_env },
 		{ .name1 = "accounting",	.name2 = "start",		.method = mod_update },
 		{ .name1 = "accounting",	.name2 = "alive",		.method = mod_update },
 		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release },
@@ -612,7 +606,8 @@ module_rlm_t rlm_sqlippool = {
 		/*
 		 *	DHCPv4
 		 */
-		{ .name1 = "recv",		.name2 = "Discover",		.method = mod_alloc },
+		{ .name1 = "recv",		.name2 = "Discover",		.method = mod_alloc,
+		  .method_env = &sqlippool_alloc_method_env },
 		{ .name1 = "recv",		.name2 = "Request",		.method = mod_update },
 		{ .name1 = "recv",		.name2 = "Confirm",		.method = mod_update },
 		{ .name1 = "recv",		.name2 = "Rebind",		.method = mod_update },
@@ -624,12 +619,14 @@ module_rlm_t rlm_sqlippool = {
 		 *	Generic
 		 */
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_update },
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc,
+		  .method_env = &sqlippool_alloc_method_env },
 
 		/*
 		 *	Named methods matching module operations
 		 */
-		{ .name1 = "allocate",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
+		{ .name1 = "allocate",		.name2 = CF_IDENT_ANY,		.method = mod_alloc,
+		  .method_env = &sqlippool_alloc_method_env },
 		{ .name1 = "update",		.name2 = CF_IDENT_ANY,		.method = mod_update },
 		{ .name1 = "renew",		.name2 = CF_IDENT_ANY,		.method = mod_update },
 		{ .name1 = "release",		.name2 = CF_IDENT_ANY,		.method = mod_release },

@@ -58,7 +58,7 @@ sqlippool {
 	#
 	#  e.g. `ipaddr`, `ipv4prefix,` `ipv6addr`, or `ipv6prefix`.
 	#  ====
-	allocated_address_attr = radius.Framed-IP-Address
+	allocated_address_attr = &reply.Framed-IP-Address
 
 	#
 	#  owner:: Expansion which identifies the owner of the lease.
