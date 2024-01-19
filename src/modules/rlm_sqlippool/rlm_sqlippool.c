@@ -97,10 +97,6 @@ typedef struct rlm_sqlippool_t {
 	char const	*log_clear;		//!< We successfully deallocated ip address from pool.
 	char const	*log_failed;		//!< Failed to allocate ip from the pool.
 	char const	*log_nopool;		//!< There was no Framed-IP-Address but also no Pool-Name.
-
-						/* Reserved to handle 255.255.255.254 Requests */
-	char const	*defaultpool;		//!< Default Pool-Name if there is none in the check items.
-
 } rlm_sqlippool_t;
 
 static CONF_PARSER message_config[] = {
@@ -130,10 +126,6 @@ static CONF_PARSER module_config[] = {
 
 	{ "pool-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, pool_name), NULL },
 	{ "pool_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, pool_name), "Pool-Name" },
-
-	{ "default-pool", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, defaultpool), NULL },
-	{ "default_pool", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, defaultpool), "main_pool" },
-
 
 	{ "ipv6", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6), NULL},
 	{ "allow_duplicates", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, allow_duplicates), NULL},
