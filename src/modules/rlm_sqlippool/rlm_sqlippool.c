@@ -372,7 +372,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 				 *	that case, we should return
 				 *	NOTFOUND
 				 */
-				RDEBUG2("pool appears to be full");
+				RWDEBUG("Pool \"%pV\" appears to be full", &env->pool_name);
 				RETURN_MODULE_NOTFOUND;
 			}
 
@@ -382,7 +382,8 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 			 *	sqlippool, so we should just ignore this
 			 *	allocation failure and return NOOP
 			 */
-			RDEBUG2("IP address could not be allocated as no pool exists with that name");
+			RWDEBUG("IP address could not be allocated as no pool exists with the name \"%pV\"",
+				&env->pool_name);
 			RETURN_MODULE_NOOP;
 
 		}
