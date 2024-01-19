@@ -5227,23 +5227,6 @@ parse:
 		}
 		break;
 
-	/*
-	 *	Crazy polymorphic (IPv4/IPv6) attribute src->dst_type for WiMAX.
-	 *
-	 *	We try and make is saner by replacing the original
-	 *	da, with either an IPv4 or IPv6 da src->dst_type.
-	 *
-	 *	These are not dynamic da, and will have the same vendor
-	 *	and attribute as the original.
-	 */
-	case FR_TYPE_COMBO_IP_ADDR:
-		if (fr_inet_pton(&dst->vb_ip, buffer, strlen(buffer), AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
-		break;
-
-	case FR_TYPE_COMBO_IP_PREFIX:
-		if (fr_inet_pton(&dst->vb_ip, buffer, strlen(buffer), AF_UNSPEC, fr_hostname_lookups, true) < 0) return -1;
-		break;
-
 	default:
 		fr_strerror_printf("Cannot parse input as data type %s", fr_type_to_str(dst_type));
 		return -1;
