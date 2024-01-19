@@ -90,9 +90,6 @@ typedef struct {
 	char const	*log_failed;		//!< Failed to allocate ip from the pool.
 	char const	*log_nopool;		//!< There was no Framed-IP-Address but also no Pool-Name.
 
-						/* Reserved to handle 255.255.255.254 Requests */
-	char const	*defaultpool;		//!< Default Pool-Name if there is none in the check items.
-
 } rlm_sqlippool_t;
 
 static conf_parser_t message_config[] = {
@@ -114,8 +111,6 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("allocated_address_attr", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_sqlippool_t, allocated_address_attr) },
 
 	{ FR_CONF_OFFSET("requested_address", rlm_sqlippool_t, requested_address) },
-
-	{ FR_CONF_OFFSET("default_pool", rlm_sqlippool_t, defaultpool), .dflt = "main_pool" },
 
 
 	{ FR_CONF_OFFSET_FLAGS("alloc_begin", CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_begin), .dflt = "START TRANSACTION" },
