@@ -42,8 +42,6 @@ typedef struct {
 
 	rlm_sql_t const	*sql;
 
-	tmpl_t		*requested_address;	//!< name of the requested IP address attribute
-
 						/* Alloc sequence */
 	char const	*alloc_begin;		//!< SQL query to begin.
 	char const	*alloc_existing;	//!< SQL query to find existing IP.
@@ -71,14 +69,13 @@ typedef struct {
 typedef struct {
 	fr_value_box_t	pool_name;			//!< Name of pool address will be allocated from.
 	tmpl_t		*pool_name_tmpl;		//!< Tmpl used to expand pool_name
+	fr_value_box_t	requested_address;		//!< IP address being requested by client.
 	tmpl_t		*allocated_address_attr;	//!< Attribute to populate with allocated IP.
 	fr_value_box_t	allocated_address;		//!< Existing value for allocated IP.
 } ippool_alloc_call_env_t;
 
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
-
-	{ FR_CONF_OFFSET("requested_address", rlm_sqlippool_t, requested_address) },
 
 
 	{ FR_CONF_OFFSET_FLAGS("alloc_begin", CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_begin), .dflt = "START TRANSACTION" },
@@ -265,13 +262,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (inst->requested_address) {
-		if (!tmpl_is_xlat(inst->requested_address)) {
-			cf_log_err(conf, "requested_address must be a double quoted expansion, not %s",
-				   tmpl_type_to_str(inst->requested_address->type));
-		}
-	}
-
 	inst->sql = (rlm_sql_t *) sql->dl_inst->data;
 
 	if (strcmp(talloc_get_name(inst->sql), "rlm_sql_t") != 0) {
@@ -332,20 +322,12 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	 *	If no existing IP was found and we have a requested IP address
 	 *	and a query to find whether it is available then try that
 	 */
-	if ((allocation_len == 0) && inst->alloc_requested && *inst->alloc_requested) {
-		char buffer[128];
-		char *ip = NULL;
-		ssize_t slen;
-
-		slen = tmpl_expand(&ip, buffer, sizeof(buffer), request, inst->requested_address, NULL, NULL);
-		if (slen < 0) RETURN_MODULE_FAIL;
-
-		if (slen > 0) {
-			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-							  inst->alloc_requested, &handle,
-							  inst, request);
-			if (!handle) RETURN_MODULE_FAIL;
-		}
+	if ((allocation_len == 0) && inst->alloc_requested && *inst->alloc_requested &&
+	    (env->requested_address.type != FR_TYPE_NULL)) {
+		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+						  inst->alloc_requested, &handle,
+						  inst, request);
+		if (!handle) RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -557,6 +539,8 @@ static const call_env_method_t sqlippool_alloc_method_env = {
 		{ FR_CALL_ENV_PARSE_OFFSET("pool_name", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
 	     				   ippool_alloc_call_env_t, pool_name, pool_name_tmpl),
 					   .pair.dflt = "&control.IP-Pool.Name", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("requested_address", FR_TYPE_VOID, CALL_ENV_FLAG_NULLABLE,
+				     ippool_alloc_call_env_t, requested_address) },
 		{ FR_CALL_ENV_PARSE_OFFSET("allocated_address_attr", FR_TYPE_VOID,
 					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE,
 					   ippool_alloc_call_env_t, allocated_address, allocated_address_attr) },

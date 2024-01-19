@@ -119,14 +119,14 @@ sqlippool {
 	#
 	#  requested_address:: The IP address being renewed or released.
 	#
-	#  For RADIUS the requested_address will almost always be `%{radius.Framed-IP-Address}`.
+	#  For RADIUS the requested_address will almost always be `%{Framed-IP-Address}`.
 	#
 	#  For DHCPv4 the requested_address will almost always be
-	#  `%{&dhcpv4.Requested-IP-Address || &dhcpv4.Client-IP-Address}`.
+	#  `%{&Requested-IP-Address || &Client-IP-Address}`.
 	#
-	requested_address = "%{radius.Framed-IP-Address}"
+	requested_address = "%{Framed-IP-Address}"
 
-#	requested_address = "%{&dhcpv4.Requested-IP-Address || &dhcpv4.Client-IP-Address}"
+#	requested_address = "%{&Requested-IP-Address || &Client-IP-Address}"
 
 	#
 	#  gateway:: The device controlling access to the network or relaying
