@@ -142,22 +142,18 @@ static conf_parser_t module_config[] = {
 };
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_sqlippool_dict[];
 fr_dict_autoload_t rlm_sqlippool_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
 static fr_dict_attr_t const *attr_pool_name;
-static fr_dict_attr_t const *attr_acct_status_type;
 
 extern fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
 	{ .out = &attr_pool_name, .name = "IP-Pool.Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -651,41 +647,6 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 }
 
 /*
- *	Check Accounting packets for their accounting status
- *	Call the relevant module based on the status
- */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	fr_pair_t		*vp;
-
-	int			acct_status_type;
-
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_acct_status_type);
-	if (!vp) {
-		RDEBUG2("Could not find account status type in packet");
-		RETURN_MODULE_NOOP;
-	}
-	acct_status_type = vp->vp_uint32;
-
-	switch (acct_status_type) {
-	case FR_STATUS_START:
-	case FR_STATUS_ALIVE:
-		return mod_update(p_result, mctx, request);
-
-	case FR_STATUS_STOP:
-		return mod_release(p_result, mctx, request);
-
-	case FR_STATUS_ACCOUNTING_ON:
-	case FR_STATUS_ACCOUNTING_OFF:
-		return mod_bulk_release(p_result, mctx, request);
-
-        default:
-		/* We don't care about any other accounting packet */
-		RETURN_MODULE_NOOP;
-	}
-}
-
-/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -706,8 +667,16 @@ module_rlm_t rlm_sqlippool = {
 		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
 		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc },
+		/*
+		 *	RADIUS specific
+		 */
+		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc },
+		{ .name1 = "accounting",	.name2 = "start",		.method = mod_update },
+		{ .name1 = "accounting",	.name2 = "alive",		.method = mod_update },
+		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release },
+		{ .name1 = "accounting",	.name2 = "accounting-on",	.method = mod_bulk_release },
+		{ .name1 = "accounting",	.name2 = "accounting-off",	.method = mod_bulk_release },
 
 		{ .name1 = "recv",		.name2 = "Discover",		.method = mod_alloc },
 		{ .name1 = "recv",		.name2 = "Request",		.method = mod_update },
