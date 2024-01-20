@@ -343,10 +343,6 @@ static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *u
 {
 	static _Thread_local fr_uri_escape_ctx_t	*t_ctx;
 
-	/*
-	 *	libcurl doesn't actually use the handle, but we pass one
-	 *	in anyway, just in case it does in the future.
-	 */
 	if (unlikely(t_ctx == NULL)) {
 		fr_uri_escape_ctx_t *ctx;
 
