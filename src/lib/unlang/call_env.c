@@ -399,7 +399,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 		if (!cp && !rule->pair.dflt) {
 			if (!call_env_required(rule->flags)) goto next;
 
-			cf_log_err(cs, "Module %s missing required option %s", name, rule->name);
+			cf_log_err(cs, "Missing required config item '%s'", rule->name);
 			return -1;
 		}
 
