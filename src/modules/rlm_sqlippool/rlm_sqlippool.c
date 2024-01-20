@@ -191,12 +191,10 @@ fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
  * Mostly wrapper around sql_query which does some special sqlippool sequence substitutions and expands
  * the format string.
  *
- * @param fmt sql query to expand.
- * @param handle sql connection handle.
- * @param data Instance of rlm_sqlippool.
- * @param request Current request.
- * @param param ip address string.
- * @param param_len ip address string len.
+ * @param[in] fmt sql query to expand.
+ * @param[in] handle sql connection handle.
+ * @param[in] data Instance of rlm_sqlippool.
+ * @param[in] request Current request.
  * @return
  *	- number of affected rows on success.
  *	- < 0 on error.
