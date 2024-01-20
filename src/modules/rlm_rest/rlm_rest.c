@@ -476,7 +476,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	randle->request = request;	/* Populate the request pointer for escape callbacks */
 
-	if (fr_uri_escape(&in_vb->vb_group, rest_uri_parts, randle) < 0) {
+	if (fr_uri_escape_list(&in_vb->vb_group, rest_uri_parts, randle) < 0) {
 		RPEDEBUG("Failed escaping URI");
 
 	error:

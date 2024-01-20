@@ -53,9 +53,21 @@ typedef struct {
 	fr_uri_escape_func_t	func;				//!< Function to use to escape tainted values
 } fr_uri_part_t;
 
+/** uctx to pass to fr_uri_escape
+ *
+ * @note Should not be passed to fr_uri_escape_list. That takes the uctx to pass to the fr_uri_escape_func_t directly.
+ */
+typedef struct {
+	fr_uri_part_t const	*uri_part;			//!< Start of the uri parts array.  Will be updated
+								///< as boxes are escaped.
+	void			*uctx;				//!< to pass to fr_uri_escape_func_t.
+} fr_uri_escape_ctx_t;
+
 #define XLAT_URI_PART_TERMINATOR { .name = NULL, .terminals = NULL, .tainted_allowed = false, .func = NULL }
 
-int fr_uri_escape(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void *uctx);
+int fr_uri_escape_list(fr_value_box_list_t *uri, fr_uri_part_t const *uri_parts, void *uctx);
+
+int fr_uri_escape(fr_value_box_t *uri_vb, void *uctx);
 
 #ifdef __cplusplus
 }
