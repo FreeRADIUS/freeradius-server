@@ -117,6 +117,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	char		 	buffer[265];
 	char			*p , *q;
 	fr_pair_list_t		cert_vps;
+
 	/*
 	 *	Examples and documentation show cert_info being
 	 *	a struct curl_certinfo *, but CPP checks require
@@ -138,6 +139,13 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 
 		return -1;
 	}
+
+	/*
+	 *	There doesn't seem to be any way to determine if
+	 *	the session uses ssl or not, so if no certs are
+	 *	returned, we assume it's not an ssl session.
+	 */
+	if (ptr.to_certinfo->num_of_certs == 0) return 0;
 
 	RDEBUG2("Chain has %i certificate(s)", ptr.to_certinfo->num_of_certs);
 	for (i = 0; i < ptr.to_certinfo->num_of_certs; i++) {
