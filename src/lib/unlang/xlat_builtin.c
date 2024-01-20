@@ -44,6 +44,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sha1.h>
+#include <freeradius-devel/util/value.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <freeradius-devel/tls/openssl_user_macros.h>
@@ -1782,6 +1783,17 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*in;
 
 	XLAT_ARGS(args, &in);
+
+	/*
+	 *	Pass empty arguments through
+	 *
+	 *	FR_BASE64_DEC_LENGTH produces 2 for empty strings...
+	 */
+	if (in->vb_length == 0) {
+		fr_value_box_list_remove(args, in);
+		fr_dcursor_append(out, in);
+		return XLAT_ACTION_DONE;
+	}
 
 	alen = FR_BASE64_DEC_LENGTH(in->vb_length);
 	MEM(vb = fr_value_box_alloc_null(ctx));

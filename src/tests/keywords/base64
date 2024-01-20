@@ -100,6 +100,13 @@ if (!(&test_output == 'IDk4Nz4=')) {
 	test_fail
 }
 
+# Something weird causes this test not to parse
+# &test_octets := %base64.decode("")
+#if (!(&test_octets == "")) {
+#	test_fail
+#}
+
+# Regression test, this used to crash...
 &test_octets := %base64.decode(Zm9v)
 if (!(&test_octets == "foo")) {
 	debug_request
