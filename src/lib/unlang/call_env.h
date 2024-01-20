@@ -81,9 +81,10 @@ typedef enum CC_HINT(flag_enum) {
 	CALL_ENV_FLAG_PARSE_ONLY	= (1 << 6),		//!< The result of parsing will not be evaluated at runtime.
 	CALL_ENV_FLAG_ATTRIBUTE		= (1 << 7),		//!< Tmpl must contain an attribute reference.
 	CALL_ENV_FLAG_SUBSECTION	= (1 << 8),		//!< This is a subsection.
-	CALL_ENV_FLAG_PARSE_MISSING	= (1 << 9)		//!< If this subsection is missing, still parse it.  Useful for cases where
+	CALL_ENV_FLAG_PARSE_MISSING	= (1 << 9),		//!< If this subsection is missing, still parse it.  Useful for cases where
 								///< there is a callback which always needs to be run to set up required
 								///< data structures.
+	CALL_ENV_FLAG_SECRET		= (1 << 10),		//!< The value is a secret, and should not be logged.
 } call_env_flags_t;
 DIAG_ON(attributes)
 
@@ -123,6 +124,8 @@ DIAG_ON(attributes)
 #define call_env_is_subsection(_flags)		((_flags) & CALL_ENV_FLAG_SUBSECTION)
 
 #define call_env_parse_missing(_flags)		((_flags) & CALL_ENV_FLAG_PARSE_MISSING)
+
+#define call_env_secret(_flags)			((_flags) & CALL_ENV_FLAG_SECRET)
 /** @} */
 
 /** Callback for performing custom parsing of a #CONF_PAIR
