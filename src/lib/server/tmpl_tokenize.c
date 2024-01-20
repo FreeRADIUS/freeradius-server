@@ -3388,7 +3388,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		break;
 
 	default:
-		fr_assert(0);
+		fr_assert_msg(0, "Unknown quote type %i", quote);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
