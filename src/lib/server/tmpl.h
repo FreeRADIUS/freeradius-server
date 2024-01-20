@@ -77,53 +77,7 @@ extern "C" {
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/value.h>
 
-/** When to apply escaping
- */
-typedef enum {
-	TMPL_ESCAPE_PRE_CONCAT = 0,			//!< Pre-concatenation escaping is useful for
-							///< DSLs where elements of the expansion are
-							///< static, specified by the user, and other parts
-							///< are dynamic, which may or may not need to be
-							///< escaped based on which "safe" flags are applied
-							///< to the box.  When using this mode, the escape
-							///< function must be able to handle boxes of a type
-							///< other than the cast type, possibly performing
-							///< a cast itself if necessary.
-
-	TMPL_ESCAPE_POST_CONCAT				//!< Post-concatenation escaping is useful for when
-							///< we don't want to allow the user to bypass escaping
-							///< for any part of the value.
-							///< Here all boxes are guaranteed to be of the cast type.
-} tmpl_escape_mode_t;
-
-/** Escaping rules for tmpls
- *
- */
-typedef struct {
-	fr_value_box_escape_t		func;		//!< How to escape when returned from evaluation.
-							///< Currently only used for async evaluation.
-	void				*uctx;		//!< User context for escape function.
-
-	tmpl_escape_mode_t		mode;		//!< Whether to apply escape function after
-							///< concatenation, i.e. to the final output
-							///< of the tmpl.  If false, then the escaping
-							///< is performed on each value box
-							///< individually prior to concatenation and
-							///< prior to casting.
-							///< If no concatenation is performed, then
-							///< the escaping is performed on each box individually.
-
-} tmpl_escape_t;
-
-/** See if we should perform output escaping before concatenation
- *
- */
-#define tmpl_escape_pre_concat(_tmpl)	((_tmpl)->rules.escape.func && ((_tmpl)->rules.escape.mode == TMPL_ESCAPE_PRE_CONCAT))
-
-/** See if we should perform output escaping after concatenation
- *
- */
-#define tmpl_escape_post_concat(_tmpl)	((_tmpl)->rules.escape.func && ((_tmpl)->rules.escape.mode == TMPL_ESCAPE_POST_CONCAT))
+#include <freeradius-devel/server/tmpl_escape.h>
 
 /** The maximum number of request references allowed
  *
@@ -1358,7 +1312,7 @@ int			tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 
 int			tmpl_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
 
-int			tmpl_eval_cast_in_place(fr_value_box_list_t *out, tmpl_t const *vpt);
+int			tmpl_eval_cast_in_place(fr_value_box_list_t *out, request_t *request, tmpl_t const *vpt);
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,

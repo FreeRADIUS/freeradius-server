@@ -63,7 +63,7 @@ RCSID("$Id$")
 
 #include <sys/uio.h>
 
-static void linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx);
+static int linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx);
 
 typedef enum {
 	LINELOG_DST_INVALID = 0,
@@ -324,14 +324,16 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
 /*
  *	Escape unprintable characters.
  */
-static void linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx)
+static int linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx)
 {
 	char *escaped;
 
-	if (vb->vb_length == 0) return;
+	if (vb->vb_length == 0) return 0;
 
 	MEM(escaped = fr_asprint(vb, vb->vb_strvalue, vb->vb_length, 0));
 	fr_value_box_strdup_shallow_replace(vb, escaped, talloc_strlen(escaped));
+
+	return 0;
 }
 
 static void linelog_hexdump(request_t *request, struct iovec *vector_p, size_t vector_len, char const *msg)

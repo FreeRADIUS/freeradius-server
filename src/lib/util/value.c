@@ -5867,16 +5867,19 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
  * @param[in] vb		to escape.
  * @param[in] escape		function to apply to the value box.
  * @param[in] uctx		user context to pass to the escape function.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape, void *uctx)
+int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape, void *uctx)
 {
 	switch (vb->type) {
 	case FR_TYPE_GROUP:
-		fr_value_box_list_escape_in_place(&vb->vb_group, escape, uctx);
+		return fr_value_box_list_escape_in_place(&vb->vb_group, escape, uctx);
 		break;
 
 	default:
-		escape(vb, uctx);
+		return escape(vb, uctx);
 		break;
 	}
 }
@@ -5885,15 +5888,25 @@ void fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t esca
  *
  * @note Applies recurssively to the children of group boxes.
  *
+ * @note on error, the list may be left in an inconsistent/partially escaped state.
+ *
  * @param[in] list		to escape.
  * @param[in] escape		function to apply to the value box.
  * @param[in] uctx		user context to pass to the escape function.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-void fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape, void *uctx)
+int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape, void *uctx)
 {
+	int ret = 0;
+
 	fr_value_box_list_foreach(list, vb) {
-		fr_value_box_escape_in_place(vb, escape, uctx);
+		ret = fr_value_box_escape_in_place(vb, escape, uctx);
+		if (unlikely(ret < 0)) return ret;
 	}
+
+	return ret;
 }
 
 /** Removes a single layer of nesting, moving all children into the parent list

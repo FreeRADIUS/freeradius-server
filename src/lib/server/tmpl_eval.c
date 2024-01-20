@@ -41,6 +41,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/token.h>
 #include <freeradius-devel/util/types.h>
 
+#include <talloc.h>
+
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
 
@@ -1170,7 +1172,7 @@ done:
 	 *	Evaluate casts if necessary.
 	 */
 	if (ret == 0) {
-		if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
+		if (tmpl_eval_cast_in_place(&list, request, vpt) < 0) {
 			fr_value_box_list_talloc_free(&list);
 			ret = -1;
 			goto fail;
@@ -1252,7 +1254,7 @@ done:
 	fr_value_box_list_init(&list);
 	fr_value_box_list_insert_tail(&list, value);
 
-	if (tmpl_eval_cast_in_place(&list, vpt) < 0) {
+	if (tmpl_eval_cast_in_place(&list, request, vpt) < 0) {
 		fr_value_box_list_talloc_free(&list);
 		return -1;
 	}
@@ -1263,20 +1265,74 @@ done:
 	return 0;
 }
 
+/** Allocate a uctx for an escaping function
+ *
+ * @param[in] request	The current request.
+ * @param[in] escape	Describing how to escape tmpl data.
+ *
+ * @return the uctx to pass to the escape function.
+ */
+static inline void *tmpl_eval_escape_uctx_alloc(request_t *request, tmpl_escape_t const *escape)
+{
+	switch (escape->uctx.type) {
+	case TMPL_ESCAPE_UCTX_STATIC:
+		return UNCONST(void *, escape->uctx.ptr);
 
+	case TMPL_ESCAPE_UCTX_ALLOC:
+	{
+		void *uctx;
+
+		fr_assert_msg(escape->uctx.size > 0, "TMPL_ESCAPE_UCTX_ALLOC must specify uctx.size > 0");
+		MEM(uctx = talloc_zero_array(NULL, uint8_t, escape->uctx.size));
+		if (escape->uctx.talloc_type) talloc_set_type(uctx, escape->uctx.talloc_type);
+		return uctx;
+	}
+
+	case TMPL_ESCAPE_UCTX_ALLOC_FUNC:
+		fr_assert_msg(escape->uctx.func.alloc, "TMPL_ESCAPE_UCTX_ALLOC_FUNC must specify a non-null alloc.func");
+		return escape->uctx.func.alloc(request, escape->uctx.func.uctx);
+
+	default:
+		fr_assert_msg(0, "Unknown escape uctx type %u", escape->uctx.type);
+		return NULL;
+	}
+}
+
+/** Free a uctx for an escaping function
+ *
+ * @param[in] escape	Describing how to escape tmpl data.
+ * @param[in] uctx	The uctx to free.
+ */
+static inline void tmpl_eval_escape_uctx_free(tmpl_escape_t const *escape, void *uctx)
+{
+	switch (escape->uctx.type) {
+	case TMPL_ESCAPE_UCTX_STATIC:
+		return;
+
+	case TMPL_ESCAPE_UCTX_ALLOC:
+		talloc_free(uctx);
+		return;
+
+	case TMPL_ESCAPE_UCTX_ALLOC_FUNC:
+		if (escape->uctx.func.free) escape->uctx.func.free(uctx);
+		return;
+	}
+}
 
 /** Casts a value or list of values according to the tmpl
  *
  * @param[in,out] list	Where to write the boxed value.
+ * @param[in] request	The current request.
  * @param[in] vpt	Representing the attribute.
  * @return
  *	- <0		the cast failed
  *	- 0		we successfully evaluated the tmpl
  */
-int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
+int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_t const *vpt)
 {
 	fr_type_t cast = tmpl_rules_cast(vpt);
 	bool did_concat = false;
+	void *uctx = NULL;
 
 	if (fr_type_is_structural(cast)) {
 		fr_strerror_printf("Cannot cast to structural type '%s'", fr_type_to_str(cast));
@@ -1301,12 +1357,17 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 		if (!vb) return 0;
 
 		if (tmpl_escape_pre_concat(vpt)) {
-			fr_value_box_list_escape_in_place(list, vpt->rules.escape.func, vpt->rules.escape.uctx);
+			uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
+			if (unlikely(fr_value_box_list_escape_in_place(list, vpt->rules.escape.func, uctx) < 0)) {
+			error:
+				tmpl_eval_escape_uctx_free(&vpt->rules.escape, uctx);
+				return -1;
+			}
 		}
 
 		slen = fr_value_box_list_concat_in_place(vb, vb, list, FR_TYPE_STRING,
 							 FR_VALUE_BOX_LIST_FREE_BOX, true, SIZE_MAX);
-		if (slen < 0) return -1;
+		if (slen < 0) goto error;
 		VALUE_BOX_LIST_VERIFY(list);
 
 		/*
@@ -1316,7 +1377,11 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 		 *	Otherwise we now need to re-cast the
 		 *	result.
 		 */
-		if (fr_type_is_null(cast) || fr_type_is_string(cast)) return 0;
+		if (fr_type_is_null(cast) || fr_type_is_string(cast)) {
+		success:
+			tmpl_eval_escape_uctx_free(&vpt->rules.escape, uctx);
+			return 0;
+		}
 
 		did_concat = true;
 	}
@@ -1326,7 +1391,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 		break;
 	}
 
-	if (fr_type_is_null(cast)) return 0;
+	if (fr_type_is_null(cast)) goto success;
 
 	/*
 	 *	Quoting above handled all concatenation,
@@ -1334,7 +1399,7 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 	 *	multivalued lists.
 	 */
 	fr_value_box_list_foreach_safe(list, vb) {
-		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) return -1;
+		if (fr_value_box_cast_in_place(vb, vb, cast, NULL) < 0) goto error;
 	}}
 
 	/*
@@ -1344,12 +1409,13 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, tmpl_t const *vpt)
 	 *	it expects.
 	 */
 	if ((!did_concat && tmpl_escape_pre_concat(vpt)) || tmpl_escape_post_concat(vpt)) {
-		fr_value_box_list_escape_in_place(list, vpt->rules.escape.func, vpt->rules.escape.uctx);
+		uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
+		if (unlikely(fr_value_box_list_escape_in_place(list, vpt->rules.escape.func, uctx) < 0)) goto error;
 	}
 
 	VALUE_BOX_LIST_VERIFY(list);
 
-	return 0;
+	goto success;
 }
 
 int tmpl_global_init(void)
