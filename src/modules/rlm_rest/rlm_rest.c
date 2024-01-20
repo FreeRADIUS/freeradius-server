@@ -46,7 +46,6 @@ RCSID("$Id$")
 
 static int uri_part_escape(fr_value_box_t *vb, void *uctx);
 static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *uctx);
-static void uri_part_escape_uctx_free(void *uctx);
 
 static fr_uri_part_t const rest_uri_parts[] = {
 	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
@@ -209,7 +208,6 @@ static const call_env_method_t _var = { \
 											.uctx = { \
 												.func = { \
 													.alloc = uri_part_escape_uctx_alloc, \
-													.free = uri_part_escape_uctx_free, \
 													.uctx = rest_uri_parts \
 												} , \
 												.type = TMPL_ESCAPE_UCTX_ALLOC_FUNC\
@@ -330,6 +328,11 @@ static int rlm_rest_status_update(request_t *request, void *handle)
 	return 0;
 }
 
+static int _uri_part_escape_uctx_free(void *uctx)
+{
+	return talloc_free(uctx);
+}
+
 /** Allocate an escape uctx to pass to fr_uri_escape
  *
  * @param[in] request	UNUSED.
@@ -338,18 +341,24 @@ static int rlm_rest_status_update(request_t *request, void *handle)
  */
 static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
 {
-	fr_uri_escape_ctx_t *ctx;
+	static _Thread_local fr_uri_escape_ctx_t	*t_ctx;
 
-	MEM(ctx = talloc_zero(NULL, fr_uri_escape_ctx_t));
-	ctx->uri_part = uctx;
+	/*
+	 *	libcurl doesn't actually use the handle, but we pass one
+	 *	in anyway, just in case it does in the future.
+	 */
+	if (unlikely(t_ctx == NULL)) {
+		fr_uri_escape_ctx_t *ctx;
 
-	return ctx;
+		MEM(ctx = talloc_zero(NULL, fr_uri_escape_ctx_t));
+		fr_atexit_thread_local(t_ctx, _uri_part_escape_uctx_free, ctx);
+	} else {
+		memset(t_ctx, 0, sizeof(*t_ctx));
+	}
+	t_ctx->uri_part = uctx;
+	return t_ctx;
 }
 
-static void uri_part_escape_uctx_free(void *uctx)
-{
-	talloc_free(uctx);
-}
 
 /** Free the curl easy handle
  *
