@@ -139,7 +139,26 @@ Api.endpoint('GET', '/user/<username>/mac/<client>',
 Api.endpoint('GET', '/user/<username>/reflect/',
     function(body, keyData)
         local returnData = {}
-        returnData["station"] = uriArgs.station
+
+        -- Return two Reply-Message attributes, the first with request headers, the second with arguments
+        returnData["reply.Reply-Message"] = {
+            op = ":=",
+            value = { ngx.encode_base64(cjson.encode(ngx.req.get_headers())), ngx.encode_base64(cjson.encode(uriArgs)) }
+        }
+        return ngx.say(cjson.encode(returnData))
+    end
+)
+
+-- Simple reflection of a URI argument
+Api.endpoint('POST', '/user/<username>/reflect/',
+    function(body, keyData)
+        local returnData = {}
+
+        -- Return three Reply-Message attributes, the first with request headers, the second with arguments, the third with the request body
+        returnData["reply.Reply-Message"] = {
+            op = ":=",
+            value = { ngx.encode_base64(cjson.encode(ngx.req.get_headers())), ngx.encode_base64(cjson.encode(uriArgs)), ngx.encode_base64(cjson.encode(body)) }
+        }
         return ngx.say(cjson.encode(returnData))
     end
 )

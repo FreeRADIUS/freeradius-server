@@ -56,8 +56,7 @@ typedef enum {
 	REST_HTTP_BODY_UNAVAILABLE,
 	REST_HTTP_BODY_INVALID,
 	REST_HTTP_BODY_NONE,
-	REST_HTTP_BODY_CUSTOM_XLAT,
-	REST_HTTP_BODY_CUSTOM_LITERAL,
+	REST_HTTP_BODY_CUSTOM,
 	REST_HTTP_BODY_POST,
 	REST_HTTP_BODY_JSON,
 	REST_HTTP_BODY_XML,
@@ -106,41 +105,44 @@ extern size_t http_body_type_table_len;
 extern fr_table_num_sorted_t const http_content_type_table[];
 extern size_t http_content_type_table_len;
 
+typedef struct {
+	char const			*proxy;		//!< Send request via this proxy.
+
+	char const			*method_str;	//!< The string version of the HTTP method.
+	http_method_t			method;		//!< What HTTP method should be used, GET, POST etc...
+
+	char const			*body_str;	//!< The string version of the encoding/content type.
+	http_body_type_t		body;		//!< What encoding type should be used.
+
+	bool				auth_is_set;	//!< Whether a value was provided for auth_str.
+
+	http_auth_type_t		auth;		//!< HTTP auth type.
+
+	bool				require_auth;	//!< Whether HTTP-Auth is required or not.
+
+	uint32_t			chunk;		//!< Max chunk-size (mainly for testing the encoders)
+} rlm_rest_section_request_t;
+
+typedef struct {
+	char const			*force_to_str;	//!< Force decoding with this decoder.
+	http_body_type_t		force_to;	//!< Override the Content-Type header in the response
+							//!< to force decoding as a particular type.
+
+	size_t				max_body_in;	//!< Maximum size of incoming data.
+} rlm_rest_section_response_t;
+
 /*
  *	Structure for section configuration
  */
 typedef struct {
-	char const		*name;		//!< Section name.
-	char const		*uri;		//!< URI to send HTTP request to.
+	char const			*name;		//!< Section name.
 
-	char const		*proxy;		//!< Send request via this proxy.
+	fr_time_delta_t			timeout;	//!< Timeout timeval.
 
-	char const		*method_str;	//!< The string version of the HTTP method.
-	http_method_t		method;		//!< What HTTP method should be used, GET, POST etc...
+	rlm_rest_section_request_t	request;	//!< Request configuration.
+	rlm_rest_section_response_t	response;	//!< Response configuration.
 
-	char const		*body_str;	//!< The string version of the encoding/content type.
-	http_body_type_t	body;		//!< What encoding type should be used.
-
-	char const		*force_to_str;	//!< Force decoding with this decoder.
-	http_body_type_t	force_to;	//!< Override the Content-Type header in the response
-						//!< to force decoding as a particular type.
-
-	char const		**headers;	//!< Custom headers to set (optional).
-	char const		*data;		//!< Custom body data (optional).
-
-	bool			auth_is_set;	//!< Whether a value was provided for auth_str.
-
-	http_auth_type_t	auth;		//!< HTTP auth type.
-
-	bool			require_auth;	//!< Whether HTTP-Auth is required or not.
-	char const		*username;	//!< Username used for HTTP-Auth
-	char const		*password;	//!< Password used for HTTP-Auth
-
-	fr_time_delta_t		timeout;	//!< Timeout timeval.
-	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
-	size_t			max_body_in;	//!< Maximum size of incoming data.
-
-	fr_curl_tls_t		tls;
+	fr_curl_tls_t			tls;
 } rlm_rest_section_t;
 
 /*
@@ -238,6 +240,9 @@ typedef struct {
 	http_body_type_t	type;		//!< HTTP Content Type.
 	http_body_type_t	force_to;	//!< Force decoding the body type as a particular encoding.
 
+	tmpl_t			*header;	//!< Where to create pairs representing HTTP response headers.
+						///< If NULL no headers will be parsed other than content-type.
+
 	void			*decoder;	//!< Decoder specific data.
 } rlm_rest_response_t;
 
@@ -263,6 +268,20 @@ typedef struct {
 	fr_curl_io_request_t	*handle;	//!< curl easy handle servicing our request.
 } rlm_rest_xlat_rctx_t;
 
+typedef struct {
+	struct {
+		fr_value_box_t		*uri;		//!< URI to send HTTP request to.
+		fr_value_box_list_t	*header;	//!< Headers to place in the request
+		fr_value_box_t		*data;		//!< Custom data to send in requests.
+		fr_value_box_t		*username;	//!< Username to use for authentication
+		fr_value_box_t		*password;	//!< Password to use for authentication
+	} request;
+
+	struct {
+		tmpl_t			*header;	//!< Where to write response headers
+	} response;
+} rlm_rest_call_env_t;
+
 extern HIDDEN fr_dict_t const *dict_freeradius;
 
 extern HIDDEN fr_dict_attr_t const *attr_rest_http_body;
@@ -282,11 +301,10 @@ void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t time
 /*
  *	Request processing API
  */
-int rest_request_config(module_ctx_t const *mctx,
-			rlm_rest_section_t const *section, request_t *request,
-			fr_curl_io_request_t *randle, http_method_t method,
-			http_body_type_t type, char const *uri,
-			char const *username, char const *password) CC_HINT(nonnull (1,2,4,7));
+int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *section,
+			request_t *request, fr_curl_io_request_t *randle, http_method_t method,
+			http_body_type_t type,
+			char const *uri, char const *body_data) CC_HINT(nonnull (1,2,4,7));
 
 int rest_response_decode(rlm_rest_t const *instance,
 			UNUSED rlm_rest_section_t const *section, request_t *request,
@@ -305,7 +323,6 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *handle);
  *	Helper functions
  */
 size_t rest_uri_escape(UNUSED request_t *request, char *out, size_t outlen, char const *raw, UNUSED void *arg);
-ssize_t rest_uri_build(char **out, rlm_rest_t const *instance, request_t *request, char const *uri);
 ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t const *mod_inst, request_t *request,
 			       fr_curl_io_request_t *randle, char const *uri);
 

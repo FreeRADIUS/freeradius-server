@@ -22,8 +22,6 @@
  *
  * @copyright 2012-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-
-
 RCSID("$Id$")
 
 #define LOG_PREFIX mctx->inst->name
@@ -38,6 +36,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/util/value.h>
+
+#include <talloc.h>
 
 #include "rest.h"
 
@@ -54,8 +54,7 @@ const http_body_type_t http_body_type_supported[REST_HTTP_BODY_NUM_ENTRIES] = {
 	REST_HTTP_BODY_UNSUPPORTED,  		// REST_HTTP_BODY_UNAVAILABLE
 	REST_HTTP_BODY_UNSUPPORTED,		// REST_HTTP_BODY_INVALID
 	REST_HTTP_BODY_NONE,			// REST_HTTP_BODY_NONE
-	REST_HTTP_BODY_CUSTOM_XLAT,		// REST_HTTP_BODY_CUSTOM_XLAT
-	REST_HTTP_BODY_CUSTOM_LITERAL,		// REST_HTTP_BODY_CUSTOM_LITERAL
+	REST_HTTP_BODY_CUSTOM,			// REST_HTTP_BODY_CUSTOM
 	REST_HTTP_BODY_POST,			// REST_HTTP_BODY_POST
 #ifdef HAVE_JSON
 	REST_HTTP_BODY_JSON,			// REST_HTTP_BODY_JSON
@@ -1251,7 +1250,7 @@ static int rest_decode_json(rlm_rest_t const *instance, rlm_rest_section_t const
 static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *userdata)
 {
 	rlm_rest_response_t	*ctx = userdata;
-	request_t			*request = ctx->request; /* Used by RDEBUG */
+	request_t		*request = ctx->request; /* Used by RDEBUG */
 
 	char const		*start = (char *)in, *p = start, *end = p + (size * nmemb);
 	char			*q;
@@ -1510,9 +1509,9 @@ static size_t rest_response_body(void *in, size_t size, size_t nmemb, void *user
 	{
 		char *out_p;
 
-		if ((ctx->section->max_body_in > 0) && ((ctx->used + (end - p)) > ctx->section->max_body_in)) {
+		if ((ctx->section->response.max_body_in > 0) && ((ctx->used + (end - p)) > ctx->section->response.max_body_in)) {
 			REDEBUG("Incoming data (%zu bytes) exceeds max_body_in (%zu bytes).  "
-				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->section->max_body_in);
+				"Forcing body to type 'invalid'", ctx->used + (end - p), ctx->section->response.max_body_in);
 			ctx->type = REST_HTTP_BODY_INVALID;
 			TALLOC_FREE(ctx->buffer);
 			break;
@@ -1599,9 +1598,10 @@ void rest_response_debug(request_t *request, fr_curl_io_request_t *handle)
  * @param[in] ctx	data to initialise.
  * @param[in] type	Default http_body_type to use when decoding raw data, may be
  * 			overwritten by rest_response_header.
+ * @param[in] header	Where to write out headers, may be NULL.
  */
 static void rest_response_init(rlm_rest_section_t const *section,
-			       request_t *request, rlm_rest_response_t *ctx, http_body_type_t type)
+			       request_t *request, rlm_rest_response_t *ctx, http_body_type_t type, tmpl_t *header)
 {
 	ctx->section = section;
 	ctx->request = request;
@@ -1610,6 +1610,7 @@ static void rest_response_init(rlm_rest_section_t const *section,
 	ctx->alloc = 0;
 	ctx->used = 0;
 	ctx->code = 0;
+	ctx->header = header;
 	TALLOC_FREE(ctx->buffer);
 }
 
@@ -1667,7 +1668,7 @@ static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t
 	 *  Chunked transfer encoding means the body will be sent in
 	 *  multiple parts.
 	 */
-	if (section->chunk > 0) {
+	if (section->request.chunk > 0) {
 		FR_CURL_REQUEST_SET_OPTION(CURLOPT_READDATA, &uctx->request);
 		FR_CURL_REQUEST_SET_OPTION(CURLOPT_READFUNCTION, func);
 
@@ -1714,11 +1715,10 @@ error:
  * @param[in] method	to use (HTTP verbs PUT, POST, DELETE etc...).
  * @param[in] type	Content-Type for request encoding, also sets
  *			the default for decoding.
- * @param[in] username	to use for HTTP authentication, may be NULL in
- *			which case configured defaults will be used.
- * @param[in] password	to use for HTTP authentication, may be NULL in
- *			which case configured defaults will be used.
  * @param[in] uri	buffer containing the expanded URI to send the request to.
+ * @param[in] body_data	(optional) custom body data. Must persist whilst we're
+ *			writing data out to the socket.  Must be a talloced buffer
+ *			which is \0 terminated.
  * @return
  *	- 0 on success (all opts configured).
  *	- -1 on failure.
@@ -1726,14 +1726,15 @@ error:
 int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *section,
 			request_t *request, fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type,
-			char const *uri, char const *username, char const *password)
+			char const *uri, char const *body_data)
 {
 	rlm_rest_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
+	rlm_rest_call_env_t 	*call_env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
 	fr_time_delta_t		timeout;
 
-	http_auth_type_t	auth = section->auth;
+	http_auth_type_t	auth = section->request.auth;
 
 	CURLcode		ret = CURLE_OK;
 	char const		*option;
@@ -1742,7 +1743,6 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	bool			content_type_set = false;
 
 	fr_assert(candle);
-	fr_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
 
@@ -1760,11 +1760,11 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 #else
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
 #endif
-	if (section->proxy) {
-		if (section->proxy == rest_no_proxy) {
+	if (section->request.proxy) {
+		if (section->request.proxy == rest_no_proxy) {
 			FR_CURL_REQUEST_SET_OPTION(CURLOPT_NOPROXY, "*");
 		} else {
-			FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROXY, section->proxy);
+			FR_CURL_REQUEST_SET_OPTION(CURLOPT_PROXY, section->request.proxy);
 		}
 	}
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_NOSIGNAL, 1L);
@@ -1798,13 +1798,16 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	/*
 	 *	Add in the section headers
 	 */
-	if (section->headers) {
-		talloc_foreach(section->headers, header) {
-			RINDENT();
-			RDEBUG3("%pV", fr_box_strvalue_buffer(header));
-			REXDENT();
+	if (call_env->request.header) {
+		size_t len = talloc_array_length(call_env->request.header), i;
+		for (i = 0; i < len; i++) {
+			fr_value_box_list_foreach(&call_env->request.header[i], header) {
+				RINDENT();
+				RDEBUG3("%pV", header);
+				REXDENT();
 
-			ctx->headers = curl_slist_append(ctx->headers, header);
+				ctx->headers = curl_slist_append(ctx->headers, header->vb_strvalue);
+			}
 		}
 	}
 
@@ -1855,7 +1858,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 		 *  already from attributes.
 		 */
 		if (type != REST_HTTP_BODY_NONE) {
-			char const *content_type = fr_table_str_by_value(http_content_type_table, type, section->body_str);
+			char const *content_type = fr_table_str_by_value(http_content_type_table, type, section->request.body_str);
 			snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 			ctx->headers = curl_slist_append(ctx->headers, buffer);
 			if (!ctx->headers) {
@@ -1902,7 +1905,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 		break;
 
 	case REST_HTTP_METHOD_CUSTOM:
-		FR_CURL_REQUEST_SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
+		FR_CURL_REQUEST_SET_OPTION(CURLOPT_CUSTOMREQUEST, section->request.method_str);
 		break;
 
 	default:
@@ -1914,53 +1917,31 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	 *	Set user based authentication parameters
 	 */
 	if (auth > REST_HTTP_AUTH_NONE) {
-		TALLOC_CTX *cred_ctx = NULL;
 
 #define SET_AUTH_OPTION(_x, _y)\
 do {\
 	if ((ret = curl_easy_setopt(candle, _x, _y)) != CURLE_OK) {\
 		option = STRINGIFY(_x);\
 		REDEBUG("Failed setting curl option %s: %s (%i)", option, curl_easy_strerror(ret), ret); \
-		talloc_free(cred_ctx);\
 		goto error;\
 	}\
 } while (0)
-
-		if (!username || !password) cred_ctx = talloc_init_const("cred_ctx");
-
-		if (!username) {
-			char *tmp = NULL;
-			if (xlat_aeval(cred_ctx, &tmp, request, section->username, NULL, NULL) < 0) {
-				REDEBUG("Failed expanding username");
-				talloc_free(cred_ctx);
-				goto error;
-			}
-			username = tmp;
-		}
-
-		if (!password) {
-			char *tmp = NULL;
-			if (xlat_aeval(cred_ctx, &tmp, request, section->password, NULL, NULL) < 0) {
-				REDEBUG("Failed expanding password");
-				talloc_free(cred_ctx);
-				goto error;
-			}
-			password = tmp;
-		}
-
 		RDEBUG3("Configuring HTTP auth type %s, user \"%pV\", password \"%pV\"",
 			fr_table_str_by_value(http_auth_table, auth, "<INVALID>"),
-			fr_box_strvalue_buffer(username), fr_box_strvalue_buffer(password));
+			call_env->request.username ? call_env->request.username : fr_box_strvalue("(none)"),
+			call_env->request.password ? call_env->request.password : fr_box_strvalue("(none)"));
 
-		if ((auth >= REST_HTTP_AUTH_BASIC) &&
-		    (auth <= REST_HTTP_AUTH_ANY_SAFE)) {
+		/*
+		 *	FIXME - We probably want to escape \0s here...
+		 */
+		if ((auth >= REST_HTTP_AUTH_BASIC) && (auth <= REST_HTTP_AUTH_ANY_SAFE)) {
 			SET_AUTH_OPTION(CURLOPT_HTTPAUTH, http_curl_auth[auth]);
-			SET_AUTH_OPTION(CURLOPT_USERNAME, username);
-			SET_AUTH_OPTION(CURLOPT_PASSWORD, password);
+			if (call_env->request.username) SET_AUTH_OPTION(CURLOPT_USERNAME, call_env->request.username->vb_strvalue);
+			if (call_env->request.password) SET_AUTH_OPTION(CURLOPT_PASSWORD, call_env->request.password->vb_strvalue);
 		} else if (auth == REST_HTTP_AUTH_TLS_SRP) {
 			SET_AUTH_OPTION(CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
-			SET_AUTH_OPTION(CURLOPT_TLSAUTH_USERNAME, username);
-			SET_AUTH_OPTION(CURLOPT_TLSAUTH_PASSWORD, password);
+			if (call_env->request.username) SET_AUTH_OPTION(CURLOPT_TLSAUTH_USERNAME, call_env->request.username->vb_strvalue);
+			if (call_env->request.password) SET_AUTH_OPTION(CURLOPT_TLSAUTH_PASSWORD, call_env->request.password->vb_strvalue);
 		}
 	}
 
@@ -1972,7 +1953,7 @@ do {\
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process incoming data.
 	 */
-	rest_response_init(section, request, &ctx->response, type);
+	rest_response_init(section, request, &ctx->response, type, call_env->response.header);
 
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_HEADERFUNCTION, rest_response_header);
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_HEADERDATA, &ctx->response);
@@ -1982,7 +1963,7 @@ do {\
 	/*
 	 *  Force parsing the body text as a particular encoding.
 	 */
-	ctx->response.force_to = section->force_to;
+	ctx->response.force_to = section->response.force_to;
 
 	switch (method) {
 	case REST_HTTP_METHOD_GET:
@@ -1994,8 +1975,8 @@ do {\
 	case REST_HTTP_METHOD_PUT:
 	case REST_HTTP_METHOD_PATCH:
 	case REST_HTTP_METHOD_CUSTOM:
-		if (section->chunk > 0) {
-			ctx->request.chunk = section->chunk;
+		if (section->request.chunk > 0) {
+			ctx->request.chunk = section->request.chunk;
 
 			ctx->headers = curl_slist_append(ctx->headers, "Expect:");
 			if (!ctx->headers) goto error_header;
@@ -2019,36 +2000,13 @@ do {\
 
 		break;
 
-	case REST_HTTP_BODY_CUSTOM_XLAT:
-	{
-		rest_custom_data_t *data;
-		char *expanded = NULL;
-
-		if (xlat_aeval(request, &expanded, request, section->data, NULL, NULL) < 0) return -1;
-
-		data = talloc_zero(request, rest_custom_data_t);
-		data->p = expanded;
-		data->start = expanded;
-		data->len = strlen(expanded);	// Fix me when we do binary xlat
-
-		/* Use the encoder specific pointer to store the data we need to encode */
-		ctx->request.encoder = data;
-		if (rest_request_config_body(mctx, section, request, randle, rest_encode_custom) < 0) {
-			TALLOC_FREE(ctx->request.encoder);
-			return -1;
-		}
-
-		break;
-	}
-
-	case REST_HTTP_BODY_CUSTOM_LITERAL:
+	case REST_HTTP_BODY_CUSTOM:
 	{
 		rest_custom_data_t *data;
 
 		data = talloc_zero(request, rest_custom_data_t);
-		data->p = section->data;
-		data->start = section->data;
-		data->len = strlen(section->data);
+		data->p = data->start = body_data;
+		data->len = talloc_strlen(body_data);
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
@@ -2173,77 +2131,6 @@ size_t rest_uri_escape(UNUSED request_t *request, char *out, size_t outlen, char
 	curl_free(escaped);
 
 	return strlen(out);
-}
-
-/** Builds URI; performs XLAT expansions and encoding.
- *
- * Splits the URI into "http://example.org" and "/%{xlat}/query/?bar=foo"
- * Both components are expanded, but values expanded for the second component
- * are also url encoded.
- *
- * @param[out] out	Where to write the pointer to the new buffer containing the escaped URI.
- * @param[in] inst	of rlm_rest.
- * @param[in] uri	configuration data.
- * @param[in] request	Current request
- * @return
- *	- Length of data written to buffer (excluding NULL).
- *	- < 0 if an error occurred.
- */
-ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t const *inst, request_t *request, char const *uri)
-{
-	char const	*p;
-	char		*path_exp = NULL;
-
-	char		*scheme;
-	char const	*path;
-
-	ssize_t		len;
-
-	p = uri;
-
-	/*
-	 *  All URLs must contain at least <scheme>://<server>/
-	 */
-	p = strchr(p, ':');
-	if (!p || (*++p != '/') || (*++p != '/')) {
-		malformed:
-		REDEBUG("Error URI \"%s\" is malformed, can't find start of path", uri);
-		return -1;
-	}
-	p = strchr(p + 1, '/');
-	if (!p) {
-		goto malformed;
-	}
-
-	len = (p - uri);
-
-	/*
-	 *  Allocate a temporary buffer to hold the first part of the URI
-	 */
-	scheme = talloc_array(request, char, len + 1);
-	strlcpy(scheme, uri, len + 1);
-
-	path = (uri + len);
-
-	len = xlat_aeval(request, out, request, scheme, NULL, NULL);
-	talloc_free(scheme);
-	if (len < 0) {
-		TALLOC_FREE(*out);
-
-		return 0;
-	}
-
-	len = xlat_aeval(request, &path_exp, request, path, rest_uri_escape, NULL);
-	if (len < 0) {
-		TALLOC_FREE(*out);
-
-		return 0;
-	}
-
-	MEM(*out = talloc_strdup_append(*out, path_exp));
-	talloc_free(path_exp);
-
-	return talloc_array_length(*out) - 1;	/* array_length includes \0 */
 }
 
 /** Unescapes the host portion of a URI string

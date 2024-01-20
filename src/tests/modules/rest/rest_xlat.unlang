@@ -117,29 +117,87 @@ if (!(&result_string == "Section: dummy, User: Bob\n")) {
 
 # URI with tainted values in the arguments - input argument includes URI argument
 # separator - make sure this doesn't end up generating extra arguments, but gets escaped.
-&result_string := %rest('GET', "http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/?station=%{Calling-Station-Id}")
+group {
+	string headers
+	string arguments
+	string body
 
-if (!(&result_string == "{\"station\":\"dummy&unsafe=escaped\"}\n" )) {
-	test_fail
+	map json %rest('POST', "http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/?station=%{Calling-Station-Id}", "{\"test\":\"foo\"}") {
+		&headers := '$.reply\.Reply-Message.value[0]'
+		&arguments := '$.reply\.Reply-Message.value[1]'
+		&body := '$.reply\.Reply-Message.value[2]'
+	}
+
+	&headers := (string)%base64.decode(%{headers})
+	&arguments := (string)%base64.decode(%{arguments})
+	&body := (string)%base64.decode(%{body})
+
+	if (!(&arguments == "{\"station\":\"dummy&unsafe=escaped\"}" )) {
+		test_fail
+	}
+
+	if (!(&headers =~ /"user-agent":"FreeRADIUS.*"/)) {
+		test_fail
+	}
+
+	if (!(&headers =~ /"x-freeradius-server":"default"/)) {
+		test_fail
+	}
+
+	if (!(&headers =~ /"x-custom-header":\["test","Bob"\]/)) {
+		test_fail
+	}
+
+	if (!(&body == "{\"test\":\"foo\"}")) {
+		test_fail
+	}
 }
 
 # Zero length untainted value - check parsing doesn't break on zero length string
-&test_string := ""
-&result_string := "%(rest:http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/%{test_string}?station=%{User-Name})"
+group {
+	string headers
+	string arguments
 
-if (!(&result_string == "{\"station\":\"Bob\"}\n" )) {
-	test_fail
+	&test_string := ""
+
+	map json %rest(http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/%{test_string}?station=%{User-Name}) {
+		&headers := '$.reply\.Reply-Message.value[0]'
+		&arguments := '$.reply\.Reply-Message.value[1]'
+	}
+
+	&headers := (string)%base64.decode(%{headers})
+	&arguments := (string)%base64.decode(%{arguments})
+
+	if (!(&arguments == "{\"station\":\"Bob\"}" )) {
+		test_fail
+	}
+
+	if (!(&headers =~ /"user-agent":"FreeRADIUS.*"/)) {
+		test_fail
+	}
+
+	if (!(&headers =~ /"x-freeradius-server":"default"/)) {
+		test_fail
+	}
 }
 
 # Zero length tainted value - check escaping doesn't break on zero length string
-&result_string := "%(rest:http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/%{NAS-Identifier}?station=%{Called-Station-Id})"
+group {
+	string arguments
 
-if (!(&result_string == "{\"station\":\"aa:bb:cc:dd:ee:ff\"}\n" )) {
-	test_fail
+	map json %rest("http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/%{NAS-Identifier}?station=%{Called-Station-Id}") {
+		&arguments := '$.reply\.Reply-Message.value[1]'
+	}
+
+	&arguments := (string)%base64.decode(%{arguments})
+
+	if (!(&arguments == "{\"station\":\"aa:bb:cc:dd:ee:ff\"}" )) {
+		test_fail
+	}
 }
 
 # Test against endpoint which will time out
-&result_string := "%(restshorttimeout:http://%{server_host}:%{server_port}/delay)"
+&result_string := %restshorttimeout("http://%{server_host}:%{server_port}/delay")
 
 if (&REST-HTTP-Status-Code) {
 	test_fail

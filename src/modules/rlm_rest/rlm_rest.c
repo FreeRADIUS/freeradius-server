@@ -19,48 +19,71 @@
  * @file rlm_rest.c
  * @brief Integrate FreeRADIUS with RESTfull APIs
  *
- * @copyright 2012-2019 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2012-2019,2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
+#include "lib/server/tmpl_escape.h"
+#include <talloc.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/curl/base.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
+
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/tls/base.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
-#include <ctype.h>
 #include "rest.h"
+
+static int uri_part_escape(fr_value_box_t *vb, void *uctx);
+static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *uctx);
+static void uri_part_escape_uctx_free(void *uctx);
+
+static fr_uri_part_t const rest_uri_parts[] = {
+	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
+	  .tainted_allowed = false, .extra_skip = 2 },
+	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "port", .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 },
+	  .tainted_allowed = false },
+	{ .name = "method", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
+	  .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "param", .tainted_allowed = true, .func = uri_part_escape },
+	XLAT_URI_PART_TERMINATOR
+};
 
 static fr_table_num_sorted_t const http_negotiation_table[] = {
 
-	{ L("1.0"), 	CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
-	{ L("1.1"),	CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
+	{ L("1.0"), 		CURL_HTTP_VERSION_1_0 },		//!< Enforce HTTP 1.0 requests.
+	{ L("1.1"),		CURL_HTTP_VERSION_1_1 },		//!< Enforce HTTP 1.1 requests.
 /*
  *	These are all enum values
  */
 #if CURL_AT_LEAST_VERSION(7,49,0)
-	{ L("2.0"), 	CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
+	{ L("2.0"), 		CURL_HTTP_VERSION_2_PRIOR_KNOWLEDGE },	//!< Enforce HTTP 2.0 requests.
 #endif
 #if CURL_AT_LEAST_VERSION(7,33,0)
-	{ L("2.0+auto"),	CURL_HTTP_VERSION_2_0 },	//!< Attempt HTTP 2 requests. libcurl will fall back
-								///< to HTTP 1.1 if HTTP 2 can't be negotiated with the
-								///< server. (Added in 7.33.0)
+	{ L("2.0+auto"),	CURL_HTTP_VERSION_2_0 },		//!< Attempt HTTP 2 requests. libcurl will fall back
+									///< to HTTP 1.1 if HTTP 2 can't be negotiated with the
+									///< server. (Added in 7.33.0)
 #endif
 #if CURL_AT_LEAST_VERSION(7,47,0)
-	{ L("2.0+tls"),	CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
-								///< libcurl will fall back to HTTP 1.1 if HTTP 2
-								///< can't be negotiated with the HTTPS server.
-								///< For clear text HTTP servers, libcurl will use 1.1.
+	{ L("2.0+tls"),		CURL_HTTP_VERSION_2TLS },		//!< Attempt HTTP 2 over TLS (HTTPS) only.
+									///< libcurl will fall back to HTTP 1.1 if HTTP 2
+									///< can't be negotiated with the HTTPS server.
+									///< For clear text HTTP servers, libcurl will use 1.1.
 #endif
 	{ L("default"), 	CURL_HTTP_VERSION_NONE }		//!< We don't care about what version the library uses.
-								///< libcurl will use whatever it thinks fit.
+									///< libcurl will use whatever it thinks fit.
 };
 static size_t http_negotiation_table_len = NUM_ELEMENTS(http_negotiation_table);
 
@@ -88,48 +111,50 @@ static int rest_proxy_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
 	return 0;
 }
 
-static const conf_parser_t section_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("uri", CONF_FLAG_XLAT, rlm_rest_section_t, uri), .dflt = "" },
-	{ FR_CONF_OFFSET("proxy", rlm_rest_section_t, proxy), .func = rest_proxy_parse },
-	{ FR_CONF_OFFSET("method", rlm_rest_section_t, method_str), .dflt = "GET" },
-	{ FR_CONF_OFFSET_FLAGS("header", CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
-	{ FR_CONF_OFFSET("body", rlm_rest_section_t, body_str), .dflt = "none" },
-	{ FR_CONF_OFFSET_FLAGS("data", CONF_FLAG_XLAT, rlm_rest_section_t, data) },
-	{ FR_CONF_OFFSET("force_to", rlm_rest_section_t, force_to_str) },
+#define SECTION_REQUEST_COMMON \
+	{ FR_CONF_OFFSET("body", rlm_rest_section_request_t, body_str), .dflt = "none" }, \
+	/* User authentication */ \
+	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, 0, rlm_rest_section_request_t, auth), \
+	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" }, \
+	{ FR_CONF_OFFSET("require_auth", rlm_rest_section_request_t, require_auth), .dflt = "no" }, \
+	{ FR_CONF_OFFSET("chunk", rlm_rest_section_request_t, chunk), .dflt = "0" } \
 
-	/* User authentication */
-	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, 0, rlm_rest_section_t, auth),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
-	{ FR_CONF_OFFSET_FLAGS("username", CONF_FLAG_XLAT, rlm_rest_section_t, username) },
-	{ FR_CONF_OFFSET_FLAGS("password", CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
-	{ FR_CONF_OFFSET("require_auth", rlm_rest_section_t, require_auth), .dflt = "no" },
+static const conf_parser_t section_request_config[] = {
+	{ FR_CONF_OFFSET("proxy", rlm_rest_section_request_t, proxy), .func = rest_proxy_parse },
+	{ FR_CONF_OFFSET("method", rlm_rest_section_request_t, method_str), .dflt = "GET" },
+	SECTION_REQUEST_COMMON,
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t section_response_config[] = {
+	{ FR_CONF_OFFSET("force_to", rlm_rest_section_response_t, force_to_str) }, \
+	{ FR_CONF_OFFSET_TYPE_FLAGS("max_body_in", FR_TYPE_SIZE, 0, rlm_rest_section_response_t, max_body_in), .dflt = "16k" },
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t section_config[] = {
+	{ FR_CONF_OFFSET_SUBSECTION("request", 0, rlm_rest_section_t, request, section_request_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("response", 0, rlm_rest_section_t, response, section_response_config) },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", rlm_rest_section_t, timeout), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", rlm_rest_section_t, chunk), .dflt = "0" },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("max_body_in", FR_TYPE_SIZE, 0, rlm_rest_section_t, max_body_in), .dflt = "16k" },
 
 	/* TLS Parameters */
 	{ FR_CONF_OFFSET_SUBSECTION("tls", 0, rlm_rest_section_t, tls, fr_curl_tls_config) },
 	CONF_PARSER_TERMINATOR
 };
 
+static const conf_parser_t xlat_request_config[] = {
+	SECTION_REQUEST_COMMON,
+	CONF_PARSER_TERMINATOR
+};
+
 static const conf_parser_t xlat_config[] = {
-	{ FR_CONF_OFFSET("proxy", rlm_rest_section_t, proxy), .func = rest_proxy_parse },
-
-	/* User authentication */
-	{ FR_CONF_OFFSET_IS_SET("auth", FR_TYPE_VOID, 0, rlm_rest_section_t, auth),
-	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = http_auth_table, .len = &http_auth_table_len }, .dflt = "none" },
-
-	{ FR_CONF_OFFSET_FLAGS("header", CONF_FLAG_MULTI, rlm_rest_section_t, headers) },
-
-	{ FR_CONF_OFFSET_FLAGS("username", CONF_FLAG_XLAT, rlm_rest_section_t, username) },
-	{ FR_CONF_OFFSET_FLAGS("password", CONF_FLAG_SECRET | CONF_FLAG_XLAT, rlm_rest_section_t, password) },
-	{ FR_CONF_OFFSET("require_auth", rlm_rest_section_t, require_auth), .dflt = "no" },
+	{ FR_CONF_OFFSET_SUBSECTION("request", 0, rlm_rest_section_t, request, xlat_request_config) },
+	{ FR_CONF_OFFSET_SUBSECTION("response", 0, rlm_rest_section_t, response, section_response_config) },
 
 	/* Transfer configuration */
 	{ FR_CONF_OFFSET("timeout", rlm_rest_section_t, timeout), .dflt = "4.0" },
-	{ FR_CONF_OFFSET("chunk", rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
 	{ FR_CONF_OFFSET_SUBSECTION("tls", 0, rlm_rest_section_t, tls, fr_curl_tls_config) },
@@ -156,6 +181,88 @@ static const conf_parser_t module_config[] = {
 #endif
 
 	CONF_PARSER_TERMINATOR
+};
+
+#define REST_CALL_ENV_REQUEST_COMMON(_dflt_username, _dflt_password) \
+	{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_MULTI, rlm_rest_call_env_t, request.header) }, \
+	{ FR_CALL_ENV_OFFSET("data", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, rlm_rest_call_env_t, request.data) }, \
+	{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_NULLABLE, \
+				rlm_rest_call_env_t, request.username), .pair.dflt_quote = T_BARE_WORD, _dflt_username }, \
+	{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SINGLE | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_SECRET, \
+				rlm_rest_call_env_t, request.password), .pair.dflt_quote = T_BARE_WORD, _dflt_password }, \
+
+#define REST_CALL_ENV_RESPONSE_COMMON \
+	{ FR_CALL_ENV_PARSE_ONLY_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE, rlm_rest_call_env_t, response.header) }, \
+
+#define REST_CALL_ENV_SECTION(_var, _section, _dflt_username, _dflt_password) \
+static const call_env_method_t _var = { \
+	FR_CALL_ENV_METHOD_OUT(rlm_rest_call_env_t), \
+	.env = (call_env_parser_t[]){ \
+		{ FR_CALL_ENV_SUBSECTION(_section, NULL, CALL_ENV_FLAG_NONE, \
+			((call_env_parser_t[]) { \
+				{ FR_CALL_ENV_SUBSECTION("request", NULL, CALL_ENV_FLAG_NONE, \
+							((call_env_parser_t[]) { \
+								{ FR_CALL_ENV_OFFSET("uri", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, rlm_rest_call_env_t, request.uri), \
+										     .pair.escape = { \
+											.func = fr_uri_escape, \
+											.mode = TMPL_ESCAPE_PRE_CONCAT, \
+											.uctx = { \
+												.func = { \
+													.alloc = uri_part_escape_uctx_alloc, \
+													.free = uri_part_escape_uctx_free, \
+													.uctx = rest_uri_parts \
+												} , \
+												.type = TMPL_ESCAPE_UCTX_ALLOC_FUNC\
+											} \
+										      }}, /* Do not concat */ \
+								REST_CALL_ENV_REQUEST_COMMON(_dflt_username, _dflt_password) \
+								CALL_ENV_TERMINATOR \
+							})) }, \
+				{ FR_CALL_ENV_SUBSECTION("response", NULL, CALL_ENV_FLAG_NONE, \
+							((call_env_parser_t[]) { \
+								REST_CALL_ENV_RESPONSE_COMMON \
+								CALL_ENV_TERMINATOR \
+							})) }, \
+				CALL_ENV_TERMINATOR \
+			}) \
+		) }, \
+		CALL_ENV_TERMINATOR \
+	} \
+}
+
+REST_CALL_ENV_SECTION(rest_call_env_authorize, "authorize",,);
+REST_CALL_ENV_SECTION(rest_call_env_authenticate, "authenticate", .pair.dflt = "&User-Name", .pair.dflt = "&User-Password");
+REST_CALL_ENV_SECTION(rest_call_env_post_auth, "post-auth",,);
+REST_CALL_ENV_SECTION(rest_call_env_accounting, "accounting",,);
+
+/*
+ *	xlat call env doesn't have the same set of config items as the other sections
+ *	because some values come from the xlat call itself.
+ *
+ *	If someone can figure out a non-fuggly way of omitting the uri from the
+ *	configuration, please do, and use the REST_CALL_ENV_SECTION macro for this
+ *	too.
+ */
+static const call_env_method_t rest_call_env_xlat = { \
+	FR_CALL_ENV_METHOD_OUT(rlm_rest_call_env_t), \
+	.env = (call_env_parser_t[]){ \
+		{ FR_CALL_ENV_SUBSECTION("xlat", NULL, CALL_ENV_FLAG_NONE, \
+			((call_env_parser_t[]) { \
+				{ FR_CALL_ENV_SUBSECTION("request", NULL, CALL_ENV_FLAG_NONE, \
+							((call_env_parser_t[]) { \
+								REST_CALL_ENV_REQUEST_COMMON(,) \
+								CALL_ENV_TERMINATOR \
+							})) }, \
+				{ FR_CALL_ENV_SUBSECTION("response", NULL, CALL_ENV_FLAG_NONE, \
+							((call_env_parser_t[]) { \
+								REST_CALL_ENV_RESPONSE_COMMON \
+								CALL_ENV_TERMINATOR \
+							})) }, \
+				CALL_ENV_TERMINATOR \
+			}) \
+		) }, \
+		CALL_ENV_TERMINATOR \
+	} \
 };
 
 fr_dict_t const *dict_freeradius;
@@ -223,34 +330,98 @@ static int rlm_rest_status_update(request_t *request, void *handle)
 	return 0;
 }
 
-static int rlm_rest_perform(module_ctx_t const *mctx,
-			    rlm_rest_section_t const *section, fr_curl_io_request_t *randle,
-			    request_t *request, char const *username, char const *password)
+/** Allocate an escape uctx to pass to fr_uri_escape
+ *
+ * @param[in] request	UNUSED.
+ * @param[in] uctx	pointer to the start of the uri_parts array.
+ * @return A new fr_uri_escape_ctx_t.
+ */
+static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
 {
-	rlm_rest_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
-	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
-	ssize_t			uri_len;
-	char			*uri = NULL;
-	int			ret;
+	fr_uri_escape_ctx_t *ctx;
 
-	RDEBUG2("Expanding URI components");
+	MEM(ctx = talloc_zero(NULL, fr_uri_escape_ctx_t));
+	ctx->uri_part = uctx;
+
+	return ctx;
+}
+
+static void uri_part_escape_uctx_free(void *uctx)
+{
+	talloc_free(uctx);
+}
+
+/** Free the curl easy handle
+ *
+ * @param[in] arg		curl easy handle to free.
+ */
+static int _uri_part_escape_free_on_exit(void *arg)
+{
+	curl_easy_cleanup(arg);
+	return 0;
+}
+
+/** URL escape a single box forming part of a URL
+ *
+ * @param[in] vb		to escape
+ * @param[in] uctx		UNUSED context containing CURL handle
+ * @return
+ * 	- 0 on success
+ * 	- -1 on failure
+ */
+static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
+{
+	static _Thread_local CURL	*t_candle;
+	char				*escaped;
 
 	/*
-	 *  Build xlat'd URI, this allows REST servers to be specified by
-	 *  request attributes.
+	 *	libcurl doesn't actually use the handle, but we pass one
+	 *	in anyway, just in case it does in the future.
 	 */
-	uri_len = rest_uri_build(&uri, inst, request, section->uri);
-	if (uri_len <= 0) return -1;
+	if (unlikely(t_candle == NULL)) {
+		CURL *candle;
 
-	RDEBUG2("Sending HTTP %s to \"%s\"", fr_table_str_by_value(http_method_table, section->method, NULL), uri);
+		MEM(candle = curl_easy_init());
+		fr_atexit_thread_local(t_candle, _uri_part_escape_free_on_exit, candle);
+	}
+
+	escaped = curl_easy_escape(t_candle, vb->vb_strvalue, vb->vb_length);
+	if (!escaped) return -1;
+
+	/*
+	 *	Returned string the same length - nothing changed
+	 */
+	if (strlen(escaped) == vb->vb_length) {
+		curl_free(escaped);
+		return 0;
+	}
+
+	fr_value_box_clear_value(vb);
+	fr_value_box_strdup(vb, vb, NULL, escaped, vb->tainted);
+
+	curl_free(escaped);
+
+	return 0;
+}
+
+static int rlm_rest_perform(module_ctx_t const *mctx,
+			    rlm_rest_section_t const *section, fr_curl_io_request_t *randle,
+			    request_t *request)
+{
+	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
+	rlm_rest_call_env_t 	*call_env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
+	int			ret;
+
+	RDEBUG2("Sending HTTP %s to \"%pV\"",
+	        fr_table_str_by_value(http_method_table, section->request.method, NULL), call_env->request.uri);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
 	 *  context data.
 	 */
-	ret = rest_request_config(mctx, section, request, randle, section->method, section->body,
-				  uri, username, password);
-	talloc_free(uri);
+	ret = rest_request_config(mctx, section, request, randle, section->request.method, section->request.body,
+				  call_env->request.uri->vb_strvalue,
+				  call_env->request.data ? call_env->request.data->vb_strvalue : NULL);
 	if (ret < 0) return -1;
 
 	/*
@@ -338,55 +509,6 @@ finish:
 	return xa;
 }
 
-/** URL escape a single box forming part of a URL
- *
- * @param[in] vb		to escape
- * @param[in] uctx		context containing CURL handle
- * @return
- * 	- 0 on success
- * 	- -1 on failure
- */
-static int uri_part_escape(fr_value_box_t *vb, void *uctx)
-{
-	char			*escaped;
-	fr_curl_io_request_t	*randle = talloc_get_type_abort(uctx, fr_curl_io_request_t);
-	request_t		*request = randle->request;
-
-	escaped = curl_easy_escape(randle->candle, vb->vb_strvalue, vb->vb_length);
-	if (!escaped) return -1;
-
-	/*
-	 *	Returned string the same length - nothing changed
-	 */
-	if (strlen(escaped) == vb->vb_length) {
-		RDEBUG4("Tainted value %pV needed no escaping", vb);
-		curl_free(escaped);
-		return 0;
-	}
-
-	RDEBUG4("Tainted value %pV escaped to %s", vb, escaped);
-
-	fr_value_box_clear_value(vb);
-	fr_value_box_strdup(vb, vb, NULL, escaped, vb->tainted);
-
-	curl_free(escaped);
-
-	return 0;
-}
-
-static fr_uri_part_t const rest_uri_parts[] = {
-	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
-	  .tainted_allowed = false, .extra_skip = 2 },
-	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
-	  .tainted_allowed = true, .func = uri_part_escape },
-	{ .name = "port", .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 },
-	  .tainted_allowed = false },
-	{ .name = "method", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
-	  .tainted_allowed = true, .func = uri_part_escape },
-	{ .name = "param", .tainted_allowed = true, .func = uri_part_escape },
-	XLAT_URI_PART_TERMINATOR
-};
-
 static xlat_arg_parser_t const rest_xlat_args[] = {
 	{ .required = true, .type = FR_TYPE_STRING },
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_STRING },
@@ -443,20 +565,20 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		method = fr_table_value_by_substr(http_method_table, uri_vb->vb_strvalue, -1, REST_HTTP_METHOD_UNKNOWN);
 
 		if (method != REST_HTTP_METHOD_UNKNOWN) {
-			section->method = method;
+			section->request.method = method;
 		/*
 	 	 *  If the method is unknown, it's a custom verb
 	 	 */
 		} else {
-			section->method = REST_HTTP_METHOD_CUSTOM;
-			MEM(section->method_str = talloc_bstrndup(rctx, uri_vb->vb_strvalue, uri_vb->vb_length));
+			section->request.method = REST_HTTP_METHOD_CUSTOM;
+			MEM(section->request.method_str = talloc_bstrndup(rctx, uri_vb->vb_strvalue, uri_vb->vb_length));
 		}
 		/*
 		 *	Move to next argument
 		 */
 		in_vb = fr_value_box_list_pop_head(in);
 	} else {
-		section->method = REST_HTTP_METHOD_GET;
+		section->request.method = REST_HTTP_METHOD_GET;
 	}
 
 	/*
@@ -476,7 +598,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	randle->request = request;	/* Populate the request pointer for escape callbacks */
 
-	if (fr_uri_escape_list(&in_vb->vb_group, rest_uri_parts, randle) < 0) {
+	if (fr_uri_escape_list(&in_vb->vb_group, rest_uri_parts, NULL) < 0) {
 		RPEDEBUG("Failed escaping URI");
 
 	error:
@@ -506,14 +628,13 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			REDEBUG("Failed to concatenate freeform data");
 			goto error;
 		}
-		section->body = REST_HTTP_BODY_CUSTOM_LITERAL;
-		section->data = in_vb->vb_strvalue;
+		section->request.body = REST_HTTP_BODY_CUSTOM;
 	}
 
 	RDEBUG2("Sending HTTP %s to \"%pV\"",
-	       (section->method == REST_HTTP_METHOD_CUSTOM) ?
-	       	section->method_str : fr_table_str_by_value(http_method_table, section->method, NULL),
-	       uri_vb);
+	       (section->request.method == REST_HTTP_METHOD_CUSTOM) ?
+	       	section->request.method_str : fr_table_str_by_value(http_method_table, section->request.method, NULL),
+	        uri_vb);
 
 	/*
 	 *  Configure various CURL options, and initialise the read/write
@@ -521,9 +642,10 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(MODULE_CTX(dl_module_instance_by_data(inst), t, NULL, NULL),
-				  section, request, randle, section->method,
-				  section->body, uri_vb->vb_strvalue, NULL, NULL);
+	ret = rest_request_config(MODULE_CTX(dl_module_instance_by_data(inst), t, xctx->env_data, NULL),
+				  section, request, randle, section->request.method,
+				  section->request.body,
+				  uri_vb->vb_strvalue, in_vb ? in_vb->vb_strvalue : NULL);
 	if (ret < 0) goto error;
 
 	/*
@@ -638,7 +760,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
@@ -736,29 +858,24 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 {
 	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
+	rlm_rest_call_env_t 		*call_env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
 	rlm_rest_section_t const	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle;
 
 	int				ret;
 
-	fr_pair_t const		*username;
-	fr_pair_t const		*password;
-
 	if (!section->name) RETURN_MODULE_NOOP;
-
-	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
 
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
-	if (!username) {
+	if (!call_env->request.username) {
 		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		RETURN_MODULE_INVALID;
 	}
 
-	if (!password) {
+	if (!call_env->request.password) {
 		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		RETURN_MODULE_INVALID;
 	}
@@ -766,7 +883,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	/*
 	 *	Make sure the supplied password isn't empty
 	 */
-	if (password->vp_length == 0) {
+	if (call_env->request.password->vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
 		RETURN_MODULE_INVALID;
 	}
@@ -775,7 +892,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &call_env->request.password);
 	} else {
 		RDEBUG2("Login attempt with password");
 	}
@@ -783,8 +900,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(mctx, section,
-			       handle, request, username->vp_strvalue, password->vp_strvalue);
+	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
@@ -859,7 +975,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
@@ -934,7 +1050,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
 
-	ret = rlm_rest_perform(mctx, section, handle, request, NULL, NULL);
+	ret = rlm_rest_perform(mctx, section, handle, request);
 	if (ret < 0) {
 		rest_slab_release(handle);
 
@@ -947,7 +1063,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser_t const *config_items,
 			     rlm_rest_section_t *config, char const *name)
 {
-	CONF_SECTION *cs;
+	CONF_SECTION *cs, *request_cs;
 
 	cs = cf_section_find(parent, name, NULL);
 	if (!cs) {
@@ -967,34 +1083,34 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser
 	config->name = name;
 
 	/*
-	 *  Sanity check
-	 */
-	 if ((config->username && !config->password) || (!config->username && config->password)) {
-		cf_log_err(cs, "'username' and 'password' must both be set or both be absent");
-
-		return -1;
-	 }
-
-	/*
 	 *  Convert HTTP method auth and body type strings into their integer equivalents.
 	 */
-	if ((config->auth != REST_HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
+	if ((config->request.auth != REST_HTTP_AUTH_NONE) && !http_curl_auth[config->request.auth]) {
 		cf_log_err(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
 			   "configuration, then recompile this module",
-			   fr_table_str_by_value(http_auth_table, config->auth, "<INVALID>"));
+			   fr_table_str_by_value(http_auth_table, config->request.auth, "<INVALID>"));
 
 		return -1;
 	}
-	/*
-	 *	Enable Basic-Auth automatically if username/password were passed
-	 */
-	if (!config->auth_is_set && config->username && config->password && http_curl_auth[REST_HTTP_AUTH_BASIC]) {
-		cf_log_debug(cs, "Setting auth = 'basic' as credentials were provided, but no auth method "
-			     "was set");
-		config->auth = REST_HTTP_AUTH_BASIC;
-	}
-	config->method = fr_table_value_by_str(http_method_table, config->method_str, REST_HTTP_METHOD_CUSTOM);
+	config->request.method = fr_table_value_by_str(http_method_table, config->request.method_str, REST_HTTP_METHOD_CUSTOM);
 
+	/*
+	 *  Custom hackery to figure out if data was set we can't do it any other way because we can't
+	 *  parse the tmpl_t execept within a call_env.
+	 *
+	 *  We have custom body data so we set REST_HTTP_BODY_CUSTOM, but also need to try and
+	 *  figure out what content-type to use. So if they've used the canonical form we
+	 *  need to convert it back into a proper HTTP content_type value.
+	 */
+	if ((request_cs = cf_section_find(cs, "request", NULL)) && cf_pair_find(request_cs, "data")) {
+		http_body_type_t body;
+
+		config->request.body = REST_HTTP_BODY_CUSTOM;
+
+		body = fr_table_value_by_str(http_body_type_table, config->request.body_str, REST_HTTP_BODY_UNKNOWN);
+		if (body != REST_HTTP_BODY_UNKNOWN) {
+			config->request.body_str = fr_table_str_by_value(http_content_type_table, body, config->request.body_str);
+		}
 	/*
 	 *  We don't have any custom user data, so we need to select the right encoder based
 	 *  on the body type.
@@ -1002,72 +1118,58 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser
 	 *  To make this slightly more/less confusing, we accept both canonical body_types,
 	 *  and content_types.
 	 */
-	if (!config->data) {
-		config->body = fr_table_value_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
-		if (config->body == REST_HTTP_BODY_UNKNOWN) {
-			config->body = fr_table_value_by_str(http_content_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
+	} else {
+		config->request.body = fr_table_value_by_str(http_body_type_table, config->request.body_str, REST_HTTP_BODY_UNKNOWN);
+		if (config->request.body == REST_HTTP_BODY_UNKNOWN) {
+			config->request.body = fr_table_value_by_str(http_content_type_table, config->request.body_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
-		if (config->body == REST_HTTP_BODY_UNKNOWN) {
-			cf_log_err(cs, "Unknown HTTP body type '%s'", config->body_str);
+		if (config->request.body == REST_HTTP_BODY_UNKNOWN) {
+			cf_log_err(cs, "Unknown HTTP body type '%s'", config->request.body_str);
 			return -1;
 		}
 
-		switch (http_body_type_supported[config->body]) {
+		switch (http_body_type_supported[config->request.body]) {
 		case REST_HTTP_BODY_UNSUPPORTED:
 			cf_log_err(cs, "Unsupported HTTP body type \"%s\", please submit patches",
-				      config->body_str);
+				      config->request.body_str);
 			return -1;
 
 		case REST_HTTP_BODY_INVALID:
 			cf_log_err(cs, "Invalid HTTP body type.  \"%s\" is not a valid web API data "
-				      "markup format", config->body_str);
+				      "markup format", config->request.body_str);
 			return -1;
 
 		case REST_HTTP_BODY_UNAVAILABLE:
 			cf_log_err(cs, "Unavailable HTTP body type.  \"%s\" is not available in this "
-				      "build", config->body_str);
+				      "build", config->request.body_str);
 			return -1;
 
 		default:
 			break;
 		}
-	/*
-	 *  We have custom body data so we set REST_HTTP_BODY_CUSTOM_XLAT, but also need to try and
-	 *  figure out what content-type to use. So if they've used the canonical form we
-	 *  need to convert it back into a proper HTTP content_type value.
-	 */
-	} else {
-		http_body_type_t body;
-
-		config->body = REST_HTTP_BODY_CUSTOM_XLAT;
-
-		body = fr_table_value_by_str(http_body_type_table, config->body_str, REST_HTTP_BODY_UNKNOWN);
-		if (body != REST_HTTP_BODY_UNKNOWN) {
-			config->body_str = fr_table_str_by_value(http_content_type_table, body, config->body_str);
-		}
 	}
 
-	if (config->force_to_str) {
-		config->force_to = fr_table_value_by_str(http_body_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
-		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {
-			config->force_to = fr_table_value_by_str(http_content_type_table, config->force_to_str, REST_HTTP_BODY_UNKNOWN);
+	if (config->response.force_to_str) {
+		config->response.force_to = fr_table_value_by_str(http_body_type_table, config->response.force_to_str, REST_HTTP_BODY_UNKNOWN);
+		if (config->response.force_to == REST_HTTP_BODY_UNKNOWN) {
+			config->response.force_to = fr_table_value_by_str(http_content_type_table, config->response.force_to_str, REST_HTTP_BODY_UNKNOWN);
 		}
 
-		if (config->force_to == REST_HTTP_BODY_UNKNOWN) {
-			cf_log_err(cs, "Unknown forced response body type '%s'", config->force_to_str);
+		if (config->response.force_to == REST_HTTP_BODY_UNKNOWN) {
+			cf_log_err(cs, "Unknown forced response body type '%s'", config->response.force_to_str);
 			return -1;
 		}
 
-		switch (http_body_type_supported[config->force_to]) {
+		switch (http_body_type_supported[config->response.force_to]) {
 		case REST_HTTP_BODY_UNSUPPORTED:
 			cf_log_err(cs, "Unsupported forced response body type \"%s\", please submit patches",
-				      config->force_to_str);
+				      config->response.force_to_str);
 			return -1;
 
 		case REST_HTTP_BODY_INVALID:
 			cf_log_err(cs, "Invalid HTTP forced response body type.  \"%s\" is not a valid web API data "
-				      "markup format", config->force_to_str);
+				      "markup format", config->response.force_to_str);
 			return -1;
 
 		default:
@@ -1120,6 +1222,7 @@ static int rest_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx)
 	TALLOC_FREE(ctx->response.buffer);
 	TALLOC_FREE(ctx->request.encoder);
 	TALLOC_FREE(ctx->response.decoder);
+	ctx->response.header = NULL;	/* This is owned by the parsed call env and must not be freed */
 
 	randle->request = NULL;
 	return 0;
@@ -1214,10 +1317,10 @@ static int instantiate(module_inst_ctx_t const *mctx)
 	rlm_rest_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
 
-	inst->xlat.method_str = "GET";
-	inst->xlat.body = REST_HTTP_BODY_NONE;
-	inst->xlat.body_str = "application/x-www-form-urlencoded";
-	inst->xlat.force_to_str = "plain";
+	inst->xlat.request.method_str = "GET";
+	inst->xlat.request.body = REST_HTTP_BODY_NONE;
+	inst->xlat.request.body_str = "application/x-www-form-urlencoded";
+	inst->xlat.response.force_to_str = "plain";
 
 	/*
 	 *	Parse sub-section configs.
@@ -1249,6 +1352,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, rest_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, rest_xlat_args);
+	xlat_func_call_env_set(xlat, &rest_call_env_xlat);
 
 	return 0;
 }
@@ -1306,13 +1410,13 @@ module_rlm_t rlm_rest = {
 		/*
 		 *	Hack to support old configurations
 		 */
-		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,	.method_env = &rest_call_env_authorize		},
 
-		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_accounting	},
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting	},
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate	},
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth		},
+		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_accounting,	.method_env = &rest_call_env_accounting		},
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,	.method_env = &rest_call_env_authorize		},
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,	.method_env = &rest_call_env_accounting		},
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,	.method_env = &rest_call_env_authenticate 	},
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,	.method_env = &rest_call_env_post_auth		},
 		MODULE_NAME_TERMINATOR
 	}
 };

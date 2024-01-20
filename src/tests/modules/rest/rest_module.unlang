@@ -74,15 +74,4 @@ if (!(&control.NAS-IP-Address[0] == "10.0.0.10") || !(&control.NAS-IP-Address[1]
 
 debug_control
 
-# Test "authenticate" rest call.  Uses http basic authentication
-rest.authenticate
-
-if (!(&REST-HTTP-Status-Code == 200)) {
-	test_fail
-}
-
-if (!(&REST-HTTP-Body == "Section: authenticate, User: Bob, Authenticated: true\n")) {
-	test_fail
-}
-
 test_pass

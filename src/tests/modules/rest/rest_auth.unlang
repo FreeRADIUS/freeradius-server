@@ -1,0 +1,12 @@
+# Test "authenticate" rest call.  Uses http basic authentication
+rest.authenticate
+
+if (!(&REST-HTTP-Status-Code == 200)) {
+	test_fail
+}
+
+if (!(&REST-HTTP-Body == "Section: authenticate, User: Bob, Authenticated: true\n")) {
+	test_fail
+}
+
+test_pass
