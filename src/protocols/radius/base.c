@@ -698,6 +698,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 {
 	bool found_ma;
 	int rcode;
+	int code;
 	uint8_t *msg, *end;
 	size_t packet_len = fr_nbo_to_uint16(packet + 2);
 	uint8_t request_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
@@ -705,6 +706,12 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 
 	if (packet_len < RADIUS_HEADER_LENGTH) {
 		fr_strerror_printf("invalid packet length %zd", packet_len);
+		return -1;
+	}
+
+	code = packet[0];
+	if (!code || (code >= FR_RADIUS_CODE_MAX)) {
+		fr_strerror_printf("Unknown reply code %d", code);
 		return -1;
 	}
 
@@ -833,6 +840,27 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	return fr_radius_encode_dbuff(&FR_DBUFF_TMP(packet, packet_len), original, secret, secret_len, code, id, vps);
 }
 
+static const bool disallow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
+	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = true,
+	// can be in Access-Accept
+	[ FR_RADIUS_CODE_ACCESS_REJECT ] = true,
+	[ FR_RADIUS_CODE_ACCESS_CHALLENGE ] = true,
+
+	[ FR_RADIUS_CODE_ACCOUNTING_REQUEST ] = true,
+	[ FR_RADIUS_CODE_ACCOUNTING_RESPONSE ] = true,
+
+	[ FR_RADIUS_CODE_STATUS_SERVER ] = true,
+
+	[ FR_RADIUS_CODE_COA_ACK ] = true,
+	[ FR_RADIUS_CODE_COA_NAK ] = true,
+
+	[ FR_RADIUS_CODE_DISCONNECT_REQUEST ] = true,
+	[ FR_RADIUS_CODE_DISCONNECT_ACK ] = true,
+	[ FR_RADIUS_CODE_DISCONNECT_NAK ] = true,
+
+	[ FR_RADIUS_CODE_PROTOCOL_ERROR ] = true,
+};
+
 ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 			 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_list_t *vps)
 {
@@ -846,6 +874,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	packet_ctx.secret = secret;
 	packet_ctx.rand_ctx.a = fr_rand();
 	packet_ctx.rand_ctx.b = fr_rand();
+	packet_ctx.disallow_tunnel_passwords = disallow_tunnel_passwords[code];
 
 	/*
 	 *	The RADIUS header can't do more than 64K of data.
@@ -859,8 +888,6 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	switch (code) {
 	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
-		packet_ctx.disallow_tunnel_passwords = true;
-
 		/*
 		 *	Callers in these cases have preloaded the buffer with the authentication vector.
 		 */
@@ -875,9 +902,6 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	case FR_RADIUS_CODE_DISCONNECT_ACK:
 	case FR_RADIUS_CODE_DISCONNECT_NAK:
 	case FR_RADIUS_CODE_PROTOCOL_ERROR:
-		packet_ctx.disallow_tunnel_passwords = true;
-		FALL_THROUGH;
-
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 		if (!original) {
 			fr_strerror_const("Cannot encode response without request");
@@ -889,9 +913,6 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 
 	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
 	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
-		packet_ctx.disallow_tunnel_passwords = true;
-		FALL_THROUGH;
-
 		/*
 		 *	Tunnel-Password encoded attributes are allowed
 		 *	in CoA-Request packets, by RFC 5176 Section

@@ -1180,11 +1180,6 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	}
 
 	code = data[0];
-	if (!code || (code >= FR_RADIUS_CODE_MAX)) {
-		REDEBUG("Unknown reply code %d", code);
-		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
-	}
-
 	if (!allowed_replies[code]) {
 		REDEBUG("%s packet received invalid reply code %s",
 			fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
