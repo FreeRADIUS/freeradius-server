@@ -619,8 +619,7 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
  *
  *  Writes pass straight through to the next bio.
  */
-fr_bio_t *fr_bio_mem_packet_alloc(TALLOC_CTX *ctx, size_t read_size, fr_bio_t *next,
-				  fr_bio_verify_t verify, void *uctx)
+fr_bio_t *fr_bio_mem_packet_alloc(TALLOC_CTX *ctx, size_t read_size, fr_bio_verify_t verify, fr_bio_t *next)	
 {
 	fr_bio_mem_t *my;
 

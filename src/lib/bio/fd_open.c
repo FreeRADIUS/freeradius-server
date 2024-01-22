@@ -24,6 +24,7 @@
 
 #include <freeradius-devel/bio/fd_priv.h>
 #include <freeradius-devel/util/file.h>
+#include <freeradius-devel/util/cap.h>
 
 #include <sys/stat.h>
 #include <net/if.h>
@@ -361,7 +362,7 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	 *
 	 *	slashes[1] points to the slash after 'radiusd', which doesn't exist.
 	 */
-	slashes[0] = '\0';
+	*slashes[0] = '\0';
 
 	/*
 	 *	If the grandparent doesn't exist, then we don't create it.
@@ -379,8 +380,8 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	/*
 	 *	Create the parent directory.
 	 */
-	slashes[0] = '/';
-	slashes[1] = '\0';
+	*slashes[0] = '/';
+	*slashes[1] = '\0';
 	if (mkdirat(parent_fd, dir, 0700) < 0) {
 		fr_strerror_printf("Failed creating directory %s: %s", dir, fr_syserror(errno));
 	close_parent:

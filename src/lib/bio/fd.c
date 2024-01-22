@@ -22,13 +22,6 @@
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
 
-#ifdef __linux__
-/*
- *	for accept4()
- */
-#define _GNU_SOURCE
-#endif
-
 #include <freeradius-devel/bio/fd_priv.h>
 #include <freeradius-devel/bio/null.h>
 
@@ -206,7 +199,7 @@ retry:
 		addr->socket.inet.dst_ipaddr = my->info.socket.inet.src_ipaddr;
 		addr->socket.inet.dst_port = my->info.socket.inet.src_port;
 
-		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, addr->socket.inet.src_port,
+		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
 					       &sockaddr, salen);
 		return rcode;
 	}
@@ -298,7 +291,6 @@ static ssize_t fd_fd_recvfromto_common(fr_bio_fd_t *my, void *packet_ctx, void *
 	int tries = 0;
 	ssize_t rcode;
 	struct sockaddr_storage from;
-	socklen_t from_len;
 	fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 
 	my->info.read_blocked = false;
@@ -315,7 +307,7 @@ static ssize_t fd_fd_recvfromto_common(fr_bio_fd_t *my, void *packet_ctx, void *
 		.msg_control	= my->cbuf,
 		.msg_controllen	= sizeof(my->cbuf),
 		.msg_name	= &from,
-		.msg_namelen	= &from_len,
+		.msg_namelen	= sizeof(from),
 		.msg_iov	= &my->iov,
 		.msg_iovlen	= 1,
 		.msg_flags	= 0,
@@ -327,7 +319,7 @@ retry:
 		ADDR_INIT;
 
 		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
-					       &from, from_len);
+					       &from, my->msgh.msg_namelen);
 
 		return rcode;
 	}
@@ -439,7 +431,7 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 		.msg_control	= my->cbuf,
 		// controllen is set below
 		.msg_name	= &to,
-		.msg_namelen	= &to_len,
+		.msg_namelen	= to_len,
 		.msg_iov	= &my->iov,
 		.msg_iovlen	= 1,
 		.msg_flags	= 0,
@@ -667,7 +659,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
         struct sockaddr_storage sockaddr;
 
 	if (my->info.socket.af != AF_UNIX) {
-		rcode = fr_ipaddr_to_sockaddr(&sockaddr, &salen, &my->info.socket.inet.dst_ipaddr, &my->info.socket.inet.dst_port);
+		rcode = fr_ipaddr_to_sockaddr(&sockaddr, &salen, &my->info.socket.inet.dst_ipaddr, my->info.socket.inet.dst_port);
 	} else {
 		rcode = fr_filename_to_sockaddr((struct sockaddr_un *) &sockaddr, &salen, my->info.socket.unix.path);
 	}
@@ -830,7 +822,7 @@ retry:
 
 		ADDR_INIT;
 
-		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, addr->socket.inet.src_port,
+		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
 					       &sockaddr, salen);
 
 		addr->socket.inet.dst_ipaddr = my->info.socket.inet.src_ipaddr;
@@ -951,7 +943,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_socket_t co
 		if ((my->info.socket.fd >= 0) &&
 		    (fr_bio_fd_init(&my->bio, sock) < 0)) {
 			talloc_free(my);
-			return -1;
+			return NULL;
 		}
 	} else {
 		/*
