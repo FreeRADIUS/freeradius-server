@@ -372,10 +372,6 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
-	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
 	DO_PART(alloc_begin);
 
 	/*
@@ -519,10 +515,6 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
-	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
 	DO_PART(update_begin);
 
 	/*
@@ -567,10 +559,6 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
-	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
 	DO_PART(release_begin);
 	DO_PART(release_clear);
 	DO_PART(release_commit);
@@ -592,10 +580,6 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, 
 	rlm_sql_handle_t	*handle;
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
-
-	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
-		RETURN_MODULE_FAIL;
-	}
 
 	DO_PART(bulk_release_begin);
 	DO_PART(bulk_release_clear);
@@ -619,10 +603,6 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 	rlm_sql_handle_t	*handle;
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
-
-	if (inst->sql->sql_set_user(inst->sql, request, NULL) < 0) {
-		RETURN_MODULE_FAIL;
-	}
 
 	DO_PART(mark_begin);
 	DO_PART(mark_update);
