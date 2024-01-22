@@ -40,8 +40,6 @@ typedef struct {
 	char const      *name;
 	char const	*sql_name;
 
-	uint32_t	lease_duration;
-
 	rlm_sql_t const	*sql;
 
 	fr_dict_attr_t const *allocated_address_da; //!< the attribute for IP address allocation
@@ -82,8 +80,6 @@ typedef struct {
 
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
-
-	{ FR_CONF_OFFSET("lease_duration", rlm_sqlippool_t, lease_duration), .dflt = "86400" },
 
 	{ FR_CONF_OFFSET_FLAGS("allocated_address_attr", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_sqlippool_t, allocated_address_attr) },
 
