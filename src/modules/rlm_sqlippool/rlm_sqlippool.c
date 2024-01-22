@@ -165,6 +165,7 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
  *	Don't repeat yourself
  */
 #define DO_PART(_x) if(sqlippool_command(inst->_x, &handle, inst, request) <0) goto error
+#define DO_AFFECTED(_x, _affected) _affected = sqlippool_command(inst->_x, &handle, inst, request); if (_affected < 0) goto error
 #define RESERVE_CONNECTION(_handle, _pool, _request) _handle = fr_pool_connection_get(_pool, _request); \
 	if (!_handle) { \
 		REDEBUG("Failed reserving SQL connection"); \
@@ -429,7 +430,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
-	RETURN_MODULE_OK;
+	RETURN_MODULE_UPDATED;
 }
 
 /*
@@ -450,13 +451,7 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 	 */
 	DO_PART(update_free);
 
-	affected = sqlippool_command(inst->update_update, &handle, inst, request);
-
-	if (affected < 0) {
-	error:
-		if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-		RETURN_MODULE_FAIL;
-	}
+	DO_AFFECTED(update_update, affected);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
@@ -464,13 +459,17 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 		/*
 		 * The lease has been updated - return OK
 		 */
-		RETURN_MODULE_OK;
+		RETURN_MODULE_UPDATED;
 	} else {
 		/*
 		 * The lease could not be updated - return notfound
 		 */
 		RETURN_MODULE_NOTFOUND;
 	}
+
+error:
+	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
+	RETURN_MODULE_FAIL;
 }
 
 /*
@@ -480,13 +479,15 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 {
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
 	rlm_sql_handle_t	*handle;
+	int			affected;
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
-	DO_PART(release_clear);
+	DO_AFFECTED(release_clear, affected);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-	RETURN_MODULE_OK;
+	if (affected > 0) RETURN_MODULE_UPDATED;
+	RETURN_MODULE_NOTFOUND;
 
 	error:
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
