@@ -232,7 +232,7 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Merge information from the outside world into our
 	 *	random pool.
 	 */
-	fr_rand_seed(packet->data, RADIUS_HEADER_LENGTH);
+	fr_rand_mixin(packet->data, RADIUS_HEADER_LENGTH);
 	talloc_free(packet_ctx.tmp_ctx);
 	talloc_free(packet_ctx.tags);
 
