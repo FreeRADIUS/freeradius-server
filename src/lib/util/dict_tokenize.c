@@ -2177,7 +2177,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 	/*
 	 *	Seed the random pool with data.
 	 */
-	fr_rand_seed(&statbuf, sizeof(statbuf));
+	fr_rand_mixin(&statbuf, sizeof(statbuf));
 
 	memset(&base_flags, 0, sizeof(base_flags));
 

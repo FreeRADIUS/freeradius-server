@@ -31,11 +31,11 @@ RCSID("$Id$")
 static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
 static _Thread_local bool fr_rand_initialized = false;
 
-/** Seed the random number generator
+/** Mix data into the random number generator.
  *
  * May be called any number of times.
  */
-void fr_rand_seed(void const *data, size_t size)
+void fr_rand_mixin(void const *data, size_t size)
 {
 	uint32_t hash;
 
@@ -75,7 +75,7 @@ void fr_rand_seed(void const *data, size_t size)
 			memcpy((void *) &fr_rand_pool.randrsl[0], &when, sizeof(when));
 		}
 
-		fr_rand_init(&fr_rand_pool, 1);
+		fr_isaac_init(&fr_rand_pool, 1);
 		fr_rand_pool.randcnt = 0;
 		fr_rand_initialized = 1;
 	}
@@ -105,7 +105,7 @@ uint32_t fr_rand(void)
 	 *	Ensure that the pool is initialized.
 	 */
 	if (!fr_rand_initialized) {
-		fr_rand_seed(NULL, 0);
+		fr_rand_mixin(NULL, 0);
 	}
 
 	num = fr_rand_pool.randrsl[fr_rand_pool.randcnt++];

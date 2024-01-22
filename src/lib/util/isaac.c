@@ -63,7 +63,7 @@ do { \
 } while (0)
 
 /* if (flag==1), then use the contents of randrsl[] to initialize mm[]. */
-void fr_rand_init(fr_randctx *ctx, int flag)
+void fr_isaac_init(fr_randctx *ctx, int flag)
 {
 	int		i;
 	uint32_t	a, b, c, d, e, f, g, h;
@@ -123,7 +123,7 @@ int main()
 
 	for (i = 0; i < 256; ++i) ctx.randrsl[i] = (uint32_t)0;
 
-	fr_rand_init(&ctx, 1);
+	fr_isaac_init(&ctx, 1);
 	for (i = 0; i < 2; ++i) {
 		fr_isaac(&ctx);
 		for (j = 0; j < 256; ++j) {
