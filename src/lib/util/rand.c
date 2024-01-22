@@ -31,6 +31,48 @@ RCSID("$Id$")
 static _Thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
 static _Thread_local bool fr_rand_initialized = false;
 
+void fr_rand_init(void)
+{
+	int fd;
+
+	if (fr_rand_initialized) return;
+
+
+	memset(&fr_rand_pool, 0, sizeof(fr_rand_pool));
+
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd >= 0) {
+		size_t total;
+		ssize_t this;
+
+		total = 0;
+		while (total < sizeof(fr_rand_pool.randrsl)) {
+			this = read(fd, fr_rand_pool.randrsl,
+				    sizeof(fr_rand_pool.randrsl) - total);
+			if ((this < 0) && (errno != EINTR)) break;
+			if (this > 0) total += this;
+		}
+		close(fd);
+	} else {
+		/*
+		 *	We use unix_time, because fr_time() is
+		 *	nanoseconds since the server started.
+		 *	Which is likely a very small number.
+		 *	Whereas unix time is somewhat more
+		 *	unknown.  If we're not seeding off of
+		 *	/dev/urandom, then any randomness we
+		 *	get here is terrible.
+		 */
+		int64_t when = fr_unix_time_unwrap(fr_time_to_unix_time(fr_time()));
+
+		memcpy((void *) &fr_rand_pool.randrsl[0], &when, sizeof(when));
+	}
+
+	fr_isaac_init(&fr_rand_pool, 1);
+	fr_rand_pool.randcnt = 0;
+	fr_rand_initialized = true;
+}
+
 /** Mix data into the random number generator.
  *
  * May be called any number of times.
@@ -43,44 +85,8 @@ void fr_rand_mixin(void const *data, size_t size)
 	 *	Ensure that the pool is initialized.
 	 */
 	if (!fr_rand_initialized) {
-		int fd;
-
-		memset(&fr_rand_pool, 0, sizeof(fr_rand_pool));
-
-		fd = open("/dev/urandom", O_RDONLY);
-		if (fd >= 0) {
-			size_t total;
-			ssize_t this;
-
-			total = 0;
-			while (total < sizeof(fr_rand_pool.randrsl)) {
-				this = read(fd, fr_rand_pool.randrsl,
-					    sizeof(fr_rand_pool.randrsl) - total);
-				if ((this < 0) && (errno != EINTR)) break;
-				if (this > 0) total += this;
-			}
-			close(fd);
-		} else {
-			/*
-			 *	We use unix_time, because fr_time() is
-			 *	nanoseconds since the server started.
-			 *	Which is likely a very small number.
-			 *	Whereas unix time is somewhat more
-			 *	unknown.  If we're not seeding off of
-			 *	/dev/urandom, then any randomness we
-			 *	get here is terrible.
-			 */
-			int64_t when = fr_unix_time_unwrap(fr_time_to_unix_time(fr_time()));
-
-			memcpy((void *) &fr_rand_pool.randrsl[0], &when, sizeof(when));
-		}
-
-		fr_isaac_init(&fr_rand_pool, 1);
-		fr_rand_pool.randcnt = 0;
-		fr_rand_initialized = 1;
+		fr_rand_init();
 	}
-
-	if (!data) return;
 
 	/*
 	 *	Hash the user data
@@ -105,7 +111,7 @@ uint32_t fr_rand(void)
 	 *	Ensure that the pool is initialized.
 	 */
 	if (!fr_rand_initialized) {
-		fr_rand_mixin(NULL, 0);
+		fr_rand_init();
 	}
 
 	num = fr_rand_pool.randrsl[fr_rand_pool.randcnt++];
