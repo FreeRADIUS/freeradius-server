@@ -258,6 +258,25 @@ while (p < end) { \
 	}
 }
 
+
+/*
+ *	http://www.cse.yorku.ca/~oz/marsaglia-rng.html
+ *
+ *	We implement MWC here, which uses 2 32-bit numbers for a
+ *	state, and has a period of 2^60.
+ *
+ *	We could extend this to a larger RNG with 4 32-bit state
+ *	numbers {a, b, c, d} and use KISS, which has a period of about
+ *	2^123.
+ *
+ *	a' = 36969 * (a & 65535) + (a >> 16)
+ *	b' = 18000 * (b & 65535) + (b >> 16))
+ *
+ *	MWC	(a' << 16) + b'
+ *	SHR3	(c ^= (c <<17); c ^= ( c>>13); c ^= (c << 5))
+ *	CONG	d' = 69069 * d + 1234567
+ *	KISS	((MWC^CONG)+SHR3)
+ */
 uint32_t fr_fast_rand(fr_fast_rand_t *ctx)
 {
 	ctx->a = (36969 * (ctx->a & 0xffff)) + (ctx->a >> 16);
