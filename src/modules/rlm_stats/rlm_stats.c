@@ -130,6 +130,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 	 *	Loop over all of the other thread instances, locking
 	 *	them, and adding their statistics in.
 	 */
+	pthread_mutex_lock(&t->mutex);
 	for (other = fr_dlist_head(&t->inst->list);
 	     other != NULL;
 	     other = fr_dlist_next(&t->inst->list, other)) {
@@ -153,6 +154,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 
 		pthread_mutex_unlock(&other->mutex);
 	}
+	pthread_mutex_unlock(&t->mutex);
 }
 
 
