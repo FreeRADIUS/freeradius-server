@@ -783,16 +783,6 @@ do { \
 			unsigned int		i;
 
 			fr_pair_list_init(&reply_vps);
-
-			if (fr_radius_packet_encode(packet, &request_vps, NULL, conf->secret) < 0) {
-				fr_perror("Failed encoding packet");
-				return EXIT_FAILURE;
-			}
-			if (fr_radius_packet_sign(packet, NULL, conf->secret) < 0) {
-				fr_perror("Failed signing packet");
-				return EXIT_FAILURE;
-			}
-
 			/*
 			 *	Print the attributes we're about to send
 			 */
@@ -807,7 +797,7 @@ do { \
 			 *	next call.
 			 */
 			for (i = 0; i < conf->retries; i++) {
-				rcode = write(packet->socket.fd, packet->data, packet->data_len);
+				rcode = fr_radius_packet_send(packet, &request_vps, NULL, conf->secret);
 				if (rcode < 0) {
 					ERROR("Failed sending: %s", fr_syserror(errno));
 					return EXIT_FAILURE;
