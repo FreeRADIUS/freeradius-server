@@ -610,7 +610,7 @@ static fr_slen_t tmpl_request_ref_list_from_substr(TALLOC_CTX *ctx, tmpl_attr_er
 		/*
 		 *	If the caller is asking for a namespace, then walk back up the tmpl_rules_t to find a parent namespace.
 		 */
-		if (namespace && t_rules->parent) {
+		if (namespace && t_rules && t_rules->parent) {
 			t_rules = t_rules->parent;
 
 			switch (ref) {
