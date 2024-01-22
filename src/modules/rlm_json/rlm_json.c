@@ -594,11 +594,11 @@ static int mod_load(void)
 
 	fr_json_version_print();
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "json_escape", json_escape_xlat, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "json.escape", json_escape_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_args_set(xlat, json_escape_xlat_arg);
-	if (unlikely(!(xlat = xlat_func_register(NULL, "json_quote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "json.quote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_args_set(xlat, json_escape_xlat_arg);
-	if (unlikely(!(xlat = xlat_func_register(NULL, "json_jpath_validate", json_jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "json.jpath_validate", json_jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_mono_set(xlat, json_jpath_validate_xlat_arg);
 
 	return 0;
@@ -606,8 +606,9 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("json_quote");
-	xlat_func_unregister("json_jpath_validate");
+	xlat_func_unregister("json.escape");
+	xlat_func_unregister("json.quote");
+	xlat_func_unregister("json.jpath_validate");
 }
 
 /*

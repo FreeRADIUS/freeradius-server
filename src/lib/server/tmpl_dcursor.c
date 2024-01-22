@@ -401,14 +401,14 @@ fr_pair_t *_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	if (err) *err = 0;
 
 	/*
-	 *	Navigate to the correct request context
+	 *	Navigate to the correct request context (parent, outer, curent, etc...)
 	 */
 	if (tmpl_request_ptr(&request, tmpl_request(vpt)) < 0) {
 		if (err) *err = -3;
 		memset(cc, 0, sizeof(*cc));	/* so tmpl_dcursor_clear doesn't explode */
 		return NULL;
 	}
-	list = request->pair_root;
+	list = request->pair_root;		/* Start navigating from the root of that request */
 
 	return tmpl_dcursor_init_relative(err, ctx, cc, cursor, request, list, vpt, build, uctx);
 }
