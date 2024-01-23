@@ -461,7 +461,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	socklen_t sunlen;
 	struct sockaddr_un sun;
 
-	p = strrchr(my->info.socket.unix.path, '/');
+	p = strrchr(cfg->path, '/');
 
 	/*
 	 *	The UID and GID should be taken automatically from the "user" and "group" settings in

@@ -50,7 +50,13 @@ struct fr_bio_common_s {
  */
 static inline void CC_HINT(nonnull) fr_bio_chain(fr_bio_t *first, fr_bio_t *second)
 {
-	fr_dlist_entry_link_after(&first->entry, &second->entry);
+	fr_assert(first->entry.prev == NULL);
+	fr_assert(first->entry.next == NULL);
+
+	fr_assert(second->entry.prev == NULL);
+
+	first->entry.next = &second->entry;
+	second->entry.prev = &first->entry;
 }
 
 /** Remove a bio from a chain
