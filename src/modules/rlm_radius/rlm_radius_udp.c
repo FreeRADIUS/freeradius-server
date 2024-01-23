@@ -1167,6 +1167,27 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 
 	RHEXDUMP3(data, packet_len, "Read packet");
 
+	code = data[0];
+	if (!allowed_replies[code]) {
+		REDEBUG("%s packet received unknown reply code %s",
+			fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
+		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+	}
+
+	/*
+	 *	Protocol error can reply to any packet.
+	 *
+	 *	Status-Server can get any reply.
+	 *
+	 *	Otherwise the reply code must be associated with the request code we sent.
+	 */
+	if ((code != FR_RADIUS_CODE_PROTOCOL_ERROR) && (u->code != FR_RADIUS_CODE_STATUS_SERVER) &&
+	    (allowed_replies[code] != u->code)) {
+		REDEBUG("%s packet received invalid reply code %s",
+			fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
+		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+	}
+
 	original[0] = u->code;
 	original[1] = 0;			/* not looked at by fr_radius_verify() */
 	original[2] = 0;
@@ -1177,27 +1198,6 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1, false) < 0) {
 		RPWDEBUG("Ignoring response with invalid signature");
 		return DECODE_FAIL_MA_INVALID;
-	}
-
-	code = data[0];
-	if (!allowed_replies[code]) {
-		REDEBUG("%s packet received invalid reply code %s",
-			fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
-		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
-	}
-
-	/*
-	 *	Protocol error is allowed as a response to any
-	 *	packet code.
-	 *
-	 *	Status checks accept any response code.
-	 */
-	if (!u->status_check && (code != FR_RADIUS_CODE_PROTOCOL_ERROR)) {
-		if (allowed_replies[code] != (fr_radius_packet_code_t) u->code) {
-			REDEBUG("%s packet received invalid reply code %s",
-				fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
-			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
-		}
 	}
 
 	/*
