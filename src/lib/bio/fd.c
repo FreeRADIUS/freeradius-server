@@ -296,6 +296,10 @@ static ssize_t fd_fd_recvfromto_common(fr_bio_fd_t *my, void *packet_ctx, void *
 	struct sockaddr_storage from;
 	fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 
+#ifdef STATIC_ANALYZER
+	from.af = AF_UNSPEC;
+#endif
+
 	my->info.read_blocked = false;
 
 	memset(&my->cbuf, 0, sizeof(my->cbuf));

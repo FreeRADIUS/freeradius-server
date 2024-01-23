@@ -282,7 +282,7 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	mode_t perm;
 	int parent_fd, fd;
 	char const *path = cfg->path;
-	char *dir, *p;
+	char *p, *dir = NULL;
 	char *slashes[2];
 
 	perm = S_IREAD | S_IWRITE | S_IEXEC;
@@ -299,18 +299,20 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 
 		if (fstat(*dirfd, &buf) < 0) {
 			fr_strerror_printf("Failed reading parent directory for file %s: %s", path, fr_syserror(errno));
+		fail:
+			talloc_free(dir);
 			close(*dirfd);
 			return -1;
 		}
 
 		if (buf.st_uid != cfg->uid) {
 			fr_strerror_printf("Failed reading parent directory for file %s: Incorrect UID", path);
-			return -1;
+			goto fail;
 		}
 
 		if (buf.st_gid != cfg->gid) {
 			fr_strerror_printf("Failed reading parent directory for file %s: Incorrect GID", path);
-			return -1;
+			goto fail;
 		}
 
 		/*
@@ -320,15 +322,14 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 		 */
 		if (fchmod(*dirfd, perm) < 0) {
 			fr_strerror_printf("Failed setting parent directory permissions for file %s: %s", path, fr_syserror(errno));
-			close(*dirfd);
-			return -1;
+			goto fail;
 		}
 
 		return 0;
 	}
 
 	dir = talloc_strdup(NULL, path);
-	if (!dir) return -1;
+	if (!dir) goto fail;
 
 	/*
 	 *	Find the last two directory separators.
@@ -348,9 +349,7 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	 */
 	if (!slashes[0]) {
 		fr_strerror_printf("Failed parsing filename %s: it is not absolute", path);
-	fail:
-		talloc_free(dir);
-		return -1;
+		goto fail;
 	}
 
 	/*
