@@ -917,15 +917,13 @@ int fr_bio_fd_init_accept(fr_bio_fd_t *my)
  *
  *  @param ctx		the talloc ctx
  *  @param cb		callbacks
- *  @param sock		structure holding socket information
- *			src_ip is always *our* IP.  dst_ip is always *their* IP.
- *  @param type		type of the bio
+ *  @param cfg		structure holding configuration information
  *  @param offset	for datagram sockets, where #fr_bio_fd_packet_ctx_t is stored
  *  @return
  *	- NULL on error, memory allocation failed
  *	- !NULL the bio
  */
-fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_socket_t const *sock, fr_bio_fd_type_t type, size_t offset)
+fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_fd_config_t const *cfg, size_t offset)
 {
 	fr_bio_fd_t *my;
 
@@ -936,27 +934,15 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_socket_t co
 	my->max_tries = 4;
 	my->offset = offset;
 
-	if (sock) {
-		my->info.type = type;
-		my->info.state = FR_BIO_FD_STATE_CLOSED;
-
-		if ((my->info.socket.fd >= 0) &&
-		    (fr_bio_fd_init(&my->bio, sock) < 0)) {
-			talloc_free(my);
-			return NULL;
-		}
-	} else {
+	if (!cfg) {
 		/*
-		 *	We can allocate a "place-holder" FD bio, and then later fill it in with
-		 *	fr_bio_fd_init().
-		 *
-		 *	@todo - maybe just use fr_bio_fd_open() all of the time?
+		 *	Add place-holder information.
 		 */
 		my->info = (fr_bio_fd_info_t) {
 			.socket = {
 				.af = AF_UNSPEC,
 			},
-			.type = type,
+			.type = FR_BIO_FD_UNCONNECTED,
 			.read_blocked = true,
 			.write_blocked = true,
 			.eof = false,
@@ -965,6 +951,13 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_socket_t co
 
 		my->bio.read = fr_bio_eof_read;
 		my->bio.write = fr_bio_null_write;
+	} else {
+		my->info.state = FR_BIO_FD_STATE_CLOSED;
+
+		if (fr_bio_fd_socket_open(&my->bio, cfg) < 0) {
+			talloc_free(my);
+			return NULL;
+		}
 	}
 
 	talloc_set_destructor(my, fr_bio_fd_destructor);

@@ -107,7 +107,7 @@ typedef struct {
 	fr_bio_fd_config_t const *cfg;	//!< so we know what was asked, vs what was granted.
 } fr_bio_fd_info_t;
 
-fr_bio_t	*fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_socket_t const *sock, fr_bio_fd_type_t type, size_t offset) CC_HINT(nonnull(1));
+fr_bio_t	*fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_fd_config_t const *cfg, size_t offset) CC_HINT(nonnull(1));
 
 int		fr_bio_fd_close(fr_bio_t *bio) CC_HINT(nonnull);
 
