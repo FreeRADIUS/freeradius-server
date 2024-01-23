@@ -477,6 +477,7 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 	char const	*p = fmt, *end = p + strlen(fmt), *fmt_p = p, *fmt_q = p;
 	char		*out = NULL, *out_tmp;
 	va_list		ap_p, ap_q;
+	char		*subst;
 
 	out = talloc_strdup(ctx, "");
 	va_copy(ap_p, ap);
@@ -485,7 +486,8 @@ static char *fr_vasprintf_internal(TALLOC_CTX *ctx, char const *fmt, va_list ap,
 	do {
 		char const	*q;
 		char		len[2] = { '\0', '\0' };
-		char		*subst = NULL;
+
+		subst = NULL;
 
 		if ((*p != '%') || (*++p == '%')) {
 			fmt_q = p + 1;
