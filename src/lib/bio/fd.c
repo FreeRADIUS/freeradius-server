@@ -232,7 +232,7 @@ static ssize_t fr_bio_fd_write(fr_bio_t *bio, UNUSED void *packet_ctx, const voi
 
 retry:
 	/*
-	 *	Note that we call send() and not write()!  Posix says:
+	 *	We could call send() instead of write()!  Posix says:
 	 *
 	 *	"A write was attempted on a socket that is shut down for writing, or is no longer
 	 *	connected. In the latter case, if the socket is of type SOCK_STREAM, a SIGPIPE signal shall
@@ -240,9 +240,12 @@ retry:
 	 *
 	 *	We can override this behavior by calling send(), and passing the special flag which says
 	 *	"don't do that!".  The system call will then return EPIPE, which indicates that the socket is
-	 *	no longer usavle.
+	 *	no longer usable.
+	 *
+	 *	However, we also set the SO_NOSIGPIPE socket option, which means that we can just call write()
+	 *	here.
 	 */
-	rcode = send(my->info.socket.fd, buffer, size, MSG_NOSIGNAL);
+	rcode = write(my->info.socket.fd, buffer, size);
 	if (rcode >= 0) return rcode;
 
 #undef flag_blocked
