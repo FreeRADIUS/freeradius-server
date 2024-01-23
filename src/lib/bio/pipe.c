@@ -148,7 +148,7 @@ fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_pipe_cb_funcs_t *cb, size_t 
 {
 	fr_bio_pipe_t *my;
 
-	if (!cb->readable || !cb->writeable) return -1;
+	if (!cb->readable || !cb->writeable) return NULL;
 
 	if (buffer_size < 1024)		buffer_size = 1024;
 	if (buffer_size > (1 << 20))	buffer_size = (1 << 20);

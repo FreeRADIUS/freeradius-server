@@ -106,11 +106,14 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	/*
 	 *	@todo - add an internal "type" to the bio?
 	 */
-	while (next && (strcmp(talloc_get_name(next), "fr_bio_fd_t") != 0)) {
-		next = fr_bio_next(next);
-	}
+	do {
+		if (strcmp(talloc_get_name(next), "fr_bio_fd_t") == 0) {
+			fd = next;
+			break;
+		}
+	} while ((next = fr_bio_next(next)) != NULL);
 
-	if (!fd) return -1;
+	if (!fd) return NULL;
 
 	info = fr_bio_fd_info(fd);
 	fr_assert(info != NULL);
@@ -120,7 +123,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	 *
 	 *	Unix domain sockets have to use a different method for filtering input connections.
 	 */
-	if (!((info->socket.af == AF_INET) || (info->socket.af == AF_INET6))) return -1;
+	if (!((info->socket.af == AF_INET) || (info->socket.af == AF_INET6))) return NULL;
 
 	/*
 	 *	We can only be used for accept() sockets, or unconnected UDP sockets.
@@ -130,7 +133,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 		break;
 
 	case FR_BIO_FD_CONNECTED:
-		return -1;
+		return NULL;
 
 	case FR_BIO_FD_ACCEPT:
 		break;

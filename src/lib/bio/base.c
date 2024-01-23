@@ -180,7 +180,7 @@ int fr_bio_shutdown(fr_bio_t *bio)
  */
 int fr_bio_shutdown_intermediate(fr_bio_t *bio)
 {
-	fr_bio_common_t *prev = (fr_bio_common_t *) fr_bio_prev(bio);
+	fr_bio_common_t *prev;
 
 	while ((prev = (fr_bio_common_t *) fr_bio_prev(bio)) != NULL) {
 		bio = (fr_bio_t *) prev;

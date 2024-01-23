@@ -52,7 +52,7 @@ static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
 	int af, argc, port;
 	ssize_t rcode;
 	uint8_t *p, *end;
-	char *eos, *argv[5];
+	char *eos, *argv[5] = {};
 
 	p = my->buffer.read;
 	end = my->buffer.write;
@@ -111,7 +111,18 @@ static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
 	/*
 	 *	Didn't end with CRLF and zero.
 	 */
-	if (rcode < 0) goto fail;
+	if (rcode < 0) {
+		fr_strerror_const("haproxy v1 header did not end with CRLF");
+		goto fail;
+	}
+
+	/*
+	 *
+	 */
+	if (argc != 4) {
+		fr_strerror_const("haproxy v1 header did not have 4 parameters");
+		goto fail;
+	}
 
 	if (fr_inet_pton(&my->info.socket.inet.src_ipaddr, argv[0], -1, af, false, false) < 0) goto fail;
 	if (fr_inet_pton(&my->info.socket.inet.dst_ipaddr, argv[1], -1, af, false, false) < 0) goto fail;
