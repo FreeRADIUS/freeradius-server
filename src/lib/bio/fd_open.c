@@ -620,7 +620,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 	opt = my->info.socket.inet.ifindex;
 
 	switch (my->info.socket.af) {
-	case AF_UNIX:
+	case AF_LOCAL:
 		rcode = setsockopt(my->info.socket.fd, IPPROTO_IP, IP_BOUND_IF, &opt, sizeof(opt));
 		break;
 
@@ -663,7 +663,7 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	socklen_t salen;
 	struct sockaddr_storage	salocal;
 
-	if (my->info.socket.af == AF_UNIX) {
+	if (my->info.socket.af == AF_LOCAL) {
 		return fr_bio_fd_socket_bind_unix(my, cfg);
 	}
 
@@ -808,7 +808,7 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	 */
 	switch (cfg->type) {
 		/*
-		 *	Unconnected UDP or datagram AF_UNUX server sockets.
+		 *	Unconnected UDP or datagram AF_LOCAL server sockets.
 		 */
 	case FR_BIO_FD_UNCONNECTED:
 		if (my->info.socket.type != SOCK_DGRAM) {
@@ -816,7 +816,7 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			return -1;
 		}
 
-		if (my->info.socket.af == AF_UNIX) {
+		if (my->info.socket.af == AF_LOCAL) {
 			rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg);
 		} else {
 			rcode = fr_bio_fd_server_udp(fd, &my->info.socket, cfg); /* sets SO_REUSEPORT, too */
@@ -829,14 +829,14 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		break;
 
 		/*
-		 *	A connected client: UDP, TCP, or AF_UNIX.
+		 *	A connected client: UDP, TCP, or AF_LOCAL.
 		 */
 	case FR_BIO_FD_CONNECTED:
 		if (my->info.socket.type == SOCK_DGRAM) {
 			rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg); /* we don't use SO_REUSEPORT for clients */
 			if (rcode < 0) goto fail;
 
-		} else if (my->info.socket.af != AF_UNIX) {
+		} else if ((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6)) {
 			rcode = fr_bio_fd_common_tcp(fd, &my->info.socket, cfg);
 			if (rcode < 0) goto fail;
 		}
@@ -861,7 +861,7 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			rcode = fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg);
 			break;
 
-		case AF_UNIX:
+		case AF_LOCAL:
 			rcode = 0;
 			break;
 

@@ -640,7 +640,7 @@ int fr_filename_to_sockaddr(struct sockaddr_un *sun, socklen_t *sunlen, char con
 		return -1;
 	}
 
-	sun->sun_family = AF_UNIX;
+	sun->sun_family = AF_LOCAL;
 	memcpy(sun->sun_path, filename, len + 1); /* SUN_LEN will do strlen */
 
 	*sunlen = SUN_LEN(sun);
@@ -661,7 +661,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
         socklen_t salen;
         struct sockaddr_storage sockaddr;
 
-	if (my->info.socket.af != AF_UNIX) {
+	if (my->info.socket.af != AF_LOCAL) {
 		rcode = fr_ipaddr_to_sockaddr(&sockaddr, &salen, &my->info.socket.inet.dst_ipaddr, my->info.socket.inet.dst_port);
 	} else {
 		rcode = fr_filename_to_sockaddr((struct sockaddr_un *) &sockaddr, &salen, my->info.socket.unix.path);
