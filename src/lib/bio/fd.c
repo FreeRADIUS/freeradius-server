@@ -722,7 +722,10 @@ static int fr_bio_fd_init_file(fr_bio_fd_t *my)
 	my->info.read_blocked = false;
 	my->info.write_blocked = false;
 
-	switch (my->info.cfg->flags) {
+	/*
+	 *	Other flags may be O_CREAT, etc.
+	 */
+	switch (my->info.cfg->flags & (O_RDONLY | O_WRONLY | O_RDWR)) {
 	case O_RDONLY:
 		my->bio.read = fr_bio_fd_read_stream;
 		my->bio.write = fr_bio_null_write; /* @todo - error on write? */

@@ -775,7 +775,26 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		my->info.socket.type = SOCK_STREAM;
 		my->info.socket.unix.path = cfg->filename;
 
-		fd = open(cfg->filename, cfg->flags);
+		/*
+		 *	Allow hacks for stdout and stderr
+		 */
+		if (strcmp(cfg->filename, "/dev/stdout") == 0) {
+			if (cfg->flags != O_WRONLY) {
+			fail_dev:
+				fr_strerror_printf("Cannot read from %s", cfg->filename);
+				return -1;
+			}
+
+			fd = dup(STDOUT_FILENO);
+
+		} else if (strcmp(cfg->filename, "/dev/stderr") == 0) {
+			if (cfg->flags != O_WRONLY) goto fail_dev;
+
+			fd = dup(STDERR_FILENO);
+
+		} else {
+			fd = open(cfg->filename, cfg->flags, cfg->perm);
+		}
 		if (fd < 0) {
 			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
 			return -1;
