@@ -577,13 +577,12 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
  */
 static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 {
-	char *ifname;
-	char buffer[IFNAMSIZ];
-
 	/*
 	 *	ifindex isn't set, do nothing.
 	 */
 	if (!my->info.socket.inet.ifindex) return 0;
+
+	fr_assert(cfg->interface != NULL);
 
 	/*
 	 *	The internet hints that CAP_NET_RAW is required to use SO_BINDTODEVICE.

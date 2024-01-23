@@ -584,7 +584,7 @@ static ssize_t fr_bio_fd_sendfromto6(fr_bio_t *bio, void *packet_ctx, const void
 		.msg_control	= my->cbuf,
 		// controllen is set below
 		.msg_name	= &to,
-		.msg_namelen	= &to_len,
+		.msg_namelen	= to_len,
 		.msg_iov	= &my->iov,
 		.msg_iovlen	= 1,
 		.msg_flags	= 0,
