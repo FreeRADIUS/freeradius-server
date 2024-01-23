@@ -461,10 +461,6 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	socklen_t sunlen;
 	struct sockaddr_un sun;
 
-	fr_assert(cfg->path != NULL);
-
-	p = strrchr(cfg->path, '/');
-
 	/*
 	 *	The UID and GID should be taken automatically from the "user" and "group" settings in
 	 *	mainconfig.  There is no reason to set them to anything else.
@@ -492,6 +488,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	/*
 	 *	Opening 'foo.sock' is OK.
 	 */
+	p = strrchr(cfg->path, '/');
 	if (!p) {
 		dirfd = AT_FDCWD;
 		filename = cfg->path;
@@ -584,7 +581,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, fr_bio_fd_config_t c
 	 */
 	if (!my->info.socket.inet.ifindex) return 0;
 
-	fr_assert(cfg->interface != NULL);
+	if (!cfg->interface) return 0;
 
 	/*
 	 *	The internet hints that CAP_NET_RAW is required to use SO_BINDTODEVICE.
@@ -719,17 +716,10 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 	my->info.socket = (fr_socket_t) {};
 
-	if (cfg->path) {
-		my->info.socket.af = AF_UNIX;
-	} else {
-		my->info.socket.af = cfg->src_ipaddr.af;
-		fr_assert((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6));
-	}
 	my->info.socket.type = cfg->socket_type;
 
-	switch (my->info.socket.af) {
-	case AF_INET:
-	case AF_INET6:
+	if (!cfg->path) {
+		my->info.socket.af = cfg->src_ipaddr.af;
 		my->info.socket.inet.src_ipaddr = cfg->src_ipaddr;
 		my->info.socket.inet.dst_ipaddr = cfg->dst_ipaddr;
 		my->info.socket.inet.src_port = cfg->src_port;
@@ -749,17 +739,12 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 				return -1;
 			}
 		}
-		break;
-
-	case AF_UNIX:
-		my->info.socket.unix.path = cfg->path;
+	} else {
+		my->info.socket.af = AF_UNIX;
 		my->info.socket.type = SOCK_STREAM;
+		my->info.socket.unix.path = cfg->path;
 		protocol = 0;
 		break;
-
-	default:
-		fr_strerror_const("Failed opening socket: unsupported address family");
-		return -1;
 	}
 
 	/*
