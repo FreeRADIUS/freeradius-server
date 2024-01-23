@@ -32,9 +32,9 @@ RCSIDH(lib_bio_fd_h, "$Id$")
 #include <fcntl.h>
 
 /*
- *	Local hack.
+ *	Local hack.  AF_FILE is a synonym for AF_LOCAL on some platforms.
  */
-#define AF_FILE (INT_MAX)
+#define AF_FILE_BIO (INT_MAX)
 
 /** Per-packet context
  *

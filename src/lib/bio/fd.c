@@ -748,7 +748,7 @@ static int fr_bio_fd_init_file(fr_bio_fd_t *my)
 
 int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 {
-	if (my->info.socket.af == AF_FILE) return fr_bio_fd_init_file(my);
+	if (my->info.socket.af == AF_FILE_BIO) return fr_bio_fd_init_file(my);
 
 	/*
 	 *	Connected datagrams must have real IPs

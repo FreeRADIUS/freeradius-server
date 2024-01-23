@@ -771,7 +771,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		/*
 		 *	Filenames overload the #fr_socket_t for now.
 		 */
-		my->info.socket.af = AF_FILE;
+		my->info.socket.af = AF_FILE_BIO;
 		my->info.socket.type = SOCK_STREAM;
 		my->info.socket.unix.path = cfg->filename;
 
