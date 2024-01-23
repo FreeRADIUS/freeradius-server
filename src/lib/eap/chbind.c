@@ -176,7 +176,8 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 	uint8_t const	*attr_data;
 	size_t		data_len = 0;
 	fr_pair_t	*vp;
-	fr_radius_ctx_t packet_ctx;
+	fr_radius_ctx_t common_ctx = {};
+	fr_radius_decode_ctx_t packet_ctx = {};
 
 	/* check input parameters */
 	fr_assert((request != NULL) &&
@@ -198,7 +199,7 @@ fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 	/*
 	 *	Maybe copy the State over, too?
 	 */
-	memset(&packet_ctx, 0, sizeof(packet_ctx));
+	packet_ctx.common = &common_ctx;
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
 
 	/* Add the channel binding attributes to the fake packet */
