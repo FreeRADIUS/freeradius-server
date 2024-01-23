@@ -82,24 +82,7 @@ typedef struct {
 	char const	*mark_begin;		//!< SQL query to begin.
 	char const	*mark_update;		//!< SQL query to mark an IP.
 	char const	*mark_commit;		//!< SQL query to commit.
-
-						/* Logging Section */
-	char const	*log_exists;		//!< There was an ip address already assigned.
-	char const	*log_success;		//!< We successfully allocated ip address from pool.
-	char const	*log_clear;		//!< We successfully deallocated ip address from pool.
-	char const	*log_failed;		//!< Failed to allocate ip from the pool.
-	char const	*log_nopool;		//!< There was no Framed-IP-Address but also no Pool-Name.
-
 } rlm_sqlippool_t;
-
-static conf_parser_t message_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("exists", CONF_FLAG_XLAT, rlm_sqlippool_t, log_exists) },
-	{ FR_CONF_OFFSET_FLAGS("success", CONF_FLAG_XLAT, rlm_sqlippool_t, log_success) },
-	{ FR_CONF_OFFSET_FLAGS("clear", CONF_FLAG_XLAT, rlm_sqlippool_t, log_clear) },
-	{ FR_CONF_OFFSET_FLAGS("failed", CONF_FLAG_XLAT, rlm_sqlippool_t, log_failed) },
-	{ FR_CONF_OFFSET_FLAGS("nopool", CONF_FLAG_XLAT, rlm_sqlippool_t, log_nopool) },
-	CONF_PARSER_TERMINATOR
-};
 
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
@@ -158,8 +141,6 @@ static conf_parser_t module_config[] = {
 
 	{ FR_CONF_OFFSET_FLAGS("mark_commit", CONF_FLAG_XLAT, rlm_sqlippool_t, mark_commit) },
 
-
-	{ FR_CONF_POINTER("messages", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) message_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -174,12 +155,10 @@ fr_dict_autoload_t rlm_sqlippool_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_pool_name;
-static fr_dict_attr_t const *attr_module_success_message;
 static fr_dict_attr_t const *attr_acct_status_type;
 
 extern fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlippool_dict_attr[] = {
-	{ .out = &attr_module_success_message, .name = "Module-Success-Message", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_pool_name, .name = "IP-Pool.Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_acct_status_type, .name = "Acct-Status-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
@@ -382,30 +361,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-
-/*
- *	If we have something to log, then we log it.
- *	Otherwise we return the retcode as soon as possible
- */
-static unlang_action_t do_logging(rlm_rcode_t *p_result, UNUSED rlm_sqlippool_t const *inst, request_t *request,
-				  char const *str, rlm_rcode_t rcode)
-{
-	char		*expanded = NULL;
-	fr_pair_t	*vp;
-
-	if (!str || !*str) RETURN_MODULE_RCODE(rcode);
-
-	MEM(pair_append_request(&vp, attr_module_success_message) == 0);
-	if (xlat_aeval(vp, &expanded, request, str, NULL, NULL) < 0) {
-		pair_delete_request(vp);
-		RETURN_MODULE_RCODE(rcode);
-	}
-	fr_pair_value_bstrdup_buffer_shallow(vp, expanded, true);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-
 /*
  *	Allocate an IP address from the pool.
  */
@@ -423,13 +378,13 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	if (fr_pair_find_by_da(&request->reply_pairs, NULL, inst->allocated_address_da) != NULL) {
 		RDEBUG2("%s already exists", inst->allocated_address_da->name);
 
-		return do_logging(p_result, inst, request, inst->log_exists, RLM_MODULE_NOOP);
+		RETURN_MODULE_NOOP;
 	}
 
 	if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_pool_name) == NULL) {
 		RDEBUG2("No %s defined", attr_pool_name->name);
 
-		return do_logging(p_result, inst, request, inst->log_nopool, RLM_MODULE_NOOP);
+		RETURN_MODULE_NOOP;
 	}
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
@@ -516,7 +471,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 				 *	NOTFOUND
 				 */
 				RDEBUG2("pool appears to be full");
-				return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
+				RETURN_MODULE_NOTFOUND;
 			}
 
 			/*
@@ -533,7 +488,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		fr_pool_connection_release(inst->sql->pool, request, handle);
 
 		RDEBUG2("IP address could not be allocated");
-		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -547,7 +502,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		talloc_free(vp);
 		RDEBUG2("Invalid IP address [%s] returned from database query.", allocation);
 		fr_pool_connection_release(inst->sql->pool, request, handle);
-		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOOP);
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
@@ -567,7 +522,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
-	return do_logging(p_result, inst, request, inst->log_success, RLM_MODULE_OK);
+	RETURN_MODULE_OK;
 }
 
 /*
@@ -610,12 +565,12 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 		/*
 		 * The lease has been updated - return OK
 		 */
-		return do_logging(p_result, inst, request, inst->log_success, RLM_MODULE_OK);
+		RETURN_MODULE_OK;
 	} else {
 		/*
 		 * The lease could not be updated - return notfound
 		 */
-		return do_logging(p_result, inst, request, inst->log_failed, RLM_MODULE_NOTFOUND);
+		RETURN_MODULE_NOTFOUND;
 	}
 }
 

@@ -145,30 +145,6 @@ sqlippool {
 #       gateway = "%{dhcpv4.Gateway-IP-Address}"
 
 	#
-	#  messages { ... }:: These messages are added to the `control.:` items, as
-	#  `Module-Success-Message`. They are not logged anywhere else, unlike
-	#  previous versions.
-	#  If you want to have them logged to a file, see the `linelog` module,
-	#  and create an entry which writes `Module-Success-Message` message.
-	#
-	#  WARNING: MySQL (MyISAM) has certain limitations that means it can hand out
-	#  the same IP address to 2 different users.
-	#  *We suggest* using an SQL DB with proper transaction support, such as PostgreSQL,
-	#  or using MySQL with InnoDB.
-	#
-	messages {
-		exists = "Existing IP: %{reply.${..allocated_address_attr}} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
-		success = "Allocated IP: %{reply.${..allocated_address_attr}} from %{control.IP-Pool.Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
-		clear = "Released IP ${..requested_address} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
-
-		failed = "IP Allocation FAILED from %{control.IP-Pool.Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
-		nopool = "No IP-Pool.Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-	}
-
-	#
 	#  .Load the queries from a separate file.
 	#
 	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf
