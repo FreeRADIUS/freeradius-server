@@ -461,6 +461,11 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	socklen_t sunlen;
 	struct sockaddr_un sun;
 
+	if (!cfg->path) {
+		fr_strerror_const("Failed to specify path");
+		return -1;
+	}
+
 	/*
 	 *	The UID and GID should be taken automatically from the "user" and "group" settings in
 	 *	mainconfig.  There is no reason to set them to anything else.
