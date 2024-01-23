@@ -712,8 +712,44 @@ fail:
         return fr_bio_error(IO);
 }
 
+/** Files are a special case of connected sockets.
+ *
+ */
+static int fr_bio_fd_init_file(fr_bio_fd_t *my)
+{
+	my->info.state = FR_BIO_FD_STATE_OPEN;
+	my->info.eof = false;
+	my->info.read_blocked = false;
+	my->info.write_blocked = false;
+
+	switch (my->info.cfg->flags) {
+	case O_RDONLY:
+		my->bio.read = fr_bio_fd_read_stream;
+		my->bio.write = fr_bio_null_write; /* @todo - error on write? */
+		break;
+
+	case O_WRONLY:
+		my->bio.read = fr_bio_null_read; /* @todo - error on read? */
+		my->bio.write = fr_bio_fd_write;
+		break;
+
+	case O_RDWR:
+		my->bio.read = fr_bio_fd_read_stream;
+		my->bio.write = fr_bio_fd_write;
+		break;
+
+	default:
+		fr_strerror_const("Invalid flag for opening file");
+		return -1;
+	}
+
+	return 0;
+}
+
 int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 {
+	if (my->info.socket.af == AF_FILE) return fr_bio_fd_init_file(my);
+
 	/*
 	 *	Connected datagrams must have real IPs
 	 */
@@ -891,7 +927,6 @@ int fr_bio_fd_init_accept(fr_bio_fd_t *my)
 	return 0;
 }
 
-
 /** Allocate a FD bio
  *
  *  The caller is responsible for tracking the FD, and all associated management of it.  The bio API is
@@ -957,7 +992,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_fd_conf
 	} else {
 		my->info.state = FR_BIO_FD_STATE_CLOSED;
 
-		if (fr_bio_fd_socket_open(&my->bio, cfg) < 0) {
+		if (fr_bio_fd_open(&my->bio, cfg) < 0) {
 			talloc_free(my);
 			return NULL;
 		}
@@ -1026,35 +1061,6 @@ retry:
 	my->info.eof = true;
 
 	return 0;
-}
-
-/** re-open the bio
- */
-int fr_bio_fd_init(fr_bio_t *bio, fr_socket_t const *sock)
-{
-	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
-
-	fr_assert(my->info.socket.inet.src_ipaddr.af == my->info.socket.inet.dst_ipaddr.af);
-
-	/*
-	 *	The bio can't be open if we're re-initializing it.
-	 */
-	if (my->info.state == FR_BIO_FD_STATE_OPEN) return -1;
-
-	my->info.socket = *sock;
-
-	switch (my->info.type) {
-	case FR_BIO_FD_UNCONNECTED:
-		return fr_bio_fd_init_common(my);
-
-	case FR_BIO_FD_CONNECTED:
-		return fr_bio_fd_init_connected(my);
-
-	case FR_BIO_FD_ACCEPT:
-		return fr_bio_fd_init_accept(my);
-	}
-
-	return -1;
 }
 
 /** Finalize a connect()

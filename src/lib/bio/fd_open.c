@@ -711,9 +711,9 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
  *
  *  Note that it does not call connect()!
  */
-int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
+int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 {
-	int fd, protocol;
+	int fd;
 	int rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
@@ -726,7 +726,9 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		.cfg = cfg,
 	};
 
-	if (!cfg->path) {
+	if (!cfg->path && !cfg->filename) {
+		int protocol;
+
 		my->info.socket.af = cfg->src_ipaddr.af;
 		my->info.socket.inet.src_ipaddr = cfg->src_ipaddr;
 		my->info.socket.inet.dst_ipaddr = cfg->dst_ipaddr;
@@ -747,20 +749,37 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 				return -1;
 			}
 		}
-	} else {
-		my->info.socket.af = AF_UNIX;
+
+		fd = socket(my->info.socket.af, my->info.socket.type, protocol);
+		if (fd < 0) {
+			fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
+			return -1;
+		}
+
+	} else if (cfg->path) {
+		my->info.socket.af = AF_LOCAL;
 		my->info.socket.type = SOCK_STREAM;
 		my->info.socket.unix.path = cfg->path;
-		protocol = 0;
-	}
 
-	/*
-	 *	Open the socket.
-	 */
-	fd = socket(my->info.socket.af, my->info.socket.type, protocol);
-	if (fd < 0) {
-		fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
-		return -1;
+		fd = socket(my->info.socket.af, my->info.socket.type, 0);
+		if (fd < 0) {
+			fr_strerror_printf("Failed opening domain socket %s: %s", cfg->path, fr_syserror(errno));
+			return -1;
+		}
+
+	} else {
+		/*
+		 *	Filenames overload the #fr_socket_t for now.
+		 */
+		my->info.socket.af = AF_FILE;
+		my->info.socket.type = SOCK_STREAM;
+		my->info.socket.unix.path = cfg->filename;
+
+		fd = open(cfg->filename, cfg->flags);
+		if (fd < 0) {
+			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
+			return -1;
+		}
 	}
 
 	/*

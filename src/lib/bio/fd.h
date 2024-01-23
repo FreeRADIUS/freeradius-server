@@ -29,6 +29,13 @@ RCSIDH(lib_bio_fd_h, "$Id$")
 #include <freeradius-devel/bio/base.h>
 #include <freeradius-devel/util/socket.h>
 
+#include <fcntl.h>
+
+/*
+ *	Local hack.
+ */
+#define AF_FILE (INT_MAX)
+
 /** Per-packet context
  *
  *	For reading packets src_ip is *their* IP, and dst_ip is *our* IP.
@@ -87,6 +94,9 @@ typedef struct {
 	uid_t		uid;		//!< who owns the socket
 	gid_t		gid;		//!< who owns the socket
 
+	char const	*filename;	//!< for files
+	int		flags;		//!< O_RDONLY, etc.
+
 	bool		async;		//!< is it async
 } fr_bio_fd_config_t;
 
@@ -111,12 +121,10 @@ fr_bio_t	*fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_fd_conf
 
 int		fr_bio_fd_close(fr_bio_t *bio) CC_HINT(nonnull);
 
-int		fr_bio_fd_init(fr_bio_t *bio, fr_socket_t const *sock) CC_HINT(nonnull);
-
 int		fr_bio_fd_connect(fr_bio_t *bio) CC_HINT(nonnull);
 
 fr_bio_fd_info_t const *fr_bio_fd_info(fr_bio_t *bio) CC_HINT(nonnull);
 
-int		fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg) CC_HINT(nonnull);
+int		fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg) CC_HINT(nonnull);
 
 int		fr_bio_fd_write_only(fr_bio_t *bio);
