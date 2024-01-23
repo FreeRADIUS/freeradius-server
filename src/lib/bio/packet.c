@@ -109,7 +109,7 @@ static int fr_bio_packet_destructor(fr_bio_packet_t *my)
 	my->bio.write = fr_bio_null_write;
 	fr_bio_packet_list_cancel(my);
 
-	return fr_bio_destructor(&my->bio);
+	return 0;
 }
 
 /** Push a packet onto a list.
