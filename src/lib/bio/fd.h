@@ -59,22 +59,6 @@ typedef enum {
 					// updates #fr_bio_fd_packet_ctx_t on successful FD read.
 } fr_bio_fd_type_t;
 
-/** Run-time status of the socket.
- *
- */
-typedef struct {
-	fr_socket_t	socket;		//!< as connected socket
-
-	fr_bio_fd_type_t type;		//!< type of the socket
-
-	fr_bio_fd_state_t state;	//!< connecting, open, closed, etc.
-
-	bool		read_blocked;	//!< did we block on read?
-	bool		write_blocked;	//!< did we block on write?
-	bool		eof;		//!< are we at EOF?
-
-} fr_bio_fd_info_t;
-
 /** Configuration for sockets
  *
  *  Each piece of information is broken out into a separate field, so that the configuration file parser can
@@ -105,6 +89,23 @@ typedef struct {
 
 	bool		async;		//!< is it async
 } fr_bio_fd_config_t;
+
+/** Run-time status of the socket.
+ *
+ */
+typedef struct {
+	fr_socket_t	socket;		//!< as connected socket
+
+	fr_bio_fd_type_t type;		//!< type of the socket
+
+	fr_bio_fd_state_t state;	//!< connecting, open, closed, etc.
+
+	bool		read_blocked;	//!< did we block on read?
+	bool		write_blocked;	//!< did we block on write?
+	bool		eof;		//!< are we at EOF?
+
+	fr_bio_fd_config_t const *cfg;	//!< so we know what was asked, vs what was granted.
+} fr_bio_fd_info_t;
 
 fr_bio_t	*fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_socket_t const *sock, fr_bio_fd_type_t type, size_t offset) CC_HINT(nonnull(1));
 

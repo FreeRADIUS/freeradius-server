@@ -714,9 +714,12 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 	fr_strerror_clear();
 
-	my->info.socket = (fr_socket_t) {};
-
-	my->info.socket.type = cfg->socket_type;
+	my->info = (fr_bio_fd_info_t) {
+		.socket = {
+			.type = cfg->socket_type,
+		},
+		.cfg = cfg,
+	};
 
 	if (!cfg->path) {
 		my->info.socket.af = cfg->src_ipaddr.af;
@@ -744,7 +747,6 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		my->info.socket.type = SOCK_STREAM;
 		my->info.socket.unix.path = cfg->path;
 		protocol = 0;
-		break;
 	}
 
 	/*
@@ -763,8 +765,11 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		fr_strerror_printf("Failed opening setting O_NONBLOCK: %s", fr_syserror(errno));
 
 	fail:
-		my->info.socket.fd = -1;
+		my->info.socket = (fr_socket_t) {
+			.fd = -1,
+		};
 		my->info.state = FR_BIO_FD_STATE_CLOSED;
+		my->info.cfg = NULL;
 		close(fd);
 		return -1;
 	}
@@ -867,5 +872,6 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		if (fr_bio_fd_init_accept(my) < 0) goto fail;
 		break;
 	}
+
 	return 0;
 }
