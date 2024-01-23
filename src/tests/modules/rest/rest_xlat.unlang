@@ -179,6 +179,11 @@ group {
 	if (!(&headers =~ /"x-freeradius-server":"default"/)) {
 		test_fail
 	}
+
+	# Some weird escaping issue prevents matching application/json
+	if (!(&headers =~ /"content-type":"application.+json"/)) {
+		test_fail
+	}
 }
 
 # Zero length tainted value - check escaping doesn't break on zero length string

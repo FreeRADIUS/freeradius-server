@@ -1107,7 +1107,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser
 	 *  figure out what content-type to use. So if they've used the canonical form we
 	 *  need to convert it back into a proper HTTP content_type value.
 	 */
-	if ((request_cs = cf_section_find(cs, "request", NULL)) && cf_pair_find(request_cs, "data")) {
+	if ((strcmp(name, "xlat") == 0) || ((request_cs = cf_section_find(cs, "request", NULL)) && cf_pair_find(request_cs, "data"))) {
 		http_body_type_t body;
 
 		config->request.body = REST_HTTP_BODY_CUSTOM;
