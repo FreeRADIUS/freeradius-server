@@ -25,6 +25,7 @@
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/null.h>
 
+#ifndef NDEBUG
 /** Free this bio.
  *
  *  The bio can only be freed if it is not in any chain.
@@ -39,6 +40,7 @@ int fr_bio_destructor(fr_bio_t *bio)
 	 */
 	return 0;
 }
+#endif
 
 /** Always returns EOF on fr_bio_read()
  *

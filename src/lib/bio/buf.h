@@ -50,6 +50,7 @@ size_t		fr_bio_buf_read(fr_bio_buf_t *bio_buf, void *buffer, size_t size) CC_HIN
 ssize_t		fr_bio_buf_write(fr_bio_buf_t *bio_buf, const void *buffer, size_t size) CC_HINT(nonnull);
 
 
+#ifndef NDEBUG
 static inline void CC_HINT(nonnull) fr_bio_buf_verify(fr_bio_buf_t const *bio_buf)
 {
 	fr_assert(bio_buf->start != NULL);
@@ -57,6 +58,9 @@ static inline void CC_HINT(nonnull) fr_bio_buf_verify(fr_bio_buf_t const *bio_bu
 	fr_assert(bio_buf->read <= bio_buf->write);
 	fr_assert(bio_buf->write <= bio_buf->end);
 }
+#else
+#define fr_bio_buf_verify(_x)
+#endif
 
 static inline void CC_HINT(nonnull) fr_bio_buf_reset(fr_bio_buf_t *bio_buf)
 {
