@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dict.h>
 
@@ -2991,7 +2992,28 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		ssize_t			slen;
 		fr_token_t		type;
 		unlang_group_t		*switch_g;
-		unlang_switch_t	*switch_gext;
+		unlang_switch_t		*switch_gext;
+
+		switch_g = unlang_generic_to_group(parent);
+		switch_gext = unlang_group_to_switch(switch_g);
+
+		/*
+		 *	We need to cast case values to match
+		 *	what we're switching over, otherwise
+		 *	integers of different widths won't
+		 *	match.
+		 */
+		t_rules.cast = tmpl_expanded_type(switch_gext->vpt);
+
+		/*
+		 *	Need to pass the attribute from switch
+		 *	to tmpl rules so we can convert the
+		 *	case string to an integer value.
+		 */
+		if (tmpl_is_attr(switch_gext->vpt)) {
+			fr_dict_attr_t const *da = tmpl_attr_tail_da(switch_gext->vpt);
+			if (da->flags.has_value) t_rules.enumv = da;
+		}
 
 		type = cf_section_name2_quote(cs);
 
@@ -3005,8 +3027,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return NULL;
 		}
 
-		switch_g = unlang_generic_to_group(parent);
-		switch_gext = unlang_group_to_switch(switch_g);
+
 		fr_assert(switch_gext->vpt != NULL);
 
 		/*
