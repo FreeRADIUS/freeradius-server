@@ -131,6 +131,7 @@ static inline bool fr_bio_buf_contains(fr_bio_buf_t *bio_buf, void const *buffer
 	return ((uint8_t const *) buffer >= bio_buf->start) && ((uint8_t const *) buffer <= bio_buf->end);
 }
 
+#if 0
 static inline void CC_HINT(nonnull) fr_bio_buf_write_update(fr_bio_buf_t *bio_buf, void const *buffer, size_t size, size_t written)
 {
 	if (!fr_bio_buf_initialized(bio_buf)) return;
@@ -149,3 +150,4 @@ static inline void CC_HINT(nonnull) fr_bio_buf_write_update(fr_bio_buf_t *bio_bu
 		fr_assert(!fr_bio_buf_contains(bio_buf, buffer));
 	}
 }
+#endif
