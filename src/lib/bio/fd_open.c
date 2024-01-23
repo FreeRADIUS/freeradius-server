@@ -461,6 +461,8 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	socklen_t sunlen;
 	struct sockaddr_un sun;
 
+	fr_assert(cfg->path != NULL);
+
 	p = strrchr(cfg->path, '/');
 
 	/*
@@ -468,22 +470,22 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 *	mainconfig.  There is no reason to set them to anything else.
 	 */
 	if (cfg->uid == (uid_t) -1) {
-		fr_strerror_printf("Failed opening domain socket %s: no UID specified", my->info.socket.unix.path);
+		fr_strerror_printf("Failed opening domain socket %s: no UID specified", cfg->path);
 		return -1;
 	}
 
 	if (cfg->gid == (gid_t) -1) {
-		fr_strerror_printf("Failed opening domain socket %s: no GID specified", my->info.socket.unix.path);
+		fr_strerror_printf("Failed opening domain socket %s: no GID specified", cfg->path);
 		return -1;
 	}
 
 	if (cfg->uid == 0) {
-		fr_strerror_printf("Failed opening domain socket %s: refusing to open as UID 0", my->info.socket.unix.path);
+		fr_strerror_printf("Failed opening domain socket %s: refusing to open as UID 0", cfg->path);
 		return -1;
 	}
 
 	if (cfg->gid == 0) {
-		fr_strerror_printf("Failed opening domain socket %s: refusing to open as GID 0", my->info.socket.unix.path);
+		fr_strerror_printf("Failed opening domain socket %s: refusing to open as GID 0", cfg->path);
 		return -1;
 	}
 
@@ -492,9 +494,9 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 */
 	if (!p) {
 		dirfd = AT_FDCWD;
-		filename = my->info.socket.unix.path;
+		filename = cfg->path;
 
-	} else if (p == my->info.socket.unix.path) {
+	} else if (p == cfg->path) {
 		/*
 		 *	Opening '/foo.sock' is dumb.
 		 */
@@ -528,7 +530,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	/*
 	 *	For bind(), we pass the full path.
 	 */
-	if (fr_filename_to_sockaddr(&sun, &sunlen, my->info.socket.unix.path) < 0) goto fail;
+	if (fr_filename_to_sockaddr(&sun, &sunlen, cfg->path) < 0) goto fail;
 
 	rcode = bind(my->info.socket.fd, (struct sockaddr *) &sun, sunlen);
 #endif
@@ -537,7 +539,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 		 *	@todo - if EADDRINUSE, then the socket exists.  Try connect(), and if that fails,
 		 *	delete the socket and try again.  This may be simpler than the checks above.
 		 */
-		fr_strerror_printf("Failed binding to domain socket %s: %s", my->info.socket.unix.path, fr_syserror(errno));
+		fr_strerror_printf("Failed binding to domain socket %s: %s", cfg->path, fr_syserror(errno));
 		goto fail;
 	}
 
@@ -546,7 +548,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 *	Linux supports chown && chmod for sockets.
 	 */
 	if (fchmod(my->info.socket.fd, S_IREAD | S_IWRITE | S_IEXEC | S_IRGRP | S_IWGRP | S_IXGRP) < 0) {
-		fr_strerror_printf("Failed changing permission for domain socket %s: %s", my->info.socket.unix.path, fr_syserror(errno));
+		fr_strerror_printf("Failed changing permission for domain socket %s: %s", cfg->path, fr_syserror(errno));
 		goto fail;
 	}
 
@@ -556,7 +558,7 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	 *	Otherwise if we're running as root, it will set ownership to the correct user.
 	 */
 	if (fchown(my->info.socket.fd, cfg->uid, cfg->gid) < 0) {
-		fr_strerror_printf("Failed changing ownershipt for domain directory %s: %s", my->info.socket.unix.path, fr_syserror(errno));
+		fr_strerror_printf("Failed changing ownershipt for domain directory %s: %s", cfg->path, fr_syserror(errno));
 		goto fail;
 	}
 
@@ -721,6 +723,7 @@ int fr_bio_fd_socket_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		my->info.socket.af = AF_UNIX;
 	} else {
 		my->info.socket.af = cfg->src_ipaddr.af;
+		fr_assert((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6));
 	}
 	my->info.socket.type = cfg->socket_type;
 
