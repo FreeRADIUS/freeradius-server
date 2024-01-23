@@ -480,16 +480,6 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 		return -1;
 	}
 
-	if (cfg->uid == 0) {
-		fr_strerror_printf("Failed opening domain socket %s: refusing to open as UID 0", cfg->path);
-		return -1;
-	}
-
-	if (cfg->gid == 0) {
-		fr_strerror_printf("Failed opening domain socket %s: refusing to open as GID 0", cfg->path);
-		return -1;
-	}
-
 	/*
 	 *	Opening 'foo.sock' is OK.
 	 */

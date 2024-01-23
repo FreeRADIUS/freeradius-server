@@ -606,10 +606,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	} else {
 		inst->uid = getuid();
 	}
-	if (!inst->uid) {
-		ERROR("Cannot open domain sockets as UID root.  uid must be set");
-		return -1;
-	}
 
 	if (inst->gid_name) {
 		if (fr_perm_gid_from_str(conf, &inst->gid, inst->gid_name) < 0) {
@@ -622,10 +618,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	} else {
 		inst->gid = getgid();
-	}
-	if (!inst->gid) {
-		ERROR("Cannot open domain sockets as GID root.  gid must be set");
-		return -1;
 	}
 
 	/*
