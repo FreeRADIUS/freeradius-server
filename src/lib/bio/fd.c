@@ -1057,6 +1057,8 @@ int fr_bio_fd_init(fr_bio_t *bio, fr_socket_t const *sock)
 	case FR_BIO_FD_ACCEPT:
 		return fr_bio_fd_init_accept(my);
 	}
+
+	return -1;
 }
 
 /** Finalize a connect()
