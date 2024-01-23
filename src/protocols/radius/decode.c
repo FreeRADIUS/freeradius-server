@@ -433,7 +433,7 @@ static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	size_t			len;
 	ssize_t			slen;
 	fr_dict_attr_t const	*da;
-	fr_radius_ctx_t		*packet_ctx = decode_ctx;
+	fr_radius_decode_ctx_t	*packet_ctx = decode_ctx;
 
 #ifdef STATIC_ANALYZER
 	if (!packet_ctx || !packet_ctx->tmp_ctx) return PAIR_DECODE_FATAL_ERROR;
@@ -496,7 +496,7 @@ static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
  */
 static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				      fr_dict_attr_t const *parent, uint8_t const *data,
-				      size_t const data_len, fr_radius_ctx_t *packet_ctx)
+				      size_t const data_len, fr_radius_decode_ctx_t *packet_ctx)
 {
 	uint8_t const	*ptr = data;
 	uint8_t const	*end = data + data_len;
@@ -609,7 +609,7 @@ static ssize_t decode_nas_filter_rule(TALLOC_CTX *ctx, fr_pair_list_t *out,
  */
 static ssize_t decode_digest_attributes(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					fr_dict_attr_t const *parent, uint8_t const *data,
-					size_t const data_len, fr_radius_ctx_t *packet_ctx)
+					size_t const data_len, fr_radius_decode_ctx_t *packet_ctx)
 {
 	ssize_t slen;
 	fr_pair_t *vp;
@@ -646,7 +646,7 @@ redo:
  */
 ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			     fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			     fr_radius_ctx_t *packet_ctx)
+			     fr_radius_decode_ctx_t *packet_ctx)
 {
 	uint8_t const		*p = data, *end = data + data_len;
 	fr_dict_attr_t const	*child;
@@ -726,7 +726,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				   fr_dict_attr_t const *parent,
 				   uint8_t const *data, size_t data_len,
-				   fr_radius_ctx_t *packet_ctx, fr_dict_vendor_t const *dv)
+				   fr_radius_decode_ctx_t *packet_ctx, fr_dict_vendor_t const *dv)
 {
 	unsigned int		attribute;
 	ssize_t			attrlen, my_len;
@@ -848,7 +848,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 static ssize_t decode_extended_fragments(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					 fr_dict_attr_t const *parent,
 					 uint8_t const *data, size_t attr_len,
-					 fr_radius_ctx_t *packet_ctx)
+					 fr_radius_decode_ctx_t *packet_ctx)
 {
 	ssize_t		ret;
 	size_t		fraglen;
@@ -953,7 +953,7 @@ static ssize_t decode_extended_fragments(TALLOC_CTX *ctx, fr_pair_list_t *out,
 static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       fr_dict_attr_t const *da,
 			       uint8_t const *data, UNUSED size_t data_len,
-			       fr_radius_ctx_t *packet_ctx)
+			       fr_radius_decode_ctx_t *packet_ctx)
 {
 	ssize_t slen;
 	fr_dict_attr_t const *child;
@@ -1035,7 +1035,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_dict_attr_t const *parent,
 			    uint8_t const *data, size_t attr_len,
-			    fr_radius_ctx_t *packet_ctx)
+			    fr_radius_decode_ctx_t *packet_ctx)
 {
 	ssize_t			ret;
 	size_t			wimax_len;
@@ -1276,7 +1276,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					    fr_dict_attr_t const *parent,
 					    uint8_t const *data, size_t attr_len,
-					    fr_radius_ctx_t *packet_ctx)
+					    fr_radius_decode_ctx_t *packet_ctx)
 {
 	size_t			total;
 	ssize_t			ret;
@@ -1484,7 +1484,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
-	fr_radius_ctx_t *packet_ctx = decode_ctx;
+	fr_radius_decode_ctx_t *packet_ctx = decode_ctx;
 
 	if (attr_len > 128 * 1024) {
 		fr_strerror_printf("%s: packet is too large to be RADIUS", __FUNCTION__);
@@ -1625,7 +1625,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		case FLAG_ENCRYPT_USER_PASSWORD:
 			fr_radius_decode_password((char *)buffer, attr_len,
-						  packet_ctx->secret, packet_ctx->vector);
+						  packet_ctx->common->secret, packet_ctx->common->vector);
 			buffer[253] = '\0';
 
 			/*
@@ -1660,7 +1660,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		case FLAG_TAGGED_TUNNEL_PASSWORD:
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 			if (fr_radius_decode_tunnel_password(buffer, &data_len,
-							     packet_ctx->secret, packet_ctx->vector,
+							     packet_ctx->common->secret, packet_ctx->common->vector,
 							     packet_ctx->tunnel_password_zeros) < 0) {
 				goto raw;
 			}
@@ -1672,7 +1672,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		case FLAG_ENCRYPT_ASCEND_SECRET:
 			fr_radius_ascend_secret(&FR_DBUFF_TMP(buffer, sizeof(buffer)), p, data_len,
-						packet_ctx->secret, packet_ctx->vector);
+						packet_ctx->common->secret, packet_ctx->common->vector);
 			buffer[RADIUS_AUTH_VECTOR_LENGTH] = '\0';
 			data_len = strlen((char *) buffer);
 			break;
@@ -1950,7 +1950,7 @@ static const bool special[UINT8_MAX + 1] = {
  *
  */
 ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			      uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx)
+			      uint8_t const *data, size_t data_len, fr_radius_decode_ctx_t *packet_ctx)
 {
 	ssize_t			ret;
 	fr_dict_attr_t const	*da;
@@ -2054,7 +2054,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return 2 + ret;
 }
 
-static int _test_ctx_free(fr_radius_ctx_t *ctx)
+static int _test_ctx_free(fr_radius_decode_ctx_t *ctx)
 {
 	TALLOC_FREE(ctx->tags);
 
@@ -2069,13 +2069,17 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 		0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
-	fr_radius_ctx_t	*test_ctx;
+	fr_radius_decode_ctx_t	*test_ctx;
 
 	if (fr_radius_init() < 0) return -1;
 
-	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
-	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
-	memcpy(test_ctx->vector, vector, sizeof(test_ctx->vector));
+	test_ctx = talloc_zero(ctx, fr_radius_decode_ctx_t);
+	test_ctx->common = talloc_zero(test_ctx, fr_radius_ctx_t);
+
+	test_ctx->common->secret = talloc_strdup(test_ctx->common, "testing123");
+	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret);
+
+	memcpy(test_ctx->common->vector, vector, sizeof(test_ctx->common->vector));
 	test_ctx->tmp_ctx = talloc_zero(test_ctx, uint8_t);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
@@ -2087,7 +2091,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				      uint8_t const *data, size_t data_len, void *proto_ctx)
 {
-	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
+	fr_radius_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_decode_ctx_t);
 	decode_fail_t	reason;
 	fr_pair_t	*vp;
 	size_t		packet_len = data_len;
@@ -2117,15 +2121,15 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_append(out, vp);
 
 	memset(original, 0, 4);
-	memcpy(original + 4, test_ctx->vector, sizeof(test_ctx->vector));
+	memcpy(original + 4, test_ctx->common->vector, sizeof(test_ctx->common->vector));
 	test_ctx->end = data + packet_len;
 
 	return fr_radius_decode(ctx, out, data, packet_len, original,
-				test_ctx->secret, talloc_array_length(test_ctx->secret) - 1);
+				test_ctx->common->secret, talloc_array_length(test_ctx->common->secret) - 1);
 }
 
 static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_attr_t const *parent,
-			   uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx)
+			   uint8_t const *data, size_t data_len, fr_radius_decode_ctx_t *packet_ctx)
 {
 	fr_assert(parent == fr_dict_root(dict_radius));
 

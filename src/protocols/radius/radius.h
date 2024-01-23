@@ -163,20 +163,40 @@ typedef struct {
 } fr_radius_tag_ctx_t;
 
 typedef struct {
-	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
-	uint8_t 		vector[RADIUS_AUTH_VECTOR_LENGTH]; //!< vector for encryption / decryption of data
-	char const		*secret;		//!< shared secret.  MUST be talloc'd
+	char const	*secret;
+	size_t		secret_length;
+
+	bool		add_proxy_state;		//!< do we add a Proxy-State?
+	uint64_t	my_proxy_state;			//!< if so, this is its value
+
+	uint32_t	acct_delay_time;		//!< additional time to add to acct_delay_time
+
+	uint8_t 	vector[RADIUS_AUTH_VECTOR_LENGTH]; //!< vector for authenticating the reply
+} fr_radius_ctx_t;
+
+typedef struct {
+	fr_radius_ctx_t		*common;
+
 	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
-	uint8_t const  		*end;			//!< end of the packet
 	int			salt_offset;		//!< for tunnel passwords
-	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
-	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
 
 	uint8_t			tag;			//!< current tag for encoding
+	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
+	bool			seen_message_authenticator;
+} fr_radius_encode_ctx_t;
+
+typedef struct {
+	fr_radius_ctx_t		*common;
+
+	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
+	uint8_t const  		*end;			//!< end of the packet
+
+	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
+
 	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
 	fr_pair_list_t		*tag_root;		//!< Where to insert tag attributes.
 	TALLOC_CTX		*tag_root_ctx;		//!< Where to allocate new tag attributes.
-} fr_radius_ctx_t;
+} fr_radius_decode_ctx_t;
 
 /*
  *	protocols/radius/abinary.c
@@ -209,7 +229,7 @@ ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *list,
 ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *list,
 				     fr_dict_attr_t const *parent,
 				     uint8_t const *data, size_t data_len,
-				     fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
+				     fr_radius_decode_ctx_t *packet_ctx) CC_HINT(nonnull);
 
 ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *list,
-				      uint8_t const *data, size_t data_len, fr_radius_ctx_t *packet_ctx) CC_HINT(nonnull);
+				      uint8_t const *data, size_t data_len, fr_radius_decode_ctx_t *packet_ctx) CC_HINT(nonnull);

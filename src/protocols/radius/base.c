@@ -862,16 +862,19 @@ static const bool disallow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
 };
 
 ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
-			 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_list_t *vps)
+			 char const *secret, size_t secret_len, int code, int id, fr_pair_list_t *vps)
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
 	fr_dcursor_t		cursor;
-	fr_radius_ctx_t		packet_ctx;
+	fr_radius_ctx_t		common_ctx = {};
+	fr_radius_encode_ctx_t	packet_ctx = {};
 	fr_dbuff_t		work_dbuff, length_dbuff;
 
-	memset(&packet_ctx, 0, sizeof(packet_ctx));
-	packet_ctx.secret = secret;
+	common_ctx.secret = secret;
+	common_ctx.secret_length = secret_len;
+
+	packet_ctx.common = &common_ctx;
 	packet_ctx.rand_ctx.a = fr_rand();
 	packet_ctx.rand_ctx.b = fr_rand();
 	packet_ctx.disallow_tunnel_passwords = disallow_tunnel_passwords[code];
@@ -891,7 +894,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 		/*
 		 *	Callers in these cases have preloaded the buffer with the authentication vector.
 		 */
-		FR_DBUFF_OUT_MEMCPY_RETURN(packet_ctx.vector, &work_dbuff, sizeof(packet_ctx.vector));
+		FR_DBUFF_OUT_MEMCPY_RETURN(common_ctx.vector, &work_dbuff, sizeof(common_ctx.vector));
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
@@ -907,8 +910,8 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 			fr_strerror_const("Cannot encode response without request");
 			return -1;
 		}
-		memcpy(packet_ctx.vector, original + 4, sizeof(packet_ctx.vector));
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, packet_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
+		memcpy(common_ctx.vector, original + 4, sizeof(common_ctx.vector));
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, common_ctx.vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
@@ -923,7 +926,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 		 *	to say "don't do that!"
 		 */
 	case FR_RADIUS_CODE_COA_REQUEST:
-		memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
+		memset(common_ctx.vector, 0, sizeof(common_ctx.vector));
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
@@ -975,17 +978,20 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
  */
 ssize_t fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 uint8_t const *packet, size_t packet_len, uint8_t const *original,
-			 char const *secret, UNUSED size_t secret_len)
+			 char const *secret, size_t secret_len)
 {
 	ssize_t			slen;
 	uint8_t const		*attr, *end;
-	fr_radius_ctx_t		packet_ctx;
+	fr_radius_ctx_t		common_ctx = {};
+	fr_radius_decode_ctx_t	packet_ctx = {};
 
-	memset(&packet_ctx, 0, sizeof(packet_ctx));
+	common_ctx.secret = secret;
+	common_ctx.secret_length = secret_len;
+	memcpy(common_ctx.vector, original ? original + 4 : packet + 4, sizeof(common_ctx.vector));
+
+	packet_ctx.common = &common_ctx;
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");
-	packet_ctx.secret = secret;
 	packet_ctx.end = packet + packet_len;
-	memcpy(packet_ctx.vector, original ? original + 4 : packet + 4, sizeof(packet_ctx.vector));
 
 	attr = packet + 20;
 	end = packet + packet_len;

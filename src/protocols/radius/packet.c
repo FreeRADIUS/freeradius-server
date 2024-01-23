@@ -122,10 +122,14 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
 	fr_pair_list_t		tmp_list;
-	fr_radius_ctx_t		packet_ctx = {
-					.secret = secret,
-					.tunnel_password_zeros = tunnel_password_zeros
-				};
+	fr_radius_ctx_t		common_ctx = {};
+	fr_radius_decode_ctx_t	packet_ctx = {};
+
+	common_ctx.secret = secret;
+	common_ctx.secret_length = strlen(secret);
+
+	packet_ctx.common = &common_ctx;
+	packet_ctx.tunnel_password_zeros = tunnel_password_zeros;
 
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, packet);
@@ -134,7 +138,7 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	switch (packet->code) {
 	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
-		memcpy(packet_ctx.vector, packet->vector, sizeof(packet_ctx.vector));
+		memcpy(common_ctx.vector, packet->vector, sizeof(common_ctx.vector));
 		break;
 
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
@@ -149,10 +153,10 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	radsniff doesn't always have a response
 		 */
 		if (original) {
-			memcpy(packet_ctx.vector, original->vector, sizeof(packet_ctx.vector));
+			memcpy(common_ctx.vector, original->vector, sizeof(common_ctx.vector));
 		} else {
 			memset(packet->vector, 0, sizeof(packet->vector));
-			memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
+			memset(common_ctx.vector, 0, sizeof(common_ctx.vector));
 		}
 		break;
 
@@ -160,7 +164,7 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	case FR_RADIUS_CODE_COA_REQUEST:
 	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
-		memset(packet_ctx.vector, 0, sizeof(packet_ctx.vector));
+		memset(common_ctx.vector, 0, sizeof(common_ctx.vector));
 		break;
 
 	default:

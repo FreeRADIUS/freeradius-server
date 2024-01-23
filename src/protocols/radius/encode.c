@@ -104,7 +104,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
 	uint8_t		tpasswd[RADIUS_MAX_STRING_LENGTH];
 	size_t		i, n;
-	fr_radius_ctx_t	*packet_ctx = encode_ctx;
+	fr_radius_encode_ctx_t	*packet_ctx = encode_ctx;
 	uint32_t	r;
 	size_t		output_len, encrypted_len, padding;
 	ssize_t		slen;
@@ -187,10 +187,10 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	md5_ctx = fr_md5_ctx_alloc_from_list();
 	md5_ctx_old = fr_md5_ctx_alloc_from_list();
 
-	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->secret, talloc_array_length(packet_ctx->secret) - 1);
+	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);
 
-	fr_md5_update(md5_ctx, packet_ctx->vector, RADIUS_AUTH_VECTOR_LENGTH);
+	fr_md5_update(md5_ctx, packet_ctx->common->vector, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, &tpasswd[0], 2);
 
 	/*
@@ -337,7 +337,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	size_t			len;
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_radius_ctx_t		*packet_ctx = encode_ctx;
+	fr_radius_encode_ctx_t	*packet_ctx = encode_ctx;
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_t		value_dbuff;
 	fr_dbuff_marker_t	value_start, src, dest;
@@ -506,7 +506,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	Encode the password in place
 		 */
 		slen = encode_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff),
-				       packet_ctx->secret, packet_ctx->vector);
+				       packet_ctx->common->secret, packet_ctx->common->vector);
 		if (slen < 0) return slen;
 		encrypted = true;
 		break;
@@ -557,7 +557,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	there can pass a marker so we can use it here, too.
 		 */
 		slen = fr_radius_ascend_secret(&work_dbuff, fr_dbuff_current(&value_start), fr_dbuff_used(&value_dbuff),
-					       packet_ctx->secret, packet_ctx->vector);
+					       packet_ctx->common->secret, packet_ctx->common->vector);
 		if (slen < 0) return slen;
 		encrypted = true;
 		break;
@@ -1511,7 +1511,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	 *	Tags are *top-level*, and are never nested.
 	 */
 	if (vp->vp_type == FR_TYPE_GROUP) {
-		fr_radius_ctx_t	*packet_ctx = encode_ctx;
+		fr_radius_encode_ctx_t	*packet_ctx = encode_ctx;
 
 		if (!vp->da->flags.internal ||
 		    !((vp->da->attr > FR_TAG_BASE) && (vp->da->attr < (FR_TAG_BASE + 0x20)))) {
@@ -1655,7 +1655,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static int _test_ctx_free(UNUSED fr_radius_ctx_t *ctx)
+static int _test_ctx_free(UNUSED fr_radius_encode_ctx_t *ctx)
 {
 	fr_radius_free();
 
@@ -1668,15 +1668,19 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 		0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
-	fr_radius_ctx_t	*test_ctx;
+	fr_radius_encode_ctx_t	*test_ctx;
 
 	if (fr_radius_init() < 0) return -1;
 
-	test_ctx = talloc_zero(ctx, fr_radius_ctx_t);
+	test_ctx = talloc_zero(ctx, fr_radius_encode_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
-	memcpy(test_ctx->vector, vector, sizeof(test_ctx->vector));
+	test_ctx->common = talloc_zero(test_ctx, fr_radius_ctx_t);
+
+	test_ctx->common->secret = talloc_strdup(test_ctx->common, "testing123");
+	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret);
+
+	memcpy(test_ctx->common->vector, vector, sizeof(test_ctx->common->vector));
 	test_ctx->rand_ctx.a = 6809;
 	test_ctx->rand_ctx.b = 2112;
 	talloc_set_destructor(test_ctx, _test_ctx_free);
@@ -1688,7 +1692,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
 {
-	fr_radius_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_ctx_t);
+	fr_radius_encode_ctx_t	*packet_ctx = talloc_get_type_abort(proto_ctx, fr_radius_encode_ctx_t);
 	int packet_type = FR_RADIUS_CODE_ACCESS_REQUEST;
 	fr_pair_t *vp;
 	ssize_t slen;
@@ -1704,20 +1708,20 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 			int i;
 
 			for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) {
-				data[4 + i] = fr_fast_rand(&test_ctx->rand_ctx);
+				data[4 + i] = fr_fast_rand(&packet_ctx->rand_ctx);
 			}
 		}
 	}
 
 	/*
-	 *	@todo - pass in test_ctx to this function, so that we
+	 *	@todo - pass in packet_ctx to this function, so that we
 	 *	can leverage a consistent random number generator.
 	 */
-	slen = fr_radius_encode(data, data_len, NULL, test_ctx->secret, talloc_array_length(test_ctx->secret) - 1,
+	slen = fr_radius_encode(data, data_len, NULL, packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1,
 				packet_type, 0, vps);
 	if (slen <= 0) return slen;
 
-	if (fr_radius_sign(data, NULL, (uint8_t const *) test_ctx->secret, talloc_array_length(test_ctx->secret) - 1) < 0) {
+	if (fr_radius_sign(data, NULL, (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1) < 0) {
 		return -1;
 	}
 
