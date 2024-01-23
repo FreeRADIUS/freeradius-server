@@ -141,22 +141,25 @@ static inline CC_HINT(nonnull) int fr_htrie_num_elements(fr_htrie_t *ht)
 static inline fr_htrie_type_t fr_htrie_hint(fr_type_t type)
 {
 	switch (type) {
-	default:
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
 		return FR_HTRIE_HASH;
 
 	case FR_TYPE_IP:
 		return FR_HTRIE_TRIE;
 
-	case FR_TYPE_STRING:
-	case FR_TYPE_OCTETS:
-	case FR_TYPE_DATE:
-	case FR_TYPE_TIME_DELTA:
+	case FR_TYPE_IFID:
+	case FR_TYPE_ETHERNET:
+	case FR_TYPE_INTEGER:
+	case FR_TYPE_FLOAT32:
+	case FR_TYPE_FLOAT64:
 		return FR_HTRIE_RB;
 
-	case FR_TYPE_FLOAT32:	/* exact float comparisons are impossible */
-	case FR_TYPE_FLOAT64:
-	case FR_TYPE_BOOL:	/* what are they on? */
+	case FR_TYPE_VOID:
+	case FR_TYPE_NULL:
+	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_STRUCTURAL:
+	case FR_TYPE_MAX:
 		return FR_HTRIE_INVALID;
 	}
 }
