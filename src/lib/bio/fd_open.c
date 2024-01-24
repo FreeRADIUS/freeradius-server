@@ -909,21 +909,24 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		switch (my->info.socket.af) {
 		case AF_INET:
 			if (fr_bio_fd_server_ipv4(fd, &my->info.socket, cfg) < 0) goto fail;
+
+			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
 			break;
 
 		case AF_INET6:
 			if (fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg) < 0) goto fail;
+
+			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
 			break;
 
-		case AF_LOCAL:
+		case AF_LOCAL:	
+			if (fr_bio_fd_socket_bind_unix(my, cfg) < 0) goto fail;
 			break;
 
 		default:
 			fr_strerror_const("Unsupported address family for accept() socket");
 			goto fail;
 		}
-
-		if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
 
 		if (fr_bio_fd_init_accept(my) < 0) goto fail;
 		break;
