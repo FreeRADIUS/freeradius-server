@@ -297,7 +297,7 @@ static ssize_t fd_fd_recvfromto_common(fr_bio_fd_t *my, void *packet_ctx, void *
 	fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 
 #ifdef STATIC_ANALYZER
-	from.af = AF_UNSPEC;
+	from.ss_family = AF_UNSPEC;
 #endif
 
 	my->info.read_blocked = false;
