@@ -29,10 +29,12 @@ CLIENT := radclient
 include src/tests/radiusd.mk
 $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 
+$(OUTPUT)/auth_proxy.txt: $(BUILD_DIR)/lib/local/rlm_radius.la
+
 #
 #	Run the radclient commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% | $(TEST).radiusd_kill $(TEST).radiusd_start
+$(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/local/proto_radius.la $(BUILD_DIR)/lib/local/libfreeradius-radius.la | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<)$(E))
 	$(eval TYPE     := $(shell echo $(TARGET) | cut -f1 -d '_'))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
