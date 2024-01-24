@@ -155,6 +155,11 @@ undo	Password.Cleartext := "hello"
 undo
 	Framed-IP-Address := "this is not an IP address"
 
+#
+#  Test where additional checks uses the [*] filter
+#
+any	Realm[*] == "two", Password.Cleartext := "ofcourse"
+	Reply-Message := "success-any"
 
 $INCLUDE cmp
 
