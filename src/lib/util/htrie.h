@@ -145,6 +145,7 @@ static inline fr_htrie_type_t fr_htrie_hint(fr_type_t type)
 	case FR_TYPE_OCTETS:
 		return FR_HTRIE_HASH;
 
+	/* IPv4/v6 IP and prefix */
 	case FR_TYPE_IP:
 		return FR_HTRIE_TRIE;
 
@@ -160,8 +161,10 @@ static inline fr_htrie_type_t fr_htrie_hint(fr_type_t type)
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_STRUCTURAL:
 	case FR_TYPE_MAX:
-		return FR_HTRIE_INVALID;
+		break;
 	}
+
+	return FR_HTRIE_INVALID;
 }
 
 #ifdef __cplusplus
