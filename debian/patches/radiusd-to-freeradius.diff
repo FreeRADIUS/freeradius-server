@@ -56,21 +56,24 @@ Index: freeradius-server/raddb/sites-available/control-socket
 ===================================================================
 --- freeradius-server.orig/raddb/sites-available/control-socket
 +++ freeradius-server/raddb/sites-available/control-socket
-@@ -82,12 +82,12 @@ server control {
+@@ -68,7 +68,7 @@ server control {
  			#
- 			#  uid:: Name of user who is allowed to connect to the control socket.
+ 			#  Note that the control socket cannot have uid of 0.
  			#
 -#			uid = radius
 +#			uid = freerad
  
  			#
- 			#  gid:: Name of group that is allowed to connect to the control socket.
+ 			#  gid:: Name of group which owns the control socket.
+@@ -80,7 +80,7 @@ server control {
+ 			#
+ 			#  Note that the control socket cannot have gid of 0.
  			#
 -#			gid = radius
 +#			gid = freerad
  
  			#
- 			#  Access mode.
+ 			#  mode:: Access mode.
 Index: freeradius-server/src/bin/radiusd.c
 ===================================================================
 --- freeradius-server.orig/src/bin/radiusd.c
