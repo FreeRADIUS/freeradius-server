@@ -652,9 +652,7 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	socklen_t salen;
 	struct sockaddr_storage	salocal;
 
-	if (my->info.socket.af == AF_LOCAL) {
-		return fr_bio_fd_socket_bind_unix(my, cfg);
-	}
+	fr_assert((my->info.socket.af == AF_INET) || (my->info.socket.af == AF_INET6));
 
 #ifdef HAVE_CAPABILITY_H
 	/*
@@ -843,12 +841,25 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			return -1;
 		}
 
-		if (my->info.socket.af == AF_LOCAL) {
-			rcode = fr_bio_fd_common_datagram(fd, &my->info.socket, cfg);
-		} else {
-			rcode = fr_bio_fd_server_udp(fd, &my->info.socket, cfg); /* sets SO_REUSEPORT, too */
+		switch (my->info.socket.af) {
+		case AF_LOCAL:
+			if (fr_bio_fd_common_datagram(fd, &my->info.socket, cfg) < 0) goto fail;
+			break;
+
+		case AF_FILE_BIO:
+			fr_strerror_const("Filenames must use the connected API");
+			goto fail;
+
+		case AF_INET:
+		case AF_INET6:
+			 /* sets SO_REUSEPORT, too */
+			if (fr_bio_fd_server_udp(fd, &my->info.socket, cfg) < 0) goto fail;
+			break;
+
+		default:
+			fr_strerror_const("Unsupported address family for unconnected sockets");
+			goto fail;
 		}
-		if (rcode < 0) goto fail;
 
 		if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
 
@@ -856,7 +867,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		break;
 
 		/*
-		 *	A connected client: UDP, TCP, or AF_LOCAL.
+		 *	A connected client: UDP, TCP, AF_LOCAL, or AF_FILE_BIO
 		 */
 	case FR_BIO_FD_CONNECTED:
 		if (my->info.socket.type == SOCK_DGRAM) {
@@ -868,7 +879,23 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			if (rcode < 0) goto fail;
 		}
 
-		if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+
+		switch (my->info.socket.af) {
+		case AF_LOCAL:
+			if (fr_bio_fd_socket_bind_unix(my, cfg) < 0) goto fail;
+			break;
+
+		case AF_FILE_BIO:
+			break;
+
+		case AF_INET:
+		case AF_INET6:
+			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
+			break;
+
+		default:
+			return -1;
+		}
 
 		if (fr_bio_fd_init_connected(my) < 0) goto fail;
 		break;
@@ -881,23 +908,20 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 		switch (my->info.socket.af) {
 		case AF_INET:
-			rcode = fr_bio_fd_server_ipv4(fd, &my->info.socket, cfg);
+			if (fr_bio_fd_server_ipv4(fd, &my->info.socket, cfg) < 0) goto fail;
 			break;
 
 		case AF_INET6:
-			rcode = fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg);
+			if (fr_bio_fd_server_ipv6(fd, &my->info.socket, cfg) < 0) goto fail;
 			break;
 
 		case AF_LOCAL:
-			rcode = 0;
 			break;
 
 		default:
-			rcode = -1;
-			errno = EAFNOSUPPORT;
-			break;
+			fr_strerror_const("Unsupported address family for accept() socket");
+			goto fail;
 		}
-		if (rcode < 0) goto fail;
 
 		if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
 
