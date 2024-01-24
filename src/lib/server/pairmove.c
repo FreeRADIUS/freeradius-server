@@ -790,24 +790,34 @@ int radius_legacy_map_list_apply(request_t *request, map_list_t const *list, fr_
 
 int radius_legacy_map_cmp(request_t *request, map_t const *map)
 {
-	int rcode;
-	fr_pair_t *vp;
-	fr_value_box_t const *box;
-	fr_value_box_t *to_free = NULL;
-	fr_value_box_t dst, str;
+	int			rcode;
+	fr_pair_t		*vp;
+	fr_value_box_t const	*box;
+	fr_value_box_t		*to_free = NULL;
+	fr_value_box_t		dst, str;
+	fr_dcursor_t		cursor;
+	tmpl_dcursor_ctx_t	cc;
 
 	fr_assert(tmpl_is_attr(map->lhs));
 	fr_assert(fr_comparison_op[map->op]);
 
-	if (tmpl_find_vp(&vp, request, map->lhs) < 0) {
+	vp = tmpl_dcursor_init(NULL, request, &cc, &cursor, request, map->lhs);
+
+	if (!vp) {
+		tmpl_dcursor_clear(&cc);
 		if (map->op == T_OP_CMP_FALSE) return true;
 		return 0;
 	}
 
-	if (map->op == T_OP_CMP_TRUE) return false;
+	if (map->op == T_OP_CMP_TRUE){
+		tmpl_dcursor_clear(&cc);
+		return false;
+	}
 
 	if (fr_type_is_structural(vp->vp_type)) {
 		fr_strerror_const("Invalid comparison for structural type");
+	error:
+		tmpl_dcursor_clear(&cc);
 		return -1;
 	}
 
@@ -817,12 +827,12 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 	} else if (tmpl_is_attr(map->rhs)) {
 		fr_pair_t *rhs;
 
-		if (tmpl_find_vp(&rhs, request, map->rhs) < 0) return -1;
+		if (tmpl_find_vp(&rhs, request, map->rhs) < 0) goto error;
 
 		box = &rhs->data;
 
 	} else if (tmpl_contains_xlat(map->rhs)) {
-		if (tmpl_aexpand(request, &to_free, request, map->rhs, NULL, NULL) < 0) return -1;
+		if (tmpl_aexpand(request, &to_free, request, map->rhs, NULL, NULL) < 0) goto error;
 
 		box = to_free;
 
@@ -835,14 +845,23 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 
 	} else {
 		fr_strerror_const("Unknown RHS");
-		return -1;
+		goto error;
 	}
 
 	/*
-	 *	Let the calculation code do upcasting as necessary.
+	 *	Check all possible vps matching the lhs
+	 *	Allows for comparisons such as &foo[*] == "bar" - i.e. true if any instance of &foo has the value "bar"
 	 */
-	rcode = fr_value_calc_binary_op(request, &dst, FR_TYPE_BOOL, &vp->data, map->op, box);
+	while (vp) {
+		/*
+		 *	Let the calculation code do upcasting as necessary.
+		 */
+		rcode = fr_value_calc_binary_op(request, &dst, FR_TYPE_BOOL, &vp->data, map->op, box);
+		if ((rcode >= 0) && dst.vb_bool) break;  // Found a "true" result, no need to check any further
+		vp = fr_dcursor_next(&cursor);
+	}
 	TALLOC_FREE(to_free);
+	tmpl_dcursor_clear(&cc);
 
 	if (rcode < 0) return rcode;
 
