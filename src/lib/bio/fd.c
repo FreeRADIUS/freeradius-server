@@ -809,7 +809,7 @@ int fr_bio_fd_init_common(fr_bio_fd_t *my)
 		my->bio.read = fr_bio_fd_recvfrom;
 		my->bio.write = fr_bio_fd_sendto;
 
-#if defined(IP_PKTINFO) || defined(IP_RECVDSTADDR) 
+#if defined(IP_PKTINFO) || defined(IP_RECVDSTADDR)
 	} else if (my->info.socket.inet.src_ipaddr.af == AF_INET) {		//!< we don't know our IPv4
 		if (fr_bio_fd_udpfromto_init4(my->info.socket.fd) < 0) return -1;
 
@@ -1027,7 +1027,7 @@ int fr_bio_fd_close(fr_bio_t *bio)
 	if (rcode < 0) return rcode;
 
 	my->bio.read = fr_bio_eof_read;
-	my->bio.write = fr_bio_null_write;	
+	my->bio.write = fr_bio_null_write;
 
 	/*
 	 *	Shut down the connected socket.  The only errors possible here are things we can't do anything
