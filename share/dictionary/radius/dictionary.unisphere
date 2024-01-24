@@ -54,28 +54,28 @@ VENDOR		Unisphere			4874
 
 BEGIN-VENDOR	Unisphere
 
-ATTRIBUTE	Virtual-Router				1	string
-ATTRIBUTE	Local-Address-Pool			2	string
-ATTRIBUTE	Local-Interface				3	string
+ATTRIBUTE	Virtual-Router-Name			1	string
+ATTRIBUTE	Address-Pool-Name			2	string
+ATTRIBUTE	Local-Loopback-Interface		3	string
 ATTRIBUTE	Primary-Dns				4	ipaddr
 ATTRIBUTE	Secondary-Dns				5	ipaddr
 ATTRIBUTE	Primary-Wins				6	ipaddr
 ATTRIBUTE	Secondary-Wins				7	ipaddr
-ATTRIBUTE	Tunnel-Virtual-Router			8	string has_tag
-ATTRIBUTE	Tunnel-Password				9	string has_tag
+ATTRIBUTE	Tunnel-Virtual-Router			8	string	has_tag
+ATTRIBUTE	Tunnel-Password				9	string	has_tag
 ATTRIBUTE	Ingress-Policy-Name			10	string
 ATTRIBUTE	Egress-Policy-Name			11	string
 ATTRIBUTE	Ingress-Statistics			12	integer
 ATTRIBUTE	Egress-Statistics			13	integer
-ATTRIBUTE	Service-Category			14	integer
-ATTRIBUTE	PCR					15	integer
-ATTRIBUTE	SCR					16	integer
-ATTRIBUTE	MBS					17	integer
-ATTRIBUTE	Init-CLI-Access-Level			18	string
-ATTRIBUTE	Allow-All-VR-Access			19	integer
-ATTRIBUTE	Alt-CLI-Access-Level			20	string
-ATTRIBUTE	Alt-CLI-VRouter-Name			21	string
-ATTRIBUTE	SA-Validate				22	integer
+ATTRIBUTE	Atm-Service-Category			14	integer
+ATTRIBUTE	Atm-PCR					15	integer
+ATTRIBUTE	Atm-SCR					16	integer
+ATTRIBUTE	Atm-MBS					17	integer
+ATTRIBUTE	Cli-Initial-Access-Level		18	string
+ATTRIBUTE	Cli-Allow-All-VR-Access			19	integer
+ATTRIBUTE	Alternate-Cli-Access-Level		20	string
+ATTRIBUTE	Alternate-Cli-Vrouter-Name		21	string
+ATTRIBUTE	Sa-Validate				22	integer
 ATTRIBUTE	Igmp-Enable				23	integer
 ATTRIBUTE	Pppoe-Description			24	string
 ATTRIBUTE	Redirect-VRouter-Name			25	string
@@ -83,17 +83,17 @@ ATTRIBUTE	Qos-Profile-Name			26	string
 ATTRIBUTE	Pppoe-Max-Sessions			27	integer
 ATTRIBUTE	Pppoe-Url				28	string
 ATTRIBUTE	Qos-Profile-Interface-Type		29	integer
-ATTRIBUTE	Nas-Port-Method				30	integer
+ATTRIBUTE	Tunnel-Nas-Port-Method			30	integer
 ATTRIBUTE	Service-Bundle				31	string
 ATTRIBUTE	Tunnel-Tos				32	integer
-ATTRIBUTE	Tunnel-Max-Sessions			33	integer has_tag
+ATTRIBUTE	Tunnel-Maximum-Sessions			33	integer
 ATTRIBUTE	Framed-Ip-Route-Tag			34	string
 ATTRIBUTE	Tunnel-Dialout-Number			35	string
 ATTRIBUTE	PPP-Username				36	string
 ATTRIBUTE	PPP-Password				37	string
-ATTRIBUTE	PPP-Protocol				38	integer
-ATTRIBUTE	Tunnel-Min-Bps				39	integer
-ATTRIBUTE	Tunnel-Max-Bps				40	integer
+ATTRIBUTE	PPP-Auth-Protocol			38	integer
+ATTRIBUTE	Tunnel-Minimum-Bps			39	integer
+ATTRIBUTE	Tunnel-Maximum-Bps			40	integer
 ATTRIBUTE	Tunnel-Bearer-Type			41	integer
 ATTRIBUTE	Input-Gigapackets			42	integer
 ATTRIBUTE	Output-Gigapackets			43	integer
@@ -102,9 +102,9 @@ ATTRIBUTE	IpV6-Virtual-Router			45	string
 ATTRIBUTE	IpV6-Local-Interface			46	string
 ATTRIBUTE	Ipv6-Primary-Dns			47	ipv6addr
 ATTRIBUTE	Ipv6-Secondary-Dns			48	ipv6addr
-ATTRIBUTE	Service-Name				49	string
-ATTRIBUTE	Session-Volume-Quota			50	string
-ATTRIBUTE	Disconnect-Cause			51	string
+ATTRIBUTE	Sdx-Service-Name			49	string
+ATTRIBUTE	Sdx-Session-Volume-Quota		50	string
+ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string
 ATTRIBUTE	Radius-Client-Address			52	ipaddr
 ATTRIBUTE	Service-Description			53	string
 ATTRIBUTE	L2tp-Recv-Window-Size			54	integer
@@ -122,7 +122,7 @@ ATTRIBUTE	Service-Activate			65	string	has_tag
 ATTRIBUTE	Service-Deactivate			66	string
 ATTRIBUTE	Service-Volume				67	integer	has_tag
 ATTRIBUTE	Service-Timeout				68	integer	has_tag
-ATTRIBUTE	Service-Stats				69	integer	has_tag
+ATTRIBUTE	Service-Statistics			69	integer	has_tag
 
 ATTRIBUTE	DF-Bit					70	integer
 
@@ -170,10 +170,10 @@ ATTRIBUTE	IGMP-No-Tracking-V2-Grps		103	integer
 ATTRIBUTE	MLD-Explicit-Tracking			104	integer
 ATTRIBUTE	MLD-No-Tracking-V1-Grps			105	integer
 
-ATTRIBUTE	Jnpr-IPv6-Ingress-Policy-Name		106	string
-ATTRIBUTE	Jnpr-IPv6-Egress-Policy-Name		107	string
-ATTRIBUTE	Jnpr-CoS-Parameter-Type			108	string
-ATTRIBUTE	Jnpr-DHCP-Guided-Relay-Server		109	ipaddr
+ATTRIBUTE	IPv6-Ingress-Policy-Name		106	string
+ATTRIBUTE	IPv6-Egress-Policy-Name			107	string
+ATTRIBUTE	CoS-Shaping-Pmt-Type			108	string
+ATTRIBUTE	DHCP-Guided-Relay-Server		109	ipaddr
 
 ATTRIBUTE	Acc-Loop-Cir-Id				110	string
 ATTRIBUTE	Acc-Aggr-Cir-Id-Bin			111	octets
@@ -198,15 +198,15 @@ ATTRIBUTE	DSL-Type				128	integer
 ATTRIBUTE	IPv6-NdRa-Prefix			129	ipv6prefix
 ATTRIBUTE	Qos-Set-Name				130	string
 
-ATTRIBUTE	Service-AcctInt				140	integer has_tag
+ATTRIBUTE	Service-Acct-Interval			140	integer has_tag
 
 ATTRIBUTE	DownStream-Calc-Rate			141	integer
 ATTRIBUTE	UpStream-Calc-Rate			142	integer
-ATTRIBUTE	Jnpr-Max-Clients-Per-Interface		143	integer
+ATTRIBUTE	Max-Clients-Per-Interface		143	integer
 
-ATTRIBUTE	PPP-Ingress-Only			144	integer
+ATTRIBUTE	PPP-Monitor-Ingress-Only		144	integer
 
-ATTRIBUTE	Jnpr-CoS-Scheduler-Pmt-Type		146	string
+ATTRIBUTE	CoS-Scheduler-Pmt-Type			146	string
 ATTRIBUTE	Backup-Address-Pool			147	string
 
 ATTRIBUTE	ICR-Partition-Id			150	string
@@ -216,25 +216,27 @@ ATTRIBUTE	IPv6-Acct-Input-Packets			153	integer
 ATTRIBUTE	IPv6-Acct-Output-Packets		154	integer
 ATTRIBUTE	IPv6-Acct-Input-Gigawords		155	integer
 ATTRIBUTE	IPv6-Acct-Output-Gigawords		156	integer
-ATTRIBUTE	Jnpr-IPv6-NdRa-Pool-Name		157	string
-ATTRIBUTE	Jnpr-PppoE-Padn				158	string
+ATTRIBUTE	IPv6-NdRa-Pool-Name			157	string
+ATTRIBUTE	PppoE-Padn				158	string
 ATTRIBUTE	Dhcp-Option-82				159	octets
-ATTRIBUTE	Jnpr-Vlan-Map-Id			160	integer
-ATTRIBUTE	Jnpr-IPv6-Delegated-Pool-Name		161	string
-ATTRIBUTE	Jnpr-Tx-Connect-Speed			162	integer
-ATTRIBUTE	Jnpr-Rx-Connect-Speed			163	integer
+ATTRIBUTE	Vlan-Map-Id				160	integer
+ATTRIBUTE	IPv6-Delegated-Pool-Name		161	string
+ATTRIBUTE	Tx-Connect-Speed			162	integer
+ATTRIBUTE	Rx-Connect-Speed			163	integer
 ATTRIBUTE	Ipv4-release-control			164	string
 ATTRIBUTE	Pcp-Server-Name				165	string
 
-# ATTRIBUTE 166 - 173 RESERVED
+# ATTRIBUTE 164 - 173 RESERVED
+ATTRIBUTE	Service-Activate-Type			173	integer
 ATTRIBUTE	Client-Profile-Name			174	string
-ATTRIBUTE	Jnpr-Redirect-GW-Address		175	ipaddr
-ATTRIBUTE	Jnpr-APN-Name				176	string
+ATTRIBUTE	Redirect-GW-Address			175	ipaddr
+ATTRIBUTE	APN-Name				176	string
 ATTRIBUTE	Cos-Shaping-Rate			177	string
 ATTRIBUTE	Action-Reason				178	string
 ATTRIBUTE	Service-Volume-Gigawords		179	integer has_tag
 ATTRIBUTE	Update-Service				180	string has_tag
 
+ATTRIBUTE	DHCPv6-Guided-Relay-Server		181	ipv6addr
 ATTRIBUTE	Acc-Loop-Remote-Id			182	string
 ATTRIBUTE	Acc-Loop-Encap				183	octets
 ATTRIBUTE	Inner-Vlan-Map-Id			184	integer
@@ -242,11 +244,13 @@ ATTRIBUTE	Core-Facing-Interface			185	string
 ATTRIBUTE	Pcp-Port-Map				186	string
 ATTRIBUTE	vCPE-Lan-Extension			187	string
 ATTRIBUTE	vCPE-IPv4-Offload			188	string
-
-ATTRIBUTE	Jnpr-Input-Interface-Filter		191	string
-ATTRIBUTE	Jnpr-Output-Interface-Filter		192	string
-ATTRIBUTE	ERX-Bulk-CoA-Transaction-Id		194	integer
-ATTRIBUTE	ERX-Bulk-CoA-Identifier			195	integer
+ATTRIBUTE	DHCP-First-Relay-IPv4-Address		189	ipaddr
+ATTRIBUTE	DHCP-First-Relay-IPv6-Address		190	ipv6addr
+ATTRIBUTE	Input-Interface-Filter			191	string
+ATTRIBUTE	Output-Interface-Filter			192	string
+ATTRIBUTE	Pim-Enable				193	integer
+ATTRIBUTE	Bulk-CoA-Transaction-Id			194	integer
+ATTRIBUTE	Bulk-CoA-Identifier			195	integer
 ATTRIBUTE	IPv4-Input-Service-Set			196	string
 ATTRIBUTE	IPv4-Output-Service-Set			197	string
 ATTRIBUTE	IPv4-Input-Service-Filter		198	string
@@ -257,6 +261,35 @@ ATTRIBUTE	IPv6-Input-Service-Filter		202	string
 ATTRIBUTE	IPv6-Output-Service-Filter		203	string
 ATTRIBUTE	Adv-Pcef-Profile-Name			204	string
 ATTRIBUTE	Adv-Pcef-Rule-Name			205	string
+ATTRIBUTE	Re-Authentication-Catalyst		206	integer
+ATTRIBUTE	DHCPv6-Options				207	octets
+ATTRIBUTE	DHCP-Header				208	octets
+ATTRIBUTE	DHCPv6-Header				209	octets
+ATTRIBUTE	Acct-Request-Reason			210	integer
+
+ATTRIBUTE	Inner-Tag-Protocol-Id			211	string
+ATTRIBUTE	Routing-Services			212	integer
+ATTRIBUTE	Interface-Set-Targeting-Weight		213	integer
+ATTRIBUTE	Interface-Targeting-Weight		214	integer
+ATTRIBUTE	Hybrid-Access-DSL-Downstream-Speed	216	integer
+ATTRIBUTE	Hybrid-Access-LTE-Downstream-Speed	217	integer
+
+ATTRIBUTE	PON-Access-Type				219	integer
+ATTRIBUTE	ONT-ONU-Average-Data-Rate-Downstream	220	integer
+ATTRIBUTE	ONT-ONU-Peak-Data-Rate-Downstream	221	integer
+ATTRIBUTE	ONT-ONU-Maximum-Data-Rate-Upstream	222	integer
+ATTRIBUTE	ONT-ONU-Assured-Data-Rate-Upstream	223	integer
+ATTRIBUTE	PON-Tree-Maximum-Data-Rate-Upstream	224	integer
+ATTRIBUTE	PON-Tree-Maximum-Data-Rate-Downstream	225	integer
+
+ATTRIBUTE	Expected-Throughput-Upstream		226	integer
+ATTRIBUTE	Expected-Throughput-Downstream		227	integer
+ATTRIBUTE	Attainable-Expected-Throughput-Upstream	228	integer
+ATTRIBUTE	Attainable-Expected-Throughput-Downstream 229	integer
+ATTRIBUTE	Gamma-Data-Rate-Upstream		230	integer
+ATTRIBUTE	Gamma-Data-Rate-Downstream		231	integer
+ATTRIBUTE	Attainable-Gamma-Data-Rate-Upstream	232	integer
+ATTRIBUTE	Attainable-Gamma-Data-Rate-Downstream	233	integer
 
 #
 #  Values	Attribute		Name			Number
@@ -267,17 +300,16 @@ VALUE	Ingress-Statistics		enable			1
 VALUE	Egress-Statistics		disable			0
 VALUE	Egress-Statistics		enable			1
 
-VALUE	Service-Category		UBR			1
-VALUE	Service-Category		UBRPCR			2
-VALUE	Service-Category		nrtVBR			3
-VALUE	Service-Category		CBR			4
-VALUE	Service-Category		rtVBR			5
+VALUE	Atm-Service-Category		UBR			1
+VALUE	Atm-Service-Category		UBRPCR			2
+VALUE	Atm-Service-Category		nrtVBR			3
+VALUE	Atm-Service-Category		CBR			4
 
-VALUE	Allow-All-VR-Access		disable			0
-VALUE	Allow-All-VR-Access		enable			1
+VALUE	Cli-Allow-All-VR-Access		disable			0
+VALUE	Cli-Allow-All-VR-Access		enable			1
 
-VALUE	SA-Validate			disable			0
-VALUE	SA-Validate			enable			1
+VALUE	Sa-Validate			disable			0
+VALUE	Sa-Validate			enable			1
 
 VALUE	Igmp-Enable			disable			0
 VALUE	Igmp-Enable			enable			1
@@ -295,14 +327,14 @@ VALUE	Qos-Profile-Interface-Type	IP-TUNNEL		10
 VALUE	Qos-Profile-Interface-Type	VLAN-SUB		11
 VALUE	Qos-Profile-Interface-Type	PPPOE-SUB		12
 
-VALUE	Nas-Port-Method			None			0
-VALUE	Nas-Port-Method			CISCO-CLID		1
+VALUE	Tunnel-Nas-Port-Method		None			0
+VALUE	Tunnel-Nas-Port-Method		CISCO-CLID		1
 
-VALUE	PPP-Protocol			None			0
-VALUE	PPP-Protocol			PAP			1
-VALUE	PPP-Protocol			CHAP			2
-VALUE	PPP-Protocol			PAP-CHAP		3
-VALUE	PPP-Protocol			CHAP-PAP		4
+VALUE	PPP-Auth-Protocol		None			0
+VALUE	PPP-Auth-Protocol		PAP			1
+VALUE	PPP-Auth-Protocol		CHAP			2
+VALUE	PPP-Auth-Protocol		PAP-CHAP		3
+VALUE	PPP-Auth-Protocol		CHAP-PAP		4
 
 VALUE	Tunnel-Bearer-Type		None			0
 VALUE	Tunnel-Bearer-Type		Analog			1
@@ -322,9 +354,9 @@ VALUE	IGMP-Version			v1			1
 VALUE	IGMP-Version			v2			2
 VALUE	IGMP-Version			v3			3
 
-VALUE	Service-Stats			disabled		0
-VALUE	Service-Stats			time			1
-VALUE	Service-Stats			time-volume		2
+VALUE	Service-Statistics		disabled		0
+VALUE	Service-Statistics		time			1
+VALUE	Service-Statistics		time-volume		2
 
 VALUE	L2TP-Resynch-Method		disable			0
 VALUE	L2TP-Resynch-Method		failover		1
@@ -369,8 +401,40 @@ VALUE	DSL-Type			VDSL2			5
 VALUE	DSL-Type			SDSL			6
 VALUE	DSL-Type			UNKNOWN			7
 
-VALUE	PPP-Ingress-Only		disabled		0
-VALUE	PPP-Ingress-Only		enabled			1
+VALUE	PPP-Monitor-Ingress-Only	disabled		0
+VALUE	PPP-Monitor-Ingress-Only	enabled			1
+
+VALUE	Service-Activate-Type		dynamic			1
+VALUE	Service-Activate-Type		opscript		1
+
+VALUE	Pim-Enable			disabled		0
+VALUE	Pim-Enable			enabled			1
+
+VALUE	Re-Authentication-Catalyst	disabled		0
+VALUE	Re-Authentication-Catalyst	client-renew		1
+
+VALUE	Acct-Request-Reason		Acct-Start-Ack		1
+VALUE	Acct-Request-Reason		Periodic		2
+VALUE	Acct-Request-Reason		IP-Active		4
+VALUE	Acct-Request-Reason		IP-Inactive		8
+VALUE	Acct-Request-Reason		IPv6-Active		16
+VALUE	Acct-Request-Reason		IPv6-Inactive		32
+VALUE	Acct-Request-Reason		Session-Active		64
+VALUE	Acct-Request-Reason		Session-Inactive	128
+VALUE	Acct-Request-Reason		Line-Speed-Change	256
+VALUE	Acct-Request-Reason		Address-Assignment-Change 512
+VALUE	Acct-Request-Reason		CoA-Complete		1024
+
+VALUE	Routing-Services		disabled		0
+VALUE	Routing-Services		enabled			1
+
+VALUE	PON-Access-Type			Other			0
+VALUE	PON-Access-Type			GPON			1
+VALUE	PON-Access-Type			XG-PON1			2
+VALUE	PON-Access-Type			TWDM-PON		3
+VALUE	PON-Access-Type			XGS-PON			4
+VALUE	PON-Access-Type			WDM-PON			5
+VALUE	PON-Access-Type			UNKNOWN			7
 
 END-VENDOR	Unisphere
 ALIAS		Unisphere				Vendor-Specific.Unisphere
