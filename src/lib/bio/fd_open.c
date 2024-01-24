@@ -919,7 +919,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			if (fr_bio_fd_socket_bind(my, cfg) < 0) goto fail;
 			break;
 
-		case AF_LOCAL:	
+		case AF_LOCAL:
 			if (fr_bio_fd_socket_bind_unix(my, cfg) < 0) goto fail;
 			break;
 
