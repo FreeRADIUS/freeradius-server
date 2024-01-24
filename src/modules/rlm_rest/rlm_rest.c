@@ -21,7 +21,7 @@
  *
  * @copyright 2012-2019,2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-#include "lib/server/tmpl_escape.h"
+
 #include <talloc.h>
 RCSID("$Id$")
 
@@ -33,6 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/tmpl_escape.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/util/atexit.h>

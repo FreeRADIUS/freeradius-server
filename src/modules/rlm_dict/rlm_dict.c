@@ -25,7 +25,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/value.h>
+#include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
@@ -216,6 +220,45 @@ static xlat_action_t xlat_attr_num(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_attr_oid_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Return the attribute number of an attribute reference
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_attr_oid(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				   UNUSED xlat_ctx_t const *xctx,
+				   request_t *request, fr_value_box_list_t *in)
+{
+	fr_pair_t	*vp;
+	fr_value_box_t	*attr = fr_value_box_list_head(in);
+	fr_value_box_t	*vb;
+	fr_sbuff_t	*oid_buff;
+
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&oid_buff, 50, SIZE_MAX);
+
+	if ((xlat_fmt_get_vp(&vp, request, attr->vb_strvalue) < 0) || !vp) return XLAT_ACTION_FAIL;
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+
+	/*
+	 *	Print to an extendable buffer, so we don't have to worry
+	 *	about the size of the OID.
+	 */
+	if (fr_dict_attr_oid_print(oid_buff, NULL, vp->da, true) < 0) {
+		RPEDEBUG("Printing OID for '%s' failed", vp->da->name);
+		return XLAT_ACTION_FAIL;
+	}
+
+	fr_value_box_strdup(vb, vb, NULL, fr_sbuff_start(oid_buff), false);
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Return the data type of an attribute reference
  *
  * @ingroup xlat_functions
@@ -251,6 +294,7 @@ static int mod_load(void)
 	XLAT_REGISTER("dict.vendor.num", xlat_vendor_num, FR_TYPE_UINT32, xlat_vendor_num_args);
 	XLAT_REGISTER("dict.attr", xlat_attr, FR_TYPE_STRING, xlat_attr_args);
 	XLAT_REGISTER("dict.attr.num", xlat_attr_num, FR_TYPE_UINT32, xlat_attr_num_args);
+	XLAT_REGISTER("dict.attr.oid", xlat_attr_oid, FR_TYPE_STRING, xlat_attr_oid_args);
 	XLAT_REGISTER("dict.attr.type", xlat_attr_type, FR_TYPE_STRING, xlat_attr_args);
 	return 0;
 }
@@ -263,6 +307,8 @@ static void mod_unload(void)
 	xlat_func_unregister("dict.vendor.num");
 	xlat_func_unregister("dict.attr");
 	xlat_func_unregister("dict.attr.num");
+	xlat_func_unregister("dict.attr.oid");
+	xlat_func_unregister("dict.attr.type");
 }
 
 extern module_rlm_t rlm_dict;

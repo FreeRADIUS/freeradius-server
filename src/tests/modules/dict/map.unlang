@@ -32,6 +32,10 @@ if (%dict.attr.num('Vendor-Specific.FreeRADIUS.Proxied-To') != 1) {
 	test_fail
 }
 
+if (%dict.attr.oid('Vendor-Specific.FreeRADIUS.Proxied-To') != '26.11344.1') {
+	test_fail
+}
+
 if (%dict.vendor('Vendor-Specific.FreeRADIUS.Proxied-To') != 'FreeRADIUS') {
 	test_fail
 }
