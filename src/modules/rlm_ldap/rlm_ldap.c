@@ -2562,10 +2562,10 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap_escape", ldap_escape_xlat, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.escape", ldap_escape_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
-	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap_unescape", ldap_unescape_xlat, FR_TYPE_STRING)))) return -1;
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.unescape", ldap_unescape_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
@@ -2574,8 +2574,8 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("ldap_escape");
-	xlat_func_unregister("ldap_unescape");
+	xlat_func_unregister("ldap.escape");
+	xlat_func_unregister("ldap.unescape");
 }
 
 /* globally exported name */

@@ -884,7 +884,7 @@ ldap {
 #
 #  The rlm_ldap provides the below xlat's functions.
 #
-#  ### %ldap_escape(...}
+#  ### %ldap.escape(...}
 #
 #  Escape a string for use in an LDAP filter or DN.
 #
@@ -895,7 +895,7 @@ ldap {
 #  [source,unlang]
 #  ----
 #  &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
-#  &reply.Reply-Message := "The LDAP url is %ldap_escape(%{my-string}}"
+#  &reply.Reply-Message := "The LDAP url is %ldap.escape(%{my-string}}"
 #  ----
 #
 #  .Output
@@ -904,7 +904,7 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 #  ```
 #
-#  ### %ldap_unescape(...)
+#  ### %ldap.unescape(...)
 #
 #  Unescape a string for use in an LDAP filter or DN.
 #
@@ -915,7 +915,7 @@ ldap {
 #  [source,unlang]
 #  ----
 #  &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
-#  &reply.Reply-Message := "The LDAP url is %ldap_unescape(%{my-string})"
+#  &reply.Reply-Message := "The LDAP url is %ldap.unescape(%{my-string})"
 #  ----
 #
 #  .Output
