@@ -5876,12 +5876,12 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escap
 	switch (vb->type) {
 	case FR_TYPE_GROUP:
 		return fr_value_box_list_escape_in_place(&vb->vb_group, escape, uctx);
-		break;
 
 	default:
-		return escape(vb, uctx);
 		break;
 	}
+
+	return escape(vb, uctx);
 }
 
 /** Escape a list of value boxes in place
