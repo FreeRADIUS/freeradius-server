@@ -105,9 +105,6 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list
  * @param[out] out			to add pairs to.
  * @param[in] packet			to decode.
  * @param[in] original			packet, if this is a reply.
- * @param[in] max_attributes		to decode.
- * @param[in] tunnel_password_zeros	set random elements of the tunnel password
- *					vectors to zero to aid in testing.
  * @param[in] secret			shared secret used for decoding encrypted
  *					password attributes.
  * @return
@@ -116,7 +113,7 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list
  */
 int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			    fr_radius_packet_t *packet, fr_radius_packet_t *original,
-			    uint32_t max_attributes, bool tunnel_password_zeros, char const *secret)
+			    char const *secret)
 {
 	int			packet_length;
 	uint8_t			*ptr;
@@ -129,7 +126,6 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	common_ctx.secret_length = strlen(secret);
 
 	packet_ctx.common = &common_ctx;
-	packet_ctx.tunnel_password_zeros = tunnel_password_zeros;
 
 #ifndef NDEBUG
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, packet);
@@ -196,7 +192,6 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_assert(ptr != NULL);
 		my_len = fr_radius_decode_pair(ctx, &tmp_list, ptr, packet_length, &packet_ctx);
 		if (my_len < 0) {
-		fail:
 			talloc_free(packet_ctx.tmp_ctx);
 			fr_pair_list_free(&tmp_list);
 			return -1;
@@ -206,24 +201,6 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	This should really be an assertion.
 		 */
 		if (my_len == 0) break;
-
-		/*
-		 *	VSA's may not have been counted properly in
-		 *	fr_radius_packet_ok() above, as it is hard to count
-		 *	then without using the dictionary.  We
-		 *	therefore enforce the limits here, too.
-		 */
-		if ((max_attributes > 0) && (fr_pair_list_num_elements(out) > max_attributes)) {
-			char host_ipaddr[INET6_ADDRSTRLEN];
-
-			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request "
-					   "(received %zu, max %d are allowed)",
-					   inet_ntop(packet->socket.inet.src_ipaddr.af,
-						     &packet->socket.inet.src_ipaddr.addr,
-						     host_ipaddr, sizeof(host_ipaddr)),
-					   fr_pair_list_num_elements(out), max_attributes);
-			goto fail;
-		}
 
 		ptr += my_len;
 		packet_length -= my_len;

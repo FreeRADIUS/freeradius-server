@@ -824,7 +824,7 @@ do { \
 						continue;
 					}
 					if (fr_radius_packet_decode(reply, &reply_vps, reply, packet,
-								    RADIUS_MAX_ATTRIBUTES, false, conf->secret) < 0) {
+								    conf->secret) < 0) {
 						fr_perror("Failed decoding reply");
 						goto recv_error;
 					}
