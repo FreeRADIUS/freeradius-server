@@ -41,10 +41,8 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
 
-#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/action.h>
-#include <freeradius-devel/unlang/xlat.h>
 
 #include <ldap.h>
 #include "rlm_ldap.h"
