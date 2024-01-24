@@ -628,19 +628,19 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
 }
 #else
 
-#error This system is missing SO_BINDTODEVICE, IP_BOUND_IF, IPV6_BOUND_IF
-
-/** ??? Who knows?
+/** This system is missing SO_BINDTODEVICE, IP_BOUND_IF, IPV6_BOUND_IF
  *
+ *	@todo - FreeBSD IP_RECVIF and IP_SENDIF
+ *
+ *	Except that has to be done in recvmsg() and sendmsg().  And it only works on datagram sockets.
+ *
+ *	cmsg_len = sizeof(struct sockaddr_dl)
+ *	cmsg_level = IPPROTO_IP
+ *	cmsg_type = IP_RECVIF
  */
 static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 {
-	/*
-	 *	@todo - see fr_socket_bind().  Troll through the interfaces to see which interface has a name
-	 *	which matches the named interface.  If so, copy over it's IP to our src_ip, so long as src_ip
-	 *	is INADDR_ANY.
-	 */
-
+	fr_sterror_const("Bind to interface is not supported on this platform");
 	return -1;
 }
 
