@@ -396,7 +396,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		return -1;
 	}
 
-	if (fr_radius_sign(buffer, request->packet->data,
+	if (fr_radius_sign(buffer, request->packet->data + 4,
 			   (uint8_t const *) client->secret, talloc_array_length(client->secret) - 1) < 0) {
 		RPEDEBUG("Failed signing RADIUS reply");
 		return -1;

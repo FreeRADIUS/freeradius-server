@@ -156,7 +156,7 @@ char const *fr_radius_packet_names[FR_RADIUS_CODE_MAX] = {
  * encrypting passwords to RADIUS.
  */
 ssize_t fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
-				char const *secret, uint8_t const vector[static RADIUS_AUTH_VECTOR_LENGTH])
+				char const *secret, uint8_t const *vector)
 {
 	fr_md5_ctx_t		*md5_ctx;
 	size_t			i;
@@ -259,14 +259,14 @@ invalid:
  * in the message-authenticator value if the attribute is present in the encoded packet.
  *
  * @param[in,out] packet	(request or response).
- * @param[in] original		request (only if this is a response).
+ * @param[in] vector		original packet vector to use
  * @param[in] secret		to sign the packet with.
  * @param[in] secret_len	The length of the secret.
  * @return
  *	- <0 on error
  *	- 0 on success
  */
-int fr_radius_sign(uint8_t *packet, uint8_t const *original,
+int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 		   uint8_t const *secret, size_t secret_len)
 {
 	uint8_t		*msg, *end;
@@ -329,8 +329,8 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 		case FR_RADIUS_CODE_DISCONNECT_NAK:
 		case FR_RADIUS_CODE_COA_ACK:
 		case FR_RADIUS_CODE_COA_NAK:
-			if (!original) goto need_original;
-			memcpy(packet + 4, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
+			if (!vector) goto need_original;
+			memcpy(packet + 4, vector, RADIUS_AUTH_VECTOR_LENGTH);
 			break;
 
 		case FR_RADIUS_CODE_ACCESS_REQUEST:
@@ -371,12 +371,12 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *original,
 	case FR_RADIUS_CODE_COA_ACK:
 	case FR_RADIUS_CODE_COA_NAK:
 	case FR_RADIUS_CODE_PROTOCOL_ERROR:
-		if (!original) {
+		if (!vector) {
 		need_original:
 			fr_strerror_const("Cannot sign response packet without a request packet");
 			return -1;
 		}
-		memcpy(packet + 4, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
+		memcpy(packet + 4, vector, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 		/*
@@ -683,7 +683,7 @@ finish:
  *  If they differ, there's a problem.
  *
  * @param[in] packet		the raw RADIUS packet (request or response)
- * @param[in] original		the raw original request (if this is a response)
+ * @param[in] vector		the original packet vector
  * @param[in] secret		the shared secret
  * @param[in] secret_len	the length of the secret
  * @param[in] require_ma	whether we require Message-Authenticator.
@@ -693,7 +693,7 @@ finish:
  *	     was in some other way malformed.
  *	- 0 on success.
  */
-int fr_radius_verify(uint8_t *packet, uint8_t const *original,
+int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 		     uint8_t const *secret, size_t secret_len, bool require_ma)
 {
 	bool found_ma;
@@ -766,7 +766,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 *	slightly more CPU work than having verify-specific
 	 *	functions, but it ends up being cleaner in the code.
 	 */
-	rcode = fr_radius_sign(packet, original, secret, secret_len);
+	rcode = fr_radius_sign(packet, vector, secret, secret_len);
 	if (rcode < 0) {
 		fr_strerror_const_push("Failed calculating correct authenticator");
 		return -1;
@@ -801,7 +801,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *original,
 	 */
 	if (fr_digest_cmp(request_authenticator, packet + 4, sizeof(request_authenticator)) != 0) {
 		memcpy(packet + 4, request_authenticator, sizeof(request_authenticator));
-		if (original) {
+		if (vector) {
 			fr_strerror_const("invalid Response Authenticator (shared secret is incorrect)");
 		} else {
 			fr_strerror_const("invalid Request Authenticator (shared secret is incorrect)");
@@ -977,7 +977,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
  *
  */
 ssize_t fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			 uint8_t const *packet, size_t packet_len, uint8_t const *original,
+			 uint8_t const *packet, size_t packet_len, uint8_t const *vector,
 			 char const *secret, size_t secret_len)
 {
 	ssize_t			slen;
@@ -987,7 +987,7 @@ ssize_t fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	common_ctx.secret = secret;
 	common_ctx.secret_length = secret_len;
-	memcpy(common_ctx.vector, original ? original + 4 : packet + 4, sizeof(common_ctx.vector));
+	memcpy(common_ctx.vector, vector ? vector : packet + 4, sizeof(common_ctx.vector));
 
 	packet_ctx.common = &common_ctx;
 	packet_ctx.tmp_ctx = talloc_init_const("tmp");

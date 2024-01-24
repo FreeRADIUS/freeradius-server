@@ -282,19 +282,12 @@ bool fr_radius_packet_ok(fr_radius_packet_t *packet, uint32_t max_attributes, bo
  *
  */
 int fr_radius_packet_verify(fr_radius_packet_t *packet, fr_radius_packet_t *original, char const *secret)
-{
-	uint8_t const	*original_data;
+{	
 	char		buffer[INET6_ADDRSTRLEN];
 
 	if (!packet->data) return -1;
 
-	if (original) {
-		original_data = original->data;
-	} else {
-		original_data = NULL;
-	}
-
-	if (fr_radius_verify(packet->data, original_data,
+	if (fr_radius_verify(packet->data, original ? original->data + 4 : NULL,
 			     (uint8_t const *) secret, talloc_array_length(secret) - 1, false) < 0) {
 		fr_strerror_printf_push("Received invalid packet from %s",
 					inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
@@ -313,13 +306,6 @@ int fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *
 			  char const *secret)
 {
 	int ret;
-	uint8_t const *original_data;
-
-	if (original) {
-		original_data = original->data;
-	} else {
-		original_data = NULL;
-	}
 
 	/*
 	 *	Copy the random vector to the packet.  Other packet
@@ -331,7 +317,7 @@ int fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *
 		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
 	}
 
-	ret = fr_radius_sign(packet->data, original_data,
+	ret = fr_radius_sign(packet->data, original ? original->data + 4 : NULL,
 			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	if (ret < 0) return ret;
 

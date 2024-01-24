@@ -105,15 +105,15 @@ enum {
 /*
  *	protocols/radius/base.c
  */
-int		fr_radius_sign(uint8_t *packet, uint8_t const *original,
+int		fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 			       uint8_t const *secret, size_t secret_len) CC_HINT(nonnull (1,3));
-int		fr_radius_verify(uint8_t *packet, uint8_t const *original,
+int		fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 				 uint8_t const *secret, size_t secret_len, bool require_ma) CC_HINT(nonnull (1,3));
 bool		fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 			     uint32_t max_attributes, bool require_ma, decode_fail_t *reason) CC_HINT(nonnull (1,2));
 
 ssize_t		fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
-					char const *secret, uint8_t const vector[static RADIUS_AUTH_VECTOR_LENGTH]);
+					char const *secret, uint8_t const *vector);
 
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 
@@ -124,7 +124,7 @@ ssize_t		fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 				 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_list_t *vps);
 
 ssize_t		fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				 uint8_t const *packet, size_t packet_len, uint8_t const *original,
+				 uint8_t const *packet, size_t packet_len, uint8_t const *vector,
 				 char const *secret, UNUSED size_t secret_len) CC_HINT(nonnull(1,2,3,6));
 
 int		fr_radius_init(void);

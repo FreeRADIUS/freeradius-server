@@ -1159,7 +1159,6 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	rlm_radius_udp_t const *inst = h->thread->inst;
 	size_t			packet_len;
 	uint8_t			code;
-	uint8_t			original[RADIUS_HEADER_LENGTH];
 
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
@@ -1188,13 +1187,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 	}
 
-	original[0] = u->code;
-	original[1] = 0;			/* not looked at by fr_radius_verify() */
-	original[2] = 0;
-	original[3] = RADIUS_HEADER_LENGTH;	/* for debugging */
-	memcpy(original + RADIUS_AUTH_VECTOR_OFFSET, request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
-
-	if (fr_radius_verify(data, original,
+	if (fr_radius_verify(data, request_authenticator,
 			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1, false) < 0) {
 		RPWDEBUG("Ignoring response with invalid signature");
 		return DECODE_FAIL_MA_INVALID;
@@ -1205,7 +1198,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	 *	This only fails if the packet is strangely malformed,
 	 *	or if we run out of memory.
 	 */
-	if (fr_radius_decode(ctx, reply, data, packet_len, original,
+	if (fr_radius_decode(ctx, reply, data, packet_len, request_authenticator,
 			     inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
 		REDEBUG("Failed decoding attributes for packet");
 		fr_pair_list_free(reply);
