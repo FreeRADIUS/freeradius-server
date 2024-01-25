@@ -228,25 +228,6 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ NULL }
 };
 
-/** If we get a reply, the request must come from one of a small
- * number of packet types.
- */
-static fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
-	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
-	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
-	[FR_RADIUS_CODE_ACCESS_REJECT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
-
-	[FR_RADIUS_CODE_ACCOUNTING_RESPONSE]	= FR_RADIUS_CODE_ACCOUNTING_REQUEST,
-
-	[FR_RADIUS_CODE_COA_ACK]		= FR_RADIUS_CODE_COA_REQUEST,
-	[FR_RADIUS_CODE_COA_NAK]		= FR_RADIUS_CODE_COA_REQUEST,
-
-	[FR_RADIUS_CODE_DISCONNECT_ACK]	= FR_RADIUS_CODE_DISCONNECT_REQUEST,
-	[FR_RADIUS_CODE_DISCONNECT_NAK]	= FR_RADIUS_CODE_DISCONNECT_REQUEST,
-
-	[FR_RADIUS_CODE_PROTOCOL_ERROR]	= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
-};
-
 /** Turn a reply code into a module rcode;
  *
  */
@@ -1165,27 +1146,6 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 
 	RHEXDUMP3(data, data_len, "Read packet");
 
-	code = data[0];
-	if (!allowed_replies[code]) {
-		REDEBUG("%s packet received unknown reply code %s",
-			fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
-		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
-	}
-
-	/*
-	 *	Protocol error can reply to any packet.
-	 *
-	 *	Status-Server can get any reply.
-	 *
-	 *	Otherwise the reply code must be associated with the request code we sent.
-	 */
-	if ((code != FR_RADIUS_CODE_PROTOCOL_ERROR) && (u->code != FR_RADIUS_CODE_STATUS_SERVER) &&
-	    (allowed_replies[code] != u->code)) {
-		REDEBUG("%s packet received invalid reply code %s",
-			fr_radius_packet_names[u->code], fr_radius_packet_names[code]);
-		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
-	}
-
 	common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
 		.secret_length = talloc_array_length(inst->secret) - 1,
@@ -1212,8 +1172,10 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	}
 	talloc_free(decode_ctx.tmp_ctx);
 
+	code = data[0];
+
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
-	       fr_radius_packet_names[code], code, data_len, h->name);
+	       fr_radius_packet_names[code], data[1], data_len, h->name);
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
 
 	*response_code = code;

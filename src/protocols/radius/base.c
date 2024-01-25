@@ -148,6 +148,25 @@ char const *fr_radius_packet_names[FR_RADIUS_CODE_MAX] = {
 };
 
 
+/** If we get a reply, the request must come from one of a small
+ * number of packet types.
+ */
+static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
+	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
+	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
+	[FR_RADIUS_CODE_ACCESS_REJECT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
+
+	[FR_RADIUS_CODE_ACCOUNTING_RESPONSE]	= FR_RADIUS_CODE_ACCOUNTING_REQUEST,
+
+	[FR_RADIUS_CODE_COA_ACK]		= FR_RADIUS_CODE_COA_REQUEST,
+	[FR_RADIUS_CODE_COA_NAK]		= FR_RADIUS_CODE_COA_REQUEST,
+
+	[FR_RADIUS_CODE_DISCONNECT_ACK]		= FR_RADIUS_CODE_DISCONNECT_REQUEST,
+	[FR_RADIUS_CODE_DISCONNECT_NAK]		= FR_RADIUS_CODE_DISCONNECT_REQUEST,
+
+	[FR_RADIUS_CODE_PROTOCOL_ERROR]		= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
+};
+
 /**  Do Ascend-Send / Recv-Secret calculation.
  *
  * The secret is hidden by xoring with a MD5 digest created from
@@ -996,8 +1015,36 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			break;
 
 		default:
+		no_vector:
 			fr_strerror_const("No authentication vector passed for packet decode");
 			return -1;
+		}
+	}
+
+	if (decode_ctx->request_code) {
+		int code = packet[0];
+
+		fr_assert(code < FR_RADIUS_CODE_MAX); /* checked by fr_radius_ok() */
+		fr_assert(decode_ctx->request_code < FR_RADIUS_CODE_MAX); /* checked by fr_radius_ok() */
+
+		if (!allowed_replies[code]) {
+			fr_strerror_printf("%s packet received unknown reply code %s",
+					   fr_radius_packet_names[decode_ctx->request_code], fr_radius_packet_names[code]);
+			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
+		}
+
+		/*
+		 *	Protocol error can reply to any packet.
+		 *
+		 *	Status-Server can get any reply.
+		 *
+		 *	Otherwise the reply code must be associated with the request code we sent.
+		 */
+		if ((code != FR_RADIUS_CODE_PROTOCOL_ERROR) && (decode_ctx->request_code != FR_RADIUS_CODE_STATUS_SERVER) &&
+		    (allowed_replies[code] != decode_ctx->request_code)) {
+			fr_strerror_printf("%s packet received invalid reply code %s",
+					   fr_radius_packet_names[decode_ctx->request_code], fr_radius_packet_names[code]);
+			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 	}
 
@@ -1006,6 +1053,8 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	RADIUS/1.1.
 	 */
 	if (decode_ctx->verify) {
+		if (!decode_ctx->request_authenticator) goto no_vector;
+
 		if (fr_radius_verify(packet, decode_ctx->request_authenticator,
 				     (uint8_t const *) decode_ctx->common->secret, decode_ctx->common->secret_length,
 				     decode_ctx->require_message_authenticator) < 0) {
