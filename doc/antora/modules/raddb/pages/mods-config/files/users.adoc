@@ -132,7 +132,7 @@ We recommend not using `DEFAULT` when the `key` is an IP address or prefix.  It 
 
 When the `users` file has no matches (even `DEFAULT`), the `files` module returns `noop`.  If one or more entries matched, then the module returns `ok`.  Note that it will return `ok` even if no reply items are added.
 
-When there is a failure processing the `users` file, the module returns `fail`.  This situation can happen when the attribute assigment refers to a list which does not exist in the current context (e.g. `parent.foo := ...`), or when the value is a dynamic expansion which fails.
+When there is a failure processing the `users` file, the module returns `fail`.  This situation can happen when the attribute assignment refers to a list which does not exist in the current context (e.g. `parent.foo := ...`), or when the value is a dynamic expansion which fails.
 
 When the module returns `fail`, then any changes which might have been made are reverted.  The result is just the same as if the module never matched any entries.  For example, the `users` file below contains an SQL module query which might fail:
 
@@ -182,7 +182,7 @@ The default list for the reply items is `reply`.  Specifying another list means 
 
 ==== Structural Data Types
 
-Structural data types such as `tlv`, `group`, and `struct` are handled somewhat oddly in the `users` file.  The reason for this behavior is due to the limitations of the `users` file format.  In constrast, nested attributes are handled simply and clearly by the new xref:reference:unlang/edit.adoc[edit] functionality.  If there is any confusion or uncertainty about how the `users` file operates, we recommend just using the new xref:reference:unlang/edit.adoc[edit] functionality.
+Structural data types such as `tlv`, `group`, and `struct` are handled somewhat oddly in the `users` file.  The reason for this behavior is due to the limitations of the `users` file format.  In contrast, nested attributes are handled simply and clearly by the new xref:reference:unlang/edit.adoc[edit] functionality.  If there is any confusion or uncertainty about how the `users` file operates, we recommend just using the new xref:reference:unlang/edit.adoc[edit] functionality.
 
 It is not possible to perform comparisons structural data types.  It is only possible to create and edit them.
 
@@ -204,7 +204,7 @@ bob	Password.Cleartext := "hello"
 
 This example copies the `Vendor-Specific.Cisco` group from the `&control` list.  If the attribute does not exist in the control list, nothing is done.
 
-Structural attributes can be created from a string, as with the xref:reference:unlang/edit.adoc[edit] funtionality.  Note that the string should not contain brackets such as `"{ AVPair = 'hello' }"`.
+Structural attributes can be created from a string, as with the xref:reference:unlang/edit.adoc[edit] functionality.  Note that the string should not contain brackets such as `"{ AVPair = 'hello' }"`.
 
 .Creating a Structural attribute from a string
 ----
@@ -230,7 +230,7 @@ bob	Password.Cleartext := "hello"
 	.AVPair += "Hello"
 ----
 
-In the above example, the reply items start out with a reference to a structural attribute which is at the "root" of the attribure tree.  In this case, the attribute is `Vendor-Specific`.  The assignment uses the `=` operator, which creates the attribute if it does not already exist.  If the `Vendor-Specific` attribute exists, no changes are made.  The value assigned is an empty list, which (if necessary) will create an empty `Vendor-Specific` attribute.
+In the above example, the reply items start out with a reference to a structural attribute which is at the "root" of the attribute tree.  In this case, the attribute is `Vendor-Specific`.  The assignment uses the `=` operator, which creates the attribute if it does not already exist.  If the `Vendor-Specific` attribute exists, no changes are made.  The value assigned is an empty list, which (if necessary) will create an empty `Vendor-Specific` attribute.
 
 The next line contains a _relative_ attribute reference: `.Cisco`.  The attribute reference is _relative_ because it begins with a `.` character.  The relative attribute must be a child of the previous structural attribute, in this case `Vendor-Specific`.
 
@@ -241,7 +241,7 @@ The final line contains `.AVPair += "Hello"`.  This line also contains a _relati
 The relative attributes work fairly simply, subject to the following rules:
 
 * a relative attribute `.foo` *must* have a structural attribute before it
-* a relative attribute `.foo` *must* be a child of the previous structural atrribute
+* a relative attribute `.foo` *must* be a child of the previous structural attribute
 * an absolute attribute can be used at any point, even if the previous attribute as relative.
 * using an absolute attribute will "reset" the reference for relative attributes, to be either itself (if it is structural), or nothing (if it is a leaf)
 * relative attributes can use multiple `.` to reference attributes "higher" in the tree
