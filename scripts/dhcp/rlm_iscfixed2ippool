@@ -11,7 +11,7 @@
 #  Helper script to parse an ISC DHCP config file and extract fixed
 #  leases for populating FreeRADIUS ippool tables.
 #
-#  This script reads an ISC DCHP config file and extracts any fixed
+#  This script reads an ISC DHCP config file and extracts any fixed
 #  leases.  If Net::DNS is available, then any host names are resolved.
 #  The resulting list of hardware mac addresses and IP addresses are
 #  then formatted as SQL to update a standard FreeRADIUS DHCP ippool

@@ -21,11 +21,11 @@
 #          bugs, add features, etc).
 
 # Note: Parameterized "functions" in this makefile that are marked with
-#       "USE WITH EVAL" are only useful in conjuction with eval. This is
+#       "USE WITH EVAL" are only useful in conjunction with eval. This is
 #       because those functions result in a block of Makefile syntax that must
 #       be evaluated after expansion. Since they must be used with eval, most
 #       instances of "$" within them need to be escaped with a second "$" to
-#       accomodate the double expansion that occurs when eval is invoked.
+#       accommodate the double expansion that occurs when eval is invoked.
 
 #
 #  You can watch what it's doing by:
