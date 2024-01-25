@@ -261,7 +261,7 @@
  */
 #define TEST_LOG_MAXSIZE ((TEST_DUMP_MAXSIZE * 3) + TEST_MSG_MAXSIZE + 3)
 
-/* Common test initialiation/clean-up
+/* Common test initialisation/clean-up
  *
  * In some test suites, it may be needed to perform some sort of the same
  * initialization and/or clean-up in all the tests.
@@ -1319,7 +1319,7 @@ acutest_run_(const struct acutest_test_* test, int index, int master_index)
         char msg[TEST_LOG_MAXSIZE];
         size_t count;
 
-        /* Create pipe for receiveing log entries */
+        /* Create pipe for receiving log entries */
         if (!CreatePipe(&hRead, &hWrite, &lpPipeAttribute, 0)) {
             fprintf(stderr, "Error creating pipe\n");
             acutest_exit_(2);

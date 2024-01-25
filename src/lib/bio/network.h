@@ -37,7 +37,7 @@ fr_trie_t *fr_bio_network_trie_alloc(TALLOC_CTX *ctx, int af, fr_ipaddr_t const 
  *	NULL means "nothing matches", which should also be interpreted as "deny".
  *
  *	The difference between "NULL" and "deny" is that NULL is an IP address which was never inserted into
- *	the trie.  Whereas "deny" menas that there is a parent "allow" range, and we are carving out a "deny"
+ *	the trie.  Whereas "deny" means that there is a parent "allow" range, and we are carving out a "deny"
  *	in the middle of that range.
  */
 #define FR_BIO_NETWORK_ALLOW ((void *) (-1))

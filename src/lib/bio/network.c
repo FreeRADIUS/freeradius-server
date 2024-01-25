@@ -97,7 +97,7 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 	fr_bio_fd_info_t const *info;
 
 	/*
-	 *	We are only useable for FD bios.  We need to get "offset" into the packet_ctx, and we don't
+	 *	We are only usable for FD bios.  We need to get "offset" into the packet_ctx, and we don't
 	 *	want to have an API which allows for two different "offset" values to be passed to two
 	 *	different bios.
 	 */

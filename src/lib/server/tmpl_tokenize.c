@@ -812,7 +812,7 @@ void tmpl_set_dict_def(tmpl_t *vpt, fr_dict_t const *dict)
 
 /** Set escape parameters for the tmpl output
  *
- * @parma[in] vpt	to alter.
+ * @param[in] vpt	to alter.
  * @param[in] escape	to set.
  */
 void tmpl_set_escape(tmpl_t *vpt, tmpl_escape_t const *escape)

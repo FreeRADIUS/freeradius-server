@@ -167,7 +167,7 @@ static bool eap_is_valid(TALLOC_CTX *ctx, eap_packet_raw_t **eap_packet_p)
 	 */
 	packet_len = talloc_array_length((uint8_t *) eap_packet);
 	if (packet_len <= EAP_HEADER_LEN) {
-		fr_strerror_printf("Invalid EAP data lenth %zd <= 4", packet_len);
+		fr_strerror_printf("Invalid EAP data length %zd <= 4", packet_len);
 		return false;
 	}
 

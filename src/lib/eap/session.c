@@ -134,7 +134,7 @@ static eap_session_t *eap_session_alloc(request_t *request)
 	return eap_session;
 }
 
-/** 'destroy' an EAP session and dissasociate it from the current request
+/** 'destroy' an EAP session and disassociate it from the current request
  *
  * @note This could be done in the eap_session_t destructor (and was done previously)
  *	but this made the code too hard to follow, and too fragile.
@@ -259,7 +259,7 @@ static char *eap_identity(request_t *request, eap_session_t *eap_session, eap_pa
 	 *  In some EAP methods, the identity may be encrypted, and padded
 	 *  out to the block size of the encryption method.  These identities
 	 *  may contain nuls, and may be much larger than humanly readable
-	 *  identiies.
+	 *  identities.
 	 *
 	 *  The identity value *MUST NOT* be artificially limited or truncated
 	 *  here.

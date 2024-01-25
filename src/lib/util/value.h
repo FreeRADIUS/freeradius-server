@@ -618,7 +618,7 @@ fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_typ
 
 /** @name Escape functions
  *
- * Apply a tranformation to a value box or list of value boxes.
+ * Apply a transformation to a value box or list of value boxes.
  *
  * @{
  */

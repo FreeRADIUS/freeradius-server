@@ -536,7 +536,7 @@ static eap_tls_status_t eap_tls_session_status(request_t *request, eap_session_t
 
 /** Check that this EAP-TLS packet is correct and the progression of EAP-TLS packets is sane
  *
- * @note In the received packet, No data will be present incase of ACK or NAK
+ * @note In the received packet, No data will be present in case of ACK or NAK
  *	in this case the packet->data pointer will be NULL.
  *
  * @param[in] request		the current subrequest.
@@ -936,7 +936,7 @@ static inline CC_HINT(always_inline) unlang_action_t eap_tls_handshake_push(requ
  * Here we implement a basic state machine.  The state machine is implicit and
  * is driven by the state of the TLS session and the flags sent.
  * INCOMING DATA:
- *   1. EAP-TLS should get the compelete TLS data from the peer.
+ *   1. EAP-TLS should get the complete TLS data from the peer.
  *   2. Store that data in a data structure with any other required info
  *   3. Hand this data structure to the TLS module.
  *   4. TLS module will perform its operations on the data and hands back to EAP-TLS

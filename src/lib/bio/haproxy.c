@@ -159,7 +159,7 @@ static ssize_t fr_bio_haproxy_read_next(fr_bio_t *bio, UNUSED void *packet_ctx, 
 	used = fr_bio_buf_used(&my->buffer);
 
 	/*
-	 *	Somehow (magically) we can satisy the read from our buffer.  Do so.  Note that we do NOT run
+	 *	Somehow (magically) we can satisfy the read from our buffer.  Do so.  Note that we do NOT run
 	 *	the activation callback, as there is still data in our buffer
 	 */
 	if (size < used) {

@@ -170,7 +170,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 */
 	if (!eap_round->set_request_id) {
 		/*
-		 *	Id serves to suppport request/response
+		 *	Id serves to support request/response
 		 *	retransmission in the EAP layer and as such
 		 *	must be different for 'adjacent' packets
 		 *	except in case of success/failure-replies.
