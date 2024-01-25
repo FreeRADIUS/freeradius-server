@@ -49,7 +49,7 @@ typedef struct value_pair_s fr_pair_t;
 
 FR_TLIST_TYPES(fr_pair_order_list)
 
-typedef struct {
+typedef struct pair_list_s {
         FR_TLIST_HEAD(fr_pair_order_list)	order;			//!< Maintains the relative order of pairs in a list.
 
 	bool				 _CONST is_child;		//!< is a child of a VP

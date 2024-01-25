@@ -288,6 +288,45 @@ typedef enum {
 typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					  char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t *flags);
 
+/*
+ *	Forward declarations to avoid circular references.
+ */
+typedef struct pair_list_s fr_pair_list_t;
+typedef struct fr_dbuff_s fr_dbuff_t;
+
+/** A generic interface for decoding packets to fr_pair_ts
+ *
+ * A decoding function should decode a single top level packet from wire format.
+ *
+ * Note that unlike #fr_tp_proto_decode_t, this function is NOT passed an encode_ctx.  That is because when we
+ * do cross-protocol encoding, the "outer" protocol has no information it can share with the "inner" protocol.
+ *
+ * @param[in] ctx		to allocate new pairs in.
+ * @param[in] vps		where new VPs will be added
+ * @param[in] data		to decode.
+ * @param[in] data_len		The length of the incoming data.
+ * @return
+ *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
+ *	- > 0 on success.  How many bytes were decoded.
+ */
+typedef ssize_t (*fr_dict_attr_decode_func_t)(TALLOC_CTX *ctx, fr_pair_list_t *vps,
+					      uint8_t const *data, size_t data_len);
+
+/** A generic interface for encoding fr_pair_ts to packets
+ *
+ * An encoding function should encode multiple VPs to a wire format packet
+ *
+ * Note that unlike #fr_tp_proto_encode_t, this function is NOT passed an encode_ctx.  That is because when we
+ * do cross-protocol encoding, the "outer" protocol has no information it can share with the "inner" protocol.
+ *
+ * @param[in] vps		vps to encode
+ * @param[in] dbuff		buffer where data can be written
+ * @return
+ *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
+ *	- > 0 on success.  How many bytes were encoded
+ */
+typedef ssize_t(*fr_dict_attr_encode_func_t)(fr_dbuff_t *dbuff, fr_pair_list_t *vps);
+
 /** Protocol-specific callbacks in libfreeradius-PROTOCOL
  *
  */
@@ -298,6 +337,8 @@ typedef struct {
 	fr_table_num_ordered_t	const *subtype_table;		//!< for "encrypt=1", etc.
 	size_t			subtype_table_len;		//!< length of subtype_table
 	fr_dict_attr_valid_func_t attr_valid;			//!< validation function for new attributes
+	fr_dict_attr_decode_func_t decode;			//!< for decoding attributes
+	fr_dict_attr_encode_func_t encode;			//!< for encoding attributes
 } fr_dict_protocol_t;
 
 typedef struct fr_dict_gctx_s fr_dict_gctx_t;
