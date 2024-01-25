@@ -1963,7 +1963,6 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 			break;
 
 		case PR_CLIENT_NAK:
-			fr_assert(!connection);
 			delay = inst->nak_lifetime;
 			break;
 
