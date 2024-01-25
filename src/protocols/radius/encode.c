@@ -290,7 +290,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t encode_tags(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *encode_ctx)
+static ssize_t encode_pairs(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *encode_ctx)
 {
 	ssize_t			slen;
 	fr_pair_t const	*vp;
@@ -1521,7 +1521,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		fr_assert(packet_ctx->tag < 0x20);
 
 		// recurse to encode the children of this attribute
-		slen = encode_tags(&work_dbuff, &vp->vp_group, encode_ctx);
+		slen = encode_pairs(&work_dbuff, &vp->vp_group, encode_ctx);
 		packet_ctx->tag = 0;
 		if (slen < 0) return slen;
 
@@ -1651,6 +1651,26 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
+
+ssize_t	fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t *list)
+{
+       	fr_radius_ctx_t common_ctx = {};
+	fr_radius_encode_ctx_t encode_ctx = {
+		.common = &common_ctx,
+	};
+
+	/*
+	 *	Just in case we need random numbers.
+	 */
+	encode_ctx.rand_ctx.a = fr_rand();
+	encode_ctx.rand_ctx.b = fr_rand();
+
+	/*
+	 *	Encode the pairs.
+	 */
+	return encode_pairs(dbuff, list, &encode_ctx);
+}
+
 
 static int _test_ctx_free(UNUSED fr_radius_encode_ctx_t *ctx)
 {

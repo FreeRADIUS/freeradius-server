@@ -1015,7 +1015,6 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			break;
 
 		default:
-		no_vector:
 			fr_strerror_const("No authentication vector passed for packet decode");
 			return -1;
 		}
@@ -1328,4 +1327,6 @@ fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
 	.subtype_table = subtype_table,
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr_valid = attr_valid,
+	.decode = fr_radius_decode_foreign,
+	.encode = fr_radius_encode_foreign,
 };

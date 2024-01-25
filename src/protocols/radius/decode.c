@@ -2044,6 +2044,47 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return 2 + ret;
 }
 
+ssize_t fr_radius_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				 uint8_t const *data, size_t data_len)
+{
+	ssize_t slen;
+	uint8_t const *attr, *end;
+
+	fr_radius_ctx_t common_ctx = {};
+	fr_radius_decode_ctx_t decode_ctx = {
+		.common = &common_ctx,
+		.tmp_ctx = talloc(ctx, uint8_t),
+		.end = data + data_len,
+	};
+
+	attr = data;
+	end = decode_ctx.end;
+
+	while (attr < end) {
+		slen = fr_radius_decode_pair(ctx, out, attr, (end - attr), &decode_ctx);
+		if (slen < 0) {
+			talloc_free(decode_ctx.tmp_ctx);
+			return slen - (attr - data);
+		}
+
+		/*
+		 *	If slen is larger than the room in the packet,
+		 *	all kinds of bad things happen.
+		 */
+		 if (!fr_cond_assert(slen <= (end - attr))) {
+			talloc_free(decode_ctx.tmp_ctx);
+			 return -slen - (attr - data);
+		 }
+
+		attr += slen;
+		talloc_free_children(decode_ctx.tmp_ctx);
+	}
+
+	talloc_free(decode_ctx.tmp_ctx);
+	return data_len;
+}
+
+
 static int _test_ctx_free(fr_radius_decode_ctx_t *ctx)
 {
 	TALLOC_FREE(ctx->tags);
