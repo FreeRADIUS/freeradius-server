@@ -134,7 +134,7 @@ for i in ${schema_src_dir}/*; do
     cp -n "${i}" "${schema_dir}/"
 done
 
-# Copy over the auxilliary schemas
+# Copy over the auxiliary schemas
 for i in "${aux_schema_src[@]}" ; do
     cp -n "${i}" "${schema_dir}/"
 done
