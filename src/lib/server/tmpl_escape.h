@@ -37,7 +37,7 @@ typedef enum {
 							///< from uctx.ptr.
 } tmpl_escape_uctx_type_t;
 
-/** Funtion to allocate a user context for escaping
+/** Function to allocate a user context for escaping
  *
  * @param[in] request		Request that the tmpl is being evaluated for.
  * @param[in] uctx		The user context that was passed via the tmpl_escape_t.

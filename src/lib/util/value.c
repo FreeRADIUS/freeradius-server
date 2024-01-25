@@ -5862,7 +5862,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 
 /** Escape a single value box in place
  *
- * @note Applies recurssively to the children of group boxes.
+ * @note Applies recursively to the children of group boxes.
  *
  * @param[in] vb		to escape.
  * @param[in] escape		function to apply to the value box.
@@ -5886,7 +5886,7 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escap
 
 /** Escape a list of value boxes in place
  *
- * @note Applies recurssively to the children of group boxes.
+ * @note Applies recursively to the children of group boxes.
  *
  * @note on error, the list may be left in an inconsistent/partially escaped state.
  *

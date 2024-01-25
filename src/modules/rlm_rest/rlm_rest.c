@@ -1102,7 +1102,7 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser
 
 	/*
 	 *  Custom hackery to figure out if data was set we can't do it any other way because we can't
-	 *  parse the tmpl_t execept within a call_env.
+	 *  parse the tmpl_t except within a call_env.
 	 *
 	 *  We have custom body data so we set REST_HTTP_BODY_CUSTOM, but also need to try and
 	 *  figure out what content-type to use. So if they've used the canonical form we

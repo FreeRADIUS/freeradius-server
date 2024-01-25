@@ -401,7 +401,7 @@ fr_pair_t *_tmpl_dcursor_init(int *err, TALLOC_CTX *ctx, tmpl_dcursor_ctx_t *cc,
 	if (err) *err = 0;
 
 	/*
-	 *	Navigate to the correct request context (parent, outer, curent, etc...)
+	 *	Navigate to the correct request context (parent, outer, current, etc...)
 	 */
 	if (tmpl_request_ptr(&request, tmpl_request(vpt)) < 0) {
 		if (err) *err = -3;

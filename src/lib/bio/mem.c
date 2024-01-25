@@ -202,7 +202,7 @@ static ssize_t fr_bio_mem_read_packet(fr_bio_t *bio, void *packet_ctx, void *buf
 
 		/*
 		 *	We've tried to make room and failed.  Which means that the buffer is full, AND there
-		 *	still isn't a compelte packet in the buffer.  This is therefore a fatal error.  The
+		 *	still isn't a complete packet in the buffer.  This is therefore a fatal error.  The
 		 *	application has not supplied us with enough read_buffer space to store a complete
 		 *	packet.
 		 */
