@@ -2062,13 +2062,13 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 	}
 
 	fr_assert(!connection);
-	fr_assert(client->ht != NULL);
 
 	/*
 	 *	Find out how many connections are using this
 	 *	client.
 	 */
 	pthread_mutex_lock(&client->mutex);
+	fr_assert(client->ht != NULL);
 	connections = fr_hash_table_num_elements(client->ht);
 	pthread_mutex_unlock(&client->mutex);
 
