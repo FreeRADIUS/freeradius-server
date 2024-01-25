@@ -1259,6 +1259,8 @@ static rs_request_t *rs_request_alloc(TALLOC_CTX *ctx)
 	return original;
 }
 
+static const uint8_t zeros[RADIUS_AUTH_VECTOR_LENGTH] = {};
+
 static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkthdr const *header, uint8_t const *data)
 {
 	rs_stats_t		*stats = event->stats;
@@ -1492,7 +1494,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 			ret = fr_radius_decode_simple(packet, &decoded,
 						      packet->data, packet->data_len,
-						      original ? original->expect->data + 4 : NULL,
+						      (original && original->expect && original->expect->data) ?
+							original->expect->data + 4 : zeros,
 						      conf->radius_secret);
 			if (ret < 0) {
 				fr_radius_packet_free(&packet);		/* Also frees vps */
