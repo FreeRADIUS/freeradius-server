@@ -13,6 +13,7 @@ $(eval $(call TEST_BOOTSTRAP))
 #
 #	Config settings
 #
+RADCLIENT            ?= radclient
 RADCLIENT_BUILD_DIR  := $(BUILD_DIR)/tests/radclient
 RADCLIENT_RADIUS_LOG := $(RADCLIENT_BUILD_DIR)/radiusd.log
 RADCLIENT_GDB_LOG    := $(RADCLIENT_BUILD_DIR)/gdb.log
@@ -34,7 +35,7 @@ $(OUTPUT)/auth_proxy.txt: $(BUILD_DIR)/lib/local/rlm_radius.la
 #
 #	Run the radclient commands against the radiusd.
 #
-$(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/local/proto_radius.la $(BUILD_DIR)/lib/local/libfreeradius-radius.la | $(TEST).radiusd_kill $(TEST).radiusd_start
+$(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local/proto_radius.la $(BUILD_DIR)/lib/local/libfreeradius-radius.la | $(TEST).radiusd_kill $(TEST).radiusd_start
 	$(eval TARGET   := $(notdir $<)$(E))
 	$(eval TYPE     := $(shell echo $(TARGET) | cut -f1 -d '_'))
 	$(eval CMD_TEST := $(patsubst %.txt,%.cmd,$<))
@@ -46,14 +47,14 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/local/proto_radius.la $(BUILD_DIR)/lib/lo
 
 	${Q}echo "RADCLIENT-TEST INPUT=$(TARGET) ARGV=\"$(ARGV)\""
 	${Q}[ -f $(dir $@)/radiusd.pid ] || exit 1
-	${Q}if ! $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
+	${Q}if ! $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET) 1> $(FOUND) 2>&1; then \
 		if [ "$(IGNORE_ERROR)" != "1" ]; then                               \
 			echo "FAILED";                                              \
 			cat $(FOUND);                                               \
 			rm -f $(BUILD_DIR)/tests/test.radclient;		    \
 			$(MAKE) --no-print-directory test.radclient.radiusd_kill;   \
 			echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-			echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
+			echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -xF -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
 			exit 1;                                                     \
 		fi;                                                                 \
 	fi
@@ -81,7 +82,7 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/local/proto_radius.la $(BUILD_DIR)/lib/lo
 	${Q}if [ -e "$(EXPECTED)" ] && ! diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND); then  \
 		echo "RADCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
+		echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
 		echo "ERROR: File $(FOUND) is not the same as $(EXPECTED)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		echo "e.g: $(EXPECTED)";                                    \
@@ -92,7 +93,7 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/lib/local/proto_radius.la $(BUILD_DIR)/lib/lo
 	elif [ -e "$(CMD_TEST)" ] && ! $(SHELL) $(CMD_TEST); then           \
 		echo "RADCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
-		echo "RADCLIENT: $(TEST_BIN)/radclient $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
+		echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
 		echo "ERROR: The script $(CMD_TEST) can't validate the content of $(FOUND)"; \
 		echo "If you did some update on the radclient code, please be sure to update the unit tests."; \
 		rm -f $(BUILD_DIR)/tests/test.radclient;		    \

@@ -1,5 +1,6 @@
 SUBMAKEFILES := \
     radclient.mk \
+    radclient-ng.mk \
     radict.mk \
     radiusd.mk \
     radlast.mk \
