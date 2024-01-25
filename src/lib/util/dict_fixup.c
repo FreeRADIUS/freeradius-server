@@ -229,86 +229,63 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 {
 	fr_dict_t		*dict;
 	fr_dict_attr_t const	*da;
-	char			*p;
+	char const		*name;
 	ssize_t			slen;
 
-	da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref);
-	if (da) return da;
-
 	/*
-	 *	The attribute doesn't exist, and the reference
-	 *	isn't in a "PROTO.ATTR" format, die.
+	 *	Ref to attribute in existing dictionary.  The dictionary MUST be loaded by $INCLUDEs.
 	 */
-	p = strchr(ref, '.');
+	if (ref[0] != '.') {
+		da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref);
+		if (da) return da;
 
-	/*
-	 *	Get / skip protocol name.
-	 */
-	slen = dict_by_protocol_substr(NULL,
-				       &dict, &FR_SBUFF_IN(ref, strlen(ref)),
-				       *dict_def);
-	if (slen <= 0) {
-		fr_dict_t *other;
-
-		if (p) *p = '\0';
-
-		/*
-		 *	Can't load the dictionary we're loading.
-		 */
-		if (dict == *dict_def) {
-			fr_strerror_printf("Cannot reference parent dictionary %s from within the same dictionary", fr_dict_root(dict)->name);
-			return NULL;
-		}
-
-		if (fr_dict_protocol_afrom_file(&other, ref, NULL, filename) < 0) {
-			return NULL;
-		}
-
-		if (p) *p = '.';
-
-		/*
-		 *	Grab the protocol name again
-		 */
-		dict = other;
-		if (!p) {
-			*dict_def = other;
-			return other->root;
-		}
-
-		slen = p - ref;
-	}
-
-	if (slen < 0) {
-	invalid_reference:
-		fr_strerror_printf("Invalid attribute reference '%s' at %s[%d]",
-				   ref,
+		fr_strerror_printf("Invalid attribute reference '%s' at %s[%d]", ref,
 				   fr_cwd_strip(filename), line);
 		return NULL;
 	}
 
-	/*
-	 *	No known dictionary, so we're asked to just
-	 *	use the whole string.  Which we did above.  So
-	 *	either it's a bad ref, OR it's a ref to a
-	 *	dictionary which doesn't exist.
-	 */
-	if (slen == 0) goto invalid_reference;
+	name = ref + 2;		/* already checked when we insert it */
 
 	/*
-	 *	Just a bare reference to the protocol.  Use the root.
+	 *	Reference to foreign protocol.  Get the protocol name.
 	 */
-	if (!ref[slen]) {
-		*dict_def = dict;
-		return fr_dict_root(dict);
+	slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_IN(name, strlen(name)), NULL);
+	if (slen <= 0) {
+		char *p;
+
+		p = strchr(name, '.');
+		if (p) *p = '\0';
+
+		if (fr_dict_protocol_afrom_file(&dict, name, NULL, filename) < 0) {
+			fr_strerror_printf("Unknown protocol '%s' at %s[%d]", name,
+					   fr_cwd_strip(filename), line);
+			return NULL;
+		}
+
+		/*
+		 *	The reference is to the root of the foreign protocol, we're done.
+		 */
+		if (!p) {
+			*dict_def = dict;
+			return dict->root;
+		}
+
+		name = p + 1;
+	} else {
+		/*
+		 *	The foreign dictionary was loaded by someone
+		 *	else, try to resolve the attribute.
+		 */
+		name += slen + 1;
 	}
 
 	/*
 	 *	Look up the attribute.
 	 */
-	da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), ref + slen + 1);
+	da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), name);
 	if (!da) {
-		fr_strerror_printf("No such attribute '%s' in reference at %s[%d]",
-				   ref + slen + 1, fr_cwd_strip(filename), line);
+		fr_strerror_printf("No such attribute '%s' in protocol '%s' at %s[%d]",
+				   name, dict->root->name, fr_cwd_strip(filename), line);
 		return NULL;
 	}
 

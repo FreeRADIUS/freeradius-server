@@ -779,118 +779,118 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
  */
 static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *parent, fr_dict_attr_t const *da, char *ref)
 {
-	/*
-	 *	Groups can refer to other dictionaries, or other attributes.
-	 */
-	if (da->type == FR_TYPE_GROUP) {
-		fr_dict_attr_t		*self;
-		fr_dict_t		*dict;
-		char			*p;
-		ssize_t			slen;
-
-		memcpy(&self, &da, sizeof(self)); /* const issues */
-
-		/*
-		 *	No qualifiers, just point it to the root of the current dictionary.
-		 */
-		if (!ref) {
-			dict = ctx->dict;
-			da = ctx->dict->root;
-			goto check;
-		}
-
-		/*
-		 *	Else we find the reference.
-		 */
-		da = fr_dict_attr_by_oid(NULL, parent, ref);
-		if (da) {
-			dict = ctx->dict;
-			goto check;
-		}
-
-		/*
-		 *	The attribute doesn't exist, and the reference
-		 *	is FOO, it might be just a ref to a
-		 *	dictionary.
-		 */
-		p = strchr(ref, '.');
-		if (!p) goto fixup;
-
-		/*
-		 *	Get / skip protocol name.
-		 */
-		slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_IN(ref, strlen(ref)), ctx->dict);
-		if (slen < 0) {
-			talloc_free(ref);
-			return -1;
-		}
-
-		/*
-		 *	No known dictionary, so we're asked to just
-		 *	use the whole string.  Which we did above.  So
-		 *	either it's a bad ref, OR it's a ref to a
-		 *	dictionary which hasn't yet been loaded.
-		 *
-		 *	Save the fixup for later, when we've hopefully
-		 *	loaded the dictionary.
-		 */
-		if (slen == 0) {
-		fixup:
-			if (dict_fixup_group(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
-					     self, ref, talloc_array_length(ref) - 1) < 0) {
-			oom:
-				talloc_free(ref);
-				return -1;
-			}
-			talloc_free(ref);
-
-			return 0;
-
-		} else if (ref[slen] == '\0') {
-			da = dict->root;
-			goto check;
-
-		} else {
-			/*
-			 *	Look up the attribute.
-			 */
-			da = fr_dict_attr_by_oid(NULL, parent, ref + slen);
-			if (!da) {
-				fr_strerror_printf("protocol loaded, but no attribute '%s'", ref + slen);
-				talloc_free(ref);
-				return -1;
-			}
-
-		check:
-			talloc_free(ref);
-
-			if (da->type != FR_TYPE_TLV) {
-				fr_strerror_const("References MUST be to an ATTRIBUTE of type 'tlv'");
-				return -1;
-			}
-
-			if (fr_dict_attr_ref(da)) {
-				fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
-				return -1;
-			}
-
-			self->dict = dict;
-
-			dict_attr_ref_set(self, da);
-		}
-	}
+	fr_dict_t		*dict;
+	ssize_t			slen;
+	char const		*name;
 
 	/*
 	 *	It's a "clone" thing.
 	 */
-	if (ref) {
+	if (da->type != FR_TYPE_GROUP) {
+		if (!ref) return 0;
+
 		if (dict_fixup_clone(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
 				     fr_dict_attr_unconst(parent), fr_dict_attr_unconst(da),
-				     ref, talloc_array_length(ref) - 1) < 0) goto oom;
+				     ref, talloc_array_length(ref) - 1) < 0) {
+		fail:
+			talloc_free(ref);
+			return -1;
+		}
+
 		talloc_free(ref);
+		return 0;
 	}
 
-	return 0;
+	/*
+	 *	No reference, just point it to the root of the current dictionary.
+	 */
+	if (!ref) {
+		fr_dict_attr_t		*self;
+
+		dict = ctx->dict;
+		da = ctx->dict->root;
+
+set:
+		talloc_free(ref);
+
+		self = UNCONST(fr_dict_attr_t *, da);
+		self->dict = dict;
+
+		dict_attr_ref_set(self, da);	
+		return 0;
+	}
+
+	/*
+	 *	Else refs refer to attributes in the current dictionary.
+	 */
+	if (ref[0] != '.') {
+		da = fr_dict_attr_by_oid(NULL, parent, ref);
+		if (da) {
+			dict = ctx->dict;
+			goto set;
+		}
+
+		/*
+		 *	The attribute doesn't exist (yet) save a reference to it.
+		 */
+	add_fixup:
+		if (dict_fixup_group(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+				     UNCONST(fr_dict_attr_t *, da), ref, talloc_array_length(ref) - 1) < 0) goto fail;
+			
+		talloc_free(ref);
+		return 0;
+	}
+
+	if (ref[1] != '.') {
+		fr_strerror_const("Invalid reference");
+		goto fail;
+	}
+
+	name = ref + 2;
+
+	/*
+	 *	Get / skip protocol name.
+	 */
+	slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_IN(name, strlen(name)), ctx->dict);
+	if (slen <= 0) goto add_fixup;
+
+	if (strncmp(name, ctx->dict->root->name, slen) == 0) {
+		fr_strerror_const("Cannot reference the current protocol dictionary");
+		goto fail;
+	}
+
+	/*
+	 *	It's a reference to the root of the foreign dictionary.
+	 */
+	if (name[slen] == '\0') {
+		da = dict->root;
+		goto set;
+	}
+
+	/*
+	 *	Look up the attribute.
+	 */
+	da = fr_dict_attr_by_oid(NULL, dict->root, name + slen);
+	if (!da) {
+		fr_strerror_printf("protocol '%s' is loaded, but there is no such attribute '%s'",
+				   dict->root->name, name + slen);
+		goto fail;
+	}
+
+	/*
+	 *	Refs must satisfy certain properties.
+	 */
+	if (da->type != FR_TYPE_TLV) {
+		fr_strerror_const("References MUST be to an ATTRIBUTE of type 'tlv'");
+		goto fail;
+	}
+
+	if (fr_dict_attr_ref(da)) {
+		fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
+		goto fail;
+	}
+
+	goto set;
 }
 
 /*
