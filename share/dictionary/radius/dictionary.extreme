@@ -27,12 +27,26 @@ ATTRIBUTE	VM-VPP-Name				214	string
 ATTRIBUTE	VM-IP-Addr				215	ipaddr
 ATTRIBUTE	VM-VLAN-ID				216	integer
 ATTRIBUTE	VM-VR-Name				217	string
+ATTRIBUTE	Netlogin-VR-Name		    218		string
+ATTRIBUTE	NSI-Type				230		integer		has_tag
+ATTRIBUTE	NSI-ID					231		string		has_tag
+ATTRIBUTE	Policy-ACL				232		string
+ATTRIBUTE	Email-Address			233		string
+ATTRIBUTE	Dynamic-MHSA			250		integer
+ATTRIBUTE	Dynamic-ACL				251		string
+ATTRIBUTE	Dynamic-Config			252		string
+ATTRIBUTE	Dynamic-Client-Assignments          253		string
 
 VALUE	CLI-Authorization		Disabled		0
 VALUE	CLI-Authorization		Enabled			1
 
 VALUE	Netlogin-Only			Disabled		0
 VALUE	Netlogin-Only			Enabled			1
+
+VALUE	NSI-Type			VNI-OR-ISID		1
+
+VALUE	Dynamic-MHSA			Disabled		0
+VALUE	Dynamic-MHSA			Enabled			1
 
 END-VENDOR	Extreme
 ALIAS		Extreme					Vendor-Specific.Extreme
