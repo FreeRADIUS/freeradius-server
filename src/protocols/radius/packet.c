@@ -170,6 +170,7 @@ int fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	packet_ctx.tmp_ctx = talloc(packet, uint8_t);
 	packet_ctx.end = packet->data + packet->data_len;
+	packet_ctx.request_authenticator = &common_ctx.vector;
 
 	/*
 	 *	Extract attribute-value pairs
