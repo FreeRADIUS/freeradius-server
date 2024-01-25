@@ -28,7 +28,7 @@ jobs:
       fail-fast: true
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -67,7 +67,7 @@ jobs:
       run: tar -czf site.tgz doc/doxygen/html build/docsite
 
     - name: Store output
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: compiled-docs
         path: site.tgz
@@ -102,7 +102,7 @@ jobs:
 
     steps:
     - name: Retrieve output
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compiled-docs
 
@@ -150,7 +150,7 @@ jobs:
             IdentityFile ~/.ssh/id_rsa-git
 
     - name: Retrieve output
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: compiled-docs
 

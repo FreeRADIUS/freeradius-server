@@ -76,7 +76,7 @@ jobs:
     steps:
 
       # Checkout, but defer pulling LFS objects until we've restored the cache
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           lfs: false
 

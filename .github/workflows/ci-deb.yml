@@ -119,7 +119,7 @@ jobs:
     - name: Update apt repository lists
       run: apt-get update
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         path: freeradius
 
@@ -141,7 +141,7 @@ jobs:
         mv *.deb debs
 
     - name: Restore eapol_test build directory from cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
@@ -156,7 +156,7 @@ jobs:
       working-directory: freeradius
 
     - name: Store DEBs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: debs-${{ matrix.env.NAME }}
         path: debs
@@ -204,7 +204,7 @@ jobs:
     steps:
 
     - name: Load DEBs
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: debs-${{ matrix.env.NAME }}
 
@@ -259,7 +259,7 @@ jobs:
         mv eapol_test /usr/local/bin
         chmod +x /usr/local/bin/eapol_test
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         path: freeradius
 
@@ -274,7 +274,7 @@ jobs:
 
     - name: Upload radius logs on failure
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: radius-logs-${{ matrix.env.NAME }}
         path: |
