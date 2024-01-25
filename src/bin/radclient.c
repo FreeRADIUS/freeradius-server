@@ -1183,8 +1183,9 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	/*
 	 *	Decode the packet
 	 */
-	if (fr_radius_packet_decode(request, &request->request_pairs,
-				    request->packet, NULL, secret) != 0) {
+	if (fr_radius_decode_simple(request, &request->request_pairs,
+				    request->packet->data, request->packet->data_len,
+				    NULL, secret) < 0) {
 		REDEBUG("Failed decoding CoA packet");
 		return 0;
 	}
@@ -1357,8 +1358,9 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (fr_radius_packet_decode(request, &request->reply_pairs,
-				    request->reply, request->packet, secret) != 0) {
+	if (fr_radius_decode_simple(request, &request->reply_pairs,
+				    request->reply->data, request->reply->data_len,
+				    request->packet->vector, secret) < 0) {
 		REDEBUG("Reply decode failed");
 		stats.lost++;
 		goto packet_done;

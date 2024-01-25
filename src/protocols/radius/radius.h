@@ -177,6 +177,10 @@ ssize_t		fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 uint8_t *packet, size_t packet_len,
 				 fr_radius_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
 
+ssize_t		fr_radius_decode_simple(TALLOC_CTX *ctx, fr_pair_list_t *out,
+					uint8_t *packet, size_t packet_len,
+					uint8_t const *vector, char const *secret) CC_HINT(nonnull(1,2,3,6));
+
 int		fr_radius_init(void);
 
 void		fr_radius_free(void);

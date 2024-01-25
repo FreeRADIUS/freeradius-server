@@ -1042,6 +1042,30 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return packet_len;
 }
 
+/** Simple wrapper for callers who just need a shared secret
+ *
+ */
+ssize_t	fr_radius_decode_simple(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				uint8_t *packet, size_t packet_len,
+				uint8_t const *vector, char const *secret)
+{
+	ssize_t rcode;
+	fr_radius_ctx_t		common_ctx = {};
+	fr_radius_decode_ctx_t	packet_ctx = {};
+
+	common_ctx.secret = secret;
+	common_ctx.secret_length = strlen(secret);
+
+	packet_ctx.common = &common_ctx;
+	packet_ctx.tmp_ctx = talloc(ctx, uint8_t);
+	packet_ctx.request_authenticator = vector;
+	packet_ctx.end = packet + packet_len;
+
+	rcode = fr_radius_decode(ctx, out, packet, packet_len, &packet_ctx);
+	talloc_free(packet_ctx.tmp_ctx);
+
+	return rcode;
+}
 
 int fr_radius_init(void)
 {
