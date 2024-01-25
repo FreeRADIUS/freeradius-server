@@ -102,54 +102,6 @@ enum {
 #define flag_long_extended(_flags)   (!(_flags)->extra && (_flags)->subtype == FLAG_LONG_EXTENDED_ATTR)
 #define flag_tunnel_password(_flags) (!(_flags)->extra && (((_flags)->subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD) || ((_flags)->subtype == FLAG_TAGGED_TUNNEL_PASSWORD)))
 
-typedef struct {
-	fr_pair_t	*parent;
-	fr_dcursor_t	cursor;
-} fr_radius_tag_ctx_t;
-
-typedef struct {
-	char const	*secret;
-	size_t		secret_length;
-
-	bool		add_proxy_state;		//!< do we add a Proxy-State?
-	uint64_t	my_proxy_state;			//!< if so, this is its value
-
-	uint32_t	acct_delay_time;		//!< additional time to add to acct_delay_time
-
-	uint8_t 	vector[RADIUS_AUTH_VECTOR_LENGTH]; //!< vector for authenticating the reply
-} fr_radius_ctx_t;
-
-typedef struct {
-	fr_radius_ctx_t		*common;
-
-	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
-	int			salt_offset;		//!< for tunnel passwords
-
-	uint8_t			tag;			//!< current tag for encoding
-
-	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
-	bool			seen_message_authenticator;
-} fr_radius_encode_ctx_t;
-
-typedef struct {
-	fr_radius_ctx_t		*common;
-
-	uint8_t const		*vector;		//!< of the request packet
-
-	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
-	uint8_t const  		*end;			//!< end of the packet
-
-	uint8_t			request_code;		//!< original code for the request.
-
-	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
-	bool			verify;			//!< can skip verify for dynamic clients
-	bool			require_message_authenticator;
-
-	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
-	fr_pair_list_t		*tag_root;		//!< Where to insert tag attributes.
-	TALLOC_CTX		*tag_root_ctx;		//!< Where to allocate new tag attributes.
-} fr_radius_decode_ctx_t;
-
 /*
  *	protocols/radius/base.c
  */
@@ -172,8 +124,8 @@ ssize_t		fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 				 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_list_t *vps);
 
 ssize_t		fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
-				 uint8_t *packet, size_t packet_len,
-				 fr_radius_decode_ctx_t *decode_ctx) CC_HINT(nonnull);
+				 uint8_t const *packet, size_t packet_len, uint8_t const *vector,
+				 char const *secret, UNUSED size_t secret_len) CC_HINT(nonnull(1,2,3,6));
 
 int		fr_radius_init(void);
 
@@ -203,6 +155,47 @@ int		fr_radius_packet_send(fr_radius_packet_t *packet, fr_pair_list_t *list,
 
 #define fr_radius_packet_log_hex(_log, _packet) _fr_radius_packet_log_hex(_log, _packet, __FILE__, __LINE__)
 void		_fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *packet, char const *file, int line) CC_HINT(nonnull);
+
+typedef struct {
+	fr_pair_t	*parent;
+	fr_dcursor_t	cursor;
+} fr_radius_tag_ctx_t;
+
+typedef struct {
+	char const	*secret;
+	size_t		secret_length;
+
+	bool		add_proxy_state;		//!< do we add a Proxy-State?
+	uint64_t	my_proxy_state;			//!< if so, this is its value
+
+	uint32_t	acct_delay_time;		//!< additional time to add to acct_delay_time
+
+	uint8_t 	vector[RADIUS_AUTH_VECTOR_LENGTH]; //!< vector for authenticating the reply
+} fr_radius_ctx_t;
+
+typedef struct {
+	fr_radius_ctx_t		*common;
+
+	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
+	int			salt_offset;		//!< for tunnel passwords
+
+	uint8_t			tag;			//!< current tag for encoding
+	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
+	bool			seen_message_authenticator;
+} fr_radius_encode_ctx_t;
+
+typedef struct {
+	fr_radius_ctx_t		*common;
+
+	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
+	uint8_t const  		*end;			//!< end of the packet
+
+	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
+
+	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
+	fr_pair_list_t		*tag_root;		//!< Where to insert tag attributes.
+	TALLOC_CTX		*tag_root_ctx;		//!< Where to allocate new tag attributes.
+} fr_radius_decode_ctx_t;
 
 /*
  *	protocols/radius/abinary.c

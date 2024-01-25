@@ -973,24 +973,25 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
-			 uint8_t *packet, size_t packet_len,
-			 fr_radius_decode_ctx_t *decode_ctx)
+/** Decode a raw RADIUS packet into VPs.
+ *
+ */
+ssize_t fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
+			 uint8_t const *packet, size_t packet_len, uint8_t const *vector,
+			 char const *secret, size_t secret_len)
 {
 	ssize_t			slen;
 	uint8_t const		*attr, *end;
+	fr_radius_ctx_t		common_ctx = {};
+	fr_radius_decode_ctx_t	packet_ctx = {};
 
-	/*
-	 *	We can skip verification for dynamic client checks, and where packets are unsigned as with
-	 *	RADIUS/1.1.
-	 */
-	if (decode_ctx->verify) {
-		if (fr_radius_verify(packet, decode_ctx->vector,
-				     (uint8_t const *) decode_ctx->common->secret, decode_ctx->common->secret_length,
-				     decode_ctx->require_message_authenticator) < 0) {
-			return -1;
-		}
-	}
+	common_ctx.secret = secret;
+	common_ctx.secret_length = secret_len;
+	memcpy(common_ctx.vector, vector ? vector : packet + 4, sizeof(common_ctx.vector));
+
+	packet_ctx.common = &common_ctx;
+	packet_ctx.tmp_ctx = talloc_init_const("tmp");
+	packet_ctx.end = packet + packet_len;
 
 	attr = packet + 20;
 	end = packet + packet_len;
@@ -1000,27 +1001,33 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	he doesn't, all hell breaks loose.
 	 */
 	while (attr < end) {
-		slen = fr_radius_decode_pair(ctx, out, attr, (end - attr), decode_ctx);
-		if (slen < 0) return slen;
+		slen = fr_radius_decode_pair(ctx, out, attr, (end - attr), &packet_ctx);
+		if (slen < 0) {
+		fail:
+			talloc_free(packet_ctx.tmp_ctx);
+			talloc_free(packet_ctx.tags);
+			return slen;
+		}
 
 		/*
 		 *	If slen is larger than the room in the packet,
 		 *	all kinds of bad things happen.
 		 */
 		 if (!fr_cond_assert(slen <= (end - attr))) {
-			 return -slen;
+			 goto fail;
 		 }
 
 		attr += slen;
-		talloc_free_children(decode_ctx->tmp_ctx);
+		talloc_free_children(packet_ctx.tmp_ctx);
 	}
 
 	/*
 	 *	We've parsed the whole packet, return that.
 	 */
+	talloc_free(packet_ctx.tmp_ctx);
+	talloc_free(packet_ctx.tags);
 	return packet_len;
 }
-
 
 int fr_radius_init(void)
 {

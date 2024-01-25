@@ -2121,7 +2121,8 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	test_ctx->end = data + packet_len;
 
-	return fr_radius_decode(ctx, out, UNCONST(uint8_t *, data), packet_len, test_ctx);
+	return fr_radius_decode(ctx, out, data, packet_len, test_ctx->common->vector,
+				test_ctx->common->secret, talloc_array_length(test_ctx->common->secret) - 1);
 }
 
 static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_attr_t const *parent,

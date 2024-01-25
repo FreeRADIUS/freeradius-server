@@ -1159,8 +1159,6 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	rlm_radius_udp_t const *inst = h->thread->inst;
 	size_t			packet_len;
 	uint8_t			code;
-	fr_radius_ctx_t		common_ctx;
-	fr_radius_decode_ctx_t	decode_ctx;
 
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
@@ -1189,31 +1187,23 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 		return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 	}
 
-	common_ctx = (fr_radius_ctx_t) {
-		.secret = inst->secret,
-		.secret_length = talloc_array_length(inst->secret) - 1,
-	};
-
-	decode_ctx = (fr_radius_decode_ctx_t) {
-		.common = &common_ctx,
-		.request_code = u->code,
-		.vector = &request_authenticator[0],
-		.tmp_ctx = talloc(ctx, uint8_t),
-		.end = data + packet_len,
-		.verify = true,
-	};
+	if (fr_radius_verify(data, request_authenticator,
+			     (uint8_t const *) inst->secret, talloc_array_length(inst->secret) - 1, false) < 0) {
+		RPWDEBUG("Ignoring response with invalid signature");
+		return DECODE_FAIL_MA_INVALID;
+	}
 
 	/*
-	 *	!client->active means a fake packet defining a dynamic client - so there will
-	 *	be no secret defined yet - so can't verify.
+	 *	Decode the attributes, in the context of the reply.
+	 *	This only fails if the packet is strangely malformed,
+	 *	or if we run out of memory.
 	 */
-	if (fr_radius_decode(request->request_ctx, &request->request_pairs,
-			     data, data_len, &decode_ctx) < 0) {
-		talloc_free(decode_ctx.tmp_ctx);
-		RPEDEBUG("Failed reading packet");
+	if (fr_radius_decode(ctx, reply, data, packet_len, request_authenticator,
+			     inst->secret, talloc_array_length(inst->secret) - 1) < 0) {
+		REDEBUG("Failed decoding attributes for packet");
+		fr_pair_list_free(reply);
 		return DECODE_FAIL_UNKNOWN;
 	}
-	talloc_free(decode_ctx.tmp_ctx);
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
 	       fr_radius_packet_names[code], code, packet_len, h->name);

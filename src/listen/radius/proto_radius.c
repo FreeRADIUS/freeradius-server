@@ -201,9 +201,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 {
 	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
-	fr_client_t const	*client;
-	fr_radius_ctx_t		common_ctx;
-	fr_radius_decode_ctx_t	decode_ctx;
+	fr_client_t const		*client;
 
 	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
@@ -216,23 +214,19 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 
 	client = address->radclient;
 
-	common_ctx = (fr_radius_ctx_t) {
-		.secret = client->secret,
-		.secret_length = talloc_array_length(client->secret) - 1,
-	};
-
-	decode_ctx = (fr_radius_decode_ctx_t) {
-		.common = &common_ctx,
-		.tmp_ctx = talloc(request, uint8_t),
-		.end = data + data_len,
-		.verify = client->active,
-		.require_message_authenticator = client->message_authenticator,
-	};
+	/*
+	 *	!client->active means a fake packet defining a dynamic client - so there will
+	 *	be no secret defined yet - so can't verify.
+	 */
+	if (client->active &&
+	    fr_radius_verify(data, NULL, (uint8_t const *) client->secret, talloc_array_length(client->secret) - 1,
+			     client->message_authenticator) < 0) {
+		RPEDEBUG("Failed verifying packet signature.");
+		return -1;
+	}
 
 	/*
-	 *	The verify() routine over-writes the request packet vector.
-	 *
-	 *	@todo - That needs to be changed.
+	 *	Hacks for now until we have a lower-level decode routine.
 	 */
 	request->packet->code = data[0];
 	request->packet->id = data[1];
@@ -243,16 +237,16 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	request->packet->data_len = data_len;
 
 	/*
-	 *	!client->active means a fake packet defining a dynamic client - so there will
-	 *	be no secret defined yet - so can't verify.
+	 *	Note that we don't set a limit on max_attributes here.
+	 *	That MUST be set and checked in the underlying
+	 *	transport, via a call to fr_radius_ok().
 	 */
 	if (fr_radius_decode(request->request_ctx, &request->request_pairs,
-			     data, data_len, &decode_ctx) < 0) {
-		talloc_free(decode_ctx.tmp_ctx);
-		RPEDEBUG("Failed reading packet");
+			     request->packet->data, request->packet->data_len, NULL,
+			     client->secret, talloc_array_length(client->secret) - 1) < 0) {
+		RPEDEBUG("Failed decoding packet");
 		return -1;
 	}
-	talloc_free(decode_ctx.tmp_ctx);
 
 	/*
 	 *	Set the rest of the fields.
