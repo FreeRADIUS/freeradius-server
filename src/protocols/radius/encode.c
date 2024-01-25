@@ -190,7 +190,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);
 
-	fr_md5_update(md5_ctx, packet_ctx->common->vector, RADIUS_AUTH_VECTOR_LENGTH);
+	fr_md5_update(md5_ctx, packet_ctx->request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, &tpasswd[0], 2);
 
 	/*
@@ -506,7 +506,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	Encode the password in place
 		 */
 		slen = encode_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff),
-				       packet_ctx->common->secret, packet_ctx->common->vector);
+				       packet_ctx->common->secret, packet_ctx->request_authenticator);
 		if (slen < 0) return slen;
 		encrypted = true;
 		break;
@@ -557,7 +557,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	there can pass a marker so we can use it here, too.
 		 */
 		slen = fr_radius_ascend_secret(&work_dbuff, fr_dbuff_current(&value_start), fr_dbuff_used(&value_dbuff),
-					       packet_ctx->common->secret, packet_ctx->common->vector);
+					       packet_ctx->common->secret, packet_ctx->request_authenticator);
 		if (slen < 0) return slen;
 		encrypted = true;
 		break;
@@ -1680,7 +1680,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx->common->secret = talloc_strdup(test_ctx->common, "testing123");
 	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret);
 
-	memcpy(test_ctx->common->vector, vector, sizeof(test_ctx->common->vector));
+	test_ctx->request_authenticator = vector;
 	test_ctx->rand_ctx.a = 6809;
 	test_ctx->rand_ctx.b = 2112;
 	talloc_set_destructor(test_ctx, _test_ctx_free);

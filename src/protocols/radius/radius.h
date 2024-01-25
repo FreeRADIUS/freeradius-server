@@ -122,6 +122,8 @@ typedef struct {
 typedef struct {
 	fr_radius_ctx_t		*common;
 
+	uint8_t const		*request_authenticator;
+
 	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
 	int			salt_offset;		//!< for tunnel passwords
 

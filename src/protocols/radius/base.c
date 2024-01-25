@@ -875,6 +875,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	common_ctx.secret_length = secret_len;
 
 	packet_ctx.common = &common_ctx;
+	packet_ctx.request_authenticator = common_ctx.vector;
 	packet_ctx.rand_ctx.a = fr_rand();
 	packet_ctx.rand_ctx.b = fr_rand();
 	packet_ctx.disallow_tunnel_passwords = disallow_tunnel_passwords[code];
