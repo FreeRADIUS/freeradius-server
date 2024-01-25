@@ -61,13 +61,13 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 	${Q}if [ -e "$(EXPECTED)" ]; then                                                                     \
 		grep -v "^#" $(EXPECTED) > $(FOUND).result || true;                                           \
 		sed -i.bak -e '$${/Executing: /d;}' $(FOUND);                                                 \
-		if ! cmp $(FOUND) $(FOUND).result; then                                                       \
+		if ! cmp $(FOUND).result $(FOUND); then                                                       \
 			echo "RADSNIFF FAILED $@";                                                                \
 			echo "RADSNIFF: $(TEST_BIN)/radsniff $(ARGV) -I $(PCAP_IN) -D share/dictionary -xx";        \
 			echo "ERROR: File $(FOUND).result is not the same as $(EXPECTED)";                        \
 			echo "If you did some update on the radsniff code, please be sure to update the unit tests."; \
 			echo "e.g: $(EXPECTED)";                                                                      \
-			diff $(FOUND) $(FOUND).result;                                                                \
+			diff $(FOUND).result $(FOUND);                                                                \
 			rm -f $@;										      \
 			exit 1;                                                                                       \
 		fi; \
