@@ -1624,8 +1624,10 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *  User-Password
 		 */
 		case FLAG_ENCRYPT_USER_PASSWORD:
+			if (!packet_ctx->request_authenticator) goto raw;
+
 			fr_radius_decode_password((char *)buffer, attr_len,
-						  packet_ctx->common->secret, packet_ctx->common->vector);
+						  packet_ctx->common->secret, packet_ctx->request_authenticator);
 			buffer[253] = '\0';
 
 			/*
@@ -1659,8 +1661,10 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		case FLAG_TAGGED_TUNNEL_PASSWORD:
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+			if (!packet_ctx->request_authenticator) goto raw;	
+
 			if (fr_radius_decode_tunnel_password(buffer, &data_len,
-							     packet_ctx->common->secret, packet_ctx->common->vector,
+							     packet_ctx->common->secret, packet_ctx->request_authenticator,
 							     packet_ctx->tunnel_password_zeros) < 0) {
 				goto raw;
 			}
@@ -1670,9 +1674,11 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	Ascend-Send-Secret
 		 *	Ascend-Receive-Secret
 		 */
-		case FLAG_ENCRYPT_ASCEND_SECRET:
+		case FLAG_ENCRYPT_ASCEND_SECRET:	
+			if (!packet_ctx->request_authenticator) goto raw;
+
 			fr_radius_ascend_secret(&FR_DBUFF_TMP(buffer, sizeof(buffer)), p, data_len,
-						packet_ctx->common->secret, packet_ctx->common->vector);
+						packet_ctx->common->secret, packet_ctx->request_authenticator);
 			buffer[RADIUS_AUTH_VECTOR_LENGTH] = '\0';
 			data_len = strlen((char *) buffer);
 			break;
@@ -2079,7 +2085,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx->common->secret = talloc_strdup(test_ctx->common, "testing123");
 	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret);
 
-	memcpy(test_ctx->common->vector, vector, sizeof(test_ctx->common->vector));
+	test_ctx->request_authenticator = vector;
 	test_ctx->tmp_ctx = talloc_zero(test_ctx, uint8_t);
 	talloc_set_destructor(test_ctx, _test_ctx_free);
 
@@ -2121,8 +2127,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	test_ctx->end = data + packet_len;
 
-	return fr_radius_decode(ctx, out, data, packet_len, test_ctx->common->vector,
-				test_ctx->common->secret, talloc_array_length(test_ctx->common->secret) - 1);
+	return fr_radius_decode(ctx, out, UNCONST(uint8_t *, data), packet_len, test_ctx);
 }
 
 static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_attr_t const *parent,
