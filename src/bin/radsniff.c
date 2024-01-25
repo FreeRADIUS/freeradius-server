@@ -1485,13 +1485,16 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 */
 		if (conf->decode_attrs) {
 			int ret;
-			FILE *log_fp = fr_log_fp;
 
-			fr_log_fp = NULL;
-			ret = fr_radius_packet_decode(packet, &decoded, packet, original ? original->expect : NULL,
+#ifndef NDEBUG
+			if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, packet);
+#endif
+
+			ret = fr_radius_decode_simple(packet, &decoded,
+						      packet->data, packet->data_len,
+						      original ? original->expect->data + 4 : NULL,
 						      conf->radius_secret);
-			fr_log_fp = log_fp;
-			if (ret != 0) {
+			if (ret < 0) {
 				fr_radius_packet_free(&packet);		/* Also frees vps */
 				REDEBUG("Failed decoding");
 				return;
@@ -1626,11 +1629,12 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = fr_radius_packet_decode(packet, &decoded, packet, NULL,
+			ret = fr_radius_decode_simple(packet, &decoded,
+						      packet->data, packet->data_len, NULL,
 						      conf->radius_secret);
 			fr_log_fp = log_fp;
 
-			if (ret != 0) {
+			if (ret < 0) {
 				fr_radius_packet_free(&packet);	/* Also frees vps */
 
 				REDEBUG("Failed decoding");

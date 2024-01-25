@@ -191,9 +191,6 @@ void		fr_radius_free(void);
 ssize_t		fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
 					fr_radius_packet_t const *original,
 					char const *secret) CC_HINT(nonnull (1,2,4));
-int		fr_radius_packet_decode(TALLOC_CTX *ctx, fr_pair_list_t *list,
-					fr_radius_packet_t *packet, fr_radius_packet_t *original,
-					char const *secret) CC_HINT(nonnull (1,2,3,5));
 
 bool		fr_radius_packet_ok(fr_radius_packet_t *packet, uint32_t max_attributes, bool require_ma,
 				    decode_fail_t *reason) CC_HINT(nonnull (1));

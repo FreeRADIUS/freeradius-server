@@ -823,7 +823,9 @@ do { \
 						talloc_free(packet);
 						continue;
 					}
-					if (fr_radius_packet_decode(reply, &reply_vps, reply, packet,
+					if (fr_radius_decode_simple(reply, &reply_vps,
+								    reply->data, reply->data_len,
+								    packet->vector,
 								    conf->secret) < 0) {
 						fr_perror("Failed decoding reply");
 						goto recv_error;

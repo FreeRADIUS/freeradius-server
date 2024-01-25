@@ -1053,7 +1053,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	RADIUS/1.1.
 	 */
 	if (decode_ctx->verify) {
-		if (!decode_ctx->request_authenticator) goto no_vector;
+		if (!decode_ctx->request_authenticator) decode_ctx->request_authenticator = zeros;
 
 		if (fr_radius_verify(packet, decode_ctx->request_authenticator,
 				     (uint8_t const *) decode_ctx->common->secret, decode_ctx->common->secret_length,

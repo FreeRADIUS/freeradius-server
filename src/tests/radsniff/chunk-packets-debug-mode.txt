@@ -22,7 +22,7 @@ Sniffing on (build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap)
         Message-Authenticator = 0xd1851d10de31ceb79bbb5141d62b39ba
         NAS-Port-Id = "0"
 2020-05-21 00:56:59.767770 (3) Accounting-Request Id 89 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63467 -> 127.0.0.1:1813 +0.425
-	Authenticator-Field = 0x00000000000000000000000000000000
+	Authenticator-Field = 0x4279b1ea045f3ae6da9643ef14656468
 2020-05-21 00:56:59.790790 (4) Accounting-Response Id 89 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:63467 <- 127.0.0.1:1813 +0.428 +0.002
 	Authenticator-Field = 0x113000da9020f10c71b6c248d4dda6bf
         Service-Type = Framed-User
@@ -32,7 +32,7 @@ Sniffing on (build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap)
         Message-Authenticator = 0x62a3e9f511e8bde563bd88ee44673fd5
         NAS-Port-Id = "0"
 2020-05-21 00:56:59.499467 (5) CoA-Request Id 104 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55698 -> 127.0.0.1:3799 +0.848
-	Authenticator-Field = 0x00000000000000000000000000000000
+	Authenticator-Field = 0xf3d81bfd6d5149180c2c6821bc15793d
 2020-05-21 00:56:59.505460 (6) CoA-ACK Id 104 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:55698 <- 127.0.0.1:3799 +0.854 +0.005
 	Authenticator-Field = 0xab97b09e10f2a81bc1b81c0532540960
         User-Name = "bob"
@@ -54,7 +54,7 @@ Sniffing on (build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap)
         Message-Authenticator = 0x14aa9ea36bfae4e448437a2345d87c6a
         NAS-Port-Id = "0"
 2020-05-21 00:57:00.351072 (9) Accounting-Request Id 1 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60612 -> 127.0.0.1:1813 +1.700
-	Authenticator-Field = 0x00000000000000000000000000000000
+	Authenticator-Field = 0x40232523c5cc9fe379614a215cedd7f6
 2020-05-21 00:57:00.353281 (10) Accounting-Response Id 1 build/tests/radsniff/radius-auth+acct+coa-100pkts.pcap:127.0.0.1:60612 <- 127.0.0.1:1813 +1.702 +0.002
 	Authenticator-Field = 0x84ab5b7e68ebf30734f32c8196150091
 Captured 10 packets, exiting...
