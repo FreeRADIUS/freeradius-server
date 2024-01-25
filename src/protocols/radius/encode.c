@@ -45,8 +45,7 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
  *
  * Input and output buffers can be identical if in-place encryption is needed.
  */
-static ssize_t encode_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *input, size_t inlen,
-			       char const *secret, uint8_t const *vector)
+static ssize_t encode_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *input, size_t inlen, fr_radius_encode_ctx_t *packet_ctx)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t	digest[RADIUS_AUTH_VECTOR_LENGTH];
@@ -73,13 +72,13 @@ static ssize_t encode_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *input, size
 	md5_ctx = fr_md5_ctx_alloc_from_list();
 	md5_ctx_old = fr_md5_ctx_alloc_from_list();
 
-	fr_md5_update(md5_ctx, (uint8_t const *) secret, talloc_array_length(secret) - 1);
+	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->common->secret, packet_ctx->common->secret_length);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);
 
 	/*
 	 *	Do first pass.
 	 */
-	fr_md5_update(md5_ctx, vector, AUTH_PASS_LEN);
+	fr_md5_update(md5_ctx, packet_ctx->request_authenticator, AUTH_PASS_LEN);
 
 	for (n = 0; n < len; n += AUTH_PASS_LEN) {
 		if (n > 0) {
@@ -98,13 +97,12 @@ static ssize_t encode_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *input, size
 }
 
 
-static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, size_t inlen, void *encode_ctx)
+static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, size_t inlen, fr_radius_encode_ctx_t *packet_ctx)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
 	uint8_t		tpasswd[RADIUS_MAX_STRING_LENGTH];
 	size_t		i, n;
-	fr_radius_encode_ctx_t	*packet_ctx = encode_ctx;
 	uint32_t	r;
 	size_t		output_len, encrypted_len, padding;
 	ssize_t		slen;
@@ -187,7 +185,7 @@ static ssize_t encode_tunnel_password(fr_dbuff_t *dbuff, fr_dbuff_marker_t *in, 
 	md5_ctx = fr_md5_ctx_alloc_from_list();
 	md5_ctx_old = fr_md5_ctx_alloc_from_list();
 
-	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1);
+	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->common->secret, packet_ctx->common->secret_length);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);
 
 	fr_md5_update(md5_ctx, packet_ctx->request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
@@ -505,8 +503,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		/*
 		 *	Encode the password in place
 		 */
-		slen = encode_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff),
-				       packet_ctx->common->secret, packet_ctx->request_authenticator);
+		slen = encode_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff), packet_ctx);
 		if (slen < 0) return slen;
 		encrypted = true;
 		break;
@@ -1678,7 +1675,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx->common = talloc_zero(test_ctx, fr_radius_ctx_t);
 
 	test_ctx->common->secret = talloc_strdup(test_ctx->common, "testing123");
-	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret);
+	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret) - 1;
 
 	test_ctx->request_authenticator = vector;
 	test_ctx->rand_ctx.a = 6809;

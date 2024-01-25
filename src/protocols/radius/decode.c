@@ -68,12 +68,10 @@ static void memcpy_bounded(void * restrict dst, const void * restrict src, size_
  * initial intermediate value, to differentiate it from the
  * above.
  */
-ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
-					 char const *secret, uint8_t const *vector, bool tunnel_password_zeros)
+static ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, fr_radius_decode_ctx_t *packet_ctx)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
-	int		secretlen;
 	size_t		i, n, encrypted_len, embedded_len;
 
 	encrypted_len = *pwlen;
@@ -104,15 +102,10 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 
 	encrypted_len -= 2;		/* discount the salt */
 
-	/*
-	 *	Use the secret to setup the decryption digest
-	 */
-	secretlen = talloc_array_length(secret) - 1;
-
 	md5_ctx = fr_md5_ctx_alloc_from_list();
 	md5_ctx_old = fr_md5_ctx_alloc_from_list();
 
-	fr_md5_update(md5_ctx, (uint8_t const *) secret, secretlen);
+	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->common->secret, packet_ctx->common->secret_length);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx); /* save intermediate work */
 
 	/*
@@ -120,7 +113,7 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 	 *
 	 *	 b(1) = MD5(secret + vector + salt)
 	 */
-	fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
+	fr_md5_update(md5_ctx, packet_ctx->request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
 	fr_md5_update(md5_ctx, passwd, 2);
 
 	embedded_len = 0;
@@ -177,7 +170,7 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 	/*
 	 *	Check trailing bytes
 	 */
-	if (tunnel_password_zeros) for (i = embedded_len; i < (encrypted_len - 1); i++) {	/* -1 for length field */
+	if (packet_ctx->tunnel_password_zeros) for (i = embedded_len; i < (encrypted_len - 1); i++) {	/* -1 for length field */
 		if (passwd[i] != 0) {
 			fr_strerror_printf("Trailing garbage in Tunnel Password "
 					   "(shared secret is probably incorrect!)");
@@ -196,12 +189,12 @@ ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen,
 /** Decode password
  *
  */
-ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret, uint8_t const *vector)
+static ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, fr_radius_decode_ctx_t *packet_ctx)
 {
 	fr_md5_ctx_t	*md5_ctx, *md5_ctx_old;
 	uint8_t		digest[RADIUS_AUTH_VECTOR_LENGTH];
 	int		i;
-	size_t		n, secretlen;
+	size_t		n;
 
 	/*
 	 *	The RFC's say that the maximum is 128, but where we
@@ -214,15 +207,10 @@ ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret
 	 */
 	if (pwlen == 0) goto done;
 
-	/*
-	 *	Use the secret to setup the decryption digest
-	 */
-	secretlen = talloc_array_length(secret) - 1;
-
 	md5_ctx = fr_md5_ctx_alloc_from_list();
 	md5_ctx_old = fr_md5_ctx_alloc_from_list();
 
-	fr_md5_update(md5_ctx, (uint8_t const *) secret, secretlen);
+	fr_md5_update(md5_ctx, (uint8_t const *) packet_ctx->common->secret, packet_ctx->common->secret_length);
 	fr_md5_ctx_copy(md5_ctx_old, md5_ctx);	/* save intermediate work */
 
 	/*
@@ -230,7 +218,7 @@ ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret
 	 */
 	for (n = 0; n < pwlen; n += AUTH_PASS_LEN) {
 		if (n == 0) {
-			fr_md5_update(md5_ctx, vector, RADIUS_AUTH_VECTOR_LENGTH);
+			fr_md5_update(md5_ctx, packet_ctx->request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
 			fr_md5_final(digest, md5_ctx);
 
 			fr_md5_ctx_copy(md5_ctx, md5_ctx_old);
@@ -1626,8 +1614,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		case FLAG_ENCRYPT_USER_PASSWORD:
 			if (!packet_ctx->request_authenticator) goto raw;
 
-			fr_radius_decode_password((char *)buffer, attr_len,
-						  packet_ctx->common->secret, packet_ctx->request_authenticator);
+			fr_radius_decode_password((char *)buffer, attr_len, packet_ctx);
 			buffer[253] = '\0';
 
 			/*
@@ -1663,9 +1650,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 			if (!packet_ctx->request_authenticator) goto raw;	
 
-			if (fr_radius_decode_tunnel_password(buffer, &data_len,
-							     packet_ctx->common->secret, packet_ctx->request_authenticator,
-							     packet_ctx->tunnel_password_zeros) < 0) {
+			if (fr_radius_decode_tunnel_password(buffer, &data_len, packet_ctx) < 0) {
 				goto raw;
 			}
 			break;
@@ -2083,7 +2068,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx->common = talloc_zero(test_ctx, fr_radius_ctx_t);
 
 	test_ctx->common->secret = talloc_strdup(test_ctx->common, "testing123");
-	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret);
+	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret) - 1;
 
 	test_ctx->request_authenticator = vector;
 	test_ctx->tmp_ctx = talloc_zero(test_ctx, uint8_t);

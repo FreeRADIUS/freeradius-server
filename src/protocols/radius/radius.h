@@ -227,12 +227,6 @@ ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
  */
 int		fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, size_t dv_length);
 
-ssize_t		fr_radius_decode_password(char *encpw, size_t len, char const *secret, uint8_t const *vector);
-
-
-ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
-						 uint8_t const *vector, bool tunnel_password_zeros);
-
 ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *list,
 					    fr_dict_attr_t const *parent,
 					    uint8_t const *data, size_t const attr_len,
