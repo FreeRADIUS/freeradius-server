@@ -852,6 +852,7 @@ int radius_legacy_map_cmp(request_t *request, map_t const *map)
 	 *	Check all possible vps matching the lhs
 	 *	Allows for comparisons such as &foo[*] == "bar" - i.e. true if any instance of &foo has the value "bar"
 	 */
+	rcode = 0;
 	while (vp) {
 		/*
 		 *	Let the calculation code do upcasting as necessary.
