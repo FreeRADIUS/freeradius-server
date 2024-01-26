@@ -270,7 +270,7 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 			return NULL;
 		}
 
-		if (dict->proto->init && (dict->proto->init() < 0)) return -1;
+		if (dict->proto->init && (dict->proto->init() < 0)) return NULL;
 
 		/*
 		 *	The reference is to the root of the foreign protocol, we're done.
