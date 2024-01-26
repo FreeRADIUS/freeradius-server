@@ -140,15 +140,6 @@ int			fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle
 int			fr_curl_easy_tls_init (fr_curl_io_request_t *randle, fr_curl_tls_t const *conf);
 
 CURL			*fr_curl_tmp_handle(void);
-
-xlat_action_t		fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-						UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
-						fr_value_box_list_t *in);
-
-xlat_action_t		fr_curl_xlat_uri_unescape(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
-						  UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
-						  fr_value_box_list_t *in);
-
 #ifdef __cplusplus
 }
 #endif
