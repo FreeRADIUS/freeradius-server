@@ -729,11 +729,6 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 
 	}
 
-	if (fr_dict_attr_ref(da)) {
-		fr_strerror_const("An ALIAS MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
-		return -1;
-	}
-
 	/*
 	 *	Note that we do NOT call fr_dict_attr_add() here.
 	 *
