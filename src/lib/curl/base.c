@@ -22,6 +22,7 @@
  * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 #include <freeradius-devel/curl/base.h>
+#include <freeradius-devel/curl/xlat.h>
 #ifdef WITH_TLS
 #include <freeradius-devel/tls/base.h>
 #endif
@@ -30,7 +31,6 @@
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "attrs.h"
-#include "xlat.h"
 
 fr_dict_attr_t const *attr_tls_certificate;
 static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/
@@ -281,10 +281,10 @@ static int fr_curl_init(void)
 		xlat_t *xlat;
 
 		xlat = xlat_func_register(NULL, "uri.escape", fr_curl_xlat_uri_escape, FR_TYPE_STRING);
-		xlat_func_args_set(xlat, &fr_curl_xlat_uri_args);
+		xlat_func_args_set(xlat, fr_curl_xlat_uri_args);
 		xlat_func_safe_for_set(xlat, fr_curl_xlat_uri_escape);
 		xlat = xlat_func_register(NULL, "uri.unescape", fr_curl_xlat_uri_unescape, FR_TYPE_STRING);
-		xlat_func_args_set(xlat, &fr_curl_xlat_uri_args);
+		xlat_func_args_set(xlat, fr_curl_xlat_uri_args);
 	}
 
 	return 0;

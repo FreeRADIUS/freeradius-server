@@ -25,6 +25,7 @@
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/curl/base.h>
+#include <freeradius-devel/curl/xlat.h>
 
 #include "base.h"
 

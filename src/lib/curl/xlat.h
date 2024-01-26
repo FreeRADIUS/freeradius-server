@@ -30,7 +30,7 @@ extern "C" {
 #include <curl/curl.h>
 #include <freeradius-devel/unlang/xlat.h>
 
-extern xlat_arg_parser_t const fr_curl_xlat_uri_args;
+extern xlat_arg_parser_t const fr_curl_xlat_uri_args[];
 
 xlat_action_t		fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 						UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,

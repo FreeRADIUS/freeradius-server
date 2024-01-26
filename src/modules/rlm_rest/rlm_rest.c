@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/curl/base.h>
+#include <freeradius-devel/curl/xlat.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
