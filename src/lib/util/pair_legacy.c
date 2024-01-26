@@ -330,6 +330,18 @@ redo:
 		}
 		fr_assert(da != NULL);
 
+#if 0
+		/*
+		 *	@todo - If we're at the root, then aliases can cause us to jump over intermediate
+		 *	attributes.  In which case we have to create the intermediate attributes, too.
+		 */
+		if (relative->da) {
+			if (relative->da->flags.is_root) {
+				fr_assert(da->depth == 1);
+			}
+		}
+#endif
+
 		/*
 		 *	Intermediate components are always found / created.  The final component is
 		 *	always appended, no matter the operator.
