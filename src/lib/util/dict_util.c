@@ -3296,6 +3296,30 @@ bool dict_has_dependents(fr_dict_t *dict)
 	return (fr_rb_num_elements(dict->dependents) > 0);
 }
 
+static int dict_autoref_free(fr_dict_t *dict)
+{
+	fr_dict_t **refd_list;
+	unsigned int i;
+
+	if (!dict->autoref) return 0;
+
+	if (fr_hash_table_flatten(NULL, (void ***)&refd_list, dict->autoref) < 0) {
+		fr_strerror_const("failed flattening autoref hash table");
+		return -1;
+	}
+
+	for (i = 0; i < talloc_array_length(refd_list); i++) {
+		if (fr_dict_free(&refd_list[i], dict->root->name) < 0) {
+			fr_strerror_printf("failed freeing autoloaded protocol %s", refd_list[i]->root->name);
+			return -1;
+		}
+	}
+
+	TALLOC_FREE(dict->autoref);
+
+	return 0;
+}
+
 static int _dict_free(fr_dict_t *dict)
 {
 	/*
@@ -3312,7 +3336,10 @@ static int _dict_free(fr_dict_t *dict)
 	}
 
 #ifdef STATIC_ANALYZER
-	if (!dict->root) return -1;
+	if (!dict->root) {
+		fr_strerror_const("dict root is missing");
+		return -1;
+	}
 #endif
 
 	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict->gctx->protocol_by_name, dict))) {
@@ -3338,8 +3365,11 @@ static int _dict_free(fr_dict_t *dict)
 		     dep = fr_rb_iter_next_inorder(&iter)) {
 			fr_strerror_printf_push("%s (%u)", dep->dependent, dep->count);
 		}
+
 		return -1;
 	}
+
+	if (dict_autoref_free(dict) < 0) return -1;
 
 	/*
 	 *	Free the hash tables with free functions first
@@ -3347,19 +3377,6 @@ static int _dict_free(fr_dict_t *dict)
 	 *	are still there.
 	 */
 	talloc_free(dict->vendors_by_name);
-
-	if (dict->autoref) {
-		fr_dict_t **refd_list;
-		unsigned int i;
-
-		if (fr_hash_table_flatten(NULL, (void ***)&refd_list, dict->autoref) < 0) return -1;
-
-		for (i = 0; i < talloc_array_length(refd_list); i++) {
-		     if (fr_dict_free(&refd_list[i], dict->root->name) < 0) return -1;
-		}
-
-		talloc_free(refd_list);
-	}
 
 	/*
 	 *	Decrease the reference count on the validation
@@ -3893,13 +3910,29 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 	    	if (talloc_free(gctx->internal) < 0) still_loaded = true;
 	}
 
+	/*
+	 *	Free up autorefs first, which will free up inter-dictionary dependencies.
+	 */
+	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
+	     dict;
+	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
+		(void)talloc_get_type_abort(dict, fr_dict_t);
+
+		if (dict_autoref_free(dict) < 0) return -1;
+	}
+
 	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
 	     dict;
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
 	     	(void)talloc_get_type_abort(dict, fr_dict_t);
 	     	dict_dependent_remove(dict, "global");			/* remove our dependency */
 
-	    	if (talloc_free(dict) < 0) still_loaded = true;
+		if (talloc_free(dict) < 0) {
+#ifndef NDEBUG
+			FR_FAULT_LOG("gctx failed to free dictionary %s - %s", dict->root->name, fr_strerror());
+#endif
+			still_loaded = true;
+		}
 	}
 
 	if (still_loaded) {

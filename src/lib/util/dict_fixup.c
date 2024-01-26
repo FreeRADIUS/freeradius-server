@@ -256,9 +256,17 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 		p = strchr(name, '.');
 		if (p) *p = '\0';
 
-		if (fr_dict_protocol_afrom_file(&dict, name, NULL, filename) < 0) {
+		/*
+		 *	Load the new dictionary, and mark it as loaded from our dictionary.
+		 */
+		if (fr_dict_protocol_afrom_file(&dict, name, NULL, (*dict_def)->root->name) < 0) {
 			fr_strerror_printf("Unknown protocol '%s' at %s[%d]", name,
 					   fr_cwd_strip(filename), line);
+			return NULL;
+		}
+
+		if (!fr_hash_table_insert((*dict_def)->autoref, dict)) {
+			fr_strerror_const("Failed inserting into internal autoref table");
 			return NULL;
 		}
 
