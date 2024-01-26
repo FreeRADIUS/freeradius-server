@@ -19,7 +19,7 @@ runs:
         wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
 
     - name: 'Restore OpenSSL 3.0 from the cache'
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: openssl-cache
       with:
         path: /opt/openssl/
