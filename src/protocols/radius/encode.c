@@ -601,6 +601,52 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+static ssize_t encode_group(fr_dbuff_t *dbuff,
+			    fr_da_stack_t *da_stack, unsigned int depth,
+			    fr_dcursor_t *cursor, UNUSED void *encode_ctx)
+{
+	ssize_t			slen;
+	fr_dict_attr_t const	*da;
+	fr_pair_t const		*vp = fr_dcursor_current(cursor);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+
+	fr_dict_attr_t const *ref;
+	fr_dict_protocol_t const *proto;
+
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	da = da_stack->da[depth];
+
+	ref = fr_dict_attr_ref(da);
+	if (!ref) {
+		fr_strerror_printf("Invalid attribute reference for %s", da->name);
+		return PAIR_ENCODE_SKIPPED;
+	}
+
+	fr_assert(ref->dict != dict_radius);
+
+	proto = fr_dict_protocol(ref->dict);
+	fr_assert(proto != NULL);
+
+	if (!proto->encode) {
+		fr_strerror_printf("Attribute %s -> %s does not have an encoder", da->name, ref->name);
+		return PAIR_ENCODE_SKIPPED;
+	}
+
+	/*
+	 *	The foreign functions don't take a cursor, so we have to update the cursor ourselves.
+	 */
+	slen = proto->encode(&work_dbuff, &vp->vp_group);
+	if (slen <= 0) return slen;
+
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "group ref");
+
+	vp = fr_dcursor_next(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
 /** Breaks down large data into pieces, each with a header
  *
  * @param[out] data		we're fragmenting.
@@ -802,33 +848,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 		slen = fr_struct_to_network(&work_dbuff, da_stack, my_depth, cursor, encode_ctx, encode_value, encode_child);
 
 	} else if (da->type == FR_TYPE_GROUP) {
-		fr_dict_attr_t const *ref;
-		fr_dict_protocol_t const *proto;
-
-		ref = fr_dict_attr_ref(da);
-		if (!ref) {
-			fr_strerror_printf("Invalid attribute reference for %s", da->name);
-			return PAIR_ENCODE_SKIPPED;
-		}
-
-		fr_assert(ref->dict != dict_radius);
-
-		proto = fr_dict_protocol(ref->dict);
-		fr_assert(proto != NULL);
-
-		if (!proto->encode) {
-			fr_strerror_printf("Attribute %s -> %s does not have an encoder", da->name, ref->name);
-			return PAIR_ENCODE_SKIPPED;
-		}
-
-		/*
-		 *	The foreign functions don't take a cursor, so we have to update the cursor ourselves.
-		 */
-		slen = proto->encode(&work_dbuff, &vp->vp_group);
-		if (slen > 0) {
-			vp = fr_dcursor_next(cursor);
-			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		}
+		slen = encode_group(&work_dbuff, da_stack, my_depth, cursor, encode_ctx);
 
 	} else {
 		fr_assert(da->type == FR_TYPE_TLV);
