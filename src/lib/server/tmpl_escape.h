@@ -56,7 +56,9 @@ typedef void(*tmpl_escape_uctx_free_t)(void *uctx);
 /** When to apply escaping
  */
 typedef enum {
-	TMPL_ESCAPE_PRE_CONCAT = 0,			//!< Pre-concatenation escaping is useful for
+	TMPL_ESCAPE_NONE = 0,				//!< No escaping is performed.
+
+	TMPL_ESCAPE_PRE_CONCAT,				//!< Pre-concatenation escaping is useful for
 							///< DSLs where elements of the expansion are
 							///< static, specified by the user, and other parts
 							///< are dynamic, which may or may not need to be
@@ -78,6 +80,8 @@ typedef enum {
 typedef struct {
 	fr_value_box_escape_t		func;		//!< How to escape when returned from evaluation.
 							///< Currently only used for async evaluation.
+	fr_value_box_safe_for_t		safe_for;	//!< Value to set on boxes which have been escaped
+							///< by the #fr_value_box_escape_t function.
 
 	tmpl_escape_mode_t		mode;		//!< Whether to apply escape function after
 							///< concatenation, i.e. to the final output

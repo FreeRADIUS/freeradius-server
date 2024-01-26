@@ -35,13 +35,16 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/tmpl_escape.h>
 #include <freeradius-devel/server/pairmove.h>
+#include <freeradius-devel/server/log.h>
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>
+#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include "rest.h"
 
@@ -212,7 +215,8 @@ static const call_env_method_t _var = { \
 													.uctx = rest_uri_parts \
 												} , \
 												.type = TMPL_ESCAPE_UCTX_ALLOC_FUNC\
-											} \
+											}, \
+											.safe_for = (fr_value_box_safe_for_t)fr_curl_xlat_uri_escape \
 										      }}, /* Do not concat */ \
 								REST_CALL_ENV_REQUEST_COMMON(_dflt_username, _dflt_password) \
 								CALL_ENV_TERMINATOR \
@@ -356,17 +360,6 @@ static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *u
 	return t_ctx;
 }
 
-
-/** Free the curl easy handle
- *
- * @param[in] arg		curl easy handle to free.
- */
-static int _uri_part_escape_free_on_exit(void *arg)
-{
-	curl_easy_cleanup(arg);
-	return 0;
-}
-
 /** URL escape a single box forming part of a URL
  *
  * @param[in] vb		to escape
@@ -377,21 +370,9 @@ static int _uri_part_escape_free_on_exit(void *arg)
  */
 static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
-	static _Thread_local CURL	*t_candle;
 	char				*escaped;
 
-	/*
-	 *	libcurl doesn't actually use the handle, but we pass one
-	 *	in anyway, just in case it does in the future.
-	 */
-	if (unlikely(t_candle == NULL)) {
-		CURL *candle;
-
-		MEM(candle = curl_easy_init());
-		fr_atexit_thread_local(t_candle, _uri_part_escape_free_on_exit, candle);
-	}
-
-	escaped = curl_easy_escape(t_candle, vb->vb_strvalue, vb->vb_length);
+	escaped = curl_easy_escape(fr_curl_tmp_handle(), vb->vb_strvalue, vb->vb_length);
 	if (!escaped) return -1;
 
 	/*
@@ -761,7 +742,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	void				*handle;
 	int				ret;
 
-	if (!section->name) RETURN_MODULE_NOOP;
+	if (!section->name) {
+		RDEBUG2("No authorize section configured");
+		RETURN_MODULE_NOOP;
+	}
 
 	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
@@ -870,7 +854,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 	int				ret;
 
-	if (!section->name) RETURN_MODULE_NOOP;
+	if (!section->name) {
+		RDEBUG2("No authentication section configured");
+		RETURN_MODULE_NOOP;
+	}
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -976,7 +963,10 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	void				*handle;
 	int				ret;
 
-	if (!section->name) RETURN_MODULE_NOOP;
+	if (!section->name) {
+		RDEBUG2("No accounting section configured");
+		RETURN_MODULE_NOOP;
+	}
 
 	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;
@@ -1051,7 +1041,10 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	void				*handle;
 	int				ret;
 
-	if (!section->name) RETURN_MODULE_NOOP;
+	if (!section->name) {
+		RDEBUG2("No post-auth section configured");
+		RETURN_MODULE_NOOP;
+	}
 
 	handle = rest_slab_reserve(t->slab);
 	if (!handle) RETURN_MODULE_FAIL;

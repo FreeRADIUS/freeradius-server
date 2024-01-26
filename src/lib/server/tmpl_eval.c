@@ -1358,7 +1358,11 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 
 		if (tmpl_escape_pre_concat(vpt)) {
 			uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
-			if (unlikely(fr_value_box_list_escape_in_place(list, vpt->rules.escape.func, uctx) < 0)) {
+			/*
+			 *	Sets escaped values, so boxes don't get re-escaped
+			 */
+			if (unlikely(fr_value_box_list_escape_in_place(list, vpt->rules.escape.func,
+								       vpt->rules.escape.safe_for, uctx) < 0)) {
 			error:
 				tmpl_eval_escape_uctx_free(&vpt->rules.escape, uctx);
 				return -1;
@@ -1410,7 +1414,22 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 	 */
 	if ((!did_concat && tmpl_escape_pre_concat(vpt)) || tmpl_escape_post_concat(vpt)) {
 		uctx = tmpl_eval_escape_uctx_alloc(request, &vpt->rules.escape);
-		if (unlikely(fr_value_box_list_escape_in_place(list, vpt->rules.escape.func, uctx) < 0)) goto error;
+		if (unlikely(fr_value_box_list_escape_in_place(list, vpt->rules.escape.func,
+							       vpt->rules.escape.safe_for, uctx) < 0)) goto error;
+	}
+
+	/*
+	 *	If there's no escape function, but there is
+	 *	an escaped value, mark all the boxes up with
+	 *	this value.
+	 *
+	 *	This is mostly useful for call_env usage in
+	 *	modules where certain values are implicitly safe
+	 *	for consumption, like SQL statements in the SQL
+	 *	module.
+	 */
+	if (!vpt->rules.escape.func && vpt->rules.escape.safe_for) {
+		fr_value_box_list_mark_safe_for(list, vpt->rules.escape.safe_for);
 	}
 
 	VALUE_BOX_LIST_VERIFY(list);

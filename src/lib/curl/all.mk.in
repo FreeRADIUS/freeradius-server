@@ -5,7 +5,7 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME)$(L)
 endif
 
-SOURCES		:= base.c io.c
+SOURCES		:= base.c io.c xlat.c
 
 SRC_CFLAGS	:= @mod_cflags@
 

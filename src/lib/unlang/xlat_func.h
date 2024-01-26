@@ -72,6 +72,14 @@ void		xlat_func_resolve_set(xlat_t *xlat, xlat_resolve_t func);
 
 void		xlat_purify_func_set(xlat_t *xlat, xlat_purify_t func);
 
+/** Set the escaped values for output boxes
+ *
+ * @param[in] _xlat		function to set the escaped value for (as returned by xlat_register).
+ * @param[in] _escaped		escaped value to write to output boxes.
+ */
+#define		xlat_func_safe_for_set(_xlat, _escaped) _xlat_func_safe_for_set(_xlat, (uintptr_t) (_escaped))
+void		_xlat_func_safe_for_set(xlat_t *xlat, uintptr_t escaped);
+
 /** Set a callback for global instantiation of xlat functions
  *
  * @param[in] _xlat		function to set the callback for (as returned by xlat_register).

@@ -27,6 +27,7 @@
  * @copyright 2012 Alan DeKok (aland@freeradius.org)
  * @copyright 1999-2013 The FreeRADIUS Server Project.
  */
+#include "lib/util/value.h"
 RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
@@ -370,7 +371,7 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If it's already safe, just copy it over.
 	 */
-	if (in_vb->safe == FR_VALUE_BOX_SAFE(1)) {
+	if (fr_value_box_is_safe_for(in_vb, ldap_escape_xlat)) {
 		fr_value_box_copy(vb, vb, in_vb);
 
 		fr_dcursor_append(out, vb);
@@ -397,7 +398,7 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
-	fr_value_box_mark_safe(vb, FR_VALUE_BOX_SAFE(1));
+	fr_value_box_mark_safe_for(vb, ldap_escape_xlat);
 
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
@@ -453,7 +454,7 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	/*
 	 *	If it's already safe, don't do anything.
 	 */
-	if (vb->safe == FR_VALUE_BOX_SAFE(1)) return 0;
+	if (fr_value_box_is_safe_for(vb, uri_part_escape)) return 0;
 
 	/*
 	 *	Maximum space needed for output would be 3 times the input if every
@@ -472,7 +473,7 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_clear_value(vb);
 	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
-	fr_value_box_mark_safe(vb, FR_VALUE_BOX_SAFE(1));
+	fr_value_box_mark_safe_for(vb, uri_part_escape);
 
 	return 0;
 }

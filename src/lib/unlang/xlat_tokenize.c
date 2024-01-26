@@ -25,6 +25,7 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  */
 
+#include "lib/util/value.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/util/debug.h>
@@ -111,7 +112,7 @@ static fr_sbuff_parse_rules_t const xlat_new_arg_rules = {
 };
 
 static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
-				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+				fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, fr_value_box_safe_for_t safe_for);
 
 #ifdef HAVE_REGEX
 /** Parse an xlat reference
@@ -285,8 +286,7 @@ int xlat_validate_function_args(xlat_exp_t *node)
  *	- 0 if the string was parsed into a function.
  *	- <0 on parse error.
  */
-int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
-				tmpl_rules_t const *t_rules)
+int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tmpl_rules_t const *t_rules)
 {
 	xlat_exp_t		*node;
 	xlat_t			*func;
@@ -355,7 +355,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_multi_arg_rules, t_rules, false, false) < 0) {
+	if (xlat_tokenize_argv(node, &node->call.args, in, func, &xlat_multi_arg_rules, t_rules, false, false) < 0) {
 		goto error;
 	}
 	xlat_flags_merge(&node->flags, &node->call.args->flags);
@@ -500,7 +500,8 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 	 *	Now parse the child nodes that form the
 	 *	function's arguments.
 	 */
-	if (xlat_tokenize_argv(node, &node->call.args, in, &xlat_new_arg_rules, t_rules, true, (node->call.input_type == XLAT_INPUT_MONO)) < 0) {
+	if (xlat_tokenize_argv(node, &node->call.args, in, func,
+			       &xlat_new_arg_rules, t_rules, true, (node->call.input_type == XLAT_INPUT_MONO)) < 0) {
 error:
 		talloc_free(node);
 		return -1;
@@ -889,12 +890,14 @@ check_for_attr:
  * @param[in] in		sbuff to parse.
  * @param[in] p_rules		that control parsing.
  * @param[in] t_rules		that control attribute reference and xlat function parsing.
+ * @param[in] safe_for		mark up literal values as being pre-escaped.  May be merged
+ *				with t_rules in future.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
-			       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+			       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, fr_value_box_safe_for_t safe_for)
 {
 	xlat_exp_t			*node = NULL;
 	fr_slen_t			slen;
@@ -944,6 +947,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		do_value_box:
 			xlat_exp_set_name_buffer_shallow(node, str);
 			fr_value_box_strdup(node, &node->data, NULL, str, false);
+			fr_value_box_mark_safe_for(&node->data, safe_for);
 			node->flags.constant = true;
 			fr_assert(node->flags.pure);
 
@@ -1379,6 +1383,7 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
  *				later.
  * @param[out] out		the head of the xlat list / tree structure.
  * @param[in] in		the format string to expand.
+ * @param[in] xlat		we're tokenizing arguments for.
  * @param[in] p_rules		controlling how to parse the string outside of
  *				any expansions.
  * @param[in] t_rules		controlling how attribute references are parsed.
@@ -1389,15 +1394,24 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
  *	- >0  on success which is the number of characters parsed.
  */
 fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
+			     xlat_t const *xlat,
 			     fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma, bool allow_attr)
 {
 	int				argc = 0;
 	fr_sbuff_t			our_in = FR_SBUFF(in);
 	ssize_t				slen;
 	fr_sbuff_marker_t		m;
-	fr_sbuff_parse_rules_t const	*our_p_rules;	/* Bareword parse rules */
+	fr_sbuff_parse_rules_t const	*our_p_rules;		/* Bareword parse rules */
 	fr_sbuff_parse_rules_t		tmp_p_rules;
 	xlat_exp_head_t			*head;
+	xlat_arg_parser_t const		*arg = NULL;
+
+	if (xlat && xlat->args) {
+		arg = xlat->args;	/* Track the arguments as we parse */
+	} else {
+		static xlat_arg_parser_t	default_arg = { .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH };
+		arg = &default_arg;
+	}
 
 	MEM(head = xlat_exp_head_alloc(ctx));
 	if (p_rules && p_rules->terminals) {
@@ -1468,7 +1482,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			}
 
 			if (xlat_tokenize_input(node->group, &our_in,
-						our_p_rules, t_rules) < 0) {
+						our_p_rules, t_rules, arg->safe_for) < 0) {
 			error:
 				if (our_p_rules != &value_parse_rules_bareword_quoted) {
 					talloc_const_free(our_p_rules->terminals);
@@ -1486,7 +1500,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			XLAT_DEBUG("ARGV double quotes <-- %.*s", (int) fr_sbuff_remaining(&our_in), fr_sbuff_current(&our_in));
 
 			if (xlat_tokenize_input(node->group, &our_in,
-						&value_parse_rules_double_quoted, t_rules) < 0) goto error;
+						&value_parse_rules_double_quoted, t_rules, arg->safe_for) < 0) goto error;
 			break;
 
 		/*
@@ -1507,6 +1521,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 			xlat_exp_set_name_buffer_shallow(child, str);
 			fr_value_box_strdup(child, &child->data, NULL, str, false);
+			fr_value_box_mark_safe_for(&child->data, arg->safe_for);	/* Literal values are treated as implicitly safe */
 			child->flags.constant = true;
 			fr_assert(child->flags.pure);
 			xlat_exp_insert_tail(node->group, child);
@@ -1576,6 +1591,14 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			fr_strerror_const("Unexpected text after argument");
 			goto error;
 		}
+
+		if (!arg->variadic) {
+			arg++;
+			if (arg->type == FR_TYPE_NULL) {
+				fr_strerror_printf("Too many arguments, expected %u", argc - 1);
+				goto error;
+			}
+		}
 	}
 
 	if (our_p_rules != &value_parse_rules_bareword_quoted) talloc_const_free(our_p_rules->terminals);
@@ -1613,7 +1636,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 
 	fr_strerror_clear();	/* Clear error buffer */
 
-	if (xlat_tokenize_input(head, &our_in, p_rules, t_rules) < 0) {
+	if (xlat_tokenize_input(head, &our_in, p_rules, t_rules, 0) < 0) {
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}

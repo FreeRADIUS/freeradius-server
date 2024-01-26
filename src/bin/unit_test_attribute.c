@@ -2913,7 +2913,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 	char		buff[1024];
 
 	slen = xlat_tokenize_argv(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len),
-				  NULL,
+				  NULL, NULL,
 				  &(tmpl_rules_t) {
 					  .attr = {
 						  .dict_def = cc->tmpl_rules.attr.dict_def ?

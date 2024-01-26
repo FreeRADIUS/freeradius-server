@@ -146,6 +146,14 @@ typedef union {
 	fr_value_box_list_t			children;		//!< for groups
 } fr_value_box_datum_t;
 
+/** Escaping that's been applied to a value box
+ *
+ * This should be a unique value for each dialect being escaped.  If the value is 0,
+ * then the box is not escaped.  If the escaped value matches the escaped value of
+ * the function performing the escaping then it should not be re-escaped.
+ */
+typedef uintptr_t fr_value_box_safe_for_t;
+
 /** Union containing all data types supported by the server
  *
  * This union contains all data types that can be represented by fr_pair_ts. It may also be used in other parts
@@ -164,8 +172,12 @@ struct value_box_s {
 	unsigned int   				secret : 1;		//!< Same as #fr_dict_attr_flags_t secret
 	unsigned int				immutable : 1;		//!< once set, the value cannot be changed
 	unsigned int				talloced : 1;		//!< Talloced, not stack or text allocated.
-
-	uint16_t		_CONST		safe;			//!< more detailed safety
+	fr_value_box_safe_for_t	_CONST		safe_for;		//!< A unique value to indicate if that value box is safe
+									///< for consumption by a particular module for a particular
+									///< purpose.  e.g. LDAP, SQL, etc.
+									///< Usually set by the xlat framework on behalf of an xlat
+									///< escaping function, and checked by a #fr_value_box_escape_t
+									///< to see if it needs to operate.
 
 	fr_value_box_entry_t			entry;			//!< Doubly linked list entry.
 
@@ -179,14 +191,6 @@ struct value_box_s {
 	int					line;			//!< Line where the box was allocated or initialised.
 #endif
 };
-
-/** Macro to automatically define a value for the "safe" field based on the current module / library.
- *
- * Functions which escape tainted data can mark it "safe" for a
- * particular purpose.  Each module has it's own version of safety.
- * e.g. LDAP, SQL, etc.  Each module can then manage its own list of sub-types for safety.
- */
-#define FR_VALUE_BOX_SAFE(_x) ((LOG_ID_LIB << 8) | _x)
 
 /** @name List and cursor function definitions
  */
@@ -633,9 +637,11 @@ fr_value_box_t *_fr_value_box_alloc(NDEBUG_LOCATION_ARGS TALLOC_CTX *ctx, fr_typ
   */
 typedef int (*fr_value_box_escape_t)(fr_value_box_t *vb, void *uctx);
 
-int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape, void *uctx)
+int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape,
+				 fr_value_box_safe_for_t escaped, void *uctx)
 				 CC_HINT(nonnull(1,2));
-int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape, void *uctx)
+int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape,
+				      fr_value_box_safe_for_t escaped, void *uctx)
 				      CC_HINT(nonnull(1,2));
 /** @} */
 
@@ -1026,19 +1032,16 @@ int		fr_value_box_ipaddr(fr_value_box_t *dst, fr_dict_attr_t const *enumv,
 int		fr_value_unbox_ipaddr(fr_ipaddr_t *dst, fr_value_box_t *src)
 		CC_HINT(nonnull);
 
-static inline CC_HINT(nonnull, always_inline)
-bool fr_value_box_is_safe(fr_value_box_t const *box, uint16_t safe)
-{
-	if (!safe) return false;
-
-	return (box->safe == safe);
-}
-
-int		fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe)
+#define		fr_value_box_mark_safe_for(_box, _safe_for) _fr_value_box_mark_safe_for(_box, (fr_value_box_safe_for_t)_safe_for)
+void		_fr_value_box_mark_safe_for(fr_value_box_t *box, fr_value_box_safe_for_t safe_for)
 		CC_HINT(nonnull);
 
 void		fr_value_box_mark_unsafe(fr_value_box_t *box)
 		CC_HINT(nonnull);
+
+#define		fr_value_box_is_safe_for(_box, _safe_for) (_box->safe_for == (fr_value_box_safe_for_t)_safe_for)
+
+void		fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_safe_for_t safe_for);
 
 static inline CC_HINT(nonnull, always_inline)
 bool fr_value_box_is_secret(fr_value_box_t const *box)

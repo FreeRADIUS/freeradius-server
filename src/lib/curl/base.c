@@ -27,8 +27,10 @@
 #endif
 
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 
 #include "attrs.h"
+#include "xlat.h"
 
 fr_dict_attr_t const *attr_tls_certificate;
 static fr_dict_t const *dict_freeradius; /*internal dictionary for server*/
@@ -197,6 +199,39 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	return 0;
 }
 
+/** Free the curl easy handle
+ *
+ * @param[in] arg		curl easy handle to free.
+ */
+static int _curl_tmpl_handle(void *arg)
+{
+	curl_easy_cleanup(arg);
+	return 0;
+}
+
+/** Return a thread local curl easy handle
+ *
+ * This should only be used for calls into libcurl functions
+ * which don't operate on an active request, like the
+ * escape/unescape functions.
+ *
+ * @return
+ *	- A thread local curl easy handle.
+ *	- NULL on failure.
+ */
+CURL *fr_curl_tmp_handle(void)
+{
+	static _Thread_local CURL	*t_candle;
+
+	if (unlikely(t_candle == NULL)) {
+		CURL *candle;
+
+		MEM(candle = curl_easy_init());
+		fr_atexit_thread_local(t_candle, _curl_tmpl_handle, candle);
+	}
+
+	return t_candle;
+}
 
 /** Initialise global curl options
  *
@@ -242,6 +277,16 @@ static int fr_curl_init(void)
 
 	INFO("libcurl version: %s", curl_version());
 
+	{
+		xlat_t *xlat;
+
+		xlat = xlat_func_register(NULL, "uri.escape", fr_curl_xlat_uri_escape, FR_TYPE_STRING);
+		xlat_func_args_set(xlat, &fr_curl_xlat_uri_args);
+		xlat_func_safe_for_set(xlat, fr_curl_xlat_uri_escape);
+		xlat = xlat_func_register(NULL, "uri.unescape", fr_curl_xlat_uri_unescape, FR_TYPE_STRING);
+		xlat_func_args_set(xlat, &fr_curl_xlat_uri_args);
+	}
+
 	return 0;
 }
 
@@ -253,6 +298,9 @@ static void fr_curl_free(void)
 	fr_openssl_free();
 #endif
 	curl_global_cleanup();
+
+	xlat_func_unregister("uri.escape");
+	xlat_func_unregister("uri.unescape");
 }
 
 /*

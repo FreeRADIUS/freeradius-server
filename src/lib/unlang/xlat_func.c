@@ -439,6 +439,16 @@ void xlat_purify_func_set(xlat_t *xlat, xlat_purify_t func)
 	xlat->purify = func;
 }
 
+/** Set the escaped values for output boxes
+ *
+ * @param[in] xlat		function to set the escaped value for (as returned by xlat_register).
+ * @param[in] safe_for		escaped value to write to output boxes.
+ */
+void _xlat_func_safe_for_set(xlat_t *xlat, fr_value_box_safe_for_t safe_for)
+{
+	xlat->return_safe_for = safe_for;
+}
+
 /** Set global instantiation/detach callbacks
  *
  * @param[in] xlat		to set instantiation callbacks for.

@@ -221,10 +221,12 @@ static xlat_action_t xlat_process_arg_list(TALLOC_CTX *ctx, fr_value_box_list_t 
 
 #define ESCAPE(_arg, _vb, _arg_num) \
 do { \
-	if ((_arg)->func && ((_vb)->tainted || (_arg)->always_escape) && \
-	    ((_arg)->func(request, _vb, (_arg)->uctx) < 0)) { \
-		RPEDEBUG("Function \"%s\" failed escaping argument %u", name, _arg_num); \
-		return XLAT_ACTION_FAIL; \
+	if ((_arg)->func && (!(_vb)->safe_for || !fr_value_box_is_safe_for((_vb), (_arg)->safe_for) || (_arg)->always_escape)) { \
+		if ((_arg)->func(request, _vb, (_arg)->uctx) < 0) { \
+			RPEDEBUG("Function \"%s\" failed escaping argument %u", name, _arg_num); \
+			return XLAT_ACTION_FAIL; \
+		} \
+		fr_value_box_mark_safe_for((_vb), (_arg)->safe_for); \
 	} \
 } while (0)
 
@@ -520,6 +522,7 @@ bool xlat_process_return(request_t *request, xlat_t const *func, fr_value_box_li
 			/* We are not forgiving for debug builds */
 			fr_assert_fail("Treating invalid return type as fatal");
 		}
+		fr_value_box_mark_safe_for(pos, func->return_safe_for); /* Always set this */
 		count++;
 	} while ((pos = fr_value_box_list_next(returned, pos)));
 
@@ -845,6 +848,7 @@ xlat_action_t xlat_frame_eval_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	return xa;
 }
+
 /** Process the result of a previous nested expansion
  *
  * @param[in] ctx		to allocate value boxes in.
@@ -1305,7 +1309,7 @@ static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, x
 				}
 
 				len = vb->vb_length * 3;
-				escaped = talloc_array(pool, char, len);
+				MEM(escaped = talloc_array(pool, char, len));
 				real_len = escape(request, escaped, len, vb->vb_strvalue, UNCONST(void *, escape_ctx));
 
 				entry = vb->entry;

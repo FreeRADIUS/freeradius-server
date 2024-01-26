@@ -24,11 +24,10 @@
  * @copyright 2000 Mike Machado (mike@innercite.com)
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
+
 RCSID("$Id$")
 
 #define LOG_PREFIX mctx->inst->name
-
-#include <ctype.h>
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exfile.h>
@@ -196,7 +195,7 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 	/*
 	 *	If it's already safe, don't do anything.
 	 */
-	if (vb->safe == FR_VALUE_BOX_SAFE(inst->driver->number)) return 0;
+	if (fr_value_box_is_safe_for(vb, inst->driver)) return 0;
 
 	handle = fr_pool_connection_get(inst->pool, request);
 	if (!handle) {
@@ -234,7 +233,7 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
 	 *	safe value.  This means that we don't
 	 *	cross-contaminate "safe" values across databases.
 	 */
-	fr_value_box_mark_safe(vb, FR_VALUE_BOX_SAFE(inst->driver->number));
+	fr_value_box_mark_safe_for(vb, inst->driver);
 	vb->entry = entry;
 
 	fr_pool_connection_release(inst->pool, request, handle);
@@ -248,7 +247,7 @@ static int sql_xlat_escape(request_t *request, fr_value_box_t *vb, void *uctx)
  * be returned instead.
  *
 @verbatim
-%{sql:<sql statement>}
+%sql(<sql statement>)
 @endverbatim
  *
  * @ingroup xlat_functions

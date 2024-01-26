@@ -152,6 +152,8 @@ typedef struct {
 							///< tainted ones.
 	fr_type_t			type;		//!< Type to cast argument to.
 	xlat_escape_func_t		func;		//!< Function to handle tainted values.
+	fr_value_box_safe_for_t		safe_for;	//!< Escaped value to set for boxes processed by
+							///< this escape function.
 	void				*uctx;		//!< Argument to pass to escape callback.
 } xlat_arg_parser_t;
 
@@ -392,6 +394,7 @@ fr_slen_t	xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sb
 					fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
 
 fr_slen_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
+				   xlat_t const *xlat,
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma, bool allow_attr);
 
 fr_slen_t	xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,

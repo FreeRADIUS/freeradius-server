@@ -92,6 +92,7 @@ typedef struct xlat_s {
 							///< xlat.  Typically used for xlats which refer to tmpls
 							///< in their module config.
 
+	fr_value_box_safe_for_t	return_safe_for;	//!< Escaped value to set in output boxes.
 	fr_type_t		return_type;		//!< Function is guaranteed to return one or more boxes
 							///< of this type.  If the return type is FR_TYPE_VOID
 							///< then the xlat function can return any type of output.

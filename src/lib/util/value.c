@@ -621,8 +621,8 @@ static inline void fr_value_box_copy_meta(fr_value_box_t *dst, fr_value_box_t co
 	dst->enumv = src->enumv;
 	dst->type = src->type;
 	dst->tainted = src->tainted;
+	dst->safe_for = src->safe_for;
 	dst->secret = src->secret;
-	dst->safe = src->safe;
 	fr_value_box_list_entry_init(dst);
 }
 
@@ -5866,22 +5866,33 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
  *
  * @param[in] vb		to escape.
  * @param[in] escape		function to apply to the value box.
+ * @param[in] safe_for		the escaped value to check value boxes again.
+ *				box has an escaped value that matches, it will
+ *				not be re-escaped.
  * @param[in] uctx		user context to pass to the escape function.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape, void *uctx)
+int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escape,
+				 fr_value_box_safe_for_t safe_for, void *uctx)
 {
+	int ret;
+
 	switch (vb->type) {
 	case FR_TYPE_GROUP:
-		return fr_value_box_list_escape_in_place(&vb->vb_group, escape, uctx);
+		return fr_value_box_list_escape_in_place(&vb->vb_group, escape, safe_for, uctx);
 
 	default:
 		break;
 	}
 
-	return escape(vb, uctx);
+	ret = escape(vb, uctx);
+	if (unlikely(ret < 0)) return ret;
+
+	vb->safe_for = safe_for;
+
+	return 0;
 }
 
 /** Escape a list of value boxes in place
@@ -5892,17 +5903,21 @@ int fr_value_box_escape_in_place(fr_value_box_t *vb, fr_value_box_escape_t escap
  *
  * @param[in] list		to escape.
  * @param[in] escape		function to apply to the value box.
+ * @param[in] safe_for		the escaped value to check value boxes again.
+ *				box has an escaped value that matches, it will
+ *				not be re-escaped.
  * @param[in] uctx		user context to pass to the escape function.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape, void *uctx)
+int fr_value_box_list_escape_in_place(fr_value_box_list_t *list, fr_value_box_escape_t escape,
+				      fr_value_box_safe_for_t safe_for, void *uctx)
 {
 	int ret = 0;
 
 	fr_value_box_list_foreach(list, vb) {
-		ret = fr_value_box_escape_in_place(vb, escape, uctx);
+		ret = fr_value_box_escape_in_place(vb, escape, safe_for, uctx);
 		if (unlikely(ret < 0)) return ret;
 	}
 
@@ -6205,34 +6220,31 @@ void fr_value_box_list_verify(char const *file, int line, fr_value_box_list_t co
 
 /** Mark a value-box as "safe", of a particular type.
  *
- *  This means that users of that data who understand this particular value of the "safe" flag
- *  can then ignore the "tainted" flag, and use the value as if it was untainted.  Every other user
- *  of the data must still treat it as tainted.
- *
- *  Tainted data can be marked "safe".  But marking it "safe" does not remove the "tainted" flag.
- *
- *  Once data is marked safe, it cannot be marked as a different type of "safe".
  */
-int fr_value_box_mark_safe(fr_value_box_t *box, uint16_t safe)
+void _fr_value_box_mark_safe_for(fr_value_box_t *vb, fr_value_box_safe_for_t safe_for)
 {
-	if (box->safe == safe) return 0;
-
-	if (box->safe != 0) {
-		fr_strerror_const("Data was already marked 'safe', of a different type");
-		return -1;
-	}
-
-	box->safe = safe;
-	return 0;
+	vb->safe_for = safe_for;
 }
 
 /** Mark a value-box as "unsafe"
  *
  *  This always succeeds, and there are no side effects.
  */
-void fr_value_box_mark_unsafe(fr_value_box_t *box)
+void fr_value_box_mark_unsafe(fr_value_box_t *vb)
 {
-	box->safe = 0;
+	vb->safe_for = 0;
+}
+
+/** Set the escaped flag for all value boxes in a list
+ *
+ * @note Only operates on a single level.
+ *
+ * @param[in] list	to operate on.
+ * @param[in] safe_for	value to set.
+ */
+void fr_value_box_list_mark_safe_for(fr_value_box_list_t *list, fr_value_box_safe_for_t safe_for)
+{
+	fr_value_box_list_foreach(list, vb) vb->safe_for = safe_for;
 }
 
 /** Check truthiness of values.
