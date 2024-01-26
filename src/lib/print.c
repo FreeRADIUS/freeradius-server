@@ -529,6 +529,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp, bool
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:	
 		for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->vp_length; q++) {
 			/* Indicate truncation */
 			if (freespace < 3) return outlen + 1;
