@@ -3309,6 +3309,8 @@ static int dict_autoref_free(fr_dict_t *dict)
 	}
 
 	for (i = 0; i < talloc_array_length(refd_list); i++) {
+		if (refd_list[i]->proto->free) refd_list[i]->proto->free();
+
 		if (fr_dict_free(&refd_list[i], dict->root->name) < 0) {
 			fr_strerror_printf("failed freeing autoloaded protocol %s", refd_list[i]->root->name);
 			return -1;

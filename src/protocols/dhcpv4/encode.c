@@ -763,8 +763,6 @@ ssize_t	fr_dhcpv4_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 	fr_dcursor_t	cursor;
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 
-	(void) fr_dhcpv4_global_init();
-
 	fr_assert(dict_dhcpv4 != NULL);
 
 	fr_pair_dcursor_iter_init(&cursor, list, fr_dhcpv4_next_encodable, dict_dhcpv4);

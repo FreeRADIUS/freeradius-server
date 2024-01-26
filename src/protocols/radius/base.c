@@ -1319,6 +1319,10 @@ fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
 	.subtype_table = subtype_table,
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr_valid = attr_valid,
+
+	.init = fr_radius_init,
+	.free = fr_radius_free,
+
 	.decode = fr_radius_decode_foreign,
 	.encode = fr_radius_encode_foreign,
 };

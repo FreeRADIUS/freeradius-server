@@ -327,6 +327,14 @@ typedef ssize_t (*fr_dict_attr_decode_func_t)(TALLOC_CTX *ctx, fr_pair_list_t *v
  */
 typedef ssize_t(*fr_dict_attr_encode_func_t)(fr_dbuff_t *dbuff, fr_pair_list_t const *vps);
 
+/** Init / free callbacks
+ *
+ *  Only for "autoref" usage.
+ */
+typedef int (*fr_dict_protocol_init_t)(void);
+typedef void (*fr_dict_protocol_free_t)(void);
+
+
 /** Protocol-specific callbacks in libfreeradius-PROTOCOL
  *
  */
@@ -337,6 +345,10 @@ typedef struct {
 	fr_table_num_ordered_t	const *subtype_table;		//!< for "encrypt=1", etc.
 	size_t			subtype_table_len;		//!< length of subtype_table
 	fr_dict_attr_valid_func_t attr_valid;			//!< validation function for new attributes
+
+	fr_dict_protocol_init_t	init;				//!< initialize the library
+	fr_dict_protocol_free_t	free;				//!< free the library
+
 	fr_dict_attr_decode_func_t decode;			//!< for decoding attributes
 	fr_dict_attr_encode_func_t encode;			//!< for encoding attributes
 } fr_dict_protocol_t;
