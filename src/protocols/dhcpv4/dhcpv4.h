@@ -177,6 +177,9 @@ void		fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len);
 ssize_t		fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					uint8_t const *data, size_t len, void *decode_ctx) CC_HINT(nonnull);
 
+ssize_t		fr_dhcpv4_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
+					 uint8_t const *data, size_t data_len) CC_HINT(nonnull);
+
 /*
  *	encode.c
  */

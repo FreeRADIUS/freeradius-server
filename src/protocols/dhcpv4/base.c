@@ -734,4 +734,5 @@ fr_dict_protocol_t libfreeradius_dhcpv4_dict_protocol = {
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr_valid = attr_valid,
 	.encode		= fr_dhcpv4_encode_foreign,
+	.decode		= fr_dhcpv4_decode_foreign,
 };

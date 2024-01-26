@@ -1780,6 +1780,33 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (ret < 0) goto raw;
 		return attr_len;
 
+	case FR_TYPE_GROUP:
+	{
+		fr_dict_attr_t const *ref;
+		fr_dict_protocol_t const *proto;
+
+		ref = fr_dict_attr_ref(parent);
+		if (!ref) goto raw;
+
+		fr_assert(ref->dict != parent->dict);
+
+		proto = fr_dict_protocol(ref->dict);
+		fr_assert(proto != NULL);
+
+		if (!proto->decode) goto raw;
+
+		vp = fr_pair_afrom_da(ctx, parent);
+		if (!vp) return -1;
+
+		ret = proto->decode(vp, &vp->vp_group, p, attr_len);
+		if (ret < 0) goto raw;
+
+		vp->vp_tainted = true;
+
+		fr_pair_append(out, vp);
+		return attr_len;
+	}
+
 	default:
 	raw:
 		if (vp) talloc_free(vp);

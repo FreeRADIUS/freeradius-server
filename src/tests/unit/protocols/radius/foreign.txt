@@ -1,0 +1,12 @@
+proto radius
+proto-dictionary radius
+fuzzer-out radius
+
+encode-pair Extended-Attribute-5.DHCPv4-Options := { Time-Offset = 2112 }
+match f5 0a 04 00 02 04 00 00 08 40
+
+decode-pair -
+match Extended-Attribute-5 = { DHCPv4-Options = { Time-Offset = 2112 } }
+
+count
+match 7
