@@ -830,7 +830,7 @@ set:
 		 */
 	add_fixup:
 		if (dict_fixup_group(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
-				     UNCONST(fr_dict_attr_t *, da), ref, talloc_array_length(ref) - 1) < 0) goto fail;
+				     UNCONST(fr_dict_attr_t *, da), ref) < 0) goto fail;
 			
 		talloc_free(ref);
 		return 0;

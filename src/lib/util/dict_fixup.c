@@ -202,13 +202,12 @@ static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixu
  * @param[in] line		this fixup relates to.
  * @param[in] da		The group dictionary attribute.
  * @param[in] ref		OID string representing what the group references.
- * @param[in] ref_len		Length of the reference string.
  * @return
  *	- 0 on success.
  *	- -1 on out of memory.
  */
 int dict_fixup_group(dict_fixup_ctx_t *fctx, char const *filename, int line,
-		     fr_dict_attr_t *da, char const *ref, size_t ref_len)
+		     fr_dict_attr_t *da, char const *ref)
 {
 	dict_fixup_group_t *fixup;
 
@@ -219,7 +218,7 @@ int dict_fixup_group(dict_fixup_ctx_t *fctx, char const *filename, int line,
 	}
 	*fixup = (dict_fixup_group_t) {
 		.da = da,
-		.ref = talloc_bstrndup(fixup, ref, ref_len)
+		.ref = talloc_strdup(fixup, ref),
 	};
 
 	return dict_fixup_common(filename, line, &fctx->group, &fixup->common);
@@ -239,11 +238,13 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 		da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref);
 		if (da) return da;
 
+	invalid:
 		fr_strerror_printf("Invalid attribute reference '%s' at %s[%d]", ref,
 				   fr_cwd_strip(filename), line);
 		return NULL;
 	}
 
+	fr_assert(ref[1] == '.');
 	name = ref + 2;		/* already checked when we insert it */
 
 	/*
@@ -281,12 +282,13 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 		}
 
 		name = p + 1;
+
 	} else {
 		/*
 		 *	The foreign dictionary was loaded by someone
 		 *	else, try to resolve the attribute.
 		 */
-		name += slen + 1;
+		name += slen;
 
 		if (!*name) {
 			/*
@@ -295,6 +297,9 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 			*dict_def = dict;
 			return dict->root;
 		}
+
+		if (*name != '.') goto invalid;
+		name++;
 	}
 
 	/*

@@ -44,7 +44,7 @@ int	dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
 			 fr_dict_attr_t const *parent);
 
 int	dict_fixup_group(dict_fixup_ctx_t *fctx, char const *filename, int line,
-			 fr_dict_attr_t *da, char const *ref, size_t ref_len);
+			 fr_dict_attr_t *da, char const *ref);
 
 int	dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 			 fr_dict_attr_t *parent, fr_dict_attr_t *da,
