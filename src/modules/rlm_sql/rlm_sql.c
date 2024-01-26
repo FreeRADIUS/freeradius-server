@@ -1086,202 +1086,6 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
-static int mod_detach(module_detach_ctx_t const *mctx)
-{
-	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
-
-	if (inst->pool) fr_pool_free(inst->pool);
-
-	/*
-	 *	We need to explicitly free all children, so if the driver
-	 *	parented any memory off the instance, their destructors
-	 *	run before we unload the bytecode for them.
-	 *
-	 *	If we don't do this, we get a SEGV deep inside the talloc code
-	 *	when it tries to call a destructor that no longer exists.
-	 */
-	talloc_free_children(inst);
-
-	return 0;
-}
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_sql_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
-	xlat_t			*xlat;
-	xlat_arg_parser_t	*sql_xlat_arg;
-
-	inst->name = mctx->inst->name;	/* Need this for functions in sql.c */
-	inst->driver = (rlm_sql_driver_t const *)inst->driver_submodule->module; /* Public symbol exported by the submodule */
-
-	/*
-	 *	Register the group comparison attribute
-	 */
-	if (inst->config.groupmemb_query) {
-		char const *group_attribute;
-		fr_dict_attr_flags_t flags = {};
-		char buffer[256];
-
-		if (inst->config.group_attribute) {
-			group_attribute = inst->config.group_attribute;
-		} else if (cf_section_name2(conf)) {
-			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", mctx->inst->name);
-			group_attribute = buffer;
-		} else {
-			group_attribute = "SQL-Group";
-		}
-
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, -1,
-				     FR_TYPE_STRING, &flags) < 0) {
-			cf_log_perr(conf, "Failed defining group attribute");
-			return -1;
-		}
-
-		inst->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
-								     false, false);
-		if (!inst->group_da) {
-			cf_log_perr(conf, "Failed resolving group attribute");
-			return -1;
-		}
-
-		/*
-		 *	Define the new %{sql.group:name} xlat.  The
-		 *	register function automatically adds the
-		 *	module instance name as a prefix.
-		 */
-		xlat = xlat_func_register_module(inst, mctx, "group", sql_group_xlat, FR_TYPE_BOOL);
-		if (!xlat) {
-			cf_log_perr(conf, "Failed registering %s expansion", group_attribute);
-			return -1;
-		}
-
-		/*
-		 *	The xlat escape function needs access to inst - so
-		 *	argument parser details need to be defined here
-		 */
-		sql_xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
-		sql_xlat_arg[0].type = FR_TYPE_STRING;
-		sql_xlat_arg[0].required = true;
-		sql_xlat_arg[0].concat = true;
-		sql_xlat_arg[0].func = NULL; /* No real escaping done - we do strcmp() on it */
-		sql_xlat_arg[0].uctx = NULL;
-		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
-
-		xlat_func_mono_set(xlat, sql_xlat_arg);
-	}
-
-	/*
-	 *	Register the SQL xlat function
-	 */
-	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
-	if (!xlat) {
-		cf_log_perr(conf, "Failed registering %s expansion", mctx->inst->name);
-		return -1;
-	}
-
-	/*
-	 *	The xlat escape function needs access to inst - so
-	 *	argument parser details need to be defined here
-	 */
-	sql_xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
-	sql_xlat_arg[0].type = FR_TYPE_STRING;
-	sql_xlat_arg[0].required = true;
-	sql_xlat_arg[0].concat = true;
-	sql_xlat_arg[0].func = sql_xlat_escape;
-	sql_xlat_arg[0].uctx = inst;
-	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
-
-	xlat_func_mono_set(xlat, sql_xlat_arg);
-
-	/*
-	 *	Register the SQL map processor function
-	 */
-	if (inst->driver->sql_fields) map_proc_register(inst, mctx->inst->name, mod_map_proc, sql_map_verify, 0);
-
-	return 0;
-}
-
-
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
-
-	/*
-	 *	We need authorize_group_check_query or authorize_group_reply_query
-	 *	if group_membership_query is set.
-	 *
-	 *	Or we need group_membership_query if authorize_group_check_query or
-	 *	authorize_group_reply_query is set.
-	 */
-	if (!inst->config.groupmemb_query) {
-		if (inst->config.authorize_group_check_query) {
-			WARN("Ignoring authorize_group_reply_query as group_membership_query is not configured");
-		}
-
-		if (inst->config.authorize_group_reply_query) {
-			WARN("Ignoring authorize_group_check_query as group_membership_query is not configured");
-		}
-
-		if (!inst->config.read_groups) {
-			WARN("Ignoring read_groups as group_membership_query is not configured");
-			inst->config.read_groups = false;
-		}
-	} /* allow the group check / reply queries to be NULL */
-
-	/*
-	 *	This will always exist, as cf_section_parse_init()
-	 *	will create it if it doesn't exist.  However, the
-	 *	"reference" config item won't exist in an auto-created
-	 *	configuration.  So if that doesn't exist, we ignore
-	 *	the whole subsection.
-	 */
-	inst->config.accounting.cs = cf_section_find(conf, "accounting", NULL);
-	inst->config.accounting.reference_cp = (cf_pair_find(inst->config.accounting.cs, "reference") != NULL);
-
-	inst->config.postauth.cs = cf_section_find(conf, "post-auth", NULL);
-	inst->config.postauth.reference_cp = (cf_pair_find(inst->config.postauth.cs, "reference") != NULL);
-
-	/*
-	 *	Cache the SQL-User-Name fr_dict_attr_t, so we can be slightly
-	 *	more efficient about creating SQL-User-Name attributes.
-	 */
-	inst->sql_user = attr_sql_user_name;
-
-	/*
-	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
-	 */
-	inst->sql_set_user		= sql_set_user;
-	inst->query			= rlm_sql_query;
-	inst->select			= rlm_sql_select_query;
-	inst->fetch_row			= rlm_sql_fetch_row;
-
-	/*
-	 *	Either use the module specific escape function
-	 *	or our default one.
-	 */
-	inst->sql_escape_func = inst->driver->sql_escape_func ?
-				inst->driver->sql_escape_func :
-				sql_escape_func;
-
-	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
-	if (!inst->ef) {
-		cf_log_err(conf, "Failed creating log file context");
-		return -1;
-	}
-
-	/*
-	 *	Initialise the connection pool for this instance
-	 */
-	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
-
-	inst->pool = module_rlm_connection_pool_init(conf, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
-	if (!inst->pool) return -1;
-
-	return 0;
-}
-
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
@@ -1694,10 +1498,201 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	RETURN_MODULE_NOOP;
 }
 
-/*
- *	Execute postauth_query after authentication
- */
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
 
+	if (inst->pool) fr_pool_free(inst->pool);
+
+	/*
+	 *	We need to explicitly free all children, so if the driver
+	 *	parented any memory off the instance, their destructors
+	 *	run before we unload the bytecode for them.
+	 *
+	 *	If we don't do this, we get a SEGV deep inside the talloc code
+	 *	when it tries to call a destructor that no longer exists.
+	 */
+	talloc_free_children(inst);
+
+	return 0;
+}
+
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	rlm_sql_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
+	xlat_t			*xlat;
+	xlat_arg_parser_t	*sql_xlat_arg;
+
+	inst->name = mctx->inst->name;	/* Need this for functions in sql.c */
+	inst->driver = (rlm_sql_driver_t const *)inst->driver_submodule->module; /* Public symbol exported by the submodule */
+
+	/*
+	 *	Register the group comparison attribute
+	 */
+	if (inst->config.groupmemb_query) {
+		char const *group_attribute;
+		fr_dict_attr_flags_t flags = {};
+		char buffer[256];
+
+		if (inst->config.group_attribute) {
+			group_attribute = inst->config.group_attribute;
+		} else if (cf_section_name2(conf)) {
+			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", mctx->inst->name);
+			group_attribute = buffer;
+		} else {
+			group_attribute = "SQL-Group";
+		}
+
+		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, -1,
+				     FR_TYPE_STRING, &flags) < 0) {
+			cf_log_perr(conf, "Failed defining group attribute");
+			return -1;
+		}
+
+		inst->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
+								     false, false);
+		if (!inst->group_da) {
+			cf_log_perr(conf, "Failed resolving group attribute");
+			return -1;
+		}
+
+		/*
+		 *	Define the new %{sql.group:name} xlat.  The
+		 *	register function automatically adds the
+		 *	module instance name as a prefix.
+		 */
+		xlat = xlat_func_register_module(inst, mctx, "group", sql_group_xlat, FR_TYPE_BOOL);
+		if (!xlat) {
+			cf_log_perr(conf, "Failed registering %s expansion", group_attribute);
+			return -1;
+		}
+
+		/*
+		 *	The xlat escape function needs access to inst - so
+		 *	argument parser details need to be defined here
+		 */
+		sql_xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
+		sql_xlat_arg[0].type = FR_TYPE_STRING;
+		sql_xlat_arg[0].required = true;
+		sql_xlat_arg[0].concat = true;
+		sql_xlat_arg[0].func = NULL; /* No real escaping done - we do strcmp() on it */
+		sql_xlat_arg[0].uctx = NULL;
+		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+
+		xlat_func_mono_set(xlat, sql_xlat_arg);
+	}
+
+	/*
+	 *	Register the SQL xlat function
+	 */
+	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
+	if (!xlat) {
+		cf_log_perr(conf, "Failed registering %s expansion", mctx->inst->name);
+		return -1;
+	}
+
+	/*
+	 *	The xlat escape function needs access to inst - so
+	 *	argument parser details need to be defined here
+	 */
+	sql_xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
+	sql_xlat_arg[0].type = FR_TYPE_STRING;
+	sql_xlat_arg[0].required = true;
+	sql_xlat_arg[0].concat = true;
+	sql_xlat_arg[0].func = sql_xlat_escape;
+	sql_xlat_arg[0].safe_for = (fr_value_box_safe_for_t)inst->driver;
+	sql_xlat_arg[0].uctx = inst;
+	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+
+	xlat_func_mono_set(xlat, sql_xlat_arg);
+
+	/*
+	 *	Register the SQL map processor function
+	 */
+	if (inst->driver->sql_fields) map_proc_register(inst, mctx->inst->name, mod_map_proc, sql_map_verify, 0);
+
+	return 0;
+}
+
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
+	CONF_SECTION	*conf = mctx->inst->conf;
+
+	/*
+	 *	We need authorize_group_check_query or authorize_group_reply_query
+	 *	if group_membership_query is set.
+	 *
+	 *	Or we need group_membership_query if authorize_group_check_query or
+	 *	authorize_group_reply_query is set.
+	 */
+	if (!inst->config.groupmemb_query) {
+		if (inst->config.authorize_group_check_query) {
+			WARN("Ignoring authorize_group_reply_query as group_membership_query is not configured");
+		}
+
+		if (inst->config.authorize_group_reply_query) {
+			WARN("Ignoring authorize_group_check_query as group_membership_query is not configured");
+		}
+
+		if (!inst->config.read_groups) {
+			WARN("Ignoring read_groups as group_membership_query is not configured");
+			inst->config.read_groups = false;
+		}
+	} /* allow the group check / reply queries to be NULL */
+
+	/*
+	 *	This will always exist, as cf_section_parse_init()
+	 *	will create it if it doesn't exist.  However, the
+	 *	"reference" config item won't exist in an auto-created
+	 *	configuration.  So if that doesn't exist, we ignore
+	 *	the whole subsection.
+	 */
+	inst->config.accounting.cs = cf_section_find(conf, "accounting", NULL);
+	inst->config.accounting.reference_cp = (cf_pair_find(inst->config.accounting.cs, "reference") != NULL);
+
+	inst->config.postauth.cs = cf_section_find(conf, "post-auth", NULL);
+	inst->config.postauth.reference_cp = (cf_pair_find(inst->config.postauth.cs, "reference") != NULL);
+
+	/*
+	 *	Cache the SQL-User-Name fr_dict_attr_t, so we can be slightly
+	 *	more efficient about creating SQL-User-Name attributes.
+	 */
+	inst->sql_user = attr_sql_user_name;
+
+	/*
+	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
+	 */
+	inst->sql_set_user		= sql_set_user;
+	inst->query			= rlm_sql_query;
+	inst->select			= rlm_sql_select_query;
+	inst->fetch_row			= rlm_sql_fetch_row;
+
+	/*
+	 *	Either use the module specific escape function
+	 *	or our default one.
+	 */
+	inst->sql_escape_func = inst->driver->sql_escape_func ?
+				inst->driver->sql_escape_func :
+				sql_escape_func;
+
+	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
+	if (!inst->ef) {
+		cf_log_err(conf, "Failed creating log file context");
+		return -1;
+	}
+
+	/*
+	 *	Initialise the connection pool for this instance
+	 */
+	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
+
+	inst->pool = module_rlm_connection_pool_init(conf, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
+	if (!inst->pool) return -1;
+
+	return 0;
+}
 
 /* globally exported name */
 module_rlm_t rlm_sql = {
