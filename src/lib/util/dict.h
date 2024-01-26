@@ -325,7 +325,7 @@ typedef ssize_t (*fr_dict_attr_decode_func_t)(TALLOC_CTX *ctx, fr_pair_list_t *v
  *	- <= 0 on error.  May be the offset (as a negative value) where the error occurred.
  *	- > 0 on success.  How many bytes were encoded
  */
-typedef ssize_t(*fr_dict_attr_encode_func_t)(fr_dbuff_t *dbuff, fr_pair_list_t *vps);
+typedef ssize_t(*fr_dict_attr_encode_func_t)(fr_dbuff_t *dbuff, fr_pair_list_t const *vps);
 
 /** Protocol-specific callbacks in libfreeradius-PROTOCOL
  *

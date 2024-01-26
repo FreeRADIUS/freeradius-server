@@ -219,7 +219,7 @@ ssize_t		fr_radius_decode_abinary(fr_pair_t *vp, uint8_t const *data, size_t dat
  */
 ssize_t		fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *encode_ctx);
 
-ssize_t		fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t *list) CC_HINT(nonnull);
+ssize_t		fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list) CC_HINT(nonnull);
 
 /*
  *	protocols/radius/decode.c

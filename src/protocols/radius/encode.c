@@ -1652,7 +1652,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-ssize_t	fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t *list)
+ssize_t	fr_radius_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 {
        	fr_radius_ctx_t common_ctx = {};
 	fr_radius_encode_ctx_t encode_ctx = {
