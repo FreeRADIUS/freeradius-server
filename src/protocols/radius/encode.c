@@ -1507,14 +1507,9 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	/*
 	 *	Tags are *top-level*, and are never nested.
 	 */
-	if (vp->vp_type == FR_TYPE_GROUP) {
+	if ((vp->vp_type == FR_TYPE_GROUP) && vp->da->flags.internal &&
+	    (vp->da->attr > FR_TAG_BASE) && (vp->da->attr < (FR_TAG_BASE + 0x20))) {
 		fr_radius_encode_ctx_t	*packet_ctx = encode_ctx;
-
-		if (!vp->da->flags.internal ||
-		    !((vp->da->attr > FR_TAG_BASE) && (vp->da->attr < (FR_TAG_BASE + 0x20)))) {
-			fr_dcursor_next(cursor);
-			return PAIR_ENCODE_SKIPPED;
-		}
 
 		packet_ctx->tag = vp->da->attr - FR_TAG_BASE;
 		fr_assert(packet_ctx->tag > 0);
