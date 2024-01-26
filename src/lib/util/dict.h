@@ -548,6 +548,8 @@ fr_dict_t const		*fr_dict_by_protocol_name(char const *name);
 
 fr_dict_t const		*fr_dict_by_protocol_num(unsigned int num);
 
+fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict);
+
 fr_dict_t const		*fr_dict_by_da(fr_dict_attr_t const *da) CC_HINT(nonnull);
 
 fr_dict_t const		*fr_dict_by_attr_name(fr_dict_attr_t const **found, char const *name);

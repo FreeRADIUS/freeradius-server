@@ -4477,3 +4477,11 @@ bool fr_dict_attr_can_contain(fr_dict_attr_t const *parent, fr_dict_attr_t const
 	 */
 	return (parent->type == FR_TYPE_GROUP);
 }
+
+/** Return the protocol descriptor for the dictionary.
+ *
+ */
+fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict)
+{
+	return dict->proto;
+}
