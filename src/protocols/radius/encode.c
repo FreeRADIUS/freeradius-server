@@ -801,6 +801,35 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	} else if (da->type == FR_TYPE_STRUCT) {
 		slen = fr_struct_to_network(&work_dbuff, da_stack, my_depth, cursor, encode_ctx, encode_value, encode_child);
 
+	} else if (da->type == FR_TYPE_GROUP) {
+		fr_dict_attr_t const *ref;
+		fr_dict_protocol_t const *proto;
+
+		ref = fr_dict_attr_ref(da);
+		if (!ref) {
+			fr_strerror_printf("Invalid attribute reference for %s", da->name);
+			return PAIR_ENCODE_SKIPPED;
+		}
+
+		fr_assert(ref->dict != dict_radius);
+
+		proto = fr_dict_protocol(ref->dict);
+		fr_assert(proto != NULL);
+
+		if (!proto->encode) {
+			fr_strerror_printf("Attribute %s -> %s does not have an encoder", da->name, ref->name);
+			return PAIR_ENCODE_SKIPPED;
+		}
+
+		/*
+		 *	The foreign functions don't take a cursor, so we have to update the cursor ourselves.
+		 */
+		slen = proto->encode(&work_dbuff, &vp->vp_group);
+		if (slen > 0) {
+			vp = fr_dcursor_next(cursor);
+			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+		}
+
 	} else {
 		fr_assert(da->type == FR_TYPE_TLV);
 
