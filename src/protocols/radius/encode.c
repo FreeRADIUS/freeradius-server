@@ -726,8 +726,10 @@ static ssize_t attr_fragment(fr_dbuff_t *data, size_t data_len, fr_dbuff_marker_
 		 *	Just over-ride the flag field.  Nothing else
 		 *	uses it.
 		 */
-		fr_dbuff_set(&frag_hdr_p, fr_dbuff_current(&frag_hdr) + flag_offset);
-		fr_dbuff_in(&frag_hdr_p, (uint8_t)(!last << 7));
+		if (flag_offset) {
+			fr_dbuff_set(&frag_hdr_p, fr_dbuff_current(&frag_hdr) + flag_offset);
+			fr_dbuff_in(&frag_hdr_p, (uint8_t)(!last << 7));
+		}
 
 		FR_PROTO_HEX_DUMP(fr_dbuff_current(hdr), frag_len + hdr_len,
 				  "attr_fragment fragment %u/%u", i + 1, num_fragments);
@@ -1022,7 +1024,7 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	size_t			hdr_len;
 	fr_dbuff_marker_t	hdr, length_field, vsa_length_field;
 	fr_dict_attr_t const	*da, *dv;
-	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, UINT8_MAX);
+	fr_dbuff_t		work_dbuff;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -1031,6 +1033,22 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	if (dv->type != FR_TYPE_VENDOR) {
 		fr_strerror_const("Expected Vendor");
 		return PAIR_ENCODE_FATAL_ERROR;
+	}
+
+	/*
+	 *	Now we encode one vendor attribute.
+	 */
+	da = da_stack->da[depth];
+	fr_assert(da != NULL);
+
+	/*
+	 *	Most VSAs get limited to the one attribute.  Only refs
+	 *	(e.g. DHCPv4, DHCpv6) can get fragmented.
+	 */
+	if (da->type != FR_TYPE_GROUP) {
+		work_dbuff = FR_DBUFF_MAX(dbuff, UINT8_MAX);
+	} else {
+		work_dbuff = FR_DBUFF(dbuff);
 	}
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
@@ -1045,11 +1063,6 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint32_t)dv->attr);	/* Copy in the 32bit vendor ID */
 
-	/*
-	 *	Now we encode one vendor attribute.
-	 */
-	da = da_stack->da[depth];
-	fr_assert(da != NULL);
 
 	hdr_len = dv->flags.type_size + dv->flags.length;
 
@@ -1103,11 +1116,30 @@ static ssize_t encode_vendor_attr(fr_dbuff_t *dbuff,
 	slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	if (slen <= 0) return slen;
 
-	if (dv->flags.length) {
-		fr_dbuff_in(&vsa_length_field, (uint8_t)(hdr_len + slen));
-	}
+	/*
+	 *	There may be more than 253 octets of data encoded in
+	 *	the attribute.  If so, move the data up in the packet,
+	 *	and copy the existing header over.  Set the "C" flag
+	 *	ONLY after copying the rest of the data.
+	 *
+	 *	Note that we do NOT check 'slen' here, as it's only
+	 *	the size of the sub-sub attribute, and doesn't include
+	 *	the RADIUS attribute header, or Vendor-ID.
+	 */
+	if (fr_dbuff_used(&work_dbuff) > UINT8_MAX) {
+		size_t length_offset = 0;
 
-	fr_dbuff_in(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
+		if (dv->flags.length) length_offset = 6 + hdr_len - 1;
+
+		slen = attr_fragment(&work_dbuff, (size_t)slen, &hdr, 6 + hdr_len, 0, length_offset);
+		if (slen <= 0) return slen;
+	} else {
+		if (dv->flags.length) {
+			fr_dbuff_in(&vsa_length_field, (uint8_t)(hdr_len + slen));
+		}
+
+		fr_dbuff_in(&length_field, (uint8_t) fr_dbuff_used(&work_dbuff));
+	}
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_current(&hdr), 6 + hdr_len, "header vsa");
 
