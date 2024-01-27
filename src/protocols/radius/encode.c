@@ -41,6 +41,10 @@ static ssize_t encode_child(fr_dbuff_t *dbuff,
 				fr_da_stack_t *da_stack, unsigned int depth,
 				fr_dcursor_t *cursor, void *encode_ctx);
 
+static ssize_t encode_group(fr_dbuff_t *dbuff,
+			    fr_da_stack_t *da_stack, unsigned int depth,
+			    fr_dcursor_t *cursor, void *encode_ctx);
+
 /** "encrypt" a password RADIUS style
  *
  * Input and output buffers can be identical if in-place encryption is needed.
@@ -348,6 +352,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	TLVs are just another type of value.
 	 */
 	if (da->type == FR_TYPE_TLV) return encode_tlv(dbuff, da_stack, depth, cursor, encode_ctx);
+
+	if (da->type == FR_TYPE_GROUP) return encode_group(dbuff, da_stack, depth, cursor, encode_ctx);
 
 	/*
 	 *	Catch errors early on.
@@ -841,19 +847,11 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	da = da_stack->da[my_depth];
 	fr_assert(vp->da == da);
 
-	if (fr_type_is_leaf(da->type)) {
+	if (da->type != FR_TYPE_STRUCT) {
 		slen = encode_value(&work_dbuff, da_stack, my_depth, cursor, encode_ctx);
 
-	} else if (da->type == FR_TYPE_STRUCT) {
-		slen = fr_struct_to_network(&work_dbuff, da_stack, my_depth, cursor, encode_ctx, encode_value, encode_child);
-
-	} else if (da->type == FR_TYPE_GROUP) {
-		slen = encode_group(&work_dbuff, da_stack, my_depth, cursor, encode_ctx);
-
 	} else {
-		fr_assert(da->type == FR_TYPE_TLV);
-
-		slen = encode_tlv(&work_dbuff, da_stack, my_depth, cursor, encode_ctx);
+		slen = fr_struct_to_network(&work_dbuff, da_stack, my_depth, cursor, encode_ctx, encode_value, encode_child);
 	}
 	if (slen <= 0) return slen;
 

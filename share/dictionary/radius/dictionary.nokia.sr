@@ -296,8 +296,8 @@ ATTRIBUTE	Force-Nak				98	string	# CoA
 ATTRIBUTE	Ipv6-Address				99	ipv6addr
 ATTRIBUTE	Serv-Id					100	integer
 ATTRIBUTE	Interface				101	string
-ATTRIBUTE	ToServer-Dhcp-Options			102	octets
-ATTRIBUTE	ToClient-Dhcp-Options			103	octets
+ATTRIBUTE	ToServer-Dhcp-Options			102	group ref=..DHCPv4
+ATTRIBUTE	ToClient-Dhcp-Options			103	group ref=..DHCPv4
 ATTRIBUTE	Tunnel-Serv-Id				104	integer
 ATTRIBUTE	Ipv6-Primary-Dns			105	ipv6addr
 ATTRIBUTE	Ipv6-Secondary-Dns			106	ipv6addr
@@ -530,8 +530,8 @@ ATTRIBUTE	WPP-ErrorCode				183	integer
 ATTRIBUTE	Onetime-Http-Redirect-Reactivate	185	string
 
 # DHCP6 attributes
-ATTRIBUTE	ToServer-Dhcp6-Options			191	octets
-ATTRIBUTE	ToClient-Dhcp6-Options			192	octets
+ATTRIBUTE	ToServer-Dhcp6-Options			191	group ref=..DHCPv6
+ATTRIBUTE	ToClient-Dhcp6-Options			192	group ref=..DHCPv6
 
 #
 #  MUST have renew time <= rebind time <= preferred lifetime <= valid lifetime

@@ -108,9 +108,9 @@ ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string
 ATTRIBUTE	Radius-Client-Address			52	ipaddr
 ATTRIBUTE	Service-Description			53	string
 ATTRIBUTE	L2tp-Recv-Window-Size			54	integer
-ATTRIBUTE	Dhcp-Options				55	octets
-ATTRIBUTE	Dhcp-Mac-Addr				56	string
-ATTRIBUTE	Dhcp-Gi-Address				57	ipaddr
+ATTRIBUTE	DHCP-Options				55	group ref=..DHCPv4
+ATTRIBUTE	DHCP-Mac-Addr				56	string
+ATTRIBUTE	DHCP-Gi-Address				57	ipaddr
 ATTRIBUTE	LI-Action				58	integer	encrypt=2
 ATTRIBUTE	Med-Dev-Handle				59	octets	encrypt=2
 ATTRIBUTE	Med-Ip-Address				60	ipaddr	encrypt=2
@@ -218,7 +218,7 @@ ATTRIBUTE	IPv6-Acct-Input-Gigawords		155	integer
 ATTRIBUTE	IPv6-Acct-Output-Gigawords		156	integer
 ATTRIBUTE	IPv6-NdRa-Pool-Name			157	string
 ATTRIBUTE	PppoE-Padn				158	string
-ATTRIBUTE	Dhcp-Option-82				159	octets
+ATTRIBUTE	DHCP-Option-82				159	octets # ref=..DHCPv4.Relay-Agent-Information
 ATTRIBUTE	Vlan-Map-Id				160	integer
 ATTRIBUTE	IPv6-Delegated-Pool-Name		161	string
 ATTRIBUTE	Tx-Connect-Speed			162	integer
@@ -262,7 +262,7 @@ ATTRIBUTE	IPv6-Output-Service-Filter		203	string
 ATTRIBUTE	Adv-Pcef-Profile-Name			204	string
 ATTRIBUTE	Adv-Pcef-Rule-Name			205	string
 ATTRIBUTE	Re-Authentication-Catalyst		206	integer
-ATTRIBUTE	DHCPv6-Options				207	octets
+ATTRIBUTE	DHCPv6-Options				207	group ref=..DHCPv4
 ATTRIBUTE	DHCP-Header				208	octets
 ATTRIBUTE	DHCPv6-Header				209	octets
 ATTRIBUTE	Acct-Request-Reason			210	integer
