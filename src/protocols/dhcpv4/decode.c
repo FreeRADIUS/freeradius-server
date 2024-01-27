@@ -580,7 +580,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fr_dict_attr_t const *da;
 
 		if (!packet_ctx->buffer) {
-			packet_ctx->buffer = talloc_array(packet_ctx, uint8_t, data_len);
+			packet_ctx->buffer = talloc_array(packet_ctx->tmp_ctx, uint8_t, data_len);
 			if (!packet_ctx->buffer) return PAIR_DECODE_OOM;
 
 		} else if (talloc_array_length(packet_ctx->buffer) < data_len) {
