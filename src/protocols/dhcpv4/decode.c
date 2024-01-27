@@ -32,6 +32,8 @@
 #include "dhcpv4.h"
 #include "attrs.h"
 
+static _Thread_local uint8_t	concat_buffer[1500]; /* ethernet max */
+
 static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			      fr_dict_attr_t const *parent,
 			      uint8_t const *data, size_t const data_len, void *decode_ctx);
@@ -579,18 +581,14 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		uint8_t *q;
 		fr_dict_attr_t const *da;
 
-		if (!packet_ctx->buffer) {
-			packet_ctx->buffer = talloc_array(packet_ctx->tmp_ctx, uint8_t, data_len);
-			if (!packet_ctx->buffer) return PAIR_DECODE_OOM;
-
-		} else if (talloc_array_length(packet_ctx->buffer) < data_len) {
-			/*
-			 *	We're called in a loop from fr_dhcpv4_decode(), with the full packet, so the
-			 *	needed size should only go down as we decode the packet.
-			 */
+		/*
+		 *	The maximum DHCPv4 packet size is 576 bytes,
+		 *	unless the other end negotiates more.
+		 */
+		if (sizeof(concat_buffer) < data_len) {
 			return -1;
 		}
-		q = packet_ctx->buffer;
+		q = concat_buffer;
 
 		for (next = data; next < end; next += 2 + next[1]) {
 			if ((end - next) < 2) return -1;
@@ -606,20 +604,20 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
 			if (!da) return -1;
 
-			slen = fr_pair_raw_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer);
+			slen = fr_pair_raw_from_network(ctx, out, da, concat_buffer, q - concat_buffer);
 
 		} else if (da->type == FR_TYPE_VSA) {
-			slen = decode_vsa(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+			slen = decode_vsa(ctx, out, da, concat_buffer, q - concat_buffer, packet_ctx);
 
 		} else if (da->type == FR_TYPE_TLV) {
-			slen = fr_pair_tlvs_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer,
+			slen = fr_pair_tlvs_from_network(ctx, out, da, concat_buffer, q - concat_buffer,
 							 packet_ctx, decode_option, verify_tlvs, true);
 
 		} else if (da->flags.array) {
-			slen = fr_pair_array_from_network(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx, decode_value);
+			slen = fr_pair_array_from_network(ctx, out, da, concat_buffer, q - concat_buffer, packet_ctx, decode_value);
 
 		} else {
-			slen = decode_value(ctx, out, da, packet_ctx->buffer, q - packet_ctx->buffer, packet_ctx);
+			slen = decode_value(ctx, out, da, concat_buffer, q - concat_buffer, packet_ctx);
 		}
 		if (slen <= 0) return slen;
 
