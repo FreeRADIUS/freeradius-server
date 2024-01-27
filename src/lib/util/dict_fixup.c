@@ -230,6 +230,7 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 	fr_dict_attr_t const	*da;
 	char const		*name;
 	ssize_t			slen;
+	char			protocol[64];
 
 	/*
 	 *	Ref to attribute in existing dictionary.  The dictionary MUST be loaded by $INCLUDEs.
@@ -254,7 +255,6 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 	if (slen <= 0) {
 		char *p;
 		char const *q;
-		char protocol[64];
 
 		/*
 		 *	The filenames are lowercase.  The names in the dictionaries are case-insensitive.  So
