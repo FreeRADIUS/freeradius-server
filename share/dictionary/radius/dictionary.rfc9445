@@ -9,4 +9,4 @@
 #	$Id$
 #
 ATTRIBUTE	DHCPv6-Options				245.3	octets # formatted as DHCPv6 options
-ATTRIBUTE	DHCPv4-Options				245.4	octets # group ref=..DHCPv4
+ATTRIBUTE	DHCPv4-Options				245.4	group ref=..DHCPv4
