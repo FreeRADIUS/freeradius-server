@@ -253,14 +253,26 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 	slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_IN(name, strlen(name)), NULL);
 	if (slen <= 0) {
 		char *p;
+		char const *q;
+		char protocol[64];
 
-		p = strchr(name, '.');
-		if (p) *p = '\0';
+		/*
+		 *	The filenames are lowercase.  The names in the dictionaries are case-insensitive.  So
+		 *	we mash the name to all lowercase.
+		 */
+		p = protocol;
+		q = name;
+		while (*q && (*q != '.')) {
+			*(p++) = tolower((int) *(q++));
+
+			if ((size_t) (p - protocol) >= sizeof(protocol)) goto invalid;
+		}
+		*p = '\0';
 
 		/*
 		 *	Load the new dictionary, and mark it as loaded from our dictionary.
 		 */
-		if (fr_dict_protocol_afrom_file(&dict, name, NULL, (*dict_def)->root->name) < 0) {
+		if (fr_dict_protocol_afrom_file(&dict, protocol, NULL, (*dict_def)->root->name) < 0) {
 			return NULL;
 		}
 
@@ -274,7 +286,7 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 		/*
 		 *	The reference is to the root of the foreign protocol, we're done.
 		 */
-		if (!p) {
+		if (!*q) {
 			*dict_def = dict;
 			return dict->root;
 		}
