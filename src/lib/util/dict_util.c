@@ -3303,7 +3303,7 @@ static int dict_autoref_free(fr_dict_t *dict)
 
 	if (!dict->autoref) return 0;
 
-	if (fr_hash_table_flatten(NULL, (void ***)&refd_list, dict->autoref) < 0) {
+	if (fr_hash_table_flatten(dict->autoref, (void ***)&refd_list, dict->autoref) < 0) {
 		fr_strerror_const("failed flattening autoref hash table");
 		return -1;
 	}
