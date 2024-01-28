@@ -108,3 +108,58 @@ ssize_t fr_pair_cursor_to_network(fr_dbuff_t *dbuff,
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
+
+/** Encode a foreign reference to the network
+ *
+ * @param[out] dbuff		buffer to write the TLV to.
+ * @param[in] da_stack		Describing nesting of options.
+ * @param[in] depth		in the da_stack.
+ * @param[in,out] cursor	Current attribute we're encoding.
+ * @return
+ *	- >0 length of data encoded.
+ *	- 0 if we ran out of space.
+ *	- < 0 on error.
+ */
+ssize_t fr_pair_ref_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned int depth,
+			       fr_dcursor_t *cursor)
+{
+	ssize_t			slen;
+	fr_dict_attr_t const	*da;
+	fr_pair_t const		*vp = fr_dcursor_current(cursor);
+	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
+
+	fr_dict_attr_t const *ref;
+	fr_dict_protocol_t const *proto;
+
+	FR_PROTO_STACK_PRINT(da_stack, depth);
+
+	da = da_stack->da[depth];
+	fr_assert(da->type == FR_TYPE_GROUP);
+
+	ref = fr_dict_attr_ref(da);
+	if (!ref) {
+		fr_strerror_printf("Invalid attribute reference for %s", da->name);
+		return PAIR_ENCODE_SKIPPED;
+	}
+
+	proto = fr_dict_protocol(ref->dict);
+	fr_assert(proto != NULL);
+
+	if (!proto->encode) {
+		fr_strerror_printf("Attribute %s -> %s does not have an encoder", da->name, ref->name);
+		return PAIR_ENCODE_SKIPPED;
+	}
+
+	/*
+	 *	The foreign functions don't take a cursor, so we have to update the cursor ourselves.
+	 */
+	slen = proto->encode(&work_dbuff, &vp->vp_group);
+	if (slen <= 0) return slen;
+
+	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "group ref");
+
+	vp = fr_dcursor_next(cursor);
+	fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
