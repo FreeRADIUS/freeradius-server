@@ -775,6 +775,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *parent, fr_dict_attr_t const *da, char *ref)
 {
 	fr_dict_t		*dict;
+	fr_dict_attr_t const	*da_ref;
 	ssize_t			slen;
 	char const		*name;
 
@@ -803,15 +804,14 @@ static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *pare
 		fr_dict_attr_t		*self;
 
 		dict = ctx->dict;
-		da = ctx->dict->root;
+		da_ref = ctx->dict->root;
 
-set:
+	set:
 		talloc_free(ref);
 
 		self = UNCONST(fr_dict_attr_t *, da);
-		self->dict = dict;
 
-		dict_attr_ref_set(self, da);	
+		dict_attr_ref_set(self, da_ref);
 		return 0;
 	}
 
@@ -819,8 +819,8 @@ set:
 	 *	Else refs refer to attributes in the current dictionary.
 	 */
 	if (ref[0] != '.') {
-		da = fr_dict_attr_by_oid(NULL, parent, ref);
-		if (da) {
+		da_ref = fr_dict_attr_by_oid(NULL, parent, ref);
+		if (da_ref) {
 			dict = ctx->dict;
 			goto set;
 		}
@@ -858,15 +858,15 @@ set:
 	 *	It's a reference to the root of the foreign dictionary.
 	 */
 	if (name[slen] == '\0') {
-		da = dict->root;
+		da_ref = dict->root;
 		goto set;
 	}
 
 	/*
 	 *	Look up the attribute.
 	 */
-	da = fr_dict_attr_by_oid(NULL, dict->root, name + slen);
-	if (!da) {
+	da_ref = fr_dict_attr_by_oid(NULL, dict->root, name + slen);
+	if (!da_ref) {
 		fr_strerror_printf("protocol '%s' is loaded, but there is no such attribute '%s'",
 				   dict->root->name, name + slen);
 		goto fail;
@@ -875,12 +875,12 @@ set:
 	/*
 	 *	Refs must satisfy certain properties.
 	 */
-	if (da->type != FR_TYPE_TLV) {
+	if (da_ref->type != FR_TYPE_TLV) {
 		fr_strerror_const("References MUST be to an ATTRIBUTE of type 'tlv'");
 		goto fail;
 	}
 
-	if (fr_dict_attr_ref(da)) {
+	if (fr_dict_attr_ref(da_ref)) {
 		fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
 		goto fail;
 	}
