@@ -404,6 +404,11 @@ next:
 	}
 	p++;
 
+	/*
+	 *	Pathological case of no data.
+	 */
+	if (option_len == 0) goto next;
+
 	vp = fr_pair_find_by_da(out, NULL, vendor);
 	if (!vp) {
 		vp = fr_pair_afrom_da(ctx, vendor);
@@ -413,9 +418,9 @@ next:
 	}
 
 	len = fr_pair_tlvs_from_network(vp, &vp->vp_group, vendor, p, option_len, decode_ctx, decode_option, verify_tlvs, false);
-	if (len <= 0) return len;
+	if (len < 0) return len;
 
-	p += len;
+	p += option_len;
 	if (p < end) goto next;
 
 	/*
@@ -581,13 +586,6 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		uint8_t *q;
 		fr_dict_attr_t const *da;
 
-		/*
-		 *	The maximum DHCPv4 packet size is 576 bytes,
-		 *	unless the other end negotiates more.
-		 */
-		if (sizeof(concat_buffer) < data_len) {
-			return -1;
-		}
 		q = concat_buffer;
 
 		for (next = data; next < end; next += 2 + next[1]) {
@@ -595,9 +593,13 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			if (next[0] != data[0]) break;
 			if ((next + 2 + next[1]) > end) return -1;
 
+			if ((size_t) (q + next[1] - concat_buffer) > sizeof(concat_buffer)) return -1;
+
 			memcpy(q, next + 2, next[1]);
 			q += next[1];
 		}
+
+		if (q == concat_buffer) return 0;
 
 		da = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), p[0]);
 		if (!da) {
