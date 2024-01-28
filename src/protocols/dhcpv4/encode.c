@@ -774,7 +774,7 @@ ssize_t	fr_dhcpv4_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 	 */
 	while (fr_dcursor_current(&cursor) != NULL) {
 		slen = fr_dhcpv4_encode_option(&work_dbuff, &cursor, &(fr_dhcpv4_ctx_t){ .root = fr_dict_root(dict_dhcpv4) });
-		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen < 0) return slen;
 	}
 
 	FR_PROTO_TRACE("Foreign option is %zu byte(s)", fr_dbuff_used(&work_dbuff));
