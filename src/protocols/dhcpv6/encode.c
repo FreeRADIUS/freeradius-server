@@ -282,6 +282,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 		if (ref && (ref->dict != dict_dhcpv6)) {
 			slen = fr_pair_ref_to_network(&work_dbuff, da_stack, depth, cursor);
+			if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 			break;
 		}
 
