@@ -10,4 +10,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	Relay-Supplied-Options			66	tlv		# Options see RFC 6422
+ATTRIBUTE	Relay-Supplied-Options			66	group
