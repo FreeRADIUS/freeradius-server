@@ -187,10 +187,17 @@ ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		slen = decode_tlv(child_ctx, list, parent, p, (end - p), decode_ctx);
 		if (slen <= 0) {
-			FR_PROTO_TRACE("    tlv decode failed at offset %zu - converting to raw", (size_t) (p - data));
+			FR_PROTO_TRACE("    tlv decode failed at offset %zu - %s", (size_t) (p - data), fr_strerror());
 			fr_pair_list_free(list);
 			talloc_free(vp);
-			return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
+
+			/*
+			 *	Don't decode it as raw.  We don't know how the TLVs are structured, so the
+			 *	only da we have is the parent.  The output has to in the parent with a child
+			 *	da.  So if we create a raw attribute here, then we have the raw attribute of
+			 *	da==parent going into the parent, which is wrong.
+			 */
+			return PAIR_DECODE_FATAL_ERROR;
 		}
 
 		p += slen;
