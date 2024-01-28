@@ -445,7 +445,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff,
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	hdr;
 	fr_dict_attr_t const	*da = da_stack->da[depth];
-	ssize_t			len;
+	ssize_t			slen;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 	fr_dbuff_marker(&hdr, &work_dbuff);
@@ -460,11 +460,11 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff,
 	 *	Write out the option's value
 	 */
 	if (da->flags.array) {
-		len = fr_pair_array_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value);
+		slen = fr_pair_array_to_network(&work_dbuff, da_stack, depth, cursor, encode_ctx, encode_value);
 	} else {
-		len = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
+		slen = encode_value(&work_dbuff, da_stack, depth, cursor, encode_ctx);
 	}
-	if (len < 0) return len;
+	if (slen < 0) return slen;
 
 	/*
 	 *	Write out the option number and length (before the value we just wrote)
@@ -668,7 +668,7 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 	unsigned int		depth = 0;
 	fr_da_stack_t		da_stack;
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, DHCPV6_OPT_HDR_LEN + UINT16_MAX);
-	ssize_t			len;
+	ssize_t			slen;
 
 	vp = fr_dcursor_current(cursor);
 	if (!vp) return 0;
@@ -694,18 +694,18 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 		 *	Relay-Message has a special format, it's an entire packet. :(
 		 */
 		if (da_stack.da[depth] == attr_relay_message) {
-			len = encode_relay_message(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
+			slen = encode_relay_message(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 			break;
 		}
 
-		len = encode_rfc(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
+		slen = encode_rfc(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 
 	default:
-		len = encode_child(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
+		slen = encode_child(&work_dbuff, &da_stack, depth, cursor, encode_ctx);
 		break;
 	}
-	if (len < 0) return len;
+	if (slen < 0) return slen;
 
 	FR_PROTO_TRACE("Complete option is %zu byte(s)", fr_dbuff_used(&work_dbuff));
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), NULL);
