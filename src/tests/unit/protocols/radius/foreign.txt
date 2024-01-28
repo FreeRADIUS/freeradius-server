@@ -50,8 +50,8 @@ match f5 11 03 00 00 0e 00 00 00 51 00 05 01 05 62 6f 62
 #
 #  Not yet
 #
-#decode-pair -
-#match Extended-Attribute-5 = { DHCPv6-Options = { RADIUS = { User-Name = "bob" } } }
+decode-pair -
+match Extended-Attribute-5 = { DHCPv6-Options = { Rapid-Commit = yes, RADIUS = { User-Name = "bob" } } }
 
 ######################################################################
 #
@@ -72,4 +72,4 @@ decode-proto 1f000260b50307ffededdef5ff04f504da0000026004ffedf53cfffffdff13daf50
 match Packet-Type = Terminate-Session, Packet-Authentication-Vector = 0xb50307ffededdef5ff04f504da000002, raw.Framed-Interface-Id = 0xffed, Extended-Attribute-5 = { raw.255 = 0xfdff13daf504ffed000000000c0000180000000000000076e504ffdaf504ffecf504ffddf500ffed8104ffdaf504ff82f504ffda0bfaffda, raw.DHCPv4-Options = 0xed249e0038fffe0002ff2b3100bd001f000000810f02010004000f1b00549e00e402ef046b02cf04c05400046b02cf047d41cf04e7cf02040002fe147c02cf040205cf7d02cf00047d02cf04e802cf067d02cf7a007c02027dcfcf020404e8cf067d02cf04cf02040002fe147c02cf040205cf7d02cf00047d02cf04e802cf067d02cf7a047c02027dcfcf020404e8cf067d02cf047c02cf040302cf04e8023d02cf0024151c2a160000000000000000018303d67b0303023002cf03025902cf0306bd000014fb02cf03000000000076e504ffdaf504ffecf504ffddf500ff82f504ffda0bfaffdaf504ffdaf504ffecf504ff73f504ffddf504ff }, raw.Extended-Attribute-5 = 0xffdd, raw.Extended-Attribute-5 = 0xffed, raw.Extended-Attribute-5 = 0xffda, raw.237 = 0x04ffdaf5ff04f5ed249e0038fffe0002ff2b3100bd0000000000810ffeff0000000f1b00549e00e402ef046b02cf04c05400046b02cf047d41cf040000000000000076e504ffdaf504ffecf504ffddf500ffed8104ffdaf504ff82f504ffda0bfaffdaf504ffdaf504ffecf504ff73f504ffddf504ffedf504ffdaf5ff04f5ed249e0038fffe0002ff2b3100bd0000000000810ffeff0000000f1b00549e00e402ef046b02cf04c05400046b02cf047d41cf04e7cf02040002fe147c02cf040205cf7d02cf06bd02cf0302cc03030302cf03435d03594302cf02cf03025902cf03063d02cf2b063d0302cf03435902cf030302
 
 count
-match 27
+match 29

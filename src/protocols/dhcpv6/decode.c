@@ -73,6 +73,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	ssize_t			slen;
 	fr_pair_t		*vp = NULL;
 	uint8_t			prefix_len;
+	fr_dict_attr_t const	*ref;
 
 	FR_PROTO_HEX_DUMP(data, data_len, "decode_value");
 
@@ -186,14 +187,31 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		vp = fr_pair_afrom_da(ctx, parent);
 		if (!vp) return PAIR_DECODE_OOM;
 
-		/*
-		 *	Child VPs go into the child group, not in the main parent list.  BUT, we start
-		 *	decoding attributes from the dictionary root, not from this parent.
-		 */
-		slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, decode_option, NULL, false);
-		if (slen < 0) {
-			talloc_free(vp);
-			goto raw;
+		ref = fr_dict_attr_ref(parent);
+		if (ref && (ref->dict != dict_dhcpv6)) {
+			fr_dict_protocol_t const *proto;
+
+			proto = fr_dict_protocol(ref->dict);
+			fr_assert(proto != NULL);
+
+			if (!proto->decode) {
+			raw_free:
+				talloc_free(vp);
+				goto raw;
+			}
+
+			slen = proto->decode(vp, &vp->vp_group, data, data_len);
+			if (slen < 0) goto raw_free;
+
+			vp->vp_tainted = true;
+
+		} else {
+			/*
+			 *	Child VPs go into the child group, not in the main parent list.  BUT, we start
+			 *	decoding attributes from the dictionary root, not from this parent.
+			 */
+			slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, decode_option, NULL, false);
+			if (slen < 0) goto raw_free;
 		}
 
 		fr_pair_append(out, vp);
@@ -210,10 +228,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						 &FR_DBUFF_TMP(data,  sizeof(vp->vp_ipv6addr)),  sizeof(vp->vp_ipv6addr), true);
-		if (slen < 0) {
-			talloc_free(vp);
-			goto raw;
-		}
+		if (slen < 0) goto raw_free;
 		break;
 
 	default:
@@ -222,10 +237,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		slen = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						 &FR_DBUFF_TMP(data, data_len), data_len, true);
-		if (slen < 0) {
-			talloc_free(vp);
-			goto raw;
-		}
+		if (slen < 0) goto raw_free;
 		break;
 	}
 
