@@ -421,6 +421,43 @@ ssize_t fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return decode_option(ctx, out, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx);
 }
 
+ssize_t	fr_dhcpv6_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
+				 uint8_t const *data, size_t data_len)
+{
+	ssize_t slen;
+	uint8_t const *attr, *end;
+
+	fr_dhcpv6_decode_ctx_t decode_ctx = {};
+
+	decode_ctx.tmp_ctx = talloc(ctx, uint8_t);
+
+	attr = data;
+	end = data + data_len;
+
+	while (attr < end) {
+		slen = fr_dhcpv6_decode_option(ctx, out, attr, (end - attr), &decode_ctx);
+		if (slen < 0) {
+			talloc_free(decode_ctx.tmp_ctx);
+			return slen;
+		}
+
+		/*
+		 *	If slen is larger than the room in the packet,
+		 *	all kinds of bad things happen.
+		 */
+		 if (!fr_cond_assert(slen <= (end - attr))) {
+			talloc_free(decode_ctx.tmp_ctx);
+			 return -slen - (attr - data);
+		 }
+
+		attr += slen;
+		talloc_free_children(decode_ctx.tmp_ctx);
+	}
+
+	talloc_free(decode_ctx.tmp_ctx);
+	return data_len;
+}
+
 /*
  *	Stub functions to enable test context
  */

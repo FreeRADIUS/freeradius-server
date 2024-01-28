@@ -993,4 +993,11 @@ fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.subtype_table = subtype_table,
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr_valid = attr_valid,
+
+
+	.init = fr_dhcpv6_global_init,
+	.free = fr_dhcpv6_global_free,
+
+	.encode		= fr_dhcpv6_encode_foreign,
+	.decode		= fr_dhcpv6_decode_foreign,
 };

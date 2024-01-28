@@ -171,8 +171,13 @@ void		fr_dhcpv6_global_free(void);
  */
 ssize_t		fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * encode_ctx);
 
+ssize_t		fr_dhcpv6_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list);
+
 /*
  *	decode.c
  */
 ssize_t		fr_dhcpv6_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					uint8_t const *data, size_t data_len, void *decode_ctx);
+
+ssize_t		fr_dhcpv6_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
+					 uint8_t const *data, size_t data_len);

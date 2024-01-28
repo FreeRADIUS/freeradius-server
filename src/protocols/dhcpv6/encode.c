@@ -713,6 +713,34 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+ssize_t	fr_dhcpv6_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
+{
+	ssize_t		slen;
+	fr_dcursor_t	cursor;
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
+
+	fr_assert(dict_dhcpv6 != NULL);
+
+	fr_pair_dcursor_iter_init(&cursor, list, fr_dhcpv6_next_encodable, dict_dhcpv6);
+
+	/*
+	 *	Loop over all DHCPv4 options.
+	 *
+	 *	Unlike fr_dhcpv4_encode_dbuff(), we don't sort the options.  If that causes problems, we will
+	 *	deal with it later.
+	 */
+	while (fr_dcursor_current(&cursor) != NULL) {
+		slen = fr_dhcpv6_encode_option(&work_dbuff, &cursor, &(fr_dhcpv6_encode_ctx_t){ .root = fr_dict_root(dict_dhcpv6) });
+		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+	}
+
+	FR_PROTO_TRACE("Foreign option is %zu byte(s)", fr_dbuff_used(&work_dbuff));
+	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), NULL);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+
 static int _test_ctx_free(UNUSED fr_dhcpv6_encode_ctx_t *ctx)
 {
 	fr_dhcpv6_global_free();
