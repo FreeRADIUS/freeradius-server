@@ -729,12 +729,6 @@ ssize_t	fr_dhcpv6_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 
 	fr_pair_dcursor_iter_init(&cursor, list, fr_dhcpv6_next_encodable, dict_dhcpv6);
 
-	/*
-	 *	Loop over all DHCPv4 options.
-	 *
-	 *	Unlike fr_dhcpv4_encode_dbuff(), we don't sort the options.  If that causes problems, we will
-	 *	deal with it later.
-	 */
 	while (fr_dcursor_current(&cursor) != NULL) {
 		slen = fr_dhcpv6_encode_option(&work_dbuff, &cursor, &(fr_dhcpv6_encode_ctx_t){ .root = fr_dict_root(dict_dhcpv6) });
 		if (slen < 0) return slen;
