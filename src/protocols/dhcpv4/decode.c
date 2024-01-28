@@ -654,7 +654,7 @@ ssize_t	fr_dhcpv4_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		slen = fr_dhcpv4_decode_option(ctx, out, attr, (end - attr), &decode_ctx);
 		if (slen < 0) {
 			talloc_free(decode_ctx.tmp_ctx);
-			return slen - (attr - data);
+			return slen;
 		}
 
 		/*
