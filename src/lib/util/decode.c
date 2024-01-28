@@ -166,7 +166,7 @@ ssize_t fr_pair_tlvs_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	Do a quick sanity check to see if the TLVs are at all OK.
 	 */
-	if (verify_tlvs && !verify_tlvs(data, data_len)) return fr_pair_raw_from_network(ctx, out, parent, data, data_len);
+	if (verify_tlvs && !verify_tlvs(data, data_len)) return -1;
 
 	p = data;
 	end = data + data_len;
