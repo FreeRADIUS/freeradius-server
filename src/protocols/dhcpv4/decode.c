@@ -619,7 +619,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		} else {
 			slen = decode_value(ctx, out, da, concat_buffer, q - concat_buffer, packet_ctx);
 		}
-		if (slen <= 0) return slen;
+		if (slen < 0) return slen;
 
 		/*
 		 *	The actual amount of data we decoded, including the various headers.
