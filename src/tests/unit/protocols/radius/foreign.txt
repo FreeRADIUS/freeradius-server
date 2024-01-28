@@ -40,6 +40,18 @@ match f5 10 03 00 00 0e 00 00 00 20 00 04 00 00 1a 99
 decode-pair -
 match Extended-Attribute-5 = { DHCPv6-Options = { Rapid-Commit = yes, Information-Refresh-Time = 6809 } }
 
+######################################################################
+#
+#  RADIUS encapsulates DHCPv6, which in turn encapsulates RADIUS
+#
+encode-pair Extended-Attribute-5 = { DHCPv6-Options = { Rapid-Commit = yes, RADIUS = { User-Name = "bob" } } }
+match f5 11 03 00 00 0e 00 00 00 51 00 05 01 05 62 6f 62
+
+#
+#  Not yet
+#
+#decode-pair -
+#match Extended-Attribute-5 = { DHCPv6-Options = { RADIUS = { User-Name = "bob" } } }
 
 ######################################################################
 #
@@ -57,4 +69,4 @@ decode-proto 04ac00edd604040404040404040404040302d700f30303f5040402f50303f504030
 match Packet-Type = Accounting-Request, Packet-Authentication-Vector = 0xd604040404040404040404040302d700, raw.Extended-Attribute-3 = 0x03, raw.Extended-Attribute-5 = 0x0402, raw.Extended-Attribute-5 = 0x03, raw.Extended-Attribute-5 = 0x0303, raw.Extended-Attribute-5 = 0x0402, raw.Extended-Attribute-5 = 0x03, User-Password = "\366\356", raw.Extended-Attribute-3 = 0x03, raw.Extended-Attribute-5 = 0x0402, raw.Extended-Attribute-5 = 0x03, raw.Extended-Attribute-5 = 0x0402, User-Password = "\366\356", raw.Extended-Attribute-3 = 0x03, raw.Extended-Attribute-5 = 0x0402, raw.Extended-Attribute-5 = 0x03, User-Password = "\366\356", raw.Extended-Attribute-3 = 0x03, raw.Extended-Attribute-5 = 0x0402, raw.Extended-Attribute-5 = 0x03, raw.Extended-Attribute-5 = 0x0403, raw.Extended-Attribute-5 = 0x0402, raw.Extended-Attribute-5 = 0x02, raw.214 = 0x0402, User-Password = "\366\356", raw.Extended-Attribute-3 = 0x03, raw.Extended-Attribute-5 = 0x0402, raw.Extended-Attribute-5 = 0x03, User-Password = "\366\356", raw.Extended-Attribute-3 = 0x03, raw.Extended-Attribute-5 = 0x0402, raw.Extended-Attribute-5 = 0x03, Extended-Attribute-5 = { raw.DHCPv4-Options = 0x2a006004040404040404f30303f5040402f50303040202046000f30303f5040402f50303f5040303f5040402f50303040202046000f30303f5040402f50303f5040402020203023d046000f30303f5040303f5030402040404 }, raw.NAS-IP-Address = 0x0404, raw.NAS-IP-Address = 0x0404
 
 count
-match 23
+match 25

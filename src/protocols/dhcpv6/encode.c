@@ -278,6 +278,12 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	case FR_TYPE_GROUP:
 	{
 		fr_dcursor_t child_cursor;
+		fr_dict_attr_t const *ref = fr_dict_attr_ref(vp->da);
+
+		if (ref && (ref->dict != dict_dhcpv6)) {
+			slen = fr_pair_ref_to_network(&work_dbuff, da_stack, depth, cursor);
+			break;
+		}
 
 		/*
 		 *	Encode the child options.
