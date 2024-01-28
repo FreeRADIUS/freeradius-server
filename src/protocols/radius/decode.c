@@ -2146,6 +2146,24 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
+static const char *reason_name[DECODE_FAIL_MAX] = {
+	[ DECODE_FAIL_NONE ] = "all OK",
+	[ DECODE_FAIL_MIN_LENGTH_PACKET ] = "packet is too small",
+	[ DECODE_FAIL_MIN_LENGTH_FIELD ] = "length field is too small",
+	[ DECODE_FAIL_MIN_LENGTH_MISMATCH ] = "length mismatch",
+	[ DECODE_FAIL_HEADER_OVERFLOW ] = "header overflow",
+	[ DECODE_FAIL_UNKNOWN_PACKET_CODE ] = "unknown packet code",
+	[ DECODE_FAIL_INVALID_ATTRIBUTE ] = "invalid attribute",
+	[ DECODE_FAIL_ATTRIBUTE_TOO_SHORT ] = "attribute too short",
+	[ DECODE_FAIL_ATTRIBUTE_OVERFLOW ] = "attribute overflows the packet",
+	[ DECODE_FAIL_MA_INVALID_LENGTH ] = "invalid length for Message-Authenticator",
+	[ DECODE_FAIL_ATTRIBUTE_UNDERFLOW ] = "attribute underflows the packet",
+	[ DECODE_FAIL_TOO_MANY_ATTRIBUTES ] = "too many attributes",
+	[ DECODE_FAIL_MA_MISSING ] = "Message-Authenticator is required, but missing",
+	[ DECODE_FAIL_MA_INVALID ] = "Message-Authenticator is invalid",
+	[ DECODE_FAIL_UNKNOWN ] = "unknown",
+};
+
 static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				      uint8_t const *data, size_t data_len, void *proto_ctx)
 {
@@ -2155,6 +2173,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	size_t		packet_len = data_len;
 
 	if (!fr_radius_ok(data, &packet_len, 200, false, &reason)) {
+		fr_strerror_printf("Packet failed verification - %s", reason_name[reason]);
 		return -1;
 	}
 
