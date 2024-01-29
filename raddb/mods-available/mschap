@@ -64,7 +64,7 @@ mschap {
 	#
 	#  If that works, you know both that the user exists, and the
 	#  password is correct.  You also know what AD expects for the
-	#  username,
+	#  username.
 	#
 	#  There is often confusion between different formats of the
 	#  username.  Is it "user", or "user@domain" or "DOMAIN\\user"?
@@ -88,11 +88,12 @@ mschap {
 	#  Then, run ntlm_auth from the command line, using the same
 	#  command-line options as given below.  Since you can't
 	#  change the challenge or nt-response strings, try changing
-	#  the --username=... parameter.  Try different formats for
-	#  the username until one works.
+	#  the --username=... and --domain=... parameters.  Try
+	#  different formats for them until one works.  There should only
+	#  be a small number of variations possible.
 	#
-	#  That is the username format which you need to configure
-	#  here.
+	#  That is the username and domain format which you need to
+	#  configure here in this file.
 	#
 	#  For Samba 4, you should also set the "ntlm auth" parameter
 	#  in the Samba configuration:
