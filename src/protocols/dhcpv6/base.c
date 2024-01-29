@@ -914,10 +914,17 @@ int fr_dhcpv6_global_init(void)
 		return 0;
 	}
 
-	if (fr_dict_autoload(libfreeradius_dhcpv6_dict) < 0) return -1;
+	instance_count++;
+
+	if (fr_dict_autoload(libfreeradius_dhcpv6_dict) < 0) {
+	fail:
+		instance_count--;
+		return -1;
+	}
+
 	if (fr_dict_attr_autoload(libfreeradius_dhcpv6_dict_attr) < 0) {
 		fr_dict_autofree(libfreeradius_dhcpv6_dict);
-		return -1;
+		goto fail;
 	}
 
 	/*
@@ -932,17 +939,17 @@ int fr_dhcpv6_global_init(void)
 		if (fr_dict_enum_add_name(fr_dict_attr_unconst(attr_option_request),
 					  child->name, &value, true, false) < 0) {
 			fr_dict_autofree(libfreeradius_dhcpv6_dict);
-			return -1;
+			goto fail;
 		}
 	}
-
-	instance_count++;
 
 	return 0;
 }
 
 void fr_dhcpv6_global_free(void)
 {
+	fr_assert(instance_count > 0);
+
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_dhcpv6_dict);

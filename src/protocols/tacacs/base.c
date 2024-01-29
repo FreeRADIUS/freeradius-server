@@ -30,6 +30,8 @@
 #include "tacacs.h"
 #include "attrs.h"
 
+static uint32_t instance_count = 0;
+
 fr_dict_t const *dict_tacacs;
 
 extern fr_dict_autoload_t libfreeradius_tacacs_dict[];
@@ -141,14 +143,33 @@ char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX] = {
 
 int fr_tacacs_init(void)
 {
-	if (fr_dict_autoload(libfreeradius_tacacs_dict) < 0) return -1;
-	if (fr_dict_attr_autoload(libfreeradius_tacacs_dict_attr) < 0) return -1;
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
+	instance_count++;
+
+	if (fr_dict_autoload(libfreeradius_tacacs_dict) < 0) {
+	fail:
+		instance_count--;
+		return -1;
+	}
+
+	if (fr_dict_attr_autoload(libfreeradius_tacacs_dict_attr) < 0) {
+		fr_dict_autofree(libfreeradius_tacacs_dict);
+		goto fail;
+	}
 
 	return 0;
 }
 
 void fr_tacacs_free(void)
 {
+	fr_assert(instance_count > 0);
+
+	if (--instance_count > 0) return;
+
 	fr_dict_autofree(libfreeradius_tacacs_dict);
 }
 

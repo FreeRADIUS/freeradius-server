@@ -94,24 +94,27 @@ int fr_tftp_init(void)
 		return 0;
 	}
 
+	instance_count++;
+
 	if (fr_dict_autoload(libfreeradius_tftp) < 0) {
-		fr_strerror_printf_push("Failed loading the 'tftp' dictionary");
+	fail:
+		instance_count--;
 		return -1;
 	}
 
 	if (fr_dict_attr_autoload(libfreeradius_tftp_dict_attr) < 0) {
-		fr_strerror_printf("Failed loading the 'tftp' attributes");
 		fr_dict_autofree(libfreeradius_tftp);
-		return -1;
+		goto fail;
 	}
 
-	instance_count++;
 
 	return 0;
 }
 
 void fr_tftp_free(void)
 {
+	fr_assert(instance_count > 0);
+
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_tftp);

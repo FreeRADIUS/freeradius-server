@@ -59,24 +59,27 @@ int fr_vmps_init(void)
 		return 0;
 	}
 
+	instance_count++;
+
 	if (fr_dict_autoload(libfreeradius_vmps) < 0) {
-		fr_strerror_const_push("Failed loading the 'vmps' dictionary");
+	fail:
+		instance_count--;
 		return -1;
 	}
 
 	if (fr_dict_attr_autoload(libfreeradius_vmps_dict_attr) < 0) {
-		fr_strerror_const("Failed loading the 'vmps' attributes");
 		fr_dict_autofree(libfreeradius_vmps);
-		return -1;
+		goto fail;
 	}
 
-	instance_count++;
 
 	return 0;
 }
 
 void fr_vmps_free(void)
 {
+	fr_assert(instance_count > 0);
+
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_vmps);

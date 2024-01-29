@@ -265,19 +265,26 @@ int fr_arp_init(void)
 		return 0;
 	}
 
-	if (fr_dict_autoload(libfreeradius_arp_dict) < 0) return -1;
-	if (fr_dict_attr_autoload(libfreeradius_arp_dict_attr) < 0) {
-		fr_dict_autofree(libfreeradius_arp_dict);
+	instance_count++;
+
+	if (fr_dict_autoload(libfreeradius_arp_dict) < 0) {
+	fail:
+		instance_count--;
 		return -1;
 	}
 
-	instance_count++;
+	if (fr_dict_attr_autoload(libfreeradius_arp_dict_attr) < 0) {
+		fr_dict_autofree(libfreeradius_arp_dict);
+		goto fail;
+	}
 
 	return 0;
 }
 
 void fr_arp_free(void)
 {
+	fr_assert(instance_count > 0);
+
 	if (--instance_count > 0) return;
 
 	fr_dict_autofree(libfreeradius_arp_dict);
