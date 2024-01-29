@@ -1856,7 +1856,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	It also justifies allocating FR_RADIUS_CODE_MAXinstances of rs_latency_t.
 		 */
 		rs_stats_update_latency(&stats->exchange[packet->code], &latency);
-		rs_stats_update_latency(&stats->exchange[original->expect->code], &latency);
+		if (original->expect) rs_stats_update_latency(&stats->exchange[original->expect->code], &latency);
 
 		/*
 		 *	We're filtering on response, now print out the full data from the request
