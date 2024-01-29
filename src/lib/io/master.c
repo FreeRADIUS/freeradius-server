@@ -1364,6 +1364,19 @@ redo:
 			return 0;
 		}
 
+		/*
+		 * Set the descriptor for the new child connection as
+		 * non-blocking.
+		 */
+		if (fr_nonblock(accept_fd) < -1) {
+			DEBUG("proto_%s - failed to set new TCP descriptor %d as non-blocking. Closing...",
+					inst->app->common.name, accept_fd);
+			close(accept_fd);
+			return 0;
+		}
+
+
+
 #ifdef STATIC_ANALYZER
 		saremote.ss_family = AF_INET; /* static analyzer doesn't know that accept() initializes this */
 #endif
