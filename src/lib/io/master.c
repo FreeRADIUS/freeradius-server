@@ -1364,6 +1364,11 @@ redo:
 			return 0;
 		}
 
+		/*
+		 *	Set the new descriptor to be non-blocking.
+		 */
+		(void) fr_nonblock(accept_fd);
+
 #ifdef STATIC_ANALYZER
 		saremote.ss_family = AF_INET; /* static analyzer doesn't know that accept() initializes this */
 #endif
