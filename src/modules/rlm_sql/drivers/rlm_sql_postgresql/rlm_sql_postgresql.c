@@ -537,7 +537,7 @@ static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char
 
 	ret = PQescapeStringConn(conn->db, out, in, inlen, &err);
 	if (err) {
-		REDEBUG("Error escaping string \"%s\": %s", in, PQerrorMessage(conn->db));
+		ROPTIONAL(REDEBUG, ERROR, "Error escaping string \"%s\": %s", in, PQerrorMessage(conn->db));
 		return 0;
 	}
 
