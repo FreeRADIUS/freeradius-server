@@ -1416,7 +1416,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	Check if the parent 'struct' is fixed size.  And if
 	 *	so, complain if we're adding a variable sized member.
 	 */
-	if (ctx->stack[ctx->stack_depth].da->flags.length &&
+	if (ctx->stack[ctx->stack_depth].da->flags.length && ctx->stack[ctx->stack_depth].da->flags.is_known_width &&
 	    ((type == FR_TYPE_TLV) || flags.is_known_width ||
 	     ((type == FR_TYPE_STRING) && !flags.length) ||
 	     ((type == FR_TYPE_OCTETS) && !flags.length))) {
