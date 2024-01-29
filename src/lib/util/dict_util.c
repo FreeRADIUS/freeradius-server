@@ -4046,6 +4046,8 @@ void fr_dict_global_ctx_set(fr_dict_gctx_t const *gctx)
  */
 int fr_dict_global_ctx_free(fr_dict_gctx_t const *gctx)
 {
+	if (dict_gctx == gctx) dict_gctx = NULL;
+
 	return talloc_const_free(gctx);
 }
 
