@@ -9,7 +9,7 @@ CREATE TABLE fr_ippool_status (
 INSERT INTO fr_ippool_status (status_id, status) VALUES (1, 'dynamic'), (2, 'static'), (3, 'declined'), (4, 'disabled');
 
 CREATE TABLE fr_ippool (
-	id			int PRIMARY KEY,
+	id			INTEGER PRIMARY KEY,
 	pool_name		varchar(30) NOT NULL,
 	address		        varchar(43) NOT NULL,
 	owner		        varchar(128) NOT NULL DEFAULT '',
