@@ -2,7 +2,7 @@
 -- Table structure for table 'radippool'
 --
 CREATE TABLE radippool (
-  id                    int(11) PRIMARY KEY,
+  id                    INTEGER PRIMARY KEY,
   pool_name             varchar(30) NOT NULL,
   framedipaddress       varchar(15) NOT NULL default '',
   nasipaddress          varchar(15) NOT NULL default '',

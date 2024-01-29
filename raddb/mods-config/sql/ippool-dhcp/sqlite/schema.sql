@@ -9,7 +9,7 @@ CREATE TABLE dhcpstatus (
 INSERT INTO dhcpstatus (status_id, status) VALUES (1, 'dynamic'), (2, 'static'), (3, 'declined'), (4, 'disabled');
 
 CREATE TABLE dhcpippool (
-	id			int(11) PRIMARY KEY,
+	id			INTEGER PRIMARY KEY,
 	pool_name		varchar(30) NOT NULL,
 	framedipaddress		varchar(15) NOT NULL default '',
 	pool_key		varchar(30) NOT NULL default '',
