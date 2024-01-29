@@ -441,6 +441,8 @@ ssize_t	fr_dhcpv6_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	fr_dhcpv6_decode_ctx_t decode_ctx = {};
 
+	fr_assert(dict_dhcpv6 != NULL);
+
 	decode_ctx.tmp_ctx = talloc(ctx, uint8_t);
 
 	attr = data;

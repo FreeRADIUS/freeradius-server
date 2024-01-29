@@ -2084,6 +2084,8 @@ ssize_t fr_radius_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		.end = data + data_len,
 	};
 
+	fr_assert(dict_radius != NULL);
+
 	attr = data;
 	end = decode_ctx.end;
 
