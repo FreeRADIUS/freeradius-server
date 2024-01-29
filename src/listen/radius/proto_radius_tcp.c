@@ -113,8 +113,16 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 */
 	data_size = read(thread->sockfd, buffer + *leftover, buffer_len - *leftover);
 	if (data_size < 0) {
-		PDEBUG2("proto_radius_tcp got read error %zd", data_size);
-		return data_size;
+		if (errno != EAGAIN && errno != EWOULDBLOCK) {
+		    fr_strerror_printf("proto_radius_tcp got read error: %s", fr_syserror(errno));
+		    return -1;
+		}
+		/*
+		 * we're done if had no leftovers. Otherwise, continue to ensure that any data left
+		 * over gets processed.
+		 */
+		if (*leftover == 0)
+		    return 0;
 	}
 
 	/*
@@ -140,7 +148,10 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 		return -1;
 	}
 
-	in_buffer = data_size + *leftover;
+	/* data_size could be -1 if we did not manage to read */
+	in_buffer = *leftover;
+	if (data_size > 0)
+	    in_buffer += data_size;
 
 	/*
 	 *	Not enough for one packet.  Tell the caller that we need to read more.
