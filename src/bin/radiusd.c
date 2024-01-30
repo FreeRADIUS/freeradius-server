@@ -1118,15 +1118,15 @@ cleanup:
 	 */
 	modules_rlm_free();
 
+#ifdef WITH_TLS
+	fr_tls_dict_free();
+#endif
+
 	/*
 	 *  And now nothing should be left anywhere except the
 	 *  parsed configuration items.
 	 */
 	main_config_free(&config);
-
-#ifdef WITH_TLS
-	fr_tls_dict_free();
-#endif
 
 	/*
 	 *  Cleanup everything else
