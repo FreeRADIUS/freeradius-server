@@ -20,7 +20,6 @@ https://doc.freeradius.org/[Doxygen] site.
 ** xref:sbuff.adoc[String buffers] (`sbuff` s)
 ** xref:sbuff-parsing.adoc[Parsing with string buffers]
 ** xref:sbuff-ng.adoc[Sbuff issues]
-* xref:todo.adoc[TODO]
 
 Also see the xref:installation:dependencies.adoc[build
 dependencies] page.

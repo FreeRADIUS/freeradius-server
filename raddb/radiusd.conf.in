@@ -5,7 +5,7 @@
 
 #######################################################################
 #
-#  = FreeRADIUS server configuration file - @RADIUSD_VERSION_STRING@
+#  = FreeRADIUS server configuration file - @RADIUSD_VERSION_MAJOR@.@RADIUSD_VERSION_MINOR@
 #
 #  Read `man radiusd` before editing this file.  See the section
 #  titled DEBUGGING.  It outlines a method where you can quickly
@@ -309,7 +309,7 @@ log {
 	#  Setting this to "yes" means that the server prints a series
 	#  of dots:
 	#
-	#	.......
+	#    .......
 	#
 	#  instead of the value, for attributes which contain secret
 	#  information.  e.g. User-Name, Tunnel-Password, etc.
@@ -455,8 +455,8 @@ security {
 	#  that it should be impossible to break out of the chroot.
 	#
 	#  If you are worried about security issues related to this
-	#  use of chdir, then simply ensure that the "raddb" directory
-	#  is inside of the chroot, and be sure to do "cd raddb"
+	#  use of chdir, then simply ensure that the `raddb` directory
+	#  is inside of the chroot, and be sure to do `cd raddb`
 	#  BEFORE starting the server.
 	#
 	#  If the server is statically linked, then the only files

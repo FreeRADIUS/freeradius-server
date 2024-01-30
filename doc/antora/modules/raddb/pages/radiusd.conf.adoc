@@ -2,7 +2,7 @@
 
 
 
-= FreeRADIUS server configuration file - @RADIUSD_VERSION_STRING@
+= FreeRADIUS server configuration file - 4.0
 
 Read `man radiusd` before editing this file.  See the section
 titled DEBUGGING.  It outlines a method where you can quickly
@@ -277,7 +277,7 @@ Suppress "secret" values when printing them in debug mode.
 Setting this to "yes" means that the server prints a series
 of dots:
 
-.......
+  .......
 
 instead of the value, for attributes which contain secret
 information.  e.g. User-Name, Tunnel-Password, etc.

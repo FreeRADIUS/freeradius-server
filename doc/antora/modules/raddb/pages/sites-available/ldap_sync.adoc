@@ -19,8 +19,9 @@ information or act on it.
 Note: Each of the three implementations of LDAP synchronisation behave
 differently:
 
-https://tools.ietf.org/html/rfc4533[RFC 4533]
---------
+
+== https://tools.ietf.org/html/rfc4533[RFC 4533]
+
 This provides a robust mechanism to allow clients to maintain a
 cached copy of a fragment of a directory by the use of cookies which
 can be returned to the server indicating the last successfully processed
@@ -30,8 +31,9 @@ However, when an object is deleted from the directory, the entry which is
 received only contains the DN, or, if the deletion is reported as part of
 the initial refresh phase it may only be the UUID.
 
-Active Directory
----------------
+
+== Active Directory
+
 Active Directory will only provide updates from the time the query started;
 there is no mechanism to catch up on changes which occurred while the
 client was not connected.  In addition it is not possible to apply a
@@ -42,7 +44,7 @@ has to be enabled on Active Directory and a query must be running which
 includes the Deleted Objects container.
 
 Active Directory will only perform persistent searches if the filter is
-(objectClass=*).  To overcome this limitation, FreeRADIUS allows other
+`(objectClass=*)`.  To overcome this limitation, FreeRADIUS allows other
 LDAP filters to be specified which are applied in FreeRADIUS before passing
 packets to the relevant processing sections.
 
@@ -50,7 +52,7 @@ This implementation of LDAP filters is not intended to be complete, but
 covers the most likely to be required.
 
 One key limitation, due to not having the LDAP schema to interpret attribute
-types, is that >=, <= and bitwise filters are assumed to be on integer values.
+types, is that `>=`, `<=` and bitwise filters are assumed to be on integer values.
 
 If your Active Directory tree contains multiple domains, you will need a
 query for each domain that is of interest; running a query at the base
@@ -61,8 +63,9 @@ Depending on the attributes of interest, the number of notifications of
 changes received can be reduced by running the LDAP query against the
 Global Catalog rather than the normal AD LDAP server.
 
-Persistent Search
------------------
+
+== Persistent Search
+
 Servers implementing Persistent Search have the option to return the full
 directory contents, or simply start reporting changes from the point when
 the query was run.
@@ -71,20 +74,20 @@ The draft says that servers SHOULD include a changeNumber when reporting
 changes to keep track of progress - however this has not been observed in
 any testing.  If this is implemented, then it can behave in a similar
 manner to the cookie defined in https://tools.ietf.org/html/rfc4533[RFC 4533]; a search against the change log
-with a filter of (changeNumber>=n) could be used to read changes since
+with a filter of `(changeNumber>=n)` could be used to read changes since
 change number 'n'.
 
 
-Note on user group membership
------------------------------
-Many directories provide a virtual memberOf attribute which lists
+== Note on user group membership
+
+Many directories provide a virtual `memberOf` attribute which lists
 which groups a user is a member of.
 
 With the directories which have been tested, including OpenLDAP and
-Active Directory it has been observed that modifying group member lists
+Active Directory, it has been observed that modifying group member lists
 does not result in notification of changes to the users, even though
 other modifications to the user will result in a notification which
-can include the memberOf attribute.
+can include the `memberOf` attribute.
 
 Instead group membership changes are reported as changes to the group object.
 
@@ -98,6 +101,7 @@ a single persistent search.
 Most options within the listen section are identical to rlm_ldap.
 See /etc/raddb/mods-available/ldap for more detailed descriptions of
 configuration items.
+
 
 
 
