@@ -20,7 +20,6 @@
 **** xref:unlang/group.adoc[group]
 **** xref:unlang/if.adoc[if]
 **** xref:unlang/load-balance.adoc[load-balance]
-**** xref:unlang/local.adoc[local variables]
 **** xref:unlang/limit.adoc[limit]
 **** xref:unlang/map.adoc[map]
 **** xref:unlang/parallel.adoc[parallel]
@@ -33,6 +32,8 @@
 **** xref:unlang/transaction.adoc[transaction]
 **** xref:unlang/try.adoc[try]
 **** xref:unlang/update.adoc[update]
+
+*** xref:unlang/local.adoc[Local variables]
 
 *** xref:unlang/module.adoc[Modules]
 **** xref:unlang/module_method.adoc[Module Methods]
