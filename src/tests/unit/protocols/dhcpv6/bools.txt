@@ -9,6 +9,9 @@ proto dhcpv6
 proto-dictionary dhcpv6
 fuzzer-out dhcpv6
 
+#decode-pair 005100085a04030019fc0000005100087f040300190301c5
+#match raw.RADIUS = 0x5a04030019fc0000, raw.RADIUS = 0x7f040300190301c5
+
 #
 #  True values are encoded by using an empty attribute.
 #
