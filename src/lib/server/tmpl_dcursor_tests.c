@@ -1,10 +1,12 @@
 #define USE_CONSTRUCTOR
 
 #ifdef USE_CONSTRUCTOR
-static void test_init(void) __attribute((constructor));
+static void test_init(void) __attribute__((constructor));
+static void test_free(void) __attribute__((destructor));
 #else
 static void test_init(void);
-#define TEST_INIT test_init()
+#  define TEST_INIT  test_init()
+#  define TEST_FINI  test_free()
 #endif
 
 #include <freeradius-devel/util/acutest.h>
@@ -38,6 +40,11 @@ static void test_init(void)
 	if (fr_dict_test_init(autofree, &test_dict, NULL) < 0) goto error;
 
 	if (request_global_init() < 0) goto error;
+}
+
+static void test_free(void)
+{
+	request_global_free();
 }
 
 static request_t *request_fake_alloc(void)
