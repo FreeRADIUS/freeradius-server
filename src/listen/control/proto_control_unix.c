@@ -300,7 +300,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	 */
 	data_size = fr_conduit_read_async(thread->sockfd, &conduit, buffer, buffer_len, leftover, &want_more);
 	if (data_size < 0) {
-		DEBUG2("proto_control_unix got read error %zd: %s", data_size, fr_strerror());
+		DEBUG2("proto_control_unix got read error %zd: %s", data_size, fr_syserror(errno));
 		return data_size;
 	}
 
