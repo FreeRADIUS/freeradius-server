@@ -139,7 +139,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 		packet_len = fr_tacacs_length(buffer, *leftover);
 		if (packet_len < 0) goto invalid;
 
-		if (packet_len <= *leftover) {
+		if (packet_len <= ((ssize_t) *leftover)) {
 			data_size = 0;
 			goto have_packet;
 		}
