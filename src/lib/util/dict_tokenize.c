@@ -711,7 +711,6 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 
 	da = dict_attr_by_name(NULL, parent, argv[0]);
 	if (da) {
-			fr_assert(0);
 		fr_strerror_printf("ALIAS '%s' conflicts with another attribute in namespace %s",
 				   argv[0], parent->name);
 		return -1;
