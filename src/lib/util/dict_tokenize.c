@@ -711,6 +711,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 
 	da = dict_attr_by_name(NULL, parent, argv[0]);
 	if (da) {
+			fr_assert(0);
 		fr_strerror_printf("ALIAS '%s' conflicts with another attribute in namespace %s",
 				   argv[0], parent->name);
 		return -1;
@@ -774,10 +775,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
  */
 static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *parent, fr_dict_attr_t const *da, char *ref)
 {
-	fr_dict_t		*dict;
 	fr_dict_attr_t const	*da_ref;
-	ssize_t			slen;
-	char const		*name;
 
 	/*
 	 *	It's a "clone" thing.
@@ -803,7 +801,6 @@ static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *pare
 	if (!ref) {
 		fr_dict_attr_t		*self;
 
-		dict = ctx->dict;
 		da_ref = ctx->dict->root;
 
 	set:
@@ -820,10 +817,7 @@ static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *pare
 	 */
 	if (ref[0] != '.') {
 		da_ref = fr_dict_attr_by_oid(NULL, parent, ref);
-		if (da_ref) {
-			dict = ctx->dict;
-			goto set;
-		}
+		if (da_ref) goto set;
 
 		/*
 		 *	The attribute doesn't exist (yet) save a reference to it.
@@ -841,51 +835,12 @@ static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *pare
 		goto fail;
 	}
 
-	name = ref + 2;
-
 	/*
-	 *	Get / skip protocol name.
+	 *	We load foreign dictionaries AFTER we've finalized this entire dictionary.  That way we don't
+	 *	partially load this one, load the full foreign one, and then run into issues where the foreign
+	 *	one references an attribute we haven't loaded yet.
 	 */
-	slen = dict_by_protocol_substr(NULL, &dict, &FR_SBUFF_IN(name, strlen(name)), ctx->dict);
-	if (slen <= 0) goto add_fixup;
-
-	if (strncmp(name, ctx->dict->root->name, slen) == 0) {
-		fr_strerror_const("Cannot reference the current protocol dictionary");
-		goto fail;
-	}
-
-	/*
-	 *	It's a reference to the root of the foreign dictionary.
-	 */
-	if (name[slen] == '\0') {
-		da_ref = dict->root;
-		goto set;
-	}
-
-	/*
-	 *	Look up the attribute.
-	 */
-	da_ref = fr_dict_attr_by_oid(NULL, dict->root, name + slen);
-	if (!da_ref) {
-		fr_strerror_printf("protocol '%s' is loaded, but there is no such attribute '%s'",
-				   dict->root->name, name + slen);
-		goto fail;
-	}
-
-	/*
-	 *	Refs must satisfy certain properties.
-	 */
-	if (da_ref->type != FR_TYPE_TLV) {
-		fr_strerror_const("References MUST be to an ATTRIBUTE of type 'tlv'");
-		goto fail;
-	}
-
-	if (fr_dict_attr_ref(da_ref)) {
-		fr_strerror_const("References MUST NOT refer to an ATTRIBUTE which also has 'ref=...'");
-		goto fail;
-	}
-
-	goto set;
+	goto add_fixup;
 }
 
 /*
@@ -2037,6 +1992,8 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 
 static int dict_finalise(dict_tokenize_ctx_t *ctx)
 {
+	if (ctx->dict->proto && ctx->dict->proto->init && (ctx->dict->proto->init() < 0)) return -1;
+
 	if (dict_fixup_apply(&ctx->fixup) < 0) return -1;
 
 	ctx->value_attr = NULL;
