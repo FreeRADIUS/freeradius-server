@@ -1,13 +1,7 @@
-#define USE_CONSTRUCTOR
-
-#ifdef USE_CONSTRUCTOR
-static void test_init(void) __attribute__((constructor));
-static void test_free(void) __attribute__((destructor));
-#else
 static void test_init(void);
+static void test_free(void);
 #  define TEST_INIT  test_init()
 #  define TEST_FINI  test_free()
-#endif
 
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
