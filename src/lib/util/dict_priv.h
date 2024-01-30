@@ -84,6 +84,8 @@ struct fr_dict {
 
 	bool			string_based;		//!< TACACS, etc.
 
+	bool			autofree;		//!< from dict_fixup.
+
 	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
 	fr_hash_table_t		*vendors_by_num;	//!< Lookup vendor by PEN.
 

@@ -281,7 +281,19 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 			return NULL;
 		}
 
-		if (dict->proto && dict->proto->init && (dict->proto->init() < 0)) return NULL;
+		/*
+		 *	If we call init(), make sure that we call free();
+		 */
+		if (dict->proto && dict->proto->init) {
+			if (dict->proto->init() < 0) return NULL;
+
+			/*
+			 *	Mark the *referencing* dictionary as autofree.
+			 *
+			 *	Changing this to dict->autofree=true will break things. :(
+			 */
+			(*dict_def)->autofree = true;
+		}
 
 		/*
 		 *	The reference is to the root of the foreign protocol, we're done.

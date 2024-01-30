@@ -3344,6 +3344,15 @@ static int _dict_free(fr_dict_t *dict)
 	}
 #endif
 
+	/*
+	 *	If we called init(), then call free()
+	 */
+	if (dict->autofree) {
+		fr_assert(dict->proto);
+		fr_assert(dict->proto->free);
+		dict->proto->free();
+	}
+
 	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict->gctx->protocol_by_name, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
 		return -1;
