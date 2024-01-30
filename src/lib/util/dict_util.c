@@ -4126,7 +4126,7 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s refs %s (%u)", dict->root->name, dep->dependent, dep->count);
+			FR_FAULT_LOG("\t%s is referenced from %s count (%u)", dict->root->name, dep->dependent, dep->count);
 		}
 	}
 
@@ -4134,7 +4134,7 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, gctx->internal->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s refs %s (%u)", gctx->internal->root->name, dep->dependent, dep->count);
+			FR_FAULT_LOG("\t%s is referenced from %s count (%u)", gctx->internal->root->name, dep->dependent, dep->count);
 		}
 	}
 }
