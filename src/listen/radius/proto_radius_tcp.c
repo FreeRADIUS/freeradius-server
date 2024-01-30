@@ -109,6 +109,24 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	decode_fail_t			reason;
 
 	/*
+	 *	We may hvae read multiple packets in the previous read.  In which case the buffer may already
+	 *	have packets remaining.  In that case, we can return packets directly from the buffer, and
+	 *	skip the read().
+	 */
+	if (*leftover >= RADIUS_HEADER_LENGTH) {
+		packet_len = fr_nbo_to_uint16(buffer + 2);
+
+		if (packet_len <= *leftover) {
+			data_size = 0;
+			goto have_packet;
+		}
+
+		/*
+		 *	Else we don't have a full packet, try to read more data from the network.
+		 */
+	}
+
+	/*
 	 *      Read data into the buffer.
 	 */
 	data_size = read(thread->sockfd, buffer + *leftover, buffer_len - *leftover);
@@ -119,7 +137,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 #endif
 		case EAGAIN:
 			/*
-			 *	We didn't read any data leave the buffers alone.
+			 *	We didn't read any data; leave the buffers alone.
 			 *
 			 *	i.e. if we had a partial packet in the buffer and we didn't read any data,
 			 *	then the partial packet is still left in the buffer.
@@ -130,7 +148,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 			break;
 		}
 
-		PDEBUG2("proto_radius_tcp got read error %zd", data_size);
+		PDEBUG2("proto_radius_tcp got read error (%zd) - %s", data_size, fr_syserror(errno));
 		return data_size;
 	}
 
@@ -148,6 +166,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 		return -1;
 	}
 
+have_packet:
 	/*
 	 *	We MUST always start with a known RADIUS packet.
 	 */
@@ -162,7 +181,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	/*
 	 *	Not enough for one packet.  Tell the caller that we need to read more.
 	 */
-	if (in_buffer < 20) {
+	if (in_buffer < RADIUS_HEADER_LENGTH) {
 		*leftover = in_buffer;
 		return 0;
 	}

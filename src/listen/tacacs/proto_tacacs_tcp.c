@@ -131,6 +131,25 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	size_t				in_buffer;
 
 	/*
+	 *	We may hvae read multiple packets in the previous read.  In which case the buffer may already
+	 *	have packets remaining.  In that case, we can return packets directly from the buffer, and
+	 *	skip the read().
+	 */
+	if (*leftover >= FR_HEADER_LENGTH) {
+		packet_len = fr_tacacs_length(buffer, *leftover);
+		if (packet_len < 0) goto invalid;
+
+		if (packet_len <= *leftover) {
+			data_size = 0;
+			goto have_packet;
+		}
+
+		/*
+		 *	Else we don't have a full packet, try to read more data from the network.
+		 */
+	}
+
+	/*
 	 *      Read data into the buffer.
 	 */
 	data_size = read(thread->sockfd, buffer + (*leftover), buffer_len - (*leftover));
@@ -170,6 +189,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 		return -1;
 	}
 
+have_packet:
 	/*
 	 *	Represents all the data we've read since we last
 	 *	decoded a complete packet.
@@ -183,6 +203,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	 */
 	packet_len = fr_tacacs_length(buffer, in_buffer);
 	if (packet_len < 0) {
+	invalid:
 		PERROR("Invalid TACACS packet");
 		return -1;	/* Malformed, close the socket */
 	}
