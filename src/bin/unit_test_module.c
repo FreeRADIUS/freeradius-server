@@ -1232,6 +1232,10 @@ cleanup:
 	 */
 	main_config_free(&config);
 
+#ifdef WITH_TLS
+	fr_tls_dict_free();
+#endif
+
 	/*
 	 *	Free any autoload dictionaries
 	 */

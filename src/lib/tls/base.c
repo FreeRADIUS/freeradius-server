@@ -45,7 +45,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 
-static uint32_t instance_count = 0;
+static uint32_t openssl_instance_count = 0;
 
 /** The context which holds any memory OpenSSL allocates
  *
@@ -62,6 +62,8 @@ static _Thread_local bool	*async_pool_init;
 static OSSL_PROVIDER *openssl_default_provider = NULL;
 static OSSL_PROVIDER *openssl_legacy_provider = NULL;
 #endif
+
+static uint32_t tls_instance_count = 0;
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
@@ -340,9 +342,7 @@ int fr_openssl_thread_init(size_t async_pool_size_init, size_t async_pool_size_m
  */
 void fr_openssl_free(void)
 {
-	if (--instance_count > 0) return;
-
-	fr_dict_autofree(tls_dict);
+	if (--openssl_instance_count > 0) return;
 
 	fr_tls_log_free();
 
@@ -384,8 +384,8 @@ static int fr_openssl_cleanup(UNUSED void *uctx)
  */
 int fr_openssl_init(void)
 {
-	if (instance_count > 0) {
-		instance_count++;
+	if (openssl_instance_count > 0) {
+		openssl_instance_count++;
 		return 0;
 	}
 
@@ -475,7 +475,7 @@ int fr_openssl_init(void)
 	 */
 	fr_atexit_global(fr_openssl_cleanup, NULL);
 
-	instance_count++;
+	openssl_instance_count++;
 
 	return 0;
 }
@@ -515,23 +515,38 @@ int fr_openssl_fips_mode(bool enabled)
  */
 int fr_tls_dict_init(void)
 {
+	if (tls_instance_count > 0) {
+		tls_instance_count++;
+		return 0;
+	}
+
+	tls_instance_count++;
+
 	if (fr_dict_autoload(tls_dict) < 0) {
 		PERROR("Failed initialising protocol library");
+	fail:
+		tls_instance_count--;
 		fr_openssl_free();
 		return -1;
 	}
 
 	if (fr_dict_attr_autoload(tls_dict_attr) < 0) {
 		PERROR("Failed resolving attributes");
-		fr_openssl_free();
-		return -1;
+		goto fail;
 	}
 
 	if (fr_dict_enum_autoload(tls_dict_enum) < 0) {
 		PERROR("Failed resolving enums");
-		fr_openssl_free();
-		return -1;
+		goto fail;
 	}
+
 	return 0;
+}
+
+void fr_tls_dict_free(void)
+{
+	if (--tls_instance_count > 0) return;
+
+	fr_dict_autofree(tls_dict);
 }
 #endif /* WITH_TLS */
