@@ -210,11 +210,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Create session pool
 	 */
-	DEBUG("OCISessionPoolCreate min=%d max=%d inc=%d", inst->spool_min, inst->spool_max, inst->spool_inc);
+	DEBUG2("OCISessionPoolCreate min=%d max=%d inc=%d", inst->spool_min, inst->spool_max, inst->spool_inc);
 
 	/* We need it to fix const issues between 'const char *' vs 'unsigned char *' */
-	memcpy(&sql_login, config->sql_login, sizeof(sql_login));
-	memcpy(&sql_password, config->sql_password, sizeof(sql_password));
+	memcpy(&sql_login, &config->sql_login, sizeof(sql_login));
+	memcpy(&sql_password, &config->sql_password, sizeof(sql_password));
 
 	if (OCISessionPoolCreate((dvoid *)inst->env, (dvoid *)inst->error, (dvoid *)inst->pool,
 				 (OraText**)&inst->pool_name, (ub4*)&inst->pool_name_len,
