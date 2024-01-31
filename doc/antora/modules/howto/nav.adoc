@@ -49,6 +49,9 @@
 
 ** xref:protocols/index.adoc[Protocols]
 
+** Operating System
+*** xref:os/letsencrypt.adoc[Using LetsEncrypt certificates]
+
 ** Vendors
 *** xref:vendors/ascend.adoc[Ascend]
 *** xref:vendors/bay.adoc[Bay]
