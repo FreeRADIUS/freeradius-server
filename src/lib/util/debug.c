@@ -432,27 +432,21 @@ DIAG_ON(deprecated-declarations)
 			waitpid(ppid, NULL, 0);
 
 			/* Tell the parent what happened */
+		send_status:
 			if (write(from_child[1], &ret, sizeof(ret)) < 0) {
 				fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
 			}
 
 			/* Detach */
 			_PTRACE_DETACH(ppid);
-			exit(0);
+			_exit(0); /* don't run the atexit() handlers. */
 		/*
 		 *	We could attach because of a permissions issue, we don't know
 		 *      whether we're being traced or not.
 		 */
 		} else if (errno == EPERM) {
 			ret = DEBUGGER_STATE_UNKNOWN;
-
-			/* Tell the parent what happened */
-			if (write(from_child[1], &ret, sizeof(ret)) < 0) {
-				fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
-			}
-
-			_PTRACE_DETACH(ppid);
-			exit(0);
+			goto send_status;
 		}
 
 		ret = DEBUGGER_STATE_ATTACHED;
@@ -461,7 +455,17 @@ DIAG_ON(deprecated-declarations)
 			fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
 		}
 
-		exit(0);
+		/*
+		 *	We call _exit() instead of exit().  This means that we skip the atexit() handlers,
+		 *	which don't need to run in a temporary child process.  Skipping them means that we
+		 *	avoid dirtying those pages to "clean things up", which is then immediately followed by
+		 *	exiting.
+		 *
+		 *	Skipping the atexit() handlers also means that we're not worried about memory leaks
+		 *	because things "aren't cleaned up correctly".  We're not exiting cleanly here (and
+		 *	don't care to exit cleanly).  So just exiting with no cleanups is fine.
+		 */
+		_exit(0);
 	/* Parent */
 	} else {
 		int8_t ret = DEBUGGER_STATE_UNKNOWN;
