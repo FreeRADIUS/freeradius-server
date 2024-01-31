@@ -1074,6 +1074,28 @@ int main_config_init(main_config_t *config)
 	 */
 	config->talloc_pool_size = 8 * 1024; /* default */
 
+	cs = cf_section_alloc(NULL, NULL, "main", NULL);
+	if (!cs) return -1;
+
+	/*
+	 *	Add a 'feature' subsection off the main config
+	 *	We check if it's defined first, as the user may
+	 *	have defined their own feature flags, or want
+	 *	to manually override the ones set by modules
+	 *	or the server.
+	 */
+	subcs = cf_section_find(cs, "feature", NULL);
+	if (!subcs) {
+		subcs = cf_section_alloc(cs, cs, "feature", NULL);
+		if (!subcs) {
+		failure:
+			fr_dict_free(&config->dict, __FILE__);
+			talloc_free(cs);
+			return -1;
+		}
+	}
+	dependency_features_init(subcs);
+
 	if (fr_dict_internal_afrom_file(&config->dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
 		PERROR("Failed reading internal dictionaries");
 		goto failure;
@@ -1098,9 +1120,6 @@ do {\
 	 */
 	DICT_READ_OPTIONAL(config->raddb_dir, FR_DICTIONARY_FILE);
 
-	cs = cf_section_alloc(NULL, NULL, "main", NULL);
-	if (!cs) return -1;
-
 	/*
 	 *	Special-case things.  If the output is a TTY, AND
 	 *	we're debugging, colourise things.  This flag also
@@ -1113,24 +1132,6 @@ do {\
 		can_colourise = default_log.colourise = false;
 	}
 	default_log.line_number = config->log_line_number;
-
-	/*
-	 *	Add a 'feature' subsection off the main config
-	 *	We check if it's defined first, as the user may
-	 *	have defined their own feature flags, or want
-	 *	to manually override the ones set by modules
-	 *	or the server.
-	 */
-	subcs = cf_section_find(cs, "feature", NULL);
-	if (!subcs) {
-		subcs = cf_section_alloc(cs, cs, "feature", NULL);
-		if (!subcs) {
-		failure:
-			talloc_free(cs);
-			return -1;
-		}
-	}
-	dependency_features_init(subcs);
 
 	/*
 	 *	Add a 'version' subsection off the main config
