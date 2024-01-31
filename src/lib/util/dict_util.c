@@ -4136,6 +4136,7 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
 			FR_FAULT_LOG("\t%s is referenced from %s count (%u)", dict->root->name, dep->dependent, dep->count);
+			fr_assert(0);
 		}
 	}
 
@@ -4144,6 +4145,7 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
 			FR_FAULT_LOG("\t%s is referenced from %s count (%u)", gctx->internal->root->name, dep->dependent, dep->count);
+			fr_assert(0);
 		}
 	}
 }
