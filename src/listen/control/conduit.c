@@ -41,13 +41,24 @@ static ssize_t lo_read(int fd, void *out, size_t outlen)
 	for (total = 0; total < outlen; total += r) {
 		r = read(fd, p + total, outlen - total);
 
-		if (r == 0) return 0;
+		if (r == 0) return total;
 
 		if (r < 0) {
-			if (errno == EINTR) continue;
+			switch (errno) {
+			case EINTR:
+				continue;
+
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+			case EWOULDBLOCK:
+#endif
+			case EAGAIN:
+				return total;
+
+			default:
+				break;
+			}
 
 			return -1;
-
 		}
 	}
 
@@ -82,18 +93,7 @@ ssize_t fr_conduit_read_async(int fd, fr_conduit_type_t *pconduit,
 	 */
 	if (offset < sizeof(hdr)) {
 		r = lo_read(fd, buffer + offset, sizeof(hdr) - offset);
-		if (r == 0) return 0; /* closed */
-
-		if (r < 0) {
-#ifdef EWOULDBLOCK
-			if (errno == EWOULDBLOCK) return 0;
-#endif
-#ifdef EAGAIN
-			if (errno == EAGAIN) return 0;
-#endif
-
-			return r;
-		}
+		if (r <= 0) return r;
 
 		*leftover += r;
 		offset += r;
