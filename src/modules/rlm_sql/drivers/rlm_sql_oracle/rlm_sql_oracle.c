@@ -48,6 +48,8 @@ DIAG_ON(unused-macros)
 
 #include "rlm_sql.h"
 
+static int max_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule);
+
 typedef struct {
 	OCIEnv		*env;	//!< Number of columns associated with the result set
 	OCIError	*error;	//!< Oracle error handle
@@ -76,7 +78,7 @@ static const conf_parser_t spool_config[] = {
 	{ FR_CONF_OFFSET("stmt_cache_size", rlm_sql_oracle_t, stmt_cache_size), .dflt = "32" },
 	{ FR_CONF_OFFSET("timeout", rlm_sql_oracle_t, spool_timeout), .dflt = "0" },
 	{ FR_CONF_OFFSET("min", rlm_sql_oracle_t, spool_min), .dflt = "1" },
-	{ FR_CONF_OFFSET("max", rlm_sql_oracle_t, spool_max), .dflt = "2" },
+	{ FR_CONF_OFFSET("max", rlm_sql_oracle_t, spool_max), .dflt_func = max_dflt },
 	{ FR_CONF_OFFSET("inc", rlm_sql_oracle_t, spool_inc), .dflt = "1" },
 	CONF_PARSER_TERMINATOR
 };
@@ -85,6 +87,17 @@ static const conf_parser_t driver_config[] = {
 	{ FR_CONF_POINTER("spool", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) spool_config },
 	CONF_PARSER_TERMINATOR
 };
+
+static int max_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule)
+{
+	char		*strvalue;
+
+	strvalue = talloc_asprintf(NULL, "%u", main_config->max_workers);
+	*out = cf_pair_alloc(cs, rule->name1, strvalue, T_OP_EQ, T_BARE_WORD, quote);
+	talloc_free(strvalue);
+
+	return 0;
+}
 
 #define	MAX_DATASTR_LEN	64
 
