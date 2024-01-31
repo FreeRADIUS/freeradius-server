@@ -40,30 +40,24 @@ permissions.
 
 
 
-peercred:: It is enabled by default, and offers an additional layer
-of security.  When enabled FreeRADIUS will check the euid and
-egid of the process connecting to the control socket.
+uid:: Name of user who owns the control socket.
 
-The client process is allowed to connect if any of the following
-are true:
+If this is not set, then the "security.user" configuration is used.
 
-- The client processes' euid is 0 (root).
-- The client processes' euid matches FreeRADIUS' euid.
-- gid is set (below), and the client processes' egid matches the
-  configured gid.
+If that isn't set, then the uid of the current user running radiusd is used.
 
-NOTE: With peercred enabled, auxiliary groups of the client process
-are not considered.  If you have multiple users and need to control
-control socket authorization via group membership, you should set
-`peercred = no`, and rely on filesystem permissions for enforcement.
+Note that the control socket cannot have uid of 0.
 
 
 
-uid:: Name of user who is allowed to connect to the control socket.
+gid:: Name of group which owns the control socket.
 
+If this is not set, then the "security.group" configuration is used.
 
+If that isn't set, then the primary group (gid) of the current user running radiusd
+is used.
 
-gid:: Name of group that is allowed to connect to the control socket.
+Note that the control socket cannot have gid of 0.
 
 
 
@@ -76,7 +70,11 @@ ro = read only access (default)
 rw = read/write access.
 
 
-@todo - add "limit" section
+
+As an additional check, the connecting process can be limited to a certain UID and
+GID.  Either or both can be set.  If one is set, it is checked and enforced.
+
+
 
 == Default Configuration
 
@@ -97,10 +95,13 @@ server control {
 		transport = unix
 		unix {
 			filename = ${run_dir}/control/${name}.sock
-#			peercred = no
 #			uid = radius
 #			gid = radius
 			mode = rw
+			peercred {
+#				uid = something
+#				gid = something
+			}
 		}
 	}
 }

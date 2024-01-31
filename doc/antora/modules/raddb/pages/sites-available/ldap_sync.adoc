@@ -104,7 +104,6 @@ configuration items.
 
 
 
-
 Local attributes which are used to cache results from LDAP
 
 

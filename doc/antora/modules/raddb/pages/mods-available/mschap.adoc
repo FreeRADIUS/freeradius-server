@@ -113,6 +113,9 @@ If there is a cleartext or NT hashed password available, you can set
 `MS-CHAP-Use-NTLM-Auth := No` in the control items, and the `mschap`
 module will do the authentication itself, without calling `ntlm_auth`.
 
+You can also set `MS-CHAP-Use-NTLM-Auth := Auto`.  If a password is available,
+it will be used.  Otherwise the module will fall back to ntlm_auth.
+
 You can also try setting the user name as:
 
 `... --username=%mschap(User-Name) ...`
