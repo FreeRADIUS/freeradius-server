@@ -1,0 +1,78 @@
+= Simultaneous-Use checking
+
+There are a whole lot of pieces which have to work together for
+`Simultaneous-Use` to work.  In this guide, we assume that user
+sessions are stored in SQL.
+
+For `Simultaneous-Use` to work. the server needs to know who is
+online, which means that accounting must be configured and working.
+Start off by checking the basics, independent of `Simultaneous-Use`.
+
+As always, start off with reading the debug output, and use that
+information to answer a few questions.
+
+== Did the user get Access-Accept?
+
+*No* - Fix that.  Make sure that the user can be authenticated!
+
+*Yes* - FreeRADIUS told the NAS to allow the user online.  This usually
+ works, but perhaps the NAS disagreed, and still dropped the user.  It happens.
+
+The only way you know that a user is actually online is to check the
+accounting data.  So we will do that next.
+
+== Did the server then get an Accounting-Request for that user?
+
+*No* - The NAS isn't sending accounting packets, Simultaneous-Use will never work.
+
+Go fix the NAS so that it sends accounting packets.
+
+*Yes* - The NAS is telling FreeRADIUS that it allowed the user online,
+ and the user has an active session.  We now have to see where that data is stored.
+
+== Did the accounting data go into the radacct table?
+
+As always, Read the debug output.
+
+*No* - There is nothing in the debug output about radacct?  Configure the server to write accounting data to SQL 
+
+ou can use `radclient` to send fake accounting packets for testing.
+Use a real accounting packet as a template for input to `radclient`,
+but change the `User-Name` so that the tests don't affect real users.
+
+
+*Yes* - You see successful `INSERT` or `UPDATE` lines in `radacct`.   That's good!
+
+== One last check
+
+Double-check the radacct database using an SQL client.  Just to be sure that the data is really there.
+
+== It is now set up correctly to track user sessions
+
+If all that works, then the server is set up correctly to authenticate
+users, and to store their data in SQL.  This is the foundation for
+`Simultaneous-Use`.
+
+== Set Simultaneous-Use
+
+Then, configure the server to set `Simultaneous-Use=1`.  That tells the server to enforce `Simultaneous-Use`.  That configuration can go into the `files` module, `sql`, or whereever else you want.
+
+You will also need to configure the `default` virtual server to check session data in SQL.  Look for `Simultaneous-Use` in `sites-available/default`.  Uncomment the line containing `sql`
+
+== Double check that a user can still log in!
+
+Go through all of the above steps _again_, checking that the user can
+log in, and that the server is receiving accounting packets.
+
+This time, also look for the debug output to contain:
+
+```
+# Executing section session from file ...
+session {
+```
+
+That shows it is checking the `session` database.  If all goes well, the next few lines after that should show that it is checking `sql`.
+
+If the above text doesn't appear, then the server isn't getting told to set `Simultaneous-Use = 1`.  You will have to fix that before going to the next step.
+
+If the user has not logged in yet, you will see an `Access-Accept`.  Otherwise, if the user already has an active session, the server should say that the user is being rejected due to multiple logins.

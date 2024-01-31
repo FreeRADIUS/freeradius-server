@@ -19,3 +19,4 @@
 ***** xref:protocols/proxy/enable_proxy_protocol.adoc[Enabling PROXY Protocol for RadSec]
 ** xref:monitoring/index.adoc[Monitoring]
 *** xref:monitoring/statistics.adoc[Server statistics]
+** xref:simultaneous_use.adoc[Simultaneous-Use]
