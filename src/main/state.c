@@ -33,7 +33,7 @@ RCSID("$Id$")
 #include <freeradius-devel/process.h>
 
 typedef struct state_entry_t {
-	uint8_t		state[AUTH_VECTOR_LEN];
+	uint8_t		state[MD5_DIGEST_LENGTH];
 
 	time_t		cleanup;
 	struct state_entry_t *prev;
@@ -389,6 +389,31 @@ static void fr_state_cleanup(state_entry_t *head)
 	}
 }
 
+static void state_entry_calc(state_entry_t *entry, VALUE_PAIR *vp)
+{
+	/*
+	 *	Assume our own State first.
+	 */
+	if (vp->vp_length == sizeof(entry->state)) {
+		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+
+		/*
+		 *	Too big?  Get the MD5 hash, in order
+		 *	to depend on the entire contents of State.
+		 */
+	} else if (vp->vp_length > sizeof(entry->state)) {
+		fr_md5_calc(entry->state, vp->vp_octets, vp->vp_length);
+
+		/*
+		 *	Too small?  Use the whole thing, and
+		 *	set the rest of entry->state to zero.
+		 */
+	} else {
+		memcpy(entry->state, vp->vp_octets, vp->vp_length);
+		memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
+	}
+}
+
 
 /*
  *	Create a new entry.  Called with the mutex held.
@@ -470,27 +495,8 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 	 *	one we created above.
 	 */
 	if (vp) {
-		/*
-		 *	Assume our own State first.
-		 */
-		if (vp->vp_length == sizeof(entry->state)) {
-			memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+		state_entry_calc(entry, vp);
 
-			/*
-			 *	Too big?  Get the MD5 hash, in order
-			 *	to depend on the entire contents of State.
-			 */
-		} else if (vp->vp_length > sizeof(entry->state)) {
-			fr_md5_calc(entry->state, vp->vp_octets, vp->vp_length);
-
-			/*
-			 *	Too small?  Use the whole thing, and
-			 *	set the rest of entry->state to zero.
-			 */
-		} else {
-			memcpy(entry->state, vp->vp_octets, vp->vp_length);
-			memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
-		}
 	} else {
 		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
 		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state));
@@ -534,27 +540,7 @@ static state_entry_t *fr_state_find(fr_state_t *state, const char *server, RADIU
 	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
 
-	/*
-	 *	Assume our own State first.
-	 */
-	if (vp->vp_length == sizeof(my_entry.state)) {
-		memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
-
-		/*
-		 *	Too big?  Get the MD5 hash, in order
-		 *	to depend on the entire contents of State.
-		 */
-	} else if (vp->vp_length > sizeof(my_entry.state)) {
-		fr_md5_calc(my_entry.state, vp->vp_octets, vp->vp_length);
-
-		/*
-		 *	Too small?  Use the whole thing, and
-		 *	set the rest of my_entry.state to zero.
-		 */
-	} else {
-		memcpy(my_entry.state, vp->vp_octets, vp->vp_length);
-		memset(&my_entry.state[vp->vp_length], 0, sizeof(my_entry.state) - vp->vp_length);
-	}
+	state_entry_calc(&my_entry, vp);
 
 	/*	Make unique for different virtual servers handling same request
 	 */
