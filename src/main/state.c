@@ -389,19 +389,24 @@ static void fr_state_cleanup(state_entry_t *head)
 	}
 }
 
-static void state_entry_calc(state_entry_t *entry, VALUE_PAIR *vp)
+static void state_entry_calc(REQUEST *request, state_entry_t *entry, VALUE_PAIR *vp)
 {
 	/*
-	 *	Assume our own State first.
+	 *	Assume our own State first.  This is where the state
+	 *	is the correct size, AND we're not proxying it to an
+	 *	external home server.  If we are proxying it to an
+	 *	external home server, then that home server creates
+	 *	the State attribute, and we don't control it.
 	 */
-	if (vp->vp_length == sizeof(entry->state)) {
+	if (vp->vp_length == sizeof(entry->state) &&
+	    (!request->proxy || (request->proxy->dst_port == 0))) {
 		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
 
 		/*
 		 *	Too big?  Get the MD5 hash, in order
 		 *	to depend on the entire contents of State.
 		 */
-	} else if (vp->vp_length > sizeof(entry->state)) {
+	} else if (vp->vp_length >= sizeof(entry->state)) {
 		fr_md5_calc(entry->state, vp->vp_octets, vp->vp_length);
 
 		/*
@@ -495,7 +500,7 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 	 *	one we created above.
 	 */
 	if (vp) {
-		state_entry_calc(entry, vp);
+		state_entry_calc(request, entry, vp);
 
 	} else {
 		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
@@ -532,7 +537,7 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 /*
  *	Find the entry, based on the State attribute.
  */
-static state_entry_t *fr_state_find(fr_state_t *state, const char *server, RADIUS_PACKET *packet)
+static state_entry_t *fr_state_find(REQUEST *request, fr_state_t *state, const char *server, RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
 	state_entry_t *entry, my_entry;
@@ -540,7 +545,7 @@ static state_entry_t *fr_state_find(fr_state_t *state, const char *server, RADIU
 	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
 
-	state_entry_calc(&my_entry, vp);
+	state_entry_calc(request, &my_entry, vp);
 
 	/*	Make unique for different virtual servers handling same request
 	 */
@@ -568,7 +573,7 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 	request->state = NULL;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(state, request->server, original);
+	entry = fr_state_find(request, state, request->server, original);
 	if (entry) state_entry_free(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 }
@@ -593,7 +598,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	rad_assert(request->state == NULL);
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(state, request->server, packet);
+	entry = fr_state_find(request, state, request->server, packet);
 
 	/*
 	 *	This has to be done in a mutex lock, because talloc
@@ -675,7 +680,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	cleanup_list = fr_state_cleanup_find(state);
 
 	if (original) {
-		old = fr_state_find(state, request->server, original);
+		old = fr_state_find(request, state, request->server, original);
 	} else {
 		old = NULL;
 	}
