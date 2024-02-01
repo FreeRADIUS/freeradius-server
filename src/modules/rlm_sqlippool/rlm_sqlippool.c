@@ -57,25 +57,17 @@ typedef struct {
 	char const	*pool_check;		//!< Query to check for the existence of the pool.
 
 						/* Update sequence */
-	char const	*update_begin;		//!< SQL query to begin.
 	char const	*update_free;		//!< SQL query to clear offered IPs
 	char const	*update_update;		//!< SQL query to update an IP entry.
-	char const	*update_commit;		//!< SQL query to commit.
 
 						/* Release sequence */
-	char const	*release_begin;		//!< SQL query to begin.
 	char const	*release_clear;       	//!< SQL query to clear an IP entry.
-	char const	*release_commit;	//!< SQL query to commit.
 
 						/* Bulk release sequence */
-	char const	*bulk_release_begin;	//!< SQL query to begin.
 	char const	*bulk_release_clear;	//!< SQL query to bulk clear several IPs.
-	char const	*bulk_release_commit;	//!< SQL query to commit.
 
 						/* Mark sequence */
-	char const	*mark_begin;		//!< SQL query to begin.
 	char const	*mark_update;		//!< SQL query to mark an IP.
-	char const	*mark_commit;		//!< SQL query to commit.
 } rlm_sqlippool_t;
 
 static conf_parser_t module_config[] = {
@@ -102,34 +94,18 @@ static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("pool_check", CONF_FLAG_XLAT, rlm_sqlippool_t, pool_check) },
 
 
-	{ FR_CONF_OFFSET_FLAGS("update_begin", CONF_FLAG_XLAT, rlm_sqlippool_t, update_begin) },
-
 	{ FR_CONF_OFFSET_FLAGS("update_free", CONF_FLAG_XLAT, rlm_sqlippool_t, update_free) },
 
 	{ FR_CONF_OFFSET_FLAGS("update_update", CONF_FLAG_XLAT, rlm_sqlippool_t, update_update) },
 
-	{ FR_CONF_OFFSET_FLAGS("update_commit", CONF_FLAG_XLAT, rlm_sqlippool_t, update_commit) },
-
-
-	{ FR_CONF_OFFSET_FLAGS("release_begin", CONF_FLAG_XLAT, rlm_sqlippool_t, release_begin) },
 
 	{ FR_CONF_OFFSET_FLAGS("release_clear", CONF_FLAG_XLAT, rlm_sqlippool_t, release_clear) },
 
-	{ FR_CONF_OFFSET_FLAGS("release_commit", CONF_FLAG_XLAT, rlm_sqlippool_t, release_commit) },
-
-
-	{ FR_CONF_OFFSET_FLAGS("bulk_release_begin", CONF_FLAG_XLAT, rlm_sqlippool_t, bulk_release_begin) },
 
 	{ FR_CONF_OFFSET_FLAGS("bulk_release_clear", CONF_FLAG_XLAT, rlm_sqlippool_t, bulk_release_clear) },
 
-	{ FR_CONF_OFFSET_FLAGS("bulk_release_commit", CONF_FLAG_XLAT, rlm_sqlippool_t, bulk_release_commit) },
-
-
-	{ FR_CONF_OFFSET_FLAGS("mark_begin", CONF_FLAG_XLAT, rlm_sqlippool_t, mark_begin) },
 
 	{ FR_CONF_OFFSET_FLAGS("mark_update", CONF_FLAG_XLAT, rlm_sqlippool_t, mark_update) },
-
-	{ FR_CONF_OFFSET_FLAGS("mark_commit", CONF_FLAG_XLAT, rlm_sqlippool_t, mark_commit) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -511,8 +487,6 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
-	DO_PART(update_begin);
-
 	/*
 	 *  An optional query which can be used to tidy up before updates
 	 *  primarily intended for multi-server setups sharing a common database
@@ -527,8 +501,6 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 		if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 		RETURN_MODULE_FAIL;
 	}
-
-	DO_PART(update_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
@@ -555,9 +527,7 @@ static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, modul
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
-	DO_PART(release_begin);
 	DO_PART(release_clear);
-	DO_PART(release_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_OK;
@@ -577,9 +547,7 @@ static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, 
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
-	DO_PART(bulk_release_begin);
 	DO_PART(bulk_release_clear);
-	DO_PART(bulk_release_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_OK;
@@ -600,9 +568,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
-	DO_PART(mark_begin);
 	DO_PART(mark_update);
-	DO_PART(mark_commit);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_OK;
