@@ -486,14 +486,14 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 			entry->state[8] = entry->state[2] ^ (((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
 			entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
 			entry->state[12] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
+
+			entry->ours = true;
 		}
 
 		/*
 		 *	The old one isn't used any more, so we can free it.
 		 */
 		if (!old->opaque) state_entry_free(state, old);
-
-		entry->ours = true;
 
 	} else if (!vp) {
 		/*
