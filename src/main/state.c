@@ -502,6 +502,8 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 			x = fr_rand();
 			memcpy(entry->state + (i * 4), &x, sizeof(x));
 		}
+
+		entry->ours = true; /* we created it */
 	}
 
 	/*
