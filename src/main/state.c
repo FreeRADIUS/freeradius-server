@@ -40,6 +40,7 @@ typedef struct state_entry_t {
 	struct state_entry_t *next;
 
 	int		tries;
+	bool		ours;
 
 	TALLOC_CTX		*ctx;
 	VALUE_PAIR		*vps;
@@ -401,6 +402,7 @@ static void state_entry_calc(REQUEST *request, state_entry_t *entry, VALUE_PAIR 
 	if (vp->vp_length == sizeof(entry->state) &&
 	    (!request->proxy || (request->proxy->dst_port == 0))) {
 		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+		entry->ours = true;
 
 		/*
 		 *	Too big?  Get the MD5 hash, in order
@@ -470,7 +472,7 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 		/*
 		 *	Track State
 		 */
-		if (!vp) {
+		if (!vp && old->ours) {
 			memcpy(entry->state, old->state, sizeof(entry->state));
 
 			entry->state[1] = entry->state[0] ^ entry->tries;
@@ -514,7 +516,7 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 		/*
 		 *	Make unique for different virtual servers handling same request
 		 */
-		*((uint32_t *)(&entry->state[4])) ^= fr_hash_string(request->server);
+		if (entry->ours) *((uint32_t *)(&entry->state[4])) ^= fr_hash_string(request->server);
 
 		/*
 		 *	Copy server to state in case it's needed for cleanup
@@ -549,7 +551,7 @@ static state_entry_t *fr_state_find(REQUEST *request, fr_state_t *state, const c
 
 	/*	Make unique for different virtual servers handling same request
 	 */
-	if (server) *((uint32_t *)(&my_entry.state[4])) ^= fr_hash_string(server);
+	if (server && my_entry.ours) *((uint32_t *)(&my_entry.state[4])) ^= fr_hash_string(server);
 
 	entry = rbtree_finddata(state->tree, &my_entry);
 
