@@ -493,6 +493,8 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 		 */
 		if (!old->opaque) state_entry_free(state, old);
 
+		entry->ours = true;
+
 	} else if (!vp) {
 		/*
 		 *	16 octets of randomness should be enough to
