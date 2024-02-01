@@ -404,20 +404,27 @@ static void state_entry_calc(REQUEST *request, state_entry_t *entry, VALUE_PAIR 
 		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
 		entry->ours = true;
 
-		/*
-		 *	Too big?  Get the MD5 hash, in order
-		 *	to depend on the entire contents of State.
-		 */
-	} else if (vp->vp_length >= sizeof(entry->state)) {
-		fr_md5_calc(entry->state, vp->vp_octets, vp->vp_length);
+	} else {
+		FR_MD5_CTX ctx;
 
 		/*
-		 *	Too small?  Use the whole thing, and
-		 *	set the rest of entry->state to zero.
+		 *	We don't control the external State attribute.
+		 *	As a result, different home servers _may_
+		 *	create the same State attribute.  In order to
+		 *	differentiate them, we "mix in" the User-Name,
+		 *	which should contain the realm.  And we then
+		 *	hope that different home servers in the same
+		 *	realm don't create overlapping State
+		 *	attributes.
 		 */
-	} else {
-		memcpy(entry->state, vp->vp_octets, vp->vp_length);
-		memset(&entry->state[vp->vp_length], 0, sizeof(entry->state) - vp->vp_length);
+		fr_md5_init(&ctx);
+		fr_md5_update(&ctx, vp->vp_octets, vp->vp_length);
+
+		vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		if (vp) fr_md5_update(&ctx, vp->vp_octets, vp->vp_length);
+
+		fr_md5_final(entry->state, &ctx);
+		fr_md5_destroy(&ctx);
 	}
 }
 
