@@ -558,6 +558,7 @@ static state_entry_t *fr_state_find(REQUEST *request, fr_state_t *state, const c
 	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
 
+	my_entry.ours = false;
 	state_entry_calc(request, &my_entry, vp);
 
 	/*	Make unique for different virtual servers handling same request
