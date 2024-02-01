@@ -224,7 +224,7 @@ int dict_fixup_group(dict_fixup_ctx_t *fctx, char const *filename, int line,
 	return dict_fixup_common(filename, line, &fctx->group, &fixup->common);
 }
 
-static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, char const *ref, char const *filename, int line)
+static fr_dict_attr_t const *dict_protocol_reference(fr_dict_t **dict_def, char const *ref, char const *filename, int line)
 {
 	fr_dict_t		*dict;
 	fr_dict_attr_t const	*da;
@@ -232,21 +232,8 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 	ssize_t			slen;
 	char			protocol[64];
 
-	/*
-	 *	Ref to attribute in existing dictionary.  The dictionary MUST be loaded by $INCLUDEs.
-	 */
-	if (ref[0] != '.') {
-		da = fr_dict_attr_by_oid(NULL, fr_dict_root(*dict_def), ref);
-		if (da) return da;
-
-	invalid:
-		fr_strerror_printf("Invalid attribute reference '%s' at %s[%d]", ref,
-				   fr_cwd_strip(filename), line);
-		return NULL;
-	}
-
-	fr_assert(ref[1] == '.');
-	name = ref + 2;		/* already checked when we insert it */
+	fr_assert((ref[0] == '.') && (ref[1] == '.'));
+	name = ref + 2;		/* already checked when we inserted it */
 
 	/*
 	 *	Reference to foreign protocol.  Get the protocol name.
@@ -265,7 +252,12 @@ static fr_dict_attr_t const *dict_find_or_load_reference(fr_dict_t **dict_def, c
 		while (*q && (*q != '.')) {
 			*(p++) = tolower((int) *(q++));
 
-			if ((size_t) (p - protocol) >= sizeof(protocol)) goto invalid;
+			if ((size_t) (p - protocol) >= sizeof(protocol)) {
+			invalid:
+				fr_strerror_printf("Invalid attribute reference '%s' at %s[%d]", ref,
+						   fr_cwd_strip(filename), line);
+				return NULL;
+			}
 		}
 		*p = '\0';
 
@@ -352,33 +344,23 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 	fr_dict_t *dict = fr_dict_unconst(fr_dict_by_da(fixup->da));
 
 	/*
-	 *
-	 *	We avoid refcount loops by using the "autoref"
-	 *	table.  If a "group" attribute refers to a
-	 *	dictionary which does not exist, we load it,
-	 *	increment its reference count, and add it to
-	 *	the autoref table.
-	 *
-	 *	If a group attribute refers to a dictionary
-	 *	which does exist, we check that dictionaries
-	 *	"autoref" table.  If OUR dictionary is there,
-	 *	then we do nothing else.  That dictionary
-	 *	points to us via refcounts, so we can safely
-	 *	point to it.  The refcounts ensure that we
-	 *	won't be free'd before the other one is
-	 *	free'd.
-	 *
-	 *	If our dictionary is NOT in the other
-	 *	dictionaries autoref table, then it was loaded
-	 *	via some other method.  We increment its
-	 *	refcount, and add it to our autoref table.
-	 *
-	 *	Then when this dictionary is being free'd, we
-	 *	also free the dictionaries in our autoref
-	 *	table.
+	 *	Ref to attribute in existing dictionary.  The dictionary MUST be loaded by $INCLUDEs.
 	 */
-	da = dict_find_or_load_reference(&dict, fixup->ref, fixup->common.filename, fixup->common.line);
-	if (!da) return -1;
+	if (fixup->ref[0] != '.') {
+		da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), fixup->ref);
+		if (!da) {
+			fr_strerror_printf("Invalid attribute reference '%s' at %s[%d]", fixup->ref,
+					   fr_cwd_strip(fixup->common.filename), fixup->common.line);
+			return -1;
+		}
+	} else {
+		/*
+		 *	Load a foreign protocol, which may include
+		 *	loops.
+		 */
+		da = dict_protocol_reference(&dict, fixup->ref, fixup->common.filename, fixup->common.line);
+		if (!da) return -1;
+	}
 
 	if (da->type != FR_TYPE_TLV) {
 		fr_strerror_printf("References MUST be to attributes of type 'tlv' at %s[%d]",
@@ -453,7 +435,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	fr_dict_t		*dict = fr_dict_unconst(fr_dict_by_da(fixup->da));
 
 	/*
-	 *	We can't clone our parents.
+	 *	Find the reference
 	 */
 	da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), fixup->ref);
 	if (da) {
@@ -473,7 +455,10 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 			}
 		}
 	} else {
-		da = dict_find_or_load_reference(&dict, fixup->ref, fixup->common.filename, fixup->common.line);
+		/*
+		 *	@todo - cloning foreign attributes is not a well-tested path.
+		 */
+		da = dict_protocol_reference(&dict, fixup->ref, fixup->common.filename, fixup->common.line);
 		if (!da) return -1;
 	}
 
