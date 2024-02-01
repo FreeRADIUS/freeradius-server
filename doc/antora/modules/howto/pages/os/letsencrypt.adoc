@@ -1,33 +1,35 @@
 = Using LetsEncrypt certificates
 
 When configuring FreeRADIUS to use EAP, the use of keys and
-certificates are essential. Unfortunately this is one of those
-areas that can be hard to get right and prone to problems.
-Notably, certificates expiring at very inopportune moments.
+certificates are essential. Unfortunately this is one of those areas
+that can be hard to get right and prone to problems.  Notably,
+certificates can expiry at very inopportune moments.  At which point
+no one can get online.
 
-The recommendation is always to use a private CA for both server
+Our recommendation is always to use a private CA for both server
 and user certificates for utmost security. However, the problem of
 having to install the CA root certificate on all end user devices
-can put many off this route. In this case, using a public CA
+can put many people off of this route. In that case, using a public CA
 certificate for the server is often seen as the most convenient
-answer, even if not the most secure.
+answer, even if it is not the most secure.
 
 WARNING: Never configure FreeRADIUS to use a public CA root in the
 `ca_file` or `ca_path` EAP module settings. This would potentially
-allow any users with certificates issued the public CA to
-authenticate!
+allow any secondary (intermediate) CA signed by that public CA to
+issue client certificates, and be authenticated by your server!
 
 
 == Prerequisites
 
-The instructions here depend on the following
+The instructions here depend on the following criteria:
 
 - You have chosen to use a public CA to issue the server
   certificate for your RADIUS server, and are aware of the
   security considerations in doing so.
 
-- You wish to use LetsEncrypt for this purpose and want
-  certificate renewals (usually every 2-3 months) to be automatic.
+- You wish to use [LetsEncrypt[(https://letsencrypt.org/) for this
+  purpose, and want certificate renewals (usually every 2-3 months) to
+  be automatic.
 
 - The RADIUS server has a public IP address and can receive
   traffic on port 80 for certificate renewals, and you have
@@ -36,17 +38,16 @@ The instructions here depend on the following
 - There is a DNS entry pointing at the server that the certificate
   can be issued for.
 
-RADIUS servers are usually best hidden away on an internal
-network, so the latter points above are worth considering
-carefully. It is possible to set this up using a front web-server
-that requests the certificate and then pushes it back to the
-RADIUS server internally, but that is beyond the scope of this
-document.
+RADIUS servers are usually best hidden away on an internal network, so
+the final few points above are worth considering carefully. It is
+possible to set this up using a front web-server which requests the
+certificate and then pushes it back to the RADIUS server internally,
+but that configuration is beyond the scope of this document.
 
 
 == Set up process
 
-The instructions here use LetsEncrypt's "certbot" tool to generate
+The instructions here use LetsEncrypt's [certbot](https://certbot.eff.org/) tool to generate
 certificates and renew them when necessary. Other alternative
 tools can be used based on the following instructions.
 
@@ -54,17 +55,17 @@ We will be setting up the following components:
 
 - Creating up a group that has access to the certificate files.
 
-- Writing a post-renewal hook script for certbot so that FreeRADIUS
-  is restarted after any new certificate has been installed.
+- Writing a post-renewal hook script for `certbot` so that FreeRADIUS
+  is restarted after the new certificate has been installed.
 
-- Running certbot to issue the certificate.
+- Running `certbot` to issue the certificate.
 
 - Configuring FreeRADIUS to use the LetsEncrypt issued certificate
   and associated private key.
 
 This document is based on a Debian system (version 12 at the time
-of writing), so may need adjusting for other operating systems.
-The instructions here are for a generic system, so may need
+of writing), so it may need adjusting for other operating systems.
+The instructions here are for a generic system, so it may also need
 adjusting for each particular case. For example, a group may
 already exist that has ownership of the certificates, so that can
 likely be used instead of creating a new one.
@@ -102,20 +103,19 @@ adduser freerad certs
 ----
 
 
-
 === Configure certbot
 
-We will use a script to restart FreeRADIUS whenever certbot renews
-the certificate. This will also ensure that the permissions are
-always set correctly on the certificate files so that FreeRADIUS
+We will use a script to restart FreeRADIUS whenever `certbot` renews
+the certificate. This script will also ensure that the permissions are
+always set correctly on the certificate files, so that FreeRADIUS
 is able to read them.
 
-Create `/usr/local/sbin/certbot-post-hook` with the following
+Create a file `/usr/local/sbin/certbot-post-hook` with the following
 contents:
 
 [source,shell]
 ----
-#! /bin/sh
+#!/bin/sh
 
 #  Ensure certificates are in the correct group
 chgrp -R certs /etc/letsencrypt/live /etc/letsencrypt/archive
@@ -128,20 +128,21 @@ chmod 750 /etc/letsencrypt/live /etc/letsencrypt/archive
 
 === Generate the certificate
 
-The system is now ready to request a certificate from LetsEncrypt.
-We will be using the example FQDN of `radius.example.com` here;
-replace this with whatever name you have in your DNS pointing to
+The system is now ready to request a certificate from LetsEncrypt.  We
+will be using the example FQDN of `radius.example.com` here; replace
+this name with whatever name you have in your DNS, and which points to
 the public IP address of the RADIUS server.
 
-First, generate a certificate from the test certificate issuer.
-There are more severe rate limits on the production issuer server
-which can mean you are quickly locked out if making multiple
-requests while testing.
+First, generate a certificate from the test certificate issuer.  There
+are severe rate limits on the production issuer server, which can mean
+you are quickly locked out if making multiple requests while testing.
+It is therefore useful to try with the test issuer first.
 
-Run the following to generate a key and request the certificate.
-Note that certbot will open up a temporary web server on port 80
-while this is in progress, so ensure any firewalls are already
-opened up.
+Run the following to generate a key and to request the certificate.
+Note that `certbot` will open up a temporary web server on port 80
+while this is in progress, so ensure that any firewalls are already
+opened up, and that external systems can connect to the machine in
+port 80.
 
 [source,shell]
 ----
@@ -161,7 +162,7 @@ NOTE: There are still rate limits on LetsEncrypt's test server,
 but they are higher and you are less likely to hit them than with
 the production issuer.
 
-Once you have successfully generated a test certificate you can
+Once you have successfully generated a test certificate, you can
 remove it and request the real certificate:
 
 [source,shell]
@@ -227,11 +228,9 @@ service freeradius restart
 
 The certificates need to be renewed before three months is up.
 There is a command, `certbot renew`, to do this automatically. On
-Debian based systems the `certbot` package will create a cron job
-or systemd timer to run this at least daily, but check that this
-is enabled.
-
-
+Debian based systems, the `certbot` package will create a cron job
+or systemd timer to run this at least daily, but you should still check that this
+cron job is enabled.
 
 
 == Troubleshooting
@@ -247,15 +246,17 @@ that may help.
 - Is there a DNS entry, for the same domain name being requested,
   resolvable in the public DNS?
 
-- Have you hit LetsEncrypt rate limits?
+- Does that DNS entry point to the IP of the system running `certbot`?
+
+- Have you hit the LetsEncrypt rate limits?
 
 
 === Certificate expires and does not renew
 
 - Is the server still reachable on port 80, and is the DNS entry
-  still present (as above)?
+  still present and correct (as above)?
 
-- Is the certbot cron job or systemd timer to renew certificates
+- Is the `certbot` cron job or `systemd` timer to renew certificates
   enabled? The Debian packaging creates these, but other systems
   may not.
 
@@ -263,7 +264,9 @@ that may help.
 === FreeRADIUS refuses to start
 
 - Check the certificate permissions are set correctly. Can the
-  FreeRADIUS user read the certificate and key files?
+  FreeRADIUS user read the certificate and key files?  If there is a
+  permissions issue, FreeRADIUS will print out a descriptive error
+  message.
 
 
 ### User devices fail to trust the server
@@ -271,6 +274,6 @@ that may help.
 - Was the FreeRADIUS daemon restarted after changing the
   configuration?
 
-- Most devices include the LetsEncrypt root these day, but some
-  older devices may not. Install their root CA certificate if
-  needed.
+- Most devices include the LetsEncrypt root these day, but some older
+  devices may not. Install the LetsEncrypt root CA certificate on
+  those devices if needed.
