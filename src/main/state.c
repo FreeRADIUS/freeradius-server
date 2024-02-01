@@ -399,8 +399,9 @@ static void state_entry_calc(REQUEST *request, state_entry_t *entry, VALUE_PAIR 
 	 *	external home server, then that home server creates
 	 *	the State attribute, and we don't control it.
 	 */
-	if (vp->vp_length == sizeof(entry->state) &&
-	    (!request->proxy || (request->proxy->dst_port == 0))) {
+	if (entry->ours ||
+	    (vp->vp_length == sizeof(entry->state) &&
+	     (!request->proxy || (request->proxy->dst_port == 0)))) {
 		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
 		entry->ours = true;
 
@@ -475,19 +476,18 @@ static state_entry_t *fr_state_entry_create(fr_state_t *state, REQUEST *request,
 	 */
 	if (old) {
 		entry->tries = old->tries + 1;
+		entry->ours = old->ours;
 
 		/*
 		 *	Track State
 		 */
-		if (!vp && old->ours) {
+		if (!vp && entry->ours) {
 			memcpy(entry->state, old->state, sizeof(entry->state));
 
 			entry->state[1] = entry->state[0] ^ entry->tries;
 			entry->state[8] = entry->state[2] ^ (((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
 			entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
 			entry->state[12] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
-
-			entry->ours = true;
 		}
 
 		/*
