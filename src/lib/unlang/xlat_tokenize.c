@@ -1636,7 +1636,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 
 	fr_strerror_clear();	/* Clear error buffer */
 
-	if (xlat_tokenize_input(head, &our_in, p_rules, t_rules, 0) < 0) {
+	if (xlat_tokenize_input(head, &our_in, p_rules, t_rules, t_rules ? t_rules->literal.safe_for : 0) < 0) {
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
