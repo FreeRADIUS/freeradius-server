@@ -66,12 +66,21 @@ typedef struct {
 	char const	*mark_update;		//!< SQL query to mark an IP.
 } rlm_sqlippool_t;
 
+/**  Call environment used by module alloc method
+ */
 typedef struct {
 	fr_value_box_t	pool_name;			//!< Name of pool address will be allocated from.
 	tmpl_t		*pool_name_tmpl;		//!< Tmpl used to expand pool_name
 	fr_value_box_t	requested_address;		//!< IP address being requested by client.
 	tmpl_t		*allocated_address_attr;	//!< Attribute to populate with allocated IP.
 	fr_value_box_t	allocated_address;		//!< Existing value for allocated IP.
+	fr_value_box_t	begin;				//!< SQL query to begin transaction.
+	tmpl_t		*existing;			//!< tmpl to expand as query for finding the existing IP.
+	tmpl_t		*requested;			//!< tmpl to expand as query for finding the requested IP.
+	tmpl_t		*find;				//!< tmpl to expand as query for finding an unused IP.
+	tmpl_t		*update;			//!< tmpl to expand as query for updating the found IP.
+	tmpl_t		*pool_check;			//!< tmpl to expand as query for checking for existence of the pool.
+	fr_value_box_t	commit;				//!< SQL query to commit transaction.
 } ippool_alloc_call_env_t;
 
 static conf_parser_t module_config[] = {
@@ -573,6 +582,12 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	return 0;
 };
 
+#define QUERY_ESCAPE .pair.escape = { \
+	.func = sqlippool_box_escape, \
+	.mode = TMPL_ESCAPE_PRE_CONCAT, \
+	.uctx = { .func = { .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC }, \
+}, .pair.func = call_env_parse
+
 static const call_env_method_t sqlippool_alloc_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ippool_alloc_call_env_t),
 	.env = (call_env_parser_t[]) {
@@ -584,6 +599,20 @@ static const call_env_method_t sqlippool_alloc_method_env = {
 		{ FR_CALL_ENV_PARSE_OFFSET("allocated_address_attr", FR_TYPE_VOID,
 					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE,
 					   ippool_alloc_call_env_t, allocated_address, allocated_address_attr) },
+		{ FR_CALL_ENV_OFFSET("alloc_begin", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+				     ippool_alloc_call_env_t, begin), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("alloc_existing", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY,
+						ippool_alloc_call_env_t, existing), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("alloc_requested", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY,
+						ippool_alloc_call_env_t, requested), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("alloc_find", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY | CALL_ENV_FLAG_REQUIRED,
+						ippool_alloc_call_env_t, find), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("alloc_update", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY,
+						ippool_alloc_call_env_t, update), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("pool_check", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY,
+						ippool_alloc_call_env_t, pool_check), QUERY_ESCAPE },
+		{ FR_CALL_ENV_OFFSET("alloc_commit", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+				     ippool_alloc_call_env_t, commit), QUERY_ESCAPE },
 		CALL_ENV_TERMINATOR
 	}
 };
