@@ -1391,35 +1391,54 @@ recv Accounting-Request {
 #  Session start
 #
 accounting Start {
-
+	#
+	#  Refresh leases when we see a start.
+	#
+	#  Ensure that &control.IP-Pool.Name is set to determine which
+	#  pool of IPs are used.  Set this in `recv Accounting-Request` so
+	#  it is available for all the accounting sections.
+	#
+#	sqlippool
 }
 
 #
 #  Session stop
 #
 accounting Stop {
-
+	#
+	#  Return an address to the IP Pool when we see a stop record.
+	#
+#	sqlippool
 }
 
 #
 #  Session is still alive
 #
 accounting Interim-Update {
-
+	#
+	#  Refresh leases when we see an alive.
+	#
+#	sqlippool
 }
 
 #
 #  The NAS has just booted up.
 #
 accounting Accounting-On {
-
+	#
+	#  Return all addresses related to this NAS to the IP Pool
+	#
+#	sqlippool
 }
 
 #
 #  The NAS is about to go down
 #
 accounting Accounting-Off {
-
+	#
+	#  Return all addresses related to this NAS to the IP Pool
+	#
+#	sqlippool
 }
 
 #
@@ -1486,15 +1505,6 @@ send Accounting-Response {
 	#
 #	radutmp
 #	sradutmp
-
-	#
-	#  Refresh leases when we see a start or alive. Return an address to
-	#  the IP Pool when we see a stop record.
-	#
-	#  Ensure that &control.IP-Pool.Name is set to determine which
-	#  pool of IPs are used.
-	#
-#	sqlippool
 
 	#
 	#  Log traffic to an SQL database.
