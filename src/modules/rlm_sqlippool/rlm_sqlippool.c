@@ -534,6 +534,42 @@ static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_c
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_FAIL;
 }
+/** Custom parser for sqlippool call env
+ *
+ * Needed as the escape function needs to reference
+ * the correct instance of the SQL module since escaping functions
+ * are dependent on the driver used by a given module instance.
+ */
+static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, UNUSED call_env_parser_t const *rule)
+{
+	rlm_sqlippool_t const	*inst = talloc_get_type_abort_const(data, rlm_sqlippool_t);
+	module_instance_t const	*sql_inst;
+	rlm_sql_t const		*sql;
+	tmpl_t			*parsed_tmpl;
+	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);
+	tmpl_rules_t		our_rules = *t_rules;
+
+	/*
+	 *	Lookup the sql module instance.
+	 */
+	sql_inst = module_rlm_by_name(NULL, inst->sql_name);
+	if (!sql_inst) return -1;
+	sql = talloc_get_type_abort(sql_inst->dl_inst->data, rlm_sql_t);
+
+	/*
+	 *	Set the sql module instance data as the uctx for escaping
+	 *	and use the same "safe_for" as the sql module.
+	 */
+	our_rules.escape.uctx.func.uctx = sql;
+	our_rules.escape.safe_for = (fr_value_box_safe_for_t)sql->driver;
+	our_rules.literal.safe_for = (fr_value_box_safe_for_t)sql->driver;
+
+	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) return -1;
+	*(void **)out = parsed_tmpl;
+	return 0;
+};
 
 static const call_env_method_t sqlippool_alloc_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ippool_alloc_call_env_t),
