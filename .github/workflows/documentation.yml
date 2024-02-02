@@ -113,13 +113,13 @@ jobs:
       uses: actions/configure-pages@v3
 
     - name: Upload Doxygen content
-      uses: actions/upload-pages-artifact@v1
+      uses: actions/upload-pages-artifact@v3
       with:
         path: 'doc/doxygen/html'
 
     - name: Deploy doxygen content to GitHub pages
       id: deployment
-      uses: actions/deploy-pages@v1
+      uses: actions/deploy-pages@v4
 
   deploy-antora-docs:
     if: ( github.repository_owner == 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' ) && ( github.event_name == 'push' )

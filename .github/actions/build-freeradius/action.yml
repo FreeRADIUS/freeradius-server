@@ -165,7 +165,7 @@ runs:
 
     - name: "Clang Static Analyzer: Store assets on failure"
       if: ${{ inputs.cc == 'clang' && failure() }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: clang-scan.tgz
         path: build/plist/**/*.html
