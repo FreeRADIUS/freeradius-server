@@ -133,51 +133,42 @@ static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
 
 /** Perform a single sqlippool query
  *
- * Mostly wrapper around sql_query which does some special sqlippool sequence substitutions and expands
- * the format string.
+ * Mostly wrapper around sql_query which returns the number of affected rows.
  *
- * @param[in] fmt sql query to expand.
+ * @param[in] query sql query to execute.
  * @param[in] handle sql connection handle.
- * @param[in] data Instance of rlm_sqlippool.
+ * @param[in] sql Instance of rlm_sql.
  * @param[in] request Current request.
  * @return
  *	- number of affected rows on success.
  *	- < 0 on error.
  */
-static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
-			     rlm_sqlippool_t const *data, request_t *request)
+static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
+			     rlm_sql_t const *sql, request_t *request)
 {
-	char *expanded = NULL;
-
-	int ret;
-	int affected;
+	int	ret, affected;
 
 	/*
 	 *	If we don't have a command, do nothing.
 	 */
-	if (!fmt || !*fmt) return 0;
+	if (!query || !*query) return 0;
 
 	/*
 	 *	No handle?  That's an error.
 	 */
 	if (!handle || !*handle) return -1;
 
-	if (xlat_aeval(request, &expanded, request, fmt, data->sql->sql_escape_func, *handle) < 0) return -1;
-
-	ret = data->sql->query(data->sql, request, handle, expanded);
-	talloc_free(expanded);
-	if (ret < 0){
-		return -1;
-	}
+	ret = sql->query(sql, request, handle, query);
+	if (ret < 0) return -1;
 
 	/*
 	 *	No handle, we can't continue.
 	 */
 	if (!*handle) return -1;
 
-	affected = (data->sql->driver->sql_affected_rows)(*handle, &data->sql->config);
+	affected = (sql->driver->sql_affected_rows)(*handle, &sql->config);
 
-	(data->sql->driver->sql_finish_query)(*handle, &data->sql->config);
+	(sql->driver->sql_finish_query)(*handle, &sql->config);
 
 	return affected;
 }
@@ -197,33 +188,23 @@ static int sqlippool_command(char const *fmt, rlm_sql_handle_t **handle,
 /*
  * Query the database expecting a single result row
  */
-static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen, char const *fmt,
-							  rlm_sql_handle_t **handle, rlm_sqlippool_t *data,
+static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen, char const *query,
+							  rlm_sql_handle_t **handle, rlm_sql_t const *sql,
 							  request_t *request)
 {
-	char *expanded = NULL;
-
-	int rlen, retval;
-
-	rlm_sql_row_t row;
+	int		rlen, retval;
+	rlm_sql_row_t	row;
 
 	*out = '\0';
 
-	/*
-	 *	Do an xlat on the provided string
-	 */
-	if (xlat_aeval(request, &expanded, request, fmt, data->sql->sql_escape_func, *handle) < 0) {
-		return 0;
-	}
-	retval = data->sql->select(data->sql, request, handle, expanded);
-	talloc_free(expanded);
+	retval = sql->select(sql, request, handle, query);
 
 	if ((retval != 0) || !*handle) {
-		REDEBUG("database query error on '%s'", fmt);
+		REDEBUG("database query error on '%s'", query);
 		return 0;
 	}
 
-	if (data->sql->fetch_row(&row, data->sql, request, handle) < 0) {
+	if (sql->fetch_row(&row, sql, request, handle) < 0) {
 		REDEBUG("Failed fetching query result");
 		goto finish;
 	}
@@ -248,7 +229,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	retval = rlen;
 
 finish:
-	(data->sql->driver->sql_finish_select_query)(*handle, &data->sql->config);
+	(sql->driver->sql_finish_select_query)(*handle, &sql->config);
 
 	return retval;
 }
