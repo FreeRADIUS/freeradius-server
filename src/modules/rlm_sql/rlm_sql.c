@@ -241,6 +241,11 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	return 0;
 }
 
+static int sql_box_escape(fr_value_box_t *vb, rlm_sql_escape_uctx_t *uctx)
+{
+	return sql_xlat_escape(NULL, vb, uctx);
+}
+
 /** Execute an arbitrary SQL query
  *
  * For SELECTs, the values of the first column will be returned.
@@ -1679,6 +1684,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->sql_escape_func = inst->driver->sql_escape_func ?
 				inst->driver->sql_escape_func :
 				sql_escape_func;
+	inst->box_escape_func = sql_box_escape;
 
 	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 	if (!inst->ef) {

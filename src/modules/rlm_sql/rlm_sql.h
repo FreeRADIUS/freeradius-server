@@ -179,6 +179,8 @@ typedef struct {
 	rlm_sql_handle_t	*handle;
 } rlm_sql_escape_uctx_t;
 
+typedef int (*sql_box_escape_t)(fr_value_box_t *vb, rlm_sql_escape_uctx_t *uctx);
+
 typedef struct {
 	module_t	common;				//!< Common fields for all loadable modules.
 
@@ -222,6 +224,7 @@ struct sql_inst {
 
 	int			(*sql_set_user)(rlm_sql_t const *inst, request_t *request, char const *username);
 	xlat_escape_legacy_t	sql_escape_func;
+	sql_box_escape_t	box_escape_func;
 	sql_rcode_t		(*query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t		(*select)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t		(*fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
