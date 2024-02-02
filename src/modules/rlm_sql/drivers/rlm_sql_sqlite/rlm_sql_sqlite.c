@@ -713,7 +713,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		sqlite3		*db = NULL;
 		CONF_PAIR	*cp;
 
-		INFO("Database doesn't exist, creating it and loading schema");
+		INFO("Database \"%s\" doesn't exist, creating it and loading schema", inst->filename);
 
 		p = strrchr(inst->filename, '/');
 		if (p) {
