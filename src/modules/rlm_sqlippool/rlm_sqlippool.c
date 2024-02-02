@@ -42,19 +42,6 @@ typedef struct {
 	char const	*sql_name;
 
 	rlm_sql_t const	*sql;
-
-						/* Update sequence */
-	char const	*update_free;		//!< SQL query to clear offered IPs
-	char const	*update_update;		//!< SQL query to update an IP entry.
-
-						/* Release sequence */
-	char const	*release_clear;       	//!< SQL query to clear an IP entry.
-
-						/* Bulk release sequence */
-	char const	*bulk_release_clear;	//!< SQL query to bulk clear several IPs.
-
-						/* Mark sequence */
-	char const	*mark_update;		//!< SQL query to mark an IP.
 } rlm_sqlippool_t;
 
 /**  Call environment used by module alloc method
@@ -73,6 +60,13 @@ typedef struct {
 	tmpl_t		*pool_check;			//!< tmpl to expand as query for checking for existence of the pool.
 	fr_value_box_t	commit;				//!< SQL query to commit transaction.
 } ippool_alloc_call_env_t;
+
+/**  Call environment used by all other module methods
+ */
+typedef struct {
+	fr_value_box_t	free;			//!< SQL query to clear other offered IPs.  Only used in "update" method.
+	fr_value_box_t	update;			//!< SQL query to update an IP record.
+} ippool_common_call_env_t;
 
 /** Current step in IP allocation state machine
  */
@@ -97,20 +91,6 @@ typedef struct {
 
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
-
-
-	{ FR_CONF_OFFSET_FLAGS("update_free", CONF_FLAG_XLAT, rlm_sqlippool_t, update_free) },
-
-	{ FR_CONF_OFFSET_FLAGS("update_update", CONF_FLAG_XLAT, rlm_sqlippool_t, update_update) },
-
-
-	{ FR_CONF_OFFSET_FLAGS("release_clear", CONF_FLAG_XLAT, rlm_sqlippool_t, release_clear) },
-
-
-	{ FR_CONF_OFFSET_FLAGS("bulk_release_clear", CONF_FLAG_XLAT, rlm_sqlippool_t, bulk_release_clear) },
-
-
-	{ FR_CONF_OFFSET_FLAGS("mark_update", CONF_FLAG_XLAT, rlm_sqlippool_t, mark_update) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -181,9 +161,11 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
 /*
  *	Don't repeat yourself
  */
-#define DO_AFFECTED(_x, _affected) _affected = sqlippool_command(inst->_x, &handle, inst, request); if (_affected < 0) goto error
 #define DO_PART(_x) if(env->_x.type == FR_TYPE_STRING) { \
 	if(sqlippool_command(env->_x.vb_strvalue, &handle, sql, request) <0) goto error; \
+}
+#define DO_AFFECTED(_x, _affected) if (env->_x.type == FR_TYPE_STRING) { \
+	_affected = sqlippool_command(env->_x.vb_strvalue, &handle, sql, request); if (_affected < 0) goto error; \
 }
 #define RESERVE_CONNECTION(_handle, _pool, _request) _handle = fr_pool_connection_get(_pool, _request); \
 	if (!_handle) { \
@@ -559,14 +541,19 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/*
- *	Update a lease.
+/** Common function used by module methods which perform an optional "free" then "update"
+ *	- update
+ *	- release
+ *	- bulk_release
+ *	- mark
  */
-static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	rlm_sql_handle_t	*handle;
-	int			affected;
+	rlm_sqlippool_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
+	ippool_common_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_common_call_env_t);
+	rlm_sql_t const			*sql = inst->sql;
+	rlm_sql_handle_t		*handle;
+	int				affected = 0;
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 
@@ -575,91 +562,28 @@ static unlang_action_t CC_HINT(nonnull) mod_update(rlm_rcode_t *p_result, module
 	 *  primarily intended for multi-server setups sharing a common database
 	 *  allowing for tidy up of multiple offered addresses in a DHCP context.
 	 */
-	DO_PART(update_free);
+	DO_PART(free);
 
-	DO_AFFECTED(update_update, affected);
+	DO_AFFECTED(update, affected);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
-	if (affected > 0) {
-		/*
-		 * The lease has been updated - return OK
-		 */
-		RETURN_MODULE_UPDATED;
-	} else {
-		/*
-		 * The lease could not be updated - return notfound
-		 */
-		RETURN_MODULE_NOTFOUND;
-	}
+	if (affected > 0) RETURN_MODULE_UPDATED;
+	RETURN_MODULE_NOTFOUND;
 
 error:
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 	RETURN_MODULE_FAIL;
 }
 
-/*
- *	Release a lease.
+/** Call SQL module box_escape_func to escape tainted values
  */
-static unlang_action_t CC_HINT(nonnull) mod_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	rlm_sql_handle_t	*handle;
-	int			affected;
+static int sqlippool_box_escape(fr_value_box_t *vb, void *uctx) {
+	rlm_sql_escape_uctx_t	*ctx = talloc_get_type_abort(uctx, rlm_sql_escape_uctx_t);
 
-	RESERVE_CONNECTION(handle, inst->sql->pool, request);
-
-	DO_AFFECTED(release_clear, affected);
-
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-	if (affected > 0) RETURN_MODULE_UPDATED;
-	RETURN_MODULE_NOTFOUND;
-
-	error:
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-	RETURN_MODULE_FAIL;
+	return ctx->sql->box_escape_func(vb, uctx);
 }
 
-/*
- *	Release a collection of leases.
- */
-static unlang_action_t CC_HINT(nonnull) mod_bulk_release(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	rlm_sql_handle_t	*handle;
-
-	RESERVE_CONNECTION(handle, inst->sql->pool, request);
-
-	DO_PART(bulk_release_clear);
-
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-	RETURN_MODULE_OK;
-
-	error:
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-	RETURN_MODULE_FAIL;
-}
-
-/*
- *	Mark a lease.  Typically for DHCP Decline where IPs need to be marked
- *	as invalid
- */
-static unlang_action_t CC_HINT(nonnull) mod_mark(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	rlm_sql_handle_t	*handle;
-
-	RESERVE_CONNECTION(handle, inst->sql->pool, request);
-
-	DO_PART(mark_update);
-
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-	RETURN_MODULE_OK;
-
-	error:
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-	RETURN_MODULE_FAIL;
-}
 /** Custom parser for sqlippool call env
  *
  * Needed as the escape function needs to reference
@@ -732,6 +656,44 @@ static const call_env_method_t sqlippool_alloc_method_env = {
 	}
 };
 
+static const call_env_method_t sqlippool_update_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ippool_common_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("update_free", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+				     ippool_common_call_env_t, free), QUERY_ESCAPE },
+		{ FR_CALL_ENV_OFFSET("update_update", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+				     ippool_common_call_env_t, update), QUERY_ESCAPE },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+static const call_env_method_t sqlippool_release_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ippool_common_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("release_clear", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+				     ippool_common_call_env_t, update), QUERY_ESCAPE },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+static const call_env_method_t sqlippool_bulk_release_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ippool_common_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("bulk_release_clear", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+				     ippool_common_call_env_t, update), QUERY_ESCAPE },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+static const call_env_method_t sqlippool_mark_method_env = {
+	FR_CALL_ENV_METHOD_OUT(ippool_common_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("mark_clear", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+				     ippool_common_call_env_t, update), QUERY_ESCAPE },
+		CALL_ENV_TERMINATOR
+	}
+};
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -758,28 +720,40 @@ module_rlm_t rlm_sqlippool = {
 		 */
 		{ .name1 = "recv",		.name2 = "access-request",	.method = mod_alloc,
 		  .method_env = &sqlippool_alloc_method_env },
-		{ .name1 = "accounting",	.name2 = "start",		.method = mod_update },
-		{ .name1 = "accounting",	.name2 = "alive",		.method = mod_update },
-		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release },
-		{ .name1 = "accounting",	.name2 = "accounting-on",	.method = mod_bulk_release },
-		{ .name1 = "accounting",	.name2 = "accounting-off",	.method = mod_bulk_release },
+		{ .name1 = "accounting",	.name2 = "start",		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
+		{ .name1 = "accounting",	.name2 = "alive",		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
+		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_common,
+		  .method_env = &sqlippool_release_method_env },
+		{ .name1 = "accounting",	.name2 = "accounting-on",	.method = mod_common,
+		  .method_env = &sqlippool_bulk_release_method_env },
+		{ .name1 = "accounting",	.name2 = "accounting-off",	.method = mod_common,
+		  .method_env = &sqlippool_bulk_release_method_env },
 
 		/*
 		 *	DHCPv4
 		 */
 		{ .name1 = "recv",		.name2 = "Discover",		.method = mod_alloc,
 		  .method_env = &sqlippool_alloc_method_env },
-		{ .name1 = "recv",		.name2 = "Request",		.method = mod_update },
-		{ .name1 = "recv",		.name2 = "Confirm",		.method = mod_update },
-		{ .name1 = "recv",		.name2 = "Rebind",		.method = mod_update },
-		{ .name1 = "recv",		.name2 = "Renew",		.method = mod_update },
-		{ .name1 = "recv",		.name2 = "Release",		.method = mod_release },
-		{ .name1 = "recv",		.name2 = "Decline",		.method = mod_mark },
+		{ .name1 = "recv",		.name2 = "Request",		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
+		{ .name1 = "recv",		.name2 = "Confirm",		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
+		{ .name1 = "recv",		.name2 = "Rebind",		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
+		{ .name1 = "recv",		.name2 = "Renew",		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
+		{ .name1 = "recv",		.name2 = "Release",		.method = mod_common,
+		  .method_env = &sqlippool_release_method_env },
+		{ .name1 = "recv",		.name2 = "Decline",		.method = mod_common,
+		  .method_env = &sqlippool_mark_method_env },
 
 		/*
 		 *	Generic
 		 */
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_update },
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
 		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_alloc,
 		  .method_env = &sqlippool_alloc_method_env },
 
@@ -788,11 +762,16 @@ module_rlm_t rlm_sqlippool = {
 		 */
 		{ .name1 = "allocate",		.name2 = CF_IDENT_ANY,		.method = mod_alloc,
 		  .method_env = &sqlippool_alloc_method_env },
-		{ .name1 = "update",		.name2 = CF_IDENT_ANY,		.method = mod_update },
-		{ .name1 = "renew",		.name2 = CF_IDENT_ANY,		.method = mod_update },
-		{ .name1 = "release",		.name2 = CF_IDENT_ANY,		.method = mod_release },
-		{ .name1 = "bulk-release",	.name2 = CF_IDENT_ANY,		.method = mod_bulk_release },
-		{ .name1 = "mark",		.name2 = CF_IDENT_ANY,		.method = mod_mark },
+		{ .name1 = "update",		.name2 = CF_IDENT_ANY,		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
+		{ .name1 = "renew",		.name2 = CF_IDENT_ANY,		.method = mod_common,
+		  .method_env = &sqlippool_update_method_env },
+		{ .name1 = "release",		.name2 = CF_IDENT_ANY,		.method = mod_common,
+		  .method_env = &sqlippool_release_method_env },
+		{ .name1 = "bulk-release",	.name2 = CF_IDENT_ANY,		.method = mod_common,
+		  .method_env = &sqlippool_bulk_release_method_env },
+		{ .name1 = "mark",		.name2 = CF_IDENT_ANY,		.method = mod_common,
+		  .method_env = &sqlippool_mark_method_env },
 
 		MODULE_NAME_TERMINATOR
 	}
