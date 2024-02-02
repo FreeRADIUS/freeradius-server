@@ -344,7 +344,7 @@ int call_env_parsed_valid(call_env_parsed_t const *parsed, CONF_ITEM const *ci, 
  *	- <0 on failure;
  */
 static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
-			  CONF_SECTION const *cs, call_env_parser_t const *rule) {
+			  CONF_SECTION const *cs, void const *data, call_env_parser_t const *rule) {
 	CONF_PAIR const		*cp, *next;
 	call_env_parsed_t	*call_env_parsed = NULL;
 	ssize_t			count, multi_index;
@@ -390,7 +390,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				goto next;
 			}
 
-			if (call_env_parse(ctx, parsed, name, t_rules, subcs, rule->section.subcs) < 0) return -1;
+			if (call_env_parse(ctx, parsed, name, t_rules, subcs, data, rule->section.subcs) < 0) return -1;
 			goto next;
 		}
 
@@ -461,7 +461,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			 *	result structure.
 			 */
 			if (rule->pair.func) {
-				if (unlikely(rule->pair.func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), rule) < 0)) {
+				if (unlikely(rule->pair.func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), data, rule) < 0)) {
 				error:
 					cf_log_perr(to_parse, "Failed to parse configuration item '%s = %s'", rule->name, cf_pair_value(to_parse));
 					talloc_free(call_env_parsed);
@@ -657,7 +657,7 @@ void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr
  * 	- NULL on failure.
  */
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
-			   tmpl_rules_t const *t_rules, CONF_SECTION *cs)
+			   tmpl_rules_t const *t_rules, CONF_SECTION *cs, void const *data)
 {
 	unsigned int	count;
 	size_t		names_len;
@@ -687,7 +687,7 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 	MEM(call_env = talloc_pooled_object(ctx, call_env_t, count * 4, (sizeof(call_env_parser_t) + sizeof(tmpl_t)) * count + names_len * 2));
 	call_env->method = call_env_method;
 	call_env_parsed_init(&call_env->parsed);
-	if (call_env_parse(call_env, &call_env->parsed, name, t_rules, cs, call_env_method->env) < 0) {
+	if (call_env_parse(call_env, &call_env->parsed, name, t_rules, cs, data, call_env_method->env) < 0) {
 		talloc_free(call_env);
 		return NULL;
 	}

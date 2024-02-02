@@ -41,6 +41,7 @@ FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry
 
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/tmpl.h>
 
@@ -87,7 +88,6 @@ typedef enum CC_HINT(flag_enum) {
 	CALL_ENV_FLAG_SECRET		= (1 << 10),		//!< The value is a secret, and should not be logged.
 } call_env_flags_t;
 DIAG_ON(attributes)
-
 
 /** @name #conf_parser_t flags checks
  *
@@ -139,7 +139,7 @@ DIAG_ON(attributes)
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_parser_t const *rule);
+typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule);
 
 /** Callback for performing custom parsing of a #CONF_SECTION
  *
@@ -416,7 +416,7 @@ void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr
  * @{
  */
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
-			   tmpl_rules_t const *rules, CONF_SECTION *cs) CC_HINT(nonnull(3,4,5));
+			   tmpl_rules_t const *rules, CONF_SECTION *cs, void const *data) CC_HINT(nonnull(3,4,5));
 /** @} */
 
 #ifdef __cplusplus
