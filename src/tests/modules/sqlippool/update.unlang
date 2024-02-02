@@ -1,0 +1,103 @@
+#
+#  Test updates on sqlippool allocated addresses.
+#
+uint32 expiry
+&control.IP-Pool.Name := 'test_update'
+
+#
+#  Add IP addresses
+#
+%sql("DELETE FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}'")
+%sql("INSERT INTO fr_ippool (pool_name, address, expiry_time) VALUES ('%{control.IP-Pool.Name}', '192.168.0.1', datetime('now', '-00:10'))")
+
+# 1. Check allocation
+sqlippool.allocate
+if (!updated) {
+	test_fail
+}
+
+# 2.
+if !(&reply.Framed-IP-Address == 192.168.0.1) {
+	test_fail
+}
+
+# 3. Verify expiry time is based on offer duration
+&expiry := %sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'")
+if ((&expiry - %l) < 20) {
+	test_fail
+}
+
+# 4.
+if ((&expiry - %l) > 40) {
+	test_fail
+}
+
+
+# 5. Verify the gateway was set
+if !(%sql("SELECT gateway FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'") == '127.0.0.1') {
+	test_fail
+}
+
+# 6. Add another IP addresses
+%sql("INSERT INTO fr_ippool (pool_name, address, expiry_time) values ('%{control.IP-Pool.Name}', '192.168.1.1', datetime('now', '-00:10'))")
+
+# 7. Verify that the lease time is extended
+&Framed-IP-Address := &reply.Framed-IP-Address
+&NAS-IP-Address := 127.0.0.2
+
+sqlippool.renew
+if (!updated) {
+	test_fail
+}
+
+# 8. Check expiry reflects that
+&expiry := %sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'")
+if ((&expiry - %l) < 50) {
+	test_fail
+}
+
+# 9.
+if ((&expiry - %l) > 70) {
+	test_fail
+}
+
+# 10. Verify the gateway was updated
+if !(%sql("SELECT gateway FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'") == '127.0.0.2') {
+	test_fail
+}
+
+# Change the ip address to one that doesn't exist in the pool and check we *can't* update it
+&Framed-IP-Address := 192.168.3.1
+
+sqlippool.renew
+# 11.
+if (!notfound) {
+	test_fail
+}
+
+# 12. This will have caused the update_free query to have run - which will have released the original address.
+if (%sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND owner = '00:11:22:33:44:55'")) {
+	test_fail
+}
+
+# re-issue the original allocation
+&reply := {}
+&Framed-IP-Address := 192.168.0.1
+sqlippool.allocate
+
+# 13. Now change the calling station ID and check that we *can't* update the lease
+&Calling-Station-ID := 'naughty'
+
+sqlippool.renew
+if (!notfound) {
+	test_fail
+}
+
+# 14. Verify the lease is still associated with the previous device
+if !(&reply.Framed-IP-Address == %sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND owner = '00:11:22:33:44:55'")) {
+	test_fail
+}
+
+&reply := {}
+
+test_pass

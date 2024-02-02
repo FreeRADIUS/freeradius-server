@@ -1,0 +1,93 @@
+#
+#  Allocate an address from an SQL IP Pool
+#
+uint32 expiry
+&control.IP-Pool.Name := 'test_alloc'
+
+#
+#  Add IP addresses
+#
+%sql("DELETE FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}'")
+%sql("INSERT INTO fr_ippool (pool_name, address, expiry_time) VALUES ('%{control.IP-Pool.Name}', '192.168.0.1', datetime('now', '-00:10'))")
+
+#
+#  Check allocation
+#
+sqlippool.allocate
+if (!updated) {
+	test_fail
+}
+
+if !(&reply.Framed-IP-Address == 192.168.0.1) {
+	test_fail
+}
+
+#
+#  Check Expiry
+#
+&expiry := %sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'")
+if ((&expiry - %l) < 20) {
+	test_fail
+}
+
+# +2 - Some slop for macOS
+if ((&expiry - %l) > 42) {
+	test_fail
+}
+
+#
+#  Verify the address details have been updated
+#
+if !(%sql("SELECT owner FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'") == '00:11:22:33:44:55') {
+	test_fail
+}
+
+if !(%sql("SELECT gateway FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'") == '127.0.0.1') {
+	test_fail
+}
+
+&Framed-IP-Address := &reply.Framed-IP-Address
+&reply := {}
+
+#
+#  Add IP addresses
+#
+%sql("INSERT INTO fr_ippool (pool_name, address, expiry_time) values ('%{control.IP-Pool.Name}', '192.168.1.1', datetime('now', '-00:10'))")
+
+#
+#  Check we get the same lease, with the same lease time
+#
+sqlippool.allocate
+if (!updated) {
+	test_fail
+}
+
+#
+#  Check the IP addresses are the same
+#
+if !(&Framed-IP-Address == &reply.Framed-IP-Address) {
+	test_fail
+}
+
+&reply := {}
+
+#
+#  Now change the Calling-Station-ID and check we get a different lease
+#
+&Calling-Station-ID := 'another_mac'
+
+sqlippool.allocate
+if (!updated) {
+	test_fail
+}
+
+#
+#  Check we got the right lease
+#
+if !(&reply.Framed-IP-Address == 192.168.1.1) {
+	test_fail
+}
+
+&reply := {}
+
+test_pass

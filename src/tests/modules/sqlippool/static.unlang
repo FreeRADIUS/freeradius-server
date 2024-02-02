@@ -1,0 +1,64 @@
+#
+#  Test static IP allocation using sqlippool
+#
+&control.IP-Pool.Name := 'test_static'
+
+#
+#  Add a dynamic IP addresses
+#
+%sql("DELETE FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}'")
+%sql("INSERT INTO fr_ippool (pool_name, address, expiry_time) VALUES ('%{control.IP-Pool.Name}', '192.168.0.1', datetime('now', '-00:20'))")
+
+#
+#  Add a static IP assigned to the calling station in the request
+#  with a shorter expiry time than the dynamic address - so the dynamic
+#  would be chosen if simply selected on expiry time.
+#
+%sql("INSERT INTO fr_ippool (pool_name, address, expiry_time, owner, status_id) VALUES ('%{control.IP-Pool.Name}', '192.168.0.10', datetime('now', '-00:10'), 'aa:bb:cc:dd:ee:ff', 2)")
+
+#
+#  Check allocation
+#
+sqlippool.allocate
+if (!updated) {
+	test_fail
+}
+
+if !(&reply.Framed-IP-Address == 192.168.0.10) {
+	test_fail
+}
+
+#
+#  Check that renewal does not mess with static IP
+#
+&Framed-IP-Address := &reply.Framed-IP-Address
+
+sqlippool.renew
+if !(updated) {
+	test_fail
+}
+
+#
+#  Check that releasing does not mess with static IP
+#
+sqlippool.release
+if !(notfound) {
+	test_fail
+}
+
+#
+#  Verify the association with the device remains
+#
+if !(%sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND owner = '%{Calling-Station-Id}'") == '192.168.0.10') {
+	test_fail
+}
+
+# Check the expiry - this will have been put in the future by the allocation / renewal
+# and not reset by the release.
+if (%sql("SELECT strftime('%%s', expiry_time) FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'") <= %l) {
+	test_fail
+}
+
+&reply := {}
+
+test_pass

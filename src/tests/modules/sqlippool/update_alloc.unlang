@@ -1,0 +1,38 @@
+#
+#  Allocate an address from an SQL IP Pool and update
+#
+&control.IP-Pool.Name := 'test_update_alloc'
+
+#
+#  Add IP addresses
+#
+%sql("DELETE FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}'")
+%sql("INSERT INTO fr_ippool (pool_name, address, expiry_time) VALUES ('%{control.IP-Pool.Name}', '192.168.0.1', datetime('now', '-00:10'))")
+
+# 1. Check allocation
+sqlippool.allocate
+if (!updated) {
+	test_fail
+}
+
+#
+#  Attempt to update an IP address by performing a renew
+#
+&Framed-IP-Address := 192.168.0.1
+&NAS-IP-Address := 127.0.0.1
+
+sqlippool.renew
+
+# 2. Verify the gateway was set
+if !(%sql("SELECT gateway FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND address = '%{reply.Framed-IP-Address}'") == '127.0.0.1') {
+	test_fail
+}
+
+# 4. Verify we got an IP
+if !(&reply.Framed-IP-Address == 192.168.0.1) {
+	test_fail
+}
+
+&reply := {}
+
+test_pass

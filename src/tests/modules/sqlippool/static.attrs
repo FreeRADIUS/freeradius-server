@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = 'john'
+User-Password = 'testing123'
+NAS-IP-Address = 127.0.0.1
+Calling-Station-Id = aa:bb:cc:dd:ee:ff
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
