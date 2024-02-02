@@ -83,6 +83,7 @@ jobs:
             python3              \
             py39-pip             \
             postgresql12-client  \
+            sqlite3              \
             talloc               \
             unixODBC
           sudo pip install tacacs_plus
