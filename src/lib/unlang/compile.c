@@ -4580,14 +4580,16 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			      "but no inst_size set",
 			      inst->module->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
 
-		single->call_env = call_env_alloc(single, single->self.name, method_env,
-						  unlang_ctx->rules,
-						  inst->dl_inst->conf, single->instance->dl_inst->data);
 		if (!single->call_env) {
 		error:
 			talloc_free(c);
 			return NULL;
 		}
+
+		single->call_env = call_env_alloc(single, single->self.name, method_env,
+						  unlang_ctx->rules,
+						  inst->dl_inst->conf);
+		if (!single->call_env) goto error;
 	}
 
 	/*
