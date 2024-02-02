@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <rlm_sql.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/unlang/function.h>
 
 #include <ctype.h>
 
@@ -41,16 +42,6 @@ typedef struct {
 	char const	*sql_name;
 
 	rlm_sql_t const	*sql;
-
-						/* Alloc sequence */
-	char const	*alloc_begin;		//!< SQL query to begin.
-	char const	*alloc_existing;	//!< SQL query to find existing IP.
-	char const	*alloc_requested;	//!< SQL query to find requested IP.
-	char const	*alloc_find;		//!< SQL query to find an unused IP.
-	char const	*alloc_update;		//!< SQL query to mark an IP as used.
-	char const	*alloc_commit;		//!< SQL query to commit.
-
-	char const	*pool_check;		//!< Query to check for the existence of the pool.
 
 						/* Update sequence */
 	char const	*update_free;		//!< SQL query to clear offered IPs
@@ -83,24 +74,29 @@ typedef struct {
 	fr_value_box_t	commit;				//!< SQL query to commit transaction.
 } ippool_alloc_call_env_t;
 
+/** Current step in IP allocation state machine
+ */
+typedef enum {
+	IPPOOL_ALLOC_EXISTING,			//!< Expanding the "existing" query
+	IPPOOL_ALLOC_REQUESTED,			//!< Expanding the "requested" query
+	IPPOOL_ALLOC_FIND,			//!< Expanding the "find" query
+	IPPOOL_ALLOC_POOL_CHECK,		//!< Expanding the "pool_check" query
+	IPPOOL_ALLOC_UPDATE			//!< Expanding the "update" query
+} ippool_alloc_status_t;
+
+/**  Resume context for IP allocation
+ */
+typedef struct {
+	request_t		*request;	//!< Current request.
+	ippool_alloc_status_t	status;		//!< Status of the allocation.
+	ippool_alloc_call_env_t	*env;		//!< Call environment for the allocation.
+	rlm_sql_handle_t	*handle;	//!< SQL handle being used for queries.
+	rlm_sql_t const		*sql;		//!< SQL module instance.
+	fr_value_box_list_t	values;		//!< Where to put the expanded queries ready for execution.
+} ippool_alloc_ctx_t;
+
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
-
-
-	{ FR_CONF_OFFSET_FLAGS("alloc_begin", CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_begin), .dflt = "START TRANSACTION" },
-
-	{ FR_CONF_OFFSET_FLAGS("alloc_existing", CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_existing) },
-
-	{ FR_CONF_OFFSET_FLAGS("alloc_requested", CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_requested) },
-
-	{ FR_CONF_OFFSET_FLAGS("alloc_find", CONF_FLAG_XLAT | CONF_FLAG_REQUIRED, rlm_sqlippool_t, alloc_find) },
-
-	{ FR_CONF_OFFSET_FLAGS("alloc_update", CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_update) },
-
-	{ FR_CONF_OFFSET_FLAGS("alloc_commit", CONF_FLAG_XLAT, rlm_sqlippool_t, alloc_commit), .dflt = "COMMIT" },
-
-
-	{ FR_CONF_OFFSET_FLAGS("pool_check", CONF_FLAG_XLAT, rlm_sqlippool_t, pool_check) },
 
 
 	{ FR_CONF_OFFSET_FLAGS("update_free", CONF_FLAG_XLAT, rlm_sqlippool_t, update_free) },
@@ -185,8 +181,10 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
 /*
  *	Don't repeat yourself
  */
-#define DO_PART(_x) if(sqlippool_command(inst->_x, &handle, inst, request) <0) goto error
 #define DO_AFFECTED(_x, _affected) _affected = sqlippool_command(inst->_x, &handle, inst, request); if (_affected < 0) goto error
+#define DO_PART(_x) if(env->_x.type == FR_TYPE_STRING) { \
+	if(sqlippool_command(env->_x.vb_strvalue, &handle, sql, request) <0) goto error; \
+}
 #define RESERVE_CONNECTION(_handle, _pool, _request) _handle = fr_pool_connection_get(_pool, _request); \
 	if (!_handle) { \
 		REDEBUG("Failed reserving SQL connection"); \
@@ -285,97 +283,159 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-/*
- *	Allocate an IP address from the pool.
+/** Release SQL pool connections when alloc context is freed.
  */
-static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 {
-	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_alloc_call_env_t);
+	(void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
+	if (to_free->handle) fr_pool_connection_release(to_free->sql->pool, to_free->request, to_free->handle);
+	return 0;
+}
+
+#define REPEAT_MOD_ALLOC_RESUME if (unlang_function_repeat_set(request, mod_alloc_resume) < 0) RETURN_MODULE_FAIL
+
+/** Resume function called after each IP allocation query is expanded
+ *
+ * Executes the query and, if appropriate, pushes the next tmpl for expansion
+ *
+ * Following the final (successful) query, the destination attribute is populated.
+ *
+ * @param p_result	Result of IP allocation.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		Current allocation context.
+ * @return One of the UNLANG_ACTION_* values.
+ */
+static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	ippool_alloc_ctx_t	*alloc_ctx = talloc_get_type_abort(uctx, ippool_alloc_ctx_t);
+	ippool_alloc_call_env_t	*env = alloc_ctx->env;
+	int			allocation_len = 0;
 	char			allocation[FR_MAX_STRING_LEN];
-	int			allocation_len;
-	rlm_sql_handle_t	*handle;
-	tmpl_t			ip_rhs;
-	map_t			ip_map;
+	rlm_sql_handle_t	*handle = alloc_ctx->handle;
+	rlm_sql_t const		*sql = alloc_ctx->sql;
+	fr_value_box_t		*query = fr_value_box_list_pop_head(&alloc_ctx->values);
 
-	/*
-	 *	If the allocated IP attribute already exists, do nothing
-	 */
-	if (env->allocated_address.type) {
-		RDEBUG2("%s already exists (%pV)", env->allocated_address_attr->name, &env->allocated_address);
-
-		RETURN_MODULE_NOOP;
-	}
-
-	if (env->pool_name.type == FR_TYPE_NULL) {
-		RDEBUG2("No %s defined", env->pool_name_tmpl->name);
-
-		RETURN_MODULE_NOOP;
-	}
-
-	RESERVE_CONNECTION(handle, inst->sql->pool, request);
-
-	DO_PART(alloc_begin);
-
-	/*
-	 *	If there is a query for finding the existing IP
-	 *	run that first
-	 */
-	if (inst->alloc_existing && *inst->alloc_existing) {
-		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-						  inst->alloc_existing, &handle,
-						  inst, request);
-		if (!handle) RETURN_MODULE_FAIL;
-	} else {
-		allocation_len = 0;
-	}
-
-	/*
-	 *	If no existing IP was found and we have a requested IP address
-	 *	and a query to find whether it is available then try that
-	 */
-	if ((allocation_len == 0) && inst->alloc_requested && *inst->alloc_requested &&
-	    (env->requested_address.type != FR_TYPE_NULL)) {
-		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-						  inst->alloc_requested, &handle,
-						  inst, request);
-		if (!handle) RETURN_MODULE_FAIL;
-	}
-
-	/*
-	 *	If no existing IP was found (or no query was run),
-	 *	run the query to find a free IP
-	 */
-	if (allocation_len == 0) {
-		allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-						  inst->alloc_find, &handle,
-						  inst, request);
-		if (!handle) RETURN_MODULE_FAIL;
-	}
-
-	/*
-	 *	Nothing found...
-	 */
-	if (allocation_len == 0) {
-		DO_PART(alloc_commit);
+	switch (alloc_ctx->status) {
+	case IPPOOL_ALLOC_EXISTING:
+		if (query) {
+			allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
+							  alloc_ctx->sql, request);
+			talloc_free(query);
+			if (!handle) {
+			error:
+				talloc_free(alloc_ctx);
+				RETURN_MODULE_FAIL;
+			}
+			if (allocation_len > 0) goto make_pair;
+		}
 
 		/*
-		 *Should we perform pool-check ?
+		 *	If there's a requested address and associated query, expand that
 		 */
-		if (inst->pool_check && *inst->pool_check) {
+		if (env->requested && (env->requested_address.type != FR_TYPE_NULL)) {
+			alloc_ctx->status = IPPOOL_ALLOC_REQUESTED;
+			REPEAT_MOD_ALLOC_RESUME;
+			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->requested, NULL) < 0) goto error;
+			return UNLANG_ACTION_PUSHED_CHILD;
+		}
+		goto expand_find;
 
+	case IPPOOL_ALLOC_REQUESTED:
+		if (query) {
+			allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
+							  alloc_ctx->sql, request);
+			talloc_free(query);
+			if (!handle) goto error;
+			if (allocation_len > 0) goto make_pair;
+		}
+
+	expand_find:
+		/*
+		 *	Neither "existing" nor "requested" found an address, expand "find" query
+		 */
+		alloc_ctx->status = IPPOOL_ALLOC_FIND;
+		REPEAT_MOD_ALLOC_RESUME;
+		if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->find, NULL) < 0) goto error;
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	case IPPOOL_ALLOC_FIND:
+	{
+		tmpl_t	ip_rhs;
+		map_t	ip_map;
+
+		allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
+						  alloc_ctx->sql, request);
+		talloc_free(query);
+		if (!handle) goto error;
+
+		if (allocation_len == 0) {
+			/*
+			 *  Nothing found
+			 */
+			DO_PART(commit);
+
+			/*
+			 *  Should we perform pool-check?
+			 */
+			if (env->pool_check) {
+				alloc_ctx->status = IPPOOL_ALLOC_POOL_CHECK;
+				REPEAT_MOD_ALLOC_RESUME;
+				if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->pool_check, NULL) < 0) goto error;
+				return UNLANG_ACTION_PUSHED_CHILD;
+			}
+		no_address:
+			RWDEBUG("IP address could not be allocated");
+			RETURN_MODULE_NOOP;
+		}
+
+	make_pair:
+		/*
+		 *	See if we can create the VP from the returned data.  If not,
+		 *	error out.  If so, add it to the list.
+		 */
+		ip_map = (map_t) {
+			.lhs = env->allocated_address_attr,
+			.op = T_OP_SET,
+			.rhs = &ip_rhs
+		};
+
+		tmpl_init_shallow(&ip_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0, NULL);
+		fr_value_box_bstrndup_shallow(&ip_map.rhs->data.literal, NULL, allocation, allocation_len, false);
+		if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
+			DO_PART(commit);
+
+			REDEBUG("Invalid IP address [%s] returned from database query.", allocation);
+			goto error;
+		}
+
+		RDEBUG2("Allocated IP %s", allocation);
+
+		/*
+		 *	If we have an update query expand it
+		 */
+		if (env->update) {
+			alloc_ctx->status = IPPOOL_ALLOC_UPDATE;
+			REPEAT_MOD_ALLOC_RESUME;
+			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->update, NULL) < 0) goto error;
+			return UNLANG_ACTION_PUSHED_CHILD;
+		}
+
+		goto finish;
+	}
+
+	case IPPOOL_ALLOC_POOL_CHECK:
+		if (query) {
 			/*
 			 *Ok, so the allocate-find query found nothing ...
 			 *Let's check if the pool exists at all
 			 */
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-							  inst->pool_check, &handle, inst, request);
+							  query->vb_strvalue, &handle, sql, request);
+			talloc_free(query);
 			if (!handle) RETURN_MODULE_FAIL;
 
-			fr_pool_connection_release(inst->sql->pool, request, handle);
-
 			if (allocation_len) {
-
 				/*
 				 *	Pool exists after all... So,
 				 *	the failure to allocate the IP
@@ -397,51 +457,106 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 			RWDEBUG("IP address could not be allocated as no pool exists with the name \"%pV\"",
 				&env->pool_name);
 			RETURN_MODULE_NOOP;
+		}
+		goto no_address;
 
+	case IPPOOL_ALLOC_UPDATE:
+		if (query) {
+			if (sqlippool_command(query->vb_strvalue, &handle, sql, request) < 0) goto error;
+			talloc_free(query);
 		}
 
-		fr_pool_connection_release(inst->sql->pool, request, handle);
+	finish:
+		DO_PART(commit);
 
-		RDEBUG2("IP address could not be allocated");
-		RETURN_MODULE_NOOP;
+		talloc_free(alloc_ctx);
+		RETURN_MODULE_UPDATED;
 	}
 
 	/*
-	 *	See if we can create the VP from the returned data.  If not,
-	 *	error out.  If so, add it to the list.
+	 *	All return paths are handled within the switch statement.
 	 */
-	ip_map = (map_t) {
-		.lhs = env->allocated_address_attr,
-		.op = T_OP_SET,
-		.rhs = &ip_rhs
+	fr_assert(0);
+	RETURN_MODULE_FAIL;
+}
+
+/** Initiate the allocation of an IP address from the pool.
+ *
+ * Based on configured queries and attributes which exist, determines the first
+ * query tmpl to expand.
+ *
+ * @param p_result	Result of the allocation (if it fails).
+ * @param mctx		Module context.
+ * @param request	Current request.
+ * @return One of the UNLANG_ACTION_* values.
+ */
+static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
+	ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_alloc_call_env_t);
+	rlm_sql_t const		*sql = inst->sql;
+	rlm_sql_handle_t	*handle;
+	ippool_alloc_ctx_t	*alloc_ctx = NULL;
+
+	/*
+	 *	If the allocated IP attribute already exists, do nothing
+	 */
+	if (env->allocated_address.type) {
+		RDEBUG2("%s already exists (%pV)", env->allocated_address_attr->name, &env->allocated_address);
+		RETURN_MODULE_NOOP;
+	}
+
+	if (env->pool_name.type == FR_TYPE_NULL) {
+		RDEBUG2("No %s defined", env->pool_name_tmpl->name);
+		RETURN_MODULE_NOOP;
+	}
+
+	RESERVE_CONNECTION(handle, inst->sql->pool, request);
+	request_data_add(request, (void *)sql_escape_uctx_alloc, 0, handle, false, false, false);
+
+	DO_PART(begin);
+
+	MEM(alloc_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ippool_alloc_ctx_t));
+	*alloc_ctx = (ippool_alloc_ctx_t) {
+		.env = env,
+		.handle = handle,
+		.sql = inst->sql,
+		.request = request,
 	};
-
-	tmpl_init_shallow(&ip_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0, NULL);
-	fr_value_box_bstrndup_shallow(&ip_map.rhs->data.literal, NULL, allocation, allocation_len, false);
-	if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
-		DO_PART(alloc_commit);
-
-		RDEBUG2("Invalid IP address [%s] returned from database query.", allocation);
-		fr_pool_connection_release(inst->sql->pool, request, handle);
-		RETURN_MODULE_NOOP;
-	}
-
-	/*
-	 *	UPDATE
-	 */
-	if (sqlippool_command(inst->alloc_update, &handle, inst, request) < 0) {
+	talloc_set_destructor(alloc_ctx, sqlippool_alloc_ctx_free);
+	fr_value_box_list_init(&alloc_ctx->values);
+	if (unlang_function_push(request, NULL, mod_alloc_resume, NULL, 0, UNLANG_SUB_FRAME, alloc_ctx) < 0 ) {
 	error:
-		if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
+		talloc_free(alloc_ctx);
 		RETURN_MODULE_FAIL;
 	}
 
-	DO_PART(alloc_commit);
+	/*
+	 *	Establish which tmpl needs expanding first.
+	 *
+	 *	If there is a query for finding the existing IP expand that first
+	 */
+	if (env->existing) {
+		alloc_ctx->status = IPPOOL_ALLOC_EXISTING;
+		if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->existing, NULL) < 0) goto error;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
 
-	RDEBUG2("Allocated IP %s", allocation);
+	/*
+	 *	If have a requested IP address and a query to find whether it is available then try that
+	 */
+	if (env->requested && (env->requested_address.type != FR_TYPE_NULL)) {
+		alloc_ctx->status = IPPOOL_ALLOC_REQUESTED;
+		if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->requested, NULL) < 0) goto error;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
 
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-
-	RETURN_MODULE_UPDATED;
+	/*
+	 *	If neither of the previous two queries were defined, first expand the "find" query
+	 */
+	alloc_ctx->status = IPPOOL_ALLOC_FIND;
+	if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->find, NULL) < 0) goto error;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /*
