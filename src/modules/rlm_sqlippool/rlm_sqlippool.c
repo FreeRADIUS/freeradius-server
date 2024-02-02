@@ -110,6 +110,27 @@ static conf_parser_t module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static int _sql_escape_uxtx_free(void *uctx)
+{
+	return talloc_free(uctx);
+}
+
+static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
+{
+	static _Thread_local rlm_sql_escape_uctx_t	*t_ctx;
+
+	if (unlikely(t_ctx == NULL)) {
+		rlm_sql_escape_uctx_t *ctx;
+
+		MEM(ctx = talloc_zero(NULL, rlm_sql_escape_uctx_t));
+		fr_atexit_thread_local(t_ctx, _sql_escape_uxtx_free, ctx);
+	}
+	t_ctx->sql = uctx;
+	t_ctx->handle = request_data_reference(request, (void *)sql_escape_uctx_alloc, 0);
+
+	return t_ctx;
+}
+
 /** Perform a single sqlippool query
  *
  * Mostly wrapper around sql_query which does some special sqlippool sequence substitutions and expands
