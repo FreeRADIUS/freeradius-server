@@ -3347,9 +3347,7 @@ static int _dict_free(fr_dict_t *dict)
 	/*
 	 *	If we called init(), then call free()
 	 */
-	if (dict->loaded) {
-		fr_assert(dict->proto);
-		fr_assert(dict->proto->free);
+	if (dict->loaded && dict->proto && dict->proto->free) {
 		dict->proto->free();
 	}
 
