@@ -788,23 +788,13 @@ static ssize_t fr_dhcpv4_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 	return fr_dhcpv4_encode_dbuff(&FR_DBUFF_TMP(data, data_len), NULL, 0, 0, vps);
 }
 
-static int _encode_test_ctx(UNUSED fr_dhcpv4_ctx_t *test_ctx)
-{
-	fr_dhcpv4_global_free();
-
-	return 0;
-}
-
 static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_dhcpv4_ctx_t *test_ctx;
 
-	if (fr_dhcpv4_global_init() < 0) return -1;
-
 	test_ctx = talloc_zero(ctx, fr_dhcpv4_ctx_t);
 	if (!test_ctx) return -1;
 	test_ctx->root = fr_dict_root(dict_dhcpv4);
-	talloc_set_destructor(test_ctx, _encode_test_ctx);
 
 	*out = test_ctx;
 

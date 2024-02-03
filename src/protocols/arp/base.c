@@ -295,6 +295,9 @@ fr_dict_protocol_t libfreeradius_arp_dict_protocol = {
 	.name = "arp",
 	.default_type_size = 4,
 	.default_type_length = 0,
+
+	.init = fr_arp_init,
+	.free = fr_arp_free,
 };
 
 
@@ -302,23 +305,14 @@ typedef struct {
 	bool		tmp;
 } fr_arp_ctx_t;
 
-static int _test_ctx_free(UNUSED fr_arp_ctx_t *ctx)
-{
-	fr_arp_free();
-
-	return 0;
-}
-
 static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_arp_ctx_t *test_ctx;
 
-	if (fr_arp_init() < 0) return -1;
+	fr_assert(instance_count > 0);
 
 	test_ctx = talloc_zero(ctx, fr_arp_ctx_t);
 	if (!test_ctx) return -1;
-
-	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;
 

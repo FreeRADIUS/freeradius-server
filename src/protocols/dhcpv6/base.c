@@ -1001,7 +1001,6 @@ fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr_valid = attr_valid,
 
-
 	.init = fr_dhcpv6_global_init,
 	.free = fr_dhcpv6_global_free,
 

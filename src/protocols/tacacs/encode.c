@@ -1066,7 +1066,6 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx = talloc_zero(ctx, fr_tacacs_ctx_t);
 	if (!test_ctx) return -1;
 
-//	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
 	test_ctx->root = fr_dict_root(dict_tacacs);
 	talloc_set_destructor(test_ctx, _encode_test_ctx);
 

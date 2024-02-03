@@ -255,4 +255,7 @@ fr_dict_protocol_t libfreeradius_bfd_dict_protocol = {
 	.name = "bfd",
 	.default_type_size = 1,
 	.default_type_length = 1,
+
+	.init = fr_bfd_init,
+	.free = fr_bfd_free,
 };

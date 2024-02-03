@@ -163,24 +163,14 @@ ssize_t fr_bfd_encode(uint8_t *out, size_t outlen, UNUSED uint8_t const *origina
 }
 
 
-static int _test_ctx_free(UNUSED fr_bfd_ctx_t *ctx)
-{
-	fr_bfd_free();
-
-	return 0;
-}
-
 static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_bfd_ctx_t	*test_ctx;
-
-	if (fr_bfd_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_bfd_ctx_t);
 	if (!test_ctx) return -1;
 
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
-	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;
 

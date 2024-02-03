@@ -99,23 +99,13 @@ ssize_t fr_bfd_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return slen;
 }
 
-static int _test_ctx_free(UNUSED fr_bfd_ctx_t *ctx)
-{
-	fr_bfd_free();
-
-	return 0;
-}
-
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_bfd_ctx_t	*test_ctx;
 
-	if (fr_bfd_init() < 0) return -1;
-
 	test_ctx = talloc_zero(ctx, fr_bfd_ctx_t);
 	test_ctx->secret = talloc_strdup(test_ctx, "testing123");
 	test_ctx->tmp_ctx = talloc_zero(test_ctx, uint8_t);
-	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;
 

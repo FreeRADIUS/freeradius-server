@@ -742,24 +742,14 @@ ssize_t	fr_dhcpv6_encode_foreign(fr_dbuff_t *dbuff, fr_pair_list_t const *list)
 }
 
 
-static int _test_ctx_free(UNUSED fr_dhcpv6_encode_ctx_t *ctx)
-{
-	fr_dhcpv6_global_free();
-
-	return 0;
-}
-
 static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_dhcpv6_encode_ctx_t	*test_ctx;
-
-	if (fr_dhcpv6_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_dhcpv6_encode_ctx_t);
 	if (!test_ctx) return -1;
 
 	test_ctx->root = fr_dict_root(dict_dhcpv6);
-	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;
 

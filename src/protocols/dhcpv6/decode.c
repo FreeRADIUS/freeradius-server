@@ -472,27 +472,14 @@ ssize_t	fr_dhcpv6_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return data_len;
 }
 
-/*
- *	Stub functions to enable test context
- */
-static int _test_ctx_free(UNUSED fr_dhcpv6_decode_ctx_t *ctx)
-{
-	fr_dhcpv6_global_free();
-
-	return 0;
-}
-
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_dhcpv6_decode_ctx_t	*test_ctx;
-
-	if (fr_dhcpv6_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_dhcpv6_decode_ctx_t);
 	if (!test_ctx) return -1;
 
 	test_ctx->tmp_ctx = talloc(test_ctx, uint8_t);
-	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;
 

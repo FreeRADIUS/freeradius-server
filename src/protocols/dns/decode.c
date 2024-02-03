@@ -372,13 +372,6 @@ static ssize_t decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_at
 /*
  *	Test points
  */
-static int _decode_test_ctx(UNUSED fr_dns_ctx_t *test_ctx)
-{
-	fr_dns_global_free();
-
-	return 0;
-}
-
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_dns_ctx_t *test_ctx;
@@ -386,7 +379,6 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	if (fr_dns_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_dns_ctx_t);
-	talloc_set_destructor(test_ctx, _decode_test_ctx);
 
 	test_ctx->tmp_ctx = talloc(test_ctx, uint8_t);
 	*out = test_ctx;
