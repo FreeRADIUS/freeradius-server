@@ -3915,12 +3915,6 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 	 */
 	if (gctx->free_at_exit) fr_atexit_global_disarm(true, _dict_global_free_at_exit, gctx);
 
-	if (gctx->internal) {
-		dict_dependent_remove(gctx->internal, "global");	/* remove our dependency */
-
-	    	if (talloc_free(gctx->internal) < 0) still_loaded = true;
-	}
-
 	/*
 	 *	Free up autorefs first, which will free up inter-dictionary dependencies.
 	 */
@@ -3946,12 +3940,23 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 		}
 	}
 
+	/*
+	 *	Free the internal dictionary as the last step, after all of the protocol dictionaries and
+	 *	libraries have freed their references to it.
+	 */
+	if (gctx->internal) {
+		dict_dependent_remove(gctx->internal, "global");	/* remove our dependency */
+
+		if (talloc_free(gctx->internal) < 0) still_loaded = true;
+	}
+
 	if (still_loaded) {
 #ifndef NDEBUG
 		fr_dict_global_ctx_debug(gctx);
 #endif
 		return -1;
 	}
+
 	/*
 	 *	Set this to NULL just in case the caller tries to use
 	 *	dict_global_init() again.
