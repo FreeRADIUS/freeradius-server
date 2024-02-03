@@ -2363,11 +2363,11 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			 */
 			dict_fixup_init(NULL, &ctx->fixup);
 
-			// check if there's a linked library for the
-			// protocol.  The values can be unknown (we
-			// try to load one), or non-existent, or
-			// known.  For the last two, we don't try to
-			// load anything.
+			/*
+			 *	We're in the middle of loading this dictionary.  Tell
+			 *	fr_dict_protocol_afrom_file() to suppress recursive references.
+			 */
+			found->loading = true;
 
 			ctx->dict = found;
 
@@ -2909,10 +2909,28 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	 *	has already been loaded and return that.
 	 */
 	dict = dict_by_protocol_name(proto_name);
-	if (dict && dict->autoloaded) {
-		 dict_dependent_add(dict, dependent);
-		*out = dict;
-		return 0;
+	if (dict) {
+		/*
+		 *	If we're in the middle of loading this dictionary, then the only way we get back here
+		 *	is via a circular reference.  So we catch that, and drop the circular dependency.
+		 *
+		 *	When we have A->B->A, it means that we don't need to track B->A, because we track
+		 *	A->B.  And if A is freed, then B is freed.
+		 */
+		if (!dict->loading) dict_dependent_add(dict, dependent);
+
+		/*
+		 *	But we only return a pre-existing dict if _this function_ has loaded it.
+		 */
+		if (dict->loaded) {
+			*out = dict;
+			return 0;
+		}
+
+		/*
+		 *	Set the flag to true _before_ loading the file.  That prevents recursion.
+		 */
+		dict->loaded = true;
 	}
 
 	if (!proto_dir) {
@@ -2934,6 +2952,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	 */
 	if (dict_from_file(dict_gctx->internal, dict_dir, FR_DICTIONARY_FILE, NULL, 0) < 0) {
 	error:
+		dict->loading = false;
 		talloc_free(dict_dir);
 		return -1;
 	}
@@ -2947,13 +2966,15 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 		goto error;
 	}
 
-	talloc_free(dict_dir);
-
 	/*
-	 *	If we're autoloading a previously defined dictionary,
-	 *	then mark up the dictionary as now autoloaded.
+	 *	Initialize the library.
 	 */
-	if (!dict->autoloaded) dict->autoloaded = true;
+	if (dict->proto && dict->proto->init) {
+		if (dict->proto->init() < 0) goto error;
+	}
+	dict->loading = false;
+
+	talloc_free(dict_dir);
 
 	dict_dependent_add(dict, dependent);
 

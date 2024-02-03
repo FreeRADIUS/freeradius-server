@@ -80,11 +80,11 @@ struct fr_dict {
 	bool			in_protocol_by_num;	//!< Whether the dictionary has been inserted into the
 							//!< protocol_by_num table.
 
-	bool			autoloaded;		//!< manual vs autoload
-
 	bool			string_based;		//!< TACACS, etc.
 
-	bool			autofree;		//!< from dict_fixup.
+	bool			loading;		//!< from fr_dict_protocol_afrom_file();
+
+	bool			loaded;			//!< from fr_dict_protocol_afrom_file();
 
 	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
 	fr_hash_table_t		*vendors_by_num;	//!< Lookup vendor by PEN.
