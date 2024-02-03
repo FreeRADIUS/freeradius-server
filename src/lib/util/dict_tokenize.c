@@ -2952,7 +2952,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	 */
 	if (dict_from_file(dict_gctx->internal, dict_dir, FR_DICTIONARY_FILE, NULL, 0) < 0) {
 	error:
-		dict->loading = false;
+		if (dict) dict->loading = false;
 		talloc_free(dict_dir);
 		return -1;
 	}
