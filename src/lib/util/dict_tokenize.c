@@ -2916,10 +2916,8 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 		 *	When we have A->B->A, it means that we don't need to track B->A, because we track
 		 *	A->B.  And if A is freed, then B is freed.
 		 */
-		if (!dict->loading) {
-			added = true;
-			dict_dependent_add(dict, dependent);
-		}
+		added = true;
+		dict_dependent_add(dict, dependent);
 
 		/*
 		 *	But we only return a pre-existing dict if _this function_ has loaded it.
