@@ -3567,22 +3567,7 @@ int fr_dict_const_free(fr_dict_t const **dict, char const *dependent)
 {
 	fr_dict_t **our_dict = UNCONST(fr_dict_t **, dict);
 
-	if (!*our_dict) return 0;
-
-	switch (dict_dependent_remove(*our_dict, dependent)) {
-	case 0:		/* dependent has no more refs */
-		if (!dict_has_dependents(*our_dict)) {
-			talloc_free(*our_dict);
-			return 0;
-		}
-		FALL_THROUGH;
-
-	case 1:		/* dependent has more refs */
-		return 1;
-
-	default:	/* error */
-		return -1;
-	}
+	return fr_dict_free(our_dict, dependent);
 }
 
 /** Decrement the reference count on a previously loaded dictionary
