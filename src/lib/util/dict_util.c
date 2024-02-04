@@ -3327,9 +3327,10 @@ static int dict_autoref_free(fr_dict_t *dict)
 		return -1;
 	}
 
+	/*
+	 *	Free the dictionary.  It will call proto->free() if there's nothing more to do.
+	 */
 	for (i = 0; i < talloc_array_length(refd_list); i++) {
-		if (refd_list[i]->proto->free) refd_list[i]->proto->free();
-
 		if (fr_dict_free(&refd_list[i], dict->root->name) < 0) {
 			fr_strerror_printf("failed freeing autoloaded protocol %s", refd_list[i]->root->name);
 			return -1;
@@ -3396,8 +3397,6 @@ static int _dict_free(fr_dict_t *dict)
 
 		return -1;
 	}
-
-//	if (dict_autoref_free(dict) < 0) return -1;
 
 	/*
 	 *	Free the hash tables with free functions first
@@ -3925,7 +3924,7 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
 		(void)talloc_get_type_abort(dict, fr_dict_t);
 
-//		if (dict_autoref_free(dict) < 0) return -1;
+		if (dict_autoref_free(dict) < 0) return -1;
 	}
 
 	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
