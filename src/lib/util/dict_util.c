@@ -3296,6 +3296,25 @@ bool dict_has_dependents(fr_dict_t *dict)
 	return (fr_rb_num_elements(dict->dependents) > 0);
 }
 
+#ifndef NDEBUG
+static void dependent_debug(fr_dict_t *dict)
+{
+	fr_rb_iter_inorder_t	iter;
+	fr_dict_dependent_t	*dep;
+
+	if (!dict_has_dependents(dict)) return;
+
+	fprintf(stderr, "DEPENDENTS FOR %s\n", dict->root->name);
+
+	for (dep = fr_rb_iter_init_inorder(&iter, dict->dependents);
+	     dep;
+	     dep = fr_rb_iter_next_inorder(&iter)) {
+		fprintf(stderr, "\t<- %s (%u)\n", dep->dependent, dep->count);
+	}
+}
+#endif
+
+
 static int dict_autoref_free(fr_dict_t *dict)
 {
 	fr_dict_t **refd_list;
