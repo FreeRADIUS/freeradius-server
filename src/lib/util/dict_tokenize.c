@@ -2971,6 +2971,7 @@ int fr_dict_protocol_afrom_file(fr_dict_t **out, char const *proto_name, char co
 	/*
 	 *	Initialize the library.
 	 */
+	dict->loaded = true;
 	if (dict->proto && dict->proto->init) {
 		if (dict->proto->init() < 0) goto error;
 	}
