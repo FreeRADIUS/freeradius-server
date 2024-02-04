@@ -1,0 +1,9 @@
+#!/bin/sh
+
+#
+#  Dump hex in order.  Because the default for hexdump
+#  is to dump 2 bytes at a time, in little-endian order.
+#
+#  And -v to suppress "*"
+#
+hexdump -ve ' 16/1 "%02x"  "\n"' $@
