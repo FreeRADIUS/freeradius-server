@@ -9,21 +9,14 @@ proto dhcpv6
 proto-dictionary dhcpv6
 fuzzer-out dhcpv6
 
-#
-#  True values are encoded by using an empty attribute.
-#
-#  False values are encoded by nothing.
-#
-encode-pair Rapid-Commit = yes
-match 00 0e 00 00
+decode-pair 005100085a04030019fc0000005100087f040300190301c5
+match raw.RADIUS = 0x5a04030019fc0000, raw.RADIUS = 0x7f040300190301c5
+
+encode-pair RADIUS = { User-Name = "bob" }
+match 00 51 00 05 01 05 62 6f 62
 
 decode-pair -
-match Rapid-Commit = yes
-
-encode-pair Rapid-Commit = no
-match
-
-# And we can't decode nothing...
+match RADIUS = { User-Name = "bob" }
 
 count
 match 9
