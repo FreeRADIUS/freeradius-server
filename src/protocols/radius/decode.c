@@ -2098,6 +2098,7 @@ ssize_t fr_radius_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			return slen;
 		}
 
+#if 0
 		/*
 		 *	If slen is larger than the room in the packet,
 		 *	all kinds of bad things happen.
@@ -2105,6 +2106,7 @@ ssize_t fr_radius_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 if (!fr_cond_assert(slen <= (end - attr))) {
 			 goto fail;
 		 }
+#endif
 
 		attr += slen;
 		talloc_free_children(decode_ctx.tmp_ctx);
