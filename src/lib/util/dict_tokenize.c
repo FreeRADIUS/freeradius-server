@@ -1991,8 +1991,6 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 
 static int dict_finalise(dict_tokenize_ctx_t *ctx)
 {
-//	if (ctx->dict->proto && ctx->dict->proto->init && (ctx->dict->proto->init() < 0)) return -1;
-
 	if (dict_fixup_apply(&ctx->fixup) < 0) return -1;
 
 	ctx->value_attr = NULL;
