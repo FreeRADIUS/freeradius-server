@@ -2115,6 +2115,12 @@ ssize_t fr_radius_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return data_len;
 }
 
+static int _test_ctx_free(fr_radius_decode_ctx_t *ctx)
+{
+       TALLOC_FREE(ctx->tags);
+
+       return 0;
+}
 
 static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
@@ -2132,6 +2138,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 
 	test_ctx->request_authenticator = vector;
 	test_ctx->tmp_ctx = talloc_zero(test_ctx, uint8_t);
+	talloc_set_destructor(test_ctx, _test_ctx_free);
 
 	*out = test_ctx;
 
