@@ -3344,12 +3344,14 @@ static int _dict_free(fr_dict_t *dict)
 	}
 #endif
 
+#if 0
 	/*
 	 *	If we called init(), then call free()
 	 */
-	if (dict->loaded && dict->proto && dict->proto->free) {
+	if (dict->proto && dict->proto->free) {
 		dict->proto->free();
 	}
+#endif
 
 	if (!fr_cond_assert(!dict->in_protocol_by_name || fr_hash_table_delete(dict->gctx->protocol_by_name, dict))) {
 		fr_strerror_printf("Failed removing dictionary from protocol hash \"%s\"", dict->root->name);
@@ -3378,7 +3380,7 @@ static int _dict_free(fr_dict_t *dict)
 		return -1;
 	}
 
-	if (dict_autoref_free(dict) < 0) return -1;
+//	if (dict_autoref_free(dict) < 0) return -1;
 
 	/*
 	 *	Free the hash tables with free functions first
@@ -3921,7 +3923,7 @@ static int _dict_global_free(fr_dict_gctx_t *gctx)
 	     dict = fr_hash_table_iter_next(gctx->protocol_by_name, &iter)) {
 		(void)talloc_get_type_abort(dict, fr_dict_t);
 
-		if (dict_autoref_free(dict) < 0) return -1;
+//		if (dict_autoref_free(dict) < 0) return -1;
 	}
 
 	for (dict = fr_hash_table_iter_init(gctx->protocol_by_name, &iter);
