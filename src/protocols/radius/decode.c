@@ -2092,7 +2092,7 @@ ssize_t fr_radius_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	while (attr < end) {
 		slen = fr_radius_decode_pair(ctx, out, attr, (end - attr), &decode_ctx);
 		if (slen < 0) {
-		fail:
+//		fail:
 			talloc_free(decode_ctx.tmp_ctx);
 			talloc_free(decode_ctx.tags);
 			return slen;
