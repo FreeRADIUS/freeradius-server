@@ -376,8 +376,6 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_dns_ctx_t *test_ctx;
 
-	if (fr_dns_global_init() < 0) return -1;
-
 	test_ctx = talloc_zero(ctx, fr_dns_ctx_t);
 
 	test_ctx->tmp_ctx = talloc(test_ctx, uint8_t);
