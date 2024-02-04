@@ -42,6 +42,7 @@ static bool			init = false;
 static fr_test_point_proto_decode_t *tp	= NULL;
 static dl_t			*dl = NULL;
 static dl_loader_t		*dl_loader;
+static fr_dict_protocol_t	*dl_proto;
 
 static fr_dict_t		*dict = NULL;
 
@@ -50,6 +51,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
 static void exitHandler(void)
 {
+	if (dl_proto && dl_proto->free) dl_proto->free();
+
 	fr_dict_free(&dict, __FILE__);
 
 	if (dl && dl->handle) {
@@ -215,6 +218,14 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	dl = dl_by_name(dl_loader, buffer, NULL, false);
 	if (!dl) {
 		fr_perror("fuzzer: Failed loading library %s", buffer);
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	snprintf(buffer, sizeof(buffer), "libfreeradius_%s_dict_protocol", proto);
+
+	dl_proto = dlsym(dl->handle, buffer);
+	if (dl_proto && dl_proto->init() && (dl_proto->init() < 0)) {
+		fr_perror("fuzzer: Failed initializing library %s", buffer);
 		fr_exit_now(EXIT_FAILURE);
 	}
 
