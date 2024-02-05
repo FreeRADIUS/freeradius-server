@@ -152,8 +152,6 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  -F                                Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h                                Print usage help information.\n");
 	fprintf(stderr, "  -i <id>                           Set request id to 'id'.  Values may be 0..255\n");
-	fprintf(stderr, "  -n <num>                          Send N requests/s\n");
-	fprintf(stderr, "  -p <num>                          Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -P <proto>                        Use proto (tcp or udp) for transport.\n");
 	fprintf(stderr, "  -r <retries>                      If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -s                                Print out summary information of auth results.\n");
@@ -1097,8 +1095,6 @@ int main(int argc, char **argv)
 	char		filesecret[256];
 	FILE		*fp;
 	int		do_summary = false;
-	int		persec = 0;
-	int		parallel = 1;
 	int		force_af = AF_UNSPEC;
 #ifndef NDEBUG
 	TALLOC_CTX	*autofree;
@@ -1141,7 +1137,7 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fhi:n:p:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fhi:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1234,23 +1230,6 @@ int main(int argc, char **argv)
 			if ((last_used_id < 0) || (last_used_id > 255)) {
 				usage();
 			}
-			break;
-
-		case 'n':
-			persec = atoi(optarg);
-			if (persec <= 0) usage();
-			break;
-
-			/*
-			 *	Note that sending MANY requests in
-			 *	parallel can over-run the kernel
-			 *	queues, and Linux will happily discard
-			 *	packets.  So even if the server responds,
-			 *	the client may not see the reply.
-			 */
-		case 'p':
-			parallel = atoi(optarg);
-			if (parallel <= 0) usage();
 			break;
 
 		case 'P':
@@ -1505,9 +1484,7 @@ int main(int argc, char **argv)
 	 *	loop.
 	 */
 	do {
-		int n = parallel;
 		rc_request_t *this, *next;
-		char const *filename = NULL;
 
 		done = true;
 		sleep_time = fr_time_delta_wrap(-1);
@@ -1537,75 +1514,28 @@ int main(int argc, char **argv)
 			}
 
 			/*
-			 *	Packets from multiple '-f' are sent
-			 *	in parallel.
-			 *
-			 *	Packets from one file are sent in
-			 *	series, unless '-p' is specified, in
-			 *	which case N packets from each file
-			 *	are sent in parallel.
+			 *	Send the current packet.
 			 */
-			if (this->files->packets != filename) {
-				filename = this->files->packets;
-				n = parallel;
+			if (send_one_packet(this) < 0) {
+				talloc_free(this);
+				break;
 			}
 
-			if (n > 0) {
-				n--;
+			
+			/*
+			 *	If we haven't sent this packet
+			 *	often enough, we're not done,
+			 *	and we shouldn't sleep.
+			 */
+			if (this->resend < resend_count) {
+				int i;
 
-				/*
-				 *	Send the current packet.
-				 */
-				if (send_one_packet(this) < 0) {
-					talloc_free(this);
-					break;
-				}
-
-				/*
-				 *	Wait a little before sending
-				 *	the next packet, if told to.
-				 */
-				if (persec) {
-					fr_time_delta_t psec;
-
-					psec = (persec == 1) ? fr_time_delta_from_sec(1) : fr_time_delta_wrap(1000000 / persec);
-
-					/*
-					 *	Don't sleep elsewhere.
-					 */
-					sleep_time = fr_time_delta_wrap(0);
-
-
-					/*
-					 *	Sleep for milliseconds,
-					 *	portably.
-					 *
-					 *	If we get an error or
-					 *	a signal, treat it like
-					 *	a normal timeout.
-					 */
-					select(0, NULL, NULL, NULL, &fr_time_delta_to_timeval(psec));
-				}
-
-				/*
-				 *	If we haven't sent this packet
-				 *	often enough, we're not done,
-				 *	and we shouldn't sleep.
-				 */
-				if (this->resend < resend_count) {
-					int i;
-
-					done = false;
-					sleep_time = fr_time_delta_wrap(0);
-
-					for (i = 0; i < 4; i++) {
-						((uint32_t *) this->packet->vector)[i] = fr_rand();
-					}
-				}
-			} else { /* haven't sent this packet, we're not done */
-				assert(this->done == false);
-				assert(this->reply == NULL);
 				done = false;
+				sleep_time = fr_time_delta_wrap(0);
+				
+				for (i = 0; i < 4; i++) {
+					((uint32_t *) this->packet->vector)[i] = fr_rand();
+				}
 			}
 		}
 
