@@ -348,7 +348,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	}
 
 	if (!(*handle)->row) {
-		REDEBUG("SQL query did not return any results");
+		RDEBUG2("SQL query did not return any results");
 		goto finish;
 	}
 
