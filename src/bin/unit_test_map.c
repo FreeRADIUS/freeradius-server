@@ -280,12 +280,6 @@ cleanup:
 	 */
 	fr_atexit_thread_trigger_all();
 
-	/*
-	 *	Try really hard to free any allocated
-	 *	memory, so we get clean talloc reports.
-	 */
-	xlat_free();
-
 	request_global_free();
 
 	/*
