@@ -6,6 +6,11 @@
                 "/usr/include/**",
                 "${workspaceFolder}/src/**"
             ],
+            "forcedInclude": [
+                "${workspaceFolder}/src/freeradius-devel/autoconf.h",
+                "${workspaceFolder}/src/freeradius-devel/build.h",
+                "${workspaceFolder}/src/freeradius-devel/features.h"
+            ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",
             "cStandard": "c11",
@@ -16,6 +21,11 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/src/**"
+            ],
+            "forcedInclude": [
+                "${workspaceFolder}/src/freeradius-devel/autoconf.h",
+                "${workspaceFolder}/src/freeradius-devel/build.h",
+                "${workspaceFolder}/src/freeradius-devel/features.h"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",

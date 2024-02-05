@@ -1,0 +1,7 @@
+{
+	"files.trimTrailingWhitespace": true,
+	"files.insertFinalNewline": true,
+	"[diff]" : {
+		"files.trimTrailingWhitespace": false
+	}
+}
