@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/unlang_priv.h>	/* Remove when everything uses new xlat API */
 
 
-static bool done_init = false;
+static int instance_count = 0;
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -1454,7 +1454,7 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 ssize_t xlat_eval(char *out, size_t outlen, request_t *request,
 		  char const *fmt, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
-	fr_assert(done_init);
+	fr_assert(instance_count);
 
 	return _xlat_eval(request, &out, outlen, request, fmt, escape, escape_ctx);
 }
@@ -1462,7 +1462,7 @@ ssize_t xlat_eval(char *out, size_t outlen, request_t *request,
 ssize_t xlat_eval_compiled(char *out, size_t outlen, request_t *request,
 			   xlat_exp_head_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
-	fr_assert(done_init);
+	fr_assert(instance_count);
 
 	return _xlat_eval_compiled(request, &out, outlen, request, xlat, escape, escape_ctx);
 }
@@ -1470,7 +1470,7 @@ ssize_t xlat_eval_compiled(char *out, size_t outlen, request_t *request,
 ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, request_t *request, char const *fmt,
 		   xlat_escape_legacy_t escape, void const *escape_ctx)
 {
-	fr_assert(done_init);
+	fr_assert(instance_count);
 
 	*out = NULL;
 	return _xlat_eval(ctx, out, 0, request, fmt, escape, escape_ctx);
@@ -1479,7 +1479,7 @@ ssize_t xlat_aeval(TALLOC_CTX *ctx, char **out, request_t *request, char const *
 ssize_t xlat_aeval_compiled(TALLOC_CTX *ctx, char **out, request_t *request,
 			    xlat_exp_head_t const *xlat, xlat_escape_legacy_t escape, void const *escape_ctx)
 {
-	fr_assert(done_init);
+	fr_assert(instance_count);
 
 	*out = NULL;
 	return _xlat_eval_compiled(ctx, out, 0, request, xlat, escape, escape_ctx);
@@ -1516,7 +1516,7 @@ int xlat_aeval_compiled_argv(TALLOC_CTX *ctx, char ***argv, request_t *request,
 	MEM(my_argv = talloc_zero_array(ctx, char *, count + 1));
 	*argv = my_argv;
 
-	fr_assert(done_init);
+	fr_assert(instance_count);
 
 	i = 0;
 	xlat_exp_foreach(head, node) {
@@ -1549,7 +1549,7 @@ int xlat_flatten_compiled_argv(TALLOC_CTX *ctx, xlat_exp_head_t ***argv, xlat_ex
 	MEM(my_argv = talloc_zero_array(ctx, xlat_exp_head_t *, count + 1));
 	*argv = my_argv;
 
-	fr_assert(done_init);
+	fr_assert(instance_count);
 
 	i = 0;
 	xlat_exp_foreach(head, node) {
@@ -1638,26 +1638,34 @@ int xlat_eval_walk(xlat_exp_head_t *head, xlat_walker_t walker, xlat_type_t type
 
 int xlat_eval_init(void)
 {
-	fr_assert(!done_init);
+	fr_assert(!instance_count);
+
+	if (instance_count > 0) {
+		instance_count++;
+		return 0;
+	}
+
+	instance_count++;
 
 	if (fr_dict_autoload(xlat_eval_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
 		return -1;
 	}
+
 	if (fr_dict_attr_autoload(xlat_eval_dict_attr) < 0) {
 		PERROR("%s", __FUNCTION__);
 		fr_dict_autofree(xlat_eval_dict);
 		return -1;
 	}
 
-	done_init = true;
-
 	return 0;
 }
 
 void xlat_eval_free(void)
 {
-	fr_dict_autofree(xlat_eval_dict);
+	fr_assert(instance_count > 0);
 
-	done_init = false;
+	if (--instance_count > 0) return;
+
+	fr_dict_autofree(xlat_eval_dict);
 }
