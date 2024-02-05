@@ -121,11 +121,6 @@ void server_free(void)
 	xlat_instances_free();
 
 	/*
-	 *	The only xlats remaining are the ones registered by the server core.
-	 */
-	xlat_free();
-
-	/*
 	 *	Free password dictionaries
 	 */
 	password_free();
