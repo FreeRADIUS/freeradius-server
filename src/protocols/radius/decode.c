@@ -2203,12 +2203,14 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 }
 
 static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED fr_dict_attr_t const *parent,
-			   uint8_t const *data, size_t data_len, fr_radius_decode_ctx_t *packet_ctx)
+			   uint8_t const *data, size_t data_len, void *decode_ctx)
 {
+	fr_radius_decode_ctx_t *packet_ctx = decode_ctx;
+
 	fr_assert(parent == fr_dict_root(dict_radius));
 
 	packet_ctx->end = data + data_len;
-	return fr_radius_decode_pair(ctx, out, data, data_len, packet_ctx);
+	return fr_radius_decode_pair(ctx, out, data, data_len, decode_ctx);
 }
 
 
@@ -2218,7 +2220,7 @@ static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, NDEBUG_UNUSED f
 extern fr_test_point_pair_decode_t radius_tp_decode_pair;
 fr_test_point_pair_decode_t radius_tp_decode_pair = {
 	.test_ctx	= decode_test_ctx,
-	.func		= (fr_pair_decode_t) decode_pair
+	.func		= decode_pair
 };
 
 extern fr_test_point_proto_decode_t radius_tp_decode_proto;
