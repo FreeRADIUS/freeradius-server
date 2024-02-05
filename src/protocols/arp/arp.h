@@ -37,8 +37,8 @@
 #define FR_ARP_PACKET_SIZE (28)
 #define ETH_TYPE_ARP (0x0806)
 
-int fr_arp_init(void);
-void fr_arp_free(void);
+int fr_arp_global_init(void);
+void fr_arp_global_free(void);
 
 ssize_t fr_arp_encode(fr_dbuff_t *dbuff, uint8_t const *original, fr_pair_list_t *vps);
 ssize_t fr_arp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packet, size_t packet_len);

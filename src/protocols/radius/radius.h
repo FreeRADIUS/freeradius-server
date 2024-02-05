@@ -181,9 +181,9 @@ ssize_t		fr_radius_decode_simple(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					uint8_t *packet, size_t packet_len,
 					uint8_t const *vector, char const *secret) CC_HINT(nonnull(1,2,3,6));
 
-int		fr_radius_init(void);
+int		fr_radius_global_init(void);
 
-void		fr_radius_free(void);
+void		fr_radius_global_free(void);
 
 /*
  *	protocols/radius/packet.c

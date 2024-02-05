@@ -258,7 +258,7 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 				      NULL, NULL, NULL);
 }
 
-int fr_arp_init(void)
+int fr_arp_global_init(void)
 {
 	if (instance_count > 0) {
 		instance_count++;
@@ -281,7 +281,7 @@ int fr_arp_init(void)
 	return 0;
 }
 
-void fr_arp_free(void)
+void fr_arp_global_free(void)
 {
 	fr_assert(instance_count > 0);
 
@@ -296,8 +296,8 @@ fr_dict_protocol_t libfreeradius_arp_dict_protocol = {
 	.default_type_size = 4,
 	.default_type_length = 0,
 
-	.init = fr_arp_init,
-	.free = fr_arp_free,
+	.init = fr_arp_global_init,
+	.free = fr_arp_global_free,
 };
 
 

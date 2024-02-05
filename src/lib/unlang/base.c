@@ -71,7 +71,7 @@ void unlang_register(int type, unlang_op_t *op)
 
 static TALLOC_CTX *unlang_ctx = NULL;
 
-int unlang_init_global(void)
+int unlang_global_init(void)
 {
 	if (instance_count > 0) {
 		instance_count++;
@@ -84,7 +84,7 @@ int unlang_init_global(void)
 	/*
 	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
 	 */
-	if (xlat_init(unlang_ctx) < 0) {
+	if (xlat_global_init(unlang_ctx) < 0) {
 	fail:
 		TALLOC_FREE(unlang_ctx);
 
@@ -131,7 +131,7 @@ int unlang_init_global(void)
 	return 0;
 }
 
-void unlang_free_global(void)
+void unlang_global_free(void)
 {
 	if (--instance_count > 0) return;
 
@@ -140,5 +140,5 @@ void unlang_free_global(void)
 
 	memset(unlang_ops, 0, sizeof(unlang_ops));
 
-	xlat_free();
+	xlat_global_free();
 }

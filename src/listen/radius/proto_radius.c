@@ -605,7 +605,7 @@ static xlat_action_t packet_vector_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static int mod_load(void)
 {
-	if (fr_radius_init() < 0) {
+	if (fr_radius_global_init() < 0) {
 		PERROR("Failed initialising protocol library");
 		return -1;
 	}
@@ -620,7 +620,7 @@ static void mod_unload(void)
 {
 	xlat_func_unregister("radius.packet.vector");
 
-	fr_radius_free();
+	fr_radius_global_free();
 }
 
 fr_app_t proto_radius = {

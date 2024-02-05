@@ -36,9 +36,9 @@ extern "C" {
 
 bool			unlang_section(CONF_SECTION *cs);
 
-int			unlang_init_global(void);
+int			unlang_global_init(void);
 
-void			unlang_free_global(void);
+void			unlang_global_free(void);
 
 int			unlang_thread_instantiate(TALLOC_CTX *ctx) CC_HINT(nonnull);
 

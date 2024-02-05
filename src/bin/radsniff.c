@@ -2735,7 +2735,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Initialise the protocol library */
-	if (fr_radius_init() < 0) {
+	if (fr_radius_global_init() < 0) {
 		fr_perror("radclient");
 		return 1;
 	}
@@ -3159,7 +3159,7 @@ finish:
 	talloc_free(conf);
 
 	fr_dict_autofree(radsniff_dict);
-	fr_radius_free();
+	fr_radius_global_free();
 
 	/*
 	 *	Ensure our atexit handlers run before any other

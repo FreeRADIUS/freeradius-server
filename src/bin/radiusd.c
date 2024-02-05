@@ -790,7 +790,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialise the interpreter, registering operations.
 	 */
-	if (unlang_init_global() < 0) EXIT_WITH_FAILURE;
+	if (unlang_global_init() < 0) EXIT_WITH_FAILURE;
 
 	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
@@ -1094,7 +1094,7 @@ cleanup:
 	/*
 	 *	Free any resources used by the unlang interpreter.
 	 */
-	unlang_free_global();
+	unlang_global_free();
 
 #ifdef WITH_TLS
 	fr_openssl_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */

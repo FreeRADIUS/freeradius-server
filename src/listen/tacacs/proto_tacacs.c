@@ -584,7 +584,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static int mod_load(void)
 {
-	if (fr_tacacs_init() < 0) {
+	if (fr_tacacs_global_init() < 0) {
 		PERROR("Failed initialising tacacs");
 		return -1;
 	}
@@ -594,7 +594,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_tacacs_free();
+	fr_tacacs_global_free();
 }
 
 fr_app_t proto_tacacs = {

@@ -87,8 +87,8 @@ ssize_t fr_tftp_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps) CC_HINT(nonnull(1
 extern char const	*fr_tftp_codes[FR_TFTP_MAX_CODE];
 extern char const 	*fr_tftp_error_codes[FR_TFTP_MAX_ERROR_CODE];
 
-int fr_tftp_init(void);
-void fr_tftp_free(void);
+int fr_tftp_global_init(void);
+void fr_tftp_global_free(void);
 
 #ifdef __cplusplus
 }

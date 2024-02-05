@@ -629,7 +629,7 @@ setup_io_submodule:
 
 static int mod_load(void)
 {
-	if (fr_radius_init() < 0) {
+	if (fr_radius_global_init() < 0) {
 		PERROR("Failed initialising protocol library");
 		return -1;
 	}
@@ -638,7 +638,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_radius_free();
+	fr_radius_global_free();
 }
 
 /*

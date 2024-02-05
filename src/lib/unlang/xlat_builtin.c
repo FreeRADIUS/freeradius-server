@@ -3720,7 +3720,7 @@ int xlat_protocols_register(void)
  *
  * @hidecallgraph
  */
-int xlat_init(TALLOC_CTX *ctx)
+int xlat_global_init(TALLOC_CTX *ctx)
 {
 	xlat_t *xlat;
 
@@ -3862,7 +3862,7 @@ do { \
 /** De-register all xlat functions we created
  *
  */
-void xlat_free(void)
+void xlat_global_free(void)
 {
 	xlat_func_free();
 

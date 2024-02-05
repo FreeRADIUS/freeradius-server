@@ -218,7 +218,7 @@ bool fr_bfd_packet_ok(char const **err, uint8_t const *packet, size_t packet_len
 
 
 
-int fr_bfd_init(void)
+int fr_bfd_global_init(void)
 {
 	if (instance_count > 0) {
 		instance_count++;
@@ -241,7 +241,7 @@ int fr_bfd_init(void)
 	return 0;
 }
 
-void fr_bfd_free(void)
+void fr_bfd_global_free(void)
 {
 	fr_assert(instance_count > 0);
 
@@ -256,6 +256,6 @@ fr_dict_protocol_t libfreeradius_bfd_dict_protocol = {
 	.default_type_size = 1,
 	.default_type_length = 1,
 
-	.init = fr_bfd_init,
-	.free = fr_bfd_free,
+	.init = fr_bfd_global_init,
+	.free = fr_bfd_global_free,
 };

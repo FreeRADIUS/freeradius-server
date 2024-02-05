@@ -52,7 +52,7 @@ fr_dict_attr_autoload_t libfreeradius_vmps_dict_attr[] = {
 };
 
 
-int fr_vmps_init(void)
+int fr_vmps_global_init(void)
 {
 	if (instance_count > 0) {
 		instance_count++;
@@ -76,7 +76,7 @@ int fr_vmps_init(void)
 	return 0;
 }
 
-void fr_vmps_free(void)
+void fr_vmps_global_free(void)
 {
 	fr_assert(instance_count > 0);
 

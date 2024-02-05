@@ -522,7 +522,7 @@ static ssize_t fr_vmps_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 static int _decode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)
 {
-	fr_vmps_free();
+	fr_vmps_global_free();
 
 	return 0;
 }
@@ -531,7 +531,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_vmps_ctx_t *test_ctx;
 
-	if (fr_vmps_init() < 0) return -1;
+	if (fr_vmps_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_vmps_ctx_t);
 	if (!test_ctx) return -1;
@@ -563,7 +563,7 @@ static ssize_t fr_vmps_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps,
 
 static int _encode_test_ctx(UNUSED fr_vmps_ctx_t *proto_ctx)
 {
-	fr_vmps_free();
+	fr_vmps_global_free();
 
 	return 0;
 }
@@ -572,7 +572,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_vmps_ctx_t *test_ctx;
 
-	if (fr_vmps_init() < 0) return -1;
+	if (fr_vmps_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_vmps_ctx_t);
 	if (!test_ctx) return -1;

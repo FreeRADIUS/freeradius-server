@@ -447,7 +447,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static int mod_load(void)
 {
-	if (fr_vmps_init() < 0) {
+	if (fr_vmps_global_init() < 0) {
 		PERROR("Failed initializing the VMPS dictionaries");
 		return -1;
 	}
@@ -457,7 +457,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_vmps_free();
+	fr_vmps_global_free();
 }
 
 fr_app_t proto_vmps = {

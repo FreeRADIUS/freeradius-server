@@ -249,7 +249,7 @@ static ssize_t fr_tftp_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps,
 
 static int _encode_test_ctx(UNUSED fr_tftp_ctx_t *proto_ctx)
 {
-	fr_tftp_free();
+	fr_tftp_global_free();
 
 	return 0;
 }
@@ -258,7 +258,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_tftp_ctx_t *test_ctx;
 
-	if (fr_tftp_init() < 0) return -1;
+	if (fr_tftp_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_tftp_ctx_t);
 	if (!test_ctx) return -1;

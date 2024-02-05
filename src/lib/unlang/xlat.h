@@ -494,8 +494,8 @@ xlat_action_t	unlang_xlat_yield(request_t *request,
  *	xlat_builtin.c
  */
 int		xlat_protocols_register(void);
-int		xlat_init(TALLOC_CTX *ctx);
-void		xlat_free(void);
+int		xlat_global_init(TALLOC_CTX *ctx);
+void		xlat_global_free(void);
 
 #ifdef __cplusplus
 }

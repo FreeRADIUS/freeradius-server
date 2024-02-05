@@ -345,9 +345,9 @@ int		fr_tacacs_packet_to_code(fr_tacacs_packet_t const *pkt);
 /* base.c */
 ssize_t		fr_tacacs_length(uint8_t const *buffer, size_t buffer_len);
 
-int		fr_tacacs_init(void);
+int		fr_tacacs_global_init(void);
 
-void		fr_tacacs_free(void);
+void		fr_tacacs_global_free(void);
 
 int		fr_tacacs_body_xor(fr_tacacs_packet_t const *pkt, uint8_t *body, size_t body_len, char const *secret, size_t secret_len) CC_HINT(nonnull(1,2,4));
 

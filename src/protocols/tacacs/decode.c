@@ -1082,7 +1082,7 @@ static int _encode_test_ctx(fr_tacacs_ctx_t *proto_ctx)
 {
 	talloc_const_free(proto_ctx->secret);
 
-	fr_tacacs_free();
+	fr_tacacs_global_free();
 
 	return 0;
 }
@@ -1091,7 +1091,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 {
 	fr_tacacs_ctx_t *test_ctx;
 
-	if (fr_tacacs_init() < 0) return -1;
+	if (fr_tacacs_global_init() < 0) return -1;
 
 	test_ctx = talloc_zero(ctx, fr_tacacs_ctx_t);
 	if (!test_ctx) return -1;

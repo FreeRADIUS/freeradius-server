@@ -141,7 +141,7 @@ char const *fr_tacacs_packet_names[FR_TACACS_CODE_MAX] = {
 };
 
 
-int fr_tacacs_init(void)
+int fr_tacacs_global_init(void)
 {
 	if (instance_count > 0) {
 		instance_count++;
@@ -164,7 +164,7 @@ int fr_tacacs_init(void)
 	return 0;
 }
 
-void fr_tacacs_free(void)
+void fr_tacacs_global_free(void)
 {
 	fr_assert(instance_count > 0);
 

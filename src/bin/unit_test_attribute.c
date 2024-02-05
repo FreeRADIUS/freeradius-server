@@ -3808,7 +3808,7 @@ int main(int argc, char *argv[])
 	 *	Initialise the interpreter, registering operations.
 	 *	Needed because some keywords also register xlats.
 	 */
-	if (unlang_init_global() < 0) {
+	if (unlang_global_init() < 0) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}
@@ -3937,7 +3937,7 @@ cleanup:
 		EXIT_WITH_FAILURE;
 	}
 
-	unlang_free_global();
+	unlang_global_free();
 
 	request_global_free();
 

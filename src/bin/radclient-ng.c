@@ -1722,7 +1722,7 @@ int main(int argc, char **argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 
-	if (fr_radius_init() < 0) {
+	if (fr_radius_global_init() < 0) {
 		fr_perror("radclient");
 		fr_exit_now(EXIT_FAILURE);
 	}
@@ -2054,7 +2054,7 @@ int main(int argc, char **argv)
 
 	talloc_free(secret);
 
-	fr_radius_free();
+	fr_radius_global_free();
 
 	packet_global_free();
 

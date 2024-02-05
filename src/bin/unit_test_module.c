@@ -890,7 +890,7 @@ int main(int argc, char *argv[])
 	 *	Initialise the interpreter, registering operations.
 	 *      This initialises
 	 */
-	if (unlang_init_global() < 0) {
+	if (unlang_global_init() < 0) {
 		fr_perror("%s", config->name);
 		EXIT_WITH_FAILURE;
 	}
@@ -1208,7 +1208,7 @@ cleanup:
 	/*
 	 *	Free any resources used by the unlang interpreter.
 	 */
-	unlang_free_global();
+	unlang_global_free();
 
 	/*
 	 *	Virtual servers need to be freed before modules

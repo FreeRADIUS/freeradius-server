@@ -296,7 +296,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static int mod_load(void)
 {
-	if (fr_arp_init() < 0) {
+	if (fr_arp_global_init() < 0) {
 		PERROR("Failed initialising protocol library");
 		return -1;
 	}
@@ -305,7 +305,7 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	fr_arp_free();
+	fr_arp_global_free();
 }
 
 fr_app_t proto_arp = {

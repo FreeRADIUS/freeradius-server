@@ -87,7 +87,7 @@ char const *fr_tftp_error_codes[FR_TFTP_MAX_ERROR_CODE] = {
 	[FR_ERROR_CODE_VALUE_NO_SUCH_USER] = "No such user"
 };
 
-int fr_tftp_init(void)
+int fr_tftp_global_init(void)
 {
 	if (instance_count > 0) {
 		instance_count++;
@@ -111,7 +111,7 @@ int fr_tftp_init(void)
 	return 0;
 }
 
-void fr_tftp_free(void)
+void fr_tftp_global_free(void)
 {
 	fr_assert(instance_count > 0);
 

@@ -59,9 +59,9 @@ typedef enum {
 
 extern char const	*fr_vmps_packet_names[FR_VMPS_CODE_MAX];
 
-int fr_vmps_init(void);
+int fr_vmps_global_init(void);
 
-void fr_vmps_free(void);
+void fr_vmps_global_free(void);
 
 #ifdef __cplusplus
 }

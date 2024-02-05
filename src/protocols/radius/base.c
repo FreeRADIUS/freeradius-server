@@ -1115,7 +1115,7 @@ ssize_t	fr_radius_decode_simple(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	return rcode;
 }
 
-int fr_radius_init(void)
+int fr_radius_global_init(void)
 {
 	if (instance_count > 0) {
 		instance_count++;
@@ -1138,7 +1138,7 @@ int fr_radius_init(void)
 	return 0;
 }
 
-void fr_radius_free(void)
+void fr_radius_global_free(void)
 {
 	fr_assert(instance_count > 0);
 
@@ -1327,8 +1327,8 @@ fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr_valid = attr_valid,
 
-	.init = fr_radius_init,
-	.free = fr_radius_free,
+	.init = fr_radius_global_init,
+	.free = fr_radius_global_free,
 
 	.decode = fr_radius_decode_foreign,
 	.encode = fr_radius_encode_foreign,
