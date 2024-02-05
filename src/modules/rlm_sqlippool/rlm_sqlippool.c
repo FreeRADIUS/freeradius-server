@@ -359,7 +359,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 
 	rlen = strlen((*handle)->row[0]);
 	if (rlen >= outlen) {
-		RDEBUG("insufficient string space");
+		REDEBUG("The first column of the result was too long (%d)", rlen);
 		goto finish;
 	}
 
