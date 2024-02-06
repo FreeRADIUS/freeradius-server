@@ -609,6 +609,18 @@ static ssize_t decode_digest_attributes(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!vp) return PAIR_DECODE_OOM;
 
 redo:
+	FR_PROTO_HEX_DUMP(p, end - p, "decode_digest_attributes");
+
+	if (((size_t) (p - end) < 2) || (p[1] > (size_t) (end - p))) {
+		slen = fr_pair_raw_from_network(vp, &vp->vp_group, parent, p, end - p);
+		if (slen < 0) {
+			talloc_free(vp);
+			return slen;
+		}
+
+		goto done;
+	}
+
 	slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, parent, p + 2, p[1] - 2, packet_ctx, decode_rfc, NULL, false);
 	if (slen <= 0) {
 		talloc_free(vp);
@@ -623,6 +635,7 @@ redo:
 		goto redo;
 	}
 
+done:
 	fr_pair_append(out, vp);
 	return p - data;
 }
