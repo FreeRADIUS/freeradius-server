@@ -236,6 +236,7 @@ extern size_t tmpl_type_table_len;
 typedef struct tmpl_rules_s tmpl_rules_t;
 typedef struct tmpl_attr_rules_s tmpl_attr_rules_t;
 typedef struct tmpl_xlat_rules_s tmpl_xlat_rules_t;
+typedef struct tmpl_literal_rules_s tmpl_literal_rules_t;
 typedef struct tmpl_res_rules_s tmpl_res_rules_t;
 typedef struct tmpl_s tmpl_t;
 
@@ -334,6 +335,10 @@ struct tmpl_xlat_rules_s {
 	bool			new_functions;		//!< new function syntax
 };
 
+struct tmpl_literal_rules_s {
+	fr_value_box_safe_for_t	safe_for;		//!< What should literals be marked up safe for
+};
+
 /** Optional arguments passed to vp_tmpl functions
  *
  */
@@ -353,7 +358,9 @@ struct tmpl_rules_s {
 							///< Instantiated xlats are not added to the global
 							///< trees, regexes are not JIT'd.
 
-	tmpl_escape_t		escape;		//!< How escaping should be handled during evaluation.
+	tmpl_escape_t		escape;			//!< How escaping should be handled during evaluation.
+
+	tmpl_literal_rules_t	literal;		//!< Rules for parsing literals.
 };
 
 /** Similar to tmpl_rules_t, but used to specify parameters that may change during subsequent resolution passes
