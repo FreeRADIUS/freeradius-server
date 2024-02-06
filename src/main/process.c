@@ -5042,7 +5042,11 @@ static bool coa_max_time(REQUEST *request)
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port,
 			       mrd);
-			request_done(request, FR_ACTION_DONE);
+			if (setup_post_proxy_fail(request)) {
+				request_queue_or_run(request, coa_no_reply);
+			} else {
+				request_done(request, FR_ACTION_DONE);
+			}
 			return true;
 		}
 
@@ -6170,7 +6174,7 @@ static void check_proxy(rad_listen_t *head)
 			if (sock->my_ipaddr.af == AF_INET) has_v4 = true;
 			if (sock->my_ipaddr.af == AF_INET6) has_v6 = true;
 			break;
-			
+
 		default:
 			break;
 		}
