@@ -9,6 +9,9 @@ proto dhcpv6
 proto-dictionary dhcpv6
 fuzzer-out dhcpv6
 
+decode-proto 00 ff 17 00 00 51 00 0c cf 06 17 04 00 06 cf ff 00 06 00 00
+match Packet-Type = 0, Transaction-ID = 0xff1700, raw.RADIUS = 0xcf0617040006cfff00060000
+
 decode-pair 005100085a04030019fc0000005100087f040300190301c5
 match raw.RADIUS = 0x5a04030019fc0000, raw.RADIUS = 0x7f040300190301c5
 
@@ -19,4 +22,4 @@ decode-pair -
 match RADIUS = { User-Name = "bob" }
 
 count
-match 9
+match 11
