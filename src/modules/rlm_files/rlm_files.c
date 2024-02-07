@@ -42,22 +42,6 @@ typedef struct {
 	char const *common_filename;
 	fr_htrie_t *common_htrie;
 	PAIR_LIST_LIST *common_def;
-
-	char const *recv_filename;
-	fr_htrie_t *recv_htrie;
-	PAIR_LIST_LIST *recv_pl;
-
-	char const *auth_filename;
-	fr_htrie_t *auth_htrie;
-	PAIR_LIST_LIST *auth_pl;
-
-	char const *recv_acct_filename;
-	fr_htrie_t *recv_acct_users;
-	PAIR_LIST_LIST *recv_acct_pl;
-
-	char const *send_filename;
-	fr_htrie_t *send_htrie;
-	PAIR_LIST_LIST *send_pl;
 } rlm_files_t;
 
 typedef struct {
@@ -88,10 +72,6 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_files_t, common_filename) },
-	{ FR_CONF_OFFSET_FLAGS("recv_filename", CONF_FLAG_FILE_INPUT, rlm_files_t, recv_filename) },
-	{ FR_CONF_OFFSET_FLAGS("acct_filename", CONF_FLAG_FILE_INPUT, rlm_files_t, recv_acct_filename) },
-	{ FR_CONF_OFFSET_FLAGS("auth_filename", CONF_FLAG_FILE_INPUT, rlm_files_t, auth_filename) },
-	{ FR_CONF_OFFSET_FLAGS("send_filename", CONF_FLAG_FILE_INPUT, rlm_files_t, send_filename) },
 	{ FR_CONF_OFFSET_FLAGS("key", CONF_FLAG_NOT_EMPTY, rlm_files_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 	CONF_PARSER_TERMINATOR
 };
@@ -425,20 +405,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 #define READFILE(_x, _y, _d) if (getrecv_filename(inst, inst->_x, &inst->_y, &inst->_d, inst->key_data_type) != 0) do { ERROR("Failed reading %s", inst->_x); return -1;} while (0)
 
 	READFILE(common_filename, common_htrie, common_def);
-	READFILE(recv_filename, recv_htrie, recv_pl);
-	READFILE(recv_acct_filename, recv_acct_users, recv_acct_pl);
-	READFILE(auth_filename, auth_htrie, auth_pl);
-	READFILE(send_filename, send_htrie, send_pl);
 
 	return 0;
 }
 
-/*
- *	Common code called by everything below.
- */
-static unlang_action_t file_common(rlm_rcode_t *p_result, UNUSED rlm_files_t const *inst, rlm_files_env_t *env,
-				   request_t *request, fr_htrie_t *tree, PAIR_LIST_LIST *default_list)
+static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
+	rlm_files_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
+	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 	PAIR_LIST_LIST const	*user_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false, trie = false;
@@ -446,6 +420,8 @@ static unlang_action_t file_common(rlm_rcode_t *p_result, UNUSED rlm_files_t con
 	uint8_t			key_buffer[16], *key;
 	size_t			keylen = 0;
 	fr_edit_list_t		*el, *child;
+	fr_htrie_t		*tree = inst->common_htrie;
+	PAIR_LIST_LIST		*default_list = inst->common_def;
 
 	if (!tree && !default_list) RETURN_MODULE_NOOP;
 
@@ -631,58 +607,6 @@ redo:
 
 
 /*
- *	Find the named user in the database.  Create the
- *	set of attribute-value pairs to check and reply with
- *	for this user from the database. The main code only
- *	needs to check the password, the rest is done here.
- */
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
-	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
-
-	return file_common(p_result, inst, env_data, request,
-			   inst->recv_htrie ? inst->recv_htrie : inst->common_htrie,
-			   inst->recv_htrie ? inst->recv_pl : inst->common_def);
-}
-
-
-/*
- *	Pre-Accounting - read the recv_acct_users file for check_items and
- *	config. Reply items are Not Recommended(TM) in recv_acct_users,
- *	except for Fallthrough, which should work
- */
-static unlang_action_t CC_HINT(nonnull) mod_preacct(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
-	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
-
-	return file_common(p_result, inst, env_data, request,
-			   inst->recv_acct_users ? inst->recv_acct_users : inst->common_htrie,
-			   inst->recv_acct_users ? inst->recv_acct_pl : inst->common_def);
-}
-
-static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
-	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
-
-	return file_common(p_result, inst, env_data, request,
-			   inst->auth_htrie ? inst->auth_htrie : inst->common_htrie,
-			   inst->auth_htrie ? inst->auth_pl : inst->common_def);
-}
-
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_files_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
-	rlm_files_env_t *env_data = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
-
-	return file_common(p_result, inst, env_data, request,
-			   inst->send_htrie ? inst->send_htrie : inst->common_htrie,
-			   inst->send_htrie ? inst->send_pl : inst->common_def);
-}
-
-/*
  *	@todo - Whilst this causes `key` to be evaluated on a per-call basis,
  *	it is still evaluated during module instantiation to determine the tree type in use
  *	so more restructuring is needed to make the module protocol agnostic.
@@ -709,13 +633,7 @@ module_rlm_t rlm_files = {
 		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct,
-		  .method_env = &method_env	},
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
-		  .method_env = &method_env	},
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
-		  .method_env = &method_env	},
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_files,
 		  .method_env = &method_env	},
 		MODULE_NAME_TERMINATOR
 	}
