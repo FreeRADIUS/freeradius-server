@@ -1316,7 +1316,7 @@ static xlat_action_t xlat_logical_and_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	(a, b, c) && (d, e, f) == a && b && c && d && e && f
 	 */
 	match = xlat_logical_and(rctx, &rctx->list);
-	if (!match) return XLAT_ACTION_FAIL;
+	if (!match) return XLAT_ACTION_DONE;
 
 	fr_value_box_list_talloc_free(&rctx->list);
 
