@@ -506,7 +506,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 			if (len < 0) {
 				char const *err = fr_strerror();
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
+				(void) fr_sbuff_in_sprintf(&out, "ERROR expanding xlat: %s", *err ? err : "no error provided");
 				continue;
 			}
 
@@ -555,7 +555,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 
 			if (xlat_resolve(head, NULL) < 0) {
 				talloc_free(xlat_ctx);
-				fr_sbuff_in_sprintf(&out, "ERROR resolving xlat: %s", fr_strerror());
+				(void) fr_sbuff_in_sprintf(&out, "ERROR resolving xlat: %s", fr_strerror());
 				continue;
 			}
 
