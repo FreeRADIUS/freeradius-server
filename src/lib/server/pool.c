@@ -774,7 +774,10 @@ static int connection_check(fr_pool_t *pool, request_t *request)
 	if (spare < pool->spare) {
 		/*
 		 *	Don't open too many pending connections.
+		 *	Again, coverity doesn't realize all callers have the lock,
+		 *	so we must annotate here as well.
 		 */
+		/* coverity[missing_lock] */
 		if (pool->state.pending >= pool->pending_window) goto manage_connections;
 
 		/*
