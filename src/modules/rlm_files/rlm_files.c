@@ -97,15 +97,15 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 
 static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault, fr_type_t data_type)
 {
-	int rcode;
-	PAIR_LIST_LIST users;
-	PAIR_LIST_LIST search_list;	// Temporary list header used for matching in htrie
-	PAIR_LIST *entry, *next;
-	PAIR_LIST_LIST *user_list, *default_list;
-	fr_htrie_t *tree;
-	fr_htrie_type_t htype;
-	fr_value_box_t *box;
-	map_t		*reply_head;
+	int			rcode;
+	PAIR_LIST_LIST		users;
+	PAIR_LIST_LIST		search_list;	// Temporary list header used for matching in htrie
+	PAIR_LIST		*entry, *next;
+	PAIR_LIST_LIST		*user_list, *default_list;
+	fr_htrie_t		*tree;
+	fr_htrie_type_t		htype;
+	fr_value_box_t		*box;
+	map_t			*reply_head;
 
 	if (!filename) {
 		*ptree = NULL;
