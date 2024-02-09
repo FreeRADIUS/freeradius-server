@@ -30,31 +30,36 @@ RCSID("$Id$")
 #include <freeradius-devel/server/users_file.h>
 #include <freeradius-devel/util/htrie.h>
 #include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/transaction.h>
 
 #include <ctype.h>
 #include <fcntl.h>
 
 typedef struct {
-	tmpl_t *key;
-	fr_type_t	key_data_type;
-
-	char const *common_filename;
-	fr_htrie_t *common_htrie;
-	PAIR_LIST_LIST *common_def;
+	char const	*filename;
 } rlm_files_t;
 
+/**  Structure produced by custom call_env parser
+ */
 typedef struct {
-	fr_value_box_t	key;
+	tmpl_t		*key_tmpl;	//<! tmpl used to evaluate lookup key.
+	fr_htrie_t	*htrie;		//!< parsed files "user" data.
+	PAIR_LIST_LIST	*def;		//!< parsed files DEFAULT data.
+} rlm_files_data_t;
+
+/**  Call_env structure
+ */
+typedef struct {
+	rlm_files_data_t	*data;	//<! Data from parsed call_env
+	fr_value_box_list_t	values;	//<! Where the expanded tmpl value will be written.
 } rlm_files_env_t;
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_files_dict[];
 fr_dict_autoload_t rlm_files_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
@@ -69,10 +74,8 @@ fr_dict_attr_autoload_t rlm_files_dict_attr[] = {
 	{ NULL }
 };
 
-
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_INPUT, rlm_files_t, common_filename) },
-	{ FR_CONF_OFFSET_FLAGS("key", CONF_FLAG_NOT_EMPTY, rlm_files_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED | CONF_FLAG_FILE_INPUT, rlm_files_t, filename) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -95,7 +98,8 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 	return fr_value_box_to_key(out, outlen, ((PAIR_LIST_LIST const *)a)->box);
 }
 
-static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault, fr_type_t data_type)
+static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
+			    fr_type_t data_type, fr_dict_t const *dict)
 {
 	int			rcode;
 	PAIR_LIST_LIST		users;
@@ -113,7 +117,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 	}
 
 	pairlist_list_init(&users);
-	rcode = pairlist_read(ctx, dict_radius, filename, &users);
+	rcode = pairlist_read(ctx, dict, filename, &users);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -387,34 +391,12 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 	return 0;
 }
 
-
-
-/*
- *	(Re-)read the "users" file into memory.
+/** Lookup the expanded key value in files data.
+ *
  */
-static int mod_instantiate(module_inst_ctx_t const *mctx)
+static unlang_action_t CC_HINT(nonnull) mod_files_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	rlm_files_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_files_t);
-
-	inst->key_data_type = tmpl_expanded_type(inst->key);
-	if (fr_htrie_hint(inst->key_data_type) == FR_HTRIE_INVALID) {
-		cf_log_err(mctx->inst->conf, "Invalid data type '%s' for 'files' module.",
-			   fr_type_to_str(inst->key_data_type));
-		return -1;
-	}
-
-#undef READFILE
-#define READFILE(_x, _y, _d) if (getrecv_filename(inst, inst->_x, &inst->_y, &inst->_d, inst->key_data_type) != 0) do { ERROR("Failed reading %s", inst->_x); return -1;} while (0)
-
-	READFILE(common_filename, common_htrie, common_def);
-
-	return 0;
-}
-
-static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_files_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_files_t);
-	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
+	rlm_files_env_t		*env = talloc_get_type_abort(uctx, rlm_files_env_t);
 	PAIR_LIST_LIST const	*user_list;
 	PAIR_LIST const 	*user_pl, *default_pl;
 	bool			found = false, trie = false;
@@ -422,19 +404,25 @@ static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_
 	uint8_t			key_buffer[16], *key;
 	size_t			keylen = 0;
 	fr_edit_list_t		*el, *child;
-	fr_htrie_t		*tree = inst->common_htrie;
-	PAIR_LIST_LIST		*default_list = inst->common_def;
+	fr_htrie_t		*tree = env->data->htrie;
+	PAIR_LIST_LIST		*default_list = env->data->def;
+	fr_value_box_t		*key_vb = fr_value_box_list_head(&env->values);
+
+	if (!key_vb) {
+		ERROR("Missing key value");
+		RETURN_MODULE_FAIL;
+	}
 
 	if (!tree && !default_list) RETURN_MODULE_NOOP;
 
-	RDEBUG2("Looking for key \"%pV\"", &env->key);
+	RDEBUG2("Looking for key \"%pV\"", key_vb);
 
 	el = unlang_interpret_edit_list(request);
 	MEM(child = fr_edit_list_alloc(request, 50, el));
 
 	if (tree) {
 		my_list.name = NULL;
-		my_list.box = &env->key;
+		my_list.box = key_vb;
 		user_list = fr_htrie_find(tree, &my_list);
 
 		trie = (tree->type == FR_HTRIE_TRIE);
@@ -449,7 +437,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_
 			key = key_buffer;
 			keylen = sizeof(key_buffer) * 8;
 
-			(void) fr_value_box_to_key(&key, &keylen, &env->key);
+			(void) fr_value_box_to_key(&key, &keylen, key_vb);
 
 			RDEBUG3("Keylen %ld", keylen);
 			RHEXDUMP3(key, (keylen + 7) >> 3, "KEY ");
@@ -607,19 +595,70 @@ redo:
 	RETURN_MODULE_OK;
 }
 
-
-/*
- *	@todo - Whilst this causes `key` to be evaluated on a per-call basis,
- *	it is still evaluated during module instantiation to determine the tree type in use
- *	so more restructuring is needed to make the module protocol agnostic.
+/** Initiate a files data lookup
  *
- *	Or we need to regenerate the tree on every call.
+ * The results of call_env parsing are a structure containing the
+ * tmpl_t representing the key and the parsed files data, meaning tmpl
+ * expansion does not happen by default.
+ * First we push the tmpl onto the stack for evaluation, then the lookup
+ * is done in mod_files_resume.
  */
+static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
+
+	fr_value_box_list_init(&env->values);
+
+	/*
+	 *	Set mod_files_resume as the repeat function
+	 */
+	if (unlang_function_push(request, NULL, mod_files_resume, NULL, 0, UNLANG_SUB_FRAME, env) < 0) RETURN_MODULE_FAIL;
+
+	/*
+	 *	Push evaluation of the key tmpl onto the stack
+	 */
+	if (unlang_tmpl_push(env, &env->values, request, env->data->key_tmpl, NULL) < 0) RETURN_MODULE_FAIL;
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/** Custom call_env parser for loading files data
+ *
+ */
+static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			  void const *data, UNUSED call_env_parser_t const *rule)
+{
+	rlm_files_t const	*inst = talloc_get_type_abort_const(data, rlm_files_t);
+	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);
+	rlm_files_data_t	*files_data;
+	fr_type_t		keytype;
+
+	MEM(files_data = talloc_zero(ctx, rlm_files_data_t));
+
+	if (tmpl_afrom_substr(ctx, &files_data->key_tmpl,
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      cf_pair_value_quote(to_parse), NULL, t_rules) < 0) return -1;
+
+	keytype = tmpl_expanded_type(files_data->key_tmpl);
+	if (fr_htrie_hint(keytype) == FR_HTRIE_INVALID) {
+		cf_log_err(ci, "Invalid data type '%s' for 'files' module", fr_type_to_str(keytype));
+	error:
+		talloc_free(files_data);
+		return -1;
+	}
+
+	if (getrecv_filename(files_data, inst->filename, &files_data->htrie, &files_data->def,
+			     keytype, t_rules->attr.dict_def) < 0) goto error;
+
+	*(void **)out = files_data;
+	return 0;
+}
+
 static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_files_env_t),
 	.env = (call_env_parser_t[]){
-		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_VOID, CALL_ENV_FLAG_REQUIRED, rlm_files_env_t, key),
-				     .pair.dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("key", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, rlm_files_env_t, data),
+				     .pair.dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING,
+				     .pair.func = call_env_parse },
 		CALL_ENV_TERMINATOR
 	},
 };
@@ -632,7 +671,6 @@ module_rlm_t rlm_files = {
 		.name		= "files",
 		.inst_size	= sizeof(rlm_files_t),
 		.config		= module_config,
-		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){
 		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_files,
