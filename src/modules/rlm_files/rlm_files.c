@@ -275,7 +275,9 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 
 	tree = fr_htrie_alloc(ctx,  htype, pairlist_hash, pairlist_cmp, pairlist_to_key, NULL);
 	if (!tree) {
-		pairlist_free(&users);
+		while ((entry = fr_dlist_pop_head(&users.head))) {
+			talloc_free(entry);
+		}
 		return -1;
 	}
 

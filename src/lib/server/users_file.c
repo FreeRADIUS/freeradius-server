@@ -89,14 +89,6 @@ static inline void line_error_marker_adj(char const *src_file, int src_line,
  */
 #define ERROR_MARKER_ADJ(_sbuff, _idx, _error) line_error_marker_adj(__FILE__, __LINE__, file, lineno, _sbuff, _idx, _error)
 
-/*
- *	Free a PAIR_LIST
- */
-void pairlist_free(PAIR_LIST_LIST *pl)
-{
-	talloc_free(pl);
-}
-
 static fr_table_num_sorted_t const check_cmp_op_table[] = {
 	{ L("!*"),	T_OP_CMP_FALSE		},
 	{ L("!="),	T_OP_NE			},
