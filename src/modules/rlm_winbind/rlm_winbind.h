@@ -18,7 +18,6 @@ typedef struct {
 	/* group config */
 	tmpl_t		*group_username;
 	bool			group_add_domain;
-	char const		*group_attribute;
 } rlm_winbind_t;
 
 typedef struct {
