@@ -61,7 +61,6 @@ fr_dict_autoload_t rlm_winbind_dict[] = {
 };
 
 static fr_dict_attr_t const *attr_user_name;
-static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_expr_bool_enum;
 
@@ -69,10 +68,13 @@ extern fr_dict_attr_autoload_t rlm_winbind_dict_attr[];
 fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ NULL }
 };
+
+typedef struct {
+	tmpl_t	*password;
+} winbind_autz_call_env_t;
 
 /** Group comparison for Winbind-Group
  *
@@ -483,11 +485,13 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_winbind_t);
+	winbind_autz_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_autz_call_env_t);
 	fr_pair_t		*vp;
 
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
+	vp = fr_pair_find_by_da(&request->request_pairs, NULL, tmpl_attr_tail_da(env->password));
 	if (!vp) {
-		REDEBUG2("No User-Password found in the request; not doing winbind authentication.");
+		REDEBUG2("No %s found in the request; not doing winbind authentication.",
+			 tmpl_attr_tail_da(env->password)->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -544,6 +548,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	RETURN_MODULE_REJECT;
 }
 
+static const call_env_method_t winbind_autz_method_env = {
+	FR_CALL_ENV_METHOD_OUT(winbind_autz_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_PARSE_ONLY, winbind_autz_call_env_t, password),
+			.pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+		CALL_ENV_TERMINATOR
+	}
+};
+
 static const call_env_method_t winbind_auth_method_env = {
 	FR_CALL_ENV_METHOD_OUT(winbind_auth_call_env_t),
 	.env = (call_env_parser_t[]) {
@@ -576,7 +589,8 @@ module_rlm_t rlm_winbind = {
 		.detach		= mod_detach
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		  .method_env = &winbind_autz_method_env },
 		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
 		  .method_env = &winbind_auth_method_env },
 		MODULE_NAME_TERMINATOR
