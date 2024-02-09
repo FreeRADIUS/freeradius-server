@@ -164,7 +164,7 @@ static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, c
 		goto error;
 	}
 
-	REDEBUG2("Trying to find user \"%s\" in group \"%s\"", username, name);
+	RDEBUG2("Trying to find user \"%s\" in group \"%s\"", username, name);
 
 	err = wbcCtxGetGroups(wb_ctx, username, &num_groups, &wb_groups);
 	switch (err) {
@@ -224,7 +224,7 @@ static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, c
 			continue;
 		}
 
-		REDEBUG2("Resolved GID %i to name \"%s\"", wb_groups[i], group->gr_name);
+		RDEBUG3("Resolved GID %i to name \"%s\"", wb_groups[i], group->gr_name);
 
 		/* Find the backslash in the returned group name */
 		if ((backslash < strlen(group->gr_name)) && (group->gr_name[backslash] == '\\')) {
@@ -237,9 +237,9 @@ static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, c
 		}
 
 		/* See if the group matches */
-		REDEBUG2("Checking plain group name \"%s\"", group_name);
+		RDEBUG3("Checking plain group name \"%s\"", group_name);
 		if (!strcasecmp(group_name, name)) {
-			REDEBUG2("Found matching group: %s", group_name);
+			RDEBUG2("Found matching group: %s", group_name);
 			rcode = true;
 		}
 		wbcFreeMemory(group);
@@ -248,7 +248,7 @@ static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, c
 		if (rcode) break;
 	}
 
-	if (!rcode) REDEBUG2("No groups found that match");
+	if (!rcode) RWDEBUG2("No groups found that match");
 
 finish:
 	wbcFreeMemory(wb_groups);
