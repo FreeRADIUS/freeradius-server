@@ -266,7 +266,7 @@ error:
 /** Check if the user is a member of a particular winbind group
  *
 @verbatim
-%{winbind.group:<name>}
+%winbind.group(<name>)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -352,7 +352,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t			*xlat;
 
 	/*
-	 *	Define the new %{winbind.group:name} xlat.  The register
+	 *	Define the %winbind.group(name) xlat.  The register
 	 *	function automatically adds the module instance name
 	 *	as a prefix.
 	 */
