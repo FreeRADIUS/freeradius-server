@@ -69,7 +69,7 @@ typedef enum {
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	CALL_ENV_FLAG_NONE 		= 0,
-	CALL_ENV_FLAG_REQUIRED 		= 1,			//!< Tmpl must produce output or section is required.
+	CALL_ENV_FLAG_REQUIRED 		= 1,			//!< Associated conf pair or section is required.
 	CALL_ENV_FLAG_CONCAT 		= (1 << 1),		//!< If the tmpl produced multiple boxes they should be concatenated.
 	CALL_ENV_FLAG_SINGLE 		= (1 << 2),		//!< If the tmpl produces more than one box this is an error.
 	CALL_ENV_FLAG_MULTI 		= (1 << 3),		//!< Multiple instances of the conf pairs are allowed.  Resulting
