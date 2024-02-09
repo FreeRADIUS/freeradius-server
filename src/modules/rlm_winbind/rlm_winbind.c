@@ -330,6 +330,11 @@ static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_t
 }
 
 
+static xlat_arg_parser_t const winbind_group_xlat_arg[] = {
+	{ .required = true, .type = FR_TYPE_STRING, .concat = true },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Bootstrap this module
  *
  * Register pair compare function for Winbind-Group fake attribute
@@ -345,7 +350,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_winbind_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
 	xlat_t			*xlat;
-	xlat_arg_parser_t	*xlat_arg;
 
 	/*
 	 *	Define the new %{winbind.group:name} xlat.  The register
@@ -358,19 +362,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	/*
-	 *	The xlat escape function needs access to inst - so
-	 *	argument parser details need to be defined here
-	 */
-	xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
-	xlat_arg[0].type = FR_TYPE_STRING;
-	xlat_arg[0].required = true;
-	xlat_arg[0].concat = true;
-	xlat_arg[0].func = NULL; /* No real escaping done - we do strcmp() on it */
-	xlat_arg[0].uctx = NULL;
-	xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
-
-	xlat_func_mono_set(xlat, xlat_arg);
+	xlat_func_mono_set(xlat, winbind_group_xlat_arg);
 
 	return 0;
 }
