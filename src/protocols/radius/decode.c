@@ -887,7 +887,7 @@ static ssize_t decode_extended_fragments(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	last_frag = false;
 
 	while (frag < end) {
-		if (last_frag ||
+		if (last_frag || ((end - frag) < 2) ||
 		    (frag[0] != attr[0]) ||
 		    (frag[1] < 4) ||		       /* too short for long-extended */
 		    (frag[2] != attr[2]) ||
