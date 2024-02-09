@@ -540,24 +540,18 @@ redo:
 			goto fail;
 		}
 
-		if (pl->fall_through) {
-			continue;
-		}
+		if (pl->fall_through) continue;
 
 		/*
 		 *	We're not doing patricia tries.  Stop now.
 		 */
-		if (!trie) {
-			break;
-		}
+		if (!trie) break;
 
 		/*
 		 *	We're doing patricia tries, but we've been
 		 *	told to not walk back up the trie, OR we're at the top of the tree.  Stop.
 		 */
-		if (!pl->next_shortest_prefix || (keylen == 0)) {
-			break;
-		}
+		if (!pl->next_shortest_prefix || (keylen == 0)) break;
 
 		/*
 		 *	Walk back up the trie looking for shorter prefixes.
