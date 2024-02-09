@@ -13,7 +13,6 @@ typedef struct {
 	fr_dict_enum_value_t		*auth_type;
 
 	/* main config */
-	tmpl_t		*wb_username;
 	tmpl_t		*wb_domain;
 
 	/* group config */
@@ -21,3 +20,9 @@ typedef struct {
 	bool			group_add_domain;
 	char const		*group_attribute;
 } rlm_winbind_t;
+
+typedef struct {
+	fr_value_box_t	username;
+	fr_value_box_t	domain;
+	fr_value_box_t	password;
+} winbind_auth_call_env_t;

@@ -45,7 +45,6 @@ static const conf_parser_t group_config[] = {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("username", rlm_winbind_t, wb_username) },
 	{ FR_CONF_OFFSET("domain", rlm_winbind_t, wb_domain) },
 	{ FR_CONF_POINTER("group", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) group_config },
 	CONF_PARSER_TERMINATOR
@@ -391,11 +390,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	struct wbcInterfaceDetails	*wb_info = NULL;
 	CONF_SECTION			*conf = mctx->inst->conf;
 
-	if (!inst->wb_username) {
-		cf_log_err(conf, "winbind_username must be defined to use rlm_winbind");
-		return -1;
-	}
-
 	inst->wb_pool = module_rlm_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->wb_pool) {
 		cf_log_err(conf, "Unable to initialise winbind connection pool");
@@ -526,29 +520,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_winbind_t);
-	fr_pair_t		*username, *password;
-
-	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
-
-	/*
-	 *	We can only authenticate user requests which HAVE
-	 *	a User-Name attribute.
-	 */
-	if (!username) {
-		REDEBUG("Attribute \"User-Name\" is required for authentication");
-		RETURN_MODULE_INVALID;
-	}
-
-	if (!password) {
-		REDEBUG("Attribute \"User-Password\" is required for authentication");
-		RETURN_MODULE_INVALID;
-	}
+	winbind_auth_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_auth_call_env_t);
 
 	/*
 	 *	Make sure the supplied password isn't empty
 	 */
-	if (password->vp_length == 0) {
+	if (env->password.vb_length == 0) {
 		REDEBUG("User-Password must not be empty");
 		RETURN_MODULE_INVALID;
 	}
@@ -557,7 +534,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	Log the password
 	 */
 	if (RDEBUG_ENABLED3) {
-		RDEBUG("Login attempt with password \"%pV\"", &password->data);
+		RDEBUG("Login attempt with password \"%pV\"", &env->password);
 	} else {
 		RDEBUG2("Login attempt with password");
 	}
@@ -567,7 +544,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	many debug outputs or errors as the auth function is
 	 *	chatty enough.
 	 */
-	if (do_auth_wbclient_pap(inst, request, password) == 0) {
+	if (do_auth_wbclient_pap(inst, request, env) == 0) {
 		REDEBUG2("User authenticated successfully using winbind");
 		RETURN_MODULE_OK;
 	}
@@ -575,6 +552,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	RETURN_MODULE_REJECT;
 }
 
+static const call_env_method_t winbind_auth_method_env = {
+	FR_CALL_ENV_METHOD_OUT(winbind_auth_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, winbind_auth_call_env_t, username) },
+		{ FR_CALL_ENV_OFFSET("domain", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, winbind_auth_call_env_t, domain) },
+		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SECRET, winbind_auth_call_env_t, password),
+			.pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+		CALL_ENV_TERMINATOR
+	}
+};
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -598,7 +585,8 @@ module_rlm_t rlm_winbind = {
 	},
 	.method_names = (module_method_name_t[]){
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
+		  .method_env = &winbind_auth_method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };

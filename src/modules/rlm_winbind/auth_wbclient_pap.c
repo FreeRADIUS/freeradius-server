@@ -47,17 +47,14 @@ RCSID("$Id$")
  *	- -648	Password expired
  *
  */
-int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_t *password)
+int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, winbind_auth_call_env_t *env)
 {
-	int ret = -1;
-	struct wbcContext *wb_ctx;
-	struct wbcAuthUserParams authparams;
-	wbcErr err;
-	int len;
-	struct wbcAuthUserInfo *info = NULL;
-	struct wbcAuthErrorInfo *error = NULL;
-	char user_name_buf[500];
-	char domain_name_buf[500];
+	int				ret = -1;
+	struct wbcContext		*wb_ctx;
+	struct wbcAuthUserParams	authparams;
+	wbcErr				err;
+	struct wbcAuthUserInfo		*info = NULL;
+	struct wbcAuthErrorInfo		*error = NULL;
 
 	/*
 	 * Clear the auth parameters - this is important, as
@@ -67,27 +64,14 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_
 	memset(&authparams, 0, sizeof(authparams));
 
 	/*
-	 * wb_username must be set for this function to be called
+	 * username must be set for this function to be called
 	 */
-	fr_assert(inst->wb_username);
+	fr_assert(env->username.type == FR_TYPE_STRING);
 
-	/*
-	 * Get the username and domain from the configuration
-	 */
-	len = tmpl_expand(&authparams.account_name, user_name_buf, sizeof(user_name_buf),
-			  request, inst->wb_username, NULL, NULL);
-	if (len < 0) {
-		REDEBUG2("Unable to expand winbind_username");
-		goto done;
-	}
+	authparams.account_name = env->username.vb_strvalue;
 
-	if (inst->wb_domain) {
-		len = tmpl_expand(&authparams.domain_name, domain_name_buf, sizeof(domain_name_buf),
-				  request, inst->wb_domain, NULL, NULL);
-		if (len < 0) {
-			REDEBUG2("Unable to expand winbind_domain");
-			goto done;
-		}
+	if (env->domain.type == FR_TYPE_STRING) {
+		authparams.domain_name = env->domain.vb_strvalue;
 	} else {
 		RWDEBUG2("No domain specified; authentication may fail because of this");
 	}
@@ -97,7 +81,7 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, fr_pair_
 	 * Build the wbcAuthUserParams structure with what we know
 	 */
 	authparams.level = WBC_AUTH_USER_LEVEL_PLAIN;
-	authparams.password.plaintext = password->data.vb_strvalue;
+	authparams.password.plaintext = env->password.vb_strvalue;
 
 	/*
 	 * Parameters documented as part of the MSV1_0_SUBAUTH_LOGON structure
