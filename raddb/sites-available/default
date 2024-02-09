@@ -1371,9 +1371,9 @@ recv Accounting-Request {
 	acct_unique
 
 	#
-	#  Read the 'acct_users' file.
+	#  Read the 'accounting' file.
 	#
-	files
+	files_accounting
 }
 
 #

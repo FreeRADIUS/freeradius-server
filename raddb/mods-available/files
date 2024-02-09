@@ -33,26 +33,13 @@ files {
 	#
 	#  filename:: The old `users` style file is now located here.
 	#
-	#  If no other filenames are specified, the module uses this file.
-	#
 	filename = ${moddir}/authorize
+}
 
-
-	#
-	#  Optional files
-	#
-	#  The following filenames are optional.
-	#
-
-	#  recv_filename:: The file to run in any "recv" section
-#	recv_filename =  ${moddir}/recv
-
-	#  send_filename:: The file to run in any "send" section
-#	send_filename =  ${moddir}/send
-
-	#  auth_filename:: The file to run in any "authenticate" section
-#	auth_filename =  ${moddir}/authenticate
-
-	#  acct_filename:: The file to run in any "recv Accounting-Request" section
-#	acct_filename =  ${moddir}/accounting
+#
+#  ## An instance of the `files` module for use in processing accounting packets
+#
+files files_accounting {
+#	key = "%{&Stripped-User-Name || &User-Name}"
+	filename = ${modconfdir}/files/accounting
 }
