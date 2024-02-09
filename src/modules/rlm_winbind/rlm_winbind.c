@@ -381,7 +381,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_winbind_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
-	struct wbcInterfaceDetails	*wb_info = NULL;
 	CONF_SECTION			*conf = mctx->inst->conf;
 
 	inst->wb_pool = module_rlm_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
@@ -394,60 +393,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  Winbind authentication will likely not work",
 		     mctx->inst->name);
-	}
-
-	/*
-	 *	If the domain has not been specified, try and find
-	 *	out what it is from winbind.
-	 */
-	if (!inst->wb_domain) {
-		wbcErr			err;
-		struct wbcContext	*wb_ctx;
-
-		cf_log_err(conf, "winbind_domain unspecified; trying to get it from winbind");
-
-		wb_ctx = wbcCtxCreate();
-		if (!wb_ctx) {
-			/* this should be very unusual */
-			cf_log_err(conf, "Unable to get libwbclient context, cannot get domain");
-			goto no_domain;
-		}
-
-		err = wbcCtxInterfaceDetails(wb_ctx, &wb_info);
-		wbcCtxFree(wb_ctx);
-
-		if (err != WBC_ERR_SUCCESS) {
-			cf_log_err(conf, "libwbclient returned wbcErr code %d; unable to get domain name.", err);
-			cf_log_err(conf, "Is winbind running and does the winbind_privileged socket have");
-			cf_log_err(conf, "the correct permissions?");
-			goto no_domain;
-		}
-
-		if (!wb_info->netbios_domain) {
-			cf_log_err(conf, "winbind returned blank domain name");
-			goto no_domain;
-		}
-
-		tmpl_afrom_substr(inst, &inst->wb_domain,
-			          &FR_SBUFF_IN(wb_info->netbios_domain, strlen(wb_info->netbios_domain)),
-			          T_SINGLE_QUOTED_STRING,
-			          NULL,
-			          &(tmpl_rules_t){
-					  .attr = {
-						  .allow_unknown = true,
-						  .allow_unresolved = true
-					  },
-			          });
-		if (!inst->wb_domain) {
-			cf_log_perr(conf, "Bad domain");
-			wbcFreeMemory(wb_info);
-			return -1;
-		}
-
-		cf_log_err(conf, "Using winbind_domain '%s'", inst->wb_domain->name);
-
-no_domain:
-		wbcFreeMemory(wb_info);
 	}
 
 	return 0;
@@ -557,11 +502,74 @@ static const call_env_method_t winbind_autz_method_env = {
 	}
 };
 
+static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				 UNUSED void const *data, UNUSED call_env_parser_t const *rule)
+{
+	CONF_PAIR const			*to_parse = cf_item_to_pair(ci);
+	tmpl_t				*parsed_tmpl = NULL;
+	struct wbcInterfaceDetails	*wb_info = NULL;
+
+	if (strlen(cf_pair_value(to_parse)) > 0) {
+		if (tmpl_afrom_substr(ctx, &parsed_tmpl,
+				      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+				      cf_pair_value_quote(to_parse), NULL, t_rules) < 0) return -1;
+	} else {
+		/*
+		 *	If the domain has not been specified, try and find
+		 *	out what it is from winbind.
+		 */
+		wbcErr			err;
+		struct wbcContext	*wb_ctx;
+
+		cf_log_warn(ci, "winbind domain unspecified; trying to get it from winbind");
+
+		wb_ctx = wbcCtxCreate();
+		if (!wb_ctx) {
+			/* this should be very unusual */
+			cf_log_err(ci, "Unable to get libwbclient context, cannot get domain");
+			goto no_domain;
+		}
+
+		err = wbcCtxInterfaceDetails(wb_ctx, &wb_info);
+		wbcCtxFree(wb_ctx);
+
+		if (err != WBC_ERR_SUCCESS) {
+			cf_log_err(ci, "libwbclient returned wbcErr code %d; unable to get domain name.", err);
+			cf_log_err(ci, "Is winbind running and does the winbind_privileged socket have");
+			cf_log_err(ci, "the correct permissions?");
+			goto no_domain;
+		}
+
+		if (!wb_info->netbios_domain) {
+			cf_log_err(ci, "winbind returned blank domain name");
+			goto no_domain;
+		}
+
+		tmpl_afrom_substr(ctx, &parsed_tmpl,
+			          &FR_SBUFF_IN(wb_info->netbios_domain, strlen(wb_info->netbios_domain)),
+			          T_SINGLE_QUOTED_STRING, NULL, t_rules);
+		if (!parsed_tmpl) {
+			cf_log_perr(ci, "Bad domain");
+			wbcFreeMemory(wb_info);
+			return -1;
+		}
+
+		cf_log_info(ci, "Using winbind_domain '%s'", parsed_tmpl->name);
+
+	no_domain:
+		wbcFreeMemory(wb_info);
+	}
+
+	*(void **)out = parsed_tmpl;
+	return parsed_tmpl ? 0 : -1;
+}
+
 static const call_env_method_t winbind_auth_method_env = {
 	FR_CALL_ENV_METHOD_OUT(winbind_auth_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, winbind_auth_call_env_t, username) },
-		{ FR_CALL_ENV_OFFSET("domain", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, winbind_auth_call_env_t, domain) },
+		{ FR_CALL_ENV_OFFSET("domain", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, winbind_auth_call_env_t, domain),
+			.pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING, .pair.func = domain_call_env_parse },
 		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_SECRET, winbind_auth_call_env_t, password),
 			.pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
 		CALL_ENV_TERMINATOR
