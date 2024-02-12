@@ -38,35 +38,29 @@ RCSID("$Id$")
 #include <wbclient.h>
 
 static const conf_parser_t group_config[] = {
-	{ FR_CONF_OFFSET("search_username", rlm_winbind_t, group_username) },
 	{ FR_CONF_OFFSET("add_domain", rlm_winbind_t, group_add_domain), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("domain", rlm_winbind_t, wb_domain) },
 	{ FR_CONF_POINTER("group", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) group_config },
 	CONF_PARSER_TERMINATOR
 };
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_winbind_dict[];
 fr_dict_autoload_t rlm_winbind_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_auth_type;
 static fr_dict_attr_t const *attr_expr_bool_enum;
 
 extern fr_dict_attr_autoload_t rlm_winbind_dict_attr[];
 fr_dict_attr_autoload_t rlm_winbind_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ NULL }
 };
@@ -75,17 +69,24 @@ typedef struct {
 	tmpl_t	*password;
 } winbind_autz_call_env_t;
 
+typedef struct {
+	fr_value_box_t	username;
+	fr_value_box_t	domain;
+} winbind_group_xlat_call_env_t;
+
 /** Group comparison for Winbind-Group
  *
  * @param inst		Instance of this module
  * @param request	The current request
  * @param name		Group name to be searched
+ * @param env		Group check xlat call_env
  *
  * @return
  *	- 0 user is in group
  *	- 1 failure or user is not in group
  */
-static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, char const *name)
+static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, char const *name,
+				winbind_group_xlat_call_env_t *env)
 {
 	bool			rcode = false;
 	struct wbcContext	*wb_ctx;
@@ -95,17 +96,9 @@ static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, c
 
 	char const		*domain = NULL;
 	size_t			domain_len = 0;
-	char const		*user = NULL;
-	char			*user_buff = NULL;
 	char const		*username;
 	char			*username_buff = NULL;
-	fr_pair_t		*vp_username;
-
-	ssize_t			slen;
 	size_t			backslash = 0;
-
-	vp_username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	if (!vp_username) return false;
 
 	RINDENT();
 
@@ -118,41 +111,17 @@ static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, c
 	/*
 	 *	Include the domain in the username?
 	 */
-	if (inst->group_add_domain && inst->wb_domain) {
-		slen = tmpl_aexpand(request, &domain, request, inst->wb_domain, NULL, NULL);
-		if (slen < 0) {
-			REDEBUG("Unable to expand group_search_username");
-			goto error;
-		}
-		domain_len = (size_t)slen;
-	}
-
-	/*
-	 *	Sort out what User-Name we are going to use.
-	 */
-	if (inst->group_username) {
-		slen = tmpl_aexpand(request, &user_buff, request, inst->group_username, NULL, NULL);
-		if (slen < 0) {
-			REDEBUG("Unable to expand group_search_username");
-			goto error;
-		}
-		user = user_buff;
-	} else {
-		/*
-		 *	This is quite unlikely to work without a domain, but
-		 *	we've not been given much else to work on.
-		 */
-		if (!domain) {
-			RWDEBUG("Searching group with plain username, this will probably fail");
-			RWDEBUG("Ensure winbind_domain and group_search_username are both correctly set");
-		}
-		user = vp_username->vp_strvalue;
+	if (inst->group_add_domain && env->domain.type == FR_TYPE_STRING){
+		domain = env->domain.vb_strvalue;
+		domain_len = env->domain.vb_length;
 	}
 
 	if (domain) {
-		username = username_buff = talloc_typed_asprintf(request, "%s\\%s", domain, user);
+		username = username_buff = talloc_typed_asprintf(request, "%s\\%s", domain, env->username.vb_strvalue);
 	} else {
-		username = user;
+		username = env->username.vb_strvalue;
+		RWDEBUG("Searching group with plain username, this will probably fail");
+		RWDEBUG("Ensure winbind domain is correctly set");
 	}
 
 	/*
@@ -255,9 +224,7 @@ finish:
 	fr_pool_connection_release(inst->wb_pool, request, wb_ctx);
 
 error:
-	talloc_free(user_buff);
 	talloc_free(username_buff);
-	talloc_const_free(domain);
 	REXDENT();
 
 	return rcode;
@@ -277,6 +244,7 @@ static xlat_action_t winbind_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     request_t *request, fr_value_box_list_t *in)
 {
 	rlm_winbind_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_winbind_t);
+	winbind_group_xlat_call_env_t	*env = talloc_get_type_abort(xctx->env_data, winbind_group_xlat_call_env_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*p = arg->vb_strvalue;
 	fr_value_box_t		*vb;
@@ -284,7 +252,7 @@ static xlat_action_t winbind_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_skip_whitespace(p);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
-	vb->vb_bool = winbind_check_group(inst, request, p);
+	vb->vb_bool = winbind_check_group(inst, request, p, env);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -335,38 +303,6 @@ static xlat_arg_parser_t const winbind_group_xlat_arg[] = {
 	{ .required = true, .type = FR_TYPE_STRING, .concat = true },
 	XLAT_ARG_PARSER_TERMINATOR
 };
-
-/** Bootstrap this module
- *
- * Register pair compare function for Winbind-Group fake attribute
- *
- * @param[in] mctx	data for this module
- *
- * @return
- *	- 0	success
- *	- -1	failure
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_winbind_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
-	xlat_t			*xlat;
-
-	/*
-	 *	Define the %winbind.group(name) xlat.  The register
-	 *	function automatically adds the module instance name
-	 *	as a prefix.
-	 */
-	xlat = xlat_func_register_module(inst, mctx, "group", winbind_group_xlat, FR_TYPE_BOOL);
-	if (!xlat) {
-		cf_log_err(conf, "Failed registering group expansion");
-		return -1;
-	}
-
-	xlat_func_mono_set(xlat, winbind_group_xlat_arg);
-
-	return 0;
-}
 
 
 /** Instantiate this module
@@ -574,6 +510,51 @@ static const call_env_method_t winbind_auth_method_env = {
 		CALL_ENV_TERMINATOR
 	}
 };
+
+static const call_env_method_t winbind_group_xlat_call_env = {
+	FR_CALL_ENV_METHOD_OUT(winbind_group_xlat_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("domain", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, winbind_group_xlat_call_env_t, domain),
+			.pair.dflt = "", .pair.dflt_quote = T_SINGLE_QUOTED_STRING, .pair.func = domain_call_env_parse },
+		{ FR_CALL_ENV_SUBSECTION("group", CF_IDENT_ANY, CALL_ENV_FLAG_NONE,
+			((call_env_parser_t[]) {
+				{FR_CALL_ENV_OFFSET("search_username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, winbind_group_xlat_call_env_t, username) },
+				CALL_ENV_TERMINATOR
+			}))},
+		CALL_ENV_TERMINATOR
+	}
+};
+
+/** Bootstrap this module
+ *
+ * @param[in] mctx	data for this module
+ *
+ * @return
+ *	- 0	success
+ *	- -1	failure
+ */
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	rlm_winbind_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
+	CONF_SECTION		*conf = mctx->inst->conf;
+	xlat_t			*xlat;
+
+	/*
+	 *	Define the %winbind.group(name) xlat.  The register
+	 *	function automatically adds the module instance name
+	 *	as a prefix.
+	 */
+	xlat = xlat_func_register_module(inst, mctx, "group", winbind_group_xlat, FR_TYPE_BOOL);
+	if (!xlat) {
+		cf_log_err(conf, "Failed registering group expansion");
+		return -1;
+	}
+
+	xlat_func_mono_set(xlat, winbind_group_xlat_arg);
+	xlat_func_call_env_set(xlat, &winbind_group_xlat_call_env);
+
+	return 0;
+}
 
 /*
  *	The module name should be the only globally exported symbol.

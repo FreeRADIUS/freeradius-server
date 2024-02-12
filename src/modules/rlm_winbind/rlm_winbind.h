@@ -12,11 +12,7 @@ typedef struct {
 	fr_pool_t		*wb_pool;
 	fr_dict_enum_value_t		*auth_type;
 
-	/* main config */
-	tmpl_t		*wb_domain;
-
 	/* group config */
-	tmpl_t		*group_username;
 	bool			group_add_domain;
 } rlm_winbind_t;
 
