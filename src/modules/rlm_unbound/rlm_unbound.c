@@ -97,7 +97,12 @@ static int _unbound_request_free(unbound_request_t *ur)
  * @param rate_limited	Was the request rate limited due to unbound workload
  */
 static void xlat_unbound_callback(void *mydata, int rcode, void *packet, int packet_len, int sec,
-				  char *why_bogus, UNUSED int rate_limited)
+				  char *why_bogus
+#if UNBOUND_VERSION_MAJOR > 1 || (UNBOUND_VERSION_MAJOR == 1 && UNBOUND_VERSION_MINOR > 7)
+				  , UNUSED int rate_limited
+#endif
+				  )
+
 {
 	unbound_request_t	*ur = talloc_get_type_abort(mydata, unbound_request_t);
 	request_t		*request = ur->request;
