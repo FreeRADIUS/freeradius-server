@@ -18,6 +18,9 @@
 # Build without Python
 %bcond_without rlm_python
 
+# Build without unbound
+%bcond_without rlm_unbound
+
 # Many distributions have extremely old versions of OpenSSL
 # if you'd like to build with the FreeRADIUS openssl packages
 # which are installed in /opt/openssl you should pass
@@ -476,6 +479,18 @@ Requires: freeradius-libfreeradius-curl = %{version}
 %description rest
 This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
 
+%if %{with rlm_unbound}
+%package unbound
+Summary: Unbound DNS support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: unbound
+BuildRequires: unbound-devel
+
+%description unbound
+This plugin provides unbound DNS support for the FreeRADIUS server project.
+%endif
+
 %if %{with rlm_lua}
 %package lua
 Summary: Lua support for FreeRADIUS
@@ -636,6 +651,7 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         %{autoconf_mod_with rlm_securid} \
         %{autoconf_mod_with rlm_sigtran} \
         %{autoconf_mod_with rlm_sql_oracle} \
+	%{autoconf_mod_with rlm_unbound} \
         %{autoconf_mod_with rlm_yubikey} \
 %if %{without ldap}
         --without-libfreeradius-ldap \
@@ -755,9 +771,6 @@ touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/ippool/oracle
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/main/oracle
 %__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
-%endif
-%if %{without rlm_unbound}
-%__rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/mods-config/unbound
 %endif
 %__rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/rlm_test.so
 
@@ -1110,6 +1123,10 @@ fi
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
 %endif
 
+%if %{with rlm_unbound}
+%config(noreplace)	%{_sysconfdir}/raddb/mods-config/unbound/default.conf
+%endif
+
 %files utils
 %exclude /usr/bin/*_tests
 %exclude /usr/bin/unit_test_*
@@ -1235,6 +1252,13 @@ fi
 %files rest
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_rest.so
+
+%if %{with rlm_unbound}
+%files unbound
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_unbound.so
+%doc %{_mandir}/man5/rlm_unbound.5.gz
+%endif
 
 %if %{with rlm_sigtran}
 %files sigtran
