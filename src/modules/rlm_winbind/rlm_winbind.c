@@ -139,11 +139,11 @@ static bool winbind_check_group(rlm_winbind_t const *inst, request_t *request, c
 	switch (err) {
 	case WBC_ERR_SUCCESS:
 		if (!num_groups) {
-			REDEBUG2("No groups returned");
+			RWDEBUG2("No groups returned");
 			goto finish;
 		}
 
-		REDEBUG2("Successfully retrieved user's groups");
+		RDEBUG2("Successfully retrieved user's groups");
 		break;
 
 	case WBC_ERR_WINBIND_NOT_AVAILABLE:
@@ -421,7 +421,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	chatty enough.
 	 */
 	if (do_auth_wbclient_pap(inst, request, env) == 0) {
-		REDEBUG2("User authenticated successfully using winbind");
+		RDEBUG2("User authenticated successfully using winbind");
 		RETURN_MODULE_OK;
 	}
 
