@@ -1,0 +1,9 @@
+if !(%winbind.group('domain users')) {
+	test_fail
+}
+
+if (%winbind.group('nongroup')) {
+	test_fail
+}
+
+test_pass

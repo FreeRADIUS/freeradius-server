@@ -47,6 +47,9 @@ fi
 # Allow non TLS LDAP connections to Samba
 sudo sed -i 's/\[global\]/\[global\]\n\tldap server require strong auth = no/' /etc/samba/smb.conf
 
+# Create user for testing winbind auth
+sudo /usr/bin/samba-tool user create aduser secret_123
+
 # Start the domain controller
 if [ "$USE_DOCKER" != "true" ]; then
 	sudo systemctl start samba-ad-dc

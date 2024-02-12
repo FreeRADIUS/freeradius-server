@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = 'aduser'
+User-Password = 'secret_123'
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept

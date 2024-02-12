@@ -1,0 +1,10 @@
+# Test "authenticate" winbind call.
+winbind
+
+if !(&control.Auth-Type == winbind) {
+	test_fail
+}
+
+winbind.authenticate
+
+test_pass
