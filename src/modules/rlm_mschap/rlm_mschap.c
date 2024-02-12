@@ -1678,7 +1678,7 @@ static int CC_HINT(nonnull(1, 2, 3)) nt_password_find(bool *ephemeral, fr_pair_t
 		 *	..if we're not, then we can call out to external sources.
 		 */
 		} else {
-			return -1;
+			return 0;
 		}
 	}
 
