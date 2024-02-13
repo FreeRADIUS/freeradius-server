@@ -91,7 +91,6 @@ static const conf_parser_t passchange_config[] = {
 
 static const conf_parser_t winbind_config[] = {
 	{ FR_CONF_OFFSET("username", rlm_mschap_t, wb_username) },
-	{ FR_CONF_OFFSET("domain", rlm_mschap_t, wb_domain) },
 #ifdef WITH_AUTH_WINBIND
 	{ FR_CONF_OFFSET("retry_with_normalised_username", rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
 #endif
@@ -126,7 +125,6 @@ static const conf_parser_t module_config[] = {
 	 *	These are now in a subsection above.
 	 */
 	{ FR_CONF_DEPRECATED("winbind_username", rlm_mschap_t, wb_username) },
-	{ FR_CONF_DEPRECATED("winbind_domain", rlm_mschap_t, wb_domain) },
 #ifdef WITH_AUTH_WINBIND
 	{ FR_CONF_DEPRECATED("winbind_retry_with_normalised_username", rlm_mschap_t, wb_retry_with_normalised_username) },
 #endif
@@ -181,7 +179,19 @@ static const call_env_parser_t auth_call_env[] = {
 	CALL_ENV_TERMINATOR
 };
 
-MSCHAP_CALL_ENV(auth);
+static const call_env_method_t mschap_auth_method_env = {
+	FR_CALL_ENV_METHOD_OUT(mschap_auth_call_env_t),
+	.env = (call_env_parser_t[]){ \
+		{ FR_CALL_ENV_SUBSECTION("attributes", NULL, CALL_ENV_FLAG_REQUIRED, auth_call_env) },
+		{ FR_CALL_ENV_SUBSECTION("winbind", NULL, CALL_ENV_FLAG_NONE,
+			((call_env_parser_t[]) {
+				{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, mschap_auth_call_env_t, wb_username) },
+				{ FR_CALL_ENV_OFFSET("domain", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, mschap_auth_call_env_t, wb_domain) },
+				CALL_ENV_TERMINATOR
+			}))},
+		CALL_ENV_TERMINATOR
+	}
+};
 
 typedef struct {
 	tmpl_t const	*chap_challenge;
@@ -1598,7 +1608,7 @@ static unlang_action_t mschap_error(rlm_rcode_t *p_result, rlm_mschap_t const *i
 		rcode = RLM_MODULE_DISALLOW;
 
 	} else if (mschap_result < 0) {
-		REDEBUG("%s is incorrect", env_data->chap2_response->name);
+		REDEBUG("%s is incorrect", mschap_version == 1 ? env_data->chap_response->name : env_data->chap2_response->name);
 		error = 691;
 		retry = inst->allow_retry;
 		message = "Authentication failed";
@@ -2157,6 +2167,14 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 								 tmpl_attr_tail_da(env_data->chap2_cpw));
 	if (cpw) {
 		uint8_t		*p;
+
+		/*
+		 *	Password change does require the NT password
+		 */
+		if (!nt_password) {
+			REDEBUG("Missing Password.NT - required for change password request");
+			RETURN_MODULE_FAIL;
+		}
 
 		mschap_process_cpw_request(&rcode, mctx->inst->data, request, cpw, nt_password, env_data);
 		if (rcode != RLM_MODULE_OK) goto finish;
