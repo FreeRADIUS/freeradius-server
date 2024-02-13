@@ -828,6 +828,11 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	my->info.socket.fd = fd;
 
 	/*
+	 *	Set the type, too.
+	 */
+	my->info.type = cfg->type;
+
+	/*
 	 *	Do sanity checks, bootstrap common socket options, bind to the socket, and initialize the read
 	 *	/ write functions.
 	 */
