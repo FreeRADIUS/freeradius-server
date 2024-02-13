@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/list.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/util/chap.h>
+#include <freeradius-devel/bio/fd.h>
 #ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
 #endif
@@ -71,18 +72,15 @@ static bool do_output = true;
 
 static rc_stats_t stats;
 
-static uint16_t server_port = 0;
 static int packet_code = FR_RADIUS_CODE_UNDEFINED;
-static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static bool done = true;
 static bool print_filename = false;
 
-static fr_ipaddr_t client_ipaddr;
-static uint16_t client_port = 0;
-
 static int sockfd;
 static int last_used_id = -1;
+
+static fr_bio_fd_config_t fd_config;
 
 static int ipproto = IPPROTO_UDP;
 
@@ -406,10 +404,10 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		}
 		request->packet->uctx = request;
 
-		request->packet->socket.inet.src_ipaddr = client_ipaddr;
-		request->packet->socket.inet.src_port = client_port;
-		request->packet->socket.inet.dst_ipaddr = server_ipaddr;
-		request->packet->socket.inet.dst_port = server_port;
+		request->packet->socket.inet.src_ipaddr = fd_config.src_ipaddr;
+		request->packet->socket.inet.src_port = fd_config.src_port;
+		request->packet->socket.inet.dst_ipaddr = fd_config.dst_ipaddr;
+		request->packet->socket.inet.dst_port = fd_config.dst_port;
 		request->packet->socket.type = (ipproto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 
 		request->files = files;
@@ -673,15 +671,15 @@ error:
 static int radclient_sane(rc_request_t *request)
 {
 	if (request->packet->socket.inet.dst_port == 0) {
-		request->packet->socket.inet.dst_port = server_port;
+		request->packet->socket.inet.dst_port = fd_config.dst_port;
 	}
 	if (request->packet->socket.inet.dst_ipaddr.af == AF_UNSPEC) {
-		if (server_ipaddr.af == AF_UNSPEC) {
+		if (fd_config.dst_ipaddr.af == AF_UNSPEC) {
 			ERROR("No server was given, and request %" PRIu64 " in file %s did not contain "
 			      "Packet-Dst-IP-Address", request->num, request->files->packets);
 			return -1;
 		}
-		request->packet->socket.inet.dst_ipaddr = server_ipaddr;
+		request->packet->socket.inet.dst_ipaddr = fd_config.dst_ipaddr;
 	}
 	if (request->packet->code == 0) {
 		if (packet_code == -1) {
@@ -753,7 +751,7 @@ static int send_one_packet(rc_request_t *request)
 		 *	we don't sleep, and we stop trying to process
 		 *	this packet.
 		 */
-		request->packet->socket.inet.src_ipaddr.af = server_ipaddr.af;
+		request->packet->socket.inet.src_ipaddr.af = fd_config.dst_ipaddr.af;
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, request->packet, NULL);
 		if (!rcode) {
 			ERROR("Can't allocate ID");
@@ -934,8 +932,8 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	 *	This only works if were not using any of the
 	 *	Packet-* attributes, or running with 'auto'.
 	 */
-	reply->socket.inet.dst_ipaddr = client_ipaddr;
-	reply->socket.inet.dst_port = client_port;
+	reply->socket.inet.dst_ipaddr = fd_config.src_ipaddr;
+	reply->socket.inet.dst_port = fd_config.src_port;
 
 	/*
 	 *	TCP sockets don't use recvmsg(), and thus don't get
@@ -944,8 +942,8 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	 *	we connected to.
 	 */
 	if (ipproto == IPPROTO_TCP) {
-		reply->socket.inet.src_ipaddr = server_ipaddr;
-		reply->socket.inet.src_port = server_port;
+		reply->socket.inet.src_ipaddr = fd_config.dst_ipaddr;
+		reply->socket.inet.src_port = fd_config.dst_port;
 	}
 
 	packet = fr_packet_list_find_byreply(packet_list, reply);
@@ -1064,7 +1062,6 @@ int main(int argc, char **argv)
 	char		filesecret[256];
 	FILE		*fp;
 	int		do_summary = false;
-	int		force_af = AF_UNSPEC;
 #ifndef NDEBUG
 	TALLOC_CTX	*autofree;
 #endif
@@ -1106,13 +1103,36 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
+	fd_config = (fr_bio_fd_config_t) {
+		.type = FR_BIO_FD_CONNECTED,
+		.socket_type = SOCK_DGRAM,
+
+		.src_ipaddr = (fr_ipaddr_t) {
+			.af = AF_UNSPEC,
+		},
+		.dst_ipaddr = (fr_ipaddr_t) {
+			.af = AF_UNSPEC,
+		},
+	
+		.src_port = 0,
+		.dst_port = 1812,
+
+		.interface = NULL,
+
+		.path = NULL,
+		.filename = NULL,
+
+		.async = true,
+	};
+
+
 	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fhi:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
-			force_af = AF_INET;
+			fd_config.dst_ipaddr.af = AF_INET;
 			break;
 
 		case '6':
-			force_af = AF_INET6;
+			fd_config.dst_ipaddr.af = AF_INET6;
 			break;
 
 		case 'c':
@@ -1128,7 +1148,7 @@ int main(int argc, char **argv)
 			int tmp;
 
 			if (strchr(optarg, ':')) {
-				if (fr_inet_pton_port(&client_ipaddr, &client_port,
+				if (fr_inet_pton_port(&fd_config.src_ipaddr, &fd_config.src_port,
 						      optarg, -1, AF_UNSPEC, true, false) < 0) {
 					fr_perror("Failed parsing source address");
 					fr_exit_now(1);
@@ -1139,7 +1159,7 @@ int main(int argc, char **argv)
 			tmp = atoi(optarg);
 			if (tmp < 1 || tmp > 65535) usage();
 
-			client_port = (uint16_t)tmp;
+			fd_config.src_port = (uint16_t)tmp;
 		}
 			break;
 
@@ -1334,7 +1354,7 @@ int main(int argc, char **argv)
 	 *	Resolve hostname.
 	 */
 	if (strcmp(argv[1], "-") != 0) {
-		if (fr_inet_pton_port(&server_ipaddr, &server_port, argv[1], -1, force_af, true, true) < 0) {
+		if (fr_inet_pton_port(&fd_config.dst_ipaddr, &fd_config.dst_port, argv[1], -1, fd_config.dst_ipaddr.af, true, true) < 0) {
 			fr_perror("radclient");
 			fr_exit_now(1);
 		}
@@ -1342,9 +1362,9 @@ int main(int argc, char **argv)
 		/*
 		 *	Work backwards from the port to determine the packet type
 		 */
-		if (packet_code == FR_RADIUS_CODE_UNDEFINED) packet_code = radclient_get_code(server_port);
+		if (packet_code == FR_RADIUS_CODE_UNDEFINED) packet_code = radclient_get_code(fd_config.dst_port);
 	}
-	radclient_get_port(packet_code, &server_port);
+	radclient_get_port(packet_code, &fd_config.dst_port);
 
 	/*
 	 *	Add the secret.
@@ -1388,32 +1408,33 @@ int main(int argc, char **argv)
 	 */
 	request = fr_dlist_head(&rc_request_list);
 
-	if (client_ipaddr.af == AF_UNSPEC) {
+	if (fd_config.src_ipaddr.af == AF_UNSPEC) {
 		if (request->packet->socket.inet.src_ipaddr.af == AF_UNSPEC) {
-			memset(&client_ipaddr, 0, sizeof(client_ipaddr));
-			client_ipaddr.af = server_ipaddr.af;
+			fd_config.src_ipaddr = (fr_ipaddr_t) {
+				.af = fd_config.dst_ipaddr.af,
+			};
 		} else {
-			client_ipaddr = request->packet->socket.inet.src_ipaddr;
+			fd_config.src_ipaddr = request->packet->socket.inet.src_ipaddr;
 		}
 	}
 
-	if (client_port == 0) client_port = request->packet->socket.inet.src_port;
+	if (fd_config.src_port == 0) fd_config.src_port = request->packet->socket.inet.src_port;
 
 	if (ipproto == IPPROTO_TCP) {
-		sockfd = fr_socket_client_tcp(NULL, NULL, &server_ipaddr, server_port, false);
+		sockfd = fr_socket_client_tcp(NULL, NULL, &fd_config.dst_ipaddr, fd_config.dst_port, false);
 		if (sockfd < 0) {
 			ERROR("Failed opening socket");
 			return -1;
 		}
 
 	} else {
-		sockfd = fr_socket_server_udp(&client_ipaddr, &client_port, NULL, false);
+		sockfd = fr_socket_server_udp(&fd_config.src_ipaddr, &fd_config.src_port, NULL, false);
 		if (sockfd < 0) {
 			fr_perror("Error opening socket");
 			return -1;
 		}
 
-		if (fr_socket_bind(sockfd, NULL, &client_ipaddr, &client_port) < 0) {
+		if (fr_socket_bind(sockfd, NULL, &fd_config.src_ipaddr, &fd_config.src_port) < 0) {
 			fr_perror("Error binding socket");
 			return -1;
 		}
@@ -1425,8 +1446,8 @@ int main(int argc, char **argv)
 		fr_exit_now(1);
 	}
 
-	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &server_ipaddr,
-				       server_port, NULL)) {
+	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &fd_config.dst_ipaddr,
+				       fd_config.dst_port, NULL)) {
 		ERROR("Failed adding socket");
 		fr_exit_now(1);
 	}
@@ -1436,8 +1457,8 @@ int main(int argc, char **argv)
 	 *	everything.
 	 */
 	fr_dlist_foreach(&rc_request_list, rc_request_t, this) {
-		this->packet->socket.inet.src_ipaddr = client_ipaddr;
-		this->packet->socket.inet.src_port = client_port;
+		this->packet->socket.inet.src_ipaddr = fd_config.src_ipaddr;
+		this->packet->socket.inet.src_port = fd_config.src_port;
 		if (radclient_sane(this) != 0) {
 			fr_exit_now(1);
 		}
