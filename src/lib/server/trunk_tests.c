@@ -1592,7 +1592,7 @@ static void test_connection_levels_max(void)
 	/*
 	 *	Receiving responses
 	 */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
+	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(2));
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
