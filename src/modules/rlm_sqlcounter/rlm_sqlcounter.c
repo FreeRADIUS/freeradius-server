@@ -63,7 +63,7 @@ typedef struct {
 	tmpl_t	*start_attr;		//!< &control.${.:instance}-Start
 	tmpl_t	*end_attr;		//!< &control.${.:instance}-End
 
-	tmpl_t	*paircmp_attr;		//!< Daily-Session-Time.
+	tmpl_t	*counter_attr;		//!< Daily-Session-Time.
 	tmpl_t	*limit_attr;  		//!< Max-Daily-Session.
 	tmpl_t	*reply_attr;  		//!< Session-Timeout.
 	tmpl_t	*key;  			//!< User-Name
@@ -90,8 +90,8 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("reset_period_end_name", CONF_FLAG_ATTRIBUTE, rlm_sqlcounter_t, end_attr),
 	  .dflt = "&control.${.:instance}-End" },
 
-	/* Just used to register a paircmp against */
-	{ FR_CONF_OFFSET_FLAGS("counter_name", CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, paircmp_attr) },
+	/* Attribute to write counter value to*/
+	{ FR_CONF_OFFSET_FLAGS("counter_name", CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, counter_attr) },
 	{ FR_CONF_OFFSET_FLAGS("check_name", CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, limit_attr) },
 
 	/* Attribute to write remaining session to */
@@ -337,7 +337,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Add the counter to the control list
 	 */
-	MEM(pair_update_control(&vp, tmpl_attr_tail_da(inst->paircmp_attr)) >= 0);
+	MEM(pair_update_control(&vp, tmpl_attr_tail_da(inst->counter_attr)) >= 0);
 	vp->vp_uint64 = counter;
 
 	/*
@@ -453,7 +453,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Create a new attribute for the counter.
 	 */
-	fr_assert(inst->paircmp_attr);
+	fr_assert(inst->counter_attr);
 	fr_assert(inst->limit_attr);
 
 	memset(&flags, 0, sizeof(flags));
@@ -467,7 +467,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->paircmp_attr, FR_TYPE_UINT64, &flags) < 0) {
+	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->counter_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining counter attribute");
 		return -1;
 	}
@@ -477,8 +477,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (tmpl_attr_tail_da(inst->paircmp_attr)->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_attr_tail_da(inst->paircmp_attr)->name);
+	if (tmpl_attr_tail_da(inst->counter_attr)->type != FR_TYPE_UINT64) {
+		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_attr_tail_da(inst->counter_attr)->name);
 		return -1;
 	}
 

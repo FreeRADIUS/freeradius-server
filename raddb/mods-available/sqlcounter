@@ -85,8 +85,8 @@
 #
 #  Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 #
-#  counter_name:: Name of the `check` attribute to use to access the counter in
-#  the `users` file or SQL `radcheck` or `radgroupcheck` tables.
+#  counter_name:: Name of the attribte to add to the `control` list with the current
+#  value of the counter.
 #
 #  After the sqlcounter module has run, the counter attribute will exist.
 #
