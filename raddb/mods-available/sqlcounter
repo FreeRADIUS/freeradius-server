@@ -74,14 +74,14 @@
 #  reset_period_start_name::  The name of the attribute which is used to store the
 #  time that the current reset period started.
 #
-#  The default is `&control.${.:instance}-Start`
+#  The default is `&control.${.:instance}-Reset-Start`
 #
 #  Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 #
 #  reset_period_end_name::  The name of the attribute which is used to store the
 #  time that the current reset period will end.
 #
-#  The default is `&control.${.:instance}-End`
+#  The default is `&control.${.:instance}-Reset-End`
 #
 #  Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 #

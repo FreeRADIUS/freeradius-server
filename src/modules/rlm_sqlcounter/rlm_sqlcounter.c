@@ -85,9 +85,9 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("key", CONF_FLAG_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 
 	{ FR_CONF_OFFSET_FLAGS("reset_period_start_name", CONF_FLAG_ATTRIBUTE, rlm_sqlcounter_t, start_attr),
-	  .dflt = "&control.${.:instance}-Start" },
+	  .dflt = "&control.${.:instance}-Reset-Start", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET_FLAGS("reset_period_end_name", CONF_FLAG_ATTRIBUTE, rlm_sqlcounter_t, end_attr),
-	  .dflt = "&control.${.:instance}-End" },
+	  .dflt = "&control.${.:instance}-Reset-End", .quote = T_BARE_WORD },
 
 	/* Attribute to write counter value to*/
 	{ FR_CONF_OFFSET_FLAGS("counter_name", CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, counter_attr) },
