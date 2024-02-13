@@ -1254,8 +1254,6 @@ skip_reply:
 			goto error;
 		}
 
-		map_list_talloc_free(&reply_tmp);
-
 		rcode = RLM_MODULE_OK;
 		map_list_talloc_free(&reply_tmp);
 	}
