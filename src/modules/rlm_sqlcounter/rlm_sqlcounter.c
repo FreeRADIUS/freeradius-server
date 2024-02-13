@@ -141,7 +141,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 		if (!isalpha((uint8_t) last))
 			last = 'd';
 		num = atoi(inst->reset);
-		DEBUG("num=%d, last=%c",num,last);
+		DEBUG3("num=%d, last=%c",num,last);
 	}
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
 		/*
@@ -205,7 +205,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 		if (!isalpha((uint8_t) last))
 			last = 'd';
 		num = atoi(inst->reset);
-		DEBUG("num=%d, last=%c", num, last);
+		DEBUG3("num=%d, last=%c", num, last);
 	}
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
 		/*
