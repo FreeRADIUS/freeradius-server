@@ -95,6 +95,9 @@
 #		 reject
 #	}
 #
+#  reply_name:: Name of the attribute to populate with the remaining session time.
+#  e.g. `&reply.Session-Timeout`.  If the attribute already exists and contains
+#  a lower value, then it will not be updated.
 
 #
 #  ## Configuration Settings

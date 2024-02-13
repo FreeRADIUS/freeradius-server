@@ -65,7 +65,6 @@ typedef struct {
 
 	tmpl_t	*counter_attr;		//!< Daily-Session-Time.
 	tmpl_t	*limit_attr;  		//!< Max-Daily-Session.
-	tmpl_t	*reply_attr;  		//!< Session-Timeout.
 	tmpl_t	*key;  			//!< User-Name
 
 	char const	*sqlmod_inst;	//!< Instance of SQL module to use, usually just 'sql'.
@@ -94,10 +93,12 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("counter_name", CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, counter_attr) },
 	{ FR_CONF_OFFSET_FLAGS("check_name", CONF_FLAG_ATTRIBUTE | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, limit_attr) },
 
-	/* Attribute to write remaining session to */
-	{ FR_CONF_OFFSET_FLAGS("reply_name", CONF_FLAG_ATTRIBUTE, rlm_sqlcounter_t, reply_attr) },
 	CONF_PARSER_TERMINATOR
 };
+
+typedef struct {
+	tmpl_t		*reply_attr;		//!< Attribute to write timeout to.
+} sqlcounter_call_env_t;
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
@@ -253,6 +254,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
+	sqlcounter_call_env_t	*env = talloc_get_type_abort(mctx->env_data, sqlcounter_call_env_t);
 	uint64_t		counter, res;
 	fr_pair_t		*limit, *vp;
 	fr_pair_t		*reply_item;
@@ -346,7 +348,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	could login at max for 2*max-usage-time Is
 	 *	that acceptable?
 	 */
-	if (inst->reply_attr) {
+	if (env->reply_attr) {
 		fr_value_box_t	vb;
 
 		/*
@@ -354,7 +356,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		 *	limit, so that the user will not need to login
 		 *	again.  Do this only for Session-Timeout.
 		 */
-		if ((tmpl_attr_tail_da(inst->reply_attr) == attr_session_timeout) &&
+		if ((tmpl_attr_tail_da(env->reply_attr) == attr_session_timeout) &&
 		    fr_time_gt(inst->reset_time, fr_time_wrap(0)) &&
 		    ((int64_t)res >= fr_time_delta_to_sec(fr_time_sub(inst->reset_time, request->packet->timestamp)))) {
 			fr_time_delta_t to_reset = fr_time_sub(inst->reset_time, request->packet->timestamp);
@@ -371,7 +373,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		/*
 		 *	Limit the reply attribute to the minimum of the existing value, or this new one.
 		 */
-		ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
+		ret = tmpl_find_or_add_vp(&reply_item, request, env->reply_attr);
 		switch (ret) {
 		case 1:		/* new */
 			break;
@@ -381,7 +383,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			fr_value_box_t	existing;
 			fr_value_box_cast(NULL, &existing, FR_TYPE_UINT64, NULL, &vp->data);
 			if (fr_value_box_cmp(&vb, &existing) == 1) {
-				RDEBUG2("Leaving existing %s value of %pV" , inst->reply_attr->name,
+				RDEBUG2("Leaving existing %s value of %pV" , env->reply_attr->name,
 					&vp->data);
 				RETURN_MODULE_OK;
 			}
@@ -389,11 +391,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 			break;
 
 		case -1:	/* alloc failed */
-			REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
+			REDEBUG("Error allocating attribute %s", env->reply_attr->name);
 			RETURN_MODULE_FAIL;
 
 		default:	/* request or list unavailable */
-			RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
+			RDEBUG2("List or request context not available for %s, skipping...", env->reply_attr->name);
 			RETURN_MODULE_OK;
 		}
 
@@ -490,6 +492,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static const call_env_method_t sqlcounter_call_env = {
+	FR_CALL_ENV_METHOD_OUT(sqlcounter_call_env_t),
+	.env = (call_env_parser_t[]){
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("reply_name", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, sqlcounter_call_env_t, reply_attr) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -511,7 +521,8 @@ module_rlm_t rlm_sqlcounter = {
 		.instantiate	= mod_instantiate,
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_authorize},
+		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		  .method_env = &sqlcounter_call_env },
 		MODULE_NAME_TERMINATOR
 	}
 };
