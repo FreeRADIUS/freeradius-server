@@ -44,8 +44,8 @@ if ! grep -q "nameserver 127.0.0.1" /etc/resolv.conf; then
 	grep "^nameserver" /etc/resolv.conf.tmp | sudo tee -a /etc/resolv.conf
 fi
 
-# Allow non TLS LDAP connections to Samba
-sudo sed -i 's/\[global\]/\[global\]\n\tldap server require strong auth = no/' /etc/samba/smb.conf
+# Allow non TLS LDAP connections to Samba and NTLM for MSCHAP auth
+sudo sed -i 's/\[global\]/\[global\]\n\tldap server require strong auth = no\n\tntlm auth = yes/' /etc/samba/smb.conf
 
 # Create user for testing winbind auth
 sudo /usr/bin/samba-tool user create aduser secret_123

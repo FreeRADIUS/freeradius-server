@@ -1,0 +1,28 @@
+&control.Password.Cleartext := 'secret_123'
+
+mschap_winbind
+
+if !(&control.Auth-Type == mschap_winbind) {
+	test_fail
+}
+
+mschap_winbind.authenticate {
+	reject = 1
+}
+
+#
+#  Depending on host permissions, we may not be able to talk to winbind
+#  Handle false failures
+#
+if (&Module-Failure-Message[*] == 'mschap_winbind: Unable to contact winbind!') {
+	test_pass
+	return
+}
+
+if !(&reply.Vendor-Specific.Microsoft.CHAP-MPPE-Keys) {
+	test_fail
+}
+
+&reply := {}
+
+test_pass

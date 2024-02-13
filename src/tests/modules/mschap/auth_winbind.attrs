@@ -1,0 +1,14 @@
+#
+#  Input Packet
+#
+Packet-Type = Access-Request
+User-Name = 'EXAMPLE\aduser'
+NAS-IP-Address = 127.0.0.1
+Vendor-Specific.Microsoft.CHAP-Response = 0x0001000000000000000000000000000000000000000000000000553aa92b9b20dba13953035b7ca0a8f6eb198ea6076f8b2a
+Vendor-Specific.Microsoft.CHAP-Challenge = 0xe2d04a33fec38c11
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+
