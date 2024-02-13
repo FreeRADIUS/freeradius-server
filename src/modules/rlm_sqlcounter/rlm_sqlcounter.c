@@ -347,6 +347,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	that acceptable?
 	 */
 	if (inst->reply_attr) {
+		fr_value_box_t	vb;
+
 		/*
 		 *	If we are near a reset then add the next
 		 *	limit, so that the user will not need to login
@@ -361,64 +363,42 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 				"Adding %pV to reply value",
 				fr_box_time_delta(to_reset), res, fr_box_time_delta(to_reset));
 			res = fr_time_delta_to_sec(to_reset) + limit->vp_uint64;
-
-			/*
-			 *	Limit the reply attribute to the minimum of the existing value, or this new one.
-			 *
-			 *	Duplicate code because Session-Timeout is uint32, not uint64
-			 */
-			ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
-			switch (ret) {
-			case 1:		/* new */
-				break;
-
-			case 0:		/* found */
-				if (reply_item->vp_uint32 <= res) {
-					RDEBUG2("Leaving existing %s value of %u", inst->reply_attr->name,
-						reply_item->vp_uint32);
-					RETURN_MODULE_OK;
-				}
-				break;
-
-			case -1:	/* alloc failed */
-				REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
-				RETURN_MODULE_FAIL;
-
-			default:	/* request or list unavailable */
-				RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
-				RETURN_MODULE_OK;
-			}
-
-			if (res > UINT32_MAX) res = UINT32_MAX;
-			reply_item->vp_uint32 = res;
-
-		} else {
-			/*
-			 *	Limit the reply attribute to the minimum of the existing value, or this new one.
-			 */
-			ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
-			switch (ret) {
-			case 1:		/* new */
-				break;
-
-			case 0:		/* found */
-				if (reply_item->vp_uint64 <= res) {
-					RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
-						reply_item->vp_uint64);
-					RETURN_MODULE_OK;
-				}
-				break;
-
-			case -1:	/* alloc failed */
-				REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
-				RETURN_MODULE_FAIL;
-
-			default:	/* request or list unavailable */
-				RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
-				RETURN_MODULE_OK;
-			}
-			reply_item->vp_uint64 = res;
 		}
+
+		fr_value_box_init(&vb, FR_TYPE_UINT64, NULL, false);
+		vb.vb_uint64 = res;
+
+		/*
+		 *	Limit the reply attribute to the minimum of the existing value, or this new one.
+		 */
+		ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
+		switch (ret) {
+		case 1:		/* new */
+			break;
+
+		case 0:		/* found */
+		{
+			fr_value_box_t	existing;
+			fr_value_box_cast(NULL, &existing, FR_TYPE_UINT64, NULL, &vp->data);
+			if (fr_value_box_cmp(&vb, &existing) == 1) {
+				RDEBUG2("Leaving existing %s value of %pV" , inst->reply_attr->name,
+					&vp->data);
+				RETURN_MODULE_OK;
+			}
+		}
+			break;
+
+		case -1:	/* alloc failed */
+			REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
+			RETURN_MODULE_FAIL;
+
+		default:	/* request or list unavailable */
+			RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
+			RETURN_MODULE_OK;
+		}
+
+		fr_value_box_cast(reply_item, &reply_item->data, reply_item->data.type, NULL, &vb);
+
 		RDEBUG2("&%pP", reply_item);
 
 		RETURN_MODULE_UPDATED;
