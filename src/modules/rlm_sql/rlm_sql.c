@@ -1240,11 +1240,15 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 		do_fall_through = fall_through(&reply_tmp);
 
-		RDEBUG2("User found in radreply table, merging reply items");
+		RDEBUG2("User found in radreply table");
 		user_found = true;
+	}
 
+skip_reply:
+	if (map_list_num_elements(&reply_tmp)) {
+		RDEBUG2("Merging control and reply items");
 		if (radius_legacy_map_list_apply(request, &reply_tmp, NULL) < 0) {
-			RPEDEBUG("Failed applying reply item");
+			RPEDEBUG("Failed applying item");
 			map_list_talloc_free(&reply_tmp);
 			rcode = RLM_MODULE_FAIL;
 			goto error;
@@ -1261,7 +1265,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 */
 	if (!inst->config.groupmemb_query) goto release;
 
-skip_reply:
 	if ((do_fall_through == FALL_THROUGH_YES) ||
 	    (inst->config.read_groups && (do_fall_through == FALL_THROUGH_DEFAULT))) {
 		rlm_rcode_t ret;
