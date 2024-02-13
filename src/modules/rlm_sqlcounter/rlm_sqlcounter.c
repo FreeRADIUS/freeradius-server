@@ -98,6 +98,7 @@ static const conf_parser_t module_config[] = {
 
 typedef struct {
 	tmpl_t		*reply_attr;		//!< Attribute to write timeout to.
+	tmpl_t		*reply_msg_attr;	//!< Attribute to write reply message to.
 } sqlcounter_call_env_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -110,12 +111,10 @@ fr_dict_autoload_t rlm_sqlcounter_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_reply_message;
 static fr_dict_attr_t const *attr_session_timeout;
 
 extern fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[];
 fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[] = {
-	{ .out = &attr_reply_message, .name = "Reply-Message", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
@@ -319,11 +318,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Check if check item > counter
 	 */
 	if (limit->vp_uint64 <= counter) {
-		/* User is denied access, send back a reply message */
-		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
+		if (env->reply_msg_attr) {
+			/* User is denied access, send back a reply message */
+			snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 
-		MEM(pair_update_reply(&vp, attr_reply_message) >= 0);
-		fr_pair_value_strdup(vp, msg, false);
+			MEM(pair_update_reply(&vp, tmpl_attr_tail_da(env->reply_msg_attr)) >= 0);
+			fr_pair_value_strdup(vp, msg, false);
+		}
 
 		REDEBUG2("Maximum %s usage time reached", inst->reset);
 		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
@@ -496,6 +497,7 @@ static const call_env_method_t sqlcounter_call_env = {
 	FR_CALL_ENV_METHOD_OUT(sqlcounter_call_env_t),
 	.env = (call_env_parser_t[]){
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("reply_name", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, sqlcounter_call_env_t, reply_attr) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("reply_message_name", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, sqlcounter_call_env_t, reply_msg_attr) },
 		CALL_ENV_TERMINATOR
 	}
 };

@@ -98,6 +98,9 @@
 #  reply_name:: Name of the attribute to populate with the remaining session time.
 #  e.g. `&reply.Session-Timeout`.  If the attribute already exists and contains
 #  a lower value, then it will not be updated.
+#
+#  reply_message_name:: Name of the attribute into which a message should be placed
+#  if the limit has been exeeded for the counter.
 
 #
 #  ## Configuration Settings
@@ -116,6 +119,7 @@ sqlcounter dailycounter {
 	check_name = &control.Max-Daily-Session
 	reply_name = &reply.Session-Timeout
 	key = "%{&Stripped-User-Name || &User-Name}"
+	reply_message_name = &Reply-Message
 
 	reset = daily
 
