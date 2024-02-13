@@ -753,42 +753,11 @@ static int send_one_packet(rc_request_t *request)
 		 *	we don't sleep, and we stop trying to process
 		 *	this packet.
 		 */
-	retry:
 		request->packet->socket.inet.src_ipaddr.af = server_ipaddr.af;
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, request->packet, NULL);
 		if (!rcode) {
-			int mysockfd;
-
-			if (ipproto == IPPROTO_TCP) {
-				mysockfd = fr_socket_client_tcp(NULL, NULL,
-								&request->packet->socket.inet.dst_ipaddr,
-								request->packet->socket.inet.dst_port, false);
-				if (mysockfd < 0) {
-					fr_perror("Error opening socket");
-					return -1;
-				}
-			} else {
-				uint16_t port = 0;
-
-				mysockfd = fr_socket_server_udp(&client_ipaddr, &port, NULL, true);
-				if (mysockfd < 0) {
-					fr_perror("Error opening socket");
-					return -1;
-				}
-
-				if (fr_socket_bind(mysockfd, NULL, &client_ipaddr, &port) < 0) {
-					fr_perror("Error binding socket");
-					return -1;
-				}
-			}
-
-			if (!fr_packet_list_socket_add(packet_list, mysockfd, ipproto,
-						       &request->packet->socket.inet.dst_ipaddr,
-						       request->packet->socket.inet.dst_port, NULL)) {
-				ERROR("Can't add new socket");
-				fr_exit_now(1);
-			}
-			goto retry;
+			ERROR("Can't allocate ID");
+			fr_exit_now(1);
 		}
 
 		assert(request->packet->id != -1);
