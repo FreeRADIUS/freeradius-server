@@ -16,7 +16,6 @@ jobs:
       matrix:
         env:
           - { NAME: "centos-7",  OS: "centos:7" }
-          - { NAME: "centos-8",  OS: "centos:8" }
           - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
           - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
       fail-fast: false
@@ -34,22 +33,6 @@ jobs:
 
     steps:
 
-    #
-    # Centos9 is EOL, so we need the below tricks to get it to work.
-    #
-    # Converting from CentOS Linux 8 to CentOS Stream 8 is the "official" process
-    # (see centos.org/centos-stream/#centos-stream-8):
-    #
-    - name: Some hacks for CentOS 8 (EOL) to work again.
-      if: ${{ matrix.env.NAME == 'centos-8' }}
-      run: |
-        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
-        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
-        yum upgrade -y
-        yum -y --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos
-        yum clean all && yum makecache
-        yum distro-sync -y --allowerasing
-
     # Required so that the checkout action uses git protocol rather than the GitHub REST API.
     # make rpm requires the FR directory to be a git repository.
     - name: Install recent git for CentOS 7
@@ -57,8 +40,8 @@ jobs:
       run: |
         yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.30.1-1.ep7.x86_64.rpm
 
-    - name: Install distro git for Rocky and CentOS 8.
-      if: ${{ startsWith(matrix.env.NAME, 'rocky-') || matrix.env.NAME == 'centos-8' }}
+    - name: Install distro git for Rocky.
+      if: ${{ startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
         yum install -y git-core
 
@@ -89,8 +72,8 @@ jobs:
       run: |
         yum install -y epel-release
 
-    - name: Enable PowerTools on Rocky 8 and CentOS 8.
-      if: ${{ matrix.env.NAME == 'rocky-8' || matrix.env.NAME == 'centos-8' }}
+    - name: Enable PowerTools on Rocky 8.
+      if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
@@ -142,8 +125,8 @@ jobs:
         openssl version
 
     # For pkill and ps
-    - name: Enable procps-ng on Centos and Rocky
-      if: ${{ startsWith(matrix.env.NAME, 'centos-8') || startsWith(matrix.env.NAME, 'rocky-') }}
+    - name: Enable procps-ng on Rocky
+      if: ${{ startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
         yum install -y procps-ng
 
@@ -206,7 +189,6 @@ jobs:
       matrix:
         env:
           - { NAME: "centos-7", OS: "centos:7" }
-          - { NAME: "centos-8", OS: "centos:8" }
           - { NAME: "rocky-8", OS: "rockylinux/rockylinux:8" }
           - { NAME: "rocky-9", OS: "rockylinux/rockylinux:9" }
       fail-fast: false
@@ -219,22 +201,6 @@ jobs:
     name: "RPM install test"
 
     steps:
-
-    #
-    # Centos9 is EOL, so we need the below tricks to get it to work.
-    #
-    # Converting from CentOS Linux 8 to CentOS Stream 8 is the "official" process
-    # (see centos.org/centos-stream/#centos-stream-8):
-    #
-    - name: Some hacks for CentOS 8 (EOL) to work again.
-      if: ${{ matrix.env.NAME == 'centos-8' }}
-      run: |
-        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
-        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
-        yum upgrade -y
-        yum -y --disablerepo '*' --enablerepo extras swap centos-linux-repos centos-stream-repos
-        yum clean all && yum makecache
-        yum distro-sync -y --allowerasing
 
     - name: LTB repo for CentOS and Rocky 8
       if: ${{ startsWith(matrix.env.NAME, 'centos-') || matrix.env.NAME == 'rocky-8' }}
@@ -252,8 +218,8 @@ jobs:
       run: |
         yum install -y epel-release
 
-    - name: Enable PowerTools on Centos 8 and Rocky 8
-      if: ${{ matrix.env.NAME == 'centos-8' || matrix.env.NAME == 'rocky-8' }}
+    - name: Enable PowerTools on Rocky 8
+      if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
         yum install -y yum-utils
         yum config-manager --enable PowerTools || :
