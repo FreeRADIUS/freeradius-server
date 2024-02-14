@@ -453,11 +453,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	CONF_SECTION    	*conf = mctx->inst->conf;
 	fr_dict_attr_flags_t	flags = (fr_dict_attr_flags_t) { .internal = 1, .length = 8 };
 
-	/*
-	 *	Create a new attribute for the counter.
-	 */
-	fr_assert(inst->counter_attr);
-	fr_assert(inst->limit_attr);
 
 	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->start_attr, FR_TYPE_UINT64, &flags) < 0) {
 		cf_log_perr(conf, "Failed defining reset_period_start attribute");
