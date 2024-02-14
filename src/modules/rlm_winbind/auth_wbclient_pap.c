@@ -39,7 +39,7 @@ RCSID("$Id$")
  *
  * @param[in] inst Module instance
  * @param[in] request The current request
- * @param[in] password the User-Password
+ * @param[in] env The call_env for the current winbind authentication
  *
  * @return
  *	- 0	Success
