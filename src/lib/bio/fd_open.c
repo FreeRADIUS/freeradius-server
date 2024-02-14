@@ -678,20 +678,9 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	}
 
 	/*
-	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
-	 *	kernel instead binds us to a 1.2.3.4.  So once the
-	 *	socket is bound, ask it what it's IP address is.
+	 *	The source IP may have changed, so get the new one.
 	 */
-	salen = sizeof(salocal);
-	memset(&salocal, 0, salen);
-	if (getsockname(my->info.socket.fd, (struct sockaddr *) &salocal, &salen) < 0) {
-		fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
-		return -1;
-	}
-
-	if (fr_ipaddr_from_sockaddr(&my->info.socket.inet.src_ipaddr, &my->info.socket.inet.src_port, &salocal, salen) < 0) return -1;
-
-	return 0;
+	return fr_bio_fd_socket_name(my);
 }
 
 /** Opens a socket and updates sock->fd

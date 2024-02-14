@@ -652,6 +652,31 @@ int fr_filename_to_sockaddr(struct sockaddr_un *sun, socklen_t *sunlen, char con
 	return 0;
 }
 
+int fr_bio_fd_socket_name(fr_bio_fd_t *my)
+{
+        socklen_t salen;
+        struct sockaddr_storage salocal;
+
+	/*
+	 *	Already set: do nothing.
+	 */
+	if (!fr_ipaddr_is_inaddr_any(&my->info.socket.inet.src_ipaddr)) return 0;
+
+	/*
+	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
+	 *	kernel instead binds us to a 1.2.3.4.  So once the
+	 *	socket is bound, ask it what it's IP address is.
+	 */
+	salen = sizeof(salocal);
+	memset(&salocal, 0, salen);
+	if (getsockname(my->info.socket.fd, (struct sockaddr *) &salocal, &salen) < 0) {
+		fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return fr_ipaddr_from_sockaddr(&my->info.socket.inet.src_ipaddr, &my->info.socket.inet.src_port, &salocal, salen);
+}
+
 
 /** Try to connect().
  *
@@ -681,6 +706,11 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 retry:
         if (connect(my->info.socket.fd, (struct sockaddr *) &sockaddr, salen) == 0) {
                 my->info.state = FR_BIO_FD_STATE_OPEN;
+
+		/*
+		 *	The source IP may have changed, so get the new one.
+		 */
+		if (fr_bio_fd_socket_name(my) < 0) goto fail;
 
                 if (fr_bio_fd_init_common(my) < 0) goto fail;
 
@@ -758,10 +788,16 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 	if (my->info.socket.af == AF_FILE_BIO) return fr_bio_fd_init_file(my);
 
 	/*
-	 *	Connected datagrams must have real IPs
+	 *	The source IP can be unspecified.  It will get updated after we call connect().
 	 */
-	if (fr_ipaddr_is_inaddr_any(&my->info.socket.inet.src_ipaddr)) return -1;
-	if (fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) return -1;
+
+	/*
+	 *	All connected sockets must have a destination IP.
+	 */
+	if (fr_ipaddr_is_inaddr_any(&my->info.socket.inet.dst_ipaddr)) {
+		fr_strerror_const("Destination IP address cannot be wildcard");
+		return -1;
+	}
 
 	/*
 	 *	Don't do any reads until we're connected.

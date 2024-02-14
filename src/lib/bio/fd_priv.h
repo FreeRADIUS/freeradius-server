@@ -57,3 +57,5 @@ int	fr_bio_fd_init_common(fr_bio_fd_t *my);
 int	fr_bio_fd_init_connected(fr_bio_fd_t *my);
 
 int	fr_bio_fd_init_accept(fr_bio_fd_t *my);
+
+int	fr_bio_fd_socket_name(fr_bio_fd_t *my);
