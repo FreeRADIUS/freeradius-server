@@ -267,6 +267,79 @@ fail:
 	return rcode;
 }
 
+/** Return data only if we have a complete packet.
+ *
+ */
+static ssize_t fr_bio_mem_read_packet_datagram(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
+{
+	ssize_t rcode;
+	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
+	fr_bio_t *next;
+
+	/*
+	 *	There must be a next bio.
+	 */
+	next = fr_bio_next(&my->bio);
+	fr_assert(next != NULL);
+
+	rcode = next->read(next, packet_ctx, buffer, size);
+	if (rcode > 0) {
+		size_t want = rcode;
+
+		/*
+		 *	It's a datagram socket, there can only be one packet in the buffer.
+		 *
+		 *	@todo - if we're allowed more than one packet in the buffer, we should just call
+		 *	fr_bio_mem_read_packet(), or this function should call fr_bio_mem_verify_packet().
+		 */
+		switch (my->verify((fr_bio_t *) my, packet_ctx, buffer, &want)) {
+			/*
+			 *	The data in the buffer is exactly a packet.  Return that.
+			 *
+			 *	@todo - if there are multiple packets, return the total size of packets?
+			 */
+		case FR_BIO_VERIFY_OK:
+			fr_assert(want <= (size_t) rcode);
+			return want;
+
+			/*
+			 *	The data in the buffer doesn't make up a complete packet, discard it.  The
+			 *	called verify function should take care of logging.
+			 */
+		case FR_BIO_VERIFY_WANT_MORE:
+			return 0;
+
+		case FR_BIO_VERIFY_DISCARD:
+			return 0;
+
+			/*
+			 *	Some kind of fatal validation error.
+			 */
+		case FR_BIO_VERIFY_ERROR_CLOSE:
+			break;
+		}
+
+		rcode = fr_bio_error(VERIFY);
+		goto fail;
+	}
+
+	/*
+	 *	No data was read from the next bio, we still don't have a packet.  Return nothing.
+	 */
+	if (rcode == 0) return 0;
+
+	/*
+	 *	The next bio returned an error.  Whatever it is, it's fatal.  We can read from the memory
+	 *	buffer until it's empty, but we can no longer write to the memory buffer.  Any data written to
+	 *	the buffer is lost.
+	 */
+fail:
+	bio->read = fr_bio_mem_read_eof;
+	bio->write = fr_bio_null_write;
+	return rcode;
+}
+
+
 /** Pass writes to the next BIO
  *
  *  For speed, we try to bypass the memory buffer and write directly to the next bio.  However, if the next
@@ -619,15 +692,22 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
  *
  *  Writes pass straight through to the next bio.
  */
-fr_bio_t *fr_bio_mem_packet_alloc(TALLOC_CTX *ctx, size_t read_size, fr_bio_verify_t verify, fr_bio_t *next)	
+fr_bio_t *fr_bio_mem_packet_alloc(TALLOC_CTX *ctx, size_t read_size, fr_bio_verify_t verify, bool datagram, fr_bio_t *next)
 {
 	fr_bio_mem_t *my;
 
-	my = (fr_bio_mem_t *) fr_bio_mem_sink_alloc(ctx, read_size);
+	if (!datagram) {
+		my = (fr_bio_mem_t *) fr_bio_mem_sink_alloc(ctx, read_size);
+	} else {
+		my = talloc_zero(ctx, fr_bio_mem_t);
+		if (!my) return NULL;
+
+		talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor);
+	}
 	if (!my) return NULL;
 
 	my->verify = verify;
-	my->bio.read = fr_bio_mem_read_packet;
+	my->bio.read = datagram ? fr_bio_mem_read_packet_datagram : fr_bio_mem_read_packet;
 	my->bio.write = fr_bio_next_write;
 
 	fr_bio_chain(&my->bio, next);

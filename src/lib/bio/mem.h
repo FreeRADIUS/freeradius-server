@@ -51,7 +51,7 @@ typedef fr_bio_verify_action_t (*fr_bio_verify_t)(fr_bio_t *bio, void *packet_ct
 
 fr_bio_t	*fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size, fr_bio_t *next) CC_HINT(nonnull);
 
-fr_bio_t	*fr_bio_mem_packet_alloc(TALLOC_CTX *ctx, size_t read_size, fr_bio_verify_t verify, fr_bio_t *next) CC_HINT(nonnull);
+fr_bio_t	*fr_bio_mem_packet_alloc(TALLOC_CTX *ctx, size_t read_size, fr_bio_verify_t verify, bool datagram, fr_bio_t *next) CC_HINT(nonnull);
 
 fr_bio_t	*fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t buffer_size, fr_bio_t *next) CC_HINT(nonnull);
 
