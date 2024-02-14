@@ -79,6 +79,12 @@ static char *wbclient_normalise_username(TALLOC_CTX *ctx, struct wbcContext *wb_
 
 /** Check NTLM authentication direct to winbind via Samba's libwbclient library
  *
+ * @param[in] inst		Module instance.
+ * @param[in] request		Current request.
+ * @param[in] challenge		MS CHAP challenge.
+ * @param[in] response		MS CHAP response.
+ * @param[out] nthashhash	Hash returned on success.
+ * @param[in] env_data		Call_env data for current authentication.
  * @return
  *	- 0 success.
  *	- -1 auth failure.
