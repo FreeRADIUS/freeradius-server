@@ -67,7 +67,7 @@ typedef struct {
 	tmpl_t	*limit_attr;  		//!< Max-Daily-Session.
 	tmpl_t	*key;  			//!< User-Name
 
-	char const	*sqlmod_inst;	//!< Instance of SQL module to use, usually just 'sql'.
+	char const	*sql_name;	//!< Instance of SQL module to use, usually just 'sql'.
 	char const	*query;		//!< SQL query to retrieve current session time.
 	char const	*reset;  	//!< Daily, weekly, monthly, never or user defined.
 
@@ -76,7 +76,7 @@ typedef struct {
 } rlm_sqlcounter_t;
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("sql_module_instance", CONF_FLAG_REQUIRED, rlm_sqlcounter_t, sqlmod_inst) },
+	{ FR_CONF_OFFSET_FLAGS("sql_module_instance", CONF_FLAG_REQUIRED, rlm_sqlcounter_t, sql_name) },
 
 
 	{ FR_CONF_OFFSET_FLAGS("query", CONF_FLAG_XLAT | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, query) },
@@ -297,7 +297,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	vp->vp_uint64 = fr_time_to_sec(inst->reset_time);
 
 	/* Then combine that with the name of the module were using to do the query */
-	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, inst->query);
+	len = snprintf(query, sizeof(query), "%%%s(\"%s\")", inst->sql_name, inst->query);
 	if (len >= (sizeof(query) - 1)) {
 		REDEBUG("Insufficient query buffer space");
 
