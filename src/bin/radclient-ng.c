@@ -1067,9 +1067,7 @@ int main(int argc, char **argv)
 	char		filesecret[256];
 	FILE		*fp;
 	int		do_summary = false;
-#ifndef NDEBUG
 	TALLOC_CTX	*autofree;
-#endif
 	fr_dlist_head_t	filenames;
 
 	/*
@@ -1085,9 +1083,8 @@ int main(int argc, char **argv)
 	 */
 	fr_atexit_global_setup();
 
-#ifndef NDEBUG
 	autofree = talloc_autofree_context();
-
+#ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radclient");
 		fr_exit_now(EXIT_FAILURE);
@@ -1117,7 +1114,7 @@ int main(int argc, char **argv)
 		.dst_ipaddr = (fr_ipaddr_t) {
 			.af = AF_INET,
 		},
-	
+
 		.src_port = 0,
 		.dst_port = 1812,
 
@@ -1490,7 +1487,7 @@ int main(int argc, char **argv)
 				break;
 			}
 
-			
+
 			/*
 			 *	If we haven't sent this packet
 			 *	often enough, we're not done,
@@ -1501,7 +1498,7 @@ int main(int argc, char **argv)
 
 				done = false;
 				sleep_time = fr_time_delta_wrap(0);
-				
+
 				for (i = 0; i < 4; i++) {
 					((uint32_t *) this->packet->vector)[i] = fr_rand();
 				}
@@ -1544,9 +1541,7 @@ int main(int argc, char **argv)
 		ret = EXIT_FAILURE;
 	}
 
-#ifndef NDEBUG
 	talloc_free(autofree);
-#endif
 
 	if (do_summary) {
 		fr_perror("Packet summary:\n"
