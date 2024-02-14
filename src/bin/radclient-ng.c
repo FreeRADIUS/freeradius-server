@@ -82,6 +82,10 @@ static int last_used_id = -1;
 
 static fr_bio_fd_config_t fd_config;
 
+static fr_bio_fd_info_t const *fd_info = NULL;
+
+static fr_bio_t *bio = NULL;
+
 static int ipproto = IPPROTO_UDP;
 
 static fr_packet_list_t *packet_list = NULL;
@@ -724,6 +728,8 @@ static void deallocate_id(rc_request_t *request)
  */
 static int send_one_packet(rc_request_t *request)
 {
+	ssize_t slen;
+
 	assert(request->done == false);
 
 #ifdef STATIC_ANALYZER
@@ -751,7 +757,8 @@ static int send_one_packet(rc_request_t *request)
 		 *	we don't sleep, and we stop trying to process
 		 *	this packet.
 		 */
-		request->packet->socket.inet.src_ipaddr.af = fd_config.dst_ipaddr.af;
+		request->packet->socket = fd_info->socket;
+
 		rcode = fr_packet_list_id_alloc(packet_list, ipproto, request->packet, NULL);
 		if (!rcode) {
 			ERROR("Can't allocate ID");
@@ -865,11 +872,32 @@ static int send_one_packet(rc_request_t *request)
 		request->tries++;
 	}
 
-	/*
-	 *	Send the packet.
-	 */
-	if (fr_radius_packet_send(request->packet, &request->request_pairs, NULL, secret) < 0) {
-		REDEBUG("Failed to send packet for ID %d", request->packet->id);
+	if (!request->packet->data) {
+		/*
+		 *	Encode the packet.
+		 */
+		if (fr_radius_packet_encode(request->packet, &request->request_pairs, NULL, secret) < 0) {
+			REDEBUG("Failed encoding packet for ID %d", request->packet->id);
+			deallocate_id(request);
+			request->done = true;
+			return -1;
+		}
+
+		/*
+		 *	Re-sign it, including updating the
+		 *	Message-Authenticator.
+		 */
+		if (fr_radius_packet_sign(request->packet, NULL, secret) < 0) {
+			REDEBUG("Failed signing packet for ID %d", request->packet->id);
+			deallocate_id(request);
+			request->done = true;
+			return -1;
+		}
+	}
+
+	slen = fr_bio_write(bio, NULL, request->packet->data, request->packet->data_len);
+	if (slen <= 0) {
+		REDEBUG("Failed writing packet for ID %d", request->packet->id);
 		deallocate_id(request);
 		request->done = true;
 		return -1;
@@ -921,29 +949,6 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 		 */
 		if (ipproto == IPPROTO_TCP) fr_exit_now(1);
 		return -1;	/* bad packet */
-	}
-
-	/*
-	 *	We don't use udpfromto.  So if we bind to "*", we want
-	 *	to find replies sent to 192.0.2.4.  Therefore, we
-	 *	force all replies to have the one address we know
-	 *	about, no matter what real address they were sent to.
-	 *
-	 *	This only works if were not using any of the
-	 *	Packet-* attributes, or running with 'auto'.
-	 */
-	reply->socket.inet.dst_ipaddr = fd_config.src_ipaddr;
-	reply->socket.inet.dst_port = fd_config.src_port;
-
-	/*
-	 *	TCP sockets don't use recvmsg(), and thus don't get
-	 *	the source IP/port.  However, since they're TCP, we
-	 *	know what the source IP/port is, because that's where
-	 *	we connected to.
-	 */
-	if (ipproto == IPPROTO_TCP) {
-		reply->socket.inet.src_ipaddr = fd_config.dst_ipaddr;
-		reply->socket.inet.src_port = fd_config.dst_port;
 	}
 
 	packet = fr_packet_list_find_byreply(packet_list, reply);
@@ -1066,7 +1071,6 @@ int main(int argc, char **argv)
 	TALLOC_CTX	*autofree;
 #endif
 	fr_dlist_head_t	filenames;
-	rc_request_t	*request;
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1108,10 +1112,10 @@ int main(int argc, char **argv)
 		.socket_type = SOCK_DGRAM,
 
 		.src_ipaddr = (fr_ipaddr_t) {
-			.af = AF_UNSPEC,
+			.af = AF_INET,
 		},
 		.dst_ipaddr = (fr_ipaddr_t) {
-			.af = AF_UNSPEC,
+			.af = AF_INET,
 		},
 	
 		.src_port = 0,
@@ -1223,8 +1227,10 @@ int main(int argc, char **argv)
 
 		case 'P':
 			if (!strcmp(optarg, "tcp")) {
+				fd_config.socket_type = SOCK_STREAM;
 				ipproto = IPPROTO_TCP;
 			} else if (!strcmp(optarg, "udp")) {
+				fd_config.socket_type = SOCK_DGRAM;
 				ipproto = IPPROTO_UDP;
 			} else {
 				usage();
@@ -1402,43 +1408,16 @@ int main(int argc, char **argv)
 
 	openssl3_init();
 
-	/*
-	 *	Bind to the first specified IP address and port.
-	 *	This means we ignore later ones.
-	 */
-	request = fr_dlist_head(&rc_request_list);
-
-	if (fd_config.src_ipaddr.af == AF_UNSPEC) {
-		if (request->packet->socket.inet.src_ipaddr.af == AF_UNSPEC) {
-			fd_config.src_ipaddr = (fr_ipaddr_t) {
-				.af = fd_config.dst_ipaddr.af,
-			};
-		} else {
-			fd_config.src_ipaddr = request->packet->socket.inet.src_ipaddr;
-		}
+	bio = fr_bio_fd_alloc(autofree, NULL, &fd_config, 0);
+	if (!bio) {
+		ERROR("Failed opening socket: %s", fr_strerror());
+		fr_exit_now(1);
 	}
 
-	if (fd_config.src_port == 0) fd_config.src_port = request->packet->socket.inet.src_port;
+	fd_info = fr_bio_fd_info(bio);
+	fr_assert(fd_info != NULL);
 
-	if (ipproto == IPPROTO_TCP) {
-		sockfd = fr_socket_client_tcp(NULL, NULL, &fd_config.dst_ipaddr, fd_config.dst_port, false);
-		if (sockfd < 0) {
-			ERROR("Failed opening socket");
-			return -1;
-		}
-
-	} else {
-		sockfd = fr_socket_server_udp(&fd_config.src_ipaddr, &fd_config.src_port, NULL, false);
-		if (sockfd < 0) {
-			fr_perror("Error opening socket");
-			return -1;
-		}
-
-		if (fr_socket_bind(sockfd, NULL, &fd_config.src_ipaddr, &fd_config.src_port) < 0) {
-			fr_perror("Error binding socket");
-			return -1;
-		}
-	}
+	sockfd = fd_info->socket.fd;
 
 	packet_list = fr_packet_list_create(1);
 	if (!packet_list) {
