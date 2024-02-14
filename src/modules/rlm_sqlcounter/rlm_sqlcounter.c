@@ -450,42 +450,28 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+#define ATTR_CHECK(_tmpl, _name) if (tmpl_is_attr_unresolved(inst->_tmpl)) { \
+	if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), tmpl_attr_tail_unresolved(inst->_tmpl), -1, FR_TYPE_UINT64, &flags) < 0) { \
+		cf_log_perr(conf, "Failed defining %s attribute", _name); \
+		return -1; \
+	} \
+} else if (tmpl_is_attr(inst->_tmpl)) { \
+	if (tmpl_attr_tail_da(inst->_tmpl)->type != FR_TYPE_UINT64) { \
+		cf_log_err(conf, "%s attribute %s must be uint64", _name, tmpl_attr_tail_da(inst->_tmpl)->name); \
+		return -1; \
+	} \
+}
+
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
 	CONF_SECTION    	*conf = mctx->inst->conf;
 	fr_dict_attr_flags_t	flags = (fr_dict_attr_flags_t) { .internal = 1, .length = 8 };
 
-
-	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->start_attr, FR_TYPE_UINT64, &flags) < 0) {
-		cf_log_perr(conf, "Failed defining reset_period_start attribute");
-		return -1;
-	}
-
-	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->end_attr, FR_TYPE_UINT64, &flags) < 0) {
-		cf_log_perr(conf, "Failed defining reset_end_start attribute");
-		return -1;
-	}
-
-	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->counter_attr, FR_TYPE_UINT64, &flags) < 0) {
-		cf_log_perr(conf, "Failed defining counter attribute");
-		return -1;
-	}
-
-	if (tmpl_attr_tail_unresolved_add(fr_dict_unconst(dict_freeradius), inst->limit_attr, FR_TYPE_UINT64, &flags) < 0) {
-		cf_log_perr(conf, "Failed defining check attribute");
-		return -1;
-	}
-
-	if (tmpl_attr_tail_da(inst->counter_attr)->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Counter attribute %s MUST be uint64", tmpl_attr_tail_da(inst->counter_attr)->name);
-		return -1;
-	}
-
-	if (tmpl_attr_tail_da(inst->limit_attr)->type != FR_TYPE_UINT64) {
-		cf_log_err(conf, "Check attribute %s MUST be uint64", tmpl_attr_tail_da(inst->limit_attr)->name);
-		return -1;
-	}
+	ATTR_CHECK(start_attr, "reset_period_start")
+	ATTR_CHECK(end_attr, "reset_period_end")
+	ATTR_CHECK(counter_attr, "counter")
+	ATTR_CHECK(limit_attr, "check")
 
 	return 0;
 }
