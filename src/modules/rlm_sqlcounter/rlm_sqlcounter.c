@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #define LOG_PREFIX "sqlcounter"
 
+#include <rlm_sql.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
@@ -467,11 +468,23 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
 	CONF_SECTION    	*conf = mctx->inst->conf;
 	fr_dict_attr_flags_t	flags = (fr_dict_attr_flags_t) { .internal = 1, .length = 8 };
+	module_instance_t const	*sql_inst;
 
 	ATTR_CHECK(start_attr, "reset_period_start")
 	ATTR_CHECK(end_attr, "reset_period_end")
 	ATTR_CHECK(counter_attr, "counter")
 	ATTR_CHECK(limit_attr, "check")
+
+	sql_inst = module_rlm_by_name(NULL, inst->sql_name);
+	if (!sql_inst) {
+		cf_log_err(conf, "Module \"%s\" not found", inst->sql_name);
+		return -1;
+	}
+
+	if (!talloc_get_type(sql_inst->dl_inst->data, rlm_sql_t)) {
+		cf_log_err(conf, "\"%s\" is not an instance of rlm_sql", inst->sql_name);
+		return -1;
+	}
 
 	return 0;
 }
