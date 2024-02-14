@@ -267,7 +267,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 *	Before doing anything else, see if we have to reset
 	 *	the counters.
 	 */
-	if (fr_time_eq(inst->reset_time, fr_time_wrap(0)) &&
+	if (fr_time_neq(inst->reset_time, fr_time_wrap(0)) &&
 	    (fr_time_lteq(inst->reset_time, request->packet->timestamp))) {
 		/*
 		 *	Re-set the next time and prev_time for this counters range
