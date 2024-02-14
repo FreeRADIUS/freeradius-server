@@ -281,15 +281,18 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RETURN_MODULE_NOOP;
 	}
 
+	/*
+	 *	Populate start and end attributes for use in query expansion
+	 */
 	if (tmpl_find_or_add_vp(&vp, request, inst->start_attr) < 0) {
-		RWDEBUG2("Couldn't find %s, doing nothing...", inst->start_attr->name);
-		RETURN_MODULE_NOOP;
+		REDEBUG("Couldn't create %s", inst->start_attr->name);
+		RETURN_MODULE_FAIL;
 	}
 	vp->vp_uint64 = fr_time_to_sec(inst->last_reset);
 
 	if (tmpl_find_or_add_vp(&vp, request, inst->end_attr) < 0) {
-		RWDEBUG2("Couldn't find %s, doing nothing...", inst->end_attr->name);
-		RETURN_MODULE_NOOP;
+		REDEBUG2("Couldn't create %s", inst->end_attr->name);
+		RETURN_MODULE_FAIL;
 	}
 	vp->vp_uint64 = fr_time_to_sec(inst->reset_time);
 
