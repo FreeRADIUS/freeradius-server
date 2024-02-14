@@ -379,8 +379,6 @@ _Generic(&(_ct), \
 /** conf_parser_t entry which raises an error if a matching CONF_PAIR is found
  *
  * @param[in] _name		of pair to search for.
- * @param[in] _type		type, mostly unused.
- * @param[in] _flags		flags controlling parsing behaviour.
  * @param[in] _struct		where the result was previously written.
  * @param[in] _field		in the struct where the result was previously written.
  */

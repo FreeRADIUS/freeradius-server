@@ -57,10 +57,12 @@ static void totp_log(char const *fmt, ...)
  *	for 8-character challenges, and not for 6 character
  *	challenges!
  *
- * @param[in] cfg      Instance of fr_totp_t
- * @param[in] key      Key to decrypt.
- * @param[in] keylen   Length of key field.
- * @param[in] totp     TOTP password entered by the user.
+ * @param[in] cfg	Instance of fr_totp_t
+ * @param[in] request	The current request
+ * @param[in] now	The current time
+ * @param[in] key	Key to decrypt.
+ * @param[in] keylen	Length of key field.
+ * @param[in] totp	TOTP password entered by the user.
  * @return
  *	-  0  On Success
  *	- -1  On Failure

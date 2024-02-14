@@ -80,7 +80,7 @@ static_assert(sizeof(unsigned int) >= 4, "Unsigned integer too small on this pla
    fr_dlist_head_t my_head = FR_DLIST_INITIALISER(my_head)
  @endcode
  *
- * @param[in] _entry	what's being initialised.
+ * @param[in] _head	what's being initialised.
  */
 #define FR_DLIST_HEAD_INITIALISER(_head) { .entry = FR_DLIST_ENTRY_INITIALISER((_head).entry) }
 
