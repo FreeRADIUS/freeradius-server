@@ -30,10 +30,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/unlang/function.h>
 
 #include <ctype.h>
-
-#define MAX_QUERY_LEN 1024
 
 /*
  *	Note: When your counter spans more than 1 period (ie 3 months
@@ -98,6 +97,7 @@ static const conf_parser_t module_config[] = {
 };
 
 typedef struct {
+	xlat_exp_head_t	*query_xlat;		//!< Tokenized xlat to run query.
 	tmpl_t		*reply_attr;		//!< Attribute to write timeout to.
 	tmpl_t		*reply_msg_attr;	//!< Attribute to write reply message to.
 } sqlcounter_call_env_t;
@@ -244,25 +244,146 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 	return ret;
 }
 
+typedef struct {
+	bool			last_success;
+	fr_value_box_list_t	result;
+	rlm_sqlcounter_t	*inst;
+	sqlcounter_call_env_t	*env;
+	fr_pair_t		*limit;
+} sqlcounter_rctx_t;
 
-/*
- *	Find the named user in this modules database.  Create the set
- *	of attribute-value pairs to check and reply with for this user
- *	from the database. The authentication code only needs to check
- *	the password, the rest is done here.
+/** Handle the result of calling the SQL query to retrieve the `counter` value.
+ *
+ * Create / update the `counter` attribute in the contol list
+ * If `counter` > `limit`, optionally populate a reply message and return RLM_MODULE_REJECT.
+ * Otherwise, optionally populate a reply attribute with the value of `limit` - `counter` and return RLM_MODULE_UPDATED.
+ * If no reply attribute is set, return RLM_MODULE_OK.
+ */
+static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	sqlcounter_rctx_t	*rctx = talloc_get_type_abort(uctx, sqlcounter_rctx_t);
+	rlm_sqlcounter_t	*inst = rctx->inst;
+	sqlcounter_call_env_t	*env = rctx->env;
+	fr_value_box_t		*sql_result = fr_value_box_list_pop_head(&rctx->result);
+	uint64_t		counter, res;
+	fr_pair_t		*vp, *limit = rctx->limit;
+	int			ret;
+	char			msg[128];
+
+	if (!sql_result || (sscanf(sql_result->vb_strvalue, "%" PRIu64, &counter) != 1)) {
+		RDEBUG2("No integer found in result string \"%pV\".  May be first session, setting counter to 0",
+			sql_result);
+		counter = 0;
+	}
+
+	/*
+	 *	Add the counter to the control list
+	 */
+	MEM(pair_update_control(&vp, tmpl_attr_tail_da(inst->counter_attr)) >= 0);
+	vp->vp_uint64 = counter;
+
+	/*
+	 *	Check if check item > counter
+	 */
+	if (limit->vp_uint64 <= counter) {
+		if (env->reply_msg_attr) {
+			/* User is denied access, send back a reply message */
+			snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
+
+			MEM(pair_update_reply(&vp, tmpl_attr_tail_da(env->reply_msg_attr)) >= 0);
+			fr_pair_value_strdup(vp, msg, false);
+		}
+
+		REDEBUG2("Maximum %s usage time reached", inst->reset);
+		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
+			 inst->limit_attr->name, limit->vp_uint64, counter);
+
+		RETURN_MODULE_REJECT;
+	}
+
+	res = limit->vp_uint64 - counter;
+	RDEBUG2("Allowing user, %s value (%" PRIu64 ") is greater than counter value (%" PRIu64 ")",
+		inst->limit_attr->name, limit->vp_uint64, counter);
+
+	/*
+	 *	We are assuming that simultaneous-use=1. But
+	 *	even if that does not happen then our user
+	 *	could login at max for 2*max-usage-time Is
+	 *	that acceptable?
+	 */
+	if (env->reply_attr) {
+		fr_value_box_t	vb;
+
+		/*
+		 *	If we are near a reset then add the next
+		 *	limit, so that the user will not need to login
+		 *	again.  Do this only for Session-Timeout.
+		 */
+		if ((tmpl_attr_tail_da(env->reply_attr) == attr_session_timeout) &&
+		    fr_time_gt(inst->reset_time, fr_time_wrap(0)) &&
+		    ((int64_t)res >= fr_time_delta_to_sec(fr_time_sub(inst->reset_time, request->packet->timestamp)))) {
+			fr_time_delta_t to_reset = fr_time_sub(inst->reset_time, request->packet->timestamp);
+
+			RDEBUG2("Time remaining (%pV) is greater than time to reset (%" PRIu64 "s).  "
+				"Adding %pV to reply value",
+				fr_box_time_delta(to_reset), res, fr_box_time_delta(to_reset));
+			res = fr_time_delta_to_sec(to_reset) + limit->vp_uint64;
+		}
+
+		fr_value_box_init(&vb, FR_TYPE_UINT64, NULL, false);
+		vb.vb_uint64 = res;
+
+		/*
+		 *	Limit the reply attribute to the minimum of the existing value, or this new one.
+		 */
+		ret = tmpl_find_or_add_vp(&vp, request, env->reply_attr);
+		switch (ret) {
+		case 1:		/* new */
+			break;
+
+		case 0:		/* found */
+		{
+			fr_value_box_t	existing;
+			fr_value_box_cast(NULL, &existing, FR_TYPE_UINT64, NULL, &vp->data);
+			if (fr_value_box_cmp(&vb, &existing) == 1) {
+				RDEBUG2("Leaving existing %s value of %pV" , env->reply_attr->name,
+					&vp->data);
+				RETURN_MODULE_OK;
+			}
+		}
+			break;
+
+		case -1:	/* alloc failed */
+			REDEBUG("Error allocating attribute %s", env->reply_attr->name);
+			RETURN_MODULE_FAIL;
+
+		default:	/* request or list unavailable */
+			RDEBUG2("List or request context not available for %s, skipping...", env->reply_attr->name);
+			RETURN_MODULE_OK;
+		}
+
+		fr_value_box_cast(vp, &vp->data, vp->data.type, NULL, &vb);
+
+		RDEBUG2("&%pP", vp);
+
+		RETURN_MODULE_UPDATED;
+	}
+
+	RETURN_MODULE_OK;
+}
+
+/** Check the value of a `counter` retrieved from an SQL query with a `limit`
+ *
+ * Module specific attributes containing the start / end times are created / updated,
+ * the query is tokenized as an xlat call to the relevant SQL module and then
+ * pushed on the stack for evaluation.
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
 	sqlcounter_call_env_t	*env = talloc_get_type_abort(mctx->env_data, sqlcounter_call_env_t);
-	uint64_t		counter, res;
 	fr_pair_t		*limit, *vp;
-	fr_pair_t		*reply_item;
-	char			msg[128];
-	int			ret;
-	size_t len;
-	char *expanded = NULL;
-	char query[MAX_QUERY_LEN];
+	sqlcounter_rctx_t	*rctx;
 
 	/*
 	 *	Before doing anything else, see if we have to reset
@@ -297,121 +418,23 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 	vp->vp_uint64 = fr_time_to_sec(inst->reset_time);
 
-	/* Then combine that with the name of the module were using to do the query */
-	len = snprintf(query, sizeof(query), "%%%s(\"%s\")", inst->sql_name, inst->query);
-	if (len >= (sizeof(query) - 1)) {
-		REDEBUG("Insufficient query buffer space");
+	MEM(rctx = talloc(unlang_interpret_frame_talloc_ctx(request), sqlcounter_rctx_t));
+	*rctx = (sqlcounter_rctx_t) {
+		.inst = inst,
+		.env = env,
+		.limit = limit
+	};
 
+	if (unlang_function_push(request, NULL, mod_authorize_resume, NULL, 0, UNLANG_SUB_FRAME, rctx) < 0) {
+	error:
+		talloc_free(rctx);
 		RETURN_MODULE_FAIL;
 	}
 
-	/* Finally, xlat resulting SQL query */
-	if (xlat_aeval(request, &expanded, request, query, NULL, NULL) < 0) {
-		RETURN_MODULE_FAIL;
-	}
+	fr_value_box_list_init(&rctx->result);
+	if (unlang_xlat_push(rctx, &rctx->last_success, &rctx->result, request, env->query_xlat, UNLANG_SUB_FRAME) < 0) goto error;
 
-	if (sscanf(expanded, "%" PRIu64, &counter) != 1) {
-		RDEBUG2("No integer found in result string \"%s\".  May be first session, setting counter to 0",
-			expanded);
-		counter = 0;
-	}
-
-	talloc_free(expanded);
-
-	/*
-	 *	Check if check item > counter
-	 */
-	if (limit->vp_uint64 <= counter) {
-		if (env->reply_msg_attr) {
-			/* User is denied access, send back a reply message */
-			snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
-
-			MEM(pair_update_reply(&vp, tmpl_attr_tail_da(env->reply_msg_attr)) >= 0);
-			fr_pair_value_strdup(vp, msg, false);
-		}
-
-		REDEBUG2("Maximum %s usage time reached", inst->reset);
-		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
-			 inst->limit_attr->name, limit->vp_uint64, counter);
-
-		RETURN_MODULE_REJECT;
-	}
-
-	res = limit->vp_uint64 - counter;
-	RDEBUG2("Allowing user, %s value (%" PRIu64 ") is greater than counter value (%" PRIu64 ")",
-		inst->limit_attr->name, limit->vp_uint64, counter);
-
-	/*
-	 *	Add the counter to the control list
-	 */
-	MEM(pair_update_control(&vp, tmpl_attr_tail_da(inst->counter_attr)) >= 0);
-	vp->vp_uint64 = counter;
-
-	/*
-	 *	We are assuming that simultaneous-use=1. But
-	 *	even if that does not happen then our user
-	 *	could login at max for 2*max-usage-time Is
-	 *	that acceptable?
-	 */
-	if (env->reply_attr) {
-		fr_value_box_t	vb;
-
-		/*
-		 *	If we are near a reset then add the next
-		 *	limit, so that the user will not need to login
-		 *	again.  Do this only for Session-Timeout.
-		 */
-		if ((tmpl_attr_tail_da(env->reply_attr) == attr_session_timeout) &&
-		    fr_time_gt(inst->reset_time, fr_time_wrap(0)) &&
-		    ((int64_t)res >= fr_time_delta_to_sec(fr_time_sub(inst->reset_time, request->packet->timestamp)))) {
-			fr_time_delta_t to_reset = fr_time_sub(inst->reset_time, request->packet->timestamp);
-
-			RDEBUG2("Time remaining (%pV) is greater than time to reset (%" PRIu64 "s).  "
-				"Adding %pV to reply value",
-				fr_box_time_delta(to_reset), res, fr_box_time_delta(to_reset));
-			res = fr_time_delta_to_sec(to_reset) + limit->vp_uint64;
-		}
-
-		fr_value_box_init(&vb, FR_TYPE_UINT64, NULL, false);
-		vb.vb_uint64 = res;
-
-		/*
-		 *	Limit the reply attribute to the minimum of the existing value, or this new one.
-		 */
-		ret = tmpl_find_or_add_vp(&reply_item, request, env->reply_attr);
-		switch (ret) {
-		case 1:		/* new */
-			break;
-
-		case 0:		/* found */
-		{
-			fr_value_box_t	existing;
-			fr_value_box_cast(NULL, &existing, FR_TYPE_UINT64, NULL, &vp->data);
-			if (fr_value_box_cmp(&vb, &existing) == 1) {
-				RDEBUG2("Leaving existing %s value of %pV" , env->reply_attr->name,
-					&vp->data);
-				RETURN_MODULE_OK;
-			}
-		}
-			break;
-
-		case -1:	/* alloc failed */
-			REDEBUG("Error allocating attribute %s", env->reply_attr->name);
-			RETURN_MODULE_FAIL;
-
-		default:	/* request or list unavailable */
-			RDEBUG2("List or request context not available for %s, skipping...", env->reply_attr->name);
-			RETURN_MODULE_OK;
-		}
-
-		fr_value_box_cast(reply_item, &reply_item->data, reply_item->data.type, NULL, &vb);
-
-		RDEBUG2("&%pP", reply_item);
-
-		RETURN_MODULE_UPDATED;
-	}
-
-	RETURN_MODULE_OK;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /*
@@ -489,9 +512,49 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+/** Custom call_env parser to tokenize the SQL query xlat used for counter retrieval
+ */
+static int call_env_query_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data,
+				UNUSED call_env_parser_t const *rule)
+{
+	rlm_sqlcounter_t const	*inst = talloc_get_type_abort_const(data, rlm_sqlcounter_t);
+	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);
+	char			*query;
+	xlat_exp_head_t		*ex;
+
+	query = talloc_asprintf(NULL, "%%%s(\"%s\")", inst->sql_name, cf_pair_value(to_parse));
+
+	if (xlat_tokenize(ctx, &ex,
+		  &FR_SBUFF_IN(query, talloc_array_length(query)),
+		  &(fr_sbuff_parse_rules_t){
+			.escapes = &(fr_sbuff_unescape_rules_t) {
+				.name = "xlat",
+				.chr = '\\',
+				.subs = {
+					['%'] = '%',
+					['\\'] = '\\',
+				},
+		  }}, t_rules) < 0) {
+		talloc_free(query);
+		return -1;
+	}
+	talloc_free(query);
+
+	if (xlat_needs_resolving(ex) &&
+	    (xlat_resolve(ex, &(xlat_res_rules_t){ .allow_unresolved = false }) < 0)) {
+		talloc_free(ex);
+		return -1;
+	}
+
+	*(void**)out = ex;
+	return 0;
+}
+
 static const call_env_method_t sqlcounter_call_env = {
 	FR_CALL_ENV_METHOD_OUT(sqlcounter_call_env_t),
 	.env = (call_env_parser_t[]){
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("query", FR_TYPE_VOID, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_PARSE_ONLY, sqlcounter_call_env_t, query_xlat),
+		  .pair.func = call_env_query_parse },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("reply_name", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, sqlcounter_call_env_t, reply_attr) },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("reply_message_name", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, sqlcounter_call_env_t, reply_msg_attr) },
 		CALL_ENV_TERMINATOR
