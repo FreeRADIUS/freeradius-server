@@ -134,7 +134,7 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 		}
 
 		num = atoi(inst->reset);
-		DEBUG("rlm_sqlcounter: num=%d, last=%c",num,last);
+		DEBUG3("rlm_sqlcounter: num=%d, last=%c",num,last);
 	}
 
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
@@ -181,10 +181,10 @@ static int find_next_reset(rlm_sqlcounter_t *inst, REQUEST *request, time_t time
 	if (len == 0) *sNextTime = '\0';
 
 	if (is_monthly) {
-		DEBUG("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s], Reset day [%d]",
+		DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s], Reset day [%d]",
 			(int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime, inst->reset_day);
 	} else {
-		DEBUG("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
+		DEBUG2("rlm_sqlcounter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
 			(int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
 	}
 	return ret;
@@ -220,7 +220,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 		if (!isalpha((uint8_t) last))
 			last = 'd';
 		num = atoi(inst->reset);
-		DEBUG("rlm_sqlcounter: num=%d, last=%c",num,last);
+		DEBUG3("rlm_sqlcounter: num=%d, last=%c",num,last);
 	}
 
 	if (strcmp(inst->reset, "hourly") == 0 || last == 'h') {
