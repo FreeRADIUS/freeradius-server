@@ -877,6 +877,8 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		request->proxy_reply = talloc_steal(request, fake->reply);
 		fake->reply = NULL;
 
+		request->proxy->dst_port = 0; /* hacks for state.c lookups */
+
 		/*
 		 *	And we're done with this request.
 		 */
