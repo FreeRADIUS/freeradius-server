@@ -338,6 +338,7 @@ int call_env_parsed_valid(call_env_parsed_t const *parsed, CONF_ITEM const *ci, 
  * @param[in] name		Module name for error messages.
  * @param[in] t_rules		controlling how the call env is parsed.
  * @param[in] cs		Module config.
+ * @param[in] data		module / xlat instance data of the module / xlat allocating this call_env
  * @param[in] rule		to parse.
  * @return
  *	- 0 on success;
