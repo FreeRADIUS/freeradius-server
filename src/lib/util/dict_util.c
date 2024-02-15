@@ -3773,6 +3773,7 @@ static int _fr_dict_autoload_talloc_free(fr_dict_autoload_talloc_t const *to_fre
  *	 to the dictionary are gone.
  *
  * @param[in] ctx	to bind the dictionary lifetime to.
+ * @param[out] out	pointer to the loaded dictionary.
  * @param[in] proto	to load.
  * @param[in] dependent to register this reference to.  Will be dupd.
  */

@@ -320,6 +320,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t ti
  * - All other unprintables are escaped as @verbatim \<oct><oct><oct> @endverbatim.
  *
  * @param vb		Value box to escape.
+ * @param uctx		unused.
  */
 /*
  *	Escape unprintable characters.

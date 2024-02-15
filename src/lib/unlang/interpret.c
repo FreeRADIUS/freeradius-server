@@ -228,6 +228,7 @@ static int _local_variables_free(unlang_variable_ref_t *ref)
 
 /** Push the children of the current frame onto a new frame onto the stack
  *
+ * @param[out] p_result		set to RLM_MOULDE_FAIL if pushing the children fails
  * @param[in] request		to push the frame onto.
  * @param[in] default_rcode	The default result.
  * @param[in] do_next_sibling	Whether to only execute the first node in the #unlang_t program
@@ -1600,7 +1601,7 @@ static xlat_action_t unlang_interpret_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	if (strcmp(fmt, "rcode") == 0) {
 		if (fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) goto error;
-		
+
 		goto finish;
 	}
 

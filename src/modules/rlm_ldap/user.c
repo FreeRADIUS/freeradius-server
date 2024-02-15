@@ -240,6 +240,7 @@ ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *req
  * Checks to see if after the LDAP to RADIUS mapping has been completed that a reference password.
  *
  * @param[in] request		Current request.
+ * @param[in] inst_name		Name of LDAP module instance for debug messages.
  * @param[in] expect_password	Whether we should be expecting a password.
  * @param[in] ttrunk		the connection thread trunk.
  */

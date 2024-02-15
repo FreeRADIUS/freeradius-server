@@ -134,6 +134,7 @@ DIAG_ON(attributes)
  * @param[out] out		Where to write the result of parsing.
  * @param[in] t_rules		we're parsing attributes with.  Contains the default dictionary and nested 'caller' tmpl_rules_t.
  * @param[in] ci		The #CONF_SECTION or #CONF_PAIR to parse.
+ * @param[in] data		module / xlat instance data of the module / xlat allocating this call_env
  * @param[in] rule		Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
  * @return
  *	- 0 on success.

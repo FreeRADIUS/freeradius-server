@@ -121,7 +121,9 @@ static void ldap_map_profile_cancel(UNUSED request_t *request, UNUSED fr_signal_
  * sets of attributes to the request.
  *
  * @param[out] ret		Where to write the result of the query.
+ * @param[in] inst		LDAP module instance.
  * @param[in] request		Current request.
+ * @param[in] ttrunk		Trunk connection on which to run LDAP queries.
  * @param[in] dn		of profile object to apply.
  * @param[in] scope		to apply when looking up profiles.
  * @param[in] filter		to apply when looking up profiles.
