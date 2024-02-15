@@ -1,161 +1,83 @@
-= rlm_sqlcounter
+= SQL counter module
 
-Installation and running guide by Ram Narula ram@princess1.net Internet for Education (Thailand)
+== Introduction
 
-Pre-requisites: Make sure to have configured radiusd with rlm_sqlcounter installed
+The `sqlcounter` module provides a mechanism which can be used to enforce periodic
+resource limits.
 
-```
-make clean ./configure –with-experimental-modules make make install
-```
+Each instance of the module is configured with a period (e.g. daily) which is used
+to populate values in two attributes in the `control` list when the module is
+called.
 
-Make sure to have radiusd running properly under sql and there
-must be a `sql` entry under `recv Accounting-Request { }` section of radiusd.conf
+An attribute is defined to contain a "limit" for whatever resource is being counted,
+(e.g. session time or data volume) for the specified period.
+
+If that attribute exists, the module will run an SQL query to calculate the used
+resource quantity.
+
+The retrieved value is then compared with the limit and if the limit has been
+exceeded, the module will return `reject`
 
 == Configuration
 
-Create a text file called sqlcounter.conf in the same directory
-where radiusd.conf resides (usually /usr/local/etc/raddb) with the
-following content (for mysql):
+A sample module configuration is provided in `raddb/mods-available/sqlcounter`.
 
-```
-sqlcounter noresetcounter {
-	sql_module_instance = sqlcca3
-	counter_name = Max-All-Session-Time
-	check_name = Max-All-Session
-	reply_name = Session-Timeout
-	key = User-Name reset = never
-    query = "SELECT SUM(AcctSessionTime) FROM radacct WHERE UserName='%{%k}'"
-}
+This includes configurations which cover daily and monthly periods, plus a
+couple of examples where there are no reset dates on the periods being considered.
 
-sqlcounter dailycounter {
-	sql_module_instance = sqlcca3
-	driver = rlm_sqlcounter
-	counter_name = Daily-Session-Time
-	check_name = Max-Daily-Session
-	reply_name = Session-Timeout
-	key = User-Name
-	reset = daily
-	query = "SELECT SUM(AcctSessionTime - GREATEST((%b - UNIX_TIMESTAMP(AcctStartTime)), 0)) FROM radacct WHERE UserName='%{%k}' AND UNIX_TIMESTAMP(AcctStartTime) + AcctSessionTime > '%b'"
-}
+The SQL queries associated with these sample module configurations are found
+in `raddb/mods-config/sql/counter/<dialect>/*.conf` with each instances query
+in a different file.
 
-sqlcounter monthlycounter {
-	sql_module_instance = sqlcca3
-	counter_name = Monthly-Session-Time
-	check_name = Max-Monthly-Session
-	reply_name = Session-Timeout
-	key = User-Name
-	reset = monthly
-    query = "SELECT SUM(AcctSessionTime - GREATEST((%b - UNIX_TIMESTAMP(AcctStartTime)), 0)) FROM radacct WHERE UserName='%{%k}' AND UNIX_TIMESTAMP(AcctStartTime) + AcctSessionTime > '%b'"
-}
-```
+As provided, the counters are all based on session time, using the `acctsessiontime`,
+field from `radacct`.
 
-The respective lines for postgresql are:
+In order to enforce limits based on data volume, the queries should be updated to
+use the `acctinputoctets` and / or `acctoutputoctets` fields depending on the
+requirement.
 
-```
-query = "SELECT SUM(AcctSessionTime) FROM radacct WHERE
-UserName='%{%k}'"
+See the sample module configuration for details of the configuration options.
 
-query = "SELECT SUM(AcctSessionTime - GREATEST((%b -
-EXTRACT(epoch FROM AcctStartTime)), 0)) FROM radacct WHERE UserName='%{%k}'
-AND EXTRACT(epoch FROM AcctStartTime) + AcctSessionTime > '%b'"
+== Usage
 
-query = "SELECT SUM(AcctSessionTime - GREATEST((%b -
-EXTRACT(epoch FROM AcctStartTime)), 0)) FROM radacct WHERE UserName='%{%k}'
-AND EXTRACT(epoch FROM AcctStartTime) + AcctSessionTime > '%b'"
-```
+As a prerequisite to using the `sqlcounter` module with the sample configurations
+an instance of the `sql` module must be configured and called when processing
+accounting packets.
 
-If you are running postgres 7.x, you may not have a GREATEST function.
+This instance of the `sql` module should be set as the `sql_module_instance`
+in the `sqlcounter` module configuration.
 
-An example of one is:
+Depending on how user limits are to be set, appropriate entries should be
+added to the relevant source data store being used to set `control` attributes
+during authorization.  e.g. if the `sql` module is being used to hold user
+data, add entries to `radcheck` or `radgroupcheck` as appropriate.
 
-```
-CREATE OR REPLACE FUNCTION ``greater''(integer, integer) RETURNS integer
-AS ’ DECLARE res INTEGER; one INTEGER := 0; two INTEGER := 0; BEGIN one
-= $1; two = $2; IF one IS NULL THEN one = 0; END IF; IF two IS NULL THEN
-two = 0; END IF; IF one > two THEN res := one; ELSE res := two; END IF;
-RETURN res; END; ’ LANGUAGE `plpgsql';
-```
+The attribute to set is the one referred to in the `check_name` module,
+configuration, e.g. on the sample `dailycounter` module instance the attribute
+is `&control.Max-Daily-Session`.
 
-[2] Include the above file to radiusd.conf by adding a
-line in `modules {}` section.
+In the authorization policy, call the required `sqlcounter` module instance,
+having made sure that the appropriate `check_name` attribute is set.
 
-```
-modules {
+If the configured query returns a value which exceeds the value in the limit
+attribute, the module will return `reject` and populate the attribute set
+in `reply_message_name`.
 
-$INCLUDE $\{confdir}/sqlcounter.conf
-```
+If the retrieved value is below the limit, then the attribute set in
+`reply_name` will be populated in the `reply` list with the difference
+between the limit and the retrieved value and the module will return `updated`.
 
-…some other entries here…
+If that attribute already exists with a lower value, that value will be
+left and the module will return `ok`.
 
-[3] Make sure to have the sqlcounter names under authorize section like
-the following:
+If no `reply_name` is configured, then the module returns `ok`.
 
-```
-recv Access-Request {
-	# some entries here… …some entries here… …some entries here… …some entries here…
-	noresetcounter
-	dailycounter
-	monthlycounter
-}
-```
+For the use case where the reply attribute is being used to set a point when
+a user re-authenticates, specifically using time (in seconds), the option
+`auto_extend` can be used to avoid unnecessary re-authentications.
 
-* noresetcounter: the counter that never resets, can be used for real
-session-time cumulation
-
-* dailycounter: the counter that resets everyday, can be used for limiting
-daily access time (eg. 3 hours a day)
-
-* monthlycounter: the counter that resets monthly, can be used for
-limiting monthly access time (eg. 50 hours per month)
-
-You can make your own names and directives for resetting the counter by
-reading the sample sqlcounter configuration in `raddb/experimental.conf`
-
-== Implementation
-
-Add sqlcounter names to be used into radcheck or radgroupcheck table
-appropriately for sql. For users file just follow the example below.
-
-NOTE: The users in the example below must be able to login normally as
-the example will only show how to apply sqlcounter counters.
-
-Scenarios [1] username test0001 have total time limit of 15 hours (user
-can login as many times as needed but can be online for total time of 15
-hours which is 54000 seconds) If using normal users file authentication
-the entry can look like:
-
-```
-test0001 Max-All-Session := 54000, User-Password == `blah`
-Service-Type = Framed-User, Framed-Protocol = PPP
-```
-
-or for sql make sure to have `Max-All-Session` entry under either radcheck
-or radgroup check table:
-
-```
-INSERT into radcheck VALUES(’','test0001','Max-All-Session','54000',':=');
-```
-
-[2] username test0002 have total time limit of 3 hours a day
-
-```
-test0002 Max-Daily-Session := 10800, User-Password == 'blah'
-Service-Type = Framed-User, Framed-Protocol = PPP
-```
-
-or in sql
-
-`INSERT into radcheck VALUES (’',’test0002', 'Max-Daily-Session','10800',':=');`
-
-[3] username test0003 have total time limit of 90 hours a month
-
-```
-test0003 Max-Monthly-Session := 324000, User-Password == ``blah''
-Service-Type = Framed-User, Framed-Protocol = PPP in sql: > INSERT into
-radcheck VALUES (’`,’test0003',`Max-Monthly-Session',`10800',`:=');
-```
-
-NOTE: The `Max-All-Session`, `Max-Daily-Session` and `Max-Monthly-Session` are
-defined in `sqlcounter.conf`
-
-WARNING: Accounting must be done via sql or this will not work.
+Setting this option to `yes` causes a check to be done to see if the difference
+between the configured limit and the retrieved value is sufficient to cover the
+time to the next period.  If it is, then the value returned in the reply
+attribute will be the number of seconds until the next period plus the value of
+the limit.
