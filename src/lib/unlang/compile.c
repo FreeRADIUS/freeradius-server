@@ -4580,6 +4580,10 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			      "but no inst_size set",
 			      inst->module->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
 
+		if (!unlang_ctx->rules) {
+			cf_log_err(ci, "Failed compiling %s - no rules", inst->module->name);
+			goto error;
+		}
 		single->call_env = call_env_alloc(single, single->self.name, method_env,
 						  unlang_ctx->rules,
 						  inst->dl_inst->conf, single->instance->dl_inst->data);
