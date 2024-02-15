@@ -281,13 +281,13 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 	if (limit->vp_uint64 <= counter) {
 		if (env->reply_msg_attr) {
 			/* User is denied access, send back a reply message */
-			snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
+			snprintf(msg, sizeof(msg), "Your maximum %s usage has been reached", inst->reset);
 
 			MEM(pair_update_reply(&vp, tmpl_attr_tail_da(env->reply_msg_attr)) >= 0);
 			fr_pair_value_strdup(vp, msg, false);
 		}
 
-		REDEBUG2("Maximum %s usage time reached", inst->reset);
+		REDEBUG2("Maximum %s usage reached", inst->reset);
 		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
 			 inst->limit_attr->name, limit->vp_uint64, counter);
 
