@@ -95,12 +95,22 @@
 #		 reject
 #	}
 #
+#  check_name:: Name of the attribute containing the limit to compare the counter to.
+#
 #  reply_name:: Name of the attribute to populate with the remaining session time.
 #  e.g. `&reply.Session-Timeout`.  If the attribute already exists and contains
 #  a lower value, then it will not be updated.
 #
 #  reply_message_name:: Name of the attribute into which a message should be placed
 #  if the limit has been exeeded for the counter.
+#
+#  auto_extend:: If set to `yes` and the remaining session time goes past the time for
+#  the next counter reset, the value in the `reply_name` attribute will be set to
+#  the time to the next reset plus the value of the `check_name` attribute.
+#  This is most useful if the limit is a time based one, and, for example,
+#  `Session-Timeout` is the `reply_name` attribute.  If there is sufficient allocation
+#  left for the session to get to the next counter period, the user will not have
+#  to re-authenticate before they have used their allocation for the next counter period.
 
 #
 #  ## Configuration Settings
@@ -118,6 +128,7 @@ sqlcounter dailycounter {
 	counter_name = &control.Daily-Session-Time
 	check_name = &control.Max-Daily-Session
 	reply_name = &reply.Session-Timeout
+	auto_extend = yes
 	key = "%{&Stripped-User-Name || &User-Name}"
 	reply_message_name = &Reply-Message
 
@@ -136,6 +147,7 @@ sqlcounter monthlycounter {
 	counter_name = &Monthly-Session-Time
 	check_name = &control.Max-Monthly-Session
 	reply_name = &reply.Session-Timeout
+	auto_extend = yes
 	key = &User-Name
 
 	reset = monthly

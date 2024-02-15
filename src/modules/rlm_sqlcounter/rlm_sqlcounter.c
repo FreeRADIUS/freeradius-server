@@ -70,6 +70,8 @@ typedef struct {
 	char const	*sql_name;	//!< Instance of SQL module to use, usually just 'sql'.
 	char const	*query;		//!< SQL query to retrieve current session time.
 	char const	*reset;  	//!< Daily, weekly, monthly, never or user defined.
+	bool		auto_extend;	//!< If the remaining allowance is sufficient to reach the next
+					///< period allow for that in setting the reply attribute.
 
 	fr_time_t	reset_time;
 	fr_time_t	last_reset;
@@ -81,6 +83,7 @@ static const conf_parser_t module_config[] = {
 
 	{ FR_CONF_OFFSET_FLAGS("query", CONF_FLAG_XLAT | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, query) },
 	{ FR_CONF_OFFSET_FLAGS("reset", CONF_FLAG_REQUIRED, rlm_sqlcounter_t, reset) },
+	{ FR_CONF_OFFSET_FLAGS("auto_extend", CONF_FLAG_OK_MISSING, rlm_sqlcounter_t, auto_extend) },
 
 	{ FR_CONF_OFFSET_FLAGS("key", CONF_FLAG_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 
@@ -103,20 +106,10 @@ typedef struct {
 } sqlcounter_call_env_t;
 
 static fr_dict_t const *dict_freeradius;
-static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t rlm_sqlcounter_dict[];
 fr_dict_autoload_t rlm_sqlcounter_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
-	{ NULL }
-};
-
-static fr_dict_attr_t const *attr_session_timeout;
-
-extern fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[];
-fr_dict_attr_autoload_t rlm_sqlcounter_dict_attr[] = {
-	{ .out = &attr_session_timeout, .name = "Session-Timeout", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ NULL }
 };
 
@@ -317,9 +310,9 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		/*
 		 *	If we are near a reset then add the next
 		 *	limit, so that the user will not need to login
-		 *	again.  Do this only for Session-Timeout.
+		 *	again.  Do this only if auto_extend is set.
 		 */
-		if ((tmpl_attr_tail_da(env->reply_attr) == attr_session_timeout) &&
+		if (inst->auto_extend &&
 		    fr_time_gt(inst->reset_time, fr_time_wrap(0)) &&
 		    ((int64_t)res >= fr_time_delta_to_sec(fr_time_sub(inst->reset_time, request->packet->timestamp)))) {
 			fr_time_delta_t to_reset = fr_time_sub(inst->reset_time, request->packet->timestamp);
