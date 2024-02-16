@@ -1876,7 +1876,9 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *
 	 *	It must be the FIRST attribute in the packet.
 	 */
-	if (!packet->tls && original && (original->code == PW_CODE_ACCESS_REQUEST)) {
+	if (!packet->tls && 
+	    ((original && (original->code == PW_CODE_ACCESS_REQUEST)) ||
+	     (packet->code == PW_CODE_ACCESS_REQUEST))) {
 		seen_ma = true;
 
 		packet->offset = RADIUS_HDR_LEN;
