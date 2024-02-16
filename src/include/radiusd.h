@@ -174,6 +174,7 @@ typedef struct main_config {
 
 	bool		exiting;			//!< are we exiting?
 
+	bool		require_ma;			//!< global configuration for all clients and home servers
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.

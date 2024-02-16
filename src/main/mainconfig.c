@@ -160,6 +160,7 @@ static const CONF_PARSER security_config[] = {
 	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), STRINGIFY(0) },
 	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), STRINGIFY(0) },
 	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
+	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.require_ma), "yes"},
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
 #endif
