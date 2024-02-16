@@ -512,7 +512,7 @@ static const CONF_PARSER client_config[] = {
 
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
 
-	{ "require_message_authenticator",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, require_ma), "no" },
+	{ "require_message_authenticator",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_IGNORE_DEFAULT, RADCLIENT, require_ma), NULL },
 
 	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret), NULL },
 	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), NULL },
@@ -905,6 +905,13 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	 */
 	c = talloc_zero(ctx, RADCLIENT);
 	c->cs = cs;
+
+	/*
+	 *	Set the "require message authenticator" flag from the
+	 *	global default.  If the configuration item exists, AND
+	 *	is set, it will over-ride this flag.
+	 */
+	c->require_ma = main_config.require_ma;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
 	cl_netmask = 255;
