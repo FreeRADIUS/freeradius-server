@@ -8,6 +8,6 @@ dhcp_common {
 	&reply.Subnet-Mask = 255.255.255.0
 	&reply.Router-Address = 192.0.2.1
 	&reply.IP-Address-Lease-Time = 7200
-#	&reply.IP-Address-Lease-Time = "${modules.sqlippool[dhcp_sqlippool].lease_duration}"
+#	&reply.IP-Address-Lease-Time = "${modules.sqlippool[sqlippool].lease_duration}"
 	&reply.Server-Identifier = &control.Server-Identifier
 }

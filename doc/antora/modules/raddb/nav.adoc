@@ -26,7 +26,6 @@
 *** xref:mods-available/detail.adoc[Detail Module]
 *** xref:mods-available/detail.example.com.adoc[Detail Module (Sample)]
 *** xref:mods-available/detail.log.adoc[Detail Module (Log Sample)]
-*** xref:mods-available/dhcp_sqlippool.adoc[DHCP SQL-IP-Pool Module]
 *** xref:mods-available/dhcpv4.adoc[DHCPv4 Module]
 *** xref:mods-available/dict.adoc[Dict Module]
 *** xref:mods-available/digest.adoc[Digest Module]

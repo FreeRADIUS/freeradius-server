@@ -3,10 +3,7 @@
 #
 #	This is a virtual server that handles DHCP.
 #
-#  See raddb/mods-available/dhcp_sqlippool for the IP Pool configuration.
-#
-#  See raddb/policy.d/dhcp_sqlippool for the "glue" code that allows
-#  the RADIUS based "sqlippool" module to be used for DHCP.
+#  See raddb/mods-available/sqlippool for the IP Pool configuration.
 #
 #  See raddb/mods-config/sql/ippool/ for the schemas.
 #
@@ -149,7 +146,7 @@ recv Discover {
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
 	#  set the pool name here if you haven't set it elsewhere.
 #	&control.IP-Pool.Name := "local"
-#	dhcp_sqlippool
+#	sqlippool
 
 	#  Set the type of packet to send in reply.
 	#
@@ -209,7 +206,7 @@ recv Request {
 	#  Or, allocate IPs from the DHCP pool in SQL. You may need to
 	#  set the pool name here if you haven't set it elsewhere.
 #	&control.IP-Pool.Name := "local"
-#	dhcp_sqlippool
+#	sqlippool
 
 	if (ok) {
 		&reply.Your-IP-Address := "%{&request.Requested-IP-Address || &request.Client-IP-Address}"
@@ -235,7 +232,7 @@ recv Decline {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and mark the IP as declined.
 #	&control.IP-Pool.Name := "local"
-#	dhcp_sqlippool
+#	sqlippool
 
 	ok
 }
@@ -267,7 +264,7 @@ recv Release {
 	#  If using IPs from a DHCP pool in SQL then you may need to set the
 	#  pool name here if you haven't set it elsewhere and release the IP.
 #	&control.IP-Pool.Name := "local"
-#	dhcp_sqlippool
+#	sqlippool
 
 	ok
 }

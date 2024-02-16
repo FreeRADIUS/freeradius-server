@@ -1,9 +1,6 @@
 
 
-See raddb/mods-available/dhcp_sqlippool for the IP Pool configuration.
-
-See raddb/policy.d/dhcp_sqlippool for the "glue" code that allows
-the RADIUS based "sqlippool" module to be used for DHCP.
+See raddb/mods-available/sqlippool for the IP Pool configuration.
 
 See raddb/mods-config/sql/ippool/ for the schemas.
 
@@ -297,7 +294,7 @@ recv Discover {
 	dhcp_common
 #	mac2ip
 #	&control.IP-Pool.Name := "local"
-#	dhcp_sqlippool
+#	sqlippool
 #	&reply.Message-Type = Offer
 #	ok
 }
@@ -311,7 +308,7 @@ recv Request {
 	dhcp_common
 #	mac2ip
 #	&control.IP-Pool.Name := "local"
-#	dhcp_sqlippool
+#	sqlippool
 	if (ok) {
 		&reply.Your-IP-Address := "%{&request.Requested-IP-Address || &request.Client-IP-Address}"
 	}
@@ -319,7 +316,7 @@ recv Request {
 }
 recv Decline {
 #	&control.IP-Pool.Name := "local"
-#	dhcp_sqlippool
+#	sqlippool
 	ok
 }
 recv Inform {
@@ -335,7 +332,7 @@ recv Inform {
 #}
 recv Release {
 #	&control.IP-Pool.Name := "local"
-#	dhcp_sqlippool
+#	sqlippool
 	ok
 }
 recv Lease-Query {
