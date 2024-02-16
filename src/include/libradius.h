@@ -407,6 +407,7 @@ typedef struct radius_packet {
 	size_t			partial;
 	int			proto;
 #endif
+	bool			tls;		//!< uses secure transport
 } RADIUS_PACKET;
 
 typedef enum {

@@ -439,6 +439,8 @@ read_application_data:
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
+	packet->tls = true;
+
 	if (!rad_packet_ok(packet, 0, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		DEBUG("(TLS) Closing TLS socket from client");
@@ -935,6 +937,8 @@ int proxy_tls_recv(rad_listen_t *listener)
 	memcpy(packet->data, data, packet->data_len);
 	memcpy(packet->vector, packet->data + 4, 16);
 
+	packet->tls = true;
+
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
@@ -995,6 +999,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	if there's no packet, encode it here.
 	 */
 	if (!request->proxy->data) {
+		request->reply->tls = true;
 		request->proxy_listener->proxy_encode(request->proxy_listener,
 						      request);
 	}
