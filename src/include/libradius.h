@@ -410,6 +410,7 @@ typedef struct radius_packet {
 #ifdef WITH_RADIUSV11
 	bool			radiusv11;
 #endif
+	bool			tls;		//!< uses secure transport
 } RADIUS_PACKET;
 
 typedef enum {

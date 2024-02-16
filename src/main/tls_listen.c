@@ -673,6 +673,7 @@ read_application_data:
 #ifdef WITH_RADIUSV11
 	packet->radiusv11 = sock->radiusv11;
 #endif
+	packet->tls = true;
 
 	if (!rad_packet_ok(packet, 0, NULL)) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -1286,6 +1287,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 	}
 
 #endif
+	packet->tls = true;
 
 	/*
 	 *	FIXME: Client MIB updates?
@@ -1373,6 +1375,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	 *	if there's no packet, encode it here.
 	 */
 	if (!request->proxy->data) {
+		request->reply->tls = true;
 		request->proxy_listener->proxy_encode(request->proxy_listener,
 						      request);
 	}
@@ -1509,6 +1512,8 @@ int proxy_tls_send_reply(rad_listen_t *listener, REQUEST *request)
 
 	if ((listener->status != RAD_LISTEN_STATUS_INIT &&
 	    (listener->status != RAD_LISTEN_STATUS_KNOWN))) return 0;
+
+	request->reply->tls = true;
 
 	/*
 	 *	Pack the VPs
