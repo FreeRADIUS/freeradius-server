@@ -43,7 +43,7 @@ typedef struct {
 /**  Structure produced by custom call_env parser
  */
 typedef struct {
-	tmpl_t		*key_tmpl;	//<! tmpl used to evaluate lookup key.
+	tmpl_t		*key_tmpl;	//!< tmpl used to evaluate lookup key.
 	fr_htrie_t	*htrie;		//!< parsed files "user" data.
 	PAIR_LIST_LIST	*def;		//!< parsed files DEFAULT data.
 } rlm_files_data_t;
@@ -51,8 +51,8 @@ typedef struct {
 /**  Call_env structure
  */
 typedef struct {
-	rlm_files_data_t	*data;	//<! Data from parsed call_env
-	fr_value_box_list_t	values;	//<! Where the expanded tmpl value will be written.
+	rlm_files_data_t	*data;	//!< Data from parsed call_env
+	fr_value_box_list_t	values;	//!< Where the expanded tmpl value will be written.
 } rlm_files_env_t;
 
 static fr_dict_t const *dict_freeradius;
