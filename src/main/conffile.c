@@ -1424,6 +1424,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 {
 	int rcode;
 	bool deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, multi, file_exists;
+	bool ignore_dflt;
 	char **q;
 	char const *value;
 	CONF_PAIR *cp = NULL;
@@ -1447,6 +1448,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
 	tmpl = (type & PW_TYPE_TMPL);
 	multi = (type & PW_TYPE_MULTI);
+	ignore_dflt = (type & PW_TYPE_IGNORE_DEFAULT);
 
 	if (attribute) required = true;
 	if (required) cant_be_empty = true;	/* May want to review this in the future... */
@@ -1470,7 +1472,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 *	section, use the default value.
 	 */
 	if (!cp) {
-		if (deprecated) return 0;	/* Don't set the default value */
+		if (deprecated || ignore_dflt) return 0;	/* Don't set the default value */
 
 		rcode = 1;
 		value = dflt;
