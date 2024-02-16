@@ -24,6 +24,25 @@ do { \
 	*(r++) = b = (ind(mm, y >> RANDSIZL) + x) & 0xffffffff; \
 } while (0)
 
+#ifdef ISAAC_PLUS
+/*
+ *	https://eprint.iacr.org/2006/438.pdf
+ *
+ *	- replace shift by rotate
+ *	- replace "a+b" with "a^b"
+ *	- change "x+s" to "x+(s^a)"
+ */
+#define rotr(x, n) (((x) << n) | ((x) >> (32 - n)))
+#define ind(mm,x)  ((mm)[rotr(x, 2) & (RANDSIZ-1)])
+#define rngstep(mix, a, b, mm, m, m2, r, x) \
+do { \
+	x = *m;  \
+	a = ((a^(mix)) + *(m2++)) & 0xffffffff; \
+	*(m++) = y = (ind(mm, x) + (a ^ b)) & 0xffffffff; \
+	*(r++) = b = ((ind(mm, y >> RANDSIZL) ^ a) + x) & 0xffffffff; \
+} while (0)
+#endif
+
 void fr_isaac(fr_randctx *ctx)
 {
 	register uint32_t a, b, x, y, *m, *mm, *m2, *r, *mend;
