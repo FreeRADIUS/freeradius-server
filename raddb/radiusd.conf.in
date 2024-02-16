@@ -603,6 +603,17 @@ security {
 	#
 	status_server = yes
 
+	#
+	#  Global configuration for requiring Message-Authenticator
+	#  in all Access-* packets.
+	#
+	#  This flag sets the global default for all clients and home
+	#  servers.  It can be over-ridden in individual client or
+	#  home server by adding a flag to that section which says
+	#  "require_message_authenticator = false".
+	#
+	require_message_authenticator = yes
+
 @openssl_version_check_config@
 }
 
