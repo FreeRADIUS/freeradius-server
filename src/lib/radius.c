@@ -1831,6 +1831,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	uint16_t		total_length;
 	int			len;
 	VALUE_PAIR const	*reply;
+	bool			seen_ma = false;
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -1883,6 +1884,12 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		id = htonl(id);
 		memcpy(hdr->vector, &id, sizeof(id));
 		memset(hdr->vector + sizeof(id), 0, sizeof(hdr->vector) - sizeof(id));
+
+		/*
+		 *	We don't encode Message-Authenticator
+		 */
+		seen_ma = true;
+		packet->offset = -1;
 	} else
 #endif
 	{
@@ -1907,6 +1914,25 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	Hmm... this may be slower than just doing a small
 	 *	memcpy.
 	 */
+
+	/*
+	 *	Always add Message-Authenticator for replies to
+	 *	Access-Request packets.
+	 *
+	 *	It must be the FIRST attribute in the packet.
+	 */
+	if (!packet->tls && original && (original->code == PW_CODE_ACCESS_REQUEST)) {
+		seen_ma = true;
+
+		packet->offset = RADIUS_HDR_LEN;
+
+		ptr[0] = PW_MESSAGE_AUTHENTICATOR;
+		ptr[1] = 18;
+		memset(ptr + 2, 0, 16);
+
+		ptr += 18;
+		total_length += 18;
+	}
 
 	/*
 	 *	Loop over the reply attributes for the packet.
@@ -1943,15 +1969,6 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 #ifdef WITH_RADIUSV11
 		/*
-		 *	Do not encode Message-Authenticator for RADIUS/1.1
-		 */
-		if (packet->radiusv11 && (reply->da->vendor == 0) && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
-			reply = reply->next;
-			continue;
-		}
-
-
-		/*
 		 *	Do not encode Original-Packet-Code for RADIUS/1.1
 		 */
 		if (packet->radiusv11 && reply->da->vendor == ((unsigned int) PW_EXTENDED_ATTRIBUTE_1 << 24) && (reply->da->attr == 4)) {
@@ -1984,15 +2001,13 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	length and initial value.
 		 */
 		if (!reply->da->vendor && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
-#ifdef WITH_RADIUSV11
 			/*
-			 *	RADIUSV11 does not encode or verify Message-Authenticator.
+			 *	We have already encoded the Message-Authenticator, don't do it again.
 			 */
-			if (packet->radiusv11) {
+			if (seen_ma) {
 				reply = reply->next;
 				continue;
 			}
-#endif
 
 			if (room < 18) break;
 
