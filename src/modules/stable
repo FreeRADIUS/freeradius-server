@@ -30,6 +30,7 @@ rlm_sqlippool
 rlm_test
 rlm_totp
 rlm_unix
+rlm_unbound
 rlm_sometimes
 rlm_wimax
 rlm_yubikey
