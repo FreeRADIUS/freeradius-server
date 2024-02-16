@@ -2029,6 +2029,10 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 		return NULL;
 	}
 
+#ifdef WITH_RADIUSV11
+	request->reply->radiusv11 = packet->radiusv11;
+#endif
+
 	request->listener = listener;
 	request->client = client;
 	request->packet = talloc_steal(request, packet);
