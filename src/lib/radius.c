@@ -1806,6 +1806,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	uint16_t		total_length;
 	int			len;
 	VALUE_PAIR const	*reply;
+	bool			seen_ma = false;
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -1870,6 +1871,25 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 */
 
 	/*
+	 *	Always add Message-Authenticator for replies to
+	 *	Access-Request packets.
+	 *
+	 *	It must be the FIRST attribute in the packet.
+	 */
+	if (!packet->tls && original && (original->code == PW_CODE_ACCESS_REQUEST)) {
+		seen_ma = true;
+
+		packet->offset = RADIUS_HDR_LEN;
+
+		ptr[0] = PW_MESSAGE_AUTHENTICATOR;
+		ptr[1] = 18;
+		memset(ptr + 2, 0, 16);
+
+		ptr += 18;
+		total_length += 18;
+	}
+
+	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
 	reply = packet->vps;
@@ -1926,6 +1946,14 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	length and initial value.
 		 */
 		if (!reply->da->vendor && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+			/*
+			 *	We have already encoded the Message-Authenticator, don't do it again.
+			 */
+			if (seen_ma) {
+				reply = reply->next;
+				continue;
+			}
+
 			if (room < 18) break;
 
 			/*
