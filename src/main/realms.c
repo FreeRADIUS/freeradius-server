@@ -483,6 +483,7 @@ static CONF_PARSER home_server_recv_coa[] = {
 
 static CONF_PARSER home_server_config[] = {
 	{ "nonblock", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, nonblock), "no" },
+	{ "require_message_authenticator", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_IGNORE_DEFAULT, home_server_t, require_ma), NULL },
 	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr), NULL },
 	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, home_server_t, ipaddr), NULL },
 	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, home_server_t, ipaddr), NULL },
@@ -786,6 +787,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	home->cs = cs;
 	home->state = HOME_STATE_UNKNOWN;
 	home->proto = IPPROTO_UDP;
+	home->require_ma = main_config.require_ma;
 
 	/*
 	 *	Parse the configuration into the home server
@@ -1121,6 +1123,11 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 */
 		if (tls) {
 			int rcode;
+
+			/*
+			 *	We don't require this for TLS connections.
+			 */
+			home->require_ma = false;
 
 			home->tls = tls_client_conf_parse(tls);
 			if (!home->tls) {

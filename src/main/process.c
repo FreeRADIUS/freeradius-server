@@ -2798,8 +2798,23 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	server core, but I guess we can fix that later.
 	 */
 	if (!request->proxy_reply) {
+		decode_fail_t reason;
+
+		/*
+		 *	If the home server configuration requires a Message-Authenticator, then set the flag,
+		 *	but only if the proxied packet is Access-Request or Status-Sercer.
+		 *
+		 *	The realms.c file already clears require_ma for TLS connections.
+		 */
+		bool require_ma = request->home_server->require_ma && (request->proxy->code == PW_CODE_ACCESS_REQUEST);
+
 		if (!request->home_server) {
 			proxy_reply_too_late(request);
+			return 0;
+		}
+
+		if (!rad_packet_ok(packet, require_ma, &reason)) {
+			DEBUG("Ignoring invalid packet - %s", fr_strerror());
 			return 0;
 		}
 
