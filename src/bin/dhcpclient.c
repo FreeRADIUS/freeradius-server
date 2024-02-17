@@ -101,7 +101,7 @@ fr_dict_attr_autoload_t dhcpclient_dict_attr[] = {
 };
 
 static fr_table_num_sorted_t const request_types[] = {
-	{ L("auto"),     	0	},
+	{ L("auto"),     	0			},
 	{ L("decline"),		FR_DHCP_DECLINE		},
 	{ L("discover"),        FR_DHCP_DISCOVER	},
 	{ L("inform"),		FR_DHCP_INFORM		},
