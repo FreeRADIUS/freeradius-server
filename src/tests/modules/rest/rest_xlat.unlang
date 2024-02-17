@@ -13,7 +13,7 @@ string result_string
 &test_string := 'notfound'
 
 # Retrieve a plain text file
-&result_string := %rest('GET', "http://%{server_host}:%{server_port}/test.txt")
+&result_string := %rest('GET', "http://%{server_host}:%rest.escape(%{server_port})/test.txt")
 
 if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
@@ -24,7 +24,7 @@ if (!(&result_string == "Sample text response\n")) {
 }
 
 # Take host from incoming packet
-&result_string := %rest("http://%{Login-IP-Host}:%{server_port}/test.txt")
+&result_string := %rest("http://%{Login-IP-Host}:%rest.escape(%{server_port})/test.txt")
 
 if (!(&REST-HTTP-Status-Code == 200) || !(&result_string == "Sample text response\n")) {
 	test_fail
@@ -33,19 +33,19 @@ if (!(&REST-HTTP-Status-Code == 200) || !(&result_string == "Sample text respons
 # Port is not allowed from incoming packet
 &result_string := %rest("http://%{server_host}:%{NAS-Port}/test.txt")
 
-if (!(&Module-Failure-Message == "Failed escaping URI: Tainted value not allowed for port") || &result_string) {
+if (!(&Module-Failure-Message == "Failed escaping URI: Unsafe input \"8080\" not allowed in URI part port") || &result_string) {
 	test_fail
 }
 
 # Check a "not found" gives a 404 status code
-&result_string := %rest('GET', "http://%{server_host}:%{server_port}/%{test_string}")
+&result_string := %rest('GET', "http://%{server_host}:%rest.escape(%{server_port})/%{test_string}")
 
 if (!(&REST-HTTP-Status-Code == 404)) {
 	test_fail
 }
 
 # GET with URL parameters
-&test_string := %rest('GET', "http://%{server_host}:%{server_port}/user/%{User-Name}/mac/%{Called-Station-Id}")
+&test_string := %rest('GET', "http://%{server_host}:%rest.escape(%{server_port})/user/%{User-Name}/mac/%{Called-Station-Id}")
 
 if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
@@ -67,7 +67,7 @@ if (!(&control.User-Name == "Bob")) {
 &control.User-Name := 'dummy'
 
 # Directly use json map and prepend the returned value
-map json %rest('GET', "http://%{server_host}:%{server_port}/user/%{User-Name}/mac/%{Called-Station-Id}") {
+map json %rest('GET', "http://%{server_host}:%rest.escape(%{server_port})/user/%{User-Name}/mac/%{Called-Station-Id}") {
 	&control.User-Name ^= '$.control\.User-Name.value'
 }
 
@@ -78,7 +78,7 @@ if (!(&control.User-Name[0] == 'Bob') || !(&control.User-Name[1] == 'dummy')) {
 &test_string := %json.encode('&request.NAS-IP-Address')
 
 # POST to https with JSON body data
-&result_string := %rest('POST', "https://%{server_host}:%{server_ssl_port}/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting", %{test_string})
+&result_string := %rest('POST', "https://%{server_host}:%rest.escape(%{server_ssl_port})/user/%{User-Name}/mac/%{Called-Station-Id}?section=accounting", %{test_string})
 
 if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
@@ -105,7 +105,7 @@ if (!(&control.NAS-IP-Address == "192.168.1.1")) {
 &result_string := "NAS=%{NAS-IP-Address}&user=%{User-Name}"
 
 # POST to https with POST body data
-&result_string := %rest('POST', "https://%{server_host}:%{server_ssl_port}/post/test?section=dummy", %{result_string})
+&result_string := %rest('POST', "https://%{server_host}:%rest.escape(%{server_ssl_port})/post/test?section=dummy", %{result_string})
 
 if (!(&REST-HTTP-Status-Code == 200)) {
 	test_fail
@@ -122,7 +122,7 @@ group {
 	string arguments
 	string body
 
-	map json %rest('POST', "http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/?station=%{Calling-Station-Id}", "{\"test\":\"foo\"}") {
+	map json %rest('POST', "http://%{server_host}:%rest.escape(%{server_port})/user/%{User-Name}/reflect/?station=%{Calling-Station-Id}", "{\"test\":\"foo\"}") {
 		&headers := '$.reply\.Reply-Message.value[0]'
 		&arguments := '$.reply\.Reply-Message.value[1]'
 		&body := '$.reply\.Reply-Message.value[2]'
@@ -160,7 +160,7 @@ group {
 
 	&test_string := ""
 
-	map json %rest(http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/%{test_string}?station=%{User-Name}) {
+	map json %rest(http://%{server_host}:%rest.escape(%{server_port})/user/%{User-Name}/reflect/%{test_string}?station=%{User-Name}) {
 		&headers := '$.reply\.Reply-Message.value[0]'
 		&arguments := '$.reply\.Reply-Message.value[1]'
 	}
@@ -190,7 +190,7 @@ group {
 group {
 	string arguments
 
-	map json %rest("http://%{server_host}:%{server_port}/user/%{User-Name}/reflect/%{NAS-Identifier}?station=%{Called-Station-Id}") {
+	map json %rest("http://%{server_host}:%rest.escape(%{server_port})/user/%{User-Name}/reflect/%{NAS-Identifier}?station=%{Called-Station-Id}") {
 		&arguments := '$.reply\.Reply-Message.value[1]'
 	}
 
@@ -202,7 +202,7 @@ group {
 }
 
 # Test against endpoint which will time out
-&result_string := %restshorttimeout("http://%{server_host}:%{server_port}/delay")
+&result_string := %restshorttimeout("http://%{server_host}:%rest.escape(%{server_port})/delay")
 
 if (&REST-HTTP-Status-Code) {
 	test_fail

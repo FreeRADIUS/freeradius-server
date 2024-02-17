@@ -398,7 +398,8 @@ fr_slen_t 	xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_
 				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, bool comma, bool allow_attr);
 
 fr_slen_t	xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **head, fr_sbuff_t *in,
-			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules);
+			      fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+			      fr_value_box_safe_for_t literals_safe_for);
 
 fr_slen_t	xlat_print(fr_sbuff_t *in, xlat_exp_head_t const *node, fr_sbuff_escape_rules_t const *e_rules);
 
@@ -464,7 +465,7 @@ int		xlat_instance_unregister_func(xlat_exp_t *node);
 
 int		xlat_instance_register_func(xlat_exp_t *node);
 
-int		xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules); /* xlat_instance_register() or xlat_instantiate_ephemeral() */
+int		xlat_finalize(xlat_exp_head_t *head, fr_event_list_t *runtime_el); /* xlat_instance_register() or xlat_instantiate_ephemeral() */
 
 void		xlat_instances_free(void);
 

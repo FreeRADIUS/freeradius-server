@@ -25,6 +25,7 @@
  * @copyright 2000,2006 The FreeRADIUS server project
  */
 
+#include "lib/util/event.h"
 #include "lib/util/value.h"
 RCSID("$Id$")
 
@@ -897,7 +898,8 @@ check_for_attr:
  *	- -1 on failure.
  */
 static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
-			       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules, fr_value_box_safe_for_t safe_for)
+			       fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+			       fr_value_box_safe_for_t safe_for)
 {
 	xlat_exp_t			*node = NULL;
 	fr_slen_t			slen;
@@ -1611,12 +1613,17 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 
 /** Tokenize an xlat expansion
  *
- * @param[in] ctx	to allocate dynamic buffers in.
- * @param[out] out	the head of the xlat list / tree structure.
- * @param[in] in	the format string to expand.
- * @param[in] p_rules	controlling how the string containing the xlat
- *			expansions should be parsed.
- * @param[in] t_rules	controlling how attribute references are parsed.
+ * @param[in] ctx			to allocate dynamic buffers in.
+ * @param[out] out			the head of the xlat list / tree structure.
+ * @param[in] in			the format string to expand.
+ * @param[in] p_rules			controlling how the string containing the xlat
+ *					expansions should be parsed.
+ * @param[in] t_rules			controlling how attribute references are parsed.
+ *					Do NOT alter this function to take tmpl_rules_t
+ *					as this provides another value for literals_safe_for
+ *					and this gets very confusing.
+ * @param[in] literals_safe_for		the safe_for value to assign to any literals occurring at the
+ *					top level of the expansion.
  * @return
  *	- >0 on success.
  *	- 0 and *head == NULL - Parse failure on first char.
@@ -1624,19 +1631,17 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
  *	- < 0 the negative offset of the parse failure.
  */
 fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
-			fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+			fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules,
+			fr_value_box_safe_for_t literals_safe_for)
 {
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 	xlat_exp_head_t	*head;
 
-	MEM(head = xlat_exp_head_alloc(ctx));
-	if (t_rules) {
-		fr_assert(!t_rules->at_runtime || t_rules->xlat.runtime_el); /* if it's at runtime, we need an event list */
-	}
 
+	MEM(head = xlat_exp_head_alloc(ctx));
 	fr_strerror_clear();	/* Clear error buffer */
 
-	if (xlat_tokenize_input(head, &our_in, p_rules, t_rules, t_rules ? t_rules->literal.safe_for : 0) < 0) {
+	if (xlat_tokenize_input(head, &our_in, p_rules, t_rules, literals_safe_for) < 0) {
 		talloc_free(head);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
@@ -1645,7 +1650,7 @@ fr_slen_t xlat_tokenize(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_finalize(head, t_rules) < 0) {
+	if (xlat_finalize(head, t_rules->xlat.runtime_el) < 0) {
 		talloc_free(head);
 		return 0;
 	}

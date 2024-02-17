@@ -1425,7 +1425,7 @@ ssize_t _xlat_eval(TALLOC_CTX *ctx, char **out, size_t outlen, request_t *reques
 					    .runtime_el = unlang_interpret_event_list(request),
 				    },
 				    .at_runtime = true,
-			    });
+			    }, 0);
 	if (len == 0) {
 		if (*out) {
 			**out = '\0';

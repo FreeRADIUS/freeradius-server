@@ -1284,7 +1284,7 @@ int cf_section_parse_pass2(void *base, CONF_SECTION *cs)
 							     .allow_unresolved = false,
 							     .allow_foreign = (dict == NULL)
 						     },
-					     });
+					     }, 0);
 			if (slen < 0) {
 				char *spaces, *text;
 

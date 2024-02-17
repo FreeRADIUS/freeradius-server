@@ -37,6 +37,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 
 #include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/value.h>
 
 #include <ctype.h>
 
@@ -2414,6 +2415,7 @@ static fr_slen_t tmpl_afrom_value_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff
 		talloc_free(vpt);
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
+	fr_value_box_mark_safe_for(&tmp, t_rules->literals_safe_for);
 
 	tmpl_init(vpt, TMPL_TYPE_DATA, quote, fr_sbuff_start(&our_in), fr_sbuff_used(&our_in), t_rules);
 
@@ -3080,7 +3082,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 			xlat_exp_head_t	*head = NULL;
 
 			vpt = tmpl_alloc_null(ctx);
-			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
+			slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, t_rules->literals_safe_for);
 			if (slen <= 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 			if (xlat_needs_resolving(head)) UNRESOLVED_SET(&type);
@@ -3112,8 +3114,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 			my_t_rules.cast = my_t_rules.enumv->type;
 
-			return tmpl_afrom_value_substr(ctx, out, in, quote,
-						       &my_t_rules, true, p_rules);
+			return tmpl_afrom_value_substr(ctx, out, in, quote, &my_t_rules, true, p_rules);
 		}
 
 		/*
@@ -3263,7 +3264,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, t_rules->literals_safe_for);
 		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*
@@ -3331,7 +3332,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 		 *	Ensure any xlats produced are bootstrapped
 		 *	so that their instance data will be created.
 		 */
-		if (xlat_finalize(head, t_rules) < 0) {
+		if (xlat_finalize(head, t_rules->xlat.runtime_el) < 0) {
 			fr_strerror_const("Failed to bootstrap xlat");
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
@@ -3356,7 +3357,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules);
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, t_rules->literals_safe_for);
 		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*

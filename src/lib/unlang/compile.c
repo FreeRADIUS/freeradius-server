@@ -855,6 +855,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		cf_log_err(cs, "Failed to find map processor '%s'", name2);
 		return NULL;
 	}
+	t_rules.literals_safe_for = proc->literals_safe_for;
 
 	g = group_allocate(parent, cs, &map_ext);
 	if (!g) return NULL;

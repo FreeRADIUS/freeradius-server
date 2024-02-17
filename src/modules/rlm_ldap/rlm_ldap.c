@@ -33,7 +33,9 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/uri.h>
+#include <freeradius-devel/util/value.h>
 
 #include <freeradius-devel/ldap/conf.h>
 #include <freeradius-devel/ldap/base.h>
@@ -346,8 +348,25 @@ typedef struct {
 	fr_ldap_map_exp_t	expanded;
 } ldap_map_ctx_t;
 
+typedef enum {
+	LDAP_SCHEME_UNIX = 0,
+	LDAP_SCHEME_TCP,
+	LDAP_SCHEME_TCP_SSL
+} ldap_schemes_t;
+
+static fr_table_num_sorted_t const ldap_uri_scheme_table[] = {
+	{ L("ldap://"),		LDAP_SCHEME_UNIX	},
+	{ L("ldapi://"),     	LDAP_SCHEME_TCP		},
+	{ L("ldaps://"),        LDAP_SCHEME_TCP_SSL	},
+};
+static size_t ldap_uri_scheme_table_len = NUM_ELEMENTS(ldap_uri_scheme_table);
+
+/** This is the common function that actually ends up doing all the URI escaping
+ */
+#define LDAP_URI_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_escape_func
+
 static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -396,7 +415,6 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 */
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), in_vb->tainted);
-	fr_value_box_mark_safe_for(vb, ldap_escape_xlat);
 
 	fr_dcursor_append(out, vb);
 	return XLAT_ACTION_DONE;
@@ -443,16 +461,11 @@ static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /** Escape function for a part of an LDAP URI
  *
  */
-static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
+static int ldap_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
 	fr_sbuff_t		sbuff;
 	fr_sbuff_uctx_talloc_t	sbuff_ctx;
 	size_t			len;
-
-	/*
-	 *	If it's already safe, don't do anything.
-	 */
-	if (fr_value_box_is_safe_for(vb, uri_part_escape)) return 0;
 
 	/*
 	 *	Maximum space needed for output would be 3 times the input if every
@@ -471,7 +484,6 @@ static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_clear_value(vb);
 	fr_value_box_strdup_shallow(vb, NULL, fr_sbuff_buff(&sbuff), vb->tainted);
-	fr_value_box_mark_safe_for(vb, uri_part_escape);
 
 	return 0;
 }
@@ -563,28 +575,32 @@ static void ldap_xlat_signal(xlat_ctx_t const *xctx, request_t *request, UNUSED 
 	fr_trunk_request_signal_cancel(query->treq);
 }
 
-
+/*
+ *	If a part doesn't have an escaping function, parsing will fail unless the input
+ *	was marked up with a safe_for value by the ldap arg parsing, i.e. was a literal
+ *	input argument to the xlat.
+ *
+ *	This is equivalent to the old "tainted_allowed" flag.
+ */
 static fr_uri_part_t const ldap_uri_parts[] = {
-	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
-	  .tainted_allowed = false, .extra_skip = 2 },
-	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
-	  .tainted_allowed = false },
-	{ .name = "port", .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 },
-	  .tainted_allowed = false },
-	{ .name = "dn", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
-	  .tainted_allowed = true, .func = uri_part_escape },
-	{ .name = "attrs", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
-	  .tainted_allowed = false },
-	{ .name = "scope", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
-	  .tainted_allowed = true, .func = uri_part_escape },
-	{ .name = "filter", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1},
-	  .tainted_allowed = true, .func = uri_part_escape },
-	{ .name = "exts", .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "scheme", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 }, .extra_skip = 2 },
+	{ .name = "host", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 } },
+	{ .name = "port", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 } },
+	{ .name = "dn", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = ldap_uri_part_escape },
+	{ .name = "attrs", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }},
+	{ .name = "scope", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = ldap_uri_part_escape },
+	{ .name = "filter", .safe_for = LDAP_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1}, .func = ldap_uri_part_escape },
+	{ .name = "exts", .safe_for = LDAP_URI_SAFE_FOR, .func = ldap_uri_part_escape },
+	XLAT_URI_PART_TERMINATOR
+};
+
+static fr_uri_part_t const ldap_dn_parts[] = {
+	{ .name = "dn", .safe_for = LDAP_URI_SAFE_FOR , .func = ldap_uri_part_escape },
 	XLAT_URI_PART_TERMINATOR
 };
 
 static xlat_arg_parser_t const ldap_xlat_arg[] = {
-	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -829,7 +845,7 @@ static xlat_action_t ldap_memberof_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *ou
 }
 
 static xlat_arg_parser_t const ldap_memberof_xlat_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -982,18 +998,32 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	char const			*filter;
 	int				scope;
 
+	bool				is_dn;
+
 	XLAT_ARGS(in, &uri_components);
 
-	if (fr_uri_escape_list(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) {
-		RPERROR("Failed to escape LDAP URI");
-		return XLAT_ACTION_FAIL;
+	is_dn = (fr_uri_has_scheme(&uri_components->vb_group, ldap_uri_scheme_table, ldap_uri_scheme_table_len, -1) < 0);
+
+	/*
+	 *	Apply different escaping rules based on whether the first
+	 *	arg lookgs like a URI or a DN.
+	 */
+	if (is_dn) {
+		if (fr_uri_escape_list(&uri_components->vb_group, ldap_dn_parts, NULL) < 0) {
+			RPERROR("Failed to escape LDAP DN");
+			return XLAT_ACTION_FAIL;
+		}
+	} else {
+		if (fr_uri_escape_list(&uri_components->vb_group, ldap_uri_parts, NULL) < 0) {
+			RPERROR("Failed to escape LDAP URI");
+			return XLAT_ACTION_FAIL;
+		}
 	}
 
 	/*
 	 *	Smush everything into the first URI box
 	 */
 	uri = fr_value_box_list_head(&uri_components->vb_group);
-
 	if (fr_value_box_list_concat_in_place(uri, uri, &uri_components->vb_group,
 					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		REDEBUG("Failed concattenating input");
@@ -1006,7 +1036,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	MEM(xlat_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), ldap_xlat_profile_ctx_t));
 	talloc_set_destructor(xlat_ctx, ldap_xlat_profile_ctx_free);
 
-	if (!ldap_is_ldap_url(uri->vb_strvalue)) {
+	if (is_dn) {
 		host_url = handle_config->server;
 		dn = talloc_typed_strdup_buffer(xlat_ctx, uri->vb_strvalue);
 		filter = env_data->profile_filter.vb_strvalue;
@@ -1229,11 +1259,13 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	ldap_map_ctx_t		*map_ctx;
 	char			*host_url, *host = NULL;
 
-	if (fr_uri_escape_list(url, ldap_uri_parts, NULL) < 0) {
-		RPERROR("Failed to escape LDAP URI");
-		RETURN_MODULE_FAIL;
-	}
-
+	/* FIXME - We need a way of markup up literal */
+/*
+ *	if (fr_uri_escape_list(url, ldap_uri_parts, NULL) < 0) {
+ *		RPERROR("Failed to escape LDAP URI");
+ *		RETURN_MODULE_FAIL;
+ *	}
+ */
 	url_head = fr_value_box_list_head(url);
 	if (!url_head) {
 		REDEBUG("LDAP URL cannot be (null)");
@@ -2273,7 +2305,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_args_set(xlat, ldap_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
 
-	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0);
+	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0, LDAP_URI_SAFE_FOR);
 
 	return 0;
 }
@@ -2564,6 +2596,8 @@ static int mod_load(void)
 	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.escape", ldap_escape_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	xlat_func_safe_for_set(xlat, LDAP_URI_SAFE_FOR);	/* Used for all LDAP escaping */
+
 	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.unescape", ldap_unescape_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);

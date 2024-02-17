@@ -23,6 +23,7 @@
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
+#include "lib/util/value.h"
 RCSIDH(call_env_h, "$Id$")
 
 #ifdef __cplusplus
@@ -193,6 +194,7 @@ struct call_env_parser_s {
 				call_env_parse_type_t		type;		//!< What type of output the parsing phase is expected to produce.
 			} parsed;
 
+			fr_value_box_safe_for_t		literals_safe_for;	//!< What safe_for value to assign any literals that are arguments to the tmpl_t.
 			tmpl_escape_t			escape;		//!< Escape method to use when evaluating tmpl_t.
 		} pair;
 

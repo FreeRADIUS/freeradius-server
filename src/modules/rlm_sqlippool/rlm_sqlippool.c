@@ -612,7 +612,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	 */
 	our_rules.escape.uctx.func.uctx = sql;
 	our_rules.escape.safe_for = (fr_value_box_safe_for_t)sql->driver;
-	our_rules.literal.safe_for = (fr_value_box_safe_for_t)sql->driver;
+	our_rules.literals_safe_for = (fr_value_box_safe_for_t)sql->driver;
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),

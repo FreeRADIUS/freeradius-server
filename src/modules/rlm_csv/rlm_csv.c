@@ -737,11 +737,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	And register the `map csv <key> { ... }` function.
 	 */
-	map_proc_register(inst, mctx->inst->name, mod_map_proc, csv_maps_verify, 0);
+	map_proc_register(inst, mctx->inst->name, mod_map_proc, csv_maps_verify, 0, 0);
 
 	return 0;
 }
-
 
 /** Instantiate the module
  *

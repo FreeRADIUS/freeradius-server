@@ -489,7 +489,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 								};
 
 
-			slen = xlat_tokenize(xlat_ctx, &head, &line, &p_rules, &t_rules);
+			slen = xlat_tokenize(xlat_ctx, &head, &line, &p_rules, &t_rules, 0);
 			if (slen <= 0) {
 				talloc_free(xlat_ctx);
 				fr_sbuff_in_sprintf(&out, "ERROR offset %d '%s'", (int) -slen, fr_strerror());
@@ -882,7 +882,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0) < 0) {
+	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0, 0) < 0) {
 		EXIT_WITH_FAILURE;
 	}
 

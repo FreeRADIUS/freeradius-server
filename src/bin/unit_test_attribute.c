@@ -2788,7 +2788,8 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					},
 					.xlat = cc->tmpl_rules.xlat,
-				});
+				},
+				0);
 	if (dec_len <= 0) {
 		fr_strerror_printf_push_head("ERROR offset %d", (int) -dec_len);
 

@@ -430,6 +430,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 
 			our_rules.attr.list_def = request_attr_request;
 			our_rules.cast = ((type == FR_TYPE_VOID) ? FR_TYPE_NULL : type);
+			our_rules.literals_safe_for = rule->pair.literals_safe_for;
 
 			call_env_parsed = call_env_parsed_alloc(ctx, rule);
 			call_env_parsed->count = count;

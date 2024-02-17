@@ -584,7 +584,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	fr_json_format_verify(format, true);
 
 	if (map_proc_register(inst, "json", mod_map_proc,
-			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t)) < 0) return -1;
+			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t), 0) < 0) return -1;
 	return 0;
 }
 

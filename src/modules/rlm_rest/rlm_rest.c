@@ -49,19 +49,17 @@ RCSID("$Id$")
 
 #include "rest.h"
 
-static int uri_part_escape(fr_value_box_t *vb, void *uctx);
-static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *uctx);
+static int rest_uri_part_escape(fr_value_box_t *vb, void *uctx);
+static void *rest_uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *uctx);
+
+#define REST_URI_SAFE_FOR (fr_value_box_safe_for_t)fr_curl_xlat_uri_escape
 
 static fr_uri_part_t const rest_uri_parts[] = {
-	{ .name = "scheme", .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 },
-	  .tainted_allowed = false, .extra_skip = 2 },
-	{ .name = "host", .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 },
-	  .tainted_allowed = true, .func = uri_part_escape },
-	{ .name = "port", .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 },
-	  .tainted_allowed = false },
-	{ .name = "method", .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 },
-	  .tainted_allowed = true, .func = uri_part_escape },
-	{ .name = "param", .tainted_allowed = true, .func = uri_part_escape },
+	{ .name = "scheme", .safe_for = REST_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":")), .part_adv = { [':'] = 1 }, .extra_skip = 2 },
+	{ .name = "host", .safe_for = REST_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L(":"), L("/")), .part_adv = { [':'] = 1, ['/'] = 2 }, .func = rest_uri_part_escape },
+	{ .name = "port", .safe_for = REST_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("/")), .part_adv = { ['/'] = 1 } },
+	{ .name = "method", .safe_for = REST_URI_SAFE_FOR, .terminals = &FR_SBUFF_TERMS(L("?")), .part_adv = { ['?'] = 1 }, .func = rest_uri_part_escape },
+	{ .name = "param", .safe_for = REST_URI_SAFE_FOR, .func = rest_uri_part_escape },
 	XLAT_URI_PART_TERMINATOR
 };
 
@@ -212,13 +210,14 @@ static const call_env_method_t _var = { \
 											.mode = TMPL_ESCAPE_PRE_CONCAT, \
 											.uctx = { \
 												.func = { \
-													.alloc = uri_part_escape_uctx_alloc, \
+													.alloc = rest_uri_part_escape_uctx_alloc, \
 													.uctx = rest_uri_parts \
 												} , \
 												.type = TMPL_ESCAPE_UCTX_ALLOC_FUNC\
 											}, \
-											.safe_for = (fr_value_box_safe_for_t)fr_curl_xlat_uri_escape \
-										      }}, /* Do not concat */ \
+											.safe_for = REST_URI_SAFE_FOR \
+										      }, \
+										      .pair.literals_safe_for = REST_URI_SAFE_FOR}, /* Do not concat */ \
 								REST_CALL_ENV_REQUEST_COMMON(_dflt_username, _dflt_password) \
 								CALL_ENV_TERMINATOR \
 							})) }, \
@@ -334,7 +333,7 @@ static int rlm_rest_status_update(request_t *request, void *handle)
 	return 0;
 }
 
-static int _uri_part_escape_uctx_free(void *uctx)
+static int _rest_uri_part_escape_uctx_free(void *uctx)
 {
 	return talloc_free(uctx);
 }
@@ -345,7 +344,7 @@ static int _uri_part_escape_uctx_free(void *uctx)
  * @param[in] uctx	pointer to the start of the uri_parts array.
  * @return A new fr_uri_escape_ctx_t.
  */
-static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
+static void *rest_uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
 {
 	static _Thread_local fr_uri_escape_ctx_t	*t_ctx;
 
@@ -353,7 +352,7 @@ static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *u
 		fr_uri_escape_ctx_t *ctx;
 
 		MEM(ctx = talloc_zero(NULL, fr_uri_escape_ctx_t));
-		fr_atexit_thread_local(t_ctx, _uri_part_escape_uctx_free, ctx);
+		fr_atexit_thread_local(t_ctx, _rest_uri_part_escape_uctx_free, ctx);
 	} else {
 		memset(t_ctx, 0, sizeof(*t_ctx));
 	}
@@ -369,7 +368,7 @@ static void *uri_part_escape_uctx_alloc(UNUSED request_t *request, void const *u
  * 	- 0 on success
  * 	- -1 on failure
  */
-static int uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
+static int rest_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 {
 	char				*escaped;
 
@@ -498,7 +497,7 @@ finish:
 }
 
 static xlat_arg_parser_t const rest_xlat_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING },
+	{ .required = true, .safe_for = REST_URI_SAFE_FOR, .type = FR_TYPE_STRING },
 	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -1379,7 +1378,31 @@ static int mod_load(void)
 	fr_json_version_print();
 #endif
 
+	{
+		xlat_t *xlat;
+
+		xlat = xlat_func_register(NULL, "rest.escape", fr_curl_xlat_uri_escape, FR_TYPE_STRING);
+		if (unlikely(!xlat)) {
+			ERROR("Failed registering \"rest.escape\" xlat");
+			return -1;
+		}
+		xlat_func_args_set(xlat, fr_curl_xlat_uri_args);
+		xlat_func_safe_for_set(xlat, REST_URI_SAFE_FOR); /* Each instance of the uri_escape xlat has its own safe_for value */
+		xlat = xlat_func_register(NULL, "rest.unescape", fr_curl_xlat_uri_unescape, FR_TYPE_STRING);
+		if (unlikely(!xlat)) {
+			ERROR("Failed registering \"rest.unescape\" xlat");
+			return -1;
+		}
+		xlat_func_args_set(xlat, fr_curl_xlat_uri_args);
+	}
+
 	return 0;
+}
+
+static void mod_unload(void)
+{
+	xlat_func_unregister("rest.escape");
+	xlat_func_unregister("rest.unescape");
 }
 
 /*
@@ -1401,6 +1424,7 @@ module_rlm_t rlm_rest = {
 		.thread_inst_size	= sizeof(rlm_rest_thread_t),
 		.config			= module_config,
 		.onload			= mod_load,
+		.unload			= mod_unload,
 		.bootstrap		= mod_bootstrap,
 		.instantiate		= instantiate,
 		.thread_instantiate	= mod_thread_instantiate,

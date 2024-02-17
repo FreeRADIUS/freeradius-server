@@ -3005,7 +3005,7 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	 *	Add nodes that need to be bootstrapped to
 	 *	the registry.
 	 */
-	if (xlat_finalize(head, t_rules) < 0) {
+	if (xlat_finalize(head, t_rules->xlat.runtime_el) < 0) {
 		talloc_free(head);
 		return -1;
 	}
@@ -3015,13 +3015,13 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 }
 
 fr_slen_t xlat_tokenize_expression(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
-				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+				   fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	return xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, false);
 }
 
 fr_slen_t xlat_tokenize_condition(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t *in,
-				 fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
+				  fr_sbuff_parse_rules_t const *p_rules, tmpl_rules_t const *t_rules)
 {
 	return xlat_tokenize_expression_internal(ctx, out, in, p_rules, t_rules, true);
 }

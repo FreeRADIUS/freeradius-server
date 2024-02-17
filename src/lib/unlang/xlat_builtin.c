@@ -1494,7 +1494,7 @@ static xlat_action_t xlat_func_eval(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  .runtime_el = unlang_interpret_event_list(request),
 				  },
 				  .at_runtime = true
-			  }) < 0) {
+			  }, 0) < 0) {
 		RPEDEBUG("Failed parsing expansion");
 	error:
 		talloc_free(rctx);

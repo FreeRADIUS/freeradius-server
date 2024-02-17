@@ -24,11 +24,13 @@
  * @copyright 2015 Arran Cudbard-bell (a.cudbardb@freeradius.org)
  */
 
+
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map_proc_priv.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/value.h>
 
 static fr_rb_tree_t *map_proc_root = NULL;
 
@@ -101,13 +103,14 @@ map_proc_t *map_proc_find(char const *name)
  * @param[in] evaluate		Module's map processor function.
  * @param[in] instantiate	function (optional).
  * @param[in] inst_size		of talloc chunk to allocate for instance data (optional).
+ * @param[in] literals_safe_for	What safe_for value to assign to literals.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int map_proc_register(void *mod_inst, char const *name,
 		      map_proc_func_t evaluate,
-		      map_proc_instantiate_t instantiate, size_t inst_size)
+		      map_proc_instantiate_t instantiate, size_t inst_size, fr_value_box_safe_for_t literals_safe_for)
 {
 	map_proc_t *proc;
 
@@ -145,6 +148,7 @@ int map_proc_register(void *mod_inst, char const *name,
 	proc->evaluate = evaluate;
 	proc->instantiate = instantiate;
 	proc->inst_size = inst_size;
+	proc->literals_safe_for = literals_safe_for;
 
 	return 0;
 }

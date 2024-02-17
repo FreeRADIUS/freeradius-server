@@ -679,16 +679,18 @@ static inline CC_HINT(always_inline) int xlat_instance_register(xlat_exp_head_t 
 
 /** Bootstrap static xlats, or instantiate ephemeral ones.
  *
- * @param[in] head of xlat tree to create instance data for.
- * @param[in] t_rules parsing rules with #fr_event_list_t
+ * @param[in] head		of xlat tree to create instance data for.
+ * @param[in] runtime_el	determines whether we do ephemeral or static instantiation.
+ *				If NULL, we perform static instantiation, otherwise
+ *				will perform ephemeral instantiation passing the el to
+ *				the instantiation functions.
  */
-int xlat_finalize(xlat_exp_head_t *head, tmpl_rules_t const *t_rules)
+int xlat_finalize(xlat_exp_head_t *head, fr_event_list_t *runtime_el)
 {
-	if (!t_rules || !t_rules->at_runtime) {
-		fr_assert(!t_rules || !t_rules->xlat.runtime_el);
+	if (!runtime_el) {
 		return xlat_instance_register(head);
 	}
-	return xlat_instantiate_ephemeral(head, t_rules->xlat.runtime_el);
+	return xlat_instantiate_ephemeral(head, runtime_el);
 }
 
 /** Walk over all registered instance data and free them explicitly

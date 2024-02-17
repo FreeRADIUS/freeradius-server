@@ -40,6 +40,7 @@ typedef struct map_proc_inst map_proc_inst_t;
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/map.h>
+#include <freeradius-devel/util/value.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,7 +82,7 @@ map_proc_t	*map_proc_find(char const *name);
 void		map_proc_free(void);
 int		map_proc_register(void *mod_inst, char const *name,
 				  map_proc_func_t evaluate,
-				  map_proc_instantiate_t instantiate, size_t inst_size);
+				  map_proc_instantiate_t instantiate, size_t inst_size, fr_value_box_safe_for_t safe_for);
 
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 				      CONF_SECTION *cs, tmpl_t const *src, map_list_t const *maps);

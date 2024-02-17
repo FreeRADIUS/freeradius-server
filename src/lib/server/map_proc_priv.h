@@ -28,6 +28,7 @@
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/value.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +45,7 @@ struct map_proc {
 	map_proc_func_t		evaluate;		//!< Module's map processor function.
 	map_proc_instantiate_t	instantiate;		//!< Callback to create new instance struct.
 	size_t			inst_size;		//!< Size of map_proc instance data to allocate.
+	fr_value_box_safe_for_t literals_safe_for;	//!< Safe for values to be set for literals in the map source.
 };
 
 /** Map processor instance

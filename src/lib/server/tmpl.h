@@ -335,32 +335,27 @@ struct tmpl_xlat_rules_s {
 	bool			new_functions;		//!< new function syntax
 };
 
-struct tmpl_literal_rules_s {
-	fr_value_box_safe_for_t	safe_for;		//!< What should literals be marked up safe for
-};
-
 /** Optional arguments passed to vp_tmpl functions
  *
  */
 struct tmpl_rules_s {
-	tmpl_rules_t const     	*parent;		//!< for parent / child relationships
+	tmpl_rules_t const    	 	*parent;		//!< for parent / child relationships
 
-	tmpl_attr_rules_t	attr;			//!< Rules/data for parsing attribute references.
-	tmpl_xlat_rules_t	xlat;			//!< Rules/data for parsing xlats.
+	tmpl_attr_rules_t		attr;			//!< Rules/data for parsing attribute references.
+	tmpl_xlat_rules_t		xlat;			//!< Rules/data for parsing xlats.
 
-	fr_dict_attr_t const	*enumv;			//!< Enumeration attribute used to resolve enum values.
+	fr_dict_attr_t const		*enumv;			//!< Enumeration attribute used to resolve enum values.
 
-	fr_type_t		cast;			//!< Whether there was an explicit cast.
-							///< Used to determine if barewords or other values
-							///< should be converted to an internal data type.
+	fr_type_t			cast;			//!< Whether there was an explicit cast.
+								///< Used to determine if barewords or other values
+								///< should be converted to an internal data type.
 
-	bool			at_runtime;		//!< Produce an ephemeral/runtime tmpl.
-							///< Instantiated xlats are not added to the global
-							///< trees, regexes are not JIT'd.
-
-	tmpl_escape_t		escape;			//!< How escaping should be handled during evaluation.
-
-	tmpl_literal_rules_t	literal;		//!< Rules for parsing literals.
+	bool				at_runtime;		//!< Produce an ephemeral/runtime tmpl.
+								///< Instantiated xlats are not added to the global
+								///< trees, regexes are not JIT'd.
+	fr_value_box_safe_for_t		literals_safe_for;	//!< safe_for value assigned to literal values in
+								///< xlats, execs, and data.
+	tmpl_escape_t			escape;			//!< How escaping should be handled during evaluation.
 };
 
 /** Similar to tmpl_rules_t, but used to specify parameters that may change during subsequent resolution passes

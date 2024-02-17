@@ -14,4 +14,33 @@ if (!%ldap.profile('cn=suspended,ou=profiles,dc=example,dc=com')) {
       test_fail
 }
 
+# Verify that DN based profiles allow dynamic expansions
+group {
+      string user
+
+      &user := 'suspended'
+
+      if (!%ldap.profile("ldap:///cn=%{user},ou=profiles,dc=example,dc=com")) {
+            test_fail
+      }
+
+      if (&reply.Reply-Message != 'User-Suspended') {
+            test_fail
+      }
+
+      &control := {}
+      &reply := {}
+
+      if (!%ldap.profile("cn=%{user},ou=profiles,dc=example,dc=com")) {
+            test_fail
+      }
+
+      if (&reply.Reply-Message != 'User-Suspended') {
+            test_fail
+      }
+
+      &control := {}
+      &reply := {}
+}
+
 test_pass
