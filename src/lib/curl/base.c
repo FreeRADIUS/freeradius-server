@@ -265,7 +265,6 @@ static int fr_curl_init(void)
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
 		ERROR("CURL init returned error: %i - %s", ret, curl_easy_strerror(ret));
-	error:
 		fr_dict_autofree(curl_dict);
 		return -1;
 	}
@@ -278,24 +277,6 @@ static int fr_curl_init(void)
 
 	INFO("libcurl version: %s", curl_version());
 
-	{
-		xlat_t *xlat;
-
-		xlat = xlat_func_register(NULL, "uri.escape", fr_curl_xlat_uri_escape, FR_TYPE_STRING);
-		if (unlikely(!xlat)) {
-			ERROR("Failed registering \"uri.escape\" xlat");
-			goto error;
-		}
-		xlat_func_args_set(xlat, fr_curl_xlat_uri_args);
-		xlat_func_safe_for_set(xlat, fr_curl_xlat_uri_escape);
-		xlat = xlat_func_register(NULL, "uri.unescape", fr_curl_xlat_uri_unescape, FR_TYPE_STRING);
-		if (unlikely(!xlat)) {
-			ERROR("Failed registering \"uri.unescape\" xlat");
-			goto error;
-		}
-		xlat_func_args_set(xlat, fr_curl_xlat_uri_args);
-	}
-
 	return 0;
 }
 
@@ -307,9 +288,6 @@ static void fr_curl_free(void)
 	fr_openssl_free();
 #endif
 	curl_global_cleanup();
-
-	xlat_func_unregister("uri.escape");
-	xlat_func_unregister("uri.unescape");
 }
 
 /*
