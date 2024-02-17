@@ -47,25 +47,23 @@ xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_
 	char		*escaped;
 
 	escaped = curl_easy_escape(fr_curl_tmp_handle(), to_escape->vb_strvalue, to_escape->vb_length);
-	if (!escaped) return -1;
+	if (!escaped) return XLAT_ACTION_FAIL;
 
 	/*
 	 *	Returned string the same length - nothing changed
 	 */
-	if (strlen(escaped) == to_escape->vb_length) {
-		curl_free(escaped);
-		return 0;
-	}
+	if (strlen(escaped) == to_escape->vb_length) goto done;
 
 	fr_value_box_clear_value(to_escape);
 	fr_value_box_strdup(to_escape, to_escape, NULL, escaped, to_escape->tainted);
 
+done:
 	curl_free(escaped);
 
 	fr_value_box_list_remove(in, to_escape);
 	fr_dcursor_insert(out, to_escape);
 
-	return XLAT_ACTION_FAIL;
+	return XLAT_ACTION_DONE;
 }
 
 /** xlat function to unescape URI encoded strings
