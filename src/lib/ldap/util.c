@@ -67,7 +67,7 @@ static const bool escapes[UINT8_MAX + 1] = {
  * @param in Raw unescaped string.
  * @param arg Any additional arguments (unused).
  */
-size_t fr_ldap_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_ldap_uri_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t left = outlen;
 
@@ -122,7 +122,7 @@ size_t fr_ldap_escape_func(UNUSED request_t *request, char *out, size_t outlen, 
  * @param in Escaped string string.
  * @param arg Any additional arguments (unused).
  */
-size_t fr_ldap_unescape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t fr_ldap_uri_unescape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	char const *p;
 	char *c1, *c2, c3;
@@ -532,7 +532,7 @@ ssize_t fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen,
 		in = buffer;
 	}
 
-	len = xlat_eval(out, outlen, request, in, fr_ldap_escape_func, NULL);
+	len = xlat_eval(out, outlen, request, in, fr_ldap_uri_escape_func, NULL);
 	if (len < 0) {
 		REDEBUG("Failed creating filter");
 

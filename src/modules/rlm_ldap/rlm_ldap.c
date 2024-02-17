@@ -363,10 +363,15 @@ static size_t ldap_uri_scheme_table_len = NUM_ELEMENTS(ldap_uri_scheme_table);
 
 /** This is the common function that actually ends up doing all the URI escaping
  */
-#define LDAP_URI_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_escape_func
+#define LDAP_URI_SAFE_FOR (fr_value_box_safe_for_t)fr_ldap_uri_escape_func
 
-static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
+static xlat_arg_parser_t const ldap_uri_escape_xlat_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+static xlat_arg_parser_t const ldap_safe_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -374,9 +379,9 @@ static xlat_arg_parser_t const ldap_escape_xlat_arg[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				      UNUSED xlat_ctx_t const *xctx,
-				      request_t *request, fr_value_box_list_t *in)
+static xlat_action_t ldap_uri_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					  UNUSED xlat_ctx_t const *xctx,
+					  request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
@@ -388,7 +393,7 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	If it's already safe, just copy it over.
 	 */
-	if (fr_value_box_is_safe_for(in_vb, ldap_escape_xlat)) {
+	if (fr_value_box_is_safe_for(in_vb, LDAP_URI_SAFE_FOR)) {
 		fr_value_box_copy(vb, vb, in_vb);
 
 		fr_dcursor_append(out, vb);
@@ -408,7 +413,7 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Call the escape function, including the space for the trailing NULL
 	 */
-	len = fr_ldap_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
+	len = fr_ldap_uri_escape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length * 3 + 1, in_vb->vb_strvalue, NULL);
 
 	/*
 	 *	Trim buffer to fit used space and assign to box
@@ -420,13 +425,18 @@ static xlat_action_t ldap_escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const ldap_uri_unescape_xlat_arg[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** Unescape LDAP string
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					UNUSED xlat_ctx_t const *xctx,
-					request_t *request, fr_value_box_list_t *in)
+static xlat_action_t ldap_uri_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					    UNUSED xlat_ctx_t const *xctx,
+					    request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t		*vb, *in_vb = fr_value_box_list_head(in);
 	fr_sbuff_t		sbuff;
@@ -446,7 +456,7 @@ static xlat_action_t ldap_unescape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	/*
 	 *	Call the unescape function, including the space for the trailing NULL
 	 */
-	len = fr_ldap_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length + 1, in_vb->vb_strvalue, NULL);
+	len = fr_ldap_uri_unescape_func(request, fr_sbuff_buff(&sbuff), in_vb->vb_length + 1, in_vb->vb_strvalue, NULL);
 
 	/*
 	 *	Trim buffer to fit used space and assign to box
@@ -479,7 +489,7 @@ static int ldap_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 	/*
 	 *	Call the escape function, including the space for the trailing NULL
 	 */
-	len = fr_ldap_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
+	len = fr_ldap_uri_escape_func(NULL, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, NULL);
 
 	fr_sbuff_trim_talloc(&sbuff, len);
 	fr_value_box_clear_value(vb);
@@ -2593,13 +2603,18 @@ static int mod_load(void)
 {
 	xlat_t	*xlat;
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.escape", ldap_escape_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.escape", ldap_uri_escape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_mono_set(xlat, ldap_uri_escape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 	xlat_func_safe_for_set(xlat, LDAP_URI_SAFE_FOR);	/* Used for all LDAP escaping */
 
-	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.unescape", ldap_unescape_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_mono_set(xlat, ldap_escape_xlat_arg);
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.safe", xlat_transparent, FR_TYPE_STRING)))) return -1;
+	xlat_func_args_set(xlat, ldap_safe_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	xlat_func_safe_for_set(xlat, LDAP_URI_SAFE_FOR);
+
+	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.unescape", ldap_uri_unescape_xlat, FR_TYPE_STRING)))) return -1;
+	xlat_func_mono_set(xlat, ldap_uri_unescape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
 	return 0;
@@ -2607,8 +2622,9 @@ static int mod_load(void)
 
 static void mod_unload(void)
 {
-	xlat_func_unregister("ldap.escape");
-	xlat_func_unregister("ldap.unescape");
+	xlat_func_unregister("ldap.uri.escape");
+	xlat_func_unregister("ldap.uri.safe");
+	xlat_func_unregister("ldap.uri.unescape");
 }
 
 /* globally exported name */

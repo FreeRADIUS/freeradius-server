@@ -744,7 +744,7 @@ binds which there can be on a single thread.
 
 The rlm_ldap provides the below xlat's functions.
 
-### %ldap.escape(...}
+### %ldap.uri.escape(...}
 
 Escape a string for use in an LDAP filter or DN.
 
@@ -755,7 +755,7 @@ Escape a string for use in an LDAP filter or DN.
 [source,unlang]
 ----
 &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
-&reply.Reply-Message := "The LDAP url is %ldap.escape(%{my-string}}"
+&reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
 ----
 
 .Output
@@ -764,7 +764,7 @@ Escape a string for use in an LDAP filter or DN.
 "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 ```
 
-### %ldap.unescape(...)
+### %ldap.uri.unescape(...)
 
 Unescape a string for use in an LDAP filter or DN.
 
@@ -775,7 +775,7 @@ Unescape a string for use in an LDAP filter or DN.
 [source,unlang]
 ----
 &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
-&reply.Reply-Message := "The LDAP url is %ldap.unescape(%{my-string})"
+&reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
 ----
 
 .Output

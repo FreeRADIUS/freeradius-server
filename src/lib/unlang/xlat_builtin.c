@@ -255,6 +255,24 @@ void xlat_debug_attr_list(request_t *request, fr_pair_list_t const *list)
 	}
 }
 
+/** Common function to move boxes form input list to output list
+ *
+ * This can be used to implement safe_for functions, as the xlat framework
+ * can be used for concatenation, casting, and marking up output boxes as
+ * safe_for.
+ */
+xlat_action_t xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
+			       UNUSED xlat_ctx_t const *xctx,
+			       UNUSED request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_list_foreach_safe(args, vb) {
+		fr_value_box_list_remove(args, vb);
+		fr_dcursor_append(out, vb);
+	}}
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Print out attribute info
  *
  * Prints out all instances of a current attribute, or all attributes in a list.

@@ -137,7 +137,7 @@ static unlang_action_t ldap_group_name2dn_start(rlm_rcode_t *p_result, UNUSED in
 				 inst->groupobj_filter ? inst->groupobj_filter : "",
 				 group_ctx->group_name[0] && group_ctx->group_name[1] ? "(|" : "");
 	while (*name) {
-		fr_ldap_escape_func(request, buffer, sizeof(buffer), *name++, NULL);
+		fr_ldap_uri_escape_func(request, buffer, sizeof(buffer), *name++, NULL);
 		filter = talloc_asprintf_append_buffer(filter, "(%s=%s)", inst->groupobj_name_attr, buffer);
 
 		group_ctx->name_cnt++;

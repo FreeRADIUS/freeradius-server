@@ -8,13 +8,13 @@ string result_string
 &test_string := "safe string"
 
 # String with no escaping
-&result_string := %ldap.escape(%{test_string})
+&result_string := %ldap.uri.escape(%{test_string})
 
 if (!(&result_string == "safe string")) {
         test_fail
 }
 
-&result_string := %ldap.unescape(%{result_string})
+&result_string := %ldap.uri.unescape(%{result_string})
 
 if (!(&result_string == 'safe string')) {
         test_fail
@@ -22,13 +22,13 @@ if (!(&result_string == 'safe string')) {
 
 # String with some characters to escape
 &test_string := 'non safe,+"\<>;*=() string'
-&result_string := %ldap.escape(%{test_string})
+&result_string := %ldap.uri.escape(%{test_string})
 
 if (!(&result_string == 'non safe\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29 string')) {
         test_fail
 }
 
-&result_string := %ldap.unescape(%{result_string})
+&result_string := %ldap.uri.unescape(%{result_string})
 
 if (!(&result_string == 'non safe,+"\<>;*=() string')) {
         test_fail
@@ -36,13 +36,13 @@ if (!(&result_string == 'non safe,+"\<>;*=() string')) {
 
 # String where all characters require escaping
 &test_string := ',+"\<>;*=()'
-&result_string := %ldap.escape(%{test_string})
+&result_string := %ldap.uri.escape(%{test_string})
 
 if (!(&result_string == '\2c\2b\22\5c\3c\3e\3b\2a\3d\28\29')) {
         test_fail
 }
 
-&result_string := %ldap.unescape(%{result_string})
+&result_string := %ldap.uri.unescape(%{result_string})
 
 if (!(&result_string == ',+"\<>;*=()')) {
         test_fail
@@ -90,7 +90,7 @@ if (!(&result_string == "Fred Jones")) {
 }
 
 # Reference an alternative LDAP server in the xlat
-&result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:%ldap.escape(%{$ENV{LDAP_TEST_SERVER_PORT} + 1})/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
+&result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:%ldap.uri.escape(%{$ENV{LDAP_TEST_SERVER_PORT} + 1})/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
 
 if (!(&result_string == "Fred Jones")) {
         test_fail

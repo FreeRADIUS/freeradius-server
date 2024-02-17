@@ -884,9 +884,10 @@ ldap {
 #
 #  The rlm_ldap provides the below xlat's functions.
 #
-#  ### %ldap.escape(...}
+#  ### %ldap.uri.escape(...}
 #
-#  Escape a string for use in an LDAP filter or DN.
+#  Escape a string for use in an LDAP filter or DN.  The value will then be marked as safe for use
+#  in LDAP URIs and DNs, and will not be escaped or modified.
 #
 #  .Return: _string_
 #
@@ -895,7 +896,7 @@ ldap {
 #  [source,unlang]
 #  ----
 #  &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
-#  &reply.Reply-Message := "The LDAP url is %ldap.escape(%{my-string}}"
+#  &reply.Reply-Message := "The LDAP url is %ldap.uri.escape(%{my-string}}"
 #  ----
 #
 #  .Output
@@ -904,7 +905,22 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 #  ```
 #
-#  ### %ldap.unescape(...)
+#  ### %ldap.uri.safe(...}
+#
+#  Mark a string as safe for use in an LDAP filter or DN.  Values marked as safe for use in LDAP
+#  URIs will not be escaped or modified, and will be allowed in places where dynamic values are
+#  usually prohibited.
+#
+#  .Return: _string_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ----
+#  &my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+#  ----
+#
+#  ### %ldap.uri.unescape(...)
 #
 #  Unescape a string for use in an LDAP filter or DN.
 #
@@ -915,7 +931,7 @@ ldap {
 #  [source,unlang]
 #  ----
 #  &my-string := "ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
-#  &reply.Reply-Message := "The LDAP url is %ldap.unescape(%{my-string})"
+#  &reply.Reply-Message := "The LDAP url is %ldap.uri.unescape(%{my-string})"
 #  ----
 #
 #  .Output

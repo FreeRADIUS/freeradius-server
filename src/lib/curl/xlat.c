@@ -36,6 +36,11 @@ xlat_arg_parser_t const fr_curl_xlat_uri_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+xlat_arg_parser_t const fr_curl_xlat_safe_args[] = {
+	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
 /** xlat function to escape URI encoded strings
  *
  */
