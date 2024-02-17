@@ -90,7 +90,7 @@ if (!(&result_string == "Fred Jones")) {
 }
 
 # Reference an alternative LDAP server in the xlat
-&result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:%{$ENV{LDAP_TEST_SERVER_PORT} + 1}/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
+&result_string := %ldap("ldap://$ENV{LDAP_TEST_SERVER}:%ldap.escape(%{$ENV{LDAP_TEST_SERVER_PORT} + 1})/dc=subdept,dc=example,dc=com?displayName?sub?(uid=fred)")
 
 if (!(&result_string == "Fred Jones")) {
         test_fail
