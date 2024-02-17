@@ -839,7 +839,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		/*
 		 * User is denied access, send back a reply message
 		*/
-		sprintf(msg, "Your maximum %s usage time has been reached", inst->reset);
+		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 		pair_make_reply("Reply-Message", msg, T_OP_EQ);
 
 		REDEBUG("Maximum %s usage time reached", inst->reset);
