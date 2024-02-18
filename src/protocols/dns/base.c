@@ -73,7 +73,7 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	[FR_DNS_STATEFUL_OP] = "stateful-operations",
 };
 
-#define DECODE_FAIL(_reason) if (reason) *reason = DECODE_FAIL_ ## _reason
+#define DECODE_FAIL(_reason) if (reason) *reason = FR_DNS_DECODE_FAIL_ ## _reason
 
 static bool fr_dns_tlv_ok(uint8_t const *p, uint8_t const *end, fr_dns_decode_fail_t *reason)
 {

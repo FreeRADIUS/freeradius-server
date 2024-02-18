@@ -384,33 +384,33 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static fr_table_num_ordered_t reason_fail_table[] = {
-	{ L("none"),						DECODE_FAIL_NONE		},
-	{ L("packet is smaller than DNS header"),		DECODE_FAIL_MIN_LENGTH_PACKET	},
-	{ L("packet is larger than 65535"),			DECODE_FAIL_MAX_LENGTH_PACKET	},
-	{ L("expected query / answer, got answer / query"),	DECODE_FAIL_UNEXPECTED		},
-	{ L("no 'questions' in query packet"),			DECODE_FAIL_NO_QUESTIONS	},
-	{ L("unexprected answers in query packet"),		DECODE_FAIL_ANSWERS_IN_QUESTION	},
-	{ L("unexpected NS records in query packet"),		DECODE_FAIL_NS_IN_QUESTION	},
-	{ L("invalid label for resource record"),	       	DECODE_FAIL_INVALID_RR_LABEL	},
-	{ L("missing resource record header"),			DECODE_FAIL_MISSING_RR_HEADER	},
-	{ L("missing resource record length field"),		DECODE_FAIL_MISSING_RR_LEN	},
-	{ L("resource record length field is zero"),		DECODE_FAIL_ZERO_RR_LEN	},
-	{ L("resource record length overflows the packet"),	DECODE_FAIL_RR_OVERFLOWS_PACKET	},
-	{ L("more resource records than indicated in header"),	DECODE_FAIL_TOO_MANY_RRS	},
-	{ L("fewer resource records than indicated in header"),	DECODE_FAIL_TOO_FEW_RRS		},
-	{ L("pointer overflows packet"),			DECODE_FAIL_POINTER_OVERFLOWS_PACKET   	},
-	{ L("pointer points to packet header"),			DECODE_FAIL_POINTER_TO_HEADER		},
-	{ L("pointer does not point to a label"),      		DECODE_FAIL_POINTER_TO_NON_LABEL       	},
-	{ L("pointer creates a loop"),				DECODE_FAIL_POINTER_LOOPS		},
-	{ L("invalid pointer"),					DECODE_FAIL_INVALID_POINTER		},
-	{ L("label overflows the packet"),			DECODE_FAIL_LABEL_OVERFLOWS_PACKET     	},
-	{ L("too many characters in label"),			DECODE_FAIL_LABEL_TOO_LONG		},
-	{ L("query record header is missing"),			DECODE_FAIL_MISSING_QD_HEADER		},
-	{ L("missing TLV header in OPT RR"),			DECODE_FAIL_MISSING_TLV_HEADER		},
-	{ L("TLV overflows enclosing RR"),			DECODE_FAIL_TLV_OVERFLOWS_RR		},
+fr_table_num_ordered_t fr_dns_reason_fail_table[] = {
+	{ L("none"),						FR_DNS_DECODE_FAIL_NONE		},
+	{ L("packet is smaller than DNS header"),		FR_DNS_DECODE_FAIL_MIN_LENGTH_PACKET	},
+	{ L("packet is larger than 65535"),			FR_DNS_DECODE_FAIL_MAX_LENGTH_PACKET	},
+	{ L("expected query / answer, got answer / query"),	FR_DNS_DECODE_FAIL_UNEXPECTED		},
+	{ L("no 'questions' in query packet"),			FR_DNS_DECODE_FAIL_NO_QUESTIONS	},
+	{ L("unexprected answers in query packet"),		FR_DNS_DECODE_FAIL_ANSWERS_IN_QUESTION	},
+	{ L("unexpected NS records in query packet"),		FR_DNS_DECODE_FAIL_NS_IN_QUESTION	},
+	{ L("invalid label for resource record"),	       	FR_DNS_DECODE_FAIL_INVALID_RR_LABEL	},
+	{ L("missing resource record header"),			FR_DNS_DECODE_FAIL_MISSING_RR_HEADER	},
+	{ L("missing resource record length field"),		FR_DNS_DECODE_FAIL_MISSING_RR_LEN	},
+	{ L("resource record length field is zero"),		FR_DNS_DECODE_FAIL_ZERO_RR_LEN	},
+	{ L("resource record length overflows the packet"),	FR_DNS_DECODE_FAIL_RR_OVERFLOWS_PACKET	},
+	{ L("more resource records than indicated in header"),	FR_DNS_DECODE_FAIL_TOO_MANY_RRS	},
+	{ L("fewer resource records than indicated in header"),	FR_DNS_DECODE_FAIL_TOO_FEW_RRS		},
+	{ L("pointer overflows packet"),			FR_DNS_DECODE_FAIL_POINTER_OVERFLOWS_PACKET   	},
+	{ L("pointer points to packet header"),			FR_DNS_DECODE_FAIL_POINTER_TO_HEADER		},
+	{ L("pointer does not point to a label"),      		FR_DNS_DECODE_FAIL_POINTER_TO_NON_LABEL       	},
+	{ L("pointer creates a loop"),				FR_DNS_DECODE_FAIL_POINTER_LOOPS		},
+	{ L("invalid pointer"),					FR_DNS_DECODE_FAIL_INVALID_POINTER		},
+	{ L("label overflows the packet"),			FR_DNS_DECODE_FAIL_LABEL_OVERFLOWS_PACKET     	},
+	{ L("too many characters in label"),			FR_DNS_DECODE_FAIL_LABEL_TOO_LONG		},
+	{ L("query record header is missing"),			FR_DNS_DECODE_FAIL_MISSING_QD_HEADER		},
+	{ L("missing TLV header in OPT RR"),			FR_DNS_DECODE_FAIL_MISSING_TLV_HEADER		},
+	{ L("TLV overflows enclosing RR"),			FR_DNS_DECODE_FAIL_TLV_OVERFLOWS_RR		},
 };
-static size_t reason_fail_table_len = NUM_ELEMENTS(reason_fail_table);
+size_t fr_dns_reason_fail_table_len = NUM_ELEMENTS(fr_dns_reason_fail_table);
 
 static ssize_t decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, void *proto_ctx)
 {
@@ -423,12 +423,12 @@ static ssize_t decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const 
 	 *	Allow queries or answers
 	 */
 	if (!fr_dns_packet_ok(data, data_len, true, &reason)) {
-		if (reason != DECODE_FAIL_UNEXPECTED) goto fail;
+		if (reason != FR_DNS_DECODE_FAIL_UNEXPECTED) goto fail;
 
 		if (!fr_dns_packet_ok(data, data_len, false, &reason)) {
 		fail:
 			fr_strerror_printf("DNS packet malformed - %s",
-					   fr_table_str_by_value(reason_fail_table, reason, "<INVALID>"));
+					   fr_table_str_by_value(fr_dns_reason_fail_table, reason, "<INVALID>"));
 			return -1;
 		}
 	}

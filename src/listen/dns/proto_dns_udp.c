@@ -26,6 +26,7 @@
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/util/udp.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/listen.h>
@@ -161,7 +162,8 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 	packet = (fr_dns_packet_t *) buffer;
 
 	if (!fr_dns_packet_ok(buffer, packet_len, true, &reason)) {
-		RATE_LIMIT_GLOBAL(WARN, "Invalid DNS packet failed with reason %d - ignoring", reason);
+		RATE_LIMIT_GLOBAL(WARN, "Ignoring invalid DNS packet - %s",
+				  fr_table_str_by_value(fr_dns_reason_fail_table, reason, "unknown"));
 		return 0;
 	}
 
