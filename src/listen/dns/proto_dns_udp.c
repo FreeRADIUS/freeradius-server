@@ -24,6 +24,7 @@
 #define LOG_PREFIX "proto_dns_udp"
 
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/util/udp.h>
 #include <freeradius-devel/util/trie.h>
 #include <freeradius-devel/io/application.h>
@@ -340,7 +341,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	proto_dns_udp_t		*inst = talloc_get_type_abort(mctx->inst->data, proto_dns_udp_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
 	size_t			num;
-	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;
 	fr_client_t		*client;
 
@@ -389,12 +389,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	ci = cf_parent(inst->cs); /* listen { ... } */
-	fr_assert(ci != NULL);
-	ci = cf_parent(ci);
-	fr_assert(ci != NULL);
-
-	server_cs = cf_item_to_section(ci);
+	server_cs = cf_section_find_in_parent(inst->cs, "server", NULL);
+	fr_assert(server_cs != NULL);
 
 	/*
 	 *	Look up local clients, if they exist.

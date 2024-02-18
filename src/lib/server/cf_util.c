@@ -997,6 +997,9 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *p
 
 /** Find a CONF_SECTION with name1 and optionally name2 in the specified conf section of one of its parents
  *
+ * Will walk up the configuration tree, searching in each parent until a matching section is found or
+ * we hit the root.
+ *
  * @param[in] cs	The section we're searching in.
  * @param[in] name1	of the section we're searching for. Special value CF_IDENT_ANY
  *			can be used to match any name1 value.
