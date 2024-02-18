@@ -386,7 +386,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
-	inst->io.server_cs = cf_item_to_section(cf_parent(mctx->inst->data));
+	inst->io.server_cs = cf_section_find_in_parent(mctx->inst->conf, "server", NULL);
 
 	fr_assert(dict_dns != NULL);
 	fr_assert(attr_packet_type != NULL);
