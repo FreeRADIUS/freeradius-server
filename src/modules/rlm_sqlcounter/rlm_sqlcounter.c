@@ -72,6 +72,7 @@ typedef struct {
 	char const	*reset;  	//!< Daily, weekly, monthly, never or user defined.
 	bool		auto_extend;	//!< If the remaining allowance is sufficient to reach the next
 					///< period allow for that in setting the reply attribute.
+	bool		utc;		//!< Use UTC time.
 
 	fr_time_t	reset_time;
 	fr_time_t	last_reset;
@@ -84,6 +85,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("query", CONF_FLAG_XLAT | CONF_FLAG_REQUIRED, rlm_sqlcounter_t, query) },
 	{ FR_CONF_OFFSET_FLAGS("reset", CONF_FLAG_REQUIRED, rlm_sqlcounter_t, reset) },
 	{ FR_CONF_OFFSET_FLAGS("auto_extend", CONF_FLAG_OK_MISSING, rlm_sqlcounter_t, auto_extend) },
+	{ FR_CONF_OFFSET_FLAGS("utc", CONF_FLAG_OK_MISSING, rlm_sqlcounter_t, utc) },
 
 	{ FR_CONF_OFFSET_FLAGS("key", CONF_FLAG_NOT_EMPTY, rlm_sqlcounter_t, key), .dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .quote = T_DOUBLE_QUOTED_STRING },
 
@@ -122,7 +124,11 @@ static int find_next_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 	struct tm	*tm, s_tm;
 	time_t		time_s = fr_time_to_sec(now);
 
-	tm = localtime_r(&time_s, &s_tm);
+	if (inst->utc) {
+		tm = gmtime_r(&time_s, &s_tm);
+	} else {
+		tm = localtime_r(&time_s, &s_tm);
+	}
 	tm->tm_sec = tm->tm_min = 0;
 
 	fr_assert(inst->reset != NULL);
@@ -186,7 +192,11 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 	struct		tm *tm, s_tm;
 	time_t		time_s = fr_time_to_sec(now);
 
-	tm = localtime_r(&time_s, &s_tm);
+	if (inst->utc) {
+		tm = gmtime_r(&time_s, &s_tm);
+	} else {
+		tm = localtime_r(&time_s, &s_tm);
+	}
 	tm->tm_sec = tm->tm_min = 0;
 
 	fr_assert(inst->reset != NULL);

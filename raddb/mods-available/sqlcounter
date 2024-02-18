@@ -111,6 +111,8 @@
 #  `Session-Timeout` is the `reply_name` attribute.  If there is sufficient allocation
 #  left for the session to get to the next counter period, the user will not have
 #  to re-authenticate before they have used their allocation for the next counter period.
+#
+#  utc:: Use UTC for calculating the period start and end values.
 
 #
 #  ## Configuration Settings
