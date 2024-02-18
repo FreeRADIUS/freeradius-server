@@ -312,7 +312,11 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		}
 
 		/*
-		 *	type + class + TTL
+		 *	type (2) + class (2) + TTL (4)
+		 *
+		 *	These are overloaded for the OPT RR
+		 *	and possibly others, but the basic
+		 *	idea is the same.
 		 */
 		if ((p + 8) > end) {
 			DECODE_FAIL(MISSING_RR_HEADER);
@@ -322,15 +326,15 @@ bool fr_dns_packet_ok(uint8_t const *packet, size_t packet_len, bool query, fr_d
 		p += 8;
 
 		/*
-		  *	rr_len
+		 *	rr_len
 		 */
-		if ((p + 2) >= end) {
+		if ((p + 2) > end) {
 			DECODE_FAIL(MISSING_RR_LEN);
 			return false;
 		}
 
 		len = fr_nbo_to_uint16(p);
-		if (len == 0) {
+		if (!is_opt && (len == 0)) {
 			DECODE_FAIL(ZERO_RR_LEN);
 			return false;
 		}
