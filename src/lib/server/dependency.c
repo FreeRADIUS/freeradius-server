@@ -456,7 +456,7 @@ void dependency_version_print(void)
 #endif
 		DEBUG2("  ");
 	}
-	INFO("Copyright 1999-2023 The FreeRADIUS server project and contributors");
+	INFO("Copyright 1999-2024 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
 	INFO("You may redistribute copies of FreeRADIUS under the terms of the");
@@ -465,4 +465,3 @@ void dependency_version_print(void)
 
 	fflush(NULL);
 }
-
