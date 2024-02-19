@@ -1103,7 +1103,10 @@ int8_t cf_section_name_cmp(CONF_SECTION const *cs, char const *name1, char const
 	if (name2 != CF_IDENT_ANY) {
 		char const *cs_name2 = cf_section_name2(cs);
 
-		if (!cs_name2) return 1;
+		if (!cs_name2) {
+			if (!name2) return 0;
+			return 1;
+		}
 
 		return CMP(strcmp(cs_name2, name2), 0);
 	}
