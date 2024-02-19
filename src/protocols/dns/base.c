@@ -425,9 +425,7 @@ int fr_dns_global_init(void)
 
 void fr_dns_global_free(void)
 {
-	fr_assert(instance_count > 0);
-
-	if (--instance_count > 0) return;
+	if (instance_count && (--instance_count > 0)) return;
 
 	fr_dict_autofree(dns_dict);
 }
