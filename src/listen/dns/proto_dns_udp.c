@@ -391,7 +391,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	server_cs = cf_section_find_in_parent(inst->cs, "server", CF_IDENT_ANY);
+	server_cs = cf_section_find_parent(inst->cs, "server", CF_IDENT_ANY);
 	fr_assert(server_cs != NULL);
 
 	/*

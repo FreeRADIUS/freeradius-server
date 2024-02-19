@@ -995,7 +995,7 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *p
 					       CONF_ITEM_SECTION, name1, name2));
 }
 
-/** Find a CONF_SECTION with name1 and optionally name2 in the specified conf section of one of its parents
+/** Find a section in the lineage of a CONF_SECTION which matches a specific name1 and optionally name2.
  *
  * Will walk up the configuration tree, searching in each parent until a matching section is found or
  * we hit the root.
@@ -1036,30 +1036,16 @@ CONF_SECTION *cf_section_find_in_parent(CONF_SECTION const *cs,
  *	- The first matching subsection.
  *	- NULL if no subsections match.
  */
-CONF_SECTION *cf_section_has_parent(CONF_SECTION const *cs,
-				    char const *name1, char const *name2)
+CONF_SECTION *cf_section_find_parent(CONF_SECTION const *cs,
+				     char const *name1, char const *name2)
 {
-	CONF_ITEM *parent;
+	CONF_ITEM *parent = cf_section_to_item(cs);
 
-	for (parent = cf_parent(cf_section_to_item(cs));
-	     parent != NULL;
-	     parent = cf_parent(parent)) {
+	while ((parent = cf_parent(parent))) {
 		CONF_SECTION *found = cf_item_to_section(parent);
 
-		if (IS_WILDCARD(name1)) return found;
-
-		if (strcmp(found->name1, name1) != 0) continue;
-
-		if (IS_WILDCARD(name2)) return found;
-
-		if (!name2) {
-			if (!found->name2) return found;
-
-			return NULL;
-		}
-
-		if (strcmp(found->name2, name2) == 0) return found;
-	}
+		if (cf_section_name_cmp(found, name1, name2) == 0) return found;
+	};
 
 	return NULL;
 }
