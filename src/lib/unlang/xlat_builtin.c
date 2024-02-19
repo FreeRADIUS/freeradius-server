@@ -32,6 +32,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
+#include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat.h>
@@ -1273,6 +1274,9 @@ static xlat_action_t xlat_func_map(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			.dict_def = request->dict,
 			.list_def = request_attr_request,
 			.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+		},
+		.xlat = {
+			.runtime_el = unlang_interpret_event_list(request)
 		}
 	};
 
