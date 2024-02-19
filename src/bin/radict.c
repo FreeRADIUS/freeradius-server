@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
 
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
-		fr_perror("radict");
+		fr_perror("radict - Fault setup");
 		fr_exit(EXIT_FAILURE);
 	}
 #endif
@@ -363,13 +363,13 @@ int main(int argc, char *argv[])
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("radict");
+		fr_perror("radict - library mismatch");
 		ret = 1;
 		goto finish;
 	}
 
 	if (!fr_dict_global_ctx_init(NULL, true, dict_dir)) {
-		fr_perror("radict");
+		fr_perror("radict - Global context init failed");
 		ret = 1;
 		goto finish;
 	}
@@ -377,19 +377,19 @@ int main(int argc, char *argv[])
 	INFO("Loading dictionary: %s/%s", dict_dir, FR_DICTIONARY_FILE);
 
 	if (fr_dict_internal_afrom_file(dict_end++, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
-		fr_perror("radict");
+		fr_perror("radict - Loading internal dictionary failed");
 		ret = 1;
 		goto finish;
 	}
 
 	if (load_dicts(dict_dir, protocol) < 0) {
-		fr_perror("radict");
+		fr_perror("radict - Loading dictionaries failed");
 		ret = 1;
 		goto finish;
 	}
 
 	if (dict_end == dicts) {
-		fr_perror("radict: No dictionaries loaded");
+		fr_perror("radict - No dictionaries loaded");
 		ret = 1;
 		goto finish;
 	}
@@ -464,7 +464,7 @@ finish:
 			fr_dict_free(dict_p, __FILE__);
 		} while (++dict_p < dict_end);
 	}
-	if (talloc_free(autofree) < 0) fr_perror("radict");
+	if (talloc_free(autofree) < 0) fr_perror("radict - Error freeing dictionaries");
 
 	/*
 	 *	Ensure our atexit handlers run before any other
