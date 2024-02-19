@@ -3656,7 +3656,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 		}
 
 		if (!*p->dict) {
-			fr_strerror_printf("Can't resolve Attribute '%s', dictionary not loaded", p->name);
+			fr_strerror_printf("Autoloader autoloader can't resolve attribute \"%s\", dictionary not loaded", p->name);
 			fr_strerror_printf_push("Check fr_dict_autoload_t struct has "
 						"an entry to load the dictionary \"%s\" is located in, and that "
 						"the fr_dict_autoload_t symbol name is correct", p->name);
@@ -3665,13 +3665,13 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 
 		da = fr_dict_attr_by_oid(NULL, fr_dict_root(*p->dict), p->name);
 		if (!da) {
-			fr_strerror_printf("Attribute '%s' not found in \"%s\" dictionary", p->name,
+			fr_strerror_printf("Autoloader attribute \"%s\" not found in \"%s\" dictionary", p->name,
 					   *p->dict ? (*p->dict)->root->name : "internal");
 			return -1;
 		}
 
 		if (da->type != p->type) {
-			fr_strerror_printf("Attribute '%s' should be type %s, but defined as type %s", da->name,
+			fr_strerror_printf("Autoloader attribute \"%s\" should be type %s, but defined as type %s", da->name,
 					   fr_type_to_str(p->type),
 					   fr_type_to_str(da->type));
 			return -1;
