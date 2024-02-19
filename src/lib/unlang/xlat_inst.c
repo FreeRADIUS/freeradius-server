@@ -656,7 +656,9 @@ static inline CC_HINT(always_inline) int xlat_instance_register(xlat_exp_head_t 
 	 *	If thread instantiate has been called, it's too late to
 	 *	bootstrap new xlats.
 	 */
-	fr_assert(!xlat_thread_inst_tree);
+	fr_assert_msg(!xlat_thread_inst_tree, "Tried to instantiate new compile time xlat at runtime.  "
+		      "xlat.runtime_el likely not set in tmpl rules when it should've been.  "
+		      "Use unlang_interpret_event_list() to get the current event list from the request");
 
 	/*
 	 *	Initialise the instance tree if this is the first xlat
