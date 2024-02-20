@@ -2966,6 +2966,82 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_substr_args[] = {
+	{ .single = true, .required = true, .type = FR_TYPE_VOID },
+	{ .single = true, .required = true, .type = FR_TYPE_INT32 },
+	{ .single = true, .type = FR_TYPE_INT32 },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Extract a substring from string / octets data
+ *
+ * Second parameter is start position, optional third parameter is length
+ * Negative start / length count from RHS of data.
+ *
+ * Example: (User-Name = "hello")
+@verbatim
+%substr(&User-Name, 1, 3) == 'ell'
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_substr(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+				      request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*in = NULL, *start_vb, *len_vb, *vb;
+	int32_t		start, end, len;
+
+	XLAT_ARGS(args, &in, &start_vb, &len_vb);
+
+	if (!((in->type == FR_TYPE_STRING) || (in->type == FR_TYPE_OCTETS))) {
+		RPEDEBUG("substr only valid for string or octets data");
+		return XLAT_ACTION_FAIL;
+	}
+
+	if (start_vb->vb_int32 > (int32_t)in->vb_length) return XLAT_ACTION_DONE;
+
+	if (start_vb->vb_int32 < 0) {
+		start = in->vb_length + start_vb->vb_int32;
+		if (start < 0) start = 0;
+	} else {
+		start = start_vb->vb_int32;
+	}
+
+	if (len_vb) {
+		if (len_vb->vb_int32 < 0) {
+			end = in->vb_length + len_vb->vb_int32;
+			if (end < 0) return XLAT_ACTION_DONE;
+		} else {
+			end = start + len_vb->vb_int32;
+			if (end > (int32_t)in->vb_length) end = in->vb_length;
+		}
+	} else {
+		end = in->vb_length;
+	}
+
+	if (start >= end) return XLAT_ACTION_DONE;
+
+	MEM(vb = fr_value_box_alloc(ctx, in->type, NULL));
+
+	len = end - start;
+	switch (in->type) {
+	case FR_TYPE_STRING:
+		fr_value_box_bstrndup(vb, vb, NULL, &in->vb_strvalue[start], len, in->tainted);
+		break;
+	case FR_TYPE_OCTETS:
+	{
+		uint8_t *buf;
+		fr_value_box_mem_alloc(vb, &buf, vb, NULL, len, in->tainted);
+		memcpy(buf, &in->vb_octets[start], len);
+	}
+		break;
+	default:
+		fr_assert(0);
+	}
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
 
 #ifdef HAVE_REGEX_PCRE2
 /** Perform regex substitution TODO CHECK
@@ -3785,6 +3861,7 @@ do { \
 	XLAT_REGISTER_ARGS("length", xlat_func_length, FR_TYPE_SIZE, xlat_func_length_args);
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, FR_TYPE_STRING, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, FR_TYPE_STRING, xlat_func_pad_args);
+	XLAT_REGISTER_ARGS("substr", xlat_func_substr, FR_TYPE_VOID, xlat_func_substr_args);
 
 	/*
 	 *	The inputs to these functions are variable.
