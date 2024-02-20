@@ -194,9 +194,7 @@ RECV(generic)
 RESUME(recv_generic)
 {
 	rlm_rcode_t			rcode = *p_result;
-	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST const   		*inst = mctx->inst->data;
 
 	PROCESS_TRACE;
 
@@ -212,12 +210,9 @@ RESUME(recv_generic)
 #endif
 	fr_assert(PROCESS_PACKET_CODE_VALID(request->reply->code));
 
-	UPDATE_STATE_CS(reply);
-
+	UPDATE_STATE(reply);
 	fr_assert(state->send != NULL);
-	return unlang_module_yield_to_section(p_result, request,
-					      cs, state->rcode, state->send,
-					      NULL, 0, mctx->rctx);
+	return state->send(p_result, mctx, request);
 }
 
 RESUME_NO_MCTX(recv_no_send)
