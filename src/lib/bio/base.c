@@ -123,13 +123,15 @@ int fr_bio_free(fr_bio_t *bio)
 	 *	the read/write functions to do nothing.
 	 */
 	if (next) {
-		fr_bio_unchain(bio);
+		next->entry.prev = NULL;
 		if (fr_bio_free(next) < 0) {
-			fr_bio_chain(bio, next);
+			next->entry.prev = &bio->entry;
 			bio->read = fr_bio_eof_read;
 			bio->write = fr_bio_null_write;
 			return -1;
 		}
+
+		bio->entry.next = NULL;
 	}
 
 	/*
