@@ -628,7 +628,7 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 *	Depending on the attribute type, some operators are disallowed.
 	 */
 	if (tmpl_is_attr(map->lhs)) {
-		if (!fr_assignment_op[map->op] && !fr_comparison_op[map->op]) {
+		if (!fr_assignment_op[map->op] && !fr_comparison_op[map->op] && !fr_binary_op[map->op]) {
 			cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
 				   "Only assignment or filter operators are allowed",
 				   fr_table_str_by_value(fr_tokens_table, map->op, "<INVALID>"));
