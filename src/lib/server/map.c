@@ -197,7 +197,11 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		}
 		rhs_rules = &my_rhs_rules;
 
-		if (edit) my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
+		if (edit) {
+			if ((map->op != T_OP_RSHIFT_EQ) && (map->op != T_OP_LSHIFT_EQ)) {
+				my_rhs_rules.enumv = tmpl_attr_tail_da(map->lhs);
+			}
+		}
 		break;
 	}
 
@@ -293,9 +297,17 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 	 *	If we know that the assignment is forbidden, then fail early.
 	 */
 	if (tmpl_is_attr(map->lhs) && tmpl_is_data(map->rhs)) {
-		da = tmpl_attr_tail_da(map->lhs);
+		fr_type_t cast_type;
 
-		if (tmpl_cast_in_place(map->rhs, da->type, da) < 0) {
+		if ((map->op != T_OP_RSHIFT_EQ) && (map->op != T_OP_LSHIFT_EQ)) {
+			da = tmpl_attr_tail_da(map->lhs);
+			cast_type = da->type;
+		} else {
+			da = NULL;
+			cast_type = FR_TYPE_UINT32;
+		}
+
+		if (tmpl_cast_in_place(map->rhs, cast_type, da) < 0) {
 			cf_log_err(cp, "Invalid assignment - %s", fr_strerror());
 			goto error;
 		}

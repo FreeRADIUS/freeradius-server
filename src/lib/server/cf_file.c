@@ -2418,10 +2418,10 @@ check_for_eol:
 	case T_OP_AND_EQ:
 	case T_OP_OR_EQ:
 	case T_OP_NE:
-	case T_RSHIFT:
+	case T_OP_RSHIFT_EQ:
 	case T_OP_GE:
 	case T_OP_GT:
-	case T_LSHIFT:
+	case T_OP_LSHIFT_EQ:
 	case T_OP_LE:
 	case T_OP_LT:
 	case T_OP_CMP_EQ:
