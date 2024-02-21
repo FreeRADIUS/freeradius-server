@@ -40,10 +40,6 @@ static inline void fr_bio_buf_init(fr_bio_buf_t *bio_buf, uint8_t *buffer, size_
 	bio_buf->end = buffer + size;
 }
 
-int		fr_bio_buf_alloc(TALLOC_CTX *ctx, fr_bio_buf_t *bio_buf, size_t size) CC_HINT(nonnull);
-
-int		fr_bio_buf_resize(fr_bio_buf_t *bio_buf, uint8_t *buffer, size_t size) CC_HINT(nonnull);
-
 size_t		fr_bio_buf_make_room(fr_bio_buf_t *bio_buf);
 
 size_t		fr_bio_buf_read(fr_bio_buf_t *bio_buf, void *buffer, size_t size) CC_HINT(nonnull(1));
