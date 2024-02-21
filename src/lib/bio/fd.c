@@ -481,7 +481,7 @@ retry:
 	if (rcode >= 0) return rcode;
 
 #undef flag_blocked
-#define flag_blocked info.read_blocked
+#define flag_blocked info.write_blocked
 #include "fd_errno.h"
 
 	return fr_bio_error(IO);
@@ -620,7 +620,7 @@ retry:
 	if (rcode >= 0) return rcode;
 
 #undef flag_blocked
-#define flag_blocked info.read_blocked
+#define flag_blocked info.write_blocked
 #include "fd_errno.h"
 
 	return fr_bio_error(IO);
