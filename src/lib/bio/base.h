@@ -127,6 +127,17 @@ static inline CC_HINT(nonnull) fr_bio_t *fr_bio_next(fr_bio_t *bio)
 	return fr_dlist_entry_to_item(offsetof(fr_bio_t, entry), next);
 }
 
+/** Read raw data from a bio
+ *
+ *  @param bio		the binary IO handler
+ *  @param packet_ctx	packet-specific data associated with the buffer
+ *  @param buffer	where to read the data
+ *  @param size		amount of data to read.
+ *  @return
+ *	- <0 for error.  The return code will be fr_bio_error(ERROR_NAME)
+ *	- 0 for "did not read any data".  Note that EOF is an error return.
+ *	- >0 for amount of data read.
+ */
 static inline ssize_t CC_HINT(nonnull(1,3)) fr_bio_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
 	if (size == 0) return 0;
@@ -139,6 +150,17 @@ static inline ssize_t CC_HINT(nonnull(1,3)) fr_bio_read(fr_bio_t *bio, void *pac
 	return bio->read(bio, packet_ctx, buffer, size);
 }
 
+/** Write raw data to a bio
+ *
+ *  @param bio		the binary IO handler
+ *  @param packet_ctx	packet-specific data associated with the buffer
+ *  @param buffer	the data to write.  If NULL, will "flush" any pending data.
+ *  @param size		amount of data to write.  For flush, it should be SIZE_MAX
+ *  @return
+ *	- <0 for error.  The return code will be fr_bio_error(ERROR_NAME)
+ *	- 0 for "did not write any data"
+ *	- >0 for amount of data written.  Should always be equal to size!
+ */
 static inline ssize_t CC_HINT(nonnull(1)) fr_bio_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size)
 {
 	if (size == 0) return 0;
