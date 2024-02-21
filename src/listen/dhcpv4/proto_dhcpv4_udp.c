@@ -457,9 +457,13 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 			WARN("Silently discarding reply due to unimplemented message type %d", code[2]);
 			return 0;
 		}
+
+	send_reply:
+		DEBUG("Sending %s XID %08x from %pV:%d to %pV:%d", dhcp_message_types[code[2]], packet->xid,
+		      fr_box_ipaddr(socket.inet.src_ipaddr), socket.inet.src_port,
+		      fr_box_ipaddr(socket.inet.dst_ipaddr), socket.inet.dst_port);
 	}
 
-send_reply:
 	/*
 	 *	proto_dhcpv4 takes care of suppressing do-not-respond, etc.
 	 */

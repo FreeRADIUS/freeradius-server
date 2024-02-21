@@ -329,6 +329,18 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 
 	RHEXDUMP3(buffer, data_len, "proto_dhcpv4 encode packet");
 
+	if (RDEBUG_ENABLED) {
+		/*
+		 *	We can't report the destination IP / port here as it is manipulated in mod_write
+		 */
+		RDEBUG("Sending %s XID %08x length %zu via socket %s",
+		       dhcp_message_types[request->reply->code],
+		       request->reply->id,
+		       data_len,
+		       request->async->listen->name);
+		log_request_proto_pair_list(L_DBG_LVL_1, request, NULL, &request->reply_pairs, NULL);
+	}
+
 	request->reply->data_len = data_len;
 	return data_len;
 }
