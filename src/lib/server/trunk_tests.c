@@ -25,6 +25,8 @@ typedef struct {
 	uint64_t		freed;			//!< Count of tests in this run that were freed.
 } test_proto_stats_t;
 
+static bool annotate = false; /* true to turn on selected TEST_MSG_ALWAYS()s in test_request_foo() */
+
 #define DEBUG_LVL_SET if (acutest_verbose_level_ >= 3) fr_debug_lvl = L_DBG_LVL_4 + 1
 
 static void test_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
@@ -206,6 +208,7 @@ static void test_request_cancel(UNUSED fr_connection_t *conn, void *preq,
 
 	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->cancelled = true;
+	if (annotate) TEST_MSG_ALWAYS("preq %p cancelled\n", our_preq);
 	if (stats) stats->cancelled++;
 }
 
@@ -218,6 +221,7 @@ static void test_request_complete(UNUSED request_t *request, void *preq, UNUSED 
 
 	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->completed = true;
+	if (annotate) TEST_MSG_ALWAYS("preq %p completed\n", our_preq);
 	if (stats) stats->completed++;
 }
 
@@ -230,6 +234,7 @@ static void test_request_fail(UNUSED request_t *request, void *preq, UNUSED void
 
 	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->failed = true;
+	if (annotate) TEST_MSG_ALWAYS("preq %p failed\n", our_preq);
 	if (stats) stats->failed++;
 }
 
@@ -242,6 +247,7 @@ static void test_request_free(UNUSED request_t *request, void *preq, void *uctx)
 
 	our_preq = talloc_get_type_abort(preq, test_proto_request_t);
 	our_preq->freed = true;
+	if (annotate) TEST_MSG_ALWAYS("preq %p freed\n", our_preq);
 	if (stats) stats->freed++;
 }
 
@@ -1504,6 +1510,8 @@ static void test_connection_levels_max(void)
 	test_proto_request_t	*preq_a, *preq_b, *preq_c, *preq_d, *preq_e;
 	fr_trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL, *treq_d = NULL, *treq_e = NULL;
 
+	annotate = true;
+
 	DEBUG_LVL_SET;
 
 	el = fr_event_list_alloc(ctx, NULL, NULL);
@@ -1527,7 +1535,7 @@ static void test_connection_levels_max(void)
 	 *	Like test_connection_start_on_enqueue(), you have to process the backlog
 	 *	to start the chain of events.
 	 */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
+	// test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
@@ -1585,17 +1593,18 @@ static void test_connection_levels_max(void)
 	/*
 	 *	Looping I/O
 	 */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
+	// test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
 	/*
 	 *	Receiving responses
 	 */
-	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(2));
+	// test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(2));
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
+	TEST_MSG_ALWAYS("preq_a = %p\n", preq_a);
 	TEST_CHECK(preq_a->completed == true);
 	TEST_CHECK(preq_a->failed == false);
 	TEST_CHECK(preq_a->cancelled == false);
@@ -1642,6 +1651,8 @@ static void test_connection_levels_max(void)
 
 	TEST_CHECK(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_ALL) == 0);
 	FR_TRUNK_VERIFY(trunk);
+
+	annotate = false;
 
 	talloc_free(trunk);
 	talloc_free(ctx);
