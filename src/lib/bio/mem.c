@@ -43,7 +43,7 @@ typedef struct fr_bio_mem_s {
 
 static ssize_t fr_bio_mem_write_buffer(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
 
-static int     fr_bio_mem_verify_packet(fr_bio_t *bio, void *packet_ctx, size_t *size) CC_HINT(nonnull(1,3));
+static int     fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size) CC_HINT(nonnull(1,3));
 
 /** At EOF, read data from the buffer until it is empty.
  *
@@ -142,7 +142,7 @@ static ssize_t fr_bio_mem_read(fr_bio_t *bio, void *packet_ctx, void *buffer, si
 /** Return data only if we have a complete packet.
  *
  */
-static ssize_t fr_bio_mem_read_packet(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
+static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
 	ssize_t rcode;
 	size_t used, room, want;
@@ -158,7 +158,7 @@ static ssize_t fr_bio_mem_read_packet(fr_bio_t *bio, void *packet_ctx, void *buf
 		/*
 		 *	See if there are valid packets in the buffer.
 		 */
-		rcode = fr_bio_mem_verify_packet(bio, packet_ctx, &want);
+		rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
 		if (rcode < 0) {
 			rcode = fr_bio_error(VERIFY);
 			goto fail;
@@ -170,7 +170,7 @@ static ssize_t fr_bio_mem_read_packet(fr_bio_t *bio, void *packet_ctx, void *buf
 		if (rcode == 1) {
 			/*
 			 *	This isn't a fatal error.  The caller should check how much room is needed by calling
-			 *	fr_bio_mem_verify_packet(), and retry.
+			 *	fr_bio_mem_call_verify(), and retry.
 			 *
 			 *	But in general, the caller should make sure that the output buffer has enough
 			 *	room for at least one packet.  The verify() function should also ensure that
@@ -233,7 +233,7 @@ static ssize_t fr_bio_mem_read_packet(fr_bio_t *bio, void *packet_ctx, void *buf
 		/*
 		 *	See if there are valid packets in the buffer.
 		 */
-		rcode = fr_bio_mem_verify_packet(bio, packet_ctx, &want);
+		rcode = fr_bio_mem_call_verify(bio, packet_ctx, &want);
 		if (rcode < 0) {
 			rcode = fr_bio_error(VERIFY);
 			goto fail;
@@ -270,7 +270,7 @@ fail:
 /** Return data only if we have a complete packet.
  *
  */
-static ssize_t fr_bio_mem_read_packet_datagram(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
+static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
 	ssize_t rcode;
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
@@ -290,7 +290,7 @@ static ssize_t fr_bio_mem_read_packet_datagram(fr_bio_t *bio, void *packet_ctx, 
 		 *	It's a datagram socket, there can only be one packet in the buffer.
 		 *
 		 *	@todo - if we're allowed more than one packet in the buffer, we should just call
-		 *	fr_bio_mem_read_packet(), or this function should call fr_bio_mem_verify_packet().
+		 *	fr_bio_mem_read_verify(), or this function should call fr_bio_mem_call_verify().
 		 */
 		switch (my->verify((fr_bio_t *) my, packet_ctx, buffer, &want)) {
 			/*
@@ -563,7 +563,7 @@ void fr_bio_mem_read_discard(fr_bio_t *bio, size_t size)
  *	- 0 for "we have a partial packet", the size to read is in *size
  *	- 1 for "we have at least one good packet", the size of it is in *size
  */
-static int fr_bio_mem_verify_packet(fr_bio_t *bio, void *packet_ctx, size_t *size)
+static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 {
 	uint8_t *packet, *end;
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
@@ -798,7 +798,26 @@ int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram)
 	}
 
 	my->verify = verify;
-	my->bio.read = datagram ? fr_bio_mem_read_packet_datagram : fr_bio_mem_read_packet;
+
+	/*
+	 *	If we are writing datagrams, then we cannot buffer individual datagrams.  We must write
+	 *	either all of the datagram out, or none of it.
+	 */
+	if (datagram) {
+		my->bio.read = fr_bio_mem_read_verify_datagram;
+		my->bio.write = fr_bio_next_write;
+
+		/*
+		 *	Might as well free the memory for the write buffer.  It won't be used.
+		 */
+		if (my->write_buffer.start) {
+			talloc_free(my->write_buffer.start);
+			my->write_buffer = (fr_bio_buf_t) {};
+		}
+	} else {
+		my->bio.read = fr_bio_mem_read_verify;
+		/* don't touch the write function or the write buffer. */
+	}
 
 	return 0;
 }
