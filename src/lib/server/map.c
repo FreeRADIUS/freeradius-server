@@ -728,7 +728,7 @@ check_for_child:
 	}
 
 	if (parent_p) {
-		if (tmpl_attr_tail_da_is_structural(map->lhs)) {
+		if (!tmpl_needs_resolving(map->lhs) && tmpl_attr_tail_da_is_structural(map->lhs)) {
 			*parent_p = map;
 		} else {
 			*parent_p = parent;
@@ -738,7 +738,7 @@ check_for_child:
 	/*
 	 *	Xlat expansions are cast to strings for structural data types.
 	 */
-	if (tmpl_attr_tail_da_is_structural(map->lhs) && (tmpl_is_xlat(map->rhs))) {
+	if (!tmpl_needs_resolving(map->lhs) && tmpl_attr_tail_da_is_structural(map->lhs) && (tmpl_is_xlat(map->rhs))) {
 		tmpl_cast_set(map->rhs, FR_TYPE_STRING);
 	}
 
