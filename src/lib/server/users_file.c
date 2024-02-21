@@ -273,15 +273,6 @@ static int pairlist_read_internal(TALLOC_CTX *ctx, fr_dict_t const *dict, char c
 			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
 			.list_def = request_attr_request,
 			.list_presence = TMPL_ATTR_LIST_ALLOW,
-
-			/*
-			 *	Otherwise the tmpl code returns 0 when asked
-			 *	to parse unknown names.  So we say "please
-			 *	parse unknown names as unresolved attributes",
-			 *	and then do a second pass to complain that the
-			 *	thing isn't known.
-			 */
-			.allow_unresolved = true
 		}
 	};
 	rhs_rules = (tmpl_rules_t) {
@@ -395,12 +386,6 @@ check_item:
 
 		fr_assert(new_map->lhs != NULL);
 		fr_assert(new_map->rhs != NULL);
-
-		if (!tmpl_is_attr(new_map->lhs)) {
-			ERROR("%s[%d]: Unknown attribute '%s'",
-			      file, lineno, new_map->lhs->name);
-			goto fail_entry;
-		}
 
 		/*
 		 *	The default rule says that the check
