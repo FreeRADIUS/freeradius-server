@@ -686,34 +686,6 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 	return (fr_bio_t *) my;
 }
 
-/** Only return verified packets.
- *
- *  Like fr_bio_mem_alloc(), but only returns packets.
- *
- *  Writes pass straight through to the next bio.
- */
-fr_bio_t *fr_bio_mem_packet_alloc(TALLOC_CTX *ctx, size_t read_size, fr_bio_verify_t verify, bool datagram, fr_bio_t *next)
-{
-	fr_bio_mem_t *my;
-
-	if (!datagram) {
-		my = (fr_bio_mem_t *) fr_bio_mem_sink_alloc(ctx, read_size);
-	} else {
-		my = talloc_zero(ctx, fr_bio_mem_t);
-		if (!my) return NULL;
-
-		talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor);
-	}
-	if (!my) return NULL;
-
-	my->verify = verify;
-	my->bio.read = datagram ? fr_bio_mem_read_packet_datagram : fr_bio_mem_read_packet;
-	my->bio.write = fr_bio_next_write;
-
-	fr_bio_chain(&my->bio, next);
-
-	return (fr_bio_t *) my;
-}
 
 /** Allocate a memory buffer which sources data from the callers application into the bio system.
  *
@@ -803,4 +775,30 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
 
 	talloc_set_destructor((fr_bio_t *) my, fr_bio_destructor);
 	return (fr_bio_t *) my;
+}
+
+/** Set the verification function for memory bios.
+ *
+ *  It is possible to add a verification function.  It is not currently possible to remove one.
+ *
+ *  @param bio		the binary IO handler
+ *  @param verify	the verification function
+ *  @param datagram	whether or not this bio is a datagram one.
+ *  @return
+ *	- <0 on error
+ *	- 0 on success
+ */
+int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram)
+{
+	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
+
+	if (my->bio.read != fr_bio_mem_read) {
+		fr_strerror_const("Cannot add verify to a memory sink bio");
+		return fr_bio_error(GENERIC);
+	}
+
+	my->verify = verify;
+	my->bio.read = datagram ? fr_bio_mem_read_packet_datagram : fr_bio_mem_read_packet;
+
+	return 0;
 }
