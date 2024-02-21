@@ -75,7 +75,7 @@ ATTRIBUTE	NIS-Domain-Name				40	string
 ATTRIBUTE	NIS-Servers				41	ipaddr array
 ATTRIBUTE	NTP-Servers				42	ipaddr array
 # N Vendor Specific Information
-ATTRIBUTE	Vendor					43	octets # tlv
+ATTRIBUTE	Vendor-Specific-Options			43	octets # tlv
 ATTRIBUTE	NETBIOS-Name-Servers			44	ipaddr array
 ATTRIBUTE	NETBIOS-Dgm-Dist-Servers		45	ipaddr array
 ATTRIBUTE	NETBIOS-Node-Type			46	uint8
