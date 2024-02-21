@@ -45,7 +45,7 @@ if !(%substr(%{test_octets}, 1, 2) == 0x2345) {
 	test_fail
 }
 
-if (%substr(%{test_int}, 1, 2)) {
+if !(%substr(%{test_int}, 1, 2) == '23') {
 	test_fail
 }
 

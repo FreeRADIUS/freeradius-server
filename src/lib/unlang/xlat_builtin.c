@@ -2975,6 +2975,8 @@ static xlat_arg_parser_t const xlat_func_substr_args[] = {
 
 /** Extract a substring from string / octets data
  *
+ * Non string / octets data is cast to a string.
+ *
  * Second parameter is start position, optional third parameter is length
  * Negative start / length count from RHS of data.
  *
@@ -2993,9 +2995,17 @@ static xlat_action_t xlat_func_substr(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED
 
 	XLAT_ARGS(args, &in, &start_vb, &len_vb);
 
-	if (!((in->type == FR_TYPE_STRING) || (in->type == FR_TYPE_OCTETS))) {
-		RPEDEBUG("substr only valid for string or octets data");
-		return XLAT_ACTION_FAIL;
+	switch (in->type) {
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+		break;
+
+	default:
+		if (fr_value_box_cast_in_place(in, in, FR_TYPE_STRING, NULL) < 0) {
+			RPEDEBUG("Failed casting value to string");
+			return XLAT_ACTION_FAIL;
+		}
+		break;
 	}
 
 	if (start_vb->vb_int32 > (int32_t)in->vb_length) return XLAT_ACTION_DONE;
