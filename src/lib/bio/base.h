@@ -183,12 +183,6 @@ int	fr_bio_destructor(fr_bio_t *bio) CC_HINT(nonnull);
 
 #define fr_bio_error(_x) (-(FR_BIO_ERROR_ ## _x))
 
-ssize_t	fr_bio_eof_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
-
-ssize_t fr_bio_next_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
-
-ssize_t fr_bio_next_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
-
 int	fr_bio_shutdown(fr_bio_t *bio) CC_HINT(nonnull);
 
 int	fr_bio_free(fr_bio_t *bio) CC_HINT(nonnull);

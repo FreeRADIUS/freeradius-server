@@ -44,6 +44,12 @@ struct fr_bio_common_s {
 	FR_BIO_COMMON;
 };
 
+ssize_t fr_bio_next_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
+
+ssize_t fr_bio_next_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
+
+ssize_t	fr_bio_eof_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
+
 /** Chain one bio after another.
  *
  *  @todo - this likely needs to be public
