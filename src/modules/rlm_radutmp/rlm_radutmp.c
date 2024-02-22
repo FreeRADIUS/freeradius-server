@@ -50,16 +50,17 @@ struct nas_port_s {
 
 typedef struct {
 	NAS_PORT	*nas_port_list;
-	char const	*filename;
-	char const	*username;
 	bool		check_nas;
 	uint32_t	permission;
 	bool		caller_id_ok;
 } rlm_radutmp_t;
 
+typedef struct {
+	fr_value_box_t	filename;
+	fr_value_box_t	username;
+} rlm_radutmp_env_t;
+
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_OUTPUT, rlm_radutmp_t, filename), .dflt = RADUTMP },
-	{ FR_CONF_OFFSET_FLAGS("username", CONF_FLAG_SECRET, rlm_radutmp_t, username), .dflt = "%{User-Name}" },
 	{ FR_CONF_OFFSET("check_with_nas", rlm_radutmp_t, check_nas), .dflt = "yes" },
 	{ FR_CONF_OFFSET("permissions", rlm_radutmp_t, permission), .dflt = "0644" },
 	{ FR_CONF_OFFSET("caller_id", rlm_radutmp_t, caller_id_ok), .dflt = "no" },
@@ -179,6 +180,7 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, uint16
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radutmp_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_radutmp_t);
+	rlm_radutmp_env_t	*env = talloc_get_type_abort(mctx->env_data, rlm_radutmp_env_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	struct radutmp		ut, u;
 	fr_pair_t		*vp;
@@ -192,9 +194,6 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	char const		*nas;
 	NAS_PORT		*cache;
 	int			r;
-
-	char			*filename = NULL;
-	char			*expanded = NULL;
 	fr_client_t		*client;
 
 	if (request->dict != dict_radius) RETURN_MODULE_NOOP;
@@ -330,14 +329,6 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	ut.time = t - ut.delay;
 
 	/*
-	 *	Get the utmp filename, via xlat.
-	 */
-	filename = NULL;
-	if (xlat_aeval(request, &filename, request, inst->filename, NULL, NULL) < 0) {
-		RETURN_MODULE_FAIL;
-	}
-
-	/*
 	 *	See if this was a reboot.
 	 *
 	 *	Hmm... we may not want to zap all of the users when the NAS comes up, because of issues with receiving
@@ -345,14 +336,14 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	 */
 	if (status == FR_STATUS_ACCOUNTING_ON && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s restarted (Accounting-On packet seen)", nas);
-		radutmp_zap(&rcode, request, filename, ut.nas_address, ut.time);
+		radutmp_zap(&rcode, request, env->filename.vb_strvalue, ut.nas_address, ut.time);
 
 		goto finish;
 	}
 
 	if (status == FR_STATUS_ACCOUNTING_OFF && (ut.nas_address != htonl(INADDR_NONE))) {
 		RIDEBUG("NAS %s rebooted (Accounting-Off packet seen)", nas);
-		radutmp_zap(&rcode, request, filename, ut.nas_address, ut.time);
+		radutmp_zap(&rcode, request, env->filename.vb_strvalue, ut.nas_address, ut.time);
 
 		goto finish;
 	}
@@ -368,15 +359,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	}
 
 	/*
-	 *	Translate the User-Name attribute, or whatever else they told us to use.
+	 *	Copy the expanded username to the radutmp structure
 	 */
-	if (xlat_aeval(request, &expanded, request, inst->username, NULL, NULL) < 0) {
-		rcode = RLM_MODULE_FAIL;
-
-		goto finish;
-	}
-	strlcpy(ut.login, expanded, RUT_NAMESIZE);
-	TALLOC_FREE(expanded);
+	strlcpy(ut.login, env->username.vb_strvalue, RUT_NAMESIZE);
 
 	/*
 	 *	Perhaps we don't want to store this record into
@@ -402,9 +387,9 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	/*
 	 *	Enter into the radutmp file.
 	 */
-	fd = open(filename, O_RDWR|O_CREAT, inst->permission);
+	fd = open(env->filename.vb_strvalue, O_RDWR|O_CREAT, inst->permission);
 	if (fd < 0) {
-		REDEBUG("Error accessing file %s: %s", filename, fr_syserror(errno));
+		REDEBUG("Error accessing file %pV: %s", &env->filename, fr_syserror(errno));
 		rcode = RLM_MODULE_FAIL;
 
 		goto finish;
@@ -414,7 +399,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	 *	Lock the utmp file, prefer lockf() over flock().
 	 */
 	if (rad_lockfd(fd, LOCK_LEN) < 0) {
-		REDEBUG("Error acquiring lock on %s: %s", filename, fr_syserror(errno));
+		REDEBUG("Error acquiring lock on %pV: %s", &env->filename, fr_syserror(errno));
 		rcode = RLM_MODULE_FAIL;
 
 		goto finish;
@@ -547,14 +532,22 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 	finish:
 
-	talloc_free(filename);
-
 	if (fd > -1) {
 		close(fd);	/* and implicitly release the locks */
 	}
 
 	RETURN_MODULE_RCODE(rcode);
 }
+
+static const call_env_method_t method_env = {
+	FR_CALL_ENV_METHOD_OUT(rlm_radutmp_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, rlm_radutmp_env_t, filename) },
+		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, rlm_radutmp_env_t, username),
+		  .pair.dflt = "%{User-Name}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+		CALL_ENV_TERMINATOR
+	}
+};
 
 /* globally exported name */
 extern module_rlm_t rlm_radutmp;
@@ -567,7 +560,8 @@ module_rlm_t rlm_radutmp = {
 		.config		= module_config
 	},
 	.method_names = (module_method_name_t[]){
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,
+		  .method_env = &method_env },
 		MODULE_NAME_TERMINATOR
 	}
 };
