@@ -328,7 +328,8 @@ check_list:
 		    (old->coa_home_server == client->coa_home_server) &&
 		    (old->coa_home_pool == client->coa_home_pool) &&
 #endif
-		    (old->require_ma == client->require_ma)) {
+		    (old->require_ma == client->require_ma) &&
+		    (old->limit_proxy_state == client->limit_proxy_state)) {
 			WARN("Ignoring duplicate client %s", client->longname);
 			client_free(client);
 			return true;
@@ -513,6 +514,7 @@ static const CONF_PARSER client_config[] = {
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
 
 	{ "require_message_authenticator",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_IGNORE_DEFAULT, RADCLIENT, require_ma), NULL },
+	{ "limit_proxy_state",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_IGNORE_DEFAULT, RADCLIENT, limit_proxy_state), NULL },
 
 	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret), NULL },
 	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), NULL },
@@ -903,11 +905,13 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	c->cs = cs;
 
 	/*
-	 *	Set the "require message authenticator" flag from the
-	 *	global default.  If the configuration item exists, AND
-	 *	is set, it will over-ride this flag.
+	 *	Set the "require message authenticator" and "limit
+	 *	proxy state" flags from the global default.  If the
+	 *	configuration item exists, AND is set, it will
+	 *	over-ride the flag.
 	 */
 	c->require_ma = main_config.require_ma;
+	c->limit_proxy_state = main_config.limit_proxy_state;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
 	cl_netmask = 255;
