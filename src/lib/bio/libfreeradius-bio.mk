@@ -9,7 +9,7 @@ SOURCES	:=		\
 	mem.c		\
 	network.c	\
 	null.c		\
-	packet.c	\
-	pipe.c
+	pipe.c		\
+	queue.c
 
 TGT_PREREQS	:= libfreeradius-util$(L)

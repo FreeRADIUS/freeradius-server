@@ -17,26 +17,23 @@
 
 /**
  * $Id$
- * @file lib/bio/packet.h
- * @brief Binary IO abstractions for packets in buffers
+ * @file lib/bio/queue.h
+ * @brief Binary IO abstractions for queues of raw packets
  *
  * Write packets of data to bios.  If a packet is partially
  * read/written, it is cached for later processing.
  *
- * @todo - Not quite done yet.  It still needs to be integrated into the bio framework,
- * and be managed through a bio of its own.
- *
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
-RCSIDH(lib_bio_packet_h, "$Id$")
+RCSIDH(lib_bio_queue_h, "$Id$")
 
-typedef void	(*fr_bio_packet_callback_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size);
-typedef void	(*fr_bio_packet_saved_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size, void *ctx);
+typedef void	(*fr_bio_queue_callback_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size);
+typedef void	(*fr_bio_queue_saved_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size, void *ctx);
 
-fr_bio_t	*fr_bio_packet_alloc(TALLOC_CTX *ctx, size_t max_saved,
-				     fr_bio_packet_saved_t saved,
-				     fr_bio_packet_callback_t sent,
-				     fr_bio_packet_callback_t cancel,
-				     fr_bio_t *next) CC_HINT(nonnull(1,6));
+fr_bio_t	*fr_bio_queue_alloc(TALLOC_CTX *ctx, size_t max_saved,
+				    fr_bio_queue_saved_t saved,
+				    fr_bio_queue_callback_t sent,
+				    fr_bio_queue_callback_t cancel,
+				    fr_bio_t *next) CC_HINT(nonnull(1,6));
 
-int		fr_bio_packet_cancel(fr_bio_t *bio, void *ctx) CC_HINT(nonnull);
+int		fr_bio_queue_cancel(fr_bio_t *bio, void *ctx) CC_HINT(nonnull);
