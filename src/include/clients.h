@@ -45,6 +45,8 @@ typedef struct radclient {
 
 	bool			require_ma;		//!< Require RADIUS message authenticator in requests.
 
+	bool			limit_proxy_state;     	//!< Limit Proxy-State in requests
+
 	char const		*nas_type;		//!< Type of client (arbitrary).
 
 	char const		*login;			//!< Username to use for simultaneous use checks.
