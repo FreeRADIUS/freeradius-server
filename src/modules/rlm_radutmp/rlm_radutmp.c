@@ -491,7 +491,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		 *	easier than searching through the entire file.
 		 */
 		if (!cache) {
-			cache = talloc_zero(NULL, NAS_PORT);
+			cache = talloc_zero(inst, NAS_PORT);
 			if (cache) {
 				cache->nasaddr = ut.nas_address;
 				cache->port = ut.nas_port;
