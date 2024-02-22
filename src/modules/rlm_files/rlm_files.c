@@ -535,10 +535,13 @@ redo:
 		found = true;
 
 		/* ctx may be reply */
+		RINDENT();
 		if (radius_legacy_map_list_apply(request, &pl->reply, child) < 0) {
 			RPWARN("Failed parsing reply item");
+			REXDENT();
 			goto fail;
 		}
+		REXDENT();
 
 		if (pl->fall_through) continue;
 
