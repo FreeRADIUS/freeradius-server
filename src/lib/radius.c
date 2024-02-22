@@ -2450,6 +2450,8 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	radius_packet_t		*hdr;
 	char			host_ipaddr[128];
 	bool			require_ma = false;
+	bool			limit_proxy_state = false;
+	bool			seen_proxy_state = false;
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
 	decode_fail_t		failure = DECODE_FAIL_NONE;
@@ -2500,13 +2502,14 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	/*
 	 *	Message-Authenticator is required in Status-Server
 	 *	packets, otherwise they can be trivially forged.
-	 */
-	if (hdr->code == PW_CODE_STATUS_SERVER) require_ma = true;
-
-	/*
+	 *
 	 *	It's also required if the caller asks for it.
+	 *
+	 *	We only limit Proxy-State if we're not requiring
+	 *	Message-Authenticator.
 	 */
-	if (flags) require_ma = true;
+	require_ma = ((flags & 0x01) != 0) || (hdr->code == PW_CODE_STATUS_SERVER);
+	limit_proxy_state = ((flags & 0x04) != 0) & !require_ma;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -2669,6 +2672,10 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 			non_eap = true;
 			break;
 
+		case PW_PROXY_STATE:
+			seen_proxy_state = true;
+			break;
+
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
 				FR_DEBUG_STRERROR_PRINTF("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
@@ -2737,6 +2744,18 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 */
 	if (require_ma && !seen_ma) {
 		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)));
+		failure = DECODE_FAIL_MA_MISSING;
+		goto finish;
+	}
+
+	/*
+	 *	The client is a NAS which shouldn't send Proxy-State, but it did!
+	 */
+	if (limit_proxy_state && seen_proxy_state && !seen_ma) {
+		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute, but still has one or more Proxy-State attributes",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
