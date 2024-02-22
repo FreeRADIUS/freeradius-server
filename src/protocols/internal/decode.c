@@ -30,6 +30,7 @@
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/io/test_point.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/types.h>
 
 static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
 				    fr_dbuff_t *dbuff, void *decode_ctx);
@@ -62,50 +63,11 @@ static ssize_t internal_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *head,
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-/** Decode a TLV as a group type attribute
- *
- */
-static ssize_t internal_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
-				   fr_dbuff_t *dbuff, void *decode_ctx)
-{
-
-	ssize_t		slen;
-	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
-	fr_pair_t	*tlv;
-
-	FR_PROTO_TRACE("Decoding TLV - %s (%zu bytes)", parent_da->name, fr_dbuff_len(&work_dbuff));
-
-	/*
-	 *	Create intermediary TLV VP to retain
-	 *	the nesting structure
-	 */
-	tlv = fr_pair_afrom_da(ctx, parent_da);
-	if (!tlv) return PAIR_DECODE_OOM;
-
-	/*
-	 *	Decode all the children of this TLV
-	 */
-	while (fr_dbuff_extend(&work_dbuff)) {
-		FR_PROTO_HEX_MARKER(fr_dbuff_start(&work_dbuff), fr_dbuff_len(&work_dbuff),
-				    fr_dbuff_remaining(&work_dbuff), "Decoding child");
-
-		slen = internal_decode_pair(tlv, &tlv->vp_group, parent_da, &work_dbuff, decode_ctx);
-		if (slen <= 0) {
-			talloc_free(tlv);
-			return slen;
-		}
-	}
-
-	fr_pair_append(head, tlv);
-
-	return fr_dbuff_set(dbuff, &work_dbuff);
-}
-
 /** Decode a group
  *
  */
-static ssize_t internal_decode_group(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
-				     fr_dbuff_t *dbuff, void *decode_ctx)
+static ssize_t internal_decode_structural(TALLOC_CTX *ctx, fr_pair_list_t *head, fr_dict_attr_t const *parent_da,
+					  fr_dbuff_t *dbuff, void *decode_ctx)
 {
 	fr_pair_t	*vp;
 	ssize_t		slen;
@@ -272,53 +234,24 @@ static ssize_t internal_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dic
 
 	switch (da->type) {
 	/*
-	 *	This just changes the lookup context, we don't
-	 *	actually need to allocate anything for it.
-	 */
-	case FR_TYPE_VSA:		/* An attribute holding vendor definitions */
-		if (unlikely(unknown)) {
-			fr_strerror_printf("%s: %s can't be marked as unknown", __FUNCTION__,
-					   fr_type_to_str(da->type));
-			fr_dbuff_set(&work_dbuff, &ext_field);
-			goto error;
-		}
-	FALL_THROUGH;
-
-	case FR_TYPE_VENDOR:		/* A vendor definition */
-		if (unlikely(tainted)) {
-		bad_tainted:
-			fr_strerror_printf("%s: %s can't be marked as tainted", __FUNCTION__,
-					   fr_type_to_str(da->type));
-			fr_dbuff_set(&work_dbuff, &enc_field);
-		error:
-			if (unknown) fr_dict_unknown_free(&da);
-			return fr_pair_decode_slen(slen, fr_dbuff_start(&work_dbuff), fr_dbuff_current(&work_dbuff));
-		}
-
-		FR_PROTO_TRACE("Decoding %s - %s", da->name,
-			       fr_type_to_str(da->type));
-
-		slen = internal_decode_pair(ctx, out, parent_da, &work_dbuff, decode_ctx);
-		if (slen <= 0) goto error;
-		break;
-
-	/*
 	 *	Structural types
 	 *
 	 *	STRUCTs are encoded as TLVs, because the struct
 	 *	packing only applies to the original protocol, and not
 	 *	to our internal encoding.
 	 */
-	case FR_TYPE_TLV:
-	case FR_TYPE_STRUCT:
-		if (unlikely(tainted)) goto bad_tainted;
-
-		slen = internal_decode_tlv(ctx, out, da, &work_dbuff, decode_ctx);
-		if (slen <= 0) goto error;
-		break;
-
-	case FR_TYPE_GROUP:
-		slen = internal_decode_group(ctx, out, da, &work_dbuff, decode_ctx);
+	 case FR_TYPE_STRUCTURAL:
+	 	if (fr_type_is_vsa(da->type)) {
+			if (unlikely(unknown)) {
+				fr_strerror_printf("%s: %s can't be marked as unknown", __FUNCTION__,
+						fr_type_to_str(da->type));
+				fr_dbuff_set(&work_dbuff, &ext_field);
+			error:
+				if (unknown) fr_dict_unknown_free(&da);
+				return fr_pair_decode_slen(slen, fr_dbuff_start(&work_dbuff), fr_dbuff_current(&work_dbuff));
+			}
+		}
+		slen = internal_decode_structural(ctx, out, da, &work_dbuff, decode_ctx);
 		if (slen <= 0) goto error;
 		break;
 
