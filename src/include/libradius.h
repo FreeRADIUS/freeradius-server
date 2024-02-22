@@ -528,6 +528,12 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
+
+/*
+ *	1 == require_ma
+ *	2 == msg_peek
+ *	3 == limit_proxy_state
+ */
 RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
 ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, int *code);
 void		rad_recv_discard(int sockfd);

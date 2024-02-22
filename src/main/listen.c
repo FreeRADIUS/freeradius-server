@@ -2027,7 +2027,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, client->require_ma);
+	packet = rad_recv(ctx, listener->fd, client->require_ma | (((int) client->limit_proxy_state) << 2));
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
