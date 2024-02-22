@@ -634,7 +634,41 @@ security {
 	#  home server by adding a flag to that section which says
 	#  "require_message_authenticator = false".
 	#
+	#  If the server produces error message which says "Packet
+	#  does not contain required Message-Authenticator attribute",
+	#  then this configuration item has to be updated.
+	#
+	#  WARNING: This item should always be left as "yes",
+	#  otherwise it is possible for MITM attackers to create fake
+	#  Access-Accept packets to the NAS!
+	#
 	require_message_authenticator = yes
+
+	#
+	#  Global configuration for requiring Message-Authenticator
+	#  Access-Request packets from a NAS, but only if those
+	#  packets also contain Proxy-State.
+	#
+	#  If "require_message_authenticator" is set to "yes", this
+	#  configuration item is ignored.
+	#
+	#  If "require_message_authenticator" is set to "no", this
+	#  configuration item is checked.
+	#
+	#  This configuration item should ALWAYS be set to "yes".
+	#
+	#  The only reason to set it to "no" is when the client is a
+	#  proxy, AND the proxy does not send Message-Authenticator in
+	#  Access-Request packets.  Even then, the best approach to
+	#  fix the issue is to (1) update the client to send
+	#  Message-Authenticator, and if that can't be done, then (2)
+	#  set this flag to "no", but ONLY on a per-client basis.
+	#
+	#  WARNING: This item should always be left as "yes",
+	#  otherwise it is possible for MITM attackers to create fake
+	#  Access-Accept packets to the NAS!
+	#
+	limit_proxy_state = yes
 
 @openssl_version_check_config@
 }
