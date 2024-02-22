@@ -563,6 +563,8 @@ int main(int argc, char **argv)
 
 	main_config_free(&config);
 
+	fr_dict_free(&dict, __FILE__);
+
 	/*
 	 *	Ensure our atexit handlers run before any other
 	 *	atexit handlers registered by third party libraries.
