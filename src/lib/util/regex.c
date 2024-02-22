@@ -500,7 +500,7 @@ again:
 	 */
 	ret = pcre2_substitute(preg->compiled,
 			       (PCRE2_SPTR8)subject, (PCRE2_SIZE)subject_len, 0,
-			       options, regmatch ? regmatch->match_data : NULL, fr_pcre2_tls->mcontext,
+			       options, NULL, fr_pcre2_tls->mcontext,
 			       (PCRE2_UCHAR const *)replacement, replacement_len, (PCRE2_UCHAR *)buff, &actual_len);
 
 	if (ret < 0) {

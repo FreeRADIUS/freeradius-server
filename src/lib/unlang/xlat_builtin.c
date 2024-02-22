@@ -36,14 +36,18 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/unlang/xlat_ctx.h>
 
 #include <freeradius-devel/io/test_point.h>
 
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/base16.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/regex.h>
+#include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/value.h>
 
@@ -3054,6 +3058,73 @@ static xlat_action_t xlat_func_substr(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED
 }
 
 #ifdef HAVE_REGEX_PCRE2
+/** Cache statically compiled expressions
+ */
+typedef struct {
+	regex_t			*pattern;
+	fr_regex_flags_t	flags;
+} xlat_subst_regex_inst_t;
+
+/** Pre-compile regexes where possible
+ */
+static int xlat_instantiate_subst_regex(xlat_inst_ctx_t const *xctx)
+{
+	xlat_subst_regex_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_subst_regex_inst_t);
+	xlat_exp_t		*patt_exp;
+	fr_sbuff_t		sbuff;
+	fr_sbuff_marker_t	start_m, end_m;
+
+	/* args #2 (pattern) */
+	patt_exp = fr_dlist_next(&xctx->ex->call.args->dlist, fr_dlist_head(&xctx->ex->call.args->dlist));
+	fr_assert(patt_exp->type == XLAT_GROUP);	/* args must be groups */
+
+	/* If there are dynamic expansions, we can't pre-compile */
+	if (!xlat_is_literal(patt_exp->group)) return 0;
+	fr_assert(fr_dlist_num_elements(&patt_exp->group->dlist) == 1);
+
+	patt_exp = fr_dlist_head(&patt_exp->group->dlist);
+
+	/* We can only pre-compile strings */
+	if (!fr_type_is_string(patt_exp->data.type)) return 0;
+
+	sbuff = FR_SBUFF_IN(patt_exp->data.vb_strvalue, patt_exp->data.vb_length);
+
+	/* skip any whitesapce */
+	fr_sbuff_adv_past_whitespace(&sbuff, SIZE_MAX, 0);
+
+	/* Is the next char a forward slash? */
+	if (fr_sbuff_next_if_char(&sbuff, '/')) {
+		fr_slen_t		slen;
+
+		fr_sbuff_marker(&start_m, &sbuff);
+
+		if (!fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '/')) return 0;	/* Not a regex */
+
+		fr_sbuff_marker(&end_m, &sbuff);
+		fr_sbuff_next(&sbuff); /* skip trailing slash */
+
+		if (fr_sbuff_remaining(&sbuff)) {
+			slen = regex_flags_parse(NULL, &inst->flags,
+						&sbuff,
+						NULL, true);
+			if (slen < 0) {
+				PERROR("Failed parsing regex flags in \"%s\"", patt_exp->data.vb_strvalue);
+				return -1;
+			}
+		}
+
+		if (regex_compile(inst, &inst->pattern,
+				  fr_sbuff_current(&start_m), fr_sbuff_current(&end_m) - fr_sbuff_current(&start_m),
+				  &inst->flags, true, false) <= 0) {
+			PERROR("Failed compiling regex \"%s\"", patt_exp->data.vb_strvalue);
+			return -1;
+		}
+	}
+	/* No... then it's not a regex */
+
+	return 0;
+}
+
 /** Perform regex substitution TODO CHECK
  *
  * Called when %subst() pattern begins with "/"
@@ -3071,17 +3142,17 @@ static xlat_action_t xlat_func_substr(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					   UNUSED xlat_ctx_t const *xctx, request_t *request,
-					   fr_value_box_list_t *args)
+static int xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				 UNUSED xlat_ctx_t const *xctx, request_t *request,
+				 fr_value_box_list_t *args)
 {
-	char const		*p, *q, *end;
-	char const		*regex;
+	xlat_subst_regex_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_subst_regex_inst_t);
+	fr_sbuff_t		sbuff;
+	fr_sbuff_marker_t	start_m, end_m;
 	char			*buff;
-	size_t			regex_len;
 	ssize_t			slen;
-	regex_t			*pattern;
-	fr_regex_flags_t	flags;
+	regex_t			*pattern, *our_pattern = NULL;
+	fr_regex_flags_t	*flags, our_flags = {};
 	fr_value_box_t		*vb;
 	fr_value_box_t		*subject_vb;
 	fr_value_box_t		*regex_vb;
@@ -3089,63 +3160,63 @@ static xlat_action_t xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	XLAT_ARGS(args, &subject_vb, &regex_vb, &rep_vb);
 
-	/* coverity[dereference] */
-	p = regex_vb->vb_strvalue;
-	end = p + regex_vb->vb_length;
-
-	if (p == end) {
-		REDEBUG("Regex must not be empty");
-		return XLAT_ACTION_FAIL;
-	}
-
-	p++;	/* Advance past '/' */
-	regex = p;
-
-	q = memchr(p, '/', end - p);
-	if (!q) {
-		REDEBUG("No terminating '/' found for regex");
-		return XLAT_ACTION_FAIL;
-	}
-	regex_len = q - p;
-
-	p = q + 1;
-
 	/*
-	 *	Parse '[flags]'
+	 *	Was not pre-compiled, so we need to compile it now
 	 */
-	memset(&flags, 0, sizeof(flags));
+	if (!inst->pattern) {
+		sbuff = FR_SBUFF_IN(regex_vb->vb_strvalue, regex_vb->vb_length);
+		if (fr_sbuff_len(&sbuff) == 0) {
+			REDEBUG("Regex must not be empty");
+			return XLAT_ACTION_FAIL;
+		}
 
-	slen = regex_flags_parse(NULL, &flags, &FR_SBUFF_IN(p, end), NULL, true);
-	if (slen < 0) {
-		RPEDEBUG("Failed parsing regex flags");
-		return XLAT_ACTION_FAIL;
-	}
+		fr_sbuff_next(&sbuff); /* skip leading slash */
+		fr_sbuff_marker(&start_m, &sbuff);
 
-	/*
-	 *	Process the substitution
-	 */
-	if (regex_compile(NULL, &pattern, regex, regex_len, &flags, false, true) <= 0) {
-		RPEDEBUG("Failed compiling regex");
-		return XLAT_ACTION_FAIL;
+		if (!fr_sbuff_adv_to_chr(&sbuff, SIZE_MAX, '/')) return 1;	/* Not a regex */
+
+		fr_sbuff_marker(&end_m, &sbuff);
+		fr_sbuff_next(&sbuff); /* skip trailing slash */
+
+		slen = regex_flags_parse(NULL, &our_flags, &sbuff, NULL, true);
+		if (slen < 0) {
+			RPEDEBUG("Failed parsing regex flags");
+			return -1;
+		}
+
+		/*
+		*	Process the substitution
+		*/
+		if (regex_compile(NULL, &our_pattern,
+				  fr_sbuff_current(&start_m), fr_sbuff_current(&end_m) - fr_sbuff_current(&start_m),
+				  &our_flags, true, true) <= 0) {
+			RPEDEBUG("Failed compiling regex");
+			return -1;
+		}
+		pattern = our_pattern;
+		flags = &our_flags;
+	} else {
+		pattern = inst->pattern;
+		flags = &inst->flags;
 	}
 
 	MEM(vb = fr_value_box_alloc_null(ctx));
-	if (regex_substitute(vb, &buff, 0, pattern, &flags,
+	if (regex_substitute(vb, &buff, 0, pattern, flags,
 			     subject_vb->vb_strvalue, subject_vb->vb_length,
 			     rep_vb->vb_strvalue, rep_vb->vb_length, NULL) < 0) {
 		RPEDEBUG("Failed performing substitution");
 		talloc_free(vb);
 		talloc_free(pattern);
-		return XLAT_ACTION_FAIL;
+		return -1;
 	}
 	fr_value_box_bstrdup_buffer_shallow(NULL, vb, NULL, buff, subject_vb->tainted);
 	fr_value_box_set_secret(vb, fr_value_box_is_secret(subject_vb));
 
 	fr_dcursor_append(out, vb);
 
-	talloc_free(pattern);
+	talloc_free(our_pattern);
 
-	return XLAT_ACTION_DONE;
+	return 0;
 }
 #endif
 
@@ -3195,10 +3266,22 @@ static xlat_action_t xlat_func_subst(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	pattern = pattern_vb->vb_strvalue;
 	if (*pattern == '/') {
 #ifdef HAVE_REGEX_PCRE2
-		return xlat_func_subst_regex(ctx, out, xctx, request, args);
+		switch (xlat_func_subst_regex(ctx, out, xctx, request, args)) {
+		case 0:
+			return XLAT_ACTION_DONE;
+
+		case 1:
+			/* Not a regex, fall through */
+			break;
+
+		case -1:
+			return XLAT_ACTION_FAIL;
+		}
 #else
-		REDEBUG("regex based substitutions require libpcre2.  "
-			"Check ${features.regex-pcre2} to determine support");
+		if (memchr(pattern, '/', pattern_vb->vb_length - 1)) {
+			REDEBUG("regex based substitutions require libpcre2.  "
+				"Check ${features.regex-pcre2} to determine support");
+		}
 		return XLAT_ACTION_FAIL;
 #endif
 	}
@@ -3895,6 +3978,9 @@ do { \
 	XLAT_REGISTER_ARGS("nexttime", xlat_func_next_time, FR_TYPE_UINT64, xlat_func_next_time_args);
 	XLAT_REGISTER_ARGS("pairs", xlat_func_pairs, FR_TYPE_STRING, xlat_func_pairs_args);
 	XLAT_REGISTER_ARGS("subst", xlat_func_subst, FR_TYPE_STRING, xlat_func_subst_args);
+
+	xlat_func_instantiate_set(xlat, xlat_instantiate_subst_regex, xlat_subst_regex_inst_t, NULL, NULL);
+
 	XLAT_REGISTER_ARGS("time", xlat_func_time, FR_TYPE_VOID, xlat_func_time_args);
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);

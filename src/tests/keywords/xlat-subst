@@ -1,10 +1,12 @@
 string test_string1
 string test_string2
 string test_string3
+string empty_string
 
 &test_string1 := 'aaa'
 &test_string2 := "\n\n\n"
 &test_string3 := "the quick brown fox jumped over the lazy dog"
+&empty_string := ''
 
 #
 #  Non-regex base substitutions
@@ -76,6 +78,16 @@ if (!(%subst(%{test_string1}, /z/, 'b') == 'aaa')) {
 	test_fail
 }
 
+# Basic substitutions - Dynamic
+if (!(%subst(%{test_string1}, /a%{empty_string}/, 'b') == 'baa')) {
+	test_fail
+}
+
+# Global substitution - Dynamic
+if (!(%subst(%{test_string1}, /a%{empty_string}/g, 'b') == 'bbb')) {
+	test_fail
+}
+
 #
 #  Newline manipulation
 #
@@ -104,25 +116,15 @@ if (!(%subst(%{test_string2}, /\n/g, "\r") == "\r\r\r")) {
 	test_fail
 }
 
-# Bad regex
-if (%subst(%{test_string1}, /***/g, '.')) {
+# Capture groups
+if (!(%subst(%{test_string3}, '/^the (.*) brown (.*) jumped.*/', "$1,$2") == "quick,fox")) {
 	test_fail
 }
 
-if !(&Module-Failure-Message[*] == 'Failed compiling regex: quantifier does not follow a repeatable item') {
+if (!(%subst(%{test_string3}, "/^%{empty_string}the (.*) brown (.*) jumped.*/", "$1,$2") == "quick,fox")) {
 	test_fail
 }
 
-&request -= &Module-Failure-Message[*]
-
-# Empty regex
-if (%subst(%{test_string1}, //g, '.')) {
-	test_fail
-}
-
-if !(&Module-Failure-Message[*] == 'Failed compiling regex: Empty expression') {
-	test_fail
-}
 }
 
 success

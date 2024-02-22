@@ -1,0 +1,4 @@
+# Bad regex
+if (%subst(%{test_string1}, /***/g, '.')) { #ERROR
+	test_fail
+}
