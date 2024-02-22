@@ -418,7 +418,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, fr_regmatch_t *re
  *	- >= 0 the length of the output string.
  *	- < 0 on error.
  */
-int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg, fr_regex_flags_t *flags,
+int regex_substitute(TALLOC_CTX *ctx, char **out, size_t max_out, regex_t *preg, fr_regex_flags_t const *flags,
 		     char const *subject, size_t subject_len,
 		     char const *replacement, size_t replacement_len,
 		     fr_regmatch_t *regmatch)

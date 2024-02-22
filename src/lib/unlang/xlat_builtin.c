@@ -3143,16 +3143,17 @@ static int xlat_instantiate_subst_regex(xlat_inst_ctx_t const *xctx)
  * @ingroup xlat_functions
  */
 static int xlat_func_subst_regex(TALLOC_CTX *ctx, fr_dcursor_t *out,
-				 UNUSED xlat_ctx_t const *xctx, request_t *request,
+				 xlat_ctx_t const *xctx, request_t *request,
 				 fr_value_box_list_t *args)
 {
-	xlat_subst_regex_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_subst_regex_inst_t);
+	xlat_subst_regex_inst_t const	*inst = talloc_get_type_abort_const(xctx->inst, xlat_subst_regex_inst_t);
 	fr_sbuff_t		sbuff;
 	fr_sbuff_marker_t	start_m, end_m;
 	char			*buff;
 	ssize_t			slen;
 	regex_t			*pattern, *our_pattern = NULL;
-	fr_regex_flags_t	*flags, our_flags = {};
+	fr_regex_flags_t const	*flags;
+	fr_regex_flags_t	our_flags = {};
 	fr_value_box_t		*vb;
 	fr_value_box_t		*subject_vb;
 	fr_value_box_t		*regex_vb;
