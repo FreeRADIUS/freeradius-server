@@ -3076,7 +3076,7 @@ static int xlat_instantiate_subst_regex(xlat_inst_ctx_t const *xctx)
 
 	/* args #2 (pattern) */
 	patt_exp = fr_dlist_next(&xctx->ex->call.args->dlist, fr_dlist_head(&xctx->ex->call.args->dlist));
-	fr_assert(patt_exp->type == XLAT_GROUP);	/* args must be groups */
+	fr_assert(patt_exp && patt_exp->type == XLAT_GROUP);	/* args must be groups */
 
 	/* If there are dynamic expansions, we can't pre-compile */
 	if (!xlat_is_literal(patt_exp->group)) return 0;
