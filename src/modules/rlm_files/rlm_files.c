@@ -52,6 +52,7 @@ typedef struct {
  */
 typedef struct {
 	rlm_files_data_t	*data;	//!< Data from parsed call_env
+	char const		*name;  //!< Name of module instance - for debug output
 	fr_value_box_list_t	values;	//!< Where the expanded tmpl value will be written.
 } rlm_files_env_t;
 
@@ -409,13 +410,13 @@ static unlang_action_t CC_HINT(nonnull) mod_files_resume(rlm_rcode_t *p_result, 
 	fr_value_box_t		*key_vb = fr_value_box_list_head(&env->values);
 
 	if (!key_vb) {
-		ERROR("Missing key value");
+		RERROR("Missing key value");
 		RETURN_MODULE_FAIL;
 	}
 
 	if (!tree && !default_list) RETURN_MODULE_NOOP;
 
-	RDEBUG2("Looking for key \"%pV\"", key_vb);
+	RDEBUG2("%s - Looking for key \"%pV\"", env->name, key_vb);
 
 	el = unlang_interpret_edit_list(request);
 	MEM(child = fr_edit_list_alloc(request, 50, el));
@@ -531,17 +532,20 @@ redo:
 
 		if (!match) continue;
 
-		RDEBUG2("Found match \"%s\" on line %d of %s", pl->name, pl->lineno, pl->filename);
+		RDEBUG2("%s - Found match \"%s\" on line %d of %s", env->name, pl->name, pl->lineno, pl->filename);
 		found = true;
 
-		/* ctx may be reply */
-		RINDENT();
-		if (radius_legacy_map_list_apply(request, &pl->reply, child) < 0) {
-			RPWARN("Failed parsing reply item");
+		if (map_list_num_elements(&pl->reply) > 0) {
+			RDEBUG2("%s - Preparing attribute updates:", env->name);
+			/* ctx may be reply */
+			RINDENT();
+			if (radius_legacy_map_list_apply(request, &pl->reply, child) < 0) {
+				RPWARN("Failed parsing reply item");
+				REXDENT();
+				goto fail;
+			}
 			REXDENT();
-			goto fail;
 		}
-		REXDENT();
 
 		if (pl->fall_through) continue;
 
@@ -575,7 +579,7 @@ redo:
 			}
 
 			user_pl = fr_dlist_head(&user_list->head);
-			RDEBUG("Found matching shorter subnet %s at key length %ld", user_pl->name, keylen);
+			RDEBUG("%s - Found matching shorter subnet %s at key length %ld", env->name, user_pl->name, keylen);
 			goto redo;
 		} while (keylen > 0);
 	}
@@ -605,6 +609,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_
 	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
 	fr_value_box_list_init(&env->values);
+	env->name = mctx->inst->name;
 
 	/*
 	 *	Set mod_files_resume as the repeat function
