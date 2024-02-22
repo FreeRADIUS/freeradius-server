@@ -178,6 +178,8 @@ typedef struct main_config {
 
 	bool		require_ma;			//!< global configuration for all clients and home servers
 
+	bool		limit_proxy_state;     		//!< global configuration for all clients
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
