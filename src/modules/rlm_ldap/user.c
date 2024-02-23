@@ -29,7 +29,6 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/util/debug.h>
-#include <ctype.h>
 
 #define LOG_PREFIX mctx->inst->name
 

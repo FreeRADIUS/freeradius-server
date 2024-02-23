@@ -109,18 +109,19 @@ static conf_parser_t user_config[] = {
  *	Group configuration
  */
 static conf_parser_t group_config[] = {
-	{ FR_CONF_OFFSET("filter", rlm_ldap_t, groupobj_filter) },
-	{ FR_CONF_OFFSET("scope", rlm_ldap_t, groupobj_scope), .dflt = "sub",
+	{ FR_CONF_OFFSET("filter", rlm_ldap_t, group.obj_filter) },
+	{ FR_CONF_OFFSET("scope", rlm_ldap_t, group.obj_scope), .dflt = "sub",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len }  },
 
-	{ FR_CONF_OFFSET("name_attribute", rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
-	{ FR_CONF_OFFSET("membership_attribute", rlm_ldap_t, userobj_membership_attr) },
-	{ FR_CONF_OFFSET_FLAGS("membership_filter", CONF_FLAG_XLAT, rlm_ldap_t, groupobj_membership_filter) },
-	{ FR_CONF_OFFSET("cacheable_name", rlm_ldap_t, cacheable_group_name), .dflt = "no" },
-	{ FR_CONF_OFFSET("cacheable_dn", rlm_ldap_t, cacheable_group_dn), .dflt = "no" },
-	{ FR_CONF_OFFSET("cache_attribute", rlm_ldap_t, cache_attribute) },
-	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group_attribute) },
-	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, allow_dangling_group_refs), .dflt = "no" },
+	{ FR_CONF_OFFSET("name_attribute", rlm_ldap_t, group.obj_name_attr), .dflt = "cn" },
+	{ FR_CONF_OFFSET("membership_attribute", rlm_ldap_t, group.userobj_membership_attr) },
+	{ FR_CONF_OFFSET_FLAGS("membership_filter", CONF_FLAG_XLAT, rlm_ldap_t, group.obj_membership_filter) },
+	{ FR_CONF_OFFSET("cacheable_name", rlm_ldap_t, group.cacheable_name), .dflt = "no" },
+	{ FR_CONF_OFFSET("cacheable_dn", rlm_ldap_t, group.cacheable_dn), .dflt = "no" },
+	{ FR_CONF_OFFSET("cache_attribute", rlm_ldap_t, group.cache_attribute) },
+	{ FR_CONF_OFFSET("group_attribute", rlm_ldap_t, group.attribute) },
+	{ FR_CONF_OFFSET("allow_dangling_group_ref", rlm_ldap_t, group.allow_dangling_refs), .dflt = "no" },
+	{ FR_CONF_OFFSET("skip_on_suspend", rlm_ldap_t, group.skip_on_suspend), .dflt = "yes"},
 	CONF_PARSER_TERMINATOR
 };
 
@@ -805,7 +806,7 @@ static unlang_action_t ldap_memberof_xlat_results(rlm_rcode_t *p_result, UNUSED 
 		if (!xlat_ctx->dn) xlat_ctx->dn = rlm_find_user_dn_cached(request);
 		if (!xlat_ctx->dn) RETURN_MODULE_FAIL;
 
-		if (inst->groupobj_membership_filter) {
+		if (inst->group.obj_membership_filter) {
 			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
 			if (rlm_ldap_check_groupobj_dynamic(&rcode, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				xlat_ctx->status = GROUP_XLAT_MEMB_FILTER;
@@ -820,7 +821,7 @@ static unlang_action_t ldap_memberof_xlat_results(rlm_rcode_t *p_result, UNUSED 
 			goto finish;
 		}
 
-		if (inst->userobj_membership_attr) {
+		if (inst->group.userobj_membership_attr) {
 			REPEAT_LDAP_MEMBEROF_XLAT_RESULTS;
 			if (rlm_ldap_check_userobj_dynamic(&rcode, request, xlat_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				xlat_ctx->status = GROUP_XLAT_MEMB_ATTR;
@@ -899,7 +900,7 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 		fr_value_box_bstr_realloc(group_vb, NULL, group_vb, len);
 	}
 
-	if ((group_is_dn && inst->cacheable_group_dn) || (!group_is_dn && inst->cacheable_group_name)) {
+	if ((group_is_dn && inst->group.cacheable_dn) || (!group_is_dn && inst->group.cacheable_name)) {
 		rlm_rcode_t our_rcode;
 
 		rlm_ldap_check_cached(&our_rcode, inst, request, group_vb);
@@ -928,7 +929,7 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 		.inst = inst,
 		.group = group_vb,
 		.dn = rlm_find_user_dn_cached(request),
-		.attrs = { inst->userobj_membership_attr, NULL },
+		.attrs = { inst->group.userobj_membership_attr, NULL },
 		.group_is_dn = group_is_dn,
 		.env_data = env_data
 	};
@@ -1524,7 +1525,10 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			autz_ctx->access_state = rlm_ldap_check_access(inst, request, autz_ctx->entry);
 			switch (autz_ctx->access_state) {
 			case LDAP_ACCESS_ALLOWED:
+				break;
+
 			case LDAP_ACCESS_SUSPENDED:
+				if (inst->group.skip_on_suspend) goto post_group;
 				break;
 
 			case LDAP_ACCESS_DISALLOWED:
@@ -1536,10 +1540,10 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		/*
 		 *	Check if we need to cache group memberships
 		 */
-		if ((inst->cacheable_group_dn || inst->cacheable_group_name) && (inst->userobj_membership_attr)) {
+		if ((inst->group.cacheable_dn || inst->group.cacheable_name) && (inst->group.userobj_membership_attr)) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (rlm_ldap_cacheable_userobj(&rcode, request, autz_ctx,
-						       inst->userobj_membership_attr) == UNLANG_ACTION_PUSHED_CHILD) {
+						       inst->group.userobj_membership_attr) == UNLANG_ACTION_PUSHED_CHILD) {
 				autz_ctx->status = LDAP_AUTZ_GROUP;
 				return UNLANG_ACTION_PUSHED_CHILD;
 			}
@@ -1548,7 +1552,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_GROUP:
-		if (inst->cacheable_group_dn || inst->cacheable_group_name) {
+		if (inst->group.cacheable_dn || inst->group.cacheable_name) {
 			REPEAT_MOD_AUTHORIZE_RESUME;
 			if (rlm_ldap_cacheable_groupobj(&rcode, request, autz_ctx) == UNLANG_ACTION_PUSHED_CHILD) {
 				autz_ctx->status = LDAP_AUTZ_POST_GROUP;
@@ -1559,6 +1563,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		FALL_THROUGH;
 
 	case LDAP_AUTZ_POST_GROUP:
+	post_group:
 #ifdef WITH_EDIR
 		/*
 		 *	We already have a Password.Cleartext.  Skip edir.
@@ -1792,9 +1797,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		expanded->attrs[expanded->count++] = inst->userobj_access_attr;
 	}
 
-	if (inst->userobj_membership_attr && (inst->cacheable_group_dn || inst->cacheable_group_name)) {
+	if (inst->group.userobj_membership_attr && (inst->group.cacheable_dn || inst->group.cacheable_name)) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->userobj_membership_attr;
+		expanded->attrs[expanded->count++] = inst->group.userobj_membership_attr;
 	}
 
 	if (inst->profile_attr) {
@@ -2258,8 +2263,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", mctx->inst->name);
 
-	if (inst->group_attribute) {
-		group_attribute = inst->group_attribute;
+	if (inst->group.attribute) {
+		group_attribute = inst->group.attribute;
 	} else if (cf_section_name2(conf)) {
 		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", mctx->inst->name);
 		group_attribute = buffer;
@@ -2267,12 +2272,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		group_attribute = "LDAP-Group";
 	}
 
-	inst->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
+	inst->group.da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
 
 	/*
 	 *	If the group attribute was not in the dictionary, create it
 	 */
-	if (!inst->group_da) {
+	if (!inst->group.da) {
 		fr_dict_attr_flags_t	flags;
 
 		memset(&flags, 0, sizeof(flags));
@@ -2282,25 +2287,25 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			return -1;
 
 		}
-		inst->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
+		inst->group.da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
 	}
 
 	/*
 	 *	Setup the cache attribute
 	 */
-	if (inst->cache_attribute) {
+	if (inst->group.cache_attribute) {
 		fr_dict_attr_flags_t	flags;
 
 		memset(&flags, 0, sizeof(flags));
 		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
-				     inst->cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
+				     inst->group.cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
 			PERROR("Error creating cache attribute");
 			return -1;
 
 		}
-		inst->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->cache_attribute);
+		inst->group.cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
 	} else {
-		inst->cache_da = inst->group_da;	/* Default to the group_da */
+		inst->group.cache_da = inst->group.da;	/* Default to the group_da */
 	}
 
 	/*
@@ -2445,8 +2450,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Sanity checks for cacheable groups code.
 	 */
-	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
-		if (!inst->groupobj_name_attr) {
+	if (inst->group.cacheable_name && inst->group.obj_membership_filter) {
+		if (!inst->group.obj_name_attr) {
 			cf_log_err(conf, "Configuration item 'group.name_attribute' must be set if cacheable "
 				      "group names are enabled");
 

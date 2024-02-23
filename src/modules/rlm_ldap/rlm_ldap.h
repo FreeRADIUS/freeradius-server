@@ -41,7 +41,6 @@ typedef struct {
 
 	int		userobj_scope;			//!< Search scope.
 
-	char const	*userobj_membership_attr;	//!< Attribute that describes groups the user is a member of.
 	char const	*userobj_access_attr;		//!< Attribute to check to see if the user should be locked out.
 	bool		access_positive;		//!< If true the presence of the attribute will allow access,
 							//!< else it will deny access.
@@ -59,37 +58,43 @@ typedef struct {
 	/*
 	 *	Group object attributes and filters
 	 */
-	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
-	int		groupobj_scope;			//!< Search scope.
+	struct {
+		char const	*userobj_membership_attr;	//!< Attribute that describes groups the user is a member of.
 
-	char const	*groupobj_name_attr;		//!< The name of the group.
-	char const	*groupobj_membership_filter;	//!< Filter to only retrieve groups which contain
-							//!< the user as a member.
+		char const	*obj_filter;			//!< Filter to retrieve only group objects.
+		int		obj_scope;			//!< Search scope.
 
-	bool		cacheable_group_name;		//!< If true the server will determine complete set of group
-							//!< memberships for the current user object, and perform any
-							//!< resolution necessary to determine the names of those
-							//!< groups, then right them to the control list (LDAP-Group).
+		char const	*obj_name_attr;			//!< The name of the group.
+		char const	*obj_membership_filter;		//!< Filter to only retrieve groups which contain
+								//!< the user as a member.
 
-	bool		cacheable_group_dn;		//!< If true the server will determine complete set of group
-							//!< memberships for the current user object, and perform any
-							//!< resolution necessary to determine the DNs of those groups,
-							//!< then right them to the control list (LDAP-GroupDN).
+		bool		cacheable_name;			//!< If true the server will determine complete set of group
+								//!< memberships for the current user object, and perform any
+								//!< resolution necessary to determine the names of those
+								//!< groups, then right them to the control list (LDAP-Group).
 
-	char const	*cache_attribute;		//!< Sets the attribute we use when creating and retrieving
-							//!< cached group memberships.
+		bool		cacheable_dn;			//!< If true the server will determine complete set of group
+								//!< memberships for the current user object, and perform any
+								//!< resolution necessary to determine the DNs of those groups,
+								//!< then right them to the control list (LDAP-GroupDN).
 
-	fr_dict_attr_t const	*cache_da;		//!< The DA associated with this specific instance of the
-							//!< rlm_ldap module.
+		char const	*cache_attribute;		//!< Sets the attribute we use when creating and retrieving
+								//!< cached group memberships.
 
-	char const	*group_attribute;		//!< Sets the attribute we use when comparing group
-							//!< group memberships.
+		fr_dict_attr_t const	*cache_da;		//!< The DA associated with this specific instance of the
+								//!< rlm_ldap module.
 
-	fr_dict_attr_t const	*group_da;		//!< The DA associated with this specific instance of the
-							//!< rlm_ldap module.
+		char const	*attribute;			//!< Sets the attribute we use when comparing group
+								//!< group memberships.
 
-	bool		allow_dangling_group_refs;	//!< Don't error if we fail to resolve a group DN referenced
-							///< from a user object.
+		fr_dict_attr_t const	*da;			//!< The DA associated with this specific instance of the
+								//!< rlm_ldap module.
+
+		bool		allow_dangling_refs;		//!< Don't error if we fail to resolve a group DN referenced
+								///< from a user object.
+
+		bool		skip_on_suspend;		//!< Don't process groups if the user is suspended.
+	} group;
 
 	/*
 	 *	Profiles

@@ -476,6 +476,14 @@ ldap {
 		#  `(<inst>-Group` or `LDAP-Group` if using the default instance).
 		#
 		group_attribute = "${..:instance}-Group"
+
+		#
+		#  skip_on_suspend::
+		#
+		#  Don't process user groups if the user has been suspended.
+		#  If set to 'no', groups will still be processed.
+		#
+		skip_on_suspend = 'yes'
 	}
 
 	#
