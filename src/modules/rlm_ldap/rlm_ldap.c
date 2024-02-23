@@ -1653,37 +1653,39 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		switch (autz_ctx->access_state) {
 		case LDAP_ACCESS_ALLOWED:
 			if (inst->profile_attr) {
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr);
+				int count;
 
-				if (autz_ctx->profile_values) {
-					RDEBUG2("Processing profile(s) found in attribute \"%s\"", inst->profile_attr);
+				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr);
+				count = ldap_count_values_len(autz_ctx->profile_values);
+				if (count > 0) {
+					RDEBUG2("Processing %i profile(s) found in attribute \"%s\"", count, inst->profile_attr);
+					if (RDEBUG_ENABLED3) {
+						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
+							RDEBUG3("Will evaluate profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
+						}
+					}
 				} else {
 					RDEBUG2("No profile(s) found in attribute \"%s\"", inst->profile_attr);
-				}
-
-				if (RDEBUG_ENABLED3) {
-					for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-						RDEBUG3("Will evaluate profile with DN \"%pV\"", fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
-					}
 				}
 			}
 			break;
 
 		case LDAP_ACCESS_SUSPENDED:
 			if (inst->profile_attr_suspend) {
-				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr_suspend);
+				int count;
 
-				if (autz_ctx->profile_values) {
-					RDEBUG2("Processing suspension profile(s) found in attribute \"%s\"", inst->profile_attr_suspend);
+				autz_ctx->profile_values = ldap_get_values_len(handle, autz_ctx->entry, inst->profile_attr_suspend);
+				count = ldap_count_values_len(autz_ctx->profile_values);
+				if (count > 0) {
+					RDEBUG2("Processing %i suspension profile(s) found in attribute \"%s\"", count, inst->profile_attr_suspend);
+					if (RDEBUG_ENABLED3) {
+						for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
+							RDEBUG3("Will evaluate suspenension profile with DN \"%pV\"",
+								fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
+						}
+					}
 				} else {
 					RDEBUG2("No suspension profile(s) found in attribute \"%s\"", inst->profile_attr_suspend);
-				}
-
-				if (RDEBUG_ENABLED3) {
-					for (struct berval **bv_p = autz_ctx->profile_values; *bv_p; bv_p++) {
-						RDEBUG3("Will evaluate suspenension profile with DN \"%pV\"",
-							fr_box_strvalue_len((*bv_p)->bv_val, (*bv_p)->bv_len));
-					}
 				}
 			}
 			break;
