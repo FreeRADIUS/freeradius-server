@@ -220,7 +220,7 @@ ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *req
 			size_t suspend_value_len = talloc_array_length(inst->access_value_suspend) - 1;
 			if ((values[0]->bv_len == suspend_value_len) &&
 			    (strncasecmp(values[0]->bv_val, inst->access_value_suspend, suspend_value_len) == 0)) {
-				REDEBUG("\"%s\" attribute exists and indicates suspension", inst->userobj_access_attr);
+				RIDEBUG("\"%s\" attribute exists and indicates suspension", inst->userobj_access_attr);
 				ret = LDAP_ACCESS_SUSPENDED;
 				goto done;
 			}
