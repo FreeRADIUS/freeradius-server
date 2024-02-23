@@ -160,7 +160,7 @@ fi
 cp -n "scripts/ci/ldap/slapd${suffix}.conf" "${base_dir}/slapd.conf"
 
 # Start slapd
-slapd -d any -h "ldap://127.0.0.1:${ldap_port}/ ldaps://127.0.0.1:${ldaps_port}/ ${socket_url}" -f "${base_dir}/slapd.conf" 2>&1 > ${base_dir}/slapd.log &
+slapd -d any -h "ldap://127.0.0.1:${ldap_port}/ ldaps://127.0.0.1:${ldaps_port}/ ${socket_url}" -f "${base_dir}/slapd.conf" > ${base_dir}/slapd.log 2>&1 &
 
 # Wait for LDAP to start
 sleep 1
