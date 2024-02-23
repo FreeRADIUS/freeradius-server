@@ -505,25 +505,25 @@ size_t fr_ldap_common_dn(char const *full, char const *part)
 	return f_len - p_len;
 }
 
-/** Combine and expand filters
+/** Combine filters and tokenize to a tmpl
  *
- * @param request Current request.
- * @param out Where to write the expanded string.
- * @param outlen Length of output buffer.
- * @param sub Array of subfilters (may contain NULLs).
- * @param sublen Number of potential subfilters in array.
- * @return length of expanded data.
+ * @param ctx		To allocate combined filter in
+ * @param request	Current request.
+ * @param sub		Array of subfilters (may contain NULLs).
+ * @param sublen	Number of potential subfilters in array.
+ * @param out		Where to write a pointer to the resulting tmpl.
+ * @return length of combined data.
  */
-ssize_t fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen, char *out, size_t outlen)
+int fr_ldap_filter_to_tmpl(TALLOC_CTX *ctx, tmpl_rules_t const *t_rules, char const **sub, size_t sublen, tmpl_t **out)
 {
-	char buffer[LDAP_MAX_FILTER_STR_LEN + 1];
-	char const *in = NULL;
-	char *p = buffer;
+	char		*buffer = NULL;
+	char const	*in = NULL;
+	ssize_t		len = 0;
+	size_t		i;
+	int		cnt = 0;
+	tmpl_t		*parsed;
 
-	ssize_t len = 0;
-
-	unsigned int i;
-	int cnt = 0;
+	*out = NULL;
 
 	/*
 	 *	Figure out how many filter elements we need to integrate
@@ -532,53 +532,39 @@ ssize_t fr_ldap_xlat_filter(request_t *request, char const **sub, size_t sublen,
 		if (sub[i] && *sub[i]) {
 			in = sub[i];
 			cnt++;
+			len += strlen(sub[i]);
 		}
 	}
 
-	if (!cnt) {
-		out[0] = '\0';
-		return 0;
-	}
+	if (!cnt) return 0;
 
 	if (cnt > 1) {
-		if (outlen < 3) {
-			goto oob;
-		}
+		/*
+		 *	Allocate a buffer large enough, allowing for (& ... ) plus trailing '\0'
+		 */
+		buffer = talloc_array(ctx, char, len + 4);
 
-		p[len++] = '(';
-		p[len++] = '&';
-
+		strcpy(buffer, "(&");
 		for (i = 0; i < sublen; i++) {
 			if (sub[i] && (*sub[i] != '\0')) {
-				len += strlcpy(p + len, sub[i], outlen - len);
-
-				if ((size_t) len >= outlen) {
-					oob:
-					REDEBUG("Out of buffer space creating filter");
-
-					return -1;
-				}
+				strcat(buffer, sub[i]);
 			}
 		}
-
-		if ((outlen - len) < 2) {
-			goto oob;
-		}
-
-		p[len++] = ')';
-		p[len] = '\0';
-
+		strcat(buffer, ")");
 		in = buffer;
 	}
 
-	len = xlat_eval(out, outlen, request, in, fr_ldap_uri_escape_func, NULL);
-	if (len < 0) {
-		REDEBUG("Failed creating filter");
+	len = tmpl_afrom_substr(ctx, &parsed, &FR_SBUFF_IN(in, strlen(in)), T_DOUBLE_QUOTED_STRING, NULL, t_rules);
 
+	talloc_free(buffer);
+
+	if (len < 0) {
+		EMARKER(in, -len, fr_strerror());
 		return -1;
 	}
 
-	return len;
+	*out = parsed;
+	return 0;
 }
 
 /** Check that a particular attribute is included in an attribute list

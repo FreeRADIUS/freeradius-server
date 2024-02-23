@@ -74,6 +74,8 @@ typedef struct {
 
 static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
 
+static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, UNUSED call_env_parser_t const *rule);
+
 static const call_env_parser_t sasl_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_mech) },
 	{ FR_CALL_ENV_OFFSET("authname", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_authname) },
@@ -218,6 +220,15 @@ static const call_env_method_t authorize_method_env = {
 		{ FR_CALL_ENV_SUBSECTION("group", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[]) {
 						{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, group_base) },
+						{ FR_CALL_ENV_PARSE_ONLY_OFFSET("membership_filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_autz_call_env_t, group_filter),
+						  .pair.func = ldap_group_filter_parse,
+						  .pair.escape = {
+							.func = fr_ldap_box_escape,
+							.safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+							.mode = TMPL_ESCAPE_PRE_CONCAT
+						  },
+						  .pair.literals_safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+						},
 						CALL_ENV_TERMINATOR
 					 })) },
 		{ FR_CALL_ENV_SUBSECTION("profile", NULL, CALL_ENV_FLAG_NONE,
@@ -255,6 +266,15 @@ static const call_env_method_t xlat_memberof_method_env = {
 		{ FR_CALL_ENV_SUBSECTION("group", NULL, CALL_ENV_FLAG_NONE,
 					 ((call_env_parser_t[]) {
 						{ FR_CALL_ENV_OFFSET("base_dn", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_memberof_call_env_t, group_base) },
+						{ FR_CALL_ENV_PARSE_ONLY_OFFSET("membership_filter", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, ldap_xlat_memberof_call_env_t, group_filter),
+						  .pair.func = ldap_group_filter_parse,
+						  .pair.escape = {
+							.func = fr_ldap_box_escape,
+							.safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+							.mode = TMPL_ESCAPE_PRE_CONCAT
+						  },
+						  .pair.literals_safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+						},
 						CALL_ENV_TERMINATOR
 					 })) },
 		CALL_ENV_TERMINATOR
@@ -2414,6 +2434,19 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 		call_env_parsed_set_value(parsed, vb);
 	}
 
+	return 0;
+}
+
+static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, UNUSED CONF_ITEM *ci,
+				   void const *data, UNUSED call_env_parser_t const *rule)
+{
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(data, rlm_ldap_t);
+	char const		*filters[] = { inst->group.obj_filter, inst->group.obj_membership_filter };
+	tmpl_t			*parsed;
+
+	if (fr_ldap_filter_to_tmpl(ctx, t_rules, filters, NUM_ELEMENTS(filters), &parsed) < 0) return -1;
+
+	*(void **)out = parsed;
 	return 0;
 }
 

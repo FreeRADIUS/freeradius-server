@@ -60,7 +60,8 @@ typedef struct {
 	rlm_ldap_t const	*inst;					//!< Module instance.
 	fr_value_box_t		*base_dn;				//!< The base DN to search for groups in.
 	fr_ldap_thread_trunk_t	*ttrunk;				//!< Trunk on which to perform additional queries.
-	char			filter[LDAP_MAX_FILTER_STR_LEN + 1];	//!< Filter used to search for groups.
+	tmpl_t			*filter_tmpl;				//!< Tmpl to expand into LDAP filter.
+	fr_value_box_list_t	expanded_filter;			//!< Values produced by expanding filter xlat.
 	char const		*attrs[2];				//!< For retrieving the group name.
 	fr_ldap_query_t		*query;					//!< Current query performing group lookup.
 	void			*uctx;					//!< Optional context for use in results parsing.
@@ -570,16 +571,21 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
  * @param[in] uctx		Group lookup context.
  * @return One of the RLM_MODULE_* values.
  */
-static unlang_action_t ldap_cacheable_groupobj_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
+static unlang_action_t ldap_cacheable_groupobj_start(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request,
 						     void *uctx)
 {
 	ldap_group_groupobj_ctx_t	*group_ctx = talloc_get_type_abort(uctx, ldap_group_groupobj_ctx_t);
 	rlm_ldap_t const		*inst = group_ctx->inst;
+	fr_value_box_t			*filter;
+
+	filter = fr_value_box_list_head(&group_ctx->expanded_filter);
+
+	if (filter->type != FR_TYPE_STRING) RETURN_MODULE_FAIL;
 
 	group_ctx->attrs[0] = inst->group.obj_name_attr;
 	return fr_ldap_trunk_search(group_ctx, &group_ctx->query, request, group_ctx->ttrunk,
 				    group_ctx->base_dn->vb_strvalue, inst->group.obj_scope,
-				    group_ctx->filter, group_ctx->attrs, NULL, NULL);
+				    filter->vb_strvalue, group_ctx->attrs, NULL, NULL);
 }
 
 /** Cancel a pending group object lookup.
@@ -695,7 +701,6 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 {
 	rlm_ldap_t const		*inst = autz_ctx->inst;
 	ldap_group_groupobj_ctx_t	*group_ctx;
-	char const			*filters[] = { inst->group.obj_filter, inst->group.obj_membership_filter };
 
 	if (!inst->group.obj_membership_filter) {
 		RDEBUG2("Skipping caching group objects as directive 'group.membership_filter' is not set");
@@ -711,18 +716,16 @@ unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *re
 	group_ctx->inst = inst;
 	group_ctx->ttrunk = autz_ctx->ttrunk;
 	group_ctx->base_dn = &autz_ctx->call_env->group_base;
-
-	if (fr_ldap_xlat_filter(request, filters, NUM_ELEMENTS(filters),
-				group_ctx->filter, sizeof(group_ctx->filter)) < 0) {
-		talloc_free(group_ctx);
-		RETURN_MODULE_INVALID;
-	}
+	fr_value_box_list_init(&group_ctx->expanded_filter);
 
 	if (unlang_function_push(request, ldap_cacheable_groupobj_start, ldap_cacheable_groupobj_resume,
 				 ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL, UNLANG_SUB_FRAME, group_ctx) < 0) {
+	error:
 		talloc_free(group_ctx);
 		RETURN_MODULE_FAIL;
 	}
+
+	if (unlang_tmpl_push(group_ctx, &group_ctx->expanded_filter, request, autz_ctx->call_env->group_filter, NULL) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
@@ -785,7 +788,6 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 {
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
 	ldap_group_groupobj_ctx_t	*group_ctx;
-	int				ret;
 
 	MEM(group_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_group_groupobj_ctx_t));
 	*group_ctx = (ldap_group_groupobj_ctx_t) {
@@ -793,42 +795,45 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 		.ttrunk = xlat_ctx->ttrunk,
 		.uctx = xlat_ctx
 	};
+	fr_value_box_list_init(&group_ctx->expanded_filter);
 
 	if (fr_ldap_util_is_dn(xlat_ctx->group->vb_strvalue, xlat_ctx->group->vb_length)) {
-		char const *filters[] = { inst->group.obj_filter, inst->group.obj_membership_filter };
+		group_ctx->filter_tmpl = xlat_ctx->env_data->group_filter;
+		group_ctx->base_dn = xlat_ctx->group;
+	} else {
+		char		name_filter[LDAP_MAX_FILTER_STR_LEN];
+		char const	*filters[] = { name_filter, inst->group.obj_filter, inst->group.obj_membership_filter };
+		tmpl_rules_t	t_rules;
 
-		RINDENT();
-		ret = fr_ldap_xlat_filter(request,
-					  filters, NUM_ELEMENTS(filters),
-					  group_ctx->filter, sizeof(group_ctx->filter));
-		REXDENT();
-
-		if (ret < 0) {
+		if (!inst->group.obj_name_attr) {
+			REDEBUG("Told to search for group by name, but missing 'group.name_attribute' "
+				"directive");
 		invalid:
 			talloc_free(group_ctx);
 			RETURN_MODULE_INVALID;
 		}
 
-		group_ctx->base_dn = xlat_ctx->group;
-	} else {
-		char name_filter[LDAP_MAX_FILTER_STR_LEN];
-		char const *filters[] = { name_filter, inst->group.obj_filter, inst->group.obj_membership_filter };
-
-		if (!inst->group.obj_name_attr) {
-			REDEBUG("Told to search for group by name, but missing 'group.name_attribute' "
-				"directive");
-
-			goto invalid;
-		}
+		t_rules = (tmpl_rules_t){
+			.attr = {
+				.dict_def = request->dict,
+				.list_def = request_attr_request,
+			},
+			.xlat = {
+				.runtime_el = unlang_interpret_event_list(request),
+			},
+			.at_runtime = true,
+			.escape.func = fr_ldap_box_escape,
+			.escape.safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+			.escape.mode = TMPL_ESCAPE_PRE_CONCAT,
+			.literals_safe_for = (fr_value_box_safe_for_t)fr_ldap_box_escape,
+			.cast = FR_TYPE_STRING,
+		};
 
 		snprintf(name_filter, sizeof(name_filter), "(%s=%s)",
 			 inst->group.obj_name_attr, xlat_ctx->group->vb_strvalue);
-		RINDENT();
-		ret = fr_ldap_xlat_filter(request,
-					  filters, NUM_ELEMENTS(filters),
-					  group_ctx->filter, sizeof(group_ctx->filter));
-		REXDENT();
-		if (ret < 0) goto invalid;
+
+		if (fr_ldap_filter_to_tmpl(group_ctx, &t_rules, filters, NUM_ELEMENTS(filters),
+					   &group_ctx->filter_tmpl) < 0) goto invalid;
 
 		fr_assert(xlat_ctx->env_data);
 		group_ctx->base_dn = &xlat_ctx->env_data->group_base;
@@ -836,7 +841,13 @@ unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t
 
 	if (unlang_function_push(request, ldap_cacheable_groupobj_start, ldap_check_groupobj_resume,
 				 ldap_group_groupobj_cancel, ~FR_SIGNAL_CANCEL,
-				 UNLANG_SUB_FRAME, group_ctx) < 0) goto invalid;
+				 UNLANG_SUB_FRAME, group_ctx) < 0) {
+	error:
+		talloc_free(group_ctx);
+		RETURN_MODULE_FAIL;
+	}
+
+	if (unlang_tmpl_push(group_ctx, &group_ctx->expanded_filter, request, group_ctx->filter_tmpl, NULL) < 0) goto error;
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }

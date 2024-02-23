@@ -133,6 +133,7 @@ typedef struct {
 	fr_value_box_t	user_base;			//!< Base DN in which to search for users.
 	fr_value_box_t	user_filter;			//!< Filter to use when searching for users.
 	fr_value_box_t 	group_base;			//!< Base DN in which to search for groups.
+	tmpl_t		*group_filter;			//!< tmpl to expand as group membership filter.
 	fr_value_box_t	default_profile;		//!< If this is set, we will search for a profile object
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
@@ -152,6 +153,7 @@ typedef struct {
 	fr_value_box_t	user_base;			//!< Base DN in which to search for users.
 	fr_value_box_t	user_filter;			//!< Filter to use when searching for users.
 	fr_value_box_t	group_base;			//!< Base DN in which to search for groups.
+	tmpl_t		*group_filter;			//!< tmpl to expand as group membership filter.
 } ldap_xlat_memberof_call_env_t;
 
 /** State list for resumption of authorization
