@@ -1,0 +1,3 @@
+#
+#  Test the radutmp module
+#
