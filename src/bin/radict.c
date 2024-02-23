@@ -33,12 +33,9 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #include <stdbool.h>
 
-#include <ctype.h>
-
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
-#include <assert.h>
 
 typedef enum {
 	RADICT_OUT_FANCY = 1,
