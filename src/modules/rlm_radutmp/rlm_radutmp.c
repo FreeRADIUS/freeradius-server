@@ -281,7 +281,6 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 			if ((vp->vp_length > 0) && (vp->vp_strvalue[vp->vp_length - 1] == 0)) off--;
 			if (off < 0) off = 0;
 			memcpy(ut.session_id, vp->vp_strvalue + off, sizeof(ut.session_id));
-			break;
 		} else if (vp->da == attr_nas_port_type) {
 			if (vp->vp_uint32 <= 4) ut.porttype = porttypes[vp->vp_uint32];
 		} else if (vp->da == attr_calling_station_id) {
