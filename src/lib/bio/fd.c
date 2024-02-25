@@ -258,11 +258,12 @@ retry:
 /** Write to a UDP socket where we know our IP
  *
  */
-static ssize_t fr_bio_fd_sendto(fr_bio_t *bio, UNUSED void *packet_ctx, const void *buffer, size_t size)
+static ssize_t fr_bio_fd_sendto(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size)
 {
 	int tries = 0;
 	ssize_t rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+	fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 	socklen_t salen;
 	struct sockaddr_storage sockaddr;
 
@@ -274,7 +275,7 @@ static ssize_t fr_bio_fd_sendto(fr_bio_t *bio, UNUSED void *packet_ctx, const vo
 	my->info.write_blocked = false;
 
 	// get destination IP
-	salen = sizeof(sockaddr);
+	(void) fr_ipaddr_to_sockaddr(&sockaddr, &salen, &addr->socket.inet.dst_ipaddr, addr->socket.inet.dst_port);
 
 retry:
 	rcode = sendto(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, salen);
