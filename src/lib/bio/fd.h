@@ -46,8 +46,8 @@ RCSIDH(lib_bio_fd_h, "$Id$")
  *	isn't used.  The caller can look at the socket information to determine src/dst ip/port.
  */
 typedef struct {
-	fr_time_t	when;		//!< when the packet was received
 	fr_socket_t	socket;		//!< socket information, including FD.
+	fr_time_t	when;		//!< when the packet was received
 } fr_bio_fd_packet_ctx_t;
 
 typedef enum {
