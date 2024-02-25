@@ -672,13 +672,18 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 	/*
 	 *	The caller has to state that the API is caching data both ways.
 	 */
-	if (!read_size || !write_size) return NULL;
+	if (!read_size) return NULL;
 
 	if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) return NULL;
-	if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) return NULL;
-
 	my->bio.read = fr_bio_mem_read;
-	my->bio.write = fr_bio_mem_write_next;
+
+	if (write_size) {
+		if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) return NULL;
+
+		my->bio.write = fr_bio_mem_write_next;
+	} else {
+		my->bio.write = fr_bio_next_write;
+	}
 
 	fr_bio_chain(&my->bio, next);
 
