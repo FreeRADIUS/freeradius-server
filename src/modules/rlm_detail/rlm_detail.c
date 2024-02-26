@@ -23,8 +23,6 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/exfile.h>
@@ -62,14 +60,13 @@ typedef struct {
 	bool		escape;		//!< do filename escaping, yes / no
 
 	exfile_t    	*ef;		//!< Log file handler
-
-	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
 } rlm_detail_t;
 
 typedef struct {
 	fr_value_box_t	filename;	//!< File / path to write to.
 	tmpl_t		*filename_tmpl;	//!< tmpl used to expand filename (for debug output)
 	fr_value_box_t	header;		//!< Header format
+	fr_hash_table_t	*ht;		//!< Holds suppressed attributes.
 } rlm_detail_env_t;
 
 int detail_group_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
@@ -187,65 +184,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_detail_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_detail_t);
 	CONF_SECTION	*conf = mctx->inst->conf;
-	CONF_SECTION	*cs;
 
 	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking, NULL, NULL);
 	if (!inst->ef) {
 		cf_log_err(conf, "Failed creating log file context");
 		return -1;
-	}
-
-	/*
-	 *	Suppress certain attributes.
-	 */
-	cs = cf_section_find(conf, "suppress", NULL);
-	if (cs) {
-		CONF_ITEM	*ci;
-
-		inst->ht = fr_hash_table_alloc(inst, detail_hash, detail_cmp, NULL);
-
-		for (ci = cf_item_next(cs, NULL);
-		     ci != NULL;
-		     ci = cf_item_next(cs, ci)) {
-			char const	*attr;
-			fr_dict_attr_t const	*da;
-
-			if (!cf_item_is_pair(ci)) continue;
-
-			attr = cf_pair_attr(cf_item_to_pair(ci));
-			if (!attr) continue; /* pair-anoia */
-
-			da = fr_dict_attr_search_by_qualified_oid(NULL, dict_radius, attr, false, false);
-			if (!da) {
-				cf_log_perr(conf, "Failed resolving attribute");
-				return -1;
-			}
-
-			/*
-			 *	Be kind to minor mistakes.
-			 */
-			if (fr_hash_table_find(inst->ht, da)) {
-				WARN("Ignoring duplicate entry '%s'", attr);
-				continue;
-			}
-
-
-			if (!fr_hash_table_insert(inst->ht, da)) {
-				ERROR("Failed inserting '%s' into suppression table", attr);
-				return -1;
-			}
-
-			DEBUG("'%s' suppressed, will not appear in detail output", attr);
-		}
-
-		/*
-		 *	If we didn't suppress anything, delete the hash table.
-		 */
-		if (fr_hash_table_num_elements(inst->ht) == 0) {
-			TALLOC_FREE(inst->ht);
-		} else {
-			fr_hash_table_fill(inst->ht);
-		}
 	}
 
 	return 0;
@@ -278,7 +221,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
  * @param[in] compat Write out entry in compatibility mode.
  */
 static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request, fr_value_box_t *header,
-			fr_radius_packet_t *packet, fr_pair_list_t *list, bool compat)
+			fr_radius_packet_t *packet, fr_pair_list_t *list, bool compat, fr_hash_table_t *ht)
 {
 	if (fr_pair_list_empty(list)) {
 		RWDEBUG("Skipping empty packet");
@@ -339,7 +282,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
 
 	/* Write each attribute/value to the log file */
 	fr_pair_list_foreach_leaf(list, vp) {
-		if (inst->ht && fr_hash_table_find(inst->ht, vp->da)) continue;
+		if (ht && fr_hash_table_find(ht, vp->da)) continue;
 
 		/*
 		 *	Skip Net.* if we're not logging src/dst
@@ -422,7 +365,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 		RETURN_MODULE_FAIL;
 	}
 
-	if (detail_write(outfp, inst, request, &env->header, packet, list, compat) < 0) goto fail;
+	if (detail_write(outfp, inst, request, &env->header, packet, list, compat, env->ht) < 0) goto fail;
 
 	/*
 	 *	Flush everything
@@ -483,6 +426,65 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 	return 0;
 }
 
+static int call_env_suppress_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+				   CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+{
+	CONF_SECTION const	*cs = cf_item_to_section(ci);
+	CONF_SECTION const	*parent = cf_item_to_section(cf_parent(ci));
+	call_env_parsed_t	*parsed;
+	CONF_ITEM const		*to_parse = NULL;
+	char const		*attr;
+	fr_dict_attr_t const	*da;
+	fr_hash_table_t		*ht;
+
+	MEM(parsed = call_env_parsed_add(ctx, out,
+					 &(call_env_parser_t) { FR_CALL_ENV_PARSE_ONLY_OFFSET("suppress", FR_TYPE_VOID, 0, rlm_detail_env_t, ht )}));
+
+	ht = fr_hash_table_alloc(parsed, detail_hash, detail_cmp, NULL);
+
+	while ((to_parse = cf_item_next(cs, to_parse))) {
+		if (!cf_item_is_pair(to_parse)) continue;
+
+		attr = cf_pair_attr(cf_item_to_pair(to_parse));
+		if (!attr) continue;
+
+		da = fr_dict_attr_search_by_qualified_oid(NULL, t_rules->attr.dict_def, attr, false, false);
+		if (!da) {
+			cf_log_perr(to_parse, "Failed resolving attribute");
+			return -1;
+		}
+
+		/*
+		 *	Be kind to minor mistakes
+		 */
+		if (fr_hash_table_find(ht, da)) {
+			cf_log_warn(to_parse, "Ignoring duplicate entry '%s'", attr);
+			continue;
+		}
+
+		if (!fr_hash_table_insert(ht, da)) {
+			cf_log_perr(to_parse, "Failed inserting '%s' into suppression table", attr);
+			return -1;
+		}
+
+		DEBUG("%s - '%s' suppressed, will not appear in detail output", cf_section_name(parent), attr);
+	}
+
+	/*
+	 *	Clear up if nothing is actually to be suppressed
+	 */
+	if (fr_hash_table_num_elements(ht) == 0) {
+		talloc_free(ht);
+		call_env_parsed_free(out, parsed);
+		return 0;
+	}
+
+	fr_hash_table_fill(ht);
+	call_env_parsed_set_data(parsed, ht);
+
+	return 0;
+}
+
 static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_detail_env_t),
 	.env = (call_env_parser_t[]){
@@ -490,6 +492,7 @@ static const call_env_method_t method_env = {
 		  .pair.func =  call_env_filename_parse },
 		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, rlm_detail_env_t, header),
 		  .pair.dflt = "%t", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+		{ FR_CALL_ENV_SUBSECTION_FUNC("suppress", NULL, CALL_ENV_FLAG_NONE, call_env_suppress_parse) },
 		CALL_ENV_TERMINATOR
 	}
 };
