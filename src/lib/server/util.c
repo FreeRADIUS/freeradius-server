@@ -162,6 +162,31 @@ size_t rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outle
 	return (p - out);
 }
 
+int rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc)
+{
+	char			*escaped;
+	size_t			len;
+	fr_value_box_entry_t	entry;
+
+	if (vb->vb_length == 0) return 0;
+	if (vb->safe_for == (fr_value_box_safe_for_t)rad_filename_box_make_safe) return 0;
+
+	/*
+	 *	Allocate an output buffer, only ever the same or shorter than the input
+	 */
+	MEM(escaped = talloc_array(vb, char, vb->vb_length + 1));
+
+	len = rad_filename_make_safe(NULL, escaped, (vb->vb_length + 1), vb->vb_strvalue, NULL);
+
+	entry = vb->entry;
+	fr_value_box_clear_value(vb);
+	fr_value_box_bstrndup(vb, vb, NULL, escaped, len, false);
+	vb->entry = entry;
+	talloc_free(escaped);
+
+	return 0;
+}
+
 /** Escapes the raw string such that it should be safe to use as part of a file path
  *
  * This function is designed to produce a string that's still readable but portable
@@ -260,6 +285,40 @@ size_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen, 
 	*out = '\0';
 
 	return outlen - freespace;
+}
+
+int rad_filename_box_escape(fr_value_box_t *vb, UNUSED void *uxtc)
+{
+	char			*escaped;
+	size_t			len;
+	fr_value_box_entry_t	entry;
+
+	if (vb->vb_length == 0) return 0;
+	if (vb->safe_for == (fr_value_box_safe_for_t)rad_filename_box_escape) return 0;
+
+	/*
+	 *	Allocate an output buffer, if every character is escaped,
+	 *	it will be 3 times the input
+	 */
+	MEM(escaped = talloc_array(vb, char, vb->vb_length * 3 + 1));
+
+	len = rad_filename_escape(NULL, escaped, (vb->vb_length * 3 + 1), vb->vb_strvalue, NULL);
+
+	/*
+	 *	If the escaped length == input length, no changes were done.
+	 */
+	if (len == vb->vb_length) {
+		talloc_free(escaped);
+		return 0;
+	}
+
+	entry = vb->entry;
+	fr_value_box_clear_value(vb);
+	fr_value_box_bstrndup(vb, vb, NULL, escaped, len, false);
+	vb->entry = entry;
+	talloc_free(escaped);
+
+	return 0;
 }
 
 /** Converts data stored in a file name back to its original form

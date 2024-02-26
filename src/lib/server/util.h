@@ -36,8 +36,10 @@ extern "C" {
 void (*reset_signal(int signo, void (*func)(int)))(int);
 size_t		rad_filename_make_safe(UNUSED request_t *request, char *out, size_t outlen,
 				       char const *in, UNUSED void *arg);
+int		rad_filename_box_make_safe(fr_value_box_t *vb, UNUSED void *uxtc);
 size_t		rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen,
 				    char const *in, UNUSED void *arg);
+int		rad_filename_box_escape(fr_value_box_t *vb, UNUSED void *uxtc);
 ssize_t		rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen);
 char		*rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c);
 
