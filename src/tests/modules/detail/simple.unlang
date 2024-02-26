@@ -1,0 +1,17 @@
+%file.rm("$ENV{MODULE_TEST_DIR}/127.0.0.1-detail")
+
+&request -= &Module-Failure-Message[*]
+
+detail
+
+if !%file.exists("$ENV{MODULE_TEST_DIR}/127.0.0.1-detail") {
+	test_fail
+}
+
+if !%exec('/bin/sh', '-c', "grep -E Calling-Station-Id $ENV{MODULE_TEST_DIR}/127.0.0.1-detail") {
+	test_fail
+}
+
+%file.rm("$ENV{MODULE_TEST_DIR}/127.0.0.1-detail")
+
+test_pass

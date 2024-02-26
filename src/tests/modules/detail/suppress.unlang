@@ -1,0 +1,20 @@
+%file.rm("$ENV{MODULE_TEST_DIR}/127.0.0.1-suppress")
+
+&request -= &Module-Failure-Message[*]
+
+detail_suppress
+
+if !%file.exists("$ENV{MODULE_TEST_DIR}/127.0.0.1-suppress") {
+	test_fail
+}
+
+#
+# Calling-Station-Id should not be in the output
+#
+if %exec('/bin/sh', '-c', "grep  -E Calling-Station-Id $ENV{MODULE_TEST_DIR}/127.0.0.1-suppress") {
+	test_fail
+}
+
+%file.rm("$ENV{MODULE_TEST_DIR}/127.0.0.1-suppress")
+
+test_pass
