@@ -36,4 +36,4 @@ fr_bio_t	*fr_bio_queue_alloc(TALLOC_CTX *ctx, size_t max_saved,
 				    fr_bio_queue_callback_t cancel,
 				    fr_bio_t *next) CC_HINT(nonnull(1,6));
 
-int		fr_bio_queue_cancel(fr_bio_t *bio, void *ctx) CC_HINT(nonnull);
+int		fr_bio_queue_cancel(fr_bio_t *bio, void *queue_ctx) CC_HINT(nonnull);

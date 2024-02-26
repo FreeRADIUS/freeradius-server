@@ -64,7 +64,7 @@ FR_DLIST_FUNCS(fr_bio_queue_list, fr_bio_queue_entry_t, entry)
 typedef struct fr_bio_queue_s {
 	FR_BIO_COMMON;
 
-	size_t		max_saved;
+	size_t				max_saved;
 
 	fr_bio_queue_saved_t		saved;
 	fr_bio_queue_callback_t	sent;
@@ -73,7 +73,7 @@ typedef struct fr_bio_queue_s {
 	FR_DLIST_HEAD(fr_bio_queue_list)	pending;
 	FR_DLIST_HEAD(fr_bio_queue_list)	free;
 
-	fr_bio_queue_entry_t	array[];
+	fr_bio_queue_entry_t		array[];
 } fr_bio_queue_t;
 
 static ssize_t fr_bio_queue_write_buffer(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
@@ -458,15 +458,15 @@ fr_bio_t *fr_bio_queue_alloc(TALLOC_CTX *ctx, size_t max_saved,
  *  chain, and shutdownting each bio.
  *
  *  @param	bio	the #fr_bio_queue_t
- *  @param	ctx	The context returned from #fr_bio_queue_saved_t
+ *  @param	queue_ctx The context returned from #fr_bio_queue_saved_t
  *  @return
  *	- <0 no such packet was found in the list of saved packets, OR the packet cannot be cancelled.
  *	- 0 the packet was cancelled.
  */
-int fr_bio_queue_cancel(fr_bio_t *bio, void *ctx)
+int fr_bio_queue_cancel(fr_bio_t *bio, void *queue_ctx)
 {
 	fr_bio_queue_t *my = talloc_get_type_abort(bio, fr_bio_queue_t);
-	fr_bio_queue_entry_t *item = ctx;
+	fr_bio_queue_entry_t *item = queue_ctx;
 
 	if (!(item >= &my->array[0]) && (item < &my->array[my->max_saved])) {
 		return -1;
@@ -505,7 +505,6 @@ int fr_bio_queue_cancel(fr_bio_t *bio, void *ctx)
 		 */
 	}
 
-
 	/*
 	 *	Remove it from the saved list, and run the cancellation callback.
 	 */
@@ -513,5 +512,6 @@ int fr_bio_queue_cancel(fr_bio_t *bio, void *ctx)
 	fr_bio_queue_list_insert_head(&my->free, item);
 
 	if (my->cancel) my->cancel(bio, item->packet_ctx, item->buffer, item->size);
+
 	return 0;
 }
