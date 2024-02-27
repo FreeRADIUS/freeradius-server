@@ -779,37 +779,6 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_nt(rlm_rcode_t *p_result,
 	RETURN_MODULE_OK;
 }
 
-static unlang_action_t CC_HINT(nonnull) pap_auth_lm(rlm_rcode_t *p_result,
-						    UNUSED rlm_pap_t const *inst, request_t *request,
-						    fr_pair_t const *known_good, UNUSED fr_value_box_t const *password)
-{
-	uint8_t	digest[MD4_DIGEST_LENGTH];
-	fr_dbuff_t digest_dbuff = FR_DBUFF_TMP(digest, sizeof(digest));
-	char	charbuf[32 + 1];
-	ssize_t	len;
-
-	RDEBUG2("Comparing with \"known-good\" Password.LM");
-
-	if (known_good->vp_length != MD4_DIGEST_LENGTH) {
-		REDEBUG("\"known good\" Password.LM has incorrect length, expected 16 got %zu", known_good->vp_length);
-		RETURN_MODULE_INVALID;
-	}
-
-	len = xlat_eval(charbuf, sizeof(charbuf), request, "%mschap(LM-Hash, %{User-Password})", NULL, NULL);
-	if (len < 0) RETURN_MODULE_FAIL;
-
-	if ((fr_base16_decode(NULL, &digest_dbuff, &FR_SBUFF_IN(charbuf, len), false) !=
-	     (ssize_t)known_good->vp_length) ||
-	    (fr_digest_cmp(fr_dbuff_start(&digest_dbuff), known_good->vp_octets, known_good->vp_length) != 0)) {
-		REDEBUG("LM digest does not match \"known good\" digest");
-		REDEBUG3("Calculated : %pH", fr_box_octets(digest, sizeof(digest)));
-		REDEBUG3("Expected   : %pH", &known_good->data);
-		RETURN_MODULE_REJECT;
-	}
-
-	RETURN_MODULE_OK;
-}
-
 static unlang_action_t CC_HINT(nonnull) pap_auth_ns_mta_md5(rlm_rcode_t *p_result,
 							    UNUSED rlm_pap_t const *inst, request_t *request,
 							    fr_pair_t const *known_good, fr_value_box_t const *password)
@@ -887,7 +856,6 @@ static unlang_action_t CC_HINT(nonnull) pap_auth_dummy(rlm_rcode_t *p_result,
  */
 static const pap_auth_func_t auth_func_table[] = {
 	[FR_CLEARTEXT]	= pap_auth_clear,
-	[FR_LM]		= pap_auth_lm,
 	[FR_MD5]	= pap_auth_md5,
 	[FR_SMD5]	= pap_auth_smd5,
 
