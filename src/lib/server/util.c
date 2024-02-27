@@ -277,8 +277,8 @@ size_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen, 
 		 *	Unsafe chars
 		 */
 		*out++ = '-';
-		in++;
 		fr_base16_encode(&FR_SBUFF_OUT(out, freespace), &FR_DBUFF_TMP((uint8_t const *)in, 1));
+		in++;
 		out += 2;
 		freespace -= 3;
 	}
