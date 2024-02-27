@@ -508,7 +508,7 @@ size_t fr_ldap_common_dn(char const *full, char const *part)
 /** Combine filters and tokenize to a tmpl
  *
  * @param ctx		To allocate combined filter in
- * @param request	Current request.
+ * @param t_rules	Rules for parsing combined filter.
  * @param sub		Array of subfilters (may contain NULLs).
  * @param sublen	Number of potential subfilters in array.
  * @param out		Where to write a pointer to the resulting tmpl.
