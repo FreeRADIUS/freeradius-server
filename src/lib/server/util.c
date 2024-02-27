@@ -227,15 +227,15 @@ size_t rad_filename_escape(UNUSED request_t *request, char *out, size_t outlen, 
 
 			switch (utf8_len) {
 			case 2:
-				snprintf(out, freespace, "-%x-%x", in[0], in[1]);
+				snprintf(out, freespace, "-%x-%x", (uint8_t)in[0], (uint8_t)in[1]);
 				break;
 
 			case 3:
-				snprintf(out, freespace, "-%x-%x-%x", in[0], in[1], in[2]);
+				snprintf(out, freespace, "-%x-%x-%x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2]);
 				break;
 
 			case 4:
-				snprintf(out, freespace, "-%x-%x-%x-%x", in[0], in[1], in[2], in[3]);
+				snprintf(out, freespace, "-%x-%x-%x-%x", (uint8_t)in[0], (uint8_t)in[1], (uint8_t)in[2], (uint8_t)in[3]);
 				break;
 			}
 
