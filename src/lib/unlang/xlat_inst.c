@@ -272,7 +272,7 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 									.dict_def = call->dict,
 									.list_def = request_attr_request
 							}
-					      }, call->func->mctx->inst->conf, xi->data);
+					      }, call->func->mctx->inst->conf, call->func->mctx->inst->data);
 		if (!xi->call_env) {
 			talloc_free(xi);
 			return NULL;
