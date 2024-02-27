@@ -483,6 +483,10 @@ ldap {
 		#  Don't process user groups if the user has been suspended.
 		#  If set to 'no', groups will still be processed.
 		#
+		#  Groups are never processed for disabled users.
+		#
+		#  Defaults to 'yes'.
+		#
 		skip_on_suspend = 'yes'
 	}
 
@@ -526,7 +530,7 @@ ldap {
 #		attribute = 'radiusProfileDn'
 
 		#
-		#  attribute_suspended: The LDAP attribute containing profile DNs to apply
+		#  attribute_suspend: The LDAP attribute containing profile DNs to apply
 		#  in addition to the default profile above, when the user account is in
 		#  the suspended state
 		#
@@ -534,7 +538,7 @@ ldap {
 		#  attributes from the update section, are are applied if authorization
 		#  is successful.
 		#
-#		attribute_suspended = 'radiusProfileDn'
+#		attribute_suspend = 'radiusProfileDn'
 	}
 
 	#
