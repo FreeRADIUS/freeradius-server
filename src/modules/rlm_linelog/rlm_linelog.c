@@ -387,8 +387,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 			*p = '\0';
 			if (fr_mkdir(NULL, path, -1, 0700, NULL, NULL) < 0) {
 				RERROR("Failed to create directory %pV: %s", call_env->filename, fr_syserror(errno));
-				ret = -1;
-				goto finish;
+				return -1;
 			}
 			*p = '/';
 		}
@@ -396,8 +395,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 		fd = exfile_open(inst->file.ef, path, inst->file.permissions, &offset);
 		if (fd < 0) {
 			RERROR("Failed to open %pV: %s", call_env->filename, fr_syserror(errno));
-			ret = -1;
-			goto finish;
+			return -1;
 		}
 
 		if (inst->file.group_str && (chown(path, -1, inst->file.group) == -1)) {
@@ -435,8 +433,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 				/* Assert on the extra fatal errors */
 				fr_assert((errno != EINVAL) && (errno != EFAULT));
 
-				ret = -1;
-				goto finish;
+				return -1;
 			}
 		}
 
@@ -483,10 +480,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 	do_write:
 		num = fr_pool_state(inst->pool)->num;
 		conn = fr_pool_connection_get(inst->pool, request);
-		if (!conn) {
-			ret = -1;
-			goto finish;
-		}
+		if (!conn) return -1;
 
 		for (i = num; i >= 0; i--) {
 			ssize_t wrote;
@@ -568,7 +562,6 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 		break;
 	}
 
-finish:
 	return ret;
 }
 
