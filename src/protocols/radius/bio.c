@@ -1,0 +1,80 @@
+/*
+ *   This library is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation; either
+ *   version 2.1 of the License, or (at your option) any later version.
+ *
+ *   This library is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *   Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this library; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ *
+ * @file protocols/radius/bio.c
+ * @brief Functions to support RADIUS bio handlers
+ *
+ * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
+ */
+RCSID("$Id$")
+
+#include <freeradius-devel/radius/bio.h>
+
+/** Callback for RADIUS packet verification.
+ *
+ */
+fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size)
+{
+	decode_fail_t	failure;
+	size_t		in_buffer = *size;
+	fr_radius_bio_verify_t *uctx = bio->uctx;
+
+	if (in_buffer < 4) {
+		*size = RADIUS_HEADER_LENGTH;
+		return FR_BIO_VERIFY_WANT_MORE;
+	}
+
+	/*
+	 *	See if we need to discard the packet.
+	 */
+	if (!fr_radius_ok(data, size, uctx->max_attributes, uctx->require_message_authenticator, &failure)) {
+		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
+
+		return FR_BIO_VERIFY_ERROR_CLOSE;
+	}
+
+	/*
+	 *	On input, *size is how much data we have.  On output, *size is how much data we want.
+	 */
+	return (in_buffer >= *size) ? FR_BIO_VERIFY_OK : FR_BIO_VERIFY_WANT_MORE;
+}
+
+/** And verify a datagram packet.
+ *
+ */
+fr_bio_verify_action_t fr_radius_bio_verify_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size)
+{
+	decode_fail_t	failure;
+	size_t		in_buffer = *size;
+	fr_radius_bio_verify_t *uctx = bio->uctx;
+
+	if (in_buffer < RADIUS_HEADER_LENGTH) return FR_BIO_VERIFY_DISCARD;
+
+	/*
+	 *	See if we need to discard the packet.
+	 */
+	if (!fr_radius_ok(data, size, uctx->max_attributes, uctx->require_message_authenticator, &failure)) {
+		return FR_BIO_VERIFY_DISCARD;
+	}
+
+	/*
+	 *	On input, *size is how much data we have.  On output, *size is how much data we want.
+	 */
+	return (in_buffer >= *size) ? FR_BIO_VERIFY_OK : FR_BIO_VERIFY_DISCARD;
+}
