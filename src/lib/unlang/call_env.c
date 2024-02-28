@@ -470,6 +470,10 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 					talloc_free(tmp_cp);
 					return -1;
 				}
+				if (!call_env_parsed->data.ptr) {
+					talloc_free(call_env_parsed);
+					goto next_pair;
+				}
 			} else {
 				tmpl_t *parsed_tmpl;
 
@@ -486,8 +490,9 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			 */
 			if (call_env_parsed_valid(call_env_parsed, cf_pair_to_item(to_parse), rule) < 0) goto error;
 
-			talloc_free(tmp_cp);
 			call_env_parsed_insert_tail(parsed, call_env_parsed);
+		next_pair:
+			talloc_free(tmp_cp);
 			cp = cf_pair_find_next(cs, cp, rule->name);
 		}
 	next:
