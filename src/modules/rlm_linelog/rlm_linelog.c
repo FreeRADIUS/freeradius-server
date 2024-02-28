@@ -64,7 +64,8 @@ RCSID("$Id$")
 #include <sys/uio.h>
 
 static int linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx);
-
+static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				   void const *data, UNUSED call_env_parser_t const *rule);
 typedef enum {
 	LINELOG_DST_INVALID = 0,
 	LINELOG_DST_FILE,				//!< Log to a file.
@@ -114,13 +115,11 @@ typedef struct {
 	} syslog;
 
 	struct {
-		char const		*name;			//!< File to write to.
 		uint32_t		permissions;		//!< Permissions to use when creating new files.
 		char const		*group_str;		//!< Group to set on new files.
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
-		xlat_escape_legacy_t	escape_func;		//!< Escape function.
 	} file;
 
 	struct {
@@ -140,7 +139,6 @@ typedef struct {
 
 
 static const conf_parser_t file_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_FILE_OUTPUT | CONF_FLAG_XLAT, rlm_linelog_t, file.name) },
 	{ FR_CONF_OFFSET("permissions", rlm_linelog_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", rlm_linelog_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_linelog_t, file.escape), .dflt = "no" },
@@ -189,7 +187,6 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	Deprecated config items
 	 */
-	{ FR_CONF_DEPRECATED("filename", rlm_linelog_t, file.name) },
 	{ FR_CONF_DEPRECATED("permissions", rlm_linelog_t, file.permissions) },
 	{ FR_CONF_DEPRECATED("group", rlm_linelog_t, file.group_str) },
 
@@ -206,6 +203,7 @@ typedef struct {
 
 	fr_value_box_t		*log_head;		//!< Header to add to each new log file.
 
+	fr_value_box_t		*filename;		//!< File name, if output is to a file.
 } linelog_call_env_t;
 
 static const call_env_method_t linelog_method_env = {
@@ -214,6 +212,12 @@ static const call_env_method_t linelog_method_env = {
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("format", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_PARSE_ONLY, linelog_call_env_t, log_src), .pair.escape.func = linelog_escape_func },
 		{ FR_CALL_ENV_OFFSET("reference",FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_ref), .pair.escape.func = linelog_escape_func },
 		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
+			((call_env_parser_t[]) {
+				{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, filename),
+				  .pair.func = call_env_filename_parse },
+				CALL_ENV_TERMINATOR
+			})) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -222,6 +226,12 @@ static const call_env_method_t linelog_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(linelog_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, log_head), .pair.escape.func = linelog_escape_func },
+		{ FR_CALL_ENV_SUBSECTION("file", NULL, CALL_ENV_FLAG_NONE,
+			((call_env_parser_t[]) {
+				{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, linelog_call_env_t, filename),
+				  .pair.func = call_env_filename_parse },
+				CALL_ENV_TERMINATOR
+			})) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -360,21 +370,23 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 	case LINELOG_DST_FILE:
 	{
 		int		fd = -1;
-		char		path[2048];
+		char const	*path;
 		off_t		offset;
 		char		*p;
 
-		if (xlat_eval(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
-			ret = -1;
-			goto finish;
+		if (!call_env->filename) {
+			RERROR("Missing filename");
+			return -1;
 		}
+
+		path = call_env->filename->vb_strvalue;
 
 		/* check path and eventually create subdirs */
 		p = strrchr(path, '/');
 		if (p) {
 			*p = '\0';
 			if (fr_mkdir(NULL, path, -1, 0700, NULL, NULL) < 0) {
-				RERROR("Failed to create directory %s: %s", path, fr_syserror(errno));
+				RERROR("Failed to create directory %pV: %s", call_env->filename, fr_syserror(errno));
 				ret = -1;
 				goto finish;
 			}
@@ -383,13 +395,13 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 
 		fd = exfile_open(inst->file.ef, path, inst->file.permissions, &offset);
 		if (fd < 0) {
-			RERROR("Failed to open %s: %s", path, fr_syserror(errno));
+			RERROR("Failed to open %pV: %s", call_env->filename, fr_syserror(errno));
 			ret = -1;
 			goto finish;
 		}
 
 		if (inst->file.group_str && (chown(path, -1, inst->file.group) == -1)) {
-			RPWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
+			RPWARN("Unable to change system group of \"%pV\": %s", call_env->filename, fr_strerror());
 		}
 
 		/*
@@ -417,7 +429,7 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 
 			if (writev(fd, &head_vector_s[0], head_vector_len) < 0) {
 			write_fail:
-				RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
+				RERROR("Failed writing to \"%pV\": %s", call_env->filename, fr_syserror(errno));
 				exfile_close(inst->file.ef, fd);
 
 				/* Assert on the extra fatal errors */
@@ -865,6 +877,36 @@ build_vector:
 	}
 }
 
+/*
+ *	Custom call env parser for filenames - sets the correct escaping function
+ */
+static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				   void const *data, UNUSED call_env_parser_t const *rule)
+{
+	rlm_linelog_t const	*inst = talloc_get_type_abort_const(data, rlm_linelog_t);
+	tmpl_t			*parsed;
+	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);
+	tmpl_rules_t		our_rules;
+
+	/*
+	 *	If we're not logging to a file destination, do nothing
+	 */
+	if (fr_table_value_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID) != LINELOG_DST_FILE) return 0;
+
+	our_rules = *t_rules;
+	our_rules.escape.func = (inst->file.escape) ? rad_filename_box_escape : rad_filename_box_make_safe;
+	our_rules.escape.safe_for = (inst->file.escape) ? (fr_value_box_safe_for_t)rad_filename_box_escape :
+						     (fr_value_box_safe_for_t)rad_filename_box_make_safe;
+	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
+	our_rules.literals_safe_for = our_rules.escape.safe_for;
+
+	if (tmpl_afrom_substr(ctx, &parsed,
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) return -1;
+
+	*(void **)out = parsed;
+	return 0;
+}
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
@@ -881,17 +923,8 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_linelog_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	CONF_SECTION		*cs, *conf = mctx->inst->conf;
 	char			prefix[100];
-
-	/*
-	 *	Escape filenames only if asked.
-	 */
-	if (inst->file.escape) {
-		inst->file.escape_func = rad_filename_escape;
-	} else {
-		inst->file.escape_func = rad_filename_make_safe;
-	}
 
 	inst->log_dst = fr_table_value_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
 	if (inst->log_dst == LINELOG_DST_INVALID) {
@@ -907,10 +940,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	switch (inst->log_dst) {
 	case LINELOG_DST_FILE:
 	{
-		if (!inst->file.name) {
+		cs = cf_section_find(conf, "file", CF_IDENT_ANY);
+		if (!cs) {
+		no_filename:
 			cf_log_err(conf, "No value provided for 'file.filename'");
 			return -1;
 		}
+		if (!cf_pair_find(cs, "filename")) goto no_filename;
 
 		inst->file.ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
 		if (!inst->file.ef) {
