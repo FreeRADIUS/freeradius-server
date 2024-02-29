@@ -10,10 +10,10 @@ string result_string
 &Framed-IP-Address := 127.0.0.1
 &test_octets := &Framed-IP-Address
 
-&test_string := "%unpack(%{test_octets}, 0, 'ipaddr')"
-&result_ipaddr := "%unpack(%{test_octets}, 0, 'ipaddr')"
+&test_string := %unpack(%{test_octets}, 0, 'ipaddr')
+&result_ipaddr := %unpack(%{test_octets}, 0, 'ipaddr')
 
-if !(&test_string == "127.0.0.1") {
+if !(&test_string == '127.0.0.1') {
 	test_fail
 }
 
@@ -22,7 +22,7 @@ if !(&result_ipaddr == 127.0.0.1) {
 }
 
 &test_octets := 0x000001020304
-&result_integer := "%unpack(%{test_octets}, 4, 'uint16')"
+&result_integer := %unpack(%{test_octets}, 4, 'uint16')
 
 # Octets 4 and 5 == 0x0304 == 772
 if ~(&result_integer == 772) {
@@ -30,33 +30,33 @@ if ~(&result_integer == 772) {
 }
 
 # truncation
-&test_string := "0x0011223344556677"
-&result_string := "%unpack(%{test_string}, 0, 'ether')"
-if !(&result_string == "00:11:22:33:44:55") {
+&test_string := '0x0011223344556677'
+&result_string := %unpack(%{test_string}, 0, 'ether')
+if !(&result_string == '00:11:22:33:44:55') {
 	test_fail
 }
 
 &test_string := "0x48656C6C6F"
-&result_string := "%unpack(%{test_string}, 0, 'string')"
-if !(&result_string == "Hello") {
+&result_string := %unpack(%{test_string}, 0, 'string')
+if !(&result_string == 'Hello') {
 	test_fail
 }
 
 # Offset beyond data length
-&result_string := "%unpack(%{test_string}, 10, 'string')"
+&result_string := %unpack(%{test_string}, 10, 'string')
 
-if !(&result_string == "") {
+if (&result_string) {
 	test_fail
 }
 
-if (!(&Module-Failure-Message == "unpack offset 10 is larger than input data length 5")) {
+if (!(&Module-Failure-Message == 'unpack offset 10 is larger than input data length 5')) {
 	test_fail
 }
 &request -= &Module-Failure-Message[*]
 
 # Invalid destination data type
-&result_string := "%unpack(%{test_string}, 0, 'thing')"
-if !(&result_string == "") {
+&result_string := %unpack(%{test_string}, 0, 'thing')
+if (&result_string) {
 	test_fail
 }
 
@@ -65,8 +65,8 @@ if (!(&Module-Failure-Message == "Invalid data type 'thing'")) {
 }
 
 # Invalid source data type
-&result_string := "%unpack(%{result_integer}, 0, 'string')"
-if !(&result_string == "") {
+&result_string := %unpack(%{result_integer}, 0, 'string')
+if (&result_string) {
 	test_fail
 }
 
@@ -77,9 +77,9 @@ if (!(&Module-Failure-Message == "unpack requires the input attribute to be 'str
 
 # Invalid hex string
 &test_string := '0x014sdgw'
-&result_string := "%unpack(%{test_string}, 0, 'string')"
+&result_string := %unpack(%{test_string}, 0, 'string')
 
-if !(&result_string == "") {
+if (&result_string) {
 	test_fail
 }
 
@@ -90,9 +90,9 @@ if (!(&Module-Failure-Message == "Invalid hex string in '0x014sdgw'")) {
 
 # Zero length hex string
 &test_string := '0x'
-&result_string := "%unpack(%{test_string}, 0, 'string')"
+&result_string := %unpack(%{test_string}, 0, 'string')
 
-if !(&result_string == "") {
+if (&result_string) {
 	test_fail
 }
 
