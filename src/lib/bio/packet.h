@@ -36,12 +36,13 @@ typedef struct fr_bio_packet_s fr_bio_packet_t;
  * @param bio		the packet-based bio
  * @param packet_ctx	any per-packet additional context needed
  * @param packet_p	the output packet descriptor.  Contains raw protocol data (IDs, counts, etc.)
+ * @param ctx		the talloc_ctx for the list
  * @param out		the decoded pairs from the packet
  * @return
  *	- <0 on error
  *	- 0 for success (*packet_p may still be NULL tho)
  */
-typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t **packet_p, fr_pair_list_t *out);
+typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *out);
 
 /** Write a packet and pairs from the network
  *
@@ -78,9 +79,9 @@ struct fr_bio_packet_s {
 };
 
 
-static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t **packet_p, fr_pair_list_t *out)
+static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *out)
 {
-	return bio->read(bio, packet_ctx, packet_p, out);
+	return bio->read(bio, packet_ctx, packet_p, ctx, out);
 }
 
 static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t *packet, fr_pair_list_t *list)

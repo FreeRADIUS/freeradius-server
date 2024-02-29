@@ -132,7 +132,7 @@ static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 };
 
 int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, UNUSED void *packet_ctx, fr_radius_packet_t **packet_p,
-				 fr_pair_list_t *out)
+				 TALLOC_CTX *ctx, fr_pair_list_t *out)
 {
 	int code;
 	ssize_t slen;
@@ -213,7 +213,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, UNUSED void *packet_ctx, 
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (fr_radius_decode_simple(reply, out, reply->data, reply->data_len,
+	if (fr_radius_decode_simple(ctx, out, reply->data, reply->data_len,
 				    packet->vector, (char const *) my->cfg.verify.secret) < 0) {
 		fr_assert(0);
 	}
