@@ -286,6 +286,16 @@ Provides common functions used by other FreeRADIUS libraries and modules.
 #
 # END 3rd party utility library packages
 #
+%package brotli
+Summary: Brotli compression and decompression
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: brotli
+BuildRequires: brotli-devel
+
+%description brotli
+This module adds brotli compression and decompression support to FreeRADIUS.
+
 %package imap
 Summary: IMAP support for FreeRADIUS
 Group: System Environment/Daemons
@@ -293,7 +303,7 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: freeradius-libfreeradius-curl = %{version}
 
 %description imap
-This plugin provides the ability to authenticate users against an IMAP server.
+This module provides the ability to authenticate users against an IMAP server.
 
 %if %{with rlm_cache_memcached}
 %package memcached
@@ -1187,6 +1197,10 @@ fi
 %files libfreeradius-util
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-util.so
+
+%files brotli
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_brotli.so
 
 %if %{with rlm_cache_memcached}
 %files memcached

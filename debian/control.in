@@ -5,6 +5,7 @@ Build-Depends: @BUILDDEPS@ debhelper (>= 9),
  dh-systemd (>= 1.5) | debhelper (>= 13.3.0),
  dpkg-dev (>= 1.13.19),
  freetds-dev,
+ libbrotli-dev,
  libcap-dev,
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libgdbm-dev,
@@ -132,6 +133,12 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: DHCP module for FreeRADIUS server
  The FreeRADIUS server can act as a DHCP server, and this module
  is necessary for that.
+
+Package: freeradius-brotli
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Brotli compression and decompression for FreeRADIUS server
+ This module adds brotli compression and decompression support to FreeRADIUS.
 
 Package: freeradius-krb5
 Architecture: any

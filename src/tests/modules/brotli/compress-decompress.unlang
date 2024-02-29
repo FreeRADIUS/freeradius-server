@@ -1,0 +1,57 @@
+
+# Normal encode/decode
+group {
+	string uncompressed
+	string compressed
+	string decompressed
+
+	&uncompressed := "cn=subscriber12345,ou=subscribers,dc=example,dc=com"
+	&compressed := %brotli.compress(%{uncompressed})
+
+	if (%length(%{compressed}) == 0) {
+		test_fail
+	}
+
+	if (%{compressed} == %{uncompressed}) {
+		test_fail
+	}
+
+	if (%length(%{compressed}) >= %length(%{uncompressed})) {
+		test_fail
+	}
+
+	&decompressed := %brotli.decompress(%{compressed})
+	if (&decompressed != &uncompressed) {
+		test_fail
+	}
+}
+
+# Zero length encode/decode
+group {
+	string uncompressed
+	string compressed
+	string decompressed
+
+	&uncompressed := ""
+	&compressed := %brotli.compress(%{uncompressed})
+
+	# Should have a brotli header
+	if (%length(%{compressed}) != 1) {
+		test_fail
+	}
+
+	if (%{compressed} == %{uncompressed}) {
+		test_fail
+	}
+
+	&decompressed := %brotli.decompress(%{compressed})
+	if (&decompressed != &uncompressed) {
+		test_fail
+	}
+
+	if (%length(%{decompressed}) != 0) {
+		test_fail
+	}
+}
+
+test_pass
