@@ -35,6 +35,7 @@ static xlat_arg_parser_t const unpack_xlat_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_VOID },
 	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
 	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	{ .single = true, .type = FR_TYPE_VOID },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -56,10 +57,13 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_type_t	type;
 	uint8_t const	*input;
 	uint8_t		blob[256];
+	uint32_t	repeat = 1, count = 1;
 	fr_value_box_t	*data_vb = fr_value_box_list_head(in);
 	fr_value_box_t	*offset_vb = fr_value_box_list_next(in, data_vb);
 	fr_value_box_t	*type_vb = fr_value_box_list_next(in, offset_vb);
+	fr_value_box_t	*repeat_vb = fr_value_box_list_next(in, type_vb);
 	fr_value_box_t	*vb;
+	ssize_t		used;
 
 	if ((data_vb->type != FR_TYPE_OCTETS) && (data_vb->type != FR_TYPE_STRING)) {
 		REDEBUG("unpack requires the input attribute to be 'string' or 'octets'");
@@ -108,21 +112,41 @@ static xlat_action_t unpack_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_FAIL;
 	}
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
-
-	/*
-	 *	Call the generic routines to get data from the
-	 *	"network" buffer.
-	 */
-	if (fr_value_box_from_network(ctx, vb, type, NULL,
-				      &FR_DBUFF_TMP(input + offset, input_len - offset),
-				      input_len - offset, data_vb->tainted) < 0) {
-		RPEDEBUG("Failed decoding %s", type_vb->vb_strvalue);
-		talloc_free(vb);
-		return XLAT_ACTION_FAIL;
+	if (repeat_vb) {
+		if ((repeat_vb->type == FR_TYPE_STRING) && (strcmp(repeat_vb->vb_strvalue, "*") == 0)) {
+			repeat = UINT32_MAX;
+		} else {
+			if (fr_value_box_cast_in_place(repeat_vb, repeat_vb, FR_TYPE_UINT32, NULL) < 0) {
+				REDEBUG("Invalid value for limit");
+				return XLAT_ACTION_FAIL;
+			}
+			repeat = repeat_vb->vb_uint32;
+		}
 	}
 
-	fr_dcursor_append(out, vb);
+	while (true) {
+		MEM(vb = fr_value_box_alloc_null(ctx));
+
+		/*
+		 *	Call the generic routines to get data from the
+		 *	"network" buffer.
+		 */
+		used = fr_value_box_from_network(ctx, vb, type, NULL,
+						 &FR_DBUFF_TMP(input + offset, input_len - offset),
+						 input_len - offset, data_vb->tainted);
+		if (used < 0) {
+			RPEDEBUG("Failed decoding %s", type_vb->vb_strvalue);
+			talloc_free(vb);
+			return XLAT_ACTION_FAIL;
+		}
+
+		fr_dcursor_append(out, vb);
+		if (count == repeat) break;
+
+		offset += used;
+		if (offset + used > input_len) break;
+		count++;
+	}
 
 	return XLAT_ACTION_DONE;
 }

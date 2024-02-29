@@ -22,9 +22,9 @@
 #  To use it, add it to the `raddb/mods-enabled/` directory.  Then,
 #  use it on the right-hand side of a variable assignment.
 #
-#   %unpack(<data>, <offset>, <data_type>)
+#   %unpack(<data>, <offset>, <data_type>[, <repeat>])
 #
-#  The arguments are three fields:
+#  The arguments are three or four fields:
 #
 #  data::
 #
@@ -41,6 +41,11 @@
 #
 #  the data type to unpack at that offset. e.g. `integer`, `ipaddr`, `byte`, `short`, etc.
 #
+#  repeat::
+#
+#  How many instances of the data type should be unpacked.  This optional argument
+#  must either be an integer or the special value of `'*'` to extract as many instances
+#  as can be from the input data.
 
 #
 #  ## Sample

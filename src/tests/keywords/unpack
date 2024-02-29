@@ -100,4 +100,34 @@ if (!(&Module-Failure-Message == "Zero length hex string in '0x'")) {
 	test_fail
 }
 
+# Tests of extracting multiple values
+&test_octets := 0x0011223344556677
+&NAS-Port := %unpack(%{test_octets}, 0, 'uint8', '*')
+
+if (&NAS-Port[#] != 8) {
+	test_fail
+}
+
+if !((&NAS-Port[0] == 0) && (&NAS-Port[1] == 17) && (&NAS-Port[2] == 34) && (&NAS-Port[3] == 51) && (&NAS-Port[4] == 68) && (&NAS-Port[5] == 85) && (&NAS-Port[6] == 102) && (&NAS-Port[7] == 119)) {
+	test_fail
+}
+
+&NAS-Port := %unpack(%{test_octets}, 0, 'uint8', 2)
+
+if (&NAS-Port[#] != 2) {
+	test_fail
+}
+
+&NAS-Port := %unpack(%{test_octets}, 0, 'uint8', 10)
+
+if (&NAS-Port[#] != 8) {
+	test_fail
+}
+
+&NAS-Port := %unpack(%{test_octets}, 0, 'uint8', 'invalid')
+
+if (&NAS-Port) {
+	test_fail
+}
+
 success
