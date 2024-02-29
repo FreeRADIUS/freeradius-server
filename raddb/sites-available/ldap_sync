@@ -383,7 +383,7 @@ server ldap_sync {
 #		if (!&reply.LDAP-Sync.Cookie) {
 #			string csn
 #
-#			&csn := %concat(%ldap("ldap:///%{LDAP-Sync.Directory-Root-DN}?contextCSN?base"), ';')
+#			&csn := %concat(%ldap("ldap:///%ldap.uri.safe(%{LDAP-Sync.Directory-Root-DN})?contextCSN?base"), ';')
 #			&reply.LDAP-Sync.Cookie := "rid=000,csn=%{csn}"
 #		}
 	}
