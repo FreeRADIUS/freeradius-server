@@ -215,6 +215,22 @@ If no argument is passed, it returns the current time.  Otherwise if the argumen
 &Acct-Start-Time := %time(now)
 ----
 
+The current time can also be compared to a known date:
+
+.Example
+[source,unlang]
+----
+if (%time() < (date) 'Aug 1 2023 01:02:03 UTC') {
+	...
+}
+----
+
+The format of the date strings should be the same format as the server
+prints out.  The parse will try to accept other date formats (raw
+integer, etc.), but not all formats are guaranteed to work.  There are
+hundreds of different date formats used across the world, and the
+server cannot support them all.
+
 [NOTE]
 ====
 This expansion should be used in preference to the xref:xlat/character.adoc[single letter expansions] `%l`.  That expansion returns integer seconds, and is not suitable for millisecond or microsecond resolution.

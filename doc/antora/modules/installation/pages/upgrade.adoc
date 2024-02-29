@@ -1051,6 +1051,23 @@ The attributes `Time-Of-Day`, `Login-Time`, and `Current-Time` have
 also been removed.  Any configuration which tries to use them will
 result in an error.
 
+Dates and time attributes can be checked against date strings by
+casting them:
+
+```
+if (&Date-attribute < (date) 'Aug 1 2023 01:02:03 UTC') {
+	...
+}
+```
+
+The current time can also be checked:
+
+```
+if (%time() < (date) 'Aug 1 2023 01:02:03 UTC') {
+	...
+}
+```
+
 == Deleted Functionality
 
 Many "virtual" or "fake" attributes have been removed or renamed.

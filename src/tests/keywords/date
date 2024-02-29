@@ -76,4 +76,20 @@ if (!(&Module-Failure-Message == "Can't convert type ipaddr into date")) {
 	test_fail
 }
 
+#
+#  Do date comparisons
+#
+if (&test_date != (date) 'Aug  8 2022 19:04:19 UTC') {
+   test_fail
+}
+
+if (&test_date < (date) 'Aug  8 2022 18:00:00 UTC') {
+   test_fail
+}
+
+if (&test_date > (date) 'Aug 9 2022 00:04:19 UTC') {
+   test_fail
+}
+
+
 success
