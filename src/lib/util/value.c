@@ -4362,7 +4362,17 @@ int fr_value_box_mem_realloc(TALLOC_CTX *ctx, uint8_t **out, fr_value_box_t *dst
 	clen = talloc_array_length(dst->vb_octets);
 	if (clen == len) return 0;	/* No change */
 
-	bin = talloc_realloc(ctx, cbin, uint8_t, len);
+	/*
+	 *	Realloc the buffer.  If the new length is 0, we
+	 *	need to call talloc_array() instead of talloc_realloc()
+	 *	as talloc_realloc() will fail.
+	 */
+	if (len > 0) {
+		bin = talloc_realloc(ctx, cbin, uint8_t, len);
+	} else {
+		bin = talloc_array(ctx, uint8_t, 0);
+		talloc_free(cbin);
+	}
 	if (!bin) {
 		fr_strerror_printf("Failed reallocing value box buffer to %zu bytes", len);
 		return -1;
