@@ -1,5 +1,6 @@
 rlm_always
 rlm_attr_filter
+rlm_brotli
 rlm_cache
 rlm_chap
 rlm_csv
