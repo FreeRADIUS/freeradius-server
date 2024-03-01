@@ -83,8 +83,10 @@ static size_t pair_comparison_op_table_len = NUM_ELEMENTS(pair_comparison_op_tab
  */
 static fr_sbuff_parse_rules_t const bareword_unquoted = {
 	.terminals = &FR_SBUFF_TERMS(
+		L(""),
 		L("\t"),
 		L("\n"),
+		L("\r"),
 		L(" "),
 		L(","),
 		L("}")
