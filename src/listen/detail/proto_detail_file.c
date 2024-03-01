@@ -536,7 +536,7 @@ retry:
 		 *	File really was deleted, and didn't have
 		 *	anything moved over the top.
 		 */
-		if (triggered_by_delete) return;
+		if (inst->immediate && triggered_by_delete) return;
 
 delay:
 		/*
