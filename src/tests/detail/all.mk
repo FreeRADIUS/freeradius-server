@@ -19,9 +19,15 @@ $(OUTPUT)/%: $(DIR)/% $(addprefix ${BUILD_DIR}/lib/,proto_detail.la proto_detail
 	$(eval DIR := $(dir $<))
 	${Q}echo "DETAIL $(notdir $<)"
 	${Q}cp $< $(dir $@)/detail.txt
+	${Q}rm -f $(dir $@)/processed
 	${Q}if ! $(TEST_BIN)/radiusd -d $(DIR)/config -D ${top_srcdir}/share/dictionary -X > $@.log; then \
 		tail $@.log; \
 		echo "cp $< $(dir $@)/detail.txt; $(TEST_BIN)/radiusd -d $(DIR)/config -D ${top_srcdir}/share/dictionary -X "; \
+		exit 1; \
+	fi
+	${Q}if [ ! -e $(dir $@)/processed ] ; then \
+		tail $@.log; \
+		echo "Processing $< failed to produce expected output $(dir $@)/processed"; \
 		exit 1; \
 	fi
 	${Q}touch $@
