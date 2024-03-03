@@ -626,7 +626,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
 		u->id = fr_rand() & 0xff;	/* We don't care what the value is here */
 		h->status_checking = true;	/* Ensure this is valid */
-		(void) fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
+		fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
 
 	/*
 	 *	Status checks can never be retransmitted
@@ -1742,7 +1742,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	Start retransmissions from when the socket is writable.
 		 */
 		if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
-			(void) fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
+			fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
 			fr_assert(fr_time_delta_ispos(u->retry.rt));
 			fr_assert(fr_time_gt(u->retry.next, fr_time_wrap(0)));
 		}

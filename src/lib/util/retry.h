@@ -57,7 +57,7 @@ typedef enum {
 	FR_RETRY_MRD,					//!< reached maximum retransmission duration
 } fr_retry_state_t;
 
-int		fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config) CC_HINT(nonnull);
+void		fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config) CC_HINT(nonnull);
 fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now) CC_HINT(nonnull);
 
 #ifdef __cplusplus

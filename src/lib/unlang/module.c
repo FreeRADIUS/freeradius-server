@@ -994,7 +994,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) {
 			fr_assert(fr_time_gt(now, fr_time_wrap(0)));
 
-			(void) fr_retry_init(&state->retry, now, &frame->instruction->actions.retry); /* can't fail */
+			fr_retry_init(&state->retry, now, &frame->instruction->actions.retry);
 
 			if (fr_event_timer_at(request, unlang_interpret_event_list(request),
 					      &state->ev, state->retry.next,

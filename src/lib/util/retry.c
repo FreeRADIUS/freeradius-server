@@ -33,7 +33,7 @@ RCSID("$Id$")
  * @param now when the retransmission starts
  * @param config the counters to track.  They shouldn't change while the retransmission is happening
  */
-int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
+void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 {
 	uint64_t		scale;
 	fr_time_delta_t		rt;
@@ -61,8 +61,6 @@ int fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config)
 
 	r->rt = rt;
 	r->next = fr_time_add(now, rt);
-
-	return 0;
 }
 
 /** Initialize a retransmission counter
