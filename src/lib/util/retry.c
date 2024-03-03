@@ -47,6 +47,14 @@ void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config
 	r->updated = now;
 
 	/*
+	 *	Only 1 retry, the timeout is MRD, not IRT.
+	 */
+	if (config->mrc == 1) {
+		r->next = fr_time_add(now, config->mrd);
+		return;
+	}
+
+	/*
 	 *	Initial:
 	 *
 	 *	RT = IRT + RAND * IRT
