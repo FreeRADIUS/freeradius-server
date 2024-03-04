@@ -27,14 +27,14 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/id.h>
 
 struct fr_radius_id_s {
-	int			free;		//!< number of used IDs
+	int			num_free_ids;	//!< number of used IDs
 
 	int			free_start;
 	int			free_end;
 
 	fr_radius_packet_t     	*packet[256];	//!< pointer to packet data
 	
-	int			ids[256];
+	int			free_ids[256];
 };
 
 
@@ -50,12 +50,12 @@ fr_radius_id_t *fr_radius_id_alloc(TALLOC_CTX *ctx)
 	track = talloc_zero(ctx, fr_radius_id_t);
 	if (!track) return NULL;
 
-	track->free = 256;
+	track->num_free_ids = 256;
 	track->free_start = 0;
 	track->free_end = 0;
 
 	for (i = 0; i < 256; i++) {
-		track->ids[i] = i;
+		track->free_ids[i] = i;
 	}
 
 	return 0;
@@ -68,18 +68,19 @@ int fr_radius_id_pop(fr_radius_id_t *track, fr_radius_packet_t *packet)
 {
 	int id;
 
-	id = track->ids[track->free_start];
+	id = track->free_ids[track->free_start];
 	fr_assert(id >= 0);
 	fr_assert(id < 256);
 
 	fr_assert(!track->packet[id]);
 
-	track->ids[track->free_start] = -1;
+	track->free_ids[track->free_start] = -1;
 
 	track->free_start++;
 	track->free_start &= 0xff;
 
-	track->free--;
+	fr_assert(track->num_free_ids > 0);
+	track->num_free_ids--;
 
 	track->packet[id] = packet;
 	packet->id = id;
@@ -96,19 +97,19 @@ int fr_radius_id_push(fr_radius_id_t *track, fr_radius_packet_t const *packet)
 	fr_assert(packet->id < 256);
 
 	fr_assert(track->packet[packet->id] == packet);
-	fr_assert(track->free < 256);
+	fr_assert(track->num_free_ids < 256);
 	fr_assert(track->free_start != track->free_end);
 	fr_assert(track->free_end >= 0);
 	fr_assert(track->free_end < 256);
-	fr_assert(track->ids[track->free_end] == -1);
+	fr_assert(track->free_ids[track->free_end] == -1);
 
-	track->ids[track->free_end] = packet->id;
+	track->free_ids[track->free_end] = packet->id;
 
 	track->free_end++;
 	track->free_end &= 0xff;
 
 	track->packet[packet->id] = NULL;
-	track->free++;
+	track->num_free_ids++;
 
 	return 0;
 }
