@@ -33,6 +33,15 @@ listen {
 	proto = tcp
 	ipaddr = *
 	port = 8000
+
+	#
+	#  Set limits so that unused connections get cleaned up quickly.
+	#
+	limit {
+	      max_connections = 16
+	      lifetime = 5
+	      idle_timeout = 5
+	}
 }
 
 #
