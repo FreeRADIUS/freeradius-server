@@ -1844,7 +1844,7 @@ static xlat_action_t xlat_func_base64_decode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const xlat_func_bin_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -1868,46 +1868,47 @@ static xlat_action_t xlat_func_bin(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	uint8_t			*bin;
 	size_t			len, outlen;
 	fr_sbuff_parse_error_t	err;
-	fr_value_box_t		*hex;
+	fr_value_box_t		*list, *hex;
 
-	XLAT_ARGS(args, &hex);
+	XLAT_ARGS(args, &list);
 
-	len = hex->vb_length;
-	if ((len > 1) && (len & 0x01)) {
-		REDEBUG("Input data length must be >1 and even, got %zu", len);
-		return XLAT_ACTION_FAIL;
+	while ((hex = fr_value_box_list_pop_head(&list->vb_group))) {
+		len = hex->vb_length;
+		if ((len > 1) && (len & 0x01)) {
+			REDEBUG("Input data length must be >1 and even, got %zu", len);
+			return XLAT_ACTION_FAIL;
+		}
+
+		p = hex->vb_strvalue;
+		end = p + len;
+
+		/*
+		 *	Look for 0x at the start of the string
+		 */
+		if ((p[0] == '0') && (p[1] == 'x')) {
+			p += 2;
+			len -=2;
+		}
+
+		/*
+		 *	Zero length octets string
+		 */
+		if (p == end) continue;
+
+		outlen = len / 2;
+
+		MEM(result = fr_value_box_alloc_null(ctx));
+		MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(args)) == 0);
+		fr_base16_decode(&err, &FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p), true);
+		if (err) {
+			REDEBUG2("Invalid hex string");
+			talloc_free(result);
+			return XLAT_ACTION_FAIL;
+		}
+
+		fr_dcursor_append(out, result);
 	}
 
-	p = hex->vb_strvalue;
-	end = p + len;
-
-	/*
-	 *	Look for 0x at the start of the string
-	 */
-	if ((p[0] == '0') && (p[1] == 'x')) {
-		p += 2;
-		len -=2;
-	}
-
-	/*
-	 *	Zero length octets string
-	 */
-	if (p == end) goto finish;
-
-	outlen = len / 2;
-
-	MEM(result = fr_value_box_alloc_null(ctx));
-	MEM(fr_value_box_mem_alloc(result, &bin, result, NULL, outlen, fr_value_box_list_tainted(args)) == 0);
-	fr_base16_decode(&err, &FR_DBUFF_TMP(bin, outlen), &FR_SBUFF_IN(p, end - p), true);
-	if (err) {
-		REDEBUG2("Invalid hex string");
-		talloc_free(result);
-		return XLAT_ACTION_FAIL;
-	}
-
-	fr_dcursor_append(out, result);
-
-finish:
 	return XLAT_ACTION_DONE;
 }
 
@@ -2089,7 +2090,7 @@ static xlat_action_t xlat_func_concat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 }
 
 static xlat_arg_parser_t const xlat_func_hex_arg[] = {
-	{ .required = true, .concat = true, .type = FR_TYPE_OCTETS },
+	{ .required = true, .type = FR_TYPE_OCTETS },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -2109,29 +2110,29 @@ static xlat_action_t xlat_func_hex(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 				   UNUSED request_t *request, fr_value_box_list_t *args)
 {
 	char		*new_buff;
-	fr_value_box_t	*bin;
+	fr_value_box_t	*list, *bin;
 
-	XLAT_ARGS(args, &bin);
+	XLAT_ARGS(args, &list);
 
-	fr_value_box_list_remove(args, bin);
-
-	/*
-	 *	Use existing box, but with new buffer
-	 */
-	MEM(new_buff = talloc_zero_array(bin, char, (bin->vb_length * 2) + 1));
-	if (bin->vb_length) {
-		fr_base16_encode(&FR_SBUFF_OUT(new_buff, (bin->vb_length * 2) + 1),
+	while ((bin = fr_value_box_list_pop_head(&list->vb_group))) {
+		/*
+		 *	Use existing box, but with new buffer
+		 */
+		MEM(new_buff = talloc_zero_array(bin, char, (bin->vb_length * 2) + 1));
+		if (bin->vb_length) {
+			fr_base16_encode(&FR_SBUFF_OUT(new_buff, (bin->vb_length * 2) + 1),
 					       &FR_DBUFF_TMP(bin->vb_octets, bin->vb_length));
-		fr_value_box_clear_value(bin);
-		fr_value_box_strdup_shallow(bin, NULL, new_buff, bin->tainted);
-	/*
-	 *	Zero length binary > zero length hex string
-	 */
-	} else {
-		fr_value_box_clear_value(bin);
-		fr_value_box_strdup(bin, bin, NULL, "", bin->tainted);
+			fr_value_box_clear_value(bin);
+			fr_value_box_strdup_shallow(bin, NULL, new_buff, bin->tainted);
+		/*
+		 *	Zero length binary > zero length hex string
+		 */
+		} else {
+			fr_value_box_clear_value(bin);
+			fr_value_box_strdup(bin, bin, NULL, "", bin->tainted);
+		}
+		fr_dcursor_append(out, bin);
 	}
-	fr_dcursor_append(out, bin);
 
 	return XLAT_ACTION_DONE;
 }
