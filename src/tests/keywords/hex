@@ -101,4 +101,20 @@ if (!(&result_string == '203938373e')) {
 	test_fail
 }
 
+&request += {
+	&Class = 0x0101
+	&Class = 0x010203
+	&Class = 0x0405
+}
+
+&NAS-Identifier := %hex(%{Class[*]})
+
+if (&NAS-Identifier[#] != 3) {
+	test_fail
+}
+
+if !((&NAS-Identifier[0] == '0101') && (&NAS-Identifier[1] == '010203') && (&NAS-Identifier[2] == '0405')) {
+	test_fail
+}
+
 success
