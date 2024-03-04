@@ -10,6 +10,7 @@ SOURCES	:=		\
 	network.c	\
 	null.c		\
 	pipe.c		\
-	queue.c
+	queue.c		\
+	retry.c
 
 TGT_PREREQS	:= libfreeradius-util$(L)
