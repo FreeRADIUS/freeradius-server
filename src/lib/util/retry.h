@@ -45,6 +45,7 @@ typedef struct {
 	fr_time_t		updated;		//!< last update, really a cached "now".
 	fr_time_delta_t		rt;			//!< retransmit interval
 	uint32_t		count;			//!< number of sent packets
+	uint32_t		replies;		//!< number of responses received.
 } fr_retry_t;
 
 /*
