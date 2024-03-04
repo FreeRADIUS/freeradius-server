@@ -573,8 +573,8 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	/*
 	 *	Limit to reasonable values.
 	 */
-	if (!max_saved) return -1;
-	if (max_saved > 65536) return -1;
+	if (!max_saved) return NULL;
+	if (max_saved > 65536) return NULL;
 
 	my = talloc_zero(ctx, fr_bio_retry_t);
 	if (!my) return NULL;
