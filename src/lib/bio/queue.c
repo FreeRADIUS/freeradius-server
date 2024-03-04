@@ -27,7 +27,6 @@
 #include <freeradius-devel/bio/null.h>
 #include <freeradius-devel/util/dlist.h>
 
-typedef struct fr_bio_queue_entry_s	fr_bio_queue_entry_t;
 typedef struct fr_bio_queue_list_s	fr_bio_queue_list_t;
 typedef struct fr_bio_queue_s		fr_bio_queue_t;
 
@@ -53,13 +52,7 @@ struct fr_bio_queue_entry_s {
 	FR_DLIST_ENTRY(fr_bio_queue_list)	entry;		//!< List entry.
 };
 
-struct fr_bio_queue_list_s {
-	FR_DLIST_HEAD(fr_bio_queue_list)	saved;
-	FR_DLIST_HEAD(fr_bio_queue_list)	free;
-};
-
 FR_DLIST_FUNCS(fr_bio_queue_list, fr_bio_queue_entry_t, entry)
-
 
 typedef struct fr_bio_queue_s {
 	FR_BIO_COMMON;
@@ -455,18 +448,17 @@ fr_bio_t *fr_bio_queue_alloc(TALLOC_CTX *ctx, size_t max_saved,
  *
  *  There is no way to cancel all packets.  The caller must find the lowest bio in the chain, and shutdown it.
  *  e.g. by closing the socket via fr_bio_fd_close().  That function will take care of walking back up the
- *  chain, and shutdownting each bio.
+ *  chain, and shutting down each bio.
  *
  *  @param	bio	the #fr_bio_queue_t
- *  @param	queue_ctx The context returned from #fr_bio_queue_saved_t
+ *  @param	item	The context returned from #fr_bio_queue_saved_t
  *  @return
  *	- <0 no such packet was found in the list of saved packets, OR the packet cannot be cancelled.
  *	- 0 the packet was cancelled.
  */
-int fr_bio_queue_cancel(fr_bio_t *bio, void *queue_ctx)
+int fr_bio_queue_cancel(fr_bio_t *bio, fr_bio_queue_entry_t *item)
 {
 	fr_bio_queue_t *my = talloc_get_type_abort(bio, fr_bio_queue_t);
-	fr_bio_queue_entry_t *item = queue_ctx;
 
 	if (!(item >= &my->array[0]) && (item < &my->array[my->max_saved])) {
 		return -1;

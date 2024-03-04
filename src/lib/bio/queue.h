@@ -27,8 +27,10 @@
  */
 RCSIDH(lib_bio_queue_h, "$Id$")
 
+typedef struct fr_bio_queue_entry_s fr_bio_queue_entry_t;
+
 typedef void	(*fr_bio_queue_callback_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size);
-typedef void	(*fr_bio_queue_saved_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size, void *ctx);
+typedef void	(*fr_bio_queue_saved_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size, fr_bio_queue_entry_t *queue_ctx);
 
 fr_bio_t	*fr_bio_queue_alloc(TALLOC_CTX *ctx, size_t max_saved,
 				    fr_bio_queue_saved_t saved,
@@ -36,4 +38,4 @@ fr_bio_t	*fr_bio_queue_alloc(TALLOC_CTX *ctx, size_t max_saved,
 				    fr_bio_queue_callback_t cancel,
 				    fr_bio_t *next) CC_HINT(nonnull(1,6));
 
-int		fr_bio_queue_cancel(fr_bio_t *bio, void *queue_ctx) CC_HINT(nonnull);
+int		fr_bio_queue_cancel(fr_bio_t *bio, fr_bio_queue_entry_t *queue_ctx) CC_HINT(nonnull);
