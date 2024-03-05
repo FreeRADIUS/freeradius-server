@@ -3139,6 +3139,8 @@ static int xlat_instantiate_subst_regex(xlat_inst_ctx_t const *xctx)
 %subst(%{User-Name}, /oo.*$/, 'un') == "fun"
 @endverbatim
  *
+ * @note References can be specified in the replacement string with $<ref>
+ *
  * @see #xlat_func_subst
  *
  * @ingroup xlat_functions
