@@ -33,9 +33,9 @@ RCSIDH(lib_bio_retry_h, "$Id$")
 #include <freeradius-devel/util/event.h>
 
 typedef struct {
-	fr_event_list_t		*el;		//!< event li
+	fr_event_list_t		*el;		//!< event list
 
-	fr_retry_config_t	retry_config;
+	fr_retry_config_t	retry_config;	//!< base retry config
 } fr_bio_retry_config_t;
 
 typedef struct fr_bio_retry_entry_s fr_bio_retry_entry_t;
@@ -59,7 +59,7 @@ typedef enum {
  *  @param retry_ctx	pointer to save for use with later cancellation
  */
 typedef void	(*fr_bio_retry_sent_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size,
-				       fr_time_delta_t next_retransmit, fr_bio_retry_entry_t *retry_ctx);
+				       fr_bio_retry_entry_t *retry_ctx);
 
 typedef ssize_t	(*fr_bio_retry_rewrite_t)(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size);
 
@@ -108,6 +108,8 @@ fr_bio_t	*fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 				    fr_bio_retry_config_t const *cfg,
 				    fr_bio_t *next) CC_HINT(nonnull(1,3,4,6,7,8));
 
-int		fr_bio_retry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx) CC_HINT(nonnull);
+int		fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx) CC_HINT(nonnull);
+
+int		fr_bio_retry_entry_start(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, fr_retry_config_t const *cfg) CC_HINT(nonnull);
 
 ssize_t		fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size) CC_HINT(nonnull(1,2));

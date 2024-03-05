@@ -386,8 +386,6 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	fr_bio_retry_entry_t *item;
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 	fr_bio_t *next;
-	fr_time_t now;
-	fr_time_delta_t retransmit;
 
 	fr_assert(!my->partial);
 
@@ -420,6 +418,8 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	item = fr_bio_retry_list_pop_head(&my->free);
 	fr_assert(item != NULL);
 
+	item->retry.config = NULL;
+	item->retry.start = fr_time();
 	item->packet_ctx = packet_ctx;
 	item->buffer = buffer;
 	item->size = size;
@@ -427,16 +427,15 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	item->have_reply = false;
 	item->cancelled = false;
 
-	now = fr_time();
-	fr_retry_init(&item->retry, now, &my->retry_config);
-
-	retransmit = fr_time_sub_time_time(now, item->retry.next);
-
 	/*
 	 *	Tell the application that we've saved the packet.  The "item" pointer allows the application
 	 *	to cancel this packet if necessary.
 	 */
-	my->sent(bio, packet_ctx, buffer, size, retransmit, item);
+	my->sent(bio, packet_ctx, buffer, size, item);
+
+	if (!item->retry.config) {
+		fr_retry_init(&item->retry, item->retry.start, &my->retry_config);
+	}
 
 	/*
 	 *	This should never fail.
@@ -545,7 +544,7 @@ static int8_t _entry_cmp(void const *one, void const *two)
  *
  *  @todo - add a "cancel oldest packet API" so we can re-use IDs before we've received all replies.
  */
-int fr_bio_retry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
+int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 {
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 
@@ -588,6 +587,22 @@ int fr_bio_retry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	if (my->first == item) my->first = NULL;
 
 	fr_bio_retry_release(my, item, item->have_reply ? FR_BIO_RETRY_DONE : FR_BIO_RETRY_CANCELLED);
+	return 0;
+}
+
+/**  Set a per-packet retry config 
+ *
+ *  This function should be called from the #fr_bio_retry_sent_t callback to set a unique retry timer for this
+ *  packet.  If no retry configuration is set, then the main one from the alloc() function is used.
+ */
+int fr_bio_retry_entry_start(UNUSED fr_bio_t *bio, fr_bio_retry_entry_t *item, fr_retry_config_t const *cfg)
+{
+	fr_assert(item->buffer != NULL);
+
+	if (item->retry.config) return -1;
+
+	fr_retry_init(&item->retry, item->retry.start, cfg);
+
 	return 0;
 }
 
