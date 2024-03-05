@@ -31,7 +31,11 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/table.h>
 #include <freeradius-devel/util/time.h>
+
+extern fr_table_num_ordered_t fr_time_tracking_state_table[];
+extern size_t fr_time_tracking_state_table_len;
 
 typedef enum {
 	FR_TIME_TRACKING_STOPPED = 0,				//!< Time tracking is not running.
@@ -148,7 +152,9 @@ static inline CC_HINT(nonnull) void fr_time_tracking_init(fr_time_tracking_t *tt
 static inline CC_HINT(nonnull(2)) void fr_time_tracking_start(fr_time_tracking_t *parent,
 							   fr_time_tracking_t *tt, fr_time_t now)
 {
-	fr_assert_msg(tt->state == FR_TIME_TRACKING_STOPPED, "Unexpected time tracking state state %i", tt->state);
+
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_STOPPED, "Unexpected time tracking state state %s",
+		      fr_table_str_by_value(fr_time_tracking_state_table, tt->state, "<INVALID>"));
 	fr_assert(!tt->parent);
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
@@ -176,7 +182,8 @@ static inline CC_HINT(nonnull) void fr_time_tracking_push(fr_time_tracking_t *pa
 	fr_assert(tt->parent);
 	fr_assert(parent->parent == tt->parent);
 
-	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %s",
+		      fr_table_str_by_value(fr_time_tracking_state_table, tt->state, "<INVALID>"));
 	run_time = fr_time_sub(now, tt->last_changed);
 	tt->last_changed = parent->started = now;
 
@@ -196,7 +203,8 @@ static inline CC_HINT(nonnull) void fr_time_tracking_pop(fr_time_tracking_t *tt,
 {
 	fr_time_delta_t		run_time;
 
-	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %s",
+		      fr_table_str_by_value(fr_time_tracking_state_table, tt->state, "<INVALID>"));
 	fr_assert(tt->parent);
 
 	run_time = fr_time_sub(now, tt->last_changed);
@@ -219,7 +227,8 @@ static inline CC_HINT(nonnull) void fr_time_tracking_yield(fr_time_tracking_t *t
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
-	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %s",
+		      fr_table_str_by_value(fr_time_tracking_state_table, tt->state, "<INVALID>"));
 	tt->state = FR_TIME_TRACKING_YIELDED;
 	tt->last_yielded = tt->last_changed = now;
 
@@ -239,7 +248,8 @@ static inline CC_HINT(nonnull) void fr_time_tracking_resume(fr_time_tracking_t *
 
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
-	fr_assert_msg(tt->state == FR_TIME_TRACKING_YIELDED, "Unexpected time tracking state state %i", tt->state);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_YIELDED, "Unexpected time tracking state state %s",
+		      fr_table_str_by_value(fr_time_tracking_state_table, tt->state, "<INVALID>"));
 	tt->state = FR_TIME_TRACKING_RUNNING;
 	tt->last_resumed = tt->last_changed = now;
 
@@ -262,7 +272,8 @@ static inline void fr_time_tracking_end(fr_time_delta_t *predicted,
 {
 	fr_time_delta_t		run_time;
 
-	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %i", tt->state);
+	fr_assert_msg(tt->state == FR_TIME_TRACKING_RUNNING, "Unexpected time tracking state state %s",
+		      fr_table_str_by_value(fr_time_tracking_state_table, tt->state, "<INVALID>"));
 	ASSERT_ON_TIME_TRAVEL(tt, now);
 
 	tt->state = FR_TIME_TRACKING_STOPPED;
