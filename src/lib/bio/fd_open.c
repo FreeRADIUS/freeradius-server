@@ -744,6 +744,11 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		}
 
 	} else {
+		if (cfg->type != FR_BIO_FD_CONNECTED) {
+			fr_strerror_printf("Can only use connected sockets for file IO");
+			return -1;
+		}
+
 		/*
 		 *	Filenames overload the #fr_socket_t for now.
 		 */
