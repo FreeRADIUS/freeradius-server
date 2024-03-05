@@ -228,18 +228,14 @@ static ssize_t fr_bio_haproxy_read(fr_bio_t *bio, void *packet_ctx, void *buffer
 fr_bio_t *fr_bio_haproxy_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_t *next)
 {
 	fr_bio_haproxy_t *my;
-	uint8_t *data;
 
 	my = talloc_zero(ctx, fr_bio_haproxy_t);
 	if (!my) return NULL;
 
-	data = talloc_array(my, uint8_t, HAPROXY_HEADER_V1_SIZE);
-	if (!data) {
+	if (fr_bio_buf_alloc(my, &my->buffer, HAPROXY_HEADER_V1_SIZE) < 0) {
 		talloc_free(my);
 		return NULL;
 	}
-
-	fr_bio_buf_init(&my->buffer, data, HAPROXY_HEADER_V1_SIZE);
 
 	my->bio.read = fr_bio_haproxy_read;
 	my->bio.write = fr_bio_null_write; /* can't write to this bio */

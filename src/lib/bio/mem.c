@@ -625,18 +625,14 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
  */
 static bool fr_bio_mem_buf_alloc(fr_bio_mem_t *my, fr_bio_buf_t *buf, size_t size)
 {
-	uint8_t *data;
-
 	if (size < 1024) size = 1024;
 	if (size > (1 << 20)) size = 1 << 20;
 
-	data = talloc_array(my, uint8_t, size);
-	if (!data) {
+	if (fr_bio_buf_alloc(my, buf, size) < 0) {
 		talloc_free(my);
 		return false;
 	}
 
-	fr_bio_buf_init(buf, data, size);
 	return true;
 }
 

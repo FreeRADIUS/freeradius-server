@@ -147,3 +147,12 @@ static inline void CC_HINT(nonnull) fr_bio_buf_write_update(fr_bio_buf_t *bio_bu
 	}
 }
 #endif
+
+static inline size_t CC_HINT(nonnull) fr_bio_buf_size(fr_bio_buf_t const *bio_buf)
+{
+	fr_bio_buf_verify(bio_buf);
+
+	return (bio_buf->end - bio_buf->start);
+}
+
+int	fr_bio_buf_alloc(TALLOC_CTX *ctx, fr_bio_buf_t *bio_buf, size_t size) CC_HINT(nonnull);

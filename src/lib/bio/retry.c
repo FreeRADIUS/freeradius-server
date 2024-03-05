@@ -167,7 +167,9 @@ static ssize_t fr_bio_retry_write_cancelled(fr_bio_t *bio, void *packet_ctx, con
 	rcode = next->write(next, NULL, my->cancelled.read, used);
 	if (rcode <= 0) return rcode;
 
-	if ((size_t) rcode == used) {
+	my->cancelled.read += rcode;
+
+	if (fr_bio_buf_used(&my->cancelled) == 0) {
 		my->blocked = false;
 		my->bio.write = fr_bio_retry_write;
 
@@ -175,9 +177,9 @@ static ssize_t fr_bio_retry_write_cancelled(fr_bio_t *bio, void *packet_ctx, con
 	}
 
 	/*
-	 *	We didn't write any of the partial packet, so we can't write out this one, either.
+	 *	We didn't write any of the saved partial packet, so we can't write out the current one,
+	 *	either.
 	 */
-	my->cancelled.read += rcode;
 	return 0;
 }
 
@@ -552,29 +554,21 @@ int fr_bio_retry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	if (item->cancelled) return 0;
 
 	/*
-	 *	If we've written a partial packet, then we cannot cancel this item.
-	 *
-	 *	@todo - cache the rest of the packet data and send it, even if the item has been cancelled!
+	 *	If we've written a partial packet, jump through a bunch of hoops to cache the partial packet
+	 *	data.  This lets the application cancel any pending packet, while still making sure that we
+	 *	don't break packet boundaries.
 	 */
 	if (my->partial == item) {
 		if (item->partial > 0) {
-			uint8_t *ptr;
 			size_t size;
 
 			size = item->size - item->partial;
 
 			if (!my->cancelled.start) {
-				ptr = talloc_array(my, uint8_t, size);
-				if (!ptr) return -1;
+				if (fr_bio_buf_alloc(my, &my->cancelled, size)) return -1;
 
-				fr_bio_buf_init(&my->cancelled, ptr, size);
-
-			} else if (size > (size_t) (my->cancelled.end - my->cancelled.start)) {
-				ptr = talloc_array(my, uint8_t, size);
-				if (!ptr) return -1;
-
-				talloc_free(my->cancelled.start);
-				fr_bio_buf_init(&my->cancelled, ptr, size);
+			} else if (size > fr_bio_buf_size(&my->cancelled)) {
+				if (fr_bio_buf_alloc(my, &my->cancelled, size)) return -1;
 			}
 
 			fr_assert(fr_bio_buf_used(&my->cancelled) == 0);

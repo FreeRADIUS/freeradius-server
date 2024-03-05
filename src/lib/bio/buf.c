@@ -110,3 +110,17 @@ ssize_t	fr_bio_buf_write(fr_bio_buf_t *bio_buf, const void *buffer, size_t size)
 
 	return size;
 }
+
+int fr_bio_buf_alloc(TALLOC_CTX *ctx, fr_bio_buf_t *bio_buf, size_t size)
+{
+	void *ptr;
+
+	ptr = talloc_array(ctx, uint8_t, size);
+	if (!ptr) return -1;
+
+	if (bio_buf->start) talloc_free(bio_buf->start);
+
+	fr_bio_buf_init(bio_buf, ptr, size);
+
+	return 0;
+}
