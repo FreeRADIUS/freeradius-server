@@ -597,6 +597,7 @@ static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *r
 	 *	Bootstrap the async state machine with the initial
 	 *	state of the request.
 	 */
+	RDEBUG3("Time tracking started in yielded state");
 	fr_time_tracking_start(&worker->tracking, &request->async->tracking, now);
 	fr_time_tracking_yield(&request->async->tracking, now);
 	worker->num_active++;
@@ -609,6 +610,7 @@ static void worker_request_time_tracking_start(fr_worker_t *worker, request_t *r
 
 static void worker_request_time_tracking_end(fr_worker_t *worker, request_t *request, fr_time_t now)
 {
+	RDEBUG3("Time tracking ended");
 	fr_time_tracking_end(&worker->predicted, &request->async->tracking, now);
 	fr_assert(worker->num_active > 0);
 	worker->num_active--;
@@ -1207,6 +1209,10 @@ static void _worker_request_detach(request_t *request, UNUSED void *uctx)
 		*	because they don't contribute for the time consumed by an
 		*	external request.
 		*/
+		if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
+			RDEBUG3("Forcing time tracking to running state, from yielded, for request detach");
+			fr_time_tracking_resume(&request->async->tracking, fr_time());
+		}
 		worker_request_time_tracking_end(worker, request, fr_time());
 
 		if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
@@ -1236,6 +1242,7 @@ static void _worker_request_stop(request_t *request, void *uctx)
 	 *	as done.
 	 */
 	if (request->async->tracking.state == FR_TIME_TRACKING_YIELDED) {
+		RDEBUG3("Forcing time tracking to running state, from yielded, for request stop");
 		fr_time_tracking_resume(&request->async->tracking, fr_time());
 	}
 
