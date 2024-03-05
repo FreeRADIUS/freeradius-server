@@ -25,6 +25,7 @@
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/retry.h>
 #include <freeradius-devel/bio/null.h>
+#include <freeradius-devel/bio/buf.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/dlist.h>
 
@@ -51,6 +52,7 @@ struct fr_bio_retry_entry_s {
 	size_t		partial;		//!< for partial writes :(
 
 	bool		have_reply;		//!< did we see any reply?
+	bool		cancelled;		//!< was it cancelled?
 };
 
 FR_DLIST_FUNCS(fr_bio_retry_list, fr_bio_retry_entry_t, entry)
@@ -73,6 +75,8 @@ struct fr_bio_retry_s {
 	fr_bio_retry_response_t	response;
 	fr_bio_retry_release_t	release;
 
+	fr_bio_buf_t		cancelled;
+
 	bool			blocked;
 
 	FR_DLIST_HEAD(fr_bio_retry_list) free;
@@ -80,6 +84,7 @@ struct fr_bio_retry_s {
 
 static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx);
 static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
+
 
 /** Reset the timer after changing the rb tree.
  *
@@ -137,6 +142,45 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	fr_bio_retry_list_insert_head(&my->free, item);
 }
 
+/** There's a partial *cancelled* packet written.  Write all of that one first, before writing another packet.
+ *
+ */
+static ssize_t fr_bio_retry_write_cancelled(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size)
+{
+	size_t used;
+	ssize_t rcode;
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+	fr_bio_t *next;
+
+	fr_assert(!my->partial);
+	fr_assert(my->cancelled.start);
+
+	used = fr_bio_buf_used(&my->cancelled);
+	fr_assert(used > 0);
+
+	/*
+	 *	There must be a next bio.
+	 */
+	next = fr_bio_next(&my->bio);
+	fr_assert(next != NULL);
+
+	rcode = next->write(next, NULL, my->cancelled.write, used);
+	if (rcode <= 0) return rcode;
+
+	if ((size_t) rcode == used) {
+		my->blocked = false;
+		my->bio.write = fr_bio_retry_write;
+
+		return fr_bio_retry_write(bio, packet_ctx, buffer, size);
+	}
+
+	/*
+	 *	We didn't write any of the partial packet, so we can't write out this one, either.
+	 */
+	my->cancelled.write += rcode;
+	return 0;
+}
+
 /** There's a partial packet written.  Write all of that one first, before writing another packet.
  *
  */
@@ -158,7 +202,7 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
 
-	rcode = next->write(next, item->packet_ctx, packet + item->partial, item->size - item->partial);
+	rcode = next->write(next, NULL, packet + item->partial, item->size - item->partial);
 	if (rcode < 0) {
 		my->partial = NULL;
 		my->blocked = false;
@@ -379,6 +423,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	item->size = size;
 	item->partial = 0;
 	item->have_reply = false;
+	item->cancelled = false;
 
 	now = fr_time();
 	fr_retry_init(&item->retry, now, &my->retry_config);
@@ -496,13 +541,15 @@ static int8_t _entry_cmp(void const *one, void const *two)
 
 /** Cancel one item.
  *
- *  @todo - add a "cancel oldest thing" so we can re-use IDs before we've received all replies.
+ *  @todo - add a "cancel oldest packet API" so we can re-use IDs before we've received all replies.
  */
 int fr_bio_retry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 {
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 
 	fr_assert(item->buffer != NULL);
+
+	if (item->cancelled) return 0;
 
 	/*
 	 *	If we've written a partial packet, then we cannot cancel this item.
@@ -511,13 +558,35 @@ int fr_bio_retry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	 */
 	if (my->partial == item) {
 		if (item->partial > 0) {
-			fr_strerror_const("Cannot cancel partial packet");
-			return -1;
+			uint8_t *ptr;
+			size_t size;
+
+			size = item->size - item->partial;
+
+			if (!my->cancelled.start) {
+				ptr = talloc_array(my, uint8_t, size);
+				if (!ptr) return -1;
+
+				fr_bio_buf_init(&my->cancelled, ptr, size);
+
+			} else if (size > (size_t) (my->cancelled.end - my->cancelled.start)) {
+				ptr = talloc_array(my, uint8_t, size);
+				if (!ptr) return -1;
+
+				talloc_free(my->cancelled.start);
+				fr_bio_buf_init(&my->cancelled, ptr, size);
+			}
+
+			fr_assert(fr_bio_buf_used(&my->cancelled) == 0);
+
+			fr_bio_buf_write(&my->cancelled, item->buffer + item->partial, size);
+
+			my->bio.write = fr_bio_retry_write_cancelled;
+		} else {
+			my->bio.write = fr_bio_retry_write;
 		}
 
 		my->partial = NULL;
-		my->blocked = false;
-		my->bio.write = fr_bio_retry_write;
 	}
 
 	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
@@ -558,8 +627,8 @@ static int fr_bio_retry_destructor(fr_bio_retry_t *my)
  */
 fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 			     fr_bio_retry_sent_t sent,
-			     fr_bio_retry_rewrite_t rewrite,
 			     fr_bio_retry_response_t response,
+			     fr_bio_retry_rewrite_t rewrite,
 			     fr_bio_retry_release_t release,
 			     fr_bio_retry_config_t const *cfg,
 			     fr_bio_t *next)
