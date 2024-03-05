@@ -106,7 +106,7 @@ fr_bio_t	*fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 				    fr_bio_retry_rewrite_t rewrite,
 				    fr_bio_retry_release_t release,
 				    fr_bio_retry_config_t const *cfg,
-				    fr_bio_t *next) CC_HINT(nonnull(1,3,5,6,7,8));
+				    fr_bio_t *next) CC_HINT(nonnull(1,3,4,6,7,8));
 
 int		fr_bio_retry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx) CC_HINT(nonnull);
 
