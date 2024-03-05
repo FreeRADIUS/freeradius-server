@@ -25,61 +25,49 @@ handles all of these issues simultaneously.
 
 The issues addressed by bios include the following items:
 
-* abstracting TCP versus UDP socket IO
+* be based on _independent blocks_ (e.g. file IO, memory buffers,
+  etc).
 
-* allowing packet-based reads and writes, instead of byte-based
-  * i.e. so that application protocol state machines do not have to
-  * deal with partial packets.
+* be composable, so that blocks can be _chained_ or _unchained_ to
+  oqbtain complex functionality.
 
-* Use protocol-agnostic memory buffers to track partial reads and
-  partial writes.
+* be _abstracted_ so that the application using the bio has little
+  need to understand the difference between the individual blocks
 
-* allowing "written" data to be cancelled or "unwritten".  Packets
-  which have been written to the bio, but not yet to the network can
-  be cancelled at any time.  The data then disappears from the bio,
-  and is never written to the network.
+* be _declarative_ where possible, so an application can declare a
+  data structure saying "this is the kind of bio I want", and the
+  underlying bio "alloc" or "create" API does the right thing.
 
-* allowing chaining, so that an application can write RADIUS packets
-  to a bio, and then have those packets go through a TLS
-  transformation, and then out a TCP socket.
+* be _callback_ oriented, so that the bio calls the application to do
+  application-specific things, and the bio handles the abstractions
 
-* Chaining also allows applications to selectively add per-chain
-  functionality, without affecting the producer or consumer of data.
+* be _state machine_ oriented, so that inside of the bio, the
+  functionality is broken into a series of small functions.  If the
+  bio is in a different state, it changes its internal function
+  pointers to manage that state.  This approach is better than large
+  functions with masses of if / then / else
 
-* allowing unchaining, so that we can have a bio say "I'm done, and no
-  longer needed".  This happens for example when we have a connection
-  from haproxy.  The first ~128 bytes of a TCP connection are the
-  original src/dst ip/port.  The data after that is just the TLS
-  transport.  The haproxy layer needs to be able to intercept and read
-  that data, and then remove itself from the chain of bios.
+* be _exposed_ so that the individual blocks do not hide everything
+  from the application.  Each block exports an info / state structure.
+  The application can example the internal state of the block.  This
+  approach stops the M*N API explosion typically seen when every block
+  has to implement all of the get/set functionality of every other
+  block.
 
-* abstraction, so that the application can be handed a bio, and use
-  it.  The underlying bio might be UDP, TCP, TLS, etc.  The
-  application does not know, and can behave identically for all
-  situations.  There are some limitations, of course.  Something has
-  to create the bios and their respective chains.  But once a "RADIUS"
-  bio, has been created, the RADIUS application can read and write
-  packets to it without worrying about underlying issues of UDP vs
-  TCP, TLS vs clear-text, dedup, etc.
+* Be _modifiable_ so that blocks can be chained / unchained on the
+  fly.  This capability allows applications to add / delete things
+  like dynamic filters (haproxy or dynamic client) on the fly.
 
-* simplicity.  Any transport-specific function knows only about that
-  transport, and it's own bio.  It does not need to know about other
-  bios (unless it needs them, as with TLS -> TCP).  The function does
-  not know about packets or protocols.  We should be able to use the
-  same basic UDP/TCP network bios for most protocols.  Or if we
-  cannot, the duplicated code should be trivial, and little more than
-  `read()` and some checks for error conditions (EOF, blocked, etc.)
+* Allow for a _separation_ of application issues (basic bio
+  read/write) from protocol state machine issues (packet retransmit,
+  etc.)  The application largely just calls read / write to the bio,
+  any bio modifications are done by the protocol state machine.
 
-* If the caller needs to do something with a particular bio, that bio
-  will expose an API specific to that bio.  There is no reason to copy
-  that status back up the bio chain.  This also means that the caller
-  often needs to cache the multiple bios, which is fine.
-
-* asynchronous at its core.  Anything can block at any time.  There
+* be _asynchronous_ where possible.  Anything can block at any time.  There
   are callbacks if necessary.
 
-* no run-time memory allocations for bio operations.  Everything
-  operates on pre-allocated structures
+* _avoid_ run-time memory allocations for bio operations.  Everything
+  should operate on pre-allocated structures
 
 * O(1) operations where possible.
 
@@ -87,9 +75,9 @@ The issues addressed by bios include the following items:
   it needs to do.  It exposes APIs for the caller (who must know what
   it is).  It has its own callbacks to modify its operation.
 
-* not thread-safe.  Use locks, people.
+* the bios do _not_ need to be thread-safe.
 
-There are explicit _non-goals_ for the bio API.  These non-goals are
+There are some explicit _non-goals_ for the bio API.  These non-goals are
 issues which are outside of the scope of bios, such as:
 
 * As an outcome of simplicity, there are no bio-specific wrappers for
@@ -107,7 +95,7 @@ issues which are outside of the scope of bios, such as:
   state of the bio.
 
 * eventing and timers.  The bios can allow an underlying file
-  descriptor to be used, but the bio layer itself runs nothing more
+  descriptor to be used, but the bio layers usually run nothing more
   than state-specific callbacks, defined on a per-bio basis.
 
 * decoding / encoding packet contents.  This is handled by dbuffs,
@@ -115,3 +103,4 @@ issues which are outside of the scope of bios, such as:
   and enforce nested bounds on packets, nested attributes, etc.  But
   dbuffs have no concept of multiple packets, deduplication, file
   descriptors, etc.
+
