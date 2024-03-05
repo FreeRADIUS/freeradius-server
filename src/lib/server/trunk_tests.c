@@ -1512,7 +1512,7 @@ static void test_connection_levels_max(void)
 				};
 	test_proto_request_t	*preq_a, *preq_b, *preq_c, *preq_d, *preq_e;
 	fr_trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL, *treq_d = NULL, *treq_e = NULL;
-	int			completed = 0, next_prio = 0;
+	int			next_prio = 0;
 
 	DEBUG_LVL_SET;
 
@@ -1606,39 +1606,15 @@ static void test_connection_levels_max(void)
 	fr_event_corral(el, test_time_base, false);
 	fr_event_service(el);
 
-	/*
-	 *	Timing issues sometimes cause the requests to be sent out
-	 *	of sequence - so check for two being completed, and those two
-	 *	being fully handled.
-	 */
-	if (preq_a->completed) {
-		TEST_CHECK(preq_a->failed == false);
-		TEST_CHECK(preq_a->cancelled == false);
-		TEST_CHECK(preq_a->freed == true);
-		completed++;
-	}
+	TEST_CHECK(preq_a->completed == true);
+	TEST_CHECK(preq_a->failed == false);
+	TEST_CHECK(preq_a->cancelled == false);
+	TEST_CHECK(preq_a->freed == true);
 
-	if (preq_b->completed) {
-		TEST_CHECK(preq_b->failed == false);
-		TEST_CHECK(preq_b->cancelled == false);
-		TEST_CHECK(preq_b->freed == true);
-		completed++;
-	}
-
-	if (preq_c->completed) {
-		TEST_CHECK(preq_c->failed == false);
-		TEST_CHECK(preq_c->cancelled == false);
-		TEST_CHECK(preq_c->freed == true);
-		completed++;
-	}
-
-	if (preq_d->completed) {
-		TEST_CHECK(preq_d->failed == false);
-		TEST_CHECK(preq_d->cancelled == false);
-		TEST_CHECK(preq_d->freed == true);
-		completed++;
-	}
-	TEST_CHECK(completed == 2);
+	TEST_CHECK(preq_b->completed == true);
+	TEST_CHECK(preq_b->failed == false);
+	TEST_CHECK(preq_b->cancelled == false);
+	TEST_CHECK(preq_b->freed == true);
 
 	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_PENDING), 2);
 	TEST_CHECK_LEN(fr_trunk_request_count_by_state(trunk, FR_TRUNK_CONN_ALL, FR_TRUNK_REQUEST_STATE_BACKLOG), 0);
