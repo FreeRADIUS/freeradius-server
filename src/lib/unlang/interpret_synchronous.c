@@ -101,6 +101,8 @@ static void _request_done_detached(request_t *request, UNUSED rlm_rcode_t rcode,
 static void _request_detach(request_t *request, UNUSED void *uctx)
 {
 	RDEBUG3("Synchronous request detached");
+
+	if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
 }
 
 /** Request has been stopped

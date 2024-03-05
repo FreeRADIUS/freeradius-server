@@ -46,6 +46,7 @@
  *
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
+
 RCSID("$Id$")
 
 #define LOG_PREFIX worker->name
@@ -59,6 +60,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/base.h>
 #include <freeradius-devel/unlang/call.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/minmax_heap.h>
 
@@ -1197,17 +1199,22 @@ static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t
  */
 static void _worker_request_detach(request_t *request, UNUSED void *uctx)
 {
-//	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
+	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
 
-	RDEBUG3("Request is detached");
-	fr_assert(request_is_detached(request));
+	if (request_is_detachable(request)) {
+		/*
+		*	End the time tracking...  We don't track detached requests,
+		*	because they don't contribute for the time consumed by an
+		*	external request.
+		*/
+		worker_request_time_tracking_end(worker, request, fr_time());
 
-	/*
-	 *	End the time tracking...  We don't track detached requests,
-	 *	because they don't contribute for the time consumed by an
-	 *	external request.
-	 */
-//	worker_request_time_tracking_end(worker, request, fr_time());
+		if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
+
+		RDEBUG3("Request is detached");
+	} else {
+		fr_assert_msg(0, "Request is not detachable");
+	}
 
 	return;
 }

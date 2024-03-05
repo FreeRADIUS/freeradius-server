@@ -1108,9 +1108,8 @@ void unlang_interpret_request_detach(request_t *request)
 	if (!request_is_detachable(request)) return;
 
 	intp = stack->intp;
-	intp->funcs.detach(request, intp->uctx);
 
-	if (request_detach(request) < 0) RPEDEBUG("Failed detaching request");
+	intp->funcs.detach(request, intp->uctx);
 }
 
 /** Send a signal (usually stop) to a request
