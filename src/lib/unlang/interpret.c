@@ -27,6 +27,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/unlang/xlat.h>
+#include <freeradius-devel/util/time.h>
 
 #include "interpret_priv.h"
 #include "module_priv.h"
@@ -1435,6 +1437,9 @@ static xlat_action_t unlang_cancel_never_run(UNUSED TALLOC_CTX *ctx, UNUSED fr_d
 
 /** Allows a request to dynamically alter its own lifetime
  *
+ * %cancel(<timeout>)
+ *
+ * If timeout is 0, then the request is immediately cancelled.
  */
 static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					UNUSED xlat_ctx_t const *xctx,
@@ -1485,7 +1490,9 @@ static xlat_action_t unlang_cancel_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	 *	We call unlang_xlat_yield to keep the interpreter happy
 	 *	as it expects to see a resume function set.
 	 */
-	if (!timeout) return unlang_xlat_yield(request, unlang_cancel_never_run, NULL, 0, NULL);
+	if (!timeout || fr_time_delta_eq(timeout->vb_time_delta, fr_time_delta_from_sec(0))) {
+		return unlang_xlat_yield(request, unlang_cancel_never_run, NULL, 0, NULL);
+	}
 
 	if (ev_p_og) {
 		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
