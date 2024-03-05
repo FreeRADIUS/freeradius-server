@@ -164,7 +164,7 @@ static ssize_t fr_bio_retry_write_cancelled(fr_bio_t *bio, void *packet_ctx, con
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
 
-	rcode = next->write(next, NULL, my->cancelled.write, used);
+	rcode = next->write(next, NULL, my->cancelled.read, used);
 	if (rcode <= 0) return rcode;
 
 	if ((size_t) rcode == used) {
@@ -177,7 +177,7 @@ static ssize_t fr_bio_retry_write_cancelled(fr_bio_t *bio, void *packet_ctx, con
 	/*
 	 *	We didn't write any of the partial packet, so we can't write out this one, either.
 	 */
-	my->cancelled.write += rcode;
+	my->cancelled.read += rcode;
 	return 0;
 }
 
@@ -578,6 +578,7 @@ int fr_bio_retry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 			}
 
 			fr_assert(fr_bio_buf_used(&my->cancelled) == 0);
+			fr_assert(my->cancelled.read == my->cancelled.start);
 
 			fr_bio_buf_write(&my->cancelled, item->buffer + item->partial, size);
 
