@@ -1,0 +1,21 @@
+# Cancel in subrequest
+subrequest Access-Request {
+	&parent.Tmp-String-0 := 'testing'
+
+	# Immediately cancel the subrequest
+	%cancel(0)
+
+	&parent.Tmp-String-1 := 'should not see me'
+
+	# We should've been cancelled here
+	test_fail
+}
+
+if (!(&Tmp-String-0 == 'testing')) {
+	test_fail
+}
+
+if (&Tmp-String-1 == 'should not see me') {
+	test_fail
+}
+success
