@@ -16,6 +16,7 @@ typedef struct {
 	bool			freed;			//!< Seen by the free callback.
 	bool			signal_partial;		//!< Muxer should signal that this request is partially written.
 	bool			signal_cancel_partial;	//!< Muxer should signal that this request is partially cancelled.
+	int			priority;		//!< Priority of request
 } test_proto_request_t;
 
 typedef struct {
@@ -345,12 +346,19 @@ static fr_connection_t *test_setup_socket_pair_connection_alloc(fr_trunk_connect
 				   log_prefix, tconn);
 }
 
+static int8_t test_preq_cmp(void const *a, void const *b)
+{
+	test_proto_request_t const	*preq_a = a;
+	test_proto_request_t const	*preq_b = b;
+	return CMP(preq_a->priority, preq_b->priority);
+}
+
 static fr_trunk_t *test_setup_trunk(TALLOC_CTX *ctx, fr_event_list_t *el, fr_trunk_conf_t *conf, bool with_cancel_mux, void *uctx)
 {
 	fr_trunk_io_funcs_t	io_funcs = {
 					.connection_alloc = test_setup_socket_pair_connection_alloc,
 					.connection_notify = _conn_notify,
-					.request_prioritise = fr_pointer_cmp,
+					.request_prioritise = test_preq_cmp,
 					.request_mux = test_mux,
 					.request_demux = test_demux,
 					.request_cancel = test_request_cancel,
@@ -1486,6 +1494,7 @@ do { \
 	treq_##_id = fr_trunk_request_alloc(trunk, NULL); \
 	preq_##_id = talloc_zero(ctx, test_proto_request_t); \
 	preq_##_id->treq = treq_##_id; \
+	preq_##_id->priority = next_prio++; \
 } while (0)
 
 static void test_connection_levels_max(void)
@@ -1503,7 +1512,7 @@ static void test_connection_levels_max(void)
 				};
 	test_proto_request_t	*preq_a, *preq_b, *preq_c, *preq_d, *preq_e;
 	fr_trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL, *treq_d = NULL, *treq_e = NULL;
-	int			completed = 0;
+	int			completed = 0, next_prio = 0;
 
 	DEBUG_LVL_SET;
 
@@ -1689,6 +1698,7 @@ static void test_connection_levels_alternating_edges(void)
 	test_proto_request_t	*preq_a, *preq_b, *preq_c;
 	fr_trunk_request_t	*treq_a = NULL, *treq_b = NULL, *treq_c = NULL;
 	test_proto_stats_t	stats;
+	int			next_prio = 0;
 
 	DEBUG_LVL_SET;
 
