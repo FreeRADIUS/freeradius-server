@@ -1361,7 +1361,11 @@ recv Accounting-Request {
 	#  The packet should have a timestamp.  If not, use "now" from the server.
 	#
 	if (!&Event-Timestamp) {
-		&request.Event-Timestamp := %{%l - &Acct-Delay-Time}
+		&request.Event-Timestamp := %{%l() - &Acct-Delay-Time}
+
+	} elsif (!&Acct-Delay-Time && &request.Event-Timestamp && (&request.Event-Timestamp < %l())) {
+		&request.Acct-Delay-Time := %{%l() - &Event-Timestamp}
+
 	}
 
 	#
