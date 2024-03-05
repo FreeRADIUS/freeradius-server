@@ -148,26 +148,26 @@ static int find_next_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 		 *  Round up to the next nearest hour.
 		 */
 		tm->tm_hour += num;
-		inst->reset_time = fr_time_from_sec(mktime(tm));
+		inst->reset_time = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round up to the next nearest day.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday += num;
-		inst->reset_time = fr_time_from_sec(mktime(tm));
+		inst->reset_time = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round up to the next nearest week.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday += (7 - tm->tm_wday) +(7*(num-1));
-		inst->reset_time = fr_time_from_sec(mktime(tm));
+		inst->reset_time = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon += num;
-		inst->reset_time = fr_time_from_sec(mktime(tm));
+		inst->reset_time = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "never") == 0) {
 		inst->reset_time = fr_time_wrap(0);
 	} else {
@@ -216,26 +216,26 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, fr_time_t now)
 		 *  Round down to the prev nearest hour.
 		 */
 		tm->tm_hour -= num - 1;
-		inst->last_reset = fr_time_from_sec(mktime(tm));
+		inst->last_reset = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "daily") == 0 || last == 'd') {
 		/*
 		 *  Round down to the prev nearest day.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday -= num - 1;
-		inst->last_reset = fr_time_from_sec(mktime(tm));
+		inst->last_reset = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "weekly") == 0 || last == 'w') {
 		/*
 		 *  Round down to the prev nearest week.
 		 */
 		tm->tm_hour = 0;
 		tm->tm_mday -= tm->tm_wday +(7*(num-1));
-		inst->last_reset = fr_time_from_sec(mktime(tm));
+		inst->last_reset = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "monthly") == 0 || last == 'm') {
 		tm->tm_hour = 0;
 		tm->tm_mday = 1;
 		tm->tm_mon -= num - 1;
-		inst->last_reset = fr_time_from_sec(mktime(tm));
+		inst->last_reset = fr_time_from_sec(inst->utc ? timegm(tm) : mktime(tm));
 	} else if (strcmp(inst->reset, "never") == 0) {
 		inst->reset_time = fr_time_wrap(0);
 	} else {
