@@ -38,6 +38,7 @@ SOURCES	:= \
 	tmpl_dcursor.c \
 	tmpl_eval.c \
 	tmpl_tokenize.c \
+	time_tracking.c \
 	trigger.c \
 	trunk.c \
 	users_file.c \

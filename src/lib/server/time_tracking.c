@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/io/time_tracking.h>
+#include <freeradius-devel/server/time_tracking.h>
 
 fr_table_num_ordered_t fr_time_tracking_state_table[] = {
 	{ L("STOPPED"),		FR_TIME_TRACKING_STOPPED	},

@@ -16,7 +16,7 @@
  */
 #include <freeradius-devel/io/base.h>
 #include <freeradius-devel/io/application.h>
-#include <freeradius-devel/io/time_tracking.h>
+#include <freeradius-devel/server/time_tracking.h>
 
 /** Describes a path data takes to/from the wire to/from fr_pair_ts
  *
