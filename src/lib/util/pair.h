@@ -673,7 +673,7 @@ int		fr_pair_cmp(fr_pair_t const *a, fr_pair_t const *b);
 int		fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b) CC_HINT(nonnull);
 
 /* Filtering */
-void		fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2]) CC_HINT(nonnull(2));
+void		fr_pair_validate_debug(fr_pair_t const *failed[2]) CC_HINT(nonnull(2));
 
 bool		fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter,
 				 fr_pair_list_t *list) CC_HINT(nonnull(2,3));

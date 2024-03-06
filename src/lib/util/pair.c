@@ -2056,7 +2056,7 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
  * @param ctx a hack until we have thread specific talloc contexts.
  * @param failed pair of attributes which didn't match.
  */
-void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
+void fr_pair_validate_debug(fr_pair_t const *failed[2])
 {
 	fr_pair_t const *filter = failed[0];
 	fr_pair_t const *list = failed[1];

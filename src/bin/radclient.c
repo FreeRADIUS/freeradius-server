@@ -1220,7 +1220,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 			RDEBUG("%s: CoA request passed filter", request->name);
 			stats.passed++;
 		} else {
-			fr_pair_validate_debug(request, failed);
+			fr_pair_validate_debug(failed);
 			REDEBUG("%s: CoA Request for failed filter", request->name);
 			stats.failed++;
 		}
@@ -1414,7 +1414,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 			RDEBUG("%s: Response passed filter", request->name);
 			stats.passed++;
 		} else {
-			fr_pair_validate_debug(request, failed);
+			fr_pair_validate_debug(failed);
 			REDEBUG("%s: Response for failed filter", request->name);
 			stats.failed++;
 		}
