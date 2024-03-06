@@ -370,7 +370,7 @@ int fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, 
 	return 0;
 }
 
-int fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list)
+int fr_dhcpv4_packet_encode(fr_packet_t *packet, fr_pair_list_t *list)
 {
 	ssize_t		len;
 	fr_pair_t	*vp;
@@ -398,9 +398,9 @@ int fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list)
 	return 0;
 }
 
-fr_radius_packet_t *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len)
+fr_packet_t *fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len)
 {
-	fr_radius_packet_t *packet;
+	fr_packet_t *packet;
 	uint32_t	magic;
 	uint8_t const	*code;
 

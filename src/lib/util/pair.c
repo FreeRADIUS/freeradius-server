@@ -266,7 +266,7 @@ fr_pair_t *fr_pair_root_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
  *
  * @note Will duplicate any unknown attributes passed as the da.
  *
- * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_packet_t
  * @param[in] da	Specifies the dictionary attribute to build the #fr_pair_t from.
  *			If unknown, will be duplicated, with the memory being bound to
  *      		the pair.
@@ -356,7 +356,7 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
  * Which type of #fr_dict_attr_t the #fr_pair_t was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
- * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t.
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_packet_t.
  * @param[in] parent	of the attribute being allocated (usually a dictionary or vendor).
  * @param[in] attr	number.
  * @return
@@ -392,7 +392,7 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
  *
  *  Unlike fr_pair_afrom_da_nested(), this function starts off at an intermediate ctx and list.
  *
- * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t.
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_packet_t.
  * @param[out] list	where the created pair is supposed to go.
  * @param[in] da	the da for the pair to create
  * @param[in] start	the starting depth. If start != 0, we must have ctx==vp at that depth, and list==&vp->vp_group
@@ -452,7 +452,7 @@ fr_pair_t *fr_pair_afrom_da_depth_nested(TALLOC_CTX *ctx, fr_pair_list_t *list, 
  *  This function is similar to fr_pair_update_by_da_parent(), except that function requires
  *  a parent pair, and this one takes a separate talloc ctx and pair list.
  *
- * @param[in] ctx	for allocated memory, usually a pointer to a #fr_radius_packet_t.
+ * @param[in] ctx	for allocated memory, usually a pointer to a #fr_packet_t.
  * @param[out] list	where the created pair is supposed to go.
  * @param[in] da	the da for the pair to create
  * @return

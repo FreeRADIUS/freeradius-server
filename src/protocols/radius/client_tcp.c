@@ -31,7 +31,7 @@ RCSID("$Id$")
 /**  Allocate an ID, and write one packet.
  *
  */
-static int fr_radius_client_tcp_bio_write(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t *packet, fr_pair_list_t *list)
+static int fr_radius_client_tcp_bio_write(fr_bio_packet_t *bio, void *packet_ctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 

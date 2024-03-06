@@ -57,7 +57,7 @@ static char const *ldap_sync_message_types[FR_LDAP_SYNC_CODE_MAX] = {
 	"Cookie-Store-Response",
 };
 
-static void ldap_sync_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
+static void ldap_sync_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_list_t *list, bool received)
 {
 
 	if (!packet) return;

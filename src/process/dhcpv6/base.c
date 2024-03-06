@@ -287,7 +287,7 @@ static const virtual_server_compile_t compile_list[] = {
 /*
  *	Debug the packet if requested.
  */
-static void dhcpv6_packet_debug(request_t *request, fr_radius_packet_t const *packet, fr_pair_list_t const *list, bool received)
+static void dhcpv6_packet_debug(request_t *request, fr_packet_t const *packet, fr_pair_list_t const *list, bool received)
 {
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];

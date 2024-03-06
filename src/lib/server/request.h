@@ -223,8 +223,8 @@ struct request_s {
 	char const		*component; 	//!< Section the request is in.
 	char const		*module;	//!< Module the request is currently being processed by.
 
-	fr_radius_packet_t	*packet;	//!< Incoming request.
-	fr_radius_packet_t	*reply;		//!< Outgoing response.
+	fr_packet_t	*packet;	//!< Incoming request.
+	fr_packet_t	*reply;		//!< Outgoing response.
 
 	fr_client_t		*client;	//!< The client that originally sent us the request.
 

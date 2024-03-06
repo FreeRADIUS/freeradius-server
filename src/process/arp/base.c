@@ -160,7 +160,7 @@ static fr_process_state_t const process_state[] = {
 /*
  *	Debug the packet if requested.
  */
-static void arp_packet_debug(request_t *request, fr_radius_packet_t const *packet, fr_pair_list_t const *list, bool received)
+static void arp_packet_debug(request_t *request, fr_packet_t const *packet, fr_pair_list_t const *list, bool received)
 {
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;

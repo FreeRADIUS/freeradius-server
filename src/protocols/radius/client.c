@@ -82,7 +82,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	return my;
 }
 
-int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, UNUSED void *packet_ctx, fr_radius_packet_t *packet, fr_pair_list_t *list)
+int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, UNUSED void *packet_ctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
 	ssize_t slen;
 
@@ -131,13 +131,13 @@ static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_PROTOCOL_ERROR]		= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
 };
 
-int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, UNUSED void *packet_ctx, fr_radius_packet_t **packet_p,
+int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, UNUSED void *packet_ctx, fr_packet_t **packet_p,
 				 TALLOC_CTX *ctx, fr_pair_list_t *out)
 {
 	int code;
 	ssize_t slen;
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
-	fr_radius_packet_t *packet, *reply;
+	fr_packet_t *packet, *reply;
 	fr_bio_fd_packet_ctx_t fd_ctx;
 
 	slen = fr_bio_read(my->common.bio, &fd_ctx, &my->buffer, sizeof(my->buffer));
@@ -227,7 +227,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, UNUSED void *packet_ctx, 
 /** Release (or cancel) an outgoing packet.
  *
  */
-int fr_radius_client_fd_bio_release(fr_bio_packet_t *bio, UNUSED void *packet_ctx, fr_radius_packet_t *packet)
+int fr_radius_client_fd_bio_release(fr_bio_packet_t *bio, UNUSED void *packet_ctx, fr_packet_t *packet)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 

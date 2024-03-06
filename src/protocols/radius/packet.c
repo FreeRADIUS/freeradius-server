@@ -18,7 +18,7 @@
  * $Id$
  *
  * @file protocols/radius/packet.c
- * @brief Functions to deal with fr_radius_packet_t data structures.
+ * @brief Functions to deal with fr_packet_t data structures.
  *
  * @copyright 2000-2017 The FreeRADIUS server project
  */
@@ -49,8 +49,8 @@ typedef struct {
 /** Encode a packet
  *
  */
-ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
-				fr_radius_packet_t const *original, char const *secret)
+ssize_t fr_radius_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
+				fr_packet_t const *original, char const *secret)
 {
 	uint8_t const *original_data;
 	ssize_t slen;
@@ -112,7 +112,7 @@ ssize_t fr_radius_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list
  *	- True on success.
  *	- False on failure.
  */
-bool fr_radius_packet_ok(fr_radius_packet_t *packet, uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
+bool fr_radius_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
 {
 	char host_ipaddr[INET6_ADDRSTRLEN];
 
@@ -136,8 +136,8 @@ bool fr_radius_packet_ok(fr_radius_packet_t *packet, uint32_t max_attributes, bo
 /** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
  *
  */
-int fr_radius_packet_verify(fr_radius_packet_t *packet, fr_radius_packet_t *original, char const *secret)
-{	
+int fr_radius_packet_verify(fr_packet_t *packet, fr_packet_t *original, char const *secret)
+{
 	char		buffer[INET6_ADDRSTRLEN];
 
 	if (!packet->data) return -1;
@@ -157,7 +157,7 @@ int fr_radius_packet_verify(fr_radius_packet_t *packet, fr_radius_packet_t *orig
 /** Sign a previously encoded packet
  *
  */
-int fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *original,
+int fr_radius_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
 			  char const *secret)
 {
 	int ret;
@@ -184,7 +184,7 @@ int fr_radius_packet_sign(fr_radius_packet_t *packet, fr_radius_packet_t const *
 /** Wrapper for recvfrom, which handles recvfromto, IPv6, and all possible combinations
  *
  */
-static ssize_t rad_recvfrom(int sockfd, fr_radius_packet_t *packet, int flags)
+static ssize_t rad_recvfrom(int sockfd, fr_packet_t *packet, int flags)
 {
 	ssize_t			data_len;
 
@@ -205,13 +205,13 @@ static ssize_t rad_recvfrom(int sockfd, fr_radius_packet_t *packet, int flags)
 }
 
 
-/** Receive UDP client requests, and fill in the basics of a fr_radius_packet_t structure
+/** Receive UDP client requests, and fill in the basics of a fr_packet_t structure
  *
  */
-fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma)
+fr_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma)
 {
 	ssize_t			data_len;
-	fr_radius_packet_t	*packet;
+	fr_packet_t	*packet;
 
 	/*
 	 *	Allocate the new request data structure
@@ -294,8 +294,8 @@ fr_radius_packet_t *fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, ui
  *
  * Also attach reply attribute value pairs and any user message provided.
  */
-int fr_radius_packet_send(fr_radius_packet_t *packet, fr_pair_list_t *list,
-			  fr_radius_packet_t const *original, char const *secret)
+int fr_radius_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
+			  fr_packet_t const *original, char const *secret)
 {
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
@@ -352,7 +352,7 @@ int fr_radius_packet_send(fr_radius_packet_t *packet, fr_pair_list_t *list,
 	return udp_send(&packet->socket, 0, packet->data, packet->data_len);
 }
 
-void _fr_radius_packet_log_hex(fr_log_t const *log, fr_radius_packet_t const *packet, char const *file, int line)
+void _fr_radius_packet_log_hex(fr_log_t const *log, fr_packet_t const *packet, char const *file, int line)
 {
 	uint8_t const *attr, *end;
 	char buffer[1024];

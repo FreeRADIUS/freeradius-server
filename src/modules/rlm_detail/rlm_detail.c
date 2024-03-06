@@ -221,7 +221,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
  * @param[in] compat Write out entry in compatibility mode.
  */
 static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request, fr_value_box_t *header,
-			fr_radius_packet_t *packet, fr_pair_list_t *list, bool compat, fr_hash_table_t *ht)
+			fr_packet_t *packet, fr_pair_list_t *list, bool compat, fr_hash_table_t *ht)
 {
 	if (fr_pair_list_empty(list)) {
 		RWDEBUG("Skipping empty packet");
@@ -322,7 +322,7 @@ static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request,
  *	Do detail, compatible with old accounting
  */
 static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-						  fr_radius_packet_t *packet, fr_pair_list_t *list,
+						  fr_packet_t *packet, fr_pair_list_t *list,
 						  bool compat)
 {
 	rlm_detail_env_t	*env = talloc_get_type_abort(mctx->env_data, rlm_detail_env_t);

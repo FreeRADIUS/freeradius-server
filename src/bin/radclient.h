@@ -85,8 +85,8 @@ struct rc_request {
 	fr_pair_t		*password;	//!< Password.Cleartext
 	fr_time_t		timestamp;
 
-	fr_radius_packet_t	*packet;	//!< The outgoing request.
-	fr_radius_packet_t	*reply;		//!< The incoming response.
+	fr_packet_t	*packet;	//!< The outgoing request.
+	fr_packet_t	*reply;		//!< The incoming response.
 
 	fr_pair_list_t		request_pairs;
 	fr_pair_list_t		reply_pairs;

@@ -477,7 +477,7 @@ ssize_t eap_fast_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_session,
 						  fr_tls_session_t *tls_session,
 						  request_t *request,
-						  fr_radius_packet_t *reply, fr_pair_list_t *reply_list)
+						  fr_packet_t *reply, fr_pair_list_t *reply_list)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_REJECT;
 	fr_pair_t			*vp;

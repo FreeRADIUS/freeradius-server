@@ -72,7 +72,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  *	A lie!  It always returns!
  */
 static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
-					fr_radius_packet_t *packet, fr_radius_packet_t *reply)
+					fr_packet_t *packet, fr_packet_t *reply)
 {
 	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sometimes_t);
 	uint32_t		hash;

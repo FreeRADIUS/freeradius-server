@@ -18,7 +18,7 @@
 /**
  * $Id$
  * @file lib/bio/packet.h
- * @brief Binary IO abstractions for #fr_radius_packet_t
+ * @brief Binary IO abstractions for #fr_packet_t
  *
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
@@ -42,7 +42,7 @@ typedef struct fr_bio_packet_s fr_bio_packet_t;
  *	- <0 on error
  *	- 0 for success (*packet_p may still be NULL tho)
  */
-typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *out);
+typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *out);
 
 /** Write a packet and pairs from the network
  *
@@ -54,7 +54,7 @@ typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_r
  *	- <0 on error (EOF, fail, etc,)
  *	- 0 for success
  */
-typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t *packet, fr_pair_list_t *list);
+typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_packet_t *packet, fr_pair_list_t *list);
 
 /** Release an outgoing packet.
  *
@@ -65,7 +65,7 @@ typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_
  *	- <0 on error
  *	- 0 for success
  */
-typedef int (*fr_bio_packet_release_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t *packet);
+typedef int (*fr_bio_packet_release_t)(fr_bio_packet_t *bio, void *packet_ctx, fr_packet_t *packet);
 
 struct fr_bio_packet_s {
 	void			*uctx;		//!< user ctx, caller can manually set it.
@@ -79,17 +79,17 @@ struct fr_bio_packet_s {
 };
 
 
-static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *out)
+static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, void *packet_ctx, fr_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *out)
 {
 	return bio->read(bio, packet_ctx, packet_p, ctx, out);
 }
 
-static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t *packet, fr_pair_list_t *list)
+static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *bio, void *packet_ctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
 	return bio->write(bio, packet_ctx, packet, list);
 }
 
-static inline CC_HINT(nonnull) int fr_bio_packet_release(fr_bio_packet_t *bio, void *packet_ctx, fr_radius_packet_t *packet)
+static inline CC_HINT(nonnull) int fr_bio_packet_release(fr_bio_packet_t *bio, void *packet_ctx, fr_packet_t *packet)
 {
 	if (!bio->release) return 0;
 

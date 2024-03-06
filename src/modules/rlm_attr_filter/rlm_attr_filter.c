@@ -188,7 +188,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_result,
 								module_ctx_t const *mctx, request_t *request,
-								fr_radius_packet_t *packet, fr_pair_list_t *list)
+								fr_packet_t *packet, fr_pair_list_t *list)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_attr_filter_t);
 	fr_pair_list_t	output;

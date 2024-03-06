@@ -160,7 +160,7 @@ typedef struct {
 int8_t		fr_dhcpv4_attr_cmp(void const *a, void const *b);
 
 bool		fr_dhcpv4_ok(uint8_t const *data, ssize_t data_len, uint8_t *message_type, uint32_t *xid);
-fr_radius_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
+fr_packet_t	*fr_dhcpv4_packet_alloc(uint8_t const *data, ssize_t data_len);
 bool 		fr_dhcpv4_is_encodable(void const *item, void const *uctx);
 void		*fr_dhcpv4_next_encodable(fr_dlist_head_t *list, void *to_eval, void *uctx);
 ssize_t		fr_dhcpv4_encode(uint8_t *buffer, size_t buflen, dhcp_packet_t *original, int code, uint32_t xid, fr_pair_list_t *vps);
@@ -192,7 +192,7 @@ uint8_t const	*fr_dhcpv4_packet_get_option(dhcp_packet_t const *packet, size_t p
 int		fr_dhcpv4_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 uint8_t const *data, size_t data_len, unsigned int *code);
 
-int		fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list);
+int		fr_dhcpv4_packet_encode(fr_packet_t *packet, fr_pair_list_t *list);
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 /*
@@ -202,10 +202,10 @@ int		fr_dhcpv4_packet_encode(fr_radius_packet_t *packet, fr_pair_list_t *list);
 int		fr_dhcpv4_raw_socket_open(struct sockaddr_ll *p_ll, int iface_index);
 
 int		fr_dhcpv4_raw_packet_send(int sockfd, struct sockaddr_ll *p_ll,
-					  fr_radius_packet_t *packet, fr_pair_list_t *list);
+					  fr_packet_t *packet, fr_pair_list_t *list);
 
-fr_radius_packet_t	*fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_ll,
-						  fr_radius_packet_t *request, fr_pair_list_t *list);
+fr_packet_t	*fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_ll,
+						  fr_packet_t *request, fr_pair_list_t *list);
 #endif
 
 /*
@@ -215,16 +215,16 @@ fr_radius_packet_t	*fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *p_
 /*
  *	Use fr_pcap_init and fr_pcap_open to create/open handles.
  */
-fr_radius_packet_t	*fr_dhcpv4_pcap_recv(fr_pcap_t *pcap);
+fr_packet_t	*fr_dhcpv4_pcap_recv(fr_pcap_t *pcap);
 
-int		fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_radius_packet_t *packet);
+int		fr_dhcpv4_pcap_send(fr_pcap_t *pcap, uint8_t *dst_ether_addr, fr_packet_t *packet);
 #endif
 
 /*
  *	udp.c
  */
-fr_radius_packet_t	*fr_dhcpv4_udp_packet_recv(int sockfd);
-int		fr_dhcpv4_udp_packet_send(fr_radius_packet_t *packet);
+fr_packet_t	*fr_dhcpv4_udp_packet_recv(int sockfd);
+int		fr_dhcpv4_udp_packet_send(fr_packet_t *packet);
 
 #ifdef __cplusplus
 }

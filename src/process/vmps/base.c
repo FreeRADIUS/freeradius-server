@@ -162,7 +162,7 @@ static fr_process_state_t const process_state[] = {
 /*
  *	Debug the packet if requested.
  */
-static void vmps_packet_debug(request_t *request, fr_radius_packet_t const *packet, fr_pair_list_t const *list, bool received)
+static void vmps_packet_debug(request_t *request, fr_packet_t const *packet, fr_pair_list_t const *list, bool received)
 {
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];

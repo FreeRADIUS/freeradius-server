@@ -472,7 +472,7 @@ static inline CC_HINT(always_inline) request_t *request_alloc_pool(TALLOC_CTX *c
 					   10,					/* extra */
 					   (UNLANG_FRAME_PRE_ALLOC * UNLANG_STACK_MAX) +	/* Stack memory */
 					   (sizeof(fr_pair_t) * 5) +		/* pair lists and root*/
-					   (sizeof(fr_radius_packet_t) * 2) +	/* packets */
+					   (sizeof(fr_packet_t) * 2) +	/* packets */
 					   128					/* extra */
 					   ));
 	fr_assert(ctx != request);
@@ -717,11 +717,11 @@ void request_global_free(void)
  *	Verify a packet.
  */
 static void packet_verify(char const *file, int line,
-			  request_t const *request, fr_radius_packet_t const *packet, fr_pair_list_t *list, char const *type)
+			  request_t const *request, fr_packet_t const *packet, fr_pair_list_t *list, char const *type)
 {
 	TALLOC_CTX *parent;
 
-	fr_fatal_assert_msg(packet, "CONSISTENCY CHECK FAILED %s[%i]: fr_radius_packet_t %s pointer was NULL",
+	fr_fatal_assert_msg(packet, "CONSISTENCY CHECK FAILED %s[%i]: fr_packet_t %s pointer was NULL",
 			    file, line, type);
 
 	parent = talloc_parent(packet);
@@ -730,7 +730,7 @@ static void packet_verify(char const *file, int line,
 		if (parent) fr_log_talloc_report(parent);
 
 
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%i]: Expected fr_radius_packet_t %s to be parented "
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%i]: Expected fr_packet_t %s to be parented "
 				     "by %p (%s), but parented by %p (%s)",
 				     file, line, type, request, talloc_get_name(request),
 				     parent, parent ? talloc_get_name(parent) : "NULL");

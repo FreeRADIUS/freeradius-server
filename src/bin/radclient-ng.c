@@ -224,7 +224,7 @@ static void openssl3_free(void)
 #define openssl3_free()
 #endif
 
-static int mschapv1_encode(fr_radius_packet_t *packet, fr_pair_list_t *list,
+static int mschapv1_encode(fr_packet_t *packet, fr_pair_list_t *list,
 			   char const *password)
 {
 	unsigned int		i;
@@ -916,7 +916,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	fd_set			set;
 	fr_time_delta_t		our_wait_time;
 	rc_request_t		*request;
-	fr_radius_packet_t	*reply, *packet;
+	fr_packet_t	*reply, *packet;
 	volatile int		max_fd;
 
 #ifdef STATIC_ANALYZER

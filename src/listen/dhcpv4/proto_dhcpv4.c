@@ -193,7 +193,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	fr_io_track_t const *track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const *address = track->address;
 	fr_client_t const *client;
-	fr_radius_packet_t *packet = request->packet;
+	fr_packet_t *packet = request->packet;
 
 	/*
 	 *	Set the request dictionary so that we can do

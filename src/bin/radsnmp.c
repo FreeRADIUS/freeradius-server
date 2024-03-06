@@ -162,9 +162,9 @@ static void rs_signal_stop(UNUSED int sig)
  * @param fd the request will be sent on.
  * @return new request.
  */
-static fr_radius_packet_t *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
+static fr_packet_t *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
 {
-	fr_radius_packet_t *packet;
+	fr_packet_t *packet;
 
 	packet = fr_radius_packet_alloc(conf, true);
 
@@ -654,7 +654,7 @@ do { \
 
 		fr_dcursor_t		cursor;
 		fr_pair_t		*vp;
-		fr_radius_packet_t	*packet;
+		fr_packet_t	*packet;
 		fr_pair_list_t		request_vps;
 
 		/*
@@ -773,7 +773,7 @@ do { \
 		 *	Send the packet
 		 */
 		{
-			fr_radius_packet_t	*reply = NULL;
+			fr_packet_t	*reply = NULL;
 			fr_pair_list_t		reply_vps;
 			ssize_t			rcode;
 

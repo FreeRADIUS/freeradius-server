@@ -99,8 +99,8 @@ fr_pair_list_t *tmpl_list_head(request_t *request, fr_dict_attr_t const *list)
 /** Return the correct TALLOC_CTX to alloc #fr_pair_t in, for a list
  *
  * Allocating new #fr_pair_t in the context of a #request_t is usually wrong.
- * #fr_pair_t should be allocated in the context of a #fr_radius_packet_t, so that if the
- * #fr_radius_packet_t is freed before the #request_t, the associated #fr_pair_t lists are
+ * #fr_pair_t should be allocated in the context of a #fr_packet_t, so that if the
+ * #fr_packet_t is freed before the #request_t, the associated #fr_pair_t lists are
  * freed too.
  *
  * @param[in] request containing the target lists.
@@ -128,20 +128,20 @@ TALLOC_CTX *tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list)
 	return NULL;
 }
 
-/** Resolve a list to the #fr_radius_packet_t holding the HEAD pointer for a #fr_pair_t list
+/** Resolve a list to the #fr_packet_t holding the HEAD pointer for a #fr_pair_t list
  *
- * Returns a pointer to the #fr_radius_packet_t that holds the HEAD pointer of a given list,
+ * Returns a pointer to the #fr_packet_t that holds the HEAD pointer of a given list,
  * for the current #request_t.
  *
  * @param[in] request To resolve list in.
- * @param[in] list #fr_pair_list_t value to resolve to #fr_radius_packet_t.
+ * @param[in] list #fr_pair_list_t value to resolve to #fr_packet_t.
  * @return
- *	- #fr_radius_packet_t on success.
+ *	- #fr_packet_t on success.
  *	- NULL on failure.
  *
  * @see tmpl_pair_list
  */
-fr_radius_packet_t *tmpl_packet_ptr(request_t *request, fr_dict_attr_t const *list)
+fr_packet_t *tmpl_packet_ptr(request_t *request, fr_dict_attr_t const *list)
 {
 	if (list == request_attr_request) return request->packet;
 

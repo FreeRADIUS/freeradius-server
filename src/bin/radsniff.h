@@ -76,7 +76,7 @@ typedef enum {
 } rs_status_t;
 
 typedef void (*rs_packet_logger_t)(uint64_t count, rs_status_t status, fr_pcap_t *handle,
-				   fr_radius_packet_t *packet, fr_pair_list_t *list,
+				   fr_packet_t *packet, fr_pair_list_t *list,
 				   struct timeval *elapsed, struct timeval *latency, bool response, bool body);
 typedef enum {
 #ifdef HAVE_COLLECTDC_H
@@ -176,7 +176,7 @@ typedef struct {
 	uint8_t			*data;			//!< PCAP packet data.
 } rs_capture_t;
 
-/** Wrapper for fr_radius_packet_t
+/** Wrapper for fr_packet_t
  *
  * Allows an event to be associated with a request packet.  This is required because we need to disarm
  * the event timer when a response is received, so we don't erroneously log the response as lost.
@@ -190,11 +190,11 @@ typedef struct {
 	struct timeval		when;			//!< Time when the packet was received, or next time an event
 							//!< is scheduled.
 	fr_pcap_t		*in;			//!< PCAP handle the original request was received on.
-	fr_radius_packet_t	*packet;		//!< The original packet.
+	fr_packet_t	*packet;		//!< The original packet.
 	fr_pair_list_t		packet_vps;
-	fr_radius_packet_t	*expect;		//!< Request/response.
+	fr_packet_t	*expect;		//!< Request/response.
 	fr_pair_list_t		expect_vps;
-	fr_radius_packet_t	*linked;		//!< The subsequent response or forwarded request the packet
+	fr_packet_t	*linked;		//!< The subsequent response or forwarded request the packet
 							//!< was linked against.
 	fr_pair_list_t		link_vps;		//!< fr_pair_ts used to link retransmissions.
 

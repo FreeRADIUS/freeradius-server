@@ -1067,7 +1067,7 @@ void			tmpl_debug(tmpl_t const *vpt) CC_HINT(nonnull);
 
 fr_pair_list_t		*tmpl_list_head(request_t *request, fr_dict_attr_t const *list);
 
-fr_radius_packet_t	*tmpl_packet_ptr(request_t *request, fr_dict_attr_t const *list) CC_HINT(nonnull);
+fr_packet_t	*tmpl_packet_ptr(request_t *request, fr_dict_attr_t const *list) CC_HINT(nonnull);
 
 TALLOC_CTX		*tmpl_list_ctx(request_t *request, fr_dict_attr_t const *list);
 

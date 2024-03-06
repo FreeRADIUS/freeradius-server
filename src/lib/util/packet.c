@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** fr_radius_packet_t alloc/free functions
+/** fr_packet_t alloc/free functions
  *
  * @file src/lib/util/packet.c
  *
@@ -26,20 +26,20 @@ RCSID("$Id$")
 #include <freeradius-devel/util/packet.h>
 #include <freeradius-devel/util/rand.h>
 
-/** Allocate a new fr_radius_packet_t
+/** Allocate a new fr_packet_t
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a request_t.
  * @param new_vector if true a new request authenticator will be generated.
  * @return
- *	- New fr_radius_packet_t.
+ *	- New fr_packet_t.
  *	- NULL on error.
  */
-fr_radius_packet_t *fr_radius_packet_alloc(TALLOC_CTX *ctx, bool new_vector)
+fr_packet_t *fr_radius_packet_alloc(TALLOC_CTX *ctx, bool new_vector)
 {
-	fr_radius_packet_t	*rp;
+	fr_packet_t	*rp;
 
-	rp = talloc_zero(ctx, fr_radius_packet_t);
+	rp = talloc_zero(ctx, fr_packet_t);
 	if (!rp) {
 		fr_strerror_const("out of memory");
 		return NULL;
@@ -51,18 +51,18 @@ fr_radius_packet_t *fr_radius_packet_alloc(TALLOC_CTX *ctx, bool new_vector)
 	return rp;
 }
 
-/** Allocate a new fr_radius_packet_t response
+/** Allocate a new fr_packet_t response
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a request_t.
  * @param packet The request packet.
  * @return
- *	- New fr_radius_packet_t.
+ *	- New fr_packet_t.
  *	- NULL on error.
  */
-fr_radius_packet_t *fr_radius_packet_alloc_reply(TALLOC_CTX *ctx, fr_radius_packet_t *packet)
+fr_packet_t *fr_radius_packet_alloc_reply(TALLOC_CTX *ctx, fr_packet_t *packet)
 {
-	fr_radius_packet_t *reply;
+	fr_packet_t *reply;
 
 	if (!packet) return NULL;
 
@@ -83,12 +83,12 @@ fr_radius_packet_t *fr_radius_packet_alloc_reply(TALLOC_CTX *ctx, fr_radius_pack
 }
 
 
-/** Free a fr_radius_packet_t
+/** Free a fr_packet_t
  *
  */
-void fr_radius_packet_free(fr_radius_packet_t **packet_p)
+void fr_radius_packet_free(fr_packet_t **packet_p)
 {
-	fr_radius_packet_t *packet;
+	fr_packet_t *packet;
 
 	if (!packet_p || !*packet_p) return;
 	packet = *packet_p;

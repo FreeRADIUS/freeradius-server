@@ -196,7 +196,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 /*
  *	Debug the packet if requested.
  */
-void common_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *pairs, bool received)
+void common_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_list_t *pairs, bool received)
 {
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];

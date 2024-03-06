@@ -219,7 +219,7 @@ static const conf_parser_t config[] = {
 /*
  *	Debug the packet if requested.
  */
-static void radius_packet_debug(request_t *request, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received)
+static void radius_packet_debug(request_t *request, fr_packet_t *packet, fr_pair_list_t *list, bool received)
 {
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
 	char if_name[IFNAMSIZ];

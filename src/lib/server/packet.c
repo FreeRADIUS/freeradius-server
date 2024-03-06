@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/** fr_radius_packet_t alloc/free functions
+/** fr_packet_t alloc/free functions
  *
  * @file src/lib/server/packet.c
  *
@@ -76,14 +76,14 @@ static int inet2pairs(TALLOC_CTX *ctx, fr_pair_list_t *list,
 /** Allocate a "Net." struct with src/dst host and port.
  *
  * @param      ctx    The context in which the packet is allocated.
- * @param[in]  list   #fr_pair_list_t value to resolve to #fr_radius_packet_t.
+ * @param[in]  list   #fr_pair_list_t value to resolve to #fr_packet_t.
  * @param[out] packet The request packet.
  *
  * @return
  *	-  0 on success
  *	- <0 on error.
  */
-int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_radius_packet_t const *packet)
+int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_packet_t const *packet)
 {
 	fr_pair_t *vp, *net, *tlv;
 
@@ -103,7 +103,7 @@ int fr_packet_pairs_from_packet(TALLOC_CTX *ctx, fr_pair_list_t *list, fr_radius
 	 *	Net.Dst
 	 */
 	if (fr_pair_find_or_append_by_da(net, &tlv, &net->vp_group, attr_net_dst) < 0) return -1;
-	
+
 	if (inet2pairs(tlv, &tlv->vp_group, attr_net_dst_ip, attr_net_dst_port, &packet->socket.inet.dst_ipaddr, packet->socket.inet.dst_port) < 0) return -1;
 
 	/*
@@ -123,7 +123,7 @@ static void pairs2inet(fr_ipaddr_t *ipaddr, uint16_t *port, fr_pair_list_t const
 
 	vp = fr_pair_find_by_da(list, NULL, attr_ip);
 	if (vp) *ipaddr = vp->vp_ip;
-	
+
 	vp = fr_pair_find_by_da(list, NULL, attr_port);
 	if (vp) *port = vp->vp_uint16;
 }
@@ -133,7 +133,7 @@ static void pairs2inet(fr_ipaddr_t *ipaddr, uint16_t *port, fr_pair_list_t const
  * @param packet	the packet to send
  * @param list		the list to check for Net.*
  */
-void fr_packet_pairs_to_packet(fr_radius_packet_t *packet, fr_pair_list_t const *list)
+void fr_packet_pairs_to_packet(fr_packet_t *packet, fr_pair_list_t const *list)
 {
 	fr_pair_t *net, *tlv;
 

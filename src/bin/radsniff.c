@@ -308,7 +308,7 @@ static void rs_packet_print_csv_header(void)
 }
 
 static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *handle,
-				fr_radius_packet_t *packet, fr_pair_list_t *list,
+				fr_packet_t *packet, fr_pair_list_t *list,
 				UNUSED struct timeval *elapsed, struct timeval *latency, UNUSED bool response,
 				bool body)
 {
@@ -382,7 +382,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 }
 
 static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t *handle,
-				  fr_radius_packet_t *packet, fr_pair_list_t *list,
+				  fr_packet_t *packet, fr_pair_list_t *list,
 				  struct timeval *elapsed, struct timeval *latency, bool response, bool body)
 {
 	char buffer[2048];
@@ -477,7 +477,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 }
 
 static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t status, UNUSED fr_pcap_t *handle,
-				  fr_radius_packet_t *packet, fr_pair_list_t *list,
+				  fr_packet_t *packet, fr_pair_list_t *list,
 				  UNUSED struct timeval *elapsed, UNUSED struct timeval *latency, bool response, bool body)
 {
 	fr_log_t output_file;
@@ -528,7 +528,7 @@ static void rs_packet_save_in_output_dir(uint64_t count, UNUSED rs_status_t stat
 }
 
 static inline void rs_packet_print(rs_request_t *request, uint64_t count, rs_status_t status, fr_pcap_t *handle,
-				   fr_radius_packet_t *packet, fr_pair_list_t *list,
+				   fr_packet_t *packet, fr_pair_list_t *list,
 				   struct timeval *elapsed, struct timeval *latency,
 				   bool response, bool body)
 {
@@ -1283,7 +1283,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	static uint64_t		captured = 0;
 
 	rs_status_t		status = RS_NORMAL;	/* Any special conditions (RTX, Unlinked, ID-Reused) */
-	fr_radius_packet_t	*packet;		/* Current packet were processing */
+	fr_packet_t	*packet;		/* Current packet were processing */
 	rs_request_t		*original = NULL;
 	fr_pair_list_t		decoded;
 
@@ -1886,7 +1886,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 */
 	} else if (!conf->filter_response && (conf->event_flags & status)) {
 		uint64_t		print_id;
-		fr_radius_packet_t	*print_packet;
+		fr_packet_t	*print_packet;
 		fr_pair_list_t		*print_pair_list;
 
 		if (original) {

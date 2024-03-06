@@ -30,24 +30,24 @@ RCSIDH(list_h, "$Id$")
 #include <stdint.h>
 
 int8_t fr_packet_cmp(void const *a, void const *b);
-void fr_request_from_reply(fr_radius_packet_t *request,
-			     fr_radius_packet_t const *reply);
+void fr_request_from_reply(fr_packet_t *request,
+			     fr_packet_t const *reply);
 
 typedef struct fr_packet_list_s fr_packet_list_t;
 
 fr_packet_list_t *fr_packet_list_create(int alloc_id);
 void fr_packet_list_free(fr_packet_list_t *pl);
-bool fr_packet_list_insert(fr_packet_list_t *pl, fr_radius_packet_t *request_p);
+bool fr_packet_list_insert(fr_packet_list_t *pl, fr_packet_t *request_p);
 
-fr_radius_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_radius_packet_t *request);
-fr_radius_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_radius_packet_t *reply);
+fr_packet_t *fr_packet_list_find(fr_packet_list_t *pl, fr_packet_t *request);
+fr_packet_t *fr_packet_list_find_byreply(fr_packet_list_t *pl, fr_packet_t *reply);
 bool fr_packet_list_yank(fr_packet_list_t *pl,
-			 fr_radius_packet_t *request);
+			 fr_packet_t *request);
 uint32_t fr_packet_list_num_elements(fr_packet_list_t *pl);
 bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
-			    fr_radius_packet_t *request_p, void **pctx);
+			    fr_packet_t *request_p, void **pctx);
 bool fr_packet_list_id_free(fr_packet_list_t *pl,
-			    fr_radius_packet_t *request, bool yank);
+			    fr_packet_t *request, bool yank);
 bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, uint16_t dst_port,
 			      void *ctx);
@@ -55,10 +55,10 @@ bool fr_packet_list_socket_del(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
 bool fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
-fr_radius_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma);
+fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma);
 
 uint32_t fr_packet_list_num_incoming(fr_packet_list_t *pl);
 uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl);
 
-void fr_packet_header_log(fr_log_t const *log, fr_radius_packet_t *packet, bool received);
-void fr_packet_log(fr_log_t const *log, fr_radius_packet_t *packet, fr_pair_list_t *list, bool received);
+void fr_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool received);
+void fr_packet_log(fr_log_t const *log, fr_packet_t *packet, fr_pair_list_t *list, bool received);
