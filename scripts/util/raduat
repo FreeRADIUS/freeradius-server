@@ -13,6 +13,10 @@ OPTIND=1         # Reset in case getopts has been used previously in the shell.
 : ${TESTDIR=$(dirname $0)"/tests"}
 : ${RADCLIENT='radclient'}
 : ${FILTER_SUFFIX='_expected'}
+# What we send back in response to a CoA request
+: ${COA_REPLY_SUFFIX='_coa_reply'}
+# What we expect from a CoA request
+: ${COA_FILTER_SUFFIX='_coa_expected'}
 PATH="$(dirname $0)/bin:${PATH}"
 
 # Initialize our own variables
@@ -70,6 +74,23 @@ function show_help
     echo "For example:"
     echo "  ${TESTDIR}/test000_my_first_test"
     echo "  ${TESTDIR}/test000_my_first_test${FILTER_SUFFIX}"
+    echo
+    echo "It is also possible to specify a CoA reply and filter file."
+    echo "The CoA-Request must be sent to port 3799 on the machine raduat is executing on."
+    echo "The contents of the CoA reply file will be sent back to the RADIUS server."
+    echo "An optional CoA filter file can be specified to check the contents of the CoA request."
+    echo
+    echo "The CoA reply file name must match the test name but with a '${COA_REPLY_SUFFIX}' suffix."
+    echo "The CoA filter file name must match the test name but with a '${COA_FILTER_SUFFIX}' suffix."
+    echo "For example:"
+    echo "  ${TESTDIR}/test000_my_first_test${COA_REPLY_SUFFIX}"
+    echo "  ${TESTDIR}/test000_my_first_test${COA_FILTER_SUFFIX}"
+    echo
+    echo "The following types of tests will be executed serially:"
+    echo "  - Tests without an expected response"
+    echo "  - Tests with CoA replies"
+    echo "  - Tests with CoA filters"
+    echo "  - Tests with \"# serial\" in the first line of the test file"
     echo
     echo "The directory containing the tests may have multiple subdirectories to group the tests."
 }
@@ -214,14 +235,22 @@ if [ "$test_files" != '' ]; then
     tmp=
     for glob in $test_files; do
         # Filter out response files (makes wildcards easier), and expand the globs
-        for file in $(find "${test_path}" -depth -path "*${glob}" -and -not -path "*${FILTER_SUFFIX}" -and '(' -type f -or -type l ')'); do
+        for file in $(find "${test_path}" -depth -path "*${glob}" \
+            -and -not -path "*${FILTER_SUFFIX}" \
+            -and -not -path "*${COA_REPLY_SUFFIX}" \
+            -and -not -path "*${COA_FILTER_SUFFIX}" \
+            -and '(' -type f -or -type l ')'); do
             tmp+="${file} "
         done
     done
     test_files="${tmp}"
 else
     # Lexicographical, depth-first
-    test_files=$(find "$test_path" -depth -path '*test[0-9][0-9][0-9]*' -and -not -path "*${FILTER_SUFFIX}" -and '(' -type f -or -type l ')')
+    test_files=$(find "$test_path" -depth -path '*test[0-9][0-9][0-9]*' \
+                -and -not -path "*${FILTER_SUFFIX}" \
+                -and -not -path "*${COA_REPLY_SUFFIX}" \
+                -and -not -path "*${COA_FILTER_SUFFIX}" \
+                -and '(' -type f -or -type l ')')
     if [ "$test_files" == '' ]; then
         ERROR "No test files found in $test_path"
         exit 64;
@@ -273,18 +302,37 @@ for i in $test_files; do
     fi
 
     expected="${i}${FILTER_SUFFIX}"
+    # We need pairs of requests and responses in the bulk format
     if [ ! -f "$expected" -a ! -L "$expected" ]; then
         DEBUG "$i cannot be parallelised: Can't find 'expected' file"
         file_args+=" -f \"$i\""
         continue
     fi
 
+    # We mostly do this to let radclient produce an error
     if [ ! -r "$expected" ]; then
         INFO "$i cannot be parallelised: 'expected' file not readable"
         file_args+=" -f \"${i}:${expected}\""
         continue
     fi
 
+    # If there's a coa_reply file, then we need to serialise the test
+    # because there's no bulk test format that includes coa_reply
+    coa_reply="${i}${COA_REPLY_SUFFIX}"
+    if [ -f "$coa_reply" -o -L "$coa_reply" ]; then
+        DEBUG "$i cannot be parallelised: Found CoA Reply"
+
+        # We also have a filter
+        coa_filter="${i}${COA_FILTER_SUFFIX}"
+        if [ -f "$coa_filter" -o -L "$coa_filter" ]; then
+            serial_file_args+=" -f \"${i}:${expected}:${coa_reply}:${coa_filter}\""
+        else
+            serial_file_args+=" -f \"${i}:${expected}:${coa_reply}\""
+        fi
+        continue
+    fi
+
+    # If the test file is marked as serial only, then we need to serialise the test
     if head -n 1 "$i" | grep -i -E '^#\s*serial' > /dev/null; then
         DEBUG "$i marked as serial only"
         serial_file_args+=" -f \"${i}:${expected}\""
