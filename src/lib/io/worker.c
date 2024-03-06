@@ -1199,7 +1199,7 @@ static void _worker_request_done_detached(request_t *request, UNUSED rlm_rcode_t
 /** Make us responsible for running the request
  *
  */
-static void _worker_request_detach(request_t *request, UNUSED void *uctx)
+static void _worker_request_detach(request_t *request, void *uctx)
 {
 	fr_worker_t	*worker = talloc_get_type_abort(uctx, fr_worker_t);
 
