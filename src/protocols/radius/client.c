@@ -52,6 +52,7 @@ static int _radius_client_fd_bio_free(fr_radius_client_fd_bio_t *my)
 
 fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t read_size, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
+	int i;
 	fr_radius_client_fd_bio_t *my;
 	fr_bio_t *fd, *mem;
 
@@ -59,6 +60,16 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 
 	my = talloc_zero(ctx, fr_radius_client_fd_bio_t);
 	if (!my) return NULL;
+
+	/*
+	 *	Allocate tracking for all of the packets.
+	 */
+	for (i = 1; i < FR_RADIUS_CODE_MAX; i++) {
+		if (!cfg->allowed[i]) continue;
+
+		my->codes[i] = fr_radius_id_alloc(my);
+		if (!my->codes[i]) goto fail;
+	}
 
 	my->fd = fd = fr_bio_fd_alloc(my, NULL, fd_cfg, 0);
 	if (!fd) {
@@ -68,7 +79,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	}
 	my->fd = fd;
 
-	my->mem = mem = fr_bio_mem_alloc(ctx, read_size, 2 * 4096, fd);
+	my->mem = mem = fr_bio_mem_alloc(my, read_size, 2 * 4096, fd);
 	if (!mem) goto fail;
 
 	my->cfg = *cfg;
@@ -91,12 +102,16 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, UNUSED void *pa
 	fr_assert(packet->code > 0);
 	fr_assert(packet->code < FR_RADIUS_CODE_MAX);
 
-	/*
-	 *	@todo - Allocate when the socket is opened, so we don't check it for every packet.
-	 */
-	if (!my->codes[packet->code] && !(my->codes[packet->code] = fr_radius_id_alloc(my))) return -1;
+	if (!my->codes[packet->code]) {
+		fr_strerror_printf("Outgoing packet code %s is disallowed by the configuration",
+				   fr_radius_packet_names[packet->code]);
+		return -1;
+	}
 
-	if (fr_radius_code_id_pop(my->codes, packet) < 0) return -1;
+	if (fr_radius_code_id_pop(my->codes, packet) < 0) {
+		fr_strerror_const("All IDs are in use");
+		return -1;
+	}
 
 	/*
 	 *	Encode the packet.
@@ -145,7 +160,6 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, UNUSED void *packet_ctx, 
 
 	if (slen < 0) {
 		fr_assert(slen != fr_bio_error(IO_WOULD_BLOCK));
-
 		return slen;
 	}
 
@@ -177,14 +191,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, UNUSED void *packet_ctx, 
 	}
 
 	/*
-	 *	@todo - if we already have a reply then don't decode
-	 *	it.  Just return "whoops, no packet".
-	 *
-	 *	@todo - provide an API to expire the outgoing packet.
-	 *
-	 *	@todo - provide an API to run timers for a particular packet.
-	 *
-	 *	Any retries, etc. are part of packet->uctx
+	 *	Return the code to the free list.
 	 */
 	if (fr_radius_code_id_push(my->codes, packet) < 0) {
 		fr_assert(0);

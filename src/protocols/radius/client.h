@@ -33,7 +33,9 @@ RCSIDH(radius_client_h, "$Id$")
 typedef struct {
 	fr_radius_bio_verify_t	verify;
 
-	fr_retry_config_t  retry[FR_RADIUS_CODE_MAX];
+	bool		allowed[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
+
+	fr_retry_config_t  retry[FR_RADIUS_CODE_MAX];	//!< default retry configuration for each packet type
 } fr_radius_client_config_t;
 
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg) CC_HINT(nonnull);
