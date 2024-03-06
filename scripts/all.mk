@@ -1,11 +1,21 @@
-install: $(R)$(sbindir)/rc.radiusd $(R)$(sbindir)/raddebug \
-	$(R)$(bindir)/radsqlrelay $(R)$(bindir)/radcrypt $(R)$(bindir)/rlm_sqlippool_tool
+install: \
+	$(R)$(sbindir)/rc.radiusd \
+	$(R)$(sbindir)/raddebug \
+	$(R)$(bindir)/raduat \
+	$(R)$(bindir)/radsqlrelay \
+	$(R)$(bindir)/radcrypt \
+	$(R)$(bindir)/rlm_sqlippool_tool \
+
 
 $(R)$(sbindir)/rc.radiusd: scripts/rc.radiusd
 	${Q}mkdir -p $(dir $@)
 	${Q}$(INSTALL) -m 755 $< $@
 
 $(R)$(sbindir)/raddebug: scripts/util/raddebug
+	${Q}mkdir -p $(dir $@)
+	${Q}$(INSTALL) -m 755 $< $@
+
+$(R)$(bindir)/raduat: scripts/util/raduat
 	${Q}mkdir -p $(dir $@)
 	${Q}$(INSTALL) -m 755 $< $@
 

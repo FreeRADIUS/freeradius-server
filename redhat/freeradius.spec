@@ -1149,6 +1149,7 @@ fi
 /usr/bin/radsniff
 /usr/bin/radsqlrelay
 /usr/bin/radtest
+/usr/bin/raduat
 /usr/bin/radwho
 /usr/bin/radzap
 /usr/bin/smbencrypt
