@@ -171,7 +171,7 @@ typedef struct {
 							///< the same order as they were added.
 } process_radius_request_pairs_t;
 
-#define FR_RADIUS_PROCESS_CODE_VALID(_x) (fr_packet_CODE_VALID(_x) || (_x == FR_RADIUS_CODE_DO_NOT_RESPOND))
+#define FR_RADIUS_PROCESS_CODE_VALID(_x) (FR_RADIUS_PACKET_CODE_VALID(_x) || (_x == FR_RADIUS_CODE_DO_NOT_RESPOND))
 
 #define PROCESS_PACKET_TYPE		fr_packet_code_t
 #define PROCESS_CODE_MAX		FR_RADIUS_CODE_MAX
@@ -880,7 +880,7 @@ RESUME(protocol_error)
 
 	PROCESS_TRACE;
 
-	fr_assert(fr_packet_CODE_VALID(request->reply->code));
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->reply->code));
 
 	/*
 	 *	https://tools.ietf.org/html/rfc7930#section-4
@@ -924,7 +924,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	request->module = NULL;
 	fr_assert(request->dict == dict_radius);
 
-	fr_assert(fr_packet_CODE_VALID(request->packet->code));
+	fr_assert(FR_RADIUS_PACKET_CODE_VALID(request->packet->code));
 
 	UPDATE_STATE(packet);
 

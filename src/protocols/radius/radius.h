@@ -48,7 +48,7 @@
  */
 
 extern char const *fr_packet_names[FR_RADIUS_CODE_MAX];
-#define fr_packet_CODE_VALID(_x) ((_x > 0) && (_x < FR_RADIUS_CODE_MAX))
+#define FR_RADIUS_PACKET_CODE_VALID(_x) ((_x > 0) && (_x < FR_RADIUS_CODE_MAX))
 
 #define AUTH_PASS_LEN (RADIUS_AUTH_VECTOR_LENGTH)
 

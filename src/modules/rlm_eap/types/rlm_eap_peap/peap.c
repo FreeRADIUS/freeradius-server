@@ -289,7 +289,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		 *	Note that we don't do *anything* with the reply
 		 *	attributes.
 		 */
-		if (fr_packet_CODE_VALID(reply->code)) {
+		if (FR_RADIUS_PACKET_CODE_VALID(reply->code)) {
 			RDEBUG2("Got tunneled reply %s", fr_packet_names[reply->code]);
 		} else {
 			RDEBUG2("Got tunneled reply code %i", reply->code);
