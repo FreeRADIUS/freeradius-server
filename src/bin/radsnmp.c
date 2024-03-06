@@ -166,7 +166,7 @@ static fr_packet_t *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
 {
 	fr_packet_t *packet;
 
-	packet = fr_radius_packet_alloc(conf, true);
+	packet = fr_packet_alloc(conf, true);
 
 	packet->code = conf->code;
 
@@ -797,7 +797,7 @@ do { \
 			 *	next call.
 			 */
 			for (i = 0; i < conf->retries; i++) {
-				rcode = fr_radius_packet_send(packet, &request_vps, NULL, conf->secret);
+				rcode = fr_packet_send(packet, &request_vps, NULL, conf->secret);
 				if (rcode < 0) {
 					ERROR("Failed sending: %s", fr_syserror(errno));
 					return EXIT_FAILURE;
@@ -814,7 +814,7 @@ do { \
 					continue;	/* Timeout */
 
 				case 1:
-					reply = fr_radius_packet_recv(packet, packet->socket.fd, UDP_FLAGS_NONE,
+					reply = fr_packet_recv(packet, packet->socket.fd, UDP_FLAGS_NONE,
 								      RADIUS_MAX_ATTRIBUTES, false);
 					if (!reply) {
 						fr_perror("Failed receiving reply");

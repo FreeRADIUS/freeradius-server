@@ -614,9 +614,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+fr_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
-	fr_radius_packet_code_t			code = FR_RADIUS_CODE_ACCESS_REJECT;
+	fr_packet_code_t			code = FR_RADIUS_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp = NULL;
 	fr_dcursor_t		cursor;
@@ -723,7 +723,7 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 	 */
 	chbind = eap_chbind_vp2packet(request, &request->request_pairs);
 	if (chbind) {
-		fr_radius_packet_code_t chbind_code;
+		fr_packet_code_t chbind_code;
 		CHBIND_REQ *req = talloc_zero(request, CHBIND_REQ);
 
 		RDEBUG2("received chbind request");

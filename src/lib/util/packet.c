@@ -35,7 +35,7 @@ RCSID("$Id$")
  *	- New fr_packet_t.
  *	- NULL on error.
  */
-fr_packet_t *fr_radius_packet_alloc(TALLOC_CTX *ctx, bool new_vector)
+fr_packet_t *fr_packet_alloc(TALLOC_CTX *ctx, bool new_vector)
 {
 	fr_packet_t	*rp;
 
@@ -60,13 +60,13 @@ fr_packet_t *fr_radius_packet_alloc(TALLOC_CTX *ctx, bool new_vector)
  *	- New fr_packet_t.
  *	- NULL on error.
  */
-fr_packet_t *fr_radius_packet_alloc_reply(TALLOC_CTX *ctx, fr_packet_t *packet)
+fr_packet_t *fr_packet_alloc_reply(TALLOC_CTX *ctx, fr_packet_t *packet)
 {
 	fr_packet_t *reply;
 
 	if (!packet) return NULL;
 
-	reply = fr_radius_packet_alloc(ctx, false);
+	reply = fr_packet_alloc(ctx, false);
 	if (!reply) return NULL;
 
 	/*
@@ -86,7 +86,7 @@ fr_packet_t *fr_radius_packet_alloc_reply(TALLOC_CTX *ctx, fr_packet_t *packet)
 /** Free a fr_packet_t
  *
  */
-void fr_radius_packet_free(fr_packet_t **packet_p)
+void fr_packet_free(fr_packet_t **packet_p)
 {
 	fr_packet_t *packet;
 

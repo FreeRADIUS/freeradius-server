@@ -1461,7 +1461,7 @@ static ssize_t decode_tlv_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
  *
  *  "length" is AT LEAST the length of this attribute, as we
  *  expect the caller to have verified the data with
- *  fr_radius_packet_ok().  "length" may be up to the length of the
+ *  fr_packet_ok().  "length" may be up to the length of the
  *  packet.
  *
  *  This function will ONLY return -1 on programmer error or OOM.  If
@@ -1660,7 +1660,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 */
 		case FLAG_TAGGED_TUNNEL_PASSWORD:
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			if (!packet_ctx->request_authenticator) goto raw;	
+			if (!packet_ctx->request_authenticator) goto raw;
 
 			if (fr_radius_decode_tunnel_password(buffer, &data_len, packet_ctx) < 0) {
 				goto raw;
@@ -1671,7 +1671,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	Ascend-Send-Secret
 		 *	Ascend-Receive-Secret
 		 */
-		case FLAG_ENCRYPT_ASCEND_SECRET:	
+		case FLAG_ENCRYPT_ASCEND_SECRET:
 			if (!packet_ctx->request_authenticator) goto raw;
 
 			fr_radius_ascend_secret(&FR_DBUFF_TMP(buffer, sizeof(buffer)), p, data_len,

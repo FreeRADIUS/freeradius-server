@@ -141,7 +141,7 @@ extern HIDDEN fr_dict_attr_t const 	*dhcp_option_82;
 		fprintf(stdout, ## __VA_ARGS__); \
 		fprintf(stdout, "\n"); \
 	} \
-	fr_radius_packet_free(&packet); \
+	fr_packet_free(&packet); \
 	return NULL; \
 }
 #endif

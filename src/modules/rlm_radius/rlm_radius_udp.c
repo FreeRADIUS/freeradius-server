@@ -351,8 +351,8 @@ static void CC_HINT(nonnull) status_check_alloc(udp_handle_t *h)
 	talloc_const_free(request->name);
 	request->name = talloc_strdup(request, h->module_name);
 
-	request->packet = fr_radius_packet_alloc(request, false);
-	request->reply = fr_radius_packet_alloc(request, false);
+	request->packet = fr_packet_alloc(request, false);
+	request->reply = fr_packet_alloc(request, false);
 
 	/*
 	 *	Create the VPs, and ignore any errors
@@ -411,7 +411,7 @@ static void CC_HINT(nonnull) status_check_alloc(udp_handle_t *h)
 	u->code = inst->parent->status_check;
 	request->packet->code = u->code;
 
-	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_radius_packet_names[u->code]);
+	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_packet_names[u->code]);
 	log_request_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
 
 	MEM(h->status_r = talloc_zero(request, udp_result_t));
@@ -638,7 +638,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	}
 
 	DEBUG("%s - Sending %s ID %d length %ld over connection %s",
-	      h->module_name, fr_radius_packet_names[u->code], u->id, u->packet_len, h->name);
+	      h->module_name, fr_packet_names[u->code], u->id, u->packet_len, h->name);
 
 	if (encode(h->inst, h->status_request, u, u->id) < 0) {
 	fail:
@@ -651,7 +651,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	slen = write(h->fd, u->packet, u->packet_len);
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %ld over connection %s: %s",
-		      h->module_name, fr_radius_packet_names[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
+		      h->module_name, fr_packet_names[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
 		goto fail;
 	}
 	fr_assert((size_t)slen == u->packet_len);
@@ -1175,7 +1175,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	code = data[0];
 
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
-	       fr_radius_packet_names[code], data[1], data_len, h->name);
+	       fr_packet_names[code], data[1], data_len, h->name);
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
 
 	*response_code = code;
@@ -1772,7 +1772,7 @@ static void request_mux(fr_event_list_t *el,
 			u->id = u->rr->id;
 
 			RDEBUG("Sending %s ID %d length %ld over connection %s",
-			       fr_radius_packet_names[u->code], u->id, u->packet_len, h->name);
+			       fr_packet_names[u->code], u->id, u->packet_len, h->name);
 
 			if (encode(h->inst, request, u, u->id) < 0) {
 				/*
@@ -1793,7 +1793,7 @@ static void request_mux(fr_event_list_t *el,
 			(void) radius_track_entry_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 		} else {
 			RDEBUG("Retransmitting %s ID %d length %ld over connection %s",
-			       fr_radius_packet_names[u->code], u->id, u->packet_len, h->name);
+			       fr_packet_names[u->code], u->id, u->packet_len, h->name);
 		}
 
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
@@ -2001,7 +2001,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		}
 
 		RDEBUG("Sending %s ID %d length %ld over connection %s",
-		       fr_radius_packet_names[u->code], u->id, u->packet_len, h->name);
+		       fr_packet_names[u->code], u->id, u->packet_len, h->name);
 		RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
 
 		h->coalesced[queued].treq = treq;

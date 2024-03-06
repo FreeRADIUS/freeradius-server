@@ -336,9 +336,9 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	}
 
 	/* Status, Type, Interface, Src, Src port, Dst, Dst port, ID */
-	if (FR_RADIUS_PACKET_CODE_VALID(packet->code)) {
+	if (fr_packet_CODE_VALID(packet->code)) {
 		if (fr_sbuff_in_sprintf(&sbuff, "%s,%s,%s,%i,%s,%i,%i,",
-					fr_radius_packet_names[packet->code], handle->name,
+					fr_packet_names[packet->code], handle->name,
 					src, packet->socket.inet.src_port, dst, packet->socket.inet.dst_port, packet->id) < 0) return;
 	} else {
 		if (fr_sbuff_in_sprintf(&sbuff, "%u,%s,%s,%i,%s,%i,%i,", packet->code, handle->name,
@@ -409,9 +409,9 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		if (s <= 0) return;
 	}
 
-	if (FR_RADIUS_PACKET_CODE_VALID(packet->code)) {
+	if (fr_packet_CODE_VALID(packet->code)) {
 		len = snprintf(p, s, "%s Id %i %s:%s:%d %s %s:%i ",
-			       fr_radius_packet_names[packet->code],
+			       fr_packet_names[packet->code],
 			       packet->id,
 			       handle->name,
 			       response ? dst : src,
@@ -459,7 +459,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		 *	Print out verbose HEX output
 		 */
 		if (conf->print_packet && (fr_debug_lvl >= L_DBG_LVL_4)) {
-			fr_radius_packet_log_hex(&default_log, packet);
+			fr_packet_log_hex(&default_log, packet);
 		}
 
 		if (conf->print_packet && (fr_debug_lvl >= L_DBG_LVL_2)) {
@@ -633,7 +633,7 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 	}
 }
 
-static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code_t code)
+static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_packet_code_t code)
 {
 	int i;
 	bool have_rt = false;
@@ -643,7 +643,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code
 	if (!stats->interval.received && !have_rt && !stats->interval.reused) return;
 
 	if (stats->interval.received || stats->interval.linked) {
-		INFO("%s counters:", fr_radius_packet_names[code]);
+		INFO("%s counters:", fr_packet_names[code]);
 		if (stats->interval.received > 0) {
 			INFO("\tTotal     : %.3lf/s" , stats->interval.received);
 		}
@@ -652,7 +652,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code
 	if (stats->interval.linked > 0) {
 		INFO("\tLinked    : %.3lf/s", stats->interval.linked);
 		INFO("\tUnlinked  : %.3lf/s", stats->interval.unlinked);
-		INFO("%s latency:", fr_radius_packet_names[code]);
+		INFO("%s latency:", fr_packet_names[code]);
 		INFO("\tHigh      : %.3lfms", stats->interval.latency_high);
 		INFO("\tLow       : %.3lfms", stats->interval.latency_low);
 		INFO("\tAverage   : %.3lfms", stats->interval.latency_average);
@@ -660,7 +660,7 @@ static void rs_stats_print_code_fancy(rs_latency_t *stats, fr_radius_packet_code
 	}
 
 	if (have_rt || stats->interval.lost || stats->interval.reused) {
-		INFO("%s retransmits & loss:", fr_radius_packet_names[code]);
+		INFO("%s retransmits & loss:", fr_packet_names[code]);
 
 		if (stats->interval.lost)	INFO("\tLost      : %.3lf/s", stats->interval.lost);
 		if (stats->interval.reused)	INFO("\tID Reused : %.3lf/s", stats->interval.reused);
@@ -738,7 +738,7 @@ static void rs_stats_print_csv_header(rs_update_t *this)
 	}
 
 	for (i = 0; i < rs_codes_len; i++) {
-		char const *name = fr_radius_packet_names[rs_useful_codes[i]];
+		char const *name = fr_packet_names[rs_useful_codes[i]];
 
 		fprintf(stdout,
 			",\"%s received/s\""
@@ -1052,9 +1052,9 @@ static int _request_free(rs_request_t *request)
 		}
 	}
 
-	fr_radius_packet_free(&request->packet);
-	fr_radius_packet_free(&request->expect);
-	fr_radius_packet_free(&request->linked);
+	fr_packet_free(&request->packet);
+	fr_packet_free(&request->expect);
+	fr_packet_free(&request->linked);
 
 	return 0;
 }
@@ -1391,7 +1391,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	recover once some requests timeout, so make an effort to deal
 	 *	with allocation failures gracefully.
 	 */
-	packet = fr_radius_packet_alloc(conf, false);
+	packet = fr_packet_alloc(conf, false);
 	if (!packet) {
 		REDEBUG("Failed allocating memory to hold decoded packet");
 		rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
@@ -1426,13 +1426,13 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	packet->socket.inet.src_port = ntohs(udp->src);
 	packet->socket.inet.dst_port = ntohs(udp->dst);
 
-	if (!fr_radius_packet_ok(packet, RADIUS_MAX_ATTRIBUTES, false, &reason)) {
+	if (!fr_packet_ok(packet, RADIUS_MAX_ATTRIBUTES, false, &reason)) {
 		fr_perror("radsniff");
 		if (conf->event_flags & RS_ERROR) {
 			rs_packet_print(NULL, count, RS_ERROR, event->in,
 					packet, &decoded, &elapsed, NULL, false, false);
 		}
-		fr_radius_packet_free(&packet);
+		fr_packet_free(&packet);
 
 		return;
 	}
@@ -1458,7 +1458,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (conf->filter_response_code && (conf->filter_response_code != packet->code)) {
 		drop_response:
 			RDEBUG2("Response dropped by filter");
-			fr_radius_packet_free(&packet);
+			fr_packet_free(&packet);
 
 			/* We now need to cleanup the original request too */
 			if (original) {
@@ -1472,24 +1472,24 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			FILE *log_fp = fr_log_fp;
 
 			fr_log_fp = NULL;
-			ret = fr_radius_packet_verify(packet, original->expect, conf->radius_secret);
+			ret = fr_packet_verify(packet, original->expect, conf->radius_secret);
 			fr_log_fp = log_fp;
 			if (ret != 0) {
 				fr_perror("Failed verifying packet ID %d", packet->id);
-				fr_radius_packet_free(&packet);
+				fr_packet_free(&packet);
 				return;
 			}
 		}
 
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
-		 *	fr_radius_packet_ok( does checks to verify the packet is actually valid.
+		 *	fr_packet_ok( does checks to verify the packet is actually valid.
 		 */
 		if (conf->decode_attrs) {
 			int ret;
 
 #ifndef NDEBUG
-			if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(&default_log, packet);
+			if (fr_debug_lvl >= L_DBG_LVL_4) fr_packet_log_hex(&default_log, packet);
 #endif
 
 			ret = fr_radius_decode_simple(packet, &decoded,
@@ -1498,7 +1498,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 							original->expect->data + 4 : zeros,
 						      conf->radius_secret);
 			if (ret < 0) {
-				fr_radius_packet_free(&packet);		/* Also frees vps */
+				fr_packet_free(&packet);		/* Also frees vps */
 				REDEBUG("Failed decoding");
 				return;
 			}
@@ -1529,7 +1529,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				 *	Explicitly free VPs first so list maintains integrity - it is reused below
 				 */
 				fr_pair_list_free(&original->link_vps);
-				fr_radius_packet_free(&original->linked);
+				fr_packet_free(&original->linked);
 				fr_event_timer_delete(&original->event);
 			/*
 			 *	...nope it's the first response to a request.
@@ -1566,7 +1566,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	complexity, reduces max capture rate, and is generally a PITA.
 			 */
 			if (conf->filter_request) {
-				fr_radius_packet_free(&packet);
+				fr_packet_free(&packet);
 				RDEBUG2("Original request dropped by filter");
 				return;
 			}
@@ -1593,7 +1593,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			drop_request:
 
 			RDEBUG2("Request dropped by filter");
-			fr_radius_packet_free(&packet);
+			fr_packet_free(&packet);
 
 			return;
 		}
@@ -1608,11 +1608,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				FILE *log_fp = fr_log_fp;
 
 				fr_log_fp = NULL;
-				ret = fr_radius_packet_verify(packet, NULL, conf->radius_secret);
+				ret = fr_packet_verify(packet, NULL, conf->radius_secret);
 				fr_log_fp = log_fp;
 				if (ret != 0) {
 					fr_perror("Failed verifying packet ID %d", packet->id);
-					fr_radius_packet_free(&packet);
+					fr_packet_free(&packet);
 					return;
 				}
 			}
@@ -1625,7 +1625,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		/*
 		 *	Only decode attributes if we want to print them or filter on them
-		 *	fr_radius_packet_ok( does checks to verify the packet is actually valid.
+		 *	fr_packet_ok( does checks to verify the packet is actually valid.
 		 */
 		if (conf->decode_attrs) {
 			int ret;
@@ -1638,7 +1638,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			fr_log_fp = log_fp;
 
 			if (ret < 0) {
-				fr_radius_packet_free(&packet);	/* Also frees vps */
+				fr_packet_free(&packet);	/* Also frees vps */
 
 				REDEBUG("Failed decoding");
 				return;
@@ -1650,11 +1650,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		/*
 		 *	Save the request for later matching
 		 */
-		search.expect = fr_radius_packet_alloc_reply(packet, packet);
+		search.expect = fr_packet_alloc_reply(packet, packet);
 		if (!search.expect) {
 			REDEBUG("Failed allocating memory to hold expected reply");
 			rs_tv_add_ms(&header->ts, conf->stats.timeout, &stats->quiet);
-			fr_radius_packet_free(&packet);
+			fr_packet_free(&packet);
 
 			return;
 		}
@@ -1667,7 +1667,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 					   conf->link_da_num);
 			if (ret < 0) {
 				ERROR("Failed extracting RTX linking pairs from request");
-				fr_radius_packet_free(&packet);
+				fr_packet_free(&packet);
 				return;
 			}
 		}
@@ -1733,11 +1733,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 			/* We may of seen the response, but it may of been lost upstream */
 			fr_pair_list_free(&original->link_vps);
-			fr_radius_packet_free(&original->linked);
+			fr_packet_free(&original->linked);
 
 			/* replace packet and vps */
 			fr_pair_list_free(&original->packet_vps);
-			fr_radius_packet_free(&original->packet);
+			fr_packet_free(&original->packet);
 			original->packet = talloc_steal(original, packet);
 			fr_pair_list_append(&original->packet_vps, &decoded);
 
@@ -1748,7 +1748,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 			/* replace expected packets and vps */
 			fr_pair_list_free(&original->expect_vps);
-			fr_radius_packet_free(&original->expect);
+			fr_packet_free(&original->expect);
 			original->expect = talloc_steal(original, search.expect);
 			fr_pair_list_append(&original->expect_vps, &search.expect_vps);
 
@@ -1828,7 +1828,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 	default:
 		REDEBUG("Unsupported code %i", packet->code);
-		fr_radius_packet_free(&packet);
+		fr_packet_free(&packet);
 
 		return;
 	}
@@ -1911,7 +1911,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	not be done by the event queue.
 	 */
 	if (response && !original) {
-		fr_radius_packet_free(&packet);	/* Also frees decoded */
+		fr_packet_free(&packet);	/* Also frees decoded */
 	}
 
 	captured++;
@@ -2894,7 +2894,7 @@ int main(int argc, char *argv[])
 			DEBUG2("  RADIUS secret           : [%s]", conf->radius_secret);
 
 		if (conf->filter_request_code) {
-			DEBUG2("  RADIUS request code     : [%s]", fr_radius_packet_names[conf->filter_request_code]);
+			DEBUG2("  RADIUS request code     : [%s]", fr_packet_names[conf->filter_request_code]);
 		}
 
 		if (!fr_pair_list_empty(&conf->filter_request_vps)){
@@ -2903,7 +2903,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (conf->filter_response_code) {
-			DEBUG2("  RADIUS response code    : [%s]", fr_radius_packet_names[conf->filter_response_code]);
+			DEBUG2("  RADIUS response code    : [%s]", fr_packet_names[conf->filter_response_code]);
 		}
 
 		if (conf->to_output_dir) {

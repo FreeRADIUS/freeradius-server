@@ -688,7 +688,7 @@ fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max
 		if (pl->sockets[start].socket.type == SOCK_STREAM) {
 			packet = fr_tcp_recv(pl->sockets[start].socket.fd, false);
 		} else
-			packet = fr_radius_packet_recv(NULL, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
+			packet = fr_packet_recv(NULL, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
 						       max_attributes, require_ma);
 		if (!packet) continue;
 
@@ -744,7 +744,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool receive
 	 *
 	 *	This really belongs in a utility library
 	 */
-	if (FR_RADIUS_PACKET_CODE_VALID(packet->code)) {
+	if (fr_packet_CODE_VALID(packet->code)) {
 		fr_log(log, L_DBG, __FILE__, __LINE__,
 		       "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
 #ifdef WITH_IFINDEX_NAME_RESOLUTION
@@ -752,7 +752,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool receive
 #endif
 		       "length %zu\n",
 		        received ? "Received" : "Sent",
-		        fr_radius_packet_names[packet->code],
+		        fr_packet_names[packet->code],
 		        packet->id,
 		        packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
 			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->socket.inet.src_ipaddr),
@@ -803,6 +803,6 @@ void fr_packet_log(fr_log_t const *log, fr_packet_t *packet, fr_pair_list_t *lis
 	fr_packet_header_log(log, packet, received);
 	if (fr_debug_lvl >= L_DBG_LVL_1) fr_pair_list_log(log, 4, list);
 #ifndef NDEBUG
-	if (fr_debug_lvl >= L_DBG_LVL_4) fr_radius_packet_log_hex(log, packet);
+	if (fr_debug_lvl >= L_DBG_LVL_4) fr_packet_log_hex(log, packet);
 #endif
 }

@@ -168,9 +168,9 @@ static size_t chbind_get_data(chbind_packet_t const *packet,
 }
 
 
-fr_radius_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
+fr_packet_code_t chbind_process(request_t *request, CHBIND_REQ *chbind)
 {
-	fr_radius_packet_code_t		code;
+	fr_packet_code_t		code;
 	rlm_rcode_t	rcode;
 	request_t	*fake = NULL;
 	uint8_t const	*attr_data;

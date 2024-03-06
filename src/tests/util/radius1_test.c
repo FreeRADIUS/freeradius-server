@@ -63,7 +63,7 @@ typedef struct {
 
 	struct sockaddr_storage src;
 	socklen_t	salen;
-} fr_radius_packet_ctx_t;
+} fr_packet_ctx_t;
 
 static int		debug_lvl = 0;
 static int		max_control_plane = 0;
@@ -98,8 +98,8 @@ static rlm_rcode_t test_process(UNUSED void const *instance, request_t *request,
 
 static int test_decode(UNUSED void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
-	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
-								       fr_radius_packet_ctx_t);
+	fr_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
+								       fr_packet_ctx_t);
 
 	request->number = pc->id;
 	request->async->process = test_process;
@@ -114,8 +114,8 @@ static int test_decode(UNUSED void const *instance, request_t *request, uint8_t 
 static ssize_t test_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
 	fr_md5_ctx_t	*md5_ctx;
-	fr_radius_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
-								       fr_radius_packet_ctx_t);
+	fr_packet_ctx_t const *pc = talloc_get_type_abort_const(request->async->listen->app_instance,
+								       fr_packet_ctx_t);
 
 	MPRINT1("\t\tENCODE >>> request %"PRIu64" - data %p %p room %zd\n",
 		request->number, pc, buffer, buffer_len);
@@ -189,7 +189,7 @@ static void *worker_thread(void *arg)
 
 static void send_reply(int sockfd, fr_channel_data_t *reply)
 {
-	fr_radius_packet_ctx_t *pc = talloc_get_type_abort(reply->packet_ctx, fr_radius_packet_ctx_t);
+	fr_packet_ctx_t *pc = talloc_get_type_abort(reply->packet_ctx, fr_packet_ctx_t);
 
 	MPRINT1("Master got reply %d size %zd\n", pc->id, reply->m.data_size);
 
@@ -332,7 +332,7 @@ static void master_process(TALLOC_CTX *ctx)
 			uint8_t			*packet, *attr, *end;
 			size_t			total_len;
 			ssize_t			data_size;
-			fr_radius_packet_ctx_t	*packet_ctx;
+			fr_packet_ctx_t	*packet_ctx;
 
 			if (events[i].filter == EVFILT_USER) {
 				(void) fr_channel_service_kevent(workers[0].ch, control_master, &events[i]);
@@ -345,7 +345,7 @@ static void master_process(TALLOC_CTX *ctx)
 			cd = (fr_channel_data_t *) fr_message_reserve(ms, 4096);
 			fr_assert(cd != NULL);
 
-			packet_ctx = talloc(ctx, fr_radius_packet_ctx_t);
+			packet_ctx = talloc(ctx, fr_packet_ctx_t);
 			fr_assert(packet_ctx != NULL);
 			packet_ctx->salen = sizeof(packet_ctx->src);
 

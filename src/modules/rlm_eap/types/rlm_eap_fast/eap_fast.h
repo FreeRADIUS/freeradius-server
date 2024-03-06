@@ -254,7 +254,7 @@ extern HIDDEN fr_dict_t const *dict_eap_fast;
  */
 void eap_fast_tlv_append(fr_tls_session_t *tls_session, fr_dict_attr_t const *da, bool mandatory,
 			 int length, const void *data) CC_HINT(nonnull);
-fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);
+fr_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session) CC_HINT(nonnull);
 
 /*
  *	A bunch of EAP-FAST helper functions.

@@ -47,8 +47,8 @@
  *	protocols/radius/base.c
  */
 
-extern char const *fr_radius_packet_names[FR_RADIUS_CODE_MAX];
-#define FR_RADIUS_PACKET_CODE_VALID(_x) ((_x > 0) && (_x < FR_RADIUS_CODE_MAX))
+extern char const *fr_packet_names[FR_RADIUS_CODE_MAX];
+#define fr_packet_CODE_VALID(_x) ((_x > 0) && (_x < FR_RADIUS_CODE_MAX))
 
 #define AUTH_PASS_LEN (RADIUS_AUTH_VECTOR_LENGTH)
 
@@ -188,24 +188,24 @@ void		fr_radius_global_free(void);
 /*
  *	protocols/radius/packet.c
  */
-ssize_t		fr_radius_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
+ssize_t		fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 					fr_packet_t const *original,
 					char const *secret) CC_HINT(nonnull (1,2,4));
 
-bool		fr_radius_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_ma,
+bool		fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_ma,
 				    decode_fail_t *reason) CC_HINT(nonnull (1));
 
-int		fr_radius_packet_verify(fr_packet_t *packet, fr_packet_t *original,
+int		fr_packet_verify(fr_packet_t *packet, fr_packet_t *original,
 					char const *secret) CC_HINT(nonnull (1,3));
-int		fr_radius_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
+int		fr_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
 				      char const *secret) CC_HINT(nonnull (1,3));
 
-fr_packet_t	*fr_radius_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma);
-int		fr_radius_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
+fr_packet_t	*fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma);
+int		fr_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
 				      fr_packet_t const *original, char const *secret) CC_HINT(nonnull (1,2,4));
 
-#define fr_radius_packet_log_hex(_log, _packet) _fr_radius_packet_log_hex(_log, _packet, __FILE__, __LINE__)
-void		_fr_radius_packet_log_hex(fr_log_t const *log, fr_packet_t const *packet, char const *file, int line) CC_HINT(nonnull);
+#define fr_packet_log_hex(_log, _packet) _fr_packet_log_hex(_log, _packet, __FILE__, __LINE__)
+void		_fr_packet_log_hex(fr_log_t const *log, fr_packet_t const *packet, char const *file, int line) CC_HINT(nonnull);
 
 /*
  *	protocols/radius/abinary.c

@@ -154,14 +154,14 @@ static int request_init(fr_packet_t **out, fr_pair_list_t *packet_vps, char cons
 		fp = stdin;
 	}
 
-	packet = fr_radius_packet_alloc(NULL, false);
+	packet = fr_packet_alloc(NULL, false);
 
 	/*
 	 *	Read the VP's.
 	 */
 	if (fr_pair_list_afrom_file(packet, dict_dhcpv4, packet_vps, fp, &filedone) < 0) {
 		fr_perror("dhcpclient");
-		fr_radius_packet_free(&packet);
+		fr_packet_free(&packet);
 		if (fp != stdin) fclose(fp);
 		return -1;
 	}

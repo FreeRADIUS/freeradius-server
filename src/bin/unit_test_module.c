@@ -137,8 +137,8 @@ static request_t *request_from_internal(TALLOC_CTX *ctx)
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc_internal(ctx, NULL);
-	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
-	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
+	if (!request->packet) request->packet = fr_packet_alloc(request, false);
+	if (!request->reply) request->reply = fr_packet_alloc(request, false);
 
 	request->packet->socket = (fr_socket_t){
 		.type = SOCK_DGRAM,
@@ -209,14 +209,14 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 		return NULL;
 	}
 
-	request->packet = fr_radius_packet_alloc(request, false);
+	request->packet = fr_packet_alloc(request, false);
 	if (!request->packet) {
 		fr_strerror_const("No memory");
 		goto error;
 	}
 	request->packet->timestamp = fr_time();
 
-	request->reply = fr_radius_packet_alloc(request, false);
+	request->reply = fr_packet_alloc(request, false);
 	if (!request->reply) {
 		fr_strerror_const("No memory");
 		goto error;
@@ -612,8 +612,8 @@ static request_t *request_clone(request_t *old, int number, CONF_SECTION *server
 	request = request_alloc_internal(NULL, NULL);
 	if (!request) return NULL;
 
-	if (!request->packet) request->packet = fr_radius_packet_alloc(request, false);
-	if (!request->reply) request->reply = fr_radius_packet_alloc(request, false);
+	if (!request->packet) request->packet = fr_packet_alloc(request, false);
+	if (!request->reply) request->reply = fr_packet_alloc(request, false);
 
 	memcpy(request->packet, old->packet, sizeof(*request->packet));
 	(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &old->request_pairs);

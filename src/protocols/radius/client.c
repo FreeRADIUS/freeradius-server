@@ -101,13 +101,13 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, UNUSED void *pa
 	/*
 	 *	Encode the packet.
 	 */
-	if (fr_radius_packet_encode(packet, list, NULL, (char const *) my->cfg.verify.secret) < 0) {
+	if (fr_packet_encode(packet, list, NULL, (char const *) my->cfg.verify.secret) < 0) {
 	fail:
 		fr_radius_code_id_push(my->codes, packet);
 		return -1;
 	}
 
-	if (fr_radius_packet_sign(packet, NULL, (char const *) my->cfg.verify.secret) < 0) goto fail;
+	if (fr_packet_sign(packet, NULL, (char const *) my->cfg.verify.secret) < 0) goto fail;
 
 	slen = fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
 	if (slen <= 0) goto fail;
@@ -115,7 +115,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, UNUSED void *pa
 	return 0;
 }
 
-static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
+static const fr_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_REJECT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
@@ -193,7 +193,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, UNUSED void *packet_ctx, 
 	/*
 	 *	Allocate the new request data structure
 	 */
-	reply = fr_radius_packet_alloc(packet, false);
+	reply = fr_packet_alloc(packet, false);
 	if (!reply) return -1;
 
 	reply->socket = fd_ctx.socket;

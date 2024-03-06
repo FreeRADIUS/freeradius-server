@@ -273,7 +273,7 @@ static int getport(char const *name)
 /*
  *	Set a port from the request type if we don't already have one
  */
-static void radclient_get_port(fr_radius_packet_code_t type, uint16_t *port)
+static void radclient_get_port(fr_packet_code_t type, uint16_t *port)
 {
 	switch (type) {
 	default:
@@ -306,7 +306,7 @@ static void radclient_get_port(fr_radius_packet_code_t type, uint16_t *port)
 /*
  *	Resolve a port to a request type
  */
-static fr_radius_packet_code_t radclient_get_code(uint16_t port)
+static fr_packet_code_t radclient_get_code(uint16_t port)
 {
 	/*
 	 *	getport returns 0 if the service doesn't exist
@@ -401,7 +401,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			goto error;
 		}
 
-		request->packet = fr_radius_packet_alloc(request, true);
+		request->packet = fr_packet_alloc(request, true);
 		if (!request->packet) {
 			ERROR("Out of memory");
 			goto error;
@@ -720,7 +720,7 @@ static void deallocate_id(rc_request_t *request)
 	 *	authentication vector.
 	 */
 	if (request->packet->data) TALLOC_FREE(request->packet->data);
-	if (request->reply) fr_radius_packet_free(&request->reply);
+	if (request->reply) fr_packet_free(&request->reply);
 }
 
 /*
@@ -876,7 +876,7 @@ static int send_one_packet(rc_request_t *request)
 		/*
 		 *	Encode the packet.
 		 */
-		if (fr_radius_packet_encode(request->packet, &request->request_pairs, NULL, secret) < 0) {
+		if (fr_packet_encode(request->packet, &request->request_pairs, NULL, secret) < 0) {
 			REDEBUG("Failed encoding packet for ID %d", request->packet->id);
 			deallocate_id(request);
 			request->done = true;
@@ -887,7 +887,7 @@ static int send_one_packet(rc_request_t *request)
 		 *	Re-sign it, including updating the
 		 *	Message-Authenticator.
 		 */
-		if (fr_radius_packet_sign(request->packet, NULL, secret) < 0) {
+		if (fr_packet_sign(request->packet, NULL, secret) < 0) {
 			REDEBUG("Failed signing packet for ID %d", request->packet->id);
 			deallocate_id(request);
 			request->done = true;
@@ -955,7 +955,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	if (!packet) {
 		ERROR("Received reply to request we did not send. (id=%d socket %d)",
 		      reply->id, reply->socket.fd);
-		fr_radius_packet_free(&reply);
+		fr_packet_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
 	request = packet->uctx;
@@ -964,7 +964,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	 *	Fails the signature validation: not a real reply.
 	 *	FIXME: Silently drop it and listen for another packet.
 	 */
-	if (fr_radius_packet_verify(reply, request->packet, secret) < 0) {
+	if (fr_packet_verify(reply, request->packet, secret) < 0) {
 		REDEBUG("Reply verification failed");
 		stats.lost++;
 		goto packet_done; /* shared secret is incorrect */
@@ -1016,9 +1016,9 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	 *	packet matched that.
 	 */
 	if ((request->filter_code != FR_RADIUS_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
-		if (FR_RADIUS_PACKET_CODE_VALID(request->reply->code)) {
-			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_names[request->filter_code],
-				fr_radius_packet_names[request->reply->code]);
+		if (fr_packet_CODE_VALID(request->reply->code)) {
+			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_names[request->filter_code],
+				fr_packet_names[request->reply->code]);
 		} else {
 			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
 				request->reply->code);
@@ -1048,8 +1048,8 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	}
 
 packet_done:
-	fr_radius_packet_free(&request->reply);
-	fr_radius_packet_free(&reply);	/* may be NULL */
+	fr_packet_free(&request->reply);
+	fr_packet_free(&reply);	/* may be NULL */
 
 	return 0;
 }
