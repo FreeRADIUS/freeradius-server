@@ -92,12 +92,11 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 static int fr_bio_retry_reset_timer(fr_bio_retry_t *my)
 {
 	fr_bio_retry_entry_t *first;
-	fr_rb_iter_inorder_t iter;
 
 	/*
 	 *	Nothing to do, don't set any timers.
 	 */
-	first = fr_rb_iter_init_inorder(&iter, &my->rb);
+	first = fr_rb_first(&my->rb);
 	if (!first) {
 		fr_assert(!my->ev);
 		my->first = NULL;
@@ -379,7 +378,9 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	}
 }
 
-
+/** Write a request, and see if we have a reply.
+ *
+ */
 static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size)
 {
 	ssize_t rcode;
@@ -390,18 +391,38 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	fr_assert(!my->partial);
 
 	/*
-	 *	Catch the corner case where the max number of saved packets is exceeded.
-	 */
-	if (fr_bio_retry_list_num_elements(&my->free) == 0) {
-		return fr_bio_error(BUFFER_FULL);
-	}
-
-	/*
 	 *	There must be a next bio.
 	 */
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
 	
+	/*
+	 *	The caller is trying to flush partial data.  But we don't have any partial data, so just call
+	 *	the next bio to flush it.
+	 */
+	if (!buffer) {
+		return next->write(next, packet_ctx, NULL, size);
+	}
+
+	/*
+	 *	Catch the corner case where the max number of saved packets is exceeded.
+	 */
+	if (fr_bio_retry_list_num_elements(&my->free) == 0) {
+		item = fr_rb_last(&my->rb);
+		if (!item) return fr_bio_error(BUFFER_FULL);
+
+		if (!item->retry.replies) return fr_bio_error(BUFFER_FULL);
+
+		fr_assert(!item->cancelled);
+
+		if (fr_bio_retry_entry_cancel(bio, item) < 0) return fr_bio_error(BUFFER_FULL);
+
+		/*
+		 *	We now have a free item, so we can use it.
+		 */
+		fr_assert(fr_bio_retry_list_num_elements(&my->free) > 0);
+	}
+
 	/*
 	 *	Write out the packet.  If there's an error, OR we wrote nothing, return.
 	 *
