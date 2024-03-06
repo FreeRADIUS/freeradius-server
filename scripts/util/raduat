@@ -13,7 +13,6 @@ OPTIND=1         # Reset in case getopts has been used previously in the shell.
 : ${TESTDIR=$(dirname $0)"/tests"}
 : ${RADCLIENT='radclient'}
 : ${FILTER_SUFFIX='_expected'}
-: ${DICTPATH=$(dirname $0)/share}
 PATH="$(dirname $0)/bin:${PATH}"
 
 # Initialize our own variables
@@ -318,7 +317,6 @@ if [ ! -z "$file_args" ]; then
 	args+=" -t \"$timeout\""
 	args+=" -r \"$retries\""
 	args+=" -p \"$parallel\""
-	args+=" -D \"$DICTPATH\""
 	args+=" \"$target\""
 	args+=" auto"
 	args+=" \"$secret\""
@@ -348,7 +346,6 @@ if [ ! -z "$serial_file_args" ]; then
 	args+=" -t \"$timeout\""
 	args+=" -r \"$retries\""
 	args+=" -p 1"
-	args+=" -D \"$DICTPATH\""
 	args+=" \"$target\""
 	args+=" auto"
 	args+=" \"$secret\""
