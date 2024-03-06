@@ -2053,7 +2053,6 @@ int fr_pair_list_cmp(fr_pair_list_t const *a, fr_pair_list_t const *b)
  *
  * @todo add thread specific talloc contexts.
  *
- * @param ctx a hack until we have thread specific talloc contexts.
  * @param failed pair of attributes which didn't match.
  */
 void fr_pair_validate_debug(fr_pair_t const *failed[2])
@@ -2076,10 +2075,6 @@ void fr_pair_validate_debug(fr_pair_t const *failed[2])
 		fr_strerror_printf("Attribute \"%s\" not found in filter", list->da->name);
 		return;
 	}
-
-#ifdef STATIC_ANALYZER
-	if (!value || !str) return;
-#endif
 
 	fr_strerror_printf("Attribute value: \"%pP\" didn't match filter: \"%pP\"", list, filter);
 
