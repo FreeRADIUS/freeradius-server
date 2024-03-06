@@ -268,3 +268,14 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	}
 	return result;
 }
+
+typedef struct {
+} fr_ipaddr_t;
+
+int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask_bits)
+{
+	int result;
+
+	__coverity_writeall__(out);
+	return result;
+}
