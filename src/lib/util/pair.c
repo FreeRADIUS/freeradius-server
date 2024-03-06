@@ -2061,8 +2061,6 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
 	fr_pair_t const *filter = failed[0];
 	fr_pair_t const *list = failed[1];
 
-	char *value, *str;
-
 	fr_strerror_clear();	/* Clear any existing messages */
 
 	if (!list) {
@@ -2079,18 +2077,11 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
 		return;
 	}
 
-	fr_pair_aprint(ctx, &value, NULL, list);
-	fr_pair_aprint(ctx, &str, NULL, filter);
-
 #ifdef STATIC_ANALYZER
 	if (!value || !str) return;
 #endif
 
-	fr_strerror_printf("Attribute value \"%pV\" didn't match filter: \"%pV\"",
-			   fr_box_strvalue_buffer(value), fr_box_strvalue_buffer(str));
-
-	talloc_free(str);
-	talloc_free(value);
+	fr_strerror_printf("Attribute value: \"%pP\" didn't match filter: \"%pP\"", list, filter);
 
 	return;
 }
