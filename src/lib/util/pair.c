@@ -2086,7 +2086,8 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, fr_pair_t const *failed[2])
 	if (!value || !str) return;
 #endif
 
-	fr_strerror_printf("Attribute value \"%s\" didn't match filter: %s", value, str);
+	fr_strerror_printf("Attribute value \"%pV\" didn't match filter: \"%pV\"",
+			   fr_box_strvalue_buffer(value), fr_box_strvalue_buffer(str));
 
 	talloc_free(str);
 	talloc_free(value);
