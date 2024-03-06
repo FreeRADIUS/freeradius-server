@@ -2134,7 +2134,11 @@ bool fr_pair_validate(fr_pair_t const *failed[2], fr_pair_list_t *filter, fr_pai
 		 */
 		switch (check->vp_type) {
 		case FR_TYPE_STRUCTURAL:
-			if (!fr_pair_validate(failed, &check->vp_group, &match->vp_group)) goto mismatch;
+			/*
+			 *	Return from here on failure, so that the nested mismatch
+			 *	information is preserved.
+			 */
+			if (!fr_pair_validate(failed, &check->vp_group, &match->vp_group)) return false;
 			break;
 
 		default:
