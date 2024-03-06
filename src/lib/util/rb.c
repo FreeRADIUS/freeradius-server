@@ -777,6 +777,36 @@ uint32_t fr_rb_num_elements(fr_rb_tree_t *tree)
 	return tree->num_elements;
 }
 
+void *fr_rb_first(fr_rb_tree_t *tree)
+{
+	fr_rb_node_t *x = tree->root;
+
+	if (x == NIL) return NULL;
+
+	/*
+	 *	First node is the leftmost
+	 */
+	while (x->left != NIL) x = x->left;
+
+	return x->data;
+}
+
+
+void *fr_rb_last(fr_rb_tree_t *tree)
+{
+	fr_rb_node_t *x = tree->root;
+
+	if (x == NIL) return NULL;
+
+	/*
+	 *	Last node is the rightmost
+	 */
+	while (x->right != NIL) x = x->right;
+
+	return x->data;
+}
+
+
 /** Initialise an in-order iterator
  *
  * @param[out] iter	to initialise.

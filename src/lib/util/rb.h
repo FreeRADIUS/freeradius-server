@@ -295,6 +295,10 @@ bool 		fr_rb_delete_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node) CC_HI
 
 uint32_t	fr_rb_num_elements(fr_rb_tree_t *tree) CC_HINT(nonnull);
 
+void		*fr_rb_first(fr_rb_tree_t *tree) CC_HINT(nonnull);
+
+void		*fr_rb_last(fr_rb_tree_t *tree) CC_HINT(nonnull);
+
 /** Check to see if an item is in a tree by examining its inline #fr_rb_node_t
  *
  * This works because we use NIL sentinels to represent the absence of a child
