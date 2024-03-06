@@ -627,6 +627,20 @@ int fr_bio_retry_entry_start(UNUSED fr_bio_t *bio, fr_bio_retry_entry_t *item, f
 	return 0;
 }
 
+/**  Allow the callbacks / application to know when things are being retried.
+ *
+ *  This is not initialized util _after_ fr_bio_retry_entry_start() has been called.
+ */
+const fr_retry_t *fr_bio_retry_entry_info(UNUSED fr_bio_t *bio, fr_bio_retry_entry_t *item)
+{
+	fr_assert(item->buffer != NULL);
+
+	if (!item->retry.config) return NULL;
+
+	return &item->retry;
+}
+
+
 /**  Cancel all outstanding packets.
  *
  */
