@@ -563,11 +563,27 @@ static int8_t _entry_cmp(void const *one, void const *two)
 
 /** Cancel one item.
  *
- *  @todo - add a "cancel oldest packet API" so we can re-use IDs before we've received all replies.
+ *  If "item" is NULL, the last entry in the timer tree is cancelled.
+ *
+ *  @param bio		the binary IO handler
+ *  @param item		the retry context from #fr_bio_retry_save_t
+ *  @return
+ *	- <0 error
+ *	- 0 for success
  */
 int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 {
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+
+	/*
+	 *	No item passed, try to cancel the oldest one.
+	 */
+	if (!item) {
+		item = fr_rb_last(&my->rb);
+		if (!item) return 0;
+
+		if (!item->retry.replies) return -1; /* can't cancel it */
+	}
 
 	fr_assert(item->buffer != NULL);
 
