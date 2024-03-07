@@ -142,8 +142,10 @@ retry:
  *
  *  The difference between this and stream protocols is that for datagrams. a read of zero means "no packets",
  *  where a read of zero on a steam socket means "EOF".
+ *
+ *  Connected sockets do _not_ update per-packet contexts.
  */
-static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
+static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
 	int tries = 0;
 	ssize_t rcode;
@@ -153,20 +155,7 @@ static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, void *packet_ctx
 
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
-	if (rcode > 0) {
-		fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
-
-		ADDR_INIT;
-
-		addr->socket.inet.dst_ipaddr = my->info.socket.inet.src_ipaddr;
-		addr->socket.inet.dst_port = my->info.socket.inet.src_port;
-
-		addr->socket.inet.src_ipaddr = my->info.socket.inet.dst_ipaddr;
-		addr->socket.inet.src_port = my->info.socket.inet.dst_port;
-		return rcode;
-	}
-
-	if (rcode == 0) return rcode;
+	if (rcode >= 0) return rcode;
 
 #undef flag_blocked
 #define flag_blocked info.read_blocked
@@ -214,8 +203,9 @@ retry:
 }
 
 
-/** Write to fd
+/** Write to fd.
  *
+ *  This function is used for connected sockets, where we ignore the packet_ctx.
  */
 static ssize_t fr_bio_fd_write(fr_bio_t *bio, UNUSED void *packet_ctx, const void *buffer, size_t size)
 {
@@ -1000,7 +990,7 @@ int fr_bio_fd_init_accept(fr_bio_fd_t *my)
  *  @param ctx		the talloc ctx
  *  @param cb		callbacks
  *  @param cfg		structure holding configuration information
- *  @param offset	for datagram sockets, where #fr_bio_fd_packet_ctx_t is stored
+ *  @param offset	only for unconnected datagram sockets, where #fr_bio_fd_packet_ctx_t is stored
  *  @return
  *	- NULL on error, memory allocation failed
  *	- !NULL the bio
