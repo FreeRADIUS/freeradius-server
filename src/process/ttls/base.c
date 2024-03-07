@@ -158,7 +158,7 @@ typedef struct {
 	process_ttls_auth_t		auth;		//!< Authentication configuration.
 } process_ttls_t;
 
-#define PROCESS_PACKET_TYPE		fr_packet_code_t
+#define PROCESS_PACKET_TYPE		fr_radius_packet_code_t
 #define PROCESS_CODE_MAX		FR_RADIUS_CODE_MAX
 #define PROCESS_CODE_DO_NOT_RESPOND	FR_RADIUS_CODE_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_RADIUS_PACKET_CODE_VALID
@@ -217,7 +217,7 @@ static void radius_packet_debug(request_t *request, fr_packet_t *packet, fr_pair
 #endif
 		       "",
 		       received ? "Received" : "Sending",
-		       fr_packet_names[packet->code],
+		       fr_radius_packet_name[packet->code],
 		       packet->id,
 		       packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
 		       fr_box_ipaddr(packet->socket.inet.src_ipaddr),

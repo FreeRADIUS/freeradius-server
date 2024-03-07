@@ -296,8 +296,8 @@ struct rs {
 
 	fr_pair_list_t 		filter_request_vps;	//!< Sorted filter vps.
 	fr_pair_list_t 		filter_response_vps;	//!< Sorted filter vps.
-	fr_packet_code_t			filter_request_code;	//!< Filter request packets by code.
-	fr_packet_code_t			filter_response_code;	//!< Filter response packets by code.
+	fr_radius_packet_code_t			filter_request_code;	//!< Filter request packets by code.
+	fr_radius_packet_code_t			filter_response_code;	//!< Filter response packets by code.
 
 	rs_status_t		event_flags;		//!< Events we log and capture on.
 	rs_packet_logger_t	logger;			//!< Packet logger
@@ -352,7 +352,7 @@ struct rs_stats_tmpl
  *	collectd.c - Registration and processing functions
  */
 rs_stats_tmpl_t *rs_stats_collectd_init_latency(TALLOC_CTX *ctx, rs_stats_tmpl_t **out, rs_t *conf,
-						char const *type, rs_latency_t *stats, fr_packet_code_t code);
+						char const *type, rs_latency_t *stats, fr_radius_packet_code_t code);
 void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timeval *now);
 int rs_stats_collectd_open(rs_t *conf);
 int rs_stats_collectd_close(rs_t *conf);

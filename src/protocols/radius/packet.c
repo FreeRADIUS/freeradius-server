@@ -370,7 +370,7 @@ void _fr_packet_log_hex(fr_log_t const *log, fr_packet_t const *packet, char con
 	}
 
        if ((packet->data[0] > 0) && (packet->data[0] < FR_RADIUS_CODE_MAX)) {
-               fr_log(log, L_DBG, file, line, "  Code     : %s", fr_packet_names[packet->data[0]]);
+               fr_log(log, L_DBG, file, line, "  Code     : %s", fr_radius_packet_name[packet->data[0]]);
        } else {
                fr_log(log, L_DBG, file, line, "  Code     : %u", packet->data[0]);
        }

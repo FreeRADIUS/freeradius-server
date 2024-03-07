@@ -413,7 +413,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",
-		       fr_packet_names[request->reply->code],
+		       fr_radius_packet_name[request->reply->code],
 		       request->reply->id,
 		       fr_box_ipaddr(request->reply->socket.inet.src_ipaddr),
 		       request->reply->socket.inet.src_port,

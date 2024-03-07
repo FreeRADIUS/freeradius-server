@@ -115,7 +115,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, UNUSED void *pa
 	return 0;
 }
 
-static const fr_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
+static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_REJECT]		= FR_RADIUS_CODE_ACCESS_REQUEST,

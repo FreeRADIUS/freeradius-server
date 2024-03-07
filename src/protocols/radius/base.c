@@ -91,7 +91,7 @@ fr_table_num_sorted_t const fr_radius_request_name_table[] = {
 };
 size_t fr_radius_request_name_table_len = NUM_ELEMENTS(fr_radius_request_name_table);
 
-char const *fr_packet_names[FR_RADIUS_CODE_MAX] = {
+char const *fr_radius_packet_name[FR_RADIUS_CODE_MAX] = {
 	"",					//!< 0
 	"Access-Request",
 	"Access-Accept",
@@ -151,7 +151,7 @@ char const *fr_packet_names[FR_RADIUS_CODE_MAX] = {
 /** If we get a reply, the request must come from one of a small
  * number of packet types.
  */
-static const fr_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
+static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_REJECT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
@@ -1028,7 +1028,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		if (!allowed_replies[code]) {
 			fr_strerror_printf("%s packet received unknown reply code %s",
-					   fr_packet_names[decode_ctx->request_code], fr_packet_names[code]);
+					   fr_radius_packet_name[decode_ctx->request_code], fr_radius_packet_name[code]);
 			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 
@@ -1042,7 +1042,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if ((code != FR_RADIUS_CODE_PROTOCOL_ERROR) && (decode_ctx->request_code != FR_RADIUS_CODE_STATUS_SERVER) &&
 		    (allowed_replies[code] != decode_ctx->request_code)) {
 			fr_strerror_printf("%s packet received invalid reply code %s",
-					   fr_packet_names[decode_ctx->request_code], fr_packet_names[code]);
+					   fr_radius_packet_name[decode_ctx->request_code], fr_radius_packet_name[code]);
 			return DECODE_FAIL_UNKNOWN_PACKET_CODE;
 		}
 	}

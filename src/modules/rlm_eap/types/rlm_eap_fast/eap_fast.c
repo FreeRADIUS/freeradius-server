@@ -124,7 +124,7 @@ static void eap_fast_send_error(fr_tls_session_t *tls_session, int error)
 	eap_fast_tlv_append(tls_session, attr_eap_fast_error, true, sizeof(value), &value);
 }
 
-static void eap_fast_append_result(fr_tls_session_t *tls_session, fr_packet_code_t code)
+static void eap_fast_append_result(fr_tls_session_t *tls_session, fr_radius_packet_code_t code)
 {
 	eap_fast_tunnel_t	*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
 	uint16_t		state;
@@ -567,10 +567,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_session_t *eap_sess
 	return rcode;
 }
 
-static fr_packet_code_t eap_fast_eap_payload(request_t *request, eap_session_t *eap_session,
+static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, eap_session_t *eap_session,
 				    fr_tls_session_t *tls_session, fr_pair_t *tlv_eap_payload)
 {
-	fr_packet_code_t			code = FR_RADIUS_CODE_ACCESS_REJECT;
+	fr_radius_packet_code_t			code = FR_RADIUS_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp;
 	eap_fast_tunnel_t	*t;
@@ -774,7 +774,7 @@ static fr_packet_code_t eap_fast_eap_payload(request_t *request, eap_session_t *
 	return code;
 }
 
-static fr_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t *eap_session,
+static fr_radius_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSED eap_session_t *eap_session,
 				       fr_tls_session_t *tls_session, eap_tlv_crypto_binding_tlv_t *binding)
 {
 	uint8_t			cmac[sizeof(binding->compound_mac)];
@@ -797,7 +797,7 @@ static fr_packet_code_t eap_fast_crypto_binding(request_t *request, UNUSED eap_s
 	return FR_RADIUS_CODE_ACCESS_ACCEPT;
 }
 
-static fr_packet_code_t eap_fast_process_tlvs(request_t *request, eap_session_t *eap_session,
+static fr_radius_packet_code_t eap_fast_process_tlvs(request_t *request, eap_session_t *eap_session,
 				     fr_tls_session_t *tls_session, fr_pair_list_t *fast_vps)
 {
 	eap_fast_tunnel_t		*t = talloc_get_type_abort(tls_session->opaque, eap_fast_tunnel_t);
@@ -809,7 +809,7 @@ static fr_packet_code_t eap_fast_process_tlvs(request_t *request, eap_session_t 
 	for (vp = fr_pair_list_head(fast_vps);
 	     vp;
 	     vp = fr_pair_list_next(fast_vps, vp)) {
-		fr_packet_code_t code = FR_RADIUS_CODE_ACCESS_REJECT;
+		fr_radius_packet_code_t code = FR_RADIUS_CODE_ACCESS_REJECT;
 		if (vp->da->parent == fr_dict_root(dict_eap_fast)) {
 			if (vp->da == attr_eap_fast_eap_payload) {
 				code = eap_fast_eap_payload(request, eap_session, tls_session, vp);
@@ -881,7 +881,7 @@ static fr_packet_code_t eap_fast_process_tlvs(request_t *request, eap_session_t 
 	}
 
 	if (binding) {
-		fr_packet_code_t code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
+		fr_radius_packet_code_t code = eap_fast_crypto_binding(request, eap_session, tls_session, binding);
 		if (code == FR_RADIUS_CODE_ACCESS_ACCEPT) {
 			t->stage = EAP_FAST_PROVISIONING;
 		}
@@ -895,9 +895,9 @@ static fr_packet_code_t eap_fast_process_tlvs(request_t *request, eap_session_t 
 /*
  * Process the inner tunnel data
  */
-fr_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+fr_radius_packet_code_t eap_fast_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
-	fr_packet_code_t			code;
+	fr_radius_packet_code_t			code;
 	fr_pair_list_t		fast_vps;
 	uint8_t const		*data;
 	size_t			data_len;

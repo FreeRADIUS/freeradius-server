@@ -273,7 +273,7 @@ static int getport(char const *name)
 /*
  *	Set a port from the request type if we don't already have one
  */
-static void radclient_get_port(fr_packet_code_t type, uint16_t *port)
+static void radclient_get_port(fr_radius_packet_code_t type, uint16_t *port)
 {
 	switch (type) {
 	default:
@@ -306,7 +306,7 @@ static void radclient_get_port(fr_packet_code_t type, uint16_t *port)
 /*
  *	Resolve a port to a request type
  */
-static fr_packet_code_t radclient_get_code(uint16_t port)
+static fr_radius_packet_code_t radclient_get_code(uint16_t port)
 {
 	/*
 	 *	getport returns 0 if the service doesn't exist
@@ -1017,8 +1017,8 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	 */
 	if ((request->filter_code != FR_RADIUS_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
 		if (FR_RADIUS_PACKET_CODE_VALID(request->reply->code)) {
-			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_names[request->filter_code],
-				fr_packet_names[request->reply->code]);
+			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_name[request->filter_code],
+				fr_radius_packet_name[request->reply->code]);
 		} else {
 			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
 				request->reply->code);

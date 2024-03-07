@@ -52,7 +52,7 @@ typedef enum {
 	FR_RADIUS_CODE_PROTOCOL_ERROR		= 52,	//!< RFC7930 - Protocol-Error (generic NAK)
 	FR_RADIUS_CODE_MAX 	  		= 53,	//!< Maximum possible protocol code
 	FR_RADIUS_CODE_DO_NOT_RESPOND		= 256	//!< Special rcode to indicate we will not respond.
-} fr_packet_code_t;
+} fr_radius_packet_code_t;
 
 #define FR_AUTH_UDP_PORT		1812
 #define FR_AUTH_UDP_PORT_ALT		1645

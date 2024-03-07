@@ -752,7 +752,7 @@ void fr_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool receive
 #endif
 		       "length %zu\n",
 		        received ? "Received" : "Sent",
-		        fr_packet_names[packet->code],
+		        fr_radius_packet_name[packet->code],
 		        packet->id,
 		        packet->socket.inet.src_ipaddr.af == AF_INET6 ? "[" : "",
 			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->socket.inet.src_ipaddr),
