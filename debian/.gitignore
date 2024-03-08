@@ -8,7 +8,6 @@ freeradius-postgresql
 freeradius-rest
 freeradius-utils
 freeradius-unixodbc
-freeradius-dhcp
 freeradius-memcached
 freeradius-redis
 freeradius-yubikey

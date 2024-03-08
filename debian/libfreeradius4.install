@@ -2,6 +2,8 @@ usr/lib/freeradius/libfreeradius-arp.so
 usr/lib/freeradius/libfreeradius-bfd.so
 usr/lib/freeradius/libfreeradius-bio.so
 usr/lib/freeradius/libfreeradius-control.so
+usr/lib/freeradius/libfreeradius-dhcpv4.so
+usr/lib/freeradius/libfreeradius-dhcpv6.so
 usr/lib/freeradius/libfreeradius-dns.so
 usr/lib/freeradius/libfreeradius-eap-aka-sim.so
 usr/lib/freeradius/libfreeradius-eap.so

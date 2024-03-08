@@ -1,3 +1,4 @@
+usr/bin/dhcpclient
 usr/bin/smbencrypt
 usr/bin/radclient
 usr/bin/radict
