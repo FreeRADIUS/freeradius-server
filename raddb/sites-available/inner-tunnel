@@ -287,6 +287,13 @@ send Access-Accept {
 	#  the reply.
 	#
 #	use_tunneled_reply
+
+	#
+	#  Call an instance of `linelog` to log the authentication success
+	#  - equivalent to the previous log `auth = yes` option in v3.
+	#  See `mods-enabled/linelog` for message formats and destinations.
+	#
+#	log_auth_result
 }
 
 #
@@ -299,6 +306,14 @@ send Access-Accept {
 send Access-Reject {
 	#  log failed authentications in SQL, too.
 	-sql
+
+	#
+	#  Call an instance of `linelog` to log the authentication failure
+	#  - equivalent to the previous log `auth = yes` option in v3.
+	#  See `mods-enabled/linelog` for message formats and destinations.
+	#
+#	log_auth_result
+
 	attr_filter.access_reject
 
 	#
