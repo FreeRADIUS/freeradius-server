@@ -19,13 +19,13 @@ namespace:: Needs to be "tacacs" for TACACS+ functionality.
 
 ### TACACS+ Configuration
 
-All of the configuration for processing TACAC+ packets goes here.
+All of the configuration for processing TACACS+ packets goes here.
 
 
-#### Access-Request subsection
+#### Authentication subsection
 
 This section contains configuration which is
-specific to processing `link:https://freeradius.org/rfc/rfc2865.html#Access-Request[Access-Request]` packets.
+specific to processing `Authentication` packets.
 
 Similar sections can be added, but are not
 necessary for Accounting-Request (and other)

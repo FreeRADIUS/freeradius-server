@@ -27,14 +27,14 @@ server tacacs {
 	#
 	#  ### TACACS+ Configuration
 	#
-	#  All of the configuration for processing TACAC+ packets goes here.
+	#  All of the configuration for processing TACACS+ packets goes here.
 	#
 	tacacs {
 		#
-		#  #### Access-Request subsection
+		#  #### Authentication subsection
 		#
 		#  This section contains configuration which is
-		#  specific to processing `Access-Request` packets.
+		#  specific to processing `Authentication` packets.
 		#
 		#  Similar sections can be added, but are not
 		#  necessary for Accounting-Request (and other)
