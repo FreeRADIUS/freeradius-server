@@ -613,15 +613,6 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 		default:	/* don't do anything by default */
 			break;
 
-#if 0
-			/*
-			 *	Track this for prioritizing ongoing EAP sessions.
-			 */
-		case FR_STATE:
-			if (attr[1] > 2) packet->rounds = attr[2];
-			break;
-#endif
-
 			/*
 			 *	If there's an EAP-Message, we require
 			 *	a Message-Authenticator.
