@@ -35,9 +35,9 @@ fr_radius_id_t	*fr_radius_id_alloc(TALLOC_CTX *ctx);
 
 int		fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet) CC_HINT(nonnull);
 
-int		fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet) CC_HINT(nonnull);
+void		fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet) CC_HINT(nonnull);
 
-fr_packet_t *fr_radius_id_find(fr_radius_id_t *track, int id) CC_HINT(nonnull);
+fr_packet_t	*fr_radius_id_find(fr_radius_id_t *track, int id) CC_HINT(nonnull);
 
 static inline CC_HINT(nonnull) int fr_radius_code_id_alloc(TALLOC_CTX *ctx, fr_radius_code_id_t codes, int code)
 {
@@ -62,14 +62,14 @@ static inline CC_HINT(nonnull) int fr_radius_code_id_pop(fr_radius_code_id_t cod
 	return fr_radius_id_pop(codes[packet->code], packet);
 }
 
-static inline CC_HINT(nonnull) int fr_radius_code_id_push(fr_radius_code_id_t codes, fr_packet_t const *packet)
+static inline CC_HINT(nonnull) void fr_radius_code_id_push(fr_radius_code_id_t codes, fr_packet_t const *packet)
 {
 	fr_assert(packet->code > 0);
 	fr_assert(packet->code < FR_RADIUS_CODE_MAX);
 
 	fr_assert(codes[packet->code]);
 
-	return fr_radius_id_push(codes[packet->code], packet);
+	fr_radius_id_push(codes[packet->code], packet);
 }
 
 static inline CC_HINT(nonnull) fr_packet_t *fr_radius_code_id_find(fr_radius_code_id_t codes, int code, int id)

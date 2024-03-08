@@ -91,7 +91,7 @@ int fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet)
 /** De-allocate an ID for a packet, using LRU
  *
  */
-int fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet)
+void fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet)
 {
 	fr_assert(packet->id >= 0);
 	fr_assert(packet->id < 256);
@@ -110,8 +110,6 @@ int fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet)
 
 	track->packet[packet->id] = NULL;
 	track->num_free_ids++;
-
-	return 0;
 }
 
 fr_packet_t *fr_radius_id_find(fr_radius_id_t *track, int id)

@@ -29,6 +29,7 @@ RCSIDH(radius_client_h, "$Id$")
 #include <freeradius-devel/radius/bio.h>
 #include <freeradius-devel/bio/packet.h>
 #include <freeradius-devel/bio/fd.h>
+#include <freeradius-devel/bio/retry.h>
 
 typedef struct {
 	fr_radius_bio_verify_t	verify;
@@ -37,6 +38,13 @@ typedef struct {
 
 	fr_retry_config_t  retry[FR_RADIUS_CODE_MAX];	//!< default retry configuration for each packet type
 } fr_radius_client_config_t;
+
+typedef struct {
+	fr_bio_retry_entry_t	*retry_ctx;
+
+	fr_packet_t	*packet;
+	fr_packet_t	*reply;
+} fr_radius_client_packet_ctx_t;
 
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg) CC_HINT(nonnull);
 
