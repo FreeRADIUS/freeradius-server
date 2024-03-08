@@ -219,6 +219,7 @@ static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, fr_pair_t const *s
  * @param[in] packet associated with the request (request, reply...).
  * @param[in] list of pairs to write.
  * @param[in] compat Write out entry in compatibility mode.
+ * @param[in] ht Hash table containing attributes to be suppressed in the output.
  */
 static int detail_write(FILE *out, rlm_detail_t const *inst, request_t *request, fr_value_box_t *header,
 			fr_packet_t *packet, fr_pair_list_t *list, bool compat, fr_hash_table_t *ht)
