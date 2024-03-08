@@ -51,6 +51,7 @@ void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config
 	 */
 	if (config->mrc == 1) {
 		r->next = fr_time_add(now, config->mrd);
+		r->rt = config->mrd; /* mostly set for debug messages */
 		return;
 	}
 
