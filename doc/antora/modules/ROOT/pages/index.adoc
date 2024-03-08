@@ -146,7 +146,7 @@ This section describes the syntax and functionality of the keywords,
 data types, etc. used in the `unlang` processing language.
 
 All of the xref:raddb:index.adoc[configuration files] are available in
-hypertext format. In can often be easier to read the configuration files
+hypertext format. It can often be easier to read the configuration files
 in a nicely formatted version, instead of as a fixed-width font in a
 text editor.
 
