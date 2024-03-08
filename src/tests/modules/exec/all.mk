@@ -1,3 +1,3 @@
 #
-#  Test the "files" module
+#  Test the "exec" module
 #

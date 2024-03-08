@@ -1,5 +1,5 @@
 #
-#  Test the "files" module
+#  Test the "python" module
 #
 
 PYTHONPATH := $(top_builddir)/src/tests/modules/python/
