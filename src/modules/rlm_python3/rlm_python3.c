@@ -306,7 +306,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		/* last element of the tuple is the attribute value */
 		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
 		if (!PyUnicode_CheckExact(pStr2) && !PyBytes_CheckExact(pStr2)) {
-			ERROR("%s - Value for attribute %s:%s must be a string",
+			ERROR("%s - Value for attribute %s:%s must be a string or bytes",
 			      funcname, list_name, s1);
 			continue;
 		}
