@@ -158,13 +158,6 @@ typedef struct {
 } process_tacacs_sections_t;
 
 typedef struct {
-	bool		log_stripped_names;
-	bool		log_auth;		//!< Log authentication attempts.
-	bool		log_auth_badpass;	//!< Log failed authentications.
-	bool		log_auth_goodpass;	//!< Log successful authentications.
-	char const	*auth_badpass_msg;	//!< Additional text to append to failed auth messages.
-	char const	*auth_goodpass_msg;	//!< Additional text to append to successful auth messages.
-
 	fr_time_delta_t	session_timeout;	//!< Maximum time between the last response and next request.
 	uint32_t	max_session;		//!< Maximum ongoing session allowed.
 
@@ -212,20 +205,7 @@ static const conf_parser_t session_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const conf_parser_t log_config[] = {
-	{ FR_CONF_OFFSET("stripped_names", process_tacacs_auth_t, log_stripped_names), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth", process_tacacs_auth_t, log_auth), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_badpass", process_tacacs_auth_t, log_auth_badpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("auth_goodpass", process_tacacs_auth_t,  log_auth_goodpass), .dflt = "no" },
-	{ FR_CONF_OFFSET("msg_badpass", process_tacacs_auth_t, auth_badpass_msg) },
-	{ FR_CONF_OFFSET("msg_goodpass", process_tacacs_auth_t, auth_goodpass_msg) },
-
-	CONF_PARSER_TERMINATOR
-};
-
 static const conf_parser_t auth_config[] = {
-	{ FR_CONF_POINTER("log", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) log_config },
-
 	{ FR_CONF_POINTER("session", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) session_config },
 
 	CONF_PARSER_TERMINATOR
@@ -240,116 +220,6 @@ static const conf_parser_t config[] = {
 
 
 #define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-
-/*
- *	Return a short string showing the terminal server, port
- *	and calling station ID.
- */
-static char *auth_name(char *buf, size_t buflen, request_t *request)
-{
-	char const	*tls = "";
-	fr_client_t	*client = client_from_request(request);
-
-	if (request->packet->socket.inet.dst_port == 0) tls = " via proxy to virtual server";
-
-	snprintf(buf, buflen, "from client %.128s%s",
-		 client ? client->shortname : "", tls);
-
-	return buf;
-}
-
-
-/*
- *	Make sure user/pass are clean and then create an attribute
- *	which contains the log message.
- */
-static void CC_HINT(format (printf, 4, 5)) auth_message(process_tacacs_auth_t const *inst,
-							request_t *request, bool goodpass, char const *fmt, ...)
-{
-	va_list		 ap;
-
-	bool		logit;
-	char const	*extra_msg = NULL;
-
-	char		password_buff[256];
-	char const	*password_str = NULL;
-
-	char		buf[1024];
-	char		extra[1024];
-	char		*p;
-	char		*msg;
-	fr_pair_t	*username = NULL;
-	fr_pair_t	*password = NULL;
-
-	/*
-	 *	No logs?  Then no logs.
-	 */
-	if (!inst->log_auth) return;
-
-	/*
-	 *	Get the correct username based on the configured value
-	 */
-	if (!inst->log_stripped_names) {
-		username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	} else {
-		username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_stripped_user_name);
-		if (!username) username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	}
-
-	/*
-	 *	Clean up the password
-	 */
-	if (inst->log_auth_badpass || inst->log_auth_goodpass) {
-		password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
-		if (!password) {
-			fr_pair_t *auth_type;
-
-			auth_type = fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type);
-			if (auth_type) {
-				snprintf(password_buff, sizeof(password_buff), "<via Auth-Type = %s>",
-					 fr_dict_enum_name_by_value(auth_type->da, &auth_type->data));
-				password_str = password_buff;
-			} else {
-				password_str = "<no User-Password attribute>";
-			}
-		} else if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_password)) {
-			password_str = "<CHAP-Password>";
-		}
-	}
-
-	if (goodpass) {
-		logit = inst->log_auth_goodpass;
-		extra_msg = inst->auth_goodpass_msg;
-	} else {
-		logit = inst->log_auth_badpass;
-		extra_msg = inst->auth_badpass_msg;
-	}
-
-	if (extra_msg) {
-		extra[0] = ' ';
-		p = extra + 1;
-		if (xlat_eval(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) return;
-	} else {
-		*extra = '\0';
-	}
-
-	/*
-	 *	Expand the input message
-	 */
-	va_start(ap, fmt);
-	msg = fr_vasprintf(request, fmt, ap);
-	va_end(ap);
-
-	RAUTH("%s: [%pV%s%pV] (%s)%s",
-	      msg,
-	      username ? &username->data : fr_box_strvalue("<no User-Name attribute>"),
-	      logit ? "/" : "",
-	      logit ? (password_str ? fr_box_strvalue(password_str) : &password->data) : fr_box_strvalue(""),
-	      auth_name(buf, sizeof(buf), request),
-	      extra);
-
-	talloc_free(msg);
-}
 
 /*
  *	Synthesize a State attribute from connection && session information.
@@ -761,17 +631,9 @@ RESUME(auth_type)
 
 RESUME(auth_pass)
 {
-	fr_pair_t			*vp;
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
 
 	PROCESS_TRACE;
-
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_module_success_message);
-	if (vp) {
-		auth_message(&inst->auth, request, true, "Login OK (%pV)", &vp->data);
-	} else {
-		auth_message(&inst->auth, request, true, "Login OK");
-	}
 
 	// @todo - worry about user identity existing?
 
@@ -781,17 +643,9 @@ RESUME(auth_pass)
 
 RESUME(auth_fail)
 {
-	fr_pair_t			*vp;
 	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
 
 	PROCESS_TRACE;
-
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_module_failure_message);
-	if (vp) {
-		auth_message(&inst->auth, request, false, "Login incorrect (%pV)", &vp->data);
-	} else {
-		auth_message(&inst->auth, request, false, "Login incorrect");
-	}
 
 	// @todo - insert server message saying "failed"
 	// and also for FAIL

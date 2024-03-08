@@ -43,62 +43,6 @@ server tacacs {
 		#
 		Authentication {
 			#
-			#  log:: Logging configuration for TACACS+ authentication
-			#
-			log {
-				#
-				#  stripped_names:: Log the full
-				#  `User-Name` attribute, as it was
-				#  found in the request.
-				#
-				#  allowed values: {no, yes}
-				#
-				stripped_names = no
-
-				#
-				#  auth:: Log authentication requests
-				#  to the log file.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth = no
-
-				#
-				#  auth_goodpass:: Log "good"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_goodpass = no
-
-				#
-				#  auth_badpass:: Log "bad"
-				#  passwords with the authentication
-				#  requests.
-				#
-				#  allowed values: {no, yes}
-				#
-				auth_badpass = no
-
-				#
-				#  msg_goodpass::
-				#  msg_badpass::
-				#
-				#  Log additional text at the end of the "Login OK" messages.
-				#  for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-				#  configurations above have to be set to "yes".
-				#
-				#  The strings below are dynamically expanded, which means that
-				#  you can put anything you want in them.  However, note that
-				#  this expansion can be slow, and can negatively impact server
-				#  performance.
-				#
-#				msg_goodpass = ""
-#				msg_badpass = ""
-			}
-
-			#
 			#  session:: Controls how ongoing
 			#  (multi-round) sessions are handled
 			#
@@ -332,10 +276,24 @@ server tacacs {
 	#
 	send Authentication-Pass {
 		&reply.Server-Message := "Hello %{User-Name}"
+
+		#
+		#  Call an instance of `linelog` to log the authentication success
+		#  - equivalent to the previous log `auth = yes` option in v3.
+		#  See `mods-enabled/linelog` for message formats and destinations.
+		#
+#		log_auth_authentication_pass
 	}
 
 	send Authentication-Fail {
 		&reply.Server-Message := "Failed login!"
+
+		#
+		#  Call an instance of `linelog` to log the authentication failure
+		#  - equivalent to the previous log `auth = yes` option in v3.
+		#  See `mods-enabled/linelog` for message formats and destinations.
+		#
+#		log_auth_authentication_fail
 	}
 
 	#
