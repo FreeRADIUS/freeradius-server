@@ -83,5 +83,6 @@ $(OUTPUT)/%.txt: $(DIR)/%.txt $(TEST_BIN_DIR)/radsniff $(PCAP_IN)
 		echo "ERROR! We should have at least one .txt or .cmd test";                                  \
 		exit 1;                                                                                       \
 	fi
+	${Q}rm -f ${EXPECTED}.simple
 	${Q}touch $@
 endif
