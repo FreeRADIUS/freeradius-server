@@ -54,22 +54,25 @@ extern "C" {
  *	data,data_len:	Used between fr_radius_recv and fr_radius_decode.
  */
 typedef struct {
-	fr_rb_node_t		node;			//!< Allows insertion into the list.c
-							///< rbtree, may be removed in future.
-
 	fr_socket_t		socket;			//!< This packet was received on.
+	fr_time_t		timestamp;		//!< When we received the packet.
 
 	int			id;			//!< Packet ID (used to link requests/responses).
 	unsigned int		code;			//!< Packet code (type).
 
-	uint8_t			vector[RADIUS_AUTH_VECTOR_LENGTH];//!< RADIUS authentication vector.
-
-	uint32_t       		count;			//!< Number of times we've seen this packet
-	fr_time_t		timestamp;		//!< When we received the packet.
 	uint8_t			*data;			//!< Packet data (body).
 	size_t			data_len;		//!< Length of packet data.
 
-	uint32_t       		rounds;			//!< for State[0]
+	/*
+	 *	The vector should go away soon
+	 */
+	uint8_t			vector[RADIUS_AUTH_VECTOR_LENGTH];//!< RADIUS authentication vector.
+
+	/*
+	 *	The following fields are deprecated, and only used by old code.
+	 */
+	fr_rb_node_t		node;			//!< Allows insertion into the list.c
+							///< rbtree, may be removed in future.
 
 	size_t			partial;
 
