@@ -32,78 +32,41 @@ configuration files.
 Within the main server configuration, a section can reference a
 template by using `$template name`.
 
-For now, you can use templates only for sections in
-radiusd.conf, not sub-sections.  So you still have to use the
-`$INCLUDE file...` method for things like defining multiple
-"sql" modules, each with similar configuration.
 
-
-
-## Template example
-
-Define the main template section:
-
-
-Unlike v3, Access-Request log configuration is different
-for each `listen` section.  Templates can be used to regain
-a global configuration.  Simply configure the following
-section as you like, and then in every Access-Request
-subsection, put:
-
-    Access-Request {
-        $template Access-Request
-    }
-
-then enable `templates.conf` as described above.
-
-
-stripped_names:: Log the full User-Name
-attribute, as it was found in the request.
-
-Allowed values: {no, yes}
-
-
-
-auth:: Log authentication requests to the log file.
-
-Allowed values: {no, yes}
-
-
-
-Should we log passwords with the authentication requests?
-
-auth_badpass:: logs password if it's rejected
-auth_goodpass:: logs password if it's correct
-
-Allowed values: {no, yes}
-
-
-
-Log additional text at the end of the "Login OK" messages.
-for these to work, the "auth" and "auth_goodpass" or "auth_badpass"
-configurations above have to be set to "yes".
-
-The strings below are dynamically expanded, which means that
-you can put anything you want in them.  However, note that
-this expansion can be slow, and can negatively impact server
-performance.
-
-msg_goodpass:: text to log after a correct password
-msg_badpass:: text to log after an incorrect password
-
-
-
-== Default Configuration
+One use case would be if there are multiple instances of the
+sql module for load balancing or failover.
+These will typically share many common configuration options
+which can be set in a template and then that template referred
+to in each instances of the sql module
 
 ```
-templates {
-	Access-Request {
-		stripped_names = no
-		auth = no
-		auth_badpass = no
-		auth_goodpass = no
-		msg_goodpass = ""
-		msg_badpass = ""
+	sql sql01 {
+		$template sql-common
+		...
+	}
+	sql sql02 {
+		$template sql-common
+		...
+	}
+```
+
+In that case the template `sql-common` could be as follows:
+
+```
+sql-common {
+	acct_table = 'radacct'
+	acct_table2 = 'radacct'
+	postauth_table = 'radpostauth'
+	authcheck_table = 'radcheck'
+	groupcheck_table = 'radgroupcheck'
+	authreply_table = 'radreply'
+	groupreply_table = 'radgroupreply'
+	usergroup_table = 'radusergroup'
+	read_groups = yes
+	pool {
+		start = 0
+		min = 1
+		spare = 1
 	}
 }
 ```
