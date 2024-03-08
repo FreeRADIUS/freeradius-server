@@ -143,12 +143,6 @@ performance.
 
 
 
-msg_denied::
-
-The message when the user exceeds the Simultaneous-Use limit.
-
-
-
 session:: Controls how ongoing
 (multi-round) sessions are handled
 
@@ -1290,7 +1284,6 @@ server default {
 				auth_badpass = no
 #				msg_goodpass = ""
 #				msg_badpass = ""
-				msg_denied = "You are already logged in - access denied"
 			}
 			session {
 #				max = 4096

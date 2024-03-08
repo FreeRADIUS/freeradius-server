@@ -93,10 +93,6 @@ msg_badpass:: text to log after an incorrect password
 
 
 
-msg_denied:: The message when the user exceeds
-the Simultaneous-Use limit.
-
-
 == Default Configuration
 
 ```
@@ -108,7 +104,6 @@ templates {
 		auth_goodpass = no
 		msg_goodpass = ""
 		msg_badpass = ""
-		msg_denied = "You are already logged in - access denied"
 	}
 }
 ```

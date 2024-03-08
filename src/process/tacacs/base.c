@@ -165,9 +165,6 @@ typedef struct {
 	char const	*auth_badpass_msg;	//!< Additional text to append to failed auth messages.
 	char const	*auth_goodpass_msg;	//!< Additional text to append to successful auth messages.
 
-	char const	*denied_msg;		//!< Additional text to append if the user is already logged
-						//!< in (simultaneous use check failed).
-
 	fr_time_delta_t	session_timeout;	//!< Maximum time between the last response and next request.
 	uint32_t	max_session;		//!< Maximum ongoing session allowed.
 
@@ -222,7 +219,6 @@ static const conf_parser_t log_config[] = {
 	{ FR_CONF_OFFSET("auth_goodpass", process_tacacs_auth_t,  log_auth_goodpass), .dflt = "no" },
 	{ FR_CONF_OFFSET("msg_badpass", process_tacacs_auth_t, auth_badpass_msg) },
 	{ FR_CONF_OFFSET("msg_goodpass", process_tacacs_auth_t, auth_goodpass_msg) },
-	{ FR_CONF_OFFSET("msg_denied", process_tacacs_auth_t, denied_msg), .dflt = "You are already logged in - access denied" },
 
 	CONF_PARSER_TERMINATOR
 };

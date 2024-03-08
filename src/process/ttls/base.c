@@ -129,9 +129,6 @@ typedef struct {
 	bool		auth_goodpass;	//!< Log failed authentications.
 	char const	*auth_badpass_msg;	//!< Additional text to append to successful auth messages.
 	char const	*auth_goodpass_msg;	//!< Additional text to append to failed auth messages.
-
-	char const	*denied_msg;		//!< Additional text to append if the user is already logged
-						//!< in (simultaneous use check failed).
 } process_ttls_auth_log_t;
 
 typedef struct {
@@ -180,7 +177,6 @@ static const conf_parser_t log_config[] = {
 	{ FR_CONF_OFFSET("auth_goodpass", process_ttls_auth_log_t,  auth_goodpass), .dflt = "no" },
 	{ FR_CONF_OFFSET("msg_badpass", process_ttls_auth_log_t, auth_badpass_msg) },
 	{ FR_CONF_OFFSET("msg_goodpass", process_ttls_auth_log_t, auth_goodpass_msg) },
-	{ FR_CONF_OFFSET("msg_denied", process_ttls_auth_log_t, denied_msg), .dflt = "You are already logged in - access denied" },
 
 	CONF_PARSER_TERMINATOR
 };

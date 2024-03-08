@@ -96,13 +96,6 @@ server tacacs {
 				#
 #				msg_goodpass = ""
 #				msg_badpass = ""
-
-				#
-				#  msg_denied::
-				#
-				#  The message when the user exceeds the Simultaneous-Use limit.
-				#
-				msg_denied = "You are already logged in - access denied"
 			}
 
 			#
