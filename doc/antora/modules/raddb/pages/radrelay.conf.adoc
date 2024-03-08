@@ -97,7 +97,7 @@ This can be one of:
 
 |===
 | Destination | Description
-| files       | Log to `file`, as defined below.
+| file        | Log to `file`, as defined below.
 | syslog      | To syslog (see also the `syslog_facility`, below.
 | stdout      | Standard output.
 | stderr      | Standard error.
@@ -109,7 +109,7 @@ logging to go to stdout.
 
 
 file:: The logging messages for the server are appended to the
-tail of this file `if ${destination} == "files"`
+tail of this file `if ${destination} == "file"`
 
 NOTE: If the server is running in debugging mode, this file is
 NOT used.
@@ -263,7 +263,7 @@ pidfile = ${run_dir}/${name}.pid
 max_request_time = 30
 cleanup_delay = 5
 log {
-	destination = files
+	destination = file
 	file = ${logdir}/${name}.log
 }
 security {

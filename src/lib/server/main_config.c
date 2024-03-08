@@ -103,7 +103,7 @@ static int name_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, c
  *	Log destinations
  */
 static const conf_parser_t initial_log_config[] = {
-	{ FR_CONF_OFFSET("destination", main_config_t, log_dest), .dflt = "files" },
+	{ FR_CONF_OFFSET("destination", main_config_t, log_dest), .dflt = "file" },
 	{ FR_CONF_OFFSET("syslog_facility", main_config_t, syslog_facility), .dflt = "daemon",
 		.func = cf_table_parse_int,
 			.uctx = &(cf_table_parse_ctx_t){

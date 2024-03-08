@@ -116,7 +116,7 @@ log {
 	#
 	#  |===
 	#  | Destination | Description
-	#  | files       | Log to `file`, as defined below.
+	#  | file        | Log to `file`, as defined below.
 	#  | syslog      | To syslog (see also the `syslog_facility`, below.
 	#  | stdout      | Standard output.
 	#  | stderr      | Standard error.
@@ -125,11 +125,11 @@ log {
 	#  The command-line option `-X` over-rides this option, and forces
 	#  logging to go to stdout.
 	#
-	destination = files
+	destination = file
 
 	#
 	#  file:: The logging messages for the server are appended to the
-	#  tail of this file `if ${destination} == "files"`
+	#  tail of this file `if ${destination} == "file"`
 	#
 	#  NOTE: If the server is running in debugging mode, this file is
 	#  NOT used.

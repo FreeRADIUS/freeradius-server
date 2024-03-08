@@ -80,6 +80,7 @@ typedef enum {
 
 static fr_table_num_sorted_t const linefr_log_dst_table[] = {
 	{ L("file"),	LINELOG_DST_FILE	},
+	{ L("files"),	LINELOG_DST_FILE	},
 	{ L("request"),	LINELOG_DST_REQUEST	},
 	{ L("stderr"),	LINELOG_DST_STDERR	},
 	{ L("stdout"),	LINELOG_DST_STDOUT	},

@@ -175,6 +175,7 @@ fr_table_num_sorted_t const syslog_severity_table[] = {
 size_t syslog_severity_table_len = NUM_ELEMENTS(syslog_severity_table);
 
 fr_table_num_sorted_t const log_destination_table[] = {
+	{ L("file"),		L_DST_FILES	},
 	{ L("files"),		L_DST_FILES	},
 	{ L("null"),		L_DST_NULL	},
 	{ L("stderr"),		L_DST_STDERR	},
@@ -1088,7 +1089,7 @@ static bool log_timestamp_is_set;
  *	Parse an fr_log_t configuration.
  */
 static const conf_parser_t log_config[] = {
-	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, 0, &log_destination), .dflt = "files" },
+	{ FR_CONF_POINTER("destination", FR_TYPE_STRING, 0, &log_destination), .dflt = "file" },
 #if 0
 	/*
 	 *	@todo - once we allow this, also check that there's only _one_ destination
