@@ -219,8 +219,6 @@ static const conf_parser_t config[] = {
 };
 
 
-#define RAUTH(fmt, ...)		log_request(L_AUTH, L_DBG_LVL_OFF, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
-
 /*
  *	Synthesize a State attribute from connection && session information.
  */

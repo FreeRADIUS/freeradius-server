@@ -42,8 +42,6 @@ RCSID("$Id$")
 #  include <grp.h>
 #endif
 
-#define DIRLEN	8192		//!< Maximum path length.
-
 /** Instance configuration for rlm_detail
  *
  * Holds the configuration and preparsed data for a instance of rlm_detail.
