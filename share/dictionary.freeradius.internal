@@ -571,6 +571,7 @@ ATTRIBUTE	TLS-PSK-Identity			1933	string
 ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage-OID 1936	string
 ATTRIBUTE	TLS-Client-Cert-Valid-Since		1937	string
 ATTRIBUTE	TLS-Cache-Method			1938	integer
+ATTRIBUTE	TLS-Cert-CRL-Distribution-Points	1939	string
 VALUE	TLS-Cache-Method		save			1
 VALUE	TLS-Cache-Method		load			2
 VALUE	TLS-Cache-Method		clear			3

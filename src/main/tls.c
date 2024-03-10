@@ -2884,7 +2884,7 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[9][2] = {
+static char const *cert_attr_names[10][2] = {
 	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
 	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
 	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
@@ -2893,7 +2893,8 @@ static char const *cert_attr_names[9][2] = {
 	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" },
-	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" }
+	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" },
+	{ "TLS-Client-Cert-CRL-Distribution-Points",	"TLS-Cert-CRL-Distribution-Points"}
 };
 
 #define FR_TLS_SERIAL		(0)
@@ -2905,10 +2906,38 @@ static char const *cert_attr_names[9][2] = {
 #define FR_TLS_SAN_DNS          (6)
 #define FR_TLS_SAN_UPN          (7)
 #define FR_TLS_VALID_SINCE	(8)
+#define FR_TLS_CDP		(9)
+
 
 static const char *cert_names[2] = {
 	"client", "server",
 };
+
+/*
+ *	Extract Certification Distribution point URL from the certificate
+ */
+const char *get_dp_url(DIST_POINT *dp)
+{
+	GENERAL_NAMES *gens;
+	GENERAL_NAME *gen;
+	int i, gtype;
+	ASN1_STRING *uri;
+
+	if (dp == NULL || !dp->distpoint || dp->distpoint->type != 0) {
+		return NULL;
+	}
+	gens = dp->distpoint->name.fullname;
+	for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
+		gen = sk_GENERAL_NAME_value(gens, i);
+		uri = GENERAL_NAME_get0_value(gen, &gtype);
+		if (gtype == GEN_URI && ASN1_STRING_length(uri) > 6) {
+			const char *url_ptr = (const char*) ASN1_STRING_get0_data(uri);
+			return url_ptr;
+		}
+	}
+	return NULL;
+}
+
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -2944,6 +2973,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char		common_name[1024];
 	char		cn_str[1024];
 	char		buf[64];
+        char            cdp[1024];
 	X509		*client_cert;
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
 	const STACK_OF(X509_EXTENSION) *ext_list;
@@ -3081,6 +3111,30 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if (certs && (lookup <= 1) && common_name[0] && subject[0]) {
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+	}
+
+	/*
+	 *	Get the Certificate Distribution points
+	 */
+	STACK_OF(DIST_POINT) *crl_dp = X509_get_ext_d2i(client_cert, NID_crl_distribution_points, NULL, NULL);
+	DIST_POINT *dp;
+	const char *url_ptr = NULL;
+	if (crl_dp != NULL) {
+		for (int i = 0; i < sk_DIST_POINT_num(crl_dp); i++) {
+			dp = sk_DIST_POINT_value(crl_dp, i);
+			if (dp == NULL) {
+				continue;
+			}
+			cdp[0] = '\0';
+			url_ptr = get_dp_url(dp);
+			if (url_ptr == NULL) {
+				continue;
+                        }
+			strncpy(cdp, (char*) url_ptr, (int) strlen(url_ptr));
+			cdp[strlen(url_ptr)] = '\0';
+			vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CDP][lookup], cdp, T_OP_ADD);
+			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		}
 	}
 
 	/*
