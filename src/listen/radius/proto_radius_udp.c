@@ -245,7 +245,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 
 			memcpy(&packet, &track->reply, sizeof(packet)); /* const issues */
 
-			(void) udp_send(&socket, flags, packet, track->reply_len);
+			return udp_send(&socket, flags, packet, track->reply_len);
 		}
 
 		return buffer_len;
