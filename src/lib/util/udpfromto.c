@@ -457,9 +457,9 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 		(from->sa_family == AF_INET &&
 			(((struct sockaddr_in *) from)->sin_addr.s_addr == INADDR_ANY)) ||
 		(from->sa_family == AF_INET6 &&
-			IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *) from)->sin6_addr))
-	)
+			IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *) from)->sin6_addr))) {
 		return sendto(fd, buf, len, flags, to, to_len);
+	}
 
 	/* Set up control buffer iov and msgh structures. */
 	memset(&cbuf, 0, sizeof(cbuf));
