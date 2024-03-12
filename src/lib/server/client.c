@@ -978,6 +978,11 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 			value = vp->vp_strvalue;
 			break;
 
+		case FR_FREERADIUS_CLIENT_SRC_IP_ADDRESS:
+			attr = "src_ipaddr";
+			value = fr_inet_ntop(buffer, sizeof(buffer), &vp->vp_ip);
+			break;
+
 		case FR_FREERADIUS_CLIENT_REQUIRE_MA:
 			attr = "require_message_authenticator";
 			if (vp->vp_bool) {
