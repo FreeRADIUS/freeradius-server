@@ -249,12 +249,7 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 			 */
 			clients = cf_data_value(cf_data_find(cs, fr_client_list_t, NULL));
 			if (!clients) {
-				clients = client_list_init(cs);
-				if (!clients) {
-					ERROR("Out of memory");
-					return false;
-				}
-
+				MEM(clients = client_list_init(cs));
 				if (!cf_data_add(cs, clients, NULL, true)) {
 					ERROR("Failed to associate clients with virtual server %s", client->server);
 					talloc_free(clients);

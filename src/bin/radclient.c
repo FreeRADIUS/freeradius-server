@@ -161,7 +161,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  -c <count>			     Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d <raddb>                        Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>                      Set main dictionary directory (defaults to " DICTDIR ").\n");
-	fprintf(stderr, "  -f <file>[:<file>]                Read packets from file, not stdin.\n");
+	fprintf(stderr, "  -f <request>[:<expected>][:<coa_reply>][:<coa_expected>]  Read packets from file, not stdin.\n");
 	fprintf(stderr, "                                    If a second file is provided, it will be used to verify responses\n");
 	fprintf(stderr, "  -F                                Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h                                Print usage help information.\n");
@@ -377,20 +377,8 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	/*
 	 *	Allocate it.
 	 */
-	request = talloc_zero(parent, rc_request_t);
-	if (!request) {
-		ERROR("Out of memory");
-		return -1;
-	}
-
-	request->reply = fr_packet_alloc(request, false);
-	if (!request->reply) {
-
-		ERROR("Out of memory");
-	error:
-		talloc_free(request);
-		return -1;
-	}
+	MEM(request = talloc_zero(parent, rc_request_t));
+	MEM(request->reply = fr_packet_alloc(request, false));
 
 	/*
 	 *	Don't initialize src/dst IP/port, or anything else.  That will be read from the network.
@@ -405,7 +393,9 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	if (fr_pair_list_afrom_file(request, dict_radius,
 				    &request->reply_pairs, coa_reply, coa_reply_done) < 0) {
 		REDEBUG("Error parsing \"%s\"", reply_filename);
-		goto error;
+	error:
+		talloc_free(request);
+		return -1;
 	}
 
 	/*
@@ -527,17 +517,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Allocate it.
 		 */
-		request = talloc_zero(ctx, rc_request_t);
-		if (!request) {
-			ERROR("Out of memory");
-			goto error;
-		}
-
-		request->packet = fr_packet_alloc(request, true);
-		if (!request->packet) {
-			ERROR("Out of memory");
-			goto error;
-		}
+		MEM(request = talloc_zero(ctx, rc_request_t));
+		MEM(request->packet = fr_packet_alloc(request, true));
 		request->packet->uctx = request;
 
 		request->packet->socket.inet.src_ipaddr = client_ipaddr;
@@ -1549,12 +1530,7 @@ int main(int argc, char **argv)
 			char const *p;
 			rc_file_pair_t *files;
 
-			files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
-			if (!files) {
-			oom:
-				ERROR("Out of memory");
-				fr_exit_now(EXIT_FAILURE);
-			}
+			MEM(files = talloc_zero(talloc_autofree_context(), rc_file_pair_t));
 
 			/*
 			 *	Commas are nicer than colons.
@@ -1572,8 +1548,7 @@ int main(int argc, char **argv)
 			} else {
 				char *q;
 
-				files->packets = talloc_strndup(files, optarg, p - optarg);
-				if (!files->packets) goto oom;
+				MEM(files->packets = talloc_strndup(files, optarg, p - optarg));
 				files->filters = p + 1;
 
 				/*
@@ -1866,16 +1841,10 @@ int main(int argc, char **argv)
 		 */
 		if (!attr_coa_filter) attr_coa_filter = attr_user_name;
 
-		coa_tree = fr_rb_inline_talloc_alloc(NULL, rc_request_t, node, request_cmp, NULL);
-		if (!coa_tree) goto oom;
+		MEM(coa_tree = fr_rb_inline_talloc_alloc(NULL, rc_request_t, node, request_cmp, NULL));
 	}
 
-	packet_list = fr_packet_list_create(1);
-	if (!packet_list) {
-		ERROR("Out of memory");
-		fr_exit_now(1);
-	}
-
+	MEM(packet_list = fr_packet_list_create(1));
 	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
 		ERROR("Failed adding socket");

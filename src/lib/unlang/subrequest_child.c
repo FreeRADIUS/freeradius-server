@@ -399,11 +399,7 @@ int unlang_subrequest_child_op_init(void)
 	 *	so that talloc_get_type works
 	 *	correctly.
 	 */
-	subrequest_instruction = talloc(NULL, unlang_subrequest_t);
-	if (!subrequest_instruction) {
-		ERROR("%s: Out of memory", __FUNCTION__);
-		return -1;
-	}
+	MEM(subrequest_instruction = talloc(NULL, unlang_subrequest_t));
 	*subrequest_instruction = (unlang_subrequest_t){
 		.group = {
 			.self = {

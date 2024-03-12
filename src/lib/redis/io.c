@@ -314,11 +314,7 @@ static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connecti
 	 *	Allocate a structure to wrap the
 	 *	redis async context.
 	 */
-	h = talloc_zero(conn, fr_redis_handle_t);
-	if (!h) {
-		ERROR("Out of memory");
-		return FR_CONNECTION_STATE_FAILED;
-	}
+	MEM(h = talloc_zero(conn, fr_redis_handle_t));
 	talloc_set_destructor(h, _redis_handle_free);
 
 	h->ac = redisAsyncConnect(host, port);

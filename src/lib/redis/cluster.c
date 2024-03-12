@@ -2276,11 +2276,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	fr_assert(triggers_enabled || !trigger_prefix);
 	fr_assert(triggers_enabled || (!trigger_args || fr_pair_list_empty(trigger_args)));
 
-	cluster = talloc_zero(NULL, fr_redis_cluster_t);
-	if (!cluster) {
-		ERROR("%s - Out of memory", log_prefix);
-		return NULL;
-	}
+	MEM(cluster = talloc_zero(NULL, fr_redis_cluster_t));
 	fr_pair_list_init(&cluster->trigger_args);
 
 	cs_name1 = cf_section_name1(module);
@@ -2380,23 +2376,10 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 	 *	its parent context, as the two contexts may be
 	 *	modified by multiple threads.
 	 */
-	if (talloc_link_ctx(ctx, cluster) < 0) {
-	oom:
-		ERROR("%s - Out of memory", cluster->log_prefix);
-
-	error:
-		talloc_free(cluster);
-		return NULL;
-	}
-
-	cluster->node = talloc_zero_array(cluster, fr_redis_cluster_node_t, conf->max_nodes + 1);
-	if (!cluster->node) goto oom;
-
-	cluster->used_nodes = fr_rb_inline_alloc(cluster, fr_redis_cluster_node_t, rbnode, _cluster_node_cmp, NULL);
-	if (!cluster->used_nodes) goto oom;
-
-	cluster->free_nodes = fr_fifo_create(cluster, conf->max_nodes, NULL);
-	if (!cluster->free_nodes) goto oom;
+	MEM(talloc_link_ctx(ctx, cluster) >= 0);
+	MEM(cluster->node = talloc_zero_array(cluster, fr_redis_cluster_node_t, conf->max_nodes + 1));
+	MEM(cluster->used_nodes = fr_rb_inline_alloc(cluster, fr_redis_cluster_node_t, rbnode, _cluster_node_cmp, NULL));
+	MEM(cluster->free_nodes = fr_fifo_create(cluster, conf->max_nodes, NULL));
 
 	cluster->conf = conf;
 
@@ -2442,7 +2425,10 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx,
 		node = fr_fifo_peek(cluster->free_nodes);
 		if (!node) {
 			ERROR("%s - Number of bootstrap servers exceeds 'max_nodes'", cluster->log_prefix);
-			goto error;
+
+		error:
+			talloc_free(cluster);
+			return NULL;
 		}
 
 		server = cf_pair_value(cp);

@@ -395,17 +395,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Allocate it.
 		 */
-		request = talloc_zero(ctx, rc_request_t);
-		if (!request) {
-			ERROR("Out of memory");
-			goto error;
-		}
-
-		request->packet = fr_packet_alloc(request, true);
-		if (!request->packet) {
-			ERROR("Out of memory");
-			goto error;
-		}
+		MEM(request = talloc_zero(ctx, rc_request_t));
+		MEM(request->packet = fr_packet_alloc(request, true));
 		request->packet->uctx = request;
 
 		request->packet->socket.inet.src_ipaddr = fd_config.src_ipaddr;
@@ -1180,12 +1171,7 @@ int main(int argc, char **argv)
 			char const *p;
 			rc_file_pair_t *files;
 
-			files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
-			if (!files) {
-			oom:
-				ERROR("Out of memory");
-				fr_exit_now(EXIT_FAILURE);
-			}
+			MEM(files = talloc_zero(talloc_autofree_context(), rc_file_pair_t));
 
 			/*
 			 *	Commas are nicer than colons.
@@ -1201,8 +1187,7 @@ int main(int argc, char **argv)
 				files->packets = optarg;
 				files->filters = NULL;
 			} else {
-				files->packets = talloc_strndup(files, optarg, p - optarg);
-				if (!files->packets) goto oom;
+				MEM(files->packets = talloc_strndup(files, optarg, p - optarg));
 				files->filters = p + 1;
 			}
 			fr_dlist_insert_tail(&filenames, files);
@@ -1416,12 +1401,7 @@ int main(int argc, char **argv)
 
 	sockfd = fd_info->socket.fd;
 
-	packet_list = fr_packet_list_create(1);
-	if (!packet_list) {
-		ERROR("Out of memory");
-		fr_exit_now(1);
-	}
-
+	MEM(packet_list = fr_packet_list_create(1));
 	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &fd_config.dst_ipaddr,
 				       fd_config.dst_port, NULL)) {
 		ERROR("Failed adding socket");

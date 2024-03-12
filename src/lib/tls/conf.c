@@ -456,12 +456,7 @@ fr_tls_conf_t *fr_tls_conf_alloc(TALLOC_CTX *ctx)
 {
 	fr_tls_conf_t *conf;
 
-	conf = talloc_zero(ctx, fr_tls_conf_t);
-	if (!conf) {
-		ERROR("Out of memory");
-		return NULL;
-	}
-
+	MEM(conf = talloc_zero(ctx, fr_tls_conf_t));
 	talloc_set_destructor(conf, _conf_server_free);
 
 	return conf;
