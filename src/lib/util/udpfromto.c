@@ -451,13 +451,15 @@ int sendfromto(int fd, void *buf, size_t len, int flags,
 #  endif
 
 	/*
-	 *	No "from" or "from" is 0.0.0.0 or ::/0, just use regular sendto.
+	 *	No "from" or "from" is 0.0.0.0 or ::/0, and there's no
+	 *	interface binding, just use regular sendto.
 	 */
 	if (!from || (from_len == 0) ||
-		(from->sa_family == AF_INET &&
+		((ifindex == 0) &&
+		((from->sa_family == AF_INET &&
 			(((struct sockaddr_in *) from)->sin_addr.s_addr == INADDR_ANY)) ||
 		(from->sa_family == AF_INET6 &&
-			IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *) from)->sin6_addr))) {
+			IN6_IS_ADDR_UNSPECIFIED(&((struct sockaddr_in6 *) from)->sin6_addr))))) {
 		return sendto(fd, buf, len, flags, to, to_len);
 	}
 
