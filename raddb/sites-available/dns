@@ -24,14 +24,14 @@
 #  It's meant to be a _flexible_ DNS server.  Want to give different answers to VoIP phones
 #  and desktops?  It can do that.
 #
-server dns {
+server DNS {
 	#
 	#  namespace:: The protocol / dictionary to use.
 	#
 	namespace = dns
 
 	listen {
-		type = query
+		type = Query
 
 		transport = udp
 
@@ -45,12 +45,11 @@ server dns {
 	}
 
 
-recv query {
+recv Query {
 	ok
 }
 
-send query.response {
+send Query-Response {
 	ok
 }
-
 }

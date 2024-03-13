@@ -37,7 +37,7 @@ Dont use "port = 53" unless you want to break things
 == Default Configuration
 
 ```
-server dns {
+server DNS {
 	namespace = dns
 	listen {
 		type = query
@@ -47,10 +47,10 @@ server dns {
 			port = 5300
 		}
 	}
-recv query {
+recv Query {
 	ok
 }
-send query.response {
+send Query-Response {
 	ok
 }
 }

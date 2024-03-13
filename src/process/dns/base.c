@@ -174,13 +174,13 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 static const virtual_server_compile_t compile_list[] = {
 	{
 		.name = "recv",
-		.name2 = "query",
+		.name2 = "Query",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(request),
 	},
 	{
 		.name = "send",
-		.name2 = "query.response",
+		.name2 = "Query-Response",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(reply),
 	},
