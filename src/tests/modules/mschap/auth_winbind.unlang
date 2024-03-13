@@ -15,6 +15,7 @@ mschap_winbind.authenticate {
 #  Handle false failures
 #
 if (&Module-Failure-Message[*] == 'mschap_winbind: Unable to contact winbind!') {
+	&reply := {}
 	test_pass
 	return
 }
