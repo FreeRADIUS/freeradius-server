@@ -3845,6 +3845,7 @@ static void request_ping(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
+	default:
 		rad_assert(request->in_proxy_hash);
 
 		request->home_server->num_received_pings++;
@@ -3883,9 +3884,10 @@ static void request_ping(REQUEST *request, int action)
 		mark_home_server_alive(request, home);
 		break;
 
-	default:
+	case FR_ACTION_RUN:
+	case FR_ACTION_DUP:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
+		return;
 	}
 
 	rad_assert(!request->in_request_hash);
