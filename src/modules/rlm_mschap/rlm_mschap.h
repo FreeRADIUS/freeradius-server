@@ -51,9 +51,6 @@ typedef struct {
 	char const		*ntlm_auth;
 	fr_time_delta_t		ntlm_auth_timeout;
 	char const		*ntlm_cpw;
-	char const		*ntlm_cpw_username;
-	char const		*ntlm_cpw_domain;
-	char const		*local_cpw;
 
 	bool			allow_retry;
 	char const		*retry_msg;
@@ -84,4 +81,7 @@ typedef struct {
 	tmpl_t const	*chap_nt_enc_pw;
 	fr_value_box_t	wb_username;
 	fr_value_box_t	wb_domain;
+	tmpl_t const	*ntlm_cpw_username;
+	tmpl_t const	*ntlm_cpw_domain;
+	tmpl_t const	*local_cpw;
 } mschap_auth_call_env_t;
