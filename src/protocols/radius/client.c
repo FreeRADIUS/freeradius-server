@@ -98,10 +98,10 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	return my;
 }
 
-int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, fr_packet_t *packet, fr_pair_list_t *list)
+int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
 	ssize_t slen;
-	fr_radius_client_packet_ctx_t *ctx;
+	fr_radius_id_ctx_t *id_ctx;
 
 	fr_assert(!packet->data);
 
@@ -114,18 +114,22 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, fr_packet_t *pa
 		return -1;
 	}
 
-	if (fr_radius_code_id_pop(my->codes, packet) < 0) {
-		fr_strerror_const("All IDs are in use");
-		return -1;
-	}
+	id_ctx = fr_radius_code_id_pop(my->codes, packet);
+	if (!id_ctx) {
+		/*
+		 *	Try to cancel the oldest one.
+		 */
+		if (fr_bio_retry_entry_cancel(my->retry, NULL) < 1) {
+		all_ids_used:
+			fr_strerror_const("All IDs are in use");
+			return -1;
+		}
 
-	/*
-	 *	Initialize our client retry data structure.
-	 */
-	ctx = packet->uctx;
-	ctx->retry_ctx = NULL;
-	ctx->packet = packet;
-	ctx->reply = NULL;
+		id_ctx = fr_radius_code_id_pop(my->codes, packet);
+		if (!id_ctx) goto all_ids_used;
+	}
+	id_ctx->request_ctx = request_ctx;
+	fr_assert(id_ctx->packet == packet);
 
 	/*
 	 *	Encode the packet.
@@ -138,13 +142,13 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, fr_packet_t *pa
 
 	if (fr_packet_sign(packet, NULL, (char const *) my->cfg.verify.secret) < 0) goto fail;
 
-	slen = fr_bio_write(my->common.bio, ctx, packet->data, packet->data_len);
+	slen = fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
 	if (slen <= 0) goto fail;
 
 	return 0;
 }
 
-#if 0
+#if 1
 static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
@@ -161,28 +165,33 @@ static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_PROTOCOL_ERROR]		= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
 };
 
-static void radius_client_retry_sent(UNUSED fr_bio_t *bio, void *packet_ctx, UNUSED const void *buffer, UNUSED size_t size,
+static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void *buffer, UNUSED size_t size,
 				     fr_bio_retry_entry_t *retry_ctx)
 {
-	fr_radius_client_packet_ctx_t *ctx = packet_ctx;
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
+	fr_radius_id_ctx_t *id_ctx;
+	uint8_t const *data = buffer;
 
-	ctx->retry_ctx = retry_ctx;
+	id_ctx = fr_radius_code_id_find(my->codes, data[0], data[1]);
+	fr_assert(id_ctx != NULL);
+
+	id_ctx->packet = packet_ctx;
+	id_ctx->retry_ctx = retry_ctx;
+	retry_ctx->uctx = id_ctx;
 }
 
-static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **item_p, void *packet_ctx, const void *buffer, UNUSED size_t size)
+static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **retry_ctx_p, UNUSED void *packet_ctx, const void *buffer, UNUSED size_t size)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
-	fr_radius_client_packet_ctx_t *ctx, *reply_ctx;
 	unsigned int code;
 	uint8_t *data = UNCONST(uint8_t *, buffer); /* @todo - for verify() */
-	fr_packet_t *packet;
+	fr_radius_id_ctx_t *id_ctx;
 
 	/*
 	 *	We now have a complete packet in our buffer.  Check if it is one we expect.
 	 */
-	if (!data[0] || (data[0] >= FR_RADIUS_CODE_MAX)) {
-		return false;
-	}
+	fr_assert(data[0] > 0);
+	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
 	/*
 	 *	Is the code an allowed reply code?
@@ -193,27 +202,22 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **i
 	/*
 	 *	It's a reply, but not a permitted reply to a particular request.
 	 *
-	 *	@todo - for protocol error, look up original packet code <sigh>
+	 *	@todo - Status-Server.  And for protocol error, look up original packet code
 	 */
-	packet = fr_radius_code_id_find(my->codes, code, data[1]);
-	if (!packet) return false;
-
-	ctx = packet->uctx;
-	reply_ctx = packet_ctx;
+	id_ctx = fr_radius_code_id_find(my->codes, allowed_replies[code], data[1]);
+	if (!id_ctx) return false;
 
 	/*
 	 *	No reply yet, verify the response packet, and save it for later.
 	 */
-	if (!ctx->reply) {
-		if (fr_radius_verify(data, packet->data + 4,
+	if (!id_ctx->response) {
+		if (fr_radius_verify(data,id_ctx-> packet->data + 4,
 				     my->cfg.verify.secret, my->cfg.verify.secret_len,
 				     my->cfg.verify.require_message_authenticator) < 0) {
 			return false;
 		}
 
-		*item_p = ctx->retry_ctx;
-
-		reply_ctx->packet = packet;
+		*retry_ctx_p = id_ctx->retry_ctx;
 		return true;
 	}
 
@@ -221,37 +225,42 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **i
 	 *	The reply has the correct ID / Code, but it's not the
 	 *	same as our previous reply: ignore it.
 	 */
-	if (memcmp(buffer, ctx->reply, RADIUS_HEADER_LENGTH) != 0) return false;
+	if (memcmp(buffer, id_ctx->response->data, RADIUS_HEADER_LENGTH) != 0) return false;
 	
 	/*
 	 *	Tell the caller that it's a duplicate reply.
 	 */
-	*item_p = ctx->retry_ctx;
+	*retry_ctx_p = id_ctx->retry_ctx;
 	return false;
 }
 
-static void radius_client_retry_release(fr_bio_t *bio, void *packet_ctx, UNUSED const void *buffer, UNUSED size_t size, UNUSED fr_bio_retry_release_reason_t reason)
+static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED fr_bio_retry_release_reason_t reason)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
-	fr_radius_client_packet_ctx_t *ctx = packet_ctx;
+	fr_radius_id_ctx_t *id_ctx = retry_ctx->uctx;
 
-	fr_radius_code_id_push(my->codes, ctx->packet);
+	fr_radius_code_id_push(my->codes, id_ctx->packet);
 }
 #endif
 
-int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, fr_packet_t **packet_p,
-				 TALLOC_CTX *pair_ctx, fr_pair_list_t *out)
+int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p,
+				 TALLOC_CTX *out_ctx, fr_pair_list_t *out)
 {
 	ssize_t slen;
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
-	fr_packet_t *packet, *reply;
-	fr_radius_client_packet_ctx_t ctx = {};
+	fr_packet_t *reply;
+	fr_radius_id_ctx_t *id_ctx;
+
+	/*
+	 *	We don't need to set up response.socket for connected bios.
+	 */
+	fr_packet_t response = {};
 
 	/*
 	 *	We read the response packet ctx into our local structure.  If we have a real response, we will
 	 *	swap to using the request context, and not the response context.
 	 */
-	slen = fr_bio_read(my->common.bio, &ctx, &my->buffer, sizeof(my->buffer));
+	slen = fr_bio_read(my->common.bio, &response, &my->buffer, sizeof(my->buffer));
 	if (!slen) return 0;
 
 	if (slen < 0) {
@@ -259,15 +268,21 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, fr_packet_t **packet_p,
 		return slen;
 	}
 
-	packet = ctx.packet;
-	fr_assert(packet != NULL);
+	/*
+	 *	Use the reply code to look up the original packet code.
+	 *
+	 *	@todo - see above todo in response().  Maybe cache the id_ctx in "my"?
+	 */
+	id_ctx = fr_radius_code_id_find(my->codes, allowed_replies[my->buffer[0]], my->buffer[1]);
+	fr_assert(id_ctx != NULL);
 
 	/*
 	 *	Allocate the new request data structure
 	 */
-	reply = fr_packet_alloc(packet, false);
+	reply = fr_packet_alloc(id_ctx->packet, false);
 	if (!reply) return -1;
-	ctx.reply = reply;
+
+	id_ctx->response = reply;
 
 	/*
 	 *	This is for connected sockets.
@@ -289,12 +304,12 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, fr_packet_t **packet_p,
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (fr_radius_decode_simple(pair_ctx, out, reply->data, reply->data_len,
-				    packet->vector, (char const *) my->cfg.verify.secret) < 0) {
+	if (fr_radius_decode_simple(out_ctx, out, reply->data, reply->data_len,
+				    id_ctx->packet->vector, (char const *) my->cfg.verify.secret) < 0) {
 		fr_assert(0);
 	}
 
-	reply->uctx = packet->uctx;
+	*request_ctx_p = id_ctx->request_ctx;
 	*packet_p = reply;
 
 	return 1;

@@ -31,13 +31,20 @@ typedef struct fr_radius_id_s fr_radius_id_t;
 
 typedef fr_radius_id_t *fr_radius_code_id_t[FR_RADIUS_CODE_MAX];
 
+typedef struct {
+	void		*request_ctx;		//!< for the application to track
+	fr_packet_t	*packet;		//!< outgoing packet
+	fr_packet_t	*response;		//!< response to outgoing packet
+	void		*retry_ctx;		//!< to find the retry information
+} fr_radius_id_ctx_t;
+
 fr_radius_id_t	*fr_radius_id_alloc(TALLOC_CTX *ctx);
 
-int		fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet) CC_HINT(nonnull);
+fr_radius_id_ctx_t *fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet) CC_HINT(nonnull);
 
 void		fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet) CC_HINT(nonnull);
 
-fr_packet_t	*fr_radius_id_find(fr_radius_id_t *track, int id) CC_HINT(nonnull);
+fr_radius_id_ctx_t *fr_radius_id_find(fr_radius_id_t *track, int id) CC_HINT(nonnull);
 
 static inline CC_HINT(nonnull) int fr_radius_code_id_alloc(TALLOC_CTX *ctx, fr_radius_code_id_t codes, int code)
 {
@@ -52,7 +59,7 @@ static inline CC_HINT(nonnull) int fr_radius_code_id_alloc(TALLOC_CTX *ctx, fr_r
 	return 0;
 }
 
-static inline CC_HINT(nonnull) int fr_radius_code_id_pop(fr_radius_code_id_t codes, fr_packet_t *packet)
+static inline CC_HINT(nonnull) fr_radius_id_ctx_t *fr_radius_code_id_pop(fr_radius_code_id_t codes, fr_packet_t *packet)
 {
 	fr_assert(packet->code > 0);
 	fr_assert(packet->code < FR_RADIUS_CODE_MAX);
@@ -72,7 +79,7 @@ static inline CC_HINT(nonnull) void fr_radius_code_id_push(fr_radius_code_id_t c
 	fr_radius_id_push(codes[packet->code], packet);
 }
 
-static inline CC_HINT(nonnull) fr_packet_t *fr_radius_code_id_find(fr_radius_code_id_t codes, int code, int id)
+static inline CC_HINT(nonnull) fr_radius_id_ctx_t *fr_radius_code_id_find(fr_radius_code_id_t codes, int code, int id)
 {
 	fr_assert(code > 0);
 	fr_assert(code < FR_RADIUS_CODE_MAX);

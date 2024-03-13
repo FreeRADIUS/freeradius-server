@@ -54,6 +54,6 @@ typedef struct {
 
 fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t read_size, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg) CC_HINT(nonnull);
 
-int	fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, fr_packet_t *packet, fr_pair_list_t *list);
+int	fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list);
 
-int	fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, fr_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *list);
+int	fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p, TALLOC_CTX *out_ctx, fr_pair_list_t *out);

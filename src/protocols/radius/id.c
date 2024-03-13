@@ -32,7 +32,7 @@ struct fr_radius_id_s {
 	int			free_start;
 	int			free_end;
 
-	fr_packet_t     	*packet[256];	//!< pointer to packet data
+	fr_radius_id_ctx_t     	id[256];	//!< pointers to request / reply data
 
 	int			free_ids[256];
 };
@@ -64,7 +64,7 @@ fr_radius_id_t *fr_radius_id_alloc(TALLOC_CTX *ctx)
 /** Allocate an ID for a packet, using LRU
  *
  */
-int fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet)
+fr_radius_id_ctx_t *fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet)
 {
 	int id;
 
@@ -72,7 +72,7 @@ int fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet)
 	fr_assert(id >= 0);
 	fr_assert(id < 256);
 
-	fr_assert(!track->packet[id]);
+	fr_assert(!track->id[id].packet);
 
 	track->free_ids[track->free_start] = -1;
 
@@ -82,10 +82,12 @@ int fr_radius_id_pop(fr_radius_id_t *track, fr_packet_t *packet)
 	fr_assert(track->num_free_ids > 0);
 	track->num_free_ids--;
 
-	track->packet[id] = packet;
+	track->id[id] = (fr_radius_id_ctx_t) {
+		.packet = packet,
+	};
 	packet->id = id;
 
-	return 0;
+	return &track->id[id];
 }
 
 /** De-allocate an ID for a packet, using LRU
@@ -96,7 +98,7 @@ void fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet)
 	fr_assert(packet->id >= 0);
 	fr_assert(packet->id < 256);
 
-	fr_assert(track->packet[packet->id] == packet);
+	fr_assert(track->id[packet->id].packet == packet);
 	fr_assert(track->num_free_ids < 256);
 	fr_assert(track->free_start != track->free_end);
 	fr_assert(track->free_end >= 0);
@@ -108,14 +110,14 @@ void fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet)
 	track->free_end++;
 	track->free_end &= 0xff;
 
-	track->packet[packet->id] = NULL;
+	track->id[packet->id].packet = NULL;
 	track->num_free_ids++;
 }
 
-fr_packet_t *fr_radius_id_find(fr_radius_id_t *track, int id)
+fr_radius_id_ctx_t *fr_radius_id_find(fr_radius_id_t *track, int id)
 {
 	fr_assert(id >= 0);
 	fr_assert(id < 256);
 
-	return track->packet[id];
+	return &track->id[id];
 }

@@ -23,11 +23,13 @@
  */
 
 #include <freeradius-devel/bio/bio_priv.h>
-#include <freeradius-devel/bio/retry.h>
 #include <freeradius-devel/bio/null.h>
 #include <freeradius-devel/bio/buf.h>
 #include <freeradius-devel/util/rb.h>
 #include <freeradius-devel/util/dlist.h>
+
+#define _BIO_RETRY_PRIVATE
+#include <freeradius-devel/bio/retry.h>
 
 typedef struct fr_bio_retry_list_s	fr_bio_retry_list_t;
 typedef struct fr_bio_retry_s	fr_bio_retry_t;
@@ -38,6 +40,9 @@ typedef struct fr_bio_retry_s	fr_bio_retry_t;
 FR_DLIST_TYPES(fr_bio_retry_list)
 
 struct fr_bio_retry_entry_s {
+	void		*uctx;
+	void		*packet_ctx;
+
 	union {
 		fr_rb_node_t	node;		//!< for the timers
 		FR_DLIST_ENTRY(fr_bio_retry_list) entry; //!< for the free list
@@ -46,7 +51,6 @@ struct fr_bio_retry_entry_s {
 	fr_bio_retry_t	*my;			//!< so we can get to it from the event timer callback
 	fr_retry_t	retry;			//!< retry timers and counters
 
-	void		*packet_ctx;
 	uint8_t const	*buffer;
 	size_t		size;	
 	size_t		partial;		//!< for partial writes :(
@@ -132,7 +136,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 		(void) fr_bio_retry_reset_timer(my);
 	}
 
-	my->release((fr_bio_t *) my, item->packet_ctx, item->buffer, item->size, reason);
+	my->release((fr_bio_t *) my, item, reason);
 
 #ifndef NDEBUG
 	item->buffer = NULL;
@@ -569,7 +573,8 @@ static int8_t _entry_cmp(void const *one, void const *two)
  *  @param item		the retry context from #fr_bio_retry_save_t
  *  @return
  *	- <0 error
- *	- 0 for success
+ *	- 0 - didn't cancel
+ *	- 1 - did cancel
  */
 int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 {
@@ -582,12 +587,15 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 		item = fr_rb_last(&my->rb);
 		if (!item) return 0;
 
-		if (!item->retry.replies) return -1; /* can't cancel it */
+		/*
+		 *	This item hasn't had a response, we can't cancel it.
+		 */
+		if (!item->retry.replies) return 0;
 	}
 
 	fr_assert(item->buffer != NULL);
 
-	if (item->cancelled) return 0;
+	if (item->cancelled) return 1;
 
 	/*
 	 *	If we've written a partial packet, jump through a bunch of hoops to cache the partial packet
@@ -624,7 +632,7 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	if (my->first == item) my->first = NULL;
 
 	fr_bio_retry_release(my, item, item->have_reply ? FR_BIO_RETRY_DONE : FR_BIO_RETRY_CANCELLED);
-	return 0;
+	return 1;
 }
 
 /**  Set a per-packet retry config 
@@ -668,14 +676,11 @@ static int fr_bio_retry_destructor(fr_bio_retry_t *my)
 	talloc_const_free(my->ev);
 
 	/*
-	 *	Cancel all outgoing packets.
+	 *	Cancel all outgoing packets.  Don't bother updating the tree or the free list, as all of the
+	 *	entries will be deleted when the memory is freed.
 	 */
 	while ((item = fr_rb_iter_init_inorder(&iter, &my->rb)) != NULL) {
-		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
-#ifndef NDEBUG
-		fr_bio_retry_list_insert_head(&my->free, item);
-#endif
-		my->release((fr_bio_t *) my, item->packet_ctx, item->buffer, item->size, FR_BIO_RETRY_CANCELLED);
+		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_CANCELLED);
 	}
 
 	my->first = NULL;

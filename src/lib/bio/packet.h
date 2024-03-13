@@ -34,25 +34,27 @@ typedef struct fr_bio_packet_s fr_bio_packet_t;
 /** Read a packet and pairs from the network
  *
  * @param bio		the packet-based bio
- * @param packet_p	the output packet descriptor.  Contains raw protocol data (IDs, counts, etc.)
- * @param ctx		the talloc_ctx for the list
+ * @param request_ctx_p	the request context associated with the response
+ * @param packet_p	the response packet.  Contains raw protocol data (IDs, counts, etc.)
+ * @param out_ctx	talloc context for the list
  * @param out		the decoded pairs from the packet
  * @return
  *	- <0 on error
  *	- 0 for success (*packet_p may still be NULL tho)
  */
-typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, fr_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *out);
+typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p, TALLOC_CTX *out_ctx, fr_pair_list_t *out);
 
 /** Write a packet and pairs from the network
  *
  * @param bio		the packet-based bio
- * @param packet	the output packet descriptor.  Contains raw protocol data (IDs, counts, etc.)
+ * @param request_ctx	the request context
+ * @param packet	the request packet.  Contains raw protocol data (IDs, counts, etc.)
  * @param list		the pairs to encode in the packet
  * @return
  *	- <0 on error (EOF, fail, etc,)
  *	- 0 for success
  */
-typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, fr_packet_t *packet, fr_pair_list_t *list);
+typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list);
 
 /** Release an outgoing packet.
  *
@@ -74,12 +76,12 @@ struct fr_bio_packet_s {
 };
 
 
-static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, fr_packet_t **packet_p, TALLOC_CTX *ctx, fr_pair_list_t *out)
+static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p, TALLOC_CTX *out_ctx, fr_pair_list_t *out)
 {
-	return bio->read(bio, packet_p, ctx, out);
+	return bio->read(bio, request_ctx_p, packet_p, out_ctx, out);
 }
 
-static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *bio, fr_packet_t *packet, fr_pair_list_t *list)
+static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *bio, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
-	return bio->write(bio, packet, list);
+	return bio->write(bio, request_ctx, packet, list);
 }

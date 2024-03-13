@@ -40,6 +40,13 @@ typedef struct {
 
 typedef struct fr_bio_retry_entry_s fr_bio_retry_entry_t;
 
+#ifndef _BIO_RETRY_PRIVATE
+struct  fr_bio_retry_entry_s {
+	void		*uctx;			//!< user-writable context
+	void		*packet_ctx;		//!< packet_ctx from the write() call
+};
+#endif
+
 typedef enum {
 	FR_BIO_RETRY_DONE = 0,
 	FR_BIO_RETRY_NO_REPLY,
@@ -93,12 +100,10 @@ typedef bool (*fr_bio_retry_response_t)(fr_bio_t *bio, fr_bio_retry_entry_t **it
  *  The packet will be cancelled after this call returns.  The cancellation callback will NOT be run.
  *
  *  @param bio		the binary IO handler
- *  @param packet_ctx	per-packet context
- *  @param buffer	raw data for the packet
- *  @param size		size of the raw data
+ *  @param retry_ctx	the retry ctx to release
  *  @param reason	why this packet is being released
  */
-typedef void	(*fr_bio_retry_release_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size, fr_bio_retry_release_reason_t reason);
+typedef void	(*fr_bio_retry_release_t)(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, fr_bio_retry_release_reason_t reason);
 
 fr_bio_t	*fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 				    fr_bio_retry_sent_t sent,
