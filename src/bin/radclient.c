@@ -369,7 +369,7 @@ static bool already_hex(fr_pair_t *vp)
 }
 
 /*
- *	Read one CoA reply amd possibly filter
+ *	Read one CoA reply and possibly filter
  */
 static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_filename, bool *coa_reply_done, FILE *coa_filter, char const *filter_filename, bool *coa_filter_done)
 {
@@ -445,6 +445,15 @@ static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_fil
 	}
 
 	parent->coa = request;
+
+	/*
+	 *	Ensure that the packet is also tracked in the CoA tree.
+	 */
+	fr_assert(coa_tree);
+	if (!fr_rb_insert(coa_tree, parent)) {
+		ERROR("Failed inserting packet from %s into CoA tree", request->name);
+		fr_exit_now(1);
+	}
 
 	return 0;
 }
@@ -1115,7 +1124,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	fr_time_delta_t		our_wait_time;
 	rc_request_t		*request, *parent;
 	fr_packet_t		*packet;
-	fr_pair_list_t		pairs;
+	rc_request_t		my;
 
 #ifdef STATIC_ANALYZER
 	if (!secret) fr_exit_now(1);
@@ -1149,26 +1158,27 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		return 0;
 	}
 
-	fr_pair_list_init(&pairs);
+	fr_pair_list_init(&my.request_pairs);
 
 	/*
 	 *	Decode the packet before looking up the parent, so that we can compare the pairs.
 	 */
-	if (fr_radius_decode_simple(packet, &pairs,
+	if (fr_radius_decode_simple(packet, &my.request_pairs,
 				    packet->data, packet->data_len,
 				    NULL, secret) < 0) {
 		DEBUG("Failed decoding CoA packet");
 		return 0;
 	}
 
-	fr_packet_log(&default_log, packet, &pairs, true);
+	fr_packet_log(&default_log, packet, &my.request_pairs, true);
 
 	/*
 	 *	Find a Access-Request which has the same User-Name / etc. as this CoA packet.
 	 */
-	parent = fr_rb_find(coa_tree, &(rc_request_t) {
-			.packet = packet,
-		});
+	my.name = "receive CoA request";
+	my.packet = packet;
+
+	parent = fr_rb_find(coa_tree, &my);
 	if (!parent) {
 		DEBUG("No matching request packet for CoA packet %u %u", packet->data[0], packet->data[1]);
 		talloc_free(packet);
@@ -1179,20 +1189,20 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	request = parent->coa;
 	request->packet = talloc_steal(request, packet);
 
-	fr_pair_list_steal(request, &pairs);
-	fr_pair_list_append(&request->request_pairs, &pairs);
+	fr_pair_list_steal(request, &my.request_pairs);
+	fr_pair_list_append(&request->request_pairs, &my.request_pairs);
 
 	/*
 	 *	If we had an expected response code, check to see if the
 	 *	packet matched that.
 	 */
-	if (request->reply->code != request->filter_code) {
+	if (request->packet->code != request->filter_code) {
 		if (FR_RADIUS_PACKET_CODE_VALID(request->reply->code)) {
 			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_name[request->filter_code],
-				fr_radius_packet_name[request->reply->code]);
+				fr_radius_packet_name[request->packet->code]);
 		} else {
 			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
-				request->reply->code);
+				request->packet->code);
 		}
 		stats.failed++;
 
@@ -1216,6 +1226,10 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		}
 	}
 
+	request->reply->id = request->packet->id;
+
+	request->reply->socket.type = SOCK_DGRAM;
+	request->reply->socket.af = client_ipaddr.af;
 	request->reply->socket.fd = coafd;
 	request->reply->socket.inet.src_ipaddr = client_ipaddr;
 	request->reply->socket.inet.src_port = coa_port;
@@ -1236,6 +1250,9 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		return 0;
 	}
 
+	fr_packet_log(&default_log, request->reply, &request->reply_pairs, false);
+
+
 	/*
 	 *	Send reply.
 	 */
@@ -1243,6 +1260,8 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		REDEBUG("Failed sending CoA reply");
 		return 0;
 	}
+
+	fr_rb_remove(coa_tree, request);
 
 	/*
 	 *	No longer waiting for a CoA packet for this request.
@@ -1260,7 +1279,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	fd_set			set;
 	fr_time_delta_t		our_wait_time;
 	rc_request_t		*request;
-	fr_packet_t	*reply, *packet;
+	fr_packet_t		*reply, *packet;
 	volatile int		max_fd;
 
 #ifdef STATIC_ANALYZER
@@ -1275,10 +1294,26 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 
 	our_wait_time = !fr_time_delta_ispos(wait_time) ? fr_time_delta_from_sec(0) : wait_time;
 
+	if (do_coa && fr_rb_num_elements(coa_tree) > 0) {
+		FD_SET(coafd, &set);
+		if (coafd >= max_fd) max_fd = coafd + 1;
+	}
+
 	/*
-	 *	No packet was received.
+	 *	See if a packet was received.
 	 */
+retry:
 	if (select(max_fd, &set, NULL, NULL, &fr_time_delta_to_timeval(our_wait_time)) <= 0) return 0;
+
+	/*
+	 *	Read a CoA packet
+	 */
+	if (FD_ISSET(coafd, &set)) {
+		recv_coa_packet(fr_time_delta_wrap(0));
+		FD_CLR(coafd, &set);
+		our_wait_time = fr_time_delta_from_sec(0);
+		goto retry;
+	}
 
 	/*
 	 *	Look for the packet.
@@ -1286,6 +1321,7 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	reply = fr_packet_list_recv(packet_list, &set, RADIUS_MAX_ATTRIBUTES, false);
 	if (!reply) {
 		ERROR("Received bad packet");
+
 		/*
 		 *	If the packet is bad, we close the socket.
 		 *	I'm not sure how to do that now, so we just
@@ -1528,7 +1564,7 @@ int main(int argc, char **argv)
 			break;
 
 			/*
-			 *	packet,filter,coa_filter,coa_reply
+			 *	packet,filter,coa_reply,coa_filter
 			 */
 		case 'f':
 		{
@@ -1729,6 +1765,13 @@ int main(int argc, char **argv)
 			ERROR("Unknown or invalid CoA filter attribute %s", optarg);
 			fr_exit_now(1);
 		}
+
+		/*
+		 *	If there's no attribute given to match CoA to requests, use User-Name
+		 */
+		if (!attr_coa_filter) attr_coa_filter = attr_user_name;
+
+		MEM(coa_tree = fr_rb_inline_talloc_alloc(NULL, rc_request_t, node, request_cmp, NULL));
 	}
 	packet_global_init();
 
@@ -1847,13 +1890,6 @@ int main(int argc, char **argv)
 			fr_perror("Error binding socket");
 			return -1;
 		}
-
-		/*
-		 *	If there's no attribute given to match CoA to requests, use User-Name
-		 */
-		if (!attr_coa_filter) attr_coa_filter = attr_user_name;
-
-		MEM(coa_tree = fr_rb_inline_talloc_alloc(NULL, rc_request_t, node, request_cmp, NULL));
 	}
 
 	MEM(packet_list = fr_packet_list_create(1));
@@ -1871,14 +1907,6 @@ int main(int argc, char **argv)
 		this->packet->socket.inet.src_ipaddr = client_ipaddr;
 		this->packet->socket.inet.src_port = client_port;
 		if (radclient_sane(this) != 0) {
-			fr_exit_now(1);
-		}
-
-		/*
-		 *	Ensure that the packet is also tracked in the CoA tree.
-		 */
-		if (coa_tree && this->coa && !fr_rb_insert(coa_tree, this)) {
-			ERROR("Failed inserting into CoA tree");
 			fr_exit_now(1);
 		}
 	}
