@@ -170,6 +170,7 @@ static const call_env_parser_t auth_call_env[] = {
 	{ FR_CALL_ENV_PARSE_ONLY_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED, mschap_auth_call_env_t, username), .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
 	MSCHAP_COMMON_CALL_ENV(auth),
 	MSCHAP_OPT_CALL_ENV(chap2_success, auth),
+	MSCHAP_OPT_CALL_ENV(chap_error, auth),
 	MSCHAP_OPT_CALL_ENV(chap_mppe_keys, auth),
 	MSCHAP_OPT_CALL_ENV(mppe_encryption_policy, auth),
 	MSCHAP_OPT_CALL_ENV(mppe_recv_key, auth),
