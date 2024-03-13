@@ -809,7 +809,7 @@ static int radiusv11_server_alpn_cb(SSL *ssl,
 	return SSL_TLSEXT_ERR_ALERT_FATAL;
 }
 
-static int radiusv11_client_hello_cb(SSL *s, int *alert, void *arg)
+static int radiusv11_client_hello_cb(UNUSED SSL *s, int *alert, void *arg)
 {
 	rad_listen_t *this = arg;
 	listen_socket_t *sock = this->data;
@@ -2733,7 +2733,7 @@ static int proxy_socket_encode(RADIUSV11_UNUSED rad_listen_t *listener, REQUEST 
 }
 
 
-static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
+static int proxy_socket_decode(RADIUSV11_UNUSED rad_listen_t *listener, REQUEST *request)
 {
 #ifdef WITH_RADIUSV11
 	listen_socket_t *sock = listener->data;
