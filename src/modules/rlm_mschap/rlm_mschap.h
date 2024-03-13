@@ -81,6 +81,7 @@ typedef struct {
 	tmpl_t const	*mppe_send_key;
 	tmpl_t const	*mppe_encryption_types;
 	tmpl_t const	*chap2_cpw;
+	tmpl_t const	*chap_nt_enc_pw;
 	fr_value_box_t	wb_username;
 	fr_value_box_t	wb_domain;
 } mschap_auth_call_env_t;

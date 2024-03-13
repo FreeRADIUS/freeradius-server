@@ -387,6 +387,10 @@ chap2_cpw::  The attribute used to change a users' password
 
 
 
+chap_nt_enc_pw:: The attribute containing the encrypted new NT password
+
+
+
 To use this instance of the mschap module to handle TACACS+ the attribute
 section should be replaced with the following.
 
@@ -444,6 +448,7 @@ mschap {
 		mppe_encryption_policy = &Vendor-Specific.Microsoft.MPPE-Encryption-Policy
 		mppe_encryption_types = &Vendor-Specific.Microsoft.MPPE-Encryption-Types
 		chap2_cpw =  &Vendor-Specific.Microsoft.CHAP2-CPW
+		chap_nt_enc_pw = & Vendor-Specific.Microsoft.CHAP-NT-Enc-PW
 	}
 #	attributes {
 #		username = &User-Name

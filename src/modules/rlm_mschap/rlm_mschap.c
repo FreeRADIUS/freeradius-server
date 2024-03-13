@@ -176,6 +176,7 @@ static const call_env_parser_t auth_call_env[] = {
 	MSCHAP_OPT_CALL_ENV(mppe_send_key, auth),
 	MSCHAP_OPT_CALL_ENV(mppe_encryption_types, auth),
 	MSCHAP_OPT_CALL_ENV(chap2_cpw, auth),
+	MSCHAP_OPT_CALL_ENV(chap_nt_enc_pw, auth),
 	CALL_ENV_TERMINATOR
 };
 
@@ -1779,20 +1780,15 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_rcode_t *
 	for (seq = 1; seq < 4; seq++) {
 		int found = 0;
 
-		for (nt_enc = fr_pair_list_head(&request->request_pairs);
-		     nt_enc;
-		     nt_enc = fr_pair_list_next(&request->request_pairs, nt_enc)) {
-			if (fr_dict_vendor_num_by_da(nt_enc->da) != VENDORPEC_MICROSOFT) continue;
-
-			if (nt_enc->da->attr != FR_MSCHAP_NT_ENC_PW) continue;
-
+		while ((nt_enc = fr_pair_find_by_da_nested(&request->request_pairs, nt_enc,
+							   tmpl_attr_tail_da(env_data->chap_nt_enc_pw)))) {
 			if (nt_enc->vp_length < 4) {
-				REDEBUG("Vendor-Specific.Microsoft.CHAP-NT-Enc-PW with invalid format");
+				REDEBUG("%s with invalid format", env_data->chap_nt_enc_pw->name);
 				RETURN_MODULE_INVALID;
 			}
 
 			if (nt_enc->vp_octets[0] != 6) {
-				REDEBUG("Vendor-Specific.Microsoft.CHAP-NT-Enc-PW with invalid format");
+				REDEBUG("%s with invalid format", env_data->chap_nt_enc_pw->name);
 				RETURN_MODULE_INVALID;
 			}
 
@@ -1803,12 +1799,12 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_rcode_t *
 		}
 
 		if (!found) {
-			REDEBUG("Could not find MS-CHAP-NT-Enc-PW w/ sequence number %d", seq);
+			REDEBUG("Could not find %s with sequence number %d", env_data->chap_nt_enc_pw->name, seq);
 			RETURN_MODULE_INVALID;
 		}
 
 		if ((new_nt_enc_len + nt_enc->vp_length - 4) > sizeof(new_nt_encrypted)) {
-			REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length > 516");
+			REDEBUG("Unpacked %s length > 516", env_data->chap_nt_enc_pw->name);
 			RETURN_MODULE_INVALID;
 		}
 
@@ -1817,7 +1813,7 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_cpw_request(rlm_rcode_t *
 	}
 
 	if (new_nt_enc_len != 516) {
-		REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length != 516");
+		REDEBUG("Unpacked %s length != 516", env_data->chap_nt_enc_pw->name);
 		RETURN_MODULE_INVALID;
 	}
 
@@ -2169,6 +2165,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		if (!nt_password) {
 			REDEBUG("Missing Password.NT - required for change password request");
 			RETURN_MODULE_FAIL;
+		}
+		if (!env_data->chap_nt_enc_pw) {
+			REDEBUG("chap_nt_enc_pw option is not set - required for change password request");
+			RETURN_MODULE_INVALID;
 		}
 
 		mschap_process_cpw_request(&rcode, mctx->inst->data, request, cpw, nt_password, env_data);
