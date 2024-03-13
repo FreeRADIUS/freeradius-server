@@ -107,6 +107,7 @@ Requires(pre): shadow-utils glibc-common
 Requires(post): /sbin/chkconfig /usr/sbin/setsebool
 Requires(preun): /sbin/chkconfig
 Requires: freeradius-config = %{version}-%{release}
+Requires: freeradius-common = %{version}-%{release}
 %if %{with freeradius_openssl}
 Requires: freeradius-openssl
 %else
@@ -163,10 +164,16 @@ FreeRADIUS default config files
 This package should be used as a base for a site local package
 to configure the FreeRADIUS server.
 
+%package common
+Summary: Main utility library, protocol libraries, and dictionaries
+
+%description common
+Provides the main utility library, protocol libraries, and the dictionaries
+
 %package utils
 Group: System Environment/Daemons
 Summary: FreeRADIUS utilities
-Requires: %{name}%{?_isa} = %{version}-%{release}
+Requires: freeradius-common = %{version}-%{release}
 Requires: libpcap >= 0.9.4
 
 %description utils
@@ -202,7 +209,7 @@ SQL databases.
 %package libfreeradius-curl
 Summary: curl wrapper library for FreeRADIUS
 Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: freeradius-libfreeradius-util = %{version}-%{release}
+Requires: freeradius-common = %{version}-%{release}
 Requires: libcurl >= 7.24.0
 BuildRequires: libcurl-devel >= 7.24.0
 
@@ -259,14 +266,6 @@ Provides a producer module to push messages into a Kafka queue
 # END kafka libraries and modules
 #
 
-%package libfreeradius-radius
-Summary: RADIUS protocol library for FreeRADIUS
-Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: freeradius-libfreeradius-util = %{version}-%{release}
-
-%description libfreeradius-radius
-Provides protocol encoders and decoders for the RADIUS protocol.
-
 %package libfreeradius-redis
 Summary: Internal support library for FreeRADIUS modules using hiredis
 Group: System Environment/Daemons
@@ -276,12 +275,6 @@ BuildRequires: hiredis-devel >= 0.10
 
 %description libfreeradius-redis
 Internal support library for FreeRADIUS modules using hiredis, required by all modules that use hiredis.
-
-%package libfreeradius-util
-Summary: Utility library used by all other FreeRADIUS libraries
-
-%description libfreeradius-util
-Provides common functions used by other FreeRADIUS libraries and modules.
 
 #
 # END 3rd party utility library packages
@@ -878,16 +871,12 @@ fi
 %doc %{_mandir}/man1/smbencrypt.1.gz
 %doc %{_mandir}/man5/checkrad.5.gz
 %doc %{_mandir}/man5/clients.conf.5.gz
-%doc %{_mandir}/man5/dictionary.5.gz
 %doc %{_mandir}/man5/radiusd.conf.5.gz
 %doc %{_mandir}/man5/unlang.5.gz
 %doc %{_mandir}/man8/radcrypt.8.gz
 %doc %{_mandir}/man8/raddebug.8.gz
 %doc %{_mandir}/man8/radmin.8.gz
 %doc %{_mandir}/man8/radiusd.8.gz
-# dictionaries
-%dir %attr(755,root,root) /usr/share/freeradius
-%{_datadir}/freeradius/dictionary/*
 # logs
 %dir %attr(700,radiusd,radiusd) /var/log/radius/
 %dir %attr(700,radiusd,radiusd) /var/log/radius/radacct/
@@ -955,27 +944,14 @@ fi
 %{_libdir}/freeradius/proto_vmps.so
 %{_libdir}/freeradius/proto_vmps_udp.so
 
-# Support libraries without external deps
-%{_libdir}/freeradius/libfreeradius-arp.so
-%{_libdir}/freeradius/libfreeradius-bfd.so
-%{_libdir}/freeradius/libfreeradius-bio.so
+# Support libraries without external deps.
+# Protocol libraries should not be included here, they should be added to the common package instead.
 %{_libdir}/freeradius/libfreeradius-control.so
-%{_libdir}/freeradius/libfreeradius-dhcpv4.so
-%{_libdir}/freeradius/libfreeradius-dhcpv6.so
-%{_libdir}/freeradius/libfreeradius-dns.so
-%{_libdir}/freeradius/libfreeradius-eap-aka-sim.so
-%{_libdir}/freeradius/libfreeradius-eap.so
-%{_libdir}/freeradius/libfreeradius-ethernet.so
-%{_libdir}/freeradius/libfreeradius-internal.so
 %{_libdir}/freeradius/libfreeradius-io.so
 %{_libdir}/freeradius/libfreeradius-server.so
-%{_libdir}/freeradius/libfreeradius-sim.so
-%{_libdir}/freeradius/libfreeradius-tacacs.so
-%{_libdir}/freeradius/libfreeradius-tftp.so
 %{_libdir}/freeradius/libfreeradius-tls.so
 %{_libdir}/freeradius/libfreeradius-totp.so
 %{_libdir}/freeradius/libfreeradius-unlang.so
-%{_libdir}/freeradius/libfreeradius-vmps.so
 
 # Backend modules without external deps
 %{_libdir}/freeradius/rlm_always.so
@@ -1035,6 +1011,35 @@ fi
 %{?with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
 %if %{with experimental_modules}
 %endif
+
+%files common
+# The protocol libraries are needed to load dictionaries, which are used by the server
+# and the majority of utility binaries.
+%{_libdir}/freeradius/libfreeradius-arp.so
+%{_libdir}/freeradius/libfreeradius-bfd.so
+%{_libdir}/freeradius/libfreeradius-dhcpv4.so
+%{_libdir}/freeradius/libfreeradius-dhcpv6.so
+%{_libdir}/freeradius/libfreeradius-dns.so
+%{_libdir}/freeradius/libfreeradius-eap-aka-sim.so
+%{_libdir}/freeradius/libfreeradius-eap.so
+%{_libdir}/freeradius/libfreeradius-ethernet.so
+%{_libdir}/freeradius/libfreeradius-internal.so
+%{_libdir}/freeradius/libfreeradius-radius.so
+%{_libdir}/freeradius/libfreeradius-sim.so
+%{_libdir}/freeradius/libfreeradius-tacacs.so
+%{_libdir}/freeradius/libfreeradius-tftp.so
+%{_libdir}/freeradius/libfreeradius-vmps.so
+
+# Utility libraries
+%{_libdir}/freeradius/libfreeradius-bio.so
+%{_libdir}/freeradius/libfreeradius-util.so
+
+# dictionaries
+%dir %attr(755,root,root) /usr/share/freeradius
+%{_datadir}/freeradius/dictionary/*
+
+# man pages for dictionaries
+%doc %{_mandir}/man5/dictionary.5.gz
 
 %files config
 %dir %attr(755,root,radiusd) %{_sysconfdir}/raddb
@@ -1187,17 +1192,9 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-json.so
 
-%files libfreeradius-radius
-%defattr(-,root,root)
-%{_libdir}/freeradius/libfreeradius-radius.so
-
 %files libfreeradius-redis
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-redis.so
-
-%files libfreeradius-util
-%defattr(-,root,root)
-%{_libdir}/freeradius/libfreeradius-util.so
 
 %files brotli
 %defattr(-,root,root)
