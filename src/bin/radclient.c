@@ -1114,7 +1114,8 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	fd_set			set;
 	fr_time_delta_t		our_wait_time;
 	rc_request_t		*request, *parent;
-	fr_packet_t	*packet;
+	fr_packet_t		*packet;
+	fr_pair_list_t		pairs;
 
 #ifdef STATIC_ANALYZER
 	if (!secret) fr_exit_now(1);
@@ -1148,6 +1149,20 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		return 0;
 	}
 
+	fr_pair_list_init(&pairs);
+
+	/*
+	 *	Decode the packet before looking up the parent, so that we can compare the pairs.
+	 */
+	if (fr_radius_decode_simple(packet, &pairs,
+				    packet->data, packet->data_len,
+				    NULL, secret) < 0) {
+		DEBUG("Failed decoding CoA packet");
+		return 0;
+	}
+
+	fr_packet_log(&default_log, packet, &pairs, true);
+
 	/*
 	 *	Find a Access-Request which has the same User-Name / etc. as this CoA packet.
 	 */
@@ -1155,7 +1170,8 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 			.packet = packet,
 		});
 	if (!parent) {
-		DEBUG("No matching request packet");
+		DEBUG("No matching request packet for CoA packet %u %u", packet->data[0], packet->data[1]);
+		talloc_free(packet);
 		return 0;
 	}
 	assert(parent->coa);
@@ -1163,17 +1179,8 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 	request = parent->coa;
 	request->packet = talloc_steal(request, packet);
 
-	/*
-	 *	Decode the packet
-	 */
-	if (fr_radius_decode_simple(request, &request->request_pairs,
-				    request->packet->data, request->packet->data_len,
-				    NULL, secret) < 0) {
-		REDEBUG("Failed decoding CoA packet");
-		return 0;
-	}
-
-	fr_packet_log(&default_log, request->packet, &request->request_pairs, true);
+	fr_pair_list_steal(request, &pairs);
+	fr_pair_list_append(&request->request_pairs, &pairs);
 
 	/*
 	 *	If we had an expected response code, check to see if the
