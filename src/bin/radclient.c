@@ -1523,7 +1523,7 @@ int main(int argc, char **argv)
 			break;
 
 			/*
-			 *	packet,filter,coa_reply,coa_filter
+			 *	packet,filter,coa_filter,coa_reply
 			 */
 		case 'f':
 		{
