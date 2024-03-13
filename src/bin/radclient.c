@@ -69,6 +69,8 @@ static fr_time_delta_t sleep_time = fr_time_delta_wrap(-1);
 static char *secret = NULL;
 static bool do_output = true;
 
+static const char *attr_coa_filter_name = "User-Name";
+
 static rc_stats_t stats;
 
 static uint16_t server_port = 0;
@@ -1479,11 +1481,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'A':
-			attr_coa_filter = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), optarg);
-			if (!attr_coa_filter) {
-				ERROR("Unknown or invalid attribute %s", optarg);
-				fr_exit_now(1);
-			}
+			attr_coa_filter_name = optarg;
 			break;
 
 		case 'c':
@@ -1718,6 +1716,13 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	if (do_coa) {
+		attr_coa_filter = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), attr_coa_filter_name);
+		if (!attr_coa_filter) {
+			ERROR("Unknown or invalid CoA filter attribute %s", optarg);
+			fr_exit_now(1);
+		}
+	}
 	packet_global_init();
 
 	fr_strerror_clear();	/* Clear the error buffer */
