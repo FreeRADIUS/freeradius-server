@@ -32,6 +32,14 @@ $(eval $(call RADIUSD_SERVICE,radiusd,$(OUTPUT)))
 
 $(OUTPUT)/auth_proxy.txt: $(BUILD_DIR)/lib/local/rlm_radius.la
 
+define RADCLIENT_TEST
+test.radclient.$(basename ${1}): $(addprefix $(OUTPUT)/,${1})
+
+test.radclient.help: TEST_RADCLIENT_HELP += test.radclient.$(basename ${1})
+endef
+
+$(foreach x,$(FILES),$(eval $(call RADCLIENT_TEST, $x)))
+
 #
 #	Run the radclient commands against the radiusd.
 #
@@ -106,3 +114,6 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 $(TEST):
 	${Q}$(MAKE) --no-print-directory $@.radiusd_stop
 	@touch $(BUILD_DIR)/tests/$@
+
+$(TEST).help:
+	@echo make $(TEST_RADCLIENT_HELP)
