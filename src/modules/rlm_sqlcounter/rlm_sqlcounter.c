@@ -257,7 +257,7 @@ typedef struct {
 
 /** Handle the result of calling the SQL query to retrieve the `counter` value.
  *
- * Create / update the `counter` attribute in the contol list
+ * Create / update the `counter` attribute in the control list
  * If `counter` > `limit`, optionally populate a reply message and return RLM_MODULE_REJECT.
  * Otherwise, optionally populate a reply attribute with the value of `limit` - `counter` and return RLM_MODULE_UPDATED.
  * If no reply attribute is set, return RLM_MODULE_OK.

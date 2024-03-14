@@ -235,7 +235,7 @@ static xlat_action_t brotli_xlat_compress(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			bool more = fr_value_box_list_next(&data_vb->vb_group, vb) != NULL;
 
 			/*
-			 *	In reality this loop is probably unecessary,
+			 *	In reality this loop is probably unnecessary,
 			 *	but the brotli docs state:
 			 *
 			 *	"client should repeat BROTLI_OPERATION_FINISH operation until available_in becomes 0,

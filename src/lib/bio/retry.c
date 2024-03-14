@@ -348,7 +348,7 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	 *	Write out the packet.  On failure release this item.
 	 *
 	 *	If there's an error, we hope that the next "real" write will find the error, and do any
-	 *	necesary cleanups.  Note that we can't call bio shutdown here, as the bio is controlled by the
+	 *	necessary cleanups.  Note that we can't call bio shutdown here, as the bio is controlled by the
 	 *	application, and not by us.
 	 */
 	rcode = my->rewrite(next, item, item->buffer, item->size);

@@ -690,7 +690,7 @@ allow_not_yet_valid_crl:: Accept a not-yet-valid Certificate Revocation List.
 
 Once authentication has completed, the TLS client may be
 provided with a session ticket which it presents
-during the next authentication attemp.
+during the next authentication attempt.
 
 Presenting a session ticket allows the client to skip the
 majority of TLS tunnel setup during its next authentication
@@ -963,7 +963,7 @@ outer request.  This configuration is NOT RECOMMENDED.
 
 
 
-include_length:: Whether we include a length fiel in the TLS header.
+include_length:: Whether we include a length field in the TLS header.
 
 This has the same meaning, and overwrites, the same field in
 the `tls` configuration, above.  The default value here is

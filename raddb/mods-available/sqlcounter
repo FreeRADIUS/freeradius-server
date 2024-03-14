@@ -85,7 +85,7 @@
 #
 #  Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 #
-#  counter_name:: Name of the attribte to add to the `control` list with the current
+#  counter_name:: Name of the attribute to add to the `control` list with the current
 #  value of the counter.
 #
 #  After the sqlcounter module has run, the counter attribute will exist.
@@ -102,7 +102,7 @@
 #  a lower value, then it will not be updated.
 #
 #  reply_message_name:: Name of the attribute into which a message should be placed
-#  if the limit has been exeeded for the counter.
+#  if the limit has been exceeded for the counter.
 #
 #  auto_extend:: If set to `yes` and the remaining session time goes past the time for
 #  the next counter reset, the value in the `reply_name` attribute will be set to

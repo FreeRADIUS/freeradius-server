@@ -131,7 +131,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	size_t				in_buffer;
 
 	/*
-	 *	We may hvae read multiple packets in the previous read.  In which case the buffer may already
+	 *	We may have read multiple packets in the previous read.  In which case the buffer may already
 	 *	have packets remaining.  In that case, we can return packets directly from the buffer, and
 	 *	skip the read().
 	 */
