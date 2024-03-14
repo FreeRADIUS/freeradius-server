@@ -24,15 +24,15 @@ VALUE	Query				Query			0
 VALUE	Query				Response		1
 
 VALUE	Opcode				Query			0
-VALUE	Opcode				IQuery			1
+VALUE	Opcode				Inverse-Query		1
 VALUE	Opcode				Status			2
 VALUE	Opcode				Notify			4
 VALUE	Opcode				Update			5
-VALUE	Opcode				DNS-Stateful-Operations	6
+VALUE	Opcode				Stateful-Operation	6
 
 VALUE	Rcode				No-Error		0
 VALUE	Rcode				Format-error		1
-VALUE	Rcode				Server-error		2
+VALUE	Rcode				Server-Failure		2
 VALUE	Rcode				Name-error		3
 VALUE	Rcode				Not-implemented		4
 VALUE	Rcode				Refused			5

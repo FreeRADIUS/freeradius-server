@@ -66,11 +66,11 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 };
 
  char const *fr_dns_packet_names[FR_DNS_CODE_MAX] = {
-	[FR_DNS_QUERY] = "query",
-	[FR_DNS_IQUERY] = "iquery",
-	[FR_DNS_STATUS] = "status",
-	[FR_DNS_UPDATE] = "update",
-	[FR_DNS_STATEFUL_OP] = "stateful-operations",
+	[FR_DNS_QUERY] = "Query",
+	[FR_DNS_INVERSE_QUERY] = "Inverse-Query",
+	[FR_DNS_STATUS] = "Status",
+	[FR_DNS_UPDATE] = "Update",
+	[FR_DNS_STATEFUL_OPERATION] = "Stateful-Operation",
 };
 
 #define DECODE_FAIL(_reason) if (reason) *reason = FR_DNS_DECODE_FAIL_ ## _reason
