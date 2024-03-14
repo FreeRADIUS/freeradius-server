@@ -585,7 +585,7 @@ int fr_pair_steal_prepend(TALLOC_CTX *list_ctx, fr_pair_list_t *list, fr_pair_t 
  *	- 0 on success
  *	- -1 on failure.
  */
-int fr_pair_raw_from_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
+int fr_pair_raw_afrom_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 {
 	fr_dict_attr_t *unknown;
 
@@ -607,7 +607,6 @@ int fr_pair_raw_from_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 
 	return 0;
 }
-
 
 /** Iterate over pairs with a specified da
  *
@@ -752,7 +751,7 @@ fr_pair_t *fr_pair_find_by_da_idx(fr_pair_list_t const *list, fr_dict_attr_t con
 	return NULL;
 }
 
-/** Find a pair with a matching da walking the nested da tree
+/** Find a pair with a matching fr_dict_attr_t, by walking the nested fr_dict_attr_t tree
  *
  * The list should be the one containing the top level attributes.
  *
@@ -2076,7 +2075,7 @@ void fr_pair_validate_debug(fr_pair_t const *failed[2])
 		return;
 	}
 
-	fr_strerror_printf("Attribute value: \"%pP\" didn't match filter: \"%pP\"", list, filter);
+	fr_strerror_printf("Attribute value: %pP didn't match filter: %pP", list, filter);
 
 	return;
 }

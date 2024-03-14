@@ -272,7 +272,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		if (slen < 0) {
 		raw:
 			FR_PROTO_TRACE("decoding as unknown type");
-			if (fr_pair_raw_from_pair(vp, p, (end - p)) < 0) {
+			if (fr_pair_raw_afrom_pair(vp, p, (end - p)) < 0) {
 				return -1;
 			}
 			p = end;

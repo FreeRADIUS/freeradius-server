@@ -271,7 +271,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 				goto error;
 			}
 
-			fr_pair_raw_from_pair(vp, p, value_len);
+			fr_pair_raw_afrom_pair(vp, p, value_len);
 		}
 
 		/*

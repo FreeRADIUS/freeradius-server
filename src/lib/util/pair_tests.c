@@ -232,7 +232,7 @@ static void test_fr_pair_steal(void)
 	TEST_CHECK(talloc_parent(vp) == autofree);
 }
 
-static void test_fr_pair_raw_from_pair(void)
+static void test_fr_pair_raw_afrom_pair(void)
 {
 	fr_pair_t *vp;
 	uint8_t value = 0;
@@ -244,7 +244,7 @@ static void test_fr_pair_raw_from_pair(void)
 	PAIR_VERIFY(vp);
 
 	TEST_CASE("Converting regular 'vp' as unknown");
-	TEST_CHECK(fr_pair_raw_from_pair(vp, &value, 1) == 0);
+	TEST_CHECK(fr_pair_raw_afrom_pair(vp, &value, 1) == 0);
 
 	TEST_CASE("Checking if a real 'raw' vp");
 	TEST_CHECK(vp && vp->vp_raw);
@@ -759,7 +759,7 @@ static void test_fr_pair_list_copy_by_ancestor(void)
 	TEST_CHECK(vp->da == fr_dict_attr_test_tlv_string);
 #endif
 
-	TEST_CASE("Verifying the copied attribute");	
+	TEST_CASE("Verifying the copied attribute");
 	PAIR_VERIFY(vp);
 
 	TEST_CASE("Expecting nothing else in local list");
@@ -1428,7 +1428,7 @@ TEST_LIST = {
 	{ "fr_dcursor_iter_by_da_init",           test_fr_pair_dcursor_by_da_init },
 	{ "fr_pair_dcursor_by_ancestor_init",     test_fr_pair_dcursor_by_ancestor_init },
 	{ "fr_pair_dcursor_value_init",           test_fr_pair_dcursor_value_init },
-	{ "fr_pair_raw_from_pair",                test_fr_pair_raw_from_pair },
+	{ "fr_pair_raw_afrom_pair",                test_fr_pair_raw_afrom_pair },
 	{ "fr_pair_find_by_da_idx",                   test_fr_pair_find_by_da_idx },
 	{ "fr_pair_find_by_child_num_idx",            test_fr_pair_find_by_child_num_idx },
 	{ "fr_pair_find_by_da_nested",            test_fr_pair_find_by_da_nested },
