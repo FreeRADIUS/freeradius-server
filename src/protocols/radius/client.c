@@ -29,6 +29,11 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/client_tcp.h>
 #include <freeradius-devel/radius/client_priv.h>
 
+static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void *buffer, UNUSED size_t size,
+				     fr_bio_retry_entry_t *retry_ctx);
+static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **retry_ctx_p, UNUSED void *packet_ctx, const void *buffer, UNUSED size_t size);
+static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED fr_bio_retry_release_reason_t reason);
+
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
 	fr_assert(fd_cfg->type == FR_BIO_FD_CONNECTED);
@@ -87,9 +92,14 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 
 	my->mem = fr_bio_mem_alloc(my, read_size, 2 * 4096, my->fd);
 	if (!my->mem) goto fail;
-
-	my->cfg = *cfg;
 	my->mem->uctx = &my->cfg.verify;
+
+	my->retry = fr_bio_retry_alloc(my, 256, radius_client_retry_sent, radius_client_retry_response,
+				       NULL, radius_client_retry_release, &cfg->retry_cfg, my->mem);
+	if (!my->retry) goto fail;
+	my->retry->uctx = my;
+	
+	my->cfg = *cfg;
 
 	my->common.bio = my->mem;
 
@@ -148,7 +158,6 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	return 0;
 }
 
-#if 1
 static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_ACCESS_ACCEPT]		= FR_RADIUS_CODE_ACCESS_REQUEST,
 	[FR_RADIUS_CODE_ACCESS_CHALLENGE]	= FR_RADIUS_CODE_ACCESS_REQUEST,
@@ -241,7 +250,6 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 
 	fr_radius_code_id_push(my->codes, id_ctx->packet);
 }
-#endif
 
 int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p,
 				 TALLOC_CTX *out_ctx, fr_pair_list_t *out)
