@@ -71,7 +71,7 @@ brotli {
 	}
 
 	#
-	#  large_window:: Allow window sizes outside of the range permited by RFC 7932
+	#  large_window:: Allow window sizes outside of the range permitted by RFC 7932
 	#
 	#  Changes the behaviour of both the compressor and decompressor.
 	#

@@ -1,7 +1,7 @@
 # The Memory Bio
 
 The memory bio does read / write buffering for a "next" bio.  Where
-the file desciptor bio does no buffering, the memory bio adds that
+the file descriptor bio does no buffering, the memory bio adds that
 capability.
 
 In its simplest incarnation, the memory bio allows for controllable
