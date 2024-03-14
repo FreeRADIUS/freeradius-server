@@ -32,9 +32,9 @@ RUN apt-get update && \
 #  - doxygen & JSON.pm
 RUN apt-get install -y doxygen graphviz libjson-perl
 #  - antora (npm needed)
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
 RUN apt-get install -y nodejs
-RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
+RUN npm i -g @antora/cli@3.1.7 @antora/site-generator-default@3.1.7
 #  - pandoc
 WORKDIR /tmp
 RUN curl -OL $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*deb" | cut -d '"' -f 4)
