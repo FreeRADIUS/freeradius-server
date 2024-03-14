@@ -8,6 +8,9 @@ different operating systems, using Docker.
 The primary purpose is for developers to easily test FreeRADIUS on
 different systems.
 
+**Do not use this for running FreeRADIUS in production - see
+`scripts/docker` instead.**
+
 
 ## Common Usage
 

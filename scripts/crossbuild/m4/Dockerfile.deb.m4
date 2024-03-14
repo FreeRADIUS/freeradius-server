@@ -31,13 +31,14 @@ RUN apt-get update && \
 #
 #  Documentation build dependecies
 #
+define(`NODE_VER', ifelse(D_NAME, `ubuntu18', `16', `20'))dnl
 
 #  - doxygen & JSON.pm
 RUN apt-get install -y doxygen graphviz libjson-perl
 #  - antora (npm needed)
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
-RUN apt-get install -y nodejs`'ifelse(OS_NAME, `debian', `ifelse(eval(OS_VER`>=12'), 1, ` npm')')
-RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
+RUN curl -sL https://deb.nodesource.com/setup_`'NODE_VER.x | bash -
+RUN apt-get install -y nodejs
+RUN npm i -g @antora/cli@3.1.7 @antora/site-generator-default@3.1.7
 #  - pandoc
 WORKDIR /tmp
 RUN curl -OL $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*deb" | cut -d '"' -f 4)

@@ -37,9 +37,9 @@ RUN rm /etc/yum.repos.d/CentOS-SCLo-scl.repo
 #  - doxygen & JSON.pm
 RUN yum install -y doxygen graphviz perl-JSON
 #  - antora (npm needed)
-RUN curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+RUN curl -sL https://rpm.nodesource.com/setup_16.x | bash -
 RUN yum install -y nodejs
-RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
+RUN npm i -g @antora/cli@3.1.7 @antora/site-generator-default@3.1.7
 #  - pandoc
 RUN curl -o - -L $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*tar.gz" | cut -d '"' -f 4) | tar xzvf - -C /tmp/
 RUN mv /tmp/pandoc-*/bin/* /usr/local/bin
