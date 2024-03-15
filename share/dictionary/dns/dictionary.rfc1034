@@ -70,7 +70,7 @@ VALUE	Class				Any			255
 ATTRIBUTE	Resource-Record				3	struct
 MEMBER		Name					string	dns_label
 MEMBER		Type					uint16	key
-MEMBER		Class					uint16
+MEMBER		Class					uint16 enum=Question.Class
 MEMBER		TTL					time_delta
 
 ######################################################################
