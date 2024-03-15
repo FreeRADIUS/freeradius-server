@@ -130,9 +130,34 @@ do { \
 #define RESUME(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 #define RESUME_NO_MCTX(_x) static inline unlang_action_t resume_ ## _x(rlm_rcode_t *p_result, UNUSED module_ctx_t const *mctx, request_t *request)
 
+/** Call a module method with a new rctx
+ *
+ * @note This should be used to add a rctxs when calling the initial recv section.
+ *
+ * @param[out] p_result		Pointer to the result code.
+ * @param[in] mctx		Module context.
+ * @param[in] request		Request.
+ * @param[in] method		Method to call.
+ * @param[in] rctx		Resume context to use to override the one in the mctx.
+ * @return			Result of the method call.
+ */
+static inline CC_HINT(always_inline)
+unlang_action_t process_with_rctx(rlm_rcode_t *p_result, module_ctx_t const *mctx,
+				  request_t *request, module_method_t method, void *rctx)
+{
+	module_ctx_t our_mctx = *mctx;
+	our_mctx.rctx = rctx;
+
+	return method(p_result, &our_mctx, request);
+}
+
 /** Call a named recv function directly
  */
 #define CALL_RECV(_x) recv_ ## _x(p_result, mctx, request)
+
+/** Call a named recv function directly with a new rctx
+ */
+#define CALL_RECV_RCTX(_x, _rctx) process_with_rctx(p_result, mctx, request, recv_ ## _x, _rctx);
 
 /** Call a named send function directly
  */
@@ -323,7 +348,6 @@ RESUME(send_generic)
 	fr_assert(rcode < RLM_MODULE_NUMCODES);
 	switch (state->packet_type[rcode]) {
 	case 0:			/* don't change the reply */
-		fr_assert(request->reply->code != 0);
 		break;
 
 	default:
