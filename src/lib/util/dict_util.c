@@ -3612,12 +3612,12 @@ int fr_dict_enum_autoload(fr_dict_enum_autoload_t const *to_load)
 
 	for (p = to_load; p->out; p++) {
 		if (unlikely(!p->attr)) {
-			fr_strerror_const("Invalid autoload entry, missing attribute pointer");
+			fr_strerror_printf("Invalid attribute autoload entry for \"%s\", missing attribute pointer", p->name);
 			return -1;
 		}
 
 		if (unlikely(!*p->attr)) {
-			fr_strerror_printf("Can't resolve value '%s', attribute not loaded", p->name);
+			fr_strerror_printf("Can't resolve value \"%s\", attribute not loaded", p->name);
 			fr_strerror_printf_push("Check fr_dict_attr_autoload_t struct has "
 						"an entry to load the attribute \"%s\" is located in, and that "
 						"the fr_dict_autoload_attr_t symbol name is correct", p->name);
@@ -3651,7 +3651,7 @@ int fr_dict_attr_autoload(fr_dict_attr_autoload_t const *to_load)
 
 	for (p = to_load; p->out; p++) {
 		if (!p->dict) {
-			fr_strerror_const("Invalid autoload entry, missing dictionary pointer");
+			fr_strerror_printf("Invalid attribute autoload entry for \"%s\", missing dictionary pointer", p->name);
 			return -1;
 		}
 

@@ -664,6 +664,42 @@ dl_loader_t *dl_loader_from_module_loader(dl_module_loader_t *dl_module_l)
 	return dl_module_l->dl_loader;
 }
 
+/** Wrapper to log errors
+ */
+static int dl_dict_enum_autoload(dl_t const *module, void *symbol, void *user_ctx)
+{
+	int ret;
+
+	ret = fr_dl_dict_enum_autoload(module, symbol, user_ctx);
+	if (ret < 0) PERROR("Failed autoloading enum value for \"%s\"", module->name);
+
+	return ret;
+}
+
+/** Wrapper to log errors
+ */
+static int dl_dict_attr_autoload(dl_t const *module, void *symbol, void *user_ctx)
+{
+	int ret;
+
+	ret = fr_dl_dict_attr_autoload(module, symbol, user_ctx);
+	if (ret < 0) PERROR("Failed autoloading attribute for \"%s\"", module->name);
+
+	return ret;
+}
+
+/** Wrapper to log errors
+ */
+static int dl_dict_autoload(dl_t const *module, void *symbol, void *user_ctx)
+{
+	int ret;
+
+	ret = fr_dl_dict_autoload(module, symbol, user_ctx);
+	if (ret < 0) PERROR("Failed autoloading dictionary for \"%s\"", module->name);
+
+	return ret;
+}
+
 /** Initialise structures needed by the dynamic linker
  *
  */
@@ -725,11 +761,11 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 	 *	Register dictionary autoload callbacks
 	 */
 	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
-				   DL_PRIORITY_DICT_ENUM, "dict_enum", fr_dl_dict_enum_autoload, NULL);
+				   DL_PRIORITY_DICT_ENUM, "dict_enum", dl_dict_enum_autoload, NULL);
 	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
-				   DL_PRIORITY_DICT_ATTR, "dict_attr", fr_dl_dict_attr_autoload, NULL);
+				   DL_PRIORITY_DICT_ATTR, "dict_attr", dl_dict_attr_autoload, NULL);
 	dl_symbol_init_cb_register(dl_module_loader->dl_loader,
-				   DL_PRIORITY_DICT, "dict", fr_dl_dict_autoload, NULL);
+				   DL_PRIORITY_DICT, "dict", dl_dict_autoload, NULL);
 	dl_symbol_free_cb_register(dl_module_loader->dl_loader,
 				   DL_PRIORITY_DICT, "dict", fr_dl_dict_autofree, NULL);
 
