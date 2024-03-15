@@ -509,7 +509,6 @@ int restore_field_list(request_t *request, fr_pair_list_t *to_restore)
 	return 0;
 }
 
-
 /** Add a status code if one doesn't already exist
  *
  */
