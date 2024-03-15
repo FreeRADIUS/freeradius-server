@@ -37,7 +37,7 @@ VALUE	Rcode				Name-error		3
 VALUE	Rcode				Not-implemented		4
 VALUE	Rcode				Refused			5
 VALUE	Rcode				YX-Domain		6
-VALUE	Rcode				YX-Resource-Recode-Set	7
+VALUE	Rcode				YX-Resource-Record-Set	7
 VALUE	Rcode				NX-Resource-Record-Set	8
 VALUE	Rcode				Not-Auth		9
 VALUE	Rcode				Not-Zone		10
@@ -45,7 +45,7 @@ VALUE	Rcode				DSO-Type-Not-Implemented 11
 VALUE	Rcode				Bad-Signature		16
 VALUE	Rcode				Bad-Key			17
 VALUE	Rcode				Bad-Time		18
-VALUE	Rcode				Rad-Mode		19
+VALUE	Rcode			        Bad-Mode		19
 VALUE	Rcode				Bad-name		20
 VALUE	Rcode				Bad-Algorithm		21
 VALUE	Rcode				Bad-Truncation		22
