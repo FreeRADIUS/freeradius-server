@@ -537,6 +537,7 @@ fr_sbuff_parse_rules_t const value_parse_rules_bareword_quoted = {
 		.do_oct = false
 	},
 	.terminals = &FR_SBUFF_TERMS(
+		L(""),
 		L("\t"),
 		L("\n"),
 		L(" ")
