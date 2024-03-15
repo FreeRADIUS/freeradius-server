@@ -98,7 +98,7 @@ match f6 ab 01 20 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 00 00 00
 #    |   |  optdata   = '6\xbf\x11\x1f\xef.\x01\t}\x8f\xfe\x06\\co\xfb\x14-vt\x94@zs'
 #
 decode-proto f6 ab 81 87 00 01 00 00 00 00 00 01  00 00 06 00 01  00 00 29 10 00 01 00 00 00  00 1c  00 0a 00 18 36 bf 11 1f ef 2e 01 09 7d 8f fe 06 5c 63 6f fb 14 2d 76 74 94 40 7a 73
-match Header = { ID = 63147, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = yes, Recursion-Available = yes, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = YX-Resource-Rcord-Set, Question-Count = 1, Answer-Count = 0, Name-Server-Count = 0, Additional-Records-Count = 1 }, Question = { Name = ".", Type = 6, Class = Internet }, Additional-Record = { Name = ".", Type = Opt, Class = 4096, TTL = 16777216, Type.Opt = { Options = { Cookie = { Client = 0x36bf111fef2e0109, Server = 0x7d8ffe065c636ffb142d767494407a73 } } } }
+match Header = { ID = 63147, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = yes, Recursion-Available = yes, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = YX-Resource-Record-Set, Question-Count = 1, Answer-Count = 0, Name-Server-Count = 0, Additional-Records-Count = 1 }, Question = { Name = ".", Type = 6, Class = Internet }, Additional-Record = { Name = ".", Type = Opt, Class = 4096, TTL = 16777216, Type.Opt = { Options = { Cookie = { Client = 0x36bf111fef2e0109, Server = 0x7d8ffe065c636ffb142d767494407a73 } } } }
 encode-proto -
 match f6 ab 81 87 00 01 00 00 00 00 00 01 00 00 06 00 01 00 00 29 10 00 01 00 00 00 00 1c 00 0a 00 18 36 bf 11 1f ef 2e 01 09 7d 8f fe 06 5c 63 6f fb 14 2d 76 74 94 40 7a 73
 
