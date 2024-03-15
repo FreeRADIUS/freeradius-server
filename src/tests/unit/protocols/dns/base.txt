@@ -38,6 +38,13 @@ match 00 00 80 00 00 00 00 01 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03
 decode-proto -
 match Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error, Question-Count = 0, Answer-Count = 1, Name-Server-Count = 0, Additional-Records-Count = 0 }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { IP = 127.0.0.1 } }
 
+#
+#  Check the encoder can manage counts on its own, and finishes encoding missing count attributes in the header
+#  This is regession test for the struct encoder, which would stop encoding if count attributes weren't explicitly
+#  provided resulting in a malformed header.
+#
+encode-proto Header = { ID = 0, Query = Response, Opcode = Query, Authoritative = no, Truncated-Response = no, Recursion-Desired = no, Recursion-Available = no, Reserved = no, Authentic-Data = no, Checking-Disabled = no, Rcode = No-Error }, Resource-Record = { Name = "www.example.com", Type = A, Class = Internet, TTL = 16, Type.A = { ip = 127.0.0.1 } }
+match 00 00 80 00 00 00 00 01 00 00 00 00 03 77 77 77 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 00 01 00 01 00 00 00 10 00 04 7f 00 00 01
 
 #
 #  multiple labels (2)

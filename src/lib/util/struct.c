@@ -688,7 +688,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			}
 
 			vp = fr_dcursor_next(cursor);
-			if (!vp) break;
+			/* We need to continue, there may be more fields to encode */
 
 			goto next;
 		}
