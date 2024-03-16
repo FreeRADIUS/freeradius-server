@@ -28,6 +28,8 @@
  */
 RCSIDH(redis_h, "$Id$")
 
+#include <freeradius-devel/util/time.h>
+
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/map.h>
 #include <freeradius-devel/server/module.h>
@@ -121,6 +123,9 @@ typedef struct {
 	uint32_t		max_retries;	//!< Maximum number of times we attempt a command
 						//!< when receiving successive -TRYAGAIN messages.
 	uint32_t		max_alt;	//!< Maximum alternative nodes to try.
+
+	fr_time_delta_t		command_timeout; //!< How long to wait for commands to return.
+
 	fr_time_delta_t		retry_delay;	//!< How long to wait when we received a -TRYAGAIN
 						//!< message.
 	fr_time_delta_t		connection_timeout;
@@ -140,7 +145,8 @@ typedef struct {
 	{ FR_CONF_OFFSET_FLAGS("password", CONF_FLAG_SECRET, fr_redis_conf_t, password) }, \
 	{ FR_CONF_OFFSET("max_nodes", fr_redis_conf_t, max_nodes), .dflt = "20" }, \
 	{ FR_CONF_OFFSET("max_alt", fr_redis_conf_t, max_alt), .dflt = "3" }, \
-	{ FR_CONF_OFFSET("max_redirects", fr_redis_conf_t, max_redirects), .dflt = "2" }
+	{ FR_CONF_OFFSET("max_redirects", fr_redis_conf_t, max_redirects), .dflt = "2" }, \
+	{ FR_CONF_OFFSET("command_timeout", fr_redis_conf_t, reconnection_delay), .dflt = "0" }
 
 void		fr_redis_version_print(void);
 
