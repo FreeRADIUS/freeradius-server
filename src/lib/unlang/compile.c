@@ -1413,9 +1413,10 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 		da = tmpl_attr_tail_da(map->lhs);
 		if (!da->flags.internal && parent && (parent->type != FR_TYPE_GROUP) &&
 		    (da->parent != parent)) {
+			/* FIXME - Broken check, doesn't work for key attributes */
 			cf_log_err(cp, "Invalid location for %s - it is not a child of %s",
 				   da->name, parent->name);
-			return -1;
+			return 0;
 		}
 		break;
 
