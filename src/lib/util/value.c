@@ -5317,7 +5317,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	switch (data->type) {
 	case FR_TYPE_STRING:
 		if (data->vb_length) FR_SBUFF_IN_ESCAPE_RETURN(&our_out,
-								  data->vb_strvalue, data->vb_length, e_rules);
+							       data->vb_strvalue, data->vb_length, e_rules);
 		break;
 
 	case FR_TYPE_OCTETS:
