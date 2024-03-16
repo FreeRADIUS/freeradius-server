@@ -1570,23 +1570,30 @@ int fr_pair_append_by_da_parent(TALLOC_CTX *ctx, fr_pair_t **out, fr_pair_list_t
 	}
 }
 
-/** Return the first fr_pair_t matching the #fr_dict_attr_t or alloc a new fr_pair_t (and append)
+/** Return the first fr_pair_t matching the #fr_dict_attr_t or alloc a new fr_pair_t and its subtree (and append)
  *
- * @param[in] parent	to search for attributes in or append attributes to
- * @param[out] out	Pair we allocated or found.  May be NULL if the caller doesn't
- *			care about manipulating the fr_pair_t.
- * @param[in] da	of attribute to locate or alloc.
+ * @param[in] parent			If parent->da is an ancestor of the specified
+ *					da, we continue building out the nested structure
+ *					from the parent.
+ *					If parent is NOT an ancestor, then it must be a group
+ *					attribute, and we will append the shallowest member
+ *					of the struct or TLV as a child, and build out everything
+ *					to the specified da.
+ * @param[out] out			Pair we allocated or found.  May be NULL if the caller doesn't
+ *					care about manipulating the fr_pair_t.
+ * @param[in] da			of attribute to locate or alloc.
  * @return
  *	- 1 if attribute already existed.
  *	- 0 if we allocated a new attribute.
- *	- -1 on failure.
+ *	- -1 on memory allocation failure.
+ *	- -2 if the parent is not a group attribute.
  */
 int fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
 				fr_dict_attr_t const *da)
 {
 	fr_pair_t		*vp = NULL;
 	fr_da_stack_t		da_stack;
-	fr_dict_attr_t const	**find;
+	fr_dict_attr_t const	**find;	/* ** to allow us to iterate */
 	TALLOC_CTX		*pair_ctx = parent;
 	fr_pair_list_t		*list = &parent->vp_group;
 
@@ -1604,22 +1611,42 @@ int fr_pair_update_by_da_parent(fr_pair_t *parent, fr_pair_t **out,
 	}
 
 	fr_proto_da_stack_build(&da_stack, da);
-	find = &da_stack.da[0];
+	/*
+	 *	Is parent an ancestor of the attribute we're trying
+	 *	to build? If so, we resume from the deepest pairs
+	 *	already created.
+	 *
+	 *	da stack excludes the root.
+	 */
+	if ((parent->da->depth < da->depth) && (da_stack.da[parent->da->depth - 1] == parent->da)) {
+		/*
+		 *	Start our search from the parent's children
+		 */
+		list = &parent->vp_group;
+		find = &da_stack.da[parent->da->depth];	/* Next deepest attr than parent */
+	/*
+	 *	Disallow building one TLV tree into another
+	 */
+	} else if (!fr_type_is_group(parent->da->type)) {
+		fr_strerror_printf("Expected parent \"%s\" to be an ancestor of \"%s\" or a group.  "
+				   "But it is not an acestor and is of type %s", parent->da->name, da->name,
+				   fr_type_to_str(parent->da->type));
+		return -2;
+	} else {
+		find = &da_stack.da[0];
+	}
 
 	/*
 	 *	Walk down the da stack looking for candidate parent
-	 *	attributes and then allocating the leaf.
+	 *	attributes and then allocating the leaf, and any
+	 *	attributes between the leaf and parent.
 	 */
 	while (true) {
 		fr_assert((*find)->depth <= da->depth);
 
+		vp = fr_pair_find_by_da(list, NULL, *find);
 		/*
-		 *	We're not at the leaf, look for a potential parent
-		 */
-		if ((*find) != da) vp = fr_pair_find_by_da(list, NULL, *find);
-
-		/*
-		 *	Nothing found, create the pair
+		 *	Nothing found at this level, create the pair
 		 */
 		if (!vp) {
 			if (fr_pair_append_by_da(pair_ctx, &vp, list, *find) < 0) {
@@ -1670,7 +1697,7 @@ int fr_pair_delete_by_da(fr_pair_list_t *list, fr_dict_attr_t const *da)
 	return cnt;
 }
 
-/** Delete matching pairs from the specified list
+/** Delete matching pairs from the specified list, and prune any empty branches
  *
  * @param[in,out] list	to search for attributes in or delete attributes from.
  * @param[in] da	to match.
@@ -1686,8 +1713,14 @@ int fr_pair_delete_by_da_nested(fr_pair_list_t *list, fr_dict_attr_t const *da)
 	fr_pair_list_t		*cur_list;	/* Current list being searched */
 	fr_da_stack_t		da_stack;
 
+	/*
+	 *	Fast path for non-nested attributes
+	 */
 	if (da->depth <= 1) return fr_pair_delete_by_da(list, da);
 
+	/*
+	 *	No pairs, fast path!
+	 */
 	if (fr_pair_list_empty(list)) return 0;
 
 	/*
