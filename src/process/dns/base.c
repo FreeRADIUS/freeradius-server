@@ -350,6 +350,7 @@ static inline CC_HINT(always_inline)
 void dns_rcode_add(fr_pair_t **rcode, request_t *request, fr_value_box_t const **code)
 {
 	fr_value_box_t const	*vb;
+	int ret;
 
 	if (!code || !*code) return;
 
@@ -359,7 +360,8 @@ void dns_rcode_add(fr_pair_t **rcode, request_t *request, fr_value_box_t const *
 	 *	Don't override the user status
 	 *      code.
 	 */
-	if (fr_pair_update_by_da_parent(request->reply_ctx, rcode, attr_rcode) == 0) {
+	MEM((ret = fr_pair_update_by_da_parent(request->reply_ctx, rcode, attr_rcode)) >= 0);
+	if (ret == 0) {
 		fr_value_box_copy(*rcode, &(*rcode)->data, vb);
 		(*rcode)->data.enumv = (*rcode)->da;	/* Hack, boxes should have their enumv field populated */
 	}
