@@ -410,6 +410,10 @@ RESUME(recv_request)
 	 */
 	dns_rcode_add(&rcode, request, state->dns_rcode[*p_result]);
 
+#ifdef __clang_analyzer__
+	if (!rcode) return UNLANG_ACTION_FAIL;
+#endif
+
 	/*
 	 *	Call an appropriate error section if it's been set
 	 *	otherwise, just call the generic recv resume
