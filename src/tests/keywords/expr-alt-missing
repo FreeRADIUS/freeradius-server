@@ -1,0 +1,31 @@
+&Acct-Input-Octets := 0
+
+# 0 is false according to the truthy rules, should return 5
+if (!(%{&Acct-Input-Octets || 5} == 5)) {
+        test_fail
+}
+
+# Both values are not truthy, but it's still more useful to
+# return one on them instead of NULL, and this is an extremely
+# common use case when setting defaults.
+if ("%{&Acct-Input-Octets || 0}" == '') {
+        test_fail
+}
+
+# Same as above, except 5 is truthy, so we DEFINITELY shouldn't
+# be returning NULL.
+if ("%{&Acct-Input-Octets || 5}" == '') {
+        test_fail
+}
+
+# Completely absent null value is definitely not truthy
+if (!(%{&Acct-Output-Octets || 5} == 5)) {
+        test_fail
+}
+
+# One null should not trigger the expression returning null overall
+if ("%{&Acct-Output-Octets || 5}" == '') {
+        test_fail
+}
+
+success

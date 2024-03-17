@@ -1130,14 +1130,19 @@ static xlat_action_t xlat_logical_process_arg(UNUSED TALLOC_CTX *ctx, UNUSED fr_
  *  @param[in]     rctx our ctx
  *  @param[in]     in   list of value-boxes to check
  *  @return
- *	- false on failure
- *	- true for match, with dst updated to contain the relevant box.
+ *	- false if there are no truthy values. The last box is copied to the rctx.
+ *	  This is to allow us to return default values which may not be truthy,
+ *	  e.g. %{&Counter || 0} or %{&Framed-IP-Address || 0.0.0.0}.
+ *	  If we don't copy the last box to the rctx, the expression just returns NULL
+ *	  which is never useful...
+ *	- true if we find a truthy value.  The first truthy box is copied to the rctx.
  *
  *  Empty lists are not truthy.
  */
 static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const *in)
 {
-	fr_value_box_t *found = NULL;
+	fr_value_box_t *last = NULL;
+	bool ret = false;
 
 	/*
 	 *	Empty lists are !truthy.
@@ -1153,32 +1158,27 @@ static bool xlat_logical_or(xlat_logical_rctx_t *rctx, fr_value_box_list_t const
 			continue;
 		}
 
+		last = box;
+
 		/*
 		 *	Remember the last box we found.
 		 *
 		 *	If it's truthy, then we stop immediately.
 		 */
 		if (fr_value_box_is_truthy(box)) {
-			found = box;
+			ret = true;
 			break;
 		}
-
-		/*
-		 *	Stop on the first "false"
-		 */
-		return false;
 	}
-
-	if (!found) return false;
 
 	if (!rctx->box) {
 		MEM(rctx->box = fr_value_box_alloc_null(rctx->ctx));
 	} else {
 		fr_value_box_clear(rctx->box);
 	}
-	fr_value_box_copy(rctx->box, rctx->box, found);
+	if (last) fr_value_box_copy(rctx->box, rctx->box, last);
 
-	return true;
+	return ret;
 }
 
 /*
@@ -1256,7 +1256,7 @@ static bool xlat_logical_and(xlat_logical_rctx_t *rctx, fr_value_box_list_t cons
 	 */
 	fr_value_box_list_foreach(in, box) {
 		if (fr_box_is_group(box)) {
-			if (!xlat_logical_or(rctx, &box->vb_group)) return false;
+			if (!xlat_logical_and(rctx, &box->vb_group)) return false;
 			continue;
 		}
 
