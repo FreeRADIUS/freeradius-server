@@ -9,25 +9,25 @@
 #  i.e. we can reference things which don't exist,
 #  and they'll get ignored.
 #
-if (0) {
+if (false) {
 	no-such-module
 }
 
-if (0) {
+if (false) {
 	no-such-module
 }
 else {
 	ok
 }
 
-if (1) {
+if (true) {
 	ok
 }
 else {
 	no-such-module
 }
 
-if (1) {
+if (true) {
 	ok
 }
 elsif ("%foo(bar)") {	# no pass2
