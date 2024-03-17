@@ -41,7 +41,8 @@ FR_DLIST_TYPES(fr_bio_retry_list)
 
 struct fr_bio_retry_entry_s {
 	void		*uctx;
-	void		*packet_ctx;
+	void		*packet_ctx
+;	fr_bio_retry_rewrite_t rewrite;		//!< per-packet rewrite callback
 
 	union {
 		fr_rb_node_t	node;		//!< for the timers
@@ -351,7 +352,11 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	 *	necessary cleanups.  Note that we can't call bio shutdown here, as the bio is controlled by the
 	 *	application, and not by us.
 	 */
-	rcode = my->rewrite(next, item, item->buffer, item->size);
+	if (item->rewrite) {
+		rcode = item->rewrite(next, item, item->buffer, item->size);
+	} else {
+		rcode = my->rewrite(next, item, item->buffer, item->size);
+	}
 	if (rcode < 0) {
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
 		return;

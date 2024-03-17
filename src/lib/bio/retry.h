@@ -40,10 +40,14 @@ typedef struct {
 
 typedef struct fr_bio_retry_entry_s fr_bio_retry_entry_t;
 
+typedef ssize_t	(*fr_bio_retry_rewrite_t)(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size);
+
 #ifndef _BIO_RETRY_PRIVATE
 struct  fr_bio_retry_entry_s {
 	void		*uctx;			//!< user-writable context
 	void		*packet_ctx;		//!< packet_ctx from the write() call
+	fr_bio_retry_rewrite_t rewrite;		//!< per-packet rewrite callback
+	void		*rewrite_ctx;		//!< context specifically for rewriting this packet
 };
 #endif
 
