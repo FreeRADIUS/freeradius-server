@@ -179,10 +179,20 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
  */
 static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8_t *buffer, size_t buffer_len)
 {
-	if (buffer_len < 1) return -1;
+	if (buffer_len < 2) return -1;
 
-	*buffer = request->reply->code;
-	return 1;
+	buffer[0] = request->reply->code;
+	buffer[1] = 0x00;
+
+	/*
+	 *	For some reason the rest of the code treats
+	 *	returning one byte of data as a magic
+	 *	"do not respond" value... It's unclear why.
+	 *
+	 *	Return 2 to indicate we actually want our
+	 *	write functiont o run.
+	 */
+	return 2;
 }
 
 /** Open listen sockets/connect to external event source
