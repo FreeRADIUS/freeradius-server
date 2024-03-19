@@ -190,7 +190,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	 *	"do not respond" value... It's unclear why.
 	 *
 	 *	Return 2 to indicate we actually want our
-	 *	write functiont o run.
+	 *	write function to run.
 	 */
 	return 2;
 }
