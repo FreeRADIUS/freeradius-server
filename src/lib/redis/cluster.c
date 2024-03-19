@@ -1481,13 +1481,6 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delt
 		return NULL;
 	}
 
-	/*
-	 *	Sets a timeout for synchronous command evaluation
-	 */
-	if (fr_time_delta_cmp(node->cluster->conf->command_timeout, fr_time_delta_from_sec(0)) != 0) {
-		redisSetTimeout(handle, fr_time_delta_to_timeval(node->cluster->conf->command_timeout));
-	}
-
 	conn = talloc_zero(ctx, fr_redis_conn_t);
 	conn->handle = handle;
 	conn->node = node;

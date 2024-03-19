@@ -79,15 +79,6 @@ redis {
 	#
 #	use_cluster_map = yes
 
-	#
-	#  command_timeout:: The maximum time allowed for an individual command to execute
-	#
-	#  Setting to 0.0 disables the timeout.
-	#
-	#  Default is 0.0
-	#
-#	command_timeout = 0
-
 	#  lua { ... }::
 	#
 	#  Configuration options which control the execution of lua scripts
