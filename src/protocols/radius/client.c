@@ -329,3 +329,49 @@ fr_bio_t *fr_radius_client_bio_get_fd(fr_bio_packet_t *bio)
 
 	return my->fd;
 }
+
+/** Try to connect a socket.
+ *
+ *  Calls fr_bio_fd_connect()
+ *
+ *  @param bio	the packet bio
+ *  @return
+ *	- 0 for "connected, can continue"
+ *	- fr_bio_error(IO_WOULD_BLOCK) for "not yet connected, please try again"
+ *	- <0 for other fr_bio_error()
+ *
+ */
+int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
+
+	switch (my->fd_info->type) {
+	default:
+		fr_strerror_const("Invalid RADIUS client bio for connect");
+		return fr_bio_error(GENERIC);
+
+	case FR_BIO_FD_UNCONNECTED:
+		return 0;
+
+	case FR_BIO_FD_CONNECTED:
+		break;
+	}
+
+	switch(my->fd_info->state) {
+	case FR_BIO_FD_STATE_INVALID:
+		fr_strerror_const("Invalid RADIUS client bio state");
+		return fr_bio_error(GENERIC);
+
+	case FR_BIO_FD_STATE_CLOSED:
+		fr_strerror_const("RADIUS client bio is closed");
+		return fr_bio_error(GENERIC);
+
+	case FR_BIO_FD_STATE_OPEN:
+		return 0;
+
+	case FR_BIO_FD_STATE_CONNECTING:
+		break;
+	}
+
+	return fr_bio_fd_connect(my->fd);
+}
