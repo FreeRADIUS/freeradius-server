@@ -18,6 +18,12 @@ server load {
 	#
 	listen load {
 		#
+		#  The main module is the proto module, even though we're
+		#  operating in the RADIUS namespace.
+		#
+		proto = load
+
+		#
 		#  This is a valid Packet-Type for the current `namespace`
 		#
 		type = Access-Request
@@ -86,7 +92,6 @@ server load {
 			parallel	= 25
 		}
 	}
-}
 
 #
 #  The rest of the recv/send sections are protocol specific, and are
