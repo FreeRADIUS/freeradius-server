@@ -17,17 +17,17 @@
 }
 
 #
-#  Basic store and retrieve
+#  Basic update and retrieve
 #
 &control.Callback-Id := 'cache me'
 
-cache_update.store
+cache_update.update
 if (!updated) {
 	test_fail
 }
 
 # Merge
-cache_update.store
+cache_update.update
 if (!updated) {
 	test_fail
 }

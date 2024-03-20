@@ -17,7 +17,7 @@
 }
 
 #
-#  Basic store and retrieve
+#  Basic update and retrieve
 #
 &control.Callback-Id := 'cache me'
 

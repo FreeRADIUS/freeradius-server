@@ -934,8 +934,6 @@ static unlang_action_t CC_HINT(nonnull) mod_method_status(rlm_rcode_t *p_result,
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
-	DEBUG3("Calling %s.status", mctx->inst->name);
-
 	if (env->key->vb_length == 0) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_FAIL;
@@ -974,8 +972,6 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(rlm_rcode_t *p_result, m
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
-	DEBUG3("Calling %s.load", mctx->inst->name);
-
 	if (env->key->vb_length == 0) {
 		REDEBUG("Zero length key string is invalid");
 		RETURN_MODULE_FAIL;
@@ -1003,14 +999,14 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
-/** Create and insert a cache entry
+/** Create, or update a cache entry
  *
  * @return
  *	- #RLM_MODULE_OK on success.
  *	- #RLM_MODULE_UPDATED if we merged the cache entry.
  *	- #RLM_MODULE_FAIL on failure.
  */
-static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t CC_HINT(nonnull) mod_method_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
@@ -1020,8 +1016,6 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
-
-	DEBUG3("Calling %s.store", mctx->inst->name);
 
 	if (env->key->vb_length == 0) {
 		REDEBUG("Zero length key string is invalid");
@@ -1074,10 +1068,75 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	 *	should perform upserts.
 	 */
 	if (expire) {
-		DEBUG4("Set the cache expire");
+		DEBUG3("Expiring cache entry");
 
 		cache_expire(&rcode, inst, request, &handle, env->key);
 		if (rcode == RLM_MODULE_FAIL) goto finish;
+	}
+
+	/*
+	 *	Inserts are upserts, so we don't care about the
+	 *	entry state.
+	 */
+	cache_insert(&rcode, inst, request, &handle, env->key, env->maps, ttl);
+	if (rcode == RLM_MODULE_OK) rcode = RLM_MODULE_UPDATED;
+
+finish:
+	cache_unref(request, inst, entry, handle);
+
+	RETURN_MODULE_RCODE(rcode);
+}
+
+/** Create, or update a cache entry
+ *
+ * @return
+ *	- #RLM_MODULE_NOOP if an entry already existed.
+ *	- #RLM_MODULE_UPDATED if we inserted a cache entry.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+	fr_time_delta_t		ttl;
+	rlm_cache_entry_t 	*entry = NULL;
+	rlm_cache_handle_t 	*handle = NULL;
+	fr_pair_t		*vp;
+
+	if (env->key->vb_length == 0) {
+		REDEBUG("Zero length key string is invalid");
+		RETURN_MODULE_FAIL;
+	}
+
+	if (cache_acquire(&handle, inst, request) < 0) {
+		RETURN_MODULE_FAIL;
+	}
+
+	/* Process the TTL */
+	ttl = inst->config.ttl; /* Set the default value from cache { ttl=... } */
+	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_cache_ttl);
+	if (vp && (vp->vp_int32 > 0)) {
+		ttl = fr_time_delta_from_sec(vp->vp_int32);
+
+		DEBUG3("Overriding default TTL %pV -> %d", fr_box_time_delta(ttl), vp->vp_int32);
+	}
+
+	/*
+	 *	We can only alter the TTL on an entry if it exists.
+	 */
+	cache_find(&rcode, &entry, inst, request, &handle, env->key);
+	switch (rcode) {
+	default:
+	case RLM_MODULE_OK:
+		rcode = RLM_MODULE_NOOP;
+		goto finish;
+
+	case RLM_MODULE_FAIL:
+		goto finish;
+
+	case RLM_MODULE_NOTFOUND:
+		break;
 	}
 
 	/*
@@ -1087,10 +1146,10 @@ static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, 
 	 *	insert.
 	 */
 	cache_insert(&rcode, inst, request, &handle, env->key, env->maps, ttl);
-	if (rcode == RLM_MODULE_OK) rcode = RLM_MODULE_UPDATED;
 
 finish:
 	cache_unref(request, inst, entry, handle);
+	if (rcode == RLM_MODULE_OK) rcode = RLM_MODULE_UPDATED;
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -1342,6 +1401,7 @@ module_rlm_t rlm_cache = {
 	.method_names = (module_method_name_t[]){
 		{ .name1 = "status", .name2 = CF_IDENT_ANY,		.method = mod_method_status,	.method_env = &cache_method_env },
 		{ .name1 = "load", .name2 = CF_IDENT_ANY,		.method = mod_method_load,	.method_env = &cache_method_env },
+		{ .name1 = "update", .name2 = CF_IDENT_ANY,		.method = mod_method_update,	.method_env = &cache_method_env },
 		{ .name1 = "store", .name2 = CF_IDENT_ANY,		.method = mod_method_store,	.method_env = &cache_method_env },
 		{ .name1 = "clear", .name2 = CF_IDENT_ANY,		.method = mod_method_clear,	.method_env = &cache_method_env },
 		{ .name1 = "ttl", .name2 = CF_IDENT_ANY,		.method = mod_method_ttl,	.method_env = &cache_method_env },

@@ -4,11 +4,11 @@
 &Filter-Id := 'testkey1'
 
 #
-# 0.  Basic store and retrieve
+# 0.  Basic update and retrieve
 #
 &control.Callback-Id := 'cache me'
 
-cache.store
+cache.update
 if (!updated) {
 	test_fail
 }
@@ -63,13 +63,13 @@ if (!notfound) {
 # 14. This should still allow the creation of a new entry
 &control.Cache-TTL := -2
 
-cache.store
+cache.update
 if (!updated) {
 	test_fail
 }
 
 # 12. We have nothing to do if it is ready added.
-cache.store
+cache.update
 if (!updated) {
 	test_fail
 }
@@ -102,7 +102,7 @@ if (&Callback-Id == &control.Callback-Id) {
 # 20. Check that a new entry is created
 &control.Cache-TTL := -2
 
-cache.store
+cache.update
 if (!updated) {
 	test_fail
 }
@@ -128,7 +128,7 @@ if (&Callback-Id != &control.Callback-Id) {
 &control.Cache-TTL := -2
 &control.Cache-Merge-New := yes
 
-cache.store
+cache.update
 if (!updated) {
 	test_fail
 }
@@ -145,6 +145,23 @@ if (&Cache-Entry-Hits != 0) {
 
 cache.load
 if (&Cache-Entry-Hits != 1) {
+	test_fail
+}
+
+# 27. Try and store an existing entry, should do nothing
+cache.store
+if (!noop) {
+	test_fail
+}
+
+# 28. But with the entry removed, we can now create a new entry
+cache.clear
+if (!ok) {
+	test_fail
+}
+
+cache.store
+if (!updated) {
 	test_fail
 }
 
