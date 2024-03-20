@@ -61,7 +61,7 @@ static const call_env_method_t cache_method_env = {
 	FR_CALL_ENV_METHOD_OUT(cache_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, cache_call_env_t, key) },
-		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_REQUIRED, cache_update_section_parse) },
+		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_NONE, cache_update_section_parse) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -354,6 +354,12 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	RDEBUG2("Creating new cache entry");
 
 	/*
+	 *	We don't have any maps to apply to the cache entry
+	 *	so don't try to expand them.
+	 */
+	if (!maps) goto skip_maps;
+
+	/*
 	 *	Alloc a pool so we don't have excessive allocs when
 	 *	gathering fr_pair_ts to cache.
 	 */
@@ -448,6 +454,8 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 		talloc_free_children(pool); /* reset pool state */
 	}
 	talloc_free(pool);
+
+skip_maps:
 
 	/*
 	 *	Check to see if we need to merge the entry into the request

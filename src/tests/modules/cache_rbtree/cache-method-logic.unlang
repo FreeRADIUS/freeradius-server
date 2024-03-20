@@ -165,4 +165,25 @@ if (!updated) {
 	test_fail
 }
 
+# 29. Check the behaviour of cache_empty_update
+cache_empty_update.store
+if (!updated) {
+	test_fail
+}
+
+cache_empty_update.status
+if (!ok) {
+	test_fail
+}
+
+cache_empty_update.clear
+if (!ok) {
+	test_fail
+}
+
+cache_empty_update.status
+if (!notfound) {
+	test_fail
+}
+
 test_pass
