@@ -49,6 +49,7 @@ sql {
 	#    * oracle
 	#    * postgresql
 	#    * sqlite
+	#    * mongo
 	#
 	dialect = "sqlite"
 
@@ -75,6 +76,7 @@ sql {
 	#  | freetds           | mssql
 	#  | null              | any
 	#  | unixodbc          | mssql
+	#  | mongodb           | mongo
 	#  |===
 	#
 	driver = "${dialect}"
