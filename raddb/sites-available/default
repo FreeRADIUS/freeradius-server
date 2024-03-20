@@ -759,6 +759,9 @@ recv Access-Request {
 	#  We also recommend doing user lookups in the `inner-tunnel`
 	#  virtual server.
 	#
+	eap {
+		ok = return
+	}
 
 	#
 	#  The `unix` module will obtain passwords from `/etc/passwd`
@@ -966,6 +969,7 @@ authenticate ldap {
 #  For EAP-MD5, EAP-MSCHAP, EAP-TLS, EAP-TTLS, EAP-PEAP, EAP-PWD, etc.
 #
 authenticate eap {
+	eap
 }
 
 
@@ -1068,6 +1072,7 @@ send Access-Accept {
 	#  For EAP, ensure that the Access-Accept contains a User-Name
 	#  attribute.
 	#
+	eap
 
 	#
 	#  Get an address from the IP Pool.
@@ -1226,6 +1231,7 @@ send Access-Reject {
 	#  Insert an EAP-Failure message if the request was rejected by
 	#  policy, instead of from an authentication failure.
 	#
+	eap
 
 	#
 	#  Call an instance of `linelog` to log the authentication failure
