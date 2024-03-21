@@ -920,6 +920,7 @@ static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	vb->vb_int64 = fr_time_delta_unwrap(fr_unix_time_sub(c->expires, fr_time_to_unix_time(request->packet->timestamp)));
 	fr_dcursor_append(out, vb);
 
+	cache_free(inst, &c);
 	cache_release(inst, request, &handle);
 
 	return XLAT_ACTION_DONE;
