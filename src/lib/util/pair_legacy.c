@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/regex.h>
-#include <freeradius-devel/util/token.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -65,19 +64,19 @@ static fr_table_num_sorted_t const pair_assignment_op_table[] = {
 static ssize_t pair_assignment_op_table_len = NUM_ELEMENTS(pair_assignment_op_table);
 
 static fr_table_num_sorted_t const pair_comparison_op_table[] = {
-	{ L(":="),	T_OP_SET		},
 	{ L("!*"),	T_OP_CMP_FALSE		},
 	{ L("!="),	T_OP_NE			},
 	{ L("!~"),	T_OP_REG_NE		},
 	{ L("+="),	T_OP_ADD_EQ		},
+	{ L(":="),	T_OP_SET		},
 	{ L("<"),	T_OP_LT			},
 	{ L("<="),	T_OP_LE			},
 	{ L("="),	T_OP_EQ			},
 	{ L("=*"),	T_OP_CMP_TRUE		},
 	{ L("=="),	T_OP_CMP_EQ		},
-	{ L("=~"),	T_OP_REG_EQ 		},
+	{ L("=~"),	T_OP_REG_EQ		},
 	{ L(">"),	T_OP_GT			},
-	{ L(">="),	T_OP_GE			},
+	{ L(">="),	T_OP_GE			}
 };
 static size_t pair_comparison_op_table_len = NUM_ELEMENTS(pair_comparison_op_table);
 
