@@ -458,7 +458,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	CONF_SECTION	*conf = mctx->inst->conf;
 	xlat_t		*xlat;
 
-	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, exec_xlat_oneshot, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, NULL, exec_xlat_oneshot, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, exec_xlat_args);
 
 	if (inst->input_list && !tmpl_is_list(inst->input_list)) {

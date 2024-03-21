@@ -863,7 +863,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_redis_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_redis_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, redis_xlat, FR_TYPE_VOID);
+	xlat = xlat_func_register_module(inst, mctx, NULL, redis_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, redis_args);
 
 	/*

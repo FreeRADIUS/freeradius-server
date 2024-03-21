@@ -182,11 +182,9 @@ xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
 	return fr_rb_find(xlat_root, &(xlat_t){ .name = name });
 }
 
-/** Register an xlat function for a module
+/** Register an xlat function
  *
  * @param[in] ctx		Used to automate deregistration of the xlat function.
- * @param[in] mctx		Instantiation context from the module.
- *				Will be duplicated and passed to future xlat calls.
  * @param[in] name		of the xlat.
  * @param[in] func		to register.
  * @param[in] return_type	what type of output the xlat function will produce.
@@ -194,14 +192,11 @@ xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
  *	- A handle for the newly registered xlat function on success.
  *	- NULL on failure.
  */
-xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
-				  char const *name, xlat_func_t func, fr_type_t return_type)
+xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type)
 {
 	xlat_t	*c;
-	module_inst_ctx_t *our_mctx = NULL;
-	size_t len, used;
 	fr_sbuff_t in;
-	char inst_name[256];
+	size_t len, used;
 
 	fr_assert(xlat_root);
 
@@ -209,15 +204,6 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 	invalid_name:
 		ERROR("%s: Invalid xlat name", __FUNCTION__);
 		return NULL;
-	}
-
-	/*
-	 *	Name xlats other than those which are just the module instance
-	 *	as <instance name>.<function name>
-	 */
-	if (mctx && name != mctx->inst->name) {
-		snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->inst->name, name);
-		name = inst_name;
 	}
 
 	len = strlen(name);
@@ -254,15 +240,10 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 	 *	Doesn't exist.  Create it.
 	 */
 	MEM(c = talloc(ctx, xlat_t));
-	if (mctx) {
-		MEM(our_mctx = talloc_zero(c, module_inst_ctx_t));	/* Original won't stick around */
-		memcpy(our_mctx, mctx, sizeof(*our_mctx));
-	}
 	*c = (xlat_t){
 		.name = talloc_typed_strdup(c, name),
 		.func = func,
 		.return_type = return_type,
-		.mctx = our_mctx,
 		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */
 	};
 	talloc_set_destructor(c, _xlat_func_talloc_free);
@@ -277,19 +258,49 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 	return c;
 }
 
-/** Register an xlat function
+/** Register an xlat function for a module
  *
  * @param[in] ctx		Used to automate deregistration of the xlat function.
- * @param[in] name		of the xlat.
+ * @param[in] mctx		Instantiation context from the module.
+ *				Will be duplicated and passed to future xlat calls.
+ * @param[in] name		of the xlat.  Must be NULL, for "self-named" xlats.
+ *				e.g. `cache`, `sql`, `delay`, etc.
  * @param[in] func		to register.
  * @param[in] return_type	what type of output the xlat function will produce.
  * @return
  *	- A handle for the newly registered xlat function on success.
  *	- NULL on failure.
  */
-xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, fr_type_t return_type)
+xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
+				  char const *name, xlat_func_t func, fr_type_t return_type)
 {
-	return xlat_func_register_module(ctx, NULL, name, func, return_type);
+	module_inst_ctx_t	*our_mctx = NULL;
+	xlat_t			*c;
+	char 			inst_name[256];
+
+	fr_assert_msg(name != mctx->inst->name, "`name` must not be the same as the module "
+		      "instance name.  Pass a NULL `name` arg if this is required");
+
+	if (!name) {
+		name = mctx->inst->name;
+	} else {
+		if ((size_t)snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->inst->name, name) >= sizeof(inst_name)) {
+			ERROR("%s: Instance name too long", __FUNCTION__);
+			return NULL;
+		}
+		name = inst_name;
+	}
+
+	c = xlat_func_register(ctx, name, func, return_type);
+	if (!c) return NULL;
+
+	if (mctx) {
+		MEM(our_mctx = talloc_zero(c, module_inst_ctx_t));	/* Original won't stick around */
+		memcpy(our_mctx, mctx, sizeof(*our_mctx));
+	}
+	c->mctx = our_mctx;
+
+	return c;
 }
 
 /** Verify xlat arg specifications are valid

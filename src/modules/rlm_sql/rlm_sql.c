@@ -1593,7 +1593,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
+	xlat = xlat_func_register_module(inst, mctx, NULL, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
 	if (!xlat) {
 		cf_log_perr(conf, "Failed registering %s expansion", mctx->inst->name);
 		return -1;

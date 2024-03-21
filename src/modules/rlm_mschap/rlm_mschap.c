@@ -2406,7 +2406,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_mschap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_mschap_t);
 	xlat_t			*xlat;
 
-	xlat = xlat_func_register_module(inst, mctx, mctx->inst->name, mschap_xlat, FR_TYPE_VOID);
+	xlat = xlat_func_register_module(inst, mctx, NULL, mschap_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, mschap_xlat_args);
 	xlat_func_call_env_set(xlat, &mschap_xlat_method_env);
 

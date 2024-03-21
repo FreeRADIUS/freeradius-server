@@ -2342,7 +2342,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	inst->bind_trunk_conf.req_pool_headers = 2;
 	inst->bind_trunk_conf.req_pool_size = sizeof(fr_ldap_bind_auth_ctx_t) + sizeof(fr_ldap_sasl_ctx_t);
 
-	xlat = xlat_func_register_module(NULL, mctx, mctx->inst->name, ldap_xlat, FR_TYPE_STRING);
+	xlat = xlat_func_register_module(NULL, mctx, NULL, ldap_xlat, FR_TYPE_STRING);
 	xlat_func_mono_set(xlat, ldap_xlat_arg);
 
 	if (unlikely(!(xlat = xlat_func_register_module(NULL, mctx, "memberof", ldap_memberof_xlat,
