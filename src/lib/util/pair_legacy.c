@@ -58,9 +58,10 @@ static fr_sbuff_term_t const 	bareword_terminals =
 				);
 
 static fr_table_num_sorted_t const pair_assignment_op_table[] = {
-	{ L("+="),	T_OP_ADD_EQ		},
 	{ L(":="),	T_OP_EQ			},
-	{ L("="),	T_OP_EQ			},
+	{ L("+="),	T_OP_ADD_EQ		},
+	{ L("+="),	T_OP_ADD_EQ		},
+	{ L("="),	T_OP_EQ			}
 };
 static ssize_t pair_assignment_op_table_len = NUM_ELEMENTS(pair_assignment_op_table);
 
@@ -69,7 +70,6 @@ static fr_table_num_sorted_t const pair_comparison_op_table[] = {
 	{ L("!*"),	T_OP_CMP_FALSE		},
 	{ L("!="),	T_OP_NE			},
 	{ L("!~"),	T_OP_REG_NE		},
-	{ L("+="),	T_OP_ADD_EQ		},
 	{ L("<"),	T_OP_LT			},
 	{ L("<="),	T_OP_LE			},
 	{ L("="),	T_OP_EQ			},
