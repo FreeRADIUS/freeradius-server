@@ -888,6 +888,43 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					xlat_ctx_t const *xctx,
+					request_t *request, UNUSED fr_value_box_list_t *in)
+{
+
+	rlm_cache_entry_t	*c = NULL;
+	rlm_cache_t		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_cache_t);
+	cache_call_env_t	*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
+	rlm_cache_handle_t	*handle = NULL;
+
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
+
+	fr_value_box_t		*vb;
+
+	if (cache_acquire(&handle, inst, request) < 0) {
+		return XLAT_ACTION_FAIL;
+	}
+
+	cache_find(&rcode, &c, inst, request, &handle, env->key);
+	switch (rcode) {
+	case RLM_MODULE_OK:		/* found */
+		break;
+
+	default:
+		cache_release(inst, request, &handle);
+		return XLAT_ACTION_DONE;
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	vb->vb_int64 = fr_time_delta_unwrap(fr_unix_time_sub(c->expires, fr_time_to_unix_time(request->packet->timestamp)));
+	fr_dcursor_append(out, vb);
+
+	cache_release(inst, request, &handle);
+
+	return XLAT_ACTION_DONE;
+}
+
 /** Release the allocated resources and cleanup the avps
  */
 static void cache_unref(request_t *request, rlm_cache_t const *inst, rlm_cache_entry_t *entry,
@@ -1382,6 +1419,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	xlat = xlat_func_register_module(inst, mctx, NULL, cache_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, cache_xlat_args);
+	xlat_func_call_env_set(xlat, &cache_method_env);
+
+	xlat = xlat_func_register_module(inst, mctx, "ttl.get", cache_ttl_get_xlat, FR_TYPE_VOID);
 	xlat_func_call_env_set(xlat, &cache_method_env);
 
 	return 0;

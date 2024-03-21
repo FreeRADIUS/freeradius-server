@@ -294,10 +294,8 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 	c = xlat_func_register(ctx, name, func, return_type);
 	if (!c) return NULL;
 
-	if (mctx) {
-		MEM(our_mctx = talloc_zero(c, module_inst_ctx_t));	/* Original won't stick around */
-		memcpy(our_mctx, mctx, sizeof(*our_mctx));
-	}
+	MEM(our_mctx = talloc_zero(c, module_inst_ctx_t));	/* Original won't stick around */
+	memcpy(our_mctx, mctx, sizeof(*our_mctx));
 	c->mctx = our_mctx;
 
 	return c;

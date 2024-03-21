@@ -9,7 +9,12 @@ if (!ok) {
         test_fail
 }
 
-&request.Login-LAT-Service := %cache(request.Callback-Id)
+# Check the cache TTL function works
+if (%cache.ttl.get() < 4) {
+        test_fail
+}
+
+&request.Login-LAT-Service := %cache('request.Callback-Id')
 
 if (&Login-LAT-Service != &control.Callback-Id) {
         test_fail
