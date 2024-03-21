@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/types.h>
+#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/call_env.h>
 
@@ -916,8 +918,8 @@ static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		return XLAT_ACTION_DONE;
 	}
 
-	MEM(vb = fr_value_box_alloc_null(ctx));
-	vb->vb_int64 = fr_time_delta_unwrap(fr_unix_time_sub(c->expires, fr_time_to_unix_time(request->packet->timestamp)));
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_TIME_DELTA, NULL));
+	vb->vb_time_delta = fr_unix_time_sub(c->expires, fr_time_to_unix_time(request->packet->timestamp));
 	fr_dcursor_append(out, vb);
 
 	cache_free(inst, &c);
