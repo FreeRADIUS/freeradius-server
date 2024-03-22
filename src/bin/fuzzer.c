@@ -237,8 +237,8 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 *	Search in our symbol space first.  We may have been dynamically
 	 *	or statically linked to the library we're fuzzing...
 	 */
-	dl_proto = fuzzer_dict_init(RTLD_SELF, proto);
-	tp = fuzzer_test_point(RTLD_SELF, proto);
+	dl_proto = fuzzer_dict_init(RTLD_DEFAULT, proto);
+	tp = fuzzer_test_point(RTLD_DEFAULT, proto);
 
 	/*
 	 *	Failed to find the test point, try and load it in
