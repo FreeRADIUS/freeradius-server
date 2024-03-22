@@ -68,6 +68,31 @@ static void exitHandler(void)
 	fr_atexit_global_trigger_all();
 }
 
+static inline
+fr_dict_protocol_t *fuzzer_dict_init(void *dl_handle, char const *proto)
+{
+	char			buffer[256];
+	fr_dict_protocol_t	*our_dl_proto;
+
+	snprintf(buffer, sizeof(buffer), "libfreeradius_%s_dict_protocol", proto);
+
+	our_dl_proto = dlsym(dl_handle, buffer);
+	if (our_dl_proto && our_dl_proto->init() && (our_dl_proto->init() < 0)) {
+		fr_perror("fuzzer: Failed initializing library %s", buffer);
+		fr_exit_now(EXIT_FAILURE);
+	}
+
+	return our_dl_proto;
+}
+
+static inline
+fr_test_point_proto_decode_t *fuzzer_test_point(void *dl_handle, char const *proto)
+{
+	char			buffer[256];
+	snprintf(buffer, sizeof(buffer), "%s_tp_decode_proto", proto);
+	return dlsym(dl_handle, buffer);
+}
+
 int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
 	char const		*lib_dir  	= getenv("FR_LIBRARY_PATH");
@@ -208,33 +233,36 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 	 */
 	fr_hostname_lookups = fr_reverse_lookups = false;
 
-	dl_loader = dl_loader_init(NULL, NULL, 0, false);
-	if (!dl_loader) {
-		fr_perror("fuzzer: Failed initializing library loader");
-		fr_exit_now(EXIT_FAILURE);
-	}
+	/*
+	 *	Search in our symbol space first.  We may have been dynamically
+	 *	or statically linked to the library we're fuzzing...
+	 */
+	dl_proto = fuzzer_dict_init(RTLD_SELF, proto);
+	tp = fuzzer_test_point(RTLD_SELF, proto);
 
-	snprintf(buffer, sizeof(buffer), "libfreeradius-%s", proto);
-	dl = dl_by_name(dl_loader, buffer, NULL, false);
-	if (!dl) {
-		fr_perror("fuzzer: Failed loading library %s", buffer);
-		fr_exit_now(EXIT_FAILURE);
-	}
-
-	snprintf(buffer, sizeof(buffer), "libfreeradius_%s_dict_protocol", proto);
-
-	dl_proto = dlsym(dl->handle, buffer);
-	if (dl_proto && dl_proto->init() && (dl_proto->init() < 0)) {
-		fr_perror("fuzzer: Failed initializing library %s", buffer);
-		fr_exit_now(EXIT_FAILURE);
-	}
-
-	snprintf(buffer, sizeof(buffer), "%s_tp_decode_proto", proto);
-
-	tp = dlsym(dl->handle, buffer);
+	/*
+	 *	Failed to find the test point, try and load it in
+	 *	dynamically from the protocol library.
+	 */
 	if (!tp) {
-		fr_perror("fuzzer: Failed finding test point %s", buffer);
-		fr_exit_now(EXIT_FAILURE);
+		dl_loader = dl_loader_init(NULL, NULL, 0, false);
+		if (!dl_loader) {
+			fr_perror("fuzzer: Failed initializing library loader");
+			fr_exit_now(EXIT_FAILURE);
+		}
+
+		snprintf(buffer, sizeof(buffer), "libfreeradius-%s", proto);
+		dl = dl_by_name(dl_loader, buffer, NULL, false);
+		if (!dl) {
+			fr_perror("fuzzer: Failed loading library %s", buffer);
+			fr_exit_now(EXIT_FAILURE);
+		}
+
+		if (!dl_proto) dl_proto = fuzzer_dict_init(dl->handle, proto);
+		if (!tp && !(tp = fuzzer_test_point(dl->handle, proto))) {
+			fr_perror("fuzzer: Failed finding test point %s", buffer);
+			fr_exit_now(EXIT_FAILURE);
+		}
 	}
 
 	init = true;
