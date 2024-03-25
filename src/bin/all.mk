@@ -47,6 +47,10 @@ FUZZER_TIMEOUT   ?= 10
 #  Define a function to do all of the same thing.
 #
 define FUZZ_PROTOCOL
+src/bin/fuzzer_${1}.c: src/bin/fuzzer.c
+	$${Q}sed 's/XX_PROTOCOL_XX/${1}/g' < $$^ > $$@
+
+
 src/bin/fuzzer_${1}.mk: src/bin/fuzzer.mk
 	$${Q}sed 's/$$$$(PROTOCOL)/${1}/g' < $$^ > $$@
 
