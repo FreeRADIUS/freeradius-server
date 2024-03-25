@@ -80,7 +80,7 @@ foreach &control.Filter-Id {
 	#
 	# The cluster tends to come up within a couple of seconds, but it takes longer
 	# for the replicas to be displayed in cluster slot output (usually ~5 seconds).
-	%(delay:0.5)
+	%delay(0.5)
 
 	#
 	#  If the cluster is still not behaving

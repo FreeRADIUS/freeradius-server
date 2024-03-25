@@ -41,7 +41,7 @@ if (!updated) {
 	test_fail
 }
 
-if (%(length:%{Callback-Id}) != 11) {
+if (%length(%{Callback-Id}) != 11) {
 	test_fail
 }
 

@@ -12,7 +12,7 @@ if (!(%redis(SET, b, 'boom') == 'OK')) {
 }
 
 #  Leave some time (500ms) for the synchronisation
-%(delay:0.5)
+%delay(0.5)
 
 #  Note the current master
 &redismaster := %redis.node(b, 0)
@@ -38,7 +38,7 @@ foreach &control.Filter-Id {
 	if (%redis.node(b, 0) == &redisreplica) {
 		break
 	}
-	%(delay:0.5)
+	%delay(0.5)
 }
 
 if (!(%redis(GET, b) == 'boom')) {
@@ -51,7 +51,7 @@ if (%redis(@%redis.node(b), DEBUG, SEGFAULT)) {
 }
 
 # No alternatives...
-%(delay:0.5)
+%delay(0.5)
 if (%redis(GET, b) == 'boom') {
 	test_fail
 }
