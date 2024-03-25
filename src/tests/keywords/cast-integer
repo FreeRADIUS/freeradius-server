@@ -1,3 +1,6 @@
+uint64 foo
+uint32 zscore
+
 #
 #  PRE: if
 #
@@ -14,3 +17,16 @@ if ((integer)&Class[0] < 256) {
 if ((integer)&Class[0] > 257) {
 	test_fail
 }
+
+&zscore := 1
+
+&foo := (uint64) 0x10000000000001
+
+if (&foo != (&zscore + %cast('uint64', 0x10000000000000))) {
+	test_fail
+}
+
+if (&foo != (&zscore + (uint64) 0x10000000000000)) {
+	test_fail
+}
+
