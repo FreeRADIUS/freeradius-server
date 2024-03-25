@@ -68,7 +68,7 @@ foreach &control.Filter-Id {
 			#
 			if ((%redis("-@%redis.node(b, 1)", GET, b) == %{data1}) && \
 			    (%redis("-@%redis.node(c, 1)", GET, c) == %{data2}) && \
-			    (%redis("-@%redis.node(d 1)", GET, d) == %{data3})) {
+			    (%redis("-@%redis.node(d, 1)", GET, d) == %{data3})) {
 				break
 			}
 		}
