@@ -111,7 +111,7 @@ if !(&zscore < (uint64)0x10000000000000) {
 #
 #  Check that the ZSCORE is maintained, simply with the static bit set
 #
-if !(%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1) == (&zscore + %(cast:uint64 0x10000000000000))) {
+if !(%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, 192.168.0.1) == (&zscore + (uint64) 0x10000000000000)) {
 	test_fail
 }
 

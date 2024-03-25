@@ -45,7 +45,7 @@ if (!(&reply.Session-Timeout == 30)) {
 #
 #  Check ZSCORE is now < 2^52 - the "static bit"
 #
-if (%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) >= %(cast:uint64 0x10000000000000)) {
+if (%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) >= (uint64) 0x10000000000000) {
 	test_fail
 }
 
