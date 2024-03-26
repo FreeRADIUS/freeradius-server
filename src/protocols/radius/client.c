@@ -186,7 +186,17 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 
 	id_ctx->packet = packet_ctx;
 	id_ctx->retry_ctx = retry_ctx;
+
 	retry_ctx->uctx = id_ctx;
+
+	/*
+	 *	@todo - set this for Accounting-Request packets which have Acct-Delay-Time we need to track
+	 *	where the Acct-Delay-Time is in the packet, along with its original value, and then we can use
+	 *	the #fr_retry_t to discover how many seconds to add to Acct-Delay-Time.
+	 */
+	retry_ctx->rewrite = NULL;
+
+//	if (buffer[0] != FR_RADIUS_CODE_ACCOUNTING_REQUEST) return;
 }
 
 static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **retry_ctx_p, UNUSED void *packet_ctx, const void *buffer, UNUSED size_t size)
