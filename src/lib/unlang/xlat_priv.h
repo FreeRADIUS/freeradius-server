@@ -336,9 +336,6 @@ int		xlat_register_expressions(void);
 int		xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 					tmpl_rules_t const *t_rules);
 
-int		xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in,
-					    tmpl_rules_t const *t_rules);
-
 ssize_t		xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t const *node,
 				fr_sbuff_escape_rules_t const *e_rules, char c);
 

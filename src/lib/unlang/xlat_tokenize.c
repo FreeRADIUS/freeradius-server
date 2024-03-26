@@ -99,12 +99,7 @@ static fr_sbuff_escape_rules_t const xlat_escape = {
  * The caller sets the literal parse rules for outside of expansions when they
  * call xlat_tokenize.
  */
-static fr_sbuff_parse_rules_t const xlat_multi_arg_rules = {
-	.escapes = &xlat_unescape,
-	.terminals = &FR_SBUFF_TERM(")")	/* These get merged with other literal terminals */
-};
-
-static fr_sbuff_parse_rules_t const xlat_new_arg_rules = {
+static fr_sbuff_parse_rules_t const xlat_function_arg_rules = {
 	.escapes = &xlat_unescape,
 	.terminals = &FR_SBUFF_TERMS( /* These get merged with other literal terminals */
 				L(")"),
@@ -278,107 +273,6 @@ int xlat_validate_function_args(xlat_exp_t *node)
 	return 0;
 }
 
-/** Parse an xlat function and its child arguments
- *
- * Parses a function call string in the format
- * @verbatim %(<func>:<arguments>) @endverbatim
- *
- * @return
- *	- 0 if the string was parsed into a function.
- *	- <0 on parse error.
- */
-int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tmpl_rules_t const *t_rules)
-{
-	xlat_exp_t		*node;
-	xlat_t			*func;
-	fr_sbuff_marker_t	m_s;
-
-	/*
-	 *	Special characters, spaces, etc. cannot be
-	 *	module names.
-	 */
-	XLAT_DEBUG("FUNC-ARGS <-- %.*s", (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
-
-	/*
-	 *	%(function:args)
-	 */
-	fr_sbuff_marker(&m_s, in);
-	fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
-
-	if (!fr_sbuff_is_char(in, ':')) {
-		fr_strerror_const("Can't find function/argument separator");
-	bad_function:
-		fr_sbuff_set(in, &m_s);		/* backtrack */
-		fr_sbuff_marker_release(&m_s);
-		return -1;
-	}
-
-	func = xlat_func_find(fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
-
-	/*
-	 *	Allocate a node to hold the function
-	 */
-	node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_current(&m_s), fr_sbuff_behind(&m_s));
-	if (!func) {
-		if (!t_rules || !t_rules->attr.allow_unresolved || t_rules->at_runtime) {
-			fr_strerror_const("Unresolved expansion functions are not allowed here");
-			goto bad_function;
-		}
-		xlat_exp_set_type(node, XLAT_FUNC_UNRESOLVED);
-		node->flags.needs_resolving = true;	/* Needs resolution during pass2 */
-	} else {
-		if (func->input_type != XLAT_INPUT_ARGS) {
-			fr_strerror_const("Function should be called using %{func:arg} syntax");
-		error:
-			talloc_free(node);
-			return -1;
-		}
-		node->call.func = func;
-		if (t_rules) node->call.dict = t_rules->attr.dict_def;
-		node->flags = func->flags;
-	}
-
-	/*
-	 *	Record the calling style, this is useful
-	 *	for checking later with unresolved
-	 *	functions, for printing accurate debug
-	 *	info, and for weird xlats like the
-	 *	redundant xlat
-	 */
-	node->call.input_type = XLAT_INPUT_ARGS;
-
-	fr_sbuff_next(in);			/* Skip the ':' */
-	XLAT_DEBUG("FUNC-ARGS <-- %s ... %.*s", node->fmt, (int) fr_sbuff_remaining(in), fr_sbuff_current(in));
-
-	fr_sbuff_marker_release(&m_s);
-
-	/*
-	 *	Now parse the child nodes that form the
-	 *	function's arguments.
-	 */
-	if (xlat_tokenize_argv(node, &node->call.args, in, func, &xlat_multi_arg_rules, t_rules, false, false) < 0) {
-		goto error;
-	}
-	xlat_flags_merge(&node->flags, &node->call.args->flags);
-
-	/*
-	 *	Check we have all the required arguments
-	 */
-	if (node->type == XLAT_FUNC) {
-		if (xlat_validate_function_args(node) < 0) goto error;
-
-		node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
-	}
-
-	if (!fr_sbuff_next_if_char(in, ')')) {
-		fr_strerror_const("Missing closing brace");
-		goto error;
-	}
-
-	xlat_exp_insert_tail(head, node);
-	return 0;
-}
-
 /** Parse an xlat function and its child argument
  *
  * Parses a function call string in the format
@@ -388,7 +282,7 @@ int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tmpl_rule
  *	- 0 if the string was parsed into a function.
  *	- <0 on parse error.
  */
-static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmpl_rules_t const *t_rules)
+static int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tmpl_rules_t const *t_rules)
 {
 	char c;
 	xlat_exp_t *node;
@@ -502,7 +396,7 @@ static int xlat_tokenize_function_new(xlat_exp_head_t *head, fr_sbuff_t *in, tmp
 	 *	function's arguments.
 	 */
 	if (xlat_tokenize_argv(node, &node->call.args, in, func,
-			       &xlat_new_arg_rules, t_rules, true, (node->call.input_type == XLAT_INPUT_MONO)) < 0) {
+			       &xlat_function_arg_rules, t_rules, true, (node->call.input_type == XLAT_INPUT_MONO)) < 0) {
 error:
 		talloc_free(node);
 		return -1;
@@ -989,15 +883,6 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 		}
 
 		/*
-		 *	xlat function call with discrete arguments
-		 */
-		if (fr_sbuff_adv_past_str_literal(in, "%(")) {
-			TALLOC_FREE(node); /* nope, couldn't use it */
-			if (xlat_tokenize_function_args(head, in, t_rules) < 0) goto error;
-			goto next;
-		}
-
-		/*
 		 *	More migration hacks: allow %foo(...)
 		 */
 		if (fr_sbuff_next_if_char(in, '%')) {
@@ -1016,7 +901,7 @@ static int xlat_tokenize_input(xlat_exp_head_t *head, fr_sbuff_t *in,
 			/*
 			 *	Tokenize the function arguments using the new method.
 			 */
-			if (xlat_tokenize_function_new(head, in, t_rules) < 0) goto error;
+			if (xlat_tokenize_function_args(head, in, t_rules) < 0) goto error;
 			goto next;
 		}
 
