@@ -39,7 +39,6 @@ RCSID("$Id$")
  *	  unless it's one of a list of exceptions.
  *	< 0, How many additional bytes we'd need as a negative integer.
  *	PAIR_ENCODE_FATAL_ERROR - Abort encoding the packet.
- *	PAIR_ENCODE_SKIPPED - Unencodable value
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,

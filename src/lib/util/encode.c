@@ -139,7 +139,7 @@ ssize_t fr_pair_ref_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsig
 	ref = fr_dict_attr_ref(da);
 	if (!ref) {
 		fr_strerror_printf("Invalid attribute reference for %s", da->name);
-		return PAIR_ENCODE_SKIPPED;
+		return 0;
 	}
 
 	proto = fr_dict_protocol(ref->dict);
@@ -147,7 +147,7 @@ ssize_t fr_pair_ref_to_network(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsig
 
 	if (!proto->encode) {
 		fr_strerror_printf("Attribute %s -> %s does not have an encoder", da->name, ref->name);
-		return PAIR_ENCODE_SKIPPED;
+		return 0;
 	}
 
 	/*

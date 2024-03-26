@@ -294,10 +294,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 
 			while (fr_dcursor_current(&child_cursor) != NULL) {
 				slen = fr_dhcpv6_encode_option(&work_dbuff, &child_cursor, encode_ctx);
-				if (slen == PAIR_ENCODE_SKIPPED) continue;
 
 				if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
-				if (slen == 0) break;
 			}
 		}
 	}
@@ -635,7 +633,7 @@ static ssize_t encode_relay_message(fr_dbuff_t *dbuff,
 	if (fr_pair_list_empty(&vp->vp_group)) {
 		vp = fr_dcursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
-		return PAIR_ENCODE_SKIPPED;
+		return 0;
 	}
 
 	/*
@@ -685,7 +683,7 @@ ssize_t fr_dhcpv6_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void * 
 	if (vp->da->flags.internal) {
 		fr_strerror_printf("Attribute \"%s\" is not a DHCPv6 option", vp->da->name);
 		fr_dcursor_next(cursor);
-		return PAIR_ENCODE_SKIPPED;
+		return 0;
 	}
 
 	fr_proto_da_stack_build(&da_stack, vp->da);

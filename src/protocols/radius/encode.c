@@ -246,7 +246,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 
 			if (vp->da != da_stack->da[depth]) {
 				fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
-				return PAIR_ENCODE_SKIPPED;
+				return 0;
 			}
 
 			fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
@@ -257,10 +257,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 			 *	Call ourselves recursively to encode children.
 			 */
 			slen = encode_tlv(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
-			if (slen < 0) {
-				if (slen == PAIR_ENCODE_SKIPPED) continue;
-				return slen;
-			}
+			if (slen < 0) return slen;
 
 			vp = fr_dcursor_next(cursor);
 			fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
@@ -268,10 +265,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 		} else {
 			slen = encode_child(&work_dbuff, da_stack, depth + 1, cursor, encode_ctx);
 		}
-		if (slen < 0) {
-			if (slen == PAIR_ENCODE_SKIPPED) continue;
-			return slen;
-		}
+		if (slen < 0) return slen;
 
 		/*
 		 *	If nothing updated the attribute, stop
@@ -307,10 +301,7 @@ static ssize_t encode_pairs(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *
 		 *	Encode an individual VP
 		 */
 		slen = fr_radius_encode_pair(dbuff, &cursor, encode_ctx);
-		if (slen < 0) {
-			if (slen == PAIR_ENCODE_SKIPPED) continue;
-			return slen;
-		}
+		if (slen < 0) return slen;
 	}
 
 	return fr_dbuff_used(dbuff);
@@ -325,7 +316,6 @@ static ssize_t encode_pairs(fr_dbuff_t *dbuff, fr_pair_list_t const *vps, void *
  *	  unless it's one of a list of exceptions.
  *	< 0, How many additional bytes we'd need as a negative integer.
  *	PAIR_ENCODE_FATAL_ERROR - Abort encoding the packet.
- *	PAIR_ENCODE_SKIPPED - Unencodable value
  */
 static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
@@ -514,7 +504,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 		if (packet_ctx->disallow_tunnel_passwords) {
 			fr_strerror_const("Attributes with 'encrypt=2' set cannot go into this packet.");
-			return PAIR_ENCODE_SKIPPED;
+			return 0;
 		}
 
 		/*
@@ -585,7 +575,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		(void) fr_dbuff_out(&msb, &src);
 		if (msb != 0) {
 			fr_strerror_const("Integer overflow for tagged uint32 attribute");
-			return PAIR_ENCODE_SKIPPED;
+			return 0;
 		}
 		fr_dbuff_set(&dest, &value_start);
 		fr_dbuff_in(&dest, packet_ctx->tag);
@@ -1225,10 +1215,7 @@ static ssize_t encode_vendor(fr_dbuff_t *dbuff,
 		} else {
 			slen = encode_vendor_attr(&work_dbuff, da_stack, depth, &child_cursor, encode_ctx);
 		}
-		if (slen < 0) {
-			if (slen == PAIR_ENCODE_SKIPPED) continue;
-			return slen;
-		}
+		if (slen < 0) return slen;
 	}
 
 	vp = fr_dcursor_next(cursor);
@@ -1271,7 +1258,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 	vp = fr_dcursor_current(cursor);
 	if (vp->da != da_stack->da[depth]) {
 		fr_strerror_printf("%s: Can't encode empty Vendor-Specific", __FUNCTION__);
-		return PAIR_ENCODE_SKIPPED;
+		return 0;
 	}
 
 	/*
@@ -1285,10 +1272,7 @@ static ssize_t encode_vsa(fr_dbuff_t *dbuff,
 		fr_assert(da_stack->da[depth + 1]->type == FR_TYPE_VENDOR);
 
 		slen = encode_vendor(&work_dbuff, da_stack, depth + 1, &child_cursor, encode_ctx);
-		if (slen < 0) {
-			if (slen == PAIR_ENCODE_SKIPPED) continue;
-			return slen;
-		}
+		if (slen < 0) return slen;
 	}
 
 	/*
@@ -1448,7 +1432,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 		if (((fr_dict_vendor_num_by_da(da_stack->da[depth]) == 0) && (da_stack->da[depth]->attr == 0)) ||
 		    (da_stack->da[depth]->attr > UINT8_MAX)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
-			return PAIR_ENCODE_SKIPPED;
+			return 0;
 		}
 		break;
 	}
@@ -1577,7 +1561,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		    (vp->da != attr_message_authenticator)) {
 			fr_dcursor_next(cursor);
 			fr_strerror_const("Zero length string attributes not allowed");
-			return PAIR_ENCODE_SKIPPED;
+			return 0;
 		}
 		break;
 	}
