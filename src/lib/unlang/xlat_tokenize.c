@@ -492,7 +492,7 @@ static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	MEM(node = xlat_exp_alloc_null(head));
 	if (tmpl_afrom_attr_substr(node, &err, &vpt, in, p_rules, &our_t_rules) < 0) {
 		/*
-		 *	If the parse error occurred before the ':'
+		 *	If the parse error occurred before a terminator,
 		 *	then the error is changed to 'Unknown module',
 		 *	as it was more likely to be a bad module name,
 		 *	than a request qualifier.
@@ -569,7 +569,6 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 	char			hint;
 	fr_sbuff_term_t		hint_tokens = FR_SBUFF_TERMS(
 					L(" "),		/* First special token is a ' ' - Likely a syntax error */
-					L(":"),		/* First special token is a ':' i.e. '%{func:' */
 					L("["),		/* First special token is a '[' i.e. '%{attr[<idx>]}' */
 					L("}")		/* First special token is a '}' i.e. '%{<attrref>}' */
 				);
@@ -602,19 +601,9 @@ int xlat_tokenize_expansion(xlat_exp_head_t *head, fr_sbuff_t *in,
 #endif /* HAVE_REGEX */
 
 	/*
-	 *	See if it's an old-style function name.
-	 */
-	fr_sbuff_marker(&s_m, in);
-	len = fr_sbuff_adv_past_allowed(in, SIZE_MAX, xlat_func_chars, NULL);
-	if (fr_sbuff_is_char(in, ':')) {
-		if (!len) goto missing_function;
-		goto check_for_attr;
-	}
-
-	/*
 	 *	See if it's an attribute reference, with possible array stuff.
 	 */
-	len += fr_sbuff_adv_past_allowed(in, SIZE_MAX, tmpl_attr_allowed_chars, NULL);
+	len = fr_sbuff_adv_past_allowed(in, SIZE_MAX, tmpl_attr_allowed_chars, NULL);
 	if (fr_sbuff_is_char(in, '}')) {
 		if (!len) goto empty_disallowed;
 		goto check_for_attr;
@@ -713,11 +702,6 @@ check_for_attr:
 		case '}':
 		empty_disallowed:
 			fr_strerror_const("Empty expression is invalid");
-			return -1;
-
-		case ':':
-		missing_function:
-			fr_strerror_const("Missing expansion function");
 			return -1;
 
 		case '[':

@@ -158,10 +158,10 @@ xlat %{}
 match ERROR offset 3: Empty expression is invalid
 
 xlat %{:}
-match ERROR offset 3: Missing expansion function
+match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat %{:bar}
-match ERROR offset 3: Missing expansion function
+match ERROR offset 3: No operand found.  Expected &ref, literal, 'quoted literal', "%{expansion}", or enum value
 
 xlat %foo(' bar')
 match ERROR offset 2: Unresolved expansion functions are not allowed here
