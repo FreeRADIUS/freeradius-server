@@ -178,7 +178,7 @@ int LLVMFuzzerInitialize(int *argc, char ***argv)
 		if (!lib_dir) {
 			lib_dir = lib_dir_to_free = talloc_asprintf(NULL, "%.*s/lib", (int) (p - (*argv)[0]), (*argv)[0]);
 			if (!lib_dir_to_free) fr_exit_now(EXIT_FAILURE);
-<		}
+		}
 	}
 #endif
 
