@@ -850,7 +850,7 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 /** Check if the user is a member of a particular group
  *
 @verbatim
-%{sql.group:<name>}
+%sql.group(<name>)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -1565,7 +1565,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 
 		/*
-		 *	Define the new %{sql.group:name} xlat.  The
+		 *	Define the new %sql.group(name) xlat.  The
 		 *	register function automatically adds the
 		 *	module instance name as a prefix.
 		 */

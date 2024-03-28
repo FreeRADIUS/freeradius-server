@@ -255,7 +255,7 @@ static xlat_arg_parser_t const redis_remap_xlat_args[] = {
 /** Force a redis cluster remap
  *
 @verbatim
-%{redis.remap:<redis server ip>:<redis server port>}
+%redis.remap(<redis server ip>:<redis server port>)
 @endverbatim
  *
  * @ingroup xlat_functions

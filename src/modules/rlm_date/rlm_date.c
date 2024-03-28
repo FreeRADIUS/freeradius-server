@@ -193,7 +193,7 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		}
 
 		/*
-		 *	%{date:'+%A'} == "Monday", to mirror the behavior of the `date` command.
+		 *	%date('+%A') == "Monday", to mirror the behavior of the `date` command.
 		 */
 		if (arg->vb_strvalue[0] == '+') {
 			return date_encode_strftime(ctx, out, inst, request, arg->vb_strvalue + 1, fr_time_to_sec(fr_time()));

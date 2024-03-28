@@ -574,7 +574,7 @@ static xlat_arg_parser_t const cipher_rsa_encrypt_xlat_arg[] = {
  * Arguments are @verbatim(<plaintext>...)@endverbatim
  *
 @verbatim
-%{<inst>.encrypt:<plaintext>...}
+%<inst>.encrypt(<plaintext>...)
 @endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
@@ -635,7 +635,7 @@ static xlat_arg_parser_t const cipher_rsa_sign_xlat_arg[] = {
  * Arguments are @verbatim(<plaintext>...)@endverbatim
  *
 @verbatim
-%{<inst>.sign:<plaintext>...}
+%<inst>.sign(<plaintext>...)
 @endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
@@ -713,7 +713,7 @@ static xlat_arg_parser_t const cipher_rsa_decrypt_xlat_arg[] = {
  * Arguments are @verbatim(<ciphertext\>...)@endverbatim
  *
 @verbatim
-%{<inst>.decrypt:<ciphertext>...}
+%<inst>.decrypt(<ciphertext>...)
 @endverbatim
  *
  * If multiple arguments are provided they will be concatenated.
@@ -774,7 +774,7 @@ static xlat_arg_parser_t const cipher_rsa_verify_xlat_arg[] = {
  * Arguments are @verbatim(<signature>, <plaintext>...)@endverbatim
  *
 @verbatim
-%<inst>.verify(<signature> <plaintext>...)
+%<inst>.verify(<signature>, <plaintext>...)
 @endverbatim
  *
  * If multiple arguments are provided (after @verbatim<signature>@endverbatim)

@@ -136,7 +136,7 @@ static xlat_arg_parser_t const modhex_to_hex_xlat_arg[] = {
  *
  * Example:
 @verbatim
-"%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
+%modhextohex('vvrbuctetdhc') == "ffc1e0d3d260"
 @endverbatim
  *
  * @ingroup xlat_functions

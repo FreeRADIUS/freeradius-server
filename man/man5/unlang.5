@@ -667,20 +667,18 @@ Obtaining results from databases
 .RS
 It is useful to query a database for some information, and to use the
 result in a condition.  The following syntax will call a module, pass
-it the given string, and replace the string expansion with the
+it the given arguments, and replace the string expansion with the
 resulting string returned from the module.
 
 .DS
-	%{module:string ...}
+	%module(arg1, arg2, ...)
 .DE
 
-The syntax of the string is module-specific.  Please read the module
-documentation for additional details.  If a literal "}" character is
-needed inside of an expansion, it should be escaped as "%}".  e.g.
-"%{module:This uses {braces%} as an example}"
+The syntax of the arguments is module-specific.  Please read the module
+documentation for additional details.
 
 Many modules will take data that is dynamically expanded, e.g.
-"%{module:%{Attribute-Name}}".  The expansion will be turned into a
+"%module(%{Attribute-Name})".  The expansion will be turned into a
 static string before it is passed to the module.
 .RE
 .PP
@@ -737,11 +735,11 @@ Other built in expansions
 .IP ${rand:<num>}
 Get random number from 0 to n-1.
 
-.IP ${randstr:<char_sequence>}
+.IP %randstr(<char_sequence>)
 Get random string built from character classes.  Each character in the input
 char_sequence is substituted for a random character from the specified class.
 
-e.g. "%{randstr:CCCC!!cccnnn}" == "IPFL>{saf874"
+e.g. %randstr(CCCC!!cccnnn) == "IPFL>{saf874"
 
 .RS
 .IP c
@@ -772,85 +770,85 @@ Characters suitable for OTP (those easily confused omitted) - [469ACGHJKLMNPQRUV
 Binary data.
 .RE
 
-.IP %{urlquote:<uri>}
+.IP %urlquote(<uri>)
 Quote special characters in URI.
 
-e.g. "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47".
+e.g. %urlquote('http://example.org/') == "http%3A%47%47example.org%47".
 
-.IP %{urlunquote:<quoted_uri>}
+.IP %urlunquote(<quoted_uri>)
 Unquote URL special characters.
 
-e.g. "%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
+e.g. %urlunquote('http%%3A%%47%%47example.org%%47') == "http://example.org/"
 
-.IP %{tolower:<string>}
+.IP %tolower(<string>)
 Convert string to lowercase.
 
-e.g. "%{tolower:Bar}" == "bar"
+e.g. %tolower('Bar') == "bar"
 
-.IP %{toupper:<string>}
+.IP %toupper(<string>)
 Convert string to uppercase.
 
-e.g. "%{toupper:Foo}" == "FOO"
+e.g. %toupper('Foo') == "FOO"
 
-.IP %{md5:<string>}
+.IP %md5(<string>)
 Get the md5 hash of the input string.
 
-e.g. "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
+e.g. %md5('foo') == "acbd18db4cc2f85cedef654fccc4a4d8"
 
-.IP %{sha1:<string>}
+.IP %sha1(<string>)
 Get the sha1 hash of the input string.
 
-e.g. "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+e.g. %sha1('foo') == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
 
-.IP %{sha224:<string>}
+.IP %sha224(<string>)
 Get the sha2-224 hash of the input string.
 
-e.g. "%{sha224:foo}" == "0808f64e60d58979fcb676c96ec938270dea42445aeefcd3a4e6f8db"
+e.g. %sha224('foo') == "0808f64e60d58979fcb676c96ec938270dea42445aeefcd3a4e6f8db"
 
-.IP %{sha256:<string>}
+.IP %sha256(<string>)
 Get the sha2-256 hash of the input string.
 
-e.g. "%{sha256:foo}" == "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
+e.g. %sha256('foo') == "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae"
 
-.IP %{sha384:<string>}
+.IP %sha384(<string>)
 Get the sha2-384 hash of the input string.
 
-e.g. "%{sha384:foo}" == "98c11ffdfdd540676b1a137cb1a22b2a70350c9a44171d6b1180c6be5cbb2ee3f79d532c8a1dd9ef2e8e08e752a3babb"
+e.g. %sha384('foo') == "98c11ffdfdd540676b1a137cb1a22b2a70350c9a44171d6b1180c6be5cbb2ee3f79d532c8a1dd9ef2e8e08e752a3babb"
 
-.IP %{sha512:<string>}
+.IP %sha512(<string>)
 Get the sha2-512 hash of the input string.
 
-e.g. "%{sha512:foo}" == "f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7"
+e.g. %sha512('foo') == "f7fbba6e0636f890e56fbbf3283e524c6fa3204ae298382d624741d0dc6638326e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7"
 
-.IP %{sha3_224:<string>}
+.IP %sha3_224(<string>)
 Get the sha3-224 hash of the input string.
 
-e.g. "%{sha3_224:foo}" == "f4f6779e153c391bbd29c95e72b0708e39d9166c7cea51d1f10ef58a"
+e.g. %sha3_224('foo') == "f4f6779e153c391bbd29c95e72b0708e39d9166c7cea51d1f10ef58a"
 
-.IP %{sha3_256:<string>}
+.IP %sha3_256(<string>)
 Get the sha3-256 hash of the input string.
 
-e.g. "%{sha3_256:foo}" == "76d3bc41c9f588f7fcd0d5bf4718f8f84b1c41b20882703100b9eb9413807c01"
+e.g. %sha3_256('foo') == "76d3bc41c9f588f7fcd0d5bf4718f8f84b1c41b20882703100b9eb9413807c01"
 
-.IP %{sha3_384:<string>}
+.IP %sha3_384(<string>)
 Get the sha3-384 hash of the input string.
 
-e.g. "%{sha3_384:foo}" == "665551928d13b7d84ee02734502b018d896a0fb87eed5adb4c87ba91bbd6489410e11b0fbcc06ed7d0ebad559e5d3bb5"
+e.g. %sha3_384('foo') == "665551928d13b7d84ee02734502b018d896a0fb87eed5adb4c87ba91bbd6489410e11b0fbcc06ed7d0ebad559e5d3bb5"
 
-.IP %{sha3_512:<string>}
+.IP %sha3_512(<string>)
 Get the sha3-512 hash of the input string.
 
-e.g. "%{sha3_512:foo}" == "4bca2b137edc580fe50a88983ef860ebaca36c857b1f492839d6d7392452a63c82cbebc68e3b70a2a1480b4bb5d437a7cba6ecf9d89f9ff3ccd14cd6146ea7e7"
+e.g. %sha3_512('foo') == "4bca2b137edc580fe50a88983ef860ebaca36c857b1f492839d6d7392452a63c82cbebc68e3b70a2a1480b4bb5d437a7cba6ecf9d89f9ff3ccd14cd6146ea7e7"
 
-.IP %{hmacmd5:&<value_ref>\ &<key_ref>}
+.IP %hmacmd5(&<value_ref>,\ &<key_ref>)
 Generate HMAC-MD5 of input data.
 
-e.g. "%{hmacmd5:foo bar}" == "31b6db9e5eb4addb42f1a6ca07367adc"
+e.g. %hmacmd5('foo', 'bar') == "31b6db9e5eb4addb42f1a6ca07367adc"
 
-.IP %{hmacsha1:&<value_ref>\ &<key_ref>}
+.IP %hmacsha1(&<value_ref>,\ &<key_ref>)
 Generate HMAC-SHA1 of input data.
 
-"%{hmacsha1:foo bar}" == "85d155c55ed286a300bd1cf124de08d87e914f3a"
+%hmacsha1('foo', 'bar') == "85d155c55ed286a300bd1cf124de08d87e914f3a"
 
 .IP %(pairs:<list_or_attr>)
 Serialize attributes as a string

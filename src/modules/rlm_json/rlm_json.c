@@ -200,7 +200,7 @@ static xlat_arg_parser_t const json_encode_xlat_arg[] = {
 
 /** Convert given attributes to a JSON document
  *
- * Usage is `%{json.encode:attr tmpl list}`
+ * Usage is `%json.encode(attr tmpl list)`
  *
  * @ingroup xlat_functions
  */

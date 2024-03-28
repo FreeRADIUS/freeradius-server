@@ -56,7 +56,7 @@ static xlat_arg_parser_t const escape_xlat_arg[] = {
  *
  * Example:
 @verbatim
-"%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62"
+%escape('<img>foo.jpg</img>') == "=60img=62foo.jpg=60/img=62"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -130,7 +130,7 @@ static xlat_arg_parser_t const unescape_xlat_arg[] = {
  *
  * Example:
 @verbatim
-"%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>"
+%unescape('=60img=62foo.jpg=60/img=62') == "<img>foo.jpg</img>"
 @endverbatim
  *
  * @ingroup xlat_functions

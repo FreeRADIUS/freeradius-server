@@ -153,7 +153,7 @@ static bool CC_HINT(nonnull) unix_check_group(UNUSED rlm_unix_t const *inst, req
 /** Check if the user is a member of a particular unix group
  *
 @verbatim
-%{unix.group:<name>}
+%unix.group(<name>)
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -187,7 +187,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_arg_parser_t	*xlat_arg;
 
 	/*
-	 *	Define the new %{unix.group:name} xlat.  The register
+	 *	Define the new %unix.group(name) xlat.  The register
 	 *	function automatically adds the module instance name
 	 *	as a prefix.
 	 */

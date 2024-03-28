@@ -1342,7 +1342,7 @@ static xlat_arg_parser_t const xlat_func_next_time_args[] = {
  * For example, if it were 16:18 %nexttime(1h) would expand to 2520.
  *
  * The envisaged usage for this function is to limit sessions so that they don't
- * cross billing periods. The output of the xlat should be combined with %{rand:} to create
+ * cross billing periods. The output of the xlat should be combined with %rand() to create
  * some jitter, unless the desired effect is every subscriber on the network
  * re-authenticating at the same time.
  *
@@ -2175,7 +2175,7 @@ static xlat_arg_parser_t const xlat_hmac_args[] = {
  *
  * Example:
 @verbatim
-%hmacmd5(%{string:foo}, %{string:bar}) == "0x31b6db9e5eb4addb42f1a6ca07367adc"
+%hmacmd5('foo', 'bar') == "0x31b6db9e5eb4addb42f1a6ca07367adc"
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -2193,7 +2193,7 @@ static xlat_action_t xlat_func_hmac_md5(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *
  * Example:
 @verbatim
-%hmacsha1(%{string:foo}, %{string:bar}) == "0x85d155c55ed286a300bd1cf124de08d87e914f3a"
+%hmacsha1('foo', 'bar') == "0x85d155c55ed286a300bd1cf124de08d87e914f3a"
 @endverbatim
  *
  * @ingroup xlat_functions

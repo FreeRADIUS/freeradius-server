@@ -673,7 +673,6 @@ check_for_attr:
 	 *	%{Attr-Name}
 	 *	%{Attr-Name[#]}
 	 *	%{request.Attr-Name}
-	 *	%{mod:foo}
 	 */
 
 	/*
@@ -713,9 +712,6 @@ check_for_attr:
 		}
 	}
 
-	/*
-	 *      Hint token is a ':' it's an xlat function %{<func>:<args}
-	 */
 	switch (hint) {
 	/*
 	 *	Hint token is a:

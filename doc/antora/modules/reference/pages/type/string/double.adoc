@@ -132,7 +132,7 @@ string is being used.
 `"this is a long string"` +
 `"this has embedded\ncharacters"` +
 `"attribute\tvalue\nusername\t%{User-Name}\nreply-message\t%{reply.Reply-Message}"`
-`"The result of 'SELECT * FROM foo WHERE 1' is: %{sql:SELECT * FROM foo WHERE 1}"`
+`"The result of 'SELECT * FROM foo WHERE 1' is: %sql(SELECT * FROM foo WHERE 1)"`
 
 // Licenced under CC-by-NC 4.0.
 // Copyright (C) 2019 Arran Cudbard-Bell <a.cudbardb@freeradius.org>

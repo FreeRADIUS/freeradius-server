@@ -95,7 +95,7 @@ static xlat_arg_parser_t const xlat_idna_arg[] = {
 /** Convert domain name to ASCII punycode
  *
 @verbatim
-%{idn:<domain>}
+%idn(<domain>)
 @endverbatim
  *
  * @ingroup xlat_functions
