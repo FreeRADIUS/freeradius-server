@@ -1,0 +1,17 @@
+#
+#  Input Packet
+#
+Packet-Type = Access-Request
+User-Name = 'example\john'
+NAS-IP-Address = 127.0.0.1
+Vendor-Specific.Microsoft.CHAP-Challenge = 0x16d2833f4239256dd2b2bb26f2ecb2a3
+Vendor-Specific.Microsoft.CHAP2-Response = 0x0001502feeee9495a353cddbd1efc40072820000000000000000e866286bb30d0215ed16cf425b6a29d206667a9853e23ca4
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Vendor-Specific.Microsoft.CHAP2-Success == 0x00533d36383634394236373633333031444436354643323535394632443137323934333139364541383841
+Vendor-Specific.Microsoft.MPPE-Encryption-Policy == Encryption-Allowed
+Vendor-Specific.Microsoft.MPPE-Encryption-Types == RC4-40or128-bit-Allowed
+
