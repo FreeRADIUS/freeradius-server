@@ -175,7 +175,7 @@ Or:
 . update via exec/script
 
 ```
-local_cpw = `%exec('/my/script', %{User-Name}, %{MS-CHAP-New-Password.Cleartext})`
+local_cpw = `%exec('/my/script', %{User-Name}, %{MS-CHAP-New-Cleartext-Password})`
 ```
 
 WARNING: Wherever possible, you should use `MS-CHAP-New-NT-Password`. The
