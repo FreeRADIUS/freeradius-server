@@ -704,7 +704,7 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-int sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username)
+static int sql_set_user(rlm_sql_t const *inst, request_t *request)
 {
 	char *expanded = NULL;
 	fr_pair_t *vp = NULL;
@@ -713,9 +713,7 @@ int sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username
 
 	fr_assert(request->packet != NULL);
 
-	if (username != NULL) {
-		sqluser = username;
-	} else if (inst->config.query_user[0] != '\0') {
+	if (inst->config.query_user[0] != '\0') {
 		sqluser = inst->config.query_user;
 	} else {
 		return 0;
@@ -807,11 +805,9 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	rlm_sql_grouplist_t	*entry, *head = NULL;
 
 	/*
-	 *	Set, escape, and check the user attr here
+	 *	Set the user attr here
 	 */
-	if (sql_set_user(inst, request, NULL) < 0) {
-		return false;
-	}
+	if (sql_set_user(inst, request) < 0) return false;
 
 	/*
 	 *	Get a socket for this lookup
@@ -1124,7 +1120,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Set, escape, and check the user attr here
 	 */
-	if (sql_set_user(inst, request, NULL) < 0) RETURN_MODULE_FAIL;
+	if (sql_set_user(inst, request) < 0) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Reserve a socket
@@ -1375,7 +1371,7 @@ static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *in
 		goto finish;
 	}
 
-	sql_set_user(inst, request, NULL);
+	sql_set_user(inst, request);
 
 	while (true) {
 		value = cf_pair_value(pair);
@@ -1673,7 +1669,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
 	 */
-	inst->sql_set_user		= sql_set_user;
 	inst->query			= rlm_sql_query;
 	inst->select			= rlm_sql_select_query;
 	inst->fetch_row			= rlm_sql_fetch_row;

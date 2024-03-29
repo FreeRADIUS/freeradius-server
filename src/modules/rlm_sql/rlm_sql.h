@@ -222,7 +222,6 @@ struct sql_inst {
 	module_instance_t	*driver_submodule;	//!< Driver's submodule.
 	rlm_sql_driver_t const	*driver;		//!< Driver's exported interface.
 
-	int			(*sql_set_user)(rlm_sql_t const *inst, request_t *request, char const *username);
 	xlat_escape_legacy_t	sql_escape_func;
 	sql_box_escape_t	box_escape_func;
 	sql_rcode_t		(*query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
@@ -240,7 +239,6 @@ sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_
 sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
 sql_rcode_t    	rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug);
-int		sql_set_user(rlm_sql_t const *inst, request_t *request, char const *username);
 
 /*
  *	sql_state.c
