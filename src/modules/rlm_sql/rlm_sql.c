@@ -90,7 +90,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("password", CONF_FLAG_SECRET, rlm_sql_config_t, sql_password), .dflt = "" },
 	{ FR_CONF_OFFSET("radius_db", rlm_sql_config_t, sql_db), .dflt = "radius" },
 	{ FR_CONF_OFFSET("read_groups", rlm_sql_config_t, read_groups), .dflt = "yes" },
-	{ FR_CONF_OFFSET_FLAGS("sql_user_name", CONF_FLAG_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
 	{ FR_CONF_OFFSET("group_attribute", rlm_sql_config_t, group_attribute) },
 	{ FR_CONF_OFFSET("cache_groups", rlm_sql_config_t, cache_groups) },
 	{ FR_CONF_OFFSET_FLAGS("logfile", CONF_FLAG_XLAT, rlm_sql_config_t, logfile) },
@@ -135,6 +134,50 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 	{ .out = &attr_user_profile, .name = "User-Profile", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ NULL }
+};
+
+typedef struct {
+	fr_value_box_t	user;
+} sql_autz_call_env_t;
+
+static const call_env_method_t authorize_method_env = {
+	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_autz_call_env_t, user) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+typedef struct {
+	fr_value_box_t	user;
+} sql_redundant_call_env_t;
+
+static const call_env_method_t accounting_method_env = {
+	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+static const call_env_method_t post_auth_method_env = {
+	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		CALL_ENV_TERMINATOR
+	}
+};
+
+typedef struct {
+	fr_value_box_t	user;
+} sql_group_xlat_call_env_t;
+
+static const call_env_method_t group_xlat_method_env = {
+	FR_CALL_ENV_METHOD_OUT(sql_group_xlat_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_group_xlat_call_env_t, user) },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 /*
@@ -701,36 +744,23 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-static int sql_set_user(rlm_sql_t const *inst, request_t *request)
+static void sql_set_user(rlm_sql_t const *inst, request_t *request, fr_value_box_t *user)
 {
-	char *expanded = NULL;
 	fr_pair_t *vp = NULL;
-	char const *sqluser;
-	ssize_t len;
 
 	fr_assert(request->packet != NULL);
 
-	if (inst->config.query_user[0] != '\0') {
-		sqluser = inst->config.query_user;
-	} else {
-		return 0;
-	}
-
 	MEM(pair_update_request(&vp, inst->sql_user) >= 0);
-	len = xlat_aeval(vp, &expanded, request, sqluser, NULL, NULL);
-	if (len < 0) {
+	if(!user || (user->type != FR_TYPE_STRING)) {
 		pair_delete_request(vp);
-		return -1;
+		return;
 	}
 
 	/*
-	 *	Replace any existing SQL-User-Name with outs
+	 *	Replace any existing SQL-User-Name with new value
 	 */
-	fr_pair_value_bstrdup_buffer_shallow(vp, expanded, true);
-	MEM(fr_pair_value_bstr_realloc(vp, NULL, len) == 0);
+	fr_pair_value_bstrdup_buffer(vp, user->vb_strvalue, user->tainted);
 	RDEBUG2("SQL-User-Name set to '%pV'", &vp->data);
-
-	return 0;
 }
 
 /*
@@ -795,7 +825,8 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 /** Check if a given group is in the SQL group for this user.
  *
  */
-static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *request, char const *name)
+static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *request, char const *name,
+					     fr_value_box_t *user)
 {
 	bool rcode = false;
 	rlm_sql_handle_t	*handle;
@@ -804,7 +835,7 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	/*
 	 *	Set the user attr here
 	 */
-	if (sql_set_user(inst, request) < 0) return false;
+	sql_set_user(inst, request, user);
 
 	/*
 	 *	Get a socket for this lookup
@@ -852,6 +883,7 @@ static xlat_action_t sql_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			      xlat_ctx_t const *xctx,
 			      request_t *request, fr_value_box_list_t *in)
 {
+	sql_group_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, sql_group_xlat_call_env_t);
 	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*p = arg->vb_strvalue;
@@ -860,7 +892,7 @@ static xlat_action_t sql_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_skip_whitespace(p);
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
-	vb->vb_bool = sql_check_group(inst, request, p);
+	vb->vb_bool = sql_check_group(inst, request, p, &call_env->user);
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1089,6 +1121,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
+	sql_autz_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_autz_call_env_t);
 	rlm_sql_handle_t	*handle;
 
 	map_list_t		check_tmp;
@@ -1115,9 +1148,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 
 	/*
-	 *	Set, escape, and check the user attr here
+	 *	Set the user attr here
 	 */
-	if (sql_set_user(inst, request) < 0) RETURN_MODULE_FAIL;
+	sql_set_user(inst, request, &call_env->user);
 
 	/*
 	 *	Reserve a socket
@@ -1311,7 +1344,8 @@ release:
  *	doesn't update any rows, the next matching config item is used.
  *
  */
-static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *inst, request_t *request, sql_acct_section_t const *section)
+static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *inst, request_t *request,
+				      sql_acct_section_t const *section, sql_redundant_call_env_t *call_env)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 
@@ -1368,7 +1402,7 @@ static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *in
 		goto finish;
 	}
 
-	sql_set_user(inst, request);
+	sql_set_user(inst, request, &call_env->user);
 
 	while (true) {
 		value = cf_pair_value(pair);
@@ -1475,9 +1509,10 @@ finish:
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
+	sql_redundant_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_redundant_call_env_t);
 
 	if (inst->config.accounting.reference_cp) {
-		return acct_redundant(p_result, inst, request, &inst->config.accounting);
+		return acct_redundant(p_result, inst, request, &inst->config.accounting, call_env);
 	}
 
 	RETURN_MODULE_NOOP;
@@ -1489,9 +1524,10 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
+	sql_redundant_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_redundant_call_env_t);
 
 	if (inst->config.postauth.reference_cp) {
-		return acct_redundant(p_result, inst, request, &inst->config.postauth);
+		return acct_redundant(p_result, inst, request, &inst->config.postauth, call_env);
 	}
 
 	RETURN_MODULE_NOOP;
@@ -1567,6 +1603,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			cf_log_perr(conf, "Failed registering %s expansion", group_attribute);
 			return -1;
 		}
+		xlat_func_call_env_set(xlat, &group_xlat_method_env);
 
 		/*
 		 *	The xlat escape function needs access to inst - so
@@ -1712,11 +1749,15 @@ module_rlm_t rlm_sql = {
 		/*
 		 *	Hack to support old configurations
 		 */
-		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
+		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		  .method_env = &authorize_method_env	},
 
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize		},
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting	},
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth		},
+		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		  .method_env = &authorize_method_env	},
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,
+		  .method_env = &accounting_method_env	},
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,
+		  .method_env = &post_auth_method_env	},
 		MODULE_NAME_TERMINATOR
 	}
 };

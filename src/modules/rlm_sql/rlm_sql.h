@@ -92,9 +92,6 @@ typedef struct {
 	char const 		*sql_password;			//!< Login password to use.
 	char const 		*sql_db;			//!< Database to run queries against.
 
-	char const		*query_user;			//!< xlat expansion used to specify the user
-								//!< to use as the subject of queries.
-
 	char const		*group_attribute;		//!< Name of the group attribute.
 
 	char const		*authorize_check_query;		//!< Query used get check VPs for a user.
