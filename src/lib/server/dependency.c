@@ -288,7 +288,7 @@ void dependency_features_init(CONF_SECTION *cs)
 		 *	Were we build with gperftools support,
 		 *	and is it currently enabled.
 		 */
-		dependency_feature_add(cs, "gperftools", state.enabled);
+		dependency_feature_add(cs, "runtime-gperftools", state.enabled);
 	}
 #endif
 
