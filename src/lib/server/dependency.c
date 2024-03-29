@@ -44,6 +44,10 @@ static CONF_SECTION *default_version_cs;		//!< Default configuration section to 
 #  include <openssl/engine.h>
 #endif
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+#  include <gperftools/profiler.h>
+#endif
+
 #ifdef HAVE_VALGRIND_H
 #  include <valgrind.h>
 #endif
@@ -273,6 +277,19 @@ void dependency_features_init(CONF_SECTION *cs)
 	 *	Are we running under Leak Sanitizer
 	 */
 	dependency_feature_add(cs, "runtime-lsan", (fr_get_lsan_state() == 1));
+#endif
+
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+	{
+		struct ProfilerState state;
+
+		ProfilerGetCurrentState(&state);
+		/*
+		 *	Were we build with gperftools support,
+		 *	and is it currently enabled.
+		 */
+		dependency_feature_add(cs, "gperftools", state.enabled);
+	}
 #endif
 
 #ifdef HAVE_VALGRIND_H

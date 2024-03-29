@@ -36,6 +36,9 @@
 # Enable asserts and additional debugging
 %bcond_with developer
 
+# Integrate with gperftools
+%bcond_with gperftools
+
 # Enable various clang/gcc debugging tool support
 %bcond_with address_sanitizer
 %bcond_with leak_sanitizer
@@ -702,6 +705,8 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %endif
 %if %{with developer}
         --enable-developer=yes \
+%endif
+%if %{with gperftools}
         --with-gperftools \
 %endif
 %if %{with address_sanitizer}
