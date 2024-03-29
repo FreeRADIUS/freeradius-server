@@ -1634,11 +1634,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	if (!inst->config.groupmemb_query) {
 		if (inst->config.authorize_group_check_query) {
-			WARN("Ignoring authorize_group_reply_query as group_membership_query is not configured");
+			WARN("Ignoring authorize_group_check_query as group_membership_query is not configured");
 		}
 
 		if (inst->config.authorize_group_reply_query) {
-			WARN("Ignoring authorize_group_check_query as group_membership_query is not configured");
+			WARN("Ignoring authorize_group_reply_query as group_membership_query is not configured");
 		}
 
 		if (!inst->config.read_groups) {
