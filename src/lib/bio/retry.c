@@ -57,7 +57,6 @@ struct fr_bio_retry_entry_s {
 	size_t		partial;		//!< for partial writes :(
 
 	bool		have_reply;		//!< did we see any reply?
-	bool		cancelled;		//!< was it cancelled?
 };
 
 FR_DLIST_FUNCS(fr_bio_retry_list, fr_bio_retry_entry_t, entry)
@@ -422,8 +421,6 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 
 		if (!item->retry.replies) return fr_bio_error(BUFFER_FULL);
 
-		fr_assert(!item->cancelled);
-
 		if (fr_bio_retry_entry_cancel(bio, item) < 0) return fr_bio_error(BUFFER_FULL);
 
 		/*
@@ -455,7 +452,6 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	item->size = size;
 	item->partial = 0;
 	item->have_reply = false;
-	item->cancelled = false;
 
 	/*
 	 *	Tell the application that we've saved the packet.  The "item" pointer allows the application
@@ -599,8 +595,6 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	}
 
 	fr_assert(item->buffer != NULL);
-
-	if (item->cancelled) return 1;
 
 	/*
 	 *	If we've written a partial packet, jump through a bunch of hoops to cache the partial packet
