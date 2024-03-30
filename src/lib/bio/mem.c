@@ -668,13 +668,20 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 	/*
 	 *	The caller has to state that the API is caching data both ways.
 	 */
-	if (!read_size) return NULL;
+	if (!read_size) {
+		fr_strerror_const("Read size must be non-zero");
+		return NULL;
+	}
 
-	if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) return NULL;
+	if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) {
+	oom:
+		fr_strerror_const("Out of memory");
+		return NULL;
+	}
 	my->bio.read = fr_bio_mem_read;
 
 	if (write_size) {
-		if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) return NULL;
+		if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) goto oom;
 
 		my->bio.write = fr_bio_mem_write_next;
 	} else {
