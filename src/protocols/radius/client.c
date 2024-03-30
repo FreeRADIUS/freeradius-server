@@ -158,6 +158,8 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	slen = fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
 	if (slen <= 0) goto fail;
 
+	my->outstanding++;
+
 	return 0;
 }
 
@@ -240,6 +242,9 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 		}
 
 		*retry_ctx_p = id_ctx->retry_ctx;
+
+		fr_assert(my->outstanding > 0);
+		my->outstanding--;
 		return true;
 	}
 
@@ -366,6 +371,14 @@ fr_bio_t *fr_radius_client_bio_get_fd(fr_bio_packet_t *bio)
 
 	return my->fd;
 }
+
+size_t fr_radius_client_bio_outstanding(fr_bio_packet_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
+
+	return my->outstanding;
+}
+
 
 /** Try to connect a socket.
  *
