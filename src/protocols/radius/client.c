@@ -38,7 +38,10 @@ fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_co
 {
 	fr_assert(fd_cfg->type == FR_BIO_FD_CONNECTED);
 
-	if (fd_cfg->path || fd_cfg->filename) return NULL;
+	if (fd_cfg->path || fd_cfg->filename) {
+		fr_strerror_const("Domain sockets and files are not supported");
+		return NULL;
+	}
 
 	if (fd_cfg->socket_type == SOCK_DGRAM) return fr_radius_client_udp_bio_alloc(ctx, cfg, fd_cfg);
 
@@ -101,7 +104,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	
 	my->cfg = *cfg;
 
-	my->common.bio = my->mem;
+	my->common.bio = my->retry;
 
 	talloc_set_destructor(my, _radius_client_fd_bio_free);
 
