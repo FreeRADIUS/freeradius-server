@@ -264,6 +264,30 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 	fr_radius_code_id_push(my->codes, id_ctx->packet);
 }
 
+/** Cancel one packet.
+ *
+ *  The packet can have a reply, or not.  It doesn't matter.
+ *
+ *  This also frees any IDs associated with the packet.
+ */
+int fr_radius_client_fd_bio_cancel(fr_bio_packet_t *bio, fr_packet_t *packet)
+{
+	fr_radius_id_ctx_t *id_ctx;
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
+
+	if (!my->retry) return 0;
+
+	id_ctx = fr_radius_code_id_find(my->codes, packet->code, packet->id);
+	if (!id_ctx || !id_ctx->retry_ctx) return 0;
+
+	fr_assert(id_ctx->packet == packet);
+
+	if (fr_bio_retry_entry_cancel(my->retry, id_ctx->retry_ctx) < 0) return -1;
+
+	id_ctx->retry_ctx = NULL;
+	return 0;
+}
+
 int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p,
 				 TALLOC_CTX *out_ctx, fr_pair_list_t *out)
 {

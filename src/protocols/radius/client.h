@@ -46,3 +46,5 @@ fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_co
 fr_bio_t	*fr_radius_client_bio_get_fd(fr_bio_packet_t *bio) CC_HINT(nonnull);
 
 int		fr_radius_client_bio_connect(fr_bio_packet_t *bio) CC_HINT(nonnull);
+
+int		fr_radius_client_fd_bio_cancel(fr_bio_packet_t *bio, fr_packet_t *packet) CC_HINT(nonnull);
