@@ -32,11 +32,13 @@ RCSID("$Id$")
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/time.h>
+#include <freeradius-devel/util/event.h>
 #include <freeradius-devel/server/packet.h>
 #include <freeradius-devel/radius/list.h>
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/util/chap.h>
-#include <freeradius-devel/bio/fd.h>
+#include <freeradius-devel/radius/client.h>
+
 #ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/ssl.h>
 #endif
@@ -59,14 +61,13 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 		_attr = fr_pair_find_by_da(&request->request_pairs, NULL, _da); \
 		if (!_attr) { \
 			_attr = fr_pair_afrom_da(request, _da); \
-			assert(_attr != NULL); \
+			fr_assert(_attr != NULL); \
 			fr_pair_append(&request->request_pairs, _attr); \
 		} \
 	} while (0)
 
 static int retries = 3;
 static fr_time_delta_t timeout = fr_time_delta_wrap((int64_t)5 * NSEC);	/* 5 seconds */
-static fr_time_delta_t sleep_time = fr_time_delta_wrap(-1);
 static char *secret = NULL;
 static bool do_output = true;
 
@@ -74,11 +75,7 @@ static rc_stats_t stats;
 
 static int packet_code = FR_RADIUS_CODE_UNDEFINED;
 static int resend_count = 1;
-static bool done = true;
 static bool print_filename = false;
-
-static int sockfd;
-static int last_used_id = -1;
 
 static fr_bio_fd_config_t fd_config;
 
@@ -86,11 +83,14 @@ static fr_bio_fd_info_t const *fd_info = NULL;
 
 static fr_bio_t *bio = NULL;
 
+static fr_radius_client_config_t client_config;
+
+static fr_bio_packet_t *client_bio = NULL;
+
 static int ipproto = IPPROTO_UDP;
 
-static fr_packet_list_t *packet_list = NULL;
-
 static fr_dlist_head_t rc_request_list;
+static rc_request_t	*current = NULL;
 
 static char const *radclient_version = RADIUSD_VERSION_BUILD("radclient");
 
@@ -153,7 +153,6 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "                                    If a second file is provided, it will be used to verify responses\n");
 	fprintf(stderr, "  -F                                Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h                                Print usage help information.\n");
-	fprintf(stderr, "  -i <id>                           Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -P <proto>                        Use proto (tcp or udp) for transport.\n");
 	fprintf(stderr, "  -r <retries>                      If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -s                                Print out summary information of auth results.\n");
@@ -223,6 +222,15 @@ static void openssl3_free(void)
 #define openssl3_init()
 #define openssl3_free()
 #endif
+
+static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void *ctx)
+{
+	// @todo - actually call %pV handler
+
+	if (fr_time_delta_unwrap(wake) > (NSEC / 10)) DEBUG2("Main loop waking up in %pV seconds", fr_box_time_delta(wake));
+
+	return 0;
+}
 
 static int mschapv1_encode(fr_packet_t *packet, fr_pair_list_t *list,
 			   char const *password)
@@ -362,7 +370,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	bool		packets_done = false;
 	uint64_t	num = 0;
 
-	assert(files->packets != NULL);
+	fr_assert(files->packets != NULL);
 
 	/*
 	 *	Determine where to read the VP's from.
@@ -406,7 +414,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		request->packet->socket.type = (ipproto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
 
 		request->files = files;
-		request->packet->id = last_used_id;
+		request->packet->id = -1;
 		request->num = num++;
 
 		fr_pair_list_init(&request->filter);
@@ -695,15 +703,11 @@ static int radclient_sane(rc_request_t *request)
  */
 static void deallocate_id(rc_request_t *request)
 {
-	if (!request || !request->packet ||
-	    (request->packet->id < 0)) {
-		return;
-	}
+	if (!request || !request->packet || (request->packet->id < 0)) return;
 
-	/*
-	 *	One more unused RADIUS ID.
-	 */
-	fr_packet_list_id_free(packet_list, request->packet, true);
+	(void) fr_radius_client_fd_bio_cancel(client_bio, request->packet);
+
+	request->packet->id = -1;
 
 	/*
 	 *	If we've already sent a packet, free up the old one,
@@ -717,180 +721,67 @@ static void deallocate_id(rc_request_t *request)
 /*
  *	Send one packet.
  */
-static int send_one_packet(rc_request_t *request)
+static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 {
-	ssize_t slen;
-
-	assert(request->done == false);
+	fr_assert(!request->done);
+	fr_assert(request->reply == NULL);
 
 #ifdef STATIC_ANALYZER
 	if (!secret) fr_exit_now(1);
 #endif
 
-	/*
-	 *	Remember when we have to wake up, to re-send the
-	 *	request, of we didn't receive a reply.
-	 */
-	if ((fr_time_delta_eq(sleep_time, fr_time_delta_wrap(-1)) || (fr_time_delta_gt(sleep_time, timeout)))) {
-		sleep_time = timeout;
-	}
+	fr_assert(request->packet->id < 0);
+	fr_assert(request->packet->data == NULL);
 
 	/*
-	 *	Haven't sent the packet yet.  Initialize it.
+	 *	Update the password, so it can be encrypted with the
+	 *	new authentication vector.
 	 */
-	if (!request->tries || request->packet->id == -1) {
-		bool rcode;
+	if (request->password) {
+		fr_pair_t *vp;
 
-		assert(request->reply == NULL);
+		if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password)) != NULL) {
+			fr_pair_value_strdup(vp, request->password->vp_strvalue, false);
 
-		/*
-		 *	Didn't find a free packet ID, we're not done,
-		 *	we don't sleep, and we stop trying to process
-		 *	this packet.
-		 */
-		request->packet->socket = fd_info->socket;
+		} else if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_password)) != NULL) {
+			uint8_t		buffer[17];
+			fr_pair_t	*challenge;
+			uint8_t	const	*vector;
 
-		rcode = fr_packet_list_id_alloc(packet_list, ipproto, request->packet, NULL);
-		if (!rcode) {
-			ERROR("Can't allocate ID");
-			fr_exit_now(1);
-		}
-
-		assert(request->packet->id != -1);
-		assert(request->packet->data == NULL);
-
-		/*
-		 *	Update the password, so it can be encrypted with the
-		 *	new authentication vector.
-		 */
-		if (request->password) {
-			fr_pair_t *vp;
-
-			if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password)) != NULL) {
-				fr_pair_value_strdup(vp, request->password->vp_strvalue, false);
-
-			} else if ((vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_password)) != NULL) {
-				uint8_t		buffer[17];
-				fr_pair_t	*challenge;
-				uint8_t	const	*vector;
-
-				/*
-				 *	Use Chap-Challenge pair if present,
-				 *	Request Authenticator otherwise.
-				 */
-				challenge = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge);
-				if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
-					vector = challenge->vp_octets;
-				} else {
-					vector = request->packet->vector;
-				}
-
-				fr_chap_encode(buffer,
-					       fr_rand() & 0xff, vector, RADIUS_AUTH_VECTOR_LENGTH,
-					       request->password->vp_strvalue,
-					       request->password->vp_length);
-				fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
-
-			} else if (fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_ms_chap_password) != NULL) {
-				mschapv1_encode(request->packet, &request->request_pairs, request->password->vp_strvalue);
-
+			/*
+			 *	Use Chap-Challenge pair if present,
+			 *	Request Authenticator otherwise.
+			 */
+			challenge = fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge);
+			if (challenge && (challenge->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
+				vector = challenge->vp_octets;
 			} else {
-				DEBUG("WARNING: No password in the request");
+				vector = request->packet->vector;
 			}
-		}
 
-		request->timestamp = fr_time();
-		request->tries = 1;
-		request->resend++;
+			fr_chap_encode(buffer,
+				       fr_rand() & 0xff, vector, RADIUS_AUTH_VECTOR_LENGTH,
+				       request->password->vp_strvalue,
+				       request->password->vp_length);
+			fr_pair_value_memdup(vp, buffer, sizeof(buffer), false);
 
-	} else {		/* request->packet->id >= 0 */
-		fr_time_t now = fr_time();
+		} else if (fr_pair_find_by_da_nested(&request->request_pairs, NULL, attr_ms_chap_password) != NULL) {
+			mschapv1_encode(request->packet, &request->request_pairs, request->password->vp_strvalue);
 
-		/*
-		 *	FIXME: Accounting packets are never retried!
-		 *	The Acct-Delay-Time attribute is updated to
-		 *	reflect the delay, and the packet is re-sent
-		 *	from scratch!
-		 */
-
-		/*
-		 *	Not time for a retry, do so.
-		 */
-		if (fr_time_delta_lt(fr_time_sub(now, request->timestamp), timeout)) {
-			/*
-			 *	When we walk over the tree sending
-			 *	packets, we update the minimum time
-			 *	required to sleep.
-			 */
-			if (fr_time_delta_eq(sleep_time, fr_time_delta_wrap(-1)) ||
-			    fr_time_delta_gt(sleep_time, fr_time_sub(now, request->timestamp))) {
-				sleep_time = fr_time_sub(now, request->timestamp);
-			}
-			return 0;
-		}
-
-		/*
-		 *	We're not trying later, maybe the packet is done.
-		 */
-		if (request->tries == retries) {
-			assert(request->packet->id >= 0);
-
-			/*
-			 *	Delete the request from the tree of
-			 *	outstanding requests.
-			 */
-			fr_packet_list_yank(packet_list, request->packet);
-
-			REDEBUG("No reply from server for ID %d socket %d",
-				request->packet->id, request->packet->socket.fd);
-			deallocate_id(request);
-
-			/*
-			 *	Normally we mark it "done" when we've received
-			 *	the reply, but this is a special case.
-			 */
-			if (request->resend == resend_count) {
-				request->done = true;
-			}
-			stats.lost++;
-			return -1;
-		}
-
-		/*
-		 *	We are trying later.
-		 */
-		request->timestamp = now;
-		request->tries++;
-	}
-
-	if (!request->packet->data) {
-		/*
-		 *	Encode the packet.
-		 */
-		if (fr_packet_encode(request->packet, &request->request_pairs, NULL, secret) < 0) {
-			REDEBUG("Failed encoding packet for ID %d", request->packet->id);
-			deallocate_id(request);
-			request->done = true;
-			return -1;
-		}
-
-		/*
-		 *	Re-sign it, including updating the
-		 *	Message-Authenticator.
-		 */
-		if (fr_packet_sign(request->packet, NULL, secret) < 0) {
-			REDEBUG("Failed signing packet for ID %d", request->packet->id);
-			deallocate_id(request);
-			request->done = true;
-			return -1;
+		} else {
+			DEBUG("WARNING: No password in the request");
 		}
 	}
 
-	slen = fr_bio_write(bio, NULL, request->packet->data, request->packet->data_len);
-	if (slen <= 0) {
-		REDEBUG("Failed writing packet for ID %d", request->packet->id);
-		deallocate_id(request);
-		request->done = true;
+	request->timestamp = fr_time();
+	request->tries = 1;
+	request->resend++;
+
+	/*
+	 *	Send the current packet.
+	 */
+	if (fr_bio_packet_write(client, request, request->packet, &request->request_pairs) < 0) {
+		REDEBUG("Failed writing packet");
 		return -1;
 	}
 
@@ -899,67 +790,14 @@ static int send_one_packet(rc_request_t *request)
 	return 0;
 }
 
+#if 0
 /*
  *	Receive one packet, maybe.
  */
 static int recv_one_packet(fr_time_delta_t wait_time)
 {
-	fd_set			set;
-	fr_time_delta_t		our_wait_time;
-	rc_request_t		*request;
-	fr_packet_t		*reply, *packet;
-	int			max_fd;
 
-#ifdef STATIC_ANALYZER
-	if (!secret) fr_exit_now(1);
-#endif
-
-	/* And wait for reply, timing out as necessary */
-	FD_ZERO(&set);
-
-	max_fd = fr_packet_list_fd_set(packet_list, &set);
-	if (max_fd < 0) fr_exit_now(1); /* no sockets to listen on! */
-
-	our_wait_time = !fr_time_delta_ispos(wait_time) ? fr_time_delta_from_sec(0) : wait_time;
-
-	/*
-	 *	No packet was received.
-	 */
-	if (select(max_fd, &set, NULL, NULL, &fr_time_delta_to_timeval(our_wait_time)) <= 0) return 0;
-
-	/*
-	 *	Look for the packet.
-	 */
-	reply = fr_packet_list_recv(packet_list, &set, RADIUS_MAX_ATTRIBUTES, false);
-	if (!reply) {
-		ERROR("Received bad packet");
-		/*
-		 *	If the packet is bad, we close the socket.
-		 *	I'm not sure how to do that now, so we just
-		 *	die...
-		 */
-		if (ipproto == IPPROTO_TCP) fr_exit_now(1);
-		return -1;	/* bad packet */
-	}
-
-	packet = fr_packet_list_find_byreply(packet_list, reply);
-	if (!packet) {
-		ERROR("Received reply to request we did not send. (id=%d socket %d)",
-		      reply->id, reply->socket.fd);
-		fr_packet_free(&reply);
-		return -1;	/* got reply to packet we didn't send */
-	}
-	request = packet->uctx;
-
-	/*
-	 *	Fails the signature validation: not a real reply.
-	 *	FIXME: Silently drop it and listen for another packet.
-	 */
-	if (fr_packet_verify(reply, request->packet, secret) < 0) {
-		REDEBUG("Reply verification failed");
-		stats.lost++;
-		goto packet_done; /* shared secret is incorrect */
-	}
+	// @todo - get a packet
 
 	if (print_filename) {
 		RDEBUG("%s response code %d", request->files->packets, reply->code);
@@ -1044,6 +882,66 @@ packet_done:
 
 	return 0;
 }
+#endif
+
+static void client_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
+			 UNUSED int fd_errno, UNUSED void *uctx)
+{
+	fr_assert(0);
+}
+
+static void client_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_bio_packet_t *client = uctx;
+	rc_request_t *request;
+	fr_pair_list_t list;
+	fr_packet_t *reply;
+	int rcode;
+
+	fr_pair_list_init(&list);
+
+	/*
+	 *	@todo list_ctx is ignored
+	 */
+	rcode = fr_bio_packet_read(client, (void **) &request, &reply, client, &list);
+	if (rcode < 0) fr_assert(0);
+
+	if (!rcode) {
+		ERROR("Failed reading packet - %s", fr_strerror());
+		fr_assert(0);
+	}
+
+	fr_packet_log(&default_log, reply, &list, true);
+
+	fr_assert(0);
+}
+
+static fr_event_update_t const pause_write[] = {
+	FR_EVENT_SUSPEND(fr_event_io_func_t, write),
+	{ 0 }
+};
+
+static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	fr_bio_packet_t *client = uctx;
+	rc_request_t *request;
+
+	request = fr_dlist_next(&rc_request_list, current);
+
+	/*
+	 *	Nothing more to send, stop trying to write packets.
+	 */
+	if (!request) {
+		if (fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, pause_write) < 0) fr_assert(0);
+
+		return;
+	}
+
+	current = request;
+
+	if (send_one_packet(client, request) < 0) fr_assert(0);
+}
+
 
 /**
  *
@@ -1117,8 +1015,18 @@ int main(int argc, char **argv)
 		.async = false,
 	};
 
+	/*
+	 *	Initialize our client configuration.
+	 */
+	client_config = (fr_radius_client_config_t) {
+		.log = &default_log,
+		.verify = {
+			.require_message_authenticator = false,
+			.max_attributes = RADIUS_MAX_ATTRIBUTES,
+		},
+	};
 
-	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fhi:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:C:d:D:f:FhP:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			fd_config.dst_ipaddr.af = AF_INET;
 			break;
@@ -1198,15 +1106,6 @@ int main(int argc, char **argv)
 			print_filename = true;
 			break;
 
-		case 'i':
-			if (!isdigit((uint8_t) *optarg))
-				usage();
-			last_used_id = atoi(optarg);
-			if ((last_used_id < 0) || (last_used_id > 255)) {
-				usage();
-			}
-			break;
-
 		case 'P':
 			if (!strcmp(optarg, "tcp")) {
 				fd_config.socket_type = SOCK_STREAM;
@@ -1256,6 +1155,8 @@ int main(int argc, char **argv)
 			       fr_exit_now(1);
 			}
 			secret = talloc_strdup(NULL, filesecret);
+			client_config.verify.secret = (uint8_t *) secret;
+			client_config.verify.secret_len = talloc_array_length(secret) - 1;
 		}
 		       break;
 
@@ -1338,6 +1239,17 @@ int main(int argc, char **argv)
 		packet_code = atoi(argv[2]);
 	}
 
+	fr_assert(packet_code != 0);
+	fr_assert(packet_code < FR_RADIUS_CODE_MAX);
+	client_config.allowed[packet_code] = true;
+	client_config.retry[packet_code] = (fr_retry_config_t) {
+		.irt = fr_time_delta_from_sec(2),
+		.mrt = fr_time_delta_from_sec(16),
+		.mrd = fr_time_delta_from_sec(30),
+		.mrc = 5,
+	};
+	client_config.retry_cfg.retry_config = client_config.retry[packet_code];
+
 	/*
 	 *	Resolve hostname.
 	 */
@@ -1357,7 +1269,11 @@ int main(int argc, char **argv)
 	/*
 	 *	Add the secret.
 	 */
-	if (argv[3]) secret = talloc_strdup(NULL, argv[3]);
+	if (argv[3]) {
+		secret = talloc_strdup(NULL, argv[3]);
+		client_config.verify.secret = (uint8_t *) secret;
+		client_config.verify.secret_len = talloc_array_length(secret) - 1;
+	}
 
 	/*
 	 *	If no '-f' is specified, we're reading from stdin.
@@ -1390,28 +1306,31 @@ int main(int argc, char **argv)
 
 	openssl3_init();
 
-	bio = fr_bio_fd_alloc(autofree, NULL, &fd_config, 0);
-	if (!bio) {
+	client_config.retry_cfg.el = fr_event_list_alloc(autofree, _loop_status, NULL);
+	if (!client_config.retry_cfg.el) {
+		ERROR("Failed opening event list: %s", fr_strerror());
+		fr_exit_now(1);
+	}
+
+	client_bio = fr_radius_client_bio_alloc(autofree, &client_config, &fd_config);
+	if (!client_bio) {
 		ERROR("Failed opening socket: %s", fr_strerror());
 		fr_exit_now(1);
 	}
 
-	if (fr_bio_fd_connect(bio) < 0) {
+	/*
+	 *	@todo - keep calling connect() when socket is readable?
+	 */
+	if (fr_radius_client_bio_connect(client_bio) < 0) {
 		ERROR("Failed connecting socket: %s", fr_strerror());
 		fr_exit_now(1);
 	}
 
+	bio = fr_radius_client_bio_get_fd(client_bio);
+	fr_assert(bio != NULL);
+
 	fd_info = fr_bio_fd_info(bio);
 	fr_assert(fd_info != NULL);
-
-	sockfd = fd_info->socket.fd;
-
-	MEM(packet_list = fr_packet_list_create(1));
-	if (!fr_packet_list_socket_add(packet_list, sockfd, ipproto, &fd_config.dst_ipaddr,
-				       fd_config.dst_port, NULL)) {
-		ERROR("Failed adding socket");
-		fr_exit_now(1);
-	}
 
 	/*
 	 *	Walk over the list of packets, sanity checking
@@ -1425,93 +1344,12 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/*
-	 *	Walk over the packets to send, until
-	 *	we're all done.
-	 *
-	 *	FIXME: This currently busy-loops until it receives
-	 *	all of the packets.  It should really have some sort of
-	 *	send packet, get time to wait, select for time, etc.
-	 *	loop.
-	 */
-	do {
-		rc_request_t *this, *next;
+	if (fr_event_fd_insert(NULL, client_config.retry_cfg.el, fd_info->socket.fd, client_read, client_write, client_error, client_bio) < 0) {
+		fr_perror("radclient");
+		fr_exit_now(1);
+	}
 
-		done = true;
-		sleep_time = fr_time_delta_wrap(-1);
-
-		/*
-		 *	Walk over the packets, sending them.
-		 */
-
-		for (this = fr_dlist_head(&rc_request_list);
-		     this != NULL;
-		     this = next) {
-			next = fr_dlist_next(&rc_request_list, this);
-
-			/*
-			 *	If there's a packet to receive,
-			 *	receive it, but don't wait for a
-			 *	packet.
-			 */
-			recv_one_packet(fr_time_delta_wrap(0));
-
-			/*
-			 *	This packet is done.  Delete it.
-			 */
-			if (this->done) {
-				talloc_free(this);
-				continue;
-			}
-
-			/*
-			 *	Send the current packet.
-			 */
-			if (send_one_packet(this) < 0) {
-				talloc_free(this);
-				break;
-			}
-
-
-			/*
-			 *	If we haven't sent this packet
-			 *	often enough, we're not done,
-			 *	and we shouldn't sleep.
-			 */
-			if (this->resend < resend_count) {
-				int i;
-
-				done = false;
-				sleep_time = fr_time_delta_wrap(0);
-
-				for (i = 0; i < 4; i++) {
-					((uint32_t *) this->packet->vector)[i] = fr_rand();
-				}
-			}
-		}
-
-		/*
-		 *	Still have outstanding requests.
-		 */
-		if (fr_packet_list_num_elements(packet_list) > 0) {
-			done = false;
-		} else {
-			sleep_time = fr_time_delta_wrap(0);
-		}
-
-		/*
-		 *	Nothing to do until we receive a request, so
-		 *	sleep until then.  Once we receive one packet,
-		 *	we go back, and walk through the whole list again,
-		 *	sending more packets (if necessary), and updating
-		 *	the sleep time.
-		 */
-		if (!done && fr_time_delta_ispos(sleep_time)) {
-			recv_one_packet(sleep_time);
-		}
-	} while (!done);
-
-	fr_packet_list_free(packet_list);
+	(void) fr_event_loop(client_config.retry_cfg.el);
 
 	fr_dlist_talloc_free(&rc_request_list);
 
