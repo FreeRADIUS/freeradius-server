@@ -2152,7 +2152,7 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 	passlen += nt_pass_decrypted[513] << 8;
 	if ((nt_pass_decrypted[514] != 0) ||
 	    (nt_pass_decrypted[515] != 0)) {
-		REDEBUG("Decrypted new password blob claims length > 65536, probably an invalid Password.NT", nt_pass_decrypted);
+		REDEBUG("Decrypted new password blob claims length > 65536, probably an invalid Password.NT");
 		return -1;
 	}
 
