@@ -58,7 +58,7 @@ fr_radius_id_t *fr_radius_id_alloc(TALLOC_CTX *ctx)
 		track->free_ids[i] = i;
 	}
 
-	return 0;
+	return track;
 }
 
 /** Allocate an ID for a packet, using LRU
