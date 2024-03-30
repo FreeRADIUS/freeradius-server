@@ -145,7 +145,7 @@ static inline ssize_t CC_HINT(nonnull(1,3)) fr_bio_read(fr_bio_t *bio, void *pac
 	/*
 	 *	We cannot read from the middle of a chain.
 	 */
-	fr_assert(!fr_bio_next(bio));
+	fr_assert(!fr_bio_prev(bio));
 
 	return bio->read(bio, packet_ctx, buffer, size);
 }
