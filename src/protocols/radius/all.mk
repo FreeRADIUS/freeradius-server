@@ -25,5 +25,5 @@ SOURCES		+= \
 		   id.c \
 		   bio.c
 
-TGT_PREREQS	+= libfreeradius-util$(L)
+TGT_PREREQS	+= libfreeradius-bio$(L)
 endif
