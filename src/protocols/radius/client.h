@@ -32,6 +32,8 @@ RCSIDH(radius_client_h, "$Id$")
 #include <freeradius-devel/bio/retry.h>
 
 typedef struct {
+	fr_log_t		*log;
+
 	fr_radius_bio_verify_t	verify;
 
 	fr_bio_retry_config_t	retry_cfg;

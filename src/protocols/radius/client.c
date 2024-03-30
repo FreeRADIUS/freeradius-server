@@ -194,6 +194,8 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 
 	retry_ctx->uctx = id_ctx;
 
+	(void) fr_bio_retry_entry_start(bio, retry_ctx, &my->cfg.retry[data[0]]);
+
 	/*
 	 *	@todo - set this for Accounting-Request packets which have Acct-Delay-Time we need to track
 	 *	where the Acct-Delay-Time is in the packet, along with its original value, and then we can use
@@ -228,14 +230,14 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 	 *
 	 *	@todo - Status-Server.  And for protocol error, look up original packet code
 	 */
-	id_ctx = fr_radius_code_id_find(my->codes, allowed_replies[code], data[1]);
+	id_ctx = fr_radius_code_id_find(my->codes, code, data[1]);
 	if (!id_ctx) return false;
 
 	/*
 	 *	No reply yet, verify the response packet, and save it for later.
 	 */
 	if (!id_ctx->response) {
-		if (fr_radius_verify(data,id_ctx-> packet->data + 4,
+		if (fr_radius_verify(data, id_ctx->packet->data + 4,
 				     my->cfg.verify.secret, my->cfg.verify.secret_len,
 				     my->cfg.verify.require_message_authenticator) < 0) {
 			return false;
