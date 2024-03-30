@@ -698,6 +698,7 @@ static int radclient_sane(rc_request_t *request)
 }
 
 
+#if 0
 /*
  *	Deallocate packet ID, etc.
  */
@@ -717,6 +718,7 @@ static void deallocate_id(rc_request_t *request)
 	if (request->packet->data) TALLOC_FREE(request->packet->data);
 	if (request->reply) fr_packet_free(&request->reply);
 }
+#endif
 
 /*
  *	Send one packet.
