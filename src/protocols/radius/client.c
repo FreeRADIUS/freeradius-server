@@ -294,7 +294,7 @@ int fr_radius_client_fd_bio_cancel(fr_bio_packet_t *bio, fr_packet_t *packet)
 }
 
 int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p,
-				 TALLOC_CTX *out_ctx, fr_pair_list_t *out)
+				 UNUSED TALLOC_CTX *out_ctx, fr_pair_list_t *out)
 {
 	ssize_t slen;
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
@@ -329,7 +329,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_
 	/*
 	 *	Allocate the new request data structure
 	 */
-	reply = fr_packet_alloc(id_ctx->packet, false);
+	reply = fr_packet_alloc(id_ctx->request_ctx, false);
 	if (!reply) return -1;
 
 	id_ctx->response = reply;
@@ -354,7 +354,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (fr_radius_decode_simple(out_ctx, out, reply->data, reply->data_len,
+	if (fr_radius_decode_simple(id_ctx->request_ctx, out, reply->data, reply->data_len,
 				    id_ctx->packet->vector, (char const *) my->cfg.verify.secret) < 0) {
 		fr_assert(0);
 	}
