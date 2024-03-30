@@ -907,8 +907,8 @@ static int recv_one_packet(fr_time_delta_t wait_time)
 	fd_set			set;
 	fr_time_delta_t		our_wait_time;
 	rc_request_t		*request;
-	fr_packet_t	*reply, *packet;
-	volatile int		max_fd;
+	fr_packet_t		*reply, *packet;
+	int			max_fd;
 
 #ifdef STATIC_ANALYZER
 	if (!secret) fr_exit_now(1);
@@ -1114,7 +1114,7 @@ int main(int argc, char **argv)
 		.path = NULL,
 		.filename = NULL,
 
-		.async = true,
+		.async = false,
 	};
 
 
@@ -1393,6 +1393,11 @@ int main(int argc, char **argv)
 	bio = fr_bio_fd_alloc(autofree, NULL, &fd_config, 0);
 	if (!bio) {
 		ERROR("Failed opening socket: %s", fr_strerror());
+		fr_exit_now(1);
+	}
+
+	if (fr_bio_fd_connect(bio) < 0) {
+		ERROR("Failed connecting socket: %s", fr_strerror());
 		fr_exit_now(1);
 	}
 
