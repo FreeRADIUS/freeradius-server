@@ -102,7 +102,7 @@ static int fr_bio_retry_reset_timer(fr_bio_retry_t *my)
 	 */
 	first = fr_rb_first(&my->rb);
 	if (!first) {
-		fr_assert(!my->ev);
+		talloc_const_free(my->ev);
 		my->first = NULL;
 		return 0;
 	}
@@ -319,12 +319,11 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	ssize_t rcode;
-	fr_bio_retry_entry_t *item = uctx; /* NOT individually talloc'd */
-	fr_bio_retry_t *my = talloc_get_type_abort(item->my, fr_bio_retry_t);
+	fr_bio_retry_t *my = talloc_get_type_abort(uctx, fr_bio_retry_t);
+	fr_bio_retry_entry_t *item;
 	fr_retry_state_t state;
-	fr_bio_t *next;
 
-	fr_assert(item == my->first);
+	item = my->first;
 	my->first = NULL;
 
 	/*
@@ -339,12 +338,6 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	}
 
 	/*
-	 *	There must be a next bio.
-	 */
-	next = fr_bio_next(&my->bio);
-	fr_assert(next != NULL);
-
-	/*
 	 *	Write out the packet.  On failure release this item.
 	 *
 	 *	If there's an error, we hope that the next "real" write will find the error, and do any
@@ -352,9 +345,9 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	 *	application, and not by us.
 	 */
 	if (item->rewrite) {
-		rcode = item->rewrite(next, item, item->buffer, item->size);
+		rcode = item->rewrite(&my->bio, item, item->buffer, item->size);
 	} else {
-		rcode = my->rewrite(next, item, item->buffer, item->size);
+		rcode = my->rewrite(&my->bio, item, item->buffer, item->size);
 	}
 	if (rcode < 0) {
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
@@ -445,6 +438,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	item = fr_bio_retry_list_pop_head(&my->free);
 	fr_assert(item != NULL);
 
+	fr_assert(item->my == my);
 	item->retry.config = NULL;
 	item->retry.start = fr_time();
 	item->packet_ctx = packet_ctx;
@@ -644,6 +638,8 @@ int fr_bio_retry_entry_start(UNUSED fr_bio_t *bio, fr_bio_retry_entry_t *item, f
 	fr_assert(item->buffer != NULL);
 
 	if (item->retry.config) return -1;
+
+	fr_assert(fr_time_delta_unwrap(cfg->irt) != 0);
 
 	fr_retry_init(&item->retry, item->retry.start, cfg);
 
