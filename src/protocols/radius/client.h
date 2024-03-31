@@ -43,6 +43,12 @@ typedef struct {
 	fr_retry_config_t 	retry[FR_RADIUS_CODE_MAX];	//!< default retry configuration for each packet type
 } fr_radius_client_config_t;
 
+typedef struct {
+	bool			connected;
+
+	size_t			outstanding;
+} fr_radius_client_bio_info_t;
+
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg) CC_HINT(nonnull);
 
 int		fr_radius_client_bio_connect(fr_bio_packet_t *bio) CC_HINT(nonnull);
@@ -50,5 +56,7 @@ int		fr_radius_client_bio_connect(fr_bio_packet_t *bio) CC_HINT(nonnull);
 int		fr_radius_client_fd_bio_cancel(fr_bio_packet_t *bio, fr_packet_t *packet) CC_HINT(nonnull);
 
 fr_bio_t	*fr_radius_client_bio_get_fd(fr_bio_packet_t *bio) CC_HINT(nonnull);
+
+fr_radius_client_bio_info_t const *fr_radius_client_bio_info(fr_bio_packet_t *bio) CC_HINT(nonnull);
 
 size_t		fr_radius_client_bio_outstanding(fr_bio_packet_t *bio) CC_HINT(nonnull);

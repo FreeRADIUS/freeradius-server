@@ -45,7 +45,7 @@ typedef struct {
 	fr_bio_t		*mem;
 	fr_bio_t		*fd;
 
-	size_t			outstanding;
+	fr_radius_client_bio_info_t info;
 
 	/*
 	 *	@todo - perhaps we want to have the read() routine allocate memory for the packet?  Or the

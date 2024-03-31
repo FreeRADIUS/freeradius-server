@@ -106,6 +106,11 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 
 	my->common.bio = my->retry;
 
+	/*
+	 *	Set up the connected status.
+	 */
+	my->info.connected = (my->fd_info->type == FR_BIO_FD_CONNECTED) && (my->fd_info->state == FR_BIO_FD_STATE_OPEN);
+
 	talloc_set_destructor(my, _radius_client_fd_bio_free);
 
 	return my;
@@ -158,7 +163,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	slen = fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
 	if (slen <= 0) goto fail;
 
-	my->outstanding++;
+	my->info.outstanding++;
 
 	return 0;
 }
@@ -245,8 +250,8 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 
 		*retry_ctx_p = id_ctx->retry_ctx;
 
-		fr_assert(my->outstanding > 0);
-		my->outstanding--;
+		fr_assert(my->info.outstanding > 0);
+		my->info.outstanding--;
 		return true;
 	}
 
@@ -358,7 +363,8 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_
 	 */
 	if (fr_radius_decode_simple(id_ctx->request_ctx, out, reply->data, reply->data_len,
 				    id_ctx->packet->vector, (char const *) my->cfg.verify.secret) < 0) {
-		fr_assert(0);
+		talloc_free(reply);
+		return -1;
 	}
 
 	*request_ctx_p = id_ctx->request_ctx;
@@ -378,7 +384,14 @@ size_t fr_radius_client_bio_outstanding(fr_bio_packet_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 
-	return my->outstanding;
+	return my->info.outstanding;
+}
+
+fr_radius_client_bio_info_t const *fr_radius_client_bio_info(fr_bio_packet_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
+
+	return &my->info;
 }
 
 
@@ -395,7 +408,10 @@ size_t fr_radius_client_bio_outstanding(fr_bio_packet_t *bio)
  */
 int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
 {
+	int rcode;
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
+
+	if (my->info.connected) return 0;
 
 	switch (my->fd_info->type) {
 	default:
@@ -425,5 +441,11 @@ int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
 		break;
 	}
 
-	return fr_bio_fd_connect(my->fd);
+	/*
+	 *	Try to connect it.
+	 */
+	rcode = fr_bio_fd_connect(my->fd);
+
+	my->info.connected = (rcode == 0);
+	return rcode;
 }
