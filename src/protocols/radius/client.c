@@ -129,7 +129,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	if (!my->codes[packet->code]) {
 		fr_strerror_printf("Outgoing packet code %s is disallowed by the configuration",
 				   fr_radius_packet_name[packet->code]);
-		return -1;
+		return fr_bio_error(GENERIC);
 	}
 
 	id_ctx = fr_radius_code_id_pop(my->codes, packet);
@@ -140,7 +140,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 		if (fr_bio_retry_entry_cancel(my->retry, NULL) < 1) {
 		all_ids_used:
 			fr_strerror_const("All IDs are in use");
-			return -1;
+			return fr_bio_error(GENERIC);
 		}
 
 		id_ctx = fr_radius_code_id_pop(my->codes, packet);
@@ -155,13 +155,16 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	if (fr_packet_encode(packet, list, NULL, (char const *) my->cfg.verify.secret) < 0) {
 	fail:
 		fr_radius_code_id_push(my->codes, packet);
-		return -1;
+		return fr_bio_error(GENERIC);
 	}
 
 	if (fr_packet_sign(packet, NULL, (char const *) my->cfg.verify.secret) < 0) goto fail;
 
 	slen = fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
-	if (slen <= 0) goto fail;
+	if (slen <= 0) {
+		fr_radius_code_id_push(my->codes, packet);
+		return slen;
+	}
 
 	my->info.outstanding++;
 
