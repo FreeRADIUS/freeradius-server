@@ -610,7 +610,7 @@ static void ldap_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connec
 		break;
 	}
 
-	if (fr_event_fd_insert(ldap_conn, el, ldap_conn->fd,
+	if (fr_event_fd_insert(ldap_conn, NULL, el, ldap_conn->fd,
 			       read_fn,
 			       write_fn,
 			       ldap_conn_error,

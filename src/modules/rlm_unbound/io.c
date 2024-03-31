@@ -257,7 +257,7 @@ static int _unbound_io_event_activate(struct ub_event *ub_ev, struct timeval *tv
 
 		DEBUG4("unbound event %p - Registered for read+write events on FD %i", ev, ev->fd);
 
-		if (fr_event_fd_insert(ev, ev->ev_b->el, ev->fd,
+		if (fr_event_fd_insert(ev, NULL, ev->ev_b->el, ev->fd,
 				       _unbound_io_service_readable,
 				       _unbound_io_service_writable,
 				       _unbound_io_service_errored,
@@ -272,7 +272,7 @@ static int _unbound_io_event_activate(struct ub_event *ub_ev, struct timeval *tv
 
 		DEBUG4("unbound event %p - Registered for read+error events on FD %i", ev, ev->fd);
 
-		if (fr_event_fd_insert(ev, ev->ev_b->el, ev->fd,
+		if (fr_event_fd_insert(ev, NULL, ev->ev_b->el, ev->fd,
 				       _unbound_io_service_readable,
 				       NULL,
 				       _unbound_io_service_errored,
@@ -287,7 +287,7 @@ static int _unbound_io_event_activate(struct ub_event *ub_ev, struct timeval *tv
 
 		DEBUG4("unbound event %p - Registered for write+error events on FD %i", ev, ev->fd);
 
-		if (fr_event_fd_insert(ev, ev->ev_b->el, ev->fd,
+		if (fr_event_fd_insert(ev, NULL, ev->ev_b->el, ev->fd,
 				       NULL,
 				       _unbound_io_service_writable,
 				       _unbound_io_service_errored,

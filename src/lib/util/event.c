@@ -1212,6 +1212,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 /** Associate I/O callbacks with a file descriptor
  *
  * @param[in] ctx	to bind lifetime of the event to.
+ * @param[out] ef_out	Where to store the output event
  * @param[in] el	to insert fd callback into.
  * @param[in] fd	to install filters for.
  * @param[in] read_fn	function to call when fd is readable.
@@ -1223,7 +1224,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
  *	- -1 on failure.
  */
 int _fr_event_fd_insert(NDEBUG_LOCATION_ARGS
-			TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+			TALLOC_CTX *ctx, fr_event_fd_t **ef_out, fr_event_list_t *el, int fd,
 		        fr_event_fd_cb_t read_fn,
 		        fr_event_fd_cb_t write_fn,
 		        fr_event_error_cb_t error,
@@ -1237,7 +1238,7 @@ int _fr_event_fd_insert(NDEBUG_LOCATION_ARGS
 	}
 
 	return _fr_event_filter_insert(NDEBUG_LOCATION_VALS
-				       ctx, NULL, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
+				       ctx, ef_out, el, fd, FR_EVENT_FILTER_IO, &funcs, error, uctx);
 }
 
 /** Remove a file descriptor from the event loop

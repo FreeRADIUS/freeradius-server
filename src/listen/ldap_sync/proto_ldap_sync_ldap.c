@@ -1223,7 +1223,7 @@ static void _proto_ldap_socket_open_connected(fr_connection_t *conn, UNUSED fr_c
 	/*
 	 *	Set the callback which will handle the results of this query
 	 */
-	if (fr_event_fd_insert(conn, conn->el, ldap_conn->fd,
+	if (fr_event_fd_insert(conn, NULL, conn->el, ldap_conn->fd,
 			       _proto_ldap_socket_open_read,
 			       NULL,
 			       _proto_ldap_socket_open_error,

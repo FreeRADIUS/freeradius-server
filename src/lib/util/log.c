@@ -1283,7 +1283,7 @@ int fr_log_global_init(fr_event_list_t *el, bool daemonize)
 	/*
 	 *	Now do stderr...
 	 */
-	if (unlikely(fr_event_fd_insert(NULL, el, stdout_pipe[1], fr_log_fd_event, NULL, NULL, &stdout_ctx) < 0)) {
+	if (unlikely(fr_event_fd_insert(NULL, NULL, el, stdout_pipe[1], fr_log_fd_event, NULL, NULL, &stdout_ctx) < 0)) {
 		fr_strerror_const_push("Failed adding stdout handler to event loop");
 	error_2:
 		dup2(STDOUT_FILENO, stdout_fd);	/* Copy back the stdout FD */
@@ -1321,7 +1321,7 @@ int fr_log_global_init(fr_event_list_t *el, bool daemonize)
 	stdout_ctx.type = L_ERR;
 	stdout_ctx.lvl = L_DBG_LVL_OFF;	/* Log at all debug levels */
 
-	if (unlikely(fr_event_fd_insert(NULL, el, stderr_pipe[1], fr_log_fd_event, NULL, NULL, &stderr_ctx) < 0)) {
+	if (unlikely(fr_event_fd_insert(NULL, NULL, el, stderr_pipe[1], fr_log_fd_event, NULL, NULL, &stderr_ctx) < 0)) {
 		fr_strerror_const_push("Failed adding stdout handler to event loop");
 	error_6:
 		dup2(STDERR_FILENO, stderr_fd);	/* Copy back the stderr FD */

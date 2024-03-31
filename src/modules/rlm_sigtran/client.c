@@ -177,7 +177,7 @@ int sigtran_client_thread_register(fr_event_list_t *el)
 	 *	and resume requests which are
 	 *	waiting.
 	 */
-	if (fr_event_fd_insert(NULL, el, req_pipe[0], _sigtran_pipe_read, NULL, _sigtran_pipe_error, NULL) < 0) {
+	if (fr_event_fd_insert(NULL, NULL, el, req_pipe[0], _sigtran_pipe_read, NULL, _sigtran_pipe_error, NULL) < 0) {
 		ERROR("worker - Failed listening on osmocom pipe");
 		goto error;
 	}

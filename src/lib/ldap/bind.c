@@ -141,7 +141,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 			return;
 		}
 
-		ret = fr_event_fd_insert(bind_ctx, el, fd,
+		ret = fr_event_fd_insert(bind_ctx, NULL, el, fd,
 					 NULL,
 					 _ldap_bind_io_write,	/* We'll be called again when the conn is open */
 					 _ldap_bind_io_error,
@@ -155,7 +155,7 @@ static void _ldap_bind_io_write(fr_event_list_t *el, int fd, UNUSED int flags, v
 			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
 		}
 		c->fd = fd;
-		ret = fr_event_fd_insert(bind_ctx, el, fd,
+		ret = fr_event_fd_insert(bind_ctx, NULL, el, fd,
 					 _ldap_bind_io_read,
 					 NULL,
 					 _ldap_bind_io_error,
@@ -212,7 +212,7 @@ int fr_ldap_bind_async(fr_ldap_connection_t *c,
 	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)) {
 		int ret;
 
-		ret = fr_event_fd_insert(bind_ctx, el, fd,
+		ret = fr_event_fd_insert(bind_ctx, NULL, el, fd,
 					 NULL,
 					 _ldap_bind_io_write,
 					 _ldap_bind_io_error,

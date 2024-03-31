@@ -1059,7 +1059,7 @@ int fr_exec_oneshot(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		 *	Accept a maximum of 32k of data from the process.
 		 */
 		fr_sbuff_init_talloc(exec->stdout_ctx, &exec->stdout_buff, &exec->stdout_tctx, 128, 32 * 1024);
-		if (fr_event_fd_insert(ctx, el, exec->stdout_fd, exec_stdout_read, NULL, NULL, exec) < 0) {
+		if (fr_event_fd_insert(ctx, NULL, el, exec->stdout_fd, exec_stdout_read, NULL, NULL, exec) < 0) {
 			RPEDEBUG("Failed adding event listening to stdout");
 			goto fail_and_close;
 		}
@@ -1077,7 +1077,7 @@ int fr_exec_oneshot(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 			.prefix = exec->stdout_prefix
 		};
 
-		if (fr_event_fd_insert(ctx, el, exec->stdout_fd, log_request_fd_event,
+		if (fr_event_fd_insert(ctx, NULL, el, exec->stdout_fd, log_request_fd_event,
 				       NULL, NULL, &exec->stdout_uctx) < 0){
 			RPEDEBUG("Failed adding event listening to stdout");
 			goto fail_and_close;
@@ -1095,7 +1095,7 @@ int fr_exec_oneshot(TALLOC_CTX *ctx, fr_exec_state_t *exec, request_t *request,
 		.prefix = exec->stderr_prefix
 	};
 
-	if (fr_event_fd_insert(ctx, el, exec->stderr_fd, log_request_fd_event,
+	if (fr_event_fd_insert(ctx, NULL, el, exec->stderr_fd, log_request_fd_event,
 			       NULL, NULL, &exec->stderr_uctx) < 0) {
 		RPEDEBUG("Failed adding event listening to stderr");
 		close(exec->stderr_fd);

@@ -175,7 +175,7 @@ static void _ldap_sasl_bind_io_read(fr_event_list_t *el, int fd, UNUSED int flag
 		 */
 		if (sasl_ctx->rmech) DEBUG3("Continuing SASL mech %s...", sasl_ctx->rmech);
 
-		ret = fr_event_fd_insert(sasl_ctx, el, fd,
+		ret = fr_event_fd_insert(sasl_ctx, NULL, el, fd,
 					 NULL,
 					 _ldap_sasl_bind_io_write,	/* Need to write more SASL stuff */
 					 _ldap_sasl_bind_io_error,
@@ -238,7 +238,7 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 			return;
 		}
 
-		ret = fr_event_fd_insert(sasl_ctx, el, fd,
+		ret = fr_event_fd_insert(sasl_ctx, NULL, el, fd,
 					 NULL,
 					 _ldap_sasl_bind_io_write,	/* We'll be called again when the conn is open */
 					 _ldap_sasl_bind_io_error,
@@ -255,7 +255,7 @@ static void _ldap_sasl_bind_io_write(fr_event_list_t *el, int fd, UNUSED int fla
 			if ((ret != LDAP_OPT_SUCCESS) || (fd < 0)) goto error;
 		}
 		c->fd = fd;
-		ret = fr_event_fd_insert(sasl_ctx, el, fd,
+		ret = fr_event_fd_insert(sasl_ctx, NULL, el, fd,
 					 _ldap_sasl_bind_io_read,
 					 NULL,
 					 _ldap_sasl_bind_io_error,
@@ -340,7 +340,7 @@ int fr_ldap_sasl_bind_async(fr_ldap_connection_t *c,
 	if ((ldap_get_option(c->handle, LDAP_OPT_DESC, &fd) == LDAP_SUCCESS) && (fd >= 0)){
 		int ret;
 
-		ret = fr_event_fd_insert(sasl_ctx, el, fd,
+		ret = fr_event_fd_insert(sasl_ctx, NULL, el, fd,
 					 NULL,
 					 _ldap_sasl_bind_io_write,
 					 _ldap_sasl_bind_io_error,

@@ -291,7 +291,7 @@ retry:
 
 		/*
 		 */
-		if (fr_event_fd_insert(uq, uq->el, uq->fd, NULL,
+		if (fr_event_fd_insert(uq, NULL, uq->el, uq->fd, NULL,
 				       udp_queue_writable, NULL, uq) < 0) {
 			return -1;
 		}

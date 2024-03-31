@@ -224,7 +224,7 @@ int		_fr_event_filter_update(NDEBUG_LOCATION_ARGS
 #define		fr_event_filter_update(...) _fr_event_filter_update(NDEBUG_LOCATION_EXP __VA_ARGS__)
 
 int		_fr_event_fd_insert(NDEBUG_LOCATION_ARGS
-				    TALLOC_CTX *ctx, fr_event_list_t *el, int fd,
+				    TALLOC_CTX *ctx, fr_event_fd_t **ef_out, fr_event_list_t *el, int fd,
 				    fr_event_fd_cb_t read_fn,
 				    fr_event_fd_cb_t write_fn,
 				    fr_event_error_cb_t error,

@@ -319,7 +319,7 @@ static int _fr_curl_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int wha
 
 	switch (what) {
 	case CURL_POLL_IN:
-		if (fr_event_fd_insert(mhandle, mhandle->el, fd,
+		if (fr_event_fd_insert(mhandle, NULL, mhandle->el, fd,
 				       _fr_curl_io_service_readable,
 				       NULL,
 				       _fr_curl_io_service_errored,
@@ -332,7 +332,7 @@ static int _fr_curl_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int wha
 		break;
 
 	case CURL_POLL_OUT:
-		if (fr_event_fd_insert(mhandle, mhandle->el, fd,
+		if (fr_event_fd_insert(mhandle, NULL, mhandle->el, fd,
 				       NULL,
 				       _fr_curl_io_service_writable,
 				       _fr_curl_io_service_errored,
@@ -345,7 +345,7 @@ static int _fr_curl_io_event_modify(UNUSED CURL *easy, curl_socket_t fd, int wha
 		break;
 
 	case CURL_POLL_INOUT:
-		if (fr_event_fd_insert(mhandle, mhandle->el, fd,
+		if (fr_event_fd_insert(mhandle, NULL, mhandle->el, fd,
 				       _fr_curl_io_service_readable,
 				       _fr_curl_io_service_writable,
 				       _fr_curl_io_service_errored,

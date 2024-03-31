@@ -1371,7 +1371,7 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *listen)
 	app_io = s->listen->app_io;
 	s->filter = FR_EVENT_FILTER_IO;
 
-	if (fr_event_fd_insert(nr, nr->el, s->listen->fd,
+	if (fr_event_fd_insert(nr, NULL, nr->el, s->listen->fd,
 			       fr_network_read,
 			       s->listen->no_write_callback ? NULL : fr_network_write,
 			       fr_network_error,
@@ -1979,7 +1979,7 @@ fr_network_t *fr_network_create(TALLOC_CTX *ctx, fr_event_list_t *el, char const
 	if (fr_nonblock(nr->signal_pipe[0]) < 0) goto fail2;
 	if (fr_nonblock(nr->signal_pipe[1]) < 0) goto fail2;
 
-	if (fr_event_fd_insert(nr, nr->el, nr->signal_pipe[0], _signal_pipe_read, NULL, NULL, nr) < 0) {
+	if (fr_event_fd_insert(nr, NULL, nr->el, nr->signal_pipe[0], _signal_pipe_read, NULL, NULL, nr) < 0) {
 		fr_strerror_const("Failed inserting event for signal pipe");
 		goto fail2;
 	}

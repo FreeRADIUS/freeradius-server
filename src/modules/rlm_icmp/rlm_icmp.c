@@ -477,7 +477,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	 *	We assume that the outbound socket is always writable.
 	 *	If not, too bad.  Packets will get lost.
 	 */
-	if (fr_event_fd_insert(t, mctx->el, fd,
+	if (fr_event_fd_insert(t, NULL, mctx->el, fd,
 			       mod_icmp_read,
 			       NULL,
 			       mod_icmp_error,

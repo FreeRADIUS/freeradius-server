@@ -489,7 +489,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 
 	}
 
-	if (fr_event_fd_insert(h, el, h->fd,
+	if (fr_event_fd_insert(h, NULL, el, h->fd,
 			       read_fn,
 			       write_fn,
 			       conn_error,

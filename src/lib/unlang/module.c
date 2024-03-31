@@ -276,7 +276,7 @@ int unlang_module_fd_add(request_t *request,
 	/*
 	 *	Register for events on the file descriptor
 	 */
-	if (fr_event_fd_insert(request, unlang_interpret_event_list(request), fd,
+	if (fr_event_fd_insert(request, NULL, unlang_interpret_event_list(request), fd,
 			       ev->fd_read ? unlang_event_fd_read_handler : NULL,
 			       ev->fd_write ? unlang_event_fd_write_handler : NULL,
 			       ev->fd_error ? unlang_event_fd_error_handler: NULL,

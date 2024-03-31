@@ -278,7 +278,7 @@ int main_loop_init(void)
 	}
 	DEBUG4("Created self-signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (fr_event_fd_insert(NULL, event_list, self_pipe[0],
+	if (fr_event_fd_insert(NULL, NULL, event_list, self_pipe[0],
 			       main_loop_signal_recv,
 			       NULL,
 			       NULL,

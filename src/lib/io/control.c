@@ -171,7 +171,7 @@ fr_control_t *fr_control_create(TALLOC_CTX *ctx, fr_event_list_t *el, fr_atomic_
 	(void) fcntl(c->pipe[0], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 	(void) fcntl(c->pipe[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC);
 
-	if (fr_event_fd_insert(c, el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
+	if (fr_event_fd_insert(c, NULL, el, c->pipe[0], pipe_read, NULL, NULL, c) < 0) {
 		talloc_free(c);
 		fr_strerror_const_push("Failed adding FD to event list control socket");
 		return NULL;

@@ -135,7 +135,7 @@ static void _redis_io_common(fr_connection_t *conn, fr_redis_handle_t *h, bool r
 	DEBUG4("redis handle %p - Registered for %s%serror events on FD %i",
 	       h, read ? "read+" : "", write ? "write+" : "", c->fd);
 
-	if (fr_event_fd_insert(h, el, c->fd,
+	if (fr_event_fd_insert(h, NULL, el, c->fd,
 			       read ? _redis_io_service_readable : NULL,
 			       write ? _redis_io_service_writable : NULL,
 			       _redis_io_service_errored,

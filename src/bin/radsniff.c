@@ -3055,7 +3055,7 @@ int main(int argc, char *argv[])
 			fr_exit_now(EXIT_FAILURE);
 		}
 
-		if (fr_event_fd_insert(NULL, events, self_pipe[0],
+		if (fr_event_fd_insert(NULL, NULL, events, self_pipe[0],
 				       rs_signal_action,
 				       NULL,
 				       NULL,
@@ -3102,7 +3102,7 @@ int main(int argc, char *argv[])
 			 */
 			if (event->in->type == PCAP_FILE_IN) {
 				rs_got_packet(events, in_p->fd, 0, event);
-			} else if (fr_event_fd_insert(NULL, events, in_p->fd,
+			} else if (fr_event_fd_insert(NULL, NULL, events, in_p->fd,
 					       rs_got_packet,
 					       NULL,
 					       NULL,

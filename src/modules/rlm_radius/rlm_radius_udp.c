@@ -484,7 +484,7 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 		return;
 
 	case FR_RETRY_CONTINUE:
-		if (fr_event_fd_insert(h, el, h->fd, conn_writable_status_check, NULL,
+		if (fr_event_fd_insert(h, NULL, el, h->fd, conn_writable_status_check, NULL,
 				       conn_error_status_check, conn) < 0) {
 			PERROR("%s - Failed inserting FD event", h->module_name);
 			fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
@@ -503,7 +503,7 @@ static void conn_status_check_again(fr_event_list_t *el, UNUSED fr_time_t now, v
 	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
 
-	if (fr_event_fd_insert(h, el, h->fd, conn_writable_status_check, NULL, conn_error_status_check, conn) < 0) {
+	if (fr_event_fd_insert(h, NULL, el, h->fd, conn_writable_status_check, NULL, conn_error_status_check, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->module_name);
 		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
 	}
@@ -660,7 +660,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 *	Switch to waiting on read and insert the event
 	 *	for the response timeout.
 	 */
-	if (fr_event_fd_insert(h, conn->el, h->fd, conn_readable_status_check, NULL, conn_error_status_check, conn) < 0) {
+	if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_readable_status_check, NULL, conn_error_status_check, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->module_name);
 		goto fail;
 	}
@@ -845,7 +845,7 @@ static fr_connection_state_t conn_init(void **h_out, fr_connection_t *conn, void
 		 *	one response to bring the connection online,
 		 *	otherwise we need inst->num_answers_to_alive
 		 */
-		if (fr_event_fd_insert(h, conn->el, h->fd, NULL,
+		if (fr_event_fd_insert(h, NULL, conn->el, h->fd, NULL,
 				       conn_writable_status_check, conn_error_status_check, conn) < 0) goto fail;
 	/*
 	 *	If we're not doing status-checks, signal the connection
@@ -1028,7 +1028,7 @@ static void thread_conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *co
 
 	}
 
-	if (fr_event_fd_insert(h, el, h->fd,
+	if (fr_event_fd_insert(h, NULL, el, h->fd,
 			       read_fn,
 			       write_fn,
 			       conn_error,
@@ -1070,7 +1070,7 @@ static void thread_conn_notify_replicate(fr_trunk_connection_t *tconn, fr_connec
 		break;
 	}
 
-	if (fr_event_fd_insert(h, el, h->fd,
+	if (fr_event_fd_insert(h, NULL, el, h->fd,
 			       read_fn,
 			       write_fn,
 			       conn_error,

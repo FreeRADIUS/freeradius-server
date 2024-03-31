@@ -181,15 +181,15 @@ static void _conn_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
 		break;
 
 	case FR_TRUNK_CONN_EVENT_READ:
-		TEST_CHECK(fr_event_fd_insert(conn, el, fd, _conn_io_read, NULL, _conn_io_error, tconn) == 0);
+		TEST_CHECK(fr_event_fd_insert(conn, NULL, el, fd, _conn_io_read, NULL, _conn_io_error, tconn) == 0);
 		break;
 
 	case FR_TRUNK_CONN_EVENT_WRITE:
-		TEST_CHECK(fr_event_fd_insert(conn, el, fd, NULL, _conn_io_write, _conn_io_error, tconn) == 0);
+		TEST_CHECK(fr_event_fd_insert(conn, NULL, el, fd, NULL, _conn_io_write, _conn_io_error, tconn) == 0);
 		break;
 
 	case FR_TRUNK_CONN_EVENT_BOTH:
-		TEST_CHECK(fr_event_fd_insert(conn, el, fd, _conn_io_read, _conn_io_write, _conn_io_error, tconn) == 0);
+		TEST_CHECK(fr_event_fd_insert(conn, NULL, el, fd, _conn_io_read, _conn_io_write, _conn_io_error, tconn) == 0);
 		break;
 
 	default:
@@ -302,7 +302,7 @@ static fr_connection_state_t _conn_open(fr_event_list_t *el, void *h, UNUSED voi
 	/*
 	 *	This always needs to be inserted
 	 */
-	TEST_CHECK(fr_event_fd_insert(our_h, el, our_h[1], _conn_io_loopback, NULL, NULL, our_h) == 0);
+	TEST_CHECK(fr_event_fd_insert(our_h, NULL, el, our_h[1], _conn_io_loopback, NULL, NULL, our_h) == 0);
 
 	return FR_CONNECTION_STATE_CONNECTED;
 }

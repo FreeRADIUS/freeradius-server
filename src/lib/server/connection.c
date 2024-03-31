@@ -1405,7 +1405,7 @@ int fr_connection_signal_on_fd(fr_connection_t *conn, int fd)
 	 *	If connection becomes writable we
 	 *	assume it's open.
 	 */
-	if (fr_event_fd_insert(conn, conn->pub.el, fd,
+	if (fr_event_fd_insert(conn, NULL, conn->pub.el, fd,
 			       NULL,
 			       _connection_writable,
 			       _connection_error,
