@@ -24,6 +24,5 @@ default:
 	/*
 	 *	Some other error, it's fatal.
 	 */
-	fr_bio_shutdown(&my->bio);
 	break;
 }
