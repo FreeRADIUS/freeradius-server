@@ -87,6 +87,8 @@ static fr_radius_client_config_t client_config;
 
 static fr_bio_packet_t *client_bio = NULL;
 
+static fr_radius_client_bio_info_t const *client_info = NULL;
+
 static int ipproto = IPPROTO_UDP;
 
 static fr_dlist_head_t rc_request_list;
@@ -96,6 +98,8 @@ static char const *radclient_version = RADIUSD_VERSION_BUILD("radclient");
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;
+
+static TALLOC_CTX	*autofree = NULL;
 
 extern fr_dict_autoload_t radclient_dict[];
 fr_dict_autoload_t radclient_dict[] = {
@@ -673,9 +677,13 @@ error:
  */
 static int radclient_sane(rc_request_t *request)
 {
+	request->packet->socket.inet.src_ipaddr = fd_config.src_ipaddr;
+	request->packet->socket.inet.src_port = fd_config.src_port;
+
 	if (request->packet->socket.inet.dst_port == 0) {
 		request->packet->socket.inet.dst_port = fd_config.dst_port;
 	}
+
 	if (request->packet->socket.inet.dst_ipaddr.af == AF_UNSPEC) {
 		if (fd_config.dst_ipaddr.af == AF_UNSPEC) {
 			ERROR("No server was given, and request %" PRIu64 " in file %s did not contain "
@@ -684,6 +692,7 @@ static int radclient_sane(rc_request_t *request)
 		}
 		request->packet->socket.inet.dst_ipaddr = fd_config.dst_ipaddr;
 	}
+
 	if (request->packet->code == 0) {
 		if (packet_code == -1) {
 			ERROR("Request was \"auto\", and request %" PRIu64 " in file %s did not contain Packet-Type",
@@ -692,6 +701,7 @@ static int radclient_sane(rc_request_t *request)
 		}
 		request->packet->code = packet_code;
 	}
+
 	request->packet->socket.fd = -1;
 
 	return 0;
@@ -783,7 +793,7 @@ static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 	 *	Send the current packet.
 	 */
 	if (fr_bio_packet_write(client, request, request->packet, &request->request_pairs) < 0) {
-		REDEBUG("Failed writing packet");
+		REDEBUG("Failed writing packet - %s", fr_strerror());
 		return -1;
 	}
 
@@ -892,7 +902,7 @@ static void client_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int f
 	fr_assert(0);
 }
 
-static void client_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void client_read(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	fr_bio_packet_t *client = uctx;
 	rc_request_t *request;
@@ -906,16 +916,32 @@ static void client_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 *	@todo list_ctx is ignored
 	 */
 	rcode = fr_bio_packet_read(client, (void **) &request, &reply, client, &list);
-	if (rcode < 0) fr_assert(0);
-
-	if (!rcode) {
-		ERROR("Failed reading packet - %s", fr_strerror());
-		fr_assert(0);
+	if (rcode < 0) {
+		ERROR("Failed reading packet - %s", fr_bio_strerror(rcode));
+		fr_exit_now(1);
 	}
 
-	fr_packet_log(&default_log, reply, &list, true);
+	/*
+	 *	Not a RADIUS packet, or not a reply to a packet we sent.
+	 */
+	if (!rcode) return;
 
-	fr_assert(0);
+	fr_pair_list_append(&request->reply_pairs, &list);
+
+	fr_packet_log(&default_log, reply, &request->reply_pairs, true);
+
+	/*
+	 *	Don't leave a dangling pointer around.
+	 */
+	if (current == request) {
+		current = fr_dlist_prev(&rc_request_list, current);
+	}
+
+	talloc_free(request);
+
+	if (!fr_radius_client_bio_outstanding(client)) {
+		fr_event_loop_exit(el, 1);
+	}
 }
 
 static fr_event_update_t const pause_write[] = {
@@ -944,6 +970,21 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	if (send_one_packet(client, request) < 0) fr_assert(0);
 }
 
+static void client_connect(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+{
+	fr_bio_packet_t *client = uctx;
+
+	if (fr_radius_client_bio_connect(client) < 0) {
+		ERROR("Failed connecting socket: %s", fr_strerror());
+		fr_exit_now(1);
+	}
+
+	if (fr_event_fd_insert(autofree, NULL, el, fd, client_read, client_write, client_error, client) < 0) {
+		fr_perror("radclient");
+		fr_exit_now(1);
+	}
+}
+
 
 /**
  *
@@ -958,7 +999,6 @@ int main(int argc, char **argv)
 	char		filesecret[256];
 	FILE		*fp;
 	int		do_summary = false;
-	TALLOC_CTX	*autofree;
 	fr_dlist_head_t	filenames;
 
 	/*
@@ -995,6 +1035,9 @@ int main(int argc, char **argv)
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
+	/*
+	 *	Initialize the kind of socket we want.
+	 */
 	fd_config = (fr_bio_fd_config_t) {
 		.type = FR_BIO_FD_CONNECTED,
 		.socket_type = SOCK_DGRAM,
@@ -1014,11 +1057,11 @@ int main(int argc, char **argv)
 		.path = NULL,
 		.filename = NULL,
 
-		.async = false,
+		.async = true,
 	};
 
 	/*
-	 *	Initialize our client configuration.
+	 *	Initialize the client configuration.
 	 */
 	client_config = (fr_radius_client_config_t) {
 		.log = &default_log,
@@ -1027,6 +1070,12 @@ int main(int argc, char **argv)
 			.max_attributes = RADIUS_MAX_ATTRIBUTES,
 		},
 	};
+
+	/***********************************************************************
+	 *
+	 *	Parse command-line options.
+	 *
+	 ***********************************************************************/
 
 	while ((c = getopt(argc, argv, "46c:C:d:D:f:FhP:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
@@ -1156,7 +1205,7 @@ int main(int argc, char **argv)
 			       ERROR("Secret in %s is too short", optarg);
 			       fr_exit_now(1);
 			}
-			secret = talloc_strdup(NULL, filesecret);
+			secret = talloc_strdup(autofree, filesecret);
 			client_config.verify.secret = (uint8_t *) secret;
 			client_config.verify.secret_len = talloc_array_length(secret) - 1;
 		}
@@ -1190,9 +1239,66 @@ int main(int argc, char **argv)
 		ERROR("Insufficient arguments");
 		usage();
 	}
+
 	/*
-	 *	Mismatch between the binary and the libraries it depends on
+	 *	Get the request type
 	 */
+	if (!isdigit((uint8_t) argv[2][0])) {
+		packet_code = fr_table_value_by_str(fr_radius_request_name_table, argv[2], -2);
+		if (packet_code == -2) {
+			ERROR("Unrecognised request type \"%s\"", argv[2]);
+			usage();
+		}
+	} else {
+		packet_code = atoi(argv[2]);
+	}
+
+	fr_assert(packet_code != 0);
+	fr_assert(packet_code < FR_RADIUS_CODE_MAX);
+
+	/*
+	 *	Initialize the retry configuration for this type of packet.
+	 */
+	client_config.allowed[packet_code] = true;
+	client_config.retry[packet_code] = (fr_retry_config_t) {
+		.irt = fr_time_delta_from_sec(2),
+		.mrt = fr_time_delta_from_sec(16),
+		.mrd = fr_time_delta_from_sec(30),
+		.mrc = 5,
+	};
+	client_config.retry_cfg.retry_config = client_config.retry[packet_code];
+
+	/*
+	 *	Resolve hostname.
+	 */
+	if (strcmp(argv[1], "-") != 0) {
+		if (fr_inet_pton_port(&fd_config.dst_ipaddr, &fd_config.dst_port, argv[1], -1, fd_config.dst_ipaddr.af, true, true) < 0) {
+			fr_perror("radclient");
+			fr_exit_now(1);
+		}
+
+		/*
+		 *	Work backwards from the port to determine the packet type
+		 */
+		if (packet_code == FR_RADIUS_CODE_UNDEFINED) packet_code = radclient_get_code(fd_config.dst_port);
+	}
+	radclient_get_port(packet_code, &fd_config.dst_port);
+
+	/*
+	 *	Add the secret.
+	 */
+	if (argv[3]) {
+		secret = talloc_strdup(autofree, argv[3]);
+		client_config.verify.secret = (uint8_t *) secret;
+		client_config.verify.secret_len = talloc_array_length(secret) - 1;
+	}
+
+	/***********************************************************************
+	 *
+	 *	We're done parsing command-line options, bootstrap the various libraries, etc.
+	 *
+	 ***********************************************************************/
+
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
 		fr_perror("radclient");
 		fr_exit_now(EXIT_FAILURE);
@@ -1226,59 +1332,18 @@ int main(int argc, char **argv)
 
 	packet_global_init();
 
-	fr_strerror_clear();	/* Clear the error buffer */
+	openssl3_init();
+
+	fr_strerror_clear();
+
+	/***********************************************************************
+	 *
+	 *	We're done bootstrapping the libraries and dictionaries, read the input files.
+	 *
+	 ***********************************************************************/
 
 	/*
-	 *	Get the request type
-	 */
-	if (!isdigit((uint8_t) argv[2][0])) {
-		packet_code = fr_table_value_by_str(fr_radius_request_name_table, argv[2], -2);
-		if (packet_code == -2) {
-			ERROR("Unrecognised request type \"%s\"", argv[2]);
-			usage();
-		}
-	} else {
-		packet_code = atoi(argv[2]);
-	}
-
-	fr_assert(packet_code != 0);
-	fr_assert(packet_code < FR_RADIUS_CODE_MAX);
-	client_config.allowed[packet_code] = true;
-	client_config.retry[packet_code] = (fr_retry_config_t) {
-		.irt = fr_time_delta_from_sec(2),
-		.mrt = fr_time_delta_from_sec(16),
-		.mrd = fr_time_delta_from_sec(30),
-		.mrc = 5,
-	};
-	client_config.retry_cfg.retry_config = client_config.retry[packet_code];
-
-	/*
-	 *	Resolve hostname.
-	 */
-	if (strcmp(argv[1], "-") != 0) {
-		if (fr_inet_pton_port(&fd_config.dst_ipaddr, &fd_config.dst_port, argv[1], -1, fd_config.dst_ipaddr.af, true, true) < 0) {
-			fr_perror("radclient");
-			fr_exit_now(1);
-		}
-
-		/*
-		 *	Work backwards from the port to determine the packet type
-		 */
-		if (packet_code == FR_RADIUS_CODE_UNDEFINED) packet_code = radclient_get_code(fd_config.dst_port);
-	}
-	radclient_get_port(packet_code, &fd_config.dst_port);
-
-	/*
-	 *	Add the secret.
-	 */
-	if (argv[3]) {
-		secret = talloc_strdup(NULL, argv[3]);
-		client_config.verify.secret = (uint8_t *) secret;
-		client_config.verify.secret_len = talloc_array_length(secret) - 1;
-	}
-
-	/*
-	 *	If no '-f' is specified, we're reading from stdin.
+	 *	If no '-f' is specified, then we are reading from stdin.
 	 */
 	if (fr_dlist_num_elements(&filenames) == 0) {
 		rc_file_pair_t *files;
@@ -1299,14 +1364,18 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	No packets read.  Die.
+	 *	No packets were read.  Die.
 	 */
 	if (!fr_dlist_num_elements(&rc_request_list)) {
 		ERROR("Nothing to send");
 		fr_exit_now(1);
 	}
 
-	openssl3_init();
+	/***********************************************************************
+	 *
+	 *	We're done reading files, open the socket, event loop, and start sending packets.
+	 *
+	 ***********************************************************************/
 
 	client_config.retry_cfg.el = fr_event_list_alloc(autofree, _loop_status, NULL);
 	if (!client_config.retry_cfg.el) {
@@ -1314,19 +1383,17 @@ int main(int argc, char **argv)
 		fr_exit_now(1);
 	}
 
+	/*
+	 *	Open the RADIUS client bio, and then get the information associated with it.
+	 */
 	client_bio = fr_radius_client_bio_alloc(autofree, &client_config, &fd_config);
 	if (!client_bio) {
 		ERROR("Failed opening socket: %s", fr_strerror());
 		fr_exit_now(1);
 	}
 
-	/*
-	 *	@todo - keep calling connect() when socket is readable?
-	 */
-	if (fr_radius_client_bio_connect(client_bio) < 0) {
-		ERROR("Failed connecting socket: %s", fr_strerror());
-		fr_exit_now(1);
-	}
+	client_info = fr_radius_client_bio_info(client_bio);
+	fr_assert(client_info != NULL);
 
 	bio = fr_radius_client_bio_get_fd(client_bio);
 	fr_assert(bio != NULL);
@@ -1335,27 +1402,40 @@ int main(int argc, char **argv)
 	fr_assert(fd_info != NULL);
 
 	/*
-	 *	Walk over the list of packets, sanity checking
-	 *	everything.
+	 *	Walk over the list of packets, updating to use the correct addresses, and sanity checking them.
 	 */
 	fr_dlist_foreach(&rc_request_list, rc_request_t, this) {
-		this->packet->socket.inet.src_ipaddr = fd_config.src_ipaddr;
-		this->packet->socket.inet.src_port = fd_config.src_port;
 		if (radclient_sane(this) != 0) {
 			fr_exit_now(1);
 		}
 	}
 
-	if (fr_event_fd_insert(NULL, client_config.retry_cfg.el, fd_info->socket.fd, client_read, client_write, client_error, client_bio) < 0) {
+	/*
+	 *	Always bounce through a connect(), even if we don't need it.
+	 *
+	 *	Once the connect() passes, we start reading from the request list, and processing packets.
+	 */
+	if (fr_event_fd_insert(autofree, NULL, client_config.retry_cfg.el, fd_info->socket.fd, NULL,
+			       client_connect, client_error, client_bio) < 0) {
 		fr_perror("radclient");
 		fr_exit_now(1);
 	}
 
+	/***********************************************************************
+	 *
+	 *	Run the main event loop until we either see an error, or we have sent (and received) all of the packets.
+	 *
+	 ***********************************************************************/
 	(void) fr_event_loop(client_config.retry_cfg.el);
 
+	/***********************************************************************
+	 *
+	 *	We are done the event loop.  Start cleaning things up.
+	 *
+	 ***********************************************************************/
 	fr_dlist_talloc_free(&rc_request_list);
 
-	talloc_free(secret);
+	(void) fr_event_fd_delete(client_config.retry_cfg.el, fd_info->socket.fd, FR_EVENT_FILTER_IO);
 
 	fr_radius_global_free();
 
@@ -1389,9 +1469,9 @@ int main(int argc, char **argv)
 	 */
 	fr_atexit_global_trigger_all();
 
-	if ((stats.lost > 0) || (stats.failed > 0)) return EXIT_FAILURE;
-
 	openssl3_free();
+
+	if ((stats.lost > 0) || (stats.failed > 0)) return EXIT_FAILURE;
 
 	return ret;
 }
