@@ -24,6 +24,7 @@
 
 #include <freeradius-devel/bio/bio_priv.h>
 #include <freeradius-devel/bio/null.h>
+#include <freeradius-devel/util/syserror.h>
 
 #ifndef NDEBUG
 /** Free this bio.
@@ -191,4 +192,33 @@ int fr_bio_shutdown_intermediate(fr_bio_t *bio)
 	}
 
 	return fr_bio_shutdown(bio);
+}
+
+char const *fr_bio_strerror(ssize_t error)
+{
+	switch (error) {
+	case fr_bio_error(NONE):
+		return "";
+
+	case fr_bio_error(IO_WOULD_BLOCK):
+		return "IO operation would block";
+
+	case fr_bio_error(IO):
+		return fr_syserror(errno);
+
+	case fr_bio_error(GENERIC):
+		return fr_strerror();
+
+	case fr_bio_error(VERIFY):
+		return "Packet fails verification";
+
+	case fr_bio_error(BUFFER_FULL):
+		return "Output buffer is full";
+
+	case fr_bio_error(BUFFER_TOO_SMALL):
+		return "Output buffer is too small to cache the data";
+
+	default:
+		return "<unknown>";
+	}
 }

@@ -186,3 +186,5 @@ int	fr_bio_destructor(fr_bio_t *bio) CC_HINT(nonnull);
 int	fr_bio_shutdown(fr_bio_t *bio) CC_HINT(nonnull);
 
 int	fr_bio_free(fr_bio_t *bio) CC_HINT(nonnull);
+
+char const *fr_bio_strerror(ssize_t error);
