@@ -85,8 +85,8 @@ struct fr_bio_packet_s {
  * @param bio		the packet-based bio
  * @param[out] request_ctx_p	the larger context for the original request packet
  * @param[out] packet_p	Where the allocated #fr_packet_t will be stored
- * @param[out_ctx]	for the output pairs
- * @param[out]		decoded output pairs
+ * @param[out] out_ctx	for the output pairs
+ * @param[out] out		decoded output pairs
  * @return
  *	- <0 on error.  This is fr_bio_error(FOO)
  *	- 0 for success
