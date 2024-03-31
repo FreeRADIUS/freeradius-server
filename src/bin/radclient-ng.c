@@ -411,11 +411,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		MEM(request->packet = fr_packet_alloc(request, true));
 		request->packet->uctx = request;
 
-		request->packet->socket.inet.src_ipaddr = fd_config.src_ipaddr;
-		request->packet->socket.inet.src_port = fd_config.src_port;
-		request->packet->socket.inet.dst_ipaddr = fd_config.dst_ipaddr;
-		request->packet->socket.inet.dst_port = fd_config.dst_port;
-		request->packet->socket.type = (ipproto == IPPROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
+		/*
+		 *	Don't set request->packet->socket.  The underlying socket isn't open yet.
+		 */
 
 		request->files = files;
 		request->packet->id = -1;
@@ -572,19 +570,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			case FR_RADIUS_CODE_STATUS_SERVER:
-				switch (radclient_get_code(request->packet->socket.inet.dst_port)) {
-				case FR_RADIUS_CODE_ACCESS_REQUEST:
-					request->filter_code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-					break;
-
-				case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
-					request->filter_code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
-					break;
-
-				default:
-					request->filter_code = FR_RADIUS_CODE_UNDEFINED;
-					break;
-				}
+				request->filter_code = FR_RADIUS_CODE_UNDEFINED;
 				break;
 
 			case FR_RADIUS_CODE_UNDEFINED:
@@ -632,11 +618,28 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Automatically set the dst port (if one wasn't already set).
 		 */
+		radclient_get_port(request->packet->code, &request->packet->socket.inet.dst_port);
 		if (request->packet->socket.inet.dst_port == 0) {
-			radclient_get_port(request->packet->code, &request->packet->socket.inet.dst_port);
-			if (request->packet->socket.inet.dst_port == 0) {
-				REDEBUG("Can't determine destination port");
-				goto error;
+			REDEBUG("Can't determine destination port");
+			goto error;
+		}
+
+		/*
+		 *	We expect different responses for Status-Server, depending on which port is being used.
+		 */
+		if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) {
+			switch (radclient_get_code(request->packet->socket.inet.dst_port)) {
+			case FR_RADIUS_CODE_ACCESS_REQUEST:
+				request->filter_code = FR_RADIUS_CODE_ACCESS_ACCEPT;
+				break;
+
+			case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
+				request->filter_code = FR_RADIUS_CODE_ACCOUNTING_RESPONSE;
+				break;
+
+			default:
+				request->filter_code = FR_RADIUS_CODE_UNDEFINED;
+				break;
 			}
 		}
 
@@ -677,8 +680,8 @@ error:
  */
 static int radclient_sane(rc_request_t *request)
 {
-	request->packet->socket.inet.src_ipaddr = fd_config.src_ipaddr;
-	request->packet->socket.inet.src_port = fd_config.src_port;
+	request->packet->socket.inet.src_ipaddr = fd_info->socket.inet.src_ipaddr;
+	request->packet->socket.inet.src_port = fd_info->socket.inet.src_port;
 
 	if (request->packet->socket.inet.dst_port == 0) {
 		request->packet->socket.inet.dst_port = fd_config.dst_port;
@@ -1405,7 +1408,7 @@ int main(int argc, char **argv)
 	 *	Walk over the list of packets, updating to use the correct addresses, and sanity checking them.
 	 */
 	fr_dlist_foreach(&rc_request_list, rc_request_t, this) {
-		if (radclient_sane(this) != 0) {
+		if (radclient_sane(this) < 0) {
 			fr_exit_now(1);
 		}
 	}
