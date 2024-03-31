@@ -685,7 +685,7 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 
 /** Opens a socket and updates sock->fd
  *
- *  Note that it does not call connect()!
+ *  If the socket is asynchronous, it also calls connect()
  */
 int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 {
@@ -877,7 +877,6 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			rcode = fr_bio_fd_common_tcp(fd, &my->info.socket, cfg);
 			if (rcode < 0) goto fail;
 		}
-
 
 		switch (my->info.socket.af) {
 		case AF_LOCAL:

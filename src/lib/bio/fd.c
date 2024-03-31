@@ -819,6 +819,11 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 	}
 #endif
 
+	/*
+	 *	Don't call connect() if the socket is synchronous, it will block.
+	 */
+	if (!my->info.cfg->async) return 0;
+
 	return fr_bio_fd_try_connect(my);
 }
 
