@@ -176,6 +176,10 @@ static int _rc_request_free(rc_request_t *request)
 {
 	fr_dlist_remove(&rc_request_list, request);
 
+	if (request->packet && (request->packet->id >= 0)) {
+		(void) fr_radius_client_fd_bio_cancel(client_bio, request->packet);
+	}
+
 	return 0;
 }
 
@@ -229,9 +233,9 @@ static void openssl3_free(void)
 
 static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void *ctx)
 {
-	// @todo - actually call %pV handler
+	if (fr_time_delta_unwrap(wake) < (NSEC / 10)) return 0;
 
-	if (fr_time_delta_unwrap(wake) > (NSEC / 10)) DEBUG2("Main loop waking up in %pV seconds", fr_box_time_delta(wake));
+	fr_log(&default_log, L_DBG, __FILE__, __LINE__, "Main loop waking up in %pV seconds", fr_box_time_delta(wake));
 
 	return 0;
 }
@@ -1380,7 +1384,9 @@ int main(int argc, char **argv)
 	 *
 	 ***********************************************************************/
 
-	client_config.retry_cfg.el = fr_event_list_alloc(autofree, _loop_status, NULL);
+	client_config.retry_cfg.el = fr_event_list_alloc(autofree,
+							 (fr_debug_lvl >= 2) ? _loop_status : NULL,
+							 NULL);
 	if (!client_config.retry_cfg.el) {
 		ERROR("Failed opening event list: %s", fr_strerror());
 		fr_exit_now(1);
