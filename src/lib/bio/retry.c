@@ -142,6 +142,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	item->buffer = NULL;
 #endif
 
+	fr_assert(my->first != item);
 	fr_bio_retry_list_insert_head(&my->free, item);
 }
 
@@ -461,6 +462,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	This should never fail.
 	 */
 	if (!fr_rb_insert(&my->rb, item)) {
+		fr_assert(my->first != item);
 		fr_bio_retry_list_insert_head(&my->free, item);
 		return size;
 	}
@@ -478,8 +480,9 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 */
 	fr_assert(my->first != item);
 
-	if (!fr_bio_retry_reset_timer(my)) {
+	if (fr_bio_retry_reset_timer(my) < 0) {
 		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+		fr_assert(my->first != item);
 		fr_bio_retry_list_insert_head(&my->free, item);
 	}
 
