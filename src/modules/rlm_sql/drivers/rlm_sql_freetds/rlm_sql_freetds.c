@@ -511,7 +511,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 
 			for (i = 0; i < colcount; i++) {
 				/* Space to hold the result data */
-				rowdata[i] = talloc_array(rowdata, char, MAX_DATASTR_LEN + 1);
+				rowdata[i] = talloc_zero_array(rowdata, char, MAX_DATASTR_LEN + 1);
 
 				/* Associate the target buffer with the data */
 				if (ct_bind(conn->command, i + 1, &descriptor, rowdata[i], NULL, NULL) != CS_SUCCEED) {
