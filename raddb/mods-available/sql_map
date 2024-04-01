@@ -6,11 +6,6 @@ sql_map {
 	#  use the *instance* name here: sql1.
 	sql_module_instance = "sql"
 
-	#  This is duplicative of info available in the SQL module, but
-	#  we have to list it here as we do not yet support nested
-	#  reference expansions.
-	dialect = "mysql"
-
 	# Name of the check item attribute to be used as a key in the SQL queries
 	query = "SELECT ... FROM ... "
 
