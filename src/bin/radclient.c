@@ -1110,7 +1110,7 @@ static int send_one_packet(rc_request_t *request)
 		return -1;
 	}
 
-	fr_packet_log(&default_log, request->packet, &request->request_pairs, false);
+	fr_radius_packet_log(&default_log, request->packet, &request->request_pairs, false);
 
 	return 0;
 }
@@ -1170,7 +1170,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		return 0;
 	}
 
-	fr_packet_log(&default_log, packet, &my.request_pairs, true);
+	fr_radius_packet_log(&default_log, packet, &my.request_pairs, true);
 
 	/*
 	 *	Find a Access-Request which has the same User-Name / etc. as this CoA packet.
@@ -1250,7 +1250,7 @@ static int recv_coa_packet(fr_time_delta_t wait_time)
 		return 0;
 	}
 
-	fr_packet_log(&default_log, request->reply, &request->reply_pairs, false);
+	fr_radius_packet_log(&default_log, request->reply, &request->reply_pairs, false);
 
 
 	/*
@@ -1392,7 +1392,7 @@ retry:
 		goto packet_done;
 	}
 	PAIR_LIST_VERIFY(&request->reply_pairs);
-	fr_packet_log(&default_log, request->reply, &request->reply_pairs, true);
+	fr_radius_packet_log(&default_log, request->reply, &request->reply_pairs, true);
 
 	/*
 	 *	Increment counters...

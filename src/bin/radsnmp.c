@@ -786,7 +786,7 @@ do { \
 			/*
 			 *	Print the attributes we're about to send
 			 */
-			fr_packet_log(&default_log, packet, &reply_vps, false);
+			fr_radius_packet_log(&default_log, packet, &reply_vps, false);
 
 			FD_ZERO(&set); /* clear the set */
 			FD_SET(fd, &set);
@@ -847,7 +847,7 @@ do { \
 			/*
 			 *	Print the attributes we received in response
 			 */
-			fr_packet_log(&default_log, reply, &reply_vps, true);
+			fr_radius_packet_log(&default_log, reply, &reply_vps, true);
 
 			switch (command) {
 			case RADSNMP_GET:

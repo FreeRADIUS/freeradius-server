@@ -810,7 +810,7 @@ static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 		return -1;
 	}
 
-	fr_packet_log(&default_log, request->packet, &request->request_pairs, false);
+	fr_radius_packet_log(&default_log, request->packet, &request->request_pairs, false);
 
 	return 0;
 }
@@ -857,7 +857,7 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	 */
 	if (!rcode) return;
 
-	fr_packet_log(&default_log, reply, &reply_pairs, true);
+	fr_radius_packet_log(&default_log, reply, &reply_pairs, true);
 
 	/*
 	 *	Increment counters...

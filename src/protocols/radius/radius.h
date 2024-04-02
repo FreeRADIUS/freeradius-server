@@ -241,3 +241,7 @@ ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *list,
 
 ssize_t		fr_radius_decode_foreign(TALLOC_CTX *ctx, fr_pair_list_t *out,
 					 uint8_t const *data, size_t data_len) CC_HINT(nonnull);
+
+void		fr_radius_packet_header_log(fr_log_t const *log, fr_packet_t *packet, bool received);
+
+void		fr_radius_packet_log(fr_log_t const *log, fr_packet_t *packet, fr_pair_list_t *list, bool received);
