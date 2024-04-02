@@ -924,12 +924,19 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 		paused = false;
 	}
 
-
 	/*
 	 *	If we're not done, then leave this packet in the list for future resending.
 	 */
 	request->done = (request->resend == resend_count);
-	if (!request->done) return;
+	if (!request->done) {
+		/*
+		 *	We don't care about duplicate replies, they can go away.
+		 */
+		(void) fr_radius_client_fd_bio_cancel(client, request->packet);
+		request->packet->id = -1;
+		TALLOC_FREE(request->packet->data);
+		return;
+	}
 
 	fr_packet_free(&reply);
 
@@ -963,6 +970,8 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	request = fr_dlist_next(&rc_request_list, current);
 	fr_assert(!paused);
 
+	if (!request) request = fr_dlist_head(&rc_request_list);
+
 	/*
 	 *	Nothing more to send, stop trying to write packets.
 	 */
@@ -984,6 +993,7 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 		goto pause;
 	}
 
+	request->resend++;
 }
 
 static void client_connect(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
