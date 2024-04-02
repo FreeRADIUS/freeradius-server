@@ -1,0 +1,17 @@
+# Pre-set Login-LAT-Node to check correct operator behaviour
+&control.Login-LAT-Node := "foo"
+
+# Test "authorize" rest call.  Uses http to a GET end point
+
+redundant {
+        timeout 0.1s {
+                rest_delay
+        }
+        ok
+}
+
+if (&REST-HTTP-Status-Code) {
+	test_fail
+}
+
+test_pass

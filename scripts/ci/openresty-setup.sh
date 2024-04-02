@@ -28,7 +28,7 @@ PASSWORD="whatever"
 CONF="${BUILDDIR}/nginx.conf"
 
 # Find the mime.types file
-MIME_TYPES_LOCATIONS="/usr/local/openresty/nginx/conf/mime.types /opt/homebrew/etc/openresty/mime.types /usr/local/etc/nginx/mime.types /etc/nginx/mime.types"
+MIME_TYPES_LOCATIONS="/usr/local/etc/openresty/mime.types /opt/homebrew/etc/openresty/mime.types /usr/local/etc/nginx/mime.types /etc/nginx/mime.types"
 for i in ${MIME_TYPES_LOCATIONS}; do
 	if [ -e "${i}" ]; then
 		MIME_TYPES="${i}"
@@ -124,6 +124,15 @@ http {
 	    default_type 'application/json';
 	    add_header   'Content-Type' 'application/json';
 	    content_by_lua_file  ${APIDIR}/json-api.lua;
+	}
+
+        location ~ ^/delay/([0-9]*)$ {
+	    default_type 'application/json';
+	    add_header   'Content-Type' 'application/json';
+            content_by_lua_block {
+                ngx.sleep(tonumber(ngx.var[1]))
+		ngx.say('{\"delay_us\":' .. ngx.ctx.openresty_request_time_us .. '}')
+            }
 	}
 
 	location ~ ^/post(.*)$ {
