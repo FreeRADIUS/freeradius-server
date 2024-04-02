@@ -77,6 +77,10 @@ static int packet_code = FR_RADIUS_CODE_UNDEFINED;
 static int resend_count = 1;
 static bool print_filename = false;
 
+static int forced_id = -1;
+static size_t parallel = 1;
+static bool paused = false;
+
 static fr_bio_fd_config_t fd_config;
 
 static fr_bio_fd_info_t const *fd_info = NULL;
@@ -157,6 +161,8 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "                                    If a second file is provided, it will be used to verify responses\n");
 	fprintf(stderr, "  -F                                Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h                                Print usage help information.\n");
+	fprintf(stderr, "  -i <id>                           Set request id to 'id'.  Values may be 0..255\n");
+	fprintf(stderr, "  -p <num>                          Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -P <proto>                        Use proto (tcp or udp) for transport.\n");
 	fprintf(stderr, "  -r <retries>                      If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -s                                Print out summary information of auth results.\n");
@@ -811,107 +817,25 @@ static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 	return 0;
 }
 
-#if 0
-/*
- *	Receive one packet, maybe.
- */
-static int recv_one_packet(fr_time_delta_t wait_time)
+static fr_event_update_t const pause_write[] = {
+	FR_EVENT_SUSPEND(fr_event_io_func_t, write),
+	{ 0 }
+};
+
+static fr_event_update_t const resume_write[] = {
+	FR_EVENT_RESUME(fr_event_io_func_t, write),
+	{ 0 }
+};
+
+
+static NEVER_RETURNS void client_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
+				       int fd_errno, UNUSED void *uctx)
 {
-
-	// @todo - get a packet
-
-	if (print_filename) {
-		RDEBUG("%s response code %d", request->files->packets, reply->code);
-	}
-
-	deallocate_id(request);
-	request->reply = reply;
-	reply = NULL;
-
-	/*
-	 *	If this fails, we're out of memory.
-	 */
-	if (fr_radius_decode_simple(request, &request->reply_pairs,
-				    request->reply->data, request->reply->data_len,
-				    request->packet->vector, secret) < 0) {
-		REDEBUG("Reply decode failed");
-		stats.lost++;
-		goto packet_done;
-	}
-	PAIR_LIST_VERIFY(&request->reply_pairs);
-	fr_packet_log(&default_log, request->reply, &request->reply_pairs, true);
-
-	/*
-	 *	Increment counters...
-	 */
-	switch (request->reply->code) {
-	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
-	case FR_RADIUS_CODE_COA_ACK:
-	case FR_RADIUS_CODE_DISCONNECT_ACK:
-		stats.accepted++;
-		break;
-
-	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		break;
-
-	default:
-		stats.rejected++;
-	}
-
-	fr_strerror_clear();	/* Clear strerror buffer */
-
-	/*
-	 *	If we had an expected response code, check to see if the
-	 *	packet matched that.
-	 */
-	if ((request->filter_code != FR_RADIUS_CODE_UNDEFINED) && (request->reply->code != request->filter_code)) {
-		if (FR_RADIUS_PACKET_CODE_VALID(request->reply->code)) {
-			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_name[request->filter_code],
-				fr_radius_packet_name[request->reply->code]);
-		} else {
-			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
-				request->reply->code);
-		}
-		stats.failed++;
-	/*
-	 *	Check if the contents of the packet matched the filter
-	 */
-	} else if (fr_pair_list_empty(&request->filter)) {
-		stats.passed++;
-	} else {
-		fr_pair_t const *failed[2];
-
-		fr_pair_list_sort(&request->reply_pairs, fr_pair_cmp_by_da);
-		if (fr_pair_validate(failed, &request->filter, &request->reply_pairs)) {
-			RDEBUG("%s: Response passed filter", request->name);
-			stats.passed++;
-		} else {
-			fr_pair_validate_debug(failed);
-			REDEBUG("%s: Response for failed filter", request->name);
-			stats.failed++;
-		}
-	}
-
-	if (request->resend == resend_count) {
-		request->done = true;
-	}
-
-packet_done:
-	fr_packet_free(&request->reply);
-	fr_packet_free(&reply);	/* may be NULL */
-
-	return 0;
-}
-#endif
-
-static void client_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
-			 UNUSED int fd_errno, UNUSED void *uctx)
-{
-	fr_assert(0);
+	ERROR("Failed in connection - %s", fr_syserror(fd_errno));
+	fr_exit_now(1);
 }
 
-static void client_read(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_bio_packet_t *client = uctx;
 	rc_request_t *request;
@@ -990,6 +914,15 @@ static void client_read(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, vo
 	}
 
 	/*
+	 *	The retry bio takes care of suppressing duplicate replies.
+	 */
+	if (paused) {
+		if (fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, resume_write) < 0) fr_assert(0);
+		paused = false;
+	}
+
+
+	/*
 	 *	If we're not done, then leave this packet in the list for future resending.
 	 */
 	request->done = (request->resend == resend_count);
@@ -1019,30 +952,35 @@ static void client_read(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, vo
 	}
 }
 
-static fr_event_update_t const pause_write[] = {
-	FR_EVENT_SUSPEND(fr_event_io_func_t, write),
-	{ 0 }
-};
-
 static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	fr_bio_packet_t *client = uctx;
 	rc_request_t *request;
 
 	request = fr_dlist_next(&rc_request_list, current);
+	fr_assert(!paused);
 
 	/*
 	 *	Nothing more to send, stop trying to write packets.
 	 */
 	if (!request) {
+	pause:
 		if (fr_event_filter_update(el, fd, FR_EVENT_FILTER_IO, pause_write) < 0) fr_assert(0);
-
 		return;
 	}
 
 	current = request;
 
 	if (send_one_packet(client, request) < 0) fr_assert(0);
+
+	/*
+	 *	0 means "don't limit requests".
+	 */
+	if (parallel && (fr_radius_client_bio_outstanding(client) >= parallel)) {
+		paused = true;
+		goto pause;
+	}
+
 }
 
 static void client_connect(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
@@ -1071,6 +1009,7 @@ int main(int argc, char **argv)
 	int		c;
 	char		const *raddb_dir = RADDBDIR;
 	char		const *dict_dir = DICTDIR;
+	char		*end;
 	char		filesecret[256];
 	FILE		*fp;
 	int		do_summary = false;
@@ -1152,7 +1091,7 @@ int main(int argc, char **argv)
 	 *
 	 ***********************************************************************/
 
-	while ((c = getopt(argc, argv, "46c:C:d:D:f:FhP:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fi:hp:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			fd_config.dst_ipaddr.af = AF_INET;
 			break;
@@ -1230,6 +1169,28 @@ int main(int argc, char **argv)
 
 		case 'F':
 			print_filename = true;
+			break;
+
+		case 'i':
+			if (!isdigit((uint8_t) *optarg))
+				usage();
+			forced_id = atoi(optarg);
+			if ((forced_id < 0) || (forced_id > 255)) {
+				usage();
+			}
+			break;
+
+			/*
+			 *	Note that sending MANY requests in
+			 *	parallel can over-run the kernel
+			 *	queues, and Linux will happily discard
+			 *	packets.  So even if the server responds,
+			 *	the client may not see the reply.
+			 */
+		case 'p':
+			parallel = strtoul(optarg, &end, 10);
+			if (*end) usage();
+			if (parallel > 65536) usage();
 			break;
 
 		case 'P':
@@ -1426,6 +1387,10 @@ int main(int argc, char **argv)
 		files = talloc_zero(talloc_autofree_context(), rc_file_pair_t);
 		files->packets = "-";
 		if (radclient_init(files, files) < 0) fr_exit_now(1);
+	}
+
+	if ((forced_id >= 0) && (fr_dlist_num_elements(&filenames) > 1)) {
+		usage();
 	}
 
 	/*
