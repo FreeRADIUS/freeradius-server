@@ -3337,7 +3337,7 @@ fi
 				CFLAGS="-DLDAP_DEPRECATED=1 ${CFLAGS}"
 
 
-						smart_try_dir="$libfreeradius_ldap_lib_dir /usr/local/opt/openldap/lib /usr/local/openldap/lib"
+						smart_try_dir="$libfreeradius_ldap_lib_dir /usr/local/opt/openldap/lib /usr/local/openldap/lib /usr/local/openldap/lib64"
 
 
 

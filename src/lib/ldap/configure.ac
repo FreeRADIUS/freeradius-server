@@ -78,7 +78,7 @@ FR_LIBRARY_START_TESTS
 	dnl #  exports OpenLDAP specific functions to managing async
 	dnl #  I/O.
 	dnl #
-	smart_try_dir="$libfreeradius_ldap_lib_dir /usr/local/opt/openldap/lib /usr/local/openldap/lib"
+	smart_try_dir="$libfreeradius_ldap_lib_dir /usr/local/opt/openldap/lib /usr/local/openldap/lib /usr/local/openldap/lib64"
 	FR_SMART_CHECK_LIB(ldap, ldap_install_tls)
 	if test "x$ac_cv_lib_ldap_ldap_install_tls" != "xyes"; then
 		fail="$fail libldap (with async support)"
