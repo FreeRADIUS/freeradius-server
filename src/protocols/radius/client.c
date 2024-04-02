@@ -404,6 +404,24 @@ fr_radius_client_bio_info_t const *fr_radius_client_bio_info(fr_bio_packet_t *bi
 }
 
 
+int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
+{
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
+
+	if (!code || (code >= FR_RADIUS_CODE_MAX)) {
+		fr_strerror_const("Invalid packet code");
+		return -1;
+	}
+
+	if ((id < 0) || (id > 256)) {
+		fr_strerror_const("Invalid ID");
+		return -1;
+	}
+
+	return fr_radius_code_id_force(my->codes, code, id);
+}
+
+
 /** Try to connect a socket.
  *
  *  Calls fr_bio_fd_connect()

@@ -46,6 +46,8 @@ void		fr_radius_id_push(fr_radius_id_t *track, fr_packet_t const *packet) CC_HIN
 
 fr_radius_id_ctx_t *fr_radius_id_find(fr_radius_id_t *track, int id) CC_HINT(nonnull);
 
+int		fr_radius_id_force(fr_radius_id_t *track, int id) CC_HINT(nonnull);
+
 static inline CC_HINT(nonnull) int fr_radius_code_id_alloc(TALLOC_CTX *ctx, fr_radius_code_id_t codes, int code)
 {
 	fr_assert(code > 0);
@@ -87,4 +89,14 @@ static inline CC_HINT(nonnull) fr_radius_id_ctx_t *fr_radius_code_id_find(fr_rad
 	if (!codes[code]) return NULL;
 
 	return fr_radius_id_find(codes[code], id);
+}
+
+static inline CC_HINT(nonnull) int fr_radius_code_id_force(fr_radius_code_id_t codes, int code, int id)
+{
+	fr_assert(code > 0);
+	fr_assert(code < FR_RADIUS_CODE_MAX);
+
+	if (!codes[code]) return NULL;
+
+	return fr_radius_id_force(codes[code], id);
 }

@@ -121,3 +121,32 @@ fr_radius_id_ctx_t *fr_radius_id_find(fr_radius_id_t *track, int id)
 
 	return &track->id[id];
 }
+
+/**  Forces the next ID to be the given one
+ *
+ */
+int fr_radius_id_force(fr_radius_id_t *track, int id)
+{
+	int i, first;
+
+	fr_assert(id >= 0);
+	fr_assert(id < 256);
+
+	for (i = 0; i < 256; i++) {
+		if (track->free_ids[(track->free_start + i) & 0xff] != id) continue;
+
+		/*
+		 *	It's already the first one.  We don't need to do any more.
+		 */
+		if (i == 0) return 0;
+
+		first = track->free_ids[track->free_start];
+		track->free_ids[track->free_start] = id;
+		track->free_ids[(track->free_start + i) & 0xff] = first;
+
+		return 0;
+	}
+
+	fr_strerror_const("Cannot assign ID");
+	return -1;
+}
