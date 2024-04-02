@@ -41,8 +41,8 @@ FR_DLIST_TYPES(fr_bio_retry_list)
 
 struct fr_bio_retry_entry_s {
 	void		*uctx;
-	void		*packet_ctx
-;	fr_bio_retry_rewrite_t rewrite;		//!< per-packet rewrite callback
+	void		*packet_ctx;
+	fr_bio_retry_rewrite_t rewrite;		//!< per-packet rewrite callback
 
 	union {
 		fr_rb_node_t	node;		//!< for the timers
@@ -141,6 +141,8 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 #ifndef NDEBUG
 	item->buffer = NULL;
 #endif
+	item->uctx = NULL;
+	item->packet_ctx = NULL;
 
 	fr_assert(my->first != item);
 	fr_bio_retry_list_insert_head(&my->free, item);

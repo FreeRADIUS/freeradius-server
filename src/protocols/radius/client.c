@@ -214,12 +214,13 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 //	if (buffer[0] != FR_RADIUS_CODE_ACCOUNTING_REQUEST) return;
 }
 
-static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **retry_ctx_p, UNUSED void *packet_ctx, const void *buffer, UNUSED size_t size)
+static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **retry_ctx_p, void *packet_ctx, const void *buffer, UNUSED size_t size)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
 	unsigned int code;
 	uint8_t *data = UNCONST(uint8_t *, buffer); /* @todo - for verify() */
 	fr_radius_id_ctx_t *id_ctx;
+	fr_packet_t *response = packet_ctx;
 
 	/*
 	 *	We now have a complete packet in our buffer.  Check if it is one we expect.
@@ -252,6 +253,7 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 		}
 
 		*retry_ctx_p = id_ctx->retry_ctx;
+		response->uctx = id_ctx->packet;
 
 		fr_assert(my->info.outstanding > 0);
 		my->info.outstanding--;
@@ -276,7 +278,18 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
 	fr_radius_id_ctx_t *id_ctx = retry_ctx->uctx;
 
+	fr_assert(id_ctx->packet == retry_ctx->packet_ctx);
+
 	fr_radius_code_id_push(my->codes, id_ctx->packet);
+
+	/*
+	 *	We're no longer retrying this packet.
+	 *
+	 *	However, we leave id_ctx->request_ctx and id_ctx->packet around, because the other code still
+	 *	needs it.
+	 */
+	id_ctx->request_ctx = NULL;
+	id_ctx->retry_ctx = NULL;
 }
 
 /** Cancel one packet.
@@ -300,6 +313,8 @@ int fr_radius_client_fd_bio_cancel(fr_bio_packet_t *bio, fr_packet_t *packet)
 	if (fr_bio_retry_entry_cancel(my->retry, id_ctx->retry_ctx) < 0) return -1;
 
 	id_ctx->retry_ctx = NULL;
+	id_ctx->packet = NULL;
+
 	return 0;
 }
 
@@ -308,8 +323,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_
 {
 	ssize_t slen;
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
-	fr_packet_t *reply;
-	fr_radius_id_ctx_t *id_ctx;
+	fr_packet_t *reply, *original;
 
 	/*
 	 *	We don't need to set up response.socket for connected bios.
@@ -328,21 +342,13 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_
 		return slen;
 	}
 
-	/*
-	 *	Use the reply code to look up the original packet code.
-	 *
-	 *	@todo - see above todo in response().  Maybe cache the id_ctx in "my"?
-	 */
-	id_ctx = fr_radius_code_id_find(my->codes, allowed_replies[my->buffer[0]], my->buffer[1]);
-	fr_assert(id_ctx != NULL);
+	original = response.uctx;
 
 	/*
 	 *	Allocate the new request data structure
 	 */
-	reply = fr_packet_alloc(id_ctx->request_ctx, false);
+	reply = fr_packet_alloc(original, false);
 	if (!reply) return -1;
-
-	id_ctx->response = reply;
 
 	/*
 	 *	This is for connected sockets.
@@ -364,13 +370,13 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (fr_radius_decode_simple(id_ctx->request_ctx, out, reply->data, reply->data_len,
-				    id_ctx->packet->vector, (char const *) my->cfg.verify.secret) < 0) {
+	if (fr_radius_decode_simple(original, out, reply->data, reply->data_len,
+				    original->vector, (char const *) my->cfg.verify.secret) < 0) {
 		talloc_free(reply);
 		return -1;
 	}
 
-	*request_ctx_p = id_ctx->request_ctx;
+	*request_ctx_p = original->uctx;
 	*packet_p = reply;
 
 	return 1;
