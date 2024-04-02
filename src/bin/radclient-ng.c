@@ -235,6 +235,8 @@ static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void 
 {
 	if (fr_time_delta_unwrap(wake) < (NSEC / 10)) return 0;
 
+	if (fr_dlist_num_elements(&rc_request_list) != 0) return 0;
+
 	fr_log(&default_log, L_DBG, __FILE__, __LINE__, "Main loop waking up in %pV seconds", fr_box_time_delta(wake));
 
 	return 0;
@@ -913,16 +915,16 @@ static void client_read(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, vo
 {
 	fr_bio_packet_t *client = uctx;
 	rc_request_t *request;
-	fr_pair_list_t list;
+	fr_pair_list_t reply_pairs;
 	fr_packet_t *reply;
 	int rcode;
 
-	fr_pair_list_init(&list);
+	fr_pair_list_init(&reply_pairs);
 
 	/*
 	 *	@todo list_ctx is ignored
 	 */
-	rcode = fr_bio_packet_read(client, (void **) &request, &reply, client, &list);
+	rcode = fr_bio_packet_read(client, (void **) &request, &reply, client, &reply_pairs);
 	if (rcode < 0) {
 		ERROR("Failed reading packet - %s", fr_bio_strerror(rcode));
 		fr_exit_now(1);
@@ -933,9 +935,67 @@ static void client_read(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, vo
 	 */
 	if (!rcode) return;
 
-	fr_pair_list_append(&request->reply_pairs, &list);
+	fr_packet_log(&default_log, reply, &reply_pairs, true);
 
-	fr_packet_log(&default_log, reply, &request->reply_pairs, true);
+	/*
+	 *	Increment counters...
+	 */
+	switch (reply->code) {
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCOUNTING_RESPONSE:
+	case FR_RADIUS_CODE_COA_ACK:
+	case FR_RADIUS_CODE_DISCONNECT_ACK:
+		stats.accepted++;
+		break;
+
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+		break;
+
+	default:
+		stats.rejected++;
+	}
+
+	fr_strerror_clear();	/* Clear strerror buffer */
+
+	/*
+	 *	If we had an expected response code, check to see if the
+	 *	packet matched that.
+	 */
+	if ((request->filter_code != FR_RADIUS_CODE_UNDEFINED) && (reply->code != request->filter_code)) {
+		if (FR_RADIUS_PACKET_CODE_VALID(reply->code)) {
+			REDEBUG("%s: Expected %s got %s", request->name, fr_radius_packet_name[request->filter_code],
+				fr_radius_packet_name[reply->code]);
+		} else {
+			REDEBUG("%s: Expected %u got %i", request->name, request->filter_code,
+				reply->code);
+		}
+		stats.failed++;
+	/*
+	 *	Check if the contents of the packet matched the filter
+	 */
+	} else if (fr_pair_list_empty(&request->filter)) {
+		stats.passed++;
+	} else {
+		fr_pair_t const *failed[2];
+
+		fr_pair_list_sort(&reply_pairs, fr_pair_cmp_by_da);
+		if (fr_pair_validate(failed, &request->filter, &reply_pairs)) {
+			RDEBUG("%s: Response passed filter", request->name);
+			stats.passed++;
+		} else {
+			fr_pair_validate_debug(failed);
+			REDEBUG("%s: Response for failed filter", request->name);
+			stats.failed++;
+		}
+	}
+
+	/*
+	 *	If we're not done, then leave this packet in the list for future resending.
+	 */
+	request->done = (request->resend == resend_count);
+	if (!request->done) return;
+
+	fr_packet_free(&reply);
 
 	/*
 	 *	Don't leave a dangling pointer around.
@@ -946,6 +1006,14 @@ static void client_read(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, vo
 
 	talloc_free(request);
 
+	/*
+	 *	There are more packets to send, then allow the writer to send them.
+	 */
+	if (fr_dlist_num_elements(&rc_request_list) != 0) return;
+
+	/*
+	 *	We're done all packets, and there's nothing more to read, stop.
+	 */
 	if (!fr_radius_client_bio_outstanding(client)) {
 		fr_event_loop_exit(el, 1);
 	}
