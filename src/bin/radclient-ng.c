@@ -66,8 +66,6 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 		} \
 	} while (0)
 
-static int retries = 3;
-static fr_time_delta_t timeout = fr_time_delta_wrap((int64_t)5 * NSEC);	/* 5 seconds */
 static char *secret = NULL;
 static bool do_output = true;
 
@@ -1015,6 +1013,9 @@ int main(int argc, char **argv)
 	int		do_summary = false;
 	fr_dlist_head_t	filenames;
 
+	int		retries = 5;
+	fr_time_delta_t timeout = fr_time_delta_from_sec(2);
+
 	/*
 	 *	It's easier having two sets of flags to set the
 	 *	verbosity of library calls and the verbosity of
@@ -1297,10 +1298,10 @@ int main(int argc, char **argv)
 	 */
 	client_config.allowed[packet_code] = true;
 	client_config.retry[packet_code] = (fr_retry_config_t) {
-		.irt = fr_time_delta_from_sec(2),
+		.irt = timeout,
 		.mrt = fr_time_delta_from_sec(16),
 		.mrd = fr_time_delta_from_sec(30),
-		.mrc = 5,
+		.mrc = retries,
 	};
 	client_config.retry_cfg.retry_config = client_config.retry[packet_code];
 
