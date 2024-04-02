@@ -28,7 +28,7 @@ PASSWORD="whatever"
 CONF="${BUILDDIR}/nginx.conf"
 
 # Find the mime.types file
-MIME_TYPES_LOCATIONS="/usr/local/etc/openresty/mime.types /opt/homebrew/etc/openresty/mime.types /usr/local/etc/nginx/mime.types /etc/nginx/mime.types"
+MIME_TYPES_LOCATIONS="/usr/local/openresty/nginx/conf/mime.types /usr/local/etc/openresty/mime.types /opt/homebrew/etc/openresty/mime.types /usr/local/etc/nginx/mime.types /etc/nginx/mime.types"
 for i in ${MIME_TYPES_LOCATIONS}; do
 	if [ -e "${i}" ]; then
 		MIME_TYPES="${i}"
