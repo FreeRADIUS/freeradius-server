@@ -432,13 +432,13 @@ print_fmt:
 	/*
 	 *	Make sure the indent isn't set to something crazy
 	 */
-	unlang_indent = request->log.unlang_indent > sizeof(spaces) - 1 ?
+	unlang_indent = request->log.indent.unlang > sizeof(spaces) - 1 ?
 			sizeof(spaces) - 1 :
-			request->log.unlang_indent;
+			request->log.indent.unlang;
 
-	module_indent = request->log.module_indent > sizeof(spaces) - 1 ?
+	module_indent = request->log.indent.module > sizeof(spaces) - 1 ?
 			sizeof(spaces) - 1 :
-			request->log.module_indent;
+			request->log.indent.module;
 
 	/*
 	 *	Module name and indentation i.e.
@@ -880,8 +880,7 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 			ssize_t marker_idx, char const *marker_fmt, ...)
 {
 	char const		*ellipses = "";
-	uint8_t			unlang_indent;
-	uint8_t			module_indent;
+	rindent_t		indent;
 	va_list			ap;
 	char			*error;
 	static char const	marker_spaces[] = "                                                            "; /* 60 */
@@ -902,10 +901,9 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	/*
 	 *  Don't want format markers being indented
 	 */
-	unlang_indent = request->log.unlang_indent;
-	module_indent = request->log.module_indent;
-	request->log.unlang_indent = 0;
-	request->log.module_indent = 0;
+	indent = request->log.indent;
+	request->log.indent.module = 0;
+	request->log.indent.unlang = 0;
 
 	va_start(ap, marker_fmt);
 	error = fr_vasprintf(request, marker_fmt, ap);
@@ -915,8 +913,7 @@ void log_request_marker(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request
 	log_request(type, lvl, request, file, line, "%s%.*s^ %s", ellipses, (int) marker_idx, marker_spaces, error);
 	talloc_free(error);
 
-	request->log.unlang_indent = unlang_indent;
-	request->log.module_indent = module_indent;
+	request->log.indent = indent;
 }
 
 void log_request_hex(fr_log_type_t type, fr_log_lvl_t lvl, request_t *request,

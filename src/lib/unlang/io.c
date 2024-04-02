@@ -56,7 +56,7 @@ request_t *unlang_io_subrequest_alloc(request_t *parent, fr_dict_t const *namesp
 	/*
 	 *	Push the child, and set it's top frame to be true.
 	 */
-	child->log.unlang_indent = parent->log.unlang_indent;
+	child->log.indent.unlang = parent->log.indent.unlang;
 
 	/*
 	 *	Initialize some basic information for the child.

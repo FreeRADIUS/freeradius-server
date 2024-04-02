@@ -661,7 +661,7 @@ static unlang_action_t unlang_module_done(rlm_rcode_t *p_result, request_t *requ
 	rlm_rcode_t			rcode = state-> set_rcode ? state->rcode : *p_result;
 
 #ifndef NDEBUG
-	fr_assert(state->unlang_indent == request->log.unlang_indent);
+	fr_assert(state->unlang_indent == request->log.indent.unlang);
 #endif
 
 	fr_assert(rcode >= RLM_MODULE_REJECT);
@@ -885,7 +885,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	state->previous_module = request->module;
 
 #ifndef NDEBUG
-	state->unlang_indent = request->log.unlang_indent;
+	state->unlang_indent = request->log.indent.unlang;
 #endif
 	/*
 	 *	Process a stand-alone child, and fall through

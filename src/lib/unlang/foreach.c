@@ -101,7 +101,7 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	if (!vp) {
 		*p_result = frame->result;
 #ifndef NDEBUG
-		fr_assert(state->indent == request->log.unlang_indent);
+		fr_assert(state->indent == request->log.indent.unlang);
 #endif
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
@@ -199,7 +199,7 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	state->request = request;
 	state->depth = depth;
 #ifndef NDEBUG
-	state->indent = request->log.unlang_indent;
+	state->indent = request->log.indent.unlang;
 #endif
 
 	/*

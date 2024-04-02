@@ -37,6 +37,11 @@ extern "C" {
  *
  */
 typedef struct log_dst log_dst_t;
+typedef struct rindent_s {
+	uint8_t			unlang;		//!< By how much to indent log messages. uin8_t so it's obvious
+						//!< when a request has been exdented too much.
+	uint8_t			module;		//!< Indentation after the module prefix name.
+} rindent_t;
 
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/util/log.h>
@@ -374,12 +379,6 @@ void	log_global_free(void);
 #define RPEDEBUG4(fmt, ...)	log_request_perror(L_DBG_ERR, L_DBG_LVL_MAX, request, __FILE__, __LINE__, fmt, ## __VA_ARGS__)
 /** @} */
 
-typedef struct {
-	uint8_t			unlang_indent;	//!< By how much to indent log messages. uin8_t so it's obvious
-						//!< when a request has been exdented too much.
-	uint8_t			module_indent;	//!< Indentation after the module prefix name.
-} rindent_t;
-
 /** Save indentation for later restoral.
  *
  *  This call avoids the need to manually REXDENT on error paths.  We
@@ -387,13 +386,11 @@ typedef struct {
  *
  */
 #define RINDENT_SAVE(_x, _request) do { \
-		(_x)->unlang_indent = request->log.unlang_indent; \
-		(_x)->module_indent = request->log.module_indent; \
+		(_x)->indent = request->log.indent; \
 	} while (0)
 
 #define RINDENT_RESTORE(_request, _x) do { \
-		request->log.unlang_indent = (_x)->unlang_indent; \
-		request->log.module_indent = (_x)->module_indent; \
+		request->log.indent = (_x)->indent; \
 	} while (0)
 
 #ifdef DEBUG_INDENT
@@ -432,9 +429,9 @@ typedef struct {
  */
 #  define RINDENT() do {\
 	if (request->module) {\
-		request->log.module_indent += 2;\
+		request->log.indent.unlang += 2;\
 	} else {\
-		request->log.unlang_indent += 2;\
+		request->log.indent.unlang += 2;\
 	}\
 } while(0)
 
@@ -445,9 +442,9 @@ typedef struct {
  */
 #  define REXDENT() do {\
 	if (request->module) {\
-		request->log.module_indent -= 2;\
+		request->log.indent.unlang -= 2;\
 	} else {\
-		request->log.unlang_indent -= 2;\
+		request->log.indent.unlang -= 2;\
 	}\
 } while(0)
 #endif

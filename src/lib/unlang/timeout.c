@@ -62,7 +62,7 @@ static unlang_action_t unlang_timeout_resume_done(UNUSED rlm_rcode_t *p_result, 
 	unlang_frame_state_timeout_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_timeout_t);
 
 	if (!state->success) {
-		RINDENT_RESTORE(request, &state->indent);
+		RINDENT_RESTORE(request, state);
 
 		RWDEBUG("Timeout exceeded");
 		return UNLANG_ACTION_FAIL;
@@ -79,7 +79,7 @@ static unlang_action_t unlang_timeout_set(rlm_rcode_t *p_result, request_t *requ
 	/*
 	 *	Save current indentation for the error path.
 	 */
-	RINDENT_SAVE(&state->indent, request);
+	RINDENT_SAVE(state, request);
 
 	timeout = fr_time_add(fr_time(), state->timeout);
 

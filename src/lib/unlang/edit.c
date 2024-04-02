@@ -1530,7 +1530,7 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 
 			rcode = state->current->func(request, state, state->current);
 			if (rcode < 0) {
-				RINDENT_RESTORE(request, &state->indent);
+				RINDENT_RESTORE(request, state);
 
 				/*
 				 *	Expansions, etc. failures are SOFT failures, which undo the edit
@@ -1605,7 +1605,7 @@ static void edit_state_init_internal(request_t *request, unlang_frame_state_edit
 	/*
 	 *	Save current indentation for the error path.
 	 */
-	RINDENT_SAVE(&state->indent, request);
+	RINDENT_SAVE(state, request);
 }
 
 /** Execute an update block

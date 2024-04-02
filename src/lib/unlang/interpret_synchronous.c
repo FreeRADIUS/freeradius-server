@@ -62,8 +62,8 @@ static void _request_done_external(request_t *request, UNUSED rlm_rcode_t rcode,
 		 *	@todo - check that the stack is at frame 0, otherwise
 		 *	more things have gone wrong.
 		 */
-		fr_assert_msg(request->parent || (request->log.unlang_indent == 0),
-			      "Request %s bad log indentation - expected 0 got %u", request->name, request->log.unlang_indent);
+		fr_assert_msg(request->parent || (request->log.indent.unlang == 0),
+			      "Request %s bad log indentation - expected 0 got %u", request->name, request->log.indent.unlang);
 		fr_assert_msg(!unlang_interpret_is_resumable(request),
 			      "Request %s is marked as yielded at end of processing", request->name);
 	}

@@ -158,8 +158,8 @@ static inline void CC_HINT(always_inline) request_log_init_child(request_t *chil
 	 *	Copy debug information.
 	 */
 	memcpy(&(child->log), &(parent->log), sizeof(child->log));
-	child->log.unlang_indent = 0;	/* Apart from the indent which we reset */
-	child->log.module_indent = 0;	/* Apart from the indent which we reset */
+	child->log.indent.unlang = 0;	/* Apart from the indent which we reset */
+	child->log.indent.module = 0;	/* Apart from the indent which we reset */
 	child->log.lvl = parent->log.lvl;
 }
 

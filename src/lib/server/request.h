@@ -215,9 +215,7 @@ struct request_s {
 
 		fr_log_lvl_t		lvl;		//!< Log messages with lvl >= to this should be logged.
 
-		uint8_t			unlang_indent;	//!< By how much to indent log messages. uin8_t so it's obvious
-							//!< when a request has been exdented too much.
-		uint8_t			module_indent;	//!< Indentation after the module prefix name.
+		rindent_t		indent;		//!< Indentation for log messages.
 	} log;
 
 	char const		*component; 	//!< Section the request is in.
