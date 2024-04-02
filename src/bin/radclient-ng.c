@@ -692,6 +692,7 @@ static int radclient_sane(rc_request_t *request)
 {
 	request->packet->socket.inet.src_ipaddr = fd_info->socket.inet.src_ipaddr;
 	request->packet->socket.inet.src_port = fd_info->socket.inet.src_port;
+	request->packet->socket.inet.ifindex = fd_info->socket.inet.ifindex;
 
 	if (request->packet->socket.inet.dst_port == 0) {
 		request->packet->socket.inet.dst_port = fd_config.dst_port;
@@ -858,6 +859,10 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	if (!rcode) return;
 
 	fr_radius_packet_log(&default_log, reply, &reply_pairs, true);
+
+	if (print_filename) {
+		RDEBUG("%s response code %d", request->files->packets, reply->code);
+	}
 
 	/*
 	 *	Increment counters...
@@ -1444,6 +1449,13 @@ int main(int argc, char **argv)
 	fd_info = fr_bio_fd_info(bio);
 	fr_assert(fd_info != NULL);
 
+	if (forced_id >= 0) {
+		if (fr_radius_client_bio_force_id(client_bio, packet_code, forced_id) < 0) {
+			fr_perror("radclient");
+			fr_exit_now(1);
+		}
+	}
+
 	/*
 	 *	Walk over the list of packets, updating to use the correct addresses, and sanity checking them.
 	 */
@@ -1490,6 +1502,8 @@ int main(int argc, char **argv)
 	}
 
 	talloc_free(autofree);
+
+	fr_strerror_clear();
 
 	if (do_summary) {
 		fr_perror("Packet summary:\n"
