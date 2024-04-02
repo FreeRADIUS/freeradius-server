@@ -281,6 +281,16 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	 */
 	if (data_size <= 0) return data_size;
 
+#if 0
+	/*
+	 *	If we're not tracking duplicates, then track->packet is NULL.
+	 *
+	 *	There's no reason to fix this now, as all of this will
+	 *	be rewritten when the bio stuff works.  Since this
+	 *	code doesn't do anything anyways, it's best to just
+	 *	comment it out.
+	 */
+
 	/*
 	 *	Root through the reply to determine any
 	 *	connection-level negotiation data, but only the first
@@ -289,6 +299,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 	if ((written == 0) && (track->packet[0] == FR_RADIUS_CODE_STATUS_SERVER)) {
 //		status_check_reply(inst, buffer, buffer_len);
 	}
+#endif
 
 	/*
 	 *	Add in previously written data to the response.
