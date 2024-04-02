@@ -665,7 +665,12 @@ int fr_bio_fd_socket_name(fr_bio_fd_t *my)
 		return -1;
 	}
 
-	return fr_ipaddr_from_sockaddr(&my->info.socket.inet.src_ipaddr, &my->info.socket.inet.src_port, &salocal, salen);
+	if (fr_ipaddr_from_sockaddr(&my->info.socket.inet.src_ipaddr, &my->info.socket.inet.src_port, &salocal, salen) < 0) return -1;
+
+	fr_ipaddr_get_scope_id(&my->info.socket.inet.src_ipaddr);
+	my->info.socket.inet.ifindex = my->info.socket.inet.src_ipaddr.scope_id;
+
+	return 0;
 }
 
 

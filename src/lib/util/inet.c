@@ -1469,6 +1469,50 @@ int fr_ipaddr_from_sockaddr(fr_ipaddr_t *ipaddr, uint16_t *port,
 	return 0;
 }
 
+void  fr_ipaddr_get_scope_id(fr_ipaddr_t *ipaddr)
+{
+	struct ifaddrs *list = NULL;
+	struct ifaddrs *i;
+
+	/*
+	 *	This should be set already for IPv6.  We should only need to do this for IPv4.
+	 */
+	if (ipaddr->scope_id != 0) return;
+
+	/*
+	 *	Bind manually to an IP used by the named interface.
+	 */
+	if (getifaddrs(&list) < 0) return;
+
+	for (i = list; i != NULL; i = i->ifa_next) {
+		fr_ipaddr_t my_ipaddr;
+
+		if (!i->ifa_addr || !i->ifa_name || (ipaddr->af != i->ifa_addr->sa_family)) continue;
+
+		fr_ipaddr_from_sockaddr(&my_ipaddr, NULL,
+					(struct sockaddr_storage *)i->ifa_addr, sizeof(struct sockaddr_in6));
+		my_ipaddr.scope_id = 0;
+
+		/*
+		 *	my_ipaddr will have a scope_id, but the input
+		 *	ipaddr won't have one.  We therefore set the
+		 *	local one to zero, so that we can do correct
+		 *	IP address comparisons.
+		 *
+		 *	If the comparison succeeds, then we return
+		 *	both the interface name, and we update the
+		 *	input ipaddr with the correct scope_id.
+		 */
+		if (fr_ipaddr_cmp(ipaddr, &my_ipaddr) == 0) {
+			ipaddr->scope_id = if_nametoindex(i->ifa_name);
+			break;
+		}
+	}
+
+	freeifaddrs(list);
+}
+
+
 char *fr_ipaddr_to_interface(TALLOC_CTX *ctx, fr_ipaddr_t *ipaddr)
 {
 	struct ifaddrs *list = NULL;
