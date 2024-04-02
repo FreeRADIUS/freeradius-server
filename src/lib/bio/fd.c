@@ -776,6 +776,8 @@ static int fr_bio_fd_init_file(fr_bio_fd_t *my)
 
 int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 {
+	int rcode;
+
 	if (my->info.socket.af == AF_FILE_BIO) return fr_bio_fd_init_file(my);
 
 	/*
@@ -824,7 +826,15 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 	 */
 	if (!my->info.cfg->async) return 0;
 
-	return fr_bio_fd_try_connect(my);
+	rcode = fr_bio_fd_try_connect(my);
+	if (rcode == 0) return 0;
+
+	if (rcode != fr_bio_error(IO_WOULD_BLOCK)) return rcode;
+
+	fr_assert(my->info.write_blocked);
+	fr_assert(my->info.state == FR_BIO_FD_STATE_CONNECTING);
+
+	return 0;
 }
 
 int fr_bio_fd_init_common(fr_bio_fd_t *my)
