@@ -44,7 +44,7 @@ struct fr_radius_id_s {
  */
 fr_radius_id_t *fr_radius_id_alloc(TALLOC_CTX *ctx)
 {
-	int i;
+	uint32_t i;
 	fr_radius_id_t *track;
 
 	track = talloc_zero(ctx, fr_radius_id_t);
@@ -57,6 +57,28 @@ fr_radius_id_t *fr_radius_id_alloc(TALLOC_CTX *ctx)
 	for (i = 0; i < 256; i++) {
 		track->free_ids[i] = i;
 	}
+
+	/*
+	 *	Shuffle the entirs using a Fisher-Yates shuffle.
+	 *
+	 *	We loop from i=255..1, choosing random numbers j, such that 0 <= j <= i
+	 *	And then swap a[j],a[i]
+	 *
+	 *	We choose a 32-bit random number, and then take the modulo of that and i+1.  Which means that
+	 *	the resulting random number j is [0..i], whereas taking the modulo with i, then the random
+	 *	number j will instead be chosen to be [0..i)
+	 */
+	for (i = 255; i >= 1; i--) {
+		uint32_t j = fr_rand() % (i + 1); /* small bias, but we don't care much */
+		int tmp;
+
+		if (j == i) continue;
+
+		tmp = track->free_ids[j];
+		track->free_ids[j] = track->free_ids[i];
+		track->free_ids[i] = tmp;
+	}
+
 
 	return track;
 }
