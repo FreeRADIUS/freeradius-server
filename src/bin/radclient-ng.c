@@ -722,28 +722,6 @@ static int radclient_sane(rc_request_t *request)
 }
 
 
-#if 0
-/*
- *	Deallocate packet ID, etc.
- */
-static void deallocate_id(rc_request_t *request)
-{
-	if (!request || !request->packet || (request->packet->id < 0)) return;
-
-	(void) fr_radius_client_fd_bio_cancel(client_bio, request->packet);
-
-	request->packet->id = -1;
-
-	/*
-	 *	If we've already sent a packet, free up the old one,
-	 *	and ensure that the next packet has a unique
-	 *	authentication vector.
-	 */
-	if (request->packet->data) TALLOC_FREE(request->packet->data);
-	if (request->reply) fr_packet_free(&request->reply);
-}
-#endif
-
 /*
  *	Send one packet.
  */
@@ -927,7 +905,7 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	/*
 	 *	If we're not done, then leave this packet in the list for future resending.
 	 */
-	request->done = (request->resend == resend_count);
+	request->done = (request->resend >= resend_count);
 	if (!request->done) {
 		/*
 		 *	We don't care about duplicate replies, they can go away.
@@ -952,7 +930,9 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	/*
 	 *	There are more packets to send, then allow the writer to send them.
 	 */
-	if (fr_dlist_num_elements(&rc_request_list) != 0) return;
+	if (fr_dlist_num_elements(&rc_request_list) != 0) {
+		return;
+	}
 
 	/*
 	 *	We're done all packets, and there's nothing more to read, stop.
@@ -982,6 +962,11 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	}
 
 	current = request;
+
+	if (request->packet->id >= 0) {
+		paused = true;
+		goto pause;
+	}
 
 	if (send_one_packet(client, request) < 0) fr_assert(0);
 
