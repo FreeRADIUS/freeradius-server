@@ -1,0 +1,40 @@
+#
+#  Clear out old data
+#
+string groupname
+
+%sql("${delete_from_radcheck} 'groups_no_fall_through'")
+%sql("${delete_from_radreply} 'groups_no_fall_through'")
+
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'nofallthrough_group'")
+%sql("DELETE FROM radgroupreply WHERE groupname = 'nofallthrough_group'")
+
+%sql("DELETE FROM radusergroup WHERE username = 'groups_no_fall_through'")
+
+#
+#  Insert new test data
+#
+%sql("${insert_into_radcheck} ('groups_no_fall_through', 'Password.Cleartext', ':=', 'topsecret')")
+%sql("${insert_into_radreply} ('groups_no_fall_through', 'Reply-Message', ':=', 'Hello No-Fallthrough User')")
+%sql("${insert_into_radreply} ('groups_no_fall_through', 'Fall-Through', ':=', 'no')")
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_no_fall_through', 'fallthrough_group', 1010)")
+%sql("INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('nofallthrough_group', 'Password.Cleartext', ':=', 'UserAPassword')")
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('nofallthrough_group', 'Reply-Message', ':=', 'Hello User A')")
+
+#
+#  Run SQL
+#
+sql
+if (!ok) {
+	test_fail
+}
+
+if !(&control.Password.Cleartext == &User-Password) {
+	test_fail
+}
+
+if !(&reply.Reply-Message == "Hello No-Fallthrough User") {
+	test_fail
+}
+
+test_pass
