@@ -251,7 +251,7 @@ static fr_process_state_t const process_state[] = {
 		.default_reply = FR_DHCP_DO_NOT_RESPOND,
 		.send = send_generic,
 		.resume = resume_send_generic,
-		.section_offset = PROCESS_CONF_OFFSET(ack),
+		.section_offset = PROCESS_CONF_OFFSET(nak),
 	},
 
 	[FR_DHCP_INFORM] = {
