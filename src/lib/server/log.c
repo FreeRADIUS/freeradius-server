@@ -1062,12 +1062,13 @@ static void log_register_dst(char const *name, fr_log_t *log, CONF_SECTION *cs)
  */
 fr_log_t *log_dst_by_name(char const *name)
 {
-	fr_log_track_t find;
+	fr_log_track_t find, *found;
 
 	memset(&find, 0, sizeof(find));
 	find.name = name;
 
-	return fr_rb_find(dst_tree, &find);
+	found = fr_rb_find(dst_tree, &find);
+	return (found) ? found->log : NULL;
 }
 
 static int _log_free(fr_log_t *log)
