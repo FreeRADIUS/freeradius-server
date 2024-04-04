@@ -1180,9 +1180,9 @@ static int _log_dst_free(fr_log_t *log)
 }
 
 static xlat_arg_parser_t const xlat_func_log_dst_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING },
-	{ .required = false, .type = FR_TYPE_UINT32 },
-	{ .required = false, .type = FR_TYPE_STRING },
+	{ .required = true, .type = FR_TYPE_STRING, .concat = true },
+	{ .required = false, .type = FR_TYPE_UINT32, .single = true },
+	{ .required = false, .type = FR_TYPE_STRING, .concat = true },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
