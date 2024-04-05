@@ -118,7 +118,7 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 			dst = *last;
 			if (dst->uctx == log_dst) {
 				*last = dst->next;
-				free(dst);
+				talloc_free(dst);
 				return;
 			}
 
