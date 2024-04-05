@@ -1180,7 +1180,7 @@ static int _log_dst_free(fr_log_t *log)
 }
 
 static xlat_arg_parser_t const xlat_func_log_dst_args[] = {
-	{ .required = true, .type = FR_TYPE_STRING, .concat = true },
+	{ .required = false, .type = FR_TYPE_STRING, .concat = true },
 	{ .required = false, .type = FR_TYPE_UINT32, .single = true },
 	{ .required = false, .type = FR_TYPE_STRING, .concat = true },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -1206,7 +1206,7 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	XLAT_ARGS(args, &dst, &lvl, &file);
 
 	if (!dst || !*dst->vb_strvalue) {
-		request_log_prepend(request, NULL, L_DBG_LVL_OFF);
+		request_log_prepend(request, NULL, L_DBG_LVL_DISABLE);
 		return XLAT_ACTION_DONE;
 	}
 
