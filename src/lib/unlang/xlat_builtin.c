@@ -1231,7 +1231,7 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	dbg->dst = L_DST_FILES;
 	dbg->file = talloc_strdup(dbg, file->vb_strvalue);
 	dbg->fd = open(dbg->file, O_WRONLY | O_CREAT | O_CLOEXEC, 0600);
-	if (!dbg->fd) {
+	if (dbg->fd < 0) {
 		REDEBUG("Failed opening %s - %s", dbg->file, fr_syserror(errno));
 		talloc_free(dbg);
 		return XLAT_ACTION_DONE;
