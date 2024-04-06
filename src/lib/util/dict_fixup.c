@@ -416,36 +416,59 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
  */
 static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
 {
-	fr_dict_attr_t const	*da;
+	fr_dict_attr_t const	*da, *root;
 	fr_dict_attr_t		*cloned;
 	fr_dict_t		*dict = fr_dict_unconst(fr_dict_by_da(fixup->da));
+	char const		*ref = fixup->ref;
+
+	/*
+	 *	Allow relative attribute references.
+	 */
+	if (ref[0] == '.') {
+		root = fixup->da->parent;
+		ref++;
+
+		while (ref[0] == '.') {
+			/*
+			 *	@todo - allow references to other protocols.
+			 */
+			if (root->flags.is_root) {
+				fr_strerror_printf("Too many '.' in clone=%s at %s[%d]",
+						   fixup->ref, fr_cwd_strip(fixup->common.filename), fixup->common.line);
+				return -1;
+			}
+
+			root = root->parent;
+			ref++;
+		}
+	} else {
+		root = fr_dict_root(dict);
+	}
 
 	/*
 	 *	Find the reference
 	 */
-	da = fr_dict_attr_by_oid(NULL, fr_dict_root(dict), fixup->ref);
-	if (da) {
-		/*
-		 *	The referenced DA is higher than the one we're
-		 *	creating.  Ensure it's not a parent.
-		 */
-		if (da->depth < fixup->da->depth) {
-			fr_dict_attr_t const *parent;
+	da = fr_dict_attr_by_oid(NULL, root, ref);
+	if (!da) {
+		fr_strerror_printf("Unknown attribute reference in clone=%s at parent %s %s[%d]",
+				   fixup->ref, root->name, fr_cwd_strip(fixup->common.filename), fixup->common.line);
+		return -1;
+	}
 
-			for (parent = fixup->da->parent; !parent->flags.is_root; parent = parent->parent) {
-				if (parent == da) {
-					fr_strerror_printf("References MUST NOT refer to a parent attribute %s at %s[%d]",
-							   parent->name, fr_cwd_strip(fixup->common.filename), fixup->common.line);
-					return -1;
-				}
+	/*
+	 *	The referenced DA is higher than the one we're
+	 *	creating.  Ensure it's not a parent.
+	 */
+	if (da->depth < fixup->da->depth) {
+		fr_dict_attr_t const *parent;
+
+		for (parent = fixup->da->parent; !parent->flags.is_root; parent = parent->parent) {
+			if (parent == da) {
+				fr_strerror_printf("References MUST NOT refer to a parent attribute %s at %s[%d]",
+						   parent->name, fr_cwd_strip(fixup->common.filename), fixup->common.line);
+				return -1;
 			}
 		}
-	} else {
-		/*
-		 *	@todo - cloning foreign attributes is not a well-tested path.
-		 */
-		da = dict_protocol_reference(&dict, fixup->ref, fixup->common.filename, fixup->common.line);
-		if (!da) return -1;
 	}
 
 	if (fr_dict_attr_ref(da)) {

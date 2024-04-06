@@ -217,7 +217,7 @@ VALUE	Assigned			Src-Assigned		1
 VALUE	Assigned			Dst-Assigned		2
 VALUE	Assigned			Src-Dst-Assigned	3
 
-ATTRIBUTE	Dst-Spec				28.11.6	tlv clone=Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec
+ATTRIBUTE	Dst-Spec				28.11.6	tlv clone=.Src-Spec
 
 ATTRIBUTE	IP-TOS/DSCP-Range-and-Mask		28.11.7	octets
 ATTRIBUTE	VLAN-ID					28.11.8	integer
@@ -475,12 +475,12 @@ ATTRIBUTE	Priority				.2	byte
 ATTRIBUTE	Protocol				.3	byte
 ATTRIBUTE	Direction				.4	byte
 
-ATTRIBUTE	Src-Spec				84.9.5	tlv  clone=Vendor-Specific.WiMAX.Packet-Flow-Descriptor.Classifier.Src-Spec
+ATTRIBUTE	Src-Spec				84.9.5	tlv  clone=...Packet-Flow-Descriptor.Classifier.Src-Spec
 #  Add these two, also
 ATTRIBUTE	MAC-Address				.8	ether
 ATTRIBUTE	MAC-Mask				.9	ether
 
-ATTRIBUTE	Dest-Spec				84.9.6	tlv clone=Vendor-Specific.WiMAX.Packet-Flow-Descriptor-v2.Classifier.Src-Spec
+ATTRIBUTE	Dest-Spec				84.9.6	tlv clone=.Src-Spec
 
 ATTRIBUTE	Classifier-IP-ToS-DSCP			84.9.7	byte
 
