@@ -6,6 +6,8 @@
 #
 #	Dictionary for Huawei.  See also dictionary.h3c
 #
+#	https://support.huawei.com/enterprise/en/doc/EDOC1100279002/ecd24420/appendix-radius-attributes#EN-US_CONCEPT_0172358597
+#
 #	$Id$
 #
 ##############################################################################
@@ -152,9 +154,9 @@ ATTRIBUTE	Framed-Pool-Group			157	string
 ATTRIBUTE	Framed-IPv6-Address			158	ipv6addr
 ATTRIBUTE	Acct-Update-Address			159	integer
 ATTRIBUTE	NAT-Policy-Name				160	string
-ATTRIBUTE	NAT-Public-Address			161	string
-ATTRIBUTE	NAT-Start-Port				162	string
-ATTRIBUTE	NAT-End-Port				163	string
+ATTRIBUTE	NAT-Public-Address			161	ipaddr
+ATTRIBUTE	NAT-Start-Port				162	integer
+ATTRIBUTE	NAT-End-Port				163	integer
 ATTRIBUTE	NAT-Port-Forwarding			164	string
 ATTRIBUTE	NAT-Port-Range-Update			165	integer
 ATTRIBUTE	DS-Lite-Tunnel-Name			166	string
@@ -178,7 +180,7 @@ VALUE	Auth-Type			Tunnel			8
 VALUE	Auth-Type			MIP			9
 VALUE	Auth-Type			None			10
 
-ATTRIBUTE	Acct-Terminate-Subcause			181	string
+ATTRIBUTE	Acct-Terminate-Subcause			181	integer
 ATTRIBUTE	Down-QOS-Profile-Name			182	string
 ATTRIBUTE	Port-Mirror				183	integer
 
@@ -189,12 +191,17 @@ VALUE	Port-Mirror			Enable			3
 
 ATTRIBUTE	Account-Info				184	string
 ATTRIBUTE	Service-Info				185	string
-ATTRIBUTE	DHCP-Option				187	octets
+ATTRIBUTE	DHCP-Option				187	group ref=..DHCPv4
 ATTRIBUTE	AVpair					188	string
 ATTRIBUTE	Delegated-IPv6-Prefix-Pool		191	string
-ATTRIBUTE	IPv6-Prefix-Lease			192	octets
-ATTRIBUTE	IPv6-Address-Lease			193	octets
-ATTRIBUTE	IPv6-Policy-Route			194	ipv6prefix # manual says string?
+ATTRIBUTE	IPv6-Prefix-Lease			192	struct
+MEMBER		T1						byte
+MEMBER		T2						byte
+MEMBER		Preferred-Lifetime				integer
+MEMBER		Valid-Lifetime					integer
+
+ATTRIBUTE	IPv6-Address-Lease			193	struct clone=.IPv6-Prefix-Lease
+ATTRIBUTE	IPv6-Policy-Route			194	ipv6addr
 ATTRIBUTE	MNG-IPv6				196	integer
 
 VALUE	MNG-IPv6			Unsupported		0
@@ -228,6 +235,8 @@ ATTRIBUTE	MS-Maximum-MAC-Study-Number		222	octets # ether??
 ATTRIBUTE	GGSN-Vendor				232	string
 ATTRIBUTE	GGSN-Version				233	string
 ATTRIBUTE	Ext-Specific				238	string
+ATTRIBUTE	User-Group-Name				251	string
+ATTRIBUTE	User-Service-Type			252	integer
 ATTRIBUTE	Web-URL					253	string
 ATTRIBUTE	Version					254	string
 ATTRIBUTE	Product-ID				255	string
