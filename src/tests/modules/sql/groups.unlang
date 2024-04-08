@@ -45,6 +45,22 @@ if !(&reply.Reply-Message == "Hello User B") {
 	test_fail
 }
 
+if (&control.SQL-Group[*] == 'groups_group_a') {
+	test_fail
+}
+
+if !(&control.SQL-Group[*] == 'groups_group_b') {
+	test_fail
+}
+
+#
+#  Although the user is in this group, the lack of Fall-Through in radgroupreply
+#  means this will never be processed when calling the sql module in authorize context.
+#
+if (&control.SQL-Group[*] == 'groups_group_c') {
+	test_fail
+}
+
 #
 #  Test paircmp group comparisons
 #

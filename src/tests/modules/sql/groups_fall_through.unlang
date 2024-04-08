@@ -44,4 +44,16 @@ if !(&reply.Reply-Message == "Hello Fallthrough User") {
 	test_fail
 }
 
+if !(&control.SQL-Group[*] == 'fallthrough_group_a') {
+	test_fail
+}
+
+if !(&control.SQL-Group[*] == 'fallthrough_group_b') {
+	test_fail
+}
+
+if (&control.SQL-Group[*] == 'fallthrough_group_c') {
+	test_fail
+}
+
 test_pass
