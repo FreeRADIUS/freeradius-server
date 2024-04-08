@@ -92,6 +92,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("read_groups", rlm_sql_config_t, read_groups), .dflt = "yes" },
 	{ FR_CONF_OFFSET_FLAGS("sql_user_name", CONF_FLAG_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
 	{ FR_CONF_OFFSET("group_attribute", rlm_sql_config_t, group_attribute) },
+	{ FR_CONF_OFFSET("cache_groups", rlm_sql_config_t, cache_groups) },
 	{ FR_CONF_OFFSET_FLAGS("logfile", CONF_FLAG_XLAT, rlm_sql_config_t, logfile) },
 	{ FR_CONF_OFFSET("open_query", rlm_sql_config_t, connect_query) },
 
@@ -947,7 +948,7 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 		map_list_talloc_free(&check_tmp);
 
 		if (inst->config.cache_groups) {
-			MEM(pair_update_control(&vp, inst->group_da) >= 0);
+			MEM(pair_append_control(&vp, inst->group_da) >= 0);
 			fr_pair_value_strdup(vp, group_name, true);
 			added = true;
 		}
@@ -999,7 +1000,7 @@ static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sq
 	}
 
 	if (inst->config.cache_groups && !added) {
-		MEM(pair_update_control(&vp, inst->group_da) >= 0);
+		MEM(pair_append_control(&vp, inst->group_da) >= 0);
 		fr_pair_value_strdup(vp, group_name, true);
 	}
 
