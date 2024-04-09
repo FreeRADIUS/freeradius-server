@@ -1224,6 +1224,7 @@ static xlat_action_t xlat_func_log_dst(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 	 *	Clone it.
 	 */
 	MEM(dbg = talloc_memdup(request, log, sizeof(*log)));
+	dbg->parent = log;
 
 	/*
 	 *	Open the new filename.

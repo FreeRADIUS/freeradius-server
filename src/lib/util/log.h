@@ -91,7 +91,9 @@ typedef enum {
 	L_TIMESTAMP_OFF				//!< Never log timestamps.
 } fr_log_timestamp_t;
 
-typedef struct {
+typedef struct fr_log_s fr_log_t;
+
+struct fr_log_s {
 	fr_log_dst_t		dst;		//!< Log destination.
 
 	bool			line_number;	//!< Log src file and line number.
@@ -115,7 +117,9 @@ typedef struct {
 
 	ssize_t			(*cookie_write)(void *, char const *, size_t);	//!< write function
 	void			*uctx;		//!< User data associated with the fr_log_t.
-} fr_log_t;
+
+	fr_log_t		*parent;	//!< Log destination this was cloned from.
+};
 
 typedef struct {
 	char const		*first_prefix;	//!< Prefix for the first line printed.

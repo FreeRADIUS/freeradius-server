@@ -116,7 +116,7 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 		last = &request->log.dst;
 		while (*last) {
 			dst = *last;
-			if (dst->uctx == log_dst) {
+			if (((fr_log_t *)dst->uctx)->parent == log_dst) {
 				*last = dst->next;
 				talloc_free(dst);
 				if (!request->log.dst) request->log.lvl = L_DBG_LVL_OFF;
@@ -133,7 +133,7 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 	 *	Change the debug level of an existing destination.
 	 */
 	for (dst = request->log.dst; dst != NULL; dst = dst->next) {
-		if (dst->uctx == log_dst) {
+		if (((fr_log_t *)dst->uctx)->parent == log_dst) {
 			dst->lvl = lvl;
 			if (lvl > request->log.lvl) request->log.lvl = lvl;
 			return;
