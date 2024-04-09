@@ -252,15 +252,8 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 static int fr_bio_retry_write_delayed(fr_bio_retry_t *my, fr_time_t now)
 {
 	fr_bio_retry_entry_t *item;
-	fr_bio_t *next;
 
 	fr_assert(!my->partial);
-
-	/*
-	 *	There must be a next bio.
-	 */
-	next = fr_bio_next(&my->bio);
-	fr_assert(next != NULL);
 
 	while ((item = fr_rb_first(&my->rb)) != NULL) {
 		int rcode;
