@@ -103,7 +103,7 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 			talloc_free(request->log.dst);
 			request->log.dst = dst;
 		}
-
+		request->log.lvl = L_DBG_LVL_OFF;
 		return;
 	}
 
@@ -119,6 +119,7 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 			if (dst->uctx == log_dst) {
 				*last = dst->next;
 				talloc_free(dst);
+				if (!request->log.dst) request->log.lvl = L_DBG_LVL_OFF;
 				return;
 			}
 
@@ -134,6 +135,7 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 	for (dst = request->log.dst; dst != NULL; dst = dst->next) {
 		if (dst->uctx == log_dst) {
 			dst->lvl = lvl;
+			if (lvl > request->log.lvl) request->log.lvl = lvl;
 			return;
 		}
 	}
@@ -146,7 +148,8 @@ void request_log_prepend(request_t *request, fr_log_t *log_dst, fr_log_lvl_t lvl
 	dst->func = vlog_request;
 	dst->uctx = log_dst;
 
-	dst->lvl = request->log.lvl;
+	dst->lvl = lvl;
+	if (lvl > request->log.lvl) request->log.lvl = lvl;
 	dst->next = request->log.dst;
 
 	request->log.dst = dst;
