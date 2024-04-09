@@ -54,8 +54,8 @@ struct fr_bio_retry_entry_s {
 
 	uint8_t const	*buffer;
 	size_t		size;	
-	size_t		partial;		//!< for partial writes :(
 
+	bool		cancelled;		//!< was this item cancelled?
 	bool		have_reply;		//!< did we see any reply?
 };
 
@@ -71,7 +71,20 @@ struct fr_bio_retry_s {
 
 	fr_event_timer_t const	*ev;
 
+	/*
+	 *	The "first" entry is cached here so that we can detect when it changes.  The insert / delete
+	 *	code can just do its work without worrying about timers.  And then when the tree manipulation
+	 *	is done, call the fr_bio_retry_reset_timer() function to reset (or not) the timer.
+	 */
 	fr_bio_retry_entry_t	*first;		//!< for timers
+
+	/*
+	 *	Cache a partial write when IO is blocked.
+	 *
+	 *	When the IO is blocked, the timer "ev" event AND the "first" entry MUST be set to NULL.
+	 *	There's no point in running retry timers when we can't send packets due to IO blockage.  And
+	 *	since there's no timer, there's no need to track which entry is first.
+	 */
 	fr_bio_retry_entry_t	*partial;	//!< for partial writes
 
 	fr_bio_retry_sent_t	sent;
@@ -79,9 +92,7 @@ struct fr_bio_retry_s {
 	fr_bio_retry_response_t	response;
 	fr_bio_retry_release_t	release;
 
-	fr_bio_buf_t		cancelled;
-
-	bool			blocked;
+	fr_bio_buf_t		buffer;
 
 	FR_DLIST_HEAD(fr_bio_retry_list) free;
 };
@@ -102,10 +113,17 @@ static int fr_bio_retry_reset_timer(fr_bio_retry_t *my)
 	 */
 	first = fr_rb_first(&my->rb);
 	if (!first) {
+	cancel_timer:
 		talloc_const_free(my->ev);
 		my->first = NULL;
 		return 0;
 	}
+
+	/*
+	 *	We're partially writing a response.  Don't bother with the timer, and delete any existing
+	 *	timer.  It will be reset when the partial entry is placed back into the queue.
+	 */
+	if (first == my->partial) goto cancel_timer;
 
 	/*
 	 *	The timer is already set correctly, we're done.
@@ -126,6 +144,21 @@ static int fr_bio_retry_reset_timer(fr_bio_retry_t *my)
  */
 static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, fr_bio_retry_release_reason_t reason)
 {
+	/*
+	 *	Tell the caller that we've released it before doing anything else.  That way we can safely
+	 *	modify anything we want.
+	 */
+	my->release((fr_bio_t *) my, item, reason);
+
+	/*
+	 *	We've partially written this item.  Don't bother changing it's position in any of the lists,
+	 *	as it's in progress.
+	 */
+	if (my->partial == item) {
+		item->cancelled = true;
+		return;
+	}
+
 	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
 
 	/*
@@ -135,8 +168,6 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 		my->first = NULL;
 		(void) fr_bio_retry_reset_timer(my);
 	}
-
-	my->release((fr_bio_t *) my, item, reason);
 
 #ifndef NDEBUG
 	item->buffer = NULL;
@@ -148,20 +179,25 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	fr_bio_retry_list_insert_head(&my->free, item);
 }
 
-/** There's a partial *cancelled* packet written.  Write all of that one first, before writing another packet.
+/** There's a partial packet written.  Write all of that one first, before writing another packet.
  *
+ *  The packet can either be cancelled, or IO blocked.  In either case, we must write the full packet before
+ *  going on to the next one, OR retrying another packet.
  */
-static ssize_t fr_bio_retry_write_cancelled(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size)
+static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size)
 {
 	size_t used;
 	ssize_t rcode;
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 	fr_bio_t *next;
+	fr_bio_retry_entry_t *item = my->partial;
 
-	fr_assert(!my->partial);
-	fr_assert(my->cancelled.start);
+	fr_assert(!my->first);
+	fr_assert(!my->ev);
+	fr_assert(my->partial != NULL);
+	fr_assert(my->buffer.start);
 
-	used = fr_bio_buf_used(&my->cancelled);
+	used = fr_bio_buf_used(&my->buffer);
 	fr_assert(used > 0);
 
 	/*
@@ -170,70 +206,75 @@ static ssize_t fr_bio_retry_write_cancelled(fr_bio_t *bio, void *packet_ctx, con
 	next = fr_bio_next(&my->bio);
 	fr_assert(next != NULL);
 
-	rcode = next->write(next, NULL, my->cancelled.read, used);
+	rcode = next->write(next, NULL, my->buffer.read, used);
 	if (rcode <= 0) return rcode;
 
-	my->cancelled.read += rcode;
-
-	if (fr_bio_buf_used(&my->cancelled) == 0) {
-		my->blocked = false;
-		my->bio.write = fr_bio_retry_write;
-
-		return fr_bio_retry_write(bio, packet_ctx, buffer, size);
-	}
+	my->buffer.read += rcode;
 
 	/*
-	 *	We didn't write any of the saved partial packet, so we can't write out the current one,
-	 *	either.
+	 *	Still data in the buffer.  We still can't send more packets or do retries.
 	 */
-	return 0;
-}
-
-/** There's a partial packet written.  Write all of that one first, before writing another packet.
- *
- */
-static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size)
-{
-	ssize_t rcode;
-	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
-	fr_bio_t *next;
-	fr_bio_retry_entry_t *item;
-	uint8_t const *packet;
-	
-	fr_assert(my->partial);
-	item = my->partial;
-	packet = item->buffer;
+	if (fr_bio_buf_used(&my->buffer) > 0) return 0;
 
 	/*
-	 *	There must be a next bio.
+	 *	We're done.  Reset the buffer and clean up our cached partial packet.
 	 */
-	next = fr_bio_next(&my->bio);
-	fr_assert(next != NULL);
-
-	rcode = next->write(next, NULL, packet + item->partial, item->size - item->partial);
-	if (rcode < 0) {
-		my->partial = NULL;
-		my->blocked = false;
-		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
-		return rcode;
-	}
-
-	/*
-	 *	We didn't finish writing the partial packet, so we can't write the current one, either.
-	 */
-	item->partial += rcode;
-	if (item->partial < item->size) return 0;
-
-	/*
-	 *	We finally wrote all of this packet.  Clean up the partial tracking items, and go write the
-	 *	packet we were given.
-	 */
-	item->partial = 0;
+	fr_bio_buf_reset(&my->buffer);
 	my->partial = NULL;
-	my->blocked = false;
 
+	/*
+	 *	The item was cancelled.  It's still in the tree, so we remove it, and reset its fields.
+	 *	We then insert it into the free list.
+	 *
+	 *	If it's not cancelled, then we leave it in the tree, and run its timers s normal.
+	 */
+	if (item->cancelled) {
+		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+
+#ifndef NDEBUG
+		item->buffer = NULL;
+#endif
+		item->uctx = NULL;
+		item->packet_ctx = NULL;
+
+		fr_bio_retry_list_insert_head(&my->free, item);
+	}
+
+	/*
+	 *	Walk through the list to see if we need to retry writes and jump ahead with packets.
+	 *
+	 *	Note that the retried packets are sent _before_ the new one.  If the caller doesn't want this
+	 *	behavior, he can cancel the old ones.
+	 *
+	 *	@todo - have a way to prioritize packets?  i.e. to insert a packet at the _head_ of the list,
+	 *	and write it _now_, as with Status-Server.
+	 */
+	item = fr_rb_first(&my->rb);
+	if (item) {
+		fr_time_t now = fr_time();
+
+		/*
+		 *	We're supposed to send the next retry now.  i.e. the socket has been blocked for a
+		 *	long time.
+		 *
+		 *	Send the packet, _but_ also immediately check for the "next next" retry.  If that's
+		 *	still in the past, then skip it.  But _don't_ update retry.count, as we don't send
+		 *	packets.  Instead, just enforce MRD, etc.
+		 */
+		if (fr_time_cmp(now, item->retry.next) <= 0) {
+			fr_assert(0);
+		}
+
+		/*
+		 *	We now have an active socket but no timers, so we set up the timers.
+		 */
+		(void) fr_bio_retry_reset_timer(my);
+	}
+
+	/*
+	 *	Try to write the packet which we were given.
+	 */
 	my->bio.write = fr_bio_retry_write;
-
 	return fr_bio_retry_write(bio, packet_ctx, buffer, size);
 }
 
@@ -246,14 +287,37 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
  */
 static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, ssize_t rcode)
 {
-	fr_assert(!item->partial);
+	fr_assert(!my->partial);
+	fr_assert(rcode > 0);
 
-	item->partial = (size_t) rcode;
-	my->blocked = true;
+	/*
+	 *	(re)-alloc the buffer for partial writes.
+	 */
+	if (!my->buffer.start ||
+	    (item->size > fr_bio_buf_size(&my->buffer))) {
+		if (fr_bio_buf_alloc(my, &my->buffer, item->size)) return -1;
+	}
+
+	fr_assert(fr_bio_buf_used(&my->buffer) == 0);
+	fr_assert(my->buffer.read == my->buffer.start);
+
+	fr_bio_buf_write(&my->buffer, item->buffer + rcode, item->size - rcode);
+
 	my->partial = item;
+
+	/*
+	 *	There's no timer, as the write is blocked, so we can't retry.
+	 */
 	talloc_const_free(my->ev);
+	my->first = NULL;
+
 	my->bio.write = fr_bio_retry_write_partial;
 
+	/*
+	 *	We leave the entry in the timer tree so that the expiry timer will get hit.
+	 *
+	 *	And then return the size of the partial data we wrote.
+	 */
 	return rcode;
 }
 
@@ -326,8 +390,16 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	fr_bio_retry_entry_t *item;
 	fr_retry_state_t state;
 
+	/*
+	 *	For the timer to be running, there must be a "first" entry which causes the timer to fire.
+	 *
+	 *	There must also be no partially written entry.  If the IO is blocked, then all timers are
+	 *	suspended.
+	 */
+	fr_assert(my->first != NULL);
+	fr_assert(my->partial == NULL);
+
 	item = my->first;
-	my->first = NULL;
 
 	/*
 	 *	Are we there yet?
@@ -413,7 +485,8 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 */
 	if (fr_bio_retry_list_num_elements(&my->free) == 0) {
 		item = fr_rb_last(&my->rb);
-		if (!item) return fr_bio_error(BUFFER_FULL);
+
+		fr_assert(item != NULL);
 
 		if (!item->retry.replies) return fr_bio_error(BUFFER_FULL);
 
@@ -447,7 +520,6 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	item->packet_ctx = packet_ctx;
 	item->buffer = buffer;
 	item->size = size;
-	item->partial = 0;
 	item->have_reply = false;
 
 	/*
@@ -482,10 +554,14 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 */
 	fr_assert(my->first != item);
 
+	/*
+	 *	If we can't set the timer, then release this item.
+	 */
 	if (fr_bio_retry_reset_timer(my) < 0) {
-		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
-		fr_assert(my->first != item);
-		fr_bio_retry_list_insert_head(&my->free, item);
+		fr_strerror_const("Failed adding timer for packet");
+
+		fr_bio_retry_release(my, item, FR_BIO_RETRY_CANCELLED);
+		return fr_bio_error(GENERIC);
 	}
 
 	return size;
@@ -524,13 +600,20 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 		if (item->retry.replies < item->retry.count) return 0;
 
 		/*
+		 *	We have a reply, so we can't possibly be partially writing the request
+		 */
+		fr_assert(item != my->partial);
+
+		/*
 		 *	We've received all of the responses, we can clean up the packet.
 		 */
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_DONE);
 		return 0;
 	}
+
 	fr_assert(item != NULL);
 	fr_assert(item->retry.replies == 0);
+	fr_assert(item != my->partial);
        
 	/*
 	 *	We have a new reply.  If we've received all of the replies (i.e. one), OR we don't have a
@@ -551,6 +634,7 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
 	(void) fr_rb_insert(&my->rb, item);
 	(void) fr_bio_retry_reset_timer(my);
+
 	return rcode;
 }
 
@@ -593,43 +677,13 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 		if (!item->retry.replies) return 0;
 	}
 
+	/*
+	 *	If the caller has cached a previously finished item, then that's a fatal error.
+	 */
 	fr_assert(item->buffer != NULL);
 
-	/*
-	 *	If we've written a partial packet, jump through a bunch of hoops to cache the partial packet
-	 *	data.  This lets the application cancel any pending packet, while still making sure that we
-	 *	don't break packet boundaries.
-	 */
-	if (my->partial == item) {
-		if (item->partial > 0) {
-			size_t size;
-
-			size = item->size - item->partial;
-
-			if (!my->cancelled.start) {
-				if (fr_bio_buf_alloc(my, &my->cancelled, size)) return -1;
-
-			} else if (size > fr_bio_buf_size(&my->cancelled)) {
-				if (fr_bio_buf_alloc(my, &my->cancelled, size)) return -1;
-			}
-
-			fr_assert(fr_bio_buf_used(&my->cancelled) == 0);
-			fr_assert(my->cancelled.read == my->cancelled.start);
-
-			fr_bio_buf_write(&my->cancelled, item->buffer + item->partial, size);
-
-			my->bio.write = fr_bio_retry_write_cancelled;
-		} else {
-			my->bio.write = fr_bio_retry_write;
-		}
-
-		my->partial = NULL;
-	}
-
-	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
-	if (my->first == item) my->first = NULL;
-
 	fr_bio_retry_release(my, item, item->have_reply ? FR_BIO_RETRY_DONE : FR_BIO_RETRY_CANCELLED);
+
 	return 1;
 }
 
