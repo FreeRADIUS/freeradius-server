@@ -783,6 +783,13 @@ static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 	request->tries = 1;
 
 	/*
+	 *	Ensure that each Access-Request is unique.
+	 */
+	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
+		fr_rand_buffer(request->packet->vector, sizeof(request->packet->vector));
+	}
+
+	/*
 	 *	Send the current packet.
 	 */
 	rcode = fr_bio_packet_write(client, request, request->packet, &request->request_pairs);
