@@ -161,9 +161,17 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	if (fr_packet_sign(packet, NULL, (char const *) my->cfg.verify.secret) < 0) goto fail;
 
 	slen = fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
-	if (slen <= 0) {
+	if (slen < 0) {
 		fr_radius_code_id_push(my->codes, packet);
 		return slen;
+	}
+
+	/*
+	 *	Didn't write anything, that's a blocking error.
+	 */
+	if (slen == 0) {
+		fr_radius_code_id_push(my->codes, packet);
+		return fr_bio_error(IO_WOULD_BLOCK);
 	}
 
 	my->info.outstanding++;

@@ -727,6 +727,8 @@ static int radclient_sane(rc_request_t *request)
  */
 static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 {
+	int rcode;
+
 	fr_assert(!request->done);
 	fr_assert(request->reply == NULL);
 
@@ -779,12 +781,17 @@ static int send_one_packet(fr_bio_packet_t *client, rc_request_t *request)
 
 	request->timestamp = fr_time();
 	request->tries = 1;
-	request->resend++;
 
 	/*
 	 *	Send the current packet.
 	 */
-	if (fr_bio_packet_write(client, request, request->packet, &request->request_pairs) < 0) {
+	rcode = fr_bio_packet_write(client, request, request->packet, &request->request_pairs);
+	if (rcode < 0) {
+		/*
+		 *	Failed writing it.  Try again later.
+		 */
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return 0;
+
 		REDEBUG("Failed writing packet - %s", fr_strerror());
 		return -1;
 	}
@@ -961,8 +968,6 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 		return;
 	}
 
-	current = request;
-
 	if (request->packet->id >= 0) {
 		paused = true;
 		goto pause;
@@ -979,6 +984,8 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	}
 
 	request->resend++;
+	current = request;
+
 }
 
 static void client_connect(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
