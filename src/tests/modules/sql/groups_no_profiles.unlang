@@ -1,0 +1,45 @@
+#
+#  Clear out old data
+#
+%sql("${delete_from_radcheck} 'groups_no_profiles_user'")
+%sql("${delete_from_radreply} 'groups_no_profiles_user'")
+
+%sql("DELETE FROM radusergroup WHERE username = 'groups_no_profiles_user'")
+
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'group_no_profile_a'")
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'group_no_profile_b'")
+
+%sql("DELETE FROM radgroupreply WHERE groupname = 'group_no_profile_a'")
+%sql("DELETE FROM radgroupreply WHERE groupname = 'group_no_profile_b'")
+
+#
+#  Insert new test data
+#
+%sql("${insert_into_radcheck} ('group_profile_user_a', 'Password.Cleartext', ':=', 'invalidsecret')")
+
+%sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_no_profiles_user', 'group_no_profile_a', 200)")
+
+%sql("INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('group_no_profile_a', 'Password.Cleartext', ':=', 'secret')")
+%sql("INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('group_no_profile_a', 'User-Profile', ':=', 'group_profile_b')")
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('group_no_profile_a', 'Reply-Message', ':=', 'Hello Groups User')")
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('group_no_profile_a', 'Fall-Through', ':=', 'no')")
+
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('group_no_profile_b', 'Reply-Message', ':=', 'Hello Profile User')")
+
+#
+#  Run SQL
+#
+sql
+if (!updated) {
+	test_fail
+}
+
+if !(&control.Password.Cleartext == &User-Password) {
+	test_fail
+}
+
+if !(&reply.Reply-Message == "Hello Groups User") {
+	test_fail
+}
+
+test_pass

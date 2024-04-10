@@ -1,0 +1,45 @@
+#
+#  Clear out old data
+#
+%sql("${delete_from_radcheck} 'profile_user_a'")
+%sql("${delete_from_radreply} 'profile_user_a'")
+
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'profile_a'")
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'profile_b'")
+%sql("DELETE FROM radgroupcheck WHERE groupname = 'profile_c'")
+
+%sql("DELETE FROM radgroupreply WHERE groupname = 'profile_a'")
+%sql("DELETE FROM radgroupreply WHERE groupname = 'profile_b'")
+%sql("DELETE FROM radgroupreply WHERE groupname = 'profile_c'")
+
+#
+#  Insert new test data
+#
+%sql("${insert_into_radcheck} ('profile_user_a', 'Password.Cleartext', ':=', 'invalidsecret')")
+%sql("${insert_into_radcheck} ('profile_user_a', 'User-Profile', ':=', 'profile_a')")
+%sql("${insert_into_radcheck} ('profile_user_a', 'User-Profile', '+=', 'profile_b')")
+
+%sql("INSERT INTO radgroupcheck (groupname, attribute, op, value) VALUES ('profile_a', 'Password.Cleartext', ':=', 'secret')")
+
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('profile_a', 'Reply-Message', ':=', 'Hello User A')")
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('profile_a', 'Fall-Through', ':=', 'yes')")
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('profile_b', 'Reply-Message', ':=', 'Hello User')")
+%sql("INSERT INTO radgroupreply (groupname, attribute, op, value) VALUES ('profile_c', 'Reply-Message', ':=', 'Hello User B')")
+
+#
+#  Run SQL
+#
+sql
+if (!updated) {
+	test_fail
+}
+
+if !(&control.Password.Cleartext == &User-Password) {
+	test_fail
+}
+
+if !(&reply.Reply-Message == "Hello User") {
+	test_fail
+}
+
+test_pass
