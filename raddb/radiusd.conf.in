@@ -605,12 +605,14 @@ security {
 
 	#
 	#  Global configuration for requiring Message-Authenticator
-	#  in all Access-* packets.
+	#  in all Access-* packets sent over UDP or TCP.  This flag
+	#  is ignored for TLS.
 	#
 	#  This flag sets the global default for all clients and home
-	#  servers.  It can be over-ridden in individual client or
-	#  home server by adding a flag to that section which says
-	#  "require_message_authenticator = false".
+	#  servers.  It can be over-ridden in an individual client or
+	#  home server definition by adding a flag to that section:
+	#
+	#	require_message_authenticator = no
 	#
 	#  If the server produces error message which says "Packet
 	#  does not contain required Message-Authenticator attribute",
@@ -625,7 +627,15 @@ security {
 	#
 	#  Global configuration for requiring Message-Authenticator
 	#  Access-Request packets from a NAS, but only if those
-	#  packets also contain Proxy-State.
+	#  packets also contain Proxy-State.  This flag only applies
+	#  to packets sent over UDP or TCP.  This flag is ignored for
+	#  TLS.
+	#
+	#  This flag sets the global default for all clients.  It can
+	#  be over-ridden in an individual client definition by adding
+	#  a flag to that section:
+	#
+	#	limit_proxy_state = no
 	#
 	#  If "require_message_authenticator" is set to "yes", this
 	#  configuration item is ignored.
@@ -638,13 +648,15 @@ security {
 	#  The only reason to set it to "no" is when the client is a
 	#  proxy, AND the proxy does not send Message-Authenticator in
 	#  Access-Request packets.  Even then, the best approach to
-	#  fix the issue is to (1) update the client to send
+	#  fix the issue is to (1) update the proxy to send
 	#  Message-Authenticator, and if that can't be done, then (2)
 	#  set this flag to "no", but ONLY on a per-client basis.
 	#
-	#  WARNING: This item should always be left as "yes",
-	#  otherwise it is possible for MITM attackers to create fake
-	#  Access-Accept packets to the NAS!
+	#  WARNING: Setting both this flag and the
+	#  "require_message_authenticator" flag to "no" will allow
+	#  MITM attackers to create fake Access-Accept packets to the
+	#  NAS!  At least one of them MUST be set to "yes" for the
+	#  system to have any protection against the attack.
 	#
 	limit_proxy_state = yes
 
