@@ -56,7 +56,6 @@ struct fr_bio_retry_entry_s {
 	size_t		size;	
 
 	bool		cancelled;		//!< was this item cancelled?
-	bool		have_reply;		//!< did we see any reply?
 };
 
 FR_DLIST_FUNCS(fr_bio_retry_list, fr_bio_retry_entry_t, entry)
@@ -200,7 +199,7 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	 */
 	state = fr_retry_next(&item->retry, now);
 	if (state != FR_RETRY_CONTINUE) {
-		fr_bio_retry_release(my, item, (fr_bio_retry_release_reason_t) item->have_reply);
+		fr_bio_retry_release(my, item, (fr_bio_retry_release_reason_t) (item->retry.replies > 0));
 		return 1;
 	}
 
@@ -274,6 +273,8 @@ static int fr_bio_retry_write_delayed(fr_bio_retry_t *my, fr_time_t now)
 	 *	Now that we've written multiple items, reset the timer.
 	 *
 	 *	We do this at the end of the loop so that we don't update it for each item in the loop.
+	 *
+	 *	@todo - set generic write error?
 	 */
 	(void) fr_bio_retry_reset_timer(my);
 
@@ -470,7 +471,7 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	 *	Note that we don't bother resetting the timer, here.  There's no point in running a timer when
 	 *	the bio is likely dead.
 	 */
-	if (rcode < 0) {
+	if ((rcode < 0) && (rcode != fr_bio_error(IO_WOULD_BLOCK))) {
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
 		return rcode;
 	}
@@ -601,7 +602,6 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	item->packet_ctx = packet_ctx;
 	item->buffer = buffer;
 	item->size = size;
-	item->have_reply = false;
 
 	/*
 	 *	Tell the application that we've saved the packet.  The "item" pointer allows the application
@@ -763,7 +763,7 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	 */
 	fr_assert(item->buffer != NULL);
 
-	fr_bio_retry_release(my, item, item->have_reply ? FR_BIO_RETRY_DONE : FR_BIO_RETRY_CANCELLED);
+	fr_bio_retry_release(my, item, (item->retry.replies > 0) ? FR_BIO_RETRY_DONE : FR_BIO_RETRY_CANCELLED);
 
 	return 1;
 }
