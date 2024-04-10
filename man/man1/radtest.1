@@ -1,4 +1,4 @@
-.TH RADTEST 1 "5 April 2010" "" "FreeRADIUS Daemon"
+.TH RADTEST 1 "21 May 2024" "" "FreeRADIUS Daemon"
 .SH NAME
 radtest - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
@@ -15,6 +15,8 @@ radtest - send packets to a RADIUS server, show reply
 .IR ]
 .RB [ \-6
 .IR ]
+.RB [ \-b
+.IR ]
 .I user password radius-server nas-port-number secret
 .RB [ ppphint ]
 .RB [ nasname ]
@@ -26,6 +28,13 @@ way to test a radius server.
 
 .SH OPTIONS
 
+.IP \-b
+Enforce the Blast RADIUS checks.  All replies to an Access-Request packet
+must contain a Message-Authenticator as the first attribute.
+
+For compatibility with old servers, this flag is not set by default.
+However, radclient still checks for the Blast RADIUS signature, and
+discards packets which match the attack.
 .IP "\-d \fIraddb_directory\fP"
 The directory that contains the RADIUS dictionary files. Defaults to
 \fI/etc/raddb\fP.
