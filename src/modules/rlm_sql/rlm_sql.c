@@ -774,7 +774,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 			return -1;
 		}
 
-		if (!*phead) {
+		if (!*phead || !entry) {	/* clang scan couldn't tell that when *phead != NULL then entry != NULL */
 			*phead = talloc_zero(*handle, rlm_sql_grouplist_t);
 			entry = *phead;
 		} else {
