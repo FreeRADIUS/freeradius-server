@@ -106,6 +106,10 @@ typedef struct {
 								//!< If false, Fall-Through = yes is required
 								//!< in the previous reply list to process
 								//!< groups.
+	bool			read_profiles;			//!< Read user profiles by default.
+								//!< If false, Fall-Through = yes is required
+								//!< in the previous reply list to process
+								//!< profiles.
 	char const		*logfile;			//!< Keep a log of all SQL queries executed
 								//!< Useful for batch insertion with the
 								//!< NULL drivers.
