@@ -56,6 +56,7 @@ typedef enum {
 	FR_BIO_RETRY_NO_REPLY,
 	FR_BIO_RETRY_CANCELLED,
 	FR_BIO_RETRY_WRITE_ERROR,
+	FR_BIO_RETRY_FATAL_ERROR,
 } fr_bio_retry_release_reason_t;
 
 /** Callback for when a packet is sent

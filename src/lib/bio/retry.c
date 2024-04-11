@@ -218,7 +218,7 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 		rcode = my->rewrite(&my->bio, item, item->buffer, item->size);
 	}
 	if (rcode < 0) {
-		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return 0;
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
 
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
 		return rcode;
@@ -323,7 +323,7 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	my->buffer.read += rcode;
 
 	/*
-	 *	Still data in the buffer.  We still can't send more packets or do retries.
+	 *	Still data in the buffer.  We can't send more packets until we finished writing this one.
 	 */
 	if (fr_bio_buf_used(&my->buffer) > 0) return 0;
 
@@ -397,13 +397,14 @@ static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *it
 {
 	fr_assert(!my->partial);
 	fr_assert(rcode > 0);
+	fr_assert((size_t) rcode < item->size);
 
 	/*
 	 *	(re)-alloc the buffer for partial writes.
 	 */
 	if (!my->buffer.start ||
 	    (item->size > fr_bio_buf_size(&my->buffer))) {
-		if (fr_bio_buf_alloc(my, &my->buffer, item->size)) return -1;
+		if (fr_bio_buf_alloc(my, &my->buffer, item->size)) return fr_bio_error(GENERIC);
 	}
 
 	fr_assert(fr_bio_buf_used(&my->buffer) == 0);
@@ -490,7 +491,7 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	 *	the bio is likely dead.
 	 */
 	if (rcode < 0) {
-		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return 0;
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
 
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
 		return rcode;
@@ -537,7 +538,7 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	 */
 	rcode = fr_bio_retry_write_item(my, item, now);
 	if (rcode < 0) {
-		fr_assert(rcode != fr_bio_error(IO_WOULD_BLOCK)); /* should return 0 instead! */
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return;
 
 		my->error = rcode;
 		my->bio.write = fr_bio_retry_write_fatal;
@@ -638,6 +639,8 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 */
 	if (!fr_rb_insert(&my->rb, item)) {
 		fr_assert(my->first != item);
+
+		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_FATAL_ERROR);
 		fr_bio_retry_list_insert_head(&my->free, item);
 		return size;
 	}
