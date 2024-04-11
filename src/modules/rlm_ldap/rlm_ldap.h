@@ -167,9 +167,10 @@ typedef enum {
 	LDAP_AUTZ_EDIR_BIND,
 	LDAP_AUTZ_POST_EDIR,
 #endif
+	LDAP_AUTZ_MAP,
+	LDAP_AUTZ_DEFAULT_PROFILE,
 	LDAP_AUTZ_POST_DEFAULT_PROFILE,
 	LDAP_AUTZ_USER_PROFILE,
-	LDAP_AUTZ_MAP
 } ldap_autz_status_t;
 
 /** User's access state

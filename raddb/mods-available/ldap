@@ -182,6 +182,9 @@ ldap {
 	#  section name to set default destination requests/lists
 	#  for `<fr attr>s` with no list qualifiers.
 	#
+	#  These attribute maps are applied _before_ any profiles, meaning that
+	#  the values here can be referenced in profiles using expansions.
+	#
 	#  NOTE: LDAP attribute names should be single quoted unless you want
 	#  the name to be derived from an xlat expansion, or an attribute ref.
 	#

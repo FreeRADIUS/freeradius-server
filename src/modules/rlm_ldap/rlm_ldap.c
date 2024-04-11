@@ -1631,6 +1631,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		goto skip_edir;
 
 	case LDAP_AUTZ_POST_EDIR:
+	{
 		/*
 		 *	The result of the eDirectory user bind will be in p_result.
 		 *	Anything other than RLM_MODULE_OK is a failure.
@@ -1640,8 +1641,25 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			goto finish;
 		}
 
+	}
+	FALL_THROUGH;
+
+#endif
+	case LDAP_AUTZ_MAP:
+#ifdef WITH_EDIR
 	skip_edir:
 #endif
+		if (!map_list_empty(call_env->user_map) || inst->valuepair_attr) {
+			RDEBUG2("Processing user attributes");
+			RINDENT();
+			if (fr_ldap_map_do(request, inst->valuepair_attr,
+					   &autz_ctx->expanded, autz_ctx->entry) > 0) rcode = RLM_MODULE_UPDATED;
+			REXDENT();
+			rlm_ldap_check_reply(request, autz_ctx->dlinst->name, call_env->expect_password->vb_bool, autz_ctx->ttrunk);
+		}
+		FALL_THROUGH;
+
+	case LDAP_AUTZ_DEFAULT_PROFILE:
 		/*
 		 *	Apply ONE user profile, or a default user profile.
 		 */
@@ -1742,17 +1760,6 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			default:
 				break;
 			}
-		}
-		FALL_THROUGH;
-
-	case LDAP_AUTZ_MAP:
-		if (!map_list_empty(call_env->user_map) || inst->valuepair_attr) {
-			RDEBUG2("Processing user attributes");
-			RINDENT();
-			if (fr_ldap_map_do(request, inst->valuepair_attr,
-					   &autz_ctx->expanded, autz_ctx->entry) > 0) rcode = RLM_MODULE_UPDATED;
-			REXDENT();
-			rlm_ldap_check_reply(request, autz_ctx->dlinst->name, call_env->expect_password->vb_bool, autz_ctx->ttrunk);
 		}
 	}
 
