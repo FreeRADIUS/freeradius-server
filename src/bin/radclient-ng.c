@@ -982,6 +982,9 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 
 	if (send_one_packet(client, request) < 0) fr_assert(0);
 
+	request->resend++;
+	current = request;
+
 	/*
 	 *	0 means "don't limit requests".
 	 */
@@ -989,10 +992,6 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 		paused = true;
 		goto pause;
 	}
-
-	request->resend++;
-	current = request;
-
 }
 
 static void client_connect(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
