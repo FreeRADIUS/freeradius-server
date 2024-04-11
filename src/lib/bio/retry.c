@@ -192,6 +192,8 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	ssize_t rcode;
 	fr_retry_state_t state;
 
+	fr_assert(!my->partial);
+
 	/*
 	 *	Are we there yet?
 	 *
@@ -216,6 +218,8 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 		rcode = my->rewrite(&my->bio, item, item->buffer, item->size);
 	}
 	if (rcode < 0) {
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return 0;
+
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
 		return rcode;
 	}
@@ -252,6 +256,10 @@ static int fr_bio_retry_write_delayed(fr_bio_retry_t *my, fr_time_t now)
 {
 	fr_bio_retry_entry_t *item;
 
+	/*
+	 *	We can't be in this function if there's a partial packet.  We must be in
+	 *	fr_bio_retry_write_partial().
+	 */
 	fr_assert(!my->partial);
 
 	while ((item = fr_rb_first(&my->rb)) != NULL) {
@@ -427,7 +435,7 @@ static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *it
  *  This function should be called by the rewrite() callback, after (possibly) re-encoding the packet.
  *
  *  @param bio		the binary IO handler
- *  @param item		the retry context from #fr_bio_retry_save_t
+ *  @param item		the retry context from #fr_bio_retry_sent_t
  *  @param buffer	raw data for the packet.  May be NULL, in which case the previous packet is retried
  *  @param size		size of the raw data
  *  @return
@@ -441,7 +449,12 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 	fr_bio_t *next;
 
-	fr_assert(!my->partial);
+	/*
+	 *	The caller may (accidentally or intentionally) call this function when there's a partial
+	 *	packet.  The intention for rewrite() is that it is only called from timers, and those only run
+	 *	when the socket isn't blocked.  But the caller might not pay attention to those issues.
+	 */
+	if (my->partial) return 0;
 	
 	/*
 	 *	There must be a next bio.
@@ -466,12 +479,19 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	if ((size_t) rcode == size) return rcode;
 
 	/*
+	 *	Can't write anything, be sad.
+	 */
+	if (rcode == 0) return 0;
+
+	/*
 	 *	There's an error writing the packet.  Release it, and move the item to the free list.
 	 *
-	 *	Note that we don't bother resetting the timer, here.  There's no point in running a timer when
+	 *	Note that we don't bother resetting the timer.  There's no point in changing the timer when
 	 *	the bio is likely dead.
 	 */
-	if ((rcode < 0) && (rcode != fr_bio_error(IO_WOULD_BLOCK))) {
+	if (rcode < 0) {
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return 0;
+
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_WRITE_ERROR);
 		return rcode;
 	}
@@ -735,7 +755,7 @@ static int8_t _entry_cmp(void const *one, void const *two)
  *  If "item" is NULL, the last entry in the timer tree is cancelled.
  *
  *  @param bio		the binary IO handler
- *  @param item		the retry context from #fr_bio_retry_save_t
+ *  @param item		the retry context from #fr_bio_retry_sent_t
  *  @return
  *	- <0 error
  *	- 0 - didn't cancel
