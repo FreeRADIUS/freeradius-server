@@ -174,6 +174,7 @@ fr_slen_t fr_size_to_str(fr_sbuff_t *out, size_t in)
 					{ "PB",		(uint64_t)1000 * 1000 * 1000 * 1000 * 1000},
 					{ "EB",		(uint64_t)1000 * 1000 * 1000 * 1000 * 1000 * 1000},
 				};
+	fr_slen_t slen;
 	fr_size_unit_t const *unit = &base10_units[0];
 
 	uint8_t pos2 = fr_low_bit_pos(in);
@@ -195,5 +196,7 @@ fr_slen_t fr_size_to_str(fr_sbuff_t *out, size_t in)
 	else if (pos2 >= 10) unit = &base2_units[pos2 / 10];
 
 done:
-	return fr_sbuff_in_sprintf(&our_out, "%zu%s", in / unit->mul, unit->suffix);
+	slen = fr_sbuff_in_sprintf(&our_out, "%zu%s", in / unit->mul, unit->suffix);
+	if (slen < 0) return slen;
+	return fr_sbuff_set(out, &our_out);
 }

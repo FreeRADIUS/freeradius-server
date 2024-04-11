@@ -5414,7 +5414,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 	}
 
 	case FR_TYPE_SIZE:
-		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%zu", data->datum.size);
+		FR_SBUFF_RETURN(fr_size_to_str, &our_out, data->datum.size);
 		break;
 
 	case FR_TYPE_TIME_DELTA:

@@ -21,11 +21,11 @@ string result_string
 }
 
 
-if (!("%length(%{Reply-Message})" == 39)) {
+if (!(%length(%{Reply-Message}) == 39)) {
 	test_fail
 }
 
-if (!("%length(%{Callback-Number})" == 42)) {
+if (!(%length(%{Callback-Number}) == 42)) {
 	test_fail
 }
 

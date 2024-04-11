@@ -87,7 +87,7 @@ if !("0x%hex(%{test_octets})" =~ /^0x([0-9a-f]+)$/) {
 
 &result_string := "%{1}"
 
-if (!("%length(%{result_string})" == 8166)) {
+if (!(%length(%{result_string}) == 8166)) {
 	test_fail
 }
 
