@@ -27,7 +27,6 @@
  * @copyright 2012 Alan DeKok (aland@freeradius.org)
  * @copyright 1999-2013 The FreeRADIUS Server Project.
  */
-#include "lib/util/value.h"
 RCSID("$Id$")
 
 USES_APPLE_DEPRECATED_API
@@ -42,6 +41,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/server/rcode.h>
 
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/action.h>
@@ -1686,6 +1686,12 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 
 	case LDAP_AUTZ_POST_DEFAULT_PROFILE:
 		/*
+		 *	Did we jump back her after applying the default profile?
+		 */
+		if (autz_ctx->status == LDAP_AUTZ_POST_DEFAULT_PROFILE) {
+			rcode = RLM_MODULE_UPDATED;
+		}
+		/*
 		 *	Apply a SET of user profiles.
 		 */
 		switch (autz_ctx->access_state) {
@@ -1739,7 +1745,10 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		 *	After each profile has been applied, execution will restart here.
 		 *	Start by clearing the previously used value.
 		 */
-		TALLOC_FREE(autz_ctx->profile_value);
+		if (autz_ctx->profile_value) {
+			TALLOC_FREE(autz_ctx->profile_value);
+			rcode = RLM_MODULE_UPDATED;	/* We're back here after applying a profile successfully */
+		}
 
 		if (autz_ctx->profile_values && autz_ctx->profile_values[autz_ctx->value_idx]) {
 			unlang_action_t	ret;
@@ -1761,6 +1770,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 				break;
 			}
 		}
+		break;
 	}
 
 finish:
