@@ -1336,6 +1336,13 @@ recv Accounting-Request {
 #
 accounting Start {
 	#
+	#  Log traffic to an SQL database.
+	#
+	#  See "Accounting Queries" in `mods-available/sql`.
+	#
+	-sql
+
+	#
 	#  Refresh leases when we see a start.
 	#
 	#  Ensure that &control.IP-Pool.Name is set to determine which
@@ -1350,6 +1357,26 @@ accounting Start {
 #
 accounting Stop {
 	#
+	#  Log traffic to an SQL database.
+	#
+	-sql
+
+	#
+	#  If you receive stop packets with zero session length,
+	#  they will NOT be logged in the database. The SQL
+	#  module will print a message (only in debugging mode),
+	#  and will return "noop".
+	#
+	#  You can ignore these packets by uncommenting the
+	#  following three lines. Otherwise, the server will not
+	#  respond to the accounting request, and the NAS will
+	#  retransmit.
+	#
+#	if (noop) {
+#		ok
+#	}
+
+	#
 	#  Return an address to the IP Pool when we see a stop record.
 	#
 #	sqlippool
@@ -1359,6 +1386,11 @@ accounting Stop {
 #  Session is still alive
 #
 accounting Interim-Update {
+	#
+	#  Log traffic to an SQL database.
+	#
+	-sql
+
 	#
 	#  Refresh leases when we see an alive.
 	#
@@ -1370,6 +1402,11 @@ accounting Interim-Update {
 #
 accounting Accounting-On {
 	#
+	#  Record that the NAS has booted to an SQL database
+	#
+	-sql
+
+	#
 	#  Return all addresses related to this NAS to the IP Pool
 	#
 #	sqlippool
@@ -1379,6 +1416,11 @@ accounting Accounting-On {
 #  The NAS is about to go down
 #
 accounting Accounting-Off {
+	#
+	#  Record that the NAS is shutting down to an SQL database
+	#
+	-sql
+
 	#
 	#  Return all addresses related to this NAS to the IP Pool
 	#
@@ -1449,28 +1491,6 @@ send Accounting-Response {
 	#
 #	radutmp
 #	sradutmp
-
-	#
-	#  Log traffic to an SQL database.
-	#
-	#  See "Accounting Queries" in `mods-available/sql`.
-	#
-	-sql
-
-	#
-	#  If you receive stop packets with zero session length,
-	#  they will NOT be logged in the database. The SQL
-	#  module will print a message (only in debugging mode),
-	#  and will return "noop".
-	#
-	#  You can ignore these packets by uncommenting the
-	#  following three lines. Otherwise, the server will not
-	#  respond to the accounting request, and the NAS will
-	#  retransmit.
-	#
-#	if (noop) {
-#		ok
-#	}
 
 	#
 	#  Instead of sending the query to the SQL server in
