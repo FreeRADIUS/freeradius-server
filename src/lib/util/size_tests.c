@@ -284,6 +284,10 @@ static void test_size_print_base2(void)
 	TEST_MSG("Fall back to B");
 	TEST_CHECK_SLEN(fr_size_to_str(test_out(buff), ((size_t)1024 * 1024 * 1024 * 1024) + 1025), 14);
 	TEST_CHECK_STRCMP(buff, "1099511628801B");
+
+	/* Regression - Was displayed as 524288KB because it took the base 10 path */
+	TEST_CHECK_SLEN(fr_size_to_str(test_out(buff), (size_t)524288000), 6);
+	TEST_CHECK_STRCMP(buff, "500MiB");
 }
 
 static void test_size_print_base10(void)
