@@ -385,6 +385,7 @@ int rad_status_server(REQUEST *request)
 		if (sock->state == LISTEN_TLS_CHECKING) {
 			int autz_type = PW_AUTZ_TYPE;
 			char const *name = "Autz-Type";
+			rad_listen_t *listener = request->listener;
 
 			if (request->listener->type == RAD_LISTEN_ACCT) {
 				autz_type = PW_ACCT_TYPE;
@@ -404,11 +405,22 @@ int rad_status_server(REQUEST *request)
 			if ((rcode == RLM_MODULE_OK) || (rcode == RLM_MODULE_UPDATED)) {
 				RDEBUG("(TLS) Connection is authorized");
 				request->reply->code = PW_CODE_ACCESS_ACCEPT;
+
+				listener->status = RAD_LISTEN_STATUS_RESUME;
+
+				rad_assert(sock->request->packet != request->packet);
+
+				sock->state = LISTEN_TLS_SETUP;
+
 			} else {
 				RWDEBUG("(TLS) Connection is not authorized - closing TCP socket.");
 				request->reply->code = PW_CODE_ACCESS_REJECT;
+
+				listener->status = RAD_LISTEN_STATUS_EOL;
+				listener->tls = NULL; /* parent owns this! */
 			}
 
+			radius_update_listener(listener);
 			return 0;
 		}
 	}
