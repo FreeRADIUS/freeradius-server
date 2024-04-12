@@ -104,6 +104,7 @@ static conf_parser_t user_config[] = {
 	{ FR_CONF_OFFSET("access_positive", rlm_ldap_t, user.access_positive), .dflt = "yes" },
 	{ FR_CONF_OFFSET("access_value_negate", rlm_ldap_t, user.access_value_negate), .dflt = "false" },
 	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, user.access_value_suspend), .dflt = "suspended" },
+	{ FR_CONF_OFFSET_IS_SET("expect_password", FR_TYPE_BOOL, 0, rlm_ldap_t, user.expect_password) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1655,7 +1656,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 			if (fr_ldap_map_do(request, inst->valuepair_attr,
 					   &autz_ctx->expanded, autz_ctx->entry) > 0) rcode = RLM_MODULE_UPDATED;
 			REXDENT();
-			rlm_ldap_check_reply(request, autz_ctx->dlinst->name, call_env->expect_password->vb_bool, autz_ctx->ttrunk);
+			rlm_ldap_check_reply(request, inst, autz_ctx->dlinst->name, call_env->expect_password->vb_bool, autz_ctx->ttrunk);
 		}
 		FALL_THROUGH;
 

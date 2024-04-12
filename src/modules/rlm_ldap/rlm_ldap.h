@@ -50,6 +50,9 @@ typedef struct {
 		char const	*access_value_suspend;          //!< Value that indicates suspension.  Is not affected by
 								///< access_positive and will always allow access, but will apply
 								///< a different profile.
+		bool		expect_password;		//!< Allow the user to forcefully decide if a password should be
+								///< expected.  Controls whether warnings are issued.
+		bool		expect_password_is_set;		//!< Whether an expect password value was provided.
 	} user;
 
 	/*
@@ -258,7 +261,7 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst
 
 ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *request, LDAPMessage *entry);
 
-void rlm_ldap_check_reply(request_t *request, char const *inst_name, bool expect_password, fr_ldap_thread_trunk_t const *ttrunk);
+void rlm_ldap_check_reply(request_t *request, rlm_ldap_t *inst, char const *inst_name, bool expect_password, fr_ldap_thread_trunk_t const *ttrunk);
 
 /*
  *	groups.c - Group membership functions.

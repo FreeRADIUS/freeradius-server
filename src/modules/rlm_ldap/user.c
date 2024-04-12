@@ -254,7 +254,7 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 	*	Expect_password is set when we process the mapping, and is only true if there was a mapping between
 	*	an LDAP attribute and a password reference attribute in the control list.
 	*/
-	if (!expect_password || !RDEBUG_ENABLED2) return;
+	if ((inst->user.expect_password_is_set && !inst->user.expect_password) || !expect_password || !RDEBUG_ENABLED2) return;
 
 	parent = fr_pair_find_by_da_nested(&request->control_pairs, NULL, attr_password);
 	if (!parent) parent = request->control_ctx;

@@ -373,6 +373,14 @@ ldap {
 		#  to indicate that the user should be suspended.
 		#
 #		access_value_suspend = 'suspended'
+
+		#
+		#  expect_password:: When set to no, disable warnings for missing password
+		#  attributes in user objects returned from LDAP.  This is useful for
+		#  ISP environments where some subscribers have passwords set, and others
+		#  do not (e.g. mixed IPoE and PPPoE).
+		#
+#		expect_password = no
 	}
 
 	#
