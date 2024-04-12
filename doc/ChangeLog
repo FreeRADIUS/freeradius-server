@@ -13,7 +13,7 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* Add auto_escape to sample SQL module config
 	* Add 'if not exists' to mysql create table queries. ref #5032 (#5137)
 	* Add lookback and more configuration to totp.  See mods-available/totp
-	* Update dictionary.aruba; add dictionary.tplink
+	* Update dictionary.aruba; add dictionary.tplink, dictionary.alphion
 	* Added "radsecret" program which generates strong secrets.  See the
 	  top of the "clients.conf" file for more information.
 	* Add "time_since" xlat to calculate elapsed time in seconds, milliseconds
@@ -52,6 +52,15 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	  CoA / Disconnect ACK and NAK packets.
 	* reject_delay no longer applies to proxied packets.  All servers should now
 	  set "reject_delay = 1" for security and scalability.
+	* Update Python thread and error handling.  Fixes #5208.
+	* Fix handling of Session-State when proxying.  Fixes #5288.
+	* Run relevant post-proxy Fail-* section on CoA / Disconnect timeout.
+	* Add "limit" section to AWS health check configurtion.  Fixes 35300.
+	* use MAX in sqlite queries instead of GREATEST.
+	* Fix typo in Mongo queries.  Fixes #5301.
+	* Fix occasional crash with bad home servers.  Fixes #5308.
+	* Minor bug fixes to the SQL freetds modules.
+	* Fix blocking issue with RADIUS/TLS connection checks.
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
