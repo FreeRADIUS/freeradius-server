@@ -1437,9 +1437,9 @@ send Accounting-Response {
 	#
 	#  Update the wtmp file.
 	#
-	#  If you don't use "radlast", you can delete this line.
+	#  This is only relevant if you use "radlast".
 	#
-	unix
+#	unix
 
 	#
 	#  For Simultaneous-Use tracking.
