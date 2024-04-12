@@ -153,6 +153,22 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 			 *	If we only need the tmpl or data, just set the pointer and move the next.
 			 */
 			out = (void **)((uint8_t *)*call_env_rctx->data + env->rule->pair.parsed.offset);
+
+			/*
+			 *	For multi pair options, the pointers need to go into a new array.
+			 *	When processing the first expansion, allocate the array, and for
+			 *	all expansions adjust the `out` pointer to write to.
+			 */
+			if (call_env_multi(env->rule->flags)) {
+				void *array;
+				if (env->multi_index == 0) {
+					MEM(array = talloc_zero_array((*call_env_rctx->data), void *, env->count));
+					*out = array;
+				}
+				array = *(void **)out;
+				out = (void **)((uint8_t *)array + sizeof(void *) * env->multi_index);
+			}
+
 			switch (env->rule->pair.parsed.type) {
 			case CALL_ENV_PARSE_TYPE_TMPL:
 				*out = UNCONST(tmpl_t *, env->data.tmpl);
