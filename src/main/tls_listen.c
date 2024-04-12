@@ -874,6 +874,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (sock->state == LISTEN_TLS_CHECKING) {
 		if (request->reply->code != PW_CODE_ACCESS_ACCEPT) {
+			RDEBUG("(TLS) Connection checks failed - closing connection");
 			listener->status = RAD_LISTEN_STATUS_EOL;
 			listener->tls = NULL; /* parent owns this! */
 
@@ -887,6 +888,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 		/*
 		 *	Resume reading from the listener.
 		 */
+		RDEBUG("(TLS) Connection checks succeeded - continuing with normal reads");
 		listener->status = RAD_LISTEN_STATUS_RESUME;
 		radius_update_listener(listener);
 
@@ -1406,9 +1408,11 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 				return -1;
 			}
 
+			RDEBUG3("(TLS) has %zu bytes in the buffer", sock->ssn->clean_out.used);
+
 			memcpy(sock->ssn->clean_out.data + sock->ssn->clean_out.used, request->proxy->data, request->proxy->data_len);
 			sock->ssn->clean_out.used += request->proxy->data_len;
-			RDEBUG3("(TLS) Writing %zu bytes for later (total %zu)", request->proxy->data_len, sock->ssn->clean_out.used);
+			RDEBUG3("(TLS) Saving %zu bytes of RADIUS traffic for later (total %zu)", request->proxy->data_len, sock->ssn->clean_out.used);
 
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
