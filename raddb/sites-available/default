@@ -1100,13 +1100,6 @@ send Access-Accept {
 	-sql
 
 	#
-	#  Instead of sending the query to the SQL server in
-	#  real-time, write it into a log file to be picked up and
-	#  sent to the database later.
-	#
-#	sql_log
-
-	#
 	#  Uncomment the following if you want to modify the
 	#  user's object in LDAP after a successful login.
 	#
@@ -1491,13 +1484,6 @@ send Accounting-Response {
 	#
 #	radutmp
 #	sradutmp
-
-	#
-	#  Instead of sending the query to the SQL server in
-	#  real-time, write it into a log file to be picked up and
-	#  sent to the database later.
-	#
-#	sql_log
 
 	#
 	#  Cisco VoIP specific bulk accounting.
