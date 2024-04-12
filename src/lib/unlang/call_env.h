@@ -141,7 +141,7 @@ DIAG_ON(attributes)
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule);
+typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
 
 /** Callback for performing custom parsing of a #CONF_SECTION
  *
@@ -402,7 +402,8 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
 /** @name Functions that implement standard parsing behaviour which can be called by callbacks
  * @{
  */
-int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule);
+int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1,
+			char const *section_name2, void const *data, call_env_parser_t const *rule);
 /** @} */
 
 /** @name Functions to be used by the section callbacks to add parsed data.
@@ -425,7 +426,8 @@ void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr
  * @{
  */
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
-			   tmpl_rules_t const *rules, CONF_SECTION *cs, void const *data) CC_HINT(nonnull(3,4,5));
+			   tmpl_rules_t const *rules, CONF_SECTION *cs, char const *section_name1,
+			   char const *section_name2, void const *data) CC_HINT(nonnull(3,4,5));
 /** @} */
 
 #ifdef __cplusplus

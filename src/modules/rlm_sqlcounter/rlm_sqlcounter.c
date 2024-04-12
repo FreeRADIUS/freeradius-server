@@ -517,8 +517,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 /** Custom call_env parser to tokenize the SQL query xlat used for counter retrieval
  */
-static int call_env_query_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data,
-				UNUSED call_env_parser_t const *rule)
+static int call_env_query_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				UNUSED char const *section_name1, UNUSED char const *section_name2,
+				void const *data, UNUSED call_env_parser_t const *rule)
 {
 	rlm_sqlcounter_t const	*inst = talloc_get_type_abort_const(data, rlm_sqlcounter_t);
 	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);

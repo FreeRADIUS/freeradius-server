@@ -4587,8 +4587,9 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			goto error;
 		}
 		single->call_env = call_env_alloc(single, single->self.name, method_env,
-						  unlang_ctx->rules,
-						  inst->dl_inst->conf, single->instance->dl_inst->data);
+						  unlang_ctx->rules, inst->dl_inst->conf,
+						  unlang_ctx->section_name1, unlang_ctx->section_name2,
+						  single->instance->dl_inst->data);
 		if (!single->call_env) {
 		error:
 			talloc_free(c);

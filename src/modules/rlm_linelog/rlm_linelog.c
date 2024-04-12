@@ -65,6 +65,7 @@ RCSID("$Id$")
 
 static int linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx);
 static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				   UNUSED char const *section_name1, UNUSED char const *section_name2,
 				   void const *data, UNUSED call_env_parser_t const *rule);
 typedef enum {
 	LINELOG_DST_INVALID = 0,
@@ -875,6 +876,7 @@ build_vector:
  *	Custom call env parser for filenames - sets the correct escaping function
  */
 static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				   UNUSED char const *section_name1, UNUSED char const *section_name2,
 				   void const *data, UNUSED call_env_parser_t const *rule)
 {
 	rlm_linelog_t const	*inst = talloc_get_type_abort_const(data, rlm_linelog_t);

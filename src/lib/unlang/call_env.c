@@ -360,6 +360,7 @@ int call_env_parsed_valid(call_env_parsed_t const *parsed, CONF_ITEM const *ci, 
  *	- -1 on failure.
  */
 int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			UNUSED char const *section_name1, UNUSED char const *section_name2,
 			UNUSED void const *data, UNUSED call_env_parser_t const *rule)
 {
 	CONF_PAIR const	*to_parse = cf_item_to_pair(ci);
@@ -385,6 +386,8 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
  * @param[in] name		Module name for error messages.
  * @param[in] t_rules		controlling how the call env is parsed.
  * @param[in] cs		Module config.
+ * @param[in] section_name1	Name 1 from calling section for module calls
+ * @param[in] section_name2	Name 2 from calling section for module calls
  * @param[in] data		module / xlat instance data of the module / xlat allocating this call_env
  * @param[in] rule		to parse.
  * @return
@@ -392,7 +395,8 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
  *	- <0 on failure;
  */
 static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
-			  CONF_SECTION const *cs, void const *data, call_env_parser_t const *rule) {
+			  CONF_SECTION const *cs, char const *section_name1, char const *section_name2,
+			  void const *data, call_env_parser_t const *rule) {
 	CONF_PAIR const		*cp, *next;
 	call_env_parsed_t	*call_env_parsed = NULL;
 	ssize_t			count, multi_index;
@@ -438,7 +442,8 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				goto next;
 			}
 
-			if (call_env_parse(ctx, parsed, name, t_rules, subcs, data, rule->section.subcs) < 0) return -1;
+			if (call_env_parse(ctx, parsed, name, t_rules, subcs, section_name1, section_name2,
+					   data, rule->section.subcs) < 0) return -1;
 			goto next;
 		}
 
@@ -510,7 +515,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			 *	would, or produce a custom structure, which will be copied into the
 			 *	result structure.
 			 */
-			if (unlikely(func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), data, rule) < 0)) {
+			if (unlikely(func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), section_name1, section_name2, data, rule) < 0)) {
 			error:
 				cf_log_perr(to_parse, "Failed to parse configuration item '%s = %s'", rule->name, cf_pair_value(to_parse));
 				talloc_free(call_env_parsed);
@@ -702,7 +707,8 @@ void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr
  * 	- NULL on failure.
  */
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
-			   tmpl_rules_t const *t_rules, CONF_SECTION *cs, void const *data)
+			   tmpl_rules_t const *t_rules, CONF_SECTION *cs, char const *section_name1,
+			   char const *section_name2, void const *data)
 {
 	unsigned int	count;
 	size_t		names_len;
@@ -732,7 +738,8 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 	MEM(call_env = talloc_pooled_object(ctx, call_env_t, count * 4, (sizeof(call_env_parser_t) + sizeof(tmpl_t)) * count + names_len * 2));
 	call_env->method = call_env_method;
 	call_env_parsed_init(&call_env->parsed);
-	if (call_env_parse(call_env, &call_env->parsed, name, t_rules, cs, data, call_env_method->env) < 0) {
+	if (call_env_parse(call_env, &call_env->parsed, name, t_rules, cs, section_name1, section_name2,
+			   data, call_env_method->env) < 0) {
 		talloc_free(call_env);
 		return NULL;
 	}

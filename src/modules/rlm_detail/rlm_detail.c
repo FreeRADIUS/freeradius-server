@@ -403,7 +403,8 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 }
 
 static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			  void const *data, UNUSED call_env_parser_t const *rule)
+				   UNUSED char const *section_name1, UNUSED char const *section_name2,
+				   void const *data, UNUSED call_env_parser_t const *rule)
 {
 	rlm_detail_t const	*inst = talloc_get_type_abort_const(data, rlm_detail_t);
 	tmpl_t			*parsed;

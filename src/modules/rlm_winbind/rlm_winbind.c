@@ -438,6 +438,7 @@ static const call_env_method_t winbind_autz_method_env = {
 };
 
 static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				 UNUSED char const *section_name1, UNUSED char const *section_name2,
 				 UNUSED void const *data, UNUSED call_env_parser_t const *rule)
 {
 	CONF_PAIR const			*to_parse = cf_item_to_pair(ci);

@@ -590,7 +590,9 @@ static int sqlippool_box_escape(fr_value_box_t *vb, void *uctx) {
  * the correct instance of the SQL module since escaping functions
  * are dependent on the driver used by a given module instance.
  */
-static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, UNUSED call_env_parser_t const *rule)
+static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			  UNUSED char const *section_name1, UNUSED char const *section_name2,
+			  void const *data, UNUSED call_env_parser_t const *rule)
 {
 	rlm_sqlippool_t const	*inst = talloc_get_type_abort_const(data, rlm_sqlippool_t);
 	module_instance_t const	*sql_inst;

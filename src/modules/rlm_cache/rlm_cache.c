@@ -42,7 +42,7 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_cache;
 
-static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule);
+static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
 static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
 
 static const conf_parser_t module_config[] = {
@@ -102,7 +102,9 @@ fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
 	{ NULL }
 };
 
-static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule)
+static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			   char const *section_name1, char const *section_name2, void const *data,
+			   call_env_parser_t const *rule)
 {
 	rlm_cache_t const	*inst = talloc_get_type_abort_const(data, rlm_cache_t);
 	call_env_parse_pair_t	func = inst->driver->key_parse ? inst->driver->key_parse : call_env_parse_pair;
@@ -113,7 +115,8 @@ static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rul
 	 *	Call the custom key parse function, OR the standard call_env_parse_pair
 	 *	function, depending on whether the driver calls a custom parsing function.
 	 */
-	if (unlikely((ret = func(ctx, &key_tmpl, t_rules, ci, inst->driver_submodule->dl_inst->data, rule)) < 0)) return ret;
+	if (unlikely((ret = func(ctx, &key_tmpl, t_rules, ci, section_name1, section_name2,
+				 inst->driver_submodule->dl_inst->data, rule)) < 0)) return ret;
 	*((tmpl_t **)out) = key_tmpl;
 
 	/*
