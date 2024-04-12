@@ -72,7 +72,7 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 
 	cnt = ldap_count_entries(query->ldap_conn->handle, query->result);
 
-	if ((!user_ctx->inst->userobj_sort_ctrl) && (cnt > 1)) {
+	if ((!user_ctx->inst->user.obj_sort_ctrl) && (cnt > 1)) {
 		REDEBUG("Ambiguous search result, returned %i unsorted entries (should return 1 or 0).  "
 			"Enable sorting, or specify a more restrictive base_dn, filter or scope", cnt);
 		REDEBUG("The following entries were returned:");
@@ -158,7 +158,7 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst
 {
 	static char const	*tmp_attrs[] = { NULL };
 	ldap_user_find_ctx_t	*user_ctx;
-	LDAPControl		*serverctrls[] = { inst->userobj_sort_ctrl, NULL };
+	LDAPControl		*serverctrls[] = { inst->user.obj_sort_ctrl, NULL };
 
 	if (!attrs) memset(&attrs, 0, sizeof(tmp_attrs));
 
@@ -179,7 +179,7 @@ unlang_action_t rlm_ldap_find_user_async(TALLOC_CTX *ctx, rlm_ldap_t const *inst
 	}
 
 	return fr_ldap_trunk_search(user_ctx, &user_ctx->query, request, user_ctx->ttrunk,
-				    user_ctx->base_dn, user_ctx->inst->userobj_scope, user_ctx->filter,
+				    user_ctx->base_dn, user_ctx->inst->user.obj_scope, user_ctx->filter,
 				    user_ctx->attrs, serverctrls, NULL);
 }
 
@@ -197,37 +197,37 @@ ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *req
 	ldap_access_state_t ret = LDAP_ACCESS_ALLOWED;
 	struct berval **values = NULL;
 
-	values = ldap_get_values_len(fr_ldap_handle_thread_local(), entry, inst->userobj_access_attr);
+	values = ldap_get_values_len(fr_ldap_handle_thread_local(), entry, inst->user.obj_access_attr);
 	if (values) {
-		size_t negate_value_len = talloc_array_length(inst->access_value_negate) - 1;
-		if (inst->access_positive) {
+		size_t negate_value_len = talloc_array_length(inst->user.access_value_negate) - 1;
+		if (inst->user.access_positive) {
 			if ((values[0]->bv_len >= negate_value_len) &&
-			    (strncasecmp(values[0]->bv_val, inst->access_value_negate, negate_value_len) == 0)) {
+			    (strncasecmp(values[0]->bv_val, inst->user.access_value_negate, negate_value_len) == 0)) {
 				REDEBUG("\"%s\" attribute exists but is set to '%s' - user locked out",
-				        inst->userobj_access_attr, inst->access_value_negate);
+				        inst->user.obj_access_attr, inst->user.access_value_negate);
 				ret = LDAP_ACCESS_DISALLOWED;
 				goto done;
 			}
 			/* RLM_MODULE_OK set above... */
 		} else if ((values[0]->bv_len < negate_value_len) ||
-		           (strncasecmp(values[0]->bv_val, inst->access_value_negate, negate_value_len) != 0)) {
-			REDEBUG("\"%s\" attribute exists - user locked out", inst->userobj_access_attr);
+		           (strncasecmp(values[0]->bv_val, inst->user.access_value_negate, negate_value_len) != 0)) {
+			REDEBUG("\"%s\" attribute exists - user locked out", inst->user.obj_access_attr);
 			ret = LDAP_ACCESS_DISALLOWED;
 			goto done;
 		}
 		{
-			size_t suspend_value_len = talloc_array_length(inst->access_value_suspend) - 1;
+			size_t suspend_value_len = talloc_array_length(inst->user.access_value_suspend) - 1;
 			if ((values[0]->bv_len == suspend_value_len) &&
-			    (strncasecmp(values[0]->bv_val, inst->access_value_suspend, suspend_value_len) == 0)) {
-				RIDEBUG("\"%s\" attribute exists and indicates suspension", inst->userobj_access_attr);
+			    (strncasecmp(values[0]->bv_val, inst->user.access_value_suspend, suspend_value_len) == 0)) {
+				RIDEBUG("\"%s\" attribute exists and indicates suspension", inst->user.obj_access_attr);
 				ret = LDAP_ACCESS_SUSPENDED;
 				goto done;
 			}
 		}
 	done:
 		ldap_value_free_len(values);
-	} else if (inst->access_positive) {
-		REDEBUG("No \"%s\" attribute - user locked out", inst->userobj_access_attr);
+	} else if (inst->user.access_positive) {
+		REDEBUG("No \"%s\" attribute - user locked out", inst->user.obj_access_attr);
 		ret = LDAP_ACCESS_DISALLOWED;
 	}
 
@@ -239,11 +239,12 @@ ldap_access_state_t rlm_ldap_check_access(rlm_ldap_t const *inst, request_t *req
  * Checks to see if after the LDAP to RADIUS mapping has been completed that a reference password.
  *
  * @param[in] request		Current request.
+ * @param[in] inst		Current LDAP instance.
  * @param[in] inst_name		Name of LDAP module instance for debug messages.
  * @param[in] expect_password	Whether we should be expecting a password.
  * @param[in] ttrunk		the connection thread trunk.
  */
-void rlm_ldap_check_reply(request_t *request, char const *inst_name, bool expect_password, fr_ldap_thread_trunk_t const *ttrunk)
+void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const *inst_name, bool expect_password, fr_ldap_thread_trunk_t const *ttrunk)
 {
 	fr_pair_t 		*parent;
 
@@ -291,31 +292,19 @@ void rlm_ldap_check_reply(request_t *request, char const *inst_name, bool expect
 			break;
 
 		default:
-			if (!ttrunk->config.admin_identity) {
-				RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
-				RWDEBUG2("!!! but no password attribute found in search result");
-				RWDEBUG2("!!! Either:");
-				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that");
-				RWDEBUG2("!!!    \"%s\" has permission to read that password attribute (recommended)",
-					 ttrunk->config.admin_identity);
-				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-					 inst_name);
-				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-					 inst_name);
-				RWDEBUG2("!!!    (pap only)");
-			} else {
-				RWDEBUG2("!!! No \"known good\" password added");
-				RWDEBUG2("!!! but no password attribute found in search result");
-				RWDEBUG2("!!! Either:");
-				RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that");
-				RWDEBUG2("!!!    'identity' is set to the DN of an account that has permission to read");
-				RWDEBUG2("!!!    that password attribute");
-				RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
-					 inst_name);
-				RWDEBUG2("!!!	setting attribute &control.Auth-Type := '%s' in the authorize section",
-					 inst_name);
-				RWDEBUG2("!!!    (pap only)");
-			}
+			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
+			RWDEBUG2("!!! but no password attribute found in search result");
+			RWDEBUG2("!!! Either:");
+			RWDEBUG2("!!!  - Ensure the user object contains a password attribute, and that");
+			RWDEBUG2("!!!    %c%s%c has permission to read that password attribute (recommended)",
+				 ttrunk->config.admin_identity ? '"' : '\0',
+				 ttrunk->config.admin_identity ? ttrunk->config.admin_identity : "the bind user",
+				 ttrunk->config.admin_identity ? '"' : '\0');
+			RWDEBUG2("!!!  - Bind as the user by listing %s in the authenticate section, and",
+				 inst_name);
+			RWDEBUG2("!!!    setting attribute &control.Auth-Type := '%s' in the authorize section",
+				 inst_name);
+			RWDEBUG2("!!!    (pap only)");
 			break;
 		}
 	}

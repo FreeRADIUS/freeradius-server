@@ -32,28 +32,25 @@ typedef struct {
 							//!< identify the autz or acct session the commands were
 							//!< issued for.
 #endif
+	struct {
+		/*
+		 *	User object attributes and filters
+		 */
+		char const	*obj_sort_by;			//!< List of attributes to sort by.
+		LDAPControl	*obj_sort_ctrl;			//!< Server side sort control.
 
-	/*
-	 *	User object attributes and filters
-	 */
-	char const	*userobj_sort_by;		//!< List of attributes to sort by.
-	LDAPControl	*userobj_sort_ctrl;		//!< Server side sort control.
+		int		obj_scope;			//!< Search scope.
 
-	int		userobj_scope;			//!< Search scope.
+		char const	*obj_access_attr;		//!< Attribute to check to see if the user should be locked out.
+		bool		access_positive;		//!< If true the presence of the attribute will allow access,
+								//!< else it will deny access.
 
-	char const	*userobj_access_attr;		//!< Attribute to check to see if the user should be locked out.
-	bool		access_positive;		//!< If true the presence of the attribute will allow access,
-							//!< else it will deny access.
-
-	char const	*access_value_negate;           //!< If the value of the access_attr matches this, the result
-							///< will be negated.
-	char const	*access_value_suspend;          //!< Value that indicates suspension.  Is not affected by
-							///< access_positive and will always allow access, but will apply
-							///< a different profile.
-
-	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
-							//!< attribute and value.
-
+		char const	*access_value_negate;           //!< If the value of the access_attr matches this, the result
+								///< will be negated.
+		char const	*access_value_suspend;          //!< Value that indicates suspension.  Is not affected by
+								///< access_positive and will always allow access, but will apply
+								///< a different profile.
+	} user;
 
 	/*
 	 *	Group object attributes and filters
@@ -95,6 +92,9 @@ typedef struct {
 
 		bool		skip_on_suspend;		//!< Don't process groups if the user is suspended.
 	} group;
+
+	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
+							//!< attribute and value.
 
 	/*
 	 *	Profiles

@@ -96,14 +96,14 @@ static conf_parser_t profile_config[] = {
  *	User configuration
  */
 static conf_parser_t user_config[] = {
-	{ FR_CONF_OFFSET("scope", rlm_ldap_t, userobj_scope), .dflt = "sub",
+	{ FR_CONF_OFFSET("scope", rlm_ldap_t, user.obj_scope), .dflt = "sub",
 	  .func = cf_table_parse_int, .uctx = &(cf_table_parse_ctx_t){ .table = fr_ldap_scope, .len = &fr_ldap_scope_len } },
-	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, userobj_sort_by) },
+	{ FR_CONF_OFFSET("sort_by", rlm_ldap_t, user.obj_sort_by) },
 
-	{ FR_CONF_OFFSET("access_attribute", rlm_ldap_t, userobj_access_attr) },
-	{ FR_CONF_OFFSET("access_positive", rlm_ldap_t, access_positive), .dflt = "yes" },
-	{ FR_CONF_OFFSET("access_value_negate", rlm_ldap_t, access_value_negate), .dflt = "false" },
-	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, access_value_suspend), .dflt = "suspended" },
+	{ FR_CONF_OFFSET("access_attribute", rlm_ldap_t, user.obj_access_attr) },
+	{ FR_CONF_OFFSET("access_positive", rlm_ldap_t, user.access_positive), .dflt = "yes" },
+	{ FR_CONF_OFFSET("access_value_negate", rlm_ldap_t, user.access_value_negate), .dflt = "false" },
+	{ FR_CONF_OFFSET("access_value_suspend", rlm_ldap_t, user.access_value_suspend), .dflt = "suspended" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1541,7 +1541,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		/*
 		 *	Check for access.
 		 */
-		if (inst->userobj_access_attr) {
+		if (inst->user.obj_access_attr) {
 			autz_ctx->access_state = rlm_ldap_check_access(inst, request, autz_ctx->entry);
 			switch (autz_ctx->access_state) {
 			case LDAP_ACCESS_ALLOWED:
@@ -1831,9 +1831,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	/*
 	 *	Add any additional attributes we need for checking access, memberships, and profiles
 	 */
-	if (inst->userobj_access_attr) {
+	if (inst->user.obj_access_attr) {
 		CHECK_EXPANDED_SPACE(expanded);
-		expanded->attrs[expanded->count++] = inst->userobj_access_attr;
+		expanded->attrs[expanded->count++] = inst->user.obj_access_attr;
 	}
 
 	if (inst->group.userobj_membership_attr && (inst->group.cacheable_dn || inst->group.cacheable_name)) {
@@ -2178,7 +2178,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_ldap_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
 
-	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
+	if (inst->user.obj_sort_ctrl) ldap_control_free(inst->user.obj_sort_ctrl);
 
 	return 0;
 }
@@ -2611,14 +2611,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Build the server side sort control for user objects
 	 */
-	if (inst->userobj_sort_by) {
+	if (inst->user.obj_sort_by) {
 		LDAPSortKey	**keys;
 		int		ret;
 
-		ret = ldap_create_sort_keylist(&keys, UNCONST(char *, inst->userobj_sort_by));
+		ret = ldap_create_sort_keylist(&keys, UNCONST(char *, inst->user.obj_sort_by));
 		if (ret != LDAP_SUCCESS) {
 			cf_log_err(conf, "Invalid user.sort_by value \"%s\": %s",
-				      inst->userobj_sort_by, ldap_err2string(ret));
+				      inst->user.obj_sort_by, ldap_err2string(ret));
 			goto error;
 		}
 
@@ -2626,7 +2626,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	Always set the control as critical, if it's not needed
 		 *	the user can comment it out...
 		 */
-		ret = ldap_create_sort_control(ldap_global_handle, keys, 1, &inst->userobj_sort_ctrl);
+		ret = ldap_create_sort_control(ldap_global_handle, keys, 1, &inst->user.obj_sort_ctrl);
 		ldap_free_sort_keylist(keys);
 		if (ret != LDAP_SUCCESS) {
 			ERROR("Failed creating server sort control: %s", ldap_err2string(ret));
