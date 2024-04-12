@@ -3235,12 +3235,12 @@ static xlat_arg_parser_t const xlat_func_subst_args[] = {
 /** Perform regex substitution
  *
 @verbatim
-%sub(<subject>, <pattern>, <replace>)
+%subst(<subject>, <pattern>, <replace>)
 @endverbatim
  *
  * Example: (User-Name = "foobar")
 @verbatim
-%sub(%{User-Name}, 'oo', 'un') == "funbar"
+%subst(%{User-Name}, 'oo', 'un') == "funbar"
 @endverbatim
  *
  * @see xlat_func_subst_regex
