@@ -22,9 +22,19 @@
  */
 RCSID("$Id$")
 
+#include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/htrie.h>
+#include <freeradius-devel/util/table.h>
 
 #define FUNC(_prefix, _op) ._op = (fr_htrie_ ##_op ## _t) fr_##_prefix##_## _op
+
+fr_table_num_sorted_t const fr_htrie_type_table[] = {
+	{ L("auto"),		FR_HTRIE_AUTO },
+	{ L("hash"),		FR_HTRIE_HASH },
+	{ L("rb"),		FR_HTRIE_RB },
+	{ L("trie"),		FR_HTRIE_TRIE },
+};
+size_t fr_htrie_type_table_len = NUM_ELEMENTS(fr_htrie_type_table);
 
 static fr_htrie_funcs_t const default_funcs[] = {
 	[FR_HTRIE_HASH] = {
@@ -132,6 +142,14 @@ fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
 		if (unlikely(!ht->store)) goto error;
 		ht->funcs = default_funcs[type];
 		return ht;
+
+	case FR_HTRIE_INVALID:
+		fr_assert_msg(0, "FR_TYPE_INVALID passed as htype");
+		return NULL;
+
+	case FR_HTRIE_AUTO:
+		fr_assert_msg(0, "FR_HTRIE_AUTO must be resolved to a concrete htype value using fr_htrie_hint()");
+		return NULL;
 
 	default:
 		return NULL;

@@ -51,7 +51,15 @@ typedef enum {
 	FR_HTRIE_HASH,		//!< Data is stored in a hash.
 	FR_HTRIE_RB,		//!< Data is stored in a rb tree.
 	FR_HTRIE_TRIE,		//!< Data is stored in a prefix trie.
+	FR_HTRIE_AUTO,		//!< Automatically choose the best type.
+				///< Must be not be passed to fr_htrie_alloc().
+				///< If the user selects this, you must
+				///< call fr_htrie_hint() to determine the
+				///< best type.
 } fr_htrie_type_t;
+
+extern fr_table_num_sorted_t const fr_htrie_type_table[];
+extern size_t fr_htrie_type_table_len;
 
 /** Which functions are used for the different operations
  *
