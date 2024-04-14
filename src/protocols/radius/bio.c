@@ -34,6 +34,7 @@ fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_c
 	decode_fail_t	failure;
 	size_t		in_buffer = *size;
 	fr_radius_bio_verify_t *uctx = bio->uctx;
+	uint8_t const	*hdr = data;
 
 	if (in_buffer < 4) {
 		*size = RADIUS_HEADER_LENGTH;
@@ -49,6 +50,8 @@ fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_c
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
 
+	if (!uctx->allowed[hdr[0]]) return FR_BIO_VERIFY_DISCARD;
+
 	/*
 	 *	On input, *size is how much data we have.  On output, *size is how much data we want.
 	 */
@@ -63,15 +66,20 @@ fr_bio_verify_action_t fr_radius_bio_verify_datagram(fr_bio_t *bio, UNUSED void 
 	decode_fail_t	failure;
 	size_t		in_buffer = *size;
 	fr_radius_bio_verify_t *uctx = bio->uctx;
+	uint8_t const	*hdr = data;
 
 	if (in_buffer < RADIUS_HEADER_LENGTH) return FR_BIO_VERIFY_DISCARD;
 
 	/*
 	 *	See if we need to discard the packet.
+	 *
+	 *	@todo - move the "allowed" list to this function
 	 */
 	if (!fr_radius_ok(data, size, uctx->max_attributes, uctx->require_message_authenticator, &failure)) {
 		return FR_BIO_VERIFY_DISCARD;
 	}
+
+	if (!uctx->allowed[hdr[0]]) return FR_BIO_VERIFY_DISCARD;
 
 	/*
 	 *	On input, *size is how much data we have.  On output, *size is how much data we want.

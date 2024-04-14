@@ -31,11 +31,14 @@ RCSIDH(radius_bio_h, "$Id$")
 #include <freeradius-devel/util/retry.h>
 
 typedef struct {
-	bool		require_message_authenticator;
-	uint32_t	max_attributes;
-
 	uint8_t const	*secret;
 	size_t		secret_len;
+
+	uint32_t	max_attributes;
+
+	bool		allowed[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
+
+	bool		require_message_authenticator;
 } fr_radius_bio_verify_t;
 
 fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size);
