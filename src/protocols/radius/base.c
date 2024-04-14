@@ -167,6 +167,19 @@ static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_PROTOCOL_ERROR]		= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
 };
 
+int fr_radius_allow_reply(int code, bool allowed[static FR_RADIUS_CODE_MAX])
+{
+	int i;
+
+	if ((code <= 0) || (code >= FR_RADIUS_CODE_MAX)) return -1;
+
+	for (i = 1; i < FR_RADIUS_CODE_MAX; i++) {
+		allowed[i] |= (allowed_replies[i] == (fr_radius_packet_code_t) code);
+	}
+
+	return 0;
+}
+
 /**  Do Ascend-Send / Recv-Secret calculation.
  *
  * The secret is hidden by xoring with a MD5 digest created from

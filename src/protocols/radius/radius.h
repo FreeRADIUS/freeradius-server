@@ -155,6 +155,8 @@ typedef struct {
 /*
  *	protocols/radius/base.c
  */
+int		fr_radius_allow_reply(int code, bool allowed[static FR_RADIUS_CODE_MAX]);
+
 int		fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 			       uint8_t const *secret, size_t secret_len) CC_HINT(nonnull (1,3));
 int		fr_radius_verify(uint8_t *packet, uint8_t const *vector,
