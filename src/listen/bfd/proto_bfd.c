@@ -22,7 +22,6 @@
  * @copyright 2017 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2016 Alan DeKok (aland@freeradius.org)
  */
-#include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/internal/internal.h>
@@ -232,11 +231,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 		return 0;
 	}
 
-	/*
-	 *	Note that we don't set a limit on max_attributes here.
-	 *	That MUST be set and checked in the underlying
-	 *	transport, via a call to fr_radius_ok().
-	 */
 	if (fr_bfd_decode(request->request_ctx, &request->request_pairs,
 			  (uint8_t const *) bfd, bfd->length,
 			  client->secret, talloc_array_length(client->secret) - 1) < 0) {
@@ -261,43 +255,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 
 		your->vp_uint32 = my->vp_uint32;
 		my->vp_uint32 = tmp;
-	}
-
-	/*
-	 *	If we're defining a dynamic client, this packet is
-	 *	fake.  We don't have a secret, so we mash all of the
-	 *	encrypted attributes to sane (i.e. non-hurtful)
-	 *	values.
-	 */
-	if (!client->active) {
-		fr_assert(client->dynamic);
-
-		for (vp = fr_pair_list_head(&request->request_pairs);
-		     vp != NULL;
-		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
-			if (!flag_encrypted(&vp->da->flags)) {
-				switch (vp->vp_type) {
-				default:
-					break;
-
-				case FR_TYPE_UINT32:
-					vp->vp_uint32 = 0;
-					break;
-
-				case FR_TYPE_IPV4_ADDR:
-					vp->vp_ipv4addr = INADDR_ANY;
-					break;
-
-				case FR_TYPE_OCTETS:
-					fr_pair_value_memdup(vp, (uint8_t const *) "", 1, true);
-					break;
-
-				case FR_TYPE_STRING:
-					fr_pair_value_strdup(vp, "", true);
-					break;
-				}
-			}
-		}
 	}
 
 	if (fr_packet_pairs_from_packet(request->request_ctx, &request->request_pairs, request->packet) < 0) {

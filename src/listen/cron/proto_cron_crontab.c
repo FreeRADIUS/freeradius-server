@@ -449,11 +449,6 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	request->packet->data = talloc_zero_array(request->packet, uint8_t, 1);
 	request->packet->data_len = 1;
 
-	/*
-	 *	Note that we don't set a limit on max_attributes here.
-	 *	That MUST be set and checked in the underlying
-	 *	transport, via a call to fr_radius_ok().
-	 */
 	(void) fr_pair_list_copy(request->request_ctx, &request->request_pairs, &inst->pair_list);
 
 	/*
