@@ -72,7 +72,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 *	Allocate tracking for all of the packets.
 	 */
 	for (i = 1; i < FR_RADIUS_CODE_MAX; i++) {
-		if (!cfg->allowed[i]) continue;
+		if (!cfg->outgoing[i]) continue;
 
 		my->codes[i] = fr_radius_id_alloc(my);
 		if (!my->codes[i]) goto fail;

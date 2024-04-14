@@ -1309,7 +1309,9 @@ int main(int argc, char **argv)
 	/*
 	 *	Initialize the retry configuration for this type of packet.
 	 */
-	client_config.allowed[packet_code] = true;
+	client_config.outgoing[packet_code] = true;
+	(void) fr_radius_allow_reply(packet_code, client_config.verify.allowed);
+
 	client_config.retry[packet_code] = (fr_retry_config_t) {
 		.irt = timeout,
 		.mrt = fr_time_delta_from_sec(16),

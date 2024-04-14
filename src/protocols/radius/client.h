@@ -38,7 +38,7 @@ typedef struct {
 
 	fr_bio_retry_config_t	retry_cfg;
 
-	bool			allowed[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
+	bool			outgoing[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
 
 	fr_retry_config_t 	retry[FR_RADIUS_CODE_MAX];	//!< default retry configuration for each packet type
 } fr_radius_client_config_t;
