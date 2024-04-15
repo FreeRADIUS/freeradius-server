@@ -1211,6 +1211,10 @@ ssize_t			tmpl_cast_from_substr(tmpl_rules_t *t_rules, fr_sbuff_t *in) CC_HINT(n
 
 int			tmpl_cast_set(tmpl_t *vpt, fr_type_t type) CC_HINT(nonnull);	/* Sets cast type */
 
+static inline fr_type_t tmpl_cast_get(tmpl_t *vpt)
+{
+	return vpt->rules.cast;
+}
 
 #ifdef HAVE_REGEX
 ssize_t			tmpl_regex_flags_substr(tmpl_t *vpt, fr_sbuff_t *in,
