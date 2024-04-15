@@ -328,6 +328,37 @@ int call_env_parsed_valid(call_env_parsed_t const *parsed, CONF_ITEM const *ci, 
 	return 0;
 }
 
+/** Standard function we use for parsing call env pairs
+ *
+ * @note This is called where no custom pair parsing function is provided, but may be called by custom functions to avoid
+ *       duplicating the standard parsing code.
+ *
+ * @param[in] ctx		to allocate any data in.
+ * @param[out] out		Where to write the result of parsing.
+ * @param[in] t_rules		we're parsing attributes with.  Contains the default dictionary and nested 'caller' tmpl_rules_t.
+ * @param[in] ci		The #CONF_SECTION or #CONF_PAIR to parse.
+ * @param[in] data		module / xlat instance data of the module / xlat allocating this call_env
+ * @param[in] rule		Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			UNUSED void const *data, UNUSED call_env_parser_t const *rule)
+{
+	CONF_PAIR const	*to_parse = cf_item_to_pair(ci);
+	tmpl_t		*parsed_tmpl;
+
+	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
+			      cf_pair_value_quote(to_parse), NULL, t_rules) < 0) {
+		return -1;
+	}
+	*(void **)out = parsed_tmpl;
+
+	return 0;
+}
+
 /** Parse per call env
  *
  * Used for config options which must be parsed in the context in which
@@ -421,6 +452,7 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			CONF_PAIR const		*to_parse;
 			tmpl_rules_t		our_rules = {};
 			fr_type_t 		type = rule->pair.cast_type;
+			call_env_parse_pair_t	func = rule->pair.func ? rule->pair.func : call_env_parse_pair;
 
 			if (t_rules) {
 				our_rules.parent = t_rules->parent;
@@ -462,27 +494,16 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			 *	would, or produce a custom structure, which will be copied into the
 			 *	result structure.
 			 */
-			if (rule->pair.func) {
-				if (unlikely(rule->pair.func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), data, rule) < 0)) {
-				error:
-					cf_log_perr(to_parse, "Failed to parse configuration item '%s = %s'", rule->name, cf_pair_value(to_parse));
-					talloc_free(call_env_parsed);
-					talloc_free(tmp_cp);
-					return -1;
-				}
-				if (!call_env_parsed->data.ptr) {
-					talloc_free(call_env_parsed);
-					goto next_pair;
-				}
-			} else {
-				tmpl_t *parsed_tmpl;
-
-				if (tmpl_afrom_substr(call_env_parsed, &parsed_tmpl,
-						      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
-						      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) {
-					goto error;
-				}
-				call_env_parsed->data.tmpl = parsed_tmpl;
+			if (unlikely(func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), data, rule) < 0)) {
+			error:
+				cf_log_perr(to_parse, "Failed to parse configuration item '%s = %s'", rule->name, cf_pair_value(to_parse));
+				talloc_free(call_env_parsed);
+				talloc_free(tmp_cp);
+				return -1;
+			}
+			if (!call_env_parsed->data.ptr) {
+				talloc_free(call_env_parsed);
+				goto next_pair;
 			}
 
 			/*

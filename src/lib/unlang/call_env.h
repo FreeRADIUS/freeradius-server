@@ -399,6 +399,12 @@ typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
 unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_result_t *result, void **env_data, call_env_t const *call_env);
 /** @} */
 
+/** @name Functions that implement standard parsing behaviour which can be called by callbacks
+ * @{
+ */
+int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule);
+/** @} */
+
 /** @name Functions to be used by the section callbacks to add parsed data.
  * @{
  */
