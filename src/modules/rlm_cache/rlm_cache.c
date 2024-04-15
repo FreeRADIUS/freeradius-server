@@ -104,7 +104,7 @@ fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
 
 static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule)
 {
-	rlm_cache_t		*inst = talloc_get_type_abort(data, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort_const(data, rlm_cache_t);
 	call_env_parse_pair_t	func = inst->driver->key_parse ? inst->driver->key_parse : call_env_parse_pair;
 	tmpl_t			*key_tmpl;
 	fr_type_t		cast;
