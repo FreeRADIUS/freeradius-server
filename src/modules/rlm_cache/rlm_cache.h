@@ -272,4 +272,10 @@ struct rlm_cache_driver_s {
 	cache_release_t			release;		//!< (optional) Release access to resource acquired
 								//!< with acquire callback.
 	cache_reconnect_t		reconnect;		//!< (optional) Re-initialise resource.
+
+	call_env_parse_pair_t		key_parse;		//!< (optional) custom key parser.  Allows the driver
+								///< to have complete control over how the key is
+								///< parsed.  If not provided, the default key parser
+								///< will be used.  data will be set to the submodule's
+								///< instance data, NOT the #rlm_cache_t.
 };

@@ -19,6 +19,7 @@
  * @file rlm_cache.c
  * @brief Cache values and merge them back into future requests.
  *
+ * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2012-2014 The FreeRADIUS server project
  */
 RCSID("$Id$")
@@ -30,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
@@ -40,6 +42,7 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_cache;
 
+static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule);
 static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
 
 static const conf_parser_t module_config[] = {
@@ -59,10 +62,15 @@ typedef struct {
 	map_list_t		*maps;			//!< Attribute map applied to cache entries.
 } cache_call_env_t;
 
+typedef struct {
+	fr_type_t		ktype;		//!< Key type
+
+} cache_htrie_t;
+
 static const call_env_method_t cache_method_env = {
 	FR_CALL_ENV_METHOD_OUT(cache_call_env_t),
 	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, cache_call_env_t, key) },
+		{ FR_CALL_ENV_OFFSET("key", FR_TYPE_VOID, CALL_ENV_FLAG_REQUIRED, cache_call_env_t, key), .pair.func = cache_key_parse },
 		{ FR_CALL_ENV_SUBSECTION_FUNC("update", CF_IDENT_ANY, CALL_ENV_FLAG_NONE, cache_update_section_parse) },
 		CALL_ENV_TERMINATOR
 	}
@@ -93,6 +101,48 @@ fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
 	{ .out = &attr_cache_entry_hits, .name = "Cache-Entry-Hits", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ NULL }
 };
+
+static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, void const *data, call_env_parser_t const *rule)
+{
+	rlm_cache_t		*inst = talloc_get_type_abort(data, rlm_cache_t);
+	call_env_parse_pair_t	func = inst->driver->key_parse ? inst->driver->key_parse : call_env_parse_pair;
+	tmpl_t			*key_tmpl;
+	fr_type_t		cast;
+	int			ret;
+	/*
+	 *	Call the custom key parse function, OR the standard call_env_parse_pair
+	 *	function, depending on whether the driver calls a custom parsing function.
+	 */
+	if (unlikely((ret = func(ctx, &key_tmpl, t_rules, ci, inst->driver_submodule->dl_inst->data, rule)) < 0)) return ret;
+	*((tmpl_t **)out) = key_tmpl;
+
+	/*
+	 *	Unless the driver has a custom key parse function, we only allow keys of
+	 *	type string.
+	 */
+	if (inst->driver->key_parse) return 0;
+
+	cast = tmpl_cast_get(key_tmpl);
+	switch (cast) {
+	case FR_TYPE_STRING:
+	case FR_TYPE_NULL:
+	case FR_TYPE_VOID:
+		break;
+
+	default:
+		cf_log_err(ci, "Driver only allows key type '%s', got '%s'",
+			   fr_type_to_str(FR_TYPE_STRING), fr_type_to_str(cast));
+		return -1;
+	}
+
+	if (tmpl_cast_set(key_tmpl, FR_TYPE_STRING) < 0) {
+		cf_log_perr(ci, "Can't convert key type '%s' to '%s'",
+			    fr_type_to_str(tmpl_expanded_type(key_tmpl)), fr_type_to_str(FR_TYPE_STRING));
+		return -1;
+	}
+
+	return 0;
+}
 
 /** Get exclusive use of a handle to access the cache
  *
