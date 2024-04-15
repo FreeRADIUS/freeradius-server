@@ -175,6 +175,18 @@ static inline fr_htrie_type_t fr_htrie_hint(fr_type_t type)
 	return FR_HTRIE_INVALID;
 }
 
+/** Return a static string containing the type name
+ *
+ * @param[in] type to return name for.
+ * @return name of the type
+ *
+ * @hidecallergraph
+ */
+static inline char const *fr_htrie_type_to_str(fr_htrie_type_t type)
+{
+	return fr_table_str_by_value(fr_htrie_type_table, type, "<INVALID>");
+}
+
 #ifdef __cplusplus
 }
 #endif
