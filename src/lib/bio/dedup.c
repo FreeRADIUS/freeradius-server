@@ -81,9 +81,9 @@ struct fr_bio_dedup_s {
 	/*
 	 *	The "first" entry is cached here so that we can detect when it changes.  The insert / delete
 	 *	code can just do its work without worrying about timers.  And then when the tree manipulation
-	 *	is done, call the fr_bio_retry_reset_timer() function to reset (or not) the timer.
+	 *	is done, call the fr_bio_dedup_reset_timer() function to reset (or not) the timer.
 	 *
-	 *	The time is when the first packet expires.
+	 *	The timer is set for is when the first packet expires.
 	 */
 	fr_bio_dedup_entry_t	*first;
 
@@ -223,7 +223,10 @@ static void fr_bio_dedup_release(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item,
 {
 	my->release((fr_bio_t *) my, item, reason);
 
-	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+	/*
+	 *	Partially written items aren't in the expiry tree.
+	 */
+	if (my->partial != item) (void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
 
 	/*
 	 *	We're deleting the timer entry.  Go reset the timer.
