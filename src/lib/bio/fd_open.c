@@ -30,18 +30,45 @@
 #include <net/if.h>
 #include <fcntl.h>
 #include <libgen.h>
+#include <netinet/tcp.h>
 
 /** Initialize common datagram information
  *
  */
-static int fr_bio_fd_common_tcp(int fd, UNUSED fr_socket_t const *sock, UNUSED fr_bio_fd_config_t const *cfg)
+static int fr_bio_fd_common_tcp(int fd, UNUSED fr_socket_t const *sock, fr_bio_fd_config_t const *cfg)
 {
 	int on = 1;
 
 #ifdef SO_KEEPALIVE
+	/*
+	 *	TCP keepalives are always a good idea.  Too many people put firewalls between critical
+	 *	systems, and then the firewalls drop live TCP streams.
+	 */
 	if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) < 0) {
 		fr_strerror_printf("Failed setting SO_KEEPALIVE: %s", fr_syserror(errno));
 		return -1;
+	}
+#endif
+
+#ifdef TCP_NODELAY
+	/*
+	 *	Add some defines for *BSD, and Solaris systems.
+	 */
+#  if !defined(SOL_TCP) && defined(IPPROTO_TCP)
+#    define SOL_TCP IPPROTO_TCP
+#  endif
+
+	/*
+	 *	Also set TCP_NODELAY, to force the data to be written quickly.
+	 *
+	 *	We buffer full packets in memory before we write them, so there's no reason for the kernel to
+	 *	sit around waiting for more data from us.
+	 */
+	if (!cfg->tcp_delay) {
+		if (setsockopt(fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
+			fr_strerror_printf("Failed setting TCP_NODELAY: %s", fr_syserror(errno));
+			return -1;
+		}
 	}
 #endif
 

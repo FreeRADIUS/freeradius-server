@@ -98,6 +98,7 @@ typedef struct {
 	int		flags;		//!< O_RDONLY, etc.
 
 	bool		async;		//!< is it async
+	bool		tcp_delay;	//!< We do tcp_nodelay by default.
 } fr_bio_fd_config_t;
 
 /** Run-time status of the socket.
