@@ -94,8 +94,9 @@ typedef fr_bio_dedup_entry_t *(*fr_bio_dedup_get_item_t)(fr_bio_t *bio, void *pa
 fr_bio_t	*fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 				    fr_bio_dedup_receive_t receive,
 				    fr_bio_dedup_release_t release,
+				    fr_bio_dedup_get_item_t get_item,
 				    fr_bio_dedup_config_t const *cfg,
-				    fr_bio_t *next) CC_HINT(nonnull);
+				    fr_bio_t *next) CC_HINT(nonnull(1,3,4,6,7));
 
 int		fr_bio_dedup_entry_cancel(fr_bio_t *bio, fr_bio_dedup_entry_t *dedup_ctx) CC_HINT(nonnull);
 

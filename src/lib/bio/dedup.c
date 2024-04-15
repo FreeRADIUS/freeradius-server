@@ -535,7 +535,8 @@ static ssize_t fr_bio_dedup_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	We need the item pointer to mark this entry as blocked.  If that doesn't exist, then we try
 	 *	really hard to write out the un-tracked data.
 	 */
-	item = my->get_item(bio, packet_ctx);
+	item = NULL;
+	if (my->get_item) item = my->get_item(bio, packet_ctx);
 	if (!item) return fr_bio_dedup_blocked_data(my, buffer, size, rcode);
 
 	fr_assert(item->reply == buffer);
@@ -734,6 +735,7 @@ static int fr_bio_dedup_destructor(fr_bio_dedup_t *my)
 fr_bio_t *fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 			     fr_bio_dedup_receive_t receive,
 			     fr_bio_dedup_release_t release,
+			     fr_bio_dedup_get_item_t get_item,
 			     fr_bio_dedup_config_t const *cfg,
 			     fr_bio_t *next)
 {
@@ -772,6 +774,7 @@ fr_bio_t *fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 
 	my->receive = receive;
 	my->release = release;
+	my->get_item = get_item;
 
 	my->el = cfg->el;
 	my->config = *cfg;
