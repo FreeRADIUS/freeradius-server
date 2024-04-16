@@ -427,7 +427,8 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 }
 
 static int call_env_suppress_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
-				   CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+				   CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2,
+				   UNUSED call_env_parser_t const *rule)
 {
 	CONF_SECTION const	*cs = cf_item_to_section(ci);
 	CONF_SECTION const	*parent = cf_item_to_section(cf_parent(ci));

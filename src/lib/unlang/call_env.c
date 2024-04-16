@@ -421,7 +421,8 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				 */
 				call_env_parsed_t *last = call_env_parsed_tail(parsed);
 
-				if (rule->section.func(ctx, parsed, t_rules, cf_section_to_item(subcs), rule) < 0) {
+				if (rule->section.func(ctx, parsed, t_rules, cf_section_to_item(subcs), section_name1,
+						       section_name2, rule) < 0) {
 					cf_log_perr(cs, "Failed parsing configuration section %s", rule->name);
 					talloc_free(call_env_parsed);
 					return -1;

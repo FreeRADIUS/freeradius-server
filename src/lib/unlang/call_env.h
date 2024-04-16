@@ -158,7 +158,7 @@ typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t co
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*call_env_parse_section_t)(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_parser_t const *rule);
+typedef int (*call_env_parse_section_t)(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, call_env_parser_t const *rule);
 
 /** Per method call config
  *

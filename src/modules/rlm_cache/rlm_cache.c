@@ -43,7 +43,7 @@ RCSID("$Id$")
 extern module_rlm_t rlm_cache;
 
 static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
-static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule);
+static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2, UNUSED call_env_parser_t const *rule);
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_cache_t, driver_submodule), .dflt = "rbtree",
@@ -1402,7 +1402,9 @@ static int cache_verify(map_t *map, void *uctx)
 	return 0;
 }
 
-static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED call_env_parser_t const *rule)
+static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+				      CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2,
+				      UNUSED call_env_parser_t const *rule)
 {
 	CONF_SECTION		*update = cf_item_to_section(ci);
 	call_env_parsed_t	*parsed;
