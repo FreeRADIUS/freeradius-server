@@ -47,6 +47,7 @@ struct  fr_bio_dedup_entry_s {
 	void		*packet_ctx;		//!< packet_ctx for dedup purposes
 	uint8_t		*packet;	       	//!< cached packet data.
 	size_t		packet_size;		//!< size of the cached packet data
+	void		*reply_ctx;		//!< reply ctx
 	uint8_t		*reply;			//!< reply cached by the application
 	size_t		reply_size;		//!< size of the cached reply
 };
@@ -98,7 +99,7 @@ fr_bio_t	*fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 				    fr_bio_dedup_config_t const *cfg,
 				    fr_bio_t *next) CC_HINT(nonnull(1,3,4,6,7));
 
-int		fr_bio_dedup_entry_cancel(fr_bio_t *bio, fr_bio_dedup_entry_t *dedup_ctx) CC_HINT(nonnull);
+void		fr_bio_dedup_entry_cancel(fr_bio_t *bio, fr_bio_dedup_entry_t *dedup_ctx) CC_HINT(nonnull);
 
 ssize_t		fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item) CC_HINT(nonnull);
 

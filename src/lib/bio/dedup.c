@@ -45,11 +45,21 @@ typedef struct fr_bio_dedup_s	fr_bio_dedup_t;
  */
 FR_DLIST_TYPES(fr_bio_dedup_list)
 
+typedef enum {
+	FR_BIO_DEDUP_STATE_FREE,
+	FR_BIO_DEDUP_STATE_ACTIVE,		//!< Received, but not replied.
+	FR_BIO_DEDUP_STATE_PENDING,		//!< Have a reply, but we're trying to write it out.
+	FR_BIO_DEDUP_STATE_REPLIED,		//!< Replied, and waiting for it to expire.
+	FR_BIO_DEDUP_STATE_PARTIAL,		//!< Partially written
+	FR_BIO_DEDUP_STATE_CANCELLED,		//!< Partially written, and then cancelled.
+} fr_bio_dedup_state_t;
+
 struct fr_bio_dedup_entry_s {
 	void		*uctx;
 	void		*packet_ctx;
 	uint8_t		*packet;	       	//!< cached packet data for finding duplicates
 	size_t		packet_size;		//!< size of the cached packet data
+	void		*reply_ctx;		//!< reply ctx
 	uint8_t		*reply;			//!< reply cached by the application
 	size_t		reply_size;		//!< size of the cached reply
 
@@ -63,7 +73,7 @@ struct fr_bio_dedup_entry_s {
 	fr_bio_dedup_t	*my;			//!< so we can get to it from the event timer callback
 
 	fr_time_t	expires;		//!< when this entry expires
-	bool		cancelled;		//!< was this item cancelled?
+	fr_bio_dedup_state_t state;		//!< which tree or list this item is in
 };
 
 FR_DLIST_FUNCS(fr_bio_dedup_list, fr_bio_dedup_entry_t, entry)
@@ -72,6 +82,7 @@ struct fr_bio_dedup_s {
 	FR_BIO_COMMON;
 
 	fr_event_list_t		*el;
+
 	fr_rb_tree_t		rb;		//!< expire list
 
 	fr_bio_dedup_config_t	config;
@@ -102,13 +113,49 @@ struct fr_bio_dedup_s {
 
 	fr_bio_buf_t		buffer;
 
-	FR_DLIST_HEAD(fr_bio_dedup_list) free;
+	FR_DLIST_HEAD(fr_bio_dedup_list) active; //!< received but not yet replied
+	FR_DLIST_HEAD(fr_bio_dedup_list) pending; //!< trying to write when the socket is blocked.
+	FR_DLIST_HEAD(fr_bio_dedup_list) free;	//!< free list
 };
 
 static void fr_bio_dedup_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx);
 static ssize_t fr_bio_dedup_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
 static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item, ssize_t rcode);
 static void fr_bio_dedup_release(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item, fr_bio_dedup_release_reason_t reason);
+static int fr_bio_dedup_reset_timer(fr_bio_dedup_t *my);
+
+static inline void fr_bio_dedup_reset_timer_item(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item)
+{
+	if (my->first != item) return;
+
+	my->first = NULL;
+	(void) fr_bio_dedup_reset_timer(my);
+}
+
+/** Move an item from active to replied.
+ *
+ *  Note that we don't update any timers.  The caller is responsible for that.
+ */
+static void fr_bio_dedup_replied(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item)
+{
+	if (item->state == FR_BIO_DEDUP_STATE_REPLIED) return;
+
+	fr_assert(item->state == FR_BIO_DEDUP_STATE_ACTIVE);
+
+	(void) fr_bio_dedup_list_remove(&my->active, item);
+
+	/*
+	 *	Now that we have a reply, set the default expiry time.  The caller can always call
+	 *	fr_bio_dedup_entry_extend() to change the expiry time.
+	 */
+	item->expires = fr_time_add_time_delta(fr_time(), my->config.lifetime);
+
+	/*
+	 *	This should never fail.
+	 */
+	(void) fr_rb_insert(&my->rb, item);
+	item->state = FR_BIO_DEDUP_STATE_REPLIED;
+}
 
 /**  Resend a reply when we receive a duplicate request.
  *
@@ -130,13 +177,69 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 	fr_bio_t *next;
 
 	if (!item->reply || !item->reply_size) return 0;
-	
-	/*
-	 *	We read a duplicate packet and wish to reply, but the writes may be blocked.
-	 *
-	 *	If so, we just tell the caller that we can't write anything.
-	 */
-	if (my->partial) return fr_bio_error(IO_WOULD_BLOCK);
+
+	switch (item->state) {
+		/*
+		 *	Send a first reply if we can.
+		 */
+	case FR_BIO_DEDUP_STATE_ACTIVE:
+		/*
+		 *	If we're not writing to the socket, just insert the packet into the pending list.
+		 */	
+		if (my->bio.write != fr_bio_dedup_write) {
+			(void) fr_bio_dedup_list_remove(&my->active, item);
+			fr_bio_dedup_list_insert_tail(&my->pending, item);
+
+			item->state = FR_BIO_DEDUP_STATE_PENDING;
+			item->expires = fr_time_add_time_delta(fr_time(), my->config.lifetime);
+			return item->reply_size;
+		}
+
+		/*
+		 *	The socket is writable, go do that.
+		 */
+		break;
+
+		/*
+		 *	Send a duplicate reply.
+		 */
+	case FR_BIO_DEDUP_STATE_REPLIED:
+		if (my->bio.write == fr_bio_dedup_write) break;
+
+		/*
+		 *	The socket is blocked.  Save the packet in the pending queue.
+		 */
+	move_to_pending:
+		fr_rb_remove_by_inline_node(&my->rb, &item->node);
+
+	save_in_pending:
+		/*
+		 *	We could update the timer for pending packets.  However, that's more complicated.
+		 *
+		 *	The packets will be expire when the pending queue is flushed, OR when the application
+		 *	cancels the pending packet.
+		 */
+		fr_bio_dedup_reset_timer_item(my, item);
+
+		fr_bio_dedup_list_insert_tail(&my->pending, item);
+		item->state = FR_BIO_DEDUP_STATE_PENDING;
+		return item->reply_size;
+
+		/*
+		 *	We're already trying to write this entry, don't do anything else.
+		 */
+	case FR_BIO_DEDUP_STATE_PENDING:
+		fr_assert(my->partial != NULL);
+		FALL_THROUGH;
+
+	case FR_BIO_DEDUP_STATE_PARTIAL:
+		return fr_bio_error(IO_WOULD_BLOCK);
+
+	case FR_BIO_DEDUP_STATE_CANCELLED:
+	case FR_BIO_DEDUP_STATE_FREE:
+		fr_assert(0);
+		return fr_bio_error(GENERIC);
+	}
 
 	/*
 	 *	There must be a next bio.
@@ -146,16 +249,25 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 
 	/*
 	 *	Write out the packet, if everything is OK, return.
-	 *
-	 *	Note that we don't update any timers if the write succeeded.  That is handled by the caller.
 	 */
-	rcode = next->write(next, item->packet_ctx, item->reply, item->reply_size);
-	if ((size_t) rcode == item->reply_size) return rcode;
+	rcode = next->write(next, item->reply_ctx, item->reply, item->reply_size);
+	if ((size_t) rcode == item->reply_size) {
+		fr_bio_dedup_replied(my, item);
+		return rcode;
+	}
 
 	/*
 	 *	Can't write anything, be sad.
 	 */
-	if (rcode == 0) return 0;
+	if ((rcode == 0) || (rcode == fr_bio_error(IO_WOULD_BLOCK))) {
+		if (item->state == FR_BIO_DEDUP_STATE_ACTIVE) {
+			(void) fr_bio_dedup_list_remove(&my->active, item);
+			goto save_in_pending;
+		}
+
+		fr_assert(item->state == FR_BIO_DEDUP_STATE_REPLIED);
+		goto move_to_pending;
+	}
 
 	/*
 	 *	There's an error writing the packet.  Release it, and move the item to the free list.
@@ -164,8 +276,6 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 	 *	the bio is likely dead.
 	 */
 	if (rcode < 0) {
-		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
-
 		fr_bio_dedup_release(my, item, FR_BIO_DEDUP_WRITE_ERROR);
 		return rcode;
 	}
@@ -199,6 +309,9 @@ static int fr_bio_dedup_reset_timer(fr_bio_dedup_t *my)
 	 *	partial outgoing packet, because we can expire entries which aren't partially written.
 	 *
 	 *	However, the partially written packet MUST NOT be in the expiry tree.
+	 *
+	 *	We also don't care about the pending list.  The application will either cancel the item, or
+	 *	the socket will become writable, and the item will get handled then.
 	 */
 	fr_assert(first != my->partial);
 
@@ -223,27 +336,45 @@ static void fr_bio_dedup_release(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item,
 {
 	my->release((fr_bio_t *) my, item, reason);
 
-	/*
-	 *	Partially written items aren't in the expiry tree.
-	 */
-	if (my->partial != item) (void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+	switch (item->state) {
+		/*
+		 *	Cancel an active item, just nuke it.
+		 */
+	case FR_BIO_DEDUP_STATE_ACTIVE:
+		fr_bio_dedup_list_remove(&my->active, item);
+		break;
 
-	/*
-	 *	We're deleting the timer entry.  Go reset the timer.
-	 */
-	if (my->first == item) {
-		my->first = NULL;
-		(void) fr_bio_dedup_reset_timer(my);
+		/*
+		 *	We already replied, remove it from the expiry tree.
+		 *
+		 *	We only update the timer if the caller isn't already expiring the entry.
+		 */
+	case FR_BIO_DEDUP_STATE_REPLIED:
+		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+
+		if (reason != FR_BIO_DEDUP_EXPIRED) fr_bio_dedup_reset_timer_item(my, item);
+		break;
+
+		/*
+		 *	It was pending another write, so we just discard the write.
+		 */
+	case FR_BIO_DEDUP_STATE_PENDING:
+		fr_bio_dedup_list_remove(&my->active, item);
+		break;
+
+		/*
+		 *	Don't free it.  Just set its state to cancelled.
+		 */
+	case FR_BIO_DEDUP_STATE_PARTIAL:
+		fr_assert(my->partial == item);
+		item->state = FR_BIO_DEDUP_STATE_CANCELLED;
+		return;
+
+	case FR_BIO_DEDUP_STATE_CANCELLED:
+	case FR_BIO_DEDUP_STATE_FREE:
+		fr_assert(0);
+		return;
 	}
-
-	/*
-	 *	We've partially written this item. Mark it as cancelled, and remove it from the expiry tree.
-	 *	This lets us expiry other entries, even if this one is blocked.
-	 *
-	 *	Don't return this item to the free list until such time as it's fully written out.
-	 */
-	item->cancelled = (my->partial == item);
-	if (item->cancelled) return;
 
 #ifndef NDEBUG
 	item->packet = NULL;
@@ -253,6 +384,83 @@ static void fr_bio_dedup_release(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item,
 
 	fr_assert(my->first != item);
 	fr_bio_dedup_list_insert_head(&my->free, item);
+}
+
+/** Flush any packets in the pending queue.
+ *
+ */
+static ssize_t fr_bio_dedup_flush_pending(fr_bio_dedup_t *my)
+{
+	ssize_t rcode, out_rcode;
+	fr_bio_dedup_entry_t *item;
+	fr_bio_t *next;
+	fr_time_t now;
+
+	/*
+	 *	We can only flush the pending list when any previous partial packet has been written.
+	 */
+	fr_assert(!my->partial);
+
+	/*
+	 *	Nothing in the list, we're done.
+	 */
+	if (fr_bio_dedup_list_num_elements(&my->pending) == 0) return 0;
+
+	/*
+	 *	There must be a next bio.
+	 */
+	next = fr_bio_next(&my->bio);
+	fr_assert(next != NULL);
+
+	now = fr_time();
+	out_rcode = 0;
+
+	/*
+	 *	Write out any pending packets.
+	 */
+	while ((item = fr_bio_dedup_list_pop_head(&my->pending)) != NULL) {
+		fr_assert(item->state == FR_BIO_DEDUP_STATE_PENDING);
+
+		/*
+		 *	It's already expired, don't bother replying.
+		 */
+		if (fr_time_lteq(item->expires, now)) {
+			fr_bio_dedup_release(my, item, FR_BIO_DEDUP_EXPIRED);
+			continue;
+		}
+
+		/*
+		 *	Write the entry to the next bio.
+		 */
+		rcode = next->write(next, item->reply_ctx, item->reply, item->reply_size);
+		if (rcode <= 0) return rcode; /* @todo - update timer if we've written one packet */
+
+		/*
+		 *	We've written the entire packet, move it to the expiry list.
+		 */
+		if ((size_t) rcode == item->reply_size) {
+			(void) fr_bio_dedup_list_remove(&my->pending, item);
+			(void) fr_rb_insert(&my->rb, item);
+			item->state = FR_BIO_DEDUP_STATE_REPLIED;
+			continue;
+		}
+
+		fr_bio_dedup_blocked(my, item, rcode);
+
+		out_rcode = fr_bio_error(IO_WOULD_BLOCK);
+		break;
+	}
+
+	/*
+	 *	We may need to update the timer if we've removed the first entry from the tree, or added a new
+	 *	first entry.
+	 */
+	if (!my->first || (my->first != fr_rb_first(&my->rb))) {
+		my->first = NULL;
+		(void) fr_bio_dedup_reset_timer(my);
+	}
+
+	return out_rcode;
 }
 
 /** Save partially written data to our local buffer.
@@ -328,6 +536,9 @@ static ssize_t fr_bio_dedup_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	fr_assert(my->partial != NULL);
 	fr_assert(my->buffer.start);
 
+	fr_assert((item->state == FR_BIO_DEDUP_STATE_PARTIAL) ||
+		  (item->state == FR_BIO_DEDUP_STATE_CANCELLED));
+
 	rcode = fr_bio_dedup_buffer_write(my);
 	if (rcode <= 0) return rcode;
 
@@ -338,7 +549,8 @@ static ssize_t fr_bio_dedup_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	 *	written, either add it back to the tree if it's still operational, or add it to the free list
 	 *	if it has been cancelled.
 	 */
-	if (!item->cancelled) {
+	if (item->state == FR_BIO_DEDUP_STATE_PARTIAL) {
+
 		/*
 		 *	See if we have to clean up this entry.  If so, do it now.  That avoids another bounce
 		 *	through the event loop.
@@ -351,22 +563,33 @@ static ssize_t fr_bio_dedup_write_partial(fr_bio_t *bio, void *packet_ctx, const
 			 *	We've changed the tree, so update the timer.  fr_bio_dedup_write() only
 			 *	updates the timer on successful write.
 			 */
+			item->state = FR_BIO_DEDUP_STATE_ACTIVE;
 			(void) fr_rb_insert(&my->rb, item);
-			(void) fr_bio_dedup_reset_timer(my);
 		}
+		(void) fr_bio_dedup_reset_timer(my);
 
 	} else {
+		/*
+		 *	The item was cancelled, add it to the free list.
+		 */
 #ifndef NDEBUG
 		item->packet = NULL;
 #endif
 		item->uctx = NULL;
 		item->packet_ctx = NULL;
 
+		item->state = FR_BIO_DEDUP_STATE_FREE;
 		fr_bio_dedup_list_insert_head(&my->free, item);
 	}
 
 	/*
-	 *	Unlike the retry BIO, we don't retry writes for items in the RB tree.  Those ones have already
+	 *	Flush any packets which were pending during the blocking period.
+	 */
+	rcode = fr_bio_dedup_flush_pending(my);
+	if (rcode < 0) return rcode;
+
+	/*
+	 *	Unlike the retry BIO, we don't retry writes for items in the RB tree.  Those packets have already
 	 *	been written.
 	 */
 
@@ -393,17 +616,40 @@ static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *it
 
 	if (fr_bio_dedup_buffer_save(my, item->reply, item->reply_size, rcode) < 0) return fr_bio_error(GENERIC);
 
-	my->partial = item;
+	switch (item->state) {
+	case FR_BIO_DEDUP_STATE_ACTIVE:
+		(void) fr_bio_dedup_list_remove(&my->active, item);
+		break;
 
-	/*
-	 *	We cannot expire this entry, so remove it from the expiration tree.  That step lets us
-	 *	expire other entries.
-	 */
-	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
-	if (my->first == item) {
-		my->first = NULL;
-		(void) fr_bio_dedup_reset_timer(my);
+		/*
+		 *	We cannot expire this entry, so remove it from the expiration tree.  That step lets us
+		 *	expire other entries.
+		 */
+	case FR_BIO_DEDUP_STATE_REPLIED:
+		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+		fr_bio_dedup_reset_timer_item(my, item);
+		break;
+
+		/*
+		 *	We tried to write a pending packet and got blocked.
+		 */
+	case FR_BIO_DEDUP_STATE_PENDING:
+		fr_assert(fr_bio_dedup_list_head(&my->pending) == item);
+		(void) fr_bio_dedup_list_remove(&my->pending, item);
+		break;
+
+		/*
+		 *	None of these states should be possible.
+		 */
+	case FR_BIO_DEDUP_STATE_PARTIAL:
+	case FR_BIO_DEDUP_STATE_CANCELLED:
+	case FR_BIO_DEDUP_STATE_FREE:
+		fr_assert(0);
+		return fr_bio_error(GENERIC);
 	}
+
+	my->partial = item;
+	item->state = FR_BIO_DEDUP_STATE_PENDING;
 
 	/*
 	 *	Reset the write routine, so that if the application tries any more writes, the partial entry
@@ -420,8 +666,19 @@ static ssize_t fr_bio_dedup_write_data(fr_bio_t *bio, void *packet_ctx, const vo
 	ssize_t rcode;
 	fr_bio_dedup_t *my = talloc_get_type_abort(bio, fr_bio_dedup_t);
 
+	fr_assert(!my->partial);
+
+	/*
+	 *	Flush out any partly written data.
+	 */
 	rcode = fr_bio_dedup_buffer_write(my);
 	if (rcode <= 0) return rcode;
+
+	/*
+	 *	Flush any packets which were pending during the blocking period.
+	 */
+	rcode = fr_bio_dedup_flush_pending(my);
+	if (rcode < 0) return rcode;
 
 	/*
 	 *	Try to write the packet which we were given.
@@ -461,6 +718,7 @@ static ssize_t fr_bio_dedup_blocked_data(fr_bio_dedup_t *my, uint8_t const *buff
 
 /** Expire an entry when its timer fires.
  *
+ *  @todo - expire items from the pending list, too
  */
 static void fr_bio_dedup_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
 {
@@ -476,6 +734,8 @@ static void fr_bio_dedup_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	/*
 	 *	Expire all entries which are within 10ms of "now".  That way we don't reset the event many
 	 *	times in short succession.
+	 *
+	 *	@todo - also expire entries on the pending list?
 	 */
 	expires = fr_time_add(now, fr_time_delta_from_msec(10));
 
@@ -529,16 +789,20 @@ static ssize_t fr_bio_dedup_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	rcode = next->write(next, packet_ctx, buffer, size);
 	if (rcode <= 0) return rcode;
 
-	if ((size_t) rcode == size) return rcode;
-
 	/*
 	 *	We need the item pointer to mark this entry as blocked.  If that doesn't exist, then we try
 	 *	really hard to write out the un-tracked data.
 	 */
 	item = NULL;
 	if (my->get_item) item = my->get_item(bio, packet_ctx);
+	if ((size_t) rcode == size) {
+		if (item) fr_bio_dedup_replied(my, item);
+		return rcode;
+	}
+
 	if (!item) return fr_bio_dedup_blocked_data(my, buffer, size, rcode);
 
+	fr_assert(item->reply_ctx == packet_ctx);
 	fr_assert(item->reply == buffer);
 	fr_assert(item->reply_size == size);
 
@@ -565,7 +829,7 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	if (rcode <= 0) return rcode;
 
 	/*
-	 *	
+	 *	Get a free item
 	 */
 	item = fr_bio_dedup_list_pop_head(&my->free);
 	fr_assert(item != NULL);
@@ -576,6 +840,7 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 		.packet_ctx = packet_ctx,
 		.packet = buffer,
 		.packet_size = (size_t) rcode,
+		.state = FR_BIO_DEDUP_STATE_ACTIVE,
 	};
 
 	/*
@@ -593,28 +858,12 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	 *	and potentially also write a duplicate reply via fr_bio_dedup_respond().
 	 */
 	if (!my->receive(bio, item, packet_ctx, buffer, rcode)) {
+		item->state = FR_BIO_DEDUP_STATE_FREE;
 		fr_bio_dedup_list_insert_head(&my->free, item);
 		return 0;
 	}
 
-	/*
-	 *	The application can cache "item", and later update item->reply and item->reply_size.
-	 *
-	 *	Now that we know we're going to track the file, update the default expirty time.  The caller
-	 *	can always call fr_bio_dedup_entry_extend() to change the expiry time.
-	 */
-	item->expires = fr_time_add_time_delta(fr_time(), my->config.lifetime);
-
-	/*
-	 *	This should never fail.
-	 */
-	if (!fr_rb_insert(&my->rb, item)) {
-		fr_assert(my->first != item);
-
-		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_INTERNAL_ERROR);
-		fr_bio_dedup_list_insert_head(&my->free, item);
-		return fr_bio_error(GENERIC);
-	}
+	fr_bio_dedup_list_insert_tail(&my->active, item);
 
 	return rcode;
 }
@@ -634,22 +883,14 @@ static int8_t _entry_cmp(void const *one, void const *two)
  *
  *  @param bio		the binary IO handler
  *  @param item		the dedup context from #fr_bio_dedup_respond_t
- *  @return
- *	- <0 error
- *	- 0 - didn't cancel
- *	- 1 - did cancel
  */
-int fr_bio_dedup_entry_cancel(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
+void fr_bio_dedup_entry_cancel(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 {
 	fr_bio_dedup_t *my = talloc_get_type_abort(bio, fr_bio_dedup_t);
 
-	/*
-	 *	If the caller has cached a previously finished item, then that's a fatal error.
-	 */
+	fr_assert(item->state != FR_BIO_DEDUP_STATE_FREE);
 
 	fr_bio_dedup_release(my, item, FR_BIO_DEDUP_CANCELLED);
-
-	return 1;
 }
 
 /** Extend the expiry time for an entry
@@ -665,13 +906,26 @@ int fr_bio_dedup_entry_extend(fr_bio_t *bio, fr_bio_dedup_entry_t *item, fr_time
 {
 	fr_bio_dedup_t *my = talloc_get_type_abort(bio, fr_bio_dedup_t);
 
+	switch (item->state) {
+	case FR_BIO_DEDUP_STATE_ACTIVE:
+		return 0;
+
+	case FR_BIO_DEDUP_STATE_REPLIED:
+		break;
+
 	/*
-	 *	Partially written replies aren't in the dedup tree.  We can just change their expiry time and
-	 *	be done.
+	 *	Partially written or pending replies aren't in the expirty tree.  We can just change their
+	 *	expiry time and be done.
 	 */
-	if (my->partial == item) {
+	case FR_BIO_DEDUP_STATE_PARTIAL:
+	case FR_BIO_DEDUP_STATE_PENDING:
 		item->expires = expires;
 		return 0;
+
+	case FR_BIO_DEDUP_STATE_CANCELLED:
+	case FR_BIO_DEDUP_STATE_FREE:
+		fr_assert(0);
+		return fr_bio_error(GENERIC);
 	}
 
 	/*
@@ -680,13 +934,11 @@ int fr_bio_dedup_entry_extend(fr_bio_t *bio, fr_bio_dedup_entry_t *item, fr_time
 	 */
 	fr_assert(fr_time_lteq(expires, fr_time()));
 
-	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
-
-	item->expires = expires;
-
 	/*
-	 *	We've changed the tree, so update the timer.
+	 *	Change places in the tree.
 	 */
+	item->expires = expires;
+	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
 	(void) fr_rb_insert(&my->rb, item);
 
 	/*
@@ -765,10 +1017,15 @@ fr_bio_t *fr_bio_dedup_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	 *	Insert the entries into the free list in order.
 	 */
 	fr_bio_dedup_list_init(&my->free);
+
 	for (i = 0; i < max_saved; i++) {
 		items[i].my = my;
+		items[i].state = FR_BIO_DEDUP_STATE_FREE;
 		fr_bio_dedup_list_insert_tail(&my->free, &items[i]);
 	}
+
+	fr_bio_dedup_list_init(&my->active);
+	fr_bio_dedup_list_init(&my->pending);
 
 	(void) fr_rb_inline_init(&my->rb, fr_bio_dedup_entry_t, node, _entry_cmp, NULL);
 
