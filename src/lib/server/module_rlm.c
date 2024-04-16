@@ -689,7 +689,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 			 *	We've matched "*", or "name1" or
 			 *	"name1 *".  Return that.
 			 */
-			*name1 = p;
+			*name1 = name + (p - inst_name);
 			*name2 = NULL;
 			*method = methods->method;
 			if (method_env) *method_env = methods->method_env;
