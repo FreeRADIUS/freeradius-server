@@ -610,41 +610,24 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 /*
  *	Log the query to a file.
  */
-void rlm_sql_query_log(rlm_sql_t const *inst, request_t *request, sql_acct_section_t const *section, char const *query)
+void rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query)
 {
 	int fd;
-	char const *filename = NULL;
-	char *expanded = NULL;
 	size_t len;
 	bool failed = false;	/* Write the log message outside of the critical region */
 
-	filename = inst->config.logfile;
-	if (section && section->logfile) filename = section->logfile;
-
-	if (!filename || !*filename) {
-		return;
-	}
-
-	if (xlat_aeval(request, &expanded, request, filename, NULL, NULL) < 0) {
-		return;
-	}
-
 	fd = exfile_open(inst->ef, filename, 0640, NULL);
 	if (fd < 0) {
-		ERROR("Couldn't open logfile '%s': %s", expanded, fr_syserror(errno));
+		ERROR("Couldn't open logfile '%s': %s", filename, fr_syserror(errno));
 
-		talloc_free(expanded);
 		/* coverity[missing_unlock] */
 		return;
 	}
 
 	len = strlen(query);
-	if ((write(fd, query, len) < 0) || (write(fd, ";\n", 2) < 0)) {
-		failed = true;
-	}
+	if ((write(fd, query, len) < 0) || (write(fd, ";\n", 2) < 0)) failed = true;
 
-	if (failed) ERROR("Failed writing to logfile '%s': %s", expanded, fr_syserror(errno));
+	if (failed) ERROR("Failed writing to logfile '%s': %s", filename, fr_syserror(errno));
 
-	talloc_free(expanded);
 	exfile_close(inst->ef, fd);
 }

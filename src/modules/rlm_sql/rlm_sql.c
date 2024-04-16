@@ -68,7 +68,6 @@ static const conf_parser_t type_config[] = {
 
 static const conf_parser_t acct_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("reference", CONF_FLAG_XLAT, rlm_sql_config_t, accounting.reference), .dflt = ".query" },
-	{ FR_CONF_OFFSET_FLAGS("logfile", CONF_FLAG_XLAT, rlm_sql_config_t, accounting.logfile) },
 
 	{ FR_CONF_POINTER("type", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) type_config },
 	CONF_PARSER_TERMINATOR
@@ -76,7 +75,6 @@ static const conf_parser_t acct_config[] = {
 
 static const conf_parser_t postauth_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("reference", CONF_FLAG_XLAT, rlm_sql_config_t, postauth.reference), .dflt = ".query" },
-	{ FR_CONF_OFFSET_FLAGS("logfile", CONF_FLAG_XLAT, rlm_sql_config_t, postauth.logfile) },
 
 	{ FR_CONF_OFFSET_FLAGS("query", CONF_FLAG_MULTI | CONF_FLAG_XLAT, rlm_sql_config_t, postauth.query) },
 	CONF_PARSER_TERMINATOR
@@ -94,7 +92,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("group_attribute", rlm_sql_config_t, group_attribute) },
 	{ FR_CONF_OFFSET("cache_groups", rlm_sql_config_t, cache_groups) },
 	{ FR_CONF_OFFSET("read_profiles", rlm_sql_config_t, read_profiles), .dflt = "yes" },
-	{ FR_CONF_OFFSET_FLAGS("logfile", CONF_FLAG_XLAT, rlm_sql_config_t, logfile) },
 	{ FR_CONF_OFFSET("open_query", rlm_sql_config_t, connect_query) },
 
 	{ FR_CONF_OFFSET("safe_characters", rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
@@ -154,6 +151,28 @@ static const call_env_method_t authorize_method_env = {
 	}
 };
 
+static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				  char const *section_name1, char const *section_name2, void const *data, UNUSED call_env_parser_t const *rule);
+
+typedef struct {
+	fr_value_box_t	filename;
+} sql_xlat_call_env_t;
+
+static const call_env_method_t xlat_method_env = {
+	FR_CALL_ENV_METHOD_OUT(sql_xlat_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("logfile", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_xlat_call_env_t, filename),
+		  .pair.escape = {
+			.func = rad_filename_box_make_safe,
+			.safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+			.mode = TMPL_ESCAPE_PRE_CONCAT
+		  },
+		  .pair.literals_safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe,
+		},
+		CALL_ENV_TERMINATOR
+	}
+};
+
 typedef struct rlm_sql_grouplist_s rlm_sql_grouplist_t;
 
 /** Status of the authorization process
@@ -193,12 +212,14 @@ typedef struct {
 
 typedef struct {
 	fr_value_box_t	user;
+	fr_value_box_t	filename;
 } sql_redundant_call_env_t;
 
 static const call_env_method_t accounting_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -207,6 +228,7 @@ static const call_env_method_t post_auth_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
+		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -372,6 +394,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			      xlat_ctx_t const *xctx,
 			      request_t *request, fr_value_box_list_t *in)
 {
+	sql_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, sql_xlat_call_env_t);
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
 	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
@@ -385,7 +408,9 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
 	if (!handle) return XLAT_ACTION_FAIL;
 
-	rlm_sql_query_log(inst, request, NULL, arg->vb_strvalue);
+	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
+		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
+	}
 
 	p = arg->vb_strvalue;
 
@@ -584,8 +609,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 	if (!handle) {
 		RETURN_MODULE_FAIL;
 	}
-
-	rlm_sql_query_log(inst, request, NULL, query_str);
 
 	ret = rlm_sql_select_query(inst, request, &handle, query_str);
 	if (ret != RLM_SQL_OK) {
@@ -1544,7 +1567,9 @@ static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *in
 			goto finish;
 		}
 
-		rlm_sql_query_log(inst, request, section, expanded);
+		if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
+			rlm_sql_query_log(inst, call_env->filename.vb_strvalue, expanded);
+		}
 
 		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
 		TALLOC_FREE(expanded);
@@ -1651,6 +1676,81 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
 	RETURN_MODULE_NOOP;
 }
 
+static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+				  CONF_ITEM *ci, char const *section_name1, char const *section_name2,
+				  UNUSED void const *data, UNUSED call_env_parser_t const *rule)
+{
+	CONF_SECTION const	*subcs = NULL, *subsubcs = NULL;
+	CONF_PAIR const		*to_parse = NULL;
+	tmpl_t			*parsed_tmpl;
+	call_env_parsed_t	*parsed_env;
+	tmpl_rules_t		our_rules;
+	char			*section2, *p;
+
+	/*
+	 *	The call env subsection which calls this has CF_IDENT_ANY as its name
+	 *	which results in finding the first child section of the module config.
+	 *	We actually want the whole module config - so go to the parent.
+	 */
+	ci = cf_parent(ci);
+
+	/*
+	 *	Find the instance of "logfile" to parse
+	 *
+	 *	If the module call is from `accounting Start` then first is
+	 *		<module> { accounting { start { logfile } } }
+	 *	then
+	 *		<module> { accounting { logfile } }
+	 *	falling back to
+	 *		<module> { logfile }
+	 */
+	subcs = cf_section_find(cf_item_to_section(ci), section_name1, CF_IDENT_ANY);
+	if (subcs) {
+		if (section_name2) {
+			section2 = talloc_strdup(NULL, section_name2);
+			p = section2;
+			while (*p != '\0') {
+				*(p) = tolower((uint8_t)*p);
+				p++;
+			}
+			subsubcs = cf_section_find(subcs, section2, CF_IDENT_ANY);
+			talloc_free(section2);
+			if (subsubcs) to_parse = cf_pair_find(subsubcs, "logfile");
+		}
+		if (!to_parse) to_parse = cf_pair_find(subcs, "logfile");
+	}
+
+	if (!to_parse) to_parse = cf_pair_find(cf_item_to_section(ci), "logfile");
+
+	if (!to_parse) return 0;
+
+	/*
+	 *	Use filename safety escape functions
+	 */
+	our_rules = *t_rules;
+	our_rules.escape.func = rad_filename_box_make_safe;
+	our_rules.escape.safe_for = (fr_value_box_safe_for_t)rad_filename_box_make_safe;
+	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
+	our_rules.literals_safe_for = our_rules.escape.safe_for;
+
+	MEM(parsed_env = call_env_parsed_add(ctx, out,
+					     &(call_env_parser_t){ FR_CALL_ENV_OFFSET("logfile", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, filename)}));
+
+	if (tmpl_afrom_substr(parsed_env, &parsed_tmpl,
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) {
+	error:
+		call_env_parsed_free(out, parsed_env);
+		return -1;
+	}
+	if (tmpl_needs_resolving(parsed_tmpl) &&
+	    (tmpl_resolve(parsed_tmpl, &(tmpl_res_rules_t){ .dict_def = our_rules.attr.dict_def }) < 0)) goto error;
+
+	call_env_parsed_set_tmpl(parsed_env, parsed_tmpl);
+
+	return 0;
+}
+
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
@@ -1746,6 +1846,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		cf_log_perr(conf, "Failed registering %s expansion", mctx->inst->name);
 		return -1;
 	}
+	xlat_func_call_env_set(xlat, &xlat_method_env);
 
 	/*
 	 *	The xlat escape function needs access to inst - so
