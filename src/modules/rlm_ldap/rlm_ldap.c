@@ -72,7 +72,7 @@ typedef struct {
 	map_list_t	*profile_map;			//!< List of maps to apply to the profile.
 } ldap_xlat_profile_call_env_t;
 
-static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2, UNUSED call_env_parser_t const *rule);
+static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
 
 static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2, void const *data, UNUSED call_env_parser_t const *rule);
 
@@ -2380,7 +2380,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
 				     CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2,
-				     call_env_parser_t const *rule)
+				     UNUSED void const *data, call_env_parser_t const *rule)
 {
 	map_list_t			*maps;
 	CONF_SECTION			*update = cf_item_to_section(ci);
