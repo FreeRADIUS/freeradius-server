@@ -639,10 +639,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	 *	We have a module, but the caller doesn't care about
 	 *	method or names, so just return the module.
 	 */
-	if (!method || !method_name1 || !method_name2) {
-		talloc_free(inst_name);
-		return mi;
-	}
+	if (!method || !method_name1 || !method_name2) goto finish;
 
 	/*
 	 *	We MAY have two names.
@@ -655,8 +652,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	if (!mrlm->method_names) {
 		*name1 = name + (p - inst_name);
 		*name2 = NULL;
-		talloc_free(inst_name);
-		return mi;
+		goto finish;
 	}
 
 	/*
@@ -699,17 +695,13 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 		/*
 		 *	Return the found module.
 		 */
-		talloc_free(inst_name);
-		return mi;
+		goto finish;
 	}
 
 	/*
 	 *	We CANNOT have '.' in method names.
 	 */
-	if (strchr(q + 1, '.') != 0) {
-		talloc_free(inst_name);
-		return mi;
-	}
+	if (strchr(q + 1, '.') != 0) goto finish;
 
 	len = q - p;
 
