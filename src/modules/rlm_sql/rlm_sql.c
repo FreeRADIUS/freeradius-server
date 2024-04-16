@@ -238,7 +238,7 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	return 0;
 }
 
-static int sql_box_escape(fr_value_box_t *vb, rlm_sql_escape_uctx_t *uctx)
+static int sql_box_escape(fr_value_box_t *vb, void *uctx)
 {
 	return sql_xlat_escape(NULL, vb, uctx);
 }
