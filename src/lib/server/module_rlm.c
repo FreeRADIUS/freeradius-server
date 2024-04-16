@@ -761,12 +761,13 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 		*name2 = name + (q - inst_name);
 		*method = methods->method;
 		if (method_env) *method_env = methods->method_env;
-		break;
+		goto finish;
 	}
 
 	*name1 = name + (p - inst_name);
 	*name2 = NULL;
 
+finish:
 	talloc_free(inst_name);
 	return mi;
 }
