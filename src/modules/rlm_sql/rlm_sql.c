@@ -45,41 +45,6 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_sql;
 
-/*
- *	So we can do pass2 xlat checks on the queries.
- */
-static const conf_parser_t query_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("query", CONF_FLAG_MULTI | CONF_FLAG_XLAT, rlm_sql_config_t, accounting.query) },
-	CONF_PARSER_TERMINATOR
-};
-
-/*
- *	For now hard-code the subsections.  This isn't perfect, but it
- *	helps the average case.
- */
-static const conf_parser_t type_config[] = {
-	{ FR_CONF_POINTER("accounting-on", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) query_config },
-	{ FR_CONF_POINTER("accounting-off", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) query_config },
-	{ FR_CONF_POINTER("start", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) query_config },
-	{ FR_CONF_POINTER("interim-update", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) query_config },
-	{ FR_CONF_POINTER("stop", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) query_config },
-	CONF_PARSER_TERMINATOR
-};
-
-static const conf_parser_t acct_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("reference", CONF_FLAG_XLAT, rlm_sql_config_t, accounting.reference), .dflt = ".query" },
-
-	{ FR_CONF_POINTER("type", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) type_config },
-	CONF_PARSER_TERMINATOR
-};
-
-static const conf_parser_t postauth_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("reference", CONF_FLAG_XLAT, rlm_sql_config_t, postauth.reference), .dflt = ".query" },
-
-	{ FR_CONF_OFFSET_FLAGS("query", CONF_FLAG_MULTI | CONF_FLAG_XLAT, rlm_sql_config_t, postauth.query) },
-	CONF_PARSER_TERMINATOR
-};
-
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_sql_t, driver_submodule), .dflt = "null",
 			 .func = module_rlm_submodule_parse },
@@ -101,9 +66,6 @@ static const conf_parser_t module_config[] = {
 	 */
 	{ FR_CONF_OFFSET("query_timeout", rlm_sql_config_t, query_timeout) },
 
-	{ FR_CONF_POINTER("accounting", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) acct_config },
-
-	{ FR_CONF_POINTER("post-auth", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) postauth_config },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -151,8 +113,11 @@ static const call_env_method_t authorize_method_env = {
 	}
 };
 
-static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-				  char const *section_name1, char const *section_name2, void const *data, UNUSED call_env_parser_t const *rule);
+static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *cc,
+				  char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
+
+static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *cc,
+				char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
 
 typedef struct {
 	fr_value_box_t	filename;
@@ -211,8 +176,9 @@ typedef struct {
 } sql_autz_ctx_t;
 
 typedef struct {
-	fr_value_box_t	user;
-	fr_value_box_t	filename;
+	fr_value_box_t		user;		//!< Expansion of sql_user_name.
+	fr_value_box_t		filename;	//!< File name to write SQL logs to.
+	tmpl_t			**query;	//!< Array of tmpls for list of queries to run.
 } sql_redundant_call_env_t;
 
 static const call_env_method_t accounting_method_env = {
@@ -220,18 +186,31 @@ static const call_env_method_t accounting_method_env = {
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
+		{ FR_CALL_ENV_SUBSECTION_FUNC("accounting", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, query_call_env_parse) },
 		CALL_ENV_TERMINATOR
 	}
 };
 
-static const call_env_method_t post_auth_method_env = {
+static const call_env_method_t send_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_redundant_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_redundant_call_env_t, user) },
 		{ FR_CALL_ENV_SUBSECTION_FUNC(CF_IDENT_ANY, CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, logfile_call_env_parse) },
+		{ FR_CALL_ENV_SUBSECTION_FUNC("send", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, query_call_env_parse) },
 		CALL_ENV_TERMINATOR
 	}
 };
+
+/** Context for tracking redundant SQL query sets
+ */
+typedef struct {
+	rlm_sql_t const			*inst;		//!< Module instance.
+	request_t			*request;	//!< Request being processed.
+	rlm_sql_handle_t		*handle;	//!< Database connection handle.
+	sql_redundant_call_env_t	*call_env;	//!< Call environment data.
+	size_t				query_no;	//!< Current query number.
+	fr_value_box_list_t		query;		//!< Where expanded query tmpl will be written.
+} sql_redundant_ctx_t;
 
 typedef struct {
 	fr_value_box_t	user;
@@ -1475,205 +1454,149 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/*
- *	Generic function for failing between a bunch of queries.
+/** Tidy up when freeing an SQL redundant context
  *
- *	Uses the same principle as rlm_linelog, expanding the 'reference' config
- *	item using xlat to figure out what query it should execute.
- *
- *	If the reference matches multiple config items, and a query fails or
- *	doesn't update any rows, the next matching config item is used.
- *
+ * Release the connection handle and unset the SQL-User attribute.
  */
-static unlang_action_t acct_redundant(rlm_rcode_t *p_result, rlm_sql_t const *inst, request_t *request,
-				      sql_acct_section_t const *section, sql_redundant_call_env_t *call_env)
+static int sql_redundant_ctx_free(sql_redundant_ctx_t *to_free)
 {
-	rlm_rcode_t		rcode = RLM_MODULE_OK;
+	(void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
+	if (to_free->handle) fr_pool_connection_release(to_free->inst->pool, to_free->request, to_free->handle);
+	sql_unset_user(to_free->inst, to_free->request);
 
-	rlm_sql_handle_t	*handle = NULL;
-	int			sql_ret;
-	int			numaffected = 0;
+	return 0;
+}
 
-	CONF_ITEM		*item;
-	CONF_PAIR 		*pair;
-	char const		*attr = NULL;
-	char const		*value;
+/** Resume function called after expansion of next query in a redundant list of queries
+ *
+ * @param p_result	Result of current module call.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		Current redundant sql context.
+ * @return one of the RLM_MODULE_* values.
+ */
+static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(uctx, sql_redundant_ctx_t);
+	sql_redundant_call_env_t	*call_env = redundant_ctx->call_env;
+	rlm_sql_t const			*inst = redundant_ctx->inst;
+	fr_value_box_t			*query;
+	int				sql_ret;
+	int				numaffected = 0;
+	tmpl_t				*next_query;
 
-	char			path[FR_MAX_STRING_LEN];
-	char			*p = path;
-	char			*expanded = NULL;
+	query = fr_value_box_list_pop_head(&redundant_ctx->query);
+	if (!query) RETURN_MODULE_FAIL;
 
-	fr_assert(section);
-
-	if (section->reference[0] != '.') *p++ = '.';
-
-	if (xlat_eval(p, sizeof(path) - (p - path), request, section->reference, NULL, NULL) < 0) {
-		rcode = RLM_MODULE_FAIL;
-
-		goto finish;
+	if ((call_env->filename.type == FR_TYPE_STRING) && (call_env->filename.vb_length > 0)) {
+		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, query->vb_strvalue);
 	}
+
+	sql_ret = rlm_sql_query(inst, request, &redundant_ctx->handle, query->vb_strvalue);
+	talloc_free(query);
+
+	RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, sql_ret, "<INVALID>"));
+
+	switch (sql_ret) {
+	/*
+	 *	Query was a success! Now we just need to check if it did anything.
+	 */
+	case RLM_SQL_OK:
+		break;
 
 	/*
-	 *	If we can't find a matching config item we do
-	 *	nothing so return RLM_MODULE_NOOP.
+	 *	A general, unrecoverable server fault.
 	 */
-	item = cf_reference_item(NULL, section->cs, path);
-	if (!item) {
-		RWDEBUG("No such configuration item %s", path);
-		rcode = RLM_MODULE_NOOP;
+	case RLM_SQL_ERROR:
+	/*
+	 *	If we get RLM_SQL_RECONNECT it means all connections in the pool
+	 *	were exhausted, and we couldn't create a new connection,
+	 *	so we do not need to call fr_pool_connection_release.
+	 */
+	case RLM_SQL_RECONNECT:
+		RETURN_MODULE_FAIL;
 
-		goto finish;
+	/*
+	 *	Query was invalid, this is a terminal error.
+	 */
+	case RLM_SQL_QUERY_INVALID:
+		RETURN_MODULE_INVALID;
+
+	/*
+	 *	Driver found an error (like a unique key constraint violation)
+	 *	that hinted it might be a good idea to try an alternative query.
+	 */
+	case RLM_SQL_ALT_QUERY:
+		goto next;
 	}
-	if (cf_item_is_section(item)){
-		RWDEBUG("Sections are not supported as references");
-		rcode = RLM_MODULE_NOOP;
+	fr_assert(redundant_ctx->handle);
 
-		goto finish;
+	/*
+	 *	We need to have updated something for the query to have been
+	 *	counted as successful.
+	 */
+	numaffected = (inst->driver->sql_affected_rows)(redundant_ctx->handle, &inst->config);
+	(inst->driver->sql_finish_query)(redundant_ctx->handle, &inst->config);
+	RDEBUG2("%i record(s) updated", numaffected);
+
+	if (numaffected > 0) RETURN_MODULE_OK;	/* A query succeeded, were done! */
+next:
+	/*
+	 *	Look to see if there are any more queries to expand
+	 */
+	redundant_ctx->query_no++;
+	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_MODULE_NOOP;
+	next_query = *(tmpl_t **)((uint8_t *)call_env->query + sizeof(void *) * redundant_ctx->query_no);
+	if (unlang_function_repeat_set(request, mod_sql_redundant_resume) < 0) RETURN_MODULE_FAIL;
+	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, next_query, NULL) < 0) RETURN_MODULE_FAIL;
+
+	RDEBUG2("Trying next query...");
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+/**  Generic module call for failing between a bunch of queries.
+ *
+ * Used for `accounting` and `send` module calls
+ *
+ */
+static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_sql_t const			*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
+	sql_redundant_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_redundant_call_env_t);
+	sql_redundant_ctx_t		*redundant_ctx;
+
+	/*
+	 *	No query to expand - do nothing.
+	 */
+	if (!call_env->query) {
+		RWARN("No query configured");
+		RETURN_MODULE_NOOP;
 	}
 
-	pair = cf_item_to_pair(item);
-	attr = cf_pair_attr(pair);
+	MEM(redundant_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), sql_redundant_ctx_t));
+	*redundant_ctx = (sql_redundant_ctx_t) {
+		.inst = inst,
+		.request = request,
+		.call_env = call_env,
+		.query_no = 0
+	};
+	talloc_set_destructor(redundant_ctx, sql_redundant_ctx_free);
 
-	RDEBUG2("Using query template '%s'", attr);
+	redundant_ctx->handle = fr_pool_connection_get(inst->pool, request);
+	if (!redundant_ctx->handle) RETURN_MODULE_FAIL;
 
-	handle = fr_pool_connection_get(inst->pool, request);
-	if (!handle) {
-		rcode = RLM_MODULE_FAIL;
-
-		goto finish;
-	}
+	request_data_add(request, (void *)sql_escape_uctx_alloc, 0, redundant_ctx->handle, false, false, false);
 
 	sql_set_user(inst, request, &call_env->user);
 
-	while (true) {
-		value = cf_pair_value(pair);
-		if (!value) {
-			RDEBUG2("Ignoring null query");
-			rcode = RLM_MODULE_NOOP;
+	if (unlang_function_push(request, NULL, mod_sql_redundant_resume, NULL, 0,
+				 UNLANG_SUB_FRAME, redundant_ctx) < 0) RETURN_MODULE_FAIL;
 
-			goto finish;
-		}
+	fr_value_box_list_init(&redundant_ctx->query);
+	if (unlang_tmpl_push(redundant_ctx, &redundant_ctx->query, request, *call_env->query, NULL) < 0) RETURN_MODULE_FAIL;
 
-		if (xlat_aeval(request, &expanded, request, value, inst->sql_escape_func, handle) < 0) {
-			rcode = RLM_MODULE_FAIL;
-
-			goto finish;
-		}
-
-		if (!*expanded) {
-			RDEBUG2("Ignoring null query");
-			rcode = RLM_MODULE_NOOP;
-
-			goto finish;
-		}
-
-		if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
-			rlm_sql_query_log(inst, call_env->filename.vb_strvalue, expanded);
-		}
-
-		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
-		TALLOC_FREE(expanded);
-		RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, sql_ret, "<INVALID>"));
-
-		switch (sql_ret) {
-		/*
-		 *  Query was a success! Now we just need to check if it did anything.
-		 */
-		case RLM_SQL_OK:
-			break;
-
-		/*
-		 *  A general, unrecoverable server fault.
-		 */
-		case RLM_SQL_ERROR:
-		/*
-		 *  If we get RLM_SQL_RECONNECT it means all connections in the pool
-		 *  were exhausted, and we couldn't create a new connection,
-		 *  so we do not need to call fr_pool_connection_release.
-		 */
-		case RLM_SQL_RECONNECT:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-
-		/*
-		 *  Query was invalid, this is a terminal error, but we still need
-		 *  to do cleanup, as the connection handle is still valid.
-		 */
-		case RLM_SQL_QUERY_INVALID:
-			rcode = RLM_MODULE_INVALID;
-			goto finish;
-
-		/*
-		 *  Driver found an error (like a unique key constraint violation)
-		 *  that hinted it might be a good idea to try an alternative query.
-		 */
-		case RLM_SQL_ALT_QUERY:
-			goto next;
-		}
-		fr_assert(handle);
-
-		/*
-		 *  We need to have updated something for the query to have been
-		 *  counted as successful.
-		 */
-		numaffected = (inst->driver->sql_affected_rows)(handle, &inst->config);
-		(inst->driver->sql_finish_query)(handle, &inst->config);
-		RDEBUG2("%i record(s) updated", numaffected);
-
-		if (numaffected > 0) break;	/* A query succeeded, were done! */
-	next:
-		/*
-		 *  We assume all entries with the same name form a redundant
-		 *  set of queries.
-		 */
-		pair = cf_pair_find_next(section->cs, pair, attr);
-
-		if (!pair) {
-			RDEBUG2("No additional queries configured");
-			rcode = RLM_MODULE_NOOP;
-
-			goto finish;
-		}
-
-		RDEBUG2("Trying next query...");
-	}
-
-finish:
-	talloc_free(expanded);
-	fr_pool_connection_release(inst->pool, request, handle);
-	sql_unset_user(inst, request);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-/*
- *	Accounting: Insert or update session data in our sql table
- */
-static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
-	sql_redundant_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_redundant_call_env_t);
-
-	if (inst->config.accounting.reference_cp) {
-		return acct_redundant(p_result, inst, request, &inst->config.accounting, call_env);
-	}
-
-	RETURN_MODULE_NOOP;
-}
-
-/*
- *	Postauth: Write a record of the authentication attempt
- */
-static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_sql_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
-	sql_redundant_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_redundant_call_env_t);
-
-	if (inst->config.postauth.reference_cp) {
-		return acct_redundant(p_result, inst, request, &inst->config.postauth, call_env);
-	}
-
-	RETURN_MODULE_NOOP;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
@@ -1747,6 +1670,74 @@ static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 	    (tmpl_resolve(parsed_tmpl, &(tmpl_res_rules_t){ .dict_def = our_rules.attr.dict_def }) < 0)) goto error;
 
 	call_env_parsed_set_tmpl(parsed_env, parsed_tmpl);
+
+	return 0;
+}
+
+static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+				CONF_ITEM *ci, UNUSED char const *section_name1, char const *section_name2,
+				void const *data, UNUSED call_env_parser_t const *rule)
+{
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(data, rlm_sql_t);
+	CONF_SECTION const	*subcs = NULL;
+	CONF_PAIR const		*to_parse = NULL;
+	tmpl_t			*parsed_tmpl;
+	call_env_parsed_t	*parsed_env;
+	tmpl_rules_t		our_rules;
+	char			*section2, *p;
+	ssize_t			count, slen, multi_index = 0;
+
+	if (!section_name2) return -1;
+
+	/*
+	 *	Find the instance(s) of "query" to parse
+	 *
+	 *	If the module call is from `accounting Start` then it should be
+	 *		<module> { accounting { start { query } } }
+	 */
+	section2 = talloc_strdup(NULL, section_name2);
+	p = section2;
+	while (*p != '\0') {
+		*(p) = tolower((uint8_t)*p);
+		p++;
+	}
+	subcs = cf_section_find(cf_item_to_section(ci), section2, CF_IDENT_ANY);
+	talloc_free(section2);
+	if (!subcs) return 0;
+
+	/*
+	 *	Use module specific escape functions
+	 */
+	our_rules = *t_rules;
+	our_rules.escape.func = inst->box_escape_func;
+	our_rules.escape.safe_for = (fr_value_box_safe_for_t)inst->driver;
+	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
+	our_rules.literals_safe_for = our_rules.escape.safe_for;
+
+	count = cf_pair_count(subcs, "query");
+
+	while ((to_parse = cf_pair_find_next(subcs, to_parse, "query"))) {
+		MEM(parsed_env = call_env_parsed_add(ctx, out,
+						     &(call_env_parser_t){ FR_CALL_ENV_PARSE_ONLY_OFFSET("query", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_MULTI, sql_redundant_call_env_t, query)}));
+
+		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
+				      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+				      cf_pair_value_quote(to_parse), NULL, &our_rules);
+		if (slen <= 0) {
+			cf_canonicalize_error(to_parse, slen, "Failed parsing query", cf_pair_value(to_parse));
+		error:
+			call_env_parsed_free(out, parsed_env);
+			return -1;
+		}
+		if (tmpl_needs_resolving(parsed_tmpl) &&
+		    (tmpl_resolve(parsed_tmpl, &(tmpl_res_rules_t){ .dict_def = our_rules.attr.dict_def }) < 0)) {
+			cf_log_perr(to_parse, "Failed resolving query");
+			goto error;
+		}
+
+		call_env_parsed_set_multi_index(parsed_env, count, multi_index++);
+		call_env_parsed_set_data(parsed_env, parsed_tmpl);
+	}
 
 	return 0;
 }
@@ -1901,19 +1892,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	} /* allow the group check / reply queries to be NULL */
 
 	/*
-	 *	This will always exist, as cf_section_parse_init()
-	 *	will create it if it doesn't exist.  However, the
-	 *	"reference" config item won't exist in an auto-created
-	 *	configuration.  So if that doesn't exist, we ignore
-	 *	the whole subsection.
-	 */
-	inst->config.accounting.cs = cf_section_find(conf, "accounting", NULL);
-	inst->config.accounting.reference_cp = (cf_pair_find(inst->config.accounting.cs, "reference") != NULL);
-
-	inst->config.postauth.cs = cf_section_find(conf, "post-auth", NULL);
-	inst->config.postauth.reference_cp = (cf_pair_find(inst->config.postauth.cs, "reference") != NULL);
-
-	/*
 	 *	Cache the SQL-User-Name fr_dict_attr_t, so we can be slightly
 	 *	more efficient about creating SQL-User-Name attributes.
 	 */
@@ -1973,10 +1951,10 @@ module_rlm_t rlm_sql = {
 
 		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
 		  .method_env = &authorize_method_env	},
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,
+		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_sql_redundant,
 		  .method_env = &accounting_method_env	},
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,
-		  .method_env = &post_auth_method_env	},
+		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_sql_redundant,
+		  .method_env = &send_method_env	},
 		MODULE_NAME_TERMINATOR
 	}
 };

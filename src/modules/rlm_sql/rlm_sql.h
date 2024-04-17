@@ -68,21 +68,6 @@ typedef struct {
 	sql_rcode_t 		rcode;				//!< What should happen if we receive this error.
 } sql_state_entry_t;
 
-/*
- * Sections where we dynamically resolve the config entry to use,
- * by xlating reference.
- */
-typedef struct {
-	CONF_SECTION		*cs;				//!< The CONF_SECTION representing the group
-								//!< of queries to process.
-
-	char const		*reference;			//!< Reference string, expanded to point to
-								//!< a group of queries.
-	bool			reference_cp;
-
-	char const		**query;			/* for xlat parsing */
-} sql_acct_section_t;
-
 typedef struct {
 	char const 		*sql_server;			//!< Server to connect to.
 	uint32_t 		sql_port;			//!< Port to connect to.
@@ -108,16 +93,6 @@ typedef struct {
 
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
-	/*
-	 *	@todo The rest of the queries should also be moved into
-	 *	their own sections.
-	 */
-
-	/*
-	 *	Section configurations
-	 */
-	sql_acct_section_t	postauth;
-	sql_acct_section_t	accounting;
 } rlm_sql_config_t;
 
 typedef struct sql_inst rlm_sql_t;
