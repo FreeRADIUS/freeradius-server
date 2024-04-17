@@ -3,7 +3,7 @@
 #
 %sql("${delete_from_radacct} '00000004'")
 
-sql.accounting
+sql.accounting.interim-update
 if (!ok) {
 	test_fail
 }

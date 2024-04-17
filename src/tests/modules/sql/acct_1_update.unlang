@@ -1,11 +1,8 @@
 #
 #  PRE: acct_0_start
 #
-sql.accounting
-if (ok) {
-	test_pass
-}
-else {
+sql.accounting.interim-update
+if !(ok) {
 	test_fail
 }
 
@@ -16,3 +13,5 @@ if (%sql("SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'") != "1"
 if (%sql("SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'") != "30") {
 	test_pass
 }
+
+test_pass

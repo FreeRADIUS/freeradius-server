@@ -10,11 +10,8 @@
 #
 #  Insert the Accounting-Request start
 #
-sql.accounting
-if (ok) {
-	test_pass
-}
-else {
+sql.accounting.start
+if !(ok) {
 	test_fail
 }
 
@@ -37,14 +34,13 @@ if (%sql("SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000003'")
 #
 &Connect-Info = 'updated'
 
-sql.accounting
-if (ok) {
-	test_pass
-}
-else {
+sql.accounting.start
+if !(ok) {
 	test_fail
 }
 
 if (%sql("SELECT connectinfo_start FROM radacct WHERE AcctSessionId = '00000003'") != 'updated') {
 	test_fail
 }
+
+test_pass
