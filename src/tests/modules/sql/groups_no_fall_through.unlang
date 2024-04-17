@@ -25,7 +25,7 @@ string groupname
 #  Run SQL
 #
 sql
-if (!ok) {
+if (!updated) {
 	test_fail
 }
 

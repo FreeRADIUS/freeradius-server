@@ -94,12 +94,6 @@ typedef struct {
 
 	char const		*group_attribute;		//!< Name of the group attribute.
 
-	char const		*authorize_check_query;		//!< Query used get check VPs for a user.
-	char const 		*authorize_reply_query;		//!< Query used get reply VPs for a user.
-	char const		*authorize_group_check_query;	//!< Query used get check VPs for a group.
-	char const		*authorize_group_reply_query;	//!< Query used get reply VPs for a group.
-	char const 		*groupmemb_query;		//!< Query to determine group membership.
-
 	bool			cache_groups;			//!< cache group names in &control.SQL-Group
 
 	bool			read_groups;			//!< Read user groups by default.

@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <sys/stat.h>
@@ -96,12 +97,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("logfile", CONF_FLAG_XLAT, rlm_sql_config_t, logfile) },
 	{ FR_CONF_OFFSET("open_query", rlm_sql_config_t, connect_query) },
 
-	{ FR_CONF_OFFSET_FLAGS("authorize_check_query", CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_check_query) },
-	{ FR_CONF_OFFSET_FLAGS("authorize_reply_query", CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_reply_query) },
-
-	{ FR_CONF_OFFSET_FLAGS("authorize_group_check_query", CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_group_check_query) },
-	{ FR_CONF_OFFSET_FLAGS("authorize_group_reply_query", CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, authorize_group_reply_query) },
-	{ FR_CONF_OFFSET_FLAGS("group_membership_query", CONF_FLAG_NOT_EMPTY | CONF_FLAG_XLAT, rlm_sql_config_t, groupmemb_query) },
 	{ FR_CONF_OFFSET("safe_characters", rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
 	/*
@@ -138,16 +133,63 @@ fr_dict_attr_autoload_t rlm_sql_dict_attr[] = {
 };
 
 typedef struct {
-	fr_value_box_t	user;
+	fr_value_box_t	user;			//!< Expansion of the sql_user_name
+	tmpl_t		*check_query;		//!< Tmpl to expand to form authorize_check_query
+	tmpl_t		*reply_query;		//!< Tmpl to expand to form authorize_reply_query
+	tmpl_t		*membership_query;	//!< Tmpl to expand to form group_membership_query
+	tmpl_t		*group_check_query;	//!< Tmpl to expand to form authorize_group_check_query
+	tmpl_t		*group_reply_query;	//!< Tmpl to expand to form authorize_group_reply_query
 } sql_autz_call_env_t;
 
 static const call_env_method_t authorize_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_autz_call_env_t, user) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, check_query) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, reply_query) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, membership_query) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_group_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, group_check_query) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_group_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, group_reply_query) },
 		CALL_ENV_TERMINATOR
 	}
 };
+
+typedef struct rlm_sql_grouplist_s rlm_sql_grouplist_t;
+
+/** Status of the authorization process
+ */
+typedef enum {
+	SQL_AUTZ_CHECK		= 0x11,		//!< Running user `check` query
+	SQL_AUTZ_REPLY		= 0x12,		//!< Running user `reply` query
+	SQL_AUTZ_GROUP_MEMB	= 0x20,		//!< Running group membership query
+	SQL_AUTZ_GROUP_CHECK	= 0x21,		//!< Running group `check` query
+	SQL_AUTZ_GROUP_REPLY	= 0x22,		//!< Running group `reply` query
+	SQL_AUTZ_PROFILE_START	= 0x40,		//!< Starting processing user profiles
+	SQL_AUTZ_PROFILE_CHECK	= 0x41,		//!< Running profile `check` query
+	SQL_AUTZ_PROFILE_REPLY	= 0x42,		//!< Running profile `reply` query
+} sql_autz_status_t;
+
+#define SQL_AUTZ_STAGE_GROUP 0x20
+#define SQL_AUTZ_STAGE_PROFILE 0x40
+
+/** Context for SQL authorization
+ */
+typedef struct {
+	rlm_sql_t const		*inst;		//!< Module instance.
+	request_t		*request;	//!< Request being processed.
+	rlm_rcode_t		rcode;		//!< Module return code.
+	rlm_sql_handle_t	*handle;	//!< Database connection handle in use for current authorization.
+	sql_autz_call_env_t	*call_env;	//!< Call environment data.
+	map_list_t		check_tmp;	//!< List to store check items before processing.
+	map_list_t		reply_tmp;	//!< List to store reply items before processing.
+	sql_autz_status_t	status;		//!< Current status of the authorization.
+	fr_value_box_list_t	query;		//!< Where expanded query tmpls will be written.
+	bool			user_found;	//!< Has the user been found anywhere?
+	rlm_sql_grouplist_t	*groups;	//!< List of groups returned by the group membership query.
+	rlm_sql_grouplist_t	*group;		//!< Current group being processed.
+	fr_pair_t		*sql_group;	//!< Pair to update with group being processed.
+	fr_pair_t		*profile;	//!< Current profile being processed.
+} sql_autz_ctx_t;
 
 typedef struct {
 	fr_value_box_t	user;
@@ -171,15 +213,42 @@ static const call_env_method_t post_auth_method_env = {
 
 typedef struct {
 	fr_value_box_t	user;
+	tmpl_t		*membership_query;
 } sql_group_xlat_call_env_t;
 
 static const call_env_method_t group_xlat_method_env = {
 	FR_CALL_ENV_METHOD_OUT(sql_group_xlat_call_env_t),
 	.env = (call_env_parser_t[]) {
 		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_group_xlat_call_env_t, user) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_group_xlat_call_env_t, membership_query) },
 		CALL_ENV_TERMINATOR
 	}
 };
+
+static int _sql_escape_uxtx_free(void *uctx)
+{
+	return talloc_free(uctx);
+}
+
+/*
+ *	Create a thread local uctx which is used in SQL value box escaping
+ *	so that an already reserved connection can be used.
+ */
+static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
+{
+	static _Thread_local rlm_sql_escape_uctx_t	*t_ctx;
+
+	if (unlikely(t_ctx == NULL)) {
+		rlm_sql_escape_uctx_t *ctx;
+
+		MEM(ctx = talloc_zero(NULL, rlm_sql_escape_uctx_t));
+		fr_atexit_thread_local(t_ctx, _sql_escape_uxtx_free, ctx);
+	}
+	t_ctx->sql = uctx;
+	t_ctx->handle = request_data_reference(request, (void *)sql_escape_uctx_alloc, 0);
+
+	return t_ctx;
+}
 
 /*
  *	Fall-Through checking function from rlm_files.c
@@ -770,16 +839,14 @@ static void sql_set_user(rlm_sql_t const *inst, request_t *request, fr_value_box
 #define sql_unset_user(_i, _r) fr_pair_delete_by_da(&_r->request_pairs, _i->sql_user)
 
 
-typedef struct rlm_sql_grouplist_s rlm_sql_grouplist_t;
 struct rlm_sql_grouplist_s {
 	char			*name;
 	rlm_sql_grouplist_t	*next;
 };
 
 static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, request_t *request,
-			     rlm_sql_grouplist_t **phead)
+			     char const *query, rlm_sql_grouplist_t **phead)
 {
-	char			*expanded = NULL;
 	int     		num_groups = 0;
 	rlm_sql_row_t		row;
 	rlm_sql_grouplist_t	*entry;
@@ -789,12 +856,9 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 
 	entry = *phead = NULL;
 
-	if (!inst->config.groupmemb_query || !*inst->config.groupmemb_query) return 0;
-	if (xlat_aeval(request, &expanded, request, inst->config.groupmemb_query,
-			 inst->sql_escape_func, *handle) < 0) return -1;
+	if (!query || !*query) return 0;
 
-	ret = rlm_sql_select_query(inst, request, handle, expanded);
-	talloc_free(expanded);
+	ret = rlm_sql_select_query(inst, request, handle, query);
 	if (ret != RLM_SQL_OK) return -1;
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
@@ -826,17 +890,11 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 /** Check if a given group is in the SQL group for this user.
  *
  */
-static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *request, char const *name,
-					     fr_value_box_t *user)
+static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *request, char const *query, char const *name)
 {
 	bool rcode = false;
 	rlm_sql_handle_t	*handle;
 	rlm_sql_grouplist_t	*entry, *head = NULL;
-
-	/*
-	 *	Set the user attr here
-	 */
-	sql_set_user(inst, request, user);
 
 	/*
 	 *	Get a socket for this lookup
@@ -850,7 +908,7 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, &handle, request, &head) < 0) {
+	if (sql_get_grouplist(inst, &handle, request, query, &head) < 0) {
 		talloc_free(head);
 		REDEBUG("Error getting group membership");
 		fr_pool_connection_release(inst->pool, request, handle);
@@ -871,6 +929,31 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	return rcode;
 }
 
+typedef struct {
+	fr_value_box_list_t	query;
+} sql_group_xlat_ctx_t;
+
+static xlat_action_t sql_group_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *in)
+{
+	sql_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, sql_group_xlat_ctx_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	char const		*p = arg->vb_strvalue;
+	fr_value_box_t		*query, *vb;
+
+	query = fr_value_box_list_head(&xlat_ctx->query);
+	if (!query) return XLAT_ACTION_FAIL;
+
+	fr_skip_whitespace(p);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+	vb->vb_bool = sql_check_group(inst, request, query->vb_strvalue, p);
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 
 /** Check if the user is a member of a particular group
  *
@@ -880,272 +963,16 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t sql_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-			      xlat_ctx_t const *xctx,
-			      request_t *request, fr_value_box_list_t *in)
+static xlat_action_t sql_group_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, xlat_ctx_t const *xctx,
+				    request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	sql_group_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, sql_group_xlat_call_env_t);
-	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
-	fr_value_box_t		*arg = fr_value_box_list_head(in);
-	char const		*p = arg->vb_strvalue;
-	fr_value_box_t		*vb;
+	sql_group_xlat_ctx_t		*xlat_ctx;
+	rlm_sql_t const			*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
 
-	fr_skip_whitespace(p);
-
-	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
-	vb->vb_bool = sql_check_group(inst, request, p, &call_env->user);
-	fr_dcursor_append(out, vb);
-
-	return XLAT_ACTION_DONE;
-}
-
-static int sql_check_groupmemb(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
-			       fr_pair_t *sql_group, char const *group_name,
-			       sql_fall_through_t *do_fall_through, rlm_rcode_t *rcode)
-{
-	bool		added;
-	int		rows;
-	fr_pair_t	*vp;
-	char		*expanded = NULL;
-	map_list_t	check_tmp, reply_tmp;
-
-	added = false;
-	map_list_init(&check_tmp);
-	map_list_init(&reply_tmp);
-
-	fr_pair_value_strdup(sql_group, group_name, true);
-
-	if (inst->config.authorize_group_check_query) {
-		/*
-		 *	Expand the group query
-		 */
-		if (xlat_aeval(request, &expanded, request, inst->config.authorize_group_check_query,
-			       inst->sql_escape_func, *handle) < 0) {
-			REDEBUG("Error generating query");
-			return -1;
-		}
-
-		rows = sql_get_map_list(request->control_ctx, inst, request, handle, &check_tmp, expanded, request_attr_request);
-		TALLOC_FREE(expanded);
-		if (rows < 0) {
-			REDEBUG("Error retrieving check pairs for group %s", group_name);
-			return -1;
-		}
-
-		/*
-		 *	If we got check rows we need to process them before we decide to
-		 *	process the reply rows
-		 */
-		if (rows > 0) {
-			map_t *map, *next;
-
-			for (map = map_list_head(&check_tmp);
-			     map != NULL;
-			     map = next) {
-				next = map_list_next(&check_tmp, map);
-
-				if (fr_assignment_op[map->op]) {
-					(void) map_list_remove(&check_tmp, map);
-					map_list_insert_tail(&reply_tmp, map);
-					continue;
-				}
-
-				if (!fr_comparison_op[map->op]) {
-					REDEBUG("Invalid operator '%s'", fr_tokens[map->op]);
-					goto fail;
-				}
-
-				if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
-				    (map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
-					REDEBUG("Invalid comparison for structural type");
-					goto fail;
-				}
-
-				RDEBUG2("    &%s %s %s", map->lhs->name, fr_tokens[map->op],
-					map->rhs ? map->rhs->name : "{ ... }");
-				if (radius_legacy_map_cmp(request, map) != 1) {
-				fail:
-					map_list_talloc_free(&check_tmp);
-					map_list_talloc_free(&reply_tmp);
-					return 0;
-				}
-			}
-
-			RDEBUG2("Group \"%s\": Conditional check items matched", group_name);
-		} else {
-			RDEBUG2("Group \"%s\": Conditional check items matched (empty)", group_name);
-		}
-
-		if (*rcode == RLM_MODULE_NOOP) *rcode = RLM_MODULE_OK;
-
-		map_list_talloc_free(&check_tmp);
-
-		if (inst->config.cache_groups) {
-			MEM(pair_append_control(&vp, inst->group_da) >= 0);
-			fr_pair_value_strdup(vp, group_name, true);
-			added = true;
-		}
-	}
-
-	if (inst->config.authorize_group_reply_query) {
-		/*
-		 *	Now get the reply pairs since the paircmp matched
-		 */
-		if (xlat_aeval(request, &expanded, request, inst->config.authorize_group_reply_query,
-			       inst->sql_escape_func, *handle) < 0) {
-			REDEBUG("Error generating query");
-			return -1;
-		}
-
-		rows = sql_get_map_list(request->reply_ctx, inst, request, handle, &reply_tmp, expanded, request_attr_reply);
-		TALLOC_FREE(expanded);
-		if (rows < 0) {
-			REDEBUG("Error retrieving reply pairs for group %s", group_name);
-			return -1;
-		}
-
-		if (rows == 0) {
-			*do_fall_through = FALL_THROUGH_DEFAULT;
-			return 0;
-		}
-
-		fr_assert(!map_list_empty(&reply_tmp)); /* coverity, among others */
-		*do_fall_through = fall_through(&reply_tmp);
-
-		RDEBUG2("Group \"%s\": Merging reply items", group_name);
-		*rcode = RLM_MODULE_UPDATED;
-
-		if (radius_legacy_map_list_apply(request, &reply_tmp, NULL) < 0) {
-			RPEDEBUG("Failed applying reply item");
-			map_list_talloc_free(&reply_tmp);
-			return -1;
-		}
-
-		map_list_talloc_free(&reply_tmp);
-
-		/*
-		 *	If there's no reply query configured, then we assume
-		 *	FALL_THROUGH_NO, which is the same as the users file if you
-		 *	had no reply attributes.
-		 */
-	} else {
-		*do_fall_through = FALL_THROUGH_DEFAULT;
-	}
-
-	if (inst->config.cache_groups && !added) {
-		MEM(pair_append_control(&vp, inst->group_da) >= 0);
-		fr_pair_value_strdup(vp, group_name, true);
-	}
-
-	return 0;
-}
-
-
-static unlang_action_t rlm_sql_process_groups(rlm_rcode_t *p_result,
-					      rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
-					      sql_fall_through_t *do_fall_through)
-{
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-	rlm_sql_grouplist_t	*head = NULL, *entry = NULL;
-	int			rows;
-	fr_pair_t		*vp, *sql_group;
-
-	fr_assert(request->packet != NULL);
-
-	if (!inst->config.groupmemb_query) {
-		RWARN("Cannot do check groups when group_membership_query is not set");
-
-	do_nothing:
-		*do_fall_through = FALL_THROUGH_DEFAULT;
-
-		/*
-		 *	Didn't add group attributes or allocate
-		 *	memory, so don't do anything else.
-		 */
-		RETURN_MODULE_NOTFOUND;
-	}
-
-	/*
-	 *	Get the list of groups this user is a member of
-	 */
-	rows = sql_get_grouplist(inst, handle, request, &head);
-	if (rows < 0) {
-		talloc_free(head);
-		REDEBUG("Error retrieving group list");
-		RETURN_MODULE_FAIL;
-	}
-
-	if (rows == 0) {
-		RDEBUG2("User not found in any groups");
-		goto do_nothing;
-	}
-	fr_assert(head);
-
-	RDEBUG2("User found in the group table");
-
-	MEM(pair_update_request(&sql_group, inst->group_da) >= 0);
-
-	for (entry = head; entry != NULL; entry = entry->next) {
-		if (sql_check_groupmemb(inst, request, handle, sql_group, entry->name, do_fall_through, &rcode) < 0) {
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
-
-		if (*do_fall_through != FALL_THROUGH_YES) break;
-	}
-
-	/*
-	 *	Apply user profiles
-	 */
-	for (vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_user_profile);
-	     vp != NULL;
-	     vp = fr_pair_find_by_da(&request->control_pairs, vp, attr_user_profile)) {
-		if (sql_check_groupmemb(inst, request, handle, sql_group, vp->vp_strvalue, do_fall_through, &rcode) < 0) {
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
-
-		if (*do_fall_through != FALL_THROUGH_YES) break;
-	}
-
-finish:
-	fr_pair_delete(&request->request_pairs, sql_group);
-
-	talloc_free(head);
-	pair_delete_request(inst->group_da);
-
-	RETURN_MODULE_RCODE(rcode);
-}
-
-static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
-{
-	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
-
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
-	sql_autz_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_autz_call_env_t);
-	rlm_sql_handle_t	*handle;
-
-	map_list_t		check_tmp;
-	map_list_t		reply_tmp;
-
-	bool			user_found = false;
-
-	sql_fall_through_t	do_fall_through = FALL_THROUGH_DEFAULT;
-
-	int			rows;
-
-	char			*expanded = NULL;
-
-	map_list_init(&check_tmp);
-	map_list_init(&reply_tmp);
-	fr_assert(request->packet != NULL);
-	fr_assert(request->reply != NULL);
-
-	if (!inst->config.authorize_check_query && !inst->config.authorize_reply_query &&
-	    !inst->config.read_groups) {
-		RWDEBUG("No authorization checks configured, returning noop");
-
-		RETURN_MODULE_NOOP;
+	if (!call_env->membership_query) {
+		RWARN("Cannot check group membership - group_membership_query not set");
+		return XLAT_ACTION_FAIL;
 	}
 
 	/*
@@ -1153,186 +980,476 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	 */
 	sql_set_user(inst, request, &call_env->user);
 
-	/*
-	 *	Reserve a socket
-	 *
-	 *	After this point use goto error or goto release to cleanup socket temporary pairlists and
-	 *	temporary attributes.
-	 */
-	handle = fr_pool_connection_get(inst->pool, request);
-	if (!handle) {
-		sql_unset_user(inst, request);
-		RETURN_MODULE_FAIL;
+	MEM(xlat_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), sql_group_xlat_ctx_t));
+	fr_value_box_list_init(&xlat_ctx->query);
+
+	if (unlang_xlat_yield(request, sql_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
+	if (unlang_tmpl_push(xlat_ctx, &xlat_ctx->query, request, call_env->membership_query, NULL) < 0) return XLAT_ACTION_FAIL;
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
+/**  Process a "check" map
+ *
+ * Any entries using an assignment operator will be moved to the reply map
+ * for later merging into the request.
+ *
+ * @param request	Current request.
+ * @param check_map	to process.
+ * @param reply_map	where any assignment entries will be moved.
+ * @return
+ *	- 0 if all the check entries pass.
+ *	- -1 if the checks fail.
+ */
+static int check_map_process(request_t *request, map_list_t *check_map, map_list_t *reply_map)
+{
+	map_t *map, *next;
+
+	for (map = map_list_head(check_map);
+	     map != NULL;
+	     map = next) {
+		next = map_list_next(check_map, map);
+
+		if (fr_assignment_op[map->op]) {
+			(void) map_list_remove(check_map, map);
+			map_list_insert_tail(reply_map, map);
+			continue;
+		}
+
+		if (!fr_comparison_op[map->op]) {
+			REDEBUG("Invalid operator '%s'", fr_tokens[map->op]);
+			goto fail;
+		}
+
+		if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
+		    (map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
+			REDEBUG("Invalid comparison for structural type");
+			goto fail;
+		}
+
+		RDEBUG2("    &%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
+		if (radius_legacy_map_cmp(request, map) != 1) {
+		fail:
+			map_list_talloc_free(check_map);
+			map_list_talloc_free(reply_map);
+			RDEBUG2("failed match: skipping this entry");
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int sql_autz_ctx_free(sql_autz_ctx_t *to_free)
+{
+	(void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
+	if (to_free->handle) fr_pool_connection_release(to_free->inst->pool, to_free->request, to_free->handle);
+	map_list_talloc_free(&to_free->check_tmp);
+	map_list_talloc_free(&to_free->reply_tmp);
+	sql_unset_user(to_free->inst, to_free->request);
+
+	return 0;
+}
+
+/** Resume function called after authorization group / profile expansion of check / reply query tmpl
+ *
+ * Groups and profiles are treated almost identically except:
+ *   - groups are read from an SQL query
+ *   - profiles are read from &control.User-Profile
+ *   - if `cache_groups` is set, groups populate &control.SQL-Group
+ *
+ * Profiles are handled after groups, and will not happend if the last group resulted in `Fall-Through = no`
+ *
+ * Before each query is run, &request.SQL-Group is populated with the value of the group being evaluated.
+ *
+ * @param p_result	Result of current authorization.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		Current authorization context.
+ * @return one of the RLM_MODULE_* values.
+ */
+static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+{
+	sql_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, sql_autz_ctx_t);
+	sql_autz_call_env_t	*call_env = autz_ctx->call_env;
+	rlm_sql_t const		*inst = autz_ctx->inst;
+	fr_value_box_t		*query = fr_value_box_list_pop_head(&autz_ctx->query);
+	int			rows;
+	sql_fall_through_t	do_fall_through = FALL_THROUGH_DEFAULT;
+	fr_pair_t		*vp;
+
+	switch(autz_ctx->status) {
+	case SQL_AUTZ_GROUP_MEMB:
+		rows = sql_get_grouplist(inst, &autz_ctx->handle, request, query->vb_strvalue, &autz_ctx->groups);
+		talloc_free(query);
+
+		if (rows < 0) {
+			talloc_free(autz_ctx->groups);
+			REDEBUG("Error retrieving group list");
+			RETURN_MODULE_FAIL;
+		}
+
+		if (rows == 0) {
+			RDEBUG2("User not found in any groups");
+			break;
+		}
+		fr_assert(autz_ctx->groups);
+
+		RDEBUG2("User found in the group table");
+		autz_ctx->user_found = true;
+		autz_ctx->group = autz_ctx->groups;
+		MEM(pair_update_request(&autz_ctx->sql_group, inst->group_da) >= 0);
+
+	next_group:
+		fr_pair_value_strdup(autz_ctx->sql_group, autz_ctx->group->name, true);
+		autz_ctx->status = SQL_AUTZ_GROUP_CHECK;
+		FALL_THROUGH;
+
+	case SQL_AUTZ_PROFILE_START:
+	next_profile:
+		if (autz_ctx->status & SQL_AUTZ_STAGE_PROFILE) {
+			fr_pair_value_strdup(autz_ctx->sql_group, autz_ctx->profile->vp_strvalue, true);
+			autz_ctx->status = SQL_AUTZ_PROFILE_CHECK;
+		}
+		RDEBUG3("Processing %s %pV",
+			autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? "group" : "profile", &autz_ctx->sql_group->data);
+		if (inst->config.cache_groups && autz_ctx->status & SQL_AUTZ_STAGE_GROUP) {
+			MEM(pair_append_control(&vp, inst->group_da) >= 0);
+			fr_pair_value_strdup(vp, autz_ctx->group->name, true);
+		}
+
+		if (call_env->group_check_query) {
+			if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
+			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
+					     call_env->group_check_query, NULL) < 0) RETURN_MODULE_FAIL;
+			return UNLANG_ACTION_PUSHED_CHILD;
+		}
+
+		goto group_reply_push;
+
+	case SQL_AUTZ_GROUP_CHECK:
+	case SQL_AUTZ_PROFILE_CHECK:
+		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, &autz_ctx->check_tmp,
+					query->vb_strvalue, request_attr_request);
+		talloc_free(query);
+
+		if (rows < 0) {
+			REDEBUG("Error retrieving check pairs for %s %pV",
+				autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? "group" : "profile",
+				&autz_ctx->sql_group->data);
+			RETURN_MODULE_FAIL;
+		}
+
+		/*
+		 *	If we got check rows we need to process them before we decide to
+		 *	process the reply rows
+		 */
+		if (rows > 0) {
+			if (check_map_process(request, &autz_ctx->check_tmp, &autz_ctx->reply_tmp) < 0) {
+				map_list_talloc_free(&autz_ctx->check_tmp);
+				goto next_group_find;
+			}
+			RDEBUG2("%s \"%pV\": Conditional check items matched",
+				autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? "Group" : "Profile", &autz_ctx->sql_group->data);
+		} else {
+			RDEBUG2("%s \"%pV\": Conditional check items matched (empty)",
+				autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? "Group" : "Profile", &autz_ctx->sql_group->data);
+		}
+
+		if (autz_ctx->rcode == RLM_MODULE_NOOP) autz_ctx->rcode = RLM_MODULE_OK;
+
+		map_list_talloc_free(&autz_ctx->check_tmp);
+
+		if (call_env->group_reply_query) {
+		group_reply_push:
+			if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
+			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
+					     call_env->group_reply_query, NULL) < 0) RETURN_MODULE_FAIL;
+			autz_ctx->status = autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? SQL_AUTZ_GROUP_REPLY : SQL_AUTZ_PROFILE_REPLY;
+			return UNLANG_ACTION_PUSHED_CHILD;
+		}
+
+		if (map_list_num_elements(&autz_ctx->reply_tmp)) goto group_attr_cache;
+
+		goto next_group_find;
+
+	case SQL_AUTZ_GROUP_REPLY:
+	case SQL_AUTZ_PROFILE_REPLY:
+		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, &autz_ctx->reply_tmp,
+					query->vb_strvalue, request_attr_reply);
+		talloc_free(query);
+
+		if (rows < 0) {
+			REDEBUG("Error retrieving reply pairs for %s %pV",
+				autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? "group" : "profile", &autz_ctx->sql_group->data);
+			RETURN_MODULE_FAIL;
+		}
+
+		if (rows == 0) {
+			do_fall_through = FALL_THROUGH_DEFAULT;
+			goto group_attr_cache;
+		}
+
+		fr_assert(!map_list_empty(&autz_ctx->reply_tmp)); /* coverity, among others */
+		do_fall_through = fall_through(&autz_ctx->reply_tmp);
+
+	group_attr_cache:
+		if (inst->config.cache_groups && autz_ctx->status & SQL_AUTZ_STAGE_GROUP) {
+			MEM(pair_append_control(&vp, inst->group_da) >= 0);
+			fr_pair_value_strdup(vp, autz_ctx->group->name, true);
+		}
+
+		if (map_list_num_elements(&autz_ctx->reply_tmp) == 0) goto next_group_find;
+		RDEBUG2("%s \"%pV\": Merging control and reply items",
+			autz_ctx->status & SQL_AUTZ_STAGE_GROUP ? "Group" : "Profile", &autz_ctx->sql_group->data);
+		autz_ctx->rcode = RLM_MODULE_UPDATED;
+
+		RINDENT();
+		if (radius_legacy_map_list_apply(request, &autz_ctx->reply_tmp, NULL) < 0) {
+			RPEDEBUG("Failed applying reply item");
+			REXDENT();
+			RETURN_MODULE_FAIL;
+		}
+		REXDENT();
+		map_list_talloc_free(&autz_ctx->reply_tmp);
+
+	next_group_find:
+		if (do_fall_through != FALL_THROUGH_YES) break;
+		if (autz_ctx->status & SQL_AUTZ_STAGE_PROFILE) {
+			autz_ctx->profile = fr_pair_find_by_da(&request->control_pairs, autz_ctx->profile, attr_user_profile);
+			if (autz_ctx->profile) goto next_profile;
+			break;
+		}
+		autz_ctx->group = autz_ctx->group->next;
+		if (autz_ctx->group) goto next_group;
+
+		break;
+
+	default:
+		fr_assert(0);
 	}
 
 	/*
-	 *	Query the check table to find any conditions associated with this user/realm/whatever...
+	 *	If group processing has completed, check to see if profile processing should be done
 	 */
-	if (inst->config.authorize_check_query) {
-		if (xlat_aeval(request, &expanded, request, inst->config.authorize_check_query,
-				 inst->sql_escape_func, handle) < 0) {
-			REDEBUG("Failed generating query");
-			rcode = RLM_MODULE_FAIL;
+	if ((autz_ctx->status & SQL_AUTZ_STAGE_GROUP) &&
+	    ((do_fall_through == FALL_THROUGH_YES) ||
+	     (inst->config.read_profiles && (do_fall_through == FALL_THROUGH_DEFAULT)))) {
+		RDEBUG3("... falling-through to profile processing");
 
-		error:
-			map_list_talloc_free(&check_tmp);
-			map_list_talloc_free(&reply_tmp);
-			sql_unset_user(inst, request);
-
-			fr_pool_connection_release(inst->pool, request, handle);
-
-			RETURN_MODULE_RCODE(rcode);
+		autz_ctx->profile = fr_pair_find_by_da(&request->control_pairs, NULL, attr_user_profile);
+		if (autz_ctx->profile) {
+			MEM(pair_update_request(&autz_ctx->sql_group, inst->group_da) >= 0);
+			autz_ctx->status = SQL_AUTZ_PROFILE_START;
+			goto next_profile;
 		}
+	}
 
-		rows = sql_get_map_list(request->control_ctx, inst, request, &handle, &check_tmp, expanded, request_attr_request);
-		TALLOC_FREE(expanded);
+	if (!autz_ctx->user_found) RETURN_MODULE_NOTFOUND;
+
+	RETURN_MODULE_RCODE(autz_ctx->rcode);
+}
+
+/** Resume function called after authorization check / reply tmpl expansion
+ *
+ * @param p_result	Result of current authorization.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		Current authorization context.
+ * @return one of the RLM_MODULE_* values.
+ */
+static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx)
+{
+	sql_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, sql_autz_ctx_t);
+	sql_autz_call_env_t	*call_env = autz_ctx->call_env;
+	rlm_sql_t const		*inst = autz_ctx->inst;
+	fr_value_box_t		*query = fr_value_box_list_pop_head(&autz_ctx->query);
+	int			rows;
+	sql_fall_through_t	do_fall_through = FALL_THROUGH_DEFAULT;
+
+	switch(autz_ctx->status) {
+	case SQL_AUTZ_CHECK:
+		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, &autz_ctx->check_tmp,
+					query->vb_strvalue, request_attr_request);
+		talloc_free(query);
+
 		if (rows < 0) {
 			REDEBUG("Failed getting check attributes");
-			rcode = RLM_MODULE_FAIL;
-			goto error;
+			RETURN_MODULE_FAIL;
 		}
 
-		if (rows == 0) goto skip_reply;	/* Don't need to free VPs we don't have */
+		if (rows == 0) goto skip_reply;	/* Don't need to handle map entries we don't have */
 
 		/*
 		 *	Only do this if *some* check pairs were returned
 		 */
 		RDEBUG2("User found in radcheck table");
-		user_found = true;
+		autz_ctx->user_found = true;
 
-		if (rows > 0) {
-			map_t *map, *next;
+		if (check_map_process(request, &autz_ctx->check_tmp, &autz_ctx->reply_tmp) < 0) goto skip_reply;
+		RDEBUG2("Conditional check items matched");
 
-			for (map = map_list_head(&check_tmp);
-			     map != NULL;
-			     map = next) {
-				next = map_list_next(&check_tmp, map);
+		autz_ctx->rcode = RLM_MODULE_OK;
+		map_list_talloc_free(&autz_ctx->check_tmp);
 
-				if (fr_assignment_op[map->op]) {
-					(void) map_list_remove(&check_tmp, map);
-					map_list_insert_tail(&reply_tmp, map);
-					continue;
-				}
+		if (!call_env->reply_query) goto skip_reply;
 
-				if (!fr_comparison_op[map->op]) {
-					REDEBUG("Invalid operator '%s'", fr_tokens[map->op]);
-					goto fail;
-				}
+		if (unlang_function_repeat_set(request, mod_authorize_resume) < 0) RETURN_MODULE_FAIL;
+		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->reply_query, NULL) < 0) RETURN_MODULE_FAIL;
+		autz_ctx->status = SQL_AUTZ_REPLY;
+		return UNLANG_ACTION_PUSHED_CHILD;
 
-				if (fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
-				    (map->op != T_OP_CMP_TRUE) && (map->op != T_OP_CMP_FALSE)) {
-					REDEBUG("Invalid comparison for structural type");
-					goto fail;
-				}
+	case SQL_AUTZ_REPLY:
+		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, &autz_ctx->reply_tmp,
+					query->vb_strvalue, request_attr_reply);
+		talloc_free(query);
 
-				RDEBUG2("    &%s %s %s", map->lhs->name, fr_tokens[map->op], map->rhs->name);
-				if (radius_legacy_map_cmp(request, map) != 1) {
-				fail:
-					map_list_talloc_free(&check_tmp);
-					map_list_talloc_free(&reply_tmp);
-					RDEBUG2("failed match: skipping this entry");
-					goto skip_reply;
-				}
-			}
-
-			RDEBUG2("Conditional check items matched");
-		} else {
-			RDEBUG2("Conditional check items matched (empty)");
-		}
-
-		rcode = RLM_MODULE_OK;
-		map_list_talloc_free(&check_tmp);
-	}
-
-	if (inst->config.authorize_reply_query) {
-		/*
-		 *	Now get the reply pairs since the paircmp matched
-		 */
-		if (xlat_aeval(request, &expanded, request, inst->config.authorize_reply_query,
-				 inst->sql_escape_func, handle) < 0) {
-			REDEBUG("Error generating query");
-			rcode = RLM_MODULE_FAIL;
-			goto error;
-		}
-
-		rows = sql_get_map_list(request->reply_ctx, inst, request, &handle, &reply_tmp, expanded, request_attr_reply);
-		TALLOC_FREE(expanded);
 		if (rows < 0) {
 			REDEBUG("SQL query error getting reply attributes");
-			rcode = RLM_MODULE_FAIL;
-			goto error;
+			RETURN_MODULE_FAIL;
 		}
 
 		if (rows == 0) goto skip_reply;
 
-		do_fall_through = fall_through(&reply_tmp);
+		do_fall_through = fall_through(&autz_ctx->reply_tmp);
 
 		RDEBUG2("User found in radreply table");
-		user_found = true;
-	}
+		autz_ctx->user_found = true;
 
-skip_reply:
-	if (map_list_num_elements(&reply_tmp)) {
-		RDEBUG2("Merging control and reply items");
-		if (radius_legacy_map_list_apply(request, &reply_tmp, NULL) < 0) {
-			RPEDEBUG("Failed applying item");
-			map_list_talloc_free(&reply_tmp);
-			rcode = RLM_MODULE_FAIL;
-			goto error;
+	skip_reply:
+		if (map_list_num_elements(&autz_ctx->reply_tmp)) {
+			RDEBUG2("Merging control and reply items");
+			RINDENT();
+			if (radius_legacy_map_list_apply(request, &autz_ctx->reply_tmp, NULL) < 0) {
+				RPEDEBUG("Failed applying item");
+				REXDENT();
+				RETURN_MODULE_FAIL;
+			}
+			REXDENT();
+
+			autz_ctx->rcode = RLM_MODULE_UPDATED;
+			map_list_talloc_free(&autz_ctx->reply_tmp);
 		}
 
-		rcode = RLM_MODULE_OK;
-		map_list_talloc_free(&reply_tmp);
+		if ((do_fall_through == FALL_THROUGH_YES) ||
+		    (inst->config.read_groups && (do_fall_through == FALL_THROUGH_DEFAULT))) {
+			RDEBUG3("... falling-through to group processing");
+
+			if (!call_env->membership_query) {
+				RWARN("Cannot check groups when group_membership_query is not set");
+				break;
+			}
+
+			if (!call_env->group_check_query && !call_env->group_reply_query) {
+				RWARN("Cannot process groups when neither authorize_group_check_query nor authorize_group_check_query are set");
+				break;
+			}
+
+			if (unlang_function_repeat_set(request, mod_autz_group_resume) < 0) RETURN_MODULE_FAIL;
+			if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request,
+					     call_env->membership_query, NULL) < 0) RETURN_MODULE_FAIL;
+			autz_ctx->status = SQL_AUTZ_GROUP_MEMB;
+			return UNLANG_ACTION_PUSHED_CHILD;
+		}
+
+		if ((do_fall_through == FALL_THROUGH_YES) ||
+		    (inst->config.read_profiles && (do_fall_through == FALL_THROUGH_DEFAULT))) {
+			RDEBUG3("... falling-through to profile processing");
+
+			if (!call_env->group_check_query && !call_env->group_reply_query) {
+				RWARN("Cannot process profiles when neither authorize_group_check_query nor authorize_group_check_query are set");
+				break;
+			}
+
+			autz_ctx->profile = fr_pair_find_by_da(&request->control_pairs, NULL, attr_user_profile);
+			if (!autz_ctx->profile) break;
+
+			MEM(pair_update_request(&autz_ctx->sql_group, inst->group_da) >= 0);
+			autz_ctx->status = SQL_AUTZ_PROFILE_START;
+			return mod_autz_group_resume(p_result, priority, request, autz_ctx);
+		}
+		break;
+
+	default:
+		fr_assert(0);
+	}
+
+	if (!autz_ctx->user_found) RETURN_MODULE_NOTFOUND;
+	RETURN_MODULE_RCODE(autz_ctx->rcode);
+}
+
+/** Start of module authorize method
+ *
+ * Pushes the tmpl relating to the first required query for evaluation
+ */
+static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
+	sql_autz_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_autz_call_env_t);
+	sql_autz_ctx_t		*autz_ctx;
+
+	fr_assert(request->packet != NULL);
+	fr_assert(request->reply != NULL);
+
+	if (!call_env->check_query && !call_env->reply_query && !(inst->config.read_groups && call_env->membership_query)) {
+		RWDEBUG("No authorization checks configured, returning noop");
+		RETURN_MODULE_NOOP;
 	}
 
 	/*
-	 *	group checks require a group membership query.
+	 *	Set and check the user attr here
 	 */
-	if (!inst->config.groupmemb_query) goto release;
+	sql_set_user(inst, request, &call_env->user);
 
-	if ((do_fall_through == FALL_THROUGH_YES) ||
-	    (inst->config.read_groups && (do_fall_through == FALL_THROUGH_DEFAULT))) {
-		rlm_rcode_t ret;
+	MEM(autz_ctx = talloc_zero(unlang_interpret_frame_talloc_ctx(request), sql_autz_ctx_t));
+	*autz_ctx = (sql_autz_ctx_t) {
+		.inst = inst,
+		.call_env = call_env,
+		.request = request,
+		.rcode = RLM_MODULE_NOOP
+	};
+	map_list_init(&autz_ctx->check_tmp);
+	map_list_init(&autz_ctx->reply_tmp);
+	talloc_set_destructor(autz_ctx, sql_autz_ctx_free);
 
-		RDEBUG3("... falling-through to group processing");
-		rlm_sql_process_groups(&ret, inst, request, &handle, &do_fall_through);
-		switch (ret) {
+	/*
+	 *	Reserve a socket
+	 *
+	 *	This is freed by the talloc destructor for autz_ctx
+	 */
+	autz_ctx->handle = fr_pool_connection_get(inst->pool, request);
+	if (!autz_ctx->handle) RETURN_MODULE_FAIL;
 
-		/*
-		 *	Nothing bad happened, continue...
-		 */
-		case RLM_MODULE_UPDATED:
-			rcode = RLM_MODULE_UPDATED;
-			FALL_THROUGH;
+	request_data_add(request, (void *)sql_escape_uctx_alloc, 0, autz_ctx->handle, false, false, false);
 
-		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
-			FALL_THROUGH;
+	if (unlang_function_push(request, NULL, mod_authorize_resume, NULL, 0,
+				 UNLANG_SUB_FRAME, autz_ctx) < 0) {
+	error:
+		talloc_free(autz_ctx);
+		RETURN_MODULE_FAIL;
+	}
 
-		case RLM_MODULE_NOOP:
-			user_found = true;
-			break;
+	fr_value_box_list_init(&autz_ctx->query);
 
-		case RLM_MODULE_NOTFOUND:
-			break;
+	/*
+	 *	Query the check table to find any conditions associated with this user/realm/whatever...
+	 */
+	if (call_env->check_query) {
+		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->check_query, NULL) < 0) goto error;
+		autz_ctx->status = SQL_AUTZ_CHECK;
+		return UNLANG_ACTION_PUSHED_CHILD;
+	}
 
-		default:
-			rcode = ret;
-			goto release;
-		}
+	if (call_env->reply_query) {
+		if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->reply_query, NULL) < 0) goto error;
+		autz_ctx->status = SQL_AUTZ_REPLY;
+		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
 	/*
-	 *	At this point the key (user) hasn't be found in the check table, the reply table
-	 *	or the group mapping table.
+	 *	Neither check nor reply queries were set, so we must be doing group stuff
 	 */
-release:
-	if (!user_found) rcode = RLM_MODULE_NOTFOUND;
-
-	fr_pool_connection_release(inst->pool, request, handle);
-	sql_unset_user(inst, request);
-
-	RETURN_MODULE_RCODE(rcode);
+	if (unlang_tmpl_push(autz_ctx, &autz_ctx->query, request, call_env->membership_query, NULL) < 0) goto error;
+	autz_ctx->status = SQL_AUTZ_GROUP_MEMB;
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /*
@@ -1567,7 +1684,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the group comparison attribute
 	 */
-	if (inst->config.groupmemb_query) {
+	if (cf_pair_find(conf, "group_membership_query")) {
 		char const *group_attribute;
 		fr_dict_attr_flags_t flags = {};
 		char buffer[256];
@@ -1667,12 +1784,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Or we need group_membership_query if authorize_group_check_query or
 	 *	authorize_group_reply_query is set.
 	 */
-	if (!inst->config.groupmemb_query) {
-		if (inst->config.authorize_group_check_query) {
+	if (!cf_pair_find(conf, "group_membership_query")) {
+		if (cf_pair_find(conf, "authorize_group_check_query")) {
 			WARN("Ignoring authorize_group_check_query as group_membership_query is not configured");
 		}
 
-		if (inst->config.authorize_group_reply_query) {
+		if (cf_pair_find(conf, "authorize_group_reply_query")) {
 			WARN("Ignoring authorize_group_reply_query as group_membership_query is not configured");
 		}
 
