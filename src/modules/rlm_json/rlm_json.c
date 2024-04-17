@@ -358,17 +358,8 @@ static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, voi
 			p = map->rhs->name;
 			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->len);
 			if (slen <= 0) {
-				char		*spaces, *text;
-
 			error:
-				fr_canonicalize_error(cache, &spaces, &text, slen, fr_strerror());
-
-				cf_log_err(cp, "Syntax error");
-				cf_log_err(cp, "%s", p);
-				cf_log_err(cp, "%s^ %s", spaces, text);
-
-				talloc_free(spaces);
-				talloc_free(text);
+				cf_canonicalize_error(cp, slen, "Syntax error", fr_strerror());
 				return -1;
 			}
 			break;
