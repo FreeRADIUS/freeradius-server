@@ -74,6 +74,8 @@ typedef struct {
 	fr_value_box_list_t	*sender_address;	//!< The address(es) used to generate the From: header
 	fr_value_box_list_t	*recipient_addrs;	//!< The address(es) used as recipients.  Overrides elements in to, cc and bcc
 	fr_value_box_list_t	*to_addrs;		//!< The address(es) used for the To: header.
+	fr_value_box_list_t	*cc_addrs;		//!< The address(es) used for the Cc: header.
+	fr_value_box_list_t	*bcc_addrs;		//!< The address(es) used for the Bcc: header.
 } rlm_smtp_env_t;
 
 FR_DLIST_TYPES(header_list)
@@ -94,8 +96,6 @@ typedef struct {
 	char const		*envelope_address;	//!< The address used to send the message
 
 	tmpl_t 			**attachments;		//!< The attachments to be set
-	tmpl_t 			**cc_addrs;		//!< Comma separated list of emails to be listed in CC:
-	tmpl_t 			**bcc_addrs;		//!< Comma separated list of emails not to be listed
 
 	fr_time_delta_t 	timeout;		//!< Timeout for connection and server response
 	fr_curl_tls_t		tls;			//!< Used for handled all tls specific curl components
@@ -114,8 +114,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("template_directory", rlm_smtp_t, template_dir) },
 	{ FR_CONF_OFFSET("attachments", rlm_smtp_t, attachments), .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("envelope_address", rlm_smtp_t, envelope_address) },
-	{ FR_CONF_OFFSET("CC", rlm_smtp_t, cc_addrs), .dflt = "&SMTP-CC[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("BCC", rlm_smtp_t, bcc_addrs), .dflt = "&SMTP-BCC[*]", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("timeout", rlm_smtp_t, timeout) },
 	{ FR_CONF_OFFSET("set_date", rlm_smtp_t, set_date), .dflt = "yes" },
 	{ FR_CONF_OFFSET_SUBSECTION("tls", 0, rlm_smtp_t, tls, fr_curl_tls_config) },//!<loading the tls values
@@ -523,7 +521,7 @@ static int generate_from_header(fr_mail_ctx_t *uctx, struct curl_slist **out, rl
 /*
  *	Generates a curl_slist of recipients
  */
-static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_env_t const *call_env)
+static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_env_t const *call_env)
 {
 	request_t	*request = uctx->request;
 	int 		recipients_set = 0;
@@ -552,12 +550,12 @@ static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_sm
 	/*
 	 *	Try to load the cc: addresses into the envelope recipients if they are set
 	 */
-	if (inst->cc_addrs) recipients_set += tmpl_arr_to_slist(uctx, &uctx->recipients, inst->cc_addrs);
+	if (call_env->cc_addrs) recipients_set += value_box_list_to_slist(&uctx->recipients, call_env->cc_addrs);
 
 	/*
-	 *	Try to load the cc: addresses into the envelope recipients if they are set
+	 *	Try to load the bcc: addresses into the envelope recipients if they are set
 	 */
-	if (inst->bcc_addrs) recipients_set += tmpl_arr_to_slist(uctx, &uctx->recipients, inst->bcc_addrs);
+	if (call_env->bcc_addrs) recipients_set += value_box_list_to_slist(&uctx->recipients, call_env->bcc_addrs);
 
 	RDEBUG2("%d recipients set", recipients_set);
 	return recipients_set;
@@ -569,7 +567,6 @@ static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_sm
 static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_env_t const *call_env)
 {
 	fr_sbuff_t 			time_out;
-	char const 			*cc = "CC: ";
 	request_t			*request = uctx->request;
 	fr_sbuff_t 			conf_buffer;
 	fr_sbuff_uctx_talloc_t 		conf_ctx;
@@ -611,7 +608,7 @@ static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_e
 	value_box_list_to_header(uctx, &uctx->header, call_env->to_addrs, "To: ");
 
 	/* Add the CC: line if there is one provided in the request by SMTP-CC */
-	tmpl_arr_to_header(uctx, &uctx->header, inst->cc_addrs, cc);
+	value_box_list_to_header(uctx, &uctx->header, call_env->cc_addrs, "Cc: ");
 
 	/* Add all the generic header elements in the request */
 	da_to_slist(uctx, &uctx->header, attr_smtp_header);
@@ -901,7 +898,7 @@ skip_auth:
 				    fr_value_box_list_head(call_env->sender_address)->vb_strvalue));
 
 	/* Set the recipients */
-       	if (recipients_source(mail_ctx, inst, call_env) <= 0) {
+       	if (recipients_source(mail_ctx, call_env) <= 0) {
 		REDEBUG("At least one recipient is required to send an email");
 		goto error;
 	}
@@ -1226,6 +1223,10 @@ static const call_env_method_t method_env = {
 				     .pair.dflt = "&SMTP-Recipients[*]", .pair.dflt_quote = T_BARE_WORD },
 	   	{ FR_CALL_ENV_OFFSET("TO", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, to_addrs),
 		 		    .pair.dflt = "&SMTP-TO[*]", .pair.dflt_quote = T_BARE_WORD },
+	   	{ FR_CALL_ENV_OFFSET("CC", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, cc_addrs),
+		 		    .pair.dflt = "&SMTP-CC[*]", .pair.dflt_quote = T_BARE_WORD },
+	   	{ FR_CALL_ENV_OFFSET("BCC", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, bcc_addrs),
+		 		    .pair.dflt = "&SMTP-BCC[*]", .pair.dflt_quote = T_BARE_WORD },
 
 		CALL_ENV_TERMINATOR
 	}
