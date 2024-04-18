@@ -71,7 +71,7 @@ typedef struct {
 	fr_value_box_t		username;		//!< User to authenticate as when sending emails.
 	tmpl_t			*username_tmpl;		//!< The tmpl used to produce the above.
 	fr_value_box_t		password;		//!< Password for authenticated mails.
-	fr_value_box_list_t	*sender_address;	//!< The address(es) used to generate the FROM: header
+	fr_value_box_list_t	*sender_address;	//!< The address(es) used to generate the From: header
 	fr_value_box_list_t	*recipient_addrs;	//!< The address(es) used as recipients.  Overrides elements in to, cc and bcc
 } rlm_smtp_env_t;
 
@@ -488,7 +488,7 @@ static int tmpl_arr_to_attachments (fr_mail_ctx_t *uctx, curl_mime *mime, tmpl_t
 	return count;
 }
 
-/** Generate the `FROM:` header
+/** Generate the `From:` header
  *
  * Defaults to using `sender_address` values, falls back to `envelope_address`
  */
@@ -498,15 +498,15 @@ static int generate_from_header(fr_mail_ctx_t *uctx, struct curl_slist **out, rl
 	fr_sbuff_t 			sbuff;
 	fr_sbuff_uctx_talloc_t 		sbuff_ctx;
 
-	if (call_env->sender_address) return value_box_list_to_header(uctx, &uctx->header, call_env->sender_address, "FROM: ");
+	if (call_env->sender_address) return value_box_list_to_header(uctx, &uctx->header, call_env->sender_address, "From: ");
 
 	/* Initialize the buffer for the recipients. Used for FROM */
 	fr_sbuff_init_talloc(uctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX);
 
 	/* Add the preposition for the header element */
-	(void) fr_sbuff_in_strcpy(&sbuff, "FROM: ");
+	(void) fr_sbuff_in_strcpy(&sbuff, "From: ");
 
-	/* Copy the envelope address as the FROM: source */
+	/* Copy the envelope address as the From: source */
 	if (unlikely(fr_sbuff_in_bstrncpy(&sbuff, inst->envelope_address,
 					  strlen(inst->envelope_address)) < 0)) {
 		talloc_free(fr_sbuff_buff(&sbuff));
@@ -603,9 +603,9 @@ static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_e
 		talloc_free(conf_buffer.buff);
 	}
 
-	/* Add the FROM: line */
+	/* Add the From: line */
 	if (unlikely(generate_from_header(uctx, &uctx->header, inst, call_env) < 0)) {
-		RDEBUG2("FROM: header could not be added");
+		RDEBUG2("From: header could not be added");
 		return -1;
 	}
 
