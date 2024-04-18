@@ -160,12 +160,17 @@ static unlang_action_t call_env_expand_start(UNUSED rlm_rcode_t *p_result, UNUSE
 			 *	all expansions adjust the `out` pointer to write to.
 			 */
 			if (call_env_multi(env->rule->flags)) {
-				void *array;
+				void **array;
 				if (env->multi_index == 0) {
-					MEM(array = talloc_zero_array((*call_env_rctx->data), void *, env->count));
+					/*
+					 *	Coverity thinks talloc_zero_array being called with the type `void *`
+					 *	is a size mismatch.  This works round the false positive.
+					 */
+					MEM(array = _talloc_zero_array((*call_env_rctx->data), sizeof(uint8_t *),
+									env->count, "void *"));
 					*out = array;
 				}
-				array = *(void **)out;
+				array = (void **)(*out);
 				out = (void **)((uint8_t *)array + sizeof(void *) * env->multi_index);
 			}
 
