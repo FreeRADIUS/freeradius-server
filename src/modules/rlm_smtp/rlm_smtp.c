@@ -72,6 +72,7 @@ typedef struct {
 	tmpl_t			*username_tmpl;		//!< The tmpl used to produce the above.
 	fr_value_box_t		password;		//!< Password for authenticated mails.
 	fr_value_box_list_t	*sender_address;	//!< The address(es) used to generate the FROM: header
+	fr_value_box_list_t	*recipient_addrs;	//!< The address(es) used as recipients.  Overrides elements in to, cc and bcc
 } rlm_smtp_env_t;
 
 FR_DLIST_TYPES(header_list)
@@ -92,7 +93,6 @@ typedef struct {
 	char const		*envelope_address;	//!< The address used to send the message
 
 	tmpl_t 			**attachments;		//!< The attachments to be set
-	tmpl_t 			**recipient_addrs;	//!< Comma separated list of emails. Overrides elements in to, cc, bcc
 	tmpl_t 			**to_addrs;		//!< Comma separated list of emails to be listed in TO:
 	tmpl_t 			**cc_addrs;		//!< Comma separated list of emails to be listed in CC:
 	tmpl_t 			**bcc_addrs;		//!< Comma separated list of emails not to be listed
@@ -114,7 +114,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("template_directory", rlm_smtp_t, template_dir) },
 	{ FR_CONF_OFFSET("attachments", rlm_smtp_t, attachments), .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("envelope_address", rlm_smtp_t, envelope_address) },
-	{ FR_CONF_OFFSET("recipients", rlm_smtp_t, recipient_addrs), .dflt = "&SMTP-Recipients[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("TO", rlm_smtp_t, to_addrs), .dflt = "&SMTP-TO[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("CC", rlm_smtp_t, cc_addrs), .dflt = "&SMTP-CC[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("BCC", rlm_smtp_t, bcc_addrs), .dflt = "&SMTP-BCC[*]", .quote = T_BARE_WORD },
@@ -208,6 +207,27 @@ static int tmpl_attr_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl
 
 	/* Return the number of elements which were found */
 	tmpl_dcursor_clear(&cc);
+	return count;
+}
+
+/** Transform an array of value box lists to entries in a CURL slist
+ *
+ */
+static int value_box_list_to_slist(struct curl_slist **out, fr_value_box_list_t const *lists)
+{
+	fr_value_box_list_t const	*list = lists;
+	fr_value_box_t			*vb = NULL;
+	int				count = 0;
+	size_t				i, list_count = talloc_array_length(lists);
+
+	for (i = 0; i < list_count; i++) {
+		while ((vb = fr_value_box_list_next(list, vb))) {
+			*out = curl_slist_append(*out, vb->vb_strvalue);
+			count ++;
+		}
+		list++;
+	}
+
 	return count;
 }
 
@@ -504,24 +524,26 @@ static int generate_from_header(fr_mail_ctx_t *uctx, struct curl_slist **out, rl
 /*
  *	Generates a curl_slist of recipients
  */
-static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
+static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_env_t const *call_env)
 {
-	request_t		*request = uctx->request;
-	int 			recipients_set = 0;
+	request_t	*request = uctx->request;
+	int 		recipients_set = 0;
 
 	/*
 	  *	Try to load the recipients into the envelope recipients if they are set
 	  */
-	if(inst->recipient_addrs) recipients_set += tmpl_arr_to_slist(uctx, &uctx->recipients, inst->recipient_addrs);
+	if(call_env->recipient_addrs) {
+		recipients_set += value_box_list_to_slist(&uctx->recipients, call_env->recipient_addrs);
+	}
 
 	/*
 	 *	If any recipients were found, ignore to cc and bcc, return the amount added.
 	 **/
 	if (recipients_set) {
-		RDEBUG2("Recipients were generated from \"SMTP-Recipients\" and/or recipients in the config");
+		RDEBUG2("Recipients were generated from \"&SMTP-Recipients\" and/or recipients in the config");
 		return recipients_set;
 	}
-	RDEBUG2("No addresses were found in SMTP-Recipient");
+	RDEBUG2("No addresses were found in \"&SMTP-Recipients\"");
 
 	/*
 	 *	Try to load the to: addresses into the envelope recipients if they are set
@@ -881,7 +903,7 @@ skip_auth:
 				    fr_value_box_list_head(call_env->sender_address)->vb_strvalue));
 
 	/* Set the recipients */
-       	if (recipients_source(mail_ctx, inst) <= 0) {
+       	if (recipients_source(mail_ctx, inst, call_env) <= 0) {
 		REDEBUG("At least one recipient is required to send an email");
 		goto error;
 	}
@@ -965,16 +987,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 	return unlang_module_yield(request, smtp_io_module_resume, smtp_io_module_signal, ~FR_SIGNAL_CANCEL, randle);
 }
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_smtp_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t );
-
-	talloc_foreach(inst->recipient_addrs, vpt) INFO("NAME: %s", vpt->name);
-
-	return 0;
-}
-
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
@@ -1211,7 +1223,10 @@ static const call_env_method_t method_env = {
 		{ FR_CALL_ENV_PARSE_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, username, username_tmpl),
 					  .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, password), .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
-		{ FR_CALL_ENV_OFFSET("sender_address", FR_TYPE_STRING, CALL_ENV_FLAG_NONE , rlm_smtp_env_t, sender_address) },
+		{ FR_CALL_ENV_OFFSET("sender_address", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, rlm_smtp_env_t, sender_address) },
+		{ FR_CALL_ENV_OFFSET("recipients", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, recipient_addrs),
+				     .pair.dflt = "&SMTP-Recipients[*]", .pair.dflt_quote = T_BARE_WORD },
+
 		CALL_ENV_TERMINATOR
 	}
 };
@@ -1234,7 +1249,6 @@ module_rlm_t rlm_smtp = {
 		.inst_size	        = sizeof(rlm_smtp_t),
 		.thread_inst_size   	= sizeof(rlm_smtp_thread_t),
 		.config		        = module_config,
-		.bootstrap 		= mod_bootstrap,
 		.instantiate		= mod_instantiate,
 		.thread_instantiate 	= mod_thread_instantiate,
 		.thread_detach      	= mod_thread_detach,
