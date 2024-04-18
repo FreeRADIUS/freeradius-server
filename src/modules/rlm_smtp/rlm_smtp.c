@@ -73,6 +73,7 @@ typedef struct {
 	fr_value_box_t		password;		//!< Password for authenticated mails.
 	fr_value_box_list_t	*sender_address;	//!< The address(es) used to generate the From: header
 	fr_value_box_list_t	*recipient_addrs;	//!< The address(es) used as recipients.  Overrides elements in to, cc and bcc
+	fr_value_box_list_t	*to_addrs;		//!< The address(es) used for the To: header.
 } rlm_smtp_env_t;
 
 FR_DLIST_TYPES(header_list)
@@ -93,7 +94,6 @@ typedef struct {
 	char const		*envelope_address;	//!< The address used to send the message
 
 	tmpl_t 			**attachments;		//!< The attachments to be set
-	tmpl_t 			**to_addrs;		//!< Comma separated list of emails to be listed in TO:
 	tmpl_t 			**cc_addrs;		//!< Comma separated list of emails to be listed in CC:
 	tmpl_t 			**bcc_addrs;		//!< Comma separated list of emails not to be listed
 
@@ -114,7 +114,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("template_directory", rlm_smtp_t, template_dir) },
 	{ FR_CONF_OFFSET("attachments", rlm_smtp_t, attachments), .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("envelope_address", rlm_smtp_t, envelope_address) },
-	{ FR_CONF_OFFSET("TO", rlm_smtp_t, to_addrs), .dflt = "&SMTP-TO[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("CC", rlm_smtp_t, cc_addrs), .dflt = "&SMTP-CC[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("BCC", rlm_smtp_t, bcc_addrs), .dflt = "&SMTP-BCC[*]", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("timeout", rlm_smtp_t, timeout) },
@@ -548,7 +547,7 @@ static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_sm
 	/*
 	 *	Try to load the to: addresses into the envelope recipients if they are set
 	 */
-	if (inst->to_addrs) recipients_set += tmpl_arr_to_slist(uctx, &uctx->recipients, inst->to_addrs);
+	if (call_env->to_addrs) recipients_set += value_box_list_to_slist(&uctx->recipients, call_env->to_addrs);
 
 	/*
 	 *	Try to load the cc: addresses into the envelope recipients if they are set
@@ -570,7 +569,6 @@ static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_sm
 static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_env_t const *call_env)
 {
 	fr_sbuff_t 			time_out;
-	char const 			*to = "TO: ";
 	char const 			*cc = "CC: ";
 	request_t			*request = uctx->request;
 	fr_sbuff_t 			conf_buffer;
@@ -610,7 +608,7 @@ static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_e
 	}
 
 	/* Add the TO: line if there is one provided in the request by SMTP-TO */
-	tmpl_arr_to_header(uctx, &uctx->header, inst->to_addrs, to);
+	value_box_list_to_header(uctx, &uctx->header, call_env->to_addrs, "To: ");
 
 	/* Add the CC: line if there is one provided in the request by SMTP-CC */
 	tmpl_arr_to_header(uctx, &uctx->header, inst->cc_addrs, cc);
@@ -1226,6 +1224,8 @@ static const call_env_method_t method_env = {
 		{ FR_CALL_ENV_OFFSET("sender_address", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, rlm_smtp_env_t, sender_address) },
 		{ FR_CALL_ENV_OFFSET("recipients", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, recipient_addrs),
 				     .pair.dflt = "&SMTP-Recipients[*]", .pair.dflt_quote = T_BARE_WORD },
+	   	{ FR_CALL_ENV_OFFSET("TO", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, to_addrs),
+		 		    .pair.dflt = "&SMTP-TO[*]", .pair.dflt_quote = T_BARE_WORD },
 
 		CALL_ENV_TERMINATOR
 	}
