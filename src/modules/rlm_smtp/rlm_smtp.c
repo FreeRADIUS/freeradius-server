@@ -71,6 +71,7 @@ typedef struct {
 	fr_value_box_t		username;		//!< User to authenticate as when sending emails.
 	tmpl_t			*username_tmpl;		//!< The tmpl used to produce the above.
 	fr_value_box_t		password;		//!< Password for authenticated mails.
+	fr_value_box_list_t	*sender_address;	//!< The address(es) used to generate the FROM: header
 } rlm_smtp_env_t;
 
 FR_DLIST_TYPES(header_list)
@@ -90,7 +91,6 @@ typedef struct {
 	char const		*template_dir;		//!< The directory that contains all email attachments
 	char const		*envelope_address;	//!< The address used to send the message
 
-	tmpl_t 			**sender_address;	//!< The address used to generate the FROM: header
 	tmpl_t 			**attachments;		//!< The attachments to be set
 	tmpl_t 			**recipient_addrs;	//!< Comma separated list of emails. Overrides elements in to, cc, bcc
 	tmpl_t 			**to_addrs;		//!< Comma separated list of emails to be listed in TO:
@@ -113,7 +113,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("uri", rlm_smtp_t, uri) },
 	{ FR_CONF_OFFSET("template_directory", rlm_smtp_t, template_dir) },
 	{ FR_CONF_OFFSET("attachments", rlm_smtp_t, attachments), .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
-	{ FR_CONF_OFFSET("sender_address", rlm_smtp_t, sender_address) },
 	{ FR_CONF_OFFSET("envelope_address", rlm_smtp_t, envelope_address) },
 	{ FR_CONF_OFFSET("recipients", rlm_smtp_t, recipient_addrs), .dflt = "&SMTP-Recipients[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("TO", rlm_smtp_t, to_addrs), .dflt = "&SMTP-TO[*]", .quote = T_BARE_WORD},
@@ -266,6 +265,60 @@ static ssize_t tmpl_attr_to_sbuff(fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t c
 	return copied;
 }
 
+/** Converts an array of value box lists to a curl_slist with a prefix
+ *
+ * @param uctx		Mail context.
+ * @param out		CURL slist to write to.
+ * @param list		of value boxes to copy.
+ * @param prefix	to prepend to the output slist
+ * @return
+ *   - 1 on success
+ *   - 0 if no slist entry was created
+ *   - -1 on failure
+ */
+static int value_box_list_to_header(fr_mail_ctx_t *uctx, struct curl_slist **out, fr_value_box_list_t const *lists,
+				    const char *prefix)
+{
+	request_t			*request = uctx->request;
+	fr_sbuff_t			sbuff;
+	fr_sbuff_uctx_talloc_t		sbuff_ctx;
+	bool				added = false;
+	fr_value_box_t			*vb = NULL;
+	fr_value_box_list_t const	*list = lists;
+	size_t				i, list_count = talloc_array_length(lists);
+
+	fr_sbuff_init_talloc(uctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX);
+	(void) fr_sbuff_in_strcpy(&sbuff, prefix);
+
+	for (i = 0; i < list_count; i++) {
+		while ((vb = fr_value_box_list_next(list, vb))) {
+			/* If there are already values added, add the comma separator */
+			if (added) fr_sbuff_in_strcpy(&sbuff, ", ");
+
+			if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) {
+				RERROR("Failed casting %pV to string", vb);
+				talloc_free(fr_sbuff_buff(&sbuff));
+				return -1;
+			}
+
+			fr_sbuff_in_strcpy(&sbuff, vb->vb_strvalue);
+			added = true;
+		}
+		list++;
+	}
+
+	if (!added) {
+		RDEBUG2("No values to add to \"%s\" header", prefix);
+		talloc_free(fr_sbuff_buff(&sbuff));
+		return 0;
+	}
+
+	/* Add the generated buffer the the curl_slist */
+	*out = curl_slist_append(*out, fr_sbuff_buff(&sbuff));
+	talloc_free(fr_sbuff_buff(&sbuff));
+	return 1;
+}
+
 /*
  * 	Adds every value in a dict_attr to a curl_slist as a comma separated list with a preposition
  */
@@ -415,50 +468,35 @@ static int tmpl_arr_to_attachments (fr_mail_ctx_t *uctx, curl_mime *mime, tmpl_t
 	return count;
 }
 
-/*
- * 	Returns the proper envolope address
+/** Generate the `FROM:` header
+ *
+ * Defaults to using `sender_address` values, falls back to `envelope_address`
  */
-static const char *get_envelope_address(rlm_smtp_t const *inst)
+static int generate_from_header(fr_mail_ctx_t *uctx, struct curl_slist **out, rlm_smtp_t const *inst,
+				rlm_smtp_env_t const *call_env)
 {
-	/* If the envelope address is set in the config, use that to send the email */
-	if(inst->envelope_address) return inst->envelope_address;
-
-	/* If the envelope address is not set, use the first sender address if any are set */
-	if(inst->sender_address) return inst->sender_address[0]->name;
-
-	/* There was no available envelope address */
-	return NULL;
-}
-
-/*
- * 	Generate the FROM: header
- */
-static int generate_from_header(fr_mail_ctx_t *uctx, struct curl_slist **out, rlm_smtp_t const *inst)
-{
-	char const 			*from = "FROM: ";
 	fr_sbuff_t 			sbuff;
 	fr_sbuff_uctx_talloc_t 		sbuff_ctx;
 
-	/* If sender_address is set, then generate FROM: with those attributes */
-	if (inst->sender_address) {
-		tmpl_arr_to_header(uctx, &uctx->header, inst->sender_address, from);
-		return 0;
-	}
+	if (call_env->sender_address) return value_box_list_to_header(uctx, &uctx->header, call_env->sender_address, "FROM: ");
 
-	/* Initialize the buffer for the recipients. Used for TO */
+	/* Initialize the buffer for the recipients. Used for FROM */
 	fr_sbuff_init_talloc(uctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX);
 
 	/* Add the preposition for the header element */
-	(void) fr_sbuff_in_strcpy(&sbuff, from);
+	(void) fr_sbuff_in_strcpy(&sbuff, "FROM: ");
 
 	/* Copy the envelope address as the FROM: source */
-	if (unlikely(fr_sbuff_in_bstrncpy(&sbuff, inst->envelope_address, strlen(inst->envelope_address)) < 0)) {
+	if (unlikely(fr_sbuff_in_bstrncpy(&sbuff, inst->envelope_address,
+					  strlen(inst->envelope_address)) < 0)) {
+		talloc_free(fr_sbuff_buff(&sbuff));
 		return -1;
 	}
+
 	*out = curl_slist_append(*out, sbuff.buff);
 
 	/* Free the buffer used to generate the FROM header */
-	talloc_free(sbuff.buff);
+	talloc_free(fr_sbuff_buff(&sbuff));
 
 	return 0;
 }
@@ -507,7 +545,7 @@ static int recipients_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
 /*
  *	Generates a curl_slist of header elements header elements
  */
-static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
+static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_env_t const *call_env)
 {
 	fr_sbuff_t 			time_out;
 	char const 			*to = "TO: ";
@@ -544,7 +582,7 @@ static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst)
 	}
 
 	/* Add the FROM: line */
-	if (unlikely(generate_from_header(uctx, &uctx->header, inst) < 0)) {
+	if (unlikely(generate_from_header(uctx, &uctx->header, inst, call_env) < 0)) {
 		RDEBUG2("FROM: header could not be added");
 		return -1;
 	}
@@ -781,7 +819,6 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 	rlm_smtp_env_t			*call_env = talloc_get_type_abort(mctx->env_data, rlm_smtp_env_t);
 	fr_curl_io_request_t     	*randle = NULL;
 	fr_mail_ctx_t			*mail_ctx;
-	const char 			*envelope_address;
 
 	fr_pair_t const 		*smtp_body;
 
@@ -794,7 +831,7 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 		RETURN_MODULE_INVALID;
 	}
 
-	if (!inst->sender_address && !inst->envelope_address) {
+	if (!call_env->sender_address && !inst->envelope_address) {
 		RDEBUG2("At least one of \"sender_address\" or \"envelope_address\" in the config, or \"SMTP-Sender-Address\" in the request is needed");
 	error:
 		if (randle) smtp_slab_release(randle);
@@ -836,15 +873,12 @@ static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_c
 		FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, call_env->password.vb_strvalue);
 		RDEBUG2("Username and password set");
 	}
-skip_auth:
 
-	/* Send the envelope address */
-	envelope_address = get_envelope_address(inst);
-	if (!envelope_address) {
-		REDEBUG("The envelope address must be set");
-		goto error;
-	}
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_FROM, get_envelope_address(inst));
+skip_auth:
+	/* Set the envelope mail from address */
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_FROM,
+				   (inst->envelope_address ? inst->envelope_address :
+				    fr_value_box_list_head(call_env->sender_address)->vb_strvalue));
 
 	/* Set the recipients */
        	if (recipients_source(mail_ctx, inst) <= 0) {
@@ -854,7 +888,7 @@ skip_auth:
 	FR_CURL_REQUEST_SET_OPTION(CURLOPT_MAIL_RCPT, mail_ctx->recipients);
 
 	/* Set the header elements */
-       	if (header_source(mail_ctx, inst) != 0) {
+       	if (header_source(mail_ctx, inst, call_env) != 0) {
 		REDEBUG("The header slist could not be generated");
 		goto error;
 	}
@@ -1177,6 +1211,7 @@ static const call_env_method_t method_env = {
 		{ FR_CALL_ENV_PARSE_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, username, username_tmpl),
 					  .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
 		{ FR_CALL_ENV_OFFSET("password", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, password), .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+		{ FR_CALL_ENV_OFFSET("sender_address", FR_TYPE_STRING, CALL_ENV_FLAG_NONE , rlm_smtp_env_t, sender_address) },
 		CALL_ENV_TERMINATOR
 	}
 };
