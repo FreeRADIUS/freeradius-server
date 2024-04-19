@@ -181,30 +181,6 @@ static int da_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, const fr_di
 	return elems_added;
 }
 
-/*
- * 	Takes a TMPL_TYPE_ATTR and adds it to an slist
- */
-static int tmpl_attr_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t * const tmpl)
-{
-	request_t 			*request = ((fr_mail_ctx_t *)uctx)->request;
-	fr_pair_t			*vp;
-	tmpl_dcursor_ctx_t       	cc;
-	int 				count = 0;
-
-	/* Iterate over the VP and add the string value to the curl_slist */
-	vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
-
-	while (vp) {
-		*out = curl_slist_append(*out, vp->vp_strvalue);
-		vp = fr_dcursor_next(&uctx->cursor);
-		count++;
-	}
-
-	/* Return the number of elements which were found */
-	tmpl_dcursor_clear(&cc);
-	return count;
-}
-
 /** Transform an array of value box lists to entries in a CURL slist
  *
  */
@@ -224,60 +200,6 @@ static int value_box_list_to_slist(struct curl_slist **out, fr_value_box_list_t 
 	}
 
 	return count;
-}
-
-/*
- * 	Parse through an array of tmpl * elements and add them to an slist
- */
-static int tmpl_arr_to_slist(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t ** const tmpl)
-{
-	request_t 	*request = uctx->request;
-	int 		count = 0;
-	char 		*expanded_str;
-
-	talloc_foreach(tmpl, current) {
-		if (current->type == TMPL_TYPE_ATTR) {
-			/* If the element contains a reference to an attribute, parse every value it references */
-			count += tmpl_attr_to_slist(uctx, out, current);
-
-		} else {
-			/* If the element is just a normal string, add it's name to the slist*/
-			if (tmpl_aexpand(request, &expanded_str, request, current, NULL, NULL) < 0) {
-				RDEBUG2("Could not expand the element %s", current->name);
-				break;
-			}
-
-			*out = curl_slist_append(*out, expanded_str);
-			count++;
-		}
-	}
-
-	return count;
-}
-
-/*
- * 	Adds every element associated with a tmpl_attr to an sbuff
- */
-static ssize_t tmpl_attr_to_sbuff(fr_mail_ctx_t *uctx, fr_sbuff_t *out, tmpl_t const *vpt, char const *delimiter)
-{
-	fr_pair_t		*vp;
-	tmpl_dcursor_ctx_t       cc;
-
-	ssize_t			copied = 0;
-
-	/* Loop through the elements to be added to the sbuff */
-	vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, uctx->request, vpt);
-	while (vp) {
-		copied += fr_sbuff_in_bstrncpy(out, vp->vp_strvalue, vp->vp_length);
-
-		vp = fr_dcursor_next(&uctx->cursor);
-		/* If there will be more values, add a comma and whitespace */
-		if (vp) {
-			copied += fr_sbuff_in_strcpy(out, delimiter);
-		}
-	}
-	tmpl_dcursor_clear(&cc);
-	return copied;
 }
 
 /** Converts an array of value box lists to a curl_slist with a prefix
@@ -335,56 +257,6 @@ static int value_box_list_to_header(fr_mail_ctx_t *uctx, struct curl_slist **out
 }
 
 /*
- * 	Adds every value in a dict_attr to a curl_slist as a comma separated list with a preposition
- */
-static int tmpl_arr_to_header(fr_mail_ctx_t *uctx, struct curl_slist **out, tmpl_t ** const tmpl,
-			      const char *preposition)
-{
-	request_t		*request = uctx->request;
-	fr_sbuff_t 		sbuff;
-	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
-	ssize_t 		out_len = 0;
-	char 			*expanded_str;
-
-	/* Initialize the buffer for the recipients. Used for TO */
-	fr_sbuff_init_talloc(uctx, &sbuff, &sbuff_ctx, 256, SIZE_MAX);
-	/* Add the preposition for the header element */
-	(void) fr_sbuff_in_strcpy(&sbuff, preposition);
-
-	talloc_foreach(tmpl, vpt) {
-		/* If there have already been elements added, keep them comma separated */
-		if (out_len > 0) {
-			out_len += fr_sbuff_in_strcpy(&sbuff, ", ");
-		}
-
-		/* Add the tmpl to the header sbuff */
-		if (vpt->type == TMPL_TYPE_ATTR) {
-			/* If the element contains a reference to an attribute, parse every value it references */
-			out_len += tmpl_attr_to_sbuff(uctx, &sbuff, vpt, ", ");
-
-		} else {
-			/* If the element is just a normal string, add it's name to the slist*/
-			if( tmpl_aexpand(request, &expanded_str, request, vpt, NULL, NULL) < 0) {
-				RDEBUG2("Could not expand the element %s", vpt->name);
-				break;
-			}
-			out_len += fr_sbuff_in_bstrncpy(&sbuff, expanded_str, vpt->len);
-		}
-	}
-
-	/* Add the generated buffer the the curl_slist if elements were added */
-	if (out_len > 0) {
-		*out = curl_slist_append(*out, sbuff.buff);
-		talloc_free(sbuff.buff);
-		return 1;
-	}
-
-	talloc_free(sbuff.buff);
-	RDEBUG2("Failed to add the element to the header");
-	return 0;
-}
-
-/*
  * 	Takes a string value and adds it as a file path to upload as an attachment
  */
 static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const * str, size_t len,
@@ -424,63 +296,6 @@ static int str_to_attachments(fr_mail_ctx_t *uctx, curl_mime *mime, char const *
 	}
 
 	return 1;
-}
-
-/*
- * 	Parse a tmpl attr into a file attachment path and add it as a mime part
- */
-static int tmpl_attr_to_attachment(fr_mail_ctx_t *uctx, curl_mime *mime, const tmpl_t * tmpl,
-				   fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
-{
-	fr_pair_t 		*vp;
-	request_t		*request = uctx->request;
-	tmpl_dcursor_ctx_t	cc;
-	int 			attachments_set = 0;
-
-	/* Check for any file attachments */
-	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &uctx->cursor, request, tmpl);
-	     vp;
-	     vp = fr_dcursor_next(&uctx->cursor)) {
-		if (vp->vp_tainted) {
-			RDEBUG2("Skipping tainted attachment");
-			continue;
-		}
-
-		attachments_set += str_to_attachments(uctx, mime, vp->vp_strvalue, vp->vp_length, path_buffer, m);
-	}
-
-	tmpl_dcursor_clear(&cc);
-	return attachments_set;
-}
-
-/*
- * 	Adds every element in a tmpl** to an attachment path, then adds it to the email
- */
-static int tmpl_arr_to_attachments (fr_mail_ctx_t *uctx, curl_mime *mime, tmpl_t ** const tmpl,
-				    fr_sbuff_t *path_buffer, fr_sbuff_marker_t *m)
-{
-	request_t	*request = uctx->request;
-	ssize_t 	count = 0;
-	ssize_t 	expanded_str_len;
-	char 		*expanded_str;
-
-	talloc_foreach(tmpl, current) {
-		/* write the elements to the sbuff as a comma separated list */
-		if (current->type == TMPL_TYPE_ATTR) {
-			count += tmpl_attr_to_attachment(uctx, mime, current, path_buffer, m);
-
-		} else {
-			expanded_str_len = tmpl_aexpand(request, &expanded_str, request, current, NULL, NULL);
-			if (expanded_str_len < 0) {
-				RDEBUG2("Could not expand the element %s", current->name);
-				continue;
-			}
-
-			count += str_to_attachments(uctx, mime, expanded_str, expanded_str_len, path_buffer, m);
-		}
-	}
-
-	return count;
 }
 
 /** Generate the `From:` header
