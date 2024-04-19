@@ -76,6 +76,7 @@ typedef struct {
 	fr_value_box_list_t	*to_addrs;		//!< The address(es) used for the To: header.
 	fr_value_box_list_t	*cc_addrs;		//!< The address(es) used for the Cc: header.
 	fr_value_box_list_t	*bcc_addrs;		//!< The address(es) used for the Bcc: header.
+	fr_value_box_list_t	*attachments;		//!< List of files to attach.
 } rlm_smtp_env_t;
 
 FR_DLIST_TYPES(header_list)
@@ -95,8 +96,6 @@ typedef struct {
 	char const		*template_dir;		//!< The directory that contains all email attachments
 	char const		*envelope_address;	//!< The address used to send the message
 
-	tmpl_t 			**attachments;		//!< The attachments to be set
-
 	fr_time_delta_t 	timeout;		//!< Timeout for connection and server response
 	fr_curl_tls_t		tls;			//!< Used for handled all tls specific curl components
 
@@ -112,7 +111,6 @@ typedef struct {
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("uri", rlm_smtp_t, uri) },
 	{ FR_CONF_OFFSET("template_directory", rlm_smtp_t, template_dir) },
-	{ FR_CONF_OFFSET("attachments", rlm_smtp_t, attachments), .dflt = "&SMTP-Attachments[*]", .quote = T_BARE_WORD},
 	{ FR_CONF_OFFSET("envelope_address", rlm_smtp_t, envelope_address) },
 	{ FR_CONF_OFFSET("timeout", rlm_smtp_t, timeout) },
 	{ FR_CONF_OFFSET("set_date", rlm_smtp_t, set_date), .dflt = "yes" },
@@ -721,13 +719,17 @@ static int body_init(fr_mail_ctx_t *uctx, curl_mime *mime)
 /*
  * 	Adds every SMTP_Attachments file to the email as a MIME part
  */
-static int attachments_source(fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t const *inst)
+static int attachments_source(fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t const *inst, rlm_smtp_env_t const *call_env)
 {
-	request_t		*request = uctx->request;
-	int 			attachments_set = 0;
-	fr_sbuff_uctx_talloc_t 	sbuff_ctx;
-	fr_sbuff_t 		path_buffer;
-	fr_sbuff_marker_t 	m;
+	request_t			*request = uctx->request;
+	int	 			attachments_set = 0;
+	fr_sbuff_uctx_talloc_t 		sbuff_ctx;
+	fr_sbuff_t 			path_buffer;
+	fr_sbuff_marker_t 		m;
+	fr_value_box_t			*vb = NULL;
+	fr_value_box_list_t const	*list = call_env->attachments;
+	size_t				i, list_count = talloc_array_length(call_env->attachments);
+
 
 	/* Make sure that a template directory is provided */
 	if (!inst->template_dir) return 0;
@@ -748,7 +750,12 @@ static int attachments_source(fr_mail_ctx_t *uctx, curl_mime *mime, rlm_smtp_t c
 	fr_sbuff_marker(&m, &path_buffer);
 
 	/* Add the attachments to the email */
-	attachments_set += tmpl_arr_to_attachments(uctx, mime, inst->attachments, &path_buffer, &m);
+	for (i = 0; i < list_count; i++) {
+		while ((vb = fr_value_box_list_next(list, vb))) {
+			attachments_set += str_to_attachments(uctx, mime, vb->vb_strvalue, vb->vb_length, &path_buffer, &m);
+		}
+		list++;
+	}
 
 	/* Check for any file attachments */
 	talloc_free(path_buffer.buff);
@@ -924,7 +931,7 @@ skip_auth:
 	}
 
 	/* Initialize the attachments if there are any*/
-	if (attachments_source(mail_ctx, mail_ctx->mime, inst) == 0){
+	if (attachments_source(mail_ctx, mail_ctx->mime, inst, call_env) == 0){
 		RDEBUG2("No files were attached to the email");
 	}
 
@@ -1227,6 +1234,8 @@ static const call_env_method_t method_env = {
 		 		    .pair.dflt = "&SMTP-CC[*]", .pair.dflt_quote = T_BARE_WORD },
 	   	{ FR_CALL_ENV_OFFSET("BCC", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, bcc_addrs),
 		 		    .pair.dflt = "&SMTP-BCC[*]", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_OFFSET("attachments", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, attachments),
+				    .pair.dflt = "&SMTP-Attachments[*]", .pair.dflt_quote = T_BARE_WORD },
 
 		CALL_ENV_TERMINATOR
 	}
