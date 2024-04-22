@@ -88,14 +88,22 @@ RUN git clone --depth 1 --no-single-branch ${source}
 #
 #  Install build dependencies for all branches from v3 onwards
 #  Nodesource has issues (no SRPMS in some repos) and is not needed here
+#  CentOS/RHEL 7 do not support "-D" for yum-builddep so do that separately below if needed
 #
-define(`EXTRA_DISABLE', ifelse(OS_VER, 7, `--disablerepo="nodesource*"', `'))dnl
+define(`BUILDDEP_EXTRA', ifelse(OS_VER, 7, `--disablerepo="nodesource*"', `-D "_with_rlm_yubikey 1"'))dnl
 WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
-		[ -e redhat/freeradius.spec ] && yum-builddep EXTRA_DISABLE -y redhat/freeradius.spec; \
+		[ -e redhat/freeradius.spec ] && yum-builddep BUILDDEP_EXTRA -y redhat/freeradius.spec; \
 	done
+
+ifelse(OS_VER, 7,`dnl
+#  Yubikey deps for CentOS/RHEL 7
+RUN yum install -y ykclient-devel ykclient
+')dnl
+
+RUN yum install -y libyubikey-devel
 
 #
 #  Which is required by fixture setup utilities
