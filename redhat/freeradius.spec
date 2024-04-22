@@ -81,11 +81,7 @@ BuildRequires: gdbm-devel
 %if %{with freeradius_openssl}
 BuildRequires: freeradius-openssl, freeradius-openssl-devel
 %else
-%if 0%{?rhel}%{?fedora} < 8
-BuildRequires: nwkrad-openssl-devel >= 1.1.1
-%else
 BuildRequires: openssl, openssl-devel
-%endif
 %endif
 
 BuildRequires: libcap-devel
@@ -114,10 +110,6 @@ Requires: freeradius-common = %{version}-%{release}
 %if %{with freeradius_openssl}
 Requires: freeradius-openssl
 %else
-%if 0%{?rhel}%{?fedora} < 8
-# (We also need the system openssl on CentOS7 for the utilities)
-Requires: nwkrad-openssl >= 1.1.1, nwkrad-openssl-perl
-%endif
 # Need openssl-perl for c_rehash, which is used when
 # generating certificates
 Requires: openssl, openssl-perl
@@ -223,13 +215,8 @@ Integrates libcurl with FreeRADIUS' internal event loop.
 Summary: Internal support library for FreeRADIUS modules using json-c
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
-%if 0%{?rhel}%{?fedora} < 8
-Requires: nwkrad-json-c >= 0.13
-BuildRequires: nwkrad-json-c-devel >= 0.13
-%else
 Requires: json-c >= 0.13
 BuildRequires: json-c-devel >= 0.13
-%endif
 
 %description libfreeradius-json
 Internal support library for FreeRADIUS modules using json-c, required by all modules that use json-c.
@@ -362,12 +349,7 @@ Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
 %{?fedora:BuildRequires: perl-devel}
-%if 0%{?rhel} <= 5
-BuildRequires: perl
-%endif
-%if 0%{?rhel} >= 6
 BuildRequires: perl-devel
-%endif
 BuildRequires: perl(ExtUtils::Embed)
 
 %description perl
@@ -394,12 +376,7 @@ This plugin provides Python support for the FreeRADIUS server project.
 Summary: MySQL support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
-%if 0%{?rhel} <= 7
-Requires: mysql
-%endif
-%if 0%{?rhel} >= 8
 Requires: mysql-libs
-%endif
 BuildRequires: mysql-devel
 
 %description mysql
@@ -533,8 +510,6 @@ BuildRequires: libosmo-sccp-devel, libosmo-xua-devel, libosmo-mtp-devel, libosmo
 This plugin provides an experimental M3UA/SCCP/TCAP/MAP stack for the FreeRADIUS server project.
 %endif
 
-# libcurl version is too old in Centos/EL 7
-%if 0%{?rhel}%{?fedora} > 7
 %package smtp
 Summary: SMTP support for FreeRADIUS
 Group: System Environment/Daemons
@@ -543,7 +518,6 @@ Requires: freeradius-libfreeradius-curl = %{version}
 
 %description smtp
 This plugin provides the ability to authenticate users against SMTP servers and send email.
-%endif
 
 %if %{with rlm_yubikey}
 %package yubikey
@@ -568,14 +542,8 @@ This plugin provides YubiCloud support for the FreeRADIUS server project.
 #
 # Disable _debuginfo_subpackage.  They don't work. rpbuild doesn't split out the debug info for the files
 # into the subpackages.  It also doesn't split out the source files.
-%if 0%{?fedora} >= 27
 %undefine _debugsource_packages
 %undefine _debuginfo_subpackages
-%endif
-%if 0%{?rhel} >= 8
-%undefine _debugsource_packages
-%undefine _debuginfo_subpackages
-%endif
 
 %prep
 %setup -q -n freeradius-server-%{version}
@@ -685,23 +653,13 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-rlm-krb5-include-dir=/usr/kerberos/include \
         --without-rlm_sql_firebird \
         --without-rlm_sql_db2 \
-%if 0%{?rhel}%{?fedora} < 8
-        --with-jsonc-lib-dir=/opt/nwkrad/lib64 \
-        --with-jsonc-include-dir=/opt/nwkrad/include \
-%else
         --with-jsonc-lib-dir=%{_libdir} \
         --with-jsonc-include-dir=/usr/include/json \
-%endif
         --with-winbind-include-dir=/usr/include/samba-4.0 \
         --with-winbind-lib-dir=/usr/lib64/samba \
 %if %{with freeradius_openssl}
         --with-openssl-lib-dir=/opt/openssl/lib \
         --with-openssl-include-dir=/opt/openssl/include \
-%else
-%if 0%{?rhel}%{?fedora} < 8
-        --with-openssl-lib-dir=/opt/nwkrad/lib64 \
-        --with-openssl-include-dir=/opt/nwkrad/include \
-%endif
 %endif
 %if %{with developer}
         --enable-developer=yes \
@@ -1297,12 +1255,9 @@ fi
 %{_libdir}/freeradius/rlm_mruby.so
 %endif
 
-# libcurl version is too old in Centos/EL 7
-%if 0%{?rhel}%{?fedora} > 7
 %files smtp
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_smtp.so
-%endif
 
 %files freetds
 %defattr(-,root,root)
