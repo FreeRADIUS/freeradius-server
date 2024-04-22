@@ -430,22 +430,9 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 	sql_rcode_t rcode;
 
 	rcode = sql_query(handle, config, query);
-	if (rcode != RLM_SQL_OK) {
-		return rcode;
-	}
+	if (rcode != RLM_SQL_OK) return rcode;
 
-	rcode = sql_store_result(handle, config);
-	if (rcode != RLM_SQL_OK) {
-		return rcode;
-	}
-
-	/* Why? Per http://www.mysql.com/doc/n/o/node_591.html,
-	 * this cannot return an error.  Perhaps just to complain if no
-	 * fields are found?
-	 */
-	sql_num_fields(handle, config);
-
-	return rcode;
+	return sql_store_result(handle, config);
 }
 
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
