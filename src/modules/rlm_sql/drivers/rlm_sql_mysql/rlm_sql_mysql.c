@@ -49,26 +49,6 @@ DIAG_ON(strict-prototypes)
 #  include <mysqld_error.h>
 #endif
 
-#ifndef MARIADB_BASE_VERSION
-#if (MYSQL_VERSION_ID >= 50555) && (MYSQL_VERSION_ID < 50600)
-#define HAVE_TLS_OPTIONS        1
-#define HAVE_CRL_OPTIONS        0
-#define HAVE_TLS_VERIFY_OPTIONS 0
-#elif (MYSQL_VERSION_ID >= 50636) && (MYSQL_VERSION_ID < 50700)
-#define HAVE_TLS_OPTIONS        1
-#define HAVE_CRL_OPTIONS        1
-#define HAVE_TLS_VERIFY_OPTIONS 0
-#elif MYSQL_VERSION_ID >= 50700
-#define HAVE_TLS_OPTIONS        1
-#define HAVE_CRL_OPTIONS        1
-#define HAVE_TLS_VERIFY_OPTIONS 1
-#endif
-#else
-#define HAVE_TLS_OPTIONS        0
-#define HAVE_CRL_OPTIONS        0
-#define HAVE_TLS_VERIFY_OPTIONS 0
-#endif
-
 #include "rlm_sql.h"
 
 typedef enum {
@@ -118,11 +98,8 @@ static conf_parser_t tls_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_ca_path) },
 	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_certificate_file) },
 	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_private_key_file) },
-
-#if HAVE_CRL_OPTIONS
 	{ FR_CONF_OFFSET_FLAGS("crl_file", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_file) },
 	{ FR_CONF_OFFSET_FLAGS("crl_path", CONF_FLAG_FILE_INPUT, rlm_sql_mysql_t, tls_crl_path) },
-#endif
 	/*
 	 *	MySQL Specific TLS attributes
 	 */
@@ -136,13 +113,9 @@ static conf_parser_t tls_config[] = {
 	 *	but for consistency we break them out anyway, and warn if the user
 	 *	has provided an invalid list of flags.
 	 */
-#if HAVE_TLS_OPTIONS
 	{ FR_CONF_OFFSET("tls_required", rlm_sql_mysql_t, tls_required) },
-#  if HAVE_TLS_VERIFY_OPTIONS
 	{ FR_CONF_OFFSET("check_cert", rlm_sql_mysql_t, tls_check_cert) },
 	{ FR_CONF_OFFSET("check_cert_cn", rlm_sql_mysql_t, tls_check_cert_cn) },
-#  endif
-#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -180,7 +153,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 	inst->warnings = (rlm_sql_mysql_warnings)warnings;
 
-#if HAVE_TLS_VERIFY_OPTIONS
 	if (inst->tls_check_cert && !inst->tls_required) {
 		WARN("Implicitly setting tls_required = yes, as tls_check_cert = yes");
 		inst->tls_required = true;
@@ -196,7 +168,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			inst->tls_check_cert = true;
 		}
 	}
-#endif
 	return 0;
 }
 
@@ -245,7 +216,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 			      inst->tls_ca_file, inst->tls_ca_path, inst->tls_cipher);
 	}
 
-#if HAVE_TLS_OPTIONS
+#ifndef MARIADB_BASE_VERSION
 	{
 		unsigned int	ssl_mode = 0;
 		bool		ssl_mode_isset = false;
@@ -254,7 +225,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 			ssl_mode = SSL_MODE_REQUIRED;
 			ssl_mode_isset = true;
 		}
-#  if HAVE_TLS_VERIFY_OPTIONS
 		if (inst->tls_check_cert) {
 			ssl_mode = SSL_MODE_VERIFY_CA;
 			ssl_mode_isset = true;
@@ -263,15 +233,12 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 			ssl_mode = SSL_MODE_VERIFY_IDENTITY;
 			ssl_mode_isset = true;
 		}
-#  endif
 		if (ssl_mode_isset) mysql_options(&(conn->db), MYSQL_OPT_SSL_MODE, &ssl_mode);
 	}
 #endif
 
-#if HAVE_CRL_OPTIONS
 	if (inst->tls_crl_file) mysql_options(&(conn->db), MYSQL_OPT_SSL_CRL, inst->tls_crl_file);
 	if (inst->tls_crl_path) mysql_options(&(conn->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
-#endif
 
 	mysql_options(&(conn->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
 
@@ -279,14 +246,11 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	 *	We need to know about connection errors, and are capable
 	 *	of reconnecting automatically.
 	 */
-#if MYSQL_VERSION_ID >= 50013
 	{
 		bool reconnect = 0;
 		mysql_options(&(conn->db), MYSQL_OPT_RECONNECT, &reconnect);
 	}
-#endif
 
-#if (MYSQL_VERSION_ID >= 50000)
 	mysql_options(&(conn->db), MYSQL_OPT_CONNECT_TIMEOUT, &connect_timeout);
 
 	if (fr_time_delta_ispos(config->query_timeout)) {
@@ -314,13 +278,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 		mysql_options(&(conn->db), MYSQL_OPT_READ_TIMEOUT, &read_timeout);
 		mysql_options(&(conn->db), MYSQL_OPT_WRITE_TIMEOUT, &write_timeout);
 	}
-#endif
 
-#if (MYSQL_VERSION_ID >= 40100)
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
-#else
-	sql_flags = CLIENT_FOUND_ROWS;
-#endif
 
 #ifdef CLIENT_MULTI_STATEMENTS
 	sql_flags |= CLIENT_MULTI_STATEMENTS;
@@ -446,14 +405,12 @@ retry_store_result:
 	if (!conn->result) {
 		rcode = sql_check_error(conn->sock, 0);
 		if (rcode != RLM_SQL_OK) return rcode;
-#if (MYSQL_VERSION_ID >= 40100)
 		ret = mysql_next_result(conn->sock);
 		if (ret == 0) {
 			/* there are more results */
 			goto retry_store_result;
 		} else if (ret > 0) return sql_check_error(NULL, ret);
 		/* ret == -1 signals no more results */
-#endif
 	}
 	return RLM_SQL_OK;
 }
@@ -461,21 +418,11 @@ retry_store_result:
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
-	int num = 0;
 
-#if MYSQL_VERSION_ID >= 32224
 	/*
 	 *	Count takes a connection handle
 	 */
-	num = mysql_field_count(conn->sock);
-#else
-	if (!conn->result) return 0;
-	/*
-	 *	Fields takes a result struct (which can't be NULL)
-	 */
-	num = mysql_num_fields(conn->result)
-#endif
-	return num;
+	return mysql_field_count(conn->sock);
 }
 
 static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
@@ -565,7 +512,6 @@ retry_fetch_row:
 		rcode = sql_check_error(conn->sock, 0);
 		if (rcode != RLM_SQL_OK) return rcode;
 
-#if (MYSQL_VERSION_ID >= 40100)
 		sql_free_result(handle, config);
 
 		ret = mysql_next_result(conn->sock);
@@ -576,7 +522,7 @@ retry_fetch_row:
 			}
 		} else if (ret > 0) return sql_check_error(NULL, ret);
 		/* If ret is -1 then there are no more rows */
-#endif
+
 		return RLM_SQL_NO_MORE_ROWS;
 	}
 
@@ -759,7 +705,6 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
  */
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
-#if (MYSQL_VERSION_ID >= 40100)
 	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
 	int			ret;
 	MYSQL_RES		*result;
@@ -799,7 +744,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 		mysql_free_result(result);
 	}
 	if (ret > 0) return sql_check_error(NULL, ret);
-#endif
+
 	return RLM_SQL_OK;
 }
 
