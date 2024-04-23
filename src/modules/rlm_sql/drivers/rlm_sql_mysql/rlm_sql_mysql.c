@@ -305,14 +305,11 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 *	We need to know about connection errors, and are capable
 	 *	of reconnecting automatically.
 	 */
-#if MYSQL_VERSION_ID >= 50013
 	{
 		int reconnect = 0;
 		mysql_options(&(conn->db), MYSQL_OPT_RECONNECT, &reconnect);
 	}
-#endif
 
-#if (MYSQL_VERSION_ID >= 50000)
 	if (config->query_timeout) {
 		unsigned int connect_timeout = config->query_timeout;
 		unsigned int read_timeout = config->query_timeout;
@@ -340,13 +337,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		mysql_options(&(conn->db), MYSQL_OPT_READ_TIMEOUT, &read_timeout);
 		mysql_options(&(conn->db), MYSQL_OPT_WRITE_TIMEOUT, &write_timeout);
 	}
-#endif
 
-#if (MYSQL_VERSION_ID >= 40100)
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
-#else
-	sql_flags = CLIENT_FOUND_ROWS;
-#endif
 
 #ifdef CLIENT_MULTI_STATEMENTS
 	sql_flags |= CLIENT_MULTI_STATEMENTS;
@@ -485,14 +477,12 @@ retry_store_result:
 	if (!conn->result) {
 		rcode = sql_check_error(conn->sock, 0);
 		if (rcode != RLM_SQL_OK) return rcode;
-#if (MYSQL_VERSION_ID >= 40100)
 		ret = mysql_next_result(conn->sock);
 		if (ret == 0) {
 			/* there are more results */
 			goto retry_store_result;
 		} else if (ret > 0) return sql_check_error(NULL, ret);
 		/* ret == -1 signals no more results */
-#endif
 	}
 	return RLM_SQL_OK;
 }
@@ -502,17 +492,10 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	int num = 0;
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
-#if MYSQL_VERSION_ID >= 32224
 	/*
 	 *	Count takes a connection handle
 	 */
 	if (!(num = mysql_field_count(conn->sock))) {
-#else
-	/*
-	 *	Fields takes a result struct
-	 */
-	if (!(num = mysql_num_fields(conn->result))) {
-#endif
 		return -1;
 	}
 	return num;
@@ -576,7 +559,6 @@ retry_fetch_row:
 		rcode = sql_check_error(conn->sock, 0);
 		if (rcode != RLM_SQL_OK) return rcode;
 
-#if (MYSQL_VERSION_ID >= 40100)
 		sql_free_result(handle, config);
 
 		ret = mysql_next_result(conn->sock);
@@ -587,7 +569,7 @@ retry_fetch_row:
 			}
 		} else if (ret > 0) return sql_check_error(NULL, ret);
 		/* If ret is -1 then there are no more rows */
-#endif
+
 		return RLM_SQL_NO_MORE_ROWS;
 	}
 
@@ -769,7 +751,6 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
  */
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-#if (MYSQL_VERSION_ID >= 40100)
 	rlm_sql_mysql_conn_t	*conn = handle->conn;
 	int			ret;
 	MYSQL_RES		*result;
@@ -809,7 +790,6 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		mysql_free_result(result);
 	}
 	if (ret > 0) return sql_check_error(NULL, ret);
-#endif
 	return RLM_SQL_OK;
 }
 
