@@ -923,6 +923,39 @@ if (%sql.group(sales)) {
 
 will return `true`.
 
+==== Accounting and Post-Auth module calls
+
+The `reference` option has been removed from `accounting` and `post-auth`
+sql module configuration.
+
+Instead, the set of queries run depend on the section the module is called
+from.  E.g. calling from `accounting Start` will run the set of queries
+defined as
+
+```
+accounting {
+	start {
+		query = ...
+		query = ...
+	}
+}
+```
+
+The v3 `post-auth` configuration is now replaced with a set of `send`
+queries, again with the queries run specific to the section that the
+module is called from.
+
+```
+send {
+	access-accept {
+		query = ...
+	}
+	access-reject {
+		query = ...
+	}
+}
+```
+
 ==== Profiles
 
 The `default_user_profile` has been removed.  No one used it, as that
