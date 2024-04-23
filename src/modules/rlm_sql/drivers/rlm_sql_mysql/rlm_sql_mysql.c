@@ -197,6 +197,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	unsigned int connect_timeout = (unsigned int)fr_time_delta_to_sec(timeout);
 	unsigned long sql_flags;
 
+	enum mysql_option	ssl_mysql_opt;
+	unsigned int		ssl_mode = 0;
+	bool			ssl_mode_isset = false;
+
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_mysql_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
@@ -216,26 +220,32 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 			      inst->tls_ca_file, inst->tls_ca_path, inst->tls_cipher);
 	}
 
-#ifndef MARIADB_BASE_VERSION
-	{
-		unsigned int	ssl_mode = 0;
-		bool		ssl_mode_isset = false;
-
-		if (inst->tls_required) {
-			ssl_mode = SSL_MODE_REQUIRED;
-			ssl_mode_isset = true;
-		}
-		if (inst->tls_check_cert) {
-			ssl_mode = SSL_MODE_VERIFY_CA;
-			ssl_mode_isset = true;
-		}
-		if (inst->tls_check_cert_cn) {
-			ssl_mode = SSL_MODE_VERIFY_IDENTITY;
-			ssl_mode_isset = true;
-		}
-		if (ssl_mode_isset) mysql_options(&(conn->db), MYSQL_OPT_SSL_MODE, &ssl_mode);
+#ifdef MARIADB_BASE_VERSION
+	if (inst->tls_required || inst->tls_check_cert || inst->tls_check_cert_cn) {
+		ssl_mode_isset = true;
+		/**
+		 * For MariaDB, It should be true as can be seen in
+		 * https://github.com/MariaDB/server/blob/mariadb-5.5.68/sql-common/client.c#L4338
+		 */
+		ssl_mode = true;
+		ssl_mysql_opt = MYSQL_OPT_SSL_VERIFY_SERVER_CERT;
+	}
+#else
+	ssl_mysql_opt = MYSQL_OPT_SSL_MODE;
+	if (inst->tls_required) {
+		ssl_mode = SSL_MODE_REQUIRED;
+		ssl_mode_isset = true;
+	}
+	if (inst->tls_check_cert) {
+		ssl_mode = SSL_MODE_VERIFY_CA;
+		ssl_mode_isset = true;
+	}
+	if (inst->tls_check_cert_cn) {
+		ssl_mode = SSL_MODE_VERIFY_IDENTITY;
+		ssl_mode_isset = true;
 	}
 #endif
+	if (ssl_mode_isset) mysql_options(&(conn->db), ssl_mysql_opt, &ssl_mode);
 
 	if (inst->tls_crl_file) mysql_options(&(conn->db), MYSQL_OPT_SSL_CRL, inst->tls_crl_file);
 	if (inst->tls_crl_path) mysql_options(&(conn->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
