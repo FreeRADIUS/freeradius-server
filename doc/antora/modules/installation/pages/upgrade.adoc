@@ -1076,7 +1076,7 @@ It is difficult to maintain multiple implementations of the same
 functionality. As a result, we have simplified the server by removing
 duplicate functionality.
 
-== rlm_logintime
+=== rlm_logintime
 
 This module was poorly documented, and it appears that no one was using it.
 
