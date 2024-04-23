@@ -201,7 +201,7 @@ jobs:
 
     - name: 'Restore OpenSSL 3.0 from the cache'
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: openssl-cache
       with:
         path: /opt/openssl/
@@ -233,7 +233,7 @@ jobs:
         [ -d /opt/openssl ] && export PATH=/opt/openssl/bin:$PATH
         printf "\nopenssl: " ; openssl version
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Build eapol_test
       run: |
@@ -460,7 +460,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Merge into upstream"
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
         lfs: false
