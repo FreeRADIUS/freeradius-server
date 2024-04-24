@@ -43,7 +43,7 @@ endif
 #  there's no point in requiring the developer to run configure
 #  *before* making packages.
 #
-ifeq "$(filter deb rpm pkg_version crossbuild.% freeradius-server-%,$(MAKECMDGOALS))" ""
+ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% freeradius-server-%,$(MAKECMDGOALS))" ""
   $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
   include Make.inc
 else
@@ -114,7 +114,7 @@ PROTOCOLS    := \
 #  If we're building packages or crossbuilding, just do that.
 #  Don't try to do a local build.
 #
-ifeq "$(filter deb rpm pkg_version crossbuild.% freeradius-server-%,$(MAKECMDGOALS))" ""
+ifeq "$(filter deb rpm pkg_version dist-check% crossbuild.% docker.% freeradius-server-%,$(MAKECMDGOALS))" ""
 
 #
 #  Include all of the autoconf definitions into the Make variable space
@@ -463,13 +463,15 @@ freeradius-server-$(PKG_VERSION).tar.bz2: freeradius-server-$(PKG_VERSION).tar
 	gpg --default-key packages@freeradius.org -b $<
 
 # high-level targets
-.PHONY: dist-check
-dist-check: redhat/freeradius.spec debian/changelog
+.PHONY: dist-check-rpm
+dist-check-rpm: redhat/freeradius.spec
 	@if [ `grep '^%global _version' redhat/freeradius.spec | cut -d' ' -f3` != "$(PKG_VERSION)" ]; then \
 		sed 's/^%global _version .*/%global _version $(PKG_VERSION)/' redhat/freeradius.spec > redhat/.foo; \
 		mv redhat/.foo redhat/freeradius.spec; \
 		echo Updated redhat/freeradius.spec '_version' to $(PKG_VERSION); \
 	fi
+.PHONY: dist-check
+dist-check: dist-check-rpm debian/changelog
 	@if [ `head -n 1 doc/ChangeLog | awk '/^FreeRADIUS/{print $$2}'` != "$(PKG_VERSION)" ]; then \
 		echo doc/ChangeLog needs to be updated; \
 		exit 1; \
@@ -552,6 +554,13 @@ whitespace:
 #
 ifneq "$(findstring crossbuild,$(MAKECMDGOALS))" ""
   include scripts/docker/crossbuild.mk
+endif
+
+#
+#  Conditionally include the docker make file
+#
+ifneq "$(findstring docker,$(MAKECMDGOALS))" ""
+  include scripts/docker/docker.mk
 endif
 
 #
