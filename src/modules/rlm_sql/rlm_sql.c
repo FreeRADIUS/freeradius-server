@@ -1125,7 +1125,9 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 			return UNLANG_ACTION_PUSHED_CHILD;
 		}
 
-		goto group_reply_push;
+		if (call_env->group_reply_query) goto group_reply_push;
+
+		break;
 
 	case SQL_AUTZ_GROUP_CHECK:
 	case SQL_AUTZ_PROFILE_CHECK:
