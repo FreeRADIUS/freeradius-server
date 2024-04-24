@@ -33,11 +33,12 @@ GITDIR:=$(shell perl -MCwd -e 'print Cwd::abs_path shift' $$(git rev-parse --git
 
 # Don't use the Docker cache if asked
 ifneq "$(NOCACHE)" ""
-    NO_CACHE=--no-cache
+    DOCKER_BUILD_OPTS += "--no-cache"
 endif
 
-CB_CPREFIX:=fr40x-crossbuild-
+# Docker image and container name prefixes
 CB_IPREFIX:=freeradius40x-build
+CB_CPREFIX:=fr40x-crossbuild-
 
 #
 #  This Makefile is included in-line, and not via the "boilermake"
@@ -112,6 +113,12 @@ crossbuild.clean: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.clean)
 crossbuild.wipe: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.wipe)
 
 #
+#  Regenerate all Dockerfiles from m4 templates
+#
+crossbuild.regen: $(foreach IMG,${CB_IMAGES},crossbuild.${IMG}.regen)
+
+
+#
 #  Define rules for building a particular image
 #
 define CROSSBUILD_IMAGE_RULE
@@ -130,7 +137,7 @@ crossbuild.${1}.status:
 #
 $(DD)/stamp-image.${1}:
 	${Q}echo "BUILD ${1} ($(CB_IPREFIX)/${1}) > $(DD)/build.${1}"
-	${Q}docker build $(NO_CACHE) $(DT)/${1} -f $(DT)/${1}/Dockerfile.cb -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
+	${Q}docker build $(DOCKER_BUILD_OPTS) $(DT)/${1} -f $(DT)/${1}/Dockerfile.cb -t $(CB_IPREFIX)/${1} >$(DD)/build.${1} 2>&1
 	${Q}touch $(DD)/stamp-image.${1}
 
 #
@@ -169,7 +176,7 @@ $(DD)/docker.refresh.${1}: $(DD)/stamp-up.${1}
 .PHONY: $(DD)/docker.run.${1}
 $(DD)/docker.run.${1}: $(DD)/docker.refresh.${1}
 	${Q}echo "TEST ${1} > $(DD)/log.${1}"
-	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '(cd /srv/build && make && make test)' > $(DD)/log.${1} 2>&1 || echo FAIL ${1}
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '(cd /srv/build && make && make test)' > $(DD)/log.${1} 2>&1 || ( echo FAIL ${1} && false )
 
 #
 #  Stop the docker container
@@ -230,6 +237,16 @@ crossbuild.${1}.wipe:
 #
 .PHONY: crossbuild.${1}.refresh
 crossbuild.${1}.refresh: $(DD)/docker.refresh.${1}
+
+#
+#  Regenerate the image Dockerfile from the m4 templates
+#
+.PHONY: crossbuild.${1}.regen
+crossbuild.${1}.regen: $(DT)/${1}/Dockerfile.cb
+
+$(DT)/${1}/Dockerfile.cb: $(DOCKER_TMPL) $(CB_DIR)/m4/crossbuild.deb.m4 $(CB_DIR)/m4/crossbuild.rpm.m4
+	${Q}echo REGEN ${1}
+	${Q}m4 -I $(CB_DIR)/m4 -D D_NAME=${1} -D D_TYPE=crossbuild $$< > $$@
 
 #
 #  Run the build test
