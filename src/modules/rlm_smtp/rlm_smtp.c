@@ -77,20 +77,9 @@ typedef struct {
 	fr_value_box_list_t	*cc_addrs;		//!< The address(es) used for the Cc: header.
 	fr_value_box_list_t	*bcc_addrs;		//!< The address(es) used for the Bcc: header.
 	fr_value_box_list_t	*attachments;		//!< List of files to attach.
+	fr_value_box_list_t	headers;		//!< Entries to add to email header.
 } rlm_smtp_env_t;
 
-FR_DLIST_TYPES(header_list)
-
-/** Structure to hold definitions of SMTP headers
- */
-typedef FR_DLIST_HEAD(header_list) header_list_t;
-typedef struct {
-	char const			*name;		//!< SMTP header name
-	tmpl_t				*value;		//!< Tmpl to expand to as header value
-	FR_DLIST_ENTRY(header_list)	entry;		//!< Entry in the list of headers
-} rlm_smtp_header_t;
-
-FR_DLIST_FUNCS(header_list, rlm_smtp_header_t, entry)
 typedef struct {
 	char const		*uri;			//!< URI of smtp server
 	char const		*template_dir;		//!< The directory that contains all email attachments
@@ -99,7 +88,6 @@ typedef struct {
 	fr_time_delta_t 	timeout;		//!< Timeout for connection and server response
 	fr_curl_tls_t		tls;			//!< Used for handled all tls specific curl components
 
-	header_list_t		header_list;		//!< List of SMTP headers to add to emails.
 	bool 			set_date;
 
 	fr_curl_conn_config_t	conn_config;		//!< Reusable CURL handle config
@@ -381,34 +369,16 @@ static int header_source(fr_mail_ctx_t *uctx, rlm_smtp_t const *inst, rlm_smtp_e
 {
 	fr_sbuff_t 			time_out;
 	request_t			*request = uctx->request;
-	fr_sbuff_t 			conf_buffer;
-	fr_sbuff_uctx_talloc_t 		conf_ctx;
-	rlm_smtp_header_t const		*header = NULL;
-	char 				*expanded_rhs;
+	fr_value_box_t			*vb = NULL;
 
 	/*
 	 *	Load in all of the header elements supplied in the config
 	 */
-	while ((header = header_list_next(&inst->header_list, header))) {
-		/* Do any string expansion required in the rhs */
-		if( tmpl_aexpand(request, &expanded_rhs, request, header->value, NULL, NULL) < 0) {
-			RDEBUG2("Skipping: %s's could not parse: %s", header->name, header->value->name);
-			continue;
+	if (fr_value_box_list_initialised(&call_env->headers)) {
+		while ((vb = fr_value_box_list_next(&call_env->headers, vb))) {
+			RDEBUG2("Adding header \"%pV\"", vb);
+			uctx->header = curl_slist_append(uctx->header, vb->vb_strvalue);
 		}
-
-		fr_sbuff_init_talloc(uctx, &conf_buffer, &conf_ctx, 256, SIZE_MAX);
-
-		/* Format the conf item to be a valid SMTP header */
-		if (unlikely((fr_sbuff_in_bstrncpy(&conf_buffer, header->name, strlen(header->name)) < 0) ||
-			     (fr_sbuff_in_strcpy(&conf_buffer, ": ") < 0) ||
-			     (fr_sbuff_in_bstrncpy(&conf_buffer, expanded_rhs, strlen(expanded_rhs)) < 0))) {
-			RDEBUG2("Skipping: could not generate SMTP header");
-			continue;
-		}
-
-		/* Add the header to the curl slist */
-		uctx->header = curl_slist_append(uctx->header, fr_sbuff_buff(&conf_buffer));
-		talloc_free(conf_buffer.buff);
 	}
 
 	/* Add the From: line */
@@ -808,71 +778,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_smtp_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t);
-	CONF_SECTION			*conf = mctx->inst->conf;
-	CONF_SECTION			*cs;
-	CONF_ITEM			*ci;
-	CONF_PAIR			*cp;
-	tmpl_rules_t			parse_rules;
-	rlm_smtp_header_t		*header;
-	char const			*value;
-	char				*unescaped_value = NULL;
-	fr_token_t			type;
-	ssize_t				slen;
-	fr_sbuff_parse_rules_t const	*p_rules;
-
-	header_list_init(&inst->header_list);
-	cs = cf_section_find(conf, "header", NULL);
-	if (!cs) return 0;
-
-	parse_rules = (tmpl_rules_t) {
-		.attr = {
-			.allow_foreign = true,	/* Because we don't know where we'll be called */
-			.allow_unknown = true,
-			.allow_unresolved = true,
-			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
-			.list_def = request_attr_request
-		}
-	};
-
-	for (ci = cf_item_next(cs, NULL); ci != NULL; ci = cf_item_next(cs,ci)) {
-		if (!cf_item_is_pair(ci)) {
-			cf_log_err(ci, "Entry is not in \"header = value\" format");
-		error:
-			TALLOC_FREE(unescaped_value);
-			header_list_talloc_free(&inst->header_list);
-			return -1;
-		}
-
-		cp = cf_item_to_pair(ci);
-		fr_assert(cp != NULL);
-
-		MEM(header = talloc_zero(inst, rlm_smtp_header_t));
-
-		header->name = talloc_strdup(header, cf_pair_attr(cp));
-		value = cf_pair_value(cp);
-		type = cf_pair_value_quote(cp);
-		p_rules = value_parse_rules_unquoted[type];
-
-		if (type == T_DOUBLE_QUOTED_STRING || type == T_BACK_QUOTED_STRING) {
-			slen = fr_sbuff_out_aunescape_until(NULL, &unescaped_value,
-				&FR_SBUFF_IN(value, talloc_array_length(value) - 1), SIZE_MAX, p_rules->terminals, p_rules->escapes);
-			if (slen < 0) {
-			parse_error:
-				cf_canonicalize_error(ci, slen, "Failed parsing value", value);
-				goto error;
-			}
-			value = unescaped_value;
-			p_rules = NULL;
-		} else {
-			slen = talloc_array_length(value) - 1;
-		}
-
-		slen = tmpl_afrom_substr(header, &header->value, &FR_SBUFF_IN(value, slen), type, p_rules, &parse_rules);
-		if (slen < 0) goto parse_error;
-
-		header_list_insert_tail(&inst->header_list, header);
-		TALLOC_FREE(unescaped_value);
-	}
 
 	inst->conn_config.reuse.num_children = 1;
 	inst->conn_config.reuse.child_pool_size = sizeof(fr_mail_ctx_t);
@@ -1034,6 +939,61 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
+/** Parse the header section into tmpls for producing email headers
+ *
+ */
+static int smtp_header_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+				     CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2,
+				     UNUSED void const *data, UNUSED call_env_parser_t const *rule)
+{
+	CONF_SECTION const	*cs = cf_item_to_section(ci);
+	CONF_ITEM const		*item = NULL;
+	CONF_PAIR const		*cp;
+	call_env_parsed_t	*parsed_env;
+	tmpl_t			*parsed_tmpl;
+	ssize_t			slen;
+
+	while ((item = cf_item_next(cs, item))) {
+		char	*to_parse;
+
+		if (!cf_item_is_pair(item)) {
+			cf_log_err(item, "Entry is not in \"header = value\" format");
+			return -1;
+		}
+		cp = cf_item_to_pair(item);
+
+		MEM(parsed_env = call_env_parsed_add(ctx, out,
+						     &(call_env_parser_t){ FR_CALL_ENV_OFFSET("header", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, rlm_smtp_env_t, headers) }));
+
+		/*
+		 *	Turn the conf pair `attr = value` to email header format
+		 */
+		to_parse = talloc_asprintf(NULL, "%s: %s", cf_pair_attr(cp), cf_pair_value(cp));
+
+		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
+					 &FR_SBUFF_IN(to_parse, talloc_array_length(to_parse) - 1),
+					 cf_pair_value_quote(cp), NULL, t_rules);
+		talloc_free(to_parse);
+
+		if (slen <= 0) {
+			cf_canonicalize_error(cp, slen, "Failed parsing header", cf_pair_value(cp));
+		error:
+			call_env_parsed_free(out, parsed_env);
+			return -1;
+		}
+
+		if (tmpl_needs_resolving(parsed_tmpl) &&
+		    (tmpl_resolve(parsed_tmpl, &(tmpl_res_rules_t){ .dict_def = t_rules->attr.dict_def }) < 0)) {
+			cf_log_perr(cp, "Failed resolving header");
+			goto error;
+		}
+
+		call_env_parsed_set_tmpl(parsed_env, parsed_tmpl);
+	}
+
+	return 0;
+}
+
 static const call_env_method_t method_env = {
 	FR_CALL_ENV_METHOD_OUT(rlm_smtp_env_t),
 	.env = (call_env_parser_t[]) {
@@ -1051,6 +1011,7 @@ static const call_env_method_t method_env = {
 		 		    .pair.dflt = "&SMTP-BCC[*]", .pair.dflt_quote = T_BARE_WORD },
 		{ FR_CALL_ENV_OFFSET("attachments", FR_TYPE_STRING, CALL_ENV_FLAG_NULLABLE, rlm_smtp_env_t, attachments),
 				    .pair.dflt = "&SMTP-Attachments[*]", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_SUBSECTION_FUNC("header", CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION, smtp_header_section_parse) },
 
 		CALL_ENV_TERMINATOR
 	}
