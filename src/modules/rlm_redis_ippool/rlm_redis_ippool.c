@@ -1300,7 +1300,7 @@ module_rlm_t rlm_redis_ippool = {
 		  .method_env = &redis_ippool_alloc_method_env },
 		{ .name1 = "accounting",	.name2 = "start",		.method = mod_update,
 		  .method_env = &redis_ippool_update_method_env },
-		{ .name1 = "accounting",	.name2 = "alive",		.method = mod_update,
+		{ .name1 = "accounting",	.name2 = "interim-update",	.method = mod_update,
 		  .method_env = &redis_ippool_update_method_env },
 		{ .name1 = "accounting",	.name2 = "stop",		.method = mod_release,
 		  .method_env = &redis_ippool_release_method_env },
