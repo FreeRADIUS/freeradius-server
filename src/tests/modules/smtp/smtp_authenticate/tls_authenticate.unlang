@@ -11,7 +11,7 @@ smtp.authenticate {
 	fail = 1
 }
 
-if (fail) {
+if (fail && (&Module-Failure-Message[*] == 'smtp: curl request failed: Timeout was reached (28)')) {
 	test_pass
 	handled
 }
