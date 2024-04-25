@@ -68,8 +68,8 @@
 #
 #  NOTE: It is important to understand the difference between the `User-Password`
 #  and `Password.Cleartext` attributes. The `Password.Cleartext` attribute is
-#  the  *"known  good"* password for the user. Simply supplying the Cleart-ext-Password
-#  to the server will result in most authentication  methods working. The `User-Password`
+#  the  *"known  good"* password for the user. Simply supplying the `Password.Cleartext`
+#  to the server will result in most authentication methods working. The `User-Password`
 #  attribute is the password as typed in by the user on their private machine.
 #  The two are not the  same, and should be treated very differently. That is, you should
 #  generally not use the `User-Password` attribute anywhere in the RADIUS configuration.
