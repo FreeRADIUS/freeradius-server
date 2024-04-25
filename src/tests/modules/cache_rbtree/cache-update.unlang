@@ -72,4 +72,7 @@ if (&Login-LAT-Service[2] != 'baz') {
 # Clear out the reply list
 &reply := {}
 
+# Need to test if thie cache env parses correctly, we dont really care about testing the static key
+static_key
+
 test_pass

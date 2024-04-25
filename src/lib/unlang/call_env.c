@@ -378,7 +378,10 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
 	}
 	*(void **)out = parsed_tmpl;
 
-	return 0;
+	/*
+	 *	All attributes and functions should be resolved at this point
+	 */
+	return tmpl_resolve(parsed_tmpl, NULL);
 }
 
 /** Parse per call env
