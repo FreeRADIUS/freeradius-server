@@ -248,7 +248,7 @@ _Generic((((_s *)NULL)->_f), \
 	fr_value_box_t			: __builtin_choose_expr(_c, CALL_ENV_FLAG_NONE, CALL_ENV_FLAG_SINGLE), \
 	fr_value_box_t *		: __builtin_choose_expr(_c, CALL_ENV_FLAG_NONE, CALL_ENV_FLAG_SINGLE), \
 	fr_value_box_list_t		: CALL_ENV_FLAG_NONE, \
-	fr_value_box_list_t *		: CALL_ENV_FLAG_SINGLE, \
+	fr_value_box_list_t *		: CALL_ENV_FLAG_NONE, \
 	default				: CALL_ENV_FLAG_NONE \
 )
 
