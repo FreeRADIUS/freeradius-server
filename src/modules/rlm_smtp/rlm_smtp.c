@@ -35,25 +35,19 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/call_env.h>
 
-static fr_dict_t const 	*dict_radius; /*dictionary for radius protocol*/
 static fr_dict_t const 	*dict_freeradius;
 
 extern fr_dict_autoload_t rlm_smtp_dict[];
 fr_dict_autoload_t rlm_smtp_dict[] = {
-	{ .out = &dict_radius, .proto = "radius" },
 	{ .out = &dict_freeradius, .proto = "freeradius"},
 	{ NULL }
 };
 
-static fr_dict_attr_t const 	*attr_user_password;
-static fr_dict_attr_t const 	*attr_user_name;
 static fr_dict_attr_t const 	*attr_smtp_header;
 static fr_dict_attr_t const 	*attr_smtp_body;
 
 extern fr_dict_attr_autoload_t rlm_smtp_dict_attr[];
 fr_dict_attr_autoload_t rlm_smtp_dict_attr[] = {
-	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
-	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ .out = &attr_smtp_header, .name = "SMTP-Mail-Header", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_smtp_body, .name = "SMTP-Mail-Body", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ NULL },
@@ -79,6 +73,15 @@ typedef struct {
 	fr_value_box_list_t	*attachments;		//!< List of files to attach.
 	fr_value_box_list_t	headers;		//!< Entries to add to email header.
 } rlm_smtp_env_t;
+
+/** Call environment for SMTP authentication
+ */
+typedef struct {
+	fr_value_box_t		username;		//!< Value to use for user name
+	tmpl_t			*username_tmpl;		//!< tmpl expanded to populate username
+	fr_value_box_t		password;		//!< Value to use for password
+	tmpl_t			*password_tmpl;		//!< tmpl expanded to populate password
+} rlm_smtp_auth_env_t;
 
 typedef struct {
 	char const		*uri;			//!< URI of smtp server
@@ -729,8 +732,6 @@ skip_auth:
 }
 
 /*
- *	Checks that there is a User-Name and User-Password field in the request
- *	Checks that User-Password is not Blank
  *	Sets the: username, password
  *		website URI
  *		timeout information
@@ -742,33 +743,26 @@ skip_auth:
 static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_smtp_thread_t       *t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
-	fr_pair_t const 	*username, *password;
+	rlm_smtp_auth_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_smtp_auth_env_t);
 	fr_curl_io_request_t    *randle;
 
 	randle = smtp_slab_reserve(t->slab_onetime);
 	if (!randle) RETURN_MODULE_FAIL;
 
-	username = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_name);
-	password = fr_pair_find_by_da(&request->request_pairs, NULL, attr_user_password);
-
-	/* Make sure we have a user-name and user-password, and that they are possible */
-	if (!username) {
-		REDEBUG("Attribute \"User-Name\" is required for authentication");
+	if (env_data->username.type != FR_TYPE_STRING || (env_data->username.vb_length == 0)) {
+		RWARN("\"%s\" is required for authentication", env_data->username_tmpl->name);
 	error:
 		smtp_slab_release(randle);
 		RETURN_MODULE_INVALID;
 	}
-	if (username->vp_length == 0) {
-		RDEBUG2("\"User-Password\" must not be empty");
-		goto error;
-	}
-	if (!password) {
-		RDEBUG2("Attribute \"User-Password\" is required for authentication");
+
+	if (env_data->password.type != FR_TYPE_STRING || (env_data->password.vb_length == 0)) {
+		RWARN("\"%s\" is required for authentication", env_data->password_tmpl->name);
 		goto error;
 	}
 
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, username->vp_strvalue);
-	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, password->vp_strvalue);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_USERNAME, env_data->username.vb_strvalue);
+	FR_CURL_REQUEST_SET_OPTION(CURLOPT_PASSWORD, env_data->password.vb_strvalue);
 
 	if (fr_curl_io_request_enqueue(t->mhandle, request, randle)) RETURN_MODULE_INVALID;
 
@@ -1017,6 +1011,19 @@ static const call_env_method_t method_env = {
 	}
 };
 
+static const call_env_method_t auth_env = {
+	FR_CALL_ENV_METHOD_OUT(rlm_smtp_auth_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_PARSE_OFFSET("username_attribute", FR_TYPE_STRING,
+					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
+					   rlm_smtp_auth_env_t, username, username_tmpl), .pair.dflt = "&User-Name", .pair.dflt_quote = T_BARE_WORD },
+		{ FR_CALL_ENV_PARSE_OFFSET("password_attribute", FR_TYPE_STRING,
+					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE | CALL_ENV_FLAG_SECRET,
+					   rlm_smtp_auth_env_t, password, password_tmpl), .pair.dflt = "&User-Password", .pair.dflt_quote = T_BARE_WORD },
+		CALL_ENV_TERMINATOR
+	}
+};
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -1042,7 +1049,8 @@ module_rlm_t rlm_smtp = {
 	.method_names = (module_method_name_t[]){
 		{ .name1 = "mail",		.name2 = CF_IDENT_ANY,		.method = mod_mail,
 		  .method_env = &method_env },
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
+		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
+		  .method_env = &auth_env },
 		MODULE_NAME_TERMINATOR
 	}
 };
