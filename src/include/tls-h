@@ -390,6 +390,7 @@ struct fr_tls_server_conf_t {
 	bool		check_crl;
 	bool		check_all_crl;
 	bool		allow_expired_crl;
+	bool		allow_missing_crl;
 	uint32_t	ca_path_reload_interval;
 	uint32_t	ca_path_last_reload;
 	X509_STORE	*old_x509_store;
