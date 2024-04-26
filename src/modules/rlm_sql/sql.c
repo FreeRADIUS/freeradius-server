@@ -373,6 +373,38 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_hand
 	talloc_free_children(handle->log_ctx);
 }
 
+/** Automatically run the correct `finish` function when freeing an SQL query
+ *
+ */
+static int fr_sql_query_free(fr_sql_query_t *to_free)
+{
+	if (to_free->status <= 0) return 0;
+	if (to_free->type == SQL_QUERY_SELECT) {
+		(to_free->inst->driver->sql_finish_select_query)(to_free->handle, &to_free->inst->config);
+	} else {
+		(to_free->inst->driver->sql_finish_query)(to_free->handle, &to_free->inst->config);
+	}
+	return 0;
+}
+
+/** Allocate an sql query structure
+ *
+ */
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle,
+				   char const *query_str, fr_sql_query_type_t type)
+{
+	fr_sql_query_t	*query;
+	MEM(query = talloc(ctx, fr_sql_query_t));
+	*query = (fr_sql_query_t) {
+		.inst = inst,
+		.handle = handle,
+		.query_str = query_str,
+		.type = type
+	};
+	talloc_set_destructor(query, fr_sql_query_free);
+	return query;
+}
+
 /** Call the driver's sql_query method, reconnecting if necessary.
  *
  * @note Caller must call ``(inst->driver->sql_finish_query)(handle, &inst->config);``
