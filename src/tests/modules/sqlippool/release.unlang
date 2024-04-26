@@ -35,7 +35,7 @@ if !(updated) {
 #
 #  Verify the association with the device has been removed
 #
-if (%sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND owner = '%{Calling-Station-Id}")) {
+if (%sql("SELECT address FROM fr_ippool WHERE pool_name = '%{control.IP-Pool.Name}' AND owner = '%{Calling-Station-Id}'")) {
 	test_fail
 }
 
