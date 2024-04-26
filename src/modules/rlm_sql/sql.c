@@ -410,29 +410,31 @@ fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_s
  * @note Caller must call ``(inst->driver->sql_finish_query)(handle, &inst->config);``
  *	after they're done with the result.
  *
- * @param handle to query the database with. *handle should not be NULL, as this indicates
- * 	previous reconnection attempt has failed.
- * @param request Current request.
- * @param inst #rlm_sql_t instance data.
- * @param query to execute. Should not be zero length.
- * @return
+ * The rcode within the query context is updated to
  *	- #RLM_SQL_OK on success.
- *	- #RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL).
+ *	- #RLM_SQL_RECONNECT if a new handle is required (also sets the handle to NULL).
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  *	- #RLM_SQL_ALT_QUERY on constraints violation.
+ *
+ * @param p_result	Result of current module call.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		query context containing query to execute.
+ * @return an unlang_action_t.
  */
-sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query)
+unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	int ret = RLM_SQL_ERROR;
-	int i, count;
+	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_t const	*inst = query_ctx->inst;
+	int		i, count;
 
 	/* Caller should check they have a valid handle */
-	fr_assert(*handle);
+	fr_assert(query_ctx->handle);
 
 	/* There's no query to run, return an error */
-	if (query[0] == '\0') {
+	if (query_ctx->query_str[0] == '\0') {
 		if (request) REDEBUG("Zero length query");
-		return RLM_SQL_QUERY_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -445,21 +447,22 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_han
 	 *  a new connection, then give up.
 	 */
 	for (i = 0; i < (count + 1); i++) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query);
+		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
 
-		ret = (inst->driver->sql_query)(*handle, &inst->config, query);
-		switch (ret) {
+		query_ctx->rcode = (inst->driver->sql_query)(query_ctx->handle, &inst->config, query_ctx->query_str);
+		query_ctx->status = SQL_QUERY_SUBMITTED;
+		switch (query_ctx->rcode) {
 		case RLM_SQL_OK:
-			break;
+			RETURN_MODULE_OK;
 
 		/*
 		 *	Run through all available sockets until we exhaust all existing
 		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
 		case RLM_SQL_RECONNECT:
-			*handle = fr_pool_connection_reconnect(inst->pool, request, *handle);
+			query_ctx->handle = fr_pool_connection_reconnect(inst->pool, request, query_ctx->handle);
 			/* Reconnection failed */
-			if (!*handle) return RLM_SQL_RECONNECT;
+			if (!query_ctx->handle) RETURN_MODULE_FAIL;
 			/* Reconnection succeeded, try again with the new handle */
 			continue;
 
@@ -467,9 +470,9 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_han
 		 *	These are bad and should make rlm_sql return invalid
 		 */
 		case RLM_SQL_QUERY_INVALID:
-			rlm_sql_print_error(inst, request, *handle, false);
-			(inst->driver->sql_finish_query)(*handle, &inst->config);
-			break;
+			rlm_sql_print_error(inst, request, query_ctx->handle, false);
+			(inst->driver->sql_finish_query)(query_ctx->handle, &inst->config);
+			RETURN_MODULE_INVALID;
 
 		/*
 		 *	Server or client errors.
@@ -482,29 +485,31 @@ sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_han
 		 */
 		case RLM_SQL_ERROR:
 			if (inst->driver->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
-				rlm_sql_print_error(inst, request, *handle, false);
-				(inst->driver->sql_finish_query)(*handle, &inst->config);
-				break;
+				rlm_sql_print_error(inst, request, query_ctx->handle, false);
+				(inst->driver->sql_finish_query)(query_ctx->handle, &inst->config);
+				RETURN_MODULE_FAIL;
 			}
-			ret = RLM_SQL_ALT_QUERY;
 			FALL_THROUGH;
 
 		/*
 		 *	Driver suggested using an alternative query
 		 */
 		case RLM_SQL_ALT_QUERY:
-			rlm_sql_print_error(inst, request, *handle, true);
-			(inst->driver->sql_finish_query)(*handle, &inst->config);
+			rlm_sql_print_error(inst, request, query_ctx->handle, true);
+			(inst->driver->sql_finish_query)(query_ctx->handle, &inst->config);
 			break;
 
+		default:
+			break;
 		}
 
-		return ret;
+		RETURN_MODULE_OK;
 	}
 
 	ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
 
-	return RLM_SQL_ERROR;
+	query_ctx->rcode = RLM_SQL_ERROR;
+	RETURN_MODULE_FAIL;
 }
 
 /** Call the driver's sql_select_query method, reconnecting if necessary.

@@ -403,6 +403,8 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_value_box_t		*vb = NULL;
 	bool			fetched = false;
+	fr_sql_query_t		*query_ctx = NULL;
+	rlm_rcode_t		p_result;
 
 	handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
 	if (!handle) return XLAT_ACTION_FAIL;
@@ -427,19 +429,21 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	    (strncasecmp(p, "delete", 6) == 0)) {
 		int numaffected;
 
-		rcode = rlm_sql_query(inst, request, &handle, arg->vb_strvalue);
-		if (rcode != RLM_SQL_OK) {
+		MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle,
+						   arg->vb_strvalue, SQL_QUERY_OTHER));
+		rlm_sql_query(&p_result, NULL, request, query_ctx);
+		if (query_ctx->rcode != RLM_SQL_OK) {
 		query_error:
-			RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table, rcode, "<INVALID>"));
+			RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table,
+									     query_ctx ? query_ctx->rcode : rcode, "<INVALID>"));
 
 			ret = XLAT_ACTION_FAIL;
 			goto finish;
 		}
 
-		numaffected = (inst->driver->sql_affected_rows)(handle, &inst->config);
+		numaffected = (inst->driver->sql_affected_rows)(query_ctx->handle, &inst->config);
 		if (numaffected < 1) {
 			RDEBUG2("SQL query affected no rows");
-			(inst->driver->sql_finish_query)(handle, &inst->config);
 
 			goto finish;
 		}
@@ -447,8 +451,6 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		MEM(vb = fr_value_box_alloc_null(ctx));
 		fr_value_box_uint32(vb, NULL, (uint32_t)numaffected, false);
 		fr_dcursor_append(out, vb);
-
-		(inst->driver->sql_finish_query)(handle, &inst->config);
 
 		goto finish;
 	} /* else it's a SELECT statement */
@@ -492,6 +494,8 @@ finish_query:
 	(inst->driver->sql_finish_select_query)(handle, &inst->config);
 
 finish:
+	handle = query_ctx->handle ? query_ctx->handle : handle;
+	talloc_free(query_ctx);
 	fr_pool_connection_release(inst->pool, request, handle);
 
 	return ret;
@@ -1503,9 +1507,9 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 	sql_redundant_call_env_t	*call_env = redundant_ctx->call_env;
 	rlm_sql_t const			*inst = redundant_ctx->inst;
 	fr_value_box_t			*query;
-	int				sql_ret;
 	int				numaffected = 0;
 	tmpl_t				*next_query;
+	fr_sql_query_t			*query_ctx;
 
 	query = fr_value_box_list_pop_head(&redundant_ctx->query);
 	if (!query) RETURN_MODULE_FAIL;
@@ -1514,12 +1518,15 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, query->vb_strvalue);
 	}
 
-	sql_ret = rlm_sql_query(inst, request, &redundant_ctx->handle, query->vb_strvalue);
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, redundant_ctx->handle,
+					   query->vb_strvalue, SQL_QUERY_SELECT));
+
+	rlm_sql_query(p_result, NULL, request, query_ctx);
 	talloc_free(query);
 
-	RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, sql_ret, "<INVALID>"));
+	RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, query_ctx->rcode, "<INVALID>"));
 
-	switch (sql_ret) {
+	switch (query_ctx->rcode) {
 	/*
 	 *	Query was a success! Now we just need to check if it did anything.
 	 */
@@ -1550,6 +1557,9 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 	 */
 	case RLM_SQL_ALT_QUERY:
 		goto next;
+
+	case RLM_SQL_NO_MORE_ROWS:
+		break;
 	}
 	fr_assert(redundant_ctx->handle);
 
@@ -1558,7 +1568,7 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 	 *	counted as successful.
 	 */
 	numaffected = (inst->driver->sql_affected_rows)(redundant_ctx->handle, &inst->config);
-	(inst->driver->sql_finish_query)(redundant_ctx->handle, &inst->config);
+	talloc_free(query_ctx);
 	RDEBUG2("%i record(s) updated", numaffected);
 
 	if (numaffected > 0) RETURN_MODULE_OK;	/* A query succeeded, were done! */
