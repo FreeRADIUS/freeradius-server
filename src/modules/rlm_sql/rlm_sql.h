@@ -31,6 +31,7 @@ RCSIDH(rlm_sql_h, "$Id$")
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/unlang/function.h>
 
 #define FR_ITEM_CHECK 0
 #define FR_ITEM_REPLY 1
@@ -208,7 +209,7 @@ struct sql_inst {
 
 	xlat_escape_legacy_t	sql_escape_func;
 	fr_value_box_escape_t	box_escape_func;
-	sql_rcode_t		(*query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
+	unlang_function_t	query;
 	sql_rcode_t		(*select)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t		(*fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
 	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, char const *query_str, fr_sql_query_type_t type);
@@ -221,7 +222,7 @@ void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t time
 int		sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, map_list_t *out, char const *query, fr_dict_attr_t const *list);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
 sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
-sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
+unlang_action_t	rlm_sql_query(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
 sql_rcode_t    	rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug);
 fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, char const *query_str, fr_sql_query_type_t type);

@@ -131,7 +131,9 @@ static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
 static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
 			     rlm_sql_t const *sql, request_t *request)
 {
-	int	ret, affected;
+	int		affected;
+	fr_sql_query_t	*query_ctx;
+	rlm_rcode_t	p_result;
 
 	/*
 	 *	If we don't have a command, do nothing.
@@ -143,17 +145,20 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
 	 */
 	if (!handle || !*handle) return -1;
 
-	ret = sql->query(sql, request, handle, query);
-	if (ret < 0) return -1;
+	query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, *handle, query, SQL_QUERY_SELECT);
+
+	sql->query(&p_result, NULL, request, query_ctx);
+	*handle = query_ctx->handle;
+	if (query_ctx->rcode < 0) return -1;
 
 	/*
 	 *	No handle, we can't continue.
 	 */
-	if (!*handle) return -1;
+	if (!query_ctx->handle) return -1;
 
 	affected = (sql->driver->sql_affected_rows)(*handle, &sql->config);
 
-	(sql->driver->sql_finish_query)(*handle, &sql->config);
+	talloc_free(query_ctx);
 
 	return affected;
 }
