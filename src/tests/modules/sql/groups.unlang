@@ -64,20 +64,20 @@ if (&control.SQL-Group[*] == 'groups_group_c') {
 #
 #  Test paircmp group comparisons
 #
-if (%sql.group('groups_group_a') != false) {
+if (%sql.group('groups_group_a')) {
 	test_fail
 }
 
-if (%sql.group('groups_group_b') != true) {
+if !(%sql.group('groups_group_b')) {
 	test_fail
 }
 
-if (%sql.group('groups_group_c') != true) {
+if !(%sql.group('groups_group_c')) {
 	test_fail
 }
 
 # Non-existent group
-if (%sql.group('groups_group_d') != false) {
+if (%sql.group('groups_group_d')) {
 	test_fail
 }
 
@@ -86,7 +86,7 @@ if (%sql.group('groups_group_d') != false) {
 #
 &groupname := 'groups_group_b'
 
-if !(%sql.group(%{groupname}) == yes) {
+if !(%sql.group(%{groupname})) {
 	test_fail
 }
 
