@@ -22,6 +22,14 @@
 #
 
 #
+#  [NOTE]
+#  ====
+#  See `raddb/global.d/python` for configuration items that affect the
+#  python interpreter globally, such as the Python path.
+#  ====
+#
+
+#
 #  ## Configuration Settings
 #
 #  The Python API `threading.local()` may be used store thread
