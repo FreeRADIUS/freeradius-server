@@ -1831,6 +1831,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->query			= rlm_sql_query;
 	inst->select			= rlm_sql_select_query;
 	inst->fetch_row			= rlm_sql_fetch_row;
+	inst->query_alloc		= fr_sql_query_alloc;
 
 	/*
 	 *	Either use the module specific escape function

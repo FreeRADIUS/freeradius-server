@@ -105,6 +105,29 @@ typedef struct {
 								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
 
+typedef enum {
+	SQL_QUERY_SELECT,
+	SQL_QUERY_OTHER
+} fr_sql_query_type_t;
+
+/** Status of an SQL query
+ */
+typedef enum {
+	SQL_QUERY_FAILED = -1,					//!< Failed to submit.
+	SQL_QUERY_PREPARED = 0,					//!< Ready to submit.
+	SQL_QUERY_SUBMITTED,					//!< Submitted for execution.
+	SQL_QUERY_RESULTS_FETCHED				//!< Results fetched from the server.
+} fr_sql_query_status_t;
+
+typedef struct {
+	rlm_sql_t const		*inst;				//!< Module instance for this query.
+	rlm_sql_handle_t	*handle;			//!< Connection handle this query is being run on.
+	char const		*query_str;			//!< Query string to run.
+	fr_sql_query_type_t	type;				//!< Type of query.
+	fr_sql_query_status_t	status;				//!< Status of the query.
+	sql_rcode_t		rcode;				//!< Result code.
+} fr_sql_query_t;
+
 extern fr_table_num_sorted_t const sql_rcode_description_table[];
 extern size_t sql_rcode_description_table_len;
 extern fr_table_num_sorted_t const sql_rcode_table[];
@@ -188,6 +211,7 @@ struct sql_inst {
 	sql_rcode_t		(*query)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t		(*select)(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t		(*fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
+	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, char const *query_str, fr_sql_query_type_t type);
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
@@ -200,6 +224,7 @@ sql_rcode_t	rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_
 sql_rcode_t	rlm_sql_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
 sql_rcode_t    	rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug);
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, char const *query_str, fr_sql_query_type_t type);
 
 /*
  *	sql_state.c
