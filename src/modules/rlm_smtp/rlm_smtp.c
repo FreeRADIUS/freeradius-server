@@ -221,15 +221,20 @@ static int value_box_list_to_header(fr_mail_ctx_t *uctx, struct curl_slist **out
 	for (i = 0; i < list_count; i++) {
 		while ((vb = fr_value_box_list_next(list, vb))) {
 			/* If there are already values added, add the comma separator */
-			if (added) fr_sbuff_in_strcpy(&sbuff, ", ");
+			if (added) {
+				if (unlikely(fr_sbuff_in_strcpy(&sbuff, ", ") < 0)) {
+				error:
+					talloc_free(fr_sbuff_buff(&sbuff));
+					return -1;
+				}
+			}
 
 			if ((vb->type != FR_TYPE_STRING) && (fr_value_box_cast_in_place(vb, vb, FR_TYPE_STRING, NULL) < 0)) {
 				RERROR("Failed casting %pV to string", vb);
-				talloc_free(fr_sbuff_buff(&sbuff));
-				return -1;
+				goto error;
 			}
 
-			fr_sbuff_in_strcpy(&sbuff, vb->vb_strvalue);
+			if (unlikely(fr_sbuff_in_strcpy(&sbuff, vb->vb_strvalue) < 0)) goto error;
 			added = true;
 		}
 		list++;
