@@ -98,8 +98,15 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
 	}
 
 	if (inst->config.connect_query) {
-		if (rlm_sql_select_query(inst, NULL, &handle, inst->config.connect_query) != RLM_SQL_OK) goto fail;
-		(inst->driver->sql_finish_select_query)(handle, &inst->config);
+		fr_sql_query_t	*query_ctx;
+		rlm_rcode_t	p_result;
+		MEM(query_ctx = fr_sql_query_alloc(ctx, inst, handle, inst->config.connect_query, SQL_QUERY_OTHER));
+		rlm_sql_query(&p_result, NULL, NULL, query_ctx);
+		if (query_ctx->rcode != RLM_SQL_OK) {
+			talloc_free(query_ctx);
+			goto fail;
+		}
+		talloc_free(query_ctx);
 	}
 
 	return handle;
