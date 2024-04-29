@@ -129,12 +129,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	if (fr_type_is_null(user_password->type)) RETURN_MODULE_NOOP;
 
 	if (user_password->vb_length == 0) {
-		RDEBUG("TOTP.From-User is empty");
+		RWARN("TOTP.From-User is empty");
 		RETURN_MODULE_FAIL;
 	}
 
 	if ((user_password->vb_length != 6) && (user_password->vb_length != 8)) {
-		RDEBUG("TOTP.From-User has incorrect length. Expected 6 or 8, got %zu", user_password->vb_length);
+		RWARN("TOTP.From-User has incorrect length. Expected 6 or 8, got %zu", user_password->vb_length);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -148,11 +148,11 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	} else {
 		ssize_t len;
 
-		if (!fr_type_is_null(secret->type)) RETURN_MODULE_NOOP;
+		if (fr_type_is_null(secret->type)) RETURN_MODULE_NOOP;
 
 		len = fr_base32_decode(&FR_DBUFF_TMP((uint8_t *) buffer, sizeof(buffer)), &FR_SBUFF_IN(secret->vb_strvalue, secret->vb_length), true, true);
 		if (len < 0) {
-			RDEBUG("TOTP.Secret cannot be decoded");
+			RERROR("TOTP.Secret cannot be decoded");
 			RETURN_MODULE_FAIL;
 		}
 
@@ -160,9 +160,16 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		our_keylen = len;
 	}
 
-	if (fr_totp_cmp(&inst->totp, request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, user_password->vb_strvalue) != 0) RETURN_MODULE_FAIL;
+	switch (fr_totp_cmp(&inst->totp, request, fr_time_to_sec(request->packet->timestamp), our_key, our_keylen, user_password->vb_strvalue)) {
+	case 0:
+		RETURN_MODULE_OK;
 
-	RETURN_MODULE_OK;
+	case -2:
+		RETURN_MODULE_FAIL;
+
+	default:
+		RETURN_MODULE_REJECT;
+	}
 }
 
 /*

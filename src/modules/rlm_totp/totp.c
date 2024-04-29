@@ -60,12 +60,13 @@ static void totp_log(char const *fmt, ...)
  * @param[in] cfg	Instance of fr_totp_t
  * @param[in] request	The current request
  * @param[in] now	The current time
- * @param[in] key	Key to decrypt.
+ * @param[in] key	Key to encrypt.
  * @param[in] keylen	Length of key field.
  * @param[in] totp	TOTP password entered by the user.
  * @return
  *	-  0  On Success
  *	- -1  On Failure
+ *	- -2  On incorrect arguments
  */
 int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t const *key, size_t keylen, char const *totp)
 {
@@ -83,17 +84,17 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 
 	if (cfg->otp_length != 6 && cfg->otp_length != 8) {
 		fr_strerror_const("The 'opt_length' has incorrect length. Expected 6 or 8.");
-		return -1;
+		return -2;
 	}
 
 	if (keylen < 1) {
 		fr_strerror_const("Invalid 'keylen' parameter value.");
-		return -1;
+		return -2;
 	}
 
 	if (!*totp) {
 		fr_strerror_const("Invalid 'totp' parameter value.");
-		return -1;
+		return -2;
 	}
 
 	/*
