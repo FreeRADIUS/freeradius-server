@@ -23,6 +23,13 @@ else
 endif
 
 #
+#  Test of rlm_otp use oathtool - not installed on MacOS or FreeBSD
+#
+ifeq "$(findstring linux,$(AC_HOSTINFO))" ""
+  FILES_SKIP += $(filter totp/%,$(FILES))
+endif
+
+#
 #  Remove tests which are known to be slow, unless we want them to be run.
 #
 ifneq "$(RUN_SLOW_TESTS)" "1"
