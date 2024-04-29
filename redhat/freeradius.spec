@@ -65,10 +65,8 @@ BuildRequires: pcre-devel
 BuildRequires: zlib-devel
 BuildRequires: net-snmp-devel
 BuildRequires: net-snmp-utils
-%if 0%{?rhel} >= 7
 BuildRequires: libwbclient-devel
 BuildRequires: samba-devel
-%endif
 %if %{?_unitdir:1}%{!?_unitdir:0}
 BuildRequires: systemd-devel
 %endif
@@ -86,12 +84,9 @@ Requires: libpcap
 Requires: readline
 Requires: libtalloc
 Requires: net-snmp
-%if 0%{?rhel} >= 7
 Requires: libwbclient
-%endif
 Requires: zlib
 Requires: pam
-%{?el6:Requires: redhat-lsb-core}
 
 %if %{?_with_rlm_idn:1}%{?!_with_rlm_idn:0}
 Requires: libidn
@@ -199,13 +194,7 @@ Summary: Perl support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
 Requires: perl(:MODULE_COMPAT_%(eval "`%{__perl} -V:version`"; echo $version))
-%{?fedora:BuildRequires: perl-devel}
-%if 0%{?rhel} <= 5
-BuildRequires: perl
-%endif
-%if 0%{?rhel} >= 6
 BuildRequires: perl-devel
-%endif
 BuildRequires: perl(ExtUtils::Embed)
 
 %description perl
