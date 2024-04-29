@@ -180,6 +180,7 @@ module_rlm_t rlm_totp = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "totp",
 		.flags		= MODULE_TYPE_THREAD_SAFE,
+		.inst_size	= sizeof(rlm_totp_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
