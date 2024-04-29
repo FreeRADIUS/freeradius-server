@@ -167,7 +167,7 @@ static ssize_t base32_decode(uint8_t *out, size_t outlen, char const *in)
 	 *	Will get converted to
 	 *
 	 *	11111222 22333334 44445555 56666677 77788888
-	 */	
+	 */
 	for (p = b = out; p < end; p += 8) {
 		b[0] = p[0] << 3;
 		b[0] |= p[1] >> 2;
@@ -490,7 +490,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		/*
 		 *	Forbid using a key more than once.
 		 */
-		if (totp_reused(instance, now, key, keylen, password->vp_strvalue)) return RLM_MODULE_FAIL;
+		if (totp_reused(instance, now, key, keylen, password->vp_strvalue)) return RLM_MODULE_REJECT;
 
 		return RLM_MODULE_OK;
 	}
@@ -498,7 +498,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	Bad keys don't affect the cache.
 	 */
-	return RLM_MODULE_FAIL;
+	return RLM_MODULE_REJECT;
 }
 
 
