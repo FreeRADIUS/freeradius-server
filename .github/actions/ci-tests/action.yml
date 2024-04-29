@@ -123,6 +123,7 @@ runs:
         sudo apt-get install -y --no-install-recommends \
           apparmor-utils \
           redis-tools \
+          oathtool \
           ldap-utils
 
     - name: Install test clients (containers)

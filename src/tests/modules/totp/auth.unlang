@@ -1,0 +1,52 @@
+string otp
+
+&control.TOTP.Secret := 'ONSWG4TFOQYTEMZUGU3DOOBZ'
+
+#
+#  With no OTP from the user, the module does nothing
+#
+totp.authenticate
+
+if (!noop) {
+	test_fail
+}
+
+
+#
+#  Use oathtool to calculate OTP
+#
+&TOTP.From-User := %exec('/usr/bin/oathtool', '--base32', '--totp', 'ONSWG4TFOQYTEMZUGU3DOOBZ')
+
+totp.authenticate
+
+if (!ok) {
+	test_fail
+}
+
+#
+#  Now set an incorrect OTP and check for reject
+#
+&TOTP.From-User := 'ABCDEF'
+
+totp.authenticate {
+	reject = 1
+}
+
+if !(reject) {
+	test_fail
+}
+
+#
+#  And an invalid length OTP
+#
+&TOTP.From-User := '12345'
+
+totp.authenticate {
+	fail = 1
+}
+
+if !(fail) {
+	test_fail
+}
+
+test_pass
