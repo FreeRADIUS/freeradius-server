@@ -435,7 +435,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		if (query_ctx->rcode != RLM_SQL_OK) {
 		query_error:
 			RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table,
-									     query_ctx ? query_ctx->rcode : rcode, "<INVALID>"));
+									     query_ctx->rcode, "<INVALID>"));
 
 			ret = XLAT_ACTION_FAIL;
 			goto finish;
@@ -455,11 +455,13 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	rcode = rlm_sql_select_query(inst, request, &handle, arg->vb_strvalue);
-	if (rcode != RLM_SQL_OK) goto query_error;
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle,
+					   arg->vb_strvalue, SQL_QUERY_SELECT));
+	rlm_sql_select_query(&p_result, NULL, request, query_ctx);
+	if (query_ctx->rcode != RLM_SQL_OK) goto query_error;
 
 	do {
-		rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
+		rcode = rlm_sql_fetch_row(&row, inst, request, &query_ctx->handle);
 		switch (rcode) {
 		case RLM_SQL_OK:
 			if (row[0]) break;
@@ -467,7 +469,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			RDEBUG2("NULL value in first column of result");
 			ret = XLAT_ACTION_FAIL;
 
-			goto finish_query;
+			goto finish;
 
 		case RLM_SQL_NO_MORE_ROWS:
 			if (!fetched) {
@@ -475,10 +477,9 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				ret = XLAT_ACTION_FAIL;
 			}
 
-			goto finish_query;
+			goto finish;
 
 		default:
-			(inst->driver->sql_finish_select_query)(handle, &inst->config);
 			goto query_error;
 		}
 
@@ -490,11 +491,8 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	} while (1);
 
-finish_query:
-	(inst->driver->sql_finish_select_query)(handle, &inst->config);
-
 finish:
-	handle = query_ctx->handle ? query_ctx->handle : handle;
+	handle = query_ctx->handle;
 	talloc_free(query_ctx);
 	fr_pool_connection_release(inst->pool, request, handle);
 
@@ -584,6 +582,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 
 	char const		*query_str = NULL;
 	fr_value_box_t		*query_head = fr_value_box_list_head(query);
+	fr_sql_query_t		*query_ctx;
 
 #define MAX_SQL_FIELD_INDEX (64)
 
@@ -613,9 +612,12 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 		RETURN_MODULE_FAIL;
 	}
 
-	ret = rlm_sql_select_query(inst, request, &handle, query_str);
-	if (ret != RLM_SQL_OK) {
-		RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table, ret, "<INVALID>"));
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle, query_str, SQL_QUERY_SELECT));
+	rlm_sql_select_query(p_result, NULL, request, query_ctx);
+	handle = query_ctx->handle;
+
+	if (query_ctx->rcode != RLM_SQL_OK) {
+		RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table, query_ctx->rcode, "<INVALID>"));
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
@@ -628,7 +630,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 		if (ret == 0) {
 			RDEBUG2("Server returned an empty result");
 			rcode = RLM_MODULE_NOOP;
-			(inst->driver->sql_finish_select_query)(handle, &inst->config);
 			goto finish;
 		}
 
@@ -636,7 +637,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 			RERROR("Failed retrieving row count");
 		error:
 			rcode = RLM_MODULE_FAIL;
-			(inst->driver->sql_finish_select_query)(handle, &inst->config);
 			goto finish;
 		}
 	}
@@ -685,7 +685,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	if (!found_field) {
 		RDEBUG2("No fields matching map found in query result");
 		rcode = RLM_MODULE_NOOP;
-		(inst->driver->sql_finish_select_query)(handle, &inst->config);
 		goto finish;
 	}
 
@@ -713,10 +712,9 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 		rcode = RLM_MODULE_NOOP;
 	}
 
-	(inst->driver->sql_finish_select_query)(handle, &inst->config);
-
 finish:
 	talloc_free(fields);
+	talloc_free(query_ctx);
 	fr_pool_connection_release(inst->pool, request, handle);
 
 	RETURN_MODULE_RCODE(rcode);
@@ -876,7 +874,8 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 	int     		num_groups = 0;
 	rlm_sql_row_t		row;
 	rlm_sql_grouplist_t	*entry;
-	int			ret;
+	rlm_rcode_t		p_result;
+	fr_sql_query_t		*query_ctx;
 
 	/* NOTE: sql_set_user should have been run before calling this function */
 
@@ -884,8 +883,14 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 
 	if (!query || !*query) return 0;
 
-	ret = rlm_sql_select_query(inst, request, handle, query);
-	if (ret != RLM_SQL_OK) return -1;
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, *handle, query, SQL_QUERY_SELECT ));
+
+	rlm_sql_select_query(&p_result, NULL, request, query_ctx);
+	if (query_ctx->rcode != RLM_SQL_OK) {
+		talloc_free(query_ctx);
+		return -1;
+	}
+	*handle = query_ctx->handle;
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
 		if (!row[0]){
@@ -908,7 +913,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 		num_groups++;
 	}
 
-	(inst->driver->sql_finish_select_query)(*handle, &inst->config);
+	talloc_free(query_ctx);
 
 	return num_groups;
 }
