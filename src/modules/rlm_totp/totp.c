@@ -104,7 +104,7 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 	 */
 
 	for (i = 0, then = now; i <= cfg->lookback_steps; i++, then -= cfg->lookback_interval) {
-		padded = ((uint64_t) now) / cfg->time_step;
+		padded = ((uint64_t) then) / cfg->time_step;
 		data[0] = padded >> 56;
 		data[1] = padded >> 48;
 		data[2] = padded >> 40;
