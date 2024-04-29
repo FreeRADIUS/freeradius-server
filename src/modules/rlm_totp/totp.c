@@ -98,12 +98,12 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 
 	/*
 	 *	First try to authenticate against the current OTP, then step
-	 *	back in increments of BACK_STEP_SECS, up to BACK_STEPS times,
+	 *	back in increments of `lookback_interval`, up to `lookback_steps` times,
 	 *	to authenticate properly in cases of long transit delay, as
 	 *	described in RFC 6238, section 5.2.
 	 */
 
-	for (i = 0, then = now; i <= cfg->lookback_steps; i++, then -= cfg->lookback_steps) {
+	for (i = 0, then = now; i <= cfg->lookback_steps; i++, then -= cfg->lookback_interval) {
 		padded = ((uint64_t) now) / cfg->time_step;
 		data[0] = padded >> 56;
 		data[1] = padded >> 48;
