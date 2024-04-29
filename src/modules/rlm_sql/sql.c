@@ -524,29 +524,32 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
  * @note Caller must call ``(inst->driver->sql_finish_select_query)(handle, &inst->config);``
  *	after they're done with the result.
  *
- * @param inst #rlm_sql_t instance data.
- * @param request Current request.
- * @param handle to query the database with. *handle should not be NULL, as this indicates
- *	  previous reconnection attempt has failed.
- * @param query to execute. Should not be zero length.
- * @return
+ * The rcode within the query context is updated to
  *	- #RLM_SQL_OK on success.
- *	- #RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL).
+ *	- #RLM_SQL_RECONNECT if a new handle is required (also sets the handle to NULL).
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
+ *	- #RLM_SQL_ALT_QUERY on constraints violation.
+ *
+ * @param p_result	Result of current module call.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		query context containing query to execute.
+ * @return an unlang_action_t.
  */
-sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, char const *query)
+unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	int ret = RLM_SQL_ERROR;
+	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_t const	*inst = query_ctx->inst;
 	int i, count;
 
 	/* Caller should check they have a valid handle */
-	fr_assert(*handle);
+	fr_assert(query_ctx->handle);
 
 	/* There's no query to run, return an error */
-	if (query[0] == '\0') {
+	if (query_ctx->query_str[0] == '\0') {
 		if (request) REDEBUG("Zero length query");
-
-		return RLM_SQL_QUERY_INVALID;
+		query_ctx->rcode = RLM_SQL_QUERY_INVALID;
+		RETURN_MODULE_INVALID;
 	}
 
 	/*
@@ -558,38 +561,39 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, request_t *request, rlm_
 	 *  For sanity, for when no connections are viable, and we can't make a new one
 	 */
 	for (i = 0; i < (count + 1); i++) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", query);
+		ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", query_ctx->query_str);
 
-		ret = (inst->driver->sql_select_query)(*handle, &inst->config, query);
-		switch (ret) {
+		query_ctx->rcode = (inst->driver->sql_select_query)(query_ctx->handle, &inst->config, query_ctx->query_str);
+		query_ctx->status = SQL_QUERY_SUBMITTED;
+		switch (query_ctx->rcode) {
 		case RLM_SQL_OK:
-			break;
+			RETURN_MODULE_OK;
 
 		/*
 		 *	Run through all available sockets until we exhaust all existing
 		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
 		case RLM_SQL_RECONNECT:
-			*handle = fr_pool_connection_reconnect(inst->pool, request, *handle);
+			query_ctx->handle = fr_pool_connection_reconnect(inst->pool, request, query_ctx->handle);
 			/* Reconnection failed */
-			if (!*handle) return RLM_SQL_RECONNECT;
+			if (!query_ctx->handle) RETURN_MODULE_FAIL;
 			/* Reconnection succeeded, try again with the new handle */
 			continue;
 
 		case RLM_SQL_QUERY_INVALID:
 		case RLM_SQL_ERROR:
 		default:
-			rlm_sql_print_error(inst, request, *handle, false);
-			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
-			break;
+			rlm_sql_print_error(inst, request, query_ctx->handle, false);
+			(inst->driver->sql_finish_select_query)(query_ctx->handle, &inst->config);
+			if (query_ctx->rcode == RLM_SQL_QUERY_INVALID) RETURN_MODULE_INVALID;
+			RETURN_MODULE_FAIL;
 		}
-
-		return ret;
 	}
 
 	ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
 
-	return RLM_SQL_ERROR;
+	query_ctx->rcode = RLM_SQL_ERROR;
+	RETURN_MODULE_FAIL;
 }
 
 
@@ -605,8 +609,9 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 {
 	rlm_sql_row_t	row;
 	int		rows = 0;
-	sql_rcode_t	rcode;
 	map_t		*parent = NULL;
+	fr_sql_query_t	*query_ctx;
+	rlm_rcode_t	p_result;
 	tmpl_rules_t	lhs_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = request->dict,
@@ -631,22 +636,27 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 
 	fr_assert(request);
 
-	rcode = rlm_sql_select_query(inst, request, handle, query);
-	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, *handle, query, SQL_QUERY_SELECT));
+	rlm_sql_select_query(&p_result, NULL, request, query_ctx);
+	if (query_ctx->rcode != RLM_SQL_OK) {
+	error:
+		*handle = query_ctx->handle;
+		talloc_free(query_ctx);
+		return -1;
+	}
 
-	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
+	while (rlm_sql_fetch_row(&row, inst, request, &query_ctx->handle) == RLM_SQL_OK) {
 		map_t *map;
 
 		if (map_afrom_fields(ctx, &map, &parent, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
 			RPEDEBUG("Error parsing user data from database result");
-			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
-			return -1;
+			goto error;
 		}
 		if (!map->parent) map_list_insert_tail(out, map);
 
 		rows++;
 	}
-	(inst->driver->sql_finish_select_query)(*handle, &inst->config);
+	talloc_free(query_ctx);
 
 	return rows;
 }

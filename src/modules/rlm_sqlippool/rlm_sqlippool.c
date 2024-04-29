@@ -188,17 +188,23 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 {
 	int		rlen, retval;
 	rlm_sql_row_t	row;
+	fr_sql_query_t	*query_ctx;
+	rlm_rcode_t	p_result;
 
 	*out = '\0';
 
-	retval = sql->select(sql, request, handle, query);
+	MEM(query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, *handle, query, SQL_QUERY_SELECT));
+	sql->select(&p_result, NULL, request, query_ctx);
+	retval = query_ctx->rcode;
+	*handle = query_ctx->handle;
 
 	if ((retval != 0) || !*handle) {
 		REDEBUG("database query error on '%s'", query);
+		talloc_free(query_ctx);
 		return 0;
 	}
 
-	if (sql->fetch_row(&row, sql, request, handle) < 0) {
+	if (sql->fetch_row(&row, sql, request, &query_ctx->handle) < 0) {
 		REDEBUG("Failed fetching query result");
 		goto finish;
 	}
@@ -223,7 +229,8 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	retval = rlen;
 
 finish:
-	(sql->driver->sql_finish_select_query)(*handle, &sql->config);
+	*handle = query_ctx->handle;
+	talloc_free(query_ctx);
 
 	return retval;
 }
