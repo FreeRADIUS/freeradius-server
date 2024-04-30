@@ -290,7 +290,7 @@ jobs:
       if: ${{ matrix.env.CC == 'clang' }}
 
     - name: "Clang Static Analyzer: Store assets on failure"
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: clang-scan.tgz
         path: build/plist/**/*.html
@@ -465,9 +465,9 @@ jobs:
         fetch-depth: 0
         lfs: false
         persist-credentials: false
-    #  Note: This also opportunistically updates the developer's branch with commits from 
+    #  Note: This also opportunistically updates the developer's branch with commits from
     #  the main repository.
-    #  This update may fail if the developer has pushed additional commits since the 
+    #  This update may fail if the developer has pushed additional commits since the
     #  workflow started.  This is normal, and we ignore the failure.
     - name: "Merge into upstream dev branch and update local branch"
       run: |

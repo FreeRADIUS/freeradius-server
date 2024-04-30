@@ -109,7 +109,7 @@ jobs:
       working-directory: freeradius
 
     - name: Store DEBs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: debs-${{ matrix.env.NAME }}
         path: debs
@@ -158,7 +158,7 @@ jobs:
     steps:
 
     - name: Load DEBs
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: debs-${{ matrix.env.NAME }}
 
@@ -209,7 +209,7 @@ jobs:
 
     - name: Upload radius logs on failure
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: radius-logs-${{ matrix.env.NAME }}.tgz
         path: |
