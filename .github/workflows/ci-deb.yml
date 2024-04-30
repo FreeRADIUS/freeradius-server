@@ -18,6 +18,7 @@ jobs:
         env:
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
+          - { NAME: "ubuntu-24.04", OS: "ubuntu:24.04" }
           - { NAME: "debian-10",    OS: "debian:buster" }
           - { NAME: "debian-11",    OS: "debian:bullseye" }
           - { NAME: "debian-12",    OS: "debian:bookworm" }
@@ -140,6 +141,7 @@ jobs:
         env:
           - { NAME: "ubuntu-20.04", OS: "ubuntu:20.04" }
           - { NAME: "ubuntu-22.04", OS: "ubuntu:22.04" }
+          - { NAME: "ubuntu-24.04", OS: "ubuntu:24.04" }
           - { NAME: "debian-10", OS: "debian:buster" }
           - { NAME: "debian-11", OS: "debian:bullseye" }
           - { NAME: "debian-12", OS: "debian:bookworm" }
