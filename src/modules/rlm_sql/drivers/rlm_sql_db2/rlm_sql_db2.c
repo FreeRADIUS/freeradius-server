@@ -185,14 +185,12 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	int			c, i;
 	SQLINTEGER		len, slen;
 	rlm_sql_row_t		row;
 	rlm_sql_db2_conn_t	*conn;
-
-	*out = NULL;
 
 	TALLOC_FREE(handle->row);
 
@@ -214,7 +212,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 		if (slen == SQL_NULL_DATA) row[i][0] = '\0';
 	}
 
-	*out = handle->row = row;
+	handle->row = row;
 
 	return RLM_SQL_OK;
 }

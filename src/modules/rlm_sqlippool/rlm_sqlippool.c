@@ -204,11 +204,13 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 		return 0;
 	}
 
-	if (sql->fetch_row(&row, sql, request, &query_ctx->handle) < 0) {
+	if ((sql->fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	    (query_ctx->rcode < 0)) {
 		REDEBUG("Failed fetching query result");
 		goto finish;
 	}
 
+	row = query_ctx->handle->row;
 	if (!row) {
 		RDEBUG2("SQL query did not return any results");
 		goto finish;

@@ -198,12 +198,11 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 /** Returns an individual row.
  *
  */
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	int res;
 
-	*out = NULL;
 	handle->row = NULL;
 
 	if (conn->statement_type != isc_info_sql_stmt_exec_procedure) {
@@ -221,7 +220,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 
 	fb_store_row(conn);
 
-	*out = handle->row = conn->row;
+	handle->row = conn->row;
 
 	return RLM_SQL_OK;
 }

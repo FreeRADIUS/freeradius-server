@@ -184,7 +184,7 @@ typedef struct {
 	int		(*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 	int		(*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
-	sql_rcode_t	(*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_fetch_row)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 	sql_rcode_t	(*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 	sql_rcode_t	(*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
@@ -211,7 +211,7 @@ struct sql_inst {
 	fr_value_box_escape_t	box_escape_func;
 	unlang_function_t	query;
 	unlang_function_t	select;
-	sql_rcode_t		(*fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
+	unlang_function_t	fetch_row;
 	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, char const *query_str, fr_sql_query_type_t type);
 
 	char const		*name;			//!< Module instance name.
@@ -223,7 +223,7 @@ int		sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
 unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 unlang_action_t	rlm_sql_query(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
-sql_rcode_t    	rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle);
+unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug);
 fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, char const *query_str, fr_sql_query_type_t type);
 
