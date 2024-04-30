@@ -197,7 +197,7 @@ static int value_box_list_to_slist(struct curl_slist **out, fr_value_box_list_t 
  *
  * @param uctx		Mail context.
  * @param out		CURL slist to write to.
- * @param list		of value boxes to copy.
+ * @param lists		Array of value box lists to copy.
  * @param prefix	to prepend to the output slist
  * @return
  *   - 1 on success
