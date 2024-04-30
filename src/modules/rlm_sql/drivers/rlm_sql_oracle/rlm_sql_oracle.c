@@ -534,12 +534,10 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const 
 	return rows;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	int status;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
-
-	*out = NULL;
 
 	if (!conn->ctx) {
 		ERROR("Socket not connected");
@@ -551,14 +549,12 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 
 	status = OCIStmtFetch(conn->query, conn->error, 1, OCI_FETCH_NEXT, OCI_DEFAULT);
 	if (status == OCI_SUCCESS) {
-		*out = handle->row = conn->row;
+		handle->row = conn->row;
 
 		return RLM_SQL_OK;
 	}
 
 	if (status == OCI_NO_DATA) {
-		handle->row = 0;
-
 		return RLM_SQL_NO_MORE_ROWS;
 	}
 

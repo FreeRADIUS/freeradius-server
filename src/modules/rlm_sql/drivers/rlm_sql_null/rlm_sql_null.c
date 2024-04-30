@@ -58,11 +58,10 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_
 	return 0;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, UNUSED rlm_sql_handle_t *handle,
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle,
 				 UNUSED rlm_sql_config_t const *config)
 {
-	*out = NULL;
-
+	handle->row = NULL;
 	return RLM_SQL_NO_MORE_ROWS;
 }
 

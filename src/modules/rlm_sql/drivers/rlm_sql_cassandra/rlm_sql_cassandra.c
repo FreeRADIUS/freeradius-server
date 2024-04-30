@@ -514,7 +514,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 
 	rlm_sql_cassandra_conn_t 	*conn = handle->conn;
@@ -537,8 +537,6 @@ do {\
 } while(0)
 
 	if (!conn->result) return RLM_SQL_OK;				/* no result */
-
-	*out = NULL;
 
 	/*
 	 *	Start of the result set, initialise the iterator.
@@ -641,7 +639,6 @@ do {\
 		}
 		}
 	}
-	*out = row;
 
 	return RLM_SQL_OK;
 }

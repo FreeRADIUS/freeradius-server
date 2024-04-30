@@ -485,7 +485,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
 	sql_rcode_t		rcode;
@@ -493,8 +493,6 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	int			ret;
 	unsigned int		num_fields, i;
 	unsigned long		*field_lens;
-
-	*out = NULL;
 
 	/*
 	 *  Check pointer before de-referencing it.
@@ -528,7 +526,7 @@ retry_fetch_row:
 
  	field_lens = mysql_fetch_lengths(conn->result);
 
-	MEM(*out = handle->row = talloc_zero_array(handle, char *, num_fields + 1));
+	MEM(handle->row = talloc_zero_array(handle, char *, num_fields + 1));
 	for (i = 0; i < num_fields; i++) {
 		MEM(handle->row[i] = talloc_bstrndup(handle->row, row[i], field_lens[i]));
 	}

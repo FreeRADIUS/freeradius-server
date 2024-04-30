@@ -397,7 +397,6 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
 	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
-	sql_rcode_t		rcode;
 	xlat_action_t		ret = XLAT_ACTION_DONE;
 	char const		*p;
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
@@ -461,8 +460,9 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if (query_ctx->rcode != RLM_SQL_OK) goto query_error;
 
 	do {
-		rcode = rlm_sql_fetch_row(&row, inst, request, &query_ctx->handle);
-		switch (rcode) {
+		rlm_sql_fetch_row(&p_result, NULL, request, query_ctx);
+		row = query_ctx->handle->row;
+		switch (query_ctx->rcode) {
 		case RLM_SQL_OK:
 			if (row[0]) break;
 
@@ -695,7 +695,9 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	 *	Note: Not all SQL client libraries provide a row count,
 	 *	so we have to do the count here.
 	 */
-	while (((ret = rlm_sql_fetch_row(&row, inst, request, &handle)) == RLM_SQL_OK)) {
+	while ((rlm_sql_fetch_row(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	       (query_ctx->rcode == RLM_SQL_OK)) {
+		row = query_ctx->handle->row;
 		rows++;
 		for (map = map_list_head(maps), j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
@@ -705,7 +707,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 		}
 	}
 
-	if (ret == RLM_SQL_ERROR) goto error;
+	if (query_ctx->rcode == RLM_SQL_ERROR) goto error;
 
 	if (rows == 0) {
 		RDEBUG2("SQL query returned no results");
@@ -892,7 +894,9 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 	}
 	*handle = query_ctx->handle;
 
-	while (rlm_sql_fetch_row(&row, inst, request, handle) == RLM_SQL_OK) {
+	while ((rlm_sql_fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+		(query_ctx->rcode == RLM_SQL_OK)) {
+		row = query_ctx->handle->row;
 		if (!row[0]){
 			RDEBUG2("row[0] returned NULL");
 			(inst->driver->sql_finish_select_query)(*handle, &inst->config);

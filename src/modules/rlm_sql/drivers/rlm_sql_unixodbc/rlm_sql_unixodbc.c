@@ -215,13 +215,11 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	int state;
-
-	*out = NULL;
 
 	handle->row = NULL;
 
@@ -230,7 +228,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 
 	if ((state = sql_check_error(err_handle, handle, config))) return state;
 
-	*out = handle->row = conn->row;
+	handle->row = conn->row;
 
 	return RLM_SQL_OK;
 }

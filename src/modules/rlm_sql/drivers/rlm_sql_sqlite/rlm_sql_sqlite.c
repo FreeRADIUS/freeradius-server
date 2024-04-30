@@ -517,7 +517,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
@@ -525,8 +525,6 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	int i = 0;
 
 	char **row;
-
-	*out = NULL;
 
 	TALLOC_FREE(handle->row);
 
@@ -597,8 +595,6 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 			break;
 		}
 	}
-
-	*out = row;
 
 	return RLM_SQL_OK;
 }

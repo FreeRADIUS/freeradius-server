@@ -575,12 +575,11 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const 
 	return (conn->rows_affected);
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
 	CS_INT ret, count;
 
-	*out = NULL;
 	handle->row = NULL;
 
 	ret = ct_fetch(conn->command, CS_UNUSED, CS_UNUSED, CS_UNUSED, &count);
@@ -602,7 +601,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 		return RLM_SQL_NO_MORE_ROWS;
 
 	case CS_SUCCEED:
-		*out = handle->row = conn->results;
+		handle->row = conn->results;
 
 		return RLM_SQL_OK;
 
