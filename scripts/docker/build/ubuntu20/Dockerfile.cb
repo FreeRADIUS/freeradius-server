@@ -1,17 +1,25 @@
-FROM debian:10-slim
+# Auto generated for ubuntu20
+# from scripts/docker/m4/crossbuild.deb.m4
+#
+# Rebuild this file with `make crossbuild.ubuntu20.regen`
+#
+ARG from=ubuntu:20.04
+FROM ${from} as build
 
 SHELL ["/usr/bin/nice", "-n", "5", "/usr/bin/ionice", "-c", "3", "/bin/sh", "-x", "-c"]
-
-ARG osname=buster
-ONBUILD ARG osname=${osname}
 
 ARG APT_OPTS="-y --option=Dpkg::options::=--force-unsafe-io --no-install-recommends"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+
+#
+#  Install add-apt-repository (may be needed for clang) and
+#  package development utilities
+#
 RUN apt-get update && \
-#  Development utilities
     apt-get install $APT_OPTS \
+        software-properties-common \
         devscripts \
         equivs \
         git \
@@ -20,45 +28,75 @@ RUN apt-get update && \
         procps \
         quilt \
         rsync \
-        software-properties-common \
-        wget \
-#  eapol_test dependencies
+        wget && \
+    apt-get clean && \
+    rm -r /var/lib/apt/lists/*
+
+
+#
+#  Set up NetworkRADIUS extras repository
+#
+RUN install -d -o root -g root -m 0755 /etc/apt/keyrings && \
+    wget -O /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.networkradius.com/pgp/packages%40networkradius.com" && \
+    echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/ubuntu/focal focal main" > /etc/apt/sources.list.d/networkradius-extras.list && \
+    apt-get update
+
+
+#
+#  Install compilers
+#
+RUN apt-get install $APT_OPTS \
+        g++ \
+        llvm clang lldb
+
+
+
+
+#
+#  Install eapol_test dependencies
+#
+RUN apt-get install $APT_OPTS \
         libnl-3-dev \
-        libnl-genl-3-dev \
-#  For debugging (e.g. in crossbuild)
+        libnl-genl-3-dev
+
+
+#
+#  Install debugging utilities
+#
+RUN apt-get install $APT_OPTS \
         gdb \
         less \
-        vim \
-#  Compilers
-        clang \
-        g++ \
         lldb \
-        llvm
+        vim
 
 
 #
 #  Documentation build dependencies
 #
 
+WORKDIR /tmp
+
 #  - doxygen & JSON.pm
 RUN apt-get install $APT_OPTS \
         doxygen \
         graphviz \
         libjson-perl
-#  - antora (npm needed)
-RUN bash -c "$(wget -O - https://deb.nodesource.com/setup_14.x)" && \
-    apt-get install $APT_OPTS \
-        nodejs
-RUN npm i -g @antora/cli@2.1 @antora/site-generator-default@2.1
+
+#  - antora (needs npm)
+RUN bash -c "$(wget -O - https://deb.nodesource.com/setup_20.x)" && \
+    apt-get install $APT_OPTS nodejs && \
+    npm i -g @antora/cli@3.1.7 @antora/site-generator-default@3.1.7
+
 #  - pandoc
 RUN wget $(wget -qO - https://api.github.com/repos/jgm/pandoc/releases/latest | sed -ne 's/.*"browser_download_url".*"\(.*amd64\.deb\)"/\1/ p') && \
     find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -print0 | \
         xargs -0 -r apt-get install $APT_OPTS && \
     find . -mindepth 1 -maxdepth 1 -type f -name 'pandoc-*.deb' -delete
+
 #  - asciidoctor
 RUN apt-get install $APT_OPTS \
-    ruby
-RUN gem install asciidoctor
+    ruby ruby-dev && \
+    gem install asciidoctor
 
 
 #
@@ -69,21 +107,11 @@ WORKDIR /usr/local/src/repositories
 
 
 #
-#  Set up NetworkRADIUS extras repository
-#
-RUN wget -O - "https://packages.networkradius.com/pgp/packages%40networkradius.com" | apt-key add && \
-    echo "deb http://packages.networkradius.com/extras/debian/buster buster main" >> /etc/apt/sources.list.d/networkradius-extras.list && \
-    apt-get update
-
-
-#
 #  Shallow clone the FreeRADIUS source
 #
 WORKDIR /usr/local/src/repositories
 ARG source=https://github.com/FreeRADIUS/freeradius-server.git
-ARG branch=master
-RUN git clone --depth 1 --no-single-branch -b ${branch} ${source}
-
+RUN git clone --depth 1 --no-single-branch ${source}
 
 #
 #  Install build dependencies for all branches from v3 onwards
