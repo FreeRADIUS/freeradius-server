@@ -111,27 +111,19 @@ RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 
 	done
 
 #
-#  Tests require extra Yubikey libraries
+#  A few extra packages needed for tests
 #
-RUN yum install -y libyubikey-devel
+RUN yum install -y \
+    libnl3-devel \
+    libyubikey-devel \
+    oathtool \
+    which
 
-#
-#  Which is required by fixture setup utilities
-#
-RUN yum install -y which
-
-#
-#  Explicitly install libnl3-devel which is required for the EAP tests
-#
-RUN yum install -y libnl3-devel
-
-ifelse(OS_VER, 7,, `dnl
 #
 #  We test with TLS1.1, but that is disabled by default on some
 #  newer systems.
 #
 RUN update-crypto-policies --set LEGACY
-')dnl
 
 #
 #  Create the RPM build tree

@@ -71,21 +71,22 @@ RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-CLANG_VER 60 
 
 
 #
-#  Install eapol_test dependencies
+#  Install some extra packages
 #
 RUN apt-get install $APT_OPTS \
+dnl
+dnl for eapol_test:
         libnl-3-dev \
-        libnl-genl-3-dev
-
-
-#
-#  Install debugging utilities
-#
-RUN apt-get install $APT_OPTS \
+        libnl-genl-3-dev \
+dnl
+dnl for debugging:
         gdb \
         less \
         lldb \
-        vim
+        vim \
+dnl
+dnl for tests:
+        oathtool
 
 
 #
@@ -134,10 +135,10 @@ ARG source=https://github.com/FreeRADIUS/freeradius-server.git
 RUN git clone --depth 1 --no-single-branch ${source}
 
 #
-#  Install build dependencies for all branches from v3 onwards
+#  Install build dependencies for all branches from v4 onwards
 #
 WORKDIR freeradius-server
-RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[3-9]*\.[0-9x]*\.x|master|${branch})$" | sort -u); \
+RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[4-9]*\.[0-9x]*\.x|master|${branch})$" | sort -u); \
     do \
         git checkout $i; \
         if [ -e ./debian/control.in ] ; then \
