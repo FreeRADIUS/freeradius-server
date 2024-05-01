@@ -340,7 +340,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, module_ctx_t const *mctx, request_t *re
 							.list_def = request_attr_reply
 						}
 					}) <= 0) {
-			ERROR("%s - Failed to find attribute %s.%s", funcname, list_name, s1);
+			PERROR("%s - Failed to find attribute %s.%s", funcname, list_name, s1);
 			continue;
 		}
 
