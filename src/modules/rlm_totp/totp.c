@@ -70,14 +70,15 @@ static void totp_log(char const *fmt, ...)
  */
 int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t const *key, size_t keylen, char const *totp)
 {
-	time_t then;
-	unsigned int i;
-	uint8_t offset;
-	uint32_t challenge;
-	uint64_t padded;
-	uint8_t data[8];
-	uint8_t digest[SHA1_DIGEST_LENGTH];
-	char buffer[9];
+	time_t		diff, then;
+	uint32_t	steps;
+	unsigned int	i;
+	uint8_t		offset;
+	uint32_t	challenge;
+	uint64_t	padded;
+	uint8_t		data[8];
+	uint8_t		digest[SHA1_DIGEST_LENGTH];
+	char		buffer[9];
 
 	fr_assert(cfg->otp_length == 6 || cfg->otp_length == 8);
 
@@ -99,12 +100,15 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 
 	/*
 	 *	First try to authenticate against the current OTP, then step
-	 *	back in increments of `lookback_interval`, up to `lookback_steps` times,
+	 *	back and forwards in increments of `lookback_interval`, up to `lookback_steps` times,
 	 *	to authenticate properly in cases of long transit delay, as
 	 *	described in RFC 6238, section 5.2.
 	 */
-
-	for (i = 0, then = now; i <= cfg->lookback_steps; i++, then -= cfg->lookback_interval) {
+	steps = cfg->lookback_steps > cfg->lookforward_steps ? cfg->lookback_steps : cfg->lookforward_steps;
+	for (i = 0, diff = 0; i <= steps; i++, diff += cfg->lookback_interval) {
+		if (i > cfg->lookback_steps) goto forwards;
+		then = now - diff;
+	repeat:
 		padded = ((uint64_t) then) / cfg->time_step;
 		data[0] = padded >> 56;
 		data[1] = padded >> 48;
@@ -153,6 +157,15 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 		}
 
 		if (fr_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, cfg->otp_length) == 0) return 0;
+
+		/*
+		 *	We've tested backwards, now do the equivalent time slot forwards
+		 */
+		if ((then < now) && (i <= cfg->lookforward_steps)) {
+		forwards:
+			then = now + offset;
+			goto repeat;
+		}
 	}
 
 	return -1;

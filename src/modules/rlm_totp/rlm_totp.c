@@ -67,6 +67,7 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("otp_length", rlm_totp_t, totp.otp_length), .dflt = "6" },
 	{ FR_CONF_OFFSET("lookback_steps", rlm_totp_t, totp.lookback_steps), .dflt = "1" },
 	{ FR_CONF_OFFSET("lookback_interval", rlm_totp_t, totp.lookback_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("lookforward_steps", rlm_totp_t, totp.lookforward_steps), .dflt = "0" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -100,6 +101,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, >=, 1);
 	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, <=, 10);
+
+	FR_INTEGER_BOUND_CHECK("lookforward_steps", inst->totp.lookforward_steps, <=, 10);
 
 	FR_INTEGER_BOUND_CHECK("lookback_interval", inst->totp.lookback_interval, <=, inst->totp.time_step);
 

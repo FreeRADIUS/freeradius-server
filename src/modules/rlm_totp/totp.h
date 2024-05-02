@@ -35,6 +35,7 @@ typedef struct {
 	uint32_t otp_length;		//!< forced to 6 or 8
 	uint32_t lookback_steps;	//!< number of steps to look back
 	uint32_t lookback_interval;	//!< interval in seconds between steps
+	uint32_t lookforward_steps;	//!< number of steps to look forwards
 } fr_totp_t;
 
 int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t const *key, size_t keylen, char const *totp) CC_HINT(nonnull(1,4,6));
