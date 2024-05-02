@@ -106,12 +106,13 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	SQLRETURN row;
 	rlm_sql_db2_conn_t *conn;
 
-	conn = handle->conn;
+	conn = query_ctx->handle->conn;
 
 	/* allocate handle for statement */
 	SQLAllocHandle(SQL_HANDLE_STMT, conn->dbc_handle, &(conn->stmt));
@@ -119,22 +120,19 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 	/* execute query */
 	{
 		SQLCHAR *db2_query;
-		memcpy(&db2_query, &query, sizeof(query));
+		memcpy(&db2_query, &query_ctx->query_str, sizeof(query_ctx->query_str));
 
 		row = SQLExecDirect(conn->stmt, db2_query, SQL_NTS);
 		if(row != SQL_SUCCESS) {
 			/* XXX Check if row means we should return RLM_SQL_RECONNECT */
 			ERROR("Could not execute statement \"%s\"", query);
-			return RLM_SQL_ERROR;
+			query_ctx->rcode = RLM_SQL_ERROR;
+			RETURN_MODULE_FAIL
 		}
 	}
 
-	return RLM_SQL_OK;
-}
-
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
-{
-	return sql_query(handle, config, query);
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
@@ -291,7 +289,7 @@ rlm_sql_driver_t rlm_sql_db2 = {
 	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
-	.sql_select_query		= sql_select_query,
+	.sql_select_query		= sql_query,
 	.sql_num_fields			= sql_num_fields,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fields			= sql_fields,

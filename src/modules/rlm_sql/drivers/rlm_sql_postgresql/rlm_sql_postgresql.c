@@ -261,12 +261,12 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm
 	return 0;
 }
 
-static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
-					      char const *query)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	rlm_sql_postgres_conn_t	*conn = handle->conn;
-	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(handle->inst->driver_submodule->data, rlm_sql_postgresql_t);
-	fr_time_delta_t		timeout = config->query_timeout;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_postgres_conn_t	*conn = query_ctx->handle->conn;
+	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(query_ctx->inst->driver_submodule->data, rlm_sql_postgresql_t);
+	fr_time_delta_t		timeout = query_ctx->inst->config.query_timeout;
 	fr_time_t		start;
 	int			sockfd;
 	PGresult		*tmp_result;
@@ -275,18 +275,20 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 
 	if (!conn->db) {
 		ERROR("Socket not connected");
-		return RLM_SQL_RECONNECT;
+	reconnect:
+		query_ctx->rcode = RLM_SQL_RECONNECT;
+		RETURN_MODULE_FAIL;
 	}
 
 	sockfd = PQsocket(conn->db);
 	if (sockfd < 0) {
 		ERROR("Unable to obtain socket: %s", PQerrorMessage(conn->db));
-		return RLM_SQL_RECONNECT;
+		goto reconnect;
 	}
 
-	if (!PQsendQuery(conn->db, query)) {
+	if (!PQsendQuery(conn->db, query_ctx->query_str)) {
 		ERROR("Failed to send query: %s", PQerrorMessage(conn->db));
-		return RLM_SQL_RECONNECT;
+		goto reconnect;
 	}
 
 	/*
@@ -302,26 +304,26 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		FD_ZERO(&read_fd);
 		FD_SET(sockfd, &read_fd);
 
-		if (fr_time_delta_ispos(config->query_timeout)) {
+		if (fr_time_delta_ispos(timeout)) {
 			elapsed = fr_time_sub(fr_time(), start);
 			if (fr_time_delta_gteq(elapsed, timeout)) goto too_long;
 		}
 
-		r = select(sockfd + 1, &read_fd, NULL, NULL, fr_time_delta_ispos(config->query_timeout) ?
+		r = select(sockfd + 1, &read_fd, NULL, NULL, fr_time_delta_ispos(timeout) ?
 			   &fr_time_delta_to_timeval(fr_time_delta_sub(timeout, elapsed)) : NULL);
 		if (r == 0) {
 		too_long:
-			ERROR("Socket read timeout after %d seconds", (int) fr_time_delta_to_sec(config->query_timeout));
-			return RLM_SQL_RECONNECT;
+			ERROR("Socket read timeout after %d seconds", (int) fr_time_delta_to_sec(timeout));
+			goto reconnect;
 		}
 		if (r < 0) {
 			if (errno == EINTR) continue;
 			ERROR("Failed in select: %s", fr_syserror(errno));
-			return RLM_SQL_RECONNECT;
+			goto reconnect;
 		}
 		if (!PQconsumeInput(conn->db)) {
 			ERROR("Failed reading input: %s", PQerrorMessage(conn->db));
-			return RLM_SQL_RECONNECT;
+			goto reconnect;
 		}
 	}
 
@@ -346,7 +348,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 	 */
 	if (!conn->result) {
 		ERROR("Failed getting query result: %s", PQerrorMessage(conn->db));
-		return RLM_SQL_RECONNECT;
+		goto reconnect;
 	}
 
 	status = PQresultStatus(conn->result);
@@ -397,12 +399,9 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_
 		break;
 	}
 
-	return sql_classify_error(inst, status, conn->result);
-}
-
-static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t const *config, char const *query)
-{
-	return sql_query(handle, config, query);
+	query_ctx->rcode = sql_classify_error(inst, status, conn->result);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	RETURN_MODULE_OK;
 }
 
 static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
@@ -679,7 +678,7 @@ rlm_sql_driver_t rlm_sql_postgresql = {
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
-	.sql_select_query		= sql_select_query,
+	.sql_select_query		= sql_query,
 	.sql_num_fields			= sql_num_fields,
 	.sql_fields			= sql_fields,
 	.sql_fetch_row			= sql_fetch_row,

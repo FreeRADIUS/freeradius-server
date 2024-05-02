@@ -387,21 +387,21 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
-	sql_rcode_t rcode;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(query_ctx->handle->conn, rlm_sql_mysql_conn_t);
 	char const *info;
 
-	mysql_query(conn->sock, query);
-	rcode = sql_check_error(conn->sock, 0);
-	if (rcode != RLM_SQL_OK) return rcode;
+	mysql_query(conn->sock, query_ctx->query_str);
+	query_ctx->rcode = sql_check_error(conn->sock, 0);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
 	/* Only returns non-null string for INSERTS */
 	info = mysql_info(conn->sock);
 	if (info) DEBUG2("%s", info);
 
-	return RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static sql_rcode_t sql_store_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
@@ -435,14 +435,16 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t cons
 	return mysql_field_count(conn->sock);
 }
 
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	sql_rcode_t rcode;
+	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 
-	rcode = sql_query(handle, config, query);
-	if (rcode != RLM_SQL_OK) return rcode;
+	sql_query(p_result, NULL, request, query_ctx);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
-	return sql_store_result(handle, config);
+	query_ctx->rcode = sql_store_result(query_ctx->handle, &query_ctx->inst->config);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	RETURN_MODULE_OK;
 }
 
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)

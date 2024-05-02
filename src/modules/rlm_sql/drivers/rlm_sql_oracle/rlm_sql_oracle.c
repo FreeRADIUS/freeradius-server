@@ -361,41 +361,49 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int			status;
-	rlm_sql_oracle_conn_t	*conn = handle->conn;
+	rlm_sql_oracle_conn_t	*conn = query_ctx->handle->conn;
 
 	if (!conn->ctx) {
 		ERROR("Socket not connected");
 
-		return RLM_SQL_RECONNECT;
+		query_ctx->rcode = RLM_SQL_RECONNECT;
+		RETURN_MODULE_FAIL;
 	}
 
-	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query, strlen(query),
+	query_ctx->rcode = RLM_SQL_ERROR;
+
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query_ctx->query_str, strlen(query_ctx->query_str),
 	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_query");
 
-		return RLM_SQL_ERROR;
+		RETURN_MODULE_FAIL;
 	}
 
 	status = OCIStmtExecute(conn->ctx, conn->query, conn->error, 1, 0,
 				NULL, NULL, OCI_COMMIT_ON_SUCCESS);
 
-	if (status == OCI_SUCCESS) return RLM_SQL_OK;
+	if (status == OCI_SUCCESS) {
+		query_ctx->rcode = RLM_SQL_OK;
+		RETURN_MODULE_OK;
+	}
 	if (status == OCI_ERROR) {
 		ERROR("execute query failed in sql_query");
 
-		return sql_check_reconnect(handle, config);
+		query_ctx->rcode = sql_check_reconnect(query_ctx->handle, &query_ctx->inst->config);
 	}
 
-	return RLM_SQL_ERROR;
+	RETURN_MODULE_FAIL;
 }
 
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int		status;
-	char		**row;
+	char		**row = NULL;
 
 	int		i;
 	OCIParam	*param;
@@ -406,24 +414,25 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 
 	sb2		*ind;
 
-	rlm_sql_oracle_conn_t *conn = handle->conn;
+	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
 
-	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query, strlen(query),
+	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query_ctx->query_str, strlen(query_ctx->query_str),
 	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
 		ERROR("prepare failed in sql_select_query");
 
-		return RLM_SQL_ERROR;
+		goto error;
 	}
 
 	/*
 	 *	Retrieve a single row
 	 */
 	status = OCIStmtExecute(conn->ctx, conn->query, conn->error, 0, 0, NULL, NULL, OCI_DEFAULT);
-	if (status == OCI_NO_DATA) return RLM_SQL_OK;
+	if (status == OCI_NO_DATA) goto finish;
 	if (status != OCI_SUCCESS) {
 		ERROR("query failed in sql_select_query");
 
-		return sql_check_reconnect(handle, config);
+		query_ctx->rcode = sql_check_reconnect(query_ctx->handle, &query_ctx->inst->config);
+		RETURN_MODULE_FAIL;
 	}
 
 	/*
@@ -431,9 +440,9 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 	 *	the number of columns won't change.
 	 */
 	if (conn->col_count == 0) {
-		conn->col_count = sql_num_fields(handle, config);
+		conn->col_count = sql_num_fields(query_ctx->handle, &query_ctx->inst->config);
 
-		if (conn->col_count == 0) return RLM_SQL_ERROR;
+		if (conn->col_count == 0) goto error;
 	}
 
 	MEM(row = talloc_zero_array(conn, char*, conn->col_count + 1));
@@ -515,12 +524,15 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 	conn->row = row;
 	conn->ind = ind;
 
-	return RLM_SQL_OK;
+finish:
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 
  error:
 	talloc_free(row);
 
-	return RLM_SQL_ERROR;
+	query_ctx->rcode = RLM_SQL_ERROR;
+	RETURN_MODULE_FAIL;
 }
 
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
