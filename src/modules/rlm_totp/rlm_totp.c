@@ -333,47 +333,46 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 	 *	described in RFC 6238, secion 5.2.
 	 */
 
-	for (i = 0, then = now; i <= BACK_STEPS; i++, then -= BACK_STEP_SECS) {
-	       padded = (uint64_t) then / TIME_STEP;
-	       data[0] = padded >> 56;
-	       data[1] = padded >> 48;
-	       data[2] = padded >> 40;
-	       data[3] = padded >> 32;
-	       data[4] = padded >> 24;
-	       data[5] = padded >> 16;
-	       data[6] = padded >> 8;
-	       data[7] = padded & 0xff;
+	for (i = 0, diff = 0; i <= BACK_STEPS; i++, diff += BACK_STEP_SECS) {
+		padded = (uint64_t) then / TIME_STEP;
+		data[0] = padded >> 56;
+		data[1] = padded >> 48;
+		data[2] = padded >> 40;
+		data[3] = padded >> 32;
+		data[4] = padded >> 24;
+		data[5] = padded >> 16;
+		data[6] = padded >> 8;
+		data[7] = padded & 0xff;
 
-	       /*
-		*	Encrypt the network order time with the key.
-		*/
-	       fr_hmac_sha1(digest, data, 8, key, keylen);
+		/*
+		 *	Encrypt the network order time with the key.
+		 */
+		fr_hmac_sha1(digest, data, 8, key, keylen);
 
-	       /*
-		*	Take the least significant 4 bits.
-		*/
-	       offset = digest[SHA1_DIGEST_LENGTH - 1] & 0x0f;
+		/*
+		 *	Take the least significant 4 bits.
+		 */
+		offset = digest[SHA1_DIGEST_LENGTH - 1] & 0x0f;
 
-	       /*
-		*	Grab the 32bits at "offset", and drop the high bit.
-		*/
-	       challenge = (digest[offset] & 0x7f) << 24;
-	       challenge |= digest[offset + 1] << 16;
-	       challenge |= digest[offset + 2] << 8;
-	       challenge |= digest[offset + 3];
+		/*
+		 *	Grab the 32bits at "offset", and drop the high bit.
+		 */
+		challenge = (digest[offset] & 0x7f) << 24;
+		challenge |= digest[offset + 1] << 16;
+		challenge |= digest[offset + 2] << 8;
+		challenge |= digest[offset + 3];
 
-	       /*
-		*	The token is the last 6 digits in the number (or 8 for testing)..
-		*/
-               snprintf(buffer, sizeof(buffer), ((OTP_LEN == 6) ? "%06u" : "%08u"),
-		        challenge % ((OTP_LEN == 6) ? 1000000 : 100000000));
+		/*
+		 *	The token is the last 6 digits in the number (or 8 for testing)..
+		 */
+        	snprintf(buffer, sizeof(buffer), ((OTP_LEN == 6) ? "%06u" : "%08u"),
+			 challenge % ((OTP_LEN == 6) ? 1000000 : 100000000));
 
-	       RDEBUG3("Now: %zu, Then: %zu", (size_t) now, (size_t) then);
-	       RDEBUG3("Expected %s", buffer);
-	       RDEBUG3("Received %s", totp);
+		RDEBUG3("Now: %zu, Then: %zu", (size_t) now, (size_t) then);
+		RDEBUG3("Expected %s", buffer);
+		RDEBUG3("Received %s", totp);
 
-	       if (rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, OTP_LEN) == 0)
-		      return 0;
+		if (rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, OTP_LEN) == 0) return 0;
 	}
 	return 1;
 }
