@@ -1,3 +1,8 @@
+# Auto generated for alpine
+# from scripts/docker/m4/Dockerfile.alpine.m4
+#
+# Rebuild this file with `make docker.alpine.regen`
+#
 ARG from=alpine:3.13
 FROM ${from} as build
 
@@ -10,17 +15,23 @@ RUN apk add git gcc make
 #
 #  Create build directory
 #
-RUN mkdir -p /usr/local/src/repositories
-WORKDIR /usr/local/src/repositories
+RUN mkdir -p /usr/local/src/repositories/freeradius-server
+WORKDIR /usr/local/src/repositories/freeradius-server/
 
 #
-#  Shallow clone the FreeRADIUS source
+#  Copy the FreeRADIUS directory in
 #
-ARG source=https://github.com/FreeRADIUS/freeradius-server.git
-ARG release=v3.2.x
+COPY . .
 
-RUN git clone --depth 1 --single-branch --branch ${release} ${source}
-WORKDIR freeradius-server
+#
+#  Clean up tree - we want to build from the latest commit, not from
+#  any cruft left around on the local system
+#
+RUN git clean -fdxx \
+ && git reset --hard HEAD
+
+RUN [ -z "$release" ] || git checkout ${release}
+
 
 #
 #  Install build dependencies
@@ -33,7 +44,7 @@ RUN apk add linux-headers
 RUN apk add pcre-dev libidn-dev krb5-dev samba-dev curl-dev json-c-dev
 RUN apk add openldap-dev unbound-dev
 # languages
-RUN apk add ruby-dev perl-dev python2-dev
+RUN apk add ruby-dev perl-dev python2-dev python3-dev
 # databases
 RUN apk add hiredis-dev libmemcached-dev gdbm-dev libcouchbase-dev
 # sql
@@ -69,14 +80,15 @@ RUN apk update \
     && apk add libcurl json-c libldap hiredis sqlite-dev \
 #RUN apk add libidn krb5
 #RUN apk add unbound-libs
-#RUN apk add ruby-libs perl python2-dev
+#RUN apk add ruby-libs perl python2-dev python3-dev
 #RUN apk add libmemcached gdbm libcouchbase
 #RUN apk add postgresql-dev mariadb-dev unixodbc-dev
     \
     && ln -s /opt/etc/raddb /etc/raddb
 
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
+WORKDIR /
+COPY scripts/docker//etc/docker-entrypoint.sh.alpine docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 1812/udp 1813/udp
 ENTRYPOINT ["/docker-entrypoint.sh"]
