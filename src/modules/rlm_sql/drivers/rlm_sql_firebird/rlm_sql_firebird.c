@@ -198,8 +198,10 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 /** Returns an individual row.
  *
  */
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_handle_t	*handle = query_ctx->handle;
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	int res;
 
@@ -207,12 +209,16 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 
 	if (conn->statement_type != isc_info_sql_stmt_exec_procedure) {
 		res = fb_fetch(conn);
-		if (res == 100) return RLM_SQL_NO_MORE_ROWS;
+		if (res == 100) {
+			query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+			RETURN_MODULE_OK;
+		}
 
 		if (res) {
 			ERROR("Fetch problem: %s", conn->error);
 
-			return RLM_SQL_ERROR;
+			query_ctx->rcode = RLM_SQL_ERROR;
+			RETURN_MODULE_FAIL;
 		}
 	} else {
 		conn->statement_type = 0;
@@ -222,7 +228,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 
 	handle->row = conn->row;
 
-	return RLM_SQL_OK;
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 /** End the select query, such as freeing memory or result.

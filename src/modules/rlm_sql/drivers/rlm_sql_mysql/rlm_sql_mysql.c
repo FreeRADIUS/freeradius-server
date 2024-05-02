@@ -487,10 +487,11 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_handle_t	*handle = query_ctx->handle;
 	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
-	sql_rcode_t		rcode;
 	MYSQL_ROW		row;
 	int			ret;
 	unsigned int		num_fields, i;
@@ -499,32 +500,43 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t cons
 	/*
 	 *  Check pointer before de-referencing it.
 	 */
-	if (!conn->result) return RLM_SQL_RECONNECT;
+	if (!conn->result) {
+		query_ctx->rcode = RLM_SQL_RECONNECT;
+		RETURN_MODULE_FAIL;
+	}
 
 	TALLOC_FREE(handle->row);		/* Clear previous row set */
 
 retry_fetch_row:
 	row = mysql_fetch_row(conn->result);
 	if (!row) {
-		rcode = sql_check_error(conn->sock, 0);
-		if (rcode != RLM_SQL_OK) return rcode;
+		query_ctx->rcode = sql_check_error(conn->sock, 0);
+		if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
-		sql_free_result(handle, config);
+		sql_free_result(handle, &query_ctx->inst->config);
 
 		ret = mysql_next_result(conn->sock);
 		if (ret == 0) {
 			/* there are more results */
-			if ((sql_store_result(handle, config) == 0) && (conn->result != NULL)) {
+			if ((sql_store_result(handle, &query_ctx->inst->config) == 0) && (conn->result != NULL)) {
 				goto retry_fetch_row;
 			}
-		} else if (ret > 0) return sql_check_error(NULL, ret);
+		} else if (ret > 0) {
+			query_ctx->rcode = sql_check_error(NULL, ret);
+			if (query_ctx->rcode == RLM_SQL_OK) RETURN_MODULE_OK;
+			RETURN_MODULE_FAIL;
+		}
 		/* If ret is -1 then there are no more rows */
 
-		return RLM_SQL_NO_MORE_ROWS;
+		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+		RETURN_MODULE_OK;
 	}
 
 	num_fields = mysql_num_fields(conn->result);
-	if (!num_fields) return RLM_SQL_NO_MORE_ROWS;
+	if (!num_fields) {
+		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+		RETURN_MODULE_OK;
+	}
 
  	field_lens = mysql_fetch_lengths(conn->result);
 
@@ -533,7 +545,8 @@ retry_fetch_row:
 		MEM(handle->row[i] = talloc_bstrndup(handle->row, row[i], field_lens[i]));
 	}
 
-	return RLM_SQL_OK;
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)

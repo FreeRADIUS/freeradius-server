@@ -521,14 +521,13 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	int status;
-	rlm_sql_sqlite_conn_t *conn = handle->conn;
-
-	int i = 0;
-
-	char **row;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_handle_t	*handle = query_ctx->handle;
+	int			status, i = 0;
+	rlm_sql_sqlite_conn_t	*conn = handle->conn;
+	char			**row;
 
 	TALLOC_FREE(handle->row);
 
@@ -540,20 +539,27 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t cons
 	/*
 	 *	Error getting next row
 	 */
-	if (sql_check_error(conn->db, status) != RLM_SQL_OK) return RLM_SQL_ERROR;
+	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
+	error:
+		query_ctx->rcode = RLM_SQL_ERROR;
+		RETURN_MODULE_FAIL;
+	}
 
 	/*
 	 *	No more rows to process (we're done)
 	 */
-	if (status == SQLITE_DONE) return RLM_SQL_NO_MORE_ROWS;
+	if (status == SQLITE_DONE) {
+		query_ctx->rcode =  RLM_SQL_NO_MORE_ROWS;
+		RETURN_MODULE_OK;
+	}
 
 	/*
 	 *	We only need to do this once per result set, because
 	 *	the number of columns won't change.
 	 */
 	if (conn->col_count == 0) {
-		conn->col_count = sql_num_fields(handle, config);
-		if (conn->col_count == 0) return RLM_SQL_ERROR;
+		conn->col_count = sql_num_fields(handle, &query_ctx->inst->config);
+		if (conn->col_count == 0) goto error;
 	}
 
 	/*
@@ -600,7 +606,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t cons
 		}
 	}
 
-	return RLM_SQL_OK;
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)

@@ -250,7 +250,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
 {
 	char errbuff[512];
 
@@ -261,7 +261,7 @@ static int sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t const 
 		return RLM_SQL_RECONNECT;
 	}
 
-	return -1;
+	return RLM_SQL_ERROR;
 }
 
 static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
@@ -546,15 +546,18 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const 
 	return rows;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	int status;
-	rlm_sql_oracle_conn_t *conn = handle->conn;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	int			status;
+	rlm_sql_handle_t	*handle = query_ctx->handle;
+	rlm_sql_oracle_conn_t	*conn = handle->conn;
 
 	if (!conn->ctx) {
 		ERROR("Socket not connected");
 
-		return RLM_SQL_RECONNECT;
+		query_ctx->rcode = RLM_SQL_RECONNECT;
+		RETURN_MODULE_FAIL;
 	}
 
 	handle->row = NULL;
@@ -563,19 +566,23 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t cons
 	if (status == OCI_SUCCESS) {
 		handle->row = conn->row;
 
-		return RLM_SQL_OK;
+		query_ctx->rcode = RLM_SQL_OK;
+		RETURN_MODULE_OK;
 	}
 
 	if (status == OCI_NO_DATA) {
-		return RLM_SQL_NO_MORE_ROWS;
+		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+		RETURN_MODULE_OK;
 	}
 
 	if (status == OCI_ERROR) {
 		ERROR("fetch failed in sql_fetch_row");
-		return sql_check_reconnect(handle, config);
+		query_ctx->rcode = sql_check_reconnect(handle, &query_ctx->inst->config);
+		RETURN_MODULE_FAIL;
 	}
 
-	return RLM_SQL_ERROR;
+	query_ctx->rcode = RLM_SQL_ERROR;
+	RETURN_MODULE_FAIL;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)

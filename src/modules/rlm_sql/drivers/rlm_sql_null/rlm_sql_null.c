@@ -53,11 +53,12 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_
 	return 0;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle,
-				 UNUSED rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	handle->row = NULL;
-	return RLM_SQL_NO_MORE_ROWS;
+	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	query_ctx->handle->row = NULL;
+	query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+	RETURN_MODULE_OK;
 }
 
 static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)

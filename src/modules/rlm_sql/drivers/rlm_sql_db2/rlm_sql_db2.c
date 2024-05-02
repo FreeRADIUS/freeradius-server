@@ -183,12 +183,14 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	int			c, i;
 	SQLINTEGER		len, slen;
 	rlm_sql_row_t		row;
 	rlm_sql_db2_conn_t	*conn;
+	rlm_sql_handle_t	*handle = query_ctx->handle;
 
 	TALLOC_FREE(handle->row);
 
@@ -196,7 +198,10 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t cons
 	c = sql_num_fields(handle, config);
 
 	/* advance cursor */
-	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) return RLM_SQL_NO_MORE_ROWS;
+	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) {
+		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+		RETURN_MODULE_OK;
+	}
 
 	MEM(row = (rlm_sql_row_t)talloc_zero_array(handle, char *, c + 1));
 	for (i = 0; i < c; i++) {
@@ -212,7 +217,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t cons
 
 	handle->row = row;
 
-	return RLM_SQL_OK;
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
