@@ -43,6 +43,10 @@ DOCKER_REGISTRY :=
 #  Location of Docker-related files
 DOCKER_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 DIST_DIR := $(DOCKER_DIR)/dists
+#
+#  List of images we can build
+DOCKER_IMAGES:=$(sort $(patsubst $(DIST_DIR)/%,%,$(wildcard $(DIST_DIR)/*)))
+
 
 ifeq "${VERBOSE}" ""
     Q=@
@@ -75,16 +79,8 @@ define ADD_DOCKER_REGEN
     docker.${1}.regen: $$(DIST_DIR)/${1}/Dockerfile
 endef
 
-$(eval $(call ADD_DOCKER_REGEN,debian10,deb,debian:buster,debian,10,buster))
-$(eval $(call ADD_DOCKER_REGEN,debian11,deb,debian:bullseye,debian,11,bullseye))
-$(eval $(call ADD_DOCKER_REGEN,debian12,deb,debian:bookworm,debian,12,bookworm))
-$(eval $(call ADD_DOCKER_REGEN,ubuntu18,deb,ubuntu:18.04,ubuntu,18,bionic))
-$(eval $(call ADD_DOCKER_REGEN,ubuntu20,deb,ubuntu:20.04,ubuntu,20,focal))
-$(eval $(call ADD_DOCKER_REGEN,ubuntu22,deb,ubuntu:22.04,ubuntu,22,jammy))
-$(eval $(call ADD_DOCKER_REGEN,ubuntu24,deb,ubuntu:24.04,ubuntu,24,noble))
-$(eval $(call ADD_DOCKER_REGEN,centos7,rpm,centos:centos7,centos,7,7))
-$(eval $(call ADD_DOCKER_REGEN,rocky8,rpm,rockylinux/rockylinux:8,rocky,8,8))
-$(eval $(call ADD_DOCKER_REGEN,rocky9,rpm,rockylinux/rockylinux:9,rocky,9,9))
+$(foreach IMAGE,$(DOCKER_IMAGES), \
+  $(eval $(call ADD_DOCKER_REGEN,$(IMAGE))))
 
 .PHONY: docker.regen
 docker.regen: $(DOCKER_DOCKERFILES)
