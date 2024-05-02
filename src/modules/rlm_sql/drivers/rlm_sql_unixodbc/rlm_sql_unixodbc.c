@@ -117,39 +117,39 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
     return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	rlm_sql_unixodbc_conn_t *conn = handle->conn;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_unixodbc_conn_t *conn = query_ctx->handle->conn;
 	long err_handle;
-	int state;
 
 	/* Executing query */
-	err_handle = SQLExecDirect(conn->stmt, UNCONST(SQLCHAR *, query), strlen(query));
-	if ((state = sql_check_error(err_handle, handle, config))) {
-		if(state == RLM_SQL_RECONNECT) {
+	err_handle = SQLExecDirect(conn->stmt, UNCONST(SQLCHAR *, query_ctx->query_str), strlen(query_ctx->query_str));
+	if ((query_ctx->rcode = sql_check_error(err_handle, query_ctx->handle, &query_ctx->inst->config))) {
+		if(query_ctx->rcode == RLM_SQL_RECONNECT) {
 			DEBUG("rlm_sql will attempt to reconnect");
 		}
-		return state;
+		RETURN_MODULE_FAIL;
 	}
-	return 0;
+	RETURN_MODULE_OK;
 }
 
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	rlm_sql_unixodbc_conn_t *conn = handle->conn;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_unixodbc_conn_t *conn = query_ctx->handle->conn;
 	SQLINTEGER i;
 	SQLLEN len;
 	int colcount;
-	int state;
 
 	/* Only state = 0 means success */
-	if ((state = sql_query(handle, config, query))) {
-		return state;
-	}
+	if ((sql_query(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	    (query_ctx->rcode != RLM_SQL_OK)) RETURN_MODULE_FAIL;
 
-	colcount = sql_num_fields(handle, config);
+	colcount = sql_num_fields(query_ctx->handle, &query_ctx->inst->config);
 	if (colcount < 0) {
-		return RLM_SQL_ERROR;
+		query_ctx->rcode = RLM_SQL_ERROR;
+		RETURN_MODULE_FAIL;
 	}
 
 	/* Reserving memory for result */
@@ -162,7 +162,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, NULL);
 	}
 
-	return RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)

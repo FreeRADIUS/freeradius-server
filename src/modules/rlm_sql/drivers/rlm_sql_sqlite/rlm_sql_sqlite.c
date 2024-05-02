@@ -452,42 +452,46 @@ static sql_rcode_t CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rl
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	rlm_sql_sqlite_conn_t	*conn = handle->conn;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_sqlite_conn_t	*conn = query_ctx->handle->conn;
 	char const		*z_tail;
 	int			status;
 
 #ifdef HAVE_SQLITE3_PREPARE_V2
-	status = sqlite3_prepare_v2(conn->db, query, strlen(query), &conn->statement, &z_tail);
+	status = sqlite3_prepare_v2(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
 #else
-	status = sqlite3_prepare(conn->db, query, strlen(query), &conn->statement, &z_tail);
+	status = sqlite3_prepare(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
 #endif
 
 	conn->col_count = 0;
 
-	return sql_check_error(conn->db, status);
+	query_ctx->rcode = sql_check_error(conn->db, status);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	RETURN_MODULE_OK;
 }
 
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-
-	sql_rcode_t		rcode;
-	rlm_sql_sqlite_conn_t	*conn = handle->conn;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_sqlite_conn_t	*conn = query_ctx->handle->conn;
 	char const		*z_tail;
 	int			status;
 
 #ifdef HAVE_SQLITE3_PREPARE_V2
-	status = sqlite3_prepare_v2(conn->db, query, strlen(query), &conn->statement, &z_tail);
+	status = sqlite3_prepare_v2(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
 #else
-	status = sqlite3_prepare(conn->db, query, strlen(query), &conn->statement, &z_tail);
+	status = sqlite3_prepare(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
 #endif
-	rcode = sql_check_error(conn->db, status);
-	if (rcode != RLM_SQL_OK) return rcode;
+	query_ctx->rcode = sql_check_error(conn->db, status);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
 	status = sqlite3_step(conn->statement);
-	return sql_check_error(conn->db, status);
+	query_ctx->rcode = sql_check_error(conn->db, status);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+	RETURN_MODULE_OK;
 }
 
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)

@@ -432,16 +432,17 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	rlm_sql_cassandra_conn_t	*conn = handle->conn;
-	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(handle->inst->driver_submodule->data, rlm_sql_cassandra_t);
+	fr_sql_query_t			*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_cassandra_conn_t	*conn = query_ctx->handle->conn;
+	rlm_sql_cassandra_t		*inst = talloc_get_type_abort(query_ctx->handle->inst->driver_submodule->data, rlm_sql_cassandra_t);
 
 	CassStatement			*statement;
 	CassFuture			*future;
 	CassError			ret;
 
-	statement = cass_statement_new_n(query, talloc_array_length(query) - 1, 0);
+	statement = cass_statement_new_n(query_ctx->query_str, talloc_array_length(query_ctx->query_str) - 1, 0);
 	if (inst->consistency_str) cass_statement_set_consistency(statement, inst->consistency);
 
 	future = cass_session_execute(inst->session, statement);
@@ -459,17 +460,20 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 		switch (ret) {
 		case CASS_ERROR_SERVER_SYNTAX_ERROR:
 		case CASS_ERROR_SERVER_INVALID_QUERY:
-			return RLM_SQL_QUERY_INVALID;
+			query_ctx->rcode = RLM_SQL_QUERY_INVALID;
+			RETURN_MODULE_INVALID;
 
 		default:
-			return RLM_SQL_ERROR;
+			query_ctx->rcode = RLM_SQL_ERROR;
+			RETURN_MODULE_FAIL;
 		}
 	}
 
 	conn->result = cass_future_get_result(future);
 	cass_future_free(future);
 
-	return RLM_SQL_OK;
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)

@@ -89,12 +89,13 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	return 0;
 }
 
-/** Issue a non-SELECT query (ie: update/delete/insert) to the database.
+/** Issue a query to the database.
  *
  */
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config, char const *query)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-	rlm_sql_firebird_conn_t *conn = handle->conn;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_firebird_conn_t *conn = query_ctx->handle->conn;
 
 	int deadlock = 0;
 
@@ -105,11 +106,11 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 	 *	Try again query when deadlock, because in any case it
 	 *	will be retried.
 	 */
-	if (fb_sql_query(conn, query)) {
+	if (fb_sql_query(conn, query_ctx->query_str)) {
 		/* but may be lost for short sessions */
 		if ((conn->sql_code == DEADLOCK_SQL_CODE) &&
 		    !deadlock) {
-			DEBUG("conn_id deadlock. Retry query %s", query);
+			DEBUG("conn_id deadlock. Retry query %s", query_ctx->query_str);
 
 			/*
 			 *	@todo For non READ_COMMITED transactions put
@@ -121,12 +122,13 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 		}
 
 		ERROR("conn_id rlm_sql_firebird,sql_query error: sql_code=%li, error='%s', query=%s",
-		      (long int) conn->sql_code, conn->error, query);
+		      (long int) conn->sql_code, conn->error, query_ctx->query_str);
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
 			pthread_mutex_unlock(&conn->mut);
 
-			return RLM_SQL_RECONNECT;
+			query_ctx->rcode = RLM_SQL_RECONNECT;
+			RETURN_MODULE_FAIL;
 		}
 
 		/* Free problem query */
@@ -134,28 +136,26 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t c
 			//assume the network is down if rollback had failed
 			ERROR("Fail to rollback transaction after previous error: %s", conn->error);
 
-			return RLM_SQL_RECONNECT;
+			query_ctx->rcode = RLM_SQL_RECONNECT;
+			RETURN_MODULE_FAIL;
 		}
 		//   conn->in_use=0;
 
-		return RLM_SQL_ERROR;
+		query_ctx->rcode = RLM_SQL_ERROR;
+		RETURN_MODULE_FAIL;
 	}
 
 	if (conn->statement_type != isc_info_sql_stmt_select) {
-		if (fb_commit(conn)) return RLM_SQL_ERROR;	/* fb_commit unlocks the mutex */
+		if (fb_commit(conn)) {
+			query_ctx->rcode = RLM_SQL_ERROR;	/* fb_commit unlocks the mutex */
+			RETURN_MODULE_FAIL;
+		}
 	} else {
 		pthread_mutex_unlock(&conn->mut);
 	}
 
-	return 0;
-}
-
-/** Issue a select query to the database.
- *
- */
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, char const *query)
-{
-	return sql_query(handle, config, query);
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 /** Returns number of columns from query.
@@ -298,7 +298,7 @@ rlm_sql_driver_t rlm_sql_firebird = {
 	},
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
-	.sql_select_query		= sql_select_query,
+	.sql_select_query		= sql_query,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
