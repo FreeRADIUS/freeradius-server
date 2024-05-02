@@ -69,7 +69,7 @@ endif
 #
 
 define ADD_DOCKER_REGEN
-    $$(DIST_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/Dockerfile.m4 $(DOCKER_DIR)/m4/Dockerfile.deb.m4 $(DOCKER_DIR)/m4/Dockerfile.rpm.m4 $(DOCKER_DIR)/docker.mk
+    $$(DIST_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/Dockerfile.m4 $(DOCKER_DIR)/m4/Dockerfile.deb.m4 $(DOCKER_DIR)/m4/Dockerfile.rpm.m4 $(DOCKER_DIR)/m4/Dockerfile.alpine.m4 $(DOCKER_DIR)/docker.mk
 	$$(Q)echo REGEN ${1}/Dockerfile
 	$$(Q)m4 -I $(DOCKER_DIR)/m4 -D D_NAME=${1} -D D_TYPE=docker $$< > $$@
 
