@@ -163,7 +163,7 @@ int fr_totp_cmp(fr_totp_t const *cfg, request_t *request, time_t now, uint8_t co
 		 */
 		if ((then < now) && (i <= cfg->lookforward_steps)) {
 		forwards:
-			then = now + offset;
+			then = now + diff;
 			goto repeat;
 		}
 	}
