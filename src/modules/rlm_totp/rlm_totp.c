@@ -59,6 +59,7 @@ typedef struct rlm_totp_t {
         uint32_t	otp_length;		//!< forced to 6 or 8
         uint32_t	lookback_steps;		//!< number of steps to look back
         uint32_t	lookback_interval;	//!< interval in seconds between steps
+	uint32_t	lookforward_steps;	//!< number of steps to look forwards
 	rbtree_t	*dedup_tree;
 	fr_dlist_t	dedup_list;
 #ifdef HAVE_PTHREAD_H
@@ -73,12 +74,13 @@ static const CONF_PARSER module_config[] = {
         { "otp_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_totp_t, otp_length), "6" },
 	{ "lookback_steps", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_totp_t, lookback_steps), "1" },
 	{ "lookback_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_totp_t, lookback_interval), "30" },
+	{ "lookforward_steps", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_totp_t, lookforward_steps), "0" },
 	CONF_PARSER_TERMINATOR
 };
 
 #define TIME_STEP      (inst->time_step)
 #define OTP_LEN        (inst->otp_length)
-#define BACK_STEPS     (inst->lookback_steps)
+#define BACK_STEPS     (steps)
 #define BACK_STEP_SECS (inst->lookback_interval)
 #else
 #define TIME_STEP	(30)
@@ -276,6 +278,8 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->lookback_steps, >=, 1);
 	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->lookback_steps, <=, 10);
 
+	FR_INTEGER_BOUND_CHECK("lookforward_steps", inst->lookforward_steps, <=, 10);
+
 	FR_INTEGER_BOUND_CHECK("lookback_interval", inst->lookback_interval, <=, inst->time_step);
 
 	FR_INTEGER_BOUND_CHECK("otp_length", inst->otp_length, >=, 6);
@@ -316,8 +320,9 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 {
 #ifndef TESTING
         rlm_totp_t *inst = instance;
+	uint32_t steps = inst->lookback_steps > inst->lookforward_steps ? inst->lookback_steps : inst->lookforward_steps;
 #endif
-	time_t then;
+	time_t diff, then;
 	unsigned int i;
 	uint8_t offset;
 	uint32_t challenge;
@@ -334,6 +339,13 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 	 */
 
 	for (i = 0, diff = 0; i <= BACK_STEPS; i++, diff += BACK_STEP_SECS) {
+#ifndef TESTING
+		if (i > inst->lookback_steps) goto forwards;
+#endif
+		then = now - diff;
+#ifndef TESTING
+	repeat:
+#endif
 		padded = (uint64_t) then / TIME_STEP;
 		data[0] = padded >> 56;
 		data[1] = padded >> 48;
@@ -373,6 +385,17 @@ static int totp_cmp(TESTING_UNUSED REQUEST *request, time_t now, uint8_t const *
 		RDEBUG3("Received %s", totp);
 
 		if (rad_digest_cmp((uint8_t const *) buffer, (uint8_t const *) totp, OTP_LEN) == 0) return 0;
+
+#ifndef TESTING
+		/*
+		 *	We've tested backwards, now do the equivalent time slot forwards
+		 */
+		if ((then < now) && (i <= inst->lookforward_steps)) {
+		forwards:
+			then = now + diff;
+			goto repeat;
+		}
+#endif
 	}
 	return 1;
 }

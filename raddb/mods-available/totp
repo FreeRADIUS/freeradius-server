@@ -58,6 +58,11 @@ totp {
 	lookback_steps = 1
 
 	#
+	#  How many steps forward in time we look for a matching OTP
+	#
+	lookforward_steps = 0
+
+	#
 	#  Time delta between steps.
 	#
 	#  Cannot be larger than time_step
