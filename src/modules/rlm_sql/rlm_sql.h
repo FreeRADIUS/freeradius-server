@@ -183,7 +183,7 @@ typedef struct {
 	int		(*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 	int		(*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
-	sql_rcode_t	(*sql_fetch_row)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	unlang_function_t	sql_fetch_row;
 	sql_rcode_t	(*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 	sql_rcode_t	(*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 

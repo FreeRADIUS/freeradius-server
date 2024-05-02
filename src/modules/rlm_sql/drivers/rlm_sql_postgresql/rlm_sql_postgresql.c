@@ -422,15 +422,17 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-
-	int records, i, len;
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_handle_t	*handle = query_ctx->handle;
+	int			records, i, len;
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
 	handle->row = NULL;
 
-	if (conn->cur_row >= PQntuples(conn->result)) return RLM_SQL_NO_MORE_ROWS;
+	query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+	if (conn->cur_row >= PQntuples(conn->result)) RETURN_MODULE_OK;
 
 	free_result_row(conn);
 
@@ -447,10 +449,10 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 		conn->cur_row++;
 		handle->row = conn->row;
 
-		return RLM_SQL_OK;
+		query_ctx->rcode = RLM_SQL_OK;
 	}
 
-	return RLM_SQL_NO_MORE_ROWS;
+	RETURN_MODULE_OK;
 }
 
 static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)

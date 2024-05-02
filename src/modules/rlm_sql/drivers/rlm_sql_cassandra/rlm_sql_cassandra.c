@@ -518,13 +518,14 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
-
-	rlm_sql_cassandra_conn_t 	*conn = handle->conn;
+	fr_sql_query_t			*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_cassandra_conn_t 	*conn = query_ctx->handle->conn;
 	CassRow	const 			*cass_row;
 	int				fields, i;
 	char				**row;
+	rlm_sql_handle_t		*handle = query_ctx->handle;
 
 #define RLM_CASS_ERR_DATA_RETRIVE(_t) \
 do {\
@@ -537,21 +538,26 @@ do {\
 	sql_set_last_error_printf(conn, "Failed to retrieve " _t " data at column %s (%d): %s", \
 				  _col_name, i, cass_error_desc(_ret));\
 	TALLOC_FREE(handle->row);\
-	return RLM_SQL_ERROR;\
+	query_ctx->rcode = RLM_SQL_ERROR;\
+	RETURN_MODULE_FAIL;\
 } while(0)
 
-	if (!conn->result) return RLM_SQL_OK;				/* no result */
+	query_ctx->rcode = RLM_SQL_OK;
+	if (!conn->result) RETURN_MODULE_OK;				/* no result */
 
 	/*
 	 *	Start of the result set, initialise the iterator.
 	 */
 	if (!conn->iterator) conn->iterator = cass_iterator_from_result(conn->result);
-	if (!conn->iterator) return RLM_SQL_OK;				/* no result */
+	if (!conn->iterator) RETURN_MODULE_OK;				/* no result */
 
-	if (!cass_iterator_next(conn->iterator)) return RLM_SQL_NO_MORE_ROWS;	/* no more rows */
+	if (!cass_iterator_next(conn->iterator)) {
+		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;		/* no more rows */
+		RETURN_MODULE_OK;
+	}
 
 	cass_row = cass_iterator_get_row(conn->iterator);		/* this shouldn't fail ? */
-	fields = sql_num_fields(handle, config);			/* get the number of fields... */
+	fields = sql_num_fields(handle, &query_ctx->inst->config);	/* get the number of fields... */
 
 	/*
 	 *	Free the previous result (also gets called on finish_query)
@@ -639,12 +645,13 @@ do {\
 						  "Failed to retrieve data at column %s (%d): Unsupported data type",
 						  col_name, i);
 			talloc_free(handle->row);
-			return RLM_SQL_ERROR;
+			query_ctx->rcode = RLM_SQL_ERROR;
+			RETURN_MODULE_FAIL;
 		}
 		}
 	}
 
-	return RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)

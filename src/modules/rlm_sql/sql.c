@@ -320,7 +320,7 @@ unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, r
 	 *	may require the original connection to free up queries or
 	 *	result sets associated with that connection.
 	 */
-	query_ctx->rcode = (inst->driver->sql_fetch_row)(query_ctx->handle, &inst->config);
+	(inst->driver->sql_fetch_row)(p_result, NULL, request, query_ctx);
 	switch (query_ctx->rcode) {
 	case RLM_SQL_OK:
 		fr_assert(query_ctx->handle->row != NULL);

@@ -215,22 +215,28 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_handle_t	*handle = query_ctx->handle;
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
-	long err_handle;
-	int state;
+	long			err_handle;
 
 	handle->row = NULL;
 
 	err_handle = SQLFetch(conn->stmt);
-	if (err_handle == SQL_NO_DATA_FOUND) return RLM_SQL_NO_MORE_ROWS;
+	if (err_handle == SQL_NO_DATA_FOUND) {
+		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+		RETURN_MODULE_OK;
+	}
 
-	if ((state = sql_check_error(err_handle, handle, config))) return state;
+	query_ctx->rcode = sql_check_error(err_handle, handle, &query_ctx->inst->config);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
 	handle->row = conn->row;
 
-	return RLM_SQL_OK;
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
 }
 
 static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t const *config)
