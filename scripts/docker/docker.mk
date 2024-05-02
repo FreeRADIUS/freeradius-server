@@ -42,6 +42,7 @@ DOCKER_REGISTRY :=
 #
 #  Location of Docker-related files
 DOCKER_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+DIST_DIR := $(DOCKER_DIR)/dists
 
 ifeq "${VERBOSE}" ""
     Q=@
@@ -64,14 +65,14 @@ endif
 #
 
 define ADD_DOCKER_REGEN
-    $$(DOCKER_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/Dockerfile.m4 $(DOCKER_DIR)/m4/Dockerfile.deb.m4 $(DOCKER_DIR)/m4/Dockerfile.rpm.m4 $(DOCKER_DIR)/docker.mk
+    $$(DIST_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/Dockerfile.m4 $(DOCKER_DIR)/m4/Dockerfile.deb.m4 $(DOCKER_DIR)/m4/Dockerfile.rpm.m4 $(DOCKER_DIR)/docker.mk
 	$$(Q)echo REGEN ${1}/Dockerfile
 	$$(Q)m4 -I $(DOCKER_DIR)/m4 -D D_NAME=${1} -D D_TYPE=docker $$< > $$@
 
-    DOCKER_DOCKERFILES += $$(DOCKER_DIR)/${1}/Dockerfile
+    DOCKER_DOCKERFILES += $$(DIST_DIR)/${1}/Dockerfile
 
     .PHONY: docker.${1}.regen
-    docker.${1}.regen: $$(DOCKER_DIR)/${1}/Dockerfile
+    docker.${1}.regen: $$(DIST_DIR)/${1}/Dockerfile
 endef
 
 $(eval $(call ADD_DOCKER_REGEN,debian10,deb,debian:buster,debian,10,buster))
