@@ -31,6 +31,7 @@ RCSIDH(rlm_sql_h, "$Id$")
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/server/trunk.h>
 #include <freeradius-devel/unlang/function.h>
 
 #define FR_ITEM_CHECK 0
@@ -97,6 +98,14 @@ typedef struct {
 } rlm_sql_config_t;
 
 typedef struct sql_inst rlm_sql_t;
+
+/*
+ *	Per-thread instance data structure
+ */
+typedef struct {
+	fr_trunk_t		*trunk;				//!< Trunk connection for this thread.
+	rlm_sql_t const		*inst;				//!< Module instance data.
+} rlm_sql_thread_t;
 
 typedef struct {
 	void			*conn;				//!< Database specific connection handle.
