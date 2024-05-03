@@ -47,6 +47,8 @@ DIST_DIR := $(DOCKER_DIR)/dists
 #  List of images we can build
 DOCKER_IMAGES:=$(sort $(patsubst $(DIST_DIR)/%,%,$(wildcard $(DIST_DIR)/*)))
 
+DOCKER_DEFAULT_UBUNTU := ubuntu22
+DOCKER_DEFAULT_ALPINE := alpine
 
 ifeq "${VERBOSE}" ""
     Q=@
@@ -65,10 +67,10 @@ endif
 
 
 #
-#  Rules to regenerate Dockerfiles
+#  Rules for each OS
 #
 
-define ADD_DOCKER_REGEN
+define ADD_DOCKER_RULES
     $$(DIST_DIR)/${1}/Dockerfile: $(DOCKER_DIR)/m4/Dockerfile.m4 $(DOCKER_DIR)/m4/Dockerfile.deb.m4 $(DOCKER_DIR)/m4/Dockerfile.rpm.m4 $(DOCKER_DIR)/m4/Dockerfile.alpine.m4 $(DOCKER_DIR)/docker.mk
 	$$(Q)echo REGEN ${1}/Dockerfile
 	$$(Q)m4 -I $(DOCKER_DIR)/m4 -D D_NAME=${1} -D D_TYPE=docker $$< > $$@
@@ -77,10 +79,18 @@ define ADD_DOCKER_REGEN
 
     .PHONY: docker.${1}.regen
     docker.${1}.regen: $$(DIST_DIR)/${1}/Dockerfile
+
+    .PHONY: docker.${1}.build
+    docker.${1}.build:
+	@echo BUILD ${1} $(DOCKER_COMMIT)
+	$(Q)docker build $(DOCKER_BUILD_ARGS) \
+		--build-arg=release=$(DOCKER_COMMIT) \
+		-t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-${1} \
+		$(DIST_DIR)/${1}
 endef
 
 $(foreach IMAGE,$(DOCKER_IMAGES), \
-  $(eval $(call ADD_DOCKER_REGEN,$(IMAGE))))
+  $(eval $(call ADD_DOCKER_RULES,$(IMAGE))))
 
 .PHONY: docker.regen
 docker.regen: $(DOCKER_DOCKERFILES)
@@ -89,16 +99,17 @@ docker.regen: $(DOCKER_DOCKERFILES)
 #
 #  Rules to rebuild Docker images
 #
-
 .PHONY: docker-ubuntu
-docker-ubuntu:
-	@echo Building ubuntu $(DOCKER_COMMIT)
-	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/ubuntu22 --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
+docker-ubuntu: docker.$(DOCKER_DEFAULT_UBUNTU).build
+	$(Q)docker image tag \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-$(DOCKER_DEFAULT_UBUNTU) \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
 
 .PHONY: docker-alpine
-docker-alpine:
-	@echo Building alpine $(DOCKER_COMMIT)
-	$(Q)docker build $(DOCKER_BUILD_ARGS) scripts/docker/alpine --build-arg=release=$(DOCKER_COMMIT) -t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine
+docker-alpine: docker.$(DOCKER_DEFAULT_ALPINE).build
+	$(Q)docker image tag \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-$(DOCKER_DEFAULT_ALPINE) \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine
 
 .PHONY: docker
 docker: docker-ubuntu docker-alpine
