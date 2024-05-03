@@ -101,7 +101,7 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
 		fr_sql_query_t	*query_ctx;
 		rlm_rcode_t	p_result;
 		MEM(query_ctx = fr_sql_query_alloc(ctx, inst, handle, inst->config.connect_query, SQL_QUERY_OTHER));
-		rlm_sql_query(&p_result, NULL, NULL, query_ctx);
+		inst->query(&p_result, NULL, NULL, query_ctx);
 		if (query_ctx->rcode != RLM_SQL_OK) {
 			talloc_free(query_ctx);
 			goto fail;
@@ -643,7 +643,7 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 	fr_assert(request);
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, *handle, query, SQL_QUERY_SELECT));
-	rlm_sql_select_query(&p_result, NULL, request, query_ctx);
+	inst->select(&p_result, NULL, request, query_ctx);
 	if (query_ctx->rcode != RLM_SQL_OK) {
 	error:
 		*handle = query_ctx->handle;
@@ -651,7 +651,7 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 		return -1;
 	}
 
-	while ((rlm_sql_fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	while ((inst->fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 	       (query_ctx->rcode == RLM_SQL_OK)) {
 		map_t *map;
 

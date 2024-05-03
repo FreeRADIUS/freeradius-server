@@ -430,7 +430,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle,
 						   arg->vb_strvalue, SQL_QUERY_OTHER));
-		rlm_sql_query(&p_result, NULL, request, query_ctx);
+		inst->query(&p_result, NULL, request, query_ctx);
 		if (query_ctx->rcode != RLM_SQL_OK) {
 		query_error:
 			RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table,
@@ -456,11 +456,11 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle,
 					   arg->vb_strvalue, SQL_QUERY_SELECT));
-	rlm_sql_select_query(&p_result, NULL, request, query_ctx);
+	inst->select(&p_result, NULL, request, query_ctx);
 	if (query_ctx->rcode != RLM_SQL_OK) goto query_error;
 
 	do {
-		rlm_sql_fetch_row(&p_result, NULL, request, query_ctx);
+		inst->fetch_row(&p_result, NULL, request, query_ctx);
 		row = query_ctx->handle->row;
 		switch (query_ctx->rcode) {
 		case RLM_SQL_OK:
@@ -613,7 +613,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	}
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle, query_str, SQL_QUERY_SELECT));
-	rlm_sql_select_query(p_result, NULL, request, query_ctx);
+	inst->select(p_result, NULL, request, query_ctx);
 	handle = query_ctx->handle;
 
 	if (query_ctx->rcode != RLM_SQL_OK) {
@@ -695,7 +695,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	 *	Note: Not all SQL client libraries provide a row count,
 	 *	so we have to do the count here.
 	 */
-	while ((rlm_sql_fetch_row(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	while ((inst->fetch_row(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 	       (query_ctx->rcode == RLM_SQL_OK)) {
 		row = query_ctx->handle->row;
 		rows++;
@@ -887,14 +887,14 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, *handle, query, SQL_QUERY_SELECT ));
 
-	rlm_sql_select_query(&p_result, NULL, request, query_ctx);
+	inst->select(&p_result, NULL, request, query_ctx);
 	if (query_ctx->rcode != RLM_SQL_OK) {
 		talloc_free(query_ctx);
 		return -1;
 	}
 	*handle = query_ctx->handle;
 
-	while ((rlm_sql_fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	while ((inst->fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 		(query_ctx->rcode == RLM_SQL_OK)) {
 		row = query_ctx->handle->row;
 		if (!row[0]){
@@ -1530,7 +1530,7 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, redundant_ctx->handle,
 					   query->vb_strvalue, SQL_QUERY_SELECT));
 
-	rlm_sql_query(p_result, NULL, request, query_ctx);
+	inst->query(p_result, NULL, request, query_ctx);
 	talloc_free(query);
 
 	RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, query_ctx->rcode, "<INVALID>"));
