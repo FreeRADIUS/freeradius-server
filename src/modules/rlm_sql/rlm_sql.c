@@ -169,6 +169,7 @@ typedef struct {
 	request_t		*request;	//!< Request being processed.
 	rlm_rcode_t		rcode;		//!< Module return code.
 	rlm_sql_handle_t	*handle;	//!< Database connection handle in use for current authorization.
+	fr_trunk_t		*trunk;		//!< Trunk connection for current authorization.
 	sql_autz_call_env_t	*call_env;	//!< Call environment data.
 	map_list_t		check_tmp;	//!< List to store check items before processing.
 	map_list_t		reply_tmp;	//!< List to store reply items before processing.
@@ -213,6 +214,7 @@ typedef struct {
 	rlm_sql_t const			*inst;		//!< Module instance.
 	request_t			*request;	//!< Request being processed.
 	rlm_sql_handle_t		*handle;	//!< Database connection handle.
+	fr_trunk_t			*trunk;		//!< Trunk connection for queries.
 	sql_redundant_call_env_t	*call_env;	//!< Call environment data.
 	size_t				query_no;	//!< Current query number.
 	fr_value_box_list_t		query;		//!< Where expanded query tmpl will be written.
@@ -397,6 +399,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
 	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_sql_thread_t);
 	xlat_action_t		ret = XLAT_ACTION_DONE;
 	char const		*p;
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
@@ -429,7 +432,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		int numaffected;
 
 		MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle,
-						   arg->vb_strvalue, SQL_QUERY_OTHER));
+						   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
 		inst->query(&p_result, NULL, request, query_ctx);
 		if (query_ctx->rcode != RLM_SQL_OK) {
 		query_error:
@@ -454,7 +457,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle,
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle, thread->trunk,
 					   arg->vb_strvalue, SQL_QUERY_SELECT));
 	inst->select(&p_result, NULL, request, query_ctx);
 	if (query_ctx->rcode != RLM_SQL_OK) goto query_error;
@@ -564,6 +567,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 				    fr_value_box_list_t *query, map_list_t const *maps)
 {
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(mod_inst, rlm_sql_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, rlm_sql_thread_t);
 	rlm_sql_handle_t	*handle = NULL;
 
 	int			i, j;
@@ -612,7 +616,8 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 		RETURN_MODULE_FAIL;
 	}
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle, query_str, SQL_QUERY_SELECT));
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle, thread->trunk,
+					   query_str, SQL_QUERY_SELECT));
 	inst->select(p_result, NULL, request, query_ctx);
 	handle = query_ctx->handle;
 
@@ -870,7 +875,7 @@ struct rlm_sql_grouplist_s {
 	rlm_sql_grouplist_t	*next;
 };
 
-static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, request_t *request,
+static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, fr_trunk_t *trunk, request_t *request,
 			     char const *query, rlm_sql_grouplist_t **phead)
 {
 	int     		num_groups = 0;
@@ -885,7 +890,8 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, r
 
 	if (!query || !*query) return 0;
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, *handle, query, SQL_QUERY_SELECT ));
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, *handle, trunk,
+					   query, SQL_QUERY_SELECT));
 
 	inst->select(&p_result, NULL, request, query_ctx);
 	if (query_ctx->rcode != RLM_SQL_OK) {
@@ -930,6 +936,7 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	bool rcode = false;
 	rlm_sql_handle_t	*handle;
 	rlm_sql_grouplist_t	*entry, *head = NULL;
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, rlm_sql_thread_t);
 
 	/*
 	 *	Get a socket for this lookup
@@ -943,7 +950,7 @@ static bool CC_HINT(nonnull) sql_check_group(rlm_sql_t const *inst, request_t *r
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, &handle, request, query, &head) < 0) {
+	if (sql_get_grouplist(inst, &handle, thread->trunk, request, query, &head) < 0) {
 		talloc_free(head);
 		REDEBUG("Error getting group membership");
 		fr_pool_connection_release(inst->pool, request, handle);
@@ -1113,7 +1120,7 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 
 	switch(autz_ctx->status) {
 	case SQL_AUTZ_GROUP_MEMB:
-		rows = sql_get_grouplist(inst, &autz_ctx->handle, request, query->vb_strvalue, &autz_ctx->groups);
+		rows = sql_get_grouplist(inst, &autz_ctx->handle, autz_ctx->trunk, request, query->vb_strvalue, &autz_ctx->groups);
 		talloc_free(query);
 
 		if (rows < 0) {
@@ -1164,8 +1171,8 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 
 	case SQL_AUTZ_GROUP_CHECK:
 	case SQL_AUTZ_PROFILE_CHECK:
-		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, &autz_ctx->check_tmp,
-					query->vb_strvalue, request_attr_request);
+		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, autz_ctx->trunk,
+					&autz_ctx->check_tmp, query->vb_strvalue, request_attr_request);
 		talloc_free(query);
 
 		if (rows < 0) {
@@ -1210,8 +1217,8 @@ static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *
 
 	case SQL_AUTZ_GROUP_REPLY:
 	case SQL_AUTZ_PROFILE_REPLY:
-		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, &autz_ctx->reply_tmp,
-					query->vb_strvalue, request_attr_reply);
+		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, autz_ctx->trunk,
+					&autz_ctx->reply_tmp, query->vb_strvalue, request_attr_reply);
 		talloc_free(query);
 
 		if (rows < 0) {
@@ -1304,8 +1311,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 
 	switch(autz_ctx->status) {
 	case SQL_AUTZ_CHECK:
-		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, &autz_ctx->check_tmp,
-					query->vb_strvalue, request_attr_request);
+		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, autz_ctx->trunk,
+					&autz_ctx->check_tmp, query->vb_strvalue, request_attr_request);
 		talloc_free(query);
 
 		if (rows < 0) {
@@ -1335,8 +1342,8 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case SQL_AUTZ_REPLY:
-		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, &autz_ctx->reply_tmp,
-					query->vb_strvalue, request_attr_reply);
+		rows = sql_get_map_list(autz_ctx, inst, request, &autz_ctx->handle, autz_ctx->trunk,
+					&autz_ctx->reply_tmp, query->vb_strvalue, request_attr_reply);
 		talloc_free(query);
 
 		if (rows < 0) {
@@ -1420,6 +1427,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sql_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
 	sql_autz_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_autz_call_env_t);
 	sql_autz_ctx_t		*autz_ctx;
 
@@ -1441,6 +1449,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		.inst = inst,
 		.call_env = call_env,
 		.request = request,
+		.trunk = thread->trunk,
 		.rcode = RLM_MODULE_NOOP
 	};
 	map_list_init(&autz_ctx->check_tmp);
@@ -1528,7 +1537,7 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 	}
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, redundant_ctx->handle,
-					   query->vb_strvalue, SQL_QUERY_SELECT));
+					   redundant_ctx->trunk, query->vb_strvalue, SQL_QUERY_SELECT));
 
 	inst->query(p_result, NULL, request, query_ctx);
 	talloc_free(query);
@@ -1604,6 +1613,7 @@ next:
 static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_sql_t const			*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sql_t);
+	rlm_sql_thread_t		*thread = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
 	sql_redundant_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_redundant_call_env_t);
 	sql_redundant_ctx_t		*redundant_ctx;
 
@@ -1619,6 +1629,7 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 	*redundant_ctx = (sql_redundant_ctx_t) {
 		.inst = inst,
 		.request = request,
+		.trunk = thread->trunk,
 		.call_env = call_env,
 		.query_no = 0
 	};

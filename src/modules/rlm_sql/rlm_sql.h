@@ -132,6 +132,9 @@ typedef enum {
 typedef struct {
 	rlm_sql_t const		*inst;				//!< Module instance for this query.
 	rlm_sql_handle_t	*handle;			//!< Connection handle this query is being run on.
+	fr_trunk_t		*trunk;				//!< Trunk this query is being run on.
+	fr_trunk_connection_t	*tconn;				//!< Trunk connection this query is being run on.
+	fr_trunk_request_t	*treq;				//!< Trunk request for this query.
 	char const		*query_str;			//!< Query string to run.
 	fr_sql_query_type_t	type;				//!< Type of query.
 	fr_sql_query_status_t	status;				//!< Status of the query.
@@ -220,7 +223,7 @@ struct sql_inst {
 	unlang_function_t	query;
 	unlang_function_t	select;
 	unlang_function_t	fetch_row;
-	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, char const *query_str, fr_sql_query_type_t type);
+	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, fr_trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
@@ -228,13 +231,13 @@ struct sql_inst {
 };
 
 void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
-int		sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, map_list_t *out, char const *query, fr_dict_attr_t const *list);
+int		sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle, fr_trunk_t *trunk, map_list_t *out, char const *query, fr_dict_attr_t const *list);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
 unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 unlang_action_t	rlm_sql_query(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
 unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug);
-fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, char const *query_str, fr_sql_query_type_t type);
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle, fr_trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 
 /*
  *	sql_state.c

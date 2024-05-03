@@ -85,6 +85,7 @@ typedef struct {
 	ippool_alloc_status_t	status;		//!< Status of the allocation.
 	ippool_alloc_call_env_t	*env;		//!< Call environment for the allocation.
 	rlm_sql_handle_t	*handle;	//!< SQL handle being used for queries.
+	fr_trunk_t		*trunk;		//!< Trunk connection for queries.
 	rlm_sql_t const		*sql;		//!< SQL module instance.
 	fr_value_box_list_t	values;		//!< Where to put the expanded queries ready for execution.
 } ippool_alloc_ctx_t;
@@ -122,13 +123,14 @@ static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
  *
  * @param[in] query sql query to execute.
  * @param[in] handle sql connection handle.
+ * @param[in] trunk connection for queries.
  * @param[in] sql Instance of rlm_sql.
  * @param[in] request Current request.
  * @return
  *	- number of affected rows on success.
  *	- < 0 on error.
  */
-static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
+static int sqlippool_command(char const *query, rlm_sql_handle_t **handle, fr_trunk_t *trunk,
 			     rlm_sql_t const *sql, request_t *request)
 {
 	int		affected;
@@ -145,7 +147,7 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
 	 */
 	if (!handle || !*handle) return -1;
 
-	query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, *handle, query, SQL_QUERY_SELECT);
+	query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, *handle, trunk, query, SQL_QUERY_SELECT);
 
 	sql->query(&p_result, NULL, request, query_ctx);
 	*handle = query_ctx->handle;
@@ -166,11 +168,11 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
 /*
  *	Don't repeat yourself
  */
-#define DO_PART(_x) if(env->_x.type == FR_TYPE_STRING) { \
-	if(sqlippool_command(env->_x.vb_strvalue, &handle, sql, request) <0) goto error; \
+#define DO_PART(_x, _trunk) if(env->_x.type == FR_TYPE_STRING) { \
+	if(sqlippool_command(env->_x.vb_strvalue, &handle, _trunk, sql, request) <0) goto error; \
 }
-#define DO_AFFECTED(_x, _affected) if (env->_x.type == FR_TYPE_STRING) { \
-	_affected = sqlippool_command(env->_x.vb_strvalue, &handle, sql, request); if (_affected < 0) goto error; \
+#define DO_AFFECTED(_x, _trunk, _affected) if (env->_x.type == FR_TYPE_STRING) { \
+	_affected = sqlippool_command(env->_x.vb_strvalue, &handle, _trunk, sql, request); if (_affected < 0) goto error; \
 }
 #define RESERVE_CONNECTION(_handle, _pool, _request) _handle = fr_pool_connection_get(_pool, _request); \
 	if (!_handle) { \
@@ -182,8 +184,8 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle,
 /*
  * Query the database expecting a single result row
  */
-static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen, char const *query,
-							  rlm_sql_handle_t **handle, rlm_sql_t const *sql,
+static int CC_HINT(nonnull (1, 3, 4, 6)) sqlippool_query1(char *out, int outlen, char const *query,
+							  rlm_sql_handle_t **handle, fr_trunk_t *trunk, rlm_sql_t const *sql,
 							  request_t *request)
 {
 	int		rlen, retval;
@@ -193,7 +195,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 
 	*out = '\0';
 
-	MEM(query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, *handle, query, SQL_QUERY_SELECT));
+	MEM(query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, *handle, trunk, query, SQL_QUERY_SELECT));
 	sql->select(&p_result, NULL, request, query_ctx);
 	retval = query_ctx->rcode;
 	*handle = query_ctx->handle;
@@ -310,7 +312,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 	case IPPOOL_ALLOC_EXISTING:
 		if (query) {
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
-							  alloc_ctx->sql, request);
+							  alloc_ctx->trunk, alloc_ctx->sql, request);
 			talloc_free(query);
 			if (!handle) {
 			error:
@@ -334,7 +336,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 	case IPPOOL_ALLOC_REQUESTED:
 		if (query) {
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
-							  alloc_ctx->sql, request);
+							  alloc_ctx->trunk, alloc_ctx->sql, request);
 			talloc_free(query);
 			if (!handle) goto error;
 			if (allocation_len > 0) goto make_pair;
@@ -355,7 +357,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		map_t	ip_map;
 
 		allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
-						  alloc_ctx->sql, request);
+						  alloc_ctx->trunk, alloc_ctx->sql, request);
 		talloc_free(query);
 		if (!handle) goto error;
 
@@ -363,7 +365,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 			/*
 			 *  Nothing found
 			 */
-			DO_PART(commit);
+			DO_PART(commit, alloc_ctx->trunk);
 
 			/*
 			 *  Should we perform pool-check?
@@ -393,7 +395,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		tmpl_init_shallow(&ip_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0, NULL);
 		fr_value_box_bstrndup_shallow(&ip_map.rhs->data.literal, NULL, allocation, allocation_len, false);
 		if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
-			DO_PART(commit);
+			DO_PART(commit, alloc_ctx->trunk);
 
 			REDEBUG("Invalid IP address [%s] returned from database query.", allocation);
 			goto error;
@@ -421,7 +423,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 			 *Let's check if the pool exists at all
 			 */
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-							  query->vb_strvalue, &handle, sql, request);
+							  query->vb_strvalue, &handle, alloc_ctx->trunk, sql, request);
 			talloc_free(query);
 			if (!handle) RETURN_MODULE_FAIL;
 
@@ -452,12 +454,12 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 
 	case IPPOOL_ALLOC_UPDATE:
 		if (query) {
-			if (sqlippool_command(query->vb_strvalue, &handle, sql, request) < 0) goto error;
+			if (sqlippool_command(query->vb_strvalue, &handle, alloc_ctx->trunk, sql, request) < 0) goto error;
 			talloc_free(query);
 		}
 
 	finish:
-		DO_PART(commit);
+		DO_PART(commit, alloc_ctx->trunk);
 
 		talloc_free(alloc_ctx);
 		RETURN_MODULE_UPDATED;
@@ -487,6 +489,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	rlm_sql_t const		*sql = inst->sql;
 	rlm_sql_handle_t	*handle;
 	ippool_alloc_ctx_t	*alloc_ctx = NULL;
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(module_thread(sql->mi)->data, rlm_sql_thread_t);
 
 	/*
 	 *	If the allocated IP attribute already exists, do nothing
@@ -504,12 +507,13 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
 	request_data_add(request, (void *)sql_escape_uctx_alloc, 0, handle, false, false, false);
 
-	DO_PART(begin);
+	DO_PART(begin, thread->trunk);
 
 	MEM(alloc_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ippool_alloc_ctx_t));
 	*alloc_ctx = (ippool_alloc_ctx_t) {
 		.env = env,
 		.handle = handle,
+		.trunk = thread->trunk,
 		.sql = inst->sql,
 		.request = request,
 	};
@@ -560,6 +564,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	rlm_sqlippool_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
 	ippool_common_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_common_call_env_t);
 	rlm_sql_t const			*sql = inst->sql;
+	rlm_sql_thread_t		*thread = talloc_get_type_abort(module_thread(sql->mi)->data, rlm_sql_thread_t);
 	rlm_sql_handle_t		*handle;
 	int				affected = 0;
 
@@ -570,9 +575,9 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	 *  primarily intended for multi-server setups sharing a common database
 	 *  allowing for tidy up of multiple offered addresses in a DHCP context.
 	 */
-	DO_PART(free);
+	DO_PART(free, thread->trunk);
 
-	DO_AFFECTED(update, affected);
+	DO_AFFECTED(update, thread->trunk, affected);
 
 	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
 
