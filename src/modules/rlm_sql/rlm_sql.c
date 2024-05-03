@@ -2013,7 +2013,8 @@ module_rlm_t rlm_sql = {
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
-		.detach		= mod_detach
+		.detach		= mod_detach,
+		.thread_inst_size	= sizeof(rlm_sql_thread_t),
 	},
 	.bindings = (module_method_binding_t[]){
 		/*
