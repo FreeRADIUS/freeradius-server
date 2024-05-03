@@ -10,17 +10,23 @@ RUN apk add git gcc make
 #
 #  Create build directory
 #
-RUN mkdir -p /usr/local/src/repositories
-WORKDIR /usr/local/src/repositories
+RUN mkdir -p /usr/local/src/repositories/freeradius-server
+WORKDIR /usr/local/src/repositories/freeradius-server/
 
 #
-#  Shallow clone the FreeRADIUS source
+#  Copy the FreeRADIUS directory in
 #
-ARG source=https://github.com/FreeRADIUS/freeradius-server.git
-ARG release=v3.2.x
+COPY . .
 
-RUN git clone --depth 1 --single-branch --branch ${release} ${source}
-WORKDIR freeradius-server
+#
+#  Clean up tree - we want to build from the latest commit, not from
+#  any cruft left around on the local system
+#
+RUN git clean -fdxx \
+ && git reset --hard HEAD
+
+RUN [ -z "$release" ] || git checkout ${release}
+
 
 #
 #  Install build dependencies
@@ -75,8 +81,9 @@ RUN apk update \
     \
     && ln -s /opt/etc/raddb /etc/raddb
 
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
+WORKDIR /
+COPY DOCKER_TOPDIR/etc/docker-entrypoint.sh.PKG_TYPE docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 1812/udp 1813/udp
 ENTRYPOINT ["/docker-entrypoint.sh"]

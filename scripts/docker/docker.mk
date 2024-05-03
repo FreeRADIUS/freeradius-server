@@ -83,10 +83,14 @@ define ADD_DOCKER_RULES
     .PHONY: docker.${1}.build
     docker.${1}.build:
 	@echo BUILD ${1} $(DOCKER_COMMIT)
-	$(Q)docker build $(DOCKER_BUILD_ARGS) \
+	$(Q)docker buildx build \
+		$(DOCKER_BUILD_ARGS) \
+		--progress=plain \
 		--build-arg=release=$(DOCKER_COMMIT) \
 		-t $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-${1} \
-		$(DIST_DIR)/${1}
+		-f $(DIST_DIR)/${1}/Dockerfile \
+		.
+
 endef
 
 $(foreach IMAGE,$(DOCKER_IMAGES), \

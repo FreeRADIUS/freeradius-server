@@ -8,6 +8,7 @@ dnl  they use are different - see the m4 directories for each.
 dnl
 divert(`-1')
 changequote(`[', `]')
+define([DOCKER_TOPDIR], [scripts/docker/])
 define([p_SET], [
 	define([PKG_TYPE],	[$1])
 	define([OS_NAME],	[$2])
