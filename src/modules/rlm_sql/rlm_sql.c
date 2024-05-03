@@ -1880,11 +1880,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	Initialise the connection pool for this instance
-	 */
-	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
-
-	/*
 	 *	Driver must be instantiated before we call pool init
 	 *	else any configuration elements dynamically produced
 	 *	by the driver's instantiate function won't be available.
@@ -1903,6 +1898,32 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		cf_log_err(conf, "Failed instantiating driver module");
 		return -1;
 	}
+
+	if (inst->driver->uses_trunks) {
+		CONF_SECTION	*cs;
+
+		/*
+		 *	The "pool" conf section is either used for legacy pool
+		 *	connections or trunk connections depending on the
+		 *	driver configuration.
+		 */
+		cs = cf_section_find(conf, "pool", NULL);
+		if (!cs) cs = cf_section_alloc(conf, conf, "pool", NULL);
+		if (cf_section_rules_push(cs, fr_trunk_config) < 0) return -1;
+		if (cf_section_parse(&inst->config, &inst->config.trunk_conf, cs) < 0) return -1;
+
+		/*
+		 *	SQL trunks can only have one running request per connection.
+		 */
+		inst->config.trunk_conf.target_req_per_conn = 1;
+		inst->config.trunk_conf.max_req_per_conn = 1;
+		return 0;
+	}
+
+	/*
+	 *	Initialise the connection pool for this instance
+	 */
+	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
 
 	inst->pool = module_rlm_connection_pool_init(conf, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
@@ -2013,6 +2034,25 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+/** Initialise thread specific data structure
+ *
+ */
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_sql_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
+	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
+
+	t->inst = inst;
+
+	if (!inst->driver->uses_trunks) return 0;
+
+	t->trunk = fr_trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
+				  &inst->config.trunk_conf, inst->name, t, false);
+	if (!t->trunk) return -1;
+
+	return 0;
+}
+
 /* globally exported name */
 module_rlm_t rlm_sql = {
 	.common = {
@@ -2026,6 +2066,7 @@ module_rlm_t rlm_sql = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach,
 		.thread_inst_size	= sizeof(rlm_sql_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
 	},
 	.bindings = (module_method_binding_t[]){
 		/*

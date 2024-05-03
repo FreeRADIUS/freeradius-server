@@ -95,6 +95,8 @@ typedef struct {
 
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
+
+	fr_trunk_conf_t		trunk_conf;			//!< Configuration for trunk connections.
 } rlm_sql_config_t;
 
 typedef struct sql_inst rlm_sql_t;
@@ -205,6 +207,9 @@ typedef struct {
 	sql_rcode_t	(*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 	xlat_escape_legacy_t	sql_escape_func;
+
+	bool			uses_trunks;		//!< Transitional flag for drivers which use trunks.
+	fr_trunk_io_funcs_t	trunk_io_funcs;		//!< Trunk callback functions for this driver.
 } rlm_sql_driver_t;
 
 struct sql_inst {
