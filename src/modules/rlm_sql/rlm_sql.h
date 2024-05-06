@@ -107,6 +107,7 @@ typedef struct sql_inst rlm_sql_t;
 typedef struct {
 	fr_trunk_t		*trunk;				//!< Trunk connection for this thread.
 	rlm_sql_t const		*inst;				//!< Module instance data.
+	void			*sql_escape_arg;		//!< Thread specific argument to be passed to escape function.
 } rlm_sql_thread_t;
 
 typedef struct {
@@ -225,6 +226,7 @@ struct sql_inst {
 
 	xlat_escape_legacy_t	sql_escape_func;
 	fr_value_box_escape_t	box_escape_func;
+	void			*sql_escape_arg;	//!< Instance specific argument to be passed to escape function.
 	unlang_function_t	query;
 	unlang_function_t	select;
 	unlang_function_t	fetch_row;
