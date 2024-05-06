@@ -153,13 +153,15 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 	char			flags[256];
 	fr_hash_iter_t		iter;
 	fr_dict_enum_value_t		*enumv;
+	fr_sbuff_t		old_str_sbuff = FR_SBUFF_OUT(oid_str, sizeof(oid_str));
+	fr_sbuff_t		flags_sbuff = FR_SBUFF_OUT(flags, sizeof(flags));
 
-	if (fr_dict_attr_oid_print(&FR_SBUFF_OUT(oid_str, sizeof(oid_str)), NULL, da, false) <= 0) {
+	if (fr_dict_attr_oid_print(&old_str_sbuff, NULL, da, false) <= 0) {
 		fr_strerror_printf("OID string too long");
 		fr_exit(EXIT_FAILURE);
 	}
 
-	fr_dict_attr_flags_print(&FR_SBUFF_OUT(flags, sizeof(flags)), dict, da->type, &da->flags);
+	fr_dict_attr_flags_print(&flags_sbuff, dict, da->type, &da->flags);
 
 	/* Protocol Name Type */
 
@@ -167,22 +169,22 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 		case RADICT_OUT_CSV:
 			printf("%s,%s,%s,%d,%s,%s\n",
 			       fr_dict_root(dict)->name,
-			       oid_str,
+			       fr_sbuff_start(&old_str_sbuff),
 			       da->name,
 			       da->attr,
 			       fr_type_to_str(da->type),
-			       flags);
+			       fr_sbuff_start(&flags_sbuff));
 			break;
 
 		case RADICT_OUT_FANCY:
 		default:
 			printf("%s\t%s\t%s\t%d\t%s\t%s\n",
 			       fr_dict_root(dict)->name,
-			       oid_str,
+			       fr_sbuff_start(&old_str_sbuff),
 			       da->name,
 			       da->attr,
 			       fr_type_to_str(da->type),
-			       flags);
+			       fr_sbuff_start(&flags_sbuff));
 	}
 
 	if (print_values) {
@@ -201,11 +203,11 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 				case RADICT_OUT_CSV:
 					str = fr_asprintf(NULL, "%s,%s,%s,%d,%s,%s,%s,%pV",
 								fr_dict_root(dict)->name,
-								oid_str,
+								fr_sbuff_start(&old_str_sbuff),
 								da->name,
 								da->attr,
 								fr_type_to_str(da->type),
-								flags,
+								fr_sbuff_start(&flags_sbuff),
 								enumv->name,
 								enumv->value);
 					break;
@@ -214,11 +216,11 @@ static void da_print_info_td(fr_dict_t const *dict, fr_dict_attr_t const *da)
 				default:
 					str = fr_asprintf(NULL, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%pV",
 								fr_dict_root(dict)->name,
-								oid_str,
+								fr_sbuff_start(&old_str_sbuff),
 								da->name,
 								da->attr,
 								fr_type_to_str(da->type),
-								flags,
+								fr_sbuff_start(&flags_sbuff),
 								enumv->name,
 								enumv->value);
 			}
