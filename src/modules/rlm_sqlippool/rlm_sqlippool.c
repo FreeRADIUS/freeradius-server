@@ -279,7 +279,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 {
-	(void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
+	if (!to_free->sql->sql_escape_arg) (void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
 	if (to_free->handle) fr_pool_connection_release(to_free->sql->pool, to_free->request, to_free->handle);
 	return 0;
 }
@@ -505,7 +505,8 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	}
 
 	RESERVE_CONNECTION(handle, inst->sql->pool, request);
-	request_data_add(request, (void *)sql_escape_uctx_alloc, 0, handle, false, false, false);
+	if (!sql->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
+									      handle, false, false, false);
 
 	DO_PART(begin, thread->trunk);
 

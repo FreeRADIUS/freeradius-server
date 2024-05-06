@@ -321,18 +321,25 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	fr_sbuff_uctx_talloc_t		sbuff_ctx;
 
 	size_t				len;
-	rlm_sql_handle_t		*handle;
+	void				*arg;
 	rlm_sql_escape_uctx_t		*ctx = uctx;
 	rlm_sql_t const			*inst = talloc_get_type_abort_const(ctx->sql, rlm_sql_t);
 	fr_value_box_entry_t		entry;
+	rlm_sql_thread_t		*thread = talloc_get_type_abort(module_thread(inst->mi)->data, rlm_sql_thread_t);
 
 	/*
 	 *	If it's already safe, don't do anything.
 	 */
 	if (fr_value_box_is_safe_for(vb, inst->driver)) return 0;
 
-	handle = ctx->handle ? ctx->handle : fr_pool_connection_get(inst->pool, request);
-	if (!handle) {
+	if (inst->sql_escape_arg) {
+		arg = inst->sql_escape_arg;
+	} else if (thread->sql_escape_arg) {
+		arg = thread->sql_escape_arg;
+	} else {
+		arg = ctx->handle ? ctx->handle : fr_pool_connection_get(inst->pool, request);
+	}
+	if (!arg) {
 	error:
 		fr_value_box_clear_value(vb);
 		return -1;
@@ -351,7 +358,7 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 		return -1;
 	}
 
-	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, handle);
+	len = inst->sql_escape_func(request, fr_sbuff_buff(&sbuff), vb->vb_length * 3 + 1, vb->vb_strvalue, arg);
 
 	/*
 	 *	fr_value_box_strdup_shallow resets the dlist entries - take a copy
@@ -370,7 +377,7 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	fr_value_box_mark_safe_for(vb, inst->driver);
 	vb->entry = entry;
 
-	if (!ctx->handle) fr_pool_connection_release(inst->pool, request, handle);
+	if (!inst->sql_escape_arg && !thread->sql_escape_arg && !ctx->handle) fr_pool_connection_release(inst->pool, request, arg);
 	return 0;
 }
 
@@ -733,8 +740,7 @@ finish:
  */
 static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
-	rlm_sql_handle_t	*handle = arg;
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(handle->inst, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(arg, rlm_sql_t);
 	size_t			len = 0;
 
 	while (in[0]) {
@@ -1082,7 +1088,7 @@ static int check_map_process(request_t *request, map_list_t *check_map, map_list
 
 static int sql_autz_ctx_free(sql_autz_ctx_t *to_free)
 {
-	(void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
+	if (!to_free->inst->sql_escape_arg) (void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
 	if (to_free->handle) fr_pool_connection_release(to_free->inst->pool, to_free->request, to_free->handle);
 	map_list_talloc_free(&to_free->check_tmp);
 	map_list_talloc_free(&to_free->reply_tmp);
@@ -1464,7 +1470,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	autz_ctx->handle = fr_pool_connection_get(inst->pool, request);
 	if (!autz_ctx->handle) RETURN_MODULE_FAIL;
 
-	request_data_add(request, (void *)sql_escape_uctx_alloc, 0, autz_ctx->handle, false, false, false);
+	if (!inst->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
+						    			       autz_ctx->handle, false, false, false);
 
 	if (unlang_function_push(request, NULL, mod_authorize_resume, NULL, 0,
 				 UNLANG_SUB_FRAME, autz_ctx) < 0) {
@@ -1504,7 +1511,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  */
 static int sql_redundant_ctx_free(sql_redundant_ctx_t *to_free)
 {
-	(void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
+	if (!to_free->inst->sql_escape_arg) (void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
 	if (to_free->handle) fr_pool_connection_release(to_free->inst->pool, to_free->request, to_free->handle);
 	sql_unset_user(to_free->inst, to_free->request);
 
@@ -1638,7 +1645,8 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 	redundant_ctx->handle = fr_pool_connection_get(inst->pool, request);
 	if (!redundant_ctx->handle) RETURN_MODULE_FAIL;
 
-	request_data_add(request, (void *)sql_escape_uctx_alloc, 0, redundant_ctx->handle, false, false, false);
+	if (!inst->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
+									       redundant_ctx->handle, false, false, false);
 
 	sql_set_user(inst, request, &call_env->user);
 
@@ -1868,9 +1876,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Either use the module specific escape function
 	 *	or our default one.
 	 */
-	inst->sql_escape_func = inst->driver->sql_escape_func ?
-				inst->driver->sql_escape_func :
-				sql_escape_func;
+	if (inst->driver->sql_escape_func) {
+		inst->sql_escape_func = inst->driver->sql_escape_func;
+	} else {
+		inst->sql_escape_func = sql_escape_func;
+		inst->sql_escape_arg = inst;
+	}
 	inst->box_escape_func = sql_box_escape;
 
 	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), true, NULL, NULL);
