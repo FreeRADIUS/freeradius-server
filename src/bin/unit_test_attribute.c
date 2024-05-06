@@ -1105,7 +1105,7 @@ static void command_print(void)
 	void *walk_ctx = NULL;
 
 	printf("Command hierarchy --------");
-	fr_command_debug(stdout, command_head);
+	fr_command_debug(command_head, stdout);
 
 	printf("Command list --------");
 	while (fr_command_walk(command_head, &walk_ctx, NULL, command_walk) == 1) {
