@@ -201,6 +201,34 @@ static int dl_module_magic_verify(dl_module_common_t const *module)
 	return 0;
 }
 
+/** Return top root module, in a hierarchy of modules
+ *
+ */
+dl_module_inst_t const *dl_module_instance_root(dl_module_inst_t const *dl_inst)
+{
+	if (!dl_inst) return NULL;
+
+	while (dl_inst->parent) dl_inst = dl_inst->parent;
+
+	return dl_inst;
+}
+
+/** Return the prefix string for the deepest module
+ *
+ * This is useful for submodules which don't have a prefix of their own.
+ * In this case we need to use the prefix of the shallowest module, which
+ * will be a proto or rlm module.
+ *
+ * @param[in] dl_inst	Instance to get the prefix for.
+ * @return The prefix string for the shallowest module.
+ */
+char const *dl_module_instance_root_prefix_str(dl_module_inst_t const *dl_inst)
+{
+	dl_module_inst_t const *root = dl_module_instance_root(dl_inst);
+
+	return fr_table_str_by_value(dl_module_type_prefix, root->module->type, "<INVALID>");
+}
+
 /** Lookup a module's parent
  *
  */

@@ -173,6 +173,10 @@ extern size_t dl_module_type_prefix_len;
 
 dl_module_t const	*dl_module(dl_module_t const *parent, char const *name, dl_module_type_t type);
 
+dl_module_inst_t const *dl_module_instance_root(dl_module_inst_t const *dl_inst);
+
+char const		*dl_module_instance_root_prefix_str(dl_module_inst_t const *dl_inst);
+
 dl_module_inst_t const	*dl_module_parent_instance(dl_module_inst_t const *child);
 
 dl_module_inst_t const	*dl_module_instance_by_data(void const *data);

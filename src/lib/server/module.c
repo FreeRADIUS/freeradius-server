@@ -729,7 +729,7 @@ int module_instantiate(module_instance_t *instance)
 	 */
 	if (mi->module->instantiate) {
 		cf_log_debug(cs, "Instantiating %s_%s \"%s\"",
-			     fr_table_str_by_value(dl_module_type_prefix, mi->dl_inst->module->type, "<INVALID>"),
+			     dl_module_instance_root_prefix_str(mi->dl_inst),
 			     mi->dl_inst->module->common->name,
 			     mi->name);
 
@@ -804,7 +804,7 @@ int module_bootstrap(module_instance_t *mi)
 		CONF_SECTION *cs = mi->dl_inst->conf;
 
 		cf_log_debug(cs, "Bootstrapping %s_%s \"%s\"",
-			     fr_table_str_by_value(dl_module_type_prefix, mi->dl_inst->module->type, "<INVALID>"),
+			     dl_module_instance_root_prefix_str(mi->dl_inst),
 			     mi->dl_inst->module->common->name,
 			     mi->name);
 
