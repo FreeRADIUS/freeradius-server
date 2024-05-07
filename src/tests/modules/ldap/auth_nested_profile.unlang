@@ -1,0 +1,33 @@
+string test_string
+
+#
+#  Run the "ldap" module
+#
+ldap
+
+#IP address is defined in cn=profile2
+if !(&control.Framed-IP-Address == 1.2.3.6) {
+        test_fail
+}
+
+# IP netmask defined in cn=reply,cn=profile2
+if (!(&reply.Framed-IP-Netmask == 255.255.192.0)) {
+        test_fail
+}
+
+if (!(&reply.Acct-Interim-Interval == 7200)) {
+        test_fail
+}
+
+# Attempt a bind authentication
+ldap.authenticate
+
+ldap.send
+
+&test_string := %ldap("ldap://$ENV{TEST_SERVER}/uid=peter,ou=people,dc=example,dc=com?description")
+
+if (!(&test_string == "User %{User-Name} authenticated")) {
+	test_fail
+}
+
+test_pass

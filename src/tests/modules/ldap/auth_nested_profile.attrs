@@ -1,0 +1,14 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "peter"
+User-Password = "letmein"
+NAS-IP-Address = 1.2.3.5
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Acct-Interim-Interval == 7200
+Framed-IP-Netmask == "255.255.192.0"

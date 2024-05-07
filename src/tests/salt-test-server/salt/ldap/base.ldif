@@ -89,6 +89,21 @@ radiusRequestAttribute: Service-Type := 'Framed-User'
 radiusControlAttribute: Framed-IP-Address := 1.2.3.5
 radiusControlAttribute: Reply-Message := "Bonjour"
 
+dn: cn=profile3,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: profile3
+radiusRequestAttribute: Service-Type := 'Framed-User'
+radiusControlAttribute: Framed-IP-Address := 1.2.3.6
+radiusControlAttribute: Reply-Message := "Salut"
+
+dn: cn=reply,cn=profile3,ou=profiles,dc=example,dc=com
+objectClass: freeradiusPolicy
+objectClass: radiusprofile
+cn: reply
+radiusReplyAttribute: Framed-IP-Netmask := 255.255.192.0
+radiusReplyAttribute: Acct-Interim-Interval := 7200
+
 dn: cn=suspended,ou=profiles,dc=example,dc=com
 objectClass: freeradiusPolicy
 objectClass: radiusprofile
@@ -125,6 +140,23 @@ radiusAttribute: control.NAS-IP-Address := 1.2.3.4
 radiusAttribute: control.Vendor-Specific.Cisco.AVPair += 'foo'
 radiusControlAttribute: Vendor-Specific.Cisco.AVPair += 'bar'
 radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
+dialupAccess: enabled
+
+dn: uid=peter,ou=people,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+objectClass: radiusprofile
+uid: peter
+sn: Parker
+givenName: Peter
+cn: Peter Parker
+displayName: Peter Parker
+userPassword: letmein
+uidNumber: 102
+gidNumber: 102
+homeDirectory: /home/peter
+radiusProfileDN: cn=profile3,ou=profiles,dc=example,dc=com
 dialupAccess: enabled
 
 dn: uid=bob,ou=people,dc=example,dc=com

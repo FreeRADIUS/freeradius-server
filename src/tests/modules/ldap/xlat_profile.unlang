@@ -43,4 +43,19 @@ group {
       &reply := {}
 }
 
+if (!%ldap.profile('cn=profile3,ou=profiles,dc=example,dc=com')) {
+	test_fail
+}
+
+if (!((&reply.Framed-IP-Netmask == 255.255.192.0) && \
+      (&reply.Acct-Interim-Interval == 7200) && \
+      (&request.Service-Type == ::Framed-User) && \
+      (&control.Framed-IP-Address == 1.2.3.6) && \
+      (&control.Reply-Message == 'Salut'))) {
+	test_fail
+}
+
+&control := {}
+&reply := {}
+
 test_pass
