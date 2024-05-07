@@ -31,7 +31,6 @@
 extern fr_app_t proto_radius;
 
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", proto_radius_t, io.cleanup_delay), .dflt = "5.0" } ,
@@ -72,7 +71,7 @@ static const conf_parser_t priority_config[] = {
 static conf_parser_t const proto_radius_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_radius_t, allowed_types), .func = type_parse },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_radius_t, io.submodule),
-	  .func = transport_parse },
+	  .func = virtual_sever_listen_transport_parse },
 
 	/*
 	 *	Check whether or not the *trailing* bits of a
@@ -138,58 +137,6 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 
 	inst->allowed[dv->value->vb_uint32] = true;
 	*((char const **) out) = value;
-
-	return 0;
-}
-
-/** Wrapper around dl_instance
- *
- * @param[in] ctx	to allocate data in (instance of proto_radius).
- * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
- * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_PAIR specifying the name of the type module.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
-{
-	char const		*name = cf_pair_value(cf_item_to_pair(ci));
-	dl_module_inst_t	*parent_inst;
-	proto_radius_t		*inst;
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*transport_cs;
-	dl_module_inst_t	*dl_mod_inst;
-
-	transport_cs = cf_section_find(listen_cs, name, NULL);
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_radius"));
-	fr_assert(parent_inst);
-
-	/*
-	 *	Set the allowed codes so that we can compile them as
-	 *	necessary.
-	 */
-	inst = talloc_get_type_abort(parent_inst->data, proto_radius_t);
-	inst->io.transport = name;
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!transport_cs) {
-		transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
-		inst->io.app_io_conf = transport_cs;
-	}
-
-	if (dl_module_instance(ctx, &dl_mod_inst, parent_inst,
-			       DL_MODULE_TYPE_SUBMODULE, name, dl_module_inst_name_from_conf(transport_cs)) < 0) return -1;
-	if (dl_module_conf_parse(dl_mod_inst, transport_cs) < 0) {
-		talloc_free(dl_mod_inst);
-		return -1;
-	}
-	*((dl_module_inst_t **)out) = dl_mod_inst;
 
 	return 0;
 }

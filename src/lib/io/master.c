@@ -2499,7 +2499,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 */
 	if (radclient->use_connected && !inst->app_io->connection_set) {
 		DEBUG("proto_%s - cannot use connected sockets as underlying 'transport = %s' does not support it.",
-		      inst->app_io->common.name, inst->transport);
+		      inst->app_io->common.name, inst->submodule->dl_inst->module->common->name);
 		goto error;
 	}
 
@@ -2633,10 +2633,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Find and bootstrap the application IO handler.
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->submodule->module->common;
+	inst->app_io = (fr_app_io_t const *) inst->submodule->dl_inst->module->common;
 
-	inst->app_io_conf = inst->submodule->conf;
-	inst->app_io_instance = inst->submodule->data;
+	inst->app_io_conf = inst->submodule->dl_inst->conf;
+	inst->app_io_instance = inst->submodule->dl_inst->data;
 
 	/*
 	 *	If we're not tracking duplicates then we don't need a
@@ -2656,7 +2656,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->submodule)) < 0)) {
+	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->submodule->dl_inst)) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for proto_%s", inst->app_io->common.name);
 		return -1;
 	}
@@ -2723,7 +2723,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_assert(inst->app_io != NULL);
 
 	if (inst->app_io->common.instantiate &&
-	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->submodule)) < 0)) {
+	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->submodule->dl_inst)) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->common.name);
 		return -1;
 	}

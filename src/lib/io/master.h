@@ -85,7 +85,7 @@ typedef struct {
 
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 
-	dl_module_inst_t		*submodule;			//!< As provided by the transport_parse
+	module_instance_t		*submodule;			//!< As provided by the transport_parse
 									///< callback.  Broken out into the
 									///< app_io_* fields below for convenience.
 	fr_app_t			*app;				//!< main protocol handler
@@ -96,8 +96,6 @@ typedef struct {
 	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
 
 	int				ipproto;			//!< IP proto by number
-	char const			*transport;			//!< transport, typically name of IP proto
-
 	fr_trie_t const			*networks;     			//!< trie of allowed networks
 } fr_io_instance_t;
 

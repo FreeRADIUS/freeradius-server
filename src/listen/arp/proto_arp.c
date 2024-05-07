@@ -230,7 +230,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	work submodule.  We leave that until later.
 	 */
 	if (inst->app_io->common.instantiate &&
-	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule->dl_inst)) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
@@ -267,14 +267,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	parent_inst = cf_data_value(cf_data_find(inst->cs, dl_module_inst_t, "proto_arp"));
 	fr_assert(parent_inst);
 
-	if (dl_module_instance(inst->cs, &inst->io_submodule,
+	if (dl_module_instance(inst->cs, &inst->io_submodule->dl_inst,
 			       parent_inst,
 			       DL_MODULE_TYPE_SUBMODULE, "ethernet", dl_module_inst_name_from_conf(inst->cs)) < 0) {
 		cf_log_perr(inst->cs, "Failed to load proto_arp_ethernet");
 		return -1;
 	}
 
-	if (dl_module_conf_parse(inst->io_submodule, inst->cs) < 0) {
+	if (dl_module_conf_parse(inst->io_submodule->dl_inst, inst->cs) < 0) {
 		TALLOC_FREE(inst->io_submodule);
 		return -1;
 	}
@@ -282,11 +282,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Bootstrap the I/O module
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
-	inst->app_io_instance = inst->io_submodule->data;
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->dl_inst->module->common;
+	inst->app_io_instance = inst->io_submodule->dl_inst->data;
 	inst->app_io_conf = conf;
 
-	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule->dl_inst)) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}

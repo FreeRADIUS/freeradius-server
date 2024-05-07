@@ -30,7 +30,7 @@ typedef struct {
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
 	CONF_SECTION			*cs;				//!< my configuration
 
-	dl_module_inst_t	       	*io_submodule;			//!< As provided by the transport_parse
+	module_instance_t	       	*io_submodule;			//!< As provided by the transport_parse
 									///< callback.  Broken out into the
 									///< app_io_* fields below for convenience.
 
@@ -52,5 +52,3 @@ typedef struct {
 	fr_listen_t			*listen;			//!< The listener structure which describes
 									//!< the I/O path.
 } proto_arp_t;
-
-

@@ -40,7 +40,7 @@ typedef struct {
 
 	fr_app_t		*self;				//!< child / parent linking issues
 
-	dl_module_inst_t	*io_submodule;			//!< As provided by the transport_parse
+	module_instance_t	*io_submodule;			//!< As provided by the transport_parse
 								//!< callback.  Broken out into the
 								//!< app_io_* fields below for convenience.
 

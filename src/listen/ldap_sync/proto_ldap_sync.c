@@ -35,8 +35,6 @@ static fr_internal_encode_ctx_t	encode_ctx = { .allow_name_only = true };
 
 extern fr_app_t proto_ldap_sync;
 
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
-
 static conf_parser_t const ldap_sync_search_config[] = {
 	{ FR_CONF_OFFSET("base_dn", sync_config_t, base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
 
@@ -51,7 +49,7 @@ static conf_parser_t const ldap_sync_search_config[] = {
 
 static conf_parser_t const proto_ldap_sync_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_ldap_sync_t, io_submodule),
-	  .func = transport_parse },
+	  .func = virtual_sever_listen_transport_parse },
 
 	{ FR_CONF_OFFSET("max_packet_size", proto_ldap_sync_t, max_packet_size) },
 	{ FR_CONF_OFFSET("num_messages", proto_ldap_sync_t, num_messages) },
@@ -94,47 +92,6 @@ fr_dict_attr_autoload_t proto_ldap_sync_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_ldap_sync },
 	{ NULL }
 };
-
-/** Wrapper around dl_instance
- *
- * @param[in] ctx	to allocate data in (instance of proto_dns).
- * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
- * @param[in] parent	Base structure address.
- * @param[in] ci	#CONF_PAIR specifying the name of the type module.
- * @param[in] rule	unused.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int transport_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
-			   CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
-{
-	char const		*name = cf_pair_value(cf_item_to_pair(ci));
-	dl_module_inst_t	*parent_inst;
-	CONF_SECTION		*listen_cs = cf_item_to_section(cf_parent(ci));
-	CONF_SECTION		*transport_cs;
-	dl_module_inst_t	*dl_mod_inst;
-
-	transport_cs = cf_section_find(listen_cs, name, NULL);
-
-	/*
-	 *	Allocate an empty section if one doesn't exist
-	 *	this is so defaults get parsed.
-	 */
-	if (!transport_cs) transport_cs = cf_section_alloc(listen_cs, listen_cs, name, NULL);
-
-	parent_inst = cf_data_value(cf_data_find(listen_cs, dl_module_inst_t, "proto_ldap_sync"));
-	fr_assert(parent_inst);
-
-	if (dl_module_instance(ctx, &dl_mod_inst, parent_inst, DL_MODULE_TYPE_SUBMODULE, name,
-			       dl_module_inst_name_from_conf(transport_cs)) < 0) return -1;
-	if (dl_module_conf_parse(dl_mod_inst, transport_cs) < 0) {
-		talloc_free(dl_mod_inst);
-		return -1;
-	}
-	*((dl_module_inst_t **)out) = dl_mod_inst;
-	return 0;
-}
 
 /** Check if an attribute is in the config list and add if not present
  *
@@ -300,7 +257,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Instantiate the I/O module.
 	 */
 	if (inst->app_io->common.instantiate &&
-	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule->dl_inst)) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
@@ -425,12 +382,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Bootstrap the I/O module
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->common;
-	inst->app_io_instance = inst->io_submodule->data;
-	inst->app_io_conf = inst->io_submodule->conf;
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->dl_inst->module->common;
+	inst->app_io_instance = inst->io_submodule->dl_inst->data;
+	inst->app_io_conf = inst->io_submodule->dl_inst->conf;
 
 	if (inst->app_io->common.bootstrap &&
-	    (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
+	    (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule->dl_inst)) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
