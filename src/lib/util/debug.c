@@ -434,38 +434,55 @@ DIAG_ON(deprecated-declarations)
 			/* Tell the parent what happened */
 		send_status:
 			if (write(from_child[1], &ret, sizeof(ret)) < 0) {
-				fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
+				fprintf(stderr, "Writing ptrace status to parent failed: %s\n", fr_syserror(errno));
 			}
 
 			/* Detach */
 			_PTRACE_DETACH(ppid);
+
+
+			/*
+			*	We call _exit() instead of exit().  This means that we skip the atexit() handlers,
+			*	which don't need to run in a temporary child process.  Skipping them means that we
+			*	avoid dirtying those pages to "clean things up", which is then immediately followed by
+			*	exiting.
+			*
+			*	Skipping the atexit() handlers also means that we're not worried about memory leaks
+			*	because things "aren't cleaned up correctly".  We're not exiting cleanly here (and
+			*	don't care to exit cleanly).  So just exiting with no cleanups is fine.
+			*/
 			_exit(0); /* don't run the atexit() handlers. */
 		/*
-		 *	We could attach because of a permissions issue, we don't know
-		 *      whether we're being traced or not.
+		 *	man ptrace says the following:
+		 *
+		 *	EPERM  The specified process cannot be traced.  This could be
+                 *	because the tracer has insufficient privileges (the
+                 *	required capability is CAP_SYS_PTRACE); unprivileged
+                 *	processes cannot trace processes that they cannot send
+                 *	signals to or those running set-user-ID/set-group-ID
+                 *	programs, for obvious reasons.  Alternatively, the process
+		 *	may already be being traced, or (before Linux 2.6.26) be
+        	 *	init(1) (PID 1).
+		 *
+		 *	In any case, we are very unlikely to be able to attach to
+		 *	the process from the panic action.
+		 *
+		 *	We checked for CAP_SYS_PTRACE previously, so know that
+		 *	we _should_ haven been ablle to attach, so if we can't, it's
+		 *	likely that we're already being traced.
 		 */
 		} else if (errno == EPERM) {
-			ret = DEBUGGER_STATE_UNKNOWN;
+			ret = DEBUGGER_STATE_ATTACHED;
 			goto send_status;
 		}
 
-		ret = DEBUGGER_STATE_ATTACHED;
-		/* Tell the parent what happened */
-		if (write(from_child[1], &ret, sizeof(ret)) < 0) {
-			fprintf(stderr, "Writing ptrace status to parent failed: %s", fr_syserror(errno));
-		}
-
 		/*
-		 *	We call _exit() instead of exit().  This means that we skip the atexit() handlers,
-		 *	which don't need to run in a temporary child process.  Skipping them means that we
-		 *	avoid dirtying those pages to "clean things up", which is then immediately followed by
-		 *	exiting.
-		 *
-		 *	Skipping the atexit() handlers also means that we're not worried about memory leaks
-		 *	because things "aren't cleaned up correctly".  We're not exiting cleanly here (and
-		 *	don't care to exit cleanly).  So just exiting with no cleanups is fine.
+		 *	Unexpected error, we don't know whether we're already running
+		 * 	under a debugger or not...
 		 */
-		_exit(0);
+		ret = DEBUGGER_STATE_UNKNOWN;
+		fprintf(stderr, "Debugger check failed to attach to parent with unexpected error: %s\n", fr_syserror(errno));
+		goto send_status;
 	/* Parent */
 	} else {
 		int8_t ret = DEBUGGER_STATE_UNKNOWN;
