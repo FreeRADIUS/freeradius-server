@@ -594,7 +594,8 @@ static int _module_thread_inst_list_free(void *tilp)
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t **out, module_list_t const *ml, module_instance_t *mi, fr_event_list_t *el)
+static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t **out, module_list_t const *ml,
+				     module_instance_t *mi, fr_event_list_t *el)
 {
 	module_thread_instance_t	*ti;
 	TALLOC_CTX			*our_ctx = ctx;
