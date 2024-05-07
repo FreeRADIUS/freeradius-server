@@ -36,6 +36,14 @@ extern "C" {
 extern const conf_parser_t virtual_servers_config[];
 extern const conf_parser_t virtual_servers_on_read_config[];
 
+/** @name Callbacks for dealing with transports
+ *
+ * @{
+ */
+int virtual_sever_listen_transport_parse(TALLOC_CTX *ctx, void *out, void *parent,
+					 CONF_ITEM *ci, conf_parser_t const *rule);
+/** @} */
+
 /** @name Namespace management
  *
  * @{

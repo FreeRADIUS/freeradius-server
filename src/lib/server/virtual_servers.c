@@ -162,6 +162,19 @@ const conf_parser_t virtual_servers_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** Generic conf_parser_t func for loading drivers
+ *
+ */
+int virtual_sever_listen_transport_parse(TALLOC_CTX *ctx, void *out, void *parent,
+					 CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	conf_parser_t our_rule = *rule;
+
+	our_rule.uctx = &proto_modules;
+
+	return module_submodule_parse(ctx, out, parent, ci, &our_rule);
+}
+
 /** Parse a "namespace" parameter
  *
  * We need to load the process module before continuing to parse the virtual server contents
