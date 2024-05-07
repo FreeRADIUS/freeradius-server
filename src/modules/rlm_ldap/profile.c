@@ -59,6 +59,7 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 	LDAP			*handle;
 	LDAPMessage		*entry = NULL;
 	int			ldap_errno;
+	char			*dn = NULL;
 
 	/*
 	 *	Tell the caller what happened
@@ -91,11 +92,20 @@ static unlang_action_t ldap_map_profile_resume(UNUSED rlm_rcode_t *p_result, UNU
 
 	RDEBUG2("Processing profile attributes");
 	RINDENT();
-	if (fr_ldap_map_do(request, profile_ctx->inst->valuepair_attr,
-			   profile_ctx->expanded, entry) < 0) {
-		if (profile_ctx->ret) *profile_ctx->ret = LDAP_RESULT_ERROR;
+	while (entry) {
+		if (RDEBUG_ENABLED2) {
+			dn = ldap_get_dn(handle, entry);
+			RDEBUG2("Processing \"%s\"", dn);
+			ldap_memfree(dn);
+		}
+		RINDENT();
+		if (fr_ldap_map_do(request, profile_ctx->inst->valuepair_attr,
+				   profile_ctx->expanded, entry) < 0) {
+			if (profile_ctx->ret) *profile_ctx->ret = LDAP_RESULT_ERROR;
+		}
+		entry = ldap_next_entry(handle, entry);
+		REXDENT();
 	}
-
 	REXDENT();
 
 finish:
