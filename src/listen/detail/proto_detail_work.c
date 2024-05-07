@@ -313,6 +313,7 @@ redo:
 			p[1] = '\0';
 			next = p + 2;
 			stopped_search = next;
+			thread->last_line++;
 			break;
 		}
 
@@ -321,9 +322,10 @@ redo:
 		 *	record, every line MUST have a leading tab.
 		 */
 		if (p[1] != '\t') {
-			ERROR("proto_detail (%s): Malformed line found at offset %zu in file %s",
-			      thread->name, (size_t)((p - buffer) + thread->header_offset),
-			      thread->filename_work);
+			ERROR("proto_detail (%s): Missing tab indent at %s[%u], offset from start of file %zu",
+			      thread->name,
+			      thread->filename_work, thread->last_line,
+			      (size_t)((p - buffer) + thread->header_offset));
 			return -1;
 		}
 
@@ -363,10 +365,10 @@ redo:
 		 *	this, it's malformed.
 		 */
 		if (memcmp(p, " = ", 3) != 0) {
-			ERROR("proto_detail (%s): Malformed line found at offset %zu: %.*s of file %s",
+			ERROR("proto_detail (%s): Missing pair assignment operator at %s[%u], offset from start of file %zu: %.*s",
 			      thread->name,
-			      (size_t)((p - buffer) + thread->header_offset), (int) (end - p), p,
-			      thread->filename_work);
+			      thread->filename_work, thread->last_line,
+			      (size_t)((p - buffer) + thread->header_offset), (int) (end - p), p);
 			return -1;
 		}
 
@@ -482,14 +484,14 @@ redo:
 	/*
 	 *	Allocate the tracking entry.
 	 */
-	track = talloc_zero(thread, fr_detail_entry_t);
+	MEM(track = talloc_zero(thread, fr_detail_entry_t));
 	track->parent = thread;
 	track->timestamp = fr_time();
 	track->id = thread->count++;
 
 	track->done_offset = done_offset;
 	if (inst->retransmit) {
-		track->packet = talloc_memdup(track, buffer, packet_len);
+		MEM(track->packet = talloc_memdup(track, buffer, packet_len));
 		track->packet_len = packet_len;
 	}
 
