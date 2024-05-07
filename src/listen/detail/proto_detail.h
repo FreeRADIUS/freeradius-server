@@ -133,6 +133,7 @@ struct proto_detail_work_thread_s {
 
 	size_t				last_search;		//!< where we last searched in the buffer
 								//!< MUST be offset, as the buffers can change.
+	unsigned int			last_line;		//!< line number of the last record read.
 
 	off_t				file_size;		//!< size of the file
 	off_t				header_offset;		//!< offset of the current header we're reading
