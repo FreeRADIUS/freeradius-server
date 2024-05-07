@@ -208,6 +208,8 @@ typedef struct {
 	sql_rcode_t	(*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 	xlat_escape_legacy_t	sql_escape_func;
+	void		*(*sql_escape_arg_alloc)(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx);
+	void		(*sql_escape_arg_free)(void *uctx);
 
 	bool			uses_trunks;		//!< Transitional flag for drivers which use trunks.
 	fr_trunk_io_funcs_t	trunk_io_funcs;		//!< Trunk callback functions for this driver.

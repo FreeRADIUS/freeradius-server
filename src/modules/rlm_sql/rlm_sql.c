@@ -2053,6 +2053,11 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_sql_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
 	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
 
+	if (inst->driver->sql_escape_arg_alloc) {
+		t->sql_escape_arg = inst->driver->sql_escape_arg_alloc(t, mctx->el, inst);
+		if (!t->sql_escape_arg) return -1;
+	}
+
 	t->inst = inst;
 
 	if (!inst->driver->uses_trunks) return 0;
@@ -2060,6 +2065,16 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	t->trunk = fr_trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
 				  &inst->config.trunk_conf, inst->name, t, false);
 	if (!t->trunk) return -1;
+
+	return 0;
+}
+
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_sql_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_sql_thread_t);
+	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
+
+	if (inst->driver->sql_escape_arg_free) inst->driver->sql_escape_arg_free(t->sql_escape_arg);
 
 	return 0;
 }
@@ -2078,6 +2093,7 @@ module_rlm_t rlm_sql = {
 		.detach		= mod_detach,
 		.thread_inst_size	= sizeof(rlm_sql_thread_t),
 		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
 	},
 	.bindings = (module_method_binding_t[]){
 		/*
