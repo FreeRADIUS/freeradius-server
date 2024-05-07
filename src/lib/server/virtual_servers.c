@@ -440,7 +440,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	inst_name = cf_section_name2(listener_cs);
 	if (!inst_name) inst_name = mod_name;
 
-	qual_inst_name = talloc_asprintf(NULL, "%s.%s", cf_section_name2(server_cs), inst_name);
+	MEM(qual_inst_name = talloc_asprintf(NULL, "%s.%s", cf_section_name2(server_cs), inst_name));
 	mi = module_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name);
 	talloc_free(qual_inst_name);
 	if (!mi) {
