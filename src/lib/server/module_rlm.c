@@ -896,7 +896,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	if (!inst) return -1;
 
 	inst->cs = cs;
-	inst->name = talloc_strdup(inst, name);
+	MEM(inst->name = talloc_strdup(inst, name));
 	inst->all_same = all_same;
 
 	if (!fr_cond_assert(fr_rb_insert(module_rlm_virtual_name_tree, inst))) {
