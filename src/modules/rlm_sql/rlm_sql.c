@@ -911,7 +911,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, f
 		row = query_ctx->handle->row;
 		if (!row[0]){
 			RDEBUG2("row[0] returned NULL");
-			(inst->driver->sql_finish_select_query)(*handle, &inst->config);
+			(inst->driver->sql_finish_select_query)(query_ctx, &inst->config);
 			talloc_free(entry);
 			return -1;
 		}

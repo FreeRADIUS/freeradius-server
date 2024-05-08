@@ -660,9 +660,9 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 	return 1;
 }
 
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
 {
-	return sql_free_result(handle, config);
+	return sql_free_result(query_ctx->handle, config);
 }
 
 static int sql_affected_rows(fr_sql_query_t *query_ctx,

@@ -713,9 +713,9 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
  * whether more results exist and process them in turn if so.
  *
  */
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
+	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(query_ctx->handle->conn, rlm_sql_mysql_conn_t);
 	int			ret;
 	MYSQL_RES		*result;
 
@@ -736,7 +736,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 	 *	already stored result.
 	 */
 	} else {
-		sql_free_result(handle, config);	/* sql_free_result sets conn->result to NULL */
+		sql_free_result(query_ctx->handle, config);	/* sql_free_result sets conn->result to NULL */
 	}
 
 	/*

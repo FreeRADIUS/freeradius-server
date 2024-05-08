@@ -238,11 +238,11 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	RETURN_MODULE_OK;
 }
 
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
 {
-	rlm_sql_unixodbc_conn_t *conn = handle->conn;
+	rlm_sql_unixodbc_conn_t *conn = query_ctx->handle->conn;
 
-	sql_free_result(handle, config);
+	sql_free_result(query_ctx->handle, config);
 
 	/*
 	 *	SQL_CLOSE - The cursor (if any) associated with the statement
@@ -261,9 +261,9 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_co
 	return 0;
 }
 
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_unixodbc_conn_t *conn = handle->conn;
+	rlm_sql_unixodbc_conn_t *conn = query_ctx->handle->conn;
 
 	SQLFreeStmt(conn->stmt, SQL_CLOSE);
 

@@ -29,7 +29,6 @@ RCSID("$Id$")
 /* Forward declarations */
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 {
@@ -226,9 +225,9 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 /** End the select query, such as freeing memory or result.
  *
  */
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) handle->conn;
+	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) query_ctx->handle->conn;
 
 	fb_commit(conn);
 	fb_close_cursor(conn);
@@ -239,7 +238,7 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 /** End the query
  *
  */
-static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_query(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
