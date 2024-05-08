@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dl.h>
 #include <freeradius-devel/util/syserror.h>
 
+#include <pthread.h>
 #include <ctype.h>
 #include <unistd.h>
 
@@ -44,9 +45,10 @@ RCSID("$Id$")
  * Provides space to store instance data.
  */
 struct dl_module_loader_s {
-	fr_rb_tree_t	*module_tree;
-	fr_rb_tree_t	*inst_data_tree;
-	dl_loader_t	*dl_loader;
+	pthread_mutex_t 	lock;			//!<
+	fr_rb_tree_t		*module_tree;		//!< Module's dl handles.
+	fr_rb_tree_t		*inst_data_tree;	//!< Module's instance data.
+	dl_loader_t		*dl_loader;		//!< A list of loaded libraries, and symbol to callback mappings.
 };
 
 static dl_module_loader_t	*dl_module_loader;
@@ -369,6 +371,29 @@ static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t
 static int _dl_module_free(dl_module_t *dl_module)
 {
 	/*
+	 *	Talloc destructors access the talloc chunk after
+	 *	calling the destructor, which could lead to a race
+	 *	if the mutex is acquired within the destructor
+	 *	itself.  This unfortunately means that we have to
+	 *	free modules using a dedicated free function which
+	 *	locks the dl_module_loader mutex.
+	 *
+	 *	Ensure this module is not being freed using the
+	 *	normal talloc hierarchy, or with talloc_free().
+	 */
+	fr_assert_msg(pthread_mutex_trylock(&dl_module->loader->lock) != 0,
+		      "dl_module_loader->lock not held when freeing module, "
+		      "use dl_module_free() to free modules, not talloc_free");
+
+	/*
+	 *	Decrement refcounts, freeing at zero
+	 */
+	if (dl_module->refs > 0) {
+		dl_module->refs--;
+		return -1;
+	}
+
+	/*
 	 *	dl is empty if we tried to load it and failed.
 	 */
 	if (dl_module->dl) {
@@ -390,12 +415,39 @@ static int _dl_module_free(dl_module_t *dl_module)
 	return 0;
 }
 
+/** Free a dl_module (when there are no more references to it)
+ *
+ * Decrement the reference count for a module, freeing it and unloading the module if there are no
+ * more references.
+ *
+ * @note This must be used to free modules, not talloc_free().
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 if the module wasn't freed.  This likely means there are more ferences held to it.
+ */
+int dl_module_free(dl_module_t *dl_module)
+{
+	int ret;
+
+	pthread_mutex_lock(&dl_module->loader->lock);
+	ret = talloc_free(dl_module);
+	pthread_mutex_unlock(&dl_module->loader->lock);
+
+	return ret;
+}
+
 /** Load a module library using dlopen() or return a previously loaded module from the cache
  *
  * When the dl_module_t is no longer used, talloc_free() may be used to free it.
  *
  * When all references to the original dlhandle are freed, dlclose() will be called on the
  * dlhandle to unload the module.
+ *
+ * @note This function is threadsafe.  Multiple callers may attempt to load the same module
+ *	at the same time, and the module will only be loaded once, and will not be freed
+ *	until all callers have released their references to it.  This is useful for dynamic/runtime
+ *	loading of modules.
  *
  * @param[in] parent	The dl_module_t of the parent module, e.g. rlm_sql for rlm_sql_postgresql.
  * @param[in] name	of the module e.g. sql for rlm_sql.
@@ -407,7 +459,7 @@ static int _dl_module_free(dl_module_t *dl_module)
  *	- Module handle holding dlhandle, and module's public interface structure.
  *	- NULL if module couldn't be loaded, or some other error occurred.
  */
-dl_module_t const *dl_module(dl_module_t const *parent, char const *name, dl_module_type_t type)
+dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_module_type_t type)
 {
 	dl_module_t			*dl_module = NULL;
 	dl_t				*dl = NULL;
@@ -432,18 +484,28 @@ dl_module_t const *dl_module(dl_module_t const *parent, char const *name, dl_mod
 
 	for (p = module_name, q = p + talloc_array_length(p) - 1; p < q; p++) *p = tolower((uint8_t) *p);
 
+	pthread_mutex_lock(&dl_module_loader->lock);
 	/*
 	 *	If the module's already been loaded, increment the reference count.
 	 */
 	dl_module = fr_rb_find(dl_module_loader->module_tree,
 			       &(dl_module_t){ .dl = &(dl_t){ .name = module_name }});
 	if (dl_module) {
+		dl_module->refs++;
+
+		/*
+		 *	Release the lock, the caller is guaranteed to have a completely
+		 *	loaded module, which won't be freed out from underneath them until
+		 *	the reference count drops to zero.
+		 */
+		pthread_mutex_unlock(&dl_module_loader->lock);
 		talloc_free(module_name);
-		talloc_increase_ref_count(dl_module);
+
 		return dl_module;
 	}
 
-	dl_module = talloc_zero(dl_module_loader, dl_module_t);
+	MEM(dl_module = talloc_zero(dl_module_loader, dl_module_t));
+	dl_module->loader = dl_module_loader;
 	dl_module->parent = parent;
 	dl_module->type = type;
 	talloc_set_destructor(dl_module, _dl_module_free);	/* Do this late */
@@ -496,6 +558,15 @@ dl_module_t const *dl_module(dl_module_t const *parent, char const *name, dl_mod
 		goto error;
 	}
 
+	/*
+	 *	Hold the lock for the entire module loading process.
+	 *
+	 *	This ensures that all the global resources the module has symbol callbacks
+	 *	registered for, are fully populated, before something else attempts to use
+	 *	it.
+	 */
+	pthread_mutex_unlock(&dl_module_loader->lock);
+
 	talloc_free(module_name);
 
 	return dl_module;
@@ -535,7 +606,7 @@ static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
 	 *	won't be unloaded until all instances of that module
 	 *	have been destroyed.
 	 */
-	talloc_decrease_ref_count(dl_inst->module);
+	dl_module_free(dl_inst->module);
 
 	return 0;
 }
@@ -587,7 +658,7 @@ int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
 
 	MEM(dl_inst = talloc_zero(ctx, dl_module_inst_t));
 
-	dl_inst->module = dl_module(parent ? parent->module : NULL, mod_name, type);
+	dl_inst->module = dl_module_alloc(parent ? parent->module : NULL, mod_name, type);
 	if (!dl_inst->module) {
 		talloc_free(dl_inst);
 		return -1;
@@ -644,6 +715,12 @@ static int _dl_module_loader_free(dl_module_loader_t *dl_module_l)
 {
 	int ret = 0;
 
+	/*
+	 *	Lock must not be held when freeing the loader list.
+	 */
+	fr_assert_msg(pthread_mutex_trylock(&dl_module_l->lock) == 0,
+		      "dl_module_loader->lock held when attempting to free dL_module_loader_t");
+
 	if (fr_rb_num_elements(dl_module_l->inst_data_tree) > 0) {
 #ifndef NDEBUG
 		fr_rb_iter_inorder_t	iter;
@@ -678,6 +755,9 @@ finish:
 	} else {
 		dl_module_loader = NULL;
 	}
+
+	pthread_mutex_unlock(&dl_module_l->lock);
+	pthread_mutex_destroy(&dl_module_l->lock);
 
 	return ret;
 }
@@ -749,6 +829,7 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 		ERROR("Failed initialising uctx for dl_loader");
 		return NULL;
 	}
+	pthread_mutex_init(&dl_module_loader->lock, NULL);
 
 	dl_module_loader->dl_loader = dl_loader_init(NULL, dl_module_loader, false, true);
 	if (!dl_module_loader) {

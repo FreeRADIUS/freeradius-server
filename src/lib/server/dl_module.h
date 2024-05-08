@@ -140,6 +140,8 @@ typedef struct {
  */
 typedef struct dl_module_s dl_module_t;
 struct dl_module_s {
+	dl_module_loader_t		* _CONST loader;	//!< Loader that owns this dl.
+
 	dl_t				* _CONST dl;		//!< Dynamic loader handle.
 
 	dl_module_t const		* _CONST parent;	//!< of this module.
@@ -152,6 +154,15 @@ struct dl_module_s {
 	CONF_SECTION			* _CONST conf;		//!< The module's global configuration
 								///< (as opposed to the instance, configuration).
 								///< May be NULL.
+
+	unsigned int			refs;			//!< Number of references to this module.
+								///< This is maintained as a separate counter
+								///< (instead of using talloc refs) because it needs
+								///< to be thread safe.
+								///< The talloc code accesses the chunk after calling
+								///< the destructor, so we can't lock the loader mutex
+								///< inside the destructor and expect things to work
+								///< correctly.
 	bool				_CONST in_tree;
 };
 
@@ -161,7 +172,7 @@ struct dl_module_s {
  */
 struct dl_module_instance_s {
 	char const			* _CONST name;		//!< Instance name.
-	dl_module_t const		* _CONST module;	//!< Module
+	dl_module_t			* _CONST module;	//!< Module
 	void				* _CONST data;		//!< Module instance's parsed configuration.
 	CONF_SECTION			* _CONST conf;		//!< Module's instance configuration.
 	dl_module_inst_t const		* _CONST parent;	//!< Parent module's instance (if any).
@@ -171,7 +182,9 @@ struct dl_module_instance_s {
 extern fr_table_num_sorted_t const dl_module_type_prefix[];
 extern size_t dl_module_type_prefix_len;
 
-dl_module_t const	*dl_module(dl_module_t const *parent, char const *name, dl_module_type_t type);
+int 			dl_module_free(dl_module_t *dl_module);
+
+dl_module_t		*dl_module_alloc(dl_module_t const *parent, char const *name, dl_module_type_t type);
 
 dl_module_inst_t const *dl_module_instance_root(dl_module_inst_t const *dl_inst);
 
