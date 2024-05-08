@@ -450,7 +450,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			goto finish;
 		}
 
-		numaffected = (inst->driver->sql_affected_rows)(query_ctx->handle, &inst->config);
+		numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
 		if (numaffected < 1) {
 			RDEBUG2("SQL query affected no rows");
 
@@ -638,7 +638,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	 *	Not every driver provides an sql_num_rows function
 	 */
 	if (inst->driver->sql_num_rows) {
-		ret = inst->driver->sql_num_rows(handle, &inst->config);
+		ret = inst->driver->sql_num_rows(query_ctx, &inst->config);
 		if (ret == 0) {
 			RDEBUG2("Server returned an empty result");
 			rcode = RLM_MODULE_NOOP;
@@ -1592,7 +1592,7 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 	 *	We need to have updated something for the query to have been
 	 *	counted as successful.
 	 */
-	numaffected = (inst->driver->sql_affected_rows)(redundant_ctx->handle, &inst->config);
+	numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
 	talloc_free(query_ctx);
 	RDEBUG2("%i record(s) updated", numaffected);
 

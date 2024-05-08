@@ -276,10 +276,10 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_con
 	return sql_finish_query(handle, config);
 }
 
-static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	SQLINTEGER c;
-	rlm_sql_db2_conn_t *conn = handle->conn;
+	rlm_sql_db2_conn_t *conn = query_ctx->handle->conn;
 
 	SQLRowCount(conn->stmt, &c);
 

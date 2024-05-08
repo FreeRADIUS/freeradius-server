@@ -44,7 +44,6 @@ USES_APPLE_DEPRECATED_API
 /* Forward declarations */
 static int sql_check_error(long err_handle, rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 static int _sql_socket_destructor(rlm_sql_unixodbc_conn_t *conn)
@@ -377,14 +376,14 @@ static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, 
  *	       or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static int sql_affected_rows(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
 {
-	rlm_sql_unixodbc_conn_t *conn = handle->conn;
+	rlm_sql_unixodbc_conn_t *conn = query_ctx->handle->conn;
 	long error_handle;
 	SQLLEN affected_rows;
 
 	error_handle = SQLRowCount(conn->stmt, &affected_rows);
-	if (sql_check_error(error_handle, handle, config)) return -1;
+	if (sql_check_error(error_handle, query_ctx->handle, config)) return -1;
 
 	return affected_rows;
 }

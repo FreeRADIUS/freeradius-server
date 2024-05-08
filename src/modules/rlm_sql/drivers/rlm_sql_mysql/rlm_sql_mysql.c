@@ -447,9 +447,9 @@ static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *prior
 	RETURN_MODULE_OK;
 }
 
-static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(query_ctx->handle->conn, rlm_sql_mysql_conn_t);
 
 	if (conn->result) return mysql_num_rows(conn->result);
 
@@ -758,9 +758,9 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 	return RLM_SQL_OK;
 }
 
-static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(query_ctx->handle->conn, rlm_sql_mysql_conn_t);
 
 	return mysql_affected_rows(conn->sock);
 }

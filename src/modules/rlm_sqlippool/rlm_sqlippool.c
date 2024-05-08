@@ -158,7 +158,7 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle, fr_tr
 	 */
 	if (!query_ctx->handle) return -1;
 
-	affected = (sql->driver->sql_affected_rows)(*handle, &sql->config);
+	affected = (sql->driver->sql_affected_rows)(query_ctx, &sql->config);
 
 	talloc_free(query_ctx);
 
