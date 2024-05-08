@@ -147,7 +147,7 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle, fr_tr
 	 */
 	if (!handle || !*handle) return -1;
 
-	query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, *handle, trunk, query, SQL_QUERY_SELECT);
+	query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, request, *handle, trunk, query, SQL_QUERY_SELECT);
 
 	sql->query(&p_result, NULL, request, query_ctx);
 	*handle = query_ctx->handle;
@@ -195,7 +195,7 @@ static int CC_HINT(nonnull (1, 3, 4, 6)) sqlippool_query1(char *out, int outlen,
 
 	*out = '\0';
 
-	MEM(query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, *handle, trunk, query, SQL_QUERY_SELECT));
+	MEM(query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, request, *handle, trunk, query, SQL_QUERY_SELECT));
 	sql->select(&p_result, NULL, request, query_ctx);
 	retval = query_ctx->rcode;
 	*handle = query_ctx->handle;

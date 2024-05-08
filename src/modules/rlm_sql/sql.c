@@ -100,7 +100,7 @@ void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeo
 	if (inst->config.connect_query) {
 		fr_sql_query_t	*query_ctx;
 		rlm_rcode_t	p_result;
-		MEM(query_ctx = fr_sql_query_alloc(ctx, inst, handle, NULL, inst->config.connect_query, SQL_QUERY_OTHER));
+		MEM(query_ctx = fr_sql_query_alloc(ctx, inst, NULL, handle, NULL, inst->config.connect_query, SQL_QUERY_OTHER));
 		inst->query(&p_result, NULL, NULL, query_ctx);
 		if (query_ctx->rcode != RLM_SQL_OK) {
 			talloc_free(query_ctx);
@@ -403,7 +403,7 @@ static int fr_sql_query_free(fr_sql_query_t *to_free)
 /** Allocate an sql query structure
  *
  */
-fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_sql_handle_t *handle,
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle,
 				   fr_trunk_t *trunk, char const *query_str, fr_sql_query_type_t type)
 {
 	fr_sql_query_t	*query;
@@ -411,6 +411,7 @@ fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, rlm_s
 	*query = (fr_sql_query_t) {
 		.inst = inst,
 		.handle = handle,
+		.request = request,
 		.trunk = trunk,
 		.query_str = query_str,
 		.type = type
@@ -643,7 +644,7 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 
 	fr_assert(request);
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, *handle, trunk, query, SQL_QUERY_SELECT));
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, *handle, trunk, query, SQL_QUERY_SELECT));
 	inst->select(&p_result, NULL, request, query_ctx);
 	if (query_ctx->rcode != RLM_SQL_OK) {
 	error:
