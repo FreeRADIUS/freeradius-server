@@ -438,7 +438,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	    (strncasecmp(p, "delete", 6) == 0)) {
 		int numaffected;
 
-		MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle,
+		MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, handle,
 						   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
 		inst->query(&p_result, NULL, request, query_ctx);
 		if (query_ctx->rcode != RLM_SQL_OK) {
@@ -464,8 +464,8 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle, thread->trunk,
-					   arg->vb_strvalue, SQL_QUERY_SELECT));
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, handle,
+					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
 	inst->select(&p_result, NULL, request, query_ctx);
 	if (query_ctx->rcode != RLM_SQL_OK) goto query_error;
 
@@ -623,8 +623,8 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 		RETURN_MODULE_FAIL;
 	}
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, handle, thread->trunk,
-					   query_str, SQL_QUERY_SELECT));
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, handle,
+					   thread->trunk, query_str, SQL_QUERY_SELECT));
 	inst->select(p_result, NULL, request, query_ctx);
 	handle = query_ctx->handle;
 
@@ -896,7 +896,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, f
 
 	if (!query || !*query) return 0;
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, *handle, trunk,
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, *handle, trunk,
 					   query, SQL_QUERY_SELECT));
 
 	inst->select(&p_result, NULL, request, query_ctx);
@@ -1543,7 +1543,7 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, query->vb_strvalue);
 	}
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, redundant_ctx->handle,
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, redundant_ctx->handle,
 					   redundant_ctx->trunk, query->vb_strvalue, SQL_QUERY_SELECT));
 
 	inst->query(p_result, NULL, request, query_ctx);

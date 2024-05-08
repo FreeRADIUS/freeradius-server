@@ -811,7 +811,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 		 *	sql statement when we first open the connection.
 		 */
 		snprintf(database, sizeof(database), "USE %s;", config->sql_db);
-		MEM(query_ctx = fr_sql_query_alloc(NULL, handle->inst, handle, NULL, database, SQL_QUERY_OTHER));
+		MEM(query_ctx = fr_sql_query_alloc(NULL, handle->inst, NULL, handle, NULL, database, SQL_QUERY_OTHER));
 		if ((sql_query(&p_result, NULL, NULL, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 		    (query_ctx->rcode != RLM_SQL_OK)) {
 			goto error;
