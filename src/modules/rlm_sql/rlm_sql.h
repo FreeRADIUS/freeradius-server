@@ -205,8 +205,8 @@ typedef struct {
 
 	sql_error_t	sql_error;				//!< Get any errors from the previous query.
 
-	sql_rcode_t	(*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-	sql_rcode_t	(*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_finish_query)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
+	sql_rcode_t	(*sql_finish_select_query)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 
 	xlat_escape_legacy_t	sql_escape_func;
 	void		*(*sql_escape_arg_alloc)(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx);

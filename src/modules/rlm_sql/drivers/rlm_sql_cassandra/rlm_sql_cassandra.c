@@ -689,9 +689,9 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t ou
 	return 0;
 }
 
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = handle->conn;
+	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
 
 	/*
 	 *	Clear our local log buffer, and free any messages which weren't
@@ -700,7 +700,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 	talloc_free_children(conn->log_ctx);
 	memset(&conn->last_error, 0, sizeof(conn->last_error));
 
-	return sql_free_result(handle, config);
+	return sql_free_result(query_ctx->handle, config);
 }
 
 /*

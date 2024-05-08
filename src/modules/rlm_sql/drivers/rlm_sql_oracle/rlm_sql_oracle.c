@@ -604,9 +604,9 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_oracle_conn_t *conn = handle->conn;
+	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
 
 	if (OCIStmtRelease(conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
 		ERROR("OCI release failed in sql_finish_query");
@@ -616,9 +616,9 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	return 0;
 }
 
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_oracle_conn_t *conn = handle->conn;
+	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
 
 	TALLOC_FREE(conn->row);
 	conn->ind = NULL;	/* ind is a child of row */

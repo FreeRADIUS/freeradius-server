@@ -393,9 +393,9 @@ static int fr_sql_query_free(fr_sql_query_t *to_free)
 {
 	if (to_free->status <= 0) return 0;
 	if (to_free->type == SQL_QUERY_SELECT) {
-		(to_free->inst->driver->sql_finish_select_query)(to_free->handle, &to_free->inst->config);
+		(to_free->inst->driver->sql_finish_select_query)(to_free, &to_free->inst->config);
 	} else {
-		(to_free->inst->driver->sql_finish_query)(to_free->handle, &to_free->inst->config);
+		(to_free->inst->driver->sql_finish_query)(to_free, &to_free->inst->config);
 	}
 	return 0;
 }
@@ -486,7 +486,7 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 		 */
 		case RLM_SQL_QUERY_INVALID:
 			rlm_sql_print_error(inst, request, query_ctx->handle, false);
-			(inst->driver->sql_finish_query)(query_ctx->handle, &inst->config);
+			(inst->driver->sql_finish_query)(query_ctx, &inst->config);
 			RETURN_MODULE_INVALID;
 
 		/*
@@ -501,7 +501,7 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 		case RLM_SQL_ERROR:
 			if (inst->driver->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
 				rlm_sql_print_error(inst, request, query_ctx->handle, false);
-				(inst->driver->sql_finish_query)(query_ctx->handle, &inst->config);
+				(inst->driver->sql_finish_query)(query_ctx, &inst->config);
 				RETURN_MODULE_FAIL;
 			}
 			FALL_THROUGH;
@@ -511,7 +511,7 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 		 */
 		case RLM_SQL_ALT_QUERY:
 			rlm_sql_print_error(inst, request, query_ctx->handle, true);
-			(inst->driver->sql_finish_query)(query_ctx->handle, &inst->config);
+			(inst->driver->sql_finish_query)(query_ctx, &inst->config);
 			break;
 
 		default:
@@ -592,7 +592,7 @@ unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority
 		case RLM_SQL_ERROR:
 		default:
 			rlm_sql_print_error(inst, request, query_ctx->handle, false);
-			(inst->driver->sql_finish_select_query)(query_ctx->handle, &inst->config);
+			(inst->driver->sql_finish_select_query)(query_ctx, &inst->config);
 			if (query_ctx->rcode == RLM_SQL_QUERY_INVALID) RETURN_MODULE_INVALID;
 			RETURN_MODULE_FAIL;
 		}

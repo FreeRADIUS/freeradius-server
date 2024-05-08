@@ -427,9 +427,9 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 	return 1;
 }
 
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_freetds_conn_t *conn = handle->conn;
+	rlm_sql_freetds_conn_t *conn = query_ctx->handle->conn;
 
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
@@ -544,7 +544,7 @@ static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *prior
 		default:
 
 			ERROR("unexpected result type from query");
-			sql_finish_select_query(query_ctx->handle, &query_ctx->inst->config);
+			sql_finish_select_query(query_ctx, &query_ctx->inst->config);
 
 			RETURN_MODULE_FAIL;
 		}
@@ -645,9 +645,9 @@ static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_s
 
 }
 
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_freetds_conn_t *conn = handle->conn;
+	rlm_sql_freetds_conn_t *conn = query_ctx->handle->conn;
 
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
