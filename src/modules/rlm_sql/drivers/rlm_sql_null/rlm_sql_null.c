@@ -48,7 +48,7 @@ static int sql_num_fields(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_confi
 	return 0;
 }
 
-static int sql_num_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
+static int sql_num_rows(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	return 0;
 }
@@ -85,7 +85,7 @@ static sql_rcode_t sql_finish_select_query(UNUSED rlm_sql_handle_t * handle, UNU
 	return 0;
 }
 
-static int sql_affected_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
+static int sql_affected_rows(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	return 1;
 }

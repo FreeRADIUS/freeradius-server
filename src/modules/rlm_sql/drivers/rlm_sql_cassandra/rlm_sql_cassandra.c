@@ -483,9 +483,9 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t cons
 	return conn->result ? cass_result_column_count(conn->result) : 0;
 }
 
-static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = handle->conn;
+	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
 
 	return conn->result ? cass_result_row_count(conn->result) : 0;
 }
@@ -710,7 +710,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
  *	There's a good article on it here:
  *		http://planetcassandra.org/blog/how-to-do-an-upsert-in-cassandra/
  */
-static int sql_affected_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static int sql_affected_rows(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	return 1;
 }

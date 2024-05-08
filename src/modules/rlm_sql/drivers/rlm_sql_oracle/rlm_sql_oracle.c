@@ -535,9 +535,9 @@ finish:
 	RETURN_MODULE_FAIL;
 }
 
-static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_oracle_conn_t *conn = handle->conn;
+	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
 	ub4 rows = 0;
 	ub4 size = sizeof(ub4);
 
@@ -632,11 +632,6 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 	return 0;
 }
 
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
-{
-	return sql_num_rows(handle, config);
-}
-
 /* Exported to rlm_sql */
 extern rlm_sql_driver_t rlm_sql_oracle;
 rlm_sql_driver_t rlm_sql_oracle = {
@@ -653,7 +648,7 @@ rlm_sql_driver_t rlm_sql_oracle = {
 	.sql_select_query		= sql_select_query,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
-	.sql_affected_rows		= sql_affected_rows,
+	.sql_affected_rows		= sql_num_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_fields			= sql_fields,
 	.sql_free_result		= sql_free_result,

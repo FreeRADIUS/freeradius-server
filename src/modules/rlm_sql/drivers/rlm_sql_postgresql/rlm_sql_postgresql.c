@@ -515,9 +515,9 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	return i;
 }
 
-static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t const *config)
+static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_postgres_conn_t *conn = handle->conn;
+	rlm_sql_postgres_conn_t *conn = query_ctx->handle->conn;
 
 	return conn->affected_rows;
 }

@@ -28,7 +28,6 @@ RCSID("$Id$")
 
 /* Forward declarations */
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
@@ -166,14 +165,6 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t cons
 	return ((rlm_sql_firebird_conn_t *) handle->conn)->sqlda_out->sqld;
 }
 
-/** Returns number of rows in query.
- *
- */
-static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
-{
-	return sql_affected_rows(handle, config);
-}
-
 /** Returns name of fields.
  *
  */
@@ -291,9 +282,9 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 /** Return the number of rows affected by the query (update, or insert)
  *
  */
-static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	return fb_affected_rows(handle->conn);
+	return fb_affected_rows(query_ctx->handle->conn);
 }
 
 /* Exported to rlm_sql */
@@ -307,7 +298,7 @@ rlm_sql_driver_t rlm_sql_firebird = {
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_query,
 	.sql_num_fields			= sql_num_fields,
-	.sql_num_rows			= sql_num_rows,
+	.sql_num_rows			= sql_affected_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_fields			= sql_fields,

@@ -665,10 +665,10 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t c
 	return sql_free_result(handle, config);
 }
 
-static int sql_affected_rows(rlm_sql_handle_t *handle,
+static int sql_affected_rows(fr_sql_query_t *query_ctx,
 			     UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_sqlite_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = query_ctx->handle->conn;
 
 	if (conn->db) return sqlite3_changes(conn->db);
 
