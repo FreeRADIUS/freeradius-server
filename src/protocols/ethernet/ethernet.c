@@ -403,8 +403,6 @@ extern fr_proto_lib_t const libfreeradius_ethernet;
 fr_proto_lib_t const libfreeradius_ethernet = {
 	.magic		= MODULE_MAGIC_INIT,
 	.name		= "ethernet",
-	.inst_size	= sizeof(fr_ethernet_proto_ctx_t),
-
 	.opt_group	= PROTO_OPT_GROUP_CUSTOM | PROTO_OPT_GROUP_L2,
 
 	.decode		= fr_ethernet_decode,

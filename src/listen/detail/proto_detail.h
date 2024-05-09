@@ -49,7 +49,7 @@ typedef struct {
 	CONF_SECTION			*app_io_conf;			//!< Easy access to the app_io's config section.
 //	proto_detail_app_io_t		*app_io_private;		//!< Internal interface for proto_radius.
 
-	dl_module_inst_t		*work_submodule;		//!< the worker
+	module_instance_t		*work_submodule;		//!< the worker
 
 	fr_app_io_t const		*work_io;			//!< Easy access to the app_io handle.
 	void				*work_io_instance;		//!< Easy access to the app_io instance.

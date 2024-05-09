@@ -34,11 +34,7 @@ typedef struct {
 									///< callback.  Broken out into the
 									///< app_io_* fields below for convenience.
 
-	CONF_SECTION			*app_io_conf;			//!< for the APP IO
-	fr_app_io_t const		*app_io;			//!< Easy access to the app_io handle.
-	void				*app_io_instance;		//!< Easy access to the app_io instance.
-
-	dl_module_inst_t		*app_process;			//!< app_process pointer
+	module_instance_t		*app_process;			//!< app_process pointer
 	void				*process_instance;		//!< app_process instance
 
 	fr_dict_t			*dict;				//!< root dictionary

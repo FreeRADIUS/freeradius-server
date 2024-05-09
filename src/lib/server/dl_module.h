@@ -57,8 +57,6 @@ extern "C" {
 #  define DL_EXTENSION ".so"
 #endif
 
-typedef struct dl_module_instance_s dl_module_inst_t;
-
 /** Stop people using different module/library/server versions together
  *
  */
@@ -83,30 +81,10 @@ typedef enum {
 
 typedef struct dl_module_loader_s dl_module_loader_t;
 
-typedef struct {
-	dl_module_inst_t const	*inst;
-} module_detach_ctx_t;
-
-/** Module detach callback
- *
- * Is called just before the server exits, and after re-instantiation on HUP,
- * to free the old module instance.
- *
- * Detach should close all handles associated with the module instance, and
- * free any memory allocated during instantiate.
- *
- * @param[in] inst to free.
- * @return
- *	- 0 on success.
- *	- -1 if detach failed.
- */
-typedef int (*module_detach_t)(module_detach_ctx_t const *inst);
-
 /** Callback to call when a module is first loaded
  *
  */
 typedef int (*dl_module_onload_t)(void);
-
 
 /** Callback when a module is destroyed
  *
@@ -115,17 +93,14 @@ typedef void (*dl_module_unload_t)(void);
 
 /** Common fields for the interface struct modules export
  *
+ * These are just enough for the loader to be able to load and unload the module.
  */
 #define DL_MODULE_COMMON \
 	struct { \
 		uint64_t 			magic;		\
 		char const			*name;		\
-		size_t				inst_size;	\
-		char const			*inst_type;	\
-		conf_parser_t const		*config;        \
 		dl_module_onload_t		onload;         \
 		dl_module_unload_t		unload;		\
-		module_detach_t			detach;		\
 	}
 
 /** Fields common to all types of loadable modules
@@ -140,6 +115,8 @@ typedef struct {
  */
 typedef struct dl_module_s dl_module_t;
 struct dl_module_s {
+	char const			* _CONST name;		//!< Name of the module. The name passed to dl_module_alloc.
+
 	dl_module_loader_t		* _CONST loader;	//!< Loader that owns this dl.
 
 	dl_t				* _CONST dl;		//!< Dynamic loader handle.
@@ -148,7 +125,7 @@ struct dl_module_s {
 
 	dl_module_type_t		_CONST type;		//!< of this module.
 
-	dl_module_common_t const	* _CONST common;	//!< Symbol exported by the module, containing its public
+	dl_module_common_t const	* _CONST exported;	//!< Symbol exported by the module, containing its public
 								//!< functions, name and behaviour control flags.
 
 	CONF_SECTION			* _CONST conf;		//!< The module's global configuration
@@ -166,49 +143,12 @@ struct dl_module_s {
 	bool				_CONST in_tree;
 };
 
-/** A module/inst tuple
- *
- * Used to pass data back from dl_module_instance_parse_func
- */
-struct dl_module_instance_s {
-	char const			* _CONST name;		//!< Instance name.
-	dl_module_t			* _CONST module;	//!< Module
-	void				* _CONST data;		//!< Module instance's parsed configuration.
-	CONF_SECTION			* _CONST conf;		//!< Module's instance configuration.
-	dl_module_inst_t const		* _CONST parent;	//!< Parent module's instance (if any).
-	bool				_CONST detached;	//!< Whether the detach function has been called.
-};
-
 extern fr_table_num_sorted_t const dl_module_type_prefix[];
 extern size_t dl_module_type_prefix_len;
 
 int 			dl_module_free(dl_module_t *dl_module);
 
 dl_module_t		*dl_module_alloc(dl_module_t const *parent, char const *name, dl_module_type_t type);
-
-dl_module_inst_t const *dl_module_instance_root(dl_module_inst_t const *dl_inst);
-
-char const		*dl_module_instance_root_prefix_str(dl_module_inst_t const *dl_inst);
-
-dl_module_inst_t const	*dl_module_parent_instance(dl_module_inst_t const *child);
-
-dl_module_inst_t const	*dl_module_instance_by_data(void const *data);
-
-dl_module_inst_t const	*dl_module_instance_by_cs(CONF_SECTION const *cs);
-
-char const		*dl_module_instance_name_by_data(void const *data);
-
-void			*dl_module_parent_data_by_child_data(void const *data);
-
-void			*dl_module_instance_symbol(dl_module_inst_t const *instance, char const *sym_name);
-
-int			dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
-					   dl_module_inst_t const *parent,
-					   dl_module_type_t type, char const *name, char const *inst_name);
-
-char const		*dl_module_inst_name_from_conf(CONF_SECTION *conf);
-
-int			dl_module_conf_parse(dl_module_inst_t *dl_inst, CONF_SECTION *conf);
 
 char const		*dl_module_search_path(void);
 

@@ -397,7 +397,7 @@ static sql_rcode_t CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rl
 					    UNUSED fr_time_delta_t timeout)
 {
 	rlm_sql_sqlite_conn_t	*conn;
-	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(handle->inst->driver_submodule->dl_inst->data, rlm_sql_sqlite_t);
+	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(handle->inst->driver_submodule->data, rlm_sql_sqlite_t);
 
 	int status;
 

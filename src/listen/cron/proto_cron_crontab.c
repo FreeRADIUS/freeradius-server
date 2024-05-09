@@ -269,10 +269,10 @@ static fr_table_ptr_sorted_t time_names[] = {
 };
 static size_t time_names_len = NUM_ELEMENTS(time_names);
 
-/** Wrapper around dl_instance which checks the syntax of a cron job
+/** Checks the syntax of a cron job
  *
  * @param[in] ctx	to allocate data in (instance of proto_cron).
- * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
+ * @param[out] out	Where to write a module_instance_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
@@ -681,20 +681,9 @@ static char const *mod_name(fr_listen_t *li)
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	proto_cron_crontab_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_cron_crontab_t);
-	CONF_SECTION		*conf = mctx->inst->data;
-	dl_module_inst_t const	*dl_inst;
 
-	/*
-	 *	Find the dl_module_inst_t holding our instance data
-	 *	so we can find out what the parent of our instance
-	 *	was.
-	 */
-	dl_inst = dl_module_instance_by_data(inst);
-	fr_assert(dl_inst);
-
-	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_cron_t);
-
-	inst->cs = conf;
+	inst->parent = talloc_get_type_abort(mctx->inst->parent->data, proto_cron_t);
+	inst->cs = mctx->inst->conf;
 
 	return 0;
 }

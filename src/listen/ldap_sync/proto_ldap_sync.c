@@ -257,7 +257,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Instantiate the I/O module.
 	 */
 	if (inst->app_io->common.instantiate &&
-	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule->dl_inst)) < 0)) {
+	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}
@@ -382,12 +382,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Bootstrap the I/O module
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule->dl_inst->module->common;
-	inst->app_io_instance = inst->io_submodule->dl_inst->data;
-	inst->app_io_conf = inst->io_submodule->dl_inst->conf;
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->exported;
+	inst->app_io_instance = inst->io_submodule->data;
+	inst->app_io_conf = inst->io_submodule->conf;
 
 	if (inst->app_io->common.bootstrap &&
-	    (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule->dl_inst)) < 0)) {
+	    (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->common.name);
 		return -1;
 	}

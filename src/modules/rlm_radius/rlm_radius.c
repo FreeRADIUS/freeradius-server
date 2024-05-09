@@ -344,7 +344,7 @@ static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, fr_s
 
 	if (!io->signal) return;
 
-	io->signal(MODULE_CTX(inst->io_submodule->dl_inst,
+	io->signal(MODULE_CTX(inst->io_submodule,
 			      module_thread(inst->io_submodule)->data, mctx->env_data,
 			      mctx->rctx), request, action);
 }
@@ -442,7 +442,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	return another code which indicates what happened to
 	 *	the request...
 	 */
-	ua = inst->io->enqueue(&rcode, &rctx, inst->io_submodule->dl_inst->data,
+	ua = inst->io->enqueue(&rcode, &rctx, inst->io_submodule->data,
 			       module_thread(inst->io_submodule)->data, request);
 	if (ua != UNLANG_ACTION_YIELD) {
 		fr_assert(rctx == NULL);

@@ -115,7 +115,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Instantiate the master io submodule
 	 */
-	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.dl_inst));
+	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.mi));
 }
 
 
@@ -163,13 +163,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
-	inst->io.dl_inst = dl_module_instance_by_data(inst);
-	fr_assert(inst != NULL);
+	inst->io.mi = mctx->inst;
 
 	/*
 	 *	Bootstrap the master IO handler.
 	 */
-	return fr_master_app_io.common.bootstrap(MODULE_INST_CTX(inst->io.dl_inst));
+	return fr_master_app_io.common.bootstrap(MODULE_INST_CTX(inst->io.mi));
 }
 
 fr_app_t proto_control = {

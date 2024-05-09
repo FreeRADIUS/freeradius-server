@@ -21,11 +21,12 @@
  * @brief Defines functions for module (re-)initialisation.
  *
  * @copyright 2003,2006,2016 The FreeRADIUS server project
- * @copyright 2016 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2016,2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  * @copyright 2000 Alan Curry (pacman@world.std.com)
  */
 
+#include "lib/util/talloc.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
@@ -142,9 +143,9 @@ static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUS
 {
 	module_instance_t *mi = ctx;
 
-	fr_assert(mi->dl_inst->conf != NULL);
+	fr_assert(mi->conf != NULL);
 
-	(void) cf_section_write(fp, mi->dl_inst->conf, 0);
+	(void) cf_section_write(fp, mi->conf, 0);
 
 	return 0;
 }
@@ -222,6 +223,102 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 	return 0;
 }
 
+/** Return the prefix string for the deepest module
+ *
+ * This is useful for submodules which don't have a prefix of their own.
+ * In this case we need to use the prefix of the shallowest module, which
+ * will be a proto or rlm module.
+ *
+ * @param[in] mi	Instance to get the prefix for.
+ * @return The prefix string for the shallowest module.
+ */
+char const *module_instance_root_prefix_str(module_instance_t const *mi)
+{
+	module_instance_t const *root = module_instance_root(mi);
+
+	return fr_table_str_by_value(dl_module_type_prefix, root->module->type, "<INVALID>");
+}
+
+/** Detach the shallowest parent first
+ *
+ */
+static void module_detach_parent(module_instance_t *mi)
+{
+	if (mi->detached) return;
+
+	if (mi->parent) module_detach_parent(UNCONST(module_instance_t *, mi->parent));
+
+	if (mi->exported->detach) {
+		mi->exported->detach(&(module_detach_ctx_t){ .inst = mi });
+		mi->detached = true;
+	}
+}
+
+/** Allocate module instance data
+ *
+ * @param[in] mi	to allocate instance data for
+ */
+static inline CC_HINT(always_inline)
+void module_instance_data_alloc(module_instance_t *mi)
+{
+	dl_module_t const	*module = mi->module;
+	void			*data;
+
+	/*
+	 *	If there is supposed to be instance data, allocate it now.
+	 *
+	 *      If the structure is zero length then allocation will still
+	 *	succeed, and will create a talloc chunk header.
+	 *
+	 *      This is needed so we can resolve instance data back to
+	 *	module_instance_t/dl_module_t/dl_t.
+	 */
+	MEM(data = talloc_zero_array(mi, uint8_t, mi->exported->inst_size));
+	if (!mi->exported->inst_type) {
+		talloc_set_name(data, "%s_t", module->dl->name ? module->dl->name : "config");
+	} else {
+		talloc_set_name_const(data, mi->exported->inst_type);
+	}
+	mi->data = data;
+}
+
+/** Avoid boilerplate when setting the module instance name
+ *
+ */
+char const *module_instance_name_from_conf(CONF_SECTION *conf)
+{
+	char const *name2;
+
+	name2 = cf_section_name2(conf);
+	if (name2) return name2;
+
+	return cf_section_name1(conf);
+}
+
+/** Covert a CONF_SECTION into parsed module instance data
+ *
+ */
+int module_instance_conf_parse(module_instance_t *mi, CONF_SECTION *conf)
+{
+	/*
+	 *	Associate the module instance with the conf section
+	 *	*before* executing any parse rules that might need it.
+	 */
+	cf_data_add(conf, mi, mi->module->dl->name, false);
+	mi->conf = conf;
+
+	if (mi->exported->config && mi->conf) {
+		if ((cf_section_rules_push(mi->conf, mi->exported->config)) < 0 ||
+		    (cf_section_parse(mi->data, mi->data, mi->conf) < 0)) {
+			cf_log_err(mi->conf, "Failed evaluating configuration for module \"%s\"",
+				   mi->module->dl->name);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /** Sort module instance data first by list then by number
  *
  * The module's position in the global instance heap informs of us
@@ -251,7 +348,7 @@ static int8_t module_instance_name_cmp(void const *one, void const *two)
 {
 	module_instance_t const *a = one;
 	module_instance_t const *b = two;
-	dl_module_inst_t const	*dl_inst;
+	module_instance_t const	*mi;
 	int a_depth = 0, b_depth = 0;
 	int ret;
 
@@ -260,22 +357,22 @@ static int8_t module_instance_name_cmp(void const *one, void const *two)
 	 *	at the shallowest node, and finish with
 	 *	the deepest child.
 	 */
-	for (dl_inst = a->dl_inst; dl_inst; dl_inst = dl_inst->parent) a_depth++;
-	for (dl_inst = b->dl_inst; dl_inst; dl_inst = dl_inst->parent) b_depth++;
+	for (mi = a; mi; mi = mi->parent) a_depth++;
+	for (mi = b; mi; mi = mi->parent) b_depth++;
 
 	ret = CMP(a_depth, b_depth);
 	if (ret != 0) return ret;
 
 	/*
-	 *	This happens, as dl_inst is is used in
+	 *	This happens, as mi is is used in
 	 *	as the loop condition above.
 	 */
 #ifdef STATIC_ANALYZER
-	if (!fr_cond_assert(a->dl_inst)) return +1;
-	if (!fr_cond_assert(b->dl_inst)) return -1;
+	if (!fr_cond_assert(a)) return +1;
+	if (!fr_cond_assert(b)) return -1;
 #endif
 
-	ret = CMP(a->dl_inst->parent, b->dl_inst->parent);
+	ret = CMP(a->parent, b->parent);
 	if (ret != 0) return ret;
 
 	ret = strcmp(a->name, b->name);
@@ -287,8 +384,8 @@ static int8_t module_instance_name_cmp(void const *one, void const *two)
  */
 static int8_t module_instance_data_cmp(void const *one, void const *two)
 {
-	void const *a = (((module_instance_t const *)one)->dl_inst)->data;
-	void const *b = (((module_instance_t const *)two)->dl_inst)->data;
+	void const *a = ((module_instance_t const *)one)->data;
+	void const *b = ((module_instance_t const *)two)->data;
 
 	return CMP(a, b);
 }
@@ -336,13 +433,13 @@ int module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	 *	and will be appended to the parent's instance
 	 *	name.
 	 */
-	mi = module_alloc(ml, module_by_data(ml, parent), DL_MODULE_TYPE_SUBMODULE, name, name);
+	mi = module_instance_alloc(ml, module_instance_by_data(ml, parent), DL_MODULE_TYPE_SUBMODULE, name, name);
 	if (unlikely(mi == NULL)) {
 		cf_log_err(submodule_cs, "Failed loading submodule");
 		return -1;
 	}
 
-	if (unlikely(module_conf_parse(mi, submodule_cs) < 0)) {
+	if (unlikely(module_instance_conf_parse(mi, submodule_cs) < 0)) {
 		cf_log_err(submodule_cs, "Failed parsing submodule config");
 		talloc_free(mi);
 		return -1;
@@ -364,7 +461,7 @@ int module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
  *	- Module instance matching name.
  *	- NULL if no such module exists.
  */
-module_instance_t *module_by_name(module_list_t const *ml, module_instance_t const *parent, char const *asked_name)
+module_instance_t *module_instance_by_name(module_list_t const *ml, module_instance_t const *parent, char const *asked_name)
 {
 	char const		*inst_name;
 	void			*inst;
@@ -381,29 +478,12 @@ module_instance_t *module_by_name(module_list_t const *ml, module_instance_t con
 
 	inst = fr_rb_find(ml->name_tree,
 			  &(module_instance_t){
-				.dl_inst = &(dl_module_inst_t){ .parent = parent ? parent->dl_inst : NULL },
+				.parent = UNCONST(module_instance_t *, parent),
 				.name = inst_name
 			  });
 	if (!inst) return NULL;
 
 	return talloc_get_type_abort(inst, module_instance_t);
-}
-
-/** Find the module's parent (if any)
- *
- * @param[in] child	to locate the parent for.
- * @return
- *	- The module's parent.
- *	- NULL on error.
- */
-module_instance_t *module_parent(module_instance_t const *child)
-{
-	dl_module_inst_t const *parent;
-
-	parent = dl_module_parent_instance(child->dl_inst);
-	if (!parent) return NULL;
-
-	return module_by_data(child->ml, parent->data);
 }
 
 /** Find the module's shallowest parent
@@ -413,12 +493,12 @@ module_instance_t *module_parent(module_instance_t const *child)
  *	- The module's shallowest parent.
  *	- NULL on error.
  */
-module_instance_t *module_root(module_instance_t const *child)
+module_instance_t *module_instance_root(module_instance_t const *child)
 {
-	module_instance_t *next;
+	module_instance_t const *next;
 
 	for (;;) {
-		next = module_parent(child);
+		next = child->parent;
 		if (!next) break;
 
 		child = next;
@@ -435,19 +515,18 @@ module_instance_t *module_root(module_instance_t const *child)
  *	- Module instance matching data.
  *	- NULL if no such module exists.
  */
-module_instance_t *module_by_data(module_list_t const *ml, void const *data)
+module_instance_t *module_instance_by_data(module_list_t const *ml, void const *data)
 {
 	module_instance_t *mi;
 
 	mi = fr_rb_find(ml->data_tree,
 			&(module_instance_t){
-				.dl_inst = &(dl_module_inst_t){ .data = UNCONST(void *, data) },
+				.data = UNCONST(void *, data)
 			});
 	if (!mi) return NULL;
 
 	return talloc_get_type_abort(mi, module_instance_t);
 }
-
 
 /** Retrieve module/thread specific instance for a module
  *
@@ -477,14 +556,14 @@ module_thread_instance_t *module_thread(module_instance_t *mi)
  * @param[in] ml	Module list module belongs to.
  * @param[in] data	Private instance data of the module.
  *			Same as what would be provided by
- *			#module_by_data.
+ *			#module_instance_by_data.
  * @return
  *	- Thread specific instance data on success.
  *	- NULL if module has no thread instance data.
  */
 module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void const *data)
 {
-	module_instance_t		*mi = module_by_data(ml, data);
+	module_instance_t		*mi = module_instance_by_data(ml, data);
 	module_thread_instance_t 	*ti;
 	if (!mi) return NULL;
 
@@ -539,11 +618,11 @@ static int _module_thread_inst_free(module_thread_instance_t *ti)
 	module_list_in_sync = false;	/* Help catch anything attempting to do lookups */
 
 	DEBUG4("Worker cleaning up %s thread instance data (%p/%p)",
-	       mi->module->name, ti, ti->data);
+	       mi->exported->name, ti, ti->data);
 
-	if (mi->module->thread_detach) {
-		mi->module->thread_detach(&(module_thread_inst_ctx_t const ){
-						.inst = ti->mi->dl_inst,
+	if (mi->exported->thread_detach) {
+		mi->exported->thread_detach(&(module_thread_inst_ctx_t const ){
+						.inst = ti->mi,
 						.thread = ti->data,
 						.el = ti->el
 					  });
@@ -610,25 +689,25 @@ static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t *
 	ti->el = el;
 	ti->mi = mi;
 
-	if (mi->module->thread_inst_size) {
+	if (mi->exported->thread_inst_size) {
 		module_instance_t *rmi;
 
-		MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->module->thread_inst_size));
-		rmi = module_root(mi);
+		MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->exported->thread_inst_size));
+		rmi = module_instance_root(mi);
 
 		/*
 		 *	Fixup the type name, in case something calls
 		 *	talloc_get_type_abort() on it...
 		 */
-		if (!mi->module->thread_inst_type) {
+		if (!mi->exported->thread_inst_type) {
 			talloc_set_name(ti->data, "%s_%s_thread_t",
 					fr_table_str_by_value(dl_module_type_prefix,
-								rmi ? rmi->dl_inst->module->type :
-									mi->dl_inst->module->type,
+								rmi ? rmi->module->type :
+									mi->module->type,
 								"<INVALID>"),
-					mi->module->name);
+					mi->exported->name);
 		} else {
-			talloc_set_name_const(ti->data, mi->module->thread_inst_type);
+			talloc_set_name_const(ti->data, mi->exported->thread_inst_type);
 		}
 	}
 
@@ -637,9 +716,9 @@ static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t *
 	 */
 	fr_strerror_clear();
 
-	DEBUG4("Alloced %s thread instance data (%p/%p)", ti->mi->module->name, ti, ti->data);
-	if (mi->module->thread_instantiate &&
-		mi->module->thread_instantiate(MODULE_THREAD_INST_CTX(mi->dl_inst, ti->data, el)) < 0) {
+	DEBUG4("Alloced %s thread instance data (%p/%p)", ti->mi->exported->name, ti, ti->data);
+	if (mi->exported->thread_instantiate &&
+		mi->exported->thread_instantiate(MODULE_THREAD_INST_CTX(mi, ti->data, el)) < 0) {
 		PERROR("Thread instantiation failed for module \"%s\"", mi->name);
 		/* Leave module_thread_inst_list intact, other modules may need to clean up */
 		modules_thread_detach(ml);
@@ -703,14 +782,14 @@ int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_even
 int module_instantiate(module_instance_t *instance)
 {
 	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-	CONF_SECTION *cs = mi->dl_inst->conf;
+	CONF_SECTION *cs = mi->conf;
 
 	/*
 	 *	We only instantiate modules in the bootstrapped state
 	 */
 	if (mi->state != MODULE_INSTANCE_BOOTSTRAPPED) return 0;
 
-	if (mi->dl_inst->module->type == DL_MODULE_TYPE_MODULE) {
+	if (mi->module->type == DL_MODULE_TYPE_MODULE) {
 		if (fr_command_register_hook(NULL, mi->name, mi, module_cmd_table) < 0) {
 			PERROR("Failed registering radmin commands for module %s", mi->name);
 			return -1;
@@ -721,23 +800,23 @@ int module_instantiate(module_instance_t *instance)
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
-	if (mi->module->config && (cf_section_parse_pass2(mi->dl_inst->data,
-							  mi->dl_inst->conf) < 0)) return -1;
+	if (mi->exported->config && (cf_section_parse_pass2(mi->data,
+							  mi->conf) < 0)) return -1;
 
 	/*
 	 *	Call the instantiate method, if any.
 	 */
-	if (mi->module->instantiate) {
+	if (mi->exported->instantiate) {
 		cf_log_debug(cs, "Instantiating %s_%s \"%s\"",
-			     dl_module_instance_root_prefix_str(mi->dl_inst),
-			     mi->dl_inst->module->common->name,
+			     module_instance_root_prefix_str(mi),
+			     mi->module->exported->name,
 			     mi->name);
 
 		/*
 		 *	Call the module's instantiation routine.
 		 */
-		if (mi->module->instantiate(MODULE_INST_CTX(mi->dl_inst)) < 0) {
-			cf_log_err(mi->dl_inst->conf, "Instantiation failed for module \"%s\"", mi->name);
+		if (mi->exported->instantiate(MODULE_INST_CTX(mi)) < 0) {
+			cf_log_err(mi->conf, "Instantiation failed for module \"%s\"", mi->name);
 
 			return -1;
 		}
@@ -800,15 +879,15 @@ int module_bootstrap(module_instance_t *mi)
 	 *	in the trees if it needs to bootstrap
 	 *	submodules.
 	 */
-	if (mi->module->bootstrap) {
-		CONF_SECTION *cs = mi->dl_inst->conf;
+	if (mi->exported->bootstrap) {
+		CONF_SECTION *cs = mi->conf;
 
 		cf_log_debug(cs, "Bootstrapping %s_%s \"%s\"",
-			     dl_module_instance_root_prefix_str(mi->dl_inst),
-			     mi->dl_inst->module->common->name,
+			     module_instance_root_prefix_str(mi),
+			     mi->module->exported->name,
 			     mi->name);
 
-		if (mi->module->bootstrap(MODULE_INST_CTX(mi->dl_inst)) < 0) {
+		if (mi->exported->bootstrap(MODULE_INST_CTX(mi)) < 0) {
 			cf_log_err(cs, "Bootstrap failed for module \"%s\"", mi->name);
 			return -1;
 		}
@@ -851,24 +930,20 @@ int modules_bootstrap(module_list_t const *ml)
  *
  * @param[in] ctx		Where to allocate the module name.
  * @param[out] out		Where to write a pointer to the instance name.
- * @param[in] ml		Module list in which to find the parent.
  * @param[in] parent		of the module.
  * @param[in] inst_name		module's instance name.
  */
-static fr_slen_t module_instance_name(TALLOC_CTX *ctx, char **out, module_list_t const *ml,
+static fr_slen_t module_instance_name(TALLOC_CTX *ctx, char **out,
 				      module_instance_t const *parent, char const *inst_name)
 {
 	fr_sbuff_t *agg;
+	module_instance_t const *mi;
 
 	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 64, 256);
 
-	while (parent) {
-		FR_SBUFF_IN_STRCPY_RETURN(agg, parent->name);
+	for (mi = parent; mi; mi = mi->parent) {
+		FR_SBUFF_IN_STRCPY_RETURN(agg, mi->name);
 		FR_SBUFF_IN_CHAR_RETURN(agg, '.');
-
-		if (!parent->dl_inst->parent) break;
-
-		parent = module_by_data(ml, parent->dl_inst->parent->data);
 	}
 
 	FR_SBUFF_IN_STRCPY_RETURN(agg, inst_name);
@@ -876,7 +951,6 @@ static fr_slen_t module_instance_name(TALLOC_CTX *ctx, char **out, module_list_t
 	MEM(*out = talloc_bstrndup(ctx, fr_sbuff_start(agg), fr_sbuff_used(agg)));
 
 	return fr_sbuff_used(agg);
-
 }
 
 /** Free module's instance data, and any xlats or paircmps
@@ -895,9 +969,9 @@ static int _module_instance_free(module_instance_t *mi)
 	if (fr_rb_node_inline_in_tree(&mi->data_node) && !fr_cond_assert(fr_rb_delete(ml->data_tree, mi))) return 1;
 
 	/*
-	 *	mi->module may be NULL if we failed loading the module
+	 *	mi->exported may be NULL if we failed loading the module
 	 */
-	if (mi->module && ((mi->module->flags & MODULE_TYPE_THREAD_UNSAFE) != 0)) {
+	if (mi->exported && ((mi->exported->flags & MODULE_TYPE_THREAD_UNSAFE) != 0)) {
 #ifndef NDEBUG
 		int ret;
 
@@ -918,10 +992,12 @@ static int _module_instance_free(module_instance_t *mi)
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */
-	if (mi->dl_inst && mi->dl_inst->data) {
+	if (mi && mi->data) {
 		xlat_func_unregister(mi->name);
-		xlat_func_unregister_module(mi->dl_inst);
+		xlat_func_unregister_module(mi);
 	}
+
+	module_detach_parent(mi);
 
 	/*
 	 *	We need to explicitly free all children, so the module instance
@@ -933,20 +1009,7 @@ static int _module_instance_free(module_instance_t *mi)
 	 */
 	talloc_free_children(mi);
 
-	return 0;
-}
-
-/** Parse the configuration associated with a module
- *
- * @param[in] mi	To parse the configuration for.
- * @param[in] mod_conf	To parse.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int module_conf_parse(module_instance_t *mi, CONF_SECTION *mod_conf)
-{
-	if (dl_module_conf_parse(mi->dl_inst, mod_conf) < 0) return -1;
+	dl_module_free(mi->module);
 
 	return 0;
 }
@@ -974,9 +1037,9 @@ int module_conf_parse(module_instance_t *mi, CONF_SECTION *mod_conf)
  *	  and private instance data.
  *	- NULL on error.
  */
-module_instance_t *module_alloc(module_list_t *ml,
-			        module_instance_t const *parent,
-			        dl_module_type_t type, char const *mod_name, char const *inst_name)
+module_instance_t *module_instance_alloc(module_list_t *ml,
+					 module_instance_t const *parent,
+					 dl_module_type_t type, char const *mod_name, char const *inst_name)
 {
 	char			*qual_inst_name = NULL;
 	module_instance_t	*mi;
@@ -990,7 +1053,7 @@ module_instance_t *module_alloc(module_list_t *ml,
 	 *	Takes the inst_name and adds qualifiers
 	 *	if this is a submodule.
 	 */
-	if (module_instance_name(NULL, &qual_inst_name, ml, parent, inst_name) < 0) {
+	if (module_instance_name(NULL, &qual_inst_name, parent, inst_name) < 0) {
 		ERROR("Module name too long");
 		return NULL;
 	}
@@ -998,24 +1061,24 @@ module_instance_t *module_alloc(module_list_t *ml,
 	/*
 	 *	See if the module already exists.
 	 */
-	mi = module_by_name(ml, parent, qual_inst_name);
+	mi = module_instance_by_name(ml, parent, qual_inst_name);
 	if (mi) {
 		/*
 		 *	We may not have configuration data yet
 		 *	for the duplicate module.
 		 */
-		if (mi->dl_inst->conf) {
+		if (mi->conf) {
 			ERROR("Duplicate %s_%s instance \"%s\", previous instance defined at %s[%d]",
-			      fr_table_str_by_value(dl_module_type_prefix, mi->dl_inst->module->type, "<INVALID>"),
-			      mi->dl_inst->module->common->name,
+			      fr_table_str_by_value(dl_module_type_prefix, mi->module->type, "<INVALID>"),
+			      mi->module->exported->name,
 			      qual_inst_name,
-			      cf_filename(mi->dl_inst->conf),
-			      cf_lineno(mi->dl_inst->conf));
+			      cf_filename(mi->conf),
+			      cf_lineno(mi->conf));
 
 		} else {
 			ERROR("Duplicate %s_%s instance \"%s\"",
-			      fr_table_str_by_value(dl_module_type_prefix, mi->dl_inst->module->type, "<INVALID>"),
-			      mi->dl_inst->module->common->name,
+			      fr_table_str_by_value(dl_module_type_prefix, mi->module->type, "<INVALID>"),
+			      mi->module->exported->name,
 			      qual_inst_name);
 		}
 		talloc_free(qual_inst_name);
@@ -1023,22 +1086,36 @@ module_instance_t *module_alloc(module_list_t *ml,
 	}
 
 	MEM(mi = talloc_zero(parent ? (void const *)parent : (void const *)ml, module_instance_t));
-	if (dl_module_instance(mi, &mi->dl_inst, parent ? parent->dl_inst : NULL,
-			       type, mod_name, qual_inst_name) < 0) {
-	error:
-		mi->name = qual_inst_name;	/* Assigned purely for debug log output when mi is freed */
-		talloc_free(mi);
-		talloc_free(qual_inst_name);
-		return NULL;
-	}
-	fr_assert(mi->dl_inst);
+	mi->name = talloc_typed_strdup(mi, qual_inst_name);
+	talloc_free(qual_inst_name);	/* Avoid stealing */
 
-	mi->module = (module_t const *)mi->dl_inst->module->common;
+	mi->ml = ml;
+	mi->parent = parent;
+
+	/*
+	 *	Increment the reference count on an already loaded module,
+	 *	or load the .so or .dylib, and run all the global callbacks.
+	 */
+	mi->module = dl_module_alloc(parent ? parent->module : NULL, mod_name, type);
 	if (!mi->module) {
-		ERROR("Missing public structure for \"%s\"", qual_inst_name);
+	error:
 		talloc_free(mi);
 		return NULL;
 	}
+
+	/*
+	 *	We have no way of checking if this is correct... so we hope...
+	 */
+	mi->exported = (module_t const *)mi->module->exported;
+	if (unlikely(mi->exported == NULL)) {
+		ERROR("Missing public structure for \"%s\"", qual_inst_name);
+		goto error;
+	}
+
+	/*
+	 *	Allocate the module instance data.
+	 */
+	module_instance_data_alloc(mi);
 
 	/*
 	 *	If we're threaded, check if the module is thread-safe.
@@ -1048,11 +1125,8 @@ module_instance_t *module_alloc(module_list_t *ml,
 	 *	Do this here so the destructor can trylock the mutex
 	 *	correctly even if bootstrap/instantiation fails.
 	 */
-	if ((mi->module->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
-	talloc_set_destructor(mi, _module_instance_free);
-
-	mi->name = talloc_typed_strdup(mi, qual_inst_name);
-	talloc_free(qual_inst_name);	/* Avoid stealing */
+	if ((mi->exported->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
+	talloc_set_destructor(mi, _module_instance_free);	/* Set late intentionally */
 
 	mi->number = ml->last_number++;
 	mi->ml = ml;
@@ -1061,21 +1135,17 @@ module_instance_t *module_alloc(module_list_t *ml,
 	 *	Remember the module for later.
 	 */
 	if (!fr_cond_assert(fr_rb_insert(ml->name_tree, mi))) goto error;
-
-	/*
-	 *	Allow modules to get at their own
-	 *	module_instance_t data, for
-	 *	looking up thread specific data
-	 *	and for bootstrapping submodules.
-	 */
-	if (mi->dl_inst->data && !fr_cond_assert(fr_rb_insert(ml->data_tree, mi))) goto error;
+	if (!fr_cond_assert(fr_rb_insert(ml->data_tree, mi))) goto error;
 
 	/*
 	 *	...and finally insert the module
 	 *	into the global heap so we can
 	 *	get common thread-local indexes.
 	 */
-	if (fr_heap_insert(&module_global_inst_list, mi) < 0) goto error;
+	if (fr_heap_insert(&module_global_inst_list, mi) < 0) {
+		ERROR("Failed inserting into global module index");
+		goto error;
+	}
 
 	return mi;
 }

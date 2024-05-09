@@ -116,7 +116,7 @@ static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rul
 	 *	function, depending on whether the driver calls a custom parsing function.
 	 */
 	if (unlikely((ret = func(ctx, &key_tmpl, t_rules, ci, section_name1, section_name2,
-				 inst->driver_submodule->dl_inst->data, rule)) < 0)) return ret;
+				 inst->driver_submodule->data, rule)) < 0)) return ret;
 	*((tmpl_t **)out) = key_tmpl;
 
 	/*
@@ -157,7 +157,7 @@ static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t const *inst, requ
 		return 0;
 	}
 
-	return inst->driver->acquire(out, &inst->config, inst->driver_submodule->dl_inst->data, request);
+	return inst->driver->acquire(out, &inst->config, inst->driver_submodule->data, request);
 }
 
 /** Release a handle we previously acquired
@@ -168,7 +168,7 @@ static void cache_release(rlm_cache_t const *inst, request_t *request, rlm_cache
 	if (!inst->driver->release) return;
 	if (!handle || !*handle) return;
 
-	inst->driver->release(&inst->config, inst->driver_submodule->dl_inst->data, request, *handle);
+	inst->driver->release(&inst->config, inst->driver_submodule->data, request, *handle);
 	*handle = NULL;
 }
 
@@ -179,7 +179,7 @@ static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t const *inst,
 {
 	fr_assert(inst->driver->reconnect);
 
-	return inst->driver->reconnect(handle, &inst->config, inst->driver_submodule->dl_inst->data, request);
+	return inst->driver->reconnect(handle, &inst->config, inst->driver_submodule->data, request);
 }
 
 /** Allocate a cache entry
@@ -192,7 +192,7 @@ static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t const *inst,
  */
 static rlm_cache_entry_t *cache_alloc(rlm_cache_t const *inst, request_t *request)
 {
-	if (inst->driver->alloc) return inst->driver->alloc(&inst->config, inst->driver_submodule->dl_inst->data, request);
+	if (inst->driver->alloc) return inst->driver->alloc(&inst->config, inst->driver_submodule->data, request);
 
 	return talloc_zero(NULL, rlm_cache_entry_t);
 }
@@ -283,7 +283,7 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
 	*out = NULL;
 
 	for (;;) {
-		ret = inst->driver->find(&c, &inst->config, inst->driver_submodule->dl_inst->data, request, *handle, key);
+		ret = inst->driver->find(&c, &inst->config, inst->driver_submodule->data, request, *handle, key);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			RDEBUG2("Reconnecting...");
@@ -317,7 +317,7 @@ static unlang_action_t cache_find(rlm_rcode_t *p_result, rlm_cache_entry_t **out
 			fr_box_time(request->packet->timestamp));
 
 	expired:
-		inst->driver->expire(&inst->config, inst->driver_submodule->dl_inst->data, request, handle, key);
+		inst->driver->expire(&inst->config, inst->driver_submodule->data, request, handle, key);
 		cache_free(inst, &c);
 		RETURN_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
@@ -347,7 +347,7 @@ static unlang_action_t cache_expire(rlm_rcode_t *p_result,
 				    rlm_cache_handle_t **handle, fr_value_box_t const *key)
 {
 	RDEBUG2("Expiring cache entry");
-	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_submodule->dl_inst->data, request, *handle, key)) {
+	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_submodule->data, request, *handle, key)) {
 	case CACHE_RECONNECT:
 		if (cache_reconnect(handle, inst, request) == 0) continue;
 		FALL_THROUGH;
@@ -384,7 +384,7 @@ static unlang_action_t cache_insert(rlm_rcode_t *p_result,
 	TALLOC_CTX		*pool;
 
 	if ((inst->config.max_entries > 0) && inst->driver->count &&
-	    (inst->driver->count(&inst->config, inst->driver_submodule->dl_inst->data, request, handle) > inst->config.max_entries)) {
+	    (inst->driver->count(&inst->config, inst->driver_submodule->data, request, handle) > inst->config.max_entries)) {
 		RWDEBUG("Cache is full: %d entries", inst->config.max_entries);
 		RETURN_MODULE_FAIL;
 	}
@@ -523,7 +523,7 @@ skip_maps:
 	for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->insert(&inst->config, inst->driver_submodule->dl_inst->data, request, *handle, c);
+		ret = inst->driver->insert(&inst->config, inst->driver_submodule->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -557,7 +557,7 @@ static unlang_action_t cache_set_ttl(rlm_rcode_t *p_result,
 	if (!inst->driver->set_ttl) for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->insert(&inst->config, inst->driver_submodule->dl_inst->data, request, *handle, c);
+		ret = inst->driver->insert(&inst->config, inst->driver_submodule->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -579,7 +579,7 @@ static unlang_action_t cache_set_ttl(rlm_rcode_t *p_result,
 	for (;;) {
 		cache_status_t ret;
 
-		ret = inst->driver->set_ttl(&inst->config, inst->driver_submodule->dl_inst->data, request, *handle, c);
+		ret = inst->driver->set_ttl(&inst->config, inst->driver_submodule->data, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			if (cache_reconnect(handle, inst, request) == 0) continue;
@@ -1462,7 +1462,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_cache_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t );
 	xlat_t		*xlat;
 
-	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->dl_inst->module->common;
+	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->module->exported;
 
 	/*
 	 *	Non optional fields and callbacks

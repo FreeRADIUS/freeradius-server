@@ -101,10 +101,10 @@ fr_dict_attr_autoload_t proto_dhcpv6_dict_attr[] = {
 	{ NULL }
 };
 
-/** Wrapper around dl_instance which translates the packet-type into a submodule name
+/** Translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_dhcpv6).
- * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
+ * @param[out] out	Where to write a module_instance_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
@@ -368,7 +368,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Instantiate the master io submodule
 	 */
-	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.dl_inst));
+	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.mi));
 }
 
 /** Bootstrap the application
@@ -417,13 +417,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
-	inst->io.dl_inst = dl_module_instance_by_data(inst);
-	fr_assert(inst != NULL);
+	inst->io.mi = mctx->inst;
 
 	/*
 	 *	Bootstrap the master IO handler.
 	 */
-	return fr_master_app_io.common.bootstrap(MODULE_INST_CTX(inst->io.dl_inst));
+	return fr_master_app_io.common.bootstrap(MODULE_INST_CTX(inst->io.mi));
 }
 
 static int mod_load(void)

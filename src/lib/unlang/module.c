@@ -46,8 +46,8 @@ typedef struct {
 	unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
 	unlang_module_fd_event_t	fd_write;	//!< Function to call when FD is writable.
 	unlang_module_fd_event_t	fd_error;	//!< Function to call when FD has errored.
-	dl_module_inst_t		*dl_inst;	//!< Module instance to pass to callbacks.
-							///< Use dl_inst->data to get instance data.
+	module_instance_t		*mi;	//!< Module instance to pass to callbacks.
+							///< Use mi->data to get instance data.
 	void				*thread;	//!< Thread specific module instance.
 	void				*env_data;	//!< Per call environment data.
 	void const			*rctx;		//!< rctx data to pass to callbacks.
@@ -69,7 +69,7 @@ static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNU
 
 	fr_assert(ev->fd == fd);
 
-	ev->fd_read(MODULE_CTX(ev->dl_inst, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
+	ev->fd_read(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
 }
 
 /** Frees an unlang event, removing it from the request's event loop
@@ -106,7 +106,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
 {
 	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
 
-	ev->timeout(MODULE_CTX(ev->dl_inst, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, now);
+	ev->timeout(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, now);
 	talloc_free(ev);
 }
 
@@ -145,7 +145,7 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 		.request = request,
 		.fd = -1,
 		.timeout = callback,
-		.dl_inst = mc->instance->dl_inst,
+		.mi = mc->instance,
 		.thread = state->thread,
 		.env_data = state->env_data,
 		.rctx = rctx
@@ -196,7 +196,7 @@ static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UN
 	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
 	fr_assert(ev->fd == fd);
 
-	ev->fd_write(MODULE_CTX(ev->dl_inst, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
+	ev->fd_write(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
 }
 
 /** Call the callback registered for an I/O error event
@@ -214,7 +214,7 @@ static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
 
 	fr_assert(ev->fd == fd);
 
-	ev->fd_error(MODULE_CTX(ev->dl_inst, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
+	ev->fd_error(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
 }
 
 
@@ -268,7 +268,7 @@ int unlang_module_fd_add(request_t *request,
 	ev->fd_read = read;
 	ev->fd_write = write;
 	ev->fd_error = error;
-	ev->dl_inst = mc->instance->dl_inst;
+	ev->mi = mc->instance;
 	ev->thread = state->thread;
 	ev->env_data = state->env_data;
 	ev->rctx = rctx;
@@ -537,7 +537,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 		state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 		return resume(p_result,
-			      MODULE_CTX(mc->instance->dl_inst, module_thread(mc->instance)->data,
+			      MODULE_CTX(mc->instance, module_thread(mc->instance)->data,
 			      		 state->env_data, rctx),
 			      request);
 	}
@@ -601,7 +601,7 @@ unlang_action_t unlang_module_yield(request_t *request,
  */
 static inline CC_HINT(always_inline) void safe_lock(module_instance_t *mi)
 {
-	if ((mi->module->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_lock(&mi->mutex);
+	if ((mi->exported->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_lock(&mi->mutex);
 }
 
 /*
@@ -609,7 +609,7 @@ static inline CC_HINT(always_inline) void safe_lock(module_instance_t *mi)
  */
 static inline CC_HINT(always_inline) void safe_unlock(module_instance_t *mi)
 {
-	if ((mi->module->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_unlock(&mi->mutex);
+	if ((mi->exported->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_unlock(&mi->mutex);
 }
 
 /** Send a signal (usually stop) to a request
@@ -637,7 +637,7 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	caller = request->module;
 	request->module = mc->instance->name;
 	safe_lock(mc->instance);
-	if (!(action & state->sigmask)) state->signal(MODULE_CTX(mc->instance->dl_inst, state->thread->data, state->env_data, state->rctx), request, action);
+	if (!(action & state->sigmask)) state->signal(MODULE_CTX(mc->instance, state->thread->data, state->env_data, state->rctx), request, action);
 	safe_unlock(mc->instance);
 	request->module = caller;
 
@@ -726,7 +726,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	 *	Lock is noop unless instance->mutex is set.
 	 */
 	safe_lock(mc->instance);
-	ua = resume(&state->rcode, MODULE_CTX(mc->instance->dl_inst, state->thread->data,
+	ua = resume(&state->rcode, MODULE_CTX(mc->instance, state->thread->data,
 					      state->env_data, state->rctx), request);
 	safe_unlock(mc->instance);
 
@@ -734,7 +734,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 
 	switch (ua) {
 	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s or worker signalled to stop processing request", mc->instance->module->name);
+		RWARN("Module %s or worker signalled to stop processing request", mc->instance->module->exported->name);
 		if (state->p_result) *state->p_result = state->rcode;
 		state->thread->active_callers--;
 		*p_result = state->rcode;
@@ -895,7 +895,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	fr_assert(mc);
 
 	RDEBUG4("[%i] %s - %s (%s)", stack_depth_current(request), __FUNCTION__,
-		mc->instance->name, mc->instance->module->name);
+		mc->instance->module->exported->name, mc->instance->name);
 
 	state->p_result = NULL;
 
@@ -955,7 +955,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	request->module = mc->instance->name;
 	safe_lock(mc->instance);	/* Noop unless instance->mutex set */
 	ua = mc->method(&state->rcode,
-			MODULE_CTX(mc->instance->dl_inst, state->thread->data, state->env_data, NULL),
+			MODULE_CTX(mc->instance, state->thread->data, state->env_data, NULL),
 			request);
 	safe_unlock(mc->instance);
 
@@ -967,7 +967,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 *	must have been blocked.
 	 */
 	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s became unblocked", mc->instance->module->name);
+		RWARN("Module %s became unblocked", mc->instance->name);
 		if (state->p_result) *state->p_result = state->rcode;
 		*p_result = state->rcode;
 		request->module = state->previous_module;

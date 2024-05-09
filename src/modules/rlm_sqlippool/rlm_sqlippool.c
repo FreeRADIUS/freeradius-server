@@ -254,7 +254,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	inst->sql = (rlm_sql_t *) sql->dl_inst->data;
+	inst->sql = (rlm_sql_t *) sql->data;
 
 	if (strcmp(talloc_get_name(inst->sql), "rlm_sql_t") != 0) {
 		cf_log_err(conf, "Module \"%s\" is not an instance of the rlm_sql module",
@@ -606,7 +606,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	 */
 	sql_inst = module_rlm_by_name(NULL, inst->sql_name);
 	if (!sql_inst) return -1;
-	sql = talloc_get_type_abort(sql_inst->dl_inst->data, rlm_sql_t);
+	sql = talloc_get_type_abort(sql_inst->data, rlm_sql_t);
 
 	/*
 	 *	Set the sql module instance data as the uctx for escaping

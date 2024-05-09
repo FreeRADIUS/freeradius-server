@@ -507,7 +507,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (!talloc_get_type(sql_inst->dl_inst->data, rlm_sql_t)) {
+	if (!talloc_get_type(sql_inst->data, rlm_sql_t)) {
 		cf_log_err(conf, "\"%s\" is not an instance of rlm_sql", inst->sql_name);
 		return -1;
 	}

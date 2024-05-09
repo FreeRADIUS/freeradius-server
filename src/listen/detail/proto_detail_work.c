@@ -864,17 +864,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	proto_detail_work_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_work_t);
 	CONF_SECTION		*cs = mctx->inst->conf;
-	dl_module_inst_t const	*dl_inst;
+	module_instance_t const	*mi = mctx->inst;
 
-	/*
-	 *	Find the dl_module_inst_t holding our instance data
-	 *	so we can find out what the parent of our instance
-	 *	was.
-	 */
-	dl_inst = dl_module_instance_by_data(mctx->inst->data);
-	fr_assert(dl_inst);
-
-	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_detail_t);
+	inst->parent = talloc_get_type_abort(mi->parent->data, proto_detail_t);
 	inst->cs = cs;
 
 	if (inst->track_progress) {

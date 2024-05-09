@@ -45,23 +45,12 @@ RCSID("$Id$")
  * Provides space to store instance data.
  */
 struct dl_module_loader_s {
-	pthread_mutex_t 	lock;			//!<
+	pthread_mutex_t 	lock;			//!< Protects the module tree when multiple threads are loading modules simultaneously.
 	fr_rb_tree_t		*module_tree;		//!< Module's dl handles.
-	fr_rb_tree_t		*inst_data_tree;	//!< Module's instance data.
 	dl_loader_t		*dl_loader;		//!< A list of loaded libraries, and symbol to callback mappings.
 };
 
 static dl_module_loader_t	*dl_module_loader;
-
-/** Make data to instance name resolution more efficient
- *
- */
-typedef struct {
-	void			*data;		//!< Module's data.
-	dl_module_inst_t	*inst;		//!< Instance wrapper struct.
-} dl_module_inst_cache_t;
-
-static _Thread_local dl_module_inst_cache_t	dl_inst_cache;
 
 /** Name prefixes matching the types of loadable module
  */
@@ -72,16 +61,6 @@ fr_table_num_sorted_t const dl_module_type_prefix[] = {
 	{ L("rlm"),	DL_MODULE_TYPE_MODULE		}
 };
 size_t dl_module_type_prefix_len = NUM_ELEMENTS(dl_module_type_prefix);
-
-static int8_t dl_module_inst_data_cmp(void const *one, void const *two)
-{
-	dl_module_inst_t const *a = one, *b = two;
-
-	fr_assert(a->data);
-	fr_assert(b->data);
-
-	return CMP(a->data, b->data);
-}
 
 static int8_t dl_module_cmp(void const *one, void const *two)
 {
@@ -113,14 +92,14 @@ static int dl_module_onload_func(dl_t const *dl, UNUSED void *symbol, UNUSED voi
 	 */
 	fr_strerror_clear();
 
-	if (dl_module->common->onload) {
+	if (dl_module->exported->onload) {
 		int ret;
 
-		ret = dl_module->common->onload();
+		ret = dl_module->exported->onload();
 		if (ret < 0) {
 #ifndef NDEBUG
 			PERROR("Initialisation failed for module \"%s\" - onload() returned %i",
-			       dl_module->common->name, ret);
+			       dl_module->exported->name, ret);
 #else
 			PERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
 #endif
@@ -145,7 +124,7 @@ static void dl_module_unload_func(dl_t const *dl, UNUSED void *symbol, UNUSED vo
 	 *	common is NULL if we couldn't find the
 	 *	symbol and are erroring out.
 	 */
-	if (dl_module->common && dl_module->common->unload) dl_module->common->unload();
+	if (dl_module->exported && dl_module->exported->unload) dl_module->exported->unload();
 }
 
 /** Check if the magic number in the module matches the one in the library
@@ -203,168 +182,6 @@ static int dl_module_magic_verify(dl_module_common_t const *module)
 	return 0;
 }
 
-/** Return top root module, in a hierarchy of modules
- *
- */
-dl_module_inst_t const *dl_module_instance_root(dl_module_inst_t const *dl_inst)
-{
-	if (!dl_inst) return NULL;
-
-	while (dl_inst->parent) dl_inst = dl_inst->parent;
-
-	return dl_inst;
-}
-
-/** Return the prefix string for the deepest module
- *
- * This is useful for submodules which don't have a prefix of their own.
- * In this case we need to use the prefix of the shallowest module, which
- * will be a proto or rlm module.
- *
- * @param[in] dl_inst	Instance to get the prefix for.
- * @return The prefix string for the shallowest module.
- */
-char const *dl_module_instance_root_prefix_str(dl_module_inst_t const *dl_inst)
-{
-	dl_module_inst_t const *root = dl_module_instance_root(dl_inst);
-
-	return fr_table_str_by_value(dl_module_type_prefix, root->module->type, "<INVALID>");
-}
-
-/** Lookup a module's parent
- *
- */
-dl_module_inst_t const	*dl_module_parent_instance(dl_module_inst_t const *child)
-{
-	return child->parent;
-}
-
-/** Lookup a dl_module_inst_t via instance data
- *
- */
-dl_module_inst_t const *dl_module_instance_by_data(void const *data)
-{
-	DL_INIT_CHECK;
-
-	if (dl_inst_cache.data == data) return dl_inst_cache.inst;
-
-	return fr_rb_find(dl_module_loader->inst_data_tree, &(dl_module_inst_t){ .data = UNCONST(void *, data) });
-}
-
-/** Lookup a dl_module_inst_t via a config section
- *
- */
-dl_module_inst_t const *dl_module_instance_by_cs(CONF_SECTION const *cs)
-{
-	return cf_data_value(cf_data_find(cs, dl_module_inst_t, CF_IDENT_ANY));
-}
-
-/** Lookup instance name via instance data
- *
- */
-char const *dl_module_instance_name_by_data(void const *data)
-{
-	dl_module_inst_t const *inst;
-
-	inst = dl_module_instance_by_data(data);
-	if (!inst) return NULL;
-
-	return inst->name;
-}
-
-/** A convenience function for returning a parent's private data
- *
- * @param[in] data	Private instance data for child.
- * @return
- *	- Parent's private instance data.
- *	- NULL if no parent
- */
-void *dl_module_parent_data_by_child_data(void const *data)
-{
-	dl_module_inst_t const *dl_inst;
-
-	DL_INIT_CHECK;
-
-	dl_inst = dl_module_instance_by_data(data);
-	if (!dl_inst) return NULL;
-
-	if (!dl_inst->parent) return NULL;
-
-	return dl_inst->parent->data;
-}
-
-/** Detach the shallowest parent first
- *
- */
-static void dl_module_detach_parent(dl_module_inst_t *dl_inst)
-{
-	if (dl_inst->detached) return;
-
-	if (dl_inst->parent) dl_module_detach_parent(UNCONST(dl_module_inst_t *, dl_inst->parent));
-
-	if (dl_inst->module->common->detach) {
-		dl_inst->module->common->detach(&(module_detach_ctx_t){ .inst = dl_inst });
-		dl_inst->detached = true;
-	}
-}
-
-static int _dl_module_instance_data_free(void *data)
-{
-	dl_module_inst_t *dl_inst = UNCONST(dl_module_inst_t *, dl_module_instance_by_data(data));
-
-	if (!dl_inst) {
-		ERROR("Failed resolving data %p, to dl_module_inst_t, refusing to free", data);
-		return -1;
-	}
-
-	/*
-	 *	Ensure the shallowest parent module
-	 *	gets detached first so that it can
-	 *	still reach its children.
-	 */
-	dl_module_detach_parent(dl_inst);
-
-	return 0;
-}
-
-/** Allocate module instance data, and parse the module's configuration
- *
- * @param[in] dl_inst	to allocate this instance data in.
- * @param[in] module	to alloc instance data for.
- */
-static void dl_module_instance_data_alloc(dl_module_inst_t *dl_inst, dl_module_t const *module)
-{
-	void *data;
-
-	/*
-	 *	If there is supposed to be instance data, allocate it now.
-	 *
-	 *      If the structure is zero length then allocation will still
-	 *	succeed, and will create a talloc chunk header.
-	 *
-	 *      This is needed so we can resolve instance data back to
-	 *	dl_module_inst_t/dl_module_t/dl_t.
-	 */
-	MEM(data = talloc_zero_array(dl_inst, uint8_t, module->common->inst_size));
-
-	if (!module->common->inst_type) {
-		talloc_set_name(data, "%s_t", module->dl->name ? module->dl->name : "config");
-	} else {
-		talloc_set_name_const(data, module->common->inst_type);
-	}
-	dl_inst->data = data;
-
-	/*
-	 *      Must be done before setting the destructor to ensure the
-	 *      destructor can find the dl_module_inst_t associated
-	 *      with the data.
-	 */
-	fr_assert(dl_module_loader != NULL);
-	fr_rb_insert(dl_module_loader->inst_data_tree, dl_inst);	/* Duplicates not possible */
-
-	talloc_set_destructor(data, _dl_module_instance_data_free);
-}
-
 /** Decrement the reference count of the dl, eventually freeing it
  *
  */
@@ -399,7 +216,7 @@ static int _dl_module_free(dl_module_t *dl_module)
 	if (dl_module->dl) {
 		if (DEBUG_ENABLED4) {
 			DEBUG4("%s unloaded.  Handle address %p, symbol address %p", dl_module->dl->name,
-			       dl_module->dl->handle, dl_module->common);
+			       dl_module->dl->handle, dl_module->exported);
 		} else {
 			DEBUG3("%s unloaded", dl_module->dl->name);
 		}
@@ -429,10 +246,11 @@ static int _dl_module_free(dl_module_t *dl_module)
 int dl_module_free(dl_module_t *dl_module)
 {
 	int ret;
+	dl_module_loader_t *dl_module_l = dl_module->loader; /* Save this, as dl_module will be free'd */
 
-	pthread_mutex_lock(&dl_module->loader->lock);
+	pthread_mutex_lock(&dl_module_l->lock);
 	ret = talloc_free(dl_module);
-	pthread_mutex_unlock(&dl_module->loader->lock);
+	pthread_mutex_unlock(&dl_module_l->lock);
 
 	return ret;
 }
@@ -473,7 +291,7 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 		module_name = talloc_typed_asprintf(NULL, "%s_%s_%s",
 						    fr_table_str_by_value(dl_module_type_prefix,
 						    			  parent->type, "<INVALID>"),
-						    parent->common->name, name);
+						    parent->exported->name, name);
 	} else {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s",
 						    fr_table_str_by_value(dl_module_type_prefix, type, "<INVALID>"),
@@ -505,6 +323,7 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 	}
 
 	MEM(dl_module = talloc_zero(dl_module_loader, dl_module_t));
+	dl_module->name = talloc_strdup(dl_module, name);
 	dl_module->loader = dl_module_loader;
 	dl_module->parent = parent;
 	dl_module->type = type;
@@ -533,7 +352,7 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 		ERROR("Could not find \"%s\" symbol in module: %s", module_name, dlerror());
 		goto error;
 	}
-	dl_module->common = common;
+	dl_module->exported = common;
 
 	/*
 	 *	Before doing anything else, check if it's sane.
@@ -572,145 +391,6 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 	return dl_module;
 }
 
-/** Free a module instance, removing it from the instance tree
- *
- * Also decrements the reference count of the module potentially unloading it.
- *
- * @param[in] dl_inst to free.
- * @return 0.
- */
-static int _dl_module_instance_free(dl_module_inst_t *dl_inst)
-{
-	/*
-	 *	Ensure sane free order, and that all destructors
-	 *	run before the .so/.dylib is unloaded.
-	 *
-	 *      This *MUST* be done *BEFORE* decrementing the
-	 *      reference count on the module.
-	 *
-	 *      It also *MUST* be done before removing this struct
-	 *      from the inst_data_tree, so the detach destructor
-	 *      can find the dl_module_inst_t associated with
-	 *      the opaque data.
-	 */
-	talloc_free_children(dl_inst);
-
-	/*
-	 *	Remove this instance from the tracking tree.
-	 */
-	fr_assert(dl_module_loader != NULL);
-	fr_rb_delete(dl_module_loader->inst_data_tree, dl_inst);
-
-	/*
-	 *	Decrements the reference count. The module object
-	 *	won't be unloaded until all instances of that module
-	 *	have been destroyed.
-	 */
-	dl_module_free(dl_inst->module);
-
-	return 0;
-}
-
-/** Retrieve a public symbol from a module using dlsym
- *
- * Convenience function to lookup/return public symbols from modules loaded
- * with #dl_module_instance.
- *
- * @param[in] dl_inst   	Instance who's module we're looking for the symbol in.
- * @param[in] sym_name		to lookup.
- * @return
- *	- Pointer to the public data structure.
- * 	- NULL if no matching symbol was found.
- */
-void *dl_module_instance_symbol(dl_module_inst_t const *dl_inst, char const *sym_name)
-{
-	if (!sym_name) return NULL;
-
- 	return dlsym(dl_inst->module->dl->handle, sym_name);
-}
-
-/** Load a module and parse its #CONF_SECTION in one operation
- *
- * When this instance is no longer needed, it should be freed with talloc_free().
- * When all instances of a particular module are unloaded, the dl handle will be closed,
- * unloading the module.
- *
- * @param[in] ctx	to allocate structures in.
- * @param[out] out	where to write our #dl_module_inst_t containing the module
- *			handle and instance.
- * @param[in] parent	of module instance.
- * @param[in] type	of module to load.
- * @param[in] mod_name	of the module to load .e.g. 'udp' for 'proto_radius_udp'
- *			if the parent were 'proto_radius'.
- * @param[in] inst_name	The name of the instance .e.g. 'sql_aws_dc01'
- *
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int dl_module_instance(TALLOC_CTX *ctx, dl_module_inst_t **out,
-		       dl_module_inst_t const *parent,
-		       dl_module_type_t type, char const *mod_name, char const *inst_name)
-{
-	dl_module_inst_t	*dl_inst;
-
-	DL_INIT_CHECK;
-
-	MEM(dl_inst = talloc_zero(ctx, dl_module_inst_t));
-
-	dl_inst->module = dl_module_alloc(parent ? parent->module : NULL, mod_name, type);
-	if (!dl_inst->module) {
-		talloc_free(dl_inst);
-		return -1;
-	}
-	dl_inst->name = talloc_typed_strdup(dl_inst, inst_name);
-
-	/*
-	 *	ctx here is the main module's instance data
-	 */
-	dl_module_instance_data_alloc(dl_inst, dl_inst->module);
-	talloc_set_destructor(dl_inst, _dl_module_instance_free);
-
-	dl_inst->parent = parent;
-	*out = dl_inst;
-
-	return 0;
-}
-
-/** Avoid boilerplate when setting the module instance name
- *
- */
-char const *dl_module_inst_name_from_conf(CONF_SECTION *conf)
-{
-	char const *name2;
-
-	name2 = cf_section_name2(conf);
-	if (name2) return name2;
-
-	return cf_section_name1(conf);
-}
-
-int dl_module_conf_parse(dl_module_inst_t *dl_inst, CONF_SECTION *conf)
-{
-	/*
-	 *	Associate the module instance with the conf section
-	 *	*before* executing any parse rules that might need it.
-	 */
-	cf_data_add(conf, dl_inst, dl_inst->module->dl->name, false);
-	dl_inst->conf = conf;
-
-	if (dl_inst->module->common->config && dl_inst->conf) {
-		if ((cf_section_rules_push(dl_inst->conf, dl_inst->module->common->config)) < 0 ||
-		    (cf_section_parse(dl_inst->data, dl_inst->data, dl_inst->conf) < 0)) {
-			cf_log_err(dl_inst->conf, "Failed evaluating configuration for module \"%s\"",
-				   dl_inst->module->dl->name);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
 static int _dl_module_loader_free(dl_module_loader_t *dl_module_l)
 {
 	int ret = 0;
@@ -721,18 +401,18 @@ static int _dl_module_loader_free(dl_module_loader_t *dl_module_l)
 	fr_assert_msg(pthread_mutex_trylock(&dl_module_l->lock) == 0,
 		      "dl_module_loader->lock held when attempting to free dL_module_loader_t");
 
-	if (fr_rb_num_elements(dl_module_l->inst_data_tree) > 0) {
+	if (fr_rb_num_elements(dl_module_l->module_tree) > 0) {
 #ifndef NDEBUG
 		fr_rb_iter_inorder_t	iter;
-		void				*data;
+		void			*data;
 
-		WARN("Refusing to cleanup dl loader, the following module instances are still in use:");
-		for (data = fr_rb_iter_init_inorder(&iter, dl_module_l->inst_data_tree);
+		WARN("Refusing to cleanup dl loader, the following modules are still in use:");
+		for (data = fr_rb_iter_init_inorder(&iter, dl_module_l->module_tree);
 		     data;
 		     data = fr_rb_iter_next_inorder(&iter)) {
-			dl_module_inst_t *dl_inst = talloc_get_type_abort(data, dl_module_inst_t);
+			dl_module_t *module = talloc_get_type_abort(data, dl_module_t);
 
-			WARN("  %s (%s)", dl_inst->module->dl->name, dl_inst->name);
+			WARN("  %s", module->exported->name);
 		}
 #endif
 		ret = -1;
@@ -840,16 +520,9 @@ dl_module_loader_t *dl_module_loader_init(char const *lib_dir)
 	}
 	if (lib_dir) dl_search_path_prepend(dl_module_loader->dl_loader, lib_dir);
 
-	dl_module_loader->inst_data_tree = fr_rb_talloc_alloc(dl_module_loader, dl_module_inst_t,
-							      dl_module_inst_data_cmp, NULL);
-	if (!dl_module_loader->inst_data_tree) {
-		ERROR("Failed initialising dl->inst_data_tree");
-		goto error;
-	}
-
 	dl_module_loader->module_tree = fr_rb_talloc_alloc(dl_module_loader, dl_module_t,
 							   dl_module_cmp, NULL);
-	if (!dl_module_loader->inst_data_tree) {
+	if (!dl_module_loader->module_tree) {
 		ERROR("Failed initialising dl->module_tree");
 		goto error;
 	}

@@ -118,7 +118,7 @@ fr_dict_attr_autoload_t rlm_eap_dict_attr[] = {
 static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
 static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
 
-/** Wrapper around dl_instance which loads submodules based on type = foo pairs
+/** Loads submodules based on type = foo pairs
  *
  * @param[in] ctx	to allocate data in (instance of rlm_eap_t).
  * @param[out] out	Where to write child conf section to.
@@ -180,8 +180,8 @@ static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
 		CONF_SECTION	*eap_cs = cf_item_to_section(cf_parent(ci));
 
 		module_inst_ctx_t *mctx = MODULE_INST_CTX(
-			((dl_module_inst_t *)cf_data_value(cf_data_find(eap_cs,
-									dl_module_inst_t, "rlm_eap"))));
+			((module_instance_t *)cf_data_value(cf_data_find(eap_cs,
+									module_instance_t, "rlm_eap"))));
 		WARN("Ignoring EAP method %s because we don't have OpenSSL support", name);
 	}
 		return 0;
@@ -689,7 +689,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 					(rlm_eap_submodule_t const *)inst->type_identity_submodule[i]->module;
 				eap_type_t ret;
 
-				ret = submodule->type_identity(inst->type_identity_submodule[i]->dl_inst->data,
+				ret = submodule->type_identity(inst->type_identity_submodule[i]->data,
 							       eap_session->identity,
 							       talloc_array_length(eap_session->identity) - 1);
 				if (ret != FR_EAP_METHOD_INVALID) {
@@ -1100,7 +1100,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		if (!submodule_inst) continue;	/* Skipped as we don't have SSL support */
 
-		submodule = (rlm_eap_submodule_t const *)submodule_inst->dl_inst->module->common;
+		submodule = (rlm_eap_submodule_t const *)submodule_inst->module->exported;
 
 		/*
 		 *	Add the methods the submodule provides
@@ -1123,9 +1123,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			 *	Check for duplicates
 			 */
 			if (inst->methods[method].submodule) {
-				CONF_SECTION *conf = inst->methods[method].submodule_inst->dl_inst->conf;
+				CONF_SECTION *conf = inst->methods[method].submodule_inst->conf;
 
-				cf_log_err(submodule_inst->dl_inst->conf,
+				cf_log_err(submodule_inst->conf,
 					   "Duplicate EAP-Type %s.  Conflicting entry %s[%u]",
 					   eap_type2name(method),
 					   cf_filename(conf), cf_lineno(conf));

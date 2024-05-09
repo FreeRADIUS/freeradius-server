@@ -80,6 +80,27 @@ typedef unlang_action_t (*module_method_t)(rlm_rcode_t *p_result, module_ctx_t c
  */
 typedef int (*module_instantiate_t)(module_inst_ctx_t const *mctx);
 
+/** Wrapper structure around module_instance_t to allow us to pass more arguments into module_detach_ctx_t in future
+ */
+typedef struct {
+	module_instance_t const	*inst;		//!< Module instance to detach.
+} module_detach_ctx_t;
+
+/** Module detach callback
+ *
+ * Is called just before the server exits, and after re-instantiation on HUP,
+ * to free the old module instance.
+ *
+ * Detach should close all handles associated with the module instance, and
+ * free any memory allocated during instantiate.
+ *
+ * @param[in] inst to free.
+ * @return
+ *	- 0 on success.
+ *	- -1 if detach failed.
+ */
+typedef int (*module_detach_t)(module_detach_ctx_t const *inst);
+
 /** Module thread creation callback
  *
  * Called whenever a new thread is created.
@@ -140,24 +161,42 @@ struct module_method_name_s {
  * within the module to different sections.
  */
 struct module_s {
-	DL_MODULE_COMMON;		//!< Common fields for all loadable modules.
+	DL_MODULE_COMMON;					//!< Common fields for all loadable modules.
 
-	module_instantiate_t		bootstrap;
-	module_instantiate_t		instantiate;
-	int				flags;	/* flags */
-	module_thread_instantiate_t	thread_instantiate;
-	module_thread_detach_t		thread_detach;
-	char const			*thread_inst_type;
-	size_t				thread_inst_size;
+	conf_parser_t const		*config;		//!< How to convert a CONF_SECTION to a module instance.
+
+	size_t				inst_size;		//!< Size of the module's instance data.
+	char const			*inst_type;		//!< talloc type to assign to instance data.
+
+	module_instantiate_t		bootstrap;		//!< Callback to allow the module to register any global
+								///< resources like xlat functions and attributes.
+	module_instantiate_t		instantiate;		//!< Callback to allow the module to register any
+								///< per-instance resources like sockets and file handles.
+	module_detach_t			detach;			//!< Clean up module resources from both the bootstrap
+								///< and instantiation pahses.
+
+	module_flags_t			flags;			//!< Flags that control how a module starts up and how
+								///< a module is called.
+
+	module_thread_instantiate_t	thread_instantiate;	//!< Callback to populate a new module thread instance data.
+								///< Called once per thread.
+	module_thread_detach_t		thread_detach;		//!< Callback to free thread-specific resources associated
+								///!< with a module.
+
+	size_t				thread_inst_size;	//!< Size of the module's thread-specific instance data.
+	char const			*thread_inst_type;	//!< talloc type to assign to thread instance data.
 };
 
 /** What state the module instance is currently in
  *
  */
 typedef enum {
-	MODULE_INSTANCE_INIT = 0,
-	MODULE_INSTANCE_BOOTSTRAPPED,
-	MODULE_INSTANCE_INSTANTIATED
+	MODULE_INSTANCE_INIT = 0,			//!< Module instance has been allocated, but not
+							///< yet bootstrapped.
+	MODULE_INSTANCE_BOOTSTRAPPED,			//!< Module instance has been bootstrapped, but not
+							///< yet instantiated.
+	MODULE_INSTANCE_INSTANTIATED			//!< Module instance has been bootstrapped and
+							///< instantiated.
 } module_instance_state_t;
 
 /** Per instance data
@@ -170,30 +209,39 @@ struct module_instance_s {
 	fr_heap_index_t			inst_idx;	//!< Entry in the bootstrap/instantiation heap.
 							//!< should be an identical value to the thread-specific
 							///< data for this module.
+	module_instance_state_t		state;		//!< What's been done with this module so far.
 
 	fr_rb_node_t			name_node;	//!< Entry in the name tree.
 	fr_rb_node_t			data_node;	//!< Entry in the data tree.
 
 	module_list_t			*ml;		//!< Module list this instance belongs to.
 
-	uint32_t			number;		//!< Unique module number.
+	uint32_t			number;		//!< Unique module number.  This is used to access the
+							///< thread-specific module instance.
 
 	char const			*name;		//!< Instance name e.g. user_database.
 
-	dl_module_inst_t		*dl_inst;	//!< Structure containing the module's instance data,
-							//!< configuration, and dl handle.  This can be used
-							///< to access the parsed configuration data for the
-							///< module.
+	dl_module_t			*module;	//!< dynamic loader handle.  Contains the module's
+							///< dlhandle, and the functions it exports.
+							///< The dl_module is reference counted so that it
+							///< can be freed automatically when the last instance
+							///< is freed.  This will also (usually) unload the
+							///< .so or .dylib.
 
-	module_t const			*module;	//!< Public module structure.  Cached for convenience.
+	module_t const			*exported;	//!< Public module structure.  Cached for convenience.
 							///< This exports module methods, i.e. the functions
 							///< which allow the module to perform actions.
+							///< This is an identical address to dl_module->common,
+							///< but with a different type, containing additional
+							///< instance callbacks to make it easier to use.
+
+	void				*data;		//!< Module's instance data.
+	CONF_SECTION			*conf;		//!< Module's instance configuration.
+
+	module_instance_t const		*parent;	//!< Parent module's instance (if any).
 
 	pthread_mutex_t			mutex;		//!< Used prevent multiple threads entering a thread
 							///< unsafe module simultaneously.
-
-	module_instance_state_t		state;		//!< What's been done with this module so far.
-
 	/** @name Return code overrides
 	 * @{
  	 */
@@ -206,6 +254,8 @@ struct module_instance_s {
 	unlang_actions_t       		actions;	//!< default actions and retries.
 
 	/** @} */
+
+	bool				detached;	//!< Whether the detach function has been called.
 };
 
 /** Per thread per instance data
@@ -259,14 +309,18 @@ int		module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
  *
  * @{
  */
-module_instance_t	*module_parent(module_instance_t const *child) CC_HINT(warn_unused_result);
+char const		*module_instance_name_from_conf(CONF_SECTION *conf);
 
-module_instance_t	*module_root(module_instance_t const *child); CC_HINT(warn_unused_result)
+int 			module_instance_conf_parse(module_instance_t *mi, CONF_SECTION *conf);
 
-module_instance_t	*module_by_name(module_list_t const *ml, module_instance_t const *parent, char const *asked_name)
+char const 		*module_instance_root_prefix_str(module_instance_t const *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
+
+module_instance_t	*module_instance_root(module_instance_t const *child); CC_HINT(warn_unused_result)
+
+module_instance_t	*module_instance_by_name(module_list_t const *ml, module_instance_t const *parent, char const *asked_name)
 			CC_HINT(nonnull(1,3)) CC_HINT(warn_unused_result);
 
-module_instance_t	*module_by_data(module_list_t const *ml, void const *data) CC_HINT(warn_unused_result);
+module_instance_t	*module_instance_by_data(module_list_t const *ml, void const *data) CC_HINT(warn_unused_result);
 
 module_thread_instance_t *module_thread(module_instance_t *mi) CC_HINT(warn_unused_result);
 
@@ -291,9 +345,7 @@ int		module_bootstrap(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unuse
 
 int		modules_bootstrap(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-int		module_conf_parse(module_instance_t *mi, CONF_SECTION *mod_cs) CC_HINT(nonnull) CC_HINT(warn_unused_result);
-
-module_instance_t *module_alloc(module_list_t *ml,
+module_instance_t *module_instance_alloc(module_list_t *ml,
 			        module_instance_t const *parent,
 			        dl_module_type_t type, char const *mod_name, char const *inst_name)
 			        CC_HINT(nonnull(1)) CC_HINT(warn_unused_result);

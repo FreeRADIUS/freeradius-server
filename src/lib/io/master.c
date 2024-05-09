@@ -143,7 +143,7 @@ struct fr_io_connection_s {
 	fr_listen_t			*child;		//!< child listener (app_io) for this socket
 	fr_io_client_t			*client;	//!< our local client (pending or connected).
 	fr_io_client_t			*parent;	//!< points to the parent client.
-	dl_module_inst_t   		*dl_inst;	//!< for submodule
+	module_instance_t   		*mi;	//!< for submodule
 
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
@@ -478,7 +478,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 {
 	int ret;
 	fr_io_connection_t *connection;
-	dl_module_inst_t *dl_inst = NULL;
+	module_instance_t *mi = NULL;
 	fr_listen_t *li;
 	fr_client_t *radclient;
 
@@ -493,6 +493,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 */
 	if (!nak) {
 		char *inst_name;
+		char const *transport_name = inst->submodule->module->exported->name;
 
 		if (inst->max_connections || client->radclient->limit.max_connections) {
 			uint32_t max_connections = inst->max_connections ? inst->max_connections : client->radclient->limit.max_connections;
@@ -510,7 +511,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 				if ((thread->num_connections + 1) >= max_connections) {
 					DEBUG("proto_%s - Ignoring connection from client %s - 'max_connections' limit reached.",
 					      inst->app->common.name, client->radclient->shortname);
-				close_and_return:
 					if (fd >= 0) close(fd);
 					return NULL;
 				}
@@ -518,33 +518,32 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		}
 
 		/*
-		 *	FIXME - This is not at all thread safe
+		 *	FIXME - This should a 'sub' module list
 		 */
-		inst_name = talloc_asprintf(NULL, "%s%"PRIu64, inst->transport, thread->client_id++);
-		if (dl_module_instance(NULL, &dl_inst, inst->dl_inst,
-				       DL_MODULE_TYPE_SUBMODULE, inst->transport, inst_name) < 0) {
-			talloc_free(inst_name);
-			DEBUG("Failed to find proto_%s_%s", inst->app->common.name, inst->transport);
-			goto close_and_return;
-		}
-		talloc_free(inst_name);
+		inst_name = talloc_asprintf(NULL, "%s%"PRIu64, transport_name, thread->client_id++);
+		mi = module_instance_alloc(inst->submodule->ml, inst->submodule, DL_MODULE_TYPE_SUBMODULE,
+					   inst->submodule->module->exported->name, inst_name);
 
-/*
-		if (dl_module_conf_parse(dl_inst, inst->server_cs) < 0) {
+		if (module_instance_conf_parse(mi, inst->server_cs) < 0) {
+			cf_log_perr(inst->server_cs, "Failed parsing module config");
 			goto cleanup;
 		}
-*/
-		fr_assert(dl_inst != NULL);
+
+		/*
+		 *	FIXME - Instantiate the new module?!
+		 */
+		talloc_free(inst_name);
+		fr_assert(mi != NULL);
 	} else {
-		dl_inst = talloc_init_const("nak");
+		mi = talloc_init_const("nak");
 	}
 
-	MEM(connection = talloc_zero(dl_inst, fr_io_connection_t));
+	MEM(connection = talloc_zero(mi, fr_io_connection_t));
 	MEM(connection->address = talloc_memdup(connection, address, sizeof(*address)));
 	(void) talloc_set_name_const(connection->address, "fr_io_address_t");
 
 	connection->parent = client;
-	connection->dl_inst = dl_inst;
+	connection->mi = mi;
 
 	MEM(connection->client = talloc_named(NULL, sizeof(fr_io_client_t), "fr_io_client_t"));
 	memset(connection->client, 0, sizeof(*connection->client));
@@ -657,7 +656,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		li->connected = true;
 		li->app_io = thread->child->app_io;
 		li->thread_instance = connection;
-		li->app_io_instance = dl_inst->data;
+		li->app_io_instance = mi->data;
 		li->track_duplicates = thread->child->app_io->track_duplicates;
 
 		/*
@@ -732,13 +731,13 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 						  &connection->address->socket.inet.src_ipaddr,
 						  connection->address->socket.inet.src_port) < 0) {
 				DEBUG("proto_%s - Failed getting IP address", inst->app->common.name);
-				talloc_free(dl_inst);
+				talloc_free(mi);
 				return NULL;
 			}
 
 			if (inst->app_io->open(connection->child) < 0) {
 				DEBUG("proto_%s - Failed opening connected socket.", inst->app->common.name);
-				talloc_free(dl_inst);
+				talloc_free(mi);
 				return NULL;
 			}
 
@@ -824,7 +823,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 
 	cleanup:
 		if (fd >= 0) close(fd);
-		talloc_free(dl_inst);
+		talloc_free(mi);
 		return NULL;
 	}
 
@@ -2499,7 +2498,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	 */
 	if (radclient->use_connected && !inst->app_io->connection_set) {
 		DEBUG("proto_%s - cannot use connected sockets as underlying 'transport = %s' does not support it.",
-		      inst->app_io->common.name, inst->submodule->dl_inst->module->common->name);
+		      inst->app_io->common.name, inst->submodule->module->exported->name);
 		goto error;
 	}
 
@@ -2619,7 +2618,7 @@ static int mod_close(fr_listen_t *li)
 	 */
 	fr_network_listen_delete(connection->nr, child);
 
-	talloc_free(connection->dl_inst);
+	talloc_free(connection->mi);
 
 	return 0;
 }
@@ -2633,10 +2632,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Find and bootstrap the application IO handler.
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->submodule->dl_inst->module->common;
+	inst->app_io = (fr_app_io_t const *) inst->submodule->module->exported;
 
-	inst->app_io_conf = inst->submodule->dl_inst->conf;
-	inst->app_io_instance = inst->submodule->dl_inst->data;
+	inst->app_io_conf = inst->submodule->conf;
+	inst->app_io_instance = inst->submodule->data;
 
 	/*
 	 *	If we're not tracking duplicates then we don't need a
@@ -2656,7 +2655,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->submodule->dl_inst)) < 0)) {
+	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->submodule)) < 0)) {
 		cf_log_err(inst->app_io_conf, "Bootstrap failed for proto_%s", inst->app_io->common.name);
 		return -1;
 	}
@@ -2723,7 +2722,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_assert(inst->app_io != NULL);
 
 	if (inst->app_io->common.instantiate &&
-	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->submodule->dl_inst)) < 0)) {
+	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->submodule)) < 0)) {
 		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->common.name);
 		return -1;
 	}

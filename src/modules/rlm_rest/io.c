@@ -55,13 +55,12 @@ void rest_io_module_signal(module_ctx_t const *mctx, request_t *request, UNUSED 
  */
 void rest_io_xlat_signal(xlat_ctx_t const *xctx, request_t *request, fr_signal_t action)
 {
-	rlm_rest_t			*mod_inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_rest_thread_t);
 
 	rlm_rest_xlat_rctx_t		*our_rctx = talloc_get_type_abort(xctx->rctx, rlm_rest_xlat_rctx_t);
 	fr_curl_io_request_t		*randle = talloc_get_type_abort(our_rctx->handle, fr_curl_io_request_t);
 
-	rest_io_module_signal(MODULE_CTX(dl_module_instance_by_data(mod_inst),
+	rest_io_module_signal(MODULE_CTX(xctx->mctx->inst,
 			      t,
 			      xctx->mctx->env_data,
 			      randle),

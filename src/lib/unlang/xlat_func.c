@@ -542,7 +542,7 @@ void xlat_func_unregister(char const *name)
 	talloc_free(c);	/* Should also remove from tree */
 }
 
-void xlat_func_unregister_module(dl_module_inst_t const *inst)
+void xlat_func_unregister_module(module_instance_t const *inst)
 {
 	xlat_t				*c;
 	fr_rb_iter_inorder_t	iter;

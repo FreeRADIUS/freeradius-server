@@ -189,7 +189,7 @@ typedef enum {
  *
  */
 typedef struct {
-	dl_module_inst_t const	*dlinst;
+	module_instance_t const	*dlinst;
 	rlm_ldap_t const	*inst;
 	fr_ldap_map_exp_t	expanded;
 	fr_ldap_query_t		*query;

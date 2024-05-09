@@ -67,10 +67,10 @@ fr_dict_autoload_t proto_cron_dict[] = {
 	{ NULL }
 };
 
-/** Wrapper around dl_instance which translates the packet-type into a submodule name
+/** Translates the packet-type into a submodule name
  *
  * @param[in] ctx	to allocate data in (instance of proto_cron).
- * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
+ * @param[out] out	Where to write a module_instance_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.
@@ -263,10 +263,10 @@ static fr_table_ptr_sorted_t time_names[] = {
 };
 static size_t time_names_len = NUM_ELEMENTS(time_names);
 
-/** Wrapper around dl_instance which checks the syntax of a cron job
+/** Checks the syntax of a cron job
  *
  * @param[in] ctx	to allocate data in (instance of proto_cron).
- * @param[out] out	Where to write a dl_module_inst_t containing the module handle and instance.
+ * @param[out] out	Where to write a module_instance_t containing the module handle and instance.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_PAIR specifying the name of the type module.
  * @param[in] rule	unused.

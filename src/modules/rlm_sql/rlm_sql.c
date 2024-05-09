@@ -1772,7 +1772,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_sql_escape_uctx_t	*uctx;
 
 	inst->name = mctx->inst->name;	/* Need this for functions in sql.c */
-	inst->driver = (rlm_sql_driver_t const *)inst->driver_submodule->module; /* Public symbol exported by the submodule */
+	inst->driver = (rlm_sql_driver_t const *)inst->driver_submodule->module->exported; /* Public symbol exported by the submodule */
 
 	/*
 	 *	Register the group comparison attribute

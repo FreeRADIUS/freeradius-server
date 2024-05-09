@@ -222,14 +222,17 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	 *
 	 *	The instance name is the virtual server name.
 	 */
-	mi = module_alloc(process_modules, NULL, DL_MODULE_TYPE_PROCESS,
-			  module_name, dl_module_inst_name_from_conf(server_cs));
+	mi = module_instance_alloc(process_modules, NULL, DL_MODULE_TYPE_PROCESS,
+			  module_name, module_instance_name_from_conf(server_cs));
 	talloc_free(module_name);
 	if (mi == NULL) {
+	error:
 		cf_log_perr(ci, "Failed loading process module");
 		return -1;
 	}
-	process = (fr_process_module_t const *)mi->dl_inst->module->common;
+	if (unlikely(module_instance_conf_parse(mi, mi->conf) < 0)) goto error;
+
+	process = (fr_process_module_t const *)mi->module->exported;
 	if (!*(process->dict)) {
 		cf_log_err(ci, "Process module is invalid - missing namespace dictionary");
 		talloc_free(mi);
@@ -311,7 +314,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	 *	fixups here.
 	 */
 	server->process_mi = mi;
-	server->process_module = (fr_process_module_t const *)mi->dl_inst->module->common;
+	server->process_module = (fr_process_module_t const *)mi->module->exported;
 
 	*(module_instance_t const **)out = mi;
 
@@ -324,7 +327,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 		process_cs = cf_section_alloc(server_cs, server_cs, namespace, NULL);
 	}
 
-	if (module_conf_parse(mi, process_cs) < 0) {
+	if (module_instance_conf_parse(mi, process_cs) < 0) {
 		cf_log_perr(ci, "Failed bootstrapping process module");
 		cf_data_remove(server_cs, module_instance_t, "process_module");
 		cf_data_remove(server_cs, fr_dict_t, "dict");
@@ -336,7 +339,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	 *	Pull the list of sections we need to compile out of
 	 *	the process module's public struct.
 	 */
-	add_compile_list(server->process_mi->dl_inst->conf, server->process_module->compile_list, namespace);
+	add_compile_list(server->process_mi->conf, server->process_module->compile_list, namespace);
 
 	return 0;
 }
@@ -441,23 +444,19 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	if (!inst_name) inst_name = mod_name;
 
 	MEM(qual_inst_name = talloc_asprintf(NULL, "%s.%s", cf_section_name2(server_cs), inst_name));
-	mi = module_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name);
+	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name);
 	talloc_free(qual_inst_name);
 	if (!mi) {
+	error:
 		cf_log_err(listener_cs, "Failed loading listener");
 		return -1;
 	}
+	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) goto error;
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", inst_name, out);
 
-	if (module_conf_parse(mi, listener_cs) < 0) {
-		cf_log_perr(ci, "Failed parsing config for listener");
-		talloc_free(mi);
-		return -1;
-	}
-
 	listener->proto_mi = mi;
-	listener->proto_module = (fr_app_t const *)listener->proto_mi->dl_inst->module->common;
+	listener->proto_module = (fr_app_t const *)listener->proto_mi->module->exported;
 	cf_data_add(listener_cs, mi, "proto_module", false);
 
 	return 0;
@@ -1364,9 +1363,9 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 *	to create the fr_listen_t structure.
 			 */
 			if (listener->proto_module->open &&
-			    listener->proto_module->open(listener->proto_mi->dl_inst->data, sc,
-			    				 listener->proto_mi->dl_inst->conf) < 0) {
-				cf_log_err(listener->proto_mi->dl_inst->conf,
+			    listener->proto_module->open(listener->proto_mi->data, sc,
+			    				 listener->proto_mi->conf) < 0) {
+				cf_log_err(listener->proto_mi->conf,
 					   "Opening %s I/O interface failed",
 					   listener->proto_module->common.name);
 				return -1;
@@ -1440,7 +1439,7 @@ int virtual_servers_instantiate(void)
 		fr_dict_t const			*dict;
 		fr_virtual_server_t const	*vs = virtual_servers[i];
 		fr_process_module_t const	*process = (fr_process_module_t const *)
-							    vs->process_mi->dl_inst->module->common;
+							    vs->process_mi->module->exported;
  		listeners = virtual_servers[i]->listeners;
  		listener_cnt = talloc_array_length(listeners);
 
@@ -1457,7 +1456,7 @@ int virtual_servers_instantiate(void)
 			fr_assert(listener->proto_module != NULL);
 
 			if (module_instantiate(listener->proto_mi) < 0) {
-				cf_log_perr(listener->proto_mi->dl_inst->conf,
+				cf_log_perr(listener->proto_mi->conf,
 					    "Failed instantiating listener");
 				return -1;
 			}
@@ -1469,7 +1468,7 @@ int virtual_servers_instantiate(void)
 		 *	Complete final instantiation of the process module
 		 */
 		if (module_instantiate(virtual_servers[i]->process_mi) < 0) {
-			cf_log_perr(virtual_servers[i]->process_mi->dl_inst->conf,
+			cf_log_perr(virtual_servers[i]->process_mi->conf,
 				    "Failed instantiating process module");
 			return -1;
 		}
@@ -1489,7 +1488,7 @@ int virtual_servers_instantiate(void)
 			fr_assert(parse_rules.attr.dict_def != NULL);
 
 			if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,
-							    vs->process_mi->dl_inst->data) < 0) {
+							    vs->process_mi->data) < 0) {
 				return -1;
 			}
 		}

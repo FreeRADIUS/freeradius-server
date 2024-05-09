@@ -627,7 +627,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(MODULE_CTX(dl_module_instance_by_data(inst), t, xctx->env_data, NULL),
+	ret = rest_request_config(MODULE_CTX(xctx->mctx->inst, t, xctx->env_data, NULL),
 				  section, request, randle, section->request.method,
 				  section->request.body,
 				  uri_vb->vb_strvalue, in_vb ? in_vb->vb_strvalue : NULL);

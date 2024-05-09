@@ -25,7 +25,7 @@
  */
 RCSIDH(xlat_ctx_h, "$Id$")
 
-#include <freeradius-devel/server/module_ctx.h>
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,41 +35,48 @@ extern "C" {
 typedef struct xlat_exp_s xlat_exp_t;
 typedef struct xlat_exp_head_s xlat_exp_head_t;
 
+/* Break dependency loop with module_ctx.h */
+typedef struct xlat_ctx_s xlat_ctx_t;
+typedef struct xlat_inst_ctx_s xlat_inst_ctx_t;
+typedef struct xlat_thread_inst_ctx_s xlat_thread_inst_ctx_t;
+
+#include <freeradius-devel/server/module_ctx.h>
+
 /** An xlat calling ctx
  *
  * This provides optional arguments to xlat functions.
  */
-typedef struct {
+struct xlat_ctx_s {
 	void const			*inst;			//!< xlat instance data.
 	void				*thread;		//!< xlat threadinstance data.
 	module_ctx_t const		*mctx;			//!< Synthesised module calling ctx.
 	void				*env_data;		//!< Expanded call env data.
 	void				*rctx;			//!< Resume context.
-} xlat_ctx_t;
+};
 
 /** An xlat instantiation ctx
  *
  * This provides optional arguments to xlat functions.
  */
-typedef struct {
+struct xlat_inst_ctx_s {
 	void				*inst;			//!< xlat instance data to populate.
 	xlat_exp_t 			*ex;			//!< Tokenized expression to use in expansion.
 	module_inst_ctx_t const		*mctx;			//!< Synthesised module calling ctx.
 	void				*uctx;			//!< Passed to the registration function.
-} xlat_inst_ctx_t;
+};
 
 /** An xlat thread instantiation ctx
  *
  * This provides optional arguments to xlat functions.
  */
-typedef struct {
+struct xlat_thread_inst_ctx_s {
 	void const			*inst;			//!< xlat instance data.
 	void				*thread;		//!< xlat thread instance data to populate.
 	xlat_exp_t const 		*ex;			//!< Tokenized expression to use in expansion.
 	module_ctx_t const		*mctx;			//!< Synthesised module calling ctx.
 	fr_event_list_t			*el;			//!< To register any I/O handlers or timers against.
 	void				*uctx;			//!< Passed to the registration function.
-} xlat_thread_inst_ctx_t;
+};
 
 /** Wrapper to create a xlat_ctx_t as a compound literal
  *

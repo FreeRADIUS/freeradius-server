@@ -112,7 +112,7 @@ void _xlat_func_thread_instantiate_set(xlat_t const *xlat,
 				       void *uctx);
 
 void		xlat_func_unregister(char const *name);
-void		xlat_func_unregister_module(dl_module_inst_t const *inst);
+void		xlat_func_unregister_module(module_instance_t const *inst);
 /** @hidecallgraph */
 
 int		xlat_func_init(void);

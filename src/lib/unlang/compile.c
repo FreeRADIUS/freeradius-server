@@ -4526,7 +4526,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
 				call_env_method_t const *method_env, char const *realname)
 {
-	module_rlm_t const *mrlm = module_rlm_from_module(inst->module);
+	module_rlm_t const *mrlm = module_rlm_from_module(inst->exported);
 	unlang_t *c;
 	unlang_module_t *single;
 
@@ -4537,7 +4537,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	    (unlang_ctx->rules->attr.dict_def != fr_dict_internal()) &&
 	    !fr_dict_compatible(*(mrlm->dict), unlang_ctx->rules->attr.dict_def)) {
 		cf_log_err(ci, "The \"%s\" module can only be used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
-			   inst->module->name,
+			   inst->module->exported->name,
 			   fr_dict_root(*mrlm->dict)->name,
 			   fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);
 		return NULL;
@@ -4548,7 +4548,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	component.
 	 */
 	if (!method) {
-		cf_log_err(ci, "Failed compiling %s - no method matching calling section found", inst->module->name);
+		cf_log_err(ci, "Failed compiling %s - no method matching calling section found", inst->name);
 		return NULL;
 	}
 
@@ -4580,16 +4580,16 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	if (method_env) {
 		fr_assert_msg(method_env->inst_size, "Method environment for module %s, method %s %s declared, "
 			      "but no inst_size set",
-			      inst->module->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
+			      inst->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
 
 		if (!unlang_ctx->rules) {
-			cf_log_err(ci, "Failed compiling %s - no rules", inst->module->name);
+			cf_log_err(ci, "Failed compiling %s - no rules", inst->name);
 			goto error;
 		}
 		single->call_env = call_env_alloc(single, single->self.name, method_env,
-						  unlang_ctx->rules, inst->dl_inst->conf,
+						  unlang_ctx->rules, inst->conf,
 						  unlang_ctx->section_name1, unlang_ctx->section_name2,
-						  single->instance->dl_inst->data);
+						  single->instance->data);
 		if (!single->call_env) {
 		error:
 			talloc_free(c);
@@ -4603,7 +4603,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	if (cf_item_is_section(ci) &&
 	    !unlang_compile_actions(&c->actions, cf_item_to_section(ci),
-				    (inst->module->flags & MODULE_TYPE_RETRY) != 0)) goto error;
+				    (inst->exported->flags & MODULE_TYPE_RETRY) != 0)) goto error;
 
 	return c;
 }

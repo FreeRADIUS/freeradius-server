@@ -184,7 +184,7 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	mi = module_by_name(rlm_modules, NULL, inst_name);
+	mi = module_instance_by_name(rlm_modules, NULL, inst_name);
 	if (!mi) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
 
@@ -206,7 +206,7 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 			parent = tmp;
 		} while (true);
 
-		if (unlikely(module_instantiate(module_by_name(rlm_modules, NULL, inst_name)) < 0)) return -1;
+		if (unlikely(module_instantiate(module_instance_by_name(rlm_modules, NULL, inst_name)) < 0)) return -1;
 	}
 
 	/*
@@ -218,14 +218,14 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	/*
 	 *	Check the module instances are of the same type.
 	 */
-	if (strcmp(cf_section_name1(mi->dl_inst->conf), cf_section_name1(module)) != 0) {
+	if (strcmp(cf_section_name1(mi->conf), cf_section_name1(module)) != 0) {
 		cf_log_err(cp, "Referenced module is a rlm_%s instance, must be a rlm_%s instance",
-			      cf_section_name1(mi->dl_inst->conf), cf_section_name1(module));
+			      cf_section_name1(mi->conf), cf_section_name1(module));
 
 		return -1;
 	}
 
-	*out = cf_section_find(mi->dl_inst->conf, name, NULL);
+	*out = cf_section_find(mi->conf, name, NULL);
 
 	return 1;
 }
@@ -458,13 +458,13 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
 	 */
-	mi = module_by_name(rlm_modules, NULL, name);
+	mi = module_instance_by_name(rlm_modules, NULL, name);
 	if (mi) {
 		virtual_server_method_t const	*allowed_list;
 
 		if (!method) return mi;
 
-		mrlm = module_rlm_from_module(mi->module);
+		mrlm = module_rlm_from_module(mi->exported);
 
 		/*
 		 *	We're not searching for a named method, OR the
@@ -614,7 +614,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	do {
 		*p = '\0';
 
-		mi = module_by_name(rlm_modules, NULL, inst_name);
+		mi = module_instance_by_name(rlm_modules, NULL, inst_name);
 		if (mi) break;
 
 		/*
@@ -633,7 +633,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 		return NULL;
 	}
 
-	mrlm = module_rlm_from_module(mi->module);
+	mrlm = module_rlm_from_module(mi->exported);
 
 	/*
 	 *	We have a module, but the caller doesn't care about
@@ -784,7 +784,7 @@ module_thread_instance_t *module_rlm_thread_by_data(void const *data)
 
 module_instance_t *module_rlm_by_name(module_instance_t const *parent, char const *asked_name)
 {
-	return module_by_name(rlm_modules, parent, asked_name);
+	return module_instance_by_name(rlm_modules, parent, asked_name);
 }
 
 /** Create a virtual module.
@@ -798,7 +798,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 {
 	char const		*name;
 	bool			all_same;
-	module_t const 	*last = NULL;
+	module_t const 		*last = NULL;
 	CONF_ITEM 		*sub_ci = NULL;
 	CONF_PAIR		*cp;
 	module_instance_t	*mi;
@@ -831,14 +831,14 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	/*
 	 *	Ensure that the module doesn't exist.
 	 */
-	mi = module_by_name(rlm_modules, NULL, name);
+	mi = module_instance_by_name(rlm_modules, NULL, name);
 	if (mi) {
 		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
 		      name,
 		      cf_filename(cs),
 		      cf_lineno(cs),
-		      cf_filename(mi->dl_inst->conf),
-		      cf_lineno(mi->dl_inst->conf));
+		      cf_filename(mi->conf),
+		      cf_lineno(mi->conf));
 		return -1;
 	}
 
@@ -876,8 +876,8 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 
 			if (all_same) {
 				if (!last) {
-					last = mi->module;
-				} else if (last != mi->module) {
+					last = mi->exported;
+				} else if (last != mi->exported) {
 					last = NULL;
 					all_same = false;
 				}
@@ -1039,16 +1039,15 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			continue;
 		}
 
-		mi = module_alloc(rlm_modules, NULL, DL_MODULE_TYPE_MODULE, name, dl_module_inst_name_from_conf(subcs));
+		mi = module_instance_alloc(rlm_modules, NULL, DL_MODULE_TYPE_MODULE, name, module_instance_name_from_conf(subcs));
 		if (unlikely(mi == NULL)) {
 			cf_log_perr(subcs, "Failed loading module");
 			return -1;
 
 		}
 
-		if (module_conf_parse(mi, subcs) < 0) {
+		if (module_instance_conf_parse(mi, subcs) < 0) {
 			cf_log_perr(subcs, "Failed parsing module config");
-		error:
 			talloc_free(mi);
 			return -1;
 		}
@@ -1057,7 +1056,10 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 		 *	Compile the default "actions" subsection, which includes retries.
 		 */
 		actions = cf_section_find(subcs, "actions", NULL);
-		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->module->flags & MODULE_TYPE_RETRY) != 0)) goto error;
+		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->exported->flags & MODULE_TYPE_RETRY) != 0)) {
+			talloc_free(mi);
+			return -1;
+		}
 	}
 
 	/*

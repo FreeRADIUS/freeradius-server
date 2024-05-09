@@ -1309,12 +1309,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	proto_ldap_sync_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_ldap_sync_ldap_t);
 	CONF_SECTION		*conf = mctx->inst->conf;
-	dl_module_inst_t const	*dl_inst;
+	module_instance_t const	*mi = mctx->inst;
 
-	dl_inst = dl_module_instance_by_data(inst);
-	fr_assert(dl_inst);
-
-	inst->parent = talloc_get_type_abort(dl_inst->parent->data, proto_ldap_sync_t);
+	inst->parent = talloc_get_type_abort(mi->parent->data, proto_ldap_sync_t);
 	inst->cs = conf;
 
 	if (inst->recv_buff_is_set) {
