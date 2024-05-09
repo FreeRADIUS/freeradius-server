@@ -2632,7 +2632,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Find and bootstrap the application IO handler.
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->submodule->module->exported;
+	inst->app_io = (fr_app_io_t const *) inst->submodule->exported;
 
 	inst->app_io_conf = inst->submodule->conf;
 	inst->app_io_instance = inst->submodule->data;

@@ -686,7 +686,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 
 			for (i = 0; i < inst->type_identity_submodule_len; i++) {
 				rlm_eap_submodule_t const *submodule =
-					(rlm_eap_submodule_t const *)inst->type_identity_submodule[i]->module;
+					(rlm_eap_submodule_t const *)inst->type_identity_submodule[i]->exported;
 				eap_type_t ret;
 
 				ret = submodule->type_identity(inst->type_identity_submodule[i]->data,

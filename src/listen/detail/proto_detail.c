@@ -532,7 +532,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Bootstrap the I/O module
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->exported;
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->exported;
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
 
@@ -582,7 +582,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		if (module_instance_conf_parse(inst->work_submodule, transport_cs) < 0) goto error;
 
-		inst->work_io = (fr_app_io_t const *) inst->work_submodule->module->exported;
+		inst->work_io = (fr_app_io_t const *) inst->work_submodule->exported;
 		inst->work_io_instance = inst->work_submodule->data;
 		inst->work_io_conf = inst->work_submodule->conf;
 	}

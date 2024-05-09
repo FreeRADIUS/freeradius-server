@@ -181,7 +181,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 	li->default_message_size = FR_ARP_PACKET_SIZE;
 	li->num_messages = inst->num_messages;
 
-	li->app_io = (fr_app_io_t const *)inst->io_submodule->module->exported;
+	li->app_io = (fr_app_io_t const *)inst->io_submodule->exported;
 	li->app_io_instance = inst->io_submodule->data;
 	if (li->app_io->common.thread_inst_size) {
 		li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->common.thread_inst_size);

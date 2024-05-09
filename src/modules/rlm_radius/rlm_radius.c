@@ -333,7 +333,7 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, fr_signal_t action)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
-	rlm_radius_io_t	const	*io = (rlm_radius_io_t const *)inst->io_submodule->module;		/* Public symbol exported by the module */
+	rlm_radius_io_t	const	*io = (rlm_radius_io_t const *)inst->io_submodule->exported;		/* Public symbol exported by the module */
 
 	/*
 	 *	We received a duplicate packet, but we're not doing
@@ -458,7 +458,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_radius_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
 	CONF_SECTION *conf = mctx->mi->conf;
 
-	inst->io = (rlm_radius_io_t const *)inst->io_submodule->module;	/* Public symbol exported by the module */
+	inst->io = (rlm_radius_io_t const *)inst->io_submodule->exported;	/* Public symbol exported by the module */
 	inst->name = mctx->mi->name;
 
 	/*

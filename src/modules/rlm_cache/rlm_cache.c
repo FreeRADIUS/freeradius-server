@@ -1462,7 +1462,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_cache_t 	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t );
 	xlat_t		*xlat;
 
-	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->module->exported;
+	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->exported;
 
 	/*
 	 *	Non optional fields and callbacks

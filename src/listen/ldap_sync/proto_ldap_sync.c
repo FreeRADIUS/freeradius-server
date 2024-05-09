@@ -382,7 +382,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Bootstrap the I/O module
 	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule->module->exported;
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->exported;
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
 
