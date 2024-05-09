@@ -137,7 +137,7 @@ static void mod_delay_cancel(module_ctx_t const *mctx, request_t *request, UNUSE
 
 static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_delay_t);
+	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_delay_t);
 	fr_time_delta_t		delay;
 	fr_time_t		resume_at, *yielded_at;
 
@@ -220,7 +220,7 @@ static xlat_action_t xlat_delay(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 				xlat_ctx_t const *xctx,
 				request_t *request, fr_value_box_list_t *in)
 {
-	rlm_delay_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_delay_t);
+	rlm_delay_t const	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_delay_t);
 	fr_time_t		resume_at, *yielded_at;
 	fr_value_box_t		*delay = fr_value_box_list_head(in);
 
@@ -262,7 +262,7 @@ yield:
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_delay_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_delay_t);
+	rlm_delay_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_delay_t);
 	xlat_t		*xlat;
 
 	xlat = xlat_func_register_module(inst, mctx, NULL, xlat_delay, FR_TYPE_TIME_DELTA);

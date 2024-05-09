@@ -27,7 +27,7 @@
 
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exfile.h>
@@ -376,7 +376,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	sql_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, sql_xlat_call_env_t);
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
-	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
 	sql_rcode_t		rcode;
 	xlat_action_t		ret = XLAT_ACTION_DONE;
 	char const		*p;
@@ -939,7 +939,7 @@ static xlat_action_t sql_group_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, x
 					   request_t *request, fr_value_box_list_t *in)
 {
 	sql_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, sql_group_xlat_ctx_t);
-	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*p = arg->vb_strvalue;
 	fr_value_box_t		*query, *vb;
@@ -970,7 +970,7 @@ static xlat_action_t sql_group_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 {
 	sql_group_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, sql_group_xlat_call_env_t);
 	sql_group_xlat_ctx_t		*xlat_ctx;
-	rlm_sql_t const			*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_sql_t);
+	rlm_sql_t const			*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
 
 	if (!call_env->membership_query) {
 		RWARN("Cannot check group membership - group_membership_query not set");
@@ -1386,7 +1386,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, int *priority
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sql_t);
 	sql_autz_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_autz_call_env_t);
 	sql_autz_ctx_t		*autz_ctx;
 
@@ -1564,7 +1564,7 @@ next:
  */
 static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sql_t const			*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sql_t);
+	rlm_sql_t const			*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sql_t);
 	sql_redundant_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, sql_redundant_call_env_t);
 	sql_redundant_ctx_t		*redundant_ctx;
 
@@ -1746,7 +1746,7 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
+	rlm_sql_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
 
 	if (inst->pool) fr_pool_free(inst->pool);
 
@@ -1765,13 +1765,13 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 	xlat_t			*xlat;
 	xlat_arg_parser_t	*sql_xlat_arg;
 	rlm_sql_escape_uctx_t	*uctx;
 
-	inst->name = mctx->inst->name;	/* Need this for functions in sql.c */
+	inst->name = mctx->mi->name;	/* Need this for functions in sql.c */
 	inst->driver = (rlm_sql_driver_t const *)inst->driver_submodule->module->exported; /* Public symbol exported by the submodule */
 
 	/*
@@ -1785,7 +1785,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		if (inst->config.group_attribute) {
 			group_attribute = inst->config.group_attribute;
 		} else if (cf_section_name2(conf)) {
-			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", mctx->inst->name);
+			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", mctx->mi->name);
 			group_attribute = buffer;
 		} else {
 			group_attribute = "SQL-Group";
@@ -1836,7 +1836,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	xlat = xlat_func_register_module(inst, mctx, NULL, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
 	if (!xlat) {
-		cf_log_perr(conf, "Failed registering %s expansion", mctx->inst->name);
+		cf_log_perr(conf, "Failed registering %s expansion", mctx->mi->name);
 		return -1;
 	}
 	xlat_func_call_env_set(xlat, &xlat_method_env);
@@ -1861,15 +1861,15 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->driver->sql_fields) map_proc_register(inst, mctx->inst->name, mod_map_proc, sql_map_verify, 0, (fr_value_box_safe_for_t)inst->driver);
+	if (inst->driver->sql_fields) map_proc_register(inst, mctx->mi->name, mod_map_proc, sql_map_verify, 0, (fr_value_box_safe_for_t)inst->driver);
 
 	return 0;
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_sql_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	/*
 	 *	We need authorize_group_check_query or authorize_group_reply_query

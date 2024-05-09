@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -418,7 +418,7 @@ static xlat_action_t test_xlat_fail(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_test_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_test_t);
+	rlm_test_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_test_t);
 	rlm_test_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_test_thread_t);
 
 	t->inst = inst;
@@ -451,7 +451,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_test_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_test_t);
+	rlm_test_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_test_t);
 	xlat_t *xlat;
 
 	/*

@@ -554,7 +554,7 @@ static unlang_action_t mod_insert_logtee(rlm_rcode_t *p_result, module_ctx_t con
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_logtee_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_logtee_t);
+	rlm_logtee_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_logtee_t);
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_logtee_thread_t);
 
 	MEM(t->fring = fr_fring_alloc(t, inst->buffer_depth, false));
@@ -596,8 +596,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_logtee_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_logtee_t);
-	CONF_SECTION    *conf = mctx->inst->conf;
+	rlm_logtee_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_logtee_t);
+	CONF_SECTION    *conf = mctx->mi->conf;
 	char		prefix[100];
 
 	/*

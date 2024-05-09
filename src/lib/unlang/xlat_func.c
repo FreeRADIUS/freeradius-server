@@ -171,8 +171,8 @@ xlat_t *xlat_func_find_module(module_inst_ctx_t const *mctx, char const *name)
 	 *	Name xlats other than those which are just the module instance
 	 *	as <instance name>.<function name>
 	 */
-	if (mctx && name != mctx->inst->name) {
-		snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->inst->name, name);
+	if (mctx && name != mctx->mi->name) {
+		snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->mi->name, name);
 		name = inst_name;
 	}
 
@@ -278,13 +278,13 @@ xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx
 	xlat_t			*c;
 	char 			inst_name[256];
 
-	fr_assert_msg(name != mctx->inst->name, "`name` must not be the same as the module "
+	fr_assert_msg(name != mctx->mi->name, "`name` must not be the same as the module "
 		      "instance name.  Pass a NULL `name` arg if this is required");
 
 	if (!name) {
-		name = mctx->inst->name;
+		name = mctx->mi->name;
 	} else {
-		if ((size_t)snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->inst->name, name) >= sizeof(inst_name)) {
+		if ((size_t)snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->mi->name, name) >= sizeof(inst_name)) {
 			ERROR("%s: Instance name too long", __FUNCTION__);
 			return NULL;
 		}
@@ -553,7 +553,7 @@ void xlat_func_unregister_module(module_instance_t const *inst)
 	     c;
 	     c = fr_rb_iter_next_inorder(&iter)) {
 		if (!c->mctx) continue;
-		if (c->mctx->inst != inst) continue;
+		if (c->mctx->mi != inst) continue;
 
 		fr_rb_iter_delete_inorder(&iter);
 	}

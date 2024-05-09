@@ -158,7 +158,7 @@ static xlat_thread_inst_t *xlat_thread_inst_alloc(TALLOC_CTX *ctx, fr_event_list
 		module_ctx_t *mctx;
 
 		mctx = module_ctx_from_inst(xt, call->func->mctx);
-		mctx->thread = module_rlm_thread_by_data(mctx->inst->data)->data;
+		mctx->thread = module_rlm_thread_by_data(mctx->mi->data)->data;
 
 		xt->mctx = mctx;
 	}
@@ -251,7 +251,7 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 	if (call->func->call_env_method) {
 		fr_assert_msg(call->func->call_env_method->inst_size,
 			      "Method environment for module %s, xlat %s declared, "
-			      "but no inst_size set", call->func->mctx->inst->name, call->func->name);
+			      "but no inst_size set", call->func->mctx->mi->name, call->func->name);
 
 		/*
 		 *	FIXME - This is wrong, we should pass in the tmpl_rule_t
@@ -272,7 +272,7 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 									.dict_def = call->dict,
 									.list_def = request_attr_request
 							}
-					      }, call->func->mctx->inst->conf, NULL, NULL, call->func->mctx->inst->data);
+					      }, call->func->mctx->mi->conf, NULL, NULL, call->func->mctx->mi->data);
 		if (!xi->call_env) {
 			talloc_free(xi);
 			return NULL;

@@ -27,7 +27,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -615,7 +615,7 @@ static unlang_action_t do_python(rlm_rcode_t *p_result, module_ctx_t const *mctx
 	 */
 	if (!p_func) RETURN_MODULE_NOOP;
 
-	RDEBUG3("Using thread state %p/%p", mctx->inst->data, t->state);
+	RDEBUG3("Using thread state %p/%p", mctx->mi->data, t->state);
 
 	PyEval_RestoreThread(t->state);	/* Swap in our local thread state */
 	do_python_single(&rcode, mctx, request, p_func, funcname);
@@ -627,7 +627,7 @@ static unlang_action_t do_python(rlm_rcode_t *p_result, module_ctx_t const *mctx
 #define MOD_FUNC(x) \
 static unlang_action_t CC_HINT(nonnull) mod_##x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 { \
-	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_python_t); \
+	rlm_python_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_python_t); \
 	return do_python(p_result, mctx, request, inst->x.function, #x);\
 }
 
@@ -776,7 +776,7 @@ static int python_parse_config(module_inst_ctx_t const *mctx, CONF_SECTION *cs, 
  */
 static int python_module_import_config(module_inst_ctx_t const *mctx, CONF_SECTION *conf, PyObject *module)
 {
-	rlm_python_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_python_t);
+	rlm_python_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	CONF_SECTION *cs;
 
 	/*
@@ -853,8 +853,8 @@ static PyObject *python_module_init(void)
 
 static int python_interpreter_init(module_inst_ctx_t const *mctx)
 {
-	rlm_python_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_python_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_python_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 	PyObject	*module;
 
 	/*
@@ -926,7 +926,7 @@ static void python_interpreter_free(rlm_python_t *inst, PyThreadState *interp)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_python_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_python_t);
+	rlm_python_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 
 	if (python_interpreter_init(mctx) < 0) return -1;
 
@@ -976,7 +976,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_python_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_python_t);
+	rlm_python_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 
 	/*
 	 *	If we don't have a interpreter
@@ -1023,7 +1023,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	PyThreadState		*state;
-	rlm_python_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_python_t);
+	rlm_python_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_python_t);
 	rlm_python_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_python_thread_t);
 
 	state = PyThreadState_New(inst->interpreter->interp);

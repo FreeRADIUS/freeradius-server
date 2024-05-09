@@ -157,7 +157,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_sql_oracle_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_oracle_t);
+	rlm_sql_oracle_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_oracle_t);
 
 	if (inst->pool) OCISessionPoolDestroy((dvoid *)inst->pool, (dvoid *)inst->error, OCI_DEFAULT );
 	if (inst->error) OCIHandleFree((dvoid *)inst->error, OCI_HTYPE_ERROR);
@@ -168,15 +168,15 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
+	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
-	rlm_sql_oracle_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_oracle_t);
+	rlm_sql_oracle_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_oracle_t);
 	char  			errbuff[512];
 	sb4 			errcode = 0;
 	OraText 		*sql_password = NULL;
 	OraText 		*sql_login = NULL;
 
-	if (!cf_section_find(mctx->inst->conf, "spool", NULL)) {
+	if (!cf_section_find(mctx->mi->conf, "spool", NULL)) {
 		ERROR("Couldn't load mctx->configuration of session pool(\"spool\" section in driver mctx->config)");
 		return RLM_SQL_ERROR;
 	}

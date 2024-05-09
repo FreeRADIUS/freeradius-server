@@ -23,7 +23,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -170,7 +170,7 @@ static xlat_action_t xlat_icmp(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx,
 			       request_t *request, fr_value_box_list_t *in)
 {
-	rlm_icmp_t		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_icmp_t);
+	rlm_icmp_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_icmp_t);
 	rlm_icmp_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_icmp_thread_t);
 	rlm_icmp_echo_t		*echo;
 	icmp_header_t		icmp;
@@ -378,7 +378,7 @@ static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int fl
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	module_thread_inst_ctx_t	*our_mctx;
-	rlm_icmp_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_icmp_t);
+	rlm_icmp_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_icmp_t);
 	rlm_icmp_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
 	fr_ipaddr_t			ipaddr, *src;
 
@@ -493,7 +493,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_icmp_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_icmp_t);
+	rlm_icmp_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_icmp_t);
 	xlat_t		*xlat;
 
 	xlat = xlat_func_register_module(inst, mctx, NULL, xlat_icmp, FR_TYPE_BOOL);

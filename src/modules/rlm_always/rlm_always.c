@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -68,7 +68,7 @@ static xlat_action_t always_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 xlat_ctx_t const *xctx,
 				 request_t *request, fr_value_box_list_t *in)
 {
-	rlm_always_t		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_always_t);
+	rlm_always_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_always_t);
 	module_instance_t	*mi = inst->mi;
 	char const		*status;
 	char const		*p;
@@ -117,12 +117,12 @@ done:
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_always_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_always_t);
+	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
 	xlat_t		*xlat;
 
-	inst->mi = module_rlm_by_name(NULL, mctx->inst->name);
+	inst->mi = module_rlm_by_name(NULL, mctx->mi->name);
 	if (!inst->mi) {
-		cf_log_err(mctx->inst->conf, "Can't find the module instance data for this module: %s", mctx->inst->name);
+		cf_log_err(mctx->mi->conf, "Can't find the module instance data for this module: %s", mctx->mi->name);
 		return -1;
 	}
 
@@ -134,14 +134,14 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_always_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_always_t);
+	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
 
 	/*
 	 *	Convert the rcode string to an int
 	 */
 	inst->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
 	if (inst->rcode == RLM_MODULE_NOT_SET) {
-		cf_log_err(mctx->inst->conf, "rcode value \"%s\" is invalid", inst->rcode_str);
+		cf_log_err(mctx->mi->conf, "rcode value \"%s\" is invalid", inst->rcode_str);
 		return -1;
 	}
 
@@ -154,7 +154,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static unlang_action_t CC_HINT(nonnull) mod_always_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	rlm_always_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_always_t);
+	rlm_always_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_always_t);
 
 	RETURN_MODULE_RCODE(inst->rcode);
 }

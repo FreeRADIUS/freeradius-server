@@ -889,7 +889,7 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 	 				request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t			*vb = NULL, *group_vb = fr_value_box_list_pop_head(in);
-	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_ldap_t);
 	fr_ldap_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
 	ldap_xlat_memberof_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_xlat_memberof_call_env_t);
 	bool				group_is_dn;
@@ -1015,7 +1015,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 				       xlat_ctx_t const *xctx,
 				       request_t *request, fr_value_box_list_t *in)
 {
-	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_ldap_t);
 	fr_ldap_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
 	ldap_xlat_profile_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_xlat_profile_call_env_t);
 	fr_value_box_t			*uri_components, *uri;
@@ -1422,7 +1422,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 	ldap_auth_ctx_t		*auth_ctx;
 	ldap_auth_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_auth_call_env_t);
@@ -1802,7 +1802,7 @@ static int autz_ctx_free(ldap_autz_ctx_t *autz_ctx)
 
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 	ldap_autz_ctx_t		*autz_ctx;
 	fr_ldap_map_exp_t	*expanded;
@@ -1853,7 +1853,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	}
 	expanded->attrs[expanded->count] = NULL;
 
-	autz_ctx->dlinst = mctx->inst;
+	autz_ctx->dlinst = mctx->mi;
 	autz_ctx->inst = inst;
 	autz_ctx->call_env = call_env;
 	autz_ctx->status = LDAP_AUTZ_FIND;
@@ -2153,7 +2153,7 @@ error:
 
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
 	ldap_usermod_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_call_env_t);
 
 	if (inst->accounting) return user_modify(p_result, inst, request, inst->accounting, call_env);
@@ -2163,7 +2163,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
 	ldap_usermod_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_usermod_call_env_t);
 
 	if (inst->postauth) return user_modify(p_result, inst, request, inst->postauth, call_env);
@@ -2177,7 +2177,7 @@ static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, mod
  */
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_ldap_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 
 	if (inst->user.obj_sort_ctrl) ldap_control_free(inst->user.obj_sort_ctrl);
 
@@ -2200,7 +2200,7 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
 			     CONF_SECTION *parent, ldap_acct_section_t **config,
 			     rlm_components_t comp)
 {
-	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 	CONF_SECTION 	*cs;
 
 	char const *name = section_type_value[comp];
@@ -2208,7 +2208,7 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
 	cs = cf_section_find(parent, name, NULL);
 	if (!cs) {
 		DEBUG2("rlm_ldap (%s) - Couldn't find configuration for %s, will return NOOP for calls "
-		       "from this section", mctx->inst->name, name);
+		       "from this section", mctx->mi->name, name);
 
 		return 0;
 	}
@@ -2217,7 +2217,7 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
 
 	*config = talloc_zero(inst, ldap_acct_section_t);
 	if (cf_section_parse(*config, *config, cs) < 0) {
-		PERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", mctx->inst->name, name);
+		PERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", mctx->mi->name, name);
 
 		return -1;
 	}
@@ -2232,7 +2232,7 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
+	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
 	fr_ldap_thread_trunk_t	*ttrunk;
 
@@ -2295,18 +2295,18 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 	char		buffer[256];
 	char const	*group_attribute;
 	xlat_t		*xlat;
 
-	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", mctx->inst->name);
+	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", mctx->mi->name);
 
 	if (inst->group.attribute) {
 		group_attribute = inst->group.attribute;
 	} else if (cf_section_name2(conf)) {
-		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", mctx->inst->name);
+		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", mctx->mi->name);
 		group_attribute = buffer;
 	} else {
 		group_attribute = "LDAP-Group";
@@ -2373,7 +2373,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_args_set(xlat, ldap_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
 
-	map_proc_register(inst, mctx->inst->name, mod_map_proc, ldap_map_verify, 0, LDAP_URI_SAFE_FOR);
+	map_proc_register(inst, mctx->mi->name, mod_map_proc, ldap_map_verify, 0, LDAP_URI_SAFE_FOR);
 
 	return 0;
 }
@@ -2485,8 +2485,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	size_t		i;
 
 	CONF_SECTION	*options;
-	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_ldap_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
@@ -2587,7 +2587,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	if (inst->handle_config.server) {
 		inst->handle_config.server[talloc_array_length(inst->handle_config.server) - 2] = '\0';
-		DEBUG4("rlm_ldap (%s) - LDAP server string: %s", mctx->inst->name, inst->handle_config.server);
+		DEBUG4("rlm_ldap (%s) - LDAP server string: %s", mctx->mi->name, inst->handle_config.server);
 	}
 
 	/*

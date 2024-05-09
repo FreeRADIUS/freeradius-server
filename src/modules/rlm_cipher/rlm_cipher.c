@@ -646,7 +646,7 @@ static xlat_action_t cipher_rsa_sign_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					  xlat_ctx_t const *xctx,
 					  request_t *request, fr_value_box_list_t *in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
+	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_cipher_t);
 	rlm_cipher_rsa_thread_inst_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_cipher_rsa_thread_inst_t);
 
 	char const			*msg;
@@ -786,7 +786,7 @@ static xlat_action_t cipher_rsa_verify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	    xlat_ctx_t const *xctx,
 					    request_t *request, fr_value_box_list_t *in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
+	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_cipher_t);
 	rlm_cipher_rsa_thread_inst_t	*t = talloc_get_type_abort(xctx->mctx->thread, rlm_cipher_rsa_thread_inst_t);
 
 	uint8_t	const			*sig;
@@ -898,7 +898,7 @@ static xlat_action_t cipher_fingerprint_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	     xlat_ctx_t const *xctx,
 					     request_t *request, fr_value_box_list_t *in)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
+	rlm_cipher_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_cipher_t);
 	char const			*md_name;
 	EVP_MD const			*md;
 	size_t				md_len;
@@ -947,7 +947,7 @@ static xlat_action_t cipher_serial_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	xlat_ctx_t const *xctx,
 					request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	rlm_cipher_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
+	rlm_cipher_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_cipher_t);
 	ASN1_INTEGER const	*serial;
     	fr_value_box_t		*vb;
 
@@ -969,7 +969,7 @@ static xlat_action_t cipher_certificate_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	     xlat_ctx_t const *xctx,
 					     request_t *request, fr_value_box_list_t *in)
 {
-	rlm_cipher_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_cipher_t);
+	rlm_cipher_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_cipher_t);
 	char const		*attribute = fr_value_box_list_head(in)->vb_strvalue;
     	fr_value_box_t		*vb;
 
@@ -1095,7 +1095,7 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
  */
 static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_cipher_t const		*inst = talloc_get_type_abort(mctx->inst->data, rlm_cipher_t);
+	rlm_cipher_t const		*inst = talloc_get_type_abort(mctx->mi->data, rlm_cipher_t);
 	rlm_cipher_rsa_thread_inst_t	*ti = talloc_get_type_abort(mctx->thread, rlm_cipher_rsa_thread_inst_t);
 
 	/*
@@ -1255,7 +1255,7 @@ static int cipher_rsa_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_cipher_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cipher_t);
+	rlm_cipher_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cipher_t);
 
 	switch (inst->type) {
 	case RLM_CIPHER_TYPE_RSA:
@@ -1277,8 +1277,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_cipher_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cipher_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_cipher_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cipher_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	switch (inst->type) {
 	case RLM_CIPHER_TYPE_RSA:

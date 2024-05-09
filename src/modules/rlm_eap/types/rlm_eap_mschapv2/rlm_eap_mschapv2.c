@@ -282,7 +282,7 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
 	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
 	eap_round_t			*eap_round = eap_session->this_round;
 	fr_pair_list_t			response;
- 	rlm_eap_mschapv2_t const	*inst = mctx->inst->data;
+ 	rlm_eap_mschapv2_t const	*inst = mctx->mi->data;
 	rlm_rcode_t			rcode;
 	fr_pair_t *parent;
 
@@ -369,7 +369,7 @@ static unlang_action_t mschap_resume(rlm_rcode_t *p_result, module_ctx_t const *
  */
 static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_mschapv2_t);
+	rlm_eap_mschapv2_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_mschapv2_t);
 	request_t			*parent = request->parent;
 	eap_session_t			*eap_session = eap_session_get(parent);
 	mschapv2_opaque_t		*data = talloc_get_type_abort(eap_session->opaque, mschapv2_opaque_t);
@@ -628,7 +628,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	int			i;
 	bool			created_auth_challenge;
 
-	if (!fr_cond_assert(mctx->inst->data)) RETURN_MODULE_FAIL;
+	if (!fr_cond_assert(mctx->mi->data)) RETURN_MODULE_FAIL;
 
 	/*
 	 *	We're looking for attributes that should come
@@ -687,7 +687,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eap_mschapv2_compose(mctx->inst->data, request, eap_session, auth_challenge);
+	eap_mschapv2_compose(mctx->mi->data, request, eap_session, auth_challenge);
 	if (created_auth_challenge) TALLOC_FREE(auth_challenge);
 
 	/*
@@ -707,10 +707,10 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_mschapv2_t);
+	rlm_eap_mschapv2_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_mschapv2_t);
 
 	if (inst->identity && (strlen(inst->identity) > 255)) {
-		cf_log_err(mctx->inst->conf, "identity is too long");
+		cf_log_err(mctx->mi->conf, "identity is too long");
 		return -1;
 	}
 

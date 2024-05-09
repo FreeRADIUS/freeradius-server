@@ -61,8 +61,8 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->inst->data, eap_aka_sim_module_conf_t);
-	CONF_SECTION			*conf = mctx->inst->conf;
+	eap_aka_sim_module_conf_t	*inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_module_conf_t);
+	CONF_SECTION			*conf = mctx->mi->conf;
 
 	inst->type = rlm_eap_aka.provides[0];
 

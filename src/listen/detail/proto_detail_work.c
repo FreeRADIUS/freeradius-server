@@ -844,7 +844,7 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_detail_work_t *inst = talloc_get_type_abort(mctx->inst->data, proto_detail_work_t);
+	proto_detail_work_t *inst = talloc_get_type_abort(mctx->mi->data, proto_detail_work_t);
 	fr_client_t *client;
 
 	client = inst->client = talloc_zero(inst, fr_client_t);
@@ -862,9 +862,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_detail_work_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_work_t);
-	CONF_SECTION		*cs = mctx->inst->conf;
-	module_instance_t const	*mi = mctx->inst;
+	proto_detail_work_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_detail_work_t);
+	CONF_SECTION		*cs = mctx->mi->conf;
+	module_instance_t const	*mi = mctx->mi;
 
 	inst->parent = talloc_get_type_abort(mi->parent->data, proto_detail_t);
 	inst->cs = cs;

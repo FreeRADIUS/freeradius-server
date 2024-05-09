@@ -111,8 +111,8 @@ static const conf_parser_t module_config[] = {
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_dhcpv4_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_dhcpv4_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_dhcpv4_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_dhcpv4_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	/*
 	 *	Ensure that we have a destination address.
@@ -160,9 +160,9 @@ static void dhcpv4_queue_resume(bool sent, void *rctx)
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_dhcpv4_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_dhcpv4_t);
+	rlm_dhcpv4_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_dhcpv4_t);
 	rlm_dhcpv4_thread_t 	*t = talloc_get_type_abort(mctx->thread, rlm_dhcpv4_thread_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	t->buffer = talloc_array(t, uint8_t, inst->max_packet_size);
 	if (!t->buffer) {

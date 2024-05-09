@@ -143,7 +143,7 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_mysql_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_mysql_t);
+	rlm_sql_mysql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_mysql_t);
 	int			warnings;
 
 	warnings = fr_table_value_by_str(server_warnings_table, inst->warnings_str, -1);

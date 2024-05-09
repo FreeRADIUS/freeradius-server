@@ -48,8 +48,8 @@ static const conf_parser_t module_config[] = {
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sometimes_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sometimes_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_sometimes_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_sometimes_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
@@ -74,7 +74,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static unlang_action_t sometimes_return(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request,
 					fr_packet_t *packet, fr_packet_t *reply)
 {
-	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sometimes_t);
+	rlm_sometimes_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sometimes_t);
 	uint32_t		hash;
 	fr_pair_t		*vp;
 	float			value;

@@ -1278,8 +1278,8 @@ static void mod_event_list_set(fr_listen_t *li, fr_event_list_t *el, void *nr)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_ldap_sync_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_ldap_sync_ldap_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	proto_ldap_sync_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_ldap_sync_ldap_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 	char const		*server;
 
 	/*
@@ -1307,9 +1307,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_ldap_sync_ldap_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_ldap_sync_ldap_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
-	module_instance_t const	*mi = mctx->inst;
+	proto_ldap_sync_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_ldap_sync_ldap_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
+	module_instance_t const	*mi = mctx->mi;
 
 	inst->parent = talloc_get_type_abort(mi->parent->data, proto_ldap_sync_t);
 	inst->cs = conf;

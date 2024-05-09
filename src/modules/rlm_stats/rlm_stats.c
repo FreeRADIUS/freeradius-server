@@ -163,7 +163,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
  */
 static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_stats_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_stats_t);
+	rlm_stats_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 	rlm_stats_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
 	int			i;
 	uint32_t		stats_type;
@@ -360,7 +360,7 @@ static int8_t data_cmp(const void *one, const void *two)
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_stats_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_stats_t);
+	rlm_stats_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 	rlm_stats_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_stats_thread_t);
 
 	(void) talloc_set_type(t, rlm_stats_thread_t);
@@ -407,7 +407,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_stats_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_stats_t);
+	rlm_stats_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 
 	pthread_mutex_init(&inst->mutex, NULL);
 	fr_dlist_init(&inst->list, rlm_stats_thread_t, entry);
@@ -421,7 +421,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_stats_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_stats_t);
+	rlm_stats_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 
 	pthread_mutex_destroy(&inst->mutex);
 

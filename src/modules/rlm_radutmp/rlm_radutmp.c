@@ -179,7 +179,7 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, uint16
  */
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_radutmp_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_radutmp_t);
+	rlm_radutmp_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_radutmp_t);
 	rlm_radutmp_env_t	*env = talloc_get_type_abort(mctx->env_data, rlm_radutmp_env_t);
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	struct radutmp		ut, u;

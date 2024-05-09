@@ -670,9 +670,9 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
+	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
-	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_sqlite_t);
+	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_sqlite_t);
 	bool			exists;
 	struct stat		buf;
 	int			fd;
@@ -700,7 +700,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (cf_pair_find(mctx->inst->conf, "bootstrap")) {
+	if (cf_pair_find(mctx->mi->conf, "bootstrap")) {
 		inst->bootstrap = true;
 	}
 
@@ -719,10 +719,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		if (p) {
 			size_t len = (p - inst->filename) + 1;
 
-			buff = talloc_array(mctx->inst->conf, char, len);
+			buff = talloc_array(mctx->mi->conf, char, len);
 			strlcpy(buff, inst->filename, len);
 		} else {
-			MEM(buff = talloc_typed_strdup(mctx->inst->conf, inst->filename));
+			MEM(buff = talloc_typed_strdup(mctx->mi->conf, inst->filename));
 		}
 
 		ret = fr_mkdir(NULL, buff, -1, 0700, NULL, NULL);
@@ -756,13 +756,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		/*
 		 *	Execute multiple bootstrap SQL files in order
 		 */
-		for (cp = cf_pair_find(mctx->inst->conf, "bootstrap");
+		for (cp = cf_pair_find(mctx->mi->conf, "bootstrap");
 		     cp;
-		     cp = cf_pair_find_next(mctx->inst->conf, cp, "bootstrap")) {
+		     cp = cf_pair_find_next(mctx->mi->conf, cp, "bootstrap")) {
 			p = cf_pair_value(cp);
 			if (!p) continue;
 
-			ret = sql_loadfile(mctx->inst->conf, db, p);
+			ret = sql_loadfile(mctx->mi->conf, db, p);
 			if (ret < 0) goto unlink;
 		}
 

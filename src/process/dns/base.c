@@ -388,7 +388,7 @@ RECV(request)
  */
 RESUME(recv_request)
 {
-	process_dns_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_dns_t);
+	process_dns_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_dns_t);
 	fr_process_state_t const	*state;
 	fr_pair_t			*rcode = NULL;
 
@@ -488,7 +488,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	PROCESS_TRACE;
 
-	(void)talloc_get_type_abort_const(mctx->inst->data, process_dns_t);
+	(void)talloc_get_type_abort_const(mctx->mi->data, process_dns_t);
 	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "dns";

@@ -293,7 +293,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_dns_t		*inst = talloc_get_type_abort(mctx->inst->data, proto_dns_t);
+	proto_dns_t		*inst = talloc_get_type_abort(mctx->mi->data, proto_dns_t);
 
 	/*
 	 *	No IO module, it's an empty listener.
@@ -330,12 +330,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_dns_t 		*inst = talloc_get_type_abort(mctx->inst->data, proto_dns_t);
+	proto_dns_t 		*inst = talloc_get_type_abort(mctx->mi->data, proto_dns_t);
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
-	inst->io.server_cs = cf_section_find_parent(mctx->inst->conf, "server", CF_IDENT_ANY);
+	inst->io.server_cs = cf_section_find_parent(mctx->mi->conf, "server", CF_IDENT_ANY);
 
 	fr_assert(dict_dns != NULL);
 	fr_assert(attr_packet_type != NULL);
@@ -360,7 +360,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
-	inst->io.mi = mctx->inst;
+	inst->io.mi = mctx->mi;
 
 	/*
 	 *	Bootstrap the master IO handler.

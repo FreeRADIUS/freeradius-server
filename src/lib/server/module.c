@@ -249,7 +249,7 @@ static void module_detach_parent(module_instance_t *mi)
 	if (mi->parent) module_detach_parent(UNCONST(module_instance_t *, mi->parent));
 
 	if (mi->exported->detach) {
-		mi->exported->detach(&(module_detach_ctx_t){ .inst = mi });
+		mi->exported->detach(&(module_detach_ctx_t){ .mi = mi });
 		mi->detached = true;
 	}
 }
@@ -622,7 +622,7 @@ static int _module_thread_inst_free(module_thread_instance_t *ti)
 
 	if (mi->exported->thread_detach) {
 		mi->exported->thread_detach(&(module_thread_inst_ctx_t const ){
-						.inst = ti->mi,
+						.mi = ti->mi,
 						.thread = ti->data,
 						.el = ti->el
 					  });

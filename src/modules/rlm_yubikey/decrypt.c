@@ -20,7 +20,7 @@
  */
 unlang_action_t rlm_yubikey_decrypt(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request, char const *passcode)
 {
-	rlm_yubikey_t const *inst = talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t);
+	rlm_yubikey_t const *inst = talloc_get_type_abort(mctx->mi->data, rlm_yubikey_t);
 	uint32_t counter, timestamp;
 	yubikey_token_st token;
 

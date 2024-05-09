@@ -236,7 +236,7 @@ static virtual_server_compile_t const compile_list[] = {
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(mctx->inst->data, eap_aka_sim_process_conf_t);
+	eap_aka_sim_process_conf_t	*inst = talloc_get_type_abort(mctx->mi->data, eap_aka_sim_process_conf_t);
 
 	inst->type = FR_EAP_METHOD_AKA_PRIME;
 

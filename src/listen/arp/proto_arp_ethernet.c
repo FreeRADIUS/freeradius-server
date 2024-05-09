@@ -218,9 +218,9 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_arp_ethernet_t 	*inst = talloc_get_type_abort(mctx->inst->data, proto_arp_ethernet_t);
+	proto_arp_ethernet_t 	*inst = talloc_get_type_abort(mctx->mi->data, proto_arp_ethernet_t);
 
-	inst->cs = mctx->inst->conf;
+	inst->cs = mctx->mi->conf;
 
 	return 0;
 }

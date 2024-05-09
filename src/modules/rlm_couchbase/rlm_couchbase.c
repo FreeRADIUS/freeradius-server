@@ -98,7 +98,7 @@ fr_dict_attr_autoload_t rlm_couchbase_dict_attr[] = {
  */
 static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_couchbase_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_couchbase_t);		/* our module instance */
+	rlm_couchbase_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_couchbase_t);		/* our module instance */
 	rlm_couchbase_handle_t	*handle = NULL;			/* connection pool handle */
 	char			buffer[MAX_KEY_SIZE];
 	char const		*dockey;			/* our document key */
@@ -232,7 +232,7 @@ finish:
  */
 static unlang_action_t mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_couchbase_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_couchbase_t);       /* our module instance */
+	rlm_couchbase_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_couchbase_t);       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
 	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
 	fr_pair_t *vp;                         /* radius value pair linked list */
@@ -423,7 +423,7 @@ finish:
  */
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);
+	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_couchbase_t);
 
 	if (inst->map) json_object_put(inst->map);
 	if (inst->pool) fr_pool_free(inst->pool);
@@ -443,8 +443,8 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_couchbase_t);   /* our module instance */
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_couchbase_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_couchbase_t);   /* our module instance */
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	{
 		char *server, *p;

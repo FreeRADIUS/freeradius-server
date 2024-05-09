@@ -26,7 +26,7 @@
 RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/server/base.h>
@@ -162,7 +162,7 @@ static xlat_action_t unix_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_ctx_t const *xctx,
 				     request_t *request, fr_value_box_list_t *in)
 {
-	rlm_unix_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_unix_t);
+	rlm_unix_t const	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_unix_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*p = arg->vb_strvalue;
 	fr_value_box_t		*vb;
@@ -182,7 +182,7 @@ static xlat_action_t unix_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_unix_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_unix_t);
+	rlm_unix_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_unix_t);
 	xlat_t			*xlat;
 	xlat_arg_parser_t	*xlat_arg;
 
@@ -373,7 +373,7 @@ static char *uue(void *in)
  */
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_unix_t);
+	rlm_unix_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_unix_t);
 	fr_pair_t		*vp;
 	FILE			*fp;
 	struct utmp		ut;

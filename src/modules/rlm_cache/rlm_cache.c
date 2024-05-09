@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -606,7 +606,7 @@ static unlang_action_t cache_set_ttl(rlm_rcode_t *p_result,
 static unlang_action_t CC_HINT(nonnull) mod_cache_it(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_cache_entry_t	*c = NULL;
-	rlm_cache_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 
 	rlm_cache_handle_t	*handle;
@@ -876,7 +876,7 @@ xlat_action_t cache_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 			 request_t *request, fr_value_box_list_t *in)
 {
 	rlm_cache_entry_t 		*c = NULL;
-	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_cache_t);
+	rlm_cache_t			*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
 	cache_call_env_t		*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
 	rlm_cache_handle_t		*handle = NULL;
 
@@ -949,7 +949,7 @@ static xlat_action_t cache_ttl_get_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 
 	rlm_cache_entry_t	*c = NULL;
-	rlm_cache_t		*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_cache_t);
+	rlm_cache_t		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(xctx->env_data, cache_call_env_t);
 	rlm_cache_handle_t	*handle = NULL;
 
@@ -1029,7 +1029,7 @@ static void cache_unref(request_t *request, rlm_cache_t const *inst, rlm_cache_e
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_status(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	rlm_cache_entry_t 	*entry = NULL;
@@ -1067,7 +1067,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_load(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	rlm_cache_entry_t 	*entry = NULL;
@@ -1109,7 +1109,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_update(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	fr_time_delta_t		ttl;
@@ -1197,7 +1197,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_store(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	fr_time_delta_t		ttl;
@@ -1264,13 +1264,13 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_clear(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	rlm_cache_entry_t 	*entry = NULL;
 	rlm_cache_handle_t 	*handle = NULL;
 
-	DEBUG3("Calling %s.clear", mctx->inst->name);
+	DEBUG3("Calling %s.clear", mctx->mi->name);
 
 	if (env->key->vb_length == 0) {
 		REDEBUG("Zero length key string is invalid");
@@ -1308,7 +1308,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	rlm_cache_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	cache_call_env_t	*env = talloc_get_type_abort(mctx->env_data, cache_call_env_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	fr_time_delta_t		ttl;
@@ -1316,7 +1316,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_ttl(rlm_rcode_t *p_result, mo
 	rlm_cache_handle_t 	*handle = NULL;
 	fr_pair_t		*vp;
 
-	DEBUG3("Calling %s.ttl", mctx->inst->name);
+	DEBUG3("Calling %s.ttl", mctx->mi->name);
 
 	if (env->key->vb_length == 0) {
 		REDEBUG("Zero length key string is invalid");
@@ -1372,7 +1372,7 @@ finish:
  */
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_cache_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
+	rlm_cache_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 
 	/*
 	 *	We need to explicitly free all children, so if the driver
@@ -1438,8 +1438,8 @@ static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *o
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_cache_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	if (!fr_time_delta_ispos(inst->config.ttl)) {
 		cf_log_err(conf, "Must set 'ttl' to non-zero");
@@ -1459,7 +1459,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_t 	*inst = talloc_get_type_abort(mctx->inst->data, rlm_cache_t );
+	rlm_cache_t 	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t );
 	xlat_t		*xlat;
 
 	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->module->exported;

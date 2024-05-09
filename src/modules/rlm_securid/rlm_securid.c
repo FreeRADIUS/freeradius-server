@@ -429,7 +429,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, request_t *request,
 /******************************************/
 static int mod_detach(module_detach_ctx_t *mctx)
 {
-	rlm_securid_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_securid_t);
+	rlm_securid_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_securid_t);
 
 	/* delete session tree */
 	if (inst->session_tree) {
@@ -445,7 +445,7 @@ static int mod_detach(module_detach_ctx_t *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_securid_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_securid_t);
+	rlm_securid_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_securid_t);
 
 	/*
 	 *	Lookup sessions in the tree.  We don't free them in
@@ -468,7 +468,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	int			rcode;
-	rlm_securid_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_securid_t);
+	rlm_securid_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_securid_t);
 	char		 	buffer[FR_MAX_STRING_LEN]="";
 	fr_pair_t		*username, *password;
 	fr_pair_t		*vp;

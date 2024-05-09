@@ -800,7 +800,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 			       PerlInterpreter *interp, char const *function_name)
 {
 
-	rlm_perl_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
+	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
 	fr_pair_list_t		vps;
 	int			ret=0, count;
 	STRLEN			n_a;
@@ -902,7 +902,7 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 #define RLM_PERL_FUNC(_x) \
 static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 { \
-	rlm_perl_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t); \
+	rlm_perl_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t); \
 	return do_perl(p_result, mctx, request, \
 		       ((rlm_perl_thread_t *)talloc_get_type_abort(mctx->thread, rlm_perl_thread_t))->perl, \
 		       inst->func_##_x); \
@@ -946,7 +946,7 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_perl_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
+	rlm_perl_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
 	rlm_perl_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_perl_thread_t);
 	PerlInterpreter		*interp;
 	UV			clone_flags = 0;
@@ -996,8 +996,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_perl_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_perl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 	AV		*end_AV;
 
 	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
@@ -1074,7 +1074,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 DIAG_OFF(nested-externs)
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_perl_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_perl_t);
+	rlm_perl_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_perl_t);
 	int 		ret = 0, count = 0;
 
 

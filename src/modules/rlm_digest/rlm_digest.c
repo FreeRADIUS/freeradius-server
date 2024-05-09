@@ -85,7 +85,7 @@ fr_dict_attr_autoload_t rlm_digest_dict_attr[] = {
 
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_digest_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_digest_t);
+	rlm_digest_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_digest_t);
 	fr_pair_t		*vp;
 
 	/*
@@ -96,7 +96,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Digest authentication",
-		     mctx->inst->name, mctx->inst->name);
+		     mctx->mi->name, mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -452,12 +452,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_digest_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_digest_t);
+	rlm_digest_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_digest_t);
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->mi->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  Digest authentication will likely not work",
-		     mctx->inst->name);
+		     mctx->mi->name);
 	}
 
 	return 0;

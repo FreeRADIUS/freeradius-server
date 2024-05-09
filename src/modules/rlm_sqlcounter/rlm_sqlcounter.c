@@ -383,7 +383,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
 	sqlcounter_call_env_t	*env = talloc_get_type_abort(mctx->env_data, sqlcounter_call_env_t);
 	fr_pair_t		*limit, *vp;
 	sqlcounter_rctx_t	*rctx;
@@ -452,8 +452,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
-	CONF_SECTION    	*conf = mctx->inst->conf;
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
+	CONF_SECTION    	*conf = mctx->mi->conf;
 
 	fr_assert(inst->query && *inst->query);
 
@@ -491,8 +491,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlcounter_t);
-	CONF_SECTION    	*conf = mctx->inst->conf;
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
+	CONF_SECTION    	*conf = mctx->mi->conf;
 	fr_dict_attr_flags_t	flags = (fr_dict_attr_flags_t) { .internal = 1, .length = 8 };
 	module_instance_t const	*sql_inst;
 

@@ -416,7 +416,7 @@ RECV(for_any_server)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_dhcpv6_t const		*inst = mctx->inst->data;
+	process_dhcpv6_t const		*inst = mctx->mi->data;
 	process_dhcpv6_client_fields_t	*rctx = NULL;
 
 	PROCESS_TRACE;
@@ -451,7 +451,7 @@ RECV(for_this_server)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_dhcpv6_t const		*inst = mctx->inst->data;
+	process_dhcpv6_t const		*inst = mctx->mi->data;
 	process_dhcpv6_client_fields_t	*rctx;
 
 	PROCESS_TRACE;
@@ -594,7 +594,7 @@ void status_code_add(process_dhcpv6_t const *inst, request_t *request, fr_value_
  */
 RESUME(send_to_client)
 {
-	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->inst->data, process_dhcpv6_t);
+	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->mi->data, process_dhcpv6_t);
 	process_dhcpv6_client_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_client_fields_t);
 	fr_process_state_t const	*state;
 
@@ -678,7 +678,7 @@ RECV(from_relay)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_dhcpv6_t const		*inst = mctx->inst->data;
+	process_dhcpv6_t const		*inst = mctx->mi->data;
 	process_dhcpv6_relay_fields_t	*rctx = NULL;
 
 	rctx = dhcpv6_relay_fields_store(request);
@@ -696,7 +696,7 @@ RECV(from_relay)
  */
 RESUME(send_to_relay)
 {
-	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->inst->data, process_dhcpv6_t);
+	process_dhcpv6_t		*inst = talloc_get_type_abort(mctx->mi->data, process_dhcpv6_t);
 	process_dhcpv6_relay_fields_t	*fields = talloc_get_type_abort(mctx->rctx, process_dhcpv6_relay_fields_t);
 	fr_process_state_t const	*state;
 
@@ -733,7 +733,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	PROCESS_TRACE;
 
-	(void)talloc_get_type_abort_const(mctx->inst->data, process_dhcpv6_t);
+	(void)talloc_get_type_abort_const(mctx->mi->data, process_dhcpv6_t);
 	fr_assert(PROCESS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "dhcpv6";
@@ -758,9 +758,9 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_dhcpv6_t	*inst = talloc_get_type_abort(mctx->inst->data, process_dhcpv6_t);
+	process_dhcpv6_t	*inst = talloc_get_type_abort(mctx->mi->data, process_dhcpv6_t);
 
-	inst->server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
+	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 
 	return 0;
 }

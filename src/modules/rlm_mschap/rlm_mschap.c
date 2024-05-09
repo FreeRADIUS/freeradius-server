@@ -26,7 +26,7 @@
 
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exec_legacy.h>
@@ -389,7 +389,7 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	uint8_t			buffer[32];
 	fr_pair_t		*user_name;
 	fr_pair_t		*chap_challenge, *response;
-	rlm_mschap_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_mschap_t);
+	rlm_mschap_t const	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_mschap_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_value_box_t		*vb;
 	bool			tainted = false;
@@ -1379,7 +1379,7 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_mschap_t);
+	rlm_mschap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_mschap_t);
 	mschap_autz_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, mschap_autz_call_env_t);
 	fr_pair_t		*challenge = NULL;
 	fr_pair_t		*parent;
@@ -1403,7 +1403,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup MS-CHAP authentication",
-		     mctx->inst->name, mctx->inst->name);
+		     mctx->mi->name, mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -2263,7 +2263,7 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_mschap_t);
+	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_mschap_t);
 	mschap_auth_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, mschap_auth_call_env_t);
 	mschap_auth_ctx_t	*auth_ctx;
 
@@ -2274,7 +2274,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	otherwise
 	 */
 	*auth_ctx = (mschap_auth_ctx_t) {
-		.name = mctx->inst->name,
+		.name = mctx->mi->name,
 		.inst = inst,
 		.method = inst->method,
 		.env_data = env_data,
@@ -2325,7 +2325,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	 *	input attribute, and we're calling out to an
 	 *	external password store.
 	 */
-	if (nt_password_find(auth_ctx, &auth_ctx->nt_password, mctx->inst->data, request) < 0) RETURN_MODULE_FAIL;
+	if (nt_password_find(auth_ctx, &auth_ctx->nt_password, mctx->mi->data, request) < 0) RETURN_MODULE_FAIL;
 
 	/*
 	 *	Check to see if this is a change password request, and process
@@ -2388,13 +2388,13 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_mschap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_mschap_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	rlm_mschap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_mschap_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->mi->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  MS-CHAP authentication will likely not work",
-		     mctx->inst->name);
+		     mctx->mi->name);
 	}
 
 	/*
@@ -2488,7 +2488,7 @@ done_mppe_check:
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_mschap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_mschap_t);
+	rlm_mschap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_mschap_t);
 	xlat_t			*xlat;
 
 	xlat = xlat_func_register_module(inst, mctx, NULL, mschap_xlat, FR_TYPE_VOID);
@@ -2508,7 +2508,7 @@ static int mod_detach(
 		      module_detach_ctx_t const *mctx)
 {
 #ifdef WITH_AUTH_WINBIND
-	rlm_mschap_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_mschap_t);
+	rlm_mschap_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_mschap_t);
 
 	fr_pool_free(inst->wb_pool);
 #endif

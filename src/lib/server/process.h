@@ -191,7 +191,7 @@ RECV(generic)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST const		*inst = mctx->inst->data;
+	PROCESS_INST const		*inst = mctx->mi->data;
 
 	PROCESS_TRACE;
 
@@ -267,7 +267,7 @@ SEND(generic)
 	fr_pair_t 			*vp;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST const   		*inst = mctx->inst->data;
+	PROCESS_INST const   		*inst = mctx->mi->data;
 
 	PROCESS_TRACE;
 
@@ -329,7 +329,7 @@ RESUME(send_generic)
 	rlm_rcode_t			rcode = *p_result;
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	PROCESS_INST const   		*inst = mctx->inst->data;
+	PROCESS_INST const   		*inst = mctx->mi->data;
 
 	PROCESS_TRACE;
 
@@ -425,7 +425,7 @@ RESUME(new_client)
 {
 	rlm_rcode_t			rcode = *p_result;
 	CONF_SECTION			*cs;
-	PROCESS_INST const		*inst = mctx->inst->data;
+	PROCESS_INST const		*inst = mctx->mi->data;
 
 	switch (rcode) {
 	case RLM_MODULE_OK:
@@ -453,7 +453,7 @@ RESUME(new_client)
 static inline unlang_action_t new_client(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	CONF_SECTION			*cs;
-	PROCESS_INST const		*inst = mctx->inst->data;
+	PROCESS_INST const		*inst = mctx->mi->data;
 
 	PROCESS_TRACE;
 	fr_assert(inst->sections.new_client != NULL);

@@ -243,7 +243,7 @@ static xlat_action_t winbind_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     xlat_ctx_t const *xctx,
 				     request_t *request, fr_value_box_list_t *in)
 {
-	rlm_winbind_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_winbind_t);
+	rlm_winbind_t const	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_winbind_t);
 	winbind_group_xlat_call_env_t	*env = talloc_get_type_abort(xctx->env_data, winbind_group_xlat_call_env_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*p = arg->vb_strvalue;
@@ -315,8 +315,8 @@ static xlat_arg_parser_t const winbind_group_xlat_arg[] = {
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_winbind_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
-	CONF_SECTION			*conf = mctx->inst->conf;
+	rlm_winbind_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_winbind_t);
+	CONF_SECTION			*conf = mctx->mi->conf;
 
 	inst->wb_pool = module_rlm_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->wb_pool) {
@@ -324,10 +324,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->mi->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  Winbind authentication will likely not work",
-		     mctx->inst->name);
+		     mctx->mi->name);
 	}
 
 	return 0;
@@ -343,7 +343,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_winbind_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
+	rlm_winbind_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_winbind_t);
 
 	fr_pool_free(inst->wb_pool);
 
@@ -364,7 +364,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_winbind_t);
+	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_winbind_t);
 	winbind_autz_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_autz_call_env_t);
 	fr_pair_t		*vp;
 
@@ -377,7 +377,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Winbind authentication",
-		     mctx->inst->name, mctx->inst->name);
+		     mctx->mi->name, mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -395,7 +395,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_winbind_t);
+	rlm_winbind_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_winbind_t);
 	winbind_auth_call_env_t	*env = talloc_get_type_abort(mctx->env_data, winbind_auth_call_env_t);
 
 	/*
@@ -537,8 +537,8 @@ static const call_env_method_t winbind_group_xlat_call_env = {
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_winbind_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_winbind_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	rlm_winbind_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_winbind_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 	xlat_t			*xlat;
 
 	/*

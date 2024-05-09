@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <stdint.h>
 
@@ -138,7 +138,7 @@ static xlat_action_t exec_xlat_oneshot(TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out
 				       xlat_ctx_t const *xctx,
 				       request_t *request, fr_value_box_list_t *in)
 {
-	rlm_exec_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_exec_t);
+	rlm_exec_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_exec_t);
 	fr_pair_list_t		*env_pairs = NULL;
 	fr_exec_state_t		*exec;
 
@@ -240,7 +240,7 @@ static rlm_rcode_t rlm_exec_status2rcode(request_t *request, fr_value_box_t *box
 static unlang_action_t mod_exec_oneshot_nowait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 						      request_t *request)
 {
-	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
+	rlm_exec_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_exec_t);
 	fr_value_box_list_t	*args = talloc_get_type_abort(mctx->rctx, fr_value_box_list_t);
 	fr_pair_list_t		*env_pairs = NULL;
 
@@ -282,7 +282,7 @@ static fr_sbuff_parse_rules_t const rhs_term = {
 static unlang_action_t mod_exec_oneshot_wait_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	int			status;
-	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
+	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_exec_t);
 	rlm_exec_ctx_t		*m = talloc_get_type_abort(mctx->rctx, rlm_exec_ctx_t);
 	rlm_rcode_t		rcode;
 
@@ -387,7 +387,7 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p
 	rlm_exec_ctx_t		*m;
 	fr_pair_list_t		*env_pairs = NULL;
 	TALLOC_CTX		*ctx;
-	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_exec_t);
+	rlm_exec_t const       	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_exec_t);
 	exec_call_env_t		*env_data = talloc_get_type_abort(mctx->env_data, exec_call_env_t);
 
 	if (!env_data->program) {
@@ -454,8 +454,8 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_exec_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_exec_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_exec_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_exec_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 	xlat_t		*xlat;
 
 	xlat = xlat_func_register_module(NULL, mctx, NULL, exec_xlat_oneshot, FR_TYPE_STRING);

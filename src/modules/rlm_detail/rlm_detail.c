@@ -180,8 +180,8 @@ static int8_t detail_cmp(void const *a, void const *b)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_detail_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_detail_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_detail_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_detail_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	inst->ef = module_rlm_exfile_init(inst, conf, 256, fr_time_delta_from_sec(30), inst->locking, NULL, NULL);
 	if (!inst->ef) {
@@ -328,7 +328,7 @@ static unlang_action_t CC_HINT(nonnull) detail_do(rlm_rcode_t *p_result, module_
 	int			outfd, dupfd;
 	FILE			*outfp = NULL;
 
-	rlm_detail_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_detail_t);
+	rlm_detail_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_detail_t);
 
 	RDEBUG2("%s expands to %pV", env->filename_tmpl->name, &env->filename);
 

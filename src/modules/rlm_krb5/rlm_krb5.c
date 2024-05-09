@@ -59,7 +59,7 @@ fr_dict_attr_autoload_t rlm_krb5_dict_attr[] = {
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_krb5_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_krb5_t);
+	rlm_krb5_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_krb5_t);
 
 #ifndef HEIMDAL_KRB5
 	talloc_free(inst->vic_options);
@@ -81,7 +81,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_krb5_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_krb5_t);
+	rlm_krb5_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_krb5_t);
 	krb5_error_code ret;
 #ifndef HEIMDAL_KRB5
 	krb5_keytab keytab;
@@ -222,7 +222,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = module_rlm_connection_pool_init(mctx->inst->conf, inst, krb5_mod_conn_create, NULL, NULL, NULL, NULL);
+	inst->pool = module_rlm_connection_pool_init(mctx->mi->conf, inst, krb5_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 #else
 	inst->conn = krb5_mod_conn_create(inst, inst, fr_time_delta_wrap(0));
@@ -317,7 +317,7 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, request_t *request
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_krb5_t);
+	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_krb5_t);
 	rlm_rcode_t		rcode;
 	krb5_error_code		ret;
 	rlm_krb5_handle_t	*conn;
@@ -408,7 +408,7 @@ cleanup:
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_krb5_t);
+	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_krb5_t);
 	rlm_rcode_t		rcode;
 	krb5_error_code		ret;
 

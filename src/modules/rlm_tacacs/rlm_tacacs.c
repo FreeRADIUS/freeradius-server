@@ -130,7 +130,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 static void mod_tacacs_signal(module_ctx_t const *mctx, request_t *request, fr_signal_t action)
 {
-	rlm_tacacs_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_tacacs_t);
+	rlm_tacacs_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_tacacs_t);
 	rlm_tacacs_io_t	const	*io = (rlm_tacacs_io_t const *)inst->io_submodule->module;		/* Public symbol exported by the module */
 
 	/*
@@ -151,7 +151,7 @@ static void mod_tacacs_signal(module_ctx_t const *mctx, request_t *request, fr_s
  */
 static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_tacacs_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_tacacs_t);
+	rlm_tacacs_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_tacacs_t);
 	rlm_rcode_t		rcode;
 	unlang_action_t		ua;
 
@@ -188,10 +188,10 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	size_t i, num_types;
-	rlm_tacacs_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_tacacs_t);
+	rlm_tacacs_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_tacacs_t);
 
 	inst->io = (rlm_tacacs_io_t const *)inst->io_submodule->module;	/* Public symbol exported by the module */
-	inst->name = mctx->inst->name;
+	inst->name = mctx->mi->name;
 
 	/*
 	 *	These limits are specific to TACACS, and cannot be over-ridden, due to 8-bit ID fields!

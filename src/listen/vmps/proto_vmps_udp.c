@@ -390,8 +390,8 @@ static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_in
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_vmps_udp_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_vmps_udp_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	proto_vmps_udp_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_vmps_udp_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;

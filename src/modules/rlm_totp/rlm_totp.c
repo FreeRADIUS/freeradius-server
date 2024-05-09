@@ -73,8 +73,8 @@ static const conf_parser_t module_config[] = {
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_totp_t   *inst = talloc_get_type_abort(mctx->inst->data, rlm_totp_t);
-	CONF_SECTION *conf = mctx->inst->conf;
+	rlm_totp_t   *inst = talloc_get_type_abort(mctx->mi->data, rlm_totp_t);
+	CONF_SECTION *conf = mctx->mi->conf;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
@@ -94,7 +94,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_totp_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_totp_t);
+	rlm_totp_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_totp_t);
 
 	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, >=, 5);
 	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, <=, 120);
@@ -120,7 +120,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_totp_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, rlm_totp_call_env_t);
-	rlm_totp_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_totp_t);
+	rlm_totp_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_totp_t);
 	fr_value_box_t		*user_password = &env_data->user_password;
 	fr_value_box_t		*secret = &env_data->secret;
 	fr_value_box_t		*key = &env_data->key;

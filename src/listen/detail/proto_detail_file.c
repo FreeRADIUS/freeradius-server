@@ -624,8 +624,8 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_file_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_detail_file_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 	module_instance_t const	*mi;
 	char			*p;
 
@@ -656,7 +656,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	so we can find out what the parent of our instance
 	 *	was.
 	 */
-	mi = mctx->inst;
+	mi = mctx->mi;
 
 #ifndef __linux__
 	/*
@@ -717,8 +717,8 @@ static int8_t _detail_file_cmp(void const *one, void const *two)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_detail_file_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_detail_file_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	pthread_mutex_lock(&detail_file_mutex);
 	if (!detail_file_tree) {

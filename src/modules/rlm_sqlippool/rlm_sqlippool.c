@@ -225,8 +225,8 @@ finish:
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sqlippool_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	inst->name = talloc_asprintf(inst, "%s - %s", mctx->inst->name, inst->sql_name);
+	rlm_sqlippool_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
+	inst->name = talloc_asprintf(inst, "%s - %s", mctx->mi->name, inst->sql_name);
 
 	return 0;
 }
@@ -244,8 +244,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	module_instance_t	*sql;
-	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	sql = module_rlm_by_name(NULL, inst->sql_name);
 	if (!sql) {
@@ -474,7 +474,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
  */
 static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
+	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
 	ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_alloc_call_env_t);
 	rlm_sql_t const		*sql = inst->sql;
 	rlm_sql_handle_t	*handle;
@@ -549,7 +549,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
  */
 static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sqlippool_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_sqlippool_t);
+	rlm_sqlippool_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
 	ippool_common_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_common_call_env_t);
 	rlm_sql_t const			*sql = inst->sql;
 	rlm_sql_handle_t		*handle;

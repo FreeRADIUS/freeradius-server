@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -168,7 +168,7 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx, c
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_attr_filter_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_attr_filter_t);
+	rlm_attr_filter_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_attr_filter_t);
 	int rcode;
 	pairlist_list_init(&inst->attrs);
 
@@ -190,7 +190,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 								module_ctx_t const *mctx, request_t *request,
 								fr_packet_t *packet, fr_pair_list_t *list)
 {
-	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_attr_filter_t);
+	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_attr_filter_t);
 	fr_pair_list_t	output;
 	PAIR_LIST	*pl = NULL;
 	int		found = 0;

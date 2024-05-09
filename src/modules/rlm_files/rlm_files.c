@@ -609,7 +609,7 @@ static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_
 	rlm_files_env_t		*env = talloc_get_type_abort(mctx->env_data, rlm_files_env_t);
 
 	fr_value_box_list_init(&env->values);
-	env->name = mctx->inst->name;
+	env->name = mctx->mi->name;
 
 	/*
 	 *	Set mod_files_resume as the repeat function

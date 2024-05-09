@@ -513,7 +513,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 			       xlat_ctx_t const *xctx, request_t *request,
 			       fr_value_box_list_t *in)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, rlm_rest_thread_t);
 
 	fr_curl_io_request_t		*randle = NULL;
@@ -627,7 +627,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(MODULE_CTX(xctx->mctx->inst, t, xctx->env_data, NULL),
+	ret = rest_request_config(MODULE_CTX(xctx->mctx->mi, t, xctx->env_data, NULL),
 				  section, request, randle, section->request.method,
 				  section->request.body,
 				  uri_vb->vb_strvalue, in_vb ? in_vb->vb_strvalue : NULL);
@@ -647,7 +647,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 static unlang_action_t mod_authorize_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
@@ -733,7 +733,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->authorize;
 
@@ -761,7 +761,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 static unlang_action_t mod_authenticate_result(rlm_rcode_t *p_result,
 					       module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
@@ -844,7 +844,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_call_env_t 		*call_env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
 	rlm_rest_section_t const	*section = &inst->authenticate;
@@ -903,7 +903,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 static unlang_action_t mod_accounting_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
@@ -954,7 +954,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->accounting;
 
@@ -981,7 +981,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 
 static unlang_action_t mod_post_auth_result(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_section_t const 	*section = &inst->authenticate;
 	fr_curl_io_request_t		*handle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 
@@ -1032,7 +1032,7 @@ finish:
  */
 static unlang_action_t CC_HINT(nonnull) mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t		*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	rlm_rest_section_t const	*section = &inst->post_auth;
 
@@ -1261,7 +1261,7 @@ static int rest_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_rest_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
 	rlm_rest_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_rest_thread_t);
 	fr_curl_handle_t	*mhandle;
 
@@ -1311,8 +1311,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  */
 static int instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_rest_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_rest_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	inst->xlat.request.method_str = "GET";
 	inst->xlat.request.body = REST_HTTP_BODY_NONE;
@@ -1344,7 +1344,7 @@ static int instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_rest_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
 	xlat_t		*xlat;
 
 	xlat = xlat_func_register_module(inst, mctx, NULL, rest_xlat, FR_TYPE_STRING);

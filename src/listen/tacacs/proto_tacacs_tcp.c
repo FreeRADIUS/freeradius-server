@@ -400,8 +400,8 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_tacacs_tcp_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_tacacs_tcp_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	proto_tacacs_tcp_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_tacacs_tcp_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 	size_t			num;
 	CONF_ITEM		*ci;
 	CONF_SECTION		*server_cs;

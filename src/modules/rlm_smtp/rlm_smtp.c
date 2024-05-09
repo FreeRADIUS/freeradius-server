@@ -584,7 +584,7 @@ static void smtp_io_module_signal(module_ctx_t const *mctx, request_t *request, 
  */
 static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
+	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_smtp_t);
 	fr_curl_io_request_t     	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 	fr_curl_tls_t const		*tls = &inst->tls;
 	long 				curl_out;
@@ -631,7 +631,7 @@ static unlang_action_t smtp_io_module_resume(rlm_rcode_t *p_result, module_ctx_t
  */
 static unlang_action_t CC_HINT(nonnull) mod_mail(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_smtp_t);
+	rlm_smtp_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_smtp_t);
 	rlm_smtp_thread_t       	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	rlm_smtp_env_t			*call_env = talloc_get_type_abort(mctx->env_data, rlm_smtp_env_t);
 	fr_curl_io_request_t     	*randle = NULL;
@@ -776,7 +776,7 @@ static unlang_action_t CC_HINT(nonnull(1,2)) mod_authenticate(rlm_rcode_t *p_res
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_smtp_t			*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t);
+	rlm_smtp_t			*inst = talloc_get_type_abort(mctx->mi->data, rlm_smtp_t);
 
 	inst->conn_config.reuse.num_children = 1;
 	inst->conn_config.reuse.child_pool_size = sizeof(fr_mail_ctx_t);
@@ -901,7 +901,7 @@ static int smtp_persist_conn_init(fr_curl_io_request_t *randle, void *uctx)
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_smtp_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_smtp_t);
+	rlm_smtp_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_smtp_t);
 	rlm_smtp_thread_t    	*t = talloc_get_type_abort(mctx->thread, rlm_smtp_thread_t);
 	fr_curl_handle_t    	*mhandle;
 

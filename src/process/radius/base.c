@@ -329,7 +329,7 @@ RESUME(generic_radius_response)
 
 RECV(access_request)
 {
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	/*
 	 *	Only reject if the state has already been thawed.
@@ -352,7 +352,7 @@ RESUME(access_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const		*dv;
 	fr_process_state_t const	*state;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -555,7 +555,7 @@ RESUME(auth_type)
 RESUME(access_accept)
 {
 	fr_pair_t			*vp;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -581,7 +581,7 @@ RESUME(access_accept)
 
 RESUME(access_reject)
 {
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -592,7 +592,7 @@ RESUME(access_reject)
 
 RESUME(access_challenge)
 {
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -655,7 +655,7 @@ RESUME(accounting_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const	*dv;
 	fr_process_state_t const	*state;
-	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
+	process_radius_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -756,7 +756,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 {
 	fr_process_state_t const *state;
 
-	(void) talloc_get_type_abort_const(mctx->inst->data, process_radius_t);
+	(void) talloc_get_type_abort_const(mctx->mi->data, process_radius_t);
 
 	PROCESS_TRACE;
 
@@ -841,7 +841,7 @@ static xlat_action_t xlat_func_radius_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	process_radius_t	*inst = talloc_get_type_abort(mctx->inst->data, process_radius_t);
+	process_radius_t	*inst = talloc_get_type_abort(mctx->mi->data, process_radius_t);
 
 	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.max_session,
 						   inst->auth.session_timeout, inst->auth.state_server_id,
@@ -852,9 +852,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_radius_t	*inst = talloc_get_type_abort(mctx->inst->data, process_radius_t);
+	process_radius_t	*inst = talloc_get_type_abort(mctx->mi->data, process_radius_t);
 
-	inst->server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
+	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;

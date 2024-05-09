@@ -149,11 +149,11 @@ static fr_dict_attr_t const **pap_alloweds;
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_pap_t);
+	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_pap_t);
 	pap_call_env_t		*env_data = talloc_get_type_abort(mctx->env_data, pap_call_env_t);
 
 	if (fr_pair_find_by_da(&request->control_pairs, NULL, attr_auth_type) != NULL) {
-		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", mctx->inst->name);
+		RDEBUG3("Auth-Type is already set.  Not setting 'Auth-Type := %s'", mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -164,7 +164,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup PAP authentication.",
-		     mctx->inst->name, mctx->inst->name);
+		     mctx->mi->name, mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -899,7 +899,7 @@ static const pap_auth_func_t auth_func_table[] = {
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_pap_t);
+	rlm_pap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_pap_t);
 	fr_pair_t		*known_good;
 	rlm_rcode_t		rcode = RLM_MODULE_INVALID;
 	pap_auth_func_t		auth_func;
@@ -975,12 +975,12 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_pap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_pap_t);
+	rlm_pap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_pap_t);
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->mi->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  PAP will likely not work",
-		     mctx->inst->name);
+		     mctx->mi->name);
 	}
 
 	return 0;

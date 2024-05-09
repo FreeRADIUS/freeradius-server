@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX fr_lua_mctx->inst->name
+#define LOG_PREFIX fr_lua_mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 
@@ -349,4 +349,3 @@ request_t *fr_lua_util_get_request(void)
 {
 	return fr_lua_request;
 }
-

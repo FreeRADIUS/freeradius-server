@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
@@ -231,7 +231,7 @@ static eap_type_t eap_process_nak(module_ctx_t const *mctx, request_t *request,
 				  eap_type_t last_type,
 				  eap_type_data_t *nak)
 {
-	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
+	rlm_eap_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
 	unsigned int i, s_i = 0;
 	fr_pair_t *vp = NULL;
 	eap_type_t method = FR_EAP_METHOD_INVALID;
@@ -572,7 +572,7 @@ static ssize_t eap_identity_is_nai_with_realm(char const *identity)
  */
 static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t const *mctx, eap_session_t *eap_session)
 {
-	rlm_eap_t const			*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
+	rlm_eap_t const			*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
 	eap_type_data_t			*type = &eap_session->this_round->response->type;
 	request_t			*request = eap_session->request;
 
@@ -855,7 +855,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 
 static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
 	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 	unlang_action_t		ua;
@@ -920,7 +920,7 @@ static unlang_action_t mod_authenticate(rlm_rcode_t *p_result, module_ctx_t cons
  */
 static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_eap_t);
+	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
 	int			status;
 
 #ifdef WITH_PROXY
@@ -934,7 +934,7 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup EAP authentication",
-		     mctx->inst->name, mctx->inst->name);
+		     mctx->mi->name, mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -1036,7 +1036,7 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	 *	Was *NOT* an EAP-Failure, so we now need to turn it into one.
 	 */
 	REDEBUG("Request rejected after last call to module \"%s\", transforming response into EAP-Failure",
-		mctx->inst->name);
+		mctx->mi->name);
 	eap_fail(eap_session);				/* Compose an EAP failure */
 	eap_session_destroy(&eap_session);		/* Free the EAP session, and dissociate it from the request */
 
@@ -1052,13 +1052,13 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_t);
+	rlm_eap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_t);
 	size_t		i;
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->mi->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  EAP authentication will likely not work",
-		     mctx->inst->name);
+		     mctx->mi->name);
 	}
 
 	/*
@@ -1073,7 +1073,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_t);
+	rlm_eap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_t);
 	size_t		i, j, loaded, count = 0;
 
 	/*
@@ -1154,13 +1154,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	allowed by the config.
 	 */
 	if (inst->default_method_is_set && !inst->methods[inst->default_method].submodule) {
-		cf_log_err_by_child(mctx->inst->conf, "default_eap_type", "EAP-Type \"%s\" is not enabled",
+		cf_log_err_by_child(mctx->mi->conf, "default_eap_type", "EAP-Type \"%s\" is not enabled",
 				    eap_type2name(inst->default_method));
 		return -1;
 	}
 
 	if (count == 0) {
-		cf_log_err(mctx->inst->conf, "No EAP method(s) configured, module cannot do anything");
+		cf_log_err(mctx->mi->conf, "No EAP method(s) configured, module cannot do anything");
 		return -1;
 	}
 

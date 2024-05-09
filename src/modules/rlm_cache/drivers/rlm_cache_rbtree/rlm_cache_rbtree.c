@@ -69,7 +69,7 @@ static int8_t cache_heap_cmp(void const *one, void const *two)
  */
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(mctx->inst->data, rlm_cache_rbtree_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_rbtree_t);
 
 	if (driver->cache) {
 		fr_rb_iter_inorder_t	iter;
@@ -97,7 +97,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_rbtree_t *driver = talloc_get_type_abort(mctx->inst->data, rlm_cache_rbtree_t);
+	rlm_cache_rbtree_t *driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_rbtree_t);
 	int ret;
 
 	/*

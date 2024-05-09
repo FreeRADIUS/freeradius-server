@@ -546,9 +546,9 @@ static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
+	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
-	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_postgresql_t);
+	rlm_sql_postgresql_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_postgresql_t);
 	char 			application_name[NAMEDATALEN];
 	char			*db_string;
 
@@ -559,7 +559,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		CONF_SECTION	*cs;
 		char const	*name;
 
-		cs = cf_item_to_section(cf_parent(mctx->inst->conf));
+		cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 
 		name = cf_section_name2(cs);
 		if (!name) name = cf_section_name1(cs);
@@ -647,7 +647,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	{
 		CONF_SECTION *cs;
 
-		cs = cf_section_find(mctx->inst->conf, "states", NULL);
+		cs = cf_section_find(mctx->mi->conf, "states", NULL);
 		if (cs && (sql_state_entries_from_cs(inst->states, cs) < 0)) return -1;
 	}
 

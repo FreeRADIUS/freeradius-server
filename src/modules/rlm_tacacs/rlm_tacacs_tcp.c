@@ -1425,7 +1425,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, UNUSE
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_tacacs_tcp_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_tacacs_tcp_t);
+	rlm_tacacs_tcp_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_tacacs_tcp_t);
 	udp_thread_t			*thread = talloc_get_type_abort(mctx->thread, udp_thread_t);
 
 	static fr_trunk_io_funcs_t	io_funcs = {
@@ -1467,9 +1467,9 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_tacacs_t		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_tacacs_t);
-	rlm_tacacs_tcp_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_tacacs_tcp_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	rlm_tacacs_t		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_tacacs_t);
+	rlm_tacacs_tcp_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_tacacs_tcp_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	if (!parent) {
 		ERROR("IO module cannot be instantiated directly");

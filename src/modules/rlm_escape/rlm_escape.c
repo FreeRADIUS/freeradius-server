@@ -65,7 +65,7 @@ static xlat_action_t escape_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 xlat_ctx_t const *xctx,
 				 request_t *request, fr_value_box_list_t *in)
 {
-	rlm_escape_t const	*inst = talloc_get_type_abort(xctx->mctx->inst->data, rlm_escape_t);
+	rlm_escape_t const	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_escape_t);
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*p = arg->vb_strvalue;
 	size_t			len;

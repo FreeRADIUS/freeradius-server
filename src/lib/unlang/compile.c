@@ -400,7 +400,7 @@ static void unlang_dump(unlang_t *instruction, int depth)
 		{
 			unlang_module_t *single = unlang_generic_to_module(c);
 
-			DEBUG("%.*s%s", depth, unlang_spaces, single->instance->name);
+			DEBUG("%.*s%s", depth, unlang_spaces, single->mi->name);
 		}
 			break;
 
@@ -4553,7 +4553,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	}
 
 	MEM(single = talloc_zero(parent, unlang_module_t));
-	single->instance = inst;
+	single->mi = inst;
 	single->method = method;
 	c = unlang_module_to_generic(single);
 	c->parent = parent;
@@ -4589,7 +4589,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		single->call_env = call_env_alloc(single, single->self.name, method_env,
 						  unlang_ctx->rules, inst->conf,
 						  unlang_ctx->section_name1, unlang_ctx->section_name2,
-						  single->instance->data);
+						  single->mi->data);
 		if (!single->call_env) {
 		error:
 			talloc_free(c);

@@ -571,7 +571,7 @@ static xlat_action_t linelog_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				  xlat_ctx_t const *xctx, request_t *request,
 				  fr_value_box_list_t *args)
 {
-	rlm_linelog_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_linelog_t);
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_linelog_t);
 	linelog_call_env_t const	*call_env = talloc_get_type_abort(xctx->env_data, linelog_call_env_t);
 
 	struct iovec			vector[2];
@@ -610,7 +610,7 @@ typedef struct {
 
 static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_linelog_t);
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_linelog_t);
 	linelog_call_env_t const	*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
 	rlm_linelog_rctx_t		*rctx = talloc_get_type_abort(mctx->rctx, rlm_linelog_rctx_t);
 	struct iovec			*vector;
@@ -677,9 +677,9 @@ static unlang_action_t CC_HINT(nonnull) mod_do_linelog_resume(rlm_rcode_t *p_res
  */
 static unlang_action_t CC_HINT(nonnull) mod_do_linelog(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_linelog_t);
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_linelog_t);
 	linelog_call_env_t const	*call_env = talloc_get_type_abort(mctx->env_data, linelog_call_env_t);
-	CONF_SECTION			*conf = mctx->inst->conf;
+	CONF_SECTION			*conf = mctx->mi->conf;
 
 	char				buff[4096];
 	char				*p = buff;
@@ -906,7 +906,7 @@ static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_linelog_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
+	rlm_linelog_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_linelog_t);
 
 	fr_pool_free(inst->pool);
 
@@ -918,8 +918,8 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_linelog_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
-	CONF_SECTION		*cs, *conf = mctx->inst->conf;
+	rlm_linelog_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_linelog_t);
+	CONF_SECTION		*cs, *conf = mctx->mi->conf;
 	char			prefix[100];
 
 	inst->log_dst = fr_table_value_by_str(linefr_log_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
@@ -928,7 +928,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	snprintf(prefix, sizeof(prefix), "rlm_linelog (%s)", mctx->inst->name);
+	snprintf(prefix, sizeof(prefix), "rlm_linelog (%s)", mctx->mi->name);
 
 	/*
 	 *	Setup the logging destination
@@ -1033,7 +1033,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_linelog_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_linelog_t);
+	rlm_linelog_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_linelog_t);
 	xlat_t		*xlat;
 
 	static xlat_arg_parser_t const linelog_xlat_args[] = {

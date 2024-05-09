@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <ctype.h>
 #include <string.h>
@@ -1651,7 +1651,7 @@ size_t rest_get_handle_data(char const **out, fr_curl_io_request_t *randle)
 static int rest_request_config_body(module_ctx_t const *mctx, rlm_rest_section_t const *section,
 				    request_t *request, fr_curl_io_request_t *randle, rest_read_t func)
 {
-	rlm_rest_t const *inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const *inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
 	rlm_rest_curl_context_t	*uctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	ssize_t len;
 
@@ -1728,7 +1728,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 			http_body_type_t type,
 			char const *uri, char const *body_data)
 {
-	rlm_rest_t const	*inst = talloc_get_type_abort(mctx->inst->data, rlm_rest_t);
+	rlm_rest_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_rest_t);
 	rlm_rest_call_env_t 	*call_env = talloc_get_type_abort(mctx->env_data, rlm_rest_call_env_t);
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;

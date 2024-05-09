@@ -222,7 +222,7 @@ RESUME(access_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const	*dv;
 	fr_process_state_t const	*state;
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
+	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -388,7 +388,7 @@ RESUME(auth_type)
 RESUME(access_accept)
 {
 	fr_pair_t			*vp;
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
+	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -413,7 +413,7 @@ RESUME(access_accept)
 
 RESUME(access_reject)
 {
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
+	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -425,7 +425,7 @@ RESUME(access_challenge)
 {
 	CONF_SECTION			*cs;
 	fr_process_state_t const	*state;
-	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
+	process_ttls_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -486,7 +486,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 {
 	fr_process_state_t const *state;
 
-	(void) talloc_get_type_abort_const(mctx->inst->data, process_ttls_t);
+	(void) talloc_get_type_abort_const(mctx->mi->data, process_ttls_t);
 
 	PROCESS_TRACE;
 
@@ -505,7 +505,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	process_ttls_t	*inst = talloc_get_type_abort(mctx->inst->data, process_ttls_t);
+	process_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, process_ttls_t);
 
 	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.session.max,
 						   inst->auth.session.timeout, inst->auth.session.state_server_id,
@@ -516,9 +516,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_ttls_t	*inst = talloc_get_type_abort(mctx->inst->data, process_ttls_t);
+	process_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, process_ttls_t);
 
-	inst->server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
+	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;

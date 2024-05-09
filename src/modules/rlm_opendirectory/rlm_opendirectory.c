@@ -384,7 +384,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_opendirectory_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_opendirectory_t);
+	rlm_opendirectory_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_opendirectory_t);
 	struct passwd			*userdata = NULL;
 	int				ismember = 0;
 	fr_client_t			*client = NULL;
@@ -505,7 +505,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 setup_auth_type:
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup OpenDirectory authentication",
-		     mctx->inst->name, mctx->inst->name);
+		     mctx->mi->name, mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -516,12 +516,12 @@ setup_auth_type:
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_opendirectory_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_opendirectory_t);
+	rlm_opendirectory_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_opendirectory_t);
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->inst->name, -1);
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->mi->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  OpenDirectory authentication will likely not work",
-		     mctx->inst->name);
+		     mctx->mi->name);
 	}
 
 	return 0;

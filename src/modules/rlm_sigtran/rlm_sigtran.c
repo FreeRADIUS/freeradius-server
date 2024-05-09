@@ -34,7 +34,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX_ARGS mctx->inst->name
+#define LOG_PREFIX_ARGS mctx->mi->name
 
 #include <osmocom/core/linuxlist.h>
 
@@ -199,7 +199,7 @@ fr_dict_attr_autoload_t rlm_sigtran_dict_attr[] = {
 
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_sigtran_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_sigtran_t);
+	rlm_sigtran_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_sigtran_t);
 	rlm_sigtran_thread_t const	*t = talloc_get_type_abort_const(mctx->thread, rlm_sigtran_thread_t);
 
 	return sigtran_client_map_send_auth_info(p_result, inst, request, inst->conn, t->fd);
@@ -331,8 +331,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sigtran_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sigtran_t);
-	CONF_SECTION const *conf = mctx->inst->conf;
+	rlm_sigtran_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_sigtran_t);
+	CONF_SECTION const *conf = mctx->mi->conf;
 
 	/*
 	 *	Translate traffic mode string to integer
@@ -397,7 +397,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_sigtran_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sigtran_t);
+	rlm_sigtran_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_sigtran_t);
 
 	/*
 	 *	If we're just checking the config we didn't start the

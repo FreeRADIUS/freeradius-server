@@ -514,8 +514,8 @@ static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_i
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_csv_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_csv_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_csv_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_csv_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 	int		i;
 	char const	*p;
 	char		*q;
@@ -737,7 +737,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	And register the `map csv <key> { ... }` function.
 	 */
-	map_proc_register(inst, mctx->inst->name, mod_map_proc, csv_maps_verify, 0, 0);
+	map_proc_register(inst, mctx->mi->name, mod_map_proc, csv_maps_verify, 0, 0);
 
 	return 0;
 }
@@ -753,8 +753,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_csv_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_csv_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_csv_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_csv_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 	CONF_SECTION	*cs;
 	int		lineno;
 	FILE		*fp;
@@ -1002,7 +1002,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSE
 
 static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_csv_t const *inst = talloc_get_type_abort_const(mctx->inst->data, rlm_csv_t);
+	rlm_csv_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_csv_t);
 	rlm_rcode_t rcode;
 	ssize_t slen;
 	fr_value_box_t *key;

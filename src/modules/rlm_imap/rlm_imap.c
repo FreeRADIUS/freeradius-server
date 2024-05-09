@@ -105,7 +105,7 @@ static void imap_io_module_signal(module_ctx_t const *mctx, request_t *request, 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx,
 								request_t *request)
 {
-	rlm_imap_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_imap_t);
+	rlm_imap_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_imap_t);
 	fr_curl_io_request_t     	*randle = talloc_get_type_abort(mctx->rctx, fr_curl_io_request_t);
 	fr_curl_tls_t const		*tls;
 	long 				curl_out;
@@ -242,7 +242,7 @@ static int imap_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
  */
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_imap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_imap_t);
+	rlm_imap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_imap_t);
 	rlm_imap_thread_t    	*t = talloc_get_type_abort(mctx->thread, rlm_imap_thread_t);
 	fr_curl_handle_t    	*mhandle;
 

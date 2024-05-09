@@ -680,10 +680,10 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_cron_crontab_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_cron_crontab_t);
+	proto_cron_crontab_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_cron_crontab_t);
 
-	inst->parent = talloc_get_type_abort(mctx->inst->parent->data, proto_cron_t);
-	inst->cs = mctx->inst->conf;
+	inst->parent = talloc_get_type_abort(mctx->mi->parent->data, proto_cron_t);
+	inst->cs = mctx->mi->conf;
 
 	return 0;
 }
@@ -698,8 +698,8 @@ static fr_client_t *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *i
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_cron_crontab_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_cron_crontab_t);
-	CONF_SECTION		*conf = mctx->inst->data;
+	proto_cron_crontab_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_cron_crontab_t);
+	CONF_SECTION		*conf = mctx->mi->data;
 	fr_client_t		*client;
 	fr_pair_t		*vp;
 	FILE			*fp;

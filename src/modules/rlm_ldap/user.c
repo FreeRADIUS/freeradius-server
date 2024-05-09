@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/util/debug.h>
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include "rlm_ldap.h"
 

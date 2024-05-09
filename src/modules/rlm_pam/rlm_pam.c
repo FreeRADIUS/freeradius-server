@@ -87,7 +87,7 @@ fr_dict_attr_autoload_t rlm_pam_dict_attr[] = {
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_pam_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_pam_t);
+	rlm_pam_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_pam_t);
 
 	if (!inst->pam_auth_name) inst->pam_auth_name = main_config->name;
 
@@ -213,7 +213,7 @@ static int do_pam(request_t *request, char const *username, char const *passwd, 
 
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_pam_t const		*data = talloc_get_type_abort_const(mctx->inst->data, rlm_pam_t);
+	rlm_pam_t const		*data = talloc_get_type_abort_const(mctx->mi->data, rlm_pam_t);
 	int			ret;
 	fr_pair_t		*pair;
 

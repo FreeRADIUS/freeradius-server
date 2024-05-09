@@ -380,7 +380,7 @@ RESUME(auth_start)
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const	*dv;
 	fr_process_state_t const	*state;
-	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	PROCESS_TRACE;
 
@@ -629,7 +629,7 @@ RESUME(auth_type)
 
 RESUME(auth_pass)
 {
-	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	PROCESS_TRACE;
 
@@ -641,7 +641,7 @@ RESUME(auth_pass)
 
 RESUME(auth_fail)
 {
-	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	PROCESS_TRACE;
 
@@ -654,7 +654,7 @@ RESUME(auth_fail)
 
 RESUME(auth_restart)
 {
-	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	PROCESS_TRACE;
 
@@ -664,7 +664,7 @@ RESUME(auth_restart)
 
 RESUME(auth_get)
 {
-	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 	process_tacacs_session_t	*session;
 	fr_pair_t			*vp, *copy;
 
@@ -753,7 +753,7 @@ send_reply:
 
 RECV(auth_cont)
 {
-	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 	process_tacacs_session_t	*session;
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
@@ -821,7 +821,7 @@ RECV(auth_cont)
  */
 RECV(auth_cont_abort)
 {
-	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	if ((state_create(request->request_ctx, &request->request_pairs, request, false) < 0) ||
 	    (fr_state_to_request(inst->auth.state_tree, request) < 0)) {
@@ -958,7 +958,7 @@ RESUME(accounting_request)
 	CONF_SECTION			*cs;
 	fr_dict_enum_value_t const		*dv;
 	fr_process_state_t const	*state;
-	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 
 	PROCESS_TRACE;
 
@@ -1030,7 +1030,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 	PROCESS_TRACE;
 
-	(void)talloc_get_type_abort_const(mctx->inst->data, process_tacacs_t);
+	(void)talloc_get_type_abort_const(mctx->mi->data, process_tacacs_t);
 	fr_assert(FR_TACACS_PACKET_CODE_VALID(request->packet->code));
 
 	request->component = "tacacs";
@@ -1053,7 +1053,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	process_tacacs_t	*inst = talloc_get_type_abort(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t	*inst = talloc_get_type_abort(mctx->mi->data, process_tacacs_t);
 
 	inst->auth.state_tree = fr_state_tree_init(inst, attr_tacacs_state, main_config->spawn_workers, inst->auth.max_session,
 						   inst->auth.session_timeout, inst->auth.state_server_id,
@@ -1063,9 +1063,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_tacacs_t	*inst = talloc_get_type_abort(mctx->inst->data, process_tacacs_t);
+	process_tacacs_t	*inst = talloc_get_type_abort(mctx->mi->data, process_tacacs_t);
 
-	inst->server_cs = cf_item_to_section(cf_parent(mctx->inst->conf));
+	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, >=, 1);

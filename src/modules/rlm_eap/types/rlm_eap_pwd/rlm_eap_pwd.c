@@ -154,7 +154,7 @@ static int send_pwd_request(request_t *request, pwd_session_t *session, eap_roun
 
 static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_pwd_t);
+	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
 	eap_session_t	*eap_session = eap_session_get(request->parent);
 
 	pwd_session_t	*session;
@@ -486,7 +486,7 @@ static int _free_pwd_session(pwd_session_t *session)
 
 static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_pwd_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_pwd_t);
+	rlm_eap_pwd_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	pwd_session_t		*session;
 	fr_pair_t		*vp;
@@ -544,7 +544,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_eap_pwd_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_pwd_t);
+	rlm_eap_pwd_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
 
 	if (inst->bnctx) BN_CTX_free(inst->bnctx);
 
@@ -553,8 +553,8 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_pwd_t);
-	CONF_SECTION	*conf = mctx->inst->conf;
+	rlm_eap_pwd_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_pwd_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
 
 	if (inst->fragment_size < 100) {
 		cf_log_err(conf, "Fragment size is too small");

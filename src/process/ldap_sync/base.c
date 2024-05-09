@@ -105,7 +105,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 {
 	fr_process_state_t const	*state;
 
-	(void) talloc_get_type_abort_const(mctx->inst->data, process_ldap_sync_t);
+	(void) talloc_get_type_abort_const(mctx->mi->data, process_ldap_sync_t);
 
 	PROCESS_TRACE;
 

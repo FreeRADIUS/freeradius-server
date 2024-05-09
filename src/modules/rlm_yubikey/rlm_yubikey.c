@@ -194,10 +194,10 @@ static void mod_unload(void)
 #ifndef HAVE_YUBIKEY
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_yubikey_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t);
+	rlm_yubikey_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_yubikey_t);
 
 	if (inst->decrypt) {
-		cf_log_err(mctx->inst->conf, "Requires libyubikey for OTP decryption");
+		cf_log_err(mctx->mi->conf, "Requires libyubikey for OTP decryption");
 		return -1;
 	}
 	return 0;
@@ -216,15 +216,15 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_yubikey_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t);
-	CONF_SECTION    *conf = mctx->inst->conf;
+	rlm_yubikey_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_yubikey_t);
+	CONF_SECTION    *conf = mctx->mi->conf;
 
-	inst->name = mctx->inst->name;
+	inst->name = mctx->mi->name;
 
 	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, inst->name, -1);
 	if (!inst->auth_type) {
 		WARN("Failed to find 'authenticate %s {...}' section.  Yubikey authentication will likely not work",
-		     mctx->inst->name);
+		     mctx->mi->name);
 	}
 
 	if (inst->validate) {
@@ -252,7 +252,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 #ifdef HAVE_YKCLIENT
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_yubikey_ykclient_detach(talloc_get_type_abort(mctx->inst->data, rlm_yubikey_t));
+	rlm_yubikey_ykclient_detach(talloc_get_type_abort(mctx->mi->data, rlm_yubikey_t));
 	return 0;
 }
 #endif
@@ -277,7 +277,7 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t const *inst, char con
  */
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_yubikey_t);
+	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_yubikey_t);
 	char const		*passcode;
 	size_t			len;
 	fr_pair_t		*vp, *password;
@@ -367,7 +367,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup Yubikey authentication",
-		     mctx->inst->name, mctx->inst->name);
+		     mctx->mi->name, mctx->mi->name);
 		RETURN_MODULE_NOOP;
 	}
 
@@ -382,7 +382,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
  */
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_yubikey_t);
+	rlm_yubikey_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_yubikey_t);
 	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 	char const		*passcode = NULL;
 	fr_pair_t const	*vp;

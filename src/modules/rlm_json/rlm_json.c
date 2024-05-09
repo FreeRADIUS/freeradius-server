@@ -208,7 +208,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				      xlat_ctx_t const *xctx,
 				      request_t *request, fr_value_box_list_t *in)
 {
-	rlm_json_t const	*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_json_t);
+	rlm_json_t const	*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_json_t);
 	fr_json_format_t const	*format = inst->format;
 
 	ssize_t			slen;
@@ -555,8 +555,8 @@ finish:
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_json_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_json_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	rlm_json_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_json_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 	xlat_t			*xlat;
 	fr_json_format_t	*format = inst->format;
 

@@ -2626,8 +2626,8 @@ static int mod_close(fr_listen_t *li)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	fr_io_instance_t *inst = mctx->inst->data;
-	CONF_SECTION *conf = mctx->inst->conf;
+	fr_io_instance_t *inst = mctx->mi->data;
+	CONF_SECTION *conf = mctx->mi->conf;
 
 	/*
 	 *	Find and bootstrap the application IO handler.
@@ -2716,8 +2716,8 @@ static char const *mod_name(fr_listen_t *li)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	fr_io_instance_t	*inst = mctx->inst->data;
-	CONF_SECTION		*conf = mctx->inst->conf;
+	fr_io_instance_t	*inst = mctx->mi->data;
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	fr_assert(inst->app_io != NULL);
 

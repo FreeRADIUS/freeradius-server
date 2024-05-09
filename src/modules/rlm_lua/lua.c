@@ -25,7 +25,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
@@ -364,7 +364,7 @@ static int _lua_pair_get(lua_State *L)
 static int _lua_pair_set(lua_State *L)
 {
 	module_ctx_t const	*mctx = fr_lua_util_get_mctx();
-	rlm_lua_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_lua_t);
+	rlm_lua_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_lua_t);
 	request_t		*request = fr_lua_util_get_request();
 	fr_dcursor_t		cursor;
 	fr_dict_attr_t const	*da;
@@ -892,7 +892,7 @@ static void fr_lua_rcode_register(lua_State *L, char const *name)
  */
 int fr_lua_init(lua_State **out, module_inst_ctx_t const *mctx)
 {
-	rlm_lua_t const		*inst = talloc_get_type_abort_const(mctx->inst->data, rlm_lua_t);
+	rlm_lua_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_lua_t);
 	lua_State		*L;
 
 	fr_lua_util_set_mctx(MODULE_CTX_FROM_INST(mctx));

@@ -145,7 +145,7 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 		.request = request,
 		.fd = -1,
 		.timeout = callback,
-		.mi = mc->instance,
+		.mi = mc->mi,
 		.thread = state->thread,
 		.env_data = state->env_data,
 		.rctx = rctx
@@ -268,7 +268,7 @@ int unlang_module_fd_add(request_t *request,
 	ev->fd_read = read;
 	ev->fd_write = write;
 	ev->fd_error = error;
-	ev->mi = mc->instance;
+	ev->mi = mc->mi;
 	ev->thread = state->thread;
 	ev->env_data = state->env_data;
 	ev->rctx = rctx;
@@ -314,7 +314,7 @@ int unlang_module_fd_delete(request_t *request, void const *ctx, int fd)
  *
  * @param[out] p_result		Where to write the result of calling the module.
  * @param[in] request		The current request.
- * @param[in] module_instance	Instance of the module to call.
+ * @param[in] mi		Instance of the module to call.
  * @param[in] method		to call.
  * @param[in] top_frame		Set to UNLANG_TOP_FRAME if the interpreter should return.
  *				Set to UNLANG_SUB_FRAME if the interprer should continue.
@@ -323,7 +323,7 @@ int unlang_module_fd_delete(request_t *request, void const *ctx, int fd)
  *	- -1 on failure.
  */
 int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
-		       module_instance_t *module_instance, module_method_t method, bool top_frame)
+		       module_instance_t *mi, module_method_t method, bool top_frame)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame;
@@ -339,8 +339,8 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 	*mc = (unlang_module_t){
 		.self = {
 			.type = UNLANG_TYPE_MODULE,
-			.name = module_instance->name,
-			.debug_name = module_instance->name,
+			.name = mi->name,
+			.debug_name = mi->name,
 			.actions = {
 				.actions = {
 					[RLM_MODULE_REJECT]	= 0,
@@ -356,7 +356,7 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 				.retry = RETRY_INIT,
 			},
 		},
-		.instance = module_instance,
+		.mi = mi,
 		.method = method
 	};
 
@@ -372,7 +372,7 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 	state = frame->state;
 	*state = (unlang_frame_state_module_t){
 		.p_result = p_result,
-		.thread = module_thread(module_instance)
+		.thread = module_thread(mi)
 	};
 
 	/*
@@ -537,7 +537,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 		state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 		return resume(p_result,
-			      MODULE_CTX(mc->instance, module_thread(mc->instance)->data,
+			      MODULE_CTX(mc->mi, module_thread(mc->mi)->data,
 			      		 state->env_data, rctx),
 			      request);
 	}
@@ -635,10 +635,10 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	 *	Async calls can't push anything onto the unlang stack, so we just use a local "caller" here.
 	 */
 	caller = request->module;
-	request->module = mc->instance->name;
-	safe_lock(mc->instance);
-	if (!(action & state->sigmask)) state->signal(MODULE_CTX(mc->instance, state->thread->data, state->env_data, state->rctx), request, action);
-	safe_unlock(mc->instance);
+	request->module = mc->mi->name;
+	safe_lock(mc->mi);
+	if (!(action & state->sigmask)) state->signal(MODULE_CTX(mc->mi, state->thread->data, state->env_data, state->rctx), request, action);
+	safe_unlock(mc->mi);
 	request->module = caller;
 
 	/*
@@ -725,16 +725,16 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	/*
 	 *	Lock is noop unless instance->mutex is set.
 	 */
-	safe_lock(mc->instance);
-	ua = resume(&state->rcode, MODULE_CTX(mc->instance, state->thread->data,
+	safe_lock(mc->mi);
+	ua = resume(&state->rcode, MODULE_CTX(mc->mi, state->thread->data,
 					      state->env_data, state->rctx), request);
-	safe_unlock(mc->instance);
+	safe_unlock(mc->mi);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
 
 	switch (ua) {
 	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s or worker signalled to stop processing request", mc->instance->module->exported->name);
+		RWARN("Module %s or worker signalled to stop processing request", mc->mi->module->exported->name);
 		if (state->p_result) *state->p_result = state->rcode;
 		state->thread->active_callers--;
 		*p_result = state->rcode;
@@ -895,15 +895,15 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	fr_assert(mc);
 
 	RDEBUG4("[%i] %s - %s (%s)", stack_depth_current(request), __FUNCTION__,
-		mc->instance->module->exported->name, mc->instance->name);
+		mc->mi->module->exported->name, mc->mi->name);
 
 	state->p_result = NULL;
 
 	/*
 	 *	Return administratively configured return code
 	 */
-	if (mc->instance->force) {
-		state->rcode = mc->instance->code;
+	if (mc->mi->force) {
+		state->rcode = mc->mi->code;
 		ua = UNLANG_ACTION_CALCULATE_RESULT;
 		goto done;
 	}
@@ -933,7 +933,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	/*
 	 *	Grab the thread/module specific data if any exists.
 	 */
-	state->thread = module_thread(mc->instance);
+	state->thread = module_thread(mc->mi);
 	fr_assert(state->thread != NULL);
 
 	/*
@@ -952,12 +952,12 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) now = fr_time();
 
-	request->module = mc->instance->name;
-	safe_lock(mc->instance);	/* Noop unless instance->mutex set */
+	request->module = mc->mi->name;
+	safe_lock(mc->mi);	/* Noop unless instance->mutex set */
 	ua = mc->method(&state->rcode,
-			MODULE_CTX(mc->instance, state->thread->data, state->env_data, NULL),
+			MODULE_CTX(mc->mi, state->thread->data, state->env_data, NULL),
 			request);
-	safe_unlock(mc->instance);
+	safe_unlock(mc->mi);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
 
@@ -967,7 +967,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 *	must have been blocked.
 	 */
 	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s became unblocked", mc->instance->name);
+		RWARN("Module %s became unblocked", mc->mi->name);
 		if (state->p_result) *state->p_result = state->rcode;
 		*p_result = state->rcode;
 		request->module = state->previous_module;

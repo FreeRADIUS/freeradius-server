@@ -24,7 +24,7 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->inst->name
+#define LOG_PREFIX mctx->mi->name
 
 #include <talloc.h>
 
@@ -186,7 +186,7 @@ static xlat_action_t brotli_xlat_compress(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	  xlat_ctx_t const *xctx,
 					  request_t *request, fr_value_box_list_t *args)
 {
-	rlm_brotli_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_brotli_t);
+	rlm_brotli_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_brotli_t);
 	fr_value_box_t const		*data_vb;
 
 	BrotliEncoderState		*state;
@@ -295,7 +295,7 @@ static xlat_action_t brotli_xlat_decompress(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 	    xlat_ctx_t const *xctx,
 					    request_t *request, fr_value_box_list_t *args)
 {
-	rlm_brotli_t const		*inst = talloc_get_type_abort_const(xctx->mctx->inst->data, rlm_brotli_t);
+	rlm_brotli_t const		*inst = talloc_get_type_abort_const(xctx->mctx->mi->data, rlm_brotli_t);
 	fr_value_box_t const		*data_vb;
 
 	BrotliDecoderState		*state;

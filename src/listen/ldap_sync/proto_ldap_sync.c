@@ -233,8 +233,8 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_ldap_sync_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_ldap_sync_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	proto_ldap_sync_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_ldap_sync_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 	CONF_SECTION		*sync_cs;
 	sync_config_t		*sync_conf;
 	size_t			i;
@@ -367,8 +367,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_ldap_sync_t	*inst = talloc_get_type_abort(mctx->inst->data, proto_ldap_sync_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	proto_ldap_sync_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_ldap_sync_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
 	inst->cs = conf;

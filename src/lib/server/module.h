@@ -80,12 +80,6 @@ typedef unlang_action_t (*module_method_t)(rlm_rcode_t *p_result, module_ctx_t c
  */
 typedef int (*module_instantiate_t)(module_inst_ctx_t const *mctx);
 
-/** Wrapper structure around module_instance_t to allow us to pass more arguments into module_detach_ctx_t in future
- */
-typedef struct {
-	module_instance_t const	*inst;		//!< Module instance to detach.
-} module_detach_ctx_t;
-
 /** Module detach callback
  *
  * Is called just before the server exits, and after re-instantiation on HUP,

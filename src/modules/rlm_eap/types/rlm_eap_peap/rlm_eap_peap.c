@@ -116,7 +116,7 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 
 static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_peap_t		*inst = talloc_get_type(mctx->inst->data, rlm_eap_peap_t);
+	rlm_eap_peap_t		*inst = talloc_get_type(mctx->mi->data, rlm_eap_peap_t);
 
 	rlm_rcode_t		rcode;
 
@@ -272,7 +272,7 @@ static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSE
  */
 static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_peap_t);
+	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_peap_t);
 	rlm_eap_peap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_peap_thread_t);
 	eap_session_t		*eap_session = eap_session_get(request->parent);
 	eap_tls_session_t	*eap_tls_session;
@@ -339,7 +339,7 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
-	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_peap_t);
+	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_peap_t);
 	rlm_eap_peap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_peap_thread_t);
 
 	t->ssl_ctx = fr_tls_ctx_alloc(inst->tls_conf, false);
@@ -363,8 +363,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->inst->data, rlm_eap_peap_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_peap_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	if (!virtual_server_find(inst->virtual_server)) {
 		cf_log_err_by_child(conf, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);

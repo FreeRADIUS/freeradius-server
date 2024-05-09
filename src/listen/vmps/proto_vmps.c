@@ -312,7 +312,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	proto_vmps_t		*inst = talloc_get_type_abort(mctx->inst->data, proto_vmps_t);
+	proto_vmps_t		*inst = talloc_get_type_abort(mctx->mi->data, proto_vmps_t);
 
 	/*
 	 *	No IO module, it's an empty listener.
@@ -350,8 +350,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	proto_vmps_t 		*inst = talloc_get_type_abort(mctx->inst->data, proto_vmps_t);
-	CONF_SECTION		*conf = mctx->inst->conf;
+	proto_vmps_t 		*inst = talloc_get_type_abort(mctx->mi->data, proto_vmps_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
@@ -384,7 +384,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	We will need this for dynamic clients and connected sockets.
 	 */
-	inst->io.mi = mctx->inst;
+	inst->io.mi = mctx->mi;
 
 	/*
 	 *	Bootstrap the master IO handler.

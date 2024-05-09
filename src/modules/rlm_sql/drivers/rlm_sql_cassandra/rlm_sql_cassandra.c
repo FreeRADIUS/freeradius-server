@@ -709,7 +709,7 @@ static int sql_affected_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
-	rlm_sql_cassandra_t *inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_cassandra_t);
+	rlm_sql_cassandra_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_cassandra_t);
 
 	if (inst->ssl) cass_ssl_free(inst->ssl);
 	if (inst->session) cass_session_free(inst->session);	/* also synchronously closes the session */
@@ -722,9 +722,9 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->inst->parent->data, rlm_sql_t);
+	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
-	rlm_sql_cassandra_t	*inst = talloc_get_type_abort(mctx->inst->data, rlm_sql_cassandra_t);
+	rlm_sql_cassandra_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_cassandra_t);
 	bool			do_tls = false;
 	bool			do_latency_aware_routing = false;
 	CassCluster 		*cluster;
@@ -749,8 +749,8 @@ do {\
 	 *	This has to be done before we call cf_section_parse
 	 *	as it sets default values, and creates the section.
 	 */
-	if (cf_section_find(mctx->inst->conf, "tls", NULL)) do_tls = true;
-	if (cf_section_find(mctx->inst->conf, "latency_aware_routing", NULL)) do_latency_aware_routing = true;
+	if (cf_section_find(mctx->mi->conf, "tls", NULL)) do_tls = true;
+	if (cf_section_find(mctx->mi->conf, "latency_aware_routing", NULL)) do_latency_aware_routing = true;
 
 	DEBUG4("Configuring CassCluster structure");
 	cluster = inst->cluster = cass_cluster_new();
