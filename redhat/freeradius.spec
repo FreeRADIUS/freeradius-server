@@ -612,6 +612,11 @@ export RADIUSD_VERSION_RELEASE="%{release}"
         --with-threads \
         --with-thread-pool \
         --with-docdir=%{docdir} \
+%if %{without developer}
+        --disable-developer \
+%else
+        --enable-developer \
+%endif
         %{autoconf_mod_with experimental-modules} \
         %{autoconf_mod_with rlm_cache_memcached} \
         %{autoconf_mod_with rlm_idn} \
@@ -660,9 +665,6 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %if %{with freeradius_openssl}
         --with-openssl-lib-dir=/opt/openssl/lib \
         --with-openssl-include-dir=/opt/openssl/include \
-%endif
-%if %{with developer}
-        --enable-developer=yes \
 %endif
 %if %{with gperftools}
         --with-gperftools \
