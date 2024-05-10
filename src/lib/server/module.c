@@ -348,14 +348,14 @@ static module_thread_instance_t *mlg_thread_data_get(module_instance_t *mi)
 
 static int mlg_thread_data_add(module_thread_instance_t *ti)
 {
-	mlg_module_instance_t *mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(ti->mi, module_instance_t);
+	mlg_module_instance_t const *mlg_mi = (mlg_module_instance_t const *)talloc_get_type_abort_const(ti->mi, module_instance_t);
 	mlg_thread_inst_list[mlg_mi->inst_idx - 1] = ti;
 	return 0;
 }
 
 static void mlg_thread_data_del(module_thread_instance_t *ti)
 {
-	mlg_module_instance_t *mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(ti->mi, module_instance_t);
+	mlg_module_instance_t const *mlg_mi = (mlg_module_instance_t const *)talloc_get_type_abort_const(ti->mi, module_instance_t);
 	mlg_thread_inst_list[mlg_mi->inst_idx - 1] = NULL;
 	mlg_in_sync = false;
 }

@@ -266,7 +266,7 @@ struct module_thread_instance_s {
 
 	fr_event_list_t			*el;		//!< Event list associated with this thread.
 
-	module_instance_t const		*mi;		//!< As opposed to the thread local inst.
+	module_instance_t		*mi;		//!< As opposed to the thread local inst.
 
 	uint64_t			total_calls;	//! total number of times we've been called
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
