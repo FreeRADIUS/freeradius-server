@@ -2,6 +2,11 @@ ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
 #
+#  Ensure yum is installed.  Some docker images only have dnf or microdnf
+#
+RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
+
+#
 #  Install devtools like make and git and the EPEL
 #  repository for freetds and hiredis
 #

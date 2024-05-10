@@ -9,6 +9,11 @@ FROM ${from} as build
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 
 #
+#  Ensure yum is installed.  Some docker images only have microdnf
+#
+RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
+
+#
 #  Install build tools
 #
 RUN yum groupinstall -y "Development Tools"
@@ -112,6 +117,8 @@ RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.c
 #
 #  Other requirements
 #
+
+RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
 
 #  Needed for mysql-libs on Rocky 9
 RUN yum install -y yum-utils

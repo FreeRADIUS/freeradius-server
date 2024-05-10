@@ -7,6 +7,12 @@ RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
 ifelse(OS_VER, 9, `dnl
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 ')
+
+#
+#  Ensure yum is installed.  Some docker images only have dnf or microdnf
+#
+RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
+
 #
 #  Install build tools
 #
@@ -148,6 +154,8 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
     && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 })dnl
 changequote({`}, {'})dnl
+
+RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
 
 ifelse(OS_VER, 9, `dnl
 #  Needed for mysql-libs on Rocky 9
