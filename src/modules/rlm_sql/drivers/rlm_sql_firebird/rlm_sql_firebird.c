@@ -194,7 +194,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	int res;
 
-	handle->row = NULL;
+	query_ctx->row = NULL;
 
 	if (conn->statement_type != isc_info_sql_stmt_exec_procedure) {
 		res = fb_fetch(conn);
@@ -215,7 +215,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 
 	fb_store_row(conn);
 
-	handle->row = conn->row;
+	query_ctx->row = conn->row;
 
 	query_ctx->rcode = RLM_SQL_OK;
 	RETURN_MODULE_OK;

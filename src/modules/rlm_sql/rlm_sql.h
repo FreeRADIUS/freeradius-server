@@ -112,7 +112,6 @@ typedef struct {
 
 typedef struct {
 	void			*conn;				//!< Database specific connection handle.
-	rlm_sql_row_t		row;				//!< Row data from the last query.
 	rlm_sql_t const		*inst;				//!< The rlm_sql instance this connection belongs to.
 	TALLOC_CTX		*log_ctx;			//!< Talloc pool used to avoid allocing memory
 								//!< when log strings need to be copied.
@@ -143,6 +142,7 @@ typedef struct {
 	fr_sql_query_type_t	type;				//!< Type of query.
 	fr_sql_query_status_t	status;				//!< Status of the query.
 	sql_rcode_t		rcode;				//!< Result code.
+	rlm_sql_row_t		row;				//!< Row data from the last query.
 } fr_sql_query_t;
 
 extern fr_table_num_sorted_t const sql_rcode_description_table[];

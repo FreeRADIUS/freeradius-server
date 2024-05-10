@@ -429,7 +429,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	int			records, i, len;
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
-	handle->row = NULL;
+	query_ctx->row = NULL;
 
 	query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
 	if (conn->cur_row >= PQntuples(conn->result)) RETURN_MODULE_OK;
@@ -447,7 +447,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 			strlcpy(conn->row[i], PQgetvalue(conn->result, conn->cur_row, i), len + 1);
 		}
 		conn->cur_row++;
-		handle->row = conn->row;
+		query_ctx->row = conn->row;
 
 		query_ctx->rcode = RLM_SQL_OK;
 	}

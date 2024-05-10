@@ -212,7 +212,7 @@ static int CC_HINT(nonnull (1, 3, 4, 6)) sqlippool_query1(char *out, int outlen,
 		goto finish;
 	}
 
-	row = query_ctx->handle->row;
+	row = query_ctx->row;
 	if (!row) {
 		RDEBUG2("SQL query did not return any results");
 		goto finish;

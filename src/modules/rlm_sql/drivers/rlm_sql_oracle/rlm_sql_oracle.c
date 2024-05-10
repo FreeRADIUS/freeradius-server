@@ -560,11 +560,11 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		RETURN_MODULE_FAIL;
 	}
 
-	handle->row = NULL;
+	query_ctx->row = NULL;
 
 	status = OCIStmtFetch(conn->query, conn->error, 1, OCI_FETCH_NEXT, OCI_DEFAULT);
 	if (status == OCI_SUCCESS) {
-		handle->row = conn->row;
+		query_ctx->row = conn->row;
 
 		query_ctx->rcode = RLM_SQL_OK;
 		RETURN_MODULE_OK;

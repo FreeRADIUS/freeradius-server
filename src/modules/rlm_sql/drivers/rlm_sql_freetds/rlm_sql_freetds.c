@@ -592,7 +592,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	rlm_sql_freetds_conn_t *conn = handle->conn;
 	CS_INT ret, count;
 
-	handle->row = NULL;
+	query_ctx->row = NULL;
 
 	ret = ct_fetch(conn->command, CS_UNUSED, CS_UNUSED, CS_UNUSED, &count);
 	switch (ret) {
@@ -615,7 +615,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		RETURN_MODULE_OK;
 
 	case CS_SUCCEED:
-		handle->row = conn->results;
+		query_ctx->row = conn->results;
 
 		query_ctx->rcode = RLM_SQL_OK;
 		RETURN_MODULE_OK;

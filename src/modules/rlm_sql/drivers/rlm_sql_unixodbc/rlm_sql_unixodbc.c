@@ -221,7 +221,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long			err_handle;
 
-	handle->row = NULL;
+	query_ctx->row = NULL;
 
 	err_handle = SQLFetch(conn->stmt);
 	if (err_handle == SQL_NO_DATA_FOUND) {
@@ -232,7 +232,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	query_ctx->rcode = sql_check_error(err_handle, handle, &query_ctx->inst->config);
 	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
-	handle->row = conn->row;
+	query_ctx->row = conn->row;
 
 	query_ctx->rcode = RLM_SQL_OK;
 	RETURN_MODULE_OK;
