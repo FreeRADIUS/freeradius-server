@@ -799,7 +799,7 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
 static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta_t timeout)
 {
 	struct wbcContext	**wb_ctx;
-	module_inst_ctx_t	*mctx =  MODULE_INST_CTX(dl_module_instance_by_data(instance));
+	module_inst_ctx_t	*mctx =  MODULE_INST_CTX(module_instance_by_data(instance));
 
 	wb_ctx = talloc_zero(ctx, struct wbcContext *);
 	*wb_ctx = wbcCtxCreate();
