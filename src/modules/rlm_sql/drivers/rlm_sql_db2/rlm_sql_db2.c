@@ -192,7 +192,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	rlm_sql_db2_conn_t	*conn;
 	rlm_sql_handle_t	*handle = query_ctx->handle;
 
-	TALLOC_FREE(handle->row);
+	TALLOC_FREE(query_ctx->row);
 
 	conn = handle->conn;
 	c = sql_num_fields(handle, config);
@@ -203,7 +203,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		RETURN_MODULE_OK;
 	}
 
-	MEM(row = (rlm_sql_row_t)talloc_zero_array(handle, char *, c + 1));
+	MEM(row = (rlm_sql_row_t)talloc_zero_array(query_ctx, char *, c + 1));
 	for (i = 0; i < c; i++) {
 		/* get column length */
 		SQLColAttribute(conn->stmt, i + 1, SQL_DESC_DISPLAY_SIZE, NULL, 0, NULL, &len);
@@ -215,7 +215,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		if (slen == SQL_NULL_DATA) row[i][0] = '\0';
 	}
 
-	handle->row = row;
+	query_ctx->row = row;
 
 	query_ctx->rcode = RLM_SQL_OK;
 	RETURN_MODULE_OK;
@@ -226,7 +226,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_, UNUSED rlm_sql_config
 	rlm_sql_db2_conn_t *conn;
 
 	conn = query_ctx->handle->conn;
-	TALLOC_FREE(query_ctx->handle->row);
+	TALLOC_FREE(query_ctx->row);
 	SQLFreeHandle(SQL_HANDLE_STMT, conn->stmt);
 
 	return RLM_SQL_OK;

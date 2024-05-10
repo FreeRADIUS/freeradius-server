@@ -505,7 +505,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		RETURN_MODULE_FAIL;
 	}
 
-	TALLOC_FREE(handle->row);		/* Clear previous row set */
+	TALLOC_FREE(query_ctx->row);		/* Clear previous row set */
 
 retry_fetch_row:
 	row = mysql_fetch_row(conn->result);
@@ -540,9 +540,9 @@ retry_fetch_row:
 
  	field_lens = mysql_fetch_lengths(conn->result);
 
-	MEM(handle->row = talloc_zero_array(handle, char *, num_fields + 1));
+	MEM(query_ctx->row = talloc_zero_array(query_ctx, char *, num_fields + 1));
 	for (i = 0; i < num_fields; i++) {
-		MEM(handle->row[i] = talloc_bstrndup(handle->row, row[i], field_lens[i]));
+		MEM(query_ctx->row[i] = talloc_bstrndup(query_ctx->row, row[i], field_lens[i]));
 	}
 
 	query_ctx->rcode = RLM_SQL_OK;
@@ -557,7 +557,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 		mysql_free_result(conn->result);
 		conn->result = NULL;
 	}
-	TALLOC_FREE(query_ctx->handle->row);
+	TALLOC_FREE(query_ctx->row);
 
 	return RLM_SQL_OK;
 }

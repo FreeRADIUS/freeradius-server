@@ -293,7 +293,7 @@ static int sql_pair_afrom_row(TALLOC_CTX *ctx, request_t *request, fr_pair_list_
 /** Call the driver's sql_fetch_row function
  *
  * Calls the driver's sql_fetch_row logging any errors. On success, will
- * write row data to ``uctx->handle->row``.
+ * write row data to ``uctx->row``.
  *
  * The rcode within the query context is updated to
  *	- #RLM_SQL_OK on success.
@@ -323,11 +323,11 @@ unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, r
 	(inst->driver->sql_fetch_row)(p_result, NULL, request, query_ctx);
 	switch (query_ctx->rcode) {
 	case RLM_SQL_OK:
-		fr_assert(query_ctx->handle->row != NULL);
+		fr_assert(query_ctx->row != NULL);
 		RETURN_MODULE_OK;
 
 	case RLM_SQL_NO_MORE_ROWS:
-		fr_assert(query_ctx->handle->row == NULL);
+		fr_assert(query_ctx->row == NULL);
 		RETURN_MODULE_OK;
 
 	default:
@@ -657,7 +657,7 @@ int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 	       (query_ctx->rcode == RLM_SQL_OK)) {
 		map_t *map;
 
-		row = query_ctx->handle->row;
+		row = query_ctx->row;
 		if (map_afrom_fields(ctx, &map, &parent, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
 			RPEDEBUG("Error parsing user data from database result");
 			goto error;

@@ -529,7 +529,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	rlm_sql_sqlite_conn_t	*conn = handle->conn;
 	char			**row;
 
-	TALLOC_FREE(handle->row);
+	TALLOC_FREE(query_ctx->row);
 
 	/*
 	 *	Executes the SQLite query and iterates over the results
@@ -565,7 +565,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	/*
 	 *	Free the previous result (also gets called on finish_query)
 	 */
-	MEM(row = handle->row = talloc_zero_array(handle->conn, char *, conn->col_count + 1));
+	MEM(row = query_ctx->row = talloc_zero_array(query_ctx, char *, conn->col_count + 1));
 
 	for (i = 0; i < conn->col_count; i++) {
 		switch (sqlite3_column_type(conn->statement, i)) {
@@ -615,7 +615,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 	rlm_sql_sqlite_conn_t *conn = query_ctx->handle->conn;
 
 	if (conn->statement) {
-		TALLOC_FREE(query_ctx->handle->row);
+		TALLOC_FREE(query_ctx->row);
 
 		(void) sqlite3_finalize(conn->statement);
 		conn->statement = NULL;

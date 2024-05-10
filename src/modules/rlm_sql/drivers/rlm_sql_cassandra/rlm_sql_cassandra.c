@@ -537,7 +537,7 @@ do {\
 	}\
 	sql_set_last_error_printf(conn, "Failed to retrieve " _t " data at column %s (%d): %s", \
 				  _col_name, i, cass_error_desc(_ret));\
-	TALLOC_FREE(handle->row);\
+	TALLOC_FREE(query_ctx->row);\
 	query_ctx->rcode = RLM_SQL_ERROR;\
 	RETURN_MODULE_FAIL;\
 } while(0)
@@ -562,8 +562,8 @@ do {\
 	/*
 	 *	Free the previous result (also gets called on finish_query)
 	 */
-	talloc_free(handle->row);
-	MEM(row = handle->row = talloc_zero_array(handle, char *, fields + 1));
+	talloc_free(query_ctx->row);
+	MEM(row = query_ctx->row = talloc_zero_array(query_ctx, char *, fields + 1));
 
 	for (i = 0; i < fields; i++) {
 		CassValue const	*value;
@@ -644,7 +644,7 @@ do {\
 			sql_set_last_error_printf(conn,
 						  "Failed to retrieve data at column %s (%d): Unsupported data type",
 						  col_name, i);
-			talloc_free(handle->row);
+			talloc_free(query_ctx->row);
 			query_ctx->rcode = RLM_SQL_ERROR;
 			RETURN_MODULE_FAIL;
 		}
@@ -658,7 +658,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 {
 	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
 
-	if (query_ctx->handle->row) TALLOC_FREE(query_ctx->handle->row);
+	if (query_ctx->row) TALLOC_FREE(query_ctx->row);
 
 	if (conn->iterator) {
 		cass_iterator_free(conn->iterator);

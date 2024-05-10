@@ -471,7 +471,7 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	do {
 		inst->fetch_row(&p_result, NULL, request, query_ctx);
-		row = query_ctx->handle->row;
+		row = query_ctx->row;
 		switch (query_ctx->rcode) {
 		case RLM_SQL_OK:
 			if (row[0]) break;
@@ -709,7 +709,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	 */
 	while ((inst->fetch_row(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 	       (query_ctx->rcode == RLM_SQL_OK)) {
-		row = query_ctx->handle->row;
+		row = query_ctx->row;
 		rows++;
 		for (map = map_list_head(maps), j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
@@ -908,7 +908,7 @@ static int sql_get_grouplist(rlm_sql_t const *inst, rlm_sql_handle_t **handle, f
 
 	while ((inst->fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 		(query_ctx->rcode == RLM_SQL_OK)) {
-		row = query_ctx->handle->row;
+		row = query_ctx->row;
 		if (!row[0]){
 			RDEBUG2("row[0] returned NULL");
 			(inst->driver->sql_finish_select_query)(query_ctx, &inst->config);
