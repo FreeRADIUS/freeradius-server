@@ -43,7 +43,7 @@ USES_APPLE_DEPRECATED_API
 
 /* Forward declarations */
 static int sql_check_error(long err_handle, rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
 static int _sql_socket_destructor(rlm_sql_unixodbc_conn_t *conn)
@@ -242,7 +242,7 @@ static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, rlm_sql_co
 {
 	rlm_sql_unixodbc_conn_t *conn = query_ctx->handle->conn;
 
-	sql_free_result(query_ctx->handle, config);
+	sql_free_result(query_ctx, config);
 
 	/*
 	 *	SQL_CLOSE - The cursor (if any) associated with the statement
@@ -270,9 +270,9 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_co
 	return 0;
 }
 
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_unixodbc_conn_t *conn = handle->conn;
+	rlm_sql_unixodbc_conn_t *conn = query_ctx->handle->conn;
 
 	TALLOC_FREE(conn->row);
 

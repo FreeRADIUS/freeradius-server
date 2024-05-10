@@ -127,7 +127,7 @@ static const conf_parser_t driver_config[] = {
 };
 
 /* Prototypes */
-static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t const *);
+static sql_rcode_t sql_free_result(fr_sql_query_t *, rlm_sql_config_t const *);
 
 static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 {
@@ -513,7 +513,7 @@ retry_fetch_row:
 		query_ctx->rcode = sql_check_error(conn->sock, 0);
 		if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
-		sql_free_result(handle, &query_ctx->inst->config);
+		sql_free_result(query_ctx, &query_ctx->inst->config);
 
 		ret = mysql_next_result(conn->sock);
 		if (ret == 0) {
@@ -549,15 +549,15 @@ retry_fetch_row:
 	RETURN_MODULE_OK;
 }
 
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(query_ctx->handle->conn, rlm_sql_mysql_conn_t);
 
 	if (conn->result) {
 		mysql_free_result(conn->result);
 		conn->result = NULL;
 	}
-	TALLOC_FREE(handle->row);
+	TALLOC_FREE(query_ctx->handle->row);
 
 	return RLM_SQL_OK;
 }
@@ -736,7 +736,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 	 *	already stored result.
 	 */
 	} else {
-		sql_free_result(query_ctx->handle, config);	/* sql_free_result sets conn->result to NULL */
+		sql_free_result(query_ctx, config);	/* sql_free_result sets conn->result to NULL */
 	}
 
 	/*
