@@ -174,7 +174,7 @@ unlang_action_t rad_virtual_server(rlm_rcode_t *p_result, request_t *request)
 
 	RDEBUG("server %s {", cf_section_name2(unlang_call_current(request)));
 	request->async->process(&final,
-				MODULE_CTX(module_instance_by_data(request->async->process_inst), NULL, NULL, NULL),
+				MODULE_CTX(module_rlm_by_data(request->async->process_inst), NULL, NULL, NULL),
 				request);
 	RDEBUG("} # server %s", cf_section_name2(unlang_call_current(request)));
 

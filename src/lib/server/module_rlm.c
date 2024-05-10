@@ -787,6 +787,11 @@ module_instance_t *module_rlm_by_name(module_instance_t const *parent, char cons
 	return module_instance_by_name(rlm_modules, parent, asked_name);
 }
 
+module_instance_t *module_rlm_by_data(module_instance_t const *data)
+{
+	return module_instance_by_data(rlm_modules, data);
+}
+
 /** Create a virtual module.
  *
  * @param[in] cs	that defines the virtual module.
