@@ -22,7 +22,7 @@
 #	with the server over the control socket.
 #
 ######################################################################
-server control {
+server control-socket-server  {
 	#
 	#  namespace:: Determine the current scope as a control service.
 	#

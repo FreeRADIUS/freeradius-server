@@ -56,7 +56,7 @@ Index: freeradius-server/raddb/sites-available/control-socket
 ===================================================================
 --- freeradius-server.orig/raddb/sites-available/control-socket
 +++ freeradius-server/raddb/sites-available/control-socket
-@@ -68,7 +68,7 @@ server control {
+@@ -68,7 +68,7 @@ server control-socket-server  {
  			#
  			#  Note that the control socket cannot have uid of 0.
  			#
@@ -65,7 +65,7 @@ Index: freeradius-server/raddb/sites-available/control-socket
  
  			#
  			#  gid:: Name of group which owns the control socket.
-@@ -80,7 +80,7 @@ server control {
+@@ -80,7 +80,7 @@ server control-socket-server  {
  			#
  			#  Note that the control socket cannot have gid of 0.
  			#
