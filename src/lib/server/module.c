@@ -41,6 +41,186 @@ RCSID("$Id$")
 
 #include <talloc.h>
 
+static void module_thread_detach(module_thread_instance_t *ti);
+
+/** Heap of all lists/modules used to get a common index with mlg_thread->inst_list
+ */
+static fr_heap_t *mlg_index;
+
+/** An array of thread-local module lists
+*
+* The indexes in this array are identical to module_list_global, allowing
+* O(1) lookups.  Arrays are used here as there's no performance penalty
+* once they're populated.
+*/
+static _Thread_local module_thread_instance_t **mlg_thread_inst_list;
+
+/** Toggle used to determine if it's safe to use index based lookups
+ *
+ * Index based heap lookups are significantly more efficient than binary
+ * searches, but they can only be performed when all module data is inserted
+ * into both the global module list and the thread local module list.
+ *
+ * When we start removing module lists or modules from the thread local
+ * heap those heaps no longer have a common index with the global module
+ * list so we need to revert back to doing binary searches instead of using
+ * common indexes.
+ */
+static _Thread_local bool mlg_in_sync;
+
+static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info);
+static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions);
+static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info);
+static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info);
+static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
+
+fr_cmd_table_t module_cmd_table[] = {
+	{
+		.parent = "show module",
+		.add_name = true,
+		.name = "status",
+		.func = cmd_show_module_status,
+		.help = "Show the status of a particular module.",
+		.read_only = true,
+	},
+
+	{
+		.parent = "show module",
+		.add_name = true,
+		.name = "config",
+		.func = cmd_show_module_config,
+		.help = "Show configuration for a module",
+		// @todo - do tab expand, by walking over the whole module list...
+		.read_only = true,
+	},
+
+	{
+		.parent = "set module",
+		.add_name = true,
+		.name = "status",
+		.syntax = "(alive|disallow|fail|reject|handled|invalid|notfound|noop|ok|updated)",
+		.func = cmd_set_module_status,
+		.help = "Change module status to fixed value.",
+		.read_only = false,
+	},
+
+	CMD_TABLE_END
+};
+
+fr_cmd_table_t module_cmd_list_table[] = {
+	{
+		.parent = "show",
+		.name = "module",
+		.help = "Show information about modules.",
+		.tab_expand = module_name_tab_expand,
+		.read_only = true,
+	},
+
+	// @todo - what if there's a module called "list" ?
+	{
+		.parent = "show module",
+		.name = "list",
+		.func = cmd_show_module_list,
+		.help = "Show the list of modules loaded in the server.",
+		.read_only = true,
+	},
+
+	{
+		.parent = "set",
+		.name = "module",
+		.help = "Change module settings.",
+		.tab_expand = module_name_tab_expand,
+		.read_only = false,
+	},
+
+
+	CMD_TABLE_END
+};
+
+static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	module_instance_t *mi = ctx;
+
+	fr_assert(mi->conf != NULL);
+
+	(void) cf_section_write(fp, mi->conf, 0);
+
+	return 0;
+}
+
+static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx,
+				  fr_cmd_info_t *info, int max_expansions, char const **expansions)
+{
+	char const		*text;
+	int			count;
+
+	if (info->argc <= 0) return 0;
+
+	text = info->argv[info->argc - 1];
+	count = 0;
+
+	fr_heap_foreach(mlg_index, module_instance_t, instance) {
+		module_instance_t       *mi = talloc_get_type_abort(instance, module_instance_t);
+
+		if (count >= max_expansions) {
+			break;
+		}
+		if (fr_command_strncmp(text, mi->name)) {
+			expansions[count] = strdup(mi->name);
+			count++;
+		}
+	}}
+
+	return count;
+}
+
+static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info)
+{
+	fr_heap_foreach(mlg_index, module_instance_t, instance) {
+		module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
+
+		fprintf(fp, "\t%s\n", mi->name);
+	}}
+
+	return 0;
+}
+
+static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
+{
+	module_instance_t *mi = ctx;
+
+	if (!mi->force) {
+		fprintf(fp, "alive\n");
+		return 0;
+	}
+
+	fprintf(fp, "%s\n", fr_table_str_by_value(rcode_table, mi->code, "<invalid>"));
+
+	return 0;
+}
+
+static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
+{
+	module_instance_t *mi = ctx;
+	rlm_rcode_t rcode;
+
+	if (strcmp(info->argv[0], "alive") == 0) {
+		mi->force = false;
+		return 0;
+	}
+
+	rcode = fr_table_value_by_str(rcode_table, info->argv[0], RLM_MODULE_NOT_SET);
+	if (rcode == RLM_MODULE_NOT_SET) {
+		fprintf(fp_err, "Unknown status '%s'\n", info->argv[0]);
+		return -1;
+	}
+
+	mi->code = rcode;
+	mi->force = true;
+
+	return 0;
+}
+
 /** dl module tracking
  *
  * This is used by all module lists, irrespecitve of their type, and is thread safe.
@@ -158,33 +338,6 @@ struct module_list_type_s {
 		void					*data;			//!< Pointer to hold any global resources for the thread-local implementation.
 	} thread;
 };
-
-static void module_thread_detach(module_thread_instance_t *ti);
-
-/** Heap of all lists/modules used to get a common index with mlg_thread->inst_list
- */
-static fr_heap_t *mlg_index;
-
-/** An array of thread-local module lists
-*
-* The indexes in this array are identical to module_list_global, allowing
-* O(1) lookups.  Arrays are used here as there's no performance penalty
-* once they're populated.
-*/
-static _Thread_local module_thread_instance_t **mlg_thread_inst_list;
-
-/** Toggle used to determine if it's safe to use index based lookups
- *
- * Index based heap lookups are significantly more efficient than binary
- * searches, but they can only be performed when all module data is inserted
- * into both the global module list and the thread local module list.
- *
- * When we start removing module lists or modules from the thread local
- * heap those heaps no longer have a common index with the global module
- * list so we need to revert back to doing binary searches instead of using
- * common indexes.
- */
-static _Thread_local bool mlg_in_sync;
 
 typedef struct {
 	module_instance_t		mi;		//!< Common module instance fields.  Must come first.
@@ -432,159 +585,6 @@ module_list_type_t const module_list_type_thread_local = {
 		.data_del = mltl_thread_data_del
 	}
 };
-
-static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info);
-static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions);
-static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info);
-static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info);
-static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info);
-
-fr_cmd_table_t module_cmd_table[] = {
-	{
-		.parent = "show module",
-		.add_name = true,
-		.name = "status",
-		.func = cmd_show_module_status,
-		.help = "Show the status of a particular module.",
-		.read_only = true,
-	},
-
-	{
-		.parent = "show module",
-		.add_name = true,
-		.name = "config",
-		.func = cmd_show_module_config,
-		.help = "Show configuration for a module",
-		// @todo - do tab expand, by walking over the whole module list...
-		.read_only = true,
-	},
-
-	{
-		.parent = "set module",
-		.add_name = true,
-		.name = "status",
-		.syntax = "(alive|disallow|fail|reject|handled|invalid|notfound|noop|ok|updated)",
-		.func = cmd_set_module_status,
-		.help = "Change module status to fixed value.",
-		.read_only = false,
-	},
-
-	CMD_TABLE_END
-};
-
-fr_cmd_table_t module_cmd_list_table[] = {
-	{
-		.parent = "show",
-		.name = "module",
-		.help = "Show information about modules.",
-		.tab_expand = module_name_tab_expand,
-		.read_only = true,
-	},
-
-	// @todo - what if there's a module called "list" ?
-	{
-		.parent = "show module",
-		.name = "list",
-		.func = cmd_show_module_list,
-		.help = "Show the list of modules loaded in the server.",
-		.read_only = true,
-	},
-
-	{
-		.parent = "set",
-		.name = "module",
-		.help = "Change module settings.",
-		.tab_expand = module_name_tab_expand,
-		.read_only = false,
-	},
-
-
-	CMD_TABLE_END
-};
-
-static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
-{
-	module_instance_t *mi = ctx;
-
-	fr_assert(mi->conf != NULL);
-
-	(void) cf_section_write(fp, mi->conf, 0);
-
-	return 0;
-}
-
-static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx,
-				  fr_cmd_info_t *info, int max_expansions, char const **expansions)
-{
-	char const		*text;
-	int			count;
-
-	if (info->argc <= 0) return 0;
-
-	text = info->argv[info->argc - 1];
-	count = 0;
-
-	fr_heap_foreach(mlg_index, module_instance_t, instance) {
-		module_instance_t       *mi = talloc_get_type_abort(instance, module_instance_t);
-
-		if (count >= max_expansions) {
-			break;
-		}
-		if (fr_command_strncmp(text, mi->name)) {
-			expansions[count] = strdup(mi->name);
-			count++;
-		}
-	}}
-
-	return count;
-}
-
-static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info)
-{
-	fr_heap_foreach(mlg_index, module_instance_t, instance) {
-		module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-
-		fprintf(fp, "\t%s\n", mi->name);
-	}}
-
-	return 0;
-}
-
-static int cmd_show_module_status(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info)
-{
-	module_instance_t *mi = ctx;
-
-	if (!mi->force) {
-		fprintf(fp, "alive\n");
-		return 0;
-	}
-
-	fprintf(fp, "%s\n", fr_table_str_by_value(rcode_table, mi->code, "<invalid>"));
-
-	return 0;
-}
-
-static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cmd_info_t const *info)
-{
-	module_instance_t *mi = ctx;
-	rlm_rcode_t rcode;
-
-	if (strcmp(info->argv[0], "alive") == 0) {
-		mi->force = false;
-		return 0;
-	}
-
-	rcode = fr_table_value_by_str(rcode_table, info->argv[0], RLM_MODULE_NOT_SET);
-	if (rcode == RLM_MODULE_NOT_SET) {
-		fprintf(fp_err, "Unknown status '%s'\n", info->argv[0]);
-		return -1;
-	}
-
-	mi->code = rcode;
-	mi->force = true;
-
-	return 0;
-}
 
 /** Return the prefix string for the deepest module
  *
