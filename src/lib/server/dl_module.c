@@ -74,6 +74,44 @@ static int8_t dl_module_cmp(void const *one, void const *two)
 	return CMP(ret, 0);
 }
 
+/** Find the module's shallowest parent, or the child if no parents are found
+ *
+ * @param[in] child	to locate the root for.
+ * @return
+ *	- The module's shallowest parent.
+ *	- NULL on error.
+ */
+static dl_module_t const *dl_module_root(dl_module_t const *child)
+{
+	dl_module_t const *next;
+
+	for (;;) {
+		next = child->parent;
+		if (!next) break;
+
+		child = next;
+	}
+
+	return child;
+}
+
+/** Return the prefix string for the deepest module
+ *
+ * This is useful for submodules which don't have a prefix of their own.
+ * In this case we need to use the prefix of the shallowest module, which
+ * will be a proto or rlm module.
+ *
+ * @param[in] module	to get the prefix for.
+ * @return The prefix string for the shallowest module.
+ */
+static inline CC_HINT(always_inline)
+char const *dl_module_root_prefix_str(dl_module_t const *module)
+{
+	dl_module_t const *root = dl_module_root(module);
+
+	return fr_table_str_by_value(dl_module_type_prefix, root->type, "<INVALID>");
+}
+
 /** Call the load() function in a module's exported structure
  *
  * @param[in] dl	to call the load function for.
@@ -289,8 +327,7 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 
 	if (parent) {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s_%s",
-						    fr_table_str_by_value(dl_module_type_prefix,
-						    			  parent->type, "<INVALID>"),
+						    dl_module_root_prefix_str(parent),
 						    parent->exported->name, name);
 	} else {
 		module_name = talloc_typed_asprintf(NULL, "%s_%s",
