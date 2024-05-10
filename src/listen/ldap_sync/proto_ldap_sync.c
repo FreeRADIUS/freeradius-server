@@ -386,12 +386,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	inst->app_io_instance = inst->io_submodule->data;
 	inst->app_io_conf = inst->io_submodule->conf;
 
-	if (inst->app_io->common.bootstrap &&
-	    (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for \"%s\"", inst->app_io->common.name);
-		return -1;
-	}
-
 	return 0;
 }
 

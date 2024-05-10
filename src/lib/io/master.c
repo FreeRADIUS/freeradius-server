@@ -2638,11 +2638,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	fr_io_instance_t *inst = mctx->mi->data;
 	CONF_SECTION *conf = mctx->mi->conf;
 
-	/*
-	 *	Find and bootstrap the application IO handler.
-	 */
 	inst->app_io = (fr_app_io_t const *) inst->submodule->exported;
-
 	inst->app_io_conf = inst->submodule->conf;
 	inst->app_io_instance = inst->submodule->data;
 
@@ -2662,11 +2658,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			cf_log_err(inst->app_io_conf, "Internal error: 'track_duplicates' is set, but there is no 'track create' function");
 			return -1;
 		}
-	}
-
-	if (inst->app_io->common.bootstrap && (inst->app_io->common.bootstrap(MODULE_INST_CTX(inst->submodule)) < 0)) {
-		cf_log_err(inst->app_io_conf, "Bootstrap failed for proto_%s", inst->app_io->common.name);
-		return -1;
 	}
 
 	/*
