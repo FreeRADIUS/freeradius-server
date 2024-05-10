@@ -23,7 +23,6 @@
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
-#include "lib/util/value.h"
 RCSIDH(call_env_h, "$Id$")
 
 #ifdef __cplusplus
@@ -40,6 +39,7 @@ typedef struct call_env_s		call_env_t;
 FR_DLIST_TYPES(call_env_parsed)
 FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry_t)
 
+#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/dl_module.h>

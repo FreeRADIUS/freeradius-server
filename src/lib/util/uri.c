@@ -20,10 +20,11 @@
  *
  * @copyright 2021 The FreeRADIUS server project
  */
-#include "lib/util/sbuff.h"
-#include "lib/util/table.h"
-#include "lib/util/value.h"
 RCSID("$Id$")
+
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/value.h>
 
 #include "uri.h"
 

@@ -26,7 +26,6 @@
  * @copyright 2000 Alan Curry (pacman@world.std.com)
  */
 
-#include "lib/util/talloc.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
