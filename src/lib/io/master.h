@@ -70,7 +70,10 @@ typedef struct fr_io_track_s {
  *  creates the listener, and adds it to the scheduler.
  */
 typedef struct {
-	module_instance_t const   	*mi;			//!< our parent mi
+	module_instance_t const   	*mi;				//!< our parent mi
+	module_list_t			*clients;			//!< Holds client modules created to represent
+									///< sockets created as clients connect to the
+									///< listener.
 
 	uint32_t			max_connections;		//!< maximum number of connections to allow
 	uint32_t			max_clients;			//!< maximum number of dynamic clients to allow

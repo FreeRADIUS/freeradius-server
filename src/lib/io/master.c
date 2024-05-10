@@ -143,7 +143,7 @@ struct fr_io_connection_s {
 	fr_listen_t			*child;		//!< child listener (app_io) for this socket
 	fr_io_client_t			*client;	//!< our local client (pending or connected).
 	fr_io_client_t			*parent;	//!< points to the parent client.
-	module_instance_t   		*mi;	//!< for submodule
+	module_instance_t   		*mi;		//!< for submodule
 
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
@@ -493,7 +493,6 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 */
 	if (!nak) {
 		char *inst_name;
-		char const *transport_name = inst->submodule->module->exported->name;
 
 		if (inst->max_connections || client->radclient->limit.max_connections) {
 			uint32_t max_connections = inst->max_connections ? inst->max_connections : client->radclient->limit.max_connections;
@@ -518,14 +517,24 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		}
 
 		/*
-		 *	FIXME - This should a 'sub' module list
+		 *	Add a client module into a sublist
 		 */
-		inst_name = talloc_asprintf(NULL, "%s%"PRIu64, transport_name, thread->client_id++);
-		mi = module_instance_alloc(inst->submodule->ml, inst->submodule, DL_MODULE_TYPE_SUBMODULE,
-					   inst->submodule->module->exported->name, inst_name);
+		inst_name = talloc_asprintf(NULL, "%"PRIu64, thread->client_id++);
+		mi = module_instance_copy(inst->clients, inst->submodule, inst_name);
 
-		if (module_instance_conf_parse(mi, inst->server_cs) < 0) {
+		if (module_instance_conf_parse(mi, inst->submodule->conf) < 0) {
 			cf_log_perr(inst->server_cs, "Failed parsing module config");
+			goto cleanup;
+		}
+
+		/* Thread local module lists never run bootstrap */
+		if (module_instantiate(mi) < 0) {
+			cf_log_perr(inst->server_cs, "Failed instantiating module");
+			goto cleanup;
+		}
+
+		if (module_thread_instantiate(mi, mi, thread->el) < 0) {
+			cf_log_perr(inst->server_cs, "Failed instantiating module");
 			goto cleanup;
 		}
 
@@ -2695,6 +2704,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 	}
 
+	/*
+	 *	Create a list of client modules.
+	 *
+	 *	FIXME - Probably only want to do this for connected sockets?
+	 */
+	inst->clients = module_list_alloc(inst, &module_list_type_thread_local, "clients");
 
 	return 0;
 }
