@@ -223,7 +223,8 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	 *	The instance name is the virtual server name.
 	 */
 	mi = module_instance_alloc(process_modules, NULL, DL_MODULE_TYPE_PROCESS,
-			  module_name, module_instance_name_from_conf(server_cs));
+				   module_name, module_instance_name_from_conf(server_cs),
+				   0);
 	talloc_free(module_name);
 	if (mi == NULL) {
 	error:
@@ -444,7 +445,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	if (!inst_name) inst_name = mod_name;
 
 	MEM(qual_inst_name = talloc_asprintf(NULL, "%s.%s", cf_section_name2(server_cs), inst_name));
-	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name);
+	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name, 0);
 	talloc_free(qual_inst_name);
 	if (!mi) {
 	error:
@@ -1594,8 +1595,8 @@ int virtual_servers_init(void)
 		return -1;
 	}
 
-	MEM(process_modules = module_list_alloc(NULL, "process"));
-	MEM(proto_modules = module_list_alloc(NULL, "protocol"));
+	MEM(process_modules = module_list_alloc(NULL, &module_list_type_global, "process"));
+	MEM(proto_modules = module_list_alloc(NULL, &module_list_type_global, "protocol"));
 	MEM(listen_addr_root = fr_rb_inline_alloc(NULL, fr_listen_t, virtual_server_node, listen_addr_cmp, NULL));
 	MEM(server_section_name_tree = fr_rb_alloc(NULL, server_section_name_cmp, NULL));
 

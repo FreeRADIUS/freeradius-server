@@ -42,7 +42,8 @@ typedef struct module_s				module_t;
 typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
-typedef struct module_list_t			module_list_t;
+typedef struct module_list_type_s		module_list_type_t;
+typedef struct module_list_s			module_list_t;
 
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
@@ -144,7 +145,7 @@ struct module_method_name_s {
 	char const			*name2;			//!< The packet type i.e Access-Request, Access-Reject.
 
 	module_method_t			method;			//!< Module method to call
-	call_env_method_t const		*method_env;		//!< Call specific conf parsing.
+	call_env_method_t const	* const method_env;		//!< Call specific conf parsing.
 };
 
 #define MODULE_NAME_TERMINATOR { NULL }
@@ -184,14 +185,16 @@ struct module_s {
 /** What state the module instance is currently in
  *
  */
-typedef enum {
-	MODULE_INSTANCE_INIT = 0,			//!< Module instance has been allocated, but not
-							///< yet bootstrapped.
-	MODULE_INSTANCE_BOOTSTRAPPED,			//!< Module instance has been bootstrapped, but not
-							///< yet instantiated.
-	MODULE_INSTANCE_INSTANTIATED			//!< Module instance has been bootstrapped and
-							///< instantiated.
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) {
+	MODULE_INSTANCE_BOOTSTRAPPED		= (1 << 1),	//!< Module instance has been bootstrapped, but not
+								///< yet instantiated.
+	MODULE_INSTANCE_INSTANTIATED		= (1 << 2),	//!< Module instance has been bootstrapped and
+								///< instantiated.
+	MODULE_INSTANCE_NO_THREAD_INSTANCE	= (1 << 3)	//!< Not set internally, but can be used to prevent
+								///< thread instantiation for certain modules.
 } module_instance_state_t;
+DIAG_ON(attributes)
 
 /** Per instance data
  *
@@ -200,18 +203,12 @@ typedef enum {
  * data structures.
  */
 struct module_instance_s {
-	fr_heap_index_t			inst_idx;	//!< Entry in the bootstrap/instantiation heap.
-							//!< should be an identical value to the thread-specific
-							///< data for this module.
 	module_instance_state_t		state;		//!< What's been done with this module so far.
 
 	fr_rb_node_t			name_node;	//!< Entry in the name tree.
 	fr_rb_node_t			data_node;	//!< Entry in the data tree.
 
 	module_list_t			*ml;		//!< Module list this instance belongs to.
-
-	uint32_t			number;		//!< Unique module number.  This is used to access the
-							///< thread-specific module instance.
 
 	char const			*name;		//!< Instance name e.g. user_database.
 
@@ -236,6 +233,10 @@ struct module_instance_s {
 
 	pthread_mutex_t			mutex;		//!< Used prevent multiple threads entering a thread
 							///< unsafe module simultaneously.
+
+	uint32_t			number;		//!< Unique module number.  Used to assign a stable
+							///< number to each module instance.
+
 	/** @name Return code overrides
 	 * @{
  	 */
@@ -271,32 +272,60 @@ struct module_thread_instance_s {
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
 
+/** Callback to retrieve thread-local data for a module
+ *
+ * @param[in] mi	to add data to (use mi->ml for the module list).
+ * @return
+ *	- NULL if no data exists.
+ *	- Pointer to the data on success.
+ */
+typedef module_thread_instance_t *(*module_list_thread_data_get_t)(module_instance_t *mi);
+
 /** A list of modules
  *
  * This allows modules to be instantiated and freed in phases,
  * i.e. proto modules before rlm modules.
  */
-struct module_list_t {
-	uint32_t			last_number;	//!< Last identifier assigned to a module instance.
-	char const			*name;		//!< Friendly list identifier.
-	fr_rb_tree_t			*name_tree;	//!< Modules indexed by name.
-	fr_rb_tree_t			*data_tree;	//!< Modules indexed by data.
+struct module_list_s {
+	uint32_t			last_number;		//!< Last identifier assigned to a module instance.
+	char const			*name;			//!< Friendly list identifier.
+	fr_rb_tree_t			*name_tree;		//!< Modules indexed by name.
+	fr_rb_tree_t			*data_tree;		//!< Modules indexed by data.
+	fr_heap_t			*inst_heap;		//!< Heap of module instances.
+
+	/** @name Callbacks to manage thread-specific data
+	 *
+	 * In "child" lists, which are only operating in a single thread, we don't need
+	 * to use true thread-local data, because the module list itself is thread-local.
+	 *
+	 * In that case these callbacks hang memory off of the list itself.
+	 *
+	 * In the main module list, which is shared between threads, these callbacks
+	 * do use true thread-local data, to manage the module_thread_instance_t
+	 * on a per thread-basis.
+	 *
+	 * @{
+ 	 */
+	module_list_type_t const	*type;			//!< Type of module list.
+	module_list_thread_data_get_t	thread_data_get; 	//!< Callback to get thread-specific data.
+								///< Copy of type->thread_data_get.
+	/** @} */
 };
 
 /** Map string values to module state method
  *
  */
 typedef struct {
-	char const			*name;		//!< String identifier for state.
-	module_method_t			func;		//!< State function.
+	char const			*name;			//!< String identifier for state.
+	module_method_t			func;			//!< State function.
 } module_state_func_table_t;
 
 /** @name Callbacks for the conf_parser_t
  *
  * @{
  */
-int		module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
-				       CONF_ITEM *ci, UNUSED conf_parser_t const *rule) CC_HINT(warn_unused_result);
+int			module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
+					       CONF_ITEM *ci, UNUSED conf_parser_t const *rule) CC_HINT(warn_unused_result);
 /** @} */
 
 /** @name Module and module thread lookup
@@ -316,7 +345,18 @@ module_instance_t	*module_instance_by_name(module_list_t const *ml, module_insta
 
 module_instance_t	*module_instance_by_data(module_list_t const *ml, void const *data) CC_HINT(warn_unused_result);
 
-module_thread_instance_t *module_thread(module_instance_t *mi) CC_HINT(warn_unused_result);
+/** Retrieve module/thread specific instance for a module
+ *
+ * @param[in] mi	to find thread specific data for.
+ * @return
+ *	- Thread specific instance data on success.
+ *	- NULL if module has no thread instance data.
+ */
+static inline CC_HINT(warn_unused_result) CC_HINT(always_inline)
+module_thread_instance_t *module_thread(module_instance_t *mi)
+{
+	return mi->ml->thread_data_get(mi);
+}
 
 module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void const *data) CC_HINT(warn_unused_result);
 /** @} */
@@ -325,28 +365,51 @@ module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void co
  *
  * @{
  */
-void		module_free(module_instance_t *mi);
+void 			modules_thread_detach(module_list_t *ml);
 
-void		modules_thread_detach(module_list_t const *ml);
+int 			module_thread_instantiate(TALLOC_CTX *ctx, module_instance_t *mi, fr_event_list_t *el);
+			CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-int		modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_event_list_t *el) CC_HINT(nonnull) CC_HINT(warn_unused_result);
+int			modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_event_list_t *el)
+			CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-int		module_instantiate(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
+int			module_instantiate(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-int		modules_instantiate(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
+int			modules_instantiate(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-int		module_bootstrap(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
+int			module_bootstrap(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-int		modules_bootstrap(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
+int			modules_bootstrap(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
-module_instance_t *module_instance_alloc(module_list_t *ml,
-			        module_instance_t const *parent,
-			        dl_module_type_t type, char const *mod_name, char const *inst_name)
-			        CC_HINT(nonnull(1)) CC_HINT(warn_unused_result);
+module_instance_t	*module_instance_copy(module_list_t *dst, module_instance_t const *src, char const *inst_name)
+			CC_HINT(nonnull(1,2)) CC_HINT(warn_unused_result);
 
-module_list_t	*module_list_alloc(TALLOC_CTX *ctx, char const *name) CC_HINT(warn_unused_result);
+module_instance_t	*module_instance_alloc(module_list_t *ml,
+					       module_instance_t const *parent,
+					       dl_module_type_t type, char const *mod_name, char const *inst_name,
+					       module_instance_state_t init_state)
+					       CC_HINT(nonnull(1)) CC_HINT(warn_unused_result);
 
-void		modules_init(char const *lib_dir);
+/** @name Module list variants
+ *
+ * These are passed to the module_list_alloc function to allocate lists of different types
+ *
+ * Global module lists are used for backend modules, listeners, and process state machines.
+ *
+ * Thread-local lists are usually runtime instantiated variants of modules, or modules that represent client connections.
+ *
+ * One major difference (from the module's perspective) is that bootstrap is not called for thread-local modules.
+ *
+ * @{
+ */
+extern module_list_type_t const module_list_type_global;		//!< Initialise a global module, with thread-specific data.
+extern module_list_type_t const module_list_type_thread_local;	//!< Initialise a thread-local module, which is only used in a single thread.
+/** @} */
+
+module_list_t 		*module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type, char const *name)
+					   CC_HINT(nonnull(2,3)) CC_HINT(warn_unused_result);
+
+void			modules_init(char const *lib_dir);
 /** @} */
 
 #ifdef __cplusplus

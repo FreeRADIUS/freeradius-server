@@ -18,10 +18,10 @@
  * $Id$
  *
  * @file src/lib/server/module.c
- * @brief Defines functions for module (re-)initialisation.
+ * @brief Defines functions for module initialisation
  *
- * @copyright 2003,2006,2016 The FreeRADIUS server project
  * @copyright 2016,2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2003,2006,2016 The FreeRADIUS server project
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  * @copyright 2000 Alan Curry (pacman@world.std.com)
  */
@@ -36,20 +36,142 @@ RCSID("$Id$")
 #include <freeradius-devel/server/request_data.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
-/** Heap of all lists/modules used to get a common index with module_thread_inst_list
+#include <talloc.h>
+
+/** dl module tracking
+ *
+ * This is used by all module lists, irrespecitve of their type, and is thread safe.
+ */
+static dl_module_loader_t	*dl_modules = NULL;
+
+/** Callback to initialise any global structures required for the module list
+ *
+ * @param[in] ml	to initialise global data for.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*module_list_init_t)(module_list_t *ml);
+
+/** Callback to free any global structures associated with the module list
+ *
+ * @param[in] ml	to free.
+ */
+typedef void (*module_list_free_t)(module_list_t *ml);
+
+/** Callback to add data for a module
+ *
+ * @param[in] mi	to add data for.
+ *			Use mi->ml for the module list.
+ *			Use mi->data to access the data.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*module_list_data_add_t)(module_instance_t *mi);
+
+/** Callback to del data for a module
+ *
+ * @param[in] mi	to add data to (use mi->ml for the module list).
  *
  */
-static fr_heap_t *module_global_inst_list;
+typedef void (*module_list_data_del_t)(module_instance_t *mi);
+
+/** Callback to initialise a list for thread-local data, called once per thread
+ *
+ * @param[in] ctx	talloc context for thread-local data.
+ *			May be modified by the init function if the
+ *			module_thread_instance_t need to be parented
+ *			by another ctx.
+ * @param[in] ml	to initialise thread-local data for.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*module_list_thread_init_t)(TALLOC_CTX **ctx, module_list_t const *ml);
+
+/** Callback to free thread-local structures, called once per thread as the thread is being destroyed
+ *
+ * @param[in] ml	to free thread-local data for.
+ */
+typedef void (*module_list_thread_free_t)(module_list_t *ml);
+
+/** Callback to add thread-local data for a module
+ *
+ * @param[in] ti	to add data for.
+ *			Use `ti->mi->ml` for the module list.
+ *			Use `ti->mi` for the module instance.
+ *			Use `ti->data` for the thread specific data.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*module_list_thread_data_add_t)(module_thread_instance_t *ti);
+
+/** Callback to remove thread-local data for a module
+ *
+ * @param[in] ti	to del data for.
+ *			Use `ti->mi->ml` for the module list.
+ *			Use `ti->mi` for the module instance.
+ *			Use `ti->data` for the thread specific data.
+ */
+typedef void (*module_list_thread_data_del_t)(module_thread_instance_t *ti);
+
+/** Structure to hold callbacks for a module list type
+ *
+ * We care about performance for module lists, as they're used heavily at runtime.
+ *
+ * As much as possible we try to avoid jumping through unecessary functions and
+ * unecessary switch statements.
+ *
+ * This structure contains callbacks which change how the module list operates,
+ * making it either a global module list, or a thread-local module list, i.e. one
+ * which only be used by a single thread.
+ *
+ * Instances of this structure are created in this compilation unit, and exported
+ * for the caller to pass into module_list_alloc().
+ */
+struct module_list_type_s {
+	size_t					list_size;		//!< Size of talloc_chunk to allocate for the module_list_t.
+
+	module_list_init_t			init;			//!< Initialise any global structures required for thread-local lookups.
+	module_list_free_t			free;			//!< Free any global structures required for thread-local lookups.
+
+	size_t					inst_size;		//!< Size of talloc chunk to allocate for the module_instance_t.
+									///< allows over-allocation if list types want to append fields.
+	module_list_data_add_t			data_add;		//!< Record that module data has been added.
+	module_list_data_del_t			data_del;		//!< Record that module data has been removed.
+
+	/** Callbacks to manage thread-local data
+	 */
+	struct {
+		module_list_thread_init_t		init;			//!< Initialise any thread-local structures required for thread-local lookups.
+		module_list_thread_free_t		free;			//!< Free any thread-local structures.
+
+		module_list_thread_data_add_t		data_add;		//!< Add thread-local data for a module.
+		module_list_thread_data_get_t		data_get;		//!< Retrieve thread local-data for a module.
+		module_list_thread_data_del_t		data_del;		//!< Remove (but not free) thread-local data for a module.
+
+		void					*data;			//!< Pointer to hold any global resources for the thread-local implementation.
+	} thread;
+};
+
+static void module_thread_detach(module_thread_instance_t *ti);
+
+/** Heap of all lists/modules used to get a common index with mlg_thread->inst_list
+ */
+static fr_heap_t *mlg_index;
 
 /** An array of thread-local module lists
- *
- * The indexes in this array are identical to module_list_global, allowing
- * O(1) lookups.  Arrays are used here as there's no performance penalty
- * once they're populated.
- */
-static _Thread_local module_thread_instance_t **module_thread_inst_list;
+*
+* The indexes in this array are identical to module_list_global, allowing
+* O(1) lookups.  Arrays are used here as there's no performance penalty
+* once they're populated.
+*/
+static _Thread_local module_thread_instance_t **mlg_thread_inst_list;
 
 /** Toggle used to determine if it's safe to use index based lookups
  *
@@ -62,12 +184,254 @@ static _Thread_local module_thread_instance_t **module_thread_inst_list;
  * list so we need to revert back to doing binary searches instead of using
  * common indexes.
  */
-static _Thread_local bool module_list_in_sync = true;
+static _Thread_local bool mlg_in_sync;
 
-/** dl module tracking
+typedef struct {
+	module_instance_t		mi;		//!< Common module instance fields.  Must come first.
+
+	fr_heap_index_t			inst_idx;	//!< Entry in the bootstrap/instantiation heap.
+							//!< should be an identical value to the thread-specific
+							///< data for this module.
+} mlg_module_instance_t;
+
+/** Sort module instance data first by list then by number
+ *
+ * The module's position in the global instance heap informs of us
+ * of its position in the thread-specific heap, which allows for
+ * O(1) lookups.
+ */
+static int8_t _mlg_module_instance_cmp(void const *one, void const *two)
+{
+	module_instance_t const *a = talloc_get_type_abort_const(one, module_instance_t);
+	module_instance_t const *b = talloc_get_type_abort_const(two, module_instance_t);
+	int8_t ret;
+
+	fr_assert(a->ml && b->ml);
+
+	ret = CMP(a->ml, b->ml);
+	if (ret != 0) return 0;
+
+	return CMP(a->number, b->number);
+}
+
+/** Free the global module index
  *
  */
-static dl_module_loader_t	*dl_modules = NULL;
+static int _mlg_global_free(UNUSED void *uctx)
+{
+	return talloc_free(mlg_index);
+}
+
+/** Initialise the global module index
+ *
+ */
+static int _mlg_global_init(UNUSED void *uctx)
+{
+	MEM(mlg_index = fr_heap_alloc(NULL, _mlg_module_instance_cmp, mlg_module_instance_t, inst_idx, 256));
+	return 0;
+}
+
+/** Global initialisation for index heap and module array
+ *
+ */
+static int mlg_init(UNUSED module_list_t *ml)
+{
+       /*
+	*	Create the global module heap we use for
+	*	common indexes in the thread-specific
+	*	heaps.
+	*/
+	fr_atexit_global_once(_mlg_global_init, _mlg_global_free, NULL);
+
+	return 0;
+}
+
+/** Add the unique index value so we can do thread local lookups
+ *
+ */
+static int mlg_data_add(module_instance_t *mi)
+{
+	/*
+	 *	Insert the module into the global heap so
+	 *	we can get common thread-local indexes.
+	 */
+	if (fr_heap_insert(&mlg_index, mi) < 0) {
+		ERROR("Failed inserting into global module index");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void mlg_data_del(module_instance_t *mi)
+{
+	mlg_module_instance_t	*mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
+
+	if (fr_heap_entry_inserted(mlg_mi->inst_idx) && !fr_cond_assert(fr_heap_extract(&mlg_index, mi) == 0)) return;
+	return;
+}
+
+/** Free the thread local heap on exit
+ *
+ * All thread local module lists should have been destroyed by this point
+ */
+static int _module_thread_inst_list_free(void *tilp)
+{
+	module_thread_instance_t **til = talloc_get_type_abort(tilp, module_thread_instance_t *);
+	size_t i, len = talloc_array_length(til);
+	unsigned int found = 0;
+
+	for (i = 0; i < len; i++) if (til[i]) found++;
+
+	if (!fr_cond_assert_msg(found == 0,
+				"Thread local array has %u non-null elements remaining on exit.  This is a leak",
+				found)) {
+		return -1;
+	}
+
+	return talloc_free(til);
+}
+
+/** Allocate a thread-local array to hold thread data for each module thats been instantiated
+ *
+ * @param[in] ctx	Talloc context for the thread-local data.
+ *			Mutated by this function so that thread local data is allocated
+ *			beneath the array.
+ * @param[in] ml	Module list to initialise the thread-local data for.
+ */
+static int mlg_thread_init(UNUSED TALLOC_CTX **ctx, UNUSED module_list_t const *ml)
+{
+	/*
+	 *	Initialise the thread specific tree if this is the
+	 *	first time through or if everything else was
+	 *	de-initialised.
+	 */
+	if (!mlg_thread_inst_list) {
+		module_thread_instance_t **arr;
+
+		MEM(arr = talloc_zero_array(NULL, module_thread_instance_t *, fr_heap_num_elements(mlg_index)));
+
+		fr_atexit_thread_local(mlg_thread_inst_list, _module_thread_inst_list_free, arr);
+
+		mlg_in_sync = true;
+	}
+
+	return 0;
+}
+
+/** Retrieve the thread-specific data for a module from the thread-local array of instance data
+ *
+ * This looks complex, but it's just asserts for sanity.  This is really only returning an array offset.
+ *
+ * @param[in] mi	Module instance to get the thread-specific data for.
+ */
+static module_thread_instance_t *mlg_thread_data_get(module_instance_t *mi)
+{
+	mlg_module_instance_t		*mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
+	module_thread_instance_t	*ti;
+
+	fr_assert_msg(mlg_mi->inst_idx <= talloc_array_length(mlg_thread_inst_list),
+		      "module instance index %u must be <= thread local array %zu",
+		      mlg_mi->inst_idx, talloc_array_length(mlg_thread_inst_list));
+	fr_assert(mlg_in_sync);
+
+	fr_assert_msg(fr_heap_num_elements(mlg_index) == talloc_array_length(mlg_thread_inst_list),
+		      "mismatch between global module heap (%u entries) and thread local (%zu entries)",
+		      fr_heap_num_elements(mlg_index), talloc_array_length(mlg_thread_inst_list));
+
+	ti = talloc_get_type_abort(mlg_thread_inst_list[mlg_mi->inst_idx - 1], module_thread_instance_t);
+	fr_assert_msg(ti->mi == mi, "thread/module mismatch thread %s (%p), module %s (%p)",
+		      ti->mi->name, ti->mi, mi->name, mi);
+
+	return ti;
+}
+
+static int mlg_thread_data_add(module_thread_instance_t *ti)
+{
+	mlg_module_instance_t *mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(ti->mi, module_instance_t);
+	mlg_thread_inst_list[mlg_mi->inst_idx - 1] = ti;
+	return 0;
+}
+
+static void mlg_thread_data_del(module_thread_instance_t *ti)
+{
+	mlg_module_instance_t *mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(ti->mi, module_instance_t);
+	mlg_thread_inst_list[mlg_mi->inst_idx - 1] = NULL;
+	mlg_in_sync = false;
+}
+
+/** Callbacks for a global module list
+ */
+module_list_type_t const module_list_type_global = {
+	.init = mlg_init,
+
+	.inst_size = sizeof(mlg_module_instance_t),
+	.data_add = mlg_data_add,
+	.data_del = mlg_data_del,
+
+	.thread = {
+		.init = mlg_thread_init,
+		.data_add = mlg_thread_data_add,
+		.data_get = mlg_thread_data_get,
+		.data_del = mlg_thread_data_del
+	}
+};
+
+/** A slightly larger module_instance structure to hold the module instance and thread instance
+ */
+typedef struct {
+	module_instance_t		mi;			//!< Common module instance fields.  Must come first.
+	module_thread_instance_t	*ti;			//!< Thread-specific data.  Still in its own structure
+								///< for talloc reasons.
+} mltl_module_instance_t;
+
+/** This causes the module_list code to skip bootstrapping for thread-local modules
+ */
+static int mltl_mlg_data_add(module_instance_t *mi)
+{
+	mi->state |= MODULE_INSTANCE_BOOTSTRAPPED;
+	return 0;
+}
+
+static void mltl_mlg_data_del(module_instance_t *mi)
+{
+	mltl_module_instance_t *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
+	module_thread_detach(mltl_mi->ti);
+}
+
+static module_thread_instance_t *mltl_thread_data_get(module_instance_t *mi)
+{
+	mltl_module_instance_t *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
+	return mltl_mi->ti;
+}
+
+static int mltl_thread_data_add(module_thread_instance_t *ti)
+{
+	mltl_module_instance_t *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort(ti->mi, module_instance_t);
+	mltl_mi->ti = ti;
+	return 0;
+}
+
+static void mltl_thread_data_del(module_thread_instance_t *ti)
+{
+	mltl_module_instance_t *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort(ti->mi, module_instance_t);
+	mltl_mi->ti = NULL;
+}
+
+/** Callbacks for a thread local list
+ */
+module_list_type_t const module_list_type_thread_local = {
+	.inst_size = sizeof(mltl_module_instance_t),
+
+	.data_add = mltl_mlg_data_add,
+	.data_del = mltl_mlg_data_del,
+
+	.thread = {
+		.data_add = mltl_thread_data_add,
+		.data_get = mltl_thread_data_get,
+		.data_del = mltl_thread_data_del
+	}
+};
 
 static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info);
 static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions);
@@ -160,7 +524,7 @@ static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uc
 	text = info->argv[info->argc - 1];
 	count = 0;
 
-	fr_heap_foreach(module_global_inst_list, module_instance_t, instance) {
+	fr_heap_foreach(mlg_index, module_instance_t, instance) {
 		module_instance_t       *mi = talloc_get_type_abort(instance, module_instance_t);
 
 		if (count >= max_expansions) {
@@ -177,7 +541,7 @@ static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uc
 
 static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info)
 {
-	fr_heap_foreach(module_global_inst_list, module_instance_t, instance) {
+	fr_heap_foreach(mlg_index, module_instance_t, instance) {
 		module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
 
 		fprintf(fp, "\t%s\n", mi->name);
@@ -236,21 +600,6 @@ char const *module_instance_root_prefix_str(module_instance_t const *mi)
 	module_instance_t const *root = module_instance_root(mi);
 
 	return fr_table_str_by_value(dl_module_type_prefix, root->module->type, "<INVALID>");
-}
-
-/** Detach the shallowest parent first
- *
- */
-static void module_detach_parent(module_instance_t *mi)
-{
-	if (mi->detached) return;
-
-	if (mi->parent) module_detach_parent(UNCONST(module_instance_t *, mi->parent));
-
-	if (mi->exported->detach) {
-		mi->exported->detach(&(module_detach_ctx_t){ .mi = mi });
-		mi->detached = true;
-	}
 }
 
 /** Allocate module instance data
@@ -316,26 +665,6 @@ int module_instance_conf_parse(module_instance_t *mi, CONF_SECTION *conf)
 	}
 
 	return 0;
-}
-
-/** Sort module instance data first by list then by number
- *
- * The module's position in the global instance heap informs of us
- * of its position in the thread-specific heap, which allows for
- * O(1) lookups.
- */
-static int8_t _module_instance_global_cmp(void const *one, void const *two)
-{
-	module_instance_t const *a = talloc_get_type_abort_const(one, module_instance_t);
-	module_instance_t const *b = talloc_get_type_abort_const(two, module_instance_t);
-	int8_t ret;
-
-	fr_assert(a->ml && b->ml);
-
-	ret = CMP(a->ml, b->ml);
-	if (ret != 0) return 0;
-
-	return CMP(a->number, b->number);
 }
 
 /** Compare module instances by parent and name
@@ -432,7 +761,7 @@ int module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	 *	and will be appended to the parent's instance
 	 *	name.
 	 */
-	mi = module_instance_alloc(ml, module_instance_by_data(ml, parent), DL_MODULE_TYPE_SUBMODULE, name, name);
+	mi = module_instance_alloc(ml, module_instance_by_data(ml, parent), DL_MODULE_TYPE_SUBMODULE, name, name, 0);
 	if (unlikely(mi == NULL)) {
 		cf_log_err(submodule_cs, "Failed loading submodule");
 		return -1;
@@ -527,29 +856,6 @@ module_instance_t *module_instance_by_data(module_list_t const *ml, void const *
 	return talloc_get_type_abort(mi, module_instance_t);
 }
 
-/** Retrieve module/thread specific instance for a module
- *
- * @param[in] mi	to find thread specific data for.
- * @return
- *	- Thread specific instance data on success.
- *	- NULL if module has no thread instance data.
- */
-module_thread_instance_t *module_thread(module_instance_t *mi)
-{
-	module_thread_instance_t	 *ti;
-
-	fr_assert(mi->number < talloc_array_length(module_thread_inst_list));
-	fr_assert(module_list_in_sync);
-	fr_assert_msg(fr_heap_num_elements(module_global_inst_list) == talloc_array_length(module_thread_inst_list),
-		      "mismatch between global module heap (%u entries) and thread local (%zu entries)",
-		      fr_heap_num_elements(module_global_inst_list), talloc_array_length(module_thread_inst_list));
-
-	ti = talloc_get_type_abort(module_thread_inst_list[mi->inst_idx - 1], module_thread_instance_t);
-	fr_assert_msg(ti->mi == mi, "thread/module mismatch thread %s (%p), module %s (%p)",
-		      ti->mi->name, ti->mi, mi->name, mi);
-	return ti;
-}
-
 /** Retrieve module/thread specific instance data for a module
  *
  * @param[in] ml	Module list module belongs to.
@@ -563,58 +869,66 @@ module_thread_instance_t *module_thread(module_instance_t *mi)
 module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void const *data)
 {
 	module_instance_t		*mi = module_instance_by_data(ml, data);
-	module_thread_instance_t 	*ti;
+
 	if (!mi) return NULL;
 
-	fr_assert(mi->number < ml->last_number);
-	fr_assert(module_list_in_sync);
-	fr_assert_msg(fr_heap_num_elements(module_global_inst_list) == talloc_array_length(module_thread_inst_list),
-		      "mismatch between global module heap (%u entries) and thread local (%zu entries)",
-		      fr_heap_num_elements(module_global_inst_list), talloc_array_length(module_thread_inst_list));
-
-	ti = talloc_get_type_abort(module_thread_inst_list[mi->inst_idx - 1], module_thread_instance_t);
-	fr_assert_msg(ti->mi == mi, "thread/module mismatch thread %s (%p), module %s (%p)",
-		      ti->mi->name, ti->mi, mi->name, mi);
-	return ti;
+	return module_thread(mi);
 }
 
-/** Explicitly free a module if a fatal error occurs during bootstrap
- *
- * @param[in] mi	to free.
- */
-void module_free(module_instance_t *mi)
+static void module_thread_detach(module_thread_instance_t *ti)
 {
-	talloc_free(mi);
+	module_list_t *ml = ti->mi->ml;
+	ml->type->thread.data_del(ti);
+	talloc_free(ti);
 }
 
 /** Remove thread-specific data for a given module list
  *
  * Removes all module thread data for the
  */
-void modules_thread_detach(module_list_t const *ml)
+void modules_thread_detach(module_list_t *ml)
 {
 	fr_rb_iter_inorder_t		iter;
-	void				*instance;
+	void				*inst;
 
 	/*
 	 *	Loop over all the modules in the module list
 	 *	finding and extracting their thread specific
 	 *	data, and calling their detach methods.
 	 */
-	for (instance = fr_rb_iter_init_inorder(&iter, ml->name_tree);
-	     instance;
-	     instance = fr_rb_iter_next_inorder(&iter)) {
-	     	module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
+	for (inst = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	     inst;
+	     inst = fr_rb_iter_next_inorder(&iter)) {
+	     	module_instance_t		*mi = talloc_get_type_abort(inst, module_instance_t);
+		module_thread_instance_t	*ti = module_thread(mi);
 
-	     	talloc_free(module_thread_inst_list[mi->inst_idx - 1]);
+		module_thread_detach(ti);
 	}
+
+	/*
+	 *	Cleanup any lists the module list added to this thread
+	 */
+	if (ml->type->thread.free) ml->type->thread.free(ml);
 }
 
+/** Callback to free thread local data
+ *
+ * ti->data is allocated in the context of ti, so will be freed too.
+ *
+ * Calls the detach function for thread local data, and removes the data from the
+ * thread local list.
+ *
+ * @param[in] ti	to free.
+ */
 static int _module_thread_inst_free(module_thread_instance_t *ti)
 {
 	module_instance_t const *mi = ti->mi;
 
-	module_list_in_sync = false;	/* Help catch anything attempting to do lookups */
+	/*
+	 *	Never allocated a thread instance, so we don't need
+	 *	to clean it up...
+	 */
+	if (mi->state & MODULE_INSTANCE_NO_THREAD_INSTANCE) return 0;
 
 	DEBUG4("Worker cleaning up %s thread instance data (%p/%p)",
 	       mi->exported->name, ti, ti->data);
@@ -627,33 +941,9 @@ static int _module_thread_inst_free(module_thread_instance_t *ti)
 					  });
 	}
 
-	/*
-	 *	Pull the thread instance out of the tree
-	 */
-	module_thread_inst_list[ti->mi->inst_idx - 1] = NULL;
+	ti->mi->ml->type->thread.data_del(ti);
+
 	return 0;
-}
-
-/** Free the thread local heap on exit
- *
- * All thread local module lists should have been destroyed by this point
- */
-static int _module_thread_inst_list_free(void *tilp)
-{
-	module_thread_instance_t **til = talloc_get_type_abort(tilp, module_thread_instance_t *);
-	size_t i, len = talloc_array_length(til);
-	unsigned int found = 0;
-
-	for (i = 0; i < len; i++) if (til[i]) found++;
-
-
-	if (!fr_cond_assert_msg(found == 0,
-				"Thread local array has %u non-null elements remaining on exit.  This is a leak",
-				found)) {
-		return -1;
-	}
-
-	return talloc_free(til);
 }
 
 /** Allocate thread-local instance data for a module
@@ -664,35 +954,41 @@ static int _module_thread_inst_list_free(void *tilp)
  * a specific dynamic use of that module.
  *
  * @param[in] ctx	Talloc ctx to bind thread specific data to.
- * @param[out] out	Where to write the allocated #module_thread_instance_t.
- * @param[in] ml	Module list to perform thread instantiation for.
  * @param[in] mi	Module instance to perform thread instantiation for.
  * @param[in] el	Event list serviced by this thread.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t **out, module_list_t const *ml,
-				     module_instance_t *mi, fr_event_list_t *el)
+int module_thread_instantiate(TALLOC_CTX *ctx, module_instance_t *mi, fr_event_list_t *el)
 {
+	module_list_t			*ml = mi->ml;
 	module_thread_instance_t	*ti;
-	TALLOC_CTX			*our_ctx = ctx;
+
+	/*
+	 *	Allows the caller of module_instance_alloc to
+	 *	skip thread instantiation for certain modules instances
+	 *	whilst allowing modules to still register thread
+	 *	instantiation callbacks.
+	 *
+	 *	This is mainly there for the single global instance of
+	 *	a module, which will only have run-time thread-specific
+	 *	instances, like dynamic/keyed modules.
+	 */
+	if (mi->state & MODULE_INSTANCE_NO_THREAD_INSTANCE) return 0;
 
 	/*
 	 *	Check the list pointers are ok
 	 */
 	(void)talloc_get_type_abort(mi->ml, module_list_t);
 
-	MEM(ti = talloc_zero(our_ctx, module_thread_instance_t));
+	MEM(ti = talloc_zero(ctx, module_thread_instance_t));
 	talloc_set_destructor(ti, _module_thread_inst_free);
 	ti->el = el;
 	ti->mi = mi;
 
 	if (mi->exported->thread_inst_size) {
-		module_instance_t *rmi;
-
 		MEM(ti->data = talloc_zero_array(ti, uint8_t, mi->exported->thread_inst_size));
-		rmi = module_instance_root(mi);
 
 		/*
 		 *	Fixup the type name, in case something calls
@@ -700,14 +996,19 @@ static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t *
 		 */
 		if (!mi->exported->thread_inst_type) {
 			talloc_set_name(ti->data, "%s_%s_thread_t",
-					fr_table_str_by_value(dl_module_type_prefix,
-								rmi ? rmi->module->type :
-									mi->module->type,
-								"<INVALID>"),
+					module_instance_root_prefix_str(mi),
 					mi->exported->name);
 		} else {
 			talloc_set_name_const(ti->data, mi->exported->thread_inst_type);
 		}
+	}
+
+	if (ml->type->thread.data_add(ti) < 0) {
+		PERROR("Failed adding thread data for module \"%s\"", mi->name);
+	error:
+		ml->type->thread.data_del(ti);
+		talloc_free(ti);
+		return -1;
 	}
 
 	/*
@@ -717,13 +1018,10 @@ static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t *
 
 	DEBUG4("Alloced %s thread instance data (%p/%p)", ti->mi->exported->name, ti, ti->data);
 	if (mi->exported->thread_instantiate &&
-		mi->exported->thread_instantiate(MODULE_THREAD_INST_CTX(mi, ti->data, el)) < 0) {
+	    mi->exported->thread_instantiate(MODULE_THREAD_INST_CTX(mi, ti->data, el)) < 0) {
 		PERROR("Thread instantiation failed for module \"%s\"", mi->name);
-		/* Leave module_thread_inst_list intact, other modules may need to clean up */
-		modules_thread_detach(ml);
-		return -1;
+		goto error;
 	}
-	*out = ti;
 
 	return 0;
 }
@@ -741,31 +1039,27 @@ static int module_thread_instantiate(TALLOC_CTX *ctx, module_thread_instance_t *
  */
 int modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_event_list_t *el)
 {
-	void			*instance;
+	void			*inst;
 	fr_rb_iter_inorder_t	iter;
+	int ret;
 
 	/*
-	 *	Initialise the thread specific tree if this is the
-	 *	first time through or if everything else was
-	 *	de-initialised.
+	 *	Do any thread-local instantiation necessary
 	 */
-	if (!module_thread_inst_list) {
-		module_thread_instance_t **arr;
-
-		arr = talloc_zero_array(NULL, module_thread_instance_t *,
-					fr_heap_num_elements(module_global_inst_list));
-
-		fr_atexit_thread_local(module_thread_inst_list, _module_thread_inst_list_free, arr);
+	if (ml->type->thread.init) {
+		ret = ml->type->thread.init(&ctx, ml);
+		if (unlikely(ret < 0)) return ret;
 	}
 
-	for (instance = fr_rb_iter_init_inorder(&iter, ml->name_tree);
-	     instance;
-	     instance = fr_rb_iter_next_inorder(&iter)) {
-		module_instance_t		*mi = talloc_get_type_abort(instance, module_instance_t);
-		module_thread_instance_t	*ti;
+	for (inst = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	     inst;
+	     inst = fr_rb_iter_next_inorder(&iter)) {
+		module_instance_t		*mi = talloc_get_type_abort(inst, module_instance_t); /* Sanity check*/
 
-		if (module_thread_instantiate(ctx, &ti, ml, mi, el) < 0) return -1;
-		module_thread_inst_list[ti->mi->inst_idx - 1] = ti;
+		if (module_thread_instantiate(ctx, mi, el) < 0) {
+			modules_thread_detach(UNCONST(module_list_t *, ml));
+			return -1;
+		}
 	}
 
 	return 0;
@@ -786,7 +1080,8 @@ int module_instantiate(module_instance_t *instance)
 	/*
 	 *	We only instantiate modules in the bootstrapped state
 	 */
-	if (mi->state != MODULE_INSTANCE_BOOTSTRAPPED) return 0;
+	if ((!fr_cond_assert(mi->state & MODULE_INSTANCE_BOOTSTRAPPED)) ||
+	    (mi->state & MODULE_INSTANCE_INSTANTIATED)) return 0;
 
 	if (mi->module->type == DL_MODULE_TYPE_MODULE) {
 		if (fr_command_register_hook(NULL, mi->name, mi, module_cmd_table) < 0) {
@@ -820,7 +1115,7 @@ int module_instantiate(module_instance_t *instance)
 			return -1;
 		}
 	}
-	mi->state = MODULE_INSTANCE_INSTANTIATED;
+	mi->state |= MODULE_INSTANCE_INSTANTIATED;
 
 	return 0;
 }
@@ -846,8 +1141,6 @@ int modules_instantiate(module_list_t const *ml)
 	     instance;
 	     instance = fr_rb_iter_next_inorder(&iter)) {
 	     	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-		if (mi->state != MODULE_INSTANCE_BOOTSTRAPPED) continue;
-
 		if (module_instantiate(mi) < 0) return -1;
 	}
 
@@ -869,7 +1162,7 @@ int module_bootstrap(module_instance_t *mi)
 	/*
 	 *	We only bootstrap modules in the init state
 	 */
-	if (mi->state != MODULE_INSTANCE_INIT) return 0;
+	if (mi->state & MODULE_INSTANCE_BOOTSTRAPPED) return 0;
 
 	/*
 	 *	Bootstrap the module.
@@ -891,7 +1184,7 @@ int module_bootstrap(module_instance_t *mi)
 			return -1;
 		}
 	}
-	mi->state = MODULE_INSTANCE_BOOTSTRAPPED;
+	mi->state |= MODULE_INSTANCE_BOOTSTRAPPED;
 
 	return 0;
 }
@@ -917,8 +1210,6 @@ int modules_bootstrap(module_list_t const *ml)
 	     instance;
 	     instance = fr_rb_iter_next_inorder(&iter)) {
 	     	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
-		if (mi->state != MODULE_INSTANCE_INIT) continue;
-
 		if (module_bootstrap(mi) < 0) return -1;
 	}
 
@@ -936,20 +1227,49 @@ static fr_slen_t module_instance_name(TALLOC_CTX *ctx, char **out,
 				      module_instance_t const *parent, char const *inst_name)
 {
 	fr_sbuff_t *agg;
-	module_instance_t const *mi;
 
 	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 64, 256);
 
-	for (mi = parent; mi; mi = mi->parent) {
-		FR_SBUFF_IN_STRCPY_RETURN(agg, mi->name);
+	/*
+	 *	Parent has all of the qualifiers of its ancestors
+	 *	already in the name, so we just need to concatenate.
+	 */
+	if (parent) {
+		FR_SBUFF_IN_STRCPY_RETURN(agg, parent->name);
 		FR_SBUFF_IN_CHAR_RETURN(agg, '.');
 	}
-
 	FR_SBUFF_IN_STRCPY_RETURN(agg, inst_name);
 
 	MEM(*out = talloc_bstrndup(ctx, fr_sbuff_start(agg), fr_sbuff_used(agg)));
 
 	return fr_sbuff_used(agg);
+}
+
+/** Detach the shallowest parent first
+ *
+ * This ensures that the module's parent is detached before it is.
+ *
+ * Generally parents reach into their children and not the other way
+ * around.  Calling the parent's detach method first ensures that
+ * there's no code that access the child module's instance data or
+ * reach into its symbol space if it's being unloaded.
+ *
+ * @note If you don't want to detach the parent, maybe because its children
+ *	are ephemeral, consider using a seaprate thread-local module list
+ *	to hold the children instead.
+ *
+ * @param[in] mi	to detach.
+ */
+static void module_detach_parent(module_instance_t *mi)
+{
+	if (mi->detached) return;
+
+	if (mi->parent) module_detach_parent(UNCONST(module_instance_t *, mi->parent));
+
+	if (mi->exported && mi->exported->detach) {
+		mi->exported->detach(&(module_detach_ctx_t){ .mi = mi });
+		mi->detached = true;
+	}
 }
 
 /** Free module's instance data, and any xlats or paircmps
@@ -963,9 +1283,9 @@ static int _module_instance_free(module_instance_t *mi)
 
 	DEBUG3("Freeing %s (%p)", mi->name, mi);
 
-	if (fr_heap_entry_inserted(mi->inst_idx) && !fr_cond_assert(fr_heap_extract(&module_global_inst_list, mi) == 0)) return 1;
 	if (fr_rb_node_inline_in_tree(&mi->name_node) && !fr_cond_assert(fr_rb_delete(ml->name_tree, mi))) return 1;
 	if (fr_rb_node_inline_in_tree(&mi->data_node) && !fr_cond_assert(fr_rb_delete(ml->data_tree, mi))) return 1;
+	if (ml->type->data_del) ml->type->data_del(mi);
 
 	/*
 	 *	mi->exported may be NULL if we failed loading the module
@@ -991,7 +1311,7 @@ static int _module_instance_free(module_instance_t *mi)
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */
-	if (mi && mi->data) {
+	if (mi->data) {
 		xlat_func_unregister(mi->name);
 		xlat_func_unregister_module(mi);
 	}
@@ -1013,24 +1333,44 @@ static int _module_instance_free(module_instance_t *mi)
 	return 0;
 }
 
+/** Duplicate a module instance, placing it in a new module list
+ *
+ * @param[in] dst	list to place the new module instance in.
+ * @param[in] src	to duplicate.
+ * @param[in] inst_name	new instance name.  If null, src->name will be used.
+ */
+module_instance_t *module_instance_copy(module_list_t *dst, module_instance_t const *src, char const *inst_name)
+{
+	module_instance_t *mi = module_instance_alloc(dst, src->parent, src->module->type,
+						      src->module->name,
+						      inst_name ? inst_name : src->name, 0);
+	if (!mi) return NULL;
+
+	return mi;
+}
+
 /** Allocate a new module and add it to a module list for later bootstrap/instantiation
  *
  * - Load the module shared library.
  * - Allocate instance data for it.
  *
- * @param[in] ml	To add module to.
- * @param[in] parent	of the module being bootstrapped, if this is a submodule.
- *			If this is not a submodule parent must be NULL.
- * @param[in] type	What type of module we're loading.  Determines the prefix
- *			added to the library name.  Should be one of:
- *			- DL_MODULE_TYPE_MODULE - Standard backend module.
- *			- DL_MODULE_TYPE_SUBMODULE - Usually a driver for a backend module.
- *			- DL_MODULE_TYPE_PROTO - A module associated with a listen section.
- *			- DL_MODULE_TYPE_PROCESS - Protocol state machine bound to a virtual server.
- * @param[in] mod_name	The name of this module, i.e. 'redis' for 'rlm_redis'.
- * @param[in] inst_name	Instance name for this module, i.e. "aws_redis_01".
- *			The notable exception is if this is a submodule, in which case
- *			inst_name is usually the mod_name.
+ * @param[in] ml		To add module to.
+ * @param[in] parent		of the module being bootstrapped, if this is a submodule.
+ *				If this is not a submodule parent must be NULL.
+ * @param[in] type		What type of module we're loading.  Determines the prefix
+ *				added to the library name.  Should be one of:
+ *				- DL_MODULE_TYPE_MODULE - Standard backend module.
+ *				- DL_MODULE_TYPE_SUBMODULE - Usually a driver for a backend module.
+ *				- DL_MODULE_TYPE_PROTO - A module associated with a listen section.
+ *				- DL_MODULE_TYPE_PROCESS - Protocol state machine bound to a virtual server.
+ * @param[in] mod_name		The name of this module, i.e. 'redis' for 'rlm_redis'.
+ * @param[in] inst_name		Instance name for this module, i.e. "aws_redis_01".
+ *				The notable exception is if this is a submodule, in which case
+ *				inst_name is usually the mod_name.
+ * @param[in] init_state	The state the module "starts" in.  Can be used to prevent
+ *				bootstrapping, instantiation, or thread instantiation of the module,
+ *				by passing one or more of the MODULE_INSTANCE_* flags.
+ *				Should usually be 0, unless special behaviour is required.
  * @return
  *	- A new module instance handle, containing the module's public interface,
  *	  and private instance data.
@@ -1038,7 +1378,8 @@ static int _module_instance_free(module_instance_t *mi)
  */
 module_instance_t *module_instance_alloc(module_list_t *ml,
 					 module_instance_t const *parent,
-					 dl_module_type_t type, char const *mod_name, char const *inst_name)
+					 dl_module_type_t type, char const *mod_name, char const *inst_name,
+					 module_instance_state_t init_state)
 {
 	char			*qual_inst_name = NULL;
 	module_instance_t	*mi;
@@ -1084,12 +1425,18 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 		return NULL;
 	}
 
-	MEM(mi = talloc_zero(parent ? (void const *)parent : (void const *)ml, module_instance_t));
+	/*
+	 *	Overallocate the module instance, so we can add
+	 *	some module list type specific data to it.
+	 */
+	MEM(mi = (module_instance_t *)talloc_zero_array(parent ? (void const *)parent : (void const *)ml, uint8_t, ml->type->inst_size));
+	talloc_set_name_const(mi, "module_instance_t");
 	mi->name = talloc_typed_strdup(mi, qual_inst_name);
 	talloc_free(qual_inst_name);	/* Avoid stealing */
 
 	mi->ml = ml;
 	mi->parent = parent;
+	mi->state = init_state;
 
 	/*
 	 *	Increment the reference count on an already loaded module,
@@ -1126,25 +1473,15 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	 */
 	if ((mi->exported->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
 	talloc_set_destructor(mi, _module_instance_free);	/* Set late intentionally */
-
-	mi->number = ml->last_number++;
 	mi->ml = ml;
+	mi->number = ml->last_number++;
 
 	/*
 	 *	Remember the module for later.
 	 */
 	if (!fr_cond_assert(fr_rb_insert(ml->name_tree, mi))) goto error;
 	if (!fr_cond_assert(fr_rb_insert(ml->data_tree, mi))) goto error;
-
-	/*
-	 *	...and finally insert the module
-	 *	into the global heap so we can
-	 *	get common thread-local indexes.
-	 */
-	if (fr_heap_insert(&module_global_inst_list, mi) < 0) {
-		ERROR("Failed inserting into global module index");
-		goto error;
-	}
+	if (ml->type->data_add && unlikely(ml->type->data_add(mi) < 0)) goto error;
 
 	return mi;
 }
@@ -1170,6 +1507,8 @@ static int _module_list_free(module_list_t *ml)
 		talloc_free(mi);
 	}
 
+	if (ml->type->free) ml->type->free(ml);
+
 	return 0;
 }
 
@@ -1182,27 +1521,43 @@ static int _module_list_free(module_list_t *ml)
  * If no more instances of the module exist the module be unloaded.
  *
  * @param[in] ctx	To allocate the list in.
- * @param[in] name	of the list.
+ * @param[in] type	of the list.  Controls whether this is a global
+ *			module list, or a per-thread list containing
+ *			variants of an existing module.
+ * @param[in] name	of the list.  Used for debugging.
  * @return A new module list.
  */
-module_list_t *module_list_alloc(TALLOC_CTX *ctx, char const *name)
+module_list_t *module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type, char const *name)
 {
 	module_list_t *ml;
 
-	MEM(ml = talloc_zero(ctx, module_list_t));
-	talloc_set_destructor(ml, _module_list_free);
+	/*
+	 *	These callbacks are NOT optional, the rest are.
+	 */
+	fr_assert(type->thread.data_add);
+	fr_assert(type->thread.data_get);
+	fr_assert(type->thread.data_del);
 
+	MEM(ml = talloc_zero(ctx, module_list_t));
+	ml->type = type;
+
+	ml->thread_data_get = type->thread.data_get;	/* Cache for access outside of the compilation unit */
 	MEM(ml->name = talloc_typed_strdup(ml, name));
 	MEM(ml->name_tree = fr_rb_inline_alloc(ml, module_instance_t, name_node, module_instance_name_cmp, NULL));
 	MEM(ml->data_tree = fr_rb_inline_alloc(ml, module_instance_t, data_node, module_instance_data_cmp, NULL));
+	talloc_set_destructor(ml, _module_list_free);
+
+	if (ml->type->init && (ml->type->init(ml) < 0)) {
+		talloc_free(ml);
+		return NULL;
+	}
 
 	return ml;
 }
 
-static int _module_global_list_init(void *uctx)
+static int _module_dl_loader_init(void *uctx)
 {
 	dl_modules = dl_module_loader_init(uctx);
-	MEM(module_global_inst_list = fr_heap_alloc(NULL, _module_instance_global_cmp, module_instance_t, inst_idx, 256));
 
 	/*
 	 *	Ensure the common library tracking
@@ -1213,15 +1568,8 @@ static int _module_global_list_init(void *uctx)
 	return 0;
 }
 
-static int _module_global_list_free(UNUSED void *uctx)
+static int _module_dl_loader_free(UNUSED void *uctx)
 {
-
-	if (!fr_cond_assert_msg(fr_heap_num_elements(module_global_inst_list) == 0,
-				"Global module heap has %u elements remaining on exit.  This is a leak",
-				fr_heap_num_elements(module_global_inst_list))) return -1;
-	if (talloc_free(module_global_inst_list) < 0) return -1;
-	module_global_inst_list = NULL;
-
 	if (talloc_free(dl_modules) < 0) return -1;
 	dl_modules = NULL;
 	return 0;
@@ -1237,5 +1585,5 @@ void modules_init(char const *lib_dir)
 	 *	common indexes in the thread-specific
 	 *	heaps.
 	 */
-	fr_atexit_global_once(_module_global_list_init, _module_global_list_free, UNCONST(char *, lib_dir));
+	fr_atexit_global_once(_module_dl_loader_init, _module_dl_loader_free, UNCONST(char *, lib_dir));
 }

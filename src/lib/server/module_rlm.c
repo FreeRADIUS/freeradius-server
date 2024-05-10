@@ -1039,7 +1039,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			continue;
 		}
 
-		mi = module_instance_alloc(rlm_modules, NULL, DL_MODULE_TYPE_MODULE, name, module_instance_name_from_conf(subcs));
+		mi = module_instance_alloc(rlm_modules, NULL, DL_MODULE_TYPE_MODULE, name, module_instance_name_from_conf(subcs), 0);
 		if (unlikely(mi == NULL)) {
 			cf_log_perr(subcs, "Failed loading module");
 			return -1;
@@ -1157,7 +1157,7 @@ static int _modules_rlm_free_atexit(UNUSED void *uctx)
  */
 int modules_rlm_init(void)
 {
-	MEM(rlm_modules = module_list_alloc(NULL, "rlm"));
+	MEM(rlm_modules = module_list_alloc(NULL, &module_list_type_global, "rlm"));
 	MEM(module_rlm_virtual_name_tree = fr_rb_inline_alloc(NULL, module_rlm_virtual_t, name_node,
 							      module_rlm_virtual_name_cmp, NULL));
 	fr_atexit_global(_modules_rlm_free_atexit, NULL);

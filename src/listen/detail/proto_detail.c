@@ -572,7 +572,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		 *	of that list.
 		 */
 		inst->work_submodule = module_instance_alloc(parent_inst->ml, parent_inst, DL_MODULE_TYPE_SUBMODULE,
-							     "work", module_instance_name_from_conf(transport_cs));
+							     "work", module_instance_name_from_conf(transport_cs), 0);
 		if (inst->work_submodule == NULL) {
 		error:
 			cf_log_perr(inst->cs, "Failed to load proto_detail_work");
