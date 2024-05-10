@@ -139,7 +139,7 @@ static int dl_module_onload_func(dl_t const *dl, UNUSED void *symbol, UNUSED voi
 			PERROR("Initialisation failed for module \"%s\" - onload() returned %i",
 			       dl_module->exported->name, ret);
 #else
-			PERROR("Initialisation failed for module \"%s\"", dl_module->common->name);
+			PERROR("Initialisation failed for module \"%s\"", dl_module->exported->name);
 #endif
 			return -1;
 		}
