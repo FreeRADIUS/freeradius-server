@@ -367,7 +367,7 @@ module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void co
  */
 void 			modules_thread_detach(module_list_t *ml);
 
-int 			module_thread_instantiate(TALLOC_CTX *ctx, module_instance_t *mi, fr_event_list_t *el);
+int 			module_thread_instantiate(TALLOC_CTX *ctx, module_instance_t *mi, fr_event_list_t *el)
 			CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
 int			modules_thread_instantiate(TALLOC_CTX *ctx, module_list_t const *ml, fr_event_list_t *el)
