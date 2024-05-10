@@ -246,16 +246,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	proto_arp_t 		*inst = talloc_get_type_abort(mctx->mi->data, proto_arp_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
-	module_instance_t	*parent_inst;
 
 	/*
 	 *	Ensure that the server CONF_SECTION is always set.
 	 */
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
 	inst->cs = conf;
-
-	parent_inst = cf_data_value(cf_data_find(inst->cs, module_instance_t, "proto_arp"));
-	fr_assert(parent_inst);
 
 	return 0;
 }
