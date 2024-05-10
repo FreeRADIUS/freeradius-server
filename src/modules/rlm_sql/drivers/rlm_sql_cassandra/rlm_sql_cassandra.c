@@ -654,11 +654,11 @@ do {\
 	RETURN_MODULE_OK;
 }
 
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = handle->conn;
+	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
 
-	if (handle->row) TALLOC_FREE(handle->row);
+	if (query_ctx->handle->row) TALLOC_FREE(query_ctx->handle->row);
 
 	if (conn->iterator) {
 		cass_iterator_free(conn->iterator);
@@ -700,7 +700,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 	talloc_free_children(conn->log_ctx);
 	memset(&conn->last_error, 0, sizeof(conn->last_error));
 
-	return sql_free_result(query_ctx->handle, config);
+	return sql_free_result(query_ctx, config);
 }
 
 /*

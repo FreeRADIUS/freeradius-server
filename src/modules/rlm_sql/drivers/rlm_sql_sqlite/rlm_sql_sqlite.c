@@ -610,12 +610,12 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	RETURN_MODULE_OK;
 }
 
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_sqlite_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = query_ctx->handle->conn;
 
 	if (conn->statement) {
-		TALLOC_FREE(handle->row);
+		TALLOC_FREE(query_ctx->handle->row);
 
 		(void) sqlite3_finalize(conn->statement);
 		conn->statement = NULL;
@@ -662,7 +662,7 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 
 static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
 {
-	return sql_free_result(query_ctx->handle, config);
+	return sql_free_result(query_ctx, config);
 }
 
 static int sql_affected_rows(fr_sql_query_t *query_ctx,
