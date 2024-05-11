@@ -421,7 +421,7 @@ static void mlg_data_del(module_instance_t *mi)
 	mlg_module_instance_t	*mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
 
 	if (!fr_heap_entry_inserted(mlg_mi->inst_idx)) return;
-	
+
 	if (fr_heap_extract(&mlg_index, mi) == 0) return;
 
 	fr_assert(0);
@@ -682,6 +682,11 @@ static int8_t module_instance_name_cmp(void const *one, void const *two)
 	module_instance_t const	*mi;
 	int a_depth = 0, b_depth = 0;
 	int ret;
+
+#ifdef STATIC_ANALYZER
+	if (!fr_cond_assert(a)) return +1;
+	if (!fr_cond_assert(b)) return -1;
+#endif
 
 	/*
 	 *	Sort by depth, so for tree walking we start
