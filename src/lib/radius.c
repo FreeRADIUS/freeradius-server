@@ -145,8 +145,9 @@ char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "47",
   "48",
   "49",
-  "IP-Address-Allocate",
-  "IP-Address-Release",			//!< 50
+  "IP-Address-Allocate",		//!< 50
+  "IP-Address-Release",
+  "Protocol-Error",
 };
 
 
@@ -1819,6 +1820,14 @@ int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	return rad_vp2vsa(packet, original, secret, pvp, start, room);
 }
 
+static const bool code2ma[FR_MAX_PACKET_CODE] = {
+	[ PW_CODE_ACCESS_REQUEST ] = true,
+	[ PW_CODE_ACCESS_ACCEPT ] = true,
+	[ PW_CODE_ACCESS_REJECT ] = true,
+	[ PW_CODE_ACCESS_CHALLENGE ] = true,
+	[ PW_CODE_STATUS_SERVER ] = true,
+	[ PW_CODE_PROTOCOL_ERROR ] = true,
+};
 
 /** Encode a packet
  *
@@ -1917,13 +1926,13 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 
 	/*
 	 *	Always add Message-Authenticator for replies to
-	 *	Access-Request packets.
+	 *	Access-Request packets, and for all Access-Accept,
+	 *	Access-Reject, Access-Challenge.
 	 *
 	 *	It must be the FIRST attribute in the packet.
 	 */
-	if (!packet->tls && 
-	    ((original && (original->code == PW_CODE_ACCESS_REQUEST)) ||
-	     (packet->code == PW_CODE_ACCESS_REQUEST))) {
+	if (!packet->tls &&
+	    ((code2ma[packet->code]) || (original && code2ma[original->code]))) {
 		seen_ma = true;
 
 		packet->offset = RADIUS_HDR_LEN;
@@ -2578,16 +2587,23 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	}
 
 	/*
-	 *	Message-Authenticator is required in Status-Server
-	 *	packets, otherwise they can be trivially forged.
+	 *	If the caller requires Message-Authenticator, then set
+	 *	the flag.
 	 *
-	 *	It's also required if the caller asks for it.
+	 *	We also require Message-Authenticator if the packet
+	 *	code is Status-Server.
 	 *
+	 *	If we're receiving packets from a proxy socket, then
+	 *	require Message-Authenticator for Access-* replies,
+	 *	and for Protocol-Error.
+	 */
+	require_ma = ((flags & 0x01) != 0) || (hdr->code == PW_CODE_STATUS_SERVER) || (((flags & 0x08) != 0) && code2ma[hdr->code]);
+
+	/*
 	 *	We only limit Proxy-State if we're not requiring
 	 *	Message-Authenticator.
 	 */
-	require_ma = ((flags & 0x01) != 0) || (hdr->code == PW_CODE_STATUS_SERVER);
-	limit_proxy_state = ((flags & 0x04) != 0) & !require_ma;
+	limit_proxy_state = ((flags & 0x04) != 0) && !require_ma;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
