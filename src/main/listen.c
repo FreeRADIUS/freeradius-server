@@ -2090,7 +2090,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 #endif
 	char		buffer[128];
 
-	packet = rad_recv(NULL, listener->fd, 0);
+	packet = rad_recv(NULL, listener->fd, 8); /* SOME packets don't require a Message-Authenticator attribute */
 	if (!packet) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;

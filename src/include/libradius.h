@@ -519,7 +519,8 @@ bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 /*
  *	1 == require_ma
  *	2 == msg_peek
- *	3 == limit_proxy_state
+ *	4 == limit_proxy_state
+ *	8 == require_ma for Access-* replies and Protocol-Error
  */
 RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
 ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, int *code);
@@ -710,7 +711,7 @@ extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
 extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern uint32_t	fr_max_attributes; /* per incoming packet */
-#define	FR_MAX_PACKET_CODE (52)
+#define	FR_MAX_PACKET_CODE (53)
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
 extern FILE	*fr_log_fp;
