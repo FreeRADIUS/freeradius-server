@@ -420,8 +420,11 @@ static void mlg_data_del(module_instance_t *mi)
 {
 	mlg_module_instance_t	*mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
 
-	if (fr_heap_entry_inserted(mlg_mi->inst_idx) && !fr_cond_assert(fr_heap_extract(&mlg_index, mi) == 0)) return;
-	return;
+	if (!fr_heap_entry_inserted(mlg_mi->inst_idx)) return;
+	
+	if (fr_heap_extract(&mlg_index, mi) == 0) return;
+
+	fr_assert(0);
 }
 
 /** Free the thread local heap on exit
@@ -690,15 +693,6 @@ static int8_t module_instance_name_cmp(void const *one, void const *two)
 
 	ret = CMP(a_depth, b_depth);
 	if (ret != 0) return ret;
-
-	/*
-	 *	This happens, as mi is is used in
-	 *	as the loop condition above.
-	 */
-#ifdef STATIC_ANALYZER
-	if (!fr_cond_assert(a)) return +1;
-	if (!fr_cond_assert(b)) return -1;
-#endif
 
 	ret = CMP(a->parent, b->parent);
 	if (ret != 0) return ret;
