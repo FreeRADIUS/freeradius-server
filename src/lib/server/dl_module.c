@@ -378,6 +378,7 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 	error:
 		talloc_free(module_name);
 		talloc_free(dl_module);		/* Do not free dl explicitly, it's handled by the destructor */
+		pthread_mutex_unlock(&dl_module_loader->lock);
 		return NULL;
 	}
 	dl_module->dl = dl;
