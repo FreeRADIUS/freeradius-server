@@ -1043,7 +1043,6 @@ module_rlm_t rlm_smtp = {
 	.common = {
 		.magic		        = MODULE_MAGIC_INIT,
 		.name		        = "smtp",
-		.flags		        = MODULE_TYPE_THREAD_SAFE,
 		.inst_size	        = sizeof(rlm_smtp_t),
 		.thread_inst_size   	= sizeof(rlm_smtp_thread_t),
 		.config		        = module_config,

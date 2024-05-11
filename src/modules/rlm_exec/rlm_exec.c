@@ -521,7 +521,6 @@ module_rlm_t rlm_exec = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "exec",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_exec_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,

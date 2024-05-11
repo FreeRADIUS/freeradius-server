@@ -286,7 +286,6 @@ module_rlm_t rlm_imap = {
 	.common = {
 		.magic		        = MODULE_MAGIC_INIT,
 		.name		        = "imap",
-		.flags		        = MODULE_TYPE_THREAD_SAFE,
 		.inst_size	        = sizeof(rlm_imap_t),
 		.thread_inst_size   	= sizeof(rlm_imap_thread_t),
 		.config		        = module_config,

@@ -47,12 +47,9 @@ typedef struct module_list_s			module_list_t;
 
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
-	MODULE_TYPE_THREAD_SAFE	= (0 << 0), 	//!< Module is threadsafe.
-	MODULE_TYPE_THREAD_UNSAFE = (1 << 0), 	//!< Module is not threadsafe.
-						//!< Server will protect calls with mutex.
-	MODULE_TYPE_RESUMABLE	= (1 << 2), 	//!< does yield / resume
-
-	MODULE_TYPE_RETRY 	= (1 << 3) 	//!< can handle retries
+	MODULE_TYPE_THREAD_UNSAFE	= (1 << 0), 	//!< Module is not threadsafe.
+							//!< Server will protect calls with mutex.
+	MODULE_TYPE_RETRY		= (1 << 3) 	//!< can handle retries
 } module_flags_t;
 DIAG_ON(attributes)
 
@@ -160,15 +157,32 @@ struct module_s {
 
 	conf_parser_t const		*config;		//!< How to convert a CONF_SECTION to a module instance.
 
+	size_t				boot_size;		//!< Size of the module's bootstrap data.
+	char const			*boot_type;		//!< talloc type to assign to bootstrap data.
+
 	size_t				inst_size;		//!< Size of the module's instance data.
 	char const			*inst_type;		//!< talloc type to assign to instance data.
 
 	module_instantiate_t		bootstrap;		//!< Callback to allow the module to register any global
 								///< resources like xlat functions and attributes.
+								///< Instance data is read only during the bootstrap phase
+								///< and MUST NOT be modified.
+								///< Any attributes added during this phase that the module
+								///< need to be re-resolved during the instantiation phase
+								///< so that dynamic modules (which don't run bootstrap)
+								///< work correctly.
+								///< @note Not modifying the instance data is not just a
+								///< suggestion, if you try, you'll generate a SIGBUS
+								///< or SIGSEGV and it won't be obvious why.
+
 	module_instantiate_t		instantiate;		//!< Callback to allow the module to register any
 								///< per-instance resources like sockets and file handles.
-	module_detach_t			detach;			//!< Clean up module resources from both the bootstrap
-								///< and instantiation pahses.
+								///< After instantiate completes the module instance data
+								///< is mprotected to prevent modification.
+
+	module_detach_t			detach;			//!< Clean up module resources from the instantiation pahses.
+
+	module_detach_t			unstrap;		//!< Clean up module resources from both the bootstrap phase.
 
 	module_flags_t			flags;			//!< Flags that control how a module starts up and how
 								///< a module is called.
@@ -191,10 +205,16 @@ typedef enum CC_HINT(flag_enum) {
 								///< yet instantiated.
 	MODULE_INSTANCE_INSTANTIATED		= (1 << 2),	//!< Module instance has been bootstrapped and
 								///< instantiated.
-	MODULE_INSTANCE_NO_THREAD_INSTANCE	= (1 << 3)	//!< Not set internally, but can be used to prevent
+	MODULE_INSTANCE_NO_THREAD_INSTANTIATE	= (1 << 3)	//!< Not set internally, but can be used to prevent
 								///< thread instantiation for certain modules.
 } module_instance_state_t;
 DIAG_ON(attributes)
+
+typedef struct {
+	TALLOC_CTX 			*ctx;		//!< ctx data is allocated in.
+	void				*start;		//!< Start address which may be passed to mprotect.
+	size_t 				len;		//!< How much data we need mprotect to protect.
+} module_data_pool_t;
 
 /** Per instance data
  *
@@ -203,21 +223,15 @@ DIAG_ON(attributes)
  * data structures.
  */
 struct module_instance_s {
-	module_instance_state_t		state;		//!< What's been done with this module so far.
+       /** @name Fields that are most frequently accessed at runtime
+	*
+	* Putting them first gives us the greatest chance of the pointers being prefetched.
+	* @{
+	*/
+	void				*data;		//!< Module's instance data.  This is most
+							///< frequently access comes first.
 
-	fr_rb_node_t			name_node;	//!< Entry in the name tree.
-	fr_rb_node_t			data_node;	//!< Entry in the data tree.
-
-	module_list_t			*ml;		//!< Module list this instance belongs to.
-
-	char const			*name;		//!< Instance name e.g. user_database.
-
-	dl_module_t			*module;	//!< dynamic loader handle.  Contains the module's
-							///< dlhandle, and the functions it exports.
-							///< The dl_module is reference counted so that it
-							///< can be freed automatically when the last instance
-							///< is freed.  This will also (usually) unload the
-							///< .so or .dylib.
+	void				*boot;		//!< Data allocated during the boostrap phase
 
 	module_t const			*exported;	//!< Public module structure.  Cached for convenience.
 							///< This exports module methods, i.e. the functions
@@ -226,16 +240,16 @@ struct module_instance_s {
 							///< but with a different type, containing additional
 							///< instance callbacks to make it easier to use.
 
-	void				*data;		//!< Module's instance data.
-	CONF_SECTION			*conf;		//!< Module's instance configuration.
-
-	module_instance_t const		*parent;	//!< Parent module's instance (if any).
-
 	pthread_mutex_t			mutex;		//!< Used prevent multiple threads entering a thread
 							///< unsafe module simultaneously.
 
-	uint32_t			number;		//!< Unique module number.  Used to assign a stable
-							///< number to each module instance.
+	dl_module_t			*module;	//!< dynamic loader handle.  Contains the module's
+							///< dlhandle, and the functions it exports.
+							///< The dl_module is reference counted so that it
+							///< can be freed automatically when the last instance
+							///< is freed.  This will also (usually) unload the
+							///< .so or .dylib.
+	/** @} */
 
 	/** @name Return code overrides
 	 * @{
@@ -247,10 +261,42 @@ struct module_instance_s {
 							//!< has been set to true.
 
 	unlang_actions_t       		actions;	//!< default actions and retries.
-
 	/** @} */
 
-	bool				detached;	//!< Whether the detach function has been called.
+       /** @name Allow module instance data to be resolved by name or data, and to get back to the module list
+	* @{
+	*/
+	module_list_t			*ml;		//!< Module list this instance belongs to.
+	fr_rb_node_t			name_node;	//!< Entry in the name tree.
+	fr_rb_node_t			data_node;	//!< Entry in the data tree.
+	uint32_t			number;		//!< Unique module number.  Used to assign a stable
+							///< number to each module instance.
+	/** @} */
+
+       /** @name These structures allow mprotect to protect/unprotest bootstrap and instance data
+	* @{
+	*/
+	module_data_pool_t		inst_pool;	//!< Data to allow mprotect state toggling
+							///< for instance data.
+	module_data_pool_t		boot_pool;	//!< Data to allow mprotect state toggling
+							///< for bootstrap data.
+	/** @} */
+
+       /** @name Module instance state
+	* @{
+	*/
+	module_instance_state_t		mask;		//!< Prevent phases from being executed.
+	module_instance_state_t		state;		//!< What's been done with this module so far.
+	CONF_SECTION			*conf;		//!< Module's instance configuration.
+	/** @} */
+
+       /** @name Misc fields
+	* @{
+	*/
+	char const			*name;		//!< Instance name e.g. user_database.
+
+	module_instance_t const		*parent;	//!< Parent module's instance (if any).
+	/** @} */
 };
 
 /** Per thread per instance data
@@ -271,6 +317,42 @@ struct module_thread_instance_s {
 	uint64_t			total_calls;	//! total number of times we've been called
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
+
+/** Should we bootstrap this module instance?
+ *
+ * @param[in] mi	to check.
+ * @return
+ *	- true if the module instance should be bootstrapped.
+ *	- false if the module instance has already been bootstrapped.
+ */
+static inline bool module_instance_skip_bootstrap(module_instance_t *mi)
+{
+	return ((mi->state | mi->mask) & MODULE_INSTANCE_BOOTSTRAPPED);
+}
+
+/** Should we instantiate this module instance?
+ *
+ * @param[in] mi	to check.
+ * @return
+ *	- true if the module instance should be instantiated.
+ *	- false if the module instance has already been instantiated.
+ */
+static inline bool module_instance_skip_instantiate(module_instance_t *mi)
+{
+	return ((mi->state | mi->mask) & MODULE_INSTANCE_INSTANTIATED);
+}
+
+/** Should we instantiate this module instance in a new thread?
+ *
+ * @param[in] mi	to check.
+ * @return
+ *	- true if the module instance should be instantiated in a new thread.
+ *	- false if the module instance has already been instantiated in a new thread.
+ */
+static inline bool module_instance_skip_thread_instantiate(module_instance_t *mi)
+{
+	return ((mi->state | mi->mask) & MODULE_INSTANCE_NO_THREAD_INSTANTIATE);
+}
 
 /** Callback to retrieve thread-local data for a module
  *

@@ -58,8 +58,7 @@ extern module_rlm_t rlm_utf8;
 module_rlm_t rlm_utf8 = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.name		= "utf8",
-		.flags		= MODULE_TYPE_THREAD_SAFE
+		.name		= "utf8"
 	},
 	.method_names = (module_method_name_t[]){
 		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_utf8_clean },

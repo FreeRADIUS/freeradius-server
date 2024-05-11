@@ -252,7 +252,6 @@ module_rlm_t rlm_rediswho = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "rediswho",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_rediswho_t),
 		.config		= module_config,
 		.onload		= mod_load,

@@ -456,7 +456,6 @@ module_rlm_t rlm_yubikey = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "yubikey",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_yubikey_t),
 		.onload		= mod_load,
 		.unload		= mod_unload,

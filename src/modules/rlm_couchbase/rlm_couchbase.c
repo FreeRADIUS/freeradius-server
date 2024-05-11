@@ -549,7 +549,6 @@ module_rlm_t rlm_couchbase = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "couchbase",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_couchbase_t),
 		.config		= module_config,
 		.onload		= mod_load,

@@ -426,7 +426,6 @@ module_rlm_t rlm_sigtran = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "sigtran",
-		.flags			= MODULE_TYPE_THREAD_SAFE | MODULE_TYPE_RESUMABLE,
 		.inst_size		= sizeof(rlm_sigtran_t),
 		.thread_inst_size	= sizeof(rlm_sigtran_thread_t),
 		.config			= module_config,

@@ -165,7 +165,6 @@ module_rlm_t rlm_idn = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "idn",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_idn_t),
 		.config		= mod_config,
 		.bootstrap	= mod_bootstrap

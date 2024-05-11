@@ -534,7 +534,6 @@ module_rlm_t rlm_opendirectory = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "opendirectory",
 		.inst_size	= sizeof(rlm_opendirectory_t),
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){

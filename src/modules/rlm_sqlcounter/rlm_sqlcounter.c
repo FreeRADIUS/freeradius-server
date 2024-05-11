@@ -579,7 +579,6 @@ module_rlm_t rlm_sqlcounter = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "sqlcounter",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_sqlcounter_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,

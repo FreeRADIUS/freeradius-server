@@ -493,9 +493,10 @@ module_rlm_t rlm_krb5 = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "krb5",
-#ifdef KRB5_IS_THREAD_SAFE
-		.flags		= MODULE_TYPE_THREAD_SAFE,
-#else
+		/*
+		 *	FIXME - Probably want a global mutex created on mod_load
+		 */
+#ifndef KRB5_IS_THREAD_SAFE
 		.flags		= MODULE_TYPE_THREAD_UNSAFE,
 #endif
 		.inst_size	= sizeof(rlm_krb5_t),

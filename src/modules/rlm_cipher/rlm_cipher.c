@@ -1375,7 +1375,6 @@ module_rlm_t rlm_cipher = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "cipher",
-		.flags			= MODULE_TYPE_THREAD_SAFE,
 		.inst_size		= sizeof(rlm_cipher_t),
 		.thread_inst_size	= sizeof(rlm_cipher_rsa_thread_inst_t),
 		.config			= module_config,

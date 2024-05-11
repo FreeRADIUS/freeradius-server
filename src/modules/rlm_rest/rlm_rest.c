@@ -1393,7 +1393,6 @@ module_rlm_t rlm_rest = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "rest",
-		.flags			= MODULE_TYPE_THREAD_SAFE,
 		.inst_size		= sizeof(rlm_rest_t),
 		.thread_inst_size	= sizeof(rlm_rest_thread_t),
 		.config			= module_config,

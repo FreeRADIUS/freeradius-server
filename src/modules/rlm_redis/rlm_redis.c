@@ -900,7 +900,6 @@ module_rlm_t rlm_redis = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "redis",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_redis_t),
 		.config		= module_config,
 		.onload		= mod_load,

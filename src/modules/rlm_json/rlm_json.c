@@ -616,7 +616,6 @@ module_rlm_t rlm_json = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "json",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.onload		= mod_load,
 		.unload		= mod_unload,
 		.config		= module_config,

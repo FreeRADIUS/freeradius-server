@@ -1937,7 +1937,6 @@ module_rlm_t rlm_sql = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "sql",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_sql_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,

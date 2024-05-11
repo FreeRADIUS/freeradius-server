@@ -457,7 +457,6 @@ module_rlm_t rlm_wimax = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "wimax",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_wimax_t),
 		.config		= module_config,
 	},

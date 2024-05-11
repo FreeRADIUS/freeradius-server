@@ -710,7 +710,6 @@ module_rlm_t rlm_sqlippool = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "sqlippool",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_sqlippool_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,

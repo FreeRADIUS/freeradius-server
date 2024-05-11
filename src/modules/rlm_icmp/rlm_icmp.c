@@ -550,7 +550,6 @@ module_rlm_t rlm_icmp = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "icmp",
-		.flags		= MODULE_TYPE_THREAD_SAFE,
 		.inst_size	= sizeof(rlm_icmp_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
