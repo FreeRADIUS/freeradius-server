@@ -561,7 +561,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED 
 static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
 				    fr_value_box_list_t *query, map_list_t const *maps)
 {
-	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
 
 	int			i, j;
