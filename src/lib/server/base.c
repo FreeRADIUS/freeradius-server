@@ -126,20 +126,10 @@ void server_free(void)
 	password_free();
 
 	/*
-	 *	The only maps remaining are the ones registered by the server core.
-	 */
-	map_proc_free();
-
-	/*
 	 *	Now we're sure no more triggers can fire, free the
 	 * 	trigger tree.
 	 */
 	trigger_exec_free();
-
-	/*
-	 *	Free the internal dictionaries the request uses
-	 */
-	request_global_free();
 
 	/*
 	 *	Free the internal dictionaries the tmpl code uses

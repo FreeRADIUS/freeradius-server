@@ -1206,11 +1206,6 @@ cleanup:
 	server_free();
 
 	/*
-	 *	Free any resources used by the unlang interpreter.
-	 */
-	unlang_global_free();
-
-	/*
 	 *	Virtual servers need to be freed before modules
 	 *	as state entries containing data with module-specific
 	 *	destructors may exist.

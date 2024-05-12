@@ -31,8 +31,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/util/conf.h>
 
-#include <ctype.h>
-
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
@@ -279,8 +277,6 @@ cleanup:
 	 *	scheduler.
 	 */
 	fr_atexit_thread_trigger_all();
-
-	request_global_free();
 
 	/*
 	 *	Free any autoload dictionaries

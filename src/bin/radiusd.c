@@ -1091,11 +1091,6 @@ cleanup:
 
 	server_free();
 
-	/*
-	 *	Free any resources used by the unlang interpreter.
-	 */
-	unlang_global_free();
-
 #ifdef WITH_TLS
 	fr_openssl_free();		/* Cleanup any memory alloced by OpenSSL and placed into globals */
 #endif

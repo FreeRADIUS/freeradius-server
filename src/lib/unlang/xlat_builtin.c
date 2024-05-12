@@ -60,6 +60,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 static char const hextab[] = "0123456789abcdef";
+static TALLOC_CTX *xlat_ctx;
 
 /** Return a VP from the specified request.
  *
@@ -3905,6 +3906,17 @@ int xlat_protocols_register(void)
 	return 0;
 }
 
+/** De-register all xlat functions we created
+ *
+ */
+static int _xlat_global_free(UNUSED void *uctx)
+{
+	TALLOC_FREE(xlat_ctx);
+	xlat_func_free();
+	xlat_eval_free();
+
+	return 0;
+}
 
 /** Global initialisation for xlat
  *
@@ -3916,9 +3928,12 @@ int xlat_protocols_register(void)
  *
  * @hidecallgraph
  */
-int xlat_global_init(TALLOC_CTX *ctx)
+static int _xlat_global_init(UNUSED void *uctx)
 {
 	xlat_t *xlat;
+
+	xlat_ctx = talloc_init("xlat");
+	if (!xlat_ctx) return -1;
 
 	if (xlat_func_init() < 0) return -1;
 
@@ -3937,7 +3952,7 @@ int xlat_global_init(TALLOC_CTX *ctx)
 	 */
 #define XLAT_REGISTER_ARGS(_xlat, _func, _return_type, _args) \
 do { \
-	if (unlikely((xlat = xlat_func_register(ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, _args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
@@ -3967,7 +3982,7 @@ do { \
 #undef XLAT_REGISTER_ARGS
 #define XLAT_REGISTER_ARGS(_xlat, _func, _return_type, _args) \
 do { \
-	if (unlikely((xlat = xlat_func_register(ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_args_set(xlat, _args); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
@@ -3991,10 +4006,10 @@ do { \
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
 
-	if (unlikely((xlat = xlat_func_register(ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
 
-	if (unlikely((xlat = xlat_func_register(ctx, "taint", xlat_func_taint, FR_TYPE_VOID)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, "taint", xlat_func_taint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
 
 	/*
@@ -4002,7 +4017,7 @@ do { \
 	 */
 #define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
 do { \
-	if (unlikely((xlat = xlat_func_register(ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_mono_set(xlat, _arg); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
@@ -4014,7 +4029,7 @@ do { \
 	XLAT_REGISTER_MONO("md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
 	XLAT_REGISTER_MONO("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
-	if (unlikely((xlat = xlat_func_register(ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 #endif
 	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, FR_TYPE_OCTETS, xlat_func_sha_arg);
@@ -4048,7 +4063,7 @@ do { \
 #undef XLAT_REGISTER_MONO
 #define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
 do { \
-	if (unlikely((xlat = xlat_func_register(ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
 	xlat_func_mono_set(xlat, _arg); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
@@ -4059,12 +4074,9 @@ do { \
 	return xlat_register_expressions();
 }
 
-/** De-register all xlat functions we created
- *
- */
-void xlat_global_free(void)
+int xlat_global_init(void)
 {
-	xlat_func_free();
-
-	xlat_eval_free();
+	int ret;
+	fr_atexit_global_once_ret(&ret, _xlat_global_init, _xlat_global_free, NULL);
+	return ret;
 }

@@ -38,8 +38,6 @@ bool			unlang_section(CONF_SECTION *cs);
 
 int			unlang_global_init(void);
 
-void			unlang_global_free(void);
-
 int			unlang_thread_instantiate(TALLOC_CTX *ctx) CC_HINT(nonnull);
 
 #ifdef WITH_PERF

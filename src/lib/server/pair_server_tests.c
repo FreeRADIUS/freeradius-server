@@ -22,9 +22,7 @@
  */
 
 static void test_init(void);
-static void test_free(void);
 #  define TEST_INIT  test_init()
-#  define TEST_FINI  test_free()
 
 #include <freeradius-devel/util/acutest.h>
 #include <freeradius-devel/util/acutest_helpers.h>
@@ -72,11 +70,6 @@ static void test_init(void)
 	if (fr_pair_test_list_alloc(autofree, &test_pairs, NULL) < 0) goto error;
 
 	if (request_global_init() < 0) goto error;
-}
-
-static void test_free(void)
-{
-	request_global_free();
 }
 
 static request_t *request_fake_alloc(void)

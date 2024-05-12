@@ -3938,10 +3938,6 @@ cleanup:
 		EXIT_WITH_FAILURE;
 	}
 
-	unlang_global_free();
-
-	request_global_free();
-
 	if (receipt_file && (ret == EXIT_SUCCESS) && (fr_touch(NULL, receipt_file, 0644, true, 0755) <= 0)) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;

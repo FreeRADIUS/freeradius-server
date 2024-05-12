@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/atexit.h>
 
 static request_init_args_t	default_args;
 
@@ -695,7 +696,13 @@ int request_detach(request_t *child)
 	return 0;
 }
 
-int request_global_init(void)
+static int _request_global_free(UNUSED void *uctx)
+{
+	fr_dict_autofree(request_dict);
+	return 0;
+}
+
+static int _request_global_init(UNUSED void *uctx)
 {
 	if (fr_dict_autoload(request_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
@@ -706,13 +713,14 @@ int request_global_init(void)
 		fr_dict_autofree(request_dict);
 		return -1;
 	}
-
 	return 0;
 }
 
-void request_global_free(void)
+int request_global_init(void)
 {
-	fr_dict_autofree(request_dict);
+	int ret;
+	fr_atexit_global_once_ret(&ret, _request_global_init, _request_global_free, NULL);
+	return ret;
 }
 
 #ifdef WITH_VERIFY_PTR

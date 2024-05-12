@@ -26,8 +26,6 @@ RCSID("$Id$")
 
 #include "unlang_priv.h"
 
-static uint32_t instance_count;
-
 /** Different operations the interpreter can execute
  */
 unlang_op_t unlang_ops[UNLANG_TYPE_MAX];
@@ -71,20 +69,23 @@ void unlang_register(int type, unlang_op_t *op)
 
 static TALLOC_CTX *unlang_ctx = NULL;
 
-int unlang_global_init(void)
+static int _unlang_global_free(UNUSED void *uctx)
 {
-	if (instance_count > 0) {
-		instance_count++;
-		return 0;
-	}
+	unlang_subrequest_op_free();
+	TALLOC_FREE(unlang_ctx);
 
+	return 0;
+}
+
+static int _unlang_global_init(UNUSED void *uctx)
+{
 	unlang_ctx = talloc_init("unlang");
 	if (!unlang_ctx) return -1;
 
 	/*
 	 *	Explicitly initialise the xlat tree, and perform dictionary lookups.
 	 */
-	if (xlat_global_init(unlang_ctx) < 0) {
+	if (xlat_global_init() < 0) {
 	fail:
 		TALLOC_FREE(unlang_ctx);
 
@@ -126,19 +127,12 @@ int unlang_global_init(void)
 	unlang_try_init();
 	unlang_catch_init();
 
-	instance_count++;
-
 	return 0;
 }
 
-void unlang_global_free(void)
+int unlang_global_init(void)
 {
-	if (--instance_count > 0) return;
-
-	unlang_subrequest_op_free();
-	TALLOC_FREE(unlang_ctx);
-
-	memset(unlang_ops, 0, sizeof(unlang_ops));
-
-	xlat_global_free();
+	int ret;
+	fr_atexit_global_once_ret(&ret, _unlang_global_init, _unlang_global_free, NULL);
+	return ret;
 }
