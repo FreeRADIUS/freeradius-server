@@ -1852,6 +1852,25 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
 
+	/*
+	 *	Driver must be instantiated before we call pool init
+	 *	else any configuration elements dynamically produced
+	 *	by the driver's instantiate function won't be available.
+	 *
+	 *	This is absolutely fine, and was taken into account in
+	 *	the design of the module code.  The main instantiation
+	 *	loop, will not call the driver's instantiate function
+	 *	twice.
+	 *
+	 *	This is only a problem in rlm_sql.  The other users of
+	 *	connection pool either don't have submodules or have
+	 *	the submodules call module_instantiate() themselves.
+	 */
+	if (unlikely(module_instantiate(inst->driver_submodule) < 0)) {
+		cf_log_err(conf, "Failed instantiating driver module");
+		return -1;
+	}
+
 	inst->pool = module_rlm_connection_pool_init(conf, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
 	if (!inst->pool) return -1;
 
