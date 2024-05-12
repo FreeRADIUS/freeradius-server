@@ -537,7 +537,6 @@ static const call_env_method_t winbind_group_xlat_call_env = {
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_winbind_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_winbind_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
 	xlat_t			*xlat;
 
