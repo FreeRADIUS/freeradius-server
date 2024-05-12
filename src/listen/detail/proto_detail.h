@@ -36,7 +36,6 @@ extern "C" {
 
 typedef struct {
 	CONF_SECTION			*server_cs;			//!< server CS for this listener
-	CONF_SECTION			*cs;				//!< my configuration
 	fr_app_t			*self;				//!< child / parent linking issues
 	char const			*type;				//!< packet type name
 

@@ -28,9 +28,11 @@
 #include <freeradius-devel/radius/radius.h>
 #include <freeradius-devel/util/pair_legacy.h>
 
+#include <freeradius-devel/server/dl_module.h>
+#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
+
 #include "proto_detail.h"
-#include "lib/server/dl_module.h"
-#include "lib/server/module.h"
 
 extern fr_app_t proto_detail;
 
@@ -162,19 +164,19 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 	 */
 	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") != 0) {
 		CONF_SECTION *transport_cs;
-		module_instance_t *parent_inst;
+		module_instance_t *mi;
 
 		inst->work_submodule = NULL;
 
-		transport_cs = cf_section_find(inst->cs, "work", NULL);
-		parent_inst = cf_data_value(cf_data_find(inst->cs, module_instance_t, "proto_detail"));
-		fr_assert(parent_inst);
+		mi = virtual_server_listerner_by_data(parent);
+		fr_assert(mi);
 
+		transport_cs = cf_section_find(mi->conf, "work", NULL);
 		if (!transport_cs) {
-			transport_cs = cf_section_dup(inst->cs, inst->cs, inst->app_io_conf,
+			transport_cs = cf_section_dup(mi->conf, mi->conf, inst->app_io_conf,
 						      "work", NULL, false);
 			if (!transport_cs) {
-				cf_log_err(inst->cs, "Failed to create configuration for worker");
+				cf_log_err(mi->conf, "Failed to create configuration for worker");
 				return -1;
 			}
 		}
@@ -187,11 +189,11 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 		 *	to iterate over instead of a tree, so we can add this to the end
 		 *	of that list.
 		 */
-		inst->work_submodule = module_instance_alloc(parent_inst->ml, parent_inst, DL_MODULE_TYPE_SUBMODULE,
+		inst->work_submodule = module_instance_alloc(mi->ml, mi, DL_MODULE_TYPE_SUBMODULE,
 							     "work", module_instance_name_from_conf(transport_cs), 0);
 		if (inst->work_submodule == NULL) {
 		error:
-			cf_log_perr(inst->cs, "Failed to load proto_detail_work");
+			cf_log_perr(mi->conf, "Failed to load proto_detail_work");
 			TALLOC_FREE(inst->work_submodule);
 			return -1;
 		}
@@ -523,7 +525,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	The listener is inside of a virtual server.
 	 */
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
-	inst->cs = conf;
 	inst->self = &proto_detail;
 
 	/*

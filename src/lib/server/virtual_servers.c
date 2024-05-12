@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/command.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/modpriv.h>
@@ -176,6 +177,18 @@ void virtual_server_listen_debug(void)
 void virtual_server_process_debug(void)
 {
 	module_list_debug(process_modules);
+}
+
+/** Resolve proto data to a module instance
+ *
+ * @param[in] data	Pointer to the proto data.
+ * @return
+ *	- The module instance for the proto data.
+ *	- NULL if no data matches.
+ */
+module_instance_t *virtual_server_listerner_by_data(void const *data)
+{
+	return module_instance_by_data(proto_modules, data);
 }
 
 /** Generic conf_parser_t func for loading drivers

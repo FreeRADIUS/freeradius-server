@@ -45,6 +45,12 @@ void 		virtual_server_listen_debug(void);
 void		virtual_server_process_debug(void);
 /** @} */
 
+/** @name Resolution functions
+ * @{
+ */
+module_instance_t *virtual_server_listerner_by_data(void const *data);
+/** @} */
+
 /** @name Callbacks for dealing with transports
  *
  * @{
