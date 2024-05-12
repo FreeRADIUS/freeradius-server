@@ -1304,31 +1304,31 @@ static void fr_network_listen_callback(void *ctx, void const *data, size_t data_
 	(void) fr_network_listen_add_self(nr, listen);
 }
 
-static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *listen)
+static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 {
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
 	size_t			size;
 	int			num_messages;
 
-	fr_assert(listen->app_io != NULL);
+	fr_assert(li->app_io != NULL);
 
 	/*
 	 *	Non-socket listeners just get told about the event
 	 *	list, and nothing else.
 	 */
-	if (listen->non_socket_listener) {
-		fr_assert(listen->app_io->event_list_set != NULL);
-		fr_assert(!listen->app_io->read);
-		fr_assert(!listen->app_io->write);
+	if (li->non_socket_listener) {
+		fr_assert(li->app_io->event_list_set != NULL);
+		fr_assert(!li->app_io->read);
+		fr_assert(!li->app_io->write);
 
-		listen->app_io->event_list_set(listen, nr->el, nr);
+		li->app_io->event_list_set(li, nr->el, nr);
 
 		/*
 		 *	We use fr_log() here to avoid the "Network - " prefix.
 		 */
 		fr_log(nr->log, L_DBG, __FILE__, __LINE__, "Listener %s bound to virtual server %s",
-		       listen->name, cf_section_name2(listen->server_cs));
+		       li->name, cf_section_name2(li->server_cs));
 
 		return 0;
 	}
@@ -1337,7 +1337,7 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *listen)
 	fr_assert(s != NULL);
 
 	s->nr = nr;
-	s->listen = listen;
+	s->listen = li;
 	s->number = nr->num_sockets++;
 
 	MEM(s->waiting = fr_heap_alloc(s, waiting_cmp, fr_channel_data_t, channel.heap_id, 0));
