@@ -23,8 +23,6 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX mctx->mi->name
-
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/util/cap.h>
@@ -346,7 +344,7 @@ static void mod_icmp_read(UNUSED fr_event_list_t *el, UNUSED int sockfd, UNUSED 
 	my_echo.counter = icmp->counter;
 	echo = fr_rb_find(t->tree, &my_echo);
 	if (!echo) {
-		DEBUG("Can't find packet counter=%d in tree", icmp->counter);
+		DEBUG("%s - Can't find packet counter=%d in tree", mctx->mi->name, icmp->counter);
 		return;
 	}
 
@@ -365,7 +363,7 @@ static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int fl
 	module_ctx_t const	*mctx = talloc_get_type_abort(uctx, module_ctx_t);
 	rlm_icmp_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
 
-	ERROR("Failed reading from ICMP socket - Closing it");
+	ERROR("%s - Failed reading from ICMP socket - Closing it", mctx->mi->name);
 
 	(void) fr_event_fd_delete(el, t->fd, FR_EVENT_FILTER_IO);
 	close(t->fd);
