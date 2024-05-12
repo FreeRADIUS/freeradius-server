@@ -28,6 +28,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/strerror.h>
+#include <freeradius-devel/util/syserror.h>
+
+#include <talloc.h>
+#include <stdatomic.h>
 
 static TALLOC_CTX *global_ctx;
 static _Thread_local TALLOC_CTX *thread_local_ctx;
@@ -216,6 +220,73 @@ TALLOC_CTX *talloc_aligned_array(TALLOC_CTX *ctx, void **start, size_t alignment
 	return array;
 }
 
+/** How big the chunk header is
+ *
+ * Non-zero portion will always fit in a uint8_t, so we don't need to worry about atomicity.
+ */
+static size_t		t_hdr_size;
+
+/** Calculate the size of talloc chunk headers, once, on startup
+ *
+ */
+static void _talloc_hdr_size(void)
+{
+	TALLOC_CTX	*pool;
+	void		*chunk;
+
+	pool = talloc_pool(NULL, 1024);	/* Allocate 1k of memory, this will always be bigger than the chunk header */
+	if (unlikely(pool == NULL)) {
+	oom:
+		fr_strerror_const("Out of memory");
+		return;
+	}
+	chunk = talloc_size(pool, 1);	/* Get the starting address */
+	if (unlikely(chunk == NULL)) goto oom;
+
+	/*
+	 *	Sanity check... make sure the chunk is within the pool
+	 *	if it's not, we're in trouble.
+	 */
+	if (!fr_cond_assert((chunk > pool) && ((uintptr_t)chunk < ((uintptr_t)pool + 1024)))) {
+		fr_strerror_const("Initial allocation outside of pool memory");
+		return;
+	}
+
+	/*
+	 *	Talloc returns the address after the chunk header, so
+	 *	the address of the pool is <malloc address> + <hdr_size>.
+	 *
+	 *	If we allocate a chunk inside the pool, then the address
+	 *	of the chunk will be <malloc address> + <hdr_size> + <hdr_size>.
+	 *	If we subtrace the chunk from the pool address, we get
+	 *	the size of the talloc header.
+	 */
+	t_hdr_size = (uintptr_t)chunk - (uintptr_t)pool;
+
+	talloc_free(pool); /* Free the memory we used */
+}
+
+/** Calculate the size of the talloc chunk header
+ *
+ * @return
+ *	- >0 the size of the talloc chunk header.
+ *	- -1 on error.
+ */
+ssize_t talloc_hdr_size(void)
+{
+	static pthread_once_t once_control = PTHREAD_ONCE_INIT;
+
+	if (t_hdr_size > 0) return t_hdr_size;	/* We've already calculated it */
+
+	if (pthread_once(&once_control, _talloc_hdr_size) != 0) {
+		fr_strerror_printf("pthread_once failed: %s", fr_syserror(errno));
+		return -1;
+	}
+	if (t_hdr_size == 0) return -1; /* Callback should set error */
+
+	return t_hdr_size;
+}
+
 /** Return a page aligned talloc memory pool
  *
  * Because we can't intercept talloc's malloc() calls, we need to do some tricks
@@ -231,65 +302,85 @@ TALLOC_CTX *talloc_aligned_array(TALLOC_CTX *ctx, void **start, size_t alignment
  * @param[in] ctx	to allocate pool memory in.
  * @param[out] start	A page aligned address within the pool.  This can be passed
  *			to mprotect().
- * @param[out] end	of the pages that should be protected.
+ * @param[out] end_len	how many bytes to protect.
+ * @param[in] headers	how much room we should allocate for talloc headers.
+ *			This value should usually be >= 1.
  * @param[in] size	How big to make the pool.  Will be corrected to a multiple
  *			of the page size.  The actual pool size will be size
  *			rounded to a multiple of the (page_size), + page_size
  */
-TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, void **end, size_t size)
+TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_len, unsigned int headers, size_t size)
 {
 	size_t		rounded, page_size = (size_t)getpagesize();
-	size_t		hdr_size, pool_size;
-	void		*next, *chunk;
+	size_t		hdr_size;
+	void		*next;
 	TALLOC_CTX	*pool;
 
-	rounded = ROUND_UP(size, page_size);			/* Round up to a multiple of the page size */
-	if (rounded == 0) rounded = page_size;
+	hdr_size = talloc_hdr_size();
+	size += (hdr_size * headers);	/* Add more space for the chunks headers of the pool's children */
+	size += hdr_size;		/* Add one more header to the pool for the padding allocation */
 
-	pool_size = rounded + page_size;
-	pool = talloc_pool(ctx, pool_size);			/* Over allocate */
+	/*
+	 *  Allocate enough space for the padding header the other headers
+	 *  and the actual data, and sure it's a multiple of the page_size.
+	 *
+	 *   |<--- page_size --->|<-- page_size -->|
+	 *   |<-- hdr_size -->|<-- size -->|
+	 */
+	if (size % page_size == 0) {
+		rounded = size;
+	} else {
+		rounded = ROUND_UP(size, page_size);
+	}
+
+	/*
+	 *  Add another page, so that we can align the first allocation in
+	 *  the pool to a page boundary.  We have no idea what chunk malloc
+	 *  will give to talloc, and what the first address after adding the
+	 *  pools header will be
+	 */
+	rounded += page_size;
+
+	pool = talloc_pool(ctx, rounded);
 	if (!pool) {
 		fr_strerror_const("Out of memory");
 		return NULL;
 	}
 
-	chunk = talloc_size(pool, 1);				/* Get the starting address */
-	if (!fr_cond_assert((chunk > pool) && ((uintptr_t)chunk < ((uintptr_t)pool + rounded)))) {
-		fr_strerror_const("Initial allocation outside of pool memory");
-	error:
-		talloc_free(pool);
-		return NULL;
-	}
-	hdr_size = (uintptr_t)chunk - (uintptr_t)pool;
-
-	next = (void *)ROUND_UP((uintptr_t)chunk, page_size);	/* Round up address to the next page */
-
 	/*
-	 *	Depending on how talloc allocates the chunk headers,
-	 *	the memory allocated here might not align to a page
-	 *	boundary, but that's ok, we just need future allocations
-	 *	to occur on or after 'next'.
+	 *  If we didn't get lucky, and the first address in the pool is
+	 *  not the start of a page, we need to allocate some padding to
+	 *  get the first allocation in the pool to be on or after the
+	 *  start of the next page.
 	 */
-	if (((uintptr_t)next - (uintptr_t)chunk) > 0) {
+	if ((uintptr_t)pool % page_size != 0) {
 		size_t	pad_size;
 		void	*padding;
 
-		pad_size = ((uintptr_t)next - (uintptr_t)chunk);
+		next = (void *)ROUND_UP((uintptr_t)pool, page_size);	/* Round up address to the next page */
+
+		/*
+		 *	We don't care if the first address if on a page
+		 *	boundary, just that it comes after one.
+		 */
+		pad_size = ((uintptr_t)next - (uintptr_t)pool);
 		if (pad_size > hdr_size) {
 			pad_size -= hdr_size;			/* Save ~111 bytes by not over-padding */
 		} else {
-			pad_size = 1;
+			pad_size = 0;				/* Allocate as few bytes as possible */
 		}
 
 		padding = talloc_size(pool, pad_size);
 		if (!fr_cond_assert(((uintptr_t)padding + (uintptr_t)pad_size) >= (uintptr_t)next)) {
 			fr_strerror_const("Failed padding pool memory");
-			goto error;
+			return NULL;
 		}
+	} else {
+		next = pool;
 	}
 
-	*start = next;						/* This is the address we feed into mprotect */
-	*end = (void *)((uintptr_t)next + (uintptr_t)rounded);
+	*start = next;			/* This is the address we feed into mprotect */
+	*end_len = rounded;		/* This is how much memory we protect */
 
 	return pool;
 }

@@ -52,7 +52,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/cap.h>
 #endif
 
-#include <ctype.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/file.h>
@@ -239,7 +238,8 @@ int main(int argc, char *argv[])
 	bool			raddb_dir_set = false;
 
 	size_t			pool_size = 0;
-	void			*pool_page_start = NULL, *pool_page_end = NULL;
+	void			*pool_page_start = NULL;
+	size_t			pool_page_len = 0;
 	bool			do_mprotect;
 
 #ifndef NDEBUG
@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
 			 *	catch any stray writes.
 			 */
 			global_ctx = talloc_page_aligned_pool(talloc_autofree_context(),
-							      &pool_page_start, &pool_page_end, pool_size);
+							      &pool_page_start, &pool_page_len, 0, pool_size);
 			do_mprotect = true;
 		} else {
 	 		global_ctx = talloc_new(talloc_autofree_context());
@@ -963,7 +963,7 @@ int main(int argc, char *argv[])
 	 *  to write to this memory we get a SIGBUS.
 	 */
 	if (do_mprotect) {
-	    	if (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start, PROT_READ) < 0) {
+	    	if (mprotect(pool_page_start, pool_page_len, PROT_READ) < 0) {
 			PERROR("Protecting global memory failed: %s", fr_syserror(errno));
 			EXIT_WITH_FAILURE;
 		}
@@ -994,7 +994,7 @@ int main(int argc, char *argv[])
 	 *  Unprotect global memory
 	 */
 	if (do_mprotect) {
-		if (mprotect(pool_page_start, (uintptr_t)pool_page_end - (uintptr_t)pool_page_start,
+		if (mprotect(pool_page_start, pool_page_len,
 			     PROT_READ | PROT_WRITE) < 0) {
 			PERROR("Unprotecting global memory failed: %s", fr_syserror(errno));
 			EXIT_WITH_FAILURE;
