@@ -1859,12 +1859,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *
 	 *	This is absolutely fine, and was taken into account in
 	 *	the design of the module code.  The main instantiation
-	 *	loop, will not call the driver's instantiate function
+	 *	loop, will not call the driver's instantiate function,
 	 *	twice.
 	 *
 	 *	This is only a problem in rlm_sql.  The other users of
 	 *	connection pool either don't have submodules or have
-	 *	the submodules call module_instantiate() themselves.
+	 *	the submodules call module_rlm_connection_pool_init()
+	 *	themselves.
 	 */
 	if (unlikely(module_instantiate(inst->driver_submodule) < 0)) {
 		cf_log_err(conf, "Failed instantiating driver module");
