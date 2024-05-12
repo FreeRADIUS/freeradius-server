@@ -1466,17 +1466,10 @@ int virtual_servers_instantiate(void)
 		fr_assert(virtual_servers[i]->process_mi);
 
 		/*
-		 *	Complete final instantiation of the process module
-		 */
-		if (module_instantiate(virtual_servers[i]->process_mi) < 0) {
-			cf_log_perr(virtual_servers[i]->process_mi->conf,
-				    "Failed instantiating process module");
-			return -1;
-		}
-
-		/*
 		 *	Compile the processing sections indicated by
-		 *      the process module.
+		 *      the process module.  This must be done before
+		 *	module_instantiate is called, as the instance
+		 *	data is protected after this call.
 		 */
 		if (process->compile_list) {
 			tmpl_rules_t		parse_rules = {
@@ -1492,6 +1485,15 @@ int virtual_servers_instantiate(void)
 							    vs->process_mi->data) < 0) {
 				return -1;
 			}
+		}
+
+		/*
+		 *	Complete final instantiation of the process module
+		 */
+		if (module_instantiate(virtual_servers[i]->process_mi) < 0) {
+			cf_log_perr(virtual_servers[i]->process_mi->conf,
+				    "Failed instantiating process module");
+			return -1;
 		}
 
 		/*
