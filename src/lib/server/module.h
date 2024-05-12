@@ -49,7 +49,10 @@ DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
 	MODULE_TYPE_THREAD_UNSAFE	= (1 << 0), 	//!< Module is not threadsafe.
 							//!< Server will protect calls with mutex.
-	MODULE_TYPE_RETRY		= (1 << 3) 	//!< can handle retries
+	MODULE_TYPE_RETRY		= (1 << 2), 	//!< can handle retries
+
+	MODULE_TYPE_DYNAMIC_UNSAFE	= (1 << 3)	//!< Instances of this module cannot be
+							///< created at runtime.
 } module_flags_t;
 DIAG_ON(attributes)
 

@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include <talloc.h>
+#include <sys/mman.h>
 
 static void module_thread_detach(module_thread_instance_t *ti);
 
@@ -589,6 +590,50 @@ module_list_type_t const module_list_type_thread_local = {
 	}
 };
 
+/** Protect module data
+ *
+ * @param[in] pool to protect
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline CC_HINT(always_inline)
+int module_data_protect(module_instance_t *mi, module_data_pool_t *pool)
+{
+	if (pool->start == NULL) return 0; /* noop */
+
+	DEBUG("Protecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
+#if 0
+	if (unlikely(mprotect(pool->start, pool->len, PROT_READ) < 0)) {
+		fr_strerror_printf("Protecting \"%s\" module data failed: %s", mi->name, fr_syserror(errno));
+		return -1;
+	}
+#endif
+	return 0;
+}
+
+/** Unprotect module data
+ *
+ * @param[in] pool to protect
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline CC_HINT(always_inline)
+int module_data_unprotect(module_instance_t *mi, module_data_pool_t *pool)
+{
+	if (pool->start == NULL) return 0; /* noop */
+
+	DEBUG("Unprotecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
+#if 0
+	if (unlikely(mprotect(pool->start, pool->len, PROT_READ | PROT_WRITE) < 0)) {
+		fr_strerror_printf("Unprotecting \"%s\" data failed: %s", mi->name, fr_syserror(errno));
+		return -1;
+	}
+#endif
+	return 0;
+}
+
 /** Return the prefix string for the deepest module
  *
  * This is useful for submodules which don't have a prefix of their own.
@@ -603,34 +648,6 @@ char const *module_instance_root_prefix_str(module_instance_t const *mi)
 	module_instance_t const *root = module_instance_root(mi);
 
 	return fr_table_str_by_value(dl_module_type_prefix, root->module->type, "<INVALID>");
-}
-
-/** Allocate module instance data
- *
- * @param[in] mi	to allocate instance data for
- */
-static inline CC_HINT(always_inline)
-void module_instance_data_alloc(module_instance_t *mi)
-{
-	dl_module_t const	*module = mi->module;
-	void			*data;
-
-	/*
-	 *	If there is supposed to be instance data, allocate it now.
-	 *
-	 *      If the structure is zero length then allocation will still
-	 *	succeed, and will create a talloc chunk header.
-	 *
-	 *      This is needed so we can resolve instance data back to
-	 *	module_instance_t/dl_module_t/dl_t.
-	 */
-	MEM(data = talloc_zero_array(mi, uint8_t, mi->exported->inst_size));
-	if (!mi->exported->inst_type) {
-		talloc_set_name(data, "%s_t", module->dl->name ? module->dl->name : "config");
-	} else {
-		talloc_set_name_const(data, mi->exported->inst_type);
-	}
-	mi->data = data;
 }
 
 /** Avoid boilerplate when setting the module instance name
@@ -927,7 +944,7 @@ static int _module_thread_inst_free(module_thread_instance_t *ti)
 	 *	Never allocated a thread instance, so we don't need
 	 *	to clean it up...
 	 */
-	if (mi->state & MODULE_INSTANCE_NO_THREAD_INSTANCE) return 0;
+	if (mi->state & MODULE_INSTANCE_NO_THREAD_INSTANTIATE) return 0;
 
 	DEBUG4("Worker cleaning up %s thread instance data (%p/%p)",
 	       mi->exported->name, ti, ti->data);
@@ -974,7 +991,7 @@ int module_thread_instantiate(TALLOC_CTX *ctx, module_instance_t *mi, fr_event_l
 	 *	a module, which will only have run-time thread-specific
 	 *	instances, like dynamic/keyed modules.
 	 */
-	if (mi->state & MODULE_INSTANCE_NO_THREAD_INSTANCE) return 0;
+	if (module_instance_skip_thread_instantiate(mi)) return 0;
 
 	/*
 	 *	Check the list pointers are ok
@@ -1077,10 +1094,28 @@ int module_instantiate(module_instance_t *instance)
 	CONF_SECTION *cs = mi->conf;
 
 	/*
+	 *	If we're instantiating, then nothing should be able to
+	 *	modify the boot data for this module.
+	 *
+	 *	mprotect is thread-safe, so we don't need to worry about
+	 *	synchronisation.  There is the overhead of a system call
+	 *	but dynamic module instantiation is relatively rare.
+	 *
+	 *	We need to wait until all modules have registered things
+	 *	like xlat functions, as the xlat functions themselves may
+	 *	end up being allocated in boot pool data, and have inline
+	 *	rbtree node structures, which may be modified as additional
+	 *	xlat functions are registered.
+	 */
+	if (unlikely(module_data_protect(mi, &mi->boot_pool) < 0)) {
+		cf_log_perr(mi->conf, "\"%s\"", mi->name);
+		return -1;
+	}
+
+	/*
 	 *	We only instantiate modules in the bootstrapped state
 	 */
-	if ((!fr_cond_assert(mi->state & MODULE_INSTANCE_BOOTSTRAPPED)) ||
-	    (mi->state & MODULE_INSTANCE_INSTANTIATED)) return 0;
+	if (module_instance_skip_instantiate(mi)) return 0;
 
 	if (mi->module->type == DL_MODULE_TYPE_MODULE) {
 		if (fr_command_register_hook(NULL, mi->name, mi, module_cmd_table) < 0) {
@@ -1094,7 +1129,7 @@ int module_instantiate(module_instance_t *instance)
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
 	if (mi->exported->config && (cf_section_parse_pass2(mi->data,
-							  mi->conf) < 0)) return -1;
+							    mi->conf) < 0)) return -1;
 
 	/*
 	 *	Call the instantiate method, if any.
@@ -1113,6 +1148,16 @@ int module_instantiate(module_instance_t *instance)
 
 			return -1;
 		}
+	}
+
+	/*
+	 *	Instantiate shouldn't modify any global resources
+	 *	so we can protect the data now without the side
+	 *	effects we might see with boot data.
+	 */
+	if (unlikely(module_data_protect(mi, &mi->inst_pool) < 0)) {
+		cf_log_perr(mi->conf, "\"%s\"", mi->name);
+		return -1;
 	}
 	mi->state |= MODULE_INSTANCE_INSTANTIATED;
 
@@ -1161,7 +1206,7 @@ int module_bootstrap(module_instance_t *mi)
 	/*
 	 *	We only bootstrap modules in the init state
 	 */
-	if (mi->state & MODULE_INSTANCE_BOOTSTRAPPED) return 0;
+	if (module_instance_skip_bootstrap(mi)) return 0;
 
 	/*
 	 *	Bootstrap the module.
@@ -1178,8 +1223,30 @@ int module_bootstrap(module_instance_t *mi)
 			     mi->module->exported->name,
 			     mi->name);
 
+		/*
+		 *	Modules MUST NOT modify their instance data during
+		 *	bootstrap.  This is because dynamic (runtime) modules
+		 *	don't run their boostrap callbacks, and MUST re-resolve
+		 *	any resources added during bootstrap in the
+		 *	instantiate callback.
+		 *
+		 *	Bootstrap is ONLY there for adding global,
+		 *	module-specific resources.
+		 *
+		 *	If the module has MODULE_TYPE_DYNAMIC_UNSAFE is set,
+		 *	then we don't need the restriction.
+		 */
+		if ((!(mi->exported->flags & MODULE_TYPE_DYNAMIC_UNSAFE)) &&
+		    unlikely(module_data_protect(mi, &mi->inst_pool) < 0)) {
+			cf_log_perr(cs, "\"%s\"", mi->name);
+			return -1;
+		}
 		if (mi->exported->bootstrap(MODULE_INST_CTX(mi)) < 0) {
 			cf_log_err(cs, "Bootstrap failed for module \"%s\"", mi->name);
+			return -1;
+		}
+		if (unlikely(module_data_unprotect(mi, &mi->inst_pool) < 0)) {
+			cf_log_perr(cs, "\"%s\"", mi->name);
 			return -1;
 		}
 	}
@@ -1261,13 +1328,22 @@ static fr_slen_t module_instance_name(TALLOC_CTX *ctx, char **out,
  */
 static void module_detach_parent(module_instance_t *mi)
 {
-	if (mi->detached) return;
+	if (!(mi->state & (MODULE_INSTANCE_BOOTSTRAPPED | MODULE_INSTANCE_BOOTSTRAPPED))) return;
 
 	if (mi->parent) module_detach_parent(UNCONST(module_instance_t *, mi->parent));
 
-	if (mi->exported && mi->exported->detach) {
-		mi->exported->detach(&(module_detach_ctx_t){ .mi = mi });
-		mi->detached = true;
+	if (mi->state & MODULE_INSTANCE_INSTANTIATED) {
+		if (mi->exported && mi->exported->detach) {
+			mi->exported->detach(MODULE_DETACH_CTX(mi));
+		}
+		mi->state ^= MODULE_INSTANCE_INSTANTIATED;
+	}
+
+	if (mi->state & MODULE_INSTANCE_BOOTSTRAPPED) {
+		if (mi->exported && mi->exported->unstrap) {
+			mi->exported->unstrap(MODULE_DETACH_CTX(mi));
+		}
+		mi->state ^= MODULE_INSTANCE_BOOTSTRAPPED;
 	}
 }
 
@@ -1281,6 +1357,19 @@ static int _module_instance_free(module_instance_t *mi)
 	module_list_t *ml = mi->ml;
 
 	DEBUG3("Freeing %s (%p)", mi->name, mi);
+
+	/*
+	 *	Allow writing to instance and bootstrap data again
+	 *	so we can clean up without segving.
+	 */
+	if (unlikely(module_data_unprotect(mi, &mi->inst_pool) < 0)) {
+		cf_log_perr(mi->conf, "\"%s\"", mi->name);
+		return -1;
+	}
+	if (unlikely(module_data_unprotect(mi, &mi->boot_pool) < 0)) {
+		cf_log_perr(mi->conf, "\"%s\"", mi->name);
+		return -1;
+	}
 
 	if (fr_rb_node_inline_in_tree(&mi->name_node) && !fr_cond_assert(fr_rb_delete(ml->name_tree, mi))) return 1;
 	if (fr_rb_node_inline_in_tree(&mi->data_node) && !fr_cond_assert(fr_rb_delete(ml->data_tree, mi))) return 1;
@@ -1346,6 +1435,42 @@ module_instance_t *module_instance_copy(module_list_t *dst, module_instance_t co
 	if (!mi) return NULL;
 
 	return mi;
+}
+
+/** Allocate module instance data
+ *
+ * @param[out] pool_out		where to write pool details.
+ * @param[out] out		where to write data pointer.
+ * @param[in] mi		module instance.
+ * @param[in] size		of data to allocate.
+ * @param[in] type		talloc type to assign.
+ */
+static inline CC_HINT(always_inline)
+void module_instance_data_alloc(module_data_pool_t *pool_out, void **out,
+				module_instance_t *mi, size_t size, char const *type)
+{
+	dl_module_t const	*module = mi->module;
+	void			*data;
+
+	/*
+	 *	If there is supposed to be instance data, allocate it now.
+	 *
+	 *      If the structure is zero length then allocation will still
+	 *	succeed, and will create a talloc chunk header.
+	 *
+	 *      This is needed so we can resolve instance data back to
+	 *	module_instance_t/dl_module_t/dl_t.
+	 */
+	pool_out->ctx = talloc_page_aligned_pool(mi,
+						 &pool_out->start, &pool_out->len,
+						 1, size);
+	MEM(data = talloc_zero_array(pool_out->ctx, uint8_t, size));
+	if (!type) {
+		talloc_set_name(data, "%s_t", module->dl->name ? module->dl->name : "config");
+	} else {
+		talloc_set_name_const(data, type);
+	}
+	*out = data;
 }
 
 /** Allocate a new module and add it to a module list for later bootstrap/instantiation
@@ -1458,10 +1583,18 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	}
 
 	/*
-	 *	Allocate the module instance data.
+	 *	Allocate bootstrap data.
 	 */
-	module_instance_data_alloc(mi);
-
+	if (mi->exported->bootstrap) {
+		module_instance_data_alloc(&mi->boot_pool, &mi->boot,
+				   	   mi, mi->exported->boot_size, mi->exported->boot_type);
+	}
+	/*
+	 *	Allocate the module instance data.  We always allocate
+	 *	this so the module can use it for lookup.
+	 */
+	module_instance_data_alloc(&mi->inst_pool, &mi->data,
+				   mi, mi->exported->inst_size, mi->exported->inst_type);
 	/*
 	 *	If we're threaded, check if the module is thread-safe.
 	 *
@@ -1472,7 +1605,6 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	 */
 	if ((mi->exported->flags & MODULE_TYPE_THREAD_UNSAFE) != 0) pthread_mutex_init(&mi->mutex, NULL);
 	talloc_set_destructor(mi, _module_instance_free);	/* Set late intentionally */
-	mi->ml = ml;
 	mi->number = ml->last_number++;
 
 	/*

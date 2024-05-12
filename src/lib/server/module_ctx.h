@@ -46,7 +46,6 @@ typedef struct {
 } module_ctx_t;
 
 /** Temporary structure to hold arguments for instantiation calls
- *
  */
 typedef struct {
 	module_instance_t const		*mi;		//!< Instance of the module being instantiated.
@@ -167,6 +166,12 @@ DIAG_ON(unused-function)
  * @param[in] _mi	of the module being called..
  */
 #define MODULE_INST_CTX(_mi) &(module_inst_ctx_t){ .mi = _mi }
+
+/** Wrapper to create a module_detach_ctx_t as a compound literal
+ *
+ * @param[in] _mi	of the module being called..
+ */
+#define MODULE_DETACH_CTX(_mi) &(module_detach_ctx_t){ .mi = _mi }
 
 /** Wrapper to create a module_thread_inst_ctx_t as a compound literal
  *
