@@ -872,6 +872,11 @@ static int mod_load(void)
 	return 0;
 }
 
+static void mod_unload(void)
+{
+	xlat_func_unregister("radius.secret.verify");
+}
+
 /*
  *	rcodes not listed under a packet_type
  *	mean that the packet code will not be
@@ -1207,6 +1212,7 @@ fr_process_module_t process_radius = {
 		.inst_size	= sizeof(process_radius_t),
 
 		.onload		= mod_load,
+		.unload		= mod_unload,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
