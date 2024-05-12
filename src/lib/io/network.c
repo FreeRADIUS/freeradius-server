@@ -1335,6 +1335,7 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 
 	s = talloc_zero(nr, fr_network_socket_t);
 	fr_assert(s != NULL);
+	talloc_steal(s, li);
 
 	s->nr = nr;
 	s->listen = li;

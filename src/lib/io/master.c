@@ -2932,7 +2932,7 @@ int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *
 	 *	path data takes from the socket to the decoder and
 	 *	back again.
 	 */
-	MEM(li = talloc_zero(ctx, fr_listen_t));
+	MEM(li = talloc_zero(NULL, fr_listen_t));
 	talloc_set_destructor(li, fr_io_listen_free);
 
 	/*
