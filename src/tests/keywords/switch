@@ -5,9 +5,27 @@ switch &User-Name {
 
 	case "doug" {
 		&Filter-Id := "doug"
+		test_fail
 	}
 
 	default {
 		&Filter-Id := "default"
+		test_fail
+	}
+}
+
+switch "%{User-Name}" {
+	case 'bob' {
+		success
+	}
+
+	case 'doug' {
+		&Filter-Id := "doug"
+		test_fail
+	}
+
+	default {
+		&Filter-Id := "default"
+		test_fail
 	}
 }
