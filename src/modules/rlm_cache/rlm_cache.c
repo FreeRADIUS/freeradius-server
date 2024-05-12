@@ -42,12 +42,13 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_cache;
 
+int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
 static int cache_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
 
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_cache_t, driver_submodule), .dflt = "rbtree",
-			 .func = module_rlm_submodule_parse },
+			 .func = submodule_parse },
 	{ FR_CONF_OFFSET("ttl", rlm_cache_config_t, ttl), .dflt = "500s" },
 	{ FR_CONF_OFFSET("max_entries", rlm_cache_config_t, max_entries), .dflt = "0" },
 
@@ -101,6 +102,20 @@ fr_dict_attr_autoload_t rlm_cache_dict_attr[] = {
 	{ .out = &attr_cache_entry_hits, .name = "Cache-Entry-Hits", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ NULL }
 };
+
+int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	rlm_cache_t		*inst = talloc_get_type_abort(parent, rlm_cache_t);
+	module_instance_t	*mi;
+	int ret;
+
+	if (unlikely(ret = module_rlm_submodule_parse(ctx, out, parent, ci, rule) < 0)) return ret;
+
+	mi = talloc_get_type_abort(*((void **)out), module_instance_t);
+	inst->driver = (rlm_cache_driver_t const *)mi->exported; /* Public symbol exported by the submodule */
+
+	return 0;
+}
 
 static int cache_key_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
 			   char const *section_name1, char const *section_name2, void const *data,
@@ -1468,12 +1483,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	xlat_t		*xlat;
-	rlm_cache_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
-
-	/*
-	 *	Needs to be set here for callenv parsing
-	 */
-	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->exported;
 
 	/*
 	 *	Register the cache xlat function
@@ -1500,7 +1509,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 module_rlm_t rlm_cache = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
-		.flags		= MODULE_TYPE_DYNAMIC_UNSAFE,
 		.name		= "cache",
 		.inst_size	= sizeof(rlm_cache_t),
 		.config		= module_config,
