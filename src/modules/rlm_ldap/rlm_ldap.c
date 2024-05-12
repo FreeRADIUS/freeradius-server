@@ -2396,7 +2396,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	size_t			i;
 
 	CONF_SECTION		*options;
-	rlm_ldap_boot_t	const	*boot = talloc_get_type_abort(mctx->mi->data, rlm_ldap_boot_t);
+	rlm_ldap_boot_t	const	*boot = talloc_get_type_abort(mctx->mi->boot, rlm_ldap_boot_t);
 	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
 
