@@ -2632,8 +2632,7 @@ static int mod_close(fr_listen_t *li)
 	return 0;
 }
 
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	fr_io_instance_t *inst = mctx->mi->data;
 	CONF_SECTION *conf = mctx->mi->conf;
@@ -2717,23 +2716,6 @@ static char const *mod_name(fr_listen_t *li)
 
 	fr_assert(child != NULL);
 	return child->app_io->get_name(child);
-}
-
-
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	fr_io_instance_t	*inst = mctx->mi->data;
-	CONF_SECTION		*conf = mctx->mi->conf;
-
-	fr_assert(inst->app_io != NULL);
-
-	if (inst->app_io->common.instantiate &&
-	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->submodule)) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"proto_%s\"", inst->app_io->common.name);
-		return -1;
-	}
-
-	return 0;
 }
 
 /** Create a trie from arrays of allow / deny IP addresses
@@ -3138,7 +3120,6 @@ fr_app_io_t fr_master_app_io = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "radius_master_io",
 
-		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate,
 	},
 	.default_message_size	= 4096,
