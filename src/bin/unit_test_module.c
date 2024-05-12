@@ -47,8 +47,6 @@ RCSID("$Id$")
 #  include <getopt.h>
 #endif
 
-#include <ctype.h>
-
 #define EXIT_WITH_FAILURE \
 do { \
 	ret = EXIT_FAILURE; \
@@ -586,7 +584,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 /*
  *	Verify the result of the map.
  */
-static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
+static int map_proc_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED void *proc_inst,
 			   tmpl_t const *src, UNUSED map_list_t const *maps)
 {
 	if (!src) {
@@ -598,7 +596,7 @@ static int map_proc_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void 
 	return 0;
 }
 
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void *mod_inst, UNUSED void *proc_inst,
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mod_inst, UNUSED void *proc_inst,
 				    UNUSED request_t *request, UNUSED fr_value_box_list_t *src,
 				    UNUSED map_list_t const *maps)
 {
@@ -882,7 +880,7 @@ int main(int argc, char *argv[])
 		EXIT_WITH_FAILURE;
 	}
 
-	if (map_proc_register(NULL, "test-fail", mod_map_proc, map_proc_verify, 0, 0) < 0) {
+	if (map_proc_register(NULL, NULL, "test-fail", mod_map_proc, map_proc_verify, 0, 0) < 0) {
 		EXIT_WITH_FAILURE;
 	}
 
@@ -1171,6 +1169,8 @@ cleanup:
 		       memory_used_after, memory_used_before, memory_used_after - memory_used_before);
 	}
 #endif
+
+	map_proc_unregister("test-fail");
 
 	/*
 	 *	Free thread data

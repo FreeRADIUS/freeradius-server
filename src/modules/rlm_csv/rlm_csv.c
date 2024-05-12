@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/map_proc.h>
 
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSED void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
 				    fr_value_box_list_t *key, map_list_t const *maps);
 
 /*
@@ -481,7 +481,7 @@ static int csv_map_verify(map_t *map, void *instance)
 /*
  *	Verify the result of the map.
  */
-static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_inst,
+static int csv_maps_verify(CONF_SECTION *cs, void const *mod_inst, UNUSED void *proc_inst,
 			  tmpl_t const *src, map_list_t const *maps)
 {
 	map_t const *map = NULL;
@@ -496,7 +496,7 @@ static int csv_maps_verify(CONF_SECTION *cs, void *mod_inst, UNUSED void *proc_i
 		/*
 		 *	This function doesn't change the map, so it's OK.
 		 */
-		if (csv_map_verify(UNCONST(map_t *, map), mod_inst) < 0) return -1;
+		if (csv_map_verify(UNCONST(map_t *, map), UNCONST(void *, mod_inst)) < 0) return -1;
 	}
 
 	return 0;
@@ -737,7 +737,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	And register the `map csv <key> { ... }` function.
 	 */
-	map_proc_register(inst, mctx->mi->name, mod_map_proc, csv_maps_verify, 0, 0);
+	map_proc_register(inst, inst, mctx->mi->name, mod_map_proc, csv_maps_verify, 0, 0);
 
 	return 0;
 }
@@ -975,7 +975,7 @@ finish:
  * @param[in] maps	Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSED void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
 				    fr_value_box_list_t *key, map_list_t const *maps)
 {
 	rlm_csv_t		*inst = talloc_get_type_abort(mod_inst, rlm_csv_t);

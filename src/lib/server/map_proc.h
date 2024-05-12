@@ -60,7 +60,7 @@ extern "C" {
  * @param[in] maps		Head of the list of maps to process.
  * @return one of UNLANG_ACTION_*
  */
-typedef unlang_action_t (*map_proc_func_t)(rlm_rcode_t *p_result, void *mod_inst, void *proc_inst, request_t *request,
+typedef unlang_action_t (*map_proc_func_t)(rlm_rcode_t *p_result, void const *mod_inst, void *proc_inst, request_t *request,
 					   fr_value_box_list_t *result, map_list_t const *maps);
 
 /** Allocate new instance data for a map processor
@@ -74,15 +74,16 @@ typedef unlang_action_t (*map_proc_func_t)(rlm_rcode_t *p_result, void *mod_inst
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*map_proc_instantiate_t)(CONF_SECTION *cs, void *mod_inst, void *proc_inst,
+typedef int (*map_proc_instantiate_t)(CONF_SECTION *cs, void const *mod_inst, void *proc_inst,
 				      tmpl_t const *src, map_list_t const *maps);
 
 map_proc_t	*map_proc_find(char const *name);
 
-void		map_proc_free(void);
-int		map_proc_register(void *mod_inst, char const *name,
+int		map_proc_register(TALLOC_CTX *ctx, void const *mod_inst, char const *name,
 				  map_proc_func_t evaluate,
 				  map_proc_instantiate_t instantiate, size_t inst_size, fr_value_box_safe_for_t safe_for);
+
+int		map_proc_unregister(char const *name);
 
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 				      CONF_SECTION *cs, tmpl_t const *src, map_list_t const *maps);

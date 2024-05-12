@@ -24,13 +24,15 @@
  * @copyright 2015 Arran Cudbard-bell (a.cudbardb@freeradius.org)
  */
 
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/map_proc_priv.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/talloc.h>
 
 static fr_rb_tree_t *map_proc_root = NULL;
 
@@ -70,11 +72,6 @@ static int _map_proc_talloc_free(map_proc_t *proc)
 	return 0;
 }
 
-static void _map_proc_tree_free(void *proc)
-{
-	talloc_free(proc);
-}
-
 /** Find a map processor by name
  *
  * @param[in] name of map processor.
@@ -94,10 +91,28 @@ map_proc_t *map_proc_find(char const *name)
 	return fr_rb_find(map_proc_root, &find);
 }
 
+static int _map_proc_tree_init(UNUSED void *uctx)
+{
+	MEM(map_proc_root = fr_rb_inline_talloc_alloc(NULL, map_proc_t, node, map_proc_cmp, NULL));
+	return 0;
+}
+
+static int _map_proc_tree_free(UNUSED void *uctx)
+{
+	fr_rb_tree_t *mpr = map_proc_root;
+
+	fr_assert_msg(fr_rb_num_elements(mpr) == 0, "map_proc_t still registered");
+
+	map_proc_root = NULL;
+	talloc_free(mpr);
+	return 0;
+}
+
 /** Register a map processor
  *
  * This should be called by every module that provides a map processing function.
  *
+ * @param[in] ctx		if non-null, the ctx to bind this map processor to.
  * @param[in] mod_inst		of module registering the map_proc.
  * @param[in] name		of map processor. If processor already exists, it is replaced.
  * @param[in] evaluate		Module's map processor function.
@@ -108,7 +123,7 @@ map_proc_t *map_proc_find(char const *name)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_proc_register(void *mod_inst, char const *name,
+int map_proc_register(TALLOC_CTX *ctx, void const *mod_inst, char const *name,
 		      map_proc_func_t evaluate,
 		      map_proc_instantiate_t instantiate, size_t inst_size, fr_value_box_safe_for_t literals_safe_for)
 {
@@ -116,21 +131,21 @@ int map_proc_register(void *mod_inst, char const *name,
 
 	fr_assert(name && name[0]);
 
-	if (!map_proc_root) {
-		map_proc_root = fr_rb_inline_talloc_alloc(NULL, map_proc_t, node,
-							  map_proc_cmp, _map_proc_tree_free);
-		if (!map_proc_root) {
-			DEBUG("map_proc: Failed to create tree");
-			return -1;
-		}
-	}
+	fr_atexit_global_once(_map_proc_tree_init, _map_proc_tree_free, NULL);
 
 	/*
 	 *	If it already exists, replace it.
 	 */
 	proc = map_proc_find(name);
 	if (!proc) {
-		proc = talloc_zero(mod_inst, map_proc_t);
+		/*
+		*	Don't allocate directly in the parent ctx, it might be mprotected
+		*	later, and that'll cause segfaults if any of the map_proc_t are still
+		*	protected when we start shuffling the contents of the rbtree.
+		*/
+		proc = talloc_zero(NULL, map_proc_t);
+		if (ctx) talloc_link_ctx(ctx, proc);
+
 		strlcpy(proc->name, name, sizeof(proc->name));
 		proc->length = strlen(proc->name);
 
@@ -152,6 +167,27 @@ int map_proc_register(void *mod_inst, char const *name,
 
 	return 0;
 }
+
+/** Unregister a map processor by name
+ *
+ * @param[in] name	of map processor to unregister.
+ * @return
+ *	- 0 if map processor was found and unregistered.
+ *	- -1 if map processor was not found.
+ */
+int map_proc_unregister(char const *name)
+{
+	map_proc_t *proc;
+
+	proc = map_proc_find(name);
+	if (proc) {
+		talloc_free(proc);
+		return 0;
+	}
+
+	return -1;
+}
+
 
 /** Create a new map proc instance
  *
@@ -206,15 +242,4 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 unlang_action_t map_proc(rlm_rcode_t *p_result, request_t *request, map_proc_inst_t const *inst, fr_value_box_list_t *result)
 {
 	return inst->proc->evaluate(p_result, inst->proc->mod_inst, inst->data, request, result, inst->maps);
-}
-
-/** Free all map_processors unregistering them
- *
- */
-void map_proc_free(void)
-{
-	fr_rb_tree_t *mpr = map_proc_root;
-
-	map_proc_root = NULL;
-	talloc_free(mpr);
 }
