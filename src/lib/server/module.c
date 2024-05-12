@@ -542,14 +542,6 @@ typedef struct {
 								///< for talloc reasons.
 } mltl_module_instance_t;
 
-/** This causes the module_list code to skip bootstrapping for thread-local modules
- */
-static int mltl_mlg_data_add(module_instance_t *mi)
-{
-	mi->state |= MODULE_INSTANCE_BOOTSTRAPPED;
-	return 0;
-}
-
 static void mltl_mlg_data_del(module_instance_t *mi)
 {
 	mltl_module_instance_t *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
@@ -579,8 +571,6 @@ static void mltl_thread_data_del(module_thread_instance_t *ti)
  */
 module_list_type_t const module_list_type_thread_local = {
 	.inst_size = sizeof(mltl_module_instance_t),
-
-	.data_add = mltl_mlg_data_add,
 	.data_del = mltl_mlg_data_del,
 
 	.thread = {
@@ -589,6 +579,51 @@ module_list_type_t const module_list_type_thread_local = {
 		.data_del = mltl_thread_data_del
 	}
 };
+
+/** Print debugging information for a module
+ *
+ * @param[in] mi	Module instance to print.
+ */
+void module_instance_debug(module_instance_t const *mi)
+{
+	FR_FAULT_LOG("%s (%p) {", mi->name, mi);
+	FR_FAULT_LOG("  type         : %s", fr_table_str_by_value(dl_module_type_prefix, mi->module->type, "<invalid>"));
+	if (mi->parent) {
+		FR_FAULT_LOG("  parent       : \"%s\" (%p)", mi->parent->name, mi->parent);
+	}
+	FR_FAULT_LOG("  bootstrapped : %s", mi->state & MODULE_INSTANCE_BOOTSTRAPPED ? "yes" : "no");
+	FR_FAULT_LOG("  instantiated : %s", mi->state & MODULE_INSTANCE_INSTANTIATED ? "yes" : "no");
+	FR_FAULT_LOG("  boot         : %p", mi->boot);
+	FR_FAULT_LOG("  data         : %p", mi->data);
+	FR_FAULT_LOG("  conf         : %p", mi->conf);
+	FR_FAULT_LOG("}");
+}
+
+/** Print the contents of a module list
+ *
+ */
+void module_list_debug(module_list_t const *ml)
+{
+	module_instance_t const *inst;
+	fr_rb_iter_inorder_t	iter;
+
+	FR_FAULT_LOG("Module list \"%s\" (%p) {", ml->name, ml);
+	FR_FAULT_LOG("  phase masked:");
+	FR_FAULT_LOG("    bootstrap   : %s", ml->mask & MODULE_INSTANCE_BOOTSTRAPPED ? "yes" : "no");
+	FR_FAULT_LOG("    instantiate : %s", ml->mask & MODULE_INSTANCE_INSTANTIATED ? "yes" : "no");
+	FR_FAULT_LOG("    thread      : %s", ml->mask & MODULE_INSTANCE_INSTANTIATED ? "yes" : "no");
+	FR_FAULT_LOG("}");
+	/*
+	 *	Modules are printed in the same order
+	 *	they would be bootstrapped or inserted
+	 *	into the tree.
+	 */
+	for (inst = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	     inst;
+	     inst = fr_rb_iter_next_inorder(&iter)) {
+		module_instance_debug(inst);
+	}
+}
 
 /** Protect module data
  *
@@ -1176,15 +1211,15 @@ int module_instantiate(module_instance_t *instance)
  */
 int modules_instantiate(module_list_t const *ml)
 {
-	void			*instance;
+	void			*inst;
 	fr_rb_iter_inorder_t	iter;
 
 	DEBUG2("#### Instantiating %s modules ####", ml->name);
 
-	for (instance = fr_rb_iter_init_inorder(&iter, ml->name_tree);
-	     instance;
-	     instance = fr_rb_iter_next_inorder(&iter)) {
-	     	module_instance_t *mi = talloc_get_type_abort(instance, module_instance_t);
+	for (inst = fr_rb_iter_init_inorder(&iter, ml->name_tree);
+	     inst;
+	     inst = fr_rb_iter_next_inorder(&iter)) {
+	     	module_instance_t *mi = talloc_get_type_abort(inst, module_instance_t);
 		if (module_instantiate(mi) < 0) return -1;
 	}
 
@@ -1641,6 +1676,52 @@ static int _module_list_free(module_list_t *ml)
 	if (ml->type->free) ml->type->free(ml);
 
 	return 0;
+}
+
+/** Should we bootstrap this module instance?
+ *
+ * @param[in] mi	to check.
+ * @return
+ *	- true if the module instance should be bootstrapped.
+ *	- false if the module instance has already been bootstrapped.
+ */
+bool module_instance_skip_bootstrap(module_instance_t *mi)
+{
+	return ((mi->state | mi->ml->mask) & MODULE_INSTANCE_BOOTSTRAPPED);
+}
+
+/** Should we instantiate this module instance?
+ *
+ * @param[in] mi	to check.
+ * @return
+ *	- true if the module instance should be instantiated.
+ *	- false if the module instance has already been instantiated.
+ */
+bool module_instance_skip_instantiate(module_instance_t *mi)
+{
+	return ((mi->state | mi->ml->mask) & MODULE_INSTANCE_INSTANTIATED);
+}
+
+/** Should we instantiate this module instance in a new thread?
+ *
+ * @param[in] mi	to check.
+ * @return
+ *	- true if the module instance should be instantiated in a new thread.
+ *	- false if the module instance has already been instantiated in a new thread.
+ */
+bool module_instance_skip_thread_instantiate(module_instance_t *mi)
+{
+	return ((mi->state | mi->ml->mask) & MODULE_INSTANCE_NO_THREAD_INSTANTIATE);
+}
+
+/** Set a new bootstrap/instantiate state for a list
+ *
+ * @param[in] ml		To set the state for.
+ * @param[in] mask		New state.
+ */
+void module_list_mask_set(module_list_t *ml, module_instance_state_t mask)
+{
+	ml->mask = mask;
 }
 
 /** Allocate a new module list

@@ -288,7 +288,6 @@ struct module_instance_s {
        /** @name Module instance state
 	* @{
 	*/
-	module_instance_state_t		mask;		//!< Prevent phases from being executed.
 	module_instance_state_t		state;		//!< What's been done with this module so far.
 	CONF_SECTION			*conf;		//!< Module's instance configuration.
 	/** @} */
@@ -321,42 +320,6 @@ struct module_thread_instance_s {
 	uint64_t			active_callers; //! number of active callers.  i.e. number of current yields
 };
 
-/** Should we bootstrap this module instance?
- *
- * @param[in] mi	to check.
- * @return
- *	- true if the module instance should be bootstrapped.
- *	- false if the module instance has already been bootstrapped.
- */
-static inline bool module_instance_skip_bootstrap(module_instance_t *mi)
-{
-	return ((mi->state | mi->mask) & MODULE_INSTANCE_BOOTSTRAPPED);
-}
-
-/** Should we instantiate this module instance?
- *
- * @param[in] mi	to check.
- * @return
- *	- true if the module instance should be instantiated.
- *	- false if the module instance has already been instantiated.
- */
-static inline bool module_instance_skip_instantiate(module_instance_t *mi)
-{
-	return ((mi->state | mi->mask) & MODULE_INSTANCE_INSTANTIATED);
-}
-
-/** Should we instantiate this module instance in a new thread?
- *
- * @param[in] mi	to check.
- * @return
- *	- true if the module instance should be instantiated in a new thread.
- *	- false if the module instance has already been instantiated in a new thread.
- */
-static inline bool module_instance_skip_thread_instantiate(module_instance_t *mi)
-{
-	return ((mi->state | mi->mask) & MODULE_INSTANCE_NO_THREAD_INSTANTIATE);
-}
-
 /** Callback to retrieve thread-local data for a module
  *
  * @param[in] mi	to add data to (use mi->ml for the module list).
@@ -371,9 +334,12 @@ typedef module_thread_instance_t *(*module_list_thread_data_get_t)(module_instan
  * This allows modules to be instantiated and freed in phases,
  * i.e. proto modules before rlm modules.
  */
-struct module_list_s {
-	uint32_t			last_number;		//!< Last identifier assigned to a module instance.
+struct module_list_s
+{
 	char const			*name;			//!< Friendly list identifier.
+	module_instance_state_t		mask;			//!< Prevent phases from being executed.
+
+	uint32_t			last_number;		//!< Last identifier assigned to a module instance.
 	fr_rb_tree_t			*name_tree;		//!< Modules indexed by name.
 	fr_rb_tree_t			*data_tree;		//!< Modules indexed by data.
 	fr_heap_t			*inst_heap;		//!< Heap of module instances.
@@ -412,6 +378,15 @@ typedef struct {
 int			module_submodule_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 					       CONF_ITEM *ci, UNUSED conf_parser_t const *rule) CC_HINT(warn_unused_result);
 /** @} */
+
+/** @name Debugging functions
+ *
+ * @{
+ */
+void module_instance_debug(module_instance_t const *mi) CC_HINT(nonnull);
+
+void module_list_debug(module_list_t const *ml) CC_HINT(nonnull);
+ /** @} */
 
 /** @name Module and module thread lookup
  *
@@ -489,6 +464,18 @@ module_instance_t	*module_instance_alloc(module_list_t *ml,
  */
 extern module_list_type_t const module_list_type_global;		//!< Initialise a global module, with thread-specific data.
 extern module_list_type_t const module_list_type_thread_local;	//!< Initialise a thread-local module, which is only used in a single thread.
+/** @} */
+
+/** @name Control which phases are skipped (if any)
+ * @{
+ */
+bool			module_instance_skip_bootstrap(module_instance_t *mi);
+
+bool			module_instance_skip_instantiate(module_instance_t *mi);
+
+bool			module_instance_skip_thread_instantiate(module_instance_t *mi);
+
+void			module_list_mask_set(module_list_t *ml, module_instance_state_t mask);
 /** @} */
 
 module_list_t 		*module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type, char const *name)

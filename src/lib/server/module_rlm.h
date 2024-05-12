@@ -47,6 +47,12 @@ static inline module_rlm_t const *module_rlm_from_module(module_t const *module)
 	return (module_rlm_t const *)module;
 }
 
+/** @name Debug functions
+ * @{
+ */
+void		module_rlm_list_debug(void);
+/** @} */
+
 /** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules
  *
  * @{

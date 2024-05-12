@@ -2700,6 +2700,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	FIXME - Probably only want to do this for connected sockets?
 	 */
 	inst->clients = module_list_alloc(inst, &module_list_type_thread_local, "clients");
+	module_list_mask_set(inst->clients, MODULE_INSTANCE_BOOTSTRAPPED);
 
 	return 0;
 }

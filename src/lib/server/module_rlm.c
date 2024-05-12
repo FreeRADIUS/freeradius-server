@@ -74,6 +74,14 @@ char const *section_type_value[MOD_COUNT] = {
  */
 static module_list_t *rlm_modules;
 
+/** Print information on all loaded modules
+ *
+ */
+void module_rlm_list_debug(void)
+{
+	module_list_debug(rlm_modules);
+}
+
 /** Initialise a module specific exfile handle
  *
  * @see exfile_init

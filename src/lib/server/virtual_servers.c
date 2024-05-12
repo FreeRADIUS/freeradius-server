@@ -162,6 +162,22 @@ const conf_parser_t virtual_servers_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/** Print all the loaded listener instances
+ *
+ */
+void virtual_server_listen_debug(void)
+{
+	module_list_debug(proto_modules);
+}
+
+/** Print all the loaded process module instances
+ *
+ */
+void virtual_server_process_debug(void)
+{
+	module_list_debug(process_modules);
+}
+
 /** Generic conf_parser_t func for loading drivers
  *
  */

@@ -36,6 +36,15 @@ extern "C" {
 extern const conf_parser_t virtual_servers_config[];
 extern const conf_parser_t virtual_servers_on_read_config[];
 
+
+/** @name Debug functions
+ * @{
+ */
+void 		virtual_server_listen_debug(void);
+
+void		virtual_server_process_debug(void);
+/** @} */
+
 /** @name Callbacks for dealing with transports
  *
  * @{
