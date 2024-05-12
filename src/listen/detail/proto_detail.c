@@ -33,7 +33,9 @@
 #include "lib/server/module.h"
 
 extern fr_app_t proto_detail;
+
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 #if 0
 /*
@@ -52,7 +54,7 @@ static conf_parser_t const proto_detail_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_detail_t,
 			  type), .func = type_parse },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_detail_t, io_submodule),
-	  .func = virtual_sever_listen_transport_parse, .dflt = "file" },
+	  .func = transport_parse, .dflt = "file" },
 
 	/*
 	 *	Add this as a synonym so normal humans can understand it.
@@ -144,6 +146,63 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	}
 
 	inst->code = type_enum->value->vb_uint32;
+	return 0;
+}
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_detail_t *inst = talloc_get_type_abort(parent, proto_detail_t);
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	/*
+	 *	If we're not loading the work submodule directly, then try to load it here.
+	 */
+	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") != 0) {
+		CONF_SECTION *transport_cs;
+		module_instance_t *parent_inst;
+
+		inst->work_submodule = NULL;
+
+		transport_cs = cf_section_find(inst->cs, "work", NULL);
+		parent_inst = cf_data_value(cf_data_find(inst->cs, module_instance_t, "proto_detail"));
+		fr_assert(parent_inst);
+
+		if (!transport_cs) {
+			transport_cs = cf_section_dup(inst->cs, inst->cs, inst->app_io_conf,
+						      "work", NULL, false);
+			if (!transport_cs) {
+				cf_log_err(inst->cs, "Failed to create configuration for worker");
+				return -1;
+			}
+		}
+
+		/*
+		 *	This *should* get bootstrapped at some point after this module
+		 *	as it's inserted into the three the caller is iterating over.
+		 *
+		 *	We might want to revisit this, and use a linked list of modules
+		 *	to iterate over instead of a tree, so we can add this to the end
+		 *	of that list.
+		 */
+		inst->work_submodule = module_instance_alloc(parent_inst->ml, parent_inst, DL_MODULE_TYPE_SUBMODULE,
+							     "work", module_instance_name_from_conf(transport_cs), 0);
+		if (inst->work_submodule == NULL) {
+		error:
+			cf_log_perr(inst->cs, "Failed to load proto_detail_work");
+			TALLOC_FREE(inst->work_submodule);
+			return -1;
+		}
+
+		if (module_instance_conf_parse(inst->work_submodule, transport_cs) < 0) goto error;
+
+		inst->work_io = (fr_app_io_t const *) inst->work_submodule->exported;
+		inst->work_io_instance = inst->work_submodule->data;
+		inst->work_io_conf = inst->work_submodule->conf;
+	}
+
 	return 0;
 }
 
@@ -461,59 +520,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	CONF_SECTION		*conf = mctx->mi->conf;
 
 	/*
-	 *	Instantiate the I/O module. But DON'T instantiate the
-	 *	work submodule.  We leave that until later.
-	 */
-	if (inst->app_io->common.instantiate &&
-	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->common.name);
-		return -1;
-	}
-
-	/*
-	 *	These configuration items are not printed by default,
-	 *	because normal people shouldn't be touching them.
-	 */
-	if (!inst->max_packet_size) inst->max_packet_size = inst->app_io->default_message_size;
-
-	if (!inst->num_messages) inst->num_messages = 2;
-
-	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 2);
-	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
-
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
-
-	if (!inst->priority) inst->priority = PRIORITY_NORMAL;
-
-	/*
-	 *	If the IO is "file" and not the worker, instantiate the worker now.
-	 */
-	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") != 0) {
-		if (inst->work_io->common.instantiate &&
-		    (inst->work_io->common.instantiate(MODULE_INST_CTX(inst->work_submodule)) < 0)) {
-			cf_log_err(inst->work_io_conf, "Instantiation failed for \"%s\"", inst->work_io->common.name);
-			return -1;
-		}
-	}
-
-	return 0;
-}
-
-/** Bootstrap the application
- *
- * Bootstrap I/O and type submodules.
- *
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	proto_detail_t 		*inst = talloc_get_type_abort(mctx->mi->data, proto_detail_t);
-	CONF_SECTION		*conf = mctx->mi->conf;
-
-	/*
 	 *	The listener is inside of a virtual server.
 	 */
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
@@ -537,54 +543,23 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	inst->app_io_conf = inst->io_submodule->conf;
 
 	/*
-	 *	If we're not loading the work submodule directly, then try to load it here.
+	 *	These configuration items are not printed by default,
+	 *	because normal people shouldn't be touching them.
 	 */
-	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") != 0) {
-		CONF_SECTION *transport_cs;
-		module_instance_t *parent_inst;
+	if (!inst->max_packet_size) inst->max_packet_size = inst->app_io->default_message_size;
 
-		inst->work_submodule = NULL;
+	if (!inst->num_messages) inst->num_messages = 2;
 
-		transport_cs = cf_section_find(inst->cs, "work", NULL);
-		parent_inst = cf_data_value(cf_data_find(inst->cs, module_instance_t, "proto_detail"));
-		fr_assert(parent_inst);
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 2);
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
 
-		if (!transport_cs) {
-			transport_cs = cf_section_dup(inst->cs, inst->cs, inst->app_io_conf,
-						      "work", NULL, false);
-			if (!transport_cs) {
-				cf_log_err(inst->cs, "Failed to create configuration for worker");
-				return -1;
-			}
-		}
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65536);
 
-		/*
-		 *	This *should* get bootstrapped at some point after this module
-		 *	as it's inserted into the three the caller is iterating over.
-		 *
-		 *	We might want to revisit this, and use a linked list of modules
-		 *	to iterate over instead of a tree, so we can add this to the end
-		 *	of that list.
-		 */
-		inst->work_submodule = module_instance_alloc(parent_inst->ml, parent_inst, DL_MODULE_TYPE_SUBMODULE,
-							     "work", module_instance_name_from_conf(transport_cs), 0);
-		if (inst->work_submodule == NULL) {
-		error:
-			cf_log_perr(inst->cs, "Failed to load proto_detail_work");
-			TALLOC_FREE(inst->work_submodule);
-			return -1;
-		}
-
-		if (module_instance_conf_parse(inst->work_submodule, transport_cs) < 0) goto error;
-
-		inst->work_io = (fr_app_io_t const *) inst->work_submodule->exported;
-		inst->work_io_instance = inst->work_submodule->data;
-		inst->work_io_conf = inst->work_submodule->conf;
-	}
+	if (!inst->priority) inst->priority = PRIORITY_NORMAL;
 
 	return 0;
 }
-
 
 fr_app_t proto_detail = {
 	.common = {
@@ -593,7 +568,6 @@ fr_app_t proto_detail = {
 		.config			= proto_detail_config,
 		.inst_size		= sizeof(proto_detail_t),
 
-		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate,
 	},
 	.open			= mod_open,

@@ -224,27 +224,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_arp_t 		*inst = talloc_get_type_abort(mctx->mi->data, proto_arp_t);
-
-	if (!inst->num_messages) inst->num_messages = 256;
-
-	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
-	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
-
-	return 0;
-}
-
-
-/** Bootstrap the application
- *
- * Bootstrap I/O and type submodules.
- *
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	proto_arp_t 		*inst = talloc_get_type_abort(mctx->mi->data, proto_arp_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
 
 	/*
@@ -252,6 +231,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	inst->server_cs = cf_item_to_section(cf_parent(conf));
 	inst->cs = conf;
+
+	if (!inst->num_messages) inst->num_messages = 256;
+
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
 
 	return 0;
 }
@@ -278,7 +262,6 @@ fr_app_t proto_arp = {
 		.inst_size		= sizeof(proto_arp_t),
 		.onload			= mod_load,
 		.unload			= mod_unload,
-		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate
 	},
 	.dict			= &dict_arp,

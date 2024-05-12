@@ -253,14 +253,21 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	};
 
-	/*
-	 *	Instantiate the I/O module.
-	 */
-	if (inst->app_io->common.instantiate &&
-	    (inst->app_io->common.instantiate(MODULE_INST_CTX(inst->io_submodule)) < 0)) {
-		cf_log_err(conf, "Instantiation failed for \"%s\"", inst->app_io->common.name);
+	inst->server_cs = cf_item_to_section(cf_parent(conf));
+	inst->cs = conf;
+	inst->self = &proto_ldap_sync;
+
+	if (!inst->io_submodule) {
+		cf_log_err(conf, "Virtual server for LDAP sync requires a 'transport' configuration");
 		return -1;
 	}
+
+	/*
+	 *	Bootstrap the I/O module
+	 */
+	inst->app_io = (fr_app_io_t const *) inst->io_submodule->exported;
+	inst->app_io_instance = inst->io_submodule->data;
+	inst->app_io_conf = inst->io_submodule->conf;
 
 	/*
 	 *	These configuration items are not printed by default,
@@ -365,38 +372,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	proto_ldap_sync_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_ldap_sync_t);
-	CONF_SECTION		*conf = mctx->mi->conf;
-
-	inst->server_cs = cf_item_to_section(cf_parent(conf));
-	inst->cs = conf;
-	inst->self = &proto_ldap_sync;
-
-	if (!inst->io_submodule) {
-		cf_log_err(conf, "Virtual server for LDAP sync requires a 'transport' configuration");
-		return -1;
-	}
-
-	/*
-	 *	Bootstrap the I/O module
-	 */
-	inst->app_io = (fr_app_io_t const *) inst->io_submodule->exported;
-	inst->app_io_instance = inst->io_submodule->data;
-	inst->app_io_conf = inst->io_submodule->conf;
-
-	return 0;
-}
-
 fr_app_t proto_ldap_sync = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "ldap_sync",
 		.config		= proto_ldap_sync_config,
 		.inst_size	= sizeof(proto_ldap_sync_t),
-
-		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
 

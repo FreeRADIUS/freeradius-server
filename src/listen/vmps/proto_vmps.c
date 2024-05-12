@@ -313,44 +313,6 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_vmps_t		*inst = talloc_get_type_abort(mctx->mi->data, proto_vmps_t);
-
-	/*
-	 *	No IO module, it's an empty listener.
-	 */
-	if (!inst->io.submodule) return 0;
-
-	/*
-	 *	These configuration items are not printed by default,
-	 *	because normal people shouldn't be touching them.
-	 */
-	if (!inst->max_packet_size && inst->io.app_io) inst->max_packet_size = inst->io.app_io->default_message_size;
-
-	if (!inst->num_messages) inst->num_messages = 256;
-
-	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
-	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
-
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
-
-	/*
-	 *	Instantiate the master io submodule
-	 */
-	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.mi));
-}
-
-
-/** Bootstrap the application
- *
- * Bootstrap I/O and type submodules.
- *
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	proto_vmps_t 		*inst = talloc_get_type_abort(mctx->mi->data, proto_vmps_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
 
 	/*
@@ -387,9 +349,23 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	inst->io.mi = mctx->mi;
 
 	/*
-	 *	Bootstrap the master IO handler.
+	 *	These configuration items are not printed by default,
+	 *	because normal people shouldn't be touching them.
 	 */
-	return fr_master_app_io.common.bootstrap(MODULE_INST_CTX(inst->io.mi));
+	if (!inst->max_packet_size && inst->io.app_io) inst->max_packet_size = inst->io.app_io->default_message_size;
+
+	if (!inst->num_messages) inst->num_messages = 256;
+
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
+	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
+
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 1024);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
+
+	/*
+	 *	Instantiate the master io submodule
+	 */
+	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.mi));
 }
 
 static int mod_load(void)
@@ -416,7 +392,6 @@ fr_app_t proto_vmps = {
 
 		.onload			= mod_load,
 		.unload			= mod_unload,
-		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate
 	},
 	.dict			= &dict_vmps,

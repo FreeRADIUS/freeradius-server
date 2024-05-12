@@ -1288,6 +1288,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 */
 	fr_assert(inst->server);
 
+	inst->parent = talloc_get_type_abort(mctx->mi->parent->data, proto_ldap_sync_t);
+	inst->cs = conf;
+
+	if (inst->recv_buff_is_set) {
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
+		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
+	}
+
 	server = inst->server;
 	inst->handle_config.server = talloc_strdup(inst, "");
 
@@ -1301,23 +1309,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->handle_config.name = talloc_typed_asprintf(inst, "proto_ldap_conn (%s)",
 							 cf_section_name(cf_item_to_section(cf_parent(cf_parent(conf)))));
-
-	return 0;
-}
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	proto_ldap_sync_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_ldap_sync_ldap_t);
-	CONF_SECTION		*conf = mctx->mi->conf;
-	module_instance_t const	*mi = mctx->mi;
-
-	inst->parent = talloc_get_type_abort(mi->parent->data, proto_ldap_sync_t);
-	inst->cs = conf;
-
-	if (inst->recv_buff_is_set) {
-		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, 32);
-		FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, INT_MAX);
-	}
 
 	return 0;
 }
@@ -1342,8 +1333,6 @@ fr_app_io_t proto_ldap_sync_ldap = {
 		.config			= proto_ldap_sync_ldap_config,
 		.inst_size		= sizeof(proto_ldap_sync_ldap_t),
 		.thread_inst_size	= sizeof(proto_ldap_sync_ldap_thread_t),
-
-		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate
 	},
 

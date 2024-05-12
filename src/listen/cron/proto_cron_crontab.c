@@ -677,24 +677,12 @@ static char const *mod_name(fr_listen_t *li)
 	return thread->name;
 }
 
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	proto_cron_crontab_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_cron_crontab_t);
-
-	inst->parent = talloc_get_type_abort(mctx->mi->parent->data, proto_cron_t);
-	inst->cs = mctx->mi->conf;
-
-	return 0;
-}
-
 static fr_client_t *mod_client_find(fr_listen_t *li, UNUSED fr_ipaddr_t const *ipaddr, UNUSED int ipproto)
 {
 	proto_cron_crontab_t const       *inst = talloc_get_type_abort_const(li->app_io_instance, proto_cron_crontab_t);
 
 	return inst->client;
 }
-
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
@@ -704,6 +692,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_pair_t		*vp;
 	FILE			*fp;
 	bool			done = false;
+
+	inst->parent = talloc_get_type_abort(mctx->mi->parent->data, proto_cron_t);
+	inst->cs = mctx->mi->conf;
 
 	fr_pair_list_init(&inst->pair_list);
 	inst->client = client = talloc_zero(inst, fr_client_t);
@@ -745,7 +736,6 @@ fr_app_io_t proto_cron_crontab = {
 		.config			= crontab_listen_config,
 		.inst_size		= sizeof(proto_cron_crontab_t),
 		.thread_inst_size	= sizeof(proto_cron_crontab_thread_t),
-		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate
 	},
 	.default_message_size	= 4096,

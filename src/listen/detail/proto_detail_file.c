@@ -622,10 +622,30 @@ static char const *mod_name(fr_listen_t *li)
 }
 
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static fr_rb_tree_t *detail_file_tree = NULL;
+static pthread_mutex_t detail_file_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/** Compare two thread instances based on node pointer
+ *
+ * @param[in] one	First thread specific xlat expansion instance.
+ * @param[in] two	Second thread specific xlat expansion instance.
+ * @return CMP(one, two)
+ */
+static int8_t _detail_file_cmp(void const *one, void const *two)
+{
+	proto_detail_file_t const *a = one, *b = two;
+
+	return CMP(strcmp(a->filename, b->filename), 0);
+}
+
+/*
+ *	Check for multiple readers on the same set of files.
+ */
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_detail_file_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
+
 	module_instance_t const	*mi;
 	char			*p;
 
@@ -692,33 +712,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		cf_log_warn(conf, "Ignoring 'exit_when_done' due to 'immediate' flag not being set");
 		inst->parent->exit_when_done = false;
 	}
-
-	return 0;
-}
-
-static fr_rb_tree_t *detail_file_tree = NULL;
-static pthread_mutex_t detail_file_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-/** Compare two thread instances based on node pointer
- *
- * @param[in] one	First thread specific xlat expansion instance.
- * @param[in] two	Second thread specific xlat expansion instance.
- * @return CMP(one, two)
- */
-static int8_t _detail_file_cmp(void const *one, void const *two)
-{
-	proto_detail_file_t const *a = one, *b = two;
-
-	return CMP(strcmp(a->filename, b->filename), 0);
-}
-
-/*
- *	Check for multiple readers on the same set of files.
- */
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	proto_detail_file_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_detail_file_t);
-	CONF_SECTION		*conf = mctx->mi->conf;
 
 	pthread_mutex_lock(&detail_file_mutex);
 	if (!detail_file_tree) {
@@ -790,7 +783,6 @@ fr_app_io_t proto_detail_file = {
 		.config			= file_listen_config,
 		.inst_size		= sizeof(proto_detail_file_t),
 		.thread_inst_size	= sizeof(proto_detail_file_thread_t),
-		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate,
 	},
 	.default_message_size	= 65536,

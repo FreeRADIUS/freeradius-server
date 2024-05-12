@@ -388,7 +388,7 @@ static int mod_track_compare(UNUSED void const *instance, UNUSED void *thread_in
 	return (a->opcode < b->opcode) - (a->opcode > b->opcode);
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_vmps_udp_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_vmps_udp_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
@@ -510,7 +510,7 @@ fr_app_io_t proto_vmps_udp = {
 		.config			= udp_listen_config,
 		.inst_size		= sizeof(proto_vmps_udp_t),
 		.thread_inst_size	= sizeof(proto_vmps_udp_thread_t),
-		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate,
 	},
 	.default_message_size	= 4096,
 	.track_duplicates	= true,

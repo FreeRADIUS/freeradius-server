@@ -846,23 +846,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	proto_detail_work_t *inst = talloc_get_type_abort(mctx->mi->data, proto_detail_work_t);
 	fr_client_t *client;
-
-	client = inst->client = talloc_zero(inst, fr_client_t);
-	if (!inst->client) return 0;
-
-	client->ipaddr.af = AF_INET;
-	client->ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
-	client->src_ipaddr = client->ipaddr;
-
-	client->longname = client->shortname = client->secret = inst->filename;
-	client->nas_type = talloc_strdup(client, "other");
-
-	return 0;
-}
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	proto_detail_work_t	*inst = talloc_get_type_abort(mctx->mi->data, proto_detail_work_t);
 	CONF_SECTION		*cs = mctx->mi->conf;
 	module_instance_t const	*mi = mctx->mi;
 
@@ -894,9 +877,18 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	FR_INTEGER_BOUND_CHECK("limit.max_outstanding", inst->max_outstanding, >=, 1);
 
+	client = inst->client = talloc_zero(inst, fr_client_t);
+	if (!inst->client) return 0;
+
+	client->ipaddr.af = AF_INET;
+	client->ipaddr.addr.v4.s_addr = htonl(INADDR_NONE);
+	client->src_ipaddr = client->ipaddr;
+
+	client->longname = client->shortname = client->secret = inst->filename;
+	client->nas_type = talloc_strdup(client, "other");
+
 	return 0;
 }
-
 
 /** Private interface for use by proto_detail_file
  *
@@ -909,7 +901,6 @@ fr_app_io_t proto_detail_work = {
 		.config			= file_listen_config,
 		.inst_size		= sizeof(proto_detail_work_t),
 		.thread_inst_size	= sizeof(proto_detail_work_thread_t),
-		.bootstrap		= mod_bootstrap,
 		.instantiate		= mod_instantiate
 	},
 	.default_message_size	= 65536,

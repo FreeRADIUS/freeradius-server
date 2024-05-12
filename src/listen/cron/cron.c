@@ -398,6 +398,15 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	FILE			*fp;
 	bool			done;
 
+	/*
+	 *	The listener is inside of a virtual server.
+	 */
+	inst->server_cs = cf_item_to_section(cf_parent(conf));
+	inst->cs = conf;
+	inst->self = &proto_cron;
+
+	virtual_server_dict_set(inst->server_cs, inst->dict, false);
+
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, >=, 32);
 	FR_INTEGER_BOUND_CHECK("num_messages", inst->num_messages, <=, 65535);
 
@@ -424,40 +433,12 @@ static int mod_instantiate(void *instance, CONF_SECTION *conf)
 	return 0;
 }
 
-
-/** Bootstrap the application
- *
- * Bootstrap I/O and type submodules.
- *
- * @param[in] instance	Ctx data for this application.
- * @param[in] conf	Listen section parsed to give us instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_bootstrap(void *instance, CONF_SECTION *conf)
-{
-	proto_cron_t 		*inst = talloc_get_type_abort(instance, proto_cron_t);
-
-	/*
-	 *	The listener is inside of a virtual server.
-	 */
-	inst->server_cs = cf_item_to_section(cf_parent(conf));
-	inst->cs = conf;
-	inst->self = &proto_cron;
-
-	virtual_server_dict_set(inst->server_cs, inst->dict, false);
-
-	return 0;
-}
-
 fr_app_t proto_cron = {
 	.magic			= RLM_MODULE_INIT,
 	.name			= "cron",
 	.config			= proto_cron_config,
 	.inst_size		= sizeof(proto_cron_t),
 
-	.bootstrap		= mod_bootstrap,
 	.instantiate		= mod_instantiate,
 	.open			= mod_open,
 };
