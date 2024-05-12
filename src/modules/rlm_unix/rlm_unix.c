@@ -182,7 +182,6 @@ static xlat_action_t unix_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_unix_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_unix_t);
 	xlat_t			*xlat;
 	xlat_arg_parser_t	*xlat_arg;
 
@@ -191,7 +190,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	function automatically adds the module instance name
 	 *	as a prefix.
 	 */
-	xlat = xlat_func_register_module(inst, mctx, "group", unix_group_xlat, FR_TYPE_BOOL);
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, "group", unix_group_xlat, FR_TYPE_BOOL);
 	if (!xlat) {
 		PERROR("Failed registering group expansion");
 		return -1;
@@ -201,12 +200,12 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	The xlat escape function needs access to inst - so
 	 *	argument parser details need to be defined here
 	 */
-	xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
-	xlat_arg[0].type = FR_TYPE_STRING;
-	xlat_arg[0].required = true;
-	xlat_arg[0].concat = true;
-	xlat_arg[0].func = NULL; /* No real escaping done - we do strcmp() on it */
-	xlat_arg[0].uctx = NULL;
+	xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2);
+	xlat_arg[0] = (xlat_arg_parser_t) {
+		.type = FR_TYPE_STRING,
+		.required = true,
+		.concat = true
+	};
 	xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
 	xlat_func_mono_set(xlat, xlat_arg);

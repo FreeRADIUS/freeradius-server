@@ -451,7 +451,7 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_test_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_test_t);
+	rlm_test_t const *inst = talloc_get_type_abort(mctx->mi->data, rlm_test_t);
 	xlat_t *xlat;
 
 	/*
@@ -480,10 +480,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		INFO("inst->tmpl_m is NULL");
 	}
 
-	if (!(xlat = xlat_func_register_module(inst, mctx, "passthrough", test_xlat_passthrough, FR_TYPE_VOID))) return -1;
+	if (!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "passthrough", test_xlat_passthrough, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, test_xlat_passthrough_args);
 
-	if (!(xlat = xlat_func_register_module(inst, mctx, "fail", test_xlat_fail, FR_TYPE_VOID))) return -1;
+	if (!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "fail", test_xlat_fail, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, test_xlat_fail_args);
 
 	return 0;

@@ -39,8 +39,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/json/base.h>
 
-#include <ctype.h>
-
 #ifndef HAVE_JSON
 #  error "rlm_json should not be built unless json-c is available"
 #endif
@@ -327,7 +325,7 @@ static xlat_action_t json_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  *	- 0 on success.
  * 	- -1 on failure.
  */
-static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void *mod_inst, void *proc_inst,
+static int mod_map_proc_instantiate(CONF_SECTION *cs, UNUSED void const *mod_inst, void *proc_inst,
 				    tmpl_t const *src, map_list_t const *maps)
 {
 	rlm_json_jpath_cache_t	*cache_inst = proc_inst;
@@ -453,7 +451,7 @@ static int _json_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out, reques
  * @param maps		Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void *mod_inst, void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, UNUSED void const *mod_inst, void *proc_inst, request_t *request,
 				    fr_value_box_list_t *json, map_list_t const *maps)
 {
 	rlm_rcode_t			rcode = RLM_MODULE_UPDATED;
@@ -553,15 +551,11 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_json_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_json_t);
+	rlm_json_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_json_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
-	xlat_t			*xlat;
 	fr_json_format_t	*format = inst->format;
-
-	xlat = xlat_func_register_module(inst, mctx, "encode", json_encode_xlat, FR_TYPE_STRING);
-	xlat_func_mono_set(xlat, json_encode_xlat_arg);
 
 	/*
 	 *	Check the output format type and warn on unused
@@ -574,7 +568,18 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 	fr_json_format_verify(format, true);
 
-	if (map_proc_register(inst, "json", mod_map_proc,
+	return 0;
+}
+
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	rlm_json_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_json_t);
+	xlat_t			*xlat;
+
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, "encode", json_encode_xlat, FR_TYPE_STRING);
+	xlat_func_mono_set(xlat, json_encode_xlat_arg);
+
+	if (map_proc_register(mctx->mi->boot, inst, "json", mod_map_proc,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t), 0) < 0) return -1;
 	return 0;
 }
@@ -620,6 +625,7 @@ module_rlm_t rlm_json = {
 		.unload		= mod_unload,
 		.config		= module_config,
 		.inst_size	= sizeof(rlm_json_t),
-		.bootstrap	= mod_bootstrap
+		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate
 	}
 };

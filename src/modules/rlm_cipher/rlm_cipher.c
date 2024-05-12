@@ -1277,8 +1277,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_cipher_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cipher_t);
-	CONF_SECTION	*conf = mctx->mi->conf;
+	rlm_cipher_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cipher_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
 
 	switch (inst->type) {
 	case RLM_CIPHER_TYPE_RSA:
@@ -1299,13 +1299,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			/*
 			 *	Register decrypt xlat
 			 */
-			xlat = xlat_func_register_module(inst, mctx, "decrypt", cipher_rsa_decrypt_xlat, FR_TYPE_STRING);
+			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "decrypt", cipher_rsa_decrypt_xlat, FR_TYPE_STRING);
 			xlat_func_mono_set(xlat, cipher_rsa_decrypt_xlat_arg);
 
 			/*
 			 *	Verify sign xlat
 			 */
-			xlat = xlat_func_register_module(inst, mctx, "verify", cipher_rsa_verify_xlat, FR_TYPE_BOOL);
+			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "verify", cipher_rsa_verify_xlat, FR_TYPE_BOOL);
 			xlat_func_args_set(xlat, cipher_rsa_verify_xlat_arg);
 		}
 
@@ -1331,20 +1331,20 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			/*
 			 *	Register encrypt xlat
 			 */
-			xlat = xlat_func_register_module(inst, mctx, "encrypt", cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS);
+			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "encrypt", cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS);
 			xlat_func_mono_set(xlat, cipher_rsa_encrypt_xlat_arg);
 
 			/*
 			 *	Register sign xlat
 			 */
-			xlat = xlat_func_register_module(inst, mctx, "sign", cipher_rsa_sign_xlat, FR_TYPE_OCTETS);
+			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "sign", cipher_rsa_sign_xlat, FR_TYPE_OCTETS);
 			xlat_func_mono_set(xlat, cipher_rsa_sign_xlat_arg);
 
 			/*
 			 *	FIXME: These should probably be split into separate xlats
 			 *	so we can optimise for return types.
 			 */
-			xlat = xlat_func_register_module(inst, mctx, "certificate", cipher_certificate_xlat, FR_TYPE_VOID);
+			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "certificate", cipher_certificate_xlat, FR_TYPE_VOID);
 			xlat_func_args_set(xlat, cipher_certificate_xlat_args);
 		}
 		break;

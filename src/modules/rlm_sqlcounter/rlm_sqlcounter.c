@@ -440,81 +440,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
-	CONF_SECTION    	*conf = mctx->mi->conf;
-
-	fr_assert(inst->query && *inst->query);
-
-	inst->reset_time = fr_time_wrap(0);
-
-	if (find_next_reset(inst, fr_time()) == -1) {
-		cf_log_err(conf, "Invalid reset '%s'", inst->reset);
-		return -1;
-	}
-
-	/*
-	 *  Discover the beginning of the current time period.
-	 */
-	inst->last_reset = fr_time_wrap(0);
-
-	if (find_prev_reset(inst, fr_time()) < 0) {
-		cf_log_err(conf, "Invalid reset '%s'", inst->reset);
-		return -1;
-	}
-
-	return 0;
-}
-
-#define ATTR_CHECK(_tmpl, _name) if (tmpl_is_attr_unresolved(inst->_tmpl)) { \
-	if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), tmpl_attr_tail_unresolved(inst->_tmpl), -1, FR_TYPE_UINT64, &flags) < 0) { \
-		cf_log_perr(conf, "Failed defining %s attribute", _name); \
-		return -1; \
-	} \
-} else if (tmpl_is_attr(inst->_tmpl)) { \
-	if (tmpl_attr_tail_da(inst->_tmpl)->type != FR_TYPE_UINT64) { \
-		cf_log_err(conf, "%s attribute %s must be uint64", _name, tmpl_attr_tail_da(inst->_tmpl)->name); \
-		return -1; \
-	} \
-}
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
-	CONF_SECTION    	*conf = mctx->mi->conf;
-	fr_dict_attr_flags_t	flags = (fr_dict_attr_flags_t) { .internal = 1, .length = 8 };
-	module_instance_t const	*sql_inst;
-
-	ATTR_CHECK(start_attr, "reset_period_start")
-	ATTR_CHECK(end_attr, "reset_period_end")
-	ATTR_CHECK(counter_attr, "counter")
-	ATTR_CHECK(limit_attr, "check")
-
-	sql_inst = module_rlm_by_name(NULL, inst->sql_name);
-	if (!sql_inst) {
-		cf_log_err(conf, "Module \"%s\" not found", inst->sql_name);
-		return -1;
-	}
-
-	if (!talloc_get_type(sql_inst->data, rlm_sql_t)) {
-		cf_log_err(conf, "\"%s\" is not an instance of rlm_sql", inst->sql_name);
-		return -1;
-	}
-
-	return 0;
-}
-
 /** Custom call_env parser to tokenize the SQL query xlat used for counter retrieval
  */
 static int call_env_query_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
@@ -564,6 +489,81 @@ static const call_env_method_t sqlcounter_call_env = {
 		CALL_ENV_TERMINATOR
 	}
 };
+
+
+/*
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	rlm_sqlcounter_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
+	CONF_SECTION    	*conf = mctx->mi->conf;
+	module_instance_t const	*sql_inst;
+	fr_assert(inst->query && *inst->query);
+
+	sql_inst = module_rlm_by_name(NULL, inst->sql_name);
+	if (!sql_inst) {
+		cf_log_err(conf, "Module \"%s\" not found", inst->sql_name);
+		return -1;
+	}
+
+	if (!talloc_get_type(sql_inst->data, rlm_sql_t)) {
+		cf_log_err(conf, "\"%s\" is not an instance of rlm_sql", inst->sql_name);
+		return -1;
+	}
+
+	inst->reset_time = fr_time_wrap(0);
+
+	if (find_next_reset(inst, fr_time()) == -1) {
+		cf_log_err(conf, "Invalid reset '%s'", inst->reset);
+		return -1;
+	}
+
+	/*
+	 *  Discover the beginning of the current time period.
+	 */
+	inst->last_reset = fr_time_wrap(0);
+
+	if (find_prev_reset(inst, fr_time()) < 0) {
+		cf_log_err(conf, "Invalid reset '%s'", inst->reset);
+		return -1;
+	}
+
+	return 0;
+}
+
+#define ATTR_CHECK(_tmpl, _name) if (tmpl_is_attr_unresolved(inst->_tmpl)) { \
+	if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), tmpl_attr_tail_unresolved(inst->_tmpl), -1, FR_TYPE_UINT64, &flags) < 0) { \
+		cf_log_perr(conf, "Failed defining %s attribute", _name); \
+		return -1; \
+	} \
+} else if (tmpl_is_attr(inst->_tmpl)) { \
+	if (tmpl_attr_tail_da(inst->_tmpl)->type != FR_TYPE_UINT64) { \
+		cf_log_err(conf, "%s attribute %s must be uint64", _name, tmpl_attr_tail_da(inst->_tmpl)->name); \
+		return -1; \
+	} \
+}
+
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	rlm_sqlcounter_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlcounter_t);
+	CONF_SECTION    	*conf = mctx->mi->conf;
+	fr_dict_attr_flags_t	flags = (fr_dict_attr_flags_t) { .internal = 1, .length = 8 };
+
+	ATTR_CHECK(start_attr, "reset_period_start")
+	ATTR_CHECK(end_attr, "reset_period_end")
+	ATTR_CHECK(counter_attr, "counter")
+	ATTR_CHECK(limit_attr, "check")
+
+	return 0;
+}
 
 /*
  *	The module name should be the only globally exported symbol.

@@ -45,9 +45,15 @@ RCSID("$Id$")
 
 extern module_rlm_t rlm_sql;
 
+static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+
+typedef struct {
+	fr_dict_attr_t const *group_da;
+} rlm_sql_boot_t;
+
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("driver", FR_TYPE_VOID, 0, rlm_sql_t, driver_submodule), .dflt = "null",
-			 .func = module_rlm_submodule_parse },
+			 .func = submodule_parse },
 	{ FR_CONF_OFFSET("server", rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */
 	{ FR_CONF_OFFSET("port", rlm_sql_config_t, sql_port), .dflt = "0" },
 	{ FR_CONF_OFFSET("login", rlm_sql_config_t, sql_login), .dflt = "" },
@@ -225,6 +231,20 @@ static const call_env_method_t group_xlat_method_env = {
 		CALL_ENV_TERMINATOR
 	}
 };
+
+int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	rlm_sql_t		*inst = talloc_get_type_abort(parent, rlm_sql_t);
+	module_instance_t	*mi;
+	int ret;
+
+	if (unlikely(ret = module_rlm_submodule_parse(ctx, out, parent, ci, rule) < 0)) return ret;
+
+	mi = talloc_get_type_abort(*((void **)out), module_instance_t);
+	inst->driver = (rlm_sql_driver_t const *)mi->exported; /* Public symbol exported by the submodule */
+
+	return 0;
+}
 
 static int _sql_escape_uxtx_free(void *uctx)
 {
@@ -513,7 +533,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 /*
  *	Verify the result of the map.
  */
-static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
+static int sql_map_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED void *proc_inst,
 			  tmpl_t const *src, UNUSED map_list_t const *maps)
 {
 	if (!src) {
@@ -538,7 +558,7 @@ static int sql_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *
  * @param maps Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSED void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
 				    fr_value_box_list_t *query, map_list_t const *maps)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
@@ -1763,113 +1783,19 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
-	CONF_SECTION		*conf = mctx->mi->conf;
-	xlat_t			*xlat;
-	xlat_arg_parser_t	*sql_xlat_arg;
-	rlm_sql_escape_uctx_t	*uctx;
-
-	inst->name = mctx->mi->name;	/* Need this for functions in sql.c */
-	inst->driver = (rlm_sql_driver_t const *)inst->driver_submodule->exported; /* Public symbol exported by the submodule */
-
-	/*
-	 *	Register the group comparison attribute
-	 */
-	if (cf_pair_find(conf, "group_membership_query")) {
-		char const *group_attribute;
-		fr_dict_attr_flags_t flags = {};
-		char buffer[256];
-
-		if (inst->config.group_attribute) {
-			group_attribute = inst->config.group_attribute;
-		} else if (cf_section_name2(conf)) {
-			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", mctx->mi->name);
-			group_attribute = buffer;
-		} else {
-			group_attribute = "SQL-Group";
-		}
-
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, -1,
-				     FR_TYPE_STRING, &flags) < 0) {
-			cf_log_perr(conf, "Failed defining group attribute");
-			return -1;
-		}
-
-		inst->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
-								     false, false);
-		if (!inst->group_da) {
-			cf_log_perr(conf, "Failed resolving group attribute");
-			return -1;
-		}
-
-		/*
-		 *	Define the new %sql.group(name) xlat.  The
-		 *	register function automatically adds the
-		 *	module instance name as a prefix.
-		 */
-		xlat = xlat_func_register_module(inst, mctx, "group", sql_group_xlat, FR_TYPE_BOOL);
-		if (!xlat) {
-			cf_log_perr(conf, "Failed registering %s expansion", group_attribute);
-			return -1;
-		}
-		xlat_func_call_env_set(xlat, &group_xlat_method_env);
-
-		/*
-		 *	The xlat escape function needs access to inst - so
-		 *	argument parser details need to be defined here
-		 */
-		sql_xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
-		sql_xlat_arg[0].type = FR_TYPE_STRING;
-		sql_xlat_arg[0].required = true;
-		sql_xlat_arg[0].concat = true;
-		sql_xlat_arg[0].func = NULL; /* No real escaping done - we do strcmp() on it */
-		sql_xlat_arg[0].uctx = NULL;
-		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
-
-		xlat_func_mono_set(xlat, sql_xlat_arg);
-	}
-
-	/*
-	 *	Register the SQL xlat function
-	 */
-	xlat = xlat_func_register_module(inst, mctx, NULL, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
-	if (!xlat) {
-		cf_log_perr(conf, "Failed registering %s expansion", mctx->mi->name);
-		return -1;
-	}
-	xlat_func_call_env_set(xlat, &xlat_method_env);
-
-	/*
-	 *	The xlat escape function needs access to inst - so
-	 *	argument parser details need to be defined here
-	 */
-	sql_xlat_arg = talloc_zero_array(inst, xlat_arg_parser_t, 2);
-	uctx = talloc_zero(sql_xlat_arg, rlm_sql_escape_uctx_t);
-	*uctx = (rlm_sql_escape_uctx_t){ .sql = inst, .handle = NULL };
-	sql_xlat_arg[0].type = FR_TYPE_STRING;
-	sql_xlat_arg[0].required = true;
-	sql_xlat_arg[0].concat = true;
-	sql_xlat_arg[0].func = sql_xlat_escape;
-	sql_xlat_arg[0].safe_for = (fr_value_box_safe_for_t)inst->driver;
-	sql_xlat_arg[0].uctx = uctx;
-	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
-
-	xlat_func_mono_set(xlat, sql_xlat_arg);
-
-	/*
-	 *	Register the SQL map processor function
-	 */
-	if (inst->driver->sql_fields) map_proc_register(inst, mctx->mi->name, mod_map_proc, sql_map_verify, 0, (fr_value_box_safe_for_t)inst->driver);
-
-	return 0;
-}
-
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
-	CONF_SECTION	*conf = mctx->mi->conf;
+	rlm_sql_boot_t const	*boot = talloc_get_type_abort(mctx->mi->boot, rlm_sql_boot_t);
+	rlm_sql_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
+
+	/*
+	 *	We can't modify the inst field in bootstrap, and there's no
+	 *	point in making rlm_sql_boot_t available everywhere.
+	 */
+	inst->group_da = boot->group_da;
+
+	inst->name = mctx->mi->name;	/* Need this for functions in sql.c */
 
 	/*
 	 *	We need authorize_group_check_query or authorize_group_reply_query
@@ -1932,11 +1858,116 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	rlm_sql_boot_t		*boot = talloc_get_type_abort(mctx->mi->boot, rlm_sql_boot_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
+	xlat_t			*xlat;
+	xlat_arg_parser_t	*sql_xlat_arg;
+	rlm_sql_escape_uctx_t	*uctx;
+
+	/*
+	 *	Register the group comparison attribute
+	 */
+	if (cf_pair_find(conf, "group_membership_query")) {
+		char const *group_attribute;
+		fr_dict_attr_flags_t flags = {};
+		char buffer[256];
+
+		if (inst->config.group_attribute) {
+			group_attribute = inst->config.group_attribute;
+		} else if (cf_section_name2(conf)) {
+			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", mctx->mi->name);
+			group_attribute = buffer;
+		} else {
+			group_attribute = "SQL-Group";
+		}
+
+		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, -1,
+				     FR_TYPE_STRING, &flags) < 0) {
+			cf_log_perr(conf, "Failed defining group attribute");
+			return -1;
+		}
+
+		boot->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
+								      false, false);
+		if (!boot->group_da) {
+			cf_log_perr(conf, "Failed resolving group attribute");
+			return -1;
+		}
+
+		/*
+		 *	Define the new %sql.group(name) xlat.  The
+		 *	register function automatically adds the
+		 *	module instance name as a prefix.
+		 */
+		xlat = xlat_func_register_module(boot, mctx, "group", sql_group_xlat, FR_TYPE_BOOL);
+		if (!xlat) {
+			cf_log_perr(conf, "Failed registering %s expansion", group_attribute);
+			return -1;
+		}
+		xlat_func_call_env_set(xlat, &group_xlat_method_env);
+
+		/*
+		 *	The xlat escape function needs access to inst - so
+		 *	argument parser details need to be defined here
+		 */
+		sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2);
+		sql_xlat_arg[0] = (xlat_arg_parser_t){
+			.type = FR_TYPE_STRING,
+			.required = true,
+			.concat = true
+		};
+		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+
+		xlat_func_mono_set(xlat, sql_xlat_arg);
+	}
+
+	/*
+	 *	Register the SQL xlat function
+	 */
+	xlat = xlat_func_register_module(boot, mctx, NULL, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
+	if (!xlat) {
+		cf_log_perr(conf, "Failed registering %s expansion", mctx->mi->name);
+		return -1;
+	}
+	xlat_func_call_env_set(xlat, &xlat_method_env);
+
+	/*
+	 *	The xlat escape function needs access to inst - so
+	 *	argument parser details need to be defined here
+	 */
+	sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2);
+	uctx = talloc_zero(sql_xlat_arg, rlm_sql_escape_uctx_t);
+	*uctx = (rlm_sql_escape_uctx_t){ .sql = inst, .handle = NULL };
+	sql_xlat_arg[0] = (xlat_arg_parser_t){
+		.type = FR_TYPE_STRING,
+		.required = true,
+		.concat = true,
+		.func = sql_xlat_escape,
+		.safe_for = (fr_value_box_safe_for_t)inst->driver,
+		.uctx = uctx
+	};
+	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+
+	xlat_func_mono_set(xlat, sql_xlat_arg);
+
+	/*
+	 *	Register the SQL map processor function
+	 */
+	if (inst->driver->sql_fields) map_proc_register(mctx->mi->boot, inst, mctx->mi->name, mod_map_proc, sql_map_verify, 0, (fr_value_box_safe_for_t)inst->driver);
+
+	return 0;
+}
+
 /* globally exported name */
 module_rlm_t rlm_sql = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "sql",
+		.boot_size	= sizeof(rlm_sql_boot_t),
+		.boot_type	= "rlm_sql_boot_t",
 		.inst_size	= sizeof(rlm_sql_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,

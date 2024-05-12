@@ -1050,10 +1050,17 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	return state->recv(p_result, mctx, request);
 }
 
-
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	process_tacacs_t	*inst = talloc_get_type_abort(mctx->mi->data, process_tacacs_t);
+
+	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
+
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, >=, 1);
+	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, <=, 8);
+
+	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.max_session, >=, 64);
+	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.max_session, <=, (1 << 18));
 
 	inst->auth.state_tree = fr_state_tree_init(inst, attr_tacacs_state, main_config->spawn_workers, inst->auth.max_session,
 						   inst->auth.session_timeout, inst->auth.state_server_id,
@@ -1063,16 +1070,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_tacacs_t	*inst = talloc_get_type_abort(mctx->mi->data, process_tacacs_t);
+	CONF_SECTION	*server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 
-	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
-	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
-
-	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, >=, 1);
-	FR_INTEGER_BOUND_CHECK("session.max_rounds", inst->auth.max_rounds, <=, 8);
-
-	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.max_session, >=, 64);
-	FR_INTEGER_BOUND_CHECK("session.max", inst->auth.max_session, <=, (1 << 18));
+	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;
 }

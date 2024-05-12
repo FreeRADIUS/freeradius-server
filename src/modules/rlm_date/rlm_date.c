@@ -27,7 +27,6 @@
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/xlat_func.h>
-#include <ctype.h>
 #include <time.h>
 
 typedef struct {
@@ -232,10 +231,9 @@ static xlat_action_t xlat_date_convert(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_date_t 	*inst = talloc_get_type_abort(mctx->mi->data, rlm_date_t );
 	xlat_t 		*xlat;
 
-	xlat = xlat_func_register_module(inst, mctx, NULL, xlat_date_convert, FR_TYPE_VOID);
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, xlat_date_convert, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, xlat_date_convert_args);
 
 	return 0;

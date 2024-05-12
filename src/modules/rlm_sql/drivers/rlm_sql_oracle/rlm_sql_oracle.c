@@ -166,7 +166,7 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
@@ -630,7 +630,7 @@ rlm_sql_driver_t rlm_sql_oracle = {
 		.magic				= MODULE_MAGIC_INIT,
 		.inst_size			= sizeof(rlm_sql_oracle_t),
 		.config				= driver_config,
-		.bootstrap			= mod_bootstrap,
+		.instantiate			= mod_instantiate,
 		.detach				= mod_detach
 	},
 	.sql_socket_init		= sql_socket_init,

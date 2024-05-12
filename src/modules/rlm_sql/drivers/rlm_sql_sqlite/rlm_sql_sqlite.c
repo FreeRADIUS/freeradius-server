@@ -668,7 +668,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 	return -1;
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_sql_t);
 	rlm_sql_config_t const	*config = &parent->config;
@@ -684,9 +684,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 
 	/*
-	 *	mod_bootstrap() will try to create the database if it doesn't exist, up to and
-	 * 	including creating the directory it should live in, in which case we get to call
-	 * 	fr_dirfd() again. Hence failing this first fr_dirfd() just means the database isn't there.
+	 *	We will try to create the database if it doesn't exist, up to and
+	 * 	including creating the directory it should live in, in which case
+	 *	we get to call fr_dirfd() again. Hence failing this first fr_dirfd()
+	 *	just means the database isn't there.
 	 */
 	if (fr_dirfd(&fd, &r, inst->filename) < 0) {
 		exists = false;
@@ -818,7 +819,7 @@ rlm_sql_driver_t rlm_sql_sqlite = {
 		.inst_size			= sizeof(rlm_sql_sqlite_t),
 		.config				= driver_config,
 		.onload				= mod_load,
-		.bootstrap			= mod_bootstrap
+		.instantiate			= mod_instantiate
 	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.sql_socket_init		= sql_socket_init,

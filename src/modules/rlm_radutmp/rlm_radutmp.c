@@ -49,10 +49,14 @@ struct nas_port_s {
 };
 
 typedef struct {
-	NAS_PORT	*nas_port_list;
-	bool		check_nas;
-	uint32_t	permission;
-	bool		caller_id_ok;
+	NAS_PORT		*nas_port_list;
+} rlm_radutmp_mutable_t;
+
+typedef struct {
+	rlm_radutmp_mutable_t	*mutable;
+	bool			check_nas;
+	uint32_t		permission;
+	bool			caller_id_ok;
 } rlm_radutmp_t;
 
 typedef struct {
@@ -65,6 +69,16 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("permissions", rlm_radutmp_t, permission), .dflt = "0644" },
 	{ FR_CONF_OFFSET("caller_id", rlm_radutmp_t, caller_id_ok), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
+};
+
+static const call_env_method_t method_env = {
+	FR_CALL_ENV_METHOD_OUT(rlm_radutmp_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, rlm_radutmp_env_t, filename) },
+		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, rlm_radutmp_env_t, username),
+		  .pair.dflt = "%{User-Name}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
+		CALL_ENV_TERMINATOR
+	}
 };
 
 static fr_dict_t const *dict_radius;
@@ -407,7 +421,7 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	/*
 	 *	Find the entry for this NAS / portno combination.
 	 */
-	if ((cache = nas_port_find(inst->nas_port_list, ut.nas_address, ut.nas_port)) != NULL) {
+	if ((cache = nas_port_find(inst->mutable->nas_port_list, ut.nas_address, ut.nas_port)) != NULL) {
 		if (lseek(fd, (off_t)cache->offset, SEEK_SET) < 0) {
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
@@ -490,13 +504,13 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 		 *	easier than searching through the entire file.
 		 */
 		if (!cache) {
-			cache = talloc_zero(inst, NAS_PORT);
+			cache = talloc_zero(inst->mutable, NAS_PORT);
 			if (cache) {
 				cache->nasaddr = ut.nas_address;
 				cache->port = ut.nas_port;
 				cache->offset = off;
-				cache->next = inst->nas_port_list;
-				inst->nas_port_list = cache;
+				cache->next = inst->mutable->nas_port_list;
+				inst->mutable->nas_port_list = cache;
 			}
 		}
 
@@ -538,15 +552,27 @@ static unlang_action_t CC_HINT(nonnull) mod_accounting(rlm_rcode_t *p_result, mo
 	RETURN_MODULE_RCODE(rcode);
 }
 
-static const call_env_method_t method_env = {
-	FR_CALL_ENV_METHOD_OUT(rlm_radutmp_env_t),
-	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("filename", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, rlm_radutmp_env_t, filename) },
-		{ FR_CALL_ENV_OFFSET("username", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED, rlm_radutmp_env_t, username),
-		  .pair.dflt = "%{User-Name}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING },
-		CALL_ENV_TERMINATOR
-	}
-};
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	rlm_radutmp_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_radutmp_t);
+
+	/*
+	 *	Must be in the NULL ctx so it doesn't
+	 *	end up in a protected page.
+	 */
+	inst->mutable = talloc_zero(NULL, rlm_radutmp_mutable_t);
+
+	return 0;
+}
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_radutmp_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_radutmp_t);
+
+	talloc_free(inst->mutable);
+
+	return 0;
+}
 
 /* globally exported name */
 extern module_rlm_t rlm_radutmp;
@@ -556,7 +582,9 @@ module_rlm_t rlm_radutmp = {
 		.name		= "radutmp",
 		.flags		= MODULE_TYPE_THREAD_UNSAFE,
 		.inst_size	= sizeof(rlm_radutmp_t),
-		.config		= module_config
+		.config		= module_config,
+		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
 	},
 	.method_names = (module_method_name_t[]){
 		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,

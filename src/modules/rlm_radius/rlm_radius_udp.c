@@ -69,7 +69,7 @@ typedef struct {
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
 	bool			replicate;		//!< Copied from parent->replicate
 
-	fr_trunk_conf_t		*trunk_conf;		//!< trunk configuration
+	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
 } rlm_radius_udp_t;
 
 typedef struct {
@@ -2780,15 +2780,10 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 						.request_free = request_free
 					};
 
-	inst->trunk_conf = &inst->parent->trunk_conf;
-
-	inst->trunk_conf->req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
-	inst->trunk_conf->req_pool_size = sizeof(udp_request_t) + inst->max_packet_size + sizeof(radius_track_entry_t ***) + sizeof(fr_pair_t) + 20;
-
 	thread->el = mctx->el;
 	thread->inst = inst;
 	thread->trunk = fr_trunk_alloc(thread, mctx->el, inst->replicate ? &io_funcs_replicate : &io_funcs,
-				       inst->trunk_conf, inst->parent->name, thread, false);
+				       &inst->trunk_conf, inst->parent->name, thread, false);
 	if (!thread->trunk) return -1;
 
 	return 0;
@@ -2884,6 +2879,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, <=, (1 << 30));
 	}
 
+	memcpy(&inst->trunk_conf, &inst->parent->trunk_conf, sizeof(inst->trunk_conf));
+	inst->trunk_conf.req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
+	inst->trunk_conf.req_pool_size = sizeof(udp_request_t) + inst->max_packet_size + sizeof(radius_track_entry_t ***) + sizeof(fr_pair_t) + 20;
 
 	return 0;
 }

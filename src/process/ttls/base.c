@@ -507,6 +507,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	process_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, process_ttls_t);
 
+	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
+
 	inst->auth.state_tree = fr_state_tree_init(inst, attr_state, main_config->spawn_workers, inst->auth.session.max,
 						   inst->auth.session.timeout, inst->auth.session.state_server_id,
 						   fr_hash_string(cf_section_name2(inst->server_cs)));
@@ -516,10 +518,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	process_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, process_ttls_t);
+	CONF_SECTION	*server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
 
-	inst->server_cs = cf_item_to_section(cf_parent(mctx->mi->conf));
-	if (virtual_server_section_attribute_define(inst->server_cs, "authenticate", attr_auth_type) < 0) return -1;
+	if (virtual_server_section_attribute_define(server_cs, "authenticate", attr_auth_type) < 0) return -1;
 
 	return 0;
 }

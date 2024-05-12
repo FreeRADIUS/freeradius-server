@@ -27,20 +27,30 @@ RCSID("$Id$")
 #define LOG_PREFIX mctx->mi->name
 
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+
+/*
+ *	Instance data is mprotected for runtime
+ *	this is fine for the majority of module
+ *	instances, but not for rlm_always.
+ *
+ *	This struct is allocated outside of the
+ */
+typedef struct {
+	rlm_rcode_t		rcode;		//!< The integer constant representing rcode_str.
+	bool			force;		//!< If true, we force the rcode.
+} rlm_always_mutable_t;
 
 /*
  *	The instance data for rlm_always is the list of fake values we are
  *	going to return.
  */
 typedef struct {
-	char const	*rcode_str;	//!< The base value.
-	module_instance_t *mi;
-
-	rlm_rcode_t	rcode;		//!< The integer constant representing rcode_str.
-	uint32_t	simulcount;
-	bool		mpp;
+	char const		*rcode_str;	//!< The base value.
+	module_instance_t	*mi;
+	rlm_always_mutable_t	*mutable;
 } rlm_always_t;
 
 /*
@@ -48,8 +58,6 @@ typedef struct {
  */
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("rcode", rlm_always_t, rcode_str), .dflt = "fail" },
-	{ FR_CONF_OFFSET("simulcount", rlm_always_t, simulcount), .dflt = "0" },
-	{ FR_CONF_OFFSET("mpp", rlm_always_t, mpp), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -115,39 +123,6 @@ done:
 
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
-	xlat_t		*xlat;
-
-	inst->mi = module_rlm_by_name(NULL, mctx->mi->name);
-	if (!inst->mi) {
-		cf_log_err(mctx->mi->conf, "Can't find the module instance data for this module: %s", mctx->mi->name);
-		return -1;
-	}
-
-	xlat = xlat_func_register_module(inst, mctx, NULL, always_xlat, FR_TYPE_STRING);
-	xlat_func_args_set(xlat, always_xlat_args);
-
-	return 0;
-}
-
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
-
-	/*
-	 *	Convert the rcode string to an int
-	 */
-	inst->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
-	if (inst->rcode == RLM_MODULE_NOT_SET) {
-		cf_log_err(mctx->mi->conf, "rcode value \"%s\" is invalid", inst->rcode_str);
-		return -1;
-	}
-
-	return 0;
-}
-
 /*
  *	Just return the rcode ... this function is autz, auth, acct, and
  *	preacct!
@@ -156,7 +131,53 @@ static unlang_action_t CC_HINT(nonnull) mod_always_return(rlm_rcode_t *p_result,
 {
 	rlm_always_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_always_t);
 
-	RETURN_MODULE_RCODE(inst->rcode);
+	RETURN_MODULE_RCODE(inst->mutable->rcode);
+}
+
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
+
+	talloc_free(inst->mutable);
+	return 0;
+}
+
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
+
+	inst->mi = module_rlm_by_name(NULL, mctx->mi->name);
+	if (!inst->mi) {
+		cf_log_err(mctx->mi->conf, "Can't find the module instance data for this module: %s", mctx->mi->name);
+		return -1;
+	}
+
+	/*
+	 *	Allocate this outside of the module instance data,
+	 *	as that gets mprotected
+	 */
+	MEM(inst->mutable = talloc_zero(NULL, rlm_always_mutable_t));
+
+	/*
+	 *	Convert the rcode string to an int
+	 */
+	inst->mutable->rcode = fr_table_value_by_str(rcode_table, inst->rcode_str, RLM_MODULE_NOT_SET);
+	if (inst->mutable->rcode == RLM_MODULE_NOT_SET) {
+		cf_log_err(mctx->mi->conf, "rcode value \"%s\" is invalid", inst->rcode_str);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	xlat_t		*xlat;
+
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, always_xlat, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, always_xlat_args);
+
+	return 0;
 }
 
 extern module_rlm_t rlm_always;
@@ -168,6 +189,7 @@ module_rlm_t rlm_always = {
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
 	},
 	.method_names = (module_method_name_t[]){
 		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_always_return     },

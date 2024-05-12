@@ -537,7 +537,7 @@ static const call_env_method_t winbind_group_xlat_call_env = {
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_winbind_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_winbind_t);
+	rlm_winbind_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_winbind_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
 	xlat_t			*xlat;
 
@@ -546,7 +546,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	function automatically adds the module instance name
 	 *	as a prefix.
 	 */
-	xlat = xlat_func_register_module(inst, mctx, "group", winbind_group_xlat, FR_TYPE_BOOL);
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, "group", winbind_group_xlat, FR_TYPE_BOOL);
 	if (!xlat) {
 		cf_log_err(conf, "Failed registering group expansion");
 		return -1;

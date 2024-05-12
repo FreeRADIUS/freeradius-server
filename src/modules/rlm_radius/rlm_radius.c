@@ -452,7 +452,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	return unlang_module_yield(request, inst->io->resume, mod_radius_signal, 0, rctx);
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	size_t i, num_types;
 	rlm_radius_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
@@ -661,7 +661,7 @@ module_rlm_t rlm_radius = {
 		.onload		= mod_load,
 		.unload		= mod_unload,
 
-		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
 	},
 	.method_names = (module_method_name_t[]){
 		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,	.method = mod_process },

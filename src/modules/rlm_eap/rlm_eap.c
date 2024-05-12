@@ -1054,34 +1054,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_t);
 	size_t		i;
+	size_t		j, loaded, count = 0;
 
-	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->mi->name, -1);
-	if (!inst->auth_type) {
-		WARN("Failed to find 'authenticate %s {...}' section.  EAP authentication will likely not work",
-		     mctx->mi->name);
-	}
-
-	/*
-	 *	Create our own random pool.
-	 */
-	for (i = 0; i < 256; i++) inst->rand_pool.randrsl[i] = fr_rand();
-	fr_isaac_init(&inst->rand_pool, 1);
-	inst->rand_pool.randcnt = 0;
-
-	return 0;
-}
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_eap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_t);
-	size_t		i, j, loaded, count = 0;
-
-	/*
-	 *	Load and bootstrap the submodules now
-	 *	We have to do that here instead of in a parse function
-	 *	Because the submodule might want to look at its parent
-	 *	and we haven't completed our own bootstrap phase yet.
-	 */
 	loaded = talloc_array_length(inst->type_submodules);
 
 	/*
@@ -1178,6 +1152,19 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		}
 	}
 
+	inst->auth_type = fr_dict_enum_by_name(attr_auth_type, mctx->mi->name, -1);
+	if (!inst->auth_type) {
+		WARN("Failed to find 'authenticate %s {...}' section.  EAP authentication will likely not work",
+		     mctx->mi->name);
+	}
+
+	/*
+	 *	Create our own random pool.
+	 */
+	for (i = 0; i < 256; i++) inst->rand_pool.randrsl[i] = fr_rand();
+	fr_isaac_init(&inst->rand_pool, 1);
+	inst->rand_pool.randcnt = 0;
+
 	return 0;
 }
 
@@ -1207,7 +1194,6 @@ module_rlm_t rlm_eap = {
 		.config		= module_config,
 		.onload		= mod_load,
 		.unload		= mod_unload,
-		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 	},
         .method_names = (module_method_name_t[]){

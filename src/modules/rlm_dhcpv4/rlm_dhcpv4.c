@@ -31,8 +31,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/unlang/module.h>
 
-#include <ctype.h>
-
 static fr_dict_t const *dict_dhcpv4;
 static fr_dict_t const *dict_freeradius;
 
@@ -100,47 +98,6 @@ static const conf_parser_t module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/** Bootstrap the module
- *
- * Bootstrap I/O and type submodules.
- *
- * @param[in] mctx	data for this module
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_dhcpv4_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_dhcpv4_t);
-	CONF_SECTION	*conf = mctx->mi->conf;
-
-	/*
-	 *	Ensure that we have a destination address.
-	 */
-	if (inst->config.ipaddr.af == AF_UNSPEC) {
-		cf_log_err(conf, "A value must be given for 'ipaddr'");
-		return -1;
-	}
-
-	if (inst->config.ipaddr.af != AF_INET) {
-		cf_log_err(conf, "DHCPv4 can only use IPv4 addresses in 'ipaddr'");
-		return -1;
-	}
-
-	if (!inst->config.port) {
-		cf_log_err(conf, "A value must be given for 'port'");
-		return -1;
-	}
-
-	/*
-	 *	Clamp max_packet_size
-	 */
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, DEFAULT_PACKET_SIZE);
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, MAX_PACKET_SIZE);
-
-	return 0;
-}
-
 typedef struct {
 	request_t		*request;
 	bool			sent;
@@ -155,32 +112,6 @@ static void dhcpv4_queue_resume(bool sent, void *rctx)
 	unlang_interpret_mark_runnable(d->request);
 }
 
-/** Instantiate thread data for the submodule.
- *
- */
-static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
-{
-	rlm_dhcpv4_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_dhcpv4_t);
-	rlm_dhcpv4_thread_t 	*t = talloc_get_type_abort(mctx->thread, rlm_dhcpv4_thread_t);
-	CONF_SECTION		*conf = mctx->mi->conf;
-
-	t->buffer = talloc_array(t, uint8_t, inst->max_packet_size);
-	if (!t->buffer) {
-		cf_log_err(conf, "Failed allocating buffer");
-		return -1;
-	}
-
-	t->buffer_size = inst->max_packet_size;
-
-	t->uq = fr_udp_queue_alloc(t, &inst->config, mctx->el, dhcpv4_queue_resume);
-	if (!t->uq) {
-		cf_log_err(conf, "Failed allocating outbound udp queue - %s", fr_strerror());
-		return -1;
-	}
-
-	return 0;
-}
-
 static unlang_action_t dhcpv4_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
 	rlm_dhcpv4_delay_t *d = talloc_get_type_abort(mctx->rctx, rlm_dhcpv4_delay_t);
@@ -193,7 +124,6 @@ static unlang_action_t dhcpv4_resume(rlm_rcode_t *p_result, module_ctx_t const *
 	talloc_free(d);
 	RETURN_MODULE_OK;
 }
-
 
 /** Send packets outbound.
  *
@@ -321,13 +251,81 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	return unlang_module_yield(request, dhcpv4_resume, NULL, 0, d);
 }
 
+
+/** Instantiate thread data for the submodule.
+ *
+ */
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_dhcpv4_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_dhcpv4_t);
+	rlm_dhcpv4_thread_t 	*t = talloc_get_type_abort(mctx->thread, rlm_dhcpv4_thread_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
+
+	t->buffer = talloc_array(t, uint8_t, inst->max_packet_size);
+	if (!t->buffer) {
+		cf_log_err(conf, "Failed allocating buffer");
+		return -1;
+	}
+
+	t->buffer_size = inst->max_packet_size;
+
+	t->uq = fr_udp_queue_alloc(t, &inst->config, mctx->el, dhcpv4_queue_resume);
+	if (!t->uq) {
+		cf_log_err(conf, "Failed allocating outbound udp queue - %s", fr_strerror());
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Bootstrap the module
+ *
+ * Bootstrap I/O and type submodules.
+ *
+ * @param[in] mctx	data for this module
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	rlm_dhcpv4_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_dhcpv4_t);
+	CONF_SECTION	*conf = mctx->mi->conf;
+
+	/*
+	 *	Ensure that we have a destination address.
+	 */
+	if (inst->config.ipaddr.af == AF_UNSPEC) {
+		cf_log_err(conf, "A value must be given for 'ipaddr'");
+		return -1;
+	}
+
+	if (inst->config.ipaddr.af != AF_INET) {
+		cf_log_err(conf, "DHCPv4 can only use IPv4 addresses in 'ipaddr'");
+		return -1;
+	}
+
+	if (!inst->config.port) {
+		cf_log_err(conf, "A value must be given for 'port'");
+		return -1;
+	}
+
+	/*
+	 *	Clamp max_packet_size
+	 */
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, DEFAULT_PACKET_SIZE);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, MAX_PACKET_SIZE);
+
+	return 0;
+}
+
 extern module_rlm_t rlm_dhcpv4;
 module_rlm_t rlm_dhcpv4 = {
 	.common = {
 		.magic			= MODULE_MAGIC_INIT,
 		.name			= "dhcpv4",
 		.inst_size		= sizeof(rlm_dhcpv4_t),
-		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate,
 
 		.config			= module_config,
 

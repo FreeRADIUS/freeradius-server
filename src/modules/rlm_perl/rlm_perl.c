@@ -581,16 +581,6 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 	DEBUG("%*s}", indent_section, " ");
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	xlat_t		*xlat;
-
-	xlat = xlat_func_register_module(NULL, mctx, NULL, perl_xlat, FR_TYPE_VOID);
-	xlat_func_args_set(xlat, perl_xlat_args);
-
-	return 0;
-}
-
 static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const *vp,
 				     int *i, const char *hash_name, const char *list_name)
 {
@@ -1108,6 +1098,16 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 }
 DIAG_ON(nested-externs)
 
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	xlat_t *xlat;
+
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, perl_xlat, FR_TYPE_VOID);
+	xlat_func_args_set(xlat, perl_xlat_args);
+
+	return 0;
+}
+
 static int mod_load(void)
 {
 	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
@@ -1154,7 +1154,6 @@ static void mod_unload(void)
 	if (perl_dlhandle) dlclose(perl_dlhandle);
 	PERL_SYS_TERM();
 }
-
 
 /*
  *	The module name should be the only globally exported symbol.

@@ -372,6 +372,22 @@ static void mod_icmp_error(fr_event_list_t *el, UNUSED int sockfd, UNUSED int fl
 	t->fd = -1;
 }
 
+/** Destroy thread data for the submodule.
+ *
+ */
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_icmp_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
+
+	if (t->fd < 0) return 0;
+
+	(void) fr_event_fd_delete(mctx->el, t->fd, FR_EVENT_FILTER_IO);
+	close(t->fd);
+	t->fd = -1;
+
+	return 0;
+}
+
 /** Instantiate thread data for the submodule.
  *
  */
@@ -491,17 +507,28 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	return 0;
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_icmp_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_icmp_t);
-	xlat_t		*xlat;
-
-	xlat = xlat_func_register_module(inst, mctx, NULL, xlat_icmp, FR_TYPE_BOOL);
-	xlat_func_args_set(xlat, xlat_icmp_args);
+	rlm_icmp_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_icmp_t);
 
 	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, >=, fr_time_delta_from_msec(100)); /* 1/10s minimum timeout */
 	FR_TIME_DELTA_BOUND_CHECK("timeout", inst->timeout, <=, fr_time_delta_from_sec(10));
 
+	return 0;
+}
+
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	xlat_t		*xlat;
+
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, xlat_icmp, FR_TYPE_BOOL);
+	xlat_func_args_set(xlat, xlat_icmp_args);
+
+	return 0;
+}
+
+static int mod_load(void)
+{
 #ifdef __linux__
 #  ifndef HAVE_CAPABILITY_H
 	if ((geteuid() != 0)) PWARN("Server not built with cap interface, opening raw sockets will likely fail");
@@ -520,22 +547,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 }
 
 
-/** Destroy thread data for the submodule.
- *
- */
-static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
-{
-	rlm_icmp_thread_t *t = talloc_get_type_abort(mctx->thread, rlm_icmp_thread_t);
-
-	if (t->fd < 0) return 0;
-
-	(void) fr_event_fd_delete(mctx->el, t->fd, FR_EVENT_FILTER_IO);
-	close(t->fd);
-	t->fd = -1;
-
-	return 0;
-}
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -552,7 +563,9 @@ module_rlm_t rlm_icmp = {
 		.name		= "icmp",
 		.inst_size	= sizeof(rlm_icmp_t),
 		.config		= module_config,
+		.onload		= mod_load,
 		.bootstrap	= mod_bootstrap,
+		.instantiate	= mod_instantiate,
 		.thread_inst_size = sizeof(rlm_icmp_thread_t),
 		.thread_inst_type = "rlm_icmp_thread_t",
 		.thread_instantiate = mod_thread_instantiate,

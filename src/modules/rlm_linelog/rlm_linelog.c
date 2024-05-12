@@ -1033,15 +1033,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_linelog_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_linelog_t);
-	xlat_t		*xlat;
+	xlat_t *xlat;
 
 	static xlat_arg_parser_t const linelog_xlat_args[] = {
 		{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 		XLAT_ARG_PARSER_TERMINATOR
 	};
 
-	xlat = xlat_func_register_module(inst, mctx, NULL, linelog_xlat, FR_TYPE_SIZE);
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, linelog_xlat, FR_TYPE_SIZE);
 	xlat_func_mono_set(xlat, linelog_xlat_args);
 	xlat_func_call_env_set(xlat, &linelog_xlat_method_env );
 

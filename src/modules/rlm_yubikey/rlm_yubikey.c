@@ -194,7 +194,7 @@ static void mod_unload(void)
 #ifndef HAVE_YUBIKEY
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_yubikey_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_yubikey_t);
+	rlm_yubikey_t const *inst = talloc_get_type_abort(mctx->mi->data, rlm_yubikey_t);
 
 	if (inst->decrypt) {
 		cf_log_err(mctx->mi->conf, "Requires libyubikey for OTP decryption");

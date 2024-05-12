@@ -50,6 +50,11 @@ USES_APPLE_DEPRECATED_API
 #include "rlm_ldap.h"
 
 typedef struct {
+	fr_dict_attr_t const	*group_da;
+	fr_dict_attr_t const 	*cache_da;
+} rlm_ldap_boot_t;
+
+typedef struct {
 	fr_value_box_t	password;
 	tmpl_t const	*password_tmpl;
 	fr_value_box_t	user_base;
@@ -1139,7 +1144,7 @@ static xlat_action_t ldap_profile_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor
 /*
  *	Verify the result of the map.
  */
-static int ldap_map_verify(CONF_SECTION *cs, UNUSED void *mod_inst, UNUSED void *proc_inst,
+static int ldap_map_verify(CONF_SECTION *cs, UNUSED void const *mod_inst, UNUSED void *proc_inst,
 			   tmpl_t const *src, UNUSED map_list_t const *maps)
 {
 	if (!src) {
@@ -1277,10 +1282,10 @@ static int map_ctx_free(ldap_map_ctx_t *map_ctx)
  * @param[in] maps Head of the map list.
  * @return UNLANG_ACTION_CALCULATE_RESULT
  */
-static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void *mod_inst, UNUSED void *proc_inst, request_t *request,
+static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst, UNUSED void *proc_inst, request_t *request,
 				    fr_value_box_list_t *url, map_list_t const *maps)
 {
-	rlm_ldap_t		*inst = talloc_get_type_abort(mod_inst, rlm_ldap_t);
+	rlm_ldap_t const	*inst = talloc_get_type_abort_const(mod_inst, rlm_ldap_t);
 	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
 
 	LDAPURLDesc		*ldap_url;
@@ -2227,157 +2232,6 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
 	return 0;
 }
 
-/** Initialise thread specific data structure
- *
- */
-static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
-{
-	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
-	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
-	fr_ldap_thread_trunk_t	*ttrunk;
-
-	/*
-	 *	Initialise tree for connection trunks used by this thread
-	 */
-	MEM(t->trunks = fr_rb_inline_talloc_alloc(t, fr_ldap_thread_trunk_t, node, fr_ldap_trunk_cmp, NULL));
-
-	t->config = &inst->handle_config;
-	t->trunk_conf = &inst->trunk_conf;
-	t->bind_trunk_conf = &inst->bind_trunk_conf;
-	t->el = mctx->el;
-
-	/*
-	 *	Launch trunk for module default connection
-	 */
-	ttrunk = fr_thread_ldap_trunk_get(t, inst->handle_config.server, inst->handle_config.admin_identity,
-					  inst->handle_config.admin_password, NULL, &inst->handle_config);
-	if (!ttrunk) {
-		ERROR("Unable to launch LDAP trunk");
-		return -1;
-	}
-
-	/*
-	 *	Set up a per-thread LDAP trunk to use for bind auths
-	 */
-	t->bind_trunk = fr_thread_ldap_bind_trunk_get(t);
-
-	MEM(t->binds = fr_rb_inline_talloc_alloc(t, fr_ldap_bind_auth_ctx_t, node, fr_ldap_bind_auth_cmp, NULL));
-
-	return 0;
-}
-
-/** Clean up thread specific data structure
- *
- */
-static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
-{
-	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
-	void			**trunks_to_free;
-	int			i;
-
-	if (fr_rb_flatten_inorder(NULL, &trunks_to_free, t->trunks) < 0) return -1;
-
-	for (i = talloc_array_length(trunks_to_free) - 1; i >= 0; i--) talloc_free(trunks_to_free[i]);
-	talloc_free(trunks_to_free);
-	talloc_free(t->trunks);
-
-	return 0;
-}
-
-/** Bootstrap the module
- *
- * Define attributes.
- *
- * @param[in] mctx configuration data.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
-	CONF_SECTION	*conf = mctx->mi->conf;
-	char		buffer[256];
-	char const	*group_attribute;
-	xlat_t		*xlat;
-
-	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", mctx->mi->name);
-
-	if (inst->group.attribute) {
-		group_attribute = inst->group.attribute;
-	} else if (cf_section_name2(conf)) {
-		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", mctx->mi->name);
-		group_attribute = buffer;
-	} else {
-		group_attribute = "LDAP-Group";
-	}
-
-	inst->group.da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
-
-	/*
-	 *	If the group attribute was not in the dictionary, create it
-	 */
-	if (!inst->group.da) {
-		fr_dict_attr_flags_t	flags;
-
-		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
-				     group_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
-			PERROR("Error creating group attribute");
-			return -1;
-
-		}
-		inst->group.da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
-	}
-
-	/*
-	 *	Setup the cache attribute
-	 */
-	if (inst->group.cache_attribute) {
-		fr_dict_attr_flags_t	flags;
-
-		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
-				     inst->group.cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
-			PERROR("Error creating cache attribute");
-			return -1;
-
-		}
-		inst->group.cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
-	} else {
-		inst->group.cache_da = inst->group.da;	/* Default to the group_da */
-	}
-
-	/*
-	 *	Trunks used for bind auth can only have one request in flight per connection.
-	 */
-	inst->bind_trunk_conf.target_req_per_conn = 1;
-	inst->bind_trunk_conf.max_req_per_conn = 1;
-
-	/*
-	 *	Set sizes for trunk request pool.
-	 */
-	inst->bind_trunk_conf.req_pool_headers = 2;
-	inst->bind_trunk_conf.req_pool_size = sizeof(fr_ldap_bind_auth_ctx_t) + sizeof(fr_ldap_sasl_ctx_t);
-
-	xlat = xlat_func_register_module(NULL, mctx, NULL, ldap_xlat, FR_TYPE_STRING);
-	xlat_func_mono_set(xlat, ldap_xlat_arg);
-
-	if (unlikely(!(xlat = xlat_func_register_module(NULL, mctx, "memberof", ldap_memberof_xlat,
-							FR_TYPE_BOOL)))) return -1;
-	xlat_func_args_set(xlat, ldap_memberof_xlat_arg);
-	xlat_func_call_env_set(xlat, &xlat_memberof_method_env);
-
-	if (unlikely(!(xlat = xlat_func_register_module(NULL, mctx, "profile", ldap_profile_xlat,
-							FR_TYPE_BOOL)))) return -1;
-	xlat_func_args_set(xlat, ldap_xlat_arg);
-	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
-
-	map_proc_register(inst, mctx->mi->name, mod_map_proc, ldap_map_verify, 0, LDAP_URI_SAFE_FOR);
-
-	return 0;
-}
-
 static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
 				     CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2,
 				     UNUSED void const *data, call_env_parser_t const *rule)
@@ -2471,6 +2325,63 @@ static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
 	return 0;
 }
 
+/** Clean up thread specific data structure
+ *
+ */
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
+	void			**trunks_to_free;
+	int			i;
+
+	if (fr_rb_flatten_inorder(NULL, &trunks_to_free, t->trunks) < 0) return -1;
+
+	for (i = talloc_array_length(trunks_to_free) - 1; i >= 0; i--) talloc_free(trunks_to_free[i]);
+	talloc_free(trunks_to_free);
+	talloc_free(t->trunks);
+
+	return 0;
+}
+
+/** Initialise thread specific data structure
+ *
+ */
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
+	fr_ldap_thread_t	*t = talloc_get_type_abort(mctx->thread, fr_ldap_thread_t);
+	fr_ldap_thread_trunk_t	*ttrunk;
+
+	/*
+	 *	Initialise tree for connection trunks used by this thread
+	 */
+	MEM(t->trunks = fr_rb_inline_talloc_alloc(t, fr_ldap_thread_trunk_t, node, fr_ldap_trunk_cmp, NULL));
+
+	t->config = &inst->handle_config;
+	t->trunk_conf = &inst->trunk_conf;
+	t->bind_trunk_conf = &inst->bind_trunk_conf;
+	t->el = mctx->el;
+
+	/*
+	 *	Launch trunk for module default connection
+	 */
+	ttrunk = fr_thread_ldap_trunk_get(t, inst->handle_config.server, inst->handle_config.admin_identity,
+					  inst->handle_config.admin_password, NULL, &inst->handle_config);
+	if (!ttrunk) {
+		ERROR("Unable to launch LDAP trunk");
+		return -1;
+	}
+
+	/*
+	 *	Set up a per-thread LDAP trunk to use for bind auths
+	 */
+	t->bind_trunk = fr_thread_ldap_bind_trunk_get(t);
+
+	MEM(t->binds = fr_rb_inline_talloc_alloc(t, fr_ldap_bind_auth_ctx_t, node, fr_ldap_bind_auth_cmp, NULL));
+
+	return 0;
+}
+
 /** Instantiate the module
  *
  * Creates a new instance of the module reading parameters from a configuration section.
@@ -2482,11 +2393,29 @@ static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t cons
  */
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	size_t		i;
+	size_t			i;
 
-	CONF_SECTION	*options;
-	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
-	CONF_SECTION	*conf = mctx->mi->conf;
+	CONF_SECTION		*options;
+	rlm_ldap_boot_t	const	*boot = talloc_get_type_abort(mctx->mi->data, rlm_ldap_boot_t);
+	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
+
+	inst->group.da = boot->group_da;
+	inst->group.cache_da = boot->cache_da;
+
+	inst->handle_config.name = talloc_typed_asprintf(inst, "rlm_ldap (%s)", mctx->mi->name);
+
+	/*
+	 *	Trunks used for bind auth can only have one request in flight per connection.
+	 */
+	inst->bind_trunk_conf.target_req_per_conn = 1;
+	inst->bind_trunk_conf.max_req_per_conn = 1;
+
+	/*
+	 *	Set sizes for trunk request pool.
+	 */
+	inst->bind_trunk_conf.req_pool_headers = 2;
+	inst->bind_trunk_conf.req_pool_size = sizeof(fr_ldap_bind_auth_ctx_t) + sizeof(fr_ldap_sasl_ctx_t);
 
 	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
@@ -2673,6 +2602,87 @@ error:
 	return -1;
 }
 
+/** Bootstrap the module
+ *
+ * Define attributes.
+ *
+ * @param[in] mctx configuration data.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
+ */
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	rlm_ldap_boot_t		*boot = talloc_get_type_abort(mctx->mi->boot, rlm_ldap_boot_t);
+	rlm_ldap_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
+	CONF_SECTION		*conf = mctx->mi->conf;
+	char			buffer[256];
+	char const		*group_attribute;
+	xlat_t			*xlat;
+
+	if (inst->group.attribute) {
+		group_attribute = inst->group.attribute;
+	} else if (cf_section_name2(conf)) {
+		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", mctx->mi->name);
+		group_attribute = buffer;
+	} else {
+		group_attribute = "LDAP-Group";
+	}
+
+	boot->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
+
+	/*
+	 *	If the group attribute was not in the dictionary, create it
+	 */
+	if (!boot->group_da) {
+		fr_dict_attr_flags_t	flags;
+
+		memset(&flags, 0, sizeof(flags));
+		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+				     group_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
+			PERROR("Error creating group attribute");
+			return -1;
+
+		}
+		boot->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
+	}
+
+	/*
+	 *	Setup the cache attribute
+	 */
+	if (inst->group.cache_attribute) {
+		fr_dict_attr_flags_t	flags;
+
+		memset(&flags, 0, sizeof(flags));
+		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+				     inst->group.cache_attribute, -1, FR_TYPE_STRING, &flags) < 0) {
+			PERROR("Error creating cache attribute");
+			return -1;
+
+		}
+		boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
+	} else {
+		boot->cache_da = boot->group_da;	/* Default to the group_da */
+	}
+
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, ldap_xlat, FR_TYPE_STRING);
+	xlat_func_mono_set(xlat, ldap_xlat_arg);
+
+	if (unlikely(!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "memberof", ldap_memberof_xlat,
+							FR_TYPE_BOOL)))) return -1;
+	xlat_func_args_set(xlat, ldap_memberof_xlat_arg);
+	xlat_func_call_env_set(xlat, &xlat_memberof_method_env);
+
+	if (unlikely(!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "profile", ldap_profile_xlat,
+							FR_TYPE_BOOL)))) return -1;
+	xlat_func_args_set(xlat, ldap_xlat_arg);
+	xlat_func_call_env_set(xlat, &xlat_profile_method_env);
+
+	map_proc_register(mctx->mi->boot, inst, mctx->mi->name, mod_map_proc, ldap_map_verify, 0, LDAP_URI_SAFE_FOR);
+
+	return 0;
+}
+
 static int mod_load(void)
 {
 	xlat_t	*xlat;
@@ -2708,6 +2718,8 @@ module_rlm_t rlm_ldap = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "ldap",
 		.flags		= 0,
+		.boot_size	= sizeof(rlm_ldap_boot_t),
+		.boot_type	= "rlm_ldap_boot_t",
 		.inst_size	= sizeof(rlm_ldap_t),
 		.config		= module_config,
 		.onload		= mod_load,

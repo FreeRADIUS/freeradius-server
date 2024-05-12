@@ -756,7 +756,7 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	return state->recv(p_result, mctx, request);
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	process_dhcpv6_t	*inst = talloc_get_type_abort(mctx->mi->data, process_dhcpv6_t);
 
@@ -1256,7 +1256,7 @@ fr_process_module_t process_dhcpv6 = {
 		.config		= dhcpv6_process_config,
 		.inst_size	= sizeof(process_dhcpv6_t),
 
-		.bootstrap	= mod_bootstrap
+		.instantiate	= mod_instantiate
 	},
 	.process	= mod_process,
 	.compile_list	= compile_list,

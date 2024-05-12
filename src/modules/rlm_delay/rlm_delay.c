@@ -262,10 +262,9 @@ yield:
 
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_delay_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_delay_t);
 	xlat_t		*xlat;
 
-	xlat = xlat_func_register_module(inst, mctx, NULL, xlat_delay, FR_TYPE_TIME_DELTA);
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, xlat_delay, FR_TYPE_TIME_DELTA);
 	xlat_func_args_set(xlat, xlat_delay_args);
 	return 0;
 }

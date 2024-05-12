@@ -1441,6 +1441,14 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_cache_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 	CONF_SECTION	*conf = mctx->mi->conf;
 
+	/*
+	 *	Non optional fields and callbacks
+	 */
+	fr_assert(inst->driver->common.name);
+	fr_assert(inst->driver->find);
+	fr_assert(inst->driver->insert);
+	fr_assert(inst->driver->expire);
+
 	if (!fr_time_delta_ispos(inst->config.ttl)) {
 		cf_log_err(conf, "Must set 'ttl' to non-zero");
 		return -1;
@@ -1459,27 +1467,22 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
  */
 static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
-	rlm_cache_t 	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t );
 	xlat_t		*xlat;
-
-	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->exported;
+	rlm_cache_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_cache_t);
 
 	/*
-	 *	Non optional fields and callbacks
+	 *	Needs to be set here for callenv parsing
 	 */
-	fr_assert(inst->driver->common.name);
-	fr_assert(inst->driver->find);
-	fr_assert(inst->driver->insert);
-	fr_assert(inst->driver->expire);
+	inst->driver = (rlm_cache_driver_t const *)inst->driver_submodule->exported;
 
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat = xlat_func_register_module(inst, mctx, NULL, cache_xlat, FR_TYPE_VOID);
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, cache_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, cache_xlat_args);
 	xlat_func_call_env_set(xlat, &cache_method_env);
 
-	xlat = xlat_func_register_module(inst, mctx, "ttl.get", cache_ttl_get_xlat, FR_TYPE_VOID);
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, "ttl.get", cache_ttl_get_xlat, FR_TYPE_VOID);
 	xlat_func_call_env_set(xlat, &cache_method_env);
 
 	return 0;
@@ -1497,6 +1500,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 module_rlm_t rlm_cache = {
 	.common = {
 		.magic		= MODULE_MAGIC_INIT,
+		.flags		= MODULE_TYPE_DYNAMIC_UNSAFE,
 		.name		= "cache",
 		.inst_size	= sizeof(rlm_cache_t),
 		.config		= module_config,

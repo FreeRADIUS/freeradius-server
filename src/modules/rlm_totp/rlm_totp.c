@@ -57,7 +57,6 @@ static const call_env_method_t method_env = {
 
 /* Define a structure for the configuration variables */
 typedef struct rlm_totp_t {
-	char const	*name;			//!< name of this instance */
 	fr_totp_t	totp;			//! configuration entries passed to libfreeradius-totp
 } rlm_totp_t;
 
@@ -70,49 +69,6 @@ static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("lookforward_steps", rlm_totp_t, totp.lookforward_steps), .dflt = "0" },
 	CONF_PARSER_TERMINATOR
 };
-
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_totp_t   *inst = talloc_get_type_abort(mctx->mi->data, rlm_totp_t);
-	CONF_SECTION *conf = mctx->mi->conf;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
-
-	return 0;
-}
-
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_instantiate(module_inst_ctx_t const *mctx)
-{
-	rlm_totp_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_totp_t);
-
-	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, >=, 5);
-	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, <=, 120);
-
-	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, >=, 1);
-	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, <=, 10);
-
-	FR_INTEGER_BOUND_CHECK("lookforward_steps", inst->totp.lookforward_steps, <=, 10);
-
-	FR_INTEGER_BOUND_CHECK("lookback_interval", inst->totp.lookback_interval, <=, inst->totp.time_step);
-
-	FR_INTEGER_BOUND_CHECK("otp_length", inst->totp.otp_length, >=, 6);
-	FR_INTEGER_BOUND_CHECK("otp_length", inst->totp.otp_length, <=, 8);
-
-	if (inst->totp.otp_length == 7) inst->totp.otp_length = 8;
-
-	return 0;
-}
 
 /*
  *  Do the authentication
@@ -176,6 +132,38 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 }
 
 /*
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int mod_instantiate(module_inst_ctx_t const *mctx)
+{
+	rlm_totp_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_totp_t);
+
+	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, >=, 5);
+	FR_INTEGER_BOUND_CHECK("time_step", inst->totp.time_step, <=, 120);
+
+	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, >=, 1);
+	FR_INTEGER_BOUND_CHECK("lookback_steps", inst->totp.lookback_steps, <=, 10);
+
+	FR_INTEGER_BOUND_CHECK("lookforward_steps", inst->totp.lookforward_steps, <=, 10);
+
+	FR_INTEGER_BOUND_CHECK("lookback_interval", inst->totp.lookback_interval, <=, inst->totp.time_step);
+
+	FR_INTEGER_BOUND_CHECK("otp_length", inst->totp.otp_length, >=, 6);
+	FR_INTEGER_BOUND_CHECK("otp_length", inst->totp.otp_length, <=, 8);
+
+	if (inst->totp.otp_length == 7) inst->totp.otp_length = 8;
+
+	return 0;
+}
+
+/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -191,7 +179,6 @@ module_rlm_t rlm_totp = {
 		.name		= "totp",
 		.inst_size	= sizeof(rlm_totp_t),
 		.config		= module_config,
-		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){

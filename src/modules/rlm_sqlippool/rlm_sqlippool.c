@@ -223,14 +223,6 @@ finish:
 	return retval;
 }
 
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
-{
-	rlm_sqlippool_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
-	inst->name = talloc_asprintf(inst, "%s - %s", mctx->mi->name, inst->sql_name);
-
-	return 0;
-}
-
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -246,6 +238,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	module_instance_t	*sql;
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
+
+	inst->name = talloc_asprintf(inst, "%s - %s", mctx->mi->name, inst->sql_name);
 
 	sql = module_rlm_by_name(NULL, inst->sql_name);
 	if (!sql) {
@@ -712,7 +706,6 @@ module_rlm_t rlm_sqlippool = {
 		.name		= "sqlippool",
 		.inst_size	= sizeof(rlm_sqlippool_t),
 		.config		= module_config,
-		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate
 	},
 	.method_names = (module_method_name_t[]){

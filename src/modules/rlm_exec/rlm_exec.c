@@ -442,24 +442,10 @@ static unlang_action_t CC_HINT(nonnull) mod_exec_dispatch_oneshot(rlm_rcode_t *p
 					   NULL, 0, &m->box);
 }
 
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_bootstrap(module_inst_ctx_t const *mctx)
+static int mob_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_exec_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_exec_t);
 	CONF_SECTION	*conf = mctx->mi->conf;
-	xlat_t		*xlat;
-
-	xlat = xlat_func_register_module(NULL, mctx, NULL, exec_xlat_oneshot, FR_TYPE_STRING);
-	xlat_func_args_set(xlat, exec_xlat_args);
 
 	if (inst->input_list && !tmpl_is_list(inst->input_list)) {
 		cf_log_perr(conf, "Invalid input list '%s'", inst->input_list->name);
@@ -506,6 +492,25 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	return 0;
 }
+/*
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	xlat_t			*xlat;
+
+	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, exec_xlat_oneshot, FR_TYPE_STRING);
+	xlat_func_args_set(xlat, exec_xlat_args);
+
+	return 0;
+}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -524,6 +529,7 @@ module_rlm_t rlm_exec = {
 		.inst_size	= sizeof(rlm_exec_t),
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
+		.instantiate	= mob_instantiate
 	},
         .method_names = (module_method_name_t[]){
                 { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_exec_dispatch_oneshot,
