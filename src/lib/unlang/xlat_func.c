@@ -239,13 +239,21 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
-	MEM(c = talloc(ctx, xlat_t));
+	MEM(c = talloc(NULL, xlat_t));
 	*c = (xlat_t){
 		.name = talloc_typed_strdup(c, name),
 		.func = func,
 		.return_type = return_type,
 		.input_type = XLAT_INPUT_UNPROCESSED	/* set default - will be overridden if args are registered */
 	};
+
+ 	/*
+	 *	Don't allocate directly in the parent ctx, it might be mprotected
+	 *	later, and that'll cause segfaults if any of the xlat_t are still
+	 *	protected when we start shuffling the contents of the rbtree.
+	 */
+	if (ctx) talloc_link_ctx(c, ctx);
+
 	talloc_set_destructor(c, _xlat_func_talloc_free);
 	DEBUG3("%s: %s", __FUNCTION__, c->name);
 
