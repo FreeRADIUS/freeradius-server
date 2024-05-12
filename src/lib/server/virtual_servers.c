@@ -1449,35 +1449,17 @@ int virtual_servers_instantiate(void)
 	}
 
 	for (i = 0; i < server_cnt; i++) {
-		fr_virtual_listen_t		**listeners;
-		size_t				j, listener_cnt;
 		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
 		fr_dict_t const			*dict;
 		fr_virtual_server_t const	*vs = virtual_servers[i];
 		fr_process_module_t const	*process = (fr_process_module_t const *)
 							    vs->process_mi->module->exported;
- 		listeners = virtual_servers[i]->listeners;
- 		listener_cnt = talloc_array_length(listeners);
 
 		dict = virtual_server_local_dict(server_cs, *(process)->dict);
 		if (!dict) return -1;
 
 		DEBUG("Compiling policies in server %s { ... }", cf_section_name2(server_cs));
-
-		for (j = 0; j < listener_cnt; j++) {
-			fr_virtual_listen_t *listener = listeners[j];
-
-			fr_assert(listener != NULL);
-			fr_assert(listener->proto_mi != NULL);
-			fr_assert(listener->proto_module != NULL);
-
-			if (module_instantiate(listener->proto_mi) < 0) {
-				cf_log_perr(listener->proto_mi->conf,
-					    "Failed instantiating listener");
-				return -1;
-			}
-		}
 
 		fr_assert(virtual_servers[i]->process_mi);
 
@@ -1501,15 +1483,6 @@ int virtual_servers_instantiate(void)
 							    vs->process_mi->data) < 0) {
 				return -1;
 			}
-		}
-
-		/*
-		 *	Complete final instantiation of the process module
-		 */
-		if (module_instantiate(virtual_servers[i]->process_mi) < 0) {
-			cf_log_perr(virtual_servers[i]->process_mi->conf,
-				    "Failed instantiating process module");
-			return -1;
 		}
 
 		/*
@@ -1548,6 +1521,15 @@ int virtual_servers_instantiate(void)
 		}
 	}
 
+	if (modules_instantiate(process_modules) < 0) {
+		PERROR("Failed instantiating process modules");
+		return -1;
+	}
+	if (modules_instantiate(proto_modules) < 0) {
+		PERROR("Failed instantiating protocol modules");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -1567,8 +1549,14 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	 */
 	global_lib_instantiate();
 
-	if (modules_bootstrap(process_modules) < 0) return -1;
-	if (modules_bootstrap(proto_modules) < 0) return -1;
+	if (modules_bootstrap(process_modules) < 0) {
+		PERROR("Failed instantiating process modules");
+		return -1;
+	}
+	if (modules_bootstrap(proto_modules) < 0) {
+		PERROR("Failed instantiating protocol modules");
+		return -1;
+	}
 
 	return 0;
 }
