@@ -674,9 +674,9 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 }
 
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = handle->conn;
+	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
 
 	if (conn->last_error.msg && (outlen >= 1)) {
 		out[0].msg = conn->last_error.msg;
