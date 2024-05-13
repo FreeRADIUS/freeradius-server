@@ -97,7 +97,10 @@ void main_loop_signal_raise(int flag)
 
 	buffer[0] |= flag;
 
-	if (write(self_pipe[1], buffer, 1) < 0) fr_exit(0);
+	if (write(self_pipe[1], buffer, 1) < 0) {
+		FR_FAULT_LOG("Failed to write to self-pipe: %s", fr_syserror(errno));
+		fr_exit(0);
+	}
 }
 
 static void main_loop_signal_process(int flag)
@@ -289,4 +292,3 @@ int main_loop_init(void)
 
 	return 0;
 }
-
