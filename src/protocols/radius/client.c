@@ -167,12 +167,10 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	}
 
 	/*
-	 *	Didn't write anything, that's a blocking error.
+	 *	We are using an outgoing memory bio, which takes care of writing partial packets.  As a
+	 *	result, our call to the bio will always return that a full packet was written.
 	 */
-	if (slen == 0) {
-		fr_radius_code_id_push(my->codes, packet);
-		return fr_bio_error(IO_WOULD_BLOCK);
-	}
+	fr_assert((size_t) slen == packet->data_len);
 
 	my->info.outstanding++;
 

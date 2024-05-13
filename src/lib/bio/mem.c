@@ -416,8 +416,11 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 	/*
 	 *	Some of the data base been written to the next bio, and some to our cache.  The caller has to
 	 *	ensure that the first subsequent write will send over the rest of the data.
+	 *
+	 *	However, we tell the caller that we wrote the entire packet.  Because we are now responsible
+	 *	for writing the remaining bytes.
 	 */
-	return rcode + leftover;
+	return size;
 }
 
 /** Flush the memory buffer.
@@ -467,9 +470,9 @@ static ssize_t fr_bio_mem_write_flush(fr_bio_mem_t *my, size_t size)
 	}
 
 	/*
-	 *	We didn't write anything, return that.
+	 *	We didn't write anything, the bio is still blocked.
 	 */
-	if ((rcode == 0) || (rcode == fr_bio_error(IO_WOULD_BLOCK))) return rcode;
+	if ((rcode == 0) || (rcode == fr_bio_error(IO_WOULD_BLOCK))) return fr_bio_error(IO_WOULD_BLOCK);
 
 	/*
 	 *	Tell the buffer that we've read a certain amount of data from it.
@@ -477,9 +480,9 @@ static ssize_t fr_bio_mem_write_flush(fr_bio_mem_t *my, size_t size)
 	(void) fr_bio_buf_read(&my->write_buffer, NULL, (size_t) rcode);
 
 	/*
-	 *	We haven't emptied the buffer, return the partial write.
+	 *	We haven't emptied the buffer, any further IO is blocked.
 	 */
-	if ((size_t) rcode < used) return rcode;
+	if ((size_t) rcode < used) return fr_bio_error(IO_WOULD_BLOCK);
 
 	/*
 	 *	We've flushed all of the buffer.  Revert back to "pass through" writing.

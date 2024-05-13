@@ -73,6 +73,8 @@ struct fr_bio_packet_s {
 	fr_bio_packet_write_t	write;		//!< write to the underlying bio
 
 	fr_bio_t		*bio;		//!< underlying bio for IO
+
+	bool			write_blocked;	//!< are writes to the bio blocked?
 };
 
 
@@ -82,18 +84,18 @@ struct fr_bio_packet_s {
  *  check for that case, and handle blocking errors.  Typically by pushing the packet to a queue, and trying
  *  it again later.
  *
- * @param bio		the packet-based bio
+ * @param my			the packet-based bio
  * @param[out] request_ctx_p	the larger context for the original request packet
- * @param[out] packet_p	Where the allocated #fr_packet_t will be stored
- * @param[out] out_ctx	for the output pairs
+ * @param[out] packet_p		Where the allocated #fr_packet_t will be stored
+ * @param[out] out_ctx		for the output pairs
  * @param[out] out		decoded output pairs
  * @return
  *	- <0 on error.  This is fr_bio_error(FOO)
  *	- 0 for success
  */
-static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p, TALLOC_CTX *out_ctx, fr_pair_list_t *out)
+static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *my, void **request_ctx_p, fr_packet_t **packet_p, TALLOC_CTX *out_ctx, fr_pair_list_t *out)
 {
-	return bio->read(bio, request_ctx_p, packet_p, out_ctx, out);
+	return my->read(my, request_ctx_p, packet_p, out_ctx, out);
 }
 
 /** Write a packet to a packet BIO
@@ -102,7 +104,7 @@ static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, void
  *  check for that case, and handle blocking errors.  Typically by pushing the packet to a queue, and trying
  *  it again later.
  *
- * @param bio		the packet-based bio
+ * @param my		the packet-based bio
  * @param request_ctx	the larger context for the packet
  * @param packet	the output packet descriptor.  Contains raw protocol data (IDs, counts, etc.)
  * @param list		of pairs to write
@@ -110,7 +112,50 @@ static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *bio, void
  *	- <0 on error.  This is fr_bio_error(FOO)
  *	- 0 for success
  */
-static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *bio, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list)
+static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *my, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
-	return bio->write(bio, request_ctx, packet, list);
+	int rcode;
+
+	/*
+	 *	We don't allow more writes if the bio is blocked.
+	 */
+	if (my->write_blocked) return fr_bio_error(IO_WOULD_BLOCK);
+
+	rcode = my->write(my, request_ctx, packet, list);
+	if (rcode == 0) return 0;
+
+	my->write_blocked = (rcode == fr_bio_error(IO_WOULD_BLOCK));
+	return rcode;
+}
+
+/** Flush a bio which is blocked.
+ *
+ *  Note that the bio MAY return fr_bio_error(IO_WOULD_BLOCK), which is not a fatal error.  The caller has to
+ *  check for that case, and handle blocking errors.  Typically by pushing the packet to a queue, and trying
+ *  it again later.
+ *
+ * @param my		the packet-based bio
+ * @return
+ *	- <0 on error.  This is fr_bio_error(FOO)
+ *	- 0 for success
+ */
+static inline CC_HINT(nonnull) int fr_bio_packet_write_flush(fr_bio_packet_t *my)
+{
+	ssize_t slen;
+
+	if (!my->write_blocked) return 0;
+
+	/*
+	 *	Note that "wrote no data" means that there's no pending data, so we're no longer blocked.
+	 */
+	slen = my->bio->write(my->bio, NULL, NULL, SIZE_MAX);
+	if (slen >= 0) {
+		my->write_blocked = false;
+		return 0;
+	}
+
+	/*
+	 *	Likely a fatal bio error.
+	 */
+	return slen;
 }
