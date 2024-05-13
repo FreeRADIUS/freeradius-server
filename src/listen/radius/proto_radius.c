@@ -31,6 +31,7 @@
 extern fr_app_t proto_radius;
 
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("cleanup_delay", proto_radius_t, io.cleanup_delay), .dflt = "5.0" } ,
@@ -71,7 +72,7 @@ static const conf_parser_t priority_config[] = {
 static conf_parser_t const proto_radius_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_radius_t, allowed_types), .func = type_parse },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_radius_t, io.submodule),
-	  .func = virtual_sever_listen_transport_parse },
+	  .func = transport_parse },
 
 	/*
 	 *	Check whether or not the *trailing* bits of a
@@ -84,6 +85,21 @@ static conf_parser_t const proto_radius_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+
+	return 0;
+}
 
 static fr_dict_t const *dict_radius;
 
