@@ -97,6 +97,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 
 	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
 	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+	inst->io.app_io_instance = mi->data;
+	inst->io.app_io_conf = mi->conf;
 
 	return 0;
 }
