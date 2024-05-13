@@ -1030,7 +1030,10 @@ int main(int argc, char *argv[])
 	 *  We're exiting, so we can delete the PID file.
 	 *  (If it doesn't exist, we can ignore the error returned by unlink)
 	 */
-	if (config->daemonize) unlink(config->pid_file);
+	if (config->daemonize) {
+		DEBUG3("Unlinking PID file %s", config->pid_file);
+		unlink(config->pid_file);
+	}
 
 	/*
 	 *  Free memory in an explicit and consistent order
@@ -1057,17 +1060,29 @@ int main(int argc, char *argv[])
 	 *  processes created by the exec code or triggers.
 	 */
 	if (config->spawn_workers) {
+		sigset_t mask;
+
 		INFO("All threads have exited, sending SIGTERM to remaining children");
+
+		/*
+		 *	If we believe the POSIX documentation, sending
+		 *	a kill to a negative PGID could also signal us,
+		 *	so block the signal first, we're already exiting,
+		 *	so it doesn't matter if we don't get the signal.
+		 */
+		sigemptyset(&mask);
+		sigaddset(&mask, SIGTERM);
+		sigprocmask(SIG_BLOCK, &mask, NULL);
 
 		/*
 		 *	If pid is negative, but not -1, sig
 		 *	shall be sent to all processes
 		 *	(excluding an unspecified set of system processes)
 		 *	whose process group ID is equal to the absolute value
-		 *	of pid, and for which the process has permission t
+		 *	of pid, and for which the process has permission
 		 *	to send a signal.
 		 */
-		kill(-radius_pid, SIGTERM);
+		kill(-getpgid(radius_pid), SIGTERM);
 	}
 
 	/*
