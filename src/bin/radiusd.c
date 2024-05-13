@@ -1058,6 +1058,15 @@ int main(int argc, char *argv[])
 	 */
 	if (config->spawn_workers) {
 		INFO("All threads have exited, sending SIGTERM to remaining children");
+
+		/*
+		 *	If pid is negative, but not -1, sig
+		 *	shall be sent to all processes
+		 *	(excluding an unspecified set of system processes)
+		 *	whose process group ID is equal to the absolute value
+		 *	of pid, and for which the process has permission t
+		 *	to send a signal.
+		 */
 		kill(-radius_pid, SIGTERM);
 	}
 
@@ -1197,7 +1206,22 @@ static NEVER_RETURNS void usage(main_config_t const *config, int status)
  */
 static void sig_fatal(int sig)
 {
+	static int last_sig;
+
 	if (getpid() != radius_pid) _exit(sig);
+
+	/*
+	 *	Suppress duplicate signals.
+	 *
+	 *	For some reason on macOS we get multiple signals
+	 *	for the same event (SIGTERM).
+	 *
+	 *	...this also fixes the problem of the user hammering
+	 *	Ctrl-C and causing ungraceful exits as we try and
+	 *	write out signals to a pipe that's already closed.
+	 */
+	if (sig == last_sig) return;
+	last_sig = sig;
 
 	switch (sig) {
 	case SIGTERM:
