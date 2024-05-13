@@ -1005,7 +1005,7 @@ static int _module_thread_inst_free(module_thread_instance_t *ti)
 	 */
 	if (mi->state & MODULE_INSTANCE_NO_THREAD_INSTANTIATE) return 0;
 
-	DEBUG4("Worker cleaning up %s thread instance data (%p/%p)",
+	DEBUG4("Cleaning up %s thread instance data (%p/%p)",
 	       mi->exported->name, ti, ti->data);
 
 	if (mi->exported->thread_detach) {
