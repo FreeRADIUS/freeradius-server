@@ -69,6 +69,8 @@ typedef struct request_s request_t;	/* to shut up warnings about mschap.h */
 static char *secret = NULL;
 static bool do_output = true;
 
+static const char *attr_coa_filter_name = "User-Name";
+
 static rc_stats_t stats;
 
 static int packet_code = FR_RADIUS_CODE_UNDEFINED;
@@ -92,6 +94,11 @@ static fr_bio_packet_t *client_bio = NULL;
 static fr_radius_client_bio_info_t const *client_info = NULL;
 
 static int ipproto = IPPROTO_UDP;
+
+static bool do_coa = false;
+//static int coafd;
+static int coa_port = FR_COA_UDP_PORT;
+static fr_rb_tree_t *coa_tree = NULL;
 
 static fr_dlist_head_t rc_request_list;
 static rc_request_t	*current = NULL;
@@ -125,6 +132,11 @@ static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 
+static fr_dict_attr_t const *attr_radclient_coa_filename;
+static fr_dict_attr_t const *attr_radclient_coa_filter;
+
+static fr_dict_attr_t const *attr_coa_filter = NULL;
+
 extern fr_dict_attr_autoload_t radclient_dict_attr[];
 fr_dict_attr_autoload_t radclient_dict_attr[] = {
 	{ .out = &attr_cleartext_password, .name = "Password.Cleartext", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -134,6 +146,9 @@ fr_dict_attr_autoload_t radclient_dict_attr[] = {
 
 	{ .out = &attr_radclient_test_name, .name = "Radclient-Test-Name", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_request_authenticator, .name = "Request-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+
+	{ .out = &attr_radclient_coa_filename, .name = "Radclient-CoA-Filename", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_radclient_coa_filter, .name = "Radclient-CoA-Filter", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -151,6 +166,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  <command>                         One of auth, acct, status, coa, disconnect or auto.\n");
 	fprintf(stderr, "  -4                                Use IPv4 address of server\n");
 	fprintf(stderr, "  -6                                Use IPv6 address of server.\n");
+	fprintf(stderr, "  -A <attribute>		     Use named 'attribute' to match CoA requests to packets.  Default is User-Name\n");
 	fprintf(stderr, "  -C [<client_ip>:]<client_port>    Client source port and source IP address.  Port values may be 1..65535\n");
 	fprintf(stderr, "  -c <count>			     Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d <raddb>                        Set user dictionary directory (defaults to " RADDBDIR ").\n");
@@ -160,6 +176,7 @@ static NEVER_RETURNS void usage(void)
 	fprintf(stderr, "  -F                                Print the file name, packet number and reply code.\n");
 	fprintf(stderr, "  -h                                Print usage help information.\n");
 	fprintf(stderr, "  -i <id>                           Set request id to 'id'.  Values may be 0..255\n");
+	fprintf(stderr, "  -o <port>                         Set CoA listening port (defaults to 3799)\n");
 	fprintf(stderr, "  -p <num>                          Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -P <proto>                        Use proto (tcp or udp) for transport.\n");
 	fprintf(stderr, "  -r <retries>                      If timeout, retry sending the packet 'retries' times.\n");
@@ -179,6 +196,11 @@ static NEVER_RETURNS void usage(void)
 static int _rc_request_free(rc_request_t *request)
 {
 	fr_dlist_remove(&rc_request_list, request);
+
+	if (do_coa) {
+		(void) fr_rb_delete(coa_tree, &request->node);
+		// @todo - cancel incoming CoA packet/
+	}
 
 	if (request->packet && (request->packet->id >= 0)) {
 		(void) fr_radius_client_fd_bio_cancel(client_bio, request->packet);
@@ -372,6 +394,96 @@ static bool already_hex(fr_pair_t *vp)
 }
 
 /*
+ *	Read one CoA reply and possibly filter
+ */
+static int coa_init(rc_request_t *parent, FILE *coa_reply, char const *reply_filename, bool *coa_reply_done, FILE *coa_filter, char const *filter_filename, bool *coa_filter_done)
+{
+	rc_request_t	*request;
+	fr_pair_t	*vp;
+
+	/*
+	 *	Allocate it.
+	 */
+	MEM(request = talloc_zero(parent, rc_request_t));
+	MEM(request->reply = fr_packet_alloc(request, false));
+
+	/*
+	 *	Don't initialize src/dst IP/port, or anything else.  That will be read from the network.
+	 */
+	fr_pair_list_init(&request->filter);
+	fr_pair_list_init(&request->request_pairs);
+	fr_pair_list_init(&request->reply_pairs);
+
+	/*
+	 *	Read the reply VP's.
+	 */
+	if (fr_pair_list_afrom_file(request, dict_radius,
+				    &request->reply_pairs, coa_reply, coa_reply_done) < 0) {
+		REDEBUG("Error parsing \"%s\"", reply_filename);
+	error:
+		talloc_free(request);
+		return -1;
+	}
+
+	/*
+	 *	The reply can be empty.  In which case we just send an empty ACK.
+	 */
+	vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
+	if (vp) request->reply->code = vp->vp_uint32;
+
+	/*
+	 *	Read in filter VP's.
+	 */
+	if (coa_filter) {
+		if (fr_pair_list_afrom_file(request, dict_radius,
+					    &request->filter, coa_filter, coa_filter_done) < 0) {
+			REDEBUG("Error parsing \"%s\"", filter_filename);
+			goto error;
+		}
+
+		if (*coa_filter_done && !*coa_reply_done) {
+			REDEBUG("Differing number of replies/filters in %s:%s "
+				"(too many replies))", reply_filename, filter_filename);
+			goto error;
+		}
+
+		if (!*coa_filter_done && *coa_reply_done) {
+			REDEBUG("Differing number of replies/filters in %s:%s "
+				"(too many filters))", reply_filename, filter_filename);
+			goto error;
+		}
+
+		/*
+		 *	This allows efficient list comparisons later
+		 */
+		fr_pair_list_sort(&request->filter, fr_pair_cmp_by_da);
+	}
+
+	request->name = parent->name;
+
+	/*
+	 *	Automatically set the response code from the request code
+	 *	(if one wasn't already set).
+	 */
+	if (request->filter_code == FR_RADIUS_CODE_UNDEFINED) {
+		request->filter_code = FR_RADIUS_CODE_COA_REQUEST;
+	}
+
+	parent->coa = request;
+
+	/*
+	 *	Ensure that the packet is also tracked in the CoA tree.
+	 */
+	fr_assert(coa_tree);
+	if (!fr_rb_insert(coa_tree, parent)) {
+		ERROR("Failed inserting packet from %s into CoA tree", request->name);
+		fr_exit_now(1);
+	}
+
+	return 0;
+}
+
+/*
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
  */
@@ -383,6 +495,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	rc_request_t	*request = NULL;
 	bool		packets_done = false;
 	uint64_t	num = 0;
+
+	FILE		*coa_reply = NULL;
+	FILE		*coa_filter = NULL;
+	bool		coa_reply_done = false;
+	bool		coa_filter_done = false;
 
 	fr_assert(files->packets != NULL);
 
@@ -406,6 +523,22 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				goto error;
 			}
 		}
+
+		if (files->coa_reply) {
+			coa_reply = fopen(files->coa_reply, "r");
+			if (!coa_reply) {
+				ERROR("Error opening %s: %s", files->coa_reply, fr_syserror(errno));
+				goto error;
+			}
+		}
+
+		if (files->coa_filter) {
+			coa_filter = fopen(files->coa_filter, "r");
+			if (!coa_filter) {
+				ERROR("Error opening %s: %s", files->coa_filter, fr_syserror(errno));
+				goto error;
+			}
+		}
 	} else {
 		packets = stdin;
 	}
@@ -414,6 +547,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 	 *	Loop until the file is done.
 	 */
 	do {
+		char const *coa_reply_filename = NULL;
+		char const *coa_filter_filename = NULL;
+
 		/*
 		 *	Allocate it.
 		 */
@@ -538,6 +674,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			} else if (vp->da == attr_radclient_test_name) {
 				request->name = vp->vp_strvalue;
 
+			} else if (vp->da == attr_radclient_coa_filename) {
+				coa_reply_filename = vp->vp_strvalue;
+
+			} else if (vp->da == attr_radclient_coa_filter) {
+				coa_filter_filename = vp->vp_strvalue;
 			}
 		} /* loop over the VP's we read in */
 
@@ -654,6 +795,58 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		}
 
 		/*
+		 *	Read in the CoA filename and filter.
+		 */
+		if (coa_reply_filename) {
+			if (coa_reply) {
+				RDEBUG("Cannot specify CoA file on both the command line and via Radclient-CoA-Filename");
+				goto error;
+			}
+
+			coa_reply = fopen(coa_reply_filename, "r");
+			if (!coa_reply) {
+				ERROR("Error opening %s: %s", coa_reply_filename, fr_syserror(errno));
+				goto error;
+			}
+
+			if (coa_filter_filename) {
+				coa_filter = fopen(coa_filter_filename, "r");
+				if (!coa_filter) {
+					ERROR("Error opening %s: %s", coa_filter_filename, fr_syserror(errno));
+					goto error;
+				}
+			} else {
+				coa_filter = NULL;
+			}
+
+			if (coa_init(request, coa_reply, coa_reply_filename, &coa_reply_done,
+				     coa_filter, coa_filter_filename, &coa_filter_done) < 0) {
+				goto error;
+			}
+
+			fclose(coa_reply);
+			coa_reply = NULL;
+			if (coa_filter) {
+				fclose(coa_filter);
+				coa_filter = NULL;
+			}
+			do_coa = true;
+
+		} else if (coa_reply) {
+			if (coa_init(request, coa_reply, coa_reply_filename, &coa_reply_done,
+				     coa_filter, coa_filter_filename, &coa_filter_done) < 0) {
+				goto error;
+			}
+
+			if (coa_reply_done != packets_done) {
+				REDEBUG("Differing number of packets in input file and coa_reply in %s:%s ",
+				        files->packets, files->coa_reply);
+				goto error;
+
+			}
+		}
+
+		/*
 		 *	Add it to the tail of the list.
 		 */
 		fr_dlist_insert_tail(&rc_request_list, request);
@@ -669,6 +862,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 	if (packets != stdin) fclose(packets);
 	if (filters) fclose(filters);
+	if (coa_reply) fclose(coa_reply);
+	if (coa_filter) fclose(coa_filter);
 
 	/*
 	 *	And we're done.
@@ -680,6 +875,8 @@ error:
 
 	if (packets != stdin) fclose(packets);
 	if (filters) fclose(filters);
+	if (coa_reply) fclose(coa_reply);
+	if (coa_filter) fclose(coa_filter);
 
 	return -1;
 }
@@ -719,6 +916,21 @@ static int radclient_sane(rc_request_t *request)
 	request->packet->socket.fd = -1;
 
 	return 0;
+}
+
+
+static int8_t request_cmp(void const *one, void const *two)
+{
+	rc_request_t const *a = one, *b = two;
+	fr_pair_t *vp1, *vp2;
+
+	vp1 = fr_pair_find_by_da(&a->request_pairs, NULL, attr_coa_filter);
+	vp2 = fr_pair_find_by_da(&b->request_pairs, NULL, attr_coa_filter);
+
+	if (!vp1) return -1;
+	if (!vp2) return +1;
+
+	return fr_value_box_cmp(&vp1->data, &vp2->data);
 }
 
 
@@ -1105,7 +1317,7 @@ int main(int argc, char **argv)
 	 *
 	 ***********************************************************************/
 
-	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fi:hp:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fi:ho:p:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			fd_config.dst_ipaddr.af = AF_INET;
 			break;
@@ -1192,6 +1404,11 @@ int main(int argc, char **argv)
 			if ((forced_id < 0) || (forced_id > 255)) {
 				usage();
 			}
+			break;
+
+		case 'o':
+			coa_port = atoi(optarg);
+			if (!coa_port || (coa_port > 65535)) usage();
 			break;
 
 			/*
@@ -1382,6 +1599,20 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	if (do_coa) {
+		attr_coa_filter = fr_dict_attr_by_name(NULL, fr_dict_root(dict_radius), attr_coa_filter_name);
+		if (!attr_coa_filter) {
+			ERROR("Unknown or invalid CoA filter attribute %s", optarg);
+			fr_exit_now(1);
+		}
+
+		/*
+		 *	If there's no attribute given to match CoA to requests, use User-Name
+		 */
+		if (!attr_coa_filter) attr_coa_filter = attr_user_name;
+
+		MEM(coa_tree = fr_rb_talloc_alloc(autofree, rc_request_t, request_cmp, NULL));
+	}
 	packet_global_init();
 
 	openssl3_init();
@@ -1464,6 +1695,10 @@ int main(int argc, char **argv)
 			fr_perror("radclient");
 			fr_exit_now(1);
 		}
+	}
+
+	if (do_coa) {
+		// allocate a dedup server bio
 	}
 
 	/*
