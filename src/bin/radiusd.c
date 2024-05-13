@@ -901,7 +901,10 @@ int main(int argc, char *argv[])
 	 *  what to do, so we might as well do the default, and die.
 	 */
 #ifdef SIGPIPE
-	signal(SIGPIPE, SIG_IGN);
+	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) {
+		ERROR("Failed ignoring SIGPIPE: %s", fr_syserror(errno));
+		goto cleanup;
+	}
 #endif
 
 	if (fr_set_signal(SIGHUP, sig_hup) < 0) goto set_signal_error;
@@ -988,7 +991,10 @@ int main(int argc, char *argv[])
 	/*
 	 *  Ignore the TERM signal: we're about to die.
 	 */
-	signal(SIGTERM, SIG_IGN);
+	if (unlikely(signal(SIGTERM, SIG_IGN) == SIG_ERR)) {
+		ERROR("Failed blocking SIGTERM, we may receive spurious signals: %s",
+		      fr_syserror(errno));
+	}
 
 	/*
 	 *  Unprotect global memory
@@ -1060,19 +1066,7 @@ int main(int argc, char *argv[])
 	 *  processes created by the exec code or triggers.
 	 */
 	if (config->spawn_workers) {
-		sigset_t mask;
-
 		INFO("All threads have exited, sending SIGTERM to remaining children");
-
-		/*
-		 *	If we believe the POSIX documentation, sending
-		 *	a kill to a negative PGID could also signal us,
-		 *	so block the signal first, we're already exiting,
-		 *	so it doesn't matter if we don't get the signal.
-		 */
-		sigemptyset(&mask);
-		sigaddset(&mask, SIGTERM);
-		sigprocmask(SIG_BLOCK, &mask, NULL);
 
 		/*
 		 *	If pid is negative, but not -1, sig

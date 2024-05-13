@@ -172,6 +172,16 @@ static void *fr_schedule_worker_thread(void *arg)
 	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
 	fr_schedule_network_t		*sn;
 	char				worker_name[32];
+	sigset_t			sigset;
+
+	sigfillset(&sigset);
+
+	/*
+	 *	Ensure workers aren't interrupted by signals.
+	 *	The main thread, and main event loop are mostly
+	 *	idle, so they can handle signals.
+	 */
+	pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 
 	worker_id = sw->id;		/* Store the current worker ID */
 
@@ -293,6 +303,16 @@ static void *fr_schedule_network_thread(void *arg)
 	fr_schedule_child_status_t	status = FR_CHILD_FAIL;
 	fr_event_list_t			*el;
 	char				network_name[32];
+	sigset_t			sigset;
+
+	sigfillset(&sigset);
+
+	/*
+	 *	Ensure network threads aren't interrupted by
+	 *	signals. The main thread, and main event loop
+	 *	are mostly idle, so they can handle signals.
+	 */
+	pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 
 	snprintf(network_name, sizeof(network_name), "Network %d", sn->id);
 
