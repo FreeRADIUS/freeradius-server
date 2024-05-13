@@ -344,7 +344,14 @@ typedef struct fr_client_s fr_client_t;
 
 typedef fr_client_t *(*fr_io_client_find_t)(fr_listen_t *li, fr_ipaddr_t const *ipaddr, int ipproto);
 
-typedef void (*fr_io_network_get_t)(void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie);
+/** Callback to return network properties
+ *
+ * @param[out] ipproto		IP protocol (AF_INET or AF_INET6).
+ * @param[out] dynamic_clients	Whether clients are dynamic.
+ * @param[out] trie		Trie of clients.
+ * @param[in] instance		Instance data.
+ */
+typedef void (*fr_io_network_get_t)(int *ipproto, bool *dynamic_clients, fr_trie_t const **trie, void *instance);
 
 typedef char const *(*fr_io_name_t)(fr_listen_t *li);
 

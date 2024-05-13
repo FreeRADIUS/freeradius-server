@@ -2664,7 +2664,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	application IO module.
 	 */
 	if (inst->app_io->network_get) {
-		inst->app_io->network_get(inst->app_io_instance, &inst->ipproto, &inst->dynamic_clients, &inst->networks);
+		inst->app_io->network_get(&inst->ipproto, &inst->dynamic_clients, &inst->networks, inst->app_io_instance);
 	}
 
 	if ((inst->ipproto == IPPROTO_TCP) && !inst->app_io->connection_set) {

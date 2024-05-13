@@ -374,7 +374,7 @@ static int mod_connection_set(fr_listen_t *li, fr_io_address_t *connection)
 	return 0;
 }
 
-static void mod_network_get(UNUSED void *instance, int *ipproto, bool *dynamic_clients, fr_trie_t const **trie)
+static void mod_network_get(int *ipproto, bool *dynamic_clients, fr_trie_t const **trie, UNUSED void *instance)
 {
 	*ipproto = IPPROTO_TCP;
 	*dynamic_clients = false;
