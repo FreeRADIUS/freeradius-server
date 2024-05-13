@@ -33,6 +33,7 @@
 
 extern fr_app_t proto_tacacs;
 
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 static conf_parser_t const limit_config[] = {
@@ -64,7 +65,7 @@ static const conf_parser_t priority_config[] = {
 
 static const conf_parser_t proto_tacacs_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_tacacs_t, allowed_types), .func = type_parse },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_tacacs_t, io.submodule), .func = virtual_sever_listen_transport_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_tacacs_t, io.submodule), .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	{ FR_CONF_POINTER("priority", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) priority_config },
@@ -90,6 +91,21 @@ fr_dict_attr_autoload_t proto_tacacs_dict_attr[] = {
 	{ .out = &attr_tacacs_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_tacacs },
 	{ NULL }
 };
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_tacacs_t		*inst = talloc_get_type_abort(parent, proto_tacacs_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+
+	return 0;
+}
 
 /** Translates the packet-type into a submodule name
  *
