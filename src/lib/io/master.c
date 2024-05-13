@@ -523,18 +523,18 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		mi = module_instance_copy(inst->clients, inst->submodule, inst_name);
 
 		if (module_instance_conf_parse(mi, inst->submodule->conf) < 0) {
-			cf_log_perr(inst->server_cs, "Failed parsing module config");
+			cf_log_err(inst->server_cs, "Failed parsing module config");
 			goto cleanup;
 		}
 
 		/* Thread local module lists never run bootstrap */
 		if (module_instantiate(mi) < 0) {
-			cf_log_perr(inst->server_cs, "Failed instantiating module");
+			cf_log_err(inst->server_cs, "Failed instantiating module");
 			goto cleanup;
 		}
 
 		if (module_thread_instantiate(mi, mi, thread->el) < 0) {
-			cf_log_perr(inst->server_cs, "Failed instantiating module");
+			cf_log_err(inst->server_cs, "Failed instantiating module");
 			goto cleanup;
 		}
 
