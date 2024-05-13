@@ -939,6 +939,35 @@ static int fr_fault_check_permissions(void)
 	return 0;
 }
 
+/** Split out so it can be sprinkled throughout the server and called via a debugger
+ *
+ */
+void fr_fault_backtrace(void)
+{
+
+	/*
+	 *	Produce a simple backtrace - They're very basic but at least give us an
+	 *	idea of the area of the code we hit the issue in.
+	 *
+	 *	See below in fr_fault_setup() and
+	 *	https://sourceware.org/bugzilla/show_bug.cgi?id=16159
+	 *	for why we only print backtraces in debug builds if we're using GLIBC.
+	 */
+#if defined(HAVE_EXECINFO) && (!defined(NDEBUG) || !defined(__GNUC__))
+	if (fr_fault_log_fd >= 0) {
+		size_t frame_count;
+		void *stack[MAX_BT_FRAMES];
+
+		frame_count = backtrace(stack, MAX_BT_FRAMES);
+
+		FR_FAULT_LOG("Backtrace of last %zu frames:", frame_count);
+
+		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
+	}
+#endif
+	return;
+}
+
 /** Prints a simple backtrace (if execinfo is available) and calls panic_action if set.
  *
  * @param sig caught
@@ -977,26 +1006,7 @@ NEVER_RETURNS void fr_fault(int sig)
 	 */
 	if (panic_cb && (panic_cb(sig) < 0)) goto finish;
 
-	/*
-	 *	Produce a simple backtrace - They're very basic but at least give us an
-	 *	idea of the area of the code we hit the issue in.
-	 *
-	 *	See below in fr_fault_setup() and
-	 *	https://sourceware.org/bugzilla/show_bug.cgi?id=16159
-	 *	for why we only print backtraces in debug builds if we're using GLIBC.
-	 */
-#if defined(HAVE_EXECINFO) && (!defined(NDEBUG) || !defined(__GNUC__))
-	if (fr_fault_log_fd >= 0) {
-		size_t frame_count;
-		void *stack[MAX_BT_FRAMES];
-
-		frame_count = backtrace(stack, MAX_BT_FRAMES);
-
-		FR_FAULT_LOG("Backtrace of last %zu frames:", frame_count);
-
-		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
-	}
-#endif
+	fr_fault_backtrace();
 
 	/* No panic action set... */
 	if (panic_action[0] == '\0') {

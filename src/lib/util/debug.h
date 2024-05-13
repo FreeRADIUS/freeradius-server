@@ -89,6 +89,8 @@ int			fr_reset_dumpable(void);
 
 int			fr_log_talloc_report(TALLOC_CTX const *ctx);
 
+void			fr_fault_backtrace(void);
+
 void			fr_fault(int sig);
 
 void			fr_talloc_fault_setup(void);
