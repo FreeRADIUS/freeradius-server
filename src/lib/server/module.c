@@ -638,12 +638,12 @@ int module_data_protect(module_instance_t *mi, module_data_pool_t *pool)
 	if (pool->start == NULL) return 0; /* noop */
 
 	DEBUG("Protecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
-#if 0
+
 	if (unlikely(mprotect(pool->start, pool->len, PROT_READ) < 0)) {
 		fr_strerror_printf("Protecting \"%s\" module data failed: %s", mi->name, fr_syserror(errno));
 		return -1;
 	}
-#endif
+
 	return 0;
 }
 
@@ -655,18 +655,42 @@ int module_data_protect(module_instance_t *mi, module_data_pool_t *pool)
  *	- -1 on failure.
  */
 static inline CC_HINT(always_inline)
-int module_data_unprotect(module_instance_t *mi, module_data_pool_t *pool)
+int module_data_unprotect(module_instance_t const *mi, module_data_pool_t const *pool)
 {
 	if (pool->start == NULL) return 0; /* noop */
 
 	DEBUG("Unprotecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
-#if 0
+
 	if (unlikely(mprotect(pool->start, pool->len, PROT_READ | PROT_WRITE) < 0)) {
 		fr_strerror_printf("Unprotecting \"%s\" data failed: %s", mi->name, fr_syserror(errno));
 		return -1;
 	}
-#endif
+
 	return 0;
+}
+
+/** Mark module data as read only
+ *
+ * @param[in] mi	Instance data to protect (mark as read only).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int module_instance_data_protect(module_instance_t const *mi)
+{
+	return module_data_unprotect(mi, &mi->inst_pool);
+}
+
+/** Mark module data as read/write
+ *
+ * @param[in] mi	Instance data to unprotect (mark as read/write).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int module_instance_data_unprotect(module_instance_t const *mi)
+{
+	return module_data_unprotect(mi, &mi->inst_pool);
 }
 
 /** Return the prefix string for the deepest module

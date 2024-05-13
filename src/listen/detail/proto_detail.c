@@ -436,11 +436,11 @@ static int mod_open(void *instance, fr_schedule_t *sc, CONF_SECTION *conf)
 	 *	path, data takes from the socket to the decoder and
 	 *	back again.
 	 */
-	li = talloc_zero(inst, fr_listen_t);
+	MEM(li = talloc_zero(NULL, fr_listen_t));	/* Assigned thread steals the memory */
 	talloc_set_destructor(li, fr_io_listen_free);
 
 	li->app_io = inst->app_io;
-	li->thread_instance = talloc_zero_array(NULL, uint8_t, li->app_io->common.thread_inst_size);
+	li->thread_instance = talloc_zero_array(li, uint8_t, li->app_io->common.thread_inst_size);
 	talloc_set_name(li->thread_instance, "proto_%s_thread_t", inst->app_io->common.name);
 	li->app_io_instance = inst->app_io_instance;
 

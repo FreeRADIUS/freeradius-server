@@ -80,7 +80,7 @@ static int mod_open(void *instance, fr_schedule_t *sc, UNUSED CONF_SECTION *conf
 	inst->io.app = &proto_control;
 	inst->io.app_instance = instance;
 
-	return fr_master_io_listen(inst, &inst->io, sc,
+	return fr_master_io_listen(&inst->io, sc,
 				   inst->max_packet_size, inst->num_messages);
 }
 

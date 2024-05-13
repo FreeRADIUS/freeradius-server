@@ -1392,13 +1392,25 @@ int virtual_servers_open(fr_schedule_t *sc)
 			 *	Even then, proto_radius usually calls fr_master_io_listen() in order
 			 *	to create the fr_listen_t structure.
 			 */
-			if (listener->proto_module->open &&
-			    listener->proto_module->open(listener->proto_mi->data, sc,
-			    				 listener->proto_mi->conf) < 0) {
-				cf_log_err(listener->proto_mi->conf,
-					   "Opening %s I/O interface failed",
-					   listener->proto_module->common.name);
-				return -1;
+			if (listener->proto_module->open) {
+				int ret;
+
+				/*
+				 *	Sometimes the open function needs to modify instance
+				 *	data, so we need to temporarily remove the protection.
+				 */
+				module_instance_data_unprotect(listener->proto_mi);
+				ret = listener->proto_module->open(listener->proto_mi->data, sc,
+							           listener->proto_mi->conf);
+				module_instance_data_protect(listener->proto_mi);
+			   	if (unlikely(ret < 0)) {
+					cf_log_err(listener->proto_mi->conf,
+						   "Opening %s I/O interface failed",
+						   listener->proto_module->common.name);
+
+					return -1;
+				}
+
 			}
 
 			/*

@@ -388,6 +388,19 @@ void module_instance_debug(module_instance_t const *mi) CC_HINT(nonnull);
 void module_list_debug(module_list_t const *ml) CC_HINT(nonnull);
  /** @} */
 
+/** @name Toggle protection on module instance data
+ *
+ * This is used for module lists which implement additional instantiation phases
+ * (like li->open).  It should NOT be used by modules to hack around instance
+ * data being read-only after instantiation completes.
+ *
+ * @{
+ */
+int			module_instance_data_protect(module_instance_t const *mi);
+
+int			module_instance_data_unprotect(module_instance_t const *mi);
+ /** @} */
+
 /** @name Module and module thread lookup
  *
  * @{

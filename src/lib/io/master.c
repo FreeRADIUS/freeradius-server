@@ -2908,7 +2908,7 @@ int fr_io_listen_free(fr_listen_t *li)
 	return 0;
 }
 
-int fr_master_io_listen(TALLOC_CTX *ctx, fr_io_instance_t *inst, fr_schedule_t *sc,
+int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 			size_t default_message_size, size_t num_messages)
 {
 	fr_listen_t	*li, *child;

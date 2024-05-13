@@ -176,7 +176,7 @@ static ssize_t mod_read(fr_listen_t *li, void **packet_ctx, fr_time_t *recv_time
 		/*
 		 *      @todo - check for F5 load balancer packets.  <sigh>
 		 */
-		DEBUG2("proto_radius_udp got a packet which isn't RADIUS");
+		DEBUG2("proto_radius_udp got a packet which isn't RADIUS: %s", fr_strerror());
 		thread->stats.total_malformed_requests++;
 		return 0;
 	}
