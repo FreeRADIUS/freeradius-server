@@ -56,19 +56,6 @@ static fr_heap_t *mlg_index;
 */
 static _Thread_local module_thread_instance_t **mlg_thread_inst_list;
 
-/** Toggle used to determine if it's safe to use index based lookups
- *
- * Index based heap lookups are significantly more efficient than binary
- * searches, but they can only be performed when all module data is inserted
- * into both the global module list and the thread local module list.
- *
- * When we start removing module lists or modules from the thread local
- * heap those heaps no longer have a common index with the global module
- * list so we need to revert back to doing binary searches instead of using
- * common indexes.
- */
-static _Thread_local bool mlg_in_sync;
-
 static int cmd_show_module_config(FILE *fp, UNUSED FILE *fp_err, void *ctx, UNUSED fr_cmd_info_t const *info);
 static int module_name_tab_expand(UNUSED TALLOC_CTX *talloc_ctx, UNUSED void *uctx, fr_cmd_info_t *info, int max_expansions, char const **expansions);
 static int cmd_show_module_list(FILE *fp, UNUSED FILE *fp_err, UNUSED void *uctx, UNUSED fr_cmd_info_t const *info);
@@ -469,8 +456,6 @@ static int mlg_thread_init(UNUSED TALLOC_CTX **ctx, UNUSED module_list_t const *
 		MEM(arr = talloc_zero_array(NULL, module_thread_instance_t *, fr_heap_num_elements(mlg_index)));
 
 		fr_atexit_thread_local(mlg_thread_inst_list, _module_thread_inst_list_free, arr);
-
-		mlg_in_sync = true;
 	}
 
 	return 0;
@@ -490,7 +475,6 @@ static module_thread_instance_t *mlg_thread_data_get(module_instance_t *mi)
 	fr_assert_msg(mlg_mi->inst_idx <= talloc_array_length(mlg_thread_inst_list),
 		      "module instance index %u must be <= thread local array %zu",
 		      mlg_mi->inst_idx, talloc_array_length(mlg_thread_inst_list));
-	fr_assert(mlg_in_sync);
 
 	fr_assert_msg(fr_heap_num_elements(mlg_index) == talloc_array_length(mlg_thread_inst_list),
 		      "mismatch between global module heap (%u entries) and thread local (%zu entries)",
@@ -514,7 +498,6 @@ static void mlg_thread_data_del(module_thread_instance_t *ti)
 {
 	mlg_module_instance_t const *mlg_mi = (mlg_module_instance_t const *)talloc_get_type_abort_const(ti->mi, module_instance_t);
 	mlg_thread_inst_list[mlg_mi->inst_idx - 1] = NULL;
-	mlg_in_sync = false;
 }
 
 /** Callbacks for a global module list
