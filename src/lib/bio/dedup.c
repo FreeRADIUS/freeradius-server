@@ -19,6 +19,41 @@
  * @file lib/bio/dedup.c
  * @brief Binary IO abstractions for deduping packets.
  *
+ * The dedup BIO receives packets from the network, and allows for deduplication of replies.  The actual
+ * deduplication tree / table has to be maintained by the calling application, as packet dedup is very
+ * protocol-specific.  The purpose of the dedup BIO is to abstract all of the common support functions around
+ * this requirement.
+ *
+ * When packets are read() from the next bio, the #fr_bio_dedup_receive_t callback is run.  It tells the BIO
+ * whether or not the packet should be received, and whether or not the packet should be returned to the
+ * caller.  The receive callback is also passed a #fr_bio_dedup_entry_t pointer, where the packet_ctx, packet,
+ * and size are already filled out.  This entry is used to correlate requests and replies.
+ *
+ * When packets are write() to the network, the #fr_bio_dedup_get_item_t callback is called to get the
+ * previously cached #fr_bio_dedup_entry_t pointer.  This is because there is no generic way to get an
+ * additional context to this BIO via the write() routine.  i.e. the packet_ctx for write() may include things
+ * like src/dst ip/port, and therefore can't always be an #fr_bio_dedup_entry_t.  The caller should associate
+ * the #fr_bio_dedup_entry_t with the packet_ctx for the reply.  The get_item() routine can then return the entry.
+ *
+ * The entry needs to be cached in order to maintain the internal tracking used by the dedup BIO.
+ *
+ * On client retransmit, the #fr_bio_dedup_receive_t callback is run, just as if it is a new packet.  The
+ * dedup BIO does not know if the received data is a new packet until the #fr_bio_dedup_receive_t callback
+ * says so.  On duplicate client request, the #fr_bio_dedup_receive_t callback can call fr_bio_dedup_respond()
+ * to send a duplicate reply.  That call bypasses the normal dedup stack, and writes directly to the next bio.
+ *
+ * The calling application can also call fr_bio_dedup_respond() as soon as it has a reply.  i.e. skip the BIO
+ * write() call.  That works, and is safe.
+ *
+ * The dedup BIO tracks a number of lists / trees internally.  Packets which are received but which have no
+ * reply are in an "active" list.  Packets which have a reply are in an "expired" RB tree, where a timer is
+ * set to expire packets.  If a write() call results in a partial write, that packet is put into a "partially
+ * written" state.  If multiple calls to write() are done when writing is blocked, the replies are put into a
+ * "pending" state.
+ *
+ * The calling application can always call fr_bio_dedup_cancel() to cancel or expire a packet.  This call is
+ * safe, and can be made at any time, no matter what state the packet is in.
+ *
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
 
@@ -35,7 +70,7 @@ typedef struct fr_bio_dedup_list_s	fr_bio_dedup_list_t;
 typedef struct fr_bio_dedup_s	fr_bio_dedup_t;
 
 /*
- *	There is substanstial similarity between this code and the
+ *	There is substantial similarity between this code and the
  *	"retry" bio.  Any fixes which are done here should be checked
  *	there, and vice versa.
  */
@@ -844,18 +879,25 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	};
 
 	/*
-	 *	See if we want to respond to this packet.  If this isn't something we respond to, then we just
-	 *	discard it.
+	 *	See if we want to receive this packet.  If this isn't
+	 *	something we need to receive, then we just discard it.
 	 *
-	 *	The "respond" function is responsible for looking in a local dedup tree to see if there's a
+	 *	The "receive" function is responsible for looking in a local dedup tree to see if there's a
 	 *	cached reply.  It's also responsible for calling the fr_bio_retry_respond() function to send
-	 *	any duplicate reply/
+	 *	a duplicate reply, and then return "don't receive" this packet.
 	 *
-	 *	If we're NOT going to reply to this packet, then the item we just popped needs to get inserted
+	 *	The application can alos call fr_bio_dedup_entry_extend() in order to extend the lifetime of a
+	 *	packet which has a cached response.
+	 *
+	 *	If there's an active packet, then the receive() function should do whatever it needs to do in
+	 *	order to update the application for a duplicate packet.  And then return "don't receive" for
+	 *	this packet.
+	 *
+	 *	If we're NOT going to process this packet, then the item we just popped needs to get inserted
 	 *	back into the free list.
 	 *
-	 *	The caller should potentially cancel any conflicting packets via fr_bio_dedup_entry_cancel(),
-	 *	and potentially also write a duplicate reply via fr_bio_dedup_respond().
+	 *	The caller should cancel any conflicting packets by calling fr_bio_dedup_entry_cancel().  Note
+	 *	that for sanity, we don't re-use the previous #fr_bio_dedup_entry_t.
 	 */
 	if (!my->receive(bio, item, packet_ctx, buffer, rcode)) {
 		item->state = FR_BIO_DEDUP_STATE_FREE;
