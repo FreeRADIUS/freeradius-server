@@ -637,7 +637,7 @@ int module_data_protect(module_instance_t *mi, module_data_pool_t *pool)
 {
 	if (pool->start == NULL) return 0; /* noop */
 
-	DEBUG("Protecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
+	DEBUG3("Protecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
 
 	if (unlikely(mprotect(pool->start, pool->len, PROT_READ) < 0)) {
 		fr_strerror_printf("Protecting \"%s\" module data failed: %s", mi->name, fr_syserror(errno));
@@ -659,7 +659,7 @@ int module_data_unprotect(module_instance_t const *mi, module_data_pool_t const 
 {
 	if (pool->start == NULL) return 0; /* noop */
 
-	DEBUG("Unprotecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
+	DEBUG3("Unprotecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
 
 	if (unlikely(mprotect(pool->start, pool->len, PROT_READ | PROT_WRITE) < 0)) {
 		fr_strerror_printf("Unprotecting \"%s\" data failed: %s", mi->name, fr_syserror(errno));
