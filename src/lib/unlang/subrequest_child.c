@@ -143,6 +143,8 @@ static void unlang_subrequest_child_signal(request_t *request, fr_signal_t actio
 		FALL_THROUGH;
 
 	case FR_SIGNAL_CANCEL:
+		RDEBUG3("Removing subrequest from parent, and marking parent as runnable");
+
 		/*
 		 *	Indicate to the parent there's no longer a child
 		 */

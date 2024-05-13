@@ -35,8 +35,8 @@ RCSID("$Id$")
 /** Send a signal from parent request to subrequest
  *
  */
-static void unlang_subrequest_parent_signal(UNUSED request_t *request, unlang_stack_frame_t *frame,
-					    fr_signal_t action)
+static void unlang_subrequest_signal_child(UNUSED request_t *request, unlang_stack_frame_t *frame,
+					   fr_signal_t action)
 {
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 	request_t			*child = talloc_get_type_abort(state->child, request_t);
@@ -49,6 +49,27 @@ static void unlang_subrequest_parent_signal(UNUSED request_t *request, unlang_st
 	 *	signal when the detach keyword is used.
 	 */
 	fr_assert(action != FR_SIGNAL_DETACH);
+
+	/*
+	 *	If the server is stopped, inside a breakpoint,
+	 *	whilst processing a child, on resumption both
+	 *	requests (parent and child) may need to be
+	 *	cancelled as they've both hit max request_time.
+	 *
+	 *	Sometimes the child will run to completion before
+	 *	the cancellation is processed, but the parent
+	 *	will still be cancelled.
+	 *
+	 *	When the parent is cancelled this function is
+	 *	executed, which will signal an already stopped
+	 *	child to cancel itself.
+	 *
+	 *	This triggers asserts in the time tracking code.
+	 *
+	 *	...so we check to see if the child is done before
+	 *	sending a signal.
+	 */
+	if (unlang_request_is_done(child)) return;
 
 	/*
 	 *	Forward other signals to the child
@@ -277,7 +298,7 @@ int unlang_subrequest_op_init(void)
 			&(unlang_op_t){
 				.name = "subrequest",
 				.interpret = unlang_subrequest_parent_init,
-				.signal = unlang_subrequest_parent_signal,
+				.signal = unlang_subrequest_signal_child,
 				.debug_braces = true,
 				.frame_state_size = sizeof(unlang_frame_state_subrequest_t),
 				.frame_state_type = "unlang_frame_state_subrequest_t",

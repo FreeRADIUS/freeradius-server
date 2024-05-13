@@ -1223,7 +1223,7 @@ static void sig_fatal(int sig)
 	 *	Suppress duplicate signals.
 	 *
 	 *	For some reason on macOS we get multiple signals
-	 *	for the same event (SIGTERM).
+	 *	for the same event (SIGINT).
 	 *
 	 *	...this also fixes the problem of the user hammering
 	 *	Ctrl-C and causing ungraceful exits as we try and

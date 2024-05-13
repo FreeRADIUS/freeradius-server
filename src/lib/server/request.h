@@ -58,9 +58,9 @@ extern "C" {
 #endif
 
 typedef enum {
-	REQUEST_ACTIVE = 1,
-	REQUEST_STOP_PROCESSING,
-	REQUEST_COUNTED
+	REQUEST_ACTIVE = 1,		//!< Request is active (running or runnable)
+	REQUEST_STOP_PROCESSING,	//!< Request has been signalled to stop
+	REQUEST_DONE,			//!< Request has completed
 } request_master_state_t;
 #define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
 
@@ -221,13 +221,14 @@ struct request_s {
 	char const		*component; 	//!< Section the request is in.
 	char const		*module;	//!< Module the request is currently being processed by.
 
-	fr_packet_t	*packet;	//!< Incoming request.
-	fr_packet_t	*reply;		//!< Outgoing response.
+	fr_packet_t		*packet;	//!< Incoming request.
+	fr_packet_t		*reply;		//!< Outgoing response.
 
 	fr_client_t		*client;	//!< The client that originally sent us the request.
 
 	request_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
 						//!< working with the request, to do something.
+	bool			counted;	//!< Set if the request has been counted in the stats.
 
 	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 

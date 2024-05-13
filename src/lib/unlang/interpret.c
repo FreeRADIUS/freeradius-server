@@ -1081,6 +1081,8 @@ void unlang_interpret_request_done(request_t *request)
 		intp->funcs.done_detached(request, stack->result, intp->uctx);	/* Callback will usually free the request */
 		break;
 	}
+
+	request->master_state = REQUEST_DONE;
 }
 
 static inline CC_HINT(always_inline)
@@ -1310,6 +1312,13 @@ bool unlang_request_is_scheduled(request_t const *request)
 bool unlang_request_is_cancelled(request_t const *request)
 {
 	return (request->master_state == REQUEST_STOP_PROCESSING);
+}
+
+/** Return whether a request has been marked done
+ */
+bool unlang_request_is_done(request_t const *request)
+{
+	return (request->master_state == REQUEST_DONE);
 }
 
 /** Check if a request as resumable.
