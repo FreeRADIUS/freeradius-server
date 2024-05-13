@@ -254,6 +254,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
 	/*
+	 *	Instantiate the transport module before calling the
+	 *	common instantiation function.
+	 */
+	if (module_instantiate(inst->io.submodule) < 0) return -1;
+
+	/*
 	 *	Instantiate the master io submodule
 	 */
 	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.mi));

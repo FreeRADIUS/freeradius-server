@@ -509,6 +509,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->io.mi = mctx->mi;
 
 	/*
+	 *	Instantiate the transport module before calling the
+	 *	common instantiation function.
+	 */
+	if (module_instantiate(inst->io.submodule) < 0) return -1;
+
+	/*
 	 *	Instantiate the master io submodule
 	 */
 	return fr_master_app_io.common.instantiate(MODULE_INST_CTX(inst->io.mi));
