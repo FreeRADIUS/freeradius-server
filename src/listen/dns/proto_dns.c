@@ -30,7 +30,7 @@
 
 extern fr_app_t proto_dns;
 static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
-static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t priority_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("query", FR_TYPE_VOID, 0, proto_dns_t, priorities[FR_DNS_QUERY]),
