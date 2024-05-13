@@ -653,7 +653,7 @@ static bool fr_bio_mem_buf_alloc(fr_bio_mem_t *my, fr_bio_buf_t *buf, size_t siz
  *
  *  @param ctx		the talloc ctx
  *  @param read_size	size of the read buffer.  Must be 1024..1^20
- *  @param write_size	size of the write buffer.  Must be 1024..1^20
+ *  @param write_size	size of the write buffer.  Can be zero. If non-zero, must be 1024..1^20
  *  @param next		the next bio which will perform the underlying reads and writes.
  *	- NULL on error, memory allocation failed
  *	- !NULL the bio
