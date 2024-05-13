@@ -9,16 +9,11 @@ FROM ${from} as build
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 
 #
-#  Ensure yum is installed.  Some docker images only have microdnf
-#
-RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
-
-#
 #  Install build tools
 #
-RUN yum groupinstall -y "Development Tools"
+RUN dnf groupinstall -y "Development Tools"
 
-RUN yum install -y rpmdevtools openssl dnf-utils
+RUN dnf install -y rpmdevtools openssl dnf-utils
 
 
 #
@@ -56,19 +51,19 @@ RUN git clean -fdxx \
 #
 
 #  Enable EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
 #  Enable Code Ready Builder repo (CentOS powertools equivalent)
-RUN yum install -y yum-utils
-RUN yum config-manager --enable crb
+RUN dnf install -y dnf-utils
+RUN dnf config-manager --enable crb
 
 #
 #  Install build dependencies
 #
 #  Run twice, it doesn't always get everything with one invocation
 RUN [ -e redhat/freeradius.spec ] && \
-	yum-builddep -y redhat/freeradius.spec && \
-	yum-builddep -y redhat/freeradius.spec
+	dnf builddep -y redhat/freeradius.spec && \
+	dnf builddep -y redhat/freeradius.spec
 
 #
 #  Create RPM build environment
@@ -118,23 +113,21 @@ RUN rpm --import https://packages.networkradius.com/pgp/packages@networkradius.c
 #  Other requirements
 #
 
-RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
-
 #  Needed for mysql-libs on Rocky 9
-RUN yum install -y yum-utils
-RUN yum config-manager --enable crb
+RUN dnf install -y dnf-utils
+RUN dnf config-manager --enable crb
 
 #  EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
-    && yum install -y dnf-utils \
-    && yum config-manager --enable epel-testing
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+    && dnf install -y dnf-utils \
+    && dnf config-manager --enable epel-testing
 
 ARG radiusd_uid=95
 ARG radiusd_gid=95
 
 RUN groupadd -g ${radiusd_gid} -r radiusd \
     && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \
-    && yum install -y /tmp/*.rpm
+    && dnf install -y /tmp/*.rpm
 
 WORKDIR /
 COPY scripts/docker/etc/docker-entrypoint.sh.rpm docker-entrypoint.sh

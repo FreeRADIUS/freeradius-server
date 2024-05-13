@@ -9,19 +9,14 @@ RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-Rocky-9
 ')
 
 #
-#  Ensure yum is installed.  Some docker images only have dnf or microdnf
-#
-RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
-
-#
 #  Install build tools
 #
-RUN yum groupinstall -y "Development Tools"
+RUN dnf groupinstall -y "Development Tools"
 ifelse(OS_VER, 7,`dnl
-RUN yum install -y rpmdevtools
-RUN yum install -y openssl
+RUN dnf install -y rpmdevtools
+RUN dnf install -y openssl
 ',`
-RUN yum install -y rpmdevtools openssl dnf-utils
+RUN dnf install -y rpmdevtools openssl dnf-utils
 ')
 
 #
@@ -72,18 +67,18 @@ RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 changequote({`}, {'})dnl
 
 #  Enable EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm
 ifelse(OS_VER, 8, `
 #  Enable powertools repo
-RUN yum config-manager --enable powertools
+RUN dnf config-manager --enable powertools
 
 #  Enable epel-testing, currently needed for hiredis-devel
-RUN yum config-manager --enable epel-testing
+RUN dnf config-manager --enable epel-testing
 ')dnl
 ifelse(OS_VER, 9, `
 #  Enable Code Ready Builder repo (CentOS powertools equivalent)
-RUN yum install -y yum-utils
-RUN yum config-manager --enable crb
+RUN dnf install -y dnf-utils
+RUN dnf config-manager --enable crb
 ')dnl
 
 #
@@ -91,8 +86,8 @@ RUN yum config-manager --enable crb
 #
 #  Run twice, it doesn't always get everything with one invocation
 RUN [ -e redhat/freeradius.spec ] && \
-	yum-builddep -y redhat/freeradius.spec && \
-	yum-builddep -y redhat/freeradius.spec
+	dnf builddep -y redhat/freeradius.spec && \
+	dnf builddep -y redhat/freeradius.spec
 
 #
 #  Create RPM build environment
@@ -155,25 +150,23 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 })dnl
 changequote({`}, {'})dnl
 
-RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
-
 ifelse(OS_VER, 9, `dnl
 #  Needed for mysql-libs on Rocky 9
-RUN yum install -y yum-utils
-RUN yum config-manager --enable crb
+RUN dnf install -y dnf-utils
+RUN dnf config-manager --enable crb
 ')dnl
 
 #  EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm \
-    && yum install -y dnf-utils \
-    && yum config-manager --enable epel-testing
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm \
+    && dnf install -y dnf-utils \
+    && dnf config-manager --enable epel-testing
 
 ARG radiusd_uid=95
 ARG radiusd_gid=95
 
 RUN groupadd -g ${radiusd_gid} -r radiusd \
     && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \
-    && yum install -y /tmp/*.rpm
+    && dnf install -y /tmp/*.rpm
 
 WORKDIR /
 COPY scripts/docker/etc/docker-entrypoint.sh.PKG_TYPE docker-entrypoint.sh

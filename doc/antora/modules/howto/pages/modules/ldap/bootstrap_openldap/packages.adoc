@@ -23,7 +23,7 @@ OpenLDAP LTB packages available under the
 "Packaging and OpenLDAP extensions" heading https://ltb-project.org/documentation[here].
 
 You should add the appropriate repository definitions and install the `openldap`
-package (`yum install openldap` or `apt-get install openldap`).
+package (`dnf install openldap` or `apt-get install openldap`).
 
 === Define site specific variables
 Change the values here to match local paths and your site specific

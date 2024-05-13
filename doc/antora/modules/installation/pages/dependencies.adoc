@@ -33,7 +33,7 @@ https://talloc.samba.org/talloc/doc/html/index.html
 
 ```
 # subscription-manager repos --enable rhel-7-server-optional-rpms
-# yum install libtalloc-dev
+# dnf install libtalloc-dev
 ```
 
 === kqueue
@@ -54,5 +54,5 @@ _kqueue is already available, there is nothing to install._
 
 ```
 # subscription-manager repos --enable rhel-7-server-optional-rpms
-# yum install libkqueue-dev
+# dnf install libkqueue-dev
 ```

@@ -97,7 +97,7 @@ Install the MS SQL Tools package:
 
 [source,shell]
 ----
-yum install mssql-tools
+dnf install mssql-tools
 ----
 
 Verify that non-ODBC connectivity to the database server functions correctly
@@ -153,7 +153,7 @@ Install the package for Microsoft ODBC Driver for SQL Server:
 
 [source,shell]
 ----
-yum install msodbcsql17 unixodbc
+dnf install msodbcsql17 unixodbc
 ----
 
 

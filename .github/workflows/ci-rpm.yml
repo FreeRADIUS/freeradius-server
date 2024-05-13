@@ -84,24 +84,24 @@ jobs:
         echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
         echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
-        yum install -y epel-release
+        dnf install -y epel-release
 
     - name: Enable PowerTools / CRB
       run: |
-        yum install -y yum-utils dnf-plugins-core
-        yum config-manager --enable PowerTools || :
-        yum config-manager --enable powertools || :
-        yum config-manager --enable crb || :
+        dnf install -y dnf-utils dnf-plugins-core
+        dnf config-manager --enable PowerTools || :
+        dnf config-manager --enable powertools || :
+        dnf config-manager --enable crb || :
 
     - name: Enable EPEL for Rocky Linux 9
       if: ${{ matrix.env.NAME == 'rocky-9' }}
       run: |
-        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
     # For pkill
     - name: Enable procps-ng
       run: |
-        yum install -y procps-ng
+        dnf install -y procps-ng
 
     - name: Set up NetworkRADIUS extras repository
       run: |
@@ -115,7 +115,7 @@ jobs:
 
     - name: Install common tools
       run: |
-        yum install -y rpm-build openssl make gcc perl git-core
+        dnf install -y rpm-build openssl make gcc perl git-core
 
     - uses: actions/checkout@v4
       with:
@@ -127,7 +127,7 @@ jobs:
     #
     - name: Install build dependencies
       run: |
-        yum-builddep -y freeradius.spec && yum-builddep -y freeradius.spec
+        dnf builddep -y freeradius.spec && dnf builddep -y freeradius.spec
       working-directory: freeradius/redhat
 
     - name: Build RPMs
@@ -151,7 +151,7 @@ jobs:
     # Build eapol_test using a minimal make environment to avoid configuring
     - name: Build eapol_test
       run: |
-        yum install -y libnl3-devel which
+        dnf install -y libnl3-devel which
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
         scripts/ci/eapol_test-build.sh
         mv scripts/ci/eapol_test/eapol_test ../rpms
@@ -170,7 +170,7 @@ jobs:
     #
     - name: "Debug: Package dependancies for tmate"
       run: |
-        yum install -y xz
+        dnf install -y xz
         ln -s /bin/true /bin/apt-get
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
@@ -226,24 +226,24 @@ jobs:
         echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
         echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
-        yum install -y epel-release
+        dnf install -y epel-release
 
     - name: Enable PowerTools / CRB
       run: |
-        yum install -y yum-utils dnf-plugins-core
-        yum config-manager --enable PowerTools || :
-        yum config-manager --enable powertools || :
-        yum config-manager --enable crb || :
+        dnf install -y dnf-utils dnf-plugins-core
+        dnf config-manager --enable PowerTools || :
+        dnf config-manager --enable powertools || :
+        dnf config-manager --enable crb || :
 
     - name: Enable EPEL for Rocky Linux 9
       if: ${{ matrix.env.NAME == 'rocky-9' }}
       run: |
-        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+        dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
 
     # For pkill
     - name: Enable procps-ng
       run: |
-        yum install -y procps-ng
+        dnf install -y procps-ng
 
     - name: Load RPMs
       uses: actions/download-artifact@v4
@@ -252,7 +252,7 @@ jobs:
 
     - name: Install RPMs
       run: |
-        yum install -y *.rpm
+        dnf install -y *.rpm
 
     - name: Config check
       run: |
@@ -264,7 +264,7 @@ jobs:
     #
     - name: Install pre-built eapol_test
       run: |
-        yum install -y libnl3 make gdb which
+        dnf install -y libnl3 make gdb which
         mv eapol_test /usr/local/bin
         chmod +x /usr/local/bin/eapol_test
 
@@ -296,7 +296,7 @@ jobs:
     #
     - name: "Debug: Package dependancies for tmate"
       run: |
-        yum install -y xz
+        dnf install -y xz
         ln -s /bin/true /bin/apt-get
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 

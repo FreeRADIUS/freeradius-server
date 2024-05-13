@@ -7,37 +7,32 @@ ARG from=rockylinux/rockylinux:9
 FROM ${from} as build
 
 #
-#  Ensure yum is installed.  Some docker images only have dnf or microdnf
-#
-RUN if [ ! -e /usr/bin/yum ]; then if [ -e /usr/bin/dnf ]; then dnf install -y yum; else microdnf install -y yum; fi; fi
-
-#
 #  Install devtools like make and git and the EPEL
 #  repository for freetds and hiredis
 #
-RUN yum update -y
-RUN yum install -y rpmdevtools openssl epel-release git procps yum-utils \
+RUN dnf update -y
+RUN dnf install -y rpmdevtools openssl epel-release git procps dnf-utils \
 	rsync dnf-plugins-core
 
 
 
-RUN yum config-manager --set-enabled crb
+RUN dnf config-manager --set-enabled crb
 
 #
 #  Documentation build dependencies
 #
 
 #  - doxygen & JSON.pm
-RUN yum install -y doxygen graphviz perl-JSON
+RUN dnf install -y doxygen graphviz perl-JSON
 #  - antora (npm needed)
 RUN curl -sL https://rpm.nodesource.com/setup_20.x | bash -
-RUN yum install -y nodejs
+RUN dnf install -y nodejs
 RUN npm i -g @antora/cli@3.1.7 @antora/site-generator-default@3.1.7
 #  - pandoc
 RUN curl -o - -L $(curl -s https://api.github.com/repos/jgm/pandoc/releases/latest | grep "browser_download_url.*tar.gz" | cut -d '"' -f 4) | tar xzvf - -C /tmp/
 RUN mv /tmp/pandoc-*/bin/* /usr/local/bin
 #  - asciidoctor
-RUN yum install -y rubygems-devel
+RUN dnf install -y rubygems-devel
 RUN gem install asciidoctor
 
 #
@@ -73,13 +68,13 @@ WORKDIR freeradius-server
 RUN for i in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin 2>/dev/null | sed -e 's#origin/##' | egrep "^(v[4-9]*\.[0-9x]*\.x|master)$");\
 	do \
 		git checkout $i; \
-		[ -e redhat/freeradius.spec ] && yum-builddep  -y redhat/freeradius.spec; \
+		[ -e redhat/freeradius.spec ] && dnf builddep  -y redhat/freeradius.spec; \
 	done
 
 #
 #  A few extra packages needed for tests
 #
-RUN yum install -y \
+RUN dnf install -y \
     libnl3-devel \
     libyubikey-devel \
     oathtool \

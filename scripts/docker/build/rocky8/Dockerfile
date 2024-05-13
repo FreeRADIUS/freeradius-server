@@ -11,9 +11,9 @@ RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
 #
 #  Install build tools
 #
-RUN yum groupinstall -y "Development Tools"
+RUN dnf groupinstall -y "Development Tools"
 
-RUN yum install -y rpmdevtools openssl dnf-utils
+RUN dnf install -y rpmdevtools openssl dnf-utils
 
 
 #
@@ -61,21 +61,21 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
 #  Enable EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 
 #  Enable powertools repo
-RUN yum config-manager --enable powertools
+RUN dnf config-manager --enable powertools
 
 #  Enable epel-testing, currently needed for hiredis-devel
-RUN yum config-manager --enable epel-testing
+RUN dnf config-manager --enable epel-testing
 
 #
 #  Install build dependencies
 #
 #  Run twice, it doesn't always get everything with one invocation
 RUN [ -e redhat/freeradius.spec ] && \
-	yum-builddep -y redhat/freeradius.spec && \
-	yum-builddep -y redhat/freeradius.spec
+	dnf builddep -y redhat/freeradius.spec && \
+	dnf builddep -y redhat/freeradius.spec
 
 #
 #  Create RPM build environment
@@ -136,16 +136,16 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 
 
 #  EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
-    && yum install -y dnf-utils \
-    && yum config-manager --enable epel-testing
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm \
+    && dnf install -y dnf-utils \
+    && dnf config-manager --enable epel-testing
 
 ARG radiusd_uid=95
 ARG radiusd_gid=95
 
 RUN groupadd -g ${radiusd_gid} -r radiusd \
     && useradd -u ${radiusd_uid} -g radiusd -r -M -d /home/radiusd -s /sbin/nologin radiusd \
-    && yum install -y /tmp/*.rpm
+    && dnf install -y /tmp/*.rpm
 
 WORKDIR /
 COPY scripts/docker/etc/docker-entrypoint.sh.rpm docker-entrypoint.sh
