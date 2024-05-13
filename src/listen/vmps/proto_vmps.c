@@ -30,8 +30,8 @@
 #include "proto_vmps.h"
 
 extern fr_app_t proto_vmps;
-static int type_parse(TALLOC_CTX *ctx, void *out, void *parent,
-		      CONF_ITEM *ci, conf_parser_t const *rule);
+static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t priority_config[] = {
 	{ FR_CONF_OFFSET("Join-Request", proto_vmps_t, priorities[FR_PACKET_TYPE_VALUE_JOIN_REQUEST]),
@@ -64,7 +64,7 @@ static conf_parser_t const limit_config[] = {
  */
 static conf_parser_t const proto_vmps_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_vmps_t, allowed_types), .func = type_parse },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_vmps_t, io.submodule), .func = virtual_sever_listen_transport_parse },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_vmps_t, io.submodule), .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	{ FR_CONF_POINTER("priority", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) priority_config },
@@ -117,6 +117,23 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 	inst->allowed[dv->value->vb_uint32] = true;
 	*((char const **) out) = value;
+
+	return 0;
+}
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_vmps_t		*inst = talloc_get_type_abort(parent, proto_vmps_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+	inst->io.app_io_instance = mi->data;
+	inst->io.app_io_conf = mi->conf;
 
 	return 0;
 }

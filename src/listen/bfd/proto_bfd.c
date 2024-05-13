@@ -30,6 +30,7 @@
 
 extern fr_app_t proto_bfd;
 
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /** How to parse a BFD listen section
@@ -37,7 +38,7 @@ static int auth_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF
  */
 static conf_parser_t const proto_bfd_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_bfd_t, io.submodule),
-	  .func = virtual_sever_listen_transport_parse },
+	  .func = transport_parse },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -82,6 +83,22 @@ fr_dict_attr_autoload_t proto_bfd_dict_attr[] = {
 	{ NULL }
 };
 
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_bfd_t		*inst = talloc_get_type_abort(parent, proto_bfd_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+	inst->io.app_io_instance = mi->data;
+	inst->io.app_io_conf = mi->conf;
+
+	return 0;
+}
 /*
  *	They all have to be UDP.
  */

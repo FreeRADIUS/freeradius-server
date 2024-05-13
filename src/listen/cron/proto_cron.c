@@ -31,6 +31,7 @@
 
 extern fr_app_t proto_cron;
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 
 /** How to parse a Load listen section
  *
@@ -39,7 +40,7 @@ static conf_parser_t const proto_cron_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_cron_t,
 			  type), .func = type_parse },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_cron_t, io.submodule),
-	  .func = virtual_sever_listen_transport_parse, .dflt = "crontab" },
+	  .func = transport_parse, .dflt = "crontab" },
 
 	/*
 	 *	Add this as a synonym so normal humans can understand it.
@@ -56,6 +57,23 @@ static conf_parser_t const proto_cron_config[] = {
 
 	CONF_PARSER_TERMINATOR
 };
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_cron_t		*inst = talloc_get_type_abort(parent, proto_cron_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+	inst->io.app_io_instance = mi->data;
+	inst->io.app_io_conf = mi->conf;
+
+	return 0;
+}
 
 /** Translates the packet-type into a submodule name
  *

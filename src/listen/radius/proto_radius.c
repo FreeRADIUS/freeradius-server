@@ -86,23 +86,6 @@ static conf_parser_t const proto_radius_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
-{
-	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
-	module_instance_t	*mi;
-
-	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
-		return -1;
-	}
-
-	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
-	inst->io.app_io = (fr_app_io_t const *)mi->exported;
-	inst->io.app_io_instance = mi->data;
-	inst->io.app_io_conf = mi->conf;
-
-	return 0;
-}
-
 static fr_dict_t const *dict_radius;
 
 extern fr_dict_autoload_t proto_radius_dict[];
@@ -155,6 +138,23 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 
 	inst->allowed[dv->value->vb_uint32] = true;
 	*((char const **) out) = value;
+
+	return 0;
+}
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_radius_t		*inst = talloc_get_type_abort(parent, proto_radius_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+	inst->io.app_io_instance = mi->data;
+	inst->io.app_io_conf = mi->conf;
 
 	return 0;
 }

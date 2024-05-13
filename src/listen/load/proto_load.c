@@ -31,6 +31,7 @@
 
 extern fr_app_t proto_load;
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 /** How to parse a Load listen section
  *
@@ -39,7 +40,7 @@ static conf_parser_t const proto_load_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY | CONF_FLAG_REQUIRED, proto_load_t,
 			  type), .func = type_parse },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_load_t, io.submodule),
-	  .func = virtual_sever_listen_transport_parse, .dflt = "step" },
+	  .func = transport_parse, .dflt = "step" },
 
 	/*
 	 *	Add this as a synonym so normal humans can understand it.
@@ -101,6 +102,23 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM
 	}
 
 	inst->code = type_enum->value->vb_uint32;
+	return 0;
+}
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_load_t		*inst = talloc_get_type_abort(parent, proto_load_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+	inst->io.app_io_instance = mi->data;
+	inst->io.app_io_conf = mi->conf;
+
 	return 0;
 }
 

@@ -28,6 +28,8 @@
 
 extern fr_app_t proto_control;
 
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+
 static conf_parser_t const limit_config[] = {
 	{ FR_CONF_OFFSET("idle_timeout", proto_control_t, io.idle_timeout), .dflt = "30.0" } ,
 	{ FR_CONF_OFFSET("nak_lifetime", proto_control_t, io.nak_lifetime), .dflt = "30.0" } ,
@@ -50,7 +52,7 @@ static conf_parser_t const limit_config[] = {
  */
 static conf_parser_t const proto_control_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_control_t, io.submodule),
-	  .func = virtual_sever_listen_transport_parse },
+	  .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	CONF_PARSER_TERMINATOR
@@ -63,6 +65,23 @@ fr_dict_autoload_t proto_control_dict[] = {
 	{ .out = &dict_control, .proto = "freeradius" },
 	{ NULL }
 };
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_control_t		*inst = talloc_get_type_abort(parent, proto_control_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+	inst->io.app_io_instance = mi->data;
+	inst->io.app_io_conf = mi->conf;
+
+	return 0;
+}
 
 /** Open listen sockets/connect to external event source
  *

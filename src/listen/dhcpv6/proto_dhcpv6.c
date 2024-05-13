@@ -30,6 +30,7 @@
 
 extern fr_app_t proto_dhcpv6;
 static int type_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
 static const conf_parser_t priority_config[] = {
 	{ FR_CONF_OFFSET("Solicit", proto_dhcpv6_t, priorities[FR_DHCPV6_SOLICIT]),
@@ -76,7 +77,7 @@ static conf_parser_t const limit_config[] = {
 static conf_parser_t const proto_dhcpv6_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY, proto_dhcpv6_t, allowed_types), .func = type_parse },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, proto_dhcpv6_t, io.submodule),
-	  .func = virtual_sever_listen_transport_parse },
+	  .func = transport_parse },
 
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 
@@ -131,6 +132,23 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 
 	inst->allowed[dv->value->vb_uint32] = true;
 	*((char const **) out) = value;
+
+	return 0;
+}
+
+static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	proto_dhcpv6_t		*inst = talloc_get_type_abort(parent, proto_dhcpv6_t);
+	module_instance_t	*mi;
+
+	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+		return -1;
+	}
+
+	mi = talloc_get_type_abort(*(void **)out, module_instance_t);
+	inst->io.app_io = (fr_app_io_t const *)mi->exported;
+	inst->io.app_io_instance = mi->data;
+	inst->io.app_io_conf = mi->conf;
 
 	return 0;
 }
