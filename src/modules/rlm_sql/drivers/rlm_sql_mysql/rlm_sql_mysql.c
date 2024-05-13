@@ -573,17 +573,15 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
  * @param ctx to allocate temporary error buffers in.
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
- * @param handle rlm_sql connection handle.
+ * @param conn MySQL connection the query was run on.
  * @param config rlm_sql config.
  * @return
  *	- Number of errors written to the #sql_log_entry_t array.
  *	- -1 on failure.
  */
 static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			   rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+			   rlm_sql_mysql_conn_t *conn, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
-
 	MYSQL_RES		*result;
 	MYSQL_ROW		row;
 	unsigned int		num_fields;
@@ -633,22 +631,22 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
 	return i;
 }
 
-/** Retrieves any errors associated with the connection handle
+/** Retrieves any errors associated with the query context
  *
  * @note Caller should free any memory allocated in ctx (talloc_free_children()).
  *
  * @param ctx to allocate temporary error buffers in.
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
- * @param handle rlm_sql connection handle.
+ * @param query_ctx Query context to retrieve error for.
  * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_t		*inst = talloc_get_type_abort(handle->inst->driver_submodule->data, rlm_sql_mysql_t);
-	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
+	rlm_sql_mysql_t const	*inst = talloc_get_type_abort_const(query_ctx->inst->driver_submodule->data, rlm_sql_mysql_t);
+	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(query_ctx->handle->conn, rlm_sql_mysql_conn_t);
 	char const		*error;
 	size_t			i = 0;
 
@@ -685,7 +683,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 
 		FALL_THROUGH;
 		case SERVER_WARNINGS_YES:
-			ret = sql_warnings(ctx, out, outlen - 1, handle, config);
+			ret = sql_warnings(ctx, out, outlen - 1, conn, config);
 			if (ret > 0) i += ret;
 			break;
 

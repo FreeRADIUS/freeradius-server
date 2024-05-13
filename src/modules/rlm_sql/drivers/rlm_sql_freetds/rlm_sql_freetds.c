@@ -400,21 +400,21 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-/** Retrieves any errors associated with the connection handle
+/** Retrieves any errors associated with the query context
  *
  * @note Caller will free any memory allocated in ctx.
  *
  * @param ctx to allocate temporary error buffers in.
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
- * @param handle rlm_sql connection handle.
+ * @param query_ctx Query context to retrieve error for.
  * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
-			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_freetds_conn_t *conn = handle->conn;
+	rlm_sql_freetds_conn_t *conn = query_ctx->handle->conn;
 
 	fr_assert(conn && conn->db);
 	fr_assert(outlen > 0);
@@ -808,6 +808,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 		MEM(query_ctx = fr_sql_query_alloc(NULL, handle->inst, NULL, handle, NULL, database, SQL_QUERY_OTHER));
 		if ((sql_query(&p_result, NULL, NULL, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 		    (query_ctx->rcode != RLM_SQL_OK)) {
+			talloc_free(query_ctx);
 			goto error;
 		}
 		talloc_free(query_ctx);
@@ -819,7 +820,7 @@ error:
 	if (conn->context) {
 		sql_log_entry_t	error;
 
-		if (sql_error(NULL, &error, 1, handle, config) > 0) ERROR("%s", error.msg);
+		if (sql_error(NULL, &error, 1, &(fr_sql_query_t){ .handle = handle }, config) > 0) ERROR("%s", error.msg);
 	}
 
 	return RLM_SQL_ERROR;

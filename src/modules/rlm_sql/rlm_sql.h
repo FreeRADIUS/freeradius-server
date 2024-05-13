@@ -176,7 +176,7 @@ extern size_t sql_rcode_table_len;
  *	0  - If no error messages are available.
  *	>0 - Number of log entries
  */
-typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, rlm_sql_handle_t *handle,
+typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, fr_sql_query_t *handle,
 			      rlm_sql_config_t const *config);
 
 typedef struct {
@@ -246,7 +246,7 @@ void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const
 unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 unlang_action_t	rlm_sql_query(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
 unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
-void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug);
+void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query_t *query_ctx, bool force_debug);
 fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, fr_trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 
 /*

@@ -332,7 +332,7 @@ unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, r
 
 	default:
 		ROPTIONAL(RERROR, ERROR, "Error fetching row");
-		rlm_sql_print_error(inst, request, query_ctx->handle, false);
+		rlm_sql_print_error(inst, request, query_ctx, false);
 		RETURN_MODULE_FAIL;
 	}
 }
@@ -344,18 +344,20 @@ unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, r
  *
  * @param inst Instance of rlm_sql.
  * @param request Current request, may be NULL.
- * @param handle Handle to retrieve errors for.
+ * @param query_ctx Query context to retrieve errors for.
  * @param force_debug Force all errors to be logged as debug messages.
  */
-void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, bool force_debug)
+void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query_t *query_ctx, bool force_debug)
 {
 	char const	*driver = inst->driver_submodule->name;
 	sql_log_entry_t	log[20];
 	size_t		num, i;
+	TALLOC_CTX	*log_ctx = talloc_new(NULL);
 
-	num = (inst->driver->sql_error)(handle->log_ctx, log, (NUM_ELEMENTS(log)), handle, &inst->config);
+	num = (inst->driver->sql_error)(log_ctx, log, (NUM_ELEMENTS(log)), query_ctx, &inst->config);
 	if (num == 0) {
 		ROPTIONAL(RERROR, ERROR, "Unknown error");
+		talloc_free(log_ctx);
 		return;
 	}
 
@@ -383,7 +385,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, rlm_sql_hand
 		}
 	}
 
-	talloc_free_children(handle->log_ctx);
+	talloc_free(log_ctx);
 }
 
 /** Automatically run the correct `finish` function when freeing an SQL query
@@ -485,7 +487,7 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 		 *	These are bad and should make rlm_sql return invalid
 		 */
 		case RLM_SQL_QUERY_INVALID:
-			rlm_sql_print_error(inst, request, query_ctx->handle, false);
+			rlm_sql_print_error(inst, request, query_ctx, false);
 			(inst->driver->sql_finish_query)(query_ctx, &inst->config);
 			RETURN_MODULE_INVALID;
 
@@ -500,7 +502,7 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 		 */
 		case RLM_SQL_ERROR:
 			if (inst->driver->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
-				rlm_sql_print_error(inst, request, query_ctx->handle, false);
+				rlm_sql_print_error(inst, request, query_ctx, false);
 				(inst->driver->sql_finish_query)(query_ctx, &inst->config);
 				RETURN_MODULE_FAIL;
 			}
@@ -510,7 +512,7 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 		 *	Driver suggested using an alternative query
 		 */
 		case RLM_SQL_ALT_QUERY:
-			rlm_sql_print_error(inst, request, query_ctx->handle, true);
+			rlm_sql_print_error(inst, request, query_ctx, true);
 			(inst->driver->sql_finish_query)(query_ctx, &inst->config);
 			break;
 
@@ -591,7 +593,7 @@ unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority
 		case RLM_SQL_QUERY_INVALID:
 		case RLM_SQL_ERROR:
 		default:
-			rlm_sql_print_error(inst, request, query_ctx->handle, false);
+			rlm_sql_print_error(inst, request, query_ctx, false);
 			(inst->driver->sql_finish_select_query)(query_ctx, &inst->config);
 			if (query_ctx->rcode == RLM_SQL_QUERY_INVALID) RETURN_MODULE_INVALID;
 			RETURN_MODULE_FAIL;
