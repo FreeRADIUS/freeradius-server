@@ -528,7 +528,11 @@ typedef struct {
 static void mltl_mlg_data_del(module_instance_t *mi)
 {
 	mltl_module_instance_t *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
-	module_thread_detach(mltl_mi->ti);
+
+	/*
+	 *	Only free thread instance data we allocated...
+	 */
+	if (mltl_mi->ti) module_thread_detach(mltl_mi->ti);
 }
 
 static module_thread_instance_t *mltl_thread_data_get(module_instance_t *mi)
