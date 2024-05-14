@@ -68,17 +68,24 @@ typedef int (*fr_bio_packet_release_t)(fr_bio_packet_t *bio, fr_packet_t *packet
 
 typedef void (*fr_bio_packet_signal_t)(fr_bio_packet_t *bio);
 
+typedef struct {
+	fr_bio_packet_signal_t	read_blocked;
+	fr_bio_packet_signal_t	write_blocked;
+
+	fr_bio_packet_signal_t	read_resume;
+	fr_bio_packet_signal_t	write_resume;
+} fr_bio_packet_cb_funcs_t;
+
 struct fr_bio_packet_s {
 	void			*uctx;		//!< user ctx, caller can manually set it.
 
 	fr_bio_packet_read_t	read;		//!< read from the underlying bio
 	fr_bio_packet_write_t	write;		//!< write to the underlying bio
 
-	fr_bio_packet_signal_t	read_blocked;
-	fr_bio_packet_signal_t	write_blocked;
+	fr_bio_packet_cb_funcs_t cb;
 
-	fr_bio_packet_signal_t	read_resume;
-	fr_bio_packet_signal_t	write_resume;
+	bool			write_blocked;
+	bool			read_blocked;
 
 	fr_bio_t		*bio;		//!< underlying bio for IO
 };

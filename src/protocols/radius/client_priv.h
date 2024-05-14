@@ -46,7 +46,6 @@ typedef struct {
 	fr_bio_t		*fd;
 
 	bool			all_ids_used;		//!< ALL IDs are used.
-	bool			write_blocked;
 
 	fr_radius_client_bio_info_t info;
 

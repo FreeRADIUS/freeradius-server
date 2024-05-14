@@ -62,3 +62,5 @@ fr_radius_client_bio_info_t const *fr_radius_client_bio_info(fr_bio_packet_t *bi
 size_t		fr_radius_client_bio_outstanding(fr_bio_packet_t *bio) CC_HINT(nonnull);
 
 int		fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id);
+
+int		fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t const *cb);

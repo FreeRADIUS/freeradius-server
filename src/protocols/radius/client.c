@@ -146,7 +146,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 		all_ids_used:
 			my->all_ids_used = true;
 
-			if (my->common.write_blocked) my->common.write_blocked(&my->common);
+			if (my->common.cb.write_blocked) my->common.cb.write_blocked(&my->common);
 
 			fr_strerror_const("All IDs are in use");
 			return fr_bio_error(GENERIC);
@@ -313,7 +313,7 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 	if (my->all_ids_used) {
 		my->all_ids_used = false;
 
-		if (!my->write_blocked && my->common.write_resume) my->common.write_resume(&my->common);
+		if (!my->common.write_blocked && my->common.cb.write_resume) my->common.cb.write_resume(&my->common);
 	}
 }
 
@@ -500,4 +500,66 @@ int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
 
 	my->info.connected = (rcode == 0);
 	return rcode;
+}
+
+/*
+ *	Debounce functions to get to the right callback.
+ */
+static void fr_bio_write_blocked(fr_bio_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = bio->uctx;
+
+	my->common.write_blocked = true;
+
+	my->common.cb.write_blocked(&my->common);
+}
+
+static void fr_bio_write_resume(fr_bio_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = bio->uctx;
+
+	/*
+	 *	IO is unblocked, but we don't have any free IDs.  So we can't yet resume writes.
+	 */
+	if (my->all_ids_used) return;
+
+	my->common.write_blocked = false;
+
+	my->common.cb.write_resume(&my->common);
+}
+
+static void fr_bio_read_blocked(fr_bio_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = bio->uctx;
+
+	my->common.read_blocked = true;
+
+	my->common.cb.read_blocked(&my->common);
+}
+
+static void fr_bio_read_resume(fr_bio_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = bio->uctx;
+
+	my->common.read_blocked = false;
+
+	my->common.cb.read_resume(&my->common);
+}
+
+int fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t const *cb)
+{
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
+	fr_bio_cb_funcs_t bio_cb = {};
+
+#undef SET
+#define SET(_x) if (cb->_x) bio_cb._x = fr_bio_ ## _x
+
+	SET(write_blocked);
+	SET(read_blocked);
+	SET(write_resume);
+	SET(read_resume);
+
+	(void) fr_bio_cb_set(my->fd, &bio_cb);
+
+	return 0;
 }
