@@ -85,6 +85,11 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 		return NULL;
 	}
 
+	/*
+	 *	So that read / write pause / resume callbacks can find us
+	 */
+	my->fd->uctx = my;
+
 	my->fd_info = fr_bio_fd_info(my->fd);
 	fr_assert(my->fd_info != NULL);
 
@@ -139,6 +144,10 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 		 */
 		if (fr_bio_retry_entry_cancel(my->retry, NULL) < 1) {
 		all_ids_used:
+			my->all_ids_used = true;
+
+			if (my->common.write_blocked) my->common.write_blocked(&my->common);
+
 			fr_strerror_const("All IDs are in use");
 			return fr_bio_error(GENERIC);
 		}
@@ -296,6 +305,16 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 	 */
 	id_ctx->request_ctx = NULL;
 	id_ctx->retry_ctx = NULL;
+
+	/*
+	 *	IO was blocked due to IDs.  We now have a free ID, so perhaps we can resume writes.  But only
+	 *	if the IO handlers didn't mark us as "write blocked".
+	 */
+	if (my->all_ids_used) {
+		my->all_ids_used = false;
+
+		if (!my->write_blocked && my->common.write_resume) my->common.write_resume(&my->common);
+	}
 }
 
 /** Cancel one packet.
