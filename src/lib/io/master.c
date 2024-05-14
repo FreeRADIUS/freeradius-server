@@ -492,6 +492,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 	 *	called when the instance data is freed.
 	 */
 	if (!nak) {
+		CONF_SECTION *cs;
 		char *inst_name;
 
 		if (inst->max_connections || client->radclient->limit.max_connections) {
@@ -522,7 +523,10 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		inst_name = talloc_asprintf(NULL, "%"PRIu64, thread->client_id++);
 		mi = module_instance_copy(inst->clients, inst->submodule, inst_name);
 
-		if (module_instance_conf_parse(mi, inst->submodule->conf) < 0) {
+		cs = cf_section_dup(mi, NULL, inst->submodule->conf,
+				    cf_section_name1(inst->submodule->conf),
+				    cf_section_name2(inst->submodule->conf), false);
+		if (module_instance_conf_parse(mi, cs) < 0) {
 			cf_log_err(inst->server_cs, "Failed parsing module config");
 			goto cleanup;
 		}
