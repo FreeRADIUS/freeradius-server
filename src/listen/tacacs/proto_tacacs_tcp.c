@@ -63,7 +63,7 @@ typedef struct {
 	bool				recv_buff_is_set;	//!< Whether we were provided with a recv_buff
 	bool				dynamic_clients;	//!< whether we have dynamic clients
 
-	fr_client_list_t			*clients;		//!< local clients
+	fr_client_list_t		*clients;		//!< local clients
 
 	fr_trie_t			*trie;			//!< for parsed networks
 	fr_ipaddr_t			*allow;			//!< allowed networks for dynamic clients
@@ -459,7 +459,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 	}
 
-	ci = cf_parent(inst->cs); /* listen { ... } */
+	ci = cf_section_to_item(mctx->mi->parent->conf); /* listen { ... } */
 	fr_assert(ci != NULL);
 	ci = cf_parent(ci);
 	fr_assert(ci != NULL);
