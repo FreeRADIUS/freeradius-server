@@ -27,8 +27,6 @@ if (rcode > 0) {
 	return rcode;
 }
 
-if (rcode == 0) return rcode;
-
 #undef flag_blocked
 #define flag_blocked read_blocked
 #include "fd_errno.h"
