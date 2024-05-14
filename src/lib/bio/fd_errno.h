@@ -1,5 +1,5 @@
 /*
- *	Code snippet to avoid duplication.
+ *	We have an error, so we have common error handling code.
  */
 switch (errno) {
 case EINTR:
@@ -17,7 +17,9 @@ case EAGAIN:
 	/*
 	 *	The operation would block, return that.
 	 */
-	my->flag_blocked = true;
+	if (!my->info.flag_blocked && my->cb.flag_blocked) my->cb.flag_blocked((fr_bio_t *) my);
+
+	my->info.flag_blocked = true;
 	return fr_bio_error(IO_WOULD_BLOCK);
 
 default:

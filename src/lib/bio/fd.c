@@ -132,7 +132,7 @@ retry:
 	}
 
 #undef flag_blocked
-#define flag_blocked info.read_blocked
+#define flag_blocked read_blocked
 #include "fd_errno.h"
 
 	return fr_bio_error(IO);
@@ -158,7 +158,7 @@ retry:
 	if (rcode >= 0) return rcode;
 
 #undef flag_blocked
-#define flag_blocked info.read_blocked
+#define flag_blocked read_blocked
 #include "fd_errno.h"
 
 	return fr_bio_error(IO);
@@ -193,15 +193,14 @@ retry:
 		return rcode;
 	}
 
-	if (rcode == 0 ) return rcode;
+	if (rcode == 0) return rcode;
 
 #undef flag_blocked
-#define flag_blocked info.read_blocked
+#define flag_blocked read_blocked
 #include "fd_errno.h"
 
 	return fr_bio_error(IO);
 }
-
 
 /** Write to fd.
  *
@@ -217,8 +216,6 @@ static ssize_t fr_bio_fd_write(fr_bio_t *bio, UNUSED void *packet_ctx, const voi
 	 *	FD bios do nothing on flush.
 	 */
 	if (!buffer) return 0;
-
-	my->info.write_blocked = false;
 
 retry:
 	/*
@@ -236,11 +233,8 @@ retry:
 	 *	here.
 	 */
 	rcode = write(my->info.socket.fd, buffer, size);
-	if (rcode >= 0) return rcode;
 
-#undef flag_blocked
-#define flag_blocked info.write_blocked
-#include "fd_errno.h"
+#include "fd_write.h"
 
 	return fr_bio_error(IO);
 }
@@ -262,18 +256,13 @@ static ssize_t fr_bio_fd_sendto(fr_bio_t *bio, void *packet_ctx, const void *buf
 	 */
 	if (!buffer) return 0;
 
-	my->info.write_blocked = false;
-
 	// get destination IP
 	(void) fr_ipaddr_to_sockaddr(&sockaddr, &salen, &addr->socket.inet.dst_ipaddr, addr->socket.inet.dst_port);
 
 retry:
 	rcode = sendto(my->info.socket.fd, buffer, size, 0, (struct sockaddr *) &sockaddr, salen);
-	if (rcode >= 0) return rcode;
 
-#undef flag_blocked
-#define flag_blocked info.write_blocked
-#include "fd_errno.h"
+#include "fd_write.h"
 
 	return fr_bio_error(IO);
 }
@@ -325,7 +314,7 @@ retry:
 	if (rcode == 0) return rcode;
 
 #undef flag_blocked
-#define flag_blocked info.read_blocked
+#define flag_blocked read_blocked
 #include "fd_errno.h"
 
 	return fr_bio_error(IO);
@@ -413,8 +402,6 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 	fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 
-	my->info.write_blocked = false;
-
 	memset(&my->cbuf, 0, sizeof(my->cbuf));
 	memset(&my->msgh, 0, sizeof(struct msghdr));
 
@@ -470,9 +457,7 @@ retry:
 	rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
 	if (rcode >= 0) return rcode;
 
-#undef flag_blocked
-#define flag_blocked info.write_blocked
-#include "fd_errno.h"
+#include "fd_write.h"
 
 	return fr_bio_error(IO);
 }
@@ -566,8 +551,6 @@ static ssize_t fr_bio_fd_sendfromto6(fr_bio_t *bio, void *packet_ctx, const void
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 	fr_bio_fd_packet_ctx_t *addr = fr_bio_fd_packet_ctx(my, packet_ctx);
 
-	my->info.write_blocked = false;
-
 	memset(&my->cbuf, 0, sizeof(my->cbuf));
 	memset(&my->msgh, 0, sizeof(struct msghdr));
 
@@ -607,11 +590,8 @@ static ssize_t fr_bio_fd_sendfromto6(fr_bio_t *bio, void *packet_ctx, const void
 
 retry:
 	rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
-	if (rcode >= 0) return rcode;
 
-#undef flag_blocked
-#define flag_blocked info.write_blocked
-#include "fd_errno.h"
+#include "fd_write.h"
 
 	return fr_bio_error(IO);
 }
@@ -730,7 +710,10 @@ retry:
                  *      to call fr_bio_fd_connect() before calling write()
                  */
         case EINPROGRESS:
+		if (!my->info.write_blocked && my->cb.write_blocked) my->cb.write_blocked((fr_bio_t *) my);
+
 		my->info.write_blocked = true;
+
 		return fr_bio_error(IO_WOULD_BLOCK);
 
         default:
@@ -805,11 +788,8 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 
 	my->info.eof = false;
 
-	/*
-	 *	The socket shouldn't be selected for read.  But it should be selected for write.
-	 */
 	my->info.read_blocked = false;
-	my->info.write_blocked = true;
+	my->info.write_blocked = false;
 
 #ifdef SO_NOSIGPIPE
 	/*
@@ -836,6 +816,9 @@ int fr_bio_fd_init_connected(fr_bio_fd_t *my)
 
 	if (rcode != fr_bio_error(IO_WOULD_BLOCK)) return rcode;
 
+	/*
+	 *	The socket is blocked, and should be selected for writing.
+	 */
 	fr_assert(my->info.write_blocked);
 	fr_assert(my->info.state == FR_BIO_FD_STATE_CONNECTING);
 
@@ -1035,8 +1018,8 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_fd_conf
 				.af = AF_UNSPEC,
 			},
 			.type = FR_BIO_FD_UNCONNECTED,
-			.read_blocked = true,
-			.write_blocked = true,
+			.read_blocked = false,
+			.write_blocked = false,
 			.eof = false,
 			.state = FR_BIO_FD_STATE_CLOSED,
 		};
@@ -1187,7 +1170,7 @@ retry:
 	if (rcode >= 0) return 0;
 
 #undef flag_blocked
-#define flag_blocked info.read_blocked
+#define flag_blocked read_blocked
 #include "fd_errno.h"
 
 	return fr_bio_error(IO);

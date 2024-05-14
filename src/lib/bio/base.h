@@ -86,6 +86,12 @@ typedef int (*fr_bio_callback_t)(fr_bio_t *bio); /* activate / shutdown callback
 typedef struct {
 	fr_bio_callback_t	activate;
 	fr_bio_callback_t	shutdown;
+
+	fr_bio_callback_t	read_blocked;
+	fr_bio_callback_t	write_blocked;
+
+	fr_bio_callback_t	read_resume;		//!< "unblocked" is too similar to "blocked"
+	fr_bio_callback_t	write_resume;
 } fr_bio_cb_funcs_t;
 
 /** Accept a new connection on a bio
