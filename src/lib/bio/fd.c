@@ -112,12 +112,8 @@ static ssize_t fr_bio_fd_read_stream(fr_bio_t *bio, UNUSED void *packet_ctx, voi
 	ssize_t rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
-	my->info.read_blocked = false;
-
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
-	if (rcode > 0) return rcode;
-
 	if (rcode == 0) {
 		/*
 		 *	Stream sockets return 0 at EOF.  However, we want to distinguish that from the case of datagram
@@ -131,9 +127,7 @@ retry:
 		return fr_bio_error(EOF);
 	}
 
-#undef flag_blocked
-#define flag_blocked read_blocked
-#include "fd_errno.h"
+#include "fd_read.h"
 
 	return fr_bio_error(IO);
 }
@@ -151,15 +145,10 @@ static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, UNUSED void *pac
 	ssize_t rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
-	my->info.read_blocked = false;
-
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
-	if (rcode >= 0) return rcode;
 
-#undef flag_blocked
-#define flag_blocked read_blocked
-#include "fd_errno.h"
+#include "fd_read.h"
 
 	return fr_bio_error(IO);
 }
@@ -173,8 +162,6 @@ static ssize_t fr_bio_fd_recvfrom(fr_bio_t *bio, void *packet_ctx, void *buffer,
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 	socklen_t salen;
 	struct sockaddr_storage sockaddr;
-
-	my->info.read_blocked = false;
 
 retry:
 	salen = sizeof(sockaddr);
@@ -190,14 +177,9 @@ retry:
 
 		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
 					       &sockaddr, salen);
-		return rcode;
 	}
 
-	if (rcode == 0) return rcode;
-
-#undef flag_blocked
-#define flag_blocked read_blocked
-#include "fd_errno.h"
+#include "fd_read.h"
 
 	return fr_bio_error(IO);
 }
@@ -280,8 +262,6 @@ static ssize_t fd_fd_recvfromto_common(fr_bio_fd_t *my, void *packet_ctx, void *
 	from.ss_family = AF_UNSPEC;
 #endif
 
-	my->info.read_blocked = false;
-
 	memset(&my->cbuf, 0, sizeof(my->cbuf));
 	memset(&my->msgh, 0, sizeof(struct msghdr));
 
@@ -307,15 +287,9 @@ retry:
 
 		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
 					       &from, my->msgh.msg_namelen);
-
-		return rcode;
 	}
 
-	if (rcode == 0) return rcode;
-
-#undef flag_blocked
-#define flag_blocked read_blocked
-#include "fd_errno.h"
+#include "fd_read.h"
 
 	return fr_bio_error(IO);
 }
@@ -1163,15 +1137,11 @@ static ssize_t fr_bio_fd_read_discard(fr_bio_t *bio, UNUSED void *packet_ctx, vo
 	ssize_t rcode;
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
-	my->info.read_blocked = false;
-
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
-	if (rcode >= 0) return 0;
+	if (rcode > 0) rcode = 0; /* always return that we read no data */
 
-#undef flag_blocked
-#define flag_blocked read_blocked
-#include "fd_errno.h"
+#include "fd_read.h"
 
 	return fr_bio_error(IO);
 }
