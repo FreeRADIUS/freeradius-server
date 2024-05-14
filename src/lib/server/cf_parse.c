@@ -46,7 +46,7 @@ static char const parse_spaces[] = "                                            
 #define PAIR_SPACE(_cs) ((_cs->depth + 1) * 2)
 #define SECTION_SPACE(_cs) (_cs->depth * 2)
 
-void cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t const *rule)
+void cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t const *rule)
 {
 	char const	*value;
 	char		*tmp = NULL;
@@ -567,7 +567,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 			 *	Switch between custom parsing function
 			 *	and the standard value parsing function.
 			 */
-			cf_pair_debug(cs, cp, rule);
+			cf_pair_debug_log(cs, cp, rule);
 
 			if (cf_pair_is_parsed(cp)) continue;
 			ret = func(value_ctx, entry, base, cf_pair_to_item(cp), rule);
@@ -616,7 +616,7 @@ static int CC_HINT(nonnull(4,5)) cf_pair_parse_internal(TALLOC_CTX *ctx, void *o
 		}
 		if (deprecated) goto deprecated;
 
-		cf_pair_debug(cs, cp, rule);
+		cf_pair_debug_log(cs, cp, rule);
 
 		if (cf_pair_is_parsed(cp)) return 0;
 		ret = func(ctx, out, base, cf_pair_to_item(cp), rule);

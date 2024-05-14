@@ -2314,6 +2314,20 @@ void _cf_debug(CONF_ITEM const *ci)
 	}
 }
 
+/** Ease of use from debugger
+ */
+void cf_pair_debug(CONF_SECTION *cp)
+{
+	cf_debug(cp);
+}
+
+/** Ease of use from debugger
+ */
+void cf_section_debug(CONF_SECTION *cs)
+{
+	cf_debug(cs);
+}
+
 /*
  *	Used when we don't need the children any more, as with
  *

@@ -634,7 +634,7 @@ typedef struct {
 #define CF_FILE_CONFIG (1 << 2)
 #define CF_FILE_MODULE (1 << 3)
 
-void		cf_pair_debug(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t const *rule);
+void		cf_pair_debug_log(CONF_SECTION const *cs, CONF_PAIR *cp, conf_parser_t const *rule);
 
 /*
  *	Type validation and conversion
