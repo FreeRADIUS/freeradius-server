@@ -1293,15 +1293,15 @@ static int _network_socket_free(fr_network_socket_t *s)
 static void fr_network_listen_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
 	fr_network_t		*nr = ctx;
-	fr_listen_t		*listen;
+	fr_listen_t		*li;
 
-	fr_assert(data_size == sizeof(listen));
+	fr_assert(data_size == sizeof(li));
 
-	if (data_size != sizeof(listen)) return;
+	if (data_size != sizeof(li)) return;
 
-	memcpy(&listen, data, sizeof(listen));
+	memcpy(&li, data, sizeof(li));
 
-	(void) fr_network_listen_add_self(nr, listen);
+	(void) fr_network_listen_add_self(nr, li);
 }
 
 static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
@@ -1421,19 +1421,21 @@ static void fr_network_directory_callback(void *ctx, void const *data, size_t da
 {
 	int			num_messages;
 	fr_network_t		*nr = ctx;
+	fr_listen_t		*li;
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
 	fr_event_vnode_func_t	funcs = { .extend = fr_network_vnode_extend };
 
-	fr_assert(data_size == sizeof(s->listen));
+	if (fr_cond_assert(data_size == sizeof(li))) return;
 
-	if (data_size != sizeof(s->listen)) return;
+	memcpy(&li, data, sizeof(li));
 
 	s = talloc_zero(nr, fr_network_socket_t);
 	fr_assert(s != NULL);
+	talloc_steal(s, li);
 
 	s->nr = nr;
-	memcpy(&s->listen, data, sizeof(s->listen));
+	s->listen = li;
 	s->number = nr->num_sockets++;
 
 	MEM(s->waiting = fr_heap_alloc(s, waiting_cmp, fr_channel_data_t, channel.heap_id, 0));
