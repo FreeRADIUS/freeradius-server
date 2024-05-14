@@ -147,6 +147,7 @@ static ssize_t fr_bio_fd_read_connected_datagram(fr_bio_t *bio, UNUSED void *pac
 
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
+	if (rcode == 0) return rcode;
 
 #include "fd_read.h"
 
@@ -178,6 +179,8 @@ retry:
 		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
 					       &sockaddr, salen);
 	}
+
+	if (rcode == 0) return rcode;
 
 #include "fd_read.h"
 
@@ -288,6 +291,8 @@ retry:
 		(void) fr_ipaddr_from_sockaddr(&addr->socket.inet.src_ipaddr, &addr->socket.inet.src_port,
 					       &from, my->msgh.msg_namelen);
 	}
+
+	if (rcode == 0) return rcode;
 
 #include "fd_read.h"
 
@@ -429,7 +434,6 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 
 retry:
 	rcode = sendmsg(my->info.socket.fd, &my->msgh, 0);
-	if (rcode >= 0) return rcode;
 
 #include "fd_write.h"
 
@@ -1137,9 +1141,11 @@ static ssize_t fr_bio_fd_read_discard(fr_bio_t *bio, UNUSED void *packet_ctx, vo
 
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
-	if (rcode > 0) rcode = 0; /* always return that we read no data */
+	if (rcode >= 0) return 0; /* always return that we read no data */
 
-#include "fd_read.h"
+#undef flag_blocked
+#define flag_blocked read_blocked
+#include "fd_errno.h"
 
 	return fr_bio_error(IO);
 }
