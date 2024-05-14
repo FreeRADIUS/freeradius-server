@@ -407,7 +407,7 @@ static int mod_open(fr_listen_t *li)
 		.async = true,
 	};
 
-	thread->fd_bio = fr_bio_fd_alloc(thread, NULL, &cfg, 0);
+	thread->fd_bio = fr_bio_fd_alloc(thread, &cfg, 0);
 	if (!thread->fd_bio) {
 		PERROR("Failed allocating UNIX path %s", inst->filename);
 		return -1;

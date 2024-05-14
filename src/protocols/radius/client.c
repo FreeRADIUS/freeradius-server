@@ -78,7 +78,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 		if (!my->codes[i]) goto fail;
 	}
 
-	my->fd = fr_bio_fd_alloc(my, NULL, fd_cfg, 0);
+	my->fd = fr_bio_fd_alloc(my, fd_cfg, 0);
 	if (!my->fd) {
 	fail:
 		talloc_free(my);

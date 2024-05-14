@@ -222,3 +222,14 @@ char const *fr_bio_strerror(ssize_t error)
 		return "<unknown>";
 	}
 }
+
+int fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb)
+{
+	fr_bio_common_t *my = (fr_bio_common_t *) bio;
+
+	if (!cb) cb = &(fr_bio_cb_funcs_t) { };
+
+	my->cb = *cb;
+
+	return 0;
+}

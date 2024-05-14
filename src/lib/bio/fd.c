@@ -965,21 +965,19 @@ int fr_bio_fd_init_accept(fr_bio_fd_t *my)
  *  If a read returns EOF, then the FD remains open until talloc_free(bio) or fr_bio_fd_close() is called.
  *
  *  @param ctx		the talloc ctx
- *  @param cb		callbacks
  *  @param cfg		structure holding configuration information
  *  @param offset	only for unconnected datagram sockets, where #fr_bio_fd_packet_ctx_t is stored
  *  @return
  *	- NULL on error, memory allocation failed
  *	- !NULL the bio
  */
-fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_cb_funcs_t *cb, fr_bio_fd_config_t const *cfg, size_t offset)
+fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t offset)
 {
 	fr_bio_fd_t *my;
 
 	my = talloc_zero(ctx, fr_bio_fd_t);
 	if (!my) return NULL;
 
-	if (cb) my->cb = *cb;
 	my->max_tries = 4;
 	my->offset = offset;
 

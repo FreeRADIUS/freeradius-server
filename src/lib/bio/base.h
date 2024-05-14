@@ -194,3 +194,5 @@ int	fr_bio_shutdown(fr_bio_t *bio) CC_HINT(nonnull);
 int	fr_bio_free(fr_bio_t *bio) CC_HINT(nonnull);
 
 char const *fr_bio_strerror(ssize_t error);
+
+int fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb) CC_HINT(nonnull(1));
