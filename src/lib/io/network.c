@@ -1278,6 +1278,7 @@ static int _network_socket_free(fr_network_socket_t *s)
 	}
 
 	talloc_free(s->waiting);
+	talloc_free(s->listen);
 
 	return 0;
 }

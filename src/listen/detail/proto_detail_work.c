@@ -761,14 +761,6 @@ static int mod_close_internal(proto_detail_work_thread_t *thread)
 	close(thread->fd);
 	thread->fd = -1;
 
-	/*
-	 *	If we've been spawned from proto_detail_file, clean
-	 *	ourselves up, including our listener.
-	 */
-	if (thread->listen) {
-		talloc_free(thread->listen);
-	}
-
 	if (inst->parent->exit_when_done) {
 		INFO("Done reading detail files, process will now exit");
 
