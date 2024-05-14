@@ -116,7 +116,7 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 {
 
 	proto_detail_work_t const	*inst = talloc_get_type_abort_const(instance, proto_detail_work_t);
-	fr_detail_entry_t const		*track = request->async->packet_ctx;
+	fr_detail_entry_t const		*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_detail_entry_t);
 	fr_pair_t *vp;
 
 	request->client = inst->client;

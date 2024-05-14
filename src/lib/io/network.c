@@ -1292,14 +1292,14 @@ static int _network_socket_free(fr_network_socket_t *s)
  */
 static void fr_network_listen_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
-	fr_network_t		*nr = ctx;
+	fr_network_t		*nr = talloc_get_type_abort(ctx, fr_network_t);
 	fr_listen_t		*li;
 
 	fr_assert(data_size == sizeof(li));
 
 	if (data_size != sizeof(li)) return;
 
-	memcpy(&li, data, sizeof(li));
+	li = talloc_get_type_abort(*((void * const *)data), fr_listen_t);
 
 	(void) fr_network_listen_add_self(nr, li);
 }
@@ -1420,8 +1420,8 @@ static int fr_network_listen_add_self(fr_network_t *nr, fr_listen_t *li)
 static void fr_network_directory_callback(void *ctx, void const *data, size_t data_size, UNUSED fr_time_t now)
 {
 	int			num_messages;
-	fr_network_t		*nr = ctx;
-	fr_listen_t		*li;
+	fr_network_t		*nr = talloc_get_type_abort(ctx, fr_network_t);
+	fr_listen_t		*li = talloc_get_type_abort(*((void * const *)data), fr_listen_t);
 	fr_network_socket_t	*s;
 	fr_app_io_t const	*app_io;
 	fr_event_vnode_func_t	funcs = { .extend = fr_network_vnode_extend };
