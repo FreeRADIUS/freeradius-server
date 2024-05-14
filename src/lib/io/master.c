@@ -2702,8 +2702,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Create a list of client modules.
 	 *
 	 *	FIXME - Probably only want to do this for connected sockets?
+	 *
+	 *	FIXME - We probably want write protect enabled?
 	 */
-	inst->clients = module_list_alloc(inst, &module_list_type_thread_local, "clients");
+	inst->clients = module_list_alloc(inst, &module_list_type_thread_local, "clients", false);
 	module_list_mask_set(inst->clients, MODULE_INSTANCE_BOOTSTRAPPED);
 
 	return 0;

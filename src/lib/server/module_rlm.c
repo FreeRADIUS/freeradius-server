@@ -1170,7 +1170,7 @@ static int _modules_rlm_free_atexit(UNUSED void *uctx)
  */
 int modules_rlm_init(void)
 {
-	MEM(rlm_modules = module_list_alloc(NULL, &module_list_type_global, "rlm"));
+	MEM(rlm_modules = module_list_alloc(NULL, &module_list_type_global, "rlm", true));
 	MEM(module_rlm_virtual_name_tree = fr_rb_inline_alloc(NULL, module_rlm_virtual_t, name_node,
 							      module_rlm_virtual_name_cmp, NULL));
 	fr_atexit_global(_modules_rlm_free_atexit, NULL);

@@ -331,8 +331,13 @@ typedef module_thread_instance_t *(*module_list_thread_data_get_t)(module_instan
 
 /** A list of modules
  *
- * This allows modules to be instantiated and freed in phases,
- * i.e. proto modules before rlm modules.
+ * This used to be a global structure, but was move to a struct.
+ *
+ * Module lists allow collections of modules to be created.  The module lists themselves can be configured
+ * to be thread-local or global, with optional runtime write protection.
+ *
+ * Thread-local module lists are used for dynamic modules, i.e. those created at runtime, where as the
+ * global module lists are used for backend modules, listeners, and process state machines.
  */
 struct module_list_s
 {
@@ -343,6 +348,11 @@ struct module_list_s
 	fr_rb_tree_t			*name_tree;		//!< Modules indexed by name.
 	fr_rb_tree_t			*data_tree;		//!< Modules indexed by data.
 	fr_heap_t			*inst_heap;		//!< Heap of module instances.
+
+	bool				write_protect;		//!< If true, pages containing module boot or
+								///< instance data will be write protected after
+								///< bootstrapping and instantiation is complete,
+								///< to prevent accidental modification.
 
 	/** @name Callbacks to manage thread-specific data
 	 *
@@ -491,7 +501,8 @@ bool			module_instance_skip_thread_instantiate(module_instance_t *mi);
 void			module_list_mask_set(module_list_t *ml, module_instance_state_t mask);
 /** @} */
 
-module_list_t 		*module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type, char const *name)
+module_list_t 		*module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type,
+					   char const *name, bool write_protect)
 					   CC_HINT(nonnull(2,3)) CC_HINT(warn_unused_result);
 
 void			modules_init(char const *lib_dir);

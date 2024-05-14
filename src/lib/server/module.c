@@ -622,16 +622,14 @@ void module_list_debug(module_list_t const *ml)
 static inline CC_HINT(always_inline)
 int module_data_protect(module_instance_t *mi, module_data_pool_t *pool)
 {
-	if (pool->start == NULL) return 0; /* noop */
+	if ((pool->start == NULL) || !mi->ml->write_protect) return 0; /* noop */
 
 	DEBUG3("Protecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
 
-#if 0
 	if (unlikely(mprotect(pool->start, pool->len, PROT_READ) < 0)) {
 		fr_strerror_printf("Protecting \"%s\" module data failed: %s", mi->name, fr_syserror(errno));
 		return -1;
 	}
-#endif
 
 	return 0;
 }
@@ -646,16 +644,14 @@ int module_data_protect(module_instance_t *mi, module_data_pool_t *pool)
 static inline CC_HINT(always_inline)
 int module_data_unprotect(module_instance_t const *mi, module_data_pool_t const *pool)
 {
-	if (pool->start == NULL) return 0; /* noop */
+	if ((pool->start == NULL) || !mi->ml->write_protect) return 0; /* noop */
 
 	DEBUG3("Unprotecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
 
-#if 0
 	if (unlikely(mprotect(pool->start, pool->len, PROT_READ | PROT_WRITE) < 0)) {
 		fr_strerror_printf("Unprotecting \"%s\" data failed: %s", mi->name, fr_syserror(errno));
 		return -1;
 	}
-#endif
 
 	return 0;
 }
@@ -1747,14 +1743,17 @@ void module_list_mask_set(module_list_t *ml, module_instance_state_t mask)
  * If the list is freed all module instance data will be freed.
  * If no more instances of the module exist the module be unloaded.
  *
- * @param[in] ctx	To allocate the list in.
- * @param[in] type	of the list.  Controls whether this is a global
- *			module list, or a per-thread list containing
- *			variants of an existing module.
- * @param[in] name	of the list.  Used for debugging.
+ * @param[in] ctx		To allocate the list in.
+ * @param[in] type		of the list.  Controls whether this is a global
+ *				module list, or a per-thread list containing
+ *				variants of an existing module.
+ * @param[in] name		of the list.  Used for debugging.
+ * @param[in] write_protect	Whether to write protect the module data
+ *				after instantiation and bootstrapping.
  * @return A new module list.
  */
-module_list_t *module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type, char const *name)
+module_list_t *module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type,
+				 char const *name, bool write_protect)
 {
 	module_list_t *ml;
 
@@ -1778,6 +1777,7 @@ module_list_t *module_list_alloc(TALLOC_CTX *ctx, module_list_type_t const *type
 		talloc_free(ml);
 		return NULL;
 	}
+	ml->write_protect = write_protect;
 
 	return ml;
 }

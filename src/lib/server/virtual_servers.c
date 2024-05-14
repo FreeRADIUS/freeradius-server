@@ -1626,8 +1626,14 @@ int virtual_servers_init(void)
 		return -1;
 	}
 
-	MEM(process_modules = module_list_alloc(NULL, &module_list_type_global, "process"));
-	MEM(proto_modules = module_list_alloc(NULL, &module_list_type_global, "protocol"));
+	MEM(process_modules = module_list_alloc(NULL, &module_list_type_global, "process", true));
+
+	/*
+	 *	FIXME - We should be able to turn on write protection,
+	 *	but there are too many proto modules that hang things
+	 *	off of their instance data.
+	 */
+	MEM(proto_modules = module_list_alloc(NULL, &module_list_type_global, "protocol", false));
 	MEM(listen_addr_root = fr_rb_inline_alloc(NULL, fr_listen_t, virtual_server_node, listen_addr_cmp, NULL));
 	MEM(server_section_name_tree = fr_rb_alloc(NULL, server_section_name_cmp, NULL));
 
