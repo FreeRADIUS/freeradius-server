@@ -488,7 +488,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			 *	Create a new pair with all of the data
 			 *	of the old one.
 			 */
-			cp2 = cf_pair_dup(cs, cp1);
+			cp2 = cf_pair_dup(cs, cp1, true);
 			if (!cp2) return false;
 
 			cf_filename_set(cp2, cp1->item.filename);

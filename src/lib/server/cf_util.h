@@ -182,7 +182,7 @@ void		cf_section_add_name2_quote(CONF_SECTION *cs, fr_token_t token);
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
 			       fr_token_t op, fr_token_t lhs_type, fr_token_t rhs_type);
 
-CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp);
+CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp, bool copy_meta);
 
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
 

@@ -886,7 +886,8 @@ void _cf_lineno_set(CONF_ITEM *ci, int lineno)
  * @param[in] name1	of new section.
  * @param[in] name2	of new section.
  * @param[in] copy_meta	Copy additional meta data for a section
- *			(like template, base, depth and variables).
+ *			(like template, base, depth, parsed state,
+ *			and variables).
  * @return
  *	- A duplicate of the existing section.
  *	- NULL on error.
@@ -922,7 +923,7 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 			break;
 
 		case CONF_ITEM_PAIR:
-			cp = cf_pair_dup(new, cf_item_to_pair(ci));
+			cp = cf_pair_dup(new, cf_item_to_pair(ci), copy_meta);
 			if (!cp) {
 				talloc_free(new);
 				return NULL;
@@ -939,7 +940,6 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 
 	return new;
 }
-
 
 /** Return the next child that's a #CONF_SECTION
  *
@@ -1254,11 +1254,12 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
  *
  * @param parent	to allocate new pair in.
  * @param cp		to duplicate.
+ * @param copy_meta	Copy additional meta data for a pair
  * @return
  *	- NULL on error.
  *	- A duplicate of the input pair.
  */
-CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
+CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp, bool copy_meta)
 {
 	CONF_PAIR *new;
 
@@ -1268,7 +1269,7 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 	new = cf_pair_alloc(parent, cp->attr, cf_pair_value(cp), cp->op, cp->lhs_quote, cp->rhs_quote);
 	if (!new) return NULL;
 
-	new->parsed = cp->parsed;
+	if (copy_meta) new->parsed = cp->parsed;
 	cf_lineno_set(new, cp->item.lineno);
 	cf_filename_set(new, cp->item.filename);
 
@@ -1303,7 +1304,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	/*
 	 *	Add the new CONF_PAIR
 	 */
-	MEM(new_cp = cf_pair_dup(cs, cp));
+	MEM(new_cp = cf_pair_dup(cs, cp, true));
 	talloc_const_free(cp->value);
 	MEM(cp->value = talloc_typed_strdup(cp, value));
 
