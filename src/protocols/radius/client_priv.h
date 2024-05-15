@@ -38,7 +38,6 @@ typedef struct {
 
 	fr_radius_code_id_t	codes;
 
-	fr_bio_fd_info_t const	*fd_info;
 	fr_socket_t		reply_socket;
 
 	fr_bio_t		*retry;

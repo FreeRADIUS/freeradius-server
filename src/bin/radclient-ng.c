@@ -83,10 +83,6 @@ static bool paused = false;
 
 static fr_bio_fd_config_t fd_config;
 
-static fr_bio_fd_info_t const *fd_info = NULL;
-
-static fr_bio_t *bio = NULL;
-
 static fr_radius_client_config_t client_config;
 
 static fr_bio_packet_t *client_bio = NULL;
@@ -887,9 +883,9 @@ error:
  */
 static int radclient_sane(rc_request_t *request)
 {
-	request->packet->socket.inet.src_ipaddr = fd_info->socket.inet.src_ipaddr;
-	request->packet->socket.inet.src_port = fd_info->socket.inet.src_port;
-	request->packet->socket.inet.ifindex = fd_info->socket.inet.ifindex;
+	request->packet->socket.inet.src_ipaddr = client_info->fd_info->socket.inet.src_ipaddr;
+	request->packet->socket.inet.src_port = client_info->fd_info->socket.inet.src_port;
+	request->packet->socket.inet.ifindex = client_info->fd_info->socket.inet.ifindex;
 
 	if (request->packet->socket.inet.dst_port == 0) {
 		request->packet->socket.inet.dst_port = fd_config.dst_port;
@@ -1684,12 +1680,6 @@ int main(int argc, char **argv)
 	client_info = fr_radius_client_bio_info(client_bio);
 	fr_assert(client_info != NULL);
 
-	bio = fr_radius_client_bio_get_fd(client_bio);
-	fr_assert(bio != NULL);
-
-	fd_info = fr_bio_fd_info(bio);
-	fr_assert(fd_info != NULL);
-
 	if (forced_id >= 0) {
 		if (fr_radius_client_bio_force_id(client_bio, packet_code, forced_id) < 0) {
 			fr_perror("radclient");
@@ -1715,7 +1705,7 @@ int main(int argc, char **argv)
 	 *
 	 *	Once the connect() passes, we start reading from the request list, and processing packets.
 	 */
-	if (fr_event_fd_insert(autofree, NULL, client_config.retry_cfg.el, fd_info->socket.fd, NULL,
+	if (fr_event_fd_insert(autofree, NULL, client_config.retry_cfg.el, client_info->fd_info->socket.fd, NULL,
 			       client_connect, client_error, client_bio) < 0) {
 		fr_perror("radclient");
 		fr_exit_now(1);
@@ -1735,7 +1725,7 @@ int main(int argc, char **argv)
 	 ***********************************************************************/
 	fr_dlist_talloc_free(&rc_request_list);
 
-	(void) fr_event_fd_delete(client_config.retry_cfg.el, fd_info->socket.fd, FR_EVENT_FILTER_IO);
+	(void) fr_event_fd_delete(client_config.retry_cfg.el, client_info->fd_info->socket.fd, FR_EVENT_FILTER_IO);
 
 	fr_radius_global_free();
 

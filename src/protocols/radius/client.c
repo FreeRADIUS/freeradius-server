@@ -90,12 +90,12 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 */
 	my->fd->uctx = my;
 
-	my->fd_info = fr_bio_fd_info(my->fd);
-	fr_assert(my->fd_info != NULL);
+	my->info.fd_info = fr_bio_fd_info(my->fd);
+	fr_assert(my->info.fd_info != NULL);
 
-	my->reply_socket = my->fd_info->socket;
+	my->reply_socket = my->info.fd_info->socket;
 	if ((my->reply_socket.af == AF_INET) || (my->reply_socket.af == AF_INET6)) {
-		fr_socket_addr_swap(&my->reply_socket, &my->fd_info->socket);
+		fr_socket_addr_swap(&my->reply_socket, &my->info.fd_info->socket);
 	}
 
 	my->mem = fr_bio_mem_alloc(my, read_size, 2 * 4096, my->fd);
@@ -114,7 +114,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	/*
 	 *	Set up the connected status.
 	 */
-	my->info.connected = (my->fd_info->type == FR_BIO_FD_CONNECTED) && (my->fd_info->state == FR_BIO_FD_STATE_OPEN);
+	my->info.connected = (my->info.fd_info->type == FR_BIO_FD_CONNECTED) && (my->info.fd_info->state == FR_BIO_FD_STATE_OPEN);
 
 	talloc_set_destructor(my, _radius_client_fd_bio_free);
 
@@ -465,7 +465,7 @@ int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
 
 	if (my->info.connected) return 0;
 
-	switch (my->fd_info->type) {
+	switch (my->info.fd_info->type) {
 	default:
 		fr_strerror_const("Invalid RADIUS client bio for connect");
 		return fr_bio_error(GENERIC);
@@ -477,7 +477,7 @@ int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
 		break;
 	}
 
-	switch(my->fd_info->state) {
+	switch(my->info.fd_info->state) {
 	case FR_BIO_FD_STATE_INVALID:
 		fr_strerror_const("Invalid RADIUS client bio state");
 		return fr_bio_error(GENERIC);
@@ -559,7 +559,5 @@ int fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t c
 	SET(write_resume);
 	SET(read_resume);
 
-	(void) fr_bio_cb_set(my->fd, &bio_cb);
-
-	return 0;
+	return fr_bio_cb_set(my->fd, &bio_cb);
 }
