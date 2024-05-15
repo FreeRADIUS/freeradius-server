@@ -229,6 +229,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	module_instance_t		*mi;
 	char const			*namespace;
 	char				*module_name, *p, *end;
+	char const			*inst_name;
 	fr_process_module_t const	*process;
 
 	fr_cond_assert_msg(process_modules,
@@ -244,6 +245,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	     p < end;
 	     p++) if (*p == '-') *p = '_';
 
+	if (module_instance_name_from_conf(&inst_name, server_cs) < 0) return -1;
 
 	/*
 	 *	The module being loaded is the namespace with all '-'
@@ -252,7 +254,7 @@ static int namespace_on_read(TALLOC_CTX *ctx, UNUSED void *out, UNUSED void *par
 	 *	The instance name is the virtual server name.
 	 */
 	mi = module_instance_alloc(process_modules, NULL, DL_MODULE_TYPE_PROCESS,
-				   module_name, module_instance_name_from_conf(server_cs),
+				   module_name, inst_name,
 				   0);
 	talloc_free(module_name);
 	if (mi == NULL) {
@@ -473,14 +475,17 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	inst_name = cf_section_name2(listener_cs);
 	if (!inst_name) inst_name = mod_name;
 
-	MEM(qual_inst_name = talloc_asprintf(NULL, "%s.%s", cf_section_name2(server_cs), inst_name));
-	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name, 0);
-	talloc_free(qual_inst_name);
-	if (!mi) {
+	if (module_instance_name_valid(inst_name) < 0) {
 	error:
 		cf_log_err(listener_cs, "Failed loading listener");
 		return -1;
 	}
+
+	MEM(qual_inst_name = talloc_asprintf(NULL, "%s.%s", cf_section_name2(server_cs), inst_name));
+	mi = module_instance_alloc(proto_modules, NULL, DL_MODULE_TYPE_PROTO, mod_name, qual_inst_name, 0);
+	talloc_free(qual_inst_name);
+	if (!mi) goto error;
+
 	if (unlikely(module_instance_conf_parse(mi, listener_cs) < 0)) goto error;
 
 	if (DEBUG_ENABLED4) cf_log_debug(ci, "Loading %s listener into %p", inst_name, out);

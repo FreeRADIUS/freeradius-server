@@ -163,8 +163,9 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 	 *	If we're not loading the work submodule directly, then try to load it here.
 	 */
 	if (strcmp(inst->io_submodule->module->dl->name, "proto_detail_work") != 0) {
-		CONF_SECTION *transport_cs;
-		module_instance_t *mi;
+		CONF_SECTION		*transport_cs;
+		module_instance_t	*mi;
+		char const		*inst_name;
 
 		inst->work_submodule = NULL;
 
@@ -181,6 +182,8 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 			}
 		}
 
+		if (module_instance_name_from_conf(&inst_name, transport_cs) < 0) return -1;
+
 		/*
 		 *	This *should* get bootstrapped at some point after this module
 		 *	as it's inserted into the three the caller is iterating over.
@@ -190,7 +193,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 		 *	of that list.
 		 */
 		inst->work_submodule = module_instance_alloc(mi->ml, mi, DL_MODULE_TYPE_SUBMODULE,
-							     "work", module_instance_name_from_conf(transport_cs), 0);
+							     "work", inst_name, 0);
 		if (inst->work_submodule == NULL) {
 		error:
 			cf_log_perr(mi->conf, "Failed to load proto_detail_work");

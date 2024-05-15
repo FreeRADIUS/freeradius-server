@@ -415,7 +415,7 @@ int			module_instance_data_unprotect(module_instance_t const *mi);
  *
  * @{
  */
-char const		*module_instance_name_from_conf(CONF_SECTION *conf);
+fr_slen_t		module_instance_name_from_conf(char const **name, CONF_SECTION *conf);
 
 int 			module_instance_conf_parse(module_instance_t *mi, CONF_SECTION *conf);
 
@@ -463,6 +463,8 @@ int			modules_instantiate(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn
 int			module_bootstrap(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
 int			modules_bootstrap(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
+
+fr_slen_t		module_instance_name_valid(char const *inst_name) CC_HINT(nonnull);
 
 module_instance_t	*module_instance_copy(module_list_t *dst, module_instance_t const *src, char const *inst_name)
 			CC_HINT(nonnull(1,2)) CC_HINT(warn_unused_result);
