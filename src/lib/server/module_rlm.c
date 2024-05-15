@@ -474,7 +474,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
 	 */
-	mi = module_instance_by_name(rlm_modules_static, NULL, name);
+	mi = module_rlm_static_by_name(NULL, name);
 	if (mi) {
 		virtual_server_method_t const	*allowed_list;
 
@@ -793,12 +793,7 @@ CONF_SECTION *module_rlm_by_name_virtual(char const *asked_name)
 	return inst->cs;
 }
 
-module_thread_instance_t *module_rlm_thread_by_data(void const *data)
-{
-	return module_thread_by_data(rlm_modules_static, data);
-}
-
-module_instance_t *module_rlm_by_name(module_instance_t const *parent, char const *asked_name)
+module_instance_t *module_rlm_static_by_name(module_instance_t const *parent, char const *asked_name)
 {
 	return module_instance_by_name(rlm_modules_static, parent, asked_name);
 }

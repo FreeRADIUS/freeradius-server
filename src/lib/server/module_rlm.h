@@ -94,9 +94,7 @@ module_instance_t	*module_rlm_by_name_and_method(module_method_t *method, call_e
 						       char const **name1, char const **name2,
 						       char const *asked_name);
 
-module_thread_instance_t *module_rlm_thread_by_data(void const *data);
-
-module_instance_t	*module_rlm_by_name(module_instance_t const *parent, char const *asked_name);
+module_instance_t	*module_rlm_static_by_name(module_instance_t const *parent, char const *asked_name);
 
 CONF_SECTION		*module_rlm_by_name_virtual(char const *asked_name);
 

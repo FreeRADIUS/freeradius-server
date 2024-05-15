@@ -241,7 +241,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->name = talloc_asprintf(inst, "%s - %s", mctx->mi->name, inst->sql_name);
 
-	sql = module_rlm_by_name(NULL, inst->sql_name);
+	sql = module_rlm_static_by_name(NULL, inst->sql_name);
 	if (!sql) {
 		cf_log_err(conf, "failed to find sql instance named %s",
 			   inst->sql_name);
@@ -598,7 +598,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	/*
 	 *	Lookup the sql module instance.
 	 */
-	sql_inst = module_rlm_by_name(NULL, inst->sql_name);
+	sql_inst = module_rlm_static_by_name(NULL, inst->sql_name);
 	if (!sql_inst) return -1;
 	sql = talloc_get_type_abort(sql_inst->data, rlm_sql_t);
 

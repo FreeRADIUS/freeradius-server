@@ -327,7 +327,7 @@ struct module_thread_instance_s {
  *	- NULL if no data exists.
  *	- Pointer to the data on success.
  */
-typedef module_thread_instance_t *(*module_list_thread_data_get_t)(module_instance_t *mi);
+typedef module_thread_instance_t *(*module_list_thread_data_get_t)(module_instance_t const *mi);
 
 /** A list of modules
  *
@@ -436,7 +436,7 @@ module_instance_t	*module_instance_by_data(module_list_t const *ml, void const *
  *	- NULL if module has no thread instance data.
  */
 static inline CC_HINT(warn_unused_result) CC_HINT(always_inline)
-module_thread_instance_t *module_thread(module_instance_t *mi)
+module_thread_instance_t *module_thread(module_instance_t const *mi)
 {
 	return mi->ml->thread_data_get(mi);
 }

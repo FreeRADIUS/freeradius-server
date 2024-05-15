@@ -467,9 +467,9 @@ static int mlg_thread_init(UNUSED TALLOC_CTX **ctx, UNUSED module_list_t const *
  *
  * @param[in] mi	Module instance to get the thread-specific data for.
  */
-static module_thread_instance_t *mlg_thread_data_get(module_instance_t *mi)
+static module_thread_instance_t *mlg_thread_data_get(module_instance_t const *mi)
 {
-	mlg_module_instance_t		*mlg_mi = (mlg_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
+	mlg_module_instance_t const	*mlg_mi = (mlg_module_instance_t const *)talloc_get_type_abort_const(mi, module_instance_t);
 	module_thread_instance_t	*ti;
 
 	fr_assert_msg(mlg_mi->inst_idx <= talloc_array_length(mlg_thread_inst_list),
@@ -535,9 +535,9 @@ static void mltl_mlg_data_del(module_instance_t *mi)
 	if (mltl_mi->ti) module_thread_detach(mltl_mi->ti);
 }
 
-static module_thread_instance_t *mltl_thread_data_get(module_instance_t *mi)
+static module_thread_instance_t *mltl_thread_data_get(module_instance_t const *mi)
 {
-	mltl_module_instance_t *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort(mi, module_instance_t);
+	mltl_module_instance_t const *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort_const(mi, module_instance_t);
 	return mltl_mi->ti;
 }
 

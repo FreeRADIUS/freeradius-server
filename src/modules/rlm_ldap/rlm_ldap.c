@@ -1286,7 +1286,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 				    fr_value_box_list_t *url, map_list_t const *maps)
 {
 	rlm_ldap_t const	*inst = talloc_get_type_abort_const(mod_inst, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, fr_ldap_thread_t);
 
 	LDAPURLDesc		*ldap_url;
 	int			ldap_url_ret;
@@ -1428,7 +1428,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi), fr_ldap_thread_t);
 	ldap_auth_ctx_t		*auth_ctx;
 	ldap_auth_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_auth_call_env_t);
 
@@ -1616,7 +1616,7 @@ static unlang_action_t mod_authorize_resume(rlm_rcode_t *p_result, UNUSED int *p
 		if (inst->edir && inst->edir_autz) {
 			fr_pair_t	*password = fr_pair_find_by_da(&request->control_pairs,
 								       NULL, attr_cleartext_password);
-			fr_ldap_thread_t *thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data,
+			fr_ldap_thread_t *thread = talloc_get_type_abort(module_thread(inst->mi)->data,
 									 fr_ldap_thread_t);
 
 			if (!password) {
@@ -1808,7 +1808,7 @@ static int autz_ctx_free(ldap_autz_ctx_t *autz_ctx)
 static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, fr_ldap_thread_t);
 	ldap_autz_ctx_t		*autz_ctx;
 	fr_ldap_map_exp_t	*expanded;
 	ldap_autz_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_autz_call_env_t);
@@ -1965,7 +1965,7 @@ static unlang_action_t user_modify(rlm_rcode_t *p_result, rlm_ldap_t const *inst
 				   ldap_acct_section_t *section, ldap_usermod_call_env_t *call_env)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_FAIL;
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_rlm_thread_by_data(inst)->data, fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, fr_ldap_thread_t);
 	ldap_user_modify_ctx_t	*usermod_ctx = NULL;
 
 	int		total = 0, last_pass = 0;
@@ -2400,6 +2400,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_ldap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
 
+	inst->mi = mctx->mi;	/* Cached for IO callbacks */
 	inst->group.da = boot->group_da;
 	inst->group.cache_da = boot->cache_da;
 

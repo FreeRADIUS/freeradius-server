@@ -508,7 +508,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	module_instance_t const	*sql_inst;
 	fr_assert(inst->query && *inst->query);
 
-	sql_inst = module_rlm_by_name(NULL, inst->sql_name);
+	sql_inst = module_rlm_static_by_name(NULL, inst->sql_name);
 	if (!sql_inst) {
 		cf_log_err(conf, "Module \"%s\" not found", inst->sql_name);
 		return -1;
