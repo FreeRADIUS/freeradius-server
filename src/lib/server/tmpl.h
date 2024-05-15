@@ -1335,7 +1335,6 @@ void			tmpl_rules_child_init(TALLOC_CTX *ctx, tmpl_rules_t *out, tmpl_rules_t co
 void			tmpl_rules_debug(tmpl_rules_t const *rules) CC_HINT(nonnull);
 
 int			tmpl_global_init(void);
-void			tmpl_global_free(void);
 
 #undef _CONST
 

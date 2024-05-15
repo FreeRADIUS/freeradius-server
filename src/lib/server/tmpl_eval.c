@@ -34,6 +34,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/unlang/call.h>
+
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/value.h>
@@ -1450,7 +1452,16 @@ int tmpl_eval_cast_in_place(fr_value_box_list_t *list, request_t *request, tmpl_
 	goto success;
 }
 
-int tmpl_global_init(void)
+static int _tmpl_global_free(UNUSED void *uctx)
+{
+	fr_dict_autofree(tmpl_dict);
+
+	fr_dict_unknown_free(&tmpl_attr_unspec);
+
+	return 0;
+}
+
+static int _tmpl_global_init(UNUSED void *uctx)
 {
 	fr_dict_attr_t *da;
 
@@ -1468,9 +1479,11 @@ int tmpl_global_init(void)
 	return 0;
 }
 
-void tmpl_global_free(void)
+int tmpl_global_init(void)
 {
-	fr_dict_autofree(tmpl_dict);
+	int ret;
 
-	fr_dict_unknown_free(&tmpl_attr_unspec);
+	fr_atexit_global_once_ret(&ret, _tmpl_global_init, _tmpl_global_free, NULL);
+
+	return 0;
 }

@@ -130,9 +130,4 @@ void server_free(void)
 	 * 	trigger tree.
 	 */
 	trigger_exec_free();
-
-	/*
-	 *	Free the internal dictionaries the tmpl code uses
-	 */
-	tmpl_global_free();
 }
