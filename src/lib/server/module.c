@@ -624,7 +624,8 @@ int module_data_protect(module_instance_t *mi, module_data_pool_t *pool)
 {
 	if ((pool->start == NULL) || !mi->ml->write_protect) return 0; /* noop */
 
-	DEBUG3("Protecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
+	DEBUG3("Protecting data for module \"%s\" %p-%p",
+	       mi->name, pool->start, ((uint8_t *)pool->start + pool->len - 1));
 
 	if (unlikely(mprotect(pool->start, pool->len, PROT_READ) < 0)) {
 		fr_strerror_printf("Protecting \"%s\" module data failed: %s", mi->name, fr_syserror(errno));
@@ -646,7 +647,8 @@ int module_data_unprotect(module_instance_t const *mi, module_data_pool_t const 
 {
 	if ((pool->start == NULL) || !mi->ml->write_protect) return 0; /* noop */
 
-	DEBUG3("Unprotecting data %s %p-%p", mi->name, pool->start, (uint8_t *)pool->start + pool->len);
+	DEBUG3("Unprotecting data for module \"%s\" %p-%p",
+	       mi->name, pool->start, ((uint8_t *)pool->start + pool->len - 1));
 
 	if (unlikely(mprotect(pool->start, pool->len, PROT_READ | PROT_WRITE) < 0)) {
 		fr_strerror_printf("Unprotecting \"%s\" data failed: %s", mi->name, fr_syserror(errno));
@@ -1462,6 +1464,13 @@ static int _module_instance_free(module_instance_t *mi)
 	 */
 	talloc_free_children(mi);
 
+	/*
+	 *	This frees any instance and boot data associated with the
+	 *	module_instance_t.
+	 */
+	talloc_free(mi->boot_pool.ctx);
+	talloc_free(mi->inst_pool.ctx);
+
 	dl_module_free(mi->module);
 
 	return 0;
@@ -1506,8 +1515,17 @@ void module_instance_data_alloc(module_data_pool_t *pool_out, void **out,
 	 *
 	 *      This is needed so we can resolve instance data back to
 	 *	module_instance_t/dl_module_t/dl_t.
+	 *
+	 *	Note: On Linux allocating the pools from the module_instance_t
+	 *	resulted in the protections being triggered, possibly because
+	 *	the pools are siblings, and talloc was modifying the chunk header
+	 *	of a protected pool.
+	 *
+	 *	To correct this, we need to allocate the pools in the NULL
+	 *	ctx, and free them manually.  This means the chunk headers
+	 *	are not linked in any way.
 	 */
-	pool_out->ctx = talloc_page_aligned_pool(mi,
+	pool_out->ctx = talloc_page_aligned_pool(NULL,
 						 &pool_out->start, &pool_out->len,
 						 1, size);
 	MEM(data = talloc_zero_array(pool_out->ctx, uint8_t, size));
