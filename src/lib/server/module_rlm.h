@@ -98,8 +98,6 @@ module_thread_instance_t *module_rlm_thread_by_data(void const *data);
 
 module_instance_t	*module_rlm_by_name(module_instance_t const *parent, char const *asked_name);
 
-module_instance_t	*module_rlm_by_data(module_instance_t const *data);
-
 CONF_SECTION		*module_rlm_by_name_virtual(char const *asked_name);
 
 /** @} */
