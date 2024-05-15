@@ -119,10 +119,4 @@ void server_free(void)
 	 *	Free xlat instance data, and call any detach methods
 	 */
 	xlat_instances_free();
-
-	/*
-	 *	Now we're sure no more triggers can fire, free the
-	 * 	trigger tree.
-	 */
-	trigger_exec_free();
 }

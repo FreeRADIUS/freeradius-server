@@ -22,15 +22,18 @@
  *
  * @copyright 2015 The FreeRADIUS server project
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/cf_parse.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
+
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
+
 #include <sys/wait.h>
 
 /** Whether triggers are enabled globally
@@ -102,12 +105,6 @@ xlat_action_t trigger_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static int _mutex_free(pthread_mutex_t *mutex)
-{
-	pthread_mutex_destroy(mutex);
-	return 0;
-}
-
 static void _trigger_last_fired_free(void *data)
 {
 	talloc_free(data);
@@ -124,56 +121,6 @@ static int8_t _trigger_last_fired_cmp(void const *one, void const *two)
 	trigger_last_fired_t const *a = one, *b = two;
 
 	return CMP(a->ci, b->ci);
-}
-
-/** Set the global trigger section trigger_exec will search in, and register xlats
- *
- * This function exists because triggers are used by the connection pool, which
- * is used in the server library which may not have the mainconfig available.
- * Additionally, utilities may want to set their own root config sections.
- *
- * We don't register the trigger xlat here, as we may inadvertently initialise
- * the xlat code, which is annoying when this is called from a utility.
- *
- * @param[in] cs	to use as global trigger section.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int trigger_exec_init(CONF_SECTION const *cs)
-{
-	if (!cs) {
-		ERROR("%s - Pointer to main_config was NULL", __FUNCTION__);
-		return -1;
-	}
-
-	trigger_exec_main = cs;
-	trigger_exec_subcs = cf_section_find(cs, "trigger", NULL);
-
-	if (!trigger_exec_subcs) {
-		WARN("trigger { ... } subsection not found, triggers will be disabled");
-		return 0;
-	}
-
-	MEM(trigger_last_fired_tree = fr_rb_inline_talloc_alloc(talloc_null_ctx(),
-								trigger_last_fired_t, node,
-								_trigger_last_fired_cmp, _trigger_last_fired_free));
-
-	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
-	pthread_mutex_init(trigger_mutex, 0);
-	talloc_set_destructor(trigger_mutex, _mutex_free);
-	triggers_init = true;
-
-	return 0;
-}
-
-/** Free trigger resources
- *
- */
-void trigger_exec_free(void)
-{
-	TALLOC_FREE(trigger_last_fired_tree);
-	TALLOC_FREE(trigger_mutex);
 }
 
 /** Return whether triggers are enabled
@@ -523,4 +470,72 @@ void trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const
 	MEM(vp = fr_pair_afrom_da(ctx, port_da));
 	vp->vp_uint16 = port;
 	fr_pair_append(list, vp);
+}
+
+static int _mutex_free(pthread_mutex_t *mutex)
+{
+	pthread_mutex_destroy(mutex);
+	return 0;
+}
+
+/** Free trigger resources
+ *
+ */
+static int _trigger_exec_free(UNUSED void *uctx)
+{
+	TALLOC_FREE(trigger_last_fired_tree);
+	TALLOC_FREE(trigger_mutex);
+
+	return 0;
+}
+
+/** Set the global trigger section trigger_exec will search in, and register xlats
+ *
+ * This function exists because triggers are used by the connection pool, which
+ * is used in the server library which may not have the mainconfig available.
+ * Additionally, utilities may want to set their own root config sections.
+ *
+ * We don't register the trigger xlat here, as we may inadvertently initialise
+ * the xlat code, which is annoying when this is called from a utility.
+ *
+ * @param[in] cs_arg	to use as global trigger section.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _trigger_exec_init(void *cs_arg)
+{
+	CONF_SECTION *cs = talloc_get_type_abort(cs_arg, CONF_SECTION);
+	if (!cs) {
+		ERROR("%s - Pointer to main_config was NULL", __FUNCTION__);
+		return -1;
+	}
+
+	trigger_exec_main = cs;
+	trigger_exec_subcs = cf_section_find(cs, "trigger", NULL);
+
+	if (!trigger_exec_subcs) {
+		WARN("trigger { ... } subsection not found, triggers will be disabled");
+		return 0;
+	}
+
+	MEM(trigger_last_fired_tree = fr_rb_inline_talloc_alloc(talloc_null_ctx(),
+								trigger_last_fired_t, node,
+								_trigger_last_fired_cmp, _trigger_last_fired_free));
+
+	trigger_mutex = talloc(talloc_null_ctx(), pthread_mutex_t);
+	pthread_mutex_init(trigger_mutex, 0);
+	talloc_set_destructor(trigger_mutex, _mutex_free);
+	triggers_init = true;
+
+	return 0;
+}
+
+int trigger_exec_init(CONF_SECTION const *cs)
+{
+	int ret;
+
+	fr_atexit_global_once_ret(&ret, _trigger_exec_init, _trigger_exec_free, UNCONST(CONF_SECTION *, cs));
+
+	return ret;
 }

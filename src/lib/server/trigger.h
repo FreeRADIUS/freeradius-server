@@ -48,8 +48,6 @@ int		trigger_exec(unlang_interpret_t *intp,
 			     CONF_SECTION const *cs, char const *name, bool rate_limit, fr_pair_list_t *args)
 			     CC_HINT(nonnull(3));
 
-void		trigger_exec_free(void);
-
 bool		trigger_enabled(void);
 
 void		trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const *server, uint16_t port);
