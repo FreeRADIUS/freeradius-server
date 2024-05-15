@@ -1105,8 +1105,6 @@ cleanup:
 	 */
 	fr_atexit_thread_trigger_all();
 
-	fr_snmp_free();
-
 	server_free();
 
 #ifdef WITH_TLS

@@ -28,6 +28,8 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
+
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
@@ -1051,7 +1053,7 @@ int fr_snmp_process(request_t *request)
 /** Internal SNMP initialisation function (used for recursion)
  *
  */
-static int _fr_snmp_init(fr_snmp_map_t map[], fr_dict_attr_t const *parent)
+static int _fr_snmp_init_r(fr_snmp_map_t map[], fr_dict_attr_t const *parent)
 {
 	unsigned int i;
 
@@ -1067,7 +1069,7 @@ static int _fr_snmp_init(fr_snmp_map_t map[], fr_dict_attr_t const *parent)
 				return -1;
 			}
 
-			ret = _fr_snmp_init(map[i].child, map[i].da);
+			ret = _fr_snmp_init_r(map[i].child, map[i].da);
 			if (ret < 0) return -1;
 
 			continue;
@@ -1094,11 +1096,7 @@ static int _fr_snmp_init(fr_snmp_map_t map[], fr_dict_attr_t const *parent)
 
 	return 0;
 }
-
-/** Initialise the tree of SNMP map structures used to attach callbacks to OIDs
- *
- */
-int fr_snmp_init(void)
+static int _fr_snmp_init(UNUSED void *uctx)
 {
 	start_time = fr_time();
 	reset_time = start_time;
@@ -1113,10 +1111,24 @@ int fr_snmp_init(void)
 		return -1;
 	}
 
-	return _fr_snmp_init(snmp_iso, fr_dict_root(dict_snmp));	/* The SNMP root node */
+	return _fr_snmp_init_r(snmp_iso, fr_dict_root(dict_snmp));	/* The SNMP root node */
 }
 
-void fr_snmp_free(void)
+static int _fr_snmp_free(UNUSED void *uctx)
 {
 	fr_dict_autofree(snmp_dict);
+
+	return 0;
+}
+
+/** Initialise the tree of SNMP map structures used to attach callbacks to OIDs
+ *
+ */
+int fr_snmp_init(void)
+{
+	int ret;
+
+	fr_atexit_global_once_ret(&ret, _fr_snmp_init, _fr_snmp_free, NULL);
+
+	return ret;
 }
