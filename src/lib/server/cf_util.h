@@ -145,8 +145,19 @@ CONF_SECTION	*_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 				   char const *filename, int lineno);
 CONF_SECTION	*cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
+
+#define cf_section_foreach(_parent, _iter) \
+		for (CONF_SECTION *_iter = cf_section_first(_parent); _iter; _iter = cf_section_next(_parent, _iter))
+
 /** @hidecallergraph */
-CONF_SECTION	*cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev);
+CONF_SECTION	*cf_section_first(CONF_SECTION const *cs);
+
+/** @hidecallergraph */
+CONF_SECTION	*cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *curr);
+
+/** @hidecallergraph */
+CONF_SECTION	*cf_section_prev(CONF_SECTION const *cs, CONF_SECTION const *curr);
+
 /** @hidecallergraph */
 CONF_SECTION	*cf_section_find(CONF_SECTION const *cs, char const *name1, char const *name2);
 /** @hidecallergraph */
@@ -190,7 +201,11 @@ void		cf_pair_mark_parsed(CONF_PAIR *cp);
 
 bool		cf_pair_is_parsed(CONF_PAIR *cp);
 
-CONF_PAIR	*cf_pair_next(CONF_SECTION const *cs, CONF_PAIR const *prev);
+CONF_PAIR	*cf_pair_first(CONF_SECTION const *cs);
+
+CONF_PAIR	*cf_pair_next(CONF_SECTION const *cs, CONF_PAIR const *curr);
+
+CONF_PAIR	*cf_pair_prev(CONF_SECTION const *cs, CONF_PAIR const *curr);
 
 CONF_PAIR	*cf_pair_find(CONF_SECTION const *cs, char const *name);
 

@@ -39,15 +39,34 @@ static int8_t _cf_ident2_cmp(void const *a, void const *b);
 /** Return the next child that's of the specified type
  *
  * @param[in] parent	to return children from.
- * @param[in] prev	child to start searching from.
+ * @param[in] current	child to start searching from.
  * @param[in] type	to search for.
  * @return
  *	- The next #CONF_ITEM that's a child of ci matching type.
  *	- NULL if no #CONF_ITEM matches that criteria.
  */
-static CONF_ITEM *cf_next(CONF_ITEM const *parent, CONF_ITEM const *prev, CONF_ITEM_TYPE type)
+static CONF_ITEM *cf_next(CONF_ITEM const *parent, CONF_ITEM const *current, CONF_ITEM_TYPE type)
 {
-	cf_item_foreach_prev(parent, ci, UNCONST(CONF_ITEM *, prev)) {
+	cf_item_foreach_next(parent, ci, UNCONST(CONF_ITEM *, current)) {
+		if (ci->type == type) return ci;
+	}
+
+	return NULL;
+}
+
+/** Return the previos child that's of the specified type
+ *
+ * @param[in] parent	to return children from.
+ * @param[in] current	child to start searching from.
+ * @param[in] type	to search for.
+ * @return
+ *	- The next #CONF_ITEM that's a child of ci matching type.
+ *	- NULL if no #CONF_ITEM matches that criteria.
+ */
+static inline CC_HINT(always_inline)
+CONF_ITEM *cf_prev(CONF_ITEM const *parent, CONF_ITEM const *current, CONF_ITEM_TYPE type)
+{
+	cf_item_foreach_prev(parent, ci, UNCONST(CONF_ITEM *, current)) {
 		if (ci->type == type) return ci;
 	}
 
@@ -205,7 +224,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 	}
 
 	if (IS_WILDCARD(ident1)) {
-		cf_item_foreach_prev(parent, ci, prev) {
+		cf_item_foreach_next(parent, ci, prev) {
 			if (cf_ident2_cmp(ci, find) == 0) return ci;
 		}
 
@@ -213,7 +232,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 	}
 
 	if (IS_WILDCARD(ident2)) {
-		cf_item_foreach_prev(parent, ci, prev) {
+		cf_item_foreach_next(parent, ci, prev) {
 		     if (_cf_ident1_cmp(ci, find) == 0) return ci;
 
 		}
@@ -221,7 +240,7 @@ static CONF_ITEM *cf_find_next(CONF_ITEM const *parent, CONF_ITEM const *prev,
 		return NULL;
 	}
 
-	cf_item_foreach_prev(parent, ci, prev) {
+	cf_item_foreach_next(parent, ci, prev) {
 		if (_cf_ident2_cmp(ci, find) == 0) return ci;
 	}
 
@@ -422,12 +441,13 @@ void _cf_item_insert_after(CONF_ITEM *parent, CONF_ITEM *prev, CONF_ITEM *child)
  * @param[in] parent	to remove child from.
  * @param[in] child	to remove.
  * @return
- *	- The item removed.
+ *	- The previous item (makes iteration easier)
  *	- NULL if the item wasn't set.
  */
 CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 {
 	CONF_ITEM	*found = NULL;
+	CONF_ITEM	*prev;
 	bool		in_ident1, in_ident2;
 
 	if (!parent || cf_item_has_no_children(parent)) return NULL;
@@ -445,7 +465,7 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 	/*
 	 *	Fixup the linked list
 	 */
-	fr_dlist_remove(&parent->children, child);
+	prev = fr_dlist_remove(&parent->children, child);
 
 	in_ident1 = (fr_rb_remove_by_inline_node(parent->ident1, &child->ident1_node) != NULL);
 
@@ -476,7 +496,7 @@ CONF_ITEM *_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child)
 		}
 	}
 
-	return child;
+	return prev;
 }
 
 /** Return the next child of cs
@@ -941,17 +961,42 @@ CONF_SECTION *cf_section_dup(TALLOC_CTX *ctx, CONF_SECTION *parent, CONF_SECTION
 	return new;
 }
 
-/** Return the next child that's a #CONF_SECTION
+/** Return the first child in a CONF_SECTION
  *
  * @param[in] cs	to return children from.
- * @param[in] prev	child to start searching from.
  * @return
  *	- The next #CONF_ITEM that's a child of cs and a CONF_SECTION.
  *	- NULL if no #CONF_ITEM matches that criteria.
  */
-CONF_SECTION *cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *prev)
+CONF_SECTION *cf_section_first(CONF_SECTION const *cs)
 {
-	return cf_item_to_section(cf_next(cf_section_to_item(cs), cf_section_to_item(prev), CONF_ITEM_SECTION));
+	return cf_item_to_section(cf_next(cf_section_to_item(cs), NULL, CONF_ITEM_SECTION));
+}
+
+/** Return the next child that's a #CONF_SECTION
+ *
+ * @param[in] cs	to return children from.
+ * @param[in] curr	child to start searching from.
+ * @return
+ *	- The next #CONF_ITEM that's a child of cs and a CONF_SECTION.
+ *	- NULL if no #CONF_ITEM matches that criteria.
+ */
+CONF_SECTION *cf_section_next(CONF_SECTION const *cs, CONF_SECTION const *curr)
+{
+	return cf_item_to_section(cf_next(cf_section_to_item(cs), cf_section_to_item(curr), CONF_ITEM_SECTION));
+}
+
+/** Return the previous child that's a #CONF_SECTION
+ *
+ * @param[in] cs	to return children from.
+ * @param[in] curr	child to start searching from.
+ * @return
+ *	- The next #CONF_ITEM that's a child of cs and a CONF_SECTION.
+ *	- NULL if no #CONF_ITEM matches that criteria.
+ */
+CONF_SECTION *cf_section_prev(CONF_SECTION const *cs, CONF_SECTION const *curr)
+{
+	return cf_item_to_section(cf_prev(cf_section_to_item(cs), cf_section_to_item(curr), CONF_ITEM_SECTION));
 }
 
 /** Find a CONF_SECTION with name1 and optionally name2.
@@ -1291,15 +1336,13 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp, bool copy_meta)
 int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 {
 	CONF_PAIR *new_cp;
-	CONF_ITEM *ci;
 
 	if (!cs || !cp || !value) return -1;
 
 	/*
 	 *	Remove the old CONF_PAIR
 	 */
-	ci = cf_item_remove(cs, cp);
-	if (!fr_cond_assert(!ci || (ci == cf_pair_to_item(cp)))) return -1;
+	(void)cf_item_remove(cs, cp);
 
 	/*
 	 *	Add the new CONF_PAIR
@@ -1336,14 +1379,39 @@ bool cf_pair_is_parsed(CONF_PAIR *cp)
 /** Return the next child that's a #CONF_PAIR
  *
  * @param[in] cs	to return children from.
- * @param[in] prev	child to start searching from.
  * @return
  *	- The next #CONF_ITEM that's a child of cs and a CONF_PAIR.
  *	- NULL if no #CONF_ITEM matches that criteria.
  */
-CONF_PAIR *cf_pair_next(CONF_SECTION const *cs, CONF_PAIR const *prev)
+CONF_PAIR *cf_pair_first(CONF_SECTION const *cs)
 {
-	return cf_item_to_pair(cf_next(cf_section_to_item(cs), cf_pair_to_item(prev), CONF_ITEM_PAIR));
+	return cf_item_to_pair(cf_next(cf_section_to_item(cs), NULL, CONF_ITEM_PAIR));
+}
+
+/** Return the next child that's a #CONF_PAIR
+ *
+ * @param[in] cs	to return children from.
+ * @param[in] curr	child to start searching from.
+ * @return
+ *	- The next #CONF_ITEM that's a child of cs and a CONF_PAIR.
+ *	- NULL if no #CONF_ITEM matches that criteria.
+ */
+CONF_PAIR *cf_pair_next(CONF_SECTION const *cs, CONF_PAIR const *curr)
+{
+	return cf_item_to_pair(cf_next(cf_section_to_item(cs), cf_pair_to_item(curr), CONF_ITEM_PAIR));
+}
+
+/** Return the next child that's a #CONF_PAIR
+ *
+ * @param[in] cs	to return children from.
+ * @param[in] curr	child to start searching from.
+ * @return
+ *	- The next #CONF_ITEM that's a child of cs and a CONF_PAIR.
+ *	- NULL if no #CONF_ITEM matches that criteria.
+ */
+CONF_PAIR *cf_pair_prev(CONF_SECTION const *cs, CONF_PAIR const *curr)
+{
+	return cf_item_to_pair(cf_prev(cf_section_to_item(cs), cf_pair_to_item(curr), CONF_ITEM_PAIR));
 }
 
 /** Search for a #CONF_PAIR with a specific name
@@ -1790,13 +1858,10 @@ CONF_DATA const *_cf_data_add_static(CONF_ITEM *ci, void const *data, char const
 void *_cf_data_remove(CONF_ITEM *parent, CONF_DATA const *cd)
 {
 	void *data;
-	CONF_ITEM *ci;
 
 	if (!cd) return NULL;
 
-	ci = cf_item_remove(parent, cd);
-	if (!fr_cond_assert(!ci || (ci == cf_data_to_item(cd)))) return NULL;
-	if (!ci) return NULL;
+	(void)cf_item_remove(parent, cd);
 
 	talloc_set_destructor(cd, NULL);	/* Disarm the destructor */
 	memcpy(&data, &cd->data, sizeof(data));
@@ -2250,7 +2315,7 @@ void _cf_debug(CONF_ITEM const *ci)
 
 	DEBUG("  filename      : %s", ci->filename);
 	DEBUG("  line          : %i", ci->lineno);
-	DEBUG("  next          : %p", fr_dlist_next(&ci->parent->children, ci));
+	if (ci->parent) DEBUG("  next          : %p", fr_dlist_next(&ci->parent->children, ci));
 	DEBUG("  parent        : %p", ci->parent);
 	DEBUG("  children      : %s", cf_item_has_no_children(ci) ? "no" : "yes");
 	DEBUG("  ident1 tree   : %p (%u entries)", ci->ident1, ci->ident1 ? fr_rb_num_elements(ci->ident1) : 0);
