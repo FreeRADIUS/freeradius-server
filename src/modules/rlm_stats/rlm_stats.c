@@ -250,7 +250,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 
 		pthread_mutex_lock(&inst->mutable->mutex);
 		for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
-			inst->stats[i] += t->stats[i];
+			inst->mutable->stats[i] += t->stats[i];
 			t->stats[i] = 0;
 		}
 		pthread_mutex_unlock(&inst->mutable->mutex);
