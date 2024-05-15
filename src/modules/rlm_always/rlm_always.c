@@ -146,7 +146,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_always_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_always_t);
 
-	inst->mi = module_rlm_by_name(NULL, mctx->mi->name);
+	inst->mi = UNCONST(module_instance_t *, mctx->mi);
 	if (!inst->mi) {
 		cf_log_err(mctx->mi->conf, "Can't find the module instance data for this module: %s", mctx->mi->name);
 		return -1;
