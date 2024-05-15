@@ -201,7 +201,7 @@ static const CONF_PARSER server_config[] = {
 	{ "cleanup_delay", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.cleanup_delay), STRINGIFY(CLEANUP_DELAY) },
 	{ "max_requests", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.max_requests), STRINGIFY(MAX_REQUESTS) },
 #ifndef HAVE_KQUEUE
-	{ "max_fds", FR_CONF_POINTER(PW_TYPE_INTEGER, &max_fds), },
+	{ "max_fds", FR_CONF_POINTER(PW_TYPE_INTEGER, &max_fds), "512" },
 #endif
 	{ "postauth_client_lost", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.postauth_client_lost), "no" },
 	{ "pidfile", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.pid_file), "${run_dir}/radiusd.pid"},
