@@ -401,7 +401,7 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_
 	/*
 	 *	We can't protect pages after the pool
 	 */
-	fr_assert(((uintptr_t)*start + *end_len) < ((uintptr_t)pool + alloced));
+	fr_assert(((uintptr_t)*start + *end_len) <= ((uintptr_t)pool + alloced));
 
 	return pool;
 }
