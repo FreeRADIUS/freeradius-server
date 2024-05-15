@@ -29,8 +29,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/cf_util.h>
+
 #include <freeradius-devel/server/global_lib.h>
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/virtual_servers.h>
@@ -72,14 +75,19 @@ char const *section_type_value[MOD_COUNT] = {
 /** Global module list for all backend modules
  *
  */
-static module_list_t *rlm_modules;
+static module_list_t *rlm_modules_static;
+
+/** Runtime instantiated list
+ *
+ */
+static module_list_t *rlm_modules_dynamic;
 
 /** Print information on all loaded modules
  *
  */
 void module_rlm_list_debug(void)
 {
-	module_list_debug(rlm_modules);
+	module_list_debug(rlm_modules_static);
 }
 
 /** Initialise a module specific exfile handle
@@ -192,7 +200,7 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	mi = module_instance_by_name(rlm_modules, NULL, inst_name);
+	mi = module_instance_by_name(rlm_modules_static, NULL, inst_name);
 	if (!mi) {
 		cf_log_err(cp, "Unknown module instance \"%s\"", inst_name);
 
@@ -214,7 +222,7 @@ int module_rlm_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, ch
 			parent = tmp;
 		} while (true);
 
-		if (unlikely(module_instantiate(module_instance_by_name(rlm_modules, NULL, inst_name)) < 0)) return -1;
+		if (unlikely(module_instantiate(module_instance_by_name(rlm_modules_static, NULL, inst_name)) < 0)) return -1;
 	}
 
 	/*
@@ -466,7 +474,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	 *	Module names are allowed to contain '.'
 	 *	so we search for the bare module name first.
 	 */
-	mi = module_instance_by_name(rlm_modules, NULL, name);
+	mi = module_instance_by_name(rlm_modules_static, NULL, name);
 	if (mi) {
 		virtual_server_method_t const	*allowed_list;
 
@@ -622,7 +630,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	do {
 		*p = '\0';
 
-		mi = module_instance_by_name(rlm_modules, NULL, inst_name);
+		mi = module_instance_by_name(rlm_modules_static, NULL, inst_name);
 		if (mi) break;
 
 		/*
@@ -787,17 +795,17 @@ CONF_SECTION *module_rlm_by_name_virtual(char const *asked_name)
 
 module_thread_instance_t *module_rlm_thread_by_data(void const *data)
 {
-	return module_thread_by_data(rlm_modules, data);
+	return module_thread_by_data(rlm_modules_static, data);
 }
 
 module_instance_t *module_rlm_by_name(module_instance_t const *parent, char const *asked_name)
 {
-	return module_instance_by_name(rlm_modules, parent, asked_name);
+	return module_instance_by_name(rlm_modules_static, parent, asked_name);
 }
 
 module_instance_t *module_rlm_by_data(module_instance_t const *data)
 {
-	return module_instance_by_data(rlm_modules, data);
+	return module_instance_by_data(rlm_modules_static, data);
 }
 
 /** Create a virtual module.
@@ -844,7 +852,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 	/*
 	 *	Ensure that the module doesn't exist.
 	 */
-	mi = module_instance_by_name(rlm_modules, NULL, name);
+	mi = module_instance_by_name(rlm_modules_static, NULL, name);
 	if (mi) {
 		ERROR("Duplicate module \"%s\" in file %s[%d] and file %s[%d]",
 		      name,
@@ -928,7 +936,7 @@ int module_rlm_submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
 {
 	conf_parser_t our_rule = *rule;
 
-	our_rule.uctx = &rlm_modules;
+	our_rule.uctx = &rlm_modules_static;
 
 	return module_submodule_parse(ctx, out, parent, ci, &our_rule);
 }
@@ -938,7 +946,7 @@ int module_rlm_submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
  */
 void modules_rlm_thread_detach(void)
 {
-	modules_thread_detach(rlm_modules);
+	modules_thread_detach(rlm_modules_static);
 }
 
 /** Allocates thread-specific data for all registered backend modules
@@ -951,7 +959,7 @@ void modules_rlm_thread_detach(void)
  */
 int modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
 {
-	return modules_thread_instantiate(ctx, rlm_modules, el);
+	return modules_thread_instantiate(ctx, rlm_modules_static, el);
 }
 
 /** Performs the instantiation phase for all backend modules
@@ -962,7 +970,70 @@ int modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el)
  */
 int modules_rlm_instantiate(void)
 {
-	return modules_instantiate(rlm_modules);
+	return modules_instantiate(rlm_modules_static);
+}
+
+static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
+{
+	char const		*name;
+	module_instance_t	*mi = NULL;
+	CONF_SECTION		*actions;
+
+	/*
+	 *	name2 can't be a keyword
+	 */
+	name = cf_section_name2(mod_conf);
+	if (name && unlang_compile_is_keyword(name)) {
+	invalid_name:
+		cf_log_err(mod_conf, "Module names cannot be unlang keywords '%s'", name);
+		return -1;
+	}
+
+	name = cf_section_name1(mod_conf);
+
+	/*
+	 *	For now, ignore name1 which is a keyword.
+	 */
+	if (unlang_compile_is_keyword(name)) {
+		if (!cf_section_name2(mod_conf)) {
+			cf_log_err(mod_conf, "Missing second name at '%s'", name);
+			return -1;
+		}
+		if (module_rlm_bootstrap_virtual(mod_conf) < 0) return -1;
+		return 0;
+	}
+
+	/*
+	 *	Skip inline templates, and disallow "template { ... }"
+	 */
+	if (strcmp(name, "template") == 0) {
+		if (!cf_section_name2(mod_conf)) goto invalid_name;
+		return 0;
+	}
+
+	mi = module_instance_alloc(ml, NULL, DL_MODULE_TYPE_MODULE, name, module_instance_name_from_conf(mod_conf), 0);
+	if (unlikely(mi == NULL)) {
+		cf_log_perr(mod_conf, "Failed loading module");
+		return -1;
+
+	}
+
+	if (module_instance_conf_parse(mi, mod_conf) < 0) {
+		cf_log_perr(mod_conf, "Failed parsing module config");
+		talloc_free(mi);
+		return -1;
+	}
+
+	/*
+	 *	Compile the default "actions" subsection, which includes retries.
+	 */
+	actions = cf_section_find(mod_conf, "actions", NULL);
+	if (actions && unlang_compile_actions(&mi->actions, actions, (mi->exported->flags & MODULE_TYPE_RETRY) != 0)) {
+		talloc_free(mi);
+		return -1;
+	}
+
+	return 0;
 }
 
 /** Bootstrap modules and virtual modules
@@ -976,11 +1047,9 @@ int modules_rlm_instantiate(void)
  */
 int modules_rlm_bootstrap(CONF_SECTION *root)
 {
-	CONF_ITEM		*ci;
-	CONF_SECTION		*cs, *modules;
+	CONF_SECTION		*cs, *modules, *static_cs, *dynamic_cs;
 	module_rlm_virtual_t	*vm;
 	fr_rb_iter_inorder_t	iter;
-	CONF_SECTION		*actions;
 
 	/*
 	 *	Ensure any libraries the modules depend on are instantiated
@@ -996,101 +1065,64 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 		return 0;
 	}
 
-	DEBUG2("#### Bootstrapping modules ####");
+	static_cs = cf_section_find(modules, "static", NULL);
+	if (!static_cs) {
+		static_cs = cf_section_alloc(modules, NULL, "static", NULL);
+		cf_section_foreach(modules, mod_cs) {
+			CONF_SECTION *prev;
 
+			/*
+			 *	Skip over the dynamic section
+			 */
+			if ((strcmp(cf_section_name1(mod_cs), "dynamic") == 0) &&
+			    cf_section_name2(mod_cs) == NULL) continue;
+
+			/*
+			 *	Move all modules which are not in
+			 *	the dynamic section into the static
+			 *	section for backwards compatibility.
+			 */
+			prev = cf_item_to_section(cf_item_remove(modules, mod_cs));
+			cf_item_add(static_cs, mod_cs);
+			mod_cs = prev;
+		}
+		cf_item_add(modules, static_cs);
+	}
+	DEBUG2("#### Bootstrapping static modules ####");
 	cf_log_debug(modules, " modules {");
+	cf_log_debug(modules, "    static {");
+	cf_section_foreach(static_cs, mod_conf) {
+		if (module_conf_parse(rlm_modules_static, mod_conf) < 0) return -1;
+	}
+	cf_log_debug(modules, "    } # static");
 
 	/*
-	 *	Loop over module definitions, looking for duplicates.
-	 *
-	 *	This is O(N^2) in the number of modules, but most
-	 *	systems should have less than 100 modules.
+	 *	Now we have a module tree, run bootstrap on all the modules.
+	 *	This will bootstrap modules and then submodules.
 	 */
-	for (ci = cf_item_next(modules, NULL);
-	     ci != NULL;
-	     ci = cf_item_next(modules, ci)) {
-		char const *name;
-		CONF_SECTION *subcs;
-		module_instance_t *mi = NULL;
+	if (unlikely(modules_bootstrap(rlm_modules_static) < 0)) return -1;
 
-		/*
-		 *	@todo - maybe this should be a warning?
-		 */
-		if (!cf_item_is_section(ci)) continue;
-
-		subcs = cf_item_to_section(ci);
-
-		/*
-		 *	name2 can't be a keyword
-		 */
-		name = cf_section_name2(subcs);
-		if (name && unlang_compile_is_keyword(name)) {
-		invalid_name:
-			cf_log_err(subcs, "Module names cannot be unlang keywords '%s'", name);
-			return -1;
-		}
-
-		name = cf_section_name1(subcs);
-
-		/*
-		 *	For now, ignore name1 which is a keyword.
-		 */
-		if (unlang_compile_is_keyword(name)) {
-			if (!cf_section_name2(subcs)) {
-				cf_log_err(subcs, "Missing second name at '%s'", name);
-				return -1;
-			}
-			if (module_rlm_bootstrap_virtual(subcs) < 0) return -1;
-			continue;
-		}
-
-		/*
-		 *	Skip inline templates, and disallow "template { ... }"
-		 */
-		if (strcmp(name, "template") == 0) {
-			if (!cf_section_name2(subcs)) goto invalid_name;
-			continue;
-		}
-
-		mi = module_instance_alloc(rlm_modules, NULL, DL_MODULE_TYPE_MODULE, name, module_instance_name_from_conf(subcs), 0);
-		if (unlikely(mi == NULL)) {
-			cf_log_perr(subcs, "Failed loading module");
-			return -1;
-
-		}
-
-		if (module_instance_conf_parse(mi, subcs) < 0) {
-			cf_log_perr(subcs, "Failed parsing module config");
-			talloc_free(mi);
-			return -1;
-		}
-
-		/*
-		 *	Compile the default "actions" subsection, which includes retries.
-		 */
-		actions = cf_section_find(subcs, "actions", NULL);
-		if (actions && unlang_compile_actions(&mi->actions, actions, (mi->exported->flags & MODULE_TYPE_RETRY) != 0)) {
-			talloc_free(mi);
-			return -1;
-		}
-	}
-
-	/*
-	 *	Having parsed all the modules, bootstrap them.
-	 *	This needs to be after parsing so that submodules can access
-	 *	their parent's fully parsed data.
-	 */
-	{
-		int ret = modules_bootstrap(rlm_modules);
-
-		cf_log_debug(modules, " } # modules");
-
-		if (unlikely(ret < 0)) return -1;
-	}
-
-	if (fr_command_register_hook(NULL, NULL, modules, module_cmd_list_table) < 0) {
+	if (fr_command_register_hook(NULL, NULL, static_cs, module_cmd_list_table) < 0) {
 		PERROR("Failed registering radmin commands for modules");
 		return -1;
+	}
+
+	/*
+	 *	Build the configuration and parse dynamic modules
+	 */
+	dynamic_cs = cf_section_find(modules, "dynamic", NULL);
+	if (dynamic_cs) {
+		DEBUG2("#### Bootstrapping dynamic modules ####");
+		/*
+		*	Parse and then instantiate any dynamic modules configure
+		*/
+		cf_log_debug(modules, "    dynamic {");
+		cf_section_foreach(dynamic_cs, mod_conf) {
+			if (unlikely(module_conf_parse(rlm_modules_dynamic, mod_conf) < 0)) return -1;
+		}
+		cf_log_debug(modules, "    } # dynamic");
+		if (unlikely(modules_bootstrap(rlm_modules_dynamic) < 0)) return -1;
+		cf_log_debug(modules, " } # modules");
 	}
 
 	/*
@@ -1099,33 +1131,25 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	 */
 	cs = cf_section_find(root, "policy", NULL);
 	if (cs) {
-		while ((ci = cf_item_next(cs, ci))) {
-			CONF_SECTION *subcs, *problemcs;
-			char const *name1;
-
-			/*
-			 *	Skip anything that isn't a section.
-			 */
-			if (!cf_item_is_section(ci)) continue;
-
-			subcs = cf_item_to_section(ci);
-			name1 = cf_section_name1(subcs);
+		cf_section_foreach(cs, policy_cs) {
+			CONF_SECTION	*problemcs;
+			char const	*name1 = cf_section_name1(policy_cs);
 
 			if (unlang_compile_is_keyword(name1)) {
-				cf_log_err(subcs, "Policy name '%s' cannot be an unlang keyword", name1);
+				cf_log_err(policy_cs, "Policy name '%s' cannot be an unlang keyword", name1);
 				return -1;
 			}
 
-			if (cf_section_name2(subcs)) {
-				cf_log_err(subcs, "Policies cannot have two names");
+			if (cf_section_name2(policy_cs)) {
+				cf_log_err(policy_cs, "Policies cannot have two names");
 				return -1;
 			}
 
-			problemcs = cf_section_find_next(cs, subcs, name1, CF_IDENT_ANY);
+			problemcs = cf_section_find_next(cs, policy_cs, name1, CF_IDENT_ANY);
 			if (!problemcs) continue;
 
 			cf_log_err(problemcs, "Duplicate policy '%s' is forbidden.",
-				   cf_section_name1(subcs));
+				   cf_section_name1(policy_cs));
 			return -1;
 		}
 	}
@@ -1152,8 +1176,8 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
  */
 int modules_rlm_free(void)
 {
-	if (talloc_free(rlm_modules) < 0) return -1;
-	rlm_modules = NULL;
+	if (talloc_free(rlm_modules_static) < 0) return -1;
+	rlm_modules_static = NULL;
 	if (talloc_free(module_rlm_virtual_name_tree) < 0) return -1;
 	module_rlm_virtual_name_tree = NULL;
 
@@ -1170,7 +1194,10 @@ static int _modules_rlm_free_atexit(UNUSED void *uctx)
  */
 int modules_rlm_init(void)
 {
-	MEM(rlm_modules = module_list_alloc(NULL, &module_list_type_global, "rlm", true));
+	MEM(rlm_modules_static = module_list_alloc(NULL, &module_list_type_global, "rlm", true));
+	MEM(rlm_modules_dynamic = module_list_alloc(NULL, &module_list_type_thread_local, "rlm", true));
+	module_list_mask_set(rlm_modules_dynamic, MODULE_INSTANCE_INSTANTIATED);	/* Ensure we never instantiate dynamic modules */
+
 	MEM(module_rlm_virtual_name_tree = fr_rb_inline_alloc(NULL, module_rlm_virtual_t, name_node,
 							      module_rlm_virtual_name_cmp, NULL));
 	fr_atexit_global(_modules_rlm_free_atexit, NULL);
