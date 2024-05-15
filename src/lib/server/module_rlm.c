@@ -1069,7 +1069,7 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 	if (!static_cs) {
 		static_cs = cf_section_alloc(modules, NULL, "static", NULL);
 		cf_section_foreach(modules, mod_cs) {
-			CONF_SECTION *prev;
+			CONF_ITEM *prev;
 
 			/*
 			 *	Skip over the dynamic section
@@ -1082,9 +1082,18 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 			 *	the dynamic section into the static
 			 *	section for backwards compatibility.
 			 */
-			prev = cf_item_to_section(cf_item_remove(modules, mod_cs));
+			prev = cf_item_remove(modules, mod_cs);
 			cf_item_add(static_cs, mod_cs);
-			mod_cs = prev;
+
+			/*
+			 *	Find the previous item that's a section
+			 */
+			while (prev && !cf_item_is_section(prev)) prev = cf_item_prev(modules, prev);
+
+			/*
+			 *	Resume iterating from that item
+			 */
+			mod_cs = cf_item_to_section(prev);
 		}
 		cf_item_add(modules, static_cs);
 	}

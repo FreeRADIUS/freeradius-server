@@ -89,8 +89,11 @@ void		_cf_item_insert_after(CONF_ITEM *parent, CONF_ITEM *prev, CONF_ITEM *child
 #define		cf_item_remove(_parent, _child) _cf_item_remove(CF_TO_ITEM(_parent), CF_TO_ITEM(_child))
 CONF_ITEM	*_cf_item_remove(CONF_ITEM *parent, CONF_ITEM *child);
 
-#define		cf_item_next(_ci, _prev) _cf_item_next(CF_TO_ITEM(_ci), _prev)
-CONF_ITEM	*_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *prev);
+#define		cf_item_next(_ci, _curr) _cf_item_next(CF_TO_ITEM(_ci), _curr)
+CONF_ITEM	*_cf_item_next(CONF_ITEM const *ci, CONF_ITEM const *curr);
+
+#define		cf_item_prev(_ci, _curr) _cf_item_prev(CF_TO_ITEM(_ci), _curr)
+CONF_ITEM	*_cf_item_prev(CONF_ITEM const *ci, CONF_ITEM const *prev);
 
 #define		cf_root(_cf) _cf_root(CF_TO_ITEM(_cf))
 CONF_SECTION	*_cf_root(CONF_ITEM const *ci);
