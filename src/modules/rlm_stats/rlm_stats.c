@@ -43,6 +43,8 @@ RCSID("$Id$")
 
 typedef struct {
 	pthread_mutex_t		mutex;
+	fr_dlist_head_t		list;				//!< for threads to know about each other
+	uint64_t		stats[FR_RADIUS_CODE_MAX];
 } rlm_stats_mutable_t;
 
 /*
@@ -55,9 +57,8 @@ typedef struct {
 	fr_dict_attr_t const	*type_da;			//!< FreeRADIUS-Stats4-Type
 	fr_dict_attr_t const	*ipv4_da;			//!< FreeRADIUS-Stats4-IPv4-Address
 	fr_dict_attr_t const	*ipv6_da;			//!< FreeRADIUS-Stats4-IPv6-Address
-	fr_dlist_head_t		list;				//!< for threads to know about each other
 
-	uint64_t		stats[FR_RADIUS_CODE_MAX];
+
 } rlm_stats_t;
 
 typedef struct {
@@ -135,9 +136,9 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 	 *	them, and adding their statistics in.
 	 */
 	pthread_mutex_lock(&t->inst->mutable->mutex);
-	for (other = fr_dlist_head(&t->inst->list);
+	for (other = fr_dlist_head(&t->inst->mutable->list);
 	     other != NULL;
-	     other = fr_dlist_next(&t->inst->list, other)) {
+	     other = fr_dlist_next(&t->inst->mutable->list, other)) {
 		int i;
 
 		if (other == t) continue;
@@ -176,7 +177,7 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 	fr_pair_t *vp;
 	rlm_stats_data_t mydata;
 	char buffer[64];
-	uint64_t local_stats[NUM_ELEMENTS(inst->stats)];
+	uint64_t local_stats[NUM_ELEMENTS(inst->mutable->stats)];
 
 	/*
 	 *	Increment counters only in "send foo" sections.
@@ -288,10 +289,10 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		 */
 		pthread_mutex_lock(&inst->mutable->mutex);
 		for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
-			inst->stats[i] += t->stats[i];
+			inst->mutable->stats[i] += t->stats[i];
 			t->stats[i] = 0;
 		}
-		memcpy(&local_stats, inst->stats, sizeof(inst->stats));
+		memcpy(&local_stats, inst->mutable->stats, sizeof(inst->mutable->stats));
 		pthread_mutex_unlock(&inst->mutable->mutex);
 		vp = NULL;
 		break;
@@ -381,7 +382,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	}
 
 	pthread_mutex_lock(&inst->mutable->mutex);
-	fr_dlist_insert_head(&inst->list, t);
+	fr_dlist_insert_head(&inst->mutable->list, t);
 	pthread_mutex_unlock(&inst->mutable->mutex);
 
 	return 0;
@@ -399,9 +400,9 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 
 	pthread_mutex_lock(&inst->mutable->mutex);
 	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
-		inst->stats[i] += t->stats[i];
+		inst->mutable->stats[i] += t->stats[i];
 	}
-	fr_dlist_remove(&inst->list, t);
+	fr_dlist_remove(&inst->mutable->list, t);
 	pthread_mutex_unlock(&inst->mutable->mutex);
 	pthread_mutex_destroy(&t->mutex);
 
@@ -414,7 +415,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	MEM(inst->mutable = talloc_zero(NULL, rlm_stats_mutable_t));
 	pthread_mutex_init(&inst->mutable->mutex, NULL);
-	fr_dlist_init(&inst->list, rlm_stats_thread_t, entry);
+	fr_dlist_init(&inst->mutable->list, rlm_stats_thread_t, entry);
 
 	return 0;
 }
