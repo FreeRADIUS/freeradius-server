@@ -20,10 +20,13 @@
  *
  * @copyright 2023 Network RADIUS SAS (legal@networkradius.com)
  */
+
 RCSID("$Id$")
 
-#include <freeradius-devel/server/packet.h>
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/pair_legacy.h>
+
+#include <freeradius-devel/server/packet.h>
 
 static fr_dict_t const *dict_freeradius;
 
@@ -153,14 +156,14 @@ void fr_packet_pairs_to_packet(fr_packet_t *packet, fr_pair_list_t const *list)
 	}
 }
 
-/** Initialises the Net. packet attributes.
- *
- * @note Call packet_global_free() when the server is done to avoid leaks.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-int packet_global_init(void)
+static int _packet_global_free(UNUSED void *uctx)
+{
+	fr_dict_autofree(util_packet_dict);
+
+	return 0;
+}
+
+static int _packet_global_init(UNUSED void *uctx)
 {
 	if (fr_dict_autoload(util_packet_dict) < 0) {
 	error:
@@ -173,7 +176,17 @@ int packet_global_init(void)
 	return 0;
 }
 
-void packet_global_free(void)
+/** Initialises the Net. packet attributes.
+ *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int packet_global_init(void)
 {
-	fr_dict_autofree(util_packet_dict);
+	int ret;
+
+	fr_atexit_global_once_ret(&ret, _packet_global_init, _packet_global_free, NULL);
+
+	return ret;
 }

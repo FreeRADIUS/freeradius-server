@@ -111,11 +111,6 @@ int server_init(CONF_SECTION *cs)
 void server_free(void)
 {
 	/*
-	 *	Free any resources used by 'Net.' packet
-	 */
-	packet_global_free();
-
-	/*
 	 *	Free xlat instance data, and call any detach methods
 	 */
 	xlat_instances_free();

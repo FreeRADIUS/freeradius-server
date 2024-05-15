@@ -1739,8 +1739,6 @@ int main(int argc, char **argv)
 
 	fr_radius_global_free();
 
-	packet_global_free();
-
 	if (fr_dict_autofree(radclient_dict) < 0) {
 		fr_perror("radclient");
 		ret = EXIT_FAILURE;

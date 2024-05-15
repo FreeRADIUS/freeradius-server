@@ -738,8 +738,6 @@ int main(int argc, char **argv)
 
 	fr_dhcpv4_global_free();
 
-	packet_global_free();
-
 	if (fr_dict_autofree(dhcpclient_dict) < 0) {
 		fr_perror("dhcpclient");
 		ret = -1;
