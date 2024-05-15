@@ -1027,6 +1027,21 @@ static fr_event_update_t const resume_write[] = {
 };
 
 
+static void client_bio_write_pause(fr_bio_packet_t *bio)
+{
+	fr_radius_client_bio_info_t const *info = fr_radius_client_bio_info(bio);
+
+	if (fr_event_filter_update(client_config.retry_cfg.el, info->fd_info->socket.fd, FR_EVENT_FILTER_IO, pause_write) < 0) fr_assert(0);
+}
+
+static void client_bio_write_resume(fr_bio_packet_t *bio)
+{
+	fr_radius_client_bio_info_t const *info = fr_radius_client_bio_info(bio);
+
+	if (fr_event_filter_update(client_config.retry_cfg.el, info->fd_info->socket.fd, FR_EVENT_FILTER_IO, resume_write) < 0) fr_assert(0);
+}
+
+
 static NEVER_RETURNS void client_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
 				       int fd_errno, UNUSED void *uctx)
 {
@@ -1183,6 +1198,9 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 		return;
 	}
 
+	/*
+	 *	No more packets to send, we pause the read.
+	 */
 	if (request->packet->id >= 0) {
 		paused = true;
 		goto pause;
@@ -1676,6 +1694,15 @@ int main(int argc, char **argv)
 		ERROR("Failed opening socket: %s", fr_strerror());
 		fr_exit_now(1);
 	}
+
+	/*
+	 *	Set callbacks so that the socket is automatically
+	 *	paused or resumed when the socket becomes writeable.
+	 */
+	(void) fr_radius_client_bio_cb_set(client_bio, &(fr_bio_packet_cb_funcs_t) {
+			.write_blocked = client_bio_write_pause,
+			.write_resume = client_bio_write_resume,
+		});
 
 	client_info = fr_radius_client_bio_info(client_bio);
 	fr_assert(client_info != NULL);
