@@ -311,7 +311,7 @@ ssize_t talloc_hdr_size(void)
  */
 TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_len, unsigned int headers, size_t size)
 {
-	size_t		rounded, page_size = (size_t)getpagesize();
+	size_t		rounded, alloced, page_size = (size_t)getpagesize();
 	size_t		hdr_size;
 	void		*next;
 	TALLOC_CTX	*pool;
@@ -339,9 +339,8 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_
 	 *  will give to talloc, and what the first address after adding the
 	 *  pools header will be
 	 */
-	rounded += page_size;
-
-	pool = talloc_pool(ctx, rounded);
+	alloced = rounded + page_size;
+	pool = talloc_pool(ctx, alloced);
 	if (!pool) {
 		fr_strerror_const("Out of memory");
 		return NULL;
@@ -381,6 +380,28 @@ TALLOC_CTX *talloc_page_aligned_pool(TALLOC_CTX *ctx, void **start, size_t *end_
 
 	*start = next;			/* This is the address we feed into mprotect */
 	*end_len = rounded;		/* This is how much memory we protect */
+
+	/*
+	 *	Start address must be page aligned
+	 */
+	fr_assert(((uintptr_t)*start % page_size) == 0);
+
+	/*
+	 *	For our sanity, length must be a multiple of the page size.
+	 *	mprotect will silently protect an entire additional page
+	 *	if length is not a multiple of page size.
+	 */
+	fr_assert(((uintptr_t)*end_len % page_size) == 0);
+
+	/*
+	 *	We can't protect pages before the pool
+	 */
+	fr_assert(*start >= pool);
+
+	/*
+	 *	We can't protect pages after the pool
+	 */
+	fr_assert(((uintptr_t)*start + *end_len) < ((uintptr_t)pool + alloced));
 
 	return pool;
 }
