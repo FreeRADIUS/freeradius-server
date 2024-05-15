@@ -797,6 +797,8 @@ static int _mod_conn_free(struct wbcContext **wb_ctx)
  */
 static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_time_delta_t timeout)
 {
+	/* Needed by ERROR() */
+	module_inst_ctx_t	*mctx = MODULE_INST_CTX(talloc_get_type_abort(instance, module_instance_t));
 	struct wbcContext	**wb_ctx;
 
 	wb_ctx = talloc_zero(ctx, struct wbcContext *);
@@ -2404,7 +2406,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 #ifdef WITH_AUTH_WINBIND
 		inst->method = AUTH_WBCLIENT;
 
-		inst->wb_pool = module_rlm_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL, NULL, NULL);
+		inst->wb_pool = module_rlm_connection_pool_init(conf, mctx->mi, mod_conn_create, NULL, NULL, NULL, NULL);
 		if (!inst->wb_pool) {
 			cf_log_err(conf, "Unable to initialise winbind connection pool");
 			return -1;
