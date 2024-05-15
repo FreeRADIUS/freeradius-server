@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/server/password.h>
 
+#include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/md4.h>
@@ -1025,10 +1026,7 @@ fr_pair_t *password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 	return NULL;
 }
 
-/** Load our dictionaries
- *
- */
-int password_init(void)
+static int _password_init(UNUSED void *uctx)
 {
 	if (fr_dict_autoload(password_dict) < 0) {
 		PERROR("%s", __FUNCTION__);
@@ -1043,7 +1041,21 @@ int password_init(void)
 	return 0;
 }
 
-void password_free(void)
+static int _password_free(UNUSED void *uctx)
 {
 	fr_dict_autofree(password_dict);
+
+	return 0;
+}
+
+/** Load our dictionaries
+ *
+ */
+int password_init(void)
+{
+	int ret;
+
+	fr_atexit_global_once_ret(&ret, _password_init, _password_free, NULL);
+
+	return ret;
 }

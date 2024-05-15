@@ -121,11 +121,6 @@ void server_free(void)
 	xlat_instances_free();
 
 	/*
-	 *	Free password dictionaries
-	 */
-	password_free();
-
-	/*
 	 *	Now we're sure no more triggers can fire, free the
 	 * 	trigger tree.
 	 */

@@ -38,8 +38,6 @@ fr_pair_t		*password_find(bool *ephemeral, TALLOC_CTX *ctx, request_t *request,
 
 int			password_init(void);
 
-void			password_free(void);
-
 #ifdef __cplusplus
 }
 #endif
