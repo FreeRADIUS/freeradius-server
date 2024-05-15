@@ -47,7 +47,9 @@ typedef struct fr_event_fd_t {
 	void			*ctx;
 } fr_event_fd_t;
 
-#define FR_EV_MAX_FDS (512)
+#define FR_EV_MAX_EVENTS (512)
+
+int fr_ev_max_fds = FR_EV_MAX_EVENTS;
 
 #undef USEC
 #define USEC (1000000)
@@ -71,10 +73,10 @@ struct fr_event_list_t {
 	fd_set		write_fds;
 #else
 	int		kq;
-	struct kevent	events[FR_EV_MAX_FDS]; /* so it doesn't go on the stack every time */
+	struct kevent	events[FR_EV_MAX_EVENTS]; /* so it doesn't go on the stack every time */
 #endif
 
-	fr_event_fd_t	readers[FR_EV_MAX_FDS];
+	fr_event_fd_t	readers[1];
 };
 
 /*
@@ -128,11 +130,12 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 	int i;
 	fr_event_list_t *el;
 
-	el = talloc_zero(ctx, fr_event_list_t);
+	el = (fr_event_list_t *) talloc_zero_array(ctx, uint8_t, sizeof(fr_event_list_t) + fr_ev_max_fds * sizeof(el->readers[0]));
 	if (!fr_assert(el)) {
 		return NULL;
 	}
 	talloc_set_destructor(el, _event_list_free);
+	talloc_set_type(el, fr_event_list_t);
 
 	el->times = fr_heap_create(fr_event_list_time_cmp, offsetof(fr_event_t, heap));
 	if (!el->times) {
@@ -140,7 +143,7 @@ fr_event_list_t *fr_event_list_create(TALLOC_CTX *ctx, fr_event_status_t status)
 		return NULL;
 	}
 
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
+	for (i = 0; i < fr_ev_max_fds; i++) {
 		el->readers[i].fd = -1;
 	}
 
@@ -363,7 +366,7 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		return 0;
 	}
 
-	if (el->num_readers >= FR_EV_MAX_FDS) {
+	if (el->num_readers >= fr_ev_max_fds) {
 		fr_strerror_printf("Too many readers");
 		return 0;
 	}
@@ -385,11 +388,11 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 	 *	usually less than 256, we do "FD & 0xff", which is a
 	 *	good guess, and makes the lookups mostly O(1).
 	 */
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
+	for (i = 0; i < fr_ev_max_fds; i++) {
 		int j;
 		struct kevent evset;
 
-		j = (i + fd) & (FR_EV_MAX_FDS - 1);
+		j = (i + fd) & (fr_ev_max_fds - 1);
 
 		if (el->readers[j].fd >= 0) continue;
 
@@ -469,11 +472,11 @@ int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
 	if (type != 0) return 0;
 
 #ifdef HAVE_KQUEUE
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
+	for (i = 0; i < fr_ev_max_fds; i++) {
 		int j;
 		struct kevent evset;
 
-		j = (i + fd) & (FR_EV_MAX_FDS - 1);
+		j = (i + fd) & (fr_ev_max_fds - 1);
 
 		if (el->readers[j].fd != fd) continue;
 
@@ -528,11 +531,11 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 	if (type != 0) return 0;
 
 #ifdef HAVE_KQUEUE
-	for (i = 0; i < FR_EV_MAX_FDS; i++) {
+	for (i = 0; i < fr_ev_max_fds; i++) {
 		int j;
 		struct kevent evset;
 
-		j = (i + fd) & (FR_EV_MAX_FDS - 1);
+		j = (i + fd) & (fr_ev_max_fds - 1);
 
 		if (el->readers[j].fd != fd) continue;
 
@@ -676,7 +679,7 @@ int fr_event_loop(fr_event_list_t *el)
 			ts_wake = NULL;
 		}
 
-		rcode = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_FDS, ts_wake);
+		rcode = kevent(el->kq, NULL, 0, el->events, FR_EV_MAX_EVENTS, ts_wake);
 #endif	/* HAVE_KQUEUE */
 
 		if (fr_heap_num_elements(el->times) > 0) {
