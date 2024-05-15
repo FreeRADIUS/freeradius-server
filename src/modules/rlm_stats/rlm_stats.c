@@ -41,13 +41,17 @@ RCSID("$Id$")
 
 #include <pthread.h>
 
+typedef struct {
+	pthread_mutex_t		mutex;
+} rlm_stats_mutable_t;
+
 /*
  *	@todo - MULTI_PROTOCOL - make this protocol agnostic.
  *	Perhaps keep stats in a hash table by (request->dict, request->code) ?
  */
 
 typedef struct {
-	pthread_mutex_t		mutex;
+	rlm_stats_mutable_t	*mutable;
 	fr_dict_attr_t const	*type_da;			//!< FreeRADIUS-Stats4-Type
 	fr_dict_attr_t const	*ipv4_da;			//!< FreeRADIUS-Stats4-IPv4-Address
 	fr_dict_attr_t const	*ipv6_da;			//!< FreeRADIUS-Stats4-IPv6-Address
@@ -130,7 +134,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 	 *	Loop over all of the other thread instances, locking
 	 *	them, and adding their statistics in.
 	 */
-	pthread_mutex_lock(&t->inst->mutex);
+	pthread_mutex_lock(&t->inst->mutable->mutex);
 	for (other = fr_dlist_head(&t->inst->list);
 	     other != NULL;
 	     other = fr_dlist_next(&t->inst->list, other)) {
@@ -154,7 +158,7 @@ static void coalesce(uint64_t final_stats[FR_RADIUS_CODE_MAX], rlm_stats_thread_
 
 		pthread_mutex_unlock(&other->mutex);
 	}
-	pthread_mutex_unlock(&t->inst->mutex);
+	pthread_mutex_unlock(&t->inst->mutable->mutex);
 }
 
 
@@ -243,12 +247,12 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 
 		t->last_global_update = request->async->recv_time;
 
-		pthread_mutex_lock(&inst->mutex);
+		pthread_mutex_lock(&inst->mutable->mutex);
 		for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
 			inst->stats[i] += t->stats[i];
 			t->stats[i] = 0;
 		}
-		pthread_mutex_unlock(&inst->mutex);
+		pthread_mutex_unlock(&inst->mutable->mutex);
 
 		RETURN_MODULE_UPDATED;
 	}
@@ -282,13 +286,13 @@ static unlang_action_t CC_HINT(nonnull) mod_stats(rlm_rcode_t *p_result, module_
 		 *
 		 *	The copy helps minimize mutex contention.
 		 */
-		pthread_mutex_lock(&inst->mutex);
+		pthread_mutex_lock(&inst->mutable->mutex);
 		for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
 			inst->stats[i] += t->stats[i];
 			t->stats[i] = 0;
 		}
 		memcpy(&local_stats, inst->stats, sizeof(inst->stats));
-		pthread_mutex_unlock(&inst->mutex);
+		pthread_mutex_unlock(&inst->mutable->mutex);
 		vp = NULL;
 		break;
 
@@ -375,11 +379,10 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		TALLOC_FREE(t->src);
 		return -1;
 	}
-	pthread_mutex_init(&t->mutex, 0);
 
-	pthread_mutex_lock(&inst->mutex);
+	pthread_mutex_lock(&inst->mutable->mutex);
 	fr_dlist_insert_head(&inst->list, t);
-	pthread_mutex_unlock(&inst->mutex);
+	pthread_mutex_unlock(&inst->mutable->mutex);
 
 	return 0;
 }
@@ -394,12 +397,12 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 	rlm_stats_t		*inst = t->inst;
 	int			i;
 
-	pthread_mutex_lock(&inst->mutex);
+	pthread_mutex_lock(&inst->mutable->mutex);
 	for (i = 0; i < FR_RADIUS_CODE_MAX; i++) {
 		inst->stats[i] += t->stats[i];
 	}
 	fr_dlist_remove(&inst->list, t);
-	pthread_mutex_unlock(&inst->mutex);
+	pthread_mutex_unlock(&inst->mutable->mutex);
 	pthread_mutex_destroy(&t->mutex);
 
 	return 0;
@@ -409,7 +412,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_stats_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 
-	pthread_mutex_init(&inst->mutex, NULL);
+	MEM(inst->mutable = talloc_zero(NULL, rlm_stats_mutable_t));
+	pthread_mutex_init(&inst->mutable->mutex, NULL);
 	fr_dlist_init(&inst->list, rlm_stats_thread_t, entry);
 
 	return 0;
@@ -423,7 +427,8 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_stats_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_stats_t);
 
-	pthread_mutex_destroy(&inst->mutex);
+	pthread_mutex_destroy(&inst->mutable->mutex);
+	talloc_free(inst->mutable);
 
 	/* free things here */
 	return 0;
