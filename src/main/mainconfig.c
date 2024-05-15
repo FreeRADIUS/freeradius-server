@@ -198,6 +198,9 @@ static const CONF_PARSER server_config[] = {
 	{ "proxy_dedup_window", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.proxy_dedup_window), "1" },
 	{ "cleanup_delay", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.cleanup_delay), STRINGIFY(CLEANUP_DELAY) },
 	{ "max_requests", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.max_requests), STRINGIFY(MAX_REQUESTS) },
+#ifndef HAVE_KQUEUE
+	{ "max_fds", FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_ev_max_fds), "" },
+#endif
 	{ "postauth_client_lost", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.postauth_client_lost), "no" },
 	{ "pidfile", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.pid_file), "${run_dir}/radiusd.pid"},
 	{ "checkrad", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.checkrad), "${sbindir}/checkrad" },
@@ -1163,6 +1166,26 @@ do {\
 	 */
 	main_config.init_delay.tv_sec = 0;
 	main_config.init_delay.tv_usec = 2* (1000000 / 3);
+
+#ifndef HAVE_KQUEUE
+	/*
+	 *	select() is limited to 1024 file descriptors. :(
+	 */
+	if (fr_ev_max_fds > FD_SETSIZE) {
+		fr_ev_max_fds = FD_SETSIZE;
+	} else {
+		/*
+		 *	Round up to the next highest power of 2.
+		 */
+		fr_ev_max_fds--;
+		fr_ev_max_fds |= fr_ev_max_fds >> 1;
+		fr_ev_max_fds |= fr_ev_max_fds >> 2;
+		fr_ev_max_fds |= fr_ev_max_fds >> 4;
+		fr_ev_max_fds |= fr_ev_max_fds >> 8;
+		fr_ev_max_fds |= fr_ev_max_fds >> 16;
+		fr_ev_max_fds++;
+	}
+#endif
 
 	/*
 	 *	Free the old configuration items, and replace them
