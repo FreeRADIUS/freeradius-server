@@ -87,6 +87,8 @@ static bool		do_colourise = false;
 
 static char const	*radius_dir = NULL;	//!< Path to raddb directory
 
+static uint32_t		max_fds = 0;
+
 /**********************************************************************
  *
  *	We need to figure out where the logs go, before doing anything
@@ -199,7 +201,7 @@ static const CONF_PARSER server_config[] = {
 	{ "cleanup_delay", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.cleanup_delay), STRINGIFY(CLEANUP_DELAY) },
 	{ "max_requests", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.max_requests), STRINGIFY(MAX_REQUESTS) },
 #ifndef HAVE_KQUEUE
-	{ "max_fds", FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_ev_max_fds), "" },
+	{ "max_fds", FR_CONF_POINTER(PW_TYPE_INTEGER, &max_fds), },
 #endif
 	{ "postauth_client_lost", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.postauth_client_lost), "no" },
 	{ "pidfile", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.pid_file), "${run_dir}/radiusd.pid"},
@@ -1171,19 +1173,22 @@ do {\
 	/*
 	 *	select() is limited to 1024 file descriptors. :(
 	 */
-	if (fr_ev_max_fds > FD_SETSIZE) {
-		fr_ev_max_fds = FD_SETSIZE;
-	} else {
-		/*
-		 *	Round up to the next highest power of 2.
-		 */
-		fr_ev_max_fds--;
-		fr_ev_max_fds |= fr_ev_max_fds >> 1;
-		fr_ev_max_fds |= fr_ev_max_fds >> 2;
-		fr_ev_max_fds |= fr_ev_max_fds >> 4;
-		fr_ev_max_fds |= fr_ev_max_fds >> 8;
-		fr_ev_max_fds |= fr_ev_max_fds >> 16;
-		fr_ev_max_fds++;
+	if (max_fds) {
+		if (max_fds > FD_SETSIZE) {
+			fr_ev_max_fds = FD_SETSIZE;
+		} else {
+			/*
+			 *	Round up to the next highest power of 2.
+			 */
+			max_fds--;
+			max_fds |= max_fds >> 1;
+			max_fds |= max_fds >> 2;
+			max_fds |= max_fds >> 4;
+			max_fds |= max_fds >> 8;
+			max_fds |= max_fds >> 16;
+			max_fds++;
+			fr_ev_max_fds = max_fds;
+		}
 	}
 #endif
 
