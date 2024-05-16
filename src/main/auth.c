@@ -850,8 +850,8 @@ int rad_virtual_server(REQUEST *request)
 			break;
 
 		case PW_AUTH_TYPE_REJECT:
-				request->reply->code = PW_CODE_ACCESS_REJECT;
-				break;
+			request->reply->code = PW_CODE_ACCESS_REJECT;
+			break;
 
 		default:
 			break;
@@ -861,6 +861,12 @@ int rad_virtual_server(REQUEST *request)
 	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
 		fr_pair_delete_by_num(&request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 		vp = pair_make_config("Post-Auth-Type", "Reject", T_OP_SET);
+		if (vp) rad_postauth(request);
+	}
+
+	if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+		fr_pair_delete_by_num(&request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+		vp = pair_make_config("Post-Auth-Type", "Challenge", T_OP_SET);
 		if (vp) rad_postauth(request);
 	}
 
