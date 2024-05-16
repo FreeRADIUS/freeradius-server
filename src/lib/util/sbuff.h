@@ -1419,6 +1419,15 @@ do { \
  *
  * @{
  */
+
+/** Toggle any chars to 'true' in out, that were present in, out or in
+ *
+ */
+static inline void fr_sbuff_allowed_merge(bool out[static UINT8_MAX + 1], bool const in[static UINT8_MAX + 1])
+{
+	for (size_t i = 0; i <= UINT8_MAX; i++) out[i] = out[i] || in[i];
+}
+
 fr_sbuff_term_t	*fr_sbuff_terminals_amerge(TALLOC_CTX *ctx,
 					   fr_sbuff_term_t const *a, fr_sbuff_term_t const *b);
 
