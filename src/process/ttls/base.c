@@ -620,44 +620,44 @@ static fr_process_state_t const process_state[] = {
 
 static virtual_server_compile_t const compile_list[] = {
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Access-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = PROCESS_CONF_OFFSET(access_request),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Access-Accept",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(access_accept),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Access-Challenge",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(access_challenge),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Access-Reject",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(access_reject),
 	},
 
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Protocol-Error",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(protocol_error),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 	{
-		.name = "authenticate",
+		.name1 = "authenticate",
 		.name2 = CF_IDENT_ANY,
 		.component = MOD_AUTHENTICATE
 	},

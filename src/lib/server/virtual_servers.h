@@ -102,9 +102,8 @@ typedef struct {
  *
  */
 typedef struct {
-	char const		*name;		//!< Name of the processing section, such as "recv" or "send"
+	char const		*name1;		//!< Name of the processing section, such as "recv" or "send"
 	char const		*name2;		//!< Second name, such as "Access-Request"
-	rlm_components_t	component;	//!< Sets the default list of actions for this section
 	size_t			offset;		//!< where the CONF_SECTION pointer is written
 	bool			dont_cache;	//!< If true, the CONF_SECTION pointer won't be written
 						///< and the offset will be ignored.

@@ -194,86 +194,86 @@ static conf_parser_t dhcpv6_process_config[] = {
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Solicit",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_solicit)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Request",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_request)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Confirm",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_confirm)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Renew",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_renew)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Rebind",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_rebind)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Release",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_release)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Decline",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_decline)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Reconfigure",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_reconfigure)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Information-Request",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_information_request)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Relay-Forward",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_relay_forward)
 	},
 
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Advertise",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(send_advertise)
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Reply",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(send_reply)
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Relay-Reply",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(send_relay_reply)
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond)

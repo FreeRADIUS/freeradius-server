@@ -204,38 +204,38 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Request",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(request),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Reply",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(reply),
 	},
 	{			/* we can listen for others ARP replies, too */
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Reply",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(recv_reply),
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Reverse-Request",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(reverse_request),
 	},
 
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Reverse-Reply",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(reverse_reply),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),

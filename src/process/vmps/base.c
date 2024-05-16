@@ -228,31 +228,31 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Join-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = PROCESS_CONF_OFFSET(join_request),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Join-Response",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(join_response),
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Reconfirm-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = PROCESS_CONF_OFFSET(reconfirm_request),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Reconfirm-Response",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(reconfirm_response),
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Do-Not-Respond",
 		.component = MOD_POST_AUTH,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),

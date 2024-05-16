@@ -54,13 +54,13 @@ static virtual_server_compile_t compile_list[] = {
 	 *      identities.
 	 */
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Identity-Response",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_identity_response)
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Identity-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_common_identity_request)
@@ -72,13 +72,13 @@ static virtual_server_compile_t compile_list[] = {
 	 *	request/response rounds.
 	 */
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Start-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_sim_start_request)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Start-Response",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_sim_start_response)
@@ -88,13 +88,13 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Full-Authentication
 	 */
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Challenge-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_sim_challenge_request)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Challenge-Response",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_sim_challenge_response)
@@ -104,13 +104,13 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Fast-Re-Authentication
 	 */
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Reauthentication-Request",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_common_reauthentication_request)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Reauthentication-Response",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_reauthentication_response)
@@ -120,7 +120,7 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Failures originating from the supplicant
 	 */
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Client-Error",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_client_error)
@@ -130,13 +130,13 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Failure originating from the server
 	 */
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Failure-Notification",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_common_failure_notification)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Failure-Notification-ACK",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_failure_notification_ack)
@@ -146,13 +146,13 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Protected success indication
 	 */
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "Success-Notification",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_common_success_notification)
 	},
 	{
-		.name = "recv",
+		.name1 = "recv",
 		.name2 = "Success-Notification-ACK",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_success_notification_ack)
@@ -162,13 +162,13 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Final EAP-Success and EAP-Failure messages
 	 */
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "EAP-Success",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_eap_success)
 	},
 	{
-		.name = "send",
+		.name1 = "send",
 		.name2 = "EAP-Failure",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_eap_failure)
@@ -178,19 +178,19 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Fast-Reauth vectors
 	 */
 	{
-		.name = "store",
+		.name1 = "store",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.store_session)
 	},
 	{
-		.name = "load",
+		.name1 = "load",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.load_session)
 	},
 	{
-		.name = "clear",
+		.name1 = "clear",
 		.name2 = "session",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.clear_session)
@@ -200,19 +200,19 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Pseudonym processing
 	 */
 	{
-		.name = "store",
+		.name1 = "store",
 		.name2 = "pseudonym",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.store_pseudonym)
 	},
 	{
-		.name = "load",
+		.name1 = "load",
 		.name2 = "pseudonym",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.load_pseudonym)
 	},
 	{
-		.name = "clear",
+		.name1 = "clear",
 		.name2 = "pseudonym",
 		.component = MOD_AUTHORIZE,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.clear_pseudonym)
