@@ -58,7 +58,7 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 		case CURLMSG_DONE:
 		{
 			fr_curl_io_request_t	*randle;
-			request_t			*request = NULL;
+			request_t		*request = NULL;
 			CURL			*candle = m->easy_handle;
 			CURLcode		ret;
 
@@ -67,6 +67,17 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 			mhandle->transfers--;
 
 			ret = curl_easy_getinfo(candle, CURLINFO_PRIVATE, &randle);
+			/*
+			 *	In curl 7.61 we got bad request data returned
+			 *	here after cancellations were processed.
+			 *
+			 *	For debug builds if the value is equal to
+			 *	0xdeadc341, we know the request was cancelled.
+			 *
+			 *	There is no good work around for this other than
+			 *	upgrading to a newer version of curl.
+			 */
+			talloc_get_type_abort(randle, fr_curl_io_request_t);
 			if (!fr_cond_assert_msg(ret == CURLE_OK,
 						"Failed retrieving request data from CURL easy handle (candle)")) {
 				curl_multi_remove_handle(mandle, candle);
@@ -86,8 +97,8 @@ static inline void _fr_curl_io_demux(fr_curl_handle_t *mhandle, CURLM *mandle)
 			randle->result = m->data.result;
 
 			/*
-			 *	Looks like this needs to be done last,
-			 *	else m->data.result ends up being junk.
+			 *	This needs to be done last, else m->data.result
+			 *	ends up being junk.
 			 */
 			curl_multi_remove_handle(mandle, candle);
 
@@ -491,6 +502,11 @@ int fr_curl_io_request_enqueue(fr_curl_handle_t *mhandle, request_t *request, fr
 	 *	Stick the current request in the curl handle's
 	 *	private data.  This makes it simple to resume
 	 *	the request in the demux function later...
+	 *
+	 *	Note: If you get 0xdeadc341 in the private data
+	 *	in the demux function, the result for the easy
+	 *	handle was erroneously delivered after a
+	 *	cancellation.
 	 */
 	ret = curl_easy_setopt(randle->candle, CURLOPT_PRIVATE, randle);
 	if (ret != CURLE_OK) {

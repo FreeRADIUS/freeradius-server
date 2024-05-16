@@ -1177,12 +1177,6 @@ static int parse_sub_section(rlm_rest_t *inst, CONF_SECTION *parent, conf_parser
 	return 0;
 }
 
-static int _mod_conn_free(fr_curl_io_request_t *randle)
-{
-	curl_easy_cleanup(randle->candle);
-	return 0;
-}
-
 /** Cleans up after a REST request.
  *
  * Resets all options associated with a CURL handle, and frees any headers
@@ -1194,7 +1188,7 @@ static int _mod_conn_free(fr_curl_io_request_t *randle)
  * @param[in] randle to cleanup.
  * @param[in] uctx unused.
  */
-static int rest_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx)
+static int _rest_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx)
 {
 	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
 	CURL			*candle = randle->candle;
@@ -1212,6 +1206,15 @@ static int rest_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx)
 		ctx->headers = NULL;
 	}
 
+#ifndef NDEBUG
+	/*
+	 *  With curl 7.61 when a request in cancelled we get a result
+	 *  with a NULL (invalid) pointer to private data.  This lets
+	 *  us know that it was request returned to the slab.
+	 */
+	curl_easy_setopt(candle, CURLOPT_PRIVATE, (void *)0xdeadc341);
+#endif
+
 	/*
 	 *  Free response data
 	 */
@@ -1222,6 +1225,12 @@ static int rest_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx)
 	ctx->response.header = NULL;	/* This is owned by the parsed call env and must not be freed */
 
 	randle->request = NULL;
+	return 0;
+}
+
+static int _mod_conn_free(fr_curl_io_request_t *randle)
+{
+	curl_easy_cleanup(randle->candle);
 	return 0;
 }
 
@@ -1244,7 +1253,7 @@ static int rest_conn_alloc(fr_curl_io_request_t *randle, void *uctx)
 	randle->uctx = curl_ctx;
 	talloc_set_destructor(randle, _mod_conn_free);
 
-	rest_slab_element_set_destructor(randle, rest_request_cleanup, NULL);
+	rest_slab_element_set_destructor(randle,  _rest_request_cleanup, NULL);
 
 	return 0;
 }
