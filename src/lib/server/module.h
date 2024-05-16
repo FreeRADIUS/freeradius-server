@@ -137,6 +137,10 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 extern "C" {
 #endif
 
+/** The maximum size of a module instance
+ */
+#define MODULE_INSTANCE_LEN_MAX 256
+
 /** Named methods exported by a module
  *
  */
@@ -463,6 +467,8 @@ int			modules_instantiate(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn
 int			module_bootstrap(module_instance_t *mi) CC_HINT(nonnull) CC_HINT(warn_unused_result);
 
 int			modules_bootstrap(module_list_t const *ml) CC_HINT(nonnull) CC_HINT(warn_unused_result);
+
+extern bool const module_instance_allowed_chars[UINT8_MAX + 1];
 
 fr_slen_t		module_instance_name_valid(char const *inst_name) CC_HINT(nonnull);
 

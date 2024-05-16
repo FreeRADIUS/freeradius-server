@@ -209,6 +209,27 @@ static int cmd_set_module_status(UNUSED FILE *fp, FILE *fp_err, void *ctx, fr_cm
 	return 0;
 }
 
+/** Chars that are allowed in a module instance name
+ *
+ */
+bool const module_instance_allowed_chars[UINT8_MAX + 1] = {
+	['-'] = true, ['/'] = true, ['_'] = true,
+	['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
+	['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
+	['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true, ['E'] = true,
+	['F'] = true, ['G'] = true, ['H'] = true, ['I'] = true, ['J'] = true,
+	['K'] = true, ['L'] = true, ['M'] = true, ['N'] = true, ['O'] = true,
+	['P'] = true, ['Q'] = true, ['R'] = true, ['S'] = true, ['T'] = true,
+	['U'] = true, ['V'] = true, ['W'] = true, ['X'] = true, ['Y'] = true,
+	['Z'] = true,
+	['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
+	['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true,
+	['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true,
+	['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = true,
+	['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true,
+	['z'] = true
+};
+
 /** dl module tracking
  *
  * This is used by all module lists, irrespecitve of their type, and is thread safe.
@@ -1358,7 +1379,7 @@ static fr_slen_t module_instance_name(TALLOC_CTX *ctx, char **out,
 {
 	fr_sbuff_t *agg;
 
-	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 64, 256);
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&agg, 64, MODULE_INSTANCE_LEN_MAX);
 
 	/*
 	 *	Parent has all of the qualifiers of its ancestors
@@ -1565,24 +1586,6 @@ void module_instance_data_alloc(module_data_pool_t *pool_out, void **out,
  */
 fr_slen_t module_instance_name_valid(char const *inst_name)
 {
-	static bool const inst_allowed_chars[UINT8_MAX + 1] = {
-		['-'] = true, ['/'] = true, ['_'] = true,
-		['0'] = true, ['1'] = true, ['2'] = true, ['3'] = true, ['4'] = true,
-		['5'] = true, ['6'] = true, ['7'] = true, ['8'] = true, ['9'] = true,
-		['A'] = true, ['B'] = true, ['C'] = true, ['D'] = true, ['E'] = true,
-		['F'] = true, ['G'] = true, ['H'] = true, ['I'] = true, ['J'] = true,
-		['K'] = true, ['L'] = true, ['M'] = true, ['N'] = true, ['O'] = true,
-		['P'] = true, ['Q'] = true, ['R'] = true, ['S'] = true, ['T'] = true,
-		['U'] = true, ['V'] = true, ['W'] = true, ['X'] = true, ['Y'] = true,
-		['Z'] = true,
-		['a'] = true, ['b'] = true, ['c'] = true, ['d'] = true, ['e'] = true,
-		['f'] = true, ['g'] = true, ['h'] = true, ['i'] = true, ['j'] = true,
-		['k'] = true, ['l'] = true, ['m'] = true, ['n'] = true, ['o'] = true,
-		['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = true,
-		['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true,
-		['z'] = true
-	};
-
 	/*
 	 *	[] are used for dynamic module selection.
 	 *	. is used as a method and submodule separator.
@@ -1593,7 +1596,7 @@ fr_slen_t module_instance_name_valid(char const *inst_name)
 		size_t len = strlen(inst_name);
 
 		for (size_t i = 0; i < len; i++) {
-			if (!inst_allowed_chars[(uint8_t)inst_name[i]]) {
+			if (!module_instance_allowed_chars[(uint8_t)inst_name[i]]) {
 				fr_strerror_printf("Instance name \"%s\" contains an invalid character.  "
 						   "Valid characters are [0-9a-zA-Z/_-]", inst_name);
 				return -(i + 1);
