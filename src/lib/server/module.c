@@ -558,7 +558,7 @@ static void mltl_mlg_data_del(module_instance_t *mi)
 
 static module_thread_instance_t *mltl_thread_data_get(module_instance_t const *mi)
 {
-	mltl_module_instance_t const *mltl_mi = (mltl_module_instance_t *)talloc_get_type_abort_const(mi, module_instance_t);
+	mltl_module_instance_t const *mltl_mi = (mltl_module_instance_t * const)talloc_get_type_abort_const(mi, module_instance_t);
 	return mltl_mi->ti;
 }
 
