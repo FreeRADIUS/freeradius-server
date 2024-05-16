@@ -1428,7 +1428,7 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_ldap_t const 	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_ldap_t);
-	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi), fr_ldap_thread_t);
+	fr_ldap_thread_t	*thread = talloc_get_type_abort(module_thread(inst->mi)->data, fr_ldap_thread_t);
 	ldap_auth_ctx_t		*auth_ctx;
 	ldap_auth_call_env_t	*call_env = talloc_get_type_abort(mctx->env_data, ldap_auth_call_env_t);
 
