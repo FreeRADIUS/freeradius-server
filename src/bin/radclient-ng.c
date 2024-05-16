@@ -1687,6 +1687,15 @@ int main(int argc, char **argv)
 	}
 
 	/*
+	 *	Set callbacks so that the socket is automatically
+	 *	paused or resumed when the socket becomes writeable.
+	 */
+	client_config.pause_resume_cfg = (fr_bio_packet_cb_funcs_t) {
+		.write_blocked = client_bio_write_pause,
+		.write_resume = client_bio_write_resume,
+	};
+
+	/*
 	 *	Open the RADIUS client bio, and then get the information associated with it.
 	 */
 	client_bio = fr_radius_client_bio_alloc(autofree, &client_config, &fd_config);
@@ -1694,15 +1703,6 @@ int main(int argc, char **argv)
 		ERROR("Failed opening socket: %s", fr_strerror());
 		fr_exit_now(1);
 	}
-
-	/*
-	 *	Set callbacks so that the socket is automatically
-	 *	paused or resumed when the socket becomes writeable.
-	 */
-	(void) fr_radius_client_bio_cb_set(client_bio, &(fr_bio_packet_cb_funcs_t) {
-			.write_blocked = client_bio_write_pause,
-			.write_resume = client_bio_write_resume,
-		});
 
 	client_info = fr_radius_client_bio_info(client_bio);
 	fr_assert(client_info != NULL);

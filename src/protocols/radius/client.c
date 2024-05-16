@@ -90,6 +90,13 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 */
 	my->fd->uctx = my;
 
+	/*
+	 *	Set up read / write blocked / resume callbacks.
+	 */
+	if (cfg->pause_resume_cfg.write_blocked || cfg->pause_resume_cfg.read_blocked) {
+		fr_radius_client_bio_cb_set((fr_bio_packet_t *) my, &cfg->pause_resume_cfg);
+	}
+
 	my->info.fd_info = fr_bio_fd_info(my->fd);
 	fr_assert(my->info.fd_info != NULL);
 
@@ -550,6 +557,12 @@ int fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t c
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 	fr_bio_cb_funcs_t bio_cb = {};
+
+	/*
+	 *	If we have a "blocked" function, we must have a "resume" function, and vice versa.
+	 */
+	fr_assert((cb->write_blocked != NULL) == (cb->write_resume != NULL));
+	fr_assert((cb->read_blocked != NULL) == (cb->read_resume != NULL));
 
 #undef SET
 #define SET(_x) if (cb->_x) bio_cb._x = fr_bio_ ## _x

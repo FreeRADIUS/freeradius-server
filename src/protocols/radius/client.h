@@ -38,6 +38,8 @@ typedef struct {
 
 	fr_bio_retry_config_t	retry_cfg;
 
+	fr_bio_packet_cb_funcs_t pause_resume_cfg;
+
 	bool			outgoing[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
 
 	fr_retry_config_t 	retry[FR_RADIUS_CODE_MAX];	//!< default retry configuration for each packet type
