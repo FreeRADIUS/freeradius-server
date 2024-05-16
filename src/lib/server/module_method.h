@@ -29,6 +29,8 @@ RCSIDH(module_method_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/util/dict.h>
+
 /** Specifies a module method identifier
  *
  * These are used in module definitions and by virtual servers to find mutually
