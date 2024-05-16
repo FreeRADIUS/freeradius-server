@@ -1501,13 +1501,6 @@ static int _module_instance_free(module_instance_t *mi)
 	 */
 	talloc_free_children(mi);
 
-	/*
-	 *	This frees any instance and boot data associated with the
-	 *	module_instance_t.
-	 */
-	talloc_free(mi->boot_pool.ctx);
-	talloc_free(mi->inst_pool.ctx);
-
 	dl_module_free(mi->module);
 
 	return 0;
@@ -1531,6 +1524,7 @@ module_instance_t *module_instance_copy(module_list_t *dst, module_instance_t co
 
 /** Allocate module instance data
  *
+ * @param[in] ctx		talloc context to allocate data in.
  * @param[out] pool_out		where to write pool details.
  * @param[out] out		where to write data pointer.
  * @param[in] mi		module instance.
@@ -1538,7 +1532,7 @@ module_instance_t *module_instance_copy(module_list_t *dst, module_instance_t co
  * @param[in] type		talloc type to assign.
  */
 static inline CC_HINT(always_inline)
-void module_instance_data_alloc(module_data_pool_t *pool_out, void **out,
+void module_instance_data_alloc(TALLOC_CTX *ctx, module_data_pool_t *pool_out, void **out,
 				module_instance_t *mi, size_t size, char const *type)
 {
 	dl_module_t const	*module = mi->module;
@@ -1552,17 +1546,8 @@ void module_instance_data_alloc(module_data_pool_t *pool_out, void **out,
 	 *
 	 *      This is needed so we can resolve instance data back to
 	 *	module_instance_t/dl_module_t/dl_t.
-	 *
-	 *	Note: On Linux allocating the pools from the module_instance_t
-	 *	resulted in the protections being triggered, possibly because
-	 *	the pools are siblings, and talloc was modifying the chunk header
-	 *	of a protected pool.
-	 *
-	 *	To correct this, we need to allocate the pools in the NULL
-	 *	ctx, and free them manually.  This means the chunk headers
-	 *	are not linked in any way.
 	 */
-	pool_out->ctx = talloc_page_aligned_pool(NULL,
+	pool_out->ctx = talloc_page_aligned_pool(ctx,
 						 &pool_out->start, &pool_out->len,
 						 1, size);
 	MEM(data = talloc_zero_array(pool_out->ctx, uint8_t, size));
@@ -1721,14 +1706,14 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	 *	Allocate bootstrap data.
 	 */
 	if (mi->exported->bootstrap) {
-		module_instance_data_alloc(&mi->boot_pool, &mi->boot,
+		module_instance_data_alloc(mi, &mi->boot_pool, &mi->boot,
 				   	   mi, mi->exported->boot_size, mi->exported->boot_type);
 	}
 	/*
 	 *	Allocate the module instance data.  We always allocate
 	 *	this so the module can use it for lookup.
 	 */
-	module_instance_data_alloc(&mi->inst_pool, &mi->data,
+	module_instance_data_alloc(mi, &mi->inst_pool, &mi->data,
 				   mi, mi->exported->inst_size, mi->exported->inst_type);
 	/*
 	 *	If we're threaded, check if the module is thread-safe.
