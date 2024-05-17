@@ -40,6 +40,7 @@ typedef enum {
 	MOD_ACTION_RETURN = -1,
 	MOD_ACTION_REJECT = -2,
 	MOD_ACTION_RETRY = -3,
+	MOD_PRIORITY_MIN = 0,
 	/*
 	 *	If ubsan or the compiled complains
 	 *	about the missing enum values we'll
