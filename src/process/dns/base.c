@@ -22,7 +22,6 @@
  * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2020 Network RADIUS SAS (legal@networkradius.com)
  */
-#include "lib/server/components.h"
 #include "lib/server/rcode.h"
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/pair.h>
@@ -133,75 +132,75 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Query",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(query),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Query-Response",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(query_response),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Inverse-Query",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(inverse_query),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Inverse-Query-Response",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(inverse_query_response),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Status",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(status),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Status-Response",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(status_response),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Update",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(update),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Update-Response",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(update_response),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Stateful-Operation",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(stateful_operation),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Stateful-Operation-Response",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(stateful_operation_response),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Do-Not-Respond",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 
 #define ERROR_SECTION(_name, _number) \
 	{ \
-		.name = "error", \
+		.name1 = "error", \
 		.name2 = _name, \
-		.component = MOD_POST_AUTH, \
+		.actions = &mod_actions_postauth, \
 		.offset = PROCESS_CONF_OFFSET(rcode[_number]), \
 	}
 

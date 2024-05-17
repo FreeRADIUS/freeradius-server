@@ -1100,103 +1100,103 @@ static virtual_server_compile_t const compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Access-Request",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(access_request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Access-Accept",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_accept),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Access-Challenge",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_challenge),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Access-Reject",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_reject),
 	},
 
 	{
 		.name1 = "recv",
 		.name2 = "Accounting-Request",
-		.component = MOD_PREACCT,
+		.actions = &mod_actions_preacct,
 		.offset = PROCESS_CONF_OFFSET(accounting_request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Accounting-Response",
-		.component = MOD_ACCOUNTING,
+		.actions = &mod_actions_accounting,
 		.offset = PROCESS_CONF_OFFSET(accounting_response),
 	},
 
 	{
 		.name1 = "recv",
 		.name2 = "Status-Server",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(status_server),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "CoA-Request",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(coa_request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "CoA-ACK",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(coa_ack),
 	},
 	{
 		.name1 = "send",.name2 = "CoA-NAK",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(coa_nak),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Disconnect-Request",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(disconnect_request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Disconnect-ACK",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(disconnect_ack),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Disconnect-NAK",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(disconnect_nak),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Protocol-Error",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(protocol_error),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Do-Not-Respond",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 	{
 		.name1 = "authenticate",
 		.name2 = CF_IDENT_ANY,
-		.component = MOD_AUTHENTICATE
+		.actions = &mod_actions_authenticate
 	},
 	{
 		.name1 = "accounting",
 		.name2 = CF_IDENT_ANY,
-		.component = MOD_AUTHENTICATE
+		.actions = &mod_actions_authenticate
 	},
 
 	DYNAMIC_CLIENT_SECTIONS,

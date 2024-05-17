@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dict.h>
 
+#include "catch_priv.h"
 #include "call_priv.h"
 #include "caller_priv.h"
 #include "condition_priv.h"
@@ -47,7 +48,7 @@ RCSID("$Id$")
 #include "limit_priv.h"
 #include "transaction_priv.h"
 #include "try_priv.h"
-#include "catch_priv.h"
+#include "mod_action.h"
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
@@ -83,22 +84,11 @@ fr_table_num_sorted_t const mod_rcode_table[] = {
 };
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
 
-
-/* Some short names for debugging output */
-static char const * const comp2str[] = {
-	"authenticate",
-	"authorize",
-	"preacct",
-	"accounting",
-	"post-auth"
-};
-
 typedef struct {
-	rlm_components_t	component;
-	char const		*section_name1;
-	char const		*section_name2;
-	unlang_actions_t	actions;
-	tmpl_rules_t const	*rules;
+	char const			*section_name1;
+	char const			*section_name2;
+	unlang_mod_actions_t		actions;
+	tmpl_rules_t const		*rules;
 } unlang_compile_t;
 
 /*
@@ -106,16 +96,11 @@ typedef struct {
  *	name and number, but we use the CURRENT actions.
  */
 static inline CC_HINT(always_inline)
-void compile_copy_context(unlang_compile_t *dst, unlang_compile_t const *src, rlm_components_t component)
+void compile_copy_context(unlang_compile_t *dst, unlang_compile_t const *src)
 {
 	int i;
 
 	*dst = *src;
-
-	/*
-	 *	Over-ride the component.
-	 */
-	dst->component = component;
 
 	/*
 	 *	Ensure that none of the actions are RETRY.
@@ -126,92 +111,12 @@ void compile_copy_context(unlang_compile_t *dst, unlang_compile_t const *src, rl
 	memset(&dst->actions.retry, 0, sizeof(dst->actions.retry)); \
 }
 
-#define UPDATE_CTX2 compile_copy_context(&unlang_ctx2, unlang_ctx, component)
+#define UPDATE_CTX2 compile_copy_context(&unlang_ctx2, unlang_ctx)
 
 
 static unlang_t *compile_empty(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs, unlang_ext_t const *ext);
 
 static char const unlang_spaces[] = "                                                                                                                                                                                                                                                                ";
-
-
-static const unlang_actions_t default_actions[MOD_COUNT] =
-{
-	/* authenticate */
-	{
-		.actions = {
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			4,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			3			/* updated  */
-		},
-		.retry = RETRY_INIT,
-	},
-	/* authorize */
-	{
-		.actions = {
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			3,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		},
-		.retry = RETRY_INIT,
-	},
-	/* preacct */
-	{
-		.actions = {
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			2,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			1,			/* noop     */
-			3			/* updated  */
-		},
-		.retry = RETRY_INIT,
-	},
-	/* accounting */
-	{
-		.actions = {
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			2,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			MOD_ACTION_RETURN,	/* notfound */
-			1,			/* noop     */
-			3			/* updated  */
-		},
-		.retry = RETRY_INIT,
-	},
-	/* post-auth */
-	{
-		.actions = {
-			MOD_ACTION_RETURN,	/* reject   */
-			MOD_ACTION_RETURN,	/* fail     */
-			3,			/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* disallow */
-			1,			/* notfound */
-			2,			/* noop     */
-			4			/* updated  */
-		},
-		.retry = RETRY_INIT,
-	}
-};
 
 static inline CC_HINT(always_inline) int unlang_attr_rules_verify(tmpl_attr_rules_t const *rules)
 {
@@ -1831,7 +1736,7 @@ invalid_type:
 /*
  *	Compile action && rcode for later use.
  */
-static int compile_action_pair(unlang_actions_t *actions, CONF_PAIR *cp)
+static int compile_action_pair(unlang_mod_actions_t *actions, CONF_PAIR *cp)
 {
 	int action;
 	char const *attr, *value;
@@ -1889,7 +1794,7 @@ static int compile_action_pair(unlang_actions_t *actions, CONF_PAIR *cp)
 	return 1;
 }
 
-static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
+static bool compile_retry_section(unlang_mod_actions_t *actions, CONF_ITEM *ci)
 {
 	CONF_ITEM *csi;
 	CONF_SECTION *cs;
@@ -1967,7 +1872,7 @@ static bool compile_retry_section(unlang_actions_t *actions, CONF_ITEM *ci)
 	return true;
 }
 
-bool unlang_compile_actions(unlang_actions_t *actions, CONF_SECTION *action_cs, bool module_retry)
+bool unlang_compile_actions(unlang_mod_actions_t *actions, CONF_SECTION *action_cs, bool module_retry)
 {
 	int i;
 	bool disallow_retry_action = false;
@@ -2180,7 +2085,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 	 *	Create our own compilation context which can be edited
 	 *	by a variable definition.
 	 */
-	compile_copy_context(&unlang_ctx2, unlang_ctx_in, unlang_ctx_in->component);
+	compile_copy_context(&unlang_ctx2, unlang_ctx_in);
 	unlang_ctx = &unlang_ctx2;
 	t_rules = *unlang_ctx_in->rules;
 
@@ -2580,7 +2485,7 @@ static unlang_t *compile_transaction(unlang_t *parent, unlang_compile_t *unlang_
 	/*
 	 *	Any failure is return, not continue.
 	 */
-	compile_copy_context(&unlang_ctx2, unlang_ctx, unlang_ctx->component);
+	compile_copy_context(&unlang_ctx2, unlang_ctx);
 
 	unlang_ctx2.actions.actions[RLM_MODULE_REJECT] = MOD_ACTION_RETURN;
 	unlang_ctx2.actions.actions[RLM_MODULE_FAIL] = MOD_ACTION_RETURN;
@@ -4127,7 +4032,7 @@ get_packet_type:
 	 *	just to ensure that retry is handled correctly.
 	 *	i.e. reset.
 	 */
-	compile_copy_context(&unlang_ctx2, unlang_ctx, unlang_ctx->component);
+	compile_copy_context(&unlang_ctx2, unlang_ctx);
 
 	/*
 	 *	Then over-write the new compilation context.
@@ -4135,7 +4040,6 @@ get_packet_type:
 	unlang_ctx2.section_name1 = "subrequest";
 	unlang_ctx2.section_name2 = name2;
 	unlang_ctx2.rules = &t_rules;
-	unlang_ctx2.component = unlang_ctx->component;
 
 	/*
 	 *	Compile the subsection with a *different* default dictionary.
@@ -4337,7 +4241,7 @@ static unlang_t *compile_caller(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 }
 
 static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci,
-				  CONF_SECTION *subcs, rlm_components_t component,
+				  CONF_SECTION *subcs,
 				  bool policy)
 {
 	unlang_compile_t		unlang_ctx2;
@@ -4417,8 +4321,6 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
  * we wish to use, instead of the input component.
  *
  * @param[in] ci		Configuration item to check
- * @param[out] pcomponent	Where to write the method we found, if any.
- *				If no method is specified will be set to MOD_COUNT.
  * @param[in] real_name		Complete name string e.g. foo.authorize.
  * @param[in] virtual_name	Virtual module name e.g. foo.
  * @param[in] method_name	Method override (may be NULL) or the method
@@ -4426,35 +4328,17 @@ static unlang_t *compile_function(unlang_t *parent, unlang_compile_t *unlang_ctx
  * @param[out] policy		whether or not this thing was a policy
  * @return the CONF_SECTION specifying the virtual module.
  */
-static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, rlm_components_t *pcomponent,
-					    char const *real_name, char const *virtual_name, char const *method_name,
+static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci,
+					    UNUSED char const *real_name, char const *virtual_name, char const *method_name,
 					    bool *policy)
 {
 	CONF_SECTION *cs, *subcs, *conf_root;
 	CONF_ITEM *loop;
-	rlm_components_t method = *pcomponent;
+#if 0
 	char buffer[256];
-
+#endif
 	*policy = false;
 	conf_root = cf_root(ci);
-
-	/*
-	 *	Turn the method name into a method enum.
-	 */
-	if (method_name) {
-		rlm_components_t i;
-
-		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-			if (strcmp(comp2str[i], method_name) == 0) break;
-		}
-
-		if (i != MOD_COUNT) {
-			method = i;
-		} else {
-			method_name = NULL;
-			virtual_name = real_name;
-		}
-	}
 
 	/*
 	 *	Look for "foo" as a virtual server.  If we find it,
@@ -4466,10 +4350,7 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, rlm_components_t *pco
 	 *	Return it to the caller, with the updated method.
 	 */
 	subcs = module_rlm_by_name_virtual(virtual_name);
-	if (subcs) {
-		*pcomponent = method;
-		goto check_for_loop;
-	}
+	if (subcs) goto check_for_loop;
 
 	/*
 	 *	Look for it in "policy".
@@ -4490,7 +4371,6 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, rlm_components_t *pco
 		subcs = cf_section_find(cs, virtual_name, NULL);
 		if (!subcs) return NULL;
 
-		*pcomponent = method;
 		goto check_for_loop;
 	}
 
@@ -4498,9 +4378,15 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci, rlm_components_t *pco
 	 *	"foo" means "look for foo.component" first, to allow
 	 *	method overrides.  If that's not found, just look for
 	 *	a policy "foo".
+	 *
+	 *	FIXME - This has been broken since we switched to named
+	 *	module sections. We should take the name1/name2 from the
+	 *	unlang ctx and use that to form the name we search for.
 	 */
+#if 0
 	snprintf(buffer, sizeof(buffer), "%s.%s", virtual_name, comp2str[method]);
-	subcs = cf_section_find(cs, buffer, NULL);
+#endif
+	subcs = cf_section_find(cs, virtual_name, NULL);
 	if (!subcs) subcs = cf_section_find(cs, virtual_name, NULL);
 	if (!subcs) return NULL;
 
@@ -4652,7 +4538,6 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	module_instance_t	*inst;
 	CONF_SECTION		*cs, *subcs, *modules;
 	char const		*realname;
-	rlm_components_t	component = unlang_ctx->component;
 	unlang_compile_t	unlang_ctx2;
 	module_method_t		method;
 	bool			policy;
@@ -4786,14 +4671,14 @@ check_for_module:
 	 */
 	p = strrchr(name, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(ci, &component, name, name, NULL, &policy);
+		subcs = virtual_module_find_cs(ci, name, name, NULL, &policy);
 	} else {
 		char buffer[256];
 
 		strlcpy(buffer, name, sizeof(buffer));
 		buffer[p - name] = '\0';
 
-		subcs = virtual_module_find_cs(ci, &component, name,
+		subcs = virtual_module_find_cs(ci, name,
 					       buffer, buffer + (p - name) + 1, &policy);
 	}
 
@@ -4804,7 +4689,7 @@ check_for_module:
 	 *	i.e. it refers to a a subsection in "policy".
 	 */
 	if (subcs) {
-		c = compile_function(parent, unlang_ctx, ci, subcs, component, policy);
+		c = compile_function(parent, unlang_ctx, ci, subcs, policy);
 		goto allocate_number;
 	}
 
@@ -4863,7 +4748,7 @@ fail:
 	return NULL;
 }
 
-int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t const *rules, void **instruction)
+int unlang_compile(CONF_SECTION *cs, unlang_mod_actions_t const * actions, tmpl_rules_t const *rules, void **instruction)
 {
 	unlang_t			*c;
 	tmpl_rules_t			my_rules;
@@ -4902,10 +4787,9 @@ int unlang_compile(CONF_SECTION *cs, rlm_components_t component, tmpl_rules_t co
 
 	c = compile_section(NULL,
 			    &(unlang_compile_t){
-				.component = component,
 				.section_name1 = cf_section_name1(cs),
 				.section_name2 = cf_section_name2(cs),
-				.actions = default_actions[component],
+				.actions = *actions,
 				.rules = rules
 			    },
 			    cs, &group_ext);

@@ -1334,13 +1334,13 @@ static int instantiate(module_inst_ctx_t const *mctx)
 	if (
 		(parse_sub_section(inst, conf, xlat_config, &inst->xlat, "xlat") < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->authorize,
-				   section_type_value[MOD_AUTHORIZE]) < 0) ||
+				   "authorize") < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->authenticate,
-				   section_type_value[MOD_AUTHENTICATE]) < 0) ||
+				   "authenticate") < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->accounting,
-				   section_type_value[MOD_ACCOUNTING]) < 0) ||
+				   "accounting") < 0) ||
 		(parse_sub_section(inst, conf, section_config, &inst->post_auth,
-				   section_type_value[MOD_POST_AUTH]) < 0))
+				   "post-auth") < 0))
 	{
 		return -1;
 	}

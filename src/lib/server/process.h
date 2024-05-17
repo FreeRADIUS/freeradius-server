@@ -467,21 +467,21 @@ static inline unlang_action_t new_client(rlm_rcode_t *p_result, module_ctx_t con
 
 #define DYNAMIC_CLIENT_SECTIONS \
 	{ \
-		.name = "new", \
+		.name1 = "new", \
 		.name2 = "client", \
-		.component = MOD_AUTHORIZE, \
+		.actions = &mod_actions_authorize, \
 		.offset = PROCESS_CONF_OFFSET(new_client), \
 	}, \
 	{ \
-		.name = "add", \
+		.name1 = "add", \
 		.name2 = "client", \
-		.component = MOD_AUTHORIZE, \
+		.actions = &mod_actions_authorize, \
 		.offset = PROCESS_CONF_OFFSET(add_client), \
 	}, \
 	{ \
-		.name = "deny", \
+		.name1 = "deny", \
 		.name2 = "client", \
-		.component = MOD_AUTHORIZE, \
+		.actions = &mod_actions_authorize, \
 		.offset = PROCESS_CONF_OFFSET(deny_client), \
 	}
 

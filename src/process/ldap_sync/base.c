@@ -197,37 +197,37 @@ static virtual_server_compile_t const compile_list[] = {
 	{
 		.name1 = "load",
 		.name2 = "Cookie",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(load_cookie)
 	},
 	{
 		.name1 = "store",
 		.name2 = "Cookie",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(store_cookie)
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Add",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(recv_add)
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Present",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(recv_present)
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Delete",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(recv_delete)
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Modify",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(recv_modify)
 	},
 

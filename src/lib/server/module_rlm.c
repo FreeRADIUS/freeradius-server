@@ -64,14 +64,6 @@ static int8_t module_rlm_virtual_name_cmp(void const *one, void const *two)
 	return CMP(ret, 0);
 }
 
-char const *section_type_value[MOD_COUNT] = {
-	"authenticate",
-	"authorize",
-	"preacct",
-	"accounting",
-	"post-auth"
-};
-
 /** Global module list for all backend modules
  *
  */
@@ -562,7 +554,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 		 *	then any module method would match, which is
 		 *	bad.
 		 */
-		for (j = 0; allowed_list[j].name != NULL; j++) {
+		for (j = 0; allowed_list[j].name1 != NULL; j++) {
 			int k;
 			virtual_server_method_t const *allowed = &allowed_list[j];
 
@@ -571,7 +563,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 
 				fr_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
 
-				if (strcasecmp(methods->name1, allowed->name) != 0) continue;
+				if (strcasecmp(methods->name1, allowed->name1) != 0) continue;
 
 				/*
 				 *	The module matches "recv *",

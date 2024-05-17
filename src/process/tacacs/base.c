@@ -1324,68 +1324,68 @@ static virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Authentication-Start",
-		.component = MOD_AUTHENTICATE,
+		.actions = &mod_actions_authenticate,
 		.offset = PROCESS_CONF_OFFSET(auth_start),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authentication-Pass",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_pass),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authentication-Fail",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_fail),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authentication-GetData",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_getdata),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authentication-GetUser",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_getuser),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authentication-GetPass",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_getpass),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authentication-Restart",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_restart),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authentication-Error",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_error),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Authentication-Continue",
-		.component = MOD_AUTHENTICATE,
+		.actions = &mod_actions_authenticate,
 		.offset = PROCESS_CONF_OFFSET(auth_cont),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Authentication-Continue-Abort",
-		.component = MOD_AUTHENTICATE,
+		.actions = &mod_actions_authenticate,
 		.offset = PROCESS_CONF_OFFSET(auth_cont_abort),
 	},
 
 	{
 		.name1 = "authenticate",
 		.name2 = CF_IDENT_ANY,
-		.component = MOD_AUTHENTICATE,
+		.actions = &mod_actions_authenticate,
 	},
 
 	/* authorization */
@@ -1393,31 +1393,31 @@ static virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Authorization-Request",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(autz_request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authorization-Pass-Add",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(autz_pass_add),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authorization-Pass-Replace",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(autz_pass_replace),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authorization-Fail",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(autz_fail),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Authorization-Error",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(autz_error),
 	},
 
@@ -1426,32 +1426,32 @@ static virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Accounting-Request",
-		.component = MOD_ACCOUNTING,
+		.actions = &mod_actions_accounting,
 		.offset = PROCESS_CONF_OFFSET(acct_request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Accounting-Success",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(acct_success),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Accounting-Error",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(acct_error),
 	},
 
 	{
 		.name1 = "accounting",
 		.name2 = CF_IDENT_ANY,
-		.component = MOD_ACCOUNTING,
+		.actions = &mod_actions_accounting,
 	},
 
 	{
 		.name1 = "send",
 		.name2 = "Do-Not-Respond",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 

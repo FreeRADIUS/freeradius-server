@@ -36,16 +36,6 @@
 extern "C" {
 #endif
 
-/* Actions may be a positive integer (the highest one returned in the group
- * will be returned), or the keyword "return", represented here by
- * MOD_ACTION_RETURN, to cause an immediate return.
- * There's also the keyword "reject", represented here by MOD_ACTION_REJECT
- * to cause an immediate reject. */
-#define MOD_ACTION_RETURN  (-1)
-#define MOD_ACTION_REJECT  (-2)
-#define MOD_ACTION_RETRY   (-3)
-#define MOD_PRIORITY_MAX   (64)
-
 /** Types of unlang_t nodes
  *
  * Here are our basic types: unlang_t, unlang_group_t, and unlang_module_t. For an
@@ -128,7 +118,7 @@ struct unlang_s {
 	bool			closed;		//!< whether or not this section is closed to new statements
 	CONF_ITEM		*ci;		//!< used to generate this item
 	unsigned int		number;		//!< unique node number
-	unlang_actions_t	actions;	//!< Priorities, etc. for the various return codes.
+	unlang_mod_actions_t	actions;	//!< Priorities, etc. for the various return codes.
 };
 
 /** Describes how to allocate an #unlang_group_t with additional memory keyword specific data

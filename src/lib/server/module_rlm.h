@@ -31,8 +31,6 @@ extern "C" {
 
 #include <freeradius-devel/server/module.h>
 
-extern char const *section_type_value[MOD_COUNT];
-
 typedef struct {
 	module_t			common;			//!< Common fields presented by all modules.
 	module_method_name_t const	*method_names;		//!< named methods

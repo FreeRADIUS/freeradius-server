@@ -107,13 +107,13 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Request",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Reply",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(send_reply),
 	},
 

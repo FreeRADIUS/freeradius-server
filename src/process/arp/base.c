@@ -206,38 +206,38 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Request",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Reply",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(reply),
 	},
 	{			/* we can listen for others ARP replies, too */
 		.name1 = "recv",
 		.name2 = "Reply",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_reply),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Reverse-Request",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(reverse_request),
 	},
 
 	{
 		.name1 = "send",
 		.name2 = "Reverse-Reply",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(reverse_reply),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Do-Not-Respond",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 

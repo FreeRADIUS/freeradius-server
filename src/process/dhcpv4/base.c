@@ -421,11 +421,11 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Discover",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 
 		.methods = (const virtual_server_method_t[]) {
 			{
-				.name = "ippool",
+				.name1 = "ippool",
 				.name2 = "allocate",
 			},
 			COMPILE_TERMINATOR
@@ -435,17 +435,17 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "send",
 		.name2 = "Offer",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(offer),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Request",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 
 		.methods = (const virtual_server_method_t[]) {
 			{
-				.name = "ippool",
+				.name1 = "ippool",
 				.name2 = "extend",
 			},
 			COMPILE_TERMINATOR
@@ -456,23 +456,23 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "send",
 		.name2 = "Ack",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(ack),
 	},
 	{
 		.name1 = "send",
 		.name2 = "NAK",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(nak),
 	},
 	{
 		.name1 = "recv",
 		.name2 = "Decline",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 
 		.methods = (const virtual_server_method_t[]) {
 			{
-				.name = "ippool",
+				.name1 = "ippool",
 				.name2 = "mark",
 			},
 			COMPILE_TERMINATOR
@@ -483,11 +483,11 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Release",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 
 		.methods = (const virtual_server_method_t[]) {
 			{
-				.name = "ippool",
+				.name1 = "ippool",
 				.name2 = "release",
 			},
 			COMPILE_TERMINATOR
@@ -497,39 +497,39 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Inform",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(inform),
 	},
 
 	{
 		.name1 = "recv",
 		.name2 = "Lease-Query",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(lease_query),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Lease-Unassigned",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(lease_unassigned),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Lease-Unknown",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(lease_unknown),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Lease-Active",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(lease_active),
 	},
 
 	{
 		.name1 = "send",
 		.name2 = "Do-Not-Respond",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 

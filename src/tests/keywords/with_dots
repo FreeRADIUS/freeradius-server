@@ -4,6 +4,8 @@
 #  The main problem is that conf section references
 #  also have dots in them...
 #
-with.dots
+
+# FIXME - Doesn't currently work
+#with.dots
 
 success

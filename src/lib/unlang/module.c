@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/call_env.h>
 
 #include "module_priv.h"
-#include "subrequest_priv.h"
 
 #include "tmpl.h"
 
@@ -46,7 +45,7 @@ typedef struct {
 	unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
 	unlang_module_fd_event_t	fd_write;	//!< Function to call when FD is writable.
 	unlang_module_fd_event_t	fd_error;	//!< Function to call when FD has errored.
-	module_instance_t		*mi;	//!< Module instance to pass to callbacks.
+	module_instance_t		*mi;		//!< Module instance to pass to callbacks.
 							///< Use mi->data to get instance data.
 	void				*thread;	//!< Thread specific module instance.
 	void				*env_data;	//!< Per call environment data.

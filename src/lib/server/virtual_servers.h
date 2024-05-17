@@ -24,6 +24,7 @@
  * @copyright 2019 The FreeRADIUS server project
  */
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -31,11 +32,11 @@ extern "C" {
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/unlang/module.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/util/dict.h>
 
 extern const conf_parser_t virtual_servers_config[];
 extern const conf_parser_t virtual_servers_on_read_config[];
-
 
 /** @name Debug functions
  * @{
@@ -94,24 +95,25 @@ bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
  *
  */
 typedef struct {
-	char const		*name;		//!< module method name1 which is allowed in this section
-	char const		*name2;		//!< module method name2 which is allowed in this section
+	char const			*name1;		//!< module method name1 which is allowed in this section
+	char const			*name2;		//!< module method name2 which is allowed in this section
 } virtual_server_method_t;
 
 /** Processing sections which are allowed in this virtual server.
  *
  */
 typedef struct {
-	char const		*name1;		//!< Name of the processing section, such as "recv" or "send"
-	char const		*name2;		//!< Second name, such as "Access-Request"
-	size_t			offset;		//!< where the CONF_SECTION pointer is written
-	bool			dont_cache;	//!< If true, the CONF_SECTION pointer won't be written
-						///< and the offset will be ignored.
-	size_t			instruction;	//!< where the instruction pointer is written
-	virtual_server_method_t const *methods;	//!< list of module methods which are allowed in this section
+	char const			*name1;		//!< Name of the processing section, such as "recv" or "send"
+	char const			*name2;		//!< Second name, such as "Access-Request"
+	size_t				offset;		//!< where the CONF_SECTION pointer is written
+	bool				dont_cache;	//!< If true, the CONF_SECTION pointer won't be written
+							///< and the offset will be ignored.
+	size_t				instruction;	//!< where the instruction pointer is written
+	unlang_mod_actions_t const	*actions;	//!< Default actions for this section.
+	virtual_server_method_t const	*methods;	//!< list of module methods which are allowed in this section
 } virtual_server_compile_t;
 
-#define COMPILE_TERMINATOR { .name = NULL, .name2 = NULL }
+#define COMPILE_TERMINATOR { .name1 = NULL, .name2 = NULL }
 
 int		virtual_server_section_register(virtual_server_compile_t const *entry) CC_HINT(nonnull);
 

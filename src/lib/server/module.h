@@ -36,6 +36,7 @@ extern "C" {
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/mod_action.h>
 #include <freeradius-devel/util/event.h>
 
 typedef struct module_s				module_t;
@@ -124,7 +125,6 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 }
 #endif
 
-#include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/pool.h>
@@ -267,7 +267,7 @@ struct module_instance_s {
 	rlm_rcode_t			code;		//!< Code module will return when 'force' has
 							//!< has been set to true.
 
-	unlang_actions_t       		actions;	//!< default actions and retries.
+	unlang_mod_actions_t       	actions;	//!< default actions and retries.
 	/** @} */
 
        /** @name Allow module instance data to be resolved by name or data, and to get back to the module list

@@ -307,12 +307,12 @@ int add_compile_list(CONF_SECTION *cs, virtual_server_compile_t const *compile_l
 
 	if (!compile_list) return 0;
 
-	for (i = 0; list[i].name != NULL; i++) {
-		if (list[i].name == CF_IDENT_ANY) continue;
+	for (i = 0; list[i].name1 != NULL; i++) {
+		if (list[i].name1 == CF_IDENT_ANY) continue;
 
 		if (virtual_server_section_register(&list[i]) < 0) {
 			cf_log_err(cs, "Failed registering processing section name %s for %s",
-				   list[i].name, name);
+				   list[i].name1, name);
 			return -1;
 		}
 	}
@@ -911,7 +911,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				return -1;
 			}
 
-			rcode = unlang_compile(subcs, list[i].component, rules, &instruction);
+			rcode = unlang_compile(subcs, list[i].actions, rules, &instruction);
 			if (rcode < 0) return -1;
 
 			/*
@@ -956,7 +956,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 			bad = cf_section_find_next(server, subcs, list[i].name1, name2);
 			if (bad) goto forbidden;
 
-			rcode = unlang_compile(subcs, list[i].component, rules, NULL);
+			rcode = unlang_compile(subcs, list[i].actions, rules, NULL);
 			if (rcode < 0) return -1;
 
 			/*
@@ -1017,15 +1017,15 @@ int virtual_server_section_register(virtual_server_compile_t const *entry)
 	if (entry->methods) {
 		int i;
 
-		for (i = 0; entry->methods[i].name != NULL; i++) {
-			if (entry->methods[i].name == CF_IDENT_ANY) {
+		for (i = 0; entry->methods[i].name1 != NULL; i++) {
+			if (entry->methods[i].name1 == CF_IDENT_ANY) {
 				ERROR("Processing sections cannot allow \"*\"");
 				return -1;
 			}
 
 			if (entry->methods[i].name2 == CF_IDENT_ANY) {
 				ERROR("Processing sections cannot allow \"%s *\"",
-					entry->methods[i].name);
+					entry->methods[i].name1);
 				return -1;
 			}
 		}

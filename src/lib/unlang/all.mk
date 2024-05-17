@@ -18,6 +18,7 @@ SOURCES	:=	base.c \
 		limit.c \
 		load_balance.c \
 		map.c \
+		mod_action.c \
 		module.c \
 		parallel.c \
 		return.c \

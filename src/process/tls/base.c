@@ -154,25 +154,25 @@ static const virtual_server_compile_t compile_list[] = {
 	{
 		.name1 = "store",
 		.name2 = "session",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(store_session)
 	},
 	{
 		.name1 = "load",
 		.name2 = "session",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(load_session)
 	},
 	{
 		.name1 = "clear",
 		.name2 = "session",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(clear_session)
 	},
 	{
 		.name1 = "verify",
 		.name2 = "certificate",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(verify_certificate)
 	},
 	COMPILE_TERMINATOR

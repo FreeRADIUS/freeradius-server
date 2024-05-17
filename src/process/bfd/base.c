@@ -272,15 +272,15 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
  */
 #define SEND_RECV(_x, _y) \
 	{ \
-		.name = "recv", \
+		.name1 = "recv", \
 		.name2 = _x, \
-		.component = MOD_POST_AUTH, \
+		.actions = &mod_actions_postauth, \
 		.offset = PROCESS_CONF_OFFSET(recv_ ## _y), \
 	}, \
 	{ \
-		.name = "send", \
+		.name1 = "send", \
 		.name2 = _x, \
-		.component = MOD_POST_AUTH, \
+		.actions = &mod_actions_postauth, \
 		.offset = PROCESS_CONF_OFFSET(send_ ## _y), \
 	}
 

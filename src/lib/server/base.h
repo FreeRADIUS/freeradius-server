@@ -32,7 +32,6 @@ RCSIDH(base_h, "$Id$")
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/client.h>
 #include <freeradius-devel/server/command.h>
-#include <freeradius-devel/server/components.h>
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/server/dependency.h>
 #include <freeradius-devel/server/dl_module.h>

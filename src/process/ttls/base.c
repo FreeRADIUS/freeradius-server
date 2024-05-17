@@ -622,44 +622,44 @@ static virtual_server_compile_t const compile_list[] = {
 	{
 		.name1 = "recv",
 		.name2 = "Access-Request",
-		.component = MOD_AUTHORIZE,
+		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(access_request),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Access-Accept",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_accept),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Access-Challenge",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_challenge),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Access-Reject",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_reject),
 	},
 
 	{
 		.name1 = "send",
 		.name2 = "Protocol-Error",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(protocol_error),
 	},
 	{
 		.name1 = "send",
 		.name2 = "Do-Not-Respond",
-		.component = MOD_POST_AUTH,
+		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 	{
 		.name1 = "authenticate",
 		.name2 = CF_IDENT_ANY,
-		.component = MOD_AUTHENTICATE
+		.actions = &mod_actions_authenticate
 	},
 	COMPILE_TERMINATOR
 };

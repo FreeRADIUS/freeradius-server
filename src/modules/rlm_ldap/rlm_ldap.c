@@ -2196,19 +2196,16 @@ static int mod_detach(module_detach_ctx_t const *mctx)
  * @param[in] mctx rlm_ldap configuration.
  * @param[in] parent of the config section.
  * @param[out] config to write the sub section parameters to.
- * @param[in] comp The section name were parsing the config for.
  * @return
  *	- 0 on success.
  *	- < 0 on failure.
  */
 static int parse_sub_section(module_inst_ctx_t const *mctx,
 			     CONF_SECTION *parent, ldap_acct_section_t **config,
-			     rlm_components_t comp)
+			     char const *name)
 {
 	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
 	CONF_SECTION 	*cs;
-
-	char const *name = section_type_value[comp];
 
 	cs = cf_section_find(parent, name, NULL);
 	if (!cs) {
@@ -2426,8 +2423,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	If the configuration parameters can't be parsed, then fail.
 	 */
-	if ((parse_sub_section(mctx, conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
-	    (parse_sub_section(mctx, conf, &inst->postauth, MOD_POST_AUTH) < 0)) {
+	if ((parse_sub_section(mctx, conf, &inst->accounting, "accounting") < 0) ||
+	    (parse_sub_section(mctx, conf, &inst->postauth, "post-auth") < 0)) {
 		cf_log_err(conf, "Failed parsing configuration");
 
 		goto error;
