@@ -1815,6 +1815,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->group_da = boot->group_da;
 
 	inst->name = mctx->mi->name;	/* Need this for functions in sql.c */
+	inst->mi = mctx->mi;		/* For looking up thread instance data */
 
 	/*
 	 *	We need authorize_group_check_query or authorize_group_reply_query

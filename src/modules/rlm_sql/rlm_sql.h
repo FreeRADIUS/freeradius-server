@@ -215,6 +215,7 @@ struct sql_inst {
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
+	module_instance_t const	*mi;			//!< Module instance data for thread lookups.
 };
 
 void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
