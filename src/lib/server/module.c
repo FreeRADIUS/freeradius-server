@@ -492,6 +492,7 @@ static module_thread_instance_t *mlg_thread_data_get(module_instance_t const *mi
 {
 	mlg_module_instance_t const	*mlg_mi = (mlg_module_instance_t const *)talloc_get_type_abort_const(mi, module_instance_t);
 	module_thread_instance_t	*ti;
+	void				*ti_p;
 
 	fr_assert_msg(mlg_mi->inst_idx <= talloc_array_length(mlg_thread_inst_list),
 		      "module instance index %u must be <= thread local array %zu",
@@ -501,7 +502,15 @@ static module_thread_instance_t *mlg_thread_data_get(module_instance_t const *mi
 		      "mismatch between global module heap (%u entries) and thread local (%zu entries)",
 		      fr_heap_num_elements(mlg_index), talloc_array_length(mlg_thread_inst_list));
 
-	ti = talloc_get_type_abort(mlg_thread_inst_list[mlg_mi->inst_idx - 1], module_thread_instance_t);
+	/*
+	 *	Check for a NULL entry.  This can happen when a module's
+	 *	thread instantiate callback fails, and we try and cleanup
+	 *	a partially instantiated thread.
+	 */
+	ti_p = mlg_thread_inst_list[mlg_mi->inst_idx - 1];
+	if (unlikely(!ti_p)) return NULL;
+
+	ti = talloc_get_type_abort(ti_p, module_thread_instance_t);
 	fr_assert_msg(ti->mi == mi, "thread/module mismatch thread %s (%p), module %s (%p)",
 		      ti->mi->name, ti->mi, mi->name, mi);
 
@@ -978,7 +987,16 @@ module_thread_instance_t *module_thread_by_data(module_list_t const *ml, void co
 
 static void module_thread_detach(module_thread_instance_t *ti)
 {
-	module_list_t *ml = ti->mi->ml;
+	module_list_t *ml;
+
+	/*
+	 *	This can happen when a module's thread instantiate
+	 *	callback fails, and we try and cleanup a partially
+	 *	instantiated thread.
+	 */
+	if (unlikely(!ti)) return;
+
+	ml = ti->mi->ml;
 	ml->type->thread.data_del(ti);
 	talloc_free(ti);
 }
