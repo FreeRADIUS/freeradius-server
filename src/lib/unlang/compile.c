@@ -106,7 +106,7 @@ void compile_copy_context(unlang_compile_t *dst, unlang_compile_t const *src)
 	 *	Ensure that none of the actions are RETRY.
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
-		if (dst->actions.actions[i] == MOD_ACTION_RETRY) dst->actions.actions[i] = 0;
+		if (dst->actions.actions[i] == MOD_ACTION_RETRY) dst->actions.actions[i] = MOD_PRIORITY_MIN;
 	}
 	memset(&dst->actions.retry, 0, sizeof(dst->actions.retry)); \
 }
