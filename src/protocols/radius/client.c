@@ -166,21 +166,44 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	fr_assert(id_ctx->packet == packet);
 
 	/*
+	 *	@todo - just create the random auth vector here?
+	 */
+	if ((packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) ||
+	    (packet->code == FR_RADIUS_CODE_STATUS_SERVER)) {
+		memcpy(my->buffer + 4, packet->vector, sizeof(packet->vector));
+	}
+
+	/*
 	 *	Encode the packet.
 	 */
-	if (fr_packet_encode(packet, list, NULL, (char const *) my->cfg.verify.secret) < 0) {
+	slen = fr_radius_encode(my->buffer, sizeof(my->buffer), NULL,
+				(char const *) my->cfg.verify.secret, my->cfg.verify.secret_len,
+				packet->code, packet->id, list);
+	if (slen < 0) {
 	fail:
 		fr_radius_code_id_push(my->codes, packet);
 		return fr_bio_error(GENERIC);
 	}
+	packet->data_len = (size_t) slen;
 
-	if (fr_packet_sign(packet, NULL, (char const *) my->cfg.verify.secret) < 0) goto fail;
+	packet->data = talloc_array(packet, uint8_t, packet->data_len);
+	if (!packet->data) goto fail;
 
-	slen = fr_bio_write(my->common.bio, &packet->socket, packet->data, packet->data_len);
+	slen = fr_radius_sign(my->buffer, NULL,
+				(uint8_t const *) my->cfg.verify.secret, my->cfg.verify.secret_len);
+	if (slen < 0) goto fail;
+
+	slen = fr_bio_write(my->common.bio, &packet->socket, my->buffer, packet->data_len);
 	if (slen < 0) {
 		fr_radius_code_id_push(my->codes, packet);
 		return slen;
 	}
+
+	/*
+	 *	Only after successful write do we copy the data back to the packet structure.
+	 */
+	memcpy(packet->data, my->buffer, packet->data_len);
+	memcpy(packet->vector, packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH);
 
 	/*
 	 *	We are using an outgoing memory bio, which takes care of writing partial packets.  As a
