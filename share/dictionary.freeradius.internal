@@ -657,7 +657,7 @@ ATTRIBUTE	Radclient-Test-Name			2200	string
 #		Free
 #
 #	Range:	3000-3999
-#		Site-local attributes (see raddb/dictionary.in)
+#		Site-local attributes (see raddb/dictionary)
 #		Do NOT define attributes in this range!
 #
 #	Range:	4000-65535
