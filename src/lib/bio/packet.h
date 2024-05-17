@@ -172,3 +172,8 @@ static inline CC_HINT(nonnull) int fr_bio_packet_write_flush(fr_bio_packet_t *my
 	 */
 	return slen;
 }
+
+void	fr_bio_packet_write_blocked(fr_bio_t *bio);
+void	fr_bio_packet_write_resume(fr_bio_t *bio);
+void	fr_bio_packet_read_blocked(fr_bio_t *bio);
+void	fr_bio_packet_read_resume(fr_bio_t *bio);

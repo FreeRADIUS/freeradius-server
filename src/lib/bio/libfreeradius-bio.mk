@@ -9,6 +9,7 @@ SOURCES	:=		\
 	mem.c		\
 	network.c	\
 	null.c		\
+	packet.c	\
 	pipe.c		\
 	queue.c		\
 	dedup.c		\

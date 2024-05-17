@@ -509,19 +509,7 @@ int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
 	return rcode;
 }
 
-/*
- *	Debounce functions to get to the right callback.
- */
-static void fr_bio_write_blocked(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-
-	my->common.write_blocked = true;
-
-	my->common.cb.write_blocked(&my->common);
-}
-
-static void fr_bio_write_resume(fr_bio_t *bio)
+static void fr_radius_client_bio_write_resume(fr_bio_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = bio->uctx;
 
@@ -533,24 +521,6 @@ static void fr_bio_write_resume(fr_bio_t *bio)
 	my->common.write_blocked = false;
 
 	my->common.cb.write_resume(&my->common);
-}
-
-static void fr_bio_read_blocked(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-
-	my->common.read_blocked = true;
-
-	my->common.cb.read_blocked(&my->common);
-}
-
-static void fr_bio_read_resume(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-
-	my->common.read_blocked = false;
-
-	my->common.cb.read_resume(&my->common);
 }
 
 int fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t const *cb)
@@ -565,11 +535,12 @@ int fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t c
 	fr_assert((cb->read_blocked != NULL) == (cb->read_resume != NULL));
 
 #undef SET
-#define SET(_x) if (cb->_x) bio_cb._x = fr_bio_ ## _x
+#define SET(_x) if (cb->_x) bio_cb._x = fr_bio_packet_ ## _x
 
 	SET(write_blocked);
+	if (cb->write_resume) bio_cb.write_resume = fr_radius_client_bio_write_resume;
+
 	SET(read_blocked);
-	SET(write_resume);
 	SET(read_resume);
 
 	return fr_bio_cb_set(my->fd, &bio_cb);
