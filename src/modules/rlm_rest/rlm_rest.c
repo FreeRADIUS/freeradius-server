@@ -21,8 +21,6 @@
  *
  * @copyright 2012-2019,2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-
-#include <talloc.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/curl/base.h>
@@ -46,6 +44,9 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat.h>
+
+#include <curl/curl.h>
+#include <talloc.h>
 
 #include "rest.h"
 
@@ -1207,12 +1208,19 @@ static int _rest_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx
 	}
 
 #ifndef NDEBUG
-	/*
-	 *  With curl 7.61 when a request in cancelled we get a result
-	 *  with a NULL (invalid) pointer to private data.  This lets
-	 *  us know that it was request returned to the slab.
-	 */
-	curl_easy_setopt(candle, CURLOPT_PRIVATE, (void *)0xdeadc341);
+	{
+		CURLcode ret;
+		/*
+		 *  With curl 7.61 when a request in cancelled we get a result
+		 *  with a NULL (invalid) pointer to private data.  This lets
+		 *  us know that it was request returned to the slab.
+		 */
+		ret = curl_easy_setopt(candle, CURLOPT_PRIVATE, (void *)0xdeadc341);
+		if (unlikely(ret != CURLE_OK)) {
+			ERROR("Failed to set private data on curl easy handle %p: %s",
+			      candle, curl_easy_strerror(ret));
+		}
+	}
 #endif
 
 	/*
