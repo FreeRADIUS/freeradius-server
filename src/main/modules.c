@@ -571,10 +571,10 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 	 *	If there is supposed to be instance data, allocate it now.
 	 *	Also parse the configuration data, if required.
 	 */
-	if (node->entry->module->inst_size) {
-		*handle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
-		rad_assert(*handle);
+	*handle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
+	rad_assert(*handle);
 
+	if (node->entry->module->inst_size) {
 		talloc_set_name(*handle, "rlm_%s_t",
 				node->entry->module->name ? node->entry->module->name : "config");
 
