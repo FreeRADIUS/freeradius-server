@@ -287,7 +287,7 @@ static ssize_t substring_xlat(UNUSED void *instance, REQUEST *request,
 	/*
 	 *  Trim whitespace
 	 */
-	while (isspace((uint8_t) *p) && p++);
+	while (isspace((uint8_t) *p)) p++;
 
 	/*
 	 * Find numeric parameters at the end.
