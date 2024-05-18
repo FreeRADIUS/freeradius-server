@@ -53,7 +53,7 @@ eap {
 	#  The configuration item is commented out so that upgrades
 	#  do not change existing behavior.
 	#
-#	dedup_key = "%{Calling-Station-Id}
+#	dedup_key = "%{Calling-Station-Id}"
 
 	#  There are many EAP types, but the server has support
 	#  for only a limited subset.  If the server receives
