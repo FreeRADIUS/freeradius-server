@@ -128,7 +128,7 @@ xlat_purify ('handled' && (&Packet-Type == Access-Challenge))
 match (&Packet-Type == Access-Challenge)
 
 xlat_purify (handled && (&Packet-Type == Access-Challenge))
-match (%rcode('handled') && (&Packet-Type == Access-Challenge))
+match (%expr.rcode('handled') && (&Packet-Type == Access-Challenge))
 
 # This is OK, without the braces
 xlat_purify 'handled' && &Packet-Type == Access-Challenge
@@ -716,16 +716,16 @@ match ((&User-Name == "bob") && ((&User-Password == "bob") || &EAP-Message))
 #  rcode tests
 #
 xlat_purify handled && (&User-Name == "bob")
-match (%rcode('handled') && (&User-Name == "bob"))
+match (%expr.rcode('handled') && (&User-Name == "bob"))
 
 xlat_purify (&User-Name == "bob") && (&User-Password == "bob") && handled
-match ((&User-Name == "bob") && (&User-Password == "bob") && %rcode('handled'))
+match ((&User-Name == "bob") && (&User-Password == "bob") && %expr.rcode('handled'))
 
 xlat_purify handledx
 match ERROR offset 1: Unexpected text - attribute names must prefixed with '&'
 
 xlat_purify handled
-match %rcode('handled')
+match %expr.rcode('handled')
 
 #
 #  Automatic casting

@@ -62,7 +62,7 @@ match ERROR offset 5: Invalid operator
 
 # sillyness is OK, but cleaned up.
 condition ((((((ok))))))
-match %rcode('ok')
+match %expr.rcode('ok')
 
 #
 #  Extra braces get squashed
@@ -71,10 +71,10 @@ condition (&User-Name == &User-Password)
 match (&User-Name == &User-Password)
 
 condition (!ok)
-match !%rcode('ok')
+match !%expr.rcode('ok')
 
 condition !(ok)
-match !%rcode('ok')
+match !%expr.rcode('ok')
 
 condition !!ok
 match ERROR offset 2: Double operator is invalid
@@ -83,7 +83,7 @@ match ERROR offset 2: Double operator is invalid
 # @todo - peephole - do optimization to get rid of double negation?
 #
 condition !(!ok)
-match !!%rcode('ok')
+match !!%expr.rcode('ok')
 
 #
 #  These next two are identical after normalization
@@ -112,15 +112,15 @@ match ((a == b) || (c == d))
 #match ERROR offset 23: Unexpected closing brace
 
 condition (handled && (&Packet-Type == Access-Challenge))
-match (%rcode('handled') && (&Packet-Type == Access-Challenge))
+match (%expr.rcode('handled') && (&Packet-Type == Access-Challenge))
 
 # This is OK, without the braces
 condition handled && &Packet-Type == Access-Challenge
-match (%rcode('handled') && (&Packet-Type == Access-Challenge))
+match (%expr.rcode('handled') && (&Packet-Type == Access-Challenge))
 
 # and this, though it's not a good idea.
 condition handled &&&Packet-Type == Access-Challenge
-match (%rcode('handled') && (&Packet-Type == Access-Challenge))
+match (%expr.rcode('handled') && (&Packet-Type == Access-Challenge))
 
 condition &reply == &request
 match ERROR offset 1: Cannot use list references in condition
@@ -392,13 +392,13 @@ match ERROR offset 1: Unexpected text - attribute names must prefixed with '&'
 #  Module return codes are OK
 #
 condition (ok)
-match %rcode('ok')
+match %expr.rcode('ok')
 
 condition (handled)
-match %rcode('handled')
+match %expr.rcode('handled')
 
 condition (fail)
-match %rcode('fail')
+match %expr.rcode('fail')
 
 condition ("a")
 match "a"

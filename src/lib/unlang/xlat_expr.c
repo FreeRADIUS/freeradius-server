@@ -177,7 +177,7 @@ static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
 		return -1;
 	}
 
-	func = xlat_func_find("rcode", 5);
+	func = xlat_func_find("expr.rcode", -1);
 	fr_assert(func != NULL);
 
 	/*
@@ -1523,49 +1523,144 @@ static int xlat_function_args_to_tmpl(xlat_inst_ctx_t const *xctx)
 	return 0;
 }
 
-
-static xlat_arg_parser_t const xlat_func_rcode_arg[] = {
+static xlat_arg_parser_t const xlat_func_expr_rcode_arg[] = {
 	{ .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
-/** Return the rcode as a string, or bool match if the argument is an rcode name
+/** Holds the result of pre-parsing the rcode on startup
+ */
+typedef struct {
+	rlm_rcode_t		rcode;	//!< The preparsed rcode.
+} xlat_rcode_inst_t;
+
+/** Convert static expr_rcode arguments into rcodes
+ *
+ * This saves doing the lookup at runtime, which given how frequently this xlat is used
+ * could get quite expensive.
+ */
+static int xlat_instantiate_expr_rcode(xlat_inst_ctx_t const *xctx)
+{
+	xlat_rcode_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_rcode_inst_t);
+	xlat_exp_t		*arg;
+	xlat_exp_t		*rcode_arg;
+	fr_value_box_t		*rcode;
+
+	/*
+	 *	If it's literal data, then we can pre-resolve it to
+	 *	a rcode now, and skip that at runtime.
+	 */
+	arg = xlat_exp_head(xctx->ex->call.args);
+	fr_assert(arg->type == XLAT_GROUP);
+
+	/*
+	 *	We can only pre-parse if this if the value is
+	 *	in a single box...
+	 */
+	if (fr_dlist_num_elements(&arg->group->dlist) != 1) return 0;
+	rcode_arg = xlat_exp_head(arg->group);
+
+	/*
+	 *	We can only pre-parse is this is a static value.
+	 */
+	if (rcode_arg->type != XLAT_BOX) return 0;
+
+	rcode = &xlat_exp_head(rcode_arg->group)->data;
+
+	inst->rcode = fr_table_value_by_str(rcode_table, rcode->vb_strvalue, RLM_MODULE_NOT_SET);
+	if (inst->rcode == RLM_MODULE_NOT_SET) {
+		ERROR("Unknown rcode '%pV'", rcode);
+		return -1;
+	}
+
+	/*
+	 *	No point in creating useless boxes at runtime,
+	 *	nuke the argument now.
+	 */
+	(void) fr_dlist_remove(&xctx->ex->call.args->dlist, arg);
+	talloc_free(arg);
+
+	return 0;
+}
+
+/** Match the passed rcode against request->rcode
  *
  * Example:
 @verbatim
-"%{rcode:}" == "handled"
-"%{rcode:handled}" == true
+%expr.rcode('handled') == true
+
+# ...or how it's used normally used
+if (handled) {
+    ...
+}
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_expr_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				     	  xlat_ctx_t const *xctx,
+				     	  request_t *request, fr_value_box_list_t *args)
+{
+	xlat_rcode_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_rcode_inst_t);
+	fr_value_box_t		*arg_rcode;
+	rlm_rcode_t		rcode;
+	fr_value_box_t		*vb;
+
+	/*
+	 *	If we have zero args, it's because the instantiation
+	 *	function consumed them. om nom nom.
+	 */
+	if (fr_value_box_list_num_elements(args) == 0) {
+		fr_assert(inst->rcode != RLM_MODULE_NOT_SET);
+		rcode = inst->rcode;
+	} else {
+		XLAT_ARGS(args, &arg_rcode);
+		rcode = fr_table_value_by_str(rcode_table, arg_rcode->vb_strvalue, RLM_MODULE_NOT_SET);
+		if (rcode == RLM_MODULE_NOT_SET) {
+			REDEBUG("Invalid rcode '%pV'", arg_rcode);
+			return XLAT_ACTION_FAIL;
+		}
+	}
+
+	RDEBUG3("Request rcode is '%s'",
+		fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"));
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
+	fr_dcursor_append(out, vb);
+	vb->vb_bool = (request->rcode == rcode);
+
+	return XLAT_ACTION_DONE;
+}
+
+/** Takes no arguments
+ */
+static xlat_arg_parser_t const xlat_func_rcode_arg[] = {
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Return the current rcode as a string
+ *
+ * Example:
+@verbatim
+"%rcode()" == "handled"
 @endverbatim
  *
  * @ingroup xlat_functions
  */
 static xlat_action_t xlat_func_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     UNUSED xlat_ctx_t const *xctx,
-				     request_t *request, fr_value_box_list_t *args)
+				     request_t *request, UNUSED fr_value_box_list_t *args)
 {
 	fr_value_box_t	*vb;
-	fr_value_box_t	*src;
 
-	XLAT_ARGS(args, &src);
 	/*
-	 *	Query the rcode if there's no argument.  Otherwise do a boolean check if the passed string
-	 *	matches the current rcode.
+	 *	FIXME - This should really be an enum
 	 */
-	if (!src) {
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
-		if (fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) {
-			talloc_free(vb);
-			return XLAT_ACTION_FAIL;
-		}
-	} else {
-		rlm_rcode_t rcode;
-
-		rcode = fr_table_value_by_str(rcode_table, src->vb_strvalue, RLM_MODULE_NOT_SET);
-
-		MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
-		vb->vb_bool = (request->rcode == rcode);
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_STRING, NULL));
+	if (fr_value_box_strdup(vb, vb, NULL, fr_table_str_by_value(rcode_table, request->rcode, "<INVALID>"), false) < 0) {
+		talloc_free(vb);
+		return XLAT_ACTION_FAIL;
 	}
-
 	fr_dcursor_append(out, vb);
 
 	return XLAT_ACTION_DONE;
@@ -1788,9 +1883,9 @@ do { \
 	xlat->token = _op; \
 } while (0)
 
-#define XLAT_REGISTER_MONO(_xlat, _func, _arg) \
+#define XLAT_REGISTER_MONO(_xlat, _func, _arg, _ret_type) \
 do { \
-	if (unlikely((xlat = xlat_func_register(NULL, _xlat, _func, FR_TYPE_VOID)) == NULL)) return -1; \
+	if (unlikely((xlat = xlat_func_register(NULL, _xlat, _func, _ret_type)) == NULL)) return -1; \
 	xlat_func_mono_set(xlat, _arg); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
@@ -1840,8 +1935,11 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_NARY_OP(T_LAND, logical_and, logical);
 	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
 
-	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg);
-	XLAT_REGISTER_MONO("exists", xlat_func_exists, xlat_func_exists_arg);
+	XLAT_REGISTER_MONO("expr.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
+	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
+	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg, FR_TYPE_STRING);
+
+	XLAT_REGISTER_MONO("exists", xlat_func_exists, xlat_func_exists_arg, FR_TYPE_BOOL);
 	xlat_func_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
 	xlat_func_print_set(xlat, xlat_expr_print_exists);
 

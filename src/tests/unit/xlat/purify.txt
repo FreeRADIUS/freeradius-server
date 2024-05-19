@@ -188,7 +188,7 @@ xlat_purify ~fail
 match ERROR offset 6: Invalid operation on module return code
 
 xlat_purify !fail
-match !%rcode('fail')
+match !%expr.rcode('fail')
 
 #
 #  Casts and such
