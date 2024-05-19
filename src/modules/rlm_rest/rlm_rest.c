@@ -1213,7 +1213,7 @@ static int _rest_request_cleanup(fr_curl_io_request_t *randle, UNUSED void *uctx
 		/*
 		 *  With curl 7.61 when a request in cancelled we get a result
 		 *  with a NULL (invalid) pointer to private data.  This lets
-		 *  us know that it was request returned to the slab.
+		 *  us know that the request was returned to the slab.
 		 */
 		ret = curl_easy_setopt(candle, CURLOPT_PRIVATE, (void *)0xdeadc341);
 		if (unlikely(ret != CURLE_OK)) {
