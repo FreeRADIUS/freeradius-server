@@ -38,6 +38,9 @@ RCSID("$Id$")
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
+static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
+				     eap_handler_t *handler, char const *msg, bool delete);
+
 /*
  * Allocate a new eap_packet_t
  */
@@ -164,7 +167,7 @@ static uint32_t eap_rand(fr_randctx *ctx)
 
 
 static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
-				   eap_handler_t *handler)
+				     eap_handler_t *handler, char const *msg, bool delete)
 {
 	rbnode_t *node;
 
@@ -173,8 +176,8 @@ static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
 
 	handler = rbtree_node2data(inst->session_tree, node);
 
-	RDEBUG("Finished EAP session with state "
-	       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
+	RDEBUG("%s EAP session with state "
+	       "0x%02x%02x%02x%02x%02x%02x%02x%02x", msg,
 	       handler->state[0], handler->state[1],
 	       handler->state[2], handler->state[3],
 	       handler->state[4], handler->state[5],
@@ -199,7 +202,28 @@ static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
 	}
 	handler->prev = handler->next = NULL;
 
-	return handler;
+	if (!delete) return handler;
+
+
+#ifdef WITH_TLS
+	/*
+	 *	Remove expired TLS sessions.
+	 */
+	switch (handler->type) {
+	case PW_EAP_TLS:
+	case PW_EAP_TTLS:
+	case PW_EAP_PEAP:
+	case PW_EAP_FAST:
+		tls_fail(handler->opaque); /* MUST be a tls_session! */
+		break;
+
+	default:
+		break;
+	}
+#endif
+
+	talloc_free(handler);
+	return NULL;
 }
 
 
@@ -219,52 +243,12 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 		handler = inst->session_head;
 		if (!handler) break;
 
-		RDEBUG("Expiring EAP session with state "
-		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
-		       handler->state[0], handler->state[1],
-		       handler->state[2], handler->state[3],
-		       handler->state[4], handler->state[5],
-		       handler->state[6], handler->state[7]);
-
 		/*
 		 *	Expire entries from the start of the list.
 		 *	They should be the oldest ones.
 		 */
 		if ((timestamp - handler->timestamp) > (int)inst->timer_limit) {
-			rbnode_t *node;
-			node = rbtree_find(inst->session_tree, handler);
-			rad_assert(node != NULL);
-			rbtree_delete(inst->session_tree, node);
-
-			/*
-			 *	handler == inst->session_head
-			 */
-			inst->session_head = handler->next;
-			if (handler->next) {
-				handler->next->prev = NULL;
-			} else {
-				inst->session_head = NULL;
-				inst->session_tail = NULL;
-			}
-
-#ifdef WITH_TLS
-			/*
-			 *	Remove expired TLS sessions.
-			 */
-			switch (handler->type) {
-			case PW_EAP_TLS:
-			case PW_EAP_TTLS:
-			case PW_EAP_PEAP:
-			case PW_EAP_FAST:
-				tls_fail(handler->opaque); /* MUST be a tls_session! */
-				break;
-
-			default:
-				break;
-			}
-#endif
-
-			talloc_free(handler);
+			(void) eaplist_delete(inst, request, handler, "Expiring", true);
 		} else {
 			break;
 		}
@@ -475,7 +459,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 
 	eaplist_expire(inst, request, request->timestamp);
 
-	handler = eaplist_delete(inst, request, &myHandler);
+	handler = eaplist_delete(inst, request, &myHandler, "Removing", false);
 	PTHREAD_MUTEX_UNLOCK(&(inst->session_mutex));
 
 	/*
