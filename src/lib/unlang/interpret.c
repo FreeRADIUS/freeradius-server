@@ -318,6 +318,16 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 		*priority);
 
 	/*
+	 *	Update request->rcode if the instruction says we should
+	 *	We don't care about priorities for this.
+	 */
+	if (unlang_ops[instruction->type].rcode_set) {
+		RDEBUG3("Setting rcode to '%s'",
+			fr_table_str_by_value(rcode_table, *result, "<INVALID>"));
+		request->rcode = *result;
+	}
+
+	/*
 	 *	Don't set action or priority if we don't have one.
 	 */
 	if (*result == RLM_MODULE_NOT_SET) return UNLANG_FRAME_ACTION_NEXT;

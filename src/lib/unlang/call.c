@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include "call_priv.h"
 
-static unlang_action_t unlang_call_resume(rlm_rcode_t *p_result, request_t *request,
+static unlang_action_t unlang_call_resume(UNUSED rlm_rcode_t *p_result, request_t *request,
 					  unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
@@ -252,7 +252,7 @@ void unlang_call_init(void)
 			   &(unlang_op_t){
 				.name			= "call",
 				.interpret		= unlang_call_frame_init,
+				.rcode_set 		= true,
 				.debug_braces		= true,
 			   });
 }
-

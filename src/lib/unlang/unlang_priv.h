@@ -218,6 +218,8 @@ typedef struct {
 	bool			debug_braces;			//!< Whether the operation needs to print braces
 								///< in debug mode.
 
+	bool			rcode_set;			//!< Set request->rcode to the result of this operation.
+
 	size_t			frame_state_size;       	//!< size of instance data in the stack frame
 
 	char const		*frame_state_type;		//!< talloc name of the frame instance data

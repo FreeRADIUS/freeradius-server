@@ -1,0 +1,16 @@
+
+# request->rcode is updated to the result of the subrequest section
+subrequest Access-Request {
+	ok {
+		ok = 10
+	}
+	noop {
+		fail = 1
+	}
+}
+
+if (ok) {
+	success
+} elsif (noop) {
+	test_fail
+}

@@ -497,6 +497,7 @@ void unlang_parallel_init(void)
 				.name = "parallel",
 				.interpret = unlang_parallel,
 				.signal = unlang_parallel_signal,
+				.rcode_set = true,
 				.debug_braces = true
 			   });
 }

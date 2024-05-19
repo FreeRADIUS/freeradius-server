@@ -1069,6 +1069,7 @@ void unlang_module_init(void)
 			   &(unlang_op_t){
 				.name = "module",
 				.interpret = unlang_module,
+				.rcode_set = true,
 				.signal = unlang_module_signal,
 				.frame_state_size = sizeof(unlang_frame_state_module_t),
 				.frame_state_type = "unlang_frame_state_module_t",

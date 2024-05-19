@@ -1,0 +1,12 @@
+# PRE: if if-else
+
+# This is a regression test.  We saw the request->rcode being lost after the first condition
+
+notfound
+if (ok || updated) {
+	test_fail
+} elsif (!notfound) {
+	test_fail
+}
+
+success

@@ -383,6 +383,7 @@ void unlang_map_init(void)
 	unlang_register(UNLANG_TYPE_MAP,
 			   &(unlang_op_t){
 				.name = "map",
+				.rcode_set = true,
 				.interpret = unlang_map_state_init,
 				.frame_state_size = sizeof(unlang_frame_state_map_proc_t),
 				.frame_state_type = "unlang_frame_state_map_proc_t",

@@ -299,6 +299,7 @@ int unlang_subrequest_op_init(void)
 				.name = "subrequest",
 				.interpret = unlang_subrequest_parent_init,
 				.signal = unlang_subrequest_signal_child,
+				.rcode_set = true,
 				.debug_braces = true,
 				.frame_state_size = sizeof(unlang_frame_state_subrequest_t),
 				.frame_state_type = "unlang_frame_state_subrequest_t",
