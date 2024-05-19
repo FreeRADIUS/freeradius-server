@@ -369,13 +369,15 @@ do { \
  *	compiler.
  */
 #ifdef __GNUC__
-#  define CC_HINT(...)	__attribute__((__VA_ARGS__))
-#  define likely(_x)	__builtin_expect((_x), 1)
-#  define unlikely(_x)	__builtin_expect((_x), 0)
+#  define CC_HINT(...)		__attribute__((__VA_ARGS__))
+#  define likely(_x)		__builtin_expect((_x), 1)
+#  define unlikely(_x)		__builtin_expect((_x), 0)
+#  define unpredictable(_x)	__builtin_unpredictable((_x))
 #else
 #  define CC_HINT(...)
-#  define likely(_x)	_x
-#  define unlikely(_x)	_x
+#  define likely(_x) _x
+#  define unlikely(_x) _x
+#  define unpredictable(_x) _x
 #endif
 
 /*
