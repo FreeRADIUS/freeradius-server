@@ -28,10 +28,9 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pair.h>
 
 #include "call_priv.h"
-#include "module_priv.h"
 
-static unlang_action_t unlang_call_finalize(UNUSED rlm_rcode_t *p_result, request_t *request,
-					    unlang_stack_frame_t *frame)
+static unlang_action_t unlang_call_resume(rlm_rcode_t *p_result, request_t *request,
+					  unlang_stack_frame_t *frame)
 {
 	unlang_group_t			*g = unlang_generic_to_group(frame->instruction);
 	unlang_call_t			*gext = unlang_group_to_call(g);
@@ -52,7 +51,7 @@ static unlang_action_t unlang_call_finalize(UNUSED rlm_rcode_t *p_result, reques
 static unlang_action_t unlang_call_children(rlm_rcode_t *p_result, request_t *request,
 					    unlang_stack_frame_t *frame)
 {
-	frame_repeat(frame, unlang_call_finalize);
+	frame_repeat(frame, unlang_call_resume);
 
 	/*
 	 *      Push the contents of the call { } section onto the stack.
@@ -127,10 +126,11 @@ static unlang_action_t unlang_call_frame_init(rlm_rcode_t *p_result, request_t *
 	 *
 	 *	AGAIN packet->code NEEDS TO DIE.
 	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
-	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE.
+	 *	DIE DIE DIE DIE DIE DIE DIE DIE DIE
+	 *	DIE DIE DIE.
 	 */
 	if (!g->children) {
-		frame_repeat(frame, unlang_call_finalize);
+		frame_repeat(frame, unlang_call_resume);
 	} else {
 		frame_repeat(frame, unlang_call_children);
 	}
