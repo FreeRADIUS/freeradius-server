@@ -29,6 +29,8 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/client_tcp.h>
 #include <freeradius-devel/radius/client_priv.h>
 
+#include <freeradius-devel/protocol/radius/rfc2865.h>
+
 static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void *buffer, UNUSED size_t size,
 				     fr_bio_retry_entry_t *retry_ctx);
 static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **retry_ctx_p, UNUSED void *packet_ctx, const void *buffer, UNUSED size_t size);
@@ -131,6 +133,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
 	ssize_t slen;
+	uint8_t *end;
 	fr_radius_id_ctx_t *id_ctx;
 
 	fr_assert(!packet->data);
@@ -184,7 +187,26 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 		fr_radius_code_id_push(my->codes, packet);
 		return fr_bio_error(GENERIC);
 	}
-	packet->data_len = (size_t) slen;
+
+	end = my->buffer + slen;
+
+	/*
+	 *	Add our own Proxy-State if requested.
+	 *
+	 *	@todo - don't add Proxy-State for status checks, which could also be Access-Request or
+	 *	Accounting-Request.  Note also that Status-Server packets should bypass the normal write
+	 *	routines, and instead be run by internal timers.
+	 */
+	if (my->cfg.add_proxy_state && (packet->code != FR_RADIUS_CODE_STATUS_SERVER) && ((end + 6) < (my->buffer + sizeof(my->buffer)))) {
+		end[0] = FR_PROXY_STATE;
+		end[1] = 6;
+		memcpy(&end[2], &my->cfg.proxy_state, sizeof(my->cfg.proxy_state));
+
+		end += 6;
+	}
+
+	packet->data_len = end - my->buffer;
+	fr_nbo_from_uint64(my->buffer + 2, packet->data_len);
 
 	packet->data = talloc_array(packet, uint8_t, packet->data_len);
 	if (!packet->data) goto fail;
@@ -258,6 +280,7 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 
 //	if (buffer[0] != FR_RADIUS_CODE_ACCOUNTING_REQUEST) return;
 }
+
 
 static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **retry_ctx_p, void *packet_ctx, const void *buffer, UNUSED size_t size)
 {

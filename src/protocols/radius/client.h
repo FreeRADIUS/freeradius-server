@@ -40,6 +40,9 @@ typedef struct {
 
 	fr_bio_packet_cb_funcs_t pause_resume_cfg;
 
+	bool			add_proxy_state;
+	uint32_t		proxy_state;
+
 	bool			outgoing[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
 
 	fr_retry_config_t 	retry[FR_RADIUS_CODE_MAX];	//!< default retry configuration for each packet type
