@@ -146,7 +146,7 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst, REQUEST *request)
 	PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
 	old = rbtree_finddata(inst->dedup_tree, handler);
 	if (old) talloc_free(old);
-	PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
+	PTHREAD_MUTEX_UNLOCK(&(inst->session_mutex));
 
 	return handler;
 }
