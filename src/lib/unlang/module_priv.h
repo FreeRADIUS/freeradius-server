@@ -62,7 +62,7 @@ typedef struct {
  	 */
 	rlm_rcode_t			*p_result;		//!< Where to store the result.
 	rlm_rcode_t			rcode;			//!< the result, only for unlang_module_resume_final.
-	bool				set_rcode;		//!< Overwrite the current rcode for the section with
+	bool				rcode_set;		//!< Overwrite the current rcode for the section with
 								///< the module rcode.
 	/** @} */
 

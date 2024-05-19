@@ -657,7 +657,7 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 static unlang_action_t unlang_module_done(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-	rlm_rcode_t			rcode = state-> set_rcode ? state->rcode : *p_result;
+	rlm_rcode_t			rcode = state->rcode_set ? state->rcode : *p_result;
 
 #ifndef NDEBUG
 	fr_assert(state->unlang_indent == request->log.indent.unlang);
@@ -771,7 +771,7 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 		 */
 		if (!state->resume) {
 			frame_repeat(frame, unlang_module_resume_done);
-			state->set_rcode = false;	/* Preserve the child rcode */
+			state->rcode_set = false;	/* Preserve the child rcode */
 		} else {
 			repeatable_set(frame);
 		}
@@ -880,7 +880,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	fr_time_t			now = fr_time_wrap(0);
 
 	*p_result = state->rcode = RLM_MODULE_NOOP;
-	state->set_rcode = true;
+	state->rcode_set = true;
 	state->previous_module = request->module;
 
 #ifndef NDEBUG
@@ -1022,7 +1022,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 		 */
 		if (!state->resume) {
 			frame_repeat(frame, unlang_module_done);
-			state->set_rcode = false;	/* Preserve the child rcode */
+			state->rcode_set = false;	/* Preserve the child rcode */
 		} else {
 			repeatable_set(frame);
 		}
