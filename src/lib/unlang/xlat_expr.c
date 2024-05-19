@@ -1601,7 +1601,7 @@ static xlat_action_t xlat_func_expr_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				     	  xlat_ctx_t const *xctx,
 				     	  request_t *request, fr_value_box_list_t *args)
 {
-	xlat_rcode_inst_t	*inst = talloc_get_type_abort(xctx->inst, xlat_rcode_inst_t);
+	xlat_rcode_inst_t const	*inst = talloc_get_type_abort_const(xctx->inst, xlat_rcode_inst_t);
 	fr_value_box_t		*arg_rcode;
 	rlm_rcode_t		rcode;
 	fr_value_box_t		*vb;
