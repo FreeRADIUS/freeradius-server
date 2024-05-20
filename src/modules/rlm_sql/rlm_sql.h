@@ -207,7 +207,6 @@ typedef struct {
 	unlang_function_t	sql_query;
 	unlang_function_t	sql_select_query;
 
-	int		(*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 	int		(*sql_num_rows)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 	int		(*sql_affected_rows)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 
