@@ -100,6 +100,8 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	fr_assert(!fr_bio_prev(&my->bio));
 	fr_assert(!fr_bio_next(&my->bio));
 
+	if (my->cb.shutdown) my->cb.shutdown(&my->bio);
+
 	return fr_bio_fd_close(&my->bio);
 }
 
@@ -844,6 +846,11 @@ int fr_bio_fd_init_common(fr_bio_fd_t *my)
 	my->info.read_blocked = false;
 	my->info.write_blocked = false;
 
+	/*
+	 *	Tell the caller that the socket is ready for application data.
+	 */
+	if (my->cb.activate) my->cb.activate(&my->bio);
+
 	return 0;
 }
 
@@ -1109,8 +1116,6 @@ int fr_bio_fd_connect(fr_bio_t *bio)
 		fr_bio_shutdown(bio);
 		return fr_bio_error(IO);
 	}
-
-	my->info.state = FR_BIO_FD_STATE_OPEN;
 
 	/*
 	 *	The socket is connected, so initialize the normal IO handlers.

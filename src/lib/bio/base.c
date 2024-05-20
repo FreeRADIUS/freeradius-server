@@ -171,8 +171,12 @@ int fr_bio_shutdown(fr_bio_t *bio)
 
 		/*
 		 *	Call user shutdown before the bio shutdown.
+		 *
+		 *	Then set it to NULL so that it doesn't get called again on talloc cleanups.
 		 */
 		if (my->cb.shutdown && ((rcode = my->cb.shutdown(last)) < 0)) return rcode;
+
+		my->cb.shutdown = NULL;
 
 		last = fr_bio_prev(last);
 	} while (last);
