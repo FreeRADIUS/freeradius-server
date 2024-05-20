@@ -25,10 +25,6 @@ RCSID("$Id$")
 #include "sql_fbapi.h"
 #include <freeradius-devel/util/debug.h>
 
-
-/* Forward declarations */
-static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
-
 static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 {
 	int i;
@@ -153,14 +149,6 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 
 	query_ctx->rcode = RLM_SQL_OK;
 	RETURN_MODULE_OK;
-}
-
-/** Returns number of columns from query.
- *
- */
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
-{
-	return ((rlm_sql_firebird_conn_t *) handle->conn)->sqlda_out->sqld;
 }
 
 /** Returns name of fields.
@@ -295,7 +283,6 @@ rlm_sql_driver_t rlm_sql_firebird = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_query,
-	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_affected_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,

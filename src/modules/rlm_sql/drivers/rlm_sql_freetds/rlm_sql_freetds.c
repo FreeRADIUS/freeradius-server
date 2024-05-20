@@ -836,7 +836,6 @@ rlm_sql_driver_t rlm_sql_freetds = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
-	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_fields			= sql_fields,
 	.sql_affected_rows		= sql_num_rows,
