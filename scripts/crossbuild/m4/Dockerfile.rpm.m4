@@ -1,6 +1,13 @@
 ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
+ifelse(OS_VER, `9', `dnl
+#
+#  Install yum
+#
+RUN dnf install -y yum
+')dnl
+
 #
 #  Install devtools like make and git and the EPEL
 #  repository for freetds and hiredis

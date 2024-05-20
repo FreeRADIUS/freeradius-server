@@ -40,6 +40,12 @@ jobs:
       run: |
         yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.30.1-1.ep7.x86_64.rpm
 
+    # Rocky 9 uses dnf by default.  CentOS 7 doesn't have dnf.  Install yum on Rocky 9 so all distros work
+    - name: Install yum
+      if: ${{ matrix.env.NAME == 'rocky-9'}}
+      run: |
+        dnf install -y yum
+
     - name: Install distro git for Rocky.
       if: ${{ startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
@@ -201,6 +207,11 @@ jobs:
     name: "RPM install test"
 
     steps:
+
+    - name: Install yum
+      if: ${{ matrix.env.NAME == 'rocky-9'}}
+      run: |
+        dnf install -y yum
 
     - name: LTB repo for CentOS and Rocky 8
       if: ${{ startsWith(matrix.env.NAME, 'centos-') || matrix.env.NAME == 'rocky-8' }}

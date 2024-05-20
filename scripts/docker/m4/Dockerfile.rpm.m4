@@ -1,6 +1,13 @@
 ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
+ifelse(OS_VER, `9', `dnl
+#
+#  Install yum
+#
+RUN dnf install -y yum
+')dnl
+
 ifelse(OS_VER, 8, `dnl
 RUN rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-rockyofficial
 ')dnl

@@ -7,6 +7,11 @@ ARG from=rockylinux/rockylinux:9
 FROM ${from} as build
 
 #
+#  Install yum
+#
+RUN dnf install -y yum
+
+#
 #  Install devtools like make and git and the EPEL
 #  repository for freetds and hiredis
 #
