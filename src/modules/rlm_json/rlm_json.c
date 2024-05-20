@@ -577,7 +577,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t			*xlat;
 
 	xlat = xlat_func_register_module(mctx->mi->boot, mctx, "encode", json_encode_xlat, FR_TYPE_STRING);
-	xlat_func_mono_set(xlat, json_encode_xlat_arg);
+	xlat_func_args_set(xlat, json_encode_xlat_arg);
 
 	if (map_proc_register(mctx->mi->boot, inst, "json", mod_map_proc,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t), 0) < 0) return -1;
@@ -595,7 +595,7 @@ static int mod_load(void)
 	if (unlikely(!(xlat = xlat_func_register(NULL, "json.quote", json_quote_xlat, FR_TYPE_STRING)))) return -1;
 	xlat_func_args_set(xlat, json_escape_xlat_arg);
 	if (unlikely(!(xlat = xlat_func_register(NULL, "json.jpath_validate", json_jpath_validate_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_mono_set(xlat, json_jpath_validate_xlat_arg);
+	xlat_func_args_set(xlat, json_jpath_validate_xlat_arg);
 
 	return 0;
 }

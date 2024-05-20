@@ -1041,7 +1041,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	};
 
 	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, linelog_xlat, FR_TYPE_SIZE);
-	xlat_func_mono_set(xlat, linelog_xlat_args);
+	xlat_func_args_set(xlat, linelog_xlat_args);
 	xlat_func_call_env_set(xlat, &linelog_xlat_method_env );
 
 	return 0;

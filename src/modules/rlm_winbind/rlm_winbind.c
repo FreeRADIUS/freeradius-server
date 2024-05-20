@@ -551,7 +551,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	xlat_func_mono_set(xlat, winbind_group_xlat_arg);
+	xlat_func_args_set(xlat, winbind_group_xlat_arg);
 	xlat_func_call_env_set(xlat, &winbind_group_xlat_call_env);
 
 	return 0;

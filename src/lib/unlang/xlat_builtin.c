@@ -4022,7 +4022,6 @@ do { \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
-
 	XLAT_REGISTER_MONO("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
 	XLAT_REGISTER_MONO("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
 	XLAT_REGISTER_MONO("map", xlat_func_map, FR_TYPE_INT8, xlat_func_map_arg);

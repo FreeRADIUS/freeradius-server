@@ -208,7 +208,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	};
 	xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
-	xlat_func_mono_set(xlat, xlat_arg);
+	xlat_func_args_set(xlat, xlat_arg);
 
 	return 0;
 }

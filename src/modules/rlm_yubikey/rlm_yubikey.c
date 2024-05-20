@@ -179,7 +179,7 @@ static int mod_load(void)
 	}
 
 	if (unlikely(!(xlat = xlat_func_register(NULL, "modhextohex", modhex_to_hex_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_mono_set(xlat, modhex_to_hex_xlat_arg);
+	xlat_func_args_set(xlat, modhex_to_hex_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
 	return 0;

@@ -1941,7 +1941,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		};
 		sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
-		xlat_func_mono_set(xlat, sql_xlat_arg);
+		xlat_func_args_set(xlat, sql_xlat_arg);
 	}
 
 	/*
@@ -1971,7 +1971,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	};
 	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
-	xlat_func_mono_set(xlat, sql_xlat_arg);
+	xlat_func_args_set(xlat, sql_xlat_arg);
 
 	/*
 	 *	Register the SQL map processor function

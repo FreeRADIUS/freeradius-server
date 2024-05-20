@@ -2664,7 +2664,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	}
 
 	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, ldap_xlat, FR_TYPE_STRING);
-	xlat_func_mono_set(xlat, ldap_xlat_arg);
+	xlat_func_args_set(xlat, ldap_xlat_arg);
 
 	if (unlikely(!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "memberof", ldap_memberof_xlat,
 							FR_TYPE_BOOL)))) return -1;
@@ -2686,7 +2686,7 @@ static int mod_load(void)
 	xlat_t	*xlat;
 
 	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.escape", ldap_uri_escape_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_mono_set(xlat, ldap_uri_escape_xlat_arg);
+	xlat_func_args_set(xlat, ldap_uri_escape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 	xlat_func_safe_for_set(xlat, LDAP_URI_SAFE_FOR);	/* Used for all LDAP escaping */
 
@@ -2696,7 +2696,7 @@ static int mod_load(void)
 	xlat_func_safe_for_set(xlat, LDAP_URI_SAFE_FOR);
 
 	if (unlikely(!(xlat = xlat_func_register(NULL, "ldap.uri.unescape", ldap_uri_unescape_xlat, FR_TYPE_STRING)))) return -1;
-	xlat_func_mono_set(xlat, ldap_uri_unescape_xlat_arg);
+	xlat_func_args_set(xlat, ldap_uri_unescape_xlat_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 
 	return 0;
