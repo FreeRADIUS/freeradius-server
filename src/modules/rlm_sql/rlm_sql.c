@@ -218,6 +218,8 @@ typedef struct {
 	sql_redundant_call_env_t	*call_env;	//!< Call environment data.
 	size_t				query_no;	//!< Current query number.
 	fr_value_box_list_t		query;		//!< Where expanded query tmpl will be written.
+	fr_value_box_t			*query_vb;	//!< Current query string.
+	fr_sql_query_t			*query_ctx;	//!< Query context for current query.
 } sql_redundant_ctx_t;
 
 typedef struct {
@@ -1560,7 +1562,9 @@ static int sql_redundant_ctx_free(sql_redundant_ctx_t *to_free)
 	return 0;
 }
 
-/** Resume function called after expansion of next query in a redundant list of queries
+static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
+
+/** Resume function called after executing an SQL query in a redundant list of queries.
  *
  * @param p_result	Result of current module call.
  * @param priority	Unused.
@@ -1568,28 +1572,14 @@ static int sql_redundant_ctx_free(sql_redundant_ctx_t *to_free)
  * @param uctx		Current redundant sql context.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t mod_sql_redundant_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
 	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(uctx, sql_redundant_ctx_t);
 	sql_redundant_call_env_t	*call_env = redundant_ctx->call_env;
 	rlm_sql_t const			*inst = redundant_ctx->inst;
-	fr_value_box_t			*query;
+	fr_sql_query_t			*query_ctx = redundant_ctx->query_ctx;
 	int				numaffected = 0;
 	tmpl_t				*next_query;
-	fr_sql_query_t			*query_ctx;
-
-	query = fr_value_box_list_pop_head(&redundant_ctx->query);
-	if (!query) RETURN_MODULE_FAIL;
-
-	if ((call_env->filename.type == FR_TYPE_STRING) && (call_env->filename.vb_length > 0)) {
-		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, query->vb_strvalue);
-	}
-
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, redundant_ctx->handle,
-					   redundant_ctx->trunk, query->vb_strvalue, SQL_QUERY_SELECT));
-
-	inst->query(p_result, NULL, request, query_ctx);
-	talloc_free(query);
 
 	RDEBUG2("SQL query returned: %s", fr_table_str_by_value(sql_rcode_description_table, query_ctx->rcode, "<INVALID>"));
 
@@ -1628,14 +1618,14 @@ static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED in
 	case RLM_SQL_NO_MORE_ROWS:
 		break;
 	}
-	fr_assert(redundant_ctx->handle);
+	fr_assert(inst->driver->uses_trunks || redundant_ctx->handle);
 
 	/*
 	 *	We need to have updated something for the query to have been
 	 *	counted as successful.
 	 */
 	numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
-	talloc_free(query_ctx);
+	TALLOC_FREE(query_ctx);
 	RDEBUG2("%i record(s) updated", numaffected);
 
 	if (numaffected > 0) RETURN_MODULE_OK;	/* A query succeeded, were done! */
@@ -1643,6 +1633,7 @@ next:
 	/*
 	 *	Look to see if there are any more queries to expand
 	 */
+	talloc_free(query_ctx);
 	redundant_ctx->query_no++;
 	if (redundant_ctx->query_no >= talloc_array_length(call_env->query)) RETURN_MODULE_NOOP;
 	next_query = *(tmpl_t **)((uint8_t *)call_env->query + sizeof(void *) * redundant_ctx->query_no);
@@ -1652,6 +1643,37 @@ next:
 	RDEBUG2("Trying next query...");
 
 	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+
+/** Resume function called after expansion of next query in a redundant list of queries
+ *
+ * @param p_result	Result of current module call.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		Current redundant sql context.
+ * @return one of the RLM_MODULE_* values.
+ */
+static unlang_action_t mod_sql_redundant_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	sql_redundant_ctx_t		*redundant_ctx = talloc_get_type_abort(uctx, sql_redundant_ctx_t);
+	sql_redundant_call_env_t	*call_env = redundant_ctx->call_env;
+	rlm_sql_t const			*inst = redundant_ctx->inst;
+
+	redundant_ctx->query_vb = fr_value_box_list_pop_head(&redundant_ctx->query);
+	if (!redundant_ctx->query_vb) RETURN_MODULE_FAIL;
+
+	if ((call_env->filename.type == FR_TYPE_STRING) && (call_env->filename.vb_length > 0)) {
+		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, redundant_ctx->query_vb->vb_strvalue);
+	}
+
+	MEM(redundant_ctx->query_ctx = fr_sql_query_alloc(redundant_ctx, inst, request,
+							  redundant_ctx->handle, redundant_ctx->trunk,
+							  redundant_ctx->query_vb->vb_strvalue, SQL_QUERY_OTHER));
+
+	if (unlang_function_repeat_set(request, mod_sql_redundant_query_resume) < 0) RETURN_MODULE_FAIL;
+
+	return unlang_function_push(request, inst->query, NULL, NULL, 0, UNLANG_SUB_FRAME, redundant_ctx->query_ctx);
 }
 
 /**  Generic module call for failing between a bunch of queries.
@@ -1684,8 +1706,10 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 	};
 	talloc_set_destructor(redundant_ctx, sql_redundant_ctx_free);
 
-	redundant_ctx->handle = fr_pool_connection_get(inst->pool, request);
-	if (!redundant_ctx->handle) RETURN_MODULE_FAIL;
+	if (!inst->driver->uses_trunks) {
+		redundant_ctx->handle = fr_pool_connection_get(inst->pool, request);
+		if (!redundant_ctx->handle) RETURN_MODULE_FAIL;
+	}
 
 	if (!inst->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
 									       redundant_ctx->handle, false, false, false);
