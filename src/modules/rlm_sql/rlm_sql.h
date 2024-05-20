@@ -145,6 +145,18 @@ typedef struct {
 	rlm_sql_row_t		row;				//!< Row data from the last query.
 } fr_sql_query_t;
 
+/** Context used when fetching attribute value pairs as a map list
+ */
+typedef struct {
+	TALLOC_CTX		*ctx;				//!< To allocate map entries in.
+	rlm_sql_t const		*inst;				//!< Module instance data.
+	fr_value_box_t		*query;				//!< Query string used for fetching pairs.
+	fr_sql_query_t		*query_ctx;			//!< Query context.
+	fr_dict_attr_t const	*list;				//!< Default list for pair evaluation.
+	map_list_t		*out;				//!< List to append entries to.
+	int			rows;				//!< How many rows the query returned.
+} fr_sql_map_ctx_t;
+
 extern fr_table_num_sorted_t const sql_rcode_description_table[];
 extern size_t sql_rcode_description_table_len;
 extern fr_table_num_sorted_t const sql_rcode_table[];

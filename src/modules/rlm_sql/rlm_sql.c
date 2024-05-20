@@ -162,6 +162,16 @@ typedef enum {
 #define SQL_AUTZ_STAGE_GROUP 0x20
 #define SQL_AUTZ_STAGE_PROFILE 0x40
 
+/** Context for group membership query evaluation
+ */
+typedef struct {
+	rlm_sql_t const		*inst;		//!< Module instance.
+	fr_value_box_t		*query;		//!< Query string used for evaluating group membership.
+	fr_sql_query_t		*query_ctx;	//!< Query context.
+	rlm_sql_grouplist_t	*groups;	//!< List of groups retrieved.
+	int			num_groups;	//!< How many groups have been retrieved.
+} sql_group_ctx_t;
+
 /** Context for SQL authorization
  */
 typedef struct {
@@ -180,6 +190,8 @@ typedef struct {
 	rlm_sql_grouplist_t	*group;		//!< Current group being processed.
 	fr_pair_t		*sql_group;	//!< Pair to update with group being processed.
 	fr_pair_t		*profile;	//!< Current profile being processed.
+	fr_sql_map_ctx_t	*map_ctx;	//!< Context used for retrieving attribute value pairs as a map list.
+	sql_group_ctx_t		*group_ctx;	//!< Context used for retrieving user group membership.
 } sql_autz_ctx_t;
 
 typedef struct {
