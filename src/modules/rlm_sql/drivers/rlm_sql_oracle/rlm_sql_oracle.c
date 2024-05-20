@@ -308,29 +308,18 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	return RLM_SQL_OK;
 }
 
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	int count;
-	rlm_sql_oracle_conn_t *conn = handle->conn;
-
-	/* get the number of columns in the select list */
-	if (OCIAttrGet((dvoid *)conn->query, OCI_HTYPE_STMT, (dvoid *)&count, NULL, OCI_ATTR_PARAM_COUNT,
-		       conn->error)) return -1;
-
-	return count;
-}
-
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
-{
-	rlm_sql_oracle_conn_t *conn = handle->conn;
+	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
 	int		fields, i, status;
 	char const	**names;
 	OCIParam	*param;
 
-	fields = sql_num_fields(handle, config);
-	if (fields <= 0) return RLM_SQL_ERROR;
+	if (OCIAttrGet((dvoid *)conn->query, OCI_HTYPE_STMT, (dvoid *)&fields, NULL, OCI_ATTR_PARAM_COUNT,
+		       conn->error)) return RLM_SQL_ERROR;
+	if (fields == 0) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_array(handle, char const *, fields));
+	MEM(names = talloc_array(query_ctx, char const *, fields));
 
 	for (i = 0; i < fields; i++) {
 		OraText *pcol_name = NULL;
@@ -440,7 +429,8 @@ static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *prior
 	 *	the number of columns won't change.
 	 */
 	if (conn->col_count == 0) {
-		conn->col_count = sql_num_fields(query_ctx->handle, &query_ctx->inst->config);
+		if (OCIAttrGet((dvoid *)conn->query, OCI_HTYPE_STMT, (dvoid *)&conn->col_count, NULL,
+			       OCI_ATTR_PARAM_COUNT, conn->error)) goto error;
 
 		if (conn->col_count == 0) goto error;
 	}

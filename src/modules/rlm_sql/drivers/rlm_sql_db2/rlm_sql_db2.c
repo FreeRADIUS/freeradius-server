@@ -135,19 +135,9 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, re
 	RETURN_MODULE_OK;
 }
 
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	SQLSMALLINT c;
-	rlm_sql_db2_conn_t *conn;
-
-	conn = handle->conn;
-	SQLNumResultCols(conn->stmt, &c);
-	return c;
-}
-
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
-{
-	rlm_sql_db2_conn_t *conn = handle->conn;
+	rlm_sql_db2_conn_t *conn = query_ctx->handle->conn;
 
 	SQLSMALLINT	fields, len, i;
 
@@ -157,7 +147,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	SQLNumResultCols(conn->stmt, &fields);
 	if (fields == 0) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_array(handle, char const *, fields));
+	MEM(names = talloc_array(query_ctx, char const *, fields));
 
 	for (i = 0; i < fields; i++) {
 		char *p;
@@ -186,8 +176,9 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	int			c, i;
+	int			i;
 	SQLINTEGER		len, slen;
+	SQLSMALLINT		c;
 	rlm_sql_row_t		row;
 	rlm_sql_db2_conn_t	*conn;
 	rlm_sql_handle_t	*handle = query_ctx->handle;
@@ -195,7 +186,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	TALLOC_FREE(query_ctx->row);
 
 	conn = handle->conn;
-	c = sql_num_fields(handle, config);
+	SQLNumResultCols(conn->stmt, &c);
 
 	/* advance cursor */
 	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) {
