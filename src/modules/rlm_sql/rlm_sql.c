@@ -386,6 +386,103 @@ static int sql_box_escape(fr_value_box_t *vb, void *uctx)
 	return sql_xlat_escape(NULL, vb, uctx);
 }
 
+static xlat_action_t sql_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					   request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(xctx->rctx, fr_sql_query_t);
+	rlm_sql_t const		*inst = query_ctx->inst;
+	fr_value_box_t		*vb;
+	xlat_action_t		ret = XLAT_ACTION_DONE;
+	rlm_sql_handle_t	*handle = query_ctx->handle;
+	int			numaffected;
+
+	fr_assert(query_ctx->type == SQL_QUERY_OTHER);
+
+	if (query_ctx->rcode != RLM_SQL_OK) {
+		RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table,
+								     query_ctx->rcode, "<INVALID>"));
+		rlm_sql_print_error(inst, request, query_ctx, false);
+		ret = XLAT_ACTION_FAIL;
+		goto finish;
+	}
+
+	numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
+	if (numaffected < 1) {
+		RDEBUG2("SQL query affected no rows");
+		goto finish;
+	}
+
+	MEM(vb = fr_value_box_alloc_null(ctx));
+	fr_value_box_uint32(vb, NULL, (uint32_t)numaffected, false);
+	fr_dcursor_append(out, vb);
+
+finish:
+	talloc_free(query_ctx);
+	if (!inst->driver->uses_trunks) fr_pool_connection_release(inst->pool, request, handle);
+
+	return ret;
+}
+
+static xlat_action_t sql_xlat_select_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+					    request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(xctx->rctx, fr_sql_query_t);
+	rlm_sql_t const		*inst = query_ctx->inst;
+	fr_value_box_t		*vb;
+	xlat_action_t		ret = XLAT_ACTION_DONE;
+	rlm_sql_handle_t	*handle = query_ctx->handle;
+	rlm_rcode_t		p_result;
+	rlm_sql_row_t		row;
+	bool			fetched = false;
+
+	fr_assert(query_ctx->type == SQL_QUERY_SELECT);
+
+	if (query_ctx->rcode != RLM_SQL_OK) {
+	query_error:
+		RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table,
+								     query_ctx->rcode, "<INVALID>"));
+		rlm_sql_print_error(inst, request, query_ctx, false);
+		ret = XLAT_ACTION_FAIL;
+		goto finish;
+	}
+
+	do {
+		inst->fetch_row(&p_result, NULL, request, query_ctx);
+		row = query_ctx->row;
+		switch (query_ctx->rcode) {
+		case RLM_SQL_OK:
+			if (row[0]) break;
+
+			RDEBUG2("NULL value in first column of result");
+			ret = XLAT_ACTION_FAIL;
+			goto finish;
+
+		case RLM_SQL_NO_MORE_ROWS:
+			if (!fetched) {
+				RDEBUG2("SQL query returned no results");
+				ret = XLAT_ACTION_FAIL;
+			}
+			goto finish;
+
+		default:
+			goto query_error;
+		}
+
+		fetched = true;
+
+		MEM(vb = fr_value_box_alloc_null(ctx));
+		fr_value_box_strdup(vb, vb, NULL, row[0], false);
+		fr_dcursor_append(out, vb);
+
+	} while (1);
+
+finish:
+	talloc_free(query_ctx);
+	if (!inst->driver->uses_trunks) fr_pool_connection_release(inst->pool, request, handle);
+
+	return ret;
+}
+
 /** Execute an arbitrary SQL query
  *
  * For SELECTs, the values of the first column will be returned.
@@ -404,19 +501,18 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 {
 	sql_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, sql_xlat_call_env_t);
 	rlm_sql_handle_t	*handle = NULL;
-	rlm_sql_row_t		row;
 	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_sql_thread_t);
-	xlat_action_t		ret = XLAT_ACTION_DONE;
 	char const		*p;
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
-	fr_value_box_t		*vb = NULL;
-	bool			fetched = false;
 	fr_sql_query_t		*query_ctx = NULL;
 	rlm_rcode_t		p_result;
+	unlang_action_t		query_ret = UNLANG_ACTION_CALCULATE_RESULT;
 
-	handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
-	if (!handle) return XLAT_ACTION_FAIL;
+	if (!inst->driver->uses_trunks) {
+		handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
+		if (!handle) return XLAT_ACTION_FAIL;
+	}
 
 	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
@@ -436,77 +532,23 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	if ((strncasecmp(p, "insert", 6) == 0) ||
 	    (strncasecmp(p, "update", 6) == 0) ||
 	    (strncasecmp(p, "delete", 6) == 0)) {
-		int numaffected;
-
 		MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, handle,
 						   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
-		inst->query(&p_result, NULL, request, query_ctx);
-		if (query_ctx->rcode != RLM_SQL_OK) {
-		query_error:
-			RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table,
-									     query_ctx->rcode, "<INVALID>"));
 
-			ret = XLAT_ACTION_FAIL;
-			goto finish;
-		}
+		unlang_xlat_yield(request, sql_xlat_query_resume, NULL, 0, query_ctx);
+		query_ret = inst->query(&p_result, NULL, request, query_ctx);
+		if (query_ret == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
 
-		numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
-		if (numaffected < 1) {
-			RDEBUG2("SQL query affected no rows");
-
-			goto finish;
-		}
-
-		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_uint32(vb, NULL, (uint32_t)numaffected, false);
-		fr_dcursor_append(out, vb);
-
-		goto finish;
+		return sql_xlat_query_resume(ctx, out, &(xlat_ctx_t){.rctx = query_ctx, .inst = inst}, request, in);
 	} /* else it's a SELECT statement */
 
 	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, handle,
 					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
-	inst->select(&p_result, NULL, request, query_ctx);
-	if (query_ctx->rcode != RLM_SQL_OK) goto query_error;
 
-	do {
-		inst->fetch_row(&p_result, NULL, request, query_ctx);
-		row = query_ctx->row;
-		switch (query_ctx->rcode) {
-		case RLM_SQL_OK:
-			if (row[0]) break;
+	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, 0, query_ctx);
+	if (unlang_function_push(request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx) != UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_FAIL;
 
-			RDEBUG2("NULL value in first column of result");
-			ret = XLAT_ACTION_FAIL;
-
-			goto finish;
-
-		case RLM_SQL_NO_MORE_ROWS:
-			if (!fetched) {
-				RDEBUG2("SQL query returned no results");
-				ret = XLAT_ACTION_FAIL;
-			}
-
-			goto finish;
-
-		default:
-			goto query_error;
-		}
-
-		fetched = true;
-
-		MEM(vb = fr_value_box_alloc_null(ctx));
-		fr_value_box_strdup(vb, vb, NULL, row[0], false);
-		fr_dcursor_append(out, vb);
-
-	} while (1);
-
-finish:
-	handle = query_ctx->handle;
-	talloc_free(query_ctx);
-	fr_pool_connection_release(inst->pool, request, handle);
-
-	return ret;
+	return XLAT_ACTION_PUSH_UNLANG;
 }
 
 /** Converts a string value into a #fr_pair_t
