@@ -1883,10 +1883,10 @@ do { \
 	xlat->token = _op; \
 } while (0)
 
-#define XLAT_REGISTER_MONO(_xlat, _func, _arg, _ret_type) \
+#define XLAT_REGISTER_BOOL(_xlat, _func, _arg, _ret_type) \
 do { \
 	if (unlikely((xlat = xlat_func_register(NULL, _xlat, _func, _ret_type)) == NULL)) return -1; \
-	xlat_func_mono_set(xlat, _arg); \
+	xlat_func_args_set(xlat, _arg); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
@@ -1935,13 +1935,16 @@ int xlat_register_expressions(void)
 	XLAT_REGISTER_NARY_OP(T_LAND, logical_and, logical);
 	XLAT_REGISTER_NARY_OP(T_LOR, logical_or, logical);
 
-	XLAT_REGISTER_MONO("expr.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
+	XLAT_REGISTER_BOOL("expr.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
 	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
-	XLAT_REGISTER_MONO("rcode", xlat_func_rcode, xlat_func_rcode_arg, FR_TYPE_STRING);
 
-	XLAT_REGISTER_MONO("exists", xlat_func_exists, xlat_func_exists_arg, FR_TYPE_BOOL);
+	XLAT_REGISTER_BOOL("exists", xlat_func_exists, xlat_func_exists_arg, FR_TYPE_BOOL);
 	xlat_func_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
 	xlat_func_print_set(xlat, xlat_expr_print_exists);
+
+	if (unlikely((xlat = xlat_func_register(NULL, "rcode", xlat_func_rcode, FR_TYPE_STRING)) == NULL)) return -1;
+	xlat_func_args_set(xlat, xlat_func_rcode_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 
 	/*
 	 *	-EXPR
