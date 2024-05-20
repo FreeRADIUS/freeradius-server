@@ -681,7 +681,7 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			return -1;
 		}
 
-		if (number > 0) {
+		if (number > 1) {
 			number--;
 			goto redo;
 		}

@@ -1,0 +1,16 @@
+update request {
+	&Tmp-Octets-0 := "0x%{randstr:16h}"
+	&Tmp-String-0 := "%{randstr:16h}"
+}
+
+if ("%{length:Tmp-Octets-0}" == 16) {
+	update reply {
+       		Filter-Id := "filter"
+	}
+}
+
+if ("%{length:Tmp-String-0}" == 32) {
+	update reply {
+       		Filter-Id := "filter"
+	}
+}
