@@ -425,16 +425,6 @@ retry_store_result:
 	return RLM_SQL_OK;
 }
 
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
-{
-	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
-
-	/*
-	 *	Count takes a connection handle
-	 */
-	return mysql_field_count(conn->sock);
-}
-
 static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
@@ -456,9 +446,9 @@ static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const
 	return 0;
 }
 
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(handle->conn, rlm_sql_mysql_conn_t);
+	rlm_sql_mysql_conn_t *conn = talloc_get_type_abort(query_ctx->handle->conn, rlm_sql_mysql_conn_t);
 
 	unsigned int	fields, i;
 	MYSQL_FIELD	*field_info;
@@ -469,7 +459,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 	 *	Different versions of SQL use different functions,
 	 *	and some don't like NULL pointers.
 	 */
-	fields = sql_num_fields(handle, config);
+	fields = mysql_field_count(conn->sock);
 	if (fields == 0) return RLM_SQL_ERROR;
 
 	/*
@@ -479,7 +469,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_
 	field_info = mysql_fetch_fields(conn->result);
 	if (!field_info) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_array(handle, char const *, fields));
+	MEM(names = talloc_array(query_ctx, char const *, fields));
 
 	for (i = 0; i < fields; i++) names[i] = field_info[i].name;
 	*out = names;
@@ -532,7 +522,7 @@ retry_fetch_row:
 		RETURN_MODULE_OK;
 	}
 
-	num_fields = mysql_num_fields(conn->result);
+	num_fields = mysql_field_count(conn->sock);
 	if (!num_fields) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
 		RETURN_MODULE_OK;

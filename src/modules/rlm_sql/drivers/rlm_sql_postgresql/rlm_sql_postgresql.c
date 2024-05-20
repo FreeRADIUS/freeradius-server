@@ -404,9 +404,9 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 	RETURN_MODULE_OK;
 }
 
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_postgres_conn_t *conn = handle->conn;
+	rlm_sql_postgres_conn_t *conn = query_ctx->handle->conn;
 
 	int		fields, i;
 	char const	**names;
@@ -414,7 +414,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	fields = PQnfields(conn->result);
 	if (fields <= 0) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_array(handle, char const *, fields));
+	MEM(names = talloc_array(query_ctx, char const *, fields));
 
 	for (i = 0; i < fields; i++) names[i] = PQfname(conn->result, i);
 	*out = names;

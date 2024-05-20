@@ -476,13 +476,6 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 	RETURN_MODULE_OK;
 }
 
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
-{
-	rlm_sql_cassandra_conn_t *conn = handle->conn;
-
-	return conn->result ? cass_result_column_count(conn->result) : 0;
-}
-
 static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
@@ -490,17 +483,17 @@ static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const
 	return conn->result ? cass_result_row_count(conn->result) : 0;
 }
 
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_cassandra_conn_t *conn = handle->conn;
+	rlm_sql_cassandra_conn_t *conn = query_ctx->handle->conn;
 
 	unsigned int	fields, i;
 	char const	**names;
 
-	fields = sql_num_fields(handle, config);
+	fields = conn->result ? cass_result_column_count(conn->result) : 0;
 	if (fields == 0) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_array(handle, char const *, fields));
+	MEM(names = talloc_array(query_ctx, char const *, fields));
 
 	for (i = 0; i < fields; i++) {
 		const char *col_name;
@@ -525,7 +518,6 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	CassRow	const 			*cass_row;
 	int				fields, i;
 	char				**row;
-	rlm_sql_handle_t		*handle = query_ctx->handle;
 
 #define RLM_CASS_ERR_DATA_RETRIVE(_t) \
 do {\
@@ -557,7 +549,7 @@ do {\
 	}
 
 	cass_row = cass_iterator_get_row(conn->iterator);		/* this shouldn't fail ? */
-	fields = sql_num_fields(handle, &query_ctx->inst->config);	/* get the number of fields... */
+	fields = cass_result_column_count(conn->result);		/* get the number of fields... */
 
 	/*
 	 *	Free the previous result (also gets called on finish_query)

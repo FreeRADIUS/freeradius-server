@@ -712,7 +712,7 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	/*
 	 *	Map proc only registered if driver provides an sql_fields function
 	 */
-	ret = (inst->driver->sql_fields)(&fields, handle, &inst->config);
+	ret = (inst->driver->sql_fields)(&fields, query_ctx, &inst->config);
 	if (ret != RLM_SQL_OK) {
 		RERROR("Failed retrieving field names: %s", fr_table_str_by_value(sql_rcode_description_table, ret, "<INVALID>"));
 		goto error;
