@@ -66,6 +66,8 @@ struct fr_bio_retry_s {
 	fr_event_list_t		*el;
 	fr_rb_tree_t		rb;
 
+	fr_bio_retry_info_t	info;
+
 	fr_retry_config_t	retry_config;
 
 	ssize_t			error;
@@ -206,6 +208,16 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	}
 
 	/*
+	 *	Track when we last sent a NEW packet.  Also track when we first sent a packet after becoming
+	 *	active again.
+	 */
+	if ((item->retry.count == 1) && fr_time_lt(my->info.last_sent, now)) {
+		my->info.last_sent = now;
+
+		if (fr_time_lteq(my->info.first_sent, my->info.last_idle)) my->info.first_sent = now;
+	}
+
+	/*
 	 *	Write out the packet.  On failure release this item.
 	 *
 	 *	If there's an error, we hope that the next "real" write will find the error, and do any
@@ -332,6 +344,7 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	 */
 	fr_bio_buf_reset(&my->buffer);
 	my->partial = NULL;
+	my->info.write_blocked = false;
 
 	/*
 	 *	The item was cancelled.  It's still in the tree, so we remove it, and reset its fields.
@@ -357,8 +370,8 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	 *	Note that the retried packets are sent _before_ the new one.  If the caller doesn't want this
 	 *	behavior, he can cancel the old ones.
 	 *
-	 *	@todo - have a way to prioritize packets?  i.e. to insert a packet at the _head_ of the list,
-	 *	and write it _now_, as with Status-Server.
+	 *	We don't need to prioritize outgoing packets (e.g. Status-Server).  A call to write() will
+	 *	write them now, in advance of any pending retries.
 	 */
 	item = fr_rb_first(&my->rb);
 	if (item) {
@@ -413,6 +426,7 @@ static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *it
 	fr_bio_buf_write(&my->buffer, item->buffer + rcode, item->size - rcode);
 
 	my->partial = item;
+	my->info.write_blocked = true;
 
 	/*
 	 *	There's no timer, as the write is blocked, so we can't retry.
@@ -720,6 +734,28 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	fr_assert(item != my->partial);
        
 	/*
+	 *	Track when the "most recently sent" packet has a reply.  This metric is better than most
+	 *	others for judging the liveliness of the destination.
+	 */
+	if (fr_time_lt(my->info.mrs_time, item->retry.start)) my->info.mrs_time = item->retry.start;
+
+	/*
+	 *	We have a new reply, remember when that happened.  Note that we don't update this timer for
+	 *	duplicate replies, but perhaps we should?
+	 */
+	my->info.last_reply = fr_time();
+
+	/*
+	 *	There are no more packets to send, so this connection is idle.
+	 *
+	 *	Note that partial packets aren't tracked in the timer tree.  We can't do retransmits until the
+	 *	socket is writable.
+	 *
+	 *	@todo - don't include application watchdog packets in the idle count?
+	 */
+	if (!my->partial && (fr_rb_num_elements(&my->rb) == 1)) my->info.last_idle = my->info.last_reply;
+
+	/*
 	 *	We have a new reply.  If we've received all of the replies (i.e. one), OR we don't have a
 	 *	maximum lifetime for this request, then release it immediately.
 	 */
@@ -900,14 +936,23 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	my->release = release;
 
 	my->el = cfg->el;
+	my->info.last_idle = fr_time();
 	my->retry_config = cfg->retry_config;
 
 	my->bio.write = fr_bio_retry_write;
 	my->bio.read = fr_bio_retry_read;
+
 
 	fr_bio_chain(&my->bio, next);
 
 	talloc_set_destructor(my, fr_bio_retry_destructor);
 
 	return (fr_bio_t *) my;
+}
+
+fr_bio_retry_info_t const *fr_bio_retry_info(fr_bio_t *bio)
+{
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+
+	return &my->info;
 }

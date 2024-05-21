@@ -54,6 +54,8 @@ typedef struct {
 	size_t			outstanding;
 
 	fr_bio_fd_info_t const	*fd_info;
+
+	fr_bio_retry_info_t const	*retry_info;
 } fr_radius_client_bio_info_t;
 
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg) CC_HINT(nonnull);

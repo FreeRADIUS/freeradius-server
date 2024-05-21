@@ -116,6 +116,9 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	if (!my->retry) goto fail;
 	my->retry->uctx = my;
 	
+	my->info.retry_info = fr_bio_retry_info(my->retry);
+	fr_assert(my->info.retry_info != NULL);
+
 	my->cfg = *cfg;
 
 	my->common.bio = my->retry;
@@ -325,6 +328,7 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 
 		fr_assert(my->info.outstanding > 0);
 		my->info.outstanding--;
+
 		return true;
 	}
 

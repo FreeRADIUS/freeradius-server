@@ -38,6 +38,16 @@ typedef struct {
 	fr_retry_config_t	retry_config;	//!< base retry config
 } fr_bio_retry_config_t;
 
+typedef struct {
+	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
+	fr_time_t		last_reply;		//!< When we last received a reply.
+	fr_time_t		first_sent;		//!< first time we sent a packet since going idle
+	fr_time_t		last_sent;		//!< last time we sent a packet.
+	fr_time_t		last_idle;		//!< last time we had nothing to do
+
+	bool			write_blocked;		//!< are writes blocked?
+} fr_bio_retry_info_t;
+
 typedef struct fr_bio_retry_entry_s fr_bio_retry_entry_t;
 
 typedef ssize_t	(*fr_bio_retry_rewrite_t)(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size);
@@ -125,3 +135,5 @@ int		fr_bio_retry_entry_start(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, fr
 const fr_retry_t *fr_bio_retry_entry_info(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx) CC_HINT(nonnull);
 
 ssize_t		fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size) CC_HINT(nonnull(1,2));
+
+fr_bio_retry_info_t const *fr_bio_retry_info(fr_bio_t *bio) CC_HINT(nonnull);
