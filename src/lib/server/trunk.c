@@ -113,6 +113,10 @@ struct fr_trunk_request_s {
 	bool			bound_to_conn;		//!< Fail the request if there's an attempt to
 							///< re-enqueue it.
 
+	bool			sent;			//!< Trunk request has been sent at least once.
+							///< Used so that re-queueing doesn't increase trunk
+							///< `sent` count.
+
 #ifndef NDEBUG
 	fr_dlist_head_t		log;			//!< State change log.
 #endif
@@ -1252,15 +1256,19 @@ static void trunk_request_enter_sent(fr_trunk_request_t *treq)
 	fr_dlist_insert_tail(&tconn->sent, treq);
 
 	/*
-	 *	Update the connection's sent stats
+	 *	Update the connection's sent stats if this is the
+	 *	first time this request is being sent.
 	 */
-	tconn->sent_count++;
+	if (!treq->sent) {
+		tconn->sent_count++;
+		treq->sent = true;
 
-	/*
-	 *	Enforces max_uses
-	 */
-	if ((trunk->conf.max_uses > 0) && (tconn->sent_count >= trunk->conf.max_uses)) {
-		trunk_connection_enter_draining_to_free(tconn);
+		/*
+		 *	Enforces max_uses
+		 */
+		if ((trunk->conf.max_uses > 0) && (tconn->sent_count >= trunk->conf.max_uses)) {
+			trunk_connection_enter_draining_to_free(tconn);
+		}
 	}
 
 	/*
