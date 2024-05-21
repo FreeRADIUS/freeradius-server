@@ -15,7 +15,7 @@
 #
 #  Insert new test data
 #
-%sql("${insert_into_radcheck} ('group_profile_user_a', 'Password.Cleartext', ':=', 'invalidsecret')")
+%sql("${insert_into_radcheck} ('groups_profile_user_a', 'Password.Cleartext', ':=', 'invalidsecret')")
 
 %sql("INSERT INTO radusergroup (username, groupname, priority) VALUES ('groups_profile_user_a', 'group_profile_a', 100)")
 
