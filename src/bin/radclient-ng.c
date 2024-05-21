@@ -1222,9 +1222,16 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 
 static void client_connect(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
+	int rcode;
 	fr_bio_packet_t *client = uctx;
 
-	if (fr_radius_client_bio_connect(client) < 0) {
+	rcode = fr_radius_client_bio_connect(client);
+	if (rcode < 0) {
+		/*
+		 *	We may need to try again.  If so, do that.
+		 */
+		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return;
+
 		ERROR("Failed connecting socket: %s", fr_strerror());
 		fr_exit_now(1);
 	}
