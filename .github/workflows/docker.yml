@@ -1,0 +1,81 @@
+name: Build Dockerfiles
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+  workflow_dispatch:
+
+env:
+  CI: 1
+  GH_ACTIONS: 1
+  DEBIAN_FRONTEND: noninteractive
+  APT_OPTS: "-y --no-install-recommends"
+
+jobs:
+  #
+  #  Generate matrix based on docker directories.
+  #
+  gen-matrix:
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.gen-matrix.outputs.matrix }}
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        lfs: false
+
+    - id: gen-matrix
+      name: Generate matrix based on docker targets
+      run: |
+        cd scripts/docker/dists
+        M=$(ls | perl -n -e '{chomp; push @L,"\"$_\""} END{print "{\"env\":[{\"OS\":",join("},{\"OS\":",@L),"}]}"}')
+        echo "Matrix: $M"
+        echo matrix=$M >> $GITHUB_OUTPUT
+
+  #
+  #  Run docker target for each given OS. This will build the
+  #  Docker image.
+  #
+  docker:
+    needs:
+      - gen-matrix
+
+    runs-on: ubuntu-20.04
+
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.gen-matrix.outputs.matrix) }}
+
+    env: ${{ matrix.env }}
+
+    name: "v3.2.x-${{ matrix.env.OS }}"
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Regenerate Dockerfile
+      run: |
+        rm scripts/docker/dists/$OS/Dockerfile || true
+        make docker.$OS.regen
+
+    - name: Build docker image
+      run: |
+        make docker.$OS.build
+
+    #
+    #  If the CI has failed and the branch is ci-debug then start a tmate
+    #  session. SSH rendezvous point is emited continuously in the job output.
+    #
+    - name: "Debug: Start tmate"
+      uses: mxschmitt/action-tmate@v3
+      with:
+        limit-access-to-actor: true
+      if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
