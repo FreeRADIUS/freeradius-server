@@ -929,6 +929,22 @@ static int8_t request_cmp(void const *one, void const *two)
 	return fr_value_box_cmp(&vp1->data, &vp2->data);
 }
 
+static void client_retry_log(UNUSED fr_bio_packet_t *client, fr_packet_t *packet)
+{
+	rc_request_t *request = packet->uctx;
+
+	DEBUG("Timeout - resending packet");
+
+	// @todo - log the actual / updated Acct-Delay-Time?
+
+	fr_radius_packet_log(&default_log, request->packet, &request->request_pairs, false);
+}
+
+static void client_release(UNUSED fr_bio_packet_t *client, UNUSED fr_packet_t *packet)
+{
+	fr_assert(0);
+}
+
 
 /*
  *	Send one packet.
@@ -1697,9 +1713,12 @@ int main(int argc, char **argv)
 	 *	Set callbacks so that the socket is automatically
 	 *	paused or resumed when the socket becomes writeable.
 	 */
-	client_config.pause_resume_cfg = (fr_bio_packet_cb_funcs_t) {
+	client_config.packet_cb_cfg = (fr_bio_packet_cb_funcs_t) {
 		.write_blocked = client_bio_write_pause,
 		.write_resume = client_bio_write_resume,
+
+		.retry = (fr_debug_lvl > 0) ? client_retry_log : NULL,
+		.release = client_release,
 	};
 
 	/*

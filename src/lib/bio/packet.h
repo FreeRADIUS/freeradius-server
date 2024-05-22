@@ -56,24 +56,24 @@ typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, void **request_ctx_p, 
  */
 typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list);
 
-/** Release an outgoing packet.
+/** Signal an outgoing packet.
  *
  * @param bio		the packet-based bio
  * @param packet	the output packet descriptor.  Contains raw protocol data (IDs, counts, etc.)
- * @return
- *	- <0 on error
- *	- 0 for success
  */
-typedef int (*fr_bio_packet_release_t)(fr_bio_packet_t *bio, fr_packet_t *packet);
+typedef void (*fr_bio_packet_signal_t)(fr_bio_packet_t *bio, fr_packet_t *packet);
 
-typedef void (*fr_bio_packet_signal_t)(fr_bio_packet_t *bio);
+typedef void (*fr_bio_packet_io_t)(fr_bio_packet_t *bio);
 
 typedef struct {
-	fr_bio_packet_signal_t	read_blocked;
-	fr_bio_packet_signal_t	write_blocked;
+	fr_bio_packet_io_t	read_blocked;
+	fr_bio_packet_io_t	write_blocked;
 
-	fr_bio_packet_signal_t	read_resume;
-	fr_bio_packet_signal_t	write_resume;
+	fr_bio_packet_io_t	read_resume;
+	fr_bio_packet_io_t	write_resume;
+
+	fr_bio_packet_signal_t	retry;
+	fr_bio_packet_signal_t	release;
 } fr_bio_packet_cb_funcs_t;
 
 struct fr_bio_packet_s {

@@ -43,7 +43,7 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 				     fr_bio_retry_entry_t *retry_ctx);
 static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **retry_ctx_p, UNUSED void *packet_ctx, const void *buffer, UNUSED size_t size);
 static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED fr_bio_retry_release_reason_t reason);
-
+static ssize_t radius_client_retry(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED const void *buffer, NDEBUG_UNUSED size_t size);
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
 	fr_assert(fd_cfg->type == FR_BIO_FD_CONNECTED);
@@ -72,6 +72,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 {
 	int i;
 	fr_radius_client_fd_bio_t *my;
+	fr_bio_retry_rewrite_t rewrite = NULL;
 
 	fr_assert(fd_cfg->type == FR_BIO_FD_CONNECTED);
 
@@ -103,8 +104,8 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	/*
 	 *	Set up read / write blocked / resume callbacks.
 	 */
-	if (cfg->pause_resume_cfg.write_blocked || cfg->pause_resume_cfg.read_blocked) {
-		fr_radius_client_bio_cb_set((fr_bio_packet_t *) my, &cfg->pause_resume_cfg);
+	if (cfg->packet_cb_cfg.write_blocked || cfg->packet_cb_cfg.read_blocked) {
+		fr_radius_client_bio_cb_set((fr_bio_packet_t *) my, &cfg->packet_cb_cfg);
 	}
 
 	my->info.fd_info = fr_bio_fd_info(my->fd);
@@ -119,8 +120,10 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	if (!my->mem) goto fail;
 	my->mem->uctx = &my->cfg.verify;
 
+	if (cfg->packet_cb_cfg.retry) rewrite = radius_client_retry;
+
 	my->retry = fr_bio_retry_alloc(my, 256, radius_client_retry_sent, radius_client_retry_response,
-				       NULL, radius_client_retry_release, &cfg->retry_cfg, my->mem);
+				       rewrite, radius_client_retry_release, &cfg->retry_cfg, my->mem);
 	if (!my->retry) goto fail;
 	my->retry->uctx = my;
 	
@@ -267,6 +270,25 @@ static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_PROTOCOL_ERROR]		= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
 };
 
+static ssize_t radius_client_retry(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED const void *buffer, NDEBUG_UNUSED size_t size)
+{
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
+	fr_radius_id_ctx_t *id_ctx = retry_ctx->uctx;
+	fr_packet_t *packet = id_ctx->packet;
+
+	fr_assert(packet->data_len == size);
+
+	fr_assert(my->cfg.packet_cb_cfg.retry);
+
+	my->cfg.packet_cb_cfg.retry(&my->common, id_ctx->packet);
+
+	/*
+	 *	Note do do NOT ball fr_bio_write(), because that will treat the packet as a new one!
+	 */
+	return fr_bio_retry_rewrite(bio, retry_ctx, packet->data, packet->data_len);
+}
+
+
 static ssize_t radius_client_rewrite_acct(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED const void *buffer, NDEBUG_UNUSED size_t size)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
@@ -306,6 +328,11 @@ static ssize_t radius_client_rewrite_acct(fr_bio_t *bio, fr_bio_retry_entry_t *r
 	 */
 	(void) fr_radius_sign(packet->data, NULL,
 			      (uint8_t const *) my->cfg.verify.secret, my->cfg.verify.secret_len);
+
+	/*
+	 *	Signal that the packet has been retried.
+	 */
+	if (my->cfg.packet_cb_cfg.retry) my->cfg.packet_cb_cfg.retry(&my->common, id_ctx->packet);
 
 	/*
 	 *	Note do do NOT ball fr_bio_write(), because that will treat the packet as a new one!
@@ -434,12 +461,19 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 	return false;
 }
 
-static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED fr_bio_retry_release_reason_t reason)
+static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, fr_bio_retry_release_reason_t reason)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
 	fr_radius_id_ctx_t *id_ctx = retry_ctx->uctx;
 
 	fr_assert(id_ctx->packet == retry_ctx->packet_ctx);
+
+	fprintf(stderr, "RELEASE %p %d\n", my->cfg.packet_cb_cfg.release, reason);
+
+	/*
+	 *	Tell the application that this packet did not see a reply/
+	 */
+	if (my->cfg.packet_cb_cfg.release && (reason == FR_BIO_RETRY_NO_REPLY)) my->cfg.packet_cb_cfg.release(&my->common, id_ctx->packet);
 
 	fr_radius_code_id_push(my->codes, id_ctx->packet);
 

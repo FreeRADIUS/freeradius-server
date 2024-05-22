@@ -205,7 +205,7 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	 */
 	state = fr_retry_next(&item->retry, now);
 	if (state != FR_RETRY_CONTINUE) {
-		fr_bio_retry_release(my, item, (fr_bio_retry_release_reason_t) (item->retry.replies > 0));
+		fr_bio_retry_release(my, item, (item->retry.replies > 0) ? FR_BIO_RETRY_DONE : FR_BIO_RETRY_NO_REPLY);
 		return 1;
 	}
 

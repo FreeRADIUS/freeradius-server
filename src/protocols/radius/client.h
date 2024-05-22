@@ -38,7 +38,7 @@ typedef struct {
 
 	fr_bio_retry_config_t	retry_cfg;
 
-	fr_bio_packet_cb_funcs_t pause_resume_cfg;
+	fr_bio_packet_cb_funcs_t packet_cb_cfg;
 
 	bool			add_proxy_state;
 	uint32_t		proxy_state;
