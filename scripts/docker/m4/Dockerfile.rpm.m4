@@ -1,7 +1,7 @@
 ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
-ifelse(OS_VER, `9', `dnl
+ifelse(OS_VER, `7', `', `dnl
 #
 #  Install yum
 #
@@ -109,6 +109,13 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 FROM ${from}
 COPY --from=build /root/rpms /tmp/
 
+ifelse(OS_VER, `7', `', `dnl
+#
+#  Install yum
+#
+RUN dnf install -y yum
+')dnl
+
 changequote(`{', `}')dnl
 ifelse(ifelse(OS_VER, 7, yes, OS_VER, 8, yes, no), yes, {dnl
 # Use LTB's openldap packages intead of the distribution version to avoid linking against NSS
@@ -123,16 +130,17 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 })dnl
 changequote({`}, {'})dnl
 
-ifelse(OS_VER, 9, `dnl
-#  Needed for mysql-libs on Rocky 9
-RUN yum install -y yum-utils
-RUN yum config-manager --enable crb
-')dnl
 
 #  EPEL repository for freetds and hiredis
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm \
 ifelse(OS_VER, 7, `    \', `dnl
     && yum install -y dnf-utils \
+ifelse(OS_VER, 8, `dnl
+    && yum config-manager --enable powertools \
+')dnl
+ifelse(OS_VER, 9, `dnl
+    && yum config-manager --enable crb \
+')dnl
     && yum config-manager --enable epel-testing
 
 ARG radiusd_uid=95
