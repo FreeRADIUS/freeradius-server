@@ -548,6 +548,7 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	fr_assert(my->partial == NULL);
 
 	item = my->first;
+	my->first = NULL;
 
 	/*
 	 *	Retry one item.
@@ -562,9 +563,12 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	}
 
 	/*
-	 *	Partial write - no timers get set.
+	 *	Partial write - no timers get set.  We need to wait until the descriptor is writable.
 	 */
-	if (rcode == 0) return;
+	if (rcode == 0) {
+		fr_assert(my->partial != NULL);
+		return;
+	}
 
 	/*
 	 *	We successfull wrote this item.  Reset the timer to the next one, which is likely to be a
