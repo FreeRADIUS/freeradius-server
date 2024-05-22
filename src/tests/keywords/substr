@@ -13,6 +13,10 @@ if !(%substr(%{test_string}, 1, 3) == 'ell') {
 	test_fail
 }
 
+if !(%substr(%{test_string}, 0, 3) == 'hel') {
+	test_fail
+}
+
 if !(%substr(%{test_string}, 5) == ' world') {
 	test_fail
 }
