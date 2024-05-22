@@ -199,6 +199,8 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 		return fr_bio_error(GENERIC);
 	}
 
+	fr_assert(slen >= RADIUS_HEADER_LENGTH);
+
 	end = my->buffer + slen;
 
 	/*
@@ -217,7 +219,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	}
 
 	packet->data_len = end - my->buffer;
-	fr_nbo_from_uint64(my->buffer + 2, packet->data_len);
+	fr_nbo_from_uint16(my->buffer + 2, packet->data_len);
 
 	packet->data = talloc_array(packet, uint8_t, packet->data_len);
 	if (!packet->data) goto fail;
@@ -265,23 +267,31 @@ static const fr_radius_packet_code_t allowed_replies[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_PROTOCOL_ERROR]		= FR_RADIUS_CODE_PROTOCOL_ERROR,	/* Any */
 };
 
-static ssize_t radius_client_rewrite_acct(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size)
+static ssize_t radius_client_rewrite_acct(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED const void *buffer, NDEBUG_UNUSED size_t size)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
 	fr_radius_client_bio_retry_t *acct = retry_ctx->rewrite_ctx;
 	fr_radius_id_ctx_t *id_ctx = retry_ctx->uctx;
+	fr_radius_id_ctx_t my_id_ctx = *id_ctx;
 	fr_packet_t *packet = id_ctx->packet;
 	uint8_t *ptr = packet->data + acct->offset;
 	uint32_t now, delay;
 
+	fr_assert(packet->data_len == size);
+
 	/*
 	 *	Change IDs, since we're changing the value of Acct-Delay-Time
 	 */
-	fr_assert(packet->data == buffer);
 	fr_radius_code_id_push(my->codes, packet);
 
 	id_ctx = fr_radius_code_id_pop(my->codes, packet);
 	if (!id_ctx) return fr_bio_error(GENERIC); /* at the minimum, we should get the ID we just pushed */
+
+	/*
+	 *	Update the ID context, and tell the retry context that the ID context has changed.
+	 */
+	id_ctx->request_ctx = my_id_ctx.request_ctx;
+	retry_ctx->uctx = id_ctx;
 
 	now = fr_time_to_sec(retry_ctx->retry.updated);
 	fr_assert(now >= acct->start);
@@ -300,7 +310,7 @@ static ssize_t radius_client_rewrite_acct(fr_bio_t *bio, fr_bio_retry_entry_t *r
 	/*
 	 *	Note do do NOT ball fr_bio_write(), because that will treat the packet as a new one!
 	 */
-	return fr_bio_retry_rewrite(bio, retry_ctx, buffer, size);
+	return fr_bio_retry_rewrite(bio, retry_ctx, packet->data, packet->data_len);
 }
 
 
@@ -341,13 +351,12 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 	 *	@todo - maybe if it doesn't exist, we look for Event-Timestamp?  And add one if necessary?
 	 */
 	while (data < end) {
-		if (data[0] != FR_ACCT_DELAY_TIME) {
-			data += data[1];
-			continue;
-		}
+		if (data[0] == FR_ACCT_DELAY_TIME) break;
+
+		data += data[1];
 	}
 
-	if (data == end) return;
+	if ((data == end) || (data[1] != 6)) return;
 
 	acct = retry_ctx->rewrite_ctx = talloc_zero(my, fr_radius_client_bio_retry_t);
 	if (!acct) return;
@@ -356,6 +365,8 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 	 *	Set up the retry handler with initial data.
 	 */
 	retry_ctx->rewrite = radius_client_rewrite_acct;
+
+	data += 2;
 
 	acct->initial = fr_nbo_to_uint32(data);
 	acct->start = fr_time_to_sec(retry_ctx->retry.start);
