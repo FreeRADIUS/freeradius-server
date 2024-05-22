@@ -43,6 +43,9 @@ struct fr_bio_retry_entry_s {
 	void		*uctx;
 	void		*packet_ctx;
 	fr_bio_retry_rewrite_t rewrite;		//!< per-packet rewrite callback
+	void		*rewrite_ctx;		//!< context specifically for rewriting this packet
+
+	fr_retry_t	retry;			//!< retry timers and counters
 
 	union {
 		fr_rb_node_t	node;		//!< for the timers
@@ -50,7 +53,6 @@ struct fr_bio_retry_entry_s {
 	};
 
 	fr_bio_retry_t	*my;			//!< so we can get to it from the event timer callback
-	fr_retry_t	retry;			//!< retry timers and counters
 
 	uint8_t const	*buffer;
 	size_t		size;	

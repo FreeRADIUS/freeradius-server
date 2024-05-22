@@ -32,6 +32,15 @@ RCSIDH(lib_bio_retry_h, "$Id$")
 #include <freeradius-devel/util/retry.h>
 #include <freeradius-devel/util/event.h>
 
+#ifdef _CONST
+#  error _CONST can only be defined in the local header
+#endif
+#ifndef _BIO_RETRY_PRIVATE
+#  define _CONST const
+#else
+#  define _CONST
+#endif
+
 typedef struct {
 	fr_event_list_t		*el;		//!< event list
 
@@ -58,6 +67,8 @@ struct  fr_bio_retry_entry_s {
 	void		*packet_ctx;		//!< packet_ctx from the write() call
 	fr_bio_retry_rewrite_t rewrite;		//!< per-packet rewrite callback
 	void		*rewrite_ctx;		//!< context specifically for rewriting this packet
+
+	fr_retry_t _CONST retry;			//!< retry timers and counters
 };
 #endif
 
@@ -137,3 +148,5 @@ const fr_retry_t *fr_bio_retry_entry_info(fr_bio_t *bio, fr_bio_retry_entry_t *r
 ssize_t		fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, const void *buffer, size_t size) CC_HINT(nonnull(1,2));
 
 fr_bio_retry_info_t const *fr_bio_retry_info(fr_bio_t *bio) CC_HINT(nonnull);
+
+#undef _CONST
