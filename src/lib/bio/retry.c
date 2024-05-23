@@ -80,16 +80,13 @@ struct fr_bio_retry_s {
 	/*
 	 *	The "first" entry is cached here so that we can detect when it changes.  The insert / delete
 	 *	code can just do its work without worrying about timers.  And then when the tree manipulation
-	 *	is done, call the fr_bio_retry_reset_timer() function to reset (or not) the timer.
+	 *	is done, call the fr_bio_retry_timer_reset() function to reset (or not) the timer.
 	 */
 	fr_bio_retry_entry_t	*first;		//!< for timers
 
 	/*
-	 *	Cache a partial write when IO is blocked.
-	 *
-	 *	When the IO is blocked, the timer "ev" event AND the "first" entry MUST be set to NULL.
-	 *	There's no point in running retry timers when we can't send packets due to IO blockage.  And
-	 *	since there's no timer, there's no need to track which entry is first.
+	 *	Cache a partial write when IO is blocked.  Partial
+	 *	packets are left in the timer tree so that they can be expired.
 	 */
 	fr_bio_retry_entry_t	*partial;	//!< for partial writes
 
@@ -110,7 +107,7 @@ static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *it
 /** Reset the timer after changing the rb tree.
  *
  */
-static int fr_bio_retry_reset_timer(fr_bio_retry_t *my)
+static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
 {
 	fr_bio_retry_entry_t *first;
 
@@ -176,7 +173,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 */
 	if (my->first == item) {
 		my->first = NULL;
-		(void) fr_bio_retry_reset_timer(my);
+		(void) fr_bio_retry_timer_reset(my);
 	}
 
 	item->packet_ctx = NULL;
@@ -300,7 +297,7 @@ static int fr_bio_retry_write_delayed(fr_bio_retry_t *my, fr_time_t now)
 	 *
 	 *	@todo - set generic write error?
 	 */
-	(void) fr_bio_retry_reset_timer(my);
+	(void) fr_bio_retry_timer_reset(my);
 
 	return 0;
 }
@@ -386,7 +383,7 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 		/*
 		 *	We now have an active socket but no timers, so we set up the timers.
 		 */
-		(void) fr_bio_retry_reset_timer(my);
+		(void) fr_bio_retry_timer_reset(my);
 	}
 
 	/*
@@ -569,7 +566,7 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	 *	We successfull wrote this item.  Reset the timer to the next one, which is likely to be a
 	 *	different one from the item we just updated.
 	 */
-	(void) fr_bio_retry_reset_timer(my);
+	(void) fr_bio_retry_timer_reset(my);
 }
 
 /** Write a request, and see if we have a reply.
@@ -678,7 +675,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	/*
 	 *	If we can't set the timer, then release this item.
 	 */
-	if (fr_bio_retry_reset_timer(my) < 0) {
+	if (fr_bio_retry_timer_reset(my) < 0) {
 		fr_strerror_const("Failed adding timer for packet");
 
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_CANCELLED);
@@ -781,7 +778,7 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 
 	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
 	(void) fr_rb_insert(&my->rb, item);
-	(void) fr_bio_retry_reset_timer(my);
+	(void) fr_bio_retry_timer_reset(my);
 
 	return rcode;
 }
