@@ -949,10 +949,8 @@ static void cleanup(fr_bio_packet_t *client, rc_request_t *request)
 
 	/*
 	 *	We're done all packets, and there's nothing more to read, stop.
-	 *
-	 *	@todo - find a way to make this zero!
 	 */
-	if (fr_radius_client_bio_outstanding(client) <= 1) {
+	if (fr_radius_client_bio_outstanding(client) == 0) {
 		fr_assert(client_config.retry_cfg.el != NULL);
 
 		fr_event_loop_exit(client_config.retry_cfg.el, 1);
@@ -1582,7 +1580,7 @@ int main(int argc, char **argv)
 	client_config.retry[packet_code] = (fr_retry_config_t) {
 		.irt = timeout,
 		.mrt = fr_time_delta_from_sec(16),
-		.mrd = fr_time_delta_from_sec(30),
+		.mrd = (retries == 1) ? timeout : fr_time_delta_from_sec(30),
 		.mrc = retries,
 	};
 	client_config.retry_cfg.retry_config = client_config.retry[packet_code];
