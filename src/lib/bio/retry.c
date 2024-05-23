@@ -58,6 +58,7 @@ struct fr_bio_retry_entry_s {
 	size_t		size;	
 
 	bool		cancelled;		//!< was this item cancelled?
+	bool		reserved;		//!< for application-layer watchdog
 };
 
 FR_DLIST_FUNCS(fr_bio_retry_list, fr_bio_retry_entry_t, entry)
@@ -153,7 +154,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 *	Remove the item before calling the application "release" function.
 	 */
 	if (my->partial != item) {
-		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+		if (!item->reserved) (void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
 	} else {
 		item->cancelled = true;
 	}
@@ -197,6 +198,7 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	fr_retry_state_t state;
 
 	fr_assert(!my->partial);
+	fr_assert(!item->reserved);
 
 	/*
 	 *	Are we there yet?
@@ -349,14 +351,11 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	my->info.write_blocked = false;
 
 	/*
-	 *	The item was cancelled.  It's still in the tree, so we remove it, and reset its fields.
-	 *	We then insert it into the free list.
+	 *	The item was cancelled, which means it's no longer in the timer tree.
 	 *
 	 *	If it's not cancelled, then we leave it in the tree, and run its timers s normal.
 	 */
 	if (item->cancelled) {
-		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
-
 		item->packet_ctx = NULL;
 
 		fr_bio_retry_list_insert_head(&my->free, item);
@@ -719,17 +718,14 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 		if (!item) return 0;
 
 		item->retry.replies++;
-		if (item->retry.replies < item->retry.count) return 0;
 
 		/*
-		 *	We have a reply, so we can't possibly be partially writing the request
+		 *	We have enough replies.  Release it.
 		 */
-		fr_assert(item != my->partial);
+		if ((item->retry.replies >= item->retry.count) || !fr_time_delta_ispos(my->retry_config.mrd)) {
+			fr_bio_retry_release(my, item, FR_BIO_RETRY_DONE);
+		}
 
-		/*
-		 *	We've received all of the responses, we can clean up the packet.
-		 */
-		fr_bio_retry_release(my, item, FR_BIO_RETRY_DONE);
 		return 0;
 	}
 
@@ -750,20 +746,28 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	my->info.last_reply = fr_time();
 
 	/*
-	 *	There are no more packets to send, so this connection is idle.
-	 *
-	 *	Note that partial packets aren't tracked in the timer tree.  We can't do retransmits until the
-	 *	socket is writable.
-	 *
-	 *	@todo - don't include application watchdog packets in the idle count?
-	 */
-	if (fr_bio_retry_outstanding((fr_bio_t *) my) == 1) my->info.last_idle = my->info.last_reply;
-
-	/*
 	 *	We have a new reply.  If we've received all of the replies (i.e. one), OR we don't have a
 	 *	maximum lifetime for this request, then release it immediately.
 	 */
 	item->retry.replies++;
+
+	/*
+	 *	We don't retry application-layer watchdog packets.  And we don't run timers for them.  The
+	 *	application is responsible for managing those timers itself.
+	 */
+	if (item->reserved) return rcode;
+
+	/*
+	 *	There are no more packets to send, so this connection is idle.
+	 *
+	 *	Note that partial packets aren't tracked in the timer tree.  We can't do retransmits until the
+	 *	socket is writable.
+	 */
+	if (fr_bio_retry_outstanding((fr_bio_t *) my) == 1) my->info.last_idle = my->info.last_reply;
+
+	/*
+	 *	We have enough replies.  Release it.
+	 */
 	if ((item->retry.replies >= item->retry.count) || !fr_time_delta_ispos(my->retry_config.mrd)) {
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_DONE);
 		return rcode;
@@ -974,4 +978,25 @@ size_t fr_bio_retry_outstanding(fr_bio_t *bio)
 	 *	Only count partially written items if they haven't been cancelled.
 	 */
 	return num + !my->partial->cancelled;
+}
+
+/**  Reserve an entry for later use with fr_bio_retry_rewrite()
+ *
+ *  So that application-layer watchdogs can bypass the normal write / retry routines.
+ */
+fr_bio_retry_entry_t *fr_bio_retry_item_reserve(fr_bio_t *bio)
+{
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+	fr_bio_retry_entry_t *item;
+
+	item = fr_bio_retry_list_pop_head(&my->free);
+	if (!item) return NULL;
+
+	fr_assert(item->my == my);
+	*item = (fr_bio_retry_entry_t) {
+		.my = my,
+		.reserved = true,
+	};
+
+	return item;
 }

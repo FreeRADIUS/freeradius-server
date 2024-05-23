@@ -151,4 +151,6 @@ fr_bio_retry_info_t const *fr_bio_retry_info(fr_bio_t *bio) CC_HINT(nonnull);
 
 size_t		fr_bio_retry_outstanding(fr_bio_t *bio) CC_HINT(nonnull);
 
+fr_bio_retry_entry_t *fr_bio_retry_item_reserve(fr_bio_t *bio) CC_HINT(nonnull);
+
 #undef _CONST
