@@ -718,7 +718,6 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
 		goto free_msg;
 
 	default:
-	sync_error:
 		PERROR("Sync error");
 		ret = -1;
 		goto free_msg;
@@ -745,6 +744,7 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
 
 	if (callback) {
 		ret = callback(sync, msg, ctrls);
+		if (ret < 0) PERROR("Sync callback error");
 	} else {
 	/*
 	 *	Callbacks are responsible for freeing the msg
@@ -752,11 +752,10 @@ static ssize_t proto_ldap_child_mod_read(fr_listen_t *li, UNUSED void **packet_c
 	 */
 		ldap_msgfree(msg);
 	}
-	if (ret < 0) goto sync_error;
 
 	ldap_controls_free(ctrls);
 
-	return 0;
+	return ret;
 }
 
 /** Send a fake packet to run the "load Cookie" section
