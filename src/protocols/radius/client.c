@@ -249,8 +249,6 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	 */
 	fr_assert((size_t) slen == packet->data_len);
 
-	my->info.outstanding++;
-
 	return 0;
 }
 
@@ -441,10 +439,6 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 
 		*retry_ctx_p = id_ctx->retry_ctx;
 		response->uctx = id_ctx->packet;
-
-		fr_assert(my->info.outstanding > 0);
-		my->info.outstanding--;
-
 		return true;
 	}
 
@@ -465,15 +459,9 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio->uctx, fr_radius_client_fd_bio_t);
 	fr_radius_id_ctx_t *id_ctx = retry_ctx->uctx;
+	fr_packet_t *packet = id_ctx->packet;
 
 	fr_assert(id_ctx->packet == retry_ctx->packet_ctx);
-
-	fprintf(stderr, "RELEASE %p %d\n", my->cfg.packet_cb_cfg.release, reason);
-
-	/*
-	 *	Tell the application that this packet did not see a reply/
-	 */
-	if (my->cfg.packet_cb_cfg.release && (reason == FR_BIO_RETRY_NO_REPLY)) my->cfg.packet_cb_cfg.release(&my->common, id_ctx->packet);
 
 	fr_radius_code_id_push(my->codes, id_ctx->packet);
 
@@ -490,6 +478,11 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 	 */
 	id_ctx->request_ctx = NULL;
 	id_ctx->retry_ctx = NULL;
+
+	/*
+	 *	Tell the application that this packet did not see a reply/
+	 */
+	if (my->cfg.packet_cb_cfg.release && (reason == FR_BIO_RETRY_NO_REPLY)) my->cfg.packet_cb_cfg.release(&my->common, packet);
 
 	/*
 	 *	IO was blocked due to IDs.  We now have a free ID, so perhaps we can resume writes.  But only
@@ -603,7 +596,7 @@ size_t fr_radius_client_bio_outstanding(fr_bio_packet_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 
-	return my->info.outstanding;
+	return fr_bio_retry_outstanding(my->retry);
 }
 
 fr_radius_client_bio_info_t const *fr_radius_client_bio_info(fr_bio_packet_t *bio)

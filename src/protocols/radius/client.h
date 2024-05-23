@@ -51,8 +51,6 @@ typedef struct {
 typedef struct {
 	bool			connected;
 
-	size_t			outstanding;
-
 	fr_bio_fd_info_t const	*fd_info;
 
 	fr_bio_retry_info_t const	*retry_info;

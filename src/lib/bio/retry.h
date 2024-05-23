@@ -149,4 +149,6 @@ ssize_t		fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, co
 
 fr_bio_retry_info_t const *fr_bio_retry_info(fr_bio_t *bio) CC_HINT(nonnull);
 
+size_t		fr_bio_retry_outstanding(fr_bio_t *bio) CC_HINT(nonnull);
+
 #undef _CONST

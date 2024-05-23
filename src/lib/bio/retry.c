@@ -150,6 +150,15 @@ static int fr_bio_retry_reset_timer(fr_bio_retry_t *my)
 static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, fr_bio_retry_release_reason_t reason)
 {
 	/*
+	 *	Remove the item before calling the application "release" function.
+	 */
+	if (my->partial != item) {
+		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+	} else {
+		item->cancelled = true;
+	}
+
+	/*
 	 *	Tell the caller that we've released it before doing anything else.  That way we can safely
 	 *	modify anything we want.
 	 */
@@ -159,12 +168,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 *	We've partially written this item.  Don't bother changing it's position in any of the lists,
 	 *	as it's in progress.
 	 */
-	if (my->partial == item) {
-		item->cancelled = true;
-		return;
-	}
-
-	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+	if (my->partial == item) return;
 
 	/*
 	 *	We're deleting the timer entry.  Go reset the timer.
@@ -759,7 +763,7 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	 *
 	 *	@todo - don't include application watchdog packets in the idle count?
 	 */
-	if (!my->partial && (fr_rb_num_elements(&my->rb) == 1)) my->info.last_idle = my->info.last_reply;
+	if (fr_bio_retry_outstanding((fr_bio_t *) my) == 1) my->info.last_idle = my->info.last_reply;
 
 	/*
 	 *	We have a new reply.  If we've received all of the replies (i.e. one), OR we don't have a
@@ -961,4 +965,19 @@ fr_bio_retry_info_t const *fr_bio_retry_info(fr_bio_t *bio)
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 
 	return &my->info;
+}
+
+size_t fr_bio_retry_outstanding(fr_bio_t *bio)
+{
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+	size_t num;
+
+	num = fr_rb_num_elements(&my->rb);
+
+	if (!my->partial) return num;
+
+	/*
+	 *	Only count partially written items if they haven't been cancelled.
+	 */
+	return num + !my->partial->cancelled;
 }

@@ -929,20 +929,54 @@ static int8_t request_cmp(void const *one, void const *two)
 	return fr_value_box_cmp(&vp1->data, &vp2->data);
 }
 
+static void cleanup(fr_bio_packet_t *client, rc_request_t *request)
+{
+	/*
+	 *	Don't leave a dangling pointer around.
+	 */
+	if (current == request) {
+		current = fr_dlist_prev(&rc_request_list, current);
+	}
+
+	talloc_free(request);
+
+	/*
+	 *	There are more packets to send, then allow the writer to send them.
+	 */
+	if (fr_dlist_num_elements(&rc_request_list) != 0) {
+		return;
+	}
+
+	/*
+	 *	We're done all packets, and there's nothing more to read, stop.
+	 *
+	 *	@todo - find a way to make this zero!
+	 */
+	if (fr_radius_client_bio_outstanding(client) <= 1) {
+		fr_assert(client_config.retry_cfg.el != NULL);
+
+		fr_event_loop_exit(client_config.retry_cfg.el, 1);
+	}
+}
+
 static void client_retry_log(UNUSED fr_bio_packet_t *client, fr_packet_t *packet)
 {
 	rc_request_t *request = packet->uctx;
 
 	DEBUG("Timeout - resending packet");
 
-	// @todo - log the actual / updated Acct-Delay-Time?
+	// @todo - log the updated Acct-Delay-Time from the packet?
 
 	fr_radius_packet_log(&default_log, request->packet, &request->request_pairs, false);
 }
 
-static void client_release(UNUSED fr_bio_packet_t *client, UNUSED fr_packet_t *packet)
+static void client_release(fr_bio_packet_t *client, fr_packet_t *packet)
 {
-	fr_assert(0);
+	rc_request_t *request = packet->uctx;
+
+	ERROR("No reply to packet");
+
+	cleanup(client, request);
 }
 
 
@@ -1171,28 +1205,7 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 
 	fr_packet_free(&reply);
 
-	/*
-	 *	Don't leave a dangling pointer around.
-	 */
-	if (current == request) {
-		current = fr_dlist_prev(&rc_request_list, current);
-	}
-
-	talloc_free(request);
-
-	/*
-	 *	There are more packets to send, then allow the writer to send them.
-	 */
-	if (fr_dlist_num_elements(&rc_request_list) != 0) {
-		return;
-	}
-
-	/*
-	 *	We're done all packets, and there's nothing more to read, stop.
-	 */
-	if (!fr_radius_client_bio_outstanding(client)) {
-		fr_event_loop_exit(el, 1);
-	}
+	cleanup(client, request);
 }
 
 static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
