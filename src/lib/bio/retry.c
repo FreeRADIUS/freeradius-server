@@ -178,10 +178,6 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 		(void) fr_bio_retry_reset_timer(my);
 	}
 
-#ifndef NDEBUG
-	item->buffer = NULL;
-#endif
-	item->uctx = NULL;
 	item->packet_ctx = NULL;
 
 	fr_assert(my->first != item);
@@ -361,10 +357,6 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	if (item->cancelled) {
 		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
 
-#ifndef NDEBUG
-		item->buffer = NULL;
-#endif
-		item->uctx = NULL;
 		item->packet_ctx = NULL;
 
 		fr_bio_retry_list_insert_head(&my->free, item);
@@ -642,11 +634,13 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	fr_assert(item != NULL);
 
 	fr_assert(item->my == my);
-	item->retry.config = NULL;
-	item->retry.start = fr_time();
-	item->packet_ctx = packet_ctx;
-	item->buffer = buffer;
-	item->size = size;
+	*item = (fr_bio_retry_entry_t) {
+		.my = my,
+		.retry.start = fr_time(),
+		.packet_ctx = packet_ctx,
+		.buffer = buffer,
+		.size = size,
+	};
 
 	/*
 	 *	Tell the application that we've saved the packet.  The "item" pointer allows the application
