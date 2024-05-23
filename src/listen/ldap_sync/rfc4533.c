@@ -171,6 +171,7 @@ int rfc4533_sync_init(fr_ldap_connection_t *conn, size_t sync_no, proto_ldap_syn
  * @return
  *	- 0 success, a cookie was parsed successfully.
  *	- -1 parse error.
+ *	- -2 same as existing cookie.
  */
 static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber)
 {
@@ -205,7 +206,7 @@ static int sync_new_cookie(bool *new_cookie, sync_state_t *sync, BerElement *ber
 			if (memcmp(sync->cookie, cookie.bv_val, cookie.bv_len) == 0) {
 				WARN("Ignoring new cookie \"%pV\": Identical to old cookie",
 				     fr_box_strvalue_len((char const *)sync->cookie, cookie_len));
-				return 0;
+				return -2;
 			}
 		}
 	}
