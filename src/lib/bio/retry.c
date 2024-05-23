@@ -78,11 +78,11 @@ struct fr_bio_retry_s {
 	fr_event_timer_t const	*ev;
 
 	/*
-	 *	The "first" entry is cached here so that we can detect when it changes.  The insert / delete
+	 *	The first item is cached here so that we can detect when it changes.  The insert / delete
 	 *	code can just do its work without worrying about timers.  And then when the tree manipulation
 	 *	is done, call the fr_bio_retry_timer_reset() function to reset (or not) the timer.
 	 */
-	fr_bio_retry_entry_t	*first;		//!< for timers
+	fr_bio_retry_entry_t	*timer_item;		//!< for timers
 
 	/*
 	 *	Cache a partial write when IO is blocked.  Partial
@@ -104,6 +104,11 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
 static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, ssize_t rcode);
 
+#define fr_bio_retry_timer_clear(_x) do { \
+		talloc_const_free((_x)->ev); \
+		(_x)->timer_item = NULL; \
+	} while (0)
+
 /** Reset the timer after changing the rb tree.
  *
  */
@@ -117,8 +122,7 @@ static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
 	first = fr_rb_first(&my->rb);
 	if (!first) {
 	cancel_timer:
-		talloc_const_free(my->ev);
-		my->first = NULL;
+		fr_bio_retry_timer_clear(my);
 		return 0;
 	}
 
@@ -131,14 +135,14 @@ static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	The timer is already set correctly, we're done.
 	 */
-	if (first == my->first) return 0;
+	if (first == my->timer_item) return 0;
 
 	/*
 	 *	Update the timer.  This should never fail.
 	 */
 	if (fr_event_timer_at(my, my->el, &my->ev, first->retry.next, fr_bio_retry_timer, my) < 0) return -1;
 
-	my->first = first;
+	my->timer_item = first;
 	return 0;
 }
 
@@ -171,14 +175,14 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	/*
 	 *	We're deleting the timer entry.  Go reset the timer.
 	 */
-	if (my->first == item) {
-		my->first = NULL;
+	if (my->timer_item == item) {
+		my->timer_item = NULL;
 		(void) fr_bio_retry_timer_reset(my);
 	}
 
 	item->packet_ctx = NULL;
 
-	fr_assert(my->first != item);
+	fr_assert(my->timer_item != item);
 	fr_bio_retry_list_insert_head(&my->free, item);
 }
 
@@ -316,7 +320,7 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	fr_bio_t *next;
 	fr_bio_retry_entry_t *item = my->partial;
 
-	fr_assert(!my->first);
+	fr_assert(!my->timer_item);
 	fr_assert(!my->ev);
 	fr_assert(my->partial != NULL);
 	fr_assert(my->buffer.start);
@@ -425,8 +429,7 @@ static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *it
 	/*
 	 *	There's no timer, as the write is blocked, so we can't retry.
 	 */
-	talloc_const_free(my->ev);
-	my->first = NULL;
+	fr_bio_retry_timer_clear(my);
 
 	my->bio.write = fr_bio_retry_write_partial;
 
@@ -536,11 +539,11 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	 *	There must also be no partially written entry.  If the IO is blocked, then all timers are
 	 *	suspended.
 	 */
-	fr_assert(my->first != NULL);
+	fr_assert(my->timer_item != NULL);
 	fr_assert(my->partial == NULL);
 
-	item = my->first;
-	my->first = NULL;
+	item = my->timer_item;
+	my->timer_item = NULL;
 
 	/*
 	 *	Retry one item.
@@ -652,7 +655,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	This should never fail.
 	 */
 	if (!fr_rb_insert(&my->rb, item)) {
-		fr_assert(my->first != item);
+		fr_assert(my->timer_item != item);
 
 		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_FATAL_ERROR);
 		fr_bio_retry_list_insert_head(&my->free, item);
@@ -670,7 +673,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	We've just inserted this packet into the timer tree, so it can't be used as the current timer.
 	 *	Once we've inserted it, we update the timer.
 	 */
-	fr_assert(my->first != item);
+	fr_assert(my->timer_item != item);
 
 	/*
 	 *	If we can't set the timer, then release this item.
@@ -872,7 +875,7 @@ static int fr_bio_retry_destructor(fr_bio_retry_t *my)
 	fr_rb_iter_inorder_t iter;
 	fr_bio_retry_entry_t *item;
 
-	talloc_const_free(my->ev);
+	fr_bio_retry_timer_clear(my);
 
 	/*
 	 *	Cancel all outgoing packets.  Don't bother updating the tree or the free list, as all of the
@@ -881,8 +884,6 @@ static int fr_bio_retry_destructor(fr_bio_retry_t *my)
 	while ((item = fr_rb_iter_init_inorder(&iter, &my->rb)) != NULL) {
 		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_CANCELLED);
 	}
-
-	my->first = NULL;
 
 	return 0;
 }
