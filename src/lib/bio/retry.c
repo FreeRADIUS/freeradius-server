@@ -48,7 +48,7 @@ struct fr_bio_retry_entry_s {
 	fr_retry_t	retry;			//!< retry timers and counters
 
 	union {
-		fr_rb_node_t	node;		//!< for the timers
+		fr_rb_node_t	timer_node;		//!< for the timers
 		FR_DLIST_ENTRY(fr_bio_retry_list) entry; //!< for the free list
 	};
 
@@ -67,7 +67,7 @@ struct fr_bio_retry_s {
 	FR_BIO_COMMON;
 
 	fr_event_list_t		*el;
-	fr_rb_tree_t		rb;
+	fr_rb_tree_t		timer_tree;
 
 	fr_bio_retry_info_t	info;
 
@@ -119,7 +119,7 @@ static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	Nothing to do, don't set any timers.
 	 */
-	first = fr_rb_first(&my->rb);
+	first = fr_rb_first(&my->timer_tree);
 	if (!first) {
 	cancel_timer:
 		fr_bio_retry_timer_clear(my);
@@ -155,7 +155,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 *	Remove the item before calling the application "release" function.
 	 */
 	if (my->partial != item) {
-		if (!item->reserved) (void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+		if (!item->reserved) (void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
 	} else {
 		item->cancelled = true;
 	}
@@ -254,12 +254,12 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	 *	We wrote the whole packet.  Remove it from the tree, which is done _without_ doing calls to
 	 *	cmp(), so we it's OK for us to rewrite item->retry.next.
 	 */
-	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
+	(void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
 
 	/*
 	 *	We have more things to do, insert the entry back into the tree, and update the timer.
 	 */
-	(void) fr_rb_insert(&my->rb, item);
+	(void) fr_rb_insert(&my->timer_tree, item);
 
 	return 1;
 }
@@ -279,7 +279,7 @@ static int fr_bio_retry_write_delayed(fr_bio_retry_t *my, fr_time_t now)
 	 */
 	fr_assert(!my->partial);
 
-	while ((item = fr_rb_first(&my->rb)) != NULL) {
+	while ((item = fr_rb_first(&my->timer_tree)) != NULL) {
 		int rcode;
 
 		/*
@@ -349,7 +349,6 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	 */
 	fr_bio_buf_reset(&my->buffer);
 	my->partial = NULL;
-	my->info.write_blocked = false;
 
 	/*
 	 *	The item was cancelled, which means it's no longer in the timer tree.
@@ -362,32 +361,15 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 		fr_bio_retry_list_insert_head(&my->free, item);
 	}
 
+	rcode = fr_bio_retry_write_resume(&my->bio);
+	if (rcode < 0) return rcode;
+
 	/*
-	 *	Walk through the list to see if we need to retry writes and jump ahead with packets.
-	 *
-	 *	Note that the retried packets are sent _before_ the new one.  If the caller doesn't want this
-	 *	behavior, he can cancel the old ones.
-	 *
-	 *	We don't need to prioritize outgoing packets (e.g. Status-Server).  A call to write() will
-	 *	write them now, in advance of any pending retries.
+	 *	Couldn't resume writes.
 	 */
-	item = fr_rb_first(&my->rb);
-	if (item) {
-		fr_time_t now = fr_time();
-
-		/*
-		 *	We're supposed to send the next retry now.  i.e. the socket has been blocked for a
-		 *	long time.
-		 */
-		if (fr_time_cmp(now, item->retry.next) <= 0) {
-			rcode = fr_bio_retry_write_delayed(my, now);
-			if (rcode <= 0) return rcode;
-		}
-
-		/*
-		 *	We now have an active socket but no timers, so we set up the timers.
-		 */
-		(void) fr_bio_retry_timer_reset(my);
+	if (rcode == 0) {
+		my->bio.write = fr_bio_null_write;
+		return 0;
 	}
 
 	/*
@@ -606,7 +588,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	Catch the corner case where the max number of saved packets is exceeded.
 	 */
 	if (fr_bio_retry_list_num_elements(&my->free) == 0) {
-		item = fr_rb_last(&my->rb);
+		item = fr_rb_last(&my->timer_tree);
 
 		fr_assert(item != NULL);
 
@@ -658,7 +640,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	/*
 	 *	This should never fail.
 	 */
-	if (!fr_rb_insert(&my->rb, item)) {
+	if (!fr_rb_insert(&my->timer_tree, item)) {
 		fr_assert(my->timer_item != item);
 
 		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_FATAL_ERROR);
@@ -783,8 +765,8 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	 */
 	item->retry.next = fr_time_add_time_delta(item->retry.start, my->retry_config.mrd);
 
-	(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
-	(void) fr_rb_insert(&my->rb, item);
+	(void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
+	(void) fr_rb_insert(&my->timer_tree, item);
 	(void) fr_bio_retry_timer_reset(my);
 
 	return rcode;
@@ -820,7 +802,7 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	 *	No item passed, try to cancel the oldest one.
 	 */
 	if (!item) {
-		item = fr_rb_last(&my->rb);
+		item = fr_rb_last(&my->timer_tree);
 		if (!item) return 0;
 
 		/*
@@ -885,7 +867,7 @@ static int fr_bio_retry_destructor(fr_bio_retry_t *my)
 	 *	Cancel all outgoing packets.  Don't bother updating the tree or the free list, as all of the
 	 *	entries will be deleted when the memory is freed.
 	 */
-	while ((item = fr_rb_iter_init_inorder(&iter, &my->rb)) != NULL) {
+	while ((item = fr_rb_iter_init_inorder(&iter, &my->timer_tree)) != NULL) {
 		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_CANCELLED);
 	}
 
@@ -934,7 +916,7 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 		fr_bio_retry_list_insert_tail(&my->free, &items[i]);
 	}
 
-	(void) fr_rb_inline_init(&my->rb, fr_bio_retry_entry_t, node, _entry_cmp, NULL);
+	(void) fr_rb_inline_init(&my->timer_tree, fr_bio_retry_entry_t, timer_node, _entry_cmp, NULL);
 
 	my->sent = sent;
 	if (!rewrite) {
@@ -972,7 +954,7 @@ size_t fr_bio_retry_outstanding(fr_bio_t *bio)
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 	size_t num;
 
-	num = fr_rb_num_elements(&my->rb);
+	num = fr_rb_num_elements(&my->timer_tree);
 
 	if (!my->partial) return num;
 
