@@ -680,18 +680,61 @@ int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
 	return rcode;
 }
 
-static void fr_radius_client_bio_write_resume(fr_bio_t *bio)
+static int fr_radius_client_bio_write_blocked(fr_bio_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = bio->uctx;
+	int rcode;
+
+	if (my->common.write_blocked) return 1;
+
+	rcode = fr_bio_retry_write_blocked(my->retry);
+	if (rcode < 0) return rcode;
+
+	if (!my->common.cb.write_blocked) {
+		my->common.write_blocked = true;
+		return 1;
+	}
+
+	rcode = my->common.cb.write_blocked(&my->common);
+	if (rcode <= 0) return rcode;
+
+	my->common.write_blocked = true;
+	return 1;
+}
+
+
+static int fr_radius_client_bio_write_resume(fr_bio_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = bio->uctx;
+	int rcode;
+
+	if (!my->common.write_blocked) return 1;
 
 	/*
-	 *	IO is unblocked, but we don't have any free IDs.  So we can't yet resume writes.
+	 *	Flush the outgoing memory buffers.
 	 */
-	if (my->all_ids_used) return;
+	rcode = fr_bio_mem_write_resume(my->mem);
+	if (rcode <= 0) return rcode;
+
+	rcode = fr_bio_retry_write_resume(my->retry);
+	if (rcode <= 0) return rcode;
+
+	/*
+	 *	IO is unblocked, but we don't have any free IDs.  So
+	 *	we can't yet resume application-layer writes.
+	 */
+	if (my->all_ids_used) return 0;
+
+	if (!my->common.cb.write_resume) {
+		my->common.write_blocked = false;
+		return 1;
+	}
+
+	rcode = my->common.cb.write_resume(&my->common);
+	if (rcode <= 0) return rcode;
 
 	my->common.write_blocked = false;
-
-	my->common.cb.write_resume(&my->common);
+	return 1;
 }
 
 int fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t const *cb)
@@ -705,14 +748,16 @@ int fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t c
 	fr_assert((cb->write_blocked != NULL) == (cb->write_resume != NULL));
 	fr_assert((cb->read_blocked != NULL) == (cb->read_resume != NULL));
 
+	bio_cb.write_blocked = fr_radius_client_bio_write_blocked;
+	bio_cb.write_resume = fr_radius_client_bio_write_resume;
+
 #undef SET
 #define SET(_x) if (cb->_x) bio_cb._x = fr_bio_packet_ ## _x
 
-	SET(write_blocked);
-	if (cb->write_resume) bio_cb.write_resume = fr_radius_client_bio_write_resume;
-
 	SET(read_blocked);
 	SET(read_resume);
+
+	my->common.cb = *cb;
 
 	return fr_bio_cb_set(my->fd, &bio_cb);
 }

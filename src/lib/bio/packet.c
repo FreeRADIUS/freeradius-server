@@ -28,39 +28,38 @@
 /*
  *	Debounce functions to get to the right callback.
  */
-void fr_bio_packet_write_blocked(fr_bio_t *bio)
+int fr_bio_packet_write_blocked(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
 
 	my->write_blocked = true;
 
-	my->cb.write_blocked(my);
+	return my->cb.write_blocked(my);
 }
 
-void fr_bio_packet_write_resume(fr_bio_t *bio)
+int fr_bio_packet_write_resume(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
 
 	my->write_blocked = false;
 
-	my->cb.write_resume(my);
+	return my->cb.write_resume(my);
 }
 
-void fr_bio_packet_read_blocked(fr_bio_t *bio)
+int fr_bio_packet_read_blocked(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
 
 	my->read_blocked = true;
 
-	my->cb.read_blocked(my);
+	return my->cb.read_blocked(my);
 }
 
-void fr_bio_packet_read_resume(fr_bio_t *bio)
+int fr_bio_packet_read_resume(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
 
 	my->read_blocked = false;
 
-	my->cb.read_resume(my);
+	return my->cb.read_resume(my);
 }
-

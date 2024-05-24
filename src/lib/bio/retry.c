@@ -303,7 +303,7 @@ static int fr_bio_retry_write_delayed(fr_bio_retry_t *my, fr_time_t now)
 	 */
 	(void) fr_bio_retry_timer_reset(my);
 
-	return 0;
+	return 1;
 }
 
 
@@ -381,7 +381,7 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 		 */
 		if (fr_time_cmp(now, item->retry.next) <= 0) {
 			rcode = fr_bio_retry_write_delayed(my, now);
-			if (rcode < 0) return rcode;
+			if (rcode <= 0) return rcode;
 		}
 
 		/*
@@ -520,8 +520,12 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 static ssize_t fr_bio_retry_write_fatal(fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void const *buffer, UNUSED size_t size)
 {
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+	ssize_t rcode = my->error;
 
-	return my->error;
+	my->error = 0;
+	my->bio.write = fr_bio_null_write;
+
+	return rcode;
 }
 
 /** Run a timer event.  Usually to write out another packet.
@@ -997,4 +1001,45 @@ fr_bio_retry_entry_t *fr_bio_retry_item_reserve(fr_bio_t *bio)
 	};
 
 	return item;
+}
+
+
+/** Writes are blocked.
+ *
+ *  For now, stop the retry timers.
+ *
+ *  We likely want to change this to a specific "expiry" timer, so that we still expire entries.
+ */
+int fr_bio_retry_write_blocked(fr_bio_t *bio)
+{
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+
+	if (my->info.write_blocked) {
+		fr_assert(!my->ev);
+		return 1;
+	}
+
+	fr_bio_retry_timer_clear(my);
+	my->info.write_blocked = true;
+
+	return 1;
+}
+
+/** Resume writes.
+ *
+ *  On resume, we try to flush any pending packets which should have been sent.
+ */
+int fr_bio_retry_write_resume(fr_bio_t *bio)
+{
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+	int rcode;
+
+	if (!my->info.write_blocked) return 1;
+
+	rcode = fr_bio_retry_write_delayed(my, fr_time());
+	if (rcode <= 0) return rcode;
+
+	(void) fr_bio_retry_timer_reset(my);
+
+	return 1;
 }

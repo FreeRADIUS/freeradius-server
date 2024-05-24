@@ -7,6 +7,8 @@
  *	BIO can notify the application.
  */
 if (rcode > 0) {
+	int error;
+
 	/*
 	 *	We weren't blocked, but we are now.
 	 */
@@ -21,7 +23,11 @@ if (rcode > 0) {
 		 *	Set the flag and run the callback.
 		 */
 		my->info.write_blocked = true;
-		if (my->cb.write_blocked) my->cb.write_blocked((fr_bio_t *) my);
+
+		if (my->cb.write_blocked) {
+			error = my->cb.write_blocked((fr_bio_t *) my);
+			if (error < 0) return error;
+		}
 
 		return rcode;	
 	}
@@ -35,7 +41,10 @@ if (rcode > 0) {
 	/*
 	 *	Call the "resume" function if we transitioned to being unblocked.
 	 */
-	if (!my->info.write_blocked && my->cb.write_resume) my->cb.write_resume((fr_bio_t *) my);
+	if (!my->info.write_blocked && my->cb.write_resume) {
+		error = my->cb.write_resume((fr_bio_t *) my);
+		if (error < 0) return error;
+	}
 
 	return rcode;
 }

@@ -22,7 +22,12 @@ if (rcode > 0) {
 	/*
 	 *	Call the "resume" function when we transition to being unblocked.
 	 */
-	if (my->cb.read_resume) my->cb.read_resume((fr_bio_t *) my);
+	if (my->cb.read_resume) {
+		int error;
+
+		error = my->cb.read_resume((fr_bio_t *) my);
+		if (error < 0) return error;
+	}
 
 	return rcode;
 }

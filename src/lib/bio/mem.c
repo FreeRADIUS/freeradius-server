@@ -832,3 +832,25 @@ int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram)
 
 	return 0;
 }
+
+/** See if we can resume writes to the memory bio.
+ *
+ *  Note that there is no equivalent fr_bio_mem_write_blocked(), as that function wouldn't do anything.
+ *  Perhaps it could swap the write function to fr_bio_mem_write_buffer(), but the fr_bio_mem_write_next()
+ *  function should automatically do that when the write to the next bio only writes part of the data,
+ *  or if it returns fr_bio_error(IO_WOULD_BLOCK)
+ */
+int fr_bio_mem_write_resume(fr_bio_t *bio)
+{
+	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
+	ssize_t rcode;
+
+	if (bio->write != fr_bio_mem_write_buffer) return 1;
+
+	rcode = fr_bio_mem_write_flush(my, SIZE_MAX);
+	if (rcode <= 0) return rcode;
+
+	if (fr_bio_buf_used(&my->write_buffer) > 0) return 0;
+
+	return 1;
+}

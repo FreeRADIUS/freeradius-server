@@ -83,7 +83,7 @@ typedef ssize_t	(*fr_bio_write_t)(fr_bio_t *bio, void *packet_ctx, const void *b
 
 typedef int (*fr_bio_callback_t)(fr_bio_t *bio); /* activate / shutdown callbacks */
 
-typedef void (*fr_bio_signal_t)(fr_bio_t *bio); /* read / write pause / resume */
+typedef int (*fr_bio_signal_t)(fr_bio_t *bio); /* read / write pause / resume */
 
 typedef struct {
 	fr_bio_callback_t	activate;

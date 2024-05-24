@@ -1075,18 +1075,26 @@ static fr_event_update_t const resume_write[] = {
 };
 
 
-static void client_bio_write_pause(fr_bio_packet_t *bio)
+static int client_bio_write_pause(fr_bio_packet_t *bio)
 {
 	fr_radius_client_bio_info_t const *info = fr_radius_client_bio_info(bio);
 
-	if (fr_event_filter_update(client_config.retry_cfg.el, info->fd_info->socket.fd, FR_EVENT_FILTER_IO, pause_write) < 0) fr_assert(0);
+	if (fr_event_filter_update(client_config.retry_cfg.el, info->fd_info->socket.fd, FR_EVENT_FILTER_IO, pause_write) < 0) {
+		return fr_bio_error(GENERIC);
+	}
+
+	return 0;
 }
 
-static void client_bio_write_resume(fr_bio_packet_t *bio)
+static int client_bio_write_resume(fr_bio_packet_t *bio)
 {
 	fr_radius_client_bio_info_t const *info = fr_radius_client_bio_info(bio);
 
-	if (fr_event_filter_update(client_config.retry_cfg.el, info->fd_info->socket.fd, FR_EVENT_FILTER_IO, resume_write) < 0) fr_assert(0);
+	if (fr_event_filter_update(client_config.retry_cfg.el, info->fd_info->socket.fd, FR_EVENT_FILTER_IO, resume_write) < 0) {
+		return fr_bio_error(GENERIC);
+	}
+
+	return 1;
 }
 
 

@@ -63,7 +63,7 @@ typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, void *request_ctx, fr
  */
 typedef void (*fr_bio_packet_signal_t)(fr_bio_packet_t *bio, fr_packet_t *packet);
 
-typedef void (*fr_bio_packet_io_t)(fr_bio_packet_t *bio);
+typedef int (*fr_bio_packet_io_t)(fr_bio_packet_t *bio);
 
 typedef struct {
 	fr_bio_packet_io_t	read_blocked;
@@ -173,7 +173,7 @@ static inline CC_HINT(nonnull) int fr_bio_packet_write_flush(fr_bio_packet_t *my
 	return slen;
 }
 
-void	fr_bio_packet_write_blocked(fr_bio_t *bio);
-void	fr_bio_packet_write_resume(fr_bio_t *bio);
-void	fr_bio_packet_read_blocked(fr_bio_t *bio);
-void	fr_bio_packet_read_resume(fr_bio_t *bio);
+int	fr_bio_packet_write_blocked(fr_bio_t *bio);
+int	fr_bio_packet_write_resume(fr_bio_t *bio);
+int	fr_bio_packet_read_blocked(fr_bio_t *bio);
+int	fr_bio_packet_read_resume(fr_bio_t *bio);

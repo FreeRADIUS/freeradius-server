@@ -690,9 +690,14 @@ retry:
                  *      to call fr_bio_fd_connect() before calling write()
                  */
         case EINPROGRESS:
-		if (!my->info.write_blocked && my->cb.write_blocked) my->cb.write_blocked((fr_bio_t *) my);
+		if (!my->info.write_blocked) {
+			if (my->cb.write_blocked) {
+				rcode = my->cb.write_blocked((fr_bio_t *) my);
+				if (rcode < 0) return rcode;
+			}
 
-		my->info.write_blocked = true;
+			my->info.write_blocked = true;
+		}
 
 		return fr_bio_error(IO_WOULD_BLOCK);
 

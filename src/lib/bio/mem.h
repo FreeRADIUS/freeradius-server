@@ -60,3 +60,5 @@ uint8_t const	*fr_bio_mem_read_peek(fr_bio_t *bio, size_t *size) CC_HINT(nonnull
 void		fr_bio_mem_read_discard(fr_bio_t *bio, size_t size) CC_HINT(nonnull);
 
 int		fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram) CC_HINT(nonnull);
+
+int		fr_bio_mem_write_resume(fr_bio_t *bio) CC_HINT(nonnull);
