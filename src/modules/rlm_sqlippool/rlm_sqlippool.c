@@ -635,7 +635,8 @@ static const call_env_method_t sqlippool_alloc_method_env = {
 					   CALL_ENV_FLAG_ATTRIBUTE | CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_NULLABLE,
 					   ippool_alloc_call_env_t, allocated_address, allocated_address_attr) },
 		{ FR_CALL_ENV_OFFSET("alloc_begin", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
-				     ippool_alloc_call_env_t, begin), QUERY_ESCAPE },
+				     ippool_alloc_call_env_t, begin), QUERY_ESCAPE,
+				     .pair.dflt = "START TRANSACTION", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("alloc_existing", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY,
 						ippool_alloc_call_env_t, existing), QUERY_ESCAPE },
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("alloc_requested", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY,
@@ -647,7 +648,8 @@ static const call_env_method_t sqlippool_alloc_method_env = {
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("pool_check", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY,
 						ippool_alloc_call_env_t, pool_check), QUERY_ESCAPE },
 		{ FR_CALL_ENV_OFFSET("alloc_commit", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_NULLABLE,
-				     ippool_alloc_call_env_t, commit), QUERY_ESCAPE },
+				     ippool_alloc_call_env_t, commit), QUERY_ESCAPE,
+				     .pair.dflt = "COMMIT", .pair.dflt_quote = T_SINGLE_QUOTED_STRING },
 		CALL_ENV_TERMINATOR
 	}
 };
