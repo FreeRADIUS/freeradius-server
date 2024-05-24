@@ -4005,6 +4005,8 @@ do { \
 	XLAT_REGISTER_ARGS("trigger", trigger_xlat, FR_TYPE_STRING, trigger_xlat_args);
 	XLAT_REGISTER_ARGS("base64.encode", xlat_func_base64_encode, FR_TYPE_STRING, xlat_func_base64_encode_arg);
 	XLAT_REGISTER_ARGS("base64.decode", xlat_func_base64_decode, FR_TYPE_OCTETS, xlat_func_base64_decode_arg);
+	XLAT_REGISTER_ARGS("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
+	XLAT_REGISTER_ARGS("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "untaint", xlat_func_untaint, FR_TYPE_VOID)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL);
@@ -4015,60 +4017,49 @@ do { \
 	/*
 	 *	All of these functions are pure.
 	 */
-#define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
+#define XLAT_REGISTER_PURE(_xlat, _func, _return_type, _arg) \
 do { \
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
-	xlat_func_mono_set(xlat, _arg); \
+	xlat_func_args_set(xlat, _arg); \
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE | XLAT_FUNC_FLAG_INTERNAL); \
 } while (0)
 
-	XLAT_REGISTER_MONO("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
-	XLAT_REGISTER_MONO("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
-	XLAT_REGISTER_MONO("map", xlat_func_map, FR_TYPE_INT8, xlat_func_map_arg);
-	XLAT_REGISTER_MONO("md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
-	XLAT_REGISTER_MONO("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
+	XLAT_REGISTER_PURE("bin", xlat_func_bin, FR_TYPE_OCTETS, xlat_func_bin_arg);
+	XLAT_REGISTER_PURE("hex", xlat_func_hex, FR_TYPE_STRING, xlat_func_hex_arg);
+	XLAT_REGISTER_PURE("map", xlat_func_map, FR_TYPE_INT8, xlat_func_map_arg);
+	XLAT_REGISTER_PURE("md4", xlat_func_md4, FR_TYPE_OCTETS, xlat_func_md4_arg);
+	XLAT_REGISTER_PURE("md5", xlat_func_md5, FR_TYPE_OCTETS, xlat_func_md5_arg);
 #if defined(HAVE_REGEX_PCRE) || defined(HAVE_REGEX_PCRE2)
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 #endif
-	XLAT_REGISTER_MONO("sha1", xlat_func_sha1, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha1", xlat_func_sha1, FR_TYPE_OCTETS, xlat_func_sha_arg);
 
 #ifdef HAVE_OPENSSL_EVP_H
-	XLAT_REGISTER_MONO("sha2_224", xlat_func_sha2_224, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_MONO("sha2_256", xlat_func_sha2_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_MONO("sha2_384", xlat_func_sha2_384, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_MONO("sha2_512", xlat_func_sha2_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha2_224", xlat_func_sha2_224, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha2_256", xlat_func_sha2_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha2_384", xlat_func_sha2_384, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha2_512", xlat_func_sha2_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
 
-	XLAT_REGISTER_MONO("blake2s_256", xlat_func_blake2s_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_MONO("blake2b_512", xlat_func_blake2b_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("blake2s_256", xlat_func_blake2s_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("blake2b_512", xlat_func_blake2b_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
-	XLAT_REGISTER_MONO("sha3_224", xlat_func_sha3_224, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_MONO("sha3_256", xlat_func_sha3_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_MONO("sha3_384", xlat_func_sha3_384, FR_TYPE_OCTETS, xlat_func_sha_arg);
-	XLAT_REGISTER_MONO("sha3_512", xlat_func_sha3_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha3_224", xlat_func_sha3_224, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha3_256", xlat_func_sha3_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha3_384", xlat_func_sha3_384, FR_TYPE_OCTETS, xlat_func_sha_arg);
+	XLAT_REGISTER_PURE("sha3_512", xlat_func_sha3_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
 #  endif
 #endif
 
-	XLAT_REGISTER_MONO("string", xlat_func_string, FR_TYPE_STRING, xlat_func_string_arg);
-	XLAT_REGISTER_MONO("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
-	XLAT_REGISTER_MONO("tolower", xlat_func_tolower, FR_TYPE_STRING, xlat_change_case_arg);
-	XLAT_REGISTER_MONO("toupper", xlat_func_toupper, FR_TYPE_STRING, xlat_change_case_arg);
-	XLAT_REGISTER_MONO("urlquote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);
-	XLAT_REGISTER_MONO("urlunquote", xlat_func_urlunquote, FR_TYPE_STRING, xlat_func_urlunquote_arg);
-	XLAT_REGISTER_MONO("eval", xlat_func_eval, FR_TYPE_VOID, xlat_func_eval_arg);
+	XLAT_REGISTER_PURE("string", xlat_func_string, FR_TYPE_STRING, xlat_func_string_arg);
+	XLAT_REGISTER_PURE("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
+	XLAT_REGISTER_PURE("tolower", xlat_func_tolower, FR_TYPE_STRING, xlat_change_case_arg);
+	XLAT_REGISTER_PURE("toupper", xlat_func_toupper, FR_TYPE_STRING, xlat_change_case_arg);
+	XLAT_REGISTER_PURE("urlquote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);
+	XLAT_REGISTER_PURE("urlunquote", xlat_func_urlunquote, FR_TYPE_STRING, xlat_func_urlunquote_arg);
+	XLAT_REGISTER_PURE("eval", xlat_func_eval, FR_TYPE_VOID, xlat_func_eval_arg);
 	xlat_func_instantiate_set(xlat, xlat_eval_instantiate, xlat_eval_inst_t, NULL, NULL);
-
-#undef XLAT_REGISTER_MONO
-#define XLAT_REGISTER_MONO(_xlat, _func, _return_type, _arg) \
-do { \
-	if (unlikely((xlat = xlat_func_register(xlat_ctx, _xlat, _func, _return_type)) == NULL)) return -1; \
-	xlat_func_mono_set(xlat, _arg); \
-	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL); \
-} while (0)
-
-	XLAT_REGISTER_MONO("rand", xlat_func_rand, FR_TYPE_UINT64, xlat_func_rand_arg);
-	XLAT_REGISTER_MONO("randstr", xlat_func_randstr, FR_TYPE_STRING, xlat_func_randstr_arg);
 
 	return xlat_register_expressions();
 }

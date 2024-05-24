@@ -1,26 +1,7 @@
 string result_string
 uint32 result_integer
 
-&result_string := "%rand('-1')"
-
-#
-#  Negative limit should have failed assignment
-#
-if !(&result_string == "") {
-	test_fail
-}
-
-&result_string := "%rand('hello world')"
-
-#
-#  Invalid limit should have failed assignment
-#
-if !(&result_string == "") {
-	test_fail
-}
-
 &result_integer := %rand('123')
-
 if (!&result_integer) {
 	test_fail
 }

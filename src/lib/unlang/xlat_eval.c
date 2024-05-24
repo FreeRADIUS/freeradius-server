@@ -352,7 +352,6 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 	/*
 	 *	xlat takes all input as a single vb.
 	 */
-	case XLAT_INPUT_MONO:
 	case XLAT_INPUT_ARGS:
 		vb = fr_value_box_list_head(list);
 		while (arg_p->type != FR_TYPE_NULL) {

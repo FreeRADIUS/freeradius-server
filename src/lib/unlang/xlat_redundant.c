@@ -232,37 +232,6 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	first = talloc_get_type_abort(fr_dlist_head(&xr->funcs), xlat_redundant_func_t);
 
 	/*
-	 *	Check the calling style matches the first
-	 *	function.
-	 *
-	 *	We do this here as the redundant xlat
-	 *	itself can't have an input type or
-	 *	defined arguments;
-	 */
-	switch (xctx->ex->call.input_type) {
-	case XLAT_INPUT_UNPROCESSED:
-		break;
-
-	case XLAT_INPUT_MONO:
-		if (first->func->input_type == XLAT_INPUT_ARGS) {
-			PERROR("Expansion function \"%s\" takes defined arguments and should "
-			       "be called using %%(func:args) syntax",
-				xctx->ex->call.func->name);
-			return -1;
-
-		}
-		break;
-
-	case XLAT_INPUT_ARGS:
-		if (first->func->input_type == XLAT_INPUT_MONO) {
-			PERROR("Expansion function \"%s\" should be called using %%{func:arg} syntax",
-			       xctx->ex->call.func->name);
-			return -1;
-		}
-		break;
-	}
-
-	/*
 	 *	For each function, create the appropriate xlat
 	 *	node, and duplicate the child arguments.
 	 */
@@ -295,14 +264,6 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 
 		switch (xrf->func->input_type) {
 		case XLAT_INPUT_UNPROCESSED:
-			break;
-
-		case XLAT_INPUT_MONO:
-			if (xlat_validate_function_mono(node) < 0) {
-				PERROR("Invalid arguments for redundant expansion function \"%s\"",
-				       xrf->func->name);
-				goto error;
-			}
 			break;
 
 		case XLAT_INPUT_ARGS:

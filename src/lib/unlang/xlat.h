@@ -44,7 +44,6 @@ typedef enum {
 
 typedef enum {
 	XLAT_INPUT_UNPROCESSED,			//!< No input argument processing
-	XLAT_INPUT_MONO,			//!< Ingests a single argument
 	XLAT_INPUT_ARGS				//!< Ingests a number of arguments
 } xlat_input_type_t;
 
@@ -409,9 +408,7 @@ static inline fr_slen_t xlat_aprint(TALLOC_CTX *ctx, char **out, xlat_exp_head_t
 
 bool		xlat_is_truthy(xlat_exp_head_t const *head, bool *out);
 
-int		xlat_validate_function_mono(xlat_exp_t *node);
-
-int		xlat_validate_function_args(xlat_exp_t *node);
+fr_slen_t	xlat_validate_function_args(xlat_exp_t *node);
 
 void		xlat_debug(xlat_exp_t const *node);
 

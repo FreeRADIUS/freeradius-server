@@ -387,24 +387,6 @@ int xlat_func_args_set(xlat_t *x, xlat_arg_parser_t const args[])
 	return 0;
 }
 
-/** Register the argument of an xlat
- *
- * For xlats that take all their input as a single argument
- *
- * @param[in,out] x		to have it's arguments registered
- * @param[in] args		to be registered
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-int xlat_func_mono_set(xlat_t *x, xlat_arg_parser_t const args[])
-{
-	if (xlat_func_args_set(x, args) < 0) return -1;
-	x->input_type = XLAT_INPUT_MONO;
-
-	return 0;
-}
-
 /** Register call environment of an xlat
  *
  * @param[in,out] x		to have it's module method env registered.

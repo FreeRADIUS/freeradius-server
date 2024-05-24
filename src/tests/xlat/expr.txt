@@ -140,7 +140,7 @@ match 0x9f9d51bc70ef21ca5c14f307980a29d8
 #  And if we take it from the &User-Name ref, we get the same thing
 #  as hashing the bare string.
 #
-xlat_expr (octets) %md5(&User-Name)
+xlat_expr (octets) %md5(%{User-Name})
 match 0x9f9d51bc70ef21ca5c14f307980a29d8
 
 xlat_expr &Service-Type

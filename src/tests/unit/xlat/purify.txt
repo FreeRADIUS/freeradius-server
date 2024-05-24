@@ -249,8 +249,8 @@ match 0x5e153571422b69cf5c5f7ce5f03985b5
 #
 #  This is a reference to the contents of &User-Name
 #
-xlat_purify %md5(&User-Name)
-match %md5(&User-Name)
+xlat_purify %md5(%{User-Name})
+match %md5(%{User-Name})
 
 
 xlat_purify %md5('foo')

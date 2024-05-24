@@ -165,25 +165,13 @@ static inline int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in)
 }
 #endif
 
-int xlat_validate_function_mono(xlat_exp_t *node)
-{
-	fr_assert(node->type == XLAT_FUNC);
-
-	if (node->call.func->args && node->call.func->args->required && !xlat_exp_head(node->call.args)) {
-		fr_strerror_const("Missing required input");
-		return -1;
-	}
-
-	return 0;
-}
-
 bool const xlat_func_chars[UINT8_MAX + 1] = {
 	SBUFF_CHAR_CLASS_ALPHA_NUM,
 	['.'] = true, ['-'] = true, ['_'] = true,
 };
 
 
-static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg)
+static fr_slen_t xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t *arg)
 {
 	ssize_t slen;
 	xlat_exp_t *node;
@@ -228,7 +216,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 				     node->data.vb_strvalue, node->data.vb_length,
 				     NULL, /* no parse rules */
 				     node->data.tainted);
-	if (slen <= 0) return -1;
+	if (slen <= 0) return slen;
 
 	/*
 	 *	Replace the string value with the parsed data type.
@@ -239,7 +227,7 @@ static int xlat_validate_function_arg(xlat_arg_parser_t const *arg_p, xlat_exp_t
 	return 0;
 }
 
-int xlat_validate_function_args(xlat_exp_t *node)
+fr_slen_t xlat_validate_function_args(xlat_exp_t *node)
 {
 	xlat_arg_parser_t const *arg_p;
 	xlat_exp_t		*arg = xlat_exp_head(node->call.args);
@@ -248,6 +236,8 @@ int xlat_validate_function_args(xlat_exp_t *node)
 	fr_assert(node->type == XLAT_FUNC);
 
 	for (arg_p = node->call.func->args, i = 0; arg_p->type != FR_TYPE_NULL; arg_p++) {
+		fr_slen_t slen;
+
 		if (!arg_p->required) break;
 
 		if (!arg) {
@@ -262,9 +252,10 @@ int xlat_validate_function_args(xlat_exp_t *node)
 		 */
 		fr_assert(arg->type == XLAT_GROUP);
 
-		if (xlat_validate_function_arg(arg_p, arg) < 0) {
+		slen = xlat_validate_function_arg(arg_p, arg);
+		if (slen < 0) {
 			fr_strerror_printf("Failed parsing argument %d as type '%s'", i, fr_type_to_str(arg_p->type));
-			return -1;
+			return slen;
 		}
 
 		arg = xlat_exp_next(node->call.args, arg);
@@ -397,7 +388,7 @@ static int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tm
 	 *	function's arguments.
 	 */
 	if (xlat_tokenize_argv(node, &node->call.args, in, func,
-			       &xlat_function_arg_rules, t_rules, true, (node->call.input_type == XLAT_INPUT_MONO)) < 0) {
+			       &xlat_function_arg_rules, t_rules, true, false) < 0) {
 error:
 		talloc_free(node);
 		return -1;
@@ -416,11 +407,6 @@ error:
 	if (node->type == XLAT_FUNC) {
 		switch (node->call.input_type) {
 		case XLAT_INPUT_UNPROCESSED:
-			break;
-
-		case XLAT_INPUT_MONO:
-			if (xlat_validate_function_mono(node) < 0) goto error;
-			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
 			break;
 
 		case XLAT_INPUT_ARGS:
@@ -1662,15 +1648,6 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 			 */
 			switch (node->call.func->input_type) {
 			case XLAT_INPUT_UNPROCESSED:
-				break;
-
-			case XLAT_INPUT_MONO:
-				if (node->call.input_type != XLAT_INPUT_MONO) {
-					fr_strerror_const("Function should be called using %{func:arg} syntax");
-					return -1;
-
-				}
-				if (xlat_validate_function_mono(node) < 0) return -1;
 				break;
 
 			case XLAT_INPUT_ARGS:
