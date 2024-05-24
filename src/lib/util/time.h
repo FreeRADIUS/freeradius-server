@@ -266,6 +266,8 @@ static inline fr_time_delta_t fr_time_delta_sub(fr_time_delta_t a, fr_time_delta
 }
 static inline fr_time_delta_t fr_time_delta_div(fr_time_delta_t a, fr_time_delta_t b)
 {
+	if (fr_time_delta_unwrap(b) == 0) return fr_time_delta_wrap(0);
+
 	return fr_time_delta_wrap(fr_time_delta_unwrap(a) / fr_time_delta_unwrap(b));
 }
 static inline fr_time_delta_t fr_time_delta_mul(fr_time_delta_t a, fr_time_delta_t b)
