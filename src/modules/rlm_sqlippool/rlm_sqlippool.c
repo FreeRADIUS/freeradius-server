@@ -71,11 +71,20 @@ typedef struct {
 /** Current step in IP allocation state machine
  */
 typedef enum {
+	IPPOOL_ALLOC_BEGIN_RUN,			//!< Run the "begin" query
 	IPPOOL_ALLOC_EXISTING,			//!< Expanding the "existing" query
+	IPPOOL_ALLOC_EXISTING_RUN,		//!< Run the "existing" query
 	IPPOOL_ALLOC_REQUESTED,			//!< Expanding the "requested" query
+	IPPOOL_ALLOC_REQUESTED_RUN,		//!< Run the "requested" query
 	IPPOOL_ALLOC_FIND,			//!< Expanding the "find" query
+	IPPOOL_ALLOC_FIND_RUN,			//!< Run the "find" query
+	IPPOOL_ALLOC_NO_ADDRESS,		//!< No address was found
 	IPPOOL_ALLOC_POOL_CHECK,		//!< Expanding the "pool_check" query
-	IPPOOL_ALLOC_UPDATE			//!< Expanding the "update" query
+	IPPOOL_ALLOC_POOL_CHECK_RUN,		//!< Run the "pool_check" query
+	IPPOOL_ALLOC_MAKE_PAIR,			//!< Make the pair.
+	IPPOOL_ALLOC_UPDATE,			//!< Expanding the "update" query
+	IPPOOL_ALLOC_UPDATE_RUN,		//!< Run the "update" query
+	IPPOOL_ALLOC_COMMIT_RUN,		//!< RUn the "commit" query
 } ippool_alloc_status_t;
 
 /**  Resume context for IP allocation
@@ -88,6 +97,9 @@ typedef struct {
 	fr_trunk_t		*trunk;		//!< Trunk connection for queries.
 	rlm_sql_t const		*sql;		//!< SQL module instance.
 	fr_value_box_list_t	values;		//!< Where to put the expanded queries ready for execution.
+	fr_value_box_t		*query;		//!< Current query being run.
+	fr_sql_query_t		*query_ctx;	//!< Query context for allocation queries.
+	rlm_rcode_t		rcode;		//!< Result code to return after running "commit".
 } ippool_alloc_ctx_t;
 
 static conf_parser_t module_config[] = {
@@ -184,33 +196,20 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle, fr_tr
 
 
 /*
- * Query the database expecting a single result row
+ *	Process the results of an SQL query expected to return a single row
  */
-static int CC_HINT(nonnull (1, 3, 4, 6)) sqlippool_query1(char *out, int outlen, char const *query,
-							  rlm_sql_handle_t **handle, fr_trunk_t *trunk, rlm_sql_t const *sql,
-							  request_t *request)
+static int sqlippool_result_process(char *out, int outlen, fr_sql_query_t *query_ctx)
 {
-	int		rlen, retval;
-	rlm_sql_row_t	row;
-	fr_sql_query_t	*query_ctx;
 	rlm_rcode_t	p_result;
+	int		rlen, retval = 0;
+	rlm_sql_row_t	row;
+	request_t	*request = query_ctx->request;
 
 	*out = '\0';
 
-	MEM(query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, request, *handle, trunk, query, SQL_QUERY_SELECT));
-	sql->select(&p_result, NULL, request, query_ctx);
-	retval = query_ctx->rcode;
-	*handle = query_ctx->handle;
-
-	if ((retval != 0) || !*handle) {
-		REDEBUG("database query error on '%s'", query);
-		talloc_free(query_ctx);
-		return 0;
-	}
-
-	if ((sql->fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
-	    (query_ctx->rcode < 0)) {
-		REDEBUG("Failed fetching query result");
+	query_ctx->inst->fetch_row(&p_result, NULL, query_ctx->request, query_ctx);
+	if (query_ctx->rcode < 0) {
+		REDEBUG("Failed fetching query_result");
 		goto finish;
 	}
 
@@ -235,9 +234,7 @@ static int CC_HINT(nonnull (1, 3, 4, 6)) sqlippool_query1(char *out, int outlen,
 	retval = rlen;
 
 finish:
-	*handle = query_ctx->handle;
-	talloc_free(query_ctx);
-
+	query_ctx->inst->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
 	return retval;
 }
 
@@ -287,6 +284,15 @@ static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 }
 
 #define REPEAT_MOD_ALLOC_RESUME if (unlang_function_repeat_set(request, mod_alloc_resume) < 0) RETURN_MODULE_FAIL
+#define SUBMIT_QUERY(_query_str, _new_status, _type, _function) do { \
+	alloc_ctx->status = _new_status; \
+	REPEAT_MOD_ALLOC_RESUME; \
+	query_ctx->query_str = _query_str; \
+	query_ctx->type = _type; \
+	query_ctx->status = SQL_QUERY_PREPARED; \
+	alloc_ctx->query = query; \
+	return unlang_function_push(request, sql->_function, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx); \
+} while (0)
 
 /** Resume function called after each IP allocation query is expanded
  *
@@ -306,27 +312,61 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 	ippool_alloc_call_env_t	*env = alloc_ctx->env;
 	int			allocation_len = 0;
 	char			allocation[FR_MAX_STRING_LEN];
-	rlm_sql_handle_t	*handle = alloc_ctx->handle;
 	rlm_sql_t const		*sql = alloc_ctx->sql;
 	fr_value_box_t		*query = fr_value_box_list_pop_head(&alloc_ctx->values);
+	fr_sql_query_t		*query_ctx = alloc_ctx->query_ctx;
+
+	/*
+	 *	If a previous async call returned one of the "failure" results just return.
+	 */
+	switch (*p_result) {
+	case RLM_MODULE_USER_SECTION_REJECT:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	default:
+		break;
+	}
 
 	switch (alloc_ctx->status) {
-	case IPPOOL_ALLOC_EXISTING:
-		if (query) {
-			allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
-							  alloc_ctx->trunk, alloc_ctx->sql, request);
-			talloc_free(query);
-			if (!handle) {
+	case IPPOOL_ALLOC_BEGIN_RUN:
+		if ((env->begin.type == FR_TYPE_STRING) &&
+		    env->begin.vb_length) sql->driver->sql_finish_query(query_ctx, &query_ctx->inst->config);
+
+		/*
+		 *	The first call of this function will always land here, whether or not a "begin" query is actually run.
+		 *
+		 *	Having (possibly) run the "begin" query, establish which tmpl needs expanding
+		 *
+		 *	If there is a query for finding the existing IP expand that first
+		 */
+		if (env->existing) {
+			alloc_ctx->status = IPPOOL_ALLOC_EXISTING;
+			REPEAT_MOD_ALLOC_RESUME;
+			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->existing, NULL) < 0) {
 			error:
 				talloc_free(alloc_ctx);
 				RETURN_MODULE_FAIL;
 			}
-			if (allocation_len > 0) goto make_pair;
+			return UNLANG_ACTION_PUSHED_CHILD;
 		}
+		goto expand_requested;
+
+	case IPPOOL_ALLOC_EXISTING:
+		if (query) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_EXISTING_RUN, SQL_QUERY_SELECT, select);
+		goto expand_requested;
+
+	case IPPOOL_ALLOC_EXISTING_RUN:
+		TALLOC_FREE(alloc_ctx->query);
+		if (query_ctx->rcode != RLM_SQL_OK) goto error;
+
+		allocation_len = sqlippool_result_process(allocation, sizeof(allocation), query_ctx);
+		sql->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
+		if (allocation_len > 0) goto make_pair;
 
 		/*
 		 *	If there's a requested address and associated query, expand that
 		 */
+	expand_requested:
 		if (env->requested && (env->requested_address.type != FR_TYPE_NULL)) {
 			alloc_ctx->status = IPPOOL_ALLOC_REQUESTED;
 			REPEAT_MOD_ALLOC_RESUME;
@@ -336,13 +376,17 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		goto expand_find;
 
 	case IPPOOL_ALLOC_REQUESTED:
-		if (query) {
-			allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
-							  alloc_ctx->trunk, alloc_ctx->sql, request);
-			talloc_free(query);
-			if (!handle) goto error;
-			if (allocation_len > 0) goto make_pair;
-		}
+		if (query) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_REQUESTED_RUN, SQL_QUERY_SELECT, select);
+
+		goto expand_find;
+
+	case IPPOOL_ALLOC_REQUESTED_RUN:
+		TALLOC_FREE(alloc_ctx->query);
+		if (query_ctx->rcode != RLM_SQL_OK) goto error;
+
+		allocation_len = sqlippool_result_process(allocation, sizeof(allocation), query_ctx);
+		sql->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
+		if (allocation_len > 0) goto make_pair;
 
 	expand_find:
 		/*
@@ -354,34 +398,45 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		return UNLANG_ACTION_PUSHED_CHILD;
 
 	case IPPOOL_ALLOC_FIND:
+		SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_FIND_RUN, SQL_QUERY_SELECT, select);
+
+	case IPPOOL_ALLOC_FIND_RUN:
+		TALLOC_FREE(alloc_ctx->query);
+		if (query_ctx->rcode != RLM_SQL_OK) goto error;
+
+		allocation_len = sqlippool_result_process(allocation, sizeof(allocation), query_ctx);
+		sql->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
+
+		if (allocation_len > 0) goto make_pair;
+
+		/*
+		 *  Nothing found
+		 */
+		if ((env->commit.type == FR_TYPE_STRING) &&
+		    env->commit.vb_length) SUBMIT_QUERY(env->commit.vb_strvalue, IPPOOL_ALLOC_NO_ADDRESS, SQL_QUERY_OTHER, query);
+		FALL_THROUGH;
+
+	case IPPOOL_ALLOC_NO_ADDRESS:
+		if ((env->commit.type == FR_TYPE_STRING) &&
+		    env->commit.vb_length) sql->driver->sql_finish_query(query_ctx, &query_ctx->inst->config);
+
+		/*
+		 *  Should we perform pool-check?
+		 */
+		if (env->pool_check) {
+			alloc_ctx->status = IPPOOL_ALLOC_POOL_CHECK;
+			REPEAT_MOD_ALLOC_RESUME;
+			if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->pool_check, NULL) < 0) goto error;
+			return UNLANG_ACTION_PUSHED_CHILD;
+		}
+	no_address:
+		RWDEBUG("IP address could not be allocated");
+		RETURN_MODULE_NOOP;
+
+	case IPPOOL_ALLOC_MAKE_PAIR:
 	{
 		tmpl_t	ip_rhs;
 		map_t	ip_map;
-
-		allocation_len = sqlippool_query1(allocation, sizeof(allocation), query->vb_strvalue, &handle,
-						  alloc_ctx->trunk, alloc_ctx->sql, request);
-		talloc_free(query);
-		if (!handle) goto error;
-
-		if (allocation_len == 0) {
-			/*
-			 *  Nothing found
-			 */
-			DO_PART(commit, alloc_ctx->trunk);
-
-			/*
-			 *  Should we perform pool-check?
-			 */
-			if (env->pool_check) {
-				alloc_ctx->status = IPPOOL_ALLOC_POOL_CHECK;
-				REPEAT_MOD_ALLOC_RESUME;
-				if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->pool_check, NULL) < 0) goto error;
-				return UNLANG_ACTION_PUSHED_CHILD;
-			}
-		no_address:
-			RWDEBUG("IP address could not be allocated");
-			RETURN_MODULE_NOOP;
-		}
 
 	make_pair:
 		/*
@@ -397,13 +452,14 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		tmpl_init_shallow(&ip_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0, NULL);
 		fr_value_box_bstrndup_shallow(&ip_map.rhs->data.literal, NULL, allocation, allocation_len, false);
 		if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
-			DO_PART(commit, alloc_ctx->trunk);
+			alloc_ctx->rcode = RLM_MODULE_FAIL;
 
 			REDEBUG("Invalid IP address [%s] returned from database query.", allocation);
-			goto error;
+			goto finish;
 		}
 
 		RDEBUG2("Allocated IP %s", allocation);
+		alloc_ctx->rcode = RLM_MODULE_UPDATED;
 
 		/*
 		 *	If we have an update query expand it
@@ -419,52 +475,62 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 	}
 
 	case IPPOOL_ALLOC_POOL_CHECK:
-		if (query) {
-			/*
-			 *Ok, so the allocate-find query found nothing ...
-			 *Let's check if the pool exists at all
-			 */
-			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-							  query->vb_strvalue, &handle, alloc_ctx->trunk, sql, request);
-			talloc_free(query);
-			if (!handle) RETURN_MODULE_FAIL;
-
-			if (allocation_len) {
-				/*
-				 *	Pool exists after all... So,
-				 *	the failure to allocate the IP
-				 *	address was most likely due to
-				 *	the depletion of the pool. In
-				 *	that case, we should return
-				 *	NOTFOUND
-				 */
-				RWDEBUG("Pool \"%pV\" appears to be full", &env->pool_name);
-				RETURN_MODULE_NOTFOUND;
-			}
-
-			/*
-			 *	Pool doesn't exist in the table. It
-			 *	may be handled by some other instance of
-			 *	sqlippool, so we should just ignore this
-			 *	allocation failure and return NOOP
-			 */
-			RWDEBUG("IP address could not be allocated as no pool exists with the name \"%pV\"",
-				&env->pool_name);
-			RETURN_MODULE_NOOP;
-		}
+		/*
+		 *	Ok, so the allocate-find query found nothing ...
+		 *	Let's check if the pool exists at all
+		 */
+		if (query) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_POOL_CHECK_RUN, SQL_QUERY_SELECT, select);
 		goto no_address;
 
-	case IPPOOL_ALLOC_UPDATE:
-		if (query) {
-			if (sqlippool_command(query->vb_strvalue, &handle, alloc_ctx->trunk, sql, request) < 0) goto error;
-			talloc_free(query);
+	case IPPOOL_ALLOC_POOL_CHECK_RUN:
+		TALLOC_FREE(alloc_ctx->query);
+		allocation_len = sqlippool_result_process(allocation, sizeof(allocation), query_ctx);
+		sql->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
+
+		if (allocation_len) {
+			/*
+			 *	Pool exists after all... So,
+			 *	the failure to allocate the IP
+			 *	address was most likely due to
+			 *	the depletion of the pool. In
+			 *	that case, we should return
+			 *	NOTFOUND
+			 */
+			RWDEBUG("Pool \"%pV\" appears to be full", &env->pool_name);
+			RETURN_MODULE_NOTFOUND;
 		}
 
-	finish:
-		DO_PART(commit, alloc_ctx->trunk);
+		/*
+		 *	Pool doesn't exist in the table. It
+		 *	may be handled by some other instance of
+		 *	sqlippool, so we should just ignore this
+		 *	allocation failure and return NOOP
+		 */
+		RWDEBUG("IP address could not be allocated as no pool exists with the name \"%pV\"",
+			&env->pool_name);
+		RETURN_MODULE_NOOP;
 
+	case IPPOOL_ALLOC_UPDATE:
+		if (query) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_UPDATE_RUN, SQL_QUERY_OTHER, query);
+
+		goto finish;
+
+	case IPPOOL_ALLOC_UPDATE_RUN:
+		TALLOC_FREE(alloc_ctx->query);
+		sql->driver->sql_finish_query(query_ctx, &query_ctx->inst->config);
+
+	finish:
+		if ((env->commit.type == FR_TYPE_STRING) &&
+		    env->commit.vb_length) SUBMIT_QUERY(env->commit.vb_strvalue, IPPOOL_ALLOC_COMMIT_RUN, SQL_QUERY_OTHER, query);
+
+		FALL_THROUGH;
+
+	case IPPOOL_ALLOC_COMMIT_RUN:
+	{
+		rlm_rcode_t	rcode = alloc_ctx->rcode;
 		talloc_free(alloc_ctx);
-		RETURN_MODULE_UPDATED;
+		RETURN_MODULE_RCODE(rcode);
+	}
 	}
 
 	/*
@@ -510,8 +576,6 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	if (!sql->sql_escape_arg && !thread->sql_escape_arg && handle)
 		request_data_add(request, (void *)sql_escape_uctx_alloc, 0, handle, false, false, false);
 
-	DO_PART(begin, thread->trunk);
-
 	MEM(alloc_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ippool_alloc_ctx_t));
 	*alloc_ctx = (ippool_alloc_ctx_t) {
 		.env = env,
@@ -521,38 +585,25 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		.request = request,
 	};
 	talloc_set_destructor(alloc_ctx, sqlippool_alloc_ctx_free);
+
+	/*
+	 *	Allocate a query_ctx which will be used for all queries in the allocation.
+	 *	Since they typically form an SQL transaction, they all need to be on the same
+	 *	connection, and use the same trunk request if using trunks.
+	 */
+	MEM(alloc_ctx->query_ctx = sql->query_alloc(alloc_ctx, sql, request, handle, thread->trunk, "", SQL_QUERY_OTHER));
+
 	fr_value_box_list_init(&alloc_ctx->values);
 	if (unlang_function_push(request, NULL, mod_alloc_resume, NULL, 0, UNLANG_SUB_FRAME, alloc_ctx) < 0 ) {
-	error:
 		talloc_free(alloc_ctx);
 		RETURN_MODULE_FAIL;
 	}
 
-	/*
-	 *	Establish which tmpl needs expanding first.
-	 *
-	 *	If there is a query for finding the existing IP expand that first
-	 */
-	if (env->existing) {
-		alloc_ctx->status = IPPOOL_ALLOC_EXISTING;
-		if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->existing, NULL) < 0) goto error;
-		return UNLANG_ACTION_PUSHED_CHILD;
+	if ((env->begin.type == FR_TYPE_STRING) && env->begin.vb_length) {
+		alloc_ctx->query_ctx->query_str = env->begin.vb_strvalue;
+		return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, alloc_ctx->query_ctx);
 	}
 
-	/*
-	 *	If have a requested IP address and a query to find whether it is available then try that
-	 */
-	if (env->requested && (env->requested_address.type != FR_TYPE_NULL)) {
-		alloc_ctx->status = IPPOOL_ALLOC_REQUESTED;
-		if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->requested, NULL) < 0) goto error;
-		return UNLANG_ACTION_PUSHED_CHILD;
-	}
-
-	/*
-	 *	If neither of the previous two queries were defined, first expand the "find" query
-	 */
-	alloc_ctx->status = IPPOOL_ALLOC_FIND;
-	if (unlang_tmpl_push(alloc_ctx, &alloc_ctx->values, request, env->find, NULL) < 0) goto error;
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
