@@ -270,11 +270,11 @@ static inline fr_time_delta_t fr_time_delta_div(fr_time_delta_t a, fr_time_delta
 
 	return fr_time_delta_wrap(fr_time_delta_unwrap(a) / fr_time_delta_unwrap(b));
 }
-static inline fr_time_delta_t fr_time_delta_mul(fr_time_delta_t a, fr_time_delta_t b)
+static inline fr_time_delta_t fr_time_delta_mul(fr_time_delta_t a, int64_t b)
 {
 	typeof_field(fr_time_delta_t, value) out;
-	if (!fr_multiply(&out, fr_time_delta_unwrap(a), fr_time_delta_unwrap(b))) {
-		return fr_time_delta_overflow_add(a, b);
+	if (!fr_multiply(&out, fr_time_delta_unwrap(a), b)) {
+		return a;
 	}
 	return fr_time_delta_wrap(out);
 }

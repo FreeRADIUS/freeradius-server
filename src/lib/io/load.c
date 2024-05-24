@@ -47,7 +47,7 @@ RCSID("$Id$")
 #define RTTVAR(_rtt, _rttvar, _t) \
 	fr_time_delta_div(\
 		fr_time_delta_add(\
-			fr_time_delta_mul(_rttvar, fr_time_delta_wrap(IBETA - 1)), \
+			fr_time_delta_mul(_rttvar, IBETA - 1), \
 			DIFF(_rtt, _t)\
 		), \
 		fr_time_delta_wrap(IBETA)\
