@@ -168,6 +168,7 @@ $(DD)/docker.refresh.${1}: $(DD)/stamp-up.${1}
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc 'rsync -a /srv/src/ /srv/local-src/'
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc 'git config -f /srv/local-src/config core.bare true'
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc 'git config -f /srv/local-src/config --unset core.worktree || true'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc 'git config --global --add safe.directory /srv/local-src'
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '(cd /srv/build && git pull --rebase)'
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -lc '[ -e /srv/build/config.log ] || echo CONFIGURE ${1}'
