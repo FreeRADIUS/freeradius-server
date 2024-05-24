@@ -1055,12 +1055,14 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *p
 					       CONF_ITEM_SECTION, name1, name2));
 }
 
-/** Find a section in the lineage of a CONF_SECTION which matches a specific name1 and optionally name2.
+/** Find an ancestor of the passed CONF_ITEM which has a child matching a specific name1 and optionally name2.
+ *
+ * @note Despite the name, this function also searches in ci for a matching item.
  *
  * Will walk up the configuration tree, searching in each parent until a matching section is found or
  * we hit the root.
  *
- * @param[in] cs	The section we're searching in.
+ * @param[in] ci	The conf item we're searching back from.
  * @param[in] name1	of the section we're searching for. Special value CF_IDENT_ANY
  *			can be used to match any name1 value.
  * @param[in] name2	of the section we're searching for. Special value CF_IDENT_ANY
@@ -1069,25 +1071,22 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *p
  *	- The first matching subsection.
  *	- NULL if no subsections match.
  */
-CONF_SECTION *cf_section_find_in_parent(CONF_SECTION const *cs,
-			      		char const *name1, char const *name2)
+CONF_SECTION *_cf_section_find_in_parent(CONF_ITEM const *ci,
+			      		 char const *name1, char const *name2)
 {
-	CONF_ITEM const *parent = cf_section_to_item(cs);
-
 	do {
 		CONF_ITEM *found;
 
-		found = cf_find(parent, CONF_ITEM_SECTION, name1, name2);
+		found = cf_find(ci, CONF_ITEM_SECTION, name1, name2);
 		if (found) return cf_item_to_section(found);
-	} while ((parent = cf_parent(parent)));
+	} while ((ci = cf_parent(ci)));
 
 	return NULL;
 }
 
-
 /** Find a parent CONF_SECTION with name1 and optionally name2.
  *
- * @param[in] cs	The section we're searching in.
+ * @param[in] ci	The section we're searching in.
  * @param[in] name1	of the section we're searching for. Special value CF_IDENT_ANY
  *			can be used to match any name1 value.
  * @param[in] name2	of the section we're searching for. Special value CF_IDENT_ANY
@@ -1096,13 +1095,15 @@ CONF_SECTION *cf_section_find_in_parent(CONF_SECTION const *cs,
  *	- The first matching subsection.
  *	- NULL if no subsections match.
  */
-CONF_SECTION *cf_section_find_parent(CONF_SECTION const *cs,
-				     char const *name1, char const *name2)
+CONF_SECTION *_cf_section_find_parent(CONF_ITEM const *ci,
+				      char const *name1, char const *name2)
 {
-	CONF_ITEM *parent = cf_section_to_item(cs);
+	while ((ci = cf_parent(ci))) {
+		CONF_SECTION *found;
 
-	while ((parent = cf_parent(parent))) {
-		CONF_SECTION *found = cf_item_to_section(parent);
+		if (!cf_item_is_section(ci)) continue;	/* Could be data hanging off a pair*/
+
+		found = cf_item_to_section(ci);
 
 		if (cf_section_name_cmp(found, name1, name2) == 0) return found;
 	};

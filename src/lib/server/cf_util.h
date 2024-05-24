@@ -166,10 +166,16 @@ CONF_SECTION	*cf_section_find(CONF_SECTION const *cs, char const *name1, char co
 /** @hidecallergraph */
 CONF_SECTION	*cf_section_find_next(CONF_SECTION const *cs, CONF_SECTION const *subcs,
 				      char const *name1, char const *name2);
-CONF_SECTION	*cf_section_find_in_parent(CONF_SECTION const *cs,
-					   char const *name1, char const *name2);
-CONF_SECTION	*cf_section_find_parent(CONF_SECTION const *cs,
-				       char const *name1, char const *name2);
+
+#define		cf_section_find_in_parent(_cf, _name1, _name2) \
+		_cf_section_find_in_parent(CF_TO_ITEM(_cf), _name1, _name2)
+CONF_SECTION	*_cf_section_find_in_parent(CONF_ITEM const *ci,
+					    char const *name1, char const *name2);
+
+#define		cf_section_find_parent(_cf, _name1, _name2) \
+		_cf_section_find_parent(CF_TO_ITEM(_cf), _name1, _name2)
+CONF_SECTION	*_cf_section_find_parent(CONF_ITEM const *ci,
+					 char const *name1, char const *name2);
 
 char const 	*cf_section_value_find(CONF_SECTION const *, char const *attr);
 
