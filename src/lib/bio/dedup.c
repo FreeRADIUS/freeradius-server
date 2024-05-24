@@ -127,7 +127,7 @@ struct fr_bio_dedup_s {
 	/*
 	 *	The "first" entry is cached here so that we can detect when it changes.  The insert / delete
 	 *	code can just do its work without worrying about timers.  And then when the tree manipulation
-	 *	is done, call the fr_bio_dedup_reset_timer() function to reset (or not) the timer.
+	 *	is done, call the fr_bio_dedup_timer_reset() function to reset (or not) the timer.
 	 *
 	 *	The timer is set for is when the first packet expires.
 	 */
@@ -157,14 +157,14 @@ static void fr_bio_dedup_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 static ssize_t fr_bio_dedup_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
 static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item, ssize_t rcode);
 static void fr_bio_dedup_release(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item, fr_bio_dedup_release_reason_t reason);
-static int fr_bio_dedup_reset_timer(fr_bio_dedup_t *my);
+static int fr_bio_dedup_timer_reset(fr_bio_dedup_t *my);
 
-static inline void fr_bio_dedup_reset_timer_item(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item)
+static inline void fr_bio_dedup_timer_reset_item(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item)
 {
 	if (my->first != item) return;
 
 	my->first = NULL;
-	(void) fr_bio_dedup_reset_timer(my);
+	(void) fr_bio_dedup_timer_reset(my);
 }
 
 /** Move an item from active to replied.
@@ -254,7 +254,7 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 		 *	The packets will be expire when the pending queue is flushed, OR when the application
 		 *	cancels the pending packet.
 		 */
-		fr_bio_dedup_reset_timer_item(my, item);
+		fr_bio_dedup_timer_reset_item(my, item);
 
 		fr_bio_dedup_list_insert_tail(&my->pending, item);
 		item->state = FR_BIO_DEDUP_STATE_PENDING;
@@ -324,7 +324,7 @@ ssize_t fr_bio_dedup_respond(fr_bio_t *bio, fr_bio_dedup_entry_t *item)
 /** Reset the timer after changing the rb tree.
  *
  */
-static int fr_bio_dedup_reset_timer(fr_bio_dedup_t *my)
+static int fr_bio_dedup_timer_reset(fr_bio_dedup_t *my)
 {
 	fr_bio_dedup_entry_t *first;
 
@@ -387,7 +387,7 @@ static void fr_bio_dedup_release(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *item,
 	case FR_BIO_DEDUP_STATE_REPLIED:
 		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
 
-		if (reason != FR_BIO_DEDUP_EXPIRED) fr_bio_dedup_reset_timer_item(my, item);
+		if (reason != FR_BIO_DEDUP_EXPIRED) fr_bio_dedup_timer_reset_item(my, item);
 		break;
 
 		/*
@@ -492,7 +492,7 @@ static ssize_t fr_bio_dedup_flush_pending(fr_bio_dedup_t *my)
 	 */
 	if (!my->first || (my->first != fr_rb_first(&my->rb))) {
 		my->first = NULL;
-		(void) fr_bio_dedup_reset_timer(my);
+		(void) fr_bio_dedup_timer_reset(my);
 	}
 
 	return out_rcode;
@@ -601,7 +601,7 @@ static ssize_t fr_bio_dedup_write_partial(fr_bio_t *bio, void *packet_ctx, const
 			item->state = FR_BIO_DEDUP_STATE_ACTIVE;
 			(void) fr_rb_insert(&my->rb, item);
 		}
-		(void) fr_bio_dedup_reset_timer(my);
+		(void) fr_bio_dedup_timer_reset(my);
 
 	} else {
 		/*
@@ -662,7 +662,7 @@ static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *it
 		 */
 	case FR_BIO_DEDUP_STATE_REPLIED:
 		(void) fr_rb_remove_by_inline_node(&my->rb, &item->node);
-		fr_bio_dedup_reset_timer_item(my, item);
+		fr_bio_dedup_timer_reset_item(my, item);
 		break;
 
 		/*
@@ -780,7 +780,7 @@ static void fr_bio_dedup_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 		fr_bio_dedup_release(my, item, FR_BIO_DEDUP_EXPIRED);
 	}
 
-	(void) fr_bio_dedup_reset_timer(my);
+	(void) fr_bio_dedup_timer_reset(my);
 }
 
 /** Write raw data to the bio.
@@ -993,7 +993,7 @@ int fr_bio_dedup_entry_extend(fr_bio_t *bio, fr_bio_dedup_entry_t *item, fr_time
 
 	my->first = NULL;
 
-	return fr_bio_dedup_reset_timer(my);
+	return fr_bio_dedup_timer_reset(my);
 }
 
 
