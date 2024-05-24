@@ -379,13 +379,22 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 	}
 
 	/*
-	 *	We were flushing the buffer, return however much data we managed to write.
+	 *	We were flushing the BIO, return however much data we managed to write.
 	 *
-	 *	Note that flushes can never block.
+	 *	Note that flushes should never block.
 	 */
 	if (!buffer) {
 		fr_assert(rcode != fr_bio_error(IO_WOULD_BLOCK));
 		return rcode;
+	}
+
+	if (my->cb.write_blocked) {
+		int error;
+
+		error = my->cb.write_blocked(bio);
+		if (error < 0) return error;
+
+		fr_assert(error != 0); /* what to do? */
 	}
 
 	/*
@@ -833,6 +842,10 @@ int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram)
 	return 0;
 }
 
+/*
+ *	There's no fr_bio_mem_write_blocked()
+ */
+
 /** See if we can resume writes to the memory bio.
  *
  *  Note that there is no equivalent fr_bio_mem_write_blocked(), as that function wouldn't do anything.
@@ -847,10 +860,15 @@ int fr_bio_mem_write_resume(fr_bio_t *bio)
 
 	if (bio->write != fr_bio_mem_write_buffer) return 1;
 
+	/*
+	 *	Flush the buffer, and then reset the write routine if we were successful.
+	 */
 	rcode = fr_bio_mem_write_flush(my, SIZE_MAX);
 	if (rcode <= 0) return rcode;
 
 	if (fr_bio_buf_used(&my->write_buffer) > 0) return 0;
 
-	return 1;
+	if (!my->cb.write_resume) return 1;
+
+	return my->cb.write_resume(bio);
 }
