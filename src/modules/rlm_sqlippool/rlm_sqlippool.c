@@ -102,6 +102,16 @@ typedef struct {
 	rlm_rcode_t		rcode;		//!< Result code to return after running "commit".
 } ippool_alloc_ctx_t;
 
+/** Resume context for IP update / release
+ */
+typedef struct {
+	request_t			*request;	//!< Current request.
+	ippool_common_call_env_t	*env;		//!< Call environment for the update.
+	rlm_sql_handle_t		*handle;	//!< SQL handle being used for queries.
+	rlm_sql_t const			*sql;		//!< SQL module instance.
+	fr_sql_query_t			*query_ctx;	//!< Query context for allocation queries.
+} ippool_common_ctx_t;
+
 static conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("sql_module_instance", rlm_sqlippool_t, sql_name), .dflt = "sql" },
 
@@ -129,63 +139,9 @@ static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
 	return t_ctx;
 }
 
-/** Perform a single sqlippool query
- *
- * Mostly wrapper around sql_query which returns the number of affected rows.
- *
- * @param[in] query sql query to execute.
- * @param[in] handle sql connection handle.
- * @param[in] trunk connection for queries.
- * @param[in] sql Instance of rlm_sql.
- * @param[in] request Current request.
- * @return
- *	- number of affected rows on success.
- *	- < 0 on error.
- */
-static int sqlippool_command(char const *query, rlm_sql_handle_t **handle, fr_trunk_t *trunk,
-			     rlm_sql_t const *sql, request_t *request)
-{
-	int		affected;
-	fr_sql_query_t	*query_ctx;
-	rlm_rcode_t	p_result;
-
-	/*
-	 *	If we don't have a command, do nothing.
-	 */
-	if (!query || !*query) return 0;
-
-	/*
-	 *	No handle?  That's an error.
-	 */
-	if (!handle || !*handle) return -1;
-
-	query_ctx = sql->query_alloc(unlang_interpret_frame_talloc_ctx(request), sql, request, *handle, trunk, query, SQL_QUERY_SELECT);
-
-	sql->query(&p_result, NULL, request, query_ctx);
-	*handle = query_ctx->handle;
-	if (query_ctx->rcode < 0) return -1;
-
-	/*
-	 *	No handle, we can't continue.
-	 */
-	if (!query_ctx->handle) return -1;
-
-	affected = (sql->driver->sql_affected_rows)(query_ctx, &sql->config);
-
-	talloc_free(query_ctx);
-
-	return affected;
-}
-
 /*
  *	Don't repeat yourself
  */
-#define DO_PART(_x, _trunk) if(env->_x.type == FR_TYPE_STRING) { \
-	if(sqlippool_command(env->_x.vb_strvalue, &handle, _trunk, sql, request) <0) goto error; \
-}
-#define DO_AFFECTED(_x, _trunk, _affected) if (env->_x.type == FR_TYPE_STRING) { \
-	_affected = sqlippool_command(env->_x.vb_strvalue, &handle, _trunk, sql, request); if (_affected < 0) goto error; \
-}
 #define RESERVE_CONNECTION(_handle, _sql, _request) if (!_sql->driver->uses_trunks) { \
 	handle = fr_pool_connection_get(_sql->pool, _request); \
 	if (!_handle) { \
@@ -607,6 +563,68 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+/** Resume function called after mod_common "update" query has completed
+ */
+static unlang_action_t mod_common_update_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+{
+	ippool_common_ctx_t	*common_ctx = talloc_get_type_abort(uctx, ippool_common_ctx_t);
+	fr_sql_query_t		*query_ctx = common_ctx->query_ctx;
+	rlm_sql_t const		*sql = common_ctx->sql;
+	int			affected = 0;
+
+	switch (*p_result) {
+	case RLM_MODULE_USER_SECTION_REJECT:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	default:
+		break;
+	}
+
+	affected = sql->driver->sql_affected_rows(query_ctx, &sql->config);
+
+	talloc_free(common_ctx);
+
+	if (affected > 0) RETURN_MODULE_UPDATED;
+	RETURN_MODULE_NOTFOUND;
+}
+
+/** Resume function called after mod_common "free" query has completed
+ */
+static unlang_action_t mod_common_free_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	ippool_common_ctx_t	*common_ctx = talloc_get_type_abort(uctx, ippool_common_ctx_t);
+	fr_sql_query_t		*query_ctx = common_ctx->query_ctx;
+	rlm_sql_t const		*sql = common_ctx->sql;
+
+	switch (*p_result) {
+	case RLM_MODULE_USER_SECTION_REJECT:
+		return UNLANG_ACTION_CALCULATE_RESULT;
+
+	default:
+		break;
+	}
+	if (common_ctx->env->update.type != FR_TYPE_STRING) RETURN_MODULE_NOOP;
+
+	sql->driver->sql_finish_query(query_ctx, &sql->config);
+
+	if (unlang_function_push(request, NULL, mod_common_update_resume, NULL, 0, UNLANG_SUB_FRAME, common_ctx) < 0) {
+		talloc_free(common_ctx);
+		RETURN_MODULE_FAIL;
+	}
+
+	common_ctx->query_ctx->query_str = common_ctx->env->update.vb_strvalue;
+	query_ctx->status = SQL_QUERY_PREPARED;
+	return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx);
+}
+
+/** Return connection to pool when mod_common context is freed.
+ */
+static int sqlippool_common_ctx_free(ippool_common_ctx_t *to_free)
+{
+	if (to_free->handle) fr_pool_connection_release(to_free->sql->pool, to_free->request, to_free->handle);
+	return 0;
+}
+
 /** Common function used by module methods which perform an optional "free" then "update"
  *	- update
  *	- release
@@ -620,27 +638,42 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	rlm_sql_t const			*sql = inst->sql;
 	rlm_sql_thread_t		*thread = talloc_get_type_abort(module_thread(sql->mi)->data, rlm_sql_thread_t);
 	rlm_sql_handle_t		*handle = NULL;
-	int				affected = 0;
+	ippool_common_ctx_t		*common_ctx = NULL;
+
+	if ((env->free.type != FR_TYPE_STRING) && (env->update.type != FR_TYPE_STRING)) RETURN_MODULE_NOOP;
 
 	RESERVE_CONNECTION(handle, inst->sql, request);
+	MEM(common_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ippool_common_ctx_t));
+	*common_ctx = (ippool_common_ctx_t) {
+		.request = request,
+		.env = env,
+		.handle = handle,
+		.sql = sql,
+	};
+	talloc_set_destructor(common_ctx, sqlippool_common_ctx_free);
+
+	MEM(common_ctx->query_ctx = sql->query_alloc(common_ctx, sql, request, handle, thread->trunk, "", SQL_QUERY_OTHER));
 
 	/*
 	 *  An optional query which can be used to tidy up before updates
 	 *  primarily intended for multi-server setups sharing a common database
 	 *  allowing for tidy up of multiple offered addresses in a DHCP context.
 	 */
-	DO_PART(free, thread->trunk);
+	if (env->free.type == FR_TYPE_STRING) {
+		common_ctx->query_ctx->query_str = env->free.vb_strvalue;
+		if (unlang_function_push(request, NULL, mod_common_free_resume, NULL, 0, UNLANG_SUB_FRAME, common_ctx) < 0) {
+			talloc_free(common_ctx);
+			RETURN_MODULE_FAIL;
+		}
+		return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, common_ctx->query_ctx);
+	}
 
-	DO_AFFECTED(update, thread->trunk, affected);
-
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-
-	if (affected > 0) RETURN_MODULE_UPDATED;
-	RETURN_MODULE_NOTFOUND;
-
-error:
-	if (handle) fr_pool_connection_release(inst->sql->pool, request, handle);
-	RETURN_MODULE_FAIL;
+	common_ctx->query_ctx->query_str = env->update.vb_strvalue;
+	if (unlang_function_push(request, NULL, mod_common_update_resume, NULL, 0, UNLANG_SUB_FRAME, common_ctx) < 0) {
+		talloc_free(common_ctx);
+		RETURN_MODULE_FAIL;
+	}
+	return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, common_ctx->query_ctx);
 }
 
 /** Call SQL module box_escape_func to escape tainted values
