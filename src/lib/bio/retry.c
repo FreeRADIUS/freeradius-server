@@ -51,6 +51,7 @@ struct fr_bio_retry_entry_s {
 		fr_rb_node_t	timer_node;		//!< for the timers
 		FR_DLIST_ENTRY(fr_bio_retry_list) entry; //!< for the free list
 	};
+	fr_rb_node_t	expiry_node;		//!< for the timers
 
 	fr_bio_retry_t	*my;			//!< so we can get to it from the event timer callback
 
@@ -68,6 +69,7 @@ struct fr_bio_retry_s {
 
 	fr_event_list_t		*el;
 	fr_rb_tree_t		timer_tree;
+	fr_rb_tree_t		expiry_tree;
 
 	fr_bio_retry_info_t	info;
 
@@ -155,7 +157,10 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 *	Remove the item before calling the application "release" function.
 	 */
 	if (my->partial != item) {
-		if (!item->reserved) (void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
+		if (!item->reserved) {
+			(void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
+			(void) fr_rb_remove_by_inline_node(&my->expiry_tree, &item->expiry_node);
+		}
 	} else {
 		item->cancelled = true;
 	}
@@ -251,14 +256,10 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	}
 
 	/*
-	 *	We wrote the whole packet.  Remove it from the tree, which is done _without_ doing calls to
+	 *	We wrote the whole packet.  Re-insert it, which is done _without_ doing calls to
 	 *	cmp(), so we it's OK for us to rewrite item->retry.next.
 	 */
 	(void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
-
-	/*
-	 *	We have more things to do, insert the entry back into the tree, and update the timer.
-	 */
 	(void) fr_rb_insert(&my->timer_tree, item);
 
 	return 1;
@@ -640,13 +641,8 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	/*
 	 *	This should never fail.
 	 */
-	if (!fr_rb_insert(&my->timer_tree, item)) {
-		fr_assert(my->timer_item != item);
-
-		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_FATAL_ERROR);
-		fr_bio_retry_list_insert_head(&my->free, item);
-		return size;
-	}
+	(void) fr_rb_insert(&my->timer_tree, item);
+	(void) fr_rb_insert(&my->expiry_tree, item);
 
 	/*
 	 *	We only wrote part of the packet, remember to write the rest of it.
@@ -772,7 +768,7 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	return rcode;
 }
 
-static int8_t _entry_cmp(void const *one, void const *two)
+static int8_t _timer_cmp(void const *one, void const *two)
 {
 	fr_bio_retry_entry_t const *a = one;
 	fr_bio_retry_entry_t const *b = two;
@@ -781,6 +777,17 @@ static int8_t _entry_cmp(void const *one, void const *two)
 	fr_assert(b->buffer);
 
 	return fr_time_cmp(a->retry.next, b->retry.next);
+}
+
+static int8_t _expiry_cmp(void const *one, void const *two)
+{
+	fr_bio_retry_entry_t const *a = one;
+	fr_bio_retry_entry_t const *b = two;
+
+	fr_assert(a->buffer);
+	fr_assert(b->buffer);
+
+	return fr_time_cmp(a->retry.end, b->retry.end);
 }
 
 /** Cancel one item.
@@ -916,7 +923,8 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 		fr_bio_retry_list_insert_tail(&my->free, &items[i]);
 	}
 
-	(void) fr_rb_inline_init(&my->timer_tree, fr_bio_retry_entry_t, timer_node, _entry_cmp, NULL);
+	(void) fr_rb_inline_init(&my->timer_tree, fr_bio_retry_entry_t, timer_node, _timer_cmp, NULL);
+	(void) fr_rb_inline_init(&my->expiry_tree, fr_bio_retry_entry_t, expiry_node, _expiry_cmp, NULL);
 
 	my->sent = sent;
 	if (!rewrite) {
