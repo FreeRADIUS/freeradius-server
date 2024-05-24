@@ -44,13 +44,29 @@ void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config
 	r->config = config;
 	r->count = 1;
 	r->start = now;
+	r->end = fr_time_add(now, config->mrd);
 	r->updated = now;
+
+	/*
+	 *	Ensure that we always have an end time.
+	 *
+	 *	If there's no MRD. We artificially force the end to a day.  If we're still retrying after
+	 *	that, it's likely good reason to give up.  The rest of the server enforces much shorter
+	 *	lifetimes on requests.
+	 */
+	if (fr_time_cmp(r->start, r->end) == 0) {
+		if (!config->mrc) {
+			r->end = fr_time_add(now, fr_time_delta_from_sec(86400));
+		} else {
+			r->end = fr_time_add(now, fr_time_delta_mul(config->mrt, config->mrc));
+		}
+	}
 
 	/*
 	 *	Only 1 retry, the timeout is MRD, not IRT.
 	 */
 	if (config->mrc == 1) {
-		r->next = fr_time_add(now, config->mrd);
+		r->next = r->end;
 		r->rt = config->mrd; /* mostly set for debug messages */
 		return;
 	}
