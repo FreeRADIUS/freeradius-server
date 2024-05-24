@@ -174,11 +174,13 @@ static int sqlippool_command(char const *query, rlm_sql_handle_t **handle, fr_tr
 #define DO_AFFECTED(_x, _trunk, _affected) if (env->_x.type == FR_TYPE_STRING) { \
 	_affected = sqlippool_command(env->_x.vb_strvalue, &handle, _trunk, sql, request); if (_affected < 0) goto error; \
 }
-#define RESERVE_CONNECTION(_handle, _pool, _request) _handle = fr_pool_connection_get(_pool, _request); \
+#define RESERVE_CONNECTION(_handle, _sql, _request) if (!_sql->driver->uses_trunks) { \
+	handle = fr_pool_connection_get(_sql->pool, _request); \
 	if (!_handle) { \
 		REDEBUG("Failed reserving SQL connection"); \
 		RETURN_MODULE_FAIL; \
-	}
+	} \
+}
 
 
 /*
@@ -487,7 +489,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
 	ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_alloc_call_env_t);
 	rlm_sql_t const		*sql = inst->sql;
-	rlm_sql_handle_t	*handle;
+	rlm_sql_handle_t	*handle = NULL;
 	ippool_alloc_ctx_t	*alloc_ctx = NULL;
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(module_thread(sql->mi)->data, rlm_sql_thread_t);
 
@@ -504,9 +506,9 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		RETURN_MODULE_NOOP;
 	}
 
-	RESERVE_CONNECTION(handle, inst->sql->pool, request);
-	if (!sql->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
-									      handle, false, false, false);
+	RESERVE_CONNECTION(handle, inst->sql, request);
+	if (!sql->sql_escape_arg && !thread->sql_escape_arg && handle)
+		request_data_add(request, (void *)sql_escape_uctx_alloc, 0, handle, false, false, false);
 
 	DO_PART(begin, thread->trunk);
 
@@ -566,10 +568,10 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	ippool_common_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_common_call_env_t);
 	rlm_sql_t const			*sql = inst->sql;
 	rlm_sql_thread_t		*thread = talloc_get_type_abort(module_thread(sql->mi)->data, rlm_sql_thread_t);
-	rlm_sql_handle_t		*handle;
+	rlm_sql_handle_t		*handle = NULL;
 	int				affected = 0;
 
-	RESERVE_CONNECTION(handle, inst->sql->pool, request);
+	RESERVE_CONNECTION(handle, inst->sql, request);
 
 	/*
 	 *  An optional query which can be used to tidy up before updates
