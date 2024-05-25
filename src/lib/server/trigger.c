@@ -25,11 +25,17 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/exec.h>
+#include <freeradius-devel/server/main_loop.h>
+#include <freeradius-devel/server/request_data.h>
+#include <freeradius-devel/server/trigger.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/unlang/subrequest.h>
+#include <freeradius-devel/unlang/xlat.h>
 
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>

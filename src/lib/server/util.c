@@ -30,8 +30,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/syserror.h>
 
-#include <ctype.h>
+#include <freeradius-devel/unlang/xlat.h>
+
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/stat.h>

@@ -27,8 +27,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/io/listen.h>
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/auth.h>
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/rcode.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/unlang/call.h>
@@ -38,8 +39,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radius/defs.h>
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-
-#include <ctype.h>
 
 /*
  *	Run a virtual server auth and postauth

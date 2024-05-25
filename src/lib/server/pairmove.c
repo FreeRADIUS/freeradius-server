@@ -25,18 +25,17 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/paircmp.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/server/tmpl_dcursor.h>
 
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/util/edit.h>
+#include <freeradius-devel/util/pair_legacy.h>
 
 #include <freeradius-devel/protocol/radius/rfc2865.h>
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-
-#include <ctype.h>
 
 /*
  *	@fixme - integrate this with the code calling it, so that we
@@ -183,8 +182,8 @@ void radius_pairmove(request_t *request, fr_pair_list_t *to, fr_pair_list_t *fro
 				 *	If equal, delete the one in
 				 *	the "to" list.
 				 */
-				rcode = paircmp_pairs(NULL, from_vp,
-							   to_vp);
+				rcode = paircmp_pairs(NULL, from_vp, to_vp);
+
 				/*
 				 *	We may want to do more
 				 *	subtractions, so we re-set the

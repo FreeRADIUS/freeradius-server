@@ -25,6 +25,8 @@
  */
 RCSIDH(stats_h, "$Id$")
 
+#include <freeradius-devel/server/request.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

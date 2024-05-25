@@ -49,7 +49,8 @@ static void pair_list_perf_init(void);
 #include <freeradius-devel/util/dict_test.h>
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/rand.h>
-
+#include <freeradius-devel/util/pair.h>
+#include <freeradius-devel/util/pair_legacy.h>
 /*
  *      Global variables
  */

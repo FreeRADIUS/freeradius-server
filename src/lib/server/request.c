@@ -24,7 +24,10 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/request_data.h>
+#include <freeradius-devel/unlang/interpret.h>
+
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/atexit.h>
 

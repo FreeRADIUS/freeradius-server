@@ -24,10 +24,11 @@
  * @copyright 2014 The FreeRADIUS server project
  */
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/exfile.h>
+#include <freeradius-devel/server/trigger.h>
 
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
 #include <freeradius-devel/util/syserror.h>

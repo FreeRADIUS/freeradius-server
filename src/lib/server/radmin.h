@@ -27,6 +27,7 @@
 RCSIDH(radmin_h, "$Id$")
 
 #include <freeradius-devel/server/command.h>
+#include <freeradius-devel/server/main_config.h>
 
 #ifdef __cplusplus
 extern "C" {

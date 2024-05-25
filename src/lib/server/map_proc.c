@@ -72,6 +72,11 @@ static int _map_proc_talloc_free(map_proc_t *proc)
 	return 0;
 }
 
+bool map_proc_literals_safe_for(map_proc_t const *proc)
+{
+	return proc->literals_safe_for;
+}
+
 /** Find a map processor by name
  *
  * @param[in] name of map processor.

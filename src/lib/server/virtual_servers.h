@@ -29,6 +29,8 @@
 extern "C" {
 #endif
 
+typedef struct virtual_server_s virtual_server_t;
+
 #include <freeradius-devel/io/schedule.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/unlang/module.h>
@@ -79,16 +81,16 @@ int		virtual_server_has_namespace(CONF_SECTION **out,
  *
  * @{
  */
-CONF_SECTION	*virtual_server_find(char const *name) CC_HINT(nonnull);
+CONF_SECTION		*virtual_server_find(char const *name) CC_HINT(nonnull);
 
-CONF_SECTION	*virtual_server_by_child(CONF_SECTION *section) CC_HINT(nonnull);
+virtual_server_t const	*virtual_server_by_child(CONF_ITEM const *ci) CC_HINT(nonnull);
 
-int		virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
-					CONF_ITEM *ci, conf_parser_t const *rule) CC_HINT(nonnull(2,4));
+int			virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
+						CONF_ITEM *ci, conf_parser_t const *rule) CC_HINT(nonnull(2,4));
 /** @} */
 
-fr_listen_t *  	listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
-bool		listen_record(fr_listen_t *li) CC_HINT(nonnull);
+fr_listen_t *  		listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
+bool			listen_record(fr_listen_t *li) CC_HINT(nonnull);
 
 
 /** Module methods which are allowed in virtual servers.
@@ -115,12 +117,12 @@ typedef struct {
 
 #define COMPILE_TERMINATOR { .name1 = NULL, .name2 = NULL }
 
-int		virtual_server_section_register(virtual_server_compile_t const *entry) CC_HINT(nonnull);
+int		virtual_server_section_register(virtual_server_t *vs, virtual_server_compile_t const *entry) CC_HINT(nonnull);
 
 int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list,
 						tmpl_rules_t const *rules, void *instance) CC_HINT(nonnull(1,2,3));
 
-virtual_server_method_t const *virtual_server_section_methods(char const *name1, char const *name2) CC_HINT(nonnull(1));
+virtual_server_method_t const *virtual_server_section_methods(virtual_server_t const *vs, char const *name1, char const *name2) CC_HINT(nonnull(1));
 
 unlang_action_t	virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull);
 

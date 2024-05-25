@@ -30,6 +30,8 @@ RCSIDH(clients_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/server/cf_util.h>
+
 typedef struct fr_client_s fr_client_t;
 typedef struct fr_client_list_s fr_client_list_t;
 

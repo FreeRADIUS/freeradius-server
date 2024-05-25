@@ -26,7 +26,13 @@
 
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/util/regex.h>
+#include <freeradius-devel/util/version.h>
+
+#include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/dependency.h>
+#include <freeradius-devel/server/log.h>
+
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 static uint64_t	libmagic = RADIUSD_MAGIC_NUMBER;

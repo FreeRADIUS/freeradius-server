@@ -27,13 +27,15 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
-
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/proto.h>
+#include <freeradius-devel/util/value.h>
+
+#include <freeradius-devel/server/dependency.h>
+#include <freeradius-devel/server/main_loop.h>
 
 #include <freeradius-devel/protocol/snmp/freeradius.h>
 

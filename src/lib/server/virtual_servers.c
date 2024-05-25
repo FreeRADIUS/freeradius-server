@@ -48,7 +48,7 @@ typedef struct {
 								///< cached for convenience.
 } fr_virtual_listen_t;
 
-typedef struct {
+struct virtual_server_s {
 	CONF_SECTION			*server_cs;		//!< The server section.
 	fr_virtual_listen_t		**listeners;		//!< Listeners in this virtual server.
 
@@ -57,7 +57,9 @@ typedef struct {
 								///< server and the entry point for the state machine.
 	fr_process_module_t const	*process_module;	//!< Public interface to the process_mi.
 								///< cached for convenience.
-} fr_virtual_server_t;
+
+	fr_rb_tree_t			*sections;		//!< List of sections that need to be compiled.
+};
 
 static fr_dict_t const *dict_freeradius;
 
@@ -93,7 +95,7 @@ static module_list_t	*proto_modules;
 /** Top level structure holding all virtual servers
  *
  */
-static fr_virtual_server_t **virtual_servers;
+static virtual_server_t **virtual_servers;
 
 /** CONF_SECTION holding all the virtual servers
  *
@@ -103,10 +105,6 @@ static fr_virtual_server_t **virtual_servers;
 static CONF_SECTION *virtual_server_root;
 
 static fr_rb_tree_t *listen_addr_root = NULL;
-
-/** Lookup allowed section names for modules
- */
-static fr_rb_tree_t *server_section_name_tree = NULL;
 
 static int8_t server_section_name_cmp(void const *one, void const *two);
 
@@ -118,7 +116,7 @@ static int listen_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_IT
 static int server_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
 
 static const conf_parser_t server_on_read_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, fr_virtual_server_t, process_mi),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, virtual_server_t, process_mi),
 			.on_read = namespace_on_read },
 
 	CONF_PARSER_TERMINATOR
@@ -130,7 +128,7 @@ const conf_parser_t virtual_servers_on_read_config[] = {
 	 *	let logic elsewhere handle the issue.
 	 */
 	{ FR_CONF_POINTER("server", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI, &virtual_servers),
-			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
+			  .subcs_size = sizeof(virtual_server_t), .subcs_type = "virtual_server_t",
 			  .subcs = (void const *) server_on_read_config, .name2 = CF_IDENT_ANY,
 			  .on_read = server_on_read },
 
@@ -138,11 +136,11 @@ const conf_parser_t virtual_servers_on_read_config[] = {
 };
 
 static const conf_parser_t server_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, fr_virtual_server_t, process_mi),
+	{ FR_CONF_OFFSET_TYPE_FLAGS("namespace", FR_TYPE_VOID, CONF_FLAG_REQUIRED, virtual_server_t, process_mi),
 			 .func = namespace_parse },
 
 	{ FR_CONF_OFFSET_TYPE_FLAGS("listen", FR_TYPE_VOID, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI,
-			 fr_virtual_server_t, listeners),
+			 virtual_server_t, listeners),
 			 .name2 = CF_IDENT_ANY,
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
@@ -156,7 +154,7 @@ const conf_parser_t virtual_servers_config[] = {
 	 *	let logic elsewhere handle the issue.
 	 */
 	{ FR_CONF_POINTER("server", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING | CONF_FLAG_MULTI, &virtual_servers),
-			  .subcs_size = sizeof(fr_virtual_server_t), .subcs_type = "fr_virtual_server_t",
+			  .subcs_size = sizeof(virtual_server_t), .subcs_type = "virtual_server_t",
 			  .subcs = (void const *) server_config, .name2 = CF_IDENT_ANY,
 			  .func = server_parse },
 
@@ -298,9 +296,8 @@ static int server_on_read(UNUSED TALLOC_CTX *ctx, UNUSED void *out, UNUSED void 
 	return 0;
 }
 
-
 static inline CC_HINT(always_inline)
-int add_compile_list(CONF_SECTION *cs, virtual_server_compile_t const *compile_list, char const *name)
+int add_compile_list(virtual_server_t *vs, CONF_SECTION *cs, virtual_server_compile_t const *compile_list, char const *name)
 {
 	int i;
 	virtual_server_compile_t const *list = compile_list;
@@ -310,7 +307,7 @@ int add_compile_list(CONF_SECTION *cs, virtual_server_compile_t const *compile_l
 	for (i = 0; list[i].name1 != NULL; i++) {
 		if (list[i].name1 == CF_IDENT_ANY) continue;
 
-		if (virtual_server_section_register(&list[i]) < 0) {
+		if (virtual_server_section_register(vs, &list[i]) < 0) {
 			cf_log_err(cs, "Failed registering processing section name %s for %s",
 				   list[i].name1, name);
 			return -1;
@@ -336,12 +333,12 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	CONF_PAIR		*cp = cf_item_to_pair(ci);
 	CONF_SECTION		*server_cs = cf_item_to_section(cf_parent(ci));
 	CONF_SECTION		*process_cs;
-	fr_virtual_server_t	*server = talloc_get_type_abort(((uint8_t *) out) - offsetof(fr_virtual_server_t, process_mi), fr_virtual_server_t);
+	virtual_server_t	*server = talloc_get_type_abort(((uint8_t *) out) - offsetof(virtual_server_t, process_mi), virtual_server_t);
 	char const		*namespace = cf_pair_value(cp);
 	module_instance_t	*mi = cf_data_value(cf_data_find(server_cs, module_instance_t, "process_module"));
 
 	/*
-	 *	We don't have access to fr_virtual_server_t
+	 *	We don't have access to virtual_server_t
 	 *	in the onread callback, so we need to do the
 	 *	fixups here.
 	 */
@@ -371,7 +368,7 @@ static int namespace_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *paren
 	 *	Pull the list of sections we need to compile out of
 	 *	the process module's public struct.
 	 */
-	add_compile_list(server->process_mi->conf, server->process_module->compile_list, namespace);
+	add_compile_list(server, server->process_mi->conf, server->process_module->compile_list, namespace);
 
 	return 0;
 }
@@ -500,7 +497,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 /** Callback to validate the server section
  *
  * @param[in] ctx	to allocate data in.
- * @param[out] out	Where to our listen configuration.  Is a #fr_virtual_server_t structure.
+ * @param[out] out	Where to our listen configuration.  Is a #virtual_server_t structure.
  * @param[in] parent	Base structure address.
  * @param[in] ci	#CONF_SECTION containing the listen section.
  * @param[in] rule	unused.
@@ -511,7 +508,7 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	fr_virtual_server_t	*server = talloc_get_type_abort(out, fr_virtual_server_t);
+	virtual_server_t	*server = talloc_get_type_abort(out, virtual_server_t);
 	CONF_SECTION		*server_cs = cf_item_to_section(ci);
 	CONF_PAIR		*namespace;
 
@@ -522,6 +519,7 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		return -1;
 	}
 
+	MEM(server->sections = fr_rb_alloc(server, server_section_name_cmp, NULL));
 	server->server_cs = server_cs;
 
 	/*
@@ -532,7 +530,7 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	/*
 	 *	And cache this struct for later referencing.
 	 */
-	cf_data_add(server_cs, server, "vs", false);
+	cf_data_add(server_cs, server, NULL, false);
 
 	return 0;
 }
@@ -652,11 +650,11 @@ int virtual_server_has_namespace(CONF_SECTION **out,
  */
 unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame)
 {
-	fr_virtual_server_t *server;
+	virtual_server_t *server;
 
-	server = cf_data_value(cf_data_find(server_cs, fr_virtual_server_t, "vs"));
+	server = cf_data_value(cf_data_find(server_cs, virtual_server_t, NULL));
 	if (!server) {
-		REDEBUG("server_cs does not contain virtual server data");
+		cf_log_err(server_cs, "server_cs does not contain virtual server data");
 		return UNLANG_ACTION_FAIL;
 	}
 
@@ -817,14 +815,29 @@ CONF_SECTION *virtual_server_find(char const *name)
 
 /** Find a virtual server using one of its sections
  *
- * @param[in] section	to find parent virtual server for.
+ * @param[in] ci	to find parent virtual server for.
  * @return
  *	- The virtual server section on success.
  *	- NULL if the child isn't associated with any virtual server section.
  */
-CONF_SECTION *virtual_server_by_child(CONF_SECTION *section)
+virtual_server_t const *virtual_server_by_child(CONF_ITEM const *ci)
 {
-	return cf_section_find_in_parent(section, "server", CF_IDENT_ANY);
+	CONF_SECTION *cs;
+	CONF_DATA const *cd;
+
+	cs = cf_section_find_in_parent(ci, "server", CF_IDENT_ANY);
+	if (unlikely(!cs)) {
+		cf_log_err(ci, "Child section is not associated with a virtual server");
+		return NULL;
+	}
+
+	cd = cf_data_find(cs, virtual_server_t, NULL);
+	if (unlikely(!cd)) {
+		cf_log_err(ci, "Virtual server section missing virtual_server_t data");
+		return NULL;
+	}
+
+	return cf_data_value(cd);
 }
 
 /** Wrapper for the config parser to allow pass1 resolution of virtual servers
@@ -996,13 +1009,11 @@ static int8_t server_section_name_cmp(void const *one, void const *two)
  *  This function is called from the virtual server bootstrap routine,
  *  which happens before module_bootstrap();
  */
-int virtual_server_section_register(virtual_server_compile_t const *entry)
+int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile_t const *entry)
 {
 	virtual_server_compile_t *old;
 
-	fr_assert(server_section_name_tree != NULL);
-
-	old = fr_rb_find(server_section_name_tree, entry);
+	old = fr_rb_find(vs->sections, entry);
 	if (old) return 0;
 
 #ifndef NDEBUG
@@ -1032,7 +1043,7 @@ int virtual_server_section_register(virtual_server_compile_t const *entry)
 	}
 #endif
 
-	if (!fr_rb_insert(server_section_name_tree, entry)) {
+	if (!fr_rb_insert(vs->sections, entry)) {
 		fr_strerror_const("Failed inserting entry into internal tree");
 		return -1;
 	}
@@ -1043,33 +1054,31 @@ int virtual_server_section_register(virtual_server_compile_t const *entry)
 /** Find the component for a section
  *
  */
-virtual_server_method_t const *virtual_server_section_methods(char const *name1, char const *name2)
+virtual_server_method_t const *virtual_server_section_methods(virtual_server_t const *vs, char const *name1, char const *name2)
 {
 	virtual_server_compile_t *entry;
-
-	fr_assert(server_section_name_tree != NULL);
 
 	/*
 	 *	Look up the specific name first.  That way we can
 	 *	define both "accounting on", and "accounting *".
 	 */
 	if (name2 != CF_IDENT_ANY) {
-		entry = fr_rb_find(server_section_name_tree,
-					&(virtual_server_compile_t) {
-						.name1 = name1,
-						.name2 = name2,
-					});
+		entry = fr_rb_find(vs->sections,
+				   &(virtual_server_compile_t) {
+					.name1 = name1,
+					.name2 = name2,
+				   });
 		if (entry) return entry->methods;
 	}
 
 	/*
 	 *	Then look up the wildcard, if we didn't find any matching name2.
 	 */
-	entry = fr_rb_find(server_section_name_tree,
-				&(virtual_server_compile_t) {
-					.name1 = name1,
-					.name2 = CF_IDENT_ANY,
-				});
+	entry = fr_rb_find(vs->sections,
+			   &(virtual_server_compile_t) {
+				.name1 = name1,
+				.name2 = CF_IDENT_ANY,
+			   });
 	if (!entry) return NULL;
 
 	return entry->methods;
@@ -1482,7 +1491,7 @@ int virtual_servers_instantiate(void)
 		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
 		fr_dict_t const			*dict;
-		fr_virtual_server_t const	*vs = virtual_servers[i];
+		virtual_server_t const	*vs = virtual_servers[i];
 		fr_process_module_t const	*process = (fr_process_module_t const *)
 							    vs->process_mi->module->exported;
 
@@ -1595,8 +1604,6 @@ int virtual_servers_free(void)
 {
 	if (talloc_free(listen_addr_root) < 0) return -1;
 	listen_addr_root = NULL;
-	if (talloc_free(server_section_name_tree) < 0) return -1;
-	server_section_name_tree = NULL;
 	if (talloc_free(process_modules) < 0) return -1;
 	process_modules = NULL;
 	if (talloc_free(proto_modules) < 0) return -1;
@@ -1640,7 +1647,6 @@ int virtual_servers_init(void)
 	 */
 	MEM(proto_modules = module_list_alloc(NULL, &module_list_type_global, "protocol", false));
 	MEM(listen_addr_root = fr_rb_inline_alloc(NULL, fr_listen_t, virtual_server_node, listen_addr_cmp, NULL));
-	MEM(server_section_name_tree = fr_rb_alloc(NULL, server_section_name_cmp, NULL));
 
 	/*
 	 *	Create a list to hold all the proto_* modules

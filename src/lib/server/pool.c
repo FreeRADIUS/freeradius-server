@@ -27,8 +27,10 @@ RCSID("$Id$")
 
 #define LOG_PREFIX pool->log_prefix
 
-#include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/server/trigger.h>
+
 #include <freeradius-devel/util/debug.h>
 
 #include <freeradius-devel/util/heap.h>

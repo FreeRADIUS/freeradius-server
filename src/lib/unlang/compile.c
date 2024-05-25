@@ -4713,12 +4713,18 @@ check_for_module:
 	 *	name2, etc.
 	 */
 	UPDATE_CTX2;
-	inst = module_rlm_by_name_and_method(&method, &method_env,
-					     &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
-					     realname);
-	if (inst) {
-		c = compile_module(parent, &unlang_ctx2, ci, inst, method, method_env, realname);
-		goto allocate_number;
+	{
+		virtual_server_t const *vs;
+
+		vs = virtual_server_by_child(ci);
+		fr_assert_msg(vs != NULL, "Failed getting virtual server for module call");
+		inst = module_rlm_by_name_and_method(&method, &method_env,
+						     &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
+						     vs, realname);
+		if (inst) {
+			c = compile_module(parent, &unlang_ctx2, ci, inst, method, method_env, realname);
+			goto allocate_number;
+		}
 	}
 
 	/*

@@ -27,8 +27,17 @@
  */
 RCSID("$Id$")
 
-#include <freeradius-devel/server/base.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/file.h>
+
+#include <freeradius-devel/server/log.h>
+#include <freeradius-devel/server/pair.h>
+#include <freeradius-devel/server/util.h>
+
+#include <freeradius-devel/unlang/xlat.h>
 
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
