@@ -854,7 +854,7 @@ int fr_bio_fd_init_common(fr_bio_fd_t *my)
 	/*
 	 *	Tell the caller that the socket is ready for application data.
 	 */
-	if (my->cb.activate) my->cb.activate(&my->bio);
+	if (my->cb.activate) return my->cb.activate(&my->bio);
 
 	return 0;
 }
