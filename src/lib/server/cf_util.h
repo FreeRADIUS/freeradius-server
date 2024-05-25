@@ -358,8 +358,8 @@ void		_cf_log_perr_by_child(fr_log_type_t type, CONF_SECTION const *parent, char
 				      char const *file, int line, fr_log_perror_format_t const *f_rules,
 				      char const *fmt, ...) CC_HINT(format (printf, 7, 8));
 
-#define		cf_debug(_cf) _cf_debug(CF_TO_ITEM(_cf))
-void		_cf_debug(CONF_ITEM const *ci);
+#define		cf_item_debug(_cf) _cf_item_debug(CF_TO_ITEM(_cf))
+void		_cf_item_debug(CONF_ITEM const *ci);
 
 void		cf_pair_debug(CONF_SECTION *cp);
 void		cf_section_debug(CONF_SECTION *cs);

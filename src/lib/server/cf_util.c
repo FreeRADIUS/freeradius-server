@@ -2273,7 +2273,7 @@ void _cf_log_perr_by_child(fr_log_type_t type, CONF_SECTION const *parent, char 
  *
  * @param[in] ci	being debugged.
  */
-void _cf_debug(CONF_ITEM const *ci)
+void _cf_item_debug(CONF_ITEM const *ci)
 {
 	/*
 	 *	Print summary of the item
@@ -2400,14 +2400,14 @@ void _cf_debug(CONF_ITEM const *ci)
  */
 void cf_pair_debug(CONF_SECTION *cp)
 {
-	cf_debug(cp);
+	cf_item_debug(cp);
 }
 
 /** Ease of use from debugger
  */
 void cf_section_debug(CONF_SECTION *cs)
 {
-	cf_debug(cs);
+	cf_item_debug(cs);
 }
 
 /*

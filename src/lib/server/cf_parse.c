@@ -1417,7 +1417,7 @@ int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char cons
 			subcs = cf_section_find(cs, name1, name2);
 			if (!subcs) {
 				cf_log_err(cs, "Failed finding '%s' subsection", name1);
-				cf_debug(cs);
+				cf_item_debug(cs);
 				return -1;
 			}
 
@@ -1428,7 +1428,7 @@ int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char cons
 		           "Existing data added %s[%i]", "conf_parser_t",
 			   name1, cd->item.filename, cd->item.lineno);
 
-		cf_debug(cs);
+		cf_item_debug(cs);
 		return -1;
 	}
 
