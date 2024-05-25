@@ -45,14 +45,6 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED fr_bio_retry_release_reason_t reason);
 static ssize_t radius_client_retry(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED const void *buffer, NDEBUG_UNUSED size_t size);
 
-static int fr_radius_client_bio_write_blocked(fr_bio_t *bio);
-static int fr_radius_client_bio_write_resume(fr_bio_t *bio);
-
-static const fr_bio_cb_funcs_t client_bio_cb_funcs = {
-	.write_blocked = fr_radius_client_bio_write_blocked,
-	.write_resume = fr_radius_client_bio_write_resume,
-};
-
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
 	fr_assert(fd_cfg->type == FR_BIO_FD_CONNECTED);
@@ -140,8 +132,12 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 
 	/*
 	 *	Inform all BIOs about the write pause / resume callbacks
+	 *
+	 *	@todo - these callbacks are set AFTER the BIOs have been initialized, so the activate()
+	 *	callback is never set, and therefore is never run.  We should add all of the callbacks to the
+	 *	various bio "cfg" data structures.
 	 */
-	fr_radius_client_bio_cb_set(bio, cfg->packet_cb_cfg);
+	fr_radius_client_bio_cb_set(&my->common, &cfg->packet_cb_cfg);
 
 	/*
 	 *	Set up the connected status.
@@ -626,61 +622,55 @@ int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
 	return fr_radius_code_id_force(my->codes, code, id);
 }
 
-
-/** Try to connect a socket.
- *
- *  Calls fr_bio_fd_connect()
- *
- *  @param bio	the packet bio
- *  @return
- *	- 0 for "connected, can continue"
- *	- fr_bio_error(IO_WOULD_BLOCK) for "not yet connected, please try again"
- *	- <0 for other fr_bio_error()
+/** Callback for when the FD is activated, i.e. connected.
  *
  */
-int fr_radius_client_bio_connect(fr_bio_packet_t *bio)
+static int fr_radius_client_bio_activate(fr_bio_t *bio)
 {
+	fr_radius_client_fd_bio_t *my = bio->uctx;
+
+	fr_assert(!my->info.connected);
+
+	my->info.connected = true;
+
+	fr_assert(0);
+
+
+	return 0;
+}
+
+void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSED int fd, UNUSED int flags, void *uctx)
+{
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
 	int rcode;
-	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 
-	if (my->info.connected) return 0;
+	fr_assert(my->common.cb.activate);
+	fr_assert(my->info.retry_info->el == el);
+	fr_assert(my->info.fd_info->socket.fd == fd);
 
-	switch (my->info.fd_info->type) {
-	default:
-		fr_strerror_const("Invalid RADIUS client bio for connect");
-		return fr_bio_error(GENERIC);
+	/*
+	 *	The socket is already connected, go activate it.  This happens when the FD bio opens an
+	 *	unconnected socket.  It calls our activation routine before the application has a chance to
+	 *	call our connect routine.
+	 */
+	if (my->info.connected) goto activate;
 
-	case FR_BIO_FD_UNCONNECTED:
-		return 0;
-
-	case FR_BIO_FD_CONNECTED:
-		break;
-	}
-
-	switch(my->info.fd_info->state) {
-	case FR_BIO_FD_STATE_INVALID:
-		fr_strerror_const("Invalid RADIUS client bio state");
-		return fr_bio_error(GENERIC);
-
-	case FR_BIO_FD_STATE_CLOSED:
-		fr_strerror_const("RADIUS client bio is closed");
-		return fr_bio_error(GENERIC);
-
-	case FR_BIO_FD_STATE_OPEN:
-		return 0;
-
-	case FR_BIO_FD_STATE_CONNECTING:
-		break;
-	}
+	fr_assert(my->info.fd_info->type == FR_BIO_FD_CONNECTED);
+	fr_assert(my->info.fd_info->state == FR_BIO_FD_STATE_CONNECTING);
 
 	/*
 	 *	Try to connect it.
 	 */
 	rcode = fr_bio_fd_connect(my->fd);
+	fr_assert(rcode >= 0);
 
-	my->info.connected = (rcode == 0);
-	return rcode;
+	my->info.connected = true;
+
+activate:
+	(void) my->common.cb.activate(&my->common);
 }
+
+
 
 /** Callback for when the writes are blocked.
  *
@@ -782,6 +772,7 @@ void fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t 
 	fr_assert((cb->write_blocked != NULL) == (cb->write_resume != NULL));
 	fr_assert((cb->read_blocked != NULL) == (cb->read_resume != NULL));
 
+	bio_cb.activate = fr_radius_client_bio_activate;
 	bio_cb.write_blocked = fr_radius_client_bio_write_blocked;
 	bio_cb.write_resume = fr_radius_client_bio_write_resume;
 

@@ -48,6 +48,8 @@ typedef struct {
 } fr_bio_retry_config_t;
 
 typedef struct {
+	fr_event_list_t		*el;			//!< event list
+
 	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
 	fr_time_t		last_reply;		//!< When we last received a reply.
 	fr_time_t		first_sent;		//!< first time we sent a packet since going idle
@@ -55,6 +57,8 @@ typedef struct {
 	fr_time_t		last_idle;		//!< last time we had nothing to do
 
 	bool			write_blocked;		//!< are writes blocked?
+
+	fr_bio_retry_config_t const *cfg;      		//!< so we know what was asked
 } fr_bio_retry_info_t;
 
 typedef struct fr_bio_retry_entry_s fr_bio_retry_entry_t;

@@ -67,7 +67,6 @@ FR_DLIST_FUNCS(fr_bio_retry_list, fr_bio_retry_entry_t, entry)
 struct fr_bio_retry_s {
 	FR_BIO_COMMON;
 
-	fr_event_list_t		*el;
 	fr_rb_tree_t		timer_tree;
 	fr_rb_tree_t		expiry_tree;
 
@@ -138,7 +137,7 @@ static int fr_bio_retry_expiry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	Update the timer.  This should never fail.
 	 */
-	if (fr_event_timer_at(my, my->el, &my->ev, first->retry.end, fr_bio_retry_expiry_timer, my) < 0) return -1;
+	if (fr_event_timer_at(my, my->info.el, &my->ev, first->retry.end, fr_bio_retry_expiry_timer, my) < 0) return -1;
 
 	my->timer_item = first;
 	return 0;
@@ -178,7 +177,7 @@ static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	Update the timer.  This should never fail.
 	 */
-	if (fr_event_timer_at(my, my->el, &my->ev, first->retry.next, fr_bio_retry_timer, my) < 0) return -1;
+	if (fr_event_timer_at(my, my->info.el, &my->ev, first->retry.next, fr_bio_retry_timer, my) < 0) return -1;
 
 	my->timer_item = first;
 	return 0;
@@ -1008,13 +1007,14 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	my->response = response;
 	my->release = release;
 
-	my->el = cfg->el;
 	my->info.last_idle = fr_time();
+	my->info.el = cfg->el;
+	my->info.cfg = cfg;
+
 	my->retry_config = cfg->retry_config;
 
 	my->bio.write = fr_bio_retry_write;
 	my->bio.read = fr_bio_retry_read;
-
 
 	fr_bio_chain(&my->bio, next);
 

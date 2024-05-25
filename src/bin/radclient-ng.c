@@ -957,7 +957,7 @@ static void cleanup(fr_bio_packet_t *client, rc_request_t *request)
 	}
 }
 
-static void client_retry_log(UNUSED fr_bio_packet_t *client, fr_packet_t *packet)
+static void client_packet_retry_log(UNUSED fr_bio_packet_t *client, fr_packet_t *packet)
 {
 	rc_request_t *request = packet->uctx;
 
@@ -968,7 +968,7 @@ static void client_retry_log(UNUSED fr_bio_packet_t *client, fr_packet_t *packet
 	fr_radius_packet_log(&default_log, request->packet, &request->request_pairs, false);
 }
 
-static void client_release(fr_bio_packet_t *client, fr_packet_t *packet)
+static void client_packet_release(fr_bio_packet_t *client, fr_packet_t *packet)
 {
 	rc_request_t *request = packet->uctx;
 
@@ -1255,26 +1255,19 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	}
 }
 
-static void client_connect(fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+static int client_bio_activate(fr_bio_packet_t *client)
 {
-	int rcode;
-	fr_bio_packet_t *client = uctx;
+	fr_radius_client_bio_info_t const *info;
 
-	rcode = fr_radius_client_bio_connect(client);
-	if (rcode < 0) {
-		/*
-		 *	We may need to try again.  If so, do that.
-		 */
-		if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return;
+	info = fr_radius_client_bio_info(client);
 
-		ERROR("Failed connecting socket: %s", fr_strerror());
-		fr_exit_now(1);
-	}
-
-	if (fr_event_fd_insert(autofree, NULL, el, fd, client_read, client_write, client_error, client) < 0) {
+	if (fr_event_fd_insert(autofree, NULL, info->retry_info->el, info->fd_info->socket.fd,
+			       client_read, client_write, client_error, client) < 0) {
 		fr_perror("radclient");
 		fr_exit_now(1);
 	}
+
+	return 0;
 }
 
 
@@ -1733,11 +1726,13 @@ int main(int argc, char **argv)
 	 *	paused or resumed when the socket becomes writeable.
 	 */
 	client_config.packet_cb_cfg = (fr_bio_packet_cb_funcs_t) {
-		.write_blocked = client_bio_write_pause,
-		.write_resume = client_bio_write_resume,
+		.activate	= client_bio_activate,
 
-		.retry = (fr_debug_lvl > 0) ? client_retry_log : NULL,
-		.release = client_release,
+		.write_blocked	= client_bio_write_pause,
+		.write_resume	= client_bio_write_resume,
+
+		.retry		= (fr_debug_lvl > 0) ? client_packet_retry_log : NULL,
+		.release	= client_packet_release,
 	};
 
 	/*
@@ -1778,7 +1773,7 @@ int main(int argc, char **argv)
 	 *	Once the connect() passes, we start reading from the request list, and processing packets.
 	 */
 	if (fr_event_fd_insert(autofree, NULL, client_config.retry_cfg.el, client_info->fd_info->socket.fd, NULL,
-			       client_connect, client_error, client_bio) < 0) {
+			       fr_radius_client_bio_connect, client_error, client_bio) < 0) {
 		fr_perror("radclient");
 		fr_exit_now(1);
 	}
