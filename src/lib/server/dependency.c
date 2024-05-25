@@ -27,6 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/util/regex.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/version.h>
 
 #include <freeradius-devel/server/cf_util.h>
