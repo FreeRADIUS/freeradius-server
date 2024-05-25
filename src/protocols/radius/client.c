@@ -594,13 +594,6 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_
 	return 1;
 }
 
-fr_bio_t *fr_radius_client_bio_get_fd(fr_bio_packet_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
-
-	return my->fd;
-}
-
 size_t fr_radius_client_bio_outstanding(fr_bio_packet_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
