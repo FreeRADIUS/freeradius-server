@@ -670,7 +670,7 @@ int main(int argc, char *argv[])
 	size_t			memory_used_before = 0;
 	size_t			memory_used_after = 0;
 #endif
-
+	virtual_server_t const	*vs;
 
 	fr_pair_list_init(&filter_vps);
 
@@ -929,11 +929,13 @@ int main(int argc, char *argv[])
 
 	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
 
-	server_cs = virtual_server_find("default");
-	if (!server_cs) {
+	vs = virtual_server_find("default");
+	if (!vs) {
 		ERROR("Cannot find virtual server 'default'");
 		EXIT_WITH_FAILURE;
 	}
+
+	server_cs = virtual_server_cs(vs);
 
 	/*
 	 *	Do some sanity checking.

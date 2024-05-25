@@ -26,11 +26,14 @@ RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+#include <freeradius-devel/server/virtual_servers.h>
+
 #include <freeradius-devel/server/cf_file.h>
 #include <freeradius-devel/server/main_config.h>
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
+
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/util/time.h>
 #include <freeradius-devel/util/dict.h>
@@ -4082,10 +4085,11 @@ get_packet_type:
 
 static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
+	virtual_server_t const		*vs;
 	unlang_t			*c;
 
 	unlang_group_t			*g;
-	unlang_call_t		*gext;
+	unlang_call_t			*gext;
 
 	fr_token_t			type;
 	char const     			*server;
@@ -4111,11 +4115,13 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 
-	server_cs = virtual_server_find(server);
-	if (!server_cs) {
+	vs = virtual_server_find(server);
+	if (!vs) {
 		cf_log_err(cs, "Unknown virtual server '%s'", server);
 		return NULL;
 	}
+
+	server_cs = virtual_server_cs(vs);
 
 	/*
 	 *	The dictionaries are not compatible, forbid it.
@@ -5053,12 +5059,16 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 
 void unlang_perf_virtual_server(fr_log_t *log, char const *name)
 {
-	CONF_SECTION *cs = virtual_server_find(name);
-	CONF_ITEM *ci;
-	char const *file;
-	int line;
 
-	if (!cs) return;
+	virtual_server_t const	*vs = virtual_server_find(name);
+	CONF_SECTION		*cs;
+	CONF_ITEM		*ci;
+	char const		*file;
+	int			line;
+
+	if (!vs) return;
+
+	cs = virtual_server_cs(vs);
 
 	file = cf_filename(cs);
 	line = cf_lineno(cs);

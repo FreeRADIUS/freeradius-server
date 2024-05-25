@@ -81,7 +81,9 @@ int		virtual_server_has_namespace(CONF_SECTION **out,
  *
  * @{
  */
-CONF_SECTION		*virtual_server_find(char const *name) CC_HINT(nonnull);
+CONF_SECTION		*virtual_server_cs(virtual_server_t const *vs) CC_HINT(nonnull);
+
+virtual_server_t const	*virtual_server_find(char const *name) CC_HINT(nonnull);
 
 virtual_server_t const	*virtual_server_by_child(CONF_ITEM const *ci) CC_HINT(nonnull);
 

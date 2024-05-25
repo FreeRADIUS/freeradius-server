@@ -25,6 +25,7 @@
  * @copyright 2000 Alan Curry (pacman@world.std.com)
  */
 
+#include "lib/server/cf_util.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -546,12 +547,12 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
  */
 fr_dict_t const *virtual_server_dict_by_name(char const *virtual_server)
 {
-	CONF_SECTION const *server_cs;
+	virtual_server_t const *vs;
 
-	server_cs = virtual_server_find(virtual_server);
-	if (!server_cs) return NULL;
+	vs = virtual_server_find(virtual_server);
+	if (!vs) return NULL;
 
-	return virtual_server_dict_by_cs(server_cs);
+	return virtual_server_dict_by_cs(vs->server_cs);
 }
 
 /** Return the namespace for the virtual server specified by a config section
@@ -613,16 +614,19 @@ fr_dict_t const *virtual_server_dict_by_child_ci(CONF_ITEM const *ci)
 int virtual_server_has_namespace(CONF_SECTION **out,
 				 char const *virtual_server, fr_dict_t const *namespace, CONF_ITEM *ci)
 {
-	CONF_SECTION	*server_cs;
-	fr_dict_t const	*dict;
+	virtual_server_t const	*vs;
+	CONF_SECTION		*server_cs;
+	fr_dict_t const		*dict;
 
 	if (out) *out = NULL;
 
-	server_cs = virtual_server_find(virtual_server);
-	if (!server_cs) {
+	vs = virtual_server_find(virtual_server);
+	if (!vs) {
 		if (ci) cf_log_err(ci, "Can't find virtual server \"%s\"", virtual_server);
 		return -1;
 	}
+	server_cs = virtual_server_cs(vs);
+
 	dict = virtual_server_dict_by_name(virtual_server);
 	if (!dict) {
 		/*
@@ -801,6 +805,17 @@ bool listen_record(fr_listen_t *li)
 	return fr_rb_insert(listen_addr_root, li);
 }
 
+/** Return the configuration section for a virtual server
+ *
+ * @param[in] vs to return conf section for
+ * @return
+ *	- The CONF_SECTION of the virtual server.
+ */
+CONF_SECTION *virtual_server_cs(virtual_server_t const *vs)
+{
+	return vs->server_cs;
+}
+
 /** Return virtual server matching the specified name
  *
  * @note May be called in bootstrap or instantiate as all servers should be present.
@@ -810,9 +825,17 @@ bool listen_record(fr_listen_t *li)
  *	- NULL if no virtual server was found.
  *	- The CONF_SECTION of the named virtual server.
  */
-CONF_SECTION *virtual_server_find(char const *name)
+virtual_server_t const *virtual_server_find(char const *name)
 {
-	return cf_section_find(virtual_server_root, "server", name);
+	CONF_SECTION *server_cs = cf_section_find(virtual_server_root, "server", name);
+	CONF_DATA const *cd;
+
+	if (unlikely(server_cs == NULL)) return NULL;
+
+	cd = cf_data_find(server_cs, virtual_server_t, NULL);
+	if (unlikely(cd == NULL)) return NULL;
+
+	return cf_data_value(cd);
 }
 
 /** Find a virtual server using one of its sections
@@ -848,15 +871,15 @@ virtual_server_t const *virtual_server_by_child(CONF_ITEM const *ci)
 int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			    CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
-	CONF_SECTION	*server_cs;
+	virtual_server_t const *vs;
 
-	server_cs = virtual_server_find(cf_pair_value(cf_item_to_pair(ci)));
-	if (!server_cs) {
+	vs = virtual_server_find(cf_pair_value(cf_item_to_pair(ci)));
+	if (!vs) {
 		cf_log_err(ci, "virtual-server \"%s\" not found", cf_pair_value(cf_item_to_pair(ci)));
 		return -1;
 	}
 
-	*((CONF_SECTION **)out) = server_cs;
+	*((CONF_SECTION **)out) = vs->server_cs;
 
 	return 0;
 }

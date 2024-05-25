@@ -23,27 +23,27 @@ static conf_parser_t ocsp_config[] = {
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp.cache_server) {
-		CONF_SECTION *server_cs;
+		virtual_server_t const *vs;
 
-		server_cs = virtual_server_find(conf->ocsp.cache_server);
-		if (!server_cs) {
+		vs = virtual_server_find(conf->ocsp.cache_server);
+		if (!vs) {
 			ERROR("No such virtual server '%s'", conf->ocsp.cache_server);
 			goto error;
 		}
 
-		if (fr_tls_ocsp_state_cache_compile(&conf->ocsp.cache, server_cs) < 0) goto error;
+		if (fr_tls_ocsp_state_cache_compile(&conf->ocsp.cache, vs->server_cs) < 0) goto error;
 	}
 
 	if (conf->staple.cache_server) {
-		CONF_SECTION *server_cs;
+		virtual_server_t const *vs;
 
-		server_cs = virtual_server_find(conf->staple.cache_server);
-		if (!server_cs) {
+		vs = virtual_server_find(conf->staple.cache_server);
+		if (!vs) {
 			ERROR("No such virtual server '%s'", conf->staple.cache_server);
 			goto error;
 		}
 
-		if (fr_tls_ocsp_staple_cache_compile(&conf->staple.cache, server_cs) < 0) goto error;
+		if (fr_tls_ocsp_staple_cache_compile(&conf->staple.cache, vs->server_cs) < 0) goto error;
 	}
 #endif
 
