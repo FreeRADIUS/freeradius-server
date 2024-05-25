@@ -30,12 +30,14 @@ extern "C" {
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
+#include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/retry.h>
 #include <freeradius-devel/unlang/mod_action.h>
 
 void		unlang_compile_init(TALLOC_CTX *ctx);
 
-int 		unlang_compile(CONF_SECTION *cs, unlang_mod_actions_t const *actions, tmpl_rules_t const *rules, void **instruction);
+int 		unlang_compile(virtual_server_t const *vs,
+			       CONF_SECTION *cs, unlang_mod_actions_t const *actions, tmpl_rules_t const *rules, void **instruction);
 
 bool		unlang_compile_is_keyword(const char *name);
 

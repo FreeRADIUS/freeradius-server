@@ -69,16 +69,6 @@ typedef struct {
 							///< and timers against.
 } module_thread_inst_ctx_t;
 
-#ifdef __cplusplus
-}
-#endif
-
-#include <freeradius-devel/server/module.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 DIAG_OFF(unused-function)
 /** Allocate a module calling ctx on the heap based on an instance ctx
  *

@@ -25,6 +25,7 @@
 
 RCSID("$Id$")
 
+#include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>

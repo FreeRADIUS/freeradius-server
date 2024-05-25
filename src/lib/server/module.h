@@ -30,21 +30,17 @@ RCSIDH(modules_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/server/cf_util.h>
-#include <freeradius-devel/server/request.h>
-#include <freeradius-devel/server/module_ctx.h>
-#include <freeradius-devel/unlang/action.h>
-#include <freeradius-devel/unlang/compile.h>
-#include <freeradius-devel/unlang/call_env.h>
-#include <freeradius-devel/unlang/mod_action.h>
-#include <freeradius-devel/util/event.h>
-
 typedef struct module_s				module_t;
+typedef struct module_state_func_table_s	module_state_func_table_t;
 typedef struct module_method_name_s		module_method_name_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
 typedef struct module_list_type_s		module_list_type_t;
 typedef struct module_list_s			module_list_t;
+
+#include <freeradius-devel/server/module_ctx.h>
+#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/request.h>
 
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
@@ -125,13 +121,20 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 }
 #endif
 
+#include <freeradius-devel/features.h>
+#include <freeradius-devel/io/schedule.h>
+
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/dl_module.h>
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/pool.h>
-#include <freeradius-devel/server/rcode.h>
+#include <freeradius-devel/server/request.h>
 
-#include <freeradius-devel/io/schedule.h>
-#include <freeradius-devel/features.h>
+#include <freeradius-devel/unlang/action.h>
+#include <freeradius-devel/unlang/call_env.h>
+#include <freeradius-devel/unlang/mod_action.h>
+
+#include <freeradius-devel/util/event.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -380,10 +383,10 @@ struct module_list_s
 /** Map string values to module state method
  *
  */
-typedef struct {
+struct module_state_func_table_s {
 	char const			*name;			//!< String identifier for state.
 	module_method_t			func;			//!< State function.
-} module_state_func_table_t;
+};
 
 /** @name Callbacks for the conf_parser_t
  *

@@ -38,6 +38,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/protocol.h>
 #include <freeradius-devel/server/virtual_servers.h>
 
+#include <freeradius-devel/unlang/compile.h>
+
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>
 #include <freeradius-devel/io/listen.h>
@@ -825,7 +827,7 @@ virtual_server_t const *virtual_server_by_child(CONF_ITEM const *ci)
 	CONF_SECTION *cs;
 	CONF_DATA const *cd;
 
-	cs = cf_section_find_in_parent(ci, "server", CF_IDENT_ANY);
+	cs = cf_section_find_parent(ci, "server", CF_IDENT_ANY);
 	if (unlikely(!cs)) {
 		cf_log_err(ci, "Child section is not associated with a virtual server");
 		return NULL;
@@ -868,18 +870,16 @@ int virtual_server_cf_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *pare
  *  This function walks down the registration table, compiling each
  *  named section.
  *
- * @param[in] server	to search for sections in.
- * @param[in] list	of sections to compiler.
+ * @param[in] vs	to to compile sections for.
  * @param[in] rules	to apply for pass1.
- * @param[in] instance	module instance data.  The offset value in
- *			the rules array will be added to this to
- *			determine where to write pointers to the
- *			various CONF_SECTIONs.
  */
-int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list, tmpl_rules_t const *rules, void *instance)
+int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t const *rules)
 {
-	int i, found;
-	CONF_SECTION *subcs = NULL;
+	virtual_server_compile_t const	*list = vs->process_module->compile_list;
+	void				*instance = vs->process_mi->data;
+	CONF_SECTION			*server = vs->server_cs;
+	int				i, found;
+	CONF_SECTION			*subcs = NULL;
 
 	found = 0;
 
@@ -924,7 +924,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 				return -1;
 			}
 
-			rcode = unlang_compile(subcs, list[i].actions, rules, &instruction);
+			rcode = unlang_compile(vs, subcs, list[i].actions, rules, &instruction);
 			if (rcode < 0) return -1;
 
 			/*
@@ -969,7 +969,7 @@ int virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile
 			bad = cf_section_find_next(server, subcs, list[i].name1, name2);
 			if (bad) goto forbidden;
 
-			rcode = unlang_compile(subcs, list[i].actions, rules, NULL);
+			rcode = unlang_compile(vs, subcs, list[i].actions, rules, NULL);
 			if (rcode < 0) return -1;
 
 			/*
@@ -1491,7 +1491,7 @@ int virtual_servers_instantiate(void)
 		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
 		fr_dict_t const			*dict;
-		virtual_server_t const	*vs = virtual_servers[i];
+		virtual_server_t const		*vs = virtual_servers[i];
 		fr_process_module_t const	*process = (fr_process_module_t const *)
 							    vs->process_mi->module->exported;
 
@@ -1518,8 +1518,7 @@ int virtual_servers_instantiate(void)
 
 			fr_assert(parse_rules.attr.dict_def != NULL);
 
-			if (virtual_server_compile_sections(server_cs, process->compile_list, &parse_rules,
-							    vs->process_mi->data) < 0) {
+			if (virtual_server_compile_sections(virtual_servers[i], &parse_rules) < 0) {
 				return -1;
 			}
 		}

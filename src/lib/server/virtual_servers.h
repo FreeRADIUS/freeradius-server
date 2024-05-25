@@ -119,8 +119,7 @@ typedef struct {
 
 int		virtual_server_section_register(virtual_server_t *vs, virtual_server_compile_t const *entry) CC_HINT(nonnull);
 
-int		virtual_server_compile_sections(CONF_SECTION *server, virtual_server_compile_t const *list,
-						tmpl_rules_t const *rules, void *instance) CC_HINT(nonnull(1,2,3));
+int		virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t const *rules) CC_HINT(nonnull);
 
 virtual_server_method_t const *virtual_server_section_methods(virtual_server_t const *vs, char const *name1, char const *name2) CC_HINT(nonnull(1));
 

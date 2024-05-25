@@ -30,6 +30,7 @@ extern "C" {
 #endif
 
 #include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/virtual_servers.h>
 
 typedef struct {
 	module_t			common;			//!< Common fields presented by all modules.
@@ -90,7 +91,7 @@ bool		module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type
  */
 module_instance_t	*module_rlm_by_name_and_method(module_method_t *method, call_env_method_t const ** method_env,
 						       char const **name1, char const **name2,
-						       char const *asked_name);
+						       virtual_server_t const *vs, char const *asked_name);
 
 module_instance_t	*module_rlm_static_by_name(module_instance_t const *parent, char const *asked_name);
 

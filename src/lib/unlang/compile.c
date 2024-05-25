@@ -25,7 +25,10 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
-#include <freeradius-devel/server/base.h>
+
+#include <freeradius-devel/server/cf_file.h>
+#include <freeradius-devel/server/main_config.h>
+#include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/tmpl.h>
@@ -85,6 +88,9 @@ fr_table_num_sorted_t const mod_rcode_table[] = {
 size_t mod_rcode_table_len = NUM_ELEMENTS(mod_rcode_table);
 
 typedef struct {
+	virtual_server_t const		*vs;			//!< Virtual server we're compiling in the context of.
+								///< This shouldn't change during the compilation of
+								///< a single unlang section.
 	char const			*section_name1;
 	char const			*section_name2;
 	unlang_mod_actions_t		actions;
@@ -760,7 +766,7 @@ static unlang_t *compile_map(unlang_t *parent, unlang_compile_t *unlang_ctx, CON
 		cf_log_err(cs, "Failed to find map processor '%s'", name2);
 		return NULL;
 	}
-	t_rules.literals_safe_for = proc->literals_safe_for;
+	t_rules.literals_safe_for = map_proc_literals_safe_for(proc);
 
 	g = group_allocate(parent, cs, &map_ext);
 	if (!g) return NULL;
@@ -4713,18 +4719,12 @@ check_for_module:
 	 *	name2, etc.
 	 */
 	UPDATE_CTX2;
-	{
-		virtual_server_t const *vs;
-
-		vs = virtual_server_by_child(ci);
-		fr_assert_msg(vs != NULL, "Failed getting virtual server for module call");
-		inst = module_rlm_by_name_and_method(&method, &method_env,
-						     &unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
-						     vs, realname);
-		if (inst) {
-			c = compile_module(parent, &unlang_ctx2, ci, inst, method, method_env, realname);
-			goto allocate_number;
-		}
+	inst = module_rlm_by_name_and_method(&method, &method_env,
+						&unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
+						unlang_ctx2.vs, realname);
+	if (inst) {
+		c = compile_module(parent, &unlang_ctx2, ci, inst, method, method_env, realname);
+		goto allocate_number;
 	}
 
 	/*
@@ -4754,7 +4754,19 @@ fail:
 	return NULL;
 }
 
-int unlang_compile(CONF_SECTION *cs, unlang_mod_actions_t const * actions, tmpl_rules_t const *rules, void **instruction)
+/** Compile an unlang section for a virtual server
+ *
+ * @param[in] vs		Virtual server to compile section for.
+ * @param[in] cs		containing the unlang calls to compile.
+ * @param[in] actions		Actions to use for the unlang section.
+ * @param[in] rules		Rules to use for the unlang section.
+ * @param[out] instruction	Pointer to store the compiled unlang section.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
+ */
+int unlang_compile(virtual_server_t const *vs,
+		   CONF_SECTION *cs, unlang_mod_actions_t const * actions, tmpl_rules_t const *rules, void **instruction)
 {
 	unlang_t			*c;
 	tmpl_rules_t			my_rules;
@@ -4793,6 +4805,7 @@ int unlang_compile(CONF_SECTION *cs, unlang_mod_actions_t const * actions, tmpl_
 
 	c = compile_section(NULL,
 			    &(unlang_compile_t){
+				.vs = vs,
 				.section_name1 = cf_section_name1(cs),
 				.section_name2 = cf_section_name2(cs),
 				.actions = *actions,

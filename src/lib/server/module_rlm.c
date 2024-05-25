@@ -38,6 +38,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/atexit.h>
+
+#include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat_redundant.h>
 
@@ -440,7 +442,7 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
  */
 module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_env_method_t const **method_env,
 						 char const **name1, char const **name2,
-						 char const *name)
+						 virtual_server_t const *vs, char const *name)
 {
 	char				*p, *q, *inst_name;
 	size_t				len;
@@ -526,12 +528,14 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 			if (strcasecmp(methods->name2, method_name2) == 0) goto found;
 		}
 
+		if (!vs) goto skip_section_method;
+
 		/*
 		 *	No match for "recv Access-Request", or
 		 *	whatever else the section is.  Let's see if
 		 *	the section has a list of allowed methods.
 		 */
-		allowed_list = virtual_server_section_methods(method_name1, method_name2);
+		allowed_list = virtual_server_section_methods(vs, method_name1, method_name2);
 		if (!allowed_list) goto return_component;
 
 		/*
@@ -596,6 +600,8 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 		 */
 		return mi;
 	}
+
+skip_section_method:
 
 	/*
 	 *	Find out if the instance name contains
@@ -870,7 +876,7 @@ static int module_rlm_bootstrap_virtual(CONF_SECTION *cs)
 			 *	want to know if we need to register a
 			 *	redundant xlat for the virtual module.
 			 */
-			mi = module_rlm_by_name_and_method(NULL, NULL, NULL, NULL, cf_pair_attr(cp));
+			mi = module_rlm_by_name_and_method(NULL, NULL, NULL, NULL, NULL, cf_pair_attr(cp));
 			if (!mi) {
 				cf_log_err(sub_ci, "Module instance \"%s\" referenced in %s block, does not exist",
 					   cf_pair_attr(cp), cf_section_name1(cs));
