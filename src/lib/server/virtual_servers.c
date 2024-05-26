@@ -25,11 +25,12 @@
  * @copyright 2000 Alan Curry (pacman@world.std.com)
  */
 
-#include "lib/server/cf_util.h"
+
 RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 #include <freeradius-devel/server/base.h>
+#include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/command.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/dl_module.h>
