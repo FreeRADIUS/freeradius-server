@@ -308,12 +308,12 @@ int add_compile_list(virtual_server_t *vs, CONF_SECTION *cs, virtual_server_comp
 
 	if (!compile_list) return 0;
 
-	for (i = 0; list[i].name1 != NULL; i++) {
-		if (list[i].name1 == CF_IDENT_ANY) continue;
+	for (i = 0; list[i].section; i++) {
+		if (list[i].section->name1 == CF_IDENT_ANY) continue;
 
 		if (virtual_server_section_register(vs, &list[i]) < 0) {
 			cf_log_err(cs, "Failed registering processing section name %s for %s",
-				   list[i].name1, name);
+				   list[i].section->name1, name);
 			return -1;
 		}
 	}
@@ -912,7 +912,7 @@ int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t con
 	 *	looks.  It's not O(n^2), but O(n logn).  But it could
 	 *	still be improved.
 	 */
-	for (i = 0; list[i].name1 != NULL; i++) {
+	for (i = 0; list[i].section; i++) {
 		int rcode;
 		CONF_SECTION *bad;
 
@@ -921,13 +921,13 @@ int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t con
 		 *	Warn if it isn't found, or compile it if
 		 *	found.
 		 */
-		if (list[i].name2 != CF_IDENT_ANY) {
+		if (list[i].section->name2 != CF_IDENT_ANY) {
 			void *instruction = NULL;
 
-			subcs = cf_section_find(server, list[i].name1, list[i].name2);
+			subcs = cf_section_find(server, list[i].section->name1, list[i].section->name2);
 			if (!subcs) {
 				DEBUG3("Warning: Skipping %s %s { ... } as it was not found.",
-				       list[i].name1, list[i].name2);
+				       list[i].section->name1, list[i].section->name2);
 				/*
 				 *	Initialise CONF_SECTION pointer for missing section
 				 */
@@ -940,7 +940,7 @@ int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t con
 			/*
 			 *	Duplicate sections are forbidden.
 			 */
-			bad = cf_section_find_next(server, subcs, list[i].name1, list[i].name2);
+			bad = cf_section_find_next(server, subcs, list[i].section->name1, list[i].section->name2);
 			if (bad) {
 			forbidden:
 				cf_log_err(bad, "Duplicate sections are forbidden.");
@@ -978,19 +978,19 @@ int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t con
 		 *	Find all subsections with the given first name
 		 *	and compile them.
 		 */
-		while ((subcs = cf_section_find_next(server, subcs, list[i].name1, CF_IDENT_ANY))) {
+		while ((subcs = cf_section_find_next(server, subcs, list[i].section->name1, CF_IDENT_ANY))) {
 			char const	*name2;
 
 			name2 = cf_section_name2(subcs);
 			if (!name2) {
-				cf_log_err(subcs, "Invalid '%s { ... }' section, it must have a name", list[i].name1);
+				cf_log_err(subcs, "Invalid '%s { ... }' section, it must have a name", list[i].section->name1);
 				return -1;
 			}
 
 			/*
 			 *	Duplicate sections are forbidden.
 			 */
-			bad = cf_section_find_next(server, subcs, list[i].name1, name2);
+			bad = cf_section_find_next(server, subcs, list[i].section->name1, name2);
 			if (bad) goto forbidden;
 
 			rcode = unlang_compile(vs, subcs, list[i].actions, rules, NULL);
@@ -1016,15 +1016,15 @@ static int8_t server_section_name_cmp(void const *one, void const *two)
 	virtual_server_compile_t const *b = two;
 	int ret;
 
-	ret = strcmp(a->name1, b->name1);
+	ret = strcmp(a->section->name1, b->section->name1);
 	ret = CMP(ret, 0);
 	if (ret != 0) return ret;
 
-	if (a->name2 == b->name2) return 0;
-	if ((a->name2 == CF_IDENT_ANY) && (b->name2 != CF_IDENT_ANY)) return -1;
-	if ((a->name2 != CF_IDENT_ANY) && (b->name2 == CF_IDENT_ANY)) return +1;
+	if (a->section->name2 == b->section->name2) return 0;
+	if ((a->section->name2 == CF_IDENT_ANY) && (b->section->name2 != CF_IDENT_ANY)) return -1;
+	if ((a->section->name2 != CF_IDENT_ANY) && (b->section->name2 == CF_IDENT_ANY)) return +1;
 
-	ret = strcmp(a->name2, b->name2);
+	ret = strcmp(a->section->name2, b->section->name2);
 	return CMP(ret, 0);
 }
 
@@ -1052,15 +1052,15 @@ int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile
 	if (entry->methods) {
 		int i;
 
-		for (i = 0; entry->methods[i].name1 != NULL; i++) {
-			if (entry->methods[i].name1 == CF_IDENT_ANY) {
+		for (i = 0; entry->methods[i]; i++) {
+			if (entry->methods[i]->name1 == CF_IDENT_ANY) {
 				ERROR("Processing sections cannot allow \"*\"");
 				return -1;
 			}
 
-			if (entry->methods[i].name2 == CF_IDENT_ANY) {
+			if (entry->methods[i]->name2 == CF_IDENT_ANY) {
 				ERROR("Processing sections cannot allow \"%s *\"",
-					entry->methods[i].name1);
+					entry->methods[i]->name1);
 				return -1;
 			}
 		}
@@ -1078,7 +1078,7 @@ int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile
 /** Find the component for a section
  *
  */
-virtual_server_method_t const *virtual_server_section_methods(virtual_server_t const *vs, char const *name1, char const *name2)
+section_name_t const **virtual_server_section_methods(virtual_server_t const *vs, char const *name1, char const *name2)
 {
 	virtual_server_compile_t *entry;
 
@@ -1089,8 +1089,7 @@ virtual_server_method_t const *virtual_server_section_methods(virtual_server_t c
 	if (name2 != CF_IDENT_ANY) {
 		entry = fr_rb_find(vs->sections,
 				   &(virtual_server_compile_t) {
-					.name1 = name1,
-					.name2 = name2,
+					.section = SECTION_NAME(name1, name2)
 				   });
 		if (entry) return entry->methods;
 	}
@@ -1100,8 +1099,7 @@ virtual_server_method_t const *virtual_server_section_methods(virtual_server_t c
 	 */
 	entry = fr_rb_find(vs->sections,
 			   &(virtual_server_compile_t) {
-				.name1 = name1,
-				.name2 = CF_IDENT_ANY,
+				.section = SECTION_NAME(name1, CF_IDENT_ANY)
 			   });
 	if (!entry) return NULL;
 

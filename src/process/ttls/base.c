@@ -620,45 +620,38 @@ static fr_process_state_t const process_state[] = {
 
 static virtual_server_compile_t const compile_list[] = {
 	{
-		.name1 = "recv",
-		.name2 = "Access-Request",
+		.section = SECTION_NAME("recv", "Access-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(access_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Access-Accept",
+		.section = SECTION_NAME("send", "Access-Accept"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_accept),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Access-Challenge",
+		.section = SECTION_NAME("send", "Access-Challenge"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_challenge),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Access-Reject",
+		.section = SECTION_NAME("send", "Access-Reject"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_reject),
 	},
 
 	{
-		.name1 = "send",
-		.name2 = "Protocol-Error",
+		.section = SECTION_NAME("send", "Protocol-Error"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(protocol_error),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Do-Not-Respond",
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 	{
-		.name1 = "authenticate",
-		.name2 = CF_IDENT_ANY,
+		.section = SECTION_NAME("authenticate", CF_IDENT_ANY),
 		.actions = &mod_actions_authenticate
 	},
 	COMPILE_TERMINATOR

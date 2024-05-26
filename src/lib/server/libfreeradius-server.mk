@@ -22,6 +22,7 @@ SOURCES	:= \
 	map_async.c \
 	map_proc.c \
 	module.c \
+	module_method.c \
 	module_rlm.c \
 	packet.c \
 	paircmp.c \

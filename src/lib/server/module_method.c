@@ -18,7 +18,7 @@
  * $Id$
  *
  * @file src/lib/server/module_method.c
- * @brief Central module_method_name_t definitions
+ * @brief Central module_method_binding_t definitions
  *
  * This file contains common module_method_t structures which may be
  * referenced within a #virtual_server_compile_t and a #module_t.
@@ -33,33 +33,24 @@
  *
  * @copyright 2022 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-typedef struct {
-	fr_dict_t const		**proto;	//!< If none-null, restrict matches to this protocol.
-						///< i.e. if both the virtual server module_method_name
-                                                ///< and the module method have non-null proto pointers
-                                                ///< then *proto must be equal for the method name to
-                                                ///< match.
+#include <freeradius-devel/server/module_method.h>
 
-	char const		*name1;		//!< module method name1 which is allowed in this section
-	char const		*name2;		//!< module method name2 which is allowed in this section
-} module_method_name_t;
-
-module_method_name_t module_method_ippool_allocate = {
+section_name_t module_method_ippool_allocate = {
 	.name1 = "ippool",
 	.name2 = "allocate"
 };
 
-module_method_name_t module_method_ippool_extend = {
+section_name_t module_method_ippool_extend = {
 	.name1 = "ippool",
 	.name2 = "extend"
 };
 
-module_method_name_t module_method_ippool_mark = {
+section_name_t module_method_ippool_mark = {
 	.name1 = "ippool",
 	.name2 = "mark"
 };
 
-module_method_name_t module_method_ippool_release = {
+section_name_t module_method_ippool_release = {
 	.name1 = "ippool",
 	.name2 = "release"
 };

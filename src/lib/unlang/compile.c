@@ -4424,22 +4424,8 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
 				call_env_method_t const *method_env, char const *realname)
 {
-	module_rlm_t const *mrlm = module_rlm_from_module(inst->exported);
 	unlang_t *c;
 	unlang_module_t *single;
-
-	/*
-	 *	Can't use "chap" in "dhcp".
-	 */
-	if (mrlm->dict && *mrlm->dict && unlang_ctx->rules && unlang_ctx->rules->attr.dict_def &&
-	    (unlang_ctx->rules->attr.dict_def != fr_dict_internal()) &&
-	    !fr_dict_compatible(*(mrlm->dict), unlang_ctx->rules->attr.dict_def)) {
-		cf_log_err(ci, "The \"%s\" module can only be used with 'namespace = %s'.  It cannot be used with 'namespace = %s'.",
-			   inst->module->exported->name,
-			   fr_dict_root(*mrlm->dict)->name,
-			   fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);
-		return NULL;
-	}
 
 	/*
 	 *	Check if the module in question has the necessary

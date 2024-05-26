@@ -130,76 +130,64 @@ typedef struct {
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name1 = "recv",
-		.name2 = "Query",
+		.section = SECTION_NAME("recv", "Query"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(query),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Query-Response",
+		.section = SECTION_NAME("send", "Query-Response"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(query_response),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Inverse-Query",
+		.section = SECTION_NAME("recv", "Inverse-Query"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(inverse_query),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Inverse-Query-Response",
+		.section = SECTION_NAME("send", "Inverse-Query-Response"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(inverse_query_response),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Status",
+		.section = SECTION_NAME("recv", "Status"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(status),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Status-Response",
+		.section = SECTION_NAME("send", "Status-Response"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(status_response),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Update",
+		.section = SECTION_NAME("recv", "Update"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(update),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Update-Response",
+		.section = SECTION_NAME("send", "Update-Response"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(update_response),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Stateful-Operation",
+		.section = SECTION_NAME("recv", "Stateful-Operation"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(stateful_operation),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Stateful-Operation-Response",
+		.section = SECTION_NAME("send", "Stateful-Operation-Response"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(stateful_operation_response),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Do-Not-Respond",
+		.section = SECTION_NAME("send", "Do-Dot-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 
 #define ERROR_SECTION(_name, _number) \
 	{ \
-		.name1 = "error", \
-		.name2 = _name, \
+		.section = SECTION_NAME("error", _name), \
 		.actions = &mod_actions_postauth, \
 		.offset = PROCESS_CONF_OFFSET(rcode[_number]), \
 	}

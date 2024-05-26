@@ -448,7 +448,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	size_t				len;
 	int				j;
 	module_instance_t		*mi;
-	module_method_name_t const	*methods;
+	module_method_binding_t const	*methods;
 	char const			*method_name1, *method_name2;
 	module_rlm_t const		*mrlm;
 
@@ -470,7 +470,7 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 	 */
 	mi = module_rlm_static_by_name(NULL, name);
 	if (mi) {
-		virtual_server_method_t const	*allowed_list;
+		section_name_t const	**allowed_list;
 
 		if (!method) return mi;
 
@@ -481,20 +481,20 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 		 *	module has no named methods.  Try to return a
 		 *	method based on the component.
 		 */
-		if (!method_name1 || !mrlm->method_names) goto return_component;
+		if (!method_name1 || !mrlm->bindings) goto return_component;
 
 		/*
 		 *	Walk through the module, finding a matching
 		 *	method.
 		 */
-		for (j = 0; mrlm->method_names[j].name1 != NULL; j++) {
-			methods = &mrlm->method_names[j];
+		for (j = 0; mrlm->bindings[j].section; j++) {
+			methods = &mrlm->bindings[j];
 
 			/*
 			 *	Wildcard match name1, we're
 			 *	done.
 			 */
-			if (methods->name1 == CF_IDENT_ANY) {
+			if (methods->section->name1 == CF_IDENT_ANY) {
 			found:
 				*method = methods->method;
 				if (method_env) *method_env = methods->method_env;
@@ -506,26 +506,26 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 			/*
 			 *	If name1 doesn't match, skip it.
 			 */
-			if (strcasecmp(methods->name1, method_name1) != 0) continue;
+			if (strcasecmp(methods->section->name1, method_name1) != 0) continue;
 
 			/*
 			 *	The module can declare a
 			 *	wildcard for name2, in which
 			 *	case it's a match.
 			 */
-			if (methods->name2 == CF_IDENT_ANY) goto found;
+			if (methods->section->name2 == CF_IDENT_ANY) goto found;
 
 			/*
 			 *	No name2 is also a match to no name2.
 			 */
-			if (!methods->name2 && !method_name2) goto found;
+			if (!methods->section->name2 && !method_name2) goto found;
 
 			/*
 			 *	Don't do strcmp on NULLs
 			 */
-			if (!methods->name2 || !method_name2) continue;
+			if (!methods->section->name2 || !method_name2) continue;
 
-			if (strcasecmp(methods->name2, method_name2) == 0) goto found;
+			if (strcasecmp(methods->section->name2, method_name2) == 0) goto found;
 		}
 
 		if (!vs) goto skip_section_method;
@@ -558,22 +558,22 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 		 *	then any module method would match, which is
 		 *	bad.
 		 */
-		for (j = 0; allowed_list[j].name1 != NULL; j++) {
+		for (j = 0; allowed_list[j]; j++) {
 			int k;
-			virtual_server_method_t const *allowed = &allowed_list[j];
+			section_name_t const *allowed = allowed_list[j];
 
-			for (k = 0; mrlm->method_names[k].name1 != NULL; k++) {
-				methods = &mrlm->method_names[k];
+			for (k = 0; mrlm->bindings[k].section; k++) {
+				methods = &mrlm->bindings[k];
 
-				fr_assert(methods->name1 != CF_IDENT_ANY); /* should have been caught above */
+				fr_assert(methods->section->name1 != CF_IDENT_ANY); /* should have been caught above */
 
-				if (strcasecmp(methods->name1, allowed->name1) != 0) continue;
+				if (strcasecmp(methods->section->name1, allowed->name1) != 0) continue;
 
 				/*
 				 *	The module matches "recv *",
 				 *	call this method.
 				 */
-				if (methods->name2 == CF_IDENT_ANY) {
+				if (methods->section->name2 == CF_IDENT_ANY) {
 				found_allowed:
 					*method = methods->method;
 					return mi;
@@ -582,14 +582,14 @@ module_instance_t *module_rlm_by_name_and_method(module_method_t *method, call_e
 				/*
 				 *	No name2 is also a match to no name2.
 				 */
-				if (!methods->name2 && !allowed->name2) goto found_allowed;
+				if (!methods->section->name2 && !allowed->name2) goto found_allowed;
 
 				/*
 				 *	Don't do strcasecmp on NULLs
 				 */
-				if (!methods->name2 || !allowed->name2) continue;
+				if (!methods->section->name2 || !allowed->name2) continue;
 
-				if (strcasecmp(methods->name2, allowed->name2) == 0) goto found_allowed;
+				if (strcasecmp(methods->section->name2, allowed->name2) == 0) goto found_allowed;
 			}
 		}
 
@@ -663,7 +663,7 @@ skip_section_method:
 	/*
 	 *	We've found the module, but it has no named methods.
 	 */
-	if (!mrlm->method_names) {
+	if (!mrlm->bindings) {
 		*name1 = name + (p - inst_name);
 		*name2 = NULL;
 		goto finish;
@@ -675,24 +675,24 @@ skip_section_method:
 	 *	matches anything else.
 	 */
 	if (!q) {
-		for (j = 0; mrlm->method_names[j].name1 != NULL; j++) {
-			methods = &mrlm->method_names[j];
+		for (j = 0; mrlm->bindings[j].section; j++) {
+			methods = &mrlm->bindings[j];
 
 			/*
 			 *	If we do not have the second $method, then ignore it!
 			 */
-			if (methods->name2 && (methods->name2 != CF_IDENT_ANY)) continue;
+			if (methods->section->name2 && (methods->section->name2 != CF_IDENT_ANY)) continue;
 
 			/*
 			 *	Wildcard match name1, we're
 			 *	done.
 			 */
-			if (!methods->name1 || (methods->name1 == CF_IDENT_ANY)) goto found_name1;
+			if (!methods->section->name1 || (methods->section->name1 == CF_IDENT_ANY)) goto found_name1;
 
 			/*
 			 *	If name1 doesn't match, skip it.
 			 */
-			if (strcasecmp(methods->name1, p) != 0) continue;
+			if (strcasecmp(methods->section->name1, p) != 0) continue;
 
 		found_name1:
 			/*
@@ -729,41 +729,41 @@ skip_section_method:
 	 *
 	 *	Loop over the method names, seeing if we have a match.
 	 */
-	for (j = 0; mrlm->method_names[j].name1 != NULL; j++) {
-		methods = &mrlm->method_names[j];
+	for (j = 0; mrlm->bindings[j].section; j++) {
+		methods = &mrlm->bindings[j];
 
 		/*
 		 *	If name1 doesn't match, skip it.
 		 */
-		if (strncasecmp(methods->name1, p, len) != 0) continue;
+		if (strncasecmp(methods->section->name1, p, len) != 0) continue;
 
 		/*
 		 *	It may have been a partial match, like "rec",
 		 *	instead of "recv".  In which case check if it
 		 *	was a FULL match.
 		 */
-		if (strlen(methods->name1) != len) continue;
+		if (strlen(methods->section->name1) != len) continue;
 
 		/*
 		 *	The module can declare a
 		 *	wildcard for name2, in which
 		 *	case it's a match.
 		 */
-		if (!methods->name2 || (methods->name2 == CF_IDENT_ANY)) goto found_name2;
+		if (!methods->section->name2 || (methods->section->name2 == CF_IDENT_ANY)) goto found_name2;
 
 		/*
 		 *	Don't do strcmp on NULLs
 		 */
-		if (!methods->name2) continue;
+		if (!methods->section->name2) continue;
 
-		if (strcasecmp(methods->name2, q) != 0) continue;
+		if (strcasecmp(methods->section->name2, q) != 0) continue;
 
 	found_name2:
 		/*
 		 *	Update name1/name2 with the methods
 		 *	that were found.
 		 */
-		*name1 = methods->name1;
+		*name1 = methods->section->name1;
 		*name2 = name + (q - inst_name);
 		*method = methods->method;
 		if (method_env) *method_env = methods->method_env;

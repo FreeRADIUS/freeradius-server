@@ -1516,14 +1516,14 @@ module_rlm_t rlm_cache = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.method_names = (module_method_name_t[]){
-		{ .name1 = "status", .name2 = CF_IDENT_ANY,		.method = mod_method_status,	.method_env = &cache_method_env },
-		{ .name1 = "load", .name2 = CF_IDENT_ANY,		.method = mod_method_load,	.method_env = &cache_method_env },
-		{ .name1 = "update", .name2 = CF_IDENT_ANY,		.method = mod_method_update,	.method_env = &cache_method_env },
-		{ .name1 = "store", .name2 = CF_IDENT_ANY,		.method = mod_method_store,	.method_env = &cache_method_env },
-		{ .name1 = "clear", .name2 = CF_IDENT_ANY,		.method = mod_method_clear,	.method_env = &cache_method_env },
-		{ .name1 = "ttl", .name2 = CF_IDENT_ANY,		.method = mod_method_ttl,	.method_env = &cache_method_env },
-		{ .name1 = CF_IDENT_ANY, .name2 = CF_IDENT_ANY,		.method = mod_cache_it,		.method_env = &cache_method_env },
-		MODULE_NAME_TERMINATOR
+	.bindings = (module_method_binding_t[]){
+		{ .section = SECTION_NAME("status", CF_IDENT_ANY),		.method = mod_method_status,	.method_env = &cache_method_env },
+		{ .section = SECTION_NAME("load", CF_IDENT_ANY),		.method = mod_method_load,	.method_env = &cache_method_env },
+		{ .section = SECTION_NAME("update", CF_IDENT_ANY),		.method = mod_method_update,	.method_env = &cache_method_env },
+		{ .section = SECTION_NAME("store", CF_IDENT_ANY),		.method = mod_method_store,	.method_env = &cache_method_env },
+		{ .section = SECTION_NAME("clear", CF_IDENT_ANY),		.method = mod_method_clear,	.method_env = &cache_method_env },
+		{ .section = SECTION_NAME("ttl", CF_IDENT_ANY),		.method = mod_method_ttl,	.method_env = &cache_method_env },
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_cache_it,		.method_env = &cache_method_env },
+		MODULE_BINDING_TERMINATOR
 	}
 };

@@ -257,8 +257,8 @@ module_rlm_t rlm_rediswho = {
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate
 	},
-	.method_names = (module_method_name_t[]){
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting },
-		MODULE_NAME_TERMINATOR
+	.bindings = (module_method_binding_t[]){
+		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting },
+		MODULE_BINDING_TERMINATOR
 	}
 };

@@ -32,7 +32,7 @@ extern "C" {
 
 typedef struct module_s				module_t;
 typedef struct module_state_func_table_s	module_state_func_table_t;
-typedef struct module_method_name_s		module_method_name_t;
+typedef struct module_method_binding_s		module_method_binding_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
 typedef struct module_list_type_s		module_list_type_t;
@@ -129,6 +129,7 @@ typedef int (*module_thread_detach_t)(module_thread_inst_ctx_t const *mctx);
 #include <freeradius-devel/server/exfile.h>
 #include <freeradius-devel/server/pool.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/section.h>
 
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/unlang/call_env.h>
@@ -144,18 +145,21 @@ extern "C" {
  */
 #define MODULE_INSTANCE_LEN_MAX 256
 
+/** Terminate a module binding list
+ */
+#define MODULE_BINDING_TERMINATOR { .section = NULL }
+
 /** Named methods exported by a module
  *
  */
-struct module_method_name_s {
-	char const			*name1;			//!< i.e. "recv", "send", "process"
-	char const			*name2;			//!< The packet type i.e Access-Request, Access-Reject.
+struct module_method_binding_s {
+	fr_dict_t const				**proto;		//!< Only allow this method to be called in this namespace.
 
-	module_method_t			method;			//!< Module method to call
-	call_env_method_t const	* const method_env;		//!< Call specific conf parsing.
+	section_name_t const			*section;		//!< Identifier for a section.
+
+	module_method_t				method;			//!< Module method to call
+	call_env_method_t const	* const 	method_env;		//!< Call specific conf parsing.
 };
-
-#define MODULE_NAME_TERMINATOR { NULL }
 
 /** Struct exported by a rlm_* module
  *

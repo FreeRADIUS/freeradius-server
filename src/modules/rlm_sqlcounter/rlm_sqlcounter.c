@@ -584,9 +584,9 @@ module_rlm_t rlm_sqlcounter = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 	},
-	.method_names = (module_method_name_t[]){
-		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+	.bindings = (module_method_binding_t[]){
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_authorize,
 		  .method_env = &sqlcounter_call_env },
-		MODULE_NAME_TERMINATOR
+		MODULE_BINDING_TERMINATOR
 	}
 };

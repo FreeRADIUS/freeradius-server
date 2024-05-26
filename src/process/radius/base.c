@@ -1098,104 +1098,88 @@ static fr_process_state_t const process_state[] = {
 
 static virtual_server_compile_t const compile_list[] = {
 	{
-		.name1 = "recv",
-		.name2 = "Access-Request",
+		.section = SECTION_NAME("recv", "Access-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(access_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Access-Accept",
+		.section = SECTION_NAME("send", "Access-Accept"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_accept),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Access-Challenge",
+		.section = SECTION_NAME("send", "Access-Challenge"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_challenge),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Access-Reject",
+		.section = SECTION_NAME("send", "Access-Reject"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(access_reject),
 	},
 
 	{
-		.name1 = "recv",
-		.name2 = "Accounting-Request",
+		.section = SECTION_NAME("recv", "Accounting-Request"),
 		.actions = &mod_actions_preacct,
 		.offset = PROCESS_CONF_OFFSET(accounting_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Accounting-Response",
+		.section = SECTION_NAME("send", "Accounting-Response"),
 		.actions = &mod_actions_accounting,
 		.offset = PROCESS_CONF_OFFSET(accounting_response),
 	},
 
 	{
-		.name1 = "recv",
-		.name2 = "Status-Server",
+		.section = SECTION_NAME("recv", "Status-Server"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(status_server),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "CoA-Request",
+		.section = SECTION_NAME("recv", "CoA-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(coa_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "CoA-ACK",
+		.section = SECTION_NAME("send", "CoA-ACK"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(coa_ack),
 	},
 	{
-		.name1 = "send",.name2 = "CoA-NAK",
+		.section = SECTION_NAME("send", "CoA-NAK"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(coa_nak),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Disconnect-Request",
+		.section = SECTION_NAME("recv", "Disconnect-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(disconnect_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Disconnect-ACK",
+		.section = SECTION_NAME("send", "Disconnect-ACK"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(disconnect_ack),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Disconnect-NAK",
+		.section = SECTION_NAME("send", "Disconnect-NAK"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(disconnect_nak),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Protocol-Error",
+		.section = SECTION_NAME("send", "Protocol-Error"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(protocol_error),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Do-Not-Respond",
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
 	{
-		.name1 = "authenticate",
-		.name2 = CF_IDENT_ANY,
+		.section = SECTION_NAME("authenticate", CF_IDENT_ANY),
 		.actions = &mod_actions_authenticate
 	},
 	{
-		.name1 = "accounting",
-		.name2 = CF_IDENT_ANY,
+		.section = SECTION_NAME("accounting", CF_IDENT_ANY),
 		.actions = &mod_actions_authenticate
 	},
 

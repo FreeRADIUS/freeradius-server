@@ -228,32 +228,27 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name1 = "recv",
-		.name2 = "Join-Request",
+		.section = SECTION_NAME("recv", "Join-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(join_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Join-Response",
+		.section = SECTION_NAME("send", "Join-Response"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(join_response),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Reconfirm-Request",
+		.section = SECTION_NAME("recv", "Reconfirm-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(reconfirm_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Reconfirm-Response",
+		.section = SECTION_NAME("send", "Reconfirm-Response"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(reconfirm_response),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Do-Not-Respond",
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},

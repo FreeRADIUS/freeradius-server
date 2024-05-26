@@ -388,11 +388,11 @@ module_rlm_t rlm_chap = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.method_names = (module_method_name_t[]){
-		{ .name1 = "recv", 		.name2 = "access-request",	.method = mod_authorize,
+	.bindings = (module_method_binding_t[]){
+		{ .section = SECTION_NAME("recv", "access-request"),	.method = mod_authorize,
 		  .method_env = &chap_autz_method_env	},
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate,
 		  .method_env = &chap_auth_method_env	},
-		MODULE_NAME_TERMINATOR
+		MODULE_BINDING_TERMINATOR
 	}
 };

@@ -531,9 +531,9 @@ module_rlm_t rlm_exec = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mob_instantiate
 	},
-        .method_names = (module_method_name_t[]){
-                { .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_exec_dispatch_oneshot,
+        .bindings = (module_method_binding_t[]){
+                { .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_exec_dispatch_oneshot,
 		  .method_env = &exec_method_env },
-                MODULE_NAME_TERMINATOR
+                MODULE_BINDING_TERMINATOR
         }
 };

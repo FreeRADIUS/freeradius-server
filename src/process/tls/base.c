@@ -152,26 +152,22 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name1 = "store",
-		.name2 = "session",
+		.section = SECTION_NAME("store", "session"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(store_session)
 	},
 	{
-		.name1 = "load",
-		.name2 = "session",
+		.section = SECTION_NAME("load", "session"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(load_session)
 	},
 	{
-		.name1 = "clear",
-		.name2 = "session",
+		.section = SECTION_NAME("clear", "session"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(clear_session)
 	},
 	{
-		.name1 = "verify",
-		.name2 = "certificate",
+		.section = SECTION_NAME("verify", "certificate"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(verify_certificate)
 	},

@@ -194,87 +194,73 @@ static conf_parser_t dhcpv6_process_config[] = {
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name1 = "recv",
-		.name2 = "Solicit",
+		.section = SECTION_NAME("recv", "Solicit"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_solicit)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Request",
+		.section = SECTION_NAME("recv", "Request"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_request)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Confirm",
+		.section = SECTION_NAME("recv", "Confirm"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_confirm)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Renew",
+		.section = SECTION_NAME("recv", "Renew"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_renew)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Rebind",
+		.section = SECTION_NAME("recv", "Rebind"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_rebind)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Release",
+		.section = SECTION_NAME("recv", "Release"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_release)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Decline",
+		.section = SECTION_NAME("recv", "Decline"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_decline)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Reconfigure",
+		.section = SECTION_NAME("recv", "Reconfigure"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_reconfigure)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Information-Request",
+		.section = SECTION_NAME("recv", "Information-Request"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_information_request)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Relay-Forward",
+		.section = SECTION_NAME("recv", "Relay-Forward"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_relay_forward)
 	},
 
 	{
-		.name1 = "send",
-		.name2 = "Advertise",
+		.section = SECTION_NAME("send", "Advertise"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(send_advertise)
 	},
 	{
-		.name1 = "send",
-		.name2 = "Reply",
+		.section = SECTION_NAME("send", "Reply"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(send_reply)
 	},
 	{
-		.name1 = "send",
-		.name2 = "Relay-Reply",
+		.section = SECTION_NAME("send", "Relay-Reply"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(send_relay_reply)
 	},
 	{
-		.name1 = "send",
-		.name2 = "Do-Not-Respond",
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond)
 	},

@@ -29,36 +29,15 @@ RCSIDH(module_method_h, "$Id$")
 extern "C" {
 #endif
 
-#include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/server/virtual_servers.h>
 
-/** Specifies a module method identifier
- *
- * These are used in module definitions and by virtual servers to find mutually
- * acceptable module methods to call between a virtual server section and the
- * module that's calling it.
- *
- * For example, a `send Access-Accept` compilation structure may also have a
- * `ippool alloc` method associated with it, to instruct any ippool modules to
- * allocate an IP address.
- */
-typedef struct {
-	fr_dict_t const		**proto;	//!< If none-null, restrict matches to this protocol.
-						///< i.e. if both the virtual server module_method_name
-                                                ///< and the module method have non-null proto pointers
-                                                ///< then *proto must be equal for the method name to
-                                                ///< match.
+extern section_name_t module_method_ippool_allocate;
 
-	char const		*name1;		//!< module method name1 which is allowed in this section
-	char const		*name2;		//!< module method name2 which is allowed in this section
-} module_method_name_t;
+extern section_name_t module_method_ippool_extend;
 
-extern module_method_name_t module_method_ippool_allocate;
+extern section_name_t module_method_ippool_mark;
 
-extern module_method_name_t module_method_ippool_extend;
-
-extern module_method_name_t module_method_ippool_mark;
-
-extern module_method_name_t module_method_ippool_release;
+extern section_name_t module_method_ippool_release;
 
 #ifdef __cplusplus
 }

@@ -616,9 +616,9 @@ module_rlm_t rlm_passwd = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.method_names = (module_method_name_t[]){
-		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_passwd_map },
-		MODULE_NAME_TERMINATOR
+	.bindings = (module_method_binding_t[]){
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_passwd_map },
+		MODULE_BINDING_TERMINATOR
 	}
 };
 #endif /* TEST */

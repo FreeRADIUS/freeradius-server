@@ -204,43 +204,35 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name1 = "recv",
-		.name2 = "Request",
+		.section = SECTION_NAME("recv", "Request"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Reply",
+		.section = SECTION_NAME("send", "Reply"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(reply),
 	},
 	{			/* we can listen for others ARP replies, too */
-		.name1 = "recv",
-		.name2 = "Reply",
+		.section = SECTION_NAME("recv", "Reply"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(recv_reply),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Reverse-Request",
+		.section = SECTION_NAME("recv", "Reverse-Request"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(reverse_request),
 	},
-
 	{
-		.name1 = "send",
-		.name2 = "Reverse-Reply",
+		.section = SECTION_NAME("send", "Reverse-Reply"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(reverse_reply),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Do-Not-Respond",
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
-
 	COMPILE_TERMINATOR
 };
 

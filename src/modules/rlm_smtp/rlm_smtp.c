@@ -1050,11 +1050,11 @@ module_rlm_t rlm_smtp = {
 		.thread_instantiate 	= mod_thread_instantiate,
 		.thread_detach      	= mod_thread_detach,
 	},
-	.method_names = (module_method_name_t[]){
-		{ .name1 = "mail",		.name2 = CF_IDENT_ANY,		.method = mod_mail,
+	.bindings = (module_method_binding_t[]){
+		{ .section = SECTION_NAME("mail", CF_IDENT_ANY),		.method = mod_mail,
 		  .method_env = &method_env },
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate,
 		  .method_env = &auth_env },
-		MODULE_NAME_TERMINATOR
+		MODULE_BINDING_TERMINATOR
 	}
 };

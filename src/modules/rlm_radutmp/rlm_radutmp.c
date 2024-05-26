@@ -586,9 +586,9 @@ module_rlm_t rlm_radutmp = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.method_names = (module_method_name_t[]){
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,
+	.bindings = (module_method_binding_t[]){
+		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting,
 		  .method_env = &method_env },
-		MODULE_NAME_TERMINATOR
+		MODULE_BINDING_TERMINATOR
 	}
 };

@@ -94,36 +94,27 @@ int			virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 fr_listen_t *  		listen_find_any(fr_listen_t *li) CC_HINT(nonnull);
 bool			listen_record(fr_listen_t *li) CC_HINT(nonnull);
 
-
-/** Module methods which are allowed in virtual servers.
- *
- */
-typedef struct {
-	char const			*name1;		//!< module method name1 which is allowed in this section
-	char const			*name2;		//!< module method name2 which is allowed in this section
-} virtual_server_method_t;
-
 /** Processing sections which are allowed in this virtual server.
  *
  */
 typedef struct {
-	char const			*name1;		//!< Name of the processing section, such as "recv" or "send"
-	char const			*name2;		//!< Second name, such as "Access-Request"
-	size_t				offset;		//!< where the CONF_SECTION pointer is written
-	bool				dont_cache;	//!< If true, the CONF_SECTION pointer won't be written
-							///< and the offset will be ignored.
-	size_t				instruction;	//!< where the instruction pointer is written
-	unlang_mod_actions_t const	*actions;	//!< Default actions for this section.
-	virtual_server_method_t const	*methods;	//!< list of module methods which are allowed in this section
+	section_name_t const			*section;	//!< Identifier for the section.
+	size_t					offset;		//!< where the CONF_SECTION pointer is written
+	bool					dont_cache;	//!< If true, the CONF_SECTION pointer won't be written
+								///< and the offset will be ignored.
+	size_t					instruction;	//!< where the instruction pointer is written
+	unlang_mod_actions_t const		*actions;	//!< Default actions for this section.
+	section_name_t const			**methods;	//!< list of auxilliary module methods which are allowed in
+								///< if the main name doesn't match.
 } virtual_server_compile_t;
 
-#define COMPILE_TERMINATOR { .name1 = NULL, .name2 = NULL }
+#define COMPILE_TERMINATOR { .section = NULL }
 
 int		virtual_server_section_register(virtual_server_t *vs, virtual_server_compile_t const *entry) CC_HINT(nonnull);
 
 int		virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t const *rules) CC_HINT(nonnull);
 
-virtual_server_method_t const *virtual_server_section_methods(virtual_server_t const *vs, char const *name1, char const *name2) CC_HINT(nonnull(1));
+section_name_t const **virtual_server_section_methods(virtual_server_t const *vs, char const *name1, char const *name2) CC_HINT(nonnull(1));
 
 unlang_action_t	virtual_server_push(request_t *request, CONF_SECTION *server_cs, bool top_frame) CC_HINT(nonnull);
 

@@ -675,10 +675,10 @@ module_rlm_t rlm_files = {
 		.inst_size	= sizeof(rlm_files_t),
 		.config		= module_config,
 	},
-	.method_names = (module_method_name_t[]){
-		{ .name1 = CF_IDENT_ANY,	.name2 = CF_IDENT_ANY,		.method = mod_files,
+	.bindings = (module_method_binding_t[]){
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_files,
 		  .method_env = &method_env	},
-		MODULE_NAME_TERMINATOR
+		MODULE_BINDING_TERMINATOR
 	}
 
 };

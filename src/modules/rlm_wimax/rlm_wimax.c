@@ -460,11 +460,10 @@ module_rlm_t rlm_wimax = {
 		.inst_size	= sizeof(rlm_wimax_t),
 		.config		= module_config,
 	},
-	.dict		= &dict_radius,
-	.method_names = (module_method_name_t[]){
-		{ .name1 = "recv",		.name2 = "accounting-request",	.method = mod_preacct },
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize },
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth },
-		MODULE_NAME_TERMINATOR
+	.bindings = (module_method_binding_t[]){
+		{ .proto = &dict_radius,	.section = SECTION_NAME("recv", "accounting-request"),	.method = mod_preacct },
+		{ .proto = &dict_radius,	.section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize },
+		{ .proto = &dict_radius,	.section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_post_auth },
+		MODULE_BINDING_TERMINATOR
 	}
 };

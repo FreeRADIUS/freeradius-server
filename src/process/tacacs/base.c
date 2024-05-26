@@ -1322,101 +1322,85 @@ static virtual_server_compile_t compile_list[] = {
 	 *	protocol.  Pretty much everything they did was wrong.
 	 */
 	{
-		.name1 = "recv",
-		.name2 = "Authentication-Start",
+		.section = SECTION_NAME("recv", "Authentication-Start"),
 		.actions = &mod_actions_authenticate,
 		.offset = PROCESS_CONF_OFFSET(auth_start),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authentication-Pass",
+		.section = SECTION_NAME("send", "Authentication-Pass"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_pass),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authentication-Fail",
+		.section = SECTION_NAME("send", "Authentication-Fail"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_fail),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authentication-GetData",
+		.section = SECTION_NAME("send", "Authentication-GetData"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_getdata),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authentication-GetUser",
+		.section = SECTION_NAME("send", "Authentication-GetUser"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_getuser),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authentication-GetPass",
+		.section = SECTION_NAME("send", "Authentication-GetPass"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_getpass),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authentication-Restart",
+		.section = SECTION_NAME("send", "Authentication-Restart"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_restart),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authentication-Error",
+		.section = SECTION_NAME("send", "Authentication-Error"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(auth_error),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Authentication-Continue",
+		.section = SECTION_NAME("recv", "Authentication-Continue"),
 		.actions = &mod_actions_authenticate,
 		.offset = PROCESS_CONF_OFFSET(auth_cont),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Authentication-Continue-Abort",
+		.section = SECTION_NAME("recv", "Authentication-Continue-Abort"),
 		.actions = &mod_actions_authenticate,
 		.offset = PROCESS_CONF_OFFSET(auth_cont_abort),
 	},
 
 	{
-		.name1 = "authenticate",
-		.name2 = CF_IDENT_ANY,
+		.section = SECTION_NAME("authenticate", CF_IDENT_ANY),
 		.actions = &mod_actions_authenticate,
 	},
 
 	/* authorization */
 
 	{
-		.name1 = "recv",
-		.name2 = "Authorization-Request",
+		.section = SECTION_NAME("recv", "Authorization-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(autz_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authorization-Pass-Add",
+		.section = SECTION_NAME("send", "Authorization-Pass-Add"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(autz_pass_add),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authorization-Pass-Replace",
+		.section = SECTION_NAME("send", "Authorization-Pass-Replace"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(autz_pass_replace),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authorization-Fail",
+		.section = SECTION_NAME("send", "Authorization-Fail"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(autz_fail),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Authorization-Error",
+		.section = SECTION_NAME("send", "Authorization-Error"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(autz_error),
 	},
@@ -1424,33 +1408,28 @@ static virtual_server_compile_t compile_list[] = {
 	/* accounting */
 
 	{
-		.name1 = "recv",
-		.name2 = "Accounting-Request",
+		.section = SECTION_NAME("recv", "Accounting-Request"),
 		.actions = &mod_actions_accounting,
 		.offset = PROCESS_CONF_OFFSET(acct_request),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Accounting-Success",
+		.section = SECTION_NAME("send", "Accounting-Success"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(acct_success),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Accounting-Error",
+		.section = SECTION_NAME("send", "Accounting-Error"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(acct_error),
 	},
 
 	{
-		.name1 = "accounting",
-		.name2 = CF_IDENT_ANY,
+		.section = SECTION_NAME("accounting", CF_IDENT_ANY),
 		.actions = &mod_actions_accounting,
 	},
 
 	{
-		.name1 = "send",
-		.name2 = "Do-Not-Respond",
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},

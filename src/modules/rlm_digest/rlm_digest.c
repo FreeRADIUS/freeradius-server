@@ -480,10 +480,9 @@ module_rlm_t rlm_digest = {
 		.inst_size	= sizeof(rlm_digest_t),
 		.instantiate	= mod_instantiate,
 	},
-	.dict		= &dict_radius,
-        .method_names = (module_method_name_t[]){
-                { .name1 = "recv",		.name2 = "access-request",	.method = mod_authorize },
-                { .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate },
-                MODULE_NAME_TERMINATOR
+        .bindings = (module_method_binding_t[]){
+                { .proto = &dict_radius,	.section = SECTION_NAME("recv", "access-request"),	.method = mod_authorize },
+                { .proto = &dict_radius,	.section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate },
+                MODULE_BINDING_TERMINATOR
         },
 };

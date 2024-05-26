@@ -195,38 +195,32 @@ static fr_process_state_t const process_state[] = {
 
 static virtual_server_compile_t const compile_list[] = {
 	{
-		.name1 = "load",
-		.name2 = "Cookie",
+		.section = SECTION_NAME("load", "Cookie"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(load_cookie)
 	},
 	{
-		.name1 = "store",
-		.name2 = "Cookie",
+		.section = SECTION_NAME("store", "Cookie"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(store_cookie)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Add",
+		.section = SECTION_NAME("recv", "Add"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(recv_add)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Present",
+		.section = SECTION_NAME("recv", "Present"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(recv_present)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Delete",
+		.section = SECTION_NAME("recv", "Delete"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(recv_delete)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Modify",
+		.section = SECTION_NAME("recv", "Modify"),
 		.actions = &mod_actions_authorize,
 		.offset = PROCESS_CONF_OFFSET(recv_modify)
 	},

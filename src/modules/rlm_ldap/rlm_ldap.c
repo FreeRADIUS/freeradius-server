@@ -2730,21 +2730,21 @@ module_rlm_t rlm_ldap = {
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach,
 	},
-	.method_names = (module_method_name_t[]){
+	.bindings = (module_method_binding_t[]){
 		/*
 		 *	Hack to support old configurations
 		 */
-		{ .name1 = "authorize",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_authorize,
 		  .method_env = &authorize_method_env		},
 
-		{ .name1 = "recv",		.name2 = CF_IDENT_ANY,		.method = mod_authorize,
+		{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize,
 		  .method_env = &authorize_method_env		},
-		{ .name1 = "accounting",	.name2 = CF_IDENT_ANY,		.method = mod_accounting,
+		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting,
 		  .method_env = &usermod_method_env		},
-		{ .name1 = "authenticate",	.name2 = CF_IDENT_ANY,		.method = mod_authenticate,
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate,
 		  .method_env = &authenticate_method_env	},
-		{ .name1 = "send",		.name2 = CF_IDENT_ANY,		.method = mod_post_auth,
+		{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_post_auth,
 		  .method_env = &usermod_method_env		},
-		MODULE_NAME_TERMINATOR
+		MODULE_BINDING_TERMINATOR
 	}
 };

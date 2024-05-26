@@ -26,6 +26,7 @@
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/module_method.h>
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/dhcpv4/dhcpv4.h>
@@ -419,116 +420,91 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 
 static const virtual_server_compile_t compile_list[] = {
 	{
-		.name1 = "recv",
-		.name2 = "Discover",
+		.section = SECTION_NAME("recv", "Discover"),
 		.actions = &mod_actions_postauth,
 
-		.methods = (const virtual_server_method_t[]) {
-			{
-				.name1 = "ippool",
-				.name2 = "allocate",
-			},
-			COMPILE_TERMINATOR
+		.methods = (const section_name_t *[]) {
+			&module_method_ippool_allocate,
+			NULL
 		},
 		.offset = PROCESS_CONF_OFFSET(discover),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Offer",
+		.section = SECTION_NAME("send", "Offer"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(offer),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Request",
+		.section = SECTION_NAME("recv", "Request"),
 		.actions = &mod_actions_postauth,
 
-		.methods = (const virtual_server_method_t[]) {
-			{
-				.name1 = "ippool",
-				.name2 = "extend",
-			},
-			COMPILE_TERMINATOR
+		.methods = (const section_name_t *[]) {
+			&module_method_ippool_extend,
+			NULL
 		},
 		.offset = PROCESS_CONF_OFFSET(request),
 	},
 
 	{
-		.name1 = "send",
-		.name2 = "Ack",
+		.section = SECTION_NAME("send", "Ack"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(ack),
 	},
 	{
-		.name1 = "send",
-		.name2 = "NAK",
+		.section = SECTION_NAME("send", "NAK"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(nak),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Decline",
+		.section = SECTION_NAME("recv", "Decline"),
 		.actions = &mod_actions_postauth,
 
-		.methods = (const virtual_server_method_t[]) {
-			{
-				.name1 = "ippool",
-				.name2 = "mark",
-			},
-			COMPILE_TERMINATOR
+		.methods = (const section_name_t *[]) {
+			&module_method_ippool_mark,
+			NULL
 		},
 		.offset = PROCESS_CONF_OFFSET(decline),
 	},
 
 	{
-		.name1 = "recv",
-		.name2 = "Release",
+		.section = SECTION_NAME("recv", "Release"),
 		.actions = &mod_actions_postauth,
 
-		.methods = (const virtual_server_method_t[]) {
-			{
-				.name1 = "ippool",
-				.name2 = "release",
-			},
-			COMPILE_TERMINATOR
+		.methods = (const section_name_t *[]) {
+			&module_method_ippool_release,
+			NULL
 		},
 		.offset = PROCESS_CONF_OFFSET(release),
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Inform",
+		.section = SECTION_NAME("recv", "Inform"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(inform),
 	},
 
 	{
-		.name1 = "recv",
-		.name2 = "Lease-Query",
+		.section = SECTION_NAME("recv", "Lease-Query"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(lease_query),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Lease-Unassigned",
+		.section = SECTION_NAME("send", "Lease-Unassigned"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(lease_unassigned),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Lease-Unknown",
+		.section = SECTION_NAME("send", "Lease-Unknown"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(lease_unknown),
 	},
 	{
-		.name1 = "send",
-		.name2 = "Lease-Active",
+		.section = SECTION_NAME("send", "Lease-Active"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(lease_active),
 	},
 
 	{
-		.name1 = "send",
-		.name2 = "Do-Not-Respond",
+		.section = SECTION_NAME("send", "Do-Not-Respond"),
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},

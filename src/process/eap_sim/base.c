@@ -54,14 +54,12 @@ static virtual_server_compile_t compile_list[] = {
 	 *      identities.
 	 */
 	{
-		.name1 = "recv",
-		.name2 = "Identity-Response",
+		.section = SECTION_NAME("recv", "Identity-Response"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_identity_response)
 	},
 	{
-		.name1 = "send",
-		.name2 = "Identity-Request",
+		.section = SECTION_NAME("send", "Identity-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_common_identity_request)
 	},
@@ -72,14 +70,12 @@ static virtual_server_compile_t compile_list[] = {
 	 *	request/response rounds.
 	 */
 	{
-		.name1 = "send",
-		.name2 = "Start-Request",
+		.section = SECTION_NAME("send", "Start-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_sim_start_request)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Start-Response",
+		.section = SECTION_NAME("recv", "Start-Response"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_sim_start_response)
 	},
@@ -88,14 +84,12 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Full-Authentication
 	 */
 	{
-		.name1 = "send",
-		.name2 = "Challenge-Request",
+		.section = SECTION_NAME("send", "Challenge-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_sim_challenge_request)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Challenge-Response",
+		.section = SECTION_NAME("recv", "Challenge-Response"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_sim_challenge_response)
 	},
@@ -104,14 +98,12 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Fast-Re-Authentication
 	 */
 	{
-		.name1 = "send",
-		.name2 = "Reauthentication-Request",
+		.section = SECTION_NAME("send", "Reauthentication-Request"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_common_reauthentication_request)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Reauthentication-Response",
+		.section = SECTION_NAME("recv", "Reauthentication-Response"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_reauthentication_response)
 	},
@@ -120,8 +112,7 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Failures originating from the supplicant
 	 */
 	{
-		.name1 = "recv",
-		.name2 = "Client-Error",
+		.section = SECTION_NAME("recv", "Client-Error"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_client_error)
 	},
@@ -130,14 +121,12 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Failure originating from the server
 	 */
 	{
-		.name1 = "send",
-		.name2 = "Failure-Notification",
+		.section = SECTION_NAME("send", "Failure-Notification"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_common_failure_notification)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Failure-Notification-ACK",
+		.section = SECTION_NAME("recv", "Failure-Notification-ACK"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_failure_notification_ack)
 	},
@@ -146,14 +135,12 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Protected success indication
 	 */
 	{
-		.name1 = "send",
-		.name2 = "Success-Notification",
+		.section = SECTION_NAME("send", "Success-Notification"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_common_success_notification)
 	},
 	{
-		.name1 = "recv",
-		.name2 = "Success-Notification-ACK",
+		.section = SECTION_NAME("recv", "Success-Notification-ACK"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.recv_common_success_notification_ack)
 	},
@@ -162,14 +149,12 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Final EAP-Success and EAP-Failure messages
 	 */
 	{
-		.name1 = "send",
-		.name2 = "EAP-Success",
+		.section = SECTION_NAME("send", "EAP-Success"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_eap_success)
 	},
 	{
-		.name1 = "send",
-		.name2 = "EAP-Failure",
+		.section = SECTION_NAME("send", "EAP-Failure"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.send_eap_failure)
 	},
@@ -178,20 +163,17 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Fast-Reauth vectors
 	 */
 	{
-		.name1 = "store",
-		.name2 = "session",
+		.section = SECTION_NAME("store", "session"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.store_session)
 	},
 	{
-		.name1 = "load",
-		.name2 = "session",
+		.section = SECTION_NAME("load", "session"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.load_session)
 	},
 	{
-		.name1 = "clear",
-		.name2 = "session",
+		.section = SECTION_NAME("clear", "session"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.clear_session)
 	},
@@ -200,20 +182,17 @@ static virtual_server_compile_t compile_list[] = {
 	 *	Pseudonym processing
 	 */
 	{
-		.name1 = "store",
-		.name2 = "pseudonym",
+		.section = SECTION_NAME("store", "pseudonym"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.store_pseudonym)
 	},
 	{
-		.name1 = "load",
-		.name2 = "pseudonym",
+		.section = SECTION_NAME("load", "pseudonym"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.load_pseudonym)
 	},
 	{
-		.name1 = "clear",
-		.name2 = "pseudonym",
+		.section = SECTION_NAME("clear", "pseudonym"),
 		.actions = &mod_actions_authorize,
 		.offset = offsetof(eap_aka_sim_process_conf_t, actions.clear_pseudonym)
 	},
