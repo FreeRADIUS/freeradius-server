@@ -184,13 +184,13 @@ module_rlm_t rlm_lua = {
 		/*
 		 *	Hack to support old configurations
 		 */
-		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_authorize		},
+		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting	},
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
+		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize },
 
-		{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_preacct		},
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize		},
-		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting	},
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate	},
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_post_auth		},
+		{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_preacct },
+		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
+		{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
 		MODULE_BINDING_TERMINATOR
 	}
 };

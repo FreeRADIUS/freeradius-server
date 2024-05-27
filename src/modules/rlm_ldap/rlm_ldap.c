@@ -2734,17 +2734,12 @@ module_rlm_t rlm_ldap = {
 		/*
 		 *	Hack to support old configurations
 		 */
-		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_authorize,
-		  .method_env = &authorize_method_env		},
+		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &usermod_method_env },
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &authenticate_method_env },
+		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
 
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize,
-		  .method_env = &authorize_method_env		},
-		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting,
-		  .method_env = &usermod_method_env		},
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate,
-		  .method_env = &authenticate_method_env	},
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_post_auth,
-		  .method_env = &usermod_method_env		},
+		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
+		{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &usermod_method_env },
 		MODULE_BINDING_TERMINATOR
 	}
 };

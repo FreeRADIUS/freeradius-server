@@ -469,8 +469,8 @@ module_rlm_t rlm_yubikey = {
 #endif
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("recv", "access-request"),	.method = mod_authorize },
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate },
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
+		{ .section = SECTION_NAME("recv", "access-request"), .method = mod_authorize },
 		MODULE_BINDING_TERMINATOR
 	}
 };

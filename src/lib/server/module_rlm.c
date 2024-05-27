@@ -25,7 +25,6 @@
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  * @copyright 2000 Alan Curry (pacman@world.std.com)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/cf_file.h>
@@ -37,7 +36,10 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/virtual_servers.h>
+
 #include <freeradius-devel/util/atexit.h>
+#include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dlist.h>
 
 #include <freeradius-devel/unlang/compile.h>
 #include <freeradius-devel/unlang/xlat_func.h>
@@ -961,6 +963,138 @@ int modules_rlm_instantiate(void)
 	return modules_instantiate(rlm_modules_static);
 }
 
+/** Compare the section names of two module_method_binding_t structures
+ */
+static int8_t binding_name_cmp(void const *one, void const *two)
+{
+	module_method_binding_t const *a = one;
+	module_method_binding_t const *b = two;
+
+	return section_name_cmp(a->section, b->section);
+}
+
+static int module_method_validate(module_instance_t *mi)
+{
+	module_method_binding_t *p, *srt_p;
+	module_rlm_t const	*mrlm;
+	fr_dlist_head_t		bindings;
+	bool			in_order = true;
+
+	mrlm = module_rlm_from_module(mi->exported);
+
+	fr_dlist_init(&bindings, module_method_binding_t, name2_entry);
+
+	/*
+	 *	Not all modules export module method bindings
+	 */
+	if (!mrlm->bindings) return 0;
+
+	for (p = mrlm->bindings; p->section; p++) {
+		if (!fr_cond_assert_msg(p->section->name1,
+					"%s: First section identifier can't be NULL", mi->name)) return -1;
+		if (!fr_cond_assert_msg(p->section->name1 || p->section->name2,
+					"%s: Section identifiers can't both be null", mi->name)) return -1;
+
+		/*
+		 *	All the bindings go in a list so we can sort them
+		 *	and produce the list in the correct order.
+		 */
+		fr_dlist_insert_tail(&bindings, p);
+	}
+
+	fr_dlist_sort(&bindings, binding_name_cmp);
+
+	/*
+	 *	Iterate over the sorted list of bindings,
+	 *	and the original list, to ensure they're
+	 *	in the correct order.
+	 */
+	for (srt_p = fr_dlist_head(&bindings), p = mrlm->bindings;
+	     srt_p;
+	     srt_p = fr_dlist_next(&bindings, srt_p), p++) {
+		if (p != srt_p) {
+			in_order = false;
+			break;
+		}
+#if 0
+		{
+			module_method_binding_t const *pp;
+			/*
+			*	Print the correct order of bindings
+			*/
+			FR_FAULT_LOG("%s: Module method bindings are not in the correct order, the correct order is:", mi->name);
+			FR_FAULT_LOG(".bindings = (module_method_binding_t[]){");
+			for (pp = fr_dlist_head(&bindings);
+				pp;
+				pp = fr_dlist_next(&bindings, pp)) {
+				char const *name1_quote = (pp->section->name1 && (pp->section->name1 != CF_IDENT_ANY)) ? "\"" : "";
+				char const *name2_quote = (pp->section->name2 && (pp->section->name2 != CF_IDENT_ANY)) ? "\"" : "";
+				char const *name1 = pp->section->name1;
+				char const *name2 = pp->section->name2;
+
+				if (name1 == CF_IDENT_ANY) {
+					name1 = "CF_IDENT_ANY";
+				} else if (!name1) {
+					name1 = "NULL";
+				}
+				if (name2 == CF_IDENT_ANY) {
+					name2 = "CF_IDENT_ANY";
+				} else if (!name2) {
+					name2 = "NULL";
+				}
+
+				FR_FAULT_LOG("\t.section = SECTION_NAME(%s%s%s, %s%s%s)",
+						name1_quote, name1, name1_quote,
+						name2_quote, name2, name2_quote);
+			}
+			FR_FAULT_LOG("}");
+		}
+#endif
+	}
+
+	/*
+	 *	Rebuild the binding list in the correct order.
+	 */
+	if (!in_order) {
+		module_method_binding_t *ordered;
+
+		MEM(ordered = talloc_array(NULL, module_method_binding_t, fr_dlist_num_elements(&bindings)));
+		for (srt_p = fr_dlist_head(&bindings), p = ordered;
+		     srt_p;
+		     srt_p = fr_dlist_next(&bindings, srt_p), p++) {
+			*p = *srt_p;
+		}
+		memcpy(mrlm->bindings, ordered, fr_dlist_num_elements(&bindings) * sizeof(*ordered));
+		talloc_free(ordered);
+	}
+
+	/*
+	 *	Build the "skip" list of name1 entries
+	 */
+	{
+		module_method_binding_t *last_binding = NULL;
+
+		for (p = mrlm->bindings; p->section; p++) {
+			if (!last_binding ||
+				(
+					(last_binding->section->name1 != p->section->name1) &&
+					(
+						(last_binding->section->name1 == CF_IDENT_ANY) ||
+						(p->section->name1 == CF_IDENT_ANY) ||
+						(strcmp(last_binding->section->name1, p->section->name1) != 0)
+					)
+				)
+			) {
+				fr_dlist_init(&p->name2_list, module_method_binding_t, name2_entry);
+				last_binding = p;
+			}
+			fr_dlist_insert_tail(&last_binding->name2_list, p);
+		}
+	}
+
+	return 0;
+}
+
 static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
 {
 	char const		*name;
@@ -1006,7 +1140,17 @@ static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
 	if (unlikely(mi == NULL)) {
 		cf_log_perr(mod_conf, "Failed loading module");
 		return -1;
+	}
 
+	/*
+	 *	First time we've loaded the dl module, so we need to
+	 *	check the module methods to make sure they're ordered
+	 *	correctly, and to add the "skip list" style name2
+	 *	entries.
+	 */
+	if ((mi->module->refs == 1) && (module_method_validate(mi) < 0)) {
+		talloc_free(mi);
+		return -1;
 	}
 
 	if (module_instance_conf_parse(mi, mod_conf) < 0) {

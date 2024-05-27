@@ -34,7 +34,7 @@ extern "C" {
 
 typedef struct {
 	module_t			common;			//!< Common fields presented by all modules.
-	module_method_binding_t const	*bindings;		//!< named methods
+	module_method_binding_t		*bindings;		//!< named methods
 } module_rlm_t;
 
 /** Cast a module_t to a module_rlm_t

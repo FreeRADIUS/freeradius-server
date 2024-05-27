@@ -182,7 +182,7 @@ module_rlm_t rlm_totp = {
 		.instantiate	= mod_instantiate
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate,	.method_env = &method_env },
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &method_env },
 		MODULE_BINDING_TERMINATOR
 	}
 };

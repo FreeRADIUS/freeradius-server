@@ -1051,10 +1051,9 @@ module_rlm_t rlm_smtp = {
 		.thread_detach      	= mod_thread_detach,
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("mail", CF_IDENT_ANY),		.method = mod_mail,
-		  .method_env = &method_env },
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate,
-		  .method_env = &auth_env },
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &auth_env },
+		{ .section = SECTION_NAME("mail", CF_IDENT_ANY), .method = mod_mail, .method_env = &method_env },
+
 		MODULE_BINDING_TERMINATOR
 	}
 };

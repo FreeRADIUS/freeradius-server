@@ -461,9 +461,9 @@ module_rlm_t rlm_wimax = {
 		.config		= module_config,
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .proto = &dict_radius,	.section = SECTION_NAME("recv", "accounting-request"),	.method = mod_preacct },
-		{ .proto = &dict_radius,	.section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize },
-		{ .proto = &dict_radius,	.section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_post_auth },
+		{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_preacct },
+		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
+		{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
 		MODULE_BINDING_TERMINATOR
 	}
 };

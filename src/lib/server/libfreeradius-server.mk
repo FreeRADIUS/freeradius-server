@@ -33,6 +33,7 @@ SOURCES	:= \
 	regex.c \
 	request.c \
 	request_data.c \
+	section.c \
 	snmp.c \
 	state.c \
 	stats.c \

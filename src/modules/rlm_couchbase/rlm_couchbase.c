@@ -556,8 +556,8 @@ module_rlm_t rlm_couchbase = {
 		.detach		= mod_detach
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize   },
 		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting   },
+		{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize   },
 		MODULE_BINDING_TERMINATOR
 	}
 };

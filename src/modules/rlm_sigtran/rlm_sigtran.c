@@ -435,7 +435,7 @@ module_rlm_t rlm_sigtran = {
 		.thread_detach		= mod_thread_detach
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_authorize },
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_authorize },
 		MODULE_BINDING_TERMINATOR
 	}
 };

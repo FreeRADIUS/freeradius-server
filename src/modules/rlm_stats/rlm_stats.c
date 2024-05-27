@@ -459,7 +459,7 @@ module_rlm_t rlm_stats = {
 		.thread_detach		= mod_thread_detach
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_stats },
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_stats },
 		MODULE_BINDING_TERMINATOR
 	}
 };

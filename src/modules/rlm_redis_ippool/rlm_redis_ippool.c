@@ -1292,59 +1292,27 @@ module_rlm_t rlm_redis_ippool = {
 		.instantiate	= mod_instantiate
 	},
 	.bindings = (module_method_binding_t[]){
-		/*
-		 *	RADIUS specific
-		 */
-		{ .section = SECTION_NAME("recv", "access-request"),	.method = mod_alloc,
-		  .method_env = &redis_ippool_alloc_method_env },
-		{ .section = SECTION_NAME("accounting", "start"),		.method = mod_update,
-		  .method_env = &redis_ippool_update_method_env },
-		{ .section = SECTION_NAME("accounting", "interim-update"),	.method = mod_update,
-		  .method_env = &redis_ippool_update_method_env },
-		{ .section = SECTION_NAME("accounting", "stop"),		.method = mod_release,
-		  .method_env = &redis_ippool_release_method_env },
-		{ .section = SECTION_NAME("accounting", "accounting-on"),	.method = mod_bulk_release,
-		  .method_env = &redis_ippool_bulk_release_method_env },
-		{ .section = SECTION_NAME("accounting", "accounting-off"),	.method = mod_bulk_release,
-		  .method_env = &redis_ippool_bulk_release_method_env },
+		{ .section = SECTION_NAME("recv", "Access-Request"), .method = mod_alloc, .method_env = &redis_ippool_alloc_method_env },			/* radius */
+		{ .section = SECTION_NAME("accounting", "Start"), .method = mod_update, .method_env = &redis_ippool_update_method_env },			/* radius */
+		{ .section = SECTION_NAME("accounting", "Interim-Update"), .method = mod_update, .method_env = &redis_ippool_update_method_env },		/* radius */
+		{ .section = SECTION_NAME("accounting", "Stop"), .method = mod_release, .method_env = &redis_ippool_release_method_env },			/* radius */
+		{ .section = SECTION_NAME("accounting", "Accounting-On"), .method = mod_bulk_release, .method_env = &redis_ippool_bulk_release_method_env },	/* radius */
+		{ .section = SECTION_NAME("accounting", "Accounting-Off"), .method = mod_bulk_release, .method_env = &redis_ippool_bulk_release_method_env },	/* radius */
 
-		/*
-		 *	DHCPv4
-		 */
-		{ .section = SECTION_NAME("recv", "discover"),		.method = mod_alloc,
-		  .method_env = &redis_ippool_alloc_method_env },
-		{ .section = SECTION_NAME("recv", "release"),		.method = mod_release,
-		  .method_env = &redis_ippool_release_method_env },
-		{ .section = SECTION_NAME("send", "ack"),			.method = mod_update,
-		  .method_env = &redis_ippool_update_method_env },
+		{ .section = SECTION_NAME("recv", "Discover"), .method = mod_alloc, .method_env = &redis_ippool_alloc_method_env },				/* dhcpv4 */
+		{ .section = SECTION_NAME("recv", "Release"), .method = mod_release, .method_env = &redis_ippool_release_method_env }, 				/* dhcpv4 */
+		{ .section = SECTION_NAME("send", "Ack"), .method = mod_update, .method_env = &redis_ippool_update_method_env },				/* dhcpv4 */
 
-		/*
-		 *	DHCPv6
-		 */
-		{ .section = SECTION_NAME("recv", "solicit"),		.method = mod_alloc,
-		  .method_env = &redis_ippool_alloc_method_env },
+		{ .section = SECTION_NAME("recv", "Solicit"), .method = mod_alloc, .method_env = &redis_ippool_alloc_method_env },				/* dhcpv6 */
 
-		/*
-		 *	Generic
-		 */
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_update,
-		  .method_env = &redis_ippool_update_method_env },
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_alloc,
-		  .method_env = &redis_ippool_alloc_method_env },
+		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_update, .method_env = &redis_ippool_update_method_env },				/* generic */
+		{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_alloc, .method_env = &redis_ippool_alloc_method_env },				/* generic */
 
-		/*
-		 *	Named methods matching module operations
-		 */
-		{ .section = SECTION_NAME("allocate", CF_IDENT_ANY),		.method = mod_alloc,
-		  .method_env = &redis_ippool_alloc_method_env },
-		{ .section = SECTION_NAME("update", CF_IDENT_ANY),		.method = mod_update,
-		  .method_env = &redis_ippool_update_method_env },
-		{ .section = SECTION_NAME("renew", CF_IDENT_ANY),		.method = mod_update,
-		  .method_env = &redis_ippool_update_method_env },
-		{ .section = SECTION_NAME("release", CF_IDENT_ANY),		.method = mod_release,
-		  .method_env = &redis_ippool_release_method_env },
-		{ .section = SECTION_NAME("bulk-release", CF_IDENT_ANY),		.method = mod_bulk_release,
-		  .method_env = &redis_ippool_bulk_release_method_env },
+		{ .section = SECTION_NAME("allocate", NULL), .method = mod_alloc, .method_env = &redis_ippool_alloc_method_env },				/* verb */
+		{ .section = SECTION_NAME("update", NULL), .method = mod_update, .method_env = &redis_ippool_update_method_env },				/* verb */
+		{ .section = SECTION_NAME("renew", NULL), .method = mod_update, .method_env = &redis_ippool_update_method_env },				/* verb */
+		{ .section = SECTION_NAME("release", NULL), .method = mod_release, .method_env = &redis_ippool_release_method_env },				/* verb */
+		{ .section = SECTION_NAME("bulk-release", NULL), .method = mod_bulk_release, .method_env = &redis_ippool_bulk_release_method_env },		/* verb */
 		MODULE_BINDING_TERMINATOR
 	}
 };

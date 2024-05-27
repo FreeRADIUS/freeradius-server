@@ -1067,13 +1067,10 @@ module_rlm_t rlm_pap = {
 		/*
 		 *	Hack to support old configurations
 		 */
-		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_authorize,
-		  .method_env = &pap_method_env		},
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &pap_method_env },
+		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &pap_method_env },
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_authorize, .method_env = &pap_method_env },
 
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate,
-		  .method_env = &pap_method_env		},
-		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_authorize,
-		  .method_env = &pap_method_env		},
 		MODULE_BINDING_TERMINATOR
 	}
 };

@@ -676,8 +676,7 @@ module_rlm_t rlm_files = {
 		.config		= module_config,
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_files,
-		  .method_env = &method_env	},
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_files, .method_env = &method_env },
 		MODULE_BINDING_TERMINATOR
 	}
 

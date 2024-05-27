@@ -25,6 +25,8 @@
  */
 RCSIDH(section_h, "$Id$")
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -42,6 +44,10 @@ typedef struct {
 	char const *name1;		//!< First section name.  Usually a verb like 'recv', 'send', etc...
 	char const *name2;		//!< Second section name.  Usually a packet type like 'access-request', 'access-accept', etc...
 } section_name_t;
+
+int8_t section_name_cmp(void const *one, void const *two);
+
+bool section_name_match(section_name_t const *a, section_name_t const *b);
 
 #ifdef __cplusplus
 }

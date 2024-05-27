@@ -1197,9 +1197,9 @@ module_rlm_t rlm_eap = {
 		.instantiate	= mod_instantiate,
 	},
         .bindings = (module_method_binding_t[]){
-                { .section = SECTION_NAME("recv", "access-request"),	.method = mod_authorize },
-                { .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate },
-                { .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_post_auth },
+                { .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
+                { .section = SECTION_NAME("recv", "access-request"), .method = mod_authorize },
+                { .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
                 MODULE_BINDING_TERMINATOR
         }
 };

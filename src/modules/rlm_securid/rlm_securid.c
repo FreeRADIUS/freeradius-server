@@ -561,7 +561,7 @@ module_rlm_t rlm_securid = {
 		.detach		= mod_detach
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),		.method = mod_authenticate },
+		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
 		MODULE_BINDING_TERMINATOR
 	}
 };

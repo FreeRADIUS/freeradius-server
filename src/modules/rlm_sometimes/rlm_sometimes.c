@@ -162,8 +162,8 @@ module_rlm_t rlm_sometimes = {
 		.instantiate	= mod_instantiate
 	},
 	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_sometimes_reply },
-		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_sometimes_packet },
+		{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_sometimes_reply },
+		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_sometimes_packet },
 		MODULE_BINDING_TERMINATOR
 	}
 };

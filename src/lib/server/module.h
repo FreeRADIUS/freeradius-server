@@ -153,12 +153,20 @@ extern "C" {
  *
  */
 struct module_method_binding_s {
-	fr_dict_t const				**proto;		//!< Only allow this method to be called in this namespace.
-
 	section_name_t const			*section;		//!< Identifier for a section.
 
 	module_method_t				method;			//!< Module method to call
-	call_env_method_t const	* const 	method_env;		//!< Call specific conf parsing.
+	call_env_method_t const			*method_env;		//!< Method specific call_env.
+
+	fr_dlist_head_t				name2_list;		//!< List of bindings with the same name1.  Only initialised
+									///< for the the first name1 binding.
+									///< DO NOT INITIALISE IN THE MODULE.
+	fr_dlist_t				name2_entry;		//!< Linked list of bindings with the same name1.
+									///< Allows us to more quickly iterate over all
+									///< name2 entries after finding a matching name1.
+									///< This is also temporarily used to verify the ordering
+									///< of name bindings.
+									///< DO NOT INITIALISE IN THE MODULE.
 };
 
 /** Struct exported by a rlm_* module
