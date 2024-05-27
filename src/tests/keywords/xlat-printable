@@ -1,0 +1,31 @@
+#
+#  PRE: if
+#
+string printable
+string unprintable
+
+&printable = "🍩abcdef🍩"
+&unprintable = "\t🍩\n"
+
+# Relaxed mode allows tabs and spaces
+if (!%str.printable("\t 🍩", "yes")) {
+	test_fail
+}
+
+if (%str.printable("\xfe")) {
+	test_fail
+}
+
+if (%str.printable(%{unprintable})) {
+	test_fail
+}
+
+if (%str.printable("\000abcd")) {
+	test_fail
+}
+
+if (!%str.printable(%{printable})) {
+	test_fail
+}
+
+success

@@ -2975,6 +2975,66 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_str_printable_arg[] = {
+	{ .concat = true, .type = FR_TYPE_STRING },
+	{ .single = true, .type = FR_TYPE_BOOL },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Return whether a string has only printable chars
+ *
+ * This function returns true if the input string contains UTF8 sequences and printable chars.
+ *
+ * @note "\t" and " " are considered unprintable chars, unless the second argument(relaxed) is true.
+ *
+ * Example:
+@verbatim
+%str.printable("🍉abcdef🍓") == true
+%str.printable("\000\n\r\t") == false
+%str.printable("\t abcd", yes) == true
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_str_printable(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					     UNUSED xlat_ctx_t const *xctx,
+					     UNUSED request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+	fr_value_box_t	*str;
+	fr_value_box_t	*relaxed_vb;
+	uint8_t const	*p, *end;
+	bool		relaxed = false;
+
+	XLAT_ARGS(args, &str, &relaxed_vb);
+
+	if (relaxed_vb) relaxed = relaxed_vb->vb_bool;
+
+	p = (uint8_t const *)str->vb_strvalue;
+	end = p + str->vb_length;
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	fr_dcursor_append(out, vb);
+	vb->vb_bool = false;
+
+	do {
+		size_t clen;
+
+		if ((*p < '!') &&
+		    (!relaxed || ((*p != '\t') && (*p != ' ')))) return XLAT_ACTION_DONE;
+
+		if (*p == 0x7f) return XLAT_ACTION_DONE;
+
+		clen = fr_utf8_char(p, end - p);
+		if (clen == 0) return XLAT_ACTION_DONE;
+		p += clen;
+	} while (p < end);
+
+	vb->vb_bool = true;
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_str_utf8_arg[] = {
 	{ .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
@@ -4092,6 +4152,7 @@ do { \
 	XLAT_REGISTER_PURE("string", xlat_func_string, FR_TYPE_STRING, xlat_func_string_arg);
 	XLAT_REGISTER_PURE("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
 	XLAT_REGISTER_PURE("str.utf8", xlat_func_str_utf8, FR_TYPE_BOOL, xlat_func_str_utf8_arg);
+	XLAT_REGISTER_PURE("str.printable", xlat_func_str_printable, FR_TYPE_BOOL, xlat_func_str_printable_arg);
 	XLAT_REGISTER_PURE("tolower", xlat_func_tolower, FR_TYPE_STRING, xlat_change_case_arg);
 	XLAT_REGISTER_PURE("toupper", xlat_func_toupper, FR_TYPE_STRING, xlat_change_case_arg);
 	XLAT_REGISTER_PURE("urlquote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);
