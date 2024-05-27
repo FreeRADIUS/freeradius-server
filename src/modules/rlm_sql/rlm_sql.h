@@ -128,6 +128,8 @@ typedef enum {
 	SQL_QUERY_FAILED = -1,					//!< Failed to submit.
 	SQL_QUERY_PREPARED = 0,					//!< Ready to submit.
 	SQL_QUERY_SUBMITTED,					//!< Submitted for execution.
+	SQL_QUERY_RETURNED,					//!< Query has executed.
+	SQL_QUERY_FETCHING_RESULTS,				//!< Fetching results from server.
 	SQL_QUERY_RESULTS_FETCHED				//!< Results fetched from the server.
 } fr_sql_query_status_t;
 
