@@ -1,0 +1,26 @@
+#
+#  PRE: if
+#
+string valid_utf8
+string invalid_utf8
+
+&valid_utf8 = "🍩abcdef🍩\n\t"
+&invalid_utf8 = "🍩\x80"
+
+if (%str.utf8("\xFE")) {
+	test_fail
+}
+
+if (!%str.utf8(%{valid_utf8})) {
+	test_fail
+}
+
+if (!%str.utf8("abcdefghijklmnopqrstuvwxyz")) {
+	test_fail
+}
+
+if (%str.utf8(%{invalid_utf8})) {
+	test_fail
+}
+
+success

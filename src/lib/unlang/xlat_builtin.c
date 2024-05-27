@@ -24,6 +24,7 @@
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  */
 
+
 RCSID("$Id$")
 
 /**
@@ -45,6 +46,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/print.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/regex.h>
 #include <freeradius-devel/util/sbuff.h>
@@ -2973,6 +2975,41 @@ static xlat_action_t xlat_func_strlen(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_str_utf8_arg[] = {
+	{ .concat = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Return whether a string is valid UTF-8
+ *
+ * This function returns true if the input string is valid UTF-8, false otherwise.
+ *
+ * Example:
+@verbatim
+%str.utf8(🍉🥝🍓) == true
+%str.utf8(🍉\xff🍓) == false
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_str_utf8(TALLOC_CTX *ctx, fr_dcursor_t *out,
+				        UNUSED xlat_ctx_t const *xctx,
+					UNUSED request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*vb;
+	fr_value_box_t	*in_head;
+
+	XLAT_ARGS(args, &in_head);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, NULL));
+	vb->vb_bool = (fr_utf8_str((uint8_t const *)in_head->vb_strvalue,
+				   in_head->vb_length) >= 0);
+
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_arg_parser_t const xlat_func_substr_args[] = {
 	{ .single = true, .required = true, .type = FR_TYPE_VOID },
 	{ .single = true, .required = true, .type = FR_TYPE_INT32 },
@@ -4054,6 +4091,7 @@ do { \
 
 	XLAT_REGISTER_PURE("string", xlat_func_string, FR_TYPE_STRING, xlat_func_string_arg);
 	XLAT_REGISTER_PURE("strlen", xlat_func_strlen, FR_TYPE_SIZE, xlat_func_strlen_arg);
+	XLAT_REGISTER_PURE("str.utf8", xlat_func_str_utf8, FR_TYPE_BOOL, xlat_func_str_utf8_arg);
 	XLAT_REGISTER_PURE("tolower", xlat_func_tolower, FR_TYPE_STRING, xlat_change_case_arg);
 	XLAT_REGISTER_PURE("toupper", xlat_func_toupper, FR_TYPE_STRING, xlat_change_case_arg);
 	XLAT_REGISTER_PURE("urlquote", xlat_func_urlquote, FR_TYPE_STRING, xlat_func_urlquote_arg);

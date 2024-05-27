@@ -82,7 +82,7 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 	case XLAT_BOX:
 	case XLAT_GROUP:
 		fr_assert(node->fmt != NULL);
-		return fr_sbuff_in_strcpy(out, node->fmt);
+		return fr_sbuff_in_sprintf(out, "%pV", fr_box_strvalue_buffer(node->fmt));
 
 	case XLAT_ONE_LETTER:
 		fr_assert(node->fmt != NULL);
@@ -93,7 +93,7 @@ static fr_slen_t xlat_fmt_print(fr_sbuff_t *out, xlat_exp_t const *node)
 		if (tmpl_is_attr(node->vpt) && (node->fmt[0] == '&')) {
 			return fr_sbuff_in_strcpy(out, node->fmt);
 		} else {
-			return fr_sbuff_in_sprintf(out, "%%{%s}", node->fmt);
+			return fr_sbuff_in_sprintf(out, "%%{%pV}", fr_box_strvalue_buffer(node->fmt));
 		}
 
 	case XLAT_VIRTUAL:

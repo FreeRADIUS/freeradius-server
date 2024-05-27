@@ -42,9 +42,7 @@ inline size_t fr_utf8_char(uint8_t const *str, ssize_t inlen)
 
 	if (inlen < 0) inlen = 4;	/* longest char */
 
-	if (*str < 0x20) return 0;
-
-	if (*str <= 0x7e) return 1;	/* 1 */
+	if (*str <= 0x7f) return 1;	/* 1 */
 
 	if (*str <= 0xc1) return 0;
 
@@ -139,10 +137,10 @@ inline size_t fr_utf8_char(uint8_t const *str, ssize_t inlen)
  * @param[in] inlen	length of input string.  May be -1 if str
  *			is \0 terminated.
  * @return The number of bytes validated.  If ret == inlen the entire
- *	   string is valid.  Else ret gives the offset at which the
- *	   first invalid byte sequence was found.
+ *	   string is valid.  Else ret gives the negative offset at
+ *	   which the first invalid byte sequence was found.
  */
-ssize_t fr_utf8_str(uint8_t const *str, ssize_t inlen)
+fr_slen_t fr_utf8_str(uint8_t const *str, ssize_t inlen)
 {
 	uint8_t const *p, *end;
 	size_t len;
@@ -156,7 +154,7 @@ ssize_t fr_utf8_str(uint8_t const *str, ssize_t inlen)
 		size_t clen;
 
 		clen = fr_utf8_char(p, end - p);
-		if (clen == 0) return end - p;
+		if (clen == 0) return p - end;
 		p += clen;
 	} while (p < end);
 
