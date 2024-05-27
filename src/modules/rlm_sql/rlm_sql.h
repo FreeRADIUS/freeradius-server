@@ -204,8 +204,11 @@ typedef struct {
 	sql_rcode_t	(*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
 					   fr_time_delta_t timeout);
 
-	unlang_function_t	sql_query;
-	unlang_function_t	sql_select_query;
+	unlang_function_t	sql_query;			//!< Run an SQL query on a pool connection.
+	unlang_function_t	sql_select_query;		//!< Run an SQL select query on a pool connection.
+
+	unlang_function_t	sql_query_resume;		//!< Callback run after an SQL trunk query is run.
+	unlang_function_t	sql_select_query_resume;	//!< Callback run after an SQL select trunk query is run.
 
 	int		(*sql_num_rows)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 	int		(*sql_affected_rows)(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
@@ -256,6 +259,7 @@ unlang_action_t	sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, 
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
 unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 unlang_action_t	rlm_sql_query(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
+unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query_t *query_ctx, bool force_debug);
 fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, fr_trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);

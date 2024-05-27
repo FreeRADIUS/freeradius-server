@@ -392,6 +392,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query
 
 /** Automatically run the correct `finish` function when freeing an SQL query
  *
+ * And mark any associated trunk request as complete.
  */
 static int fr_sql_query_free(fr_sql_query_t *to_free)
 {
@@ -401,6 +402,7 @@ static int fr_sql_query_free(fr_sql_query_t *to_free)
 	} else {
 		(to_free->inst->driver->sql_finish_query)(to_free, &to_free->inst->config);
 	}
+	if (to_free->treq) fr_trunk_request_signal_complete(to_free->treq);
 	return 0;
 }
 
@@ -529,6 +531,84 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 
 	query_ctx->rcode = RLM_SQL_ERROR;
 	RETURN_MODULE_FAIL;
+}
+
+/** Yield processing after submitting a trunk request.
+ */
+static unlang_action_t sql_trunk_query_start(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+				       UNUSED request_t *request, UNUSED void *uctx)
+{
+	return UNLANG_ACTION_YIELD;
+}
+
+/** Cancel an SQL query submitted on a trunk
+ */
+static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+
+	if (!query_ctx->treq) return;
+
+	/*
+	 *	The query_ctx needs to be parented by the treq so that it still exists
+	 *	when the cancel_mux callback is run.
+	 */
+	talloc_steal(query_ctx->treq, query_ctx);
+
+	fr_trunk_request_signal_cancel(query_ctx->treq);
+
+	query_ctx->treq = NULL;
+}
+
+/** Submit an SQL query using a trunk connection.
+ *
+ * @param p_result	Result of current module call.
+ * @param priority	Unused.
+ * @param request	Current request.
+ * @param uctx		query context containing query to execute.
+ * @return an unlang_action_t.
+ */
+unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+{
+	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	fr_trunk_enqueue_t	status;
+
+	fr_assert(query_ctx->trunk);
+
+	/* There's no query to run, return an error */
+	if (query_ctx->query_str[0] == '\0') {
+		if (request) REDEBUG("Zero length query");
+		RETURN_MODULE_INVALID;
+	}
+
+	/*
+	 *	If the query already has a treq, and that is not in the "init" state
+	 *	then this is part of an ongoing transaction and needs requeueing
+	 *	to submit on the same connection.
+	 */
+	if (query_ctx->treq && query_ctx->treq->state != FR_TRUNK_REQUEST_STATE_INIT) {
+		status = fr_trunk_request_requeue(query_ctx->treq);
+	} else {
+		status = fr_trunk_request_enqueue(&query_ctx->treq, query_ctx->trunk, request, query_ctx, NULL);
+	}
+	switch (status) {
+	case FR_TRUNK_ENQUEUE_OK:
+	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+		if (unlang_function_push(request, sql_trunk_query_start,
+					 query_ctx->type == SQL_QUERY_SELECT ?
+					 	query_ctx->inst->driver->sql_select_query_resume :
+						query_ctx->inst->driver->sql_query_resume,
+					 sql_trunk_query_cancel, ~FR_SIGNAL_CANCEL,
+					 UNLANG_SUB_FRAME, query_ctx) < 0) RETURN_MODULE_FAIL;
+		*p_result = RLM_MODULE_OK;
+		return UNLANG_ACTION_PUSHED_CHILD;
+
+	default:
+		REDEBUG("Unable to enqueue SQL query");
+		query_ctx->status = SQL_QUERY_FAILED;
+		query_ctx->rcode = RLM_SQL_ERROR;
+		RETURN_MODULE_FAIL;
+	}
 }
 
 /** Call the driver's sql_select_query method, reconnecting if necessary.
