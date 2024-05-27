@@ -608,71 +608,65 @@ unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority
 	RETURN_MODULE_FAIL;
 }
 
-
-/*************************************************************************
+/** Process the results of an SQL query to produce a map list.
  *
- *	Function: sql_getvpdata
- *
- *	Purpose: Get any group check or reply pairs
- *
- *************************************************************************/
-int sql_get_map_list(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t **handle,
-		     fr_trunk_t *trunk, map_list_t *out, char const *query, fr_dict_attr_t const *list)
+ */
+static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	rlm_sql_row_t	row;
-	int		rows = 0;
-	map_t		*parent = NULL;
-	fr_sql_query_t	*query_ctx;
-	rlm_rcode_t	p_result;
-	tmpl_rules_t	lhs_rules = (tmpl_rules_t) {
+	fr_sql_map_ctx_t	*map_ctx = talloc_get_type_abort(uctx, fr_sql_map_ctx_t);
+	tmpl_rules_t		lhs_rules = (tmpl_rules_t) {
 		.attr = {
 			.dict_def = request->dict,
 			.prefix = TMPL_ATTR_REF_PREFIX_AUTO,
-			.list_def = list,
-			.list_presence = TMPL_ATTR_LIST_ALLOW,
-
-			/*
-			 *	Otherwise the tmpl code returns 0 when asked
-			 *	to parse unknown names.  So we say "please
-			 *	parse unknown names as unresolved attributes",
-			 *	and then do a second pass to complain that the
-			 *	thing isn't known.
-			 */
-			.allow_unresolved = false
+			.list_def = map_ctx->list,
+			.list_presence = TMPL_ATTR_LIST_ALLOW
 		}
 	};
 	tmpl_rules_t	rhs_rules = lhs_rules;
+	fr_sql_query_t	*query_ctx = map_ctx->query_ctx;
+	rlm_sql_row_t	row;
+	map_t		*parent = NULL;
+	rlm_sql_t const	*inst = map_ctx->inst;
 
 	rhs_rules.attr.prefix = TMPL_ATTR_REF_PREFIX_YES;
 	rhs_rules.attr.list_def = request_attr_request;
 
-	fr_assert(request);
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
-	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, *handle, trunk, query, SQL_QUERY_SELECT));
-	inst->select(&p_result, NULL, request, query_ctx);
-	if (query_ctx->rcode != RLM_SQL_OK) {
-	error:
-		*handle = query_ctx->handle;
-		talloc_free(query_ctx);
-		return -1;
-	}
-
-	while ((inst->fetch_row(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
+	while ((inst->fetch_row(p_result, NULL, request, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
 	       (query_ctx->rcode == RLM_SQL_OK)) {
 		map_t *map;
 
 		row = query_ctx->row;
-		if (map_afrom_fields(ctx, &map, &parent, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
+		if (map_afrom_fields(map_ctx->ctx, &map, &parent, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
 			RPEDEBUG("Error parsing user data from database result");
-			goto error;
+			RETURN_MODULE_FAIL;
 		}
-		if (!map->parent) map_list_insert_tail(out, map);
+		if (!map->parent) map_list_insert_tail(map_ctx->out, map);
 
-		rows++;
+		map_ctx->rows++;
 	}
 	talloc_free(query_ctx);
 
-	return rows;
+	RETURN_MODULE_OK;
+}
+
+/** Submit the query to get any user / group check or reply pairs
+ *
+ */
+unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, rlm_sql_handle_t **handle,
+				 fr_trunk_t *trunk)
+{
+	rlm_sql_t const	*inst = map_ctx->inst;
+
+	fr_assert(request);
+
+	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, *handle, trunk,
+						    map_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
+
+	if (unlang_function_push(request, NULL, sql_get_map_list_resume, NULL, 0, UNLANG_SUB_FRAME, map_ctx) < 0) return UNLANG_ACTION_FAIL;
+
+	return unlang_function_push(request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, map_ctx->query_ctx);
 }
 
 /*
