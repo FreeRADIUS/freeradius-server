@@ -2055,8 +2055,13 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
 	 */
-	inst->query			= rlm_sql_query;
-	inst->select			= rlm_sql_select_query;
+	if (inst->driver->uses_trunks) {
+		inst->query		= rlm_sql_trunk_query;
+		inst->select		= rlm_sql_trunk_query;
+	} else {
+		inst->query		= rlm_sql_query;
+		inst->select		= rlm_sql_select_query;
+	}
 	inst->fetch_row			= rlm_sql_fetch_row;
 	inst->query_alloc		= fr_sql_query_alloc;
 
