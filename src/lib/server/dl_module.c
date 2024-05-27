@@ -243,10 +243,7 @@ static int _dl_module_free(dl_module_t *dl_module)
 	/*
 	 *	Decrement refcounts, freeing at zero
 	 */
-	if (dl_module->refs > 0) {
-		dl_module->refs--;
-		return -1;
-	}
+	if (--dl_module->refs > 0) return -1;
 
 	/*
 	 *	dl is empty if we tried to load it and failed.
@@ -364,6 +361,7 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 	dl_module->loader = dl_module_loader;
 	dl_module->parent = parent;
 	dl_module->type = type;
+	dl_module->refs = 1;
 	talloc_set_destructor(dl_module, _dl_module_free);	/* Do this late */
 
 	/*
