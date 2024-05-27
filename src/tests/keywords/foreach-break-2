@@ -3,7 +3,7 @@
 #
 string test_string
 
-&test_string := "ABCDEF_8"
+&test_string := "ABCDEF_1"
 
 #
 #  This creates a bunch of User-Name attributes.
@@ -16,8 +16,8 @@ foreach &control.User-Name {
 		success
 		break
 	}
-	elsif ("%{Foreach-Variable-0}" == '9') {
+	elsif ("%{Foreach-Variable-0}" == '1') {
 		test_fail
-		reject
+		break
 	}
 }
