@@ -55,6 +55,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
+RUN ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
+
 ifelse(ifelse(
 	D_NAME, `debian10', no,
 	D_NAME, `ubuntu18', no,
@@ -67,6 +69,7 @@ RUN groupadd -g ${freerad_gid} -r freerad \
  && useradd -u ${freerad_uid} -g freerad -r -M -d /etc/freeradius -s /usr/sbin/nologin freerad \
  && apt-get update \',
 `RUN apt-get update \')
+ && apt-get install -y tzdata \
  && apt-get install -y /tmp/*.deb \
  && apt-get clean \
  && rm -r /var/lib/apt/lists/* /tmp/*.deb \

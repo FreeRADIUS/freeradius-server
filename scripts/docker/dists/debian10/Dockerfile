@@ -60,7 +60,10 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 COPY --from=build /usr/local/src/repositories/*.deb /tmp/
 
+RUN ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
+
 RUN apt-get update \
+ && apt-get install -y tzdata \
  && apt-get install -y /tmp/*.deb \
  && apt-get clean \
  && rm -r /var/lib/apt/lists/* /tmp/*.deb \
