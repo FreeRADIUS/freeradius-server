@@ -982,7 +982,7 @@ static int module_method_validate(module_instance_t *mi)
 
 	mrlm = module_rlm_from_module(mi->exported);
 
-	fr_dlist_init(&bindings, module_method_binding_t, name2_entry);
+	fr_dlist_init(&bindings, module_method_binding_t, entry);
 
 	/*
 	 *	Not all modules export module method bindings
@@ -1085,10 +1085,10 @@ static int module_method_validate(module_instance_t *mi)
 					)
 				)
 			) {
-				fr_dlist_init(&p->name2_list, module_method_binding_t, name2_entry);
+				fr_dlist_init(&p->same_name1, module_method_binding_t, entry);
 				last_binding = p;
 			}
-			fr_dlist_insert_tail(&last_binding->name2_list, p);
+			fr_dlist_insert_tail(&last_binding->same_name1, p);
 		}
 	}
 

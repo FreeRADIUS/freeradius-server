@@ -158,10 +158,10 @@ struct module_method_binding_s {
 	module_method_t				method;			//!< Module method to call
 	call_env_method_t const			*method_env;		//!< Method specific call_env.
 
-	fr_dlist_head_t				name2_list;		//!< List of bindings with the same name1.  Only initialised
+	fr_dlist_head_t				same_name1;		//!< List of bindings with the same name1.  Only initialised
 									///< for the the first name1 binding.
 									///< DO NOT INITIALISE IN THE MODULE.
-	fr_dlist_t				name2_entry;		//!< Linked list of bindings with the same name1.
+	fr_dlist_t				entry;			//!< Linked list of bindings with the same name1.
 									///< Allows us to more quickly iterate over all
 									///< name2 entries after finding a matching name1.
 									///< This is also temporarily used to verify the ordering

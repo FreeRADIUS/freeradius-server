@@ -96,24 +96,3 @@ name2:
 
 	return CMP(strcmp(a->name2, b->name2), 0);
 }
-
-/* Compare two section names
- *
- * Respects CF_IDENT_ANY values
- *
- * @param[in] a		First section name.
- * @param[in] b		Second section name.
- *
- * @return true if the section names match, false otherwise.
- */
-bool section_name_match(section_name_t const *a, section_name_t const *b)
-{
-	if ((a->name1 == CF_IDENT_ANY) || (b->name2 == CF_IDENT_ANY)) goto name2;
-
-	if (strcmp(a->name1, b->name1) != 0) return false;
-
-name2:
-	if ((a->name2 == CF_IDENT_ANY) || (b->name2 == CF_IDENT_ANY)) return true;
-
-	return (strcmp(a->name2, b->name2) == 0);
-}

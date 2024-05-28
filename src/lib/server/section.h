@@ -26,6 +26,7 @@
 RCSIDH(section_h, "$Id$")
 
 #include <stdbool.h>
+#include <freeradius-devel/server/cf_util.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,9 +46,46 @@ typedef struct {
 	char const *name2;		//!< Second section name.  Usually a packet type like 'access-request', 'access-accept', etc...
 } section_name_t;
 
-int8_t section_name_cmp(void const *one, void const *two);
+/* Compare two sections based on name2
+ *
+ * Respects CF_IDENT_ANY values
+ *
+ * @param[in] a		First section name.
+ * @param[in] b		Second section name.
+ *
+ * @return
+ *	- 1 if name2 values match.
+ *	- 0 if name2 values don't match.
+ */
+static inline int section_name2_match(section_name_t const *a, section_name_t const *b)
+{
+	if ((a->name2 == CF_IDENT_ANY) || (b->name2 == CF_IDENT_ANY)) return 1;
 
-bool section_name_match(section_name_t const *a, section_name_t const *b);
+	return (strcmp(a->name2, b->name2) == 0) ? 1 : 0;
+}
+
+/* Compare two section names
+ *
+ * Respects CF_IDENT_ANY values
+ *
+ * @param[in] a		First section name.
+ * @param[in] b		Second section name.
+ *
+ * @return
+ *	- 1 if the section names match.
+ *	- 0 if the section names don't match.
+ *	- -1 if name1 doesn't match.
+ *
+ */
+static inline int section_name_match(section_name_t const *a, section_name_t const *b)
+{
+	if ((a->name1 == CF_IDENT_ANY) || (b->name2 == CF_IDENT_ANY)) goto name2;
+
+	if (strcmp(a->name1, b->name1) != 0) return -1;
+
+name2:
+	return section_name2_match(a, b);
+}
 
 #ifdef __cplusplus
 }
