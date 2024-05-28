@@ -376,11 +376,11 @@ This plugin provides Python support for the FreeRADIUS server project.
 Summary: MySQL support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: ( mariadb-connector-c or mysql-libs )
-BuildRequires: ( mariadb-connector-c-devel or mysql-devel )
+Requires: mariadb-connector-c
+BuildRequires: mariadb-connector-c-devel
 
 %description mysql
-This plugin provides MySQL support for the FreeRADIUS server project.
+This plugin provides MySQL / MariaDB support for the FreeRADIUS server project.
 
 %package postgresql
 Summary: PostgreSQL support for FreeRADIUS
