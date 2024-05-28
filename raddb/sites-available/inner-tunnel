@@ -409,6 +409,13 @@ post-auth {
 			&Module-Failure-Message := &request:Module-Failure-Message
 		}
 	}
+
+	#
+	#  Access-Challenge packets are sent through the Challenge sub-section
+	#  of the post-auth section.
+	#
+	#Post-Auth-Type Challenge {
+	#}
 }
 
 #
