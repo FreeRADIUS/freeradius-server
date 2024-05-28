@@ -155,7 +155,7 @@ runs:
       if: ${{ inputs.use_docker == 'true' }}
       shell: bash
       run: |
-        mysql -h ${{ inputs.sql_mysql_test_server }} -u root -e "CREATE USER 'radius'@'%' IDENTIFIED BY 'radpass';"
+        mysql -h ${{ inputs.sql_mysql_test_server }} -u root -e "CREATE USER 'radius'@'%' IDENTIFIED WITH mysql_native_password; ALTER USER 'radius'@'%' IDENTIFIED BY 'radpass';"
         mysql -h ${{ inputs.sql_mysql_test_server }} -u root -e "GRANT ALL ON radius.* TO 'radius'; FLUSH PRIVILEGES;"
 
     - name: Setup databases

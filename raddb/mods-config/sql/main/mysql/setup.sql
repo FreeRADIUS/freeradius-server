@@ -12,7 +12,8 @@
 --
 --  Create default administrator for RADIUS
 --
-CREATE USER 'radius'@'localhost' IDENTIFIED BY 'radpass';
+CREATE USER 'radius'@'localhost' IDENTIFIED WITH mysql_native_password;
+ALTER USER 'radius'@'localhost' IDENTIFIED BY 'radpass';
 
 --
 --  The server can read the authorisation data
