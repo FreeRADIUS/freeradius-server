@@ -31,6 +31,9 @@ if !(&foo[#] == 1) {
 
 &Reply-Message += { "a", "b", "c" }
 
+#
+#  This seems wrong and inconsistent with Filter-Id below???
+#
 if !(&Reply-Message == "fooabc") {
 	test_fail
 }
@@ -48,5 +51,28 @@ if !(&Filter-Id[#] == 3) {
 if !(&foo == "abc") {
 	test_fail
 }
+
+&request -= &Reply-Message
+
+#
+#  Attribute references in in-place lists work.
+#
+&Reply-Message := { &Filter-ID[2], &Filter-ID[1], &Filter-ID[0] }
+if !(&Reply-Message[#] == 3) {
+	test_fail
+}
+
+if (&Reply-Message[0] != 'c') {
+	test_fail
+}
+
+#
+#  This would make sense, but it doesn't work.  Instead it says:
+#
+#   Missing attribute value
+#   Failed creating map from '&Reply-Message = (null)'
+#
+#&Tmp-Group-0 := { &Reply-Message, &Filter-Id }
+
 
 success
