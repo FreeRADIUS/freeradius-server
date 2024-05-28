@@ -156,6 +156,7 @@ crossbuild.${1}.up: $(DD)/stamp-up.${1}
 $(DD)/docker.refresh.${1}: $(DD)/stamp-up.${1}
 	${Q}echo "REFRESH ${1}"
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'rsync -a /srv/src/ /srv/local-src/'
+	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'git config --global --add safe.directory /srv/local-src'
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config core.bare true'
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -c 'git config -f /srv/local-src/config --unset core.worktree || true'
 	${Q}docker container exec $(CB_CPREFIX)${1} sh -c '[ -d /srv/build ] || git clone /srv/local-src /srv/build'
