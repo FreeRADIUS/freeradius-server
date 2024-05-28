@@ -3193,6 +3193,8 @@ static void trunk_connection_enter_draining_to_free(fr_trunk_connection_t *tconn
 {
 	fr_trunk_t		*trunk = tconn->pub.trunk;
 
+	if (tconn->lifetime_ev) fr_event_timer_delete(&tconn->lifetime_ev);
+
 	switch (tconn->pub.state) {
 	case FR_TRUNK_CONN_ACTIVE:
 	case FR_TRUNK_CONN_FULL:
