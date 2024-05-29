@@ -242,14 +242,14 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		 *	failure, all kinds of bad things happen.  Oh
 		 *	well.
 		 */
-		DEBUG3("Gathering events - %s", dont_wait_for_event ? "Will not wait" : "will wait");
+		DEBUG4("Gathering events - %s", dont_wait_for_event ? "Will not wait" : "will wait");
 		num_events = fr_event_corral(el, fr_time(), !dont_wait_for_event);
 		if (num_events < 0) {
 			RPERROR("fr_event_corral");
 			break;
 		}
 
-		DEBUG3("%u event(s) pending%s",
+		DEBUG4("%u event(s) pending%s",
 		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 
 		/*
@@ -275,7 +275,7 @@ rlm_rcode_t unlang_interpret_synchronous(fr_event_list_t *el, request_t *request
 		 */
 		sub_request = fr_heap_pop(&intps->runnable);
 		if (!sub_request) {
-			DEBUG3("No pending requests (%u yielded)", intps->yielded);
+			DEBUG4("No pending requests (%u yielded)", intps->yielded);
 			continue;
 		}
 

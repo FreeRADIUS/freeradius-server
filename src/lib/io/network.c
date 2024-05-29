@@ -1807,9 +1807,9 @@ void fr_network(fr_network_t *nr)
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
-		DEBUG3("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
+		DEBUG4("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
 		num_events = fr_event_corral(nr->el, fr_time(), wait_for_event);
-		DEBUG3("%u event(s) pending%s",
+		DEBUG4("%u event(s) pending%s",
 		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 		if (num_events < 0) break;
 

@@ -1512,14 +1512,14 @@ void fr_worker(fr_worker_t *worker)
 		 *	Check the event list.  If there's an error
 		 *	(e.g. exit), we stop looping and clean up.
 		 */
-		DEBUG3("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
+		DEBUG4("Gathering events - %s", wait_for_event ? "will wait" : "Will not wait");
 		num_events = fr_event_corral(worker->el, fr_time(), wait_for_event);
 		if (num_events < 0) {
 			PERROR("Failed retrieving events");
 			break;
 		}
 
-		DEBUG3("%u event(s) pending%s",
+		DEBUG4("%u event(s) pending%s",
 		       num_events == -1 ? 0 : num_events, num_events == -1 ? " - event loop exiting" : "");
 
 		/*
