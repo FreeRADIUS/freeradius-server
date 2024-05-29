@@ -1,3 +1,9 @@
+freeradius (3.2.5+git) unstable; urgency=medium
+
+  * New upstream version.
+
+ -- Alan DeKok <aland@freeradius.org>  Wed, 29 May 2024 12:00:00 -0500
+
 freeradius (3.2.4+git) unstable; urgency=medium
 
   * New upstream version.

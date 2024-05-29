@@ -1,3 +1,10 @@
+FreeRADIUS 3.2.5 Wed 29 May 2024 12:00:00 EDT urgency=low
+	Configuration changes
+
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.2.4 Wed 29 May 2024 12:00:00 EDT urgency=low
 	Configuration changes
 	* Better handle backslashes in strings in the configuration files.
