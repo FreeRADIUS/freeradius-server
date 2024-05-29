@@ -25,8 +25,8 @@
 #  version, DOCKER_COMMIT _must_ also be set.
 DOCKER_VERSION := $(RADIUSD_VERSION_STRING)
 #
-#  Commit hash/tag/branch to build, will be taken from VERSION above if not overridden, e.g. "release_3_2_0"
-DOCKER_COMMIT := release_$(shell echo $(DOCKER_VERSION) | tr .- __)
+#  Commit hash/tag/branch to build, if not set then HEAD will be used.
+DOCKER_COMMIT :=
 #
 #  Build args, most likely "--no-cache"
 DOCKER_BUILD_ARGS :=
@@ -64,6 +64,34 @@ endif
 ifneq "$(DOCKER_REGISTRY)" ""
 	override DOCKER_REGISTRY := $(DOCKER_REGISTRY)/
 endif
+
+
+#
+#  Print some useful help
+#
+.PHONY: docker.help.images
+docker.help.images:
+	@echo Available images: $(DOCKER_IMAGES)
+
+.PHONY: docker.help
+docker.help: docker.help.images
+	@echo ""
+	@echo "Make targets:"
+	@echo "    docker-ubuntu        - build main ubuntu image"
+	@echo "    docker-alpine        - build main alpine image"
+	@echo "    docker.regen         - regenerate all Dockerfiles from templates"
+	@echo ""
+	@echo "Make targets per image:"
+	@echo "    docker.IMAGE.build   - build image"
+	@echo "    docker.IMAGE.regen   - regenerate Dockerfile"
+	@echo ""
+	@echo "Arguments:"
+	@echo '    DOCKER_BUILD_ARGS="--no-cache"        - extra build args'
+	@echo '    DOCKER_REGISTRY="docker.example.com"  - registry to build for'
+	@echo '    DOCKER_REPO="freeradius"              - docker repo name'
+	@echo '    DOCKER_TAG="freeradius-server"        - docker tag name'
+	@echo '    DOCKER_COMMIT="HEAD"                  - commit/ref to build from'
+	@echo '    DOCKER_VERSION="$(DOCKER_VERSION)"                - version for docker image name'
 
 
 #
