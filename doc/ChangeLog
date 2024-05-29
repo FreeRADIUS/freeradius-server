@@ -1,31 +1,43 @@
-FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
+FreeRADIUS 3.2.4 Wed 29 May 2024 12:00:00 EDT urgency=low
 	Configuration changes
+	* Better handle backslashes in strings in the configuration files.
+	  If the configuration items contain backslashes, then behavior may change.
+	  However, the previous behavior didn't work as expected, and therefore is not
+	  likely to be used.
+	* reject_delay no longer applies to proxied packets.  All servers should now
+	  set "reject_delay = 1" for security and scalability.
+	* %{randstr:...} now returns the requested amount of data, instead of
+	  one too many bytes.
 
 	Feature improvements
 	* Preliminary support for TEAP.
 	* Update EAP module pre_proxy checks to make them less restrictive.
 	  This prevents the "middle box" effect from affecting future traffic.
-	* Support "interface = ..." on OSX and other *BSD which have IP_BOUND_IF.
-	* Many fixes and updates for docker images
-	* add dpsk module.  See mods-available/dpsk
+	* Many fixes and updates for Docker images
+	* Add dpsk module.  See mods-available/dpsk
 	* Print out what cause the TLS operations to be made, such as the EAP
 	  method name (peap, ttls, etc), or RADIUS/TLS listen / proxy socket.
 	* Add auto_escape to sample SQL module config
 	* Add 'if not exists' to mysql create table queries. ref #5032 (#5137)
-	* Add lookback and more configuration to totp.  See mods-available/totp
 	* Update dictionary.aruba; add dictionary.tplink, dictionary.alphion
+	* Allow for 'encrypt=1' attributes to be longer than 128 characters.
 	* Added "radsecret" program which generates strong secrets.  See the
 	  top of the "clients.conf" file for more information.
-	* Add "time_since" xlat to calculate elapsed time in seconds, milliseconds
-	  and microseconds.
-	* radclient prints packets as hex when using -xxx
-	* document KRB5_CLIENT_KTNAME in the "env" section of radiusd.conf.
-	* Allow for 'encrypt=1' attributes to be longer than 128 characters.
-	* Add "dedup_key" for misbehaving supplicants.  See mods-available/eap
-	* Add proxy_dedup_window.  See radiusd.conf.
+	* radclient now prints packets as hex when using -xxx.
 	* Added "-t timeout" to radsniff.  It will stop processing packets
 	  after <timeout> seconds.
-	* Add "lookforward_steps" to rlm_totp.
+	* Support "interface = ..." on OSX and other *BSD which have IP_BOUND_IF.
+	* The detail module now has a "dates_as_integer" configuration item.
+	  See mods-available/detail for more information.
+	* Add lookback/lookforward steps and more configuration to totp. See
+	  mods-available/totp.
+	* Add "time_since" xlat to calculate elapsed time in seconds, milliseconds
+	  and microseconds.
+	* Support "Post-Auth-Type Challenge" in the inner tunnel. Patch from
+	  Alexander Clouter. PR #5320.
+	* Add "proxy_dedup_window".  See radiusd.conf.
+	* Document KRB5_CLIENT_KTNAME in the "env" section of radiusd.conf.
+	* Add "dedup_key" for misbehaving supplicants.  See mods-available/eap
 
 	Bug fixes
 	* Fix corner case with empty defaults in rlm_files.  Fixes #5035
@@ -36,36 +48,27 @@ FreeRADIUS 3.2.4 Fri 26 May 2023 12:00:00 EDT urgency=low
 	* Don't send the global server stats when asked for client stats. They
 	  use the same attributes, so the result is confusing.
 	* Fix multiple typos in MongoDB query.conf (#5130)
-	* add define for illumos.  Fixes #5135
-	* add client configuration for TLS PSK.
-	* permit originate CoA after proxying to an internal virtual server
+	* Add define for illumos.  Fixes #5135
+	* Add client configuration for TLS PSK.
+	* Permit originate CoA after proxying to an internal virtual server
 	* Use virtual server "default" when passed "-i" and "-p" on the command line.
 	* Fix locking issues with rlm_python3.
-	* Better handle backslashes in strings in the configuration files.
-	  If the configuration items contain backslashes, then behavior may change.
-	  However, the previous behavior didn't work as expected, and therefore is not
-	  likely to be used.
 	* The detail file reader will catch bad times in the file, and will not
 	  update Acct-Delay-Time with extreme values.
-	* The detail module now has a "dates_as_integer" configuration item.
-	  See mods-available/detail for more information.
 	* Fix issue where Message-Authenticator was calculated incorrectly for
 	  CoA / Disconnect ACK and NAK packets.
-	* reject_delay no longer applies to proxied packets.  All servers should now
-	  set "reject_delay = 1" for security and scalability.
 	* Update Python thread and error handling.  Fixes #5208.
 	* Fix handling of Session-State when proxying.  Fixes #5288.
 	* Run relevant post-proxy Fail-* section on CoA / Disconnect timeout.
 	* Add "limit" section to AWS health check configurtion.  Fixes 35300.
-	* use MAX in sqlite queries instead of GREATEST.
+	* Use MAX in sqlite queries instead of GREATEST.
 	* Fix typo in Mongo queries.  Fixes #5301.
 	* Fix occasional crash with bad home servers.  Fixes #5308.
 	* Minor bug fixes to the SQL freetds modules.
 	* Fix blocking issue with RADIUS/TLS connection checks.
 	* Fix run-time crash on configuration typos of %{substr ...} instead
 	  of %{substr:...}  Fixes #5321.
-	* %{randstr:...} now returns the requested amount of data, instead of
-	  one too many bytes.
+	* Fix crash with TLS Status-Server requests. Fixes #5326.
 
 FreeRADIUS 3.2.3 Fri 26 May 2023 12:00:00 EDT urgency=low
 	Configuration changes
