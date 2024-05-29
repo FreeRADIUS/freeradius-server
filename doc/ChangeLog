@@ -1,7 +1,7 @@
 FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
 	* Update dictionary.alcatel.sr
-	* Added dictionary.eleven
+	* Added dictionary.eleven, dictionary.tplink
 	* relax EAP pre-proxy checks based on discussions in the IETF.
 
 	Bug fixes
@@ -23,6 +23,13 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	* Clean up state ctx storage for lost packets.  Fixes #5055.
 	* Fix compiler warning when building without TCP.  Fixes #5054.
 	* Use virtual server "default" when passed "-i" and "-p" on the command line.
+	* Clean up several debug messages.
+	* Fix Message-Authenticator for CoA replies.
+	* Don't add a delay for proxied reject packets from a home server.
+	* Improve Python exception handling. #5242
+	* Correctly trim whitespace in rlm_unpack.
+	* Handle returned NULL column values in rlm_sql_freetds.
+	* Fix crash with TLS Status-Server requests. Fixes #5326.
 
 FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
