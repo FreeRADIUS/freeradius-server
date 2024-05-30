@@ -146,24 +146,54 @@ docker-alpine: docker.$(DOCKER_DEFAULT_ALPINE).build
 .PHONY: docker
 docker: docker-ubuntu docker-alpine
 
-.PHONY: docker-push
-docker-push:
+#
+#  Push main ubuntu and alpine images (all below are separate for CI jobs)
+#
+.PHONY: docker-push-ubuntu
+docker-push-ubuntu:
 	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)
+
+.PHONY: docker-push-alpine
+docker-push-alpine:
 	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine
 
-.PHONY: docker-tag-latest
-docker-tag-latest:
+.PHONY: docker-push
+docker-push: docker-push-ubuntu docker-push-alpine
+
+#
+#  Tag main "latest" images
+#
+.PHONY: docker-tag-latest-ubuntu
+docker-tag-latest-ubuntu:
 	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION) $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest
-	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-alpine
 	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION) $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-3.2
+
+.PHONY: docker-tag-latest-alpine
+docker-tag-latest-alpine:
+	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-alpine
 	$(Q)docker tag $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)-alpine $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-3.2-alpine
 
-.PHONY: docker-push-latest
-docker-push-latest: docker-push docker-tag-latest
+.PHONY: docker-tag-latest
+docker-tag-latest: docker-tag-latest-ubuntu docker-tag-latest-alpine
+
+#
+#  Push main "latest" images
+#
+.PHONY: docker-push-latest-ubuntu
+docker-push-latest-ubuntu: docker-push-ubuntu docker-tag-latest-ubuntu
 	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest
-	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-alpine
 	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-3.2
+
+.PHONY: docker-push-latest-alpine
+docker-push-latest-alpine: docker-push-alpine docker-tag-latest-alpine
+	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-alpine
 	$(Q)docker push $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):latest-3.2-alpine
 
+.PHONY: docker-push-latest
+docker-push-latest: docker-push-latest-ubuntu docker-push-latest-alpine
+
+#
+#  Convenience target to do everything
+#
 .PHONY: docker-publish
-docker-publish: docker-push-latest
+docker-publish: docker docker-push-latest
