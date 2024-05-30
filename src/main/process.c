@@ -3204,6 +3204,14 @@ static int request_will_proxy(REQUEST *request)
 		pool = home_pool_byname(vp->vp_strvalue, pool_type);
 
 		/*
+		 *	If we didn't find an auth only or acct only pool
+		 *	fall-back to those which do both.
+		 */
+		if (!pool && ((pool_type == HOME_TYPE_AUTH) || (pool_type == HOME_TYPE_ACCT))) {
+			pool = home_pool_byname(vp->vp_strvalue, HOME_TYPE_AUTH_ACCT);
+		}
+
+		/*
 		 *	Send it directly to a home server (i.e. NAS)
 		 */
 	} else if (((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
@@ -3303,6 +3311,15 @@ static int request_will_proxy(REQUEST *request)
 		 *	Find the home server by name.
 		 */
 		home = home_server_byname(vp->vp_strvalue, type);
+
+		/*
+		 *	If we didn't find an auth only or acct only home server
+		 *	fall-back to those which do both.
+		 */
+		if (!home && ((type == HOME_TYPE_AUTH) || (type == HOME_TYPE_ACCT))) {
+			home = home_server_byname(vp->vp_strvalue, HOME_TYPE_AUTH_ACCT);
+		}
+
 		if (!home) {
 			RWDEBUG("No such home server %s", vp->vp_strvalue);
 			return 0;
