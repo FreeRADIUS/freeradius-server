@@ -159,6 +159,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 
 	fr_assert(packet->code > 0);
 	fr_assert(packet->code < FR_RADIUS_CODE_MAX);
+	fr_assert(!my->common.write_blocked);
 
 	if (!my->codes[packet->code]) {
 		fr_strerror_printf("Outgoing packet code %s is disallowed by the configuration",
@@ -361,7 +362,7 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 
 	retry_ctx->uctx = id_ctx;
 
-	(void) fr_bio_retry_entry_start(bio, retry_ctx, &my->cfg.retry[data[0]]);
+	(void) fr_bio_retry_entry_init(bio, retry_ctx, &my->cfg.retry[data[0]]);
 
 	/*
 	 *	For Accounting-Request packets which have Acct-Delay-Time, we need to track where the

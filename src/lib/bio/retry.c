@@ -19,6 +19,30 @@
  * @file lib/bio/retry.c
  * @brief Binary IO abstractions for retrying packets.
  *
+ *  The retry BIO provides a mechanism for the application to send one packet, and then delegate
+ *  retransmissions to the retry bio.
+ *
+ *  This BIO will monitor writes, and run callbacks when a packet is sent, received, and released.  The
+ *  application should cache the request and response until the release callback has been run.  The BIO will
+ *  call the application on retries, or when the retransmissions have stopped.
+ *
+ *  The retry BIO also deals with partially written packets.  The BIO takes responsibility for not writing
+ *  partial packets, which means that requests can be rleeased even if the data has been partially written.
+ *  The application can also cancel an ongoing retryt entrty at any time.
+ *
+ *  If something blocks IO, the application should call the blocked / resume functions for this BIO to inform
+ *  it of IO changes.  Otherwise, the only time this BIO blocks is when it runs out of retransmission slots.
+ *
+ *  There are provisions for application-layer watchdogs, where the application can reserve a retry entry.  It
+ *  can then call the fr_bio_retry_rewrite() function instead of fr_bio_write() to write the watchdog packet.
+ *  Any retransmission timers for the application-layer watchdog must be handled by the application.  The BIO
+ *  will not retry reserved watchdog requests.
+ *
+ *  In general, the next BIO after this one should be the memory bio, so that this bio receives only complete
+ *  packets.
+ *
+ *  This BIO does not use the #fr_bio_cb_funcs_t callbacks.
+ *
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
 
@@ -48,15 +72,15 @@ struct fr_bio_retry_entry_s {
 	fr_retry_t	retry;			//!< retry timers and counters
 
 	union {
-		fr_rb_node_t	timer_node;		//!< for the timers
+		fr_rb_node_t	next_retry_node;	 //!< for retries
 		FR_DLIST_ENTRY(fr_bio_retry_list) entry; //!< for the free list
 	};
-	fr_rb_node_t	expiry_node;		//!< for the timers
+	fr_rb_node_t	expiry_node;		//!< for expiries
 
 	fr_bio_retry_t	*my;			//!< so we can get to it from the event timer callback
 
-	uint8_t const	*buffer;
-	size_t		size;	
+	uint8_t const	*buffer;		//!< cached copy of the packet to send
+	size_t		size;			//!< size of the cached packet
 
 	bool		cancelled;		//!< was this item cancelled?
 	bool		reserved;		//!< for application-layer watchdog
@@ -67,16 +91,17 @@ FR_DLIST_FUNCS(fr_bio_retry_list, fr_bio_retry_entry_t, entry)
 struct fr_bio_retry_s {
 	FR_BIO_COMMON;
 
-	fr_rb_tree_t		timer_tree;
-	fr_rb_tree_t		expiry_tree;
+	fr_rb_tree_t		next_retry_tree;	//!< when packets are retried next
+	fr_rb_tree_t		expiry_tree;	//!< when packets expire, so that we expire packets when the socket is blocked.
 
 	fr_bio_retry_info_t	info;
 
 	fr_retry_config_t	retry_config;
 
 	ssize_t			error;
+	bool			all_used;	//!< blocked due to no free entries
 
-	fr_event_timer_t const	*ev;
+	fr_event_timer_t const	*ev;		//!< we only need one timer event: next time we do something
 
 	/*
 	 *	The first item is cached here so that we can detect when it changes.  The insert / delete
@@ -91,14 +116,14 @@ struct fr_bio_retry_s {
 	 */
 	fr_bio_retry_entry_t	*partial;	//!< for partial writes
 
-	fr_bio_retry_sent_t	sent;
-	fr_bio_retry_rewrite_t	rewrite;
-	fr_bio_retry_response_t	response;
-	fr_bio_retry_release_t	release;
+	fr_bio_retry_sent_t	sent;		//!< callback for when we successfully sent a packet
+	fr_bio_retry_rewrite_t	rewrite;	//!< optional callback which can change a packet on retry
+	fr_bio_retry_response_t	response;	//!< callback to see if we got a valid response
+	fr_bio_retry_release_t	release;	//!< callback to release a request / response pair
 
-	fr_bio_buf_t		buffer;
+	fr_bio_buf_t		buffer;		//!< to store partial packets
 
-	FR_DLIST_HEAD(fr_bio_retry_list) free;
+	FR_DLIST_HEAD(fr_bio_retry_list) free;	//!< free lists are better than memory fragmentation
 };
 
 static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx);
@@ -156,7 +181,7 @@ static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	Nothing to do, don't set any timers.
 	 */
-	first = fr_rb_first(&my->timer_tree);
+	first = fr_rb_first(&my->next_retry_tree);
 	if (!first) {
 	cancel_timer:
 		fr_bio_retry_timer_clear(my);
@@ -193,7 +218,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 */
 	if (my->partial != item) {
 		if (!item->reserved) {
-			(void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
+			(void) fr_rb_remove_by_inline_node(&my->next_retry_tree, &item->next_retry_node);
 			(void) fr_rb_remove_by_inline_node(&my->expiry_tree, &item->expiry_node);
 		}
 	} else {
@@ -213,12 +238,32 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	if (my->partial == item) return;
 
 	/*
-	 *	We're deleting the timer entry.  Go reset the timer.
+	 *	We're deleting the timer entry, make sure that we clean up its events,
 	 */
 	if (my->timer_item == item) {
-		my->timer_item = NULL;
-		(void) fr_bio_retry_timer_reset(my);
+		fr_bio_retry_timer_clear(my);
 	}
+
+	/*
+	 *	If we were blocked due to having no free entries, then resume writes as soon as we create a free entry.
+	 */
+	if (my->all_used) {
+		fr_assert(fr_bio_retry_list_num_elements(&my->free) == 0);
+
+		/*
+		 *	The application MUST call fr_bio_retry_write_resume(), which will check if IO is
+		 *	actually blocked.
+		 */
+		my->all_used = false;
+
+		if (my->cb.write_resume) (void) my->cb.write_resume(&my->bio);
+	}
+
+	/*
+	 *	If write_resume() above called the application, then it might have already updated the timer.
+	 *	Don't do that again.
+	 */
+	if (!my->timer_item) (void) fr_bio_retry_timer_reset(my);
 
 	item->packet_ctx = NULL;
 
@@ -254,7 +299,7 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 
 	/*
 	 *	Track when we last sent a NEW packet.  Also track when we first sent a packet after becoming
-	 *	active again.
+	 *	writeable again.
 	 */
 	if ((item->retry.count == 1) && fr_time_lt(my->info.last_sent, now)) {
 		my->info.last_sent = now;
@@ -294,8 +339,8 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	 *	We wrote the whole packet.  Re-insert it, which is done _without_ doing calls to
 	 *	cmp(), so we it's OK for us to rewrite item->retry.next.
 	 */
-	(void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
-	(void) fr_rb_insert(&my->timer_tree, item);
+	(void) fr_rb_remove_by_inline_node(&my->next_retry_tree, &item->next_retry_node);
+	(void) fr_rb_insert(&my->next_retry_tree, item);
 
 	return 1;
 }
@@ -316,7 +361,7 @@ static int fr_bio_retry_write_delayed(fr_bio_retry_t *my, fr_time_t now)
 	fr_assert(!my->partial);
 	fr_assert(!my->info.write_blocked);
 
-	while ((item = fr_rb_first(&my->timer_tree)) != NULL) {
+	while ((item = fr_rb_first(&my->next_retry_tree)) != NULL) {
 		int rcode;
 
 		/*
@@ -399,15 +444,7 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	}
 
 	rcode = fr_bio_retry_write_resume(&my->bio);
-	if (rcode < 0) return rcode;
-
-	/*
-	 *	Couldn't resume writes.
-	 */
-	if (rcode == 0) {
-		my->bio.write = fr_bio_null_write;
-		return 0;
-	}
+	if (rcode <= 0) return rcode;
 
 	/*
 	 *	Try to write the packet which we were given.
@@ -661,13 +698,34 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	Catch the corner case where the max number of saved packets is exceeded.
 	 */
 	if (fr_bio_retry_list_num_elements(&my->free) == 0) {
-		item = fr_rb_last(&my->timer_tree);
-
+		/*
+		 *	Grab the first item which can be expired.
+		 */
+		item = fr_rb_first(&my->expiry_tree);
 		fr_assert(item != NULL);
 
-		if (!item->retry.replies) return fr_bio_error(BUFFER_FULL);
+		/*
+		 *	If the item has no replies, we can't cancel it.  Otherwise, try to cancel it, which
+		 *	will give us a free slot.  If we can't cancel it, tell the application that we're
+		 *	blocked.
+		 *
+		 *	Note that we do NOT call fr_bio_retry_write_blocked(), as that assumes the IO is
+		 *	blocked, and will stop all of the timers.  Instead, the IO is fine, but we have no way
+		 *	to send more packets.
+		 */
+		if (!item->retry.replies || (fr_bio_retry_entry_cancel(bio, item) < 0)) {
+			/*
+			 *	Note that we're blocked BEFORE running the callback, so that calls to
+			 *	fr_bio_retry_write_blocked() doesn't delete timers and stop retrying packets.
+			 */
+			my->info.write_blocked = true;
+			my->all_used = true;
 
-		if (fr_bio_retry_entry_cancel(bio, item) < 0) return fr_bio_error(BUFFER_FULL);
+			rcode = my->cb.write_blocked(bio);
+			if (rcode < 0) return rcode;
+
+			return fr_bio_error(IO_WOULD_BLOCK);
+		}
 
 		/*
 		 *	We now have a free item, so we can use it.
@@ -713,7 +771,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	/*
 	 *	This should never fail.
 	 */
-	(void) fr_rb_insert(&my->timer_tree, item);
+	(void) fr_rb_insert(&my->next_retry_tree, item);
 	(void) fr_rb_insert(&my->expiry_tree, item);
 
 	/*
@@ -833,8 +891,8 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	 */
 	item->retry.next = fr_time_add_time_delta(item->retry.start, my->retry_config.mrd);
 
-	(void) fr_rb_remove_by_inline_node(&my->timer_tree, &item->timer_node);
-	(void) fr_rb_insert(&my->timer_tree, item);
+	(void) fr_rb_remove_by_inline_node(&my->next_retry_tree, &item->next_retry_node);
+	(void) fr_rb_insert(&my->next_retry_tree, item);
 	(void) fr_bio_retry_timer_reset(my);
 
 	return rcode;
@@ -878,10 +936,10 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 
 	/*
-	 *	No item passed, try to cancel the oldest one.
+	 *	No item passed, try to cancel the first one to expire.
 	 */
 	if (!item) {
-		item = fr_rb_last(&my->timer_tree);
+		item = fr_rb_first(&my->expiry_tree);
 		if (!item) return 0;
 
 		/*
@@ -905,7 +963,7 @@ int fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *item)
  *  This function should be called from the #fr_bio_retry_sent_t callback to set a unique retry timer for this
  *  packet.  If no retry configuration is set, then the main one from the alloc() function is used.
  */
-int fr_bio_retry_entry_start(UNUSED fr_bio_t *bio, fr_bio_retry_entry_t *item, fr_retry_config_t const *cfg)
+int fr_bio_retry_entry_init(UNUSED fr_bio_t *bio, fr_bio_retry_entry_t *item, fr_retry_config_t const *cfg)
 {
 	fr_assert(item->buffer != NULL);
 
@@ -946,7 +1004,7 @@ static int fr_bio_retry_destructor(fr_bio_retry_t *my)
 	 *	Cancel all outgoing packets.  Don't bother updating the tree or the free list, as all of the
 	 *	entries will be deleted when the memory is freed.
 	 */
-	while ((item = fr_rb_iter_init_inorder(&iter, &my->timer_tree)) != NULL) {
+	while ((item = fr_rb_iter_init_inorder(&iter, &my->next_retry_tree)) != NULL) {
 		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_CANCELLED);
 	}
 
@@ -995,7 +1053,7 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 		fr_bio_retry_list_insert_tail(&my->free, &items[i]);
 	}
 
-	(void) fr_rb_inline_init(&my->timer_tree, fr_bio_retry_entry_t, timer_node, _timer_cmp, NULL);
+	(void) fr_rb_inline_init(&my->next_retry_tree, fr_bio_retry_entry_t, next_retry_node, _timer_cmp, NULL);
 	(void) fr_rb_inline_init(&my->expiry_tree, fr_bio_retry_entry_t, expiry_node, _expiry_cmp, NULL);
 
 	my->sent = sent;
@@ -1035,7 +1093,7 @@ size_t fr_bio_retry_outstanding(fr_bio_t *bio)
 	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
 	size_t num;
 
-	num = fr_rb_num_elements(&my->timer_tree);
+	num = fr_rb_num_elements(&my->next_retry_tree);
 
 	if (!my->partial) return num;
 
@@ -1069,9 +1127,6 @@ fr_bio_retry_entry_t *fr_bio_retry_item_reserve(fr_bio_t *bio)
 
 /** Writes are blocked.
  *
- *  For now, stop the retry timers.
- *
- *  We likely want to change this to a specific "expiry" timer, so that we still expire entries.
  */
 int fr_bio_retry_write_blocked(fr_bio_t *bio)
 {
@@ -1103,6 +1158,8 @@ int fr_bio_retry_write_resume(fr_bio_t *bio)
 
 	rcode = fr_bio_retry_write_delayed(my, fr_time());
 	if (rcode <= 0) return rcode;
+
+	my->info.write_blocked = false;
 
 	fr_bio_retry_timer_clear(my);
 	(void) fr_bio_retry_timer_reset(my);

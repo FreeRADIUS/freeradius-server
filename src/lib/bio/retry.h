@@ -145,7 +145,7 @@ fr_bio_t	*fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 
 int		fr_bio_retry_entry_cancel(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx) CC_HINT(nonnull(1));
 
-int		fr_bio_retry_entry_start(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, fr_retry_config_t const *cfg) CC_HINT(nonnull);
+int		fr_bio_retry_entry_init(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, fr_retry_config_t const *cfg) CC_HINT(nonnull);
 
 const fr_retry_t *fr_bio_retry_entry_info(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx) CC_HINT(nonnull);
 
