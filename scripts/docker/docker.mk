@@ -197,3 +197,15 @@ docker-push-latest: docker-push-latest-ubuntu docker-push-latest-alpine
 #
 .PHONY: docker-publish
 docker-publish: docker docker-push-latest
+
+#
+#  Used for multi-arch CI job. "docker manifest" rather than "docker buildx
+#  --platforms=...,..." so that we can parallelise the build in GH Actions.
+#
+.PHONY: docker-ci-manifest
+docker-ci-manifest:
+	$(Q)docker manifest create \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION) \
+		$(foreach ARCH,$(DOCKER_ARCHS),--amend $(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(ARCH)-$(DOCKER_VERSION))
+	$(Q)docker manifest push \
+		$(DOCKER_REGISTRY)$(DOCKER_REPO)$(DOCKER_TAG):$(DOCKER_VERSION)

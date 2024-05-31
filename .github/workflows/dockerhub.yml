@@ -1,0 +1,109 @@
+name: Dockerhub Dev
+
+on:
+  push:
+    branches-ignore:
+      - coverity_scan
+  workflow_dispatch:
+
+env:
+  CI: 1
+  GH_ACTIONS: 1
+  DEBIAN_FRONTEND: noninteractive
+  APT_OPTS: "-y --no-install-recommends"
+  DOCKER_REPOSITORY: freeradius-dev
+  BRANCH: v3.2.x
+
+jobs:
+  #
+  #  Run docker target for each given OS and ARCH. This will
+  #  build the Docker images.
+  #
+  build_docker_images:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      matrix:
+        env:
+          - { OS: "ubuntu", ARCH: "linux/amd64",    NAME: "amd64" }
+          - { OS: "ubuntu", ARCH: "linux/arm/v7",   NAME: "armv7" }
+          - { OS: "ubuntu", ARCH: "linux/arm64/v8", NAME: "arm64v8" }
+          - { OS: "alpine", ARCH: "linux/amd64",    NAME: "amd64" }
+          - { OS: "alpine", ARCH: "linux/arm/v6",   NAME: "armv6" }
+          - { OS: "alpine", ARCH: "linux/arm/v7",   NAME: "armv7" }
+          - { OS: "alpine", ARCH: "linux/arm64/v8", NAME: "arm64v8" }
+
+      fail-fast: false
+
+    name: "${{ matrix.env.OS }}-${{ matrix.env.ARCH }}"
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Regenerate Dockerfiles
+      run: |
+        rm scripts/docker/dists/*/Dockerfile || true
+        make docker.regen
+
+    - name: Install qemu
+      run: |
+        sudo apt-get update
+        sudo apt-get install ${APT_OPTS} qemu-user-static
+
+    - name: Build docker image
+      run: |
+        make docker-${{ matrix.env.OS }} \
+          DOCKER_TAG="$DOCKER_REPOSITORY" \
+          DOCKER_BUILD_ARGS="--no-cache --platform ${{ matrix.env.ARCH }}" \
+          DOCKER_VERSION="${{ matrix.env.NAME }}-$BRANCH"
+
+    - name: Docker login
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Push arch image to Docker registry
+      shell: bash
+      run: |
+        make docker-push-${{ matrix.env.OS }} \
+          DOCKER_TAG="$DOCKER_REPOSITORY" \
+          DOCKER_VERSION="${{ matrix.env.NAME }}-$BRANCH"
+
+
+  manifest:
+    runs-on: ubuntu-22.04
+    needs: build_docker_images
+
+    strategy:
+      matrix:
+        env:
+          - { OS: "ubuntu", ARCHS: "amd64 armv7 arm64v8", SUFFIX: "" }
+          - { OS: "alpine", ARCHS: "amd64 armv6 armv7 arm64v8", SUFFIX: "-alpine" }
+
+      fail-fast: false
+
+    name: "manifest-${{ matrix.env.OS }}"
+
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Docker login
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Create manifests
+      shell: bash
+      run: |
+        make docker-ci-manifest \
+          DOCKER_TAG="$DOCKER_REPOSITORY" \
+          DOCKER_VERSION="$BRANCH${{ matrix.env.SUFFIX }}" \
+          DOCKER_ARCHS="${{ matrix.env.ARCHS }}"
