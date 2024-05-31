@@ -303,20 +303,37 @@ log {
 	#
 	syslog_facility = daemon
 
-	#  Suppress "secret" values when printing them in debug mode.
+	#  suppress_secrets:: Suppress "secret" values when printing
+	#  them in debug mode.
 	#
 	#
-	#  Setting this to "yes" means that the server prints a series
-	#  of dots:
+	#  Setting this to "yes" means that the server does not print
+	#  the contents of "secret" values such as passwords.  It
+	#  instead prints a place-holder value "<<< secret >>>", as
+	#  follows:
 	#
-	#    .......
+	#	...
+	#	&User-Password = "<<< secret >>>"
+	#	...
 	#
-	#  instead of the value, for attributes which contain secret
-	#  information.  e.g. User-Name, Tunnel-Password, etc.
+	#  Note that secret values are tracked across string
+	#  expansions, string modifications, concatenations, etc.!
+	#  i.e. if a User-Password is placed into a Reply-Message,
+	#  then the value of the Reply-Message is also marked
+	#  "secret".
 	#
 	#  This configuration is disabled by default.  It is extremely
-	#  important for administrators to be able to debug user logins
-	#  by seeing what is actually being sent.
+	#  important for administrators to be able to debug user
+	#  logins by seeing what is actually being sent.
+	#
+	#  In most cases it is not useful to suppress secrets in an
+	#  attempt to "be more secure".  Any administrator who can see
+	#  the debug ouput is usually also able to view and/or modify
+	#  the servers configuration (including passwords in
+	#  databases!).  And any "low level" administrator who can
+	#  only see the debug output will usually need to see the
+	#  actual passwords in order to verify what the user is
+	#  entering.
 	#
 #	suppress_secrets = no
 }
