@@ -12,6 +12,11 @@ Use `listen load { ... }` in any virtual server to do load
 testing against that server.
 
 
+The main module is the proto module, even though we're
+operating in the RADIUS namespace.
+
+
+
 This is a valid Packet-Type for the current `namespace`
 
 
@@ -83,6 +88,7 @@ taken from the `namespace`.
 server load {
 	namespace = radius
 	listen load {
+		proto = load
 		type = Access-Request
 		transport = step
 		step {
@@ -96,7 +102,6 @@ server load {
 			parallel	= 25
 		}
 	}
-}
 recv Access-Request {
 	accept
 }

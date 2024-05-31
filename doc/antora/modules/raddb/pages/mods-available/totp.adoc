@@ -56,6 +56,10 @@ lookback_steps:: How many steps backward in time we look for a matching OTP.
 
 
 
+lookforward_steps:: How many steps forward in time we look for a matching OTP.
+
+
+
 lookback_interval:: Time delta between steps.
 
 Cannot be larger than `time_step`
@@ -72,6 +76,7 @@ totp {
 	time_step = 30
 	otp_length = 6
 	lookback_steps = 1
+	lookforward_steps = 0
 	lookback_interval = 30
 }
 ```

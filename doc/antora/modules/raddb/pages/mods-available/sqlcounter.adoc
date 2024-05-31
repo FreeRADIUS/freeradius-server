@@ -67,23 +67,41 @@ from the database.
 reset_period_start_name::  The name of the attribute which is used to store the
 time that the current reset period started.
 
-The default is `&control.${.:instance}-Start`
+The default is `&control.${.:instance}-Reset-Start`
 
 Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 
 reset_period_end_name::  The name of the attribute which is used to store the
 time that the current reset period will end.
 
-The default is `&control.${.:instance}-End`
+The default is `&control.${.:instance}-Reset-End`
 
 Note because we are counting seconds, this attribute is of type `uint64`, and not `date`.
 
-counter_name:: Name of the `check` attribute to use to access the counter in
-the `users` file or SQL `radcheck` or `radgroupcheck` tables.
+counter_name:: Name of the attribute to add to the `control` list with the current
+value of the counter.
 
 After the sqlcounter module has run, the counter attribute will exist.
 
 
+check_name:: Name of the attribute containing the limit to compare the counter to.
+
+reply_name:: Name of the attribute to populate with the remaining session time.
+e.g. `&reply.Session-Timeout`.  If the attribute already exists and contains
+a lower value, then it will not be updated.
+
+reply_message_name:: Name of the attribute into which a message should be placed
+if the limit has been exceeded for the counter.
+
+auto_extend:: If set to `yes` and the remaining session time goes past the time for
+the next counter reset, the value in the `reply_name` attribute will be set to
+the time to the next reset plus the value of the `check_name` attribute.
+This is most useful if the limit is a time based one, and, for example,
+`link:https://freeradius.org/rfc/rfc2865.html#Session-Timeout[Session-Timeout]` is the `reply_name` attribute.  If there is sufficient allocation
+left for the session to get to the next counter period, the user will not have
+to re-authenticate before they have used their allocation for the next counter period.
+
+utc:: Use UTC for calculating the period start and end values.
 
 
 ## Configuration Settings
@@ -141,7 +159,9 @@ sqlcounter dailycounter {
 	counter_name = &control.Daily-Session-Time
 	check_name = &control.Max-Daily-Session
 	reply_name = &reply.Session-Timeout
+	auto_extend = yes
 	key = "%{&Stripped-User-Name || &User-Name}"
+	reply_message_name = &Reply-Message
 	reset = daily
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
 }
@@ -151,6 +171,7 @@ sqlcounter monthlycounter {
 	counter_name = &Monthly-Session-Time
 	check_name = &control.Max-Monthly-Session
 	reply_name = &reply.Session-Timeout
+	auto_extend = yes
 	key = &User-Name
 	reset = monthly
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf

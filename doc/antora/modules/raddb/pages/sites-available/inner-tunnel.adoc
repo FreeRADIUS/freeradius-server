@@ -229,6 +229,12 @@ the reply.
 
 
 
+Call an instance of `linelog` to log the authentication success
+- equivalent to the previous log `auth = yes` option in v3.
+See `mods-enabled/linelog` for message formats and destinations.
+
+
+
 Access-Reject packets are sent through the REJECT sub-section of the
 post-auth section.
 
@@ -236,6 +242,13 @@ Add the ldap module name (or instance) if you have set
 'edir = yes' in the ldap module configuration
 
 log failed authentications in SQL, too.
+
+
+Call an instance of `linelog` to log the authentication failure
+- equivalent to the previous log `auth = yes` option in v3.
+See `mods-enabled/linelog` for message formats and destinations.
+
+
 
 
 Let the outer session know which module failed, and why.
@@ -298,9 +311,11 @@ send Access-Accept {
 #	sql_log
 #	ldap
 #	use_tunneled_reply
+#	log_auth_result
 }
 send Access-Reject {
 	-sql
+#	log_auth_result
 	attr_filter.access_reject
 	&outer.session-state.Module-Failure-Message := &request.Module-Failure-Message
 }

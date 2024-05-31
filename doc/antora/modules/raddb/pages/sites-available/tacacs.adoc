@@ -216,6 +216,18 @@ the next packet (if the client provides it)
 
 
 
+Call an instance of `linelog` to log the authentication success
+- equivalent to the previous log `auth = yes` option in v3.
+See `mods-enabled/linelog` for message formats and destinations.
+
+
+
+
+Call an instance of `linelog` to log the authentication failure
+- equivalent to the previous log `auth = yes` option in v3.
+See `mods-enabled/linelog` for message formats and destinations.
+
+
 
 With ASCII methods, GetUser and GetPass typically send a prompt
 for the client to present to the user.
@@ -335,9 +347,11 @@ server tacacs {
 	}
 	send Authentication-Pass {
 		&reply.Server-Message := "Hello %{User-Name}"
+#		log_auth_authentication_pass
 	}
 	send Authentication-Fail {
 		&reply.Server-Message := "Failed login!"
+#		log_auth_authentication_fail
 	}
 	send Authentication-GetUser {
 		&reply.Server-Message := "Username:"

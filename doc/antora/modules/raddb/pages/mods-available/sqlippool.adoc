@@ -36,7 +36,7 @@ offer_duration:: DHCP offer duration.
 
 
 
-pool_name: The attribute in the `control` list which contains the pool name.
+pool_name: The attribute which contains the pool name.
 
 
 
@@ -63,21 +63,21 @@ limited to one per user/serial.
 
 For RADIUS the owner will likely be specified by:
 
-  * `%{radius.Calling-Station-Id}` which binds the lease to the mac address
+  * `%{Calling-Station-Id}` which binds the lease to the mac address
   of the user's device.  For RADIUS this is almost always the better
   option as it can allow the user's device to move between NAS.
 
-  * `%{radius.NAS-Port}` which binds the lease to a given port on the NAS.
+  * `%{NAS-Port}` which binds the lease to a given port on the NAS.
   i.e. any device on that port can modify the lease.  This should only
   be used when the port is constant for the length of the session
   (nearly everywhere except 802.11 wireless).
 
 For DHCPv4 the owner will likely be specified by:
 
-  * `%{dhcpv4.Client-Hardware-Address}` which binds the lease to the
+  * `%{Client-Hardware-Address}` which binds the lease to the
   mac address of the user's device.
 
-  * `%{&dhcpv4.Client-Identifier || &dhcpv4.Client-Hardware-Address}`
+  * `%{&Client-Identifier || &Client-Hardware-Address}`
   which binds the lease to either the custom identifier set by the
   DHCP client, or if this is absent, the mac address of the user's
   device.
@@ -100,16 +100,16 @@ trusted attribute.
 One example would be `%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}`.`
 
 
-     owner = "%{radius.Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{radius.Calling-Station-Id}"
+     owner = "%{Vendor-Specific.ADSL-Forum.Agent-Circuit-ID}.%{Calling-Station-Id}"
 
 
 
 requested_address:: The IP address being renewed or released.
 
-For RADIUS the requested_address will almost always be `%{radius.Framed-IP-Address}`.
+For RADIUS the requested_address will almost always be `%{Framed-IP-Address}`.
 
 For DHCPv4 the requested_address will almost always be
-`%{&dhcpv4.Requested-IP-Address || &dhcpv4.Client-IP-Address}`.
+`%{&Requested-IP-Address || &Client-IP-Address}`.
 
 
 
@@ -126,7 +126,7 @@ For DHCPv4, this device is recorded so that we can respond correctly
 to lease queries.
 
 
-     gateway = "%{dhcpv4.Gateway-IP-Address}"
+     gateway = "%{Gateway-IP-Address}"
 
 
 .Load the queries from a separate file.
@@ -141,13 +141,13 @@ sqlippool {
 	ippool_table = "fr_ippool"
 	lease_duration = 3600
 	offer_duration = 60
-	pool_name = IP-Pool.Name
-	allocated_address_attr = radius.Framed-IP-Address
-	owner = "%{radius.Calling-Station-ID}"
-#	owner = "%{&dhcpv4.Client-Identifier || &dhcpv4.Client-Hardware-Address}"
-	requested_address = "%{radius.Framed-IP-Address}"
-#	requested_address = "%{&dhcpv4.Requested-IP-Address || &dhcpv4.Client-IP-Address}"
-	gateway = "%{&radius.NAS-Identifier || &radius.NAS-IP-Address}"
+	pool_name = &control.IP-Pool.Name
+	allocated_address_attr = &reply.Framed-IP-Address
+	owner = "%{Calling-Station-ID}"
+#	owner = "%{&Client-Identifier || &Client-Hardware-Address}"
+	requested_address = "%{Framed-IP-Address}"
+#	requested_address = "%{&Requested-IP-Address || &Client-IP-Address}"
+	gateway = "%{&NAS-Identifier || &NAS-IP-Address}"
 	$INCLUDE ${modconfdir}/sql/ippool/${dialect}/queries.conf
 }
 ```

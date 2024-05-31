@@ -165,6 +165,9 @@ Request and list qualifiers may be placed after the `update`
 section name to set default destination requests/lists
 for `<fr attr>s` with no list qualifiers.
 
+These attribute maps are applied _before_ any profiles, meaning that
+the values here can be referenced in profiles using expansions.
+
 NOTE: LDAP attribute names should be single quoted unless you want
 the name to be derived from an xlat expansion, or an attribute ref.
 
@@ -259,6 +262,13 @@ realm:: SASL realm. Used for kerberos.
 password_attribute:: Which attribute in the request should be used as
 the password when performing user binds.
 
+Note that Active Directory will allow unauthenticated user binds by default!
+
+You can fix this by choosing the "ADSI Edit" command from the Server Manager's Tools menu.
+Then, open the Configuration subtree, and then open the properties of the `CN=Directory
+Service, CN=Windows NT, CN=Services, CN=Configuration` object.  Modify the
+`msDS-Other-Settings` attribute, and add a new entry for `DenyUnauthenticatedBind=1`.
+
 
 
 scope:: Search scope, may be `base`, `one`, `sub' or `children`.
@@ -322,6 +332,13 @@ to indicate that we should negate the result.
 
 access_value_suspend:: Which value we look for in access_attribute
 to indicate that the user should be suspended.
+
+
+
+expect_password:: When set to no, disable warnings for missing password
+attributes in user objects returned from LDAP.  This is useful for
+ISP environments where some subscribers have passwords set, and others
+do not (e.g. mixed IPoE and PPPoE).
 
 
 
@@ -418,6 +435,17 @@ group_attribute:: Override the normal group comparison attribute name
 
 
 
+skip_on_suspend::
+
+Don't process user groups if the user has been suspended.
+If set to 'no', groups will still be processed.
+
+Groups are never processed for disabled users.
+
+Defaults to 'yes'.
+
+
+
 ### User profiles
 
 RADIUS profile objects contain sets of attributes to insert into the request.
@@ -452,7 +480,7 @@ is successful.
 
 
 
-attribute_suspended: The LDAP attribute containing profile DNs to apply
+attribute_suspend: The LDAP attribute containing profile DNs to apply
 in addition to the default profile above, when the user account is in
 the suspended state
 
@@ -746,7 +774,8 @@ The rlm_ldap provides the below xlat's functions.
 
 ### %ldap.uri.escape(...}
 
-Escape a string for use in an LDAP filter or DN.
+Escape a string for use in an LDAP filter or DN.  The value will then be marked as safe for use
+in LDAP URIs and DNs, and will not be escaped or modified.
 
 .Return: _string_
 
@@ -763,6 +792,21 @@ Escape a string for use in an LDAP filter or DN.
 ```
 "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 ```
+
+### %ldap.uri.safe(...}
+
+Mark a string as safe for use in an LDAP filter or DN.  Values marked as safe for use in LDAP
+URIs will not be escaped or modified, and will be allowed in places where dynamic values are
+usually prohibited.
+
+.Return: _string_
+
+.Example
+
+[source,unlang]
+----
+&my-int := "%ldap.profile(ldap://%ldap.uri.safe(%{LDAP-Host}):%ldap.uri.safe(%{LDAP-Port})/ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
+----
 
 ### %ldap.uri.unescape(...)
 
@@ -832,6 +876,7 @@ ldap {
 #		access_positive = yes
 #		access_value_negate = 'false'
 #		access_value_suspend = 'suspended'
+#		expect_password = no
 	}
 	group {
 		base_dn = "${..base_dn}"
@@ -845,13 +890,14 @@ ldap {
 #		cache_attribute = 'LDAP-Cached-Membership'
 #		allow_dangling_group_ref = 'no'
 		group_attribute = "${..:instance}-Group"
+		skip_on_suspend = 'yes'
 	}
 	profile {
 #		filter = '(objectclass=radiusprofile)'
 #		scope = 'base'
 #		default = 'cn=radprofile,dc=example,dc=org'
 #		attribute = 'radiusProfileDn'
-#		attribute_suspended = 'radiusProfileDn'
+#		attribute_suspend = 'radiusProfileDn'
 	}
 	accounting {
 		reference = "%tolower(type.%{Acct-Status-Type})"

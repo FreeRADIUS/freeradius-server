@@ -10,16 +10,29 @@ The `dns` virtual server is an example of using `dns` style functionality in Fre
 
 This is the `dns` virtual server.
 
-It is (for now) only a toy.  It only decodes nested attributes, which `unlang`
-cannot (yet) handle well.  It only handles a few types of RRs.  You have to manually
-do pretty much everything necessary to make DNS "work".  There's no DB integration.
-
 It's not meant to be fast.  Don't use it as a root server, or as a server for an ISP
 with millions of users.  But it should be able to do thousands to tens of thousands
 of queries per second, without really trying hard.
 
 It's meant to be a _flexible_ DNS server.  Want to give different answers to VoIP phones
-and desktops?  It can do that.
+and desktops, or other types of split horizon?  It can do that.
+
+Because DNS uses the &Header.Rcode to communicate the result of a query (instead of opcode)
+the DNS state machine works differently to other protocols.
+
+Requests will pass through the following processing sections:
+- A `recv { ... }` section matching the opcode. e.g. `recv Query { ... }`.  Query processing
+  and response formulation should be done here.
+  If this section returns anything other than `ok` or `updated`, a &reply.Header.Rcode value is
+  set.
+- An `error { ... }` section matching &reply.Header.Rcode. e.g. `error Server-Fail { ... }`.
+  If the `recv { ... }` section produced a &reply.Header.Rcode value other than `No-Error`
+  and a `error { ... } section matching the &reply.Header.Rcode is provided, it is executed.
+  Error sections are intended only for simplifying logging, and as such, the rcode of the section is ignored.
+  Error sections can manipulate the reply, e.g. setting a new value for &reply.Header.Rcode, but
+  this will not cause additional `error { ... }` section to be executed.
+- A `send { ... }` section matching the opcode. e.g. `send Query-Response { ... }`.  This can be
+  used for general massaging of the reply.  Return codes are ignored.
 
 
 namespace:: The protocol / dictionary to use.
@@ -37,17 +50,26 @@ Dont use "port = 53" unless you want to break things
 == Default Configuration
 
 ```
-server DNS {
+server dns {
 	namespace = dns
 	listen {
-		type = query
+		type = Query
 		transport = udp
 		udp {
 			ipaddr = *
-			port = 5300
+			port = 53
 		}
 	}
 recv Query {
+	if (&Question[0].Name == 'foo.example.com') {
+		&reply.Resource-Record := {
+			&Name = 'foo.example.com'
+			&Type = A
+			&Class = ::Internet
+			&TTL = 0
+			&Type.A.IP = 127.0.0.1
+		}
+	}
 	ok
 }
 send Query-Response {

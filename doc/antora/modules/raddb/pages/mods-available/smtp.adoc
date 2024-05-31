@@ -175,6 +175,16 @@ from the SMTP server.
 
 
 
+username_attribute:: Which attribute in the request should be used as
+the user's username when performing SMTP authentication.
+
+
+
+password_attribute:: Which attribute in the request should be used as
+the user's password when performing SMTP authentication.
+
+
+
 username:: User name to use when sending emails.  Can be a fixed
 string or an attribute.  Leave unset if authentication is not
 required to send emails.
@@ -309,6 +319,8 @@ smtp {
 	}
 	uri = "smtp://192.0.20.1/"
 	timeout = 5s
+#	username_attribute = &User-Name
+#	password_attribute = &User-Password
 #	username = "user"
 #	password = "secret"
 	template_directory = raddb/mods_config/smtp

@@ -27,22 +27,10 @@ The content of this attribute is used to match the `name` of the entry.
 
 filename:: The old `users` style file is now located here.
 
-If no other filenames are specified, the module uses this file.
 
 
+## An instance of the `files` module for use in processing accounting packets
 
-Optional files
-
-The following filenames are optional.
-
-
-recv_filename:: The file to run in any "recv" section
-
-send_filename:: The file to run in any "send" section
-
-auth_filename:: The file to run in any "authenticate" section
-
-acct_filename:: The file to run in any "recv Accounting-Request" section
 
 == Default Configuration
 
@@ -51,9 +39,9 @@ files {
 	moddir = ${modconfdir}/${.:instance}
 #	key = "%{&Stripped-User-Name || &User-Name}"
 	filename = ${moddir}/authorize
-#	recv_filename =  ${moddir}/recv
-#	send_filename =  ${moddir}/send
-#	auth_filename =  ${moddir}/authenticate
-#	acct_filename =  ${moddir}/accounting
+}
+files files_accounting {
+#	key = "%{&Stripped-User-Name || &User-Name}"
+	filename = ${modconfdir}/files/accounting
 }
 ```

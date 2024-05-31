@@ -273,6 +273,7 @@ cache.status:: Verify if an entry already exists without load the entries.
 | Return     | Description
 | `ok`       | if a cache entry was found.
 | `notfound` | if no cache entry was found.
+| `fail`     | if the cache was unavailable.
 |===
 
 cache.load:: Load an existing cache entry and merge it into the request.
@@ -282,16 +283,27 @@ cache.load:: Load an existing cache entry and merge it into the request.
 | Return     | Description
 | `updated`  | if a cache entry was found and loaded.
 | `notfound` | if no cache entry was found.
+| `fail`     | if the cache was unavailable.
 |===
 
-cache.store:: Perform an upset against the data store. (Not affect the existing
-request).
+cache.update:: Perform an upsert against the data store, updating the entry TTL
 
 [options="header,autowidth"]
 |===
 | Return     | Description
 | `updated`  | if we added cache entry.
-| `noop`     | if a cache entry ready exists.
+| `fail`     | if the cache was unavailable.
+|===
+
+cache.store:: Inserts data into the cache if, and only if, it is not already present
+Will not update the entry TTL.
+
+[options="header,autowidth"]
+|===
+| Return     | Description
+| `updated`  | we created or updated a cache entry.
+| `noop`     | if a cache entry aready existed.
+| `fail`     | if the cache was unavailable.
 |===
 
 cache.clear:: Delete cache entry from the data store without checking if the entry
@@ -300,8 +312,9 @@ already exists.
 [options="header,autowidth"]
 |===
 | Return     | Description
-| `ok`       | if we found and remove a entry.
+| `ok`       | if we found and removed a entry.
 | `notfound` | if no cache entry was found.
+| `fail`     | if the cache was unavailable.
 |===
 
 cache.ttl:: Change the TTL on an existing entry.
@@ -311,6 +324,7 @@ cache.ttl:: Change the TTL on an existing entry.
 | Return     | Description
 | `updated`  | if we found entry and updated the ttl.
 | `notfound` | if no cache entry was found.
+| `fail`     | if the cache was unavailable.
 |===
 
 ### Examples

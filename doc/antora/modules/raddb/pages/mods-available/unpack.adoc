@@ -21,7 +21,7 @@ use it on the right-hand side of a variable assignment.
 
  %unpack(<data>, <offset>, <data_type>[, <repeat>])
 
-The arguments are three fields:
+The arguments are three or four fields:
 
 data::
 

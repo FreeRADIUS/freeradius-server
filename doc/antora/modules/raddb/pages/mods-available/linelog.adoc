@@ -350,6 +350,22 @@ Don't log anything for these packets.
 
 Don't log anything for other `link:https://freeradius.org/rfc/rfc2866.html#Acct-Status-Type[Acct-Status-Type]` 's.
 
+
+## Authentication success / failure logging
+
+A set of sample module instances which can replace the previous builtin auth log messages
+
+The destination settings here pick up from the main radiusd.conf values, but can be
+amended if these logs need to be sent to a different destination.
+
+
+
+
+
+
+
+
+
 == Default Configuration
 
 ```
@@ -418,5 +434,49 @@ linelog log_accounting {
 		Accounting-Off = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) just went offline"
 		unknown = "NAS %{Net.Src.IP} (%{&NAS-IP-Address || &NAS-IPv6-Address}) sent unknown Acct-Status-Type %{Acct-Status-Type}"
 	}
+}
+linelog log_auth_access_accept {
+	destination = ${log.destination}
+	file {
+		filename = ${log.file}
+	}
+	syslog {
+		facility = ${log.syslog_facility}
+		severity = notice
+	}
+	format = "Login OK: [%{User-Name}] (from %client(shortname) port %{NAS-Port} cli %{Calling-Station-Id})"
+}
+linelog log_auth_access_reject {
+	destination = ${log.destination}
+	file {
+		filename = ${log.file}
+	}
+	syslog {
+		facility = ${log.syslog_facility}
+		severity = notice
+	}
+	format = "Login incorrect (%{Module-Failure-Message}): [%{User-Name}] (from %client(shortname) port %{NAS-Port} cli %{Calling-Station-Id})"
+}
+linelog log_auth_authentication_pass {
+	destination = ${log.destination}
+	file {
+		filename = ${log.file}
+	}
+	syslog {
+		facility = ${log.syslog_facility}
+		severity = notice
+	}
+	format = "Login OK: [%{User-Name}] (from client %client(shortname))"
+}
+linelog log_auth_authentication_fail {
+	destination = ${log.destination}
+	file {
+		filename = ${log.file}
+	}
+	syslog {
+		facility = ${log.syslog_facility}
+		severity = notice
+	}
+	format = "Login incorrect (%{Module-Failure-Message}): [%{User-Name}] (from %client(shortname))"
 }
 ```

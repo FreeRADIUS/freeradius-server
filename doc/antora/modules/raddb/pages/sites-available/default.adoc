@@ -44,7 +44,7 @@ There are many "commented out" references to modules and
 configurations These references serve as place-holders, and as
 documentation.  If you need the functionality of that module, then:
 
-  * configure the module in link:../mods-available/index.adoc[mods-available/]
+  * configure the module in link:../../../../../../mods-available/index.adoc[mods-available/]
   * enable the module in `mods-enabled`.  e.g. for LDAP, do:  `cd mods-enabled;ln -s ../mods-available/ldap`
   *  uncomment the references to it in this file.
 
@@ -595,7 +595,7 @@ The `auth_log` module will write all `link:https://freeradius.org/rfc/rfc2865.ht
 
 Uncomment the next bit in order to have a log of
 authentication requests.  For more information, see
-link:../mods-available/detail.log.adoc[mods-available/detail.log].
+link:../../../../../../mods-available/detail.log.adoc[mods-available/detail.log].
 
 
 
@@ -854,7 +854,7 @@ can be configured.
 
 The `Auth-Type` attribute would need to be set to
 `proxy-example.com`.  The home servers MUST be defined in
-link:../mods-available/radius.adoc[mods-available/radius].
+link:../../../../../../mods-available/radius.adoc[mods-available/radius].
 
 
 
@@ -913,17 +913,11 @@ Access-Accept. Uncomment the line below if
 
 If you want to have a log of authentication replies,
 uncomment the following line. This is defined in
-link:../mods-available/detail.log.adoc[mods-available/detail.log].
+link:../../../../../../mods-available/detail.log.adoc[mods-available/detail.log].
 
 
 
 After authenticating the user, do another SQL query.
-
-
-
-Instead of sending the query to the SQL server in
-real-time, write it into a log file to be picked up and
-sent to the database later.
 
 
 
@@ -947,7 +941,7 @@ calculations, e.g.
 You may want to delete the `MS-MPPE-*-Keys` from the
 reply, as some WiMAX clients behave badly when those
 attributes are included. See the configuration entry
-`delete_mppe_keys` in link:../mods-available/wimax.adoc[mods-available/wimax] for
+`delete_mppe_keys` in link:../../../../../../mods-available/wimax.adoc[mods-available/wimax] for
 more information.
 
 
@@ -988,6 +982,12 @@ into the EAP-Key-Name attribute.
 
 
 
+Call an instance of `linelog` to log the authentication success
+- equivalent to the previous log `auth = yes` option in v3.
+See `mods-enabled/linelog` for message formats and destinations.
+
+
+
 Remove `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` if the response contains an
 `link:https://freeradius.org/rfc/rfc2869.html#EAP-Message[EAP-Message]` attribute.  Some NAS equipment will
 automatically convert the `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` to an "EAP
@@ -1020,6 +1020,12 @@ policy, instead of from an authentication failure.
 
 
 
+Call an instance of `linelog` to log the authentication failure
+- equivalent to the previous log `auth = yes` option in v3.
+See `mods-enabled/linelog` for message formats and destinations.
+
+
+
 Remove `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` if the response contains an
 `link:https://freeradius.org/rfc/rfc2869.html#EAP-Message[EAP-Message]` attribute.  Some NAS equipment will
 automatically convert the `link:https://freeradius.org/rfc/rfc2865.html#Reply-Message[Reply-Message]` to an "EAP
@@ -1043,6 +1049,7 @@ sending Accounting responses.
 
 An Accounting-Request packet has been received. Decide which
 accounting type to use.
+
 
 
 Merge Acct-[Input|Output]-Gigawords and
@@ -1071,12 +1078,14 @@ The packet should have a timestamp.  If not, use "now" from the server.
 
 
 
+
+
 Ensure that we have a semi-unique identifier for every
 request, as many NAS boxes are broken.
 
 
 
-Read the 'acct_users' file.
+Read the 'accounting' file.
 
 
 
@@ -1094,25 +1103,73 @@ then process the `send Accounting-Response` section
 Session start
 
 
+Log traffic to an SQL database.
+
+See "Accounting Queries" in link:../../../../../../mods-available/sql.adoc[mods-available/sql].
+
+
+
+Refresh leases when we see a start.
+
+Ensure that &control.IP-Pool.Name is set to determine which
+pool of IPs are used.  Set this in `recv Accounting-Request` so
+it is available for all the accounting sections.
+
 
 
 Session stop
 
+
+Log traffic to an SQL database.
+
+
+
+If you receive stop packets with zero session length,
+they will NOT be logged in the database. The SQL
+module will print a message (only in debugging mode),
+and will return "noop".
+
+You can ignore these packets by uncommenting the
+following three lines. Otherwise, the server will not
+respond to the accounting request, and the NAS will
+retransmit.
+
+
+
+Return an address to the IP Pool when we see a stop record.
 
 
 
 Session is still alive
 
 
+Log traffic to an SQL database.
+
+
+
+Refresh leases when we see an alive.
+
 
 
 The NAS has just booted up.
 
 
+Record that the NAS has booted to an SQL database
+
+
+
+Return all addresses related to this NAS to the IP Pool
+
 
 
 The NAS is about to go down
 
+
+Record that the NAS is shutting down to an SQL database
+
+
+
+Return all addresses related to this NAS to the IP Pool
 
 
 
@@ -1161,7 +1218,7 @@ Update counters for daily usage calculations.
 
 Update the wtmp file.
 
-If you don't use "radlast", you can delete this line.
+This is only relevant if you use "radlast".
 
 
 
@@ -1169,38 +1226,6 @@ For Simultaneous-Use tracking.
 
 Due to packet losses in the network, the data here may
 be incorrect. There is little we can do about it.
-
-
-
-Refresh leases when we see a start or alive. Return an address to
-the IP Pool when we see a stop record.
-
-Ensure that &control.IP-Pool.Name is set to determine which
-pool of IPs are used.
-
-
-
-Log traffic to an SQL database.
-
-See "Accounting Queries" in link:../mods-available/sql.adoc[mods-available/sql].
-
-
-
-If you receive stop packets with zero session length,
-they will NOT be logged in the database. The SQL
-module will print a message (only in debugging mode),
-and will return "noop".
-
-You can ignore these packets by uncommenting the
-following three lines. Otherwise, the server will not
-respond to the accounting request, and the NAS will
-retransmit.
-
-
-
-Instead of sending the query to the SQL server in
-real-time, write it into a log file to be picked up and
-sent to the database later.
 
 
 
@@ -1377,7 +1402,6 @@ send Access-Accept {
 #	cui
 #	reply_log
 	-sql
-#	sql_log
 #	ldap
 #	&request.WiMAX-MN-NAI = "%{User-Name}"
 #	&reply += {
@@ -1399,33 +1423,52 @@ send Access-Accept {
 #	if (&reply.EAP-Session-Id) {
 #		&reply.EAP-Key-Name := &reply.EAP-Session-Id
 #	}
+#	log_auth_access_accept
 	remove_reply_message_if_eap
 }
 send Access-Reject {
 	-sql
 	attr_filter.access_reject
 	eap
+#	log_auth_access_reject
 	remove_reply_message_if_eap
 	delay_reject
 }
 recv Accounting-Request {
+     do_not_respond
+     return
 #	acct_counters64
 #	&request.FreeRADIUS-Acct-Session-Start-Time = "%{(&Event-Timestamp || %l) - &Acct-Session-Time - &Acct-Delay-Time}"
 	if (!&Event-Timestamp) {
-		&request.Event-Timestamp := %{%l - &Acct-Delay-Time}
+		&request.Event-Timestamp := %{%l() - &Acct-Delay-Time}
+	} elsif (!&Acct-Delay-Time && &request.Event-Timestamp && (&request.Event-Timestamp < %l())) {
+		&request.Acct-Delay-Time := %{%l() - &Event-Timestamp}
 	}
 	acct_unique
-	files
+	files_accounting
 }
 accounting Start {
+	-sql
+#	sqlippool
 }
 accounting Stop {
+	-sql
+#	if (noop) {
+#		ok
+#	}
+#	sqlippool
 }
 accounting Interim-Update {
+	-sql
+#	sqlippool
 }
 accounting Accounting-On {
+	-sql
+#	sqlippool
 }
 accounting Accounting-Off {
+	-sql
+#	sqlippool
 }
 accounting Failed {
 }
@@ -1433,15 +1476,9 @@ send Accounting-Response {
 #	cui
 	detail
 #	daily
-	unix
+#	unix
 #	radutmp
 #	sradutmp
-#	sqlippool
-	-sql
-#	if (noop) {
-#		ok
-#	}
-#	sql_log
 #	pgsql-voip
 	attr_filter.accounting_response
 }
