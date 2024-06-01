@@ -361,7 +361,7 @@ void		_cf_log_perr_by_child(fr_log_type_t type, CONF_SECTION const *parent, char
 #define		cf_item_debug(_cf) _cf_item_debug(CF_TO_ITEM(_cf))
 void		_cf_item_debug(CONF_ITEM const *ci);
 
-void		cf_pair_debug(CONF_SECTION *cp);
+void		cf_pair_debug(CONF_PAIR *cp);
 void		cf_section_debug(CONF_SECTION *cs);
 
 #define		cf_canonicalize_error(_ci, _slen, _msg, _str) _cf_canonicalize_error(CF_TO_ITEM(_ci), _slen, _msg, _str)

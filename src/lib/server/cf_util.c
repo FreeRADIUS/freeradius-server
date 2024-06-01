@@ -2398,7 +2398,7 @@ void _cf_item_debug(CONF_ITEM const *ci)
 
 /** Ease of use from debugger
  */
-void cf_pair_debug(CONF_SECTION *cp)
+void cf_pair_debug(CONF_PAIR *cp)
 {
 	cf_item_debug(cp);
 }
