@@ -2490,7 +2490,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	xlat_t *xlat;
 
-	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, mschap_xlat, FR_TYPE_VOID);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, mschap_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, mschap_xlat_args);
 	xlat_func_call_env_set(xlat, &mschap_xlat_method_env);
 

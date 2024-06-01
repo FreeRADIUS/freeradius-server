@@ -863,16 +863,16 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_redis_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_redis_t);
 	xlat_t			*xlat;
 
-	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, redis_xlat, FR_TYPE_VOID);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, redis_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, redis_args);
 
 	/*
 	 *	%redis.node(<key>[, idx])
 	 */
-	if (unlikely((xlat = xlat_func_register_module(mctx->mi->boot, mctx, "node", redis_node_xlat, FR_TYPE_STRING)) == NULL)) return -1;
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "node", redis_node_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_node_xlat_args);
 
-	if (unlikely((xlat = xlat_func_register_module(mctx->mi->boot, mctx, "remap", redis_remap_xlat, FR_TYPE_STRING)) == NULL)) return -1;
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "remap", redis_remap_xlat, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_args_set(xlat, redis_remap_xlat_args);
 
 	/*
@@ -880,7 +880,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	that'll call that function specifically.
 	 */
 	talloc_foreach(inst->lua.funcs, func) {
-		if (unlikely((xlat = xlat_func_register_module(mctx->mi->boot, mctx, func->name, redis_lua_func_xlat, FR_TYPE_VOID)) == NULL)) return -1;
+		if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, func->name, redis_lua_func_xlat, FR_TYPE_VOID)) == NULL)) return -1;
 		xlat_func_args_set(xlat, redis_lua_func_args);
 		xlat_func_instantiate_set(xlat, redis_lua_func_instantiate, redis_lua_func_inst_t, NULL, func);
 	}

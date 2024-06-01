@@ -32,10 +32,16 @@ RCSID("$Id$")
 
 static fr_rb_tree_t *xlat_root = NULL;
 
-/*
- *	Compare two xlat_t structs, based ONLY on the module name.
+/** Compare two xlat_t by the registered name
+ *
+ * @param[in] one		First xlat_t to compare.
+ * @param[in] two		Second xlat_t to compare.
+ * @return
+ *	- -1 if one < two
+ *	- 0 if one == two
+ *	- 1 if one > two
  */
-static int8_t xlat_cmp(void const *one, void const *two)
+static int8_t xlat_name_cmp(void const *one, void const *two)
 {
 	xlat_t const *a = one, *b = two;
 	size_t a_len, b_len;
@@ -49,6 +55,22 @@ static int8_t xlat_cmp(void const *one, void const *two)
 
 	ret = memcmp(a->name, b->name, a_len);
 	return CMP(ret, 0);
+}
+
+/** Compare two xlat_t by the underlying function
+ *
+ * @param[in] one		First xlat_t to compare.
+ * @param[in] two		Second xlat_t to compare.
+ * @return
+ *	- -1 if one < two
+ *	- 0 if one == two
+ *	- 1 if one > two
+ */
+int8_t xlat_func_cmp(void const *one, void const *two)
+{
+	xlat_t const *a = one, *b = two;
+
+	return CMP((uintptr_t)a->func, (uintptr_t)b->func);
 }
 
 /*
@@ -267,47 +289,21 @@ xlat_t *xlat_func_register(TALLOC_CTX *ctx, char const *name, xlat_func_t func, 
 	return c;
 }
 
-/** Register an xlat function for a module
+/** Associate a module calling ctx with the xlat
  *
- * @param[in] ctx		Used to automate deregistration of the xlat function.
- * @param[in] mctx		Instantiation context from the module.
- *				Will be duplicated and passed to future xlat calls.
- * @param[in] name		of the xlat.  Must be NULL, for "self-named" xlats.
- *				e.g. `cache`, `sql`, `delay`, etc.
- * @param[in] func		to register.
- * @param[in] return_type	what type of output the xlat function will produce.
- * @return
- *	- A handle for the newly registered xlat function on success.
- *	- NULL on failure.
+ * @note Intended to be called from the module_rlm
+ *
+ * @param[in] x		to set the mctx for.
+ * @param[in] mctx	Is duplicated and about to the lifetime of the xlat.
  */
-xlat_t *xlat_func_register_module(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
-				  char const *name, xlat_func_t func, fr_type_t return_type)
+void xlat_mctx_set(xlat_t *x, module_inst_ctx_t const *mctx)
 {
 	module_inst_ctx_t	*our_mctx = NULL;
-	xlat_t			*c;
-	char 			inst_name[256];
 
-	fr_assert_msg(name != mctx->mi->name, "`name` must not be the same as the module "
-		      "instance name.  Pass a NULL `name` arg if this is required");
-
-	if (!name) {
-		name = mctx->mi->name;
-	} else {
-		if ((size_t)snprintf(inst_name, sizeof(inst_name), "%s.%s", mctx->mi->name, name) >= sizeof(inst_name)) {
-			ERROR("%s: Instance name too long", __FUNCTION__);
-			return NULL;
-		}
-		name = inst_name;
-	}
-
-	c = xlat_func_register(ctx, name, func, return_type);
-	if (!c) return NULL;
-
-	MEM(our_mctx = talloc_zero(c, module_inst_ctx_t));	/* Original won't stick around */
+	TALLOC_FREE(x->mctx);
+	MEM(our_mctx = talloc_zero(x, module_inst_ctx_t));	/* Original won't stick around */
 	memcpy(our_mctx, mctx, sizeof(*our_mctx));
-	c->mctx = our_mctx;
-
-	return c;
+	x->mctx = our_mctx;
 }
 
 /** Verify xlat arg specifications are valid
@@ -557,7 +553,7 @@ int xlat_func_init(void)
 	/*
 	 *	Create the function tree
 	 */
-	xlat_root = fr_rb_inline_talloc_alloc(NULL, xlat_t, node, xlat_cmp, _xlat_func_tree_free);
+	xlat_root = fr_rb_inline_talloc_alloc(NULL, xlat_t, func_node, xlat_name_cmp, _xlat_func_tree_free);
 	if (!xlat_root) {
 		ERROR("%s: Failed to create tree", __FUNCTION__);
 		return -1;

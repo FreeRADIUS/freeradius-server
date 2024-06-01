@@ -190,7 +190,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	function automatically adds the module instance name
 	 *	as a prefix.
 	 */
-	xlat = xlat_func_register_module(mctx->mi->boot, mctx, "group", unix_group_xlat, FR_TYPE_BOOL);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "group", unix_group_xlat, FR_TYPE_BOOL);
 	if (!xlat) {
 		PERROR("Failed registering group expansion");
 		return -1;

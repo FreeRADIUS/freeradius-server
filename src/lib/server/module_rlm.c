@@ -1095,6 +1095,39 @@ static int module_method_validate(module_instance_t *mi)
 	return 0;
 }
 
+/** Allocate a rlm module instance
+ *
+ * These have extra space allocated to hold the dlist of associated xlats.
+ *
+ * @param[in] ml		Module list to allocate from.
+ * @param[in] parent		Parent module instance.
+ * @param[in] type		Type of module instance.
+ * @param[in] mod_name		Name of the module.
+ * @param[in] inst_name		Name of the instance.
+ * @param[in] init_state	Initial state of the module instance.
+ * @return
+ *	- The allocated module instance on success.
+ *	- NULL on failure.
+ */
+static inline CC_HINT(always_inline)
+module_instance_t *module_rlm_instance_alloc(module_list_t *ml,
+					     module_instance_t const *parent,
+					     dl_module_type_t type, char const *mod_name, char const *inst_name,
+					     module_instance_state_t init_state)
+{
+	module_instance_t *mi;
+	module_rlm_instance_t *mri;
+
+	mi = module_instance_alloc(ml, parent, type, mod_name, inst_name, init_state);
+	if (unlikely(mi == NULL)) return NULL;
+
+	MEM(mri = talloc(mi, module_rlm_instance_t));
+	module_instance_uctx_set(mi, mri);
+	fr_rb_inline_init(&mri->xlats, module_rlm_xlat_t, node, xlat_func_cmp, NULL);
+
+	return mi;
+}
+
 static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
 {
 	char const		*name;
@@ -1136,7 +1169,7 @@ static int module_conf_parse(module_list_t *ml, CONF_SECTION *mod_conf)
 
 	if (module_instance_name_from_conf(&inst_name, mod_conf) < 0) goto invalid_name;
 
-	mi = module_instance_alloc(ml, NULL, DL_MODULE_TYPE_MODULE, name, inst_name, 0);
+	mi = module_rlm_instance_alloc(ml, NULL, DL_MODULE_TYPE_MODULE, name, inst_name, 0);
 	if (unlikely(mi == NULL)) {
 		cf_log_perr(mod_conf, "Failed loading module");
 		return -1;

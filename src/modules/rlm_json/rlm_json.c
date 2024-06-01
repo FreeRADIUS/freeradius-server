@@ -576,7 +576,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	rlm_json_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_json_t);
 	xlat_t			*xlat;
 
-	xlat = xlat_func_register_module(mctx->mi->boot, mctx, "encode", json_encode_xlat, FR_TYPE_STRING);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "encode", json_encode_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, json_encode_xlat_arg);
 
 	if (map_proc_register(mctx->mi->boot, inst, "json", mod_map_proc,

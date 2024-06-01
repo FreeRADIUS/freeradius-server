@@ -34,9 +34,8 @@ extern "C" {
  */
 typedef struct {
 	unlang_t			self;			//!< Common fields in all #unlang_t tree nodes.
-	module_instance_t		*mi;			//!< Global instance of the module we're calling.
-	module_method_t			method;			//!< The entry point into the module.
 	call_env_t const		*call_env;		//!< The per call parsed call environment.
+	module_method_call_t		mmc;			//!< Everything needed to call a module method.
 } unlang_module_t;
 
 /** A module stack entry

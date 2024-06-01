@@ -1611,6 +1611,15 @@ fr_slen_t module_instance_name_valid(char const *inst_name)
 	return 0;
 }
 
+/** Set the uctx pointer for a module instance
+ *
+ * @param[in] mi	to set the uctx for.
+ * @param[in] uctx	to set.
+ */
+void module_instance_uctx_set(module_instance_t *mi, void *uctx)
+{
+	mi->uctx = uctx;
+}
 
 /** Allocate a new module and add it to a module list for later bootstrap/instantiation
  *

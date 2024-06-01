@@ -317,6 +317,8 @@ struct module_instance_s {
 	char const			*name;		//!< Instance name e.g. user_database.
 
 	module_instance_t const		*parent;	//!< Parent module's instance (if any).
+
+	void				*uctx;		//!< Extra data passed to module_instance_alloc.
 	/** @} */
 };
 
@@ -496,6 +498,8 @@ module_instance_t	*module_instance_alloc(module_list_t *ml,
 					       module_instance_state_t init_state)
 					       CC_HINT(nonnull(1)) CC_HINT(warn_unused_result);
 
+void			module_instance_uctx_set(module_instance_t *mi, void *uctx);
+
 /** @name Module list variants
  *
  * These are passed to the module_list_alloc function to allocate lists of different types
@@ -508,7 +512,7 @@ module_instance_t	*module_instance_alloc(module_list_t *ml,
  *
  * @{
  */
-extern module_list_type_t const module_list_type_global;		//!< Initialise a global module, with thread-specific data.
+extern module_list_type_t const module_list_type_global;	//!< Initialise a global module, with thread-specific data.
 extern module_list_type_t const module_list_type_thread_local;	//!< Initialise a thread-local module, which is only used in a single thread.
 /** @} */
 

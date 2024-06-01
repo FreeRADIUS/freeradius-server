@@ -2179,7 +2179,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		 *	register function automatically adds the
 		 *	module instance name as a prefix.
 		 */
-		xlat = xlat_func_register_module(boot, mctx, "group", sql_group_xlat, FR_TYPE_BOOL);
+		xlat = module_rlm_xlat_register(boot, mctx, "group", sql_group_xlat, FR_TYPE_BOOL);
 		if (!xlat) {
 			cf_log_perr(conf, "Failed registering %s expansion", group_attribute);
 			return -1;
@@ -2204,7 +2204,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat = xlat_func_register_module(boot, mctx, NULL, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
+	xlat = module_rlm_xlat_register(boot, mctx, NULL, sql_xlat, FR_TYPE_VOID);	/* Returns an integer sometimes */
 	if (!xlat) {
 		cf_log_perr(conf, "Failed registering %s expansion", mctx->mi->name);
 		return -1;

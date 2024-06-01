@@ -480,10 +480,10 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		INFO("inst->tmpl_m is NULL");
 	}
 
-	if (!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "passthrough", test_xlat_passthrough, FR_TYPE_VOID))) return -1;
+	if (!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "passthrough", test_xlat_passthrough, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, test_xlat_passthrough_args);
 
-	if (!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "fail", test_xlat_fail, FR_TYPE_VOID))) return -1;
+	if (!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "fail", test_xlat_fail, FR_TYPE_VOID))) return -1;
 	xlat_func_args_set(xlat, test_xlat_fail_args);
 
 	return 0;

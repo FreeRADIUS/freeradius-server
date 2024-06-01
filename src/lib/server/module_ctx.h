@@ -48,13 +48,13 @@ typedef struct {
 /** Temporary structure to hold arguments for instantiation calls
  */
 typedef struct {
-	module_instance_t const		*mi;		//!< Instance of the module being instantiated.
+	module_instance_t		*mi;		//!< Instance of the module being instantiated.
 } module_inst_ctx_t;
 
 /** Temporary structure to hold arguments for detach calls
  */
 typedef struct {
-	module_instance_t const		*mi;		//!< Module instance to detach.
+	module_instance_t		*mi;		//!< Module instance to detach.
 } module_detach_ctx_t;
 
 /** Temporary structure to hold arguments for thread_instantiation calls

@@ -2663,15 +2663,15 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		boot->cache_da = boot->group_da;	/* Default to the group_da */
 	}
 
-	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, ldap_xlat, FR_TYPE_STRING);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, ldap_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, ldap_xlat_arg);
 
-	if (unlikely(!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "memberof", ldap_memberof_xlat,
+	if (unlikely(!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "memberof", ldap_memberof_xlat,
 							FR_TYPE_BOOL)))) return -1;
 	xlat_func_args_set(xlat, ldap_memberof_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_memberof_method_env);
 
-	if (unlikely(!(xlat = xlat_func_register_module(mctx->mi->boot, mctx, "profile", ldap_profile_xlat,
+	if (unlikely(!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "profile", ldap_profile_xlat,
 							FR_TYPE_BOOL)))) return -1;
 	xlat_func_args_set(xlat, ldap_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_profile_method_env);

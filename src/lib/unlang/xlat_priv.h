@@ -33,6 +33,7 @@ extern "C" {
 #include <freeradius-devel/unlang/xlat_ctx.h>
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>
+#include <freeradius-devel/server/module_ctx.h>
 #include <freeradius-devel/io/pair.h>
 #include <freeradius-devel/util/talloc.h>
 #include <freeradius-devel/build.h>
@@ -56,14 +57,17 @@ extern "C" {
 #endif
 
 typedef struct xlat_s {
-	fr_rb_node_t		node;			//!< Entry in the xlat function tree.
+	fr_rb_node_t		func_node;		//!< Entry in the xlat function tree.
+	fr_dlist_t		mi_entry;		//!< Entry in the list of functions
+							///< registered to a module instance.
+
 	char const		*name;			//!< Name of xlat function.
 	xlat_func_t		func;			//!< async xlat function (async unsafe).
 
 	bool			internal;		//!< If true, cannot be redefined.
 	fr_token_t		token;			//!< for expressions
 
-	module_inst_ctx_t const	*mctx;			//!< Original module instantiation ctx if this
+	module_inst_ctx_t	*mctx;			//!< Original module instantiation ctx if this
 							///< xlat was registered by a module.
 
 	xlat_instantiate_t	instantiate;		//!< Instantiation function.

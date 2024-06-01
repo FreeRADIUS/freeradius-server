@@ -1299,13 +1299,13 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			/*
 			 *	Register decrypt xlat
 			 */
-			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "decrypt", cipher_rsa_decrypt_xlat, FR_TYPE_STRING);
+			xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "decrypt", cipher_rsa_decrypt_xlat, FR_TYPE_STRING);
 			xlat_func_args_set(xlat, cipher_rsa_decrypt_xlat_arg);
 
 			/*
 			 *	Verify sign xlat
 			 */
-			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "verify", cipher_rsa_verify_xlat, FR_TYPE_BOOL);
+			xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "verify", cipher_rsa_verify_xlat, FR_TYPE_BOOL);
 			xlat_func_args_set(xlat, cipher_rsa_verify_xlat_arg);
 		}
 
@@ -1331,20 +1331,20 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			/*
 			 *	Register encrypt xlat
 			 */
-			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "encrypt", cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS);
+			xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "encrypt", cipher_rsa_encrypt_xlat, FR_TYPE_OCTETS);
 			xlat_func_args_set(xlat, cipher_rsa_encrypt_xlat_arg);
 
 			/*
 			 *	Register sign xlat
 			 */
-			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "sign", cipher_rsa_sign_xlat, FR_TYPE_OCTETS);
+			xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "sign", cipher_rsa_sign_xlat, FR_TYPE_OCTETS);
 			xlat_func_args_set(xlat, cipher_rsa_sign_xlat_arg);
 
 			/*
 			 *	FIXME: These should probably be split into separate xlats
 			 *	so we can optimise for return types.
 			 */
-			xlat = xlat_func_register_module(mctx->mi->boot, mctx, "certificate", cipher_certificate_xlat, FR_TYPE_VOID);
+			xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "certificate", cipher_certificate_xlat, FR_TYPE_VOID);
 			xlat_func_args_set(xlat, cipher_certificate_xlat_args);
 		}
 		break;

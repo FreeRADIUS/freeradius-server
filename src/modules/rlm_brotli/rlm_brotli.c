@@ -383,11 +383,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	xlat_t	*xlat;
 
-	if (unlikely((xlat = xlat_func_register_module(mctx->mi->boot, mctx, "compress", brotli_xlat_compress,
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "compress", brotli_xlat_compress,
 						       FR_TYPE_OCTETS)) == NULL)) return -1;
 	xlat_func_args_set(xlat, brotli_xlat_compress_args);
 
-	if (unlikely((xlat = xlat_func_register_module(mctx->mi->boot, mctx, "decompress", brotli_xlat_decompress,
+	if (unlikely((xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "decompress", brotli_xlat_decompress,
 						       FR_TYPE_OCTETS)) == NULL)) return -1;
 	xlat_func_args_set(xlat, brotli_xlat_decompress_args);
 

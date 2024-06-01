@@ -29,13 +29,43 @@ RCSIDH(module_rlm_h, "$Id$")
 extern "C" {
 #endif
 
+typedef struct module_rlm_s module_rlm_t;
+typedef struct module_rlm_instance_s module_rlm_instance_t;
+
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/virtual_servers.h>
 
-typedef struct {
+struct module_rlm_s {
 	module_t			common;			//!< Common fields presented by all modules.
 	module_method_binding_t		*bindings;		//!< named methods
-} module_rlm_t;
+};
+
+struct module_rlm_instance_s {
+	fr_rb_tree_t			xlats;			//!< xlats registered to this module instance.
+								///< This is used by the redundant/loadbalance
+								///< xlats to register versions of the xlats
+								///< exported by the module instances.
+};
+
+/** An xlat function registered to a module
+ */
+typedef struct {
+	xlat_t const			*xlat;		//!< The xlat function.
+	fr_rb_node_t			node;		//!< Entry in an rbtree of registered xlats.
+} module_rlm_xlat_t;
+
+/** The output of module_rlm_by_name_and_method
+ *
+ * Everything needed to call a module method.
+ */
+typedef struct {
+	module_instance_t	 	*mi;			//!< The process modules also push module calls
+								///< onto the stack for execution.  So we need
+								///< to use the common type here.
+	module_rlm_t const		*rlm;			//!< Cached module_rlm_t.
+	module_method_binding_t		mmb;			//!< Method we're calling.
+	tmpl_t				*key;			//!< Dynamic key, only set for dynamic modules.
+} module_method_call_t;
 
 /** Cast a module_t to a module_rlm_t
  *
@@ -55,6 +85,10 @@ void		module_rlm_list_debug(void);
  *
  * @{
  */
+xlat_t		*module_rlm_xlat_register(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
+					  char const *name, xlat_func_t func, fr_type_t return_type)
+					  CC_HINT(nonnull(2,4));
+
 fr_pool_t	*module_rlm_connection_pool_init(CONF_SECTION *module,
 						 void *opaque,
 						 fr_pool_connection_create_t c,
@@ -92,10 +126,12 @@ module_instance_t	*module_rlm_by_name_and_method(module_method_t *method, call_e
 						       char const **name1, char const **name2,
 						       virtual_server_t const *vs, char const *asked_name);
 
-module_instance_t	*module_rlm_static_by_name(module_instance_t const *parent, char const *asked_name);
+module_instance_t	*module_rlm_dynamic_by_name(module_instance_t const *parent, char const *name);
 
 CONF_SECTION		*module_rlm_by_name_virtual(char const *asked_name);
+module_instance_t	*module_rlm_static_by_name(module_instance_t const *parent, char const *name);
 
+CONF_SECTION		*module_rlm_virtual_by_name(char const *name);
 /** @} */
 
 /** @name Support functions

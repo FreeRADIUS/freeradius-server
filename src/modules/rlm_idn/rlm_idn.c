@@ -152,7 +152,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 {
 	xlat_t		*xlat;
 
-	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, xlat_idna, FR_TYPE_STRING);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, xlat_idna, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, xlat_idna_arg);
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 

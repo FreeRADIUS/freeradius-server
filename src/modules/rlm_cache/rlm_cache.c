@@ -1487,11 +1487,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat = xlat_func_register_module(mctx->mi->boot, mctx, NULL, cache_xlat, FR_TYPE_VOID);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, cache_xlat, FR_TYPE_VOID);
 	xlat_func_args_set(xlat, cache_xlat_args);
 	xlat_func_call_env_set(xlat, &cache_method_env);
 
-	xlat = xlat_func_register_module(mctx->mi->boot, mctx, "ttl.get", cache_ttl_get_xlat, FR_TYPE_VOID);
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "ttl.get", cache_ttl_get_xlat, FR_TYPE_VOID);
 	xlat_func_call_env_set(xlat, &cache_method_env);
 
 	return 0;
