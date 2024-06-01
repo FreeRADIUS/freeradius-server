@@ -60,6 +60,10 @@ typedef struct {
 static inline int section_name2_match(section_name_t const *a, section_name_t const *b)
 {
 	if ((a->name2 == CF_IDENT_ANY) || (b->name2 == CF_IDENT_ANY)) return 1;
+	if (!a->name2 || !b->name2) {
+		if (a->name2 == b->name2) return 1;
+		return 0;
+	}
 
 	return (strcmp(a->name2, b->name2) == 0) ? 1 : 0;
 }
@@ -86,6 +90,8 @@ static inline int section_name_match(section_name_t const *a, section_name_t con
 name2:
 	return section_name2_match(a, b);
 }
+
+int8_t section_name_cmp(void const *one, void const *two);
 
 #ifdef __cplusplus
 }
