@@ -1,0 +1,17 @@
+if ("${feature.tls}" == no) {
+	test_pass
+	return
+}
+
+if (&User-Name == 'pbkdf2_389ds_sha256') {
+	&control.Password.With-Header := '{PBKDF2-SHA256}10000$kX7ZFznyliHoBZ+7ZIIAI1yH+V9yZg6j$kH2xGFdC+rS5+tjPnTXj/pGK0eFXTez2QqF2QZhunBM='
+
+	pap.authorize
+	pap.authenticate
+
+	if (ok) {
+		test_pass
+	} else {
+		test_fail
+	}
+}

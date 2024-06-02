@@ -682,6 +682,54 @@ finish:
 	RETURN_MODULE_RCODE(rcode);
 }
 
+static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2_389ds(rlm_rcode_t *p_result,
+								     UNUSED rlm_pap_t const *inst,
+								     request_t *request,
+								     fr_pair_t const *known_good,
+								     fr_value_box_t const *password)
+{
+	uint8_t const *p = known_good->vp_octets, *q, *end = p + known_good->vp_length;
+
+	/*
+	 *	OpenLDAP and 389ds carry algorithm information in
+	 *	the userPassword header, so make sure it's there.
+	 *
+	 *	Message format:
+	 *	  OpenLDAP: {PBKDF2-<digest>}<rounds>$<alt_b64_salt>$<alt_b64_hash>
+	 *	     389ds: {PBKDF2-<digest>}<rounds>$<b64_salt>$<b64_hash>
+	 *
+	 *	The format is almost identical to Python's passlib.
+	 *	If we advance the pointer a bit and use '}' as scheme separator,
+	 *	pap_auth_pbkdf2_parse will do the rest for us
+	 */
+
+	if (end - p < 2) {
+		REDEBUG("Password.PBKDF2-389DS too short");
+		RETURN_MODULE_INVALID;
+	}
+
+	if (*p != '{') {
+		REDEBUG("Password.PBKDF2-389DS has invalid header");
+		RETURN_MODULE_INVALID;
+	}
+
+	q = memchr(p, '}', end - p);
+	if (!q || q - p < 2) {
+		REDEBUG("Password.PBKDF2-389DS has invalid header");
+		RETURN_MODULE_INVALID;
+	}
+
+	if ((size_t)(q - p) > sizeof("{PBKDF2-") && strncasecmp((char const *) p, "{PBKDF2-", 8) == 0) {
+		p += sizeof("{PBKDF2-") - 1;
+		return pap_auth_pbkdf2_parse(p_result, request, p, end - p,
+					     pbkdf2_passlib_names, pbkdf2_passlib_names_len,
+					     '}', '$', '$', false, password);
+	}
+
+	REDEBUG("Can't determine format of Password.PBKDF2-389DS");
+	RETURN_MODULE_INVALID;
+}
+
 static inline unlang_action_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_rcode_t *p_result,
 							       UNUSED rlm_pap_t const *inst,
 							       request_t *request,
@@ -870,6 +918,7 @@ static const pap_auth_func_t auth_func_table[] = {
 
 #ifdef HAVE_OPENSSL_EVP_H
 	[FR_PBKDF2]	= pap_auth_pbkdf2,
+	[FR_PBKDF2_389DS] = pap_auth_pbkdf2_389ds,
 	[FR_SHA2]	= pap_auth_dummy,
 	[FR_SHA2_224]	= pap_auth_sha2_224,
 	[FR_SHA2_256]	= pap_auth_sha2_256,
