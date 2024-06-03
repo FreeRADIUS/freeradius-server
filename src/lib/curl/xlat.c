@@ -29,7 +29,7 @@
 
 #include "base.h"
 
-int fr_curl_xlat_refs = 0;
+// static int fr_curl_xlat_refs = 0;
 
 xlat_arg_parser_t const fr_curl_xlat_uri_args[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
@@ -44,7 +44,7 @@ xlat_arg_parser_t const fr_curl_xlat_safe_args[] = {
 /** xlat function to escape URI encoded strings
  *
  */
-xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       	      UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
 				      fr_value_box_list_t *in)
 {
@@ -74,7 +74,7 @@ done:
 /** xlat function to unescape URI encoded strings
  *
  */
-xlat_action_t fr_curl_xlat_uri_unescape(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+xlat_action_t fr_curl_xlat_uri_unescape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 					UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
 					fr_value_box_list_t *in)
 {
