@@ -62,7 +62,7 @@ typedef struct {
 	bool				large_window;		//!< non-standard "large", window size.
 } rlm_brotli_t;
 
-fr_table_num_sorted_t const brotli_mode[] = {
+static fr_table_num_sorted_t const brotli_mode[] = {
 	{ L("font"),		BROTLI_MODE_FONT	},	//!< Probably not useful?
 	{ L("generic"),		BROTLI_MODE_GENERIC	},
 	{ L("text"),		BROTLI_MODE_TEXT	},
