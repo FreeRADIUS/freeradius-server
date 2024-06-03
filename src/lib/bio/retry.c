@@ -602,7 +602,6 @@ static void fr_bio_retry_expiry_timer(UNUSED fr_event_list_t *el, fr_time_t now,
 	fr_assert(my->timer_item != NULL);
 	fr_assert(!my->partial);
 
-	item = my->timer_item;
 	my->timer_item = NULL;
 
 	/*
