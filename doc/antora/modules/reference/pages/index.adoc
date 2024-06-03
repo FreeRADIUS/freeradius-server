@@ -1,8 +1,33 @@
 = Reference Documentation
 
-We have a lot of stuff
+There are small number of high-level concepts associated with the server, as outlined below.
 
+* xref:unlang/index.adoc[Unlang] syntax
+* xref:raddb:index.html[Configuration Files]
 * xref:dictionary/index.adoc[Dictionary] where attribute names and data types are defined
 * xref:type/index.adoc[Data Types] in the server
-* xref:unlang/index.adoc[Unlang] syntax
 * xref:xlat/index.adoc[Dynamic expansions] i.e. "xlat"s.
+
+The server includes a large number of
+xref:raddb:index.html[configuration files].  These files are
+automatically converted to HTML for the on-line documentation.
+
+During normal operation, the server receives packets of information
+from the network.  Data in the packets is usually encoded in
+pre-defined "attributes" (RADIUS), or "options" (DHCP).  The
+definitions are loaded from xref:dictionary/index.adoc[dictionary]
+files.
+
+These definitions are strongly typed.  That is, each attribute has a
+pre-defined xref:type/index.adoc[data type].  For example, an
+attribute "Framed-IP-Address" has data type xref:type/ip.adoc[ipaddr].
+
+Packets are processed via the xref:unlang/index.adoc[Unlang] policy
+language.  Policies allow the server to read information in databases,
+perform if / then / else checks, add content to replies, along with
+many other actions.
+
+When processing packets, it is possible to call functions or do string
+manipulation with attribute contents.  The
+xref:xlat/index.adoc[dynamic expansion] documentation describes how
+this is done.
