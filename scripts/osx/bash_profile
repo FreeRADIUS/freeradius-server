@@ -1,0 +1,33 @@
+#
+#  Add this to the bottom of ~/.bash_profile or ~/.zshrc
+#
+#  or whereever your local shell sets its variables.
+#
+
+
+#
+#  Set paths to the homebrew files.  You may need to edit these for your local system
+#
+export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+export PATH="/opt/homebrew/opt/openssl@3/bin:$PATH"
+export LDFLAGS="-L/opt/homebrew/opt/llvm/lib -Wl,-rpath,/opt/homebrew/opt/llvm/lib -L/opt/homebrew/lib"
+export CPPFLAGS="-I/opt/homebrew/opt/llvm/include -I/opt/homebrew/include"
+
+#
+#  These settings are useful for clang address sanitizer, leak sanitizer, etc.
+#
+export MallocDebugReport=crash
+export MallocGuardEdges=1
+export MallocCorruptionAbort=1
+export MallocScribble=1
+export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+
+#
+#  Get the rest of the homebrew shell environment.
+#
+eval "$(/opt/homebrew/bin/brew shellenv)"
+
+alias configure="xcrun configure"
+alias make="xcrun gmake"
+alias lldb="xcrun /opt/homebrew/opt/llvm/bin/lldb"
+alias llvm-symbolizer="xcrun /usr/local/opt/llvm/bin/llvm-symbolizer"
