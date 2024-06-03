@@ -34,7 +34,7 @@ llvm
 luajit
 make
 mruby
-mysql-client
+mariadb-connector-c
 openldap
 openssl@1.1
 pandoc
