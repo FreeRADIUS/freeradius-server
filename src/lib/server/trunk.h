@@ -177,6 +177,9 @@ typedef enum {
 								///< the request has been cancelled.
 	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	= 0x0200,	//!< We partially wrote a cancellation request.
 	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	= 0x0400,	//!< Remote server has acknowledged our cancellation.
+
+	FR_TRUNK_REQUEST_STATE_IDLE		= 0x0800,	//!< Request has been written, needs to persist, but we
+								///< are not currently waiting for any response.
 } fr_trunk_request_state_t;
 
 /** All request states
@@ -193,7 +196,8 @@ typedef enum {
 	FR_TRUNK_REQUEST_STATE_CANCEL | \
 	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL | \
 	FR_TRUNK_REQUEST_STATE_CANCEL_SENT | \
-	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE \
+	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE | \
+	FR_TRUNK_REQUEST_STATE_IDLE \
 )
 
 /** All requests in various cancellation states
@@ -758,6 +762,8 @@ uint64_t	fr_trunk_request_count_by_state(fr_trunk_t *trunk, int conn_state, int 
 void		fr_trunk_request_signal_partial(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
 void		fr_trunk_request_signal_sent(fr_trunk_request_t *treq) CC_HINT(nonnull);
+
+void		fr_trunk_request_signal_idle(fr_trunk_request_t *treq) CC_HINT(nonnull);
 
 void		fr_trunk_request_signal_complete(fr_trunk_request_t *treq) CC_HINT(nonnull);
 

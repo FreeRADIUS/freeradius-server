@@ -154,6 +154,8 @@ struct fr_trunk_connection_s {
 
 	fr_dlist_head_t		sent;			//!< Sent request.
 
+	fr_dlist_head_t		idle;			//!< Idle request.
+
 	fr_dlist_head_t		cancel;			//!< Requests in the cancel state.
 
 	fr_trunk_request_t	*cancel_partial;	//!< Partially written cancellation request.
@@ -344,7 +346,8 @@ static fr_table_num_indexed_bit_pos_t const fr_trunk_req_trigger_names[] = {
 	{ L("pool.request_state_cancel"),		FR_TRUNK_REQUEST_STATE_CANCEL		},	/* 0x0080 - bit 8 */
 	{ L("pool.request_state_cancel_sent"),		FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},	/* 0x0100 - bit 9 */
 	{ L("pool.request_state_cancel_partial"),	FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},	/* 0x0200 - bit 10 */
-	{ L("pool.request_state_cancel_complete"),	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	}	/* 0x0400 - bit 11 */
+	{ L("pool.request_state_cancel_complete"),	FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	},	/* 0x0400 - bit 11 */
+	{ L("pool.request_state_idle"),			FR_TRUNK_REQUEST_STATE_IDLE		}	/* 0x0800 - bit 12 */
 };
 static size_t fr_trunk_req_trigger_names_len = NUM_ELEMENTS(fr_trunk_req_trigger_names);
 #endif
@@ -361,7 +364,8 @@ static fr_table_num_ordered_t const fr_trunk_request_states[] = {
 	{ L("CANCEL"),					FR_TRUNK_REQUEST_STATE_CANCEL		},
 	{ L("CANCEL-SENT"),				FR_TRUNK_REQUEST_STATE_CANCEL_SENT	},
 	{ L("CANCEL-PARTIAL"),				FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},
-	{ L("CANCEL-COMPLETE"),				FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	}
+	{ L("CANCEL-COMPLETE"),				FR_TRUNK_REQUEST_STATE_CANCEL_COMPLETE	},
+	{ L("IDLE"),					FR_TRUNK_REQUEST_STATE_IDLE		}
 };
 static size_t fr_trunk_request_states_len = NUM_ELEMENTS(fr_trunk_request_states);
 
@@ -735,6 +739,11 @@ do { \
  */
 #define REQUEST_EXTRACT_SENT(_treq) fr_dlist_remove(&tconn->sent, treq)
 
+/** Remove the current request from the idle list
+ *
+ */
+#define REQUEST_EXTRACT_IDLE(_treq) fr_dlist_remove(&tconn->idle, treq)
+
 /** Remove the current request from the cancel list
  *
  */
@@ -880,6 +889,7 @@ static void trunk_request_enter_backlog(fr_trunk_request_t *treq, bool new);
 static void trunk_request_enter_pending(fr_trunk_request_t *treq, fr_trunk_connection_t *tconn, bool new);
 static void trunk_request_enter_partial(fr_trunk_request_t *treq);
 static void trunk_request_enter_sent(fr_trunk_request_t *treq);
+static void trunk_request_enter_idle(fr_trunk_request_t *treq);
 static void trunk_request_enter_failed(fr_trunk_request_t *treq);
 static void trunk_request_enter_complete(fr_trunk_request_t *treq);
 static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel_reason_t reason);
@@ -965,6 +975,10 @@ static void trunk_request_remove_from_conn(fr_trunk_request_t *treq)
 
 	case FR_TRUNK_REQUEST_STATE_SENT:
 		REQUEST_EXTRACT_SENT(treq);
+		break;
+
+	case FR_TRUNK_REQUEST_STATE_IDLE:
+		REQUEST_EXTRACT_IDLE(treq);
 		break;
 
 	case FR_TRUNK_REQUEST_STATE_CANCEL:
@@ -1279,6 +1293,47 @@ static void trunk_request_enter_sent(fr_trunk_request_t *treq)
 	trunk_connection_event_update(tconn);
 }
 
+/** Transition a request to the idle state, indicating that it's been sent in its entirety, but no response is expected
+ *
+ * @note Largely a replica of trunk_request_enter_sent.
+ *
+ * @param[in] treq	to trigger a state change for.
+ */
+static void trunk_request_enter_idle(fr_trunk_request_t *treq)
+{
+	fr_trunk_connection_t	*tconn = treq->pub.tconn;
+	fr_trunk_t		*trunk = treq->pub.trunk;
+
+	if (!fr_cond_assert(!tconn || (tconn->pub.trunk == trunk))) return;
+
+	switch (treq->pub.state) {
+	case FR_TRUNK_REQUEST_STATE_PENDING:
+		REQUEST_EXTRACT_PENDING(treq);
+		break;
+
+	case FR_TRUNK_REQUEST_STATE_PARTIAL:
+		REQUEST_EXTRACT_PARTIAL(treq);
+		break;
+
+	default:
+		REQUEST_BAD_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_SENT);
+	}
+
+	REQUEST_STATE_TRANSITION(FR_TRUNK_REQUEST_STATE_IDLE);
+	fr_dlist_insert_tail(&tconn->idle, treq);
+
+	if (!treq->sent) {
+		tconn->sent_count++;
+		treq->sent = true;
+
+		if ((trunk->conf.max_uses > 0) && (tconn->sent_count >= trunk->conf.max_uses)) {
+			trunk_connection_enter_draining_to_free(tconn);
+		}
+	}
+
+	trunk_connection_event_update(tconn);
+}
+
 /** Transition a request to the cancel state, placing it in a connection's cancellation list
  *
  * If a request_cancel_send callback is provided, that callback will
@@ -1320,6 +1375,10 @@ static void trunk_request_enter_cancel(fr_trunk_request_t *treq, fr_trunk_cancel
 
 	case FR_TRUNK_REQUEST_STATE_SENT:
 		REQUEST_EXTRACT_SENT(treq);
+		break;
+
+	case FR_TRUNK_REQUEST_STATE_IDLE:
+		REQUEST_EXTRACT_IDLE(treq);
 		break;
 
 	default:
@@ -1474,6 +1533,7 @@ static void trunk_request_enter_complete(fr_trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_SENT:
 	case FR_TRUNK_REQUEST_STATE_PENDING:
+	case FR_TRUNK_REQUEST_STATE_IDLE:
 		trunk_request_remove_from_conn(treq);
 		break;
 
@@ -1996,6 +2056,28 @@ void fr_trunk_request_signal_sent(fr_trunk_request_t *treq)
 	}
 }
 
+/** Signal that the request was written to a connection successfully, but no response is expected
+ *
+ * @param[in] treq	to signal state change for.
+ */
+void fr_trunk_request_signal_idle(fr_trunk_request_t *treq)
+{
+	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
+
+	if (!fr_cond_assert_msg(IN_REQUEST_MUX(treq->pub.trunk),
+				"%s can only be called from within request_mux handler", __FUNCTION__)) return;
+
+	switch (treq->pub.state) {
+	case FR_TRUNK_REQUEST_STATE_PENDING:
+	case FR_TRUNK_REQUEST_STATE_PARTIAL:
+		trunk_request_enter_idle(treq);
+		break;
+
+	default:
+		return;
+	}
+}
+
 /** Signal that a trunk request is complete
  *
  * The API client will be informed that the request is now complete.
@@ -2020,6 +2102,7 @@ void fr_trunk_request_signal_complete(fr_trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_SENT:
 	case FR_TRUNK_REQUEST_STATE_PENDING:	/* Got immediate response, i.e. cached */
+	case FR_TRUNK_REQUEST_STATE_IDLE:
 		trunk_request_enter_complete(treq);
 		break;
 
@@ -2587,6 +2670,7 @@ fr_trunk_enqueue_t fr_trunk_request_requeue(fr_trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case FR_TRUNK_REQUEST_STATE_PARTIAL:
 	case FR_TRUNK_REQUEST_STATE_SENT:
+	case FR_TRUNK_REQUEST_STATE_IDLE:
 		fr_connection_signals_pause(tconn->pub.conn);
 		trunk_request_enter_cancel(treq, FR_TRUNK_CANCEL_REASON_REQUEUE);
 		trunk_request_enter_pending(treq, tconn, false);
@@ -2779,6 +2863,7 @@ uint32_t fr_trunk_request_count_by_connection(fr_trunk_connection_t const *tconn
 	if (req_state & FR_TRUNK_REQUEST_STATE_PENDING) count += fr_heap_num_elements(tconn->pending);
 	if (req_state & FR_TRUNK_REQUEST_STATE_PARTIAL) count += tconn->partial ? 1 : 0;
 	if (req_state & FR_TRUNK_REQUEST_STATE_SENT) count += fr_dlist_num_elements(&tconn->sent);
+	if (req_state & FR_TRUNK_REQUEST_STATE_IDLE) count += fr_dlist_num_elements(&tconn->idle);
 	if (req_state & FR_TRUNK_REQUEST_STATE_CANCEL) count += fr_dlist_num_elements(&tconn->cancel);
 	if (req_state & FR_TRUNK_REQUEST_STATE_CANCEL_PARTIAL) count += tconn->cancel_partial ? 1 : 0;
 	if (req_state & FR_TRUNK_REQUEST_STATE_CANCEL_SENT) count += fr_dlist_num_elements(&tconn->cancel_sent);
@@ -3647,6 +3732,7 @@ static int trunk_connection_spawn(fr_trunk_t *trunk, fr_time_t now)
 
 	MEM(tconn->pending = fr_heap_talloc_alloc(tconn, _trunk_request_prioritise, fr_trunk_request_t, heap_id, 0));
 	fr_dlist_talloc_init(&tconn->sent, fr_trunk_request_t, entry);
+	fr_dlist_talloc_init(&tconn->idle, fr_trunk_request_t, entry);
 	fr_dlist_talloc_init(&tconn->cancel, fr_trunk_request_t, entry);
 	fr_dlist_talloc_init(&tconn->cancel_sent, fr_trunk_request_t, entry);
 
