@@ -4370,6 +4370,19 @@ static void trunk_manage(fr_trunk_t *trunk, fr_time_t now)
 		}
 
 		/*
+		 *	If the last event on the trunk was a connection failure and
+		 *	there is only one connection, this may well be a reconnect
+		 *	attempt after a failure - and needs to persist otherwise
+		 *	the last event will be a failure and no new connection will
+		 *	be made, leading to no new requests being enqueued.
+		 */
+		if (fr_time_gt(trunk->pub.last_failed, fr_time_wrap(0)) &&
+		    fr_time_lt(trunk->pub.last_connected, trunk->pub.last_failed) && (conn_count == 1)) {
+			DEBUG4("Not closing remaining connection - last event was a failure");
+			return;
+		}
+
+		/*
 		 *	Inactive connections get counted in the
 		 *	set of viable connections, but are likely
 		 *	to be congested or dead, so we drain
