@@ -2596,7 +2596,8 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		if (*treq_out) {
 			treq = *treq_out;
 		} else {
-			MEM(*treq_out = treq = fr_trunk_request_alloc(trunk, request));
+			*treq_out = treq = fr_trunk_request_alloc(trunk, request);
+			if (!treq) return FR_TRUNK_ENQUEUE_FAIL;
 		}
 		treq->pub.preq = preq;
 		treq->pub.rctx = rctx;
@@ -2614,7 +2615,8 @@ fr_trunk_enqueue_t fr_trunk_request_enqueue(fr_trunk_request_t **treq_out, fr_tr
 		if (*treq_out) {
 			treq = *treq_out;
 		} else {
-			MEM(*treq_out = treq = fr_trunk_request_alloc(trunk, request));
+			*treq_out = treq = fr_trunk_request_alloc(trunk, request);
+			if (!treq) return FR_TRUNK_ENQUEUE_FAIL;
 		}
 		treq->pub.preq = preq;
 		treq->pub.rctx = rctx;
