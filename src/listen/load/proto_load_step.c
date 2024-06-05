@@ -73,6 +73,8 @@ struct proto_load_step_s {
 	fr_load_config_t		load;			//!< load configuration
 	bool				repeat;			//!, do we repeat the load generation
 	char const     			*csv;			//!< where to write CSV stats
+
+	fr_dict_t const			*dict;			//!< Our namespace.
 };
 
 
@@ -262,7 +264,7 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	 *	generic->protocol attribute conversions as
 	 *	the request runs through the server.
 	 */
-	request->dict = inst->parent->dict;
+	request->dict = inst->dict;
 
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
@@ -344,6 +346,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	fr_pair_t		*vp;
 	module_instance_t const	*mi = mctx->mi;
 
+	inst->dict = virtual_server_dict_by_child_ci(cf_section_to_item(conf));
+	if (!inst->dict) {
+		cf_log_err(conf, "Please define 'namespace' in this virtual server");
+		return -1;
+	}
+
 	fr_pair_list_init(&inst->pair_list);
 	inst->client = client = talloc_zero(inst, fr_client_t);
 	if (!inst->client) return 0;
@@ -367,7 +375,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			return -1;
 		}
 
-		if (fr_pair_list_afrom_file(inst, inst->parent->dict, &inst->pair_list, fp, &done) < 0) {
+		if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done) < 0) {
 			cf_log_perr(conf, "Failed reading %s", inst->filename);
 			fclose(fp);
 			return -1;

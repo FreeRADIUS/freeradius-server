@@ -28,6 +28,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/io/schedule.h>
 
+#include "lib/server/cf_util.h"
 #include "proto_cron.h"
 
 extern fr_app_io_t proto_cron_crontab;
@@ -76,6 +77,8 @@ struct proto_cron_tab_s {
 	cron_tab_t			tab[5];
 
 	fr_client_t			*client;		//!< static client
+
+	fr_dict_t const			*dict;			//!< our namespace.
 };
 
 
@@ -436,7 +439,7 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	 *	generic->protocol attribute conversions as
 	 *	the request runs through the server.
 	 */
-	request->dict = inst->parent->dict;
+	request->dict = inst->dict;
 
 	/*
 	 *	Hacks for now until we have a lower-level decode routine.
@@ -695,6 +698,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->parent = talloc_get_type_abort(mctx->mi->parent->data, proto_cron_t);
 	inst->cs = mctx->mi->conf;
+	inst->dict = virtual_server_dict_by_child_ci(cf_section_to_item(conf));
+	if (!inst->dict) {
+		cf_log_err(conf, "Please define 'namespace' in this virtual server");
+		return -1;
+	}
 
 	fr_pair_list_init(&inst->pair_list);
 	inst->client = client = talloc_zero(inst, fr_client_t);
@@ -715,7 +723,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (fr_pair_list_afrom_file(inst, inst->parent->dict, &inst->pair_list, fp, &done) < 0) {
+	if (fr_pair_list_afrom_file(inst, inst->dict, &inst->pair_list, fp, &done) < 0) {
 		cf_log_perr(conf, "Failed reading %s", inst->filename);
 		fclose(fp);
 		return -1;
