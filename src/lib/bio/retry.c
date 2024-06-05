@@ -41,8 +41,6 @@
  *  In general, the next BIO after this one should be the memory bio, so that this bio receives only complete
  *  packets.
  *
- *  This BIO does not use the #fr_bio_cb_funcs_t callbacks.
- *
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
 
@@ -213,6 +211,8 @@ static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
  */
 static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, fr_bio_retry_release_reason_t reason)
 {
+	bool timer_reset = false;
+
 	/*
 	 *	Remove the item before calling the application "release" function.
 	 */
@@ -242,6 +242,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 */
 	if (my->timer_item == item) {
 		fr_bio_retry_timer_clear(my);
+		timer_reset = true;
 	}
 
 	/*
@@ -263,7 +264,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	 *	If write_resume() above called the application, then it might have already updated the timer.
 	 *	Don't do that again.
 	 */
-	if (!my->timer_item) (void) fr_bio_retry_timer_reset(my);
+	if (timer_reset) (void) fr_bio_retry_timer_reset(my);
 
 	item->packet_ctx = NULL;
 
@@ -601,7 +602,11 @@ static void fr_bio_retry_expiry_timer(UNUSED fr_event_list_t *el, fr_time_t now,
 	 */
 	fr_assert(my->timer_item != NULL);
 	fr_assert(!my->partial);
+	fr_assert(my->info.write_blocked);
 
+	/*
+	 *	We should be expiring at least one entry, so nuke the timers.
+	 */
 	my->timer_item = NULL;
 
 	/*
@@ -616,7 +621,7 @@ static void fr_bio_retry_expiry_timer(UNUSED fr_event_list_t *el, fr_time_t now,
 		fr_bio_retry_release(my, item, (item->retry.replies > 0) ? FR_BIO_RETRY_DONE : FR_BIO_RETRY_NO_REPLY);
 	}
 
-	(void) fr_bio_retry_timer_reset(my);
+	(void) fr_bio_retry_expiry_timer_reset(my);
 }
 
 /** Run a timer event.  Usually to write out another packet.
