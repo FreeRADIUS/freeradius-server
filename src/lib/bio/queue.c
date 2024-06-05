@@ -338,7 +338,7 @@ static ssize_t fr_bio_queue_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
  *
  *  Cancel / close has to be called before re-init.
  */
-static int fr_bio_queue_shutdown(fr_bio_t *bio)
+static void fr_bio_queue_shutdown(fr_bio_t *bio)
 {
 	fr_bio_queue_t *my = talloc_get_type_abort(bio, fr_bio_queue_t);
 
@@ -346,8 +346,6 @@ static int fr_bio_queue_shutdown(fr_bio_t *bio)
 
 	my->bio.read = fr_bio_queue_read;
 	my->bio.write = fr_bio_queue_write_next;
-
-	return 0;
 }
 
 

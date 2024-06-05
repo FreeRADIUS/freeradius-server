@@ -81,17 +81,19 @@ typedef struct fr_bio_s fr_bio_t;
 typedef ssize_t	(*fr_bio_read_t)(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
 typedef ssize_t	(*fr_bio_write_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size);
 
-typedef int (*fr_bio_callback_t)(fr_bio_t *bio); /* activate / shutdown callbacks */
+typedef int (*fr_bio_io_t)(fr_bio_t *bio); /* activate / shutdown callbacks */
+
+typedef void (*fr_bio_callback_t)(fr_bio_t *bio); /* activate / shutdown callbacks */
 
 typedef struct {
-	fr_bio_callback_t	activate;
-	fr_bio_callback_t	shutdown;
+	fr_bio_callback_t	activate;		//!< called when the BIO is ready to be used
+	fr_bio_callback_t	shutdown;		//!< called when the BIO is being shut down
 
-	fr_bio_callback_t	read_blocked;
-	fr_bio_callback_t	write_blocked;
+	fr_bio_io_t		read_blocked;
+	fr_bio_io_t		write_blocked;
 
-	fr_bio_callback_t	read_resume;		//!< "unblocked" is too similar to "blocked"
-	fr_bio_callback_t	write_resume;
+	fr_bio_io_t		read_resume;		//!< "unblocked" is too similar to "blocked"
+	fr_bio_io_t		write_resume;
 } fr_bio_cb_funcs_t;
 
 /** Accept a new connection on a bio

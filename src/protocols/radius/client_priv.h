@@ -44,6 +44,13 @@ typedef struct {
 	fr_bio_t		*mem;
 	fr_bio_t		*fd;
 
+	/*
+	 *	@todo - this blocks on _any_ ID space being full.  So if we send auth+acct and auth blocks,
+	 *	then acct is also blocked.  Perhaps we want to track these individually, which means having
+	 *	the RADIUS client code deal with _multiple_ outgoing BIOs, each of which are equivalent.
+	 *
+	 *	However, that doesn't play well with the design that each BIO has its own FD associated with it,
+	 */
 	bool			all_ids_used;		//!< All IDs are used.
 
 	fr_radius_client_bio_info_t info;

@@ -150,7 +150,6 @@ static ssize_t fr_bio_haproxy_v1(fr_bio_haproxy_t *my)
  */
 static ssize_t fr_bio_haproxy_read_next(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
-	ssize_t rcode;
 	size_t used;
 	fr_bio_haproxy_t *my = talloc_get_type_abort(bio, fr_bio_haproxy_t);
 
@@ -175,10 +174,7 @@ static ssize_t fr_bio_haproxy_read_next(fr_bio_t *bio, UNUSED void *packet_ctx, 
 	/*
 	 *	Call the users activation function, which might remove us from the proxy chain.
 	 */
-	if (my->cb.activate) {
-		rcode = my->cb.activate(bio);
-		if (rcode < 0) return rcode;
-	}
+	if (my->cb.activate) my->cb.activate(bio);
 
 	return used;
 }

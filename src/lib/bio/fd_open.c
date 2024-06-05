@@ -445,7 +445,7 @@ static int fr_bio_fd_socket_unix_mkdir(int *dirfd, char const **filename, fr_bio
 	return 0;
 }
 
-static int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
+static void fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
@@ -462,11 +462,9 @@ static int fr_bio_fd_unix_shutdown(fr_bio_t *bio)
 	/*
 	 *	Run the user shutdown before we run ours.
 	 */
-	if (my->user_shutdown) {
-		if (my->user_shutdown(bio) < 0) return -1;
-	}
+	if (my->user_shutdown) my->user_shutdown(bio);
 
-	return unlink(my->info.socket.unix.path);
+	(void) unlink(my->info.socket.unix.path);
 }
 
 /** Bind to a Unix domain socket.

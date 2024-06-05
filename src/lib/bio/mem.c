@@ -257,9 +257,9 @@ static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buf
 	if (rcode == 0) return 0;
 
 	/*
-	 *	The next bio returned an error.  Whatever it is, it's fatal.  We can read from the memory
-	 *	buffer until it's empty, but we can no longer write to the memory buffer.  Any data written to
-	 *	the buffer is lost.
+	 *	The next bio returned an error either when our buffer was empty, or else it had only a partial
+	 *	packet in it.  We can no longer read full packets from this BIO, and we can't read from the
+	 *	next one, either.  So shut down the BIO completely.
 	 */
 fail:
 	bio->read = fr_bio_mem_read_eof;
@@ -571,7 +571,7 @@ void fr_bio_mem_read_discard(fr_bio_t *bio, size_t size)
  *  @param	packet_ctx the packet ctx
  *  @param[out]	size	how big the verified packet is
  *  @return
- *	- <0 on error, the caller should close the bio.
+ *	- <0 for FR_BIO_VERIFY_ERROR_CLOSE, the caller should close the bio.
  *	- 0 for "we have a partial packet", the size to read is in *size
  *	- 1 for "we have at least one good packet", the size of it is in *size
  */

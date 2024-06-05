@@ -626,7 +626,7 @@ int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
 /** Callback for when the FD is activated, i.e. connected.
  *
  */
-static int fr_radius_client_bio_activate(fr_bio_t *bio)
+static void fr_radius_client_bio_activate(fr_bio_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = bio->uctx;
 
@@ -635,9 +635,6 @@ static int fr_radius_client_bio_activate(fr_bio_t *bio)
 	my->info.connected = true;
 
 	fr_assert(0);
-
-
-	return 0;
 }
 
 void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSED int fd, UNUSED int flags, void *uctx)

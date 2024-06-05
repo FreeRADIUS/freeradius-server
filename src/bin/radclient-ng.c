@@ -1116,7 +1116,7 @@ static void client_read(fr_event_list_t *el, int fd, UNUSED int flags, void *uct
 	fr_pair_list_init(&reply_pairs);
 
 	/*
-	 *	@todo list_ctx is ignored
+	 *	Read one packet.
 	 */
 	rcode = fr_bio_packet_read(client, (void **) &request, &reply, client, &reply_pairs);
 	if (rcode < 0) {
@@ -1255,7 +1255,7 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	}
 }
 
-static int client_bio_activate(fr_bio_packet_t *client)
+static void  client_bio_activate(fr_bio_packet_t *client)
 {
 	fr_radius_client_bio_info_t const *info;
 
@@ -1266,8 +1266,6 @@ static int client_bio_activate(fr_bio_packet_t *client)
 		fr_perror("radclient");
 		fr_exit_now(1);
 	}
-
-	return 0;
 }
 
 
