@@ -32,7 +32,6 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "stream-8", "OS": "tgagor/centos-stream:stream8",  "DIST": "centos" },
               { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  },
               { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky"  },
             ]
@@ -43,7 +42,6 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "stream-8", "OS": "tgagor/centos-stream:stream8",  "DIST": "centos" },
               { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  }
             ]
           }
@@ -74,8 +72,8 @@ jobs:
     name: "RPM build"
 
     steps:
-    - name: Extra repos for CentOS and Rocky Linux 8
-      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
+    - name: Extra repos for Rocky Linux 8
+      if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
