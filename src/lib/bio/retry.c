@@ -1009,6 +1009,7 @@ static int fr_bio_retry_destructor(fr_bio_retry_t *my)
 	 *	entries will be deleted when the memory is freed.
 	 */
 	while ((item = fr_rb_iter_init_inorder(&iter, &my->next_retry_tree)) != NULL) {
+		fr_rb_iter_delete_inorder(&iter);
 		my->release((fr_bio_t *) my, item, FR_BIO_RETRY_CANCELLED);
 	}
 

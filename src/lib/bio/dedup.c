@@ -1012,6 +1012,7 @@ static int fr_bio_dedup_destructor(fr_bio_dedup_t *my)
 	 *	entries will be deleted when the memory is freed.
 	 */
 	while ((item = fr_rb_iter_init_inorder(&iter, &my->rb)) != NULL) {
+		fr_rb_iter_delete_inorder(&iter);
 		my->release((fr_bio_t *) my, item, FR_BIO_DEDUP_CANCELLED);
 	}
 
