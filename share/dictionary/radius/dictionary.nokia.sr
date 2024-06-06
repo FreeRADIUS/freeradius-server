@@ -10,6 +10,9 @@
 #
 # See "7750 Service Router - RADIUS Attributes Reference Guide".
 #
+#  @todo - update with extended attributes from
+#  https://infocenter.nokia.com/public/7750SR151R1A/index.jsp?topic=%2Fcom.sr.radius%2Fhtml%2Fsros_radius_attrib.html
+#
 # Latest edition may be found by searching "7750 RADIUS ATTRIBUTES REFERENCE
 # GUIDE" here: https://documentation.nokia.com/cgi-bin/doc_list.pl
 #
