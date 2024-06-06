@@ -43,14 +43,6 @@ int fr_bio_destructor(fr_bio_t *bio)
 }
 #endif
 
-/** Always returns EOF on fr_bio_read()
- *
- */
-ssize_t fr_bio_eof_read(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void *buffer, UNUSED size_t size)
-{
-	return fr_bio_error(EOF);
-}
-
 /** Internal bio function which just reads from the "next" bio.
  *
  *  It is mainly used when the current bio needs to modify the write
@@ -69,8 +61,8 @@ ssize_t fr_bio_next_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t s
 
 	if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
 
-	bio->read = fr_bio_eof_read;
-	bio->write = fr_bio_null_write;
+	bio->read = fr_bio_fail_read;
+	bio->write = fr_bio_fail_write;
 	return rcode;
 }
 
@@ -92,8 +84,8 @@ ssize_t fr_bio_next_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, s
 
 	if (rcode == fr_bio_error(IO_WOULD_BLOCK)) return rcode;
 
-	bio->read = fr_bio_eof_read;
-	bio->write = fr_bio_null_write;
+	bio->read = fr_bio_fail_read;
+	bio->write = fr_bio_fail_write;
 	return rcode;
 }
 
@@ -127,8 +119,8 @@ int fr_bio_free(fr_bio_t *bio)
 		next->entry.prev = NULL;
 		if (fr_bio_free(next) < 0) {
 			next->entry.prev = &bio->entry;
-			bio->read = fr_bio_eof_read;
-			bio->write = fr_bio_null_write;
+			bio->read = fr_bio_fail_read;
+			bio->write = fr_bio_fail_write;
 			return -1;
 		}
 

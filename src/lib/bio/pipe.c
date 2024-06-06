@@ -22,6 +22,7 @@
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
 #include <freeradius-devel/bio/bio_priv.h>
+#include <freeradius-devel/bio/null.h>
 #include <freeradius-devel/bio/mem.h>
 
 #include <freeradius-devel/bio/pipe.h>
@@ -58,14 +59,15 @@ static int fr_bio_pipe_destructor(fr_bio_pipe_t *my)
 static ssize_t fr_bio_pipe_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {
 	ssize_t rcode;
-	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
+	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);
 
 	fr_assert(my->next != NULL);
 
 	pthread_mutex_lock(&my->mutex);
 	rcode = my->next->read(my->next, packet_ctx, buffer, size);
 	if ((rcode == 0) && my->eof) {
-		rcode = fr_bio_error(EOF);
+		rcode = 0;
+		my->bio.read = fr_bio_null_read;
 
 	} else if (rcode > 0) {
 		/*
@@ -106,7 +108,7 @@ static ssize_t fr_bio_pipe_write(fr_bio_t *bio, void *packet_ctx, void const *bu
 		}
 
 	} else {
-		rcode = fr_bio_error(EOF);
+		rcode = 0;
 	}
 	pthread_mutex_unlock(&my->mutex);
 
@@ -124,6 +126,21 @@ static void fr_bio_pipe_shutdown(fr_bio_t *bio)
 
 	pthread_mutex_lock(&my->mutex);
 	fr_bio_shutdown(my->next);
+	pthread_mutex_unlock(&my->mutex);
+}
+
+/** Set EOF.
+ *
+ *  Either side can set EOF, in which case pending reads are still processed.  Writes return EOF immediately.
+ *  Readers return pending data, and then EOF.
+ */
+static void fr_bio_pipe_eof(fr_bio_t *bio)
+{
+	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
+
+	pthread_mutex_lock(&my->mutex);
+	my->eof = true;
+	fr_bio_eof(my->next);
 	pthread_mutex_unlock(&my->mutex);
 }
 
@@ -166,21 +183,8 @@ fr_bio_t *fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_pipe_cb_funcs_t *cb, size_t 
 	my->bio.read = fr_bio_pipe_read;
 	my->bio.write = fr_bio_pipe_write;
 	my->cb.shutdown = fr_bio_pipe_shutdown;
+	my->priv_cb.eof = fr_bio_pipe_eof;
 
 	talloc_set_destructor(my, fr_bio_pipe_destructor);
 	return (fr_bio_t *) my;
-}
-
-/** Set EOF.
- *
- *  Either side can set EOF, in which case pending reads are still processed.  Writes return EOF immediately.
- *  Readers return pending data, and then EOF.
- */
-void fr_bio_pipe_set_eof(fr_bio_t *bio)
-{
-	fr_bio_pipe_t *my = talloc_get_type_abort(bio, fr_bio_pipe_t);	
-
-	pthread_mutex_lock(&my->mutex);
-	my->eof = true;
-	pthread_mutex_unlock(&my->mutex);
 }

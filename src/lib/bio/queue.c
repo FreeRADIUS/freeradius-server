@@ -60,8 +60,8 @@ typedef struct fr_bio_queue_s {
 	size_t				max_saved;
 
 	fr_bio_queue_saved_t		saved;
-	fr_bio_queue_callback_t	sent;
-	fr_bio_queue_callback_t	cancel;
+	fr_bio_queue_callback_t		sent;
+	fr_bio_queue_callback_t		cancel;
 
 	FR_DLIST_HEAD(fr_bio_queue_list)	pending;
 	FR_DLIST_HEAD(fr_bio_queue_list)	free;
@@ -81,6 +81,9 @@ static void fr_bio_queue_list_cancel(fr_bio_queue_t *my)
 {
 	fr_bio_queue_entry_t *item;
 
+	my->bio.read = fr_bio_fail_read;
+	my->bio.write = fr_bio_fail_write;
+
 	if (!my->cancel) return;
 
 	if (fr_bio_queue_list_num_elements(&my->pending) == 0) return;
@@ -99,7 +102,6 @@ static int fr_bio_queue_destructor(fr_bio_queue_t *my)
 {
 	fr_assert(my->cancel);	/* otherwise it would be fr_bio_destructor */
 
-	my->bio.write = fr_bio_null_write;
 	fr_bio_queue_list_cancel(my);
 
 	return 0;
@@ -169,9 +171,6 @@ static ssize_t fr_bio_queue_write_next(fr_bio_t *bio, void *packet_ctx, void con
 		/*
 		 *	All other errors are fatal.
 		 */
-		my->bio.read = fr_bio_eof_read;
-		my->bio.write = fr_bio_null_write;
-
 		fr_bio_queue_list_cancel(my);
 		return rcode;
 	}
@@ -327,9 +326,6 @@ static ssize_t fr_bio_queue_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	 *	Error reading, which means that we can't write to it, either.  We don't care if the error is
 	 *	EOF or anything else.  We just cancel the outstanding packets, and shut ourselves down.
 	 */
-	my->bio.read = fr_bio_eof_read;
-	my->bio.write = fr_bio_null_write;
-
 	fr_bio_queue_list_cancel(my);
 	return rcode;
 }
@@ -343,9 +339,6 @@ static void fr_bio_queue_shutdown(fr_bio_t *bio)
 	fr_bio_queue_t *my = talloc_get_type_abort(bio, fr_bio_queue_t);
 
 	fr_bio_queue_list_cancel(my);
-
-	my->bio.read = fr_bio_queue_read;
-	my->bio.write = fr_bio_queue_write_next;
 }
 
 

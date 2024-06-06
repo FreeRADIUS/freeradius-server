@@ -53,8 +53,6 @@ typedef enum {
 	FR_BIO_ERROR_VERIFY,				//!< some packet verification error
 	FR_BIO_ERROR_BUFFER_FULL,      			//!< the buffer is full
 	FR_BIO_ERROR_BUFFER_TOO_SMALL,			//!< the output buffer is too small for the data
-
-	FR_BIO_ERROR_EOF, 		   		//!< at EOF
 } fr_bio_error_type_t;
 
 typedef struct fr_bio_s fr_bio_t;
@@ -143,8 +141,7 @@ static inline CC_HINT(nonnull) fr_bio_t *fr_bio_next(fr_bio_t *bio)
  *  @param size		amount of data to read.
  *  @return
  *	- <0 for error.  The return code will be fr_bio_error(ERROR_NAME)
- *	- 0 for "did not read any data".  Note that EOF is an error return.
- *	- >0 for amount of data read.
+ *	- 0 for "did not read any data".  EOF is a separate signal.
  */
 static inline ssize_t CC_HINT(nonnull(1,3)) fr_bio_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size)
 {

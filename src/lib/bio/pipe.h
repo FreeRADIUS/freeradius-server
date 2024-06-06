@@ -30,5 +30,3 @@ typedef struct {
 } fr_bio_pipe_cb_funcs_t;
 
 fr_bio_t	*fr_bio_pipe_alloc(TALLOC_CTX *ctx, fr_bio_pipe_cb_funcs_t *cb, size_t buffer_size) CC_HINT(nonnull);
-
-void		fr_bio_pipe_set_eof(fr_bio_t *bio);

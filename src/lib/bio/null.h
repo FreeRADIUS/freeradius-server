@@ -26,3 +26,6 @@ RCSIDH(lib_bio_null_h, "$Id$")
 
 ssize_t fr_bio_null_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
 ssize_t fr_bio_null_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
+
+ssize_t fr_bio_fail_read(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
+ssize_t fr_bio_fail_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);

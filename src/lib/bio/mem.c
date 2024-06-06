@@ -58,14 +58,21 @@ static ssize_t fr_bio_mem_read_eof(fr_bio_t *bio, UNUSED void *packet_ctx, void 
 	 *	No more data: return EOF from now on.
 	 */
 	if (fr_bio_buf_used(&my->read_buffer) == 0) {
-		my->bio.read = fr_bio_eof_read;
-		return fr_bio_error(EOF);
+		my->bio.read = fr_bio_null_read;
+		return 0;
 	}
 
 	/*
 	 *	Return whatever data we have available.  One the buffer is empty, the next read will get EOF.
 	 */
 	return fr_bio_buf_read(&my->read_buffer, buffer, size);
+}
+
+static void fr_bio_mem_eof(fr_bio_t *bio)
+{
+	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
+
+	my->bio.read = fr_bio_mem_read_eof;
 }
 
 /** Read from a memory BIO
@@ -262,8 +269,8 @@ static ssize_t fr_bio_mem_read_verify(fr_bio_t *bio, void *packet_ctx, void *buf
 	 *	next one, either.  So shut down the BIO completely.
 	 */
 fail:
-	bio->read = fr_bio_mem_read_eof;
-	bio->write = fr_bio_null_write;
+	bio->read = fr_bio_fail_read;
+	bio->write = fr_bio_fail_write;
 	return rcode;
 }
 
@@ -674,9 +681,6 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 {
 	fr_bio_mem_t *my;
 
-	my = talloc_zero(ctx, fr_bio_mem_t);
-	if (!my) return NULL;
-
 	/*
 	 *	The caller has to state that the API is caching data both ways.
 	 */
@@ -684,6 +688,9 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 		fr_strerror_const("Read size must be non-zero");
 		return NULL;
 	}
+
+	my = talloc_zero(ctx, fr_bio_mem_t);
+	if (!my) return NULL;
 
 	if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) {
 	oom:
@@ -699,6 +706,7 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 	} else {
 		my->bio.write = fr_bio_next_write;
 	}
+	my->priv_cb.eof = fr_bio_mem_eof;
 
 	fr_bio_chain(&my->bio, next);
 
@@ -716,15 +724,18 @@ fr_bio_t *fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t write_size, fr_bio_t *
 {
 	fr_bio_mem_t *my;
 
-	my = talloc_zero(ctx, fr_bio_mem_t);
-	if (!my) return NULL;
-
 	/*
 	 *	The caller has to state that the API is caching data.
 	 */
 	if (!write_size) return NULL;
 
-	if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) return NULL;
+	my = talloc_zero(ctx, fr_bio_mem_t);
+	if (!my) return NULL;
+
+	if (!fr_bio_mem_buf_alloc(my, &my->write_buffer, write_size)) {
+		talloc_free(my);
+		return NULL;
+	}
 
 	my->bio.read = fr_bio_null_read; /* reading FROM this bio is not possible */
 	my->bio.write = fr_bio_mem_write_next;
@@ -781,15 +792,19 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
 {
 	fr_bio_mem_t *my;
 
-	my = talloc_zero(ctx, fr_bio_mem_t);
-	if (!my) return NULL;
-
 	/*
 	 *	The caller has to state that the API is caching data.
 	 */
 	if (!read_size) return NULL;
 
-	if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) return NULL;
+	my = talloc_zero(ctx, fr_bio_mem_t);
+	if (!my) return NULL;
+
+	if (!fr_bio_mem_buf_alloc(my, &my->read_buffer, read_size)) {
+		talloc_free(my);
+		return NULL;
+	}
+
 	my->bio.read = fr_bio_mem_read_buffer;
 	my->bio.write = fr_bio_mem_write_read_buffer; /* the upstream will write to our read buffer */
 

@@ -40,3 +40,21 @@ ssize_t fr_bio_null_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED 
 {
 	return 0;
 }
+
+/** Always return error on read.
+ *
+ */
+ssize_t fr_bio_fail_read(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void *buffer, UNUSED size_t size)
+{
+	fr_strerror_const("BIO is not readable");
+	return fr_bio_error(GENERIC);
+}
+
+/** Always return 0 on write.
+ *
+ */
+ssize_t fr_bio_fail_write(UNUSED fr_bio_t *bio, UNUSED void *packet_ctx, UNUSED void const *buffer, UNUSED size_t size)
+{
+	fr_strerror_const("BIO is not writeable");
+	return fr_bio_error(GENERIC);
+}

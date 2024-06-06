@@ -105,8 +105,20 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	return fr_bio_fd_close(&my->bio);
 }
 
+static void fr_bio_fd_eof(fr_bio_t *bio)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+	bio->read = fr_bio_null_read;
+	bio->write = fr_bio_null_write;
+	my->info.eof = true;
+}
+
 /** Stream read.
  *
+ *	Stream sockets return 0 at EOF.  However, we want to distinguish that from the case of datagram
+ *	sockets, which return 0 when there's no data.  So we return 0 to the caller for "no data", but also
+ *	call the EOF function to tell all of the related BIOs that we're at EOF.
  */
 static ssize_t fr_bio_fd_read_stream(fr_bio_t *bio, UNUSED void *packet_ctx, void *buffer, size_t size)
 {
@@ -117,16 +129,8 @@ static ssize_t fr_bio_fd_read_stream(fr_bio_t *bio, UNUSED void *packet_ctx, voi
 retry:
 	rcode = read(my->info.socket.fd, buffer, size);
 	if (rcode == 0) {
-		/*
-		 *	Stream sockets return 0 at EOF.  However, we want to distinguish that from the case of datagram
-		 *	sockets, which return 0 when there's no data.  So we over-ride the 0 value here, and instead
-		 *	return an EOF error.
-		 */
-		bio->read = fr_bio_eof_read;
-		bio->write = fr_bio_null_write;
-		my->info.eof = true;
-
-		return fr_bio_error(EOF);
+		fr_bio_eof(bio);
+		return 0;
 	}
 
 #include "fd_read.h"
@@ -726,11 +730,11 @@ static int fr_bio_fd_init_file(fr_bio_fd_t *my)
 	switch (my->info.cfg->flags & (O_RDONLY | O_WRONLY | O_RDWR)) {
 	case O_RDONLY:
 		my->bio.read = fr_bio_fd_read_stream;
-		my->bio.write = fr_bio_null_write; /* @todo - error on write? */
+		my->bio.write = fr_bio_fail_write;
 		break;
 
 	case O_WRONLY:
-		my->bio.read = fr_bio_null_read; /* @todo - error on read? */
+		my->bio.read = fr_bio_fail_read;
 		my->bio.write = fr_bio_fd_write;
 		break;
 
@@ -1012,7 +1016,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 			.state = FR_BIO_FD_STATE_CLOSED,
 		};
 
-		my->bio.read = fr_bio_eof_read;
+		my->bio.read = fr_bio_null_read;
 		my->bio.write = fr_bio_null_write;
 	} else {
 		my->info.state = FR_BIO_FD_STATE_CLOSED;
@@ -1022,6 +1026,8 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 			return NULL;
 		}
 	}
+
+	my->priv_cb.eof = fr_bio_fd_eof;
 
 	talloc_set_destructor(my, fr_bio_fd_destructor);
 	return (fr_bio_t *) my;
@@ -1044,8 +1050,8 @@ int fr_bio_fd_close(fr_bio_t *bio)
 	rcode = fr_bio_shutdown(bio);
 	if (rcode < 0) return rcode;
 
-	my->bio.read = fr_bio_eof_read;
-	my->bio.write = fr_bio_null_write;
+	my->bio.read = fr_bio_fail_read;
+	my->bio.write = fr_bio_fail_write;
 
 	/*
 	 *	Shut down the connected socket.  The only errors possible here are things we can't do anything
