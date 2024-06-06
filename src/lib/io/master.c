@@ -2006,10 +2006,11 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 *	It's a connected socket.  Remove it from the
 		 *	parents list of connections, and delete it.
 		 */
-		if (connection) {
+		if (connection && connection->parent) {
 			fr_io_client_t *parent = connection->parent;
 
 			pthread_mutex_lock(&parent->mutex);
+			connection->parent = NULL;
 			if (parent->ht) (void) fr_hash_table_delete(parent->ht, connection);
 			pthread_mutex_unlock(&parent->mutex);
 
@@ -2621,10 +2622,13 @@ static int mod_close(fr_listen_t *li)
 	/*
 	 *	Remove connection from parent hash table
 	 */
-	parent = connection->parent;
-	pthread_mutex_lock(&parent->mutex);
-	if (parent->ht) (void) fr_hash_table_delete(parent->ht, connection);
-	pthread_mutex_unlock(&parent->mutex);
+	if (connection->parent) {
+		parent = connection->parent;
+		pthread_mutex_lock(&parent->mutex);
+		connection->parent = NULL;
+		if (parent->ht) (void) fr_hash_table_delete(parent->ht, connection);
+		pthread_mutex_unlock(&parent->mutex);
+	}
 
 	/*
 	 *	Clean up listener
