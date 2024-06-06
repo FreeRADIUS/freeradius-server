@@ -959,14 +959,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 #endif
 
 	/*
-	 *	Dynamically define where VSAs go.  Note that we CANNOT
-	 *	define VSAs until we define an attribute of type VSA!
-	 */
-	if ((type == FR_TYPE_VSA) && (parent->flags.is_root)) {
-		ctx->dict->vsa_parent = attr;
-	}
-
-	/*
 	 *	Add in an attribute
 	 */
 	if (fr_dict_attr_add(ctx->dict, parent, argv[0], attr, type, &flags) < 0) return -1;
@@ -981,6 +973,19 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	if (!da) {
 		fr_strerror_printf("Failed to find attribute number %u we just added to parent %s.", attr, parent->name);
 		return -1;
+	}
+
+	/*
+	 *	Dynamically define where VSAs go.  Note that we CANNOT
+	 *	define VSAs until we define an attribute of type VSA!
+	 */
+	if (type == FR_TYPE_VSA) {
+		if (parent->flags.is_root) ctx->dict->vsa_parent = attr;
+
+		if (dict_fixup_vsa(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+				   UNCONST(fr_dict_attr_t *, da)) < 0) {
+			return -1;
+		}
 	}
 
 	if (dict_process_ref(ctx, parent, da, ref) < 0) return -1;

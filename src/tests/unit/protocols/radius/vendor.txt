@@ -145,5 +145,14 @@ match 1a d8 00 00 39 e7 42 d2 ee 96 71 b2 0c 85 02 62 68 3e 7f 5c 78 6c fa f3 a9
 decode-pair -
 match  Vendor-Specific = { Aruba = { MPSK-Lookup-Info = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxy" } }
 
+#
+#  Known vendors in the extended ID space
+#
+encode-pair raw.241.26.6527.38 = 0xabcdef
+match f1 0b 1a 00 00 19 7f 26 ab cd ef
+
+decode-pair -
+match Extended-Attribute-1 = { Extended-Vendor-Specific-1 = { Nokia-SR = { raw.38 = 0xabcdef } } }
+
 count
-match 70
+match 74

@@ -35,6 +35,7 @@ typedef struct {
 	fr_dlist_head_t		enumv;		//!< Raw enumeration values to add.
 	fr_dlist_head_t		group;		//!< Group references to resolve.
 	fr_dlist_head_t		clone;		//!< Clone operation to apply.
+	fr_dlist_head_t		vsa;		//!< VSAs to add vendors for
 } dict_fixup_ctx_t;
 
 int	dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
@@ -49,6 +50,9 @@ int	dict_fixup_group(dict_fixup_ctx_t *fctx, char const *filename, int line,
 int	dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 			 fr_dict_attr_t *parent, fr_dict_attr_t *da,
 			 char const *ref, size_t ref_len);
+
+int	dict_fixup_vsa(dict_fixup_ctx_t *fctx, char const *filename, int line,
+			 fr_dict_attr_t *da);
 
 int	dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx);
 

@@ -72,6 +72,16 @@ typedef struct {
 	char 			*ref;			//!< the target attribute to clone
 } dict_fixup_clone_t;
 
+/** Run fixup callbacks for a VSA
+ *
+ */
+typedef struct {
+	dict_fixup_common_t	common;			//!< Common fields.
+
+	fr_dict_attr_t		*da;			//!< FR_TYPE_VSA to fix
+} dict_fixup_vsa_t;
+
+
 /** Dictionary attribute namespaces need their hash tables finalised
  *
  */
@@ -586,6 +596,68 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	return 0;
 }
 
+/** Push a fixup for a VSA.
+ *
+ *  This is required so that we can define VENDORs for all VSAs, even
+ *  if the dictionary doesn't contain VENDOR children for that VSA.
+ *  This fixup means that we can define VENDORs elsewhere, and then
+ *  use them in all VSA definitions.  It means that we don't have to
+ *  do these lookups at run-time.
+ *
+ * @param[in] fctx		Holds current dictionary parsing information.
+ * @param[in] filename		this fixup relates to.
+ * @param[in] line		this fixup relates to.
+ * @param[in] da		The group dictionary attribute.
+ * @return
+ *	- 0 on success.
+ *	- -1 on out of memory.
+ */
+int dict_fixup_vsa(dict_fixup_ctx_t *fctx, char const *filename, int line,
+		   fr_dict_attr_t *da)
+{
+	dict_fixup_vsa_t *fixup;
+
+	fixup = talloc(fctx->pool, dict_fixup_vsa_t);
+	if (!fixup) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+	*fixup = (dict_fixup_vsa_t) {
+		.da = da,
+	};
+
+	return dict_fixup_common(filename, line, &fctx->vsa, &fixup->common);
+}
+
+/** Run VSA fixups
+ *
+ * @param[in] fctx		Holds current dictionary parsing information.
+ * @param[in] fixup		entry for fixup
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline CC_HINT(always_inline) int dict_fixup_vsa_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_vsa_t *fixup)
+{
+	fr_dict_vendor_t *dv;
+	fr_dict_t *dict = fr_dict_unconst(fr_dict_by_da(fixup->da));
+	fr_hash_iter_t iter;
+
+	if (!dict->vendors_by_num) return 0;
+
+	for (dv = fr_hash_table_iter_init(dict->vendors_by_num, &iter);
+	     dv;
+	     dv = fr_hash_table_iter_next(dict->vendors_by_num, &iter)) {
+		if (dict_attr_child_by_num(fixup->da, dv->pen)) continue;
+
+		if (fr_dict_attr_add(dict, fixup->da, dv->name, dv->pen, FR_TYPE_VENDOR, &(fr_dict_attr_flags_t) {}) < 0) return -1;
+	}
+
+	return 0;
+}
+
+
+
 /** Initialise a fixup ctx
  *
  * @param[in] ctx	to allocate the fixup pool in.
@@ -601,6 +673,7 @@ int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
 	fr_dlist_talloc_init(&fctx->enumv, dict_fixup_enumv_t, common.entry);
 	fr_dlist_talloc_init(&fctx->group, dict_fixup_group_t, common.entry);
 	fr_dlist_talloc_init(&fctx->clone, dict_fixup_clone_t, common.entry);
+	fr_dlist_talloc_init(&fctx->vsa, dict_fixup_vsa_t, common.entry);
 
 	fctx->pool = talloc_pool(ctx, DICT_FIXUP_POOL_SIZE);
 	if (!fctx->pool) return -1;
@@ -636,6 +709,7 @@ do { \
 	APPLY_FIXUP(fctx, enumv, dict_fixup_enumv_apply, dict_fixup_enumv_t);
 	APPLY_FIXUP(fctx, group, dict_fixup_group_apply, dict_fixup_group_t);
 	APPLY_FIXUP(fctx, clone, dict_fixup_clone_apply, dict_fixup_clone_t);
+	APPLY_FIXUP(fctx, vsa,   dict_fixup_vsa_apply,   dict_fixup_vsa_t);
 
 	TALLOC_FREE(fctx->pool);
 
