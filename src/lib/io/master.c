@@ -147,6 +147,7 @@ struct fr_io_connection_s {
 
 	bool				dead;		//!< roundabout way to get the network side to close a socket
 	bool				paused;		//!< event filter doesn't like resuming something that isn't paused
+	bool				in_parent_hash;	//!< for tracking thread issues
 	fr_event_list_t			*el;		//!< event list for this connection
 	fr_network_t			*nr;		//!< network for this connection
 };
@@ -802,6 +803,7 @@ static fr_io_connection_t *fr_io_connection_alloc(fr_io_instance_t const *inst,
 		if (nak) (void) fr_hash_table_delete(client->ht, nak);
 		ret = fr_hash_table_insert(client->ht, connection);
 		client->ready_to_delete = false;
+		connection->in_parent_hash = true;
 
 		if (!ret) {
 			pthread_mutex_unlock(&client->mutex);
@@ -2006,13 +2008,13 @@ static void client_expiry_timer(fr_event_list_t *el, fr_time_t now, void *uctx)
 		 *	It's a connected socket.  Remove it from the
 		 *	parents list of connections, and delete it.
 		 */
-		if (connection && connection->parent) {
-			fr_io_client_t *parent = connection->parent;
-
-			pthread_mutex_lock(&parent->mutex);
-			connection->parent = NULL;
-			if (parent->ht) (void) fr_hash_table_delete(parent->ht, connection);
-			pthread_mutex_unlock(&parent->mutex);
+		if (connection) {
+			pthread_mutex_lock(&connection->parent->mutex);
+			if (connection->in_parent_hash) {
+				connection->in_parent_hash = false;
+				(void) fr_hash_table_delete(connection->parent->ht, connection);
+			}
+			pthread_mutex_unlock(&connection->parent->mutex);
 
 			/*
 			 *	Mark the connection as dead, and tell
@@ -2594,7 +2596,6 @@ static int mod_close(fr_listen_t *li)
 	fr_io_instance_t const *inst;
 	fr_io_connection_t *connection;
 	fr_listen_t *child;
-	fr_io_client_t *parent;
 
 	get_inst(li, &inst, NULL, &connection, &child);
 
@@ -2622,13 +2623,12 @@ static int mod_close(fr_listen_t *li)
 	/*
 	 *	Remove connection from parent hash table
 	 */
-	if (connection->parent) {
-		parent = connection->parent;
-		pthread_mutex_lock(&parent->mutex);
-		connection->parent = NULL;
-		if (parent->ht) (void) fr_hash_table_delete(parent->ht, connection);
-		pthread_mutex_unlock(&parent->mutex);
+	pthread_mutex_lock(&connection->parent->mutex);
+	if (connection->in_parent_hash) {
+		connection->in_parent_hash = false;
+		(void) fr_hash_table_delete(connection->parent->ht, connection);
 	}
+	pthread_mutex_unlock(&connection->parent->mutex);
 
 	/*
 	 *	Clean up listener
