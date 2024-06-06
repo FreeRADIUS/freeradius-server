@@ -29,8 +29,6 @@
 
 #include "base.h"
 
-// static int fr_curl_xlat_refs = 0;
-
 xlat_arg_parser_t const fr_curl_xlat_uri_args[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
