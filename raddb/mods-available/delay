@@ -15,7 +15,22 @@
 #  instead possible to have a policy that delays the response.
 #
 #  TIP: The module can also be used to introduce artificial jitter into
-#  responses.
+#  responses by adding random delays.
+#
+#  ## xlat for delays
+#
+#  The module also registers an xlat function for delays
+#
+#  %delay(...)
+#
+#  This function takes a time-delta argument (or data which is converted to a time-delta), and will delay the given number of seconds.
+#
+#  .Example
+#
+#  ```
+#  %delay(0.2s)
+#  ```
+
 #
 
 #
