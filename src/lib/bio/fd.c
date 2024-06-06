@@ -100,6 +100,8 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	fr_assert(!fr_bio_prev(&my->bio));
 	fr_assert(!fr_bio_next(&my->bio));
 
+	if (!my->info.eof && my->cb.eof) my->cb.eof(&my->bio);
+
 	if (my->cb.shutdown) my->cb.shutdown(&my->bio);
 
 	return fr_bio_fd_close(&my->bio);
@@ -130,6 +132,7 @@ retry:
 	rcode = read(my->info.socket.fd, buffer, size);
 	if (rcode == 0) {
 		fr_bio_eof(bio);
+		if (my->cb.eof) my->cb.eof(&my->bio); /* inform the application that we're at EOF */
 		return 0;
 	}
 

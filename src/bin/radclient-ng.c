@@ -1099,9 +1099,18 @@ static int client_bio_write_resume(fr_bio_packet_t *bio)
 
 
 static NEVER_RETURNS void client_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
-				       int fd_errno, UNUSED void *uctx)
+				       int fd_errno, void *uctx)
 {
+	fr_bio_packet_t *client = uctx;
+
 	ERROR("Failed in connection - %s", fr_syserror(fd_errno));
+
+	/*
+	 *	Cleanly close the BIO, so that we exercise the shutdown path.
+	 */
+	fr_assert(client == client_bio);
+	TALLOC_FREE(client_bio);
+
 	fr_exit_now(1);
 }
 

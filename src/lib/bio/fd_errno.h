@@ -27,6 +27,26 @@ case EAGAIN:
 	}
 	return fr_bio_error(IO_WOULD_BLOCK);
 
+#ifndef NDEBUG
+case ENOTCONN:
+	/*
+	 *	We're doing a read/write to a socket which isn't connected.  This is a failure of the
+	 *	application state machine.
+	 */
+	fr_assert(0);
+	break;
+#endif
+
+case ECONNRESET:
+case EPIPE:
+	/*
+	 *	The other end closed the connection, signal the application that it's a (maybe) clean close,
+	 *	and set EOF on the BIO.
+	 */
+	fr_bio_eof(&my->bio);
+	if (my->cb.eof) my->cb.eof(&my->bio); /* inform the application that we're at EOF */
+	return 0;
+
 default:
 	/*
 	 *	Some other error, it's fatal.

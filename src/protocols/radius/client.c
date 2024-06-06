@@ -623,6 +623,13 @@ int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
 	return fr_radius_code_id_force(my->codes, code, id);
 }
 
+static void fr_radius_client_bio_eof(fr_bio_t *bio)
+{
+	fr_radius_client_fd_bio_t *my = bio->uctx;
+
+	if (my->common.cb.eof) my->common.cb.eof(&my->common);
+}
+
 /** Callback for when the FD is activated, i.e. connected.
  *
  */
@@ -633,8 +640,6 @@ static void fr_radius_client_bio_activate(fr_bio_t *bio)
 	fr_assert(!my->info.connected);
 
 	my->info.connected = true;
-
-	fr_assert(0);
 }
 
 void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSED int fd, UNUSED int flags, void *uctx)
@@ -782,7 +787,12 @@ void fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t 
 
 	my->common.cb = *cb;
 
-	fr_bio_cb_set(my->fd, &bio_cb);
 	fr_bio_cb_set(my->mem, &bio_cb);
 	fr_bio_cb_set(my->retry, &bio_cb);
+
+	/*
+	 *	Only the FD bio gets an EOF callback.
+	 */
+	bio_cb.eof = fr_radius_client_bio_eof;
+	fr_bio_cb_set(my->fd, &bio_cb);
 }
