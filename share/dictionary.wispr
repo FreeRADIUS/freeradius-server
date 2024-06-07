@@ -37,5 +37,6 @@ ATTRIBUTE	WBA-Financial-Clearing-Provider		13	string
 ATTRIBUTE	WBA-Data-Clearing-Provider		14	string
 ATTRIBUTE	WBA-Linear-Volume-Rate			15	octets
 ATTRIBUTE	WBA-Identity-Provider			16	string
+ATTRIBUTE	WBA-Custom-SLA			17	string
 
 END-VENDOR	WISPr
