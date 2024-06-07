@@ -562,8 +562,8 @@ module_rlm_t rlm_unix = {
 	},
 	.bindings = (module_method_binding_t[]){
 		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting },
-		{ .section = SECTION_NAME("recv", "access-request"), .method = mod_authorize },
-		{ .section = SECTION_NAME("send", "accounting-response"), .method = mod_accounting },	/* Backwards compatibility */
+		{ .section = SECTION_NAME("recv", "Access-Request"), .method = mod_authorize },
+		{ .section = SECTION_NAME("send", "Accounting-Response"), .method = mod_accounting },	/* Backwards compatibility */
 		MODULE_BINDING_TERMINATOR
 	}
 };
