@@ -743,7 +743,8 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 
 		if (fr_sbuff_is_char(&our_name, '.')) {
 			fr_sbuff_advance(&our_name, 1);
-			if (fr_sbuff_out_bstrncpy_until(elem2, &our_name, SIZE_MAX, elem_tt, NULL) < 0) {
+			if (fr_sbuff_out_bstrncpy_until(elem2, &our_name, SIZE_MAX,
+							elem_tt, NULL) == MODULE_INSTANCE_LEN_MAX) {
 				fr_strerror_const("Module method string too long");
 				goto error;
 			}
