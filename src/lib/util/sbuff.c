@@ -438,6 +438,7 @@ int fr_sbuff_reset_talloc(fr_sbuff_t *sbuff)
 	CHECK_SBUFF_INIT(sbuff);
 
 	fr_sbuff_set_to_start(sbuff);	/* Clear data */
+	sbuff->m = NULL;		/* Remove any maker references */
 
 	if (fr_sbuff_used(sbuff) != tctx->init) {
 		char *new_buff;
