@@ -24,11 +24,11 @@
  * @copyright 2016 The FreeRADIUS server project
  * @copyright 2016 Matthew Newton (matthew@newtoncomputing.co.uk)
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/unlang/call_env.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/debug.h>
 
@@ -438,8 +438,7 @@ static const call_env_method_t winbind_autz_method_env = {
 };
 
 static int domain_call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-				 UNUSED char const *section_name1, UNUSED char const *section_name2,
-				 UNUSED void const *data, UNUSED call_env_parser_t const *rule)
+				 UNUSED call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	CONF_PAIR const			*to_parse = cf_item_to_pair(ci);
 	tmpl_t				*parsed_tmpl = NULL;

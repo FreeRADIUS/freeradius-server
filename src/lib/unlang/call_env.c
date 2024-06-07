@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/tmpl.h>
 #include <freeradius-devel/server/request.h>
+#include <freeradius-devel/server/section.h>
 #include <freeradius-devel/unlang/tmpl.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/interpret.h>
@@ -52,6 +53,12 @@ struct call_env_parsed_s {
 	call_env_parser_t const		*rule;		//!< Used to produce this.
 };
 FR_DLIST_FUNCS(call_env_parsed, call_env_parsed_t, entry)
+
+#if defined(DEBUG_CALL_ENV)
+#  define CALL_ENV_DEBUG(_ci, fmt, ...) cf_log_debug(_ci, fmt, ##__VA_ARGS__)
+#else
+#  define CALL_ENV_DEBUG(_ci, ...)
+#endif
 
 /** Parse the result of call_env tmpl expansion
  */
@@ -358,15 +365,14 @@ int call_env_parsed_valid(call_env_parsed_t const *parsed, CONF_ITEM const *ci, 
  * @param[out] out		Where to write the result of parsing.
  * @param[in] t_rules		we're parsing attributes with.  Contains the default dictionary and nested 'caller' tmpl_rules_t.
  * @param[in] ci		The #CONF_SECTION or #CONF_PAIR to parse.
- * @param[in] data		module / xlat instance data of the module / xlat allocating this call_env
+ * @param[in] cec		information about the call.
  * @param[in] rule		Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
 int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			UNUSED char const *section_name1, UNUSED char const *section_name2,
-			UNUSED void const *data, UNUSED call_env_parser_t const *rule)
+			UNUSED call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	CONF_PAIR const	*to_parse = cf_item_to_pair(ci);
 	tmpl_t		*parsed_tmpl;
@@ -394,47 +400,52 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
  * @param[in] name		Module name for error messages.
  * @param[in] t_rules		controlling how the call env is parsed.
  * @param[in] cs		Module config.
- * @param[in] section_name1	Name 1 from calling section for module calls
- * @param[in] section_name2	Name 2 from calling section for module calls
- * @param[in] data		module / xlat instance data of the module / xlat allocating this call_env
+ * @param[in] cec		information about the call.
  * @param[in] rule		to parse.
  * @return
  *	- 0 on success;
  *	- <0 on failure;
  */
 static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char const *name, tmpl_rules_t const *t_rules,
-			  CONF_SECTION const *cs, char const *section_name1, char const *section_name2,
-			  void const *data, call_env_parser_t const *rule) {
+			  CONF_SECTION const *cs,
+			  call_env_ctx_t const *cec, call_env_parser_t const *rule) {
 	CONF_PAIR const		*cp, *next;
 	call_env_parsed_t	*call_env_parsed = NULL;
 	ssize_t			count, multi_index;
+	call_env_parser_t const	*rule_p = rule;
 
-	while (rule->name) {
-		if (call_env_is_subsection(rule->flags)) {
+	while (rule_p->name) {
+		CALL_ENV_DEBUG(cs, "%s: Parsing call env data for %s", name, section_name_str(rule_p->name));
+
+		if (call_env_is_subsection(rule_p->flags)) {
 			CONF_SECTION const *subcs;
-			subcs = cf_section_find(cs, rule->name, rule->section.ident2);
-			if (!subcs && !call_env_parse_missing(rule->flags)) {
-				if (!call_env_required(rule->flags)) goto next;
-				cf_log_err(cs, "Module %s missing required section \"%s\"", name, rule->name);
+			subcs = cf_section_find(cs, rule_p->name, rule_p->section.name2);
+			if (!subcs && !call_env_parse_missing(rule_p->flags)) {
+				if (!call_env_required(rule_p->flags)) goto next;
+				cf_log_err(cs, "Module %s missing required section \"%s\"", name, rule_p->name);
 				return -1;
 			}
 
 			/*
 			 *	Hand off to custom parsing function if there is one...
 			 */
-			if (rule->section.func) {
+			if (rule_p->section.func) {
 				/*
 				 *	Record our position so we can process any new entries
 				 *	after the callback returns.
 				 */
 				call_env_parsed_t *last = call_env_parsed_tail(parsed);
 
-				if (rule->section.func(ctx, parsed, t_rules, cf_section_to_item(subcs), section_name1,
-						       section_name2, data, rule) < 0) {
-					cf_log_perr(cs, "Failed parsing configuration section %s", rule->name);
+				CALL_ENV_DEBUG(cs, "%s: Calling subsection callback %p", name, rule_p->section.func);
+
+				if (rule_p->section.func(ctx, parsed, t_rules, cf_section_to_item(subcs), cec, rule_p) < 0) {
+					cf_log_perr(cs, "Failed parsing configuration section %s", rule_p->name);
 					talloc_free(call_env_parsed);
 					return -1;
 				}
+
+				CALL_ENV_DEBUG(subcs, "%s: Callback returned %u parsed call envs", name,
+					       call_env_parsed_num_elements(parsed));
 
 				/*
 				 *	We _could_ fix up count and multi_index on behalf of
@@ -443,25 +454,28 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 				 */
 				call_env_parsed = last;
 				while ((call_env_parsed = call_env_parsed_next(parsed, call_env_parsed))) {
-					if (call_env_parsed_valid(call_env_parsed, cf_section_to_item(subcs), rule) < 0) {
-						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s", rule->name);
+					CALL_ENV_DEBUG(subcs, "%s: Checking parsed env", name, rule_p->section.func);
+					if (call_env_parsed_valid(call_env_parsed, cf_section_to_item(subcs), rule_p) < 0) {
+						cf_log_err(cf_section_to_item(subcs), "Invalid data produced by %s", rule_p->name);
 						return -1;
 					}
 				}
 				goto next;
 			}
 
-			if (call_env_parse(ctx, parsed, name, t_rules, subcs, section_name1, section_name2,
-					   data, rule->section.subcs) < 0) return -1;
+			if (call_env_parse(ctx, parsed, name, t_rules, subcs, cec, rule_p->section.subcs) < 0) {
+				CALL_ENV_DEBUG(cs, "%s: Recursive call failed", name, rule_p->name);
+				return -1;
+			}
 			goto next;
 		}
 
-		cp = cf_pair_find(cs, rule->name);
+		cp = cf_pair_find(cs, rule_p->name);
 
-		if (!cp && !rule->pair.dflt) {
-			if (!call_env_required(rule->flags)) goto next;
+		if (!cp && !rule_p->pair.dflt) {
+			if (!call_env_required(rule_p->flags)) goto next;
 
-			cf_log_err(cs, "Missing required config item '%s'", rule->name);
+			cf_log_err(cs, "Missing required config item '%s'", rule_p->name);
 			return -1;
 		}
 
@@ -469,32 +483,32 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 		 *	Check for additional conf pairs and error
 		 *	if there is one and multi is not allowed.
 		 */
-		if (!call_env_multi(rule->flags) && ((next = cf_pair_find_next(cs, cp, rule->name)))) {
-			cf_log_err(cf_pair_to_item(next), "Invalid duplicate configuration item '%s'", rule->name);
+		if (!call_env_multi(rule_p->flags) && ((next = cf_pair_find_next(cs, cp, rule_p->name)))) {
+			cf_log_err(cf_pair_to_item(next), "Invalid duplicate configuration item '%s'", rule_p->name);
 			return -1;
 		}
 
-		count = cf_pair_count(cs, rule->name);
+		count = cf_pair_count(cs, rule_p->name);
 		if (count == 0) count = 1;
 
 		for (multi_index = 0; multi_index < count; multi_index++) {
 			CONF_PAIR		*tmp_cp = NULL;
 			CONF_PAIR const		*to_parse;
 			tmpl_rules_t		our_rules = {};
-			fr_type_t 		type = rule->pair.cast_type;
-			call_env_parse_pair_t	func = rule->pair.func ? rule->pair.func : call_env_parse_pair;
+			fr_type_t 		type = rule_p->pair.cast_type;
+			call_env_parse_pair_t	func = rule_p->pair.func ? rule_p->pair.func : call_env_parse_pair;
 
 			if (t_rules) {
 				our_rules.parent = t_rules->parent;
 				our_rules.attr.dict_def = t_rules->attr.dict_def;
-				our_rules.escape = rule->pair.escape;	/* Escape rules will now get embedded in the tmpl_t and used at evaluation */
+				our_rules.escape = rule_p->pair.escape;	/* Escape rules will now get embedded in the tmpl_t and used at evaluation */
 			}
 
 			our_rules.attr.list_def = request_attr_request;
 			our_rules.cast = ((type == FR_TYPE_VOID) ? FR_TYPE_NULL : type);
-			our_rules.literals_safe_for = rule->pair.literals_safe_for;
+			our_rules.literals_safe_for = rule_p->pair.literals_safe_for;
 
-			call_env_parsed = call_env_parsed_alloc(ctx, rule);
+			call_env_parsed = call_env_parsed_alloc(ctx, rule_p);
 			call_env_parsed->count = count;
 			call_env_parsed->multi_index = multi_index;
 
@@ -505,18 +519,18 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			 *	we can't do that here.
 			 */
 			if (cp) {
-				if (call_env_force_quote(rule->flags)) {
+				if (call_env_force_quote(rule_p->flags)) {
 					to_parse = tmp_cp = cf_pair_alloc(NULL,
 							       		  cf_pair_attr(cp), cf_pair_value(cp), cf_pair_operator(cp),
 									  cf_pair_attr_quote(cp),
-									  call_env_force_quote(rule->flags) ? rule->pair.dflt_quote : cf_pair_value_quote(cp));
+									  call_env_force_quote(rule_p->flags) ? rule_p->pair.dflt_quote : cf_pair_value_quote(cp));
 				} else {
 					to_parse = cp;
 				}
 			} else {
 				to_parse = tmp_cp = cf_pair_alloc(NULL,
-								  rule->name, rule->pair.dflt, T_OP_EQ,
-								  T_BARE_WORD, rule->pair.dflt_quote);
+								  rule_p->name, rule_p->pair.dflt, T_OP_EQ,
+								  T_BARE_WORD, rule_p->pair.dflt_quote);
 			}
 
 			/*
@@ -524,9 +538,9 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			 *	would, or produce a custom structure, which will be copied into the
 			 *	result structure.
 			 */
-			if (unlikely(func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), section_name1, section_name2, data, rule) < 0)) {
+			if (unlikely(func(ctx, &call_env_parsed->data, &our_rules, cf_pair_to_item(to_parse), cec, rule_p) < 0)) {
 			error:
-				cf_log_perr(to_parse, "Failed to parse configuration item '%s = %s'", rule->name, cf_pair_value(to_parse));
+				cf_log_perr(to_parse, "Failed to parse configuration item '%s = %s'", rule_p->name, cf_pair_value(to_parse));
 				talloc_free(call_env_parsed);
 				talloc_free(tmp_cp);
 				return -1;
@@ -539,16 +553,18 @@ static int call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *parsed, char 
 			/*
 			 *	Ensure only valid data is produced.
 			 */
-			if (call_env_parsed_valid(call_env_parsed, cf_pair_to_item(to_parse), rule) < 0) goto error;
+			if (call_env_parsed_valid(call_env_parsed, cf_pair_to_item(to_parse), rule_p) < 0) goto error;
 
 			call_env_parsed_insert_tail(parsed, call_env_parsed);
 		next_pair:
 			talloc_free(tmp_cp);
-			cp = cf_pair_find_next(cs, cp, rule->name);
+			cp = cf_pair_find_next(cs, cp, rule_p->name);
 		}
 	next:
-		rule++;
+		rule_p++;
 	}
+
+	CALL_ENV_DEBUG(cs, "Returning afer processing %u rules", (unsigned int)(rule_p - rule));
 
 	return 0;
 }
@@ -572,7 +588,7 @@ static size_t call_env_count(size_t *names_len, CONF_SECTION const *cs, call_env
 	while (call_env->name) {
 		if (call_env_is_subsection(call_env->flags)) {
 			CONF_SECTION const *subcs;
-			subcs = cf_section_find(cs, call_env->name, call_env->section.ident2);
+			subcs = cf_section_find(cs, call_env->name, call_env->section.name2);
 			if (!subcs) goto next;
 
 			/*
@@ -710,14 +726,13 @@ void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr
  * @param[in] call_env_method	containing the call_env_pair_t to evaluate against the specified CONF_SECTION.
  * @param[in] t_rules		that control how call_env_pair_t are parsed.
  * @param[in] cs		to parse in the context of the call.
- * @param[in] data		module / xlat instance data of the module / xlat allocating this call_env
+ * @param[in] cec		information about how the call is being made.
  * @return
  *	- A new call_env_t on success.
  * 	- NULL on failure.
  */
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
-			   tmpl_rules_t const *t_rules, CONF_SECTION *cs, char const *section_name1,
-			   char const *section_name2, void const *data)
+			   tmpl_rules_t const *t_rules, CONF_SECTION *cs, call_env_ctx_t const *cec)
 {
 	unsigned int	count;
 	size_t		names_len;
@@ -747,8 +762,7 @@ call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t 
 	MEM(call_env = talloc_pooled_object(ctx, call_env_t, count * 4, (sizeof(call_env_parser_t) + sizeof(tmpl_t)) * count + names_len * 2));
 	call_env->method = call_env_method;
 	call_env_parsed_init(&call_env->parsed);
-	if (call_env_parse(call_env, &call_env->parsed, name, t_rules, cs, section_name1, section_name2,
-			   data, call_env_method->env) < 0) {
+	if (call_env_parse(call_env, &call_env->parsed, name, t_rules, cs, cec, call_env_method->env) < 0) {
 		talloc_free(call_env);
 		return NULL;
 	}

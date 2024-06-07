@@ -22,14 +22,25 @@
  *
  * @copyright 2023 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-
 RCSID("$Id$")
+
+#include <talloc.h>
 
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_redundant.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/unlang/xlat_priv.h>
+
+#include <freeradius-devel/server/cf_util.h>
+#include <freeradius-devel/server/module.h>
+#include <freeradius-devel/server/module_rlm.h>
+#include <freeradius-devel/unlang/xlat.h>
+
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/rand.h>
+#include <freeradius-devel/util/rb.h>
+#include <freeradius-devel/util/sbuff.h>
+
 
 /*
  *	Internal redundant handler for xlats
@@ -50,7 +61,7 @@ typedef enum {
 
 typedef struct {
 	fr_dlist_t			entry;		//!< Entry in the redundant function list.
-	xlat_t				*func;		//!< Resolved xlat function.
+	xlat_t const			*func;		//!< Resolved xlat function.
 } xlat_redundant_func_t;
 
 typedef struct {
@@ -193,7 +204,7 @@ static xlat_action_t xlat_redundant(TALLOC_CTX *ctx, fr_dcursor_t *out,
  * @param[in] args	Arguments to the function.  Will be copied,
  *			and freed when the new xlat node is freed.
  */
-static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t *func, xlat_exp_head_t const *args)
+static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat_exp_head_t const *args)
 {
 	xlat_exp_t *node;
 
@@ -311,6 +322,16 @@ static xlat_arg_parser_t const xlat_redundant_args[] = {
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
+static inline CC_HINT(always_inline)
+void xlat_redundant_add_xlat(xlat_redundant_t *xr, xlat_t const *x)
+{
+	xlat_redundant_func_t *xrf;
+
+	MEM(xrf = talloc_zero(xr, xlat_redundant_func_t));
+	xrf->func = x;
+	fr_dlist_insert_tail(&xr->funcs, xrf);
+}
+
 /** Registers a redundant xlat
  *
  * These xlats wrap the xlat methods of the modules in a redundant section,
@@ -330,18 +351,18 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	};
 	static size_t xlat_redundant_type_table_len = NUM_ELEMENTS(xlat_redundant_type_table);
 
-	char const		*name1, *name2;
+	char const		*name1;
 	xlat_redundant_type_t	xr_type;
 	xlat_redundant_t	*xr;
-	xlat_func_flags_t	flags = XLAT_FUNC_FLAG_NONE;
-	bool			can_be_pure = false;
+	xlat_func_flags_t	default_flags;
 	xlat_arg_parser_t const *args = NULL;
 
 	fr_type_t		return_type = FR_TYPE_NULL;
-	bool			first = true;
 
-	xlat_t			*xlat;
 	CONF_ITEM		*ci = NULL;
+	int			children = 0, i;
+	module_instance_t	**mri_arr;		/* Temporary array of module instances */
+	module_instance_t	**mri_p;
 
 	name1 = cf_section_name1(cs);
 	xr_type = fr_table_value_by_str(xlat_redundant_type_table, name1, XLAT_REDUNDANT_INVALID);
@@ -351,110 +372,199 @@ int xlat_register_redundant(CONF_SECTION *cs)
 		return -1;
 
 	case XLAT_REDUNDANT:
-		can_be_pure = true;	/* Can be pure */
+		default_flags = XLAT_FUNC_FLAG_PURE;	/* Can be pure */
 		break;
 
 	case XLAT_LOAD_BALANCE:
-		can_be_pure = false;	/* Can never be pure because of random selection */
+		default_flags = XLAT_FUNC_FLAG_NONE;	/* Can never be pure because of random selection */
 		break;
 
 	case XLAT_REDUNDANT_LOAD_BALANCE:
-		can_be_pure = false;	/* Can never be pure because of random selection */
+		default_flags = XLAT_FUNC_FLAG_NONE;	/* Can never be pure because of random selection */
 		break;
 	}
 
-	name2 = cf_section_name2(cs);
-	if (xlat_func_find(name2, talloc_array_length(name2) - 1)) {
-		cf_log_err(cs, "An expansion is already registered for this name");
+	/*
+	 *	Count the children
+	 */
+	while ((ci = cf_item_next(cs, ci))) {
+		if (!cf_item_is_pair(ci)) continue;
+
+		children++;
+	}
+
+	/*
+	 *	There must be at least one child.
+	 *
+	 *	It's useful to allow a redundant section with
+	 *	only one child, for debugging.
+	 */
+	if (children == 0) {
+		cf_log_err(cs, "%s %s { ... } section must contain at least one module",
+			   cf_section_name1(cs), cf_section_name2(cs));
 		return -1;
 	}
 
-	MEM(xr = talloc_zero(cs, xlat_redundant_t));
-	xr->type = xr_type;
-	xr->cs = cs;
-	fr_dlist_talloc_init(&xr->funcs, xlat_redundant_func_t, entry);
-
 	/*
-	 *	Count the number of children for load-balance, and
-	 *	also find out a little bit more about the old xlats.
-	 *
-	 *	These are just preemptive checks, the majority of
-	 *	the work is done when a redundant xlat is
-	 *	instantiated.  There we create an xlat node for
-	 *	each of the children of the section.
+	 *	Resolve all the modules in the redundant section.
 	 */
-	while ((ci = cf_item_next(cs, ci))) {
-		xlat_redundant_func_t	*xrf;
-		char const		*mod_func_name;
-		xlat_t			*mod_func;
+	MEM(mri_arr = talloc_array(NULL, module_instance_t *, children));
+	for (ci = cf_item_next(cs, NULL), i = 0;
+	     ci;
+	     ci = cf_item_next(cs, ci), i++) {
+		char const *name;
 
 		if (!cf_item_is_pair(ci)) continue;
 
-		mod_func_name = cf_pair_attr(cf_item_to_pair(ci));
+		name = cf_pair_attr(cf_item_to_pair(ci));
 
-		/*
-		 *	This is ok, it just means the module
-		 *	doesn't have an xlat method.
-		 *
-		 *	If there are ordering issues we could
-		 *	move this check to the instantiation
-		 *	function.
-		 */
-		mod_func = xlat_func_find(mod_func_name, talloc_array_length(mod_func_name) - 1);
-		if (!mod_func) {
-			talloc_free(xr);
-			return 1;
+		mri_arr[i] = module_rlm_static_by_name(NULL, name);
+		if (!mri_arr[i]) {
+			cf_log_err(ci, "Module '%s' not found.  Referenced in %s %s { ... } section",
+				   name, cf_section_name1(cs), cf_section_name2(cs));
+		error:
+			talloc_free(mri_arr);
+			return -1;
 		}
-
-		if (!args) {
-			args = mod_func->args;
-		} else {
-			fr_assert(args == mod_func->args);
-		}
-
-		/*
-		 *	Degrade to a void return type if
-		 *	we have mixed types in a redundant
-		 *	section.
-		 */
-		if (!first) {
-			if (mod_func->return_type != return_type) return_type = FR_TYPE_VOID;
-		} else {
-			return_type = mod_func->return_type;
-			first = false;
-		}
-
-		MEM(xrf = talloc_zero(xr, xlat_redundant_func_t));
-		xrf->func = mod_func;
-		fr_dlist_insert_tail(&xr->funcs, xrf);
-
-		/*
-		 *	Figure out pure status.  If any of
-		 *	the children are un-pure then the
-		 *	whole redundant xlat is un-pure,
-		 *	same with async.
-		 */
-		if (can_be_pure && mod_func->flags.pure) flags |= XLAT_FUNC_FLAG_PURE;
 	}
 
 	/*
-	 *	At least one module xlat has to exist.
+	 *	Iterate over the xlats registered for the
+	 *	first module, verifying that the other
+	 *	module instances have all registered the
+	 *	similarly named xlat functions.
+	 *
+	 *	We ignore any xlat functions that aren't
+	 *	available in all the modules.
 	 */
-	if (!fr_dlist_num_elements(&xr->funcs)) {
-		talloc_free(xr);
-		return 1;
+	{
+		fr_rb_iter_inorder_t		iter;
+		fr_sbuff_t			*name;
+		fr_sbuff_marker_t		name_start;
+		xlat_t				*xlat;
+		module_rlm_xlat_t const		*mrx;
+		module_rlm_instance_t		*mri;
+
+		FR_SBUFF_TALLOC_THREAD_LOCAL(&name, 128, SIZE_MAX);
+
+		/*
+		 *	Prepopulate the name buffer with  <section_name2>.
+		 *	as every function wil be registered with this
+		 *	prefix.
+		 */
+		if ((fr_sbuff_in_bstrcpy_buffer(name, cf_section_name2(cs)) <= 0) ||
+		     (fr_sbuff_in_char(name, '.') <= 0)) {
+			cf_log_perr(cs, "Name too long");
+			return -1;
+		}
+
+		fr_sbuff_marker(&name_start, name);
+
+		mri = talloc_get_type_abort(mri_arr[0]->uctx, module_rlm_instance_t);
+
+		/*
+		 *	Iterate over the xlats registered to the first
+		 *	module instance, searching for them in all the
+		 *	other module instances.
+		 */
+		for (mrx = fr_rb_iter_init_inorder(&iter, &mri->xlats);
+		     mrx;
+		     mrx = fr_rb_iter_next_inorder(&iter)) {
+			xlat_func_flags_t	flags = default_flags;
+			char const		*name_p;
+
+			(void)talloc_get_type(mrx, module_rlm_xlat_t);
+
+			/*
+			 *	Allocate the redundant xlat structure
+			 *	(somehwat prematurely) with the expectation
+			 *	that the virtually every module of the same
+			 *	type will have registered the same xlat
+			 *	functions.
+			 */
+			MEM(xr = talloc_zero(NULL, xlat_redundant_t));
+			xr->type = xr_type;
+			xr->cs = cs;
+			fr_dlist_talloc_init(&xr->funcs, xlat_redundant_func_t, entry);
+
+			xlat_redundant_add_xlat(xr, mrx->xlat);
+
+			/*
+			 *	We're only interested in xlat functions
+			 *	that are available in all the module
+			 *	instances.
+			 */
+			for (mri_p = mri_arr + 1; mri_p < mri_arr + children; mri_p++) {
+				module_rlm_xlat_t *found;
+
+				found = talloc_get_type_abort(fr_rb_find(&mri->xlats, mrx), module_rlm_xlat_t);
+				if (!found) continue;
+
+				xlat_redundant_add_xlat(xr, mrx->xlat);
+
+				if (!found->xlat->flags.pure) flags &= ~XLAT_FUNC_FLAG_PURE;
+			}
+
+			/*
+			 *	Warn, but allow about redundant/failover expansions
+			 *	that are neither redundant, no failover.
+			 *
+			 *	It's sometime useful to comment out multiples during
+			 *	testing.
+			 */
+			if (fr_dlist_num_elements(&xr->funcs) == 1) {
+				cf_log_debug(cs, "%s expansion has no alternates, only %s",
+					     fr_table_str_by_value(xlat_redundant_type_table, xr->type, "<INVALID>"),
+					     mrx->xlat->name);
+
+			}
+			/*
+			 *	Where the xlat name is in the format <mod>.<name2>
+			 *	then the redundant xlat will be <section_name2>.<xlat_name>.
+			 *
+			 *	Where the xlat has no '.', it's likely just the module
+			 *	name, in which case we just use <section_name2>.
+			 */
+			name_p = strchr(mrx->xlat->name, '.');
+			if (name_p) {
+				name_p++;
+				fr_sbuff_set(name, &name_start);	/* Reset the aggregation buffer to the '.' */
+				if (fr_sbuff_in_bstrncpy(name, name_p, strlen(name_p)) < 0) {
+					cf_log_perr(cs, "Name too long");
+					goto error;
+				}
+				name_p = fr_sbuff_start(name);
+			} else {
+				name_p = cf_section_name2(cs);
+			}
+
+			/*
+			 *	Register the new redundant xlat, and hang it off of
+			 *	the first module instance in the section.
+			 *
+			 *	This isn't great, but at least the xlat should
+			 *	get unregistered at about the right time.
+			 */
+			xlat = xlat_func_register(mri_arr[0], name_p, xlat_redundant, return_type);
+			if (unlikely(xlat == NULL)) {
+				cf_log_err(cs, "Registering expansion for %s section failed",
+					   fr_table_str_by_value(xlat_redundant_type_table, xr->type, "<INVALID>"));
+				talloc_free(xr);
+				return -1;
+			}
+			talloc_steal(xlat, xr);	/* redundant xlat should own its own config */
+
+			cf_log_debug(cs, "Registered %s expansion \"%s\" with %u alternates",
+				     fr_table_str_by_value(xlat_redundant_type_table, xr->type, "<INVALID>"),
+				     xlat->name, fr_dlist_num_elements(&xr->funcs));
+
+			xlat_func_flags_set(xlat, flags);
+			xlat_func_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
+			if (args) xlat_func_args_set(xlat, xlat_redundant_args);
+		}
 	}
 
-	xlat = xlat_func_register(NULL, name2, xlat_redundant, return_type);
-	if (unlikely(xlat == NULL)) {
-		ERROR("Registering xlat for %s section failed",
-		      fr_table_str_by_value(xlat_redundant_type_table, xr->type, "<INVALID>"));
-		talloc_free(xr);
-		return -1;
-	}
-	xlat_func_flags_set(xlat, flags);
-	xlat_func_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
-	if (args) xlat_func_args_set(xlat, xlat_redundant_args);
+	talloc_free(mri_arr);
 
 	return 0;
 }

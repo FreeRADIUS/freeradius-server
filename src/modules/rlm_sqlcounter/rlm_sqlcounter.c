@@ -443,10 +443,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 /** Custom call_env parser to tokenize the SQL query xlat used for counter retrieval
  */
 static int call_env_query_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-				UNUSED char const *section_name1, UNUSED char const *section_name2,
-				void const *data, UNUSED call_env_parser_t const *rule)
+				call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
-	rlm_sqlcounter_t const	*inst = talloc_get_type_abort_const(data, rlm_sqlcounter_t);
+	rlm_sqlcounter_t const	*inst = talloc_get_type_abort_const(cec->mi->data, rlm_sqlcounter_t);
 	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);
 	char			*query;
 	xlat_exp_head_t		*ex;

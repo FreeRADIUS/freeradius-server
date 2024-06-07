@@ -34,6 +34,7 @@ extern "C" {
 typedef struct call_env_parser_s	call_env_parser_t;
 typedef struct call_env_parsed_s	call_env_parsed_t;
 typedef struct call_env_method_s	call_env_method_t;
+typedef struct call_env_ctx_s		call_env_ctx_t;
 typedef struct call_env_s		call_env_t;
 
 FR_DLIST_TYPES(call_env_parsed)
@@ -43,6 +44,7 @@ FR_DLIST_TYPEDEFS(call_env_parsed, call_env_parsed_head_t, call_env_parsed_entry
 #include <freeradius-devel/unlang/action.h>
 #include <freeradius-devel/server/cf_parse.h>
 #include <freeradius-devel/server/dl_module.h>
+#include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/request.h>
 #include <freeradius-devel/server/tmpl.h>
 
@@ -135,13 +137,13 @@ DIAG_ON(attributes)
  * @param[out] out		Where to write the result of parsing.
  * @param[in] t_rules		we're parsing attributes with.  Contains the default dictionary and nested 'caller' tmpl_rules_t.
  * @param[in] ci		The #CONF_SECTION or #CONF_PAIR to parse.
- * @param[in] data		module / xlat instance data of the module / xlat allocating this call_env
+ * @param[in] cec		information about how the call env is being used.
  * @param[in] rule		Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
+typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
 
 /** Callback for performing custom parsing of a #CONF_SECTION
  *
@@ -153,12 +155,14 @@ typedef int (*call_env_parse_pair_t)(TALLOC_CTX *ctx, void *out, tmpl_rules_t co
  * @param[out] out		Where to write the result of parsing.
  * @param[in] t_rules		we're parsing attributes with.  Contains the default dictionary and nested 'caller' tmpl_rules_t.
  * @param[in] ci		The #CONF_SECTION or #CONF_PAIR to parse.
+ * @param[in] cec		information about how the call env is being used.
  * @param[in] rule		Parse rules - How the #CONF_PAIR or #CONF_SECTION should be converted.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*call_env_parse_section_t)(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
+typedef int (*call_env_parse_section_t)(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+				        call_env_ctx_t const *cec, call_env_parser_t const *rule);
 
 /** Per method call config
  *
@@ -199,7 +203,7 @@ struct call_env_parser_s {
 		} pair;
 
 		struct {
-			char const			*ident2;	//!< Second identifier for a section
+			char const			*name2;		//!< Second identifier for a section
 			call_env_parser_t const		*subcs;		//!< Nested definitions for subsection.
 
 			call_env_parse_section_t	func;		//!< Callback for parsing CONF_SECTION.
@@ -207,6 +211,21 @@ struct call_env_parser_s {
   	};
 
 	void const *uctx;				//!< User context for callback functions.
+};
+
+typedef enum {
+	CALL_ENV_CTX_TYPE_MODULE = 1,			//!< The callenv is registered to a module method.
+	CALL_ENV_CTX_TYPE_XLAT				//!< The callenv is registered to an xlat.
+} call_env_ctx_type_t;
+
+struct call_env_ctx_s {
+	call_env_ctx_type_t				type;		//!< Type of callenv ctx.
+
+	module_instance_t const				*mi;		//!< Module instance that the callenv is registered to.
+									///< Available for both module methods, and xlats.
+
+	section_name_t const				*asked;		//!< The actual name1/name2 that resolved to a
+									///< module_method_binding_t.
 };
 
 #define CALL_ENV_TERMINATOR { NULL }
@@ -375,21 +394,21 @@ typedef void _mismatch_flags;		//!< Dummy type used to indicate bad flags.
 
 /** Specify a call_env_parser_t which defines a nested subsection
  */
-#define FR_CALL_ENV_SUBSECTION(_name, _ident2, _flags, _subcs ) \
+#define FR_CALL_ENV_SUBSECTION(_name, _name2, _flags, _subcs ) \
 	.name = _name, \
 	.flags = CALL_ENV_FLAG_SUBSECTION | (_flags), \
 	.section = { \
-		.ident2 = _ident2, \
+		.name2 = _name2, \
 		.subcs = _subcs, \
 	}
 
 /** Specify a call_env_parser_t which parses a subsection using a callback function
  */
-#define FR_CALL_ENV_SUBSECTION_FUNC(_name, _ident2, _flags, _func) \
+#define FR_CALL_ENV_SUBSECTION_FUNC(_name, _name2, _flags, _func) \
 	.name = _name, \
 	.flags = CALL_ENV_FLAG_SUBSECTION | (_flags), \
 	.section = { \
-		.ident2 = _ident2, \
+		.name2 = _name2, \
 		.func = _func \
 	}
 
@@ -402,8 +421,8 @@ unlang_action_t call_env_expand(TALLOC_CTX *ctx, request_t *request, call_env_re
 /** @name Functions that implement standard parsing behaviour which can be called by callbacks
  * @{
  */
-int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1,
-			char const *section_name2, void const *data, call_env_parser_t const *rule);
+int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			call_env_ctx_t const *cec, call_env_parser_t const *rule);
 /** @} */
 
 /** @name Functions to be used by the section callbacks to add parsed data.
@@ -426,8 +445,7 @@ void call_env_parsed_free(call_env_parsed_head_t *parsed, call_env_parsed_t *ptr
  * @{
  */
 call_env_t *call_env_alloc(TALLOC_CTX *ctx, char const *name, call_env_method_t const *call_env_method,
-			   tmpl_rules_t const *rules, CONF_SECTION *cs, char const *section_name1,
-			   char const *section_name2, void const *data) CC_HINT(nonnull(3,4,5));
+			   tmpl_rules_t const *rules, CONF_SECTION *cs, call_env_ctx_t const *cec) CC_HINT(nonnull(3,4,5));
 /** @} */
 
 #ifdef __cplusplus

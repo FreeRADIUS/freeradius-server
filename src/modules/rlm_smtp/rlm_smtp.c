@@ -942,8 +942,8 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
  *
  */
 static int smtp_header_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
-				     CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2,
-				     UNUSED void const *data, UNUSED call_env_parser_t const *rule)
+				     CONF_ITEM *ci,
+				     UNUSED call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	CONF_SECTION const	*cs = cf_item_to_section(ci);
 	CONF_ITEM const		*item = NULL;

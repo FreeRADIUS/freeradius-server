@@ -23,6 +23,7 @@
  * @copyright 2018-2021 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  * @copyright 2018 The FreeRADIUS server project
  */
+#include "lib/unlang/call_env.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/io/schedule.h>
@@ -272,7 +273,11 @@ static xlat_inst_t *xlat_inst_alloc(xlat_exp_t *node)
 									.dict_def = call->dict,
 									.list_def = request_attr_request
 							}
-					      }, call->func->mctx->mi->conf, NULL, NULL, call->func->mctx->mi->data);
+					      }, call->func->mctx->mi->conf,
+					      &(call_env_ctx_t){
+							.type = CALL_ENV_CTX_TYPE_XLAT,
+							.mi = call->func->mctx->mi
+					      });
 		if (!xi->call_env) {
 			talloc_free(xi);
 			return NULL;

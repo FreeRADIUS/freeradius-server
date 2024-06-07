@@ -45,7 +45,7 @@ typedef struct {
 	unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
 	unlang_module_fd_event_t	fd_write;	//!< Function to call when FD is writable.
 	unlang_module_fd_event_t	fd_error;	//!< Function to call when FD has errored.
-	module_instance_t		*mi;		//!< Module instance to pass to callbacks.
+	module_instance_t const		*mi;		//!< Module instance to pass to callbacks.
 							///< Use mi->data to get instance data.
 	void				*thread;	//!< Thread specific module instance.
 	void				*env_data;	//!< Per call environment data.
@@ -130,12 +130,12 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_module_event_t		*ev;
-	unlang_module_t			*mc;
+	unlang_module_t			*m;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 	fr_assert(stack->depth > 0);
 	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
-	mc = unlang_generic_to_module(frame->instruction);
+	m = unlang_generic_to_module(frame->instruction);
 
 	ev = talloc(request, unlang_module_event_t);
 	if (!ev) return -1;
@@ -144,7 +144,7 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 		.request = request,
 		.fd = -1,
 		.timeout = callback,
-		.mi = mc->mi,
+		.mi = m->mmc.mi,
 		.thread = state->thread,
 		.env_data = state->env_data,
 		.rctx = rctx
@@ -250,14 +250,14 @@ int unlang_module_fd_add(request_t *request,
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_module_event_t		*ev;
-	unlang_module_t			*mc;
+	unlang_module_t			*m;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state,
 								       unlang_frame_state_module_t);
 
 	fr_assert(stack->depth > 0);
 
 	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
-	mc = unlang_generic_to_module(frame->instruction);
+	m = unlang_generic_to_module(frame->instruction);
 
 	ev = talloc_zero(request, unlang_module_event_t);
 	if (!ev) return -1;
@@ -267,7 +267,7 @@ int unlang_module_fd_add(request_t *request,
 	ev->fd_read = read;
 	ev->fd_write = write;
 	ev->fd_error = error;
-	ev->mi = mc->mi;
+	ev->mi = m->mmc.mi;
 	ev->thread = state->thread;
 	ev->env_data = state->env_data;
 	ev->rctx = rctx;
@@ -355,8 +355,12 @@ int unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 				.retry = RETRY_INIT,
 			},
 		},
-		.mi = mi,
-		.method = method
+		.mmc = {
+			.mi = mi,
+			.mmb = {
+				.method = method
+			}
+		}
 	};
 
 	/*
@@ -519,13 +523,13 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 					       unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx)
 {
 	if (!subcs) {
-		unlang_stack_t		*stack = request->stack;
-		unlang_stack_frame_t	*frame = &stack->frame[stack->depth];
-		unlang_module_t		*mc;
+		unlang_stack_t			*stack = request->stack;
+		unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+		unlang_module_t			*m;
 		unlang_frame_state_module_t	*state;
 
 		fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
-		mc = unlang_generic_to_module(frame->instruction);
+		m = unlang_generic_to_module(frame->instruction);
 
 		/*
 		 *	Be transparent to the resume function.
@@ -536,7 +540,7 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 		state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
 		return resume(p_result,
-			      MODULE_CTX(mc->mi, module_thread(mc->mi)->data,
+			      MODULE_CTX(m->mmc.mi, module_thread(m->mmc.mi)->data,
 			      		 state->env_data, rctx),
 			      request);
 	}
@@ -625,7 +629,7 @@ static inline CC_HINT(always_inline) void safe_unlock(module_instance_t *mi)
 static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame, fr_signal_t action)
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
+	unlang_module_t			*m = unlang_generic_to_module(frame->instruction);
 	char const			*caller;
 
 	if (!state->signal) return;
@@ -634,10 +638,10 @@ static void unlang_module_signal(request_t *request, unlang_stack_frame_t *frame
 	 *	Async calls can't push anything onto the unlang stack, so we just use a local "caller" here.
 	 */
 	caller = request->module;
-	request->module = mc->mi->name;
-	safe_lock(mc->mi);
-	if (!(action & state->sigmask)) state->signal(MODULE_CTX(mc->mi, state->thread->data, state->env_data, state->rctx), request, action);
-	safe_unlock(mc->mi);
+	request->module = m->mmc.mi->name;
+	safe_lock(m->mmc.mi);
+	if (!(action & state->sigmask)) state->signal(MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, state->rctx), request, action);
+	safe_unlock(m->mmc.mi);
 	request->module = caller;
 
 	/*
@@ -696,8 +700,8 @@ static unlang_action_t unlang_module_resume_done(rlm_rcode_t *p_result, request_
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-	unlang_module_t			*mc = unlang_generic_to_module(frame->instruction);
-	module_method_t		resume;
+	unlang_module_t			*m = unlang_generic_to_module(frame->instruction);
+	module_method_t			resume;
 	unlang_action_t			ua;
 
 	/*
@@ -724,16 +728,16 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
 	/*
 	 *	Lock is noop unless instance->mutex is set.
 	 */
-	safe_lock(mc->mi);
-	ua = resume(&state->rcode, MODULE_CTX(mc->mi, state->thread->data,
+	safe_lock(m->mmc.mi);
+	ua = resume(&state->rcode, MODULE_CTX(m->mmc.mi, state->thread->data,
 					      state->env_data, state->rctx), request);
-	safe_unlock(mc->mi);
+	safe_unlock(m->mmc.mi);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
 
 	switch (ua) {
 	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s or worker signalled to stop processing request", mc->mi->module->exported->name);
+		RWARN("Module %s or worker signalled to stop processing request", m->mmc.mi->name);
 		if (state->p_result) *state->p_result = state->rcode;
 		state->thread->active_callers--;
 		*p_result = state->rcode;
@@ -874,7 +878,7 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 
 static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
-	unlang_module_t			*mc;
+	unlang_module_t			*m;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 	unlang_action_t			ua;
 	fr_time_t			now = fr_time_wrap(0);
@@ -890,26 +894,26 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 *	Process a stand-alone child, and fall through
 	 *	to dealing with it's parent.
 	 */
-	mc = unlang_generic_to_module(frame->instruction);
-	fr_assert(mc);
+	m = unlang_generic_to_module(frame->instruction);
+	fr_assert(m);
 
 	RDEBUG4("[%i] %s - %s (%s)", stack_depth_current(request), __FUNCTION__,
-		mc->mi->module->exported->name, mc->mi->name);
+		m->mmc.mi->module->exported->name, m->mmc.mi->name);
 
 	state->p_result = NULL;
 
 	/*
 	 *	Return administratively configured return code
 	 */
-	if (mc->mi->force) {
-		state->rcode = mc->mi->code;
+	if (m->mmc.mi->force) {
+		state->rcode = m->mmc.mi->code;
 		ua = UNLANG_ACTION_CALCULATE_RESULT;
 		goto done;
 	}
 
-	if (mc->call_env) {
+	if (m->mmc.mmb.method_env) {
 		if (!state->env_data) {
-			ua = call_env_expand(state, request, &state->env_result, &state->env_data, mc->call_env);
+			ua = call_env_expand(state, request, &state->env_result, &state->env_data, m->call_env);
 			switch (ua) {
 			case UNLANG_ACTION_FAIL:
 				goto fail;
@@ -932,7 +936,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	/*
 	 *	Grab the thread/module specific data if any exists.
 	 */
-	state->thread = module_thread(mc->mi);
+	state->thread = module_thread(m->mmc.mi);
 	fr_assert(state->thread != NULL);
 
 	/*
@@ -951,12 +955,12 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 */
 	if (fr_time_delta_ispos(frame->instruction->actions.retry.irt)) now = fr_time();
 
-	request->module = mc->mi->name;
-	safe_lock(mc->mi);	/* Noop unless instance->mutex set */
-	ua = mc->method(&state->rcode,
-			MODULE_CTX(mc->mi, state->thread->data, state->env_data, NULL),
-			request);
-	safe_unlock(mc->mi);
+	request->module = m->mmc.mi->name;
+	safe_lock(m->mmc.mi);	/* Noop unless instance->mutex set */
+	ua = m->mmc.mmb.method(&state->rcode,
+			       MODULE_CTX(m->mmc.mi, state->thread->data, state->env_data, NULL),
+			       request);
+	safe_unlock(m->mmc.mi);
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) ua = UNLANG_ACTION_STOP_PROCESSING;
 
@@ -966,7 +970,7 @@ static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, 
 	 *	must have been blocked.
 	 */
 	case UNLANG_ACTION_STOP_PROCESSING:
-		RWARN("Module %s became unblocked", mc->mi->name);
+		RWARN("Module %s became unblocked", m->mmc.mi->name);
 		if (state->p_result) *state->p_result = state->rcode;
 		*p_result = state->rcode;
 		request->module = state->previous_module;

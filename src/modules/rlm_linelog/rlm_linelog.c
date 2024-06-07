@@ -65,8 +65,7 @@ RCSID("$Id$")
 
 static int linelog_escape_func(fr_value_box_t *vb, UNUSED void *uctx);
 static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-				   UNUSED char const *section_name1, UNUSED char const *section_name2,
-				   void const *data, UNUSED call_env_parser_t const *rule);
+				   call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule);
 typedef enum {
 	LINELOG_DST_INVALID = 0,
 	LINELOG_DST_FILE,				//!< Log to a file.
@@ -876,13 +875,12 @@ build_vector:
  *	Custom call env parser for filenames - sets the correct escaping function
  */
 static int call_env_filename_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-				   UNUSED char const *section_name1, UNUSED char const *section_name2,
-				   void const *data, UNUSED call_env_parser_t const *rule)
+				   call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
-	rlm_linelog_t const	*inst = talloc_get_type_abort_const(data, rlm_linelog_t);
-	tmpl_t			*parsed;
-	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);
-	tmpl_rules_t		our_rules;
+	rlm_linelog_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_linelog_t);
+	tmpl_t				*parsed;
+	CONF_PAIR const			*to_parse = cf_item_to_pair(ci);
+	tmpl_rules_t			our_rules;
 
 	/*
 	 *	If we're not logging to a file destination, do nothing

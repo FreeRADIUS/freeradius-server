@@ -77,9 +77,9 @@ typedef struct {
 	map_list_t	*profile_map;			//!< List of maps to apply to the profile.
 } ldap_xlat_profile_call_env_t;
 
-static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
+static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
 
-static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2, void const *data, UNUSED call_env_parser_t const *rule);
+static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule);
 
 static const call_env_parser_t sasl_call_env[] = {
 	{ FR_CALL_ENV_OFFSET("mech", FR_TYPE_STRING, CALL_ENV_FLAG_NONE, ldap_auth_call_env_t, user_sasl_mech) },
@@ -2230,8 +2230,8 @@ static int parse_sub_section(module_inst_ctx_t const *mctx,
 }
 
 static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
-				     CONF_ITEM *ci, UNUSED char const *section_name1, UNUSED char const *section_name2,
-				     UNUSED void const *data, call_env_parser_t const *rule)
+				     CONF_ITEM *ci,
+				     UNUSED call_env_ctx_t const *cec, call_env_parser_t const *rule)
 {
 	map_list_t			*maps;
 	CONF_SECTION			*update = cf_item_to_section(ci);
@@ -2309,12 +2309,11 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 }
 
 static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, UNUSED CONF_ITEM *ci,
-				   UNUSED char const *section_name1, UNUSED char const *section_name2,
-				   void const *data, UNUSED call_env_parser_t const *rule)
+				   call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
-	rlm_ldap_t const	*inst = talloc_get_type_abort_const(data, rlm_ldap_t);
-	char const		*filters[] = { inst->group.obj_filter, inst->group.obj_membership_filter };
-	tmpl_t			*parsed;
+	rlm_ldap_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_ldap_t);
+	char const			*filters[] = { inst->group.obj_filter, inst->group.obj_membership_filter };
+	tmpl_t				*parsed;
 
 	if (fr_ldap_filter_to_tmpl(ctx, t_rules, filters, NUM_ELEMENTS(filters), &parsed) < 0) return -1;
 

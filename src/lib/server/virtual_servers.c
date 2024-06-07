@@ -24,8 +24,6 @@
  * @copyright 2000 Alan DeKok (aland@freeradius.org)
  * @copyright 2000 Alan Curry (pacman@world.std.com)
  */
-
-
 RCSID("$Id$")
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
@@ -38,6 +36,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/server/process.h>
 #include <freeradius-devel/server/protocol.h>
+#include <freeradius-devel/server/section.h>
 #include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/unlang/compile.h>
@@ -109,8 +108,6 @@ static virtual_server_t **virtual_servers;
 static CONF_SECTION *virtual_server_root;
 
 static fr_rb_tree_t *listen_addr_root = NULL;
-
-static int8_t server_section_name_cmp(void const *one, void const *two);
 
 static int namespace_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int server_on_read(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule);
@@ -498,6 +495,14 @@ static int listen_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, 
 	return 0;
 }
 
+static int8_t virtual_server_compile_name_cmp(void const *a, void const *b)
+{
+	virtual_server_compile_t const *sa = a;
+	virtual_server_compile_t const *sb = b;
+
+	return section_name_cmp(sa->section, sb->section);
+}
+
 /** Callback to validate the server section
  *
  * @param[in] ctx	to allocate data in.
@@ -523,7 +528,7 @@ static int server_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 		return -1;
 	}
 
-	MEM(server->sections = fr_rb_alloc(server, server_section_name_cmp, NULL));
+	MEM(server->sections = fr_rb_alloc(server, virtual_server_compile_name_cmp, NULL));
 	server->server_cs = server_cs;
 
 	/*
@@ -1010,24 +1015,6 @@ int virtual_server_compile_sections(virtual_server_t const *vs, tmpl_rules_t con
 	return found;
 }
 
-static int8_t server_section_name_cmp(void const *one, void const *two)
-{
-	virtual_server_compile_t const *a = one;
-	virtual_server_compile_t const *b = two;
-	int ret;
-
-	ret = strcmp(a->section->name1, b->section->name1);
-	ret = CMP(ret, 0);
-	if (ret != 0) return ret;
-
-	if (a->section->name2 == b->section->name2) return 0;
-	if ((a->section->name2 == CF_IDENT_ANY) && (b->section->name2 != CF_IDENT_ANY)) return -1;
-	if ((a->section->name2 != CF_IDENT_ANY) && (b->section->name2 == CF_IDENT_ANY)) return +1;
-
-	ret = strcmp(a->section->name2, b->section->name2);
-	return CMP(ret, 0);
-}
-
 /** Register name1 / name2 as allowed processing sections
  *
  *  This function is called from the virtual server bootstrap routine,
@@ -1078,7 +1065,7 @@ int virtual_server_section_register(virtual_server_t *vs, virtual_server_compile
 /** Find the component for a section
  *
  */
-section_name_t const **virtual_server_section_methods(virtual_server_t const *vs, char const *name1, char const *name2)
+section_name_t const **virtual_server_section_methods(virtual_server_t const *vs, section_name_t const *section)
 {
 	virtual_server_compile_t *entry;
 
@@ -1086,10 +1073,10 @@ section_name_t const **virtual_server_section_methods(virtual_server_t const *vs
 	 *	Look up the specific name first.  That way we can
 	 *	define both "accounting on", and "accounting *".
 	 */
-	if (name2 != CF_IDENT_ANY) {
+	if (section->name2 != CF_IDENT_ANY) {
 		entry = fr_rb_find(vs->sections,
 				   &(virtual_server_compile_t) {
-					.section = SECTION_NAME(name1, name2)
+					.section = section
 				   });
 		if (entry) return entry->methods;
 	}
@@ -1099,7 +1086,7 @@ section_name_t const **virtual_server_section_methods(virtual_server_t const *vs
 	 */
 	entry = fr_rb_find(vs->sections,
 			   &(virtual_server_compile_t) {
-				.section = SECTION_NAME(name1, CF_IDENT_ANY)
+				.section = SECTION_NAME(section->name1, CF_IDENT_ANY)
 			   });
 	if (!entry) return NULL;
 

@@ -13,7 +13,7 @@ if (!(%concat(%test2.passthrough(foo, bar), '|') == "foo|bar")) {
 #
 #  The config has a "redundant" block for test1 and test2.
 #
-if (!(%concat(%redundant_test(foo, bar), '|') == "foo|bar")) {
+if (!(%concat(%redundant_test.passthrough(foo, bar), '|') == "foo|bar")) {
 	test_fail
 }
 

@@ -91,6 +91,26 @@ name2:
 	return section_name2_match(a, b);
 }
 
+/** Return a printable string for the section name
+ *
+ * @param[in] name		Section name.
+ */
+static inline char const *section_name_str(char const *name)
+{
+	if (name == NULL) return "NULL";
+	if (name == CF_IDENT_ANY) return "*";
+	return name;
+}
+
+static inline void section_name_dup(TALLOC_CTX *ctx, section_name_t *dst, section_name_t const *src)
+{
+	dst->name1 = src->name1;
+	dst->name2 = src->name2;
+
+	if (dst->name1 && (dst->name1 != CF_IDENT_ANY)) dst->name1 = talloc_typed_strdup(ctx, src->name1);
+	if (dst->name2 && (dst->name2 != CF_IDENT_ANY)) dst->name2 = talloc_typed_strdup(ctx, src->name2);
+}
+
 int8_t section_name_cmp(void const *one, void const *two);
 
 #ifdef __cplusplus

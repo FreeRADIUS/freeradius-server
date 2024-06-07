@@ -312,9 +312,9 @@ static void unlang_dump(unlang_t *instruction, int depth)
 
 		case UNLANG_TYPE_MODULE:
 		{
-			unlang_module_t *single = unlang_generic_to_module(c);
+			unlang_module_t *m = unlang_generic_to_module(c);
 
-			DEBUG("%.*s%s", depth, unlang_spaces, single->mi->name);
+			DEBUG("%.*s%s", depth, unlang_spaces, m->mmc.mi->name);
 		}
 			break;
 
@@ -4361,7 +4361,7 @@ static CONF_SECTION *virtual_module_find_cs(CONF_ITEM *ci,
 	 *
 	 *	Return it to the caller, with the updated method.
 	 */
-	subcs = module_rlm_by_name_virtual(virtual_name);
+	subcs = module_rlm_virtual_by_name(virtual_name);
 	if (subcs) goto check_for_loop;
 
 	/*
@@ -4420,30 +4420,29 @@ check_for_loop:
 	return subcs;
 }
 
-static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
-				CONF_ITEM *ci, module_instance_t *inst, module_method_t method,
-				call_env_method_t const *method_env, char const *realname)
+static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci, char const *name)
 {
-	unlang_t *c;
-	unlang_module_t *single;
+	unlang_t	*c;
+	unlang_module_t *m;
+	fr_slen_t	slen;
 
-	/*
-	 *	Check if the module in question has the necessary
-	 *	component.
-	 */
-	if (!method) {
-		cf_log_err(ci, "Failed compiling %s - no method matching calling section found", inst->name);
+	MEM(m = talloc_zero(parent, unlang_module_t));
+	slen = module_rlm_by_name_and_method(m, &m->mmc,
+					     unlang_ctx->vs,
+					     &(section_name_t){ .name1 = unlang_ctx->section_name1, .name2 = unlang_ctx->section_name2 },
+					     &FR_SBUFF_IN(name, strlen(name)),
+					     unlang_ctx->rules);
+	if (slen < 0) {
+		cf_log_perr(ci, "Failed compiling module call");
+		talloc_free(m);
 		return NULL;
 	}
 
-	MEM(single = talloc_zero(parent, unlang_module_t));
-	single->mi = inst;
-	single->method = method;
-	c = unlang_module_to_generic(single);
+	c = unlang_module_to_generic(m);
 	c->parent = parent;
 	c->next = NULL;
 
-	c->name = talloc_typed_strdup(c, realname);
+	c->name = talloc_typed_strdup(c, name);
 	c->debug_name = c->name;
 	c->type = UNLANG_TYPE_MODULE;
 	c->ci = ci;
@@ -4451,7 +4450,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	Set the default actions for this module.
 	 */
-	c->actions = inst->actions;
+	c->actions = m->mmc.mi->actions;
 
 	/*
 	 *	Add in the default actions for this section.
@@ -4461,22 +4460,27 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	/*
 	 *	Parse the method environment for this module / method
 	 */
-	if (method_env) {
+	if (m->mmc.mmb.method_env) {
+		call_env_method_t const *method_env = m->mmc.mmb.method_env;
+
 		fr_assert_msg(method_env->inst_size, "Method environment for module %s, method %s %s declared, "
 			      "but no inst_size set",
-			      inst->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
+			      m->mmc.mi->name, unlang_ctx->section_name1, unlang_ctx->section_name2);
 
 		if (!unlang_ctx->rules) {
-			cf_log_err(ci, "Failed compiling %s - no rules", inst->name);
+			cf_log_err(ci, "Failed compiling %s - no rules",  m->mmc.mi->name);
 			goto error;
 		}
-		single->call_env = call_env_alloc(single, single->self.name, method_env,
-						  unlang_ctx->rules, inst->conf,
-						  unlang_ctx->section_name1, unlang_ctx->section_name2,
-						  single->mi->data);
-		if (!single->call_env) {
+		m->call_env = call_env_alloc(m, m->self.name, method_env,
+					     unlang_ctx->rules, m->mmc.mi->conf,
+					     &(call_env_ctx_t){
+						.type = CALL_ENV_CTX_TYPE_MODULE,
+						.mi = m->mmc.mi,
+						.asked = &m->mmc.asked
+					     });
+		if (!m->call_env) {
 		error:
-			talloc_free(c);
+			talloc_free(m);
 			return NULL;
 		}
 	}
@@ -4487,7 +4491,7 @@ static unlang_t *compile_module(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	if (cf_item_is_section(ci) &&
 	    !unlang_compile_actions(&c->actions, cf_item_to_section(ci),
-				    (inst->exported->flags & MODULE_TYPE_RETRY) != 0)) goto error;
+				    (m->mmc.mi->exported->flags & MODULE_TYPE_RETRY) != 0)) goto error;
 
 	return c;
 }
@@ -4533,15 +4537,13 @@ static int unlang_pair_keywords_len = NUM_ELEMENTS(unlang_pair_keywords);
 static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_ITEM *ci)
 {
 	char const		*name, *p;
-	module_instance_t	*inst;
 	CONF_SECTION		*cs, *subcs, *modules;
 	char const		*realname;
 	unlang_compile_t	unlang_ctx2;
-	module_method_t		method;
 	bool			policy;
 	unlang_op_compile_t	compile;
 	unlang_t		*c;
-	call_env_method_t const	*method_env = NULL;
+	bool			ignore_notfound = false;
 
 	if (cf_item_is_section(ci)) {
 		cs = cf_item_to_section(ci);
@@ -4695,14 +4697,21 @@ check_for_module:
 	 *	Not a function.  It must be a real module.
 	 */
 	modules = cf_section_find(cf_root(ci), "modules", NULL);
-	if (!modules) goto fail;
+	if (!modules) {
+		cf_log_err(ci, "Failed compiling \"%s\" as a module or policy as no modules are enabled", name);
+		cf_log_err(ci, "Please verify that modules { ... }  section is present in the server configuration", name);
+		return NULL;
+	}
 
 	realname = name;
 
 	/*
 	 *	Try to load the optional module.
 	 */
-	if (realname[0] == '-') realname++;
+	if (*realname == '-') {
+		ignore_notfound = true;
+		realname++;
+	}
 
 	/*
 	 *	Set the child compilation context BEFORE parsing the
@@ -4711,38 +4720,15 @@ check_for_module:
 	 *	name2, etc.
 	 */
 	UPDATE_CTX2;
-	inst = module_rlm_by_name_and_method(&method, &method_env,
-						&unlang_ctx2.section_name1, &unlang_ctx2.section_name2,
-						unlang_ctx2.vs, realname);
-	if (inst) {
-		c = compile_module(parent, &unlang_ctx2, ci, inst, method, method_env, realname);
-		goto allocate_number;
-	}
+	c = compile_module(parent, &unlang_ctx2, ci, realname);
+	if (c) goto allocate_number;
 
-	/*
-	 *	We were asked to MAYBE load it and it
-	 *	doesn't exist.  Return a soft error.
-	 */
-	if (realname != name) {
-		cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled.", name, realname);
+	if (ignore_notfound) {
+		cf_log_warn(ci, "Ignoring \"%s\" as the \"%s\" module is not enabled, "
+			    "or the method does not exist", name, realname);
 		return UNLANG_IGNORE;
 	}
 
-	/*
-	 *	The module exists, but it does not have the
-	 *	named method.
-	 */
-	if (!unlang_ctx2.section_name1) {
-		cf_log_err(ci, "Failed compiling %s - %s", name, fr_strerror());
-		return NULL;
-	}
-
-	/*
-	 *	Can't de-reference it to anything.  Ugh.
-	 */
-fail:
-	cf_log_err(ci, "Failed to find \"%s\" as a module or policy.", name);
-	cf_log_err(ci, "Please verify that the configuration exists in mods-enabled/%s.", name);
 	return NULL;
 }
 

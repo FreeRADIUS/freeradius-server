@@ -627,13 +627,12 @@ static unlang_action_t CC_HINT(nonnull) mod_files(rlm_rcode_t *p_result, module_
  *
  */
 static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
-			  UNUSED char const *section_name1, UNUSED char const *section_name2,
-			  void const *data, UNUSED call_env_parser_t const *rule)
+			  call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
-	rlm_files_t const	*inst = talloc_get_type_abort_const(data, rlm_files_t);
-	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);
-	rlm_files_data_t	*files_data;
-	fr_type_t		keytype;
+	rlm_files_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_files_t);
+	CONF_PAIR const			*to_parse = cf_item_to_pair(ci);
+	rlm_files_data_t		*files_data;
+	fr_type_t			keytype;
 
 	MEM(files_data = talloc_zero(ctx, rlm_files_data_t));
 

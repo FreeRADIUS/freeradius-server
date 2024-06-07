@@ -63,6 +63,9 @@ typedef struct {
 								///< onto the stack for execution.  So we need
 								///< to use the common type here.
 	module_rlm_t const		*rlm;			//!< Cached module_rlm_t.
+	section_name_t			asked;			//!< The actual <name1>.<name2> used for the module call.
+								///< This was either the override the user specified,
+								///< or the name of the section.
 	module_method_binding_t		mmb;			//!< Method we're calling.
 	tmpl_t				*key;			//!< Dynamic key, only set for dynamic modules.
 } module_method_call_t;
@@ -122,13 +125,12 @@ bool		module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type
  *
  * @{
  */
-module_instance_t	*module_rlm_by_name_and_method(module_method_t *method, call_env_method_t const ** method_env,
-						       char const **name1, char const **name2,
-						       virtual_server_t const *vs, char const *asked_name);
+fr_slen_t 		module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *mmc_out,
+						      virtual_server_t const *vs, section_name_t const *section, fr_sbuff_t *name,
+						      tmpl_rules_t const *t_rules) CC_HINT(nonnull(5));
 
 module_instance_t	*module_rlm_dynamic_by_name(module_instance_t const *parent, char const *name);
 
-CONF_SECTION		*module_rlm_by_name_virtual(char const *asked_name);
 module_instance_t	*module_rlm_static_by_name(module_instance_t const *parent, char const *name);
 
 CONF_SECTION		*module_rlm_virtual_by_name(char const *name);

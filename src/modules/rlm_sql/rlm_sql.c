@@ -120,10 +120,10 @@ static const call_env_method_t authorize_method_env = {
 };
 
 static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *cc,
-				  char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
+				  call_env_ctx_t const *cec, call_env_parser_t const *rule);
 
 static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *cc,
-				char const *section_name1, char const *section_name2, void const *data, call_env_parser_t const *rule);
+				call_env_ctx_t const *cec, call_env_parser_t const *rule);
 
 typedef struct {
 	fr_value_box_t	filename;
@@ -1848,8 +1848,8 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 }
 
 static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
-				  CONF_ITEM *ci, char const *section_name1, char const *section_name2,
-				  UNUSED void const *data, UNUSED call_env_parser_t const *rule)
+				  CONF_ITEM *ci,
+				  UNUSED call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	CONF_SECTION const	*subcs = NULL, *subsubcs = NULL;
 	CONF_PAIR const		*to_parse = NULL;
@@ -1857,6 +1857,8 @@ static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 	call_env_parsed_t	*parsed_env;
 	tmpl_rules_t		our_rules;
 	char			*section2, *p;
+
+	fr_assert(cec->type == CALL_ENV_CTX_TYPE_MODULE);
 
 	/*
 	 *	The call env subsection which calls this has CF_IDENT_ANY as its name
@@ -1875,10 +1877,10 @@ static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 	 *	falling back to
 	 *		<module> { logfile }
 	 */
-	subcs = cf_section_find(cf_item_to_section(ci), section_name1, CF_IDENT_ANY);
+	subcs = cf_section_find(cf_item_to_section(ci), cec->asked->name1, CF_IDENT_ANY);
 	if (subcs) {
-		if (section_name2) {
-			section2 = talloc_strdup(NULL, section_name2);
+		if (cec->asked->name2) {
+			section2 = talloc_strdup(NULL, cec->asked->name2);
 			p = section2;
 			while (*p != '\0') {
 				*(p) = tolower((uint8_t)*p);
@@ -1923,10 +1925,10 @@ static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 }
 
 static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
-				CONF_ITEM *ci, UNUSED char const *section_name1, char const *section_name2,
-				void const *data, UNUSED call_env_parser_t const *rule)
+				CONF_ITEM *ci,
+				call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
-	rlm_sql_t const		*inst = talloc_get_type_abort_const(data, rlm_sql_t);
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_sql_t);
 	CONF_SECTION const	*subcs = NULL;
 	CONF_PAIR const		*to_parse = NULL;
 	tmpl_t			*parsed_tmpl;
@@ -1935,7 +1937,7 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 	char			*section2, *p;
 	ssize_t			count, slen, multi_index = 0;
 
-	if (!section_name2) return -1;
+	fr_assert(cec->type == CALL_ENV_CTX_TYPE_MODULE);
 
 	/*
 	 *	Find the instance(s) of "query" to parse
@@ -1943,15 +1945,19 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 	 *	If the module call is from `accounting Start` then it should be
 	 *		<module> { accounting { start { query } } }
 	 */
-	section2 = talloc_strdup(NULL, section_name2);
+	section2 = talloc_strdup(NULL, section_name_str(cec->asked->name2));
 	p = section2;
 	while (*p != '\0') {
 		*(p) = tolower((uint8_t)*p);
 		p++;
 	}
 	subcs = cf_section_find(cf_item_to_section(ci), section2, CF_IDENT_ANY);
+	if (!subcs) {
+		cf_log_debug(ci, "No query found for \"%s\", this query will be disabled...", section2);
+		talloc_free(section2);
+		return 0;
+	}
 	talloc_free(section2);
-	if (!subcs) return 0;
 
 	/*
 	 *	Use module specific escape functions
@@ -1966,11 +1972,14 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 
 	while ((to_parse = cf_pair_find_next(subcs, to_parse, "query"))) {
 		MEM(parsed_env = call_env_parsed_add(ctx, out,
-						     &(call_env_parser_t){ FR_CALL_ENV_PARSE_ONLY_OFFSET("query", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_MULTI, sql_redundant_call_env_t, query)}));
+						     &(call_env_parser_t){
+							FR_CALL_ENV_PARSE_ONLY_OFFSET("query", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT | CALL_ENV_FLAG_MULTI,
+										      sql_redundant_call_env_t, query)
+						     }));
 
 		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
-				      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
-				      cf_pair_value_quote(to_parse), NULL, &our_rules);
+					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+					 cf_pair_value_quote(to_parse), NULL, &our_rules);
 		if (slen <= 0) {
 			cf_canonicalize_error(to_parse, slen, "Failed parsing query", cf_pair_value(to_parse));
 		error:
@@ -2215,8 +2224,8 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 *	The xlat escape function needs access to inst - so
 	 *	argument parser details need to be defined here
 	 */
-	sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2);
-	uctx = talloc_zero(sql_xlat_arg, rlm_sql_escape_uctx_t);
+	MEM(sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2));
+	MEM(uctx = talloc_zero(sql_xlat_arg, rlm_sql_escape_uctx_t));
 	*uctx = (rlm_sql_escape_uctx_t){ .sql = inst, .handle = NULL };
 	sql_xlat_arg[0] = (xlat_arg_parser_t){
 		.type = FR_TYPE_STRING,
