@@ -79,19 +79,11 @@ dnl # Check for programs
 dnl ############################################################
 
 AC_PROG_CC
-AC_CHECK_PROGS(MYSQL_CONFIG, [ mariadb_config mysql_config ])
+AC_CHECK_PROGS(MYSQL_CONFIG, [ mariadb_config ])
 
 dnl ############################################################
 dnl # Check for libraries
 dnl ############################################################
-
-dnl # Older versions of mysqlclient packages had two variants libmysqlclient
-dnl # and libmysqlclient_r. libmysqlclient_r is the threadsafe variant that
-dnl # is per-connection threadsafe. If that is available on the system it
-dnl # should be used in preference to libmysqlclient.
-dnl # More recent versions >~ 5.6 have stopped including libmyqlclient_r
-dnl # however (as libmysqlclient is now threadsafe), so we should fall back
-dnl # to libmysqlclient if it is the only one available on the system.
 
 dnl # Use linker arguments from mysql_config if available, then fallback
 dnl # to hunting around if we can't find the client library.
@@ -101,8 +93,8 @@ if test "x$MYSQL_CONFIG" != "x"; then
 	LIBS="$mysql_libs $LIBS"
 
 	dnl # First check for libmysqlclient_r
-	AC_MSG_CHECKING([for mysql_init in -lmysqlclient_r (using ${MYSQL_CONFIG})])
-	AC_TRY_LINK_FUNC([mysql_init], [have_libmysqlclient_r=yes])
+	AC_MSG_CHECKING([for mysql_get_socket in -lmysqlclient_r (using ${MYSQL_CONFIG})])
+	AC_TRY_LINK_FUNC([mysql_get_socket], [have_libmysqlclient_r=yes])
 
 	LIBS="$old_LIBS"
 	if test "x$have_libmysqlclient_r" = "xyes"; then
@@ -120,8 +112,8 @@ if test "x$MYSQL_CONFIG" != "x"; then
 		old_LIBS="$LIBS"
 		LIBS="$mysql_libs $LIBS"
 
-		AC_MSG_CHECKING([for mysql_init in -lmysqlclient (using ${MYSQL_CONFIG})])
-		AC_TRY_LINK_FUNC([mysql_init], [have_libmysqlclient=yes])
+		AC_MSG_CHECKING([for mysql_get_socket in -lmysqlclient (using ${MYSQL_CONFIG})])
+		AC_TRY_LINK_FUNC([mysql_get_socket], [have_libmysqlclient=yes])
 
 		LIBS="$old_LIBS"
 		if test "x$have_libmysqlclient" = "xyes"; then
@@ -135,36 +127,18 @@ if test "x$MYSQL_CONFIG" != "x"; then
 	fi
 fi
 
-dnl # Check for libmysqlclient_r
-if test "x$have_a_libmysqlclient" != "xyes"; then
-	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql"
-	FR_SMART_CHECK_LIB(mysqlclient_r, mysql_init, [mysql-client])
-	if test "x$ac_cv_lib_mysqlclient_r_mysql_init" = "xyes"; then
-		have_a_libmysqlclient='yes'
-	fi
-fi
-
-dnl # Check for libmysqlclient
-if test "x$have_a_libmysqlclient" != "xyes"; then
-	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql"
-	FR_SMART_CHECK_LIB(mysqlclient, mysql_init, [mysql-client])
-	if test "x$ac_cv_lib_mysqlclient_mysql_init" = "xyes"; then
-		have_a_libmysqlclient='yes'
-	fi
-fi
-
 dnl # Check for libmariadb
 if test "x$have_a_libmysqlclient" != "xyes"; then
 	smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mariadb /usr/local/lib/mariadb /usr/local/mariadb/lib/mariadb"
-	FR_SMART_CHECK_LIB(mariadb, mysql_init, [mysql-client])
-	if test "x$ac_cv_lib_mysqlclient_mysql_init" = "xyes"; then
+	FR_SMART_CHECK_LIB(mariadb, mysql_get_socket, [mysql-client])
+	if test "x$ac_cv_lib_mysqlclient_mysql_get_socket" = "xyes"; then
 		have_a_libmysqlclient='yes'
 	fi
 fi
 
 if test "x$have_a_libmysqlclient" != "xyes"; then
-	AC_MSG_WARN([MySQL libraries not found. Use --with-mysql-lib-dir=<path>.])
-	FR_MODULE_FAIL([libmariadb || libmysqlclient || libmysqlclient_r])
+	AC_MSG_WARN([MariaDB libraries not found. Use --with-mysql-lib-dir=<path>.])
+	FR_MODULE_FAIL([libmariadb])
 fi
 
 dnl ############################################################
@@ -204,7 +178,7 @@ if test "x$have_mysql_h" != "xyes"; then
 	if test "x$ac_cv_header_mysql_mysql_h" = "xyes"; then
 		AC_DEFINE(HAVE_MYSQL_MYSQL_H, [], [Define if you have <mysql/mysql.h>])
 	else
-		AC_MSG_WARN([MySQL headers not found. Use --with-mysql-include-dir=<path>.])
+		AC_MSG_WARN([MariaDB headers not found. Use --with-mysql-include-dir=<path>.])
 		FR_MODULE_FAIL([mysql.h])
 	fi
 fi
