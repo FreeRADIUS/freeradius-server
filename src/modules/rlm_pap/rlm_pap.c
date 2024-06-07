@@ -573,6 +573,16 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 		char iterations_buff[sizeof("4294967295") + 1];
 		char *qq;
 
+		/*
+		 *	While passwords come from "trusted" sources, we don't trust them too much!
+		 */
+		if ((size_t) (q - p) >= sizeof(iterations_buff)) {
+			REMARKER((char const *) p, q - p,
+				 "Password.PBKDF2 iterations field is too large");
+
+			goto finish;
+		}
+
 		strlcpy(iterations_buff, (char const *)p, (q - p) + 1);
 
 		iterations = strtoul(iterations_buff, &qq, 10);
