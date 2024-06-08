@@ -213,7 +213,7 @@ static inline void connection_deferred_signal_add(connection_t *conn, connection
 	prev = fr_dlist_tail(&conn->deferred_signals);
 	if (prev && (prev->signal == signal)) return;		/* Don't insert duplicates */
 
-	dsignal = talloc_zero(conn, connection_dsignal_entry_t);
+	MEM(dsignal = talloc_zero(conn, connection_dsignal_entry_t));
 	dsignal->signal = signal;
 	fr_dlist_insert_tail(&conn->deferred_signals, dsignal);
 
@@ -1516,8 +1516,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 
 	fr_assert(el);
 
-	conn = talloc(ctx, connection_t);
-	if (!conn) return NULL;
+	MEM(conn = talloc(ctx, connection_t));
 	talloc_set_destructor(conn, _connection_free);
 
 	id = atomic_fetch_add_explicit(&connection_counter, 1, memory_order_relaxed);
