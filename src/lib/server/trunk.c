@@ -2004,7 +2004,7 @@ uint64_t trunk_connection_requests_requeue(trunk_connection_t *tconn, int states
 	case TRUNK_CONN_ACTIVE:
 	case TRUNK_CONN_FULL:
 	case TRUNK_CONN_INACTIVE:
-		return trunk_connection_requests_requeue(tconn, states, max, fail_bound);
+		return trunk_connection_requests_requeue_priv(tconn, states, max, fail_bound);
 
 	default:
 		return 0;
@@ -2865,7 +2865,7 @@ uint32_t trunk_request_count_by_connection(trunk_connection_t const *tconn, int 
 	if (req_state & TRUNK_REQUEST_STATE_PENDING) count += fr_heap_num_elements(tconn->pending);
 	if (req_state & TRUNK_REQUEST_STATE_PARTIAL) count += tconn->partial ? 1 : 0;
 	if (req_state & TRUNK_REQUEST_STATE_SENT) count += fr_dlist_num_elements(&tconn->sent);
-	if (req_state & TRUNK_REQUEST_STATE_IDLE) count += fr_dlist_num_elements(&tconn->idle);
+	if (req_state & TRUNK_REQUEST_STATE_REAPABLE) count += fr_dlist_num_elements(&tconn->reapable);
 	if (req_state & TRUNK_REQUEST_STATE_CANCEL) count += fr_dlist_num_elements(&tconn->cancel);
 	if (req_state & TRUNK_REQUEST_STATE_CANCEL_PARTIAL) count += tconn->cancel_partial ? 1 : 0;
 	if (req_state & TRUNK_REQUEST_STATE_CANCEL_SENT) count += fr_dlist_num_elements(&tconn->cancel_sent);
@@ -3151,7 +3151,7 @@ static void trunk_connection_enter_inactive_draining(trunk_connection_t *tconn)
 	 *	requests, so the connection is drained
 	 *	quicker.
 	 */
-	trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_PENDING, 0, false);
+	trunk_connection_requests_requeue_priv(tconn, TRUNK_REQUEST_STATE_PENDING, 0, false);
 }
 
 /** Transition a connection to the draining state
@@ -3183,7 +3183,7 @@ static void trunk_connection_enter_draining(trunk_connection_t *tconn)
 	 *	requests, so the connection is drained
 	 *	quicker.
 	 */
-	trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_PENDING, 0, false);
+	trunk_connection_requests_requeue_priv(tconn, TRUNK_REQUEST_STATE_PENDING, 0, false);
 }
 
 /** Transition a connection to the draining-to-reconnect state
@@ -3516,7 +3516,7 @@ static void _trunk_connection_on_closed(UNUSED connection_t *conn,
 	 *	removed from the active, pool
 	 *	re-enqueue the requests.
 	 */
-	if (need_requeue) trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_ALL, 0, true);
+	if (need_requeue) trunk_connection_requests_requeue_priv(tconn, TRUNK_REQUEST_STATE_ALL, 0, true);
 
 	/*
 	 *	There should be no requests left on this
@@ -4088,8 +4088,8 @@ static void trunk_rebalance(trunk_t *trunk)
 	 *	position.
 	 */
 	while ((fr_minmax_heap_min_peek(trunk->active) == head) &&
-	       trunk_connection_requests_requeue(fr_minmax_heap_max_peek(trunk->active),
-	       					 TRUNK_REQUEST_STATE_PENDING, 1, false));
+	       trunk_connection_requests_requeue_priv(fr_minmax_heap_max_peek(trunk->active),
+	       					      TRUNK_REQUEST_STATE_PENDING, 1, false));
 }
 
 /** Implements the algorithm we use to manage requests per connection levels
