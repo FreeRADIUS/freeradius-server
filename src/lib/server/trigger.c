@@ -457,13 +457,13 @@ void trigger_args_afrom_server(TALLOC_CTX *ctx, fr_pair_list_t *list, char const
 	fr_dict_attr_t const	*port_da;
 	fr_pair_t		*vp;
 
-	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), connection_POOL_SERVER);
+	server_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_SERVER);
 	if (!server_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Server\"");
 		return;
 	}
 
-	port_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), connection_POOL_PORT);
+	port_da = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CONNECTION_POOL_PORT);
 	if (!port_da) {
 		ERROR("Incomplete dictionary: Missing definition for \"Connection-Pool-Port\"");
 		return;
