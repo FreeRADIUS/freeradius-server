@@ -1049,40 +1049,6 @@ static int module_method_validate(module_instance_t *mi)
 			in_order = false;
 			break;
 		}
-#if 0
-		{
-			module_method_binding_t const *pp;
-			/*
-			*	Print the correct order of bindings
-			*/
-			FR_FAULT_LOG("%s: Module method bindings are not in the correct order, the correct order is:", mi->name);
-			FR_FAULT_LOG(".bindings = (module_method_binding_t[]){");
-			for (pp = fr_dlist_head(&bindings);
-				pp;
-				pp = fr_dlist_next(&bindings, pp)) {
-				char const *name1_quote = (pp->section->name1 && (pp->section->name1 != CF_IDENT_ANY)) ? "\"" : "";
-				char const *name2_quote = (pp->section->name2 && (pp->section->name2 != CF_IDENT_ANY)) ? "\"" : "";
-				char const *name1 = pp->section->name1;
-				char const *name2 = pp->section->name2;
-
-				if (name1 == CF_IDENT_ANY) {
-					name1 = "CF_IDENT_ANY";
-				} else if (!name1) {
-					name1 = "NULL";
-				}
-				if (name2 == CF_IDENT_ANY) {
-					name2 = "CF_IDENT_ANY";
-				} else if (!name2) {
-					name2 = "NULL";
-				}
-
-				FR_FAULT_LOG("\t.section = SECTION_NAME(%s%s%s, %s%s%s)",
-						name1_quote, name1, name1_quote,
-						name2_quote, name2, name2_quote);
-			}
-			FR_FAULT_LOG("}");
-		}
-#endif
 	}
 
 	/*
