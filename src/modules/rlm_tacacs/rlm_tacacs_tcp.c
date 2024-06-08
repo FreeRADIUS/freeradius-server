@@ -286,7 +286,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	if (fd < 0) {
 		PERROR("%s - Failed opening socket", h->module_name);
 		talloc_free(h);
-		return connection_STATE_FAILED;
+		return CONNECTION_STATE_FAILED;
 	}
 
 	/*
@@ -395,7 +395,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	// i.e. histograms (or hyperloglog) of packets, so we can see
 	// which connections / home servers are fast / slow.
 
-	return connection_STATE_CONNECTING;
+	return CONNECTION_STATE_CONNECTING;
 }
 
 /** Shutdown/close a file descriptor

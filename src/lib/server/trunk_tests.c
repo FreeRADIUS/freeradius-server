@@ -304,7 +304,7 @@ static connection_state_t _conn_open(fr_event_list_t *el, void *h, UNUSED void *
 	 */
 	TEST_CHECK(fr_event_fd_insert(our_h, NULL, el, our_h[1], _conn_io_loopback, NULL, NULL, our_h) == 0);
 
-	return connection_STATE_CONNECTED;
+	return CONNECTION_STATE_CONNECTED;
 }
 
 /** Allocate a basic socket pair
@@ -322,7 +322,7 @@ static connection_state_t _conn_init(void **h_out, connection_t *conn, UNUSED vo
 	connection_signal_on_fd(conn, h[0]);
 	*h_out = h;
 
-	return connection_STATE_CONNECTING;
+	return CONNECTION_STATE_CONNECTING;
 }
 
 static connection_t *test_setup_socket_pair_connection_alloc(trunk_connection_t *tconn,
@@ -483,7 +483,7 @@ static connection_state_t _conn_init_no_signal(void **h_out, connection_t *conn,
 	socketpair(AF_UNIX, SOCK_STREAM, 0, h);
 	*h_out = h;
 
-	return connection_STATE_CONNECTING;
+	return CONNECTION_STATE_CONNECTING;
 }
 
 static connection_t *test_setup_socket_pair_1s_timeout_connection_alloc(trunk_connection_t *tconn,

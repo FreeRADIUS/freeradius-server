@@ -378,7 +378,7 @@ static connection_state_t _logtee_conn_open(UNUSED fr_event_list_t *el, UNUSED v
 		logtee_fd_idle(t);
 	}
 
-	return connection_STATE_CONNECTED;
+	return CONNECTION_STATE_CONNECTED;
 }
 
 /** Initialise a new outbound connection
@@ -398,21 +398,21 @@ static connection_state_t _logtee_conn_init(void **h_out, connection_t *conn, vo
 	case LOGTEE_DST_UNIX:
 		DEBUG2("Opening UNIX socket at \"%s\"", inst->unix_sock.path);
 		fd = fr_socket_client_unix(inst->unix_sock.path, true);
-		if (fd < 0) return connection_STATE_FAILED;
+		if (fd < 0) return CONNECTION_STATE_FAILED;
 		break;
 
 	case LOGTEE_DST_TCP:
 		DEBUG2("Opening TCP connection to %pV:%u",
 		       fr_box_ipaddr(inst->tcp.dst_ipaddr), inst->tcp.port);
 		fd = fr_socket_client_tcp(NULL, NULL, &inst->tcp.dst_ipaddr, inst->tcp.port, true);
-		if (fd < 0) return connection_STATE_FAILED;
+		if (fd < 0) return CONNECTION_STATE_FAILED;
 		break;
 
 	case LOGTEE_DST_UDP:
 		DEBUG2("Opening UDP connection to %pV:%u",
 		       fr_box_ipaddr(inst->udp.dst_ipaddr), inst->udp.port);
 		fd = fr_socket_client_udp(NULL, NULL, NULL, &inst->udp.dst_ipaddr, inst->udp.port, true);
-		if (fd < 0) return connection_STATE_FAILED;
+		if (fd < 0) return CONNECTION_STATE_FAILED;
 		break;
 
 	/*
@@ -421,7 +421,7 @@ static connection_state_t _logtee_conn_init(void **h_out, connection_t *conn, vo
 	case LOGTEE_DST_INVALID:
 	case LOGTEE_DST_FILE:
 		fr_assert(0);
-		return connection_STATE_FAILED;
+		return CONNECTION_STATE_FAILED;
 	}
 
 	/*
@@ -433,7 +433,7 @@ static connection_state_t _logtee_conn_init(void **h_out, connection_t *conn, vo
 
 	connection_signal_on_fd(conn, fd);
 
-	return connection_STATE_CONNECTING;
+	return CONNECTION_STATE_CONNECTING;
 }
 
 /** Logging callback to write log messages to a destination

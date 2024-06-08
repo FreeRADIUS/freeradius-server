@@ -339,7 +339,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		ERROR("MySQL error: %s", mysql_error(&c->db));
 	error:
 		talloc_free(c);
-		return connection_STATE_FAILED;
+		return CONNECTION_STATE_FAILED;
 	}
 
 	if (c->status == 0) {
@@ -347,7 +347,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		       config->sql_db, mysql_get_host_info(c->sock),
 		       mysql_get_server_info(c->sock), mysql_get_proto_info(c->sock));
 		connection_signal_connected(c->conn);
-		return connection_STATE_CONNECTING;
+		return CONNECTION_STATE_CONNECTING;
 	}
 
 	if (fr_event_fd_insert(c, NULL, c->conn->el, c->fd,
@@ -359,7 +359,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 
 	*h = c;
 
-	return connection_STATE_CONNECTING;
+	return CONNECTION_STATE_CONNECTING;
 }
 
 static void _sql_connection_close(fr_event_list_t *el, void *h, UNUSED void *uctx)
@@ -753,7 +753,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 	/*
 	 *	If the connection is not active, then all that we can do is free any stored results
 	 */
-	if (query_ctx->tconn->conn->state != connection_STATE_CONNECTED) {
+	if (query_ctx->tconn->conn->state != CONNECTION_STATE_CONNECTED) {
 		sql_free_result(query_ctx, config);
 		return RLM_SQL_OK;
 	}

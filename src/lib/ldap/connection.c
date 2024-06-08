@@ -330,8 +330,8 @@ static void _ldap_connection_close_watch(connection_t *conn, UNUSED connection_s
  * @param[in] conn	Being initialised.
  * @param[in] uctx	Our LDAP connection handle (a #fr_ldap_connection_t).
  * @return
- *	- connection_STATE_CONNECTING on success.
- *	- connection_STATE_FAILED on failure.
+ *	- CONNECTION_STATE_CONNECTING on success.
+ *	- CONNECTION_STATE_FAILED on failure.
  */
 static connection_state_t _ldap_connection_init(void **h, connection_t *conn, void *uctx)
 {
@@ -353,7 +353,7 @@ static connection_state_t _ldap_connection_init(void **h, connection_t *conn, vo
 	if (fr_ldap_connection_configure(c, config) < 0) {
 	error:
 		talloc_free(c);
-		return connection_STATE_FAILED;
+		return CONNECTION_STATE_FAILED;
 	}
 
 	/* Don't block */
@@ -363,11 +363,11 @@ static connection_state_t _ldap_connection_init(void **h, connection_t *conn, vo
 	state = fr_ldap_state_next(c);
 	if (state == FR_LDAP_STATE_ERROR) goto error;
 
-	connection_add_watch_pre(conn, connection_STATE_CLOSED, _ldap_connection_close_watch, true, c);
+	connection_add_watch_pre(conn, CONNECTION_STATE_CLOSED, _ldap_connection_close_watch, true, c);
 
 	*h = c;	/* Set the handle */
 
-	return connection_STATE_CONNECTING;
+	return CONNECTION_STATE_CONNECTING;
 }
 
 /** Alloc a self re-establishing connection to an LDAP server

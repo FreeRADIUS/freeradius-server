@@ -3569,7 +3569,7 @@ static void _trunk_connection_on_failed(connection_t *conn,
 	 *	INIT -> INIT transition which triggers
 	 *	an assert.
 	 */
-	if (prev == connection_STATE_INIT) _trunk_connection_on_closed(conn, prev, state, uctx);
+	if (prev == CONNECTION_STATE_INIT) _trunk_connection_on_closed(conn, prev, state, uctx);
 
 	/*
 	 *	See what the state of the trunk is
@@ -3578,7 +3578,7 @@ static void _trunk_connection_on_failed(connection_t *conn,
 	 *	future, then fail all the requests in the
 	 *	trunk backlog.
 	 */
-	if ((state == connection_STATE_CONNECTED) &&
+	if ((state == CONNECTION_STATE_CONNECTED) &&
 	    (trunk_connection_count_by_state(trunk,
 						(TRUNK_CONN_ACTIVE |
 						 TRUNK_CONN_FULL |
@@ -3689,13 +3689,13 @@ static int _trunk_connection_free(trunk_connection_t *tconn)
 	 *	as it processes its backlog of state changes,
 	 *	as we are about to be freed.
 	 */
-	connection_del_watch_pre(tconn->pub.conn, connection_STATE_INIT, _trunk_connection_on_init);
-	connection_del_watch_post(tconn->pub.conn, connection_STATE_CONNECTING, _trunk_connection_on_connecting);
-	connection_del_watch_post(tconn->pub.conn, connection_STATE_CONNECTED, _trunk_connection_on_connected);
-	connection_del_watch_pre(tconn->pub.conn, connection_STATE_CLOSED, _trunk_connection_on_closed);
-	connection_del_watch_post(tconn->pub.conn, connection_STATE_SHUTDOWN, _trunk_connection_on_shutdown);
-	connection_del_watch_pre(tconn->pub.conn, connection_STATE_FAILED, _trunk_connection_on_failed);
-	connection_del_watch_post(tconn->pub.conn, connection_STATE_HALTED, _trunk_connection_on_halted);
+	connection_del_watch_pre(tconn->pub.conn, CONNECTION_STATE_INIT, _trunk_connection_on_init);
+	connection_del_watch_post(tconn->pub.conn, CONNECTION_STATE_CONNECTING, _trunk_connection_on_connecting);
+	connection_del_watch_post(tconn->pub.conn, CONNECTION_STATE_CONNECTED, _trunk_connection_on_connected);
+	connection_del_watch_pre(tconn->pub.conn, CONNECTION_STATE_CLOSED, _trunk_connection_on_closed);
+	connection_del_watch_post(tconn->pub.conn, CONNECTION_STATE_SHUTDOWN, _trunk_connection_on_shutdown);
+	connection_del_watch_pre(tconn->pub.conn, CONNECTION_STATE_FAILED, _trunk_connection_on_failed);
+	connection_del_watch_post(tconn->pub.conn, CONNECTION_STATE_HALTED, _trunk_connection_on_halted);
 
 	/*
 	 *	This may return -1, indicating the free was deferred
@@ -3748,25 +3748,25 @@ static int trunk_connection_spawn(trunk_t *trunk, fr_time_t now)
 	 *	between the different lists in the trunk
 	 *	with minimum extra code.
 	 */
-	connection_add_watch_pre(tconn->pub.conn, connection_STATE_INIT,
+	connection_add_watch_pre(tconn->pub.conn, CONNECTION_STATE_INIT,
 				    _trunk_connection_on_init, false, tconn);		/* Before init() has been called */
 
-	connection_add_watch_post(tconn->pub.conn, connection_STATE_CONNECTING,
+	connection_add_watch_post(tconn->pub.conn, CONNECTION_STATE_CONNECTING,
 				     _trunk_connection_on_connecting, false, tconn);	/* After init() has been called */
 
-	connection_add_watch_post(tconn->pub.conn, connection_STATE_CONNECTED,
+	connection_add_watch_post(tconn->pub.conn, CONNECTION_STATE_CONNECTED,
 				     _trunk_connection_on_connected, false, tconn);	/* After open() has been called */
 
-	connection_add_watch_pre(tconn->pub.conn, connection_STATE_CLOSED,
+	connection_add_watch_pre(tconn->pub.conn, CONNECTION_STATE_CLOSED,
 				    _trunk_connection_on_closed, false, tconn);		/* Before close() has been called */
 
-	connection_add_watch_pre(tconn->pub.conn, connection_STATE_FAILED,
+	connection_add_watch_pre(tconn->pub.conn, CONNECTION_STATE_FAILED,
 				    _trunk_connection_on_failed, false, tconn);		/* Before failed() has been called */
 
-	connection_add_watch_post(tconn->pub.conn, connection_STATE_SHUTDOWN,
+	connection_add_watch_post(tconn->pub.conn, CONNECTION_STATE_SHUTDOWN,
 				     _trunk_connection_on_shutdown, false, tconn);	/* After shutdown() has been called */
 
-	connection_add_watch_post(tconn->pub.conn, connection_STATE_HALTED,
+	connection_add_watch_post(tconn->pub.conn, CONNECTION_STATE_HALTED,
 				     _trunk_connection_on_halted, false, tconn);	/* About to be freed */
 
 	talloc_set_destructor(tconn, _trunk_connection_free);

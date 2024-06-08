@@ -437,7 +437,7 @@ static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, U
 	/*
 	 *	Connection must be in the connecting state when this fires
 	 */
-	fr_assert(conn->state == connection_STATE_CONNECTING);
+	fr_assert(conn->state == CONNECTION_STATE_CONNECTING);
 
 	h = talloc_get_type_abort(conn->h, udp_handle_t);
 
@@ -459,7 +459,7 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 	/*
 	 *	Connection must be in the connecting state when this fires
 	 */
-	fr_assert(conn->state == connection_STATE_CONNECTING);
+	fr_assert(conn->state == CONNECTION_STATE_CONNECTING);
 
 	h = talloc_get_type_abort(conn->h, udp_handle_t);
 	u = h->status_u;
@@ -752,7 +752,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		PERROR("%s - Failed opening socket", h->module_name);
 	fail:
 		talloc_free(h);
-		return connection_STATE_FAILED;
+		return CONNECTION_STATE_FAILED;
 	}
 
 	/*
@@ -861,7 +861,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	// i.e. histograms (or hyperloglog) of packets, so we can see
 	// which connections / home servers are fast / slow.
 
-	return connection_STATE_CONNECTING;
+	return CONNECTION_STATE_CONNECTING;
 }
 
 /** Shutdown/close a file descriptor
@@ -902,7 +902,7 @@ static connection_state_t conn_failed(void *handle, connection_state_t state, UN
 	 *	we need to handle any outstanding packets and
 	 *	timer events before reconnecting.
 	 */
-	case connection_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTED:
 	{
 		udp_handle_t	*h = talloc_get_type_abort(handle, udp_handle_t); /* h only available if connected */
 
@@ -917,7 +917,7 @@ static connection_state_t conn_failed(void *handle, connection_state_t state, UN
 		break;
 	}
 
-	return connection_STATE_INIT;
+	return CONNECTION_STATE_INIT;
 }
 
 static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_t *el,

@@ -299,8 +299,8 @@ static int _redis_handle_free(fr_redis_handle_t *h)
  *			signalling the connection state machine.
  * @param[in] uctx	User context.
  * @return
- *	- #connection_STATE_CONNECTING	if a file descriptor was successfully created.
- *	- #connection_STATE_FAILED		if we could not open a valid handle.
+ *	- #CONNECTION_STATE_CONNECTING	if a file descriptor was successfully created.
+ *	- #CONNECTION_STATE_FAILED		if we could not open a valid handle.
  */
 static connection_state_t _redis_io_connection_init(void **h_out, connection_t *conn, void *uctx)
 {
@@ -320,14 +320,14 @@ static connection_state_t _redis_io_connection_init(void **h_out, connection_t *
 	h->ac = redisAsyncConnect(host, port);
 	if (!h->ac) {
 		ERROR("Failed allocating handle for %s:%u", host, port);
-		return connection_STATE_FAILED;
+		return CONNECTION_STATE_FAILED;
 	}
 
 	if (h->ac->err) {
 		ERROR("Failed allocating handle for %s:%u: %s", host, port, h->ac->errstr);
 	error:
 		redisAsyncFree(h->ac);
-		return connection_STATE_FAILED;
+		return CONNECTION_STATE_FAILED;
 	}
 
 	/*
@@ -376,7 +376,7 @@ static connection_state_t _redis_io_connection_init(void **h_out, connection_t *
 
 	fr_dlist_talloc_init(&h->ignore, fr_redis_sqn_ignore_t, entry);
 
-	return connection_STATE_CONNECTING;
+	return CONNECTION_STATE_CONNECTING;
 }
 
 /** Gracefully signal that the connection should shutdown
@@ -388,7 +388,7 @@ static connection_state_t _redis_io_connection_shutdown(UNUSED fr_event_list_t *
 
 	redisAsyncDisconnect(our_h->ac);	/* Should not free the handle */
 
-	return connection_STATE_SHUTDOWN;
+	return CONNECTION_STATE_SHUTDOWN;
 }
 
 /** Notification that the connection has errored and must be closed

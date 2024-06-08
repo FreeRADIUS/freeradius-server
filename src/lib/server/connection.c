@@ -44,14 +44,14 @@ typedef struct connection_s connection_t;
 #endif
 
 fr_table_num_ordered_t const connection_states[] = {
-	{ L("HALTED"),		connection_STATE_HALTED	},
-	{ L("INIT"),		connection_STATE_INIT	},
-	{ L("CONNECTING"),	connection_STATE_CONNECTING	},
-	{ L("TIMEOUT"),		connection_STATE_TIMEOUT	},
-	{ L("CONNECTED"),	connection_STATE_CONNECTED	},
-	{ L("SHUTDOWN"),	connection_STATE_SHUTDOWN	},
-	{ L("FAILED"),		connection_STATE_FAILED	},
-	{ L("CLOSED"),		connection_STATE_CLOSED	},
+	{ L("HALTED"),		CONNECTION_STATE_HALTED	},
+	{ L("INIT"),		CONNECTION_STATE_INIT	},
+	{ L("CONNECTING"),	CONNECTION_STATE_CONNECTING	},
+	{ L("TIMEOUT"),		CONNECTION_STATE_TIMEOUT	},
+	{ L("CONNECTED"),	CONNECTION_STATE_CONNECTED	},
+	{ L("SHUTDOWN"),	CONNECTION_STATE_SHUTDOWN	},
+	{ L("FAILED"),		CONNECTION_STATE_FAILED	},
+	{ L("CLOSED"),		CONNECTION_STATE_CLOSED	},
 };
 size_t connection_states_len = NUM_ELEMENTS(connection_states);
 
@@ -59,14 +59,14 @@ size_t connection_states_len = NUM_ELEMENTS(connection_states);
  *
  */
 static fr_table_num_indexed_t const connection_trigger_names[] = {
-	[connection_STATE_HALTED]	=	{ L("connection.halted"),	connection_STATE_HALTED	},
-	[connection_STATE_INIT]	=	{ L("connection.init"),		connection_STATE_INIT	},
-	[connection_STATE_CONNECTING]=	{ L("connection.connecting"),	connection_STATE_CONNECTING	},
-	[connection_STATE_TIMEOUT]	=	{ L("connection.timeout"),	connection_STATE_TIMEOUT	},
-	[connection_STATE_CONNECTED]	=	{ L("connection.connected"),	connection_STATE_CONNECTED	},
-	[connection_STATE_SHUTDOWN]	=	{ L("connection.shutdown"),	connection_STATE_SHUTDOWN	},
-	[connection_STATE_FAILED]	=	{ L("connection.failed"),	connection_STATE_FAILED	},
-	[connection_STATE_CLOSED]	=	{ L("connection.closed"),	connection_STATE_CLOSED	}
+	[CONNECTION_STATE_HALTED]	=	{ L("connection.halted"),	CONNECTION_STATE_HALTED	},
+	[CONNECTION_STATE_INIT]		=	{ L("connection.init"),		CONNECTION_STATE_INIT },
+	[CONNECTION_STATE_CONNECTING]	=	{ L("connection.connecting"),	CONNECTION_STATE_CONNECTING },
+	[CONNECTION_STATE_TIMEOUT]	=	{ L("connection.timeout"),	CONNECTION_STATE_TIMEOUT },
+	[CONNECTION_STATE_CONNECTED]	=	{ L("connection.connected"),	CONNECTION_STATE_CONNECTED },
+	[CONNECTION_STATE_SHUTDOWN]	=	{ L("connection.shutdown"),	CONNECTION_STATE_SHUTDOWN },
+	[CONNECTION_STATE_FAILED]	=	{ L("connection.failed"),	CONNECTION_STATE_FAILED	},
+	[CONNECTION_STATE_CLOSED]	=	{ L("connection.closed"),	CONNECTION_STATE_CLOSED	}
 };
 static size_t connection_trigger_names_len = NUM_ELEMENTS(connection_trigger_names);
 
@@ -94,8 +94,8 @@ struct connection_s {
 	bool			processing_signals;	//!< Processing deferred signals, don't let the deferred
 							///< signal processor be called multiple times.
 
-	fr_dlist_head_t		watch_pre[connection_STATE_MAX];	//!< Function called before state callback.
-	fr_dlist_head_t		watch_post[connection_STATE_MAX];	//!< Function called after state callback.
+	fr_dlist_head_t		watch_pre[CONNECTION_STATE_MAX];	//!< Function called before state callback.
+	fr_dlist_head_t		watch_post[CONNECTION_STATE_MAX];	//!< Function called after state callback.
 	connection_watch_entry_t *next_watcher;	//!< Hack to insulate watcher iterator from deletions.
 
 	connection_init_t	init;			//!< Callback for initialising a connection.
@@ -107,9 +107,9 @@ struct connection_s {
 	fr_event_timer_t const	*ev;			//!< State transition timer.
 
 	fr_time_delta_t		connection_timeout;	//!< How long to wait in the
-							//!< #connection_STATE_CONNECTING state.
+							//!< #CONNECTION_STATE_CONNECTING state.
 	fr_time_delta_t		reconnection_delay;	//!< How long to wait in the
-							//!< #connection_STATE_FAILED state.
+							//!< #CONNECTION_STATE_FAILED state.
 
 	fr_dlist_head_t		deferred_signals;	//!< A list of signals we received whilst we were in
 							///< a handler.
@@ -453,7 +453,7 @@ static int connection_del_watch(connection_t *conn, fr_dlist_head_t *state_lists
  */
 int connection_del_watch_pre(connection_t *conn, connection_state_t state, connection_watch_t watch)
 {
-	if (state >= connection_STATE_MAX) return -2;
+	if (state >= CONNECTION_STATE_MAX) return -2;
 
 	return connection_del_watch(conn, conn->watch_pre, state, watch);
 }
@@ -470,7 +470,7 @@ int connection_del_watch_pre(connection_t *conn, connection_state_t state, conne
  */
 int connection_del_watch_post(connection_t *conn, connection_state_t state, connection_watch_t watch)
 {
-	if (state >= connection_STATE_MAX) return -2;
+	if (state >= CONNECTION_STATE_MAX) return -2;
 
 	return connection_del_watch(conn, conn->watch_post, state, watch);
 }
@@ -509,7 +509,7 @@ static connection_watch_entry_t *connection_add_watch(connection_t *conn, fr_dli
 connection_watch_entry_t *connection_add_watch_pre(connection_t *conn, connection_state_t state,
 				 			 connection_watch_t watch, bool oneshot, void const *uctx)
 {
-	if (state >= connection_STATE_MAX) return NULL;
+	if (state >= CONNECTION_STATE_MAX) return NULL;
 
 	return connection_add_watch(conn, &conn->watch_pre[state], watch, oneshot, uctx);
 }
@@ -531,7 +531,7 @@ connection_watch_entry_t *connection_add_watch_pre(connection_t *conn, connectio
 connection_watch_entry_t *connection_add_watch_post(connection_t *conn, connection_state_t state,
 							  connection_watch_t watch, bool oneshot, void const *uctx)
 {
-	if (state >= connection_STATE_MAX) return NULL;
+	if (state >= CONNECTION_STATE_MAX) return NULL;
 
 	return connection_add_watch(conn, &conn->watch_post[state], watch, oneshot, uctx);
 }
@@ -625,13 +625,13 @@ static void _reconnect_delay_done(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 	connection_t *conn = talloc_get_type_abort(uctx, connection_t);
 
 	switch (conn->pub.state) {
-	case connection_STATE_FAILED:
-	case connection_STATE_CLOSED:
+	case CONNECTION_STATE_FAILED:
+	case CONNECTION_STATE_CLOSED:
 		connection_state_enter_init(conn);
 		break;
 
 	default:
-		BAD_STATE_TRANSITION(connection_STATE_INIT);
+		BAD_STATE_TRANSITION(CONNECTION_STATE_INIT);
 		break;
 	}
 }
@@ -642,17 +642,17 @@ static void _reconnect_delay_done(UNUSED fr_event_list_t *el, UNUSED fr_time_t n
 static void connection_state_enter_closed(connection_t *conn)
 {
 	switch (conn->pub.state) {
-	case connection_STATE_CONNECTING:
-	case connection_STATE_CONNECTED:
-	case connection_STATE_FAILED:
+	case CONNECTION_STATE_CONNECTING:
+	case CONNECTION_STATE_CONNECTED:
+	case CONNECTION_STATE_FAILED:
 		break;
 
 	default:
-		BAD_STATE_TRANSITION(connection_STATE_CLOSED);
+		BAD_STATE_TRANSITION(CONNECTION_STATE_CLOSED);
 		return;
 	}
 
-	STATE_TRANSITION(connection_STATE_CLOSED);
+	STATE_TRANSITION(CONNECTION_STATE_CLOSED);
 
 	fr_event_timer_delete(&conn->ev);
 
@@ -704,15 +704,15 @@ static void connection_state_enter_shutdown(connection_t *conn)
 	connection_state_t ret;
 
 	switch (conn->pub.state) {
-	case connection_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTED:
 		break;
 
 	default:
-		BAD_STATE_TRANSITION(connection_STATE_SHUTDOWN);
+		BAD_STATE_TRANSITION(CONNECTION_STATE_SHUTDOWN);
 		return;
 	}
 
-	STATE_TRANSITION(connection_STATE_SHUTDOWN);
+	STATE_TRANSITION(CONNECTION_STATE_SHUTDOWN);
 
 	WATCH_PRE(conn);
 	{
@@ -722,7 +722,7 @@ static void connection_state_enter_shutdown(connection_t *conn)
 		HANDLER_END(conn);
 	}
 	switch (ret) {
-	case connection_STATE_SHUTDOWN:
+	case CONNECTION_STATE_SHUTDOWN:
 		break;
 
 	default:
@@ -754,7 +754,7 @@ static void connection_state_enter_shutdown(connection_t *conn)
 
 /** Connection failed
  *
- * Transition to the connection_STATE_FAILED state.
+ * Transition to the CONNECTION_STATE_FAILED state.
  *
  * If the connection was open, or couldn't be opened wait for reconnection_delay before transitioning
  * back to init.
@@ -766,9 +766,9 @@ static void connection_state_enter_shutdown(connection_t *conn)
 static void connection_state_enter_failed(connection_t *conn)
 {
 	connection_state_t prev;
-	connection_state_t ret = connection_STATE_INIT;
+	connection_state_t ret = CONNECTION_STATE_INIT;
 
-	fr_assert(conn->pub.state != connection_STATE_FAILED);
+	fr_assert(conn->pub.state != CONNECTION_STATE_FAILED);
 
 	/*
 	 *	Explicit error occurred, delete the connection timer
@@ -784,7 +784,7 @@ static void connection_state_enter_failed(connection_t *conn)
 	/*
 	 *	Now transition to failed
 	 */
-	STATE_TRANSITION(connection_STATE_FAILED);
+	STATE_TRANSITION(CONNECTION_STATE_FAILED);
 
 	/*
 	 *	If there's a failed callback, give it the
@@ -806,10 +806,10 @@ static void connection_state_enter_failed(connection_t *conn)
 	 *	connecting, or when we were connected.
 	 */
 	switch (prev) {
-	case connection_STATE_CONNECTED:
-	case connection_STATE_CONNECTING:
-	case connection_STATE_TIMEOUT:		/* Timeout means the connection progress past init */
-	case connection_STATE_SHUTDOWN:		/* Shutdown means the connection failed whilst shutting down */
+	case CONNECTION_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTING:
+	case CONNECTION_STATE_TIMEOUT:		/* Timeout means the connection progress past init */
+	case CONNECTION_STATE_SHUTDOWN:		/* Shutdown means the connection failed whilst shutting down */
 		connection_state_enter_closed(conn);
 		break;
 
@@ -826,14 +826,14 @@ static void connection_state_enter_failed(connection_t *conn)
 		 *	immediately if the failure was due
 		 *	to a connection timeout.
 		 */
-		case connection_STATE_INIT:
+		case CONNECTION_STATE_INIT:
 			break;
 
 		/*
 		 *	The callback signalled it wants the
 		 *	connection to stop.
 		 */
-		case connection_STATE_HALTED:
+		case CONNECTION_STATE_HALTED:
 		default:
 			connection_state_enter_halted(conn);
 			return;
@@ -846,10 +846,10 @@ static void connection_state_enter_failed(connection_t *conn)
 	 *	reconnect timeout.
 	 */
 	switch (prev) {
-	case connection_STATE_INIT:				/* Failed during initialisation */
-	case connection_STATE_CONNECTED:			/* Failed after connecting */
-	case connection_STATE_CONNECTING:			/* Failed during connecting */
-	case connection_STATE_SHUTDOWN:			/* Failed during shutdown */
+	case CONNECTION_STATE_INIT:				/* Failed during initialisation */
+	case CONNECTION_STATE_CONNECTED:			/* Failed after connecting */
+	case CONNECTION_STATE_CONNECTING:			/* Failed during connecting */
+	case CONNECTION_STATE_SHUTDOWN:			/* Failed during shutdown */
 		if (fr_time_delta_ispos(conn->reconnection_delay)) {
 			DEBUG2("Delaying reconnection by %pVs", fr_box_time_delta(conn->reconnection_delay));
 			if (fr_event_timer_in(conn, conn->pub.el, &conn->ev,
@@ -872,7 +872,7 @@ static void connection_state_enter_failed(connection_t *conn)
 		connection_state_enter_halted(conn);
 		break;
 
-	case connection_STATE_TIMEOUT:			/* Failed during connecting due to timeout */
+	case CONNECTION_STATE_TIMEOUT:			/* Failed during connecting due to timeout */
 		connection_state_enter_init(conn);
 		break;
 
@@ -889,17 +889,17 @@ static void connection_state_enter_failed(connection_t *conn)
 static void connection_state_enter_timeout(connection_t *conn)
 {
 	switch (conn->pub.state) {
-	case connection_STATE_CONNECTING:
-	case connection_STATE_SHUTDOWN:
+	case CONNECTION_STATE_CONNECTING:
+	case CONNECTION_STATE_SHUTDOWN:
 		break;
 
 	default:
-		BAD_STATE_TRANSITION(connection_STATE_TIMEOUT);
+		BAD_STATE_TRANSITION(CONNECTION_STATE_TIMEOUT);
 	}
 
 	ERROR("Connection failed - timed out after %pVs", fr_box_time_delta(conn->connection_timeout));
 
-	STATE_TRANSITION(connection_STATE_TIMEOUT);
+	STATE_TRANSITION(CONNECTION_STATE_TIMEOUT);
 
 	conn->pub.timed_out++;
 
@@ -915,17 +915,17 @@ static void connection_state_enter_halted(connection_t *conn)
 	fr_assert(conn->is_closed);
 
 	switch (conn->pub.state) {
-	case connection_STATE_FAILED:	/* Init failure */
-	case connection_STATE_CLOSED:
+	case CONNECTION_STATE_FAILED:	/* Init failure */
+	case CONNECTION_STATE_CLOSED:
 		break;
 
 	default:
-		BAD_STATE_TRANSITION(connection_STATE_HALTED);
+		BAD_STATE_TRANSITION(CONNECTION_STATE_HALTED);
 	}
 
 	fr_event_timer_delete(&conn->ev);
 
-	STATE_TRANSITION(connection_STATE_HALTED);
+	STATE_TRANSITION(CONNECTION_STATE_HALTED);
 	WATCH_PRE(conn);
 	WATCH_POST(conn);
 }
@@ -947,9 +947,9 @@ static void connection_state_enter_connected(connection_t *conn)
 {
 	int	ret;
 
-	fr_assert(conn->pub.state == connection_STATE_CONNECTING);
+	fr_assert(conn->pub.state == CONNECTION_STATE_CONNECTING);
 
-	STATE_TRANSITION(connection_STATE_CONNECTED);
+	STATE_TRANSITION(CONNECTION_STATE_CONNECTED);
 
 	fr_event_timer_delete(&conn->ev);
 	WATCH_PRE(conn);
@@ -959,14 +959,14 @@ static void connection_state_enter_connected(connection_t *conn)
 		ret = conn->open(conn->pub.el, conn->pub.h, conn->uctx);
 		HANDLER_END(conn);
 	} else {
-		ret = connection_STATE_CONNECTED;
+		ret = CONNECTION_STATE_CONNECTED;
 	}
 
 	switch (ret) {
 	/*
 	 *	Callback agrees everything is connected
 	 */
-	case connection_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTED:
 		DEBUG2("Connection established");
 		WATCH_POST(conn);	/* Only call if we successfully connected */
 		return;
@@ -974,7 +974,7 @@ static void connection_state_enter_connected(connection_t *conn)
 	/*
 	 *	Open callback failed
 	 */
-	case connection_STATE_FAILED:
+	case CONNECTION_STATE_FAILED:
 	default:
 		PERROR("Connection failed");
 		connection_state_enter_failed(conn);
@@ -992,15 +992,15 @@ static void connection_state_enter_connected(connection_t *conn)
 static void connection_state_enter_connecting(connection_t *conn)
 {
 	switch (conn->pub.state) {
-	case connection_STATE_INIT:
+	case CONNECTION_STATE_INIT:
 		break;
 
 	default:
-		BAD_STATE_TRANSITION(connection_STATE_CONNECTING);
+		BAD_STATE_TRANSITION(CONNECTION_STATE_CONNECTING);
 		return;
 	}
 
-	STATE_TRANSITION(connection_STATE_CONNECTING);
+	STATE_TRANSITION(CONNECTION_STATE_CONNECTING);
 
 	WATCH_PRE(conn);
 	WATCH_POST(conn);
@@ -1041,13 +1041,13 @@ static void connection_state_enter_init(connection_t *conn)
 	connection_state_t	ret;
 
 	switch (conn->pub.state) {
-	case connection_STATE_HALTED:
-	case connection_STATE_CLOSED:
-	case connection_STATE_FAILED:
+	case CONNECTION_STATE_HALTED:
+	case CONNECTION_STATE_CLOSED:
+	case CONNECTION_STATE_FAILED:
 		break;
 
 	default:
-		BAD_STATE_TRANSITION(connection_STATE_INIT);
+		BAD_STATE_TRANSITION(CONNECTION_STATE_INIT);
 		return;
 	}
 
@@ -1061,7 +1061,7 @@ static void connection_state_enter_init(connection_t *conn)
 	 */
 	conn->pub.reconnected++;
 
-	STATE_TRANSITION(connection_STATE_INIT);
+	STATE_TRANSITION(CONNECTION_STATE_INIT);
 
 	/*
 	 *	If we have an init callback, call it.
@@ -1073,17 +1073,17 @@ static void connection_state_enter_init(connection_t *conn)
 		ret = conn->init(&conn->pub.h, conn, conn->uctx);
 		HANDLER_END(conn);
 	} else {
-		ret = connection_STATE_CONNECTING;
+		ret = CONNECTION_STATE_CONNECTING;
 	}
 
 	switch (ret) {
-	case connection_STATE_CONNECTING:
+	case CONNECTION_STATE_CONNECTING:
 		conn->is_closed = false;	/* We now have a handle */
 		WATCH_POST(conn);		/* Only call if we successfully initialised the handle */
 		connection_state_enter_connecting(conn);
 		return;
 
-	case connection_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTED:
 		conn->is_closed = false;	/* We now have a handle */
 		WATCH_POST(conn);		/* Only call if we successfully initialised the handle */
 		connection_state_enter_connected(conn);
@@ -1092,7 +1092,7 @@ static void connection_state_enter_init(connection_t *conn)
 	/*
 	 *	Initialisation callback failed
 	 */
-	case connection_STATE_FAILED:
+	case CONNECTION_STATE_FAILED:
 	default:
 		PERROR("Connection initialisation failed");
 		connection_state_enter_failed(conn);
@@ -1114,7 +1114,7 @@ void connection_signal_init(connection_t *conn)
 	}
 
 	switch (conn->pub.state) {
-	case connection_STATE_HALTED:
+	case CONNECTION_STATE_HALTED:
 		connection_state_enter_init(conn);
 		break;
 
@@ -1146,7 +1146,7 @@ void connection_signal_connected(connection_t *conn)
 	}
 
 	switch (conn->pub.state) {
-	case connection_STATE_CONNECTING:
+	case CONNECTION_STATE_CONNECTING:
 		connection_state_enter_connected(conn);
 		break;
 
@@ -1179,20 +1179,20 @@ void connection_signal_reconnect(connection_t *conn, connection_reason_t reason)
 	}
 
 	switch (conn->pub.state) {
-	case connection_STATE_CLOSED:			/* Don't circumvent reconnection_delay */
-	case connection_STATE_INIT:				/* Already initialising */
+	case CONNECTION_STATE_CLOSED:			/* Don't circumvent reconnection_delay */
+	case CONNECTION_STATE_INIT:				/* Already initialising */
 		break;
 
-	case connection_STATE_HALTED:
+	case CONNECTION_STATE_HALTED:
 		connection_signal_init(conn);
 		break;
 
-	case connection_STATE_SHUTDOWN:
+	case CONNECTION_STATE_SHUTDOWN:
 		if (reason == connection_EXPIRED) break;	/* Already shutting down */
 		connection_state_enter_failed(conn);
 		break;
 
-	case connection_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTED:
 		if (reason == connection_EXPIRED) {
 		 	if (conn->shutdown) {
 		 		connection_state_enter_shutdown(conn);
@@ -1203,13 +1203,13 @@ void connection_signal_reconnect(connection_t *conn, connection_reason_t reason)
 		}
 		FALL_THROUGH;
 
-	case connection_STATE_CONNECTING:
-	case connection_STATE_TIMEOUT:
-	case connection_STATE_FAILED:
+	case CONNECTION_STATE_CONNECTING:
+	case CONNECTION_STATE_TIMEOUT:
+	case CONNECTION_STATE_FAILED:
 		connection_state_enter_failed(conn);
 		break;
 
-	case connection_STATE_MAX:
+	case CONNECTION_STATE_MAX:
 		fr_assert(0);
 		return;
 	}
@@ -1235,11 +1235,11 @@ void connection_signal_shutdown(connection_t *conn)
 	}
 
 	switch (conn->pub.state) {
-	case connection_STATE_HALTED:
-	case connection_STATE_SHUTDOWN:
+	case CONNECTION_STATE_HALTED:
+	case CONNECTION_STATE_SHUTDOWN:
 		break;
 
-	case connection_STATE_INIT:
+	case CONNECTION_STATE_INIT:
 		connection_state_enter_halted(conn);
 		break;
 
@@ -1250,7 +1250,7 @@ void connection_signal_shutdown(connection_t *conn)
 	 *	The shutdown callback or an FD event it inserts then
 	 *	to signal that the connection should be closed.
 	 */
-	case connection_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTED:
 		if (conn->shutdown) {
 			connection_state_enter_shutdown(conn);
 			break;
@@ -1263,18 +1263,18 @@ void connection_signal_shutdown(connection_t *conn)
 	 *	an active handle which needs to be closed before
 	 *	the connection is halted.
 	 */
-	case connection_STATE_CONNECTING:
-	case connection_STATE_TIMEOUT:
-	case connection_STATE_FAILED:
+	case CONNECTION_STATE_CONNECTING:
+	case CONNECTION_STATE_TIMEOUT:
+	case CONNECTION_STATE_FAILED:
 		connection_state_enter_closed(conn);
 		fr_assert(conn->is_closed);
 
 	FALL_THROUGH;
-	case connection_STATE_CLOSED:
+	case CONNECTION_STATE_CLOSED:
 		connection_state_enter_halted(conn);
 		break;
 
-	case connection_STATE_MAX:
+	case CONNECTION_STATE_MAX:
 		fr_assert(0);
 		return;
 	}
@@ -1298,11 +1298,11 @@ void connection_signal_halt(connection_t *conn)
 	}
 
 	switch (conn->pub.state) {
-	case connection_STATE_HALTED:
+	case CONNECTION_STATE_HALTED:
 		break;
 
-	case connection_STATE_INIT:
-	case connection_STATE_CLOSED:
+	case CONNECTION_STATE_INIT:
+	case CONNECTION_STATE_CLOSED:
 		connection_state_enter_halted(conn);
 		break;
 
@@ -1312,17 +1312,17 @@ void connection_signal_halt(connection_t *conn)
 	 *	an active handle which needs to be closed before
 	 *	the connection is halted.
 	 */
-	case connection_STATE_CONNECTED:
-	case connection_STATE_CONNECTING:
-	case connection_STATE_SHUTDOWN:
-	case connection_STATE_TIMEOUT:
-	case connection_STATE_FAILED:
+	case CONNECTION_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTING:
+	case CONNECTION_STATE_SHUTDOWN:
+	case CONNECTION_STATE_TIMEOUT:
+	case CONNECTION_STATE_FAILED:
 		connection_state_enter_closed(conn);
 		fr_assert(conn->is_closed);
 		connection_state_enter_halted(conn);
 		break;
 
-	case connection_STATE_MAX:
+	case CONNECTION_STATE_MAX:
 		fr_assert(0);
 		return;
 	}
@@ -1371,12 +1371,12 @@ static void _connection_signal_on_fd_cleanup(connection_t *conn,
 	 *	Remove the watch on the one that didn't
 	 */
 	switch (state) {
-	case connection_STATE_CLOSED:
-		connection_del_watch_pre(conn, connection_STATE_CONNECTED, _connection_signal_on_fd_cleanup);
+	case CONNECTION_STATE_CLOSED:
+		connection_del_watch_pre(conn, CONNECTION_STATE_CONNECTED, _connection_signal_on_fd_cleanup);
 		break;
 
-	case connection_STATE_CONNECTED:
-		connection_del_watch_pre(conn, connection_STATE_CLOSED, _connection_signal_on_fd_cleanup);
+	case CONNECTION_STATE_CONNECTED:
+		connection_del_watch_pre(conn, CONNECTION_STATE_CLOSED, _connection_signal_on_fd_cleanup);
 		break;
 
 	default:
@@ -1429,9 +1429,9 @@ int connection_signal_on_fd(connection_t *conn, int fd)
 	 *	the I/O handlers if the connection
 	 *      fails, or is connected.
 	 */
-	connection_add_watch_pre(conn, connection_STATE_CLOSED,
+	connection_add_watch_pre(conn, CONNECTION_STATE_CLOSED,
 				    _connection_signal_on_fd_cleanup, true, fd_s);
-	connection_add_watch_pre(conn, connection_STATE_CONNECTED,
+	connection_add_watch_pre(conn, CONNECTION_STATE_CONNECTED,
 				    _connection_signal_on_fd_cleanup, true, fd_s);
 	return 0;
 }
@@ -1463,14 +1463,14 @@ static int _connection_free(connection_t *conn)
 	}
 
 	switch (conn->pub.state) {
-	case connection_STATE_HALTED:
+	case CONNECTION_STATE_HALTED:
 		break;
 
 	/*
 	 *	Need to close the connection first
 	 */
-	case connection_STATE_CONNECTING:
-	case connection_STATE_CONNECTED:
+	case CONNECTION_STATE_CONNECTING:
+	case CONNECTION_STATE_CONNECTED:
 		connection_state_enter_closed(conn);
 		FALL_THROUGH;
 
@@ -1493,7 +1493,7 @@ static int _connection_free(connection_t *conn)
  *
  * @param[in] ctx		to allocate connection handle in.  If the connection
  *				handle is freed, and the #connection_state_t is
- *				#connection_STATE_CONNECTING or #connection_STATE_CONNECTED the
+ *				#CONNECTION_STATE_CONNECTING or #CONNECTION_STATE_CONNECTED the
  *				close callback will be called.
  * @param[in] el		to use for timer events, and to pass to the #connection_open_t callback.
  * @param[in] funcs		callback functions.
@@ -1525,7 +1525,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	*conn = (connection_t){
 		.pub = {
 			.id = id,
-			.state = connection_STATE_HALTED,
+			.state = CONNECTION_STATE_HALTED,
 			.el = el
 		},
 		.reconnection_delay = conf->reconnection_delay,
@@ -1551,7 +1551,7 @@ connection_t *connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	/*
 	 *	Pre-allocate a on_halt watcher for deferred signal processing
 	 */
-	conn->on_halted = connection_add_watch_post(conn, connection_STATE_HALTED,
+	conn->on_halted = connection_add_watch_post(conn, CONNECTION_STATE_HALTED,
 						       _deferred_signal_connection_on_halted, true, NULL);
 	connection_watch_disable(conn->on_halted);	/* Start disabled */
 

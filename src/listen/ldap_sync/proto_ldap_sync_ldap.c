@@ -563,10 +563,10 @@ static void proto_ldap_connection_init(UNUSED fr_event_list_t *el, UNUSED fr_tim
 	/*
 	 *	Add watch functions on the LDAP connection
 	 */
-	connection_add_watch_post(thread->conn, connection_STATE_INIT,
+	connection_add_watch_post(thread->conn, CONNECTION_STATE_INIT,
 				     _proto_ldap_socket_init, true, thread);
 
-	connection_add_watch_post(thread->conn, connection_STATE_CONNECTED,
+	connection_add_watch_post(thread->conn, CONNECTION_STATE_CONNECTED,
 				     _proto_ldap_socket_open_connected, true, thread);
 
 	/*
@@ -1160,7 +1160,7 @@ static void _proto_ldap_socket_closed(UNUSED connection_t *conn, connection_stat
 
 	if (fr_event_loop_exiting(thread->el)) return;
 
-	if (prev == connection_STATE_CONNECTED) {
+	if (prev == CONNECTION_STATE_CONNECTED) {
 		ERROR("LDAP connection closed.  Scheduling restart in %pVs",
 		       fr_box_time_delta(inst->handle_config.reconnection_delay));
 		if (fr_event_timer_in(thread, thread->el, &thread->conn_retry_ev,
@@ -1243,7 +1243,7 @@ static void _proto_ldap_socket_open_connected(connection_t *conn, UNUSED connect
 	/*
 	 *	Add a watch to catch closed LDAP connections
 	 */
-	connection_add_watch_post(thread->conn, connection_STATE_CLOSED,
+	connection_add_watch_post(thread->conn, CONNECTION_STATE_CLOSED,
 				     _proto_ldap_socket_closed, true, listen);
 }
 

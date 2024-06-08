@@ -43,17 +43,17 @@ typedef struct connection_pub_s connection_t; /* We use the private version of t
 #endif
 
 typedef enum {
-	connection_STATE_HALTED = 0,		//!< The connection is in a halted stat.  It does not have
+	CONNECTION_STATE_HALTED = 0,		//!< The connection is in a halted stat.  It does not have
 						///< a valid file descriptor, and it will not try and
 						///< and create one.
-	connection_STATE_INIT,		//!< Init state, sets up connection.
-	connection_STATE_CONNECTING,		//!< Waiting for connection to establish.
-	connection_STATE_TIMEOUT,		//!< Timeout during #connection_STATE_CONNECTING.
-	connection_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
-	connection_STATE_SHUTDOWN,		//!< Connection is shutting down.
-	connection_STATE_FAILED,		//!< Connection has failed.
-	connection_STATE_CLOSED,		//!< Connection has been closed.
-	connection_STATE_MAX
+	CONNECTION_STATE_INIT,		//!< Init state, sets up connection.
+	CONNECTION_STATE_CONNECTING,		//!< Waiting for connection to establish.
+	CONNECTION_STATE_TIMEOUT,		//!< Timeout during #CONNECTION_STATE_CONNECTING.
+	CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
+	CONNECTION_STATE_SHUTDOWN,		//!< Connection is shutting down.
+	CONNECTION_STATE_FAILED,		//!< Connection has failed.
+	CONNECTION_STATE_CLOSED,		//!< Connection has been closed.
+	CONNECTION_STATE_MAX
 } connection_state_t;
 
 /** Public fields for the connection
@@ -110,8 +110,8 @@ extern size_t connection_states_len;
  *			for library I/O callbacks.
  * @param[in] uctx	User context.
  * @return
- *	- #connection_STATE_CONNECTING	if a handle was successfully created.
- *	- #connection_STATE_FAILED		if we could not create a handle.
+ *	- #CONNECTION_STATE_CONNECTING	if a handle was successfully created.
+ *	- #CONNECTION_STATE_FAILED		if we could not create a handle.
  */
 typedef connection_state_t (*connection_init_t)(void **h_out, connection_t *conn, void *uctx);
 
@@ -124,8 +124,8 @@ typedef connection_state_t (*connection_init_t)(void **h_out, connection_t *conn
  * @param[in] h		Handle that was successfully opened.
  * @param[in] uctx	User context.
  * @return
- *	- #connection_STATE_CONNECTED	if the handle is usable.
- *	- #connection_STATE_FAILED		if the handle is unusable.
+ *	- #CONNECTION_STATE_CONNECTED	if the handle is usable.
+ *	- #CONNECTION_STATE_FAILED		if the handle is unusable.
  */
 typedef connection_state_t (*connection_open_t)(fr_event_list_t *el, void *h, void *uctx);
 
@@ -142,25 +142,25 @@ typedef connection_state_t (*connection_open_t)(fr_event_list_t *el, void *h, vo
  * @param[in] h		Handle that needs to be closed.
  * @param[in] uctx	User context.
  * @return
- *	- #connection_STATE_SHUTDOWN		if the handle has shutdown.
- *	- #connection_STATE_FAILED		if the handle is unusable, and we
+ *	- #CONNECTION_STATE_SHUTDOWN		if the handle has shutdown.
+ *	- #CONNECTION_STATE_FAILED		if the handle is unusable, and we
  *						should just transition directly to failed.
  */
 typedef connection_state_t (*connection_shutdown_t)(fr_event_list_t *el, void *h, void *uctx);
 
 /** Notification that a connection attempt has failed
  *
- * @note If the callback frees the connection, it must return #connection_STATE_HALTED.
+ * @note If the callback frees the connection, it must return #CONNECTION_STATE_HALTED.
  *
  * @param[in] h		Handle that failed.
  * @param[in] state	the connection was in when it failed. Usually one of:
- *			- #connection_STATE_CONNECTING	the connection attempt explicitly failed.
- *			- #connection_STATE_CONNECTED	something called #connection_signal_reconnect.
- *			- #connection_STATE_TIMEOUT		the connection attempt timed out.
+ *			- #CONNECTION_STATE_CONNECTING	the connection attempt explicitly failed.
+ *			- #CONNECTION_STATE_CONNECTED	something called #connection_signal_reconnect.
+ *			- #CONNECTION_STATE_TIMEOUT		the connection attempt timed out.
  * @param[in] uctx	User context.
  * @return
- *	- #connection_STATE_INIT		to transition to the init state.
- *	- #connection_STATE_HALTED		To prevent further reconnection
+ *	- #CONNECTION_STATE_INIT		to transition to the init state.
+ *	- #CONNECTION_STATE_HALTED		To prevent further reconnection
  *						attempts Can be restarted with
  *	  					#connection_signal_init().
  */
