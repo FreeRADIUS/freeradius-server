@@ -154,7 +154,7 @@ struct trunk_connection_s {
 
 	fr_dlist_head_t		sent;			//!< Sent request.
 
-	fr_dlist_head_t		idle;			//!< Idle request.
+	fr_dlist_head_t		reapable;			//!< Idle request.
 
 	fr_dlist_head_t		cancel;			//!< Requests in the cancel state.
 
@@ -336,36 +336,36 @@ conf_parser_t const trunk_config[] = {
  */
 static fr_table_num_indexed_bit_pos_t const trunk_req_trigger_names[] = {
 	{ L("pool.request_init"),			TRUNK_REQUEST_STATE_INIT		},	/* 0x0000 - bit 0 */
-	{ L("pool.request_unassigned"),			TRUNK_REQUEST_STATE_UNASSIGNED	},	/* 0x0001 - bit 1 */
+	{ L("pool.request_unassigned"),			TRUNK_REQUEST_STATE_UNASSIGNED		},	/* 0x0001 - bit 1 */
 	{ L("pool.request_backlog"),			TRUNK_REQUEST_STATE_BACKLOG		},	/* 0x0002 - bit 2 */
 	{ L("pool.request_pending"),			TRUNK_REQUEST_STATE_PENDING		},	/* 0x0004 - bit 3 */
 	{ L("pool.request_partial"),			TRUNK_REQUEST_STATE_PARTIAL		},	/* 0x0008 - bit 4 */
 	{ L("pool.request_sent"),			TRUNK_REQUEST_STATE_SENT		},	/* 0x0010 - bit 5 */
-	{ L("pool.request_complete"),			TRUNK_REQUEST_STATE_COMPLETE		},	/* 0x0020 - bit 6 */
-	{ L("pool.request_state_failed"),		TRUNK_REQUEST_STATE_FAILED		},	/* 0x0040 - bit 7 */
-	{ L("pool.request_state_cancel"),		TRUNK_REQUEST_STATE_CANCEL		},	/* 0x0080 - bit 8 */
-	{ L("pool.request_state_cancel_sent"),		TRUNK_REQUEST_STATE_CANCEL_SENT	},	/* 0x0100 - bit 9 */
-	{ L("pool.request_state_cancel_partial"),	TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},	/* 0x0200 - bit 10 */
-	{ L("pool.request_state_cancel_complete"),	TRUNK_REQUEST_STATE_CANCEL_COMPLETE	},	/* 0x0400 - bit 11 */
-	{ L("pool.request_state_idle"),			TRUNK_REQUEST_STATE_IDLE		}	/* 0x0800 - bit 12 */
+	{ L("pool.request_state_reapable"),		TRUNK_REQUEST_STATE_REAPABLE		},	/* 0x0020 - bit 6 */
+	{ L("pool.request_complete"),			TRUNK_REQUEST_STATE_COMPLETE		},	/* 0x0040 - bit 7 */
+	{ L("pool.request_state_failed"),		TRUNK_REQUEST_STATE_FAILED		},	/* 0x0080 - bit 8 */
+	{ L("pool.request_state_cancel"),		TRUNK_REQUEST_STATE_CANCEL		},	/* 0x0100 - bit 9 */
+	{ L("pool.request_state_cancel_sent"),		TRUNK_REQUEST_STATE_CANCEL_SENT		},	/* 0x0200 - bit 10 */
+	{ L("pool.request_state_cancel_partial"),	TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},	/* 0x0400 - bit 11 */
+	{ L("pool.request_state_cancel_complete"),	TRUNK_REQUEST_STATE_CANCEL_COMPLETE	},	/* 0x0800 - bit 12 */
 };
 static size_t trunk_req_trigger_names_len = NUM_ELEMENTS(trunk_req_trigger_names);
 #endif
 
 static fr_table_num_ordered_t const trunk_request_states[] = {
 	{ L("INIT"),					TRUNK_REQUEST_STATE_INIT		},
-	{ L("UNASSIGNED"),				TRUNK_REQUEST_STATE_UNASSIGNED	},
+	{ L("UNASSIGNED"),				TRUNK_REQUEST_STATE_UNASSIGNED		},
 	{ L("BACKLOG"),					TRUNK_REQUEST_STATE_BACKLOG		},
 	{ L("PENDING"),					TRUNK_REQUEST_STATE_PENDING		},
 	{ L("PARTIAL"),					TRUNK_REQUEST_STATE_PARTIAL		},
 	{ L("SENT"),					TRUNK_REQUEST_STATE_SENT		},
+	{ L("REAPABLE"),				TRUNK_REQUEST_STATE_REAPABLE		},
 	{ L("COMPLETE"),				TRUNK_REQUEST_STATE_COMPLETE		},
 	{ L("FAILED"),					TRUNK_REQUEST_STATE_FAILED		},
 	{ L("CANCEL"),					TRUNK_REQUEST_STATE_CANCEL		},
-	{ L("CANCEL-SENT"),				TRUNK_REQUEST_STATE_CANCEL_SENT	},
+	{ L("CANCEL-SENT"),				TRUNK_REQUEST_STATE_CANCEL_SENT		},
 	{ L("CANCEL-PARTIAL"),				TRUNK_REQUEST_STATE_CANCEL_PARTIAL	},
-	{ L("CANCEL-COMPLETE"),				TRUNK_REQUEST_STATE_CANCEL_COMPLETE	},
-	{ L("IDLE"),					TRUNK_REQUEST_STATE_IDLE		}
+	{ L("CANCEL-COMPLETE"),				TRUNK_REQUEST_STATE_CANCEL_COMPLETE	}
 };
 static size_t trunk_request_states_len = NUM_ELEMENTS(trunk_request_states);
 
@@ -375,11 +375,11 @@ static size_t trunk_request_states_len = NUM_ELEMENTS(trunk_request_states);
  */
 static fr_table_num_indexed_bit_pos_t const trunk_conn_trigger_names[] = {
 	{ L("pool.connection_halted"),			TRUNK_CONN_HALTED			},	/* 0x0000 - bit 0 */
-	{ L("pool.connection_init"),			TRUNK_CONN_INIT			},	/* 0x0001 - bit 1 */
-	{ L("pool.connection_connecting"),		TRUNK_CONN_CONNECTING		},	/* 0x0002 - bit 2 */
+	{ L("pool.connection_init"),			TRUNK_CONN_INIT				},	/* 0x0001 - bit 1 */
+	{ L("pool.connection_connecting"),		TRUNK_CONN_CONNECTING			},	/* 0x0002 - bit 2 */
 	{ L("pool.connection_active"),			TRUNK_CONN_ACTIVE			},	/* 0x0004 - bit 3 */
 	{ L("pool.connection_closed"),			TRUNK_CONN_CLOSED			},	/* 0x0008 - bit 4 */
-	{ L("pool.connection_full"),			TRUNK_CONN_FULL			},	/* 0x0010 - bit 5 */
+	{ L("pool.connection_full"),			TRUNK_CONN_FULL				},	/* 0x0010 - bit 5 */
 	{ L("pool.connection_inactive"),		TRUNK_CONN_INACTIVE			},	/* 0x0020 - bit 6 */
 	{ L("pool.connection_inactive_draining"),	TRUNK_CONN_INACTIVE_DRAINING		},	/* 0x0040 - bit 7 */
 	{ L("pool.connection_draining"),		TRUNK_CONN_DRAINING			},	/* 0x0080 - bit 8 */
@@ -395,12 +395,12 @@ static fr_table_num_ordered_t const trunk_states[] = {
 static size_t trunk_states_len = NUM_ELEMENTS(trunk_states);
 
 static fr_table_num_ordered_t const trunk_connection_states[] = {
-	{ L("INIT"),					TRUNK_CONN_INIT			},
+	{ L("INIT"),					TRUNK_CONN_INIT				},
 	{ L("HALTED"),					TRUNK_CONN_HALTED			},
-	{ L("CONNECTING"),				TRUNK_CONN_CONNECTING		},
+	{ L("CONNECTING"),				TRUNK_CONN_CONNECTING			},
 	{ L("ACTIVE"),					TRUNK_CONN_ACTIVE			},
 	{ L("CLOSED"),					TRUNK_CONN_CLOSED			},
-	{ L("FULL"),					TRUNK_CONN_FULL			},
+	{ L("FULL"),					TRUNK_CONN_FULL				},
 	{ L("INACTIVE"),				TRUNK_CONN_INACTIVE			},
 	{ L("INACTIVE-DRAINING"),			TRUNK_CONN_INACTIVE_DRAINING		},
 	{ L("DRAINING"),				TRUNK_CONN_DRAINING			},
@@ -739,10 +739,10 @@ do { \
  */
 #define REQUEST_EXTRACT_SENT(_treq) fr_dlist_remove(&tconn->sent, treq)
 
-/** Remove the current request from the idle list
+/** Remove the current request from the reapable list
  *
  */
-#define REQUEST_EXTRACT_IDLE(_treq) fr_dlist_remove(&tconn->idle, treq)
+#define REQUEST_EXTRACT_REAPABLE(_treq) fr_dlist_remove(&tconn->reapable, treq)
 
 /** Remove the current request from the cancel list
  *
@@ -889,7 +889,7 @@ static void trunk_request_enter_backlog(trunk_request_t *treq, bool new);
 static void trunk_request_enter_pending(trunk_request_t *treq, trunk_connection_t *tconn, bool new);
 static void trunk_request_enter_partial(trunk_request_t *treq);
 static void trunk_request_enter_sent(trunk_request_t *treq);
-static void trunk_request_enter_idle(trunk_request_t *treq);
+static void trunk_request_enter_reapable(trunk_request_t *treq);
 static void trunk_request_enter_failed(trunk_request_t *treq);
 static void trunk_request_enter_complete(trunk_request_t *treq);
 static void trunk_request_enter_cancel(trunk_request_t *treq, trunk_cancel_reason_t reason);
@@ -977,8 +977,8 @@ static void trunk_request_remove_from_conn(trunk_request_t *treq)
 		REQUEST_EXTRACT_SENT(treq);
 		break;
 
-	case TRUNK_REQUEST_STATE_IDLE:
-		REQUEST_EXTRACT_IDLE(treq);
+	case TRUNK_REQUEST_STATE_REAPABLE:
+		REQUEST_EXTRACT_REAPABLE(treq);
 		break;
 
 	case TRUNK_REQUEST_STATE_CANCEL:
@@ -1293,13 +1293,13 @@ static void trunk_request_enter_sent(trunk_request_t *treq)
 	trunk_connection_event_update(tconn);
 }
 
-/** Transition a request to the idle state, indicating that it's been sent in its entirety, but no response is expected
+/** Transition a request to the reapable state, indicating that it's been sent in its entirety, but no response is expected
  *
  * @note Largely a replica of trunk_request_enter_sent.
  *
  * @param[in] treq	to trigger a state change for.
  */
-static void trunk_request_enter_idle(trunk_request_t *treq)
+static void trunk_request_enter_reapable(trunk_request_t *treq)
 {
 	trunk_connection_t	*tconn = treq->pub.tconn;
 	trunk_t		*trunk = treq->pub.trunk;
@@ -1319,8 +1319,8 @@ static void trunk_request_enter_idle(trunk_request_t *treq)
 		REQUEST_BAD_STATE_TRANSITION(TRUNK_REQUEST_STATE_SENT);
 	}
 
-	REQUEST_STATE_TRANSITION(TRUNK_REQUEST_STATE_IDLE);
-	fr_dlist_insert_tail(&tconn->idle, treq);
+	REQUEST_STATE_TRANSITION(TRUNK_REQUEST_STATE_REAPABLE);
+	fr_dlist_insert_tail(&tconn->reapable, treq);
 
 	if (!treq->sent) {
 		tconn->sent_count++;
@@ -1377,8 +1377,8 @@ static void trunk_request_enter_cancel(trunk_request_t *treq, trunk_cancel_reaso
 		REQUEST_EXTRACT_SENT(treq);
 		break;
 
-	case TRUNK_REQUEST_STATE_IDLE:
-		REQUEST_EXTRACT_IDLE(treq);
+	case TRUNK_REQUEST_STATE_REAPABLE:
+		REQUEST_EXTRACT_REAPABLE(treq);
 		break;
 
 	default:
@@ -1533,7 +1533,7 @@ static void trunk_request_enter_complete(trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_SENT:
 	case TRUNK_REQUEST_STATE_PENDING:
-	case TRUNK_REQUEST_STATE_IDLE:
+	case TRUNK_REQUEST_STATE_REAPABLE:
 		trunk_request_remove_from_conn(treq);
 		break;
 
@@ -1835,8 +1835,7 @@ static uint64_t trunk_connection_requests_dequeue(fr_dlist_head_t *out, trunk_co
  *
  * @return the number of requests re-queued.
  */
-static uint64_t trunk_connection_requests_requeue(trunk_connection_t *tconn, int states, uint64_t max,
-						  bool fail_bound)
+static uint64_t trunk_connection_requests_requeue_priv(trunk_connection_t *tconn, int states, uint64_t max, bool fail_bound)
 {
 	trunk_t			*trunk = tconn->pub.trunk;
 	fr_dlist_head_t			to_process;
@@ -2060,7 +2059,7 @@ void trunk_request_signal_sent(trunk_request_t *treq)
  *
  * @param[in] treq	to signal state change for.
  */
-void trunk_request_signal_idle(trunk_request_t *treq)
+void trunk_request_signal_reapable(trunk_request_t *treq)
 {
 	if (!fr_cond_assert_msg(treq->pub.trunk, "treq not associated with trunk")) return;
 
@@ -2070,7 +2069,7 @@ void trunk_request_signal_idle(trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_PENDING:
 	case TRUNK_REQUEST_STATE_PARTIAL:
-		trunk_request_enter_idle(treq);
+		trunk_request_enter_reapable(treq);
 		break;
 
 	default:
@@ -2102,7 +2101,7 @@ void trunk_request_signal_complete(trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_SENT:
 	case TRUNK_REQUEST_STATE_PENDING:	/* Got immediate response, i.e. cached */
-	case TRUNK_REQUEST_STATE_IDLE:
+	case TRUNK_REQUEST_STATE_REAPABLE:
 		trunk_request_enter_complete(treq);
 		break;
 
@@ -2672,7 +2671,7 @@ trunk_enqueue_t trunk_request_requeue(trunk_request_t *treq)
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_PARTIAL:
 	case TRUNK_REQUEST_STATE_SENT:
-	case TRUNK_REQUEST_STATE_IDLE:
+	case TRUNK_REQUEST_STATE_REAPABLE:
 		connection_signals_pause(tconn->pub.conn);
 		trunk_request_enter_cancel(treq, TRUNK_CANCEL_REASON_REQUEUE);
 		trunk_request_enter_pending(treq, tconn, false);
@@ -3218,7 +3217,7 @@ static void trunk_connection_enter_draining_to_free(trunk_connection_t *tconn)
 	 *	requests, so the connection is drained
 	 *	quicker.
 	 */
-	trunk_connection_requests_requeue(tconn, TRUNK_REQUEST_STATE_PENDING, 0, false);
+	trunk_connection_requests_requeue_priv(tconn, TRUNK_REQUEST_STATE_PENDING, 0, false);
 }
 
 
@@ -3736,7 +3735,7 @@ static int trunk_connection_spawn(trunk_t *trunk, fr_time_t now)
 
 	MEM(tconn->pending = fr_heap_talloc_alloc(tconn, _trunk_request_prioritise, trunk_request_t, heap_id, 0));
 	fr_dlist_talloc_init(&tconn->sent, trunk_request_t, entry);
-	fr_dlist_talloc_init(&tconn->idle, trunk_request_t, entry);
+	fr_dlist_talloc_init(&tconn->reapable, trunk_request_t, entry);
 	fr_dlist_talloc_init(&tconn->cancel, trunk_request_t, entry);
 	fr_dlist_talloc_init(&tconn->cancel_sent, trunk_request_t, entry);
 
@@ -4144,7 +4143,7 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 
 	/*
 	 *	Cleanup requests in our request cache which
-	 *	have been idle for too long.
+	 *	have been reapable for too long.
 	 */
 	while ((treq = fr_dlist_tail(&trunk->free_requests)) &&
 	       fr_time_lteq(fr_time_add(treq->last_freed, trunk->conf.req_cleanup_delay), now)) talloc_free(treq);

@@ -162,7 +162,7 @@ typedef enum {
 	TRUNK_REQUEST_STATE_INIT		= 0x0000,	//!< Initial state.  Requests in this state
 								///< were never assigned, and the request_t should
 								///< not have been yielded.
-	TRUNK_REQUEST_STATE_UNASSIGNED	= 0x0001,	//!< Transition state - Request currently
+	TRUNK_REQUEST_STATE_UNASSIGNED		= 0x0001,	//!< Transition state - Request currently
 								///< not assigned to any connection.
 	TRUNK_REQUEST_STATE_BACKLOG		= 0x0002,	//!< In the backlog.
 	TRUNK_REQUEST_STATE_PENDING		= 0x0004,	//!< In the queue of a connection
@@ -170,16 +170,20 @@ typedef enum {
 	TRUNK_REQUEST_STATE_PARTIAL		= 0x0008,	//!< Some of the request was written to the socket,
 								///< more of it should be written later.
 	TRUNK_REQUEST_STATE_SENT		= 0x0010,	//!< Was written to a socket.  Waiting for a response.
-	TRUNK_REQUEST_STATE_COMPLETE		= 0x0020,	//!< The request is complete.
-	TRUNK_REQUEST_STATE_FAILED		= 0x0040,	//!< The request failed.
-	TRUNK_REQUEST_STATE_CANCEL		= 0x0080,	//!< A request on a particular socket was cancel.
-	TRUNK_REQUEST_STATE_CANCEL_SENT	= 0x0100,	//!< We've informed the remote server that
-								///< the request has been cancelled.
-	TRUNK_REQUEST_STATE_CANCEL_PARTIAL	= 0x0200,	//!< We partially wrote a cancellation request.
-	TRUNK_REQUEST_STATE_CANCEL_COMPLETE	= 0x0400,	//!< Remote server has acknowledged our cancellation.
-
-	TRUNK_REQUEST_STATE_IDLE		= 0x0800,	//!< Request has been written, needs to persist, but we
+	TRUNK_REQUEST_STATE_REAPABLE		= 0x0020,	//!< Request has been written, needs to persist, but we
 								///< are not currently waiting for any response.
+								///< This is primarily useful where the connection only
+								///< allows a single outstanding request, and writing
+								///< additional requests would cause the previous result
+								///< to be lost.
+	TRUNK_REQUEST_STATE_COMPLETE		= 0x0040,	//!< The request is complete.
+	TRUNK_REQUEST_STATE_FAILED		= 0x0080,	//!< The request failed.
+	TRUNK_REQUEST_STATE_CANCEL		= 0x0100,	//!< A request on a particular socket was cancel.
+	TRUNK_REQUEST_STATE_CANCEL_SENT		= 0x0200,	//!< We've informed the remote server that
+								///< the request has been cancelled.
+	TRUNK_REQUEST_STATE_CANCEL_PARTIAL	= 0x0400,	//!< We partially wrote a cancellation request.
+	TRUNK_REQUEST_STATE_CANCEL_COMPLETE	= 0x0800,	//!< Remote server has acknowledged our cancellation.
+
 } trunk_request_state_t;
 
 /** All request states
@@ -191,13 +195,13 @@ typedef enum {
 	TRUNK_REQUEST_STATE_PENDING | \
 	TRUNK_REQUEST_STATE_PARTIAL | \
 	TRUNK_REQUEST_STATE_SENT | \
+	TRUNK_REQUEST_STATE_REAPABLE | \
 	TRUNK_REQUEST_STATE_COMPLETE | \
 	TRUNK_REQUEST_STATE_FAILED | \
 	TRUNK_REQUEST_STATE_CANCEL | \
 	TRUNK_REQUEST_STATE_CANCEL_PARTIAL | \
 	TRUNK_REQUEST_STATE_CANCEL_SENT | \
-	TRUNK_REQUEST_STATE_CANCEL_COMPLETE | \
-	TRUNK_REQUEST_STATE_IDLE \
+	TRUNK_REQUEST_STATE_CANCEL_COMPLETE \
 )
 
 /** All requests in various cancellation states
@@ -724,13 +728,13 @@ typedef struct {
 
 	trunk_request_mux_t		request_mux;		///!< Write one or more requests to a connection.
 
-	trunk_request_demux_t	request_demux;		///!< Read one or more requests from a connection.
+	trunk_request_demux_t		request_demux;		///!< Read one or more requests from a connection.
 
 	trunk_request_cancel_mux_t	request_cancel_mux;	//!< Inform an external resource that we no longer
 								///< care about the result of any queries we
 								///< issued for this request.
 
-	trunk_request_cancel_t	request_cancel;		//!< Request should be removed from tracking
+	trunk_request_cancel_t		request_cancel;		//!< Request should be removed from tracking
 								///< and should be reset to its initial state.
 
 	trunk_request_conn_release_t	request_conn_release;	//!< Any connection specific resources should be
@@ -763,7 +767,7 @@ void		trunk_request_signal_partial(trunk_request_t *treq) CC_HINT(nonnull);
 
 void		trunk_request_signal_sent(trunk_request_t *treq) CC_HINT(nonnull);
 
-void		trunk_request_signal_idle(trunk_request_t *treq) CC_HINT(nonnull);
+void		trunk_request_signal_reapable(trunk_request_t *treq) CC_HINT(nonnull);
 
 void		trunk_request_signal_complete(trunk_request_t *treq) CC_HINT(nonnull);
 

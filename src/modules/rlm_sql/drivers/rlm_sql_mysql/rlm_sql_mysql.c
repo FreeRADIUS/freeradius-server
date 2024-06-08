@@ -741,7 +741,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 	 *	If the query is not in a state which would return results, then do nothing.
 	 */
 	if (query_ctx->treq && !(query_ctx->treq->state &
-	    (TRUNK_REQUEST_STATE_SENT | TRUNK_REQUEST_STATE_IDLE | TRUNK_REQUEST_STATE_COMPLETE))) return RLM_SQL_OK;
+	    (TRUNK_REQUEST_STATE_SENT | TRUNK_REQUEST_STATE_REAPABLE | TRUNK_REQUEST_STATE_COMPLETE))) return RLM_SQL_OK;
 
 	/*
 	 *	If the connection doesn't exist there's nothing to do
@@ -986,7 +986,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	 *	The current request is not waiting for I/O so the request can run
 	 */
 	ROPTIONAL(RDEBUG3, DEBUG3, "Got immediate response");
-	trunk_request_signal_idle(treq);
+	trunk_request_signal_reapable(treq);
 	if (request) unlang_interpret_mark_runnable(request);
 }
 

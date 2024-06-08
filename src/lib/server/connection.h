@@ -46,7 +46,7 @@ typedef enum {
 	CONNECTION_STATE_HALTED = 0,		//!< The connection is in a halted stat.  It does not have
 						///< a valid file descriptor, and it will not try and
 						///< and create one.
-	CONNECTION_STATE_INIT,		//!< Init state, sets up connection.
+	CONNECTION_STATE_INIT,			//!< Init state, sets up connection.
 	CONNECTION_STATE_CONNECTING,		//!< Waiting for connection to establish.
 	CONNECTION_STATE_TIMEOUT,		//!< Timeout during #CONNECTION_STATE_CONNECTING.
 	CONNECTION_STATE_CONNECTED,		//!< File descriptor is open (ready for writing).
