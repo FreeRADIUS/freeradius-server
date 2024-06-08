@@ -19,8 +19,8 @@
  *
  * Copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
-digraph fr_trunk_connection_t_states {
-	label = "fr_trunk_connection_t states"
+digraph trunk_connection_t_states {
+	label = "trunk_connection_t states"
 	condition_key [
 		shape=plaintext
 		label=<

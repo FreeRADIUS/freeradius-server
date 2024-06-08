@@ -125,8 +125,8 @@ typedef struct {
 #endif
 
 	fr_ldap_config_t handle_config;			//!< Connection configuration instance.
-	fr_trunk_conf_t	trunk_conf;			//!< Trunk configuration
-	fr_trunk_conf_t	bind_trunk_conf;		//!< Trunk configuration for trunk used for bind auths
+	trunk_conf_t	trunk_conf;			//!< Trunk configuration
+	trunk_conf_t	bind_trunk_conf;		//!< Trunk configuration for trunk used for bind auths
 
 	module_instance_t const *mi;			//!< Module instance data for thread lookups.
 } rlm_ldap_t;

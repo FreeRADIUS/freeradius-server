@@ -279,7 +279,7 @@ static void ldap_edir_get_password_cancel(UNUSED request_t *request, UNUSED fr_s
 
 	if (!edir_ctx->query || !edir_ctx->query->treq) return;
 
-	fr_trunk_request_signal_cancel(edir_ctx->query->treq);
+	trunk_request_signal_cancel(edir_ctx->query->treq);
 }
 
 /** Initiate retrieval of the universal password from Novell eDirectory

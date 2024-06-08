@@ -64,8 +64,8 @@ fr_ldap_referral_t *fr_ldap_referral_alloc(TALLOC_CTX *ctx, request_t *request)
 /** Callback to send LDAP referral queries when a trunk becomes active
  *
  */
-static void _ldap_referral_send(UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state_t prev,
-			        UNUSED fr_trunk_state_t state, void *uctx)
+static void _ldap_referral_send(UNUSED trunk_t *trunk, UNUSED trunk_state_t prev,
+			        UNUSED trunk_state_t state, void *uctx)
 {
 	fr_ldap_referral_t	*referral = talloc_get_type_abort(uctx, fr_ldap_referral_t);
 	fr_ldap_query_t		*query = referral->query;
@@ -80,9 +80,9 @@ static void _ldap_referral_send(UNUSED fr_trunk_t *trunk, UNUSED fr_trunk_state_
 	 *	Enqueue referral query on active trunk connection
 	 */
 	query->referral = referral;
-	switch (fr_trunk_request_enqueue(&query->treq, referral->ttrunk->trunk, request, query, NULL)) {
-	case FR_TRUNK_ENQUEUE_OK:
-	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+	switch (trunk_request_enqueue(&query->treq, referral->ttrunk->trunk, request, query, NULL)) {
+	case TRUNK_ENQUEUE_OK:
+	case TRUNK_ENQUEUE_IN_BACKLOG:
 		break;
 
 	default:
@@ -117,7 +117,7 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 	fr_ldap_referral_t	*referral;
 	LDAPURLDesc		temp_desc;
 
-	fr_trunk_request_signal_complete(query->treq);
+	trunk_request_signal_complete(query->treq);
 	query->treq = NULL;
 
 	if (query->referral_depth > 1) {
@@ -225,7 +225,7 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 
 		fr_dlist_insert_tail(&query->referrals, referral);
 		if (fr_thread_ldap_trunk_state(t, referral->host_uri,
-					       referral->identity) != FR_TRUNK_STATE_ACTIVE) {
+					       referral->identity) != TRUNK_STATE_ACTIVE) {
 			ROPTIONAL(RDEBUG3, DEBUG3,
 				  "No active LDAP trunk for URI %s, bound as %s",
 				  referral->host_uri, referral->identity);
@@ -245,9 +245,9 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 		 *	We have an active trunk enqueue the request
 		 */
 		query->referral = referral;
-		switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
-		case FR_TRUNK_ENQUEUE_OK:
-		case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+		switch (trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
+		case TRUNK_ENQUEUE_OK:
+		case TRUNK_ENQUEUE_IN_BACKLOG:
 			break;
 
 		default:
@@ -278,7 +278,7 @@ int fr_ldap_referral_follow(fr_ldap_thread_t *t, request_t *request, fr_ldap_que
 			continue;
 		}
 		referral->ttrunk = ttrunk;
-		fr_trunk_add_watch(ttrunk->trunk, FR_TRUNK_STATE_ACTIVE, _ldap_referral_send, true, referral);
+		trunk_add_watch(ttrunk->trunk, TRUNK_STATE_ACTIVE, _ldap_referral_send, true, referral);
 		ROPTIONAL(RDEBUG4, DEBUG4, "Watch inserted to send referral query on active trunk");
 	}
 
@@ -312,12 +312,12 @@ int fr_ldap_referral_next(fr_ldap_thread_t *t, request_t *request, fr_ldap_query
 	fr_ldap_referral_t	*referral = NULL;
 	fr_ldap_thread_trunk_t	*ttrunk;
 
-	fr_trunk_request_signal_complete(query->treq);
+	trunk_request_signal_complete(query->treq);
 	query->treq = NULL;
 
 	while ((referral = fr_dlist_next(&query->referrals, referral))) {
 		if (fr_thread_ldap_trunk_state(t, referral->host_uri,
-					       referral->identity) != FR_TRUNK_STATE_ACTIVE) {
+					       referral->identity) != TRUNK_STATE_ACTIVE) {
 			ROPTIONAL(RDEBUG3, DEBUG3, "No active LDAP trunk for URI %s, bind DN %s",
 				  referral->host_uri, referral->identity);
 			continue;
@@ -336,9 +336,9 @@ int fr_ldap_referral_next(fr_ldap_thread_t *t, request_t *request, fr_ldap_query
 		 *	We have an active trunk enqueue the request
 		 */
 		query->referral = referral;
-		switch(fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
-		case FR_TRUNK_ENQUEUE_OK:
-		case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+		switch(trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
+		case TRUNK_ENQUEUE_OK:
+		case TRUNK_ENQUEUE_IN_BACKLOG:
 			break;
 
 		default:
@@ -369,7 +369,7 @@ int fr_ldap_referral_next(fr_ldap_thread_t *t, request_t *request, fr_ldap_query
 			continue;
 		}
 		referral->ttrunk = ttrunk;
-		fr_trunk_add_watch(ttrunk->trunk, FR_TRUNK_STATE_ACTIVE, _ldap_referral_send, true, referral);
+		trunk_add_watch(ttrunk->trunk, TRUNK_STATE_ACTIVE, _ldap_referral_send, true, referral);
 		ROPTIONAL(RDEBUG4, DEBUG4, "Watch inserted to send referral query on active trunk");
 	}
 

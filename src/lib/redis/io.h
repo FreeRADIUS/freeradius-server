@@ -60,7 +60,7 @@ typedef struct {
  *
  * There are three layers of wrapping structures
  *
- * fr_connection_t -> fr_redis_handle_t -> redisAsyncContext
+ * connection_t -> fr_redis_handle_t -> redisAsyncContext
  *
  */
 typedef struct {
@@ -138,12 +138,12 @@ static inline bool fr_redis_connection_process_response(fr_redis_handle_t *h)
 	return false;
 }
 
-fr_connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-						   fr_connection_conf_t const *conn_conf,
+connection_t		*fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+						   connection_conf_t const *conn_conf,
 						   fr_redis_io_conf_t const *io_conf,
 						   char const *log_prefix);
 
-redisAsyncContext	*fr_redis_connection_get_async_ctx(fr_connection_t *conn);
+redisAsyncContext	*fr_redis_connection_get_async_ctx(connection_t *conn);
 
 #ifdef __cplusplus
 }

@@ -186,7 +186,7 @@ typedef struct {
 	request_t		*request;	//!< Request being processed.
 	rlm_rcode_t		rcode;		//!< Module return code.
 	rlm_sql_handle_t	*handle;	//!< Database connection handle in use for current authorization.
-	fr_trunk_t		*trunk;		//!< Trunk connection for current authorization.
+	trunk_t		*trunk;		//!< Trunk connection for current authorization.
 	sql_autz_call_env_t	*call_env;	//!< Call environment data.
 	map_list_t		check_tmp;	//!< List to store check items before processing.
 	map_list_t		reply_tmp;	//!< List to store reply items before processing.
@@ -241,7 +241,7 @@ typedef struct {
 	rlm_sql_t const			*inst;		//!< Module instance.
 	request_t			*request;	//!< Request being processed.
 	rlm_sql_handle_t		*handle;	//!< Database connection handle.
-	fr_trunk_t			*trunk;		//!< Trunk connection for queries.
+	trunk_t			*trunk;		//!< Trunk connection for queries.
 	sql_redundant_call_env_t	*call_env;	//!< Call environment data.
 	size_t				query_no;	//!< Current query number.
 	fr_value_box_list_t		query;		//!< Where expanded query tmpl will be written.
@@ -1004,7 +1004,7 @@ static unlang_action_t sql_get_grouplist_resume(rlm_rcode_t *p_result, UNUSED in
 	RETURN_MODULE_OK;
 }
 
-static unlang_action_t sql_get_grouplist(sql_group_ctx_t *group_ctx, rlm_sql_handle_t **handle, fr_trunk_t *trunk, request_t *request)
+static unlang_action_t sql_get_grouplist(sql_group_ctx_t *group_ctx, rlm_sql_handle_t **handle, trunk_t *trunk, request_t *request)
 {
 	rlm_sql_t const		*inst = group_ctx->inst;
 
@@ -2122,7 +2122,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 */
 		cs = cf_section_find(conf, "pool", NULL);
 		if (!cs) cs = cf_section_alloc(conf, conf, "pool", NULL);
-		if (cf_section_rules_push(cs, fr_trunk_config) < 0) return -1;
+		if (cf_section_rules_push(cs, trunk_config) < 0) return -1;
 		if (cf_section_parse(&inst->config, &inst->config.trunk_conf, cs) < 0) return -1;
 
 		/*
@@ -2264,7 +2264,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	if (!inst->driver->uses_trunks) return 0;
 
-	t->trunk = fr_trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
+	t->trunk = trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
 				  &inst->config.trunk_conf, inst->name, t, false);
 	if (!t->trunk) return -1;
 

@@ -94,7 +94,7 @@ static void ldap_group_userobj_cancel(UNUSED request_t *request, UNUSED fr_signa
 	 */
 	if (!group_ctx->query || !(group_ctx->query->treq)) return;
 
-	fr_trunk_request_signal_cancel(group_ctx->query->treq);
+	trunk_request_signal_cancel(group_ctx->query->treq);
 }
 
 /** Convert multiple group names into a DNs
@@ -600,7 +600,7 @@ static void ldap_group_groupobj_cancel(UNUSED request_t *request, UNUSED fr_sign
 	 */
 	if (!group_ctx->query || !group_ctx->query->treq) return;
 
-	fr_trunk_request_signal_cancel(group_ctx->query->treq);
+	trunk_request_signal_cancel(group_ctx->query->treq);
 }
 
 /** Process the results of a group object lookup.
@@ -882,7 +882,7 @@ static void ldap_dn2name_cancel(UNUSED request_t *request, UNUSED fr_signal_t ac
 
 	if (!group_ctx->query || !group_ctx->query->treq) return;
 
-	fr_trunk_request_signal_cancel(group_ctx->query->treq);
+	trunk_request_signal_cancel(group_ctx->query->treq);
 }
 
 /** Initiate a user lookup to check membership.

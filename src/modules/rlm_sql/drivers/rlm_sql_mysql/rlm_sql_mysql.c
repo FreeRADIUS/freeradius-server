@@ -68,7 +68,7 @@ typedef struct {
 	MYSQL		db;			//!< Structure representing connection details.
 	MYSQL		*sock;			//!< Connection details as returned by connection init functions.
 	MYSQL_RES	*result;		//!< Result from most recent query.
-	fr_connection_t	*conn;			//!< Generic connection structure for this connection.
+	connection_t	*conn;			//!< Generic connection structure for this connection.
 	int		fd;			//!< fd for this connection's I/O events.
 	fr_sql_query_t	*query_ctx;		//!< Current query running on this connection.
 	int		status;			//!< returned by the most recent non-blocking function call.
@@ -206,7 +206,7 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 connected:
 	if (!c->sock) {
 		ERROR("MySQL error: %s", mysql_error(&c->db));
-		fr_connection_signal_reconnect(c->conn, FR_CONNECTION_FAILED);
+		connection_signal_reconnect(c->conn, connection_FAILED);
 		return;
 	}
 
@@ -214,10 +214,10 @@ connected:
 	       mysql_get_host_info(c->sock),
 	       mysql_get_server_info(c->sock), mysql_get_proto_info(c->sock));
 
-	fr_connection_signal_connected(c->conn);
+	connection_signal_connected(c->conn);
 }
 
-static fr_connection_state_t _sql_connection_init(void **h, fr_connection_t *conn, void *uctx)
+static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
 	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
 	rlm_sql_mysql_t const	*inst = talloc_get_type_abort(sql->driver_submodule->data, rlm_sql_mysql_t);
@@ -339,15 +339,15 @@ static fr_connection_state_t _sql_connection_init(void **h, fr_connection_t *con
 		ERROR("MySQL error: %s", mysql_error(&c->db));
 	error:
 		talloc_free(c);
-		return FR_CONNECTION_STATE_FAILED;
+		return connection_STATE_FAILED;
 	}
 
 	if (c->status == 0) {
 		DEBUG2("Connected to database '%s' on %s, server version %s, protocol version %i",
 		       config->sql_db, mysql_get_host_info(c->sock),
 		       mysql_get_server_info(c->sock), mysql_get_proto_info(c->sock));
-		fr_connection_signal_connected(c->conn);
-		return FR_CONNECTION_STATE_CONNECTING;
+		connection_signal_connected(c->conn);
+		return connection_STATE_CONNECTING;
 	}
 
 	if (fr_event_fd_insert(c, NULL, c->conn->el, c->fd,
@@ -359,7 +359,7 @@ static fr_connection_state_t _sql_connection_init(void **h, fr_connection_t *con
 
 	*h = c;
 
-	return FR_CONNECTION_STATE_CONNECTING;
+	return connection_STATE_CONNECTING;
 }
 
 static void _sql_connection_close(fr_event_list_t *el, void *h, UNUSED void *uctx)
@@ -741,7 +741,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 	 *	If the query is not in a state which would return results, then do nothing.
 	 */
 	if (query_ctx->treq && !(query_ctx->treq->state &
-	    (FR_TRUNK_REQUEST_STATE_SENT | FR_TRUNK_REQUEST_STATE_IDLE | FR_TRUNK_REQUEST_STATE_COMPLETE))) return RLM_SQL_OK;
+	    (TRUNK_REQUEST_STATE_SENT | TRUNK_REQUEST_STATE_IDLE | TRUNK_REQUEST_STATE_COMPLETE))) return RLM_SQL_OK;
 
 	/*
 	 *	If the connection doesn't exist there's nothing to do
@@ -753,7 +753,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 	/*
 	 *	If the connection is not active, then all that we can do is free any stored results
 	 */
-	if (query_ctx->tconn->conn->state != FR_CONNECTION_STATE_CONNECTED) {
+	if (query_ctx->tconn->conn->state != connection_STATE_CONNECTED) {
 		sql_free_result(query_ctx, config);
 		return RLM_SQL_OK;
 	}
@@ -807,7 +807,7 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen;
-	fr_connection_t		*c = talloc_get_type_abort(arg, fr_connection_t);
+	connection_t		*c = talloc_get_type_abort(arg, connection_t);
 	rlm_sql_mysql_conn_t	*conn = talloc_get_type_abort(c->h, rlm_sql_mysql_conn_t);
 
 	/* Check for potential buffer overflow */
@@ -821,21 +821,21 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 
 static void sql_conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_connection_signal_writable(tconn);
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
+	trunk_connection_signal_writable(tconn);
 }
 
 static void sql_conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
-	fr_trunk_connection_signal_readable(tconn);
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
+	trunk_connection_signal_readable(tconn);
 }
 
 static void sql_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno));
-	fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
+	connection_signal_reconnect(tconn->conn, connection_FAILED);
 }
 
 /** Allocate an SQL trunk connection
@@ -844,17 +844,17 @@ static void sql_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int
  * @param[in] el		Event list which will be used for I/O and timer events.
  * @param[in] conn_conf		Configuration of the connection.
  * @param[in] log_prefix	What to prefix log messages with.
- * @param[in] uctx		User context passed to fr_trunk_alloc.
+ * @param[in] uctx		User context passed to trunk_alloc.
  */
-static fr_connection_t *sql_trunk_connection_alloc(fr_trunk_connection_t *tconn, fr_event_list_t *el,
-						   fr_connection_conf_t const *conn_conf,
+static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
+						   connection_conf_t const *conn_conf,
 						   char const *log_prefix, void *uctx)
 {
-	fr_connection_t		*conn;
+	connection_t		*conn;
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(uctx, rlm_sql_thread_t);
 
-	conn = fr_connection_alloc(tconn, el,
-				   &(fr_connection_funcs_t){
+	conn = connection_alloc(tconn, el,
+				   &(connection_funcs_t){
 				   	.init = _sql_connection_init,
 				   	.close = _sql_connection_close
 				   },
@@ -867,27 +867,27 @@ static fr_connection_t *sql_trunk_connection_alloc(fr_trunk_connection_t *tconn,
 	return conn;
 }
 
-static void sql_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
+static void sql_trunk_connection_notify(trunk_connection_t *tconn, connection_t *conn,
 					fr_event_list_t *el,
-					fr_trunk_connection_event_t notify_on, UNUSED void *uctx)
+					trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 	fr_event_fd_cb_t	read_fn = NULL, write_fn = NULL;
 
 	switch (notify_on) {
-	case FR_TRUNK_CONN_EVENT_NONE:
+	case TRUNK_CONN_EVENT_NONE:
 		fr_event_fd_delete(el, sql_conn->fd, FR_EVENT_FILTER_IO);
 		return;
 
-	case FR_TRUNK_CONN_EVENT_READ:
+	case TRUNK_CONN_EVENT_READ:
 		read_fn = sql_conn_readable;
 		break;
 
-	case FR_TRUNK_CONN_EVENT_WRITE:
+	case TRUNK_CONN_EVENT_WRITE:
 		write_fn = sql_conn_writable;
 		break;
 
-	case FR_TRUNK_CONN_EVENT_BOTH:
+	case TRUNK_CONN_EVENT_BOTH:
 		read_fn = sql_conn_readable;
 		write_fn = sql_conn_writable;
 		break;
@@ -895,21 +895,21 @@ static void sql_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connect
 
 	if (fr_event_fd_insert(sql_conn, NULL, el, sql_conn->fd, read_fn, write_fn, sql_conn_error, tconn) < 0) {
 		PERROR("Failed inserting FD event");
-		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+		trunk_connection_signal_reconnect(tconn, connection_FAILED);
 	}
 }
 
-static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
-				  fr_connection_t *conn, UNUSED void *uctx)
+static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				  connection_t *conn, UNUSED void *uctx)
 {
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 	request_t		*request;
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 	fr_sql_query_t		*query_ctx;
 	char const		*info;
 	int			err;
 
-	if (fr_trunk_connection_pop_request(&treq, tconn) != 0) return;
+	if (trunk_connection_pop_request(&treq, tconn) != 0) return;
 	if (!treq) return;
 
 	query_ctx = talloc_get_type_abort(treq->preq, fr_sql_query_t);
@@ -931,7 +931,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connectio
 			ROPTIONAL(RDEBUG3, DEBUG3, "Waiting for IO");
 			query_ctx->status = SQL_QUERY_SUBMITTED;
 			sql_conn->query_ctx = query_ctx;
-			fr_trunk_request_signal_sent(treq);
+			trunk_request_signal_sent(treq);
 			return;
 		}
 
@@ -950,7 +950,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connectio
 
 			default:
 				query_ctx->status = SQL_QUERY_FAILED;
-				fr_trunk_request_signal_fail(treq);
+				trunk_request_signal_fail(treq);
 				return;
 			}
 		}
@@ -967,7 +967,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connectio
 			ROPTIONAL(RDEBUG3, DEBUG3, "Waiting for IO");
 			query_ctx->status = SQL_QUERY_FETCHING_RESULTS;
 			sql_conn->query_ctx = query_ctx;
-			fr_trunk_request_signal_sent(treq);
+			trunk_request_signal_sent(treq);
 			return;
 		}
 		query_ctx->status = SQL_QUERY_RESULTS_FETCHED;
@@ -986,12 +986,12 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connectio
 	 *	The current request is not waiting for I/O so the request can run
 	 */
 	ROPTIONAL(RDEBUG3, DEBUG3, "Got immediate response");
-	fr_trunk_request_signal_idle(treq);
+	trunk_request_signal_idle(treq);
 	if (request) unlang_interpret_mark_runnable(request);
 }
 
-static void sql_trunk_request_demux(UNUSED fr_event_list_t *el, UNUSED fr_trunk_connection_t *tconn,
-				    fr_connection_t *conn, UNUSED void *uctx)
+static void sql_trunk_request_demux(UNUSED fr_event_list_t *el, UNUSED trunk_connection_t *tconn,
+				    connection_t *conn, UNUSED void *uctx)
 {
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 	fr_sql_query_t		*query_ctx;
@@ -1061,34 +1061,34 @@ static void sql_trunk_request_demux(UNUSED fr_event_list_t *el, UNUSED fr_trunk_
 	query_ctx->rcode = RLM_SQL_OK;
 }
 
-static void sql_request_cancel(fr_connection_t *conn, void *preq, fr_trunk_cancel_reason_t reason,
+static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reason_t reason,
 			       UNUSED void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
 	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
 
 	if (!query_ctx->treq) return;
-	if (reason != FR_TRUNK_CANCEL_REASON_SIGNAL) return;
+	if (reason != TRUNK_CANCEL_REASON_SIGNAL) return;
 	if (sql_conn->query_ctx == query_ctx) sql_conn->query_ctx = NULL;
 }
 
-static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
-				   fr_connection_t *conn, UNUSED void *uctx)
+static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				   connection_t *conn, UNUSED void *uctx)
 {
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 
 	/*
 	 *	The MariaDB non-blocking API doesn't have any cancellation functions -
 	 *	rather you are expected to close the connection.
 	 */
-	if ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
-		fr_trunk_request_signal_cancel_complete(treq);
-		fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+	if ((trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
+		trunk_request_signal_cancel_complete(treq);
+		connection_signal_reconnect(conn, connection_FAILED);
 	}
 }
 
 static void sql_request_fail(request_t *request, void *preq, UNUSED void *rctx,
-			     UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
+			     UNUSED trunk_request_state_t state, UNUSED void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
 
@@ -1113,7 +1113,7 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
 	if (query_ctx->status == SQL_QUERY_RETURNED) {
-		fr_trunk_request_requeue(query_ctx->treq);
+		trunk_request_requeue(query_ctx->treq);
 
 		if (unlang_function_repeat_set(request, sql_select_query_resume) < 0) {
 			query_ctx->rcode = RLM_SQL_ERROR;
@@ -1135,10 +1135,10 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx)
 {
 	rlm_sql_t const	*inst = talloc_get_type_abort(uctx, rlm_sql_t);
-	fr_connection_t *conn;
+	connection_t *conn;
 
-	conn = fr_connection_alloc(ctx, el,
-				    &(fr_connection_funcs_t){
+	conn = connection_alloc(ctx, el,
+				    &(connection_funcs_t){
 					.init = _sql_connection_init,
 					.close = _sql_connection_close,
 				    },
@@ -1150,14 +1150,14 @@ static void *sql_escape_arg_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, void *uc
 		return NULL;
 	}
 
-	fr_connection_signal_init(conn);
+	connection_signal_init(conn);
 	return conn;
 }
 
 static void sql_escape_arg_free(void *uctx)
 {
-	fr_connection_t	*conn = talloc_get_type_abort(uctx, fr_connection_t);
-	fr_connection_signal_halt(conn);
+	connection_t	*conn = talloc_get_type_abort(uctx, connection_t);
+	connection_signal_halt(conn);
 }
 
 /* Exported to rlm_sql */

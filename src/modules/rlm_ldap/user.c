@@ -127,7 +127,7 @@ static void ldap_find_user_async_cancel(UNUSED request_t *request, UNUSED fr_sig
 	 */
 	if (!user_ctx->query || !user_ctx->query->treq) return;
 
-	fr_trunk_request_signal_cancel(user_ctx->query->treq);
+	trunk_request_signal_cancel(user_ctx->query->treq);
 }
 
 /** Initiate asynchronous retrieval of the DN of a user object

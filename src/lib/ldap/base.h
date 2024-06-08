@@ -340,7 +340,7 @@ typedef struct {
 	fr_ldap_directory_t	*directory;		//!< The type of directory we're connected to.
 
 	fr_ldap_config_t const	*config;		//!< rlm_ldap connection configuration.
-	fr_connection_t		*conn;			//!< Connection state handle.
+	connection_t		*conn;			//!< Connection state handle.
 
 	fr_ldap_state_t		state;			//!< LDAP connection state machine.
 
@@ -379,8 +379,8 @@ typedef struct {
 typedef struct {
 	fr_rb_tree_t		*trunks;	//!< Tree of LDAP trunks used by this thread
 	fr_ldap_config_t	*config;	//!< Module instance config
-	fr_trunk_conf_t		*trunk_conf;	//!< Module trunk config
-	fr_trunk_conf_t		*bind_trunk_conf;	//!< Trunk config for bind auth trunk
+	trunk_conf_t		*trunk_conf;	//!< Module trunk config
+	trunk_conf_t		*bind_trunk_conf;	//!< Trunk config for bind auth trunk
 	fr_event_list_t		*el;		//!< Thread event list for callbacks / timeouts
 	fr_ldap_thread_trunk_t	*bind_trunk;	//!< LDAP trunk used for bind auths
 	fr_rb_tree_t		*binds;		//!< Tree of outstanding bind auths
@@ -400,7 +400,7 @@ typedef struct fr_ldap_thread_trunk_s {
 	char const		*bind_dn;	//!< DN connection is bound as
 	fr_ldap_config_t	config;		//!< Config used for this connection
 	fr_ldap_directory_t	*directory;	//!< The type of directory we're connected to.
-	fr_trunk_t		*trunk;		//!< Connection trunk
+	trunk_t		*trunk;		//!< Connection trunk
 	fr_ldap_thread_t	*t;		//!< Thread this connection is associated with
 	fr_event_timer_t const	*ev;		//!< Event to close the thread when it has been idle.
 } fr_ldap_thread_trunk_t;
@@ -448,7 +448,7 @@ struct fr_ldap_query_s {
 	int			msgid;		//!< The unique identifier for this query.
 						///< Uniqueness is only per connection.
 
-	fr_trunk_request_t	*treq;		//!< Trunk request this query is associated with
+	trunk_request_t	*treq;		//!< Trunk request this query is associated with
 	fr_ldap_connection_t	*ldap_conn;	//!< LDAP connection this query is running on.
 
 	fr_event_timer_t const	*ev;		//!< Event for timing out the query
@@ -608,7 +608,7 @@ typedef enum {
 typedef struct {
 	fr_rb_node_t		node;		//!< Entry in the tree of outstanding bind requests.
 	fr_ldap_thread_t	*thread;	//!< This bind is being run by.
-	fr_trunk_request_t	*treq;		//!< Trunk request this bind is associated with.
+	trunk_request_t	*treq;		//!< Trunk request this bind is associated with.
 	int			msgid;		//!< libldap msgid for this bind.
 	request_t		*request;	//!< this bind relates to.
 	fr_ldap_bind_type_t	type;		//!< type of bind.
@@ -855,7 +855,7 @@ int		fr_ldap_map_do(request_t *request,
  */
 fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx);
 
-fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					        fr_ldap_config_t const *config, char const *log_prefix);
 
 int		fr_ldap_connection_configure(fr_ldap_connection_t *c, fr_ldap_config_t const *config);
@@ -868,7 +868,7 @@ fr_ldap_thread_trunk_t	*fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 					       char const *bind_dn, char const *bind_password,
 					       request_t *request, fr_ldap_config_t const *config);
 
-fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *uri, char const *bind_dn);
+trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *uri, char const *bind_dn);
 
 fr_ldap_thread_trunk_t	*fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread);
 

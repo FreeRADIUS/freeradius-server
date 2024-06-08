@@ -58,7 +58,7 @@ struct rlm_tacacs_s {
 
 	bool			allowed[FR_TACACS_CODE_MAX];
 
-	fr_trunk_conf_t		trunk_conf;		//!< trunk configuration
+	trunk_conf_t		trunk_conf;		//!< trunk configuration
 };
 
 /** Enqueue a request_t to an IO submodule

@@ -96,7 +96,7 @@ typedef struct {
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
 
-	fr_trunk_conf_t		trunk_conf;			//!< Configuration for trunk connections.
+	trunk_conf_t		trunk_conf;			//!< Configuration for trunk connections.
 } rlm_sql_config_t;
 
 typedef struct sql_inst rlm_sql_t;
@@ -105,7 +105,7 @@ typedef struct sql_inst rlm_sql_t;
  *	Per-thread instance data structure
  */
 typedef struct {
-	fr_trunk_t		*trunk;				//!< Trunk connection for this thread.
+	trunk_t		*trunk;				//!< Trunk connection for this thread.
 	rlm_sql_t const		*inst;				//!< Module instance data.
 	void			*sql_escape_arg;		//!< Thread specific argument to be passed to escape function.
 } rlm_sql_thread_t;
@@ -137,9 +137,9 @@ typedef struct {
 	rlm_sql_t const		*inst;				//!< Module instance for this query.
 	request_t		*request;			//!< Request this query relates to.
 	rlm_sql_handle_t	*handle;			//!< Connection handle this query is being run on.
-	fr_trunk_t		*trunk;				//!< Trunk this query is being run on.
-	fr_trunk_connection_t	*tconn;				//!< Trunk connection this query is being run on.
-	fr_trunk_request_t	*treq;				//!< Trunk request for this query.
+	trunk_t		*trunk;				//!< Trunk this query is being run on.
+	trunk_connection_t	*tconn;				//!< Trunk connection this query is being run on.
+	trunk_request_t	*treq;				//!< Trunk request for this query.
 	char const		*query_str;			//!< Query string to run.
 	fr_sql_query_type_t	type;				//!< Type of query.
 	fr_sql_query_status_t	status;				//!< Status of the query.
@@ -229,7 +229,7 @@ typedef struct {
 	void		(*sql_escape_arg_free)(void *uctx);
 
 	bool			uses_trunks;		//!< Transitional flag for drivers which use trunks.
-	fr_trunk_io_funcs_t	trunk_io_funcs;		//!< Trunk callback functions for this driver.
+	trunk_io_funcs_t	trunk_io_funcs;		//!< Trunk callback functions for this driver.
 } rlm_sql_driver_t;
 
 struct sql_inst {
@@ -249,7 +249,7 @@ struct sql_inst {
 	unlang_function_t	query;
 	unlang_function_t	select;
 	unlang_function_t	fetch_row;
-	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, fr_trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
+	fr_sql_query_t		*(*query_alloc)(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 
 	char const		*name;			//!< Module instance name.
 	fr_dict_attr_t const	*group_da;		//!< Group dictionary attribute.
@@ -257,14 +257,14 @@ struct sql_inst {
 };
 
 void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
-unlang_action_t	sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, rlm_sql_handle_t **handle, fr_trunk_t *trunk);
+unlang_action_t	sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, rlm_sql_handle_t **handle, trunk_t *trunk);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
 unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 unlang_action_t	rlm_sql_query(rlm_rcode_t *p_result, int *priority, request_t *request, void *uctx);
 unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);
 void		rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query_t *query_ctx, bool force_debug);
-fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, fr_trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle, trunk_t *trunk, char const *query_str, fr_sql_query_type_t type);
 
 /*
  *	sql_state.c

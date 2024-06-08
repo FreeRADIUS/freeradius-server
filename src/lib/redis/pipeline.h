@@ -83,7 +83,7 @@ fr_redis_trunk_t		*fr_redis_trunk_alloc(fr_redis_cluster_thread_t *rtcluster,
 						      fr_redis_io_conf_t const *conf);
 
 fr_redis_cluster_thread_t	*fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-							       fr_trunk_conf_t const *tconf);
+							       trunk_conf_t const *tconf);
 
 #ifdef __cplusplus
 }

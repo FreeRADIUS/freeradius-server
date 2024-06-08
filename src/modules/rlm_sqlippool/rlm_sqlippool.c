@@ -94,7 +94,7 @@ typedef struct {
 	ippool_alloc_status_t	status;		//!< Status of the allocation.
 	ippool_alloc_call_env_t	*env;		//!< Call environment for the allocation.
 	rlm_sql_handle_t	*handle;	//!< SQL handle being used for queries.
-	fr_trunk_t		*trunk;		//!< Trunk connection for queries.
+	trunk_t		*trunk;		//!< Trunk connection for queries.
 	rlm_sql_t const		*sql;		//!< SQL module instance.
 	fr_value_box_list_t	values;		//!< Where to put the expanded queries ready for execution.
 	fr_value_box_t		*query;		//!< Current query being run.

@@ -402,7 +402,7 @@ static int fr_sql_query_free(fr_sql_query_t *to_free)
 	} else {
 		(to_free->inst->driver->sql_finish_query)(to_free, &to_free->inst->config);
 	}
-	if (to_free->treq) fr_trunk_request_signal_complete(to_free->treq);
+	if (to_free->treq) trunk_request_signal_complete(to_free->treq);
 	return 0;
 }
 
@@ -410,7 +410,7 @@ static int fr_sql_query_free(fr_sql_query_t *to_free)
  *
  */
 fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle,
-				   fr_trunk_t *trunk, char const *query_str, fr_sql_query_type_t type)
+				   trunk_t *trunk, char const *query_str, fr_sql_query_type_t type)
 {
 	fr_sql_query_t	*query;
 	MEM(query = talloc(ctx, fr_sql_query_t));
@@ -555,7 +555,7 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 	 */
 	talloc_steal(query_ctx->treq, query_ctx);
 
-	fr_trunk_request_signal_cancel(query_ctx->treq);
+	trunk_request_signal_cancel(query_ctx->treq);
 
 	query_ctx->treq = NULL;
 }
@@ -571,7 +571,7 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	fr_trunk_enqueue_t	status;
+	trunk_enqueue_t	status;
 
 	fr_assert(query_ctx->trunk);
 
@@ -586,14 +586,14 @@ unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority,
 	 *	then this is part of an ongoing transaction and needs requeueing
 	 *	to submit on the same connection.
 	 */
-	if (query_ctx->treq && query_ctx->treq->state != FR_TRUNK_REQUEST_STATE_INIT) {
-		status = fr_trunk_request_requeue(query_ctx->treq);
+	if (query_ctx->treq && query_ctx->treq->state != TRUNK_REQUEST_STATE_INIT) {
+		status = trunk_request_requeue(query_ctx->treq);
 	} else {
-		status = fr_trunk_request_enqueue(&query_ctx->treq, query_ctx->trunk, request, query_ctx, NULL);
+		status = trunk_request_enqueue(&query_ctx->treq, query_ctx->trunk, request, query_ctx, NULL);
 	}
 	switch (status) {
-	case FR_TRUNK_ENQUEUE_OK:
-	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+	case TRUNK_ENQUEUE_OK:
+	case TRUNK_ENQUEUE_IN_BACKLOG:
 		if (unlang_function_push(request, sql_trunk_query_start,
 					 query_ctx->type == SQL_QUERY_SELECT ?
 					 	query_ctx->inst->driver->sql_select_query_resume :
@@ -735,7 +735,7 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
  *
  */
 unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, rlm_sql_handle_t **handle,
-				 fr_trunk_t *trunk)
+				 trunk_t *trunk)
 {
 	rlm_sql_t const	*inst = map_ctx->inst;
 

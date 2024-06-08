@@ -38,7 +38,7 @@
  */
 struct fr_redis_cluster_thread_s {
 	fr_event_list_t			*el;
-	fr_trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
+	trunk_conf_t	const		*tconf;		//!< Configuration for all trunks in the cluster.
 	char				*log_prefix;	//!< Common log prefix to use for all cluster related
 							///< messages.
 	bool				delay_start;	//!< Prevent connections from spawning immediately.
@@ -105,7 +105,7 @@ struct fr_redis_command_set_s {
 	 * encapsulated within the command set, not just within the trunk.
 	 * @{
  	 */
-	fr_trunk_request_t		*treq;		//!< Trunk request this command set is associated with.
+	trunk_request_t		*treq;		//!< Trunk request this command set is associated with.
 	request_t			*request;	//!< Request this commands set is associated with (if any).
 	void				*rctx;		//!< Resume context to write results to.
 	/** @} */
@@ -144,7 +144,7 @@ struct fr_redis_command_set_s {
 struct fr_redis_trunk_s {
 	fr_redis_io_conf_t const	*io_conf;	//!< Redis I/O configuration.  Specifies how to connect
 							///< to the host this trunk is used to communicate with.
-	fr_trunk_t			*trunk;		//!< Trunk containing all the connections to a specific
+	trunk_t			*trunk;		//!< Trunk containing all the connections to a specific
 							///< host.
 	fr_redis_cluster_thread_t	*cluster;	//!< Cluster this trunk belongs to.
 };
@@ -396,12 +396,12 @@ fr_redis_pipeline_status_t redis_command_set_enqueue(fr_redis_trunk_t *rtrunk, f
 		return FR_REDIS_PIPELINE_BAD_CMDS;
 	}
 
-	switch (fr_trunk_request_enqueue(&cmds->treq, rtrunk->trunk, cmds->request, cmds, cmds->rctx)) {
-	case FR_TRUNK_ENQUEUE_OK:
-	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+	switch (trunk_request_enqueue(&cmds->treq, rtrunk->trunk, cmds->request, cmds, cmds->rctx)) {
+	case TRUNK_ENQUEUE_OK:
+	case TRUNK_ENQUEUE_IN_BACKLOG:
 		return FR_REDIS_PIPELINE_OK;
 
-	case FR_TRUNK_ENQUEUE_DST_UNAVAILABLE:
+	case TRUNK_ENQUEUE_DST_UNAVAILABLE:
 		return FR_REDIS_PIPELINE_DST_UNAVAILABLE;
 
 	default:
@@ -428,7 +428,7 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 {
 	fr_redis_command_t	*cmd;
 	fr_redis_command_set_t	*cmds;
-	fr_connection_t		*conn = talloc_get_type_abort(ac->ev.data, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(ac->ev.data, connection_t);
 	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
 	redisReply		*reply = vreply;
 	/*
@@ -458,11 +458,11 @@ static void _redis_pipeline_demux(struct redisAsyncContext *ac, void *vreply, vo
 	 *	is complete.
 	 */
 	if ((fr_dlist_num_elements(&cmds->pending) == 0) &&
-	    (fr_dlist_num_elements(&cmds->sent) == 0)) fr_trunk_request_signal_complete(cmds->treq);
+	    (fr_dlist_num_elements(&cmds->sent) == 0)) trunk_request_signal_complete(cmds->treq);
 }
 
-static fr_connection_t *_redis_pipeline_connection_alloc(fr_trunk_connection_t *tconn, fr_event_list_t *el,
-							 fr_connection_conf_t const *conf,
+static connection_t *_redis_pipeline_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
+							 connection_conf_t const *conf,
 							 char const *log_prefix, void *uctx)
 {
 	fr_redis_trunk_t *rtrunk = talloc_get_type_abort(uctx, fr_redis_trunk_t);
@@ -473,22 +473,22 @@ static fr_connection_t *_redis_pipeline_connection_alloc(fr_trunk_connection_t *
 /** Enqueue one or more command sets onto a redis handle
  *
  * Because the trunk is in always writable mode, _redis_pipeline_mux
- * will be called any time fr_trunk_request_enqueue is called, so there'll only
+ * will be called any time trunk_request_enqueue is called, so there'll only
  * ever be one command to dequeue.
  *
  * @param[in] tconn		Trunk connection holding the commands to enqueue.
  * @param[in] conn		Connection handle containing the fr_redis_handle_t.
  * @param[in] uctx		fr_redis_cluster_t.  Unused.
  */
-static void _redis_pipeline_mux(fr_trunk_connection_t *tconn, fr_connection_t *conn, UNUSED void *uctx)
+static void _redis_pipeline_mux(trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 	fr_redis_command_set_t 	*cmds;
 	fr_redis_command_t	*cmd;
 	fr_redis_handle_t	*h = talloc_get_type_abort(conn->h, fr_redis_handle_t);
 	request_t			*request;
 
-	treq = fr_trunk_connection_pop_request(&request, (void *)&cmds, NULL, tconn);
+	treq = trunk_connection_pop_request(&request, (void *)&cmds, NULL, tconn);
 	while ((cmd = fr_dlist_head(&cmds->pending))) {
 		/*
 		 *	If this fails it probably means the connection
@@ -503,14 +503,14 @@ static void _redis_pipeline_mux(fr_trunk_connection_t *tconn, fr_connection_t *c
 				fr_dlist_remove(&cmds->sent, cmd);
 				fr_dlist_insert_tail(&cmds->pending, cmd);
 			}
-			fr_trunk_request_signal_fail(treq);
+			trunk_request_signal_fail(treq);
 			return;
 		}
 		cmd->sqn = fr_redis_connection_sent_request(h);
 		fr_dlist_remove(&cmds->pending, cmd);
 		fr_dlist_insert_tail(&cmds->sent, cmd);
 	}
-	fr_trunk_request_signal_sent(treq);
+	trunk_request_signal_sent(treq);
 }
 
 /** Deal with cancellation of sent requests
@@ -519,8 +519,8 @@ static void _redis_pipeline_mux(fr_trunk_connection_t *tconn, fr_connection_t *c
  * on why the commands were cancelled, we either tell the handle to ignore
  * them, or move them back into the pending list.
  */
-static void _redis_pipeline_command_set_cancel(fr_connection_t *conn, UNUSED fr_trunk_request_t *treq, void *preq,
-					       fr_trunk_cancel_reason_t reason, UNUSED void *uctx)
+static void _redis_pipeline_command_set_cancel(connection_t *conn, UNUSED trunk_request_t *treq, void *preq,
+					       trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
 	fr_redis_command_set_t	*cmds = talloc_get_type_abort(preq, fr_redis_command_set_t);
 	fr_redis_handle_t	*h = conn->h;
@@ -540,7 +540,7 @@ static void _redis_pipeline_command_set_cancel(fr_connection_t *conn, UNUSED fr_
 	 *	command set back into the correct state for
 	 *	execution by another handle.
 	 */
-	case FR_TRUNK_CANCEL_REASON_MOVE:
+	case TRUNK_CANCEL_REASON_MOVE:
 		fr_dlist_move(&cmds->pending, &cmds->sent);
 		return;
 
@@ -554,7 +554,7 @@ static void _redis_pipeline_command_set_cancel(fr_connection_t *conn, UNUSED fr_
 	 *      Free will take care of cleaning up the
 	 *	pending commands.
 	 */
-	case FR_TRUNK_CANCEL_REASON_SIGNAL:
+	case TRUNK_CANCEL_REASON_SIGNAL:
 	{
 		fr_redis_command_t	*cmd;
 
@@ -565,7 +565,7 @@ static void _redis_pipeline_command_set_cancel(fr_connection_t *conn, UNUSED fr_
 		}
 	}
 
-	case FR_TRUNK_CANCEL_REASON_NONE:
+	case TRUNK_CANCEL_REASON_NONE:
 		fr_assert(0);
 		return;
 	}
@@ -615,7 +615,7 @@ static void _redis_pipeline_command_set_free(UNUSED request_t *request, void *pr
 fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread, fr_redis_io_conf_t const *io_conf)
 {
 	fr_redis_trunk_t	*rtrunk;
-	fr_trunk_io_funcs_t	io_funcs = {
+	trunk_io_funcs_t	io_funcs = {
 					.connection_alloc	= _redis_pipeline_connection_alloc,
 					.request_mux		= _redis_pipeline_mux,
 					/* demux called directly by hiredis */
@@ -627,7 +627,7 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread
 
 	MEM(rtrunk = talloc_zero(cluster_thread, fr_redis_trunk_t));
 	rtrunk->io_conf = io_conf;
-	rtrunk->trunk = fr_trunk_alloc(rtrunk, cluster_thread->el,
+	rtrunk->trunk = trunk_alloc(rtrunk, cluster_thread->el,
 				       &io_funcs, cluster_thread->tconf, cluster_thread->log_prefix, rtrunk,
 				       cluster_thread->delay_start);
 	if (!rtrunk->trunk) {
@@ -644,10 +644,10 @@ fr_redis_trunk_t *fr_redis_trunk_alloc(fr_redis_cluster_thread_t *cluster_thread
  * The structures holds the trunk connections to talk to each cluster member.
  *
  */
-fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, fr_trunk_conf_t const *tconf)
+fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_event_list_t *el, trunk_conf_t const *tconf)
 {
 	fr_redis_cluster_thread_t *cluster_thread;
-	fr_trunk_conf_t *our_tconf;
+	trunk_conf_t *our_tconf;
 
 	MEM(cluster_thread = talloc_zero(ctx, fr_redis_cluster_thread_t));
 	MEM(our_tconf = talloc_memdup(cluster_thread, tconf, sizeof(*tconf)));
@@ -658,5 +658,3 @@ fr_redis_cluster_thread_t *fr_redis_cluster_thread_alloc(TALLOC_CTX *ctx, fr_eve
 
 	return cluster_thread;
 }
-
-

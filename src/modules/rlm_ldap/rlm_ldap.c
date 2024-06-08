@@ -175,9 +175,9 @@ static const conf_parser_t module_config[] = {
 
 	{ FR_CONF_POINTER("profile", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) profile_config },
 
-	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_ldap_t, trunk_conf, fr_trunk_config ) },
+	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_ldap_t, trunk_conf, trunk_config ) },
 
-	{ FR_CONF_OFFSET_SUBSECTION("bind_pool", 0, rlm_ldap_t, bind_trunk_conf, fr_trunk_config ) },
+	{ FR_CONF_OFFSET_SUBSECTION("bind_pool", 0, rlm_ldap_t, bind_trunk_conf, trunk_config ) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -531,7 +531,7 @@ static int ldap_uri_part_escape(fr_value_box_t *vb, UNUSED void *uctx)
 static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(uctx, fr_ldap_query_t);
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 	request_t		*request;
 
 	/*
@@ -540,12 +540,12 @@ static void ldap_query_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now,
 	 */
 	if (!query->treq) return;
 
-	treq = talloc_get_type_abort(query->treq, fr_trunk_request_t);
+	treq = talloc_get_type_abort(query->treq, trunk_request_t);
 	request = treq->request;
 
 	ROPTIONAL(RERROR, ERROR, "Timeout waiting for LDAP query");
 
-	fr_trunk_request_signal_cancel(query->treq);
+	trunk_request_signal_cancel(query->treq);
 
 	query->ret = LDAP_RESULT_TIMEOUT;
 	unlang_interpret_mark_runnable(request);
@@ -609,7 +609,7 @@ static void ldap_xlat_signal(xlat_ctx_t const *xctx, request_t *request, UNUSED 
 
 	RDEBUG2("Forcefully cancelling pending LDAP query");
 
-	fr_trunk_request_signal_cancel(query->treq);
+	trunk_request_signal_cancel(query->treq);
 }
 
 /*
@@ -761,9 +761,9 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		goto query_error;
 	}
 
-	switch (fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
-	case FR_TRUNK_ENQUEUE_OK:
-	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+	switch (trunk_request_enqueue(&query->treq, ttrunk->trunk, request, query, NULL)) {
+	case TRUNK_ENQUEUE_OK:
+	case TRUNK_ENQUEUE_IN_BACKLOG:
 		break;
 
 	default:
@@ -774,7 +774,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (fr_event_timer_in(query, unlang_interpret_event_list(request), &query->ev, handle_config->res_timeout,
 			      ldap_query_timeout, query) < 0) {
 		REDEBUG("Unable to set timeout for LDAP query");
-		fr_trunk_request_signal_cancel(query->treq);
+		trunk_request_signal_cancel(query->treq);
 		goto query_error;
 	}
 
@@ -807,7 +807,7 @@ static void ldap_memberof_xlat_cancel(UNUSED request_t *request, UNUSED fr_signa
 
 	if (!xlat_ctx->query || !xlat_ctx->query->treq) return;
 
-	fr_trunk_request_signal_cancel(xlat_ctx->query->treq);
+	trunk_request_signal_cancel(xlat_ctx->query->treq);
 }
 
 #define REPEAT_LDAP_MEMBEROF_XLAT_RESULTS \
@@ -1792,7 +1792,7 @@ static void mod_authorize_cancel(UNUSED request_t *request, UNUSED fr_signal_t a
 {
 	ldap_autz_ctx_t	*autz_ctx = talloc_get_type_abort(uctx, ldap_autz_ctx_t);
 
-	if (autz_ctx->query && autz_ctx->query->treq) fr_trunk_request_signal_cancel(autz_ctx->query->treq);
+	if (autz_ctx->query && autz_ctx->query->treq) trunk_request_signal_cancel(autz_ctx->query->treq);
 }
 
 /** Ensure authorization context is properly cleared up
@@ -1890,7 +1890,7 @@ static void user_modify_cancel(UNUSED request_t *request, UNUSED fr_signal_t act
 
 	if (!usermod_ctx->query || !usermod_ctx->query->treq) return;
 
-	fr_trunk_request_signal_cancel(usermod_ctx->query->treq);
+	trunk_request_signal_cancel(usermod_ctx->query->treq);
 }
 
 /** Handle results of user modification.

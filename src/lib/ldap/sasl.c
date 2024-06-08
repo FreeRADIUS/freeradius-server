@@ -394,7 +394,7 @@ static void ldap_async_sasl_bind_auth_cancel(request_t *request, UNUSED fr_signa
 
 	RWARN("Cancelling SASL bind auth");
 	if (bind_auth_ctx->msgid > 0) fr_rb_remove(bind_auth_ctx->thread->binds, bind_auth_ctx);
-	fr_trunk_request_signal_cancel(bind_auth_ctx->treq);
+	trunk_request_signal_cancel(bind_auth_ctx->treq);
 }
 
 /** Handle the return code from parsed LDAP results to set the module rcode
@@ -426,7 +426,7 @@ static unlang_action_t ldap_async_sasl_bind_auth_results(rlm_rcode_t *p_result, 
 		break;
 
 	case LDAP_PROC_CONTINUE:
-		if (fr_trunk_request_requeue(bind_auth_ctx->treq) != FR_TRUNK_ENQUEUE_OK) {
+		if (trunk_request_requeue(bind_auth_ctx->treq) != TRUNK_ENQUEUE_OK) {
 			ret = LDAP_PROC_ERROR;
 			break;
 		}
@@ -455,7 +455,7 @@ static unlang_action_t ldap_async_sasl_bind_auth_results(rlm_rcode_t *p_result, 
 		/*
 		 *	Will free bind_auth_ctx
 		 */
-		fr_trunk_request_signal_complete(bind_auth_ctx->treq);
+		trunk_request_signal_complete(bind_auth_ctx->treq);
 	} else {
 		/*
 		 *	If there is no trunk request, the request failed, and we need to free the ctx
@@ -505,16 +505,16 @@ unlang_action_t fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_
 				 char const *identity, char const *password, char const *proxy, char const *realm)
 {
 	fr_ldap_bind_auth_ctx_t *bind_auth_ctx;
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 	fr_ldap_thread_trunk_t	*ttrunk = fr_thread_ldap_bind_trunk_get(thread);
-	fr_trunk_enqueue_t	ret;
+	trunk_enqueue_t	ret;
 
 	if (!ttrunk) {
 		ERROR("Failed to get trunk connection for LDAP bind");
 		return UNLANG_ACTION_FAIL;
 	}
 
-	treq = fr_trunk_request_alloc(ttrunk->trunk, request);
+	treq = trunk_request_alloc(ttrunk->trunk, request);
 	if (!treq) {
 		ERROR("Failed to allocate trunk request for LDAP bind");
 		return UNLANG_ACTION_FAIL;
@@ -539,16 +539,16 @@ unlang_action_t fr_ldap_sasl_bind_auth_async(request_t *request, fr_ldap_thread_
 		.realm = realm,
 	};
 
-	ret = fr_trunk_request_enqueue(&bind_auth_ctx->treq, ttrunk->trunk, request, bind_auth_ctx, NULL);
+	ret = trunk_request_enqueue(&bind_auth_ctx->treq, ttrunk->trunk, request, bind_auth_ctx, NULL);
 
 	switch (ret) {
-	case FR_TRUNK_ENQUEUE_OK:
-	case FR_TRUNK_ENQUEUE_IN_BACKLOG:
+	case TRUNK_ENQUEUE_OK:
+	case TRUNK_ENQUEUE_IN_BACKLOG:
 		break;
 
 	default:
 		ERROR("Failed to enqueue bind request");
-		fr_trunk_request_free(&treq);
+		trunk_request_free(&treq);
 		return UNLANG_ACTION_FAIL;
 	}
 

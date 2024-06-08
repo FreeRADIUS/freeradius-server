@@ -254,19 +254,19 @@ int fr_ldap_trunk_directory_alloc_async(TALLOC_CTX *ctx, fr_ldap_thread_trunk_t 
 {
 	fr_ldap_query_t		*query;
 	static char const	*attrs[] = LDAP_DIRECTORY_ATTRS;
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 
 	ttrunk->directory = talloc_zero(ctx, fr_ldap_directory_t);
 	if (!ttrunk->directory) return -1;
 
-	treq = fr_trunk_request_alloc(ttrunk->trunk, NULL);
+	treq = trunk_request_alloc(ttrunk->trunk, NULL);
 	if (!treq) return -1;
 
 	query = fr_ldap_search_alloc(treq, "", LDAP_SCOPE_BASE, "(objectclass=*)", attrs, NULL, NULL);
 	query->parser = ldap_trunk_directory_alloc_read;
 	query->treq = treq;
 
-	fr_trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, ttrunk->directory);
+	trunk_request_enqueue(&query->treq, ttrunk->trunk, NULL, query, ttrunk->directory);
 
 	return 0;
 }

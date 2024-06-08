@@ -35,7 +35,7 @@
  */
 static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(ac->data, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(ac->data, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	/*
@@ -51,7 +51,7 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 
 	DEBUG4("Signalled by hiredis, connection disconnected");
 
-	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+	connection_signal_reconnect(conn, connection_FAILED);
 }
 
 /** Called by hiredis to indicate the connection is live
@@ -59,11 +59,11 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
  */
 static void _redis_connected(redisAsyncContext const *ac, UNUSED int status)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(ac->data, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(ac->data, connection_t);
 
 	DEBUG4("Signalled by hiredis, connection is open");
 
-	fr_connection_signal_connected(conn);
+	connection_signal_connected(conn);
 }
 
 /** Redis FD became readable
@@ -71,7 +71,7 @@ static void _redis_connected(redisAsyncContext const *ac, UNUSED int status)
  */
 static void _redis_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	fr_connection_t const	*conn = talloc_get_type_abort_const(uctx, fr_connection_t);
+	connection_t const	*conn = talloc_get_type_abort_const(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - FD %i now readable", h, fd);
@@ -84,7 +84,7 @@ static void _redis_io_service_readable(UNUSED fr_event_list_t *el, int fd, UNUSE
  */
 static void _redis_io_service_writable(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
-	fr_connection_t const	*conn = talloc_get_type_abort_const(uctx, fr_connection_t);
+	connection_t const	*conn = talloc_get_type_abort_const(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - FD %i now writable", h, fd);
@@ -98,7 +98,7 @@ static void _redis_io_service_writable(UNUSED fr_event_list_t *el, int fd, UNUSE
 static void _redis_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED int flags,
 				      int fd_errno, void *uctx)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - FD %i errored: %s", h, fd, fr_syserror(fd_errno));
@@ -106,13 +106,13 @@ static void _redis_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED
 	/*
 	 *	Connection state machine will handle reconnecting
 	 */
-	fr_connection_signal_reconnect(conn, FR_CONNECTION_FAILED);
+	connection_signal_reconnect(conn, connection_FAILED);
 }
 
 /** Deal with the method hiredis uses to register/unregister interest in a file descriptor
  *
  */
-static void _redis_io_common(fr_connection_t *conn, fr_redis_handle_t *h, bool read, bool write)
+static void _redis_io_common(connection_t *conn, fr_redis_handle_t *h, bool read, bool write)
 {
 	redisContext		*c = &(h->ac->c);
 	fr_event_list_t		*el = conn->el;
@@ -154,7 +154,7 @@ static void _redis_io_common(fr_connection_t *conn, fr_redis_handle_t *h, bool r
  */
 static void _redis_io_add_read(void *uctx)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	_redis_io_common(conn, h, true, h->write_set);
@@ -165,7 +165,7 @@ static void _redis_io_add_read(void *uctx)
  */
 static void _redis_io_del_read(void *uctx)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	_redis_io_common(conn, h, false, h->write_set);
@@ -176,7 +176,7 @@ static void _redis_io_del_read(void *uctx)
  */
 static void _redis_io_add_write(void *uctx)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	_redis_io_common(conn, h, h->read_set, true);
@@ -187,7 +187,7 @@ static void _redis_io_add_write(void *uctx)
  */
 static void _redis_io_del_write(void *uctx)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	_redis_io_common(conn, h, h->read_set, false);
@@ -199,7 +199,7 @@ static void _redis_io_del_write(void *uctx)
  */
 static void _redis_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
-	fr_connection_t const	*conn = talloc_get_type_abort_const(uctx, fr_connection_t);
+	connection_t const	*conn = talloc_get_type_abort_const(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - Timeout", h);
@@ -212,7 +212,7 @@ static void _redis_io_service_timer_expired(UNUSED fr_event_list_t *el, UNUSED f
  */
 static void _redis_io_timer_modify(void *uctx, struct timeval tv)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 	fr_time_delta_t		timeout;
 
@@ -247,7 +247,7 @@ static void _redis_io_timer_modify(void *uctx, struct timeval tv)
  */
 static void _redis_io_free(void *uctx)
 {
-	fr_connection_t		*conn = talloc_get_type_abort(uctx, fr_connection_t);
+	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	fr_redis_handle_t	*h = conn->h;
 
 	DEBUG4("redis handle %p - Freed", h);
@@ -258,7 +258,7 @@ static void _redis_io_free(void *uctx)
 /** Configures async I/O callbacks for an existing redisAsyncContext
  *
  */
-static int fr_redis_io_setup(redisAsyncContext *ac, fr_connection_t const *conn)
+static int fr_redis_io_setup(redisAsyncContext *ac, connection_t const *conn)
 {
 	if (ac->ev.data != NULL) return REDIS_ERR;
 
@@ -299,10 +299,10 @@ static int _redis_handle_free(fr_redis_handle_t *h)
  *			signalling the connection state machine.
  * @param[in] uctx	User context.
  * @return
- *	- #FR_CONNECTION_STATE_CONNECTING	if a file descriptor was successfully created.
- *	- #FR_CONNECTION_STATE_FAILED		if we could not open a valid handle.
+ *	- #connection_STATE_CONNECTING	if a file descriptor was successfully created.
+ *	- #connection_STATE_FAILED		if we could not open a valid handle.
  */
-static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connection_t *conn, void *uctx)
+static connection_state_t _redis_io_connection_init(void **h_out, connection_t *conn, void *uctx)
 {
 	fr_redis_io_conf_t	*conf = uctx;
 	char const		*host = conf->hostname;
@@ -320,14 +320,14 @@ static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connecti
 	h->ac = redisAsyncConnect(host, port);
 	if (!h->ac) {
 		ERROR("Failed allocating handle for %s:%u", host, port);
-		return FR_CONNECTION_STATE_FAILED;
+		return connection_STATE_FAILED;
 	}
 
 	if (h->ac->err) {
 		ERROR("Failed allocating handle for %s:%u: %s", host, port, h->ac->errstr);
 	error:
 		redisAsyncFree(h->ac);
-		return FR_CONNECTION_STATE_FAILED;
+		return connection_STATE_FAILED;
 	}
 
 	/*
@@ -376,19 +376,19 @@ static fr_connection_state_t _redis_io_connection_init(void **h_out, fr_connecti
 
 	fr_dlist_talloc_init(&h->ignore, fr_redis_sqn_ignore_t, entry);
 
-	return FR_CONNECTION_STATE_CONNECTING;
+	return connection_STATE_CONNECTING;
 }
 
 /** Gracefully signal that the connection should shutdown
  *
  */
-static fr_connection_state_t _redis_io_connection_shutdown(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
+static connection_state_t _redis_io_connection_shutdown(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
 	fr_redis_handle_t	*our_h = talloc_get_type_abort(h, fr_redis_handle_t);
 
 	redisAsyncDisconnect(our_h->ac);	/* Should not free the handle */
 
-	return FR_CONNECTION_STATE_SHUTDOWN;
+	return connection_STATE_SHUTDOWN;
 }
 
 /** Notification that the connection has errored and must be closed
@@ -418,11 +418,11 @@ static void _redis_io_connection_close(UNUSED fr_event_list_t *el, void *h, UNUS
 /** Allocate an async redis I/O connection
  *
  */
-fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
-					   fr_connection_conf_t const *conn_conf, fr_redis_io_conf_t const *io_conf,
+connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+					   connection_conf_t const *conn_conf, fr_redis_io_conf_t const *io_conf,
 					   char const *log_prefix)
 {
-	fr_connection_t *conn;
+	connection_t *conn;
 	/*
 	 *	We don't specify an open callback
 	 *	as hiredis handles switching over
@@ -430,8 +430,8 @@ fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 	 *	within hireds, and calls us when
 	 *	the connection is open.
 	 */
-	conn = fr_connection_alloc(ctx, el,
-				   &(fr_connection_funcs_t){
+	conn = connection_alloc(ctx, el,
+				   &(connection_funcs_t){
 				   	.init = _redis_io_connection_init,
 				   	.close = _redis_io_connection_close,
 				   	.shutdown = _redis_io_connection_shutdown
@@ -451,7 +451,7 @@ fr_connection_t *fr_redis_connection_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
  * @param[in] conn	To retrieve async ctx from.
  * @return The async ctx.
  */
-redisAsyncContext *fr_redis_connection_get_async_ctx(fr_connection_t *conn)
+redisAsyncContext *fr_redis_connection_get_async_ctx(connection_t *conn)
 {
 	fr_redis_handle_t	*h = conn->h;
 	return h->ac;

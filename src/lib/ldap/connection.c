@@ -278,8 +278,8 @@ fr_ldap_connection_t *fr_ldap_connection_alloc(TALLOC_CTX *ctx)
  * re-parent the connection to the NULL ctx so that it remains
  * until all the queries have been dealt with.
  */
-static void _ldap_connection_close_watch(fr_connection_t *conn, UNUSED fr_connection_state_t prev,
-					 UNUSED fr_connection_state_t state, void *uctx)
+static void _ldap_connection_close_watch(connection_t *conn, UNUSED connection_state_t prev,
+					 UNUSED connection_state_t state, void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(uctx, fr_ldap_connection_t);
 
@@ -330,10 +330,10 @@ static void _ldap_connection_close_watch(fr_connection_t *conn, UNUSED fr_connec
  * @param[in] conn	Being initialised.
  * @param[in] uctx	Our LDAP connection handle (a #fr_ldap_connection_t).
  * @return
- *	- FR_CONNECTION_STATE_CONNECTING on success.
- *	- FR_CONNECTION_STATE_FAILED on failure.
+ *	- connection_STATE_CONNECTING on success.
+ *	- connection_STATE_FAILED on failure.
  */
-static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *conn, void *uctx)
+static connection_state_t _ldap_connection_init(void **h, connection_t *conn, void *uctx)
 {
 	fr_ldap_config_t const	*config = uctx;
 	fr_ldap_connection_t	*c;
@@ -353,7 +353,7 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 	if (fr_ldap_connection_configure(c, config) < 0) {
 	error:
 		talloc_free(c);
-		return FR_CONNECTION_STATE_FAILED;
+		return connection_STATE_FAILED;
 	}
 
 	/* Don't block */
@@ -363,11 +363,11 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
 	state = fr_ldap_state_next(c);
 	if (state == FR_LDAP_STATE_ERROR) goto error;
 
-	fr_connection_add_watch_pre(conn, FR_CONNECTION_STATE_CLOSED, _ldap_connection_close_watch, true, c);
+	connection_add_watch_pre(conn, connection_STATE_CLOSED, _ldap_connection_close_watch, true, c);
 
 	*h = c;	/* Set the handle */
 
-	return FR_CONNECTION_STATE_CONNECTING;
+	return connection_STATE_CONNECTING;
 }
 
 /** Alloc a self re-establishing connection to an LDAP server
@@ -377,17 +377,17 @@ static fr_connection_state_t _ldap_connection_init(void **h, fr_connection_t *co
  * @param[in] config		to use to bind the connection to an LDAP server.
  * @param[in] log_prefix	to prepend to connection state messages.
  */
-fr_connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
+connection_t	*fr_ldap_connection_state_alloc(TALLOC_CTX *ctx, fr_event_list_t *el,
 					        fr_ldap_config_t const *config, char const *log_prefix)
 {
-	fr_connection_t *conn;
+	connection_t *conn;
 
-	conn = fr_connection_alloc(ctx, el,
-				   &(fr_connection_funcs_t){
+	conn = connection_alloc(ctx, el,
+				   &(connection_funcs_t){
 				   	.init = _ldap_connection_init,
 				   	.close = _ldap_connection_close
 				   },
-				   &(fr_connection_conf_t){
+				   &(connection_conf_t){
 				   	.connection_timeout = config->net_timeout,
 				   	.reconnection_delay = config->reconnection_delay
 				   },
@@ -468,7 +468,7 @@ static void _ldap_trunk_idle_timeout(fr_event_list_t *el, UNUSED fr_time_t now, 
  *
  * Ensure the request is removed from the list of outstanding requests
  */
-static void ldap_request_cancel(UNUSED fr_connection_t *conn, void *preq, UNUSED fr_trunk_cancel_reason_t reason,
+static void ldap_request_cancel(UNUSED connection_t *conn, void *preq, UNUSED trunk_cancel_reason_t reason,
 			        UNUSED void *uctx) {
 	fr_ldap_query_t	*query = talloc_get_type_abort(preq, fr_ldap_query_t);
 
@@ -485,20 +485,20 @@ static void ldap_request_cancel(UNUSED fr_connection_t *conn, void *preq, UNUSED
  * @param[in] el	For timer management.
  * @param[in] tconn	The trunk connection handle
  * @param[in] conn	The specific connection queries will be cancelled on
- * @param[in] uctx	Context provided to fr_trunk_alloc
+ * @param[in] uctx	Context provided to trunk_alloc
  */
-static void ldap_request_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
-				    fr_connection_t *conn, UNUSED void *uctx)
+static void ldap_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				    connection_t *conn, UNUSED void *uctx)
 {
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_ldap_query_t		*query;
 
-	while ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
+	while ((trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
 		query = talloc_get_type_abort(treq->preq, fr_ldap_query_t);
 		ldap_abandon_ext(ldap_conn->handle, query->msgid, NULL, NULL);
 
-		fr_trunk_request_signal_cancel_complete(treq);
+		trunk_request_signal_cancel_complete(treq);
 	}
 }
 
@@ -506,7 +506,7 @@ static void ldap_request_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connect
  *
  */
 static void ldap_request_fail(request_t *request, void *preq, UNUSED void *rctx,
-			      UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
+			      UNUSED trunk_request_state_t state, UNUSED void *uctx)
 {
 	fr_ldap_query_t		*query = talloc_get_type_abort(preq, fr_ldap_query_t);
 
@@ -533,9 +533,9 @@ static void ldap_request_fail(request_t *request, void *preq, UNUSED void *rctx,
  */
 static void ldap_conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
-	fr_trunk_connection_signal_readable(tconn);
+	trunk_connection_signal_readable(tconn);
 }
 
 
@@ -550,9 +550,9 @@ static void ldap_conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
  */
 static void ldap_conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
-	fr_trunk_connection_signal_writable(tconn);
+	trunk_connection_signal_writable(tconn);
 }
 
 
@@ -568,11 +568,11 @@ static void ldap_conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
  */
 static void ldap_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
-	fr_trunk_connection_t	*tconn = talloc_get_type_abort(uctx, fr_trunk_connection_t);
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
 	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno));
 
-	fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
+	connection_signal_reconnect(tconn->conn, connection_FAILED);
 }
 
 /** Setup callbacks requested by LDAP trunk connections
@@ -581,30 +581,30 @@ static void ldap_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED in
  * @param[in] conn	Individual connection callbacks are to be installed for.
  * @param[in] el	The event list to install events in.
  * @param[in] notify_on	The types of event the trunk wants to be notified on.
- * @param[in] uctx	Context provided to fr_trunk_alloc.
+ * @param[in] uctx	Context provided to trunk_alloc.
  */
-static void ldap_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connection_t *conn,
+static void ldap_trunk_connection_notify(trunk_connection_t *tconn, connection_t *conn,
 					 fr_event_list_t *el,
-					 fr_trunk_connection_event_t notify_on, UNUSED void *uctx)
+					 trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_event_fd_cb_t	read_fn = NULL;
 	fr_event_fd_cb_t	write_fn = NULL;
 
 	switch (notify_on) {
-	case FR_TRUNK_CONN_EVENT_NONE:
+	case TRUNK_CONN_EVENT_NONE:
 		fr_event_fd_delete(el, ldap_conn->fd, FR_EVENT_FILTER_IO);
 		return;
 
-	case FR_TRUNK_CONN_EVENT_READ:
+	case TRUNK_CONN_EVENT_READ:
 		read_fn = ldap_conn_readable;
 		break;
 
-	case FR_TRUNK_CONN_EVENT_WRITE:
+	case TRUNK_CONN_EVENT_WRITE:
 		write_fn = ldap_conn_writable;
 		break;
 
-	case FR_TRUNK_CONN_EVENT_BOTH:
+	case TRUNK_CONN_EVENT_BOTH:
 		read_fn = ldap_conn_readable;
 		write_fn = ldap_conn_writable;
 		break;
@@ -616,7 +616,7 @@ static void ldap_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connec
 			       ldap_conn_error,
 			       tconn) < 0) {
 		PERROR("Failed inserting FD event");
-		fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+		trunk_connection_signal_reconnect(tconn, connection_FAILED);
 	}
 }
 
@@ -626,10 +626,10 @@ static void ldap_trunk_connection_notify(fr_trunk_connection_t *tconn, fr_connec
  * @param[in] el		Event list which will be used for I/O and timer events.
  * @param[in] conn_conf		Configuration of the connection.
  * @param[in] log_prefix	What to prefix log messages with.
- * @param[in] uctx		User context passed to fr_trunk_alloc.
+ * @param[in] uctx		User context passed to trunk_alloc.
  */
-static fr_connection_t *ldap_trunk_connection_alloc(fr_trunk_connection_t *tconn, fr_event_list_t *el,
-						    UNUSED fr_connection_conf_t const *conn_conf,
+static connection_t *ldap_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
+						    UNUSED connection_conf_t const *conn_conf,
 						    char const *log_prefix, void *uctx)
 {
 	fr_ldap_thread_trunk_t	*thread_trunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
@@ -650,20 +650,20 @@ static fr_connection_t *ldap_trunk_connection_alloc(fr_trunk_connection_t *tconn
  * @param[in] el	Event list for timers.
  * @param[in] tconn	Trunk handle.
  * @param[in] conn	on which to send the queries
- * @param[in] uctx	User context passed to fr_trunk_alloc
+ * @param[in] uctx	User context passed to trunk_alloc
  */
-static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
-				   fr_connection_t *conn, UNUSED void *uctx)
+static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				   connection_t *conn, UNUSED void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 
 	LDAPURLDesc		*referral_url = NULL;
 
 	fr_ldap_query_t		*query = NULL;
 	fr_ldap_rcode_t		status;
 
-	while (fr_trunk_connection_pop_request(&treq, tconn) == 0) {
+	while (trunk_connection_pop_request(&treq, tconn) == 0) {
 		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS + 1];
 		LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS + 1];
 
@@ -718,9 +718,9 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 			status = LDAP_PROC_ERROR;
 			ERROR("Invalid LDAP query for trunk connection");
 		error:
-			fr_trunk_request_signal_fail(query->treq);
-			if (status == LDAP_PROC_BAD_CONN) fr_trunk_connection_signal_reconnect(tconn,
-											       FR_CONNECTION_FAILED);
+			trunk_request_signal_fail(query->treq);
+			if (status == LDAP_PROC_BAD_CONN) trunk_connection_signal_reconnect(tconn,
+											       connection_FAILED);
 			continue;
 
 		}
@@ -744,7 +744,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
 		 */
 		fr_rb_insert(query->ldap_conn->queries, query);
 
-		fr_trunk_request_signal_sent(treq);
+		trunk_request_signal_sent(treq);
 	}
 
 }
@@ -761,7 +761,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, fr_trunk_connecti
  * @param[in] conn	Connection handle for these results.
  * @param[in] uctx	Thread specific trunk structure - contains tree of pending queries.
  */
-static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t *tconn, fr_connection_t *conn, void *uctx)
+static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
@@ -773,7 +773,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 	fr_ldap_query_t		find = { .msgid = -1 }, *query = NULL;
 	request_t		*request;
 	bool			really_no_result = false;
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 
 	/*
 	 *  Reset the idle timeout event
@@ -804,7 +804,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 			rcode = fr_ldap_error_check(NULL, ldap_conn, NULL, NULL);
 			if (rcode == LDAP_PROC_BAD_CONN) {
 				ERROR("Bad LDAP connection");
-				fr_connection_signal_reconnect(tconn->conn, FR_CONNECTION_FAILED);
+				connection_signal_reconnect(tconn->conn, connection_FAILED);
 			}
 			return;
 
@@ -965,7 +965,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, fr_trunk_connection_t 
 		 */
 		treq = query->treq;
 		query->treq = NULL;
-		fr_trunk_request_signal_complete(treq);
+		trunk_request_signal_complete(treq);
 	} while (1);
 }
 
@@ -1021,8 +1021,8 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
 	found->uri = found->config.server;
 	found->bind_dn = found->config.admin_identity;
 
-	found->trunk = fr_trunk_alloc(found, thread->el,
-				      &(fr_trunk_io_funcs_t){
+	found->trunk = trunk_alloc(found, thread->el,
+				      &(trunk_io_funcs_t){
 					      .connection_alloc = ldap_trunk_connection_alloc,
 					      .connection_notify = ldap_trunk_connection_notify,
 					      .request_mux = ldap_trunk_request_mux,
@@ -1066,15 +1066,15 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_trunk_get(fr_ldap_thread_t *thread, char 
  * @param[in] bind_dn		to make the connection as
  * @return
  *	- State of a trunk matching the URI and bind DN
- *	- FR_TRUNK_STATE_MAX if no matching trunk
+ *	- TRUNK_STATE_MAX if no matching trunk
  */
-fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *uri, char const *bind_dn)
+trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *uri, char const *bind_dn)
 {
 	fr_ldap_thread_trunk_t	*found, find = {.uri = uri, .bind_dn = bind_dn};
 
 	found = fr_rb_find(thread->trunks, &find);
 
-	return (found) ? found->trunk->state : FR_TRUNK_STATE_MAX;
+	return (found) ? found->trunk->state : TRUNK_STATE_MAX;
 }
 
 /** Take pending LDAP bind auths from the queue and send them.
@@ -1082,22 +1082,22 @@ fr_trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const
  * @param[in] el	Event list for timers.
  * @param[in] tconn	Trunk handle.
  * @param[in] conn	on which to send the queries
- * @param[in] uctx	User context passed to fr_trunk_alloc
+ * @param[in] uctx	User context passed to trunk_alloc
  */
-static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
-				   fr_connection_t *conn, void *uctx)
+static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				   connection_t *conn, void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
 	fr_ldap_thread_t	*thread = ttrunk->t;
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 
 	fr_ldap_bind_auth_ctx_t	*bind = NULL;
 	int			ret = 0;
 	struct berval		cred;
 	request_t		*request;
 
-	if (fr_trunk_connection_pop_request(&treq, tconn) != 0) return;
+	if (trunk_connection_pop_request(&treq, tconn) != 0) return;
 
 	/* Pacify clang scan */
 	if (!treq) return;
@@ -1178,7 +1178,7 @@ static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, fr_trunk_connec
 	 *	the different states are handled by the resume function which then
 	 *	marks the request as complete triggering the tidy up.
 	 */
-	fr_trunk_request_signal_sent(treq);
+	trunk_request_signal_sent(treq);
 }
 
 /** Read LDAP bind auth responses
@@ -1188,8 +1188,8 @@ static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, fr_trunk_connec
  * @param[in] conn	Connection handle for these results.
  * @param[in] uctx	Thread specific trunk structure - contains tree of pending queries.
  */
-static void ldap_trunk_bind_auth_demux(UNUSED fr_event_list_t *el, UNUSED fr_trunk_connection_t *tconn,
-				       fr_connection_t *conn, void *uctx)
+static void ldap_trunk_bind_auth_demux(UNUSED fr_event_list_t *el, UNUSED trunk_connection_t *tconn,
+				       connection_t *conn, void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_ldap_thread_trunk_t	*ttrunk = talloc_get_type_abort(uctx, fr_ldap_thread_trunk_t);
@@ -1304,16 +1304,16 @@ static void ldap_trunk_bind_auth_demux(UNUSED fr_event_list_t *el, UNUSED fr_tru
  * @param[in] el	For timer management.
  * @param[in] tconn	The trunk connection handle
  * @param[in] conn	The specific connection binds will be cancelled on
- * @param[in] uctx	Context provided to fr_trunk_alloc
+ * @param[in] uctx	Context provided to trunk_alloc
  */
-static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_connection_t *tconn,
-				    fr_connection_t *conn, UNUSED void *uctx)
+static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				    connection_t *conn, UNUSED void *uctx)
 {
-	fr_trunk_request_t	*treq;
+	trunk_request_t	*treq;
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
 	fr_ldap_bind_auth_ctx_t	*bind;
 
-	while ((fr_trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
+	while ((trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
 		bind = talloc_get_type_abort(treq->preq, fr_ldap_bind_auth_ctx_t);
 #ifdef WITH_SASL
 		if (bind->type == LDAP_BIND_SASL) {
@@ -1322,14 +1322,14 @@ static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_conne
 			 *	seems to leave the connection in an unpredictable state
 			 *	so safer to restart.
 			 */
-			fr_trunk_connection_signal_reconnect(tconn, FR_CONNECTION_FAILED);
+			trunk_connection_signal_reconnect(tconn, connection_FAILED);
 		} else {
 #endif
 			ldap_abandon_ext(ldap_conn->handle, bind->msgid, NULL, NULL);
 #ifdef WITH_SASL
 		}
 #endif
-		fr_trunk_request_signal_cancel_complete(treq);
+		trunk_request_signal_cancel_complete(treq);
 	}
 }
 
@@ -1337,7 +1337,7 @@ static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, fr_trunk_conne
  *
  */
 static void ldap_trunk_bind_auth_fail(request_t *request, void *preq, UNUSED void *rctx,
-				UNUSED fr_trunk_request_state_t state, UNUSED void *uctx)
+				UNUSED trunk_request_state_t state, UNUSED void *uctx)
 {
 	fr_ldap_bind_auth_ctx_t	*bind = talloc_get_type_abort(preq, fr_ldap_bind_auth_ctx_t);
 
@@ -1376,8 +1376,8 @@ fr_ldap_thread_trunk_t *fr_thread_ldap_bind_trunk_get(fr_ldap_thread_t *thread)
 	ttrunk->uri = ttrunk->config.server;
 	ttrunk->bind_dn = ttrunk->config.admin_identity;
 
-	ttrunk->trunk = fr_trunk_alloc(ttrunk, thread->el,
-				       &(fr_trunk_io_funcs_t){
+	ttrunk->trunk = trunk_alloc(ttrunk, thread->el,
+				       &(trunk_io_funcs_t){
 					      .connection_alloc = ldap_trunk_connection_alloc,
 					      .connection_notify = ldap_trunk_connection_notify,
 					      .request_mux = ldap_trunk_bind_auth_mux,

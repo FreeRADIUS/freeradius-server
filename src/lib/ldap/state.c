@@ -109,7 +109,7 @@ again:
 	 */
 	case FR_LDAP_STATE_BIND:
 		STATE_TRANSITION(FR_LDAP_STATE_RUN);
-		fr_connection_signal_connected(c->conn);
+		connection_signal_connected(c->conn);
 		break;
 
 	/*
@@ -118,7 +118,7 @@ again:
 	case FR_LDAP_STATE_RUN:		/* There's no next state for run, so this an error */
 	case FR_LDAP_STATE_ERROR:
 		STATE_TRANSITION(FR_LDAP_STATE_INIT);
-		fr_connection_signal_reconnect(c->conn, FR_CONNECTION_FAILED);
+		connection_signal_reconnect(c->conn, connection_FAILED);
 		/*
 		 *	The old connection has been freed, so specifically return the INIT state
 		 */
@@ -136,4 +136,3 @@ void fr_ldap_state_error(fr_ldap_connection_t *c)
 	STATE_TRANSITION(FR_LDAP_STATE_ERROR);
 	fr_ldap_state_next(c);
 }
-

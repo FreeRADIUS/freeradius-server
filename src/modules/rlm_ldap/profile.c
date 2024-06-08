@@ -122,7 +122,7 @@ static void ldap_map_profile_cancel(UNUSED request_t *request, UNUSED fr_signal_
 
 	if (!profile_ctx->query || !profile_ctx->query->treq) return;
 
-	fr_trunk_request_signal_cancel(profile_ctx->query->treq);
+	trunk_request_signal_cancel(profile_ctx->query->treq);
 }
 
 /** Search for and apply an LDAP profile
@@ -168,4 +168,3 @@ unlang_action_t rlm_ldap_map_profile(fr_ldap_result_code_t *ret,
 				    scope, filter,
 				    expanded->attrs, NULL, NULL);
 }
-

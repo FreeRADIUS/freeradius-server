@@ -120,7 +120,7 @@ typedef struct {
 
 	fr_event_timer_t const		*conn_retry_ev;		//!< When to retry re-establishing the conn.
 
-	fr_connection_t			*conn;			//!< Our connection to the LDAP directory.
+	connection_t			*conn;			//!< Our connection to the LDAP directory.
 } proto_ldap_sync_ldap_thread_t;
 
 typedef enum {
