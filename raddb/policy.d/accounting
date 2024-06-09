@@ -9,7 +9,7 @@ class_value_prefix = 'ai:'
 acct_unique {
 	#
 	#  If we have a class attribute in the format
-	#  'auth_id:[0-9a-f]{32}' it'll have a local value
+	#  'ai:[0-9a-f]{32}' it'll have a local value
 	#  (defined by insert_acct_class), this ensures
 	#  uniqueness and suitability.
 	#
@@ -33,13 +33,19 @@ acct_unique {
 	#  wireless environment).
 	#
 	update request {
-	       &Tmp-String-9 := "${policy.class_value_prefix}"
+		&Tmp-String-9 := "${policy.class_value_prefix}"
 	}
 
-	if (("%{hex:&Class}" =~ /^%{hex:&Tmp-String-9}/) && \
-	    ("%{string:&Class}" =~ /^${policy.class_value_prefix}([0-9a-f]{32})/i)) {
+	# 64 length match is to maintain backwards compatible with original policy (prior to 3.2.5) that double hex encoded
+	if (&Class[*] =~ /^0x%{hex:&Tmp-String-9}([0-9a-f]{32}|[0-9a-f]{64})$/) {
 		update request {
-			&Acct-Unique-Session-Id := "%{md5:%{1},%{Acct-Session-ID}}"
+			&Tmp-Octets-9 = "0x%{1}"
+		}
+		update request {
+			&Acct-Unique-Session-Id := "%{md5:%{string:&Tmp-Octets-9},%{Acct-Session-ID}}"
+		}
+		update request {
+			&Tmp-Octets-9 !* ANY
 		}
 	}
 
@@ -64,8 +70,17 @@ acct_unique {
 #	Insert a (hopefully unique) value into class
 #
 insert_acct_class {
+	update request {
+		&Tmp-String-9 := "${policy.class_value_prefix}"
+	}
+
+	# if your NAS supports returning multiple Class attributes you may wish to change the '=' to a '+='
 	update reply {
-		&Class = "${policy.class_value_prefix}%{md5:%t,%{Packet-Src-Port},%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}},%{NAS-IP-Address},%{Calling-Station-ID},%{User-Name},%{session-state:User-Name} }"
+		&Class = "0x%{hex:&Tmp-String-9}%{md5:%t,%{Packet-Src-Port},%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}},%{NAS-IP-Address},%{Calling-Station-ID},%{User-Name},%{session-state:User-Name}}"
+	}
+
+	update request {
+		&Tmp-String-9 !* ANY
 	}
 }
 
