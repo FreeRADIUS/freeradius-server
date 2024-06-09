@@ -53,14 +53,14 @@ typedef struct trunk_pub_s trunk_t;
  *
  */
 typedef enum {
-	TRUNK_CANCEL_REASON_NONE = 0,		//!< Request has not been cancelled.
+	TRUNK_CANCEL_REASON_NONE = 0,			//!< Request has not been cancelled.
 	TRUNK_CANCEL_REASON_SIGNAL,			//!< Request cancelled due to a signal.
 	TRUNK_CANCEL_REASON_MOVE,			//!< Request cancelled because it's being moved.
 	TRUNK_CANCEL_REASON_REQUEUE			//!< A previously sent request is being requeued.
 } trunk_cancel_reason_t;
 
 typedef enum {
-	TRUNK_STATE_IDLE = 0,			//!< Trunk has no connections
+	TRUNK_STATE_IDLE = 0,				//!< Trunk has no connections
 	TRUNK_STATE_ACTIVE,				//!< Trunk has active connections
 	TRUNK_STATE_PENDING,				//!< Trunk has connections, but none are active
 	TRUNK_STATE_MAX
@@ -70,13 +70,13 @@ typedef enum {
  *
  */
 typedef enum {
-	TRUNK_CONN_EVENT_NONE	= 0x00,		//!< Don't notify the trunk on connection state
+	TRUNK_CONN_EVENT_NONE	= 0x00,			//!< Don't notify the trunk on connection state
 							///< changes.
-	TRUNK_CONN_EVENT_READ 	= 0x01,		//!< Trunk should be notified if a connection is
+	TRUNK_CONN_EVENT_READ 	= 0x01,			//!< Trunk should be notified if a connection is
 							///< readable.
-	TRUNK_CONN_EVENT_WRITE	= 0x02,		//!< Trunk should be notified if a connection is
+	TRUNK_CONN_EVENT_WRITE	= 0x02,			//!< Trunk should be notified if a connection is
 							///< writable.
-	TRUNK_CONN_EVENT_BOTH	= 0x03,		//!< Trunk should be notified if a connection is
+	TRUNK_CONN_EVENT_BOTH	= 0x03,			//!< Trunk should be notified if a connection is
 							///< readable or writable.
 
 } trunk_connection_event_t;
@@ -86,13 +86,13 @@ typedef enum {
  */
 typedef enum {
 	TRUNK_CONN_HALTED		= 0x0000,	//!< Halted, ready to be freed.
-	TRUNK_CONN_INIT		= 0x0001,	//!< In the initial state.
-	TRUNK_CONN_CONNECTING	= 0x0002,	//!< Connection is connecting.
+	TRUNK_CONN_INIT			= 0x0001,	//!< In the initial state.
+	TRUNK_CONN_CONNECTING		= 0x0002,	//!< Connection is connecting.
 	TRUNK_CONN_ACTIVE		= 0x0004,	//!< Connection is connected and ready to service requests.
 							///< This is active and not 'connected', because a connection
 							///< can be 'connected' and 'full' or 'connected' and 'active'.
 	TRUNK_CONN_CLOSED		= 0x0008,	//!< Connection was closed, either explicitly or due to failure.
-	TRUNK_CONN_FULL		= 0x0010,	//!< Connection is full and can't accept any more requests.
+	TRUNK_CONN_FULL			= 0x0010,	//!< Connection is full and can't accept any more requests.
 	TRUNK_CONN_INACTIVE		= 0x0020,	//!< Connection is inactive and can't accept any more requests.
 	TRUNK_CONN_INACTIVE_DRAINING	= 0x0040,	//!< Connection is inactive, can't accept any more requests,
 							///< and will be closed once it has no more outstanding
@@ -146,12 +146,12 @@ typedef enum {
 )
 
 typedef enum {
-	TRUNK_ENQUEUE_IN_BACKLOG = 1,		//!< Request should be enqueued in backlog
-	TRUNK_ENQUEUE_OK = 0,			//!< Operation was successful.
-	TRUNK_ENQUEUE_NO_CAPACITY = -1,		//!< At maximum number of connections,
-							///< and no connection has capacity.
-	TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,		//!< Destination is down.
-	TRUNK_ENQUEUE_FAIL = -3			//!< General failure.
+	TRUNK_ENQUEUE_IN_BACKLOG = 1,				//!< Request should be enqueued in backlog
+	TRUNK_ENQUEUE_OK = 0,					//!< Operation was successful.
+	TRUNK_ENQUEUE_NO_CAPACITY = -1,				//!< At maximum number of connections,
+								///< and no connection has capacity.
+	TRUNK_ENQUEUE_DST_UNAVAILABLE = -2,			//!< Destination is down.
+	TRUNK_ENQUEUE_FAIL = -3					//!< General failure.
 } trunk_enqueue_t;
 
 /** Used for sanity checks and to simplify freeing
@@ -176,6 +176,9 @@ typedef enum {
 								///< allows a single outstanding request, and writing
 								///< additional requests would cause the previous result
 								///< to be lost.
+								///< Requests in this state count towards the outstanding
+								///< number of requests on a connection, and prevent new
+								///< requests from being enqueued until they complete.
 	TRUNK_REQUEST_STATE_COMPLETE		= 0x0040,	//!< The request is complete.
 	TRUNK_REQUEST_STATE_FAILED		= 0x0080,	//!< The request failed.
 	TRUNK_REQUEST_STATE_CANCEL		= 0x0100,	//!< A request on a particular socket was cancel.
@@ -335,7 +338,7 @@ struct trunk_pub_s {
 struct trunk_request_pub_s {
 	trunk_request_state_t _CONST state;		//!< Which list the request is now located in.
 
-	trunk_t		* _CONST trunk;		//!< Trunk this request belongs to.
+	trunk_t		* _CONST trunk;			//!< Trunk this request belongs to.
 
 	trunk_connection_t	* _CONST tconn;		//!< Connection this request belongs to.
 
@@ -355,11 +358,11 @@ struct trunk_request_pub_s {
  * the trunk API.
  */
 struct trunk_connection_pub_s {
-	trunk_connection_state_t _CONST state;	//!< What state the connection is in.
+	trunk_connection_state_t _CONST state;		//!< What state the connection is in.
 
 	connection_t		* _CONST conn;		//!< The underlying connection.
 
-	trunk_t		* _CONST trunk;		//!< Trunk this connection belongs to.
+	trunk_t			* _CONST trunk;		//!< Trunk this connection belongs to.
 };
 
 #ifndef TRUNK_TESTS
