@@ -755,7 +755,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 			.name2 = fr_sbuff_used(elem2) ? elem2->start : NULL
 		};
 
-		mmb = module_binding_find(mmc->rlm->bindings, &method);
+		mmb = module_binding_find(mmc->rlm->method.bindings, &method);
 		if (!mmb) {
 			fr_strerror_printf("Module \"%s\" does not have method %s%s%s",
 					   mmc->mi->name,
@@ -764,7 +764,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 					   method.name2 ? method.name2 : ""
 					   );
 
-			module_rlm_methods_to_strerror(mmc->rlm->bindings);
+			module_rlm_methods_to_strerror(mmc->rlm->method.bindings);
 			return fr_sbuff_error(&meth_start);
 		}
 		mmc->mmb = *mmb;	/* For locality of reference and fewer derefs */
@@ -781,12 +781,12 @@ by_section:
 	 *
 	 *	If that fails, we're done.
 	 */
-	mmb = module_binding_find(mmc->rlm->bindings, section);
+	mmb = module_binding_find(mmc->rlm->method.bindings, section);
 	if (!mmb) {
 		section_name_t const **alt_p = virtual_server_section_methods(vs, section);
 		if (alt_p) {
 			for (; *alt_p; alt_p++) {
-				mmb = module_binding_find(mmc->rlm->bindings, *alt_p);
+				mmb = module_binding_find(mmc->rlm->method.bindings, *alt_p);
 				if (mmb) {
 					if (mmc_out) section_name_dup(ctx, &mmc->asked, *alt_p);
 					break;
@@ -805,7 +805,7 @@ by_section:
 				   section->name2 ? "." : "",
 				   section->name2 ? section->name2 : ""
 				   );
-		module_rlm_methods_to_strerror(mmc->rlm->bindings);
+		module_rlm_methods_to_strerror(mmc->rlm->method.bindings);
 
 		return fr_sbuff_error(&meth_start);
 	}
@@ -1006,27 +1006,24 @@ static int8_t binding_name_cmp(void const *one, void const *two)
 	return section_name_cmp(a->section, b->section);
 }
 
-static int module_method_validate(module_instance_t *mi)
+static int module_method_group_validate(module_method_group_t *group)
 {
 	module_method_binding_t *p, *srt_p;
-	module_rlm_t const	*mrlm;
 	fr_dlist_head_t		bindings;
 	bool			in_order = true;
-
-	mrlm = module_rlm_from_module(mi->exported);
-
-	fr_dlist_init(&bindings, module_method_binding_t, entry);
 
 	/*
 	 *	Not all modules export module method bindings
 	 */
-	if (!mrlm->bindings) return 0;
+	if (!group || !group->bindings || group->validated) return 0;
 
-	for (p = mrlm->bindings; p->section; p++) {
+	fr_dlist_init(&bindings, module_method_binding_t, entry);
+
+	for (p = group->bindings; p->section; p++) {
 		if (!fr_cond_assert_msg(p->section->name1,
-					"%s: First section identifier can't be NULL", mi->name)) return -1;
+					"First section identifier can't be NULL")) return -1;
 		if (!fr_cond_assert_msg(p->section->name1 || p->section->name2,
-					"%s: Section identifiers can't both be null", mi->name)) return -1;
+					"Section identifiers can't both be null")) return -1;
 
 		/*
 		 *	All the bindings go in a list so we can sort them
@@ -1042,7 +1039,7 @@ static int module_method_validate(module_instance_t *mi)
 	 *	and the original list, to ensure they're
 	 *	in the correct order.
 	 */
-	for (srt_p = fr_dlist_head(&bindings), p = mrlm->bindings;
+	for (srt_p = fr_dlist_head(&bindings), p = group->bindings;
 	     srt_p;
 	     srt_p = fr_dlist_next(&bindings, srt_p), p++) {
 		if (p != srt_p) {
@@ -1063,7 +1060,7 @@ static int module_method_validate(module_instance_t *mi)
 		     srt_p = fr_dlist_next(&bindings, srt_p), p++) {
 			*p = *srt_p;
 		}
-		memcpy(mrlm->bindings, ordered, fr_dlist_num_elements(&bindings) * sizeof(*ordered));
+		memcpy(group->bindings, ordered, fr_dlist_num_elements(&bindings) * sizeof(*ordered));
 		talloc_free(ordered);
 	}
 
@@ -1073,7 +1070,7 @@ static int module_method_validate(module_instance_t *mi)
 	{
 		module_method_binding_t *last_binding = NULL;
 
-		for (p = mrlm->bindings; p->section; p++) {
+		for (p = group->bindings; p->section; p++) {
 			if (!last_binding ||
 				(
 					(last_binding->section->name1 != p->section->name1) &&
@@ -1090,8 +1087,16 @@ static int module_method_validate(module_instance_t *mi)
 			fr_dlist_insert_tail(&last_binding->same_name1, p);
 		}
 	}
+	group->validated = true;
 
-	return 0;
+	CC_HINT(musttail) return module_method_group_validate(group->next);
+}
+
+static int module_method_validate(module_instance_t *mi)
+{
+	module_rlm_t *mrlm = module_rlm_from_module(mi->exported);
+
+	return module_method_group_validate(&mrlm->method);
 }
 
 /** Compare xlat functions registered to a module

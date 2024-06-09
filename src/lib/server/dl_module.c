@@ -318,7 +318,7 @@ dl_module_t *dl_module_alloc(dl_module_t const *parent, char const *name, dl_mod
 	dl_t				*dl = NULL;
 	char				*module_name = NULL;
 	char				*p, *q;
-	dl_module_common_t const	*common;
+	dl_module_common_t		*common;
 
 	DL_INIT_CHECK;
 

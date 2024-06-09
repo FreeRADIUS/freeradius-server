@@ -665,8 +665,10 @@ module_rlm_t rlm_logtee = {
 		.instantiate		= mod_instantiate,
 		.thread_instantiate	= mod_thread_instantiate,
 	},
-	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_insert_logtee },
-		MODULE_BINDING_TERMINATOR
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_insert_logtee },
+			MODULE_BINDING_TERMINATOR
+		}
 	}
 };

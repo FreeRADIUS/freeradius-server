@@ -508,11 +508,13 @@ module_rlm_t rlm_detail = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &method_env },
-		{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_accounting, .method_env = &method_env },
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &method_env },
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &method_env },
-		MODULE_BINDING_TERMINATOR
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &method_env },
+			{ .section = SECTION_NAME("recv", "accounting-request"), .method = mod_accounting, .method_env = &method_env },
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &method_env },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &method_env },
+			MODULE_BINDING_TERMINATOR
+		}
 	}
 };

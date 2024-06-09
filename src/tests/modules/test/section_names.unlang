@@ -1,10 +1,13 @@
-#	.bindings = (module_method_binding_t[]){
-#		{ .section = SECTION_NAME("recv", "Access-Challenge"),		.method = mod_return },
-#		{ .section = SECTION_NAME("name1_null",	NULL),			.method = mod_return },
-#		{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_return },
-#		{ .section = SECTION_NAME("retry", NULL),			.method = mod_retry },
 #
-#		MODULE_BINDING_TERMINATOR
+#	.method = {
+#		.bindings = (module_method_binding_t[]){
+#			{ .section = SECTION_NAME("recv", "Access-Challenge"),		.method = mod_return },
+#			{ .section = SECTION_NAME("name1_null",	NULL),			.method = mod_return },
+#			{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_return },
+#			{ .section = SECTION_NAME("retry", NULL),			.method = mod_retry },
+#
+#			MODULE_BINDING_TERMINATOR
+#		}
 #	}
 
 noop

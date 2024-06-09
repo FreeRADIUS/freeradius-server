@@ -32,6 +32,7 @@ extern "C" {
 
 typedef struct module_s				module_t;
 typedef struct module_state_func_table_s	module_state_func_table_t;
+typedef struct module_method_group_s		module_method_group_t;
 typedef struct module_method_binding_s		module_method_binding_t;
 typedef struct module_instance_s		module_instance_t;
 typedef struct module_thread_instance_s		module_thread_instance_t;
@@ -149,6 +150,23 @@ extern "C" {
  */
 #define MODULE_BINDING_TERMINATOR { .section = NULL }
 
+/** A group of methods exported by a module or added as an overlay
+ *
+ * Module method groups are organised into a linked list, with each group
+ * containing a list of named methods.  This allows common collections of
+ * methods to be added to a module.
+ *
+ * One common use case is adding the `instantiate`, `exists`, and `detach`
+ * methods which are added to dynamic modules, and allow dynamic module
+ * instances to be created and destroyed at runtime.
+ */
+struct module_method_group_s {
+	module_method_binding_t			*bindings;		//!< named methods
+
+	bool					validated;		//!< Set to true by #module_method_group_validate.
+	module_method_group_t			*next;			//!< Next group in the list.
+};
+
 /** Named methods exported by a module
  *
  */
@@ -238,9 +256,9 @@ typedef struct {
 	size_t 				len;		//!< How much data we need mprotect to protect.
 } module_data_pool_t;
 
-/** Per instance data
+/** Module instance data
  *
- * Per-instance data structure, to correlate the modules with the
+ * Per-module-instance data structure to correlate the modules with the
  * instance names (may NOT be the module names!), and the per-instance
  * data structures.
  */
@@ -251,21 +269,21 @@ struct module_instance_s {
 	* @{
 	*/
 	void				*data;		//!< Module's instance data.  This is most
-							///< frequently access comes first.
+							///< frequently accessed, so comes first.
 
 	void				*boot;		//!< Data allocated during the boostrap phase
 
-	module_t const			*exported;	//!< Public module structure.  Cached for convenience.
+	module_t			*exported;	//!< Public module structure.  Cached for convenience.
 							///< This exports module methods, i.e. the functions
 							///< which allow the module to perform actions.
-							///< This is an identical address to dl_module->common,
+							///< This is an identical address to module->common,
 							///< but with a different type, containing additional
 							///< instance callbacks to make it easier to use.
 
 	pthread_mutex_t			mutex;		//!< Used prevent multiple threads entering a thread
 							///< unsafe module simultaneously.
 
-	dl_module_t			*module;	//!< dynamic loader handle.  Contains the module's
+	dl_module_t			*module;	//!< Dynamic loader handle.  Contains the module's
 							///< dlhandle, and the functions it exports.
 							///< The dl_module is reference counted so that it
 							///< can be freed automatically when the last instance
@@ -342,6 +360,9 @@ struct module_thread_instance_s {
 };
 
 /** Callback to retrieve thread-local data for a module
+ *
+ * This is public for performance reasons, and should be called through
+ * #module_thread.
  *
  * @param[in] mi	to add data to (use mi->ml for the module list).
  * @return

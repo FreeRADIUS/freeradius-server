@@ -576,9 +576,11 @@ module_rlm_t rlm_winbind = {
 		.bootstrap	= mod_bootstrap,
 		.detach		= mod_detach
 	},
-	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &winbind_auth_method_env },
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &winbind_autz_method_env },
-		MODULE_BINDING_TERMINATOR
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &winbind_auth_method_env },
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &winbind_autz_method_env },
+			MODULE_BINDING_TERMINATOR
+		}
 	}
 };

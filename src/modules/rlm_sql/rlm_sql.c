@@ -2297,15 +2297,17 @@ module_rlm_t rlm_sql = {
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach,
 	},
-	.bindings = (module_method_binding_t[]){
-		/*
-		 *	Hack to support old configurations
-		 */
-		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_sql_redundant, .method_env = &accounting_method_env },
-		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			/*
+			 *	Hack to support old configurations
+			 */
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_sql_redundant, .method_env = &accounting_method_env },
+			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
 
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_sql_redundant, .method_env = &send_method_env },
-		MODULE_BINDING_TERMINATOR
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_sql_redundant, .method_env = &send_method_env },
+			MODULE_BINDING_TERMINATOR
+		}
 	}
 };

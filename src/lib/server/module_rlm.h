@@ -37,7 +37,7 @@ typedef struct module_rlm_instance_s module_rlm_instance_t;
 
 struct module_rlm_s {
 	module_t			common;			//!< Common fields presented by all modules.
-	module_method_binding_t		*bindings;		//!< named methods
+	module_method_group_t		method;			//!< named methods
 };
 
 struct module_rlm_instance_s {
@@ -70,12 +70,9 @@ typedef struct {
 	tmpl_t				*key;			//!< Dynamic key, only set for dynamic modules.
 } module_method_call_t;
 
-/** Cast a module_t to a module_rlm_t
- *
- */
-static inline module_rlm_t const *module_rlm_from_module(module_t const *module)
+static inline module_rlm_t *module_rlm_from_module(module_t *module)
 {
-	return (module_rlm_t const *)module;
+	return (module_rlm_t *)module;
 }
 
 /** @name Debug functions

@@ -264,8 +264,10 @@ module_rlm_t rlm_tacacs = {
 
 		.instantiate	= mod_instantiate,
 	},
-	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_process },
-		MODULE_BINDING_TERMINATOR
-	},
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_process },
+			MODULE_BINDING_TERMINATOR
+		}
+	}
 };

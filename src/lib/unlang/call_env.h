@@ -173,8 +173,8 @@ typedef int (*call_env_parse_section_t)(TALLOC_CTX *ctx, call_env_parsed_head_t 
  * and use the appropriate dictionaries for where the module is in use.
  */
 struct call_env_parser_s {
-	char const		*name;			//!< Of conf pair to pass to tmpl_tokenizer.
-	call_env_flags_t	flags;			//!< Flags controlling parser behaviour.
+	char const			*name;			//!< Of conf pair to pass to tmpl_tokenizer.
+	call_env_flags_t		flags;			//!< Flags controlling parser behaviour.
 
 	union {
 		struct {
@@ -199,7 +199,7 @@ struct call_env_parser_s {
 			} parsed;
 
 			fr_value_box_safe_for_t		literals_safe_for;	//!< What safe_for value to assign any literals that are arguments to the tmpl_t.
-			tmpl_escape_t			escape;		//!< Escape method to use when evaluating tmpl_t.
+			tmpl_escape_t			escape;			//!< Escape method to use when evaluating tmpl_t.
 		} pair;
 
 		struct {
@@ -210,22 +210,22 @@ struct call_env_parser_s {
     		} section;
   	};
 
-	void const *uctx;				//!< User context for callback functions.
+	void const *uctx;					//!< User context for callback functions.
 };
 
 typedef enum {
-	CALL_ENV_CTX_TYPE_MODULE = 1,			//!< The callenv is registered to a module method.
-	CALL_ENV_CTX_TYPE_XLAT				//!< The callenv is registered to an xlat.
+	CALL_ENV_CTX_TYPE_MODULE = 1,				//!< The callenv is registered to a module method.
+	CALL_ENV_CTX_TYPE_XLAT					//!< The callenv is registered to an xlat.
 } call_env_ctx_type_t;
 
 struct call_env_ctx_s {
-	call_env_ctx_type_t				type;		//!< Type of callenv ctx.
+	call_env_ctx_type_t		type;			//!< Type of callenv ctx.
 
-	module_instance_t const				*mi;		//!< Module instance that the callenv is registered to.
-									///< Available for both module methods, and xlats.
+	module_instance_t const		*mi;			//!< Module instance that the callenv is registered to.
+								///< Available for both module methods, and xlats.
 
-	section_name_t const				*asked;		//!< The actual name1/name2 that resolved to a
-									///< module_method_binding_t.
+	section_name_t const		*asked;			//!< The actual name1/name2 that resolved to a
+								///< module_method_binding_t.
 };
 
 #define CALL_ENV_TERMINATOR { NULL }
@@ -237,9 +237,9 @@ struct call_env_ctx_s {
 	.inst_type = STRINGIFY(_inst) \
 
 struct call_env_method_s {
-	size_t				inst_size;	//!< Size of per call env.
-	char const			*inst_type;	//!< Type of per call env.
-	call_env_parser_t const		*env;		//!< Parsing rules for call method env.
+	size_t				inst_size;		//!< Size of per call env.
+	char const			*inst_type;		//!< Type of per call env.
+	call_env_parser_t const		*env;			//!< Parsing rules for call method env.
 };
 
 /** Structure containing both a talloc pool, a list of parsed call_env_pairs

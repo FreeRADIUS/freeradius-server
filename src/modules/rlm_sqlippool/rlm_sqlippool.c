@@ -815,45 +815,46 @@ module_rlm_t rlm_sqlippool = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.bindings = (module_method_binding_t[]){
-		/*
-		 *	RADIUS specific
-		 */
-		{ .section = SECTION_NAME("recv", "Access-Request"), .method = mod_alloc, .method_env = &sqlippool_alloc_method_env },
-		{ .section = SECTION_NAME("accounting", "Start"), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("accounting", "Alive"), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("accounting", "Stop"), .method = mod_common, .method_env = &sqlippool_release_method_env },
-		{ .section = SECTION_NAME("accounting", "Accounting-On"), .method = mod_common, .method_env = &sqlippool_bulk_release_method_env },
-		{ .section = SECTION_NAME("accounting", "Accounting-Off"), .method = mod_common, .method_env = &sqlippool_bulk_release_method_env },
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			/*
+			*	RADIUS specific
+			*/
+			{ .section = SECTION_NAME("recv", "Access-Request"), .method = mod_alloc, .method_env = &sqlippool_alloc_method_env },
+			{ .section = SECTION_NAME("accounting", "Start"), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("accounting", "Alive"), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("accounting", "Stop"), .method = mod_common, .method_env = &sqlippool_release_method_env },
+			{ .section = SECTION_NAME("accounting", "Accounting-On"), .method = mod_common, .method_env = &sqlippool_bulk_release_method_env },
+			{ .section = SECTION_NAME("accounting", "Accounting-Off"), .method = mod_common, .method_env = &sqlippool_bulk_release_method_env },
 
-		/*
-		 *	DHCPv4
-		 */
-		{ .section = SECTION_NAME("recv", "Discover"), .method = mod_alloc, .method_env = &sqlippool_alloc_method_env },
-		{ .section = SECTION_NAME("recv", "Request"), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("recv", "Confirm"), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("recv", "Rebind"), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("recv", "Renew"), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("recv", "Release"), .method = mod_common, .method_env = &sqlippool_release_method_env },
-		{ .section = SECTION_NAME("recv", "Decline"), .method = mod_common, .method_env = &sqlippool_mark_method_env },
+			/*
+			*	DHCPv4
+			*/
+			{ .section = SECTION_NAME("recv", "Discover"), .method = mod_alloc, .method_env = &sqlippool_alloc_method_env },
+			{ .section = SECTION_NAME("recv", "Request"), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("recv", "Confirm"), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("recv", "Rebind"), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("recv", "Renew"), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("recv", "Release"), .method = mod_common, .method_env = &sqlippool_release_method_env },
+			{ .section = SECTION_NAME("recv", "Decline"), .method = mod_common, .method_env = &sqlippool_mark_method_env },
 
-		/*
-		 *	Generic
-		 */
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY),.method = mod_alloc, .method_env = &sqlippool_alloc_method_env },
+			/*
+			*	Generic
+			*/
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY),.method = mod_alloc, .method_env = &sqlippool_alloc_method_env },
 
-		/*
-		 *	Named methods matching module operations
-		 */
-		{ .section = SECTION_NAME("allocate", NULL), .method = mod_alloc, .method_env = &sqlippool_alloc_method_env },
-		{ .section = SECTION_NAME("update", NULL), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("renew", NULL), .method = mod_common, .method_env = &sqlippool_update_method_env },
-		{ .section = SECTION_NAME("release", NULL), .method = mod_common, .method_env = &sqlippool_release_method_env },
-		{ .section = SECTION_NAME("bulk-release", NULL), .method = mod_common, .method_env = &sqlippool_bulk_release_method_env },
-		{ .section = SECTION_NAME("mark", NULL),.method = mod_common,.method_env = &sqlippool_mark_method_env },
+			/*
+			*	Named methods matching module operations
+			*/
+			{ .section = SECTION_NAME("allocate", NULL), .method = mod_alloc, .method_env = &sqlippool_alloc_method_env },
+			{ .section = SECTION_NAME("update", NULL), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("renew", NULL), .method = mod_common, .method_env = &sqlippool_update_method_env },
+			{ .section = SECTION_NAME("release", NULL), .method = mod_common, .method_env = &sqlippool_release_method_env },
+			{ .section = SECTION_NAME("bulk-release", NULL), .method = mod_common, .method_env = &sqlippool_bulk_release_method_env },
+			{ .section = SECTION_NAME("mark", NULL),.method = mod_common,.method_env = &sqlippool_mark_method_env },
 
-		MODULE_BINDING_TERMINATOR
+			MODULE_BINDING_TERMINATOR
+		}
 	}
-
 };

@@ -385,8 +385,10 @@ module_rlm_t rlm_client = {
 		.onload		= mod_load,
 		.unload		= mod_unload
 	},
-	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY),		.method = mod_authorize   },
-		MODULE_BINDING_TERMINATOR
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_authorize },
+			MODULE_BINDING_TERMINATOR
+		}
 	}
 };

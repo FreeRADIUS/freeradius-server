@@ -125,7 +125,7 @@ struct dl_module_s {
 
 	dl_module_type_t		_CONST type;		//!< of this module.
 
-	dl_module_common_t const	* _CONST exported;	//!< Symbol exported by the module, containing its public
+	dl_module_common_t		*exported;		//!< Symbol exported by the module, containing its public
 								//!< functions, name and behaviour control flags.
 
 	CONF_SECTION			* _CONST conf;		//!< The module's global configuration

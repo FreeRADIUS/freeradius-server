@@ -1724,7 +1724,7 @@ module_instance_t *module_instance_alloc(module_list_t *ml,
 	/*
 	 *	We have no way of checking if this is correct... so we hope...
 	 */
-	mi->exported = (module_t const *)mi->module->exported;
+	mi->exported = (module_t *)mi->module->exported;
 	if (unlikely(mi->exported == NULL)) {
 		ERROR("Missing public structure for \"%s\"", qual_inst_name);
 		goto error;

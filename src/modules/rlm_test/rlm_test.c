@@ -528,20 +528,22 @@ module_rlm_t rlm_test = {
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach
 	},
-	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting },
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),	.method = mod_authenticate },
-		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_authorize },
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting },
+			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY),	.method = mod_authenticate },
+			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_authorize },
 
-		{ .section = SECTION_NAME("name1_null", NULL),			.method = mod_return },
+			{ .section = SECTION_NAME("name1_null", NULL),			.method = mod_return },
 
-		{ .section = SECTION_NAME("recv", "access-challenge"),		.method = mod_return },
-		{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_preacct },
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize },
+			{ .section = SECTION_NAME("recv", "access-challenge"),		.method = mod_return },
+			{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_preacct },
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize },
 
-		{ .section = SECTION_NAME("retry", NULL),			.method = mod_retry },
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_return },
+			{ .section = SECTION_NAME("retry", NULL),			.method = mod_retry },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_return },
 
-		MODULE_BINDING_TERMINATOR
+			MODULE_BINDING_TERMINATOR
+		}
 	}
 };

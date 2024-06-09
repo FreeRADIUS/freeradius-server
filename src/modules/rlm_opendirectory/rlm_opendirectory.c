@@ -536,9 +536,11 @@ module_rlm_t rlm_opendirectory = {
 		.inst_size	= sizeof(rlm_opendirectory_t),
 		.instantiate	= mod_instantiate
 	},
-	.bindings = (module_method_binding_t[]){
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
-		MODULE_BINDING_TERMINATOR
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize },
+			MODULE_BINDING_TERMINATOR
+		}
 	}
 };

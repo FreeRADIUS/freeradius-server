@@ -1196,10 +1196,12 @@ module_rlm_t rlm_eap = {
 		.unload		= mod_unload,
 		.instantiate	= mod_instantiate,
 	},
-        .bindings = (module_method_binding_t[]){
-                { .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
-                { .section = SECTION_NAME("recv", "Access-Request"), .method = mod_authorize },
-                { .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
-                MODULE_BINDING_TERMINATOR
-        }
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
+			{ .section = SECTION_NAME("recv", "Access-Request"), .method = mod_authorize },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth },
+			MODULE_BINDING_TERMINATOR
+		}
+	}
 };

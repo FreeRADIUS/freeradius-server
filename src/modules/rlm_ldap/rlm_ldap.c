@@ -2712,33 +2712,35 @@ static void mod_unload(void)
 extern module_rlm_t rlm_ldap;
 module_rlm_t rlm_ldap = {
 	.common = {
-		.magic		= MODULE_MAGIC_INIT,
-		.name		= "ldap",
-		.flags		= 0,
-		.boot_size	= sizeof(rlm_ldap_boot_t),
-		.boot_type	= "rlm_ldap_boot_t",
-		.inst_size	= sizeof(rlm_ldap_t),
-		.config		= module_config,
-		.onload		= mod_load,
-		.unload		= mod_unload,
-		.bootstrap	= mod_bootstrap,
-		.instantiate	= mod_instantiate,
-		.detach		= mod_detach,
+		.magic			= MODULE_MAGIC_INIT,
+		.name			= "ldap",
+		.flags			= 0,
+		.boot_size		= sizeof(rlm_ldap_boot_t),
+		.boot_type		= "rlm_ldap_boot_t",
+		.inst_size		= sizeof(rlm_ldap_t),
+		.config			= module_config,
+		.onload			= mod_load,
+		.unload			= mod_unload,
+		.bootstrap		= mod_bootstrap,
+		.instantiate		= mod_instantiate,
+		.detach			= mod_detach,
 		.thread_inst_size	= sizeof(fr_ldap_thread_t),
 		.thread_inst_type	= "fr_ldap_thread_t",
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach,
 	},
-	.bindings = (module_method_binding_t[]){
-		/*
-		 *	Hack to support old configurations
-		 */
-		{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &usermod_method_env },
-		{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &authenticate_method_env },
-		{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
+	.method = {
+		.bindings = (module_method_binding_t[]){
+			/*
+			 *	Hack to support old configurations
+			 */
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &usermod_method_env },
+			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &authenticate_method_env },
+			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
 
-		{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
-		{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &usermod_method_env },
-		MODULE_BINDING_TERMINATOR
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &usermod_method_env },
+			MODULE_BINDING_TERMINATOR
+		}
 	}
 };
