@@ -987,7 +987,7 @@ static unlang_action_t sql_get_grouplist_resume(rlm_rcode_t *p_result, UNUSED in
 			goto error;
 		}
 
-		if (!group_ctx->groups || !entry) {	/* clang scan couldn't tell that when groups_ctx->groups != NULL then entry != NULL */
+		if (!entry) {
 			group_ctx->groups = talloc_zero(group_ctx, rlm_sql_grouplist_t);
 			entry = group_ctx->groups;
 		} else {
