@@ -1635,6 +1635,7 @@ static xlat_action_t xlat_func_expr_rcode(TALLOC_CTX *ctx, fr_dcursor_t *out,
 /** Takes no arguments
  */
 static xlat_arg_parser_t const xlat_func_rcode_arg[] = {
+	XLAT_ARG_PARSER_TERMINATOR,	/* Coverity gets tripped up by only having a single entry here */
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
