@@ -1013,14 +1013,14 @@ ntlm_auth_err:
 				return -1;
 			}
 
-			if (!EVP_CIPHER_CTX_set_key_length(ctx, nt_password->vp_length)) {
-				REDEBUG("Failed setting key length");
-				goto error;
-			}
-
 			if (!EVP_EncryptInit_ex(ctx, EVP_rc4(), NULL, nt_password->vp_octets, NULL)) {
 				REDEBUG("Failed setting key value");
 				goto error;;
+			}
+
+			if (!EVP_CIPHER_CTX_set_key_length(ctx, nt_password->vp_length)) {
+				REDEBUG("Failed setting key length");
+				goto error;
 			}
 
 			if (!EVP_EncryptUpdate(ctx, nt_pass_decrypted, &ntlen, new_nt_password, ntlen)) {
