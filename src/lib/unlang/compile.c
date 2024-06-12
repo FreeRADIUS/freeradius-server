@@ -4699,7 +4699,7 @@ check_for_module:
 	modules = cf_section_find(cf_root(ci), "modules", NULL);
 	if (!modules) {
 		cf_log_err(ci, "Failed compiling \"%s\" as a module or policy as no modules are enabled", name);
-		cf_log_err(ci, "Please verify that modules { ... }  section is present in the server configuration", name);
+		cf_log_err(ci, "Please verify that modules { ... }  section is present in the server configuration");
 		return NULL;
 	}
 
