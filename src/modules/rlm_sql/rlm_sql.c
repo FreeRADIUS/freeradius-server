@@ -1210,7 +1210,7 @@ static int sql_autz_ctx_free(sql_autz_ctx_t *to_free)
  * @param uctx		Current authorization context.
  * @return one of the RLM_MODULE_* values.
  */
-static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t mod_autz_group_resume(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
 	sql_autz_ctx_t		*autz_ctx = talloc_get_type_abort(uctx, sql_autz_ctx_t);
 	sql_autz_call_env_t	*call_env = autz_ctx->call_env;
@@ -1852,7 +1852,7 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 
 static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
 				  CONF_ITEM *ci,
-				  UNUSED call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+				  call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
 	CONF_SECTION const	*subcs = NULL, *subsubcs = NULL;
 	CONF_PAIR const		*to_parse = NULL;
