@@ -44,6 +44,8 @@ typedef struct {
 	fr_bio_t		*mem;
 	fr_bio_t		*fd;
 
+	fr_event_timer_t const	*ev;
+
 	/*
 	 *	@todo - this blocks on _any_ ID space being full.  So if we send auth+acct and auth blocks,
 	 *	then acct is also blocked.  Perhaps we want to track these individually, which means having

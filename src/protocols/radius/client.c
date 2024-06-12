@@ -45,6 +45,8 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED fr_bio_retry_release_reason_t reason);
 static ssize_t radius_client_retry(fr_bio_t *bio, fr_bio_retry_entry_t *retry_ctx, UNUSED const void *buffer, NDEBUG_UNUSED size_t size);
 
+static void fr_radius_client_bio_connect_timer(fr_event_list_t *el, fr_time_t now, void *uctx);
+
 fr_bio_packet_t *fr_radius_client_bio_alloc(TALLOC_CTX *ctx, fr_radius_client_config_t *cfg, fr_bio_fd_config_t const *fd_cfg)
 {
 	fr_assert(fd_cfg->type == FR_BIO_FD_CONNECTED);
@@ -139,12 +141,24 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 */
 	fr_radius_client_bio_cb_set(&my->common, &cfg->packet_cb_cfg);
 
+	talloc_set_destructor(my, _radius_client_fd_bio_free);
+
 	/*
 	 *	Set up the connected status.
 	 */
 	my->info.connected = (my->info.fd_info->type == FR_BIO_FD_CONNECTED) && (my->info.fd_info->state == FR_BIO_FD_STATE_OPEN);
 
-	talloc_set_destructor(my, _radius_client_fd_bio_free);
+	/*
+	 *	If we're supposed to be connected (but aren't), then ensure that we don't keep trying to
+	 *	connect forever.
+	 */
+	if ((my->info.fd_info->type == FR_BIO_FD_CONNECTED) && !my->info.connected &&
+	    fr_time_delta_ispos(cfg->connection_timeout) && cfg->retry_cfg.el) {
+		if (fr_event_timer_in(my, cfg->retry_cfg.el, &my->ev, cfg->connection_timeout, fr_radius_client_bio_connect_timer, my) < 0) {
+			talloc_free(my);
+			return -1;
+		}
+	}
 
 	return my;
 }
@@ -640,7 +654,24 @@ static void fr_radius_client_bio_activate(fr_bio_t *bio)
 	fr_assert(!my->info.connected);
 
 	my->info.connected = true;
+
+	talloc_const_free(&my->ev);
 }
+
+/** We failed to connect in the given timeout, the connection is dead.
+ *
+ */
+static void fr_radius_client_bio_connect_timer(NDEBUG_UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
+
+	fr_assert(my->info.retry_info->el == el);
+
+	talloc_const_free(&my->ev);
+
+	if (my->common.cb.failed) my->common.cb.failed(&my->common);
+}
+
 
 void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSED int fd, UNUSED int flags, void *uctx)
 {
@@ -670,7 +701,12 @@ void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUS
 	my->info.connected = true;
 
 activate:
-	(void) my->common.cb.activate(&my->common);
+	/*
+	 *	Stop any connection timeout.
+	 */
+	talloc_const_free(&my->ev);
+
+	my->common.cb.activate(&my->common);
 }
 
 

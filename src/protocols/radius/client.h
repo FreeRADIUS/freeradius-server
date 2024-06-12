@@ -40,6 +40,8 @@ typedef struct {
 
 	fr_bio_packet_cb_funcs_t packet_cb_cfg;
 
+	fr_time_delta_t		connection_timeout;
+
 	bool			add_proxy_state;
 	uint32_t		proxy_state;
 

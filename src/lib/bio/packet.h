@@ -69,8 +69,9 @@ typedef void (*fr_bio_packet_callback_t)(fr_bio_packet_t *bio);
 
 typedef struct {
 	fr_bio_packet_callback_t	activate;
-	fr_bio_packet_callback_t	eof;
 	fr_bio_packet_callback_t	shutdown;
+	fr_bio_packet_callback_t	eof;
+	fr_bio_packet_callback_t	failed;
 
 	fr_bio_packet_io_t	read_blocked;
 	fr_bio_packet_io_t	write_blocked;

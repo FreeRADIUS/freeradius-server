@@ -1098,6 +1098,20 @@ static int client_bio_write_resume(fr_bio_packet_t *bio)
 }
 
 
+static NEVER_RETURNS void client_bio_failed(fr_bio_packet_t *bio)
+{
+	ERROR("Failed connecting to server");
+
+	/*
+	 *	Cleanly close the BIO, so that we exercise the shutdown path.
+	 */
+	fr_assert(bio == client_bio);
+	TALLOC_FREE(client_bio);
+
+	fr_exit_now(1);
+}
+
+
 static NEVER_RETURNS void client_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags,
 				       int fd_errno, void *uctx)
 {
@@ -1734,6 +1748,7 @@ int main(int argc, char **argv)
 	 */
 	client_config.packet_cb_cfg = (fr_bio_packet_cb_funcs_t) {
 		.activate	= client_bio_activate,
+		.failed		= client_bio_failed,
 
 		.write_blocked	= client_bio_write_pause,
 		.write_resume	= client_bio_write_resume,
