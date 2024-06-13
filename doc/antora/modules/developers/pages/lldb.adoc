@@ -1,0 +1,84 @@
+= LLDB
+
+== Overview
+
+LLDB is, to state the obvious, is a debugger for some languages that use llvm. At the time of writing, that's C, C++, and Objective C for a subset of {i386, x86_64, ARM, Aarch64, MIPS64, PPC} depending on the OS.
+
+LLDB's command syntax is consistent and regular, but it can be verbose. Also, a lot of people are used to GDB commands. LLDB therefore predefines "aliases" to provide some commands familiar to gdb users, and  you have access to that command to define your own aliases.
+
+When a test fails you'll see something like this in the output, a command line showing how to run the test (with -xx for added debugging output):
+
+[source,shell]
+----
+./build/make/jlibtool --silent --timeout=300 --mode=execute ./build/bin/local/unit_test_attribute -F ./src/tests/fuzzer-corpus -D share/dictionary -d ./src/tests/unit -r "build/tests/units/data_types.txt"  src/tests/unit/data_types.txt -xx
+----
+
+To run the test under lldb, tell  jlibtool to run lldb, which in turn will run and pass options on to `unit_test_module`. Keep the `-xx` if you wish, but definitely omit the `--timeout=300`.
+
+[source,shell]
+----
+TZ=GMT build/make/jlibtool --silent --mode=execute lldb --file ./build/bin/local/unit_test_attribute -- -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d ./src/tests/unit -r "build/tests/unit/data_types.txt" src/tests/unit/data_types.txt
+----
+
+`--file` tells lldb what it's debugging, `--` tells it that all that follows should be passed to `unit_test_module`. That can appear in lldb commands to cause following arguments to be passed to a subcommand--an example of lldb's consistent syntax.
+
+lldb provides a lot of facilities for extending the debugger, defining new commands, and even defining how to display values of particular types. Since the immediate goal was providing an understandable display for select types used in FreeRADIUS, we could have done that, but the work's already been done in FreeRADIUS--why replicate it? lldb's Python scripting lets one call C functions.
+
+== What lldb Provides for Python
+
+The lldb module defines Python classes that correspond to the entities lldb deals with, such as debuggers, targets, processes, and threads. The class names all start with "SB".
+
+== What lldb Expects to See
+
+To be callable with an lldb command, a Python function must have arguments of the following types. We use the names used in the example for consistency.
+
+* `debugger` has type lldb.SBDebugger. It's the current debugger object.
+* `command` is a Python string. Surprisingly, it contains all the _arguments_ passed with the command. Any parsing has to be done in the function; the manual suggests using `shlex.split()` if needed.
+* `exe_ctx` has type lldb.SBExecutionContext. It has information on the context in which the command will run, e.g. the process, thread, and stack frame
+* `result` has type lldb.SBCommandReturnObject. One uses it to propagate errors should they happen or text to be output. (For our command, the C functions already output to stderr, so we'll only use it to indicate errors.)
+* `internal_dict` is a Python dictionary. To quote the LLDB manual, it's "[t]he dictionary for the current embedded script session which contains all variables and functions".
+
+and some surrounding boilerplate.
+
+----
+#!/usr/bin/env python
+
+#  You definitely want lldb; include others as needed.
+import lldb
+import commands
+import optparse
+import shlex
+
+def command_function(debugger, command, exe_ctx, result, internal_dict):
+    """lldb will use this for help for the command"""
+    # Code implementing command
+
+#  And the initialization code to add your commands
+#  This is taken from the lldb documentation example defining an "ls"
+#  command. This will end up in a Python source file which may contain
+#  multiple commands one can make available via the lldb command line,
+#  so for the documentation example, this is in a file named ls.py, so
+#  I suspect "script add expects to see (assumiing it's on sys.path()),
+#  `basename <python file>`.<name of sommand> <name lldb will see>
+def __lldb_init_module(debugger, internal_dict):
+    debugger.HandleCommand('command script add -f ls.ls ls')
+    # Change the print string to match the command name handed to the
+    # "command script add".
+    print 'The "ls" python command has been installed and is ready for use.'
+----
+
+Given all that, you just import the file containing the source. But must one do that by hand? Not necessarily.
+
+* One can put commands in ~/.lldbinit to run when lldb starts.
+* With the option `--local-ldbinit` it will look in the current working directory for .lldbinit (actually, 'man lldb" says it "allow[s] the debugger to parse the lldbinit _files_ [emphasis added] in the current working directory"; that's worth exploring).
+* One can use the option `--one-line-before-file <command>` to execute that one command gets run at the start.
+
+== References
+
+* https://lldb.llvm.org/index.html[The online lldb documentation]. It includes a tutorial that is of some help, and covers uses for Python other than creating new lldb commands that run Python scripts.
+* https://discourse.llvm.org/c/subprojects/lldb/8[The lldb forum]
+* https://discord.com/invite/xS7Z362[The lldb Discord server]
+
+There are various lldb "cheat sheets", other tutorials, and answered questons on sites such as StackOverflow. Those can be out of date, but may contain useful information. For example, one such answered question mentioned that the `script` command has both a one-line form and a multi-line form.
+
+
