@@ -84,7 +84,7 @@ insert_acct_class {
 #
 #	If the &Attr-Foo doesn't exist, it's value is taken as zero.
 #
-acct_counters64.preacct {
+acct_counters64 {
 	if (!&Acct-Input-Gigawords) {
 		&request.Acct-Input-Octets64 := %{&Acct-Input-Octets || 0}
 	}
