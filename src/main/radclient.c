@@ -65,6 +65,7 @@ static fr_ipaddr_t client_ipaddr;
 static uint16_t client_port = 0;
 
 static int sockfd;
+static int last_used_id = -1;
 
 #ifdef WITH_TCP
 static char const *proto = NULL;
@@ -416,7 +417,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 #endif
 
 		request->files = files;
-		request->packet->id = -1; /* allocate when sending */
+		request->packet->id = last_used_id; /* either requested, or allocated by the library */
 		request->num = num++;
 
 		/*
@@ -892,7 +893,7 @@ static int send_one_packet(rc_request_t *request)
 	/*
 	 *	Haven't sent the packet yet.  Initialize it.
 	 */
-	if (request->packet->id == -1) {
+	if (!request->tries || (request->packet->id == -1)) {
 		int i;
 		bool rcode;
 
@@ -949,8 +950,18 @@ static int send_one_packet(rc_request_t *request)
 		assert(request->packet->id != -1);
 		assert(request->packet->data == NULL);
 
-		for (i = 0; i < 4; i++) {
-			((uint32_t *) request->packet->vector)[i] = fr_rand();
+		if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+			VALUE_PAIR *vp;
+
+			if (((vp = fr_pair_find_by_num(request->packet->vps, PW_PACKET_AUTHENTICATION_VECTOR, 0, TAG_ANY)) != NULL) &&
+			    (vp->vp_length >= 16)) {
+				memcpy(request->packet->vector, vp->vp_octets, 16);
+
+			} else {
+				for (i = 0; i < 4; i++) {
+					((uint32_t *) request->packet->vector)[i] = fr_rand();
+				}
+			}
 		}
 
 		/*
@@ -1248,7 +1259,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhn:p:qr:sS:t:vx"
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:qr:sS:t:vx"
 #ifdef WITH_TCP
 		"P:"
 #endif
@@ -1300,6 +1311,15 @@ int main(int argc, char **argv)
 
 		case 'F':
 			print_filename = true;
+			break;
+
+		case 'i':
+			if (!isdigit((uint8_t) *optarg))
+				usage();
+			last_used_id = atoi(optarg);
+			if ((last_used_id < 0) || (last_used_id > 255)) {
+				usage();
+			}
 			break;
 
 		case 'n':
