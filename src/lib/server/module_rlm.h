@@ -50,8 +50,9 @@ struct module_rlm_instance_s {
 /** An xlat function registered to a module
  */
 typedef struct {
-	xlat_t const			*xlat;		//!< The xlat function.
-	fr_rb_node_t			node;		//!< Entry in an rbtree of registered xlats.
+	xlat_t const			*xlat;			//!< The xlat function.
+	module_instance_t const		*mi;			//!< The module instance that registered the xlat.
+	fr_rb_node_t			node;			//!< Entry in an rbtree of registered xlats.
 } module_rlm_xlat_t;
 
 /** The output of module_rlm_by_name_and_method

@@ -283,6 +283,7 @@ xlat_t *module_rlm_xlat_register(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 
 	MEM(mrx = talloc(mi, module_rlm_xlat_t));
 	mrx->xlat = x;
+	mrx->mi = mi;
 
 	fr_rb_insert(&mri->xlats, mrx);
 
