@@ -1089,7 +1089,7 @@ static int module_method_group_validate(module_method_group_t *group)
 	}
 	group->validated = true;
 
-	CC_HINT(musttail) return module_method_group_validate(group->next);
+	return module_method_group_validate(group->next);
 }
 
 static int module_method_validate(module_instance_t *mi)
