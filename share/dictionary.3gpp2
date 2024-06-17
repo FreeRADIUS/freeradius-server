@@ -85,7 +85,13 @@ ATTRIBUTE	3GPP2-Remote-IP-Address-Value		59.1	ipaddr
 ATTRIBUTE	3GPP2-Remote-IP-Address-Mask		59.2	integer
 ATTRIBUTE	3GPP2-Remote-IP-Qualifier		59.3	short
 
-# 60 - 69 are marked "reserved"
+ATTRIBUTE	3GPP2-HRPD-Access-Authorization		60	integer
+
+ATTRIBUTE	3GPP2-AT-Hardware-Identifier		61	tlv
+ATTRIBUTE	3GPP2-AT-Hardware-Identifier-Type	61.1	integer
+ATTRIBUTE	3GPP2-AT-Hardware-Identifier-Value	61.2	octets
+
+# 62 - 69 are marked "reserved"
 
 ATTRIBUTE	3GPP2-Remote-IPv6-Address		70	tlv
 ATTRIBUTE	3GPP2-Remote-IPv6-Address-Value		70.1	ipv6addr
