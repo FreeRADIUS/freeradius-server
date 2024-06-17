@@ -91,7 +91,13 @@ ATTRIBUTE	Address					.1	ipaddr
 ATTRIBUTE	Mask					.2	integer
 ATTRIBUTE	Qualifier				.3	short
 
-# 60 - 69 are marked "reserved"
+ATTRIBUTE	HRPD-Access-Authorization		60	integer
+
+ATTRIBUTE	AT-Hardware-Identifier			61	tlv
+ATTRIBUTE	Type					.1	integer
+ATTRIBUTE	Value					.2	octets
+
+# 62 - 69 are marked "reserved"
 
 ATTRIBUTE	Remote-IPv6				70	tlv
 ATTRIBUTE	Value					.1	ipv6addr
