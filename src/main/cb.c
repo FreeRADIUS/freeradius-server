@@ -117,6 +117,10 @@ void cbtls_info(SSL const *s, int where, int ret)
 				RDEBUG2("(TLS) %s - %s: Need to read more data: %s", conf->name, role, state);
 				return;
 			}
+			if (SSL_want_write(s)) {
+				RDEBUG2("(TLS) %s - %s: Need to write more data: %s", conf->name, role, state);
+				return;
+			}
 			RERROR("(TLS) %s - %s: Error in %s", conf->name, role, state);
 		}
 	}
