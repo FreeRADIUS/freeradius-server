@@ -77,8 +77,8 @@ static int rs_useful_codes[] = {
 	FR_RADIUS_CODE_DISCONNECT_ACK,			//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
 	FR_RADIUS_CODE_DISCONNECT_NAK,			//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
 	FR_RADIUS_CODE_COA_REQUEST,			//!< RFC3575/RFC5176 - CoA-Request
-	FR_RADIUS_CODE_COA_ACK,			//!< RFC3575/RFC5176 - CoA-Ack (positive)
-	FR_RADIUS_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
+	FR_RADIUS_CODE_COA_ACK,				//!< RFC3575/RFC5176 - CoA-Ack (positive)
+	FR_RADIUS_CODE_COA_NAK,				//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
 static fr_table_num_sorted_t const rs_events[] = {
@@ -1467,7 +1467,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			return;
 		}
 
-		if (conf->verify_radius_authenticator && original) {
+		if (conf->verify_radius_authenticator) {
 			int ret;
 			FILE *log_fp = fr_log_fp;
 
@@ -1600,6 +1600,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 
 		if (conf->verify_radius_authenticator) {
 			switch (packet->code) {
+			case FR_RADIUS_CODE_ACCESS_REQUEST: /* Even though this is just random bytes, we still might need to check Message-Authenticator */
 			case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
 			case FR_RADIUS_CODE_COA_REQUEST:
 			case FR_RADIUS_CODE_DISCONNECT_REQUEST:

@@ -784,10 +784,8 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	}
 
 	/*
-	 *	Implement verification as a signature, followed by
-	 *	checking our signature against the sent one.  This is
-	 *	slightly more CPU work than having verify-specific
-	 *	functions, but it ends up being cleaner in the code.
+	 *	Overwrite the contents of Message-Authenticator
+	 *	with the one we calculate.
 	 */
 	rcode = fr_radius_sign(packet, vector, secret, secret_len);
 	if (rcode < 0) {
@@ -801,6 +799,10 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	 *	If it's invalid, restore the original
 	 *	Message-Authenticator and Request Authenticator
 	 *	fields.
+	 *
+	 *	If it's valid the original and calculated
+	 *	message authenticators are the same, so we don't
+	 *	need to do anything.
 	 */
 	if ((msg < end) &&
 	    (fr_digest_cmp(message_authenticator, msg + 2, sizeof(message_authenticator)) != 0)) {
@@ -1141,9 +1143,7 @@ int fr_radius_global_init(void)
 
 void fr_radius_global_free(void)
 {
-	fr_assert(instance_count > 0);
-
-	if (--instance_count > 0) return;
+	if (--instance_count != 0) return;
 
 	fr_dict_autofree(libfreeradius_radius_dict);
 }
