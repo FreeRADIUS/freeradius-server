@@ -794,7 +794,7 @@ static xlat_arg_parser_t const xlat_func_radius_secret_verify_args[] = {
  *
  * Example:
 @verbatim
-%radius_secret_verify(<secret>)
+%radius.secret.verify(<secret>)
 @endverbatim
  *
  * @ingroup xlat_functions
