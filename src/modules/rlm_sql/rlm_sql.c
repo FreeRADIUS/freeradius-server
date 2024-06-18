@@ -644,6 +644,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 	fr_sql_query_t		*query_ctx = map_ctx->query_ctx;
 	map_list_t const	*maps = map_ctx->maps;
 	rlm_sql_t const		*inst = map_ctx->inst;
+	rlm_sql_handle_t	*handle = query_ctx->handle;
 	map_t const		*map;
 	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
 	sql_rcode_t		ret;
@@ -756,8 +757,8 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 
 finish:
 	talloc_free(fields);
-	if (query_ctx->handle) fr_pool_connection_release(inst->pool, request, query_ctx->handle);
 	talloc_free(map_ctx);
+	if (handle) fr_pool_connection_release(inst->pool, request, handle);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -1036,6 +1037,7 @@ static xlat_action_t sql_group_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *
 	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
 	sql_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, sql_group_xlat_ctx_t);
 	sql_group_ctx_t		*group_ctx = talloc_get_type_abort(xlat_ctx->group_ctx, sql_group_ctx_t);
+	rlm_sql_handle_t	*handle = xlat_ctx->handle;
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*name = arg->vb_strvalue;
 	fr_value_box_t		*vb;
@@ -1052,7 +1054,8 @@ static xlat_action_t sql_group_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *
 	}
 	fr_dcursor_append(out, vb);
 
-	if (!inst->driver->uses_trunks && xlat_ctx->handle) fr_pool_connection_release(inst->pool, request, xlat_ctx->handle);
+	talloc_free(xlat_ctx);
+	if (handle) fr_pool_connection_release(inst->pool, request, handle);
 
 	return XLAT_ACTION_DONE;
 }
