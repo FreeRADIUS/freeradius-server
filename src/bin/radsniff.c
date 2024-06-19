@@ -72,7 +72,6 @@ static int rs_useful_codes[] = {
 	FR_RADIUS_CODE_ACCOUNTING_RESPONSE,		//!< RFC2866 - Accounting-Response
 	FR_RADIUS_CODE_ACCESS_CHALLENGE,		//!< RFC2865 - Access-Challenge
 	FR_RADIUS_CODE_STATUS_SERVER,			//!< RFC2865/RFC5997 - Status Server (request)
-	FR_RADIUS_CODE_STATUS_CLIENT,			//!< RFC2865/RFC5997 - Status Server (response)
 	FR_RADIUS_CODE_DISCONNECT_REQUEST,		//!< RFC3575/RFC5176 - Disconnect-Request
 	FR_RADIUS_CODE_DISCONNECT_ACK,			//!< RFC3575/RFC5176 - Disconnect-Ack (positive)
 	FR_RADIUS_CODE_DISCONNECT_NAK,			//!< RFC3575/RFC5176 - Disconnect-Nak (not willing to perform)
@@ -1446,7 +1445,6 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	case FR_RADIUS_CODE_COA_ACK:
 	case FR_RADIUS_CODE_DISCONNECT_NAK:
 	case FR_RADIUS_CODE_DISCONNECT_ACK:
-	case FR_RADIUS_CODE_STATUS_CLIENT:
 	{
 		/* look for a matching request and use it for decoding */
 		search.expect = packet;
