@@ -50,7 +50,7 @@ totp {
 	#
 	#  Must be 6 or 8
 	#
-	otp_length = 8
+	otp_length = 6
 
 	#
 	#  How many steps backward in time we look for a matching OTP
