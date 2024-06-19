@@ -1164,7 +1164,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	 *	!client->active means a fake packet defining a dynamic client - so there will
 	 *	be no secret defined yet - so can't verify.
 	 */
-	if (fr_radius_decode(request->request_ctx, &request->request_pairs,
+	if (fr_radius_decode(request->request_ctx, reply,
 			     data, data_len, &decode_ctx) < 0) {
 		talloc_free(decode_ctx.tmp_ctx);
 		RPEDEBUG("Failed reading packet");
