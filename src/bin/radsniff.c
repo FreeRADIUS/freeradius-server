@@ -1465,7 +1465,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			return;
 		}
 
-		if (conf->verify_radius_authenticator) {
+		if (conf->verify_radius_authenticator && original) {
 			int ret;
 			FILE *log_fp = fr_log_fp;
 
