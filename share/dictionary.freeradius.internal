@@ -303,6 +303,8 @@ VALUE	Proxy-Tunneled-Request-As-EAP	No			0
 VALUE	Proxy-Tunneled-Request-As-EAP	Yes			1
 ATTRIBUTE	Temp-Home-Server-String			1198	string
 
+ATTRIBUTE	TOTP-Time-Offset			1199	signed
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

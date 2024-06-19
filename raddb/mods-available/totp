@@ -39,6 +39,16 @@
 #
 #  and then run that locally to get an image.
 #
+#
+#  Some tokens get severely out of sync with local time.  It is
+#  possible to offset the definition of "now" for one token by setting:
+#
+#	&control:TOTP-Time-Offset := 120
+#
+#  This is a signed integer, with allowed values between -600 to +600.
+#  The offset is added to to the current time, to get the tokens idea
+#  of "now".
+#
 totp {
 	#
 	#  Default time step between time changes

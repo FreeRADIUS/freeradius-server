@@ -508,6 +508,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		keylen = len;
 	}
 
+	vp = fr_pair_find_by_num(request->config, PW_TOTP_TIME_OFFSET, 0, TAG_ANY);
+	if (vp && (vp->vp_signed > -600) && (vp->vp_signed < 600)) {
+		RDEBUG("Using TOTP-Time-Offset = %d", vp->vp_signed);
+		now += vp->vp_signed;
+	}
+
 	if (totp_cmp(request, now, key, keylen, password->vp_strvalue, instance) == 0) {
 		/*
 		 *	Forbid using a key more than once.
