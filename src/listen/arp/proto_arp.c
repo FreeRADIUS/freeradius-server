@@ -136,7 +136,7 @@ static ssize_t mod_encode(void const *instance, request_t *request, uint8_t *buf
 		RDEBUG("WARNING: Sender-Hardware-Address of zeros will likely cause problems");
 	}
 
-	fr_packet_pairs_to_packet(request->reply, &request->reply_pairs);
+	fr_packet_net_from_pairs(request->reply, &request->reply_pairs);
 
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %d via socket %s",

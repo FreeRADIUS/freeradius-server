@@ -289,7 +289,7 @@ static request_t *request_from_file(TALLOC_CTX *ctx, FILE *fp, fr_client_t *clie
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL,  attr_packet_type);
 	if (vp) request->packet->code = vp->vp_uint32;
 
-	fr_packet_pairs_to_packet(request->packet, &request->request_pairs);
+	fr_packet_net_from_pairs(request->packet, &request->request_pairs);
 
 	/*
 	 *	The input might have updated only some of the Net.*

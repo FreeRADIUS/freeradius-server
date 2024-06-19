@@ -194,7 +194,7 @@ static int request_init(fr_packet_t **out, fr_pair_list_t *packet_vps, char cons
 	 *	Fill in the packet header from attributes, and then
 	 *	re-realize the attributes.
 	 */
-	fr_packet_pairs_to_packet(packet, packet_vps);
+	fr_packet_net_from_pairs(packet, packet_vps);
 
 	if (fp != stdin) fclose(fp);
 

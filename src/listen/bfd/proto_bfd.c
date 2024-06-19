@@ -251,7 +251,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	client = address->radclient;
 	fr_assert(client);
 
-	fr_packet_pairs_to_packet(request->reply, &request->reply_pairs);
+	fr_packet_net_from_pairs(request->reply, &request->reply_pairs);
 
 	/*
 	 *	Dynamic client stuff

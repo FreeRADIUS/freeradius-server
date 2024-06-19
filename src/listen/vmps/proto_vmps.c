@@ -270,7 +270,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		return -1;
 	}
 
-	fr_packet_pairs_to_packet(request->reply, &request->reply_pairs);
+	fr_packet_net_from_pairs(request->reply, &request->reply_pairs);
 
 	RHEXDUMP3(buffer, data_len, "proto_vmps encode packet");
 

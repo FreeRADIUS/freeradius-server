@@ -136,7 +136,7 @@ static void pairs2inet(fr_ipaddr_t *ipaddr, uint16_t *port, fr_pair_list_t const
  * @param packet	the packet to send
  * @param list		the list to check for Net.*
  */
-void fr_packet_pairs_to_packet(fr_packet_t *packet, fr_pair_list_t const *list)
+void fr_packet_net_from_pairs(fr_packet_t *packet, fr_pair_list_t const *list)
 {
 	fr_pair_t *net, *tlv;
 

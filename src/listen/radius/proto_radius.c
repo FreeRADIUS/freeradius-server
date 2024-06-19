@@ -297,7 +297,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	fr_io_track_t		*track = talloc_get_type_abort(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  	*address = track->address;
 	ssize_t			data_len;
-	fr_client_t const		*client;
+	fr_client_t const	*client;
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
@@ -374,7 +374,7 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		return -1;
 	}
 
-	fr_packet_pairs_to_packet(request->reply, &request->reply_pairs);
+	fr_packet_net_from_pairs(request->reply, &request->reply_pairs);
 
 	if (RDEBUG_ENABLED) {
 		RDEBUG("Sending %s ID %i from %pV:%i to %pV:%i length %zu via socket %s",

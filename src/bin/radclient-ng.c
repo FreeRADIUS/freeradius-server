@@ -687,7 +687,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Fill in the packet header from attributes, and then
 		 *	re-realize the attributes.
 		 */
-		fr_packet_pairs_to_packet(request->packet, &request->request_pairs);
+		fr_packet_net_from_pairs(request->packet, &request->request_pairs);
 
 		/*
 		 *	Default to the filename
