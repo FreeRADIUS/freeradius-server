@@ -41,7 +41,7 @@ struct module_rlm_s {
 };
 
 struct module_rlm_instance_s {
-	fr_rb_tree_t			xlats;			//!< xlats registered to this module instance.
+	fr_dlist_head_t			xlats;			//!< xlats registered to this module instance.
 								///< This is used by the redundant/loadbalance
 								///< xlats to register versions of the xlats
 								///< exported by the module instances.
@@ -51,8 +51,8 @@ struct module_rlm_instance_s {
  */
 typedef struct {
 	xlat_t const			*xlat;			//!< The xlat function.
-	module_instance_t const		*mi;			//!< The module instance that registered the xlat.
-	fr_rb_node_t			node;			//!< Entry in an rbtree of registered xlats.
+	module_instance_t		*mi;			//!< The module instance that registered the xlat.
+	fr_dlist_t			entry;			//!< Entry in a linked list of registered xlats.
 } module_rlm_xlat_t;
 
 /** The output of module_rlm_by_name_and_method

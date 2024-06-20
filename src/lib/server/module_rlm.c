@@ -285,7 +285,7 @@ xlat_t *module_rlm_xlat_register(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
 	mrx->xlat = x;
 	mrx->mi = mi;
 
-	fr_rb_insert(&mri->xlats, mrx);
+	fr_dlist_insert_tail(&mri->xlats, mrx);
 
 	return x;
 }
@@ -1100,16 +1100,6 @@ static int module_method_validate(module_instance_t *mi)
 	return module_method_group_validate(&mrlm->method);
 }
 
-/** Compare xlat functions registered to a module
- */
-static int8_t module_rlm_xlat_cmp(void const *one, void const *two)
-{
-	module_rlm_xlat_t const *a = one;
-	module_rlm_xlat_t const *b = two;
-
-	return xlat_func_cmp(a->xlat, b->xlat);
-}
-
 /** Allocate a rlm module instance
  *
  * These have extra space allocated to hold the dlist of associated xlats.
@@ -1138,7 +1128,8 @@ module_instance_t *module_rlm_instance_alloc(module_list_t *ml,
 
 	MEM(mri = talloc(mi, module_rlm_instance_t));
 	module_instance_uctx_set(mi, mri);
-	fr_rb_inline_init(&mri->xlats, module_rlm_xlat_t, node, module_rlm_xlat_cmp, NULL);
+
+	fr_dlist_talloc_init(&mri->xlats, module_rlm_xlat_t, entry);
 
 	return mi;
 }

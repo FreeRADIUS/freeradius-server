@@ -53,13 +53,13 @@ places.  Instead of copying the same text multiple times, a
 directory.
 
 For example, the following text can be placed into the file
-`mods-enabled/sql123`.  Once it is there, it can be used as a module
-named `sql123`, and used anywhere a module is allowed to use.
+`mods-enabled/sql_all`.  Once it is there, it can be used as a module
+named `sql_all`, and used anywhere a module is allowed to use.
 
 .Example of Redundant-Load-Balance SQL module
 [source,unlang]
 ----
-redundant-load-balance sql123 {
+redundant-load-balance sql_all {
     sql1
     sql2
     sql3
@@ -68,18 +68,18 @@ redundant-load-balance sql123 {
 
 In previous versions of the server, this definition would be placed
 into the `instantiate` section of `radiusd.conf.  This configuration
-is no longer used, and the `sql123` definition can just be placed as
+is no longer used, and the `sql_all` definition can just be placed as
 a module definition into the `mods-enabled/` directory.
 
 == Redundant-Load-Balance Expansions
 
-When the `sql123` module is defined as above, it can also be used as
+When the `sql_all` module is defined as above, it can also be used as
 in a xref:xlat/index.adoc[dynamic expansion]:
 
 .Example of Redundant-Load-Balance SQL module
 [source,unlang]
 ----
-&Reply-Message := %sql123("SELECT message FROM table WHERE name='%{User-Name}'")
+&Reply-Message := %sql_all("SELECT message FROM table WHERE name='%{User-Name}'")
 }
 ----
 
