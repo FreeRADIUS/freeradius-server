@@ -290,32 +290,6 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		mysql_options(&(c->db), MYSQL_OPT_RECONNECT, &reconnect);
 	}
 
-	if (fr_time_delta_ispos(config->query_timeout)) {
-		unsigned int read_timeout = fr_time_delta_to_sec(config->query_timeout);
-		unsigned int write_timeout = fr_time_delta_to_sec(config->query_timeout);
-
-		/*
-		 *	The timeout in seconds for each attempt to read from the server.
-		 *	There are retries if necessary, so the total effective timeout
-		 *	value is three times the option value.
-		 */
-		if (read_timeout >= 3) read_timeout /= 3;
-
-		/*
-		 *	The timeout in seconds for each attempt to write to the server.
-		 *	There is a retry if necessary, so the total effective timeout
-		 *	value is two times the option value.
-		 */
-		if (write_timeout >= 2) write_timeout /= 2;
-
-		/*
-		 *	Connect timeout is actually connect timeout (according to the
-		 *	docs) there are no automatic retries.
-		 */
-		mysql_options(&(c->db), MYSQL_OPT_READ_TIMEOUT, &read_timeout);
-		mysql_options(&(c->db), MYSQL_OPT_WRITE_TIMEOUT, &write_timeout);
-	}
-
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
 
 #ifdef CLIENT_MULTI_STATEMENTS
