@@ -110,12 +110,6 @@ exfile_t	*module_rlm_exfile_init(TALLOC_CTX *ctx,
  *
  * @{
  */
-module_method_t	module_rlm_state_str_to_method(module_state_func_table_t const *table,
-					       char const *name, module_method_t def);
-
-char const	*module_rlm_state_method_to_str(module_state_func_table_t const *table,
-						module_method_t method, char const *def);
-
 bool		module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_value_t const *enumv);
 /** @} */
 
