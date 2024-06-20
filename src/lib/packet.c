@@ -1090,7 +1090,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		fprintf(fp, "%s %s Id %i from %s%s%s:%x to %s%s%s:%u length %zu\n",
+		fprintf(fp, "%s %s Id %i from %s%s%s:%u to %s%s%s:%u length %zu\n",
 		        received ? "Received" : "Sent",
 		        fr_packet_codes[packet->code],
 		        packet->id,
@@ -1108,7 +1108,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 		        packet->dst_port,
 		        packet->data_len);
 	} else {
-		fprintf(fp, "%s code %u Id %i from %s%s%s:%u to %s%s%s:%i length %zu\n",
+		fprintf(fp, "%s code %u Id %i from %s%s%s:%u to %s%s%s:%u length %zu\n",
 		        received ? "Received" : "Sent",
 		        packet->code,
 		        packet->id,
