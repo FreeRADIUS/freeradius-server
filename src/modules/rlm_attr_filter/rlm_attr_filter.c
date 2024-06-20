@@ -364,11 +364,10 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		return attr_filter_common(p_result, mctx, request, request->_y, &request->_z##_pairs); \
 	}
 
-RLM_AF_FUNC(authorize, packet, request)
-RLM_AF_FUNC(post_auth, reply, reply)
-
-RLM_AF_FUNC(preacct, packet, request)
-RLM_AF_FUNC(accounting, reply, reply)
+RLM_AF_FUNC(request, packet, request)
+RLM_AF_FUNC(reply, reply, reply)
+RLM_AF_FUNC(control, packet, control)
+RLM_AF_FUNC(session, packet, session_state)
 
 /* globally exported name */
 extern module_rlm_t rlm_attr_filter;
@@ -385,13 +384,21 @@ module_rlm_t rlm_attr_filter = {
 			/*
 			 *	Hack to support old configurations
 			 */
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_accounting	},
-			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_authorize		},
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY),		.method = mod_reply	},
+			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY),		.method = mod_request	},
 
-			{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_preacct		},
-			{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_authorize		},
+			{ .section = SECTION_NAME("recv", "accounting-request"),	.method = mod_request	},
+			{ .section = SECTION_NAME("recv", CF_IDENT_ANY),		.method = mod_request	},
 
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_post_auth		},
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY),		.method = mod_reply	},
+
+			/*
+			 *	List name based methods
+			 */
+			{ .section = SECTION_NAME("request", CF_IDENT_ANY),		.method = mod_request	},
+			{ .section = SECTION_NAME("reply", CF_IDENT_ANY),		.method = mod_reply	},
+			{ .section = SECTION_NAME("control", CF_IDENT_ANY),		.method = mod_control	},
+			{ .section = SECTION_NAME("session-state", CF_IDENT_ANY),	.method = mod_session	},
 			MODULE_BINDING_TERMINATOR
 		}
 	}
