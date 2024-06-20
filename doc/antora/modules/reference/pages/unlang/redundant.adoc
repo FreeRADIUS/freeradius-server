@@ -148,9 +148,9 @@ The `sql_and_ldap` redundant section would register the following
 expansions:
 
 - `%sql_and_ldap(...)` which would call `%sql1(...)`, `%sql2(...)`, `%ldap1(...)`, and `%ldap2(...)`
-- `%sql_and_ldap.group(...)` which would call `%sql1(...)`, `%sql2(...)`
-- `%sql_and_ldap.memberof(...)` which would call `%ldap1(...)`, `%ldap2(...)`
-- `%sql_and_ldap.profile(...)` which would call `%ldap1(...)`, `%ldap2(...)`
+- `%sql_and_ldap.group(...)` which would call `%sql1.group(...)`, `%sql2.group(...)`
+- `%sql_and_ldap.memberof(...)` which would call `%ldap1.memberof(...)`, `%ldap2.memberof(...)`
+- `%sql_and_ldap.profile(...)` which would call `%ldap1.profile(...)`, `%ldap2.profile(...)`
 
 If the arguments passed to the redundant expansion are not compatible
 with _all_ the module expansions it would call, the server will log an
