@@ -1,3 +1,6 @@
+# Copy request to reply for later
+&reply := &request
+
 attr_filter
 
 if ((!&NAS-Port) || (&NAS-Port != 10)) {
@@ -23,6 +26,25 @@ if ((&Framed-IP-Address != 192.168.10.20) || (&Framed-IP-Address[1])) {
 if ((&Calling-Station-Id != "bob") || (&Calling-Station-Id[1] != "jim") || (&Calling-Station-Id[2])) {
         test_fail
 }
+
+if (!&reply.Idle-Timeout) {
+	test_fail
+}
+
+#
+#  Now apply the filter to the reply list
+#
+attr_filter.reply
+
+if (!&NAS-Port || &NAS-Port != 10) {
+	test_fail
+}
+
+if (&reply.Idle-Timeout) {
+	test_fail
+}
+
+&reply := {}
 
 &control.Password.Cleartext := "goodbye"
 &reply.Reply-Message := &Reply-Message
