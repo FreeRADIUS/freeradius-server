@@ -466,7 +466,9 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 		if (!cf_item_is_pair(ci)) continue;
 
-		mi = module_rlm_static_by_name(NULL, cf_pair_attr(cf_item_to_pair(ci)));
+		name = cf_pair_attr(cf_item_to_pair(ci));
+
+		mi = module_rlm_static_by_name(NULL, name);
 		if (!mi) {
 			cf_log_err(ci, "Module '%s' not found.  Referenced in %s %s { ... } section",
 				   name, cf_section_name1(cs), cf_section_name2(cs));
