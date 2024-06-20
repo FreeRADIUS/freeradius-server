@@ -341,8 +341,8 @@ static int8_t module_xlat_cmp(void const *a, void const *b)
 {
 	int8_t ret;
 
-	module_rlm_xlat_t const *mrx_a = talloc_get_type_abort(a, module_rlm_xlat_t);
-	module_rlm_xlat_t const *mrx_b = talloc_get_type_abort(b, module_rlm_xlat_t);
+	module_rlm_xlat_t const *mrx_a = talloc_get_type_abort_const(a, module_rlm_xlat_t);
+	module_rlm_xlat_t const *mrx_b = talloc_get_type_abort_const(b, module_rlm_xlat_t);
 	char const *a_p, *b_p;
 
 	/*
