@@ -292,7 +292,7 @@ module_rlm_t rlm_imap = {
 		.thread_instantiate 	= mod_thread_instantiate,
 		.thread_detach      	= mod_thread_detach,
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
 			MODULE_BINDING_TERMINATOR

@@ -1058,7 +1058,7 @@ module_rlm_t rlm_csv = {
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_process },
 			MODULE_BINDING_TERMINATOR

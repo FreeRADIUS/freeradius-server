@@ -37,7 +37,7 @@ typedef struct module_rlm_instance_s module_rlm_instance_t;
 
 struct module_rlm_s {
 	module_t			common;			//!< Common fields presented by all modules.
-	module_method_group_t		method;			//!< named methods
+	module_method_group_t		method_group;		//!< named methods
 };
 
 struct module_rlm_instance_s {

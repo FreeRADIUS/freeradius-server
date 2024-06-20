@@ -1418,7 +1418,7 @@ module_rlm_t rlm_rest = {
 		.thread_instantiate	= mod_thread_instantiate,
 		.thread_detach		= mod_thread_detach
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			/*
 			 *	Hack to support old configurations

@@ -1291,7 +1291,7 @@ module_rlm_t rlm_redis_ippool = {
 		.onload		= mod_load,
 		.instantiate	= mod_instantiate
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME("recv", "Access-Request"), .method = mod_alloc, .method_env = &redis_ippool_alloc_method_env },			/* radius */
 			{ .section = SECTION_NAME("accounting", "Start"), .method = mod_update, .method_env = &redis_ippool_update_method_env },			/* radius */

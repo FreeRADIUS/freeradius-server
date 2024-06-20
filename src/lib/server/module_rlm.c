@@ -446,9 +446,9 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
 
 /** Iterate over an array of named module methods, looking for matches
  *
- * @param[in] bindings		A terminated array of module method bindings.
- *				pre-sorted using #section_name_cmp with name2
- *				sublists populated.
+ * @param[in] mmg		A structure containing a terminated array of
+ *				module method bindings. pre-sorted using #section_name_cmp
+ *				with name2 sublists populated.
  * @param[in] section		name1 of the method being called can be one of the following:
  *				- An itenfier.
  *				- CF_IDENT_ANY if the method is a wildcard.
@@ -461,40 +461,48 @@ bool module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_
  *	- NULL on not found.
  */
 static CC_HINT(nonnull)
-module_method_binding_t const *module_binding_find(module_method_binding_t const *bindings, section_name_t const *section)
+module_method_binding_t const *module_binding_find(module_method_group_t const *mmg, section_name_t const *section)
 {
+	module_method_group_t const *mmg_p = mmg;
 	module_method_binding_t const *p;
 
-	/*
-	 *	This could potentially be improved by using a binary search
-	 *	but given the small number of items, reduced branches and
-	 *	sequential access just scanning the list, it's probably not
-	 *	worth it.
-	 */
-	for (p = bindings; p->section; p++) {
-		switch (section_name_match(p->section, section)) {
-		case 1:		/* match */
-			return p;
+	while (mmg_p) {
+		/*
+		 *	This could potentially be improved by using a binary search
+		 *	but given the small number of items, reduced branches and
+		 *	sequential access just scanning the list, it's probably not
+		 *	worth it.
+		 */
+		for (p = mmg_p->bindings; p->section; p++) {
+			switch (section_name_match(p->section, section)) {
+			case 1:		/* match */
+				return p;
 
-		case -1:	/* name1 didn't match, skip to the end of the sub-list */
-			p = fr_dlist_tail(&p->same_name1);
-			break;
+			case -1:	/* name1 didn't match, skip to the end of the sub-list */
+				p = fr_dlist_tail(&p->same_name1);
+				break;
 
-		case 0:		/* name1 did match - see if we can find a matching name2 */
-		{
-			fr_dlist_head_t const *same_name1 = &p->same_name1;
+			case 0:		/* name1 did match - see if we can find a matching name2 */
+			{
+				fr_dlist_head_t const *same_name1 = &p->same_name1;
 
-			while ((p = fr_dlist_next(same_name1, p))) {
-				if (section_name2_match(p->section, section)) return p;
+				while ((p = fr_dlist_next(same_name1, p))) {
+					if (section_name2_match(p->section, section)) return p;
+				}
+				p = fr_dlist_tail(same_name1);
 			}
-			p = fr_dlist_tail(same_name1);
-		}
-			break;
-		}
+				break;
+			}
 #ifdef __clang_analyzer__
-		/* Will never be NULL, worse case, p doesn't change*/
-		if (!p) break;
+			/* Will never be NULL, worse case, p doesn't change*/
+			if (!p) break;
 #endif
+		}
+
+		/*
+		 *	Failed to match, search the next deepest group in the chain.
+		 */
+		mmg_p = mmg_p->next;
 	}
 
 	return NULL;
@@ -502,25 +510,39 @@ module_method_binding_t const *module_binding_find(module_method_binding_t const
 
 /** Dump the available bindings for the module into the strerror stack
  *
- * @param[in] mmb	bindings to push onto the strerror stack.
+ * @note Methods from _all_ linked module method groups will be pushed onto the error stack.
+ *
+ * @param[in] mmg	module method group to evaluate.
  */
-static void module_rlm_methods_to_strerror(module_method_binding_t const *mmb)
+static void module_rlm_methods_to_strerror(module_method_group_t const *mmg)
 {
-	module_method_binding_t const *mmb_p;
+	module_method_group_t const	*mmg_p = mmg;
+	module_method_binding_t const	*mmb_p;
+	bool				first = true;
 
-	if (!mmb || !mmb[0].section) {
-		fr_strerror_const_push("Module provides no methods");
-		return;
+	while (mmg_p) {
+		mmb_p = mmg_p->bindings;
+
+		if (!mmb_p || !mmb_p[0].section) goto next;
+
+		if (first) {
+			fr_strerror_const_push("Available methods are:");
+			first = false;
+		}
+
+		for (; mmb_p->section; mmb_p++) {
+			char const *name1 = section_name_str(mmb_p->section->name1);
+			char const *name2 = section_name_str(mmb_p->section->name2);
+
+			fr_strerror_printf_push("  %s%s%s",
+						name1, name2 ? "." : "", name2 ? name2 : "");
+		}
+	next:
+		mmg_p = mmg_p->next;
 	}
 
-	fr_strerror_const_push("Available methods are:");
-
-	for (mmb_p = mmb; mmb_p->section; mmb_p++) {
-		char const *name1 = section_name_str(mmb_p->section->name1);
-		char const *name2 = section_name_str(mmb_p->section->name2);
-
-		fr_strerror_printf_push("  %s%s%s",
-					name1, name2 ? "." : "", name2 ? name2 : "");
+	if (first) {
+		fr_strerror_const_push("No methods available");
 	}
 }
 
@@ -726,7 +748,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 			.name2 = fr_sbuff_used(elem2) ? elem2->start : NULL
 		};
 
-		mmb = module_binding_find(mmc->rlm->method.bindings, &method);
+		mmb = module_binding_find(&mmc->rlm->method_group, &method);
 		if (!mmb) {
 			fr_strerror_printf("Module \"%s\" does not have method %s%s%s",
 					   mmc->mi->name,
@@ -735,7 +757,7 @@ fr_slen_t module_rlm_by_name_and_method(TALLOC_CTX *ctx, module_method_call_t *m
 					   method.name2 ? method.name2 : ""
 					   );
 
-			module_rlm_methods_to_strerror(mmc->rlm->method.bindings);
+			module_rlm_methods_to_strerror(&mmc->rlm->method_group);
 			return fr_sbuff_error(&meth_start);
 		}
 		mmc->mmb = *mmb;	/* For locality of reference and fewer derefs */
@@ -752,12 +774,12 @@ by_section:
 	 *
 	 *	If that fails, we're done.
 	 */
-	mmb = module_binding_find(mmc->rlm->method.bindings, section);
+	mmb = module_binding_find(&mmc->rlm->method_group, section);
 	if (!mmb) {
 		section_name_t const **alt_p = virtual_server_section_methods(vs, section);
 		if (alt_p) {
 			for (; *alt_p; alt_p++) {
-				mmb = module_binding_find(mmc->rlm->method.bindings, *alt_p);
+				mmb = module_binding_find(&mmc->rlm->method_group, *alt_p);
 				if (mmb) {
 					if (mmc_out) section_name_dup(ctx, &mmc->asked, *alt_p);
 					break;
@@ -776,7 +798,7 @@ by_section:
 				   section->name2 ? "." : "",
 				   section->name2 ? section->name2 : ""
 				   );
-		module_rlm_methods_to_strerror(mmc->rlm->method.bindings);
+		module_rlm_methods_to_strerror(&mmc->rlm->method_group);
 
 		return fr_sbuff_error(&meth_start);
 	}
@@ -1067,7 +1089,7 @@ static int module_method_validate(module_instance_t *mi)
 {
 	module_rlm_t *mrlm = module_rlm_from_module(mi->exported);
 
-	return module_method_group_validate(&mrlm->method);
+	return module_method_group_validate(&mrlm->method_group);
 }
 
 /** Allocate a rlm module instance

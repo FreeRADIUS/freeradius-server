@@ -191,7 +191,7 @@ module_rlm_t rlm_always = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_always_return },
 			MODULE_BINDING_TERMINATOR

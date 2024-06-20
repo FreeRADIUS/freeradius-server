@@ -1073,7 +1073,7 @@ module_rlm_t rlm_pap = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			/*
 			 *	Hack to support old configurations

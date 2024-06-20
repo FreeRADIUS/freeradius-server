@@ -277,7 +277,7 @@ module_rlm_t rlm_pam = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate },
 			MODULE_BINDING_TERMINATOR

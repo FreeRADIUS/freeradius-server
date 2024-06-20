@@ -2527,7 +2527,7 @@ module_rlm_t rlm_mschap = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &mschap_auth_method_env },
 			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &mschap_autz_method_env },

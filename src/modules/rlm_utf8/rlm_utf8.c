@@ -60,7 +60,7 @@ module_rlm_t rlm_utf8 = {
 		.magic		= MODULE_MAGIC_INIT,
 		.name		= "utf8"
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			{ .section = SECTION_NAME(CF_IDENT_ANY, CF_IDENT_ANY), .method = mod_utf8_clean },
 			MODULE_BINDING_TERMINATOR

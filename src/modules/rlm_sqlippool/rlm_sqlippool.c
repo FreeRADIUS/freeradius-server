@@ -815,7 +815,7 @@ module_rlm_t rlm_sqlippool = {
 		.config		= module_config,
 		.instantiate	= mod_instantiate
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			/*
 			*	RADIUS specific
