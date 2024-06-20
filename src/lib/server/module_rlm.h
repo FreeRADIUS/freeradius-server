@@ -21,7 +21,7 @@
  * @file src/lib/server/module_rlm.h
  * @brief Defines functions for rlm module (re-)initialisation.
  *
- * @copyright 2022 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
+ * @copyright 2022,2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSIDH(module_rlm_h, "$Id$")
 
@@ -79,38 +79,40 @@ static inline module_rlm_t *module_rlm_from_module(module_t *module)
 /** @name Debug functions
  * @{
  */
-void		module_rlm_list_debug(void);
+void			module_rlm_list_debug(void);
 /** @} */
 
 /** @name Convenience wrappers around other internal APIs to make them easier to instantiate with modules
  *
  * @{
  */
-xlat_t		*module_rlm_xlat_register(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
-					  char const *name, xlat_func_t func, fr_type_t return_type)
-					  CC_HINT(nonnull(2,4));
+xlat_t			*module_rlm_xlat_register(TALLOC_CTX *ctx, module_inst_ctx_t const *mctx,
+						  char const *name, xlat_func_t func, fr_type_t return_type)
+						  CC_HINT(nonnull(2,4));
 
-fr_pool_t	*module_rlm_connection_pool_init(CONF_SECTION *module,
-						 void *opaque,
-						 fr_pool_connection_create_t c,
-						 fr_pool_connection_alive_t a,
-						 char const *log_prefix,
-						 char const *trigger_prefix,
-						 fr_pair_list_t *trigger_args);
-exfile_t	*module_rlm_exfile_init(TALLOC_CTX *ctx,
-					CONF_SECTION *module,
-					uint32_t max_entries,
-					fr_time_delta_t max_idle,
-					bool locking,
-					char const *trigger_prefix,
-					fr_pair_list_t *trigger_args);
+fr_pool_t		*module_rlm_connection_pool_init(CONF_SECTION *module,
+							 void *opaque,
+							 fr_pool_connection_create_t c,
+							 fr_pool_connection_alive_t a,
+							 char const *log_prefix,
+							 char const *trigger_prefix,
+							 fr_pair_list_t *trigger_args);
+
+exfile_t		*module_rlm_exfile_init(TALLOC_CTX *ctx,
+						CONF_SECTION *module,
+						uint32_t max_entries,
+						fr_time_delta_t max_idle,
+						bool locking,
+						char const *trigger_prefix,
+						fr_pair_list_t *trigger_args);
 /** @} */
 
 /** @name Helper functions
  *
  * @{
  */
-bool		module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_da, fr_dict_enum_value_t const *enumv);
+bool			module_rlm_section_type_set(request_t *request, fr_dict_attr_t const *type_da,
+						    fr_dict_enum_value_t const *enumv);
 /** @} */
 
 /** @name Module and module thread lookup
@@ -140,22 +142,22 @@ int			module_rlm_submodule_parse(TALLOC_CTX *ctx, void *out, void *parent,
  *
  * @{
  */
-void		modules_rlm_thread_detach(void);
+void			modules_rlm_thread_detach(void);
 
-int		modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull(2));
+int			modules_rlm_thread_instantiate(TALLOC_CTX *ctx, fr_event_list_t *el) CC_HINT(nonnull(2));
 
-int		modules_rlm_instantiate(void);
+int			modules_rlm_instantiate(void);
 
-int		modules_rlm_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
+int			modules_rlm_bootstrap(CONF_SECTION *root) CC_HINT(nonnull);
 /** @} */
 
 /** @name Global initialisation and free functions
  *
  * @{
  */
-int		modules_rlm_free(void);
+int			modules_rlm_free(void);
 
-int		modules_rlm_init(void);
+int			modules_rlm_init(void);
 /** @} */
 
 #ifdef __cplusplus
