@@ -27,8 +27,6 @@
  */
 RCSID("$Id$")
 
-#define LOG_PREFIX "rlm_python3 - "
-
 #include "config.h"
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
@@ -235,7 +233,7 @@ static void python_error_log(void)
 			}
 			Py_DECREF(pyth_module);
 		} else {
-			ERROR("%s:%d, py_module is null, name: %p", __func__, __LINE__, module_name);
+			ERROR("%s:%d, py_module is null, name: %p", __func__, __LINE__, (void *) module_name);
 		}
 
 		Py_DECREF(module_name);
@@ -276,8 +274,10 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		PyObject 	*pStr2;
 		PyObject 	*pOp;
 		int		pairsize;
-		char const	*s1;
-		char const	*s2;
+		const char	*s1 = NULL;
+		const char	*s2_unicode = NULL;
+		char		*s2_bytes = NULL;
+		Py_ssize_t	s2_len = 0;
 		FR_TOKEN	op = T_OP_EQ;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
@@ -293,39 +293,60 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 			continue;
 		}
 
+                /* first element of the tuple is the attribute name */
 		pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
-		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
-
-		if (PyUnicode_CheckExact(pStr1)  && PyUnicode_CheckExact(pStr2)) {
-			s1 = PyUnicode_AsUTF8(pStr1);
-			s2 = PyUnicode_AsUTF8(pStr2);
-		} else if (PyUnicode_CheckExact(pStr1)  && PyBytes_CheckExact(pStr2)) {
-			s1 = PyUnicode_AsUTF8(pStr1);
-			s2 = PyBytes_AsString(pStr2);
-		} else{
-			ERROR("%s - Tuple element %d of %s must be as (str, str)",
+		if (!PyUnicode_CheckExact(pStr1)) {
+			ERROR("%s - Attribute name in tuple element %d of %s must be a string",
 			      funcname, i, list_name);
+                        continue;
+		}
+
+		s1 = PyUnicode_AsUTF8(pStr1);
+
+		/* last element of the tuple is the attribute value */
+		pStr2 = PyTuple_GET_ITEM(pTupleElement, pairsize-1);
+		if (!PyUnicode_CheckExact(pStr2) && !PyBytes_CheckExact(pStr2)) {
+			ERROR("%s - Value for attribute %s:%s must be a string or bytes",
+			      funcname, list_name, s1);
 			continue;
 		}
 
+		if (PyUnicode_CheckExact(pStr2)) {
+			s2_unicode = PyUnicode_AsUTF8AndSize(pStr2, &s2_len);
+			if (!s2_unicode) {
+				ERROR("%s - Cannot retrieve unicode value for attribute %s:%s",
+				      funcname, list_name, s1);
+				continue;
+			}
+		} else if (PyBytes_CheckExact(pStr2)) {
+			/* returns 0 on success */
+			if (PyBytes_AsStringAndSize(pStr2, &s2_bytes, &s2_len)) {
+				ERROR("%s - Cannot retrieve bytes value for %s:%s",
+				      funcname, list_name, s1);
+				continue;
+			}
+		}
+
+                /* In a 3-item tuple, the middle item is the operator */
 		if (pairsize == 3) {
 			pOp = PyTuple_GET_ITEM(pTupleElement, 1);
 			if (PyUnicode_CheckExact(pOp)) {
-				if (!(op = fr_str2int(fr_tokens, PyUnicode_AsUTF8(pOp), 0))) {
-					ERROR("%s - Invalid operator %s:%s %s %s, falling back to '='",
-					      funcname, list_name, s1, PyUnicode_AsUTF8(pOp), s2);
+				const char *op_str = PyUnicode_AsUTF8(pOp);
+				if (!(op = fr_str2int(fr_tokens, op_str, 0))) {
+					ERROR("%s - Invalid operator '%s' for %s:%s, falling back to '='",
+					      funcname, op_str, list_name, s1);
 					op = T_OP_EQ;
 				}
 			} else if (PyLong_Check(pOp)) {
-				op	= PyLong_AsLong(pOp);
+				op = PyLong_AsLong(pOp);
 				if (!fr_int2str(fr_tokens, op, NULL)) {
-					ERROR("%s - Invalid operator %s:%s %i %s, falling back to '='",
-					      funcname, list_name, s1, op, s2);
+					ERROR("%s - Invalid operator type %d for %s:%s, falling back to '='",
+					      funcname, op, list_name, s1);
 					op = T_OP_EQ;
 				}
 			} else {
-				ERROR("%s - Invalid operator type for %s:%s ? %s, using default '='",
-				      funcname, list_name, s1, s2);
+				ERROR("%s - Invalid operator type for %s:%s (should be str or int), using default '='",
+				      funcname, list_name, s1);
 			}
 		}
 
@@ -352,12 +373,18 @@ static void mod_vptuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, PyO
 		 */
 		if (vp->da->flags.has_tag) vp->tag = dst.tmpl_tag;
 
-		if (fr_pair_value_from_str(vp, s2, -1) < 0) {
-			DEBUG("%s - Failed: '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_int2str(fr_tokens, op, "="), s2);
-		} else {
-			DEBUG("%s - '%s:%s' %s '%s'", funcname, list_name, s1,
-			      fr_int2str(fr_tokens, op, "="), s2);
+		switch (vp->da->type) {
+		case PW_TYPE_STRING:
+			fr_pair_value_bstrncpy(vp, s2_unicode ? s2_unicode : s2_bytes, s2_len);
+			break;
+
+		default:
+			VERIFY_VP(vp);
+
+			if (fr_pair_value_from_str(vp, s2_unicode ? s2_unicode : s2_bytes, s2_len) < 0) {
+				DEBUG("%s - Failed: '%s:%s' %s %ld bytes", funcname, list_name, s1,
+				      fr_int2str(fr_tokens, op, "="), s2_len);
+			}
 		}
 
 		radius_pairmove(current, vps, vp, false);
@@ -400,11 +427,33 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	pStr = PyUnicode_FromString(buf);
 
 	if (pStr == NULL) {
-		ERROR("%s:%d, vp->da->name: %s", __func__, __LINE__, vp->da->name);
 		if (PyErr_Occurred()) {
-			python_error_log();
+			if (PyErr_ExceptionMatches(PyExc_UnicodeDecodeError)) {
+				PyErr_Clear();
+				DEBUG("Conversion to Unicode failed, returning %s as bytes", vp->da->name);
+				pStr = PyBytes_FromString(buf);
+				if (pStr == NULL) {
+					ERROR("%s:%d, vp->da->name: %s", __func__, __LINE__, vp->da->name);
+					/* Did we get another exception while handling the UnicodeDecodeError? */
+					if (PyErr_Occurred()) {
+						python_error_log();
+						PyErr_Clear();
+					} else {
+						ERROR("%s:%d - PyBytes_FromString returned NULL but didn't throw an exception", __func__, __LINE__);
+					}
+					return -1;
+				}
+			/* Exception was not UnicodeDecodeError */
+			} else {
+				ERROR("%s:%d, vp->da->name: %s", __func__, __LINE__, vp->da->name);
+				python_error_log();
+				PyErr_Clear();
+				return -1;
+			}
+		} else {
+			ERROR("%s:%d - PyUnicode_FromString returned NULL but didn't throw an exception", __func__, __LINE__);
+			return -1;
 		}
-		return -1;
 	}
 
 	PyTuple_SET_ITEM(pPair, 1, pStr);
@@ -442,18 +491,25 @@ static bool mod_populate_vps(PyObject* pArgs, const int pos, VALUE_PAIR *vps)
 	for (vp = fr_cursor_init(&cursor, &vps); vp; vp = fr_cursor_next(&cursor))
 		tuplelen++;
 
-	if ((vps_tuple = PyTuple_New(tuplelen)) == NULL) goto error;
+	if ((vps_tuple = PyTuple_New(tuplelen)) == NULL) {
+		ERROR("%s:%d - Memory cannot be allocated for PyTyple_New", __func__, __LINE__);
+		goto error;
+	}
 
 	for (vp = fr_cursor_init(&cursor, &vps); vp; vp = fr_cursor_next(&cursor), i++) {
 		PyObject *pPair = NULL;
 
 		/* The inside tuple has two only: */
-		if ((pPair = PyTuple_New(2)) == NULL) goto error;
+		if ((pPair = PyTuple_New(2)) == NULL) {
+			ERROR("%s:%d - Memory cannot be allocated for PyTyple_New", __func__, __LINE__);
+			goto error;
+		}
 
 		if (mod_populate_vptuple(pPair, vp) == 0) {
 			/* Put the tuple inside the container */
 			PyTuple_SET_ITEM(vps_tuple, i, pPair);
 		} else {
+			ERROR("%s:%d - mod_populate_vptuple failed", __func__, __LINE__);
 			Py_DECREF(pPair);
 			goto error;
 		}
@@ -790,7 +846,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 
 		state = PyThreadState_New(inst->sub_interpreter->interp);
 
-		RDEBUG3("Initialised new thread state %p", state);
+		RDEBUG3("Initialised new thread state %p", (void *) state);
 		if (!state) {
 			REDEBUG("Failed initialising local PyThreadState on first run");
 			return RLM_MODULE_FAIL;
@@ -808,7 +864,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 			return RLM_MODULE_FAIL;
 		}
 	}
-	RDEBUG3("Using thread state %p", this_thread->state);
+	RDEBUG3("Using thread state %p", (void *) this_thread->state);
 
 	PyEval_RestoreThread(this_thread->state);	/* Swap in our local thread state */
 	ret = do_python_single(request, pFunc, funcname, inst->pass_all_vps, inst->pass_all_vps_dict);
