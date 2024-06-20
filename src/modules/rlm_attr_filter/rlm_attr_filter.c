@@ -186,9 +186,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 /*
  *	Common attr_filter checks
  */
-static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_result,
-								module_ctx_t const *mctx, request_t *request,
-								fr_packet_t *packet, fr_pair_list_t *list)
+static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, rlm_rcode_t *p_result,
+							   module_ctx_t const *mctx, request_t *request,
+							   fr_pair_list_t *list)
 {
 	rlm_attr_filter_t const *inst = talloc_get_type_abort_const(mctx->mi->data, rlm_attr_filter_t);
 	fr_pair_list_t	output;
@@ -198,10 +198,6 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	char const	*keyname = NULL;
 	char		buffer[256];
 	ssize_t		slen;
-
-	if (!packet) {
-		RETURN_MODULE_NOOP;
-	}
 
 	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key, NULL, NULL);
 	if (slen < 0) {
@@ -245,7 +241,8 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 		fr_pair_list_init(&check_list);
 
 		while ((map = map_list_next(&pl->reply, map))) {
-			if (map_to_vp(packet, &tmp_list, request, map, NULL) < 0) {
+			WARN("ctx is %p", ctx);
+			if (map_to_vp(ctx, &tmp_list, request, map, NULL) < 0) {
 				RPWARN("Failed parsing map %s for check item, skipping it", map->lhs->name);
 				continue;
 			}
@@ -359,15 +356,15 @@ static unlang_action_t CC_HINT(nonnull(1,2)) attr_filter_common(rlm_rcode_t *p_r
 	RETURN_MODULE_UPDATED;
 }
 
-#define RLM_AF_FUNC(_x, _y, _z) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
+#define RLM_AF_FUNC(_x, _y) static unlang_action_t CC_HINT(nonnull) mod_##_x(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request) \
 	{ \
-		return attr_filter_common(p_result, mctx, request, request->_y, &request->_z##_pairs); \
+		return attr_filter_common(request->_y##_ctx, p_result, mctx, request, &request->_y##_pairs); \
 	}
 
-RLM_AF_FUNC(request, packet, request)
-RLM_AF_FUNC(reply, reply, reply)
-RLM_AF_FUNC(control, packet, control)
-RLM_AF_FUNC(session, packet, session_state)
+RLM_AF_FUNC(request, request)
+RLM_AF_FUNC(reply, reply)
+RLM_AF_FUNC(control, control)
+RLM_AF_FUNC(session, session_state)
 
 /* globally exported name */
 extern module_rlm_t rlm_attr_filter;
