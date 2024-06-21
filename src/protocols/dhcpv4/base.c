@@ -196,7 +196,7 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	a_82 = fr_dict_attr_common_parent(dhcp_option_82, my_a->da, true);
 	b_82 = fr_dict_attr_common_parent(dhcp_option_82, my_b->da, true);
 	if (a_82 && !b_82) return +1;
-	if (!a_82 && !b_82) return -1;
+	if (!a_82 && b_82) return -1;
 
 	return fr_pair_cmp_by_parent_num(my_a, my_b);
 }
