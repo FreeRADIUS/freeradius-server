@@ -91,51 +91,57 @@ static void stats_time(fr_stats_t *stats, struct timeval *start,
 void request_stats_final(REQUEST *request)
 {
 	rad_listen_t *listener;
+	RADCLIENT *client;
 
 	if (request->master_state == REQUEST_COUNTED) return;
 
-	if (!request->listener) return;
-	if (!request->client) return;
+	/* don't count statistic requests */
+	if (request->packet->code == PW_CODE_STATUS_SERVER) {
+		return;
+	}
 
-	if ((request->listener->type != RAD_LISTEN_NONE) &&
+	listener = request->listener;
+	if (listener) switch (listener->type) {
+		case RAD_LISTEN_NONE:
 #ifdef WITH_ACCOUNTING
-	    (request->listener->type != RAD_LISTEN_ACCT) &&
+		case RAD_LISTEN_ACCT:
 #endif
 #ifdef WITH_COA
-	    (request->listener->type != RAD_LISTEN_COA) &&
+		case RAD_LISTEN_COA:
 #endif
-	    (request->listener->type != RAD_LISTEN_AUTH)) return;
+		case RAD_LISTEN_AUTH:
+			break;
 
-	/* don't count statistic requests */
-	if (request->packet->code == PW_CODE_STATUS_SERVER)
-		return;
+		default:
+			return;
+	}
 
 	/*
 	 *	Deal with TCP / TLS issues.  The statistics are kept in the parent socket.
 	 */
-	listener = request->listener;
-	if (listener->parent) listener = listener->parent;
+	if (listener && listener->parent) listener = listener->parent;
+	client = request->client;
 
 #undef INC_AUTH
-#define INC_AUTH(_x) radius_auth_stats._x++;listener->stats._x++;request->client->auth._x++;
+#define INC_AUTH(_x) radius_auth_stats._x++;if (listener) listener->stats._x++;if (client) client->auth._x++;
 
 #undef INC_ACCT
 #ifdef WITH_ACCOUNTING
-#define INC_ACCT(_x) radius_acct_stats._x++;listener->stats._x++;request->client->acct._x++
+#define INC_ACCT(_x) radius_acct_stats._x++;if (listener) listener->stats._x++;if (client) client->acct._x++
 #else
 #define INC_ACCT(_x)
 #endif
 
 #undef INC_COA
 #ifdef WITH_COA
-#define INC_COA(_x) radius_coa_stats._x++;listener->stats._x++;request->client->coa._x++
+#define INC_COA(_x) radius_coa_stats._x++;if (listener) listener->stats._x++;if (client) client->coa._x++
 #else
 #define INC_COA(_x)
 #endif
 
 #undef INC_DSC
 #ifdef WITH_DSC
-#define INC_DSC(_x) radius_dsc_stats._x++;listener->stats._x++;request->client->dsc._x++
+#define INC_DSC(_x) radius_dsc_stats._x++;if (listener) listener->stats._x++;if (client) client->dsc._x++
 #else
 #define INC_DSC(_x)
 #endif
@@ -148,7 +154,7 @@ void request_stats_final(REQUEST *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function, which makes it thread-safe.
 	 */
-	if (request->reply && (request->packet->code != PW_CODE_STATUS_SERVER)) switch (request->reply->code) {
+	if (request->reply) switch (request->reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		INC_AUTH(total_access_accepts);
 
@@ -276,7 +282,7 @@ void request_stats_final(REQUEST *request)
 	if (!request->proxy_reply) goto done;	/* simplifies formatting */
 
 #undef INC
-#define INC(_x) proxy_auth_stats._x += request->num_proxied_responses; request->home_server->stats._x += request->num_proxied_responses;
+#define INC(_x) proxy_auth_stats._x += request->num_proxied_responses;request->home_server->stats._x += request->num_proxied_responses;
 
 	switch (request->proxy_reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
@@ -349,8 +355,6 @@ void request_stats_final(REQUEST *request)
 
 
 	if (request->max_time) {
-		RADCLIENT *client = request->client;
-
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
 			FR_STATS_INC(auth, unresponsive_child);
