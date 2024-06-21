@@ -3,7 +3,7 @@
 # This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
 #
 #        Attributes and values defined in RFC 8559
-#        http://www.ietf.org/rfc/rfc8559
+#        https://datatracker.ietf.org/doc/html/rfc8559
 #
 
 ATTRIBUTE	Operator-NAS-Identifier			241.8	octets
