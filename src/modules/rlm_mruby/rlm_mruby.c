@@ -517,7 +517,7 @@ module_rlm_t rlm_mruby = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach,
 	},
-	.method = {
+	.method_group = {
 		.bindings = (module_method_binding_t[]){
 			/*
 			 *	Hack to support old configurations
