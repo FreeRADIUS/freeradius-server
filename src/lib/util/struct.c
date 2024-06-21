@@ -79,47 +79,51 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Decode structs with length prefixes.
 	 */
 	if (da_is_length_field(parent)) {
-		size_t struct_len, need, new_len;
+		size_t claimed_len, field_len, calc_len;
 
+		/*
+		 *	Set how many bytes there are in the "length" field.
+		 */
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
-			need = 1;
+			field_len = 1;
 		} else {
-			need = 2;
+			field_len = 2;
 		}
 
-		if ((size_t) (end - p) < need) {
-			FR_PROTO_TRACE("Insufficient room for length header");
+		if ((size_t) (end - p) < field_len) {
+			FR_PROTO_TRACE("Insufficient room for length field");
 			goto unknown;
 		}
 
-		struct_len = p[0];
-		if (need > 1) {
-			struct_len <<= 8;
-			struct_len |= p[1];
+		claimed_len = p[0];
+		if (field_len > 1) {
+			claimed_len <<= 8;
+			claimed_len |= p[1];
 		}
+		p += field_len;
 
-		if (struct_len < da_length_offset(parent)) {
+		if (claimed_len < da_length_offset(parent)) {
 			FR_PROTO_TRACE("Length header (%zu) is smaller than minimum value (%u)",
-				       struct_len, parent->flags.type_size);
-			goto unknown;
-		}
-
-		if ((p + struct_len + need - da_length_offset(parent)) > end) {
-			FR_PROTO_TRACE("Length header (%zu) is larger than remaining data (%zu)",
-				       struct_len + need, (end - p));
+				       claimed_len, parent->flags.type_size);
 			goto unknown;
 		}
 
 		/*
-		 *	Skip the length field, and tell the decoder to
-		 *	stop at the end of the data we're supposed to decode.
+		 *	Get the calculated length of the actual data.
 		 */
-		p += need;
-		end = p + struct_len;
-		new_len = struct_len + need - offset;
-		if (new_len > data_len) goto unknown;
+		calc_len = claimed_len - da_length_offset(parent);
 
-		data_len = new_len;
+		if (calc_len > (size_t) (end - p)) {
+			FR_PROTO_TRACE("Length header (%zu) is larger than remaining data (%zu)",
+				       claimed_len + field_len, (end - p));
+			goto unknown;
+		}
+
+		/*
+		 *	Limit the size of the decoded structure to the correct length.
+		 */
+		data_len = calc_len;
+		end = p + data_len;
 	}
 
 	/*
@@ -244,9 +248,10 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	Eat up the rest of the data.
 		 */
 		if (!child_length || (child->flags.array)) {
-			child_length = (end - p);
+			child_length = end - p;
 
 		} else if ((size_t) (end - p) < child_length) {
+			FR_PROTO_TRACE("fr_struct_from_network - child length %zd underflows buffer", child_length);
 			goto unknown;
 		}
 
@@ -368,7 +373,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 */
 			child = fr_dict_unknown_attr_afrom_num(child_ctx, key_vp->da, 0);
 			if (!child) {
-				FR_PROTO_TRACE("failed allocating unknown child for key VP %s", key_vp->da->name);
+				FR_PROTO_TRACE("failed allocating unknown child for key VP %s - %s",
+					       key_vp->da->name, fr_strerror());
 				goto unknown;
 			}
 
