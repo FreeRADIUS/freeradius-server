@@ -48,25 +48,25 @@ MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		password				string		# really 1..16
 
-STRUCT	keyed-md5			auth-type		2 length=uint8,offset=2
+STRUCT	keyed-md5			auth-type		2 length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		sequence-number				uint32
 MEMBER		digest					octets[16]
 
-STRUCT	meticulous-keyed-md5		auth-type		3 length=uint8,offset=2
+STRUCT	meticulous-keyed-md5		auth-type		3 length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		sequence-number				uint32
 MEMBER		digest					octets[16]
 
-STRUCT	keyed-ssha1			auth-type		4 length=uint8,offset=2
+STRUCT	keyed-ssha1			auth-type		4 length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		sequence-number				uint32
 MEMBER		digest					octets[20]
 
-STRUCT	meticulous-keyed-ssha1		auth-type		5 length=uint8,offset=2
+STRUCT	meticulous-keyed-ssha1		auth-type		5 length=uint8,offset=3
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
 MEMBER		sequence-number				uint32
