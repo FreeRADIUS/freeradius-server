@@ -46,7 +46,7 @@ VALUE	state				up			3
 STRUCT	simple-password			auth-type		1 length=uint8,offset=2
 MEMBER		key-id					uint8
 MEMBER		reserved				uint8
-MEMBER		password				string[1]	# really 1..16
+MEMBER		password				string		# really 1..16
 
 STRUCT	keyed-md5			auth-type		2 length=uint8,offset=2
 MEMBER		key-id					uint8

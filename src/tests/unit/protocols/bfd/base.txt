@@ -27,5 +27,14 @@ match 20 c0 03 18 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff 21
 decode-proto -
 match Packet-Type = Up, Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = no, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255 }, Additional-Data = { Stripped-User-Name = "foo" }
 
+#
+#  With authentication type
+#
+encode-proto Packet-Type = Up, Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = yes, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255, auth-type.simple-password = { key-id = 0, reserved = 0, password = "hello" } }
+match 20 c4 03 21 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff 00 09 00 00 68 65 6c 6c 6f
+
+#decode-proto -
+#match Packet-Type = Up, raw.Packet = 0x20c40321deadbeef211268090000001f0000007f000000ff0009000068656c6c6f
+
 count
-match 11
+match 13
