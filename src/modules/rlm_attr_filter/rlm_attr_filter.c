@@ -241,7 +241,6 @@ static unlang_action_t CC_HINT(nonnull) attr_filter_common(TALLOC_CTX *ctx, rlm_
 		fr_pair_list_init(&check_list);
 
 		while ((map = map_list_next(&pl->reply, map))) {
-			WARN("ctx is %p", ctx);
 			if (map_to_vp(ctx, &tmp_list, request, map, NULL) < 0) {
 				RPWARN("Failed parsing map %s for check item, skipping it", map->lhs->name);
 				continue;
