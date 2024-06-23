@@ -194,9 +194,8 @@ typedef struct main_config {
 typedef enum {
 	REQUEST_ACTIVE = 1,
 	REQUEST_STOP_PROCESSING,
-	REQUEST_COUNTED
 } rad_master_state_t;
-#define REQUEST_MASTER_NUM_STATES (REQUEST_COUNTED + 1)
+#define REQUEST_MASTER_NUM_STATES (REQUEST_STOP_PROCESSING + 1)
 
 typedef enum {
 	REQUEST_QUEUED = 1,
@@ -318,6 +317,7 @@ struct rad_request {
 #define RAD_REQUEST_OPTION_COA		(1 << 0)
 #define RAD_REQUEST_OPTION_CTX 		(1 << 1)
 #define RAD_REQUEST_OPTION_CANCELLED	(1 << 2)
+#define RAD_REQUEST_OPTION_STATS	(1 << 3)
 
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30

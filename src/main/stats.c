@@ -93,7 +93,7 @@ void request_stats_final(REQUEST *request)
 	rad_listen_t *listener;
 	RADCLIENT *client;
 
-	if (request->master_state == REQUEST_COUNTED) return;
+	if ((request->options & RAD_REQUEST_OPTION_STATS) != 0) return;
 
 	/* don't count statistic requests */
 	if (request->packet->code == PW_CODE_STATUS_SERVER) {
@@ -353,7 +353,7 @@ void request_stats_final(REQUEST *request)
  done:
 #endif /* WITH_PROXY */
 
-	request->master_state = REQUEST_COUNTED;
+	request->options |= RAD_REQUEST_OPTION_STATS;
 }
 
 typedef struct fr_stats2vp {
