@@ -1006,6 +1006,12 @@ static void request_cleanup_delay_init(REQUEST *request)
 #ifdef HAVE_PTHREAD_H
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 #endif
+
+		/*
+		 *	Set the statistics immediately if we can.
+		 */
+		request_stats_final(request);
+
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
@@ -1258,6 +1264,9 @@ static void request_cleanup_delay(REQUEST *request, int action)
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
+
+			request_stats_final(request);
+
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		} /* else it's time to clean up */
