@@ -1904,8 +1904,6 @@ static int stats_socket_recv(rad_listen_t *listener)
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	FR_STATS_INC(auth, total_requests);
-
 	if (rcode < 20) {	/* RADIUS_HDR_LEN */
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		FR_STATS_INC(auth, total_malformed_requests);
