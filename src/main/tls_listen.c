@@ -377,7 +377,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 	REQUEST *request;
 	listen_socket_t *sock = listener->data;
 	fr_tls_status_t status;
-	RADCLIENT *client = sock->client;
 
 	if (!sock->packet) {
 		sock->packet = rad_alloc(sock, false);
