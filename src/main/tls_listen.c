@@ -474,8 +474,6 @@ read_application_data:
 		}
 	}
 
-	FR_STATS_INC(auth, total_requests);
-
 	return 1;
 }
 
