@@ -308,7 +308,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		goto expand_requested;
 
 	case IPPOOL_ALLOC_EXISTING:
-		if (query) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_EXISTING_RUN, SQL_QUERY_SELECT, select);
+		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_EXISTING_RUN, SQL_QUERY_SELECT, select);
 		goto expand_requested;
 
 	case IPPOOL_ALLOC_EXISTING_RUN:
@@ -332,7 +332,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		goto expand_find;
 
 	case IPPOOL_ALLOC_REQUESTED:
-		if (query) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_REQUESTED_RUN, SQL_QUERY_SELECT, select);
+		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_REQUESTED_RUN, SQL_QUERY_SELECT, select);
 
 		goto expand_find;
 
@@ -435,7 +435,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		 *	Ok, so the allocate-find query found nothing ...
 		 *	Let's check if the pool exists at all
 		 */
-		if (query) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_POOL_CHECK_RUN, SQL_QUERY_SELECT, select);
+		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_POOL_CHECK_RUN, SQL_QUERY_SELECT, select);
 		goto no_address;
 
 	case IPPOOL_ALLOC_POOL_CHECK_RUN:
@@ -467,7 +467,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		RETURN_MODULE_NOOP;
 
 	case IPPOOL_ALLOC_UPDATE:
-		if (query) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_UPDATE_RUN, SQL_QUERY_OTHER, query);
+		if (query && query->vb_length) SUBMIT_QUERY(query->vb_strvalue, IPPOOL_ALLOC_UPDATE_RUN, SQL_QUERY_OTHER, query);
 
 		goto finish;
 
