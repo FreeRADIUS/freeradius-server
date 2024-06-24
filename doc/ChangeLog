@@ -3,6 +3,8 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	* Update dictionary.alcatel.sr
 	* Added dictionary.eleven, dictionary.tplink
 	* relax EAP pre-proxy checks based on discussions in the IETF.
+	* Update advice on shared secrets, including suggesting a secure
+	  method for generating useful secrets.
 
 	Bug fixes
 	* Don't leak MD contexts with OpenSSL 3.0.
@@ -30,6 +32,10 @@ FreeRADIUS 3.0.27 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	* Correctly trim whitespace in rlm_unpack.
 	* Handle returned NULL column values in rlm_sql_freetds.
 	* Fix crash with TLS Status-Server requests. Fixes #5326.
+	* Fix OpenSSL API usage which sometimes caused crash in MS-CHAP
+	  Previously it would either always crash immediately, or never crash.
+	* Fix packet statistics.  Stop double counting some packets,
+	  and track packet statistics even if a socket is closed.
 
 FreeRADIUS 3.0.26 Tue 20 Sep 2022 12:00:00 EDT urgency=low
 	Feature improvements
