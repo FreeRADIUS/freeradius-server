@@ -635,9 +635,11 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 
 		case SSL_ERROR_WANT_READ:
 			ssn->connected = false;
+			RDEBUG("(TLS) %s - tls_new_client_session WANT_READ", conf->name);
 			return ssn;
 
 		case SSL_ERROR_WANT_WRITE:
+			RDEBUG("(TLS) %s - tls_new_client_session WANT_WRITE", conf->name);
 			ssn->connected = false;
 			return ssn;
 		}
