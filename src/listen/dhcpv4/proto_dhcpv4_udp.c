@@ -61,6 +61,7 @@ typedef struct {
 	uint32_t			max_attributes;		//!< Limit maximum decodable attributes.
 
 	uint16_t			port;			//!< Port to listen on.
+	uint16_t			client_port;		//!< Client port to reply to.
 
 	bool				broadcast;		//!< whether we listen for broadcast packets
 
@@ -95,6 +96,7 @@ static const conf_parser_t udp_listen_config[] = {
 	{ FR_CONF_OFFSET("port_name", proto_dhcpv4_udp_t, port_name) },
 
 	{ FR_CONF_OFFSET("port", proto_dhcpv4_udp_t, port) },
+	{ FR_CONF_OFFSET("client_port", proto_dhcpv4_udp_t, client_port) },
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, proto_dhcpv4_udp_t, recv_buff) },
 
 	{ FR_CONF_OFFSET("broadcast", proto_dhcpv4_udp_t, broadcast) } ,
@@ -318,6 +320,16 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, UNUSED fr_time_t req
 		}
 
 		packet->opcode = 2; /* server message */
+
+		/*
+		 *	If the client port is specified, use it.
+		 *
+		 *	RFC 2131 page 23.
+		 *
+		 *	"DHCP messages from a server to a client are sent
+		 *	to the 'DHCP client' port (68)"
+		 */
+		if (inst->client_port) socket.inet.dst_port = inst->client_port;
 
 		/*
 		 *	NAKs are broadcast when there's no giaddr.

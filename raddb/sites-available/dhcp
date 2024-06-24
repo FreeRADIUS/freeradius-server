@@ -56,6 +56,14 @@ listen {
 		#  This is also the destination port when sending to a giaddr.
 		port = 6700
 
+		#  The port to which server -> client messages should be sent.
+		#  This should be 68 on a production network, though other ports
+		#  can be useful for testing.
+		#
+		#  If this is not set then server -> client replies will be sent
+		#  to the source port of the client -> server request.
+		client_port = 68
+
 		#  Interface name we are listening on. See comments above.
 #		interface = lo0
 
