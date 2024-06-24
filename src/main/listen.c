@@ -3504,10 +3504,25 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 		this->nonblock |= home->nonblock;
 
+#ifdef TCP_NODELAY
+		/*
+		 *	Also set TCP_NODELAY, to force the data to be written quickly.
+		 */
+		if (sock->proto == IPPROTO_TCP) {
+			int on = 1;
+
+			if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
+				ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
+				goto error;
+			}
+		}
+#endif
+
 		/*
 		 *	Set non-blocking if it's configured.
 		 */
 		if (this->nonblock) {
+			fr_assert(0);
 			if (fr_nonblock(this->fd) < 0) {
 				ERROR("(TLS) Failed setting nonblocking for proxy socket '%s' - %s", buffer, fr_strerror());
 				goto error;
@@ -3520,22 +3535,9 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 				goto error;
 			}
 
-#ifdef TCP_NODELAY
-			/*
-			 *	Also set TCP_NODELAY, to force the data to be written quickly.
-			 */
-			if (sock->proto == IPPROTO_TCP) {
-				int on = 1;
-
-				if (setsockopt(this->fd, SOL_TCP, TCP_NODELAY, &on, sizeof(on)) < 0) {
-					ERROR("(TLS) Failed to set TCP_NODELAY: %s", fr_syserror(errno));
-					goto error;
-				}
-			}
-#endif
 		} else {
 			/*
-			 *	Only set timeouts when the socket is nonblocking.  This allows blocking
+			 *	Only set timeouts when the socket is blocking.  This allows blocking
 			 *	sockets to still time out when the underlying socket is dead.
 			 */
 #ifdef SO_RCVTIMEO
