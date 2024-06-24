@@ -1059,6 +1059,7 @@ static int send_one_packet(rc_request_t *request)
 		REDEBUG("Failed to send packet for ID %d", request->packet->id);
 		deallocate_id(request);
 		request->done = true;
+		stats.lost++;
 		return -1;
 	}
 
