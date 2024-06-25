@@ -69,9 +69,10 @@ listen {
 	#  one of the following items which returns a valid IP
 	#  address:
 	#
+	#	reply:Packet-Src-IP-Address
+	#	If the request is unicast, the address it was received on
 	#	src_ipaddr
 	#	ipaddr
-	#	reply:DHCP-Server-IP-Address
 	#	reply:DHCP-DHCP-Server-Identifier
 	#
 	src_ipaddr = 127.0.0.1
@@ -98,7 +99,7 @@ listen {
 	#  On Linux if you're running the server as non-root, you
 	#  will need to do:
 	#
-	#	setcap cap_net_admin,cap_net_bind_service=eip /path/to/radiusd 
+	#	setcap cap_net_admin,cap_net_bind_service=eip /path/to/radiusd
 	#
 	#  This will allow the server to set ARP table entries
 	#  for newly allocated IPs, when run as the "radius" user.
