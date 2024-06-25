@@ -76,7 +76,6 @@ listen {
 		#
 		#       src_ipaddr
 		#       ipaddr
-		#       reply.Server-IP-Address
 		#       reply.Server-Identifier
 		#
 #		src_ipaddr = 127.0.0.1
