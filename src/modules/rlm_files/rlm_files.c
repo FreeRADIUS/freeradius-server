@@ -287,7 +287,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 	}
 
 	default_list = NULL;
-	box = fr_value_box_alloc(ctx, data_type, NULL);
+	MEM(box = fr_value_box_alloc(ctx, data_type, NULL));
 
 	/*
 	 *	We've read the entries in linearly, but putting them
