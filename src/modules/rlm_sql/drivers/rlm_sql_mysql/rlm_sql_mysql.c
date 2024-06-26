@@ -206,7 +206,7 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 connected:
 	if (!c->sock) {
 		ERROR("MySQL error: %s", mysql_error(&c->db));
-		connection_signal_reconnect(c->conn, connection_FAILED);
+		connection_signal_reconnect(c->conn, CONNECTION_FAILED);
 		return;
 	}
 
@@ -809,7 +809,7 @@ static void sql_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno));
-	connection_signal_reconnect(tconn->conn, connection_FAILED);
+	connection_signal_reconnect(tconn->conn, CONNECTION_FAILED);
 }
 
 /** Allocate an SQL trunk connection
@@ -869,7 +869,7 @@ static void sql_trunk_connection_notify(trunk_connection_t *tconn, connection_t 
 
 	if (fr_event_fd_insert(sql_conn, NULL, el, sql_conn->fd, read_fn, write_fn, sql_conn_error, tconn) < 0) {
 		PERROR("Failed inserting FD event");
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
 
@@ -1057,7 +1057,7 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 	 */
 	if ((trunk_connection_pop_cancellation(&treq, tconn)) == 0) {
 		trunk_request_signal_cancel_complete(treq);
-		connection_signal_reconnect(conn, connection_FAILED);
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
 	}
 }
 

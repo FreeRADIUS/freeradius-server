@@ -572,7 +572,7 @@ static void ldap_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED in
 
 	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno));
 
-	connection_signal_reconnect(tconn->conn, connection_FAILED);
+	connection_signal_reconnect(tconn->conn, CONNECTION_FAILED);
 }
 
 /** Setup callbacks requested by LDAP trunk connections
@@ -616,7 +616,7 @@ static void ldap_trunk_connection_notify(trunk_connection_t *tconn, connection_t
 			       ldap_conn_error,
 			       tconn) < 0) {
 		PERROR("Failed inserting FD event");
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
 
@@ -719,8 +719,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_
 			ERROR("Invalid LDAP query for trunk connection");
 		error:
 			trunk_request_signal_fail(query->treq);
-			if (status == LDAP_PROC_BAD_CONN) trunk_connection_signal_reconnect(tconn,
-											       connection_FAILED);
+			if (status == LDAP_PROC_BAD_CONN) trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			continue;
 
 		}
@@ -804,7 +803,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 			rcode = fr_ldap_error_check(NULL, ldap_conn, NULL, NULL);
 			if (rcode == LDAP_PROC_BAD_CONN) {
 				ERROR("Bad LDAP connection");
-				connection_signal_reconnect(tconn->conn, connection_FAILED);
+				connection_signal_reconnect(tconn->conn, CONNECTION_FAILED);
 			}
 			return;
 
@@ -1322,7 +1321,7 @@ static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, trunk_connecti
 			 *	seems to leave the connection in an unpredictable state
 			 *	so safer to restart.
 			 */
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		} else {
 #endif
 			ldap_abandon_ext(ldap_conn->handle, bind->msgid, NULL, NULL);

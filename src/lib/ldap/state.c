@@ -118,7 +118,7 @@ again:
 	case FR_LDAP_STATE_RUN:		/* There's no next state for run, so this an error */
 	case FR_LDAP_STATE_ERROR:
 		STATE_TRANSITION(FR_LDAP_STATE_INIT);
-		connection_signal_reconnect(c->conn, connection_FAILED);
+		connection_signal_reconnect(c->conn, CONNECTION_FAILED);
 		/*
 		 *	The old connection has been freed, so specifically return the INIT state
 		 */

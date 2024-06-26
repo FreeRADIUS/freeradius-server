@@ -51,7 +51,7 @@ static void _redis_disconnected(redisAsyncContext const *ac, UNUSED int status)
 
 	DEBUG4("Signalled by hiredis, connection disconnected");
 
-	connection_signal_reconnect(conn, connection_FAILED);
+	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
 /** Called by hiredis to indicate the connection is live
@@ -106,7 +106,7 @@ static void _redis_io_service_errored(UNUSED fr_event_list_t *el, int fd, UNUSED
 	/*
 	 *	Connection state machine will handle reconnecting
 	 */
-	connection_signal_reconnect(conn, connection_FAILED);
+	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
 /** Deal with the method hiredis uses to register/unregister interest in a file descriptor

@@ -1078,7 +1078,7 @@ static void _proto_ldap_socket_open_read(fr_event_list_t *el, int fd, UNUSED int
 	error:
 		talloc_free(dir_ctx);
 		if (local) talloc_free(local);
-		connection_signal_reconnect(ldap_conn->conn, connection_FAILED);
+		connection_signal_reconnect(ldap_conn->conn, CONNECTION_FAILED);
 		return;
 	}
 

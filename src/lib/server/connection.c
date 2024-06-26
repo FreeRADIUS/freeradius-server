@@ -271,11 +271,11 @@ static void connection_deferred_signal_process(connection_t *conn)
 			break;
 
 		case CONNECTION_DSIGNAL_RECONNECT_FAILED:		/* Reconnect - Failed */
-			connection_signal_reconnect(conn, connection_FAILED);
+			connection_signal_reconnect(conn, CONNECTION_FAILED);
 			break;
 
 		case CONNECTION_DSIGNAL_RECONNECT_EXPIRED:		/* Reconnect - Expired */
-			connection_signal_reconnect(conn, connection_EXPIRED);
+			connection_signal_reconnect(conn, CONNECTION_EXPIRED);
 			break;
 
 		case CONNECTION_DSIGNAL_SHUTDOWN:
@@ -1169,7 +1169,7 @@ void connection_signal_reconnect(connection_t *conn, connection_reason_t reason)
 	       fr_table_str_by_value(connection_states, conn->pub.state, "<INVALID>"));
 
 	if (DEFER_SIGNALS(conn)) {
-		if ((reason == connection_EXPIRED) && conn->shutdown) {
+		if ((reason == CONNECTION_EXPIRED) && conn->shutdown) {
 			connection_deferred_signal_add(conn, CONNECTION_DSIGNAL_RECONNECT_EXPIRED);
 			return;
 		}
@@ -1188,12 +1188,12 @@ void connection_signal_reconnect(connection_t *conn, connection_reason_t reason)
 		break;
 
 	case CONNECTION_STATE_SHUTDOWN:
-		if (reason == connection_EXPIRED) break;	/* Already shutting down */
+		if (reason == CONNECTION_EXPIRED) break;	/* Already shutting down */
 		connection_state_enter_failed(conn);
 		break;
 
 	case CONNECTION_STATE_CONNECTED:
-		if (reason == connection_EXPIRED) {
+		if (reason == CONNECTION_EXPIRED) {
 		 	if (conn->shutdown) {
 		 		connection_state_enter_shutdown(conn);
 		 		break;

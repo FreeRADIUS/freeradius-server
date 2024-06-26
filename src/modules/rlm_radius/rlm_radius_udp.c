@@ -443,7 +443,7 @@ static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, U
 
 	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
-	connection_signal_reconnect(conn, connection_FAILED);
+	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
 /** Status check timer when opening the connection for the first time.
@@ -480,14 +480,14 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 		DEBUG("%s - Reached maximum_retransmit_count (%u > %u), failing status checks",
 		      h->module_name, u->retry.count, u->retry.config->mrc);
 	fail:
-		connection_signal_reconnect(conn, connection_FAILED);
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
 		return;
 
 	case FR_RETRY_CONTINUE:
 		if (fr_event_fd_insert(h, NULL, el, h->fd, conn_writable_status_check, NULL,
 				       conn_error_status_check, conn) < 0) {
 			PERROR("%s - Failed inserting FD event", h->module_name);
-			connection_signal_reconnect(conn, connection_FAILED);
+			connection_signal_reconnect(conn, CONNECTION_FAILED);
 		}
 		return;
 	}
@@ -505,7 +505,7 @@ static void conn_status_check_again(fr_event_list_t *el, UNUSED fr_time_t now, v
 
 	if (fr_event_fd_insert(h, NULL, el, h->fd, conn_writable_status_check, NULL, conn_error_status_check, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->module_name);
-		connection_signal_reconnect(conn, connection_FAILED);
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
 	}
 }
 
@@ -542,7 +542,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 
 		ERROR("%s - Failed reading response from socket: %s",
 		      h->module_name, fr_syserror(errno));
-		connection_signal_reconnect(conn, connection_FAILED);
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
 		return;
 	}
 
@@ -598,7 +598,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		 *	Set the timer for the next retransmit.
 		 */
 		if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_status_check_again, conn) < 0) {
-			connection_signal_reconnect(conn, connection_FAILED);
+			connection_signal_reconnect(conn, CONNECTION_FAILED);
 		}
 		return;
 	}
@@ -642,7 +642,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 
 	if (encode(h->inst, h->status_request, u, u->id) < 0) {
 	fail:
-		connection_signal_reconnect(conn, connection_FAILED);
+		connection_signal_reconnect(conn, CONNECTION_FAILED);
 		return;
 	}
 	DEBUG3("Encoded packet");
@@ -963,7 +963,7 @@ static void conn_discard(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, v
 		case ENOTCONN:
 		case ETIMEDOUT:
 			ERROR("%s - Failed draining socket: %s", h->module_name, fr_syserror(errno));
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			break;
 
 		default:
@@ -990,7 +990,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 
 	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
-	connection_signal_reconnect(conn, connection_FAILED);
+	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
 static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
@@ -1038,7 +1038,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 		/*
 		 *	May free the connection!
 		 */
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
 
@@ -1080,7 +1080,7 @@ static void thread_conn_notify_replicate(trunk_connection_t *tconn, connection_t
 		/*
 		 *	May free the connection!
 		 */
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
 
@@ -1462,7 +1462,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 
 	INFO("%s - Reviving connection %s", h->module_name, h->name);
-	trunk_connection_signal_reconnect(tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 }
 
 /** Mark a connection dead after "zombie_interval"
@@ -1488,7 +1488,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	then the connection will be marked "alive"
 	 */
 	if (h->inst->parent->status_check) {
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		return;
 	}
 
@@ -1498,7 +1498,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	if (fr_event_timer_at(h, el, &h->zombie_ev,
 			      fr_time_add(now, h->inst->parent->revive_interval), revive_timeout, tconn) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
 
@@ -1567,13 +1567,13 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 
 		if (trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
 						     h->status_u, h->status_r, true) != TRUNK_ENQUEUE_OK) {
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 	} else {
 		if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->inst->parent->zombie_period),
 				      zombie_timeout, tconn) < 0) {
 			ERROR("Failed inserting zombie timeout for connection");
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 	}
 
@@ -1703,7 +1703,7 @@ static void status_check_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	 *	connection.
 	 */
         h->status_checking = false;
-        trunk_connection_signal_reconnect(tconn, connection_FAILED);
+        trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 }
 
 static void request_mux(fr_event_list_t *el,
@@ -1879,7 +1879,7 @@ static void request_mux(fr_event_list_t *el,
 		default:
 			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 	}
@@ -2069,7 +2069,7 @@ static void request_mux_replicate(UNUSED fr_event_list_t *el,
 		default:
 			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 	}
@@ -2215,7 +2215,7 @@ static void status_check_next(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, 
 
 	if (trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
 					     h->status_u, h->status_r, true) != TRUNK_ENQUEUE_OK) {
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
 
@@ -2257,7 +2257,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 		 *	Set the timer for the next retransmit.
 		 */
 		if (fr_event_timer_at(h, h->thread->el, &u->ev, u->retry.next, status_check_next, treq->tconn) < 0) {
-			trunk_connection_signal_reconnect(treq->tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(treq->tconn, CONNECTION_FAILED);
 		}
 		return;
 	}
@@ -2313,7 +2313,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 
 			ERROR("%s - Failed reading response from socket: %s",
 			      h->module_name, fr_syserror(errno));
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 

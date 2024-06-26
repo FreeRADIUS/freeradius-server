@@ -219,7 +219,7 @@ static void _logtee_conn_error(UNUSED fr_event_list_t *el, int sock, UNUSED int 
 	/*
 	 *	Something bad happened... Fix it...
 	 */
-	connection_signal_reconnect(t->conn, connection_FAILED);
+	connection_signal_reconnect(t->conn, CONNECTION_FAILED);
 }
 
 /** Drain any data we received
@@ -244,7 +244,7 @@ static void _logtee_conn_read(UNUSED fr_event_list_t *el, int sock, UNUSED int f
 		case ETIMEDOUT:
 		case EIO:
 		case ENXIO:
-			connection_signal_reconnect(t->conn, connection_FAILED);
+			connection_signal_reconnect(t->conn, CONNECTION_FAILED);
 			return;
 
 		/*
@@ -289,7 +289,7 @@ static void _logtee_conn_writable(UNUSED fr_event_list_t *el, int sock, UNUSED i
 			case ENXIO:
 			case EPIPE:
 			case ENETDOWN:
-				connection_signal_reconnect(t->conn, connection_FAILED);
+				connection_signal_reconnect(t->conn, CONNECTION_FAILED);
 				return;
 
 			/*

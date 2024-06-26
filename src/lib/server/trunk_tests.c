@@ -154,7 +154,7 @@ static void _conn_io_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int
 
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 
-	trunk_connection_signal_reconnect(tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 }
 
 static void _conn_io_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
@@ -453,7 +453,7 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 	TEST_CHECK(events == 0);	/* I/O events should have been cleared */
 	TEST_MSG("Got %u events", events);
 
-	trunk_reconnect(trunk, TRUNK_CONN_ACTIVE, connection_FAILED);
+	trunk_reconnect(trunk, TRUNK_CONN_ACTIVE, CONNECTION_FAILED);
 
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(2));
 	events = fr_event_corral(el, test_time_base, true);
@@ -630,7 +630,7 @@ static void test_socket_pair_alloc_then_reconnect_check_delay(void)
 	/*
 	 *	Trigger reconnection
 	 */
-	connection_signal_reconnect(tconn->pub.conn, connection_FAILED);
+	connection_signal_reconnect(tconn->pub.conn, CONNECTION_FAILED);
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_nsec(NSEC * 0.5));
 
 	events = fr_event_corral(el, test_time_base, false);
@@ -1121,7 +1121,7 @@ static void test_requeue_on_reconnect(void)
 	tconn = treq->pub.tconn;	/* Store the conn the request was assigned to */
 	TEST_CHECK_LEN(trunk_request_count_by_state(trunk, TRUNK_CONN_ALL, TRUNK_REQUEST_STATE_PENDING), 1);
 
-	trunk_connection_signal_reconnect(tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 
 	/*
 	 *	Should be reassigned to the other connection
@@ -1132,7 +1132,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Should be reassigned to the backlog
 	 */
-	trunk_connection_signal_reconnect(treq->pub.tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(treq->pub.tconn, CONNECTION_FAILED);
 	TEST_CHECK_LEN(trunk_request_count_by_state(trunk, TRUNK_CONN_ALL, TRUNK_REQUEST_STATE_BACKLOG), 1);
 	TEST_CHECK(!treq->pub.tconn);
 
@@ -1167,7 +1167,7 @@ static void test_requeue_on_reconnect(void)
 	 *	then be re-assigned.
 	 */
 	tconn = treq->pub.tconn;
-	trunk_connection_signal_reconnect(treq->pub.tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(treq->pub.tconn, CONNECTION_FAILED);
 
 	TEST_CHECK(preq->completed == false);
 	TEST_CHECK(preq->failed == false);
@@ -1197,7 +1197,7 @@ static void test_requeue_on_reconnect(void)
 	TEST_CHECK_LEN(trunk_request_count_by_state(trunk, TRUNK_CONN_ALL, TRUNK_REQUEST_STATE_SENT), 1);
 
 	tconn = treq->pub.tconn;
-	trunk_connection_signal_reconnect(treq->pub.tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(treq->pub.tconn, CONNECTION_FAILED);
 
 	TEST_CHECK_LEN(trunk_request_count_by_state(trunk, TRUNK_CONN_ALL, TRUNK_REQUEST_STATE_PENDING), 1);
 
@@ -1230,7 +1230,7 @@ static void test_requeue_on_reconnect(void)
 	 *	freed instead of being moved between
 	 *	connections.
 	 */
-	trunk_connection_signal_reconnect(tconn, connection_FAILED);	/* treq->pub.tconn, now invalid due to cancel */
+	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);	/* treq->pub.tconn, now invalid due to cancel */
 
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
@@ -1295,7 +1295,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Trigger a reconnection
 	 */
-	trunk_connection_signal_reconnect(treq->pub.tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(treq->pub.tconn, CONNECTION_FAILED);
 
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);
@@ -1351,7 +1351,7 @@ static void test_requeue_on_reconnect(void)
 	/*
 	 *	Trigger a reconnection
 	 */
-	trunk_connection_signal_reconnect(treq->pub.tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(treq->pub.tconn, CONNECTION_FAILED);
 
 	test_time_base = fr_time_add_time_delta(test_time_base, fr_time_delta_from_sec(1));
 	fr_event_corral(el, test_time_base, false);

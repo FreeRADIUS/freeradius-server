@@ -81,8 +81,8 @@ struct connection_pub_s {
 };
 
 typedef enum {
-	connection_FAILED = 0,		//!< Connection is being reconnected because it failed.
-	connection_EXPIRED 			//!< Connection is being reconnected because it's at
+	CONNECTION_FAILED = 0,			//!< Connection is being reconnected because it failed.
+	CONNECTION_EXPIRED 			//!< Connection is being reconnected because it's at
 						///< the end of its life.  In this case we enter the
 						///< closing state and try and close the connection
 						///< gracefully.

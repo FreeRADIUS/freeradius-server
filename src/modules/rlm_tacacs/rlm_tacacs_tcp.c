@@ -219,7 +219,7 @@ static void udp_request_reset(udp_handle_t *h, udp_request_t *u)
 	 *	Welcome to the insanity that is TACACS+.
 	 */
 	if ((h->active == 0) && (h->id > 255)) {
-		trunk_connection_signal_reconnect(h->tconn, connection_EXPIRED);
+		trunk_connection_signal_reconnect(h->tconn, CONNECTION_EXPIRED);
 	}
 }
 
@@ -459,7 +459,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 
 	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
-	connection_signal_reconnect(conn, connection_FAILED);
+	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
 static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
@@ -499,7 +499,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 		/*
 		 *	May free the connection!
 		 */
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
 
@@ -648,7 +648,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
 
 	INFO("%s - Reviving connection %s", h->module_name, h->name);
-	trunk_connection_signal_reconnect(tconn, connection_FAILED);
+	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 }
 
 /** Mark a connection dead after "zombie_interval"
@@ -674,7 +674,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	if (fr_event_timer_at(h, el, &h->zombie_ev,
 			      fr_time_add(now, h->inst->parent->revive_interval), revive_timeout, h) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
 
@@ -735,7 +735,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->inst->parent->zombie_period),
 			      zombie_timeout, h) < 0) {
 		ERROR("Failed inserting zombie timeout for connection");
-		trunk_connection_signal_reconnect(tconn, connection_FAILED);
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 
 	return true;
@@ -950,7 +950,7 @@ static void request_mux(fr_event_list_t *el,
 		default:
 			ERROR("%s - Failed sending data over connection %s: %s",
 			      h->module_name, h->name, fr_syserror(errno));
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 	}
@@ -1095,7 +1095,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 
 				ERROR("%s - Failed reading response from socket: %s",
 				      h->module_name, fr_syserror(errno));
-				trunk_connection_signal_reconnect(tconn, connection_FAILED);
+				trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 				return;
 			}
 
@@ -1126,7 +1126,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		if (packet_len > h->inst->max_packet_size) {
 			ERROR("%s - Packet is larger than max_packet_size",
 			      h->module_name);
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 
@@ -1167,7 +1167,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		slen = decode(request->reply_ctx, &reply, &code, h, request, u, h->recv.read, packet_len);
 		if (slen < 0) {
 			// @todo - give real decode error?
-			trunk_connection_signal_reconnect(tconn, connection_FAILED);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 		h->recv.read += packet_len;
