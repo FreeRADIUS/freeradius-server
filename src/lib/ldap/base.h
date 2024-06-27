@@ -377,13 +377,13 @@ typedef struct {
  *
  */
 typedef struct {
-	fr_rb_tree_t		*trunks;	//!< Tree of LDAP trunks used by this thread
-	fr_ldap_config_t	*config;	//!< Module instance config
-	trunk_conf_t		*trunk_conf;	//!< Module trunk config
+	fr_rb_tree_t		*trunks;		//!< Tree of LDAP trunks used by this thread
+	fr_ldap_config_t	*config;		//!< Module instance config
+	trunk_conf_t		*trunk_conf;		//!< Module trunk config
 	trunk_conf_t		*bind_trunk_conf;	//!< Trunk config for bind auth trunk
-	fr_event_list_t		*el;		//!< Thread event list for callbacks / timeouts
-	fr_ldap_thread_trunk_t	*bind_trunk;	//!< LDAP trunk used for bind auths
-	fr_rb_tree_t		*binds;		//!< Tree of outstanding bind auths
+	fr_event_list_t		*el;			//!< Thread event list for callbacks / timeouts
+	fr_ldap_thread_trunk_t	*bind_trunk;		//!< LDAP trunk used for bind auths
+	fr_rb_tree_t		*binds;			//!< Tree of outstanding bind auths
 } fr_ldap_thread_t;
 
 /** Thread LDAP trunk structure
@@ -395,14 +395,14 @@ typedef struct {
  * with the trunk they are running on.
  */
 typedef struct fr_ldap_thread_trunk_s {
-	fr_rb_node_t		node;		//!< Entry in the tree of connections
-	char const		*uri;		//!< Server URI for this connection
-	char const		*bind_dn;	//!< DN connection is bound as
-	fr_ldap_config_t	config;		//!< Config used for this connection
-	fr_ldap_directory_t	*directory;	//!< The type of directory we're connected to.
-	trunk_t		*trunk;		//!< Connection trunk
-	fr_ldap_thread_t	*t;		//!< Thread this connection is associated with
-	fr_event_timer_t const	*ev;		//!< Event to close the thread when it has been idle.
+	fr_rb_node_t		node;			//!< Entry in the tree of connections
+	char const		*uri;			//!< Server URI for this connection
+	char const		*bind_dn;		//!< DN connection is bound as
+	fr_ldap_config_t	config;			//!< Config used for this connection
+	fr_ldap_directory_t	*directory;		//!< The type of directory we're connected to.
+	trunk_t			*trunk;			//!< Connection trunk
+	fr_ldap_thread_t	*t;			//!< Thread this connection is associated with
+	fr_event_timer_t const	*ev;			//!< Event to close the thread when it has been idle.
 } fr_ldap_thread_trunk_t;
 
 typedef struct fr_ldap_referral_s fr_ldap_referral_t;
@@ -418,14 +418,18 @@ typedef void (*fr_ldap_result_parser_t)(LDAP *handle, fr_ldap_query_t *query, LD
  * The same structure is used both for search queries and modifications
  */
 struct fr_ldap_query_s {
-	fr_rb_node_t		node;		//!< Entry in the tree of outstanding queries.
-	fr_dlist_t		entry;		//!< Entry in the list of connection references.
+	fr_rb_node_t		node;			//!< Entry in the tree of outstanding queries.
+	fr_dlist_t		entry;			//!< Entry in the list of connection references.
 
-	LDAPURLDesc		*ldap_url;	//!< parsed URL for current query if the source
-						///< of the query was a URL.
+	LDAPURLDesc		*ldap_url;		//!< parsed URL for current query if the source
+							///< of the query was a URL.
 
-	char const		*dn;		//!< Base DN for searches, DN for modifications.
+	char const		*dn;			//!< Base DN for searches, DN for modifications.
 
+	/** Fields which are unique to each type of query
+	 *
+	 * @note Delete only uses the DN field, as it operates at an object level.
+	 */
 	union {
 		struct {
 			char const	**attrs;	//!< Attributes being requested in a search.
@@ -444,25 +448,24 @@ struct fr_ldap_query_s {
 	fr_ldap_control_t	serverctrls[LDAP_MAX_CONTROLS];	//!< Server controls specific to this query.
 	fr_ldap_control_t	clientctrls[LDAP_MAX_CONTROLS];	//!< Client controls specific to this query.
 
+	int			msgid;			//!< The unique identifier for this query.
+							///< Uniqueness is only per connection.
 
-	int			msgid;		//!< The unique identifier for this query.
-						///< Uniqueness is only per connection.
+	trunk_request_t	*treq;				//!< Trunk request this query is associated with
+	fr_ldap_connection_t	*ldap_conn;		//!< LDAP connection this query is running on.
 
-	trunk_request_t	*treq;		//!< Trunk request this query is associated with
-	fr_ldap_connection_t	*ldap_conn;	//!< LDAP connection this query is running on.
-
-	fr_event_timer_t const	*ev;		//!< Event for timing out the query
+	fr_event_timer_t const	*ev;			//!< Event for timing out the query
 
 	char			**referral_urls;	//!< Referral results to follow
-	fr_dlist_head_t		referrals;	//!< List of parsed referrals
-	uint16_t		referral_depth;	//!< How many referrals we have followed
-	fr_ldap_referral_t	*referral;	//!< Referral actually being followed
+	fr_dlist_head_t		referrals;		//!< List of parsed referrals
+	uint16_t		referral_depth;		//!< How many referrals we have followed
+	fr_ldap_referral_t	*referral;		//!< Referral actually being followed
 
-	fr_ldap_result_parser_t	parser;		//!< Custom results parser.
+	fr_ldap_result_parser_t	parser;			//!< Custom results parser.
 
-	LDAPMessage		*result;	//!< Head of LDAP results list.
+	LDAPMessage		*result;		//!< Head of LDAP results list.
 
-	fr_ldap_result_code_t	ret;		//!< Result code
+	fr_ldap_result_code_t	ret;			//!< Result code
 };
 
 /** Parsed LDAP referral structure
@@ -472,14 +475,14 @@ struct fr_ldap_query_s {
  * Avoids repeated parsing of the referrals as provided by libldap.
  */
 typedef struct fr_ldap_referral_s {
-	fr_dlist_t		entry;		//!< Entry in list of possible referrals
-	fr_ldap_query_t		*query;		//!< Query this referral relates to
-	LDAPURLDesc		*referral_url;	//!< URL for the referral
-	char			*host_uri;	//!< Host URI used for referral connection
-	char const		*identity;	//!< Bind identity for referral connection
-	char const		*password;	//!< Bind password for referral connection
-	fr_ldap_thread_trunk_t	*ttrunk;	//!< Trunk this referral should use
-	request_t		*request;	//!< Request this referral relates to
+	fr_dlist_t		entry;			//!< Entry in list of possible referrals
+	fr_ldap_query_t		*query;			//!< Query this referral relates to
+	LDAPURLDesc		*referral_url;		//!< URL for the referral
+	char			*host_uri;		//!< Host URI used for referral connection
+	char const		*identity;		//!< Bind identity for referral connection
+	char const		*password;		//!< Bind password for referral connection
+	fr_ldap_thread_trunk_t	*ttrunk;		//!< Trunk this referral should use
+	request_t		*request;		//!< Request this referral relates to
 } fr_ldap_referral_t;
 
 /** Holds arguments for the async bind operation
@@ -606,17 +609,17 @@ typedef enum {
  * Allows tracking of multiple bind requests on a single connection.
  */
 typedef struct {
-	fr_rb_node_t		node;		//!< Entry in the tree of outstanding bind requests.
-	fr_ldap_thread_t	*thread;	//!< This bind is being run by.
-	trunk_request_t	*treq;		//!< Trunk request this bind is associated with.
-	int			msgid;		//!< libldap msgid for this bind.
-	request_t		*request;	//!< this bind relates to.
-	fr_ldap_bind_type_t	type;		//!< type of bind.
+	fr_rb_node_t		node;			//!< Entry in the tree of outstanding bind requests.
+	fr_ldap_thread_t	*thread;		//!< This bind is being run by.
+	trunk_request_t		*treq;			//!< Trunk request this bind is associated with.
+	int			msgid;			//!< libldap msgid for this bind.
+	request_t		*request;		//!< this bind relates to.
+	fr_ldap_bind_type_t	type;			//!< type of bind.
 	union {
 		fr_ldap_bind_ctx_t	*bind_ctx;	//!< User data for simple binds.
 		fr_ldap_sasl_ctx_t	*sasl_ctx;	//!< User data for SASL binds.
 	};
-	fr_ldap_rcode_t		ret;		//!< Return code of bind operation.
+	fr_ldap_rcode_t		ret;			//!< Return code of bind operation.
 } fr_ldap_bind_auth_ctx_t;
 
 /*
@@ -768,8 +771,9 @@ fr_ldap_rcode_t	fr_ldap_search_async(int *msgid, request_t *request,
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
-			       char const *dn, LDAPMod *mods[],
-			       LDAPControl **serverctrls, LDAPControl **clientctrls);
+				     char const *dn, LDAPMod *mods[],
+				     LDAPControl **serverctrls, LDAPControl **clientctrls);
+
 
 fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
 				       char const *reqiod, struct berval *reqdata);
