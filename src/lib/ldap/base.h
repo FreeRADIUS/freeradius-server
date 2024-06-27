@@ -177,6 +177,7 @@ typedef enum {
 typedef enum {
 	LDAP_REQUEST_SEARCH = 1,			//!< A lookup in an LDAP directory
 	LDAP_REQUEST_MODIFY,				//!< A modification to an LDAP entity
+	LDAP_REQUEST_DELETE,				//!< A deletion of an LDAP entity
 	LDAP_REQUEST_EXTENDED				//!< An extended LDAP operation
 } fr_ldap_request_type_t;
 
@@ -774,6 +775,9 @@ fr_ldap_rcode_t	fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 				     char const *dn, LDAPMod *mods[],
 				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
+fr_ldap_rcode_t fr_ldap_delete_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
+				     char const *dn,
+				     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 fr_ldap_rcode_t fr_ldap_extended_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
 				       char const *reqiod, struct berval *reqdata);

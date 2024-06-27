@@ -696,13 +696,25 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_
 
 		case LDAP_REQUEST_MODIFY:
 			/*
-			 *	This query is an LDAP modification
+			 *	Send a request to modify an object
 			 */
 			POPULATE_LDAP_CONTROLS(our_serverctrls, query->serverctrls);
 			POPULATE_LDAP_CONTROLS(our_clientctrls, query->clientctrls);
 
 			status = fr_ldap_modify_async(&query->msgid, query->treq->request,
 						      ldap_conn, query->dn, query->mods,
+						      our_serverctrls, our_clientctrls);
+			break;
+
+		case LDAP_REQUEST_DELETE:
+			/*
+			 *	Send a request to delete an object
+			 */
+			POPULATE_LDAP_CONTROLS(our_serverctrls, query->serverctrls);
+			POPULATE_LDAP_CONTROLS(our_clientctrls, query->clientctrls);
+
+			status = fr_ldap_delete_async(&query->msgid, query->treq->request,
+						      ldap_conn, query->dn,
 						      our_serverctrls, our_clientctrls);
 			break;
 

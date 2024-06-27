@@ -802,7 +802,47 @@ fr_ldap_rcode_t fr_ldap_modify_async(int *msgid, request_t *request, fr_ldap_con
 	RDEBUG2("Modifying object with DN \"%s\"", dn);
 	if(ldap_modify_ext(pconn->handle, dn, mods, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {
 		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, pconn, NULL, NULL);
-		ROPTIONAL(RPEDEBUG, RPERROR, "Failed modifying object");
+		ROPTIONAL(RPEDEBUG, RPERROR, "Failed sending request to modify object");
+
+		return ret;
+	}
+
+	return LDAP_PROC_SUCCESS;
+}
+
+/** Modify something in the LDAP directory
+ *
+ * Used on connections bound as the administrative user to attempt to modify an LDAP object.
+ * Called by the trunk mux function
+ *
+ * @param[out] msgid		LDAP message ID.
+ * @param[in] request		Current request.
+ * @param[in] pconn		to use.
+ * @param[in] dn		of the object to delete.
+ * @param[in] serverctrls	Search controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls	Search controls for ldap_delete.  May be NULL.
+ * @return One of the LDAP_PROC_* (#fr_ldap_rcode_t) values.
+ */
+fr_ldap_rcode_t fr_ldap_delete_async(int *msgid, request_t *request, fr_ldap_connection_t *pconn,
+				     char const *dn,
+				     LDAPControl **serverctrls, LDAPControl **clientctrls)
+{
+	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+
+	fr_ldap_control_merge(our_serverctrls, our_clientctrls,
+			      NUM_ELEMENTS(our_serverctrls),
+			      NUM_ELEMENTS(our_clientctrls),
+			      pconn, serverctrls, clientctrls);
+
+	fr_assert(pconn && pconn->handle);
+
+	if (RDEBUG_ENABLED4) fr_ldap_timeout_debug(request, pconn, fr_time_delta_wrap(0), __FUNCTION__);
+
+	RDEBUG2("Deleting object with DN \"%s\"", dn);
+	if(ldap_delete_ext(pconn->handle, dn, our_serverctrls, our_clientctrls, msgid) != LDAP_SUCCESS) {
+		fr_ldap_rcode_t	ret = fr_ldap_error_check(NULL, pconn, NULL, NULL);
+		ROPTIONAL(RPEDEBUG, RPERROR, "Failed sending request to delete object");
 
 		return ret;
 	}
