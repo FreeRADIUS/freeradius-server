@@ -418,8 +418,8 @@ static bool lst_expand(fr_lst_t *lst)
 
 	n = talloc_realloc(lst, lst->p, void *, n_capacity);
 	if (unlikely(!n)) {
-		fr_strerror_printf("Failed expanding lst to %u elements (%u bytes)",
-				   n_capacity, n_capacity * (unsigned int)sizeof(void *));
+		fr_strerror_printf("Failed expanding lst to %u elements (%zu bytes)",
+				   n_capacity, n_capacity * sizeof(void *));
 		return false;
 	}
 
