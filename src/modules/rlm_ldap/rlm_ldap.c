@@ -661,6 +661,76 @@ char *host_uri_canonify(request_t *request, LDAPURLDesc *url_parsed, fr_value_bo
 	return host;
 }
 
+/** Utility function for parsing LDAP URLs
+ *
+ * All LDAP xlat functions that work with LDAP URLs should call this function to parse the URL.
+ *
+ * @param[out] uri_parsed	LDAP URL parsed.  Must be freed with ldap_url_desc_free.
+ * @param[out] host_out		host name to use for the query.  Must be freed with ldap_mem_free
+ *				if free_host_out is true.
+ * @param[out] free_host_out	True if host_out should be freed.
+ * @param[in] request		Request being processed.
+ * @param[in] host_default	Default host to use if the URL does not specify a host.
+ * @param[in] uri_in		URI to parse.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int ldap_xlat_uri_parse(LDAPURLDesc **uri_parsed, char **host_out, bool *free_host_out,
+			       request_t *request, char *host_default, fr_value_box_t *uri_in)
+{
+	fr_value_box_t	*uri;
+	int		ldap_url_ret;
+
+	*free_host_out = false;
+
+	if (fr_uri_escape_list(&uri_in->vb_group, ldap_uri_parts, NULL) < 0){
+		RPERROR("Failed to escape LDAP URI");
+	error:
+		*uri_parsed = NULL;
+		return -1;
+	}
+
+	/*
+	 *	Smush everything into the first URI box
+	 */
+	uri = fr_value_box_list_head(&uri_in->vb_group);
+
+	if (fr_value_box_list_concat_in_place(uri, uri, &uri->vb_group,
+					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
+		REDEBUG("Failed concattenating input");
+		goto error;
+	}
+
+	if (!ldap_is_ldap_url(uri->vb_strvalue)) {
+		REDEBUG("String passed does not look like an LDAP URL");
+		goto error;
+	}
+
+	ldap_url_ret = ldap_url_parse(uri->vb_strvalue, uri_parsed);
+	if (ldap_url_ret != LDAP_URL_SUCCESS){
+		RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ldap_url_ret));
+		goto error;
+	}
+
+	/*
+	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
+	 */
+	if (!(*uri_parsed)->lud_host) {
+		*host_out = host_default;
+	} else {
+		*host_out = host_uri_canonify(request, *uri_parsed, uri);
+		if (unlikely(*host_out == NULL)) {
+			ldap_free_urldesc(*uri_parsed);
+			*uri_parsed = NULL;
+			return -1;
+		}
+		*free_host_out = true;
+	}
+
+	return 0;
+}
+
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  * @ingroup xlat_functions
@@ -670,45 +740,18 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 		       request_t *request, fr_value_box_list_t *in)
 {
 	fr_ldap_thread_t	*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
-	fr_value_box_t		*uri_components, *uri;
-	char			*host_url, *host = NULL;
+	fr_value_box_t		*uri;
+	char			*host;
+	bool			free_host = false;
 	fr_ldap_config_t const	*handle_config = t->config;
 	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query = NULL;
 
 	LDAPURLDesc		*ldap_url;
-	int			ldap_url_ret;
 
-	XLAT_ARGS(in, &uri_components);
+	XLAT_ARGS(in, &uri);
 
-	if (fr_uri_escape_list(&uri_components->vb_group, ldap_uri_parts, NULL) < 0){
-		RPERROR("Failed to escape LDAP URI");
-		return XLAT_ACTION_FAIL;
-	}
-
-	/*
-	 *	Smush everything into the first URI box
-	 */
-	uri = fr_value_box_list_head(&uri_components->vb_group);
-
-	if (fr_value_box_list_concat_in_place(uri, uri, &uri_components->vb_group,
-					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
-		REDEBUG("Failed concattenating input");
-		return XLAT_ACTION_FAIL;
-	}
-
-	if (!ldap_is_ldap_url(uri->vb_strvalue)) {
-		REDEBUG("String passed does not look like an LDAP URL");
-		return XLAT_ACTION_FAIL;
-	}
-
-	ldap_url_ret = ldap_url_parse(uri->vb_strvalue, &ldap_url);
-	if (ldap_url_ret != LDAP_URL_SUCCESS){
-		RPEDEBUG("Parsing LDAP URL failed - %s", fr_ldap_url_err_to_str(ldap_url_ret));
-	error:
-		ldap_free_urldesc(ldap_url);
-		return XLAT_ACTION_FAIL;
-	}
+	if (ldap_xlat_uri_parse(&ldap_url, &host, &free_host, request, handle_config->server, uri) < 0) return -1;
 
 	/*
 	 *	Nothing, empty string, "*" string, or got 2 things, die.
@@ -716,7 +759,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	if (!ldap_url->lud_attrs || !ldap_url->lud_attrs[0] || !*ldap_url->lud_attrs[0] ||
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) || ldap_url->lud_attrs[1]) {
 		REDEBUG("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
-		goto error;
+		ldap_free_urldesc(ldap_url);
 	}
 
 	query = fr_ldap_search_alloc(unlang_interpret_frame_talloc_ctx(request),
@@ -731,6 +774,8 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 		if (fr_ldap_parse_url_extensions(serverctrls, NUM_ELEMENTS(serverctrls),
 						 query->ldap_url->lud_exts) < 0) {
 			RPERROR("Parsing URL extensions failed");
+			if (free_host) ldap_memfree(host);
+
 		query_error:
 			talloc_free(query);
 			return XLAT_ACTION_FAIL;
@@ -744,18 +789,16 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	}
 
 	/*
-	 *	If the URL is <scheme>:/// the parsed host will be NULL - use config default
+	 *	Figure out what trunked connection we can use
+	 *	to communicate with the host.
+	 *
+	 *	If free_host is true, we must free the host
+	 *	after deciding on a trunk connection as it
+	 *	was allocated by host_uri_canonify.
 	 */
-	if (!ldap_url->lud_host) {
-		host_url = handle_config->server;
-	} else {
-		host_url = host = host_uri_canonify(request, ldap_url, uri);
-		if (unlikely(host_url == NULL)) goto query_error;
-	}
-
-	ttrunk = fr_thread_ldap_trunk_get(t, host_url, handle_config->admin_identity,
+	ttrunk = fr_thread_ldap_trunk_get(t, host, handle_config->admin_identity,
 					  handle_config->admin_password, request, handle_config);
-	if (host) ldap_memfree(host);
+	if (free_host) ldap_memfree(host);
 	if (!ttrunk) {
 		REDEBUG("Unable to get LDAP query for xlat");
 		goto query_error;
