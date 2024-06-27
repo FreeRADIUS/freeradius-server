@@ -840,7 +840,7 @@ attribute should continue to work the same as with v3.
 
 === rlm_ldap
 
-The `ldap` module provides an expansion `%ldap.memberof(<name>)` instead of
+The `ldap` module provides an expansion `%ldap.group(<name>)` instead of
 `LDAP-Group` for dynamically testing group membership.  The old method of
 
 ```
@@ -850,7 +850,7 @@ if (LDAP-Group == "foo") { ...
 will no longer work.  Instead, use
 
 ```
-if (%ldap.memberof(foo)) { ...
+if (%ldap.group(foo)) { ...
 ```
 
 The caching of group membership into attributes in the `control` list is

@@ -110,7 +110,7 @@ server default {
 }
 ----
 
-Group checks may be performed  using the xlat `%ldap.memberof()`.
+Group checks may be performed  using the xlat `%ldap.group()`.
 
 [source,unlang]
 ----
@@ -118,7 +118,7 @@ server default {
 	...
 	recv Access-Request {
 		ldap
-		if (%ldap.memberof(cn=authorized_users,ou=groups,dc=example,dc=com) == true) {
+		if (%ldap.group(cn=authorized_users,ou=groups,dc=example,dc=com) == true) {
 			reject
 		}
 		...

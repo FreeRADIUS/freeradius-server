@@ -785,10 +785,10 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
  *
  * Called if the ldap membership xlat is used and the user DN is not already known
  */
-static unlang_action_t ldap_memberof_xlat_user_find(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t ldap_group_xlat_user_find(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 						    request_t *request, void *uctx)
 {
-	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_memberof_xlat_ctx_t);
+	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_group_xlat_ctx_t);
 
 	if (xlat_ctx->env_data->user_filter.type == FR_TYPE_STRING) xlat_ctx->filter = &xlat_ctx->env_data->user_filter;
 
@@ -801,9 +801,9 @@ static unlang_action_t ldap_memberof_xlat_user_find(UNUSED rlm_rcode_t *p_result
 /** Cancel an in-progress query for the LDAP group membership xlat
  *
  */
-static void ldap_memberof_xlat_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
+static void ldap_group_xlat_cancel(UNUSED request_t *request, UNUSED fr_signal_t action, void *uctx)
 {
-	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_memberof_xlat_ctx_t);
+	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_group_xlat_ctx_t);
 
 	if (!xlat_ctx->query || !xlat_ctx->query->treq) return;
 
@@ -811,7 +811,7 @@ static void ldap_memberof_xlat_cancel(UNUSED request_t *request, UNUSED fr_signa
 }
 
 #define REPEAT_LDAP_MEMBEROF_XLAT_RESULTS \
-	if (unlang_function_repeat_set(request, ldap_memberof_xlat_results) < 0) do { \
+	if (unlang_function_repeat_set(request, ldap_group_xlat_results) < 0) do { \
 		rcode = RLM_MODULE_FAIL; \
 		goto finish; \
 	} while (0)
@@ -820,10 +820,10 @@ static void ldap_memberof_xlat_cancel(UNUSED request_t *request, UNUSED fr_signa
  *
  * This is called after each async lookup is completed
  */
-static unlang_action_t ldap_memberof_xlat_results(rlm_rcode_t *p_result, UNUSED int *priority,
+static unlang_action_t ldap_group_xlat_results(rlm_rcode_t *p_result, UNUSED int *priority,
 						  request_t *request, void *uctx)
 {
-	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_memberof_xlat_ctx_t);
+	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(uctx, ldap_group_xlat_ctx_t);
 	rlm_ldap_t const		*inst = xlat_ctx->inst;
 	rlm_rcode_t			rcode = RLM_MODULE_NOTFOUND;
 
@@ -868,10 +868,10 @@ finish:
 /** Process the results of evaluating LDAP group membership
  *
  */
-static xlat_action_t ldap_memberof_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+static xlat_action_t ldap_group_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
 					    UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
 {
-	ldap_memberof_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_memberof_xlat_ctx_t);
+	ldap_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, ldap_group_xlat_ctx_t);
 	fr_value_box_t			*vb;
 
 	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_BOOL, attr_expr_bool_enum));
@@ -881,7 +881,7 @@ static xlat_action_t ldap_memberof_xlat_resume(TALLOC_CTX *ctx, fr_dcursor_t *ou
 	return XLAT_ACTION_DONE;
 }
 
-static xlat_arg_parser_t const ldap_memberof_xlat_arg[] = {
+static xlat_arg_parser_t const ldap_group_xlat_arg[] = {
 	{ .required = true, .concat = true, .type = FR_TYPE_STRING, .safe_for = LDAP_URI_SAFE_FOR },
 	XLAT_ARG_PARSER_TERMINATOR
 };
@@ -890,7 +890,7 @@ static xlat_arg_parser_t const ldap_memberof_xlat_arg[] = {
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+static xlat_action_t ldap_group_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
 	 				request_t *request, fr_value_box_list_t *in)
 {
 	fr_value_box_t			*vb = NULL, *group_vb = fr_value_box_list_pop_head(in);
@@ -898,7 +898,7 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 	fr_ldap_thread_t		*t = talloc_get_type_abort(xctx->mctx->thread, fr_ldap_thread_t);
 	ldap_xlat_memberof_call_env_t	*env_data = talloc_get_type_abort(xctx->env_data, ldap_xlat_memberof_call_env_t);
 	bool				group_is_dn;
-	ldap_memberof_xlat_ctx_t	*xlat_ctx;
+	ldap_group_xlat_ctx_t	*xlat_ctx;
 
 	RDEBUG2("Searching for user in group \"%pV\"", group_vb);
 
@@ -949,9 +949,9 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 		}
 	}
 
-	MEM(xlat_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_memberof_xlat_ctx_t));
+	MEM(xlat_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ldap_group_xlat_ctx_t));
 
-	*xlat_ctx = (ldap_memberof_xlat_ctx_t){
+	*xlat_ctx = (ldap_group_xlat_ctx_t){
 		.inst = inst,
 		.group = group_vb,
 		.dn = rlm_find_user_dn_cached(request),
@@ -970,10 +970,10 @@ static xlat_action_t ldap_memberof_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat
 		return XLAT_ACTION_FAIL;
 	}
 
-	if (unlang_xlat_yield(request, ldap_memberof_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
+	if (unlang_xlat_yield(request, ldap_group_xlat_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) goto error;
 
-	if (unlang_function_push(request, xlat_ctx->dn ? NULL : ldap_memberof_xlat_user_find,
-				 ldap_memberof_xlat_results, ldap_memberof_xlat_cancel, ~FR_SIGNAL_CANCEL,
+	if (unlang_function_push(request, xlat_ctx->dn ? NULL : ldap_group_xlat_user_find,
+				 ldap_group_xlat_results, ldap_group_xlat_cancel, ~FR_SIGNAL_CANCEL,
 				 UNLANG_SUB_FRAME, xlat_ctx) < 0) goto error;
 
 	return XLAT_ACTION_PUSH_UNLANG;
@@ -2665,9 +2665,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, NULL, ldap_xlat, FR_TYPE_STRING);
 	xlat_func_args_set(xlat, ldap_xlat_arg);
 
-	if (unlikely(!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "memberof", ldap_memberof_xlat,
+	if (unlikely(!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "group", ldap_group_xlat,
 							FR_TYPE_BOOL)))) return -1;
-	xlat_func_args_set(xlat, ldap_memberof_xlat_arg);
+	xlat_func_args_set(xlat, ldap_group_xlat_arg);
 	xlat_func_call_env_set(xlat, &xlat_memberof_method_env);
 
 	if (unlikely(!(xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "profile", ldap_profile_xlat,

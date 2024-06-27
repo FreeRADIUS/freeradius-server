@@ -129,7 +129,7 @@ specified as a DN, and if the directory implements _variant 2_, then the group
 would be specified by name.
 ====
 
-Group checks can be performed using the xlat `%ldap.memberof()`.
+Group checks can be performed using the xlat `%ldap.group()`.
 Using this xlat, will, (if group caching is not enabled or the
 ldap module has not already been called) result in one or more
 queries being sent to the LDAP Directory to determine if the
@@ -143,7 +143,7 @@ appropriately.
 
 [source,unlang]
 ----
-if (%ldap.memberof("cn=foo,ou=groups,dc=example,dc=com") == true) {
+if (%ldap.group("cn=foo,ou=groups,dc=example,dc=com") == true) {
 	&reply.Reply-Message := "Welcome member of group 'foo'"
 }
 ----
@@ -152,7 +152,7 @@ if (%ldap.memberof("cn=foo,ou=groups,dc=example,dc=com") == true) {
 
 [source,unlang]
 ----
-if (%ldap.memberof("foo") == true) {
+if (%ldap.group("foo") == true) {
 	&reply.Reply-Message := "Welcome member of group 'foo'"
 }
 ----
@@ -182,8 +182,3 @@ should be set, and when checking for group memberships using group names
 One exception to this, is if nested group checks are being performed.
 In this case `group.cacheable_dn` must be set, as the full path of the group
 objects is required.
-
-
-
-
-
