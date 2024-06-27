@@ -230,7 +230,7 @@ typedef struct {
 	fr_ldap_query_t			*query;
 	ldap_group_xlat_status_t	status;
 	bool				found;
-} ldap_memberof_xlat_ctx_t;
+} ldap_group_xlat_ctx_t;
 
 extern HIDDEN fr_dict_attr_t const *attr_password;
 extern HIDDEN fr_dict_attr_t const *attr_cleartext_password;
@@ -274,10 +274,10 @@ unlang_action_t rlm_ldap_cacheable_userobj(rlm_rcode_t *p_result, request_t *req
 unlang_action_t rlm_ldap_cacheable_groupobj(rlm_rcode_t *p_result, request_t *request, ldap_autz_ctx_t *autz_ctx);
 
 unlang_action_t rlm_ldap_check_groupobj_dynamic(rlm_rcode_t *p_result, request_t *request,
-						ldap_memberof_xlat_ctx_t *xlat_ctx);
+						ldap_group_xlat_ctx_t *xlat_ctx);
 
 unlang_action_t rlm_ldap_check_userobj_dynamic(rlm_rcode_t *p_result, request_t *request,
-					       ldap_memberof_xlat_ctx_t *xlat_ctx);
+					       ldap_group_xlat_ctx_t *xlat_ctx);
 
 unlang_action_t rlm_ldap_check_cached(rlm_rcode_t *p_result,
 				      rlm_ldap_t const *inst, request_t *request, fr_value_box_t const *check);
