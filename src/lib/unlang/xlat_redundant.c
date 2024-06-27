@@ -317,11 +317,6 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 	return 0;
 }
 
-static xlat_arg_parser_t const xlat_redundant_args[] = {
-	{ .type = FR_TYPE_VOID },
-	XLAT_ARG_PARSER_TERMINATOR
-};
-
 static inline CC_HINT(always_inline)
 void xlat_redundant_add_xlat(xlat_redundant_t *xr, xlat_t const *x)
 {
@@ -398,7 +393,6 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	char const		*name1;
 	xlat_redundant_type_t	xr_type;
 	xlat_func_flags_t	default_flags;
-	xlat_arg_parser_t const *args = NULL;
 
 	fr_type_t		return_type = FR_TYPE_NULL;
 
@@ -618,7 +612,6 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 			xlat_func_flags_set(xlat, flags);
 			xlat_func_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
-			if (args) xlat_func_args_set(xlat, xlat_redundant_args);
 		}
 	}
 	talloc_free(mrx_tree);
