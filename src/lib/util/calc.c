@@ -1330,6 +1330,7 @@ static int calc_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_valu
 				if (mask == b->vb_uint32) break;
 
 				prefix--;
+				/* coverity[overflow_const] */
 				mask <<= 1;
 			}
 			fr_assert(prefix > 0);
