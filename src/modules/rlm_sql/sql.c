@@ -396,11 +396,12 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query
  */
 static int fr_sql_query_free(fr_sql_query_t *to_free)
 {
-	if (to_free->status <= 0) return 0;
-	if (to_free->type == SQL_QUERY_SELECT) {
-		(to_free->inst->driver->sql_finish_select_query)(to_free, &to_free->inst->config);
-	} else {
-		(to_free->inst->driver->sql_finish_query)(to_free, &to_free->inst->config);
+	if (to_free->status > 0) {
+		if (to_free->type == SQL_QUERY_SELECT) {
+			(to_free->inst->driver->sql_finish_select_query)(to_free, &to_free->inst->config);
+		} else {
+			(to_free->inst->driver->sql_finish_query)(to_free, &to_free->inst->config);
+		}
 	}
 	if (to_free->treq) trunk_request_signal_complete(to_free->treq);
 	return 0;
