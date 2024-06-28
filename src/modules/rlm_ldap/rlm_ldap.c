@@ -696,7 +696,7 @@ static int ldap_xlat_uri_parse(LDAPURLDesc **uri_parsed, char **host_out, bool *
 	 */
 	uri = fr_value_box_list_head(&uri_in->vb_group);
 
-	if (fr_value_box_list_concat_in_place(uri, uri, &uri->vb_group,
+	if (fr_value_box_list_concat_in_place(uri, uri, &uri_in->vb_group,
 					      FR_TYPE_STRING, FR_VALUE_BOX_LIST_FREE, true, SIZE_MAX) < 0) {
 		REDEBUG("Failed concattenating input");
 		goto error;
