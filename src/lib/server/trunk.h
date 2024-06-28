@@ -241,6 +241,8 @@ typedef struct {
 							///< Used to determine if we need to create new connections
 							///< and whether we can enqueue new requests.
 
+	uint32_t		max_backlog;		//!< Maximum number of requests that can be in the backlog.
+
 	uint64_t		max_uses;		//!< The maximum time a connection can be used.
 
 	fr_time_delta_t		lifetime;		//!< Time between reconnects.

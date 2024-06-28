@@ -322,6 +322,8 @@ conf_parser_t const trunk_config[] = {
 
 	{ FR_CONF_OFFSET("manage_interval", trunk_conf_t, manage_interval), .dflt = "0.2" },
 
+	{ FR_CONF_OFFSET("max_backlog", trunk_conf_t, max_backlog), .dflt = "1000" },
+
 	{ FR_CONF_OFFSET_SUBSECTION("connection", 0, trunk_conf_t, conn_conf, trunk_config_connection), .subcs_size = sizeof(trunk_config_connection) },
 	{ FR_CONF_POINTER("request", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) trunk_config_request },
 
@@ -1642,12 +1644,13 @@ static trunk_enqueue_t trunk_request_check_enqueue(trunk_connection_t **tconn_ou
 
 			total_reqs = trunk_request_count_by_state(trunk, TRUNK_CONN_ALL,
 								     TRUNK_REQUEST_STATE_ALL);
-			if (total_reqs >= limit) {
+			if (total_reqs >= (limit + trunk->conf.max_backlog)) {
 				RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_max_requests_alloc_log,
 							   RWARN, WARN, "Refusing to alloc requests - "
 							   "Limit of %"PRIu64" (max = %u * per_connection_max = %u) "
-							   "requests reached",
-							   limit, trunk->conf.max, trunk->conf.max_req_per_conn);
+							   "plus %u backlog requests reached",
+							   limit, trunk->conf.max, trunk->conf.max_req_per_conn,
+							   trunk->conf.max_backlog);
 				return TRUNK_ENQUEUE_NO_CAPACITY;
 			}
 		}
@@ -2468,12 +2471,13 @@ trunk_request_t *trunk_request_alloc(trunk_t *trunk, request_t *request)
 		uint64_t limit;
 
 		limit = (uint64_t) trunk->conf.max_req_per_conn * trunk->conf.max;
-		if (trunk->pub.req_alloc >= limit) {
+		if (trunk->pub.req_alloc >= (limit + trunk->conf.max_backlog)) {
 			RATE_LIMIT_LOCAL_ROPTIONAL(&trunk->limit_max_requests_alloc_log,
 						   RWARN, WARN, "Refusing to alloc requests - "
 						   "Limit of %"PRIu64" (max = %u * per_connection_max = %u) "
-						   "requests reached",
-						   limit, trunk->conf.max, trunk->conf.max_req_per_conn);
+						   "plus %u backlog requests reached",
+						   limit, trunk->conf.max, trunk->conf.max_req_per_conn,
+						   trunk->conf.max_backlog);
 			return NULL;
 		}
 	}
