@@ -491,6 +491,7 @@ static fr_ipaddr_t cl_ipaddr;
 static uint32_t cl_netmask;
 static char const *cl_srcipaddr = NULL;
 static char const *hs_proto = NULL;
+static char const *limit_proxy_state = NULL;
 
 #ifdef WITH_TCP
 static CONF_PARSER limit_config[] = {
@@ -514,7 +515,7 @@ static const CONF_PARSER client_config[] = {
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
 
 	{ "require_message_authenticator",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_IGNORE_DEFAULT, RADCLIENT, require_ma), NULL },
-	{ "limit_proxy_state",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_IGNORE_DEFAULT, RADCLIENT, limit_proxy_state), NULL },
+	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &limit_proxy_state), NULL },
 
 	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret), NULL },
 	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), NULL },
@@ -919,6 +920,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
 	cl_netmask = 255;
+	limit_proxy_state = NULL;
 
 	if (cf_section_parse(cs, c, client_config) < 0) {
 		cf_log_err_cs(cs, "Error parsing client section");
@@ -928,6 +930,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 		hs_proto = NULL;
 		cl_srcipaddr = NULL;
 #endif
+		limit_proxy_state = NULL;
 
 		return NULL;
 	}
@@ -1199,6 +1202,10 @@ done_coa:
 			c->limit.idle_timeout = 0;
 	}
 #endif
+
+	if (fr_bool_auto_parse(cf_pair_find(cs, "limit_proxy_state"), &c->limit_proxy_state, limit_proxy_state) < 0) {
+		goto error;
+	}
 
 	return c;
 }

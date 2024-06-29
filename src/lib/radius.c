@@ -2759,6 +2759,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		case PW_EAP_MESSAGE:
 			require_ma = true;
 			eap = true;
+			packet->eap_message = true;
 			break;
 
 		case PW_USER_PASSWORD:
@@ -2769,6 +2770,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 
 		case PW_PROXY_STATE:
 			seen_proxy_state = true;
+			packet->proxy_state = true;
 			break;
 
 		case PW_MESSAGE_AUTHENTICATOR:
@@ -2789,6 +2791,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 				goto finish;
 			}
 			seen_ma = true;
+			packet->message_authenticator = true;
 			break;
 		}
 #endif

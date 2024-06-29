@@ -530,6 +530,79 @@ int rad_status_server(REQUEST *request)
 	return 0;
 }
 
+static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
+{
+	if (client->require_ma) return;
+
+	/*
+	 *	If all of the checks are turned off, then complain for every packet we receive.
+	 */
+	if (client->limit_proxy_state == FR_BOOL_FALSE) {
+		/*
+		 *	We have a Message-Authenticator, and it's valid.  We don't need to compain.
+		 */
+		if (packet->message_authenticator) return;
+
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("BlastRADIUS check: Received packet without Message-Authenticator.");
+		DEBUG("YOU MUST SET \"require_message_authenticator = true\", or");
+		DEBUG("YOU MUST SET \"limit_proxy_state = true\" for client %s", client->shortname);
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("The packet does not contain Message-Authenticator, which is a security issue");
+		DEBUG("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+		DEBUG("Once the client is upgraded, set \"require_message_authenticator = true\" for this client.");
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		return;
+	}
+
+	/*
+	 *	Don't complain here.  rad_packet_ok() will instead
+	 *	complain about every packet with Proxy-State but which
+	 *	is missing Message-Authenticator.
+	 */
+	if (client->limit_proxy_state == FR_BOOL_TRUE) {
+		return;
+	}
+
+	if (packet->proxy_state && !packet->message_authenticator) {
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		ERROR("BlastRADIUS check: Received packet with Proxy-State, but without Message-Authenticator.");
+		ERROR("This is either a BlastRADIUS attack, OR");
+		ERROR("the client is a proxy RADIUS server which has not been upgraded.");
+		ERROR("Setting \"limit_proxy_state = false\" for client %s", client->shortname);
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		ERROR("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+		ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for this client.");
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+		client->limit_proxy_state = FR_BOOL_FALSE;
+
+	} else {
+		client->limit_proxy_state = FR_BOOL_TRUE;
+
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		if (!packet->proxy_state) {
+			ERROR("BlastRADIUS check: Received packet without Proxy-State.");
+		} else {
+			ERROR("BlastRADIUS check: Received packet with Proxy-State and Message-Authenticator.");
+		}
+
+		ERROR("Setting \"limit_proxy_state = true\" for client %s", client->shortname);
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+		if (!packet->message_authenticator) {
+			ERROR("The packet does not contain Message-Authenticator, which is a security issue.");
+			ERROR("UPGRADE THE CLIENT AS YOUR NETWORK MAY BE VULNERABLE TO THE BLASTRADIUS ATTACK.");
+			ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for this client.");
+		} else {
+			ERROR("The packet contains Message-Authenticator.");
+			if (!packet->eap_message) ERROR("The client has likely been upgraded to protect from the attack.");
+			ERROR("Please set \"require_message_authenticator = true\" for this client");
+		}
+		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+}
+
 #ifdef WITH_TCP
 static int dual_tcp_recv(rad_listen_t *listener)
 {
@@ -610,11 +683,16 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		/*
 		 *	Enforce BlastRADIUS checks on TCP, too.
 		 */
-		if (!rad_packet_ok(packet, client->require_ma | (((int) client->limit_proxy_state) << 2), NULL)) {
+		if (!rad_packet_ok(packet, client->require_ma | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2), NULL)) {
 			FR_STATS_INC(auth, total_malformed_requests);
 			rad_free(&sock->packet);
 			return 0;
 		}
+
+		/*
+		 *	Perform BlastRADIUS checks and warnings.
+		 */
+		if (packet->code == PW_CODE_ACCESS_REQUEST) blastradius_checks(packet, client);
 
 		FR_STATS_INC(auth, total_requests);
 		fun = rad_authenticate;
@@ -1961,7 +2039,6 @@ static int stats_socket_recv(rad_listen_t *listener)
 }
 #endif
 
-
 /*
  *	Check if an incoming request is "ok"
  *
@@ -2037,13 +2114,18 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, client->require_ma | (((int) client->limit_proxy_state) << 2));
+	packet = rad_recv(ctx, listener->fd, client->require_ma | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2));
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		talloc_free(ctx);
 		return 0;
 	}
+
+	/*
+	 *	Perform BlastRADIUS checks and warnings.
+	 */
+	if (packet->code == PW_CODE_ACCESS_REQUEST) blastradius_checks(packet, client);
 
 #ifdef __APPLE__
 #ifdef WITH_UDPFROMTO

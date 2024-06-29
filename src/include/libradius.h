@@ -411,6 +411,10 @@ typedef struct radius_packet {
 	bool			radiusv11;
 #endif
 	bool			tls;		//!< uses secure transport
+
+	bool			message_authenticator;
+	bool			proxy_state;
+	bool			eap_message;
 } RADIUS_PACKET;
 
 typedef enum {
