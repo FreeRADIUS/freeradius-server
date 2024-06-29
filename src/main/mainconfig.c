@@ -73,6 +73,7 @@ static char const *gid_name = NULL;
 static char const *chroot_dir = NULL;
 static bool allow_core_dumps = false;
 static char const *radlog_dest = NULL;
+static char const *limit_proxy_state = NULL;
 
 /*
  *	These are not used anywhere else..
@@ -86,6 +87,52 @@ static char const	*syslog_facility = NULL;
 static bool		do_colourise = false;
 
 static char const	*radius_dir = NULL;	//!< Path to raddb directory
+
+static const FR_NAME_NUMBER fr_bool_auto_names[] = {
+	{ "false",	FR_BOOL_FALSE     },
+	{ "no",		FR_BOOL_FALSE     },
+	{ "0",		FR_BOOL_FALSE     },
+
+	{ "true",	FR_BOOL_TRUE      },
+	{ "yes",       	FR_BOOL_TRUE      },
+	{ "1",		FR_BOOL_TRUE      },
+
+	{ "auto",	FR_BOOL_AUTO      },
+
+	{ NULL,	0 }
+};
+
+/*
+ *	Get decent values for false / true / auto
+ */
+int fr_bool_auto_parse(CONF_PAIR *cp, fr_bool_auto_t *out, char const *str)
+{
+	int value;
+
+	/*
+	 *	Don't change anything.
+	 */
+	if (!str) return 0;
+
+	value = fr_str2int(fr_bool_auto_names, str, -1);
+	if (value >= 0) {
+		*out = value;
+		return 0;
+	}
+
+	/*
+	 *	This should never happen, as the defaults are in the
+	 *	source code.  If there's no CONF_PAIR, and there's a
+	 *	parse error, then the source code is wrong.
+	 */
+	if (!cp) {
+		fprintf(stderr, "%s: Error - Invalid value in configuration", main_config.name);
+		return -1;
+	}
+
+	cf_log_err(cf_pair_to_item(cp), "Invalid value for \"%s\"", cf_pair_attr(cp));
+	return -1;
+}
 
 /**********************************************************************
  *
@@ -161,7 +208,7 @@ static const CONF_PARSER security_config[] = {
 	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), STRINGIFY(0) },
 	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
 	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.require_ma), "yes"},
-	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.limit_proxy_state), "yes"},
+	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_STRING, &limit_proxy_state), "auto"},
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
 #endif
@@ -857,6 +904,7 @@ int main_config_init(void)
 	if (!main_config.dictionary_dir) {
 		main_config.dictionary_dir = DICTDIR;
 	}
+	main_config.limit_proxy_state = FR_BOOL_AUTO;
 
 	/*
 	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(VALUE_PAIR) * 400
@@ -1151,6 +1199,18 @@ do {\
 	 */
 	main_config.init_delay.tv_sec = 0;
 	main_config.init_delay.tv_usec = 2* (1000000 / 3);
+
+	{
+		CONF_PAIR *cp = NULL;
+
+		subcs = cf_section_sub_find(cs, "security");
+		if (subcs) cp = cf_pair_find(subcs, "limit_proxy_state");
+
+		if (fr_bool_auto_parse(cp, &main_config.limit_proxy_state, limit_proxy_state) < 0) {
+			cf_file_free(cs);
+			return -1;
+		}
+	}
 
 	/*
 	 *	Free the old configuration items, and replace them

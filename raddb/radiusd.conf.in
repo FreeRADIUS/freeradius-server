@@ -647,17 +647,14 @@ security {
 	require_message_authenticator = yes
 
 	#
-	#  Global configuration for requiring Message-Authenticator
-	#  Access-Request packets from a NAS, but only if those
-	#  packets also contain Proxy-State.  This flag only applies
-	#  to packets sent over UDP or TCP.  This flag is ignored for
-	#  TLS.
+	#  Global configuration for limiting the combination of
+	#  Proxy-State and Message-Authenticator.  This flag only
+	#  applies to packets sent over UDP or TCP.  This flag is
+	#  ignored for TLS.
 	#
 	#  This flag sets the global default for all clients.  It can
 	#  be over-ridden in an individual client definition by adding
-	#  a flag to that section:
-	#
-	#	limit_proxy_state = no
+	#  the same flag to that section with an appropriate value:
 	#
 	#  If "require_message_authenticator" is set to "yes", this
 	#  configuration item is ignored.
@@ -665,22 +662,62 @@ security {
 	#  If "require_message_authenticator" is set to "no", this
 	#  configuration item is checked.
 	#
-	#  This configuration item should ALWAYS be set to "yes".
+	#  The possible values and meanings for "limit_proxy_state" are;
 	#
-	#  The only reason to set it to "no" is when the client is a
-	#  proxy, AND the proxy does not send Message-Authenticator in
-	#  Access-Request packets.  Even then, the best approach to
-	#  fix the issue is to (1) update the proxy to send
-	#  Message-Authenticator, and if that can't be done, then (2)
-	#  set this flag to "no", but ONLY on a per-client basis.
+	#  * "no" - allow any packets from the client, even packets
+	#    which contain the BlastRADIUS attack.  Please be aware
+	#    that in this configuration the server will complain for
+	#    EVERY packet which it receives.
 	#
-	#  WARNING: Setting both this flag and the
-	#  "require_message_authenticator" flag to "no" will allow
-	#  MITM attackers to create fake Access-Accept packets to the
-	#  NAS!  At least one of them MUST be set to "yes" for the
-	#  system to have any protection against the attack.
+	#    The only reason to set this flag to "no" is when the
+	#    client is a proxy, AND the proxy does not send
+	#    Message-Authenticator in Access-Request packets.  Even
+	#    then, the best approach to fix the issue is to (1) update
+	#    the proxy to send Message-Authenticator, and if that
+	#    can't be done, then (2) set this flag to "no", but ONLY
+	#    for that one client.  The global flag SHOULD still be set
+	#    to a safe value: "yes".
 	#
-	limit_proxy_state = yes
+	#    WARNING: Setting both this flag and the
+	#    "require_message_authenticator" flag to "no" will allow
+	#    MITM attackers to create fake Access-Accept packets to the
+	#    NAS!  At least one of them MUST be set to "yes" for the
+	#    system to have any protection against the attack.
+	#
+	#  * "yes" - Allow packets without Message-Authenticator,
+	#    but only when they do not contain Proxy-State.
+	#    packets which contain Proxy-State MUST also contain
+	#    Message-Authenticator, otherwise they are discarded.
+	#
+	#    This setting is safe for all NASes, GGSNs, BRAS, etc.
+	#    No known RADIUS client sends Proxy-State for normal
+	#    Access-Request packets.
+	#
+	#  * "auto" - Automatically determine the value of the flag,
+	#    based on the first packet received from that client.
+	#
+	#    If the packet contains Proxy-State but no
+	#    Message-Authenticator, then the value of the flag is
+	#    automatically switched to "no".
+	#
+	#    For all other situations, the value of the flag is
+	#    automatically switched to "yes".
+	#
+	#    WARNING: This switch is done for the first packet
+	#    received from that client.  The change does NOT persist
+	#    across server restarts.  You MUST change the to "yes"
+	#    manually, in order to make a permanent change to the
+	#    configuration.
+	#
+	#    WARNING: If there are multiple NASes with the same source
+	#    IP and client definitions, BUT the NASes have different
+	#    behavior, then this flag WILL LIKELY BREAK YOUR NETWORK.
+	#
+	#    The only solution to that rare configuration is to set
+	#    this flag to "no", in which case the network will work,
+	#    but will be vulnerable to the attack.
+	#
+	limit_proxy_state = auto
 
 @openssl_version_check_config@
 }

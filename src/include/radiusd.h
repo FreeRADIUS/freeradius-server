@@ -176,7 +176,7 @@ typedef struct main_config {
 
 	bool		require_ma;			//!< global configuration for all clients and home servers
 
-	bool		limit_proxy_state;     		//!< global configuration for all clients
+	fr_bool_auto_t 	limit_proxy_state;     		//!< global configuration for all clients
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
@@ -564,6 +564,8 @@ int main_config_init(void);
 int main_config_free(void);
 void main_config_hup(void);
 void hup_logfile(void);
+
+int	fr_bool_auto_parse(CONF_PAIR *cp, fr_bool_auto_t *out, char const *str);
 
 /* listen.c */
 void listen_free(rad_listen_t **head);
