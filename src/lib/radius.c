@@ -2762,7 +2762,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_ma && !seen_ma) {
-		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
+		FR_DEBUG_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute.  You may need to set \"require_message_authenticator = no\" in the configuration.",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
