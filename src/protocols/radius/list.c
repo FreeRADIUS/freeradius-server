@@ -669,7 +669,7 @@ int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
  *	FIXME: Add socket.fd, if -1, do round-robin, else do socket.fd
  *		IF in fdset.
  */
-fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_ma)
+fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max_attributes, bool require_message_authenticator)
 {
 	int start;
 	fr_packet_t *packet;
@@ -689,7 +689,7 @@ fr_packet_t *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set, uint32_t max
 			packet = fr_tcp_recv(pl->sockets[start].socket.fd, false);
 		} else
 			packet = fr_packet_recv(NULL, pl->sockets[start].socket.fd, UDP_FLAGS_NONE,
-						       max_attributes, require_ma);
+						       max_attributes, require_message_authenticator);
 		if (!packet) continue;
 
 		/*

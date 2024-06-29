@@ -106,17 +106,17 @@ ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
  *
  * @param[in] packet		to check.
  * @param[in] max_attributes	to decode.
- * @param[in] require_ma	to require Message-Authenticator.
+ * @param[in] require_message_authenticator	to require Message-Authenticator.
  * @param[out] reason		if not NULL, will have the failure reason written to where it points.
  * @return
  *	- True on success.
  *	- False on failure.
  */
-bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
+bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason)
 {
 	char host_ipaddr[INET6_ADDRSTRLEN];
 
-	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_ma, reason)) {
+	if (!fr_radius_ok(packet->data, &packet->data_len, max_attributes, require_message_authenticator, reason)) {
 		FR_DEBUG_STRERROR_PRINTF("Bad packet received from host %s",
 					 inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
 						   host_ipaddr, sizeof(host_ipaddr)));
@@ -208,7 +208,7 @@ static ssize_t rad_recvfrom(int sockfd, fr_packet_t *packet, int flags)
 /** Receive UDP client requests, and fill in the basics of a fr_packet_t structure
  *
  */
-fr_packet_t *fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma)
+fr_packet_t *fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_message_authenticator)
 {
 	ssize_t			data_len;
 	fr_packet_t	*packet;
@@ -271,7 +271,7 @@ fr_packet_t *fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_att
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_packet_ok(packet, max_attributes, require_ma, NULL)) {
+	if (!fr_packet_ok(packet, max_attributes, require_message_authenticator, NULL)) {
 		fr_packet_free(&packet);
 		return NULL;
 	}

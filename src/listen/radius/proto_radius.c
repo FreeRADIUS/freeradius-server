@@ -26,6 +26,7 @@
 #include <freeradius-devel/io/listen.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/server/module_rlm.h>
+#include <stdbool.h>
 #include "proto_radius.h"
 
 extern fr_app_t proto_radius;
@@ -164,11 +165,11 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
  */
 static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
-	fr_io_track_t const	*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
-	fr_io_address_t const  	*address = track->address;
-	fr_client_t const	*client;
-	fr_radius_ctx_t		common_ctx;
-	fr_radius_decode_ctx_t	decode_ctx;
+	fr_io_track_t const		*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
+	fr_io_address_t const  		*address = track->address;
+	fr_client_t			*client = UNCONST(fr_client_t *, address->radclient);
+	fr_radius_ctx_t			common_ctx;
+	fr_radius_decode_ctx_t		decode_ctx;
 
 	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
@@ -179,12 +180,12 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	 */
 	request->dict = dict_radius;
 
-	client = address->radclient;
-
 	common_ctx = (fr_radius_ctx_t) {
 		.secret = client->secret,
 		.secret_length = talloc_array_length(client->secret) - 1,
 	};
+
+	request->packet->code = data[0];
 
 	decode_ctx = (fr_radius_decode_ctx_t) {
 		.common = &common_ctx,
@@ -192,7 +193,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 		/* decode figures out request_authenticator */
 		.end = data + data_len,
 		.verify = client->active,
-		.require_message_authenticator = client->message_authenticator,
+		.require_message_authenticator = client->require_message_authenticator,
 	};
 
 	/*
@@ -200,7 +201,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	 *
 	 *	@todo - That needs to be changed.
 	 */
-	request->packet->code = data[0];
 	request->packet->id = data[1];
 	request->reply->id = data[1];
 	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
@@ -223,7 +223,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	/*
 	 *	Set the rest of the fields.
 	 */
-	request->client = UNCONST(fr_client_t *, client);
+	request->client = client;
 
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);

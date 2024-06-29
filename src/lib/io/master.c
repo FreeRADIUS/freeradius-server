@@ -392,7 +392,7 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 	DUP_FIELD(server);
 	DUP_FIELD(nas_type);
 
-	COPY_FIELD(message_authenticator);
+	COPY_FIELD(require_message_authenticator);
 	/* dynamic MUST be false */
 	COPY_FIELD(server_cs);
 	COPY_FIELD(cs);
@@ -2459,7 +2459,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 
 	COPY_FIELD(ipaddr);
 	COPY_FIELD(src_ipaddr);
-	COPY_FIELD(message_authenticator);
+	COPY_FIELD(require_message_authenticator);
 	COPY_FIELD(use_connected);
 
 	// @todo - fill in other fields?

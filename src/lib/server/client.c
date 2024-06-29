@@ -300,7 +300,7 @@ bool client_add(fr_client_list_t *clients, fr_client_t *client)
 		if (namecmp(longname) && namecmp(secret) &&
 		    namecmp(shortname) && namecmp(nas_type) &&
 		    namecmp(server) &&
-		    (old->message_authenticator == client->message_authenticator)) {
+		    (old->require_message_authenticator == client->require_message_authenticator)) {
 			WARN("Ignoring duplicate client %s", client->longname);
 			client_free(client);
 			return true;
@@ -442,7 +442,7 @@ static const conf_parser_t client_config[] = {
 
 	{ FR_CONF_OFFSET("track_connections", fr_client_t, use_connected) },
 
-	{ FR_CONF_OFFSET("require_message_authenticator", fr_client_t, message_authenticator) },
+	{ FR_CONF_OFFSET("require_message_authenticator", fr_client_t, require_message_authenticator) },
 
 	{ FR_CONF_OFFSET("dedup_authenticator", fr_client_t, dedup_authenticator) },
 

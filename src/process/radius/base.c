@@ -804,7 +804,7 @@ static xlat_action_t xlat_func_radius_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
 {
 	fr_value_box_t  *secret, *vb;
 	int		ret;
-	bool		require_ma = false;
+	bool		require_message_authenticator = false;
 
 	XLAT_ARGS(args, &secret);
 
@@ -817,9 +817,9 @@ static xlat_action_t xlat_func_radius_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
 	 *	All the other packet types are signed using the
 	 *	authenticator field.
 	 */
-	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) require_ma = true;
+	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) require_message_authenticator = true;
 
-	ret = fr_radius_verify(request->packet->data, NULL, secret->vb_octets, secret->vb_length, require_ma);
+	ret = fr_radius_verify(request->packet->data, NULL, secret->vb_octets, secret->vb_length, require_message_authenticator);
 	switch (ret) {
 	case 0:
 		vb->vb_bool = true;

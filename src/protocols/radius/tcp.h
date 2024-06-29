@@ -25,5 +25,5 @@
  */
 RCSIDH(tcp_h, "$Id$")
 
-int fr_tcp_read_packet(fr_packet_t *packet, uint32_t max_attributes, bool require_ma);
+int fr_tcp_read_packet(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator);
 fr_packet_t *fr_tcp_recv(int sockfd, int flags);

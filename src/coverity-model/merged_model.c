@@ -257,7 +257,7 @@ typedef struct {
 } decode_fail_t;
 
 bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
-                  uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
+                  uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason)
 {
 	bool result;
 

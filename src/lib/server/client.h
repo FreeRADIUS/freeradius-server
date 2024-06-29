@@ -72,6 +72,7 @@ typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
 #include <freeradius-devel/server/socket.h>
 #include <freeradius-devel/server/stats.h>
 #include <freeradius-devel/util/inet.h>
+#include <freeradius-devel/radius/radius.h>
 
 /** Describes a host allowed to send packets to the server
  *
@@ -88,7 +89,8 @@ struct fr_client_s {
 
 	char const		*secret;		//!< Secret PSK.
 
-	bool			message_authenticator;	//!< Require RADIUS message authenticator in requests.
+	bool			require_message_authenticator;		//!< Require RADIUS message authenticator
+								///< for incoming packets.
 	bool			dynamic;		//!< Whether the client was dynamically defined.
 	bool			active;			//!< for dynamic clients
 	bool			use_connected;		//!< do we use connected sockets for this client

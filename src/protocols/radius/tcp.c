@@ -57,7 +57,7 @@ fr_packet_t *fr_tcp_recv(int sockfd, int flags)
  *	Calling this function MAY change sockfd,
  *	if src_ipaddr.af == AF_UNSPEC.
  */
-int fr_tcp_read_packet(fr_packet_t *packet, uint32_t max_attributes, bool require_ma)
+int fr_tcp_read_packet(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator)
 {
 	ssize_t len;
 
@@ -141,7 +141,7 @@ int fr_tcp_read_packet(fr_packet_t *packet, uint32_t max_attributes, bool requir
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!fr_packet_ok(packet, max_attributes, require_ma, NULL)) {
+	if (!fr_packet_ok(packet, max_attributes, require_message_authenticator, NULL)) {
 		return -1;
 	}
 

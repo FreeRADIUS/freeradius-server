@@ -152,7 +152,7 @@ struct udp_request_s {
 	uint32_t		num_replies;		//!< number of reply packets, sent is in retry.count
 
 	bool			synchronous;		//!< cached from inst->parent->synchronous
-	bool			require_ma;		//!< saved from the original packet.
+	bool			require_message_authenticator;		//!< saved from the original packet.
 	bool			can_retransmit;		//!< can we retransmit this packet?
 	bool			status_check;		//!< is this packet a status check?
 
@@ -1196,7 +1196,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 {
 	ssize_t			packet_len;
 	uint8_t			*msg = NULL;
-	int			message_authenticator = u->require_ma * (RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2);
+	int			message_authenticator = u->require_message_authenticator * (RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2);
 	int			proxy_state = 6;
 
 	fr_assert(inst->parent->allowed[u->code]);
@@ -2712,7 +2712,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 	 *	@todo - don't edit the input packet!
 	 */
 	if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
-		u->require_ma = true;
+		u->require_message_authenticator = true;
 		pair_delete_request(attr_message_authenticator);
 	}
 

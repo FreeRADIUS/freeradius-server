@@ -44,4 +44,3 @@ typedef struct {
 fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size);
 
 fr_bio_verify_action_t fr_radius_bio_verify_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size);
-

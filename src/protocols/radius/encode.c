@@ -38,8 +38,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_dcursor_t *cursor, void *encode_ctx);
 
 static ssize_t encode_child(fr_dbuff_t *dbuff,
-				fr_da_stack_t *da_stack, unsigned int depth,
-				fr_dcursor_t *cursor, void *encode_ctx);
+			    fr_da_stack_t *da_stack, unsigned int depth,
+			    fr_dcursor_t *cursor, void *encode_ctx);
 
 /** "encrypt" a password RADIUS style
  *

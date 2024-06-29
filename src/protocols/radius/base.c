@@ -81,13 +81,13 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
 fr_table_num_sorted_t const fr_radius_request_name_table[] = {
-	{ L("acct"),	FR_RADIUS_CODE_ACCOUNTING_REQUEST	},
-	{ L("auth"),	FR_RADIUS_CODE_ACCESS_REQUEST		},
-	{ L("auto"),	FR_RADIUS_CODE_UNDEFINED		},
-	{ L("challenge"),	FR_RADIUS_CODE_ACCESS_CHALLENGE	},
-	{ L("coa"),	FR_RADIUS_CODE_COA_REQUEST		},
+	{ L("acct"),		FR_RADIUS_CODE_ACCOUNTING_REQUEST	},
+	{ L("auth"),		FR_RADIUS_CODE_ACCESS_REQUEST		},
+	{ L("auto"),		FR_RADIUS_CODE_UNDEFINED		},
+	{ L("challenge"),	FR_RADIUS_CODE_ACCESS_CHALLENGE		},
+	{ L("coa"),		FR_RADIUS_CODE_COA_REQUEST		},
 	{ L("disconnect"),	FR_RADIUS_CODE_DISCONNECT_REQUEST	},
-	{ L("status"),	FR_RADIUS_CODE_STATUS_SERVER		}
+	{ L("status"),		FR_RADIUS_CODE_STATUS_SERVER		}
 };
 size_t fr_radius_request_name_table_len = NUM_ELEMENTS(fr_radius_request_name_table);
 
@@ -448,14 +448,14 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
  * @param[in] packet		to check.
  * @param[in,out] packet_len_p	The size of the packet data.
  * @param[in] max_attributes	to allow in the packet.
- * @param[in] require_ma	whether we require Message-Authenticator.
+ * @param[in] require_message_authenticator	whether we require Message-Authenticator.
  * @param[in] reason		if not NULL, will have the failure reason written to where it points.
  * @return
  *	- True on success.
  *	- False on failure.
  */
 bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
-		  uint32_t max_attributes, bool require_ma, decode_fail_t *reason)
+		  uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason)
 {
 	uint8_t	const		*attr, *end;
 	size_t			totallen;
@@ -501,7 +501,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Message-Authenticator is required in Status-Server
 	 *	packets, otherwise they can be trivially forged.
 	 */
-	if (packet[0] == FR_RADIUS_CODE_STATUS_SERVER) require_ma = true;
+	if (packet[0] == FR_RADIUS_CODE_STATUS_SERVER) require_message_authenticator = true;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -631,7 +631,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 			 *	a Message-Authenticator.
 			 */
 		case FR_EAP_MESSAGE:
-			require_ma = true;
+			require_message_authenticator = true;
 			break;
 
 		case FR_MESSAGE_AUTHENTICATOR:
@@ -684,7 +684,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 *	Similarly, Status-Server packets MUST contain
 	 *	Message-Authenticator attributes.
 	 */
-	if (require_ma && !seen_ma) {
+	if (require_message_authenticator && !seen_ma) {
 		FR_DEBUG_STRERROR_PRINTF("we require Message-Authenticator attribute, but it is not in the packet");
 		failure = DECODE_FAIL_MA_MISSING;
 		goto finish;
@@ -705,11 +705,11 @@ finish:
  *  comparing the signature in the packet with the one we calculated.
  *  If they differ, there's a problem.
  *
- * @param[in] packet		the raw RADIUS packet (request or response)
- * @param[in] vector		the original packet vector
- * @param[in] secret		the shared secret
- * @param[in] secret_len	the length of the secret
- * @param[in] require_ma	whether we require Message-Authenticator.
+ * @param[in] packet				the raw RADIUS packet (request or response)
+ * @param[in] vector				the original packet vector
+ * @param[in] secret				the shared secret
+ * @param[in] secret_len			the length of the secret
+ * @param[in] require_message_authenticator	whether we require Message-Authenticator.
  * @return
  *	- -2 if the message authenticator or request authenticator was invalid.
  *	- -1 if we were unable to verify the shared secret, or the packet
@@ -717,15 +717,15 @@ finish:
  *	- 0 on success.
  */
 int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
-		     uint8_t const *secret, size_t secret_len, bool require_ma)
+		     uint8_t const *secret, size_t secret_len, bool require_message_authenticator)
 {
-	bool found_ma;
-	int rcode;
-	int code;
-	uint8_t *msg, *end;
-	size_t packet_len = fr_nbo_to_uint16(packet + 2);
-	uint8_t request_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
-	uint8_t message_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
+	bool		found_message_authenticator;
+	int		rcode;
+	int		code;
+	uint8_t		*msg, *end;
+	size_t		packet_len = fr_nbo_to_uint16(packet + 2);
+	uint8_t		request_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
+	uint8_t		message_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
 
 	if (packet_len < RADIUS_HEADER_LENGTH) {
 		fr_strerror_printf("invalid packet length %zd", packet_len);
@@ -747,7 +747,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	 */
 	msg = packet + RADIUS_HEADER_LENGTH;
 	end = packet + packet_len;
-	found_ma = false;
+	found_message_authenticator = false;
 
 	while (msg < end) {
 		if ((end - msg) < 2) goto invalid_attribute;
@@ -773,12 +773,12 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 		 *	Found it, save a copy.
 		 */
 		memcpy(message_authenticator, msg + 2, sizeof(message_authenticator));
-		found_ma = true;
+		found_message_authenticator = true;
 		break;
 	}
 
 	if ((packet[0] == FR_RADIUS_CODE_ACCESS_REQUEST) &&
-	    require_ma && !found_ma) {
+	    require_message_authenticator && !found_message_authenticator) {
 		fr_strerror_const("Access-Request is missing the required Message-Authenticator attribute");
 		return -1;
 	}

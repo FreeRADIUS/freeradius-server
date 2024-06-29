@@ -160,9 +160,9 @@ int		fr_radius_allow_reply(int code, bool allowed[static FR_RADIUS_CODE_MAX]);
 int		fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 			       uint8_t const *secret, size_t secret_len) CC_HINT(nonnull (1,3));
 int		fr_radius_verify(uint8_t *packet, uint8_t const *vector,
-				 uint8_t const *secret, size_t secret_len, bool require_ma) CC_HINT(nonnull (1,3));
+				 uint8_t const *secret, size_t secret_len, bool require_message_authenticator) CC_HINT(nonnull (1,3));
 bool		fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
-			     uint32_t max_attributes, bool require_ma, decode_fail_t *reason) CC_HINT(nonnull (1,2));
+			     uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason) CC_HINT(nonnull (1,2));
 
 ssize_t		fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
 					char const *secret, uint8_t const *vector);
@@ -194,7 +194,7 @@ ssize_t		fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 					fr_packet_t const *original,
 					char const *secret) CC_HINT(nonnull (1,2,4));
 
-bool		fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_ma,
+bool		fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator,
 				    decode_fail_t *reason) CC_HINT(nonnull (1));
 
 int		fr_packet_verify(fr_packet_t *packet, fr_packet_t *original,
@@ -202,7 +202,7 @@ int		fr_packet_verify(fr_packet_t *packet, fr_packet_t *original,
 int		fr_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
 				      char const *secret) CC_HINT(nonnull (1,3));
 
-fr_packet_t	*fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_ma);
+fr_packet_t	*fr_packet_recv(TALLOC_CTX *ctx, int fd, int flags, uint32_t max_attributes, bool require_message_authenticator);
 int		fr_packet_send(fr_packet_t *packet, fr_pair_list_t *list,
 				      fr_packet_t const *original, char const *secret) CC_HINT(nonnull (1,2,4));
 

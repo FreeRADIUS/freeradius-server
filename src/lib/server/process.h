@@ -90,14 +90,14 @@ typedef struct {
 	size_t			section_offset;	//!< Where to look in the process instance for
 						///< a pointer to the section we should execute.
 	rlm_rcode_t		rcode;		//!< Default rcode
-	module_method_t	resume;		//!< Function to call after running a recv section.
+	module_method_t		resume;		//!< Function to call after running a recv section.
 
 	/*
 	 *	Each state has only one "recv" or "send".
 	 */
 	union {
 		module_method_t		recv;		//!< Method to call when receiving this type of packet.
-		module_method_t	send;		//!< Method to call when sending this type of packet.
+		module_method_t		send;		//!< Method to call when sending this type of packet.
 	};
 	PROCESS_STATE_EXTRA_FIELDS
 } fr_process_state_t;

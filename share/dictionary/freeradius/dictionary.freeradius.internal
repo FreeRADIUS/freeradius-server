@@ -540,4 +540,3 @@ VALUE	Auth-Type			Accept			254
 #
 VALUE	Strip-User-Name			No			0
 VALUE	Strip-User-Name			Yes			1
-
