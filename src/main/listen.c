@@ -578,6 +578,16 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	switch (packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
+
+		/*
+		 *	Enforce BlastRADIUS checks on TCP, too.
+		 */
+		if (!rad_packet_ok(packet, client->require_ma | (((int) client->limit_proxy_state) << 2), NULL)) {
+			FR_STATS_INC(auth, total_malformed_requests);
+			rad_free(&sock->packet);
+			return 0;
+		}
+
 		FR_STATS_INC(auth, total_requests);
 		fun = rad_authenticate;
 		break;
