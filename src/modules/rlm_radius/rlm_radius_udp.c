@@ -1137,7 +1137,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			    uint8_t *data, size_t data_len)
 {
-	rlm_radius_udp_t const	*inst = talloc_get_type_abort(h->thread->inst, rlm_radius_udp_t);
+	rlm_radius_udp_t const	*inst = talloc_get_type_abort_const(h->thread->inst, rlm_radius_udp_t);
 	uint8_t			code;
 	fr_radius_ctx_t		common_ctx;
 	fr_radius_decode_ctx_t	decode_ctx;
