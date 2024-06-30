@@ -271,6 +271,11 @@ static REQUEST *fr_state_cleanup_request(state_entry_t *entry)
 	request->handle = rad_postauth;
 
 	/*
+	 *	xlat (and thus rlm_detail) needs something to work with
+	 */
+	gettimeofday(&request->packet->timestamp, NULL);
+
+	/*
 	 *	Move session-state VPS over, after first freeing the
 	 *	separately-parented state_ctx that was allocated along with the
 	 *	fake request.
