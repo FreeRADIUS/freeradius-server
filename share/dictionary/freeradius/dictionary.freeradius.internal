@@ -153,11 +153,24 @@ ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
 
 # The rest of the FreeRADIUS-Client-* attributes are at 1150...
-ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	bool
-ATTRIBUTE	FreeRADIUS-Client-Secret		1123	string
-ATTRIBUTE	FreeRADIUS-Client-Shortname		1124	string
-ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1125	string
-ATTRIBUTE	FreeRADIUS-Client-Virtual-Server	1126	string
+ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	uint8
+
+# Ordering is important here, as the values are a bitmask.
+VALUE	FreeRADIUS-Client-Require-MA		No			0
+VALUE	FreeRADIUS-Client-Require-MA		Auto			1
+VALUE	FreeRADIUS-Client-Require-MA		Yes			2
+
+ATTRIBUTE	FreeRADIUS-Client-Limit-Proxy-State	1123	uint8
+
+# Ordering is important here, as the values are a bitmask.
+VALUE	FreeRADIUS-Client-Limit-Proxy-State	No			0
+VALUE	FreeRADIUS-Client-Limit-Proxy-State	Auto			1
+VALUE	FreeRADIUS-Client-Limit-Proxy-State	Yes			2
+
+ATTRIBUTE	FreeRADIUS-Client-Secret		1124	string
+ATTRIBUTE	FreeRADIUS-Client-Shortname		1125	string
+ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1126	string
+ATTRIBUTE	FreeRADIUS-Client-Virtual-Server	1127	string
 
 #
 #	For send/recv CoA packets (like Auth-Type, Acct-Type, etc.)

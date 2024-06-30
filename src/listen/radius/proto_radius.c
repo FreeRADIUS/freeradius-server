@@ -84,6 +84,16 @@ static conf_parser_t const proto_radius_config[] = {
 	{ FR_CONF_POINTER("limit", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) limit_config },
 	{ FR_CONF_POINTER("priority", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) priority_config },
 
+	{ FR_CONF_OFFSET("require_message_authenticator", proto_radius_t, require_message_authenticator),
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_require_ma_table, .len = &fr_radius_require_ma_table_len },
+	  .dflt = "no" },
+
+	{ FR_CONF_OFFSET("limit_proxy_state", proto_radius_t, limit_proxy_state),
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_limit_proxy_state_table, .len = &fr_radius_limit_proxy_state_table_len },
+	  .dflt = "auto" },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -98,12 +108,16 @@ fr_dict_autoload_t proto_radius_dict[] = {
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_state;
+static fr_dict_attr_t const *attr_proxy_state;
+static fr_dict_attr_t const *attr_message_authenticator;
 
 extern fr_dict_attr_autoload_t proto_radius_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius},
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ NULL }
 };
 
@@ -163,13 +177,20 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 /** Decode the packet
  *
  */
-static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *const data, size_t data_len)
+static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
+	proto_radius_t			*inst = talloc_get_type_abort(instance, proto_radius_t);
 	fr_io_track_t const		*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  		*address = track->address;
 	fr_client_t			*client = UNCONST(fr_client_t *, address->radclient);
 	fr_radius_ctx_t			common_ctx;
 	fr_radius_decode_ctx_t		decode_ctx;
+	fr_radius_require_ma_t		require_message_authenticator = client->require_message_authenticator_is_set ?
+									client->require_message_authenticator:
+									inst->require_message_authenticator;
+	fr_radius_limit_proxy_state_t	limit_proxy_state = client->limit_proxy_state_is_set ?
+							    client->limit_proxy_state:
+							    inst->limit_proxy_state;
 
 	fr_assert(data[0] < FR_RADIUS_CODE_MAX);
 
@@ -193,8 +214,23 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 		/* decode figures out request_authenticator */
 		.end = data + data_len,
 		.verify = client->active,
-		.require_message_authenticator = client->require_message_authenticator,
 	};
+
+	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
+		/*
+		 *	bit1 is set if we've seen a packet, and the auto bit in require_message_authenticator is set/
+		 *	bit2 is set if we always require a message_authenticator.
+		 *	If either bit is high we require a message authenticator in the packet.
+		 */
+		decode_ctx.require_message_authenticator = (
+				(client->received_message_authenticator & require_message_authenticator) |
+				(require_message_authenticator & FR_RADIUS_REQUIRE_MA_YES)
+			) > 0;
+		decode_ctx.limit_proxy_state = (
+				(client->first_packet_no_proxy_state & limit_proxy_state) |
+				(limit_proxy_state & FR_RADIUS_LIMIT_PROXY_STATE_YES)
+			) > 0;
+	}
 
 	/*
 	 *	The verify() routine over-writes the request packet vector.
@@ -227,6 +263,67 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 
 	request->packet->socket = address->socket;
 	fr_socket_addr_swap(&request->reply->socket, &address->socket);
+
+	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
+		/*
+		 *	If require_message_authenticator is "auto" then
+		 *	we start requiring messages authenticator after
+		 *	the first Access-Request packet containing a
+		 *	verified one.  This isn't vulnerable to the same
+		 *	attack as limit_proxy_state, as the attacker would
+		 *	need knowledge of the secret.
+		 *
+		 *	Unfortunately there are too many cases where
+		 *	auto mode could break things (dealing with
+		 *	multiple clients behind a NAT for example).
+		 */
+		if ((require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
+		    !client->received_message_authenticator &&
+		    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
+			client->received_message_authenticator = true;
+
+			RINFO("Packet from client %pV (%pV) contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"",
+			      fr_box_ipaddr(client->ipaddr),
+			      fr_box_strvalue_buffer(client->shortname));
+		}
+
+		/*
+		 *	It's important we only evaluate this on the
+		 *	first packet.  Otherwise an attacker could send
+		 *	Access-Requests with no Proxy-State whilst
+		 *	spoofing a legitimate Proxy-Server, and causing an
+		 *	outage.
+		 *
+		 *	The likelihood of an attacker sending a packet
+		 *	to coincide with the reboot of a RADIUS
+		 *	server is low. That said, 'auto' should likely
+		 * 	not be enabled for internet facing servers.
+		 */
+		if ((limit_proxy_state == FR_RADIUS_LIMIT_PROXY_STATE_AUTO) && client->active && !client->seen_first_packet) {
+		    	client->seen_first_packet = true;
+			client->first_packet_no_proxy_state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state) == NULL;
+
+			RINFO("First packet from %pV (%pV) %s Proxy-State.  Setting \"limit_proxy_state = %s\"",
+			      fr_box_ipaddr(client->ipaddr),
+			      fr_box_strvalue_buffer(client->shortname),
+			      client->first_packet_no_proxy_state ? "did not contain" : "contained",
+			      client->first_packet_no_proxy_state ? "yes" : "no");
+
+			if (!client->received_message_authenticator) {
+				RWARN("Received packet from %pV (%pV) which did not contain Message-Authenticator:",
+				      fr_box_ipaddr(client->ipaddr),
+				      fr_box_strvalue_buffer(client->shortname));
+				RWARN("- Enable Message-Authenticator on the client");
+				RWARN("- Require Message-Authenticator in the client definition (client { require_message_authenticator = yes })");
+			}
+
+			if (!client->first_packet_no_proxy_state) {
+				RWARN("As configured, your client HIGHLY VULNERABLE to the BlastRADIUS response spoofing attack, TAKE ACTION IMMEDIATELY!");
+			} else {
+				RWARN("As configured, your client is vulnerable to the BlastRADIUS response spoofing attack");
+			}
+		}
+	}
 
 	REQUEST_VERIFY(request);
 

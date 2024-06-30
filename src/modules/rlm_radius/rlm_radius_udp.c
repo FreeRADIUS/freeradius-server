@@ -1138,6 +1138,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 			    uint8_t *data, size_t data_len)
 {
 	rlm_radius_udp_t const	*inst = talloc_get_type_abort_const(h->thread->inst, rlm_radius_udp_t);
+	rlm_radius_t const	*parent = inst->parent;
 	uint8_t			code;
 	fr_radius_ctx_t		common_ctx;
 	fr_radius_decode_ctx_t	decode_ctx;
@@ -1158,12 +1159,10 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 		.tmp_ctx = talloc(ctx, uint8_t),
 		.end = data + data_len,
 		.verify = true,
+		.require_message_authenticator = ((*(parent->received_message_authenticator) & parent->require_message_authenticator) |
+						  (parent->require_message_authenticator & FR_RADIUS_REQUIRE_MA_YES)) > 0
 	};
 
-	/*
-	 *	!client->active means a fake packet defining a dynamic client - so there will
-	 *	be no secret defined yet - so can't verify.
-	 */
 	if (fr_radius_decode(ctx, reply, data, data_len, &decode_ctx) < 0) {
 		talloc_free(decode_ctx.tmp_ctx);
 		RPEDEBUG("Failed reading packet");
@@ -1176,6 +1175,22 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	RDEBUG("Received %s ID %d length %ld reply packet on connection %s",
 	       fr_radius_packet_name[code], data[1], data_len, h->name);
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
+
+	/*
+	 *	This code is for BlastRADIUS mitigation.
+	 *
+	 *	The scenario where this applies is where we send Message-Authenticator
+	 *	but the home server doesn't support it or require it, in which case
+	 *	the response can be manipulated by an attacker.
+	 */
+	if (u->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
+		if ((parent->require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
+		    !*(parent->received_message_authenticator) &&
+		    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
+			RINFO("Packet contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"");
+			*(parent->received_message_authenticator) = true;
+		}
+	}
 
 	*response_code = code;
 

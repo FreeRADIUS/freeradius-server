@@ -244,6 +244,8 @@ server dynamic_clients {
 			#  require_message_authenticator
 			&FreeRADIUS-Client-Require-MA = no
 
+			&FreeRADIUS-Client-Limit-Proxy-State = "auto"
+
 			&FreeRADIUS-Client-Secret = "testing123"
 
 			#  shortname

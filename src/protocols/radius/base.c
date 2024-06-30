@@ -80,6 +80,24 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
  */
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf_push
 
+fr_table_num_sorted_t const fr_radius_require_ma_table[] = {
+	{ L("auto"),		FR_RADIUS_REQUIRE_MA_AUTO		},
+	{ L("no"),		FR_RADIUS_REQUIRE_MA_NO			},
+	{ L("yes"),		FR_RADIUS_REQUIRE_MA_YES		},
+	{ L("false"),		FR_RADIUS_REQUIRE_MA_NO			},
+	{ L("true"),		FR_RADIUS_REQUIRE_MA_YES		},
+};
+size_t fr_radius_require_ma_table_len = NUM_ELEMENTS(fr_radius_require_ma_table);
+
+fr_table_num_sorted_t const fr_radius_limit_proxy_state_table[] = {
+	{ L("auto"),		FR_RADIUS_LIMIT_PROXY_STATE_AUTO	},
+	{ L("no"),		FR_RADIUS_LIMIT_PROXY_STATE_NO		},
+	{ L("yes"),		FR_RADIUS_LIMIT_PROXY_STATE_YES		},
+	{ L("false"),		FR_RADIUS_LIMIT_PROXY_STATE_NO		},
+	{ L("true"),		FR_RADIUS_LIMIT_PROXY_STATE_YES		},
+};
+size_t fr_radius_limit_proxy_state_table_len = NUM_ELEMENTS(fr_radius_limit_proxy_state_table);
+
 fr_table_num_sorted_t const fr_radius_request_name_table[] = {
 	{ L("acct"),		FR_RADIUS_CODE_ACCOUNTING_REQUEST	},
 	{ L("auth"),		FR_RADIUS_CODE_ACCESS_REQUEST		},
@@ -710,6 +728,7 @@ finish:
  * @param[in] secret				the shared secret
  * @param[in] secret_len			the length of the secret
  * @param[in] require_message_authenticator	whether we require Message-Authenticator.
+ * @param[in] limit_proxy_state			whether we allow Proxy-State without Message-Authenticator.
  * @return
  *	- -2 if the message authenticator or request authenticator was invalid.
  *	- -1 if we were unable to verify the shared secret, or the packet
@@ -717,9 +736,11 @@ finish:
  *	- 0 on success.
  */
 int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
-		     uint8_t const *secret, size_t secret_len, bool require_message_authenticator)
+		     uint8_t const *secret, size_t secret_len,
+		     bool require_message_authenticator, bool limit_proxy_state)
 {
-	bool		found_message_authenticator;
+	bool		found_message_authenticator = false;
+	bool		found_proxy_state = false;
 	int		rcode;
 	int		code;
 	uint8_t		*msg, *end;
@@ -747,13 +768,19 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	 */
 	msg = packet + RADIUS_HEADER_LENGTH;
 	end = packet + packet_len;
-	found_message_authenticator = false;
 
 	while (msg < end) {
 		if ((end - msg) < 2) goto invalid_attribute;
 
 		if (msg[0] != FR_MESSAGE_AUTHENTICATOR) {
 			if (msg[1] < 2) goto invalid_attribute;
+
+			/*
+			 *	If we're not allowing Proxy-State without
+			 *	Message-authenticator, we need to record
+			 *	the fact we found Proxy-State.
+			 */
+			if (limit_proxy_state && (msg[0] == FR_PROXY_STATE)) found_proxy_state = true;
 
 			if ((msg + msg[1]) > end) {
 			invalid_attribute:
@@ -777,10 +804,16 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 		break;
 	}
 
-	if ((packet[0] == FR_RADIUS_CODE_ACCESS_REQUEST) &&
-	    require_message_authenticator && !found_message_authenticator) {
-		fr_strerror_const("Access-Request is missing the required Message-Authenticator attribute");
-		return -1;
+	if (packet[0] == FR_RADIUS_CODE_ACCESS_REQUEST) {
+		if (limit_proxy_state && found_proxy_state && !found_message_authenticator) {
+			fr_strerror_const("Proxy-State is not allowed without Message-Authenticator");
+			return -1;
+		}
+
+	    	if (require_message_authenticator && !found_message_authenticator) {
+			fr_strerror_const("Access-Request is missing the required Message-Authenticator attribute");
+			return -1;
+		}
 	}
 
 	/*
@@ -1059,7 +1092,7 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		if (fr_radius_verify(packet, decode_ctx->request_authenticator,
 				     (uint8_t const *) decode_ctx->common->secret, decode_ctx->common->secret_length,
-				     decode_ctx->require_message_authenticator) < 0) {
+				     decode_ctx->require_message_authenticator, decode_ctx->limit_proxy_state) < 0) {
 			return -1;
 		}
 	}

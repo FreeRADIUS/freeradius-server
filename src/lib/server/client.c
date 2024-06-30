@@ -442,7 +442,15 @@ static const conf_parser_t client_config[] = {
 
 	{ FR_CONF_OFFSET("track_connections", fr_client_t, use_connected) },
 
-	{ FR_CONF_OFFSET("require_message_authenticator", fr_client_t, require_message_authenticator) },
+	{ FR_CONF_OFFSET_IS_SET("require_message_authenticator", FR_TYPE_UINT32, 0, fr_client_t, require_message_authenticator),
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_require_ma_table, .len = &fr_radius_require_ma_table_len },
+	  .dflt = "no" },
+
+	{ FR_CONF_OFFSET_IS_SET("limit_proxy_state", FR_TYPE_UINT32, 0, fr_client_t, limit_proxy_state),
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_limit_proxy_state_table, .len = &fr_radius_limit_proxy_state_table_len },
+	  .dflt = "auto" },
 
 	{ FR_CONF_OFFSET("dedup_authenticator", fr_client_t, dedup_authenticator) },
 
@@ -984,10 +992,43 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 
 		case FR_FREERADIUS_CLIENT_REQUIRE_MA:
 			attr = "require_message_authenticator";
-			if (vp->vp_bool) {
-				value = "true";
-			} else {
-				value = "false";
+			switch(vp->vp_uint8) {
+			case FR_FREERADIUS_CLIENT_REQUIRE_MA_VALUE_NO:
+				value = "no";
+				break;
+
+			case FR_FREERADIUS_CLIENT_REQUIRE_MA_VALUE_AUTO:
+				value = "auto";
+				break;
+
+			case FR_FREERADIUS_CLIENT_REQUIRE_MA_VALUE_YES:
+				value = "yes";
+				break;
+
+			default:
+				RERROR("Invalid value for FreeRADIUS-Client-Require-MA");
+				goto error;
+			}
+			break;
+
+		case FR_FREERADIUS_CLIENT_LIMIT_PROXY_STATE:
+			attr = "limit_proxy_state";
+			switch(vp->vp_uint8) {
+			case FR_FREERADIUS_CLIENT_LIMIT_PROXY_STATE_VALUE_NO:
+				value = "no";
+				break;
+
+			case FR_FREERADIUS_CLIENT_LIMIT_PROXY_STATE_VALUE_AUTO:
+				value = "auto";
+				break;
+
+			case FR_FREERADIUS_CLIENT_LIMIT_PROXY_STATE_VALUE_YES:
+				value = "yes";
+				break;
+
+			default:
+				RERROR("Invalid value for FreeRADIUS-Client-Limit-Proxy-State");
+				goto error;
 			}
 			break;
 

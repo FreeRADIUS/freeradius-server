@@ -143,7 +143,7 @@ int fr_packet_verify(fr_packet_t *packet, fr_packet_t *original, char const *sec
 	if (!packet->data) return -1;
 
 	if (fr_radius_verify(packet->data, original ? original->data + 4 : NULL,
-			     (uint8_t const *) secret, talloc_array_length(secret) - 1, false) < 0) {
+			     (uint8_t const *) secret, talloc_array_length(secret) - 1, false, false) < 0) {
 		fr_strerror_printf_push("Received invalid packet from %s",
 					inet_ntop(packet->socket.inet.src_ipaddr.af, &packet->socket.inet.src_ipaddr.addr,
 						  buffer, sizeof(buffer)));

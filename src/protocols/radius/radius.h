@@ -47,14 +47,12 @@
  *	protocols/radius/base.c
  */
 
-extern char const *fr_radius_packet_name[FR_RADIUS_CODE_MAX];
+
 #define FR_RADIUS_PACKET_CODE_VALID(_x) ((_x > 0) && (_x < FR_RADIUS_CODE_MAX))
 
 #define AUTH_PASS_LEN (RADIUS_AUTH_VECTOR_LENGTH)
 
 #define	FR_TUNNEL_FR_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
-extern fr_table_num_sorted_t const fr_radius_request_name_table[];
-extern size_t fr_radius_request_name_table_len;
 
 typedef enum {
 	DECODE_FAIL_NONE = 0,
@@ -74,6 +72,37 @@ typedef enum {
 	DECODE_FAIL_UNKNOWN,
 	DECODE_FAIL_MAX
 } decode_fail_t;
+
+/** Control whether Message-Authenticator is required in Access-Requests
+ *
+ * @note Don't change the enum values.  They allow efficient bistmasking.
+ */
+typedef enum {
+	FR_RADIUS_REQUIRE_MA_NO			= 0x00,		//!< Do not require Message-Authenticator
+	FR_RADIUS_REQUIRE_MA_AUTO		= 0x01,		//!< Only require Message-Authenticator if we've previously
+								///< received a packet from this client with Message-Authenticator.
+								///< @note This isn't used by the radius protocol code, but may be used
+								///< to drive logic in modules.
+	FR_RADIUS_REQUIRE_MA_YES		= 0x02		//!< Require Message-Authenticator
+
+} fr_radius_require_ma_t;
+
+/** Control whether Proxy-State is allowed in Access-Requests
+ *
+ * @note Don't change the enum values.  They allow efficient bistmasking.
+ */
+typedef enum {
+	FR_RADIUS_LIMIT_PROXY_STATE_NO		= 0x00,		//!< Do not limit Proxy-State.  Allow proxy-state to be sent in
+								///< all packets.
+	FR_RADIUS_LIMIT_PROXY_STATE_AUTO	= 0x01,		//!< Do not allow Proxy-State unless:
+								///< - All packets received from a client have containted proxy state.
+								///< - The client has sent a packet with a Message-Authenticator.
+								///< @note This isn't used by the radius protocol code, but may be used
+								///< to drive logic in modules.
+	FR_RADIUS_LIMIT_PROXY_STATE_YES		= 0x02,		//!< Limit Proxy-State.  Do not allow Proxy-State to be sent in
+								///< packets which do not have a Message-Authenticator attribute.
+
+} fr_radius_limit_proxy_state_t;
 
 /** subtype values for RADIUS
  *
@@ -146,11 +175,23 @@ typedef struct {
 	bool 			tunnel_password_zeros;  //!< check for trailing zeros on decode
 	bool			verify;			//!< can skip verify for dynamic clients
 	bool			require_message_authenticator;
+	bool			limit_proxy_state;	//!< Don't allow Proxy-State in requests
 
 	fr_radius_tag_ctx_t    	**tags;			//!< for decoding tagged attributes
 	fr_pair_list_t		*tag_root;		//!< Where to insert tag attributes.
 	TALLOC_CTX		*tag_root_ctx;		//!< Where to allocate new tag attributes.
 } fr_radius_decode_ctx_t;
+
+extern fr_table_num_sorted_t const fr_radius_require_ma_table[];
+extern size_t fr_radius_require_ma_table_len;
+
+extern fr_table_num_sorted_t const fr_radius_limit_proxy_state_table[];
+extern size_t fr_radius_limit_proxy_state_table_len;
+
+extern fr_table_num_sorted_t const fr_radius_request_name_table[];
+extern size_t fr_radius_request_name_table_len;
+
+extern char const *fr_radius_packet_name[FR_RADIUS_CODE_MAX];
 
 /*
  *	protocols/radius/base.c
@@ -159,8 +200,11 @@ int		fr_radius_allow_reply(int code, bool allowed[static FR_RADIUS_CODE_MAX]);
 
 int		fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 			       uint8_t const *secret, size_t secret_len) CC_HINT(nonnull (1,3));
+
 int		fr_radius_verify(uint8_t *packet, uint8_t const *vector,
-				 uint8_t const *secret, size_t secret_len, bool require_message_authenticator) CC_HINT(nonnull (1,3));
+				 uint8_t const *secret, size_t secret_len,
+				 bool require_message_authenticator, bool limit_proxy_state) CC_HINT(nonnull (1,3));
+
 bool		fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 			     uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason) CC_HINT(nonnull (1,2));
 

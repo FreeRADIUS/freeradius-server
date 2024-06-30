@@ -453,7 +453,8 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 	if (!id_ctx->response) {
 		if (fr_radius_verify(data, id_ctx->packet->data + 4,
 				     my->cfg.verify.secret, my->cfg.verify.secret_len,
-				     my->cfg.verify.require_message_authenticator) < 0) {
+				     my->cfg.verify.require_message_authenticator,
+				     my->cfg.verify.limit_proxy_state) < 0) {
 			return false;
 		}
 

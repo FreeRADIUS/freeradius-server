@@ -113,6 +113,23 @@ radius {
 #	originate = no
 
 	#
+	#  require_message_authenticator::Require Message-Authenticator
+	#  in responses.
+	#
+	#  Including a Message-Authenticator attribute first in response
+	#  packet, mitigates against the blastradius prefix attack.
+	#
+	#  If value is auto, then if any packet received from the client
+	#  contains a valid Message-Authenticator attribute, then the server
+	#  will require it from all future packets from that client.
+	#
+	#  Allowed values: yes, no, auto
+	#
+	#  The default is "no".
+	#
+	require_message_authenticator = auto
+
+	#
 	#  status_check { ... }:: For "are you alive?" queries.
 	#
 	#  If the home server does not respond to proxied packets, the

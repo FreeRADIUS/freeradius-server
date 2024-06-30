@@ -39,6 +39,7 @@ typedef struct {
 	bool		allowed[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
 
 	bool		require_message_authenticator;
+	bool		limit_proxy_state;
 } fr_radius_bio_verify_t;
 
 fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size);

@@ -115,6 +115,11 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET("max_attributes", rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
+	{ FR_CONF_OFFSET("require_message_authenticator", rlm_radius_t, require_message_authenticator),
+	  .func = cf_table_parse_int,
+	  .uctx = &(cf_table_parse_ctx_t){ .table = fr_radius_require_ma_table, .len = &fr_radius_require_ma_table_len },
+	  .dflt = "no" },
+
 	{ FR_CONF_OFFSET("response_window", rlm_radius_t, response_window), .dflt = STRINGIFY(20) },
 
 	{ FR_CONF_OFFSET("zombie_period", rlm_radius_t, zombie_period), .dflt = STRINGIFY(40) },
@@ -460,6 +465,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->io = (rlm_radius_io_t const *)inst->io_submodule->exported;	/* Public symbol exported by the module */
 	inst->name = mctx->mi->name;
+	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
 	/*
 	 *	These limits are specific to RADIUS, and cannot be over-ridden
@@ -627,6 +633,14 @@ setup_io_submodule:
 	return 0;
 }
 
+static int mod_detach(module_detach_ctx_t const *mctx)
+{
+	rlm_radius_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
+
+	talloc_free(inst->received_message_authenticator);
+	return 0;
+}
+
 static int mod_load(void)
 {
 	if (fr_radius_global_init() < 0) {
@@ -662,6 +676,7 @@ module_rlm_t rlm_radius = {
 		.unload		= mod_unload,
 
 		.instantiate	= mod_instantiate,
+		.detach		= mod_detach
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){

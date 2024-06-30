@@ -24,7 +24,7 @@
  * @copyright 2018 Alan DeKok (aland@freeradius.org)
  */
 #include <freeradius-devel/io/master.h>
-
+#include <freeradius-devel/radius/radius.h>
 
 /** An instance of a proto_radius listen section
  *
@@ -41,4 +41,8 @@ typedef struct {
 
 	char const			**allowed_types;		//!< names for for 'type = ...'
 	bool				allowed[FR_RADIUS_CODE_MAX];
+
+	fr_radius_require_ma_t		require_message_authenticator;			//!< Require Message-Authenticator in all requests.
+	fr_radius_limit_proxy_state_t	limit_proxy_state;		//!< Limit Proxy-State to packets containing
+									///< Message-Authenticator.
 } proto_radius_t;

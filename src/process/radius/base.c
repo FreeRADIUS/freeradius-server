@@ -819,7 +819,7 @@ static xlat_action_t xlat_func_radius_secret_verify(TALLOC_CTX *ctx, fr_dcursor_
 	 */
 	if (request->packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) require_message_authenticator = true;
 
-	ret = fr_radius_verify(request->packet->data, NULL, secret->vb_octets, secret->vb_length, require_message_authenticator);
+	ret = fr_radius_verify(request->packet->data, NULL, secret->vb_octets, secret->vb_length, require_message_authenticator, false);
 	switch (ret) {
 	case 0:
 		vb->vb_bool = true;
