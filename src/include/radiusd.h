@@ -174,7 +174,7 @@ typedef struct main_config {
 
 	bool		exiting;			//!< are we exiting?
 
-	bool		require_ma;			//!< global configuration for all clients and home servers
+	fr_bool_auto_t 	require_ma;			//!< global configuration for all clients and home servers
 
 	fr_bool_auto_t 	limit_proxy_state;     		//!< global configuration for all clients
 

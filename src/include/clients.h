@@ -26,13 +26,6 @@
  * @copyright 2015 The FreeRADIUS server project
  */
 
-typedef enum {
-	FR_BOOL_FALSE = 0,
-	FR_BOOL_TRUE,
-	FR_BOOL_AUTO,
-} fr_bool_auto_t;
-
-
 typedef struct radclient_list RADCLIENT_LIST;
 
 
@@ -50,7 +43,9 @@ typedef struct radclient {
 
 	char const		*secret;		//!< Secret PSK.
 
-	bool			require_ma;		//!< Require RADIUS message authenticator in requests.
+	fr_bool_auto_t 		require_ma;		//!< Require RADIUS message authenticator in requests.
+
+	bool			dynamic_require_ma;	//!< for dynamic clients
 
 	fr_bool_auto_t 		limit_proxy_state;     	//!< Limit Proxy-State in requests
 

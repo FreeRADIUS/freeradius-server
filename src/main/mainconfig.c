@@ -73,6 +73,7 @@ static char const *gid_name = NULL;
 static char const *chroot_dir = NULL;
 static bool allow_core_dumps = false;
 static char const *radlog_dest = NULL;
+static char const *require_message_authenticator = NULL;
 static char const *limit_proxy_state = NULL;
 
 /*
@@ -207,7 +208,7 @@ static const CONF_PARSER security_config[] = {
 	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), STRINGIFY(0) },
 	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), STRINGIFY(0) },
 	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
-	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.require_ma), "yes"},
+	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING, &require_message_authenticator), "auto"},
 	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_STRING, &limit_proxy_state), "auto"},
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
@@ -904,6 +905,7 @@ int main_config_init(void)
 	if (!main_config.dictionary_dir) {
 		main_config.dictionary_dir = DICTDIR;
 	}
+	main_config.require_ma = FR_BOOL_AUTO;
 	main_config.limit_proxy_state = FR_BOOL_AUTO;
 
 	/*
@@ -1204,8 +1206,13 @@ do {\
 		CONF_PAIR *cp = NULL;
 
 		subcs = cf_section_sub_find(cs, "security");
-		if (subcs) cp = cf_pair_find(subcs, "limit_proxy_state");
+		if (subcs) cp = cf_pair_find(subcs, "require_message_authenticator");
+		if (fr_bool_auto_parse(cp, &main_config.require_ma, require_message_authenticator) < 0) {
+			cf_file_free(cs);
+			return -1;
+		}
 
+		if (subcs) cp = cf_pair_find(subcs, "limit_proxy_state");
 		if (fr_bool_auto_parse(cp, &main_config.limit_proxy_state, limit_proxy_state) < 0) {
 			cf_file_free(cs);
 			return -1;
