@@ -491,6 +491,7 @@ static fr_ipaddr_t cl_ipaddr;
 static uint32_t cl_netmask;
 static char const *cl_srcipaddr = NULL;
 static char const *hs_proto = NULL;
+static char const *require_message_authenticator = NULL;
 static char const *limit_proxy_state = NULL;
 
 #ifdef WITH_TCP
@@ -514,7 +515,7 @@ static const CONF_PARSER client_config[] = {
 
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
 
-	{ "require_message_authenticator",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_IGNORE_DEFAULT, RADCLIENT, require_ma), NULL },
+	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &require_message_authenticator), NULL },
 	{ "limit_proxy_state", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &limit_proxy_state), NULL },
 
 	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret), NULL },
@@ -727,7 +728,7 @@ static const CONF_PARSER dynamic_config[] = {
 	{ "FreeRADIUS-Client-Src-IP-Address", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, RADCLIENT, src_ipaddr), NULL },
 	{ "FreeRADIUS-Client-Src-IPv6-Address", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, RADCLIENT, src_ipaddr), NULL },
 
-	{ "FreeRADIUS-Client-Require-MA", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, require_ma), NULL },
+	{ "FreeRADIUS-Client-Require-MA", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, dynamic_require_ma), NULL },
 
 	{ "FreeRADIUS-Client-Secret",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, secret), "" },
 	{ "FreeRADIUS-Client-Shortname",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), "" },
@@ -920,6 +921,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
 	cl_netmask = 255;
+	require_message_authenticator = NULL;
 	limit_proxy_state = NULL;
 
 	if (cf_section_parse(cs, c, client_config) < 0) {
@@ -930,6 +932,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 		hs_proto = NULL;
 		cl_srcipaddr = NULL;
 #endif
+		require_message_authenticator = NULL;
 		limit_proxy_state = NULL;
 
 		return NULL;
@@ -1203,8 +1206,14 @@ done_coa:
 	}
 #endif
 
-	if (fr_bool_auto_parse(cf_pair_find(cs, "limit_proxy_state"), &c->limit_proxy_state, limit_proxy_state) < 0) {
+	if (fr_bool_auto_parse(cf_pair_find(cs, "require_message_authenticator"), &c->require_ma, require_message_authenticator) < 0) {
 		goto error;
+	}
+
+	if (c->require_ma != FR_BOOL_TRUE) {
+		if (fr_bool_auto_parse(cf_pair_find(cs, "limit_proxy_state"), &c->limit_proxy_state, limit_proxy_state) < 0) {
+			goto error;
+		}
 	}
 
 	return c;
@@ -1530,6 +1539,11 @@ validate:
 		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
 		goto error;
 	}
+
+	/*
+	 *	It can't be set to "auto".  Too bad.
+	 */
+	c->require_ma = (fr_bool_auto_t) c->dynamic_require_ma;
 
 	if (!client_add_dynamic(clients, request->client, c)) {
 		return NULL;

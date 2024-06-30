@@ -532,7 +532,49 @@ int rad_status_server(REQUEST *request)
 
 static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 {
-	if (client->require_ma) return;
+	if (client->require_ma == FR_BOOL_TRUE) return;
+
+	if (client->require_ma == FR_BOOL_AUTO) {
+		if (!packet->message_authenticator) {
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			ERROR("BlastRADIUS check: Received packet without Message-Authenticator.");
+			ERROR("Setting \"require_message_authenticator = false\" for client %s", client->shortname);
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			ERROR("UPGRADE THE CLIENT AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+			ERROR("Once the client is upgraded, set \"require_message_authenticator = true\" for this client.");
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			client->require_ma = FR_BOOL_FALSE;
+
+			/*
+			 *	And fall through to the
+			 *	limit_proxy_state checks, which might
+			 *	complain again.  Oh well, maybe that
+			 *	will make people read the messages.
+			 */
+
+		} else if (packet->eap_message) {
+			/*
+			 *	Don't set it to "true" for packets
+			 *	with EAP-Message.  It's already
+			 *	required there, and we might get a
+			 *	non-EAP packet with (or without)
+			 *	Message-Authenticator
+			 */
+			return;
+		} else {
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			ERROR("BlastRADIUS check: Received packet with Message-Authenticator.");
+			ERROR("Setting \"require_message_authenticator = true\" for client %s", client->shortname);
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			ERROR("It looks like the client has been uppdated to protect from the BlastRADIUS attack.");
+			ERROR("Please set \"require_message_authenticator = true\" for this client.");
+			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+			client->require_ma = FR_BOOL_TRUE;
+			return;
+		}
+
+	}
 
 	/*
 	 *	If all of the checks are turned off, then complain for every packet we receive.
@@ -542,6 +584,8 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 		 *	We have a Message-Authenticator, and it's valid.  We don't need to compain.
 		 */
 		if (packet->message_authenticator) return;
+
+		if (!fr_debug_lvl) return; /* easier than checking for each line below */
 
 		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		DEBUG("BlastRADIUS check: Received packet without Message-Authenticator.");
@@ -683,7 +727,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		/*
 		 *	Enforce BlastRADIUS checks on TCP, too.
 		 */
-		if (!rad_packet_ok(packet, client->require_ma | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2), NULL)) {
+		if (!rad_packet_ok(packet, (client->require_ma == FR_BOOL_TRUE) | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2), NULL)) {
 			FR_STATS_INC(auth, total_malformed_requests);
 			rad_free(&sock->packet);
 			return 0;
@@ -2114,7 +2158,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(ctx, listener->fd, client->require_ma | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2));
+	packet = rad_recv(ctx, listener->fd, (client->require_ma == FR_BOOL_TRUE) | ((client->limit_proxy_state == FR_BOOL_TRUE) << 2));
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
@@ -2546,7 +2590,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 #endif
 	char		buffer[128];
 
-	packet = rad_recv(NULL, listener->fd, 8); /* SOME packets don't require a Message-Authenticator attribute */
+	packet = rad_recv(NULL, listener->fd, 0x08); /* SOME packets don't require a Message-Authenticator attribute */
 	if (!packet) {
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;

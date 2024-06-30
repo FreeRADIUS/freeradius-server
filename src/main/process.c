@@ -2806,7 +2806,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		 *
 		 *	The realms.c file already clears require_ma for TLS connections.
 		 */
-		bool require_ma = request->home_server->require_ma && (request->proxy->code == PW_CODE_ACCESS_REQUEST);
+		bool require_ma = (request->home_server->require_ma == FR_BOOL_TRUE) && (request->proxy->code == PW_CODE_ACCESS_REQUEST);
 
 		if (!request->home_server) {
 			proxy_reply_too_late(request);
@@ -2822,6 +2822,53 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 			       request->home_server->secret) != 0) {
 			DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 			return 0;
+		}
+
+		/*
+		 *	BlastRADIUS checks.  We're running in the main
+		 *	listener thread, so there's no conflict
+		 *	checking or setting these fields.
+		 */
+		if ((request->proxy->code == PW_CODE_ACCESS_REQUEST) && 
+#ifdef WITH_TLS
+		    !request->home_server->tls &&
+#endif
+		    !packet->eap_message) {
+			if (request->home_server->require_ma == FR_BOOL_AUTO) {
+				if (!packet->message_authenticator) {
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					RERROR("BlastRADIUS check: Received response to Access-Request without Message-Authenticator.");
+					RERROR("Setting \"require_message_authenticator = false\" for home_server %s", request->home_server->name);
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					RERROR("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+					RERROR("Once the home_server is upgraded, set \"require_message_authenticator = true\" for this home_server.");
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+					request->home_server->require_ma = FR_BOOL_FALSE;
+				} else {
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					RERROR("BlastRADIUS check: Received response to Access-Request with Message-Authenticator.");
+					RERROR("Setting \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+					RERROR("It looks like the home server has been uppdated to protect from the BlastRADIUS attack.");
+					RERROR("Please set \"require_message_authenticator = true\" for this home_server.");
+					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+					request->home_server->require_ma = FR_BOOL_TRUE;
+				}
+
+			} else if (fr_debug_lvl && (request->home_server->require_ma == FR_BOOL_FALSE) && !packet->message_authenticator) {
+				/*
+				 *	If it's "no" AND we don't have a Message-Authenticator, then complain on every packet.
+				 */
+				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				RDEBUG("BlastRADIUS check: Received packet without Message-Authenticator from home_server %s", request->home_server->name);
+				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				RDEBUG("The packet does not contain Message-Authenticator, which is a security issue");
+				RDEBUG("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
+				RDEBUG("Once the home server is upgraded, set \"require_message_authenticator = true\" for this home_server.");
+				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			}
 		}
 	}
 

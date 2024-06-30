@@ -970,6 +970,12 @@ int		fr_socket_wait_for_connect(int sockfd, struct timeval *timeout);
 }
 #endif
 
+typedef enum {
+	FR_BOOL_FALSE = 0,
+	FR_BOOL_TRUE,
+	FR_BOOL_AUTO,
+} fr_bool_auto_t;
+
 #include <freeradius-devel/packet.h>
 
 #ifdef WITH_TCP

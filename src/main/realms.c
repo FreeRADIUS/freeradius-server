@@ -481,9 +481,11 @@ static CONF_PARSER home_server_recv_coa[] = {
 
 #endif
 
+static const char *require_message_authenticator = NULL;
+
 static CONF_PARSER home_server_config[] = {
 	{ "nonblock", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, home_server_t, nonblock), "no" },
-	{ "require_message_authenticator", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_IGNORE_DEFAULT, home_server_t, require_ma), NULL },
+	{ "require_message_authenticator", FR_CONF_POINTER(PW_TYPE_STRING| PW_TYPE_IGNORE_DEFAULT, &require_message_authenticator), NULL },
 	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr), NULL },
 	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, home_server_t, ipaddr), NULL },
 	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, home_server_t, ipaddr), NULL },
@@ -789,11 +791,17 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	home->proto = IPPROTO_UDP;
 	home->require_ma = main_config.require_ma;
 
+	require_message_authenticator = false;
+
 	/*
 	 *	Parse the configuration into the home server
 	 *	struct.
 	 */
 	if (cf_section_parse(cs, home, home_server_config) < 0) goto error;
+
+	if (fr_bool_auto_parse(cf_pair_find(cs, "require_message_authenticator"), &home->require_ma, require_message_authenticator) < 0) {
+		goto error;
+	}
 
 	/*
 	 *	It has an IP address, it must be a remote server.
