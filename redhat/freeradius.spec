@@ -7,12 +7,29 @@
 %bcond_with rlm_securid
 %bcond_with rlm_sigtran
 
-# Oracle conditions and definitions
-# Pass in --with rlm_sql_oracle to build with Oracle support
-# Specify the version of Oracle you're using with _oracle_version
-# Specify the include and lib directories for Oracle with _oracle_include_dir and _oracle_lib_dir
+#
+#  Oracle conditions and definitions
+#
+#  The name of instantclient packages, and where they install libraries and headers
+#  varies wildly between the version of the package and what operating system you're
+#  using.  The following definitions allow the defaults for the rlm_sql_oracle module
+#  to be overridden.
+#
+#  Pass in --with rlm_sql_oracle to build with Oracle support
+#
+#  Specify the version of Oracle you're using with:
+#    --define '_oracle_version <version>'
+#  Specify the include and lib directories for Oracle with:
+#    --define '_oracle_include_dir <dir>' and --define '_oracle_lib_dir <dir>'
+#  Specify runtime dependencies with:
+#    --define '_oracle_requires <package>'
+#  Specify the build dependencies with:
+#    --define '_oracle_build_requires <package>'
+#
 %bcond_with rlm_sql_oracle
 %if %{with rlm_sql_oracle}
+  %{!?_oracle_requires:%define _oracle_requires oracle-instantclient%{?_oracle_version}}
+  %{!?_oracle_build_requires:%define _oracle_build_requires oracle-instantclient%{?_oracle_version}-devel}
   %ifarch x86_64
     %{!?_oracle_include_dir:%define _oracle_include_dir /usr/include/oracle%{?_oracle_version:/%{_oracle_version}}/client64}
     %{!?_oracle_lib_dir:%define _oracle_lib_dir %{_prefix}/lib/oracle/%{?_oracle_version:/%{_oracle_version}}/client64/lib}
@@ -443,8 +460,8 @@ This plugin provides FreeTDS support for the FreeRADIUS server project.
 Summary: Oracle support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name}%{?_isa} = %{version}-%{release}
-Requires: oracle-instantclient%{?_oracle_version}
-BuildRequires: oracle-instantclient%{?_oracle_version}-devel
+Requires: %{_oracle_requires}
+BuildRequires: %{_oracle_build_requires}
 %description oracle
 This plugin provides Oracle support for the FreeRADIUS server project.
 %endif
