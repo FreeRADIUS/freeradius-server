@@ -655,8 +655,8 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 %if %{without rlm_sql_oracle}
         --without-rlm_sql_oracle \
 %else
-        --with-oracle-include-dir=%{oracle_include_dir} \
-        --with-oracle-lib-dir=%{oracle_lib_dir} \
+        --with-oracle-include-dir=%{_oracle_include_dir} \
+        --with-oracle-lib-dir=%{_oracle_lib_dir} \
 %endif
         --with-mysql-lib-dir=%{_libdir}/mysql \
         --with-unixodbc-lib-dir=%{_libdir} \
