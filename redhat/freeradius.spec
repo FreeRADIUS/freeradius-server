@@ -423,11 +423,6 @@ BuildRequires: freetds-devel
 This plugin provides FreeTDS support for the FreeRADIUS server project.
 
 %if %{with rlm_sql_oracle}
-%package oracle
-Summary: Oracle support for FreeRADIUS
-Group: System Environment/Daemons
-Requires: %{name}%{?_isa} = %{version}-%{release}
-
 %global _oracle_version 11.2
 %ifarch x86_64
 %global _oracle_include_dir /usr/include/oracle/%{_oracle_version}/client64
@@ -439,6 +434,10 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 %endif
 %endif
 
+%package oracle
+Summary: Oracle support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name}%{?_isa} = %{version}-%{release}
 Requires: oracle-instantclient%{_oracle_version}
 BuildRequires: oracle-instantclient%{_oracle_version}-devel
 %description oracle
