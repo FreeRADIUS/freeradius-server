@@ -838,6 +838,7 @@ static int write_all(int fd, char const *buf, int len) {
 	int rv, done=0;
 
 	while (done < len) {
+		/* coverity[overflow_sink] */
 		rv = write(fd, buf+done, len-done);
 		if (rv <= 0)
 			break;
