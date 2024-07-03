@@ -867,6 +867,7 @@ uint32_t fr_hash_string(char const *p)
 	uint32_t      hash = FNV_MAGIC_INIT;
 
 	while (*p) {
+		/* coverity[overflow_const] */
 		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t) (*p++);
 	}
@@ -882,6 +883,7 @@ uint32_t fr_hash_case_string(char const *p)
 	uint32_t      hash = FNV_MAGIC_INIT;
 
 	while (*p) {
+		/* coverity[overflow_const] */
 		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t) (tolower((uint8_t) *p++));
 	}
