@@ -2841,7 +2841,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 					RERROR("Setting \"require_message_authenticator = false\" for home_server %s", request->home_server->name);
 					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 					RERROR("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
-					RERROR("Once the home_server is upgraded, set \"require_message_authenticator = true\" for this home_server.");
+					RERROR("Once the home_server is upgraded, set \"require_message_authenticator = true\" for home_server %s.", request->home_server->name);
 					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
 					request->home_server->require_ma = FR_BOOL_FALSE;
@@ -2850,8 +2850,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 					RERROR("BlastRADIUS check: Received response to Access-Request with Message-Authenticator.");
 					RERROR("Setting \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
 					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-					RERROR("It looks like the home server has been uppdated to protect from the BlastRADIUS attack.");
-					RERROR("Please set \"require_message_authenticator = true\" for this home_server.");
+					RERROR("It looks like the home server has been updated to protect from the BlastRADIUS attack.");
+					RERROR("Please set \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
 					RERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
 					request->home_server->require_ma = FR_BOOL_TRUE;
@@ -2866,7 +2866,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 				RDEBUG("The packet does not contain Message-Authenticator, which is a security issue");
 				RDEBUG("UPGRADE THE HOME SERVER AS YOUR NETWORK IS VULNERABLE TO THE BLASTRADIUS ATTACK.");
-				RDEBUG("Once the home server is upgraded, set \"require_message_authenticator = true\" for this home_server.");
+				RDEBUG("Once the home server is upgraded, set \"require_message_authenticator = true\" for home_server %s", request->home_server->name);
 				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			}
 		}
