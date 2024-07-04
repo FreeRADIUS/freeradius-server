@@ -1,5 +1,10 @@
-FreeRADIUS 3.2.5 Wed 29 May 2024 12:00:00 EDT urgency=low
+FreeRADIUS 3.2.5 Tuesday 09 July 2024 12:00:00 UTC urgency=high
 	Configuration changes
+	* BlastRADIUS mitigations have been added to the "security"
+	  section.  See "require_message_authenticator" and also
+	  "limit_proxy_state".
+	* BlastRADIUS mitigations have been added to radclient.
+	  See "man radclient", and the "-b" option.
 
 	Feature improvements
 	* TOTP now supports TOTP-Time-Offset for tokens with times that
