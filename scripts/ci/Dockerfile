@@ -54,6 +54,16 @@ RUN DIST=$(lsb_release -is | tr '[:upper:]' '[:lower:]') && \
 RUN apt-get update
 
 #
+#  Install some basics
+#
+#  sudo is to maintain compatibility with GitHub hosted runners
+#
+RUN apt-get install -y --no-install-recommends \
+	git \
+	git-lfs \
+	sudo
+
+#
 #  Install FreeRADIUS build-dep packages
 #  After NR repo so that we pick up newer libkqueue packages.
 #
@@ -100,8 +110,6 @@ RUN apt-get install -yd --no-install-recommends \
 	heimdal-dev \
 	libpcre3-dev
 
-
-
 #
 #  Extra installs for the CI testing stage
 #
@@ -140,4 +148,3 @@ RUN apt-get install -y --no-install-recommends \
 #  - install eapol_test
 #  - install openssl 3.0 (needs CI update to enable/disable)
 #
-
