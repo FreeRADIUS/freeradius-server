@@ -21,7 +21,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.1
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.3
+attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.2
 	NAME 'freeradiusClientShortname'
 	DESC 'Client Shortname'
 	EQUALITY caseIgnoreMatch
@@ -30,7 +30,7 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.3
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.5
+attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.3
 	NAME 'freeradiusClientType'
 	DESC 'Client Type'
 	EQUALITY caseIgnoreMatch
@@ -39,12 +39,19 @@ attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.5
 	SINGLE-VALUE
  )
 
-attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.7
+attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.4
 	NAME 'freeradiusClientComment'
 	DESC 'Client comment'
 	EQUALITY caseIgnoreMatch
 	SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
 	SINGLE-VALUE
+ )
+
+ attributetype ( 1.3.6.1.4.1.11344.4.1.1.1.5
+	NAME 'freeradiusClientGroupDN'
+	DESC 'Client group membership'
+	EQUALITY distinguishedNameMatch
+	SYNTAX 1.3.6.1.4.1.1466.115.121.1.12
  )
 
 objectclass ( 1.3.6.1.4.1.11344.4.1.1.2.1
@@ -53,7 +60,7 @@ objectclass ( 1.3.6.1.4.1.11344.4.1.1.2.1
 	SUP top
 	STRUCTURAL
 	MUST ( freeradiusClientIdentifier )
-	MAY ( freeradiusClientShortname $ freeradiusClientType $ freeradiusClientComment )
+	MAY ( freeradiusClientShortname $ freeradiusClientType $ freeradiusClientComment $ freeradiusClientGroupDN )
  )
 
 #
@@ -68,4 +75,3 @@ objectclass ( 1.3.6.1.4.1.11344.4.1.1.2.2
 	MUST ( freeradiusClientIdentifier )
 	MAY ( freeradiusClientShortname $ freeradiusClientType $ freeradiusClientComment )
  )
-
