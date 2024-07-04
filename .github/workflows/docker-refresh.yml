@@ -1,6 +1,11 @@
 name: Docker CI Image Refresh
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - scripts/ci/Dockerfile
   workflow_dispatch:
   schedule:
     - cron: '0 1 * * *'
