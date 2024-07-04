@@ -1101,7 +1101,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_load(rlm_rcode_t *p_result, m
 	if (rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (!entry) {
-		WARN("Entry not found to load");
+		RDEBUG2("Entry not found to load");
 		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
 	}
@@ -1300,7 +1300,7 @@ static unlang_action_t CC_HINT(nonnull) mod_method_clear(rlm_rcode_t *p_result, 
 	if (rcode == RLM_MODULE_FAIL) goto finish;
 
 	if (!entry) {
-		WARN("Entry not found to delete");
+		REDEBUG2("Entry not found to delete");
 		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
 	}
