@@ -14,6 +14,9 @@ FreeRADIUS 3.2.5 Wed 29 May 2024 12:00:00 EDT urgency=low
 	* Allow proxying by pool / home server name to work with auth+acct servers
 	* Fix OpenSSL API usage which sometimes caused crash in MS-CHAP
 	  Previously it would either always crash immediately, or never crash.
+	* Fix packet statistics.  Stop double counting some packets,
+	  and track packet statistics even if a socket is closed.
+	* Reverted patch in TTLS which broke compatibility with some systems.
 
 FreeRADIUS 3.2.4 Wed 29 May 2024 12:00:00 EDT urgency=low
 	Configuration changes
