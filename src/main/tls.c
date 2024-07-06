@@ -2906,10 +2906,6 @@ static char const *cert_attr_names[9][2] = {
 #define FR_TLS_SAN_UPN          (7)
 #define FR_TLS_VALID_SINCE	(8)
 
-static const char *cert_names[2] = {
-	"client", "server",
-};
-
 /*
  *	Before trusting a certificate, you must make sure that the
  *	certificate is 'valid'. There are several steps that your
@@ -3006,7 +3002,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
 
-	RDEBUG2("(TLS) Creating attributes from %s certificate", cert_names[lookup]);
+	RDEBUG2("(TLS) Creating attributes from %d certificate in chain", lookup + 1);
  	RINDENT();
 
 	/*
