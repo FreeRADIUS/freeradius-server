@@ -17,6 +17,8 @@ FreeRADIUS 3.2.5 Wed 29 May 2024 12:00:00 EDT urgency=low
 	* Fix packet statistics.  Stop double counting some packets,
 	  and track packet statistics even if a socket is closed.
 	* Reverted patch in TTLS which broke compatibility with some systems.
+	* Don't crash in debug mode when multiple intermediate certs are used
+	  Patch from Alexander Chernikov.
 
 FreeRADIUS 3.2.4 Wed 29 May 2024 12:00:00 EDT urgency=low
 	Configuration changes
