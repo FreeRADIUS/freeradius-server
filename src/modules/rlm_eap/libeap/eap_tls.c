@@ -105,6 +105,28 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	return talloc_steal(handler, ssn); /* ssn */
 }
 
+/*
+   The S flag is set only within the EAP-TLS start message
+   sent from the EAP server to the peer.
+*/
+int eaptls_start(EAP_DS *eap_ds, int peap_flag)
+{
+       EAPTLS_PACKET   reply;
+
+       reply.code = FR_TLS_START;
+       reply.length = TLS_HEADER_LEN + 1/*flags*/;
+
+       reply.flags = peap_flag;
+       reply.flags = SET_START(reply.flags);
+
+       reply.data = NULL;
+       reply.dlen = 0;
+
+       eaptls_compose(eap_ds, &reply);
+
+       return 1;
+}
+
 /** Send an EAP-TLS success
  *
  * Composes an EAP-TLS-Success.  This is a message with code EAP_TLS_ESTABLISHED.
