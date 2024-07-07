@@ -1428,10 +1428,10 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			*pi = vp->vp_integer;
 
 			/*
-			 *	Same nastiness as above.
+			 *	Same nastiness as above, but hard-coded for require Message-Authenticator.
 			 */
 			for (parse = client_config; parse->name; parse++) {
-				if (parse->offset == dynamic_config[i].offset) break;
+				if (parse->type == PW_TYPE_BOOLEAN) break;
 			}
 			if (!parse) break;
 
