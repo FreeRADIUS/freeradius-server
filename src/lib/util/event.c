@@ -496,8 +496,10 @@ static void event_fd_func_index_build(fr_event_func_map_t *map)
 			 *	with the same function.
 			 */
 			while ((pos = fr_high_bit_pos(fflags))) {
+				/* coverity[overflow_const] */
 				pos -= 1;
 				map->ev_to_func[pos] = entry;
+				/* coverity[overflow_const] */
 				fflags &= ~(1 << pos);
 			}
 		}
