@@ -1,5 +1,5 @@
-FreeRADIUS 3.0.27 Tuesday 09 July 2024 12:00:00 UTC urgency=high
-        Configuration changes
+FreeRADIUS 3.0.27 Tue 09 Jul 2024 12:00:00 UTC urgency=high
+	Configuration changes
 	* BlastRADIUS mitigations have been added to the "security"
 	  section.  See "require_message_authenticator" and also
 	  "limit_proxy_state".
