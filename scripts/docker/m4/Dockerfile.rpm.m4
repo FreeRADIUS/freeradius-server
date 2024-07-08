@@ -1,6 +1,14 @@
 ARG from=DOCKER_IMAGE
 FROM ${from} as build
 
+ifelse(OS_VER, 7, `dnl
+#
+#  CentOS 7 is now EOL, so we need to fix up the repo source
+#
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
+')dnl
+
 ifelse(OS_VER, `7', `', `dnl
 #
 #  Install yum
@@ -119,6 +127,14 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 FROM ${from}
 
 COPY --from=build /root/rpms /tmp/
+
+ifelse(OS_VER, 7, `dnl
+#
+#  CentOS 7 is now EOL, so we need to fix up the repo source
+#
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
+')dnl
 
 ifelse(OS_VER, `7', `', `dnl
 #

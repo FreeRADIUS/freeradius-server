@@ -6,6 +6,12 @@
 ARG from=centos:7
 FROM ${from} as build
 
+#
+#  CentOS 7 is now EOL, so we need to fix up the repo source
+#
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
+
 
 
 #
@@ -95,6 +101,12 @@ RUN mv $BUILDDIR/RPMS/*/*.rpm /root/rpms/
 FROM ${from}
 
 COPY --from=build /root/rpms /tmp/
+
+#
+#  CentOS 7 is now EOL, so we need to fix up the repo source
+#
+RUN sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+RUN sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
 
 
 # Use LTB's openldap packages intead of the distribution version to avoid linking against NSS

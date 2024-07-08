@@ -15,9 +15,9 @@ jobs:
     strategy:
       matrix:
         env:
-          - { NAME: "centos-7",  OS: "centos:7" }
-          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
-          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
+          - { NAME: "centos-7",  OS: "centos:7",                BADNODE: true  }
+          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8", BADNODE: false }
+          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9", BADNODE: false }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -28,10 +28,17 @@ jobs:
     env:
       HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
       HOSTAPD_GIT_TAG: hostapd_2_8
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ matrix.env.BADNODE }}
 
     name: "RPM build"
 
     steps:
+
+    - name: Fix up CentOS 7 repositories
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+        sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
 
     # Required so that the checkout action uses git protocol rather than the GitHub REST API.
     # make rpm requires the FR directory to be a git repository.
@@ -194,9 +201,9 @@ jobs:
     strategy:
       matrix:
         env:
-          - { NAME: "centos-7", OS: "centos:7" }
-          - { NAME: "rocky-8", OS: "rockylinux/rockylinux:8" }
-          - { NAME: "rocky-9", OS: "rockylinux/rockylinux:9" }
+          - { NAME: "centos-7",  OS: "centos:7",                BADNODE: true  }
+          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8", BADNODE: false }
+          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9", BADNODE: false }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -204,9 +211,18 @@ jobs:
     container:
       image: ${{ matrix.env.OS }}
 
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ matrix.env.BADNODE }}
+
     name: "RPM install test"
 
     steps:
+
+    - name: Fix up CentOS 7 repositories
+      if: ${{ matrix.env.NAME == 'centos-7' }}
+      run: |
+        sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
+        sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
 
     - name: Install yum
       if: ${{ matrix.env.NAME == 'rocky-9'}}
