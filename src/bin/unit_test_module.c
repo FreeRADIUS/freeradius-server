@@ -410,7 +410,7 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 	char		output_buff[8192];
 	char		unescaped[sizeof(output_buff)];
 	fr_sbuff_t	line;
-	fr_sbuff_t	out = FR_SBUFF_OUT(output_buff, sizeof(output_buff));
+	fr_sbuff_t	out;
 
 	static fr_sbuff_escape_rules_t unprintables = {
 		.name = "unprintables",
@@ -427,7 +427,6 @@ static bool do_xlats(fr_event_list_t *el, request_t *request, char const *filena
 		lineno++;
 
 		line = FR_SBUFF_IN(line_buff, sizeof(line_buff));
-		fr_sbuff_set_to_start(&out);
 		if (!fr_sbuff_adv_to_chr(&line, SIZE_MAX, '\n')) {
 			if (!feof(fp)) {
 				fprintf(stderr, "%s[%d] Line too long\n", filename, lineno);
