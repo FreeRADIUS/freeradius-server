@@ -766,9 +766,16 @@ security {
 	#    packets which contain Proxy-State MUST also contain
 	#    Message-Authenticator, otherwise they are discarded.
 	#
-	#    This setting is safe for all NASes, GGSNs, BRAS, etc.
-	#    No known RADIUS client sends Proxy-State for normal
-	#    Access-Request packets.
+	#    This setting is safe for most NASes, GGSNs, BRAS, etc.
+	#    Most regular RADIUS clients do not send Proxy-State
+	#    attributes for Access-Request packets that they originate.
+	#    However some aggregators (e.g. Wireless LAN Controllers)
+	#    may act as a RADIUS proxy for requests from their cohort
+	#    of managed devices, and in such cases will provide a
+	#    Proxy-State attribute. For those systems, you _must_ look
+	#    at the actual packets to determine what to do. It may be
+	#    that the only way to fix the vulnerability is to upgrade
+	#    the WLC, and set "require_message_authenticator" to "yes".
 	#
 	#  * "auto" - Automatically determine the value of the flag,
 	#    based on the first packet received from that client.
