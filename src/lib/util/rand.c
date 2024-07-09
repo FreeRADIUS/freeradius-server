@@ -44,10 +44,11 @@ void fr_rand_init(void)
 	if (fd >= 0) {
 		size_t total;
 		ssize_t this;
+		char *buf = (char *) fr_rand_pool.randrsl;
 
 		total = 0;
 		while (total < sizeof(fr_rand_pool.randrsl)) {
-			this = read(fd, fr_rand_pool.randrsl,
+			this = read(fd, &buf[total],
 				    sizeof(fr_rand_pool.randrsl) - total);
 			if ((this < 0) && (errno != EINTR)) break;
 			if (this > 0) total += this;
