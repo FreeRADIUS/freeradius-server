@@ -179,7 +179,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
  */
 static int mod_decode(void const *instance, request_t *request, uint8_t *const data, size_t data_len)
 {
-	proto_radius_t			*inst = talloc_get_type_abort(instance, proto_radius_t);
+	proto_radius_t const		*inst = talloc_get_type_abort_const(instance, proto_radius_t);
 	fr_io_track_t const		*track = talloc_get_type_abort_const(request->async->packet_ctx, fr_io_track_t);
 	fr_io_address_t const  		*address = track->address;
 	fr_client_t			*client = UNCONST(fr_client_t *, address->radclient);
