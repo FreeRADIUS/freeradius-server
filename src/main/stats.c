@@ -96,7 +96,7 @@ void request_stats_final(REQUEST *request)
 	if ((request->options & RAD_REQUEST_OPTION_STATS) != 0) return;
 
 	/* don't count statistic requests */
-	if (request->packet->code == PW_CODE_STATUS_SERVER) {
+	if (request->packet && request->packet->code == PW_CODE_STATUS_SERVER) {
 		return;
 	}
 
@@ -154,7 +154,7 @@ void request_stats_final(REQUEST *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function, which makes it thread-safe.
 	 */
-	if (request->reply) switch (request->reply->code) {
+	if (request->packet && request->reply) switch (request->reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 		INC_AUTH(total_access_accepts);
 
