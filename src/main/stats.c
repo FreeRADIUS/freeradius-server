@@ -95,6 +95,14 @@ void request_stats_final(REQUEST *request)
 
 	if ((request->options & RAD_REQUEST_OPTION_STATS) != 0) return;
 
+	/*
+	 *	This packet was originated by the server, and not
+	 *	received from a client.  It's a status-server or home
+	 *	server "ping" packet.  So we ignore it for statistics
+	 *	purposes.
+	 */
+	if (!request->packet) return;
+
 	/* don't count statistic requests */
 	if (request->packet->code == PW_CODE_STATUS_SERVER) {
 		return;
