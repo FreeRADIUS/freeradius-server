@@ -534,7 +534,7 @@ static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 	 *	Look at the oldest requests, and see if they need to
 	 *	be deleted.
 	 */
-	while ((request = fr_minmax_heap_max_pop(worker->time_order)) != NULL) {
+	while ((request = fr_minmax_heap_min_peek(worker->time_order)) != NULL) {
 		fr_time_t cleanup;
 
 		REQUEST_VERIFY(request);
@@ -546,6 +546,7 @@ static void worker_max_request_time(UNUSED fr_event_list_t *el, UNUSED fr_time_t
 		 *	Waiting too long, delete it.
 		 */
 		REDEBUG("Request has reached max_request_time - signalling it to stop");
+		(void) fr_minmax_heap_extract(worker->time_order, request);
 		worker_stop_request(&request);
 	}
 
