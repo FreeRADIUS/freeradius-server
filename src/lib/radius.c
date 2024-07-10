@@ -3295,7 +3295,7 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 	 *	+ continuation, it's a bad attribute.
 	 */
 	if (attrlen < 8) {
-	raw:		
+	raw:
 		/*
 		 *	It's not a Vendor-Specific, it's unknown...
 		 */
@@ -4749,10 +4749,11 @@ void fr_rand_seed(void const *data, size_t size)
 		if (fd >= 0) {
 			size_t total;
 			ssize_t this;
+			char *buf = (char *) fr_rand_pool.randrsl;
 
 			total = 0;
 			while (total < sizeof(fr_rand_pool.randrsl)) {
-				this = read(fd, fr_rand_pool.randrsl,
+				this = read(fd, &buf[total],
 					    sizeof(fr_rand_pool.randrsl) - total);
 				if ((this < 0) && (errno != EINTR)) break;
 				if (this > 0) total += this;
