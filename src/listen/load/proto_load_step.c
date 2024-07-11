@@ -384,11 +384,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		fclose(fp);
 	}
 
-	vp = fr_pair_find_by_da(&inst->pair_list, NULL, inst->parent->attr_packet_type);
-	if (vp) inst->code = vp->vp_uint32;
-
 	inst->parent = talloc_get_type_abort(mi->parent->data, proto_load_t);
 	inst->cs = conf;
+
+	vp = fr_pair_find_by_da(&inst->pair_list, NULL, inst->parent->attr_packet_type);
+	if (vp) inst->code = vp->vp_uint32;
 
 	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, >=, 10);
 	FR_INTEGER_BOUND_CHECK("start_pps", inst->load.start_pps, <, 400000);
