@@ -5198,26 +5198,36 @@ void fr_rand_seed(void const *data, size_t size)
 	 */
 	if (!fr_rand_initialized) {
 		int fd;
+		uint8_t *p = (uint8_t *) &fr_rand_pool.randrsl[0];
+		uint8_t *end = p + sizeof(&fr_rand_pool.randrsl);
 
 		memset(&fr_rand_pool, 0, sizeof(fr_rand_pool));
 
 		fd = open("/dev/urandom", O_RDONLY);
 		if (fd >= 0) {
-			size_t total;
-			ssize_t this;
+			ssize_t rcode;
 
-			total = 0;
-			while (total < sizeof(fr_rand_pool.randrsl)) {
-				this = read(fd, fr_rand_pool.randrsl,
-					    sizeof(fr_rand_pool.randrsl) - total);
-				if ((this < 0) && (errno != EINTR)) break;
-				if (this > 0) total += this;
+			while (p < end) {
+				rcode = read(fd, p, (size_t) (end - p));
+				if ((rcode < 0) && (errno != EINTR)) break;
+				if (rcode > 0) p += rcode;
 			}
 			close(fd);
 		} else {
-			fr_rand_pool.randrsl[0] = fd;
-			fr_rand_pool.randrsl[1] = time(NULL);
-			fr_rand_pool.randrsl[2] = errno;
+			/*
+			 *	Initialize the pool based on microseconds.
+			 */
+			gettimeofday((struct timeval *) &fr_rand_pool.randrsl[0], NULL);
+			memcpy(&fr_rand_pool.randrsl[64], &p, sizeof(p));
+
+			/*
+			 *	Churn the pool, so that the next
+			 *	initialization isn't done from a pool
+			 *	which is nearly all zeros.
+			 */
+			fr_randinit(&fr_rand_pool, 1);
+			memcpy(fr_rand_pool.randrsl, fr_rand_pool.randmem, sizeof(fr_rand_pool.randrsl));
+			gettimeofday((struct timeval *) &fr_rand_pool.randrsl[32], NULL);
 		}
 
 		fr_randinit(&fr_rand_pool, 1);
