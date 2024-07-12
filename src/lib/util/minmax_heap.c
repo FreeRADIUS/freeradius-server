@@ -171,10 +171,10 @@ static CC_HINT(nonnull) int minmax_heap_expand(fr_minmax_heap_t *hp)
 		n_size = 2 * h->size;
 	}
 
-	h = (minmax_heap_t *)talloc_realloc(hp, h, uint8_t, sizeof(minmax_heap_t) + (sizeof(void *) * (n_size + 1)));
+	h = (minmax_heap_t *)talloc_realloc(hp, h, uint8_t, sizeof(minmax_heap_t) + (sizeof(void *) * ((size_t)n_size + 1)));
 	if (unlikely(!h)) {
-		fr_strerror_printf("Failed expanding heap to %u elements (%u bytes)",
-				   n_size, (n_size * (unsigned int)sizeof(void *)));
+		fr_strerror_printf("Failed expanding heap to %u elements (%zu bytes)",
+				   n_size, (n_size * sizeof(void *)));
 		return -1;
 	}
 
