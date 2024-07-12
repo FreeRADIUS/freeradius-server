@@ -67,7 +67,7 @@ ATTRIBUTE	IP-QoS					36	integer
 # 37-38 ?
 ATTRIBUTE	Airlink-Priority			39	integer
 ATTRIBUTE	Airlink-Record-Type			40	integer # ?
-#ATTRIBUTE	R-P-Session-ID				41	string
+ATTRIBUTE	R-P-Session-ID				41	octets
 ATTRIBUTE	Airlink-Sequence-Number			42	integer # ?
 ATTRIBUTE	Received-HDLC-Octets			43	integer
 ATTRIBUTE	Correlation-Id				44	string
@@ -127,10 +127,9 @@ ATTRIBUTE	Option					.1	short
 
 ATTRIBUTE	DNS-Update-Required			75	integer
 
-# Is this 76 or 78?  Check...
-#ATTRIBUTE	Always-On				76	integer
+# 76 ?
 # 77 ?
-#ATTRIBUTE	Always-On				78	integer
+ATTRIBUTE	Always-On				78	integer
 ATTRIBUTE	Foreign-Agent-Address			79	ipaddr
 ATTRIBUTE	Last-User-Activity-Time			80	date
 ATTRIBUTE	MN-AAA-Removal-Indication		81	integer
