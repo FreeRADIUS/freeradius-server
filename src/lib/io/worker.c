@@ -835,6 +835,7 @@ static void worker_request_bootstrap(fr_worker_t *worker, fr_channel_data_t *cd,
 
 	request->async->listen = cd->listen;
 	request->async->packet_ctx = cd->packet_ctx;
+	request->async->priority = cd->priority;
 	listen = request->async->listen;
 
 	/*
