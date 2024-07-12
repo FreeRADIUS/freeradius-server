@@ -957,13 +957,14 @@ nak:
 
 /**
  *  Track a request_t in the "runnable" heap.
+ *  Higher priorities take precedence, followed by lower sequence numbers
  */
 static int8_t worker_runnable_cmp(void const *one, void const *two)
 {
 	request_t const *a = one, *b = two;
 	int ret;
 
-	ret = CMP(a->async->priority, b->async->priority);
+	ret = CMP(b->async->priority, a->async->priority);
 	if (ret != 0) return ret;
 
 	ret = CMP(a->async->sequence, b->async->sequence);
