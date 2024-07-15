@@ -403,6 +403,14 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 	}
 
 	home = home_server_byname(name, type);
+
+	/*
+	 *	If we're looking for an auth / acct homeserver, allow for auth+acct
+	 */
+	if (!home && ((type == HOME_TYPE_AUTH) || (type == HOME_TYPE_ACCT))) {
+		home = home_server_byname(name, HOME_TYPE_AUTH_ACCT);
+	}
+
 	if (!home) {
 		*out = '\0';
 		return 0;
