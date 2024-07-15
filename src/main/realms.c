@@ -3198,7 +3198,11 @@ int home_server_afrom_file(char const *filename)
 		goto error;
 	}
 
-	if (home->dual) {
+	if (home->dual
+#ifdef WITH_TLS
+		&& !home->tls
+#endif
+	) {
 		fr_strerror_printf("Dynamic home_server '%s' is missing 'type', or it is set to 'auth+acct'.  Please specify 'type = auth' or 'type = acct', etc.", p);
 		talloc_free(home);
 		goto error;
