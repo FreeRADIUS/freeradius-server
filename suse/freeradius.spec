@@ -1,5 +1,5 @@
 Name:         freeradius-server
-Version:      3.2.5
+Version:      3.2.6
 Release:      0
 License:      GPLv2 ; LGPLv2.1
 Group:        Productivity/Networking/Radius/Servers
@@ -138,7 +138,7 @@ export LDFLAGS="-pie"
 		--disable-developer \
 		--with-experimental-modules \
 		--with-udpfromto \
-%if 0%{?suse_version} <= 920 
+%if 0%{?suse_version} <= 920
 		--without-rlm_sql_mysql \
 		--without-rlm_krb5 \
 %endif

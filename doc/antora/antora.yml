@@ -5,7 +5,7 @@
 #
 name: freeradius-server
 title: The FreeRADIUS Server
-version: '3.2.5'
+version: '3.2.6'
 start_page: ROOT:index.adoc
 nav:
 - modules/ROOT/nav.adoc

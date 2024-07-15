@@ -1,3 +1,10 @@
+FreeRADIUS 3.2.6 Mon 15 May 2024 12:00:00 UTC urgency=low
+	Configuraion changes
+
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.2.5 Tue 09 Jul 2024 12:00:00 UTC urgency=high
 	Configuration changes
 	* BlastRADIUS mitigations have been added to the "security"
