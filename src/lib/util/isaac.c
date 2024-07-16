@@ -94,7 +94,10 @@ void fr_isaac_init(fr_randctx *ctx, int flag)
 	a = b = c = d = e = f = g = h = 0x9e3779b9;  /* the golden ratio */
 
 	/* scramble it */
-	for (i = 0; i < 4; ++i) mix(a, b, c, d, e, f, g, h);
+	for (i = 0; i < 4; ++i) {
+		/* coverity[overflow_const] */
+		mix(a, b, c, d, e, f, g, h);
+	}
 
 	if (flag) {
 		/* initialize using the contents of r[] as the seed */
