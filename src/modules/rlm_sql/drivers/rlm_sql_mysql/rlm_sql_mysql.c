@@ -827,25 +827,6 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 	return mysql_real_escape_string(&conn->db, out, in, inlen);
 }
 
-static void sql_conn_writable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
-{
-	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	trunk_connection_signal_writable(tconn);
-}
-
-static void sql_conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
-{
-	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	trunk_connection_signal_readable(tconn);
-}
-
-static void sql_conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
-{
-	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno));
-	connection_signal_reconnect(tconn->conn, CONNECTION_FAILED);
-}
-
 /** Allocate an SQL trunk connection
  *
  * @param[in] tconn		Trunk handle.
@@ -875,37 +856,7 @@ static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_ev
 	return conn;
 }
 
-static void sql_trunk_connection_notify(trunk_connection_t *tconn, connection_t *conn,
-					fr_event_list_t *el,
-					trunk_connection_event_t notify_on, UNUSED void *uctx)
-{
-	rlm_sql_mysql_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_mysql_conn_t);
-	fr_event_fd_cb_t	read_fn = NULL, write_fn = NULL;
-
-	switch (notify_on) {
-	case TRUNK_CONN_EVENT_NONE:
-		fr_event_fd_delete(el, sql_conn->fd, FR_EVENT_FILTER_IO);
-		return;
-
-	case TRUNK_CONN_EVENT_READ:
-		read_fn = sql_conn_readable;
-		break;
-
-	case TRUNK_CONN_EVENT_WRITE:
-		write_fn = sql_conn_writable;
-		break;
-
-	case TRUNK_CONN_EVENT_BOTH:
-		read_fn = sql_conn_readable;
-		write_fn = sql_conn_writable;
-		break;
-	}
-
-	if (fr_event_fd_insert(sql_conn, NULL, el, sql_conn->fd, read_fn, write_fn, sql_conn_error, tconn) < 0) {
-		PERROR("Failed inserting FD event");
-		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-	}
-}
+TRUNK_NOTIFY_FUNC(sql_trunk_connection_notify, rlm_sql_mysql_conn_t)
 
 static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				  connection_t *conn, UNUSED void *uctx)

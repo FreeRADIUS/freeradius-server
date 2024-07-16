@@ -937,6 +937,54 @@ bool trunk_request_search(trunk_request_t *treq, void *ptr);
 
 #undef _CONST
 
+/** Helper macro for building generic trunk notify callback
+ *
+ * @param _name	of the callback function to build
+ * @param _type of the conn->h handle.  Needs to contain an fd element.
+ */
+#define TRUNK_NOTIFY_FUNC(_name, _type) \
+static void _conn_writeable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx) \
+{ \
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t); \
+	trunk_connection_signal_writable(tconn); \
+} \
+static void _conn_readable(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx) \
+{ \
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t); \
+	trunk_connection_signal_readable(tconn); \
+} \
+static void _conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx) \
+{ \
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t); \
+	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno)); \
+	connection_signal_reconnect(tconn->conn, CONNECTION_FAILED); \
+} \
+static void _name(trunk_connection_t *tconn, connection_t *conn, \
+		  fr_event_list_t *el, trunk_connection_event_t notify_on, UNUSED void *uctx) \
+{ \
+	_type			*c = talloc_get_type_abort(conn->h, _type); \
+	fr_event_fd_cb_t	read_fn = NULL, write_fn = NULL; \
+	switch (notify_on) { \
+	case TRUNK_CONN_EVENT_NONE: \
+		fr_event_fd_delete(el, c->fd, FR_EVENT_FILTER_IO); \
+		return; \
+	case TRUNK_CONN_EVENT_READ: \
+		read_fn = _conn_readable; \
+		break; \
+	case TRUNK_CONN_EVENT_WRITE: \
+		write_fn = _conn_writeable; \
+		break; \
+	case TRUNK_CONN_EVENT_BOTH: \
+		read_fn = _conn_readable; \
+		write_fn = _conn_writeable; \
+		break; \
+	} \
+	if (fr_event_fd_insert(c, NULL, el, c->fd, read_fn, write_fn, _conn_error, tconn) <0) { \
+		PERROR("Failed inserting FD event"); \
+		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED); \
+	} \
+}
+
 #ifdef __cplusplus
 }
 #endif
