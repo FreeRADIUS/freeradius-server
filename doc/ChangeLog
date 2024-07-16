@@ -3,6 +3,8 @@ FreeRADIUS 3.2.6 Mon 15 May 2024 12:00:00 UTC urgency=low
 
 	Feature improvements
 	* allow for "auth+acct" dynamic home servers.
+	* Allow for setting "Home-Server-Pool", etc. for proxying
+	  accounting packets, just like authentication packets.
 
 	Bug fixes
 	* Dynamic clients now inherit require_message_authenticator
