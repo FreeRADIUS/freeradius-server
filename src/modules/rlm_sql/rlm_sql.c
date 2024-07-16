@@ -106,19 +106,6 @@ typedef struct {
 	tmpl_t		*group_reply_query;	//!< Tmpl to expand to form authorize_group_reply_query
 } sql_autz_call_env_t;
 
-static const call_env_method_t authorize_method_env = {
-	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),
-	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_autz_call_env_t, user) },
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, check_query) },
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, reply_query) },
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, membership_query) },
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_group_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, group_check_query) },
-		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_group_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, group_reply_query) },
-		CALL_ENV_TERMINATOR
-	}
-};
-
 static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *cc,
 				  call_env_ctx_t const *cec, call_env_parser_t const *rule);
 
@@ -1966,9 +1953,12 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 	 *	Use module specific escape functions
 	 */
 	our_rules = *t_rules;
-	our_rules.escape.func = inst->box_escape_func;
-	our_rules.escape.safe_for = (fr_value_box_safe_for_t)inst->driver;
-	our_rules.escape.mode = TMPL_ESCAPE_PRE_CONCAT;
+	our_rules.escape = (tmpl_escape_t) {
+		.func = sql_box_escape,
+		.uctx = { .func = { .uctx = inst, .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC },
+		.safe_for = (fr_value_box_safe_for_t)inst->driver,
+		.mode = TMPL_ESCAPE_PRE_CONCAT,
+	};
 	our_rules.literals_safe_for = our_rules.escape.safe_for;
 
 	count = cf_pair_count(subcs, "query");
@@ -2283,6 +2273,52 @@ static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
 
 	return 0;
 }
+
+/** Custom parser for sql call env queries
+ *
+ * Needed as the escape function needs to reference the correct SQL driver
+ */
+static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci,
+			  call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	rlm_sql_t const		*inst = talloc_get_type_abort_const(cec->mi->data, rlm_sql_t);
+	tmpl_t			*parsed_tmpl;
+	CONF_PAIR const		*to_parse = cf_item_to_pair(ci);
+	tmpl_rules_t		our_rules = *t_rules;
+
+	/*
+	 *	Set the sql module instance data as the uctx for escaping
+	 *	and use the same "safe_for" as the sql module.
+	 */
+	our_rules.escape.func = sql_box_escape;
+	our_rules.escape.uctx.func.uctx = inst;
+	our_rules.escape.safe_for = (fr_value_box_safe_for_t)inst->driver;
+	our_rules.literals_safe_for = (fr_value_box_safe_for_t)inst->driver;
+
+	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
+			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+			      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) return -1;
+	*(void **)out = parsed_tmpl;
+	return 0;
+}
+
+#define QUERY_ESCAPE .pair.escape = { \
+	.mode = TMPL_ESCAPE_PRE_CONCAT, \
+	.uctx = { .func = { .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC }, \
+}, .pair.func = call_env_parse
+
+static const call_env_method_t authorize_method_env = {
+	FR_CALL_ENV_METHOD_OUT(sql_autz_call_env_t),
+	.env = (call_env_parser_t[]) {
+		{ FR_CALL_ENV_OFFSET("sql_user_name", FR_TYPE_STRING, CALL_ENV_FLAG_CONCAT, sql_autz_call_env_t, user) },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, check_query), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, reply_query), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("group_membership_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, membership_query), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_group_check_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, group_check_query), QUERY_ESCAPE },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("authorize_group_reply_query", FR_TYPE_STRING, CALL_ENV_FLAG_PARSE_ONLY, sql_autz_call_env_t, group_reply_query), QUERY_ESCAPE },
+		CALL_ENV_TERMINATOR
+	}
+};
 
 /* globally exported name */
 module_rlm_t rlm_sql = {
