@@ -141,6 +141,17 @@ int rad_accounting(REQUEST *request)
 				 */
 				return result;
 			}
+		}  else if (((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) ||
+			    ((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
+			    ((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL) ||
+			    ((vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_NAME, 0, TAG_ANY)) != NULL)) {
+			if (RDEBUG_ENABLED) {
+				char buffer[512];
+
+				vp_prints(buffer, sizeof(buffer), vp);
+				RDEBUG("Proxying due to %s", buffer);
+				return RLM_MODULE_OK;
+			}
 		}
 	}
 
