@@ -1,5 +1,5 @@
-Overview
---------
+= Overview
+
 FreeRADIUS is a modular, high performance and feature-rich [[RADIUS|glossary/RADIUS]] suite including [[server|config/radiusd]], [[radius client|Radclient]], development libraries and numerous additional [[RADIUS|glossary/RADIUS]] related utilities.
 
 As the premiere open source RADIUS suite it is included as a [[standard package|building/packages]] with numerous Operating Systems, has binary packages for many others and has source available which is known to [[build|building/build]] on almost anything. Production deployments include large scale installations comprising multiple [[AAA|glossary/AAA]] servers with over ten million users and millions of requests per day. It supports request [[proxying|config/proxy]], with [[fail-over|config/fail-over]] and [[load balancing|config/load balancing]], as well as the ability to access many types of back-end databases. Different classes of [[authentication|glossary/Authentication]] requests can trigger access of different [[authentication|glossary/Authentication]] and [[authorization|glossary/Authorization]] databases (with cascaded fall back), and [[Accounting|glossary/Accounting]] records can be simultaneously recorded in multiple different storage databases and directories.
@@ -8,8 +8,7 @@ As the premiere open source RADIUS suite it is included as a [[standard package|
 
 We also keep a list of [[acknowledgements|project/Acknowledgements]] of contributions to FreeRADIUS development.
 
-Features
---------
+.Features
 
 * Complete support for RFC 2865 and RFC 2866 attributes.
 * [[EAP|protocol/EAP]] with EAP-MD5, EAP-SIM, EAP-TLS, EAP-TTLS, [[EAP-PEAP|protocol/EAP-PEAP]], and Cisco [[LEAP|protocol/LEAP]] EAP sub-types
@@ -20,8 +19,7 @@ All known [[RADIUS Clients|glossary/RADIUS Clients]] are supported.
 * [[RADIUS Clients|glossary/RADIUS Clients]] 
 * [[EAP Clients|guide/EAP Clients]]
 
-Flexible Configuration
-----------------------
+.Flexible Configuration
 
 FreeRADIUS provides a wide range of methods to select user configurations. The server can select a configuration based on any of the following criteria : 
 
