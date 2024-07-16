@@ -1,9 +1,13 @@
 FreeRADIUS 3.2.6 Mon 15 May 2024 12:00:00 UTC urgency=low
-	Configuraion changes
+	Configuration changes
 
 	Feature improvements
+	* allow for "auth+acct" dynamic home servers.
 
 	Bug fixes
+	* Dynamic clients now inherit require_message_authenticator
+	  and limit_proxy_state from the "security" section.
+	* Fix radsecret build rules to better support parallel builds.
 
 FreeRADIUS 3.2.5 Tue 09 Jul 2024 12:00:00 UTC urgency=high
 	Configuration changes
