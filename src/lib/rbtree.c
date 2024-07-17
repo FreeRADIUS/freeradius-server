@@ -491,30 +491,13 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *z) {
 	rbtree_delete_internal(tree, z, false);
 }
 
-/** Delete a node from the tree, based on given data, which MUST have come from rbtree_finddata().
- *
- *
- */
-bool rbtree_deletebydata(rbtree_t *tree, void const *data)
-{
-	rbnode_t *node = rbtree_find(tree, data);
-
-	if (!node) return false;
-
-	rbtree_delete(tree, node);
-
-	return true;
-}
-
-
 /** Find an element in the tree, returning the data, not the node
  *
  */
-rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
+static rbnode_t *rbtree_find_internal(rbtree_t *tree, void const *data)
 {
 	rbnode_t *current;
 
-	PTHREAD_MUTEX_LOCK(tree);
 	current = tree->root;
 
 	while (current != NIL) {
@@ -532,6 +515,39 @@ rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
 	PTHREAD_MUTEX_UNLOCK(tree);
 	return NULL;
 }
+
+rbnode_t *rbtree_find(rbtree_t *tree, void const *data)
+{
+	rbnode_t *node;
+
+	PTHREAD_MUTEX_LOCK(tree);
+	node = rbtree_find_internal(tree, data);
+	PTHREAD_MUTEX_UNLOCK(tree);
+
+	return node;
+}
+
+/** Delete a node from the tree, based on given data, which MUST have come from rbtree_finddata().
+ *
+ *
+ */
+bool rbtree_deletebydata(rbtree_t *tree, void const *data)
+{
+	rbnode_t *node;
+
+	PTHREAD_MUTEX_LOCK(tree);
+	node = rbtree_find(tree, data);
+	if (!node) {
+		PTHREAD_MUTEX_UNLOCK(tree);
+		return false;
+	}
+
+	rbtree_delete_internal(tree, node, false);
+	PTHREAD_MUTEX_UNLOCK(tree);
+
+	return true;
+}
+
 
 /** Find the user data.
  *
