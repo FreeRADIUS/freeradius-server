@@ -3749,6 +3749,7 @@ int tmpl_cast_in_place(tmpl_t *vpt, fr_type_t type, fr_dict_attr_t const *enumv)
 		vpt->quote = tmpl_cast_quote(vpt->quote, type, enumv,
 					     unescaped, talloc_array_length(unescaped) - 1);
 		talloc_free(unescaped);
+		fr_value_box_mark_safe_for(&vpt->data.literal, vpt->rules.literals_safe_for);
 
 		/*
 		 *	The data is now of the correct type, so we don't need to keep a cast.
