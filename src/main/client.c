@@ -1300,8 +1300,13 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
 
-	c->require_ma = main_config.require_ma;
-	c->limit_proxy_state = main_config.limit_proxy_state;
+	/*
+	 *	Set these defaults from the main 0/0 client.  This
+	 *	allows it to either inherit the global configuration,
+	 *	OR to have the client{...} setting override it.
+	 */
+	c->require_ma = request->client->require_ma;
+	c->limit_proxy_state = request->client->limit_proxy_state;
 
 	fr_cursor_init(&cursor, &request->config);
 

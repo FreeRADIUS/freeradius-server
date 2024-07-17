@@ -63,6 +63,30 @@ client dynamic {
 #	directory = ${confdir}/dynamic-clients/
 
 	#
+	#  If these two flags are not set here, Then their values will
+	#  be taken from the corresponding flags in the main
+	#  security{...} section.
+	#
+	#  The resulting values will be used as the defaults for any
+	#  dynamic client which is being defined.  The
+	#  "FreeRADIUS-Client-Require-MA" attribute (see below) can be
+	#  used to further over-ride this flag.
+	#
+	#  Note that it is NOT possible to set
+	#
+	#	&FreeRADIUS-Client-Require-MA = auto
+	#
+	#  The value MUST be either "yes" or "no".
+	#  
+	#  Note that is is NOT possible to change the value of
+	#  "limit_proxy_state" dynamically via an attribute.
+	#
+	#
+#	require_message_authenticator = yes
+#	limit_proxy_state = yes
+
+
+	#
 	#  Define the lifetime (in seconds) for dynamic clients.
 	#  They will be cached for this lifetime, and deleted afterwards.
 	#
@@ -111,7 +135,7 @@ server dynamic_clients {
 			&FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
 
 			# require_message_authenticator
-			&FreeRADIUS-Client-Require-MA = no
+#			&FreeRADIUS-Client-Require-MA = no
 
 			# secret
 			&FreeRADIUS-Client-Secret = "testing123"
