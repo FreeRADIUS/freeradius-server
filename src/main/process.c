@@ -4307,9 +4307,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when, bool down)
 	if (home->listeners) {
 		ASSERT_MASTER;
 
-		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 		rbtree_walk(home->listeners, RBTREE_DELETE_ORDER, eol_home_listener, NULL);
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
 	}
 #endif
