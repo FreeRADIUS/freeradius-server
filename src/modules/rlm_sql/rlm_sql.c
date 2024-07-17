@@ -785,12 +785,20 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 	rlm_sql_handle_t	*handle = NULL;
 	fr_value_box_t		*query_head = fr_value_box_list_head(query);
 	sql_map_ctx_t		*map_ctx;
+	fr_value_box_t		*vb = NULL;
+	rlm_sql_escape_uctx_t	*escape_uctx = NULL;
 
 	fr_assert(inst->driver->sql_fields);		/* Should have been caught during validation... */
 
 	if (!query_head) {
 		REDEBUG("Query cannot be (null)");
 		RETURN_MODULE_FAIL;
+	}
+
+	while ((vb = fr_value_box_list_next(query, vb))) {
+		if (fr_value_box_is_safe_for(vb, inst->driver)) continue;
+		if (!escape_uctx) escape_uctx = sql_escape_uctx_alloc(request, inst);
+		sql_box_escape(vb, escape_uctx);
 	}
 
 	if (fr_value_box_list_concat_in_place(request,
