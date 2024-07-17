@@ -348,6 +348,20 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	 */
 	if (fr_value_box_is_safe_for(vb, inst->driver)) return 0;
 
+	/*
+	 *	No need to escape types with inherently safe data
+	 */
+	switch (vb->type) {
+	case FR_TYPE_NUMERIC:
+	case FR_TYPE_IP:
+	case FR_TYPE_ETHERNET:
+		fr_value_box_mark_safe_for(vb, inst->driver);
+		return 0;
+
+	default:
+		break;
+	}
+
 	if (inst->sql_escape_arg) {
 		arg = inst->sql_escape_arg;
 	} else if (thread->sql_escape_arg) {
