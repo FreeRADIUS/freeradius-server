@@ -742,3 +742,27 @@ void *rbtree_node2data(UNUSED rbtree_t *tree, rbnode_t *node)
 
 	return node->data;
 }
+
+void *rbtree_first(rbtree_t *tree)
+{
+	rbnode_t *x;
+	void *data;
+
+	PTHREAD_MUTEX_LOCK(tree);
+	x = tree->root;
+
+	if (x == NIL) {
+		PTHREAD_MUTEX_UNLOCK(tree);
+		return NULL;
+	}
+
+	/*
+	 *	First node is the leftmost
+	 */
+	while (x->left != NIL) x = x->left;
+
+	data = x->data;
+	PTHREAD_MUTEX_UNLOCK(tree);
+
+	return data;
+}

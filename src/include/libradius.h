@@ -927,6 +927,7 @@ rbnode_t	*rbtree_find(rbtree_t *tree, void const *data);
 void		*rbtree_finddata(rbtree_t *tree, void const *data);
 uint32_t	rbtree_num_elements(rbtree_t *tree);
 void		*rbtree_node2data(rbtree_t *tree, rbnode_t *node);
+void		*rbtree_first(rbtree_t *tree);
 
 /*
  *	The callback should be declared as:
