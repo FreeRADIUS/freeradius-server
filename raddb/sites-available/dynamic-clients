@@ -148,15 +148,12 @@ server dynamic_clients {
 
 			# virtual_server
 			#
-			#  This can ONLY be used if the network client
-			#  definition (e.g. "client dynamic" above) has
-			#  NO virtual_server defined.
+			#  The dynanamic client will NOT use this virtual server.
+			#  You can define a virtual server here, in which case
+			#  packets from that client will use the named virtual
+			#  server.
 			#
-			#  If the network client definition does have a
-			#  virtual_server defined, then that is used,
-			#  and there is no need to define this attribute.
-			#
-			&FreeRADIUS-Client-Virtual-Server = "something"
+			&FreeRADIUS-Client-Virtual-Server = "default"
 
 		}
 
