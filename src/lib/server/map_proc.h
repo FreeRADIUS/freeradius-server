@@ -77,7 +77,7 @@ typedef unlang_action_t (*map_proc_func_t)(rlm_rcode_t *p_result, void const *mo
 typedef int (*map_proc_instantiate_t)(CONF_SECTION *cs, void const *mod_inst, void *proc_inst,
 				      tmpl_t const *src, map_list_t const *maps);
 
-bool		map_proc_literals_safe_for(map_proc_t const *proc);
+fr_value_box_safe_for_t	map_proc_literals_safe_for(map_proc_t const *proc);
 
 map_proc_t	*map_proc_find(char const *name);
 
