@@ -225,7 +225,7 @@ if !(&control.NAS-Port == 0) {
 	test_fail
 }
 
-&sqlcmd := "SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%{User-Name}'"
+&sqlcmd := %sql.safe("SELECT * FROM radusergroup WHERE priority <= 1 AND username = '%sql.escape(%{User-Name})'")
 
 # Clear the control list
 &control -= &User-Name[*]
