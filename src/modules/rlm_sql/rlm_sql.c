@@ -2293,6 +2293,18 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
 	xlat_func_safe_for_set(xlat, SQL_SAFE_FOR);
 
+	if (unlikely(!(xlat = module_rlm_xlat_register(boot, mctx, "safe", xlat_transparent, FR_TYPE_STRING)))) return -1;
+	sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2);
+	sql_xlat_arg[0] = (xlat_arg_parser_t){
+		.type = FR_TYPE_STRING,
+		.variadic = true,
+		.concat = true
+	};
+	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+	xlat_func_args_set(xlat, sql_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	xlat_func_safe_for_set(xlat, SQL_SAFE_FOR);
+
 	/*
 	 *	Register the SQL map processor function
 	 */
