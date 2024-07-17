@@ -418,6 +418,31 @@ static int sql_box_escape(fr_value_box_t *vb, void *uctx)
 	return sql_xlat_escape(NULL, vb, uctx);
 }
 
+/** Escape a value to make it SQL safe.
+ *
+@verbatim
+%sql.escape(<value>)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t sql_escape_xlat(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
+{
+	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
+	fr_value_box_t		*vb;
+	rlm_sql_escape_uctx_t	*escape_uctx = NULL;
+
+	while ((vb = fr_value_box_list_pop_head(in))) {
+		if (fr_value_box_is_safe_for(vb, inst->driver)) goto append;
+		if (!escape_uctx) escape_uctx = sql_escape_uctx_alloc(request, inst);
+		sql_box_escape(vb, escape_uctx);
+	append:
+		fr_dcursor_append(out, vb);
+	}
+	return XLAT_ACTION_DONE;
+}
+
 static xlat_action_t sql_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
 					   request_t *request, UNUSED fr_value_box_list_t *in)
 {
@@ -2255,6 +2280,18 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
 	xlat_func_args_set(xlat, sql_xlat_arg);
+
+	if (unlikely(!(xlat = module_rlm_xlat_register(boot, mctx, "escape", sql_escape_xlat, FR_TYPE_STRING)))) return -1;
+	sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2);
+	sql_xlat_arg[0] = (xlat_arg_parser_t){
+		.type = FR_TYPE_STRING,
+		.variadic = true,
+		.concat = true,
+	};
+	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
+	xlat_func_args_set(xlat, sql_xlat_arg);
+	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_PURE);
+	xlat_func_safe_for_set(xlat, SQL_SAFE_FOR);
 
 	/*
 	 *	Register the SQL map processor function
