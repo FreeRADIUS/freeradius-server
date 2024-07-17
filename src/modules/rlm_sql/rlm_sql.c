@@ -43,6 +43,8 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
+#define SQL_SAFE_FOR (fr_value_box_safe_for_t)inst->driver
+
 extern module_rlm_t rlm_sql;
 
 static int submodule_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
@@ -1978,7 +1980,7 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 	our_rules.escape = (tmpl_escape_t) {
 		.func = sql_box_escape,
 		.uctx = { .func = { .uctx = inst, .alloc = sql_escape_uctx_alloc }, .type = TMPL_ESCAPE_UCTX_ALLOC_FUNC },
-		.safe_for = (fr_value_box_safe_for_t)inst->driver,
+		.safe_for = SQL_SAFE_FOR,
 		.mode = TMPL_ESCAPE_PRE_CONCAT,
 	};
 	our_rules.literals_safe_for = our_rules.escape.safe_for;
@@ -2247,7 +2249,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		.required = true,
 		.concat = true,
 		.func = sql_xlat_escape,
-		.safe_for = (fr_value_box_safe_for_t)inst->driver,
+		.safe_for = SQL_SAFE_FOR,
 		.uctx = uctx
 	};
 	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
@@ -2257,7 +2259,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->driver->sql_fields) map_proc_register(mctx->mi->boot, inst, mctx->mi->name, mod_map_proc, sql_map_verify, 0, (fr_value_box_safe_for_t)inst->driver);
+	if (inst->driver->sql_fields) map_proc_register(mctx->mi->boot, inst, mctx->mi->name, mod_map_proc, sql_map_verify, 0, SQL_SAFE_FOR);
 
 	return 0;
 }
@@ -2314,8 +2316,8 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	 */
 	our_rules.escape.func = sql_box_escape;
 	our_rules.escape.uctx.func.uctx = inst;
-	our_rules.escape.safe_for = (fr_value_box_safe_for_t)inst->driver;
-	our_rules.literals_safe_for = (fr_value_box_safe_for_t)inst->driver;
+	our_rules.escape.safe_for = SQL_SAFE_FOR;
+	our_rules.literals_safe_for = SQL_SAFE_FOR;
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
