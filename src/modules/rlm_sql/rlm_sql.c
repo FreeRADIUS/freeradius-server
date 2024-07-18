@@ -696,7 +696,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 		ret = inst->driver->sql_num_rows(query_ctx, &inst->config);
 		if (ret == 0) {
 			RDEBUG2("Server returned an empty result");
-			rcode = RLM_MODULE_NOOP;
+			rcode = RLM_MODULE_NOTFOUND;
 			goto finish;
 		}
 
@@ -780,7 +780,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 
 	if (rows == 0) {
 		RDEBUG2("SQL query returned no results");
-		rcode = RLM_MODULE_NOOP;
+		rcode = RLM_MODULE_NOTFOUND;
 	}
 
 finish:

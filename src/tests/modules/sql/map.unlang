@@ -12,7 +12,7 @@ map sql 'SELECT * FROM radusergroup WHERE priority <= 1' {
 	&control.Filter-Id	:= 'groupname'
 	&control.NAS-Port	:= 'priority'
 }
-if (!noop) {
+if (!notfound) {
 	test_fail
 }
 
