@@ -286,4 +286,13 @@ if !(&control.NAS-Port == 0) {
 	test_fail
 }
 
+# NAS-Identifier has un-safe SQL characters - check escaping works
+map sql "SELECT attribute FROM radcheck WHERE username = '%{NAS-Identifier}'" {
+	&control.Filter-Id	= 'attribute'
+}
+
+if (!notfound) {
+	test_fail
+}
+
 test_pass
