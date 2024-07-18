@@ -656,6 +656,7 @@ int fr_ldap_server_url_check(fr_ldap_config_t *handle_config, char const *server
 				cf_log_err(ci, "ldaps:// scheme is not compatible with 'start_tls'");
 				goto ldap_url_error;
 			}
+			default_port = LDAPS_PORT;
 			handle_config->tls_mode = LDAP_OPT_X_TLS_HARD;
 		} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
 			set_port_maybe = false;
