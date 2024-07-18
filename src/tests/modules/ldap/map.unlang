@@ -28,7 +28,7 @@ if (!notfound) {
 	test_fail
 }
 
-map ldapldapi "ldapi://%%2Ftmp%%2Fldap%%2Fsocket/ou=people,dc=example,dc=com??sub?(uid=John)" {
+map ldapldapi "ldapi://%%2Ftmp%%2Fldap%%2Fsocket/ou=people,dc=example,dc=com??sub?(uid=%{User-Name})" {
 	&Filter-Id := 'displayName'
 }
 
@@ -37,6 +37,17 @@ if (!updated) {
 }
 
 if !(&Filter-Id == 'John Doe') {
+	test_fail
+}
+
+#
+#  Use an attribute in the incoming requests with non "ldap safe" characters which should be escaped
+#
+map ldapldapi "ldapi://%%2Ftmp%%2Fldap%%2Fsocket/ou=people,dc=example,dc=com??sub?(uid=%{NAS-Identifier})" {
+	&Filter-Id := 'displayName'
+}
+
+if (!notfound) {
 	test_fail
 }
 

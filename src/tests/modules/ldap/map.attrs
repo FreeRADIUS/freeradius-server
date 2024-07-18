@@ -2,9 +2,10 @@
 #  Input packet
 #
 Packet-Type = Access-Request
-User-Name = "mike"
+User-Name = "john"
 User-Password = "mikeymikemike"
 NAS-IP-Address = 6.6.6.6
+NAS-Identifier = "not=ldap(safe"
 
 #
 #  Expected answer
