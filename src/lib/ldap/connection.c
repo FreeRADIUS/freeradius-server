@@ -138,6 +138,13 @@ DIAG_ON(unused-macros)
 	keepalive = fr_time_delta_to_sec(config->keepalive_interval);
 	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &keepalive);
 
+	if (config->sasl_secprops) do_ldap_option(LDAP_OPT_X_SASL_SECPROPS, "sasl_secprops", config->sasl_secprops);
+
+	/*
+	 *	Everything after this point is TLS related - so don't set if TLS not in use.
+	 */
+	if (!config->tls_mode && !config->start_tls) return 0;
+
 	/*
 	 *	Set all of the TLS options
 	 */
@@ -168,8 +175,6 @@ DIAG_ON(unused-macros)
 	/* Always use the new TLS configuration context */
 	is_server = 0;
 	do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
-
-	if (config->sasl_secprops) do_ldap_option(LDAP_OPT_X_SASL_SECPROPS, "sasl_secprops", config->sasl_secprops);
 
 	if (config->start_tls) {
 		if (config->port == 636) {
