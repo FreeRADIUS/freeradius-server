@@ -2504,6 +2504,11 @@ int realms_init(CONF_SECTION *config)
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!realm_add(rc, cs)) {
 		error:
+			/*
+			 *	realm_config is freed by realms_free()
+			 *	so if rc == realm_config set it to NULL here.
+			 */
+			if (rc == realm_config) rc = NULL;
 			realms_free();
 			/*
 			 *	Must be called after realms_free as home_servers
