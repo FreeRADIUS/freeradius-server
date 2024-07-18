@@ -2566,7 +2566,7 @@ int realms_init(CONF_SECTION *config)
 		dir = opendir(rc->directory);
 		if (!dir) {
 			cf_log_err_cs(config, "Error reading directory %s: %s",
-				      rc->directory, fr_syserror(errno));				      
+				      rc->directory, fr_syserror(errno));
 			goto error;
 		}
 
@@ -2583,7 +2583,7 @@ int realms_init(CONF_SECTION *config)
 			 *	Skip the TLS configuration.
 			 */
 			if (strcmp(dp->d_name, "tls.conf") == 0) continue;
-		
+
 			/*
 			 *	Check for valid characters
 			 */
