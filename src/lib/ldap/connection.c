@@ -177,7 +177,7 @@ DIAG_ON(unused-macros)
 	do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
 
 	if (config->start_tls) {
-		if (config->port == 636) {
+		if (config->port == LDAPS_PORT) {
 			WARN("Told to Start TLS on LDAPS port this will probably fail, please correct the "
 			     "configuration");
 		}
