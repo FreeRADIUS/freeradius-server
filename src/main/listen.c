@@ -850,7 +850,7 @@ static int tls_sni_callback(SSL *ssl, UNUSED int *al, void *arg)
 	 *	one.
 	 */
 	if (r) (void) SSL_set_SSL_CTX(ssl, r->ctx);
-		
+
 	/*
 	 *	Set an attribute saying which server has been selected.
 	 */
@@ -3585,6 +3585,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	if (home->proto == IPPROTO_TCP) {
 		this->recv = proxy_socket_tcp_recv;
 
+		this->nonblock |= home->nonblock;
+
 		/*
 		 *	FIXME: connect() is blocking!
 		 *	We do this with the proxy mutex locked, which may
@@ -3593,7 +3595,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		this->fd = fr_socket_client_tcp(&home->src_ipaddr,
 						&home->ipaddr, home->port,
 #ifdef WITH_TLS
-						!this->nonblock
+						this->nonblock
 #else
 						false
 #endif
@@ -3637,8 +3639,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 #ifdef WITH_RADIUSV11
 		this->radiusv11 = home->tls->radiusv11;
 #endif
-
-		this->nonblock |= home->nonblock;
 
 #ifdef TCP_NODELAY
 		/*
