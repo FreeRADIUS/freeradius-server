@@ -310,7 +310,7 @@ static conf_parser_t const trunk_config_connection[] = {
 
 #ifndef TRUNK_TESTS
 conf_parser_t const trunk_config[] = {
-	{ FR_CONF_OFFSET("start", trunk_conf_t, start), .dflt = "5" },
+	{ FR_CONF_OFFSET("start", trunk_conf_t, start), .dflt = "1" },
 	{ FR_CONF_OFFSET("min", trunk_conf_t, min), .dflt = "1" },
 	{ FR_CONF_OFFSET("max", trunk_conf_t, max), .dflt = "5" },
 	{ FR_CONF_OFFSET("connecting", trunk_conf_t, connecting), .dflt = "2" },
