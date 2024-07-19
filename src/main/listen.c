@@ -3585,7 +3585,9 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	if (home->proto == IPPROTO_TCP) {
 		this->recv = proxy_socket_tcp_recv;
 
+#ifdef WITH_TLS
 		this->nonblock |= home->nonblock;
+#endif
 
 		/*
 		 *	FIXME: connect() is blocking!
