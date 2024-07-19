@@ -1,33 +1,33 @@
-# Building on RHEL7 or Centos7
+= Building on RHEL7 or Centos7
 
 There are only a few requirements to building on RHEL, or CentoS
 
-## Hard dependencies
+== Hard dependencies
 
-```bash
+----
 yum -y install libtalloc-devel
-```
+----
 
-## Getting the source
+== Getting the source
 
-[[include:/building/Getting-the-Source]]
+include:/building/Getting-the-Source
 
-## Building from source
+== Building from source
 
-```bash
+----
 # Use ./configure --enable-developer if you're debugging issues, or using unstable code.
 ./configure
 make
 sudo make install
-```
+----
 
-## Building Packages
+== Building Packages
 
-### With Oracle support
+=== With Oracle support
 
-[[include:RPMs-with-Oracle-support]]
+include:RPMs-with-Oracle-support
 
-## Upgrading GCC (>= v4.0.x and master branch only)
+== Upgrading GCC (>= v4.0.x and master branch only)
 
 > GCC upgrade only required for versions >= v4.0.x you can skip this step for v3.0.x and below.
 
@@ -39,22 +39,22 @@ Follow the instructions here to enable the [devtoolset-3 repository](https://www
 
 To install:
 
-```bash
+----
 yum -y install devtoolset-3-gcc devtoolset-3-gcc-c++
-```
+----
 
 and then to get to a shell with the correct environment:
 
-```bash
+----
 scl enable devtoolset-3 bash
-```
+----
 
 Or can set ``CC=/opt/rh/devtoolset-3/root/usr/bin/gcc`` in your environment, which works just as well.
 
 If you're building on older versions of RedHat then you'll need to compile GCC from source.
 
 
-### libkqueue
+=== libkqueue
 
 > libkqueue required for >= v4.0.x, you can skip this step for v3.0.x and below.
 
@@ -62,8 +62,8 @@ Unfortunately neither RHEL nor Centos provide an RPM for libkqueue.  The instruc
 
 Building the libkqueue RPM will require these packages:
 
-````
+----
 yum -y install cmake3
-````
+----
 
-[[include:libkqueue-rpm]]
+include:libkqueue-rpm
