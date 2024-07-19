@@ -3799,6 +3799,9 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		error:
 			close(this->fd);
 			home->last_failed_open = now;
+#ifdef WITH_TLS
+			if (home->listeners && this->nonblock) rbtree_deletebydata(home->listeners, this);
+#endif
 			listen_free(&this);
 			return NULL;
 		}
