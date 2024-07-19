@@ -504,7 +504,6 @@ static rbnode_t *rbtree_find_internal(rbtree_t *tree, void const *data)
 		int result = tree->compare(data, current->data);
 
 		if (result == 0) {
-			PTHREAD_MUTEX_UNLOCK(tree);
 			return current;
 		} else {
 			current = (result < 0) ?
@@ -512,7 +511,6 @@ static rbnode_t *rbtree_find_internal(rbtree_t *tree, void const *data)
 		}
 	}
 
-	PTHREAD_MUTEX_UNLOCK(tree);
 	return NULL;
 }
 
@@ -536,13 +534,13 @@ bool rbtree_deletebydata(rbtree_t *tree, void const *data)
 	rbnode_t *node;
 
 	PTHREAD_MUTEX_LOCK(tree);
-	node = rbtree_find(tree, data);
+	node = rbtree_find_internal(tree, data);
 	if (!node) {
 		PTHREAD_MUTEX_UNLOCK(tree);
 		return false;
 	}
 
-	rbtree_delete_internal(tree, node, false);
+	rbtree_delete_internal(tree, node, true);
 	PTHREAD_MUTEX_UNLOCK(tree);
 
 	return true;
