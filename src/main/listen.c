@@ -3593,7 +3593,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		this->fd = fr_socket_client_tcp(&home->src_ipaddr,
 						&home->ipaddr, home->port,
 #ifdef WITH_TLS
-						!this->nonblock
+						this->nonblock
 #else
 						false
 #endif
