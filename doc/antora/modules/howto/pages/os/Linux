@@ -6,20 +6,20 @@ FreeRADIUS is expected to be compatible with all [http://www.linux.org/ Linux]  
 * Novell / SUSE Linux
 
 * Enterprise Editions:
-* Novell Open Enterprise Server 10
-* SUSE Linux Enterprise Server 9
-* SUSE Linux Enterprise Server 10
+** Novell Open Enterprise Server 10
+** SUSE Linux Enterprise Server 9
+** SUSE Linux Enterprise Server 10
 
 * Standard Editions:
-* SUSE Linux Professional 9.0
-* SUSE Linux Professional 9.1
-* SUSE Linux Professional 9.2
-* SUSE Linux Professional 9.3
-* SUSE Linux 10.0
-* SUSE Linux 10.1
-* openSUSE 10.2
-* openSUSE 10.3
-* openSUSE 11
+** SUSE Linux Professional 9.0
+** SUSE Linux Professional 9.1
+** SUSE Linux Professional 9.2
+** SUSE Linux Professional 9.3
+** SUSE Linux 10.0
+** SUSE Linux 10.1
+** openSUSE 10.2
+** openSUSE 10.3
+** openSUSE 11
 
 * Ubuntu (all current releases)
 * CentOS 5.x (v 1.1.3) (also, FreeRadius 2.1.7 is available via: yum install freeradius2)
