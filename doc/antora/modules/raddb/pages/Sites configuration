@@ -1,0 +1,20 @@
+The `sites-available`, `sites-enabled` convention has been
+borrowed from Apache, Nginx, and other similar projects.
+
+As of FreeRADIUS 2.x.x virtual servers are located in the
+`raddb/sites-available` subdirectory of the main configuration
+directory. Each of these files contains a `server <name> {}`
+stanza to declare a server configuration, which may then contain a
+`listen {}` stanza to bind that server to a given ip/port.
+
+The files from `raddb/sites-available` are symbolically linked
+(symlinked) from the `raddb/sites-enabled` directory. This
+allows the administrator to selectively enable and disable virtual
+servers.
+
+Every file in `raddb/sites-enabled` is `$INCLUDE`'d from
+radiusd.conf.
+
+== See Also
+
+* Virtual-Server
