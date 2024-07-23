@@ -2606,6 +2606,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 							value, dp->d_name);
 					if (slen >= (int) sizeof(buf2) || slen < 0) {
 						ERROR("%s: Full file path is too long.", dp->d_name);
+						closedir(dir);
 						return -1;
 					}
 					if ((stat(buf2, &stat_buf) != 0) ||
