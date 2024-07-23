@@ -1,7 +1,9 @@
+= VMPS
 
-
-
-
+The VLAN Mangement Policy Server(VMPS)
+system allows administrators to assign machines to a VLAN based on their
+MAC address. The protocol itself was designed by Cisco, and is only
+implemented on some Cisco switches.
 
 In v4, all "server" sections MUST start with a "namespace"
 parameter.  This tells the server which protocol is being used.
