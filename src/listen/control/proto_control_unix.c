@@ -359,6 +359,20 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 */
 	if (data_size <= 0) return data_size;
 
+#ifdef __COVERITY__
+	/*
+	 *      data_size and written have type size_t, so
+	 *      their sum can at least in theory exceed SSIZE_MAX.
+	 * 	We add this check to placate Coverity.
+	 *
+	 *      When Coverity examines this function it doesn't have
+	 * 	the caller context to see that it's honoring needed
+	 * 	preconditions (buffer_len <=SSIZE_MAX, and the loop
+	 * 	schema needed to use this function).
+	 */
+	if (data_size + written > SSIZE_MAX) return -1;
+#endif
+
 	return data_size + written;
 }
 
