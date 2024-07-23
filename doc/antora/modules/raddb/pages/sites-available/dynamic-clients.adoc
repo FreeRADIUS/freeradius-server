@@ -289,3 +289,8 @@ server dynamic_clients {
 	}
 }
 ```
+### Corner cases
+
+This code uses the standard packet tracking mechanisms.
+i.e. if a duplicate is received, ignore it.  If a conflicting packet
+is received, drop either the new one or the old one.
