@@ -363,8 +363,10 @@ rest {
 	#  |===
 	#
 	authorize {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
-		method = 'GET'
+		request {
+			uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
+			method = 'GET'
+		}
 		tls = ${..tls}
 	}
 
@@ -374,8 +376,10 @@ rest {
 	#  Same as `Authorize { ... }`
 	#
 	authenticate {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
-		method = 'GET'
+		request {
+			uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
+			method = 'GET'
+		}
 		tls = ${..tls}
 	}
 
@@ -392,8 +396,10 @@ rest {
 	#  |===
 	#
 	accounting {
-		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
-		method = 'POST'
+		request {
+			uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
+			method = 'POST'
+		}
 		tls = ${..tls}
 	}
 
@@ -403,8 +409,10 @@ rest {
 	#  Same as `Accounting { ... }`
 	#
 	post-auth {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
-		method = 'POST'
+		request {
+			uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
+			method = 'POST'
+		}
 		tls = ${..tls}
 	}
 
