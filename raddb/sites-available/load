@@ -46,6 +46,44 @@ server load {
 			#
 			#  Where the statistics file goes, in CSV format.
 			#
+			#  One line will be written to the file for each
+			#  second of the load generation run.
+			#
+			#  Each line will contain the following columns:
+			#  - time - since the test started running
+			#  - last_packet - The last time we added a request
+			#    to the backlog.
+			#  - rtt - Round Trip Time i.e. the average delay
+			#    between a request and response.  This is a
+			#    moving average in nanoseconds.
+			#  - rttvar - Round Trip Time variance.  Moving
+			#    average of the range between the smallest RTT
+			#    and largest RTT.  The value is in nanoseconds.
+			#  - pps - Packets per second.  The maximum packet
+			#    rate we're aiming for with this "step".  The
+			#    load generator increases the load periodically
+			#    in "steps".
+			#  - pps_accepted - Packets per second. Rate of
+			#    response packets received.
+			#  - sent - How many packets have been generated
+			#    by the load generation module from the start of
+			#    the run.
+			#  - received - How many packets received since the
+			#    start of the run.
+			#  - backlog - How many requests are awaiting
+			#    responses.
+			#  - backlog_max - The largest the backlog has been
+			#    since the start of the run.
+			#  - <usec - Absolute counter.  Responses received
+			#    in less that a microsecond since the start
+			#    of the run.
+			#  - us - Responses received in >= 1us < 10us since
+			#    the start of the run.
+			#  - 100us, ms, 10ms, 100ms, s are all similar
+			#    latency bins.
+			#  - blocked - 1 = true, 0 = false.   We're refusing
+			#    to enqueue more packets until we get responses
+			#    to the outstanding requests.
 			csv = ${confdir}/stats.csv
 
 			#
