@@ -486,6 +486,15 @@ static int tls_socket_recv(rad_listen_t *listener)
 		goto check_for_setup;
 	}
 
+	/*
+	 *	Is there already enough application data in the buffer for the
+	 *	next RADIUS packet?
+	 */
+	if (sock->ssn->clean_out.used >= 20 &&
+	    ((int) sock->ssn->clean_out.used) >= ((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3])) {
+		goto read_application_data;
+	}
+
 	if (!already_read) {
 		rcode = read(request->packet->sockfd,
 			     sock->ssn->dirty_in.data,
@@ -850,6 +859,16 @@ redo:
 			DEBUG("(TLS) more TLS records after dual_tls_recv");
 			goto redo;
 		}
+	}
+
+	/*
+	 *	If there is enough remaining application data in the buffer for another
+	 *	RADIUS packet, re-run tls_socket_recv() to process it.
+	 */
+	if (sock->ssn->clean_out.used >= 20 &&
+	    ((int) sock->ssn->clean_out.used) >= ((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3])) {
+		DEBUG3("(TLS) %ld bytes of application data remaining", sock->ssn->clean_out.used);
+		goto redo;
 	}
 
 	return 1;
