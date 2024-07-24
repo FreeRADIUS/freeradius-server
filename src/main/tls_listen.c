@@ -247,7 +247,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	 *	Let's see if the PROXY line is well-formed.
 	 */
 	if ((eol - p) < 14) goto invalid_data;
-	
+
 	/*
 	 *	We only support TCP4 and TCP6.
 	 */
@@ -360,7 +360,7 @@ static int proxy_protocol_check(rad_listen_t *listener, REQUEST *request)
 	} else {
 		sock->ssn->dirty_in.used = 0;
 	}
-		
+
 	/*
 	 *	It's no longer a PROXY protocol, but just straight TLS.
 	 */
@@ -373,6 +373,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 {
 	bool doing_init = false, already_read = false;
 	ssize_t rcode;
+	size_t data_len;
 	RADIUS_PACKET *packet;
 	REQUEST *request;
 	listen_socket_t *sock = listener->data;
@@ -656,16 +657,17 @@ read_application_data:
 	 *	the caller.  Otherwise...
 	 */
 	if ((sock->ssn->clean_out.used < 20) ||
-	    (((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]) != (int) sock->ssn->clean_out.used)) {
-		RDEBUG("(TLS) Received bad packet: Length %zd contents %d",
-		       sock->ssn->clean_out.used,
-		       (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
-		goto do_close;
+	    (((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]) < (int) sock->ssn->clean_out.used)) {
+		RDEBUG3("(TLS) Received partial packet (have %zu, want %u), waiting for more.",
+			sock->ssn->clean_out.used, (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
+		return 0;
 	}
 
+	data_len = (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3];
+
 	packet = sock->packet;
-	packet->data = talloc_array(packet, uint8_t, sock->ssn->clean_out.used);
-	packet->data_len = sock->ssn->clean_out.used;
+	packet->data = talloc_array(packet, uint8_t, data_len);
+	packet->data_len = data_len;
 	sock->ssn->record_minus(&sock->ssn->clean_out, packet->data, packet->data_len);
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
