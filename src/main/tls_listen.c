@@ -665,8 +665,13 @@ read_application_data:
 	 *	If the packet is a complete RADIUS packet, return it to
 	 *	the caller.  Otherwise...
 	 */
-	if ((sock->ssn->clean_out.used < 20) ||
-	    ((int) sock->ssn->clean_out.used) < ((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3])) {
+	if (sock->ssn->clean_out.used < 20) {
+		RDEBUG3("(TLS) Received partial packet (have %zu, want >=20), waiting for more.",
+			sock->ssn->clean_out.used);
+		return 0;
+	}
+
+	if (((int) sock->ssn->clean_out.used) < ((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3])) {
 		RDEBUG3("(TLS) Received partial packet (have %zu, want %u), waiting for more.",
 			sock->ssn->clean_out.used, (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
 		return 0;
