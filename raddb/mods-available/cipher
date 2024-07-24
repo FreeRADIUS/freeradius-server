@@ -15,14 +15,14 @@
 #  [options="header,autowidth"]
 #  |===
 #  | XLAT                                          | Description
-#  | `%<inst>_encrypt(<plaintext>...)`             | Encrypts plaintext using `certificate_file`
-#  | `%<inst>_decrypt(<ciphertext>...)`            | Decrypts ciphertext using `private_key_file`
-#  | `%<inst>_sign(<plaintext>...)`                | Signs plaintext using `private_key_file`
-#  | `%<inst>_verify(<signature>, <plaintext>...)`  | Validates a signature using `certificate_file`
-#  | `%<inst>_certificate(serial)`                | Returns the serial of `certificate_file`
-#  | `%<inst>_certificate(fingerprint, <hash>)`    | Produces a fingerprint of `certificate_file` using the specified hash.
-#  | `%<inst>_certificate(not_before)`            | Retrieves the notBefore time from `certificate_file`.
-#  | `%<inst>_certificate(not_after)`             | Retrieves the notAfter time from `certificate_file`.
+#  | `%<inst>.encrypt(<plaintext>...)`             | Encrypts plaintext using `certificate_file`
+#  | `%<inst>.decrypt(<ciphertext>...)`            | Decrypts ciphertext using `private_key_file`
+#  | `%<inst>.sign(<plaintext>...)`                | Signs plaintext using `private_key_file`
+#  | `%<inst>.verify(<signature>, <plaintext>...)`  | Validates a signature using `certificate_file`
+#  | `%<inst>.certificate(serial)`                | Returns the serial of `certificate_file`
+#  | `%<inst>.certificate(fingerprint, <hash>)`    | Produces a fingerprint of `certificate_file` using the specified hash.
+#  | `%<inst>.certificate(not_before)`            | Retrieves the notBefore time from `certificate_file`.
+#  | `%<inst>.certificate(not_after)`             | Retrieves the notAfter time from `certificate_file`.
 #  |===
 #
 #  NOTE: `<ciphertext>` and `<signature>` are ingested and excreted to in their raw form.
