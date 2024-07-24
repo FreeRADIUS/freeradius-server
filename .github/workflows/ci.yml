@@ -9,6 +9,7 @@ on:
 env:
   PANIC_ACTION: "gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
   ALT_OPENSSL: "3.0.8"
+  ALT_OPENSSL_PATH: "/old/3.0"
   CI: 1
   GH_ACTIONS: 1
   DEBIAN_FRONTEND: noninteractive
@@ -197,7 +198,7 @@ jobs:
       id: opensslshasum
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
       run: |
-        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
+        wget -qO- http://www.openssl.org/source/$ALT_OPENSSL_PATH/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
 
     - name: 'Restore OpenSSL 3.0 from the cache'
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
@@ -211,7 +212,7 @@ jobs:
       if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
       run: |
         cd ~
-        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
+        wget https://www.openssl.org/source/$ALT_OPENSSL_PATH/openssl-$ALT_OPENSSL.tar.gz
         tar xzf openssl-$ALT_OPENSSL.tar.gz
         cd openssl-$ALT_OPENSSL
         ./Configure --prefix=/opt/openssl --openssldir=.
