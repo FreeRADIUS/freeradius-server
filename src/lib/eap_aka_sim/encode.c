@@ -715,6 +715,15 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 					      value_len, encode_ctx);
 		if (slen < 0) return PAIR_ENCODE_FATAL_ERROR;
 
+#ifdef __COVERITY__
+		/*
+		 * 	Coverity as it stands doesn't see that value_len >= 0 because
+		 * 	work_dbuff has at least the two zero bytes in it, and thus thinks
+		 * 	(size_t) slen - value_len will be some huge size_t value. This
+		 * 	check should pacify it.
+		 */
+		if (value_len < 0) return -1;
+#endif
 		FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, (size_t)slen - value_len);
 		fr_dbuff_advance(&work_dbuff, (size_t)slen - value_len);
 	}
