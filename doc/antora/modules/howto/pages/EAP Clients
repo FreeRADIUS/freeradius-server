@@ -1,0 +1,54 @@
+== radeapclient
+
+FreeRADIUS servers ships with an "radeapclient" that can do EAP-MD5 (passwords), as well as EAP-SIM.
+
+== Windows XP supplicant
+
+XP - FreeRADIUS EAP/TLS notes may be found at:
+: http://www.denobula.com/EAPTLS.pdf
+
+== SecureW2
+
+SecureW2 was a powerful open source 802.1x Client for Windows. It is now available as a commercial product only.
+
+*Features*
+
+* Most robust and EAP-TTLS Client available today 
+* Uses the standard MS 802.1X Client for Windows 2000, Windows XP and Pocket PC 2003. 
+* Works with both wired- and wireless 802.1X networks
+* Supports convenient user profiles
+* User based authentication, allowing administrators to deploy standard accounting techniques
+* No user certificates, no client certificate issuing problems
+* Dynamic WEP keys, instead of static WEP keys
+* WEP key rotation, every 10 minutes a new WEP key is generated without the user even noticing
+* Works on all common user-databases
+* Works with 802.11 protocols such as 802.11B, 802.11A and 802.11
+
+== NetworkManager
+
+NetworkManager is a software utility aimed at simplifying the use of computer networks on Linux and other Unix-like operating systems.
+
+The project was initiated in 2004 by Red Hat, with the goal of enabling Linux users to more easily deal with modern networking needs, particularly Wireless LAN.  NetworkManager takes an opportunistic approach to network selection, attempting to use the best available connection as outages occur, or the user roams between wireless networks.  Ethernet connections are preferred over "known" wireless networks, which are preferred over wireless networks with SSIDs the user has never connected to.  The user is prompted for WEP or WPA keys as needed.
+
+==wpa_supplicant==
+
+[http://hostap.epitest.fi/wpa_supplicant/wpa_supplicant] is an Open Source WPA Supplicant for Linux, BSD, and Windows with support for WPA and WPA2 (IEEE 802.11i / RSN). It is suitable for both desktop/laptop computers and embedded systems. Supplicant is the IEEE 802.1X/WPA component that is used in the client stations. It implements key negotiation with a WPA Authenticator and it controls the roaming and IEEE 802.11 authentication/association of the wlan driver.
+
+==Xsupplicant==
+
+The [http://open1x.sourceforge.net/ Open1X project] is dedicated to bringing a free, open source 802.1X/WPA/WPA2/IEEE802.11i implementation to as many target platforms as possible.
+
+XSupplicant - freeradius (EAP/TLS) notes may be found at:
+: http://www.eax.com/802/
+: or http://www.missl.cs.umd.edu/wireless/eaptls/
+
+==rad_eap_test==
+
+[http://www.eduroam.cz/rad_eap_test/ rad_eap_test] is a tool for testing
+EAP from the shell. Uses eapol_test from wpa_supplicant, and also works
+as a nagios plugin.
+
+==See Also==
+
+* [[EAP]]
+* [[RADIUS Clients]]
