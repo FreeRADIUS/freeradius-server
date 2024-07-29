@@ -150,15 +150,34 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 	return 0;
 }
 
+static int try_connect(rad_listen_t *listener);
+
 static void tls_write_available(UNUSED fr_event_list_t *el, UNUSED int fd, void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	listen_socket_t *sock = listener->data;
 
+	/*
+	 *	Try to connect once the socket has become writeable.
+	 */
+	if (!sock->ssn->connected) {
+		int rcode;
+
+		rcode = try_connect(listener);
+		if (rcode <= 0) {
+			tls_socket_close(listener);
+			return;
+		}
+
+		if (!sock->ssn->connected) {
+			return;
+		}
+	}
+
 	proxy_listener_thaw(listener);
 
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
-	(void) tls_socket_write(listener);
+	if (sock->ssn->dirty_out.used) (void) tls_socket_write(listener);
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 }
 
@@ -1052,10 +1071,11 @@ int dual_tls_send_coa_request(rad_listen_t *listener, REQUEST *request)
 }
 #endif
 
-static int try_connect(listen_socket_t *sock)
+static int try_connect(rad_listen_t *this)
 {
 	int ret;
 	time_t now;
+	listen_socket_t *sock = this->data;
 
 	now = time(NULL);
 	if ((sock->opened + sock->connect_timeout) < now) {
@@ -1075,6 +1095,7 @@ static int try_connect(listen_socket_t *sock)
 			return 2;
 
 		case SSL_ERROR_WANT_WRITE:
+			proxy_listener_freeze(this, tls_write_available);
 			DEBUG3("(TLS) SSL_connect() returned WANT_WRITE");
 			return 2;
 		}
@@ -1110,7 +1131,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 
 	if (!sock->ssn->connected) {
-		rcode = try_connect(sock);
+		rcode = try_connect(listener);
 		if (rcode <= 0) return rcode;
 
 		if (rcode == 2) return 0; /* more negotiation needed */
@@ -1274,18 +1295,21 @@ int proxy_tls_recv(rad_listen_t *listener)
 
 	rad_assert(sock->ssn != NULL);
 
-	DEBUG3("Proxy SSL socket has data to read");
+	DEBUG3("(TLS) Proxy socket has data to read");
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	data_len = proxy_tls_read(listener);
 	if (data_len < 0) {
 		tls_socket_close(listener);
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-		DEBUG("Closing TLS socket to home server");
+		DEBUG("(TLS) Closing connection to home server");
 		return 0;
 	}
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
-	if (data_len == 0) return 0; /* not done yet */
+	if (data_len == 0) {
+		DEBUG3("(TLS) Proxy socket read no data from the network");
+		return 0; /* not done yet */
+	}
 
 	data = sock->data;
 
@@ -1410,7 +1434,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 
 	if (!sock->ssn->connected) {
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
-		rcode = try_connect(sock);
+		rcode = try_connect(listener);
 		if (rcode <= 0) {
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
