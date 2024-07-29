@@ -8,7 +8,7 @@
 #	https://www.3gpp2.org/Public_html/Specs/
 #	X.S0011-005-C v1.0
 #	https://www.3gpp2.org/Public_html/Specs/X.S0011-005-C_v2.0_050708.pdf
-#	https://www.3gpp2.org/Public_html/Specs/X.S0011-005-C_v3.0_061030.pdf
+#	https://www.3gpp2.org/Public_html/Specs/X.S0011-005-E_v1.0_091116.pdf
 #
 #	$Id$
 #
@@ -20,6 +20,21 @@ ATTRIBUTE	Security-Level				2	integer
 ATTRIBUTE	Pre-Shared-Secret			3	string # 18 octets
 ATTRIBUTE	Reverse-Tunnel-Spec			4	integer
 ATTRIBUTE	Diffserv-Class-Option			5	integer
+
+VALUE	Diffserv-Class-Option	Best-Effort		0
+VALUE	Diffserv-Class-Option	AF11			10
+VALUE	Diffserv-Class-Option	AF12			12
+VALUE	Diffserv-Class-Option	AF13			14
+VALUE	Diffserv-Class-Option	AF21			18
+VALUE	Diffserv-Class-Option	AF22			20
+VALUE	Diffserv-Class-Option	AF23			22
+VALUE	Diffserv-Class-Option	AF31			26
+VALUE	Diffserv-Class-Option	AF32			28
+VALUE	Diffserv-Class-Option	AF33			30
+VALUE	Diffserv-Class-Option	AF41			34
+VALUE	Diffserv-Class-Option	AF42			36
+VALUE	Diffserv-Class-Option	AF43			38
+VALUE	Diffserv-Class-Option	EF			46
 
 #  Contains embedded 3GPP2 accounting attributes.
 ATTRIBUTE	Accounting-Container			6	octets
@@ -179,6 +194,10 @@ ATTRIBUTE	Volume-Used-ATS-Overflow		.3	short
 ATTRIBUTE	Tariff-Switch-Interval			.4	integer
 ATTRIBUTE	Time-Interval-After-Tariff-Switch-Update .5	integer
 
+ATTRIBUTE	Subnet					108	tlv
+ATTRIBUTE	Subnet					.1	octets
+ATTRIBUTE	Sector-ID				.2	octets
+
 ATTRIBUTE	MEID					116	string
 
 ATTRIBUTE	DNS-Server				117	tlv
@@ -190,15 +209,77 @@ ATTRIBUTE	Entity-Type				.4	byte
 VALUE	Entity-Type			HAAA			1
 VALUE	Entity-Type			VAAA			2
 
+ATTRIBUTE	MIP6-Home-Agent				118	ipv6addr
+ATTRIBUTE	MIP6-CoA				119	ipv6addr
+ATTRIBUTE	MIP6-HoA-Not-Authorized			120	integer
+ATTRIBUTE	MIP6-Session-Key			121	octets
+ATTRIBUTE	MIP6-Accounting-Indication		122	string
+ATTRIBUTE	MIP6-Mesg-ID				123	octets
+ATTRIBUTE	Filter-Rule				124	string
+ATTRIBUTE	HTTP-Redirection-Rule			125	string
+ATTRIBUTE	IP-Redirection-Rule			126	string
+ATTRIBUTE	Hot-Line-Capability			127	integer
+ATTRIBUTE	MIP6-Home-Link-Prefix			128	octets
+ATTRIBUTE	Max-Auth-Aggregate-Bandwidth		130	integer
+
+ATTRIBUTE	Auth-Flow-Profile-ID			131	tlv
+ATTRIBUTE	Forward					.1	short
+ATTRIBUTE	Reverse					.2	short
+ATTRIBUTE	Bi-Direction				.3	short
+
+ATTRIBUTE	Granted-QoS-Params			132	tlv
+ATTRIBUTE	Direction				.1	short
+ATTRIBUTE	Flow-Id					.2	short
+ATTRIBUTE	Flow-Profile-ID				.4	short
+ATTRIBUTE	Traffic-Class				.5	short
+ATTRIBUTE	Peak-Rate				.6	short
+ATTRIBUTE	Bucket-Size				.7	short
+ATTRIBUTE	Token-Rate				.8	short
+ATTRIBUTE	Max-Latency				.9	short
+ATTRIBUTE	Max-IP-Packet-Loss-Rate			.10	short
+ATTRIBUTE	Packet-Size				.11	short
+ATTRIBUTE	Delay-Var-Sensitive			.12	short
+
+ATTRIBUTE	Max-Per-Flow-Priority			133	integer
+ATTRIBUTE	MIP6-Authenticator			134	octets
+
+ATTRIBUTE	MIP6-MAC-Mobility-Data			138	octets
+ATTRIBUTE	Inter-User-Priority			139	integer
+ATTRIBUTE	MIP6-Home-Agent-Attr-B			140	ipv6addr
+ATTRIBUTE	MIP6-HoA				141	ipv6addr
+
 ATTRIBUTE	Carrier-ID				142	string
 
 # More sub-types
 ATTRIBUTE	GMT-Time-Zone-Offset			143	signed
+ATTRIBUTE	Flow-ID					144	tlv
+ATTRIBUTE	Direction				.1	short
+ATTRIBUTE	Flow-ID					.2	short
+ATTRIBUTE	Flow-Status				145	integer
+ATTRIBUTE	Filtered-Octet-Count-Terminating	146	integer
+ATTRIBUTE	Filtered-Octet-Count-Originating	147	integer
+
+ATTRIBUTE	RSVP-Outbound-Octet-Count		163	integer
+ATTRIBUTE	RSVP-Inbound-Octet-Count		164	integer
+ATTRIBUTE	RSVP-Outbound-Packet-Count		165	integer
 
 ATTRIBUTE	HA-Request				168	integer
 ATTRIBUTE	HA-Authorised				169	integer
 ATTRIBUTE	IP-Ver-Authorised			172	integer
 ATTRIBUTE	MIPv4-Mesg-Id				173	string
 
+ATTRIBUTE	MIP6-HA-Local-Assigment-Capability	179	integer
+
+ATTRIBUTE	HAAA-MIP6-HA-Protocol-Capability-Indication	203	integer
+
+ATTRIBUTE	VAAA-Assigned-MIP6-HA			205	ipv6addr
+ATTRIBUTE	VAAA-Assigned-MIP6-HL			206	octets
+ATTRIBUTE	VAAA-MIP6-HA-Protocol-Capability-Indication	207	integer
+
+ATTRIBUTE	DNS-Server-IPv6-Address			214	tlv
+ATTRIBUTE	Primary					.1	ipv6addr
+ATTRIBUTE	Secondary				.2	ipv6addr
+ATTRIBUTE	Flag					.3	byte
+ATTRIBUTE	Entity-Type				.4	byte
 END-VENDOR 3GPP2
 ALIAS		3GPP2					Vendor-Specific.3GPP2
