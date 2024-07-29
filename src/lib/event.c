@@ -514,7 +514,11 @@ int fr_event_fd_write_handler(fr_event_list_t *el, int type, int fd,
 		fr_assert(ctx = el->readers[i].ctx);
 		el->readers[i].write_handler = write_handler;
 
-		FD_SET(fd, &el->write_fds); /* fd MUST already be in the set of readers! */
+		if (write_handler) {
+			FD_SET(fd, &el->write_fds); /* fd MUST already be in the set of readers! */
+		}  else {
+			FD_CLR(fd, &el->write_fds);
+		}
 		return 1;
 	}
 #endif	/* HAVE_KQUEUE */
