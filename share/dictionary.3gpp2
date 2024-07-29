@@ -7,7 +7,7 @@
 #	http://www.3gpp2.org/Public_html/specs/index.cfm
 #	X.S0011-005-C v1.0
 #	http://www.3gpp2.org/Public_html/specs/X.S0011-005-C_v2.0_050708.pdf
-#	http://www.3gpp2.org/public_html/specs/X.S0011-005-C_v3.0_061030.pdf
+#	http://www.3gpp2.org/Public_html/Specs/X.S0011-005-E_v1.0_091116.pdf
 #
 #	$Id$
 #
@@ -20,6 +20,21 @@ ATTRIBUTE	3GPP2-Security-Level			2	integer
 ATTRIBUTE	3GPP2-Pre-Shared-Secret			3	string # 18 octets
 ATTRIBUTE	3GPP2-Reverse-Tunnel-Spec		4	integer
 ATTRIBUTE	3GPP2-Diffserv-Class-Option		5	integer
+
+VALUE	3GPP2-Diffserv-Class-Option	Best-Effort		0
+VALUE	3GPP2-Diffserv-Class-Option	AF11			10
+VALUE	3GPP2-Diffserv-Class-Option	AF12			12
+VALUE	3GPP2-Diffserv-Class-Option	AF13			14
+VALUE	3GPP2-Diffserv-Class-Option	AF21			18
+VALUE	3GPP2-Diffserv-Class-Option	AF22			20
+VALUE	3GPP2-Diffserv-Class-Option	AF23			22
+VALUE	3GPP2-Diffserv-Class-Option	AF31			26
+VALUE	3GPP2-Diffserv-Class-Option	AF32			28
+VALUE	3GPP2-Diffserv-Class-Option	AF33			30
+VALUE	3GPP2-Diffserv-Class-Option	AF41			34
+VALUE	3GPP2-Diffserv-Class-Option	AF42			36
+VALUE	3GPP2-Diffserv-Class-Option	AF43			38
+VALUE	3GPP2-Diffserv-Class-Option	EF			46
 
 #  Contains embedded 3GPP2 accounting attributes.
 ATTRIBUTE	3GPP2-Accounting-Container		6	octets
@@ -173,6 +188,10 @@ ATTRIBUTE	3GPP2-Prepaid-Volume-Used-ATS-Overflow	98.3	short
 ATTRIBUTE	3GPP2-Prepaid-Tariff-Switch-Interval	98.4	integer
 ATTRIBUTE	3GPP2-Prepaid-Time-Interval-After-Tariff-Switch-Update 98.5	integer
 
+ATTRIBUTE	3GPP2-Subnet				108	tlv
+ATTRIBUTE	3GPP2-Subnet-Subnet			108.1	octets
+ATTRIBUTE	3GPP2-Subnet-Sector-ID			108.2	octets
+
 ATTRIBUTE	3GPP2-MEID				116	octets	# sub tlvs?
 
 ATTRIBUTE	3GPP2-DNS-Server-IP-Address		117	tlv
@@ -184,14 +203,78 @@ ATTRIBUTE	3GPP2-DNS-Server-Entity-Type		117.4	byte
 VALUE	3GPP2-DNS-Server-Entity-Type	HAAA			1
 VALUE	3GPP2-DNS-Server-Entity-Type	VAAA			2
 
+ATTRIBUTE	3GPP2-MIP6-Home-Agent			118	ipv6addr
+ATTRIBUTE	3GPP2-MIP6-CoA				119	ipv6addr
+ATTRIBUTE	3GPP2-MIP6-HoA-Not-Authorized		120	integer
+ATTRIBUTE	3GPP2-MIP6-Session-Key			121	octets
+ATTRIBUTE	3GPP2-MIP6-Accounting-Indication	122	string
+ATTRIBUTE	3GPP2-MIP6-Mesg-ID			123	octets
+ATTRIBUTE	3GPP2-Filter-Rule			124	string
+ATTRIBUTE	3GPP2-HTTP-Redirection-Rule		125	string
+ATTRIBUTE	3GPP2-IP-Redirection-Rule		126	string
+ATTRIBUTE	3GGP2-Hot-Line-Capability		127	integer
+
+ATTRIBUTE	3GPP2-MIP6-Home-Link-Prefix		128	octets
+ATTRIBUTE	3GPP2-Max-Auth-Aggregate-Bandwidth	130	integer
+
+ATTRIBUTE	3GPP2-Auth-Flow-Profile-ID		131	tlv
+ATTRIBUTE	3GPP2-Auth-Flow-Profile-ID-Forward	131.1	short
+ATTRIBUTE	3GPP2-Auth-Flow-Profile-ID-Reverse	131.2	short
+ATTRIBUTE	3GPP2-Auth-Flow-Profile-ID-Bi-Direction	131.3	short
+
+ATTRIBUTE	3GPP2-Granted-QoS-Params		132	tlv
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Direction	132.1	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Flow-Id	132.2	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Flow-Profile-ID	132.4	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Traffic-Class	132.5	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Peak-Rate	132.6	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Bucket-Size	132.7	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Token-Rate	132.8	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Max-Latency	132.9	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Max-IP-Packet-Loss-Rate	132.10	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Packet-Size	132.11	short
+ATTRIBUTE	3GPP2-Granted-QoS-Params-Delay-Var-Sensitive	132.12	short
+
+ATTRIBUTE	3GPP2-Max-Per-Flow-Priority		133	integer
+ATTRIBUTE	3GPP2-MIP6-Authenticator		134	octets
+
+ATTRIBUTE	3GPP2-MIP6-MAC-Mobility-Data		138	octets
+ATTRIBUTE	3GPP2-Inter-User-Priority		139	integer
+ATTRIBUTE	3GPP2-MIP6-Home-Agent-Attr-B		140	ipv6addr
+ATTRIBUTE	3GPP2-MIP6-HoA				141	ipv6addr
+
 ATTRIBUTE	3GPP2-Carrier-ID			142	string
 
 # More sub-types
 ATTRIBUTE	3GPP2-GMT-Time-Zone-Offset		143	signed
+ATTRIBUTE	3GPP2-Flow-ID				144	tlv
+ATTRIBUTE	3GPP2-Flow-ID-Direction			144.1	short
+ATTRIBUTE	3GPP2-Flow-ID-Flow-ID			144.2	short
+ATTRIBUTE	3GPP2-Flow-Status			145	integer
+ATTRIBUTE	3GPP2-Filtered-Octet-Count-Terminating	146	integer
+ATTRIBUTE	3GPP2-Filtered-Octet-Count-Originating	147	integer
+
+ATTRIBUTE	3GPP2-RSVP-Outbound-Octet-Count		163	integer
+ATTRIBUTE	3GPP2-RSVP-Inbound-Octet-Count		164	integer
+ATTRIBUTE	3GPP2-RSVP-Outbound-Packet-Count	165	integer
 
 ATTRIBUTE	3GPP2-HA-Request			168	integer
 ATTRIBUTE	3GPP2-HA-Authorised			169	integer
 ATTRIBUTE	3GPP2-IP-Ver-Authorised			172	integer
 ATTRIBUTE	3GPP2-MIPv4-Mesg-Id			173	string
+
+ATTRIBUTE	3GPP2-MIP6-HA-Local-Assigment-Capability	179	integer
+
+ATTRIBUTE	3GPP2-HAAA-MIP6-HA-Protocol-Capability-Indication	203	integer
+
+ATTRIBUTE	3GPP2-VAAA-Assigned-MIP6-HA		205	ipv6addr
+ATTRIBUTE	3GPP2-VAAA-Assigned-MIP6-HL		206	octets
+ATTRIBUTE	3GPP2-VAAA-MIP6-HA-Protocol-Capability-Indication	207	integer
+
+ATTRIBUTE	3GPP2-DNS-Server-IPv6-Address		214	tlv
+ATTRIBUTE	3GPP2-DNS-Server-IPv6-Address-Primary	214.1	ipv6addr
+ATTRIBUTE	3GPP2-DNS-Server-IPv6-Address-Secondary	214.2	ipv6addr
+ATTRIBUTE	3GPP2-DNS-Server-IPv6-Address-Flag	214.3	byte
+ATTRIBUTE	3GPP2-DNS-Server-IPv6-Address-Entity-Type	214.4	byte
 
 END-VENDOR 3GPP2
