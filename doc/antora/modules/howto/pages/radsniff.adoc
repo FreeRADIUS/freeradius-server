@@ -1,0 +1,213 @@
+## Why?
+
+On UDP buffer exhaustion FreeRADIUS has no idea that packets are being dropped as it's not informed, it only knows then it's dropped packets due to the packet queue being full (or timeouts). There's no way around this other than by having an external process snooping on the traffic.
+
+radsniff should also work fine with other RADIUS servers. So where vendors have failed to provide sufficient instrumentation in their products, you can use radsniff to monitor their product's reliability and performance.
+
+## What packet rate can radsniff deal with?
+
+That is entirely dependent on your machine. But on a modern intel i7 processor it seems to be able to handle between 25k-30k PPS before libpcap starts reporting packet loss. This should be fine for the majority of installations, it's very unlikely that a real world FreeRADIUS installation (which will usually involve coupling FreeRADIUS with a directory or database component) would be able to handle 30k PPS anyway.
+
+When libpcap starts reporting loss, radsniff will mute itself, that is stop writing stats out to the collectd socket, and stop writing stats to stdout. The time it's muted for will be double the timeout period (``radsniff -h | grep timeout``).
+
+## Building radsniff
+
+Currently only the version of radsniff in the master (3.1.x) and v3.0.x branches support statistics, which means you'll probably need to build the server from source.
+
+Static builds work on those branches, meaning you can build radsniff as a standalone binary and not have issues with libfreeradius conflicts if you're running a stable version of the FreeRADIUS server on the same host.
+
+### Dependencies
+
+radsniff depends on libpcap and libcollectclient. If libpcap isn't available then radsniff will not be built. If libcollectdclient isn't available radsniff will be build but without support for writing statistics out to a collectd socket.
+
+On Debian/Ubuntu systems you can use apt to pull in the required packages:
+```bash
+sudo apt-get install libpcap-dev libcollectdclient-dev
+```
+
+There may be packages available for other systems, else you'll need to build the libraries from source, satisfying their dependencies manually.
+
+### Configuring
+
+If you wish to build a standalone binary of radsniff, you need to pass ``--with-shared-libs=no`` to the configure script, this disabled building with share libraries.
+
+Note: It's also helpful to specify ``--prefix=DIR`` where DIR is your existing FreeRADIUS installation directory. This means radsniff will pick up the dictionaries automatically.
+
+```bash
+./configure --with-shared=no
+```
+
+The key lines of output you need to look for are:
+```bash
+checking for pcap_open_live in -lpcap... yes
+checking for pcap_fopen_offline in -lpcap... yes
+checking for pcap_dump_fopen in -lpcap... yes
+checking for lcc_connect in -lcollectdclient... yes
+...
+checking for pcap.h... yes
+checking for collectd/client.h... yes
+```
+
+If you've installed either of the libraries in non-standard locations, you can specify the various paths with ``--with-pcap-include-dir=DIR``, ``--with-pcap-lib-dir=DIR``, ``--with-collectdclient-include-dir=DIR`` and ``--with-collectdclient-lib-dir=DIR``.
+
+### Building
+The new build framework in 3.x has sufficient levels of awesome, to autocreate make targets for all the binaries automagically, meaning you can just:
+```bash
+make radsniff
+```
+and it'll just build libfreeradius, the radsniff binary, and not the entire server.
+
+Unfortunately there's no specific install target for radsniff, so for now it's best to copy the binary directly from ``./build/bin/radsniff`` to wherever you want it ``/usr/local/bin/`` for example...
+
+### Running Manually
+
+3.1.x radsniff has two main modes of operation, packet decode and output, and statistics generation. By default radsniff will decode packets, but not output any statistics.
+
+There two arguments required to switch radsniff to stats mode and get it to write those stats to collect:
+* ``-W`` - To turn on statistics the ``-W <period>`` flag is used. For integrating with collectd ``<period>`` should match your collectd interval (which is by default 10 seconds).
+* ``-O`` - To direct stats to a collectd instance ``-O <server>``, is used. ``<server>`` can be an IP address, FQDN, or UNIX Socket. For this guide we'll need be using a UNIX socket ``/var/run/collectd-sock`` (the collectd default).
+
+You may also (optionally) pass one or more ``-i <interface>`` arguments to specify interfaces to listen on. If no ``-i`` flags are passed radsniff will listen on all interfaces it can, opening separate PCAP sessions for each interface.
+
+You may also (optionally) pass ``-P <pidfile>`` to make radsniff daemonize and write out a pid file. This is primarily for use in init scripts.
+
+An example invocation for manually running radsniff as stats daemon would be something like:
+```bash
+radsniff -q -i eth0 -P /var/run/freeradius/radsniff.pid -W 10 -O /var/run/collectd-sock > /var/log/radsniff.log 2>&1
+```
+
+#### Via init script
+
+Bundled in the ``scripts/`` directory is ``radsniff.init``. This is intended for use on Debian systems.
+
+To install:
+```bash
+sudo cp scripts/radsniff.init /etc/init.d/
+sudo update-rc.d radsniff defaults
+```
+
+By default the init script will pass the following arguments to radsniff:
+```bash
+-P "$PIDFILE"-N "$PROG" -q -W 10 -O /var/run/collectd-unixsock
+```
+
+``-P`` and ``-N`` cannot be changed (without editing the init script), but the other arguments can be overridden by creating ``/etc/default/radsniff`` and adding ``RADSNIFF_OPTIONS=<your options>``.
+
+## collectd
+
+To date I haven't managed to get radsniff to connect to collectd over UDP (keep getting connection refused errors, suspect libcollectdclient bug), but have been successful getting it work over unix socket.
+
+Nothing special is required other than enabling the unix socket plugin. To do that edit ``/etc/collectd/collectd.conf`` and uncomment ``LoadPlugin unixsock`` and
+```text
+<Plugin unixsock>
+       SocketFile "/var/run/collectd-unixsock"
+       SocketGroup "collectd"
+       SocketPerms "0660"
+</Plugin>
+```
+
+You'll also need to add the type definitions from [here](https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v4.0.x/scripts/collectd/radsniff_types.db) then restart collectd.
+
+### rrdtool graph definitions
+
+#### Counters
+
+```text
+-l 0 --vertical-label "PPS"
+DEF:received=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:received:AVERAGE 
+DEF:linked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:linked:AVERAGE 
+DEF:unlinked=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_count-<packet type>.rrd:unlinked:AVERAGE 
+DEF:reused=/var/lib/collectd/rrd/<host>/<instance>exchanged/radius_count-<packet type>.rrd:reused:AVERAGE
+AREA:received#DD44CC:received
+AREA:linked#66BBCC:linked
+STACK:unlinked#7FFF00:unlinked
+STACK:reused#FF8C00:reused
+```
+
+#### Latency
+
+```text
+-l 0  --vertical-label "Latency (ms)"
+DEF:high=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_latency-<packet type>.rrd:high:MAX
+DEF:low=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_latency-<packet type>.rrd:low:MIN
+DEF:avg=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_latency-<packet type>.rrd:avg:AVERAGE
+CDEF:trend1800=avg,1800,TRENDNAN
+CDEF:trend86400=avg,86400,TRENDNAN
+LINE:high#66BBCC:high
+LINE:low#DD44CC:low
+LINE:avg#7FFF00:avg
+LINE:trend1800#718D00:avg_30m
+LINE:trend86400#946A00:avg_day
+```
+
+#### RTX
+
+```text
+-l 0  --vertical-label "Requests completed per second"
+DEF:none=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:none:AVERAGE 
+DEF:1=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:1:AVERAGE 
+DEF:2=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:2:AVERAGE 
+DEF:3=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:3:AVERAGE
+DEF:4=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:4:AVERAGE
+DEF:more=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:more:AVERAGE
+DEF:lost=/var/lib/collectd/rrd/<host>/<instance>-exchanged/radius_rtx-<packet type>.rrd:lost:AVERAGE 
+AREA:none#2AD400:none
+STACK:1#4DB000:1
+STACK:2#718D00:2
+STACK:3#946A00:3
+STACK:4#B84600:4
+STACK:more#DB2300:more
+STACK:lost#FF0000:lost
+```
+
+## munin
+
+_But I don't use collectd, I use munin!_.
+
+Munin only provides an interface to pull stats from it's various plugins, this makes integrating it with radsniff more difficult.
+
+Although both munin and collectd use rrdtool, there doesn't appear to be an easy way to read stats directly from RRD files (or create graphs from them directly). It seems like the simplest way of pulling the statistics across, is with a plugin wrapping rrdtool, which consolidates stats from the collectd RRD files, mangles the field names a bit, and writes them out in the format munin expects.
+
+So [here's a plugin](https://raw.github.com/FreeRADIUS/freeradius-server/master/scripts/munin/radsniff) which does just that.
+
+### Configuration
+```bash
+cp scripts/munin/radsniff /usr/share/munin/plugins/radsniff
+ln -s /usr/share/munin/plugins/radsniff /etc/munin/plugins/radsniff_accounting_counters
+ln -s /usr/share/munin/plugins/radsniff /etc/munin/plugins/radsniff_accounting_latency
+ln -s /usr/share/munin/plugins/radsniff /etc/munin/plugins/radsniff_accounting_rtx
+
+cat > /etc/munin/plugin-conf.d/radsniff <<DELIM
+[radsniff_accounting_latency]
+        env.type radius_latency
+        env.pkt_type accounting_response
+
+[radsniff_accounting_counters]
+        env.type radius_count
+        env.pkt_type accounting_request
+
+[radsniff_accounting_rtx]
+        env.type radius_rtx
+        env.pkt_type accounting_request
+DELIM
+```
+
+Then restart munin-node.
+
+To monitor multiple packet types create additional symlinks to the radsniff plugin, and alter ``env.pkt_type``. If running multiple instances of radsniff you should also set ``env.instance`` to the ``<instance name>`` used above.
+
+If collectd is aggregating stats from multiple hosts you'll also need to set ``env.host``. 
+
+### Caveats
+
+Firstly the resolution is very different between collectd (10 seconds) and munin (300 seconds). This means most of the stats you see in munin are AVERAGED from 5mins worth of collectd stats.
+
+If a spike in packet loss or retransmissions occurs you may see a deceptively small spike on the munin graph. This is because that spike is averaged out over munin's polling interval. To get the actual number of packets lost, multiply the value from the graph by 300. Though if you have sustained packet loss or retransmissions it should should show up fine in munin.
+
+Although the majority of GUAGE values are created using the AVERAGE consolidation function, the 'low' latency and 'high' latency use MIN and MAX respectively. It seemed more useful to know the extremes during the polling interval, especially when using the values to trigger warnings when latency gets close to the point where the NAS will start timing out requests.
+
+## Example graphs
+
+![Accounting Request counters](radsniff_accounting_counters-day.png "Accounting Request counters")
+![Accounting Request latency](radsniff_accounting_latency-day.png "Accounting Request latency")
+![Accounting Request RTC](radsniff_accounting_rtx-day.png "Accounting RTX")
