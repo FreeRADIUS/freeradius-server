@@ -75,6 +75,13 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, fr_time_delta_t tim
 
 		wrote = writev(fd, vector_p, iovcnt);
 		if (wrote > 0) {
+#ifdef __COVERITY__
+			/*
+			 * 	Coverity thinks that total += wrote might underflow,
+			 * 	which causes an issue at the return.
+			 */
+			if (total + wrote < total) return -1;
+#endif
 			total += wrote;
 			while (wrote > 0) {
 				/*
