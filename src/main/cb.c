@@ -48,10 +48,6 @@ void cbtls_info(SSL const *s, int where, int ret)
 		if (RDEBUG_ENABLED3) {
 			char const *abbrv = SSL_state_string(s);
 			size_t len;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-			STACK_OF(SSL_CIPHER) *client_ciphers;
-			STACK_OF(SSL_CIPHER) *server_ciphers;
-#endif
 
 			/*
 			 *	Trim crappy OpenSSL state strings...
@@ -70,6 +66,8 @@ void cbtls_info(SSL const *s, int where, int ret)
 				int i;
 				int num_ciphers;
 				const SSL_CIPHER *this_cipher;
+				STACK_OF(SSL_CIPHER) *client_ciphers;
+				STACK_OF(SSL_CIPHER) *server_ciphers;
 
 			report_ciphers:
 				server_ciphers = SSL_get_ciphers(s);
