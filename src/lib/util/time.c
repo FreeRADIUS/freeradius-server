@@ -1151,7 +1151,7 @@ int fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_re
  *	- 0 on success.
  *	- -1 on failure.
  */
-fr_slen_t fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_t res)
+fr_slen_t fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_t res, bool utc)
 {
 	fr_sbuff_t	our_out = FR_SBUFF(out);
 	int64_t 	subseconds;
@@ -1161,12 +1161,10 @@ fr_slen_t fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_
 	char		buf[128];
 
 	t = fr_unix_time_to_sec(time);
-	(void) gmtime_r(&t, &s_tm);
-
-	if (res == FR_TIME_RES_SEC) {
-		len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S UTC", &s_tm);
-		FR_SBUFF_IN_BSTRNCPY_RETURN(&our_out, buf, len);
-		FR_SBUFF_SET_RETURN(out, &our_out);
+	if (utc) {
+		(void) gmtime_r(&t, &s_tm);
+	} else {
+		(void) localtime_r(&t, &s_tm);
 	}
 
 	len = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &s_tm);

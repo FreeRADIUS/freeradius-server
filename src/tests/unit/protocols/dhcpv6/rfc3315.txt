@@ -47,7 +47,7 @@ encode-pair Client-ID.DUID = LLT, Client-ID.DUID.LLT.Hardware-Type = 1, Client-I
 match 00 01 00 0e 00 01 00 01 00 00 a8 c0 aa bb cc dd ee ff
 
 decode-pair -
-match Client-ID = { DUID = LLT, DUID.LLT = { Hardware-Type = Ethernet, Time = "Jan  1 2000 12:00:00 UTC", Hardware-Type.Ethernet = { Address = aa:bb:cc:dd:ee:ff } } }
+match Client-ID = { DUID = LLT, DUID.LLT = { Hardware-Type = Ethernet, Time = "2000-01-01T12:00:00Z", Hardware-Type.Ethernet = { Address = aa:bb:cc:dd:ee:ff } } }
 
 #
 #  Server Identifier
@@ -58,7 +58,7 @@ encode-pair Server-ID.DUID = LLT, Server-ID.DUID.LLT.Hardware-Type = Ethernet, S
 match 00 02 00 0e 00 01 00 01 00 00 a8 c0 c0 ff ee c0 ff ee
 
 decode-pair -
-match Server-ID = { DUID = LLT, DUID.LLT = { Hardware-Type = Ethernet, Time = "Jan  1 2000 12:00:00 UTC", Hardware-Type.Ethernet = { Address = c0:ff:ee:c0:ff:ee } } }
+match Server-ID = { DUID = LLT, DUID.LLT = { Hardware-Type = Ethernet, Time = "2000-01-01T12:00:00Z", Hardware-Type.Ethernet = { Address = c0:ff:ee:c0:ff:ee } } }
 
 #
 #  9.3. DUID Assigned by Vendor Based on Enterprise Number [DUID-EN]

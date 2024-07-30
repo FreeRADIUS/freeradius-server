@@ -1002,7 +1002,7 @@ fr_unix_time_t	fr_unix_time_from_tm(struct tm *tm)
 int		fr_unix_time_from_str(fr_unix_time_t *date, char const *date_str, fr_time_res_t hint)
 		CC_HINT(nonnull);
 
-fr_slen_t	fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_t res)
+fr_slen_t	fr_unix_time_to_str(fr_sbuff_t *out, fr_unix_time_t time, fr_time_res_t res, bool utc)
 		CC_HINT(nonnull);
 
 fr_time_delta_t	fr_time_gmtoff(void);

@@ -116,25 +116,25 @@ value int8 -130
 match integer underflow
 
 value date Jan  1 1970 12:00:00 UTC
-match Jan  1 1970 12:00:00 UTC
+match 1970-01-01T12:00:00Z
 
 #
 #  10 days in
 #
 value date 864000
-match Jan 11 1970 00:00:00 UTC
+match 1970-01-11T00:00:00Z
 
 # 100 days
 value date 8640000
-match Apr 11 1970 00:00:00 UTC
+match 1970-04-11T00:00:00Z
 
 # 1,000 days
 value date 86400000
-match Sep 27 1972 00:00:00 UTC
+match 1972-09-27T00:00:00Z
 
 # 10,000 days
 value date 864000000
-match May 19 1997 00:00:00 UTC
+match 1997-05-19T00:00:00Z
 
 #
 #  Input can be whatever.  But for the tests, output is UTC.
@@ -144,7 +144,7 @@ match May 19 1997 00:00:00 UTC
 #  Our parse function ignores time zones, which is bad.
 #
 value date Aug 21 2019 07:43:03 EDT
-match Aug 21 2019 07:43:03 UTC
+match 2019-08-21T07:43:03Z
 
 #
 #  Can't yet test this as the parse / print / parse / cmp

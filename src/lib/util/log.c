@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/value.h>
+#include <freeradius-devel/util/time.h>
 
 #include <fcntl.h>
 #ifdef HAVE_FEATURES_H
@@ -413,28 +414,11 @@ void fr_vlog(fr_log_t const *log, fr_log_type_t type, char const *file, int line
 
 	case L_TIMESTAMP_ON:
 	{
-		time_t timeval;
-		size_t len;
-
-		timeval = time(NULL);
-#ifdef HAVE_GMTIME_R
-		if (log->dates_utc) {
-			struct tm utc;
-			gmtime_r(&timeval, &utc);
-			ASCTIME_R(&utc, fmt_time, sizeof(fmt_time));
-		} else
-#endif
-		{
-			CTIME_R(&timeval, fmt_time, sizeof(fmt_time));
-		}
-
-		/*
-		 *	ctime adds '\n'
-		 */
-		len = strlen(fmt_time);
-		if ((len > 0) && (fmt_time[len - 1] == '\n')) fmt_time[len - 1] = '\0';
-	}
+		fr_unix_time_t now = fr_time_to_unix_time(fr_time());
+		fr_sbuff_t time_sbuff = FR_SBUFF_OUT(fmt_time, sizeof(fmt_time));
+		fr_unix_time_to_str(&time_sbuff, now, FR_TIME_RES_USEC, log->dates_utc);
 		break;
+	}
 	}
 
 	/*

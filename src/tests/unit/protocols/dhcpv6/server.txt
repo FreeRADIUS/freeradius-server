@@ -36,7 +36,7 @@ encode-pair Client-ID.DUID = LLT, Client-ID.DUID.LLT.Hardware-Type = Ethernet, C
 match 00 01 00 0e 00 01 00 01 00 00 00 02 00 01 02 03 04 05
 
 decode-pair -
-match Client-ID = { DUID = LLT, DUID.LLT = { Hardware-Type = Ethernet, Time = "Jan  1 2000 00:00:02 UTC", Hardware-Type.Ethernet = { Address = 00:01:02:03:04:05 } } }
+match Client-ID = { DUID = LLT, DUID.LLT = { Hardware-Type = Ethernet, Time = "2000-01-01T00:00:02Z", Hardware-Type.Ethernet = { Address = 00:01:02:03:04:05 } } }
 
 #
 #  sub-struct LL is LLT, but without the T
