@@ -29,6 +29,14 @@ RCSID("$Id$")
 
 static _Thread_local char *sbuff_scratch;
 
+/** When true, prevent use of the scratch space
+ *
+ * This prevents us from initialising a pool after the thread local destructors have run.
+ *
+ * The destructors may be called manually before thread exit, and we don't want to re-initialise the pool
+ */
+static _Thread_local bool sbuff_scratch_freed;
+
 static_assert(sizeof(long long) >= sizeof(int64_t), "long long must be as wide or wider than an int64_t");
 static_assert(sizeof(unsigned long long) >= sizeof(uint64_t), "long long must be as wide or wider than an uint64_t");
 
@@ -1488,12 +1496,18 @@ ssize_t fr_sbuff_in_bstrcpy_buffer(fr_sbuff_t *sbuff, char const *str)
  */
 static int _sbuff_scratch_free(void *arg)
 {
+	sbuff_scratch_freed = true;
 	return talloc_free(arg);
 }
 
 static inline CC_HINT(always_inline) int sbuff_scratch_init(TALLOC_CTX **out)
 {
 	TALLOC_CTX	*scratch;
+
+	if (sbuff_scratch_freed) {
+		*out = NULL;
+		return 0;
+	}
 
 	scratch = sbuff_scratch;
 	if (!scratch) {
