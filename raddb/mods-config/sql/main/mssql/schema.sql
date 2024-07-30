@@ -132,7 +132,7 @@ GO
 
 
 --
--- Table structure for table 'radacct'
+-- Table structure for table 'radcheck'
 --
 
 CREATE TABLE [radcheck] (
@@ -160,7 +160,7 @@ GO
 
 
 --
--- Table structure for table 'radacct'
+-- Table structure for table 'radgroupcheck'
 --
 
 CREATE TABLE [radgroupcheck] (
@@ -188,7 +188,7 @@ GO
 
 
 --
--- Table structure for table 'radacct'
+-- Table structure for table 'radgroupreply'
 --
 
 CREATE TABLE [radgroupreply] (
@@ -218,7 +218,7 @@ GO
 
 
 --
--- Table structure for table 'radacct'
+-- Table structure for table 'radreply'
 --
 
 CREATE TABLE [radreply] (
@@ -246,7 +246,7 @@ GO
 
 
 --
--- Table structure for table 'radacct'
+-- Table structure for table 'radusergroup'
 --
 
 CREATE TABLE [radusergroup] (
@@ -271,7 +271,7 @@ GO
 
 
 --
--- Table structure for table 'radacct'
+-- Table structure for table 'radpostauth'
 --
 
 CREATE TABLE [radpostauth] (
