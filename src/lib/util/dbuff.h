@@ -1588,6 +1588,9 @@ static inline ssize_t _fr_dbuff_in_uint64v(uint8_t **pos_p, fr_dbuff_t *dbuff, u
 	uint8_t swapped[sizeof(uint64_t)];
 
 	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x08), 8);
+#ifdef __COVERITY__
+	if (ret > sizeof(uint64_t)) return -1;
+#endif
 	fr_nbo_from_uint64(swapped, num);
 
 	return _fr_dbuff_in_memcpy(pos_p, dbuff, (swapped + (sizeof(uint64_t) - ret)), ret);
