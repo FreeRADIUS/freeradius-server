@@ -1,0 +1,348 @@
+= Freeradius perl module (rlm_perl)
+
+Embedded Perl interpreter. Supports muliple instances, threads.
+
+== Supported Methods
+
+rlm_perl support authentication, authorization, accounting, pre-proxy, post-proxy, session. You can define your own function or use the defaults.
+
+== Requests
+
+rlm_perl provide to your perl script following hashes:
+
+* %RAD_REQUEST contains the vp from request
+* %RAD_REPLY contains vp for reply
+* %RAD_CONFIG contains vp for config
+* %RAD_CHECK
+* %RAD_REQUEST_PROXY
+* %RAD_REQUEST_PROXY_REPLY
+
+in this hashes keys are the Value-Pair names from the dictionary for example if you want to access User-Name from request then use ``$RAD_REQUEST{'User-Name'}``
+
+== Logging
+
+rlm_perl have a wrapper for radlog function that comes with freeradius. In your perl script use call to ``&radiusd::radlog($type,"Some message");`` 
+Where $type can be:
+
+    1 - Debug
+    2 - Auth
+    3 - Info
+    4 - Error
+    5 - Proxy
+    6 - Acct
+
+These are the same values as defined in src/include/radiusd.h, L_DBG, L_AUTH, etc.
+
+== Return Codes
+
+You can control what to return to FreeRadius with returning predefined values:
+
+    use constant {
+      RLM_MODULE_REJECT   =>  0, #  immediately reject the request
+      RLM_MODULE_FAIL     =>  1, #  module failed, don't reply
+      RLM_MODULE_OK       =>  2, #  the module is OK, continue
+      RLM_MODULE_HANDLED  =>  3, #  the module handled the request, so stop.
+      RLM_MODULE_INVALID  =>  4, #  the module considers the request invalid.
+      RLM_MODULE_USERLOCK =>  5, #  reject the request (user is locked out)
+      RLM_MODULE_NOTFOUND =>  6, #  user not found
+      RLM_MODULE_NOOP     =>  7, #  module succeeded without doing anything
+      RLM_MODULE_UPDATED  =>  8, #  OK (pairs modified)
+      RLM_MODULE_NUMCODES =>  9, #  How many return codes there are
+    };
+
+For example if yout want to reject some user in authentication then your auth function should return RLM_MODULE_REJECT:
+
+    sub authenticate {
+        if ($RAD_REQUEST{'User-Name'} eq 'bad_user') {
+            return RLM_MODULE_REJECT;
+        }
+        return RLM_MODULE_OK;
+    }
+
+== External Perl modules
+
+You can use any external module with your perl script just do as usuall use Some_Module
+
+== Config
+
+This is an example 'modules/perl' configuration::
+
+    perl {
+          #
+          #  The Perl script to execute on authorize, authenticate,
+          #  accounting, xlat, etc.  This is very similar to using
+          #  'rlm_exec' module, but it is persistent, and therefore
+          #  faster.
+          #
+          module = /path/to/your/perl_module.pm
+    
+          #
+          #  The following hashes are given to the module and
+          #  filled with value-pairs (Attribute names and values)
+          #
+          #  %RAD_CHECK           Read-only       Check items
+          #  %RAD_REQUEST         Read-only       Attributes from the request
+          #  %RAD_REPLY           Read-write      Attributes for the reply
+          #
+          #  The return codes from functions in the perl_script
+          #  are passed directly back to the server.  These
+          #  codes are defined in doc/configurable_failover,
+          #  src/include/modules.h (RLM_MODULE_REJECT, etc),
+          #  and are pre-defined in the 'example.pl' program
+          #  which is included.
+          #
+    
+          #
+          #  List of functions in the module to call.
+          #  Comment out and change if you want to use other
+          #  function names than the defaults.
+          #
+          #func_authenticate = authenticate
+          #func_authorize = authorize
+          #func_preacct = preacct
+          #func_accounting = accounting
+          #func_checksimul = checksimul
+          #func_pre_proxy = pre_proxy
+          #func_post_proxy = post_proxy
+          #func_post_auth = post_auth
+          #func_xlat = xlat
+          #func_detach = detach
+    
+          #
+          #  Comment out the following line if you whish
+          #  to use seperate functions for Start and Stop
+          #  accounting packets. In that case, the
+          #  func_accounting function is not called.
+          #
+          #func_start_accounting = accounting_start
+          #func_stop_accounting = accounting_stop
+    }
+
+
+In the Authorize section make sure that you have 'files' uncommented.  Then add a line containing 'perl' after it.
+
+In the Authentication section add:
+
+    Auth-Type Perl {
+        perl 
+    }
+
+Add a line containing 'perl' to the Accounting section.
+
+In case of FreeRADIUS 2.x: In the users file comment the 'DEFAULT  Auth-Type = System' lines, and then add:
+
+    DEFAULT  Auth-Type = Perl
+        Fall-Through = yes
+
+In case of FreeRADIUS 3.x: add the following lines under the perl statement in the authorize section:
+
+    if (ok || updated) {
+        update control {
+            Auth-Type := Perl
+        }
+    }
+
+== How fast is rlm_perl
+
+Because the perl interpeter is loaded into memory including the script, it is very fast. You will not be waisting time, waiting for perl to start up and process the script like in case when you use Exec-Program-Wait with perl script. 
+
+== Debug
+
+Install or recompile libperl with debugging symbols. Use ``./Configure -Doptimize='-g'`` 
+Recompile rlm_perl with -g.
+Recompile FreeRadius with --enable-developer.
+
+Use gdb to attach or load core file.
+
+Type bt and then look at the backtrace and find the first
+function which accepts the my_perl argument.
+
+Then if your have perl version less than 5.10 use::
+
+    printf "%d:%s\n", my_perl->Tcurcop->cop_line, my_perl->Tcurcop->cop_file
+
+otherwise use::
+
+    printf "%d:%s\n", my_perl->Icurcop->cop_line, my_perl->Icurcop->cop_file
+
+== Example
+
+    #
+    #  This program is free software; you can redistribute it and/or modify
+    #  it under the terms of the GNU General Public License as published by
+    #  the Free Software Foundation; either version 2 of the License, or
+    #  (at your option) any later version.
+    #
+    #  This program is distributed in the hope that it will be useful,
+    #  but WITHOUT ANY WARRANTY; without even the implied warranty of
+    #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    #  GNU General Public License for more details.
+    #
+    #  You should have received a copy of the GNU General Public License
+    #  along with this program; if not, write to the Free Software
+    #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+    #
+    #  Copyright 2002  The FreeRADIUS server project
+    #  Copyright 2002  Boian Jordanov <bjordanov@orbitel.bg>
+    #
+    
+    #
+    # Example code for use with rlm_perl
+    #
+    # You can use every module that comes with your perl distribution!
+    #
+    
+    use strict;
+    # use ...
+    # This is very important ! Without this script will not get the filled  hashesh from main.
+    use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK);
+    use Data::Dumper;
+    
+    # This is hash wich hold original request from radius
+    #my %RAD_REQUEST;
+    # In this hash you add values that will be returned to NAS.
+    #my %RAD_REPLY;
+    #This is for check items
+    #my %RAD_CHECK;
+    
+    #
+    # This the remapping of return values
+    #
+        use constant    RLM_MODULE_REJECT=>    0;#  /* immediately reject the request */
+        use constant    RLM_MODULE_FAIL=>      1;#  /* module failed, don't reply */
+        use constant    RLM_MODULE_OK=>        2;#  /* the module is OK, continue */
+        use constant    RLM_MODULE_HANDLED=>   3;#  /* the module handled the request, so stop. */
+        use constant    RLM_MODULE_INVALID=>   4;#  /* the module considers the request invalid. */
+        use constant    RLM_MODULE_USERLOCK=>  5;#  /* reject the request (user is locked out) */
+        use constant    RLM_MODULE_NOTFOUND=>  6;#  /* user not found */
+        use constant    RLM_MODULE_NOOP=>      7;#  /* module succeeded without doing anything */
+        use constant    RLM_MODULE_UPDATED=>   8;#  /* OK (pairs modified) */
+        use constant    RLM_MODULE_NUMCODES=>  9;#  /* How many return codes there are */
+    
+    # Function to handle authorize
+    sub authorize {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        # Here's where your authorization code comes
+        # You can call another function from here:
+        &test_call;
+    
+        return RLM_MODULE_OK;
+    }
+    
+    # Function to handle authenticate
+    sub authenticate {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        if ($RAD_REQUEST{'User-Name'} =~ /^baduser/i) {
+                # Reject user and tell him why
+                $RAD_REPLY{'Reply-Message'} = "Denied access by rlm_perl function";
+                return RLM_MODULE_REJECT;
+        } else {
+                # Accept user and set some attribute
+                $RAD_REPLY{'h323-credit-amount'} = "100";
+                return RLM_MODULE_OK;
+        }
+    }
+    
+    # Function to handle preacct
+    sub preacct {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        return RLM_MODULE_OK;
+    }
+    
+    # Function to handle accounting
+    sub accounting {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        # You can call another subroutine from here
+        &test_call;
+    
+        return RLM_MODULE_OK;
+    }
+    
+    # Function to handle checksimul
+    sub checksimul {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        return RLM_MODULE_OK;
+    }
+    
+    # Function to handle pre_proxy
+    sub pre_proxy {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        return RLM_MODULE_OK;
+    }
+    
+    # Function to handle post_proxy
+    sub post_proxy {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        return RLM_MODULE_OK;
+    }
+    
+    # Function to handle post_auth
+    sub post_auth {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        return RLM_MODULE_OK;
+    }
+    
+    # Function to handle xlat
+    sub xlat {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        # Loads some external perl and evaluate it
+        my ($filename,$a,$b,$c,$d) = @_;
+        &radiusd::radlog(1, "From xlat $filename ");
+        &radiusd::radlog(1,"From xlat $a $b $c $d ");
+        local *FH;
+        open FH, $filename or die "open '$filename' $!";
+        local($/) = undef;
+        my $sub = <FH>;
+        close FH;
+        my $eval = qq{ sub handler{ $sub;} };
+        eval $eval;
+        eval {main->handler;};
+    }
+    
+    # Function to handle detach
+    sub detach {
+        # For debugging purposes only
+    #       &log_request_attributes;
+    
+        # Do some logging.
+        &radiusd::radlog(0,"rlm_perl::Detaching. Reloading. Done.");
+    } 
+    
+    #
+    # Some functions that can be called from other functions
+    #
+    
+    sub test_call {
+        # Some code goes here
+    }
+    
+    sub log_request_attributes {
+        # This shouldn't be done in production environments!
+        # This is only meant for debugging!
+        for (keys %RAD_REQUEST) {
+                &radiusd::radlog(1, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
+        }
+    }
+
+== External examples
+
+* Examples from PacketFence(http://www.packetfence.org)
+* VLAN assignment by Web Services (SOAP) remote calls(https://github.com/inverse-inc/packetfence/blob/stable/raddb/packetfence.pm)
