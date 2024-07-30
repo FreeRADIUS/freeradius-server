@@ -727,7 +727,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 		goto error;
 	}
 
-	if (ct_config(conn->context, CS_GET, CS_LOGIN_TIMEOUT, (CS_VOID *)&timeout_ms, CS_UNUSED, NULL) != CS_SUCCEED) {
+	if (ct_config(conn->context, CS_SET, CS_LOGIN_TIMEOUT, (CS_VOID *)&timeout_ms, CS_UNUSED, NULL) != CS_SUCCEED) {
 		ERROR("Setting connection timeout failed");
 
 		goto error;
