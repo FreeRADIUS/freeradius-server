@@ -1,0 +1,148 @@
+Welcome to the SQL Based IP Pool module.
+
+== Important Info
+
+As of July 2007 this module (from 2.0pre) is has been used in production with Postgresql for over a year at a number of locations and volume levels and hasn't needed any code changes for close to six months. It is therefore considered stable and ready for general use. (Please do not report bugs in the experimental version of rlm_sqlippool in FreeRADIUS Server 1.1.x as major changes have been made to the module in 2.0.0)
+
+Initial support for MySQL has been recently added but not extensively tested by the author. It should also work with other SQL servers with a simple change of the queries.
+
+Please report any successes (or failures) to the freeradius-devel mailing list.
+
+For rlm_sqlippool to function correctly it must receive accounting packets from your NAS, including Interim-Updates
+
+== How it Works
+
+Firstly you need to add the name of your sqlippool instance to the appropriate sections of [[radiusd.conf]]. Unless you are connecting to more than one SQL server instance you will use the default instance name of "*sqlippool*" (Unlike rlm_ippool you should NOT put the name of your IP-Pool's in each section as rlm_sqlippool does not use a new instance for each pool, only for each database connection or query configuration instance)
+
+ accounting {
+        sqlippool
+ }
+
+ post-auth {
+        sqlippool
+ }
+
+To assign a user an IP from a pool you simply need to have a Pool-Name Attribute (Keep in mind that it is a *CONTROL* attribute, not a reply attribute) in the required configuration file, which is either in files(users), sql or any other type of configuration schema.
+
+ DEFAULT Pool-Name := main_pool
+         Fall-Through = Yes
+
+The initialization of the radippool table is left to the user instead of being handled inside the module. This allows pool management to be done from any sql capable programming language and pools can be created, resized, deleted at run time without radiusd needing to be restarted.
+
+The only required fields are *pool_name* and *ip_address*. A pool consists of one or more rows in the table with the same pool_name and a different ip_address. There is no restriction on which ip addresses/ranges may be in the same pool, and addresses do not need to be contiguous.
+
+We are currently using the variable definitions of the xlat module, so before editing sqlippool.conf, please go and read more about the different run-time variables supported by FreeRADIUS. It will help you allot...
+
+As you may noticed, there is a *pool-key* variable in the config file which allows you to select which attribute is unique according to your NAS setup. On a standard dialup NAS this is going to be "NAS-Port" but on an ethernet or wireless network it will probably be "Calling-Station-Id". Other more exotic options like "3GPP-IMSI" may also be used depending on your NAS. The only requirement is that the pool-key must be unique and must be received in both Access-Request and Accounting packets so that we know to clear the IP lease when the session disconnects.
+
+=== Multiple sqlippool instances
+
+Normally, one sqlippool instance can handle multiple pools - pool selection is done by specifying the name of the pool as value of Pool-Name attribute. This implies that all pools handled by that single instance have to reside in the same database and use the same SQL queries to fetch and update pool data. In most cases this should be enough. 
+
+However, if system design dictates that different services have to use pools stored in different databases and/or use different SQL queries, multiple instances of sqlippool have to be defined. In that scenario, freeradius may have to be able to differentiate between the case when an instance fails to allocate the address due to the pool depletion and the case when Pool-Name simply doesn't match any of the pools handled by that particular instance.
+
+By default, sqlippool would return NOOP in either case. However, users may wish to handle these 2 cases differently
+
+* If Pool-Name doesn't match, simply ignore it (return NOOP) and move on to the next sqlippool instance.
+
+* If Pool-Name does match but the instance still fails to allocate the IP address, most likely there is no more free addresses in the pool and NOTFOUND should be returned. At that point some error logging should probably occur and the user should be explicitly rejected (remember that sqlippool allocates IP addresses in post-auth stance which assumes that the user has already been authenticated and authorized for access).
+
+For this to work, sqlippool has to check if the pool exists in the database used by that particular instance. Since that involves additional SQL query,
+for better performance it is executed only in case the address allocation fails.
+
+This check is disabled by default, and should not be enabled unless you want to explicitly handle the case when the pool is depleted. It can be enabled by defining the check query using pool-check statement in the sqlippool configuration:
+
+ pool-check = "SELECT id FROM ${ippool_table} WHERE pool_name='%{check:Pool-Name}' LIMIT 1"
+
+== Examples
+
+=== Simple Pool example
+
+To create an ippool called *main_pool* with 4 IPs (192.168.0.1 - 192.168.0.4) simply:
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('main_pool', '192.168.0.1');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('main_pool', '192.168.0.2');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('main_pool', '192.168.0.3');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('main_pool', '192.168.0.4');
+
+=== Non Contiguous Pool example
+
+To create a second pool called *second_pool* with 4 IPs from one range (192.168.1.1 - 192.168.1.4) and a further 6 IPs from a second range (10.0.0.1 - 10.0.0.6) simply:
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '192.168.1.1');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '192.168.1.2');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '192.168.1.3');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '192.168.1.4');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '10.0.0.1');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '10.0.0.2');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '10.0.0.3');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '10.0.0.4');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '10.0.0.5');
+ INSERT INTO radippool (pool_name, framedipaddress) VALUES ('second_pool', '10.0.0.6');
+
+=== Multiple sqlippool instance example
+
+Service provider X offers services A and B that use SERVICE-A-POOL and SERVICE-B-POOL respectively, both stored in the same database, and service C  that uses SERVICE-C-POOL stored on another database server. Post-auth configuration would look something like this:
+
+post-auth {
+    
+        Post-Auth-Type ISP-X-SERVICES {
+    
+            group {
+                group {
+    
+                    SQLIPPOOL-INSTANCE1 {
+                        ok       = return
+                        notfound = return
+                    }
+    
+                    SQLIPPOOL-INSTANCE2 {
+                        ok       = return
+                        notfound = return
+                    }
+    
+                    ok       = return
+                    noop     = return
+                    notfound = 2
+                }
+    
+                # This point can only be reached if some of the instances
+                # returned NOTFOUND, which happens when an instance finds
+                # the pool, but can't get any address from it.
+    
+                # Log allocation failure to some database
+                some_database_instance {
+                    fail = 1            # if operation fails, just go on
+                }
+     
+                # Log to detail
+                auth_log {
+                    fail = 1
+                }
+    
+                # Reject the user. 
+                reject
+            }
+    
+            #  Log to detail in case all went well
+            auth_log
+    
+            #  Do other stuff
+            ....
+        }
+    
+        ....
+    }
+
+SQLIPPOOL-INSTANCE1 handles pools SERVICE-A-POOL and SERVICE-B-POOL, while  SQLIPPOOL-INSTANCE2 handles pool SERVICE-C-POOL.
+
+SQLIPPOOL-INSTANCE1 returns NOOP for requests targeting SERVICE-C-POOL, due to the pool-check query, as SERVICE-C-POOL resides in another database. That way the processing can move on to SQLIPPOOL-INSTANCE2 which handles SERVICE-C-POOL.
+
+On the other hand, if SERVICE-A-POOL is depleted, SQLIPPOOL-INSTANCE1 returns NOTFOUND for requests targeting it, as the instance 'sees' the pool in the database, but can't get any address from it. Since SQLIPPOOL-INSTANCE1 is clearly the correct instance to handle that particular pool, radius won't try SQLIPPOOL-INSTANCE2. Instead, it will immediately jump to error logging and reject the user. The same happens for pools SERVICE-B-POOL and SERVICE-C-POOL.
+
+If pool-check query is left undefined, module instances will always return NOOP in case of a failure and the user will always be granted access, even without an IP address, which would result in working session only if NAS itself is capable of assigning IP addresses as a failover.
+
+== See Also
+
+* IP Pool
+* rlm_sql
+* Modules
+* SQL
