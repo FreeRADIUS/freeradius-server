@@ -4,7 +4,7 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME)$(L)
 endif
 
-SOURCES		:= $(TARGETNAME).c
+SOURCES		:= $(TARGETNAME).c ${top_srcdir}/src/modules/rlm_sql/sql.c
 
 SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	+= -I${top_srcdir}/src/modules/rlm_sql
