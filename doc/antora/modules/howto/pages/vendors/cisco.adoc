@@ -8,6 +8,55 @@ unfamiliar. This document aims to describe the most common configuration
 options to make your Ciscos interoperate with radius as you would expect
 a well-behaved NAS to do.
 
+## Shell Access
+To use RADIUS to authenticate your inbound shell (telnet & ssh) connections you need to create an entry in your users file similar to the following
+
+    youruser   Cleartext-Password := "somepass"
+               Service-Type = NAS-Prompt-User
+
+This will let a user (called _youruser_) in for the first level of access to your Cisco. You will still need to **enable** to perform any configuration changes or anything requiring a higher level of access.
+
+See Configuring Basic AAA on an Access Server(http://www.cisco.com/en/US/tech/tk59/technologies_tech_note09186a0080093c81.shtml) for more details.
+
+## Enable Mode
+
+### Global Enable Password
+
+When a shell user attempts to **enable** (or **enable 15**) on a cisco device, the cisco issues a RADIUS authentication request for the user **$enab15$**
+
+If you type **enable 2**, it will send request for user '$enab2$', if you type **enable 3** it will send a request for '$enab3$' and so on.
+
+These user(s) needs to to be configured on your RADIUS server with the password you wish to use to allow enable access.
+
+    $enab15$   Cleartext-Password := "someadminpass"
+               Service-Type = NAS-Prompt-User
+
+### Per User Privilege Level
+
+You can also send the privilege level (enable mode is level 15) for individual users as a reply item to automatically put them into that level with **cisco-avpair = "shell:priv-lvl=15"**
+
+You can do this with an entry in your users file similar to the following
+
+    youruser   Cleartext-Password := "somepass"
+               Service-Type = NAS-Prompt-User,
+               cisco-avpair = "shell:priv-lvl=15"
+
+For more information, see Cisco page "How to Assign Privilege Levels with TACACS+ and RADIUS (http://www.cisco.com/en/US/tech/tk59/technologies_tech_note09186a008009465c.shtml).
+
+### Command Authorization
+
+Cisco claims that there is a complete mapping scheme to translate TACACS+ expressions into Cisco-AVPair Vendor-Specific. This works for example with the priv-lvl attribute:
+
+  cisco-avpair = "shell:priv-lvl=15"
+
+The two TACACS+ attributes "cmd" and "cmd-arg" would be needed for command authorization.There is a web page for [Cisco IOS](http://www.cisco.com/en/US/products/ps6350/products_configuration_guide_chapter09186a00804fe2d8.html) detailing which TACACS+ commands exist, and it suggests that
+
+  cisco-avpair = "shell:cmd=show"
+
+would do the trick to authorize the "show" command. EXCEPT that there is a tiny note for the commands "cmd" and "cmd-arg" saying that they cannot be used for encapsulation in the Vendor-Specific space.
+
+These two are the ONLY ones. Since it's just about parsing the string content of cisco-avpair at the router side, there is absolutely no technical reason why these two wouldn't go through. The only explanation then is that this is a deliberate step by Cisco to make sure that TACACS+ is "superior" to RADIUS by arbitrarily cutting down functionality.
+
 == IOS 12.x
 
 For Cisco 12.x (12.0 and 12.1), the following `AAA` configuration
@@ -148,6 +197,31 @@ router.
 If you don’t want to use the loopback interface of course you can set
 the source-interface to any interface on your Cisco box which has an IP
 address.
+
+## Shared Secret Encryption
+
+IOS has a feature called the password-encryption service.
+
+    service password-encryption
+    no service password-encryption
+
+From the "Cisco Guide to Harden Cisco IOS Devices"(http://www.cisco.com/en/US/tech/tk648/tk361/technologies_tech_note09186a0080120f48.shtml#plane).
+
+The actual encryption process occurs when the current configuration is written or when a password is configured. Password encryption is applied to all passwords, including username passwords, authentication key passwords, the privileged command password, console and virtual terminal line access passwords, and Border Gateway Protocol neighbor passwords. This command is primarily useful for keeping unauthorized individuals from viewing your password in your configuration file.
+
+When password encryption is enabled, the encrypted form of the passwords is displayed when a more system:running-config command is entered.
+
+**Caution This command does not provide a high level of network security. If you use this command, you should also take additional network security measures.**
+
+Remember if your using password encryption, you **cannot** paste the encrypted password into the FreeRADIUS clients.conf file, It will not be the same shared secret.
+
+## Nested Accounting
+
+    aaa accounting nested
+
+results in sending a second accounting start message, possibly causing problems with total usage counters.  Cisco NAS devices issue an Accounting Start packet when the user is authenticated, and again when a PPP session is initiated.  They send an Accounting Stop packet at the end of the PPP session, and a second at the conclusion of the call (usually nearly simultaneously).  Because of this, programs such as RadiusReport may see this as two connections, and would account for approximately twice the total time used.  Not using this nested command causes the NAS device to send an Accounting Stop packet followed almost immediately by an Accounting Start packet when a PPP connection is chosen, thereby eliminating the overlap.  This is particularly useful for those organizations interested in monitoring user usage accurately.
+More information about this process can be seen [here](http://www.cisco.com/en/US/docs/ios/12_1/security/command/reference/srdacct.html#wp1022328).
+
 
 == Credits
 
