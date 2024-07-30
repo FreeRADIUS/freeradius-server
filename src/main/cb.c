@@ -70,6 +70,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 				int num_ciphers;
 				const SSL_CIPHER *this_cipher;
 
+			report_ciphers:
 				server_ciphers = SSL_get_ciphers(s);
 				if (server_ciphers) {
 					RDEBUG3("Server preferred ciphers (by priority)");
@@ -79,7 +80,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 						RDEBUG3("(TLS)    [%i] %s", i, SSL_CIPHER_get_name(this_cipher));
 					}
 				}
-	
+
 				client_ciphers = SSL_get_client_ciphers(s);
 				if (client_ciphers) {
 					RDEBUG3("Client preferred ciphers (by priority)");
@@ -116,7 +117,14 @@ void cbtls_info(SSL const *s, int where, int ret)
 				RDEBUG2("(TLS) %s: Need to read more data: %s", role, state);
 				return;
 			}
-			RERROR("(TLS) %s: Error in %s", role, state);
+			if (SSL_want_write(s)) {
+				RDEBUG2("(TLS) %s - %s: Need to write more data: %s", conf->name, role, state);
+				return;
+			}
+			RERROR("(TLS) %s - %s: Error in %s", conf->name, role, state);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+			if (RDEBUG_ENABLED3 && (SSL_get_state(s) == TLS_ST_SR_CLNT_HELLO)) goto report_ciphers;
+#endif
 		}
 	}
 }
