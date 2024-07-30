@@ -1091,6 +1091,7 @@ static int try_connect(rad_listen_t *this)
 			return -1;
 
 		case SSL_ERROR_WANT_READ:
+			if (this->blocked) proxy_listener_thaw(this);
 			DEBUG3("(TLS) SSL_connect() returned WANT_READ");
 			return 2;
 
