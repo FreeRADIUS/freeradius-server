@@ -5950,6 +5950,7 @@ static void event_new_fd(rad_listen_t *this)
 		 *	Wait until all requests using this socket are done.
 		 */
 	wait_some_more:
+		fr_event_fd_delete(el, 0, this->fd);
 		listener_free_cb(this);
 #endif	/* WITH_TCP */
 	}
