@@ -442,7 +442,6 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
 			(void) sqlite3_close(db);
-
 			goto unlink;
 		}
 
@@ -456,7 +455,10 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			if (!p) continue;
 
 			ret = sql_loadfile(conf, db, p);
-			if (ret < 0) goto unlink;
+			if (ret < 0) {
+				(void) sqlite3_close(db);
+				goto unlink;
+			}
 		}
 
 		status = sqlite3_close(db);
