@@ -78,7 +78,7 @@ jobs:
             libyubikey           \
             lua52                \
             luajit-devel         \
-            mysql80-client       \
+            mariadb-connector-c  \
             net-snmp             \
             openldap25-client    \
             python3              \
