@@ -6060,7 +6060,7 @@ static void handle_signal_self(int flag)
 	 *	main even loop to wake up from select(), and update
 	 *	the list of FDs it needs to read/write.
 	 */
-	if ((flag & RADIUS_SIGNAL_EVENT_UPDATE) != 0) {
+	if ((flag & RADIUS_SIGNAL_SELF_EVENT_UPDATE) != 0) {
 		/*
 		 *	Do nothing.
 		 */
