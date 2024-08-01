@@ -628,6 +628,8 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_EVENT_UPDATE);
 }
 
 void proxy_listener_thaw(rad_listen_t *listener)
@@ -647,6 +649,8 @@ void proxy_listener_thaw(rad_listen_t *listener)
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_EVENT_UPDATE);
 }
 #endif	/* WITH_TLS */
 
@@ -6047,6 +6051,20 @@ static void handle_signal_self(int flag)
 		FD_MUTEX_UNLOCK(&fd_mutex);
 	}
 #endif
+
+	/*
+	 *	Signal the event loop that we had an update from
+	 *	another thread.
+	 *
+	 *	We don't actually do anything here, we just want the
+	 *	main even loop to wake up from select(), and update
+	 *	the list of FDs it needs to read/write.
+	 */
+	if ((flag & RADIUS_SIGNAL_EVENT_UPDATE) != 0) {
+		/*
+		 *	Do nothing.
+		 */
+	}
 }
 
 #ifndef HAVE_PTHREAD_H

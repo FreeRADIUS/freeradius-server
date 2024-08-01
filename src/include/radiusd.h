@@ -373,7 +373,8 @@ typedef enum {
 	RADIUS_SIGNAL_SELF_EXIT		= (1 << 2),
 	RADIUS_SIGNAL_SELF_DETAIL	= (1 << 3),
 	RADIUS_SIGNAL_SELF_NEW_FD	= (1 << 4),
-	RADIUS_SIGNAL_SELF_MAX		= (1 << 5)
+	RADIUS_SIGNAL_SELF_EVENT_UPDATE	= (1 << 5),
+	RADIUS_SIGNAL_SELF_MAX		= (1 << 6)
 } radius_signal_t;
 /*
  *	Function prototypes.
