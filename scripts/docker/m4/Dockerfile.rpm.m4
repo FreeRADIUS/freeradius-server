@@ -71,10 +71,23 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 })dnl
-changequote({`}, {'})dnl
 
 #  Enable EPEL repository for freetds and hiredis
+ifelse(OS_VER, 7, {
+RUN echo $'[epel]\n\
+name=Extra Packages for Enterprise Linux 7 - $basearch\n\
+metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch&infra=$infra&content=$contentdir\n\
+failovermethod=priority\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7'\
+> /etc/yum.repos.d/epel.repo
+RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+},{
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm
+})dnl
+changequote({`}, {'})dnl
+
 ifelse(OS_VER, 8, `
 #  Enable powertools repo
 RUN yum config-manager --enable powertools
@@ -155,11 +168,22 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo \
     && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 })dnl
-changequote({`}, {'})dnl
-
 
 #  EPEL repository for freetds and hiredis
+ifelse(OS_VER, 7, {
+RUN echo $'[epel]\n\
+name=Extra Packages for Enterprise Linux 7 - $basearch\n\
+metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch&infra=$infra&content=$contentdir\n\
+failovermethod=priority\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7'\
+> /etc/yum.repos.d/epel.repo
+RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7 \
+},{
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-OS_VER.noarch.rpm \
+})dnl
+changequote({`}, {'})dnl
 ifelse(OS_VER, 7, `    \', `dnl
     && yum install -y dnf-utils \
 ifelse(OS_VER, 8, `dnl

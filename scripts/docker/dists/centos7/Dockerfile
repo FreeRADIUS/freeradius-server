@@ -60,7 +60,17 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 RUN rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
 #  Enable EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+
+RUN echo $'[epel]\n\
+name=Extra Packages for Enterprise Linux 7 - $basearch\n\
+metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch&infra=$infra&content=$contentdir\n\
+failovermethod=priority\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7'\
+> /etc/yum.repos.d/epel.repo
+RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+
 
 #
 #  Install build dependencies
@@ -119,9 +129,17 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-LTB-project'\
 > /etc/yum.repos.d/ltb-project.repo \
     && rpm --import https://ltb-project.org/lib/RPM-GPG-KEY-LTB-project
 
-
 #  EPEL repository for freetds and hiredis
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm \
+
+RUN echo $'[epel]\n\
+name=Extra Packages for Enterprise Linux 7 - $basearch\n\
+metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch&infra=$infra&content=$contentdir\n\
+failovermethod=priority\n\
+enabled=1\n\
+gpgcheck=1\n\
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7'\
+> /etc/yum.repos.d/epel.repo
+RUN rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7 \
     \
     && yum install -y /tmp/*.rpm
 
