@@ -629,7 +629,7 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
-	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_EVENT_UPDATE);
+	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
 
 void proxy_listener_thaw(rad_listen_t *listener)
@@ -650,7 +650,7 @@ void proxy_listener_thaw(rad_listen_t *listener)
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
-	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_EVENT_UPDATE);
+	if (!we_are_master()) radius_signal_self(RADIUS_SIGNAL_SELF_EVENT_UPDATE);
 }
 #endif	/* WITH_TLS */
 
