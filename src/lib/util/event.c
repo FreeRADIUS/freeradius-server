@@ -489,7 +489,7 @@ static void event_fd_func_index_build(fr_event_func_map_t *map)
 		if (unlikely(!map->ev_to_func)) abort();
 
 		for (entry = map->func_to_ev; entry->name; entry++) {
-			int fflags = entry->fflags;
+			typeof_field(fr_event_func_map_entry_t, fflags) fflags = entry->fflags;
 
 			/*
 			 *	Multiple notes can be associated
