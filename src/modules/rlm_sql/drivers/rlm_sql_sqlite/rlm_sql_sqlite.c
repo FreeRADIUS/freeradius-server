@@ -771,7 +771,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			if (!p) continue;
 
 			ret = sql_loadfile(mctx->mi->conf, db, p);
-			if (ret < 0) goto unlink;
+			if (ret < 0) {
+				(void) sqlite3_close(db);
+				goto unlink;
+			}
 		}
 
 		status = sqlite3_close(db);
