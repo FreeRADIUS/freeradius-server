@@ -117,6 +117,9 @@ typedef struct {
 	bool			check_cert;
 	bool			check_cert_cn;
 	bool			extract_cert_attrs;
+	char const		*keylog_file;		//!< Where to log SSL keying material like the pre-master secret.
+							///< The log file can then be used to decrypt the SSL session
+							///< with Wireshark.
 } fr_curl_tls_t;
 
 typedef struct {

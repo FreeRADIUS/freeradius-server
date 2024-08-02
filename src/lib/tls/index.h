@@ -38,6 +38,8 @@ extern "C" {
 #define FR_TLS_EX_INDEX_TALLOC			(17)
 
 #define FR_TLS_EX_CTX_INDEX_VERIFY_STORE	(20)
+
+#define FR_TLS_EX_INDEX_CURL_CONF		(30)
 #ifdef __cplusplus
 }
 #endif

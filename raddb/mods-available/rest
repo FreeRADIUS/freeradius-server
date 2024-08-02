@@ -130,6 +130,17 @@ rest {
 		#  Default is `no`
 		#
 #		extract_cert_attrs = no
+
+		#
+		#  keylog_file:: Write out session keys in SSLKEYLOGFILE format
+		#
+		#  The SSLKEYLOGFILE format is specified here https://www.ietf.org/archive/id/draft-thomson-tls-keylogfile-00.html.
+		#
+		#  The contents of the keylog file allows wireshark captures to be decrypted for debugging purposes.
+		#
+		#  Note:: keylog_file is not expanded at runtime.
+		#
+#		keylog_file = '/path/to/keylog_file'
 	}
 
 	#

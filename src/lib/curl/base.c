@@ -28,6 +28,7 @@
 #endif
 
 #include <freeradius-devel/util/talloc.h>
+#include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "attrs.h"
@@ -71,6 +72,7 @@ conf_parser_t fr_curl_tls_config[] = {
 	{ FR_CONF_OFFSET("check_cert", fr_curl_tls_t, check_cert), .dflt = "yes" },
 	{ FR_CONF_OFFSET("check_cert_cn", fr_curl_tls_t, check_cert_cn), .dflt = "yes" },
 	{ FR_CONF_OFFSET("extract_cert_attrs", fr_curl_tls_t, extract_cert_attrs), .dflt = "no" },
+	{ FR_CONF_OFFSET_FLAGS("keylog_file", CONF_FLAG_FILE_OUTPUT, fr_curl_tls_t,  keylog_file) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -86,6 +88,39 @@ conf_parser_t fr_curl_conn_config[] = {
 	{ FR_CONF_OFFSET("connect_timeout", fr_curl_conn_config_t, connect_timeout), .dflt = "3.0" },
 	CONF_PARSER_TERMINATOR
 };
+
+static void _curl_easy_tls_keylog(const SSL *ssl, const char *line)
+{
+	fr_curl_tls_t const *conf = SSL_CTX_get_ex_data(SSL_get_SSL_CTX(ssl), FR_TLS_EX_INDEX_CURL_CONF);
+
+	FILE *fp = fopen(conf->keylog_file, "a");
+	if (!fp) {
+		RATE_LIMIT_GLOBAL(WARN, "Failed opening keylog file \"%s\" - %s", conf->keylog_file, fr_syserror(errno));
+		return;
+	}
+
+	/*
+	 *	POSIX states fprintf calls must not intermingle
+	 *	data being written to the same file, and as all
+	 *	keying material is written on the same line, this
+	 *	should be safe.
+	 */
+	fprintf(fp, "%s\n", line);
+	fclose(fp);
+}
+
+static CURLcode _curl_easy_ssl_ctx_conf(UNUSED CURL *curl, void *ssl_ctx, void *clientp)
+{
+	fr_curl_tls_t const *conf = clientp; /* May not be talloced */
+
+	if (conf->keylog_file) {
+		SSL_CTX *ctx = ssl_ctx;
+		SSL_CTX_set_ex_data(ctx, FR_TLS_EX_INDEX_CURL_CONF, UNCONST(void *, conf));
+		SSL_CTX_set_keylog_callback(ctx, _curl_easy_tls_keylog);
+	}
+
+	return CURLE_OK;
+}
 
 int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *conf)
 {
@@ -105,6 +140,11 @@ int fr_curl_easy_tls_init(fr_curl_io_request_t *randle, fr_curl_tls_t const *con
 	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSL_VERIFYPEER, (conf->check_cert == true) ? 1L : 0L);
 	FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSL_VERIFYHOST, (conf->check_cert_cn == true) ? 2L : 0L);
 	if (conf->extract_cert_attrs) FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_CERTINFO, 1L);
+
+	if (conf->keylog_file) {
+		FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSL_CTX_FUNCTION, _curl_easy_ssl_ctx_conf);
+		FR_CURL_ROPTIONAL_SET_OPTION(CURLOPT_SSL_CTX_DATA, conf);
+	}
 
 	return 0;
 error:
