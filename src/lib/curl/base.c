@@ -111,11 +111,12 @@ static void _curl_easy_tls_keylog(const SSL *ssl, const char *line)
 
 static CURLcode _curl_easy_ssl_ctx_conf(UNUSED CURL *curl, void *ssl_ctx, void *clientp)
 {
+	SSL_CTX *ctx = ssl_ctx;
 	fr_curl_tls_t const *conf = clientp; /* May not be talloced */
 
+	SSL_CTX_set_ex_data(ctx, FR_TLS_EX_INDEX_CURL_CONF, UNCONST(void *, conf));
+
 	if (conf->keylog_file) {
-		SSL_CTX *ctx = ssl_ctx;
-		SSL_CTX_set_ex_data(ctx, FR_TLS_EX_INDEX_CURL_CONF, UNCONST(void *, conf));
 		SSL_CTX_set_keylog_callback(ctx, _curl_easy_tls_keylog);
 	}
 
