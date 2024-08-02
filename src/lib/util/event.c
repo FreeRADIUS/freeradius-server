@@ -497,6 +497,14 @@ static void event_fd_func_index_build(fr_event_func_map_t *map)
 			 */
 			while ((pos = fr_high_bit_pos(fflags))) {
 				pos -= 1;
+#ifdef __COVERITY__
+				/*
+				 * 	Coverity somehow doesn't realize that the loop
+				 * 	condition keeps the decrement from underflowing.
+				 * 	This Coverity-only check should reassure it.
+				 */
+				if (pos >= high) return;
+#endif
 				map->ev_to_func[pos] = entry;
 				fflags &= ~(1 << pos);
 			}
