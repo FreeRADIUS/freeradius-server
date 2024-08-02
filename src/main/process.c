@@ -5755,7 +5755,6 @@ static void event_new_fd(rad_listen_t *this)
 			return;
 		}
 
-		fr_event_fd_delete(el, 0, this->fd);
 		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
 	}
 #endif	/* WITH_TCP */
@@ -5831,6 +5830,7 @@ static void event_new_fd(rad_listen_t *this)
 	if (this->status == RAD_LISTEN_STATUS_REMOVE_NOW) {
 		int devnull;
 
+		fr_event_fd_delete(el, 0, this->fd);
 		this->dead = true;
 
 		/*
