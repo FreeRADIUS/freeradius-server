@@ -712,6 +712,10 @@ int fr_event_loop(fr_event_list_t *el)
 				ef->write_handler(el, ef->fd, ef->ctx);
 			}
 
+			/*
+			 *	Re-check the fd - the write_handler may have closed it.
+			 */
+			if (ef->fd < 0) continue;
 			if (!FD_ISSET(ef->fd, &read_fds)) continue;
 
 			ef->handler(el, ef->fd, ef->ctx);
