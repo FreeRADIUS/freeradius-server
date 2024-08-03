@@ -118,10 +118,10 @@ void cbtls_info(SSL const *s, int where, int ret)
 				return;
 			}
 			if (SSL_want_write(s)) {
-				RDEBUG2("(TLS) %s - %s: Need to write more data: %s", conf->name, role, state);
+				RDEBUG2("(TLS) %s: Need to write more data: %s", role, state);
 				return;
 			}
-			RERROR("(TLS) %s - %s: Error in %s", conf->name, role, state);
+			RERROR("(TLS) %s : Error in %s", role, state);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 			if (RDEBUG_ENABLED3 && (SSL_get_state(s) == TLS_ST_SR_CLNT_HELLO)) goto report_ciphers;
 #endif
