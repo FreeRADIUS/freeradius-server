@@ -175,7 +175,13 @@ static int kafka_config_dflt_single(CONF_PAIR **out, UNUSED void *parent, CONF_S
 		 */
 		if (kctx->size_scale) size *= kctx->size_scale;
 
-		fr_size_to_str(&value_elem, size);	/* reprint the size with an appropriate unit */
+		/*
+		 * 	reprint the size with an appropriate unit
+		 */
+		if (fr_size_to_str(&value_elem, size) < 0) {
+			cf_log_perr(cs, "Failed size reprint");
+			return -1;
+		}
 		value = fr_sbuff_start(&value_elem);
 	}
 		break;
