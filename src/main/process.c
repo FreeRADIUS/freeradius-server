@@ -622,7 +622,7 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 
 	listener->blocked = true;
 
-	if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) < 0) {
+	if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) <= 0) {
 		ERROR("Fatal error freezing socket: %s", fr_strerror());
 		fr_exit(1);
 	}
@@ -643,7 +643,7 @@ void proxy_listener_thaw(rad_listen_t *listener)
 
 	listener->blocked = false;
 
-	if (fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener) < 0) {
+	if (fr_event_fd_write_handler(el, 0, listener->fd, NULL, listener) <= 0) {
 		ERROR("Fatal error freezing socket: %s", fr_strerror());
 		fr_exit(1);
 	}
