@@ -111,6 +111,7 @@ static uint32_t dict_hash_name(char const *name, size_t len)
 		int c = *(unsigned char const *)p;
 		if (isalpha(c)) c = tolower(c);
 
+		/* coverity[overflow_const] */
 		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t)(c & 0xff);
 		p++;
