@@ -34,6 +34,7 @@ RCSIDH(otp_mppe_h, "$Id$")
 #define MPPE_ENC_TYPES_RC4_128    "0x00000004"
 #define MPPE_ENC_TYPES_RC4_40_128 "0x00000006"
 
+#if defined(OPENSSL_VERSION_NUMBER) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
 /* Translate the above into something easily usable. */
 static char const *otp_mppe_policy[3] = {
   MPPE_ENC_POL_ENCRYPTION_FORBIDDEN,
@@ -44,5 +45,6 @@ static char const *otp_mppe_types[3] = {
   MPPE_ENC_TYPES_RC4_40,
   MPPE_ENC_TYPES_RC4_128,
   MPPE_ENC_TYPES_RC4_40_128 };
+#endif
 
 #endif /* OTP_MPPE_H */

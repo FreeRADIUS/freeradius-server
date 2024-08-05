@@ -542,7 +542,7 @@ static void tls_keylog_cb(UNUSED const SSL *ssl, const char *line)
 
 	len = strlen(line);
 	if ((len + 1) > sizeof(buffer)) {
-		DEBUG("SSLKEYLOGFILE buffer not large enough, max %lu, required %lu", sizeof(buffer), len + 1);
+		DEBUG("SSLKEYLOGFILE buffer not large enough, max %zu, required %zu", sizeof(buffer), len + 1);
 		return;
 	}
 

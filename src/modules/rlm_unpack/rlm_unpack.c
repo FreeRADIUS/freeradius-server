@@ -360,7 +360,7 @@ static ssize_t substring_xlat(UNUSED void *instance, REQUEST *request,
 	if (start > slen) {
 		*out = '\0';
 		talloc_free(buffer);
-		WARN("Start position %li is after end of string length of %li", start, slen);
+		WARN("Start position %li is after end of string length of %zd", start, slen);
 		return 0;
 	}
 
@@ -371,7 +371,7 @@ static ssize_t substring_xlat(UNUSED void *instance, REQUEST *request,
 	if (len < 0) len = slen - start + len;
 
 	if (len < 0) {
-		WARN("String length of %li too short for substring parameters", slen);
+		WARN("String length of %zd too short for substring parameters", slen);
 		len = 0;
 	}
 
