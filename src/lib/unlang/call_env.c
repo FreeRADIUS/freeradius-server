@@ -268,6 +268,7 @@ static unlang_action_t call_env_expand_repeat(UNUSED rlm_rcode_t *p_result, UNUS
 parse_only:
 	if (env->rule->pair.parsed.offset >= 0) tmpl_out = ((uint8_t *)*call_env_rctx->data) + env->rule->pair.parsed.offset;
 
+	/* coverity[var_deref_model] */
 	result = call_env_result(*call_env_rctx->data, request, out, tmpl_out, env, &call_env_rctx->tmpl_expanded);
 	if (result != CALL_ENV_SUCCESS) {
 		if (call_env_rctx->result) *call_env_rctx->result = result;
