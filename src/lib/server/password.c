@@ -73,6 +73,8 @@ typedef struct {
 						///< attribute using the hex/base64 decoders.
 	bool			always_allow;	//!< Always allow processing of this attribute, irrespective
 						///< of what the caller says.
+	bool			retain_header;	//!< Do not strip header from password string before
+						///< passing it to the authentication module
 } password_info_t;
 
 static fr_dict_t const *dict_freeradius = NULL;
@@ -112,6 +114,7 @@ static fr_dict_attr_t const *attr_ssha3_384;
 static fr_dict_attr_t const *attr_ssha3_512;
 
 static fr_dict_attr_t const *attr_pbkdf2;
+static fr_dict_attr_t const *attr_pbkdf2_389ds;
 static fr_dict_attr_t const *attr_lm;
 static fr_dict_attr_t const *attr_nt;
 static fr_dict_attr_t const *attr_ns_mta_md5;
@@ -160,6 +163,7 @@ fr_dict_attr_autoload_t password_dict_attr[] = {
 	{ .out = &attr_ssha3_512, .name = "Password.SSHA3-512", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 
 	{ .out = &attr_pbkdf2, .name = "Password.PBKDF2", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
+	{ .out = &attr_pbkdf2_389ds, .name = "Password.PBKDF2-389DS", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_lm, .name = "Password.LM", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_nt, .name = "Password.NT", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_ns_mta_md5, .name = "Password.NS-MTA-MD5", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
@@ -205,6 +209,9 @@ static fr_table_num_sorted_t const password_header_table[] = {
 	{ L("{ns-mta-md5}"),			FR_NS_MTA_MD5	},
 	{ L("{nt}"),				FR_NT		},
 	{ L("{nthash}"),			FR_NT		},
+	{ L("{pbkdf2-sha1}"),			FR_PBKDF2_389DS	},
+	{ L("{pbkdf2-sha256}"),			FR_PBKDF2_389DS	},
+	{ L("{pbkdf2-sha512}"),			FR_PBKDF2_389DS	},
 
 #ifdef HAVE_OPENSSL_EVP_H
 	{ L("{sha224}"),			FR_SHA2	},
@@ -284,6 +291,11 @@ static password_info_t password_info[] = {
 	[FR_PBKDF2]			= {
 						.type = PASSWORD_HASH_VARIABLE,
 						.da = &attr_pbkdf2
+					},
+	[FR_PBKDF2_389DS]		= {
+						.type = PASSWORD_HASH_VARIABLE,
+						.da = &attr_pbkdf2_389ds,
+						.retain_header = true
 					},
 	[FR_SHA1]			= {
 						.type = PASSWORD_HASH,
@@ -681,10 +693,12 @@ do_header:
 			goto bad_header;
 		}
 
-		p = q + 1;
-
 		if (!fr_cond_assert(known_good->da->attr < NUM_ELEMENTS(password_info))) return NULL;
 		info = &password_info[attr];
+
+		if (!info->retain_header) {
+			p = q + 1;
+		}
 
 		MEM(new = fr_pair_afrom_da(ctx, *(info->da)));
 		switch ((*(info->da))->type) {
