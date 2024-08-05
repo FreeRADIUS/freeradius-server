@@ -1634,6 +1634,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ "CA_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, ca_file), NULL },
 	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_file), NULL },
 	{ "private_key_password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, fr_tls_server_conf_t, private_key_password), NULL },
+	{ "private_key_password_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, private_key_password_file), NULL },
 #ifdef PSK_MAX_IDENTITY_LEN
 	{ "psk_identity", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, psk_identity), NULL },
 	{ "psk_hexphrase", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, fr_tls_server_conf_t, psk_password), NULL },
@@ -3857,6 +3858,29 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client, char const *chain_
 			memcpy(&password, &conf->private_key_password, sizeof(password));
 			SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
 			SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
+		}
+	}
+	if (conf->private_key_password_file) {
+		FILE* passwordfile = fopen(conf->private_key_password_file, "r");
+		if (passwordfile) {
+			char password[256];
+			if(fgets(password, sizeof(password), passwordfile)) {
+				/*
+				 *  Remove CR/LF characters at the end of the string
+				 */
+				size_t index = strlen(password);
+				while (index > 0 && (password[index - 1] == '\r' || password[index - 1] == '\n')) {
+					index = index - 1;
+					password[index] = '\0';
+				}
+				SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
+				SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
+			} else {
+				ERROR(LOG_PREFIX ": Error reading private_key_password_file %s", conf->private_key_password_file);
+			}
+			fclose(passwordfile);
+		} else {
+			ERROR(LOG_PREFIX ": Error opening private_key_password_file %s", conf->private_key_password_file);
 		}
 	}
 
