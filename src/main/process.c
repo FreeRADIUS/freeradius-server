@@ -622,7 +622,12 @@ void proxy_listener_freeze(rad_listen_t *listener, fr_event_fd_handler_t write_h
 
 	listener->blocked = true;
 
-	if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) <= 0) {
+	if (listener->status == RAD_LISTEN_STATUS_INIT) {
+		listen_socket_t *sock = listener->data;
+
+		sock->write_handler = write_handler;
+
+	} else if (fr_event_fd_write_handler(el, 0, listener->fd, write_handler, listener) <= 0) {
 		ERROR("Fatal error freezing socket: %s", fr_strerror());
 		fr_exit(1);
 	}
@@ -5701,7 +5706,13 @@ static void event_new_fd(rad_listen_t *this)
 		if (fr_event_fd_insert(el, 0, this->fd,
 				       event_socket_handler, this)) {
 			this->status = RAD_LISTEN_STATUS_KNOWN;
-			return;
+
+			if (!sock->write_handler) return;
+
+			if (fr_event_fd_write_handler(el, 0, this->fd, sock->write_handler, this)) {
+				sock->write_handler = NULL;
+				return;
+			}
 		}
 
 		/*

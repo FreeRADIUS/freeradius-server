@@ -187,6 +187,8 @@ typedef struct listen_socket_t {
 	pthread_mutex_t mutex;
 	uint8_t		*data;
 	size_t		partial;
+
+	fr_event_fd_handler_t write_handler;
 	enum {
 		LISTEN_TLS_INIT = 0,
 		LISTEN_TLS_CHECKING,
