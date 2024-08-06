@@ -5705,6 +5705,8 @@ static void event_new_fd(rad_listen_t *this)
 	insert_fd:
 		if (fr_event_fd_insert(el, 0, this->fd,
 				       event_socket_handler, this)) {
+			sock = this->data;
+
 			this->status = RAD_LISTEN_STATUS_KNOWN;
 
 			if (!sock->write_handler) return;
