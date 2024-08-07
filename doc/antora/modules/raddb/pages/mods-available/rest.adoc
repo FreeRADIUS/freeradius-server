@@ -117,13 +117,7 @@ Default is `no`
 
 
 
-connect_uri:: It will open a connection to the server specified in `connect_uri`
-to populate the connection cache, ready for the first request.
-
-If you wish to disable this pre-caching and reachability check,
-comment out the configuration item below.
-
-WARNING: The server will not start if the server specified is unreachable.
+connect_uri:: Base URI used to avoid repetition in sections below.
 
 
 
@@ -433,22 +427,22 @@ rest {
 		tls = ${..tls}
 	}
 	authorize {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
+		uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
 		method = 'GET'
 		tls = ${..tls}
 	}
 	authenticate {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
+		uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
 		method = 'GET'
 		tls = ${..tls}
 	}
 	accounting {
-		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
+		uri = "${...connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
 		method = 'POST'
 		tls = ${..tls}
 	}
 	post-auth {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
+		uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
 		method = 'POST'
 		tls = ${..tls}
 	}

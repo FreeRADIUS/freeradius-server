@@ -13,13 +13,11 @@ rest {
 ----
 
 <1> A common URL prefix for all REST API endpoints called by this module instance.
-    Connect URI is used to reduce repetition in the config, and as a URI to check
-    connectivity to the REST API on startup, and to warm the connection pool before
-    processing requests.
+    Connect URI is used to reduce repetition in the config.
 
 == Enabling mods-available/rest
 
-The `ldap` module is enabled by creating a soft link from the
+The `rest` module is enabled by creating a soft link from the
 `mods-enabled/` directory to the `mods-available/` directory.
 
 [source,shell]
@@ -54,8 +52,10 @@ server default {
 rest {
 	...
 	authorize {
-		uri = "${..connect_uri}/user/%{User-Name}?action=authorize" <1>
-		method = 'get' <2>
+		request {
+			uri = "${...connect_uri}/user/%{User-Name}?action=authorize" <1>
+			method = 'get' <2>
+		}
 	}
 	...
 }
@@ -83,8 +83,10 @@ server default {
 rest {
 	...
 	accounting {
-		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting" <1>
-		method = 'post' <2>
+		request {
+			uri = "${...connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}?action=accounting" <1>
+			method = 'post' <2>
+		}
 	}
 	...
 }
@@ -125,11 +127,13 @@ server default {
 rest {
 	...
 	authenticate {
-		uri = "${..connect_uri}/authenticate" <1>
-		auth = basic <2>
-		username = "%{User-Name}"      <3>
-		password = "%{User-Password}"  <4>
-		method = 'get'  <5>
+		request {
+			uri = "${...connect_uri}/authenticate" <1>
+			auth = basic <2>
+			username = "%{User-Name}"      <3>
+			password = "%{User-Password}"  <4>
+			method = 'get'  <5>
+		}
 		tls = ${..tls}  <6>
 	}
 	...
