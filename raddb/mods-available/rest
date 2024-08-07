@@ -360,6 +360,8 @@ rest {
 	#
 	#  ### Authorize { ... }
 	#
+	#  Default action when called in `recv` sections except `recv Accounting-Request`.
+	#
 	#  [options="header,autowidth"]
 	#  |===
 	#  | Code | Meaning      | Process body? | Module code
@@ -384,7 +386,9 @@ rest {
 	#
 	#  ### Authenticate { ... }
 	#
-	#  Same as `Authorize { ... }`
+	#  Default action when called in `authenticate` sections.
+	#
+	#  Return codes handled the same as `Authorize { ... }`
 	#
 	authenticate {
 		request {
@@ -396,6 +400,8 @@ rest {
 
 	#
 	#  ### Accounting { ... }
+	#
+	#  Default action when called in `recv Accounting-Request` or `accounting` sections.
 	#
 	#  [options="header,autowidth"]
 	#  |===
@@ -417,7 +423,9 @@ rest {
 	#
 	#  ### Post-Auth { ... }
 	#
-	#  Same as `Accounting { ... }`
+	#  Default action when called in `send` sections.
+	#
+	#  Return codes handled the same as `Accounting { ... }`
 	#
 	post-auth {
 		request {
