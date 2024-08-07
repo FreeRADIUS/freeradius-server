@@ -751,7 +751,7 @@ static xlat_action_t ldap_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 
 	XLAT_ARGS(in, &uri);
 
-	if (ldap_xlat_uri_parse(&ldap_url, &host, &free_host, request, handle_config->server, uri) < 0) return -1;
+	if (ldap_xlat_uri_parse(&ldap_url, &host, &free_host, request, handle_config->server, uri) < 0) return XLAT_ACTION_FAIL;
 
 	/*
 	 *	Nothing, empty string, "*" string, or got 2 things, die.
