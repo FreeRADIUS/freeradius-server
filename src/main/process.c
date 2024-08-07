@@ -2838,7 +2838,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		 *	listener thread, so there's no conflict
 		 *	checking or setting these fields.
 		 */
-		if ((request->proxy->code == PW_CODE_ACCESS_REQUEST) && 
+		if ((request->proxy->code == PW_CODE_ACCESS_REQUEST) &&
 #ifdef WITH_TLS
 		    !request->home_server->tls &&
 #endif
@@ -5705,16 +5705,19 @@ static void event_new_fd(rad_listen_t *this)
 	insert_fd:
 		if (fr_event_fd_insert(el, 0, this->fd,
 				       event_socket_handler, this)) {
-			sock = this->data;
-
 			this->status = RAD_LISTEN_STATUS_KNOWN;
 
+#ifdef WITH_TLS
+			sock = this->data;
 			if (!sock->write_handler) return;
 
 			if (fr_event_fd_write_handler(el, 0, this->fd, sock->write_handler, this)) {
 				sock->write_handler = NULL;
 				return;
 			}
+#else
+			return;
+#endif
 		}
 
 		/*
