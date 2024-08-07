@@ -249,11 +249,6 @@ static int _mod_conn_free(fr_curl_io_request_t *randle)
  * which hold the context data required for generating requests and parsing
  * responses.
  *
- * If instance->connect_uri is not NULL libcurl will attempt to open a
- * TCP socket to the server specified in the URI. This is done so that when the
- * socket is first used, there will already be a cached TCP connection to the
- * REST server associated with the curl handle.
- *
  * @see fr_pool_init
  * @see fr_pool_connection_create_t
  * @see connection.c

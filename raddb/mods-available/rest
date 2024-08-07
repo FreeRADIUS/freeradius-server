@@ -144,13 +144,7 @@ rest {
 	}
 
 	#
-	#  connect_uri:: It will open a connection to the server specified in `connect_uri`
-	#  to populate the connection cache, ready for the first request.
-	#
-	#  If you wish to disable this pre-caching and reachability check,
-	#  comment out the configuration item below.
-	#
-	#  WARNING: The server will not start if the server specified is unreachable.
+	#  connect_uri:: Base URI used to avoid repetition in sections below.
 	#
 	connect_uri = "http://127.0.0.1:9090/"
 
