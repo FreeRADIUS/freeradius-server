@@ -54,10 +54,21 @@ static fr_table_num_sorted_t const fr_curl_sslcode_table[] = {
 };
 static size_t fr_curl_sslcode_table_len = NUM_ELEMENTS(fr_curl_sslcode_table);
 
+static int tls_config_dflt_capath(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule)
+{
+	char const	*ca_path = NULL;
+#if CURL_AT_LEAST_VERSION(7,70,0)
+	ca_path = curl_version_info(CURLVERSION_NOW)->capath;
+#endif
+	if (!ca_path) return 0;
+	MEM(*out = cf_pair_alloc(cs, rule->name1, ca_path, T_OP_EQ, T_BARE_WORD, quote));
+	return 0;
+}
+
 conf_parser_t fr_curl_tls_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("ca_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_file) },
 	{ FR_CONF_OFFSET_FLAGS("ca_issuer_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_issuer_file) },
-	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_path) },
+	{ FR_CONF_OFFSET_FLAGS("ca_path", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, ca_path), .dflt_func = tls_config_dflt_capath },
 	{ FR_CONF_OFFSET_FLAGS("certificate_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, certificate_file) },
 	{ FR_CONF_OFFSET_FLAGS("private_key_file", CONF_FLAG_FILE_INPUT, fr_curl_tls_t, private_key_file) },
 	{ FR_CONF_OFFSET_FLAGS("private_key_password", CONF_FLAG_SECRET, fr_curl_tls_t, private_key_password) },

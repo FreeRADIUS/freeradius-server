@@ -80,6 +80,10 @@ imap {
 		#  is not known ahead of time (using a URL from an external source), and/or the CA used
 		#  to sign the IMAP server certificate is unknown.
 		#
+		#  If not set, then whatever libcurl has as its default will be used, which typically
+		#  will be the operating system's set of trusted CAs.  This will be visible in the debug
+		#  output when FreeRADIUS starts.
+		#
 #		ca_path	             = "${certdir}"
 
 		#
