@@ -1216,6 +1216,14 @@ done_coa:
 		}
 	}
 
+	/*
+	 *	Be annoying to people, but it's about security.
+	 */
+	if (strlen(c->secret) < 12) {
+		WARN("Shared secret for client %s is short, and likely can be broken by an attacker.",
+		     c->shortname);
+	}
+
 	return c;
 }
 
