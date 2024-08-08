@@ -1,0 +1,126 @@
+
+
+
+
+= Brotli compressor/decompressor
+
+The `brotli` module registers xlat functions for compressing and
+decompressing data using the Brotli algorithm.
+
+
+
+## Configuration Settings
+
+
+
+### An example configuration
+
+
+mode:: The compression mode to use.
+
+The mode can be one of `generic`, `text` or `font`.
+
+The default mode is `generic`.
+
+
+
+quality:: The compression quality to use.
+
+Tradeoff between compression speed and compression ratio.
+
+Quality can be between `0` and `11`.
+
+The default quality is `11`.
+
+
+
+window_bits:: The compression window size.
+
+The window size can be between 10 and 24.
+
+The default window size is `22`.
+
+
+
+block_bits:: The maximum input block size.
+
+The block size can be between 16 and 24.
+
+The default block size is `24`.
+
+
+
+max_size:: Maximum size of the decompressed data.
+
+The default is usually sufficient for most use cases.
+
+The default size is `10M`.
+
+
+
+large_window:: Allow window sizes outside of the range permitted by https://tools.ietf.org/html/rfc7932[RFC 7932]
+
+Changes the behaviour of both the compressor and decompressor.
+
+The default is `no`.
+
+
+
+## Expansions
+
+The rlm_ldap provides the below xlat's functions.
+
+### %<inst>.compress(...)
+
+Ingests uncomprssed data and returns the compressed data.
+
+.Return: _octets_
+
+.Example
+
+[source,unlang]
+----
+%brotli.compress("cn=subscriber12345,ou=subscribers,dc=example,dc=com")
+----
+
+.Output
+
+```
+\0332\000\210\304&G(ɋ\031]\372l\265`\003\016\330\023L\002\332\375\344\b^\241\003\177YԜ浣D\254\223\230\002
+```
+
+### %<inst>.decompress(...)
+
+Ingests compressed data and emits the uncompressed data.
+
+.Return: _octets_
+
+.Example
+
+[source,unlang]
+----
+%brotli.decompress("\0332\000\210\304&G(ɋ\031]\372l\265`\003\016\330\023L\002\332\375\344\b^\241\003\177YԜ浣D\254\223\230\002")
+----
+
+.Output
+
+```
+"cn=subscriber12345,ou=subscribers,dc=example,dc=com"
+```
+
+== Default Configuration
+
+```
+brotli {
+	compress {
+#		mode = 'generic'
+#		quality = 11
+#		window_bits = 22
+#		block_bits = 24
+	}
+	decompress {
+#		max_size = 10M
+	}
+#	large_window = no
+}
+```
