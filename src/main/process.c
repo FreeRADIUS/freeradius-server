@@ -1703,7 +1703,7 @@ static void request_running(REQUEST *request, int action)
 					       child_state_names[request->child_state],
 					       child_state_names[REQUEST_DONE]);
 #endif
-			FINAL_STATE(REQUEST_DONE);
+			request_done(request, FR_ACTION_DONE);
 			break;
 		}
 
