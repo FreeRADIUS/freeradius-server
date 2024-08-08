@@ -125,9 +125,11 @@ CREATE TABLE radreply (
 -- Table structure for table 'radusergroup'
 --
 CREATE TABLE radusergroup (
+  id int(11) unsigned NOT NULL auto_increment,
   username varchar(64) NOT NULL default '',
   groupname varchar(64) NOT NULL default '',
   priority int(11) NOT NULL default '1',
+  PRIMARY KEY  (id),
   KEY username (username(32))
 ) ENGINE=ndbcluster;
 
