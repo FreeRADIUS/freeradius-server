@@ -1,0 +1,134 @@
+Note: The required functionality to do basic twitter operations is only available in FreeRADIUS >= v3.0.4
+
+# Overview
+
+The difficult part in twitter integration is signing the requests. If a single character
+is incorrect, the signature won't match, and the Twitter API will return an authentication
+error.
+
+The config snippet below shows how this can be done for a simple status update. At the time
+of writing there is no xlat method to sort values lexicographically. So in order to use
+the more complex API calls, you will need to modify Stage 1.1 and add your other post data
+pairs, maintaining lexicographic attribute order manually.
+
+This is all very much a work in progress, and whether additional example operations get added here will
+depend on the actual demand for twitter integration.
+
+## Getting the tokens
+
+Follow the link here(https://dev.twitter.com/docs/auth/tokens-devtwittercom) signing up 
+for an account and creating a new application if necessary.
+
+## Understanding how signing works
+
+Twitter has some excellent documents on authorizing(https://dev.twitter.com/docs/auth/authorizing-request) and signing(https://dev.twitter.com/docs/auth/creating-signature) requests.
+
+The policies below implement signing for simple status updates. It's not currently possible to write a generic signing policy.
+
+## Dictionary attributes
+
+Add the following to your custom dictionary 
+```text
+ATTRIBUTE	Twitter-API-Method			<next #>	integer
+ATTRIBUTE	Twitter-API-URL				<next #>	string
+ATTRIBUTE	Twitter-API-Data			<next #>	string
+ 
+VALUE	Twitter-API-Method		GET			1
+VALUE	Twitter-API-Method		POST			2
+VALUE	Twitter-API-Method		PUT			3
+VALUE	Twitter-API-Method		DELETE			4
+```
+
+## The policy
+And add this to policy.d/twitter
+```text
+#
+#  Basic integration with the twitter API
+#
+#  This gets the difficult part working (oAuth) and allows integration with other
+#  parts of the API.
+#
+#  Note: This does *NOT* support user based oAuth, the policy cannot be used to
+#	 authenticate users against twitter. It is purely for integration with
+#	 the API.
+#
+#  Note: Unless you're using twitter as part of an authorisation scheme, you should
+#	 use a detail reader/writer pair to provide a buffer in case the twitter
+#	 API becomes unavailable/unreachable. You don't want authentication to be
+#        delayed whilst waiting for a twitter API request to time out.
+#
+twitter {
+	oauth_consumer_key = ''
+	oauth_consumer_secret = ''
+	oauth_access_token = ''
+	oauth_access_token_secret = ''
+}
+
+twitter_sign {
+	# Stage 1.0 - Generate the nonce (base64 encoding of 32 bytes of random data) and record the timestamp
+	update request {
+		Tmp-Octets-0  := "0x%{randstr:hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh}"
+		Tmp-String-0  := "%{base64:&Tmp-Octets-0}"
+		Tmp-Integer-0 := "%l"
+	}
+
+	# Stage 1.1 - Build the parameter string
+	# Note: The parameters here may have to be re-ordered alphabetically
+	#	Twitter-API-Data should represent a single <attribute>=<value>
+	#	pair. We should probably add an xlat to sort attributes
+	#	by value lexicographically.
+	update request {
+		Tmp-String-1 := "\
+			oauth_consumer_key=%{urlquote:${policy.twitter.oauth_consumer_key}}&\
+			oauth_nonce=%{urlquote:%{Tmp-String-0}}&\
+			oauth_signature_method=HMAC-SHA1&\
+			oauth_timestamp=%{Tmp-Integer-0}&\
+			oauth_token=%{urlquote:${policy.twitter.oauth_access_token}}&\
+			oauth_version=1.0&\
+			status=%{Twitter-API-Data}"
+	}
+
+	# Stage 1.2 - Create the signature base string
+	update request {
+		Tmp-String-2 := "%{Twitter-API-Method}&%{urlquote:%{Twitter-API-URL}}&%{urlquote:%{Tmp-String-1}}"
+	}
+
+	# Stage 1.3 - Create the signing key
+	update request {
+		Tmp-String-3 := "%{urlquote:${policy.twitter.oauth_consumer_secret}}&%{urlquote:${policy.twitter.oauth_access_token_secret}}"
+	}
+
+	# Stage 1.4 - Create the oAuth signature
+	update request {
+		Tmp-Octets-1 := "0x%{hmacsha1:&Tmp-String-2 &Tmp-String-3}"
+		Tmp-String-4 := "%{base64:&Tmp-Octets-1}"
+	}
+
+	# Stage 2.0 - Adding the authorization header
+	update control {
+		REST-HTTP-Header := "Connection: close"
+		REST-HTTP-Header += "\
+			Authorization: OAuth \
+			oauth_consumer_key=\"%{urlquote:${policy.twitter.oauth_consumer_key}}\", \
+			oauth_nonce=\"%{urlquote:%{Tmp-String-0}}\", \
+			oauth_signature=\"%{urlquote:%{Tmp-String-4}}\", \
+			oauth_signature_method=\"HMAC-SHA1\", \
+			oauth_timestamp=\"%{Tmp-Integer-0}\", \
+			oauth_token=\"%{urlquote:${policy.twitter.oauth_access_token}}\", \
+			oauth_version=\"1.0\""
+	}
+}
+
+twitter_tweet {
+	update request {
+		Twitter-API-Method := POST
+		Twitter-API-URL := "https://api.twitter.com/1.1/statuses/update.json"
+		Twitter-API-Data := "%{urlquote:User %{User-Name} connected to %{NAS-Identifier} #WatchingYou #NoPrivacy #FreeRADIUS #Winning}"
+	}
+
+	# Stage 3.0 - Sending the request
+	update request {
+		Tmp-String-5 := "%{rest:%{Twitter-API-Method} %{Twitter-API-URL} status=%{Twitter-API-Data}}"
+	}
+}
+```

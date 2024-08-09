@@ -1,0 +1,49 @@
+The *rlm_sql_log* module enables the logging of SQL queries for later use by radsqlrelay.
+
+{{Default in the server source|src/modules/rlm_sql_log/}}
+
+== Configuration
+
+{{Default in the server source|raddb/modules/sql_log}}
+
+----
+	#
+	#  The rlm_sql_log module appends the SQL queries in a log
+	#  file which is read later by the radsqlrelay program.
+	#
+	#  This module only performs the dynamic expansion of the
+	#  variables found in the SQL statements. No operation is
+	#  executed on the database server. (this could be done
+	#  later by an external program) That means the module is
+	#  useful only with non-"SELECT" statements.
+	#
+	#  See rlm_sql_log(5) manpage.
+	#
+#	sql_log {
+#		path = ${radacctdir}/sql-relay
+#		acct_table = "radacct"
+#		postauth_table = "radpostauth"
+#
+#		Start = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
+#		 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+#		 AcctSessionTime, AcctTerminateCause) VALUES                 \
+#		 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+#		 '%{Framed-IP-Address}', '%S', '0', '0', '');"
+#		Stop = "INSERT INTO ${acct_table} (AcctSessionId, UserName,  \
+#		 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+#		 AcctSessionTime, AcctTerminateCause) VALUES                 \
+#		 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+#		 '%{Framed-IP-Address}', '0', '%S', '%{Acct-Session-Time}',  \
+#		 '%{Acct-Terminate-Cause}');"
+#		Alive = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
+#		 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+#		 AcctSessionTime, AcctTerminateCause) VALUES                 \
+#		 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+#		 '%{Framed-IP-Address}', '0', '0', '%{Acct-Session-Time}','');"
+#
+#		Post-Auth = "INSERT INTO ${postauth_table}                   \
+#		 (user, pass, reply, date) VALUES                            \
+#		 ('%{User-Name}', '%{User-Password:-Chap-Password}',         \
+#		 '%{reply:Packet-Type}', '%S');"
+#	}
+----

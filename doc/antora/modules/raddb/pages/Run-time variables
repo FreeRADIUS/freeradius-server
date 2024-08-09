@@ -1,0 +1,174 @@
+= Run-time variables
+
+The run-time variables defined by the server are::
+----
+%{Attribute-Name}               The value of the given Attribute-Name
+                                in the request packet
+%{request:Attribute-Name}       The value of value the given
+                                Attribute-Name in the request packet
+%{reply:Attribute-Name}         The value of the given Attribute-Name
+                                in the reply packet
+%{proxy-request:Attribute-Name} The value of the given Attribute-Name
+                                in the proxy request packet (if it exists)
+%{proxy-reply:Attribute-Name}   The value of the given Attribute-Name
+                                in the proxy reply packet (if it exists)
+----
+
+The above variable expansions also support the following meta-attributes.  These are not normal RADIUS attributes, but are created by the server to be used like them, for ease of use.  They can only be queried, and cannot be assigned.
+
+|===
+|Packet-Type|RADIUS packet type (Access-Request, etc.)
+|Packet-Src-IP-Address|IP address from which the packet was sent
+|Packet-Dst-IP-Address|IP address to which the packet was sent<br/> This may be "0.0.0.0", if the server was configured with "bind_address = *".
+|Packet-Src-Port|UDP port from which the packet was sent
+|Packet-Dst-Port|UDP port to which the packet was sent.
+|===
+
+----
+%{check:Attribute-Name}         Corresponding value for Attribute-Name
+                                in check items for request
+
+%{config:section.subsection.item} Corresponding value in 'radiusd.conf'
+                                for the string value of that item.
+
+%{config:modules.modulename[instance].item} Corresponding value from the 
+                                configuration of a named instance of a
+                                particular module.
+----
+
+The %{config:...} variables should be used **very** carefully, as they may leak secret information from your RADIUS server, if you use them in reply attributes to the NAS!
+
+If your system supports regular expressions, then regular expression matching defines other special variables, just like in Perl::
+----
+%{0}	What the regular expression matched
+%{1}	The first group which matched
+%{2}	The second group which matched
+...
+%{8}	The eight group which matched.
+----
+
+These variables are defined during a regular expression match =~, and only when the expression matches.  They are **not** defined for the operator !~, or when =~ doesn't match.  Any use of =~ destroys all previous values of %{0}..%{8}, but the variables.
+
+= Examples
+----
+%{User-Name}                   The string value of the User-Name attribute.
+%{proxy-reply:Framed-Protocol} The string value of the Framed-Protocol
+                                attribute, from the proxy reply.
+%{config:modules.unix.passwd}  The string value of the 'passwd' configuration
+                                item in the 'unix' module, in the 'modules'
+                                section of radiusd.conf.
+----
+
+----
+DEFAULT  User-Name =~ "^([^@]+)@(.*)"
+    All-That-Matched = `%{0}`
+    Just-The-User-Name = `%{1}`
+    Just-The-Realm-Name = `%{2}`
+----
+
+The variables are used in dynamically translated strings.  Most of the configuration entries in radiusd.conf (and related files) will do dynamic string translation.  To do the same dynamic translation in a RADIUS attribute (when pulling it from a database, or "users" file), you must put the string into an back-quoted string:
+----
+Session-Timeout = `%{expr: 2 + 3}`
+----
+
+To do the dynamic translation in the 'radiusd.conf' (or some other configuration files), just use the variable as-is.  See 'radiusd.conf' for examples.
+
+= Conditional syntax
+
+Additionally, you can use conditional syntax similar to ${foo:-bar} as
+defined in 'sh'.  For example:
+----
+# %{%{Foo}:-bar}
+#    When attribute Foo is set:    returns value of Foo
+#    When attribute Foo is unset:  returns literal string 'bar'
+# %{%{Foo}:-%{Bar}}
+#    When attribute Foo is set:    returns value of attribute Foo
+#    When attribute Foo is unset:  returns value of attribute Bar (if any)
+# %{%{Foo}:-%{Bar}:-baz}}
+#    When attribute Foo is set:    returns value of attribute Foo
+#    When attribute Foo is unset:  returns value of attribute Bar (if any)
+#    When attribute Bar is unset:  returns literal string 'baz'
+----
+
+And now includes support for xlat functions::
+----
+# %{%{sql:SELECT * FROM `foo`}:-%{sql:SELECT * FROM `bar`}}
+#    When select from foo returns rows:  returns result of Foo
+#    When select from foo returns null:  returns result of select from bar
+# %{%{sql:SELECT * FROM `foo`}:-'notfound}
+#    When select from foo returns rows:  returns result of Foo
+#    When select from foo returns null:  returns literal string 'notfound'
+----
+
+= String Lengths
+
+The dynamic translations support a few additional operations, too:
+----
+; %{Attribute-Name[index]}
+: Reference the N'th occurance of the given attribute.  The indexes start at zero.  This feature is NOT available for non-attribute dynamic translations, like %{sql:...}.
+: e.g. %{User-Name[0]} is the same as %{User-Name}
+: e.g. %{Cisco-AVPair[2]} references the value of the *third* Cisco-AVPair attribute (if it exists) in the request packet
+  
+; %{Attribute-Name[#]}
+: Returns the total number of attributes of that name in the relevant attribute list.  The number will usually be between 0 and 200.
+: e.g. For most requests, %{request:User-Name[#]} == 1
+  
+; %{Attribute-Name[*]}
+: Expands to a single string, with the value of each array member separated by a newline.
+----
+
+= Attributes as environment variables in executed programs
+
+When calling an external program (e.g. from 'rlm_exec' module), these variables can be passed on the command line to the program.  In addition, the server places all of the attributes in the RADIUS request into environment variables for the external program. The variables are renamed under the following rules:
+----
+  # All letters are made upper-case.
+  # All hyphens '-' are turned into underscores '_'
+----
+
+so the attribute User-Name can be passed on the command line to the program as %{User-Name}, or used inside the program as the environment variable USER_NAME (or $USER_NAME for shell scripts).
+
+If you want to see the list of all of the variables, try adding a line 'printenv > /tmp/exec-program-wait' to the script.  Then look in
+the file for a complete list of variables.
+
+= One-character variables
+
+The following one-character variables are also defined. They also do **not** permit the use of conditional syntax (':-'), as described above.
+
+|===
+| Variable  | Description
+|%d         |request day (DD)
+|%l         |request timestamp 
+|%m         |request month (MM)
+|%n         |Request number
+|%t         |request in ctime format
+|%D         |request date (YYYYMMDD)
+|%G         |request minute
+|%H         |request hour
+|%I         |request ID	
+|%S         |request timestamp in SQL format 
+|%T         |request timestamp in database format
+|%Y         |request year (YYYY)
+|===
+
+The following variables are *obsolete and have been removed* from version 3 of the server. They are duplicates of the previous general cases, and were only provided for backwards compatibility.
+
+|===
+| Variable  | Description | Proper Equivalent
+|%a         |Protocol (SLIP/PPP)	|%{Framed-Protocol}	
+|%c         |Callback-Number		|%{Callback-Number}
+|%f         |Framed IP address		|%{Framed-IP-Address}
+|%i         |Calling Station ID  	|%{Calling-Station-Id}
+|%n         |NAS IP address		|%{NAS-IP-Address}
+|%p         |Port number		|%{NAS-Port}
+|%s         |Speed (PW_CONNECT_INFO)    |%{Connect-Info}
+|%u         |User name		  	|%{User-Name}
+|%v         |Server version		|${version.freeradius-server}
+|%A         |radacct_dir		|%{config:radacctdir}
+|%C         |clientname	                | 
+|%L         |radlog_dir		  	|%{config:logdir}
+|%M         |MTU			|%{Framed-MTU} 
+|%R         |radius_dir		  	|%{config:raddbdir}
+|%U         |Stripped User name	  	|%{Stripped-User-Name}
+|%V         |Request-Authenticator (Verified/None)|
+|%Z         |All request attributes except password (must have a big buffer)|
+|===
