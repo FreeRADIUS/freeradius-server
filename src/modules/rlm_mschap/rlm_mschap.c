@@ -834,8 +834,9 @@ static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
 /*
  *	Write a string to an fd, followed by "\n"
  */
-static int write_all(int fd, char const *buf, int len) {
-	int rv, done=0;
+static int write_all(int fd, char const *buf, size_t len) {
+	ssize_t rv;
+	size_t done=0;
 
 	while (done < len) {
 		rv = write(fd, buf+done, len-done);
@@ -844,8 +845,8 @@ static int write_all(int fd, char const *buf, int len) {
 		done += rv;
 	}
 	rv = write(fd, "\n", 1);
-	if (rv <= 0) return rv;
-	return done;
+	if (rv <= 0) return -1;
+	return 0;
 }
 
 /*
@@ -882,6 +883,7 @@ static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t const *inst, request_t *r
 		 * Password-Change-Error: blah
 		 */
 
+		size_t		size;
 		int		status, len, to_child=-1, from_child=-1;
 		pid_t		pid, child_pid;
 		char		buf[2048];
@@ -907,7 +909,7 @@ static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t const *inst, request_t *r
 		vb = fr_value_box_list_head(&cpw_ctx->cpw_user);
 		if (!vb) goto ntlm_auth_err;
 
-		if (write_all(to_child, vb->vb_strvalue, vb->vb_length) != (int)vb->vb_length) {
+		if (write_all(to_child, vb->vb_strvalue, vb->vb_length) < 0) {
 			REDEBUG("Failed to write username to child");
 			goto ntlm_auth_err;
 		}
@@ -916,7 +918,7 @@ static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t const *inst, request_t *r
 			vb = fr_value_box_list_head(&cpw_ctx->cpw_domain);
 			if (!vb) goto no_domain;
 
-			if (write_all(to_child, vb->vb_strvalue, vb->vb_length) != (int)vb->vb_length) {
+			if (write_all(to_child, vb->vb_strvalue, vb->vb_length) < 0) {
 				REDEBUG("Failed to write domain to child");
 				goto ntlm_auth_err;
 			}
@@ -926,18 +928,18 @@ static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t const *inst, request_t *r
 		}
 
 		/* now the password blobs */
-		len = snprintf(buf, sizeof(buf), "new-nt-password-blob: ");
-		fr_base16_encode(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(new_nt_password, 516));
-		len = strlen(buf);
-		if (write_all(to_child, buf, len) != len) {
+		size = snprintf(buf, sizeof(buf), "new-nt-password-blob: ");
+		fr_base16_encode(&FR_SBUFF_OUT(buf + size, sizeof(buf) - size), &FR_DBUFF_TMP(new_nt_password, 516));
+		size = strlen(buf);
+		if (write_all(to_child, buf, size) < 0) {
 			RDEBUG2("failed to write new password blob to child");
 			goto ntlm_auth_err;
 		}
 
-		len = snprintf(buf, sizeof(buf), "old-nt-hash-blob: ");
-		fr_base16_encode(&FR_SBUFF_OUT(buf + len, sizeof(buf) - len), &FR_DBUFF_TMP(old_nt_hash, NT_DIGEST_LENGTH));
-		len = strlen(buf);
-		if (write_all(to_child, buf, len) != len) {
+		size = snprintf(buf, sizeof(buf), "old-nt-hash-blob: ");
+		fr_base16_encode(&FR_SBUFF_OUT(buf + size, sizeof(buf) - size), &FR_DBUFF_TMP(old_nt_hash, NT_DIGEST_LENGTH));
+		size = strlen(buf);
+		if (write_all(to_child, buf, size) < 0) {
 			REDEBUG("Failed to write old hash blob to child");
 			goto ntlm_auth_err;
 		}
@@ -946,17 +948,17 @@ static int CC_HINT(nonnull) do_mschap_cpw(rlm_mschap_t const *inst, request_t *r
 		 *  In current samba versions, failure to supply empty LM password/hash
 		 *  blobs causes the change to fail.
 		 */
-		len = snprintf(buf, sizeof(buf), "new-lm-password-blob: %01032i", 0);
-		if (write_all(to_child, buf, len) != len) {
+		size = snprintf(buf, sizeof(buf), "new-lm-password-blob: %01032i", 0);
+		if (write_all(to_child, buf, size) < 0) {
 			REDEBUG("Failed to write dummy LM password to child");
 			goto ntlm_auth_err;
 		}
-		len = snprintf(buf, sizeof(buf), "old-lm-hash-blob: %032i", 0);
-		if (write_all(to_child, buf, len) != len) {
+		size = snprintf(buf, sizeof(buf), "old-lm-hash-blob: %032i", 0);
+		if (write_all(to_child, buf, size) < 0) {
 			REDEBUG("Failed to write dummy LM hash to child");
 			goto ntlm_auth_err;
 		}
-		if (write_all(to_child, ".", 1) != 1) {
+		if (write_all(to_child, ".", 1) < 0) {
 			REDEBUG("Failed to send finish to child");
 			goto ntlm_auth_err;
 		}
