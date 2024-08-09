@@ -1387,13 +1387,17 @@ int main(int argc, char **argv)
 	 *
 	 ***********************************************************************/
 
-	while ((c = getopt(argc, argv, "46c:C:d:D:f:Fi:ho:p:P:r:sS:t:vx")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "46A:c:C:d:D:f:Fi:ho:p:P:r:sS:t:vx")) != -1) switch (c) {
 		case '4':
 			fd_config.dst_ipaddr.af = AF_INET;
 			break;
 
 		case '6':
 			fd_config.dst_ipaddr.af = AF_INET6;
+			break;
+
+		case 'A':
+			attr_coa_filter_name = optarg;
 			break;
 
 		case 'c':
