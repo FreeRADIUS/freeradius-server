@@ -41,17 +41,18 @@ while (@ARGV) {
 
     }
 
-    foreach my $name (sort {$a cmp $b} keys %used) {
+    close $FILE;
+}
+
+foreach my $name (sort {$a cmp $b} keys %used) {
 	next if -e $name;
 
 	print "REF-NO-FILE: ", $name, "\n";
-    }
+}
 
-    foreach my $name (sort {$a cmp $b} keys %exists) {
+foreach my $name (sort {$a cmp $b} keys %exists) {
 	next if defined $used{$name};
 
 	print "FILE-NO-REF: ", $name, "\n";
-    }
-
-    close $FILE;
 }
+
