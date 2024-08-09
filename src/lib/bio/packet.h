@@ -105,7 +105,7 @@ struct fr_bio_packet_s {
  *  it again later.
  *
  * @param my			the packet-based bio
- * @param[out] request_ctx_p	the larger context for the original request packet
+ * @param[out] pctx_p		the larger context for the original request packet
  * @param[out] packet_p		Where the allocated #fr_packet_t will be stored
  * @param[out] out_ctx		for the output pairs
  * @param[out] out		decoded output pairs
@@ -113,9 +113,9 @@ struct fr_bio_packet_s {
  *	- <0 on error.  This is fr_bio_error(FOO)
  *	- 0 for success
  */
-static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *my, void **request_ctx_p, fr_packet_t **packet_p, TALLOC_CTX *out_ctx, fr_pair_list_t *out)
+static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *my, void **pctx_p, fr_packet_t **packet_p, TALLOC_CTX *out_ctx, fr_pair_list_t *out)
 {
-	return my->read(my, request_ctx_p, packet_p, out_ctx, out);
+	return my->read(my, pctx_p, packet_p, out_ctx, out);
 }
 
 /** Write a packet to a packet BIO
@@ -125,14 +125,14 @@ static inline CC_HINT(nonnull) int fr_bio_packet_read(fr_bio_packet_t *my, void 
  *  it again later.
  *
  * @param my		the packet-based bio
- * @param request_ctx	the larger context for the packet
+ * @param pctx		the larger context for the packet
  * @param packet	the output packet descriptor.  Contains raw protocol data (IDs, counts, etc.)
  * @param list		of pairs to write
  * @return
  *	- <0 on error.  This is fr_bio_error(FOO)
  *	- 0 for success
  */
-static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *my, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list)
+static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *my, void *pctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
 	int rcode;
 
@@ -141,7 +141,7 @@ static inline CC_HINT(nonnull) int fr_bio_packet_write(fr_bio_packet_t *my, void
 	 */
 	if (my->write_blocked) return fr_bio_error(IO_WOULD_BLOCK);
 
-	rcode = my->write(my, request_ctx, packet, list);
+	rcode = my->write(my, pctx, packet, list);
 	if (rcode == 0) return 0;
 
 	my->write_blocked = (rcode == fr_bio_error(IO_WOULD_BLOCK));

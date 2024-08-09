@@ -163,7 +163,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	return my;
 }
 
-int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list)
+int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *pctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
 	ssize_t slen;
 	uint8_t *end;
@@ -199,7 +199,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 		id_ctx = fr_radius_code_id_pop(my->codes, packet);
 		if (!id_ctx) goto all_ids_used;
 	}
-	id_ctx->request_ctx = request_ctx;
+	id_ctx->request_ctx = pctx;
 	fr_assert(id_ctx->packet == packet);
 
 	/*
@@ -244,30 +244,39 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *request_c
 	packet->data_len = end - my->buffer;
 	fr_nbo_from_uint16(my->buffer + 2, packet->data_len);
 
-	packet->data = talloc_array(packet, uint8_t, packet->data_len);
-	if (!packet->data) goto fail;
-
 	slen = fr_radius_sign(my->buffer, NULL,
 				(uint8_t const *) my->cfg.verify.secret, my->cfg.verify.secret_len);
 	if (slen < 0) goto fail;
 
+	/*
+	 *	The other BIOs will take care of calling fr_radius_client_bio_write_blocked() when the write
+	 *	is blocked.
+	 *
+	 *	The "next" BIO is a memory one, which can store the entire packet.  So write() never returns a
+	 *	partial packet.
+	 */
 	slen = fr_bio_write(my->common.bio, &packet->socket, my->buffer, packet->data_len);
 	if (slen < 0) {
+		fr_assert((slen != fr_bio_error(IO_WOULD_BLOCK)) || my->common.write_blocked);
+
 		fr_radius_code_id_push(my->codes, packet);
 		return slen;
 	}
+
+	fr_assert((size_t) slen == packet->data_len);
+
+	/*
+	 *	We only allocate packet data after writing it to the socket.  If the write fails, we avoid a
+	 *	memory alloc / free.
+	 */
+	packet->data = talloc_array(packet, uint8_t, packet->data_len);
+	if (!packet->data) goto fail;
 
 	/*
 	 *	Only after successful write do we copy the data back to the packet structure.
 	 */
 	memcpy(packet->data, my->buffer, packet->data_len);
 	memcpy(packet->vector, packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH);
-
-	/*
-	 *	We are using an outgoing memory bio, which takes care of writing partial packets.  As a
-	 *	result, our call to the bio will always return that a full packet was written.
-	 */
-	fr_assert((size_t) slen == packet->data_len);
 
 	return 0;
 }
@@ -542,7 +551,7 @@ int fr_radius_client_fd_bio_cancel(fr_bio_packet_t *bio, fr_packet_t *packet)
 	return 0;
 }
 
-int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_packet_t **packet_p,
+int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **pctx_p, fr_packet_t **packet_p,
 				 UNUSED TALLOC_CTX *out_ctx, fr_pair_list_t *out)
 {
 	ssize_t slen;
@@ -600,7 +609,7 @@ int fr_radius_client_fd_bio_read(fr_bio_packet_t *bio, void **request_ctx_p, fr_
 		return -1;
 	}
 
-	*request_ctx_p = original->uctx;
+	*pctx_p = original->uctx;
 	*packet_p = reply;
 
 	return 1;

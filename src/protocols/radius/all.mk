@@ -23,7 +23,9 @@ SOURCES		+= \
 		   client_udp.c \
 		   client_tcp.c \
 		   id.c \
-		   bio.c
+		   bio.c \
+		   server.c \
+		   server_udp.c
 
 TGT_PREREQS	+= libfreeradius-bio$(L)
 endif
