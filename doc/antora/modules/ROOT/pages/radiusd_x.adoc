@@ -1,6 +1,6 @@
 # How to use `radiusd -X` (debug mode)
 
-This page explains how to read the output of `radiusd -X`.  The example debug output listed here is taken from the User's mailing list page.
+This page explains how to read the output of `radiusd -X`.
 
 The first part of the debug output is the *startup* text.  Once the server is started, it prints `Ready to receive requests`.  The next part of the debug output is the *packet processing* text.  Both parts need to be read (and posted to the list!) in order to solve issues.
 
@@ -519,7 +519,7 @@ The IP / port printed here is the mirror of the one printed for the Access-Reque
 
     (0) Sent Access-Reject Id 104 from 127.0.0.1:1812 to 127.0.0.1:33278 length 20
 
-If there are any attributes in the reply packet, they will be printed here.  In this case, there are non.
+If there are any attributes in the reply packet, they will be printed here.  In this case, there are none.
 
 Note that you **should** check the reply attributes to see if the server is sending the reply you expect.  If it is not sending the correct reply. you will need to fix the configuration to do so.
 
