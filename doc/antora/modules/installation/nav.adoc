@@ -5,5 +5,5 @@
 ** xref:upgrade.adoc[Upgrading from v3 to v4]
 ** xref:attribute_names.adoc[Attribute name changes from v3 to v4]
 ** Building Packages
-*** xref:build_deb.adoc[Debian and Ubuntu]
-*** xref:build_rpm.adoc[RedHat and CentOS]
+*** xref:debian.adoc[Debian and Ubuntu]
+*** xref:redhat.adoc[RedHat and CentOS]
