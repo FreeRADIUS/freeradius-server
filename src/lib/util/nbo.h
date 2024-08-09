@@ -121,6 +121,13 @@ static inline size_t fr_nbo_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
 	uint8_t swapped[sizeof(uint64_t)];
 
 	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x80), 8);
+#ifdef __COVERITY__
+	/*
+	 * 	Coverity doesn't realize that ret is necessarily <= 8,
+	 * 	so we give it a hint.
+	 */
+	if (ret > 8) return 0;
+#endif
 
 	fr_nbo_from_uint64(swapped, num);
 	memcpy(out, (swapped + (sizeof(uint64_t) - ret)), ret);	/* aligned */
