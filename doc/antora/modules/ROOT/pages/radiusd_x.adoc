@@ -1,0 +1,680 @@
+# How to use `radiusd -X` (debug mode)
+
+This page explains how to read the output of `radiusd -X`.
+
+The first part of the debug output is the *startup* text.  Once the server is started, it prints `Ready to receive requests`.  The next part of the debug output is the *packet processing* text.  Both parts need to be read (and posted to the list!) in order to solve issues.
+
+## If it doesn't start
+
+If the server does not start up correctly, *the debug output will tell you why*.  It will produce long descriptive error messages, telling you exactly what's wrong.  In some cases, it will tell you how to fix it.
+
+Look for messages like *Error* or *Warning*.  If you are running the server in a terminal console, those messages will appear in red or yellow.  It should be simple to scroll through the output, ignoring most of it, and looking for red *Error* text.
+
+Fixing those errors will usually allow the server to start correctly.
+
+## Startup text
+
+We start the server with `-X`.  This option gives us the best combination of useful output, and readable output.  Adding more `-x` gives *more complex output*,  not *more useful output*.
+
+    $ radiusd -X 2>&1 | tee debugfile
+
+The server prints out the version number, copyright, and license information:
+
+    FreeRADIUS Version 3.0.17
+    Copyright (C) 1999-2017 The FreeRADIUS server project and contributors
+    There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
+    PARTICULAR PURPOSE
+    You may redistribute copies of FreeRADIUS under the terms of the
+    GNU General Public License
+    For more information about these matters, see the file named COPYRIGHT
+
+Next, it prints out messages relating to debuggers (e.g. gdb).  These messages are intended for developers, and can generally be ignored by everyone else.
+
+    Getting debug state failed: ptrace capability not set.  If debugger detection is required run as root or: setcap cap_sys_ptrace+ep <path_to_radiusd>
+
+### Reading the configuration files
+
+The next block of messages is about the configuration files.  The server prints out the name of each configuration file it loads.
+
+This output lets you check that the server is loading the files which you think it's loading.  One common issue is that people install multiple versions of the server, and then edit one file while the server is loading a different one.  Reading the debug output will let you verify that you're editing the right file.
+
+    Starting - reading configuration files ...
+
+It then reads the dictionaries.  It does not print out the name of every dictionary file it reads, as there are over 100 files, but they are never the less still loaded.
+
+    including dictionary file /usr/share/freeradius/dictionary
+    including dictionary file /usr/share/freeradius/dictionary.dhcp
+    including dictionary file /usr/share/freeradius/dictionary.vqp
+    including dictionary file /etc/raddb/dictionary
+
+Next is loads the main `radiusd.conf` file, and some associated ones like `proxy.conf` and `clients.conf`
+
+    including configuration file /etc/raddb/radiusd.conf
+    including configuration file /etc/raddb/proxy.conf
+    including configuration file /etc/raddb/clients.conf
+
+It now loads all of the modules.  The module configuration is usually stored in `raddb/mods-enabled/`, with one module configuration per file in that directory.
+
+Sometimes the module you're using does not seem to be loaded or used.  In that case, you should check this section to see that the file is loaded.
+
+    including files in directory /etc/raddb/mods-enabled/
+    including configuration file /etc/raddb/mods-enabled/pap
+    including configuration file /etc/raddb/mods-enabled/expiration
+    including configuration file /etc/raddb/mods-enabled/files
+    including configuration file /etc/raddb/mods-enabled/linelog
+    including configuration file /etc/raddb/mods-enabled/soh
+    including configuration file /etc/raddb/mods-enabled/attr_filter
+    including configuration file /etc/raddb/mods-enabled/ntlm_auth
+    including configuration file /etc/raddb/mods-enabled/exec
+    including configuration file /etc/raddb/mods-enabled/preprocess
+    including configuration file /etc/raddb/mods-enabled/sradutmp
+    including configuration file /etc/raddb/mods-enabled/chap
+    including configuration file /etc/raddb/mods-enabled/digest
+    including configuration file /etc/raddb/mods-enabled/expr
+    including configuration file /etc/raddb/mods-enabled/echo
+    including configuration file /etc/raddb/mods-enabled/unpack
+    including configuration file /etc/raddb/mods-enabled/detail
+    including configuration file /etc/raddb/mods-enabled/always
+    including configuration file /etc/raddb/mods-enabled/eap
+    including configuration file /etc/raddb/mods-enabled/mschap
+    including configuration file /etc/raddb/mods-enabled/unix
+    including configuration file /etc/raddb/mods-enabled/detail.log
+    including configuration file /etc/raddb/mods-enabled/passwd
+    including configuration file /etc/raddb/mods-enabled/date
+    including configuration file /etc/raddb/mods-enabled/logintime
+    including configuration file /etc/raddb/mods-enabled/utf8
+    including configuration file /etc/raddb/mods-enabled/dynamic_clients
+    including configuration file /etc/raddb/mods-enabled/radutmp
+    including configuration file /etc/raddb/mods-enabled/realm
+    including configuration file /etc/raddb/mods-enabled/cache_eap
+    including configuration file /etc/raddb/mods-enabled/replicate
+
+Next, some policies are loaded.  These policies are ones which the server uses (for example) to canonicalize user names, and to do things like attribute re-writes, sanity checks, etc.
+
+    including files in directory /etc/raddb/policy.d/
+    including configuration file /etc/raddb/policy.d/control
+    including configuration file /etc/raddb/policy.d/cui
+    including configuration file /etc/raddb/policy.d/debug
+    including configuration file /etc/raddb/policy.d/moonshot-targeted-ids
+    including configuration file /etc/raddb/policy.d/eap
+    including configuration file /etc/raddb/policy.d/filter
+    including configuration file /etc/raddb/policy.d/canonicalization
+    including configuration file /etc/raddb/policy.d/abfab-tr
+    including configuration file /etc/raddb/policy.d/operator-name
+    including configuration file /etc/raddb/policy.d/dhcp
+    including configuration file /etc/raddb/policy.d/accounting
+    including files in directory /etc/raddb/sites-enabled/
+    including configuration file /etc/raddb/sites-enabled/default
+    including configuration file /etc/raddb/sites-enabled/inner-tunnel
+
+### Server Configuration
+
+Once all of the configuration files are loaded, the server prints out the configuration it is parsing.  Note that it *only prints out what it is using*.  I.e. you can put `foo = bar` into `radiusd.conf`, and the server will load it, but will not print it out in the debug output.
+
+The result is that if you set a configuration item, *it will be printed out in the debug output*.  You should verify that this is the case, especially if it looks like the server is not using the setting you edited.  If the configuration item does not appear in the debug output, *then the server is not using it.*
+
+This is the "main" server configuration:
+
+    main {
+    	name = "radiusd"
+
+Which directories the server is using,
+
+    	prefix = "/"
+    	localstatedir = "/var"
+    	sbindir = "/usr/sbin"
+    	logdir = "/var/log/radius"
+    	run_dir = "/var/run/radiusd"
+    	libdir = "/usr/lib"
+    	radacctdir = "/var/log/radius/radacct"
+
+Next we have some generic configuration settings which don't belong anywhere else.
+
+    	hostname_lookups = no
+    	max_request_time = 30
+    	cleanup_delay = 5
+    	max_requests = 16384
+    	pidfile = "/var/run/radiusd/radiusd.pid"
+    	checkrad = "/sbin/checkrad"
+    	debug_level = 0
+    	proxy_requests = yes
+
+And the logging configuration.
+
+     log {
+     	stripped_names = no
+     	auth = no
+     	auth_badpass = no
+     	auth_goodpass = no
+     	colourise = yes
+     	msg_denied = "You are already logged in - access denied"
+     }
+     resources {
+     }
+
+The security settings.
+
+     security {
+     	max_attributes = 200
+     	reject_delay = 1.000000
+     	status_server = yes
+     	allow_vulnerable_openssl = "yes"
+     }
+    }
+
+At this point, the server is well on it's way to running.
+
+### Proxy Configuration
+
+The server now loads its proxy configuration, as was defined in `proxy.conf`:
+
+    radiusd: #### Loading Realms and Home Servers ####
+
+The over all proxy configuration is loaded.
+
+     proxy server {
+     	retry_delay = 5
+     	retry_count = 3
+     	default_fallback = no
+     	dead_time = 120
+     	wake_all_if_all_dead = no
+     }
+
+Followed by `home_server` configurations.
+
+     home_server localhost {
+     	ipaddr = 127.0.0.1
+     	port = 1812
+     	type = "auth"
+     	secret = <<< secret >>>
+     	response_window = 20.000000
+     	response_timeouts = 1
+     	max_outstanding = 65536
+     	zombie_period = 40
+     	status_check = "status-server"
+     	ping_interval = 30
+     	check_interval = 30
+     	check_timeout = 4
+     	num_answers_to_alive = 3
+     	revive_interval = 120
+      limit {
+      	max_connections = 16
+      	max_requests = 0
+      	lifetime = 0
+      	idle_timeout = 0
+      }
+      coa {
+      	irt = 2
+      	mrt = 16
+      	mrc = 5
+      	mrd = 30
+      }
+     }
+
+Followed by `home_server_pool` configurations.
+
+     home_server_pool my_auth_failover {
+    	type = fail-over
+    	home_server = localhost
+     }
+
+Followed by `realm` configurations.
+
+     realm example.com {
+    	auth_pool = my_auth_failover
+     }
+     realm LOCAL {
+     }
+     realm int {
+    	virtual_server = inner-tunnel
+     }
+
+### Clients
+
+It now loads individual clients:
+
+    radiusd: #### Loading Clients ####
+     client localhost {
+     	ipaddr = 127.0.0.1
+     	require_message_authenticator = no
+     	secret = <<< secret >>>
+     	nas_type = "other"
+     	proto = "*"
+      limit {
+      	max_connections = 16
+      	lifetime = 0
+      	idle_timeout = 30
+      }
+     }
+     client localhost_ipv6 {
+     	ipv6addr = ::1
+     	require_message_authenticator = no
+     	secret = <<< secret >>>
+      limit {
+      	max_connections = 16
+      	lifetime = 0
+      	idle_timeout = 30
+      }
+     }
+
+### Auth-Type
+
+The server then creates `Auth-Type`, as set in the virtual servers.  These `Auth-Type` names and values are used by the modules, so they need to be created now.
+
+     # Creating Auth-Type = mschap
+     # Creating Auth-Type = digest
+     # Creating Auth-Type = eap
+     # Creating Auth-Type = PAP
+     # Creating Auth-Type = CHAP
+     # Creating Auth-Type = MS-CHAP
+
+### Modules
+
+When the server read the module configuration file above (from `raddb/mods-enabled`), that meant just reding the contents of the file.  It is now ready to load the dynamic library which reads that configuration, and which parses the configuration to determine what to do with it.
+
+Each module will print out it's configuration, along with any errors or warnings it sees when it is loading itself.
+
+    radiusd: #### Instantiating modules ####
+     modules {
+
+Here is loads the `pap` module.  There are multiple lines being printed at each stage of the process.
+
+First, it discovers it has to load the `pap` module, and decides to do that.
+
+      # Loaded module rlm_pap
+
+Second, it tells you which files is used to read the `pap` module configuration.
+
+      # Loading module "pap" from file /etc/raddb/mods-enabled/pap
+
+Finally, it prints out the configuration that is used by the `pap` module.
+
+      pap {
+        normalise = yes
+      }
+
+When you are editing a module configuration, it is good to check the debug output for that module, to see:
+
+* was the module loaded?
+* is it using the file you edited?
+* are the configuration changes you made showing up in the debug output?
+
+Some modules like `expiration` do not have any configuration items, and therefore don't print out any configuration when they are loaded.
+
+      # Loaded module rlm_expiration
+      # Loading module "expiration" from file /etc/raddb/mods-enabled/expiration
+
+This module loads the `users` file.
+
+      # Loaded module rlm_files
+      # Loading module "files" from file /etc/raddb/mods-enabled/files
+      files {
+      	filename = "/etc/raddb/mods-config/files/authorize"
+      	acctusersfile = "/etc/raddb/mods-config/files/accounting"
+      	preproxy_usersfile = "/etc/raddb/mods-config/files/pre-proxy"
+      }
+
+The server loads a large number of modules, so we will omit them here.
+
+Finally, it is done loading all modules, and prints this:
+
+     } # modules
+
+### Virtual Servers
+
+Next, it loads "virtual servers".
+
+    radiusd: #### Loading Virtual Servers ####
+
+It prints out the server, and name, along with which file it was loaded from.
+
+    server default { # from file /etc/raddb/sites-enabled/default
+
+It then double-checks the various processing sections.
+
+     # Loading authenticate {...}
+     # Loading authorize {...}
+     # Loading preacct {...}
+     # Loading accounting {...}
+
+The `sql` module is in the default configuration, even if the `sql` module is not enabled.  This warning message is then printed out.
+
+It can be ignored, or, in a production environment where you don't use `sql`, you can just remove references to `sql` from the virtual servers.
+
+    Ignoring "sql" (see raddb/mods-available/README.rst)
+     # Loading post-proxy {...}
+     # Loading post-auth {...}
+    } # server default
+    server inner-tunnel { # from file /etc/raddb/sites-enabled/inner-tunnel
+     # Loading authenticate {...}
+     # Loading authorize {...}
+     # Loading session {...}
+     # Loading post-auth {...}
+
+In some situations, it tells you where the configuration can be simplified.
+
+     # Skipping contents of 'if' as it is always 'false' -- /etc/raddb/sites-enabled/inner-tunnel:335
+    } # server inner-tunnel
+
+### Listen Sections
+
+After loading all of the virtual servers, it then opens the various network sockets used to read and write packets.
+
+    radiusd: #### Opening IP addresses and Ports ####
+
+First, it prints out the configuration for the listen sections.
+
+    listen {
+      	type = "auth"
+      	ipaddr = *
+      	port = 0
+       limit {
+       	max_connections = 16
+       	lifetime = 0
+       	idle_timeout = 30
+       }
+    }
+    listen {
+      	type = "acct"
+      	ipaddr = *
+      	port = 0
+       limit {
+       	max_connections = 16
+       	lifetime = 0
+       	idle_timeout = 30
+       }
+    }
+    listen {
+      	type = "auth"
+      	ipv6addr = ::
+      	port = 0
+       limit {
+       	max_connections = 16
+       	lifetime = 0
+       	idle_timeout = 30
+       }
+    }
+    listen {
+      	type = "acct"
+      	ipv6addr = ::
+      	port = 0
+       limit {
+       	max_connections = 16
+       	lifetime = 0
+       	idle_timeout = 30
+       }
+    }
+    listen {
+      	type = "auth"
+      	ipaddr = 127.0.0.1
+      	port = 18120
+    }
+
+After reading all of the configuration, it opens the ports, and prints out a list of IP addresses and ports which it is using.
+
+    Listening on auth address * port 1812 bound to server default
+    Listening on acct address * port 1813 bound to server default
+    Listening on auth address :: port 1812 bound to server default
+    Listening on acct address :: port 1813 bound to server default
+    Listening on auth address 127.0.0.1 port 18120 bound to server inner-tunnel
+    Listening on proxy address * port 39556
+    Listening on proxy address :: port 52609
+
+And we finally get to this line.
+
+    Ready to process requests
+
+Once this has been printed, the debug output changes to packet processing.
+
+Note that if *nothing* is ever printed after this line, then the server is not receiving any packets.  No amount of changing the server configuration will solve that problem.  Instead, you must fix the firewall, SeLinux configuration, network routing, etc. so that the OS delivers RADIUS packets to the server.
+
+## Packet Processing
+
+Each line (or most of them) of the packet processing output starts with a request number, e.g. `(0)`.  This number lets you track debug messages which are all for one packet.  Messages from different packets may be inter-mingled, due to threading or proxying.  Prefixing the messages with a number allows the messages to be easily differentiated.
+
+### Receiving a packet
+
+The first message for a packet tells you what type of packet was received, what it's RADIUS ID is, and the source / destination IP / port information.
+
+    (0) Received Access-Request Id 104 from 127.0.0.1:33278 to 127.0.0.1:1812 length 73
+
+After that, it prints out all of the attributes which were received in the packet.
+
+    (0)   User-Name = "bob"
+    (0)   User-Password = "wrongpassword"
+    (0)   NAS-IP-Address = 127.0.1.1
+    (0)   NAS-Port = 0
+    (0)   Message-Authenticator = 0x3d27116b37323e4f629b4e8217fc25c8
+
+Note that if an attribute is not printed here, then *it does not exist*.  If you need the packet to contain an attribute, then you must **fix the NAS** so that the NAS sends the attribute.
+
+Once the packet is received, it is run through the various processing sections of the server.  For Access-Request packets, these are `authorize`, `authenticate`, and `post-auth`.
+
+    (0) # Executing section authorize from file /etc/raddb/sites-enabled/default
+    (0)   authorize {
+
+The `authorize` section contains a number of modules, along with unlang keywords like `if`, `update`, etc.
+
+Each module prints out what it is doing, and why.  For example, the `suffix` module here is looking for `User-Name` attributes which contain `user@domain`.
+
+    (0) suffix: Checking for suffix after "@"
+    (0) suffix: No '@' in User-Name = "bob", looking up realm NULL
+    (0) suffix: No such realm "NULL"
+
+The server core then prints out the "return code" of the module.  See `man unlang` for a deeper explanation of return codes.
+
+    (0)     [suffix] = noop
+    (0)     [files] = noop
+
+The `authorize` section also has a return code.
+
+    (0)   } # authorize = noop
+
+In this case, the user is unknown, so they will be rejected.
+
+    (0) ERROR: No Auth-Type found: rejecting the user via Post-Auth-Type = Reject
+    (0) Failed to authenticate the user
+
+The packet is processed through the `Post-Auth-Type REJECT` section
+
+    (0) Using Post-Auth-Type Reject
+    (0) # Executing group from file /etc/raddb/sites-enabled/default
+    (0)   Post-Auth-Type REJECT {
+
+That section contains more modules and unlang statements.
+
+Here, the `attr_filter` module is removing attributes which are forbidden from appearing in an Access-Reject packet.
+
+    (0) attr_filter.access_reject: EXPAND %{User-Name}
+    (0) attr_filter.access_reject:    --> bob
+    (0) attr_filter.access_reject: Matched entry DEFAULT at line 11
+    (0)     [attr_filter.access_reject] = updated
+    (0)     [eap] = noop
+    (0)     policy remove_reply_message_if_eap {
+    (0)       if (&reply:EAP-Message && &reply:Reply-Message) {
+    (0)       if (&reply:EAP-Message && &reply:Reply-Message)  -> FALSE
+    (0)       else {
+    (0)         [noop] = noop
+    (0)       } # else = noop
+    (0)     } # policy remove_reply_message_if_eap = noop
+
+Finally, the `Post-Auth-Type REJECT` section is done.
+
+    (0)   } # Post-Auth-Type REJECT = updated
+
+Since this is an Access-Reject, it is delayed for one second to prevent password attacks.  The `reject_delay` configuration above control this delay.
+
+    (0) Delaying response for 1.000000 seconds
+
+The server then sleeps for a while, waking up periodically to deal with internal book-keeping.
+
+    Waking up in 0.3 seconds.
+    Waking up in 0.6 seconds.
+
+Finally after a one-second delay, the server wakes up and sends the Access-Reject packet.
+
+    (0) Sending delayed response
+
+The IP / port printed here is the mirror of the one printed for the Access-Request, above.  This indicates that it's a reply to an earlier request.
+
+    (0) Sent Access-Reject Id 104 from 127.0.0.1:1812 to 127.0.0.1:33278 length 20
+
+If there are any attributes in the reply packet, they will be printed here.  In this case, there are non.
+
+Note that you **should** check the reply attributes to see if the server is sending the reply you expect.  If it is not sending the correct reply. you will need to fix the configuration to do so.
+
+If it is sending the correct reply, but the user is not getting the expected service, then the problem is the NAS.  No amount of changing the server configuration will make the NAS behave.
+
+The server then sleeps for a while:
+
+    Waking up in 3.9 seconds.
+
+And then cleans up the request and it's associated response.  This delay is controlled by `cleanup_delay`, which was seen earlier in the debug output.
+
+    (0) Cleaning up request packet ID 104 with timestamp +23
+
+Since there's nothing more to do, we're back to this message.
+
+    Ready to process requests
+
+The debug log has another packet, which we will skip, as it's largely the same as the previous one.
+
+    (1) Received Access-Request Id 146 from 127.0.0.1:40967 to 127.0.0.1:1812 length 73
+    (1)   User-Name = "bob"
+    (1)   User-Password = "wrongagain"
+    (1)   NAS-IP-Address = 127.0.1.1
+    (1)   NAS-Port = 0
+
+The debug log then shows a successful authentication.
+
+The input packet is largely the same, but has a different `User-Name` and `User-Password` attribute.
+
+    (2) Received Access-Request Id 135 from 127.0.0.1:40344 to 127.0.0.1:1812 length 77
+    (2)   User-Name = "bob@int"
+    (2)   User-Password = "test"
+    (2)   NAS-IP-Address = 127.0.1.1
+    (2)   NAS-Port = 0
+
+The `Message-Authenticator` attribute is a cryptographic signature of the packet, and has no other meaning.
+
+    (2)   Message-Authenticator = 0x3b3f4cf11005dcccfe78bb4a5830dd52
+
+We start the `authorize` section again/
+
+    (2) # Executing section authorize from file /etc/raddb/sites-enabled/default
+    (2)   authorize {
+
+This time the `suffix` module does find a suffix.
+
+    (2) suffix: Checking for suffix after "@"
+    (2) suffix: Looking up realm "int" for User-Name = "bob@int"
+
+The realm `int` is defined above in the `realm` configuration.
+
+    (2) suffix: Found realm "int"
+
+The `suffix` module splits the `User-Name` into a `Stripped-User-Name` and `Realm` attributes.  The `Stripped-User-Name` is used by subsequent modules to match the user's name.
+
+    (2) suffix: Adding Stripped-User-Name = "bob"
+    (2) suffix: Adding Realm = "int"
+    (2) suffix: Proxying request from user bob to realm int
+    (2) suffix: Preparing to proxy authentication request to realm "int" 
+    (2)     [suffix] = updated
+    (2)     [files] = noop
+    (2)   } # authorize = updated
+    (2) Starting proxy to home server (null) port 1812
+
+This configuration has been changed from the default configuration to proxy packets to the `inner-tunnel` virtual server.  This change was done here strictly for demonstration purposes.  It is not necessary (and you should not do it!) in normal configurations.
+
+    Proxying to virtual server inner-tunnel
+    (2) # Executing section authorize from file /etc/raddb/sites-enabled/inner-tunnel
+    (2)   authorize {
+
+The `files` module matches the user name and realm, at `line 1` of the `users` file.  This output lets you know exactly which entry was matched.
+
+If the server does not do what you expect it to do, you should read `line 1` of the `users` file (or whatever entry matched), to verify that the entry is what you expect it to be.
+
+    (2) files: users: Matched entry bob@int at line 1
+    (2)     [files] = ok
+
+The `pap` module sees the `Cleartext-Password` which was set in the `users` file, along with the `User-Password` that came from the packet.  The module then sets `Auth-Type := PAP`.  This is so that the `authenticate` section will run the `pap` module, which will then authenticate the user.
+
+    (2)     [pap] = updated
+    (2)   } # authorize = updated
+
+It now runs `Auth-Type PAP`
+
+    (2) Found Auth-Type = PAP
+    (2) # Executing group from file /etc/raddb/sites-enabled/inner-tunnel
+    (2)   Auth-Type PAP {
+
+The `pap` module tells you that everything is OK.
+
+    (2) pap: Login attempt with password
+    (2) pap: Comparing with "known good" Cleartext-Password
+    (2) pap: User authenticated successfully
+    (2)     [pap] = ok
+    (2)   } # Auth-Type PAP = ok
+
+It now runs the normal `post-auth` section
+
+    (2) # Executing section post-auth from file /etc/raddb/sites-enabled/inner-tunnel
+    (2)   post-auth {
+    (2)     update reply {
+    (2)       Reply-Message := "hello"
+    (2)     } # update reply = noop
+    (2)     if (0) {
+    (2)     if (0)  -> FALSE
+    (2)   } # post-auth = noop
+    (2) Finished internally proxied request.
+    (2) Clearing existing &reply: attributes
+
+Because this is a proxied request, it now runs the `post-proxy` section of the `default` virtual server.
+
+    (2) # Executing section post-proxy from file /etc/raddb/sites-enabled/default
+    (2)   post-proxy {
+    (2)     policy debug_reply {
+    (2)       if ("%{debug_attr:reply:}" == '') {
+    (2)       Attributes matching "reply:"
+    (2)         EXPAND %{debug_attr:reply:}
+    (2)            --> 
+    (2)         if ("%{debug_attr:reply:}" == '')  -> TRUE
+    (2)         if ("%{debug_attr:reply:}" == '')  {
+    (2)           [noop] = noop
+    (2)         } # if ("%{debug_attr:reply:}" == '')  = noop
+    (2)       } # policy debug_reply = noop
+    (2)     } # post-proxy = noop
+
+This `Auth-Type = Accept` is added by the server code when proxying.  Since the proxied request returned an Access-Accept, the `default` virtual server treats that as a successful authentication.
+
+    (2)   Found Auth-Type = Accept
+    (2)   Auth-Type = Accept, accepting the user
+
+It then runs the `post-auth` section from the `default` virtual server.
+
+    (2)   # Executing section post-auth from file /etc/raddb/sites-enabled/default
+    (2)     post-auth {
+    (2)       update {
+    (2)         No attributes updated
+    (2)       } # update = noop
+    (2)       [exec] = noop
+    (2)       policy remove_reply_message_if_eap {
+    (2)         if (&reply:EAP-Message && &reply:Reply-Message) {
+    (2)         if (&reply:EAP-Message && &reply:Reply-Message)  -> FALSE
+    (2)         else {
+    (2)           [noop] = noop
+    (2)         } # else = noop
+    (2)       } # policy remove_reply_message_if_eap = noop
+    (2)     } # post-auth = noop
+
+And finally returns an Access-Accept to the client.  The `Reply-Message` here was take from `line 1` of the `users` file, when it matched above.
+
+    (2)   Sent Access-Accept Id 135 from 127.0.0.1:1812 to 127.0.0.1:40344 length 0
+    (2)     Reply-Message := "hello"
+    (2)   Finished request
+    Waking up in 4.9 seconds.
+    (2)   Cleaning up request packet ID 135 with timestamp +74
+    Ready to process requests
+    ^C
+
+That is a *lot* of information to go through.  We hope that this page has been useful.
