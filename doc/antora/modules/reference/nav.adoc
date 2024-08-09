@@ -78,7 +78,7 @@
 *** xref:xlat/string.adoc[String handling]
 **** xref:xlat/concat.adoc[Concatenation]
 **** xref:xlat/explode.adoc[Split strings]
-**** xref:xlat/length.adoc[Length]
+**** xref:xlat/builtin.adoc#length[Length]
 **** xref:xlat/lpad.adoc[Left pad]
 **** xref:xlat/pairs.adoc[Print attributes]
 **** xref:xlat/rpad.adoc[Right pad]
