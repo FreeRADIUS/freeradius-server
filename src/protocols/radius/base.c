@@ -999,7 +999,7 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_AUTHENTICATOR, 0x12,
 					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
-		packet_ctx->seen_message_authenticator = 0x00;
+		packet_ctx->seen_message_authenticator = true;
 	}
 
 	/*
