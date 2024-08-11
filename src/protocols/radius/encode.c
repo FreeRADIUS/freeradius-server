@@ -479,6 +479,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	be written.
 	 */
 	if (fr_dbuff_used(&value_dbuff) == 0) {
+	return_0:
 		vp = fr_dcursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
 		return 0;
@@ -504,7 +505,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 		if (packet_ctx->disallow_tunnel_passwords) {
 			fr_strerror_const("Attributes with 'encrypt=2' set cannot go into this packet.");
-			return 0;
+			goto return_0;
 		}
 
 		/*
@@ -575,7 +576,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		(void) fr_dbuff_out(&msb, &src);
 		if (msb != 0) {
 			fr_strerror_const("Integer overflow for tagged uint32 attribute");
-			return 0;
+			goto return_0;
 		}
 		fr_dbuff_set(&dest, &value_start);
 		fr_dbuff_in(&dest, packet_ctx->tag);
