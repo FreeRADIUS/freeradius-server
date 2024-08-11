@@ -179,7 +179,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	 */
 	request->packet->id = fr_nbo_to_uint32(data + 4);
 	request->reply->id = request->packet->id;
-	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;

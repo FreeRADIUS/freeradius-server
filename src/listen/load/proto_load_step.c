@@ -272,7 +272,6 @@ static int mod_decode(void const *instance, request_t *request, UNUSED uint8_t *
 	if (inst->code) request->packet->code = inst->code;
 	request->packet->id = fr_rand() & 0xff;
 	request->reply->id = request->packet->id;
-	memset(request->packet->vector, 0, sizeof(request->packet->vector));
 
 	request->packet->data = talloc_zero_array(request->packet, uint8_t, 1);
 	request->packet->data_len = 1;

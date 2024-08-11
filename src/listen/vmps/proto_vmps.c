@@ -167,7 +167,6 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	request->packet->code = data[0];
 	request->packet->id = data[1];
 	request->reply->id = data[1];
-	memcpy(request->packet->vector, data + 4, sizeof(request->packet->vector));
 
 	request->packet->data = talloc_memdup(request->packet, data, data_len);
 	request->packet->data_len = data_len;
