@@ -1710,7 +1710,7 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	return 0;
 }
 
-static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
+static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, void *proto_ctx)
 {
 	fr_radius_encode_ctx_t	*packet_ctx = talloc_get_type_abort(proto_ctx, fr_radius_encode_ctx_t);
 	int packet_type = FR_RADIUS_CODE_ACCESS_REQUEST;
@@ -1720,16 +1720,20 @@ static ssize_t fr_radius_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vp
 	vp = fr_pair_find_by_da(vps, NULL, attr_packet_type);
 	if (vp) packet_type = vp->vp_uint32;
 
+	/*
+	 *	Force specific values for testing.
+	 */
 	if ((packet_type == FR_RADIUS_CODE_ACCESS_REQUEST) || (packet_type == FR_RADIUS_CODE_STATUS_SERVER)) {
 		vp = fr_pair_find_by_da(vps, NULL, attr_packet_authentication_vector);
-		if (vp && (vp->vp_length == RADIUS_AUTH_VECTOR_LENGTH)) {
-			memcpy(data + 4, vp->vp_octets, RADIUS_AUTH_VECTOR_LENGTH);
-		} else {
+		if (!vp) {
 			int i;
+			uint8_t vector[RADIUS_AUTH_VECTOR_LENGTH];
 
 			for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i++) {
 				data[4 + i] = fr_fast_rand(&packet_ctx->rand_ctx);
 			}
+
+			fr_pair_list_append_by_da_len(ctx, vp, vps, attr_packet_authentication_vector, vector, sizeof(vector), false);
 		}
 	}
 

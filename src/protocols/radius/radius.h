@@ -144,8 +144,6 @@ typedef struct {
 	uint64_t	my_proxy_state;			//!< if so, this is its value
 
 	uint32_t	acct_delay_time;		//!< additional time to add to acct_delay_time
-
-	uint8_t 	vector[RADIUS_AUTH_VECTOR_LENGTH]; //!< vector for authenticating the reply
 } fr_radius_ctx_t;
 
 typedef struct {
