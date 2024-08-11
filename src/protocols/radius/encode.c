@@ -1406,6 +1406,7 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 	fr_pair_t const	*vp = fr_dcursor_current(cursor);
 	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
 	fr_dbuff_marker_t	start;
+	fr_radius_encode_ctx_t	*packet_ctx = encode_ctx;
 
 	fr_dbuff_marker(&start, &work_dbuff);
 
@@ -1455,12 +1456,16 @@ static ssize_t encode_rfc(fr_dbuff_t *dbuff, fr_da_stack_t *da_stack, unsigned i
 	 *	Message-Authenticator is hard-coded.
 	 */
 	if (vp->da == attr_message_authenticator) {
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 18);
-		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH);
+		if (!packet_ctx->seen_message_authenticator) {
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t)vp->da->attr, 18);
+			FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH);
 
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&start) + 2, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH,
-				  "message-authenticator");
-		FR_PROTO_HEX_DUMP(fr_dbuff_current(&start), 2, "header rfc");
+			FR_PROTO_HEX_DUMP(fr_dbuff_current(&start) + 2, RADIUS_MESSAGE_AUTHENTICATOR_LENGTH,
+					  "message-authenticator");
+			FR_PROTO_HEX_DUMP(fr_dbuff_current(&start), 2, "header rfc");
+
+			packet_ctx->seen_message_authenticator = true;
+		}
 
 		vp = fr_dcursor_next(cursor);
 		fr_proto_da_stack_build(da_stack, vp ? vp->da : NULL);
