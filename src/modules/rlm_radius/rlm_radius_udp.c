@@ -207,6 +207,7 @@ static fr_dict_attr_t const *attr_error_cause;
 static fr_dict_attr_t const *attr_event_timestamp;
 static fr_dict_attr_t const *attr_extended_attribute_1;
 static fr_dict_attr_t const *attr_message_authenticator;
+static fr_dict_attr_t const *attr_eap_message;
 static fr_dict_attr_t const *attr_nas_identifier;
 static fr_dict_attr_t const *attr_original_packet_code;
 static fr_dict_attr_t const *attr_proxy_state;
@@ -221,6 +222,7 @@ fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius},
 	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_TLV, .dict = &dict_radius},
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_nas_identifier, .name = "NAS-Identifier", .type = FR_TYPE_STRING, .dict = &dict_radius},
 	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius},
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
@@ -1182,7 +1184,8 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	if (u->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
 		if ((parent->require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
 		    !*(parent->received_message_authenticator) &&
-		    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
+		    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator) &&
+		    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
 			RINFO("Packet contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"");
 			*(parent->received_message_authenticator) = true;
 		}
