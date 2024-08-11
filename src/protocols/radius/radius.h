@@ -216,9 +216,6 @@ ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *sr
 ssize_t		fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
 				 char const *secret, size_t secret_len, int code, int id, fr_pair_list_t *vps);
 
-ssize_t		fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
-				 char const *secret, UNUSED size_t secret_len, int code, int id, fr_pair_list_t *vps);
-
 ssize_t		fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 uint8_t *packet, size_t packet_len,
 				 fr_radius_decode_ctx_t *decode_ctx) CC_HINT(nonnull);

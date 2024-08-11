@@ -889,15 +889,6 @@ void *fr_radius_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
 }
 
 
-/** Encode VPS into a raw RADIUS packet.
- *
- */
-ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
-			 char const *secret, size_t secret_len, int code, int id, fr_pair_list_t *vps)
-{
-	return fr_radius_encode_dbuff(&FR_DBUFF_TMP(packet, packet_len), original, secret, secret_len, code, id, vps);
-}
-
 static const bool disallow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
 	[ FR_RADIUS_CODE_ACCESS_REQUEST ] = true,
 	// can be in Access-Accept
@@ -919,7 +910,7 @@ static const bool disallow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
 	[ FR_RADIUS_CODE_PROTOCOL_ERROR ] = true,
 };
 
-ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
+ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
 			 char const *secret, size_t secret_len, int code, int id, fr_pair_list_t *vps)
 {
 	ssize_t			slen;
@@ -941,7 +932,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 	/*
 	 *	The RADIUS header can't do more than 64K of data.
 	 */
-	work_dbuff = FR_DBUFF_MAX(dbuff, 65535);
+	work_dbuff = FR_DBUFF_TMP(packet, packet_len);
 
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, code, id);
 	length_dbuff = FR_DBUFF(&work_dbuff);
@@ -1026,7 +1017,7 @@ ssize_t fr_radius_encode_dbuff(fr_dbuff_t *dbuff, uint8_t const *original,
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "%s encoded packet", __FUNCTION__);
 
-	return fr_dbuff_set(dbuff, &work_dbuff);
+	return fr_dbuff_used(&work_dbuff);
 }
 
 ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
