@@ -143,7 +143,7 @@ typedef struct {
 	bool			secure_transport;	//!< for TLS
 
 	bool			add_proxy_state;       	//!< do we add a Proxy-State?
-	uint64_t		my_proxy_state;		//!< if so, this is its value
+	uint32_t		proxy_state;		//!< if so, this is its value
 } fr_radius_ctx_t;
 
 typedef struct {

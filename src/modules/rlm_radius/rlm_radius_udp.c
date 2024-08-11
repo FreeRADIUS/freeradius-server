@@ -1206,7 +1206,6 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_t *u, uint8_t id)
 {
 	ssize_t			packet_len;
-	int			proxy_state = 6;
 	fr_radius_encode_ctx_t	encode_ctx;
 
 	fr_assert(inst->parent->allowed[u->code]);
@@ -1233,25 +1232,17 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	if (u->status_check) {
 		fr_pair_t *vp;
 
-		proxy_state = 0;
 		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
 		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 
 		if (u->code == FR_RADIUS_CODE_STATUS_SERVER) u->can_retransmit = false;
-
-	} else if (inst->parent->originate) {
-		/*
-		 *	We're originating packets instead of proxying
-		 *	them.  We don't add a Proxy-State attribute.
-		 */
-		proxy_state = 0;
 	}
 
 	/*
 	 *	We should have at minimum 64-byte packets, so don't
 	 *	bother doing run-time checks here.
 	 */
-	fr_assert(u->packet_len >= (size_t) (RADIUS_HEADER_LENGTH + proxy_state));
+	fr_assert(u->packet_len >= (size_t) RADIUS_HEADER_LENGTH);
 
 	encode_ctx = (fr_radius_encode_ctx_t) {
 		.common = &inst->common_ctx,
@@ -1266,7 +1257,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	/*
 	 *	Encode it, leaving room for Proxy-State if necessary.
 	 */
-	packet_len = fr_radius_encode(&FR_DBUFF_TMP(u->packet, u->packet_len - proxy_state),
+	packet_len = fr_radius_encode(&FR_DBUFF_TMP(u->packet, u->packet_len),
 				      &request->request_pairs, &encode_ctx);
 	if (fr_pair_encode_is_error(packet_len)) {
 		RPERROR("Failed encoding packet");
@@ -1280,7 +1271,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		size_t have;
 		size_t need;
 
-		have = u->packet_len - proxy_state;
+		have = u->packet_len;
 		need = have - packet_len;
 
 		if (need > RADIUS_MAX_PACKET_SIZE) {
@@ -1296,7 +1287,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	/*
 	 *	The encoded packet should NOT over-run the input buffer.
 	 */
-	fr_assert((size_t) (packet_len + proxy_state) <= u->packet_len);
+	fr_assert((size_t) packet_len <= u->packet_len);
 
 	/*
 	 *	Add Proxy-State to the tail end of the packet.
@@ -1305,44 +1296,11 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 *	request->request_pairs, because multiple modules
 	 *	may be sending the packets at the same time.
 	 */
-	if (proxy_state) {
-		uint8_t		*attr = u->packet + packet_len;
+	if (inst->common_ctx.add_proxy_state) {
 		fr_pair_t	*vp;
-		fr_dcursor_t	cursor;
-		int		count = 0;
-
-		/*
-		 *	Count how many Proxy-State attributes have
-		 *	*our* magic number.  Note that we also add a
-		 *	counter to each Proxy-State, so we're double
-		 *	sure that it's a loop.
-		 */
-		if (DEBUG_ENABLED) {
-			for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
-			     vp;
-			     vp = fr_dcursor_next(&cursor)) {
-				if ((vp->vp_length == 5) && (memcmp(vp->vp_octets, &inst->parent->proxy_state, 4) == 0)) {
-					count++;
-				}
-			}
-
-			/*
-			 *	Some configurations may proxy to
-			 *	ourselves for tests / simplicity.  But
-			 *	warn if there are a large number of
-			 *	identical Proxy-State attributes.
-			 */
-			if (count >= 4) RWARN("Potential proxy loop detected!  Please recheck your configuration.");
-		}
-
-		attr[0] = (uint8_t)attr_proxy_state->attr;
-		attr[1] = 7;
-		memcpy(attr + 2, &inst->parent->proxy_state, 4);
-		attr[6] = count & 0xff;
-		packet_len += 7;
 
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
-		fr_pair_value_memdup(vp, attr + 2, 5, true);
+		fr_pair_value_memdup(vp, &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
 	}
 
@@ -2775,6 +2733,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
 		.secret_length = talloc_array_length(inst->secret) - 1,
+		.add_proxy_state = !inst->parent->originate,
+		.proxy_state = inst->parent->proxy_state,
 	};
 
 	/*

@@ -364,7 +364,7 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 	/*
 	 *	Check for proxy loops.
 	 */
-	if (RDEBUG_ENABLED) {
+	if (!inst->originate && RDEBUG_ENABLED) {
 		fr_dcursor_t cursor;
 
 		for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
