@@ -98,6 +98,8 @@ struct fr_bio_dedup_entry_s {
 	uint8_t		*reply;			//!< reply cached by the application
 	size_t		reply_size;		//!< size of the cached reply
 
+	fr_rb_node_t	dedup;			//!< user managed dedup node
+
 	union {
 		struct {
 			fr_rb_node_t	node;		//!< for the expiry timers
