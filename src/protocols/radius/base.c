@@ -917,7 +917,7 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	fr_dcursor_t		cursor;
 	fr_dbuff_t		work_dbuff, length_dbuff;
 
-	packet_ctx->disallow_tunnel_passwords = disallow_tunnel_passwords[packet_ctx->request_code];
+	packet_ctx->disallow_tunnel_passwords = disallow_tunnel_passwords[packet_ctx->code];
 
 	/*
 	 *	The RADIUS header can't do more than 64K of data.
