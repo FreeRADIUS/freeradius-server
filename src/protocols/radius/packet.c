@@ -166,16 +166,6 @@ int fr_packet_sign(fr_packet_t *packet, fr_packet_t const *original,
 {
 	int ret;
 
-	/*
-	 *	Copy the random vector to the packet.  Other packet
-	 *	codes have the Request Authenticator be the packet
-	 *	signature.
-	 */
-	if ((packet->code == FR_RADIUS_CODE_ACCESS_REQUEST) ||
-	    (packet->code == FR_RADIUS_CODE_STATUS_SERVER)) {
-		memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
-	}
-
 	ret = fr_radius_sign(packet->data, original ? original->data + 4 : NULL,
 			       (uint8_t const *) secret, talloc_array_length(secret) - 1);
 	if (ret < 0) return ret;
