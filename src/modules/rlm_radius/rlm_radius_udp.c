@@ -1303,7 +1303,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		fr_pair_t	*vp;
 
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
-		fr_pair_value_memdup(vp, &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
+		fr_pair_value_memdup(vp, (uint8_t const *) &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
 	}
 
