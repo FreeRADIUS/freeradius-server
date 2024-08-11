@@ -147,7 +147,7 @@ typedef struct {
 } fr_radius_ctx_t;
 
 typedef struct {
-	fr_radius_ctx_t		*common;
+	fr_radius_ctx_t	const	*common;
 
 	uint8_t const		*request_authenticator;
 
@@ -161,7 +161,7 @@ typedef struct {
 } fr_radius_encode_ctx_t;
 
 typedef struct {
-	fr_radius_ctx_t		*common;
+	fr_radius_ctx_t const  	*common;
 
 	uint8_t const		*request_authenticator;
 

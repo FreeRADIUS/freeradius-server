@@ -1692,14 +1692,15 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 		0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f };
 
 	fr_radius_encode_ctx_t	*test_ctx;
+	fr_radius_ctx_t		*common;
 
 	test_ctx = talloc_zero(ctx, fr_radius_encode_ctx_t);
 	if (!test_ctx) return -1;
 
-	test_ctx->common = talloc_zero(test_ctx, fr_radius_ctx_t);
+	test_ctx->common = common = talloc_zero(test_ctx, fr_radius_ctx_t);
 
-	test_ctx->common->secret = talloc_strdup(test_ctx->common, "testing123");
-	test_ctx->common->secret_length = talloc_array_length(test_ctx->common->secret) - 1;
+	common->secret = talloc_strdup(test_ctx->common, "testing123");
+	common->secret_length = talloc_array_length(test_ctx->common->secret) - 1;
 
 	test_ctx->request_authenticator = vector;
 	test_ctx->rand_ctx.a = 6809;
