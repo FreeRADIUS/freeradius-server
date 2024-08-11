@@ -69,6 +69,8 @@ typedef struct {
 	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
 	bool			replicate;		//!< Copied from parent->replicate
 
+	fr_radius_ctx_t		common_ctx;
+
 	trunk_conf_t		trunk_conf;		//!< trunk configuration
 } rlm_radius_udp_t;
 
@@ -1140,20 +1142,14 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	rlm_radius_udp_t const	*inst = talloc_get_type_abort_const(h->thread->inst, rlm_radius_udp_t);
 	rlm_radius_t const	*parent = inst->parent;
 	uint8_t			code;
-	fr_radius_ctx_t		common_ctx;
 	fr_radius_decode_ctx_t	decode_ctx;
 
 	*response_code = 0;	/* Initialise to keep the rest of the code happy */
 
 	RHEXDUMP3(data, data_len, "Read packet");
 
-	common_ctx = (fr_radius_ctx_t) {
-		.secret = inst->secret,
-		.secret_length = talloc_array_length(inst->secret) - 1,
-	};
-
 	decode_ctx = (fr_radius_decode_ctx_t) {
-		.common = &common_ctx,
+		.common = &inst->common_ctx,
 		.request_code = u->code,
 		.request_authenticator = request_authenticator,
 		.tmp_ctx = talloc(ctx, uint8_t),
@@ -2829,6 +2825,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		cf_log_err(conf, "A value must be given for 'ipaddr'");
 		return -1;
 	}
+
+	inst->common_ctx = (fr_radius_ctx_t) {
+		.secret = inst->secret,
+		.secret_length = talloc_array_length(inst->secret) - 1,
+	};
 
 	/*
 	 *	If src_ipaddr isn't set, make sure it's INADDR_ANY, of
