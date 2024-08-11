@@ -157,10 +157,12 @@ static xlat_action_t xlat_func_chap_password(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	    (env_data->chap_challenge.vb_length >= inst->min_challenge_len)) {
 		challenge = env_data->chap_challenge.vb_octets;
 		challenge_len = env_data->chap_challenge.vb_length;
+
 	} else {
-		if (env_data->chap_challenge.type == FR_TYPE_OCTETS)
+		if (env_data->chap_challenge.type == FR_TYPE_OCTETS) {
 			RWDEBUG("&request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
-		challenge = request->packet->vector;
+		}
+		challenge = request->packet->data + 4;
 		challenge_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
 	fr_chap_encode(chap_password, (uint8_t)(fr_rand() & 0xff), challenge, challenge_len,
@@ -202,7 +204,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 		RDEBUG2("Creating %s from request authenticator", env_data->chap_challenge_tmpl->name);
 
 		MEM(vp = fr_pair_afrom_da(request->request_ctx, tmpl_attr_tail_da(env_data->chap_challenge_tmpl)));
-		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
+		fr_pair_value_memdup(vp, request->packet->data + 4, RADIUS_AUTH_VECTOR_LENGTH, true);
 		fr_pair_append(&request->request_pairs, vp);
 	}
 
@@ -288,9 +290,10 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		challenge = env_data->chap_challenge.vb_octets;
 		challenge_len = env_data->chap_challenge.vb_length;
 	} else {
-		if (env_data->chap_challenge.type == FR_TYPE_OCTETS)
+		if (env_data->chap_challenge.type == FR_TYPE_OCTETS) {
 			RWDEBUG("&request.CHAP-Challenge shorter than minimum length (%ld)", inst->min_challenge_len);
-		challenge = request->packet->vector;
+		}
+		challenge = request->packet->data + 4;
 		challenge_len = RADIUS_AUTH_VECTOR_LENGTH;
 	}
 	fr_chap_encode(pass_str, env_data->chap_password.vb_octets[0], challenge, challenge_len,
@@ -311,8 +314,8 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 			length = env_data->chap_challenge.vb_length;
 		} else {
 			RDEBUG2("Using challenge from authenticator field");
-			p = request->packet->vector;
-			length = sizeof(request->packet->vector);
+			p = request->packet->data + 4;
+			length = RADIUS_AUTH_VECTOR_LENGTH;
 		}
 
 		RINDENT();
