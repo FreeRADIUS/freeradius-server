@@ -395,6 +395,8 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 	fr_io_address_t const  	*address = track->address;
 	ssize_t			data_len;
 	fr_client_t const	*client;
+	fr_radius_ctx_t		common_ctx = {};
+	fr_radius_encode_ctx_t  encode_ctx;
 
 	/*
 	 *	Process layer NAK, or "Do not respond".
@@ -457,9 +459,23 @@ static ssize_t mod_encode(UNUSED void const *instance, request_t *request, uint8
 		request->reply->socket.inet.src_ipaddr = client->src_ipaddr;
 	}
 
-	data_len = fr_radius_encode(buffer, buffer_len, request->packet->data,
-				    client->secret, talloc_array_length(client->secret) - 1,
-				    request->reply->code, request->reply->id, &request->reply_pairs);
+	common_ctx = (fr_radius_ctx_t) {
+		.secret = client->secret,
+		.secret_length = talloc_array_length(client->secret) - 1,
+	};
+	encode_ctx = (fr_radius_encode_ctx_t) {
+		.common = &common_ctx,
+		.request_authenticator = request->packet->data + 4,
+		.rand_ctx = (fr_fast_rand_t) {
+			.a = fr_rand(),
+			.b = fr_rand(),
+		},
+		.request_code = request->packet->data[0],
+		.code = request->reply->code,
+		.id = request->reply->id,
+	};
+
+	data_len = fr_radius_encode(&FR_DBUFF_TMP(buffer, buffer_len), &request->reply_pairs, &encode_ctx);
 	if (data_len < 0) {
 		RPEDEBUG("Failed encoding RADIUS reply");
 		return -1;

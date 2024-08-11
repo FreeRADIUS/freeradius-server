@@ -1209,6 +1209,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	uint8_t			*msg = NULL;
 	int			message_authenticator = u->require_message_authenticator * (RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2);
 	int			proxy_state = 6;
+	fr_radius_encode_ctx_t	encode_ctx;
 
 	fr_assert(inst->parent->allowed[u->code]);
 	fr_assert(!u->packet);
@@ -1237,19 +1238,8 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	switch (u->code) {
 	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
-	{
-		size_t i;
-		uint32_t hash, base;
-
 		message_authenticator = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2;
-
-		base = fr_rand();
-		for (i = 0; i < RADIUS_AUTH_VECTOR_LENGTH; i += sizeof(uint32_t)) {
-			hash = fr_rand() ^ base;
-			memcpy(u->packet + RADIUS_AUTH_VECTOR_OFFSET + i, &hash, sizeof(hash));
-		}
-	}
-		FALL_THROUGH;
+		break;
 
 	default:
 		break;
@@ -1284,13 +1274,22 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 */
 	fr_assert(u->packet_len >= (size_t) (RADIUS_HEADER_LENGTH + proxy_state + message_authenticator));
 
+	encode_ctx = (fr_radius_encode_ctx_t) {
+		.common = &inst->common_ctx,
+		.rand_ctx = (fr_fast_rand_t) {
+			.a = fr_rand(),
+			.b = fr_rand(),
+		},
+		.code = u->code,
+		.id = id,
+	};
+
 	/*
 	 *	Encode it, leaving room for Proxy-State and
 	 *	Message-Authenticator if necessary.
 	 */
-	packet_len = fr_radius_encode(u->packet, u->packet_len - (proxy_state + message_authenticator), NULL,
-				      inst->secret, talloc_array_length(inst->secret) - 1,
-				      u->code, id, &request->request_pairs);
+	packet_len = fr_radius_encode(&FR_DBUFF_TMP(u->packet, u->packet_len - (proxy_state + message_authenticator)),
+				      &request->request_pairs, &encode_ctx);
 	if (fr_pair_encode_is_error(packet_len)) {
 		RPERROR("Failed encoding packet");
 

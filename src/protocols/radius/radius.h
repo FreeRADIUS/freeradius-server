@@ -156,6 +156,11 @@ typedef struct {
 
 	uint8_t			tag;			//!< current tag for encoding
 
+	uint8_t			request_code;
+
+	uint8_t			code;
+	uint32_t		id;
+
 	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
 	bool			seen_message_authenticator;
 } fr_radius_encode_ctx_t;
@@ -211,8 +216,7 @@ ssize_t		fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t in
 
 ssize_t		fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
 
-ssize_t		fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
-				 char const *secret, size_t secret_len, int code, int id, fr_pair_list_t *vps);
+ssize_t		fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encode_ctx_t *packet_ctx) CC_HINT(nonnull);
 
 ssize_t		fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 uint8_t *packet, size_t packet_len,

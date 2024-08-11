@@ -910,41 +910,29 @@ static const bool disallow_tunnel_passwords[FR_RADIUS_CODE_MAX] = {
 	[ FR_RADIUS_CODE_PROTOCOL_ERROR ] = true,
 };
 
-ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *original,
-			 char const *secret, size_t secret_len, int code, int id, fr_pair_list_t *vps)
+ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encode_ctx_t *packet_ctx)
 {
 	ssize_t			slen;
 	fr_pair_t const		*vp;
 	fr_dcursor_t		cursor;
-	fr_radius_ctx_t		common_ctx = {};
-	fr_radius_encode_ctx_t	packet_ctx = {};
 	fr_dbuff_t		work_dbuff, length_dbuff;
 
-	common_ctx.secret = secret;
-	common_ctx.secret_length = secret_len;
-
-	packet_ctx.common = &common_ctx;
-	if (original) {
-		packet_ctx.request_authenticator = original + 4;
-	} else {
-		packet_ctx.request_authenticator = packet + 4;
-	}
-	packet_ctx.rand_ctx.a = fr_rand();
-	packet_ctx.rand_ctx.b = fr_rand();
-	packet_ctx.disallow_tunnel_passwords = disallow_tunnel_passwords[code];
+	packet_ctx->disallow_tunnel_passwords = disallow_tunnel_passwords[packet_ctx->request_code];
 
 	/*
 	 *	The RADIUS header can't do more than 64K of data.
 	 */
-	work_dbuff = FR_DBUFF_TMP(packet, packet_len);
+	work_dbuff = FR_DBUFF_MAX(dbuff, 65535);
 
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, code, id);
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, packet_ctx->code, packet_ctx->id);
 	length_dbuff = FR_DBUFF(&work_dbuff);
 	FR_DBUFF_IN_RETURN(&work_dbuff, (uint16_t) RADIUS_HEADER_LENGTH);
 
-	switch (code) {
+	switch (packet_ctx->code) {
 	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_STATUS_SERVER:
+		packet_ctx->request_authenticator = fr_dbuff_current(&work_dbuff);
+
 		/*
 		 *	Allow over-rides of the authentication vector for testing.
 		 */
@@ -969,11 +957,11 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	case FR_RADIUS_CODE_DISCONNECT_NAK:
 	case FR_RADIUS_CODE_PROTOCOL_ERROR:
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		if (!original) {
+		if (!packet_ctx->request_authenticator) {
 			fr_strerror_const("Cannot encode response without request");
 			return -1;
 		}
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, original + 4, RADIUS_AUTH_VECTOR_LENGTH);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, packet_ctx->request_authenticator, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
@@ -988,11 +976,13 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		 *	to say "don't do that!"
 		 */
 	case FR_RADIUS_CODE_COA_REQUEST:
+		packet_ctx->request_authenticator = fr_dbuff_current(&work_dbuff);
+
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, RADIUS_AUTH_VECTOR_LENGTH);
 		break;
 
 	default:
-		fr_strerror_printf("Cannot encode unknown packet code %d", code);
+		fr_strerror_printf("Cannot encode unknown packet code %d", packet_ctx->code);
 		return -1;
 	}
 
@@ -1001,9 +991,9 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 	 *	Original-Packet-Code manually.  If the user adds it
 	 *	later themselves, well, too bad.
 	 */
-	if (code == FR_RADIUS_CODE_PROTOCOL_ERROR) {
+	if (packet_ctx->code == FR_RADIUS_CODE_PROTOCOL_ERROR) {
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_EXTENDED_ATTRIBUTE_1, 0x07, 0x04 /* Original-Packet-Code */,
-					 0x00, 0x00, 0x00, original[0]);
+					 0x00, 0x00, 0x00, packet_ctx->request_code);
 	}
 
 	/*
@@ -1016,7 +1006,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 		/*
 		 *	Encode an individual VP
 		 */
-		slen = fr_radius_encode_pair(&work_dbuff, &cursor, &packet_ctx);
+		slen = fr_radius_encode_pair(&work_dbuff, &cursor, packet_ctx);
 		if (slen < 0) return slen;
 	} /* done looping over all attributes */
 
@@ -1028,7 +1018,7 @@ ssize_t fr_radius_encode(uint8_t *packet, size_t packet_len, uint8_t const *orig
 
 	FR_PROTO_HEX_DUMP(fr_dbuff_start(&work_dbuff), fr_dbuff_used(&work_dbuff), "%s encoded packet", __FUNCTION__);
 
-	return fr_dbuff_used(&work_dbuff);
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,

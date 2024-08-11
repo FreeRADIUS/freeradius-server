@@ -1738,12 +1738,13 @@ static ssize_t fr_radius_encode_proto(TALLOC_CTX *ctx, fr_pair_list_t *vps, uint
 		}
 	}
 
+	packet_ctx->code = packet_type;
+
 	/*
 	 *	@todo - pass in packet_ctx to this function, so that we
 	 *	can leverage a consistent random number generator.
 	 */
-	slen = fr_radius_encode(data, data_len, NULL, packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1,
-				packet_type, 0, vps);
+	slen = fr_radius_encode(&FR_DBUFF_TMP(data, data_len), vps, packet_ctx);
 	if (slen <= 0) return slen;
 
 	if (fr_radius_sign(data, NULL, (uint8_t const *) packet_ctx->common->secret, talloc_array_length(packet_ctx->common->secret) - 1) < 0) {

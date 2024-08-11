@@ -52,8 +52,9 @@ typedef struct {
 ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 				fr_packet_t const *original, char const *secret)
 {
-	uint8_t const *original_data;
 	ssize_t slen;
+	fr_radius_ctx_t common = {};
+	fr_radius_encode_ctx_t packet_ctx;
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -64,19 +65,22 @@ ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 	if (fr_debug_lvl >= L_DBG_LVL_4) fr_packet_log_hex(&default_log, packet);
 #endif
 
-	if (original) {
-		original_data = original->data;
-	} else {
-		original_data = NULL;
-	}
+	common.secret = secret;
+	common.secret_length = talloc_array_length(secret) - 1;
 
-	/*
-	 *	This has to be initialized for Access-Request packets
-	 */
-	memcpy(data + 4, packet->vector, sizeof(packet->vector));
+	packet_ctx = (fr_radius_encode_ctx_t) {
+		.common = &common,
+		.request_authenticator = original ? original->data + 4 : NULL,
+		.rand_ctx = (fr_fast_rand_t) {
+			.a = fr_rand(),
+			.b = fr_rand(),
+		},
+		.request_code = original ? original->data[0] : 0,
+		.code = packet->code,
+		.id = packet->id,
+	};
 
-	slen = fr_radius_encode(data, sizeof(data), original_data, secret, talloc_array_length(secret) - 1,
-				packet->code, packet->id, list);
+	slen = fr_radius_encode(&FR_DBUFF_TMP(data, sizeof(data)), list, &packet_ctx);
 	if (slen < 0) return slen;
 
 	/*
