@@ -87,7 +87,9 @@ $(OUTPUT)/%: $(DIR)/% $(BUILD_DIR)/bin/local/$(RADCLIENT) $(BUILD_DIR)/lib/local
 #	or
 #	2. call the script src/test/radclient/$test.cmd to validate the build/test/radclient/$test.out
 #
-	${Q}if [ -e "$(EXPECTED)" ] && ! diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND); then  \
+	${Q}grep -v 'Message-Authenticator' $(FOUND) > $(FOUND).out
+	${Q}mv $(FOUND).out $(FOUND)
+	${Q}if [ -e "$(EXPECTED)" ] && ! diff -I 'Sent' -I 'Received' $(EXPECTED) $(FOUND); then \
 		echo "RADCLIENT FAILED $@";                                 \
 		echo "RADIUSD:   $(RADIUSD_RUN)";                           \
 		echo "RADCLIENT: $(TEST_BIN)/$(RADCLIENT) $(ARGV) -C $(RADCLIENT_CLIENT_PORT) -f $< -d src/tests/radclient/config -D share/dictionary 127.0.0.1:$(radclient_port) $(TYPE) $(SECRET)"; \
