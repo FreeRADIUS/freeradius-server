@@ -50,6 +50,8 @@ struct  fr_bio_dedup_entry_s {
 	void		*reply_ctx;		//!< reply ctx
 	uint8_t		*reply;			//!< reply cached by the application
 	size_t		reply_size;		//!< size of the cached reply
+
+	fr_rb_node_t	dedup;			//!< user managed dedup node
 };
 #endif
 
@@ -69,13 +71,11 @@ typedef enum {
  *  @param bio		the binary IO handler
  *  @param dedup_ctx	new dedup_ctx assigned to this potential packet
  *  @param packet_ctx	per-packet context for the response
- *  @param buffer	raw data for the request
- *  @param size		size of the raw request data
  *  @return
  *	- false - discard the packet
  *	- true - create a new entry for the packet
  */
-typedef bool (*fr_bio_dedup_receive_t)(fr_bio_t *bio, fr_bio_dedup_entry_t *dedup_ctx, void *packet_ctx, const void *buffer, size_t size);
+typedef bool (*fr_bio_dedup_receive_t)(fr_bio_t *bio, fr_bio_dedup_entry_t *dedup_ctx, void *packet_ctx);
 
 /** Callback on release the packet (timeout, or cancelled by the application)
  *

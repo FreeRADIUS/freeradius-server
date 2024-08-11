@@ -35,6 +35,9 @@
  * like src/dst ip/port, and therefore can't always be an #fr_bio_dedup_entry_t.  The caller should associate
  * the #fr_bio_dedup_entry_t with the packet_ctx for the reply.  The get_item() routine can then return the entry.
  *
+ * For simplicity, the next bio should be a memory one.  That way the read() can read more than one packet if
+ * necessary.  And the write() can cache a partial packet if it blocks.
+ *
  * The entry needs to be cached in order to maintain the internal tracking used by the dedup BIO.
  *
  * On client retransmit, the #fr_bio_dedup_receive_t callback is run, just as if it is a new packet.  The
@@ -901,7 +904,7 @@ static ssize_t fr_bio_dedup_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	 *	The caller should cancel any conflicting packets by calling fr_bio_dedup_entry_cancel().  Note
 	 *	that for sanity, we don't re-use the previous #fr_bio_dedup_entry_t.
 	 */
-	if (!my->receive(bio, item, packet_ctx, buffer, rcode)) {
+	if (!my->receive(bio, item, packet_ctx)) {
 		item->state = FR_BIO_DEDUP_STATE_FREE;
 		fr_bio_dedup_list_insert_head(&my->free, item);
 		return 0;
