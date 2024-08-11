@@ -137,13 +137,13 @@ typedef struct {
 } fr_radius_tag_ctx_t;
 
 typedef struct {
-	char const	*secret;
-	size_t		secret_length;
+	char const		*secret;
+	size_t			secret_length;
 
-	bool		add_proxy_state;		//!< do we add a Proxy-State?
-	uint64_t	my_proxy_state;			//!< if so, this is its value
+	bool			secure_transport;	//!< for TLS
 
-	uint32_t	acct_delay_time;		//!< additional time to add to acct_delay_time
+	bool			add_proxy_state;       	//!< do we add a Proxy-State?
+	uint64_t		my_proxy_state;		//!< if so, this is its value
 } fr_radius_ctx_t;
 
 typedef struct {
@@ -154,14 +154,14 @@ typedef struct {
 	fr_fast_rand_t		rand_ctx;		//!< for tunnel passwords
 	int			salt_offset;		//!< for tunnel passwords
 
+
+	uint32_t		acct_delay_time;	//!< additional time to add to acct_delay_time
 	uint8_t			tag;			//!< current tag for encoding
 
 	uint8_t			request_code;
 
 	uint8_t			code;
 	uint8_t			id;
-
-	bool			secure_transport;	//!< for TLS
 
 	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
 	bool			seen_message_authenticator;

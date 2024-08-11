@@ -990,7 +990,7 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	 *	Always add Message-Authenticator after the packet
 	 *	header for insecure transport protocols.
 	 */
-	if (!packet_ctx->secure_transport) switch (packet_ctx->code) {
+	if (!packet_ctx->common->secure_transport) switch (packet_ctx->code) {
 	case FR_RADIUS_CODE_ACCESS_REQUEST:
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
 	case FR_RADIUS_CODE_ACCESS_REJECT:

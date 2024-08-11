@@ -1703,14 +1703,14 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	common->secret = talloc_strdup(test_ctx->common, "testing123");
 	common->secret_length = talloc_array_length(test_ctx->common->secret) - 1;
 
-	test_ctx->request_authenticator = vector;
-	test_ctx->rand_ctx.a = 6809;
-	test_ctx->rand_ctx.b = 2112;
-
 	/*
 	 *	We don't want to automatically add Message-Authenticator
 	 */
-	test_ctx->secure_transport = true;
+	common->secure_transport = true;
+
+	test_ctx->request_authenticator = vector;
+	test_ctx->rand_ctx.a = 6809;
+	test_ctx->rand_ctx.b = 2112;
 
 	*out = test_ctx;
 
