@@ -1206,8 +1206,6 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_t *u, uint8_t id)
 {
 	ssize_t			packet_len;
-	uint8_t			*msg = NULL;
-	int			message_authenticator = u->require_message_authenticator * (RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2);
 	int			proxy_state = 6;
 	fr_radius_encode_ctx_t	encode_ctx;
 
@@ -1226,25 +1224,6 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 */
 	u->packet_len = inst->max_packet_size;
 	MEM(u->packet = talloc_array(u, uint8_t, u->packet_len));
-
-	/*
-	 *	All proxied Access-Request packets MUST have a
-	 *	Message-Authenticator, otherwise they're insecure.
-	 *	Same goes for Status-Server.
-	 *
-	 *	And we set the authentication vector to a random
-	 *	number...
-	 */
-	switch (u->code) {
-	case FR_RADIUS_CODE_ACCESS_REQUEST:
-	case FR_RADIUS_CODE_STATUS_SERVER:
-		message_authenticator = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2;
-		break;
-
-	default:
-		break;
-	}
-
 
 	/*
 	 *	If we're sending a status check packet, update any
@@ -1272,7 +1251,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 *	We should have at minimum 64-byte packets, so don't
 	 *	bother doing run-time checks here.
 	 */
-	fr_assert(u->packet_len >= (size_t) (RADIUS_HEADER_LENGTH + proxy_state + message_authenticator));
+	fr_assert(u->packet_len >= (size_t) (RADIUS_HEADER_LENGTH + proxy_state));
 
 	encode_ctx = (fr_radius_encode_ctx_t) {
 		.common = &inst->common_ctx,
@@ -1285,10 +1264,9 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	};
 
 	/*
-	 *	Encode it, leaving room for Proxy-State and
-	 *	Message-Authenticator if necessary.
+	 *	Encode it, leaving room for Proxy-State if necessary.
 	 */
-	packet_len = fr_radius_encode(&FR_DBUFF_TMP(u->packet, u->packet_len - (proxy_state + message_authenticator)),
+	packet_len = fr_radius_encode(&FR_DBUFF_TMP(u->packet, u->packet_len - proxy_state),
 				      &request->request_pairs, &encode_ctx);
 	if (fr_pair_encode_is_error(packet_len)) {
 		RPERROR("Failed encoding packet");
@@ -1302,7 +1280,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		size_t have;
 		size_t need;
 
-		have = u->packet_len - (proxy_state + message_authenticator);
+		have = u->packet_len - proxy_state;
 		need = have - packet_len;
 
 		if (need > RADIUS_MAX_PACKET_SIZE) {
@@ -1318,7 +1296,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	/*
 	 *	The encoded packet should NOT over-run the input buffer.
 	 */
-	fr_assert((size_t) (packet_len + proxy_state + message_authenticator) <= u->packet_len);
+	fr_assert((size_t) (packet_len + proxy_state) <= u->packet_len);
 
 	/*
 	 *	Add Proxy-State to the tail end of the packet.
@@ -1366,22 +1344,6 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
 		fr_pair_value_memdup(vp, attr + 2, 5, true);
 		fr_pair_append(&u->extra, vp);
-	}
-
-	/*
-	 *	Add Message-Authenticator manually.
-	 *
-	 *	Note that the length check will always pass, due to
-	 *	the buflen manipulation done above.
-	 */
-	if (message_authenticator) {
-		msg = u->packet + packet_len;
-
-		msg[0] = (uint8_t) attr_message_authenticator->attr;
-		msg[1] = RADIUS_MESSAGE_AUTHENTICATOR_LENGTH + 2;
-		memset(msg + 2, 0,  RADIUS_MESSAGE_AUTHENTICATOR_LENGTH);
-
-		packet_len += msg[1];
 	}
 
 	/*
@@ -1436,29 +1398,14 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	}
 
 	/*
-	 *	Only certain types of packet, and those with a
-	 *	message_authenticator need signing.
+	 *	Now that we're done mangling the packet, sign it.
 	 */
-	if (message_authenticator) goto sign;
-	switch (u->code) {
-	case FR_RADIUS_CODE_ACCOUNTING_REQUEST:
-	case FR_RADIUS_CODE_DISCONNECT_REQUEST:
-	case FR_RADIUS_CODE_COA_REQUEST:
-	sign:
-		/*
-		 *	Now that we're done mangling the packet, sign it.
-		 */
-		if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->secret,
-				   talloc_array_length(inst->secret) - 1) < 0) {
-			RERROR("Failed signing packet");
-			goto error;
-		}
-		break;
-
-	default:
-		break;
-
+	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->secret,
+			   talloc_array_length(inst->secret) - 1) < 0) {
+		RERROR("Failed signing packet");
+		goto error;
 	}
+
 	return 0;
 }
 

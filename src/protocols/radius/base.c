@@ -987,6 +987,22 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	}
 
 	/*
+	 *	Always add Message-Authenticator after the packet
+	 *	header for insecure transport protocols.
+	 */
+	if (!packet_ctx->secure_transport) switch (packet_ctx->code) {
+	case FR_RADIUS_CODE_ACCESS_REQUEST:
+	case FR_RADIUS_CODE_ACCESS_ACCEPT:
+	case FR_RADIUS_CODE_ACCESS_REJECT:
+	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
+	case FR_RADIUS_CODE_STATUS_SERVER:
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_MESSAGE_AUTHENTICATOR, 0x12,
+					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+					 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+		packet_ctx->seen_message_authenticator = 0x00;
+	}
+
+	/*
 	 *	If we're sending Protocol-Error, add in
 	 *	Original-Packet-Code manually.  If the user adds it
 	 *	later themselves, well, too bad.
