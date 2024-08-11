@@ -159,7 +159,7 @@ typedef struct {
 	uint8_t			request_code;
 
 	uint8_t			code;
-	uint32_t		id;
+	uint8_t			id;
 
 	bool			disallow_tunnel_passwords; //!< not all packets can have tunnel passwords
 	bool			seen_message_authenticator;
