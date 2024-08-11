@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/server/modpriv.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
-#include <freeradius-devel/util/chap.h>
 
 #include "rlm_radius.h"
 
@@ -385,7 +384,7 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 	if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_password) &&
 	    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge)) {
 	    	MEM(pair_append_request(&vp, attr_chap_challenge) >= 0);
-		fr_pair_value_memdup(vp, request->packet->data + 4, FR_CHAP_CHALLENGE_LENGTH, true);
+		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
 	}
 }
 
