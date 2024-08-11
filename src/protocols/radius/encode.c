@@ -1707,6 +1707,11 @@ static int encode_test_ctx(void **out, TALLOC_CTX *ctx)
 	test_ctx->rand_ctx.a = 6809;
 	test_ctx->rand_ctx.b = 2112;
 
+	/*
+	 *	We don't want to automatically add Message-Authenticator
+	 */
+	test_ctx->secure_transport = true;
+
 	*out = test_ctx;
 
 	return 0;
