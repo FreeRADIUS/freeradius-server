@@ -317,22 +317,6 @@ fr_packet_t *fr_dhcpv4_raw_packet_recv(int sockfd, struct sockaddr_ll *link_laye
 
 	packet->code = code[2];
 
-	/*
-	 *	Create a unique vector from the MAC address and the
-	 *	DHCP opcode.  This is a hack for the RADIUS
-	 *	infrastructure in the rest of the server.
-	 *
-	 *	Note: packet->data[2] == 6, which is smaller than
-	 *	sizeof(packet->vector)
-	 *
-	 *	FIXME:  Look for client-identifier in packet,
-	 *      and use that, too?
-	 */
-	memset(packet->vector, 0, sizeof(packet->vector));
-	/* coverity[tainted_data] */
-	memcpy(packet->vector, packet->data + 28, packet->data[2]);
-	packet->vector[packet->data[2]] = packet->code & 0xff;
-
 	packet->socket.inet.src_port = udp_src_port;
 	packet->socket.inet.dst_port = udp_dst_port;
 
