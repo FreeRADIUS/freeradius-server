@@ -155,7 +155,6 @@ typedef struct {
 	int			salt_offset;		//!< for tunnel passwords
 
 
-	uint32_t		acct_delay_time;	//!< additional time to add to acct_delay_time
 	uint8_t			tag;			//!< current tag for encoding
 
 	uint8_t			request_code;

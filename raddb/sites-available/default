@@ -1345,17 +1345,6 @@ recv Accounting-Request {
 #	&request.FreeRADIUS-Acct-Session-Start-Time = "%{(&Event-Timestamp || %l) - &Acct-Session-Time - &Acct-Delay-Time}"
 
 	#
-	#  The packet should have a timestamp.  If not, use "now" from the server.
-	#
-	if (!&Event-Timestamp) {
-		&request.Event-Timestamp := %{%l() - &Acct-Delay-Time}
-
-	} elsif (!&Acct-Delay-Time && &request.Event-Timestamp && (&request.Event-Timestamp < %l())) {
-		&request.Acct-Delay-Time := %{%l() - &Event-Timestamp}
-
-	}
-
-	#
 	#  Ensure that we have a semi-unique identifier for every
 	#  request, as many NAS boxes are broken.
 	#

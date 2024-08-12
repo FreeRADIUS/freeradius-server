@@ -69,6 +69,8 @@ static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_user_password;
 static fr_dict_attr_t const *attr_original_packet_code;
 static fr_dict_attr_t const *attr_error_cause;
+static fr_dict_attr_t const *attr_event_timestamp;
+static fr_dict_attr_t const *attr_acct_delay_time;
 
 extern fr_dict_attr_autoload_t process_radius_dict_attr[];
 fr_dict_attr_autoload_t process_radius_dict_attr[] = {
@@ -90,6 +92,9 @@ fr_dict_attr_autoload_t process_radius_dict_attr[] = {
 
 	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+
+	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius },
+	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	{ NULL }
 };
@@ -610,6 +615,48 @@ RESUME(access_challenge)
 	RETURN_MODULE_OK;
 }
 
+/** A wrapper around recv generic which stores fields from the request
+ */
+RECV(accounting_request)
+{
+	module_ctx_t			our_mctx = *mctx;
+	fr_pair_t			*acct_delay, *event_timestamp;
+
+	fr_assert_msg(!mctx->rctx, "rctx not expected here");
+	our_mctx.rctx = radius_request_pairs_store(request);
+	mctx = &our_mctx;	/* Our mutable mctx */
+
+	/*
+	 *	Acct-Delay-Time is horrific.  Its existence in a packet means that any retransmissions can't
+	 *	be retransmissions!  Instead, we have to send a brand new packet each time.  This rewriting is
+	 *	expensive, causes ID churn, over-allocation of IDs, and makes it more difficult to discover
+	 *	end-to-end failures.
+	 *
+	 *	As a result, we delete Acct-Delay-Time, and replace it with Event-Timestamp.
+	 */
+	event_timestamp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
+	if (!event_timestamp) {
+		MEM(event_timestamp = fr_pair_afrom_da(request->request_ctx, attr_event_timestamp));
+		fr_pair_append(&request->request_pairs, event_timestamp);
+		event_timestamp->vp_date = fr_time_to_unix_time(request->packet->timestamp);
+
+		RDEBUG("Accounting-Request packet is missing Event-Timestamp.  Adding it to packet as %pP.", event_timestamp);
+	}
+
+	acct_delay = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
+	if (acct_delay) {
+		if (acct_delay->vp_uint32 < ((365 * 86400))) {
+			event_timestamp->vp_date = fr_unix_time_sub_time_delta(event_timestamp->vp_date, fr_time_delta_from_sec(acct_delay->vp_uint32));
+
+			RDEBUG("Accounting-Request packet contains Acct-Delay-Time.  Removing %pP, and updating %pP",
+			       acct_delay, event_timestamp);
+		}
+		(void) fr_pair_delete_by_da(&request->request_pairs, attr_acct_delay_time);
+	}
+
+	return CALL_RECV(generic);
+}
+
 RESUME(acct_type)
 {
 	static const fr_process_rcode_t acct_type_rcode = {
@@ -948,7 +995,7 @@ static fr_process_state_t const process_state[] = {
 			[RLM_MODULE_DISALLOW]	= FR_RADIUS_CODE_DO_NOT_RESPOND
 		},
 		.rcode = RLM_MODULE_NOOP,
-		.recv = recv_generic_radius_request,
+		.recv = recv_accounting_request,
 		.resume = resume_accounting_request,
 		.section_offset = offsetof(process_radius_sections_t, accounting_request),
 	},

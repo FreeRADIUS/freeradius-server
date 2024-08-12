@@ -51,7 +51,6 @@ fr_dict_autoload_t libfreeradius_radius_dict[] = {
 
 fr_dict_attr_t const *attr_packet_type;
 fr_dict_attr_t const *attr_packet_authentication_vector;
-fr_dict_attr_t const *attr_raw_attribute;
 fr_dict_attr_t const *attr_chap_challenge;
 fr_dict_attr_t const *attr_chargeable_user_identity;
 fr_dict_attr_t const *attr_eap_message;

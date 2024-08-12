@@ -202,7 +202,6 @@ fr_dict_autoload_t rlm_radius_udp_dict[] = {
 	{ NULL }
 };
 
-static fr_dict_attr_t const *attr_acct_delay_time;
 static fr_dict_attr_t const *attr_error_cause;
 static fr_dict_attr_t const *attr_event_timestamp;
 static fr_dict_attr_t const *attr_extended_attribute_1;
@@ -217,7 +216,6 @@ static fr_dict_attr_t const *attr_packet_type;
 
 extern fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[];
 fr_dict_attr_autoload_t rlm_radius_udp_dict_attr[] = {
-	{ .out = &attr_acct_delay_time, .name = "Acct-Delay-Time", .type = FR_TYPE_UINT32, .dict = &dict_radius},
 	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius},
 	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_TLV, .dict = &dict_radius},
@@ -1305,50 +1303,6 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
 		fr_pair_value_memdup(vp, (uint8_t const *) &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
-	}
-
-	/*
-	 *	Ensure that we update the Acct-Delay-Time based on the
-	 *	time difference between now, and when we originally
-	 *	received the request.
-	 */
-	if ((u->code == FR_RADIUS_CODE_ACCOUNTING_REQUEST) &&
-	    (fr_pair_find_by_da(&request->request_pairs, NULL, attr_acct_delay_time) != NULL)) {
-		uint8_t *attr, *end;
-		uint32_t delay;
-		fr_time_t now;
-
-		/*
-		 *	Change Acct-Delay-Time in the packet, but not
-		 *	in the debug output.  Oh well.  We don't want
-		 *	to edit the incoming VPs, and we want to
-		 *	update the encoded version of Acct-Delay-Time.
-		 *	So we just walk through the packet to find it.
-		 */
-		end = u->packet + packet_len;
-
-		for (attr = u->packet + RADIUS_HEADER_LENGTH;
-		     attr < end;
-		     attr += attr[1]) {
-			if (attr[0] != attr_acct_delay_time->attr) continue;
-			if (attr[1] != 6) continue;
-
-			now = u->retry.updated;
-
-			/*
-			 *	Add in the time between when
-			 *	we received the packet, and
-			 *	when we're sending the packet.
-			 */
-			memcpy(&delay, attr + 2, 4);
-			delay = ntohl(delay);
-			delay += fr_time_delta_to_sec(fr_time_sub(now, u->recv_time));
-			delay = htonl(delay);
-			memcpy(attr + 2, &delay, 4);
-			break;
-		}
-
-		u->can_retransmit = false;
 	}
 
 	/*
