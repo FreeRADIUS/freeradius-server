@@ -4146,8 +4146,12 @@ do { \
 	XLAT_REGISTER_PURE("sha2_384", xlat_func_sha2_384, FR_TYPE_OCTETS, xlat_func_sha_arg);
 	XLAT_REGISTER_PURE("sha2_512", xlat_func_sha2_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
 
+#  ifdef HAVE_EVP_BLAKE2S256
 	XLAT_REGISTER_PURE("blake2s_256", xlat_func_blake2s_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
+#  endif
+#  ifdef HAVE_EVP_BLAKE2B512
 	XLAT_REGISTER_PURE("blake2b_512", xlat_func_blake2b_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
+#  endif
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	XLAT_REGISTER_PURE("sha3_224", xlat_func_sha3_224, FR_TYPE_OCTETS, xlat_func_sha_arg);
