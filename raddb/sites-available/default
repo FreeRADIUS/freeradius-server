@@ -1328,23 +1328,6 @@ recv Accounting-Request {
 #	acct_counters64
 
 	#
-	#  Session start times are *implied* in RADIUS. The NAS
-	#  never sends a "start time". Instead, it sends a start
-	#  packet, *possibly* with an Acct-Delay-Time. The server
-	#  is supposed to conclude that the start time was
-	#  "Acct-Delay-Time" seconds in the past.
-	#
-	#  The unlang below creates an explicit start time, which
-	#  can then be used in other modules. It will be *mostly*
-	#  correct. Any errors are due to the 1-second resolution
-	#  of RADIUS, and the possibility that the time on the NAS
-	#  may be off.
-	#
-	#  The start time is: NOW - delay - session_length
-	#
-#	&request.FreeRADIUS-Acct-Session-Start-Time = "%{(&Event-Timestamp || %l) - &Acct-Session-Time - &Acct-Delay-Time}"
-
-	#
 	#  Ensure that we have a semi-unique identifier for every
 	#  request, as many NAS boxes are broken.
 	#
