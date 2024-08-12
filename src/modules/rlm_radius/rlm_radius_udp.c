@@ -155,7 +155,6 @@ struct udp_request_s {
 
 	bool			synchronous;		//!< cached from inst->parent->synchronous
 	bool			require_message_authenticator;		//!< saved from the original packet.
-	bool			can_retransmit;		//!< can we retransmit this packet?
 	bool			status_check;		//!< is this packet a status check?
 
 	fr_pair_list_t		extra;			//!< VPs for debugging, like Proxy-State.
@@ -299,7 +298,6 @@ static void udp_request_reset(udp_request_t *u)
 	 *	if this is part of a pre-trunk status check.
 	 */
 	if (u->rr) radius_track_entry_release(&u->rr);
-	u->can_retransmit = false;
 }
 
 /** Reset a status_check packet, ready to reuse
@@ -1213,12 +1211,6 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	fr_assert(!u->packet);
 
 	/*
-	 *	Try to retransmit, unless there are special
-	 *	circumstances.
-	 */
-	u->can_retransmit = true;
-
-	/*
 	 *	This is essentially free, as this memory was
 	 *	pre-allocated as part of the treq.
 	 */
@@ -1253,7 +1245,6 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
 		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
 
-		u->can_retransmit = false;
 		encode_ctx.add_proxy_state = false;
 	}
 
@@ -1623,7 +1614,7 @@ static void request_mux(fr_event_list_t *el,
 		 *	or request_release_conn() function when
 		 *	the REQUEUE signal was received.
 		 */
-		if (!u->packet || !u->can_retransmit) {
+		if (!u->packet) {
 			fr_assert(!u->rr);
 
 			if (unlikely(radius_track_entry_reserve(&u->rr, treq, h->tt, request, u->code, treq) < 0)) {
@@ -2113,14 +2104,6 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 		DEBUG("Next status check packet will be in %pVs", fr_box_time_delta(fr_time_sub(u->retry.next, now)));
 
 		/*
-		 *	If we're retransmitting, leave the ID,
-		 *	packet and associated resources alone.
-		 *
-		 *	Otherwise free resources.
-		 */
-		if (!u->can_retransmit) udp_request_reset(u);
-
-		/*
 		 *	Set the timer for the next retransmit.
 		 */
 		if (fr_event_timer_at(h, h->thread->el, &u->ev, u->retry.next, status_check_next, treq->tconn) < 0) {
@@ -2331,7 +2314,6 @@ static void request_cancel(UNUSED connection_t *conn, void *preq_to_reset,
 		 *	sent.
 		 */
 		if (u->ev) (void) fr_event_timer_delete(&u->ev);
-		if (!u->can_retransmit) udp_request_reset(u);
 	}
 
 	/*
