@@ -1226,20 +1226,6 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	MEM(u->packet = talloc_array(u, uint8_t, u->packet_len));
 
 	/*
-	 *	If we're sending a status check packet, update any
-	 *	necessary timestamps.  Also, don't add Proxy-State, as
-	 *	we're originating the packet.
-	 */
-	if (u->status_check) {
-		fr_pair_t *vp;
-
-		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
-		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
-
-		if (u->code == FR_RADIUS_CODE_STATUS_SERVER) u->can_retransmit = false;
-	}
-
-	/*
 	 *	We should have at minimum 64-byte packets, so don't
 	 *	bother doing run-time checks here.
 	 */
@@ -1253,7 +1239,23 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		},
 		.code = u->code,
 		.id = id,
+		.add_proxy_state = !inst->parent->originate,
 	};
+
+	/*
+	 *	If we're sending a status check packet, update any
+	 *	necessary timestamps.  Also, don't add Proxy-State, as
+	 *	we're originating the packet.
+	 */
+	if (u->status_check) {
+		fr_pair_t *vp;
+
+		vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
+		if (vp) vp->vp_date = fr_time_to_unix_time(u->retry.updated);
+
+		u->can_retransmit = false;
+		encode_ctx.add_proxy_state = false;
+	}
 
 	/*
 	 *	Encode it, leaving room for Proxy-State if necessary.
@@ -1297,7 +1299,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 *	request->request_pairs, because multiple modules
 	 *	may be sending the packets at the same time.
 	 */
-	if (inst->common_ctx.add_proxy_state) {
+	if (encode_ctx.add_proxy_state) {
 		fr_pair_t	*vp;
 
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
@@ -2683,7 +2685,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
 		.secret_length = talloc_array_length(inst->secret) - 1,
-		.add_proxy_state = !inst->parent->originate,
 		.proxy_state = inst->parent->proxy_state,
 	};
 
