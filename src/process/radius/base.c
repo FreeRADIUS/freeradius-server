@@ -645,7 +645,7 @@ RECV(accounting_request)
 			if (acct_delay->vp_uint32 < ((365 * 86400))) {
 				event_timestamp->vp_date = fr_unix_time_sub_time_delta(event_timestamp->vp_date, fr_time_delta_from_sec(acct_delay->vp_uint32));
 
-				RDEBUG("Accounting-Request packet contains Acct-Delay-Time.  Creating %pP",
+				RDEBUG("Accounting-Request packet contains %pP.  Creating %pP",
 				       acct_delay, event_timestamp);
 			}
 		} else {
