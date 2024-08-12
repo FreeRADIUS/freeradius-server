@@ -397,7 +397,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 	char const		*name1;
 	xlat_redundant_type_t	xr_type;
-	xlat_func_flags_t	default_flags;
+	xlat_func_flags_t	default_flags = 0;	/* Prevent warnings about default flags if xr_rype is corrupt */
 	xlat_arg_parser_t const *args = NULL;
 
 	fr_type_t		return_type = FR_TYPE_NULL;
