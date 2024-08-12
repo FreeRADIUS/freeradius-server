@@ -640,19 +640,18 @@ RECV(accounting_request)
 		fr_pair_append(&request->request_pairs, event_timestamp);
 		event_timestamp->vp_date = fr_time_to_unix_time(request->packet->timestamp);
 
-		RDEBUG("Accounting-Request packet is missing Event-Timestamp.  Adding it to packet as %pP.", event_timestamp);
-
 		acct_delay = fr_pair_find_by_da(&request->request_pairs, NULL, attr_event_timestamp);
 		if (acct_delay) {
 			if (acct_delay->vp_uint32 < ((365 * 86400))) {
 				event_timestamp->vp_date = fr_unix_time_sub_time_delta(event_timestamp->vp_date, fr_time_delta_from_sec(acct_delay->vp_uint32));
 
-				RDEBUG("Accounting-Request packet contains Acct-Delay-Time.  Removing %pP, and updating %pP",
+				RDEBUG("Accounting-Request packet contains Acct-Delay-Time.  Creating %pP",
 				       acct_delay, event_timestamp);
 			}
+		} else {
+			RDEBUG("Accounting-Request packet is missing Event-Timestamp.  Adding it to packet as %pP.", event_timestamp);
 		}
 	}
-	(void) fr_pair_delete_by_da(&request->request_pairs, attr_acct_delay_time);
 
 	return CALL_RECV(generic);
 }
