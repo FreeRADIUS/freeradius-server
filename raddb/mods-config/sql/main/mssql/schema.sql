@@ -1,6 +1,6 @@
 -- $Id$d$
 --
--- schela.sql   rlm_sql - FreeRADIUS SQL Module
+-- schema.sql   rlm_sql - FreeRADIUS SQL Module
 --
 -- Database schema for MSSQL rlm_sql module
 --
@@ -47,7 +47,6 @@ CREATE TABLE [radacct] (
 	[FramedIPv6Prefix] [varchar] (45) NOT NULL,
 	[FramedInterfaceId] [varchar] (44) NOT NULL,
 	[DelegatedIPv6Prefix] [varchar] (45) NOT NULL,
-	[AcctStartDelay] [int] NULL,
 	[Class] [varchar] (64) NULL
 ) ON [PRIMARY]
 GO
@@ -80,7 +79,6 @@ ALTER TABLE [radacct] WITH NOCHECK ADD
 	CONSTRAINT [DF_radacct_FramedIPv6Prefix] DEFAULT ('') FOR [FramedIPv6Prefix],
 	CONSTRAINT [DF_radacct_FramedInterfaceId] DEFAULT ('') FOR [FramedInterfaceId],
 	CONSTRAINT [DF_radacct_DelegatedIPv6Prefix] DEFAULT ('') FOR [DelegatedIPv6Prefix],
-	CONSTRAINT [DF_radacct_AcctStartDelay] DEFAULT (null) FOR [AcctStartDelay],
 	CONSTRAINT [DF_radacct_Class] DEFAULT (null) FOR [Class],
 	CONSTRAINT [PK_radacct] PRIMARY KEY NONCLUSTERED
 	(
