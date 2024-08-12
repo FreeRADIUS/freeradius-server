@@ -97,6 +97,12 @@
 /* Define to 1 if you have the <errno.h> header file. */
 #undef HAVE_ERRNO_H
 
+/* Define to 1 if you have the 'EVP_blake2b512' function. */
+#undef HAVE_EVP_BLAKE2B512
+
+/* Define to 1 if you have the 'EVP_blake2s256' function. */
+#undef HAVE_EVP_BLAKE2S256
+
 /* define this if we have <execinfo.h> and symbols */
 #undef HAVE_EXECINFO
 

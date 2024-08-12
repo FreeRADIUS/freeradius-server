@@ -2898,8 +2898,16 @@ EVP_MD_XLAT(sha2_256, sha256)
 EVP_MD_XLAT(sha2_384, sha384)
 EVP_MD_XLAT(sha2_512, sha512)
 
+/*
+ *  OpenWRT's OpenSSL library doesn't contain these by default
+ */
+#ifdef HAVE_EVP_BLAKE2S256
 EVP_MD_XLAT(blake2s_256, blake2s256)
+#endif
+
+#ifdef HAVE_EVP_BLAKE2B512
 EVP_MD_XLAT(blake2b_512, blake2b512)
+#endif
 
 #  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 EVP_MD_XLAT(sha3_224, sha3_224)

@@ -1343,6 +1343,12 @@ if test "x$WITH_OPENSSL" = xyes; then
 
       if test "$OPENSSL_LDFLAGS" != "$smart_ldflags"; then
         AC_MSG_FAILURE(["inconsistent LDFLAGS between -lssl '$smart_ldflags' and -lcrypto '$OPENSSL_LDFLAGS'"])
+      else
+        dnl # Check for optional EVP functions which may not be present in all builds of OpenSSL
+        AC_CHECK_FUNCS(
+          EVP_blake2s256 \
+          EVP_blake2b512
+        )
       fi
     fi
   else
