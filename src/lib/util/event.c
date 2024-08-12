@@ -498,6 +498,13 @@ static void event_fd_func_index_build(fr_event_func_map_t *map)
 			while ((pos = fr_high_bit_pos(fflags))) {
 				pos -= 1;
 				map->ev_to_func[pos] = entry;
+				/*
+				 * 	Coverity thinks that after this decrement, pos
+				 * 	can be 255 even though the loop condition precludes
+				 * 	it. Adding a Coverity-only check won't change that,
+				 * 	so we're stuck with annotation.
+				 */
+				/* coverity [overflow_const] */
 				fflags &= ~(1 << pos);
 			}
 		}
