@@ -1308,13 +1308,6 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	}
 
 	/*
-	 *	Update the packet header based on the new attributes.
-	 */
-	u->packet[2] = (packet_len >> 8) & 0xff;
-	u->packet[3] = packet_len & 0xff;
-	u->packet_len = packet_len;
-
-	/*
 	 *	Ensure that we update the Acct-Delay-Time based on the
 	 *	time difference between now, and when we originally
 	 *	received the request.
