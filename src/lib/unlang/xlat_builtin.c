@@ -1941,6 +1941,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_value_box_t	*name;
 	fr_value_box_t	*arg;
 	fr_type_t	type;
+	fr_dict_attr_t const *time_res = NULL;
 
 	XLAT_ARGS(args, &name);
 
@@ -1964,8 +1965,12 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		type = fr_table_value_by_str(fr_type_table, name->vb_strvalue, FR_TYPE_NULL);
 		if (type == FR_TYPE_NULL) {
-			RDEBUG("Unknown data type '%s'", name->vb_strvalue);
-			return XLAT_ACTION_FAIL;
+			if ((time_res = xlat_time_res_attr(name->vb_strvalue)) == NULL) {
+				RDEBUG("Unknown data type '%s'", name->vb_strvalue);
+				return XLAT_ACTION_FAIL;
+			}
+
+			type = FR_TYPE_TIME_DELTA;
 		}
 	}
 
@@ -2027,7 +2032,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 		while (vb) {
 			p = fr_value_box_list_remove(&arg->vb_group, vb);
 
-			if (fr_value_box_cast_in_place(vb, vb, type, NULL) < 0) {
+			if (fr_value_box_cast_in_place(vb, vb, type, time_res) < 0) {
 				RPEDEBUG("Failed casting %pV to data type '%s'", vb, fr_type_to_str(type));
 				return XLAT_ACTION_FAIL;
 			}

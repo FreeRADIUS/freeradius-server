@@ -460,7 +460,7 @@ static xlat_arg_parser_t const binary_cmp_xlat_args[] = {
 
 static xlat_action_t xlat_cmp_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 				 UNUSED xlat_ctx_t const *xctx,
-				 UNUSED request_t *request, fr_value_box_list_t *in,
+				 request_t *request, fr_value_box_list_t *in,
 				 fr_token_t op)
 {
 	int rcode;

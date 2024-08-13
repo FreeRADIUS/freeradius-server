@@ -2128,6 +2128,16 @@ int fr_value_calc_binary_op(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_type_t hint
 					fr_assert(upcast_cmp[b->type][a->type] == FR_TYPE_NULL);
 				}
 
+				/*
+				 *	time_deltas have a scale in the enumv, but default to "seconds" if
+				 *	there's no scale.  As a result, if we compare time_delta(ms) to integer,
+				 *	then the integer is interpreted as seconds, and the scale is wrong.
+				 *
+				 *	The solution is to use the appropriate scale.
+				 */
+				if (hint == a->type) enumv = a->enumv;
+				if (hint == b->type) enumv = b->enumv;
+
 				if (hint == FR_TYPE_NULL) {
 					fr_strerror_printf("Cannot compare incompatible types (%s)... %s (%s)...",
 							   fr_type_to_str(a->type),
