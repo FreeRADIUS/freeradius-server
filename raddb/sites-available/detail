@@ -241,12 +241,19 @@ server detail {
 #  The detail file reader runs the normal RADIUS / DHCP / etc. processing sections.
 #
 recv Accounting-Request {
-	if (!&Event-Timestamp) {
-		&Event-Timestamp := &Packet-Original-Timestamp
+	#
+	#  If there's an Acct-Delay-Time, increase its value based on the
+	#  difference between when the packet was written, and the current time.
+	#
+	#  Note that we do NOT rely on any Event-Timestamp in the original packet,
+	#  it could be wrong.
+	#
+	if (&Acct-Delay-Time) {
+		&Acct-Delay-Time += %l - &Packet-Original-Timestamp
 	}
 
-	if (&Event-Timestamp < %c) {
-		&request.Acct-Delay-Time += %c - &Event-Timestamp
+	if (!&Event-Timestamp) {
+		&Event-Timestamp := &Packet-Original-Timestamp
 	}
 
 	#
