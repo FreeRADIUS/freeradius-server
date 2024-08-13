@@ -294,6 +294,8 @@ extern fr_dict_attr_t const *attr_expr_bool_enum;
 extern fr_dict_attr_t const *attr_module_return_code;
 extern fr_dict_attr_t const *attr_cast_base;
 
+fr_dict_attr_t const *xlat_time_res_attr(char const *res);
+
 /*
  *	xlat_tokenize.c
  */

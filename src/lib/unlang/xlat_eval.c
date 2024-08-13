@@ -51,9 +51,34 @@ static fr_dict_autoload_t xlat_eval_dict[] = {
 fr_dict_attr_t const *attr_expr_bool_enum; /* xlat_expr.c */
 fr_dict_attr_t const *attr_cast_base; /* xlat_expr.c */
 
+static fr_dict_attr_t const *attr_cast_time_res_sec;
+static fr_dict_attr_t const *attr_cast_time_res_min;
+static fr_dict_attr_t const *attr_cast_time_res_hour;
+static fr_dict_attr_t const *attr_cast_time_res_day;
+static fr_dict_attr_t const *attr_cast_time_res_week;
+static fr_dict_attr_t const *attr_cast_time_res_month;
+static fr_dict_attr_t const *attr_cast_time_res_year;
+static fr_dict_attr_t const *attr_cast_time_res_csec;
+static fr_dict_attr_t const *attr_cast_time_res_msec;
+static fr_dict_attr_t const *attr_cast_time_res_usec;
+static fr_dict_attr_t const *attr_cast_time_res_nsec;
+
 static fr_dict_attr_autoload_t xlat_eval_dict_attr[] = {
 	{ .out = &attr_expr_bool_enum, .name = "Expr-Bool-Enum", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_cast_base, .name = "Cast-Base", .type = FR_TYPE_UINT8, .dict = &dict_freeradius },
+
+	{ .out = &attr_cast_time_res_sec, .name = "Cast-Time-Res-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_min, .name = "Cast-Time-Res-Min", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_hour, .name = "Cast-Time-Res-Hour", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_day, .name = "Cast-Time-Res-Day", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_week, .name = "Cast-Time-Res-Week", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_month, .name = "Cast-Time-Res-Month", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_year, .name = "Cast-Time-Res-Year", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_csec, .name = "Cast-Time-Res-Centi-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_msec, .name = "Cast-Time-Res-Milli-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_usec, .name = "Cast-Time-Res-Micro-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+	{ .out = &attr_cast_time_res_nsec, .name = "Cast-Time-Res-Nano-Sec", .type = FR_TYPE_TIME_DELTA, .dict = &dict_freeradius },
+
 	{ NULL }
 };
 
@@ -64,6 +89,59 @@ fr_table_num_sorted_t const xlat_action_table[] = {
 	{ L("yield"),		XLAT_ACTION_YIELD	}
 };
 size_t xlat_action_table_len = NUM_ELEMENTS(xlat_action_table);
+
+/*
+ *	This should be updated if fr_time_precision_table[] adds more time resolutions.
+ */
+static fr_table_ptr_ordered_t const xlat_time_precision_table[] = {
+	{ L("microseconds"),	&attr_cast_time_res_usec },
+	{ L("us"),		&attr_cast_time_res_usec },
+
+	{ L("nanoseconds"),	&attr_cast_time_res_nsec },
+	{ L("ns"),		&attr_cast_time_res_nsec },
+
+	{ L("milliseconds"),	&attr_cast_time_res_msec },
+	{ L("ms"),		&attr_cast_time_res_msec },
+
+	{ L("centiseconds"),	&attr_cast_time_res_csec },
+	{ L("cs"),		&attr_cast_time_res_csec },
+
+	{ L("seconds"),		&attr_cast_time_res_sec },
+	{ L("s"),		&attr_cast_time_res_sec },
+
+	{ L("minutes"),		&attr_cast_time_res_min },
+	{ L("m"),		&attr_cast_time_res_min },
+
+	{ L("hours"),		&attr_cast_time_res_hour },
+	{ L("h"),		&attr_cast_time_res_hour },
+
+	{ L("days"),		&attr_cast_time_res_day },
+	{ L("d"),		&attr_cast_time_res_day },
+
+	{ L("weeks"),		&attr_cast_time_res_week },
+	{ L("w"),		&attr_cast_time_res_week },
+
+	/*
+	 *	These use special values FR_TIME_DUR_MONTH and FR_TIME_DUR_YEAR
+	 */
+	{ L("months"),		&attr_cast_time_res_month },
+	{ L("M"),		&attr_cast_time_res_month },
+
+	{ L("years"),		&attr_cast_time_res_year },
+	{ L("y"),		&attr_cast_time_res_year },
+
+};
+static size_t xlat_time_precision_table_len = NUM_ELEMENTS(xlat_time_precision_table);
+
+fr_dict_attr_t const *xlat_time_res_attr(char const *res)
+{
+	fr_dict_attr_t const **da_p;
+
+	da_p = fr_table_value_by_str(xlat_time_precision_table, res, NULL);
+	if (!da_p) return NULL;
+
+	return *da_p;
+}
 
 static ssize_t xlat_eval_sync(TALLOC_CTX *ctx, char **out, request_t *request, xlat_exp_head_t const * const head,
 			      xlat_escape_legacy_t escape, void  const *escape_ctx);
