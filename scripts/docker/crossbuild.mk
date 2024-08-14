@@ -11,7 +11,7 @@ else
 #
 #  Short list of common builds
 #
-CB_COMMON:=centos7 debian10 ubuntu18
+CB_COMMON:=rocky9 debian12 ubuntu24
 
 # Top level of where all crossbuild and docker files are
 CB_DIR:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
