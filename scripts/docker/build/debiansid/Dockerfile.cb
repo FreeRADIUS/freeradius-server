@@ -51,6 +51,11 @@ RUN apt-get install $APT_OPTS \
 
 
 
+#
+#  Debian sid has OpenSSL legacy provider in an optional package
+#
+RUN apt-get install $APT_OPTS openssl-provider-legacy
+
 
 #
 #  Install some extra packages

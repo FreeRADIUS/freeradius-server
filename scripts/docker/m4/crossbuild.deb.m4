@@ -69,6 +69,12 @@ RUN update-alternatives --install /usr/bin/lldb lldb /usr/bin/lldb-CLANG_VER 60 
     update-alternatives --config lldb
 ')
 
+ifelse(D_NAME, `debiansid', `dnl
+#
+#  Debian sid has OpenSSL legacy provider in an optional package
+#
+RUN apt-get install $APT_OPTS openssl-provider-legacy
+')
 
 #
 #  Install some extra packages
