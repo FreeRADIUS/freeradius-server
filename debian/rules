@@ -60,7 +60,12 @@ endif
 ifeq ($(shell dpkg-vendor --derives-from Ubuntu && echo yes),yes)
        SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.2) | libssl1.1 | libssl3"
 else
-       SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.2) | libssl1.0.2 | libssl1.1 | libssl3"
+       # Later Debian versions have the legacy OpenSSL provider in a separate package
+       ifeq ($(shell apt-cache show openssl-provider-legacy &>/dev/null && echo yes),yes)
+              SUBSTVARS = -Vdist:Depends="libssl3, openssl-provider-legacy"
+       else
+              SUBSTVARS = -Vdist:Depends="libssl1.0.0 (>= 1.0.1e-2+deb7u5) | libssl1.0.2 | libssl1.1 | libssl3"
+       endif
 endif
 
 # Add libsystemd-dev as a Build-Depends to debian/control if it is known to this system
