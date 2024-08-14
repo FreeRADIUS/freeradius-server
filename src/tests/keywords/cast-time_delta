@@ -7,19 +7,32 @@ time_delta diff
 time_delta diff2
 uint32 num
 
-if (%cast("ms", 60s) != (uint32) 60000) {
+#
+#  We can cast a time duration to milliseconds, and get a sane value.
+#
+if (%cast("ms", 60s) != 60000) {
 	test_fail
 }
 
-if (0) {
+if (%cast("weeks", 7d) != 1) {
+	test_fail
+}
+
+if (%cast("weeks", 8d) != 1.864) {
+	test_fail
+}
+
+
 #
 #  And then for dates
+#
+#  These dates are one minute apart.
 #
 &one = "2024-08-12T00:00:00Z"
 &two = "2024-08-12T00:01:00Z"
 
 &diff = &two - &one
-if (&diff != 60) {
+if (&diff != 60s) {
 	test_fail
 }
 
@@ -33,7 +46,6 @@ if (&diff != 60) {
 #
 if (&num != 60000) {
 	test_fail
-}
 }
 
 success

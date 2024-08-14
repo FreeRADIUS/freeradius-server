@@ -2973,7 +2973,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	case FR_TYPE_DATE:
 	{
 		fr_time_res_t res = FR_TIME_RES_SEC;
-		if (dst->enumv) res = dst->enumv->flags.flag_time_res;
+		if (src->enumv) res = src->enumv->flags.flag_time_res;
 
 		tmp = fr_unix_time_to_integer(src->vb_date, res);
 	}
@@ -2989,7 +2989,7 @@ static inline int fr_value_box_cast_integer_to_integer(UNUSED TALLOC_CTX *ctx, f
 	{
 		fr_time_res_t res = FR_TIME_RES_SEC;
 
-		if (dst->enumv) res = dst->enumv->flags.flag_time_res;
+		if (src->enumv) res = src->enumv->flags.flag_time_res;
 
 		tmp = (uint64_t)fr_time_delta_to_integer(src->vb_time_delta, res);
 	}
