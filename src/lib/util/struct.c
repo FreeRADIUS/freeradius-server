@@ -855,6 +855,17 @@ done:
 
 			(void) fr_dbuff_in(&hdr, (uint8_t) length);
 		} else {
+#ifdef __COVERITY__
+			/*
+			 * 	If you look at the code where do_length is set, work_dbuff
+			 * 	is extended by one byte for FLAG_LENGTH_UINT8, two bytes
+			 * 	otherwise, so the decrease in length will never make it
+			 * 	underflow. Coverity appears to recognize the former case
+			 * 	but not the latter, so we add a Coverity-only check that
+			 * 	will reassure it.
+			 */
+			if (length < 2) return PAIR_ENCODE_FATAL_ERROR;
+#endif
 			length -= 2;
 
 			length += da_length_offset(parent);
