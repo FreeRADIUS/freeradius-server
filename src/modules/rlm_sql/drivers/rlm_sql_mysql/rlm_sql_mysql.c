@@ -95,6 +95,8 @@ typedef struct {
 	char const	*warnings_str;		//!< Whether we always query the server for additional warnings.
 	rlm_sql_mysql_warnings	warnings;	//!< mysql_warning_count() doesn't
 						//!< appear to work with NDB cluster
+
+	char const	*character_set;		//!< Character set to use on connections.
 } rlm_sql_mysql_t;
 
 static conf_parser_t tls_config[] = {
@@ -127,6 +129,7 @@ static const conf_parser_t driver_config[] = {
 	{ FR_CONF_POINTER("tls", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) tls_config },
 
 	{ FR_CONF_OFFSET("warnings", rlm_sql_mysql_t, warnings_str), .dflt = "auto" },
+	{ FR_CONF_OFFSET("character_set", rlm_sql_mysql_t, character_set) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -311,6 +314,8 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	if (inst->tls_crl_path) mysql_options(&(c->db), MYSQL_OPT_SSL_CRLPATH, inst->tls_crl_path);
 
 	mysql_options(&(c->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
+
+	if (inst->character_set) mysql_options(&(c->db), MYSQL_SET_CHARSET_NAME, inst->character_set);
 
 	/*
 	 *	We need to know about connection errors, and are capable

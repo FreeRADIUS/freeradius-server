@@ -1,6 +1,6 @@
 #  -*- text -*-
 #
-#  SQL driver configuration for MySQL
+#  SQL driver configuration for MySQL/MariaDB
 #
 #  Should be included inside of a SQL module's configuration section
 #
@@ -16,8 +16,13 @@ mysql {
 #		cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
 #	}
 #
-	# If yes, (or auto and libmysqlclient reports warnings are
+	# If yes, (or auto and libmariadb reports warnings are
 	# available), will retrieve and log additional warnings from
 	# the server if an error has occurred. Defaults to 'auto'
 	warnings = auto
+
+	# The character set to use for connections
+	# See https://mariadb.com/kb/en/mysql_set_character_set/
+	# for a list of valid options
+#	character_set = utf8mb4
 }
