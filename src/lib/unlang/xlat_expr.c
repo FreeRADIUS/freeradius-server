@@ -2417,18 +2417,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	if (expr_cast_from_substr(&cast_type, &our_in) < 0) return -1;
 
 	/*
-	 *	If there is a cast, try to pass it recursively to the parser.  This allows us to set default
-	 *	data types, etc.
-	 *
-	 *	We may end up removing the cast later, if for example the tmpl is an attribute whose data type
-	 *	matches the cast.
-	 */
-	if (cast_type != FR_TYPE_NULL) {
-		our_t_rules.cast = cast_type;
-		our_t_rules.enumv = NULL;
-	}
-
-	/*
 	 *	If we still have '(', then recurse for other expressions
 	 *
 	 *	Tokenize the sub-expression, ensuring that we stop at ')'.
@@ -2462,6 +2450,18 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		 */
 		*out_c = '\0';
 		goto done;
+	}
+
+	/*
+	 *	If there is a cast, try to pass it recursively to the parser.  This allows us to set default
+	 *	data types, etc.
+	 *
+	 *	We may end up removing the cast later, if for example the tmpl is an attribute whose data type
+	 *	matches the cast.
+	 */
+	if (cast_type != FR_TYPE_NULL) {
+		our_t_rules.cast = cast_type;
+		our_t_rules.enumv = NULL;
 	}
 
 	/*
@@ -2517,17 +2517,12 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	}
 
 	/*
-	 *	The tmpl has a cast, and it's the same as our cast For xlats, we reset the tmpl cast to
-	 *	nothing.  For attr & data, we reset our cast to nothing.
-	 *
-	 *	This prevents us from having duplicate casts.
+	 *	Add in unknown attributes, by defining them in the local dictionary.
 	 */
-	if ((tmpl_rules_cast(vpt) != FR_TYPE_NULL) && (tmpl_rules_cast(vpt) == cast_type)) {
-		if (!tmpl_contains_xlat(vpt)) {
-			cast_type = FR_TYPE_NULL;
-		} else {
-			(void) tmpl_cast_set(vpt, FR_TYPE_NULL);
-		}
+	if (tmpl_is_attr(vpt) && (tmpl_attr_unknown_add(vpt) < 0)) {
+		fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
+		fr_sbuff_set(&our_in, &opand_m);
+		goto error;
 	}
 
 	if (quote != T_BARE_WORD) {
@@ -2571,33 +2566,57 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	fr_sbuff_skip_whitespace(&our_in);
 
 	/*
-	 *	Do various tmpl fixups.
+	 *	The tmpl has a cast, and it's the same as the explicit cast we were given, we can discard the
+	 *	explicit cast.
+	 *
+	 *	Also do this for tmpls which are attributes, and which have the same data type as the cast.
+	 *
+	 *	This work isn't _strictly_ necessary, but it avoids duplicate casts at run-time.
 	 */
-
-	/*
-	 *	Try and add any unknown attributes to the dictionary immediately.  This means any future
-	 *	references will all point to the same da.
-	 */
-	if (tmpl_is_attr(vpt)) {
-		fr_dict_attr_t const *da;
-
-		if (tmpl_attr_unknown_add(vpt) < 0) {
-			fr_strerror_printf("Failed defining attribute %s", tmpl_attr_tail_da(vpt)->name);
-			fr_sbuff_set(&our_in, &opand_m);
-			goto error;
-		}
-
-		fr_assert(!tmpl_is_attr_unresolved(vpt));
-
-		da = tmpl_attr_tail_da(vpt); /* could be a list! */
-
-		/*
-		 *	Omit the cast if the da type matches our cast.  BUT don't do this for enums!  In that
-		 *	case, the cast will convert the value-box to one _without_ an enumv entry, which means
-		 *	that the value will get printed as its underlying data type, and not as the enum name.
-		 */
-		if (da && !da->flags.has_value && (da->type == cast_type)) {
+	if (cast_type != FR_TYPE_NULL) {
+		if (tmpl_rules_cast(vpt) == cast_type) {
 			cast_type = FR_TYPE_NULL;
+
+		} else if (tmpl_is_attr(vpt)) {
+			fr_dict_attr_t const *da;
+
+			fr_assert(!tmpl_is_attr_unresolved(vpt));
+
+			da = tmpl_attr_tail_da(vpt); /* could be a list! */
+
+			/*
+			 *	Omit the cast if the da type matches our cast.  BUT don't do this for enums!  In that
+			 *	case, the cast will convert the value-box to one _without_ an enumv entry, which means
+			 *	that the value will get printed as its underlying data type, and not as the enum name.
+			 */
+			if (da && !da->flags.has_value && (da->type == cast_type)) {
+				cast_type = FR_TYPE_NULL;
+			}
+
+		} else if (tmpl_is_data(vpt)) {
+			fr_assert(!tmpl_is_data_unresolved(vpt));
+
+			/*
+			 *	Omit our cast type if the data is already of the right type.
+			 *
+			 *	Otherwise if we have a cast, then convert the data now, and then reset the
+			 *	cast_type to nothing.  This work allows for better errors at startup, and
+			 *	minimizes run-time work.
+			 */
+			if (tmpl_value_type(vpt) == cast_type) {
+				cast_type = FR_TYPE_NULL;
+
+			} else {
+				/*
+				 *	Cast it now, and remove the cast type.
+				 */
+				if (tmpl_cast_in_place(vpt, cast_type, NULL) < 0) {
+					fr_sbuff_set(&our_in, &opand_m);
+					goto error;
+				}
+
+				cast_type = FR_TYPE_NULL;
+			}
 		}
 	}
 
@@ -2609,7 +2628,15 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	xlat_exp_set_name_buffer_shallow(node, vpt->name);
 
 	if (tmpl_is_data(node->vpt)) {
-			node->flags.pure = true;
+		/*
+		 *	Print "true" and "false" instead of "yes" and "no".
+		 */
+		if ((tmpl_value_type(vpt) == FR_TYPE_BOOL) && !tmpl_value_enumv(vpt)) {
+			tmpl_value_enumv(vpt) = attr_expr_bool_enum;
+		}
+
+		node->flags.constant = true;
+		node->flags.pure = true;
 
 	} else if (tmpl_contains_xlat(node->vpt)) {
 		node->flags = tmpl_xlat(vpt)->flags;
@@ -2620,40 +2647,6 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 
 	node->flags.constant = node->flags.pure;
 	node->flags.needs_resolving = tmpl_needs_resolving(node->vpt);
-
-	if (tmpl_is_data(vpt)) {
-		fr_assert(!tmpl_is_data_unresolved(vpt));
-
-		/*
-		 *	Print "true" and "false" instead of "yes" and "no".
-		 */
-		if ((tmpl_value_type(vpt) == FR_TYPE_BOOL) && !tmpl_value_enumv(vpt)) {
-			tmpl_value_enumv(vpt) = attr_expr_bool_enum;
-		}
-
-		node->flags.constant = true;
-
-		/*
-		 *	Omit our cast type if the data is already of the right type.
-		 *
-		 *	Otherwise if we have a cast, then convert the data now, and then reset the cast_type
-		 *	to nothing.
-		 */
-		if (tmpl_value_type(vpt) == cast_type) {
-			cast_type = FR_TYPE_NULL;
-
-		} else if (cast_type != FR_TYPE_NULL) {
-			/*
-			 *	Cast it now, and remove the cast type.
-			 */
-			if (tmpl_cast_in_place(vpt, cast_type, NULL) < 0) {
-				fr_sbuff_set(&our_in, &opand_m);
-				goto error;
-			}
-
-			cast_type = FR_TYPE_NULL;
-		}
-	}
 
 	fr_assert(!tmpl_contains_regex(vpt));
 

@@ -202,7 +202,7 @@ match %cast(string, %{(1 + 2)})
 #  This is a different code path than the above.
 #
 xlat_purify (string)%{1 + 2}
-match %cast(string, %{(1 + 2)})
+match (string)%{(1 + 2)}
 
 xlat_purify "hello"
 match "hello"
