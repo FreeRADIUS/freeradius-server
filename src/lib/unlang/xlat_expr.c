@@ -2589,7 +2589,8 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 			 *	case, the cast will convert the value-box to one _without_ an enumv entry, which means
 			 *	that the value will get printed as its underlying data type, and not as the enum name.
 			 */
-			if (da && !da->flags.has_value && (da->type == cast_type)) {
+			if (da && (da->type == cast_type)) {
+				tmpl_cast_set(vpt, cast_type);
 				cast_type = FR_TYPE_NULL;
 			}
 

@@ -136,8 +136,12 @@ xlat_expr 5 + 5 - 10
 match ((5 + 5) - 10)
 
 xlat_expr (integer) &Service-Type
-match %cast(uint32, &Service-Type)
+match (uint32)&Service-Type
 
+#
+#  Wrapping the RHS in brackets means that the parse doesn't hoist
+#  things, and thus can't add the cast to the tmpl.
+#
 xlat_expr (uint32) (&Service-Type)
 match %cast(uint32, &Service-Type)
 

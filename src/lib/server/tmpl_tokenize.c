@@ -3593,15 +3593,33 @@ int tmpl_cast_set(tmpl_t *vpt, fr_type_t dst_type)
 		goto check_types;
 
 	case TMPL_TYPE_ATTR:
-		src_type = tmpl_attr_tail_da(vpt)->type;
+		{
+			fr_dict_attr_t const *da = tmpl_attr_tail_da(vpt);
 
+			/*
+			 *	If the attribute has an enum, then the cast means "use the raw value, and not
+			 *	the enum name".
+			 */
+			if (da->type == dst_type) {
+				if (da->flags.has_value) goto done;
+				return 0;
+			}
+			src_type = da->type;
+		}
 
 		/*
-		 *	Suppress casts where they are duplicate.
+		 *	Suppress casts where they are duplicate, unless there's an enumv.  In which case the
+		 *	cast means "don't print the enumv value, just print the raw data".
 		 */
 	check_types:
 		if (src_type == dst_type) {
-			tmpl_rules_cast(vpt) = FR_TYPE_NULL;
+			/*
+			 *	Cast with enumv means "use the raw value, and not the enum name".
+			 */
+			if (tmpl_rules_enumv(vpt)) {
+				tmpl_rules_enumv(vpt) = NULL;
+				goto done;
+			}
 			return 0;
 		}
 

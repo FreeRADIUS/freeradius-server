@@ -30,3 +30,16 @@ if (&foo != (&zscore + (uint64) 0x10000000000000)) {
 	test_fail
 }
 
+&Service-Type := ::Framed-User
+
+if ((uint32) &Service-Type != 2) {
+	test_fail
+}
+
+#
+#  Cast Service-Type to it's underlying data type,
+#  which means "don't print the enum name".
+#
+if ("%{(uint32) &Service-Type}" != "2") {
+	test_fail
+}
