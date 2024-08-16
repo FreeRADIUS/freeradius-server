@@ -495,6 +495,7 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 	fr_pair_t const		*vp = fr_dcursor_current(parent_cursor);
 	fr_dict_attr_t const   	*key_da, *parent, *tlv = NULL;
 	fr_dcursor_t		child_cursor, *cursor;
+	size_t			prefix_length = 0;
 
 	if (!vp) {
 		fr_strerror_printf("%s: Can't encode empty struct", __FUNCTION__);
@@ -562,11 +563,13 @@ ssize_t fr_struct_to_network(fr_dbuff_t *dbuff,
 			fr_dbuff_marker(&hdr, &work_dbuff);
 
 			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 1);
+			prefix_length = 1;
 		} else {
 			work_dbuff = FR_DBUFF_MAX(dbuff, 65536);
 			fr_dbuff_marker(&hdr, &work_dbuff);
 
 			FR_DBUFF_ADVANCE_RETURN(&work_dbuff, 2);
+			prefix_length = 2;
 		}
 		do_length = true;
 	}
@@ -846,8 +849,18 @@ done:
 	if (do_length) {
 		size_t length = fr_dbuff_used(&work_dbuff);
 
+#ifdef __COVERITY__
+		/*
+		 * 	Coverity somehow can't infer that length
+		 * 	is at least as long as the prefix, instead
+		 * 	thinkings it's zero so that it underflows.
+		 * 	We therefore add a Coverity-only check to
+		 * 	reassure it.
+		 */
+		if (length < prefix_length) return PAIR_ENCODE_FATAL_ERROR;
+#endif
 		if (parent->flags.subtype == FLAG_LENGTH_UINT8) {
-			length -= 1;
+			length -= prefix_length;
 
 			length += da_length_offset(parent);
 
@@ -855,18 +868,7 @@ done:
 
 			(void) fr_dbuff_in(&hdr, (uint8_t) length);
 		} else {
-#ifdef __COVERITY__
-			/*
-			 * 	If you look at the code where do_length is set, work_dbuff
-			 * 	is extended by one byte for FLAG_LENGTH_UINT8, two bytes
-			 * 	otherwise, so the decrease in length will never make it
-			 * 	underflow. Coverity appears to recognize the former case
-			 * 	but not the latter, so we add a Coverity-only check that
-			 * 	will reassure it.
-			 */
-			if (length < 2) return PAIR_ENCODE_FATAL_ERROR;
-#endif
-			length -= 2;
+			length -= prefix_length;
 
 			length += da_length_offset(parent);
 
