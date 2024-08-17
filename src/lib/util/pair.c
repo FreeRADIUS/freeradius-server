@@ -3121,8 +3121,7 @@ int fr_pair_value_mem_append_buffer(fr_pair_t *vp, uint8_t *src, bool tainted)
  */
 char const *fr_pair_value_enum(fr_pair_t const *vp, char buff[20])
 {
-	char const		*str;
-	fr_dict_enum_value_t const	*enumv = NULL;
+	fr_dict_enum_value_t const	*enumv;
 
 	if (!fr_box_is_numeric(&vp->data)) {
 		fr_strerror_printf("Pair %s is not numeric", vp->da->name);
@@ -3135,17 +3134,12 @@ char const *fr_pair_value_enum(fr_pair_t const *vp, char buff[20])
 
 	default:
 		enumv = fr_dict_enum_by_value(vp->da, &vp->data);
+		if (enumv) return enumv->name;
 		break;
 	}
 
-	if (!enumv) {
-		fr_pair_print_value_quoted(&FR_SBUFF_OUT(buff, 20), vp, T_BARE_WORD);
-		str = buff;
-	} else {
-		str = enumv->name;
-	}
-
-	return str;
+	fr_pair_print_value_quoted(&FR_SBUFF_OUT(buff, 20), vp, T_BARE_WORD);
+	return buff;
 }
 
 /** Get value box of a VP, optionally prefer enum value.
