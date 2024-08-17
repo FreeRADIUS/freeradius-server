@@ -32,6 +32,8 @@ RCSID("$Id$")
 #include <freeradius-devel/server/packet.h>
 #include <freeradius-devel/unlang/xlat.h>
 
+extern bool tmpl_require_enum_prefix;
+
 /** Initialize src/lib/server/
  *
  *  This is just so that the callers don't need to call a million functions.
@@ -103,6 +105,8 @@ int server_init(CONF_SECTION *cs)
 	 *	load the 'Net.' packet attributes.
 	 */
 	if (packet_global_init() < 0) return -1;
+
+	tmpl_require_enum_prefix = main_config_migrate_option_get("require_enum_prefix");
 
 	return 0;
 }

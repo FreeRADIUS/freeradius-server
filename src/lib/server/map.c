@@ -262,7 +262,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, map_t **out, map_t *parent, CONF_PAIR *cp,
 		my_rhs_rules.enumv = NULL;
 	}
 
-
 	slen = tmpl_afrom_substr(map, &map->rhs,
 				 &FR_SBUFF_IN(value, slen),
 				 type,

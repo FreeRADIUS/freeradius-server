@@ -190,6 +190,7 @@ static const conf_parser_t thread_config[] = {
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
+	{ FR_CONF_OFFSET_FLAGS("require_enum_prefix", CONF_FLAG_HIDDEN, main_config_t, require_enum_prefix) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1503,6 +1504,7 @@ void main_config_hup(main_config_t *config)
 static fr_table_num_ordered_t config_arg_table[] = {
 	{ L("rewrite_update"),		 offsetof(main_config_t, rewrite_update) },
 	{ L("forbid_update"),		 offsetof(main_config_t, forbid_update) },
+	{ L("require_enum_prefix"),	 offsetof(main_config_t, require_enum_prefix) },
 };
 static size_t config_arg_table_len = NUM_ELEMENTS(config_arg_table);
 

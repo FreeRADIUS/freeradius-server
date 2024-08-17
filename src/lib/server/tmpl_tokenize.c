@@ -41,6 +41,13 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+/*
+ *	Migration flag for enum prefixes.
+ */
+extern bool tmpl_require_enum_prefix;
+
+bool tmpl_require_enum_prefix = false;
+
 /** Define a global variable for specifying a default request reference
  *
  * @param[in] _name	what the global variable should be called.
@@ -2948,11 +2955,18 @@ static ssize_t tmpl_afrom_enum(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t *in,
 	fr_sbuff_parse_error_t	sberr;
 	fr_sbuff_t	our_in = FR_SBUFF(in);
 
-	if (fr_sbuff_is_str_literal(&our_in, "::")) {
-		(void) fr_sbuff_advance(&our_in, 2);
+	/*
+	 *	If there isn't a "::" prefix, then check for migration flags, and enum.
+	 *
+	 *	If we require an enum prefix, then the input can't be an enum, and we don't do any more
+	 *	parsing.
+	 *
+	 *	Otherwise if there's no prefix and no enumv, we know this input can't be an enum name.
+	 */
+	if (!fr_sbuff_adv_past_str_literal(&our_in, "::")) {
+		if (tmpl_require_enum_prefix) return 0;
 
-	} else if (!t_rules->enumv) {
-		return 0;
+		if (!t_rules->enumv) return 0;
 	}
 
 	vpt = tmpl_alloc_null(ctx);
@@ -5771,4 +5785,5 @@ void tmpl_rules_debug(tmpl_rules_t const *rules)
 	FR_FAULT_LOG("\tenumv      = %s", rules->enumv ? rules->enumv->name : "");
 	FR_FAULT_LOG("\tcast       = %s", fr_type_to_str(rules->cast));
 	FR_FAULT_LOG("\tat_runtime = %u", rules->at_runtime);
+
 }
