@@ -146,7 +146,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	/*
 	 *	Set up the connected status.
 	 */
-	my->info.connected = (my->info.fd_info->type == FR_BIO_FD_CONNECTED) && (my->info.fd_info->state == FR_BIO_FD_STATE_OPEN);
+	my->info.connected = false;
 
 	/*
 	 *	If we're supposed to be connected (but aren't), then ensure that we don't keep trying to
@@ -160,13 +160,19 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 		}
 	}
 
+	my->proto_ctx = (fr_radius_ctx_t) {
+		.secret = (char const *) my->cfg.verify.secret,
+		.secret_length = my->cfg.verify.secret_len,
+		.secure_transport = false,
+		.proxy_state = my->cfg.proxy_state,
+	};
+
 	return my;
 }
 
 int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *pctx, fr_packet_t *packet, fr_pair_list_t *list)
 {
 	ssize_t slen;
-	uint8_t *end;
 	fr_radius_id_ctx_t *id_ctx;
 
 	fr_assert(!packet->data);
@@ -213,9 +219,17 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *pctx, fr_
 	/*
 	 *	Encode the packet.
 	 */
-	slen = fr_radius_encode(my->buffer, sizeof(my->buffer), NULL,
-				(char const *) my->cfg.verify.secret, my->cfg.verify.secret_len,
-				packet->code, packet->id, list);
+	slen = fr_radius_encode(&FR_DBUFF_TMP(my->buffer, sizeof(my->buffer)), list, &(fr_radius_encode_ctx_t) {
+			.common = &my->proto_ctx,
+			.request_authenticator = NULL,
+			.rand_ctx = (fr_fast_rand_t) {
+				.a = fr_rand(),
+				.b = fr_rand(),
+			},
+			.code = packet->code,
+			.id = packet->id,
+			.add_proxy_state = my->cfg.add_proxy_state,
+		});
 	if (slen < 0) {
 	fail:
 		fr_radius_code_id_push(my->codes, packet);
@@ -223,26 +237,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *pctx, fr_
 	}
 
 	fr_assert(slen >= RADIUS_HEADER_LENGTH);
-
-	end = my->buffer + slen;
-
-	/*
-	 *	Add our own Proxy-State if requested.
-	 *
-	 *	@todo - don't add Proxy-State for status checks, which could also be Access-Request or
-	 *	Accounting-Request.  Note also that Status-Server packets should bypass the normal write
-	 *	routines, and instead be run by internal timers.
-	 */
-	if (my->cfg.add_proxy_state && (packet->code != FR_RADIUS_CODE_STATUS_SERVER) && ((end + 6) < (my->buffer + sizeof(my->buffer)))) {
-		end[0] = FR_PROXY_STATE;
-		end[1] = 6;
-		memcpy(&end[2], &my->cfg.proxy_state, sizeof(my->cfg.proxy_state));
-
-		end += 6;
-	}
-
-	packet->data_len = end - my->buffer;
-	fr_nbo_from_uint16(my->buffer + 2, packet->data_len);
+	packet->data_len = slen;
 
 	slen = fr_radius_sign(my->buffer, NULL,
 				(uint8_t const *) my->cfg.verify.secret, my->cfg.verify.secret_len);
@@ -665,7 +660,15 @@ static void fr_radius_client_bio_activate(fr_bio_t *bio)
 
 	my->info.connected = true;
 
-	talloc_const_free(&my->ev);
+	/*
+	 *	Stop any connection timeout.
+	 */
+	if (my->ev) talloc_const_free(&my->ev);
+
+	/*
+	 *	Tell the application that the connection has been activated.
+	 */
+	my->common.cb.activate(&my->common);
 }
 
 /** We failed to connect in the given timeout, the connection is dead.
@@ -677,7 +680,7 @@ static void fr_radius_client_bio_connect_timer(NDEBUG_UNUSED fr_event_list_t *el
 
 	fr_assert(my->info.retry_info->el == el);
 
-	talloc_const_free(&my->ev);
+	if (my->ev) talloc_const_free(&my->ev);
 
 	if (my->common.cb.failed) my->common.cb.failed(&my->common);
 }
@@ -686,7 +689,6 @@ static void fr_radius_client_bio_connect_timer(NDEBUG_UNUSED fr_event_list_t *el
 void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
-	int rcode;
 
 	fr_assert(my->common.cb.activate);
 	fr_assert(my->info.retry_info->el == el);
@@ -697,26 +699,24 @@ void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUS
 	 *	unconnected socket.  It calls our activation routine before the application has a chance to
 	 *	call our connect routine.
 	 */
-	if (my->info.connected) goto activate;
+	if (my->info.connected) return;
+
+	/*
+	 *	We don't pass the callbacks to fr_bio_fd_alloc(), so it can't call our activate routine.
+	 *	As a result, we have to check if the FD is open, and then call it ourselves.
+	 */
+	if (my->info.fd_info->state == FR_BIO_FD_STATE_OPEN) {
+		fr_radius_client_bio_activate(my->fd);
+		return;
+	}
 
 	fr_assert(my->info.fd_info->type == FR_BIO_FD_CONNECTED);
 	fr_assert(my->info.fd_info->state == FR_BIO_FD_STATE_CONNECTING);
 
 	/*
-	 *	Try to connect it.
+	 *	Try to connect it.  Any magic handling is done in the callbacks.
 	 */
-	rcode = fr_bio_fd_connect(my->fd);
-	fr_assert(rcode >= 0);
-
-	my->info.connected = true;
-
-activate:
-	/*
-	 *	Stop any connection timeout.
-	 */
-	talloc_const_free(&my->ev);
-
-	my->common.cb.activate(&my->common);
+	(void) fr_bio_fd_connect(my->fd);
 }
 
 

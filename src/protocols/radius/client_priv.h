@@ -40,6 +40,8 @@ typedef struct {
 
 	fr_socket_t		reply_socket;
 
+	fr_radius_ctx_t		proto_ctx;
+
 	fr_bio_t		*retry;
 	fr_bio_t		*mem;
 	fr_bio_t		*fd;
