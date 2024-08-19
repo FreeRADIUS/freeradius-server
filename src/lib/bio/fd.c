@@ -640,6 +640,19 @@ int fr_bio_fd_socket_name(fr_bio_fd_t *my)
 	return 0;
 }
 
+static void fr_bio_fd_set_open(fr_bio_fd_t *my)
+{
+	my->info.state = FR_BIO_FD_STATE_OPEN;
+	my->info.eof = false;
+	my->info.read_blocked = false;
+	my->info.write_blocked = false;
+
+	/*
+	 *	Tell the caller that the socket is ready for application data.
+	 */
+	if (my->cb.activate) my->cb.activate(&my->bio);
+}
+
 
 /** Try to connect().
  *
@@ -668,7 +681,7 @@ static ssize_t fr_bio_fd_try_connect(fr_bio_fd_t *my)
 
 retry:
         if (connect(my->info.socket.fd, (struct sockaddr *) &sockaddr, salen) == 0) {
-                my->info.state = FR_BIO_FD_STATE_OPEN;
+		fr_bio_fd_set_open(my);
 
 		/*
 		 *	The source IP may have changed, so get the new one.
@@ -717,15 +730,13 @@ fail:
         return fr_bio_error(IO);
 }
 
+
 /** Files are a special case of connected sockets.
  *
  */
 static int fr_bio_fd_init_file(fr_bio_fd_t *my)
 {
-	my->info.state = FR_BIO_FD_STATE_OPEN;
-	my->info.eof = false;
-	my->info.read_blocked = false;
-	my->info.write_blocked = false;
+	fr_bio_fd_set_open(my);
 
 	/*
 	 *	Other flags may be O_CREAT, etc.
@@ -853,15 +864,7 @@ int fr_bio_fd_init_common(fr_bio_fd_t *my)
 		return -1;
 	}
 
-	my->info.state = FR_BIO_FD_STATE_OPEN;
-	my->info.eof = false;
-	my->info.read_blocked = false;
-	my->info.write_blocked = false;
-
-	/*
-	 *	Tell the caller that the socket is ready for application data.
-	 */
-	if (my->cb.activate) my->cb.activate(&my->bio);
+	fr_bio_fd_set_open(my);
 
 	return 0;
 }
@@ -945,11 +948,6 @@ retry:
 
 int fr_bio_fd_init_accept(fr_bio_fd_t *my)
 {
-	my->info.state = FR_BIO_FD_STATE_OPEN;
-	my->info.eof = false;
-	my->info.read_blocked = true;
-	my->info.write_blocked = false; /* don't select() for write */
-
 	my->bio.read = fr_bio_fd_read_accept;
 	my->bio.write = fr_bio_null_write;
 
@@ -957,6 +955,8 @@ int fr_bio_fd_init_accept(fr_bio_fd_t *my)
 		fr_strerror_printf("Failed opening setting FD_CLOEXE: %s", fr_syserror(errno));
 		return -1;
 	}
+
+	fr_bio_fd_set_open(my);
 
 	return 0;
 }
@@ -1109,6 +1109,14 @@ int fr_bio_fd_connect(fr_bio_t *bio)
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	if (my->info.state == FR_BIO_FD_STATE_OPEN) return 0;
+
+	/*
+	 *	The caller may just call us without caring about the underlying bio.
+	 */
+	if ((my->info.socket.af == AF_FILE_BIO) || (my->info.type == FR_BIO_FD_ACCEPT)) {
+		fr_bio_fd_set_open(my);
+		return 0;
+	}
 
 	if (my->info.state != FR_BIO_FD_STATE_CONNECTING) return fr_bio_error(GENERIC);
 

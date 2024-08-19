@@ -839,7 +839,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	/*
 	 *	Initialize the bio information before calling the various setup functions.
 	 */
-	my->info.state = (cfg->type == FR_BIO_FD_CONNECTED) ? FR_BIO_FD_STATE_CONNECTING : FR_BIO_FD_STATE_OPEN;
+	my->info.state = FR_BIO_FD_STATE_CONNECTING;
 
 	/*
 	 *	Set the FD so that the subsequent calls can use it.
