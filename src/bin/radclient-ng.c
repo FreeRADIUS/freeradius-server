@@ -1324,6 +1324,8 @@ int main(int argc, char **argv)
 	 */
 	fr_atexit_global_setup();
 
+	fr_time_start();
+
 	autofree = talloc_autofree_context();
 #ifndef NDEBUG
 	if (fr_fault_setup(autofree, getenv("PANIC_ACTION"), argv[0]) < 0) {
