@@ -121,8 +121,6 @@ typedef struct {
 	CONF_SECTION	*current;		//!< sub-section we're reading
 	CONF_SECTION	*assignment_only;      	//!< map / update section
 
-	bool		require_edits;		//!< are we required to do edits?
-
 	int		braces;
 	bool		from_dir;		//!< this file was read from $include foo/
 } cf_stack_frame_t;
@@ -2288,7 +2286,6 @@ static int parse_input(cf_stack_t *stack)
 			return -1;
 		}
 		value = buff[2];
-
 		goto alloc_pair;
 	}
 
@@ -2524,7 +2521,7 @@ check_for_eol:
 	 *	allow it everywhere.
 	 */
 	if (*ptr == '{') {
-		if ((parent->unlang == CF_UNLANG_NONE) && !frame->require_edits) {
+		if ((parent->unlang != CF_UNLANG_ALLOW) && (parent->unlang != CF_UNLANG_EDIT)) {
 			ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
 			      frame->filename, frame->lineno);
 			return -1;
@@ -2557,7 +2554,6 @@ check_for_eol:
 		 *	situation later.
 		 */
 		value = NULL;
-		frame->require_edits = true;
 		goto alloc_section;
 	}
 
@@ -2568,7 +2564,7 @@ check_for_eol:
 	 *
 	 *	If it's not an "update" section, and it's an "edit" thing, then try to parse an expression.
 	 */
-	if (!frame->assignment_only && (frame->require_edits || (*buff[1] == '&'))) {
+	if (!frame->assignment_only && ((parent->unlang == CF_UNLANG_EDIT) || (*buff[1] == '&'))) {
 		bool eol;
 		ssize_t slen;
 		char const *ptr2 = ptr;
@@ -2737,7 +2733,6 @@ static int frame_readdir(cf_stack_t *stack)
 	frame->lineno = 0;
 	frame->from_dir = true;
 	frame->assignment_only = NULL; /* can't do includes inside of update / map */
-	frame->require_edits = stack->frame[stack->depth - 1].require_edits;
 	return 1;
 }
 
