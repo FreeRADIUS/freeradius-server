@@ -399,8 +399,8 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 	vp = fr_pair_find_by_da(vps, NULL, attr_dhcp_flags);
 	if (vp) {
 		FR_DBUFF_IN_RETURN(&work_dbuff, vp->vp_uint16);
-	} else if (original) {
-		FR_DBUFF_IN_RETURN(&work_dbuff, original->flags);
+	} else if (original) { /* Original flags, still in network order */
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, (uint8_t *)&original->flags, sizeof(original->flags));
 	} else {
 		FR_DBUFF_MEMSET_RETURN(&work_dbuff, 0, sizeof(vp->vp_uint16));
 	}
