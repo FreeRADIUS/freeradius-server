@@ -119,7 +119,7 @@ typedef struct {
 
 	CONF_SECTION	*parent;		//!< which started this file
 	CONF_SECTION	*current;		//!< sub-section we're reading
-	CONF_SECTION	*special;		//!< map / update section
+	CONF_SECTION	*assignment_only;      	//!< map / update section
 
 	bool		require_edits;		//!< are we required to do edits?
 
@@ -890,7 +890,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	/*
 	 *	Can't do this inside of update / map.
 	 */
-	if (frame->special) {
+	if (frame->assignment_only) {
 		ERROR("%s[%d]: Parse error: Invalid location for $INCLUDE",
 		      frame->filename, frame->lineno);
 		return -1;
@@ -949,7 +949,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame->required = required;
 		frame->parent = parent;
 		frame->current = parent;
-		frame->special = NULL;
+		frame->assignment_only = NULL;
 
 		/*
 		 *	For better debugging.
@@ -1012,7 +1012,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame->parent = parent;
 		frame->current = parent;
 		frame->filename = talloc_strdup(frame->parent, value);
-		frame->special = NULL;
+		frame->assignment_only = NULL;
 		return 1;
 	}
 
@@ -1135,7 +1135,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		/*
 		 *	No "$INCLUDE dir/" inside of update / map.  That's dumb.
 		 */
-		frame->special = NULL;
+		frame->assignment_only = NULL;
 		return 1;
 	}
 #else
@@ -1765,7 +1765,7 @@ alloc_section:
 		css->argc++;
 	}
 	stack->ptr = ptr;
-	frame->special = css;
+	frame->assignment_only = css;
 
 	return cf_section_to_item(css);
 }
@@ -1891,7 +1891,7 @@ alloc_section:
 	}
 
 	stack->ptr = ptr;
-	frame->special = css;
+	frame->assignment_only = css;
 
 	css->allow_unlang = css->allow_locals = true;
 	return cf_section_to_item(css);
@@ -1984,7 +1984,6 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 	talloc_free(name2);
 
 	stack->ptr = ptr;
-	frame->special = css;
 
 	return cf_section_to_item(css);
 }
@@ -2188,7 +2187,7 @@ static int parse_input(cf_stack_t *stack)
 		 */
 		if (!cf_template_merge(parent, parent->template)) return -1;
 
-		if (parent == frame->special) frame->special = NULL;
+		if (parent == frame->assignment_only) frame->assignment_only = NULL;
 
 		frame->current = cf_item_to_section(parent->item.parent);
 
@@ -2359,8 +2358,8 @@ check_for_eol:
 		 *	should really be put into a parser
 		 *	struct, as with tmpls.
 		 */
-		if (!frame->special && (strcmp(css->name1, "update") == 0)) {
-			frame->special = css;
+		if (!frame->assignment_only && (strcmp(css->name1, "update") == 0)) {
+			frame->assignment_only = css;
 		}
 
 		/*
@@ -2452,7 +2451,7 @@ check_for_eol:
 		/*
 		 *	As a hack, allow any operators when using &foo=bar
 		 */
-		if (!frame->special && (buff[1][0] != '&')) {
+		if (!frame->assignment_only && (buff[1][0] != '&')) {
 			ERROR("%s[%d]: Invalid operator in assignment for %s ...",
 			      frame->filename, frame->lineno, buff[1]);
 			return -1;
@@ -2538,7 +2537,7 @@ check_for_eol:
 	 *
 	 *	If it's not an "update" section, and it's an "edit" thing, then try to parse an expression.
 	 */
-	if (!frame->special && (frame->require_edits || (*buff[1] == '&'))) {
+	if (!frame->assignment_only && (frame->require_edits || (*buff[1] == '&'))) {
 		bool eol;
 		ssize_t slen;
 		char const *ptr2 = ptr;
@@ -2706,7 +2705,7 @@ static int frame_readdir(cf_stack_t *stack)
 	frame->filename = h->filename;
 	frame->lineno = 0;
 	frame->from_dir = true;
-	frame->special = NULL; /* can't do includes inside of update / map */
+	frame->assignment_only = NULL; /* can't do includes inside of update / map */
 	frame->require_edits = stack->frame[stack->depth - 1].require_edits;
 	return 1;
 }
