@@ -2272,13 +2272,19 @@ if test "x$REGEX" = "x"; then
   if test "x$ac_cv_header_regex_h" = "xyes"; then
     REGEX=yes
     AC_MSG_CHECKING([for extended regular expressions])
-    AC_EGREP_CPP(yes,
-      [
-        #include <regex.h>
-        #ifdef REG_EXTENDED
-        yes
-        #endif
-      ],
+
+    AC_RUN_IFELSE(
+      [AC_LANG_PROGRAM(
+        [[
+	  #include <stdlib.h>
+          #include <regex.h>
+        ]],
+	[[
+          #ifdef REG_EXTENDED
+          exit(1);
+          #endif
+	]]
+      )],
       [
         AC_MSG_RESULT(yes)
         AC_DEFINE(HAVE_REG_EXTENDED, [1], [define this if we have REG_EXTENDED (from <regex.h>)])

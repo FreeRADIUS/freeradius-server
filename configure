@@ -15867,17 +15867,34 @@ smart_prefix=
     REGEX=yes
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for extended regular expressions" >&5
 printf %s "checking for extended regular expressions... " >&6; }
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+
+    if test "$cross_compiling" = yes
+then :
+  { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in '$ac_pwd':" >&5
+printf "%s\n" "$as_me: error: in '$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See 'config.log' for more details" "$LINENO" 5; }
+else case e in #(
+  e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-        #include <regex.h>
-        #ifdef REG_EXTENDED
-        yes
-        #endif
+          #include <stdlib.h>
+          #include <regex.h>
 
+int
+main (void)
+{
+
+          #ifdef REG_EXTENDED
+          exit(1);
+          #endif
+
+
+  ;
+  return 0;
+}
 _ACEOF
-if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
-  $EGREP_TRADITIONAL "yes" >/dev/null 2>&1
+if ac_fn_c_try_run "$LINENO"
 then :
 
         { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
@@ -15894,7 +15911,10 @@ printf "%s\n" "no" >&6; }
      ;;
 esac
 fi
-rm -rf conftest*
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext ;;
+esac
+fi
 
 
                 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for regcomp in -lregex" >&5
