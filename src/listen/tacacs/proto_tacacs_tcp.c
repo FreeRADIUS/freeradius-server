@@ -129,6 +129,7 @@ static ssize_t mod_read(fr_listen_t *li, UNUSED void **packet_ctx, fr_time_t *re
 	proto_tacacs_tcp_thread_t	*thread = talloc_get_type_abort(li->thread_instance, proto_tacacs_tcp_thread_t);
 	ssize_t				data_size, packet_len;
 	size_t				in_buffer;
+	char				bogus_type[4];
 
 	/*
 	 *	We may have read multiple packets in the previous read.  In which case the buffer may already
@@ -238,9 +239,11 @@ have_packet:
 	 */
 	FR_PROTO_HEX_DUMP(buffer, packet_len, "tacacs_tcp_recv");
 
-	DEBUG2("proto_tacacs_tcp - Received %s seq_no %d length %d %s",
-	       packet_name[buffer[1]], buffer[2],
-	       (int) packet_len, thread->name);
+	DEBUG2("proto_tacacs_tcp - Received %s seq_no %d length %zd %s",
+	       ((buffer[1] && buffer[1] <= FR_TAC_PLUS_ACCT) ? packet_name[buffer[1]]
+							     : (sprintf(bogus_type, "%d", buffer[1]), bogus_type)),
+	       buffer[2],
+	       packet_len, thread->name);
 
 	return packet_len;
 }
