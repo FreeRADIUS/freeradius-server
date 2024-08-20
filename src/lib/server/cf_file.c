@@ -2373,10 +2373,33 @@ check_for_eol:
 			if (strcmp(css->name1, "server") == 0) css->allow_unlang = 2;
 			if (strcmp(css->name1, "policy") == 0) css->allow_unlang = 2;
 
-		} else if ((parent->allow_unlang == 2) && (strcmp(css->name1, "listen") == 0)) { /* hacks for listeners */
-			css->allow_unlang = css->allow_locals = false;
+		} else if (parent->allow_unlang == 2) {
+			//
+			// git grep SECTION_NAME src/process/ src/lib/server/process.h | sed 's/.*SECTION_NAME("//;s/",.*//' | sort -u
+			//
+			if ((strcmp(css->name1, "accounting") == 0) ||
+			    (strcmp(css->name1, "add") == 0) ||
+			    (strcmp(css->name1, "authenticate") == 0) ||
+			    (strcmp(css->name1, "clear") == 0) ||
+			    (strcmp(css->name1, "deny") == 0) ||
+			    (strcmp(css->name1, "error") == 0) ||
+			    (strcmp(css->name1, "load") == 0) ||
+			    (strcmp(css->name1, "new") == 0) ||
+			    (strcmp(css->name1, "recv") == 0) ||
+			    (strcmp(css->name1, "send") == 0) ||
+			    (strcmp(css->name1, "store") == 0) ||
+			    (strcmp(css->name1, "verify") == 0)) {
+				css->allow_unlang = css->allow_locals = true;
 
+			} else if (strcmp(css->name1, "listen") == 0) {
+				css->allow_unlang = css->allow_locals = false;
+
+			} else {	
+				goto check_unlang;
+			}
+			
 		} else {
+		check_unlang:
 			/*
 			 *	Allow unlang if the parent allows it, but don't allow
 			 *	unlang in list assignment sections.

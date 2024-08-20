@@ -306,8 +306,18 @@ int add_compile_list(virtual_server_t *vs, CONF_SECTION *cs, virtual_server_comp
 	if (!compile_list) return 0;
 
 	for (i = 0; list[i].section; i++) {
-		if (list[i].section->name1 == CF_IDENT_ANY) continue;
+#ifndef NDEBUG
+		/*
+		 *	We can't have a wildcard for name1.  It MUST be a real name.
+		 *
+		 *	The wildcard was allowed previously for ideas which later didn't turn out.
+		 */
+		if (list[i].section->name1 == CF_IDENT_ANY) {
+			fr_assert(0);
+			continue;
+		}
 
+#endif
 		if (virtual_server_section_register(vs, &list[i]) < 0) {
 			cf_log_err(cs, "Failed registering processing section name %s for %s",
 				   list[i].section->name1, name);
