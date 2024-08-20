@@ -83,6 +83,14 @@ struct cf_pair {
 	bool			referenced;	//!< Was this item referenced in the config?
 };
 
+typedef enum {
+	CF_UNLANG_NONE = 0,			//!< no unlang
+	CF_UNLANG_ALLOW,			//!< allow unlang in this section
+	CF_UNLANG_SERVER,			//!< this section is a virtual server, allow unlang 2 down
+	CF_UNLANG_POLICY,			//!< this section is a policy, allow unlang 2 down
+	CF_UNLANG_EDIT,				//!< only edit assignments
+} cf_unlang_t;
+
 /** A section grouping multiple #CONF_PAIR
  *
  */
@@ -100,7 +108,7 @@ struct cf_section {
 
 	void			*base;
 	int			depth;
-	int			allow_unlang;	//!< depth at which we allow unlang
+	cf_unlang_t    		unlang;
 	bool			attr;		//!< is this thing an attribute definition?
 	bool			allow_locals;	//!< allow local variables
 

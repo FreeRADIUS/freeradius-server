@@ -1679,7 +1679,8 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 	stack->ptr = ptr;
 
-	cs->allow_unlang = cs->allow_locals = true;
+	cs->allow_locals = true;
+	cs->unlang = CF_UNLANG_ALLOW;
 	return cf_section_to_item(cs);
 }
 
@@ -1893,7 +1894,8 @@ alloc_section:
 	stack->ptr = ptr;
 	frame->assignment_only = css;
 
-	css->allow_unlang = css->allow_locals = true;
+	 css->allow_locals = true;
+	 css->unlang = CF_UNLANG_ALLOW;
 	return cf_section_to_item(css);
 }
 
@@ -1964,7 +1966,7 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 	cf_filename_set(css, frame->filename);
 	cf_lineno_set(css, frame->lineno);
 	css->name2_quote = T_BARE_WORD;
-	css->allow_unlang = 1;
+	css->unlang = CF_UNLANG_ALLOW;
 
 	css->argc = argc;
 	if (argc) {
@@ -2208,13 +2210,15 @@ static int parse_input(cf_stack_t *stack)
 	/*
 	 *	See which unlang keywords are allowed
 	 *
-	 *	0 - no unlang keywords are allowed.
-	 *	1 - unlang keywords are allowed
-	 *	2 - unlang keywords are allowed only in sub-sections
-	 *	  i.e. policy { ... } doesn't allow "if".  But the "if"
-	 *	  keyword is allowed in children of "policy".
+	 *	Note that the "modules" section now allows virtual
+	 *	modules.  See module_rlm.c.
+	 *
+	 *	- group
+	 *	- redundant
+	 *	- redundant-load-balance
+	 *	- load-balance
 	 */
-	if (parent->allow_unlang != 1) {
+	if (parent->unlang != CF_UNLANG_ALLOW) {
 		if ((strcmp(buff[1], "if") == 0) ||
 		    (strcmp(buff[1], "elsif") == 0)) {
 			ERROR("%s[%d]: Invalid location for '%s'",
@@ -2368,11 +2372,20 @@ check_for_eol:
 		 *	statements are only allowed in child
 		 *	subsection.
 		 */
-		if (!parent->allow_unlang && !parent->item.parent) {
-			if (strcmp(css->name1, "server") == 0) css->allow_unlang = 2;
-			if (strcmp(css->name1, "policy") == 0) css->allow_unlang = 2;
+		if (!parent->item.parent) {
+			fr_assert(parent->unlang == CF_UNLANG_NONE);
 
-		} else if (parent->allow_unlang == 2) {
+			if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
+			if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
+
+		} else if (parent->unlang == CF_UNLANG_POLICY) {
+			/*
+			 *	It's a policy section - allow unlang inside of child sections.
+			 */
+			css->unlang = CF_UNLANG_ALLOW;
+			css->allow_locals = true;
+
+		} else if (parent->unlang == CF_UNLANG_SERVER) {
 			//
 			// git grep SECTION_NAME src/process/ src/lib/server/process.h | sed 's/.*SECTION_NAME("//;s/",.*//' | sort -u
 			//
@@ -2388,22 +2401,40 @@ check_for_eol:
 			    (strcmp(css->name1, "send") == 0) ||
 			    (strcmp(css->name1, "store") == 0) ||
 			    (strcmp(css->name1, "verify") == 0)) {
-				css->allow_unlang = css->allow_locals = true;
+				css->unlang = CF_UNLANG_ALLOW;
+				css->allow_locals = true;
 
-			} else if (strcmp(css->name1, "listen") == 0) {
-				css->allow_unlang = css->allow_locals = false;
-
-			} else {	
-				goto check_unlang;
+			} else {
+				css->unlang = CF_UNLANG_NONE;
+				css->allow_locals = false;
 			}
-			
-		} else {
-		check_unlang:
+
+		} else if (parent->unlang == CF_UNLANG_EDIT) {
 			/*
-			 *	Allow unlang if the parent allows it, but don't allow
-			 *	unlang in list assignment sections.
+			 *	Edit sections canb only have children
+			 *	which are edit sections.
 			 */
-			css->allow_unlang = css->allow_locals = parent->allow_unlang && !fr_list_assignment_op[name2_token];
+			css->unlang = CF_UNLANG_EDIT;
+			css->allow_locals = false;
+
+		} else if (parent->unlang == CF_UNLANG_ALLOW) {
+			/*
+			 *	If we're doing list assignment, then
+			 *	don't allow local variables.
+			 *
+			 *	If we are doing list assignments, then
+			 *	the children are all edit sections,
+			 *	and not unlang statements.
+			 */
+			css->allow_locals = !fr_list_assignment_op[name2_token];
+			if (css->allow_locals) {
+				css->unlang = CF_UNLANG_ALLOW;
+			} else {
+				css->unlang = CF_UNLANG_EDIT;
+			}
+
+		} else {
+			fr_assert(parent->unlang == CF_UNLANG_NONE);
 		}
 
 	add_section:
@@ -2493,7 +2524,7 @@ check_for_eol:
 	 *	allow it everywhere.
 	 */
 	if (*ptr == '{') {
-		if (!parent->allow_unlang && !frame->require_edits) {
+		if ((parent->unlang == CF_UNLANG_NONE) && !frame->require_edits) {
 			ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
 			      frame->filename, frame->lineno);
 			return -1;
