@@ -2207,14 +2207,6 @@ static int parse_input(cf_stack_t *stack)
 
 	/*
 	 *	See which unlang keywords are allowed
-	 *
-	 *	Note that the "modules" section now allows virtual
-	 *	modules.  See module_rlm.c.
-	 *
-	 *	- group
-	 *	- redundant
-	 *	- redundant-load-balance
-	 *	- load-balance
 	 */
 	if (parent->unlang != CF_UNLANG_ALLOW) {
 		if ((strcmp(buff[1], "if") == 0) ||
@@ -2374,6 +2366,7 @@ check_for_eol:
 
 			if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
 			if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
+			if (strcmp(css->name1, "modules") == 0) css->unlang = CF_UNLANG_MODULES;
 
 		} else if (parent->unlang == CF_UNLANG_POLICY) {
 			/*
@@ -2398,6 +2391,22 @@ check_for_eol:
 			    (strcmp(css->name1, "send") == 0) ||
 			    (strcmp(css->name1, "store") == 0) ||
 			    (strcmp(css->name1, "verify") == 0)) {
+				css->unlang = CF_UNLANG_ALLOW;
+				css->allow_locals = true;
+
+			} else {
+				css->unlang = CF_UNLANG_NONE;
+				css->allow_locals = false;
+			}
+
+		} else if (parent->unlang == CF_UNLANG_MODULES) {
+			/*
+			 *	Virtual modules in the "modules" section can have unlang.
+			 */
+			if ((strcmp(css->name1, "group") == 0) ||
+			    (strcmp(css->name1, "load-balance") == 0) ||
+			    (strcmp(css->name1, "redundant") == 0) ||
+			    (strcmp(css->name1, "redundant-load-balance") == 0)) {
 				css->unlang = CF_UNLANG_ALLOW;
 				css->allow_locals = true;
 

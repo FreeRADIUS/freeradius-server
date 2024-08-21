@@ -88,6 +88,7 @@ typedef enum {
 	CF_UNLANG_ALLOW,			//!< allow unlang in this section
 	CF_UNLANG_SERVER,			//!< this section is a virtual server, allow unlang 2 down
 	CF_UNLANG_POLICY,			//!< this section is a policy, allow unlang 2 down
+	CF_UNLANG_MODULES,			//!< this section is in "modules", allow unlang 2 down
 	CF_UNLANG_EDIT,				//!< only edit assignments
 } cf_unlang_t;
 
