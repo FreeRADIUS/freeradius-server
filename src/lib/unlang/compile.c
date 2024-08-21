@@ -1385,6 +1385,7 @@ static unlang_t *compile_edit_section(unlang_t *parent, unlang_compile_t *unlang
 		cf_log_err(cs, "Unexpected name2 '%s' for editing list %s ", name, cf_section_name1(cs));
 		return NULL;
 	}
+
 	op = cf_section_name2_quote(cs);
 	if ((op == T_INVALID) || !fr_list_assignment_op[op]) {
 		cf_log_err(cs, "Invalid operator '%s' for editing list %s.", fr_tokens[op], cf_section_name1(cs));
@@ -2125,9 +2126,9 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			name = cf_section_name1(subcs);
 
 			/*
-			 *	In-line attribute editing.
+			 *	In-line attribute editing.  Nothing else in the parse has list assignments, so this must be it.
 			 */
-			if (*name == '&') {
+			if (fr_list_assignment_op[cf_section_name2_quote(subcs)]) {
 				single = compile_edit_section(c, unlang_ctx, subcs);
 				if (!single) {
 					talloc_free(c);
@@ -2196,23 +2197,7 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			goto add_child;
 
 		} else if (cf_item_is_pair(ci)) {
-			char const *attr;
 			CONF_PAIR *cp = cf_item_to_pair(ci);
-
-			attr = cf_pair_attr(cp);
-
-			/*
-			 *	In-line attribute editing is not supported.
-			 */
-			if (*attr == '&') {
-				single = compile_edit_pair(c, unlang_ctx, cp);
-				if (!single) {
-					talloc_free(c);
-					return NULL;
-				}
-
-				goto add_child;
-			}
 
 			/*
 			 *	Variable definition.
@@ -2226,23 +2211,23 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 				goto add_child;
 			}
 
-			/*
-			 *	Bare "foo = bar" is disallowed.
-			 */
-			if (cf_pair_value(cp) != NULL) {
-				cf_log_err(cp, "Unknown keyword '%s', or invalid location", attr);
-				talloc_free(c);
-				return NULL;
+			if (!cf_pair_value(cp)) {
+				single = compile_item(c, unlang_ctx, ci);
+				if (!single) {
+					cf_log_err(ci, "Invalid keyword \"%s\".", cf_pair_attr(cp));
+					talloc_free(c);
+					return NULL;
+				}
+
+				goto add_child;
 			}
 
 			/*
-			 *	Compile the item as a module
-			 *	reference, or as "break / return /
-			 *	etc."
+			 *	What remains MUST be an edit pair.  At this point, the state of the compiler
+			 *	tells us what it is, and we don't really care if there's a leading '&'.
 			 */
-			single = compile_item(c, unlang_ctx, ci);
+			single = compile_edit_pair(c, unlang_ctx, cp);
 			if (!single) {
-				cf_log_err(ci, "Invalid keyword \"%s\".", attr);
 				talloc_free(c);
 				return NULL;
 			}
