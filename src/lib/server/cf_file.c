@@ -2507,9 +2507,9 @@ check_for_eol:
 	case T_OP_CMP_EQ:
 	case T_OP_CMP_FALSE:
 		/*
-		 *	Allow more operators in unlang statements and edit sections.
+		 *	Allow more operators in unlang statements, edit sections, and old-style "update" sections.
 		 */
-		if ((parent->unlang != CF_UNLANG_ALLOW) && (parent->unlang != CF_UNLANG_EDIT)) {
+		if ((parent->unlang != CF_UNLANG_ALLOW) && (parent->unlang != CF_UNLANG_EDIT) && (parent->unlang != CF_UNLANG_ASSIGNMENT)) {
 			ERROR("%s[%d]: Invalid operator in assignment for %s ...",
 			      frame->filename, frame->lineno, buff[1]);
 			return -1;
