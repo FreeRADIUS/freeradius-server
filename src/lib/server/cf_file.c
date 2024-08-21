@@ -2507,9 +2507,9 @@ check_for_eol:
 	case T_OP_CMP_EQ:
 	case T_OP_CMP_FALSE:
 		/*
-		 *	As a hack, allow any operators when using &foo=bar
+		 *	Allow more operators in unlang statements and edit sections.
 		 */
-		if ((parent->unlang != CF_UNLANG_ASSIGNMENT) && (buff[1][0] != '&')) {
+		if ((parent->unlang != CF_UNLANG_ALLOW) && (parent->unlang != CF_UNLANG_EDIT)) {
 			ERROR("%s[%d]: Invalid operator in assignment for %s ...",
 			      frame->filename, frame->lineno, buff[1]);
 			return -1;
@@ -2557,12 +2557,6 @@ check_for_eol:
 			return -1;
 		}
 
-		if (*buff[1] != '&') {
-			ERROR("%s[%d]: Parse error: Expected '&' before attribute name",
-			      frame->filename, frame->lineno);
-			return -1;
-		}
-
 		if (!fr_list_assignment_op[name2_token]) {
 			ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for list",
 			      frame->filename, frame->lineno, buff[2]);
@@ -2592,9 +2586,9 @@ check_for_eol:
 	/*
 	 *	Parse the value for a CONF_PAIR.
 	 *
-	 *	If it's not an "update" section, and it's an "edit" thing, then try to parse an expression.
+	 *	If it's unlang or an edit section, the RHS can be an expression.
 	 */
-	if ((parent->unlang == CF_UNLANG_EDIT) || (*buff[1] == '&')) {
+	if ((parent->unlang == CF_UNLANG_ALLOW) || (parent->unlang == CF_UNLANG_EDIT)) {
 		bool eol;
 		ssize_t slen;
 		char const *ptr2 = ptr;
