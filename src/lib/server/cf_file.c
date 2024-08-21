@@ -119,7 +119,6 @@ typedef struct {
 
 	CONF_SECTION	*parent;		//!< which started this file
 	CONF_SECTION	*current;		//!< sub-section we're reading
-	CONF_SECTION	*assignment_only;      	//!< map / update section
 
 	int		braces;
 	bool		from_dir;		//!< this file was read from $include foo/
@@ -888,7 +887,7 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 	/*
 	 *	Can't do this inside of update / map.
 	 */
-	if (frame->assignment_only) {
+	if (parent->unlang == CF_UNLANG_ASSIGNMENT) {
 		ERROR("%s[%d]: Parse error: Invalid location for $INCLUDE",
 		      frame->filename, frame->lineno);
 		return -1;
@@ -947,7 +946,6 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame->required = required;
 		frame->parent = parent;
 		frame->current = parent;
-		frame->assignment_only = NULL;
 
 		/*
 		 *	For better debugging.
@@ -1010,7 +1008,6 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		frame->parent = parent;
 		frame->current = parent;
 		frame->filename = talloc_strdup(frame->parent, value);
-		frame->assignment_only = NULL;
 		return 1;
 	}
 
@@ -1129,11 +1126,6 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			(void) fr_heap_insert(&frame->heap, h);
 		}
 		closedir(dir);
-
-		/*
-		 *	No "$INCLUDE dir/" inside of update / map.  That's dumb.
-		 */
-		frame->assignment_only = NULL;
 		return 1;
 	}
 #else
@@ -1764,7 +1756,7 @@ alloc_section:
 		css->argc++;
 	}
 	stack->ptr = ptr;
-	frame->assignment_only = css;
+	css->unlang = CF_UNLANG_ASSIGNMENT;
 
 	return cf_section_to_item(css);
 }
@@ -1890,10 +1882,10 @@ alloc_section:
 	}
 
 	stack->ptr = ptr;
-	frame->assignment_only = css;
+	css->unlang = CF_UNLANG_ASSIGNMENT;
 
-	 css->allow_locals = true;
-	 css->unlang = CF_UNLANG_ALLOW;
+	css->allow_locals = true;
+	css->unlang = CF_UNLANG_ALLOW;
 	return cf_section_to_item(css);
 }
 
@@ -2187,8 +2179,6 @@ static int parse_input(cf_stack_t *stack)
 		 */
 		if (!cf_template_merge(parent, parent->template)) return -1;
 
-		if (parent == frame->assignment_only) frame->assignment_only = NULL;
-
 		frame->current = cf_item_to_section(parent->item.parent);
 
 		ptr++;
@@ -2346,16 +2336,6 @@ check_for_eol:
 		css->name2_quote = name2_token;
 
 		/*
-		 *	Hack for better error messages in
-		 *	nested sections.  parent information
-		 *	should really be put into a parser
-		 *	struct, as with tmpls.
-		 */
-		if (!frame->assignment_only && (strcmp(css->name1, "update") == 0)) {
-			frame->assignment_only = css;
-		}
-
-		/*
 		 *	Only a few top-level sections allow "unlang"
 		 *	statements.  And for those, "unlang"
 		 *	statements are only allowed in child
@@ -2439,8 +2419,26 @@ check_for_eol:
 				css->unlang = CF_UNLANG_EDIT;
 			}
 
+		} else if (parent->unlang == CF_UNLANG_ASSIGNMENT) {
+			/*
+			 *	Do nothing
+			 */
+			css->unlang = CF_UNLANG_ASSIGNMENT;
+			css->allow_locals = false;
+
 		} else {
 			fr_assert(parent->unlang == CF_UNLANG_NONE);
+
+			/*
+			 *	Module configuration can contain "update" statements.
+			 */
+			if (parent->item.parent &&
+			    (cf_item_to_section(parent->item.parent)->unlang == CF_UNLANG_MODULES) &&
+			    (strcmp(css->name1, "update") == 0)) {
+				css->unlang = CF_UNLANG_ASSIGNMENT;
+			}
+
+			css->allow_locals = false;
 		}
 
 	add_section:
@@ -2488,7 +2486,7 @@ check_for_eol:
 		/*
 		 *	As a hack, allow any operators when using &foo=bar
 		 */
-		if (!frame->assignment_only && (buff[1][0] != '&')) {
+		if ((parent->unlang != CF_UNLANG_ASSIGNMENT) && (buff[1][0] != '&')) {
 			ERROR("%s[%d]: Invalid operator in assignment for %s ...",
 			      frame->filename, frame->lineno, buff[1]);
 			return -1;
@@ -2573,7 +2571,7 @@ check_for_eol:
 	 *
 	 *	If it's not an "update" section, and it's an "edit" thing, then try to parse an expression.
 	 */
-	if (!frame->assignment_only && ((parent->unlang == CF_UNLANG_EDIT) || (*buff[1] == '&'))) {
+	if ((parent->unlang == CF_UNLANG_EDIT) || (*buff[1] == '&')) {
 		bool eol;
 		ssize_t slen;
 		char const *ptr2 = ptr;
@@ -2741,7 +2739,6 @@ static int frame_readdir(cf_stack_t *stack)
 	frame->filename = h->filename;
 	frame->lineno = 0;
 	frame->from_dir = true;
-	frame->assignment_only = NULL; /* can't do includes inside of update / map */
 	return 1;
 }
 
