@@ -2205,13 +2205,12 @@ static int parse_input(cf_stack_t *stack)
 			      frame->filename, frame->lineno, buff[1]);
 			return -1;
 		}
+	}
 
-	} else if ((name1_token == T_BARE_WORD) && isalpha((uint8_t) *buff[1])) {
-		fr_type_t type;
-
-		/*
-		 *	The next thing should be a keyword.
-		 */
+	/*
+	 *	Look for unlang keywords.
+	 */
+	if ((parent->unlang == CF_UNLANG_ALLOW) && (name1_token == T_BARE_WORD) && isalpha((uint8_t) *buff[1])) {
 		process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
 		if (process) {
 			CONF_ITEM *ci;
@@ -2233,24 +2232,27 @@ static int parse_input(cf_stack_t *stack)
 		}
 
 		/*
-		 *	The next token is an assignment operator, so we ignore it.
+		 *	The next token isn't text, so we ignore it.
 		 */
 		if (!isalnum((int) *ptr)) goto check_for_eol;
 
 		/*
-		 *	It's not a keyword, check for a data type, which means we have a local variable
-		 *	definition.
+		 *	We have WORD WORD, so maybe it's the old-style "update request"
+		 *
+		 *	@todo - Be more stringent on this.
 		 */
+	}
+
+	/*
+	 *	See if this thing is a variable definition.
+	 */
+	if (parent->allow_locals) {
+		fr_type_t type;
+
 		type = fr_table_value_by_str(fr_type_table, buff[1], FR_TYPE_NULL);
 		if (type == FR_TYPE_NULL) {
 			parent->allow_locals = false;
 			goto check_for_eol;
-		}
-
-		if (!parent->allow_locals && (cf_section_find_in_parent(parent, "dictionary", NULL) == NULL)) {
-			ERROR("%s[%d]: Parse error: Invalid location for variable definition",
-			      frame->filename, frame->lineno);
-			return -1;
 		}
 
 		if (type == FR_TYPE_TLV) goto parse_name2;
@@ -2389,6 +2391,16 @@ check_for_eol:
 			    (strcmp(css->name1, "verify") == 0)) {
 				css->unlang = CF_UNLANG_ALLOW;
 				css->allow_locals = true;
+				break;
+			}
+
+			/*
+			 *	Allow local variables, but no unlang statements.
+			 */
+			if (strcmp(css->name1, "dictionary") == 0) {
+				css->unlang = CF_UNLANG_DICTIONARY;
+				css->allow_locals = true;
+				break;
 			}
 			break;
 
@@ -2444,6 +2456,11 @@ check_for_eol:
 			 */
 	       case CF_UNLANG_ASSIGNMENT:
 			css->unlang = CF_UNLANG_ASSIGNMENT;
+			break;
+
+		case CF_UNLANG_DICTIONARY:
+			css->unlang = CF_UNLANG_DICTIONARY;
+			css->allow_locals = true;
 			break;
 		}
 

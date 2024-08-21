@@ -91,6 +91,7 @@ typedef enum {
 	CF_UNLANG_MODULES,			//!< this section is in "modules", allow unlang 2 down
 	CF_UNLANG_EDIT,				//!< only edit commands
 	CF_UNLANG_ASSIGNMENT,  			//!< only assignments inside of map / update
+	CF_UNLANG_DICTIONARY,  			//!< only local variable definitions
 } cf_unlang_t;
 
 /** A section grouping multiple #CONF_PAIR
