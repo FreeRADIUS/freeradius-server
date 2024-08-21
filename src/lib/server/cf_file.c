@@ -2334,6 +2334,8 @@ check_for_eol:
 		cf_filename_set(css, frame->filename);
 		cf_lineno_set(css, frame->lineno);
 		css->name2_quote = name2_token;
+		css->unlang = CF_UNLANG_NONE;
+		css->allow_locals = false;
 
 		/*
 		 *	Only a few top-level sections allow "unlang"
@@ -2341,24 +2343,38 @@ check_for_eol:
 		 *	statements are only allowed in child
 		 *	subsection.
 		 */
-		if (!parent->item.parent) {
-			fr_assert(parent->unlang == CF_UNLANG_NONE);
+		switch (parent->unlang) {
+		case CF_UNLANG_NONE:
+			if (!parent->item.parent) {
+				if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
+				if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
+				if (strcmp(css->name1, "modules") == 0) css->unlang = CF_UNLANG_MODULES;
 
-			if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
-			if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
-			if (strcmp(css->name1, "modules") == 0) css->unlang = CF_UNLANG_MODULES;
+			} else if ((cf_item_to_section(parent->item.parent)->unlang == CF_UNLANG_MODULES) &&
+				   (strcmp(css->name1, "update") == 0)) {
+				/*
+				 *	Module configuration can contain "update" statements.
+				 */
+				css->unlang = CF_UNLANG_ASSIGNMENT;
+				css->allow_locals = false;
+			}
+			break;
 
-		} else if (parent->unlang == CF_UNLANG_POLICY) {
 			/*
 			 *	It's a policy section - allow unlang inside of child sections.
 			 */
+		case CF_UNLANG_POLICY:
 			css->unlang = CF_UNLANG_ALLOW;
 			css->allow_locals = true;
+			break;
 
-		} else if (parent->unlang == CF_UNLANG_SERVER) {
-			//
+			/*
+			 *	A virtual server has processing sections, but only a limited number of them.
+			 *	Rather than trying to autoload them and glue the interpreter into the conf
+			 *	file parser, we just hack it.
+			 */
+		case CF_UNLANG_SERVER:
 			// git grep SECTION_NAME src/process/ src/lib/server/process.h | sed 's/.*SECTION_NAME("//;s/",.*//' | sort -u
-			//
 			if ((strcmp(css->name1, "accounting") == 0) ||
 			    (strcmp(css->name1, "add") == 0) ||
 			    (strcmp(css->name1, "authenticate") == 0) ||
@@ -2373,37 +2389,31 @@ check_for_eol:
 			    (strcmp(css->name1, "verify") == 0)) {
 				css->unlang = CF_UNLANG_ALLOW;
 				css->allow_locals = true;
-
-			} else {
-				css->unlang = CF_UNLANG_NONE;
-				css->allow_locals = false;
 			}
+			break;
 
-		} else if (parent->unlang == CF_UNLANG_MODULES) {
 			/*
 			 *	Virtual modules in the "modules" section can have unlang.
 			 */
+		case CF_UNLANG_MODULES:
 			if ((strcmp(css->name1, "group") == 0) ||
 			    (strcmp(css->name1, "load-balance") == 0) ||
 			    (strcmp(css->name1, "redundant") == 0) ||
 			    (strcmp(css->name1, "redundant-load-balance") == 0)) {
 				css->unlang = CF_UNLANG_ALLOW;
 				css->allow_locals = true;
-
-			} else {
-				css->unlang = CF_UNLANG_NONE;
-				css->allow_locals = false;
 			}
+			break;
 
-		} else if (parent->unlang == CF_UNLANG_EDIT) {
+		case CF_UNLANG_EDIT:
 			/*
 			 *	Edit sections canb only have children
 			 *	which are edit sections.
 			 */
 			css->unlang = CF_UNLANG_EDIT;
-			css->allow_locals = false;
+			break;
 
-		} else if (parent->unlang == CF_UNLANG_ALLOW) {
+		case CF_UNLANG_ALLOW:
 			/*
 			 *	If we're doing list assignment, then
 			 *	don't allow local variables.
@@ -2414,31 +2424,27 @@ check_for_eol:
 			 */
 			css->allow_locals = !fr_list_assignment_op[name2_token];
 			if (css->allow_locals) {
+				/*
+				 *	@todo - tighten this up for "actions" sections, and module rcode
+				 *	over-rides.
+				 *
+				 *	Perhaps the best way to do that is to change the syntax for module
+				 *	over-rides, so that the parser doesn't have to guess.  :(
+				 */
 				css->unlang = CF_UNLANG_ALLOW;
 			} else {
 				css->unlang = CF_UNLANG_EDIT;
 			}
+			break;
 
-		} else if (parent->unlang == CF_UNLANG_ASSIGNMENT) {
 			/*
-			 *	Do nothing
+			 *	We can (maybe?) do nested assignments
+			 *	inside of an old-style "update" or
+			 *	"map" section
 			 */
+	       case CF_UNLANG_ASSIGNMENT:
 			css->unlang = CF_UNLANG_ASSIGNMENT;
-			css->allow_locals = false;
-
-		} else {
-			fr_assert(parent->unlang == CF_UNLANG_NONE);
-
-			/*
-			 *	Module configuration can contain "update" statements.
-			 */
-			if (parent->item.parent &&
-			    (cf_item_to_section(parent->item.parent)->unlang == CF_UNLANG_MODULES) &&
-			    (strcmp(css->name1, "update") == 0)) {
-				css->unlang = CF_UNLANG_ASSIGNMENT;
-			}
-
-			css->allow_locals = false;
+			break;
 		}
 
 	add_section:
