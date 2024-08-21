@@ -187,6 +187,8 @@ static const conf_parser_t thread_config[] = {
 /*
  *	Migration configuration.
  */
+extern bool tmpl_require_enum_prefix;
+
 static const conf_parser_t migrate_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("rewrite_update", CONF_FLAG_HIDDEN, main_config_t, rewrite_update) },
 	{ FR_CONF_OFFSET_FLAGS("forbid_update", CONF_FLAG_HIDDEN, main_config_t, forbid_update) },
@@ -1417,6 +1419,11 @@ do {\
 	}
 
 	config->root_cs = cs;	/* Do this last to avoid dangling pointers on error */
+
+	/*
+	 *	Migration flags
+	 */
+	tmpl_require_enum_prefix = config->require_enum_prefix;
 
 	/* Clear any unprocessed configuration errors */
 	fr_strerror_clear();
