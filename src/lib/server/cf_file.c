@@ -2115,6 +2115,49 @@ static int parse_input(cf_stack_t *stack)
 	}
 
 	/*
+	 *	Allow '[' after the attribute name
+	 *
+	 *	Hack up a crappy parser.
+	 *
+	 *	@todo - call tmpl_preparse(), but that function also looks for leading '&'.
+	 *
+	 *	@todo - we probably want to call tmpl_preparse() or something similar for the RHS, too.  But
+	 *	initially only if we're in an edit section.
+	 *
+	 *	For now, this hack is sufficient to parse the only array references we support, which are
+	 *	fixed numbers, and a few "special" characters.
+	 */
+	if ((parent->unlang == CF_UNLANG_ALLOW) || (parent->unlang == CF_UNLANG_EDIT)) {
+		if (ptr[0] == '[') {
+			char *q, *end;
+
+			q = buff[1] + strlen(buff[1]);
+			end = buff[1] + stack->bufsize;
+
+			while (*ptr && (*ptr != ']')) {
+				if ((q + 2) >= end) {
+					*q = '\0';
+					goto missing_bracket;
+				}
+				*(q++) = *(ptr++);
+			}
+
+			if (!*ptr) {
+			missing_bracket:
+				ERROR("%s[%d]: Missing end ']' in %s",
+				      frame->filename, frame->lineno, buff[1]);
+				return -1;
+			}
+
+			q[0] = ']';
+			q[1] = '\0';
+			ptr++;
+
+			fr_skip_whitespace(ptr);
+		}
+	}
+
+	/*
 	 *	See which unlang keywords are allowed
 	 */
 	if (parent->unlang != CF_UNLANG_ALLOW) {
