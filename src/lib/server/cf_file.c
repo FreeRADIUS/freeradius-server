@@ -3403,3 +3403,14 @@ retry:
 
 	return NULL;
 }
+
+/*
+ *	Only for unit_test_map
+ */
+void cf_section_set_unlang(CONF_SECTION *cs)
+{
+	fr_assert(cs->unlang == CF_UNLANG_NONE);
+	fr_assert(!cs->item.parent);
+
+	cs->unlang = CF_UNLANG_ALLOW;
+}

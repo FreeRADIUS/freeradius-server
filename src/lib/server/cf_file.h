@@ -62,6 +62,8 @@ char const	*cf_expand_variables(char const *filename, int lineno,
 				     CONF_SECTION *outer_cs,
 				     char *output, size_t outsize,
 				     char const *input, ssize_t inlen, bool *soft_fail);
+void		cf_section_set_unlang(CONF_SECTION *cs);
+
 #ifdef __cplusplus
 }
 #endif
