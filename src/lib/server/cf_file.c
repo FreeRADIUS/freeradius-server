@@ -1980,68 +1980,6 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 	return cf_section_to_item(css);
 }
 
-static int add_section_pair(CONF_SECTION **parent, char const **attr, char const *dot, char *buffer, size_t buffer_len, char const *filename, int lineno)
-{
-	CONF_SECTION *cs;
-	char const *name1 = *attr;
-	char *name2 = NULL;
-	char const *next;
-	char *p;
-
-	if (!dot[1] || (dot[1] == '.')) {
-		ERROR("%s[%d]: Invalid name", filename, lineno);
-		return -1;
-	}
-
-	if ((size_t) (dot - name1) >= buffer_len) {
-		ERROR("%s[%d]: Name too long", filename, lineno);
-		return -1;
-	}
-
-	memcpy(buffer, name1, dot - name1);
-	buffer[dot - name1] = '\0';
-	next = dot + 1;
-
-	/*
-	 *	Look for name1[name2]
-	 */
-	p = strchr(buffer, '[');
-	if (p) {
-		name2 = p;
-
-		p = strchr(p, ']');
-		if (!p || ((p[1] != '\0') && (p[1] != '.'))) {
-			cf_log_err(*parent, "Could not parse name2 in '%s', expected 'name1[name2]", name1);
-			return -1;
-		}
-
-		*p = '\0';
-		*(name2++) = '\0';
-	}
-
-	/*
-	 *	Reference a subsection which already exists.  If not,
-	 *	create it.
-	 */
-	cs = cf_section_find(*parent, buffer, name2);
-	if (!cs) {
-		cs = cf_section_alloc(*parent, *parent, buffer, NULL);
-		if (!cs) {
-			cf_log_err(*parent, "Failed allocating memory for section");
-			return -1;
-		}
-		cf_filename_set(cs, filename);
-		cf_lineno_set(cs, lineno);
-	}
-
-	*parent = cs;
-	*attr = next;
-
-	p = strchr(next + 1, '.');
-	if (!p) return 0;
-
-	return add_section_pair(parent, attr, p, buffer, buffer_len, filename, lineno);
-}
 
 static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		    fr_token_t name1_token, fr_token_t op_token, fr_token_t value_token,
@@ -2051,25 +1989,6 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 	conf_parser_t *rule;
 	CONF_PAIR *cp;
 	bool pass2 = false;
-
-	/*
-	 *	For laziness, allow specifying paths for CONF_PAIRs
-	 *
-	 *		section.subsection.pair = value
-	 *
-	 *	Note that we do this ONLY for CONF_PAIRs which have
-	 *	values, so that we don't pick up module references /
-	 *	methods.  And we don't do this for things which begin
-	 *	with '&' (or %), so we don't pick up attribute
-	 *	references.
-	 */
-	if ((*attr >= 'A') && (name1_token == T_BARE_WORD) && value && !parent->attr) {
-		char const *p = strchr(attr, '.');
-
-		if (p && (add_section_pair(&parent, &attr, p, buff, talloc_array_length(buff), filename, lineno) < 0)) {
-			return -1;
-		}
-	}
 
 	/*
 	 *	If we have the value, expand any configuration
