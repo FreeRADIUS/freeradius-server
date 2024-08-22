@@ -2402,6 +2402,11 @@ check_for_eol:
 				css->allow_locals = true;
 				break;
 			}
+
+			if (strcmp(css->name1, "listen") == 0) {
+				css->unlang = CF_UNLANG_LISTEN;
+				break;
+			}
 			break;
 
 			/*
@@ -2461,6 +2466,14 @@ check_for_eol:
 		case CF_UNLANG_DICTIONARY:
 			css->unlang = CF_UNLANG_DICTIONARY;
 			css->allow_locals = true;
+			break;
+
+		case CF_UNLANG_LISTEN:
+			if (strcmp(css->name1, "update") == 0) {
+				css->unlang = CF_UNLANG_ASSIGNMENT;
+			} else {
+				css->unlang = CF_UNLANG_LISTEN;
+			}
 			break;
 		}
 
