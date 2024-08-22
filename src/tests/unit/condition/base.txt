@@ -31,7 +31,7 @@ match ERROR offset 18: Invalid operator
 
 # escapes in names are illegal
 condition (ok\ foo || handled)
-match ERROR offset 4: Unexpected text after enum value.  Expected operator
+match ERROR offset 4: Invalid operator
 
 #
 #  @todo - parsing - This is just a bare word comparison, and should be disallowed?

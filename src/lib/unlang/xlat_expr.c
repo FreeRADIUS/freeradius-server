@@ -130,82 +130,6 @@ static xlat_exp_t *xlat_exists_alloc(TALLOC_CTX *ctx, xlat_exp_t *child)
 }
 
 
-static int reparse_rcode(TALLOC_CTX *ctx, xlat_exp_t **p_arg, bool allow)
-{
-	rlm_rcode_t rcode;
-	ssize_t slen;
-	size_t len;
-	xlat_t *func;
-	xlat_exp_t *arg = *p_arg;
-	xlat_exp_t *node;
-
-	if ((arg->type != XLAT_TMPL) || (arg->quote != T_BARE_WORD)) return 0;
-
-	if (!tmpl_is_data_unresolved(arg->vpt)) return 0;
-
-	len = talloc_array_length(arg->vpt->name) - 1;
-
-	/*
-	 *	Check for module return codes.  If we find one,
-	 *	replace it with a function call that returns "true" if
-	 *	the current module code matches what we supplied here.
-	 */
-	fr_sbuff_out_by_longest_prefix(&slen, &rcode, rcode_table,
-				       &FR_SBUFF_IN(arg->vpt->name, len), T_BARE_WORD);
-	if (slen < 0) return 0;
-
-	/*
-	 *	It did match, so it must match exactly.
-	 *
-	 *	@todo - what about (ENUM == &Attr), where the ENUM starts with "ok"?
-	 *	Maybe just fix that later. Or, if it's a typo such as
-	 */
-	if (((size_t) slen) != len) {
-		fr_strerror_const("Unexpected text - attribute names must prefixed with '&'");
-		return -1;
-	}
-
-	/*
-	 *	For unary operations.
-	 *
-	 *	-RCODE is not allowed.
-	 *	~RCODE is not allowed.
-	 *	!RCODE is allowed.
-	 */
-	if (!allow) {
-		fr_strerror_const("Invalid operation on module return code");
-		return -1;
-	}
-
-	func = xlat_func_find("expr.rcode", -1);
-	fr_assert(func != NULL);
-
-	/*
-	 *	@todo - free the arg, and replace it with XLAT_BOX of uint32.  Then also update func_rcode()
-	 *	to take UINT32 or string...
-	 */
-	if (tmpl_cast_in_place(arg->vpt, FR_TYPE_STRING, NULL) < 0) {
-		return -1;
-	}
-
-	MEM(node = xlat_exp_alloc(ctx, XLAT_FUNC, arg->vpt->name, len));
-	node->call.func = func;
-	// no need to set dict here
-	node->flags = func->flags;
-
-	/*
-	 *	Doesn't need resolving, isn't pure, doesn't need anything else.
-	 */
-	arg->flags = (xlat_flags_t) { };
-
-	xlat_func_append_arg(node, arg, false);
-
-	*p_arg = node;
-
-	return 0;
-}
-
-
 static fr_slen_t xlat_expr_print_unary(fr_sbuff_t *out, xlat_exp_t const *node, UNUSED void *inst, fr_sbuff_escape_rules_t const *e_rules)
 {
 	size_t	at_in = fr_sbuff_used_total(out);
@@ -1565,12 +1489,40 @@ static int xlat_instantiate_expr_rcode(xlat_inst_ctx_t const *xctx)
 	 */
 	if (rcode_arg->type != XLAT_BOX) return 0;
 
-	rcode = &xlat_exp_head(rcode_arg->group)->data;
+	rcode = &rcode_arg->data;
 
-	inst->rcode = fr_table_value_by_str(rcode_table, rcode->vb_strvalue, RLM_MODULE_NOT_SET);
-	if (inst->rcode == RLM_MODULE_NOT_SET) {
-		ERROR("Unknown rcode '%pV'", rcode);
-		return -1;
+	switch (rcode->type) {
+	case FR_TYPE_STRING:
+		inst->rcode = fr_table_value_by_str(rcode_table, rcode->vb_strvalue, RLM_MODULE_NOT_SET);
+		if (inst->rcode == RLM_MODULE_NOT_SET) {
+		unknown:
+			ERROR("Unknown rcode '%pV'", rcode);
+			return -1;
+		}
+		break;
+
+	case FR_TYPE_INT8:
+	case FR_TYPE_INT16:
+	case FR_TYPE_INT32:
+	case FR_TYPE_INT64:
+	case FR_TYPE_UINT16:
+	case FR_TYPE_UINT32:
+	case FR_TYPE_UINT64:
+	case FR_TYPE_SIZE:
+		if (fr_value_box_cast_in_place(rcode_arg, rcode, FR_TYPE_UINT8, NULL) < 0) {
+		invalid:
+			ERROR("Invalid value for rcode '%pV'", rcode);
+			return -1;
+		}
+		FALL_THROUGH;
+
+	case FR_TYPE_UINT8:
+		if (rcode->vb_uint8 >= RLM_MODULE_NUMCODES) goto invalid;
+		inst->rcode = rcode->vb_uint8;
+		break;
+
+	default:
+		goto unknown;
 	}
 
 	/*
@@ -1581,6 +1533,27 @@ static int xlat_instantiate_expr_rcode(xlat_inst_ctx_t const *xctx)
 	talloc_free(arg);
 
 	return 0;
+}
+
+static fr_slen_t xlat_expr_print_rcode(fr_sbuff_t *out, xlat_exp_t const *node, void *instance, UNUSED fr_sbuff_escape_rules_t const *e_rules)
+{
+	size_t			at_in = fr_sbuff_used_total(out);
+	xlat_rcode_inst_t	*inst = instance;
+
+	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "%expr.rcode('");
+	if (xlat_exp_head(node->call.args)) {
+		ssize_t slen;
+
+		xlat_exp_foreach(node->call.args, child) {
+			slen = xlat_print_node(out, node->call.args, child, NULL, 0);
+			if (slen < 0) return slen;
+		}
+	} else {
+		FR_SBUFF_IN_STRCPY_RETURN(out, fr_table_str_by_value(rcode_table, inst->rcode, "<INVALID>"));
+	}
+	FR_SBUFF_IN_STRCPY_LITERAL_RETURN(out, "')");
+
+	return fr_sbuff_used_total(out) - at_in;
 }
 
 /** Match the passed rcode against request->rcode
@@ -1938,6 +1911,7 @@ int xlat_register_expressions(void)
 
 	XLAT_REGISTER_BOOL("expr.rcode", xlat_func_expr_rcode, xlat_func_expr_rcode_arg, FR_TYPE_BOOL);
 	xlat_func_instantiate_set(xlat, xlat_instantiate_expr_rcode, xlat_rcode_inst_t, NULL, NULL);
+	xlat_func_print_set(xlat, xlat_expr_print_rcode);
 
 	XLAT_REGISTER_BOOL("exists", xlat_func_exists, xlat_func_exists_arg, FR_TYPE_BOOL);
 	xlat_func_instantiate_set(xlat, xlat_instantiate_exists, xlat_exists_inst_t, NULL, NULL);
@@ -2190,18 +2164,6 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		FR_SBUFF_ERROR_RETURN(&our_in);
 	}
 
-	/*
-	 *	Convert raw rcodes to xlat's.
-	 *
-	 *	@todo - if it's '!', and the node is tmpl_is_list, or tmpl_contains_attr
-	 *	re-write it to an existence check function, with node->fmt the node->vpt->name.
-	 *
-	 */
-	if (reparse_rcode(head, &node, (c == '!')) < 0) {
-		talloc_free(unary);
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
-
 	xlat_func_append_arg(unary, node, (c == '!'));
 	unary->flags.can_purify = (unary->call.func->flags.pure && unary->call.args->flags.pure) | unary->call.args->flags.can_purify;
 
@@ -2392,6 +2354,49 @@ static fr_slen_t tokenize_regex_rhs(xlat_exp_head_t *head, xlat_exp_t **out, fr_
 }
 
 
+static fr_slen_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuff_t *in)
+{
+	rlm_rcode_t		rcode;
+	ssize_t			slen;
+	xlat_t			*func;
+	xlat_exp_t		*node, *arg;
+	fr_sbuff_t		our_in = FR_SBUFF(in);
+
+	fr_sbuff_out_by_longest_prefix(&slen, &rcode, rcode_table, &our_in, T_BARE_WORD);
+	if (slen <= 0) return 0;
+
+	/*
+	 *	@todo - allow for attributes to have the name "ok-foo" ???
+	 */
+	func = xlat_func_find("expr.rcode", -1);
+	fr_assert(func != NULL);
+
+	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_start(&our_in), slen));
+	node->call.func = func;
+	// no need to set dict here
+	node->flags = func->flags;
+
+	MEM(arg = xlat_exp_alloc(node, XLAT_BOX, fr_sbuff_start(&our_in), slen));
+
+	/*
+	 *	Doesn't need resolving, isn't pure, doesn't need anything else.
+	 */
+	arg->flags = (xlat_flags_t) { };
+
+	/*
+	 *	We need a string for unit tests, but this should really be just a number.
+	 */
+	fr_value_box_init(&arg->data, FR_TYPE_STRING, NULL, false);
+	(void) fr_value_box_bstrndup(arg, &arg->data, NULL, fr_sbuff_start(&our_in), slen, false);
+
+	xlat_func_append_arg(node, arg, false);
+
+	*out = node;
+
+	FR_SBUFF_SET_RETURN(in, &our_in);
+}
+
+
 /*
  *	Tokenize a field without unary operators.
  */
@@ -2475,6 +2480,15 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	default:
 	case T_BARE_WORD:
 		p_rules = bracket_rules;
+
+		/*
+		 *	Peek for rcodes.
+		 */
+		slen = tokenize_rcode(head, &node, &our_in);
+		if (slen > 0) {
+			*out = node;
+			FR_SBUFF_SET_RETURN(in, &our_in);
+		}
 		break;
 
 	case T_SOLIDUS_QUOTED_STRING:
@@ -2914,18 +2928,6 @@ redo:
 	func = xlat_func_find(binary_ops[op].str, binary_ops[op].len);
 	fr_assert(func != NULL);
 
-	/*
-	 *	If it's a logical operator, check for rcodes, and then
-	 *	try to purify the results.
-	 */
-	if (logical_ops[op]) {
-		if (reparse_rcode(head, &rhs, true) < 0) {
-		fail_rhs:
-			fr_sbuff_set(&our_in, &m_rhs);
-			FR_SBUFF_ERROR_RETURN(&our_in);
-		}
-	}
-
 	if (multivalue_ops[op]) {
 		if ((lhs->type == XLAT_FUNC) && (lhs->call.func->token == op)) {
 			xlat_func_append_arg(lhs, rhs, cond);
@@ -2934,8 +2936,6 @@ redo:
 			lhs->flags.can_purify = lhs->call.args->flags.can_purify;
 			goto redo;
 		}
-
-		if (logical_ops[op]) if (reparse_rcode(head, &lhs, true) < 0) goto fail_lhs;
 		goto purify;
 	}
 
@@ -2951,7 +2951,10 @@ redo:
 	 */
 	if (fr_comparison_op[op]) {
 		if (!valid_type(lhs)) goto fail_lhs;
-		if (!valid_type(rhs)) goto fail_rhs;
+		if (!valid_type(rhs)) {
+			fr_sbuff_set(&our_in, &m_rhs);
+			FR_SBUFF_ERROR_RETURN(&our_in);
+		}
 
 		/*
 		 *	Peephole optimization.  If both LHS
@@ -3081,10 +3084,11 @@ static fr_slen_t xlat_tokenize_expression_internal(TALLOC_CTX *ctx, xlat_exp_hea
 	}
 
 	/*
-	 *	Convert raw rcodes to xlat's.
+	 *	If the tmpl is not resolved, then it refers to an attribute which doesn't exist.  That's an
+	 *	error.
 	 */
-	if (reparse_rcode(head, &node, true) < 0) {
-		talloc_free(head);
+	if ((node->type == XLAT_TMPL) && tmpl_is_data_unresolved(node->vpt)) {
+		fr_strerror_const("Unexpected text - attribute names must prefixed with '&'");
 		return -1;
 	}
 

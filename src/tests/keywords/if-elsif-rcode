@@ -9,4 +9,13 @@ if (ok || updated) {
 	test_fail
 }
 
+notfound
+if (%expr.rcode('ok') || %expr.rcode('updated')) {
+	test_fail
+} elsif (!%expr.rcode('notfound')) {
+	test_fail
+}
+
+
+
 success

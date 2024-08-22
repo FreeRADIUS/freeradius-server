@@ -180,12 +180,14 @@ match false
 xlat_purify !true
 match false
 
-# Offset 6 is wrong... but the code is structured strangely here
+#
+#  These are just booleans now.  We can subtract and invert them.
+#
 xlat_purify -fail
-match ERROR offset 6: Invalid operation on module return code
+match -%expr.rcode('fail')
 
 xlat_purify ~fail
-match ERROR offset 6: Invalid operation on module return code
+match ~%expr.rcode('fail')
 
 xlat_purify !fail
 match !%expr.rcode('fail')
