@@ -159,9 +159,6 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 */
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
-		slen = internal_encode(&value_dbuff, da_stack, depth + 1, cursor, encode_ctx);
-		if (slen < 0) return slen;
-		break;
 
 	/*
 	 *	Children of TLVs are encoded in the context
