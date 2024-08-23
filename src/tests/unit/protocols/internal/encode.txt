@@ -15,5 +15,11 @@ match 00 f1 11 00 f3 0e 00 01 04 00 00 00 01 00 01 04 00 00 00 02
 decode-pair -
 match Extended-Attribute-1 = { Unit-Ext-241-TLV = { Unit-TLV-Integer = 1, Unit-TLV-Integer = 2 } }
 
+encode-pair Vendor-Specific.Cisco.AVPair = "stupid=1", Vendor-Specific.Cisco.AVPair = "cisco=2"
+match 00 1a 18 00 09 15 00 01 08 73 74 75 70 69 64 3d 31 00 01 07 63 69 73 63 6f 3d 32
+
+decode-pair -
+match Vendor-Specific = { Cisco = { AVPair = "stupid=1", AVPair = "cisco=2" } }
+
 count
-match 10
+match 14
