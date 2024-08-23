@@ -5,11 +5,18 @@ FreeRADIUS 3.2.6 Mon 15 May 2024 12:00:00 UTC urgency=low
 	* allow for "auth+acct" dynamic home servers.
 	* Allow for setting "Home-Server-Pool", etc. for proxying
 	  accounting packets, just like authentication packets.
+	* require_message_authenticator=auto and limit_proxy_state=auto
+	  are not applied for wildcard clients.  This likely will
+	  leave your network in an insecure state.  Upgrade all clients!
 
 	Bug fixes
 	* Dynamic clients now inherit require_message_authenticator
 	  and limit_proxy_state from dynamic client {...} definition.
 	* Fix radsecret build rules to better support parallel builds.
+	* Checkpoint systems should be reconfigured for the BlastRADIUS
+	  attack: https://support.checkpoint.com/results/sk/sk182516
+	  The Checkpoint systems drop packets containing Message-Authenticator,
+	  which violates the RFCs and is completely ridiculous.
 
 FreeRADIUS 3.2.5 Tue 09 Jul 2024 12:00:00 UTC urgency=high
 	Configuration changes
