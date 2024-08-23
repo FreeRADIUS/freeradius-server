@@ -561,7 +561,18 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 			 *	Message-Authenticator
 			 */
 			return;
+
+		} else if (((client->src_ipaddr.af == AF_INET) &&
+			    (client->src_ipaddr.prefix != 32)) ||
+			   ((client->src_ipaddr.af == AF_INET6) &&
+			    (client->src_ipaddr.prefix != 128))) {
+			/*
+			 *	Don't change it from "auto" for wildcard clients.
+			 */
+			return;
+
 		} else {
+
 			ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			ERROR("BlastRADIUS check: Received packet with Message-Authenticator.");
 			ERROR("Setting \"require_message_authenticator = true\" for client %s", client->shortname);
@@ -620,6 +631,15 @@ static void blastradius_checks(RADIUS_PACKET *packet, RADCLIENT *client)
 		ERROR("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
 		client->limit_proxy_state = FR_BOOL_FALSE;
+
+	} else if (((client->src_ipaddr.af == AF_INET) &&
+		    (client->src_ipaddr.prefix != 32)) ||
+		   ((client->src_ipaddr.af == AF_INET6) &&
+		    (client->src_ipaddr.prefix != 128))) {
+		/*
+		 *	Don't change it from "auto" for wildcard clients.
+		 */
+		return;
 
 	} else {
 		client->limit_proxy_state = FR_BOOL_TRUE;
