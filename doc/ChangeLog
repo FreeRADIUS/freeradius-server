@@ -1,13 +1,13 @@
-FreeRADIUS 3.2.6 Mon 15 May 2024 12:00:00 UTC urgency=low
+FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
-
-	Feature improvements
-	* allow for "auth+acct" dynamic home servers.
-	* Allow for setting "Home-Server-Pool", etc. for proxying
-	  accounting packets, just like authentication packets.
 	* require_message_authenticator=auto and limit_proxy_state=auto
 	  are not applied for wildcard clients.  This likely will
 	  leave your network in an insecure state.  Upgrade all clients!
+
+	Feature improvements
+	* Allow for "auth+acct" dynamic home servers.
+	* Allow for setting "Home-Server-Pool", etc. for proxying
+	  accounting packets, just like authentication packets.
 	* Fix spelling in starent SN[1]-Subscriber-Acct-Mode attribute
 	  value. Patch from John Thacker.
 	* Update dictionary.iea. Patch from John Thacker.
