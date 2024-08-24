@@ -2165,7 +2165,7 @@ static int parse_input(cf_stack_t *stack)
 	/*
 	 *	See if this thing is a variable definition.
 	 */
-	if (parent->allow_locals) {
+	if (parent->allow_locals && (name1_token == T_BARE_WORD)) {
 		fr_type_t type;
 
 		type = fr_table_value_by_str(fr_type_table, buff[1], FR_TYPE_NULL);
@@ -2193,15 +2193,27 @@ static int parse_input(cf_stack_t *stack)
 	}
 
 	/*
-	 *	parent single word is done.  Create a CONF_PAIR.
+	 *	We've parsed the LHS thing.  The RHS might be empty, or an operator, or another word, or an
+	 *	open bracket.
 	 */
 check_for_eol:
 	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';') || (*ptr == '}')) {
-		parent->allow_locals = false;
-		value_token = T_INVALID;
-		op_token = T_OP_EQ;
-		value = NULL;
-		goto alloc_pair;
+		/*
+		 *	Only unlang sections can have module references.
+		 *
+		 *	We also allow bare words in edit lists, where the RHS is a list of values.
+		 */
+		if( (parent->unlang == CF_UNLANG_ALLOW) || (parent->unlang == CF_UNLANG_EDIT)) {
+			parent->allow_locals = false;
+			value_token = T_INVALID;
+			op_token = T_OP_EQ;
+			value = NULL;
+			goto alloc_pair;
+		}
+
+		ERROR("%s[%d]: Parse error: Unexpected bare word.  There should be a '{' or operator after it",
+		      frame->filename, frame->lineno);
+		return -1;
 	}
 
 	/*
@@ -2231,6 +2243,15 @@ check_for_eol:
 	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
 	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr)) {
 	parse_name2:
+		/*
+		 *	Other than "unlang" sections, the second name MUST be alphanumeric
+		 */
+		if ((parent->unlang != CF_UNLANG_ALLOW) && !isalpha((uint8_t) *ptr) && !isdigit((uint8_t) *ptr)) {
+			ERROR("%s[%d]: Parse error: Unexpected text after section name",
+			      frame->filename, frame->lineno);
+			return -1;
+		}
+
 		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;
