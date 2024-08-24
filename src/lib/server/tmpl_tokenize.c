@@ -3513,10 +3513,7 @@ ssize_t tmpl_cast_from_substr(tmpl_rules_t *rules, fr_sbuff_t *in)
 	fr_type_t		cast;
 	ssize_t			slen;
 
-	if (fr_sbuff_next_if_char(&our_in, '<')) {
-		close = '>';
-
-	} else if (fr_sbuff_next_if_char(&our_in, '(')) {
+	if (fr_sbuff_next_if_char(&our_in, '(')) {
 		close = ')';
 
 	} else {
@@ -5249,55 +5246,12 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 	while (isspace((uint8_t) *p) && (p < end)) p++;
 	if (p >= end) return p - in;
 
-	if (*p == '<') {
-		fr_type_t cast;
-		char const *q;
-
-		if (!castda) {
-			fr_strerror_const("Unexpected cast");
-		return_p:
-			return -(p - in);
-		}
-
-		p++;
-		fr_skip_whitespace(p);
-
-		for (q = p; *q && !isspace((uint8_t) *q) && (*q != '>'); q++) {
-			/* nothing */
-		}
-
-		cast = fr_table_value_by_substr(fr_type_table, p, q - p, FR_TYPE_NULL);
-		if (fr_type_is_null(cast)) {
-			return_P("Unknown data type");
-		}
-
-		/*
-		 *	We can only cast to basic data types.  Complex ones
-		 *	are forbidden.
-		 */
-		if (fr_type_is_non_leaf(cast)) {
-			return_P("Forbidden data type in cast");
-		}
-
-		*castda = fr_dict_attr_child_by_num(fr_dict_root(fr_dict_internal()), FR_CAST_BASE + cast);
-		if (!*castda) {
-			return_P("Cannot cast to this data type");
-		}
-
-		p = q;
-		fr_skip_whitespace(p);
-		if (*p != '>') {
-			return_P("Expected '>'");
-		}
-		p++;
-
-		fr_skip_whitespace(p);
-	}
-
 	if (require_regex) {
 		if (castda && *castda) {
 			p++;
-			return_P("Invalid cast before regular expression");
+			fr_strerror_const("Invalid cast before regular expression");
+		return_p:
+			return -(p - in);
 		}
 
 		/*
