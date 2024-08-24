@@ -105,8 +105,8 @@ void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen
 	 *	Catch bad callers.
 	 */
 	if (offset > inlen) {
-		*sp = NULL;
-		*text = NULL;
+		*sp = talloc_strdup(ctx, "");
+		*text = talloc_strdup(ctx, "");
 		return;
 	}
 
