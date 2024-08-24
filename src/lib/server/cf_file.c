@@ -2047,12 +2047,33 @@ static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 
 typedef CONF_ITEM *(*cf_process_func_t)(cf_stack_t *);
 
+static int parse_error(cf_stack_t *stack, char const *ptr, char const *message)
+{
+	char *spaces, *text;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+
+	if (!ptr) ptr = stack->ptr;
+
+	/*
+	 *	We must pass a _negative_ offset to this function.
+	 */
+	fr_canonicalize_error(NULL, &spaces, &text, stack->ptr - ptr, stack->ptr);
+
+	ERROR("%s[%d]: %s", frame->filename, frame->lineno, text);
+	ERROR("%s[%d]: %s^ - %s", frame->filename, frame->lineno, spaces, message);
+
+	talloc_free(spaces);
+	talloc_free(text);
+	return -1;
+}
+
 static int parse_input(cf_stack_t *stack)
 {
 	fr_token_t	name1_token, name2_token, value_token, op_token;
 	char const	*value;
 	CONF_SECTION	*css;
 	char const	*ptr = stack->ptr;
+	char const	*ptr2;
 	cf_stack_frame_t *frame = &stack->frame[stack->depth];
 	CONF_SECTION	*parent = frame->current;
 	char		*buff[4];
@@ -2083,8 +2104,7 @@ static int parse_input(cf_stack_t *stack)
 		 *	another file.  That's fine.
 		 */
 		if (parent == frame->parent) {
-			ERROR("%s[%d]: Too many closing braces", frame->filename, frame->lineno);
-			return -1;
+			return parse_error(stack, ptr, "Too many closing braces");
 		}
 
 		fr_assert(frame->braces > 0);
@@ -2120,9 +2140,7 @@ static int parse_input(cf_stack_t *stack)
 	if (parent->unlang != CF_UNLANG_ALLOW) {
 		if ((strcmp(buff[1], "if") == 0) ||
 		    (strcmp(buff[1], "elsif") == 0)) {
-			ERROR("%s[%d]: Invalid location for '%s'",
-			      frame->filename, frame->lineno, buff[1]);
-			return -1;
+			return parse_error(stack, ptr, "Invalid location for unlang keyword");
 		}
 	}
 
@@ -2243,9 +2261,7 @@ check_for_eol:
 		 *	Other than "unlang" sections, the second name MUST be alphanumeric
 		 */
 		if ((parent->unlang != CF_UNLANG_ALLOW) && !isalpha((uint8_t) *ptr) && !isdigit((uint8_t) *ptr)) {
-			ERROR("%s[%d]: Parse error: Unexpected text after section name",
-			      frame->filename, frame->lineno);
-			return -1;
+			return parse_error(stack, ptr, "Unexpected text after section name");
 		}
 
 		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
@@ -2254,9 +2270,7 @@ check_for_eol:
 		}
 
 		if (*ptr != '{') {
-			ERROR("%s[%d]: Parse error: expected '{', got text \"%s\"",
-			      frame->filename, frame->lineno, ptr);
-			return -1;
+			return parse_error(stack, ptr, "Expected '{'");
 		}
 		ptr++;
 		value = buff[2];
@@ -2431,15 +2445,14 @@ check_for_eol:
 	 */
 	if ((ptr[0] != '=') && (ptr[0] != '!') && (ptr[0] != '<') && (ptr[0] != '>') &&
 	    (ptr[1] != '=') && (ptr[1] != '~')) {
-		ERROR("%s[%d]: Parse error at unexpected text: %s",
-		      frame->filename, frame->lineno, ptr);
-		return -1;
+		return parse_error(stack, ptr, "Syntax error, the input should be an assignment operator");
 	}
 
 	/*
 	 *	If we're not parsing a section, then the next
 	 *	token MUST be an operator.
 	 */
+	ptr2 = ptr;
 	name2_token = gettoken(&ptr, buff[2], stack->bufsize, false);
 	switch (name2_token) {
 	case T_OP_ADD_EQ:
@@ -2459,9 +2472,7 @@ check_for_eol:
 		 *	Allow more operators in unlang statements, edit sections, and old-style "update" sections.
 		 */
 		if ((parent->unlang != CF_UNLANG_ALLOW) && (parent->unlang != CF_UNLANG_EDIT) && (parent->unlang != CF_UNLANG_ASSIGNMENT)) {
-			ERROR("%s[%d]: Invalid operator in assignment for %s ...",
-			      frame->filename, frame->lineno, buff[1]);
-			return -1;
+			return parse_error(stack, ptr2, "Invalid operator for assignment");
 		}
 		FALL_THROUGH;
 
@@ -2473,19 +2484,14 @@ check_for_eol:
 		break;
 
 	default:
-		ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
-		      frame->filename, frame->lineno, buff[1], fr_table_str_by_value(fr_tokens_table, name2_token, "<INVALID>"));
-
-		return -1;
+		return parse_error(stack, ptr2, "Syntax error, the input should be an assignment operator");
 	}
 
 	/*
 	 *	MUST have something after the operator.
 	 */
 	if (!*ptr || (*ptr == '#') || (*ptr == ',') || (*ptr == ';')) {
-		ERROR("%s[%d]: Syntax error: Expected to see a value after the operator '%s': %s",
-		      frame->filename, frame->lineno, buff[2], ptr);
-		return -1;
+		return parse_error(stack, ptr, "Missing value after operator");
 	}
 
 	/*
@@ -2501,15 +2507,11 @@ check_for_eol:
 	 */
 	if (*ptr == '{') {
 		if ((parent->unlang != CF_UNLANG_ALLOW) && (parent->unlang != CF_UNLANG_EDIT)) {
-			ERROR("%s[%d]: Parse error: Invalid location for grouped attribute",
-			      frame->filename, frame->lineno);
-			return -1;
+			return parse_error(stack, ptr, "Invalid location for grouped attribute");
 		}
 
 		if (!fr_list_assignment_op[name2_token]) {
-			ERROR("%s[%d]: Parse error: Invalid assignment operator '%s' for list",
-			      frame->filename, frame->lineno, buff[2]);
-			return -1;
+			return parse_error(stack, ptr, "Invalid assignment operator for list");
 		}
 
 		/*
@@ -2540,7 +2542,8 @@ check_for_eol:
 	if ((parent->unlang == CF_UNLANG_ALLOW) || (parent->unlang == CF_UNLANG_EDIT)) {
 		bool eol;
 		ssize_t slen;
-		char const *ptr2 = ptr;
+
+		ptr2 = ptr;
 
 		/*
 		 *	If the RHS is an expression (foo) or function %foo(), then mark it up as an expression.
@@ -2580,18 +2583,14 @@ check_for_eol:
 		 */
 		slen = fr_skip_condition(ptr, NULL, terminal_end_line, &eol);
 		if (slen < 0) {
-			ERROR("%s[%d]: Parse error in expression: %s",
-			      frame->filename, frame->lineno, fr_strerror());
-			return -1;
+			return parse_error(stack, ptr + (-slen), fr_strerror());
 		}
 
 		/*
 		 *	We parsed until the end of the string, but the condition still needs more data.
 		 */
 		if (eol) {
-			ERROR("%s[%d]: Expression is unfinished at end of line",
-			      frame->filename, frame->lineno);
-			return -1;
+			return parse_error(stack, ptr + slen, "Expression is unfinished at end of line");
 		}
 
 		/*
@@ -2661,9 +2660,7 @@ added_pair:
 	 *	error.
 	 */
 	if (*ptr && (*ptr != '#')) {
-		ERROR("%s[%d]: Syntax error: Unexpected text: %s",
-		      frame->filename, frame->lineno, ptr);
-		return -1;
+		return parse_error(stack, ptr, "Unexpected text");
 	}
 
 	/*
@@ -2947,8 +2944,7 @@ do_frame:
 				continue;
 			}
 
-			ERROR("%s[%d]: Invalid text starting with '$'", frame->filename, frame->lineno);
-			return -1;
+			return parse_error(stack, ptr, "Unknown $... keyword");
 		}
 
 		/*
