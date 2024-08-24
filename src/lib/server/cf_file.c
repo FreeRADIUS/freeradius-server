@@ -2129,28 +2129,57 @@ static int parse_input(cf_stack_t *stack)
 	 *	Found nothing to get excited over.  It MUST be
 	 *	a key word.
 	 */
-	if (cf_get_token(parent, &ptr, &name1_token, buff[1], stack->bufsize,
-			 frame->filename, frame->lineno) < 0) {
-		return -1;
-	}
+	ptr2 = ptr;
+	switch (parent->unlang) {
+	default:
+		/*
+		 *	The LHS is a bare word / keyword in normal configuration file syntax.
+		 */
+		name1_token = gettoken(&ptr, buff[1], stack->bufsize, false);
+		if (name1_token == T_EOL) return 0;
 
-	/*
-	 *	See which unlang keywords are allowed
-	 */
-	if (parent->unlang != CF_UNLANG_ALLOW) {
-		if ((strcmp(buff[1], "if") == 0) ||
-		    (strcmp(buff[1], "elsif") == 0)) {
-			return parse_error(stack, ptr, "Invalid location for unlang keyword");
+		if (name1_token == T_INVALID) {
+			return parse_error(stack, ptr2, fr_strerror());
 		}
+
+		if (name1_token != T_BARE_WORD) {
+			return parse_error(stack, ptr2, "Invalid location for quoted string");
+		}
+
+		fr_skip_whitespace(ptr);
+		break;
+
+	case CF_UNLANG_ALLOW:
+	case CF_UNLANG_EDIT:
+	case CF_UNLANG_ASSIGNMENT:
+		/*
+		 *	The LHS can be an xlat expansion, attribute reference, etc.
+		 */
+		if (cf_get_token(parent, &ptr, &name1_token, buff[1], stack->bufsize,
+				 frame->filename, frame->lineno) < 0) {
+			return -1;
+		}
+		break;
 	}
 
 	/*
-	 *	Look for unlang keywords.
+	 *	Check for unlang keywords.
 	 */
-	if ((parent->unlang == CF_UNLANG_ALLOW) && (name1_token == T_BARE_WORD) && isalpha((uint8_t) *buff[1])) {
+	if ((name1_token == T_BARE_WORD) && isalpha((uint8_t) *buff[1])) {
 		process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
 		if (process) {
 			CONF_ITEM *ci;
+
+			/*
+			 *	Disallow keywords outside of unlang sections.
+			 *
+			 *	We don't strictly need to do this with the more state-oriented parser, but
+			 *	people keep putting unlang into random places in the configuration files,
+			 *	which is wrong.
+			 */
+			if (parent->unlang != CF_UNLANG_ALLOW) {
+				return parse_error(stack, ptr2, "Invalid location for unlang keyword");
+			}
 
 			stack->ptr = ptr;
 			ci = process(stack);
@@ -2163,7 +2192,8 @@ static int parse_input(cf_stack_t *stack)
 			}
 
 			/*
-			 *	Else the item is a pair, and it's already added to the section.
+			 *	Else the item is a pair, and the call to process() it already added it to the
+			 *	current section.
 			 */
 			goto added_pair;
 		}
@@ -2172,18 +2202,12 @@ static int parse_input(cf_stack_t *stack)
 		 *	The next token isn't text, so we ignore it.
 		 */
 		if (!isalnum((int) *ptr)) goto check_for_eol;
-
-		/*
-		 *	We have WORD WORD, so maybe it's the old-style "update request"
-		 *
-		 *	@todo - Be more stringent on this.
-		 */
 	}
 
 	/*
 	 *	See if this thing is a variable definition.
 	 */
-	if (parent->allow_locals && (name1_token == T_BARE_WORD)) {
+	if ((name1_token == T_BARE_WORD) && parent->allow_locals) {
 		fr_type_t type;
 
 		type = fr_table_value_by_str(fr_type_table, buff[1], FR_TYPE_NULL);
