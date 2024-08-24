@@ -2163,7 +2163,7 @@ static int parse_input(cf_stack_t *stack)
 	}
 
 	/*
-	 *	Check for unlang keywords.
+	 *	Check if the thing we just parsed is an unlang keyword.
 	 */
 	if ((name1_token == T_BARE_WORD) && isalpha((uint8_t) *buff[1])) {
 		process = (cf_process_func_t) fr_table_value_by_str(unlang_keywords, buff[1], NULL);
@@ -2263,6 +2263,51 @@ check_for_eol:
 		name2_token = T_INVALID;
 		value = NULL;
 		goto alloc_section;
+	}
+
+	/*
+	 *	Parse the thing after the first word.  It can be an operator, or the second name for a section.
+	 */
+	ptr2 = ptr;
+	switch (parent->unlang) {
+	default:
+		/*
+		 *	Configuration sections can only have '=' after the
+		 *	first word, OR a second word which is the second name
+		 *	of a configuration section.
+		 */
+		if (*ptr == '=') goto operator;
+
+		/*
+		 *	Section name2 can only be alphanumeric or UTF-8.
+		 */
+		if (!(isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr) || (*(uint8_t const *) ptr >= 0x80))) {
+			return parse_error(stack, ptr, "Expected second name for configuration section");
+		}
+
+		name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
+		if (name1_token == T_INVALID) {
+			return parse_error(stack, ptr2, fr_strerror());
+		}
+
+		if (name1_token != T_BARE_WORD) {
+			return parse_error(stack, ptr2, "Unexpected quoted string after section name");
+		}
+
+		fr_skip_whitespace(ptr);
+
+		if (*ptr != '{') {
+			return parse_error(stack, ptr, "Missing '{' for configuration section");
+		}
+
+		ptr++;
+		value = buff[2];
+		goto alloc_section;
+
+	case CF_UNLANG_ALLOW:
+	case CF_UNLANG_EDIT:
+	case CF_UNLANG_ASSIGNMENT:
+		break;
 	}
 
 	/*
@@ -2476,6 +2521,7 @@ check_for_eol:
 	 *	If we're not parsing a section, then the next
 	 *	token MUST be an operator.
 	 */
+operator:
 	ptr2 = ptr;
 	name2_token = gettoken(&ptr, buff[2], stack->bufsize, false);
 	switch (name2_token) {
@@ -2492,6 +2538,8 @@ check_for_eol:
 	case T_OP_LT:
 	case T_OP_CMP_EQ:
 	case T_OP_CMP_FALSE:
+	case T_OP_SET:
+	case T_OP_PREPEND:
 		/*
 		 *	Allow more operators in unlang statements, edit sections, and old-style "update" sections.
 		 */
@@ -2501,8 +2549,9 @@ check_for_eol:
 		FALL_THROUGH;
 
 	case T_OP_EQ:
-	case T_OP_SET:
-	case T_OP_PREPEND:
+		/*
+		 *	Configuration variables can only use =
+		 */
 		fr_skip_whitespace(ptr);
 		op_token = name2_token;
 		break;
