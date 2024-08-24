@@ -301,7 +301,7 @@ freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git/HEAD
 	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ $(BRANCH) | bzip2 > $@
 
 %.sig: %
-	gpg --default-key packages@freeradius.org -b $<
+	gpg --local-user packages@freeradius.org -b $<
 
 #
 #  High-level targets
