@@ -2202,18 +2202,14 @@ check_for_eol:
 		 *	Only unlang sections can have module references.
 		 *
 		 *	We also allow bare words in edit lists, where the RHS is a list of values.
+		 *
+		 *	@todo - detail "suppress" requires bare words :(
 		 */
-		if( (parent->unlang == CF_UNLANG_ALLOW) || (parent->unlang == CF_UNLANG_EDIT)) {
-			parent->allow_locals = false;
-			value_token = T_INVALID;
-			op_token = T_OP_EQ;
-			value = NULL;
-			goto alloc_pair;
-		}
-
-		ERROR("%s[%d]: Parse error: Unexpected bare word.  There should be a '{' or operator after it",
-		      frame->filename, frame->lineno);
-		return -1;
+		parent->allow_locals = false;
+		value_token = T_INVALID;
+		op_token = T_OP_EQ;
+		value = NULL;
+		goto alloc_pair;
 	}
 
 	/*
