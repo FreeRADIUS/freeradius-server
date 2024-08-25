@@ -1882,7 +1882,6 @@ alloc_section:
 	}
 
 	stack->ptr = ptr;
-	css->unlang = CF_UNLANG_ASSIGNMENT;
 
 	css->allow_locals = true;
 	css->unlang = CF_UNLANG_ALLOW;
@@ -2281,8 +2280,9 @@ check_for_eol:
 		/*
 		 *	Section name2 can only be alphanumeric or UTF-8.
 		 */
+	parse_name2:
 		if (!(isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr) || (*(uint8_t const *) ptr >= 0x80))) {
-			return parse_error(stack, ptr, "Expected second name for configuration section");
+			return parse_error(stack, ptr, "Invalid second name for configuration section");
 		}
 
 		name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
@@ -2304,218 +2304,205 @@ check_for_eol:
 		value = buff[2];
 		goto alloc_section;
 
-	case CF_UNLANG_ALLOW:
-	case CF_UNLANG_EDIT:
 	case CF_UNLANG_ASSIGNMENT:
+		/*
+		 *	The next thing MUST be an operator.  We don't support nested attributes in "update" or
+		 *	"map" sections.
+		 */
+		goto operator;
+
+	case CF_UNLANG_EDIT:
+		/*
+		 *	The next thing MUST be an operator.  Edit sections always do operations, even on
+		 *	lists.  i.e. there is no second name section when editing a list.
+		 */
+		goto operator;
+
+	case CF_UNLANG_ALLOW:
+		/*
+		 *	It's not a string, bare word, or attribute reference.  It must be an operator.
+		 */
+		if (!((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
+		      ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr))) {
+			goto operator;
+		}
 		break;
 	}
 
 	/*
-	 *	We allow certain kinds of strings, attribute
-	 *	references (i.e. foreach) and bare names that
-	 *	start with a letter.  We also allow UTF-8
-	 *	characters.
-	 *
-	 *	Once we fix the parser to be less generic, we
-	 *	can tighten these rules.  Right now, it's
-	 *	*technically* possible to define a module with
-	 *	&foo or "with spaces" as the second name.
-	 *	Which seems bad.  But the old parser allowed
-	 *	it, so oh well.
+	 *	The second name could be a bare word, xlat expansion, string etc.
 	 */
-	if ((*ptr == '"') || (*ptr == '`') || (*ptr == '\'') || ((*ptr == '&') && (ptr[1] != '=')) ||
-	    ((*((uint8_t const *) ptr) & 0x80) != 0) || isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr)) {
-	parse_name2:
-		/*
-		 *	Other than "unlang" sections, the second name MUST be alphanumeric
-		 */
-		if ((parent->unlang != CF_UNLANG_ALLOW) && !isalpha((uint8_t) *ptr) && !isdigit((uint8_t) *ptr)) {
-			return parse_error(stack, ptr, "Unexpected text after section name");
-		}
+	if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return -1;
+	}
 
-		if (cf_get_token(parent, &ptr, &name2_token, buff[2], stack->bufsize,
-				 frame->filename, frame->lineno) < 0) {
-			return -1;
-		}
+	if (*ptr != '{') {
+		return parse_error(stack, ptr, "Expected '{'");
+	}
+	ptr++;
+	value = buff[2];
 
-		if (*ptr != '{') {
-			return parse_error(stack, ptr, "Expected '{'");
-		}
-		ptr++;
-		value = buff[2];
+alloc_section:
+	css = cf_section_alloc(parent, parent, buff[1], value);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
+		return -1;
+	}
 
-	alloc_section:
-		css = cf_section_alloc(parent, parent, buff[1], value);
-		if (!css) {
-			ERROR("%s[%d]: Failed allocating memory for section",
-			      frame->filename, frame->lineno);
-			return -1;
-		}
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
+	css->name2_quote = name2_token;
+	css->unlang = CF_UNLANG_NONE;
+	css->allow_locals = false;
 
-		cf_filename_set(css, frame->filename);
-		cf_lineno_set(css, frame->lineno);
-		css->name2_quote = name2_token;
-		css->unlang = CF_UNLANG_NONE;
-		css->allow_locals = false;
+	/*
+	 *	Only a few top-level sections allow "unlang"
+	 *	statements.  And for those, "unlang"
+	 *	statements are only allowed in child
+	 *	subsection.
+	 */
+	switch (parent->unlang) {
+	case CF_UNLANG_NONE:
+		if (!parent->item.parent) {
+			if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
+			if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
+			if (strcmp(css->name1, "modules") == 0) css->unlang = CF_UNLANG_MODULES;
 
-		/*
-		 *	Only a few top-level sections allow "unlang"
-		 *	statements.  And for those, "unlang"
-		 *	statements are only allowed in child
-		 *	subsection.
-		 */
-		switch (parent->unlang) {
-		case CF_UNLANG_NONE:
-			if (!parent->item.parent) {
-				if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
-				if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
-				if (strcmp(css->name1, "modules") == 0) css->unlang = CF_UNLANG_MODULES;
-
-			} else if ((cf_item_to_section(parent->item.parent)->unlang == CF_UNLANG_MODULES) &&
-				   (strcmp(css->name1, "update") == 0)) {
-				/*
-				 *	Module configuration can contain "update" statements.
-				 */
-				css->unlang = CF_UNLANG_ASSIGNMENT;
-				css->allow_locals = false;
-			}
-			break;
-
+		} else if ((cf_item_to_section(parent->item.parent)->unlang == CF_UNLANG_MODULES) &&
+			   (strcmp(css->name1, "update") == 0)) {
 			/*
-			 *	It's a policy section - allow unlang inside of child sections.
+			 *	Module configuration can contain "update" statements.
 			 */
-		case CF_UNLANG_POLICY:
+			css->unlang = CF_UNLANG_ASSIGNMENT;
+			css->allow_locals = false;
+		}
+		break;
+
+		/*
+		 *	It's a policy section - allow unlang inside of child sections.
+		 */
+	case CF_UNLANG_POLICY:
+		css->unlang = CF_UNLANG_ALLOW;
+		css->allow_locals = true;
+		break;
+
+		/*
+		 *	A virtual server has processing sections, but only a limited number of them.
+		 *	Rather than trying to autoload them and glue the interpreter into the conf
+		 *	file parser, we just hack it.
+		 */
+	case CF_UNLANG_SERVER:
+		// git grep SECTION_NAME src/process/ src/lib/server/process.h | sed 's/.*SECTION_NAME("//;s/",.*//' | sort -u
+		if ((strcmp(css->name1, "accounting") == 0) ||
+		    (strcmp(css->name1, "add") == 0) ||
+		    (strcmp(css->name1, "authenticate") == 0) ||
+		    (strcmp(css->name1, "clear") == 0) ||
+		    (strcmp(css->name1, "deny") == 0) ||
+		    (strcmp(css->name1, "error") == 0) ||
+		    (strcmp(css->name1, "load") == 0) ||
+		    (strcmp(css->name1, "new") == 0) ||
+		    (strcmp(css->name1, "recv") == 0) ||
+		    (strcmp(css->name1, "send") == 0) ||
+		    (strcmp(css->name1, "store") == 0) ||
+		    (strcmp(css->name1, "verify") == 0)) {
 			css->unlang = CF_UNLANG_ALLOW;
 			css->allow_locals = true;
 			break;
+		}
 
-			/*
-			 *	A virtual server has processing sections, but only a limited number of them.
-			 *	Rather than trying to autoload them and glue the interpreter into the conf
-			 *	file parser, we just hack it.
-			 */
-		case CF_UNLANG_SERVER:
-			// git grep SECTION_NAME src/process/ src/lib/server/process.h | sed 's/.*SECTION_NAME("//;s/",.*//' | sort -u
-			if ((strcmp(css->name1, "accounting") == 0) ||
-			    (strcmp(css->name1, "add") == 0) ||
-			    (strcmp(css->name1, "authenticate") == 0) ||
-			    (strcmp(css->name1, "clear") == 0) ||
-			    (strcmp(css->name1, "deny") == 0) ||
-			    (strcmp(css->name1, "error") == 0) ||
-			    (strcmp(css->name1, "load") == 0) ||
-			    (strcmp(css->name1, "new") == 0) ||
-			    (strcmp(css->name1, "recv") == 0) ||
-			    (strcmp(css->name1, "send") == 0) ||
-			    (strcmp(css->name1, "store") == 0) ||
-			    (strcmp(css->name1, "verify") == 0)) {
-				css->unlang = CF_UNLANG_ALLOW;
-				css->allow_locals = true;
-				break;
-			}
-
-			/*
-			 *	Allow local variables, but no unlang statements.
-			 */
-			if (strcmp(css->name1, "dictionary") == 0) {
-				css->unlang = CF_UNLANG_DICTIONARY;
-				css->allow_locals = true;
-				break;
-			}
-
-			if (strcmp(css->name1, "listen") == 0) {
-				css->unlang = CF_UNLANG_LISTEN;
-				break;
-			}
-			break;
-
-			/*
-			 *	Virtual modules in the "modules" section can have unlang.
-			 */
-		case CF_UNLANG_MODULES:
-			if ((strcmp(css->name1, "group") == 0) ||
-			    (strcmp(css->name1, "load-balance") == 0) ||
-			    (strcmp(css->name1, "redundant") == 0) ||
-			    (strcmp(css->name1, "redundant-load-balance") == 0)) {
-				css->unlang = CF_UNLANG_ALLOW;
-				css->allow_locals = true;
-			}
-			break;
-
-		case CF_UNLANG_EDIT:
-			/*
-			 *	Edit sections canb only have children
-			 *	which are edit sections.
-			 */
-			css->unlang = CF_UNLANG_EDIT;
-			break;
-
-		case CF_UNLANG_ALLOW:
-			/*
-			 *	If we're doing list assignment, then
-			 *	don't allow local variables.
-			 *
-			 *	If we are doing list assignments, then
-			 *	the children are all edit sections,
-			 *	and not unlang statements.
-			 */
-			css->allow_locals = !fr_list_assignment_op[name2_token];
-			if (css->allow_locals) {
-				/*
-				 *	@todo - tighten this up for "actions" sections, and module rcode
-				 *	over-rides.
-				 *
-				 *	Perhaps the best way to do that is to change the syntax for module
-				 *	over-rides, so that the parser doesn't have to guess.  :(
-				 */
-				css->unlang = CF_UNLANG_ALLOW;
-			} else {
-				css->unlang = CF_UNLANG_EDIT;
-			}
-			break;
-
-			/*
-			 *	We can (maybe?) do nested assignments
-			 *	inside of an old-style "update" or
-			 *	"map" section
-			 */
-	       case CF_UNLANG_ASSIGNMENT:
-			css->unlang = CF_UNLANG_ASSIGNMENT;
-			break;
-
-		case CF_UNLANG_DICTIONARY:
+		/*
+		 *	Allow local variables, but no unlang statements.
+		 */
+		if (strcmp(css->name1, "dictionary") == 0) {
 			css->unlang = CF_UNLANG_DICTIONARY;
 			css->allow_locals = true;
 			break;
-
-		case CF_UNLANG_LISTEN:
-			if (strcmp(css->name1, "update") == 0) {
-				css->unlang = CF_UNLANG_ASSIGNMENT;
-			} else {
-				css->unlang = CF_UNLANG_LISTEN;
-			}
-			break;
 		}
 
-	add_section:
 		/*
-		 *	The current section is now the child section.
+		 *	ldap sync has "update" a few levels down.
 		 */
-		frame->current = css;
-		frame->braces++;
-		css = NULL;
-		stack->ptr = ptr;
-		return 1;
+		if (strcmp(css->name1, "listen") == 0) {
+			css->unlang = CF_UNLANG_LISTEN;
+			break;
+		}
+		break;
+
+		/*
+		 *	Virtual modules in the "modules" section can have unlang.
+		 */
+	case CF_UNLANG_MODULES:
+		if ((strcmp(css->name1, "group") == 0) ||
+		    (strcmp(css->name1, "load-balance") == 0) ||
+		    (strcmp(css->name1, "redundant") == 0) ||
+		    (strcmp(css->name1, "redundant-load-balance") == 0)) {
+			css->unlang = CF_UNLANG_ALLOW;
+			css->allow_locals = true;
+		}
+		break;
+
+	case CF_UNLANG_EDIT:
+		/*
+		 *	Edit sections can only have children which are edit sections.
+		 */
+		css->unlang = CF_UNLANG_EDIT;
+		break;
+
+	case CF_UNLANG_ALLOW:
+		/*
+		 *	If we are doing list assignment, then don't allow local variables.  The children are
+		 *	also then all edit sections, and not unlang statements.
+		 *
+		 *	If we're not doing list assignment, then name2 has to be a bare word, string, etc.
+		 */
+		css->allow_locals = !fr_list_assignment_op[name2_token];
+		if (css->allow_locals) {
+			/*
+			 *	@todo - tighten this up for "actions" sections, and module rcode
+			 *	over-rides.
+			 *
+			 *	Perhaps the best way to do that is to change the syntax for module
+			 *	over-rides, so that the parser doesn't have to guess.  :(
+			 */
+			css->unlang = CF_UNLANG_ALLOW;
+		} else {
+			css->unlang = CF_UNLANG_EDIT;
+		}
+		break;
+
+		/*
+		 *	We can (maybe?) do nested assignments inside of an old-style "update" or "map" section
+		 */
+	case CF_UNLANG_ASSIGNMENT:
+		css->unlang = CF_UNLANG_ASSIGNMENT;
+		break;
+
+	case CF_UNLANG_DICTIONARY:
+		css->unlang = CF_UNLANG_DICTIONARY;
+		css->allow_locals = true;
+		break;
+
+	case CF_UNLANG_LISTEN:
+		if (strcmp(css->name1, "update") == 0) {
+			css->unlang = CF_UNLANG_ASSIGNMENT;
+		} else {
+			css->unlang = CF_UNLANG_LISTEN;
+		}
+		break;
 	}
 
+add_section:
 	/*
-	 *	The next thing MUST be an operator.  All
-	 *	operators start with one of these characters,
-	 *	so we check for them first.
+	 *	The current section is now the child section.
 	 */
-	if ((ptr[0] != '=') && (ptr[0] != '!') && (ptr[0] != '<') && (ptr[0] != '>') &&
-	    (ptr[1] != '=') && (ptr[1] != '~')) {
-		return parse_error(stack, ptr, "Syntax error, the input should be an assignment operator");
-	}
+	frame->current = css;
+	frame->braces++;
+	css = NULL;
+	stack->ptr = ptr;
+	return 1;
+
 
 	/*
 	 *	If we're not parsing a section, then the next
@@ -2580,7 +2567,7 @@ operator:
 	 */
 	if (*ptr == '{') {
 		if ((parent->unlang != CF_UNLANG_ALLOW) && (parent->unlang != CF_UNLANG_EDIT)) {
-			return parse_error(stack, ptr, "Invalid location for grouped attribute");
+			return parse_error(stack, ptr, "Invalid location for nested attribute assignment");
 		}
 
 		if (!fr_list_assignment_op[name2_token]) {
@@ -2688,6 +2675,17 @@ operator:
 		ptr += slen;
 		if ((*ptr == ',') || (*ptr == ';')) ptr++;
 
+#if 0
+	} else if ((parent->unlang != CF_UNLANG_ASSIGNMENT) &&
+		   ((*ptr == '`') || (*ptr == '%') || (*ptr == '('))) {
+		/*
+		 *	Config sections can't use backticks, xlat expansions, or expressions.
+		 *
+		 *	Except module configurations can have key = %{...}
+		 */
+		return parse_error(stack, ptr, "Invalid value for assignment in configuration file");
+#endif
+
 	} else {
 		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
@@ -2697,7 +2695,8 @@ operator:
 	}
 
 	/*
-	 *	Add parent CONF_PAIR to our CONF_SECTION
+	 *	We have an attribute assignment, which means that we no longer allow local variables to be
+	 *	defined.
 	 */
 	parent->allow_locals = false;
 
