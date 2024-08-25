@@ -2425,8 +2425,7 @@ alloc_section:
 		 *	ldap sync has "update" a few levels down.
 		 */
 		if (strcmp(css->name1, "listen") == 0) {
-			css->unlang = CF_UNLANG_LISTEN;
-			break;
+			css->unlang = CF_UNLANG_CAN_HAVE_UPDATE;
 		}
 		break;
 
@@ -2440,6 +2439,8 @@ alloc_section:
 		    (strcmp(css->name1, "redundant-load-balance") == 0)) {
 			css->unlang = CF_UNLANG_ALLOW;
 			css->allow_locals = true;
+		} else {
+			css->unlang = CF_UNLANG_CAN_HAVE_UPDATE;
 		}
 		break;
 
@@ -2484,11 +2485,11 @@ alloc_section:
 		css->allow_locals = true;
 		break;
 
-	case CF_UNLANG_LISTEN:
+	case CF_UNLANG_CAN_HAVE_UPDATE:
 		if (strcmp(css->name1, "update") == 0) {
 			css->unlang = CF_UNLANG_ASSIGNMENT;
 		} else {
-			css->unlang = CF_UNLANG_LISTEN;
+			css->unlang = CF_UNLANG_CAN_HAVE_UPDATE;
 		}
 		break;
 	}

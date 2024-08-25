@@ -92,7 +92,7 @@ typedef enum {
 	CF_UNLANG_EDIT,				//!< only edit commands
 	CF_UNLANG_ASSIGNMENT,  			//!< only assignments inside of map / update
 	CF_UNLANG_DICTIONARY,  			//!< only local variable definitions
-	CF_UNLANG_LISTEN,  			//!< ldap sync has "update" in a "listen" section.
+	CF_UNLANG_CAN_HAVE_UPDATE,		//!< can have "update"
 } cf_unlang_t;
 
 /** A section grouping multiple #CONF_PAIR
