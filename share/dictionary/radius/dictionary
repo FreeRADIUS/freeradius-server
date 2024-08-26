@@ -218,6 +218,7 @@ $INCLUDE dictionary.nortel
 #  Commented out because of attribute conflicts.
 #
 #$INCLUDE dictionary.openser
+$INCLUDE dictionary.openwifi
 $INCLUDE dictionary.packeteer
 $INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
