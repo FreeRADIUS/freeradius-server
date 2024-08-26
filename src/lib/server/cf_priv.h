@@ -77,6 +77,8 @@ struct cf_pair {
 	fr_token_t		lhs_quote;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 	fr_token_t		rhs_quote;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 
+	fr_type_t		type;		//!< for local variable definitions.
+
 	bool			pass2;		//!< do expansion in pass2.
 	bool			parsed;		//!< Was this item used during parsing?
 	bool			printed;	//!< Was this item printed already in debug mode?
@@ -113,7 +115,6 @@ struct cf_section {
 	void			*base;
 	int			depth;
 	cf_unlang_t    		unlang;
-	bool			attr;		//!< is this thing an attribute definition?
 	bool			allow_locals;	//!< allow local variables
 
 	CONF_SECTION		*template;

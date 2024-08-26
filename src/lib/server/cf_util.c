@@ -824,8 +824,6 @@ CONF_SECTION *_cf_section_alloc(TALLOC_CTX *ctx, CONF_SECTION *parent,
 	}
 	talloc_set_destructor(cs, _cf_section_free);
 
-	cs->attr = (cs->name1[0] == '&') | (parent && parent->attr);
-
 	if (parent) {
 		CONF_DATA const *cd;
 		conf_parser_t *rule;
