@@ -5278,7 +5278,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			return_P("Unexpected expansion");
 		}
 
-		if ((p[1] != '{') && (p[1] != '(')) {
+		if (p[1] != '{') {
 			char const *q;
 
 			q = p + 1;
@@ -5308,14 +5308,14 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		}
 
 		/*
-		 *	For now, %{...} / %(...) is treated as a double-quoted
+		 *	For now, %{...} is treated as a double-quoted
 		 *	string.  Once we clean other things up, the
 		 *	xlats will be treated as strongly typed values
 		 *	/ lists on their own.
 		 */
 		if (*type == T_INVALID) *type = T_BARE_WORD;
 		depth = 0;
-		close = (p[1] == '{') ? '}' : ')';
+		close = '}';
 
 		/*
 		 *	Xlat's are quoted by %{...} / %(...) nesting, not by
