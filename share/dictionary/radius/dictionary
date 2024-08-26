@@ -130,6 +130,7 @@ $INCLUDE dictionary.cisco.asa
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.citrix
+$INCLUDE dictionary.ckey
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.cnergee
 $INCLUDE dictionary.colubris

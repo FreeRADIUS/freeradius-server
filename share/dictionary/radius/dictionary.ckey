@@ -1,0 +1,39 @@
+# -*- text -*-
+# Copyright (C) 2023 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+##############################################################################
+#
+#	$Id$
+#
+##############################################################################
+
+VENDOR		Ckey				61349
+
+BEGIN-VENDOR	Ckey
+
+ATTRIBUTE	Auth-Info				10	integer
+
+VALUE	Auth-Info			Role-Reject		2
+VALUE	Auth-Info			Static-Reject		3
+VALUE	Auth-Info			Challenge-Dyna-Reject	7
+VALUE	Auth-Info			RADIUS-Key-Parse-Error	8
+VALUE	Auth-Info			Account-Does-Not-Exist	9
+VALUE	Auth-Info			Token-Expired		16
+VALUE	Auth-Info			Push-Check-Code-Error	20
+VALUE	Auth-Info			Push-Code-Error		21
+VALUE	Auth-Info			Single-Only-Dyna-Reject	22
+VALUE	Auth-Info			Static-PWD-Error	23
+VALUE	Auth-Info			PIN-Word-Error		24
+VALUE	Auth-Info			Source-IP-Error		25
+VALUE	Auth-Info			Msg-PWD-Reject		28
+VALUE	Auth-Info			Static-PWD-Expired	28
+VALUE	Auth-Info			Strategy-Config-Error	30
+VALUE	Auth-Info			EQP-Expiration-Error	31
+VALUE	Auth-Info			Account-EQP-Token-Mismatch 32
+VALUE	Auth-Info			Cannot-Login-Time	33
+VALUE	Auth-Info			Org-Reject		34
+VALUE	Auth-Info			Static-PWD-Or-PIN-Error	2324
+VALUE	Auth-Info			Unknown-Error		0xffffffff
+
+END-VENDOR	Ckey
