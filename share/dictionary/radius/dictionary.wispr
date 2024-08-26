@@ -36,5 +36,20 @@ ATTRIBUTE	Session-Terminate-Time			9	string
 ATTRIBUTE	Session-Terminate-End-Of-Day		10	string
 ATTRIBUTE	Billing-Class-Of-Service		11	string
 
+#
+# Wireless Broadband Alliance "WBA-" attributes also use vendor ID 14122
+#
+# https://github.com/wireless-broadband-alliance/RADIUS-VSA
+#
+ATTRIBUTE	Offered-Service				12	string
+ATTRIBUTE	Financial-Clearing-Provider		13	string
+ATTRIBUTE	Data-Clearing-Provider			14	string
+ATTRIBUTE	Linear-Volume-Rate			15	octets
+ATTRIBUTE	Identity-Provider			16	string
+ATTRIBUTE	Custom-SLA				17	string
+
+
 END-VENDOR	WISPr
 ALIAS		WISPr					Vendor-Specific.WISPr
+ALIAS		WBA					Vendor-Specific.WISPr
+
