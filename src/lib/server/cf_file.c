@@ -1631,6 +1631,16 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 	fr_assert((size_t) slen < (stack->bufsize - 1));
 
+	ptr += slen;
+	fr_skip_whitespace(ptr);
+
+	if (*ptr != '{') {
+		cf_log_err(cs, "Expected '{' instead of %s", ptr);
+		talloc_free(cs);
+		return NULL;
+	}
+	ptr++;
+
 	/*
 	 *	Save the parsed condition (minus trailing whitespace)
 	 *	into a buffer.
@@ -1656,16 +1666,6 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 
 	MEM(cs->name2 = talloc_typed_strdup(cs, buff[3]));
 	cs->name2_quote = T_BARE_WORD;
-
-	ptr += slen;
-	fr_skip_whitespace(ptr);
-
-	if (*ptr != '{') {
-		cf_log_err(cs, "Expected '{' instead of %s", ptr);
-		talloc_free(cs);
-		return NULL;
-	}
-	ptr++;
 
 	stack->ptr = ptr;
 
