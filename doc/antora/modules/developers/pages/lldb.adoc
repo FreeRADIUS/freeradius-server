@@ -2,9 +2,9 @@
 
 == Overview
 
-LLDB is, to state the obvious, is a debugger for some languages that use llvm. At the time of writing, that's C, C++, and Objective C for a subset of {i386, x86_64, ARM, Aarch64, MIPS64, PPC} depending on the OS.
+LLDB is, to state the obvious, a debugger for some languages that use llvm. At the time of writing, that's C, C++, and Objective C for a subset of {i386, x86_64, ARM, Aarch64, MIPS64, PPC} depending on the OS.
 
-LLDB's command syntax is consistent and regular, but it can be verbose. Also, a lot of people are used to GDB commands. LLDB therefore predefines "aliases" to provide some commands familiar to gdb users, and  you have access to that command to define your own aliases.
+LLDB's command syntax is consistent and regular, but it can be verbose. Also, a lot of people are used to GDB commands. LLDB therefore predefines "aliases" to provide some commands familiar to gdb users, and you have access to that command to define your own aliases.
 
 When a test fails you'll see something like this in the output, a command line showing how to run the test (with -xx for added debugging output):
 
@@ -13,7 +13,7 @@ When a test fails you'll see something like this in the output, a command line s
 ./build/make/jlibtool --silent --timeout=300 --mode=execute ./build/bin/local/unit_test_attribute -F ./src/tests/fuzzer-corpus -D share/dictionary -d ./src/tests/unit -r "build/tests/units/data_types.txt"  src/tests/unit/data_types.txt -xx
 ----
 
-To run the test under lldb, tell  jlibtool to run lldb, which in turn will run and pass options on to `unit_test_module`. Keep the `-xx` if you wish, but definitely omit the `--timeout=300`.
+To run the test under lldb, tell jlibtool to run lldb, which in turn will run and pass options on to `unit_test_module`. Keep the `-xx` if you wish, but definitely omit the `--timeout=300`.
 
 [source,shell]
 ----
@@ -22,7 +22,7 @@ TZ=GMT build/make/jlibtool --silent --mode=execute lldb --file ./build/bin/local
 
 `--file` tells lldb what it's debugging, `--` tells it that all that follows should be passed to `unit_test_module`. That can appear in lldb commands to cause following arguments to be passed to a subcommand--an example of lldb's consistent syntax.
 
-lldb provides a lot of facilities for extending the debugger, defining new commands, and even defining how to display values of particular types. Since the immediate goal was providing an understandable display for select types used in FreeRADIUS, we could have done that, but the work's already been done in FreeRADIUS--why replicate it? lldb's Python scripting lets one call C functions.
+lldb provides a lot of facilities for extending the debugger, defining new commands, and even defining how to display values of particular types. Since the immediate goal was providing an understandable display for select types used in FreeRADIUS, we could have done that, but the work's already been done in FreeRADIUS--why replicate it? lldb's Python scripting lets one call C functions, thus making the display consistent with minimal work.
 
 == What lldb Provides for Python
 
