@@ -2,7 +2,7 @@
 
 mschap_ntlm
 
-if !(&control.Auth-Type == mschap_ntlm) {
+if !(&control.Auth-Type == ::mschap_ntlm) {
 	test_fail
 }
 

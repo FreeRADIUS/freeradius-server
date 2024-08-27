@@ -101,7 +101,7 @@ if (reject) {
 }
 
 &control := {
-	&Auth-Type = Accept
+	&Auth-Type = ::Accept
 }
 
 #
@@ -133,7 +133,7 @@ if (reject) {
 }
 
 &control := {
-	&Auth-Type = Accept
+	&Auth-Type = ::Accept
 }
 
 success

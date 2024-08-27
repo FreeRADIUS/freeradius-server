@@ -29,5 +29,5 @@ subrequest dhcpv4.Discover {
 }
 
 if (updated) {
-	&control.Auth-Type := Accept
+	&control.Auth-Type := ::Accept
 }

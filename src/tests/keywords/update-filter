@@ -215,7 +215,7 @@ if (!(%{Filter-Id[#]} == 1)) {
 }
 
 update control {
-	&Auth-Type := Accept
+	&Auth-Type := ::Accept
 }
 
 success

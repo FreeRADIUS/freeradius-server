@@ -2,7 +2,7 @@
 
 mschap
 
-if !(&control.Auth-Type == mschap) {
+if !(&control.Auth-Type == ::mschap) {
 	test_fail
 }
 

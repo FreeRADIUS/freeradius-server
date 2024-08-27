@@ -2,7 +2,7 @@
 
 mschap_winbind
 
-if !(&control.Auth-Type == mschap_winbind) {
+if !(&control.Auth-Type == ::mschap_winbind) {
 	test_fail
 }
 

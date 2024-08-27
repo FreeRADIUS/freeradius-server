@@ -11,7 +11,7 @@ if (fail) {
 }
 
 if (ok) {
-    &control.Auth-Type := Accept
+    &control.Auth-Type := ::Accept
 }
 else {
     reject
