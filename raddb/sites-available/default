@@ -1105,7 +1105,7 @@ send Access-Accept {
 	#
 	#  If you need to have a State attribute, you can add it
 	#  here. e.g. for later CoA-Request with State, and
-	#  Service-Type = Authorize-Only.
+	#  Service-Type = ::Authorize-Only.
 	#
 #	if (!&reply.State) {
 #		&reply.State := "0x%randstr(16h)"

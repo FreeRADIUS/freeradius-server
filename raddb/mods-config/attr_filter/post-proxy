@@ -43,7 +43,7 @@
 #     o  a max session time set to 28800 seconds (8 hours) or less
 #
 #fisp
-#	Service-Type == Framed-User,
+#	Service-Type == ::Framed-User,
 #	Framed-Protocol == PPP,
 #	Framed-IP-Address == 255.255.255.254,
 #	Idle-Timeout <= 600,
@@ -61,7 +61,7 @@
 #       o Login hosts of either 192.0.2.1 or 192.0.2.2
 #
 #tisp
-#	Service-Type == Login-User,
+#	Service-Type == ::Login-User,
 #	Login-Service == Telnet,
 #	Login-TCP-Port == 23,
 #	Login-IP-Host == 192.0.2.1,
@@ -101,8 +101,8 @@
 #
 
 DEFAULT
-	Service-Type == Framed-User,
-	Service-Type == Login-User,
+	Service-Type == ::Framed-User,
+	Service-Type == ::Login-User,
 	Login-Service == Telnet,
 	Login-Service == Rlogin,
 	Login-Service == TCP-Clear,

@@ -58,7 +58,7 @@
 # get any attributes in addition to the ones listed here.
 #
 #steve	Password.Cleartext := "testing"
-#	Service-Type = Framed-User,
+#	Service-Type = ::Framed-User,
 #	Framed-Protocol = PPP,
 #	Framed-IP-Address = 172.16.3.33,
 #	Framed-IP-Netmask = 255.255.255.0,
@@ -90,7 +90,7 @@
 # Dial user back and telnet to the default host for that port
 #
 #Deg	Password.Cleartext := "ge55ged"
-#	Service-Type = Callback-Login-User,
+#	Service-Type = ::Callback-Login-User,
 #	Login-IP-Host = 0.0.0.0,
 #	Callback-Number = "9,5551212",
 #	Login-Service = Telnet,
@@ -102,7 +102,7 @@
 # he will get a connection to the host "timeshare1".
 #
 #dialbk	Password.Cleartext := "callme"
-#	Service-Type = Callback-Login-User,
+#	Service-Type = ::Callback-Login-User,
 #	Login-IP-Host = timeshare1,
 #	Login-Service = PortMaster,
 #	Callback-Number = "9,1-800-555-1212"
@@ -114,7 +114,7 @@
 # Note that by setting "Fall-Through", other attributes will be added from
 # the following DEFAULT entries
 #
-#swilson	Service-Type == Framed-User, Huntgroup-Name == "alphen"
+#swilson	Service-Type == ::Framed-User, Huntgroup-Name == "alphen"
 #		Framed-IP-Address = 192.0.2.65,
 #		Fall-Through = Yes
 
@@ -129,10 +129,10 @@
 #
 # Sample defaults for all framed connections.
 #
-#DEFAULT	Service-Type == Framed-User
+#DEFAULT	Service-Type == ::Framed-User
 #	Framed-IP-Address = 255.255.255.254,
 #	Framed-MTU = 576,
-#	Service-Type = Framed-User,
+#	Service-Type = ::Framed-User,
 #	Fall-Through = Yes
 
 #
@@ -146,7 +146,7 @@ DEFAULT	Framed-Protocol == PPP
 # Last default: rlogin to our main server.
 #
 #DEFAULT
-#	Service-Type = Login-User,
+#	Service-Type = ::Login-User,
 #	Login-Service = Rlogin,
 #	Login-IP-Host = shellbox.ispdomain.com
 
@@ -154,7 +154,7 @@ DEFAULT	Framed-Protocol == PPP
 # # Last default: shell on the local terminal server.
 # #
 # DEFAULT
-# 	Service-Type = Administrative-User
+# 	Service-Type = ::Administrative-User
 
 
 # On no match, the user is denied access.
