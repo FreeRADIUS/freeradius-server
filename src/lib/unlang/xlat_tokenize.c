@@ -1222,7 +1222,10 @@ ssize_t xlat_print(fr_sbuff_t *out, xlat_exp_head_t const *head, fr_sbuff_escape
 
 	xlat_exp_foreach(head, node) {
 		slen = xlat_print_node(out, head, node, e_rules, 0);
-		if (slen < 0) return slen - (fr_sbuff_used_total(out) - at_in);
+		if (slen < 0) {
+			/* coverity[return_overflow] */
+			return slen - (fr_sbuff_used_total(out) - at_in);
+		}
 	}
 
 	return fr_sbuff_used_total(out) - at_in;
