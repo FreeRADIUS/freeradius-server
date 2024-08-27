@@ -1614,7 +1614,7 @@ static CONF_ITEM *process_if(cf_stack_t *stack)
 		 *	Anything other than EOL is a problem at this point.
 		 */
 		if (*p) {
-			fr_strerror_const("Unexpected text");
+			fr_strerror_const("Unexpected text after condition");
 			goto error;
 		}
 
@@ -2733,7 +2733,7 @@ added_pair:
 	 *	error.
 	 */
 	if (*ptr && (*ptr != '#')) {
-		return parse_error(stack, ptr, "Unexpected text");
+		return parse_error(stack, ptr, "Unexpected text after configuration item");
 	}
 
 	/*
