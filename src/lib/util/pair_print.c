@@ -161,26 +161,21 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 
 	if (fr_type_is_leaf(vp->vp_type)) {
-		switch (vp->vp_type) {
-		case FR_TYPE_STRING:
-			if (vp->data.secret) goto secret;
-			FALL_THROUGH;
+		if (!vp->data.secret) {
+			FR_SBUFF_RETURN(fr_pair_print_value_quoted, &our_out, vp, T_DOUBLE_QUOTED_STRING);
 
-		case FR_TYPE_DATE:
-			FR_SBUFF_RETURN(fr_value_box_print_quoted, &our_out, &vp->data, T_DOUBLE_QUOTED_STRING);
-			break;
+		} else {
+			switch (vp->vp_type) {
+			case FR_TYPE_STRING:
+			case FR_TYPE_OCTETS:
+				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "<<< secret >>>");
+				break;
 
-		case FR_TYPE_OCTETS:
-			if (vp->data.secret) {
-			secret:
+			default:
+				fr_assert(0); /* see dict_tokenize.c, which enforces parsing of "secret" in dictionaries */
 				FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "<<< secret >>>");
 				break;
 			}
-			FALL_THROUGH;
-
-		default:
-			if (fr_value_box_print(&our_out, &vp->data, NULL) < 0) return -1;
-			break;
 		}
 	} else {
 		fr_pair_t *child;

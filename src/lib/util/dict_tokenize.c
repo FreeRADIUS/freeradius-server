@@ -384,6 +384,11 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		} else if (strcmp(key, "secret") == 0) {
 			flags->secret = 1;
 
+			if ((type != FR_TYPE_STRING) && (type != FR_TYPE_OCTETS)) {
+				fr_strerror_const("The 'secret' flag can only be used with data types 'string' or 'octets'");
+				return -1;
+			}
+
 		} else if (strcmp(key, "offset") == 0) {
 			int offset;
 
