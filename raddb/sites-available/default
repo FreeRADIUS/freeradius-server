@@ -751,7 +751,7 @@ recv Access-Request {
 #	auth_log
 
 	#
-	#  The `chap` module will set `Auth-Type := CHAP` if the
+	#  The `chap` module will set `Auth-Type := ::CHAP` if the
 	#  packet contains a `CHAP-Challenge` attribute.  The module
 	#  does this only if the `Auth-Type` attribute has not already
 	#  been set.
@@ -759,7 +759,7 @@ recv Access-Request {
 	chap
 
 	#
-	#  The `mschap` module will set `Auth-Type := mschap` if the
+	#  The `mschap` module will set `Auth-Type := ::mschap` if the
 	#  packet contains an `MS-CHAP-Challenge` attribute.  The
 	#  module does this only if the `Auth-Type` attribute has not
 	#  already been set.
@@ -868,7 +868,7 @@ recv Access-Request {
 	expiration
 
 	#
-	#  The `pap` module will set `Auth-Type := PAP` if the
+	#  The `pap` module will set `Auth-Type := ::PAP` if the
 	#  packet contains a `User-Password` attribute.  The module
 	#  does this only if the `Auth-Type` attribute has not already
 	#  been set.
@@ -921,11 +921,11 @@ recv Status-Server {
 #  authentication method will work, but all of the others will not.
 #
 #  The common reasons to set the `Auth-Type` attribute by hand are
-#  to forcibly reject the user (`Auth-Type := Reject`), to or
-#  forcibly accept the user (`Auth-Type := Accept`), or for
+#  to forcibly reject the user (`Auth-Type := ::Reject`), to or
+#  forcibly accept the user (`Auth-Type := ::Accept`), or for
 #  proxying.
 #
-#  Note that `Auth-Type := Accept` will NOT work with EAP.  The EAP
+#  Note that `Auth-Type := ::Accept` will NOT work with EAP.  The EAP
 #  authentication protocol uses a series of handshake messages.  All
 #  of the messages must be exchanged correctly in order for EAP
 #  authentication to succeed.  Bypassing that process with `Auth-Type

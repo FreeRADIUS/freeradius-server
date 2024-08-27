@@ -39,7 +39,7 @@
 # Note that there is NO 'Fall-Through' attribute, so the user will not
 # be given any additional resources.
 #
-#lameuser	Auth-Type := Reject
+#lameuser	Auth-Type := ::Reject
 #		Reply-Message = "Your account has been disabled."
 
 #
@@ -48,7 +48,7 @@
 # Note that there is NO 'Fall-Through' attribute, so the user will not
 # be given any additional resources.
 #
-#DEFAULT	Group == "disabled", Auth-Type := Reject
+#DEFAULT	Group == "disabled", Auth-Type := ::Reject
 #		Reply-Message = "Your account has been disabled."
 #
 

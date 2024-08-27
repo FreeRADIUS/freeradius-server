@@ -11,10 +11,10 @@
 #
 #  [WARNING]
 #  ====
-#  Whatever you do, do NOT set 'Auth-Type := EAP'.  The server is smart enough
+#  Whatever you do, do NOT set 'Auth-Type := ::EAP'.  The server is smart enough
 #  to figure this out on its own.
 #
-#  The most common side effect of setting 'Auth-Type := EAP' is that the users
+#  The most common side effect of setting 'Auth-Type := ::EAP' is that the users
 #  then cannot use ANY other authentication method.
 #  ====
 #

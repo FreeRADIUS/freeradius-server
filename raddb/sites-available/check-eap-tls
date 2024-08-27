@@ -37,7 +37,7 @@ server check-eap-tls {
 #
 #  Authorize - this is the only section required.
 #
-#  To accept the access request, set Auth-Type = Accept, otherwise
+#  To accept the access request, set Auth-Type = ::Accept, otherwise
 #  set it to Reject.
 
 recv Access-Request {
@@ -45,17 +45,17 @@ recv Access-Request {
 	#
 	#  By default, we just accept the request:
 	#
-	&control.Auth-Type := Accept
+	&control.Auth-Type := ::Accept
 
 	#
 	#  Check the client certificate matches a string, and reject otherwise
 	#
 
 #	if ("%{session-state.TLS-Client-Cert-Common-Name}" == 'client.example.com') {
-#		&control.Auth-Type := Accept
+#		&control.Auth-Type := ::Accept
 #	}
 #	else {
-#		&control.Auth-Type := Reject
+#		&control.Auth-Type := ::Reject
 #		&reply.Reply-Message := "Your certificate is not valid."
 #	}
 
@@ -64,10 +64,10 @@ recv Access-Request {
 	#  Check the client certificate common name against the supplied User-Name
 	#
 #	if (&User-Name == "host/%{session-state.TLS-Client-Cert-Common-Name}") {
-#		&control.Auth-Type := Accept
+#		&control.Auth-Type := ::Accept
 #	}
 #	else {
-#		&control.Auth-Type := Reject
+#		&control.Auth-Type := ::Reject
 #	}
 
 
@@ -97,7 +97,7 @@ recv Access-Request {
 	#
 
 #	if (!(Ldap-Group == "Permitted-Laptops")) {
-#		&control.Auth-Type := Reject
+#		&control.Auth-Type := ::Reject
 #	}
 
 	#  or, to be more specific, you could use the group's full DN:

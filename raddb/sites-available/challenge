@@ -35,7 +35,7 @@ recv Access-Request {
 	#  the user.
 	#
 	if (!&State) {
-		&control.Auth-Type := Step1
+		&control.Auth-Type := ::Step1
 		&control.Password.Cleartext := "hello"
 	}
 	else {
@@ -44,7 +44,7 @@ recv Access-Request {
 		#  Set the "known good" password to the number
 		#  saved in the session-state list.
 		#
-		&control.Auth-Type := Step2
+		&control.Auth-Type := ::Step2
 		&control.Password.Cleartext := &session-state.challenge-string
 	}
 }
