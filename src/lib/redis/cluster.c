@@ -159,9 +159,12 @@
 #include "cluster.h"
 #include "crc16.h"
 
+#ifndef WITH_TLS
+#  undef HAVE_REDIS_SSL
+#endif
+
 #ifdef HAVE_REDIS_SSL
 #include <freeradius-devel/tls/strerror.h>
-#include <freeradius-devel/tls/session.h>
 #include <hiredis/hiredis_ssl.h>
 #endif
 
