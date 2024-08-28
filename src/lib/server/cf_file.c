@@ -2369,7 +2369,7 @@ alloc_section:
 			if (strcmp(css->name1, "server") == 0) css->unlang = CF_UNLANG_SERVER;
 			if (strcmp(css->name1, "policy") == 0) css->unlang = CF_UNLANG_POLICY;
 			if (strcmp(css->name1, "modules") == 0) css->unlang = CF_UNLANG_MODULES;
-			if (strcmp(css->name1, "template") == 0) css->unlang = CF_UNLANG_CAN_HAVE_UPDATE;
+			if (strcmp(css->name1, "templates") == 0) css->unlang = CF_UNLANG_CAN_HAVE_UPDATE;
 
 		} else if ((cf_item_to_section(parent->item.parent)->unlang == CF_UNLANG_MODULES) &&
 			   (strcmp(css->name1, "update") == 0)) {
