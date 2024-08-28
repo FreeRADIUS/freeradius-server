@@ -1056,6 +1056,10 @@ static void test_file_extend(void)
 	memcpy(fbuff + sizeof(fbuff) - PATTERN_LEN, PATTERN, PATTERN_LEN);
 
 	fp = fmemopen(fbuff, sizeof(fbuff), "r");
+#ifdef __clang_analyzer__
+	if (fp == NULL) return;
+#endif
+
 	TEST_CHECK(fp != NULL);
 	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, 128) == &sbuff);
 	our_sbuff = FR_SBUFF_BIND_CURRENT(&sbuff);
@@ -1087,6 +1091,10 @@ static void test_file_extend(void)
 
 	TEST_CASE("Verify fr_sbuff_out_bstrncpy_until() extends from file properly");
 	fp = fmemopen(fbuff, sizeof(fbuff), "r");
+#ifdef __clang_analyzer__
+	if (fp == NULL) return;
+#endif
+
 	TEST_CHECK(fp != NULL);
 	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, 128) == &sbuff);
 	our_sbuff = FR_SBUFF_BIND_CURRENT(&sbuff);
@@ -1107,6 +1115,9 @@ static void test_file_extend_max(void)
 
 	TEST_CASE("Initialization");
 	fp = fmemopen(fbuff, sizeof(fbuff) - 1, "r");
+#ifdef __clang_analyzer__
+	if (fp == NULL) return;
+#endif
 	TEST_CHECK(fp != NULL);
 	TEST_CHECK(fr_sbuff_init_file(&sbuff, &fctx, buff, sizeof(buff), fp, sizeof(fbuff) - 8) == &sbuff);
 
