@@ -267,6 +267,9 @@ static dl_loader_t	*dl_loader = NULL;
 
 static fr_event_list_t	*el = NULL;
 
+static char const	*write_filename = NULL;
+static FILE		*write_fp = NULL;
+
 size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data, size_t data_used, char *in, size_t inlen);
 static int process_file(bool *exit_now, TALLOC_CTX *ctx,
 			command_config_t const *config, const char *root_dir, char const *filename, fr_dlist_head_t *lines);
@@ -1138,6 +1141,11 @@ static size_t command_include(command_result_t *result, command_file_ctx_t *cc,
 	bool	exit_now = false;
 	int	ret;
 
+	if (write_fp) {
+		fprintf(stderr, "Can't do $INCLUDE with -w %s\n", write_filename);
+		RETURN_EXIT(1);
+	}
+
 	q = strrchr(cc->path, '/');
 	if (q) {
 		*q = '\0';
@@ -1367,10 +1375,13 @@ static size_t command_radmin_add(command_result_t *result, command_file_ctx_t *c
 	char		*p, *name;
 	char		*parent = NULL;
 	fr_cmd_table_t	*table;
+	char		buffer[8192];
 
 	table = talloc_zero(cc->tmp_ctx, fr_cmd_table_t);
 
-	p = strchr(in, ':');
+	strcpy(buffer, in);
+
+	p = strchr(buffer, ':');
 	if (!p) {
 		fr_strerror_const("no ':name' specified");
 		RETURN_PARSE_ERROR(0);
@@ -1742,8 +1753,11 @@ size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc
 	ssize_t		ret;
 	char		*p, *next;
 	uint8_t		*enc_p;
+	char		buffer[8192];
 
-	p = in;
+	strcpy(buffer, in);
+
+	p = buffer;
 	next = strchr(p, ',');
 	if (next) *next = 0;
 
@@ -2008,8 +2022,11 @@ static size_t command_encode_raw(command_result_t *result, command_file_ctx_t *c
 			         char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
 	size_t	len;
+	char	buffer[8192];
 
-	len = encode_rfc(in, cc->buffer_start, cc->buffer_end - cc->buffer_start);
+	strcpy(buffer, in);
+
+	len = encode_rfc(buffer, cc->buffer_start, cc->buffer_end - cc->buffer_start);
 	if (len <= 0) RETURN_PARSE_ERROR(0);
 
 	if (len >= (size_t)(cc->buffer_end - cc->buffer_start)) {
@@ -2272,6 +2289,11 @@ static size_t command_match(command_result_t *result, command_file_ctx_t *cc,
 			    char *data, size_t data_used, char *in, size_t inlen)
 {
 	if (strcmp(in, data) != 0) {
+		if (write_fp) {
+			strcpy(in, data);
+			RETURN_OK(data_used);
+		}
+
 		mismatch_print(cc, "match", in, inlen, data, data_used, true);
 		RETURN_MISMATCH(data_used);
 	}
@@ -3181,7 +3203,21 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 
 	p = in;
 	fr_skip_whitespace(p);
-	if (*p == '\0') RETURN_NOOP(data_used);
+
+	/*
+	 *	Skip empty lines and comments.
+	 */
+	if (!*p || (*p == '#')) {
+		/*
+		 *	Dump the input to the output.
+		 */
+		if (write_fp) {
+			fputs(in, write_fp);
+			fputs("\n", write_fp);
+		}
+
+		RETURN_NOOP(data_used);
+	}
 
 	DEBUG2("%s[%d]: %s", cc->filename, cc->lineno, p);
 
@@ -3193,11 +3229,6 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 		fr_strerror_printf("Unknown command: %s", p);
 		RETURN_COMMAND_ERROR();
 	}
-
-	/*
-	 *	Skip processing the command
-	 */
-	if (command->func == command_comment) RETURN_NOOP(data_used);
 
 	p += match_len;						/* Jump to after the command */
 	fr_skip_whitespace(p);					/* Skip any whitespace */
@@ -3231,6 +3262,14 @@ size_t process_line(command_result_t *result, command_file_ctx_t *cc, char *data
 		DEBUG2("%s[%d]: --> %s", cc->filename, cc->lineno,
 		       fr_table_str_by_value(command_rcode_table, result->rcode, "<INVALID>"));
 	}
+
+	/*
+	 *	Dump the input to the output.
+	 */
+	if (write_fp) {
+		fputs(in, write_fp);
+		fputs("\n", write_fp);
+	};
 
 	talloc_free_children(cc->tmp_ctx);
 
@@ -3509,6 +3548,7 @@ static void usage(char const *name)
 	INFO("  -M                 Show talloc memory report.");
 	INFO("  -p                 Allow xlat_purify");
 	INFO("  -r <receipt_file>  Create the <receipt_file> as a 'success' exit.");
+	INFO("  -w <output_file>   Write 'corrected' output to <output_file>.");
 	INFO("Where <filename> is a file containing one or more commands and '-' indicates commands should be read from stdin.");
 	INFO("Ranges of <lines> may be specified in the format <start>[-[<end>]][,]");
 }
@@ -3690,7 +3730,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 	default_log.print_level = false;
 
-	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:")) != -1) switch (c) {
+	while ((c = getopt(argc, argv, "cd:D:F:fxMhpr:w:")) != -1) switch (c) {
 		case 'c':
 			do_commands = true;
 			break;
@@ -3726,6 +3766,10 @@ int main(int argc, char *argv[])
 
 		case 'p':
 			allow_purify = true;
+			break;
+
+		case 'w':
+			write_filename = optarg;
 			break;
 
 		case 'h':
@@ -3846,6 +3890,11 @@ int main(int argc, char *argv[])
 	 *	Read tests from stdin
 	 */
 	if (argc < 2) {
+		if (write_filename) {
+			ERROR("Can't use '-w' with stdin");
+			EXIT_WITH_FAILURE;
+		}
+
 		ret = process_file(&exit_now, autofree, &config, name, "-", NULL);
 
 	/*
@@ -3854,6 +3903,22 @@ int main(int argc, char *argv[])
 	} else {
 		int i;
 
+		if (write_filename) {
+			if (argc != 2) { /* program name and file to write */
+				ERROR("Can't use '-w' with multiple filenames");
+				EXIT_WITH_FAILURE;
+			}
+
+			write_fp = fopen(write_filename, "w");
+			if (!write_fp) {
+				ERROR("Failed opening %s: %s", write_filename, strerror(errno));
+				EXIT_WITH_FAILURE;
+			}
+		}
+
+		/*
+		 *	Loop over all input files.
+		 */
 		for (i = 1; i < argc; i++) {
 			char			*dir = NULL, *file;
 			fr_sbuff_t		in = FR_SBUFF_IN(argv[i], strlen(argv[i]));
@@ -3905,6 +3970,14 @@ int main(int argc, char *argv[])
 			fr_dlist_talloc_free(&lines);
 
 			if ((ret != 0) || exit_now) break;
+		}
+
+		if (write_fp) {
+			fclose(write_fp);
+			if (rename(write_filename, argv[1]) < 0) {
+				ERROR("Failed renaming %s: %s", write_filename, strerror(errno));
+				EXIT_WITH_FAILURE;
+			}
 		}
 	}
 

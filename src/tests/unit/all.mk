@@ -74,12 +74,22 @@ test.unit.condition: $(addprefix $(OUTPUT)/,$(filter condition/%.txt,$(FILES))) 
 $(BUILD_DIR)/tests/unit/xlat/purify.txt $(filter $(BUILD_DIR)/tests/unit/xlat/cond_%,$(FILES.$(TEST))): PURIFY=-p
 
 #
+#  For automatically fixing the tests when only the output has changed
+#
+#  The unit_test_attribute program will copy the inputs to the outputs, and rewrite the "expected" output
+#  with the "actual" output.  But only for the "match" command.  Everything is including comments and blank
+#  lines is copied verbatim.
+#
+
+#REWRITE_FLAGS = -w $(BUILD_DIR)/tmp
+
+#
 #  And the actual script to run each test.
 #
 $(OUTPUT)/%: $(DIR)/% $(TEST_BIN_DIR)/unit_test_attribute $(top_srcdir)/src/tests/unit/dictionary
 	$(eval DIR:=${top_srcdir}/src/tests/unit)
 	@echo "UNIT-TEST $(lastword $(subst /, ,$(dir $@))) $(basename $(notdir $@))"
-	${Q}if ! $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
+	${Q}if ! $(TEST_BIN)/unit_test_attribute $(PURIFY) $(REWRITE_FLAGS) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r "$@" $<; then \
 		echo "TZ=GMT $(TEST_BIN)/unit_test_attribute $(PURIFY) -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d $(DIR) -r \"$@\" $<"; \
 		rm -f $(BUILD_DIR)/tests/test.unit; \
 		exit 1; \
