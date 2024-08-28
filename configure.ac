@@ -896,6 +896,31 @@ if test "x$HAVE_THREADS" != "xno"; then
   dnl #  On Some systems, we need extra pre-processor flags, to get them to
   dnl #  to do the threading properly.
   dnl #
+  AC_CHECK_LIB(c, pthread_create,
+    [
+      HAVE_THREADS="yes"
+      CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
+
+      dnl #
+      dnl #  -pthread should add all required CPP definitions and linker
+      dnl #  arguments. But not all compilers support it, or some compilers
+      dnl #  only support it on certain platforms.
+      dnl #
+      AX_CC_PTHREAD_FLAG
+      if test "x$ax_cv_cc_pthread_flag" = 'xyes'; then
+        CFLAGS="$CFLAGS -pthread"
+      fi
+    ]
+  )
+fi
+if test "x$HAVE_THREADS" != "xno"; then
+  dnl #
+  dnl #  pthread stuff is usually in -lpthread
+  dnl #  or in -lc_r, on *BSD
+  dnl #
+  dnl #  On Some systems, we need extra pre-processor flags, to get them to
+  dnl #  to do the threading properly.
+  dnl #
   AC_CHECK_LIB(pthread, pthread_create,
     [
       HAVE_THREADS="yes"
