@@ -73,7 +73,7 @@ jobs:
 #           docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
         os:
           - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-20.04' }}"
-            docker: "${{ ubuntu:24.04' }}"
+            docker: "${{ 'ubuntu:24.04' }}"
             name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
             code: "ubuntu2004"
             imageos: "ubuntu24"
