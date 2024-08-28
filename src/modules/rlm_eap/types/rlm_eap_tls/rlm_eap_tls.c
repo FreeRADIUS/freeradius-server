@@ -81,7 +81,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
  */
 static int mod_session_init(void *type_arg, eap_handler_t *handler)
 {
-	int		status;
 	tls_session_t	*ssn;
 	rlm_eap_tls_t	*inst;
 	bool		require_client_cert = true;
