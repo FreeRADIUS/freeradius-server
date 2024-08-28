@@ -902,7 +902,7 @@ post_ca:
 		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_USE_DELTAS);
 #endif
 	}
-
+#endif
 
 	/*
 	 *	SSL_ctx_set_verify is now called in the session
