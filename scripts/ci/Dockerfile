@@ -1,7 +1,7 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
-ARG llvm_ver=12
-ARG gcc_ver=9
+ARG llvm_ver=18
+ARG gcc_ver=14
 ARG openssl_ver=3.0.2
 
 ENV DEBIAN_FRONTEND=noninteractive
