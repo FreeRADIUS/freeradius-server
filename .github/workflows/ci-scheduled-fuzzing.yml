@@ -134,7 +134,7 @@ jobs:
     needs:
       - set-matrix
 
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -190,7 +190,7 @@ jobs:
       with:
         use_docker: false
         cc: ${{ matrix.env.CC }}
-        llvm_ver: 12
+        llvm_ver: 18
 
     - name: Show versions
       run: |
