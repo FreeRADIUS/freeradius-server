@@ -57,7 +57,7 @@ jobs:
         #  docker  - the docker image name, if containers are being used
         #  name    - used in the job name only
         os:
-          - { runs_on: "ubuntu-20.04",  code: "ubuntu2004", docker: "ubuntu:24.04", name: "gh-ubuntu24", imageos: "ubuntu24" }
+          - { runs_on: "ubuntu-24.04",  code: "ubuntu2404", docker: "ubuntu:24.04", name: "gh-ubuntu24", imageos: "ubuntu24" }
 
         env:
           - { CC: clang, BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         LIBS_OPTIONAL: no,  LIBS_ALT: no,  TEST_TYPE: fixtures, NAME: linux-clang-lean    }
