@@ -693,7 +693,7 @@ static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tc
 	fr_ldap_query_t		find = { .msgid = -1 }, *query = NULL;
 	request_t		*request;
 	bool			really_no_result = false;
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 
 	/*
 	 *  Reset the idle timeout event
