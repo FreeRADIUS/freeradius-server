@@ -122,13 +122,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	status = eaptls_request(handler->eap_ds, ssn, true);
-	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
-	} else {
-		RDEBUG3("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
-	}
-	if (status == 0) return 0;
+	eaptls_start(handler->eap_ds, ssn->peap_flag);
 
 	/*
 	 *	The next stage to process the packet.
