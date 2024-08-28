@@ -13,7 +13,7 @@ encode-proto Packet = { version = 1, diagnostic = none, state = up, poll = false
 match 20 c0 03 18 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff
 
 decode-proto -
-match Packet-Type = Up, Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = no, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255 }
+match Packet-Type = ::Up, Packet = { version = 1, diagnostic = ::none, state = ::up, poll = no, final = no, control-plane-independent = no, auth-present = no, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255 }
 
 
 #
@@ -25,13 +25,13 @@ encode-proto Packet = { version = 1, diagnostic = none, state = up, poll = false
 match 20 c0 03 18 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff 21 40 03 e8 03 66 6f 6f
 
 decode-proto -
-match Packet-Type = Up, Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = no, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255 }, Additional-Data = { Stripped-User-Name = "foo" }
+match Packet-Type = ::Up, Packet = { version = 1, diagnostic = ::none, state = ::up, poll = no, final = no, control-plane-independent = no, auth-present = no, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255 }, Additional-Data = { Stripped-User-Name = "foo" }
 
 #
 #  With authentication type
 #
 decode-proto 20 c4 03 21 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff 01 0a 0f 00 68 65 6c 6c 6f
-match Packet-Type = Up, Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = yes, demand = no, multipoint = no, detect-multi = 3, length = 33, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255, auth-type = simple-password, auth-type.simple-password = { key-id = 15, reserved = 0, password = "hello" } }
+match Packet-Type = ::Up, Packet = { version = 1, diagnostic = ::none, state = ::up, poll = no, final = no, control-plane-independent = no, auth-present = yes, demand = no, multipoint = no, detect-multi = 3, length = 33, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255, auth-type = ::simple-password, auth-type.simple-password = { key-id = 15, reserved = 0, password = "hello" } }
 
 
 #
@@ -44,7 +44,7 @@ match 20 c4 03 21 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff 00
 #  Because auth-type=0, we can't decode the above text.
 #
 decode-proto -
-match Packet-Type = Up, raw.Packet = 0x20c40321deadbeef211268090000001f0000007f000000ff000a0f0068656c6c6f
+match Packet-Type = ::Up, raw.Packet = 0x20c40321deadbeef211268090000001f0000007f000000ff000a0f0068656c6c6f
 
 #match Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = yes, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255, auth-type.simple-password = { key-id = 0, reserved = 0, password = "hello" } }
 

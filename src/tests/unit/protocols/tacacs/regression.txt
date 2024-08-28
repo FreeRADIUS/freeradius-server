@@ -17,7 +17,7 @@ encode-proto Packet.Version-Major = Plus, Packet.Version-Minor = 0, Packet.Packe
 match c0 02 02 05 e1 66 78 e6 00 00 00 13 01 01 00 00 00 00 0c 61 64 64 72 3d 31 2e 32 2e 33 2e 34
 
 decode-proto -
-match Packet = { Version-Major = Plus, Version-Minor = 0, Packet-Type = Authorization, Sequence-Number = 2, Flags = Unencrypted-Single-Connect, Session-Id = 3781589222, Length = 19 }, Packet-Body-Type = Response, Authorization-Status = Pass-Add, Server-Message = "", Data = 0x, addr = 1.2.3.4
+match Packet = { Version-Major = ::Plus, Version-Minor = 0, Packet-Type = ::Authorization, Sequence-Number = 2, Flags = ::Unencrypted-Single-Connect, Session-Id = 3781589222, Length = 19 }, Packet-Body-Type = ::Response, Authorization-Status = ::Pass-Add, Server-Message = "", Data = 0x, addr = 1.2.3.4
 
 count
 match 7

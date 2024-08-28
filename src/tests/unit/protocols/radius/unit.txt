@@ -22,7 +22,7 @@ match Extended-Attribute-1 = { Unit-Ext-241-Integer = 6809 }
 #  The server *reads* Alive, but *canonicalizes* it to Interim-Update
 #
 pair Acct-Status-Type = Alive
-match Acct-Status-Type = Interim-Update
+match Acct-Status-Type = ::Interim-Update
 
 #
 #  Encoded as two different top-level attributes.

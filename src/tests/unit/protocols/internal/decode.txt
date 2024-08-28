@@ -27,7 +27,7 @@ match 7
 
 # Internal attribute (tests the variable length type encoding)
 decode-pair 20 03 E8 04 00 00 00 0D
-match Packet-Type = Status-Client
+match Packet-Type = ::Status-Client
 returned
 match 8
 

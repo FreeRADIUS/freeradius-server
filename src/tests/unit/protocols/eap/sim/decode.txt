@@ -28,7 +28,7 @@ match RAND = 0x00112233445566770011223344556677, RAND = 0x0011223344556677001122
 
 # Aliased (found)
 decode-pair.sim_tp_decode 0c 01 04 02
-match Notification = Temporarily-Denied
+match Notification = ::Temporarily-Denied
 
 # Aliased (notfound)
 decode-pair.sim_tp_decode 0c 01 ff ff

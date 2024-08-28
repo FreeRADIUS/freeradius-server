@@ -26,16 +26,16 @@ encode-pair Vendor-Specific.3com.User-Access-Level = Visitor, Vendor-Specific.3c
 match 1a 0c 00 00 00 2b 01 06 00 00 00 00 1a 26 00 00 00 2b 3c 20 31 35 35 2e 34 2e 31 32 2e 31 30 30 20 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30
 
 decode-pair -
-match Vendor-Specific = { 3com = { User-Access-Level = Visitor, Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00" } }
+match Vendor-Specific = { 3com = { User-Access-Level = ::Visitor, Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00" } }
 
 #
 #  The VSAs could also be packed into one Vendor-Specific
 #
 decode-pair 1a 2e 00 00 00 2b 1c 02 01 06 00 00 00 00 3c 20 31 35 35 2e 34 2e 31 32 2e 31 30 30 20 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30
-match Vendor-Specific = { 3com = { User-Access-Level = Visitor, Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00" } }
+match Vendor-Specific = { 3com = { User-Access-Level = ::Visitor, Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00" } }
 
 decode-pair 1a 2c 00 00 00 2b 01 06 00 00 00 00 3c 20 31 35 35 2e 34 2e 31 32 2e 31 30 30 20 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30
-match Vendor-Specific = { 3com = { User-Access-Level = Visitor, Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00" } }
+match Vendor-Specific = { 3com = { User-Access-Level = ::Visitor, Ip-Host-Addr = "155.4.12.100 00:00:00:00:00:00" } }
 
 #
 #  Vendor-Specific is of type "vsa", and therefore cannot be assigned values.
@@ -60,7 +60,7 @@ encode-pair Vendor-Specific.Unisphere.LI-Action = off
 match 1a 1a 00 00 13 0a 3a 14 86 2a d5 3d ac 81 44 14 10 34 bc 97 47 38 9a 18 25 e5
 
 decode-pair -
-match Vendor-Specific = { Unisphere = { LI-Action = off } }
+match Vendor-Specific = { Unisphere = { LI-Action = ::off } }
 
 #packet coa_request
 #original null

@@ -15,13 +15,13 @@ encode-pair Vendor-Specific.WiMAX.Capability.Accounting-Capabilities = 1
 match 1a 0c 00 00 60 b5 01 06 00 02 03 01
 
 decode-pair -
-match Vendor-Specific = { WiMAX = { Capability = { Accounting-Capabilities = IP-Session-Based } } }
+match Vendor-Specific = { WiMAX = { Capability = { Accounting-Capabilities = ::IP-Session-Based } } }
 
 encode-pair Vendor-Specific.WiMAX.Capability.Release = "1.0", Vendor-Specific.WiMAX.Capability.Accounting-Capabilities = 1
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 01
 
 decode-pair -
-match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = IP-Session-Based } } }
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = ::IP-Session-Based } } }
 
 encode-pair -
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 01
@@ -201,7 +201,7 @@ match Vendor-Specific = { WiMAX = { Packet-Flow-Descriptor-v2 = { Classifier = {
 #  Simple test for continued attributes
 #
 decode-pair 1a 0e 00 00 60 b5 01 08 80 01 05 31 2e 30 1a 0c 00 00 60 b5 01 06 00 02 03 00
-match Vendor-Specific = { WiMAX = { } }, Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Capabilities = No-Accounting }
+match Vendor-Specific = { WiMAX = { } }, Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Capabilities = ::No-Accounting }
 
 #
 #  See if encoding multiple attributes works
@@ -299,7 +299,7 @@ encode-pair Vendor-Specific.WiMAX.Capability = { Release = "1.0", Accounting-Cap
 match 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 00
 
 decode-pair -
-match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = No-Accounting } } }
+match Vendor-Specific = { WiMAX = { Capability = { Release = "1.0", Accounting-Capabilities = ::No-Accounting } } }
 
 
 count

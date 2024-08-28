@@ -31,7 +31,7 @@ encode-pair ANI-Access-Technology-Type = 3GPP2-NB-IOT
 match 00 69 00 02 00 0d
 
 decode-pair -
-match ANI-Access-Technology-Type = 3GPP2-NB-IOT
+match ANI-Access-Technology-Type = ::3GPP2-NB-IOT
 
 #
 #  4 byte unsigned integer (uint32)

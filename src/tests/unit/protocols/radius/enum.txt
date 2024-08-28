@@ -12,7 +12,7 @@ encode-pair Unit-TLV = { Test-Enum-Integer64 = one }
 match fe 0c 0c 0a 00 00 00 00 00 00 00 01
 
 decode-pair -
-match Unit-TLV = { Test-Enum-Integer64 = one }
+match Unit-TLV = { Test-Enum-Integer64 = ::one }
 
 #
 #  Same enum names, different attribute.
@@ -22,7 +22,7 @@ match fe 08 0d 06 00 00 00 01
 
 #  This value is looked up as an an enum!
 decode-pair -
-match Unit-TLV = { Test-Enum-Integer32 = one }
+match Unit-TLV = { Test-Enum-Integer32 = ::one }
 
 count
 match 11

@@ -12,7 +12,7 @@ encode-pair Authentication = { protocol = 1, algorithm = 1, rdm = 1, replay-dete
 match 5a 23 01 01 01 00 00 00 00 de ad be ef 00 00 21 12 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa ab
 
 decode-pair -
-match Authentication = { protocol = delayed-authentication, algorithm = HMAC-SHA1-keyed-hash, RDM = monotonically-increasing, replay-detection = 3735928559, algorithm.HMAC-SHA1-keyed-hash = { key-id = 8466, hash = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab } }
+match Authentication = { protocol = ::delayed-authentication, algorithm = ::HMAC-SHA1-keyed-hash, RDM = ::monotonically-increasing, replay-detection = 3735928559, algorithm.HMAC-SHA1-keyed-hash = { key-id = 8466, hash = 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab } }
 
 count
 match 7

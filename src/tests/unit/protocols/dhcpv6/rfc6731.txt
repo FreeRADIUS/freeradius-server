@@ -32,7 +32,7 @@ encode-pair RDNSS-Selection = { DNS-Recursive-Name-Server = ::1, Preference = Hi
 match 00 4a 00 22 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 01 03 6e 73 31 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
 
 decode-pair -
-match RDNSS-Selection = { DNS-Recursive-Name-Server = ::1, Preference = High, FQDN = "ns1.example.com" }
+match RDNSS-Selection = { DNS-Recursive-Name-Server = ::1, Preference = ::High, FQDN = "ns1.example.com" }
 
 #
 #  RFC 8415 Section 10 says that DNS labels MUST NOT be stored in compressed form.
@@ -41,7 +41,7 @@ encode-pair RDNSS-Selection = { DNS-Recursive-Name-Server = ::1, Preference = Hi
 match 00 4a 00 33 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 01 03 6e 73 31 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00 03 6e 73 32 07 65 78 61 6d 70 6c 65 03 63 6f 6d 00
 
 decode-pair -
-match RDNSS-Selection = { DNS-Recursive-Name-Server = ::1, Preference = High, FQDN = "ns1.example.com", FQDN = "ns2.example.com" }
+match RDNSS-Selection = { DNS-Recursive-Name-Server = ::1, Preference = ::High, FQDN = "ns1.example.com", FQDN = "ns2.example.com" }
 
 count
 match 11

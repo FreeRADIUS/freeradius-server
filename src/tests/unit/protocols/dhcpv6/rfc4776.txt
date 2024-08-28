@@ -16,7 +16,7 @@ encode-pair Geoconf-Civic = { What = Client-Location, Country-Code = "CA", Civic
 match 00 24 00 07 02 43 41 01 02 4f 4e
 
 decode-pair -
-match Geoconf-Civic = { What = Client-Location, Country-Code = "CA", Civic-Address-Elements = 0x01024f4e }
+match Geoconf-Civic = { What = ::Client-Location, Country-Code = "CA", Civic-Address-Elements = 0x01024f4e }
 
 count
 match 7

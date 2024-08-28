@@ -109,7 +109,7 @@ encode-pair Client-ID.DUID = UUID, Client-ID.DUID.UUID.Value = 0x000102030405060
 match 00 01 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 decode-pair -
-match Client-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
+match Client-ID = { DUID = ::UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
 
 #
 #  21.3. Server Identifier Option
@@ -141,7 +141,7 @@ encode-pair Server-ID.DUID = UUID, Server-ID.DUID.UUID.Value = 0x000102030405060
 match 00 02 00 12 00 04 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
 decode-pair -
-match Server-ID = { DUID = UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
+match Server-ID = { DUID = ::UUID, DUID.UUID = { Value = 0x000102030405060708090a0b0c0d0e0f } }
 
 #
 #  21.4. Identity Association for Non-temporary Addresses Option
@@ -335,7 +335,7 @@ encode-pair Option-Request = Unicast, Option-Request = IA-Addr
 match 00 06 00 04 00 0c 00 05
 
 decode-pair -
-match Option-Request = Unicast, Option-Request = IA-Addr
+match Option-Request = ::Unicast, Option-Request = ::IA-Addr
 
 #
 #  21.8.  Preference Option
@@ -456,7 +456,7 @@ encode-pair Auth.Protocol = Reconfigure-Key, Auth.Algorithm = HMAC-MD5, Auth.Rep
 match 00 0b 00 1a 03 01 00 00 00 00 00 49 96 02 d2 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15
 
 decode-pair -
-match Auth = { Protocol = Reconfigure-Key, Algorithm = HMAC-MD5, Replay-Detection-Method = Monotonicly-Increasing-Value, Replay-Detection = 1234567890, Information = 0x010203040506070809101112131415 }
+match Auth = { Protocol = ::Reconfigure-Key, Algorithm = ::HMAC-MD5, Replay-Detection-Method = ::Monotonicly-Increasing-Value, Replay-Detection = 1234567890, Information = 0x010203040506070809101112131415 }
 
 #
 #  21.12.  Server Unicast Option
@@ -530,7 +530,7 @@ encode-pair Status-Code.Value = NoPrefixAvail, Status-Code.Message = "Tapioca co
 match 00 0d 00 14 00 06 54 61 70 69 6f 63 61 20 63 6f 6d 20 71 75 65 69 6a 6f
 
 decode-pair -
-match Status-Code = { Value = NoPrefixAvail, Message = "Tapioca com queijo" }
+match Status-Code = { Value = ::NoPrefixAvail, Message = "Tapioca com queijo" }
 
 #
 #  21.14.  Rapid Commit Option
@@ -744,7 +744,7 @@ encode-pair Reconf-Msg = InformationRequest
 match 00 13 00 01 0b
 
 decode-pair -
-match Reconf-Msg = InformationRequest
+match Reconf-Msg = ::InformationRequest
 
 #
 #  21.20.  Reconfigure Accept Option

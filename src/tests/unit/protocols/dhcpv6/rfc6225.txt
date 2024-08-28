@@ -88,6 +88,6 @@ encode-pair GeoLocation.Latitude-Uncertainty = 1, GeoLocation.Latitude = 0x4235a
 match 00 3f 00 10 04 42 35 af a6 04 c2 97 64 f6 10 40 00 00 63 42
 
 decode-pair -
-match Geolocation = { Latitude-Uncertainty = 1, Latitude = 1110814630, Longitude-Uncertainty = 1, Longitude = 3264701686, Altitude-Type = Meters, Altitude-Uncertainty = 1, Altitude = 99, Version = 1, Reserved = 0, Datum = NAD83-NAVD88 }
+match Geolocation = { Latitude-Uncertainty = 1, Latitude = 1110814630, Longitude-Uncertainty = 1, Longitude = 3264701686, Altitude-Type = ::Meters, Altitude-Uncertainty = 1, Altitude = 99, Version = 1, Reserved = 0, Datum = ::NAD83-NAVD88 }
 count
 match 7

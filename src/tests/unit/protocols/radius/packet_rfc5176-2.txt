@@ -40,7 +40,7 @@ fuzzer-out radius
 #    |  value     = '\x00\x00\x00\xd1'
 #
 decode-proto 01 c8 00 37 bc 6e 70 22 44 5e 35 98 35 69 2c 8c 12 1c 19 85 01 05 62 6f 62 02 12 12 f4 1b ff 81 0d be 22 94 a8 ee dc 62 c5 7d 03 65 06 00 00 00 c9 65 06 00 00 00 d1
-match Packet-Type = Access-Request, Packet-Authentication-Vector = 0xbc6e7022445e359835692c8c121c1985, User-Name = "bob", User-Password = "\204\032\0225\365\360\3048\204\356\351\370b\321\377\210", Error-Cause = Residual-Context-Removed, Error-Cause = 209
+match Packet-Type = ::Access-Request, Packet-Authentication-Vector = 0xbc6e7022445e359835692c8c121c1985, User-Name = "bob", User-Password = "\204\032\0225\365\360\3048\204\356\351\370b\321\377\210", Error-Cause = ::Residual-Context-Removed, Error-Cause = 209
 
 count
 match 5

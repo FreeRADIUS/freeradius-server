@@ -109,7 +109,19 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t c
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
 	FR_SBUFF_IN_STRCPY_RETURN(&our_out, token);
 	FR_SBUFF_IN_CHAR_RETURN(&our_out, ' ');
-	FR_SBUFF_RETURN(fr_pair_print_value_quoted, &our_out, vp, T_DOUBLE_QUOTED_STRING);
+
+	if (fr_type_is_leaf(vp->vp_type) && vp->data.enumv && vp->data.enumv->flags.has_value) {
+		char const *name;
+
+		name = fr_dict_enum_name_by_value(vp->data.enumv, &vp->data);
+		if (!name) goto no_enumv;
+
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ':', ':');
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, name);
+	} else {
+	no_enumv:
+		FR_SBUFF_RETURN(fr_pair_print_value_quoted, &our_out, vp, T_DOUBLE_QUOTED_STRING);
+	}
 
 	FR_SBUFF_SET_RETURN(out, &our_out);
 }
