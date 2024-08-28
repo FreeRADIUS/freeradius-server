@@ -114,7 +114,7 @@ jobs:
 
     - name: Install tacacs_plus
       run: |
-        pip3 install tacacs_plus --break-system-packages
+        PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install tacacs_plus
 
     #
     #  Ensure the homebrew version of clang is run rather than the Apple compiler.

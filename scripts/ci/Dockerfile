@@ -74,7 +74,7 @@ RUN apt-get install -y --no-install-recommends /tmp/freeradius-build-deps.deb &&
 	apt-get install -y --no-install-recommends /tmp/freeradius-build-deps-extra.deb && \
 	apt-get --purge -y remove freeradius-build-deps
 
-RUN pip3 install tacacs_plus --break-system-packages
+RUN PIP_BREAK_SYSTEM_PACKAGES=1 pip3 install tacacs_plus
 
 #
 #  Install Clang and GCC
