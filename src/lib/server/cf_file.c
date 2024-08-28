@@ -1380,7 +1380,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 		/*
 		 *	In the configuration files, conditions end with ") {" or just "{"
 		 */
-		if ((depth == 0) && terminal && terminal[(uint8_t) *p]) {
+		if ((depth == 0) && terminal[(uint8_t) *p]) {
 			return p - start;
 		}
 
@@ -1502,7 +1502,7 @@ static ssize_t fr_skip_condition(char const *start, char const *end, bool const 
 	 */
 	if (eol) *eol = (depth > 0);
 
-	if (terminal && terminal[(uint8_t) *p]) return p - start;
+	if (terminal[(uint8_t) *p]) return p - start;
 
 	fr_strerror_const("Unexpected end of condition");
 	return -(p - start);
