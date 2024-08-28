@@ -161,6 +161,7 @@
 
 #ifdef HAVE_REDIS_SSL
 #include <freeradius-devel/tls/strerror.h>
+#include <freeradius-devel/tls/session.h>
 #include <hiredis/hiredis_ssl.h>
 #endif
 
