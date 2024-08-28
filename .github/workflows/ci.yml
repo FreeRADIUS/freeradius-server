@@ -68,8 +68,6 @@ jobs:
         #  code    - the name/version of the OS (for step evaluations below)
         #  docker  - the docker image name, if containers are being used
         #  name    - used in the job name only
-
-        #  Add this back when the base self-hosted docker image has been updated to 24.04
         os:
           - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-20.04' }}"
             docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
