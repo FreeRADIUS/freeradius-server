@@ -32,7 +32,6 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  },
               { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky"  },
             ]
           }
@@ -42,7 +41,7 @@ jobs:
           M=$(cat <<EOF
           {
             "env": [
-              { "NAME": "rocky-8",  "OS": "rockylinux/rockylinux:8",       "DIST": "rocky"  }
+              { "NAME": "rocky-9",  "OS": "rockylinux/rockylinux:9",       "DIST": "rocky"  }
             ]
           }
         EOF
@@ -72,18 +71,6 @@ jobs:
     name: "RPM build"
 
     steps:
-    - name: Extra repos for Rocky Linux 8
-      if: ${{ matrix.env.NAME == 'rocky-8' }}
-      run: |
-        echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
-        echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
-        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch'  >> /etc/yum.repos.d/ltb-project.repo
-        echo 'enabled=1'                                                  >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
-        rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
-        dnf install -y epel-release
-
     - name: Enable PowerTools / CRB
       run: |
         dnf install -y dnf-utils dnf-plugins-core
@@ -212,19 +199,6 @@ jobs:
         echo 'gpgcheck=1'                                                                           >> /etc/yum.repos.d/networkradius-extras.repo
         echo 'gpgkey=https://packages.networkradius.com/pgp/packages@networkradius.com'             >> /etc/yum.repos.d/networkradius-extras.repo
         rpm --import https://packages.networkradius.com/pgp/packages@networkradius.com
-
-
-    - name: Extra repos
-      if: ${{ matrix.env.NAME == 'stream-8' || matrix.env.NAME == 'rocky-8' }}
-      run: |
-        echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
-        echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
-        echo 'baseurl=https://ltb-project.org/rpm/$releasever/$basearch'  >> /etc/yum.repos.d/ltb-project.repo
-        echo 'enabled=1'                                                  >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgcheck=1'                                                 >> /etc/yum.repos.d/ltb-project.repo
-        echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
-        rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
-        dnf install -y epel-release
 
     - name: Enable PowerTools / CRB
       run: |
