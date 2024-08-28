@@ -426,10 +426,9 @@ static void fr_md5_local_final(uint8_t out[static MD5_DIGEST_LENGTH], fr_md5_ctx
 	fr_md5_update(ctx_local, PADDING, padlen - 8); /* padlen - 8 <= 64 */
 	fr_md5_update(ctx_local, count, 8);
 
-	if (out != NULL) {
-		for (i = 0; i < 4; i++)
-			PUT_32BIT_LE(out + i * 4, ctx_local->state[i]);
-	}
+	for (i = 0; i < 4; i++)
+		PUT_32BIT_LE(out + i * 4, ctx_local->state[i]);
+
 	memset(ctx_local, 0, sizeof(*ctx_local));	/* in case it's sensitive */
 }
 
