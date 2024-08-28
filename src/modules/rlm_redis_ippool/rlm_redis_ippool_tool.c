@@ -249,7 +249,7 @@ static char lua_assign_cmd[] =
 	"redis.call('SET', owner_key, ARGV[1])" EOL					/* 20 */
 	"redis.call('HSET', ip_key, 'device', ARGV[2], 'counter', 0)" EOL		/* 21 */
 	"if ARGV[3] then" EOL								/* 22 */
-	"  redis.call('HSET', ip_key, range, ARGV[3])" EOL				/* 23 */
+	"  redis.call('HSET', ip_key, 'range', ARGV[3])" EOL				/* 23 */
 	"end" EOL									/* 24 */
 	"return 1";									/* 25 */
 
