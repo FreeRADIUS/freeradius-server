@@ -55,7 +55,7 @@ jobs:
       uses: cross-platform-actions/action@v0.25.0
       with:
         operating_system: freebsd
-        version: '13.2'
+        version: '14.0'
         sync_files: runner-to-vm
         memory: 4G
         environment_variables: HOSTAPD_BUILD_DIR HOSTAPD_GIT_TAG NO_PERFORMANCE_TESTS
