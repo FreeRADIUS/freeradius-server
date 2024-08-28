@@ -637,8 +637,8 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		u->id++;
 	}
 
-	DEBUG("%s - Sending %s ID %d length %ld over connection %s",
-	      h->module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->name);
+	DEBUG("%s - Sending %s ID %d over connection %s",
+	      h->module_name, fr_radius_packet_name[u->code], u->id, h->name);
 
 	if (encode(h->inst, h->status_request, u, u->id) < 0) {
 	fail:
@@ -1297,6 +1297,11 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		fr_pair_value_memdup(vp, (uint8_t const *) &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
 	}
+
+	/*
+	 *	Update our version of the packet length.
+	 */
+	u->packet_len = packet_len;
 
 	/*
 	 *	Now that we're done mangling the packet, sign it.
