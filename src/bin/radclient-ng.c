@@ -205,8 +205,7 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
-#if defined(OPENSSL_VERSION_NUMBER) && OPENSSL_VERSION_NUMBER >= 0x30000000L
-#  include <openssl/provider.h>
+#include <openssl/provider.h>
 
 static OSSL_PROVIDER *openssl_default_provider = NULL;
 static OSSL_PROVIDER *openssl_legacy_provider = NULL;
@@ -248,10 +247,6 @@ static void openssl3_free(void)
 	}
 	openssl_legacy_provider = NULL;
 }
-#else
-#define openssl3_init()
-#define openssl3_free()
-#endif
 
 static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void *ctx)
 {

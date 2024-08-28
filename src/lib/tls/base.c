@@ -34,9 +34,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "bio.h"
 
 #include <openssl/conf.h>
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-#  include <openssl/provider.h>
-#endif
+#include <openssl/provider.h>
 
 #include <freeradius-devel/server/base.h>
 #include <freeradius-devel/tls/attrs.h>
@@ -58,10 +56,8 @@ _Thread_local TALLOC_CTX 	*ssl_talloc_ctx;
  */
 static _Thread_local bool	*async_pool_init;
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 static OSSL_PROVIDER *openssl_default_provider = NULL;
 static OSSL_PROVIDER *openssl_legacy_provider = NULL;
-#endif
 
 static uint32_t tls_instance_count = 0;
 
@@ -349,7 +345,6 @@ void fr_openssl_free(void)
 	fr_tls_bio_free();
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 static void _openssl_provider_free(void)
 {
 	if (openssl_default_provider && !OSSL_PROVIDER_unload(openssl_default_provider)) {
@@ -362,14 +357,6 @@ static void _openssl_provider_free(void)
 	}
 	openssl_legacy_provider = NULL;
 }
-#endif
-
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-static void _openssl_engine_free(void)
-{
-	fr_tls_engine_free_all();
-}
-#endif
 
 static int fr_openssl_cleanup(UNUSED void *uctx)
 {
@@ -411,7 +398,6 @@ int fr_openssl_init(void)
 		return -1;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	/*
 	 *	Load the default provider for most algorithms
 	 */
@@ -431,20 +417,13 @@ int fr_openssl_init(void)
 		fr_tls_log(NULL, "Failed loading legacy provider");
 		return -1;
 	}
-#endif
 
 	/*
 	 *	It's best to use OpenSSL's cleanup stack
 	 *	as then everything is cleaned up relative
 	 *	to the OPENSSL_cleanup() call.
 	 */
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	OPENSSL_atexit(_openssl_provider_free);
-#endif
-
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	OPENSSL_atexit(_openssl_engine_free);
-#endif
 
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
@@ -452,14 +431,6 @@ int fr_openssl_init(void)
 	 *	certificates.
 	 */
 	EVP_add_digest(EVP_sha256());
-
-	/*
-	 *	FIXME - This should be done _after_
-	 *	running any engine controls.
-	 */
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	fr_tls_engine_load_builtin();
-#endif
 
 	fr_tls_log_init();
 
@@ -489,17 +460,10 @@ int fr_openssl_init(void)
  */
 int fr_openssl_fips_mode(bool enabled)
 {
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (!EVP_set_default_properties(NULL, enabled ? "fips=yes" : "fips=no")) {
 		fr_tls_log(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
 		return -1;
 	}
-#else
-	if (!FIPS_mode_set(enabled ? 1 : 0)) {
-		fr_tls_log(NULL, "Failed %s OpenSSL FIPS mode", enabled ? "enabling" : "disabling");
-		return -1;
-	}
-#endif
 
 	return 0;
 }

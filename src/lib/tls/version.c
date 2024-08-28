@@ -51,11 +51,7 @@ int fr_openssl_version_consistent(void)
 {
 	unsigned long ssl_linked;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	ssl_linked = OpenSSL_version_num();
-#else
-	ssl_linked = (unsigned long)SSLeay();
-#endif
 
 	/*
 	 *	Major and minor versions mismatch, that's bad.
@@ -159,7 +155,6 @@ char const *fr_openssl_version_range(uint32_t low, uint32_t high)
 	return buffer;
 }
 
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 /** Return the linked SSL version number as a string
  *
  * @return pointer to a static buffer containing the version string.
@@ -191,40 +186,6 @@ char const *fr_openssl_version_expanded(void)
 
 	return buffer;
 }
-#  else
-/** Return the linked SSL version number as a string
- *
- * @return pointer to a static buffer containing the version string.
- */
-char const *fr_openssl_version_basic(void)
-{
-	long ssl_linked;
-
-	ssl_linked = SSLeay();
-	return fr_openssl_version_str_from_num((uint32_t)ssl_linked);
-}
-
-/** Print the current linked version of Openssl
- *
- * Print the currently linked version of the OpenSSL library.
- *
- * @note Not thread safe.
- *
- * @return pointer to a static buffer containing libssl version information.
- */
-char const *fr_openssl_version_expanded(void)
-{
-	static _Thread_local char buffer[256];
-	long ssl_linked = SSLeay();
-
-	snprintf(buffer, sizeof(buffer), "%s 0x%.8x (%s)",
-		 SSLeay_version(SSLEAY_VERSION),		/* Not all builds include a useful version number */
-		 ssl_linked,
-		 fr_openssl_version_str_from_num(v));
-
-	return buffer;
-}
-#  endif
 
 #  ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct {
@@ -284,13 +245,7 @@ int fr_openssl_version_check(char const *acknowledged)
 	if (strcmp(acknowledged, "yes") == 0) return 0;
 
 	/* Check for bad versions */
-
-#    if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	ssl_linked = OpenSSL_version_num();
-#    else
-	ssl_linked = (unsigned long)SSLeay();
-#    endif
-
 	for (i = 0; i < (NUM_ELEMENTS(fr_openssl_defects)); i++) {
 		fr_openssl_defect_t *defect = &fr_openssl_defects[i];
 

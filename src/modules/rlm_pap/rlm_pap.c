@@ -122,12 +122,10 @@ static fr_table_num_sorted_t const pbkdf2_crypt_names[] = {
 	{ L("HMACSHA2+256"),	FR_SSHA2_256 },
 	{ L("HMACSHA2+384"),	FR_SSHA2_384 },
 	{ L("HMACSHA2+512"),	FR_SSHA2_512 },
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	{ L("HMACSHA3+224"),	FR_SSHA3_224 },
 	{ L("HMACSHA3+256"),	FR_SSHA3_256 },
 	{ L("HMACSHA3+384"),	FR_SSHA3_384 },
 	{ L("HMACSHA3+512"),	FR_SSHA3_512 },
-#  endif
 };
 static size_t pbkdf2_crypt_names_len = NUM_ELEMENTS(pbkdf2_crypt_names);
 
@@ -431,7 +429,6 @@ PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_256, "SSHA2-256", EVP_sha
 PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_384, "SSHA2-384", EVP_sha384())
 PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha2_512, "SSHA2-512", EVP_sha512())
 
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_224, "SHA3-224", EVP_sha3_224())
 PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_256, "SHA3-256", EVP_sha3_256())
 PAP_AUTH_EVP_MD(pap_auth_evp_md, pap_auth_sha3_384, "SHA3-384", EVP_sha3_384())
@@ -440,7 +437,6 @@ PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_224, "SSHA3-224", EVP_sha
 PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_256, "SSHA3-256", EVP_sha3_256())
 PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_384, "SSHA3-384", EVP_sha3_384())
 PAP_AUTH_EVP_MD(pap_auth_evp_md_salted, pap_auth_ssha3_512, "SSHA3-512", EVP_sha3_512())
-#  endif
 
 /** Validates Crypt::PBKDF2 LDAP format strings
  *
@@ -527,7 +523,6 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 		digest_len = SHA512_DIGEST_LENGTH;
 		break;
 
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	case FR_SSHA3_224:
 		evp_md = EVP_sha3_224();
 		digest_len = SHA224_DIGEST_LENGTH;
@@ -547,7 +542,6 @@ static inline CC_HINT(nonnull) unlang_action_t pap_auth_pbkdf2_parse(rlm_rcode_t
 		evp_md = EVP_sha3_512();
 		digest_len = SHA512_DIGEST_LENGTH;
 		break;
-#  endif
 
 	default:
 		REDEBUG("Unknown PBKDF2 hash method \"%.*s\"", (int)(q - p), p);
@@ -889,8 +883,6 @@ static const pap_auth_func_t auth_func_table[] = {
 	[FR_SSHA2_256]	= pap_auth_ssha2_256,
 	[FR_SSHA2_384]	= pap_auth_ssha2_384,
 	[FR_SSHA2_512]	= pap_auth_ssha2_512,
-
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	[FR_SHA3]	= pap_auth_dummy,
 	[FR_SHA3_224]	= pap_auth_sha3_224,
 	[FR_SHA3_256]	= pap_auth_sha3_256,
@@ -900,7 +892,6 @@ static const pap_auth_func_t auth_func_table[] = {
 	[FR_SSHA3_256]	= pap_auth_ssha3_256,
 	[FR_SSHA3_384]	= pap_auth_ssha3_384,
 	[FR_SSHA3_512]	= pap_auth_ssha3_512,
-#  endif
 #endif	/* HAVE_OPENSSL_EVP_H */
 };
 

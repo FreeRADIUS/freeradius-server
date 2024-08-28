@@ -92,10 +92,8 @@ static conf_parser_t tls_cache_config[] = {
 			 .dflt = "%{EAP-Type}%interpreter(server)", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("lifetime", fr_tls_cache_conf_t, lifetime), .dflt = "1d" },
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	{ FR_CONF_OFFSET("require_extended_master_secret", fr_tls_cache_conf_t, require_extms), .dflt = "yes" },
 	{ FR_CONF_OFFSET("require_perfect_forward_secrecy", fr_tls_cache_conf_t, require_pfs), .dflt = "no" },
-#endif
 
 	{ FR_CONF_OFFSET("session_ticket_key", fr_tls_cache_conf_t, session_ticket_key) },
 

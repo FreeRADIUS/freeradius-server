@@ -380,10 +380,6 @@ void dependency_version_print(void)
 	CONF_PAIR *cp;
 
 	if (DEBUG_ENABLED3) {
-#if defined(WITH_TLS) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
-		ENGINE *engine;
-		char const *engine_id;
-#endif
 		int max = 0, len;
 
 		MEM(features = cf_section_alloc(NULL, NULL, "feature", NULL));
@@ -407,15 +403,6 @@ void dependency_version_print(void)
 			len = talloc_array_length(cf_pair_attr(cf_item_to_pair(ci)));
 			if (max < len) max = len;
 		}
-
-#if defined(WITH_TLS) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
-		for (engine = ENGINE_get_first();
-		     engine;
-		     engine = ENGINE_get_next(engine)) {
-			len = strlen(ENGINE_get_id(engine) + 1);
-			if (max < len) max = len;
-		}
-#endif
 
 		for (ci = cf_item_next(features, NULL);
 		     ci;
@@ -445,18 +432,6 @@ void dependency_version_print(void)
 
 		talloc_free(features);
 		talloc_free(versions);
-
-#if defined(WITH_TLS) && (OPENSSL_VERSION_NUMBER < 0x30000000L)
-		DEBUG3("OpenSSL engines:");
-		for (engine = ENGINE_get_first();
-		     engine;
-		     engine = ENGINE_get_next(engine)) {
-			engine_id = ENGINE_get_id(engine);
-
-			DEBUG3("  %s%.*s : %s", engine_id, (int)(max - (strlen(engine_id) + 1)), spaces,
-			       ENGINE_get_name(engine));
-		}
-#endif
 
 		DEBUG2("Endianness:");
 #ifdef WORDS_BIGENDIAN

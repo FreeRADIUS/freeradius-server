@@ -1148,7 +1148,6 @@ void tls_cache_disable_stateless_resumption(SSL_CTX *ctx)
 	ctx_options |= SSL_OP_NO_TICKET;
 	SSL_CTX_set_options(ctx, ctx_options);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	/*
 	 *	This controls the number of stateful or stateless
 	 *	tickets generated with TLS 1.3.  In OpenSSL 1.1.0
@@ -1156,7 +1155,6 @@ void tls_cache_disable_stateless_resumption(SSL_CTX *ctx)
 	 *	SSL_SESS_CACHE_OFF is not good enough.
 	 */
 	SSL_CTX_set_num_tickets(ctx, 0);
-#endif
 }
 
 /** Disable stateful session resumption for a given TLS ctx
@@ -1501,9 +1499,7 @@ int fr_tls_cache_ctx_init(SSL_CTX *ctx, fr_tls_cache_conf_t const *cache_conf)
 		 *	many session tickets by default (2), and we only
 		 *      need one.
 		 */
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 		SSL_CTX_set_num_tickets(ctx, 1);
-#endif
 	}
 		break;
 	}

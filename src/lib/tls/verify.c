@@ -182,12 +182,7 @@ int fr_tls_verify_cert_cb(int ok, X509_STORE_CTX *x509_ctx)
 		STACK_OF(X509)	*our_chain;
 		int		i;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 		our_chain = X509_STORE_CTX_get0_chain(x509_ctx);
-#else
-		our_chain = X509_STORE_CTX_get_chain(x509_ctx);
-#endif
-
 		RDEBUG3("Certificate chain - %i cert(s) untrusted", untrusted);
 		for (i = sk_X509_num(our_chain); i > 0 ; i--) {
 			X509 *this_cert = sk_X509_value(our_chain, i - 1);
@@ -358,11 +353,7 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 	/*
 	 *	If there's no client certificate, we just return OK.
 	 */
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	cert = SSL_get0_peer_certificate(ssl);			/* Does not increase ref count */
-#else
-	cert = SSL_get_peer_certificate(ssl);			/* Increases ref count */
-#endif
 	if (!cert) return 1;
 
 	ssl_ctx = SSL_get_SSL_CTX(ssl);
@@ -400,9 +391,6 @@ int fr_tls_verify_cert_chain(request_t *request, SSL *ssl)
 		}
 	}
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	X509_free(cert);
-#endif
 	X509_STORE_CTX_free(store_ctx);
 
 	return ret;

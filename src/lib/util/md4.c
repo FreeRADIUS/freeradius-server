@@ -37,10 +37,7 @@ static _Thread_local fr_md4_free_list_t *md4_array;
 #  include <openssl/evp.h>
 #  include <openssl/crypto.h>
 #  include <openssl/err.h>
-
-#  if OPENSSL_VERSION_NUMBER >= 0x30000000L
-#    include <openssl/provider.h>
-#  endif
+#  include <openssl/provider.h>
 
 static int have_openssl_md4 = -1;
 
@@ -322,11 +319,7 @@ static fr_md4_ctx_t *fr_md4_local_ctx_alloc(void)
 		 *	md4 functions, and call the OpenSSL init
 		 *	function.
 		 */
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 		if (!EVP_default_properties_is_fips_enabled(NULL)) {
-#else
-		if (FIPS_mode() == 0) {
-#endif
 			have_openssl_md4 = 1;
 
 			/*

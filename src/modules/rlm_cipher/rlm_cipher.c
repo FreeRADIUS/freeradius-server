@@ -59,6 +59,8 @@ static int cipher_rsa_certificate_file_load(TALLOC_CTX *ctx, void *out, UNUSED v
 typedef enum {
 	RLM_CIPHER_TYPE_INVALID = 0,
 	RLM_CIPHER_TYPE_RSA = 1,
+	RLM_CIPHER_TYPE_SYMMETRIC = 2				//!< Any symmetric cipher available via
+								///< OpenSSL's EVP interface.
 } cipher_type_t;
 
 /** Certificate validation modes
@@ -99,15 +101,13 @@ static fr_table_num_sorted_t const cipher_rsa_padding[] = {
 	{ L("none"),	RSA_NO_PADDING		},
 	{ L("oaep"),	RSA_PKCS1_OAEP_PADDING	},		/* PKCS OAEP padding */
 	{ L("pkcs"),	RSA_PKCS1_PADDING	},		/* PKCS 1.5 */
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	{ L("ssl"),	RSA_SSLV23_PADDING	},
-#endif
 	{ L("x931"),	RSA_X931_PADDING	}
 };
 static size_t cipher_rsa_padding_len = NUM_ELEMENTS(cipher_rsa_padding);
 
 static fr_table_num_sorted_t const cipher_type[] = {
-	{ L("rsa"),	RLM_CIPHER_TYPE_RSA	}
+	{ L("rsa"),		RLM_CIPHER_TYPE_RSA		},
+	{ L("symmetric"),	RLM_CIPHER_TYPE_SYMMETRIC	}
 };
 static size_t cipher_type_len = NUM_ELEMENTS(cipher_type);
 
@@ -235,7 +235,6 @@ static const conf_parser_t rsa_config[] = {
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, CONF_FLAG_NOT_EMPTY, rlm_cipher_t, type), .func = cipher_type_parse, .dflt = "rsa" },
 	{ FR_CONF_OFFSET_SUBSECTION("rsa", 0, rlm_cipher_t, rsa, rsa_config), .subcs_size = sizeof(cipher_rsa_t), .subcs_type = "cipher_rsa_t" },
-
 	CONF_PARSER_TERMINATOR
 };
 
@@ -1035,9 +1034,6 @@ static int cipher_rsa_padding_params_set(EVP_PKEY_CTX *evp_pkey_ctx, cipher_rsa_
 	switch (rsa_inst->padding) {
 	case RSA_NO_PADDING:
 	case RSA_X931_PADDING:
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-	case RSA_SSLV23_PADDING:
-#endif
 	case RSA_PKCS1_PADDING:
 		return 0;
 

@@ -46,9 +46,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/rand.h>
 #include <openssl/dh.h>
 #include <openssl/x509v3.h>
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-#  include <openssl/provider.h>
-#endif
+#include <openssl/provider.h>
 
 #ifndef OPENSSL_NO_ECDH
 static int ctx_ecdh_curve_set(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
@@ -80,11 +78,7 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	BIO	*bio;
 	int	ret;
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	EVP_PKEY *dh = NULL;
-#else
-	DH *dh = NULL;
-#endif
 
 	if (!file) return 0;
 
@@ -98,27 +92,17 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 	 *
 	 * Change suggested by @t8m
 	 */
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-#  if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	if (EVP_default_properties_is_fips_enabled(NULL)) {
-#  else
-	if (FIPS_mode() > 0) {
-#endif
 		WARN(LOG_PREFIX ": Ignoring user-selected DH parameters in FIPS mode. Using defaults.");
 		return 0;
 	}
-#endif
 
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
 		ERROR("Unable to open DH file - %s", file);
 		return -1;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	dh = PEM_read_bio_Parameters(bio, &dh);
-#else
-	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
-#endif
 	BIO_free(bio);
 	if (!dh) {
 		WARN("Unable to set DH parameters.  DH cipher suites may not work!");
@@ -126,13 +110,7 @@ static int ctx_dh_params_load(SSL_CTX *ctx, char *file)
 		return 0;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	ret = SSL_CTX_set0_tmp_dh_pkey(ctx, dh);
-#else
-	ret = SSL_CTX_set_tmp_dh(ctx, dh);
-	DH_free(dh);
-#endif
-
 	if (ret < 0) {
 		ERROR("Unable to set DH parameters");
 		return -1;
@@ -460,13 +438,9 @@ DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 
 static inline CC_HINT(always_inline)
 int tls_ctx_version_set(
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 			UNUSED
-#endif
 			int *ctx_options, SSL_CTX *ctx, fr_tls_conf_t const *conf)
 {
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
 	/*
 	 *	SSL_CTX_set_(min|max)_proto_version was included in OpenSSL 1.1.0
 	 *
@@ -552,45 +526,6 @@ int tls_ctx_version_set(
 			goto error;
 		}
 	}
-#else
-	/*
-	 *	OpenSSL < 1.1.0 - This doesn't need to change when new TLS versions are issued
-	 *	as new TLS versions will never be added to older OpenSSL versions.
-	 */
-	{
-		int ctx_tls_versions = 0;
-
-		/*
-		 *	We never want SSLv2 or SSLv3.
-		 */
-		*ctx_options |= SSL_OP_NO_SSLv2;
-		*ctx_options |= SSL_OP_NO_SSLv3;
-
-#  ifdef SSL_OP_NO_TLSv1
-		if (conf->tls_min_version > (float) 1.0) *ctx_options |= SSL_OP_NO_TLSv1;
-		ctx_tls_versions |= SSL_OP_NO_TLSv1;
-#  endif
-#  ifdef SSL_OP_NO_TLSv1_1
-		if (conf->tls_min_version > (float) 1.1) *ctx_options |= SSL_OP_NO_TLSv1_1;
-		if ((conf->tls_max_version > (float) 0.0) && (conf->tls_max_version < (float) 1.1)) {
-			*ctx_options |= SSL_OP_NO_TLSv1_1;
-		}
-		ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
-#  endif
-#  ifdef SSL_OP_NO_TLSv1_2
-		if (conf->tls_min_version > (float) 1.2) *ctx_options |= SSL_OP_NO_TLSv1_2;
-		if ((conf->tls_max_version > (float) 0.0) && (conf->tls_max_version < (float) 1.2)) {
-			*ctx_options |= SSL_OP_NO_TLSv1_2;
-		}
-		ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
-#  endif
-
-		if ((*ctx_options & ctx_tls_versions) == ctx_tls_versions) {
-			ERROR("You have disabled all available TLS versions");
-			goto error;
-		}
-	}
-#endif
 
 	return 0;
 }
@@ -928,13 +863,11 @@ post_ca:
 	 *	SSL_CTX_set_tmp_dh_callback(ctx, cbtls_dh);
 	 */
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	/*
 	 *	Set the block size for record padding.  This is only
 	 *	used in TLS 1.3.
 	 */
 	if (conf->padding_block_size) SSL_CTX_set_block_padding(ctx, conf->padding_block_size);
-#endif
 
 	/*
 	 *	Set elliptical curve crypto configuration.
@@ -969,7 +902,7 @@ post_ca:
 		X509_STORE_set_flags(cert_vpstore, X509_V_FLAG_USE_DELTAS);
 #endif
 	}
-#endif
+
 
 	/*
 	 *	SSL_ctx_set_verify is now called in the session
@@ -1035,14 +968,12 @@ post_ca:
 	 */
 	if (fr_tls_cache_ctx_init(ctx, &conf->cache) < 0) goto error;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
 	/*
 	 *	Set the keylog file if the admin requested it.
 	 */
 	if ((getenv("SSLKEYLOGFILE") != NULL) || (conf->keylog_file && *conf->keylog_file)) {
 		SSL_CTX_set_keylog_callback(ctx, fr_tls_session_keylog_cb);
 	}
-#endif
 
 	return ctx;
 }

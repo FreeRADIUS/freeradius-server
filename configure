@@ -10695,8 +10695,8 @@ fi
 
 done
 
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 1.1.1" >&5
-printf %s "checking for OpenSSL version >= 1.1.1... " >&6; }
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for OpenSSL version >= 3.0.0" >&5
+printf %s "checking for OpenSSL version >= 3.0.0... " >&6; }
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -10973,7 +10973,7 @@ printf "%s\n" "$ac_cv_path_EGREP_TRADITIONAL" >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <openssl/crypto.h>
-       #if (OPENSSL_VERSION_NUMBER >= 0x10101000L)
+       #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
        yes
        #endif
 
@@ -15878,7 +15878,7 @@ else case e in #(
   e) cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-          #include <stdlib.h>
+	  #include <stdlib.h>
           #include <regex.h>
 
 int

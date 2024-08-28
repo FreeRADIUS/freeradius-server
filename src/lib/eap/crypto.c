@@ -130,9 +130,6 @@ int eap_crypto_mppe_keys(request_t *request, SSL *ssl, eap_tls_prf_label_t *prf_
 }
 
 int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
-#if OPENSSL_VERSION_NUMBER < 0x10101000L
-			      UNUSED
-#endif
 			      request_t *request, SSL *ssl, eap_tls_prf_label_t *prf_label,
 			      uint8_t **out, uint8_t eap_type)
 {
@@ -157,7 +154,6 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 		SSL_get_client_random(ssl, p, SSL3_RANDOM_SIZE);
 		p += SSL3_RANDOM_SIZE;
 		SSL_get_server_random(ssl, p, SSL3_RANDOM_SIZE);
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 		break;
 
 	/*
@@ -180,7 +176,6 @@ int eap_crypto_tls_session_id(TALLOC_CTX *ctx,
 		}
 	}
 		break;
-#endif
 	}
 	*out = buff;
 

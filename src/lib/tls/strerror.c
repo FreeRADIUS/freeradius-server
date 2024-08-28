@@ -35,17 +35,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "strerror.h"
 #include "utils.h"
 
-#if OPENSSL_VERSION_NUMBER < 0x30000000L
-static inline unsigned long ERR_get_error_all(const char **file, int *line,
-					      const char **func,
-					      const char **data, int *flags)
-{
-	if (func != NULL) *func = "";
-
-	return ERR_get_error_line_data(file, line, data, flags);
-}
-#endif
-
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
 static void _tls_cert_line_push(char const *file, int line, int idx, X509 *cert)

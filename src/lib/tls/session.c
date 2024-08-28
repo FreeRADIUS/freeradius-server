@@ -848,7 +848,6 @@ void fr_tls_session_msg_cb(int write_p, int msg_version, int content_type,
 #endif
 }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L && !defined(LIBRESSL_VERSION_NUMBER)
 /*
  *  By setting the environment variable SSLKEYLOGFILE to a filename keying
  *  material will be exported that you may use with Wireshark to decode any
@@ -921,7 +920,6 @@ void fr_tls_session_keylog_cb(const SSL *ssl, const char *line)
 
 	close(fd);
 }
-#endif
 
 /** Decrypt application data
  *
@@ -1382,7 +1380,6 @@ static unlang_action_t tls_session_async_handshake_cont(rlm_rcode_t *p_result, i
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 	/*
 	 *	Bug in OpenSSL 3.0 - Normal handshaking behaviour
 	 *	results in spurious "BIO_R_UNSUPPORTED_METHOD"
@@ -1418,7 +1415,6 @@ DIAG_OFF(used-but-marked-unused)
 DIAG_ON(used-but-marked-unused)
 DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
 	}
-#endif
 
 	/*
 	 *	Deal with asynchronous requests from OpenSSL.

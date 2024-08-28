@@ -2914,12 +2914,10 @@ EVP_MD_XLAT(blake2s_256, blake2s256)
 EVP_MD_XLAT(blake2b_512, blake2b512)
 #endif
 
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 EVP_MD_XLAT(sha3_224, sha3_224)
 EVP_MD_XLAT(sha3_256, sha3_256)
 EVP_MD_XLAT(sha3_384, sha3_384)
 EVP_MD_XLAT(sha3_512, sha3_512)
-#  endif
 #endif
 
 
@@ -4158,12 +4156,10 @@ do { \
 	XLAT_REGISTER_PURE("blake2b_512", xlat_func_blake2b_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
 #  endif
 
-#  if OPENSSL_VERSION_NUMBER >= 0x10101000L
 	XLAT_REGISTER_PURE("sha3_224", xlat_func_sha3_224, FR_TYPE_OCTETS, xlat_func_sha_arg);
 	XLAT_REGISTER_PURE("sha3_256", xlat_func_sha3_256, FR_TYPE_OCTETS, xlat_func_sha_arg);
 	XLAT_REGISTER_PURE("sha3_384", xlat_func_sha3_384, FR_TYPE_OCTETS, xlat_func_sha_arg);
 	XLAT_REGISTER_PURE("sha3_512", xlat_func_sha3_512, FR_TYPE_OCTETS, xlat_func_sha_arg);
-#  endif
 #endif
 
 	XLAT_REGISTER_PURE("string", xlat_func_string, FR_TYPE_STRING, xlat_func_string_arg);
