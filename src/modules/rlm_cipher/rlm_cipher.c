@@ -318,6 +318,7 @@ static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *par
 	case RLM_CIPHER_TYPE_RSA:
 		break;
 
+	case RLM_CIPHER_TYPE_SYMMETRIC:
 	case RLM_CIPHER_TYPE_INVALID:
 		cf_log_err(ci, "Invalid cipher type \"%s\"", type_str);
 		return -1;
@@ -1258,6 +1259,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		talloc_set_type(mctx->thread, rlm_cipher_rsa_thread_inst_t);
 		return cipher_rsa_thread_instantiate(mctx);
 
+	case RLM_CIPHER_TYPE_SYMMETRIC:
 	case RLM_CIPHER_TYPE_INVALID:
 		fr_assert(0);
 	}
