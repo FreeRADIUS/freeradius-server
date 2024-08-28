@@ -64,6 +64,10 @@ static unlang_action_t ldap_find_user_async_result(rlm_rcode_t *p_result, UNUSED
 		break;
 
 	case LDAP_RESULT_NO_RESULT:
+	/*
+	 *	DNs can now be dynamic, so a BAD DN often means the same thing as an empty result
+	 */
+	case LDAP_RESULT_BAD_DN:
 		RETURN_MODULE_NOTFOUND;
 
 	default:

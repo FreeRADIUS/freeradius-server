@@ -1,0 +1,17 @@
+
+string base_dn
+
+&base_dn=%ldap.uri.safe('dc=example,dc=com')
+ldap_dynamic_dn
+if (!ok) {
+	test_fail
+}
+
+# Bad DN
+&base_dn := %ldap.uri.safe('dc=example,dc=foo,dc=com')
+ldap_dynamic_dn
+if (!notfound) {
+	test_fail
+}
+
+test_pass
