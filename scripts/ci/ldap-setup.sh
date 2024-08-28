@@ -147,6 +147,7 @@ cp raddb/certs/rsa/ca.pem "${cert_dir}/cacert.pem"
 cp raddb/certs/rsa/server.pem "${cert_dir}/servercert.pem"
 openssl rsa -in raddb/certs/rsa/server.key -out "${cert_dir}/serverkey.pem" -passin pass:whatever
 
+ldap_bind_ip="127.0.0.1"
 if [ -z "${suffix}" ]; then
     ldap_port="3890"
     ldaps_port="6360"
@@ -160,7 +161,7 @@ fi
 cp -n "scripts/ci/ldap/slapd${suffix}.conf" "${base_dir}/slapd.conf"
 
 # Start slapd
-slapd -d any -h "ldap://127.0.0.1:${ldap_port}/ ldaps://127.0.0.1:${ldaps_port}/ ${socket_url}" -f "${base_dir}/slapd.conf" > ${base_dir}/slapd.log 2>&1 &
+slapd -d any -h "ldap://${ldap_bind_ip}:${ldap_port}/ ldaps://${ldap_bind_ip}:${ldaps_port}/ ${socket_url}" -f "${base_dir}/slapd.conf" > ${base_dir}/slapd.log 2>&1 &
 
 # Wait for LDAP to start
 sleep 1
@@ -183,3 +184,10 @@ if [ $count -eq 10 ]; then
     cat ${base_dir}/slapd.log
     exit 1
 fi
+
+echo "Listening on ldap://${ldap_bind_ip}:${ldap_port}/ ldaps://${ldap_bind_ip}:${ldaps_port}/ ${socket_url}"
+cat << EOF
+export LDAP_TEST_SERVER=${ldap_bind_ip}
+export LDAP_TEST_SERVER_PORT=${ldap_port}
+export LDAP_TEST_SERVER_SSL_PORT=${ldaps_port}
+EOF
