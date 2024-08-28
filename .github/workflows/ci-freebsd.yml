@@ -86,7 +86,7 @@ jobs:
             sqlite3              \
             talloc               \
             unixODBC
-          sudo pip install tacacs_plus
+          sudo pip install tacacs_plus --break-system-packages
           echo "#! /bin/sh"        | sudo tee /usr/local/bin/nproc
           echo "sysctl -n hw.ncpu" | sudo tee -a /usr/local/bin/nproc
           sudo chmod +x /usr/local/bin/nproc

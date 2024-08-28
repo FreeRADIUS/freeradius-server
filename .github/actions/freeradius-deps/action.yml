@@ -72,7 +72,7 @@ runs:
     - name: Install tacacs_plus
       shell: bash
       run: |
-        pip3 install tacacs_plus
+        pip3 install tacacs_plus --break-system-packages
 
     - name: Install LLVM ${{ inputs.llvm_ver }}
       if: ${{ inputs.cc == 'clang' && runner.os != 'macOS' }}
