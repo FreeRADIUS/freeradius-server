@@ -6,10 +6,10 @@ inputs:
     default: false
   llvm_ver:
     desription: Version of LLVM to use
-    default: 12
+    default: 18
   gcc_ver:
     desription: Version of GCC to use
-    default: 11
+    default: 14
   cc:
     desription: Which CC to use
     default: gcc
