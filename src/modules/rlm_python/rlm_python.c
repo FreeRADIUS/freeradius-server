@@ -109,7 +109,7 @@ static conf_parser_t const python_global_config[] = {
 static int libpython_init(void);
 static void libpython_free(void);
 
-global_lib_autoinst_t rlm_python_autoinst = {
+static global_lib_autoinst_t rlm_python_autoinst = {
 	.name = "python",
 	.config = python_global_config,
 	.init = libpython_init,
