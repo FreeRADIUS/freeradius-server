@@ -1979,6 +1979,172 @@ static CONF_ITEM *process_catch(cf_stack_t *stack)
 	return cf_section_to_item(css);
 }
 
+static int parse_error(cf_stack_t *stack, char const *ptr, char const *message)
+{
+	char *spaces, *text;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+
+	if (!ptr) ptr = stack->ptr;
+
+	/*
+	 *	We must pass a _negative_ offset to this function.
+	 */
+	fr_canonicalize_error(NULL, &spaces, &text, stack->ptr - ptr, stack->ptr);
+
+	ERROR("%s[%d]: %s", frame->filename, frame->lineno, text);
+	ERROR("%s[%d]: %s^ - %s", frame->filename, frame->lineno, spaces, message);
+
+	talloc_free(spaces);
+	talloc_free(text);
+	return -1;
+}
+
+static CONF_ITEM *process_foreach(cf_stack_t *stack)
+{
+	fr_token_t	token;
+	fr_type_t	type;
+	CONF_SECTION	*css;
+	char const	*ptr = stack->ptr, *ptr2;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+
+	/*
+	 *	Get the first argument to "foreach".  For backwards
+	 *	compatibility, it could be an attribute reference.
+	 */
+	ptr2 = ptr;
+	if (cf_get_token(parent, &ptr, &token, stack->buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	if (token != T_BARE_WORD) {
+		(void) parse_error(stack, ptr2, "Unexpected argument to 'foreach'");
+		return NULL;
+	}
+
+	fr_skip_whitespace(ptr);
+
+	if (*ptr == '{') {
+		css = cf_section_alloc(parent, parent, "foreach", stack->buff[1]);
+		if (!css) {
+			ERROR("%s[%d]: Failed allocating memory for section",
+			      frame->filename, frame->lineno);
+			return NULL;
+		}
+
+		cf_filename_set(css, frame->filename);
+		cf_lineno_set(css, frame->lineno);
+		css->name2_quote = T_BARE_WORD;
+		css->unlang = CF_UNLANG_ALLOW;
+		css->allow_locals = true;
+
+		ptr++;
+		stack->ptr = ptr;
+
+		return cf_section_to_item(css);
+	}
+
+	if (strcmp(stack->buff[1], "auto") == 0) {
+		type = FR_TYPE_VOID;
+
+	} else {
+		type = fr_table_value_by_str(fr_type_table, stack->buff[1], FR_TYPE_NULL);
+		switch (type) {
+		default:
+			break;
+
+		case FR_TYPE_NULL:
+		case FR_TYPE_VOID:
+		case FR_TYPE_VALUE_BOX:
+		case FR_TYPE_MAX:
+			(void) parse_error(stack, ptr2, "Unknown or invalid variable type in 'foreach'");
+			return NULL;
+		}
+	}
+
+	fr_skip_whitespace(ptr);
+	ptr2 = ptr;
+
+	/*
+	 *	Parse the variable name.  @todo - allow '-' in names.
+	 */
+	token = gettoken(&ptr, stack->buff[2], stack->bufsize, false);
+	if (token != T_BARE_WORD) {
+		(void) parse_error(stack, ptr2, "Invalid variable name for key in 'foreach'");
+		return NULL;
+	}
+	fr_skip_whitespace(ptr);
+
+	/*
+	 *	The thing to loop over must now be in an expression block.
+	 */
+	if (*ptr != '(') {
+		(void) parse_error(stack, ptr, "Expected (...) after 'foreach' variable definition");
+		return NULL;
+	}
+
+	/*
+	 *	"(" whitespace EXPRESSION whitespace ")"
+	 */
+	ptr++;
+	fr_skip_whitespace(ptr);
+
+	if (cf_get_token(parent, &ptr, &token, stack->buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	if (token != T_BARE_WORD) {
+		(void) parse_error(stack, ptr2, "Invalid thingy in 'foreach'");
+		return NULL;
+	}
+
+	fr_skip_whitespace(ptr);
+	if (*ptr != ')') {
+		(void) parse_error(stack, ptr, "Missing ')' in 'foreach'");
+		return NULL;
+	}
+	ptr++;
+	fr_skip_whitespace(ptr);
+
+	if (*ptr != '{') {
+		(void) parse_error(stack, ptr, "Expected '{' in 'foreach'");
+		return NULL;
+	}
+
+	css = cf_section_alloc(parent, parent, "foreach", stack->buff[1]);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
+	css->name2_quote = T_BARE_WORD;
+	css->unlang = CF_UNLANG_ALLOW;
+	css->allow_locals = true;
+
+	/*
+	 *	Add in the extra arguments
+	 */
+	css->argc = 2;
+	css->argv = talloc_array(css, char const *, css->argc);
+	css->argv_quote = talloc_array(css, fr_token_t, css->argc);
+
+	css->argv[0] = fr_type_to_str(type);
+	css->argv_quote[0] = T_BARE_WORD;
+
+	css->argv[1] = talloc_typed_strdup(css->argv, stack->buff[2]);
+	css->argv_quote[1] = T_BARE_WORD;
+
+	ptr++;
+	stack->ptr = ptr;
+
+	return cf_section_to_item(css);
+}
+
 
 static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 		    fr_token_t name1_token, fr_token_t op_token, fr_token_t value_token,
@@ -2038,6 +2204,7 @@ static int add_pair(CONF_SECTION *parent, char const *attr, char const *value,
 static fr_table_ptr_sorted_t unlang_keywords[] = {
 	{ L("catch"),		(void *) process_catch },
 	{ L("elsif"),		(void *) process_if },
+	{ L("foreach"),		(void *) process_foreach },
 	{ L("if"),		(void *) process_if },
 	{ L("map"),		(void *) process_map },
 	{ L("subrequest"),	(void *) process_subrequest }
@@ -2045,26 +2212,6 @@ static fr_table_ptr_sorted_t unlang_keywords[] = {
 static int unlang_keywords_len = NUM_ELEMENTS(unlang_keywords);
 
 typedef CONF_ITEM *(*cf_process_func_t)(cf_stack_t *);
-
-static int parse_error(cf_stack_t *stack, char const *ptr, char const *message)
-{
-	char *spaces, *text;
-	cf_stack_frame_t *frame = &stack->frame[stack->depth];
-
-	if (!ptr) ptr = stack->ptr;
-
-	/*
-	 *	We must pass a _negative_ offset to this function.
-	 */
-	fr_canonicalize_error(NULL, &spaces, &text, stack->ptr - ptr, stack->ptr);
-
-	ERROR("%s[%d]: %s", frame->filename, frame->lineno, text);
-	ERROR("%s[%d]: %s^ - %s", frame->filename, frame->lineno, spaces, message);
-
-	talloc_free(spaces);
-	talloc_free(text);
-	return -1;
-}
 
 static int parse_input(cf_stack_t *stack)
 {
@@ -2182,8 +2329,9 @@ static int parse_input(cf_stack_t *stack)
 
 			stack->ptr = ptr;
 			ci = process(stack);
-			ptr = stack->ptr;
 			if (!ci) return -1;
+
+			ptr = stack->ptr;
 			if (cf_item_is_section(ci)) {
 				parent->allow_locals = false;
 				css = cf_item_to_section(ci);

@@ -1,0 +1,10 @@
+&request -= &Packet-Type
+
+#
+#  New syntax
+#
+foreach string thing ( &Filter-Id )  {
+	&reply += {
+		&Called-Station-Id = "%{Foreach-Variable-0}"
+	}
+}
