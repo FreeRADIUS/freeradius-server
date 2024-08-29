@@ -33,7 +33,9 @@ runs:
     #   ERROR: Operation {'runbindable'} cannot have a source. Source = AARE('/')
     # ...unless apparmor is disabled.
     - name: Disable AppArmor
-      run: sudo systemctl disable apparmor || true
+      run: |
+        sudo systemctl disable apparmor || true
+        sudo systemctl stop apparmor || true
       shell: bash
 
     #
