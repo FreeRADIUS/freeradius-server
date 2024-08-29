@@ -70,7 +70,7 @@ static void fb_set_sqlda(XSQLDA *sqlda) {
 		}
 
 		if (sqlda->sqlvar[i].sqltype & 1) {
-			MEM(sqlda->sqlvar[i].sqlind = (short*)calloc(sizeof(short), 1));
+			MEM(sqlda->sqlvar[i].sqlind = (short*)calloc(1, sizeof(short)));
 		} else {
 			sqlda->sqlvar[i].sqlind = 0;
 		}
@@ -322,7 +322,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 int fb_init_socket(rlm_sql_firebird_conn_t *conn)
 {
 	memset(conn, 0, sizeof(*conn));
-	MEM(conn->sqlda_out = (XSQLDA ISC_FAR *) calloc(XSQLDA_LENGTH (5), 1));
+	MEM(conn->sqlda_out = (XSQLDA ISC_FAR *) calloc(1, XSQLDA_LENGTH(5)));
 	conn->sqlda_out->sqln = 5;
 	conn->sqlda_out->version =  SQLDA_VERSION1;
 	conn->sql_dialect = 3;
@@ -383,7 +383,7 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 		 */
 		int ls = strlen(config->sql_server);
 		int ld = strlen(config->sql_db);
-		MEM(database = (char *) calloc(ls + ld + 2, 1));
+		MEM(database = (char *) calloc(1, ls + ld + 2));
 		strcpy(database, config->sql_server);
 		database[ls] = ':';
 		memmove(database + ls + 1, config->sql_db, ld);
