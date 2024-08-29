@@ -143,11 +143,14 @@ runs:
             --with-threads=$LIBS_OPTIONAL \
             --with-udpfromto=$LIBS_OPTIONAL \
             --with-openssl=$LIBS_OPTIONAL \
-            --with-pcre=$LIBS_OPTIONAL
-        echo "config.log"
-        cat config.log
-        echo "Contents of src/include/autoconf.h"
-        cat "./src/include/autoconf.h"
+            --with-pcre=$LIBS_OPTIONAL \
+        || {
+            echo "config.log"
+            cat config.log
+            echo "Contents of src/include/autoconf.h"
+            cat "./src/include/autoconf.h"
+            exit 1
+        }
 
     - name: Make
       if: ${{ inputs.test_type != 'fuzzing' }}
