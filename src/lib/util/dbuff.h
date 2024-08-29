@@ -374,6 +374,11 @@ _fr_dbuff_init(_out, \
 DIAG_ON(maybe-uninitialized)
 #endif
 
+#define FR_DBUFF_INIT(_out, _start, _len_or_end) do { \
+	fr_dbuff_init(_out, _start, _len_or_end); \
+	*(unsigned char *) _start = '\0'; \
+  } while (0)
+
 size_t	_fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension);
 
 int	fr_dbuff_trim_talloc(fr_dbuff_t *dbuff, size_t len);
