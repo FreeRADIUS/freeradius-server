@@ -2735,12 +2735,12 @@ static ssize_t tmpl_afrom_ether_substr(TALLOC_CTX *ctx, tmpl_t **out, fr_sbuff_t
 {
 	tmpl_t			*vpt;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
-	uint8_t			buff[6];
+	uint8_t			buff[6] = {};
 	fr_dbuff_t		dbuff;
 	fr_value_box_t		*vb;
 	fr_sbuff_parse_error_t	err;
 
-	FR_DBUFF_INIT(&dbuff, buff, sizeof(buff));
+	fr_dbuff_init(&dbuff, buff, sizeof(buff));
 
 	fr_base16_decode(&err, &dbuff, &our_in, true);
 	if (err != FR_SBUFF_PARSE_OK) return 0;
