@@ -49,12 +49,12 @@ if !(&reply.Session-Timeout == 60) {
 }
 
 # 8. Check ZSCORE reflects that
-if !((%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) - %l) > 50) {
+if !((%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) - %c) > 50) {
 	test_fail
 }
 
 # 9.
-if !((%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) - %l) < 70) {
+if !((%redis(ZSCORE, {%{control.IP-Pool.Name}}:pool, %{reply.Framed-IP-Address}) - %c) < 70) {
 	test_fail
 }
 

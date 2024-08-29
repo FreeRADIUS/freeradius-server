@@ -25,12 +25,12 @@ if !(&reply.Framed-IP-Address == 192.168.0.1) {
 #
 #  Check ZSCORE
 #
-if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") - %l) < 20) {
+if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") - %c) < 20) {
 	test_fail
 }
 
 # +2 - Some slop for macOS
-if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") - %l) > 42) {
+if ((%redis('ZSCORE', "{%{control.IP-Pool.Name}}:pool", "%{reply.Framed-IP-Address}") - %c) > 42) {
 	test_fail
 }
 
