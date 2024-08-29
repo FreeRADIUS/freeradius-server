@@ -222,9 +222,11 @@ void fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb)
 {
 	fr_bio_common_t *my = (fr_bio_common_t *) bio;
 
-	if (!cb) cb = &(fr_bio_cb_funcs_t) { };
-
-	my->cb = *cb;
+	if (!cb) {
+		memset(&my->cb, 0, sizeof(my->cb));
+	} else {
+		my->cb = *cb;
+	}
 }
 
 /** Internal BIO function to run EOF callbacks.
