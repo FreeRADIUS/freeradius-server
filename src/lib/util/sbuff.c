@@ -750,7 +750,10 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 		ssize_t copied;
 
 		remaining = (len - fr_sbuff_used_total(&our_in));
-		if (remaining && !fr_sbuff_extend(&our_in)) return 0;
+		if (remaining && !fr_sbuff_extend(&our_in)) {
+			fr_sbuff_marker_release(&m);
+			return 0;
+		}
 
 		chunk_len = fr_sbuff_remaining(&our_in);
 		if (chunk_len > remaining) chunk_len = remaining;
@@ -763,6 +766,7 @@ ssize_t fr_sbuff_out_bstrncpy_exact(fr_sbuff_t *out, fr_sbuff_t *in, size_t len)
 			/* Amount remaining in input buffer minus the amount we could have copied */
 			if (len == SIZE_MAX) return -(fr_sbuff_remaining(in) - (chunk_len + copied));
 			/* Amount remaining to copy minus the amount we could have copied */
+			fr_sbuff_marker_release(&m);
 			return -(remaining - (chunk_len + copied));
 		}
 		fr_sbuff_advance(&our_in, copied);
