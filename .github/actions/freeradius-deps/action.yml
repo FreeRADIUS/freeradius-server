@@ -29,6 +29,12 @@ runs:
         sudo dpkg-reconfigure man-db
         sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
 
+    # Basic package installation on Ubuntu24.04of packages fails with:
+    #   ERROR: Operation {'runbindable'} cannot have a source. Source = AARE('/')
+    # ...unless apparmor is disabled.
+    - name: Disable AppArmor
+      run: sudo systemctl disable apparmor
+
     #
     #  NetworkRADIUS repo is needed for up-to-date versions
     #  of libkqueue.  Although libkqueue is available via
