@@ -957,22 +957,19 @@ nak:
 
 /**
  *  Track a request_t in the "runnable" heap.
- *  Higher priorities take precedence, followed by higher sequence numbers
+ *  Higher priorities take precedence, followed by lower sequence numbers
  */
 static int8_t worker_runnable_cmp(void const *one, void const *two)
 {
 	request_t const *a = one, *b = two;
 	int ret;
 
-	/* Prefer higher priorities to lower priorities */
-	ret = CMP_PREFER_LARGER(a->async->priority, b->async->priority);
+	ret = CMP(b->async->priority, a->async->priority);
 	if (ret != 0) return ret;
 
-	/* Pefer higher sequence numbers to lower sequence numbers */
-	ret = CMP_PREFER_LARGER(a->async->sequence, b->async->sequence);
+	ret = CMP(a->async->sequence, b->async->sequence);
 	if (ret != 0) return ret;
 
-	/* Prefer earlier requests to later requests */
 	return fr_time_cmp(a->async->recv_time, b->async->recv_time);
 }
 
@@ -1340,10 +1337,7 @@ static inline CC_HINT(always_inline) void worker_run_request(fr_worker_t *worker
 
 		(void)unlang_interpret(request);
 
-		/*
-		 *	Save getting the time _again_
-		 */
-		now = request->async->tracking.last_changed;
+		now = fr_time();
 	}
 }
 
