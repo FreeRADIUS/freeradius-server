@@ -32,6 +32,7 @@ extern "C" {
 typedef struct {
 	unlang_group_t	group;
 	tmpl_t		*vpt;
+	fr_dict_attr_t	*key;		//!< key variable for the foreach loop
 } unlang_foreach_t;
 
 /** Cast a group structure to the foreach keyword extension

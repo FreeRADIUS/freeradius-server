@@ -1611,23 +1611,66 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	return out;
 }
 
-/** Compile a variable definition.
- *
- *  Definitions which are adjacent to one another are automatically merged
- *  into one larger variable definition.
- */
-static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_PAIR *cp, tmpl_rules_t *t_rules)
+static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name)
 {
-	unlang_variable_t *var;
-	fr_type_t	type;
-	char const	*attr, *value;
 	fr_dict_attr_t const *da;
-	unlang_group_t	*group;
 
 	fr_dict_attr_flags_t flags = {
 		.internal = true,
 		.local = true,
 	};
+
+	/*
+	 *	No overlap with the protocol dictionary.  The lookup
+	 *	in var->root will also check the protocol dictionary,
+	 *	so the check here is really only for better error messages.
+	 */
+	if (t_rules && t_rules->parent && t_rules->parent->attr.dict_def) {
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), name);
+		if (da) {
+			cf_log_err(ci, "Local variable '%s' duplicates a dictionary attribute.", name);
+			return -1;
+		}
+	}
+
+	/*
+	 *	We can't name variables for data types.
+	 */
+	if (fr_table_value_by_str(fr_type_table, name, FR_TYPE_NULL) != FR_TYPE_NULL) {
+		cf_log_err(ci, "Invalid variable name '%s'.", name);
+		return -1;
+	}
+
+	/*
+	 *	No local dups
+	 */
+	da = fr_dict_attr_by_name(NULL, var->root, name);
+	if (da) {
+		cf_log_err(ci, "Duplicate variable name '%s'.", name);
+		return -1;
+	}
+
+	if (fr_dict_attr_add(var->dict, var->root, name, var->max_attr, type, &flags) < 0) {
+		cf_log_err(ci, "Failed adding variable '%s'", name);
+		return -1;
+	}
+
+	var->max_attr++;
+
+	return 0;
+}
+
+/** Compile a variable definition.
+ *
+ *  Definitions which are adjacent to one another are automatically merged
+ *  into one larger variable definition.
+ */
+static int compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_PAIR *cp, tmpl_rules_t *t_rules)
+{
+	unlang_variable_t *var;
+	fr_type_t	type;
+	char const	*attr, *value;
+	unlang_group_t	*group;
 
 	fr_assert(unlang_ops[parent->type].debug_braces);
 
@@ -1651,7 +1694,7 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 	default:
 		cf_log_err(cp, "Local variables cannot be used here");
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -1663,12 +1706,12 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 
 	} else {
 		group->variables = var = talloc_zero(parent, unlang_variable_t);
-		if (!var) return NULL;
+		if (!var) return -1;
 
 		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
 		if (!var->dict) {
 			talloc_free(var);
-			return NULL;
+			return -1;
 		}
 		var->root = fr_dict_root(var->dict);
 
@@ -1695,7 +1738,7 @@ static unlang_t *compile_variable(unlang_t *parent, unlang_compile_t *unlang_ctx
 	if (type == FR_TYPE_NULL) {
 invalid_type:
 		cf_log_err(cp, "Invalid data type '%s'", attr);
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -1703,44 +1746,7 @@ invalid_type:
 	 */
 	if (!(fr_type_is_leaf(type) || (type == FR_TYPE_GROUP))) goto invalid_type;
 
-	/*
-	 *	No overlap with the protocol dictionary.  The lookup
-	 *	in var->root will also check the protocol dictionary,
-	 *	so the check here is really only for better error messages.
-	 */
-	if (t_rules && t_rules->parent && t_rules->parent->attr.dict_def) {
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), value);
-		if (da) {
-			cf_log_err(cp, "Local variable '%s' duplicates a dictionary attribute.", value);
-			return NULL;
-		}
-	}
-
-	/*
-	 *	We can't name variables for data types.
-	 */
-	if (fr_table_value_by_str(fr_type_table, value, FR_TYPE_NULL) != FR_TYPE_NULL) {
-		cf_log_err(cp, "Invalid variable name '%s'.", value);
-		return NULL;
-	}
-
-	/*
-	 *	No local dups
-	 */
-	da = fr_dict_attr_by_name(NULL, var->root, value);
-	if (da) {
-		cf_log_err(cp, "Duplicate variable name '%s'.", value);
-		return NULL;
-	}
-
-	if (fr_dict_attr_add(var->dict, var->root, value, var->max_attr, type, &flags) < 0) {
-		cf_log_err(cp, "Failed adding variable '%s'", value);
-		return NULL;
-	}
-
-	var->max_attr++;
-
-	return UNLANG_IGNORE;
+	return define_local_variable(cf_pair_to_item(cp), var, t_rules, type, value);
 }
 
 /*
@@ -2203,11 +2209,12 @@ static unlang_t *compile_children(unlang_group_t *g, unlang_compile_t *unlang_ct
 			 *	Variable definition.
 			 */
 			if (cf_pair_operator(cp) == T_OP_CMP_TRUE) {
-				single = compile_variable(c, unlang_ctx, cp, &t_rules);
-				if (!single) {
+				if (compile_variable(c, unlang_ctx, cp, &t_rules) < 0) {
 					talloc_free(c);
 					return NULL;
 				}
+
+				single = UNLANG_IGNORE;
 				goto add_child;
 			}
 
@@ -3195,8 +3202,10 @@ static unlang_t *compile_limit(unlang_t *parent, unlang_compile_t *unlang_ctx, C
 
 static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx, CONF_SECTION *cs)
 {
-	fr_token_t		type;
+	fr_token_t		token;
 	char const		*name2;
+	char const		*type_name, *variable_name;
+	fr_type_t		type;
 	unlang_t		*c;
 
 	unlang_group_t		*g;
@@ -3206,6 +3215,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	tmpl_t			*vpt;
 
 	tmpl_rules_t		t_rules;
+	unlang_compile_t	unlang_ctx2;
 
 	static unlang_ext_t const foreach_ext = {
 		.type = UNLANG_TYPE_FOREACH,
@@ -3216,6 +3226,13 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	};
 
 	/*
+	 *	Ignore empty "foreach" blocks, and don't even sanity check their arguments.
+	 */
+	if (!cf_item_next(cs, NULL)) {
+		return UNLANG_IGNORE;
+	}
+
+	/*
 	 *	We allow unknown attributes here.
 	 */
 	t_rules = *(unlang_ctx->rules);
@@ -3224,11 +3241,15 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	RULES_VERIFY(&t_rules);
 
 	name2 = cf_section_name2(cs);
-	if (!name2) {
-		cf_log_err(cs,
-			   "You must specify an attribute to loop over in 'foreach'");
-		return NULL;
-	}
+	fr_assert(name2 != NULL); /* checked in cf_file.c */
+
+	/*
+	 *	Allocate a group for the "foreach" block.
+	 */
+	g = group_allocate(parent, cs, &foreach_ext);
+	if (!g) return NULL;
+
+	c = unlang_group_to_generic(g);
 
 	/*
 	 *	Create the template.  If we fail, AND it's a bare word
@@ -3236,20 +3257,16 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	module.  Allow it for now.  The pass2 checks below
 	 *	will fix it up.
 	 */
-	type = cf_section_name2_quote(cs);
-	slen = tmpl_afrom_substr(cs, &vpt,
+	token = cf_section_name2_quote(cs);
+	slen = tmpl_afrom_substr(g, &vpt,
 				 &FR_SBUFF_IN(name2, strlen(name2)),
-				 type,
+				 token,
 				 NULL,
 				 &t_rules);
 	if (!vpt) {
 		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'foreach'", name2);
+		talloc_free(g);
 		return NULL;
-	}
-
-	if (!cf_item_next(cs, NULL)) {
-		talloc_free(vpt);
-		return UNLANG_IGNORE;
 	}
 
 	/*
@@ -3261,14 +3278,14 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	if (!tmpl_is_attr(vpt)) {
 		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
 			   tmpl_type_to_str(vpt->type));
-		talloc_free(vpt);
+	fail:
+		talloc_free(g);
 		return NULL;
 	}
 
 	if ((tmpl_attr_tail_num(vpt) != NUM_ALL) && (tmpl_attr_tail_num(vpt) != NUM_UNSPEC)) {
 		cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
-		talloc_free(vpt);
-		return NULL;
+		goto fail;
 	}
 
 	/*
@@ -3278,15 +3295,68 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	tmpl_attr_rewrite_leaf_num(vpt, NUM_UNSPEC, NUM_ALL);
 
-	c = compile_section(parent, unlang_ctx, cs, &foreach_ext);
-	if (!c) {
-		talloc_free(vpt);
-		return NULL;
-	}
-
-	g = unlang_generic_to_group(c);
 	gext = unlang_group_to_foreach(g);
 	gext->vpt = vpt;
+
+	c->name = "foreach";
+	MEM(c->debug_name = talloc_typed_asprintf(c, "foreach %s", name2));
+
+	/*
+	 *	Copy over the compilation context.  This is mostly
+	 *	just to ensure that retry is handled correctly.
+	 *	i.e. reset.
+	 */
+	compile_copy_context(&unlang_ctx2, unlang_ctx);
+
+	/*
+	 *	Then over-write the new compilation context.
+	 */
+	unlang_ctx2.section_name1 = "foreach";
+	unlang_ctx2.section_name2 = name2;
+	unlang_ctx2.rules = &t_rules;
+	t_rules.parent = unlang_ctx->rules;
+
+	/*
+	 *	If we have "type name", then define a local variable of that name.
+	 */
+	type_name = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+	if (type_name) {
+		unlang_variable_t *var;
+		fr_dict_attr_t const *da = tmpl_attr_tail_da(vpt);
+
+		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_NULL);
+		fr_assert(type != FR_TYPE_NULL);
+
+		if (type == FR_TYPE_VOID) type = da->type;
+
+		variable_name = cf_section_argv(cs, 1);
+
+		/*
+		 *	Define the local variables.
+		 */
+		g->variables = var = talloc_zero(g, unlang_variable_t);
+		if (!var) goto fail;
+
+		var->dict = fr_dict_protocol_alloc(unlang_ctx->rules->attr.dict_def);
+		if (!var->dict) goto fail;
+
+		var->root = fr_dict_root(var->dict);
+
+		var->max_attr = 1;
+
+		if (define_local_variable(cf_section_to_item(cs), var, &t_rules, type, variable_name) < 0) goto fail;
+
+		t_rules.attr.dict_def = var->dict;
+		t_rules.attr.namespace = NULL;
+
+		/*
+		 *	And ensure we have the key.
+		 */
+		gext->key = fr_dict_attr_by_name(NULL, var->root, variable_name);
+		fr_assert(gext->key != NULL);
+	}
+
+	if (!compile_children(g, &unlang_ctx2, true)) goto fail;
 
 	return c;
 }
