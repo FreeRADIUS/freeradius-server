@@ -20,6 +20,7 @@ runs:
         sudo apt-get install -y --no-install-recommends \
           ca-certificates \
           curl \
+          iproute2 \
           gawk \
           git \
           git-lfs \
