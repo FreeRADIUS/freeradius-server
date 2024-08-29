@@ -96,6 +96,7 @@ jobs:
           use_sanitizers: true
           cc: ${{ matrix.env.CC }}
           test_type: ${{ matrix.env.TEST_TYPE }}
+          platform: ${{ matrix.os.imageos }}
 
       - name: Run main CI tests
         uses: ./.github/actions/ci-tests

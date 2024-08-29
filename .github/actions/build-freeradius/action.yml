@@ -10,6 +10,8 @@ inputs:
   test_type:
     desription: What test is being run
     default: gcc
+  platform:
+    description: Platform the build is on
 
 
 runs:
@@ -40,7 +42,7 @@ runs:
       id: hostapd-cache
       with:
         path: ${{ env.HOSTAPD_BUILD_DIR }}
-        key: hostapd-${{ runner.os }}-${{ env.HOSTAPD_GIT_TAG }}-v4
+        key: hostapd-${{ runner.os }}-${{ inputs.platform }}-${{ env.HOSTAPD_GIT_TAG }}-v4
       if: ${{ inputs.test_type != 'fuzzing' }}
 
     #  Has issues in Docker container when running on GitHub...
