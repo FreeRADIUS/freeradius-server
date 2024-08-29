@@ -1072,10 +1072,18 @@ ssize_t	fr_radius_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 	if (decode_ctx->request_code) {
-		int code = packet[0];
+		unsigned int code = packet[0];
 
-		fr_assert(code < FR_RADIUS_CODE_MAX); /* checked by fr_radius_ok() */
-		fr_assert(decode_ctx->request_code < FR_RADIUS_CODE_MAX); /* checked by fr_radius_ok() */
+		/*
+		 *	Quiet the compiler, which gets excited about an out
+		 *	of bounds access in allowed_replies
+		 */
+		if (!fr_cond_assert(code < FR_RADIUS_CODE_MAX)) {
+			return DECODE_FAIL_UNKNOWN_PACKET_CODE; /* checked by fr_radius_ok() */
+		}
+		if (!fr_cond_assert(decode_ctx->request_code < FR_RADIUS_CODE_MAX)) {
+			return DECODE_FAIL_UNKNOWN_PACKET_CODE; /* checked by fr_radius_ok() */
+		}
 
 		if (!allowed_replies[code]) {
 			fr_strerror_printf("%s packet received unknown reply code %s",
