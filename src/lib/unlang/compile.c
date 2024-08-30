@@ -3336,10 +3336,10 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		unlang_variable_t *var;
 		fr_dict_attr_t const *da = tmpl_attr_tail_da(vpt);
 
-		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_NULL);
-		fr_assert(type != FR_TYPE_NULL);
+		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
+		fr_assert(type != FR_TYPE_VOID);
 
-		if (type == FR_TYPE_VOID) type = da->type;
+		if (type == FR_TYPE_NULL) type = da->type;
 
 		variable_name = cf_section_argv(cs, 1);
 

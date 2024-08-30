@@ -2045,22 +2045,29 @@ static CONF_ITEM *process_foreach(cf_stack_t *stack)
 		return cf_section_to_item(css);
 	}
 
-	if (strcmp(stack->buff[1], "auto") == 0) {
-		type = FR_TYPE_VOID;
+	fr_skip_whitespace(ptr);
 
-	} else {
-		type = fr_table_value_by_str(fr_type_table, stack->buff[1], FR_TYPE_NULL);
-		switch (type) {
-		default:
-			break;
+	/*
+	 *
+	 */
+	if (*ptr == '(') {
+		type = FR_TYPE_NULL;
 
-		case FR_TYPE_NULL:
-		case FR_TYPE_VOID:
-		case FR_TYPE_VALUE_BOX:
-		case FR_TYPE_MAX:
-			(void) parse_error(stack, ptr2, "Unknown or invalid variable type in 'foreach'");
-			return NULL;
-		}
+		strcpy(stack->buff[2], stack->buff[1]);
+		goto parse_expression;
+	}
+
+	type = fr_table_value_by_str(fr_type_table, stack->buff[1], FR_TYPE_NULL);
+	switch (type) {
+	default:
+		break;
+
+	case FR_TYPE_NULL:
+	case FR_TYPE_VOID:
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_MAX:
+		(void) parse_error(stack, ptr2, "Unknown or invalid variable type in 'foreach'");
+		return NULL;
 	}
 
 	fr_skip_whitespace(ptr);
@@ -2087,6 +2094,7 @@ static CONF_ITEM *process_foreach(cf_stack_t *stack)
 	/*
 	 *	"(" whitespace EXPRESSION whitespace ")"
 	 */
+parse_expression:
 	ptr++;
 	fr_skip_whitespace(ptr);
 

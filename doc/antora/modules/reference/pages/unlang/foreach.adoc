@@ -3,7 +3,7 @@
 .Syntax
 [source,unlang]
 ----
-foreach <type> <key-name> (<attribute-reference>) {
+foreach <key-name> (<attribute-reference>) {
     [ statements ]
 }
 ----
@@ -14,15 +14,13 @@ xref:unlang/break.adoc[break] keyword.
 
 There is no limit on how many `foreach` statements can be nested.
 
-<type>::
-
-A xref:type/index.adoc[data type], or the string `auto`.
-
 <key-name>::
 
 The name of the local variable which is used as the name of key when iterating over the attributes.
 
 The local variable is created automatically when the `foreach` loop is entered, and is deleted automatically when the `foreach` loop exits.
+
+The data type of the local variable is taken from the attribute reference.
 
 The `<key-name>` can be modified during the course of the `foreach` loop.  Modifications to the variable are copied back to the referenced attribute when the loop is done.  See below for an example.
 
@@ -33,36 +31,6 @@ The only limitation on the `<key-name>` is that it must be unique.
 The xref:unlang/attr.adoc[attribute reference] which will will be looped
 over.  The reference can be to one attribute, to an array, a child, or
 be a subset of attributes.
-
-== Data type of the Key
-
-The key variable can be given an explicit data type.  This data type does not have to be the same data type as the attribute being looped over.  If the types are different, then the data is cast from the source type to the key type.
-
-The explicit data type is needed for future functionality, which will allow `foreach` to iterate over xref:xlat/index.adoc[dynamic expansions].
-
-.Example
-[source,unlang]
-----
-foreach string child (&TLV[*].Child-1) {
-    &reply += {
-        Reply-Message = "TLV contains %{child}"
-    }
-}
-----
-
-When the iterator is an attribute reference, it is simplest to use `auto` as the data type.  The `foreach` iterator will then create the local variable `<key-name>`, with the data type given by the attribute which is being looped over.
-
-In the example below, the `key` variable will have data type `octets`, as the `Class` attribute has data type `octets`.
-
-.Example of 'auto' type
-[source,unlang]
-----
-foreach auto key (&Class) {
-    &reply += {
-        Reply-Message = "Contains %{key}"
-    }
-}
-----
 
 == Modifying Loop variables
 
@@ -77,7 +45,7 @@ the execution of the loop.
 ----
 &Tmp-Integer-0 := { 1, 3, 5, 11 }
 
-foreach uint32 self (&Tmp-Integer-0) {
+foreach self (&Tmp-Integer-0) {
 	&self += 19
 }
 ----

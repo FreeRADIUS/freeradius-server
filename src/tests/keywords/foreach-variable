@@ -3,7 +3,7 @@
 #
 #  New syntax
 #
-foreach string thing ( &Filter-Id )  {
+foreach thing ( &Filter-Id )  {
 	&reply += {
 		&Called-Station-Id = &thing
 	}
