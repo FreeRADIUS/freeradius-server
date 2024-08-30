@@ -135,6 +135,14 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 
 	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
 
+	vp = fr_dcursor_current(&state->cursor);
+	fr_assert(vp != NULL);
+
+	if (!fr_type_is_structural(vp->vp_type) && (vp->vp_type == state->key->vp_type)) {
+		fr_value_box_clear_value(&vp->data);
+		(void) fr_value_box_copy(vp, &vp->data, &state->key->data);
+	}	
+
 next:
 	vp = fr_dcursor_next(&state->cursor);
 	if (!vp) {
