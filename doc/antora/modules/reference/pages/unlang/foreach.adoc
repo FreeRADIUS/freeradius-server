@@ -3,7 +3,7 @@
 .Syntax
 [source,unlang]
 ----
-foreach <attribute-reference> {
+foreach <type> <key-name> (<attribute-reference>) {
     [ statements ]
 }
 ----
@@ -12,39 +12,57 @@ The `foreach` statement loops over a set of attributes as given by
 `<attribute-reference>`.  The loop can be exited early by using the
 xref:unlang/break.adoc[break] keyword.
 
+There is no limit on how many `foreach` statements can be nested.
+
+<type>::
+
+A xref:type/index.adoc[data type], or the string `auto`.
+
+<key-name>::
+
+The name of the local variable which is used as the name of key when iterating over the attributes.
+
+This local attribute contains a _copy_ of the data.  Modifications to this local variable do not affect the original attributes.  It is not currently possible to modify the attributes being looped over.
+
+The local variable is created automatically when the `foreach` loop is entered, and is deleted automatically when the `foreach` loop exits.  It is also possible to create other local variables within the `foreach` loop.
+
+The only limitation on the `<key-name>` is that it must be unique.
+
 <attribute-reference>::
 
 The xref:unlang/attr.adoc[attribute reference] which will will be looped
 over.  The reference can be to one attribute, to an array, a child, or
-be a subset.
+be a subset of attributes.
 
-Inside of the `foreach` block, the attribute that is being looped over
-can be referenced as `Foreach-Variable-0`, through
-`Foreach-Variable-9`.  The last digit is the depth of the loop,
-starting at "0".  The loops can be nested up to eight (8) deep, though
-this is not recommended.
+== Data type of the Key
 
-The attributes being looped over cannot be modified or deleted.
+The key variable can be given an explicit data type.  This data type does not have to be the same data type as the attribute being looped over.  If the types are different, then the data is cast from the source type to the key type.
+
+The explicit data type is needed for future functionality, which will allow `foreach` to iterate over xref:xlat/index.adoc[dynamic expansions].
 
 .Example
 [source,unlang]
 ----
-foreach &Class {
+foreach string child (&TLV[*].Child-1) {
     &reply += {
-        Reply-Message = "Contains %{Foreach-Variable-0}"
+        Reply-Message = "TLV contains %{child}"
     }
 }
 ----
+
+When the iterator is an attribute reference, it is simplest to use `auto` as the data type.  The `foreach` iterator will then create the local variable `<key-name>`, with the data type given by the attribute which is being looped over.
+
+In the example below, the `key` variable will have data type `octets`, as the `Class` attribute has data type `octets`.
 
 .Example
 [source,unlang]
 ----
-foreach &TLV[*].Child-1 {
+foreach auto key (&Class) {
     &reply += {
-        Reply-Message = "TLV contains %{Foreach-Variable-0}"
+        Reply-Message = "Contains %{key}"
     }
 }
 ----
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2024 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
