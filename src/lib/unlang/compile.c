@@ -3265,6 +3265,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 				 &t_rules);
 	if (!vpt) {
 		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'foreach'", name2);
+	fail:
 		talloc_free(g);
 		return NULL;
 	}
@@ -3278,9 +3279,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	if (!tmpl_is_attr(vpt)) {
 		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
 			   tmpl_type_to_str(vpt->type));
-	fail:
-		talloc_free(g);
-		return NULL;
+		goto fail;
 	}
 
 	if ((tmpl_attr_tail_num(vpt) != NUM_ALL) && (tmpl_attr_tail_num(vpt) != NUM_UNSPEC)) {
@@ -3356,7 +3355,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		fr_assert(gext->key != NULL);
 	}
 
-	if (!compile_children(g, &unlang_ctx2, true)) goto fail;
+	if (!compile_children(g, &unlang_ctx2, true)) return NULL;
 
 	return c;
 }
