@@ -1614,11 +1614,24 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name)
 {
 	fr_dict_attr_t const *da;
+	fr_slen_t len;
 
 	fr_dict_attr_flags_t flags = {
 		.internal = true,
 		.local = true,
 	};
+
+	/*
+	 *	Deny names which overlap other concepts.
+	 */
+	if (fr_table_value_by_str(tmpl_request_ref_table, name, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
+	fail_list:
+		cf_log_err(ci, "Local variable '%s' cannot be a list reference.", name);
+		return -1;
+	}
+
+	len = strlen(name);
+	if (tmpl_attr_list_from_substr(&da, &FR_SBUFF_IN(name, len)) == len) goto fail_list;
 
 	/*
 	 *	No overlap with the protocol dictionary.  The lookup
