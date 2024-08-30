@@ -22,9 +22,9 @@ A xref:type/index.adoc[data type], or the string `auto`.
 
 The name of the local variable which is used as the name of key when iterating over the attributes.
 
-This local attribute contains a _copy_ of the data.  Modifications to this local variable do not affect the original attributes.  It is not currently possible to modify the attributes being looped over.
+The local variable is created automatically when the `foreach` loop is entered, and is deleted automatically when the `foreach` loop exits.
 
-The local variable is created automatically when the `foreach` loop is entered, and is deleted automatically when the `foreach` loop exits.  It is also possible to create other local variables within the `foreach` loop.
+The `<key-name>` can be modified during the course of the `foreach` loop.  Modifications to the variable are copied back to the referenced attribute when the loop is done.  See below for an example.
 
 The only limitation on the `<key-name>` is that it must be unique.
 
@@ -54,7 +54,7 @@ When the iterator is an attribute reference, it is simplest to use `auto` as the
 
 In the example below, the `key` variable will have data type `octets`, as the `Class` attribute has data type `octets`.
 
-.Example
+.Example of 'auto' type
 [source,unlang]
 ----
 foreach auto key (&Class) {
@@ -63,6 +63,42 @@ foreach auto key (&Class) {
     }
 }
 ----
+
+== Modifying Loop variables
+
+An attribute which is a "leaf" data type (e.g. `uint32`, and not
+`tlv`) will be automatically copied back to the original attribute at
+the end of each iteration of the `foreach` loop.  That is, the
+original attribute will still exist, and will be unmodified, during
+the execution of the loop.
+
+.Example of modifying values
+[source,unlang]
+----
+&Tmp-Integer-0 := { 1, 3, 5, 11 }
+
+foreach uint32 self (&Tmp-Integer-0) {
+	&self += 19
+}
+----
+
+Once the loop has finished , the `&Tmp-Integer-0` attribute will have the following set of values.
+
+[source,unlang]
+----
+&Tmp-Integer-0 := { 20, 22, 24, 30 }
+----
+
+.Pseudocode for variable modification
+----
+loop over each i in attribute[0..n]
+     copy attribute[i] to the key variable
+
+     run loop body
+
+     copy the key variable back to attribute[i]
+----
+
 
 // Copyright (C) 2024 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
