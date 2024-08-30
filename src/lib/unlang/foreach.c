@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/server/request_data.h>
+#include <freeradius-devel/server/tmpl_dcursor.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
 #include "foreach_priv.h"
@@ -50,6 +51,10 @@ static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 f
 typedef struct {
 	request_t		*request;			//!< The current request.
 	fr_dcursor_t		cursor;				//!< Used to track our place in the list
+	fr_pair_t		*key;				//!< local variable which contains the key
+
+	tmpl_dcursor_ctx_t	cc;				//!< tmpl cursor state
+
 								///< we're iterating over.
 	fr_pair_list_t 		vps;				//!< List containing the attribute(s) we're
 								///< iterating over.
@@ -70,12 +75,16 @@ static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
  */
 static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 {
-	request_data_get(state->request, FOREACH_REQUEST_DATA, state->depth);
+	if (state->key) {
+		tmpl_dcursor_clear(&state->cc);
+	} else {
+		request_data_get(state->request, FOREACH_REQUEST_DATA, state->depth);
+	}
 
 	return 0;
 }
 
-static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+static unlang_action_t unlang_foreach_next_old(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_pair_t			*vp;
@@ -119,6 +128,53 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 }
 
 
+static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
+	fr_pair_t			*vp;
+
+	if (is_stack_unwinding_to_break(request->stack)) return UNLANG_ACTION_CALCULATE_RESULT;
+
+next:
+	vp = fr_dcursor_next(&state->cursor);
+	if (!vp) {
+		*p_result = frame->result;
+#ifndef NDEBUG
+		fr_assert(state->indent == request->log.indent.unlang);
+#endif
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Copy the data.
+	 */
+	if (fr_type_is_structural(vp->vp_type)) {
+		if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
+			REDEBUG("Failed copying children of %s", state->key->da->name);
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+	} else {
+		fr_value_box_clear_value(&state->key->data);
+		if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &vp->data) < 0) {
+			RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pP", state->key->da->name, vp);
+			goto next;
+		}
+
+#ifndef NDEBUG
+		RDEBUG2("# looping with: %s = %pV", state->key->da->name, &vp->data);
+#endif
+	}
+
+	repeatable_set(frame);
+
+	/*
+	 *	Push the child, and yield for a later return.
+	 */
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+}
+
+
 static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_stack_t			*stack = request->stack;
@@ -137,6 +193,71 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	 */
 	break_point_set(frame);
 
+	MEM(frame->state = state = talloc_zero(request->stack, unlang_frame_state_foreach_t));
+	talloc_set_destructor(state, _free_unlang_frame_state_foreach);
+
+	state->request = request;
+#ifndef NDEBUG
+	state->indent = request->log.indent.unlang;
+#endif
+
+	/*
+	 *	We have a key variable, let's use that.
+	 */
+	if (gext->key) {
+		/*
+		 *	No matching attributes, we can't do anything.
+		 */
+		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, gext->vpt);
+		if (!vp) {
+			*p_result = RLM_MODULE_NOOP;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+		/*
+		 *	Create the local variable and populate its value.
+		 */
+		if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
+			REDEBUG("Failed creating %s", gext->key->name);
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+		fr_assert(state->key != NULL);
+
+		fr_assert(vp->da->type == state->key->da->type);
+
+		if (fr_type_is_structural(vp->vp_type)) {
+			if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
+				REDEBUG("Failed copying children of %s", gext->key->name);
+				*p_result = RLM_MODULE_FAIL;
+				return UNLANG_ACTION_CALCULATE_RESULT;
+			}
+		} else {
+			fr_value_box_clear_value(&state->key->data);
+			while (vp && (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &vp->data) < 0)) {
+				RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pP", state->key->da->name, vp);
+				vp = fr_dcursor_next(&state->cursor);
+			}
+
+			/*
+			 *	Couldn't cast anything, the loop can't be run.
+			 */
+			if (!vp) {
+				*p_result = RLM_MODULE_NOOP;
+				return UNLANG_ACTION_CALCULATE_RESULT;
+			}
+		}
+
+		frame->process = unlang_foreach_next;
+
+		repeatable_set(frame);
+
+		/*
+		 *	Push the child, and go process it.
+		 */
+		return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+	}
+
 	/*
 	 *	Figure out foreach depth by walking back up the stack
 	 */
@@ -153,7 +274,6 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	MEM(frame->state = state = talloc_zero(request->stack, unlang_frame_state_foreach_t));
 	fr_pair_list_init(&state->vps);
 
 	/*
@@ -196,20 +316,14 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	state->request = request;
 	state->depth = depth;
-#ifndef NDEBUG
-	state->indent = request->log.indent.unlang;
-#endif
 
 	/*
 	 *	Add a (hopefully) faster lookup to get the state.
 	 */
 	request_data_add(request, FOREACH_REQUEST_DATA, state->depth, state, false, false, false);
 
-	talloc_set_destructor(state, _free_unlang_frame_state_foreach);
-
-	frame->process = unlang_foreach_next;
+	frame->process = unlang_foreach_next_old;
 
 	repeatable_set(frame);
 
