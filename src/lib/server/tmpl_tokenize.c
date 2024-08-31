@@ -1168,7 +1168,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 *	Set the filter type to none.
 	 */
 	ref->ar_filter_type = TMPL_ATTR_FILTER_TYPE_NONE;
-//	ref->ar_num = NUM_UNSPEC;
+	ref->ar_num = NUM_UNSPEC;
 
 	TMPL_ATTR_VERIFY(vpt);
 
