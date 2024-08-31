@@ -1368,7 +1368,6 @@ int map_afrom_vp(TALLOC_CTX *ctx, map_t **out, fr_pair_t *vp, tmpl_rules_t const
 	if (!map->lhs) goto oom;
 
 	tmpl_attr_set_leaf_da(map->lhs, vp->da);
-	tmpl_attr_set_leaf_num(map->lhs, NUM_UNSPEC);
 
 	tmpl_attr_set_request_ref(map->lhs, rules->attr.request_def);
 	tmpl_attr_set_list(map->lhs, rules->attr.list_def);
