@@ -1259,7 +1259,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	ar->ar_da = da;
 	ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
 
-	ar->ar_filter_type = TMPL_ATTR_FILTER_NONE;
+	ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_NONE;
 	ar->ar_num = NUM_UNSPEC;
 
 	/*
