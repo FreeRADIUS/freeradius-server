@@ -3295,17 +3295,15 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		goto fail;
 	}
 
-	if ((tmpl_attr_tail_num(vpt) != NUM_ALL) && (tmpl_attr_tail_num(vpt) != NUM_UNSPEC)) {
+	if (tmpl_attr_tail_num(vpt) == NUM_UNSPEC) {
+		cf_log_warn(cs, "Attribute reference should be updated to use %s[*]", vpt->name);
+		tmpl_attr_rewrite_leaf_num(vpt, NUM_UNSPEC, NUM_ALL);
+	}
+
+	if (tmpl_attr_tail_num(vpt) != NUM_ALL) {
 		cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
 		goto fail;
 	}
-
-	/*
-	 *	Fix up the template to iterate over all instances of
-	 *	the attribute. In a perfect consistent world, users would do
-	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
-	 */
-	tmpl_attr_rewrite_leaf_num(vpt, NUM_UNSPEC, NUM_ALL);
 
 	gext = unlang_group_to_foreach(g);
 	gext->vpt = vpt;
