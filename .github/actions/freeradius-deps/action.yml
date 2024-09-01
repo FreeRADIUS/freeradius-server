@@ -32,15 +32,24 @@ runs:
         sudo dpkg-reconfigure man-db
         sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
 
-    # Basic package installation on Ubuntu24.04of packages fails with:
+    #
+    # Basic package installation on Ubuntu24.04 fails with:
     #   ERROR: Operation {'runbindable'} cannot have a source. Source = AARE('/')
     # ...unless apparmor is disabled.
+    #
+    # Even with apparmor disabled and purged, some packages still attempt to call
+    # apparmor utilities.
+    #
+    # Here we alias the apparmor utilities to /bin/true to prevent the build from
+    # failing.
+    #
     - name: Disable AppArmor
       if: ${{ runner.os != 'macOS' }}
       run: |
         sudo systemctl disable apparmor || true
         sudo systemctl stop apparmor || true
-        sudo apt purge apparmor || true
+        sudo apt purge -y apparmor
+        sudo update-alternatives --install /usr/bin/aa-complain aa-complain /bin/true 60
       shell: bash
 
     #
