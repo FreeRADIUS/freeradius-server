@@ -2153,6 +2153,7 @@ static fr_slen_t tokenize_unary(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	unary->call.func = func;
 	unary->call.dict = t_rules->attr.dict_def;
 	unary->flags = func->flags;
+	unary->flags.impure_func = !func->flags.pure;
 
 	if (tokenize_field(unary->call.args, &node, &our_in, p_rules, t_rules, bracket_rules, out_c, (c == '!')) < 0) {
 		talloc_free(unary);
@@ -2374,7 +2375,7 @@ static fr_slen_t tokenize_rcode(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	MEM(node = xlat_exp_alloc(head, XLAT_FUNC, fr_sbuff_start(&our_in), slen));
 	node->call.func = func;
 	// no need to set dict here
-	node->flags = func->flags;
+	node->flags = func->flags; /* rcode is impure, but can be calculated statically */
 
 	MEM(arg = xlat_exp_alloc(node, XLAT_BOX, fr_sbuff_start(&our_in), slen));
 
@@ -2982,6 +2983,7 @@ redo:
 	node->call.func = func;
 	node->call.dict = t_rules->attr.dict_def;
 	node->flags = func->flags;
+	node->flags.impure_func = !func->flags.pure;
 
 	xlat_func_append_arg(node, lhs, logical_ops[op] && cond);
 	xlat_func_append_arg(node, rhs, logical_ops[op] && cond);

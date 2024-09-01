@@ -215,6 +215,7 @@ static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat
 		return NULL;
 	}
 	node->flags = func->flags;
+	node->flags.impure_func = !func->flags.pure;
 	xlat_flags_merge(&node->flags, &args->flags);
 
 	/*

@@ -110,6 +110,7 @@ typedef struct xlat_s xlat_t;
 typedef struct {
 	bool			needs_resolving;//!< Needs pass2 resolution.
 	bool			pure;		//!< has no external side effects, true for BOX, LITERAL, and some functions
+	bool			impure_func;	//!< xlat contains an impure function
 	bool			can_purify;	//!< if the xlat has a pure function with pure arguments.
 
 	bool			constant;	//!< xlat is just tmpl_attr_tail_data, or XLAT_BOX
@@ -434,6 +435,8 @@ xlat_action_t	xlat_transparent(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 tmpl_t		*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t *xlat);
 
 int		xlat_from_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_head_t **head, tmpl_t **vpt_p);
+
+bool		xlat_impure_func(xlat_exp_head_t const *head) CC_HINT(nonnull);
 
 /*
  *	xlat_alloc.c

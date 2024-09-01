@@ -230,6 +230,7 @@ static inline CC_HINT(nonnull) void xlat_flags_merge(xlat_flags_t *parent, xlat_
 	parent->pure &= child->pure; /* purity can only be removed, never added */
 	parent->can_purify |= child->can_purify;
 	parent->constant &= child->constant;
+	parent->impure_func |= child->impure_func;
 }
 
 static inline CC_HINT(nonnull) int xlat_exp_insert_tail(xlat_exp_head_t *head, xlat_exp_t *node)

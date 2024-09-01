@@ -378,6 +378,7 @@ static int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tm
 		node->call.func = func;
 		if (t_rules) node->call.dict = t_rules->attr.dict_def;
 		node->flags = func->flags;
+		node->flags.impure_func = !func->flags.pure;
 		node->call.input_type = func->input_type;
 	}
 
@@ -1688,6 +1689,7 @@ int xlat_resolve(xlat_exp_head_t *head, xlat_res_rules_t const *xr_rules)
 
 			xlat_flags_merge(&node->flags, &node->call.args->flags);
 			node->flags.can_purify = (node->call.func->flags.pure && node->call.args->flags.pure) | node->call.args->flags.can_purify;
+			node->flags.impure_func = !node->call.func->flags.pure;
 			break;
 
 		/*
@@ -1850,4 +1852,9 @@ done:
 	*out = head;
 
 	return 0;
+}
+
+bool xlat_impure_func(xlat_exp_head_t const *head)
+{
+	return head->flags.impure_func;
 }

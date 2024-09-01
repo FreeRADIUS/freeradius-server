@@ -403,6 +403,7 @@ void xlat_func_flags_set(xlat_t *x, xlat_func_flags_t flags)
 {
 	x->flags.pure = flags & XLAT_FUNC_FLAG_PURE;
 	x->internal = flags & XLAT_FUNC_FLAG_INTERNAL;
+	x->flags.impure_func = !x->flags.pure;
 }
 
 /** Set a print routine for an xlat function.
