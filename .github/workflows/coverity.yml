@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - coverity_scan
-    paths:
-      - '.github/workflows/coverity.yml'
   schedule:
     - cron: '0 20 * * *'
 
