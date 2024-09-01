@@ -174,8 +174,16 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	 */
 	if (ar_filter_is_none(ar)) {
 		num = 0;
+
+	} else if (!ar_filter_is_num(ar)) {
+		request_t *request = cc->request;
+
+		RDEBUG("Attribute filter is unsupported");
+		vp = NULL;
+		pop = true;
+		goto done;
+
 	} else {
-		fr_assert(ar_filter_is_num(ar));
 		num = ar->ar_num;
 	}
 

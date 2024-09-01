@@ -414,6 +414,7 @@ typedef enum {
 	TMPL_ATTR_FILTER_TYPE_INDEX,			//!< Filter is an index type.
 	TMPL_ATTR_FILTER_TYPE_CONDITION,       		//!< Filter is a condition
 	TMPL_ATTR_FILTER_TYPE_TMPL,       		//!< Filter is a tmpl
+	TMPL_ATTR_FILTER_TYPE_EXPR,              	//!< Filter is an expression
 } tmpl_attr_filter_type_t;
 
 typedef struct {
@@ -428,6 +429,7 @@ typedef struct {
 	union {
 		xlat_exp_head_t		_CONST *cond;		//!< xlat condition
 		tmpl_t			_CONST *tmpl;		//!< tmpl
+		xlat_exp_head_t		_CONST *expr;		//!< xlat expression
 	};
 } tmpl_attr_filter_t;
 
@@ -518,12 +520,14 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 #define ar_num				filter.num
 #define ar_cond				filter.cond
 #define ar_tmpl				filter.tmpl
+#define ar_expr				filter.expr
 #define ar_filter_type			filter.type
 
 #define ar_filter_is_none(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_NONE)
 #define ar_filter_is_num(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_INDEX)
 #define ar_filter_is_cond(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_CONDITION)
 #define ar_filter_is_tmpl(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_TMPL)
+#define ar_filter_is_expr(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_EXPR)
 /** @} */
 
 /** A source or sink of value data.

@@ -1464,7 +1464,48 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		slen = xlat_tokenize_condition(ar, &ar->ar_cond, &tmp, &p_rules, &t_rules);
 		if (slen < 0) goto error;
 
+		fr_assert(!xlat_impure_func(ar->ar_cond));
+
 		ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_CONDITION;
+		fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
+		break;
+	}
+
+	case '%':		/* ${...} expansion */
+	{
+		fr_sbuff_t tmp = FR_SBUFF(&our_name);
+		fr_slen_t slen;
+		tmpl_rules_t t_rules;
+		fr_sbuff_parse_rules_t p_rules;
+		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
+
+		if (!fr_sbuff_is_str(&our_name, "%{", 2)) {
+			fr_strerror_const("Invalid expression in attribute index");
+			goto error;
+		}
+
+		tmp = FR_SBUFF(&our_name);
+		t_rules = (tmpl_rules_t) {};
+		t_rules.attr = *at_rules;
+
+		p_rules = (fr_sbuff_parse_rules_t) {
+			.terminals = &filter_terminals,
+			.escapes = NULL
+		};
+
+		/*
+		 *	Check if it's an expression.
+		 */
+		slen = xlat_tokenize_expression(ar, &ar->ar_cond, &tmp, &p_rules, &t_rules);
+		if (slen < 0) goto error;
+
+		if (xlat_impure_func(ar->ar_expr)) {
+			fr_strerror_const("Expression in attribute index cannot depend on functions which call external databases");
+			goto error;
+		}
+
+		ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_EXPR;
+
 		fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
 		break;
 	}
@@ -1514,7 +1555,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		if (slen <= 0) goto error;
 
 		if (!tmpl_is_attr(ar->ar_tmpl)) {
-			fr_strerror_printf("Invalid array index");
+			fr_strerror_const("Invalid array index");
 			goto error;
 		}
 
@@ -1525,7 +1566,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *	For matching therefore, we really need to have a way to define "self".
 		 */
 		if (!fr_type_numeric[tmpl_attr_tail_da(ar->ar_tmpl)->type]) {
-			fr_strerror_printf("Invalid data type for array index (must be numeric)");
+			fr_strerror_const("Invalid data type for array index (must be numeric)");
 			goto error;
 		}
 
