@@ -3297,7 +3297,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (tmpl_attr_tail_num(vpt) == NUM_UNSPEC) {
 		cf_log_warn(cs, "Attribute reference should be updated to use %s[*]", vpt->name);
-		tmpl_attr_rewrite_leaf_num(vpt, NUM_UNSPEC, NUM_ALL);
+		tmpl_attr_set_leaf_num(vpt, NUM_ALL);
 	}
 
 	if (tmpl_attr_tail_num(vpt) != NUM_ALL) {

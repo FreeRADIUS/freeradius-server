@@ -1180,6 +1180,7 @@ void tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num)
 		ar = tmpl_attr_list_tail(tmpl_attr(vpt));
 	}
 
+	ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_INDEX;
 	ar->ar_num = num;
 
 	TMPL_ATTR_VERIFY(vpt);
