@@ -156,6 +156,7 @@ jobs:
         with:
           use_docker: true
           cc: ${{ matrix.env.CC }}
+          fuzzing: ${{ matrix.env.TEST_TYPE == 'fuzzing' }}
 
       - name: Install alternative dependencies
         if: ${{ matrix.env.LIBS_ALT == 'yes' }}

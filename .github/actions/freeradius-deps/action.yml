@@ -10,6 +10,9 @@ inputs:
   gcc_ver:
     desription: Version of GCC to use
     default: 14
+  fuzzing:
+    desription: True if fuzzing is enabled
+    default: false
   cc:
     desription: Which CC to use
     default: gcc
