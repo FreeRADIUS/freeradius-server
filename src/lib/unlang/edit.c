@@ -457,13 +457,15 @@ apply_list:
 	/*
 	 *	Print the children before we do the modifications.
 	 */
-	RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
-	if (fr_debug_lvl >= L_DBG_LVL_2) {
-		RINDENT();
-		edit_debug_attr_list(request, children, map);
-		REXDENT();
+	if (!current->parent) {
+		RDEBUG2("%s %s {", current->lhs.vpt->name, fr_tokens[map->op]);
+		if (fr_debug_lvl >= L_DBG_LVL_2) {
+			RINDENT();
+			edit_debug_attr_list(request, children, map);
+			REXDENT();
+		}
+		RDEBUG2("}");
 	}
-	RDEBUG2("}");
 
 	fr_pair_list_foreach(children, child) {
 		if (!fr_dict_attr_can_contain(current->lhs.vp->da, child->da)) {
