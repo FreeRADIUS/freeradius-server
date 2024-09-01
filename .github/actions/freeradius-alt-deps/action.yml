@@ -1,10 +1,20 @@
 name: freeradius-alt-deps
 
+inputs:
+  openssl_version:
+    description: 'The version of OpenSSL to build'
+    required: true
+    default: '3.0.1'
+  openssl_args:
+    description: 'Arguments to pass to OpenSSL configure'
+    required: true
+    default: |
+      --prefix=/opt/openssl \
+      --openssldir=/usr/lib/ssl \
+      --debug
 runs:
   using: composite
-
   steps:
-
     #
     #  Build using some alternative libraries
     #
@@ -12,28 +22,37 @@ runs:
     #    MIT Kerberos -> HEIMDAL Kerberos
     #    OpenSSL 1.0  -> OpenSSL 3.0
     #
-    - name: 'Fetch OpenSSL 3.0 SHA'
+    - name: 'Fetch OpenSSL SHA'
       id: opensslshasum
       shell: bash
       run: |
-        wget -qO- http://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
+        wget -qO- http://www.openssl.org/source/openssl-${{ inputs.openssl_version }}.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
 
-    - name: 'Restore OpenSSL 3.0 from the cache'
+    - name: 'Restore OpenSSL from the cache'
       uses: actions/cache@v4
       id: openssl-cache
       with:
         path: /opt/openssl/
-        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
+        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}-${{ inputs.openssl_args }}
 
-    - name: 'Build OpenSSL 3.0 (if cache stale)'
+    #
+    #  Build OpenSSL from source
+    #
+    #  We specify the system's normal home directory for OpenSSL
+    #  so that the normal root certificates are available.
+    #
+    #  If this causes problems in future, the system openssl.cnf
+    #  can be overwritten with a custom one.
+    #
+    - name: 'Build OpenSSL (if cache stale)'
       if: ${{ steps.openssl-cache.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
         cd ~
-        wget https://www.openssl.org/source/openssl-$ALT_OPENSSL.tar.gz
-        tar xzf openssl-$ALT_OPENSSL.tar.gz
-        cd openssl-$ALT_OPENSSL
-        ./Configure --prefix=/opt/openssl --openssldir=. --debug
+        wget https://www.openssl.org/source/openssl-${{inputs.openssl_version}}.tar.gz
+        tar xzf openssl-${{inputs.openssl_version}}.tar.gz
+        cd openssl-${{inputs.openssl_version}}
+        ./Configure ${{ inputs.openssl_args }}
         make -j `nproc`
         make install_sw
 
