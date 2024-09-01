@@ -983,7 +983,6 @@ static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
 	*ar = (tmpl_attr_t){
 		.type = type,
 		.filter = {
-			.type = TMPL_ATTR_FILTER_TYPE_NONE,
 			.num = NUM_UNSPEC
 		}
 	};
@@ -1164,15 +1163,26 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
 
-	/*
-	 *	Set the filter type to none.
-	 */
-	ref->ar_filter_type = TMPL_ATTR_FILTER_TYPE_NONE;
-	ref->ar_num = NUM_UNSPEC;
-
 	TMPL_ATTR_VERIFY(vpt);
 
 	return 0;
+}
+
+void tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num)
+{
+	tmpl_attr_t *ar;
+
+	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
+
+	if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0) {
+		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
+	} else {
+		ar = tmpl_attr_list_tail(tmpl_attr(vpt));
+	}
+
+	ar->ar_num = num;
+
+	TMPL_ATTR_VERIFY(vpt);
 }
 
 /** Rewrite the leaf's instance number
@@ -1258,9 +1268,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 	ar->ar_da = da;
 	ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
-
-	ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_NONE;
-	ar->ar_num = NUM_UNSPEC;
+	tmpl_attr_set_leaf_num(vpt, tmpl_attr_tail_num(list));
 
 	/*
 	 *	We need to rebuild the attribute name, to be the
