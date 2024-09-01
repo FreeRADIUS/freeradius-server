@@ -2364,6 +2364,7 @@ static int parse_input(cf_stack_t *stack)
 	 */
 	if ((name1_token == T_BARE_WORD) && parent->allow_locals) {
 		fr_type_t type;
+		char const *ptr3;
 
 		type = fr_table_value_by_str(fr_type_table, buff[1], FR_TYPE_NULL);
 		if (type == FR_TYPE_NULL) {
@@ -2374,6 +2375,27 @@ static int parse_input(cf_stack_t *stack)
 		if (type == FR_TYPE_TLV) goto parse_name2;
 
 		/*
+		 *	group {
+		 *
+		 *	is a section.
+		 */
+		if (type == FR_TYPE_GROUP) {
+			fr_skip_whitespace(ptr);
+			if (*ptr == '{') {
+				ptr++;
+				value = NULL;
+				name2_token = T_BARE_WORD;
+				goto alloc_section;
+			}
+
+		} else if (!fr_type_is_leaf(type)) {
+			/*
+			 *	Other structural types are allowed.
+			 */
+			return parse_error(stack, ptr2, "Invalid data type for local variable.  Must be 'tlv' or else a non-structrul type");
+		}
+
+		/*
 		 *	We don't have an operator, so set it to a magic value.
 		 */
 		op_token = T_OP_CMP_TRUE;
@@ -2381,12 +2403,34 @@ static int parse_input(cf_stack_t *stack)
 		/*
 		 *	Parse the name of the local variable, and use it as the "value" for the CONF_PAIR.
 		 */
+		ptr3 = ptr;
 		if (cf_get_token(parent, &ptr, &value_token, buff[2], stack->bufsize,
 				 frame->filename, frame->lineno) < 0) {
 			return -1;
 		}
+
+		if (value_token != T_BARE_WORD) {
+			return parse_error(stack, ptr3, "Invalid name");
+		}
+
 		value = buff[2];
-		goto alloc_pair;
+
+		/*
+		 *	Non-structural things must be variable definitions.
+		 */
+		if (fr_type_is_leaf(type)) goto alloc_pair;
+
+		/*
+		 *	Parse:	group foo
+		 *	   vs   group foo { ...
+		 */
+		fr_skip_whitespace(ptr);
+
+		if (*ptr != '{') goto alloc_pair;
+
+		ptr++;
+		name2_token = T_BARE_WORD;
+		goto alloc_section;
 	}
 
 	/*
@@ -2500,6 +2544,8 @@ check_for_eol:
 	value = buff[2];
 
 alloc_section:
+	parent->allow_locals = false;
+
 	css = cf_section_alloc(parent, parent, buff[1], value);
 	if (!css) {
 		ERROR("%s[%d]: Failed allocating memory for section",
