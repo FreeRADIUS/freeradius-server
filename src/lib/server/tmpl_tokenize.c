@@ -1442,14 +1442,11 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *
 		 *	In order to fix that, we have to
 		 */
-		if (!fr_type_is_structural(ar->ar_da->type)) {
+		if (!ar->ar_da || !fr_type_is_structural(ar->ar_da->type)) {
 			fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
 			ar->ar_num = 0;
 			goto error;
 		}
-
-		fr_assert(ar->ar_da != NULL);
-		fr_assert(fr_type_is_structural(ar->ar_da->type));
 
 		tmp = FR_SBUFF(&our_name);
 		t_rules = (tmpl_rules_t) {};
