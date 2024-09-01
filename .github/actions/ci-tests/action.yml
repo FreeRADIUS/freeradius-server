@@ -108,7 +108,6 @@ runs:
           redis-server \
           slapd
 
-        test x"$USE_DOCKER" = "xtrue" || sudo apt-get install -y --no-install-recommends apparmor-utils
         test x"$USE_DOCKER" = "xtrue" || sudo systemctl stop dovecot exim4 slapd openresty
         test x"$USE_DOCKER" = "xtrue" || sudo aa-complain /usr/sbin/slapd
 
@@ -121,7 +120,6 @@ runs:
       shell: bash
       run: |
         sudo apt-get install -y --no-install-recommends \
-          apparmor-utils \
           redis-tools \
           oathtool \
           ldap-utils
