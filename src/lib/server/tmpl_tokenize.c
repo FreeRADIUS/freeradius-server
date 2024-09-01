@@ -1362,55 +1362,64 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		fr_sbuff_next(&our_name);
 		break;
 
-	case 'n':
-		ar->ar_num = NUM_LAST;
-		fr_sbuff_next(&our_name);
+	case '0':
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+	case '6':
+	case '7':
+	case '8':
+	case '9':
+	{
+		ssize_t rcode;
+		fr_sbuff_parse_error_t	sberr = FR_SBUFF_PARSE_OK;
+		fr_sbuff_t tmp = FR_SBUFF(&our_name);
+
+		/*
+		 *	All digits (not hex).
+		 */
+		rcode = fr_sbuff_out(&sberr, &ar->ar_num, &tmp);
+		if ((rcode < 0) || !fr_sbuff_is_char(&tmp, ']')) goto parse_tmpl;
+
+		if ((ar->ar_num > 1000) || (ar->ar_num < 0)) {
+			fr_strerror_printf("Invalid array index '%hi' (should be between 0-1000)", ar->ar_num);
+			ar->ar_num = 0;
+			goto error;
+		}
+
+		fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
 		break;
+	}
+
+	case '"':
+	case '\'':
+	case '`':
+	case '/':
+		fr_strerror_const("Invalid data type for array index");
+		goto error;
 
 	/* Used as EOB here */
 	missing_closing:
 	case '\0':
 		fr_strerror_const("No closing ']' for array index");
-		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 	error:
+		if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
 		FR_SBUFF_ERROR_RETURN(&our_name);
 
-	default:
+	case '(':		/* (...) expression */
 	{
-		fr_sbuff_parse_error_t	sberr = FR_SBUFF_PARSE_OK;
 		fr_sbuff_t tmp = FR_SBUFF(&our_name);
-		ssize_t rcode;
 		fr_slen_t slen;
 		tmpl_rules_t t_rules;
 		fr_sbuff_parse_rules_t p_rules;
 		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
 
-		rcode = fr_sbuff_out(&sberr, &ar->ar_num, &tmp);
-		if ((rcode > 0) && (fr_sbuff_is_char(&tmp, ']'))) {
-			if ((ar->ar_num > 1000) || (ar->ar_num < 0)) {
-				fr_strerror_printf("Invalid array index '%hi' (should be between 0-1000)", ar->ar_num);
-				ar->ar_num = 0;
-				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
-				goto error;
-			}
-
-			fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
-			break;
-		}
-
-		/*
-		 *	Temporary parsing hack: &User-Name[a] does _not_ match a condition 'a'.
-		 */
-		if (!fr_sbuff_is_char(&tmp, '&')) {
-			fr_strerror_const("Invalid array index");
-			if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
-			goto error;
-		}
-
 		/*
 		 *	For now, we don't allow filtering on leaf values. e.g.
 		 *
-		 *		&User-Name[&User-Name == foo]
+		 *		&User-Name[(&User-Name == foo)]
 		 *
 		 *	@todo - find some sane way of allowing this, without mangling the xlat expression
 		 *	parser too badly.  The simplest way is likely to just parse the expression, and then
@@ -1434,10 +1443,9 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *	In order to fix that, we have to
 		 */
 		if (!fr_type_is_structural(ar->ar_da->type)) {
-				fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
-				ar->ar_num = 0;
-				if (err) *err = TMPL_ATTR_ERROR_INVALID_ARRAY_INDEX;
-				goto error;
+			fr_strerror_printf("Invalid filter - cannot use filter on leaf attributes");
+			ar->ar_num = 0;
+			goto error;
 		}
 
 		fr_assert(ar->ar_da != NULL);
@@ -1446,7 +1454,7 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		tmp = FR_SBUFF(&our_name);
 		t_rules = (tmpl_rules_t) {};
 		t_rules.attr = *at_rules;
-		t_rules.attr.namespace = ar->ar_da;
+		t_rules.attr.namespace = ar->ar_da; /* @todo - parent? */
 
 		p_rules = (fr_sbuff_parse_rules_t) {
 			.terminals = &filter_terminals,
@@ -1457,11 +1465,74 @@ static fr_slen_t tmpl_attr_parse_filter(tmpl_attr_error_t *err, tmpl_attr_t *ar,
 		 *	Check if it's a condition.
 		 */
 		slen = xlat_tokenize_condition(ar, &ar->ar_cond, &tmp, &p_rules, &t_rules);
-		if (slen < 0) {
+		if (slen < 0) goto error;
+
+		ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_CONDITION;
+		fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
+		break;
+	}
+
+	case 'n':
+		/*
+		 *	[n] is the last one
+		 *
+		 *	[nope] is a reference to "nope".
+		 */
+		if (fr_sbuff_is_str(&our_name, "n]", 2)) {
+			ar->ar_num = NUM_LAST;
+			fr_sbuff_next(&our_name);
+			break;
+		}
+		FALL_THROUGH;
+
+	default:
+	parse_tmpl:
+	{
+		fr_sbuff_t tmp = FR_SBUFF(&our_name);
+		ssize_t slen;
+		tmpl_rules_t t_rules;
+		fr_sbuff_parse_rules_t p_rules;
+		fr_sbuff_term_t const filter_terminals = FR_SBUFF_TERMS(L("]"));
+
+		tmp = FR_SBUFF(&our_name);
+		t_rules = (tmpl_rules_t) {};
+		t_rules.attr = *at_rules;
+
+		/*
+		 *	Don't reset namespace, we always want to start searching from the top level of the
+		 *	dictionaries.
+		 */
+
+		p_rules = (fr_sbuff_parse_rules_t) {
+			.terminals = &filter_terminals,
+			.escapes = NULL
+		};
+
+		/*
+		 *	@todo - for some reason, the tokenize_condition code allows for internal
+		 *	vs protocol vs local attributes, whereas the tmpl function only accepts
+		 *	internal ones.
+		 */
+		slen = tmpl_afrom_substr(ar, &ar->ar_tmpl, &tmp, T_BARE_WORD, &p_rules, &t_rules);
+		if (slen <= 0) goto error;
+
+		if (!tmpl_is_attr(ar->ar_tmpl)) {
+			fr_strerror_printf("Invalid array index");
 			goto error;
 		}
 
-		ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_CONDITION;
+		/*
+		 *	Arguably we _could_ say &User-Name["foo"] matches all user-name with value "foo",
+		 *	but that would confuse the issue for &Integer-Thing[4].
+		 *
+		 *	For matching therefore, we really need to have a way to define "self".
+		 */
+		if (!fr_type_numeric[tmpl_attr_tail_da(ar->ar_tmpl)->type]) {
+			fr_strerror_printf("Invalid data type for array index (must be numeric)");
+			goto error;
+		}
+
+		ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_TMPL;
 		fr_sbuff_set(&our_name, &tmp);	/* Advance name _AFTER_ doing checks */
 		break;
 	}

@@ -42,20 +42,49 @@ looks in the input packet list for the named attribute.
 .Syntax
 [source,unlang]
 ----
-&Attribute-Name[<integer>]
+&Attribute-Name[<index>]
 ----
 
 When an attribute appears multiple times in a list, this syntax allows
 you to address the attributes as if they were array entries.  The
-`<integer>` value defines which attribute to address.  The `[0]` value
+`<index>` value defines which attribute to address.  The `[0]` value
 refers to the first attributes, `[1]` refers to the second attribute,
 etc.
 
-.Examples
+The `<index>` can be an integer (0..1000), as in the example below.
+
+The indexes are limited to 1000, because there are essentially no
+protocols which have more than 1000 attributes.
+
+.Integer Array index
 [source,unlang]
 ----
 &EAP-Message[1]
 &reply.NAS-IP-Address[2]
+----
+
+The `<index>` can also be a reference to a numerical attribute, as in the example below.
+
+The reference *must* be to an attribute of numerical data type.  Structural data types and `string` or `octets` types are not allowed.  If the index is out of bounds (e.g. negative), then the reference fails.
+
+The main utility of attribute indexes is in a xref:unlang/foreach.adoc[foreach] loop.
+
+.Attribute reference as Array index
+[source,unlang]
+----
+uint32 foo
+
+&foo = 2
+
+&EAP-Message[&foo]
+----
+
+The `<index>` can also be a special value `n`, which means "the last attribute in the list.
+
+.Last attribute in a list
+[source,unlang]
+----
+&EAP-Message[n]
 ----
 
 === Array References in lists

@@ -538,7 +538,7 @@ condition &User-Name[1001] == 'bob'
 match ERROR offset 12: Invalid array index '1001' (should be between 0-1000)
 
 condition &User-Name[-1] == 'bob'
-match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
+match ERROR offset 12: Invalid array index
 
 #
 #  Sometimes the attribute/condition parser needs to fallback to bare words

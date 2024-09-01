@@ -25,7 +25,7 @@ condition &User-Name[n] == "foo"
 match (&User-Name[n] == "foo")
 
 condition &User-Name[-1] == "foo"
-match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
+match ERROR offset 12: Invalid array index
 
 #
 #  tmpl_dcursor.c has an assert which fails if you try to use
@@ -35,7 +35,7 @@ match ERROR offset 12: Invalid array index '-1' (should be between 0-1000)
 #
 #  @todo - feature - allow expressions in tmpl_attr_parse_filter(()
 #
-condition &User-Name[&User-Name == 'bar'] == "foo"
+condition &User-Name[(&User-Name == 'bar')] == "foo"
 match ERROR offset 12: Invalid filter - cannot use filter on leaf attributes
 
 #
@@ -51,7 +51,7 @@ match ERROR offset 12: Invalid filter - cannot use filter on leaf attributes
 #
 #  @todo - feature - this error is misleading and wrong.
 #
-condition &TLS-Certificate[&Common-Name == 'user@example.com'] == bar
+condition &TLS-Certificate[(&Common-Name == 'user@example.com')] == bar
 match ERROR offset 1: Cannot use list references in condition
 
 count

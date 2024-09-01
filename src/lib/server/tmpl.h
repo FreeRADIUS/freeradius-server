@@ -413,12 +413,22 @@ typedef enum {
 	TMPL_ATTR_FILTER_TYPE_NONE = 0,			//!< No filter present.
 	TMPL_ATTR_FILTER_TYPE_INDEX,			//!< Filter is an index type.
 	TMPL_ATTR_FILTER_TYPE_CONDITION,       		//!< Filter is a condition
+	TMPL_ATTR_FILTER_TYPE_TMPL,       		//!< Filter is a tmpl
 } tmpl_attr_filter_type_t;
 
 typedef struct {
 	tmpl_attr_filter_type_t	_CONST type;		//!< Type of filter this is.
 	int16_t			_CONST num;		//!< For array references.
-	xlat_exp_head_t		_CONST *cond;		//!< xlat condition
+
+	/*
+	 *	These are "union" because they are disjoint.  The "num" field is arguably disjoint, too, but
+	 *	there is currently a lot of code in tmpl_tokenize.c which directly references ar->ar_num
+	 *	without checking the type.
+	 */
+	union {
+		xlat_exp_head_t		_CONST *cond;		//!< xlat condition
+		tmpl_t			_CONST *tmpl;		//!< tmpl
+	};
 } tmpl_attr_filter_t;
 
 /** An element in a list of nested attribute references
@@ -507,11 +517,13 @@ FR_DLIST_FUNCS(tmpl_request_list, tmpl_request_t, entry)
 
 #define ar_num				filter.num
 #define ar_cond				filter.cond
+#define ar_tmpl				filter.tmpl
 #define ar_filter_type			filter.type
 
 #define ar_filter_is_none(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_NONE)
 #define ar_filter_is_num(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_INDEX)
 #define ar_filter_is_cond(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_CONDITION)
+#define ar_filter_is_tmpl(_ar)		((_ar)->ar_filter_type == TMPL_ATTR_FILTER_TYPE_TMPL)
 /** @} */
 
 /** A source or sink of value data.

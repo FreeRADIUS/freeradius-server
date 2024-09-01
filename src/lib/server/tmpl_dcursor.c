@@ -128,14 +128,58 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	tmpl_dcursor_nested_t	*ns;
 	fr_pair_t		*iter = curr, *vp;
 	bool			pop = false;
+	int16_t			num = NUM_ALL;
 
 	ns = fr_dlist_tail(&cc->nested);
 	ar = ns->ar;
 	vp = fr_dcursor_current(&ns->cursor);
 
-	fr_assert(!ar || ar_filter_is_none(ar) || ar_filter_is_num(ar)); /* @todo - add evaluation of conditions */
+	if (!ar) goto all_inst;
 
-	if (ar) switch (ar->ar_num) {
+	/*
+	 *	Array indexes can be attribute references.  In which case they must be castable to a uint8_t.
+	 *
+	 *	i.e. there's likly no point in allowing the array ref to specify "none", or "any", or "count".
+	 *
+	 *	Arguably it's useful to specify "all", but why?  The main utility of the array reference is to
+	 *	index a particular attribute when looping over a list of attributes.
+	 */
+	if (ar_filter_is_tmpl(ar)) {
+		uint8_t ref;
+
+		fr_assert(ar_filter_is_tmpl(ar));
+		fr_assert(tmpl_is_attr(ar->ar_tmpl));
+
+		/*
+		 *	Can't cast it, we're done.
+		 */
+		if (tmpl_expand(&ref, NULL, 0, cc->request, ar->ar_tmpl, NULL, NULL) < 0) {
+			vp = NULL;
+			pop = true;
+			goto done;
+		}
+
+		num = ref;
+		goto find_num;
+	}
+
+	/*
+	 *	@todo - add dynamic evaluation of conditions.  But that would work _only_ if the conditions
+	 *	aren't blocking, AND we somehow have a way for the conditions to reference a "self" attribute.
+	 */
+
+	/*
+	 *	No filter means "first one", unless the "foreach" code called tmpl_attr_rewrite_leaf_num(),
+	 *	which rewrites are_
+	 */
+	if (ar_filter_is_none(ar)) {
+		num = 0;
+	} else {
+		fr_assert(ar_filter_is_num(ar));
+		num = ar->ar_num;
+	}
+
+	switch (num) {
 	/*
 	 *	Get the first instance
 	 */
@@ -149,6 +193,9 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	case NUM_ALL:
 	case NUM_COUNT:
 	all_inst:
+		/*
+		 *	@todo - arguably we shouldn't try building things here.
+		 */
 		if (!vp) pop = true;	/* pop only when we're done */
 		fr_dcursor_next(&ns->cursor);
 		break;
@@ -167,20 +214,21 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	 *	Get the n'th instance
 	 */
 	default:
+	find_num:
 	{
 		int16_t		i = 0;
 
-		while ((i++ < ar->ar_num) && vp) vp = fr_dcursor_next(&ns->cursor);
+		while ((i++ < num) && vp) vp = fr_dcursor_next(&ns->cursor);
 		pop = true;
 	}
 		break;
-	} else goto all_inst;
+	}
 
 	/*
 	 *	If no pair was found and there is a fill
 	 *	callback, call that, depending on the suffix
 	 */
-	if (!vp && cc->build && ar) switch (ar->ar_num) {
+	if (!vp && cc->build && ar) switch (num) {
 	case NUM_UNSPEC:
 	case NUM_LAST:
 	case 0:
@@ -191,6 +239,7 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		break;
 	}
 
+done:
 	if (pop) tmpl_cursor_nested_pop(cc);
 
 	return vp;
