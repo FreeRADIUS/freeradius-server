@@ -2645,6 +2645,37 @@ brute_force:
 	return 0;
 }
 
+/*
+ *	Empty lists are empty:
+ *
+ *		{}
+ *		{{}}
+ *		{''}
+ *		{{},''}
+ *
+ *		etc.
+ */
+static bool fr_value_calc_list_empty(fr_value_box_list_t const *list)
+{
+	fr_value_box_list_foreach(list, item) {
+		switch (item->type) {
+		default:
+			return false;
+
+		case FR_TYPE_GROUP:
+			if (!fr_value_calc_list_empty(&item->vb_group)) return false;
+			break;
+
+		case FR_TYPE_STRING:
+		case FR_TYPE_OCTETS:
+			if (item->vb_length != 0) return false;
+			break;
+		}
+	}
+
+	return true;
+}
+
 
 /*
  *	Loop over input lists, calling fr_value_calc_binary_op()
@@ -2656,6 +2687,7 @@ int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_li
 {
 	int rcode;
 	bool invert = false;
+	bool a_empty, b_empty;
 
 	/*
 	 *	v3 hack.  != really means !( ... == ... )
@@ -2666,10 +2698,19 @@ int fr_value_calc_list_cmp(TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_box_li
 	}
 
 	/*
+	 *	It's annoying when the debug prints out cmp({},{}) and says "not equal".
+	 *
+	 *	What's happening behind the scenes is that one side is an empty value-box group, such as when
+	 *	an xlat expansion fails.  And the other side is an empty string.  If we believe that strings
+	 *	are actually sets of characters, then {}=='', and we're all OK
+	 */
+	a_empty = fr_value_box_list_empty(list1) || fr_value_calc_list_empty(list1);
+	b_empty = fr_value_box_list_empty(list2) || fr_value_calc_list_empty(list2);
+
+	/*
 	 *	Both lists are empty, they should be equal when checked for equality.
 	 */
-	if ((fr_value_box_list_num_elements(list1) == 0) &&
-	    (fr_value_box_list_num_elements(list2) == 0)) {
+	if (a_empty && b_empty) {
 		switch (op) {
 		case T_OP_CMP_EQ:
 		case T_OP_LE:

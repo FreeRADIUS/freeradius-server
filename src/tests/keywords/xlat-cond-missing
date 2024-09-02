@@ -16,7 +16,7 @@ if (%{Framed-IP-Address[#]} != 4) {
 #  for the existence of the attribute.  But... the syntax allows it, so
 #  it should work.
 #
-if !("%{Framed-IP-Address[4]}" == '') {
+if ("%{Framed-IP-Address[4]}" != '') {
 	test_fail
 }
 
