@@ -2634,6 +2634,19 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 				cast_type = FR_TYPE_NULL;
 			}
 		}
+
+		/*
+		 *	Push the cast down.
+		 *
+		 *	But if we're casting to string, and the RHS is already a string, we don't need to cast
+		 *	it.  We can just discard the cast.
+		 */
+		if ((cast_type != FR_TYPE_NULL) && (tmpl_rules_cast(vpt) == FR_TYPE_NULL)) {
+			if ((cast_type != FR_TYPE_STRING) || (vpt->quote == T_BARE_WORD)) {
+				tmpl_cast_set(vpt, cast_type);
+			}
+			cast_type = FR_TYPE_NULL;
+		}
 	}
 
 	/*

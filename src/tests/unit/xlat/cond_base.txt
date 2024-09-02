@@ -222,7 +222,7 @@ match (&Session-Timeout == '10')
 # This one is be an expansion, so it's left as-is.
 #
 xlat_purify &Event-Timestamp == "January 1, 2012 %{User-Name}"
-match (&Event-Timestamp == %cast(string, "January 1, 2012 %{User-Name}"))
+match (&Event-Timestamp == "January 1, 2012 %{User-Name}")
 
 # This one is NOT an expansion, so it's parsed into normal form
 xlat_purify &Event-Timestamp == 'January 1 2012'
@@ -250,7 +250,7 @@ match true
 # LHS is IPaddr, RHS is string (malformed IP address).
 # We can only fail this at run-time.
 xlat_purify (ipaddr)127.0.0.1 == "%md4(' 127.0.0.1')"
-match (127.0.0.1 == %cast(string, "%md4(' 127.0.0.1')"))
+match (127.0.0.1 == "%md4(' 127.0.0.1')")
 
 #
 #  Bare %{...} is allowed.
@@ -268,7 +268,7 @@ match true
 
 # Invalid cast from octets to ether.
 xlat_purify (ether)00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')"
-match (00:11:22:33:44:55 == %cast(string, "%md4('00:11:22:33:44:55')"))
+match (00:11:22:33:44:55 == "%md4('00:11:22:33:44:55')")
 
 xlat_purify (ether) 00:XX:22:33:44:55 == 00:11:22:33:44:55
 match ERROR offset 12: Missing separator, expected ':'
@@ -430,7 +430,7 @@ match ("foo" == &User-Name)
 #  ERROR: Failed casting 0x002ade8665c69219ca16bd108d92c8d5 to data type uint32: Invalid cast from octets to uint32.  Source length 16 is greater than destination type size 4
 #
 xlat_purify (integer)"%md4(' 1 + 1')" < &NAS-Port
-match (%cast(uint32, "%md4(' 1 + 1')") < &NAS-Port)
+match ((uint32)"0x002ade8665c69219ca16bd108d92c8d5" < &NAS-Port)
 
 #
 #  The string gets parsed as an IP address.
@@ -463,7 +463,7 @@ match ((ipaddr)&PMIP6-Home-IPv4-HoA == &Framed-IP-Address)
 
 # but these are allowed
 xlat_purify (ether)&Acct-Input-Octets64 == "%interpreter('foo')"
-match  ((ether)&Acct-Input-Octets64 == %cast(string, "%interpreter('foo')"))
+match  ((ether)&Acct-Input-Octets64 == "%interpreter('foo')")
 
 xlat_purify (ipaddr)&Filter-Id == &Framed-IP-Address
 match ((ipaddr)&Filter-Id == &Framed-IP-Address)
@@ -492,7 +492,7 @@ match (&User-Name[n] == "bob")
 #match &Foo-Bar
 
 xlat_purify &Acct-Input-Octets > "%{Session-Timeout}"
-match (&Acct-Input-Octets > %cast(string, "%{Session-Timeout}"))
+match (&Acct-Input-Octets > "%{Session-Timeout}")
 
 xlat_purify &Acct-Input-Octets > &Session-Timeout
 match (&Acct-Input-Octets > &Session-Timeout)

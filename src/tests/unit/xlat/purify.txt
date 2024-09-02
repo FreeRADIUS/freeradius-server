@@ -223,7 +223,7 @@ match "hello 3 bob"
 #  The real run-time tests work
 #
 xlat_purify "hello %{1 + 2} bob"
-match %cast(string, "hello %{(1 + 2)} bob")
+match "hello %{(1 + 2)} bob"
 
 #
 #  New syntax!
