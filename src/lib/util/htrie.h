@@ -90,9 +90,16 @@ fr_htrie_t *fr_htrie_alloc(TALLOC_CTX *ctx,
 			   fr_trie_key_t get_key,
 			   fr_free_t free_data);
 
+/*
+ * 	CC_NO_SANITIZE_UNDEFINED("function") is needed because ubsan implements
+ * 	strict function pointer type checking.  This is an issue because ubsan
+ * 	doesn't allow void * to match a specific tree type like fr_hash_t.
+ */
+
 /** Match data in a htrie
  *
  */
+CC_NO_SANITIZE_UNDEFINED("function")
 static inline CC_HINT(nonnull) void *fr_htrie_match(fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.match(ht->store, data);
@@ -101,6 +108,7 @@ static inline CC_HINT(nonnull) void *fr_htrie_match(fr_htrie_t *ht, void const *
 /** Find data in a htrie
  *
  */
+CC_NO_SANITIZE_UNDEFINED("function")
 static inline CC_HINT(nonnull) void *fr_htrie_find(fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.find(ht->store, data);
@@ -109,6 +117,7 @@ static inline CC_HINT(nonnull) void *fr_htrie_find(fr_htrie_t *ht, void const *d
 /** Insert data into a htrie
  *
  */
+CC_NO_SANITIZE_UNDEFINED("function")
 static inline CC_HINT(nonnull) bool fr_htrie_insert(fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.insert(ht->store, data);
@@ -117,6 +126,7 @@ static inline CC_HINT(nonnull) bool fr_htrie_insert(fr_htrie_t *ht, void const *
 /** Replace data in a htrie, freeing previous data if free_data cb was passed to fr_htrie_alloc
  *
  */
+CC_NO_SANITIZE_UNDEFINED("function")
 static inline CC_HINT(nonnull(2,3)) int fr_htrie_replace(void **old, fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.replace(old, ht->store, data);
@@ -125,6 +135,7 @@ static inline CC_HINT(nonnull(2,3)) int fr_htrie_replace(void **old, fr_htrie_t 
 /** Remove data from a htrie without freeing it
  *
  */
+CC_NO_SANITIZE_UNDEFINED("function")
 static inline CC_HINT(nonnull) void *fr_htrie_remove(fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.remove(ht->store, data);
@@ -133,6 +144,7 @@ static inline CC_HINT(nonnull) void *fr_htrie_remove(fr_htrie_t *ht, void const 
 /** Delete data from a htrie, freeing it if free_data cb was passed to fr_htrie_alloc
  *
  */
+CC_NO_SANITIZE_UNDEFINED("function")
 static inline CC_HINT(nonnull) bool fr_htrie_delete(fr_htrie_t *ht, void const *data)
 {
 	return ht->funcs.delete(ht->store, data);
@@ -141,6 +153,7 @@ static inline CC_HINT(nonnull) bool fr_htrie_delete(fr_htrie_t *ht, void const *
 /** Return the number of elements in the htrie
  *
  */
+CC_NO_SANITIZE_UNDEFINED("function")
 static inline CC_HINT(nonnull) int fr_htrie_num_elements(fr_htrie_t *ht)
 {
 	return ht->funcs.num_elements(ht->store);
