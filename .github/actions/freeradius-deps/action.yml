@@ -94,8 +94,8 @@ runs:
 
     - name: Install libstdc++ for fuzzing
       shell: bash
-      run: sudo apt-get install libstdc++
-      if: ${{ inputs.test_type == 'fuzzing' && runner.os != 'macOS' }}
+      run: sudo apt-get -y install libstdc++-14-dev
+      if: ${{ inputs.fuzzing && runner.os != 'macOS' }}
 
     - name: Install tacacs_plus
       shell: bash
