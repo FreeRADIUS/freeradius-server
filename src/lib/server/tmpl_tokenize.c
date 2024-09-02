@@ -1158,10 +1158,13 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 		ref->type = TMPL_ATTR_TYPE_NORMAL;
 		ref->da = da;
 	}
+
 	/*
 	 *	FIXME - Should be calculated from existing ar
 	 */
 	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
+	ref->ar_filter_type = TMPL_ATTR_FILTER_TYPE_NONE;
+	ref->ar_num = NUM_UNSPEC;
 
 	TMPL_ATTR_VERIFY(vpt);
 
