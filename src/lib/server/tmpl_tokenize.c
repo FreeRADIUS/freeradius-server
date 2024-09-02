@@ -1206,20 +1206,6 @@ void tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to)
 	TMPL_ATTR_VERIFY(vpt);
 }
 
-/** Rewrite all instances of an array number
- *
- */
-void tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to)
-{
-	tmpl_attr_t *ref = NULL;
-
-	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
-
-	while ((ref = tmpl_attr_list_next(tmpl_attr(vpt), ref))) if (ref->ar_num == from) ref->ar_num = to;
-
-	TMPL_ATTR_VERIFY(vpt);
-}
-
 /** Set the request for an attribute ref
  *
  */

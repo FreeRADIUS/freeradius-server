@@ -1193,8 +1193,6 @@ void			tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num) CC_HINT(nonnull);
 
 void			tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
 
-void			tmpl_attr_rewrite_num(tmpl_t *vpt, int16_t from, int16_t to) CC_HINT(nonnull);
-
 void			tmpl_attr_set_request_ref(tmpl_t *vpt, FR_DLIST_HEAD(tmpl_request_list) const *request_def) CC_HINT(nonnull);
 
 void			tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list) CC_HINT(nonnull);
