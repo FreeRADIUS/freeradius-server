@@ -579,6 +579,34 @@ xlat_action_t unlang_xlat_yield(request_t *request,
 	return XLAT_ACTION_YIELD;
 }
 
+/** Evaluate a "pure" (or not impure) xlat
+ *
+ * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] out		Where to write the result of the expansion.
+ * @param[in] request		to push xlat onto.
+ * @param[in] xlat		to evaluate.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int unlang_xlat_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request, xlat_exp_head_t const *xlat)
+{
+	bool	success = false;
+
+	if (xlat->flags.impure_func) {
+		fr_strerror_const("Expansion requires async operations");
+		return -1;
+	}
+
+	if (unlang_xlat_push(ctx, &success, out, request, xlat, UNLANG_TOP_FRAME) < 0) return -1;
+
+	(void) unlang_interpret(request);
+
+	if (!success) return -1;
+
+	return 0;
+}
+
 
 /** Register xlat operation with the interpreter
  *
