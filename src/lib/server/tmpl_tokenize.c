@@ -1175,28 +1175,16 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	return 0;
 }
 
-void tmpl_attr_set_leaf_num(tmpl_t *vpt, int16_t num)
-{
-	tmpl_attr_t *ar;
-
-	tmpl_assert_type(tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt));
-
-	if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0) {
-		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-	} else {
-		ar = tmpl_attr_list_tail(tmpl_attr(vpt));
-	}
-
-	ar->ar_filter_type = TMPL_ATTR_FILTER_TYPE_INDEX;
-	ar->ar_num = num;
-
-	TMPL_ATTR_VERIFY(vpt);
-}
-
 /** Rewrite the leaf's instance number
  *
+ *  This function is _only_ called from the compiler, for "update" and "foreach" keywords.  In those cases,
+ *  the user historically did "&foo-bar", but really meant "&foo-bar[*]".  We silently update that for
+ *  "update" sections, and complain about it in "foreach" sections.
+ *
+ *  As the server now supports multiple types of leaf references, we do the rewrite _only_ from "none" (no
+ *  filter), OR where it's a numerical index, AND the index hasn't been specified.
  */
-void tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to)
+void tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t to)
 {
 	tmpl_attr_t *ref = NULL;
 
@@ -1205,7 +1193,17 @@ void tmpl_attr_rewrite_leaf_num(tmpl_t *vpt, int16_t from, int16_t to)
 	if (tmpl_attr_list_num_elements(tmpl_attr(vpt)) == 0) return;
 
 	ref = tmpl_attr_list_tail(tmpl_attr(vpt));
-	if (ref->ar_num == from) ref->ar_num = to;
+
+	if (ref->ar_filter_type == TMPL_ATTR_FILTER_TYPE_NONE) {
+		ref->ar_filter_type = TMPL_ATTR_FILTER_TYPE_INDEX;
+		ref->ar_num = to;
+
+	} else if (ref->ar_filter_type != TMPL_ATTR_FILTER_TYPE_INDEX) {
+		return;
+
+	} else if (ref->ar_num == NUM_UNSPEC) {
+		ref->ar_num = to;
+	}
 
 	TMPL_ATTR_VERIFY(vpt);
 }

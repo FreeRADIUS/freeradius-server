@@ -484,25 +484,13 @@ int unlang_fixup_update(map_t *map, void *ctx)
 		}
 	}
 
-	/*
-	 *	Fixup LHS attribute references to change NUM_UNSPEC to NUM_ALL, but only for "update" sections.
-	 */
 	if (!ctx) {
-		switch (map->lhs->type) {
-		case TMPL_TYPE_ATTR:
-			if (!tmpl_is_list(map->lhs)) tmpl_attr_rewrite_leaf_num(map->lhs, NUM_UNSPEC, NUM_ALL);
-			break;
-
-		default:
-			break;
-		}
-
 		/*
 		 *	Fixup RHS attribute references to change NUM_UNSPEC to NUM_ALL.
 		 */
 		switch (map->rhs->type) {
 		case TMPL_TYPE_ATTR:
-			if (!tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_UNSPEC, NUM_ALL);
+			if (!tmpl_is_list(map->rhs)) tmpl_attr_rewrite_leaf_num(map->rhs, NUM_ALL);
 			break;
 
 		default:
@@ -3308,7 +3296,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (tmpl_attr_tail_num(vpt) == NUM_UNSPEC) {
 		cf_log_warn(cs, "Attribute reference should be updated to use %s[*]", vpt->name);
-		tmpl_attr_set_leaf_num(vpt, NUM_ALL);
+		tmpl_attr_rewrite_leaf_num(vpt, NUM_ALL);
 	}
 
 	if (tmpl_attr_tail_num(vpt) != NUM_ALL) {
