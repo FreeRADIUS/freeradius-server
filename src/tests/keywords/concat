@@ -30,10 +30,10 @@ if !(&result_string == "456789") {
 
 #
 #  &ref could return a list.
-#  (string) &ref casts each value to a string
-#    and returns a list of strings
 #
-&Called-Station-Id := %{(string) &control.NAS-Port[*]}
+#  Which we then cast individually to the LHS
+#
+&Called-Station-Id := &control.NAS-Port[*]
 if !(&Called-Station-Id[0] == "456") {
 	test_fail
 }
