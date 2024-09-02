@@ -495,6 +495,10 @@ int		unlang_xlat_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out,
 				 request_t *request, xlat_exp_head_t const *head)
 				 CC_HINT(warn_unused_result);
 
+int		unlang_xlat_eval_type(TALLOC_CTX *ctx, fr_value_box_t *out, fr_type_t type, fr_dict_attr_t const *enumv,
+				      request_t *request, xlat_exp_head_t const *head)
+				      CC_HINT(warn_unused_result);
+
 xlat_action_t	unlang_xlat_yield(request_t *request,
 				  xlat_func_t callback, xlat_func_signal_t signal, fr_signal_t sigmask,
 				  void *rctx);

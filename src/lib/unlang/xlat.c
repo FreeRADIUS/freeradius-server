@@ -607,6 +607,73 @@ int unlang_xlat_eval(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *reque
 	return 0;
 }
 
+/** Evaluate a "pure" (or not impure) xlat
+ *
+ * @param[in] ctx		To allocate value boxes and values in.
+ * @param[out] vb		output value-box
+ * @param[in] type		expected type
+ * @param[in] enumv		enum for type
+ * @param[in] request		to push xlat onto.
+ * @param[in] xlat		to evaluate.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int unlang_xlat_eval_type(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_type_t type, fr_dict_attr_t const *enumv, request_t *request, xlat_exp_head_t const *xlat)
+{
+	fr_value_box_t *src;
+	fr_value_box_list_t list;
+
+	if (fr_type_is_structural(type)) {
+		fr_strerror_const("Invalid type for output of evaluation");
+		return -1;
+	}
+
+	fr_value_box_list_init(&list);
+
+	if (unlang_xlat_eval(ctx, &list, request, xlat) < 0) return -1;
+
+	fr_value_box_init(vb, type, NULL, false);
+
+	switch (type) {
+	default:
+		/*
+		 *	Take only the first entry from the list.
+		 */
+		src = fr_value_box_list_head(&list);
+		if (!src) {
+			fr_strerror_const("Expression returned no results");
+		fail:
+			fr_value_box_list_talloc_free(&list);
+			return -1;
+		}
+
+		if (fr_value_box_cast(ctx, vb, type, enumv, src) < 0) goto fail;
+		fr_value_box_list_talloc_free(&list);
+		break;
+
+	case FR_TYPE_STRING:
+	case FR_TYPE_OCTETS:
+		/*
+		 *	No output: create an empty string.
+		 *
+		 *	The "concat in place" function returns an error for empty input, which is arguably not
+		 *	what we want to do here.
+		 */
+		if (fr_value_box_list_empty(&list)) {
+			fr_value_box_init(ctx, vb, type, NULL);
+			break;
+		}
+
+		if (fr_value_box_list_concat_in_place(ctx, vb, &list, type, FR_VALUE_BOX_LIST_FREE_BOX, false, SIZE_MAX) < 0) {
+			goto fail;
+		}
+		break;
+	}
+
+	return 0;
+}
+
 
 /** Register xlat operation with the interpreter
  *
