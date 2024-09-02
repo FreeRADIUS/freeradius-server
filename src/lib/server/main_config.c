@@ -1077,6 +1077,11 @@ int main_config_init(main_config_t *config)
 	 */
 	config->talloc_pool_size = 8 * 1024; /* default */
 
+	/*
+	 *	Migration flags
+	 */
+	if (!tmpl_require_enum_prefix) tmpl_require_enum_prefix = config->require_enum_prefix;
+
 	cs = cf_section_alloc(NULL, NULL, "main", NULL);
 	if (!cs) return -1;
 
@@ -1419,11 +1424,6 @@ do {\
 	}
 
 	config->root_cs = cs;	/* Do this last to avoid dangling pointers on error */
-
-	/*
-	 *	Migration flags
-	 */
-	tmpl_require_enum_prefix = config->require_enum_prefix;
 
 	/* Clear any unprocessed configuration errors */
 	fr_strerror_clear();
