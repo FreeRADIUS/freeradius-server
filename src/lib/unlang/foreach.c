@@ -52,6 +52,7 @@ typedef struct {
 	request_t		*request;			//!< The current request.
 	fr_dcursor_t		cursor;				//!< Used to track our place in the list
 	fr_pair_t		*key;				//!< local variable which contains the key
+	tmpl_t const		*vpt;				//!< pointer to the vpt
 
 	tmpl_dcursor_ctx_t	cc;				//!< tmpl cursor state
 
@@ -76,7 +77,22 @@ static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 {
 	if (state->key) {
+		fr_pair_t *vp;
+
 		tmpl_dcursor_clear(&state->cc);
+
+		/*
+		 *	Now that we're done, the leaf entries can be changed again.
+		 */
+		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, state->request, state->vpt);
+		fr_assert(vp != NULL);
+
+		do {
+			if (fr_type_is_leaf(vp->vp_type)) fr_pair_clear_immutable(vp);
+		
+		} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
+		tmpl_dcursor_clear(&state->cc);
+
 	} else {
 		request_data_get(state->request, FOREACH_REQUEST_DATA, state->depth);
 	}
@@ -138,6 +154,11 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	vp = fr_dcursor_current(&state->cursor);
 	fr_assert(vp != NULL);
 
+	/*
+	 *	If we modified the value, copy it back to the original pair.  Note that the copy does NOT
+	 *	check the "immutable" flag.  That flag is for the people using unlang, not for the
+	 *	interpreter.
+	 */
 	if (!fr_type_is_structural(vp->vp_type) && (vp->vp_type == state->key->vp_type)) {
 		fr_value_box_clear_value(&vp->data);
 		(void) fr_value_box_copy(vp, &vp->data, &state->key->data);
@@ -213,6 +234,8 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	 *	We have a key variable, let's use that.
 	 */
 	if (gext->key) {
+		state->vpt = gext->vpt;
+
 		/*
 		 *	No matching attributes, we can't do anything.
 		 */
@@ -221,6 +244,19 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 			*p_result = RLM_MODULE_NOOP;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
+
+		/*
+		 *	Before we loop over the variables, ensure that the user can't pull the rug out from
+		 *	under us.
+		 */
+		do {
+			if (fr_type_is_leaf(vp->vp_type)) fr_pair_set_immutable(vp);
+		
+		} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
+		tmpl_dcursor_clear(&state->cc);
+
+		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, gext->vpt);
+		fr_assert(vp != NULL);
 
 		/*
 		 *	Create the local variable and populate its value.

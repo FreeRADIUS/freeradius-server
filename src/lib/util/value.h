@@ -1075,6 +1075,12 @@ void fr_value_box_set_immutable(fr_value_box_t *box)
 	box->immutable = true;
 }
 
+static inline CC_HINT(nonnull, always_inline)
+void fr_value_box_clear_immutable(fr_value_box_t *box)
+{
+	box->immutable = false;
+}
+
 
 /** @name Assign and manipulate binary-unsafe C strings
  *

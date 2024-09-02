@@ -686,7 +686,17 @@ bool		fr_pair_immutable(fr_pair_t const *vp) CC_HINT(nonnull);
 static inline CC_HINT(nonnull, always_inline)
 void fr_pair_set_immutable(fr_pair_t *vp)
 {
+	fr_assert(fr_type_is_leaf(vp->vp_type));
+
 	fr_value_box_set_immutable(&vp->data);
+}
+
+static inline CC_HINT(nonnull, always_inline)
+void fr_pair_clear_immutable(fr_pair_t *vp)
+{
+	fr_assert(fr_type_is_leaf(vp->vp_type));
+
+	fr_value_box_clear_immutable(&vp->data);
 }
 
 

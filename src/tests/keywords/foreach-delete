@@ -1,0 +1,32 @@
+#
+#  PRE: foreach-modify
+#
+
+&Tmp-Integer-0 := { 1, 3, 5, 11 }
+
+#
+#  Try to delete one of the variables we're looping over.  If the user could delete one,
+#  then the underlying tmpl_dcursor would crash, as it didn't know about the deletion.
+#
+foreach uint32 self (&Tmp-Integer-0) {
+	&request -= &Tmp-Integer-0[1]
+	&self += 19
+}
+
+if (&Tmp-Integer-0[0] != 20) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[1] != 22) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[2] != 24) {
+	test_fail
+}
+
+if (&Tmp-Integer-0[3] != 30) {
+	test_fail
+}
+
+success
