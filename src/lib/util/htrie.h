@@ -34,17 +34,17 @@ extern "C" {
 
 typedef struct fr_htrie_s fr_htrie_t;
 
-typedef void *(*fr_htrie_find_t)(fr_htrie_t *ht, void const *data);
+typedef void *(*fr_htrie_find_t)(void *ht, void const *data);
 
-typedef bool (*fr_htrie_insert_t)(fr_htrie_t *ht, void const *data);
+typedef bool (*fr_htrie_insert_t)(void *ht, void const *data);
 
-typedef int (*fr_htrie_replace_t)(void **old, fr_htrie_t *ht, void const *data);
+typedef int (*fr_htrie_replace_t)(void **old, void *ht, void const *data);
 
-typedef void *(*fr_htrie_remove_t)(fr_htrie_t *ht, void const *data);
+typedef void *(*fr_htrie_remove_t)(void *ht, void const *data);
 
-typedef bool (*fr_htrie_delete_t)(fr_htrie_t *ht, void const *data);
+typedef bool (*fr_htrie_delete_t)(void *ht, void const *data);
 
-typedef uint32_t (*fr_htrie_num_elements_t)(fr_htrie_t *ht);
+typedef uint32_t (*fr_htrie_num_elements_t)(void *ht);
 
 typedef enum {
 	FR_HTRIE_INVALID = 0,
