@@ -983,6 +983,7 @@ static tmpl_attr_t *tmpl_attr_add(tmpl_t *vpt, tmpl_attr_type_t type)
 	*ar = (tmpl_attr_t){
 		.type = type,
 		.filter = {
+			.type = TMPL_ATTR_FILTER_TYPE_NONE,
 			.num = NUM_UNSPEC
 		}
 	};
@@ -1143,6 +1144,13 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 		 *	Free old unknown and unresolved attributes...
 		 */
 		talloc_free_children(ref);
+
+		/*
+		 *
+		 */
+		ref->ar_filter_type = TMPL_ATTR_FILTER_TYPE_NONE;
+		ref->ar_num = NUM_UNSPEC;
+
 	} else {
 		ref = tmpl_attr_add(vpt, da->flags.is_unknown ? TMPL_ATTR_TYPE_UNKNOWN : TMPL_ATTR_TYPE_NORMAL);
 	}
@@ -1152,10 +1160,8 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 *	Unknown attributes get copied
 	 */
 	if (da->flags.is_unknown) {
-		ref->type = TMPL_ATTR_TYPE_UNKNOWN;
 		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
 	} else {
-		ref->type = TMPL_ATTR_TYPE_NORMAL;
 		ref->da = da;
 	}
 
@@ -1163,8 +1169,6 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 *	FIXME - Should be calculated from existing ar
 	 */
 	ref->ar_parent = fr_dict_root(fr_dict_by_da(da));	/* Parent is the root of the dictionary */
-	ref->ar_filter_type = TMPL_ATTR_FILTER_TYPE_NONE;
-	ref->ar_num = NUM_UNSPEC;
 
 	TMPL_ATTR_VERIFY(vpt);
 
@@ -1237,6 +1241,7 @@ void tmpl_attr_set_list(tmpl_t *vpt, fr_dict_attr_t const *list)
 int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_dict_attr_t const *da)
 {
 	tmpl_t *vpt;
+	tmpl_attr_t *ar;
 
 	char attr[256];
 	ssize_t slen;
@@ -1248,7 +1253,16 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 	 */
 	tmpl_attr_copy(vpt, list);
 	tmpl_attr_set_list(vpt, tmpl_list(list));
-	tmpl_attr_set_leaf_da(vpt, da);
+
+	if (da->flags.is_unknown) {
+		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
+		ar->da = ar->ar_unknown = fr_dict_unknown_copy(vpt, da);
+	} else {
+		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
+		ar->ar_da = da;
+	}
+
+	ar->ar_parent = fr_dict_root(fr_dict_by_da(da));
 
 	/*
 	 *	We need to rebuild the attribute name, to be the
