@@ -2112,17 +2112,9 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 					      fr_type_t dst_type, fr_dict_attr_t const *dst_enumv,
 					      fr_value_box_t const *src)
 {
-	if (!fr_type_is_fixed_size(dst_type)) if (!fr_cond_assert(false)) return -1;
+	uint8_t *ptr;
 
-	if (src->vb_length < network_min_size(dst_type)) {
-		fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
-				   "destination type size %zd",
-				   fr_type_to_str(src->type),
-				   fr_type_to_str(dst_type),
-				   src->vb_length,
-				   network_min_size(dst_type));
-		return -1;
-	}
+	if (!fr_type_is_fixed_size(dst_type)) if (!fr_cond_assert(false)) return -1;
 
 	if (src->vb_length > network_max_size(dst_type)) {
 		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
@@ -2137,10 +2129,24 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 	fr_value_box_init(dst, dst_type, dst_enumv, src->tainted);
 
 	/*
+	 *	No data to copy means just reset it to zero.
+	 */
+	if (!src->vb_length) return 0;
+
+	ptr = (uint8_t *) &dst->datum;
+
+	/*
+	 *	If the source is too small, just left-fill with zeroes.
+	 */
+	if (src->vb_length < network_min_size(dst_type)) {
+		ptr += network_min_size(dst_type) - src->vb_length;
+	}
+
+	/*
 	 *	Copy the raw octets into the datum of a value_box
 	 *	inverting bytesex for uint32s (if LE).
 	 */
-	memcpy(&dst->datum, src->vb_octets, fr_value_box_field_sizes[dst_type]);
+	memcpy(ptr, src->vb_octets, src->vb_length);
 	fr_value_box_hton(dst, dst);
 
 	return 0;
