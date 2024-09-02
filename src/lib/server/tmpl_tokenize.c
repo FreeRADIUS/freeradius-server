@@ -2237,12 +2237,21 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	 */
 	switch (at_rules->prefix) {
 	case TMPL_ATTR_REF_PREFIX_YES:
-		if (!fr_sbuff_next_if_char(&our_name, '&')) {
-			fr_strerror_const("Invalid attribute reference, missing '&' prefix");
-			if (err) *err = TMPL_ATTR_ERROR_BAD_PREFIX;
-			FR_SBUFF_ERROR_RETURN(&our_name);
+		if (!tmpl_require_enum_prefix) {
+			if (!fr_sbuff_next_if_char(&our_name, '&')) {
+				fr_strerror_const("Invalid attribute reference, missing '&' prefix");
+				if (err) *err = TMPL_ATTR_ERROR_BAD_PREFIX;
+				FR_SBUFF_ERROR_RETURN(&our_name);
+			}
+			break;
 		}
+		FALL_THROUGH;	/* if we do require enum prefixes, then the '&' is optional */
 
+	case TMPL_ATTR_REF_PREFIX_AUTO:
+		/*
+		 *	'&' prefix can be there, but doesn't have to be
+		 */
+		(void) fr_sbuff_next_if_char(&our_name, '&');
 		break;
 
 	case TMPL_ATTR_REF_PREFIX_NO:
@@ -2251,13 +2260,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 			if (err) *err = TMPL_ATTR_ERROR_BAD_PREFIX;
 			FR_SBUFF_ERROR_RETURN(&our_name);
 		}
-		break;
-
-	case TMPL_ATTR_REF_PREFIX_AUTO:
-		/*
-		 *	'&' prefix can be there, but doesn't have to be
-		 */
-		(void) fr_sbuff_next_if_char(&our_name, '&');
 		break;
 	}
 
@@ -5559,7 +5561,12 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 	default:
 	bare_word:
 		*out = p;
-		quote = '\0';
+
+		if (tmpl_require_enum_prefix) {
+			quote = '['; /* foo[1] is OK */
+		} else {
+			quote = '\0';
+		}
 
 	skip_word:
 		*type = T_BARE_WORD;

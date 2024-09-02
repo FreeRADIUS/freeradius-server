@@ -1,8 +1,0 @@
-#
-#  PRE: update
-#
-#  Tests for Vendor-Specific 
-#
-update reply {
-	Vendor-Specific := "foo"	# ERROR
-}
