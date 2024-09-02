@@ -661,7 +661,6 @@ int unlang_xlat_eval_type(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_type_t type, f
 		 *	what we want to do here.
 		 */
 		if (fr_value_box_list_empty(&list)) {
-			fr_value_box_init(ctx, vb, type, NULL);
 			break;
 		}
 
