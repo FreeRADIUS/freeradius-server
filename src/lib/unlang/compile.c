@@ -2426,7 +2426,12 @@ static bool transaction_ok(CONF_SECTION *cs)
 			 */
 			if (*name == '&') continue;
 
-			if (fr_table_value_by_str(transaction_keywords, name, -1) < 0) goto fail;
+			if (fr_list_assignment_op[cf_section_name2_quote(cs)]) continue;
+
+			if (fr_table_value_by_str(transaction_keywords, name, -1) < 0) {
+				cf_log_err(ci, "Invalid keyword in 'transaction'");
+				return false;
+			}
 
 			if (!transaction_ok(subcs)) return false;
 
@@ -2438,6 +2443,11 @@ static bool transaction_ok(CONF_SECTION *cs)
 			cp = cf_item_to_pair(ci);
 			name = cf_pair_attr(cp);
 
+			/*
+			 *	If there's a value then it's not a module call.
+			 */
+			if (cf_pair_value(cp)) continue;
+
 			if (*name == '&') continue;
 
 			/*
@@ -2447,14 +2457,9 @@ static bool transaction_ok(CONF_SECTION *cs)
 				continue;
 			}
 
-			/*
-			 *	For now, don't support expansions on the LHS.
-			 *
-			 *	And don't support in-line functions.
-			 */
-		fail:
-			cf_log_err(ci, "Unexpected contents in 'transaction'");
+			cf_log_err(ci, "Invalid module reference in 'transaction'");
 			return false;
+
 		} else {
 			continue;
 		}
