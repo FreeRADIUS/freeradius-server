@@ -136,7 +136,7 @@ runs:
       if: ${{ inputs.use_docker != 'true' }}
       shell: bash
       run: |
-        export PG_VER=14
+        export PG_VER=$(ls /etc/postgresql | sort -r | head -1)
         sudo sh -c "echo host  all all 127.0.0.1/32 trust >  /etc/postgresql/$PG_VER/main/pg_hba.conf"
         sudo sh -c "echo local all all              trust >> /etc/postgresql/$PG_VER/main/pg_hba.conf"
 
