@@ -175,6 +175,19 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 	if (ar_filter_is_none(ar)) {
 		num = 0;
 
+	} else if (ar_filter_is_expr(ar)) {
+		fr_value_box_t box;
+		request_t *request = cc->request;
+
+		if (unlang_xlat_eval_type(request, &box, FR_TYPE_UINT8, NULL, request, ar->ar_expr) < 0) {
+			RPEDEBUG("Failed evaluating expression");
+			vp = NULL;
+			pop = true;
+			goto done;
+		}
+
+		num = box.vb_uint8;
+
 	} else if (!ar_filter_is_num(ar)) {
 		request_t *request = cc->request;
 

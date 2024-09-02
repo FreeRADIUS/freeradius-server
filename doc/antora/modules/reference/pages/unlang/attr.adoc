@@ -51,7 +51,7 @@ you to address the attributes as if they were array entries.  The
 refers to the first attributes, `[1]` refers to the second attribute,
 etc.
 
-The `<index>` can be an integer (0..1000), as in the example below.
+The `<index>` can be an integer (0..1000).
 
 The indexes are limited to 1000, because there are essentially no
 protocols which have more than 1000 attributes.
@@ -63,7 +63,15 @@ protocols which have more than 1000 attributes.
 &reply.NAS-IP-Address[2]
 ----
 
-The `<index>` can also be a reference to a numerical attribute, as in the example below.
+The `<index>` can also be a special value `n`, which means "the last attribute in the list.
+
+.Last attribute in a list
+[source,unlang]
+----
+&EAP-Message[n]
+----
+
+The `<index>` can also be a reference to a numerical attribute.
 
 The reference *must* be to an attribute of numerical data type.  Structural data types and `string` or `octets` types are not allowed.  If the index is out of bounds (e.g. negative), then the reference fails.
 
@@ -79,12 +87,18 @@ uint32 foo
 &EAP-Message[&foo]
 ----
 
-The `<index>` can also be a special value `n`, which means "the last attribute in the list.
+The `<index>` can also be an expression which is calculated at run time.  The expression _must_ not cause the server to call an external database, script, etc.  The main purpose of these expressions is to calculated an index without first placing it into another attribute.
 
-.Last attribute in a list
+If the index must be calculated from an external database call or script, simply place that value into an attribute first, and then use that attribute as in index.
+
+The expression _must_ be in an expansion block: `%{...}`.
+
+.Expression as an Array index
 [source,unlang]
 ----
-&EAP-Message[n]
+&index = 0
+
+&EAP-Message[%{&index + 1}]
 ----
 
 === Array References in lists
