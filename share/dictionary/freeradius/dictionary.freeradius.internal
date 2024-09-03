@@ -380,6 +380,12 @@ ATTRIBUTE	Tmp-Time-Delta-7			1807	time_delta
 ATTRIBUTE	Tmp-Time-Delta-8			1808	time_delta
 ATTRIBUTE	Tmp-Time-Delta-9			1809	time_delta
 
+ATTRIBUTE	Tmp-TLV-0				1810	tlv
+ATTRIBUTE	a					.1	uint32
+ATTRIBUTE	b					.2	uint32
+ATTRIBUTE	c					.3	string
+ATTRIBUTE	d					.4	ipaddr
+
 #
 #  1810 - 1879 - unused
 #
