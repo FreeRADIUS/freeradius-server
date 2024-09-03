@@ -739,6 +739,51 @@ fr_dict_attr_t *dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char 
 	return n;
 }
 
+/** Copy an existing attribute to a different dictionary
+ *
+ * @param[in] ctx		to allocate new attribute in.
+ * @param[in] parent		new parent to copy into
+ * @param[in] in		attribute to copy.
+ * @return
+ *	- A copy of the input fr_dict_attr_t on success.
+ *	- NULL on failure.
+ */
+static fr_dict_attr_t *dict_attr_acopy_dict(TALLOC_CTX *ctx, fr_dict_attr_t *parent, fr_dict_attr_t const *in)
+{
+	fr_dict_attr_t		*n;
+
+	n = dict_attr_alloc(ctx, parent,in->name,
+			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
+	if (unlikely(!n)) return NULL;
+
+	if (dict_attr_ext_copy_all(&n, in) < 0) {
+		talloc_free(n);
+		return NULL;
+	}
+	DA_VERIFY(n);
+
+	return n;
+}
+
+int fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *src)
+{
+	if (!dst->flags.local) {
+		fr_strerror_const("Cannot copy attributes to a non-local dictionary");
+		return -1;
+	}
+
+	/*
+	 *	Why not?  @todo - check and fix
+	 */
+	if (src->flags.local) {
+		fr_strerror_const("Cannot copy a local attribute");
+		return -1;
+	}
+
+	return dict_attr_acopy_children(dst->dict, UNCONST(fr_dict_attr_t *, dst), src);
+}
+
+
 /** Copy the children of an existing attribute
  *
  * @param[in] dict		to allocate the children in
@@ -761,7 +806,11 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 	for (child = fr_dict_attr_iterate_children(src, &child);
 	     child != NULL;
 	     child = fr_dict_attr_iterate_children(src, &child)) {
-		copy = dict_attr_acopy(dict->pool, child, NULL);
+		if (child->dict == dict) {
+			copy = dict_attr_acopy(dict->pool, child, NULL);
+		} else {
+			copy = dict_attr_acopy_dict(dict->pool, dst, child);
+		}
 		if (!copy) {
 			fr_strerror_printf("Failed cloning child %s", child->name);
 			return -1;
