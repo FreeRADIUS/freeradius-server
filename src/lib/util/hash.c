@@ -425,6 +425,7 @@ static inline CC_HINT(always_inline) fr_hash_entry_t *hash_table_find(fr_hash_ta
  *      - The user data we found.
  *	- NULL if we couldn't find any matching data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 void *fr_hash_table_find(fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
@@ -463,6 +464,7 @@ void *fr_hash_table_find_by_key(fr_hash_table_t *ht, uint32_t key, void const *d
  *	- true if data was inserted.
  *	- false if data already existed and was not inserted.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 {
 	uint32_t		key;
@@ -522,6 +524,7 @@ bool fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
  *	- 0 if data was inserted.
  *      - -1 if we failed to replace data
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 int fr_hash_table_replace(void **old, fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
@@ -552,6 +555,7 @@ int fr_hash_table_replace(void **old, fr_hash_table_t *ht, void const *data)
  *      - The user data we removed.
  *	- NULL if we couldn't find any matching data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 void *fr_hash_table_remove(fr_hash_table_t *ht, void const *data)
 {
 	uint32_t		key;
@@ -586,6 +590,7 @@ void *fr_hash_table_remove(fr_hash_table_t *ht, void const *data)
  *	- true if we removed data.
  *      - false if we couldn't find any matching data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 bool fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
 {
 	void *old;
@@ -601,6 +606,7 @@ bool fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
 /*
  *	Count number of elements
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 uint32_t fr_hash_table_num_elements(fr_hash_table_t *ht)
 {
 	return ht->num_elements;

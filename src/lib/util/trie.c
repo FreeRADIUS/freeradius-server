@@ -2638,6 +2638,7 @@ int fr_trie_walk(fr_trie_t *ft, void *ctx, fr_trie_walk_t callback)
  *	- User data matching the data passed in.
  *	- NULL if nothing matched passed data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 void *fr_trie_find(fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
@@ -2663,6 +2664,7 @@ void *fr_trie_find(fr_trie_t *ft, void const *data)
  *	- User data matching the data passed in.
  *	- NULL if nothing matched passed data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 void *fr_trie_match(fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
@@ -2688,6 +2690,7 @@ void *fr_trie_match(fr_trie_t *ft, void const *data)
  *	- true if data was inserted.
  *	- false if data already existed and was not inserted.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 bool fr_trie_insert(fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
@@ -2720,6 +2723,7 @@ bool fr_trie_insert(fr_trie_t *ft, void const *data)
  *      - 0 if data was inserted.
  *      - -1 if we failed to replace data
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 int fr_trie_replace(void **old, fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t	*user = (fr_trie_user_t *) ft;
@@ -2759,6 +2763,7 @@ int fr_trie_replace(void **old, fr_trie_t *ft, void const *data)
  *      - The user data we removed.
  *	- NULL if we couldn't find any matching data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 void *fr_trie_remove(fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
@@ -2784,6 +2789,7 @@ void *fr_trie_remove(fr_trie_t *ft, void const *data)
  *	- true if we removed data.
  *      - false if we couldn't find any matching data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 bool fr_trie_delete(fr_trie_t *ft, void const *data)
 {
 	fr_trie_user_t *user = (fr_trie_user_t *) ft;
@@ -2812,6 +2818,7 @@ bool fr_trie_delete(fr_trie_t *ft, void const *data)
  *
  * @param[in] ft	to return node count for.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 unsigned int fr_trie_num_elements(UNUSED fr_trie_t *ft)
 {
 	return 0;

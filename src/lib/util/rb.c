@@ -573,6 +573,7 @@ static inline CC_HINT(always_inline) fr_rb_node_t *find_node(fr_rb_tree_t const 
  *
  * @hidecallergraph
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 void *fr_rb_find(fr_rb_tree_t const *tree, void const *data)
 {
 	fr_rb_node_t *x;
@@ -621,6 +622,7 @@ int fr_rb_find_or_insert(void **found, fr_rb_tree_t *tree, void const *data)
  *	- true if data was inserted.
  *	- false if data already existed and was not inserted.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 bool fr_rb_insert(fr_rb_tree_t *tree, void const *data)
 {
 	if (insert_node(NULL, tree, UNCONST(void *, data)) == 0) return true;
@@ -641,6 +643,7 @@ bool fr_rb_insert(fr_rb_tree_t *tree, void const *data)
  *	- 0 if data was inserted.
  *      - -1 if we failed to replace data
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
 {
 	fr_rb_node_t	*node;
@@ -688,6 +691,7 @@ int fr_rb_replace(void **old, fr_rb_tree_t *tree, void const *data)
  *      - The user data we removed.
  *	- NULL if we couldn't find any matching data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 void *fr_rb_remove(fr_rb_tree_t *tree, void const *data)
 {
 	fr_rb_node_t	*node;
@@ -733,6 +737,7 @@ void *fr_rb_remove_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node)
  *	- true if we removed data.
  *      - false if we couldn't find any matching data.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 bool fr_rb_delete(fr_rb_tree_t *tree, void const *data)
 {
 	fr_rb_node_t *node;
@@ -772,6 +777,7 @@ bool fr_rb_delete_by_inline_node(fr_rb_tree_t *tree, fr_rb_node_t *node)
  *
  * @param[in] tree	to return node count for.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - htrie call with first argument of void * trips --fsanitize=function */
 uint32_t fr_rb_num_elements(fr_rb_tree_t *tree)
 {
 	return tree->num_elements;
