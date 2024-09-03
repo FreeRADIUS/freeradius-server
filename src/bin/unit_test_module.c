@@ -941,7 +941,7 @@ int main(int argc, char *argv[])
 	 *	Do some sanity checking.
 	 */
 	dict_check = virtual_server_dict_by_name("default");
-	if (!dict_check || (dict_check != dict_protocol)) {
+	if (!dict_check || !fr_dict_compatible(dict_check, dict_protocol)) {
 		ERROR("Virtual server namespace does not match requested namespace '%s'", PROTOCOL_NAME);
 		EXIT_WITH_FAILURE;
 	}
