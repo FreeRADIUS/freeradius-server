@@ -1602,7 +1602,10 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	return out;
 }
 
-static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name)
+extern int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
+
+static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
+				 fr_dict_attr_t const *ref)
 {
 	fr_dict_attr_t const *da;
 	fr_slen_t len;
@@ -1655,8 +1658,20 @@ static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rul
 	}
 
 	if (fr_dict_attr_add(var->dict, var->root, name, var->max_attr, type, &flags) < 0) {
+	fail:
 		cf_log_err(ci, "Failed adding variable '%s'", name);
 		return -1;
+	}
+	da = fr_dict_attr_by_name(NULL, var->root, name);
+	fr_assert(da != NULL);
+
+	/*
+	 *	Copy the children over.
+	 */
+	if (fr_type_is_structural(type)) {
+		fr_assert(ref != NULL);
+
+		if (fr_dict_attr_acopy_local(da, ref) < 0) goto fail;
 	}
 
 	var->max_attr++;
@@ -1750,7 +1765,7 @@ invalid_type:
 	 */
 	if (!(fr_type_is_leaf(type) || (type == FR_TYPE_GROUP))) goto invalid_type;
 
-	return define_local_variable(cf_pair_to_item(cp), var, t_rules, type, value);
+	return define_local_variable(cf_pair_to_item(cp), var, t_rules, type, value, NULL);
 }
 
 /*
@@ -3358,7 +3373,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 		var->max_attr = 1;
 
-		if (define_local_variable(cf_section_to_item(cs), var, &t_rules, type, variable_name) < 0) goto fail;
+		if (define_local_variable(cf_section_to_item(cs), var, &t_rules, type, variable_name, da) < 0) goto fail;
 
 		t_rules.attr.dict_def = var->dict;
 		t_rules.attr.namespace = NULL;
