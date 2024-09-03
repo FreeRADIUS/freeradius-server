@@ -2214,7 +2214,6 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 	int				ret;
 	tmpl_t				*vpt;
 	fr_sbuff_t			our_name = FR_SBUFF(name);	/* Take a local copy in case we need to back track */
-	bool				ref_prefix = false;
 	bool				is_raw = false;
 	tmpl_attr_rules_t const		*at_rules;
 	fr_sbuff_marker_t		m_l;
@@ -2263,8 +2262,12 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		break;
 	}
 
+	/*
+	 *	We parsed the tmpl as &User-Name, or just User-Name, but NOT %{User-Name}.
+	 *	Mark it up as having a prefix.
+	 */
 	MEM(vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, T_BARE_WORD, NULL, 0));
-	vpt->data.attribute.ref_prefix = ref_prefix;
+	vpt->data.attribute.ref_prefix = TMPL_ATTR_REF_PREFIX_YES;
 
 	/*
 	 *	The "raw." prefix marks up the leaf attribute
