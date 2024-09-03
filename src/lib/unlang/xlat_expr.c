@@ -2670,6 +2670,17 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	} else if (tmpl_contains_xlat(node->vpt)) {
 		node->flags = tmpl_xlat(vpt)->flags;
 
+	} else if (tmpl_is_attr(node->vpt)) {
+		node->flags.pure = false;
+
+#ifndef NDEBUG
+		if (vpt->name[0] == '%') {
+			fr_assert(vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_NO);
+		} else {
+			fr_assert(vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_YES);
+		}
+#endif
+
 	} else {
 		node->flags.pure = false;
 	}
