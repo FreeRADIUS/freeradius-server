@@ -1379,7 +1379,7 @@ static size_t command_radmin_add(command_result_t *result, command_file_ctx_t *c
 
 	table = talloc_zero(cc->tmp_ctx, fr_cmd_table_t);
 
-	strcpy(buffer, in);
+	strlcpy(buffer, in, sizeof(buffer));
 
 	p = strchr(buffer, ':');
 	if (!p) {
@@ -1755,7 +1755,7 @@ size_t command_encode_dns_label(command_result_t *result, command_file_ctx_t *cc
 	uint8_t		*enc_p;
 	char		buffer[8192];
 
-	strcpy(buffer, in);
+	strlcpy(buffer, in, sizeof(buffer));
 
 	p = buffer;
 	next = strchr(p, ',');
@@ -2024,7 +2024,7 @@ static size_t command_encode_raw(command_result_t *result, command_file_ctx_t *c
 	size_t	len;
 	char	buffer[8192];
 
-	strcpy(buffer, in);
+	strlcpy(buffer, in, sizeof(buffer));
 
 	len = encode_rfc(buffer, cc->buffer_start, cc->buffer_end - cc->buffer_start);
 	if (len <= 0) RETURN_PARSE_ERROR(0);
