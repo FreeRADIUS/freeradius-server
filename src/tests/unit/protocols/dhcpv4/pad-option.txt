@@ -1,0 +1,15 @@
+#
+#  Test for DHCPv4 Pad Option handling
+#
+proto dhcpv4
+proto-dictionary dhcpv4
+fuzzer-out dhcpv4
+
+#
+#  An options list with a large pad in the middle
+#
+decode-pair 35 01 03 01 04 ff ff ff 00 03 04 c0 a8 d7 01 06 08 01 01 01 01 08 08 08 08 1c 04 c0 a8 d7 ff 33 04 00 00 62 70 36 04 c0 a8 e4 c3 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 37 09 36 33 3a 3b 01 03 06 0f 1c 0c 08 44 49 52 2d 38 30 39 00 3d 07 01 78 32 1b c1 c5 97 39 02 02 40 32 04 c0 a8 d7 14 52 2a 01 06 00 04 04 bd 01 04 02 20 01 1e 53 45 2d 48 45 49 4d 2d 56 58 4f 2d 4a 55 4e 47 46 52 55 4c 59 43 4b 41 4e 2d 41 53 31 31 ff
+match Message-Type = ::Request, Subnet-Mask = 255.255.255.0, Router-Address = 192.168.215.1, Domain-Name-Server = 1.1.1.1, Domain-Name-Server = 8.8.8.8, Broadcast-Address = 192.168.215.255, IP-Address-Lease-Time = 25200, Server-Identifier = 192.168.228.195, Parameter-Request-List = ::Server-Identifier, Parameter-Request-List = ::IP-Address-Lease-Time, Parameter-Request-List = ::Renewal-Time, Parameter-Request-List = ::Rebinding-Time, Parameter-Request-List = ::Subnet-Mask, Parameter-Request-List = ::Router-Address, Parameter-Request-List = ::Domain-Name-Server, Parameter-Request-List = ::Domain-Name, Parameter-Request-List = ::Broadcast-Address, Hostname = "DIR-809\000", Client-Identifier = 0x0178321bc1c597, Maximum-Msg-Size = 576, Requested-IP-Address = 192.168.215.20, Relay-Agent-Information = { Circuit-Id = 0x000404bd0104, Remote-Id = 0x011e53452d4845494d2d56584f2d4a554e474652554c59434b414e2d41533131 }
+
+count
+match 5
