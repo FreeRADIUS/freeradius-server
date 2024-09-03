@@ -473,7 +473,15 @@ static int xlat_tokenize_attribute(xlat_exp_head_t *head, fr_sbuff_t *in,
 	}
 
 	our_t_rules.attr.allow_unresolved = true;		/* So we can check for virtual attributes later */
-	our_t_rules.attr.prefix = attr_prefix;			/* Must be NO to stop %{&User-Name} */
+
+	/*
+	 *	attr_prefix is NO for %{User-Name}
+	 *
+	 *	attr_prefix is YES for %foo(&User-Name)
+	 *
+	 *	attr_prefix is YES for (&User-Name == "foo")
+	 */
+	our_t_rules.attr.prefix = attr_prefix;
 
 	fr_sbuff_marker(&m_s, in);
 
@@ -1119,11 +1127,12 @@ ssize_t xlat_print_node(fr_sbuff_t *out, xlat_exp_head_t const *head, xlat_exp_t
 		fr_assert(!node->flags.pure);
 
 		/*
-		 *	We prefer the name from the configuration file, otherwise when we get
-		 *	&User-Name on input, the tmpl_printer will print the full path, as
-		 *	&request[0].User-Name.
+		 *	Parsing &User-Name or User-Name gets printed as &User-Name.
+		 *
+		 *	Parsing %{User-Name} gets printed as %{User-Name}
 		 */
-		if (node->vpt->name[0] == '&') {
+		if (node->vpt->rules.attr.prefix == TMPL_ATTR_REF_PREFIX_YES) {
+			if (node->vpt->name[0] != '&') FR_SBUFF_IN_CHAR_RETURN(out, '&');
 			FR_SBUFF_IN_STRCPY_RETURN(out, node->fmt);
 			goto done;
 		}
