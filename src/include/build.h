@@ -428,7 +428,7 @@ do { \
  *	Disable sanitizers for undefined behaviour
  */
 #if defined(__clang__)
-#  define CC_NO_SANITIZE_UNDEFINED(_what) CC_HINT(no_sanitize(_what)))
+#  define CC_NO_SANITIZE_UNDEFINED(_what) CC_HINT(no_sanitize(_what))
 #else
 #  define CC_NO_SANITIZE_UNDEFINED(_what)
 #endif
