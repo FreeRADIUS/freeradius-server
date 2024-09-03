@@ -413,6 +413,9 @@ do { \
 /*
  *      Disable various forms of ubsan
  */
+#ifndef __has_feature
+#  define __has_feature(_x) 0
+#endif
 #if defined(__clang__) && __has_feature(undefined_behavior_sanitizer)
 #  define CC_NO_UBSAN(_sanitize)        __attribute__((no_sanitize(STRINGIFY(_sanitize))))
 #elif __GNUC_PREREQ__(4, 9) && defined(__SANITIZE_UNDEFINED__)
