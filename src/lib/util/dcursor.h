@@ -143,6 +143,7 @@ static inline void *dcursor_current_set(fr_dcursor_t *cursor, void *current)
  *	- The next attribute.
  *	- NULL if no more attributes.
  */
+CC_NO_UBSAN(function)  /* UBSAN: false positive - Type specific dcursor pointer trips --fasanitize=function */
 static inline void *dcursor_next(fr_dcursor_t *cursor, fr_dcursor_iter_t iter, void *current)
 {
 	void *next;
@@ -540,6 +541,7 @@ static inline void fr_dcursor_merge(fr_dcursor_t *cursor, fr_dcursor_t *to_appen
  *
  * @hidecallergraph
  */
+CC_NO_UBSAN(function)  /* UBSAN: false positive - Type specific dcursor pointer trips --fasanitize=function */
 static inline void *fr_dcursor_filter_next(fr_dcursor_t *cursor, fr_dcursor_eval_t eval, void const *uctx)
 {
 	void *item;
@@ -560,6 +562,7 @@ static inline void *fr_dcursor_filter_next(fr_dcursor_t *cursor, fr_dcursor_eval
  *
  * @hidecallergraph
  */
+CC_NO_UBSAN(function)  /* UBSAN: false positive - Type specific dcursor pointer trips --fasanitize=function */
 static inline void *fr_dcursor_filter_head(fr_dcursor_t *cursor, fr_dcursor_eval_t eval, void const *uctx)
 {
 	void *item;
@@ -579,6 +582,7 @@ static inline void *fr_dcursor_filter_head(fr_dcursor_t *cursor, fr_dcursor_eval
  *
  * @hidecallergraph
  */
+ CC_NO_UBSAN(function)  /* UBSAN: false positive - Type specific dcursor pointer trips --fasanitize=function */
 static inline void *fr_dcursor_filter_current(fr_dcursor_t *cursor, fr_dcursor_eval_t eval, void const *uctx)
 {
         void *item;

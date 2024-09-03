@@ -381,6 +381,18 @@ do { \
 #endif
 
 /*
+ *	GNU version check
+ */
+#ifdef __GNUC__
+#define	__GNUC_PREREQ__(x, y)						\
+	((__GNUC__ == (x) && __GNUC_MINOR__ >= (y)) ||			\
+	 (__GNUC__ > (x)))
+#else
+#define	__GNUC_PREREQ__(x, y)	0
+#endif
+
+
+/*
  *	Macros to add pragmas
  */
 #define PRAGMA(_x) _Pragma(#_x)
@@ -396,6 +408,26 @@ do { \
 #  define CC_ACQUIRE_HANDLE(_tag)
 #  define CC_USE_HANDLE(_tag)
 #  define CC_RELEASE_HANDLE(_tag)
+#endif
+
+/*
+ *      Disable various forms of ubsan
+ */
+#if defined(__clang__) && __has_feature(undefined_behavior_sanitizer)
+#  define CC_NO_UBSAN(_sanitize)        __attribute__((no_sanitize(STRINGIFY(_sanitize))))
+#elif __GNUC_PREREQ__(4, 9) && defined(__SANITIZE_UNDEFINED__)
+#  define CC_NO_UBSAN(_sanitize)        __attribute__((no_sanitize_undefined))
+#else
+#  define CC_NO_UBSAN(_sanitize)
+#endif
+
+/*
+ *	Disable sanitizers for undefined behaviour
+ */
+#if defined(__clang__)
+#  define CC_NO_SANITIZE_UNDEFINED(_what) CC_HINT(no_sanitize(_what)))
+#else
+#  define CC_NO_SANITIZE_UNDEFINED(_what)
 #endif
 
 /*

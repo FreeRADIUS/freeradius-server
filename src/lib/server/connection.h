@@ -186,7 +186,7 @@ typedef void (*connection_close_t)(fr_event_list_t *el, void *h, void *uctx);
 typedef struct {
 	connection_init_t		init;
 	connection_open_t		open;
-	connection_shutdown_t	shutdown;
+	connection_shutdown_t		shutdown;
 	connection_failed_t		failed;
 	connection_close_t		close;
 } connection_funcs_t;
@@ -202,7 +202,7 @@ typedef struct {
  * @param[in] uctx	that was passed to connection_add_watch_*.
  */
 typedef void(*connection_watch_t)(connection_t *conn,
-				     connection_state_t prev, connection_state_t state, void *uctx);
+				  connection_state_t prev, connection_state_t state, void *uctx);
 
 /** @name Add watcher functions that get called before (pre) the state callback and after (post)
  * @{

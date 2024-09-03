@@ -353,6 +353,7 @@ do { \
 /** Call a list of watch functions associated with a state
  *
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - Public/private version of connection_t trips -fsanitize=function */
 static inline void connection_watch_call(connection_t *conn, fr_dlist_head_t *list)
 {
 	/*
