@@ -159,10 +159,16 @@ static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *req
 	 *	check the "immutable" flag.  That flag is for the people using unlang, not for the
 	 *	interpreter.
 	 */
-	if (!fr_type_is_structural(vp->vp_type) && (vp->vp_type == state->key->vp_type)) {
-		fr_value_box_clear_value(&vp->data);
-		(void) fr_value_box_copy(vp, &vp->data, &state->key->data);
-	}	
+	if (fr_type_is_leaf(vp->vp_type)) {
+		if (vp->vp_type == state->key->vp_type) {
+			fr_value_box_clear_value(&vp->data);
+			(void) fr_value_box_copy(vp, &vp->data, &state->key->data);
+		}
+	} else {
+		/*
+		 *	@todo - copy the pairs back?
+		 */
+	}
 
 next:
 	vp = fr_dcursor_next(&state->cursor);
@@ -178,6 +184,8 @@ next:
 	 *	Copy the data.
 	 */
 	if (fr_type_is_structural(vp->vp_type)) {
+		fr_pair_list_free(&state->key->vp_group);
+
 		if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
 			REDEBUG("Failed copying children of %s", state->key->da->name);
 			*p_result = RLM_MODULE_FAIL;
