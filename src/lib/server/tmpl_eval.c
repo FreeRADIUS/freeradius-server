@@ -1172,7 +1172,10 @@ int tmpl_eval_pair(TALLOC_CTX *ctx, fr_value_box_list_t *out, request_t *request
 		break;
 
 	default:
-		fr_assert(fr_type_is_leaf(vp->vp_type));
+		if (!fr_type_is_leaf(vp->vp_type)) {
+			fr_strerror_const("Invalid data type for evaluation");
+			goto fail;
+		}
 
 		value = fr_value_box_alloc(ctx, vp->data.type, vp->da);
 		if (!value) goto oom;
