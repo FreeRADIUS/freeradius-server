@@ -268,8 +268,6 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		}
 		fr_assert(state->key != NULL);
 
-		fr_assert(vp->da->type == state->key->da->type);
-
 		if (fr_type_is_structural(vp->vp_type)) {
 			if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
 				REDEBUG("Failed copying children of %s", gext->key->name);
