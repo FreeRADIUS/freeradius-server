@@ -552,7 +552,15 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	Padding / End of options
 	 */
-	if (p[0] == 0) return data_len;		/* 0x00 - Padding option */
+	if (p[0] == 0) {			/* 0x00 - Padding option	  */
+		data_len = 1;			/* Walk over any consecutive 0x00 */
+		p++;				/* for efficiency		  */
+		while ((p < end) && (p[0] == 0)) {
+			p++;
+			data_len ++;
+		}
+		return data_len;
+	}
 	if (p[0] == 255) return data_len;	/* 0xff - End of options signifier */
 
 	/*
