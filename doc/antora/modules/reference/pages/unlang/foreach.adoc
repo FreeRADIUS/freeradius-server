@@ -60,11 +60,12 @@ Once the loop has finished , the `&Tmp-Integer-0` attribute will have the follow
 .Pseudocode for variable modification
 ----
 loop over each i in attribute[0..n]
-     copy attribute[i] to the key variable
+    copy attribute[i] to the key variable, or cast the attribute to the destination type
 
-     run loop body
+    run loop body
 
-     copy the key variable back to attribute[i]
+    if data type of attribute matches the data type of the key
+        copy the key variable back to attribute[i]
 ----
 
 
