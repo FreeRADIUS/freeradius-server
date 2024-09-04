@@ -164,7 +164,7 @@ NEVER_RETURNS void	_fr_exit(char const *file, int line, int status, bool now);
  *
  * @param _x expression to test (should evaluate to true)
  */
-#define		fr_fatal_assert(_x) if (unlikely(!((bool)(_x)))) _fr_assert_exit(__FILE__, __LINE__, #_x, NULL))
+#define		fr_fatal_assert(_x) if (unlikely(!((bool)(_x)))) _fr_assert_fatal(__FILE__, __LINE__, #_x, NULL)
 
 /** Calls panic_action ifndef NDEBUG, else logs error and causes the server to exit immediately with code 134
  *
