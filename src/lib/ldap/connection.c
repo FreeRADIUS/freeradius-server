@@ -493,6 +493,7 @@ static void ldap_request_cancel(UNUSED connection_t *conn, void *preq, UNUSED tr
  * @param[in] conn	The specific connection queries will be cancelled on
  * @param[in] uctx	Context provided to trunk_alloc
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void ldap_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				    connection_t *conn, UNUSED void *uctx)
 {
@@ -563,6 +564,7 @@ static connection_t *ldap_trunk_connection_alloc(trunk_connection_t *tconn, fr_e
  * @param[in] conn	on which to send the queries
  * @param[in] uctx	User context passed to trunk_alloc
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				   connection_t *conn, UNUSED void *uctx)
 {
@@ -683,6 +685,7 @@ static void ldap_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_
  * @param[in] conn	Connection handle for these results.
  * @param[in] uctx	Thread specific trunk structure - contains tree of pending queries.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void ldap_trunk_request_demux(fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, void *uctx)
 {
 	fr_ldap_connection_t	*ldap_conn = talloc_get_type_abort(conn->h, fr_ldap_connection_t);
@@ -1006,6 +1009,7 @@ trunk_state_t fr_thread_ldap_trunk_state(fr_ldap_thread_t *thread, char const *u
  * @param[in] conn	on which to send the queries
  * @param[in] uctx	User context passed to trunk_alloc
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				   connection_t *conn, void *uctx)
 {
@@ -1110,6 +1114,7 @@ static void ldap_trunk_bind_auth_mux(UNUSED fr_event_list_t *el, trunk_connectio
  * @param[in] conn	Connection handle for these results.
  * @param[in] uctx	Thread specific trunk structure - contains tree of pending queries.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void ldap_trunk_bind_auth_demux(UNUSED fr_event_list_t *el, UNUSED trunk_connection_t *tconn,
 				       connection_t *conn, void *uctx)
 {
@@ -1228,6 +1233,7 @@ static void ldap_trunk_bind_auth_demux(UNUSED fr_event_list_t *el, UNUSED trunk_
  * @param[in] conn	The specific connection binds will be cancelled on
  * @param[in] uctx	Context provided to trunk_alloc
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void ldap_bind_auth_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				    connection_t *conn, UNUSED void *uctx)
 {

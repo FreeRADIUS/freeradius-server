@@ -865,6 +865,7 @@ static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_ev
 
 TRUNK_NOTIFY_FUNC(sql_trunk_connection_notify, rlm_sql_mysql_conn_t)
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				  connection_t *conn, UNUSED void *uctx)
 {
@@ -956,6 +957,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	if (request) unlang_interpret_mark_runnable(request);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void sql_trunk_request_demux(UNUSED fr_event_list_t *el, UNUSED trunk_connection_t *tconn,
 				    connection_t *conn, UNUSED void *uctx)
 {
@@ -1027,6 +1029,7 @@ static void sql_trunk_request_demux(UNUSED fr_event_list_t *el, UNUSED trunk_con
 	query_ctx->rcode = RLM_SQL_OK;
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reason_t reason,
 			       UNUSED void *uctx)
 {
@@ -1038,6 +1041,7 @@ static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reas
 	if (sql_conn->query_ctx == query_ctx) sql_conn->query_ctx = NULL;
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 				   connection_t *conn, UNUSED void *uctx)
 {

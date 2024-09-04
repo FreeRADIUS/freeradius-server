@@ -995,6 +995,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 			       fr_event_list_t *el,
 			       trunk_connection_event_t notify_on, UNUSED void *uctx)
@@ -1047,6 +1048,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 /** A special version of the trunk/event loop glue function which always discards incoming data
  *
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void thread_conn_notify_replicate(trunk_connection_t *tconn, connection_t *conn,
 					 fr_event_list_t *el,
 					 trunk_connection_event_t notify_on, UNUSED void *uctx)
@@ -1571,6 +1573,7 @@ static void status_check_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *
         trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_mux(fr_event_list_t *el,
 			trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
@@ -1827,6 +1830,7 @@ static void request_mux(fr_event_list_t *el,
 	for (i = sent; i < queued; i++) trunk_request_requeue(h->coalesced[i].treq);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_mux_replicate(UNUSED fr_event_list_t *el,
 				  trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
@@ -2136,6 +2140,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 	trunk_connection_signal_active(treq->tconn);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);

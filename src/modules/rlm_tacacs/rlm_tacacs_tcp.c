@@ -462,6 +462,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 			       fr_event_list_t *el,
 			       trunk_connection_event_t notify_on, UNUSED void *uctx)
@@ -788,6 +789,7 @@ static void request_retry(fr_event_list_t *el, fr_time_t now, void *uctx)
 	check_for_zombie(el, tconn, now, u->retry.start);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_mux(fr_event_list_t *el,
 			trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {

@@ -959,6 +959,7 @@ static void _conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	ERROR("%s - Connection failed: %s", tconn->conn->name, fr_syserror(fd_errno)); \
 	connection_signal_reconnect(tconn->conn, CONNECTION_FAILED); \
 } \
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/ \
 static void _name(trunk_connection_t *tconn, connection_t *conn, \
 		  fr_event_list_t *el, trunk_connection_event_t notify_on, UNUSED void *uctx) \
 { \
