@@ -267,6 +267,7 @@ static void _sql_connect_io_notify(fr_event_list_t *el, int fd, UNUSED int flags
 	}
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
 	rlm_sql_t const			*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
@@ -342,6 +343,7 @@ static void _sql_connection_close(fr_event_list_t *el, void *h, UNUSED void *uct
 	talloc_free(h);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
 						connection_conf_t const *conn_conf,
 						char const *log_prefix, void *uctx)

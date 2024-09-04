@@ -338,6 +338,7 @@ static void _ldap_connection_close_watch(connection_t *conn, UNUSED connection_s
  *	- CONNECTION_STATE_CONNECTING on success.
  *	- CONNECTION_STATE_FAILED on failure.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _ldap_connection_init(void **h, connection_t *conn, void *uctx)
 {
 	fr_ldap_config_t const	*config = uctx;

@@ -251,6 +251,7 @@ static void _sql_connect_query_run(connection_t *conn, UNUSED connection_state_t
 	}
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
 	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
@@ -840,6 +841,7 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
  * @param[in] log_prefix	What to prefix log messages with.
  * @param[in] uctx		User context passed to trunk_alloc.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
 						   connection_conf_t const *conn_conf,
 						   char const *log_prefix, void *uctx)

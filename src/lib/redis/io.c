@@ -302,6 +302,7 @@ static int _redis_handle_free(fr_redis_handle_t *h)
  *	- #CONNECTION_STATE_CONNECTING	if a file descriptor was successfully created.
  *	- #CONNECTION_STATE_FAILED		if we could not open a valid handle.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _redis_io_connection_init(void **h_out, connection_t *conn, void *uctx)
 {
 	fr_redis_io_conf_t	*conf = uctx;

@@ -387,6 +387,7 @@ static connection_state_t _logtee_conn_open(UNUSED fr_event_list_t *el, UNUSED v
  * @param[in] conn	being initialised.
  * @param[in] uctx	A #rlm_logtee_thread_t.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _logtee_conn_init(void **h_out, connection_t *conn, void *uctx)
 {
 	rlm_logtee_thread_t	*t = talloc_get_type_abort(uctx, rlm_logtee_thread_t);
