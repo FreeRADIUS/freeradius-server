@@ -537,6 +537,7 @@ TRUNK_NOTIFY_FUNC(ldap_trunk_connection_notify, fr_ldap_connection_t)
  * @param[in] log_prefix	What to prefix log messages with.
  * @param[in] uctx		User context passed to trunk_alloc.
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_t *ldap_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
 						    UNUSED connection_conf_t const *conn_conf,
 						    char const *log_prefix, void *uctx)

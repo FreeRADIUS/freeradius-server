@@ -920,6 +920,7 @@ static connection_state_t conn_failed(void *handle, connection_state_t state, UN
 	return CONNECTION_STATE_INIT;
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
 					  connection_conf_t const *conf,
 					  char const *log_prefix, void *uctx)
