@@ -310,6 +310,7 @@ static connection_state_t _conn_open(fr_event_list_t *el, void *h, UNUSED void *
 /** Allocate a basic socket pair
  *
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _conn_init(void **h_out, connection_t *conn, UNUSED void *uctx)
 {
 	int *h;
@@ -475,6 +476,7 @@ static void test_socket_pair_alloc_then_reconnect_then_free(void)
 	talloc_free(ctx);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _conn_init_no_signal(void **h_out, connection_t *conn, UNUSED void *uctx)
 {
 	int *h;
