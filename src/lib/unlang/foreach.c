@@ -65,6 +65,73 @@ typedef struct {
 #endif
 } unlang_frame_state_foreach_t;
 
+/*
+ *	Brute-force things instead of doing it the "right" way.
+ *
+ *	We would ideally like to have the local variable be a ref to the current vp from the cursor.  However,
+ *	that isn't (yet) supported.  In order to support that, we would likely have to add a new data type
+ *	FR_TYPE_DCURSOR, and put the cursor into in vp->vp_ptr.  We would then have to update a lot of things:
+ *
+ *	- the foreach code has to put the dcursor into state->key->vp_ptr.
+ *	- the pair code (all of it, perhaps) has to check for "is this thing a cursor), and if so
+ *	  return the next pair from the cursor instead of the given pair.  This is a huge change.
+ *	- update all of the pair / value-box APIs to handle the new data type
+ *	- check performance, etc, and that nothing else breaks.
+ *	- also need to ensure that the pair with the cursor _cannot_ be copied, as that would add two
+ *	  refs to the cursor.
+ *	- if we're lucky, we could perhaps _instead_ update only the tmpl code, but the cursor
+ *	  still has to be in the pair.
+ *	- we can update tmpl_eval_pair(), because that's what's used in the xlat code.  That gets us all
+ *	  references to the _source_ VP.
+ *	- we also have to update the edit.c code, which calls tmpl_dcursor_init() to get pairs from
+ *	  a tmpl_t of type ATTR.
+ *	- for LHS assignment, the edit code has to be updated: apply_edits_to_leaf() and apply_edits_to_list()
+ *	  which calls fr_edit_list_apply_pair_assignment() to do the actual work.  But we could likely just
+ *	  check current->lhs.vp, and dereference that to get the underlying thing.
+ *
+ *  What we ACTUALLY do instead is in the compiler when we call define_local_variable(), we clone the "da"
+ *  hierarchy via fr_dict_attr_acopy_local().  That function which should go away when we add refs.
+ *
+ *  Then this horrific function copies the pairs by number, which re-parents them to the correct
+ *  destination da.  It's brute-force and expensive, but it's easy.  And for now, it's less work than
+ *  re-doing substantial parts of the server core and utility libraries.
+ */
+static int unlang_foreach_pair_copy(fr_pair_t *to, fr_pair_t *from, fr_dict_attr_t const *from_parent)
+{
+	fr_assert(fr_type_is_structural(to->vp_type));
+	fr_assert(fr_type_is_structural(from->vp_type));
+
+	fr_pair_list_foreach(&from->vp_group, vp) {
+		fr_pair_t *child;
+
+		/*
+		 *	We only copy children of the parent TLV, but we can copy internal attributes, as they
+		 *	can exist anywhere.
+		 */
+		if (vp->da->parent != from_parent) {
+			if (vp->da->flags.internal) {
+				child = fr_pair_copy(to, vp);
+				if (child) fr_pair_append(&to->vp_group, child);
+			}
+			continue;
+		}
+
+		child = fr_pair_afrom_child_num(to, to->da, vp->da->attr);
+		if (!child) continue;
+
+		fr_pair_append(&to->vp_group, child);
+
+		if (fr_type_is_leaf(child->vp_type)) {
+			if (fr_value_box_copy(child, &child->data, &vp->data) < 0) return -1;
+			continue;
+		}
+
+		if (unlang_foreach_pair_copy(child, vp, vp->da) < 0) return -1;
+	}
+
+	return 0;
+}
+
 static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 					 xlat_ctx_t const *xctx,
 					 request_t *request, UNUSED fr_value_box_list_t *in);
@@ -183,14 +250,28 @@ next:
 	/*
 	 *	Copy the data.
 	 */
-	if (fr_type_is_structural(vp->vp_type)) {
+	if (vp->vp_type == FR_TYPE_GROUP) {
+		fr_assert(state->key->vp_type == FR_TYPE_GROUP);
+
 		fr_pair_list_free(&state->key->vp_group);
 
 		if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
+			REDEBUG("Failed copying members of %s", state->key->da->name);
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+	} else if (fr_type_is_structural(vp->vp_type)) {
+		fr_assert(state->key->vp_type == vp->vp_type);
+
+		fr_pair_list_free(&state->key->vp_group);
+
+		if (unlang_foreach_pair_copy(state->key, vp, vp->da) < 0) {
 			REDEBUG("Failed copying children of %s", state->key->da->name);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
+
 	} else {
 		fr_value_box_clear_value(&state->key->data);
 		if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &vp->data) < 0) {
@@ -276,12 +357,24 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		}
 		fr_assert(state->key != NULL);
 
-		if (fr_type_is_structural(vp->vp_type)) {
+		if (vp->vp_type == FR_TYPE_GROUP) {
+			fr_assert(state->key->vp_type == FR_TYPE_GROUP);
+
 			if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
-				REDEBUG("Failed copying children of %s", gext->key->name);
+				REDEBUG("Failed copying members of %s", gext->key->name);
 				*p_result = RLM_MODULE_FAIL;
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
+
+		} else if (fr_type_is_structural(vp->vp_type)) {
+			fr_assert(state->key->vp_type == vp->vp_type);
+
+			if (unlang_foreach_pair_copy(state->key, vp, vp->da) < 0) {
+				REDEBUG("Failed copying children of %s", state->key->da->name);
+				*p_result = RLM_MODULE_FAIL;
+				return UNLANG_ACTION_CALCULATE_RESULT;
+			}
+
 		} else {
 			fr_value_box_clear_value(&state->key->data);
 			while (vp && (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &vp->data) < 0)) {

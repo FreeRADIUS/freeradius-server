@@ -23,17 +23,24 @@ string out
 	}
 }
 
-
 &out = ""
 
 #
-#  Home-brew concat!
+#  Don't use "tlv" as the attribute name, because "tlv" is a data type.
 #
-foreach child (&Tmp-TLV-0[*]) {
-	&out += &child.c
+foreach thing (&Tmp-TLV-0[*]) {
+	&out += &thing.c
 	&out += " "
 }
 
 &out -= " "
 
-"%{out}"
+#
+#  And we have updated the string from multiple TLVs, and one particular
+#  child from each TLV.
+#
+if (&out != 'foo bar') {
+	test_fail
+}
+
+success

@@ -3,7 +3,7 @@
 .Syntax
 [source,unlang]
 ----
-foreach <key-name> (<attribute-reference>) {
+foreach [<data-type>] <key-name> (<attribute-reference>) {
     [ statements ]
 }
 ----
@@ -14,13 +14,15 @@ xref:unlang/break.adoc[break] keyword.
 
 There is no limit on how many `foreach` statements can be nested.
 
+<data-type>::
+
+An optional data tye for the `<key-name>` local variable.  When looping over attributes, the data type can be omitted.  The data type of the local variable is then taken from the attribute reference.
+
 <key-name>::
 
 The name of the local variable which is used as the name of key when iterating over the attributes.
 
 The local variable is created automatically when the `foreach` loop is entered, and is deleted automatically when the `foreach` loop exits.
-
-The data type of the local variable is taken from the attribute reference.
 
 The `<key-name>` can be modified during the course of the `foreach` loop.  Modifications to the variable are copied back to the referenced attribute when the loop is done.  See below for an example.
 
@@ -67,6 +69,36 @@ loop over each i in attribute[0..n]
     if data type of attribute matches the data type of the key
         copy the key variable back to attribute[i]
 ----
+
+=== Structural Data Types
+
+It is possible to loop over the children of a structural data type, as given in the example below.  Since the loop is over the child (i.e. leaf) attributes, the values are copied back.
+
+In this example, we have to explicitly give a data type `string`.  The data type is needed because there may be multiple children of the `TLV-Thing` attribute, and the children may not all have the same data type.
+
+.Example of Looping over children of a structural type.
+[source,unlang]
+----
+foreach string child (&TLV-Thing.[*]) {
+	&out += &child
+	&out += " "
+}
+----
+
+
+When using `foreach` to loop over multiple structural data types, the values can be
+examined, but cannot be changed.  This is a limitation of the current interpreter, and may be changed in the future.
+
+.Example of Looping over children of a structural type.
+[source,unlang]
+----
+foreach thing (&Tmp-TLV-0[*]) {
+	&out += &thing.c
+	&out += " "
+}
+----
+
+This example can read the child attribute `c`, but cannot modify it.
 
 
 // Copyright (C) 2024 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
