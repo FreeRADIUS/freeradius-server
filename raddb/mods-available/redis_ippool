@@ -24,7 +24,7 @@
 #  are polymorphic, meaning `xlats`, attribute references, literal values
 #  and execs may be specified.
 #
-#  For example `pool_nam` could be `pool_name = 'my_test_pool'` if only a
+#  For example `pool_name` could be `pool_name = 'my_test_pool'` if only a
 #  single pool were being used.
 #
 redis_ippool {
