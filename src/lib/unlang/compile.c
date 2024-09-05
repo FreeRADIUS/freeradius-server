@@ -59,6 +59,8 @@ RCSID("$Id$")
 
 #define UNLANG_IGNORE ((unlang_t *) -1)
 
+extern bool tmpl_require_enum_prefix;
+
 static unsigned int unlang_number = 1;
 
 /*
@@ -2733,11 +2735,19 @@ static unlang_t *compile_switch(unlang_t *parent, unlang_compile_t *unlang_ctx, 
 	 *	that the data types match.
 	 */
 	token = cf_section_name2_quote(cs);
-	slen = tmpl_afrom_substr(gext, &gext->vpt,
-				 &FR_SBUFF_IN(name2, strlen(name2)),
-				 token,
-				 NULL,
-				 &t_rules);
+
+	if ((token == T_BARE_WORD) && tmpl_require_enum_prefix) {
+		slen = tmpl_afrom_attr_substr(gext, NULL, &gext->vpt,
+					      &FR_SBUFF_IN(name2, strlen(name2)),
+					      NULL,
+					      &t_rules);
+	} else {
+		slen = tmpl_afrom_substr(gext, &gext->vpt,
+					 &FR_SBUFF_IN(name2, strlen(name2)),
+					 token,
+					 NULL,
+					 &t_rules);
+	}
 	if (!gext->vpt) {
 		cf_canonicalize_error(cs, slen, "Failed parsing argument to 'switch'", name2);
 		talloc_free(g);
@@ -2966,9 +2976,18 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return NULL;
 		}
 
+		/*
+		 *	Bare word strings are attribute references when tmpl_require_enum_prefix=yes
+		 */
+		if (tmpl_is_attr(vpt)) {
+			cf_log_err(cs, "arguments to 'case' statements MUST NOT be attribute references.");
+			goto fail;
+		}
+
 		if (!tmpl_is_data(vpt) || tmpl_is_data_unresolved(vpt)) {
-			talloc_free(vpt);
 			cf_log_err(cs, "arguments to 'case' statements MUST be static data.");
+		fail:
+			talloc_free(vpt);
 			return NULL;
 		}
 	} /* else it's a default 'case' statement */
