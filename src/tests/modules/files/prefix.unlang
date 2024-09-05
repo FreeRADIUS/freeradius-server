@@ -4,16 +4,15 @@ subnet
 
 if (&reply.Reply-Message[0] != '10.1/16 subnet') {
 	test_fail
-} else {
-	test_pass
 }
 
 if (&reply.Reply-Message[1] != "2nd 10.1/16 subnet") {
 	test_fail
-} else {
-	test_pass
 }
 
+if (&control.FreeRADIUS-Client-IP-Prefix != 10.1.0.0/16) {
+	test_fail
+}
 
 &FreeRADIUS-Client-IP-Prefix := 10.2.3.4/32
 
@@ -23,8 +22,10 @@ subnet
 
 if (&reply.Reply-Message != "10/8 subnet") {
 	test_fail
-} else {
-	test_pass
+}
+
+if (&control.FreeRADIUS-Client-IP-Prefix != 10.0.0.0/8) {
+	test_fail
 }
 
 &FreeRADIUS-Client-IP-Prefix := 10.1.2.3/32
@@ -39,3 +40,5 @@ subnet
 &reply -= &Reply-Message[*]
 
 subnet
+
+test_pass

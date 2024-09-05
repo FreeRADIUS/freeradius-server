@@ -14,6 +14,10 @@ if (&reply.Reply-Message[2] != "10/8 subnet") {
 	test_fail
 }
 
+if !(&control.FreeRADIUS-Client-IP-Prefix == 10.0.0.0/8) {
+	test_fail
+}
+
 #  Delete previous reply messages
 &reply -= &Reply-Message[*]
 
