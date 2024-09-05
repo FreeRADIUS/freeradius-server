@@ -1,3 +1,6 @@
+# Selinux type we're building for
+%global selinuxtype targeted
+
 # Optional modules and libraries
 %bcond_with rlm_cache_memcached
 %bcond_with rlm_idn
@@ -140,6 +143,7 @@ Requires(post): /sbin/chkconfig /usr/sbin/setsebool
 Requires(preun): /sbin/chkconfig
 Requires: freeradius-config = %{version}-%{release}
 Requires: freeradius-common = %{version}-%{release}
+Requires: (%{name}-selinux if selinux-policy-%{selinuxtype})
 %if %{with freeradius_openssl}
 Requires: freeradius-openssl
 %else
@@ -212,6 +216,21 @@ of the server, and let you decide if they satisfy your needs.
 
 Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
+
+# No requirements here, as selinux is installed by the base package
+# as are any of the utilities we need to compile/manage policies.
+%package selinux
+Summary: A custom selinux policy for FreeRADIUS which adds multiple bools
+Requires: %{name} = %{version}-%{release}
+Requires: selinux-policy-%{selinuxtype}
+Requires(post): selinux-policy-%{selinuxtype}
+BuildRequires: selinux-policy-devel
+%{?selinux_requires}
+
+%description selinux
+This packages installs a custom selinux policy to allow the FreeRADIUS
+daemon to operate on additional ports, and communicate with other services
+directly using unix sockets.
 
 %package snmp
 Summary: SNMP MIBs and SNMP utilities used by FreeRADIUS
@@ -708,6 +727,9 @@ export RADIUSD_VERSION_RELEASE="%{release}"
 # Do not use %__make here, as we may be using the non-system make
 make %{?_smp_mflags}
 
+# Compile the selinux policy and produce the .bz2 containing the compiled policy
+make -f redhat/selinux/Makefile
+
 %install
 %__rm -rf $RPM_BUILD_ROOT
 %__mkdir_p $RPM_BUILD_ROOT/var/run/radiusd
@@ -791,6 +813,9 @@ Please reference that document.
 
 EOF
 
+# Install the selinux module
+%__install -D -m 0644 -t %{buildroot}%{_datadir}/selinux/packages/%{selinuxtype} redhat/selinux/%{name}.pp.bz2
+
 %clean
 %__rm -rf $RPM_BUILD_ROOT
 
@@ -806,10 +831,12 @@ getent group  radiusd >/dev/null || /usr/sbin/groupadd -r -g 95 radiusd
 getent passwd radiusd >/dev/null || /usr/sbin/useradd  -r -g radiusd -u 95 -c "radiusd user" -s /sbin/nologin radiusd > /dev/null 2>&1
 exit 0
 
+%pre selinux
+%selinux_relabel_pre -s %{selinuxtype}
 
 %post
 if [ $1 = 1 ]; then
-  /usr/sbin/setsebool -P radius_use_jit=1 &> /dev/null || :
+  %selinux_set_booleans -s %{selinuxtype} radius_use_jit=on
 %if %{?_unitdir:1}%{!?_unitdir:0}
   /bin/systemctl enable radiusd
 %else
@@ -824,6 +851,10 @@ if [ $1 = 1 ]; then
   fi
 fi
 
+%post selinux
+%selinux_modules_install -s %{selinuxtype} %{_datadir}/selinux/packages/%{selinuxtype}/%{name}.pp.bz2
+%selinux_relabel_post -s %{selinuxtype}
+
 %preun
 if [ $1 = 0 ]; then
 %if %{?_unitdir:1}%{!?_unitdir:0}
@@ -837,6 +868,15 @@ fi
 if [ $1 -ge 1 ]; then
   /sbin/service radiusd condrestart >/dev/null 2>&1 || :
 fi
+%selinux_unset_booleans -s %{selinuxtype} radius_jit
+
+%postun selinux
+if [ $1 -eq 0 ]; then
+  %selinux_modules_uninstall -s %{selinuxtype} %{name}
+fi
+
+%posttrans selinux
+%selinux_relabel_post -s %{selinuxtype}
 
 %files
 %defattr(-,root,root)
@@ -1161,6 +1201,10 @@ fi
 /usr/bin/radsnmp
 %{_datadir}/snmp/mibs/*
 %dir %attr(750,radiusd,radiusd) %{_sharedstatedir}/radiusd/snmp
+
+%files selinux
+%defattr(-,root,root,0755)
+%attr(0644,root,root) %{_datadir}/selinux/packages/%{selinuxtype}/*.pp.bz2
 
 %files perl-util
 %defattr(-,root,root)

@@ -1,0 +1,34 @@
+module freeradius 1.0;
+
+bool radius_slapd_unix false;
+
+require {
+       type radiusd_t;
+
+       # Connect to OpenLDAP
+       type slapd_t;
+       type slapd_var_run_t;
+       class sock_file write;
+       class unix_stream_socket connectto;
+
+       # Allow logging
+       type syslogd_port_t;
+       class tcp_socket name_connect;
+
+       # Kill children
+       class process getpgid;
+}
+
+if (radius_slapd_unix) {
+       # Allow FreeRADIUS to connect to OpenLDAP via a unix socket
+       allow radiusd_t slapd_t:unix_stream_socket connectto;
+
+       # Allow FreeRADIUS to write to OpenLDAP's unix socket
+       allow radiusd_t slapd_var_run_t:sock_file write;
+}
+
+# Allow FreeRADIUS to call getpgid so it can indiscriminately kill its children on exit
+allow radiusd_t self:process getpgid;
+
+# Always allow FreeRADIUS to write to syslog
+allow radiusd_t syslogd_port_t:tcp_socket name_connect;
