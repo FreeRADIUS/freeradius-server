@@ -2927,12 +2927,14 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 	name2 = cf_section_name2(cs);
 	if (name2) {
 		ssize_t			slen;
-		fr_token_t		type;
+		fr_token_t		quote;
 		unlang_group_t		*switch_g;
 		unlang_switch_t		*switch_gext;
 
 		switch_g = unlang_generic_to_group(parent);
 		switch_gext = unlang_group_to_switch(switch_g);
+
+		fr_assert(switch_gext->vpt != NULL);
 
 		/*
 		 *	We need to cast case values to match
@@ -2952,11 +2954,11 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			if (da->flags.has_value) t_rules.enumv = da;
 		}
 
-		type = cf_section_name2_quote(cs);
+		quote = cf_section_name2_quote(cs);
 
 		slen = tmpl_afrom_substr(cs, &vpt,
 					 &FR_SBUFF_IN(name2, strlen(name2)),
-					 type,
+					 quote,
 					 NULL,
 					 &t_rules);
 		if (!vpt) {
@@ -2964,30 +2966,7 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			return NULL;
 		}
 
-
-		fr_assert(switch_gext->vpt != NULL);
-
-		/*
-		 *      This "case" statement is unresolved.  Try to
-		 *      resolve it to the data type of the parent
-		 *      "switch" tmpl.
-		 */
-		if (tmpl_is_data_unresolved(vpt)) {
-			fr_type_t cast_type = tmpl_rules_cast(switch_gext->vpt);
-			fr_dict_attr_t const *da = NULL;
-
- 			if (tmpl_is_attr(switch_gext->vpt)) da = tmpl_attr_tail_da(switch_gext->vpt);
-
-			if (fr_type_is_null(cast_type) && da) cast_type = da->type;
-
-			if (tmpl_cast_in_place(vpt, cast_type, da) < 0) {
-				cf_log_perr(cs, "Invalid argument for 'case' statement");
-				talloc_free(vpt);
-				return NULL;
-			}
-		}
-
-		if (!tmpl_is_data(vpt)) {
+		if (!tmpl_is_data(vpt) || tmpl_is_data_unresolved(vpt)) {
 			talloc_free(vpt);
 			cf_log_err(cs, "arguments to 'case' statements MUST be static data.");
 			return NULL;
