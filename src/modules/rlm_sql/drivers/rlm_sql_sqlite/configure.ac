@@ -81,15 +81,6 @@ if test "x$ac_cv_lib_sqlite3_sqlite3_open" != "xyes"
 then
 	AC_MSG_WARN([Sqlite libraries not found. Use --with-sqlite-lib-dir=<path>.])
 	FR_MODULE_FAIL([libsqlite3])
-else
-	dnl # Add any v2 variants here
-	AC_CHECK_FUNCS(\
-		sqlite3_prepare_v2 \
-		sqlite3_open_v2 \
-		sqlite3_create_function_v2 \
-		sqlite3_errstr \
-		sqlite3_extended_result_codes \
-	)
 fi
 
 dnl ############################################################

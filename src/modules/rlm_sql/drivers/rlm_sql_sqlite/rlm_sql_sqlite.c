@@ -217,18 +217,13 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 	 *	print them both.
 	 */
 	if ((status != SQLITE_OK) && (status != hstatus)) {
-#ifdef HAVE_SQLITE3_ERRSTR
 		ERROR("%s: Code 0x%04x (%i): %s", p, status, status, sqlite3_errstr(status));
-#else
-		ERROR("%s: Code 0x%04x (%i)", p, status, status);
-#endif
 	}
 
 	if (hstatus != SQLITE_OK) ERROR("%s: Code 0x%04x (%i): %s",
 					p, hstatus, hstatus, sqlite3_errmsg(db));
 }
 
-#ifdef HAVE_SQLITE3_OPEN_V2
 static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 {
 	ssize_t		len;
@@ -322,11 +317,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	p = buffer;
 	while (*p) {
 		statement_len = len - (p - buffer);
-#ifdef HAVE_SQLITE3_PREPARE_V2
 		status = sqlite3_prepare_v2(db, p, statement_len, &statement, &z_tail);
-#else
-		status = sqlite3_prepare(db, p, statement_len, &statement, &z_tail);
-#endif
 
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
 			sql_print_error(db, status, "Failed preparing statement %i", statement_cnt);
@@ -361,7 +352,6 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	talloc_free(buffer);
 	return 0;
 }
-#endif
 
 static int _sql_socket_destructor(rlm_sql_sqlite_conn_t *conn)
 {
@@ -405,19 +395,13 @@ static sql_rcode_t CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rl
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	INFO("Opening SQLite database \"%s\"", inst->filename);
-#ifdef HAVE_SQLITE3_OPEN_V2
 	status = sqlite3_open_v2(inst->filename, &(conn->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
-#else
-	status = sqlite3_open(inst->filename, &(conn->db));
-#endif
 
 	if (!conn->db || (sql_check_error(conn->db, status) != RLM_SQL_OK)) {
 		sql_print_error(conn->db, status, "Error opening SQLite database \"%s\"", inst->filename);
-#ifdef HAVE_SQLITE3_OPEN_V2
 		if (!inst->bootstrap) {
 			INFO("Use the sqlite driver 'bootstrap' option to automatically create the database file");
 		}
-#endif
 		return RLM_SQL_ERROR;
 	}
 	status = sqlite3_busy_timeout(conn->db, fr_time_delta_to_sec(config->query_timeout));
@@ -429,21 +413,15 @@ static sql_rcode_t CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rl
 	/*
 	 *	Enable extended return codes for extra debugging info.
 	 */
-#ifdef HAVE_SQLITE3_EXTENDED_RESULT_CODES
 	status = sqlite3_extended_result_codes(conn->db, 1);
 	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
 		sql_print_error(conn->db, status, "Error enabling extended result codes");
 		return RLM_SQL_ERROR;
 	}
-#endif
 
-#ifdef HAVE_SQLITE3_CREATE_FUNCTION_V2
 	status = sqlite3_create_function_v2(conn->db, "GREATEST", -1, SQLITE_ANY, NULL,
 					    _sql_greatest, NULL, NULL, NULL);
-#else
-	status = sqlite3_create_function(conn->db, "GREATEST", -1, SQLITE_ANY, NULL,
-					 _sql_greatest, NULL, NULL);
-#endif
+
 	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
 		sql_print_error(conn->db, status, "Failed registering 'GREATEST' sql function");
 		return RLM_SQL_ERROR;
@@ -459,11 +437,7 @@ static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *prior
 	char const		*z_tail;
 	int			status;
 
-#ifdef HAVE_SQLITE3_PREPARE_V2
 	status = sqlite3_prepare_v2(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
-#else
-	status = sqlite3_prepare(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
-#endif
 
 	conn->col_count = 0;
 
@@ -480,11 +454,7 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 	char const		*z_tail;
 	int			status;
 
-#ifdef HAVE_SQLITE3_PREPARE_V2
 	status = sqlite3_prepare_v2(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
-#else
-	status = sqlite3_prepare(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
-#endif
 	query_ctx->rcode = sql_check_error(conn->db, status);
 	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
@@ -713,7 +683,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	if (inst->bootstrap && !exists) {
-#ifdef HAVE_SQLITE3_OPEN_V2
 		int		status;
 		int		ret;
 		char const	*p;
@@ -744,14 +713,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 		status = sqlite3_open_v2(inst->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
-#  ifdef HAVE_SQLITE3_ERRSTR
 			ERROR("Failed creating opening/creating SQLite database: %s",
 			      sqlite3_errstr(status));
-#  else
-			ERROR("Failed creating opening/creating SQLite database, got code (%i)",
-			      status);
-#  endif
-
 			goto unlink;
 		}
 
@@ -782,11 +745,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		/*
 		 *	Safer to use sqlite3_errstr here, just in case the handle is in a weird state
 		 */
-#  ifdef HAVE_SQLITE3_ERRSTR
 			ERROR("Error closing SQLite handle: %s", sqlite3_errstr(status));
-#  else
-			ERROR("Error closing SQLite handle, got code (%i)", status);
-#  endif
 			goto unlink;
 		}
 
@@ -799,10 +758,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 			close(fd);
 			return -1;
 		}
-#else
-		WARN("sqlite3_open_v2() not available, cannot bootstrap database. "
-		       "Upgrade to SQLite >= 3.5.1 if you need this functionality");
-#endif
 	}
 
 	close(fd);
