@@ -1797,11 +1797,6 @@ static CONF_ITEM *process_subrequest(cf_stack_t *stack)
 		return NULL;
 	}
 
-	if (token != T_BARE_WORD) {
-		ERROR("%s[%d]: The first argument to 'subrequest' must be a name or an attribute reference",
-		      frame->filename, frame->lineno);
-		return NULL;
-	}
 	mod = buff[1];
 
         /*
