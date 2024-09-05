@@ -170,6 +170,7 @@ $INCLUDE dictionary.iea
 $INCLUDE dictionary.iec
 $INCLUDE dictionary.infinera
 $INCLUDE dictionary.infonet
+$INCLUDE dictionary.ingate
 $INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
