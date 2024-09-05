@@ -4,6 +4,8 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Feature improvements
 
 	Bug fixes
+	* For EAP-TLS, send TLS start without a length field.
+	  Some clients refuse to do EAP-TLS when this field exists.
 
 FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
