@@ -2,7 +2,7 @@ string foo
 string bar
 
 # Cancel in subrequest
-subrequest Access-Request {
+subrequest ::Access-Request {
 	&parent.foo := 'testing'
 
 	# Immediately cancel the subrequest

@@ -1,7 +1,7 @@
 #
 #  PRE: subrequest
 #
-subrequest Access-Request &request &reply.Tmp-Group-0 {
+subrequest ::Access-Request &request &reply.Tmp-Group-0 {
 	if (!&User-Name) {
 		test_fail
 	}

@@ -1,4 +1,4 @@
-subrequest Access-Request {
+subrequest ::Access-Request {
 	#
 	#  Prefix/attribute parsing disambiguation
 	#
@@ -6,10 +6,10 @@ subrequest Access-Request {
 
 	&User-Name := "obo"
 
-	subrequest Access-Request {
+	subrequest ::Access-Request {
 		&User-Name := "jim"
 
-		subrequest Access-Request {
+		subrequest ::Access-Request {
 			&User-Name := "joe"
 
 			&outer.request += {

@@ -4,7 +4,7 @@
 &Filter-Id := 'testing'
 
 # Cancel in subrequest
-subrequest Access-Request {
+subrequest ::Access-Request {
 	detach
 
 	# Smoke test, check for crashes
@@ -34,7 +34,7 @@ fail {
 }
 
 # Check that detached requests can be cancelled
-subrequest Access-Request {
+subrequest ::Access-Request {
 	detach
 
 	# Smoke test for cancelling detached requests

@@ -1,4 +1,4 @@
-subrequest Access-Request {
+subrequest ::Access-Request {
 	&parent.control.User-Name := 'bob'
 	success
 }

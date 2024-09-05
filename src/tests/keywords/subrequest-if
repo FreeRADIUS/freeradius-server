@@ -1,7 +1,7 @@
 #
 #  PRE: subrequest
 #
-subrequest Access-Request {
+subrequest ::Access-Request {
 	&User-Name := &parent.request.User-Name
 
 	if (!&User-Name) {

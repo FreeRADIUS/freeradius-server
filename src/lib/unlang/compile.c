@@ -3990,6 +3990,18 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 		return NULL;
 	}
 
+	/*
+	 *	::enum is this dictionary, "Packet-Type = ::enum"
+	 */
+	if ((name2[0] == ':') && (name2[1] == ':')) {
+		dict = unlang_ctx->rules->attr.dict_def;
+		packet_name = name2;
+		goto get_packet_type;
+	}
+
+	/*
+	 *	If !tmpl_require_enum_prefix, '&' means "attribute reference".
+	 */
 	if (name2[0] == '&') {
 		size_t slen;
 
@@ -4070,6 +4082,11 @@ get_packet_type:
 	}
 
 	if (packet_name) {
+		/*
+		 *	Allow ::enum-name for packet types
+		 */
+		if ((packet_name[0] == ':') && (packet_name[1] == ':')) packet_name += 2;
+
 		type_enum = fr_dict_enum_by_name(da, packet_name, -1);
 		if (!type_enum) {
 			cf_log_err(cs, "No such value '%s' for attribute 'Packet-Type' in namespace '%s'",
