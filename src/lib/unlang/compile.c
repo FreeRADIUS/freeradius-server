@@ -2979,7 +2979,8 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		/*
 		 *	Bare word strings are attribute references when tmpl_require_enum_prefix=yes
 		 */
-		if (tmpl_is_attr(vpt)) {
+		if (tmpl_is_attr(vpt) || tmpl_is_attr_unresolved(vpt)) {
+		fail_attr:
 			cf_log_err(cs, "arguments to 'case' statements MUST NOT be attribute references.");
 			goto fail;
 		}
@@ -2990,6 +2991,15 @@ static unlang_t *compile_case(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			talloc_free(vpt);
 			return NULL;
 		}
+
+		/*
+		 *	When tmpl_require_enum_prefix=yes, references to unresolved attributes
+		 *	are instead compiled as "bare word" strings.  Which we now forbid.
+		 */
+		if (tmpl_require_enum_prefix && (quote == T_BARE_WORD) && (tmpl_value_type(vpt) == FR_TYPE_STRING)) {
+			goto fail_attr;
+		}
+
 	} /* else it's a default 'case' statement */
 
 	/*
