@@ -1,6 +1,6 @@
 module freeradius 1.0;
 
-bool radius_slapd_unix false;
+bool radius_connect_slapd_unix false;
 
 require {
        type radiusd_t;
@@ -19,7 +19,7 @@ require {
        class process getpgid;
 }
 
-if (radius_slapd_unix) {
+if (radius_connect_slapd_unix) {
        # Allow FreeRADIUS to connect to OpenLDAP via a unix socket
        allow radiusd_t slapd_t:unix_stream_socket connectto;
 
