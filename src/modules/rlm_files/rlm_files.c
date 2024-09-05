@@ -51,9 +51,10 @@ typedef struct {
 /**  Call_env structure
  */
 typedef struct {
-	rlm_files_data_t	*data;	//!< Data from parsed call_env
-	char const		*name;  //!< Name of module instance - for debug output
-	fr_value_box_list_t	values;	//!< Where the expanded tmpl value will be written.
+	rlm_files_data_t	*data;		//!< Data from parsed call_env.
+	tmpl_t			*match_attr;	//!< Attribute to populate with matched key value.
+	char const		*name;  	//!< Name of module instance - for debug output.
+	fr_value_box_list_t	values;		//!< Where the expanded tmpl value will be written.
 } rlm_files_env_t;
 
 static fr_dict_t const *dict_freeradius;
@@ -535,6 +536,28 @@ redo:
 		RDEBUG2("%s - Found match \"%s\" on line %d of %s", env->name, pl->name, pl->lineno, pl->filename);
 		found = true;
 
+		/*
+		 *	If match_attr is configured, populate the requested attribute with the
+		 *	key value from the matching line.
+		 */
+		if (env->match_attr) {
+			tmpl_t	match_rhs;
+			map_t	match_map;
+
+			match_map = (map_t) {
+				.lhs = env->match_attr,
+				.op = T_OP_SET,
+				.rhs = &match_rhs
+			};
+
+			tmpl_init_shallow(&match_rhs, TMPL_TYPE_DATA, T_BARE_WORD, "", 0, NULL);
+			fr_value_box_bstrndup_shallow(&match_map.rhs->data.literal, NULL, pl->name,
+						      talloc_array_length(pl->name) - 1, false);
+			if (map_to_request(request, &match_map, map_to_vp, NULL) < 0) {
+				RWARN("Failed populating %s with key value %s", env->match_attr->name, pl->name);
+			}
+		}
+
 		if (map_list_num_elements(&pl->reply) > 0) {
 			RDEBUG2("%s - Preparing attribute updates:", env->name);
 			/* ctx may be reply */
@@ -661,6 +684,7 @@ static const call_env_method_t method_env = {
 		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("key", FR_TYPE_VOID, CALL_ENV_FLAG_PARSE_ONLY, rlm_files_env_t, data),
 				     .pair.dflt = "%{%{Stripped-User-Name} || %{User-Name}}", .pair.dflt_quote = T_DOUBLE_QUOTED_STRING,
 				     .pair.func = call_env_parse },
+		{ FR_CALL_ENV_PARSE_ONLY_OFFSET("match_attr", FR_TYPE_VOID, CALL_ENV_FLAG_ATTRIBUTE, rlm_files_env_t, match_attr) },
 		CALL_ENV_TERMINATOR
 	},
 };

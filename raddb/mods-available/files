@@ -34,6 +34,17 @@ files {
 	#  filename:: The old `users` style file is now located here.
 	#
 	filename = ${moddir}/authorize
+
+	#
+	#  match_attr:: List and attribute to populate with the `name` of the matched entry.
+	#
+	#  Note: the attriubte type should be capable of holding data of the type
+	#  used as key values.
+	#  Particularly useful if matching IP addresses to subnets, since the populated
+	#  value will be the subnet.  In that case it is best to use 0.0.0.0/0 in place
+	#  of DEFAULT for any catch-all entries.
+	#
+#	match_attr = &control.User-Category
 }
 
 #
