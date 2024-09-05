@@ -1,0 +1,65 @@
+= GDB
+
+== Overview
+
+Of course, gdb is the debugger to use for some programs compiled with gcc (the GNU Compiler Collection). Support is best for
+C and C++, and only C concerns us for FreeRADIUS.
+
+When a test fails you'll see something like this in the output, a command line showing how to run the test (with -xx for added debugging output):
+
+[source,shell]
+----
+./build/make/jlibtool --silent --timeout=300 --mode=execute ./build/bin/local/unit_test_attribute -F ./src/tests/fuzzer-corpus -D share/dictionary -d ./src/tests/unit -r "build/tests/units/data_types.txt"  src/tests/unit/data_types.txt -xx
+----
+
+To run the test under gdb, tell jlibtool to run gdb, which in turn will run and pass options on to `unit_test_attribute`. Keep the `-xx` if you wish, but definitely omit the `--timeout=300`.
+
+[source,shell]
+----
+TZ=GMT build/make/jlibtool --silent --mode=execute gdb --args ./build/bin/local/unit_test_attribute -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d ./src/tests/unit -r "build/tests/unit/data_types.txt" src/tests/unit/data_types.txt
+----
+
+Like lldb, gdb provides access to Python. One can define a class that adds a command to gdb. Here's the schema:
+
+[source,python]
+----
+import gdb
+
+# Python source code that must include a class definition like this:
+
+class newCmd (gdb.Command):
+  """comment that will be displayed if the user types "help <command name>""""
+
+  def __init__ (self):
+    # Kicks it upstairs. The first parameter is the command name
+    # We intend the user to type this command, hence the choice
+    # of second parameter.
+    super (DD, self).__init__ ("newcmd", gdb.COMMAND_USER)
+
+  def invoke (self, arg, from_tty):
+    # Code that actually performs the new command.
+    # from_tty is Boolean, true iff the user entered it at a terminal
+
+newCmd () # Actually create an instance
+----
+
+invoke will typically include calls to methods like `gdb.parse_and_eval(),` which takes a Python string, parses it as appropriate for the source language, and evaluates it, returning a corresponding gdb.Value, from which you can get information like its type. (lldb classes for Python extensions tend to have a member indicating validity, so the methods always return a value of the expected type,
+and set that validity member to indicate whether the invocation succeeded. gdb throws exceptions instead.)
+
+For our immediate purpose, calling existing FreeRADIUS functions to display data structures in a consistent fashion, we build up the command and use the gdb `run` command, because the functions themselves write to stderr.
+
+Before using the new command, gdb will have to execute the commmand
+
+[source]
+----
+source <path of file containing the class definition>
+----
+
+One can autoload Python scripts, and we may wish to do that.
+
+After that, you can type `newcmd foo` and the command will run.
+
+==References
+
+* https://sourceware.org/gdb/current/onlinedocs/gdb.html/Python.html#Python [The "Extending GDB using Python" section of Debugging with GDB]
+* https://interrupt.memfault.com/blog/automate-debugging-with-gdb-python-api ["Automate Debugging with GDB Python API" from Interrupt by Memfault] The first section is about writing prettypriters, which isn't of interest to us. Later they get into adding custom gdb commands with Python, our current interest.
