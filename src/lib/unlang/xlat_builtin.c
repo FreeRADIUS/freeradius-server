@@ -3823,6 +3823,55 @@ static xlat_action_t protocol_decode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
+static xlat_arg_parser_t const xlat_func_subnet_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_IPV4_PREFIX },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/** Calculate the subnet mask from a IPv4 prefix
+ *
+ * Example:
+@verbatim
+%ip.v4.netmask(%{Network-Prefix})
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_subnet_netmask(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+					      UNUSED request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*subnet, *vb;
+	XLAT_ARGS(args, &subnet);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
+	vb->vb_ip.addr.v4.s_addr = htonl((uint32_t)0xffffffff << (32 - subnet->vb_ip.prefix));
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
+/** Calculate the broadcast address from a IPv4 prefix
+ *
+ * Example:
+@verbatim
+%ip.v4.broadcast(%{Network-Prefix})
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t xlat_func_subnet_broadcast(TALLOC_CTX *ctx, fr_dcursor_t *out, UNUSED xlat_ctx_t const *xctx,
+						UNUSED request_t *request, fr_value_box_list_t *args)
+{
+	fr_value_box_t	*subnet, *vb;
+	XLAT_ARGS(args, &subnet);
+
+	MEM(vb = fr_value_box_alloc(ctx, FR_TYPE_IPV4_ADDR, NULL));
+	vb->vb_ip.addr.v4.s_addr = htonl( ntohl(subnet->vb_ip.addr.v4.s_addr) | (uint32_t)0xffffffff >> subnet->vb_ip.prefix);
+	fr_dcursor_append(out, vb);
+
+	return XLAT_ACTION_DONE;
+}
+
 static int protocol_xlat_instantiate(xlat_inst_ctx_t const *mctx)
 {
 	*(void **) mctx->inst = mctx->uctx;
@@ -4083,6 +4132,8 @@ do { \
 	XLAT_REGISTER_ARGS("lpad", xlat_func_lpad, FR_TYPE_STRING, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("rpad", xlat_func_rpad, FR_TYPE_STRING, xlat_func_pad_args);
 	XLAT_REGISTER_ARGS("substr", xlat_func_substr, FR_TYPE_VOID, xlat_func_substr_args);
+	XLAT_REGISTER_ARGS("ip.v4.netmask", xlat_func_subnet_netmask, FR_TYPE_IPV4_ADDR, xlat_func_subnet_args);
+	XLAT_REGISTER_ARGS("ip.v4.broadcast", xlat_func_subnet_broadcast, FR_TYPE_IPV4_ADDR, xlat_func_subnet_args);
 
 	/*
 	 *	The inputs to these functions are variable.
