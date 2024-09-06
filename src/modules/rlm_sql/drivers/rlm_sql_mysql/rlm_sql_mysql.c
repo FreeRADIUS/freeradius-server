@@ -357,8 +357,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 		DEBUG2("Connected to database '%s' on %s, server version %s, protocol version %i",
 		       config->sql_db, mysql_get_host_info(c->sock),
 		       mysql_get_server_info(c->sock), mysql_get_proto_info(c->sock));
-		connection_signal_connected(c->conn);
-		return CONNECTION_STATE_CONNECTING;
+		goto finish;
 	}
 
 	if (fr_event_fd_insert(c, NULL, c->conn->el, c->fd,
@@ -368,12 +367,13 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	DEBUG2("Connecting to database '%s' on %s:%d, fd %d",
 	       config->sql_db, config->sql_server, config->sql_port, c->fd);
 
+finish:
 	*h = c;
 
 	if (config->connect_query) connection_add_watch_post(conn, CONNECTION_STATE_CONNECTED,
 							     _sql_connect_query_run, true, sql);
 
-	return CONNECTION_STATE_CONNECTING;
+	return c->status == 0 ? CONNECTION_STATE_CONNECTED : CONNECTION_STATE_CONNECTING;
 }
 
 static void _sql_connection_close(fr_event_list_t *el, void *h, UNUSED void *uctx)
