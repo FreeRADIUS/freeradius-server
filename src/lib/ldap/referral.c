@@ -64,6 +64,7 @@ fr_ldap_referral_t *fr_ldap_referral_alloc(TALLOC_CTX *ctx, request_t *request)
 /** Callback to send LDAP referral queries when a trunk becomes active
  *
  */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private trunk_t trips --fsanitize=function*/
 static void _ldap_referral_send(UNUSED trunk_t *trunk, UNUSED trunk_state_t prev,
 			        UNUSED trunk_state_t state, void *uctx)
 {
