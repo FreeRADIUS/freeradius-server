@@ -8,78 +8,78 @@
 uint32 count1
 uint32 count2
 
-&count1 := 0
-&count2 := 0
+count1 := 0
+count2 := 0
 
-&request += {
-	&NAS-Port = 0		# 0
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 3
-	&NAS-Port = 4
-	&NAS-Port = 5
-	&NAS-Port = 6
-	&NAS-Port = 7
-	&NAS-Port = 8
-	&NAS-Port = 9		# 10
-	&NAS-Port = 0
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 3
-	&NAS-Port = 4
-	&NAS-Port = 5
-	&NAS-Port = 6
-	&NAS-Port = 7
-	&NAS-Port = 8
-	&NAS-Port = 9		# 20
-	&NAS-Port = 0
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 3
-	&NAS-Port = 4
-	&NAS-Port = 5
-	&NAS-Port = 6
-	&NAS-Port = 7
-	&NAS-Port = 8
-	&NAS-Port = 9		# 30
-	&NAS-Port = 0
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 3
-	&NAS-Port = 4
-	&NAS-Port = 5
-	&NAS-Port = 6
-	&NAS-Port = 7
-	&NAS-Port = 8
-	&NAS-Port = 9		# 40
-	&NAS-Port = 0
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 3
-	&NAS-Port = 4
-	&NAS-Port = 5
-	&NAS-Port = 6
-	&NAS-Port = 7
-	&NAS-Port = 8
-	&NAS-Port = 9		# 49
+request += {
+	NAS-Port = 0		# 0
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 3
+	NAS-Port = 4
+	NAS-Port = 5
+	NAS-Port = 6
+	NAS-Port = 7
+	NAS-Port = 8
+	NAS-Port = 9		# 10
+	NAS-Port = 0
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 3
+	NAS-Port = 4
+	NAS-Port = 5
+	NAS-Port = 6
+	NAS-Port = 7
+	NAS-Port = 8
+	NAS-Port = 9		# 20
+	NAS-Port = 0
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 3
+	NAS-Port = 4
+	NAS-Port = 5
+	NAS-Port = 6
+	NAS-Port = 7
+	NAS-Port = 8
+	NAS-Port = 9		# 30
+	NAS-Port = 0
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 3
+	NAS-Port = 4
+	NAS-Port = 5
+	NAS-Port = 6
+	NAS-Port = 7
+	NAS-Port = 8
+	NAS-Port = 9		# 40
+	NAS-Port = 0
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 3
+	NAS-Port = 4
+	NAS-Port = 5
+	NAS-Port = 6
+	NAS-Port = 7
+	NAS-Port = 8
+	NAS-Port = 9		# 49
 }
 
 #
 #  Loop 0..9
 #
-foreach &NAS-Port {
+foreach NAS-Port {
 	load-balance {
 		group {
-			&count1 += 1
-			&request += {
-				&Reply-Message = "Picked group 1 - %{count1} time(s)"
+			count1 += 1
+			request += {
+				Reply-Message = "Picked group 1 - %{count1} time(s)"
 			}
 			ok
 		}
 		group {
-			&count2 += 1
-			&request += {
-				&Reply-Message = "Picked group 2 %{count2} Time(s)"
+			count2 += 1
+			request += {
+				Reply-Message = "Picked group 2 %{count2} Time(s)"
 			}
 			ok
 		}
@@ -89,11 +89,11 @@ foreach &NAS-Port {
 # The chances of one group being used over another 50 times by random occurrence
 # is quite small, and if this happens repeatedly, it's likely there's a bug in
 # the load-balance code or random number generator.
-if ((&count1 == 0) || (&count2 == 0)) {
+if ((count1 == 0) || (count2 == 0)) {
 	test_fail
 }
 
-if !(&count1 + &count2 == 50) {
+if !(count1 + count2 == 50) {
 	test_fail
 }
 

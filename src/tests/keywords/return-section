@@ -1,7 +1,7 @@
 #
 #  PRE: if return
 #
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
 	ok
 
 	#
@@ -9,7 +9,7 @@ if (&User-Name == "bob") {
 	#  will prevent the "pap" module from being run
 	#  in the "authorize" section.
 	#
-	&control.Auth-Type := ::PAP
+	control.Auth-Type := ::PAP
 
 	#
 	#  Stop processing "authorize", and go to the next section.

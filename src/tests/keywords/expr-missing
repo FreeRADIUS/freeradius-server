@@ -9,20 +9,20 @@ string sc
 #
 #  b is missing, so its default value is 0
 #
-&a = 1
-&c = &a - &b
+a = 1
+c = a - b
 
-if !(&c == &a) {
+if !(c == a) {
 	test_fail
 }
 
-&sa = "foo"
-&sc = &sa + &sb
+sa = "foo"
+sc = sa + sb
 
 #
 #  sb is missing, so its default value is the empty string
 #
-if !(&sc == &sa) {
+if !(sc == sa) {
 	test_fail
 }
 success

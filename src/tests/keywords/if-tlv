@@ -2,9 +2,9 @@
 # PRE: if
 #
 
-%map("&TLS-Certificate.Issuer = 'foo'")
+%map("TLS-Certificate.Issuer = 'foo'")
 
-if !(&TLS-Certificate.Issuer == 'foo') {
+if !(TLS-Certificate.Issuer == 'foo') {
 	test_fail
 }
 

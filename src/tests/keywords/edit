@@ -3,20 +3,20 @@
 #
 uint32 test_integer1
 uint32 test_integer2
-&test_integer1 := 4
-&test_integer2 := 6
+test_integer1 := 4
+test_integer2 := 6
 
 #
 #  Many, many, years of work led up to this!
 #
-&test_integer1 += 5
+test_integer1 += 5
 
-if (!(&test_integer1 == 9)) {
+if (!(test_integer1 == 9)) {
 	test_fail
 }
 
-&test_integer1 += &test_integer2
-if (!(&test_integer1 == 15)) {
+test_integer1 += test_integer2
+if (!(test_integer1 == 15)) {
 	test_fail
 }
 

@@ -8,23 +8,23 @@
 #	= A' MERGE B' if A and B are lists
 #
 
-&Filter-Id := "foo"
-&control.Filter-Id := "bar"
+Filter-Id := "foo"
+control.Filter-Id := "bar"
 
 # merge
-&request >= &control
+request >= control
 
-if (!&Filter-Id) {
+if (!Filter-Id) {
 	test_fail
 }
 
 # The original value should be unchanged
-if (!(&Filter-Id == "foo")) {
+if (!(Filter-Id == "foo")) {
 	test_fail
 }
 
 #  and the new value should not be there
-if (&Filter-Id == "bar") {
+if (Filter-Id == "bar") {
 	test_fail
 }
 

@@ -1,6 +1,6 @@
-&request.REST-HTTP-Status-Code := 200
+request.REST-HTTP-Status-Code := 200
 
-switch &request.REST-HTTP-Status-Code {
+switch request.REST-HTTP-Status-Code {
 	case 200 {
 		success
 	}

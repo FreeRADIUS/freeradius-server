@@ -1,2 +1,2 @@
 string result_string
-&result_string := &reply.Filter-Id[#]	# ERROR
+result_string := reply.Filter-Id[#]	# ERROR

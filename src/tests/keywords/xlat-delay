@@ -7,15 +7,15 @@ float32 result_float
 
 %delay_10s()	# Should 'blip' the request
 
-&result_float := %delay_10s(0.1)
-if (!&result_float) {
+result_float := %delay_10s(0.1)
+if (!result_float) {
 	fail
 }
 
 #
 # Check the delay was ~100ms
 #
-if (&result_float < 0.1) {
+if (result_float < 0.1) {
 	fail
 }
 

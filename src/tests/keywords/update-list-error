@@ -4,14 +4,14 @@
 #  It's an error to update lists that don't exist.
 #
 update {
-	&request := &reply
-	&control += &request
-	&reply !* ANY
+	request := reply
+	control += request
+	reply !* ANY
 }
 
 update {
-	&request := nope		# ERROR
+	request := nope		# ERROR
 }
 
-&request += { &User-Password = 'hello' }
+request += { User-Password = 'hello' }
 success

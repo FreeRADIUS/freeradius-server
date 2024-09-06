@@ -3,27 +3,27 @@ string result_string
 #
 #  Empty output on empty input
 #
-&result_string := "%randstr(%{result_string})"
-if !(&result_string == "") {
+result_string := "%randstr(%{result_string})"
+if !(result_string == "") {
 	test_fail
 }
 
 #
 #  Check length of output
 #
-&result_string := "%randstr(nnn)"
+result_string := "%randstr(nnn)"
 if (!(%length(%{result_string}) == 3)) {
 	test_fail
 }
 
-&result_string := "%randstr(24a)"
+result_string := "%randstr(24a)"
 if (!(%length(%{result_string}) == 24)) {
 	test_fail
 }
 #
 #  Check maximum repetition
 #
-&result_string := "%randstr(1030aa)"
+result_string := "%randstr(1030aa)"
 if (!(%length(%{result_string}) == 1025)) {
 	test_fail
 }
@@ -31,16 +31,16 @@ if (!(%length(%{result_string}) == 1025)) {
 #
 #  Check invalid character class
 #
-&result_string := "%randstr(G)"
+result_string := "%randstr(G)"
 
-if !(&result_string == "") {
+if !(result_string == "") {
 	test_fail
 }
 
 #
 #  Check repetition of binary output
 #
-&result_string := "%randstr(10b)"
+result_string := "%randstr(10b)"
 if (!(%length(%{result_string}) == 10)) {
 	test_fail
 }

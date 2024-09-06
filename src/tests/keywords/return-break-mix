@@ -1,14 +1,14 @@
 #
 #  PRE: if return foreach
 #
-&control += {
-	&NAS-Port = 0
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 3
+control += {
+	NAS-Port = 0
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 3
 }
 
-foreach &control.NAS-Port {
+foreach control.NAS-Port {
 	policy_return
 
 	# Should continue executing
@@ -16,17 +16,17 @@ foreach &control.NAS-Port {
 		break
 	}
 
-	&control -= {
-		&NAS-Port == "%{Foreach-Variable-0}"
+	control -= {
+		NAS-Port == "%{Foreach-Variable-0}"
 	}
 }
 
 # Everything should have been removed except
-# the last incidence of &NAS-Port
-if (!&control.NAS-Port) {
+# the last incidence of NAS-Port
+if (!control.NAS-Port) {
 	test_fail
 }
-if (!(&control.NAS-Port[0] == 2)) {
+if (!(control.NAS-Port[0] == 2)) {
 	test_fail
 }
 

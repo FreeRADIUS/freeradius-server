@@ -1,11 +1,11 @@
 #
 #  PRE: edit
 #
-&session-state += {
-	&User-Name = "foo"
+session-state += {
+	User-Name = "foo"
 }
 
-if !(&session-state.User-Name == "foo") {
+if !(session-state.User-Name == "foo") {
 	test_fail
 }
 

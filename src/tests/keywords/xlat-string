@@ -9,15 +9,15 @@ octets test_octets5
 octets test_octets6
 string result_string
 
-&test_octets1 := 0x5c5c
-&test_octets2 := 0x49206c696b6520636869636b656e2049206c696b65206c69766572
-&test_octets3 := 0x490049
-&test_octets4 = 0x00
-&test_octets5 = 0x7465737431
-&test_octets6 = 0x7465737432
+test_octets1 := 0x5c5c
+test_octets2 := 0x49206c696b6520636869636b656e2049206c696b65206c69766572
+test_octets3 := 0x490049
+test_octets4 = 0x00
+test_octets5 = 0x7465737431
+test_octets6 = 0x7465737432
 
-&result_string := %{(string) %{test_octets1}}
-if (!(&result_string == "\\\\")) {
+result_string := %{(string) %{test_octets1}}
+if (!(result_string == "\\\\")) {
 	test_fail
 }
 
@@ -45,7 +45,7 @@ if (!(%{(string) (%{test_octets5} + %{test_octets6})} == "test1test2")) {
 #
 #  We don't need %{(string) ...) either.
 #
-if !("%{(string) &test_octets5}%{(string) &test_octets6}" == "test1test2") {
+if !("%{(string) test_octets5}%{(string) test_octets6}" == "test1test2") {
 	test_fail
 }
 
@@ -57,18 +57,18 @@ if (!("%{(string) %{test_octets5}}%{(string) %{test_octets6}}test3" == "test1tes
 	test_fail
 }
 
-&result_string := %{(string) %{test_octets2}}
-if !(&result_string == 'I like chicken I like liver') {
+result_string := %{(string) %{test_octets2}}
+if !(result_string == 'I like chicken I like liver') {
 	test_fail
 }
 
-&result_string := %{(string) %{test_octets3}}
-if (!(&result_string == "I\000I")) {
+result_string := %{(string) %{test_octets3}}
+if (!(result_string == "I\000I")) {
 	test_fail
 }
 
-&result_string := %{(string) %{test_octets4}}
-if (!(&result_string == "\000")) {
+result_string := %{(string) %{test_octets4}}
+if (!(result_string == "\000")) {
 	test_fail
 }
 

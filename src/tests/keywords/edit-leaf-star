@@ -3,28 +3,28 @@
 #
 uint32 result_integer
 
-&NAS-Port := { 1, 3, 5, 7, 11 }
+NAS-Port := { 1, 3, 5, 7, 11 }
 
 #
 #  Do operations on sets of inputs.
 #
-&result_integer += &NAS-Port[*]
-if (!(&result_integer == 27)) {
+result_integer += NAS-Port[*]
+if (!(result_integer == 27)) {
 	test_fail
 }
 
 #
 #  We should be able to copy multiple attributes
 #
-&Port-Limit := &NAS-Port[*]
-&result_integer := 0
+Port-Limit := NAS-Port[*]
+result_integer := 0
 
 
 #
 #  Do operations on sets of inputs.
 #
-&result_integer += &Port-Limit[*]
-if (!(&result_integer == 27)) {
+result_integer += Port-Limit[*]
+if (!(result_integer == 27)) {
 	test_fail
 }
 

@@ -2,71 +2,71 @@
 # PRE: edit-list
 #
 
-&request += {
-	&Class = 0x00
-	&Filter-Id = "foo"
-	&NAS-Port = 1
+request += {
+	Class = 0x00
+	Filter-Id = "foo"
+	NAS-Port = 1
 }
 
 #  Does exist
-if (!&Filter-Id) {
+if (!Filter-Id) {
 	test_fail
 }
 
 # Remove the first one
-&request -= &Filter-Id
+request -= Filter-Id
 
 #  Does not exist
-if (&Filter-Id) {
+if (Filter-Id) {
 	test_fail
 }
 
 # Other things still exist
-if (!&Class) {
+if (!Class) {
 	test_fail
 }
 
-if (!&NAS-Port) {
+if (!NAS-Port) {
 	test_fail
 }
 
 #
 #  Add multiple of the same type
 #
-&request += {
-	&Filter-Id = "foo"
-	&Filter-Id = "bar"
-	&Filter-Id = "baz"
+request += {
+	Filter-Id = "foo"
+	Filter-Id = "bar"
+	Filter-Id = "baz"
 }
 
-if (!&Filter-Id) {
+if (!Filter-Id) {
 	test_fail
 }
 
-&request -= &Filter-Id[0]
+request -= Filter-Id[0]
 
 #  the first one has been removed
-if (!(&Filter-Id[0] == "bar")) {
+if (!(Filter-Id[0] == "bar")) {
 	test_fail
 }
 
 # Other things still exist
-if (!&Class) {
+if (!Class) {
 	test_fail
 }
 
-if (!&NAS-Port) {
+if (!NAS-Port) {
 	test_fail
 }
 
-&request -= &Filter-Id[*]
+request -= Filter-Id[*]
 
 # Does not exist
-if (&Filter-Id) {
+if (Filter-Id) {
 	test_fail
 }
 
-&Filter-Id := { "foo", "bar", "baz" }
+Filter-Id := { "foo", "bar", "baz" }
 
 #
 #  Remove one by value.
@@ -74,31 +74,31 @@ if (&Filter-Id) {
 #  @todo - allow for == or =~ in the RHS list,
 #  as a condition?  For now, it's an exact match. :(
 #
-&request -= {
-	&Filter-Id == "bar"
+request -= {
+	Filter-Id == "bar"
 }
 
-if (!(&Filter-Id[0] == "foo")) {
+if (!(Filter-Id[0] == "foo")) {
 	test_fail
 }
 
-if (!(&Filter-Id[1] == "baz")) {
+if (!(Filter-Id[1] == "baz")) {
 	test_fail
 }
 
-if (&Filter-Id[2]) {
+if (Filter-Id[2]) {
 	test_fail
 }
 
 #
 #  Remove via in-place list, too.
 #
-&request -= "Filter-Id == 'foo'"
-if (!(&Filter-Id[0] == "baz")) {
+request -= "Filter-Id == 'foo'"
+if (!(Filter-Id[0] == "baz")) {
 	test_fail
 }
 
-if (&Filter-Id[1]) {
+if (Filter-Id[1]) {
 	test_fail
 }
 

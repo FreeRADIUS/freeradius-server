@@ -1,7 +1,7 @@
 #
 #  PRE: switch
 #
-switch &User-Name {
+switch User-Name {
 	case "%no-such-module(bob)" {	# ERROR
 		test_fail
 	}

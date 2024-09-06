@@ -1,25 +1,25 @@
 #
 #  PRE: subrequest
 #
-&Filter-Id := 'testing'
+Filter-Id := 'testing'
 
 # Cancel in subrequest
 subrequest ::Access-Request {
 	detach
 
 	# Smoke test, check for crashes
-	if (&parent.Filter-Id == 'testing') {
+	if (parent.Filter-Id == 'testing') {
 		test_fail
 	}
 
-	&parent.Reply-Message = 'testing'
+	parent.Reply-Message = 'testing'
 
 	# As we're detached this failure doesn't do anything
 	test_fail
 }
 
 # Should not have been set from detached child
-if (&Reply-Message && (&Reply-Message == 'testing')) {
+if (Reply-Message && (Reply-Message == 'testing')) {
 	test_fail
 }
 

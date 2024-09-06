@@ -1,11 +1,11 @@
 redundant {
-	map test-fail &Filter-Id {
-		&NAS-Port := '$[3][2]'
+	map test-fail Filter-Id {
+		NAS-Port := '$[3][2]'
 	}
 	noop
 }
 
-if (noop || (&NAS-Port == 4294967295)) {
+if (noop || (NAS-Port == 4294967295)) {
 	success
 } else {
 	fail

@@ -1,7 +1,7 @@
 # Set debug to something high, recording the old level
 uint32 test_integer
 
-&test_integer := %debug(4)
+test_integer := %debug(4)
 
 # Check debug level is now 4
 if (!(%debug(4) == 4)) {
@@ -17,10 +17,10 @@ if (!(%debug(%{test_integer}) == "%{test_integer}")) {
 }
 
 # Check for 'splosions
-"%{&control.Password.Cleartext || &control.User-Name}"
-"%{&control.User-Name || &control.Password.Cleartext}"
+"%{control.Password.Cleartext || control.User-Name}"
+"%{control.User-Name || control.Password.Cleartext}"
 
-if (&control.Password.Cleartext =~ /(h)(e)(l)(l)(o)/) {
+if (control.Password.Cleartext =~ /(h)(e)(l)(l)(o)/) {
 	"%{0}"
 	"%{1}"
 	"%{2}"

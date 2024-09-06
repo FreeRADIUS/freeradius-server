@@ -1,29 +1,29 @@
 #
 #  PRE: subrequest
 #
-subrequest ::Access-Request &request &reply.Tmp-Group-0 {
-	subrequest ::Access-Request &request &reply.Tmp-Group-0 {
-		if (!&User-Name) {
+subrequest ::Access-Request request reply.Tmp-Group-0 {
+	subrequest ::Access-Request request reply.Tmp-Group-0 {
+		if (!User-Name) {
 			test_fail
 		}
 
-		if (!(&User-Name == 'bob')) {
+		if (!(User-Name == 'bob')) {
 			test_fail
 		}
 
-		&reply.Filter-Id := 'hello from subrequest'
+		reply.Filter-Id := 'hello from subrequest'
 	}
 }
 
-if (!&reply.Tmp-Group-0.Tmp-Group-0) {
+if (!reply.Tmp-Group-0.Tmp-Group-0) {
 	test_fail
 }
 
-if (!&reply.Tmp-Group-0.Tmp-Group-0.Filter-Id) {
+if (!reply.Tmp-Group-0.Tmp-Group-0.Filter-Id) {
 	test_fail
 }
 
-if !(&reply.Tmp-Group-0.Tmp-Group-0.Filter-Id == 'hello from subrequest') {
+if !(reply.Tmp-Group-0.Tmp-Group-0.Filter-Id == 'hello from subrequest') {
 	test_fail
 }
 

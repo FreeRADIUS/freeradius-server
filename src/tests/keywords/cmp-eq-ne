@@ -4,22 +4,22 @@ uint32 result
 #
 #  "foo" does not yet exist.  So it doesn't have value "42"
 #
-if (&foo != 42) {
-	&result += 1
+if (foo != 42) {
+	result += 1
 }
 
 #
 #  This should be the same as above.
 #
-if !(&foo == 42) {
-	&result += 1
+if !(foo == 42) {
+	result += 1
 }
 
-if !&result {
+if !result {
 	test_fail
 }
 
-if (&result != 2) {
+if (result != 2) {
 	test_fail
 }
 success

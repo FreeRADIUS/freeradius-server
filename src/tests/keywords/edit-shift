@@ -3,21 +3,21 @@ octets foo
 #
 #  left shift octets
 #
-&foo := 0xabcdef
-&foo <<= 2
+foo := 0xabcdef
+foo <<= 2
 
-if (&foo != 0xef) {
+if (foo != 0xef) {
 	test_fail
 }
 
 #
 #  And right shift
 #
-&foo := 0xabcdef
+foo := 0xabcdef
 
 
-&foo >>= 2
-if (&foo != 0xab) {
+foo >>= 2
+if (foo != 0xab) {
 	test_fail
 }
 success

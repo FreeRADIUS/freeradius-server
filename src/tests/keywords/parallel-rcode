@@ -27,7 +27,7 @@ group {
 	parallel {
 		fail
 		group {	# This should *NOT* be dispatched
-			&Filter-Id := 'foo'
+			Filter-Id := 'foo'
 		}
 	}
 	actions {
@@ -37,7 +37,7 @@ group {
 if (!fail) {
 	test_fail
 }
-if (&Filter-Id) {
+if (Filter-Id) {
 	test_fail
 }
 
@@ -51,7 +51,7 @@ group {
 			fail = 10	# Higher priority than ok and no longer action return
 		}
 		group {	# This should now be dispatched
-			&parent.request.Filter-Id := 'foo'
+			parent.request.Filter-Id := 'foo'
 		}
 	}
 	actions {
@@ -61,7 +61,7 @@ group {
 if (!fail) {
 	test_fail
 }
-if (!(&Filter-Id == 'foo')) {
+if (!(Filter-Id == 'foo')) {
 	test_fail
 }
 

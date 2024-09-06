@@ -4,35 +4,35 @@ uint32 zscore
 #
 #  PRE: if
 #
-&Class := 0x00000101
+Class := 0x00000101
 
-if ((integer)&Class[0] == 257) {
+if ((integer)Class[0] == 257) {
 	success
 }
 
-if ((integer)&Class[0] < 256) {
+if ((integer)Class[0] < 256) {
 	test_fail
 }
 
-if ((integer)&Class[0] > 257) {
+if ((integer)Class[0] > 257) {
 	test_fail
 }
 
-&zscore := 1
+zscore := 1
 
-&foo := (uint64) 0x10000000000001
+foo := (uint64) 0x10000000000001
 
-if (&foo != (&zscore + %cast('uint64', 0x10000000000000))) {
+if (foo != (zscore + %cast('uint64', 0x10000000000000))) {
 	test_fail
 }
 
-if (&foo != (&zscore + (uint64) 0x10000000000000)) {
+if (foo != (zscore + (uint64) 0x10000000000000)) {
 	test_fail
 }
 
-&Service-Type := ::Framed-User
+Service-Type := ::Framed-User
 
-if ((uint32) &Service-Type != 2) {
+if ((uint32) Service-Type != 2) {
 	test_fail
 }
 
@@ -40,6 +40,6 @@ if ((uint32) &Service-Type != 2) {
 #  Cast Service-Type to it's underlying data type,
 #  which means "don't print the enum name".
 #
-if ("%{(uint32) &Service-Type}" != "2") {
+if ("%{(uint32) Service-Type}" != "2") {
 	test_fail
 }

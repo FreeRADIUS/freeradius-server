@@ -2,68 +2,68 @@ subrequest ::Access-Request {
 	#
 	#  Prefix/attribute parsing disambiguation
 	#
-	&outer.request.Outer-Realm-Name := 'testing123'
+	outer.request.Outer-Realm-Name := 'testing123'
 
-	&User-Name := "obo"
+	User-Name := "obo"
 
 	subrequest ::Access-Request {
-		&User-Name := "jim"
+		User-Name := "jim"
 
 		subrequest ::Access-Request {
-			&User-Name := "joe"
+			User-Name := "joe"
 
-			&outer.request += {
-				&Filter-Id = &current.User-Name
-				&Filter-Id = &parent.User-Name
-				&Filter-Id = &parent.parent.User-Name
-				&Filter-Id = &parent.parent.parent.User-Name
-				&Filter-Id = &outer.User-Name
-				&Filter-Id = &current.outer.User-Name
-				&Filter-Id = &parent.current.outer.User-Name
-				&Filter-Id = "%{parent.parent.parent.parent.User-Name}"
-				&Filter-Id = "%{outer.parent.User-Name}"
+			outer.request += {
+				Filter-Id = current.User-Name
+				Filter-Id = parent.User-Name
+				Filter-Id = parent.parent.User-Name
+				Filter-Id = parent.parent.parent.User-Name
+				Filter-Id = outer.User-Name
+				Filter-Id = current.outer.User-Name
+				Filter-Id = parent.current.outer.User-Name
+				Filter-Id = "%{parent.parent.parent.parent.User-Name}"
+				Filter-Id = "%{outer.parent.User-Name}"
 			}
 		}
 	}
 }
 
-if !(&Outer-Realm-Name == 'testing123') {
+if !(Outer-Realm-Name == 'testing123') {
 	test_fail
 }
 
-if !(&Filter-Id[0] == 'joe') {
+if !(Filter-Id[0] == 'joe') {
 	test_fail
 }
 
-if !(&Filter-Id[1] == 'jim') {
+if !(Filter-Id[1] == 'jim') {
 	test_fail
 }
 
-if !(&Filter-Id[2] == 'obo') {
+if !(Filter-Id[2] == 'obo') {
 	test_fail
 }
 
-if !(&Filter-Id[3] == 'bob') {
+if !(Filter-Id[3] == 'bob') {
 	test_fail
 }
 
-if !(&Filter-Id[4] == 'bob') {
+if !(Filter-Id[4] == 'bob') {
 	test_fail
 }
 
-if !(&Filter-Id[5] == 'bob') {
+if !(Filter-Id[5] == 'bob') {
 	test_fail
 }
 
-if !(&Filter-Id[6] == 'bob') {
+if !(Filter-Id[6] == 'bob') {
 	test_fail
 }
 
-if !(&Filter-Id[7] == "") {
+if !(Filter-Id[7] == "") {
 	test_fail
 }
 
-if !(&Filter-Id[8] == "") {
+if !(Filter-Id[8] == "") {
 	test_fail
 }
 

@@ -2,40 +2,40 @@
 # PRE: edit
 #
 
-&control.Filter-Id := "foo"
+control.Filter-Id := "foo"
 
 #  Doesn't exist
-if (&Filter-Id) {
+if (Filter-Id) {
 	test_fail
 }
 
 # append
-&request += &control
+request += control
 
 #  Does exist, and is the last attribute
-if (!&Filter-Id[n]) {
+if (!Filter-Id[n]) {
 	test_fail
 }
 
-&request -= &Filter-Id[*]
+request -= Filter-Id[*]
 
 #  Doesn't exist
-if (&Filter-Id) {
+if (Filter-Id) {
 	test_fail
 }
 
 # prepend
-&request ^= &control
+request ^= control
 
 #  Does exist, and is at offset 0
-if (!&Filter-Id[0]) {
+if (!Filter-Id[0]) {
 	test_fail
 }
 
-&request -= &Filter-Id[*]
-&control.Filter-Id := { "a", "b", "c", "d" }
+request -= Filter-Id[*]
+control.Filter-Id := { "a", "b", "c", "d" }
 
-&request += &control.Filter-Id[*]
+request += control.Filter-Id[*]
 if (!(%{request.Filter-Id[#]} == 4)) {
 	test_fail
 }

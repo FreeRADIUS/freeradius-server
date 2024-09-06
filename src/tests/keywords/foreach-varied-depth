@@ -1,35 +1,35 @@
 #
 #  PRE: foreach
 #
-&control += {
-	&Filter-Id = "ssid=ABCDEF"
-	&Filter-Id = "ssid=GHIJKL"
+control += {
+	Filter-Id = "ssid=ABCDEF"
+	Filter-Id = "ssid=GHIJKL"
 }
 
-if (&User-Name) {
-	foreach &control.Filter-Id {
+if (User-Name) {
+	foreach control.Filter-Id {
 		if ("%{Foreach-Variable-0}" =~ /(.*)/) {
-			&control.Calling-Station-Id := "%{1}"
+			control.Calling-Station-Id := "%{1}"
 		}
 	}
 }
 
-if (!(&control.Calling-Station-Id == 'ssid=GHIJKL')) {
+if (!(control.Calling-Station-Id == 'ssid=GHIJKL')) {
 	test_fail
 }
 
-&control -= &Calling-Station-Id[*]
+control -= Calling-Station-Id[*]
 
-foreach &control.Filter-Id {
+foreach control.Filter-Id {
 	if ("%{Foreach-Variable-0}" =~ /(.*)/) {
-		&control.Calling-Station-Id := "%{1}"
+		control.Calling-Station-Id := "%{1}"
 	}
 }
 
-if (!(&control.Calling-Station-Id == 'ssid=GHIJKL')) {
+if (!(control.Calling-Station-Id == 'ssid=GHIJKL')) {
 	test_fail
 }
 
-&control -= &Calling-Station-Id[*]
+control -= Calling-Station-Id[*]
 
 success

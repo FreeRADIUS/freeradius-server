@@ -1,12 +1,12 @@
 # PRE: switch
 #
-switch &User-Name {
+switch User-Name {
 	case "harry" {
-		&Filter-Id := "harry"
+		Filter-Id := "harry"
 	}
 
 	case "doug" {
-		&Filter-Id := "doug"
+		Filter-Id := "doug"
 	}
 
 	case {

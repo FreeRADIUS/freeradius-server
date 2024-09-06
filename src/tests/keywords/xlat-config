@@ -4,14 +4,14 @@
 string result_string
 uint32 result_integer
 
-&result_string := "%config(modules.static.test.boolean)"
-if (!(&result_string == "no")) {
+result_string := "%config(modules.static.test.boolean)"
+if (!(result_string == "no")) {
 	test_fail
 }
 
-&result_string := "test"
-&result_integer := %config(modules.static.%{result_string}.integer)
-if (!(&result_integer == 1)) {
+result_string := "test"
+result_integer := %config(modules.static.%{result_string}.integer)
+if (!(result_integer == 1)) {
 	test_fail
 }
 

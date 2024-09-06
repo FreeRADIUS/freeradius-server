@@ -4,23 +4,23 @@
 uint32 test_integer1
 uint32 test_integer2
 
-&test_integer1 := 0
-&test_integer2 := 1
+test_integer1 := 0
+test_integer2 := 1
 
-if !((&test_integer1 == 1) || (&test_integer2 == 1)) {
+if !((test_integer1 == 1) || (test_integer2 == 1)) {
 	test_fail
 }
 
-if !((&test_integer2 == 1) || (&test_integer1 == 1)) {
+if !((test_integer2 == 1) || (test_integer1 == 1)) {
 	test_fail
 }
 
 #
 #  Neither of these exists, so the resulting string should be empty
 #
-&Filter-Id := "%{&NAS-Port-Id || &NAS-Port-Id}"
+Filter-Id := "%{NAS-Port-Id || NAS-Port-Id}"
 
-if !(&Filter-Id == '') {
+if !(Filter-Id == '') {
 	test_fail
 }
 

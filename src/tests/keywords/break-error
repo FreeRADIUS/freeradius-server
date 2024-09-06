@@ -1,3 +1,3 @@
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
 	break			# ERROR
 }

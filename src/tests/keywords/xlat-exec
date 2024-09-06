@@ -1,24 +1,24 @@
 string test_string
 string result_string
 
-&test_string = "foo"
-&result_string := %exec('/bin/echo', "hello 1234:%{test_string} world")
+test_string = "foo"
+result_string := %exec('/bin/echo', "hello 1234:%{test_string} world")
 
-if (!(&result_string == "hello 1234:foo world")) {
+if (!(result_string == "hello 1234:foo world")) {
 	test_fail
 }
 
-&result_string := %exec('/bin/echo', "hello %{test_string}:1234 world")
-if (!(&result_string == "hello foo:1234 world")) {
+result_string := %exec('/bin/echo', "hello %{test_string}:1234 world")
+if (!(result_string == "hello foo:1234 world")) {
 	test_fail
 }
 
 # User-Password contains characters that need escaping
-&result_string := %exec('/bin/echo', "%{User-Password}")
-if (!(&result_string == &User-Password)) {
+result_string := %exec('/bin/echo', "%{User-Password}")
+if (!(result_string == User-Password)) {
 	test_fail
 } else {
-	&User-Password := "hello"
+	User-Password := "hello"
 }
 
 success

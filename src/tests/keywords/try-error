@@ -1,13 +1,13 @@
 string foo
 
 try {			# ERROR
-	&foo := "foo"
+	foo := "foo"
 }
 
 #
 #  No "catch" - that's an issue
 #
 
-if &foo != "foo" {
+if foo != "foo" {
 	test_fail
 }

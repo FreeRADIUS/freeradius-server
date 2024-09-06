@@ -1,5 +1,5 @@
 group {
 	uint32 foo
 
-	&request.foo := 1	# ERROR
+	request.foo := 1	# ERROR
 }

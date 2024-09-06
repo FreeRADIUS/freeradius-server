@@ -4,19 +4,19 @@
 string test_string
 string dummy_string
 
-&test_string	:= "AbCdE"
-&test_string	:= %toupper(%{test_string})
-if (!(&test_string == "ABCDE")) {
+test_string	:= "AbCdE"
+test_string	:= %toupper(%{test_string})
+if (!(test_string == "ABCDE")) {
 	test_fail
 }
 
-&test_string	:= %toupper(AAbbCCdd)
-if (!(&test_string == "AABBCCDD")) {
+test_string	:= %toupper(AAbbCCdd)
+if (!(test_string == "AABBCCDD")) {
 	test_fail
 }
 
-&test_string	:= "%toupper(%{dummy_string})"
-if !(&test_string == "") {
+test_string	:= "%toupper(%{dummy_string})"
+if !(test_string == "") {
 	test_fail
 }
 

@@ -13,18 +13,18 @@ octets result_octets
 #  Skip if the server wasn't built with openssl
 #
 if (!('${feature.tls}' == 'yes')) {
-	&reply.Packet-Type := Access-Accept
+	reply.Packet-Type := Access-Accept
 	handled
 }
 
-&control := {}
-&salt := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
+control := {}
+salt := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
 
 #
 #  Hex encoded SSHA2-512 password
 #
-&control += {
-	&Password.With-Header = "{ssha512}%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
+control += {
+	Password.With-Header = "{ssha512}%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 }
 
 pap.authorize
@@ -35,21 +35,21 @@ if (reject) {
 	test_fail
 }
 
-&control := {}
+control := {}
 
 #
 #  Base64 encoded SSHA2-512 password
 #
-&result_string := "%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
+result_string := "%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 
 # To Binary
-&result_octets := "%bin(%{result_string})"
+result_octets := "%bin(%{result_string})"
 
 # To Base64
-&result_string := "%base64.encode(%{result_octets})"
+result_string := "%base64.encode(%{result_octets})"
 
-&control += {
-	&Password.With-Header = "{ssha512}%{result_string}"
+control += {
+	Password.With-Header = "{ssha512}%{result_string}"
 }
 
 pap.authorize
@@ -60,21 +60,21 @@ if (reject) {
 	test_fail
 }
 
-&control := {}
+control := {}
 
 #
 #  Base64 of Base64 encoded SSHA2-512 password
 #
-&result_string := "%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
+result_string := "%hex(%sha2_512(%{User-Password}%{salt}))%hex(%{salt})"
 
 # To Binary
-&result_octets := "%bin(%{result_string})"
+result_octets := "%bin(%{result_string})"
 
 # To Base64
-&result_string := "{ssha512}%base64.encode(%{result_octets})"
+result_string := "{ssha512}%base64.encode(%{result_octets})"
 
-&control += {
-	&Password.With-Header = "%base64.encode(%{result_string})"
+control += {
+	Password.With-Header = "%base64.encode(%{result_string})"
 }
 
 pap.authorize
@@ -85,12 +85,12 @@ if (reject) {
 	test_fail
 }
 
-&control := {}
+control := {}
 
 #
 #  Base64 of SHA2-384 password (in SHA2-Password)
 #
-&control.Password.SHA2 := %hex(%sha2_384(%{User-Password}))
+control.Password.SHA2 := %hex(%sha2_384(%{User-Password}))
 
 pap.authorize
 pap.authenticate {
@@ -100,14 +100,14 @@ if (reject) {
 	test_fail
 }
 
-&control := {
-	&Auth-Type = ::Accept
+control := {
+	Auth-Type = ::Accept
 }
 
 #
 #  Base64 of SHA2-256 password (in SHA2-256-Password)
 #
-&control.Password.SHA2-256 := "%hex(%sha2_256(%{User-Password}))"
+control.Password.SHA2-256 := "%hex(%sha2_256(%{User-Password}))"
 
 pap.authorize
 pap.authenticate {
@@ -117,12 +117,12 @@ if (reject) {
 	test_fail
 }
 
-&control := {}
+control := {}
 
 #
 #  Base64 of SHA2-224 password (in SHA2-224-Password - No hex armour)
 #
-&control.Password.SHA2-224 := "%sha2_224(%{User-Password})"
+control.Password.SHA2-224 := "%sha2_224(%{User-Password})"
 
 pap.authorize
 pap.authenticate {
@@ -132,8 +132,8 @@ if (reject) {
 	test_fail
 }
 
-&control := {
-	&Auth-Type = ::Accept
+control := {
+	Auth-Type = ::Accept
 }
 
 success

@@ -7,24 +7,24 @@
 string result_string
 uint32 result_integer
 
-&result_string := "%interpreter(.filename)"
-&result_integer := "%interpreter(.line)"
+result_string := "%interpreter(.filename)"
+result_integer := "%interpreter(.line)"
 
-if (!(&result_string == "src/tests/keywords/xlat-interpreter")) {
+if (!(result_string == "src/tests/keywords/xlat-interpreter")) {
 	test_fail
 }
 
-&result_string := "%interpreter(.name)"
-if (!(&result_string == "&result_string")) {
+result_string := "%interpreter(.name)"
+if (!(result_string == "result_string")) {
 	test_fail
 }
 
-&result_string := "%interpreter(.type)"
-if (!(&result_string == "edit")) {
+result_string := "%interpreter(.type)"
+if (!(result_string == "edit")) {
 	test_fail
 }
 
-if (!(&result_integer == 11)) {
+if (!(result_integer == 11)) {
 	test_fail
 }
 

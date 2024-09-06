@@ -1,17 +1,17 @@
 # PRE: switch
 #
-&Filter-Id := ""
+Filter-Id := ""
 
-switch &Filter-Id {
+switch Filter-Id {
 	case "" {
 		success
 	}
 
 	case "doug" {
-		&reply.Filter-Id := "doug"
+		reply.Filter-Id := "doug"
 	}
 
 	case {
-		&reply.Filter-Id := "default"
+		reply.Filter-Id := "default"
 	}
 }

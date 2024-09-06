@@ -5,19 +5,19 @@ octets test_octets
 ipaddr test_ipaddr
 string result_string
 
-&test_octets := 0x69206861766520736361727920656d626564646564207468696e67730020696e73696465206d65
-&test_ipaddr := 127.0.0.1
-&request += {
-	&Reply-Message = "i have scary embedded things\000 inside me"
-	&Reply-Message = "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°"
+test_octets := 0x69206861766520736361727920656d626564646564207468696e67730020696e73696465206d65
+test_ipaddr := 127.0.0.1
+request += {
+	Reply-Message = "i have scary embedded things\000 inside me"
+	Reply-Message = "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°"
 
 	# and again with single quoted strings.
 	# unlike other languages, \r, \t, and \n have meaning inside of 'string'
-	&Callback-Number = 'i have scary embedded things\000 inside me'
-	&Callback-Number = '0x01\0010x07\0070x0A\n0x0D\r""0xb0\260°'
+	Callback-Number = 'i have scary embedded things\000 inside me'
+	Callback-Number = '0x01\0010x07\0070x0A\n0x0D\r""0xb0\260°'
 
-	&Callback-Id = 'i have scary embedded things\000 inside me'
-	&Callback-Id = "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°"
+	Callback-Id = 'i have scary embedded things\000 inside me'
+	Callback-Id = "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°"
 }
 
 
@@ -29,18 +29,18 @@ if (!(%length(%{Callback-Number}) == 42)) {
 	test_fail
 }
 
-&result_string := "%{(string) %{test_octets}}"
-if (!(&result_string == "i have scary embedded things\000 inside me")) {
+result_string := "%{(string) %{test_octets}}"
+if (!(result_string == "i have scary embedded things\000 inside me")) {
 	test_fail
 }
 
-if (!(&Reply-Message == "i have scary embedded things\000 inside me")) {
+if (!(Reply-Message == "i have scary embedded things\000 inside me")) {
 	test_fail
 }
 
-&test_octets := 0x30783031013078303707307830410A307830440D222230786230b0C2b0
-&result_string := "%{(string) %{test_octets}}"
-if (!(&result_string == "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°")) {
+test_octets := 0x30783031013078303707307830410A307830440D222230786230b0C2b0
+result_string := "%{(string) %{test_octets}}"
+if (!(result_string == "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°")) {
 	test_fail
 }
 
@@ -48,7 +48,7 @@ if (!("%{Reply-Message[0]}" == "i have scary embedded things\000 inside me")) {
 	test_fail
 }
 
-if (!(&Reply-Message[1] == "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°")) {
+if (!(Reply-Message[1] == "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°")) {
 	test_fail
 }
 
@@ -57,7 +57,7 @@ if !("%{Reply-Message[*]}" == "i have scary embedded things\000 inside me0x01\00
 	test_fail
 }
 
-if (!(&Reply-Message[0] == &Reply-Message[0])) {
+if (!(Reply-Message[0] == Reply-Message[0])) {
 	test_fail
 }
 
@@ -65,21 +65,21 @@ if (!(&Reply-Message[0] == &Reply-Message[0])) {
 #  This seems weird... double escapes for most things, but single escapes
 #  for the quotation marks.
 #
-if (!(&Callback-Id[1] == "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°")) {
+if (!(Callback-Id[1] == "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°")) {
 	test_fail
 }
 
 #
 # And again as an attribute reference
 #
-if (!(&Callback-Id[1] == "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°")) {
+if (!(Callback-Id[1] == "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°")) {
 	test_fail
 }
 
 #
 #  Other data types
 #
-&result_string := "%{(string) &test_ipaddr}"
+result_string := "%{(string) test_ipaddr}"
 if (!(%length(%{result_string}) == 9)) {
 	test_fail
 }

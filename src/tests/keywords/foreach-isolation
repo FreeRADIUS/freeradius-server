@@ -2,26 +2,26 @@
 #  PRE: foreach
 #
 
-&control.User-Name := { "0", "1", "2", "3" }
+control.User-Name := { "0", "1", "2", "3" }
 
-foreach &control.User-Name {
-	&control -= {
-		&User-Name == "%{1 + %{Foreach-Variable-0}}"
+foreach control.User-Name {
+	control -= {
+		User-Name == "%{1 + %{Foreach-Variable-0}}"
 	}
-	&request += {
-		&Filter-Id = "%{Foreach-Variable-0}"
+	request += {
+		Filter-Id = "%{Foreach-Variable-0}"
 	}
 }
 
-if (!&Filter-Id[0] || !&Filter-Id[1] || !&Filter-Id[2] || !&Filter-Id[3]) {
+if (!Filter-Id[0] || !Filter-Id[1] || !Filter-Id[2] || !Filter-Id[3]) {
 	test_fail
 }
 
-if (!((&Filter-Id[0] == '0')) || (!(&Filter-Id[1] == '1')) || (!(&Filter-Id[2] == '2')) || (!(&Filter-Id[3] == '3'))) {
+if (!((Filter-Id[0] == '0')) || (!(Filter-Id[1] == '1')) || (!(Filter-Id[2] == '2')) || (!(Filter-Id[3] == '3'))) {
 	test_fail
 }
 
-if (!&control.User-Name[0] || &control.User-Name[1] || &control.User-Name[2] || &control.User-Name[3]) {
+if (!control.User-Name[0] || control.User-Name[1] || control.User-Name[2] || control.User-Name[3]) {
 	test_fail
 }
 

@@ -1,10 +1,10 @@
 # PRE: if
 uint32 count
 
-&count := 0
+count := 0
 
 group {
-	&count += 1
+	count += 1
 
 	noop
 	actions {
@@ -16,7 +16,7 @@ group {
 	}
 }
 
-if (!(&count == 3)) {
+if (!(count == 3)) {
 	test_fail
 }
 

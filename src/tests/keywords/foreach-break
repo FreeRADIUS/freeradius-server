@@ -4,11 +4,11 @@
 #
 #  We DON'T want to see this one.
 #
-&request += {
-	&Filter-Id = "broken"
+request += {
+	Filter-Id = "broken"
 }
 
-foreach &Filter-Id {
+foreach Filter-Id {
 	#
 	#  If we see this one, "break" out of the
 	#  foreach loop.
@@ -17,8 +17,8 @@ foreach &Filter-Id {
 		break
 	}
 
-	&reply += {
-		&Called-Station-Id = "%{Foreach-Variable-0}"
+	reply += {
+		Called-Station-Id = "%{Foreach-Variable-0}"
 	}
 }
 
@@ -26,35 +26,35 @@ foreach &Filter-Id {
 #
 # Adding attribute during request and immediately breaking
 #
-&request += {
-	&Filter-Id = "1"
-	&Filter-Id = "2"
+request += {
+	Filter-Id = "1"
+	Filter-Id = "2"
 }
 
-foreach &Reply-Message {
+foreach Reply-Message {
 	if ("%{Foreach-Variable-0}" == "1") {
-		&request += {
-			&Filter-Id = "3"
+		request += {
+			Filter-Id = "3"
 		}
 		break
 	}
 }
 
-&request -= &Filter-Id[*]
+request -= Filter-Id[*]
 
 
 #
 # Adding attribute during request and continuing
 #
-&request += {
-	&Filter-Id = "1"
-	&Filter-Id = "2"
+request += {
+	Filter-Id = "1"
+	Filter-Id = "2"
 }
 
-foreach &Reply-Message {
+foreach Reply-Message {
 	if ("%{Foreach-Variable-0}" == "1") {
-		&request += {
-			&Filter-Id = "3"
+		request += {
+			Filter-Id = "3"
 		}
 	}
 

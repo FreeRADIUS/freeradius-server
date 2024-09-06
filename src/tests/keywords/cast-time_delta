@@ -28,23 +28,23 @@ if (%cast("weeks", 8d) != 1.864) {
 #
 #  These dates are one minute apart.
 #
-&one = "2024-08-12T00:00:00Z"
-&two = "2024-08-12T00:01:00Z"
+one = "2024-08-12T00:00:00Z"
+two = "2024-08-12T00:01:00Z"
 
-&diff = &two - &one
-if (&diff != 60s) {
+diff = two - one
+if (diff != 60s) {
 	test_fail
 }
 
 #
 #  Cast the time delta to milliseconds
 #
-&num = %cast("ms", %{diff})
+num = %cast("ms", %{diff})
 
 #
 #  This results in 60, because the conversion to fr_value_box_cast() doesn't pass dst->enumv?
 #
-if (&num != 60000) {
+if (num != 60000) {
 	test_fail
 }
 

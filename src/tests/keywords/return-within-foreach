@@ -1,15 +1,15 @@
 #
 #  PRE: if return foreach
 #
-&control += {
-	&NAS-Port = 0
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 3
+control += {
+	NAS-Port = 0
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 3
 }
 
 group {
-	foreach &control.NAS-Port {
+	foreach control.NAS-Port {
 		if ("%{Foreach-Variable-0}" == '2') {
 			accept
 			success

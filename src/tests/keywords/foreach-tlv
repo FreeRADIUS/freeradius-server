@@ -7,39 +7,39 @@
 #
 string out
 
-&Tmp-TLV-0 := {
-	&a = 1
-	&b = 2
-	&c = "foo"
-	&d = 127.0.0.1
+Tmp-TLV-0 := {
+	a = 1
+	b = 2
+	c = "foo"
+	d = 127.0.0.1
 }
 
-&request += {
-	&Tmp-TLV-0 = {
-		&a = 2112
-		&b = 6809
-		&c = "bar"
-		&d = 192.0.2.1
+request += {
+	Tmp-TLV-0 = {
+		a = 2112
+		b = 6809
+		c = "bar"
+		d = 192.0.2.1
 	}
 }
 
-&out = ""
+out = ""
 
 #
 #  Don't use "tlv" as the attribute name, because "tlv" is a data type.
 #
-foreach thing (&Tmp-TLV-0[*]) {
-	&out += &thing.c
-	&out += " "
+foreach thing (Tmp-TLV-0[*]) {
+	out += thing.c
+	out += " "
 }
 
-&out -= " "
+out -= " "
 
 #
 #  And we have updated the string from multiple TLVs, and one particular
 #  child from each TLV.
 #
-if (&out != 'foo bar') {
+if (out != 'foo bar') {
 	test_fail
 }
 

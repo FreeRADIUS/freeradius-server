@@ -1,7 +1,7 @@
-&request -= &Packet-Type[*]
+request -= Packet-Type[*]
 
-foreach &request.[*] {
-	&reply += {
-		&Called-Station-Id = "%{Foreach-Variable-0}"
+foreach request.[*] {
+	reply += {
+		Called-Station-Id = "%{Foreach-Variable-0}"
 	}
 }

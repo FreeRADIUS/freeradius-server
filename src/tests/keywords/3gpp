@@ -1,13 +1,13 @@
 string result_string1
 string result_string2
 
-&Vendor-Specific.3GPP.IMSI := "hello"
+Vendor-Specific.3GPP.IMSI := "hello"
 
 #
 #  "request.[0-9]" should be parsed as a list followed
 #  by an attribute.
 #
-&result_string1 := &Vendor-Specific.3GPP.IMSI
-&result_string2 := &request.Vendor-Specific.3GPP.IMSI
+result_string1 := Vendor-Specific.3GPP.IMSI
+result_string2 := request.Vendor-Specific.3GPP.IMSI
 
 success

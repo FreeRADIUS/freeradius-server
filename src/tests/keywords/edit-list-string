@@ -8,9 +8,9 @@
 #
 #  The purpose of this functionality is mainly for xlat, exec, etc.
 #
-&control += "NAS-Port = 9"
+control += "NAS-Port = 9"
 
-if (!(&control.NAS-Port == 9)) {
+if (!(control.NAS-Port == 9)) {
 	test_fail
 }
 

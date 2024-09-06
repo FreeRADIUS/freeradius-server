@@ -1,6 +1,6 @@
-&Filter-Id := 2
+Filter-Id := 2
 
-if !(&request.[#] == 5) {
+if !(request.[#] == 5) {
 	debug_request
 	test_fail
 }
@@ -12,43 +12,43 @@ group {
 	#  We declared it, but it does *not* exist until we assign
 	#  a value to it.
 	#
-	if &foo {
+	if foo {
 		test_fail
 	}
 
-	&foo := 1
+	foo := 1
 
-	&Filter-Id := &foo
+	Filter-Id := foo
 
-	if !(&Filter-Id == &foo) {
+	if !(Filter-Id == foo) {
 		test_fail
 	}
 
 	#
 	#  Local variables are *not* in the request.
 	#
-	if !(&request.[#] == 5) {
+	if !(request.[#] == 5) {
 		test_fail
 	}
 
 	#
 	#  Local variables can be expanded
 	#
-	&Reply-Message := "This is %{foo}"
-	if !(&Reply-Message == "This is 1") {
+	Reply-Message := "This is %{foo}"
+	if !(Reply-Message == "This is 1") {
 		test_fail
 	}
 
-	&request -= &Reply-Message
+	request -= Reply-Message
 
-} # leaving this scope automatically deletes &foo
+} # leaving this scope automatically deletes foo
 
-if !(&request.[#] == 5) {
+if !(request.[#] == 5) {
 	debug_request
 	test_fail
 }
 
-if !(&Filter-Id == "1") {
+if !(Filter-Id == "1") {
 	test_fail
 }
 

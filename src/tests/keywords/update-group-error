@@ -6,7 +6,7 @@ update reply {
 	#
 	#  This is a string, so it's NOT allowed.
 	#
-	&Filter-Id := { # ERROR
+	Filter-Id := { # ERROR
 		Reply-Message := "1.0"
 	}
 }

@@ -2,33 +2,33 @@
 # PRE: edit-list
 #
 
-&control.Filter-Id := "foo"
-&reply.Filter-Id := "foo"
+control.Filter-Id := "foo"
+reply.Filter-Id := "foo"
 
-&reply &= &control
+reply &= control
 
 #  must exist
-if (!&reply.Filter-Id) {
+if (!reply.Filter-Id) {
 	test_fail
 }
 
 # and have the correct value
-if (!(&reply.Filter-Id == "foo")) {
+if (!(reply.Filter-Id == "foo")) {
 	test_fail
 }
 
 # reset
-&reply -= &Filter-Id[*]
+reply -= Filter-Id[*]
 
 #
 # Same attribute, but different value
 #
-&reply.Filter-Id := "bar"
+reply.Filter-Id := "bar"
 
-&reply &= &control
+reply &= control
 
 #  must NOT exist
-if (&reply.Filter-Id) {
+if (reply.Filter-Id) {
 	test_fail
 }
 

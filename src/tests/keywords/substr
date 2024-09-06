@@ -5,9 +5,9 @@ string test_string
 octets test_octets
 uint32 test_int
 
-&test_string = "hello world"
-&test_octets = 0x01234567
-&test_int = 123456
+test_string = "hello world"
+test_octets = 0x01234567
+test_int = 123456
 
 if !(%substr(%{test_string}, 1, 3) == 'ell') {
 	test_fail

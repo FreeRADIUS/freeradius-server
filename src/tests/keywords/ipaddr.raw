@@ -5,12 +5,12 @@
 #
 #  Malformed NAS-IP-Address
 #
-&raw.4 = 0x010203
+raw.4 = 0x010203
 
-if (!&raw.4) {
+if (!raw.4) {
 	test_fail
 }
-elsif (!(&raw.4 == 0x010203)) {
+elsif (!(raw.4 == 0x010203)) {
 	test_fail
 }
 

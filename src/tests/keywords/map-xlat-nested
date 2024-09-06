@@ -3,7 +3,7 @@
 #
 #  Test the map xlat
 #
-&Filter-Id := "request.Tmp-Group-0.User-Name = 'testing123'"
+Filter-Id := "request.Tmp-Group-0.User-Name = 'testing123'"
 
 if (!("%map(%{Filter-Id})" == 1)) {
 	test_fail

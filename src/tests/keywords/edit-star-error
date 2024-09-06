@@ -1,4 +1,4 @@
 #
 #  Some old operators are not allowed.
 #
-&reply.Filter-Id !* ANY # ERROR
+reply.Filter-Id !* ANY # ERROR

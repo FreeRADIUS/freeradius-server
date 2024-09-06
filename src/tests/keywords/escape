@@ -11,33 +11,33 @@ string test_string7
 string test_string8
 string test_string9
 
-&test_string1 := '@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /'
-&test_string2 := '±§#$%^&+={[}];<,>?`|"'
-&test_string3 := '™¥¤'
-&test_string4 := '=C2=B1=C2=A7=23=24=25=5E=26=2B=3D=7B=5B=7D=5D=3B=3C=2C=3E=3F=60=7C=22'
-&test_string5 := '=E2=84=A2=C2=A5=C2=A4'
-&test_string6 := '=40=61=62=63=64=65=66=67'
+test_string1 := '@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /'
+test_string2 := '±§#$%^&+={[}];<,>?`|"'
+test_string3 := '™¥¤'
+test_string4 := '=C2=B1=C2=A7=23=24=25=5E=26=2B=3D=7B=5B=7D=5D=3B=3C=2C=3E=3F=60=7C=22'
+test_string5 := '=E2=84=A2=C2=A5=C2=A4'
+test_string6 := '=40=61=62=63=64=65=66=67'
 
 # Mixture of safe and unsafe chars
-&test_string7 := 'ŒČÿ'
-&test_string8 := 'Œ=C4=8Cÿ'
+test_string7 := 'ŒČÿ'
+test_string8 := 'Œ=C4=8Cÿ'
 
 # = not followed by hex and without 2 following chars
-&test_string9 := 'a=Az=y'
+test_string9 := 'a=Az=y'
 
-if (!((string)%escape.escape("%{test_string1}") == &test_string1)) {
+if (!((string)%escape.escape("%{test_string1}") == test_string1)) {
 	test_fail
 }
 
-if (!((string)%escape.escape("%{test_string2}") == &test_string4)) {
+if (!((string)%escape.escape("%{test_string2}") == test_string4)) {
 	test_fail
 }
 
-if (!((string)%escape.escape("%{test_string3}") == &test_string5)) {
+if (!((string)%escape.escape("%{test_string3}") == test_string5)) {
 	test_fail
 }
 
-if (!((string)%escape.unescape("%{test_string1}") == &test_string1)) {
+if (!((string)%escape.unescape("%{test_string1}") == test_string1)) {
 	test_fail
 }
 
@@ -45,19 +45,19 @@ if (!((string)%escape.unescape("%{test_string4}") == "%{test_string2}")) {
 	test_fail
 }
 
-if (!((string)%escape.unescape("%{test_string5}") == &test_string3)) {
+if (!((string)%escape.unescape("%{test_string5}") == test_string3)) {
 	test_fail
 }
 
-if (!((string)%escape.escape("%{test_string7}") == &test_string8)) {
+if (!((string)%escape.escape("%{test_string7}") == test_string8)) {
 	test_fail
 }
 
-if (!((string)%escape.unescape("%{test_string8}") == &test_string7)) {
+if (!((string)%escape.unescape("%{test_string8}") == test_string7)) {
 	test_fail
 }
 
-if (!((string)%escape.unescape("%{test_string9}") == &test_string9)) {
+if (!((string)%escape.unescape("%{test_string9}") == test_string9)) {
 	test_fail
 }
 

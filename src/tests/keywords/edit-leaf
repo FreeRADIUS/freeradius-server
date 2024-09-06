@@ -2,12 +2,12 @@ string test_string1
 string test_string2
 string test_string3
 
-&test_string1 := "foo"
-&test_string2 := &test_string1
-&test_string3 := "test_string1"
+test_string1 := "foo"
+test_string2 := test_string1
+test_string3 := "test_string1"
 
 # foo, bar, "foo", "foo"
-&Filter-Id := { &test_string1, "bar", "%{test_string1}", %{test_string3} }
+Filter-Id := { test_string1, "bar", "%{test_string1}", %{test_string3} }
 
 
 if (!(%{Filter-Id[#]} == 4)) {

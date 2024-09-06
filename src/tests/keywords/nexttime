@@ -8,26 +8,26 @@ uint32 result_integer
 #  different numbers of days involved.  Check hour / day / week
 #
 
-&result_integer := "%{%nexttime(2h) - %nexttime(1h)}"
+result_integer := "%{%nexttime(2h) - %nexttime(1h)}"
 
 # We have a fudge factor of 1 second either way
-if ((&result_integer < 3599) || (&result_integer > 3601)) {
+if ((result_integer < 3599) || (result_integer > 3601)) {
 	test_fail
 }
 
 #
 #  Day
 #
-&result_integer := "%{%nexttime(3d) - %nexttime(1d)}"
-if ((&result_integer < 172799) || (&result_integer > 172801)) {
+result_integer := "%{%nexttime(3d) - %nexttime(1d)}"
+if ((result_integer < 172799) || (result_integer > 172801)) {
 	test_fail
 }
 
 #
 #  Week
 #
-&result_integer := "%{%nexttime(4w) - %nexttime(2w)}"
-if ((&result_integer < 1209599) || (&result_integer > 1209601)) {
+result_integer := "%{%nexttime(4w) - %nexttime(2w)}"
+if ((result_integer < 1209599) || (result_integer > 1209601)) {
 	test_fail
 }
 

@@ -6,7 +6,7 @@ string dummy_string
 #
 #  This doesn't exist, so  the condition shouldn't match.
 #
-if (&dummy_string == "foo") {
+if (dummy_string == "foo") {
 	test_fail
 }
 else {
@@ -16,7 +16,7 @@ else {
 #
 # Since the middle part doesn't match, "NOT" the middle part SHOULD match.
 #
-if (!(&dummy_string == "foo")) {
+if (!(dummy_string == "foo")) {
 	ok
 }
 else {

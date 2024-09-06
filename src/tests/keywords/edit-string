@@ -2,26 +2,26 @@
 #  PRE: edit
 #
 string test_string
-&test_string := "foo"
-&test_string ^= "bar"
+test_string := "foo"
+test_string ^= "bar"
 
-if (!(&test_string == "barfoo")) {
+if (!(test_string == "barfoo")) {
 	test_fail
 }
 
-&test_string := "foo"
-&test_string += "bar"
+test_string := "foo"
+test_string += "bar"
 
-if (!(&test_string == "foobar")) {
+if (!(test_string == "foobar")) {
 	test_fail
 }
 
 #
 #  Subtract is the inverse of add.
 #
-&test_string -= "bar"
+test_string -= "bar"
 
-if (!(&test_string == "foo")) {
+if (!(test_string == "foo")) {
 	test_fail
 }
 

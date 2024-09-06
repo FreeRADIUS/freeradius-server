@@ -1,5 +1,5 @@
-&control.Auth-Type := ::Accept
-&reply.Reply-Message := 'pass'
+control.Auth-Type := ::Accept
+reply.Reply-Message := 'pass'
 
 
 # Section should exit after this statement

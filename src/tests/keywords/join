@@ -3,17 +3,17 @@
 #
 string result_string
 
-&control -= &Password[*]
+control -= Password[*]
 
-&control += {
-	&User-Name = &request.User-Name
-	&User-Password = &request.User-Password
-	&Filter-Id = "ab c"
-	&Filter-Id = "de fg"
-	&NAS-Port = 123
+control += {
+	User-Name = request.User-Name
+	User-Password = request.User-Password
+	Filter-Id = "ab c"
+	Filter-Id = "de fg"
+	NAS-Port = 123
 }
 
-&request.Framed-IP-Address := 192.168.1.254
+request.Framed-IP-Address := 192.168.1.254
 
 debug_control
 debug_request
@@ -30,14 +30,14 @@ debug_request
 #
 #  @todo - fix this...
 #
-&result_string := %concat(%join(%{control.[*]}, %{request.Framed-IP-Address}), '. ')
+result_string := %concat(%join(%{control.[*]}, %{request.Framed-IP-Address}), '. ')
 
-if (!(&result_string == "bob. hello. ab c. de fg. 123. 192.168.1.254")) {
+if (!(result_string == "bob. hello. ab c. de fg. 123. 192.168.1.254")) {
 	test_fail
 }
 
-&result_string := %concat(%join(%{control.Filter-Id[*]}, %{control.NAS-Port}), ',')
-if (!(&result_string == "ab c,de fg,123")) {
+result_string := %concat(%join(%{control.Filter-Id[*]}, %{control.NAS-Port}), ',')
+if (!(result_string == "ab c,de fg,123")) {
 	test_fail
 }
 

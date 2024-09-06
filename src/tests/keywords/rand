@@ -1,15 +1,15 @@
 string result_string
 uint32 result_integer
 
-&result_integer := %rand('123')
-if (!&result_integer) {
+result_integer := %rand('123')
+if (!result_integer) {
 	test_fail
 }
 
 #
 #  Make sure random number is within limit
 #
-if (&result_integer < 0 || &result_integer > 123) {
+if (result_integer < 0 || result_integer > 123) {
 	test_fail
 }
 

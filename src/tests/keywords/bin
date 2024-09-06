@@ -3,53 +3,53 @@
 #
 octets result_octets
 
-&result_octets := %bin('39383730')
-if !(&result_octets == 0x39383730) {
+result_octets := %bin('39383730')
+if !(result_octets == 0x39383730) {
 	test_fail
 }
 
-&result_octets := %bin('0x39383731')
-if !(&result_octets == 0x39383731) {
+result_octets := %bin('0x39383731')
+if !(result_octets == 0x39383731) {
 	test_fail
 }
 
-&result_octets := %bin('012')
-if (&result_octets) {
+result_octets := %bin('012')
+if (result_octets) {
 	test_fail
 }
 
-&result_octets := %bin('0x')
-if (&result_octets) {
+result_octets := %bin('0x')
+if (result_octets) {
 	test_fail
 }
 
-&result_octets := %bin('0x234')
-if (&result_octets) {
+result_octets := %bin('0x234')
+if (result_octets) {
 	test_fail
 }
 
-&result_octets := %bin('fg')
-if (&result_octets) {
+result_octets := %bin('fg')
+if (result_octets) {
 	test_fail
 }
 
-&result_octets := %bin('0x23450x1234')
-if (&result_octets) {
+result_octets := %bin('0x23450x1234')
+if (result_octets) {
 	test_fail
 }
 
-&request += {
-	&NAS-Identifier = '0001'
-	&NAS-Identifier = '0x030405'
+request += {
+	NAS-Identifier = '0001'
+	NAS-Identifier = '0x030405'
 }
 
-&Class := %bin(%{NAS-Identifier[*]})
+Class := %bin(%{NAS-Identifier[*]})
 
-if (&Class[#] != 2) {
+if (Class[#] != 2) {
 	test_fail
 }
 
-if !((&Class[0] == 0x0001) && (&Class[1] == 0x030405)) {
+if !((Class[0] == 0x0001) && (Class[1] == 0x030405)) {
 	test_fail
 }
 

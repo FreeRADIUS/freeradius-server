@@ -2,67 +2,67 @@
 # PRE: if
 #
 
-&request += {
-	&Filter-Id = 'foo'
-	&Filter-Id = 'bar'
-	&Filter-Id = 'baz'
+request += {
+	Filter-Id = 'foo'
+	Filter-Id = 'bar'
+	Filter-Id = 'baz'
 
-	&NAS-Port-Id = 'GROUP ADMINISTRATORS'
-	&NAS-Port-Id = 'GROUP STUDENTS'
-	&NAS-Port-Id = 'GROUP PEONS'
+	NAS-Port-Id = 'GROUP ADMINISTRATORS'
+	NAS-Port-Id = 'GROUP STUDENTS'
+	NAS-Port-Id = 'GROUP PEONS'
 
-	&Reply-Message = 'PEONS'
-	&Reply-Message = 'STUDENTS'
-	&Reply-Message = 'ADMINISTRATORS'
+	Reply-Message = 'PEONS'
+	Reply-Message = 'STUDENTS'
+	Reply-Message = 'ADMINISTRATORS'
 
-	&Callback-Id = 'no'
-	&Callback-Id = 'no'
-	&Callback-Id = 'yes'
+	Callback-Id = 'no'
+	Callback-Id = 'no'
+	Callback-Id = 'yes'
 
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 5
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 5
 }
 
-&control += {
-	&Filter-Id = 'foo'
-	&Filter-Id = 'bar'
-	&Filter-Id = 'baz'
+control += {
+	Filter-Id = 'foo'
+	Filter-Id = 'bar'
+	Filter-Id = 'baz'
 
-	&NAS-Port-Id = 'boink'
-	&NAS-Port-Id = 'tard'
-	&NAS-Port-Id = 'dink'
-	&NAS-Port-Id = 'slink'
+	NAS-Port-Id = 'boink'
+	NAS-Port-Id = 'tard'
+	NAS-Port-Id = 'dink'
+	NAS-Port-Id = 'slink'
 
-	&NAS-Port = 01
-	&NAS-Port = 02
-	&NAS-Port = 05
-	&NAS-Port = 04
+	NAS-Port = 01
+	NAS-Port = 02
+	NAS-Port = 05
+	NAS-Port = 04
 
-	&Port-Limit = 10
-	&Port-Limit = 20
-	&Port-Limit = 30
+	Port-Limit = 10
+	Port-Limit = 20
+	Port-Limit = 30
 }
 
 #
 #  Mmmm O(N^2)
 #
-if (!(&Filter-Id[*] == &control.Filter-Id[*])) {
+if (!(Filter-Id[*] == control.Filter-Id[*])) {
 	test_fail
 }
 
-if (&Filter-Id[*] == &control.NAS-Port-Id[*]) {
+if (Filter-Id[*] == control.NAS-Port-Id[*]) {
 	test_fail
 }
 
-if (&NAS-Port-Id[*] == &control.Filter-Id[*]) {
+if (NAS-Port-Id[*] == control.Filter-Id[*]) {
 	test_fail
 }
 
 #
 #  Integer comparison and normalisation
 #
-if (!(&NAS-Port == &control.NAS-Port)) {
+if (!(NAS-Port == control.NAS-Port)) {
 	test_fail
 }
 
@@ -70,67 +70,67 @@ if (!(&NAS-Port == &control.NAS-Port)) {
 #  if any value of request.NAS-Port > any value of
 #  request.Port-Limit then evaluate to true
 #
-if (&NAS-Port[*] > &control.Port-Limit[*]) {
+if (NAS-Port[*] > control.Port-Limit[*]) {
 	test_fail
 }
 
 #
 #  Compiled regex comparisons
 #
-if (&NAS-Port-Id[*] !~ /PEONS$/) {
+if (NAS-Port-Id[*] !~ /PEONS$/) {
 	test_fail
 }
 
-if (&control.NAS-Port-Id =~ /PEONS$/) {
+if (control.NAS-Port-Id =~ /PEONS$/) {
 	test_fail
 }
 
-if (&control.NAS-Port-Id =~ /DINKS$/) {
+if (control.NAS-Port-Id =~ /DINKS$/) {
 	test_fail
 }
 
 #
 #  Dynamic regex comparisons
 #
-if (&NAS-Port-Id[*] !~ /%{Reply-Message[0]}$/) {
+if (NAS-Port-Id[*] !~ /%{Reply-Message[0]}$/) {
 	test_fail
 }
 
-if (&NAS-Port-Id =~ /%{Reply-Message[1]}$/) {
+if (NAS-Port-Id =~ /%{Reply-Message[1]}$/) {
 	test_fail
 }
 
-if !(&NAS-Port-Id =~ /%{Reply-Message[2]}$/) {
+if !(NAS-Port-Id =~ /%{Reply-Message[2]}$/) {
 	test_fail
 }
 
-if (&NAS-Port-Id =~ /%{Reply-Message[#]}$/) {
+if (NAS-Port-Id =~ /%{Reply-Message[#]}$/) {
 	test_fail
 }
 
 #
 #  XLAT virtual comparisons
 #
-if (!(&control.NAS-Port[*] == %{control.NAS-Port[#]})) {
+if (!(control.NAS-Port[*] == %{control.NAS-Port[#]})) {
 	test_fail
 }
 
 #
 #  Literal comparisons
 #
-if (!(&control.NAS-Port-Id[*] == 'boink')) {
+if (!(control.NAS-Port-Id[*] == 'boink')) {
 	test_fail
 }
 
-if (&control.NAS-Port-Id[*] == 'foo') {
+if (control.NAS-Port-Id[*] == 'foo') {
 	test_fail
 }
 
-if (&NAS-Port[*] > 10) {
+if (NAS-Port[*] > 10) {
 	test_fail
 }
 
-if (!(&NAS-Port[*] < 10)) {
+if (!(NAS-Port[*] < 10)) {
 	test_fail
 }
 

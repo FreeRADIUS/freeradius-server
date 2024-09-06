@@ -1,6 +1,6 @@
-&request += %exec('/bin/sh', '-c', '/bin/echo \&Reply-Message = foo')
+request += %exec('/bin/sh', '-c', '/bin/echo \Reply-Message = foo')
 
-if !(&Reply-Message == 'foo') {
+if !(Reply-Message == 'foo') {
 	test_fail
 }
 

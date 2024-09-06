@@ -7,12 +7,12 @@ update reply {
 	#
 	#  This was parsed in the old edit code, but never did anything!
 	#
-	&Tmp-Group-0 := {	# ERROR
+	Tmp-Group-0 := {	# ERROR
 		Filter-Id = "foo"
 	}
 }
 
-if !&reply.Tmp-Group-0.Filter-Id {
+if !reply.Tmp-Group-0.Filter-Id {
 	test_fail
 }
 

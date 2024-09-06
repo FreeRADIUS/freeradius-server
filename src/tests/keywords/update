@@ -1,5 +1,5 @@
 update control {
-	&Password.Cleartext := 'hello'
+	Password.Cleartext := 'hello'
 }
 
 success

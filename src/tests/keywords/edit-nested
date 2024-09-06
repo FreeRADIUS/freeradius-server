@@ -1,32 +1,32 @@
 #
 #  PRE: if edit-list
 #
-&control.User-Name := "foo"
+control.User-Name := "foo"
 
 #
 #  Create a nested group.
 #
-#  @todo - we only support ONE layer of nesting under &control,
-#  &request, etc. for now.  We should support more.
+#  @todo - we only support ONE layer of nesting under control,
+#  request, etc. for now.  We should support more.
 #
-&control.Tmp-Group-0 := {
-	&NAS-Port = 1
+control.Tmp-Group-0 := {
+	NAS-Port = 1
 }
 
-if (!&control.Tmp-Group-0.NAS-Port) {
+if (!control.Tmp-Group-0.NAS-Port) {
 	test_fail
 }
 
-if (!(&control.Tmp-Group-0.NAS-Port == 1)) {
+if (!(control.Tmp-Group-0.NAS-Port == 1)) {
 	test_fail
 }
 
 #
 #  Edit it in place.
 #
-&control.Tmp-Group-0.NAS-Port += 5
+control.Tmp-Group-0.NAS-Port += 5
 
-if (!(&control.Tmp-Group-0.NAS-Port == 6)) {
+if (!(control.Tmp-Group-0.NAS-Port == 6)) {
 	test_fail
 }
 
@@ -35,9 +35,9 @@ if (!(&control.Tmp-Group-0.NAS-Port == 6)) {
 #
 #  @todo - look FIRST for attributes in the current group?
 #
-&control.Tmp-Group-0 -= &control.Tmp-Group-0.NAS-Port
+control.Tmp-Group-0 -= control.Tmp-Group-0.NAS-Port
 
-if (&control.Tmp-Group-0.NAS-Port) {
+if (control.Tmp-Group-0.NAS-Port) {
 	test_fail
 }
 
@@ -48,26 +48,26 @@ if (&control.Tmp-Group-0.NAS-Port) {
 #
 #  Append something to it
 #
-&control.Tmp-Group-0 += {
-	&Framed-IP-Address = 127.0.0.1
+control.Tmp-Group-0 += {
+	Framed-IP-Address = 127.0.0.1
 }
 
-if (!(&control.Tmp-Group-0.Framed-IP-Address == 127.0.0.1)) {
+if (!(control.Tmp-Group-0.Framed-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 
 #
 #  Multiple members
 #
-&control.Tmp-Group-0 += {
-	&Class = 0xabcdef
+control.Tmp-Group-0 += {
+	Class = 0xabcdef
 }
 
-if (!(&control.Tmp-Group-0.Framed-IP-Address == 127.0.0.1)) {
+if (!(control.Tmp-Group-0.Framed-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 
-if (!(&control.Tmp-Group-0.Class == 0xabcdef)) {
+if (!(control.Tmp-Group-0.Class == 0xabcdef)) {
 	test_fail
 }
 

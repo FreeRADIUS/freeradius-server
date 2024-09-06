@@ -6,6 +6,6 @@
 #  then fail in the compilation stage, because the
 #  attribute doesn't exist.
 #
-if (&Not-Dynamically-Allocated) {	# ERROR
+if (Not-Dynamically-Allocated) {	# ERROR
 	# foo
 }

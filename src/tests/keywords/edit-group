@@ -10,20 +10,20 @@ string test_string3
 #  them are rolled back.
 #
 transaction {
-	&test_string1 := "foo"
-	&test_string2 -= "bar" # fails, no existing test_string2
-	&test_string3 := "bar"
+	test_string1 := "foo"
+	test_string2 -= "bar" # fails, no existing test_string2
+	test_string3 := "bar"
 }
 
-if (&test_string1) {
+if (test_string1) {
 	test_fail
 }
 
-if (&test_string2) {
+if (test_string2) {
 	test_fail
 }
 
-if (&test_string3) {
+if (test_string3) {
 	test_fail
 }
 
@@ -31,20 +31,20 @@ if (&test_string3) {
 #  All of these succeed individually, so all of them should succeed.
 #
 transaction {
-	&test_string1 := "foo"
-	&test_string2 := "yup"
-	&test_string3 := "bar"
+	test_string1 := "foo"
+	test_string2 := "yup"
+	test_string3 := "bar"
 }
 
-if (!(&test_string1 == "foo")) {
+if (!(test_string1 == "foo")) {
 	test_fail
 }
 
-if (!(&test_string2 == "yup")) {
+if (!(test_string2 == "yup")) {
 	test_fail
 }
 
-if (!(&test_string3 == "bar")) {
+if (!(test_string3 == "bar")) {
 	test_fail
 }
 

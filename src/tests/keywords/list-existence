@@ -1,25 +1,25 @@
 #
 #  List existence checks are "is the list empty" checks.
 #
-if (&session-state.) {
+if (session-state.) {
 	test_fail
 }
 
-if (&session-state.[*]) {
+if (session-state.[*]) {
 	test_fail
 }
 
-if (&session-state.) {
+if (session-state.) {
 	test_fail
 }
 
-&session-state.User-Name := 'foo'
+session-state.User-Name := 'foo'
 
-if (!&session-state.) {
+if (!session-state.) {
 	test_fail
 }
 
-if (!&session-state.[*]) {
+if (!session-state.[*]) {
 	test_fail
 }
 

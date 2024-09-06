@@ -4,79 +4,79 @@
 # this fails, so the next edit is merged in and fails, too.
 string result_string
 
-&control -= &Password
+control -= Password
 
-&control += {
-	&User-Name = &request.User-Name
-	&User-Password = &request.User-Password
-	&Calling-Station-Id = "ab c"
-	&Calling-Station-Id = "de fg"
-#	&Port-Limit = { 123, 456 }  # @todo - Doesn't work :(
-	&Port-Limit = 123
-	&NAS-Port = 456
-	&NAS-Port = 789
+control += {
+	User-Name = request.User-Name
+	User-Password = request.User-Password
+	Calling-Station-Id = "ab c"
+	Calling-Station-Id = "de fg"
+#	Port-Limit = { 123, 456 }  # @todo - Doesn't work :(
+	Port-Limit = 123
+	NAS-Port = 456
+	NAS-Port = 789
 }
 
 #
-#  &ref could return a list.
-#  (&ref) means "treat the list as one value"
-#  (string) (&ref) casts that one value to a string
+#  ref could return a list.
+#  (ref) means "treat the list as one value"
+#  (string) (ref) casts that one value to a string
 #    and returns one string
 #
-&result_string := %{(string) (&control.NAS-Port[*])}
-if !(&result_string == "456789") {
+result_string := %{(string) (control.NAS-Port[*])}
+if !(result_string == "456789") {
 	test_fail
 }
 
 #
-#  &ref could return a list.
+#  ref could return a list.
 #
 #  Which we then cast individually to the LHS
 #
-&Called-Station-Id := &control.NAS-Port[*]
-if !(&Called-Station-Id[0] == "456") {
+Called-Station-Id := control.NAS-Port[*]
+if !(Called-Station-Id[0] == "456") {
 	test_fail
 }
 
-if !(&Called-Station-Id[1] == "789") {
+if !(Called-Station-Id[1] == "789") {
 	test_fail
 }
 
-&control -= &NAS-Port[*]
+control -= NAS-Port[*]
 ok	# separate updates
 
 
-&result_string := %concat(%{control.[*]}, ', ')
+result_string := %concat(%{control.[*]}, ', ')
 
 "%{result_string}"
-if (!(&result_string == "bob, hello, ab c, de fg, 123")) {
+if (!(result_string == "bob, hello, ab c, de fg, 123")) {
 	test_fail
 }
 
-&result_string := %concat(%{control.Calling-Station-Id[*]}, ', ')
+result_string := %concat(%{control.Calling-Station-Id[*]}, ', ')
 
-if (!(&result_string == "ab c, de fg")) {
+if (!(result_string == "ab c, de fg")) {
 	test_fail
 }
 
 # Empty separator
-&result_string := %concat(%{control.Calling-Station-Id[*]})
+result_string := %concat(%{control.Calling-Station-Id[*]})
 
-if (!(&result_string == "ab cde fg")) {
+if (!(result_string == "ab cde fg")) {
 	test_fail
 }
 
 # Single character separator
-&result_string := %concat(%{control.Calling-Station-Id[*]}, ',')
+result_string := %concat(%{control.Calling-Station-Id[*]}, ',')
 
-if (!(&result_string == "ab c,de fg")) {
+if (!(result_string == "ab c,de fg")) {
 	test_fail
 }
 
 # Multi character separator not delimited
-&result_string := %concat(%{control.Calling-Station-Id[*]}, '|-')
+result_string := %concat(%{control.Calling-Station-Id[*]}, '|-')
 
-if !(&result_string == "ab c|-de fg") {
+if !(result_string == "ab c|-de fg") {
 	test_fail
 }
 

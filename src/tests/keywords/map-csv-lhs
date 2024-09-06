@@ -3,5 +3,5 @@
 #
 
 map csv "%tolower(%{User-Name})" {
-	&reply.Result-Status := 'field3'
+	reply.Result-Status := 'field3'
 }

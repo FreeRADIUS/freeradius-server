@@ -4,22 +4,22 @@
 group test_group1
 group test_group2
 
-&test_group1.NAS-Port := { 1, 3, 5, 7, 11 }
-&Port-Limit := 0
+test_group1.NAS-Port := { 1, 3, 5, 7, 11 }
+Port-Limit := 0
 
 #
 #  Do operations on sets of inputs.
 #
-&Port-Limit += &test_group1.NAS-Port[*]
-if (!(&Port-Limit == 27)) {
+Port-Limit += test_group1.NAS-Port[*]
+if (!(Port-Limit == 27)) {
 	test_fail
 }
 
-&test_group2 := &test_group1
-&Port-Limit := 0
+test_group2 := test_group1
+Port-Limit := 0
 
-&Port-Limit += &test_group2.NAS-Port[*]
-if (!(&Port-Limit == 27)) {
+Port-Limit += test_group2.NAS-Port[*]
+if (!(Port-Limit == 27)) {
 	test_fail
 }
 

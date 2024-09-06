@@ -10,7 +10,7 @@ if (%regex(foo)) {
 	test_fail
 }
 
-if (!(&Module-Failure-Message[*] == "No previous named regex capture group")) {
+if (!(Module-Failure-Message[*] == "No previous named regex capture group")) {
 	test_fail
 }
 }

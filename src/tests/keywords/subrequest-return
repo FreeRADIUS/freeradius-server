@@ -1,19 +1,19 @@
 subrequest ::Access-Request {
-	&parent.request.Filter-Id := "testing1234"
+	parent.request.Filter-Id := "testing1234"
 
 	return
 
 	#
 	#  Should be ignored
 	#
-	&parent.request.Reply-Message := "testing1234"
+	parent.request.Reply-Message := "testing1234"
 }
 
-if (&Reply-Message) {
+if (Reply-Message) {
 	test_fail
 }
 
-if (!(&Filter-Id == "testing1234")) {
+if (!(Filter-Id == "testing1234")) {
 	test_fail
 }
 

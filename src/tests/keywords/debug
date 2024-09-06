@@ -4,7 +4,7 @@
 uint32 test_integer
 string dummy_string
 
-&test_integer := "%debug(4)"
+test_integer := "%debug(4)"
 
 # Check debug level is now 4
 if (!(%debug(3) == 4)) {

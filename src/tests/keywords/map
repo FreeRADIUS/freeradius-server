@@ -3,11 +3,11 @@ string CSV-Result
 #
 #  PRE: map-2arg-error map-empty-error map-module-error map-field-error
 #
-map csv &User-Name {
-	&CSV-Result := field3
+map csv User-Name {
+	CSV-Result := field3
 }
 
-if (!(&CSV-Result == "success")) {
+if (!(CSV-Result == "success")) {
 	test_fail
 }
 

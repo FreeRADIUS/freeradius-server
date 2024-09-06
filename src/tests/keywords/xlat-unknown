@@ -2,7 +2,7 @@
 # PRE: update escape
 #
 update reply {
-	&Vendor-Specific.WiMAX.Capability.Release = "foo"
+	Vendor-Specific.WiMAX.Capability.Release = "foo"
 }
 
 #
@@ -10,7 +10,7 @@ update reply {
 #  reference here should be to an unknown attribute,
 #  and the dereference should fail.
 #
-if (&reply.Capability.Release == "foo") { # ERROR
+if (reply.Capability.Release == "foo") { # ERROR
 	test_fail
 }
 else {

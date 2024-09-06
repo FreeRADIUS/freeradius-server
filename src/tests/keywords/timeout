@@ -10,7 +10,7 @@ bool c
 #
 redundant {
 	timeout 0.01s {
-		&a := %delay_10s(0.1)
+		a := %delay_10s(0.1)
 		test_fail
 	}
 
@@ -21,7 +21,7 @@ redundant {
 
 redundant {
 	timeout "0.01" {
-		&a := %delay_10s(0.1)
+		a := %delay_10s(0.1)
 		test_fail
 	}
 
@@ -33,12 +33,12 @@ redundant {
 # Regression test - Only the first child of the timeout block was executed
 redundant {
 	timeout 1s {
-		&b = true
-		&c = true
+		b = true
+		c = true
 	}
 }
 
-if (!(&b && &c)) {
+if (!(b && c)) {
 	test_fail
 }
 

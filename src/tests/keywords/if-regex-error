@@ -5,6 +5,6 @@
 #
 #  Check that bad regular expressions will fail
 #
-if (&User-Name =~ /[a-3]/) {	# ERROR
+if (User-Name =~ /[a-3]/) {	# ERROR
 	ok
 }

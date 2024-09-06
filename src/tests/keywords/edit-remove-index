@@ -1,21 +1,21 @@
 #
 #  PRE: if edit
 #
-&request += {
-	&Framed-IP-Address = 192.0.2.1
-	&Framed-IP-Address = 192.0.2.2
+request += {
+	Framed-IP-Address = 192.0.2.1
+	Framed-IP-Address = 192.0.2.2
 }
 
 #
 #  Delete only the second one
 #
-&request.Framed-IP-Address[1] := {}
+request.Framed-IP-Address[1] := {}
 
-if (&Framed-IP-Address[#] != 1) {
+if (Framed-IP-Address[#] != 1) {
 	test_fail
 }
 
-if !(&Framed-IP-Address[0] == 192.0.2.1) {
+if !(Framed-IP-Address[0] == 192.0.2.1) {
 	test_fail
 }
 

@@ -2,15 +2,15 @@ group {
 	uint32 small
 	uint32 large
 
-	&large = 10000
-	&small = 10
+	large = 10000
+	small = 10
 
 	#
 	#  Enforce it
 	#
-	&large <= &small
+	large <= small
 
-	if !(&large == &small) {
+	if !(large == small) {
 		test_fail
 	}
 

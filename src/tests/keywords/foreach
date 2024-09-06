@@ -1,7 +1,7 @@
-&request -= &Packet-Type
+request -= Packet-Type
 
-foreach &Filter-Id {
-	&reply += {
-		&Called-Station-Id = "%{Foreach-Variable-0}"
+foreach Filter-Id {
+	reply += {
+		Called-Station-Id = "%{Foreach-Variable-0}"
 	}
 }

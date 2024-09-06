@@ -6,36 +6,36 @@ octets test_octets
 octets dummy_octets
 octets result_octets
 
-&test_string := "This is a string\n"
-&test_octets := 0x000504030201
+test_string := "This is a string\n"
+test_octets := 0x000504030201
 
 #
 #  Put "This is a string" into a file and call "sha2_256sum" on it.
 #  You should get this string.
 #
-&result_octets := %sha2_256("This is a string\n")
-if (!(&result_octets == 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124)) {
+result_octets := %sha2_256("This is a string\n")
+if (!(result_octets == 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124)) {
 	test_fail
 }
 
-&result_octets := %sha2_256(%{test_string})
-if (!(&result_octets == 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124)) {
+result_octets := %sha2_256(%{test_string})
+if (!(result_octets == 0xb3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124)) {
 	test_fail
 }
 
 #
 #  SHA256 should also be able to cope with references to octet attributes
 #
-&result_octets := %sha2_256(%{test_octets})
-if (!(&result_octets == 0xf307e202b881fded70e58017aa0c4d7b29c76ab25d02bf078301a5f6635187eb)) {
+result_octets := %sha2_256(%{test_octets})
+if (!(result_octets == 0xf307e202b881fded70e58017aa0c4d7b29c76ab25d02bf078301a5f6635187eb)) {
 	test_fail
 }
 
 #
 # SHA256 of empty string
 #
-&result_octets := %sha2_256(%{dummy_octets})
-if (!(&result_octets == 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)) {
+result_octets := %sha2_256(%{dummy_octets})
+if (!(result_octets == 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)) {
 	test_fail
 }
 
@@ -43,18 +43,18 @@ if (!(&result_octets == 0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca49599
 #  SHA512 and SHA256 share common code paths, so the tests don't need to be
 #  as exhaustive.
 #
-&result_octets := %sha2_512("This is a string\n")
-if (!(&result_octets == 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f)) {
+result_octets := %sha2_512("This is a string\n")
+if (!(result_octets == 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f)) {
 	test_fail
 }
 
-&result_octets := %sha2_512(%{test_string})
-if (!(&result_octets == 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f)) {
+result_octets := %sha2_512(%{test_string})
+if (!(result_octets == 0x56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f)) {
 	test_fail
 }
 
-&result_octets := %sha2_512(%{test_octets})
-if (!(&result_octets == 0xde80271eb5e03a1c24dd0cd823a22305a743ee3a54f1de5bf97adbf56984561154bfb6928b1da4ccc3f5dde9f4032ad461937b60b9ace4ad3898cf45c90596d7)) {
+result_octets := %sha2_512(%{test_octets})
+if (!(result_octets == 0xde80271eb5e03a1c24dd0cd823a22305a743ee3a54f1de5bf97adbf56984561154bfb6928b1da4ccc3f5dde9f4032ad461937b60b9ace4ad3898cf45c90596d7)) {
 	test_fail
 }
 

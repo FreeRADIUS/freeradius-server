@@ -1,13 +1,13 @@
-switch &User-Name {
+switch User-Name {
 	case "%{Filter-Id}" {	# ERROR
 		success
 	}
 
 	case "doug" {
-		&Filter-Id := "doug"
+		Filter-Id := "doug"
 	}
 
 	default {
-		&Filter-Id := "default"
+		Filter-Id := "default"
 	}
 }

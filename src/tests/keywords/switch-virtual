@@ -5,7 +5,7 @@
 #
 #  Virtual attribute references get mashed to xlats
 #
-switch &Packet-Type {
+switch Packet-Type {
 	case Access-Request {
 		success
 	}

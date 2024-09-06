@@ -4,9 +4,9 @@
 #  Test the acct_unique policy
 #
 #
-&Acct-Unique-Session-Id := %hex(%md5("%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{&NAS-IPv6-Address || &NAS-IP-Address},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port}"))
+Acct-Unique-Session-Id := %hex(%md5("%{User-Name},%{Acct-Multi-Session-ID},%{Acct-Session-ID},%{NAS-IPv6-Address || NAS-IP-Address},%{NAS-Identifier},%{NAS-Port-ID},%{NAS-Port}"))
 
-if &Acct-Unique-Session-Id != "159dccf021583d7413b0114a090529ca" {
+if Acct-Unique-Session-Id != "159dccf021583d7413b0114a090529ca" {
 	test_fail
 }
 

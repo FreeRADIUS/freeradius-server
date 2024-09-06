@@ -1,12 +1,12 @@
-&request += {
-	&Framed-IP-Address = 192.0.2.1
-	&Framed-IP-Address = 192.0.2.2
+request += {
+	Framed-IP-Address = 192.0.2.1
+	Framed-IP-Address = 192.0.2.2
 }
 if (!(%{Framed-IP-Address[#]} == 2)) {
 	test_fail
 }
 
-if (!((&Framed-IP-Address[0] == 192.0.2.1)) || (!(&Framed-IP-Address[1] == 192.0.2.2))) {
+if (!((Framed-IP-Address[0] == 192.0.2.1)) || (!(Framed-IP-Address[1] == 192.0.2.2))) {
 	test_fail
 }
 
@@ -16,18 +16,18 @@ if (!("%{Framed-IP-Address[*]}" == '192.0.2.1192.0.2.2')) {
 
 # Try calling these xlats in mapping too, they may get optimised to VPTs which is a
 # different code path.
-&request += {
-	&NAS-IP-Address = &Framed-IP-Address[1]
-	&NAS-IP-Address = &Framed-IP-Address[0]
-	&Filter-Id = "%concat(%{Framed-IP-Address[*]}, ',')"
-	&NAS-Port = %{Framed-IP-Address[#]}
+request += {
+	NAS-IP-Address = Framed-IP-Address[1]
+	NAS-IP-Address = Framed-IP-Address[0]
+	Filter-Id = "%concat(%{Framed-IP-Address[*]}, ',')"
+	NAS-Port = %{Framed-IP-Address[#]}
 }
 
-if (!(&Filter-Id == '192.0.2.1,192.0.2.2')) {
+if (!(Filter-Id == '192.0.2.1,192.0.2.2')) {
 	test_fail
 }
 
-if (!(&NAS-Port == 2)) {
+if (!(NAS-Port == 2)) {
 	test_fail
 }
 

@@ -1,10 +1,10 @@
-&request -= &Packet-Type
+request -= Packet-Type
 
 #
 #  New syntax
 #
-foreach thing ( &Filter-Id )  {
-	&reply += {
-		&Called-Station-Id = &thing
+foreach thing ( Filter-Id )  {
+	reply += {
+		Called-Station-Id = thing
 	}
 }

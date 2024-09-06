@@ -5,16 +5,16 @@
 #  Regression test for 0x prefix. xlat expanded
 #  octet strings must NOT have a 0x prefix added
 #
-&request += {
-	&Class = 0x0001020304050607
-	&Class = 0x0706050403020100
+request += {
+	Class = 0x0001020304050607
+	Class = 0x0706050403020100
 }
 
-if (!(&Class == 0x0001020304050607)) {
+if (!(Class == 0x0001020304050607)) {
 	test_fail
 }
 
-if (!(&Class[0] == 0x0001020304050607)) {
+if (!(Class[0] == 0x0001020304050607)) {
 	test_fail
 }
 

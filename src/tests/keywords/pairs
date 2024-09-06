@@ -3,13 +3,13 @@
 #
 string result_string
 
-&request -= &Packet-Type[*]
+request -= Packet-Type[*]
 
-&Tmp-Group-0 += {
-	&Filter-Id = "This is a string"
-	&Filter-Id = "This is another one"
-	&Class = 0x000504030201
-	&NAS-Port = 7331
+Tmp-Group-0 += {
+	Filter-Id = "This is a string"
+	Filter-Id = "This is another one"
+	Class = 0x000504030201
+	NAS-Port = 7331
 }
 
 #
@@ -18,58 +18,58 @@ string result_string
 #  @todo - this doesn't work.  tmpl_afrom_attr_substr() doesn't check
 #  the tail da, or the parent of the tail.
 #
-#&pairs := %{(string) %{Tmp-Group-0.[*]}}
+#pairs := %{(string) %{Tmp-Group-0.[*]}}
 
 #
 #  However, this does "work".  It returns a concatenated string
 #  of the _values_ of the attributes, which doesn't include th
 #  attribute names.
 #
-#&pairs := %cast('string', %{Tmp-Group-0.[*]})
+#pairs := %cast('string', %{Tmp-Group-0.[*]})
 
-&result_string := "%concat(%pairs(Tmp-Group-0.[*]), ', ')"
-if !(&result_string == 'Filter-Id = "This is a string", Filter-Id = "This is another one", Class = 0x000504030201, NAS-Port = 7331') {
+result_string := "%concat(%pairs(Tmp-Group-0.[*]), ', ')"
+if !(result_string == 'Filter-Id = "This is a string", Filter-Id = "This is another one", Class = 0x000504030201, NAS-Port = 7331') {
 	test_fail
 }
 
-&result_string := "%pairs(Tmp-Group-0.Filter-Id)"
-if !(&result_string == 'Filter-Id = "This is a string"') {
+result_string := "%pairs(Tmp-Group-0.Filter-Id)"
+if !(result_string == 'Filter-Id = "This is a string"') {
 	test_fail
 }
 
-&result_string := "%concat(%pairs(Tmp-Group-0.Filter-Id[*]), ', ')"
-if !(&result_string == 'Filter-Id = "This is a string", Filter-Id = "This is another one"') {
+result_string := "%concat(%pairs(Tmp-Group-0.Filter-Id[*]), ', ')"
+if !(result_string == 'Filter-Id = "This is a string", Filter-Id = "This is another one"') {
 	test_fail
 }
 
 #
 #  Must be nested
 #
-&result_string := "%concat(%pairs(control.[*]), ', ')"
-if !(&result_string == 'Password = { Cleartext = "hello" }') {
+result_string := "%concat(%pairs(control.[*]), ', ')"
+if !(result_string == 'Password = { Cleartext = "hello" }') {
 	test_fail
 }
 
-&result_string := "%pairs(control.User-Name)"
-if (!(&result_string == '')) {
+result_string := "%pairs(control.User-Name)"
+if (!(result_string == '')) {
 	test_fail
 }
 
-&result_string := "%pairs(request.Tmp-Group-0)"
-if !(&result_string == 'Tmp-Group-0 = { Filter-Id = "This is a string", Filter-Id = "This is another one", Class = 0x000504030201, NAS-Port = 7331 }') {
+result_string := "%pairs(request.Tmp-Group-0)"
+if !(result_string == 'Tmp-Group-0 = { Filter-Id = "This is a string", Filter-Id = "This is another one", Class = 0x000504030201, NAS-Port = 7331 }') {
 	test_fail
 }
 
-&request -= &Tmp-Group-0[*]
-if (&request.Tmp-Group-0.Filter-Id) {
+request -= Tmp-Group-0[*]
+if (request.Tmp-Group-0.Filter-Id) {
 	test_fail
 }
 
 #
 #  Parse pairs from a string!
 #
-&request += "%{result_string}"
-if !(&request.Tmp-Group-0.Filter-Id == 'This is a string') {
+request += "%{result_string}"
+if !(request.Tmp-Group-0.Filter-Id == 'This is a string') {
 	test_fail
 }
 

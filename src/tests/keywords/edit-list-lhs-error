@@ -3,6 +3,6 @@
 #
 #  The name on the LHS MUST be given in the context of the parent.
 #
-&reply += {
-	&request.User-Name = "foo" # ERROR
+reply += {
+	request.User-Name = "foo" # ERROR
 }

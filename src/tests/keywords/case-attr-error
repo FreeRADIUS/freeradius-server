@@ -2,12 +2,12 @@
 #
 test_fail
 
-switch &reply.Filter-Id {
+switch reply.Filter-Id {
 	# deliberately empty
 	case "filter" {
 	}
 
-	case &Not-Dynamically-Allocated {	# ERROR
+	case Not-Dynamically-Allocated {	# ERROR
 		test_fail
 	}
 

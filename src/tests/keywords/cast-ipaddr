@@ -17,12 +17,12 @@ ipv4prefix result_ipv4prefix
 ipv6addr result_ipv6addr
 ipv6prefix result_ipv6prefix
 
-&NAS-IP-Address		:= 127.0.0.1
-&test_integer		:= 0x7f000001
+NAS-IP-Address		:= 127.0.0.1
+test_integer		:= 0x7f000001
 
-&test_string		:= &NAS-IP-Address
+test_string		:= NAS-IP-Address
 
-if (!((ipaddr)&test_integer == &NAS-IP-Address)) {
+if (!((ipaddr)test_integer == NAS-IP-Address)) {
 	test_fail
 }
 
@@ -31,108 +31,108 @@ if (!((ipaddr)&test_integer == &NAS-IP-Address)) {
 #  correct, by using the assignment to perform the cast, and looking
 #  at the results.
 #
-&test_ipaddr		= 203.0.113.1
-&test_ipv4prefix1	= 203.0.113.0/24
-&test_ipv4prefix2	= 203.0.113.1/32
-&test_ipv6addr1		= 2001:DB8::1
-&test_ipv6addr2		= ::ffff:203.0.113.1
-&test_ipv6prefix1	= 2001:DB8::/32
-&test_ipv6prefix2	= ::ffff:203.0.113.1/128
-&test_ipv6prefix3	= ::ffff:203.0.113.1/64
+test_ipaddr		= 203.0.113.1
+test_ipv4prefix1	= 203.0.113.0/24
+test_ipv4prefix2	= 203.0.113.1/32
+test_ipv6addr1		= 2001:DB8::1
+test_ipv6addr2		= ::ffff:203.0.113.1
+test_ipv6prefix1	= 2001:DB8::/32
+test_ipv6prefix2	= ::ffff:203.0.113.1/128
+test_ipv6prefix3	= ::ffff:203.0.113.1/64
 
 #
 #  IPv4 address to IPv6 address
 #
-&result_ipv6addr := &test_ipaddr
-if (!(&result_ipv6addr == ::ffff:203.0.113.1)) {
+result_ipv6addr := test_ipaddr
+if (!(result_ipv6addr == ::ffff:203.0.113.1)) {
 	test_fail
 }
 
 #
 #  IPv6 address to IPv4 address
 #
-&result_ipaddr := &result_ipv6addr
-if (!(&result_ipaddr == 203.0.113.1)) {
+result_ipaddr := result_ipv6addr
+if (!(result_ipaddr == 203.0.113.1)) {
 	test_fail
 }
 
 #
 #  IPv4 prefix to IPv6 prefix
 #
-&result_ipv6prefix := &test_ipv4prefix1
-if (!(&result_ipv6prefix == ::ffff:203.0.113.0/120)) {
+result_ipv6prefix := test_ipv4prefix1
+if (!(result_ipv6prefix == ::ffff:203.0.113.0/120)) {
 	test_fail
 }
 
 #
 #  IPv6 prefix to IPv4 prefix
 #
-&result_ipv4prefix := &result_ipv6prefix
-if (!(&result_ipv4prefix == 203.0.113.1/24)) {
+result_ipv4prefix := result_ipv6prefix
+if (!(result_ipv4prefix == 203.0.113.1/24)) {
 	test_fail
 }
 
 #
 #  IPv4 prefix (32) to IPv6 address
 #
-&result_ipv6addr := &test_ipv4prefix2
-if (!(&result_ipv6addr == ::ffff:203.0.113.1)) {
+result_ipv6addr := test_ipv4prefix2
+if (!(result_ipv6addr == ::ffff:203.0.113.1)) {
 	test_fail
 }
 
 #
 #  IPv6 prefix (128) to IPv4 address
 #
-&result_ipaddr := &test_ipv6prefix2
-if (!(&result_ipaddr == 203.0.113.1/32)) {
+result_ipaddr := test_ipv6prefix2
+if (!(result_ipaddr == 203.0.113.1/32)) {
 	test_fail
 }
 
 #
 #  IPv4 address to IPv6 prefix (128)
 #
-&result_ipv6prefix := &test_ipaddr
-if (!(&result_ipv6prefix == ::ffff:203.0.113.1/128)) {
+result_ipv6prefix := test_ipaddr
+if (!(result_ipv6prefix == ::ffff:203.0.113.1/128)) {
 	test_fail
 }
 
 #
 #  IPv6 address to IPv4 prefix (32)
 #
-&result_ipv4prefix := &test_ipv6addr2
-if (!(&result_ipv4prefix == 203.0.113.1/32)) {
+result_ipv4prefix := test_ipv6addr2
+if (!(result_ipv4prefix == 203.0.113.1/32)) {
 	test_fail
 }
 
 #
 #  IPv4 address to IPv4 prefix (32)
 #
-&result_ipv4prefix := &test_ipaddr
-if (!(&result_ipv4prefix == 203.0.113.1/32)) {
+result_ipv4prefix := test_ipaddr
+if (!(result_ipv4prefix == 203.0.113.1/32)) {
 	test_fail
 }
 
 #
 #  IPv6 address to IPv6 prefix (128)
 #
-&result_ipv6prefix := &test_ipv6addr1
-if (!(&result_ipv6prefix == 2001:DB8::1/128)) {
+result_ipv6prefix := test_ipv6addr1
+if (!(result_ipv6prefix == 2001:DB8::1/128)) {
 	test_fail
 }
 
 #
 #  IPv4 prefix (32) to IPv4 address
 #
-&result_ipaddr := &test_ipv4prefix2
-if (!(&result_ipaddr == 203.0.113.1)) {
+result_ipaddr := test_ipv4prefix2
+if (!(result_ipaddr == 203.0.113.1)) {
 	test_fail
 }
 
 #
 #  IPv6 prefix (128) to IPv6 address
 #
-&result_ipv6addr := &test_ipv6prefix2
-if (!(&result_ipv6addr == ::ffff:203.0.113.1)) {
+result_ipv6addr := test_ipv6prefix2
+if (!(result_ipv6addr == ::ffff:203.0.113.1)) {
 	test_fail
 }
 
@@ -145,14 +145,14 @@ if (!(&result_ipv6addr == ::ffff:203.0.113.1)) {
 #
 redundant {
 	group {
-		&result_ipv6addr := &test_ipv6prefix1
+		result_ipv6addr := test_ipv6prefix1
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipv6addr failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 (not /32) prefixes may be cast to IP address types') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipv6addr failed: Invalid cast from ipv6prefix to ipv6addr.  Only /128 (not /32) prefixes may be cast to IP address types') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }
@@ -162,14 +162,14 @@ redundant {
 #
 redundant {
 	group {
-		&result_ipaddr := &test_ipv6prefix3
+		result_ipaddr := test_ipv6prefix3
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipaddr failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /64) prefixes may be cast to IP address types') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipaddr failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /64) prefixes may be cast to IP address types') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }
@@ -179,14 +179,14 @@ redundant {
 #
 redundant {
 	group {
-		&result_ipv4prefix := &test_ipv6prefix3
+		result_ipv4prefix := test_ipv6prefix3
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipv4prefix failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipv4prefix failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }
@@ -196,14 +196,14 @@ redundant {
 #
 redundant {
 	group {
-		&result_ipv6addr := &test_ipv4prefix1
+		result_ipv6addr := test_ipv4prefix1
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipv6addr failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 (not /24) prefixes may be cast to IP address types') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipv6addr failed: Invalid cast from ipv4prefix to ipv6addr.  Only /32 (not /24) prefixes may be cast to IP address types') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }
@@ -213,14 +213,14 @@ redundant {
 #
 redundant {
 	group {
-		&result_ipaddr := &test_ipv4prefix1
+		result_ipaddr := test_ipv4prefix1
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipaddr failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 (not 24/) prefixes may be cast to IP address types') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipaddr failed: Invalid cast from ipv4prefix to ipaddr.  Only /32 (not 24/) prefixes may be cast to IP address types') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }
@@ -230,14 +230,14 @@ redundant {
 #
 redundant {
 	group {
-		&result_ipaddr := &test_ipv6prefix1
+		result_ipaddr := test_ipv6prefix1
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipaddr failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /32) prefixes may be cast to IP address types') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipaddr failed: Invalid cast from ipv6prefix to ipaddr.  Only /128 (not /32) prefixes may be cast to IP address types') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }
@@ -247,14 +247,14 @@ redundant {
 #
 redundant {
 	group {
-		&result_ipv4prefix := &test_ipv6prefix1
+		result_ipv4prefix := test_ipv6prefix1
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipv4prefix failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipv4prefix failed: Invalid cast from ipv6prefix to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }
@@ -264,14 +264,14 @@ redundant {
 #
 redundant {
 	group {
-		&result_ipaddr := &test_ipv6addr1
+		result_ipaddr := test_ipv6addr1
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipaddr failed: Invalid cast from ipv6addr to ipaddr.  No IPv4-IPv6 mapping prefix') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipaddr failed: Invalid cast from ipv6addr to ipaddr.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }
@@ -281,14 +281,14 @@ redundant {
 #
 redundant {
 	group {
-		&result_ipv4prefix := &test_ipv6addr1
+		result_ipv4prefix := test_ipv6addr1
 		fail
 	}
 	group {
-		if !(&Module-Failure-Message == 'Assigning value to &result_ipv4prefix failed: Invalid cast from ipv6addr to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
+		if !(Module-Failure-Message == 'Assigning value to result_ipv4prefix failed: Invalid cast from ipv6addr to ipv4prefix.  No IPv4-IPv6 mapping prefix') {
 			test_fail
 		}
-		&request -= &Module-Failure-Message[*]
+		request -= Module-Failure-Message[*]
 		ok
 	}
 }

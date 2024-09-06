@@ -4,9 +4,9 @@
 #
 # Adding attribute during request and immediately returning should still work
 #
-&Filter-Id := { "1", "2", "3", "4", "5" }
+Filter-Id := { "1", "2", "3", "4", "5" }
 
-foreach &Filter-Id {
+foreach Filter-Id {
 	if ("%{Foreach-Variable-0}" == "3") {
 		success
 
@@ -15,7 +15,7 @@ foreach &Filter-Id {
 		#  will prevent the "pap" module from being run
 		#  in the "authorize" section.
 		#
-		&control.Auth-Type := ::PAP
+		control.Auth-Type := ::PAP
 
 		#
 		#  Stop processing "authorize", and go to the next section.

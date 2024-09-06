@@ -1,5 +1,5 @@
 #
 #  We only care if this crashes or not.
 #
-&Filter-Id := "%{1 + 1} %tolower(1)"
+Filter-Id := "%{1 + 1} %tolower(1)"
 success

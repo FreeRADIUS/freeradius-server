@@ -15,119 +15,119 @@ ether test_ether
 uint64 test_int64
 ipv4prefix test_ipv4prefix
 
-&test_string = '9870'
-&test_octets = 0x39383731
-&test_ipaddr = 57.56.55.50
-&test_int = 959985460
-&test_ifid = '0000:0000:3938:3737'
-&test_ipv6addr = '::3938:3738'
-&test_ipv6prefix = '::3938:3739/128'
-&test_byte = 58
-&test_short = 14139
-&test_ether = 00:00:39:38:37:3c
-&test_int64 = 1152921505566832445
-&test_ipv4prefix = 57.56.55.62/32
+test_string = '9870'
+test_octets = 0x39383731
+test_ipaddr = 57.56.55.50
+test_int = 959985460
+test_ifid = '0000:0000:3938:3737'
+test_ipv6addr = '::3938:3738'
+test_ipv6prefix = '::3938:3739/128'
+test_byte = 58
+test_short = 14139
+test_ether = 00:00:39:38:37:3c
+test_int64 = 1152921505566832445
+test_ipv4prefix = 57.56.55.62/32
 
 # String - bin 0x39383730
-&test_output := %base64.encode(%{test_string})
-if (!(&test_output == 'OTg3MA==')) {
+test_output := %base64.encode(%{test_string})
+if (!(test_output == 'OTg3MA==')) {
 	test_fail
 }
 
 # Octets - bin 0x39383731
-&test_output := %base64.encode(%{test_octets})
-if (!(&test_output == 'OTg3MQ==')) {
+test_output := %base64.encode(%{test_octets})
+if (!(test_output == 'OTg3MQ==')) {
 	test_fail
 }
 
 # IP Address - bin 0x39383732
-&test_output := %base64.encode(%{test_ipaddr})
-if (!(&test_output == 'OTg3Mg==')) {
+test_output := %base64.encode(%{test_ipaddr})
+if (!(test_output == 'OTg3Mg==')) {
 	test_fail
 }
 
 # Integer - bin 0x39383734
-&test_output := %base64.encode(%{test_int})
-if (!(&test_output == 'OTg3NA==')) {
+test_output := %base64.encode(%{test_int})
+if (!(test_output == 'OTg3NA==')) {
 	test_fail
 }
 
 # ifid - bin 0x0000000039383737
-&test_output := %base64.encode(%{test_ifid})
-if (!(&test_output == 'AAAAADk4Nzc=')) {
+test_output := %base64.encode(%{test_ifid})
+if (!(test_output == 'AAAAADk4Nzc=')) {
 	test_fail
 }
 
 # ipv6addr - bin 0x00000000000000000000000039383738
-&test_output := %base64.encode(%{test_ipv6addr})
-if (!(&test_output == 'AAAAAAAAAAAAAAAAOTg3OA==')) {
+test_output := %base64.encode(%{test_ipv6addr})
+if (!(test_output == 'AAAAAAAAAAAAAAAAOTg3OA==')) {
 	test_fail
 }
 
 # ipv6addrprefix - bin 0x008000000000000000000000000039383739
-&test_output := %base64.encode(%{test_ipv6prefix})
-if (!(&test_output == 'AIAAAAAAAAAAAAAAAAA5ODc5')) {
+test_output := %base64.encode(%{test_ipv6prefix})
+if (!(test_output == 'AIAAAAAAAAAAAAAAAAA5ODc5')) {
 	test_fail
 }
 
 # byte - bin 0x3a
-&test_output := %base64.encode(%{test_byte})
-if (!(&test_output == 'Og==')) {
+test_output := %base64.encode(%{test_byte})
+if (!(test_output == 'Og==')) {
 	test_fail
 }
 
 # short - bin 0x373b
-&test_output := %base64.encode(%{test_short})
-if (!(&test_output == 'Nzs=')) {
+test_output := %base64.encode(%{test_short})
+if (!(test_output == 'Nzs=')) {
 	test_fail
 }
 
 # ethernet - bin 0x00003938373c
-&test_output := %base64.encode(%{test_ether})
-if (!(&test_output == 'AAA5ODc8')) {
+test_output := %base64.encode(%{test_ether})
+if (!(test_output == 'AAA5ODc8')) {
 	test_fail
 }
 
 # integer64 - bin 0x100000003938373d
-&test_output := %base64.encode(%{test_int64})
-if (!(&test_output == 'EAAAADk4Nz0=')) {
+test_output := %base64.encode(%{test_int64})
+if (!(test_output == 'EAAAADk4Nz0=')) {
 	test_fail
 }
 
 # ipv4prefix - bin 0x203938373e
-&test_output := %base64.encode(%{test_ipv4prefix})
-if (!(&test_output == 'IDk4Nz4=')) {
+test_output := %base64.encode(%{test_ipv4prefix})
+if (!(test_output == 'IDk4Nz4=')) {
 	test_fail
 }
 
 # Something weird causes this test not to parse
-# &test_octets := %base64.decode("")
-#if (!(&test_octets == "")) {
+# test_octets := %base64.decode("")
+#if (!(test_octets == "")) {
 #	test_fail
 #}
 
 # Regression test, this used to crash...
-&test_octets := %base64.decode(Zm9v)
-if (!(&test_octets == "foo")) {
+test_octets := %base64.decode(Zm9v)
+if (!(test_octets == "foo")) {
 	debug_request
 	test_fail
 }
 
-&test_octets := %base64.decode(AIAAAAAAAAAAAAAAAAA5ODc5)
-if (!(&test_octets == 0x008000000000000000000000000039383739)) {
+test_octets := %base64.decode(AIAAAAAAAAAAAAAAAAA5ODc5)
+if (!(test_octets == 0x008000000000000000000000000039383739)) {
 	test_fail
 }
 
 # Regression tests
-&test_octets := %base64.decode(5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK)
+test_octets := %base64.decode(5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK)
 
-if (!(&test_octets == 0xe5136a365f2260b6e409cec9851f1ab384ed0c3097ea8b6eb96b5c8daf2b213532c7dceb9c749ef6d4c71a628a)) {
+if (!(test_octets == 0xe5136a365f2260b6e409cec9851f1ab384ed0c3097ea8b6eb96b5c8daf2b213532c7dceb9c749ef6d4c71a628a)) {
 	test_fail
 }
 
-&test_octets := %base64.decode(eHfXPKZ+2iv9cnMV1MOmE/moYYA1Uk5xTmw4aVlMYmtDYzdKaFI4YXM0VHRERENYNm90dXVXdGNqYThySVRVeXg5enJuSFNlOXRUSEdtS0s=)
+test_octets := %base64.decode(eHfXPKZ+2iv9cnMV1MOmE/moYYA1Uk5xTmw4aVlMYmtDYzdKaFI4YXM0VHRERENYNm90dXVXdGNqYThySVRVeXg5enJuSFNlOXRUSEdtS0s=)
 
-if (!(&test_octets == 0x7877d73ca67eda2bfd727315d4c3a613f9a8618035524e714e6c3869594c626b4363374a685238617334547444444358366f7475755774636a6138724954557978397a726e48536539745448476d4b4b)) {
+if (!(test_octets == 0x7877d73ca67eda2bfd727315d4c3a613f9a8618035524e714e6c3869594c626b4363374a685238617334547444444358366f7475755774636a6138724954557978397a726e48536539745448476d4b4b)) {
 	test_fail
 }
 success

@@ -1,5 +1,5 @@
 string test_string
-&test_string := 'foo'
+test_string := 'foo'
 
 switch "%tolower(%{test_string})" {
 	case 'foo' {

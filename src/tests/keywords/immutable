@@ -5,21 +5,21 @@
 #
 uint32 test_integer
 
-&NAS-Port := 1812
+NAS-Port := 1812
 
 #
 #  Editing it is fine.
 #
-&NAS-Port += 1
-if !(&NAS-Port == 1813) {
+NAS-Port += 1
+if !(NAS-Port == 1813) {
 	test_fail
 }
 
 #
 #  Mark it as immutable.  The value shouldn't change.
 #
-%immutable(&request.NAS-Port[*])
-if !(&NAS-Port == 1813) {
+%immutable(request.NAS-Port[*])
+if !(NAS-Port == 1813) {
 	test_fail
 }
 
@@ -27,41 +27,41 @@ if !(&NAS-Port == 1813) {
 #  Try to edit it.  The value shouldn't change.
 #
 transaction {
-	&NAS-Port += 1
+	NAS-Port += 1
 }
-if !(&NAS-Port == 1813) {
+if !(NAS-Port == 1813) {
 	test_fail
 }
 
 #
 #  We can't delete it.  Deletion is a noop
 #
-&request -= &NAS-Port[*]
-if !(&NAS-Port == 1813) {
+request -= NAS-Port[*]
+if !(NAS-Port == 1813) {
 	test_fail
 }
 
 #
 #  We can copy the immutable value.  The copy is mutable.
 #
-&test_integer := &NAS-Port
-if !(&test_integer == 1813) {
+test_integer := NAS-Port
+if !(test_integer == 1813) {
 	test_fail
 }
 
-&test_integer += 1
-if !(&test_integer == 1814) {
+test_integer += 1
+if !(test_integer == 1814) {
 	test_fail
 }
 
 #
 #  Add a non-immutable NAS-Port
 #
-&request += {
-	&NAS-Port = 6809
+request += {
+	NAS-Port = 6809
 }
 
-if !(&NAS-Port[1] == 6809) {
+if !(NAS-Port[1] == 6809) {
 	test_fail
 }
 
@@ -69,12 +69,12 @@ if !(&NAS-Port[1] == 6809) {
 #  Deleting all NAS-Port attributes means that we delete the _mutable_
 #  ones, and leave the _immutable_ ones in place.
 #
-&request -= &NAS-Port[*]
-if !(&NAS-Port == 1813) {
+request -= NAS-Port[*]
+if !(NAS-Port == 1813) {
 	test_fail
 }
 
-if (&NAS-Port[#] != 1) {
+if (NAS-Port[#] != 1) {
 	test_fail
 }
 

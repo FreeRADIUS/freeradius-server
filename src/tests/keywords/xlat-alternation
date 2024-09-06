@@ -3,60 +3,60 @@
 #
 string result_string
 
-&Filter-Id := "foo"
-&NAS-Identifier := "bar"
+Filter-Id := "foo"
+NAS-Identifier := "bar"
 
 #
 #  First choice
 #
-&result_string := "%{&Filter-Id || &NAS-Identifier}"
-if (!(&result_string == 'foo')) {
+result_string := "%{Filter-Id || NAS-Identifier}"
+if (!(result_string == 'foo')) {
 	test_fail
 }
 
 #
 #  Second choice
 #
-&request -= &Filter-Id[*]
-&result_string := "%{&Filter-Id || &NAS-Identifier}"
-if (!(&result_string == 'bar')) {
+request -= Filter-Id[*]
+result_string := "%{Filter-Id || NAS-Identifier}"
+if (!(result_string == 'bar')) {
 	test_fail
 }
 
 #
 #  Multiple things in an alternation
 #
-&result_string := %{%{Filter-Id} || "%{NAS-Identifier} foo"}
-if (!(&result_string == 'bar foo')) {
+result_string := %{%{Filter-Id} || "%{NAS-Identifier} foo"}
+if (!(result_string == 'bar foo')) {
 	test_fail
 }
 
 #
 #  Alternation is empty
 #
-&result_string := "%{&Filter-Id || ''}"
-if (!(&result_string == '')) {
+result_string := "%{Filter-Id || ''}"
+if (!(result_string == '')) {
 	test_fail
 }
 
 #
 #  Everything null
 #
-&request -= &NAS-Identifier[*]
+request -= NAS-Identifier[*]
 
 #
 #  Both sides are failing, so the assignment returns a NULL string
 #
-&result_string := "%{&Filter-Id || &NAS-Identifier}"
-if (!(&result_string == "")) {
+result_string := "%{Filter-Id || NAS-Identifier}"
+if (!(result_string == "")) {
 	test_fail
 }
 
 #
 #  And unquoted results return nothing.
 #
-&result_string := %{&Filter-Id || &NAS-Identifier}
-if (&result_string) {
+result_string := %{Filter-Id || NAS-Identifier}
+if (result_string) {
 	test_fail
 }
 

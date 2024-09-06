@@ -5,18 +5,18 @@
 #
 
 update {
-	&Filter-Id := 0x626f62
+	Filter-Id := 0x626f62
 }
 
-if (!(&Filter-Id == 'bob')) {
+if (!(Filter-Id == 'bob')) {
 	test_fail
 }
 
 update {
-	&Filter-Id := '0x626f62'
+	Filter-Id := '0x626f62'
 }
 
-if (!(&Filter-Id == '0x626f62')) {
+if (!(Filter-Id == '0x626f62')) {
 	test_fail
 }
 

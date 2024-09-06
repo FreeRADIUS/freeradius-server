@@ -3,7 +3,7 @@
 string test_string
 
 # Non matching on attribute ref
-if !(&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+if !(User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	test_fail
 }
 
@@ -13,16 +13,16 @@ if !("%{User-Name}" =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/)
 }
 
 # Matching on attribute ref with capture groups
-if (&User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
+if (User-Name =~ /^([0-9])_([0-9])?_([0-9]*)_([0-9]+)_([^_])_(6)_([7-8])/) {
 	# Test all the capture groups
-	&reply.User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
+	reply.User-Name := "%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}"
 }
 else {
 	test_fail
 }
 
 # Checking capture groups are cleared out correctly
-if (&User-Name =~ /^([0-9])_/) {
+if (User-Name =~ /^([0-9])_/) {
 	if (!("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" == '1_1')) {
 		test_fail
 	}
@@ -32,7 +32,7 @@ else {
 }
 
 # Checking capture groups are cleared out correctly when there are no matches
-if (&User-Name =~ /^./) {
+if (User-Name =~ /^./) {
 	if (!("%{0}%{1}%{2}%{3}%{4}%{5}%{6}%{7}" == '1')) {
 		test_fail
 	}
@@ -42,17 +42,17 @@ else {
 }
 
 # compiled - ref - insensitive
-if !(&Calling-Station-Id =~ /:roamyroam$/i) {
+if !(Calling-Station-Id =~ /:roamyroam$/i) {
 	test_fail
 }
 
 # compiled - expansion - insensitive
-if !(&Calling-Station-Id =~ /:roamyroam$/i) {
+if !(Calling-Station-Id =~ /:roamyroam$/i) {
 	test_fail
 }
 
 # compiled - enum - ref - insensitive
-if !(&Service-Type =~ /^framed-user$/i) {
+if !(Service-Type =~ /^framed-user$/i) {
 	test_fail
 }
 
@@ -62,46 +62,46 @@ if !("%{Service-Type}" =~ /^framed-user$/i) {
 }
 
 # compiled - enum - ref
-if (&Service-Type =~ /^framed-user$/) {
+if (Service-Type =~ /^framed-user$/) {
 	test_fail
 }
 
-&test_string := "foo\nbar"
+test_string := "foo\nbar"
 
 # compiled - ref - multiline
-if !(&test_string =~ /^foo$/m) {
+if !(test_string =~ /^foo$/m) {
 	test_fail
 }
 
 # compiled - ref - non-multiline
-if (&test_string =~ /^foo$/) {
+if (test_string =~ /^foo$/) {
 	test_fail
 }
 
 # compiled - ref - non-multiline
 # Not all POSIX implementations support the \n character classes
 # so only run this test if the server was built with libpcre.
-if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) && !(&test_string =~ /^foo\nbar$/)) {
+if ((('${feature.regex-pcre}' == 'yes') || ('${feature.regex-pcre2}' == 'yes')) && !(test_string =~ /^foo\nbar$/)) {
 	test_fail
 }
 
 # compiled - ref - multiline
-if !(&test_string =~ /^bar$/m) {
+if !(test_string =~ /^bar$/m) {
 	test_fail
 }
 
 # compiled - ref - multiline - sensitive
-if (&test_string =~ /^BAR$/m) {
+if (test_string =~ /^BAR$/m) {
 	test_fail
 }
 
 # compiled - ref - multiline - insensitive
-if !(&test_string =~ /^BAR$/mi) {
+if !(test_string =~ /^BAR$/mi) {
 	test_fail
 }
 
 # compiled - ref - multiline - insensitive (flag order reversed)
-if !(&test_string =~ /^BAR$/im) {
+if !(test_string =~ /^BAR$/im) {
 	test_fail
 }
 

@@ -5,40 +5,40 @@
 #
 string result_string
 
-&request += {
-	&Class = '1=1|my_attr=2|my_attr=hello|'
-	&Calling-Station-ID = '|'
+request += {
+	Class = '1=1|my_attr=2|my_attr=hello|'
+	Calling-Station-ID = '|'
 }
 
-&control += {
-	&User-Name = '|hello|goodbye'
-	&User-Name = '|morning|night|1|'
-	&Reply-Message = 'Can\'t touch this'
-	&Filter-Id = 'here.  are . some.  words. '
+control += {
+	User-Name = '|hello|goodbye'
+	User-Name = '|morning|night|1|'
+	Reply-Message = 'Can\'t touch this'
+	Filter-Id = 'here.  are . some.  words. '
 }
 
-&result_string := "%concat(%explode(%{Class}, '|'), ',')"
-if (!(&result_string == "1=1,my_attr=2,my_attr=hello")) {
+result_string := "%concat(%explode(%{Class}, '|'), ',')"
+if (!(result_string == "1=1,my_attr=2,my_attr=hello")) {
 	test_fail
 }
 
-&result_string := "%concat(%explode(%{Calling-Station-ID}, '|'), ',')"
-if (!(&result_string == "")) {
+result_string := "%concat(%explode(%{Calling-Station-ID}, '|'), ',')"
+if (!(result_string == "")) {
 	test_fail
 }
 
-&result_string := "%concat(%explode(%{control.User-Name[*]}, |), ',')"
-if (!(&result_string == "hello,goodbye,morning,night,1")) {
+result_string := "%concat(%explode(%{control.User-Name[*]}, |), ',')"
+if (!(result_string == "hello,goodbye,morning,night,1")) {
 	test_fail
 }
 
-&result_string := "%concat(%explode(%{control.Reply-Message}, |), ',')"
-if !(&result_string == 'Can\'t touch this') {
+result_string := "%concat(%explode(%{control.Reply-Message}, |), ',')"
+if !(result_string == 'Can\'t touch this') {
 	test_fail
 }
 
-&result_string := "%concat(%explode(%{control.Filter-Id}, '. '), ',')"
-if !(&result_string == 'here, are ,some, words') {
+result_string := "%concat(%explode(%{control.Filter-Id}, '. '), ',')"
+if !(result_string == 'here, are ,some, words') {
 	test_fail
 }
 

@@ -1,12 +1,12 @@
 subrequest ::Access-Request {
-	&parent.control.User-Name := 'bob'
+	parent.control.User-Name := 'bob'
 	success
 }
 
-if (!&control.User-Name) {
+if (!control.User-Name) {
 	test_fail
 }
 
-if (!(&control.User-Name == 'bob')) {
+if (!(control.User-Name == 'bob')) {
 	test_fail
 }

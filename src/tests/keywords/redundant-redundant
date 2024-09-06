@@ -8,27 +8,27 @@ uint32 count2
 uint32 count3
 uint32 count4
 
-&count1 = 0
-&count2 = 0
-&count3 = 0
-&count4 = 0
+count1 = 0
+count2 = 0
+count3 = 0
+count4 = 0
 
 redundant {
 	redundant-load-balance {
 		group {
-			&count1 += 1
+			count1 += 1
 			fail
 		}
 		group {
-			&count2 += 1
+			count2 += 1
 			fail
 		}
 		group {
-			&count3 += 1
+			count3 += 1
 			fail
 		}
 		group {
-			&count4 += 1
+			count4 += 1
 			fail
 		}
 	}
@@ -44,21 +44,21 @@ if (!ok) {
 	return
 }
 
-if (!(&count1 == 1)) {
+if (!(count1 == 1)) {
 	test_fail
 }
 
-if (!(&count2 == 1)) {
-	test_fail
-	return
-}
-
-if (!(&count3 == 1)) {
+if (!(count2 == 1)) {
 	test_fail
 	return
 }
 
-if (!(&count4 == 1)) {
+if (!(count3 == 1)) {
+	test_fail
+	return
+}
+
+if (!(count4 == 1)) {
 	test_fail
 	return
 }

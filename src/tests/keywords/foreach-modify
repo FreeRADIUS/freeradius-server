@@ -2,25 +2,25 @@
 #  PRE: foreach
 #
 
-&Tmp-Integer-0 := { 1, 3, 5, 11 }
+Tmp-Integer-0 := { 1, 3, 5, 11 }
 
-foreach uint32 self (&Tmp-Integer-0) {
-	&self += 19
+foreach uint32 self (Tmp-Integer-0) {
+	self += 19
 }
 
-if (&Tmp-Integer-0[0] != 20) {
+if (Tmp-Integer-0[0] != 20) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[1] != 22) {
+if (Tmp-Integer-0[1] != 22) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[2] != 24) {
+if (Tmp-Integer-0[2] != 24) {
 	test_fail
 }
 
-if (&Tmp-Integer-0[3] != 30) {
+if (Tmp-Integer-0[3] != 30) {
 	test_fail
 }
 

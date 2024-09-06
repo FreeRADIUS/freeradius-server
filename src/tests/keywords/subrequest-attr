@@ -1,21 +1,21 @@
 #
 #  PRE: subrequest
 #
-&control.Filter-Id := "Access-Request"
+control.Filter-Id := "Access-Request"
 
 #
 #  Subrequest with an attribute reference
 #
-subrequest &control.Filter-Id {
-	&parent.control.User-Name := 'bob'
+subrequest control.Filter-Id {
+	parent.control.User-Name := 'bob'
 
 	success
 }
 
-if (!&control.User-Name) {
+if (!control.User-Name) {
 	test_fail
 }
 
-if (!(&control.User-Name == 'bob')) {
+if (!(control.User-Name == 'bob')) {
 	test_fail
 }

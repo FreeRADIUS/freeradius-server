@@ -8,7 +8,7 @@ if ("no" == no) {
 }
 
 # Should not execute this condition
-if (&User-Name == 'bob') {
+if (User-Name == 'bob') {
 	reject
 }
 

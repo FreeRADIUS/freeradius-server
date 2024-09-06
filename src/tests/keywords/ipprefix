@@ -4,31 +4,31 @@
 ipv4prefix test_ipv4prefix
 ipv6prefix test_ipv6prefix
 
-&test_ipv4prefix := 198.51.100.255/16
-&test_ipv6prefix := ::198.51.100.255/112
-&Framed-IP-Address := 198.51.0.1
+test_ipv4prefix := 198.51.100.255/16
+test_ipv6prefix := ::198.51.100.255/112
+Framed-IP-Address := 198.51.0.1
 
-if (!(&test_ipv6prefix == '::198.51.0.0/112')) {
+if (!(test_ipv6prefix == '::198.51.0.0/112')) {
 	test_fail
 }
 
-if (!(&test_ipv4prefix == '198.51.0.0/16')) {
+if (!(test_ipv4prefix == '198.51.0.0/16')) {
 	test_fail
 }
 
-if (!(&test_ipv6prefix == ::198.51.0.0/112)) {
+if (!(test_ipv6prefix == ::198.51.0.0/112)) {
 	test_fail
 }
 
-if (!(&test_ipv4prefix == 198.51.0.0/16)) {
+if (!(test_ipv4prefix == 198.51.0.0/16)) {
 	test_fail
 }
 
-if (!(&test_ipv4prefix < 198.0.0.0/8)) {
+if (!(test_ipv4prefix < 198.0.0.0/8)) {
 	test_fail
 }
 
-if (!(&Framed-IP-Address < 198.51.0.0/16)) {
+if (!(Framed-IP-Address < 198.51.0.0/16)) {
 	test_fail
 }
 

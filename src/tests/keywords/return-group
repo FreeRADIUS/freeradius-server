@@ -1,7 +1,7 @@
 #
 #  PRE: return
 #
-&control.Auth-Type := 'Accept'
+control.Auth-Type := 'Accept'
 
 group {
 	# Section should exit after this statement
@@ -10,8 +10,8 @@ group {
 	}
 
 	# This entry should never be reached
-	&reply.Reply-Message := 'fail'
+	reply.Reply-Message := 'fail'
 }
 
 # We should continue processing after the previous group.
-&reply.Reply-Message := 'pass'
+reply.Reply-Message := 'pass'

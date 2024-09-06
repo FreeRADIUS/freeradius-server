@@ -4,26 +4,26 @@
 #  Form attribute references with xlats
 #
 update request {
-	&Filter-Id += 'foo'
-	&Filter-Id += 'bar'
-	&Reply-Message += 'baz'
+	Filter-Id += 'foo'
+	Filter-Id += 'bar'
+	Reply-Message += 'baz'
 
 	#
 	#  @fixme - EDIT - how the heck did this ever work?
 	#
-	&control !* ANY
+	control !* ANY
 }
 
-if (!(&Filter-Id[0] == 'foo')) {
+if (!(Filter-Id[0] == 'foo')) {
 	test_fail
 }
 
 # Now delete the LHS by assigning the control list to it (which is empty)
 update {
-	&request := &control
+	request := control
 }
 
-if (&Filter-Id || &Reply-Message) {
+if (Filter-Id || Reply-Message) {
 	test_fail
 }
 

@@ -4,8 +4,8 @@
 string printable
 string unprintable
 
-&printable = "🍩abcdef🍩"
-&unprintable = "\t🍩\n"
+printable = "🍩abcdef🍩"
+unprintable = "\t🍩\n"
 
 # Relaxed mode allows tabs and spaces
 if (!%str.printable("\t 🍩", "yes")) {

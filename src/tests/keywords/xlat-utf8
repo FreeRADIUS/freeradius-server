@@ -4,8 +4,8 @@
 string valid_utf8
 string invalid_utf8
 
-&valid_utf8 = "🍩abcdef🍩\n\t"
-&invalid_utf8 = "🍩\x80"
+valid_utf8 = "🍩abcdef🍩\n\t"
+invalid_utf8 = "🍩\x80"
 
 if (%str.utf8("\xFE")) {
 	test_fail

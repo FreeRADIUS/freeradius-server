@@ -1,22 +1,22 @@
 parallel {
 	group {
-		&parent.control += {
-			&NAS-Port = 1
+		parent.control += {
+			NAS-Port = 1
 		}
 	}
 	group {
-		&parent.control += {
-			&NAS-Port = 3
+		parent.control += {
+			NAS-Port = 3
 		}
 	}
 	group {
-		&parent.control += {
-			&NAS-Port = 5
+		parent.control += {
+			NAS-Port = 5
 		}
 	}
 	group {
-		&parent.control += {
-			&NAS-Port = 7
+		parent.control += {
+			NAS-Port = 7
 		}
 	}
 }

@@ -1,11 +1,11 @@
 uint32 foo
 
-&Tmp-Integer-0 := 1
-&Tmp-Integer-1 := { 3, 6, 9 }
+Tmp-Integer-0 := 1
+Tmp-Integer-1 := { 3, 6, 9 }
 
-&foo = %eval(%{'%{Tmp-Integer-1[' + "%{Tmp-Integer-0}" + ']}'})
+foo = %eval(%{'%{Tmp-Integer-1[' + "%{Tmp-Integer-0}" + ']}'})
 
-if (&foo != 6) {
+if (foo != 6) {
 	test_fail
 }
 

@@ -1,12 +1,12 @@
-&NAS-Port := 1
-&NAS-Port += { 11, 17, 19, 23 }
+NAS-Port := 1
+NAS-Port += { 11, 17, 19, 23 }
 
-if !(&NAS-Port[#] == 1) {
+if !(NAS-Port[#] == 1) {
 	test_fail
 }
 
 
-if !(&NAS-Port == 71) {
+if !(NAS-Port == 71) {
 	test_fail
 }
 

@@ -4,23 +4,23 @@
 string test_string
 string dummy_string
 
-&test_string	:= "AbCdE"
-&test_string	:= %tolower(%{test_string})
+test_string	:= "AbCdE"
+test_string	:= %tolower(%{test_string})
 
-if !(&test_string == "abcde") {
+if !(test_string == "abcde") {
 	test_fail
 }
 
-&test_string	:= %tolower(AAbbCCdd)
-if !(&test_string == "aabbccdd") {
+test_string	:= %tolower(AAbbCCdd)
+if !(test_string == "aabbccdd") {
 	test_fail
 }
 
 #
 #  Doesn't exist
 #
-&test_string	:= "%tolower(%{dummy_string})"
-if !(&test_string == "") {
+test_string	:= "%tolower(%{dummy_string})"
+if !(test_string == "") {
 	test_fail
 }
 

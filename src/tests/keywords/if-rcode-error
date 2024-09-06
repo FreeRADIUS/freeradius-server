@@ -2,6 +2,6 @@
 #
 #  return code in an "if" section.
 #
-if (&User-Name == "bob") {
+if (User-Name == "bob") {
 	ok = reject	# ERROR
 }

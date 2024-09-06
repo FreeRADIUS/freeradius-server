@@ -1,7 +1,7 @@
 #
 #  This is the default for the tests
 #
-if !(&Net.Src.IP == 127.0.0.1) {
+if !(Net.Src.IP == 127.0.0.1) {
 	test_fail
 }
 success

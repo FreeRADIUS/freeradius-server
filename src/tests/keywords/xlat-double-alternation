@@ -1,8 +1,8 @@
 # Regression test for double consecutive alternations
 uint64 result_int64
 
-&result_int64 := "%{&Acct-Input-Octets || "2"}%{&Acct-Input-Gigawords || "1"}"
-if (!(&result_int64 == 21)) {
+result_int64 := "%{Acct-Input-Octets || "2"}%{Acct-Input-Gigawords || "1"}"
+if (!(result_int64 == 21)) {
 	test_fail
 }
 

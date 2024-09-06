@@ -3,10 +3,10 @@ string test_string2
 string test_string3
 string empty_string
 
-&test_string1 := 'aaa'
-&test_string2 := "\n\n\n"
-&test_string3 := "the quick brown fox jumped over the lazy dog"
-&empty_string := ''
+test_string1 := 'aaa'
+test_string2 := "\n\n\n"
+test_string3 := "the quick brown fox jumped over the lazy dog"
+empty_string := ''
 
 #
 #  Non-regex base substitutions

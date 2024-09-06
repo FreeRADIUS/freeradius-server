@@ -3,17 +3,17 @@ uint32 bar
 uint32 baz
 uint32 none
 
-&foo = 1
-&bar = 2
+foo = 1
+bar = 2
 
-&baz := %{&foo + &bar}
+baz := %{foo + bar}
 
-if !(&baz == 3) {
+if !(baz == 3) {
 	test_fail
 }
 
-&baz := %{&none || &foo}
-if !(&baz == &foo) {
+baz := %{none || foo}
+if !(baz == foo) {
 	test_fail
 }
 

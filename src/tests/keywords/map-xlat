@@ -3,31 +3,31 @@
 #
 #  Test the map xlat
 #
-&request += {
-	&Filter-Id = '&control.Filter-Id := \'testing123\''
-	&NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
-	&NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
+request += {
+	Filter-Id = 'control.Filter-Id := \'testing123\''
+	NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface = 'UNICAST_7360OLT3'"
+	NAS-Port-Id = "request.Vendor-Specific.Nokia-SR.MSAP-Interface += 'UNICAST_7360OLT4'"
 }
 
 if (!("%map(%{Filter-Id})" == 1)) {
 	test_fail
 }
 
-if (!(&control.Filter-Id == 'testing123')) {
+if (!(control.Filter-Id == 'testing123')) {
 	test_fail
 }
 
-foreach &NAS-Port-Id[*] {
+foreach NAS-Port-Id[*] {
 	if (!("%map(%{Foreach-Variable-0})" == 1)) {
 		test_fail
 	}
 }
 
-if (!(&Vendor-Specific.Nokia-SR.MSAP-Interface[0] == 'UNICAST_7360OLT3')) {
+if (!(Vendor-Specific.Nokia-SR.MSAP-Interface[0] == 'UNICAST_7360OLT3')) {
 	test_fail
 }
 
-if (!(&Vendor-Specific.Nokia-SR.MSAP-Interface[1] == 'UNICAST_7360OLT4')) {
+if (!(Vendor-Specific.Nokia-SR.MSAP-Interface[1] == 'UNICAST_7360OLT4')) {
 	test_fail
 }
 

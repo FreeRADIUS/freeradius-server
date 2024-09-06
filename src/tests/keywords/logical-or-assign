@@ -1,13 +1,13 @@
 string foo
 
-&Acct-Session-Time = 30
+Acct-Session-Time = 30
 
 #
 #  Test for short-circuit logical optimizations
 #
-&foo = %{&Acct-Session-Time || 'NULL'}
+foo = %{Acct-Session-Time || 'NULL'}
 
-if !(&foo == "30") {
+if !(foo == "30") {
 	test_fail
 }
 success

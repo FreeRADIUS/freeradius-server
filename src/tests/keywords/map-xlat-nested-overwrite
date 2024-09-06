@@ -3,7 +3,7 @@
 #
 #  Test the map xlat
 #
-&Filter-Id := "request.Tmp-Group-0.Filter-Id := 'testing123'"
+Filter-Id := "request.Tmp-Group-0.Filter-Id := 'testing123'"
 
 if (!(%map("%{Filter-Id}") == 1)) {
 	test_fail
@@ -17,11 +17,11 @@ if (!(%map("request.Tmp-Group-0.User-Name := 'testing000'") == 1)) {
 	test_fail
 }
 
-if (!&Tmp-Group-0[0].Filter-Id || (!(&Tmp-Group-0[0].Filter-Id == 'testing123'))) {
+if (!Tmp-Group-0[0].Filter-Id || (!(Tmp-Group-0[0].Filter-Id == 'testing123'))) {
 	test_fail
 }
 
-if (!&Tmp-Group-0[0].User-Name || (!(&Tmp-Group-0[0].User-Name == 'testing000'))) {
+if (!Tmp-Group-0[0].User-Name || (!(Tmp-Group-0[0].User-Name == 'testing000'))) {
 	test_fail
 }
 

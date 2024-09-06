@@ -1,9 +1,9 @@
-&Vendor-Specific.WiMAX.Capability.Release := "foo"
+Vendor-Specific.WiMAX.Capability.Release := "foo"
 
 #
 #  WiMAX is an alias to Vendor-Specific.WiMAX
 #
-if !(&request.WiMAX.Capability.Release == "foo") {
+if !(request.WiMAX.Capability.Release == "foo") {
 	test_fail
 }
 

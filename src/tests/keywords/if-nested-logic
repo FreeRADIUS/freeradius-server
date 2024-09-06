@@ -2,36 +2,36 @@
 # PRE: if
 #
 
-&request += {
-	&Filter-Id = 'foo'
-	&Filter-Id = 'bar'
+request += {
+	Filter-Id = 'foo'
+	Filter-Id = 'bar'
 }
 
-if !(&NAS-Port || &Filter-Id) {
+if !(NAS-Port || Filter-Id) {
 	test_fail
 }
 
-if !(!(!(&Filter-Id))) {
+if !(!(!(Filter-Id))) {
 	test_fail
 }
 
-if (&Filter-Id[0] && &Filter-Id[1] && &Filter-Id[2]) {
+if (Filter-Id[0] && Filter-Id[1] && Filter-Id[2]) {
 	test_fail
 }
 
-if !(((&Filter-Id[0] == 'baz') && (&Filter-Id[1] == 'boing')) || ((&Filter-Id[0] == 'foo') && (&Filter-Id[1] == 'bar')))  {
+if !(((Filter-Id[0] == 'baz') && (Filter-Id[1] == 'boing')) || ((Filter-Id[0] == 'foo') && (Filter-Id[1] == 'bar')))  {
 	test_fail
 }
 
-if !(((&Filter-Id[0] == 'foo') && (&Filter-Id[1] == 'boing')) || ((&Filter-Id[0] == 'foo') && (&Filter-Id[1] == 'bar')))  {
+if !(((Filter-Id[0] == 'foo') && (Filter-Id[1] == 'boing')) || ((Filter-Id[0] == 'foo') && (Filter-Id[1] == 'bar')))  {
 	test_fail
 }
 
-if !((&NAS-Port || &Filter-Id) && (&Calling-Station-Id || &User-Name)) {
+if !((NAS-Port || Filter-Id) && (Calling-Station-Id || User-Name)) {
 	test_fail
 }
 
-if !(((&NAS-Port || &Filter-Id) && !&User-Name) || (&Calling-Station-Id || &User-Name)) {
+if !(((NAS-Port || Filter-Id) && !User-Name) || (Calling-Station-Id || User-Name)) {
 	test_fail
 }
 

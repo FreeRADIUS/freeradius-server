@@ -8,8 +8,8 @@ if !(%md5('foo') == 0xacbd18db4cc2f85cedef654fccc4a4d8) {
 group {
 	octets hash
 
-	&hash = %md5('foo')
-	if !(&hash == 0xacbd18db4cc2f85cedef654fccc4a4d8) {
+	hash = %md5('foo')
+	if !(hash == 0xacbd18db4cc2f85cedef654fccc4a4d8) {
 		test_fail
 	}
 }

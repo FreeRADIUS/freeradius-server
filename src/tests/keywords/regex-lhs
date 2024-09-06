@@ -8,13 +8,13 @@ string test_string2
 #  Strings which are expanded in a regex have regex special
 #  characters escaped.  Because the input strings are unsafe.
 #
-&test_string1 = "example.com"
-&test_string2 = "^foo$bar"
+test_string1 = "example.com"
+test_string2 = "^foo$bar"
 
-if !(&test_string1 =~ /example\.com$/) {
+if !(test_string1 =~ /example\.com$/) {
 	test_fail
 }
-elsif !(&test_string2 =~ /\^foo\$bar/) {
+elsif !(test_string2 =~ /\^foo\$bar/) {
 	test_fail
 }
 

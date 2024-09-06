@@ -1,11 +1,11 @@
-&request += {
-	&Filter-Id  = 'foo'
-	&Filter-Id  = 'bar'
-	&NAS-Port = '4'
-	&NAS-Port = '8'
-	&NAS-Port = '1'
+request += {
+	Filter-Id  = 'foo'
+	Filter-Id  = 'bar'
+	NAS-Port = '4'
+	NAS-Port = '8'
+	NAS-Port = '1'
 
-	&Reply-Message = '%{Filter-Id}'
+	Reply-Message = '%{Filter-Id}'
 }
 
 #
@@ -47,13 +47,13 @@ group {
 	uint32 idx
 	string stackstr
 
-	&idx := 1
+	idx := 1
 
 	if (!(%eval("\%{Filter-Id[%{idx}]}") == 'bar')) {
 		test_fail
 	}
 
-	&stackstr := 'foo'
+	stackstr := 'foo'
 
 	if (!(%eval("\%{stackstr}") == 'foo')) {
 		test_fail

@@ -1,11 +1,11 @@
 #  Tests for Vendor-Specific
 #
-&raw.26 := 0x01020304
+raw.26 := 0x01020304
 
-if (!&raw.26) {
+if (!raw.26) {
 	test_fail
 }
-elsif (!(&raw.26 == 0x01020304)) {
+elsif (!(raw.26 == 0x01020304)) {
 	test_fail
 }
 else {

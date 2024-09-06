@@ -6,36 +6,36 @@ string dummy_string
 octets test_octets
 octets result_octets
 
-&test_string := "This is a string\n"
-&test_octets := 0x000504030201
+test_string := "This is a string\n"
+test_octets := 0x000504030201
 
 #
 #  Put "This is a string" into a file and call "md4sum" on it.
 #  You should get this string.
 #
-&result_octets := %md4("This is a string\n")
-if (!(&result_octets == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
+result_octets := %md4("This is a string\n")
+if (!(result_octets == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
 	test_fail
 }
 
-&result_octets := %md4("%{test_string}")
-if (!(&result_octets == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
+result_octets := %md4("%{test_string}")
+if (!(result_octets == 0x1f60d5cd85e17bfbdda7c923822f060c)) {
 	test_fail
 }
 
 #
 #  MD4 should also be able to cope with references to octet attributes
 #
-&result_octets := %md4("%{test_octets}")
-if (!(&result_octets == 0xac3ed17b3cf19ec38352ec534a932fc6)) {
+result_octets := %md4("%{test_octets}")
+if (!(result_octets == 0xac3ed17b3cf19ec38352ec534a932fc6)) {
 	test_fail
 }
 
 #
 #  MD4 of null string is d41d8cd98f00b204e9800998ecf8427e
 #
-&result_octets := %md4("%{dummy_string}")
-if (!(&result_octets == 0x31d6cfe0d16ae931b73c59d7e0c089c0)) {
+result_octets := %md4("%{dummy_string}")
+if (!(result_octets == 0x31d6cfe0d16ae931b73c59d7e0c089c0)) {
 	test_fail
 }
 

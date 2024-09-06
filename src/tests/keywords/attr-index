@@ -1,33 +1,33 @@
-&request += {
-	&Filter-Id = "foo"
-	&Filter-Id = "bar"
-	&Filter-Id = "baz"
+request += {
+	Filter-Id = "foo"
+	Filter-Id = "bar"
+	Filter-Id = "baz"
 }
 
-&Filter-Id[1] := "yellow"
+Filter-Id[1] := "yellow"
 
 if (!("%{Filter-Id[*]}" == "fooyellowbaz")) {
 	test_fail
 }
 
-&Filter-Id[2] += "red"
+Filter-Id[2] += "red"
 
 if (!("%{Filter-Id[*]}" == "fooyellowbazred")) {
 	test_fail
 }
 
-&Filter-Id[2] -= "red"
+Filter-Id[2] -= "red"
 
 if (!("%{Filter-Id[*]}" == "fooyellowbaz")) {
 	test_fail
 }
 
-&Filter-Id[0] := "oof"
+Filter-Id[0] := "oof"
 if (!("%{Filter-Id[*]}" == "oofyellowbaz")) {
 	test_fail
 }
 
-&Filter-Id[1] := "bar"
+Filter-Id[1] := "bar"
 if (!("%{Filter-Id[*]}" == "oofbarbaz")) {
 	test_fail
 }

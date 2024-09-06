@@ -4,13 +4,13 @@
 string test_string
 octets result_octets
 
-&test_string := "hello"
+test_string := "hello"
 
 #
 #  MD5 HMAC with missing key should fail
 #
-&result_octets := %hmacmd5(%{test_string}, )
-if &result_octets {
+result_octets := %hmacmd5(%{test_string}, )
+if result_octets {
 	test_fail
 }
 success

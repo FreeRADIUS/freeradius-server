@@ -4,13 +4,13 @@
 #
 #  @todo - allow just a bare
 #
-#	&NAS-Port := 5 + (&User-Name == "bob")
+#	NAS-Port := 5 + (User-Name == "bob")
 #
 #  which means updating the config file parser, too.
 #
-&NAS-Port := %{5 + (&User-Name == "bob")}
+NAS-Port := %{5 + (User-Name == "bob")}
 
-if !(&NAS-Port == 6) {
+if !(NAS-Port == 6) {
 	test_fail
 }
 

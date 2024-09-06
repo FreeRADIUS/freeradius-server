@@ -3,7 +3,7 @@
 #
 string test_string
 
-&test_string = "test"
+test_string = "test"
 
 #
 #	rpad tests

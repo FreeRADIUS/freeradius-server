@@ -1,9 +1,9 @@
 uint32 foo
 
-&foo := 42
+foo := 42
 
-if !(&foo == 42) {
+if !(foo == 42) {
 	test_fail
 }
 
-&foo += {}	# ERROR not allowed!
+foo += {}	# ERROR not allowed!

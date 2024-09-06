@@ -7,9 +7,9 @@
 #  State doesn't exist, so Class shouldn't be created
 #
 update request {
-	&Class := &State
+	Class := State
 }
-if (&Class) {
+if (Class) {
 	test_fail
 }
 
@@ -18,12 +18,12 @@ if (&Class) {
 #
 #
 update request {
-	&Filter-Id := "%{Reply-Message}"
+	Filter-Id := "%{Reply-Message}"
 }
-if (!&Filter-Id) {
+if (!Filter-Id) {
 	test_fail
 }
-if (!(&Filter-Id == '')) {
+if (!(Filter-Id == '')) {
 	test_fail
 }
 
@@ -33,9 +33,9 @@ if (!(&Filter-Id == '')) {
 #  @fixme - EDIT - the new method is to simply omit the assignment
 #
 update request {
-	&Class := "%{Reply-Message}"
+	Class := "%{Reply-Message}"
 }
-if (!(&Class == "")) {
+if (!(Class == "")) {
 	test_fail
 }
 

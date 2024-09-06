@@ -3,31 +3,31 @@
 #
 ipaddr result_ipaddr
 
-if (!(&NAS-IP-Address == 127.0.0.1)) {
+if (!(NAS-IP-Address == 127.0.0.1)) {
 	test_fail
 }
 
 # Dotted Quad
-&result_ipaddr := 127.0.0.1
-if (!(&result_ipaddr == 127.0.0.1)) {
+result_ipaddr := 127.0.0.1
+if (!(result_ipaddr == 127.0.0.1)) {
 	test_fail
 }
 
 # Dotted Quad with prefix
-&result_ipaddr := 127.0.0.2/32
-if (!(&result_ipaddr == 127.0.0.2)) {
+result_ipaddr := 127.0.0.2/32
+if (!(result_ipaddr == 127.0.0.2)) {
 	test_fail
 }
 
 # Hex (0x)
-&result_ipaddr := 0x7f000003
-if (!(&result_ipaddr == 127.0.0.3)) {
+result_ipaddr := 0x7f000003
+if (!(result_ipaddr == 127.0.0.3)) {
 	test_fail
 }
 
 # Decimal
-&result_ipaddr := 2130706436
-if (!(&result_ipaddr == 127.0.0.4)) {
+result_ipaddr := 2130706436
+if (!(result_ipaddr == 127.0.0.4)) {
 	test_fail
 }
 

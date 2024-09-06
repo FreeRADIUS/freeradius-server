@@ -3,7 +3,7 @@
 #
 #  Not really, but it's a way to test cross-protocol issues
 #
-&Proto.radius.User-Name = 'uid'
-&Password.With-Header = 'userPassword'
+Proto.radius.User-Name = 'uid'
+Password.With-Header = 'userPassword'
 
 success

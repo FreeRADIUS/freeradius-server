@@ -2,9 +2,9 @@
 #  Everything null
 #
 string result_string
-&request -= &Filter-Id[*]
-&request -= &NAS-Identifier[*]
+request -= Filter-Id[*]
+request -= NAS-Identifier[*]
 
-&result_string := "%{&Filter-Id[0] || &NAS-Identifier[0]}%delay_10s()"
+result_string := "%{Filter-Id[0] || NAS-Identifier[0]}%delay_10s()"
 
 success

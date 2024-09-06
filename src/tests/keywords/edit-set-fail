@@ -4,20 +4,20 @@
 #  It should still nuke the LHS attributes
 #
 
-&NAS-Port := 1812
-if !(&NAS-Port == 1812) {
+NAS-Port := 1812
+if !(NAS-Port == 1812) {
 	test_fail
 }
 
 #
 #  Service-Type doesn't exist, so the ":=" means "delete everything"
 #
-&NAS-Port := (integer) &Service-Type
+NAS-Port := (integer) Service-Type
 
 #
 #  This should no longer exist.
 #
-if &NAS-Port {
+if NAS-Port {
 	test_fail
 }
 

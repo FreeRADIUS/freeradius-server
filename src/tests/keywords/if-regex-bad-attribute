@@ -5,13 +5,13 @@
 #
 #  This should parse
 #
-if (&User-Name =~ /%{User-Name}/) {
+if (User-Name =~ /%{User-Name}/) {
 	ok
 }
 
 #
 #  Check regexes which refer to unknown attributes
 #
-if (&User-Name =~ /%{What-The-Heck-Is-This-Thing}/) {	# ERROR
+if (User-Name =~ /%{What-The-Heck-Is-This-Thing}/) {	# ERROR
 	ok
 }

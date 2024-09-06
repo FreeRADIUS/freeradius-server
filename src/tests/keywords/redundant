@@ -6,44 +6,44 @@
 #
 uint32 count
 
-&count := 0
-&request += {
-	&NAS-Port = 0
-	&NAS-Port = 1
-	&NAS-Port = 2
-	&NAS-Port = 3
-	&NAS-Port = 4
-	&NAS-Port = 5
-	&NAS-Port = 6
-	&NAS-Port = 7
-	&NAS-Port = 8
-	&NAS-Port = 9
+count := 0
+request += {
+	NAS-Port = 0
+	NAS-Port = 1
+	NAS-Port = 2
+	NAS-Port = 3
+	NAS-Port = 4
+	NAS-Port = 5
+	NAS-Port = 6
+	NAS-Port = 7
+	NAS-Port = 8
+	NAS-Port = 9
 }
 
 redundant {
 	uint32 foo
 
 	group {
-		&foo := 1
+		foo := 1
 		fail
 	}
 
 	group {
-		if !(&foo == 1) {
+		if !(foo == 1) {
 			test_fail
 		}
 		success
 	}
 }
 
-if (!&reply.Result-Status) {
+if (!reply.Result-Status) {
 	test_fail
 }
 
 #
 #  Loop 0..9
 #
-foreach &NAS-Port {
+foreach NAS-Port {
 	redundant {
 		group {
 			# fail on even numbered values, succeed on odd numbered ones
@@ -51,9 +51,9 @@ foreach &NAS-Port {
 				fail
 			}
 			else {
-				&count += 1
-				&request += {
-					&Reply-Message = "Succeed odd %{Foreach-Variable-0} %{count}"
+				count += 1
+				request += {
+					Reply-Message = "Succeed odd %{Foreach-Variable-0} %{count}"
 				}
 				ok
 			}
@@ -64,9 +64,9 @@ foreach &NAS-Port {
 				fail
 			}
 			else {
-				&count += 1
-				&request += {
-					&Reply-Message = "Succeed even %{Foreach-Variable-0} %{count}"
+				count += 1
+				request += {
+					Reply-Message = "Succeed even %{Foreach-Variable-0} %{count}"
 				}
 				ok
 			}
@@ -74,7 +74,7 @@ foreach &NAS-Port {
 	}
 }
 
-if (!(&count == %{NAS-Port[#]})) {
+if (!(count == %{NAS-Port[#]})) {
 	test_fail
 }
 

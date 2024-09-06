@@ -5,24 +5,24 @@
 #
 uint32 index
 
-&request += {
-	&Class = 0x01020304,
-	&Class = 0x05060708,
-	&Class = 0x090a0b0c,
+request += {
+	Class = 0x01020304,
+	Class = 0x05060708,
+	Class = 0x090a0b0c,
 }
 
 #
 #  Computed indexes, with some limitations
 #
-&index := 1
+index := 1
 
-if (&Class[%{&index - 1}] != 0x01020304) {
+if (Class[%{index - 1}] != 0x01020304) {
 	test_fail
 }
 
-&index := 4
+index := 4
 
-if (&Class[%{&index - 2}] != 0x090a0b0c) {
+if (Class[%{index - 2}] != 0x090a0b0c) {
 	test_fail
 }
 

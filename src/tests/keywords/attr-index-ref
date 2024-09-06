@@ -1,40 +1,40 @@
 #
 #  PRE: attr-index
 #
-#  Tests for using attribute references as array &index
+#  Tests for using attribute references as array index
 #
 uint32 index
 
-&request += {
-	&Class = 0x01020304,
-	&Class = 0x05060708,
-	&Class = 0x090a0b0c,
+request += {
+	Class = 0x01020304,
+	Class = 0x05060708,
+	Class = 0x090a0b0c,
 }
 
-&index := 1
+index := 1
 
-if (&Class[&index] != 0x05060708) {
+if (Class[index] != 0x05060708) {
 	test_fail
 }
 
-&index := 0
+index := 0
 
-if (&Class[&index] != 0x01020304) {
+if (Class[index] != 0x01020304) {
 	test_fail
 }
 
-&index := 2
+index := 2
 
-if (&Class[&index] != 0x090a0b0c) {
+if (Class[index] != 0x090a0b0c) {
 	test_fail
 }
 
 #
 #  This one doesn't exist.
 #
-&index := 3
+index := 3
 
-if (&Class[&index]) {
+if (Class[index]) {
 	test_fail
 }
 

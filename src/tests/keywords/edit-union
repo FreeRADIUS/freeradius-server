@@ -8,23 +8,23 @@
 #	= A' UNION B' if A and B are lists
 #
 
-&Reply-Message := "foo"
-&control.Reply-Message := "bar"
+Reply-Message := "foo"
+control.Reply-Message := "bar"
 
 # union
-&request |= &control
+request |= control
 
-if (!&Reply-Message) {
+if (!Reply-Message) {
 	test_fail
 }
 
 # The original value should be unchanged
-if (!(&Reply-Message[0] == "foo")) {
+if (!(Reply-Message[0] == "foo")) {
 	test_fail
 }
 
 #  and the new value should be there, too
-if (!(&Reply-Message[1] == "bar")) {
+if (!(Reply-Message[1] == "bar")) {
 	test_fail
 }
 

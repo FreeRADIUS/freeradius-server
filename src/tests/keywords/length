@@ -15,7 +15,7 @@ uint64 test_int64
 ipv4prefix test_ipv4prefix
 uint32 result_int
 
-&test_string := '\
+test_string := '\
 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz\
 abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'
@@ -24,94 +24,94 @@ if (!(%length(%{test_string}) == 260)) {
 	test_fail
 }
 
-&test_string := '9870'
-&test_octets := 0x39383731
-&test_ipaddr := 57.56.55.50
-&test_integer := 959985460
-&test_ifid := '0000:0000:3938:3737'
-&test_ipv6addr := '::3938:3738'
-&test_ipv6prefix = '::3938:3739/128'
-&test_byte := 58
-&test_short := 14139
-&test_ether := 00:00:39:38:37:3c
-&test_int64 := 1152921505566832445
-&test_ipv4prefix := 57.56.55.62/32
+test_string := '9870'
+test_octets := 0x39383731
+test_ipaddr := 57.56.55.50
+test_integer := 959985460
+test_ifid := '0000:0000:3938:3737'
+test_ipv6addr := '::3938:3738'
+test_ipv6prefix = '::3938:3739/128'
+test_byte := 58
+test_short := 14139
+test_ether := 00:00:39:38:37:3c
+test_int64 := 1152921505566832445
+test_ipv4prefix := 57.56.55.62/32
 
 # String - bin 0x39383730
-&result_int := %length(%{test_string})
-if (!(&result_int == 4)) {
+result_int := %length(%{test_string})
+if (!(result_int == 4)) {
 	test_fail
 }
 
 # Octets - bin 0x39383731
-&result_int := %length(%{test_octets})
-if (!(&result_int == 4)) {
+result_int := %length(%{test_octets})
+if (!(result_int == 4)) {
 	test_fail
 }
 
 # IP Address - bin 0x39383732
-&result_int := %length(%{test_ipaddr})
-if (!(&result_int == 4)) {
+result_int := %length(%{test_ipaddr})
+if (!(result_int == 4)) {
 	test_fail
 }
 
 # String - "hello, world"
-&result_int := %length('hello, world')
-if (!(&result_int == 12)) {
+result_int := %length('hello, world')
+if (!(result_int == 12)) {
 	test_fail
 }
 
 # Integer - bin 0x39383734
-&result_int := %length(%{test_integer})
-if (!(&result_int == 4)) {
+result_int := %length(%{test_integer})
+if (!(result_int == 4)) {
 	test_fail
 }
 
 # ifid - bin 0x0000000039383737
-&result_int := %length(%{test_ifid})
-if (!(&result_int == 8)) {
+result_int := %length(%{test_ifid})
+if (!(result_int == 8)) {
 	test_fail
 }
 
 # ipv6addr - bin 0x00000000000000000000000039383738
-&result_int := %length(%{test_ipv6addr})
-if (!(&result_int == 16)) {
+result_int := %length(%{test_ipv6addr})
+if (!(result_int == 16)) {
 	test_fail
 }
 
 # ipv6addrprefix - bin 0x8000000000000000000000000039383739
-&result_int := %length(%{test_ipv6prefix})
-if (!(&result_int == 17)) {
+result_int := %length(%{test_ipv6prefix})
+if (!(result_int == 17)) {
 	test_fail
 }
 
 # byte - bin 0x3a
-&result_int := %length(%{test_byte})
-if (!(&result_int == 1)) {
+result_int := %length(%{test_byte})
+if (!(result_int == 1)) {
 	test_fail
 }
 
 # short - bin 0x373b
-&result_int := %length(%{test_short})
-if (!(&result_int == 2)) {
+result_int := %length(%{test_short})
+if (!(result_int == 2)) {
 	test_fail
 }
 
 # ethernet - bin 0x00003938373c
-&result_int := %length(%{test_ether})
-if (!(&result_int == 6)) {
+result_int := %length(%{test_ether})
+if (!(result_int == 6)) {
 	test_fail
 }
 
 # integer64 - bin 0x100000003938373d
-&result_int := %length(%{test_int64})
-if (!(&result_int == 8)) {
+result_int := %length(%{test_int64})
+if (!(result_int == 8)) {
 	test_fail
 }
 
 # ipv4prefix - bin 0x203938373e
-&result_int := %length(%{test_ipv4prefix})
-if (!(&result_int == 5)) {
+result_int := %length(%{test_ipv4prefix})
+if (!(result_int == 5)) {
 	test_fail
 }
 

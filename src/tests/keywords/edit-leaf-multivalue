@@ -1,39 +1,39 @@
 #
 # PRE: edit
 #
-&Filter-Id := {
+Filter-Id := {
 	"foo %{User-Name}",
 	"bar",
 	"baz",
-	&User-Name
+	User-Name
 }
 
 if (!(%{request.Filter-Id[#]} == 4)) {
 	test_fail
 }
 
-if (!(&Filter-Id[0] == "foo bob")) {
+if (!(Filter-Id[0] == "foo bob")) {
 	test_fail
 }
 
-if (!(&Filter-Id[1] == "bar")) {
+if (!(Filter-Id[1] == "bar")) {
 	test_fail
 }
 
-if (!(&Filter-Id[2] == "baz")) {
+if (!(Filter-Id[2] == "baz")) {
 	test_fail
 }
 
-if (!(&Filter-Id[3] == "bob")) {
+if (!(Filter-Id[3] == "bob")) {
 	test_fail
 }
 
 #
 #  And test non-string things
 #
-&Filter-Id := "127"
+Filter-Id := "127"
 
-&Framed-IP-Address := {
+Framed-IP-Address := {
 	"%{Filter-Id}.0.0.1",
 	192.0.2.1
 }
@@ -42,11 +42,11 @@ if (!(%{request.Framed-IP-Address[#]} == 2)) {
 	test_fail
 }
 
-if (!(&Framed-IP-Address[0] == 127.0.0.1)) {
+if (!(Framed-IP-Address[0] == 127.0.0.1)) {
 	test_fail
 }
 
-if (!(&Framed-IP-Address[1] == 192.0.2.1)) {
+if (!(Framed-IP-Address[1] == 192.0.2.1)) {
 	test_fail
 }
 

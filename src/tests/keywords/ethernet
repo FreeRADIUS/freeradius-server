@@ -1,21 +1,21 @@
 octets test_octets
 ether test_ether
 
-&test_octets := 0x001122334456
+test_octets := 0x001122334456
 
-&test_ether = &test_octets
+test_ether = test_octets
 
-if (!(&test_ether == 00:11:22:33:44:56)) {
+if (!(test_ether == 00:11:22:33:44:56)) {
 	test_fail
 }
 
 # invalid assignment
 # this will silently fail with a no Module-Failure-Message.
 transaction {
-	&test_ether := %{Class[42]}
+	test_ether := %{Class[42]}
 }
 
-if (&test_ether) {
+if (test_ether) {
 	test_fail
 }
 

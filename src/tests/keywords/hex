@@ -16,104 +16,104 @@ ipv4prefix test_ipv4prefix
 
 string result_string
 
-&test_string		:= '9870'
-&test_octets		:= 0x39383731
-&test_ipaddr		:= 57.56.55.50
-&test_integer		:= 959985460
-&test_ifid		:= '0000:0000:3938:3737'
-&test_ipv6addr		:= '::3938:3738'
-&test_ipv6prefix	:= '::3938:3739/128'
-&test_byte		:= 58
-&test_short		:= 14139
-&test_ether		:= 00:00:39:38:37:3c
-&test_int64	 	:= 1152921505566832445
-&test_ipv4prefix	:= 57.56.55.62/32
+test_string		:= '9870'
+test_octets		:= 0x39383731
+test_ipaddr		:= 57.56.55.50
+test_integer		:= 959985460
+test_ifid		:= '0000:0000:3938:3737'
+test_ipv6addr		:= '::3938:3738'
+test_ipv6prefix	:= '::3938:3739/128'
+test_byte		:= 58
+test_short		:= 14139
+test_ether		:= 00:00:39:38:37:3c
+test_int64	 	:= 1152921505566832445
+test_ipv4prefix	:= 57.56.55.62/32
 
 # String
-&result_string := %hex(%{test_string})
-if (!(&result_string == '39383730')) {
+result_string := %hex(%{test_string})
+if (!(result_string == '39383730')) {
 	test_fail
 }
 
 # Octets
-&result_string := %hex(%{test_octets})
-if (!(&result_string == '39383731')) {
+result_string := %hex(%{test_octets})
+if (!(result_string == '39383731')) {
 	test_fail
 }
 
 # IP Address
-&result_string := %hex(%{test_ipaddr})
-if (!(&result_string == '39383732')) {
+result_string := %hex(%{test_ipaddr})
+if (!(result_string == '39383732')) {
 	test_fail
 }
 
 # Integer
-&result_string := %hex(%{test_integer})
-if (!(&result_string == '39383734')) {
+result_string := %hex(%{test_integer})
+if (!(result_string == '39383734')) {
 	test_fail
 }
 
 # ifid
-&result_string := %hex(%{test_ifid})
-if (!(&result_string == '0000000039383737')) {
+result_string := %hex(%{test_ifid})
+if (!(result_string == '0000000039383737')) {
 	test_fail
 }
 
 # ipv6addr
-&result_string := %hex(%{test_ipv6addr})
-if (!(&result_string == '00000000000000000000000039383738')) {
+result_string := %hex(%{test_ipv6addr})
+if (!(result_string == '00000000000000000000000039383738')) {
 	test_fail
 }
 
 # ipv6addrprefix
-&result_string := %hex(%{test_ipv6prefix})
-if (!(&result_string == '008000000000000000000000000039383739')) {
+result_string := %hex(%{test_ipv6prefix})
+if (!(result_string == '008000000000000000000000000039383739')) {
 	test_fail
 }
 
 # byte
-&result_string := %hex(%{test_byte})
-if (!(&result_string == '3a')) {
+result_string := %hex(%{test_byte})
+if (!(result_string == '3a')) {
 	test_fail
 }
 
 # short
-&result_string := %hex(%{test_short})
-if (!(&result_string == '373b')) {
+result_string := %hex(%{test_short})
+if (!(result_string == '373b')) {
 	test_fail
 }
 
 # ethernet
-&result_string := %hex(%{test_ether})
-if (!(&result_string == '00003938373c')) {
+result_string := %hex(%{test_ether})
+if (!(result_string == '00003938373c')) {
 	test_fail
 }
 
 # integer64
-&result_string := %hex(%{test_int64})
-if (!(&result_string == '100000003938373d')) {
+result_string := %hex(%{test_int64})
+if (!(result_string == '100000003938373d')) {
 	test_fail
 }
 
 # ipv4prefix
-&result_string := %hex(%{test_ipv4prefix})
-if (!(&result_string == '203938373e')) {
+result_string := %hex(%{test_ipv4prefix})
+if (!(result_string == '203938373e')) {
 	test_fail
 }
 
-&request += {
-	&Class = 0x0101
-	&Class = 0x010203
-	&Class = 0x0405
+request += {
+	Class = 0x0101
+	Class = 0x010203
+	Class = 0x0405
 }
 
-&NAS-Identifier := %hex(%{Class[*]})
+NAS-Identifier := %hex(%{Class[*]})
 
-if (&NAS-Identifier[#] != 3) {
+if (NAS-Identifier[#] != 3) {
 	test_fail
 }
 
-if !((&NAS-Identifier[0] == '0101') && (&NAS-Identifier[1] == '010203') && (&NAS-Identifier[2] == '0405')) {
+if !((NAS-Identifier[0] == '0101') && (NAS-Identifier[1] == '010203') && (NAS-Identifier[2] == '0405')) {
 	test_fail
 }
 

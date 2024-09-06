@@ -1,17 +1,17 @@
 uint32 foo
 
-&foo := 42
+foo := 42
 
-if !(&foo == 42) {
+if !(foo == 42) {
 	test_fail
 }
 
 #
 #  This is "delete"
 #
-&foo := {}
+foo := {}
 
-if &foo {
+if foo {
 	test_fail
 }
 success

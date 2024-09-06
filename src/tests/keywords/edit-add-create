@@ -7,34 +7,34 @@ uint32 test_integer2
 uint32 test_integer3
 group test_group
 
-&test_integer1 += 4
-if !(&test_integer1 == 4) {
+test_integer1 += 4
+if !(test_integer1 == 4) {
 	test_fail
 }
 
 
-&test_string += "bar"
-if !(&test_string == "bar") {
+test_string += "bar"
+if !(test_string == "bar") {
 	test_fail
 }
 
-&test_group += {
-	&Filter-Id = "foo"
+test_group += {
+	Filter-Id = "foo"
 }
 
-if !&test_group {
+if !test_group {
 	test_fail
 }
 
-if !(&test_group.Filter-Id == "foo") {
+if !(test_group.Filter-Id == "foo") {
 	test_fail
 }
 
-&test_integer2 := 3
-&test_integer3 := 4
+test_integer2 := 3
+test_integer3 := 4
 
-&test_integer1 += &test_integer3 - &test_integer2
-if !(&test_integer1 == 5) {
+test_integer1 += test_integer3 - test_integer2
+if !(test_integer1 == 5) {
 	test_fail
 }
 

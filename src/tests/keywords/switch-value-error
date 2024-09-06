@@ -1,7 +1,7 @@
 #
 #  PRE: switch
 #
-switch &Service-Type {
+switch Service-Type {
 	case Login-User {
 		test_fail
 	}

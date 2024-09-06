@@ -2,14 +2,14 @@ string foo
 string bar
 string baz
 
-&baz = "a,b,c,d,e"
+baz = "a,b,c,d,e"
 
 #
 #  Append, don't create multiple versions
 #
-&bar += %explode(%{baz}, ',')
+bar += %explode(%{baz}, ',')
 
-if !(&bar == "abcde") {
+if !(bar == "abcde") {
 	test_fail
 }
 
@@ -19,50 +19,50 @@ if !(&bar == "abcde") {
 #  We cannot have multiple copies of local variables.  There's no real
 #  reason why, but for now it's safer to be limited.
 #
-&foo := %explode(%{baz}, ',')
-if !(&foo[#] == 1) {
+foo := %explode(%{baz}, ',')
+if !(foo[#] == 1) {
 	test_fail
 }
 
 #
 #  Append
 #
-&Reply-Message = "foo"
+Reply-Message = "foo"
 
-&Reply-Message += { "a", "b", "c" }
+Reply-Message += { "a", "b", "c" }
 
 #
 #  This seems wrong and inconsistent with Filter-Id below???
 #
-if !(&Reply-Message == "fooabc") {
+if !(Reply-Message == "fooabc") {
 	test_fail
 }
 
-&Filter-Id := { "a", "b", "c" }
-if !(&Filter-Id[#] == 3) {
+Filter-Id := { "a", "b", "c" }
+if !(Filter-Id[#] == 3) {
 	test_fail
 }
 
 #
 #  List by reference
 #
-&foo := ""
-&foo += &Filter-Id[*]
-if !(&foo == "abc") {
+foo := ""
+foo += Filter-Id[*]
+if !(foo == "abc") {
 	test_fail
 }
 
-&request -= &Reply-Message
+request -= Reply-Message
 
 #
 #  Attribute references in in-place lists work.
 #
-&Reply-Message := { &Filter-ID[2], &Filter-ID[1], &Filter-ID[0] }
-if !(&Reply-Message[#] == 3) {
+Reply-Message := { Filter-ID[2], Filter-ID[1], Filter-ID[0] }
+if !(Reply-Message[#] == 3) {
 	test_fail
 }
 
-if (&Reply-Message[0] != 'c') {
+if (Reply-Message[0] != 'c') {
 	test_fail
 }
 
@@ -70,9 +70,9 @@ if (&Reply-Message[0] != 'c') {
 #  This would make sense, but it doesn't work.  Instead it says:
 #
 #   Missing attribute value
-#   Failed creating map from '&Reply-Message = (null)'
+#   Failed creating map from 'Reply-Message = (null)'
 #
-#&Tmp-Group-0 := { &Reply-Message, &Filter-Id }
+#Tmp-Group-0 := { Reply-Message, Filter-Id }
 
 
 success

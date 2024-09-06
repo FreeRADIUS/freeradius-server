@@ -4,26 +4,26 @@ uint32 two
 #
 #  PRE: edit
 #
-&one := 4
-&two := 5
+one := 4
+two := 5
 
 #
 #  First modification succeeds.  The second modification fails, which
 #  also reverts the changes to the first one.
 #
 transaction {
-	&one += 5
-	&two -= 16	# Run-time underflow!
+	one += 5
+	two -= 16	# Run-time underflow!
 }
 
 #
 #  The various edits above should have been reverted.
 #
-if !(&one == 4) {
+if !(one == 4) {
 	test_fail
 }
 
-if !(&two == 5) {
+if !(two == 5) {
 	test_fail
 }
 success

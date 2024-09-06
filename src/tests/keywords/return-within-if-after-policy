@@ -6,7 +6,7 @@
 if ('true' == 'true') {
 	accept
 	success
-	if(&User-Name == 'bob') {
+	if(User-Name == 'bob') {
 		%debug(%debug(0))	# Noop
 		return
 	}

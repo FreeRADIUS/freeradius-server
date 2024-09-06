@@ -2,13 +2,13 @@
 #  User-Name is "bob", and a switch statement
 #  with no "default" should not crash the server.
 #
-switch &User-Name {
+switch User-Name {
 	case "doug" {
-		&Filter-Id := "doug"
+		Filter-Id := "doug"
 	}
 }
 
-if (&reply.Filter-Id) {
+if (reply.Filter-Id) {
 	test_fail
 }
 

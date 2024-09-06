@@ -2,17 +2,17 @@
 #  PRE: map
 #
 
-&control.Filter-Id := "fail"
+control.Filter-Id := "fail"
 
-map csv &User-Name {
-	&control.Filter-Id ^= 'field3'
+map csv User-Name {
+	control.Filter-Id ^= 'field3'
 }
 
-if (!(&control.Filter-Id[0] == 'success')) {
+if (!(control.Filter-Id[0] == 'success')) {
 	test_fail
 }
 
-if (!(&control.Filter-Id[1] == "fail")) {
+if (!(control.Filter-Id[1] == "fail")) {
 	test_fail
 }
 

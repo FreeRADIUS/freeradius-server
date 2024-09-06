@@ -2,7 +2,7 @@
 # PRE: if if-regex-match
 #
 
-if !(&control.Password.Cleartext =~ /hell(o)(.*)/) {
+if !(control.Password.Cleartext =~ /hell(o)(.*)/) {
 	test_fail
 }
 
@@ -20,7 +20,7 @@ if ("%{2}") {
 	test_fail
 }
 
-if !(&control.Password.Cleartext =~ /hello(.*)/) {
+if !(control.Password.Cleartext =~ /hello(.*)/) {
 	test_fail
 }
 
@@ -34,15 +34,15 @@ if ("%{1}") {
 #
 #  Check assignment of regex null-match
 #
-if (&control.Password.Cleartext =~ /hell(o)(.*)/) {
-	&control.Filter-Id := "%{2}"
+if (control.Password.Cleartext =~ /hell(o)(.*)/) {
+	control.Filter-Id := "%{2}"
 }
 
-if (!&control.Filter-Id) {
+if (!control.Filter-Id) {
 	test_fail
 }
 
-if (!(&control.Filter-Id == "")) {
+if (!(control.Filter-Id == "")) {
 	test_fail
 }
 

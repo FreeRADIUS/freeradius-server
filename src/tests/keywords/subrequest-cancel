@@ -3,22 +3,22 @@ string bar
 
 # Cancel in subrequest
 subrequest ::Access-Request {
-	&parent.foo := 'testing'
+	parent.foo := 'testing'
 
 	# Immediately cancel the subrequest
 	%cancel(0)
 
-	&parent.bar := 'should not see me'
+	parent.bar := 'should not see me'
 
 	# We should've been cancelled here
 	test_fail
 }
 
-if (!(&foo == 'testing')) {
+if (!(foo == 'testing')) {
 	test_fail
 }
 
-if (&bar == 'should not see me') {
+if (bar == 'should not see me') {
 	test_fail
 }
 success
