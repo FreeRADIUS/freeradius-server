@@ -3,7 +3,7 @@
 #
 expiration {
 	if (&control.Expiration) {
-		time_delta timeout
+		time_delta when
 
 		#
 		#  %l is "when the server received the request"
@@ -13,8 +13,8 @@ expiration {
 			return
 		}
 
-		&timeout = &control.Expiration - %l
+		&when = &control.Expiration - %l
 
-		&reply.Session-Timeout <= &timeout
+		&reply.Session-Timeout <= &when
 	}
 }
