@@ -353,21 +353,6 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	return 0;
 }
 
-static int _sql_socket_destructor(rlm_sql_sqlite_conn_t *conn)
-{
-	int status = 0;
-
-	DEBUG2("Socket destructor called, closing socket");
-
-	if (conn->db) {
-		status = sqlite3_close(conn->db);
-		if (status != SQLITE_OK) WARN("Got SQLite error when closing socket: %s",
-					      sqlite3_errmsg(conn->db));
-	}
-
-	return 0;
-}
-
 static void _sql_greatest(sqlite3_context *ctx, int num_values, sqlite3_value **values)
 {
 	int i;
@@ -383,99 +368,72 @@ static void _sql_greatest(sqlite3_context *ctx, int num_values, sqlite3_value **
 	sqlite3_result_int64(ctx, max);
 }
 
-static sql_rcode_t CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
-					    UNUSED fr_time_delta_t timeout)
+static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
-	rlm_sql_sqlite_conn_t	*conn;
-	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(handle->inst->driver_submodule->data, rlm_sql_sqlite_t);
+	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
+	rlm_sql_sqlite_t	*inst = talloc_get_type_abort(sql->driver_submodule->data, rlm_sql_sqlite_t);
+	rlm_sql_sqlite_conn_t	*c;
+	rlm_sql_config_t const	*config = &sql->config;
+	int			status;
 
-	int status;
-
-	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_sqlite_conn_t));
-	talloc_set_destructor(conn, _sql_socket_destructor);
+	MEM(c = talloc_zero(conn, rlm_sql_sqlite_conn_t));
 
 	INFO("Opening SQLite database \"%s\"", inst->filename);
-	status = sqlite3_open_v2(inst->filename, &(conn->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
+	status = sqlite3_open_v2(inst->filename, &(c->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
 
-	if (!conn->db || (sql_check_error(conn->db, status) != RLM_SQL_OK)) {
-		sql_print_error(conn->db, status, "Error opening SQLite database \"%s\"", inst->filename);
+	if (!c->db || (sql_check_error(c->db, status) != RLM_SQL_OK)) {
+		sql_print_error(c->db, status, "Error opening SQLite database \"%s\"", inst->filename);
 		if (!inst->bootstrap) {
 			INFO("Use the sqlite driver 'bootstrap' option to automatically create the database file");
 		}
-		return RLM_SQL_ERROR;
+	error:
+		talloc_free(c);
+		return CONNECTION_STATE_FAILED;
 	}
-	status = sqlite3_busy_timeout(conn->db, fr_time_delta_to_sec(config->query_timeout));
-	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
-		sql_print_error(conn->db, status, "Error setting busy timeout");
-		return RLM_SQL_ERROR;
+	status = sqlite3_busy_timeout(c->db, fr_time_delta_to_sec(config->query_timeout));
+	if (sql_check_error(c->db, status) != RLM_SQL_OK) {
+		sql_print_error(c->db, status, "Error setting busy timeout");
+		goto error;
 	}
 
 	/*
 	 *	Enable extended return codes for extra debugging info.
 	 */
-	status = sqlite3_extended_result_codes(conn->db, 1);
-	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
-		sql_print_error(conn->db, status, "Error enabling extended result codes");
-		return RLM_SQL_ERROR;
+	status = sqlite3_extended_result_codes(c->db, 1);
+	if (sql_check_error(c->db, status) != RLM_SQL_OK) {
+		sql_print_error(c->db, status, "Error enabling extended result codes");
+		goto error;
 	}
 
-	status = sqlite3_create_function_v2(conn->db, "GREATEST", -1, SQLITE_ANY, NULL,
+	status = sqlite3_create_function_v2(c->db, "GREATEST", -1, SQLITE_ANY, NULL,
 					    _sql_greatest, NULL, NULL, NULL);
-
-	if (sql_check_error(conn->db, status) != RLM_SQL_OK) {
-		sql_print_error(conn->db, status, "Failed registering 'GREATEST' sql function");
-		return RLM_SQL_ERROR;
+	if (sql_check_error(c->db, status) != RLM_SQL_OK) {
+		sql_print_error(c->db, status, "Failed registering 'GREATEST' sql function");
+		goto error;
 	}
 
-	return RLM_SQL_OK;
+	*h = c;
+
+	return CONNECTION_STATE_CONNECTED;
 }
 
-static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static void _sql_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_sqlite_conn_t	*conn = query_ctx->handle->conn;
-	char const		*z_tail;
-	int			status;
+	rlm_sql_sqlite_conn_t	*c = talloc_get_type_abort(h, rlm_sql_sqlite_conn_t);
+	int status = 0;
 
-	status = sqlite3_prepare_v2(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
+	DEBUG2("Socket destructor called, closing socket");
 
-	conn->col_count = 0;
-
-	query_ctx->rcode = sql_check_error(conn->db, status);
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
-	RETURN_MODULE_OK;
-}
-
-
-static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
-{
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_sqlite_conn_t	*conn = query_ctx->handle->conn;
-	char const		*z_tail;
-	int			status;
-
-	status = sqlite3_prepare_v2(conn->db, query_ctx->query_str, strlen(query_ctx->query_str), &conn->statement, &z_tail);
-	query_ctx->rcode = sql_check_error(conn->db, status);
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
-
-	status = sqlite3_step(conn->statement);
-	query_ctx->rcode = sql_check_error(conn->db, status);
-	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
-	RETURN_MODULE_OK;
-}
-
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
-{
-	rlm_sql_sqlite_conn_t *conn = handle->conn;
-
-	if (conn->statement) return sqlite3_column_count(conn->statement);
-
-	return 0;
+	if (c->db) {
+		status = sqlite3_close(c->db);
+		if (status != SQLITE_OK) WARN("Got SQLite error when closing socket: %s",
+					      sqlite3_errmsg(c->db));
+	}
 }
 
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_sqlite_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_sqlite_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_sqlite_conn_t);
 
 	int		fields, i;
 	char const	**names;
@@ -494,9 +452,8 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_handle_t	*handle = query_ctx->handle;
 	int			status, i = 0;
-	rlm_sql_sqlite_conn_t	*conn = handle->conn;
+	rlm_sql_sqlite_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_sqlite_conn_t);
 	char			**row;
 
 	TALLOC_FREE(query_ctx->row);
@@ -528,7 +485,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	 *	the number of columns won't change.
 	 */
 	if (conn->col_count == 0) {
-		conn->col_count = sql_num_fields(handle, &query_ctx->inst->config);
+		conn->col_count = sqlite3_column_count(conn->statement);
 		if (conn->col_count == 0) goto error;
 	}
 
@@ -582,7 +539,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_sqlite_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_sqlite_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_sqlite_conn_t);
 
 	if (conn->statement) {
 		TALLOC_FREE(query_ctx->row);
@@ -616,7 +573,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
 			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_sqlite_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_sqlite_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_sqlite_conn_t);
 	char const *error;
 
 	fr_assert(outlen > 0);
@@ -638,11 +595,103 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 static int sql_affected_rows(fr_sql_query_t *query_ctx,
 			     UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_sqlite_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_sqlite_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_sqlite_conn_t);
 
 	if (conn->db) return sqlite3_changes(conn->db);
 
 	return -1;
+}
+
+/** Allocate an SQL trunk connection
+ *
+ * @param[in] tconn		Trunk handle.
+ * @param[in] el		Event list which will be used for I/O and timer events.
+ * @param[in] conn_conf		Configuration of the connection.
+ * @param[in] log_prefix	What to prefix log messages with.
+ * @param[in] uctx		User context passed to trunk_alloc.
+ */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
+						connection_conf_t const *conn_conf,
+						char const *log_prefix, void *uctx)
+{
+	connection_t		*conn;
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(uctx, rlm_sql_thread_t);
+
+	conn = connection_alloc(tconn, el,
+				&(connection_funcs_t){
+					.init = _sql_connection_init,
+					.close = _sql_connection_close
+				},
+				conn_conf, log_prefix, thread->inst);
+	if (!conn) {
+		PERROR("Failed allocating state handler for new SQL connection");
+		return NULL;
+	}
+
+	return conn;
+}
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
+static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				  connection_t *conn, UNUSED void *uctx)
+{
+	rlm_sql_sqlite_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_sqlite_conn_t);
+	trunk_request_t		*treq;
+	request_t		*request;
+	fr_sql_query_t		*query_ctx;
+	int			status;
+	char const		*z_tail;
+
+	if (trunk_connection_pop_request(&treq, tconn) != 0) return;
+	if (!treq) return;
+
+	query_ctx = talloc_get_type_abort(treq->preq, fr_sql_query_t);
+	request = query_ctx->request;
+	query_ctx->tconn = tconn;
+
+	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
+	status = sqlite3_prepare_v2(sql_conn->db, query_ctx->query_str, strlen(query_ctx->query_str),
+				    &sql_conn->statement, &z_tail);
+	query_ctx->rcode = sql_check_error(sql_conn->db, status);
+	if (query_ctx->rcode != RLM_SQL_OK) {
+	error:
+		query_ctx->status = SQL_QUERY_FAILED;
+		trunk_request_signal_fail(treq);
+		return;
+	}
+
+	if (query_ctx->type == SQL_QUERY_OTHER) {
+		status = sqlite3_step(sql_conn->statement);
+		query_ctx->rcode = sql_check_error(sql_conn->db, status);
+		if (query_ctx->rcode == RLM_SQL_ERROR) goto error;
+	}
+
+	trunk_request_signal_reapable(treq);
+}
+
+static unlang_action_t sql_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+
+	if (query_ctx->rcode == RLM_SQL_OK) RETURN_MODULE_OK;
+	RETURN_MODULE_FAIL;
+}
+
+static void sql_request_fail(UNUSED request_t *request, void *preq, UNUSED void *rctx,
+			     UNUSED trunk_request_state_t state, UNUSED void *uctx)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
+
+	query_ctx->treq = NULL;
+	query_ctx->rcode = RLM_SQL_ERROR;
+}
+
+static void sql_request_complete(UNUSED request_t *request, void *preq, UNUSED void *rctx, UNUSED void *uctx)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
+
+	sql_free_result(query_ctx, NULL);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -787,14 +836,20 @@ rlm_sql_driver_t rlm_sql_sqlite = {
 		.instantiate			= mod_instantiate
 	},
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
-	.sql_socket_init		= sql_socket_init,
-	.sql_query			= sql_query,
-	.sql_select_query		= sql_select_query,
+	.sql_query_resume		= sql_query_resume,
+	.sql_select_query_resume	= sql_query_resume,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_fields			= sql_fields,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_query
+	.sql_finish_select_query	= sql_finish_query,
+	.uses_trunks			= true,
+	.trunk_io_funcs = {
+		.connection_alloc	= sql_trunk_connection_alloc,
+		.request_mux		= sql_trunk_request_mux,
+		.request_complete	= sql_request_complete,
+		.request_fail		= sql_request_fail
+	}
 };
