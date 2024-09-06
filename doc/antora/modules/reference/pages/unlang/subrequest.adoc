@@ -10,15 +10,22 @@ subrequest <type> {
 
 The `subrequest` keyword creates a child request.  The child request
 is empty, and contains no attributes.  Attributes in the child can be
-copied from the parent via the xref:unlang/update.adoc[update] keyword.
+copied from the parent via xref:unlang/edit.adoc[editing] statements.
 Please see the xref:unlang/list.adoc[list] syntax for a description of how to
 refer to parent requests.
+
+The `subrequest` keyword allows the server to receive one type of
+packet, and then to create a different type of packet.  `subrequest`
+is most commonly used in conjunction with the
+xref:unlang/call.adoc[call] keyword to change packet types or
+protocols, and then run a different virtual server.  See the
+"Operation" section below for more information.
 
 <type>:: The type of the child request being created.
 +
 The _<type>_ field is a either an enumerated packet name such as `::Access-Request`,
 or a protocol name followed by a packet name, such as
-`dhcpv4.Discover`.  Please see the protocol dictionaries for a
+`dhcpv4::Discover`.  Please see the protocol dictionaries for a
 complete list of packet types for each protocol.
 +
 The _<type>_ field cannot be a dynamic expansion.
@@ -40,21 +47,10 @@ section.  When the child request has finished execution, it is freed.
 The return code of the `subrequest` section is the return code from
 the last statement that was executed.
 
-The `subrequest` keyword allows the server to receive one type of
-packet, and then to create a different type of packet.  For example,
-the server can receive an `Accounting-Request` packet, and then create
-a child request that is a `Disconnect-Request`.  That child request can then
-be sent to a NAS in order to disconnect a user.
-
-In previous versions of the server, child requests could be created only
-via the `update coa` syntax.  The `subrequest` keyword is much more
-powerful than the previous functionality.  It can be used anywhere,
-and can create any kind of packet.
-
 .Example
 [source,unlang]
 ----
-subrequest Disconnect-Request {
+subrequest ::Disconnect-Request {
     &User-Name := &parent.request.User-Name
     &NAS-IP-Address := &parent.request.NAS-IP-Address
     &NAS-Port := &parent.request.NAS-Port
@@ -75,12 +71,65 @@ parsed in the context of the new protocol.
 .Example
 [source,unlang]
 ----
-subrequest dhcpv4.Discover {
+subrequest dhcpv4::Discover {
     &Your-IP-Address := &parent.request.Framed-IP-Address
 
     ...
 }
 ----
+
+== Operation
+
+The `subrequest` keyword is an generalization of functionality which
+was in version 3.  In previous versions of the server, child requests
+could be created only via the `update coa` syntax.  The `subrequest`
+keyword is much more powerful than the previous functionality.  It can
+be used anywhere, and can create any kind of packet.
+
+The main purpose of a `subrequest` is to change packet types, or
+protocols.  For example, when a user is authenticated it is sometimes
+useful to start an accounting session for that user immediately.  In
+normal operations, accounting sessions are started when an accounting
+packet is received, but those packets may be delayed for seconds, or
+may be missing altogether.
+
+The solution to this problem is to start an accounting session
+immediately when the user is authenticated.  However, any "ad hoc" way
+of starting a session is likely to miss some critical step which is
+done for normal accounting packets.  The best approach, then, is to
+use the normal accounting process to create the user session.
+
+However, if the incoming packet is `Access-Request`, then it clearly
+cannot be used as part of an accounting policy.  The way to solve this
+problem is `subrequest`.
+
+When the user is authenticated and the system determines it needs to
+start an accounting session for the user, the `unlang` policies can
+take the following steps:
+
+* use `subrequest` to create an `Accounting-Request` packet
+
+* use xref:unlang/edit.adoc[edit] statement to populate the `Accounting-Request` with information about the user session
+
+* use xref:unlang/call.adoc[call] to call the server which handles `Accounting-Request` packets.
+
+The result is a policy which cannot ever go wrong.  The fake "start
+accounting" packet is run through _exactly the same policies_ as a
+normal accounting packet.  There is no way for the real and fake
+policies to get out of synchronization, as there is no difference
+between the two of them.  There is only one policy for accounting
+packets: the real one.
+
+Similar rules can be applied when the server receives
+`Accounting-Request` packets.  If the policy decides that the user has
+used "too much" data, the server can create a `Disconnect-Request`
+packet, and disconnect the users session.
+
+Or, the server can receive a DHCPv4 request, and then send a RADIUS
+packet to an external RADIUS server for MAC address authentication.
+The combination of `subrequest` and xref:unlang/call.adoc[call] means
+that the server can "mix and match" protocols in a way which is
+difficult or impossible to do with other protocol servers.
 
 == Subrequests are Synchronous
 
@@ -102,7 +151,7 @@ request, the child can no longer access any attributes in the parent.
 .Example
 [source,unlang]
 ----
-subrequest Disconnect-Request {
+subrequest ::Disconnect-Request {
     &User-Name := &parent.request.User-Name
     &NAS-IP-Address := &parent.request.NAS-IP-Address
     &NAS-Port := &parent.request.NAS-Port
