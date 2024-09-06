@@ -54,6 +54,9 @@ typedef struct {
 	fr_pair_t		*key;				//!< local variable which contains the key
 	tmpl_t const		*vpt;				//!< pointer to the vpt
 
+	bool			success;			//!< for xlat expansion
+	fr_value_box_list_t	list;				//!< value box list for looping over xlats
+
 	tmpl_dcursor_ctx_t	cc;				//!< tmpl cursor state
 
 								///< we're iterating over.
@@ -132,11 +135,11 @@ static int unlang_foreach_pair_copy(fr_pair_t *to, fr_pair_t *from, fr_dict_attr
 	return 0;
 }
 
-static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					 xlat_ctx_t const *xctx,
-					 request_t *request, UNUSED fr_value_box_list_t *in);
+static xlat_action_t unlang_foreach_xlat_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					      xlat_ctx_t const *xctx,
+					      request_t *request, UNUSED fr_value_box_list_t *in);
 
-#define FOREACH_REQUEST_DATA (void *)unlang_foreach_xlat
+#define FOREACH_REQUEST_DATA (void *)unlang_foreach_xlat_func
 
 /** Ensure request data is pulled out of the request if the frame is popped
  *
@@ -145,6 +148,8 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 {
 	if (state->key) {
 		fr_pair_t *vp;
+
+		if (tmpl_is_xlat(state->vpt)) return 0;
 
 		tmpl_dcursor_clear(&state->cc);
 
@@ -210,8 +215,94 @@ static unlang_action_t unlang_foreach_next_old(rlm_rcode_t *p_result, request_t 
 	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
+static unlang_action_t unlang_foreach_xlat_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
+	fr_value_box_t *box;
 
-static unlang_action_t unlang_foreach_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+next:
+	box = fr_dcursor_next(&state->cursor);
+	if (!box) {
+		*p_result = frame->result;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	fr_value_box_clear_value(&state->key->data);
+	if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, box) < 0) {
+		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->key->da->name, box);
+		goto next;
+	}
+
+	repeatable_set(frame);
+
+	/*
+	 *	Push the child, and yield for a later return.
+	 */
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+}
+
+
+static unlang_action_t unlang_foreach_xlat_expanded(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
+{
+	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
+	fr_value_box_t *box;
+
+	if (!state->success) {	
+		RDEBUG("Failed expanding 'foreach' list");
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	box = fr_dcursor_init(&state->cursor, fr_value_box_list_dlist_head(&state->list));
+	if (!box) {
+	done:
+		*p_result = RLM_MODULE_NOOP;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	fr_value_box_clear_value(&state->key->data);
+
+next:
+	if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, box) < 0) {
+		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->key->da->name, box);
+		box = fr_dcursor_next(&state->cursor);
+		if (!box) goto done;
+
+		goto next;
+	}
+
+	frame->process = unlang_foreach_xlat_next;
+	repeatable_set(frame);
+
+	/*
+	 *	Push the child, and yield for a later return.
+	 */
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+}
+
+
+/*
+ *	Loop over an xlat expansion
+ */
+static unlang_action_t unlang_foreach_xlat_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame,
+						unlang_frame_state_foreach_t *state)
+{
+	fr_value_box_list_init(&state->list);
+
+	if (unlang_xlat_push(state, &state->success, &state->list, request, tmpl_xlat(state->vpt), false) < 0) {
+		REDEBUG("Failed starting expansion of %s", state->vpt->name);
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+  	frame->process = unlang_foreach_xlat_expanded;
+	repeatable_set(frame);
+
+	return UNLANG_ACTION_PUSHED_CHILD;
+}
+
+
+static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_pair_t			*vp;
@@ -292,6 +383,80 @@ next:
 	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
+/*
+ *	Loop over an attribute
+ */
+static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame,
+						unlang_frame_state_foreach_t *state)
+{
+	fr_pair_t			*vp;
+
+	/*
+	 *	No matching attributes, we can't do anything.
+	 */
+	vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
+	if (!vp) {
+		*p_result = RLM_MODULE_NOOP;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	/*
+	 *	Before we loop over the variables, ensure that the user can't pull the rug out from
+	 *	under us.
+	 */
+	do {
+		if (fr_type_is_leaf(vp->vp_type)) fr_pair_set_immutable(vp);
+		
+	} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
+	tmpl_dcursor_clear(&state->cc);
+
+	vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
+	fr_assert(vp != NULL);
+
+	if (vp->vp_type == FR_TYPE_GROUP) {
+		fr_assert(state->key->vp_type == FR_TYPE_GROUP);
+
+		if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
+			REDEBUG("Failed copying members of %s", state->key->da->name);
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+	} else if (fr_type_is_structural(vp->vp_type)) {
+		fr_assert(state->key->vp_type == vp->vp_type);
+
+		if (unlang_foreach_pair_copy(state->key, vp, vp->da) < 0) {
+			REDEBUG("Failed copying children of %s", state->key->da->name);
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+	} else {
+		fr_value_box_clear_value(&state->key->data);
+		while (vp && (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &vp->data) < 0)) {
+			RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pP", state->key->da->name, vp);
+			vp = fr_dcursor_next(&state->cursor);
+		}
+
+		/*
+		 *	Couldn't cast anything, the loop can't be run.
+		 */
+		if (!vp) {
+			*p_result = RLM_MODULE_NOOP;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+	}
+
+	frame->process = unlang_foreach_attr_next;
+
+	repeatable_set(frame);
+
+	/*
+	 *	Push the child, and go process it.
+	 */
+	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+}
+
 
 static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
@@ -326,28 +491,6 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		state->vpt = gext->vpt;
 
 		/*
-		 *	No matching attributes, we can't do anything.
-		 */
-		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, gext->vpt);
-		if (!vp) {
-			*p_result = RLM_MODULE_NOOP;
-			return UNLANG_ACTION_CALCULATE_RESULT;
-		}
-
-		/*
-		 *	Before we loop over the variables, ensure that the user can't pull the rug out from
-		 *	under us.
-		 */
-		do {
-			if (fr_type_is_leaf(vp->vp_type)) fr_pair_set_immutable(vp);
-		
-		} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
-		tmpl_dcursor_clear(&state->cc);
-
-		vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, gext->vpt);
-		fr_assert(vp != NULL);
-
-		/*
 		 *	Create the local variable and populate its value.
 		 */
 		if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
@@ -357,48 +500,13 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		}
 		fr_assert(state->key != NULL);
 
-		if (vp->vp_type == FR_TYPE_GROUP) {
-			fr_assert(state->key->vp_type == FR_TYPE_GROUP);
-
-			if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
-				REDEBUG("Failed copying members of %s", gext->key->name);
-				*p_result = RLM_MODULE_FAIL;
-				return UNLANG_ACTION_CALCULATE_RESULT;
-			}
-
-		} else if (fr_type_is_structural(vp->vp_type)) {
-			fr_assert(state->key->vp_type == vp->vp_type);
-
-			if (unlang_foreach_pair_copy(state->key, vp, vp->da) < 0) {
-				REDEBUG("Failed copying children of %s", state->key->da->name);
-				*p_result = RLM_MODULE_FAIL;
-				return UNLANG_ACTION_CALCULATE_RESULT;
-			}
-
-		} else {
-			fr_value_box_clear_value(&state->key->data);
-			while (vp && (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &vp->data) < 0)) {
-				RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pP", state->key->da->name, vp);
-				vp = fr_dcursor_next(&state->cursor);
-			}
-
-			/*
-			 *	Couldn't cast anything, the loop can't be run.
-			 */
-			if (!vp) {
-				*p_result = RLM_MODULE_NOOP;
-				return UNLANG_ACTION_CALCULATE_RESULT;
-			}
+		if (tmpl_is_attr(gext->vpt)) {
+			return unlang_foreach_attr_init(p_result, request, frame, state);
 		}
 
-		frame->process = unlang_foreach_next;
+		fr_assert(tmpl_is_xlat(gext->vpt));
 
-		repeatable_set(frame);
-
-		/*
-		 *	Push the child, and go process it.
-		 */
-		return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
+		return unlang_foreach_xlat_init(p_result, request, frame, state);
 	}
 
 	/*
@@ -493,9 +601,9 @@ static unlang_action_t unlang_break(rlm_rcode_t *p_result, request_t *request, u
  *
  * @ingroup xlat_functions
  */
-static xlat_action_t unlang_foreach_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
-					 xlat_ctx_t const *xctx,
-					 request_t *request, UNUSED fr_value_box_list_t *in)
+static xlat_action_t unlang_foreach_xlat_func(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					      xlat_ctx_t const *xctx,
+					      request_t *request, UNUSED fr_value_box_list_t *in)
 {
 	fr_pair_t			*vp;
 	int const			*inst = xctx->inst;
@@ -522,7 +630,7 @@ void unlang_foreach_init(TALLOC_CTX *ctx)
 		xlat_t *x;
 
 		x = xlat_func_register(ctx, xlat_foreach_names[i],
-				  unlang_foreach_xlat, FR_TYPE_VOID);
+				  unlang_foreach_xlat_func, FR_TYPE_VOID);
 		fr_assert(x);
 		xlat_func_flags_set(x, XLAT_FUNC_FLAG_INTERNAL);
 		x->uctx = &xlat_foreach_inst[i];

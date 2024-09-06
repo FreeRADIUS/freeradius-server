@@ -3225,6 +3225,11 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	will fix it up.
 	 */
 	token = cf_section_name2_quote(cs);
+	if (token != T_BARE_WORD) {
+		cf_log_err(cs, "Data being looped over in 'foreach' must be an attribute reference or dynamic expansion, not a string");
+		goto fail;
+	}
+
 	slen = tmpl_afrom_substr(g, &vpt,
 				 &FR_SBUFF_IN(name2, strlen(name2)),
 				 token,
@@ -3243,19 +3248,19 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	fr_assert(vpt);
 
-	if (!tmpl_is_attr(vpt)) {
-		cf_log_err(cs, "MUST use attribute or list reference (not %s) in 'foreach'",
-			   tmpl_type_to_str(vpt->type));
-		goto fail;
-	}
+	if (tmpl_is_attr(vpt)) {
+		if (tmpl_attr_tail_num(vpt) == NUM_UNSPEC) {
+			cf_log_warn(cs, "Attribute reference should be updated to use %s[*]", vpt->name);
+			tmpl_attr_rewrite_leaf_num(vpt, NUM_ALL);
+		}
 
-	if (tmpl_attr_tail_num(vpt) == NUM_UNSPEC) {
-		cf_log_warn(cs, "Attribute reference should be updated to use %s[*]", vpt->name);
-		tmpl_attr_rewrite_leaf_num(vpt, NUM_ALL);
-	}
+		if (tmpl_attr_tail_num(vpt) != NUM_ALL) {
+			cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
+			goto fail;
+		}
 
-	if (tmpl_attr_tail_num(vpt) != NUM_ALL) {
-		cf_log_err(cs, "MUST NOT use instance selectors in 'foreach'");
+	} else if (!tmpl_contains_xlat(vpt)) {
+		cf_log_err(cs, "Invalid contents in 'foreach (...)', it must be an attribute reference or a dynamic expansion");
 		goto fail;
 	}
 
@@ -3284,6 +3289,25 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 *	If we have "type name", then define a local variable of that name.
 	 */
 	type_name = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+
+	if (tmpl_is_xlat(vpt)) {
+		if (!type_name) {
+			/*
+			 *	@todo - find a way to get the data type.
+			 */
+			cf_log_err(cs, "Dynamic expansions MUST specify a data type for the variable");
+			return NULL;
+		}
+
+		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
+		if (!fr_type_is_leaf(type)) {
+			cf_log_err(cs, "Dynamic expansions MUST specify a non-structural data type for the variable");
+			return NULL;
+		}
+
+		goto get_name;
+	}
+
 	if (type_name) {
 		unlang_variable_t *var;
 		fr_dict_attr_t const *da = tmpl_attr_tail_da(vpt);
@@ -3304,6 +3328,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			goto incompatible;
 		}
 
+	get_name:
 		variable_name = cf_section_argv(cs, 1);
 
 		/*

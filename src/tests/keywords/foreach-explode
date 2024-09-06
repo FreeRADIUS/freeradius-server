@@ -1,0 +1,21 @@
+#
+#  PRE: foreach xlat-explode
+#
+string input
+string result
+
+input = "a b c d e f"
+result = ""
+
+foreach string thing (%explode(%{input}, ' ')) {
+	result += thing
+	result += ','
+}
+
+result -= ','
+
+if (result != "a,b,c,d,e,f") {
+	test_fail
+}
+
+success

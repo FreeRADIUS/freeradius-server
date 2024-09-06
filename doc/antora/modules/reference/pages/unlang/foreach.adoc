@@ -3,7 +3,7 @@
 .Syntax
 [source,unlang]
 ----
-foreach [<data-type>] <key-name> (<attribute-reference>) {
+foreach [<data-type>] <key-name> (<reference>) {
     [ statements ]
 }
 ----
@@ -28,13 +28,23 @@ The `<key-name>` can be modified during the course of the `foreach` loop.  Modif
 
 The only limitation on the `<key-name>` is that it must be unique.
 
-<attribute-reference>::
+<reference>::
 
-The xref:unlang/attr.adoc[attribute reference] which will will be looped
+An xref:unlang/attr.adoc[attribute reference] which will will be looped
 over.  The reference can be to one attribute, to an array, a child, or
 be a subset of attributes.
 
+Alternatively, the `<reference>` can be a xref:reference:xlat/index.adoc[dynamic expansion function],
+such as `%sql("SELECT ...")`.  When the reference is a dynamic
+expansion function, a `<data-type>` must be specified.
+
 == Modifying Loop variables
+
+When the `<reference>` is an attribute, the attribute being looped
+over can sometimes be modified.  When the `<reference>` is a dynamic
+expansion, the results cannot be modified, and are discarded when the
+`foreach` loop is finished.  If it is necessary to save the results,
+they should be placed into another attribute.
 
 An attribute which is a "leaf" data type (e.g. `uint32`, and not
 `tlv`) will be automatically copied back to the original attribute at
