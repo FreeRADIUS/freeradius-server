@@ -2172,6 +2172,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 */
 		inst->config.trunk_conf.target_req_per_conn = 1;
 		inst->config.trunk_conf.max_req_per_conn = 1;
+		if (!inst->driver->trunk_io_funcs.connection_notify) {
+			inst->config.trunk_conf.always_writable = true;
+		}
 		return 0;
 	}
 
