@@ -4006,7 +4006,7 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 	 */
 	if ((name2[0] == '&') ||
 	    (tmpl_require_enum_prefix && ((p = strchr(name2, ':')) == NULL))) {
-		size_t slen;
+		ssize_t slen;
 
 		slen = tmpl_afrom_attr_substr(parent, NULL, &vpt,
 					      &FR_SBUFF_IN(name2, talloc_array_length(name2) - 1),
@@ -4015,6 +4015,8 @@ static unlang_t *compile_subrequest(unlang_t *parent, unlang_compile_t *unlang_c
 			cf_log_perr(cs, "Invalid argument to 'subrequest', failed parsing packet-type");
 			return NULL;
 		}
+
+		fr_assert(tmpl_is_attr(vpt));
 
 		/*
 		 *	Anything resembling an integer or string is
