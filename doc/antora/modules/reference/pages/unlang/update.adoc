@@ -87,6 +87,18 @@ assign the attributes in place, with a list qualifier.
 &request.Filter-Id := "bar"
 ----
 
+Note that the following conversion is _not_ correct, as it will
+overwrite the _entire_ request list.  Once the overwrite has been
+done, the `request` list will contain only the two attributes being
+assigned to it.
+
+[source,unlang]
+----
+&request := {
+	&User-Name = "foo"
+	&Filter-Id = "bar"
+}
+----
 === Conditionally Over-writing attributes in a list: =
 
 The following example conditionally over-writes the values for two attributes in the
