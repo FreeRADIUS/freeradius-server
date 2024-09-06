@@ -595,7 +595,21 @@ unlang_action_t rlm_sql_trunk_query(rlm_rcode_t *p_result, UNUSED int *priority,
 	switch (status) {
 	case TRUNK_ENQUEUE_OK:
 	case TRUNK_ENQUEUE_IN_BACKLOG:
-		if (unlang_function_push(request, sql_trunk_query_start,
+		/*
+		 *	Drivers such as SQLite which are synchronous run the query immediately
+		 *	on queueing.  If the query fails then the trunk request will be failed
+		 *	in which case the query_ctx will no longer have a trunk request.
+		 */
+		if (!query_ctx->treq) RETURN_MODULE_FAIL;
+
+		/*
+		 *	Synchronous drivers will have processed the query and set the
+		 *	state of the trunk request to reapable - so in that case don't
+		 *	yield (in sql_trunk_query_start)
+		 */
+		if (unlang_function_push(request,
+					 query_ctx->treq->state == TRUNK_REQUEST_STATE_REAPABLE ?
+					 	NULL : sql_trunk_query_start,
 					 query_ctx->type == SQL_QUERY_SELECT ?
 					 	query_ctx->inst->driver->sql_select_query_resume :
 						query_ctx->inst->driver->sql_query_resume,
