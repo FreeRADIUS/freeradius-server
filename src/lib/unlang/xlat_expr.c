@@ -39,6 +39,8 @@ RCSID("$Id$")
 #  define XLAT_DEBUG(...)
 #endif
 
+extern bool tmpl_require_enum_prefix;
+
 /*
  *	The new tokenizer accepts most things which are accepted by the old one.  Many of the errors will be
  *	different, though.
@@ -2464,8 +2466,11 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	 *
 	 *	We may end up removing the cast later, if for example the tmpl is an attribute whose data type
 	 *	matches the cast.
+	 *
+	 *	This ifdef isn't defined anywhere, and is just a reminder to check this code when we move to
+	 *	tmpl_require_enum_prefix=yes.  This cast has to be deleted.
 	 */
-	if (cast_type != FR_TYPE_NULL) {
+	if (!tmpl_require_enum_prefix && (cast_type != FR_TYPE_NULL)) {
 		our_t_rules.cast = cast_type;
 		our_t_rules.enumv = NULL;
 	}
