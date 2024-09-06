@@ -1604,82 +1604,9 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	return out;
 }
 
-extern int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
-
 static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
-				 fr_dict_attr_t const *ref)
-{
-	fr_dict_attr_t const *da;
-	fr_slen_t len;
+				 fr_dict_attr_t const *ref);
 
-	fr_dict_attr_flags_t flags = {
-		.internal = true,
-		.local = true,
-	};
-
-	/*
-	 *	Deny names which overlap other concepts.
-	 */
-	if (fr_table_value_by_str(tmpl_request_ref_table, name, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
-	fail_list:
-		cf_log_err(ci, "Local variable '%s' cannot be a list reference.", name);
-		return -1;
-	}
-
-	len = strlen(name);
-	if (tmpl_attr_list_from_substr(&da, &FR_SBUFF_IN(name, len)) == len) goto fail_list;
-
-	/*
-	 *	No overlap with the protocol dictionary.  The lookup
-	 *	in var->root will also check the protocol dictionary,
-	 *	so the check here is really only for better error messages.
-	 */
-	if (t_rules && t_rules->parent && t_rules->parent->attr.dict_def) {
-		da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), name);
-		if (da) {
-			cf_log_err(ci, "Local variable '%s' duplicates a dictionary attribute.", name);
-			return -1;
-		}
-	}
-
-	/*
-	 *	We can't name variables for data types.
-	 */
-	if (fr_table_value_by_str(fr_type_table, name, FR_TYPE_NULL) != FR_TYPE_NULL) {
-		cf_log_err(ci, "Invalid variable name '%s'.", name);
-		return -1;
-	}
-
-	/*
-	 *	No local dups
-	 */
-	da = fr_dict_attr_by_name(NULL, var->root, name);
-	if (da) {
-		cf_log_err(ci, "Duplicate variable name '%s'.", name);
-		return -1;
-	}
-
-	if (fr_dict_attr_add(var->dict, var->root, name, var->max_attr, type, &flags) < 0) {
-	fail:
-		cf_log_err(ci, "Failed adding variable '%s'", name);
-		return -1;
-	}
-	da = fr_dict_attr_by_name(NULL, var->root, name);
-	fr_assert(da != NULL);
-
-	/*
-	 *	Copy the children over.
-	 */
-	if (fr_type_is_structural(type) && (type != FR_TYPE_GROUP)) {
-		fr_fatal_assert(ref != NULL);
-
-		if (fr_dict_attr_acopy_local(da, ref) < 0) goto fail;
-	}
-
-	var->max_attr++;
-
-	return 0;
-}
 
 /** Compile a variable definition.
  *
@@ -4703,6 +4630,104 @@ static fr_table_ptr_sorted_t unlang_pair_keywords[] = {
 	{ L("return"), 		(void *) compile_return },
 };
 static int unlang_pair_keywords_len = NUM_ELEMENTS(unlang_pair_keywords);
+
+extern int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_t const *src);
+
+static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rules_t *t_rules, fr_type_t type, char const *name,
+				 fr_dict_attr_t const *ref)
+{
+	fr_dict_attr_t const *da;
+	fr_slen_t len;
+
+	fr_dict_attr_flags_t flags = {
+		.internal = true,
+		.local = true,
+	};
+
+	/*
+	 *	No overlap with list names.
+	 */
+	if (fr_table_value_by_str(tmpl_request_ref_table, name, REQUEST_UNKNOWN) != REQUEST_UNKNOWN) {
+	fail_list:
+		cf_log_err(ci, "Local variable '%s' cannot be a list reference.", name);
+		return -1;
+	}
+
+	len = strlen(name);
+	if (tmpl_attr_list_from_substr(&da, &FR_SBUFF_IN(name, len)) == len) goto fail_list;
+
+	/*
+	 *	No keyword section names.
+	 */
+	if (fr_table_value_by_str(unlang_section_keywords, name, NULL) != NULL) {
+	fail_unlang:
+		cf_log_err(ci, "Local variable '%s' cannot be an unlang keyword.", name);
+		return -1;
+	}
+
+	/*
+	 *	No simple keyword names.
+	 */
+	if (fr_table_value_by_str(unlang_pair_keywords, name, NULL) != NULL) goto fail_unlang;
+
+	/*
+	 *	No protocol names.
+	 */
+	if (fr_dict_by_protocol_name(name) != NULL) {
+		cf_log_err(ci, "Local variable '%s' cannot be an existing protocol name.", name);
+		return -1;
+	}
+
+	/*
+	 *	No overlap with attributes in the current dictionary.  The lookup in var->root will also check
+	 *	the current dictionary, so the check here is really only for better error messages.
+	 */
+	if (t_rules && t_rules->parent && t_rules->parent->attr.dict_def) {
+		da = fr_dict_attr_by_name(NULL, fr_dict_root(t_rules->parent->attr.dict_def), name);
+		if (da) {
+			cf_log_err(ci, "Local variable '%s' duplicates a dictionary attribute.", name);
+			return -1;
+		}
+	}
+
+	/*
+	 *	No data types.
+	 */
+	if (fr_table_value_by_str(fr_type_table, name, FR_TYPE_NULL) != FR_TYPE_NULL) {
+		cf_log_err(ci, "Invalid variable name '%s'.", name);
+		return -1;
+	}
+
+	/*
+	 *	No dups of local variables.
+	 */
+	da = fr_dict_attr_by_name(NULL, var->root, name);
+	if (da) {
+		cf_log_err(ci, "Duplicate variable name '%s'.", name);
+		return -1;
+	}
+
+	if (fr_dict_attr_add(var->dict, var->root, name, var->max_attr, type, &flags) < 0) {
+	fail:
+		cf_log_err(ci, "Failed adding variable '%s'", name);
+		return -1;
+	}
+	da = fr_dict_attr_by_name(NULL, var->root, name);
+	fr_assert(da != NULL);
+
+	/*
+	 *	Copy the children over.
+	 */
+	if (fr_type_is_structural(type) && (type != FR_TYPE_GROUP)) {
+		fr_fatal_assert(ref != NULL);
+
+		if (fr_dict_attr_acopy_local(da, ref) < 0) goto fail;
+	}
+
+	var->max_attr++;
+
+	return 0;
+}
 
 /*
  *	Compile one unlang instruction
