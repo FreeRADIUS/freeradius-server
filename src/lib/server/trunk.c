@@ -3243,6 +3243,7 @@ static void trunk_connection_enter_active(trunk_connection_t *tconn)
 		trunk_connection_remove(tconn);
 		break;
 
+	case TRUNK_CONN_INIT:
 	case TRUNK_CONN_CONNECTING:
 		trunk_connection_remove(tconn);
 		fr_assert(trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_ALL) == 0);

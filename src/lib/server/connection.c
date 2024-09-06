@@ -948,7 +948,7 @@ static void connection_state_enter_connected(connection_t *conn)
 {
 	int	ret;
 
-	fr_assert(conn->pub.state == CONNECTION_STATE_CONNECTING);
+	fr_assert(conn->pub.state == CONNECTION_STATE_CONNECTING || conn->pub.state == CONNECTION_STATE_INIT);
 
 	STATE_TRANSITION(CONNECTION_STATE_CONNECTED);
 
