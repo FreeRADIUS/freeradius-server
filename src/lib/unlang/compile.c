@@ -3180,6 +3180,7 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	ssize_t			slen;
 	tmpl_t			*vpt;
+	fr_dict_attr_t const	*da = NULL;
 
 	tmpl_rules_t		t_rules;
 	unlang_compile_t	unlang_ctx2;
@@ -3310,7 +3311,8 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 
 	if (type_name) {
 		unlang_variable_t *var;
-		fr_dict_attr_t const *da = tmpl_attr_tail_da(vpt);
+
+		da = tmpl_attr_tail_da(vpt);
 
 		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
 		fr_assert(type != FR_TYPE_VOID);
