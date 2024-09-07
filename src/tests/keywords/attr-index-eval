@@ -1,0 +1,30 @@
+uint32 index
+string ref
+string foo
+
+Filter-Id := { "a", "b" }
+index := 1
+
+#
+#  Dynamically create an attribute reference
+#
+ref = "Filter-Id[" + index + "]"
+
+#
+# Evaluate the attribute as an unlang expression.
+#
+foo = %eval(%{ref})
+
+if (foo != "b") {
+	test_fail
+}
+
+ref = "1 + 2"
+
+foo = %eval(%{ref})
+
+if (foo != 3) {
+	test_fail
+}
+
+success
