@@ -1,6 +1,26 @@
 = Expressions
 
-Expressions can be used inside of xref:xlat/index.adoc[dynamic expansions], or inside of xref:unlang/condition/index.adoc[conditions].
+Expressions can be used inside of xref:xlat/index.adoc[dynamic expansions], or inside of xref:unlang/condition/index.adoc[conditions], or on the right side of assignment xref:unlang/edit.adoc[editing].
+
+.Expression in an Expansion
+[source,unlang]
+----
+%{1 + 2}
+----
+
+.Expression in a Condition
+[source,unlang]
+----
+(&NAS-Port == 1 + 2)
+----
+
+.Expression in an assignment
+[source,unlang]
+----
+&NAS-Port = 1 + 2
+----
+
+== Operators in an Expression
 
 The following operators are supported (in order of precedence).
 
@@ -35,9 +55,9 @@ Division by zero means that the entire expression is invalid.
 
 See the xref:unlang/edit.adoc[edit] documentation for a list of attribute editing operators.
 
-== Conditions
+== Conditions in Assignments
 
-xref:unlang/condition/index.adoc[Conditions] in expressions are also
+xref:unlang/condition/index.adoc[Conditions] in assignments are also
 supported.  For example:
 
 [source,unlang]
@@ -59,14 +79,16 @@ You can just put math in-place, as with the following example:
 &Filter-Id = "Adding %{NAS-Port} + 4 = %{&NAS-Port + 4}"
 ----
 
+The old ``%{expr:...}` syntax will return an error in v4.  That functiuonality is no longer supported.
+
 == Data Types
 
 The new expression parser accepts significantly more data types than
-the old `rlm_expr` module.  The `rlm_expr` module assumed that all
-inputs were signed 64-bit integers.  Any attempt to use other data
-types resulted in an error.
+the old expresisons.  The expression in the previous versions assumed
+that all inputs were signed 64-bit integers.  Any attempt to use other
+data types resulted in an error.
 
-For example, the `+` operator can be applied to `string` and `octet`
+In new expressions, the `+` operator can be applied to `string` and `octet`
 data types.  (And incidentally, `-` is the inverse of `+`!)
 
 [source,unlang]
@@ -85,17 +107,13 @@ The suffix can then be "subtracted" off, with:
 
 Will result in `&Reply-Message == "foo"` !.
 
-Note that the `-=` operator behaves differently from earlier versions
-of the server!  Since the server no longer needs `update` sections, we
-could re-purpose the operator.
-
 Other data types will generally yield results which make sense.  For
 example:
 
 * adding an integer to an `ipv4prefix` type will result in an `ipv4addr` data type,
 * `&` and `|` will work on `string` and `octets` data types,
 * Using `&` with `ipv4addr` data types an `uint32` will result in an `ipv4prefix` data type,
-* `ipv4addr`s can be subtracted, and will return a number,
+* `ipv4addr`s can be subtracted, and will return a number which is the number of IPs between the two values,
 * `date`s can be subtracted, and will return a `time_delta`,
 * operations on integers are upgraded to the next largest integer size when necessary,
 * the logical operators `&&` and `||` return the value which caused them to succeed, e.g. `&Foo := (&User-Password || "help")` will return the contents of `&User-Name` if it exists, otherwise it will return the string `help`.
