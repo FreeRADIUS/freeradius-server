@@ -113,20 +113,20 @@ example:
 * adding an integer to an `ipv4prefix` type will result in an `ipv4addr` data type,
 * `&` and `|` will work on `string` and `octets` data types,
 * Using `&` with `ipv4addr` data types an `uint32` will result in an `ipv4prefix` data type,
-* `ipv4addr`s can be subtracted, and will return a number which is the number of IPs between the two values,
-* `date`s can be subtracted, and will return a `time_delta`,
+* `ipv4addr` types can be subtracted, and will return a number which is the number of IPs between the two values,
+* two `date` values can be subtracted, and will return a `time_delta`,
 * operations on integers are upgraded to the next largest integer size when necessary,
 * the logical operators `&&` and `||` return the value which caused them to succeed, e.g. `&Foo := (&User-Password || "help")` will return the contents of `&User-Name` if it exists, otherwise it will return the string `help`.
 
 In most cases, the data types are derived from the attribute
 dictionaries.  However, it is sometimes necessary to force the fields
-(or output) of an expression to be parsed in a particular manner.
+(or output) of an expression to be parsed as a particular type.  This
+is where casting is used.
 
 == Casts
 
 xref:type/index.adoc[Type casting] is supported via the `(type)`
-syntax.  The old-style syntax of `<type>` is accepted, but is
-deprecated.
+syntax.  The old syntax of `<type>` is not accepted.
 
 [source,unlang]
 ----
