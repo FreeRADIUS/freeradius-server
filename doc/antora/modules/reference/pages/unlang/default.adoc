@@ -1,29 +1,19 @@
-= The case Statement
+= The default Statement
 
 .Syntax
 [source,unlang]
 ----
-case [ <match> ] {
+default {
     [ statements ]
 }
 ----
 
-The `case` statement is used to match data inside of a
-xref:unlang/switch.adoc[switch] statement.  The `case` statement cannot be used
-outside of a xref:unlang/switch.adoc[switch] statement.
+The `default` statement can be used only within a
+xref:unlang/switch.adoc[switch] statement.  The `default` statement
+cannot be used outside of a xref:unlang/switch.adoc[switch] statement.
 
-
-The `<match>` text can be an attribute reference such as `&User-Name`,
-or it can be a xref:type/string/index.adoc[string].  If the match
-text is a dynamically expanded string, then the match is performed on
-the output of the string expansion.
-
-The keyword `default` can be used to specify the default action to
-take inside of a xref:unlang/switch.adoc[switch] statement.
-
-If no `<match>` text is given, it means that the `case` statement is
-the "default" and will match all which is not matched by another
-`case` statement inside of the same xref:unlang/switch.adoc[switch].
+The `default` statement is matched only when no other
+xref:unlang/case.adoc[case] statement matches.
 
 .Example
 [source,unlang]
@@ -43,5 +33,5 @@ switch &User-Name {
 }
 ----
 
-// Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
+// Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

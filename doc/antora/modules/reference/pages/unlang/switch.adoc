@@ -23,8 +23,8 @@ _<match-1>_ and _<match-2>_, etc. in order to find a match. If no
 match is found, then the server looks for the `default`
 xref:unlang/case.adoc[case] statement.
 
-The matching is generally done via equality comparison.  The `switch`
-statement is mostly equivalent to the following use of
+The matching is done via equality comparison.  The `switch`
+statement is functionally equivalent to the following use of
 xref:unlang/if.adoc[if] statements:
 
 .Nearly equivalent syntax
@@ -41,12 +41,14 @@ else {
 }
 ----
 
-There are some differences from a series of xref:unlang/if.adoc[if]
-statements.  For a `switch` statement, the _<expansion>_ is evaluated
-only once.  For the equivalent xref:unlang/if.adoc[if] statement, the
-_<expansion>_ is evaluated again for every xref:unlang/if.adoc[if].
-The other difference is that the _<match>_ values for each
-xref:unlang/case.adoc[case] statement are put into an optimized data
+However, there are some differences from a series of
+xref:unlang/if.adoc[if] statements.  For a `switch` statement, the
+_<expansion>_ is evaluated only once.  For the equivalent
+xref:unlang/if.adoc[if] statement, the _<expansion>_ is evaluated
+again for every xref:unlang/if.adoc[if].  The other difference
+performance.  Multiple xref:unlang/if.adoc[if] statements are slow,
+and are evaluated in turn.  In contrast, xref:unlang/case.adoc[case]
+statements are evaluated only once, and are put into an optimized data
 structure.
 
 If a matching xref:unlang/case.adoc[case] is found, the statements
@@ -55,7 +57,7 @@ xref:unlang/case.adoc[case] is found, the `default` section is
 evaluated.  If there is no `default`, then the `switch` statement
 behaves as if the `default` section was empty.
 
-== Efficiency and Data Types
+== Performance and Data Types
 
 The `switch` keyword will automatically choose an efficient
 representation for the set of xref:unlang/case.adoc[case] statements,
@@ -90,10 +92,11 @@ memory.
 == Limitations
 
 The _match_ text for the xref:unlang/case.adoc[case] statement _must_
-be of type xref:type/index.adoc[data].  That is, the "thing to match"
-cannot be an attribute, an SQL query, or any other dynamic expansion.
+be static data.  That is, the "thing to match"
+cannot be an attribute reference, or a dynamic expansion.
 
-Duplicate xref:unlang/case.adoc[case] statements are forbidden.
+Duplicate xref:unlang/case.adoc[case] statements are forbidden and
+will produce an error.
 
 No statement other than xref:unlang/case.adoc[case] can appear in a
 `switch` statement, and the xref:unlang/case.adoc[case] statement
