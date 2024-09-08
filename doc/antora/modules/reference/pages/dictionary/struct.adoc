@@ -53,15 +53,26 @@ Common flags and meanings
 |=====
 
 
-.Examples
+The following example shows how one structure can include another one.  In this example, the `Information` structure has two fields: `Type` and `Other`.  It has two possible sub-structures which can appear after the `Other` field.  Which sub-structure to be decoded is defined by the `key` field: `Type`.
+
+.Example of a Key field
 ----
 ATTRIBUTE Information 1 struct
 MEMBER Type uint8 key
+MEMBER Other uint32
 
 STRUCT Foo Type 1
 MEMBER Bar uint16
 MEMBER Baz uint16
+
+STRUCT Blag Type 2
+MEMBER Whoops uint32
+MEMBER Stuff uint8
 ----
+
+== Caveats
+
+Variable-sized fields such as `tlv`, `struct`, `string`, or `octets` can only be placed at the end of the `struct`.
 
 // Copyright (C) 2023 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.

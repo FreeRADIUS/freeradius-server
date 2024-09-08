@@ -66,9 +66,9 @@ The above example is equivalent to the example below.
 .Example
 ----
 ATTRIBUTE Foo 2 tlv
-ATTRIBUTE Foo.Bar 2.1 string
-ATTRIBUTE Foo.Baz 2.2 tlv
-ATTRIBUTE Foo.Baz.Such 2.2.4 ipaddr
+ATTRIBUTE Bar .1 string
+ATTRIBUTE Baz .2 tlv
+ATTRIBUTE Such .2.4 ipaddr
 ----
 
 For short entries, it can be simpler to use the full name an OID.
