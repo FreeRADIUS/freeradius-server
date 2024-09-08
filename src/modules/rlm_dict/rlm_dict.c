@@ -32,6 +32,39 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat.h>
 #include <freeradius-devel/unlang/xlat_func.h>
 
+/** Return a VP from the specified request.
+ *
+ * @param out where to write the pointer to the resolved VP. Will be NULL if the attribute couldn't
+ *	be resolved.
+ * @param request current request.
+ * @param name attribute name including qualifiers.
+ * @return
+ *	- -4 if either the attribute or qualifier were invalid.
+ *	- The same error codes as #tmpl_find_vp for other error conditions.
+ */
+static int xlat_fmt_get_vp(fr_pair_t **out, request_t *request, char const *name)
+{
+	int ret;
+	tmpl_t *vpt;
+
+	*out = NULL;
+
+	if (tmpl_afrom_attr_str(request, NULL, &vpt, name,
+				&(tmpl_rules_t){
+					.attr = {
+						.dict_def = request->dict,
+						.list_def = request_attr_request,
+						.prefix = TMPL_ATTR_REF_PREFIX_AUTO
+					}
+				}) <= 0) return -4;
+
+	ret = tmpl_find_vp(out, request, vpt);
+	talloc_free(vpt);
+
+	return ret;
+}
+
+
 static xlat_arg_parser_t const xlat_dict_attr_by_num_args[] = {
 	{ .required = true, .single = true, .type = FR_TYPE_UINT32 },
 	XLAT_ARG_PARSER_TERMINATOR
