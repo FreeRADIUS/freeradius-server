@@ -1,0 +1,170 @@
+= Interpreter
+
+The Unlang interpreter is a simple policy language which has a small
+set of pre-defined xref:unlang/keywords.adoc[Keywords].  It supports
+if/then/else xref:unlang/condition/index.adoc[Conditional expressions], and
+dynamic ref:xlat/index.adoc[String expansions].  It has a small number
+of predefined xref:type/index.adoc[data types].
+
+== Limitations
+
+The `unlang` interpreter allows adminstrators to write rules which do
+the following:
+
+* look at packet contents, via predefined field names which are
+  represented as xref:unlang/attr.adoc[attributes],
+
+* define both simple and complex policies based on the attributes,
+
+* interact with databases, usually via pre-defined behaviors
+  (e.g. "allocate IP from pool"),
+
+* update the contents of replies, using a clear and simple syntax.
+
+The language is _not_ intended to be a general purpose programming
+language.  It does not permit infinite loops, local variables,
+functions, etc.
+
+Despite these limitations, it has proven to be useful and powerful.
+While the server includes plugins for languages such as
+xref:raddb:mods-available/lua.adoc[lua],
+xref:raddb:mods-available/python.adoc[python], and
+xref:raddb:mods-available/perl.adoc[perl], most policies can be done
+in simple `unlang` statements.  More general purpose programming
+languages are more powerful than `unlang`, but they are generally
+sustantially slower.
+
+== Programming Model
+
+The `unlang` programming model is simple.  The server receives a
+packet (i.e. request) from the network, runs it through a series of
+policies, and then sends a reply.  Each stage of this process is
+called out in the configuration files as a separate section.  For
+example:
+
+.Example Unlang
+[source,unlang]
+----
+recv foo {
+    if (!ok) {
+        fail
+    }
+}
+----
+
+The processing sections are defined in
+xref:raddb:sites-available/index.adoc[virtual servers].  The
+xref:raddb:sites-available/index.adoc[virtual server] documentation
+describes the larger context of which packets are recieved, and when
+they are received.  This section concentrates on the more narrow topic
+`unlang` itself.
+
+== Receiving Requests
+
+When the server recieves a packet, the data is decoded and placed as
+xref:unlang/attr.adoc[attributes] into the `request`
+xref:unlang/list.adoc[list].  The packet is then run through a
+_processing section_ of a virtual server, which is typically named for
+the packet type. For example, a RADIUS virtual server would process
+`Access-Request` packets through the `recv Access-Request` section.
+
+The result of processing the packet is a set of attributes in the
+`reply` list.  Those attributes are encoded, and sent in a reply
+packet.
+
+== Processing Requests
+
+Each processing section is a list of xref:unlang/module.adoc[modules]
+to execute or Unlang statements to process. The list is processed in
+order from top to bottom.
+
+In some cases, it is useful to skip parts of the list or to return
+early from processing a list. For example, if a `reject` is sent
+because of a policy rule, there is usually no reason to continue to
+process that list.
+
+One key difference between normal programming languages and Unlang is
+the concept of xref:unlang/module.adoc[modules].  The modules are
+treated as keywords in the language which contain complex behavior.
+For example, the xref:raddb:mods-available/sql.adoc[sql] module has a
+complex set of pre-defined behavior, depending on what kind of packet
+it is processing.
+
+The ability to place complex logic into a module means that common
+functions such as "allocate IP from SQL" is little more than a
+one-line statement in `unlang`:
+
+.Allocating an IP
+[source,unlang]
+----
+recv Access-Request {
+    sqlippool
+    if (!ok) {
+        reject
+    }
+}
+----
+
+The benefit of this approach is that the _policies_ are simple:
+"allocate an IP, if that doesn't work, send a reject".  However, the
+_details_ of those policies are hidden behind the
+xref:raddb:mods-available/sqlippool.adoc[sqlippool] configuration.
+This abstraction allows the underyling
+xref:raddb:mods-available/sqlippool.adoc[sqlippool] configuration to
+be changed from MySQL to PostgreSQL without affecting any of the
+policies.
+
+The server includes dozens of
+xref:raddb:mods-available/index.adoc[modules], each of which defines a
+complex set of behavior.  Please see the
+xref:raddb:mods-available/index.adoc[modules] documentation for more
+information.
+
+=== Algorithm
+
+The interpreter starts off each request with a default return code and
+priority. It processes the request through a processing section.
+
+Each statement or module is evaluated, and the statement return code
+is used to update the final return code associated with the
+request. When the list is finished, the server either continues to the
+next section or sends a reply to the request.
+
+When a xref:unlang/module.adoc[module] is executed, it returns a code
+to the interpreter.  This code tells the interpreter if the module was
+`ok`, or if it did nothing (`noop`), or if the module failed (`fail`).
+The table below shows the names of the return codes and their
+meanings.
+
+include::partial$rcode_table.adoc[]
+
+The "return code" used by `unlang` is somewhat similar to return codes
+used by functions in other languages.  However, this return code is
+built into `unlang`, because it simplifies most common scenarios.  For
+example, automatic xref:unlang/load-balance.adocp[load-balancing]
+would be much more difficult without `unlang` hiding much of the
+underlying complexity.
+
+The result is that the interpreter simply runs a series of statements
+and modules.  Depending on what is returned, the interpreter either
+stops, or continues.
+
+The algorithm used by the interpreter is given in the following
+pseudo-code:
+
+```
+(code, 0) = action_table[default]
+foreach (statement in section) {
+    code' = evaluate(statement)
+    (action, priority') = action_table[code']
+    if (action == return) {
+        code = code'
+        break;
+    }
+    if (priority' >= priority) {
+        (code, priority) = (code', priority')
+    }
+}
+return (code, priority)
+```
+
