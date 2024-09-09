@@ -4587,3 +4587,19 @@ fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict)
 {
 	return dict->proto;
 }
+
+/*
+ *	Get the real protocol dictionary behind the local one.
+ */
+fr_dict_attr_t const *fr_dict_unlocal(fr_dict_attr_t const *da)
+{
+	if (!da->flags.local) return da;
+
+	fr_assert(da->dict->root == da);
+
+	while (da->dict->next) {
+		da = da->dict->next->root;
+	}
+
+	return da;
+}

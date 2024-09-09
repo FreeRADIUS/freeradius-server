@@ -1939,6 +1939,8 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 	 *	.<oid>
 	 */
 	if (fr_sbuff_out(NULL, &oid, name) > 0) {
+		namespace = fr_dict_unlocal(namespace);
+
 		fr_strerror_clear();	/* Clear out any existing errors */
 
 		if (fr_dict_by_da(namespace) == fr_dict_internal()) goto disallow_unknown;
