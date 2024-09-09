@@ -265,7 +265,7 @@ int fr_tls_session_password_cb(char *buf, int size, int rwflag UNUSED, void *u)
 	 *	from stdin (causes server to block).
 	 */
 	if (!u) {
-		ERROR("Certificate encrypted but no private_key_password configured");
+		ERROR("Private key encrypted but no private_key_password configured");
 		return 0;
 	}
 
