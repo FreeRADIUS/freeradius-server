@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/tls/base.h>
 #include <freeradius-devel/tls/cert.h>
 #include <freeradius-devel/tls/log.h>
+#include <freeradius-devel/tls/utils.h>
 #include <freeradius-devel/tls/strerror.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/unlang/xlat_func.h>
@@ -329,39 +330,6 @@ static int cipher_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *par
 	return 0;
 }
 
-/** Return the static private key password we have configured
- *
- * @param[out] buf	Where to write the password to.
- * @param[in] size	The length of buf.
- * @param[in] rwflag
- *			- 0 if password used for decryption.
- *			- 1 if password used for encryption.
- * @param[in] u		The static password.
- * @return
- *	- 0 on error.
- *	- >0 on success (the length of the password).
- */
-static int _get_private_key_password(char *buf, int size, UNUSED int rwflag, void *u)
-{
-	char		*pass;
-	size_t		len;
-
-	if (!u) {
-		ERROR("Certificate encrypted but no private_key_password configured");
-		return 0;
-	}
-
- 	pass = talloc_get_type_abort(u, char);
-	len = talloc_array_length(pass);	/* Len includes \0 */
-	if (len > (size_t)size) {
-		ERROR("Password too long.  Maximum length is %i bytes", size - 1);
-		return -1;
-	}
-	memcpy(buf, pass, len);			/* Copy complete password including \0 byte */
-
-	return len - 1;
-}
-
 /** Talloc destructor for freeing an EVP_PKEY (representing a certificate)
  *
  * @param[in] pkey	to free.
@@ -417,7 +385,7 @@ static int cipher_rsa_private_key_file_load(TALLOC_CTX *ctx, void *out, void *pa
 		return -1;
 	}
 
-	pkey = PEM_read_PrivateKey(fp, (EVP_PKEY **)out, _get_private_key_password,
+	pkey = PEM_read_PrivateKey(fp, (EVP_PKEY **)out, fr_utils_get_private_key_password,
 				   UNCONST(void *, rsa_inst->private_key_password));
 	fclose(fp);
 
