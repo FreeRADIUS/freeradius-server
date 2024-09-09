@@ -395,8 +395,7 @@ _Generic(&(_ct), \
  */
 DIAG_OFF(attributes)
 typedef enum CC_HINT(flag_enum) {
-	CONF_FLAG_HIDDEN		= 0,				//!< Used by scripts to omit items from the
-									///< generated documentation.
+	CONF_FLAG_NONE			= 0,				//!< No special flags.
 	CONF_FLAG_SUBSECTION		= (1 << 1),			//!< Instead of putting the information into a
 									///< configuration structure, the configuration
 									///< file routines MAY just parse it directly into
@@ -426,6 +425,8 @@ typedef enum CC_HINT(flag_enum) {
 									//!< left as the default to is_set_offset
 									//!< or is_set_ptr.
 	CONF_FLAG_OK_MISSING     	= (1 << 22), 			//!< OK if it's missing
+	CONF_FLAG_HIDDEN		= (1 << 23),			//!< Used by scripts to omit items from the
+									///< generated documentation.
 } conf_parser_flags_t;
 DIAG_ON(attributes)
 

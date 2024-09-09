@@ -174,7 +174,7 @@ static const conf_parser_t thread_config[] = {
 	{ FR_CONF_OFFSET("num_workers", main_config_t, max_workers), .dflt = STRINGIFY(0),
 	  .func = num_workers_parse, .dflt_func = num_workers_dflt },
 
-	{ FR_CONF_OFFSET_TYPE_FLAGS("stats_interval", FR_TYPE_TIME_DELTA | CONF_FLAG_HIDDEN, 0, main_config_t, stats_interval), },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("stats_interval", FR_TYPE_TIME_DELTA, CONF_FLAG_HIDDEN, main_config_t, stats_interval) },
 
 #ifdef WITH_TLS
 	{ FR_CONF_OFFSET_TYPE_FLAGS("openssl_async_pool_init", FR_TYPE_SIZE, 0, main_config_t, openssl_async_pool_init), .dflt = "64" },
