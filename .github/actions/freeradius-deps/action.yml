@@ -32,6 +32,13 @@ runs:
         sudo dpkg-reconfigure man-db
         sudo sed -i 's/^update_initramfs=.*/update_initramfs=no/' /etc/initramfs-tools/update-initramfs.conf
 
+    - name: Ensure all packages are up to date
+      if: ${{ runner.os != 'macOS' }}
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get -y full-upgrade
+
     #
     # Basic package installation on Ubuntu24.04 fails with:
     #   ERROR: Operation {'runbindable'} cannot have a source. Source = AARE('/')
