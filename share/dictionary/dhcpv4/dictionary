@@ -69,5 +69,6 @@ $INCLUDE dictionary.rfc8925
 $INCLUDE dictionary.adsl_forum
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cisco
+$INCLUDE dictionary.cts
 
 END-PROTOCOL 	DHCPv4
