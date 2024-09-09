@@ -42,6 +42,8 @@ int		fr_tls_utils_keyblock_size_get(request_t *request, SSL *ssl);
 
 int		fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1);
 
+int		fr_utils_get_private_key_password(char *buf, int size, UNUSED int rwflag, void *u);
+
 #ifdef __cplusplus
 }
 #endif

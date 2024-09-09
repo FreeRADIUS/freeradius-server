@@ -173,3 +173,37 @@ done:
 	return 0;
 }
 
+/** Return the static private key password we have configured
+ *
+ * @note This is used as a callback to OpenSSL's PEM_read_PrivateKey function.
+
+ * @param[out] buf	Where to write the password to.
+ * @param[in] size	The length of buf.
+ * @param[in] rwflag
+ *			- 0 if password used for decryption.
+ *			- 1 if password used for encryption.
+ * @param[in] u		The static password.
+ * @return
+ *	- 0 on error.
+ *	- >0 on success (the length of the password).
+ */
+int fr_utils_get_private_key_password(char *buf, int size, UNUSED int rwflag, void *u)
+{
+	char		*pass;
+	size_t		len;
+
+	if (!u) {
+		ERROR("Private key encrypted but no private_key_password configured");
+		return 0;
+	}
+
+ 	pass = talloc_get_type_abort(u, char);
+	len = talloc_array_length(pass);	/* Len includes \0 */
+	if (len > (size_t)size) {
+		ERROR("Password too long.  Maximum length is %i bytes", size - 1);
+		return -1;
+	}
+	memcpy(buf, pass, len);			/* Copy complete password including \0 byte */
+
+	return len - 1;
+}
