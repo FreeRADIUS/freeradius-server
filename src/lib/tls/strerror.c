@@ -142,6 +142,8 @@ DIAG_OFF(format-nonliteral)
  * Drains the thread local OpenSSL error queue, and prints out the first error
  * storing it in libfreeradius's error buffer.
  *
+ * @param[in] file	The function was called from.
+ * @param[in] line	The line the function was called from.
  * @param[in] msg	Error message describing the operation being attempted.
  * @param[in] ap	Arguments for msg.
  * @return the number of errors drained from the stack.
@@ -200,6 +202,51 @@ int _fr_tls_strerror_vprintf(char const *file, int line, char const *msg, va_lis
 
 	while ((error = ERR_get_error_all(&openssl_file, &openssl_line, &func, &data, &flags))) {
 		if (!(flags & ERR_TXT_STRING)) data = NULL;
+
+		ERR_error_string_n(error, buffer, sizeof(buffer));
+
+		_fr_strerror_printf_push(openssl_file, openssl_line, "%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
+		drained++;
+	}
+
+	return drained;
+}
+
+/** Print errors in the TLS thread local error stack
+ *
+ * Drains the thread local OpenSSL error queue, and prints out the first error
+ * storing it in libfreeradius's error buffer.
+ *
+ * @return the number of errors drained from the stack.
+ */
+int fr_tls_strerror_drain(void)
+{
+	unsigned long	error;
+
+	int		openssl_line;
+	char const	*openssl_file;
+	char const	*func;
+	char const	*data;
+	int		flags = 0;
+
+	int		drained = 0;
+	char		buffer[256];
+
+	/*
+	 *	Pop the first error, so ERR_peek_error()
+	 *	can be used to determine if there are
+	 *	multiple errors.
+	 */
+	error = ERR_get_error_all(&openssl_file, &openssl_line, &func, &data, &flags);
+	if (!error) return 0;
+	if (!(flags & ERR_TXT_STRING)) data = NULL;
+
+	ERR_error_string_n(error, buffer, sizeof(buffer));
+	_fr_strerror_printf(openssl_file, openssl_line, "%s%c%s", buffer, data ? ':' : '\0', data ? data : "");
+	drained++;
+
+	while ((error = ERR_get_error_all(&openssl_file, &openssl_line, &func, &data, &flags))) {
+		if (!(flags & ERR_TXT_STRING)) continue;
 
 		ERR_error_string_n(error, buffer, sizeof(buffer));
 

@@ -72,8 +72,6 @@ int		_fr_tls_strerror_vprintf(char const *file, int line, char const *msg, va_li
 
 /** Wrapper around fr_strerror_printf to log error messages for library functions calling libssl
  *
- * @note Will only drain the first error.
- *
  * @param[in] msg	Error message describing the operation being attempted.
  * @param[in] ...	Arguments for msg.
  * @return the number of errors drained from the stack.
@@ -93,6 +91,8 @@ int		_fr_tls_strerror_printf(char const *file, int line, char const *msg, ...)
 
 	return ret;
 }
+
+int		fr_tls_strerror_drain(void);
 #ifdef __cplusplus
 }
 #endif
