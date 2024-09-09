@@ -3312,18 +3312,25 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	if (type_name) {
 		unlang_variable_t *var;
 
-		da = tmpl_attr_tail_da(vpt);
-
 		type = fr_table_value_by_str(fr_type_table, type_name, FR_TYPE_VOID);
 		fr_assert(type != FR_TYPE_VOID);
+
+		/*
+		 *	foreach string foo (&tlv-thing.[*]) { ... }
+		 */
+		if (tmpl_attr_tail_is_unspecified(vpt)) {
+			goto get_name;
+		}
+
+		da = tmpl_attr_tail_da(vpt);
 
 		if (type == FR_TYPE_NULL) {
 			type = da->type;
 
 		} else if (fr_type_is_leaf(type) != fr_type_is_leaf(da->type)) {
 		incompatible:
-			cf_log_err(cs, "Incompatible data types in foreach variable (%s), and reference being looped over (%s)",
-				   fr_type_to_str(type), fr_type_to_str(da->type));
+			cf_log_err(cs, "Incompatible data types in foreach variable (%s), and reference %s being looped over (%s)",
+				   fr_type_to_str(type), da->name, fr_type_to_str(da->type));
 			goto fail;
 
 		} else if (fr_type_is_structural(type) && (type != da->type)) {
