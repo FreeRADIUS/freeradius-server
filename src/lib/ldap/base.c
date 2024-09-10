@@ -650,10 +650,24 @@ static void ldap_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_
 	if (!query->treq) return;
 
 	/*
-	 *	The query needs to be parented by the treq so that it still
-	 *	exists when the cancel_mux callback is run.
+	 *	Depending on the state of the trunk request, the query needs to
+	 *	be parented by the treq so that it still exists when the
+	 *	cancel_mux callback is run.
+	 *	Other states free the trunk request (and its children) immediately.
+	 *	So no re-parenting is needed.
 	 */
-	talloc_steal(query->treq, query);
+	switch (query->treq->state) {
+	case TRUNK_REQUEST_STATE_PARTIAL:
+	case TRUNK_REQUEST_STATE_SENT:
+	case TRUNK_REQUEST_STATE_CANCEL:
+	case TRUNK_REQUEST_STATE_CANCEL_PARTIAL:
+	case TRUNK_REQUEST_STATE_CANCEL_SENT:
+	case TRUNK_REQUEST_STATE_CANCEL_COMPLETE:
+		talloc_steal(query->treq, query);
+		break;
+	default:
+		break;
+	}
 
 	trunk_request_signal_cancel(query->treq);
 
