@@ -1,0 +1,10 @@
+# Example user definitions with region-based restrictions
+
+DEFAULT    User-Name == "Fredrick.Arara", Region-Id == 1
+           Auth-Type := Accept
+
+DEFAULT    User-Name == "Maureen.Makumi", Region-Id == 2
+           Auth-Type := Accept
+
+DEFAULT    User-Name == "Robert.Idewa", Region-Id == 3
+           Auth-Type := Accept
