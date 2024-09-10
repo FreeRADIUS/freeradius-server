@@ -423,10 +423,14 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 		}
 
 	} else if (fr_type_is_structural(vp->vp_type)) {
-		fr_assert(state->key->vp_type == vp->vp_type);
-
-		if (unlang_foreach_pair_copy(state->key, vp, vp->da) < 0) {
-			REDEBUG("Failed copying children of %s", state->key->da->name);
+		if (state->key->vp_type == vp->vp_type) {
+			if (unlang_foreach_pair_copy(state->key, vp, vp->da) < 0) {
+				REDEBUG("Failed copying children of %s", state->key->da->name);
+				*p_result = RLM_MODULE_FAIL;
+				return UNLANG_ACTION_CALCULATE_RESULT;
+			}
+		} else {
+			REDEBUG("Failed initializing loop variable %s - expected %s type, but got input (%pP)", state->key->da->name, fr_type_to_str(state->key->vp_type), vp);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
