@@ -1306,6 +1306,56 @@ send Access-Reject {
 
 
 ######################################################################
+#  authorize Section
+authorize {
+    # Existing modules like preprocess, chap, etc.
+    preprocess
+    chap
+    mschap
+    digest
+    suffix
+    eap {
+        ok = return
+    }
+
+    # Custom region-based logic to enforce regional admin control
+    if (!control:Region-Id) {
+        reject
+    }
+
+    if ("%{control:Region-Id}" != "%{sql:SELECT region_id FROM region_users WHERE user_id='%{User-Name}'}") {
+        reject
+    }
+
+    # Continue with other existing logic
+    files
+    sql
+    expiration
+    logintime
+
+    pap
+}
+
+authenticate {
+    Auth-Type PAP {
+        pap
+    }
+
+    Auth-Type CHAP {
+        chap
+    }
+
+    Auth-Type MS-CHAP {
+        mschap
+    }
+
+    eap
+}
+
+# Other existing sections like post-auth and accounting
+#####################################################################
+
+
 #
 #  Accounting
 #
