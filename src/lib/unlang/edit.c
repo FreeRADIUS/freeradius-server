@@ -265,7 +265,6 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 {
 	fr_pair_t *vp;
 	fr_pair_list_t *children;
-	bool copy_vps = true;
 	int rcode;
 	map_t const *map = current->map;
 	tmpl_dcursor_ctx_t cc;
@@ -278,7 +277,6 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 	 */
 	if (!map->rhs) {
 		children = &current->rhs.pair_list;
-		copy_vps = false;
 		goto apply_list;
 	}
 
@@ -342,7 +340,6 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 			return -1;
 		}
 
-		copy_vps = false;
 		goto apply_list;
 	}
 
@@ -409,7 +406,6 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 		}
 
 		children = &vp->vp_group;
-		copy_vps = true;
 		goto apply_list;
 	}
 
@@ -433,7 +429,6 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 	tmpl_dcursor_clear(&cc);
 
 	children = &current->rhs.pair_list;
-	copy_vps = false;
 
 	/*
 	 *	Apply structural thingies!
@@ -476,27 +471,27 @@ apply_list:
 		}
 	}
 
-	if (current->el) {
-		rcode = fr_edit_list_apply_list_assignment(current->el, current->lhs.vp, map->op, children, copy_vps);
+	if (map->op != T_OP_EQ) {
+		fr_assert(current->el != NULL);
+
+		rcode = fr_edit_list_apply_list_assignment(current->el, current->lhs.vp, map->op, children,
+							   (children != &current->rhs.pair_list));
 		if (rcode < 0) RPEDEBUG("Failed performing list '%s' operation", fr_tokens[map->op]);
 
 	} else {
-		fr_assert(map->op == T_OP_EQ);
+#if 0
+		/*
+		 *	The RHS list _should_ be a copy of the LHS list.  But for some cases it's not.  We
+		 *	should spend time tracking this down, but not today.
+		 *
+		 *	For now, brute-force copy isn't wrong.
+		 */
+		if (children == &current->rhs.pair_list) {
+			fr_pair_list_append(&current->lhs.vp->vp_group, children);
+		} else
+#endif
+		(void) fr_pair_list_copy(current->lhs.vp, &current->lhs.vp->vp_group, children);
 
-		if (copy_vps) {
-			fr_assert(children != &current->rhs.pair_list);
-			fr_assert(fr_pair_list_empty(&current->rhs.pair_list));
-
-			if (fr_pair_list_copy(current->lhs.vp, &current->rhs.pair_list, children) < 0) {
-				rcode = -1;
-				goto done;
-			}
-			children = &current->rhs.pair_list;
-		} else {
-			copy_vps = true; /* the  */
-		}
-
-		fr_pair_list_append(&current->lhs.vp->vp_group, children);
 		PAIR_VERIFY(current->lhs.vp);
 		rcode = 0;
 	}
@@ -505,7 +500,7 @@ apply_list:
 	 *	If the child list wasn't copied, then we just created it, and we need to free it.
 	 */
 done:
-	if (!copy_vps) fr_pair_list_free(children);
+	if (children == &current->rhs.pair_list) fr_pair_list_free(children);
 	return rcode;
 }
 

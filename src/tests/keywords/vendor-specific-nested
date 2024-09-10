@@ -1,0 +1,10 @@
+#
+#  PRE: if
+#
+Vendor-Specific = { Cisco = { AVPair = "0", AVPair = "1", AVPair = "2", AVPair = "3" } }
+
+#if (Vendor-Specific.Cisco.AVPair[3] != "3") {
+#	test_fail
+#}
+
+success
