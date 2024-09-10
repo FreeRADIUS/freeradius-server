@@ -399,7 +399,6 @@ int xlat_register_redundant(CONF_SECTION *cs)
 	char const		*name1;
 	xlat_redundant_type_t	xr_type;
 	xlat_func_flags_t	default_flags = 0;	/* Prevent warnings about default flags if xr_rype is corrupt */
-	xlat_arg_parser_t const *args = NULL;
 
 	fr_type_t		return_type = FR_TYPE_NULL;
 
@@ -619,7 +618,7 @@ int xlat_register_redundant(CONF_SECTION *cs)
 
 			xlat_func_flags_set(xlat, flags);
 			xlat_func_instantiate_set(xlat, xlat_redundant_instantiate, xlat_redundant_inst_t, NULL, xr);
-			if (args) xlat_func_args_set(xlat, xlat_redundant_args);
+			xlat_func_args_set(xlat, xlat_redundant_args);
 		}
 	}
 	talloc_free(mrx_tree);
