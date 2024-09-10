@@ -381,4 +381,11 @@ sql {
 	#  please create them and contribute them back to the project.
 	#
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
+
+
+	authorize_check_query = "SELECT id, username, attribute, value, op \
+                         FROM radcheck \
+                         JOIN region_users ON radcheck.id = region_users.user_id \
+                         WHERE radcheck.username = '%{User-Name}' AND region_users.region_id = '%{Region-Id}'"
+
 }
