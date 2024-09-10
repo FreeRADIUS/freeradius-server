@@ -4267,7 +4267,7 @@ static unlang_t *compile_call(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 		return NULL;
 	}
 	if ((dict != fr_dict_internal()) && fr_dict_internal() &&
-	    unlang_ctx->rules->attr.dict_def && (unlang_ctx->rules->attr.dict_def != dict)) {
+	    unlang_ctx->rules->attr.dict_def && !fr_dict_compatible(unlang_ctx->rules->attr.dict_def, dict)) {
 		cf_log_err(cs, "Cannot call server %s with namespace '%s' from namespaces '%s' - they have incompatible protocols",
 			   server, fr_dict_root(dict)->name, fr_dict_root(unlang_ctx->rules->attr.dict_def)->name);
 		return NULL;
