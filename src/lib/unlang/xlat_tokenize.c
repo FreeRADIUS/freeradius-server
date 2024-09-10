@@ -280,6 +280,7 @@ static int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tm
 	xlat_exp_t *node;
 	xlat_t *func;
 	fr_sbuff_marker_t m_s;
+	tmpl_rules_t my_t_rules;
 
 	fr_sbuff_marker(&m_s, in);
 
@@ -383,6 +384,16 @@ static int xlat_tokenize_function_args(xlat_exp_head_t *head, fr_sbuff_t *in, tm
 	}
 
 	(void) fr_sbuff_next(in); /* skip the '(' */
+
+	/*
+	 *	The caller might want the _output_ cast to something.  But that doesn't mean we cast each
+	 *	_argument_ to the xlat function.
+	 */
+	if (t_rules && (t_rules->cast != FR_TYPE_NULL)) {
+		my_t_rules = *t_rules;
+		my_t_rules.cast = FR_TYPE_NULL;
+		t_rules = &my_t_rules;
+	}
 
 	/*
 	 *	Now parse the child nodes that form the
