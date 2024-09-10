@@ -20,7 +20,7 @@ To run the test under lldb, tell jlibtool to run lldb, which in turn will run an
 TZ=GMT build/make/jlibtool --silent --mode=execute lldb --file ./build/bin/local/unit_test_attribute -- -F ./src/tests/fuzzer-corpus -D ./share/dictionary -d ./src/tests/unit -r "build/tests/unit/data_types.txt" src/tests/unit/data_types.txt
 ----
 
-`--file` tells lldb what it's debugging, `--` tells it that all that follows should be passed to `unit_test_module`. That can appear in lldb commands to cause following arguments to be passed to a subcommand--an example of lldb's consistent syntax.
+`--file` tells lldb what it's debugging, `--` tells it that all that follows should be passed to `unit_test_attribute`. That can appear in lldb commands to cause following arguments to be passed to a subcommand--an example of lldb's consistent syntax.
 
 lldb provides a lot of facilities for extending the debugger, defining new commands, and even defining how to display values of particular types. Since the immediate goal was providing an understandable display for select types used in FreeRADIUS, we could have done that, but the work's already been done in FreeRADIUS--why replicate it? lldb's Python scripting lets one call C functions, thus making the display consistent with minimal work.
 
