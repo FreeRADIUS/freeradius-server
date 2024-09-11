@@ -3567,10 +3567,10 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 	fr_dict_attr_flags_t flags = {
 		.is_root = true,
 		.local = true,
+		.internal = true,
 		.type_size = 2,
 		.length = 2
 	};
-
 
 	dict = dict_alloc(UNCONST(fr_dict_t *, parent));
 	if (!dict) return NULL;

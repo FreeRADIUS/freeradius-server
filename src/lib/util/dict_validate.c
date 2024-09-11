@@ -86,6 +86,11 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		return false;
 	}
 
+	if (flags->local != parent->flags.local) {
+		fr_strerror_const("Cannot mix local variables with non-local attributes");
+		return false;
+	}
+
 	/*
 	 *	Only some data types can be in arrays, because we need
 	 *	to be able to decode the various array members.
