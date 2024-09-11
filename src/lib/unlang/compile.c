@@ -4748,7 +4748,7 @@ static int define_local_variable(CONF_ITEM *ci, unlang_variable_t *var, tmpl_rul
 
 	if (fr_dict_attr_add(var->dict, var->root, name, var->max_attr, type, &flags) < 0) {
 	fail:
-		cf_log_err(ci, "Failed adding variable '%s'", name);
+		cf_log_err(ci, "Failed adding variable '%s' - %s", name, fr_strerror());
 		return -1;
 	}
 	da = fr_dict_attr_by_name(NULL, var->root, name);
