@@ -1256,7 +1256,7 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 
 		dst->vb_ip.af = AF_INET;
 		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) | b->vb_uint32);
-		dst->vb_ip.prefix = 0;
+		dst->vb_ip.prefix = 32;
 		break;
 
 	default:
