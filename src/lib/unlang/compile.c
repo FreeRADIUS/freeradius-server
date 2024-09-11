@@ -1298,6 +1298,11 @@ static int unlang_fixup_edit(map_t *map, void *ctx)
 		return -1;
 	}
 
+	/*
+	 *	map_afrom_cs() will build its tree recursively, and call us for each child map.
+	 */
+	if (map->parent && (map->parent != parent_map)) parent_map = map->parent;
+
 	parent = tmpl_attr_tail_da(parent_map->lhs);
 
 	/*
