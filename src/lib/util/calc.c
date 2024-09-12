@@ -1252,7 +1252,7 @@ static int calc_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *dst, fr_value_
 		/*
 		 *	Trying to add a number outside of the given prefix.  That's not allowed.
 		 */
-		if (b->vb_uint32 >= (((uint32_t) 1) << a->vb_ip.prefix)) return ERR_OVERFLOW;
+		if (b->vb_uint32 >= (((uint32_t) 1) << (32 - a->vb_ip.prefix))) return ERR_OVERFLOW;
 
 		dst->vb_ip.af = AF_INET;
 		dst->vb_ip.addr.v4.s_addr = htonl(ntohl(a->vb_ip.addr.v4.s_addr) | b->vb_uint32);
