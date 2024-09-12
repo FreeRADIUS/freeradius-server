@@ -1,0 +1,19 @@
+#
+#  PRE: if
+#
+string foo
+
+#
+#  Try returns noop - which is not caught
+#
+try {
+	foo := "hello"
+}
+catch disallow {
+	test_fail
+}
+catch ok reject fail {
+	test_fail
+}
+
+success
