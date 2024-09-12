@@ -79,8 +79,6 @@ static const fr_type_t upcast_op[FR_TYPE_MAX + 1][FR_TYPE_MAX + 1] = {
 		/*
 		 *	ipaddr + int --> prefix (generally only "and")
 		 */
-		[FR_TYPE_UINT8]  =  FR_TYPE_IPV4_PREFIX,
-		[FR_TYPE_UINT16] =  FR_TYPE_IPV4_PREFIX,
 		[FR_TYPE_UINT32] =  FR_TYPE_IPV4_PREFIX,
 
 		/*
