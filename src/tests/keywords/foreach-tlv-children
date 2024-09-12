@@ -7,30 +7,30 @@
 #
 string out
 
-&my-tlv := {
-	&a = 1
-	&b = 2
-	&c = "foo"
-	&d = 127.0.0.1
+my-tlv := {
+	a = 1,
+	b = 2,
+	c = "foo",
+	d = 127.0.0.1,
 }
 
 
-&out = ""
+out = ""
 
 #
 #  Home-brew concat!
 #
-foreach string child (&my-tlv.[*]) {
-	&out += &child
-	&out += " "
+foreach string child (my-tlv.[*]) {
+	out += child
+	out += " "
 }
 
 #
 #  Sad trailing space, but we can delete it!
 #
-&out -= ' '
+out -= ' '
 
-if (&out != '1 2 foo 127.0.0.1') {
+if (out != '1 2 foo 127.0.0.1') {
 	test_fail
 }
 
