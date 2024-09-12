@@ -2338,7 +2338,7 @@ ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t *err,
 		/*
 		 *	That being said, local variables are named "foo", but are always put into the local list.
 		 */
-		if (is_local) {
+		if (is_local && (at_rules->list_presence != TMPL_ATTR_LIST_FORBID)) {
 			MEM(ar = talloc(vpt, tmpl_attr_t));
 			*ar = (tmpl_attr_t){
 				.ar_type = TMPL_ATTR_TYPE_NORMAL,
