@@ -27,11 +27,16 @@ if (%redis(@%redis.node(b, 0), DEBUG, SEGFAULT)) {
 }
 
 #  Forcefully failover the slave for that node
-#  If the failover has happened automatically, then the result is ''
+#  If the failover has happened automatically, then there is no result
 #  which sometimes happens when running tests with sanitizers, due to
 #  slowness introduced by the sanitizers.
-&takeoverresult = %redis(@%{redisreplica}, CLUSTER, FAILOVER, TAKEOVER)
-if !((&takeoverresult == 'OK') || (&takeoverresult == '')) {
+try {
+	&takeoverresult = %redis(@%{redisreplica}, CLUSTER, FAILOVER, TAKEOVER)
+}
+catch fail {
+	&takeoverresult = 'OK'
+}
+if (&takeoverresult != 'OK') {
 	test_fail
 }
 
