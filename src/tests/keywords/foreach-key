@@ -1,0 +1,20 @@
+group foo
+string total
+
+foo := {User-Name = "a", User-Password = "b", User-Name = "c", User-Password = "d" }
+
+total = ""
+
+#
+#  For now, just test that we can parse key things
+#
+foreach string key, string name (foo.User-Name[*]) {
+	total += name
+	total += ","
+}
+
+if (total != "a,c,") {
+	test_fail
+}
+
+success

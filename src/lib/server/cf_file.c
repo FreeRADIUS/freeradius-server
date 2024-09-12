@@ -1994,64 +1994,16 @@ static int parse_error(cf_stack_t *stack, char const *ptr, char const *message)
 	return -1;
 }
 
-static CONF_ITEM *process_foreach(cf_stack_t *stack)
+static int parse_type_name(cf_stack_t *stack, char const **ptr_p, char const *type_ptr, fr_type_t *type_p)
 {
-	fr_token_t	token;
-	fr_type_t	type;
-	CONF_SECTION	*css;
-	char const	*ptr = stack->ptr, *ptr2;
-	cf_stack_frame_t *frame = &stack->frame[stack->depth];
-	CONF_SECTION	*parent = frame->current;
+	fr_type_t type;
+	fr_token_t token;
+	char const *ptr = *ptr_p;
+	char const *ptr2;
 
 	/*
-	 *	Get the first argument to "foreach".  For backwards
-	 *	compatibility, it could be an attribute reference.
+	 *	Parse an explicit type.
 	 */
-	ptr2 = ptr;
-	if (cf_get_token(parent, &ptr, &token, stack->buff[1], stack->bufsize,
-			 frame->filename, frame->lineno) < 0) {
-		return NULL;
-	}
-
-	if (token != T_BARE_WORD) {
-		(void) parse_error(stack, ptr2, "Unexpected argument to 'foreach'");
-		return NULL;
-	}
-
-	fr_skip_whitespace(ptr);
-
-	if (*ptr == '{') {
-		css = cf_section_alloc(parent, parent, "foreach", stack->buff[1]);
-		if (!css) {
-			ERROR("%s[%d]: Failed allocating memory for section",
-			      frame->filename, frame->lineno);
-			return NULL;
-		}
-
-		cf_filename_set(css, frame->filename);
-		cf_lineno_set(css, frame->lineno);
-		css->name2_quote = T_BARE_WORD;
-		css->unlang = CF_UNLANG_ALLOW;
-		css->allow_locals = true;
-
-		ptr++;
-		stack->ptr = ptr;
-
-		return cf_section_to_item(css);
-	}
-
-	fr_skip_whitespace(ptr);
-
-	/*
-	 *
-	 */
-	if (*ptr == '(') {
-		type = FR_TYPE_NULL;
-
-		strcpy(stack->buff[2], stack->buff[1]);
-		goto parse_expression;
-	}
-
 	type = fr_table_value_by_str(fr_type_table, stack->buff[1], FR_TYPE_NULL);
 	switch (type) {
 	default:
@@ -2061,8 +2013,8 @@ static CONF_ITEM *process_foreach(cf_stack_t *stack)
 	case FR_TYPE_VOID:
 	case FR_TYPE_VALUE_BOX:
 	case FR_TYPE_MAX:
-		(void) parse_error(stack, ptr2, "Unknown or invalid variable type in 'foreach'");
-		return NULL;
+		(void) parse_error(stack, type_ptr, "Unknown or invalid variable type in 'foreach'");
+		return -1;
 	}
 
 	fr_skip_whitespace(ptr);
@@ -2078,6 +2030,138 @@ static CONF_ITEM *process_foreach(cf_stack_t *stack)
 	}
 	fr_skip_whitespace(ptr);
 
+	*ptr_p = ptr;
+	*type_p = type;
+
+	return 0;
+}
+
+/*
+ *	foreach &User-Name {  - old and deprecated
+ *
+ *	foreach value (...) { - automatically define variable
+ *
+ *	foreach string value ( ...) { - data type for variable
+ *
+ *	foreach string key, type value (..) { - key is "string", value is as above
+ */
+static CONF_ITEM *process_foreach(cf_stack_t *stack)
+{
+	fr_token_t	token;
+	fr_type_t	type;
+	CONF_SECTION	*css;
+	char const	*ptr = stack->ptr, *ptr2, *type_ptr;
+	cf_stack_frame_t *frame = &stack->frame[stack->depth];
+	CONF_SECTION	*parent = frame->current;
+
+	css = cf_section_alloc(parent, parent, "foreach", NULL);
+	if (!css) {
+		ERROR("%s[%d]: Failed allocating memory for section",
+		      frame->filename, frame->lineno);
+		return NULL;
+	}
+
+	cf_filename_set(css, frame->filename);
+	cf_lineno_set(css, frame->lineno);
+	css->name2_quote = T_BARE_WORD;
+	css->unlang = CF_UNLANG_ALLOW;
+	css->allow_locals = true;
+
+	/*
+	 *	Get the first argument to "foreach".  For backwards
+	 *	compatibility, it could be an attribute reference.
+	 */
+	type_ptr = ptr;
+	if (cf_get_token(parent, &ptr, &token, stack->buff[1], stack->bufsize,
+			 frame->filename, frame->lineno) < 0) {
+		return NULL;
+	}
+
+	if (token != T_BARE_WORD) {
+	invalid_argument:
+		(void) parse_error(stack, type_ptr, "Unexpected argument to 'foreach'");
+		return NULL;
+	}
+
+	fr_skip_whitespace(ptr);
+
+	/*
+	 *	foreach foo { ...
+	 *
+	 *	Deprecated and don't use.
+	 */
+	if (*ptr == '{') {
+		css->name2 = talloc_typed_strdup(css, stack->buff[1]);
+
+		ptr++;
+		stack->ptr = ptr;
+
+		cf_log_warn(css, "Using deprecated syntax.  Please use new the new 'foreach' syntax.");
+		return cf_section_to_item(css);
+	}
+
+	fr_skip_whitespace(ptr);
+
+	/*
+	 *	foreach value (...) {
+	 */
+	if (*ptr == '(') {
+		type = FR_TYPE_NULL;
+		strcpy(stack->buff[2], stack->buff[1]); /* so that we can parse expression in buff[1] */
+		goto alloc_argc_2;
+	}
+
+	/*
+	 *	on input, type name is in stack->buff[1]
+	 *	on output, variable name is in stack->buff[2]
+	 */
+	if (parse_type_name(stack, &ptr, type_ptr, &type) < 0) return NULL;
+
+	/*
+	 *	if we now have an expression block, then just have variable type / name.
+	 */
+	if (*ptr == '(') goto alloc_argc_2;
+
+	/*
+	 *	There's a comma.  the first "type name" is for the key.  We skip the comma, and parse the
+	 *	second "type name" as being for the value.
+	 *
+	 *	foreach type key, type value (...)
+	 */
+	if (*ptr == ',') {
+		/*
+		 *	We have 4 arguments, [var-type, var-name, key-type, key-name]
+		 *
+		 *	We don't really care about key-type, but we might care later.
+		 */
+		css->argc = 4;
+		css->argv = talloc_array(css, char const *, css->argc);
+		css->argv_quote = talloc_array(css, fr_token_t, css->argc);
+
+		css->argv[2] = fr_type_to_str(type);
+		css->argv_quote[2] = T_BARE_WORD;
+
+		css->argv[3] = talloc_typed_strdup(css->argv, stack->buff[2]);
+		css->argv_quote[3] = T_BARE_WORD;
+
+		ptr++;
+		fr_skip_whitespace(ptr);
+		type_ptr = ptr;
+
+		/*
+		 *	Now parse "type value"
+		 */
+		token = gettoken(&ptr, stack->buff[1], stack->bufsize, false);
+		if (token != T_BARE_WORD) goto invalid_argument;
+
+		if (parse_type_name(stack, &ptr, type_ptr, &type) < 0) return NULL;
+
+		if (!fr_type_is_leaf(type)) {
+			(void) parse_error(stack, type_ptr, "Invalid data type for 'key' variable");
+			return NULL;
+		}
+	}
+
 	/*
 	 *	The thing to loop over must now be in an expression block.
 	 */
@@ -2086,10 +2170,18 @@ static CONF_ITEM *process_foreach(cf_stack_t *stack)
 		return NULL;
 	}
 
+	goto parse_expression;
+
+alloc_argc_2:
+	css->argc = 2;
+	css->argv = talloc_array(css, char const *, css->argc);
+	css->argv_quote = talloc_array(css, fr_token_t, css->argc);
+
+
+parse_expression:
 	/*
 	 *	"(" whitespace EXPRESSION whitespace ")"
 	 */
-parse_expression:
 	ptr++;
 	fr_skip_whitespace(ptr);
 
@@ -2098,8 +2190,11 @@ parse_expression:
 		return NULL;
 	}
 
+	/*
+	 *	We can do &foo[*] or %func(...), but not "...".
+	 */
 	if (token != T_BARE_WORD) {
-		(void) parse_error(stack, ptr2, "Invalid thingy in 'foreach'");
+		(void) parse_error(stack, ptr2, "Invalid reference in 'foreach'");
 		return NULL;
 	}
 
@@ -2116,26 +2211,11 @@ parse_expression:
 		return NULL;
 	}
 
-	css = cf_section_alloc(parent, parent, "foreach", stack->buff[1]);
-	if (!css) {
-		ERROR("%s[%d]: Failed allocating memory for section",
-		      frame->filename, frame->lineno);
-		return NULL;
-	}
-
-	cf_filename_set(css, frame->filename);
-	cf_lineno_set(css, frame->lineno);
-	css->name2_quote = T_BARE_WORD;
-	css->unlang = CF_UNLANG_ALLOW;
-	css->allow_locals = true;
+	css->name2 = talloc_typed_strdup(css, stack->buff[1]);
 
 	/*
 	 *	Add in the extra arguments
 	 */
-	css->argc = 2;
-	css->argv = talloc_array(css, char const *, css->argc);
-	css->argv_quote = talloc_array(css, fr_token_t, css->argc);
-
 	css->argv[0] = fr_type_to_str(type);
 	css->argv_quote[0] = T_BARE_WORD;
 
