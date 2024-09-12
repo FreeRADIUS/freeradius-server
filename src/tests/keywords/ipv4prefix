@@ -1,0 +1,33 @@
+#
+#  PRE: if
+#
+ipaddr test_addr
+ipv4prefix test_prefix
+
+test_addr := 192.168.10.25
+
+#  Address & mask -> prefix
+test_prefix := test_addr & (uint32)0xffffff00
+if !(test_prefix == 192.168.10.0/24) {
+	test_fail
+}
+
+#  Prefix + offset -> address
+test_addr := test_prefix + 23
+if !(test_addr == 192.168.10.23) {
+	test_fail
+}
+
+#  Check we can get the hightest address
+test_addr := test_prefix + 255
+if !(test_addr == 192.168.10.255) {
+	test_fail
+}
+
+#  Check we can't assign outside the subnet
+test_addr := test_prefix + 256
+if (test_addr) {
+	test_fail
+}
+
+success
