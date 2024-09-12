@@ -52,6 +52,7 @@ typedef struct {
 	request_t		*request;			//!< The current request.
 	fr_dcursor_t		cursor;				//!< Used to track our place in the list
 	fr_pair_t		*key;				//!< local variable which contains the key
+	fr_pair_t		*value;				//!< local variable which contains the value
 	tmpl_t const		*vpt;				//!< pointer to the vpt
 
 	bool			success;			//!< for xlat expansion
@@ -75,7 +76,7 @@ typedef struct {
  *	that isn't (yet) supported.  In order to support that, we would likely have to add a new data type
  *	FR_TYPE_DCURSOR, and put the cursor into in vp->vp_ptr.  We would then have to update a lot of things:
  *
- *	- the foreach code has to put the dcursor into state->key->vp_ptr.
+ *	- the foreach code has to put the dcursor into state->value->vp_ptr.
  *	- the pair code (all of it, perhaps) has to check for "is this thing a cursor), and if so
  *	  return the next pair from the cursor instead of the given pair.  This is a huge change.
  *	- update all of the pair / value-box APIs to handle the new data type
@@ -146,7 +147,7 @@ static xlat_action_t unlang_foreach_xlat_func(TALLOC_CTX *ctx, fr_dcursor_t *out
  */
 static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 {
-	if (state->key) {
+	if (state->value) {
 		fr_pair_t *vp;
 
 		if (tmpl_is_xlat(state->vpt)) return 0;
@@ -227,9 +228,9 @@ next:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	fr_value_box_clear_value(&state->key->data);
-	if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, box) < 0) {
-		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->key->da->name, box);
+	fr_value_box_clear_value(&state->value->data);
+	if (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, box) < 0) {
+		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
 		goto next;
 	}
 
@@ -260,11 +261,11 @@ static unlang_action_t unlang_foreach_xlat_expanded(rlm_rcode_t *p_result, reque
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	fr_value_box_clear_value(&state->key->data);
+	fr_value_box_clear_value(&state->value->data);
 
 next:
-	if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, box) < 0) {
-		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->key->da->name, box);
+	if (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, box) < 0) {
+		RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pV", state->value->da->name, box);
 		box = fr_dcursor_next(&state->cursor);
 		if (!box) goto done;
 
@@ -318,9 +319,9 @@ static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t
 	 *	interpreter.
 	 */
 	if (fr_type_is_leaf(vp->vp_type)) {
-		if (vp->vp_type == state->key->vp_type) {
+		if (vp->vp_type == state->value->vp_type) {
 			fr_value_box_clear_value(&vp->data);
-			(void) fr_value_box_copy(vp, &vp->data, &state->key->data);
+			(void) fr_value_box_copy(vp, &vp->data, &state->value->data);
 		}
 	} else {
 		/*
@@ -342,36 +343,36 @@ next:
 	 *	Copy the data.
 	 */
 	if (vp->vp_type == FR_TYPE_GROUP) {
-		fr_assert(state->key->vp_type == FR_TYPE_GROUP);
+		fr_assert(state->value->vp_type == FR_TYPE_GROUP);
 
-		fr_pair_list_free(&state->key->vp_group);
+		fr_pair_list_free(&state->value->vp_group);
 
-		if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
-			REDEBUG("Failed copying members of %s", state->key->da->name);
+		if (fr_pair_list_copy(state->value, &state->value->vp_group, &vp->vp_group) < 0) {
+			REDEBUG("Failed copying members of %s", state->value->da->name);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 	} else if (fr_type_is_structural(vp->vp_type)) {
-		fr_assert(state->key->vp_type == vp->vp_type);
+		fr_assert(state->value->vp_type == vp->vp_type);
 
-		fr_pair_list_free(&state->key->vp_group);
+		fr_pair_list_free(&state->value->vp_group);
 
-		if (unlang_foreach_pair_copy(state->key, vp, vp->da) < 0) {
-			REDEBUG("Failed copying children of %s", state->key->da->name);
+		if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
+			REDEBUG("Failed copying children of %s", state->value->da->name);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 	} else {
-		fr_value_box_clear_value(&state->key->data);
-		if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &vp->data) < 0) {
-			RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pP", state->key->da->name, vp);
+		fr_value_box_clear_value(&state->value->data);
+		if (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, &vp->data) < 0) {
+			RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pP", state->value->da->name, vp);
 			goto next;
 		}
 
 #ifndef NDEBUG
-		RDEBUG2("# looping with: %s = %pV", state->key->da->name, &vp->data);
+		RDEBUG2("# looping with: %s = %pV", state->value->da->name, &vp->data);
 #endif
 	}
 
@@ -414,31 +415,31 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	fr_assert(vp != NULL);
 
 	if (vp->vp_type == FR_TYPE_GROUP) {
-		fr_assert(state->key->vp_type == FR_TYPE_GROUP);
+		fr_assert(state->value->vp_type == FR_TYPE_GROUP);
 
-		if (fr_pair_list_copy(state->key, &state->key->vp_group, &vp->vp_group) < 0) {
-			REDEBUG("Failed copying members of %s", state->key->da->name);
+		if (fr_pair_list_copy(state->value, &state->value->vp_group, &vp->vp_group) < 0) {
+			REDEBUG("Failed copying members of %s", state->value->da->name);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 	} else if (fr_type_is_structural(vp->vp_type)) {
-		if (state->key->vp_type == vp->vp_type) {
-			if (unlang_foreach_pair_copy(state->key, vp, vp->da) < 0) {
-				REDEBUG("Failed copying children of %s", state->key->da->name);
+		if (state->value->vp_type == vp->vp_type) {
+			if (unlang_foreach_pair_copy(state->value, vp, vp->da) < 0) {
+				REDEBUG("Failed copying children of %s", state->value->da->name);
 				*p_result = RLM_MODULE_FAIL;
 				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
 		} else {
-			REDEBUG("Failed initializing loop variable %s - expected %s type, but got input (%pP)", state->key->da->name, fr_type_to_str(state->key->vp_type), vp);
+			REDEBUG("Failed initializing loop variable %s - expected %s type, but got input (%pP)", state->value->da->name, fr_type_to_str(state->value->vp_type), vp);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
 
 	} else {
-		fr_value_box_clear_value(&state->key->data);
-		while (vp && (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &vp->data) < 0)) {
-			RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pP", state->key->da->name, vp);
+		fr_value_box_clear_value(&state->value->data);
+		while (vp && (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, &vp->data) < 0)) {
+			RDEBUG("Failed casting 'foreach' iteration variable '%s' from %pP", state->value->da->name, vp);
 			vp = fr_dcursor_next(&state->cursor);
 		}
 
@@ -491,18 +492,18 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 	/*
 	 *	We have a key variable, let's use that.
 	 */
-	if (gext->key) {
+	if (gext->value) {
 		state->vpt = gext->vpt;
 
 		/*
 		 *	Create the local variable and populate its value.
 		 */
-		if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
-			REDEBUG("Failed creating %s", gext->key->name);
+		if (fr_pair_append_by_da(request->local_ctx, &state->value, &request->local_pairs, gext->value) < 0) {
+			REDEBUG("Failed creating %s", gext->value->name);
 			*p_result = RLM_MODULE_FAIL;
 			return UNLANG_ACTION_CALCULATE_RESULT;
 		}
-		fr_assert(state->key != NULL);
+		fr_assert(state->value != NULL);
 
 		if (tmpl_is_attr(gext->vpt)) {
 			return unlang_foreach_attr_init(p_result, request, frame, state);

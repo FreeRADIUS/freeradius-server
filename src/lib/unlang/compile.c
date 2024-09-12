@@ -3366,8 +3366,8 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		/*
 		 *	And ensure we have the key.
 		 */
-		gext->key = fr_dict_attr_by_name(NULL, var->root, variable_name);
-		fr_assert(gext->key != NULL);
+		gext->value = fr_dict_attr_by_name(NULL, var->root, variable_name);
+		fr_assert(gext->value != NULL);
 	}
 
 	if (!compile_children(g, &unlang_ctx2, true)) return NULL;
