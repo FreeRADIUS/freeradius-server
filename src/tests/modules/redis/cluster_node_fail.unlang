@@ -3,6 +3,7 @@
 #
 string redismaster
 string redisreplica
+string takeoverresult
 
 $INCLUDE cluster_reset.inc
 
@@ -26,7 +27,11 @@ if (%redis(@%redis.node(b, 0), DEBUG, SEGFAULT)) {
 }
 
 #  Forcefully failover the slave for that node
-if (!(%redis(@%{redisreplica}, CLUSTER, FAILOVER, TAKEOVER) == 'OK')) {
+#  If the failover has happened automatically, then the result is ''
+#  which sometimes happens when running tests with sanitizers, due to
+#  slowness introduced by the sanitizers.
+&takeoverresult = %redis(@%{redisreplica}, CLUSTER, FAILOVER, TAKEOVER)
+if !((&takeoverresult == 'OK') || (&takeoverresult == '')) {
 	test_fail
 }
 
