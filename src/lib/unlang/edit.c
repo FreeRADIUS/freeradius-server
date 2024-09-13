@@ -171,6 +171,7 @@ static int tmpl_to_values(TALLOC_CTX *ctx, edit_result_t *out, request_t *reques
 		 *	The other tmpl types MUST have already been
 		 *	converted to the "realized" types.
 		 */
+		tmpl_debug(vpt);
 		fr_assert(0);
 		break;
 	}
@@ -1564,6 +1565,8 @@ static unlang_action_t process_edit(rlm_rcode_t *p_result, request_t *request, u
 	 *	Freeing the edit list will automatically commit the edits.  i.e. trash the undo list, and
 	 *	leave the edited pairs in place.
 	 */
+
+	RINDENT_RESTORE(request, state);
 
 	*p_result = RLM_MODULE_NOOP;
 	if (state->success) *state->success = true;

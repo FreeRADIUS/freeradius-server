@@ -1,0 +1,25 @@
+string ref
+
+Tmp-String-0 := { "a", "b", "c", "d" }
+
+ref = "Tmp-String-0[1]"
+
+"%{ref}" += "X"
+
+if (Tmp-String-0[1] != "bX") {
+	test_fail
+}
+
+if (Tmp-String-0[0] != "a") {
+	test_fail
+}
+
+if (Tmp-String-0[2] != "c") {
+	test_fail
+}
+
+if (Tmp-String-0[3] != "d") {
+	test_fail
+}
+
+success
