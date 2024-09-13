@@ -53,6 +53,7 @@ struct tmpl_dcursor_nested_s {
 
 	fr_dcursor_t		cursor;		//!< Cursor to track where we are in the list in case
 						///< we're doing counts.
+	size_t			num;		//!< which attribute number we are looking at
 };
 
 /** Maintains state between cursor calls
@@ -101,3 +102,5 @@ fr_pair_t *tmpl_dcursor_pair_build(fr_pair_t *parent, fr_dcursor_t *cursor, fr_d
 
 #define tmpl_dcursor_build_init(_err, _ctx, _cc, _cursor, _request, _vpt, _build, _uctx) \
 	_tmpl_dcursor_init(_err, _ctx, _cc, _cursor, _request, _vpt, _build, _uctx)
+
+ssize_t	tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc);

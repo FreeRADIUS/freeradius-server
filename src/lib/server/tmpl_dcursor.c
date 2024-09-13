@@ -59,6 +59,7 @@ static void *_tmpl_cursor_child_next(fr_dlist_head_t *list, void *curr, void *uc
 
 	while ((vp = fr_dlist_next(list, vp))) {
 		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) break;
+		ns->num++;
 	}
 
 	return vp;
@@ -770,4 +771,57 @@ void tmpl_extents_debug(fr_dlist_head_t *head)
 		}
 	}
 
+}
+
+ssize_t tmpl_dcursor_print(fr_sbuff_t *out, tmpl_dcursor_ctx_t const *cc)
+{
+	tmpl_dcursor_nested_t	*ns;
+	tmpl_request_t		*rr = NULL;
+	tmpl_attr_t		*ar = NULL;
+	fr_sbuff_t		our_out = FR_SBUFF(out);
+
+	/*
+	 *	Print all the request references
+	 */
+	while ((rr = tmpl_request_list_next(&cc->vpt->data.attribute.rr, rr))) {
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, fr_table_str_by_value(tmpl_request_ref_table, rr->request, "<INVALID>"));
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+	}
+
+	ns = fr_dlist_head(&cc->nested);
+
+	/*
+	 *	This also prints out the things we're looping over in nested?
+	 */
+	while ((ar = tmpl_attr_list_next(tmpl_attr(cc->vpt), ar))) {
+		if (ns->ar == ar) break;
+
+		if (ar->ar_da == request_attr_local) continue;
+
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, ar->da->name);
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '.');
+	}
+
+	/*
+	 *	Subtract one from the number, because ???
+	 *
+	 *	@todo - for foo.[*], print out the actual da being used, which involves tracking the current
+	 *	vp, too.  Except that we would then have to track _all_ instances of _all_ vps in a list,
+	 *	which is bad.  Perhaps just forbid the use of foo.[*] instead.
+	 */
+	while (true) {
+		fr_assert(ns->num > 0);
+
+		FR_SBUFF_IN_STRCPY_RETURN(&our_out, ns->ar->da->name);
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, '[');
+		FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "%zd", ns->num - 1);
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ']');
+
+		ns = fr_dlist_next(&cc->nested, ns);
+		if (!ns) break;
+
+		FR_SBUFF_IN_CHAR_RETURN(&our_out, ']');
+	}
+
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
