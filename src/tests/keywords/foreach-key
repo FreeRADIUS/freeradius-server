@@ -9,11 +9,14 @@ total = ""
 #  For now, just test that we can parse key things
 #
 foreach string key, string name (foo.User-Name[*]) {
+	total += key
+	total += " = "
 	total += name
 	total += ","
 }
 
-if (total != "a,c,") {
+
+if (total != "foo.User-Name[0] = a,foo.User-Name[1] = c,") {
 	test_fail
 }
 

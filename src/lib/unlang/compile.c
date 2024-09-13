@@ -3180,6 +3180,9 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	fr_type_t		type;
 	unlang_t		*c;
 
+	fr_type_t		key_type;
+	char const		*key_name;
+
 	unlang_group_t		*g;
 	unlang_foreach_t	*gext;
 
@@ -3296,6 +3299,14 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 	 */
 	type_name = cf_section_argv(cs, 0); /* AFTER name1, name2 */
 
+	key_name = cf_section_argv(cs, 2);
+	if (key_name) {
+		key_type = fr_table_value_by_str(fr_type_table, key_name, FR_TYPE_VOID);
+	} else {
+		key_type = FR_TYPE_VOID;
+	}
+	key_name = cf_section_argv(cs, 3);
+
 	if (tmpl_is_xlat(vpt)) {
 		if (!type_name) {
 			/*
@@ -3311,7 +3322,19 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 			return NULL;
 		}
 
+		if ((key_type != FR_TYPE_VOID) && !fr_type_is_numeric(key_type)) {
+			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be numeric", fr_type_to_str(key_type));
+			return NULL;
+		}
+
 		goto get_name;
+	} else {
+		fr_assert(tmpl_is_attr(vpt));
+
+		if ((key_type != FR_TYPE_VOID) && (key_type != FR_TYPE_STRING)) {
+			cf_log_err(cs, "Invalid data type '%s' for 'key' variable - it should be 'string'", fr_type_to_str(key_type));
+			return NULL;
+		}
 	}
 
 	if (type_name) {
@@ -3368,6 +3391,16 @@ static unlang_t *compile_foreach(unlang_t *parent, unlang_compile_t *unlang_ctx,
 		 */
 		gext->value = fr_dict_attr_by_name(NULL, var->root, variable_name);
 		fr_assert(gext->value != NULL);
+
+		/*
+		 *	Define the local key variable.  Note that we don't copy any children.
+		 */
+		if (key_type != FR_TYPE_VOID) {
+			if (define_local_variable(cf_section_to_item(cs), var, &t_rules, key_type, key_name, NULL) < 0) goto fail;
+
+			gext->key = fr_dict_attr_by_name(NULL, var->root, key_name);
+			fr_assert(gext->key != NULL);
+		}
 	}
 
 	if (!compile_children(g, &unlang_ctx2, true)) return NULL;

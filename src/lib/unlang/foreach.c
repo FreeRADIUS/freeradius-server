@@ -45,6 +45,8 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 
 static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
+#define BUFFER_SIZE (256)
+
 /** State of a foreach loop
  *
  */
@@ -54,6 +56,9 @@ typedef struct {
 	fr_pair_t		*key;				//!< local variable which contains the key
 	fr_pair_t		*value;				//!< local variable which contains the value
 	tmpl_t const		*vpt;				//!< pointer to the vpt
+
+	uint32_t		index;				//!< for xlat results
+	char			*buffer;			//!< for key values
 
 	bool			success;			//!< for xlat expansion
 	fr_value_box_list_t	list;				//!< value box list for looping over xlats
@@ -302,6 +307,27 @@ static unlang_action_t unlang_foreach_xlat_init(rlm_rcode_t *p_result, request_t
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+static int unlang_foreach_key_update(request_t *request, unlang_frame_state_foreach_t *state)
+{
+	fr_value_box_clear_value(&state->key->data);
+
+	if (tmpl_is_attr(state->vpt)) {
+		if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
+			fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
+		}
+	} else {
+		fr_value_box_t box;
+
+		fr_value_box(&box, state->index, false);
+
+		if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &box) < 0) {
+			RDEBUG("Failed casting 'foreach' key variable '%s' from %u", state->key->da->name, state->index);
+			return -1;
+		}
+	}
+
+	return 0;
+}
 
 static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
@@ -337,6 +363,12 @@ next:
 		fr_assert(state->indent == request->log.indent.unlang);
 #endif
 		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
+	if (state->key) {
+		state->index++;
+
+		if (unlang_foreach_key_update(request, state) < 0) goto next;
 	}
 
 	/*
@@ -413,6 +445,16 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 
 	vp = tmpl_dcursor_init(NULL, NULL, &state->cc, &state->cursor, request, state->vpt);
 	fr_assert(vp != NULL);
+
+	/*
+	 *	Update the key with the current path or index.
+	 */
+	if (state->key) {
+		if (unlang_foreach_key_update(request, state) < 0) {
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;			
+		}
+	}
 
 	if (vp->vp_type == FR_TYPE_GROUP) {
 		fr_assert(state->value->vp_type == FR_TYPE_GROUP);
@@ -506,6 +548,17 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		fr_assert(state->value != NULL);
 
 		if (tmpl_is_attr(gext->vpt)) {
+			if (gext->key) {
+				if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
+					REDEBUG("Failed creating %s", gext->key->name);
+					*p_result = RLM_MODULE_FAIL;
+					return UNLANG_ACTION_CALCULATE_RESULT;
+				}
+				fr_assert(state->key != NULL);
+
+				MEM(state->buffer = talloc_array(state, char, BUFFER_SIZE));
+			}
+
 			return unlang_foreach_attr_init(p_result, request, frame, state);
 		}
 
