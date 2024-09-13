@@ -521,18 +521,18 @@ int unlang_fixup_update(map_t *map, void *ctx)
 	 */
 
 	/*
-	 *	What exactly where you expecting to happen here?
-	 */
-	if (tmpl_attr_tail_da_is_leaf(map->lhs) &&
-	    tmpl_is_list(map->rhs)) {
-		cf_log_err(map->ci, "Can't copy list into an attribute");
-		return -1;
-	}
-
-	/*
 	 *	Depending on the attribute type, some operators are disallowed.
 	 */
 	if (tmpl_is_attr(map->lhs)) {
+		/*
+		 *	What exactly where you expecting to happen here?
+		 */
+		if (tmpl_attr_tail_da_is_leaf(map->lhs) &&
+		    tmpl_is_list(map->rhs)) {
+			cf_log_err(map->ci, "Can't copy list into an attribute");
+			return -1;
+		}
+
 		if (!fr_assignment_op[map->op] && !fr_comparison_op[map->op] && !fr_binary_op[map->op]) {
 			cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
 				   "Only assignment or filter operators are allowed",
@@ -1579,18 +1579,23 @@ static unlang_t *compile_edit_pair(unlang_t *parent, unlang_compile_t *unlang_ct
 	}
 
 	/*
-	 *	Can't assign to [*] or [#]
+	 *	@todo - we still want to do fixups on the RHS?
 	 */
-	num = tmpl_attr_tail_num(map->lhs);
-	if ((num == NUM_ALL) || (num == NUM_COUNT)) {
-		cf_log_err(cp, "Invalid array reference in %s", map->lhs->name);
-		goto fail;
-	}
+	if (tmpl_is_attr(map->lhs)) {
+		/*
+		 *	Can't assign to [*] or [#]
+		 */
+		num = tmpl_attr_tail_num(map->lhs);
+		if ((num == NUM_ALL) || (num == NUM_COUNT)) {
+			cf_log_err(cp, "Invalid array reference in %s", map->lhs->name);
+			goto fail;
+		}
 
-	if ((map->op == T_OP_SUB_EQ) && fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
-	    tmpl_is_attr(map->rhs) && tmpl_attr_tail_da(map->rhs)->flags.local) {
-		cf_log_err(cp, "Cannot delete local variable %s", map->rhs->name);
-		goto fail;
+		if ((map->op == T_OP_SUB_EQ) && fr_type_is_structural(tmpl_attr_tail_da(map->lhs)->type) &&
+		    tmpl_is_attr(map->rhs) && tmpl_attr_tail_da(map->rhs)->flags.local) {
+			cf_log_err(cp, "Cannot delete local variable %s", map->rhs->name);
+			goto fail;
+		}
 	}
 
 	/*
