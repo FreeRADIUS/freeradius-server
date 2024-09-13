@@ -1,0 +1,23 @@
+#
+#  PRE: foreach-explode
+#
+string input
+string result
+
+input = "a b c d e f"
+result = ""
+
+foreach uint32 key,string thing (%explode(%{input}, ' ')) {
+	result += thing
+	result += ':'
+	result += (string) key
+	result += ','
+}
+
+result -= ','
+
+if (result != "a:0,b:1,c:2,d:3,e:4,f:5") {
+	test_fail
+}
+
+success

@@ -221,17 +221,42 @@ static unlang_action_t unlang_foreach_next_old(rlm_rcode_t *p_result, request_t 
 	return unlang_interpret_push_children(p_result, request, frame->result, UNLANG_NEXT_SIBLING);
 }
 
+static int unlang_foreach_xlat_key_update(request_t *request, unlang_frame_state_foreach_t *state)
+{
+	fr_value_box_t box;
+
+	RDEBUG("UPDATE");
+
+	fr_value_box_clear_value(&state->key->data);
+
+	fr_value_box(&box, state->index, false);
+
+	if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &box) < 0) {
+		RDEBUG("Failed casting 'foreach' key variable '%s' from %u", state->key->da->name, state->index);
+		return -1;
+	}
+
+	RDEBUG("KEY %pP", state->key);
+
+	return 0;
+}
+
+
 static unlang_action_t unlang_foreach_xlat_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_foreach_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_foreach_t);
 	fr_value_box_t *box;
 
 next:
+	state->index++;
+
 	box = fr_dcursor_next(&state->cursor);
 	if (!box) {
 		*p_result = frame->result;
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
+	
+	if (unlang_foreach_xlat_key_update(request, state) < 0) goto next;
 
 	fr_value_box_clear_value(&state->value->data);
 	if (fr_value_box_cast(state->value, &state->value->data, state->value->vp_type, state->value->da, box) < 0) {
@@ -301,32 +326,23 @@ static unlang_action_t unlang_foreach_xlat_init(rlm_rcode_t *p_result, request_t
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
+	if (unlang_foreach_xlat_key_update(request, state) < 0) {
+		*p_result = RLM_MODULE_FAIL;
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
+
   	frame->process = unlang_foreach_xlat_expanded;
 	repeatable_set(frame);
 
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
-static int unlang_foreach_key_update(request_t *request, unlang_frame_state_foreach_t *state)
+static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_frame_state_foreach_t *state)
 {
 	fr_value_box_clear_value(&state->key->data);
-
-	if (tmpl_is_attr(state->vpt)) {
-		if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
-			fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
-		}
-	} else {
-		fr_value_box_t box;
-
-		fr_value_box(&box, state->index, false);
-
-		if (fr_value_box_cast(state->key, &state->key->data, state->key->vp_type, state->key->da, &box) < 0) {
-			RDEBUG("Failed casting 'foreach' key variable '%s' from %u", state->key->da->name, state->index);
-			return -1;
-		}
+	if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
+		fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
 	}
-
-	return 0;
 }
 
 static unlang_action_t unlang_foreach_attr_next(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)
@@ -366,9 +382,7 @@ next:
 	}
 
 	if (state->key) {
-		state->index++;
-
-		if (unlang_foreach_key_update(request, state) < 0) goto next;
+		unlang_foreach_attr_key_update(request, state);
 	}
 
 	/*
@@ -450,10 +464,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	 *	Update the key with the current path or index.
 	 */
 	if (state->key) {
-		if (unlang_foreach_key_update(request, state) < 0) {
-			*p_result = RLM_MODULE_FAIL;
-			return UNLANG_ACTION_CALCULATE_RESULT;			
-		}
+		unlang_foreach_attr_key_update(request, state);
 	}
 
 	if (vp->vp_type == FR_TYPE_GROUP) {
@@ -547,18 +558,17 @@ static unlang_action_t unlang_foreach(rlm_rcode_t *p_result, request_t *request,
 		}
 		fr_assert(state->value != NULL);
 
-		if (tmpl_is_attr(gext->vpt)) {
-			if (gext->key) {
-				if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
-					REDEBUG("Failed creating %s", gext->key->name);
-					*p_result = RLM_MODULE_FAIL;
-					return UNLANG_ACTION_CALCULATE_RESULT;
-				}
-				fr_assert(state->key != NULL);
-
-				MEM(state->buffer = talloc_array(state, char, BUFFER_SIZE));
+		if (gext->key) {
+			if (fr_pair_append_by_da(request->local_ctx, &state->key, &request->local_pairs, gext->key) < 0) {
+				REDEBUG("Failed creating %s", gext->key->name);
+				*p_result = RLM_MODULE_FAIL;
+				return UNLANG_ACTION_CALCULATE_RESULT;
 			}
-
+			fr_assert(state->key != NULL);
+		}
+			
+		if (tmpl_is_attr(gext->vpt)) {
+			MEM(state->buffer = talloc_array(state, char, BUFFER_SIZE));
 			return unlang_foreach_attr_init(p_result, request, frame, state);
 		}
 
