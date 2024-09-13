@@ -2709,7 +2709,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		switch (ret) {
 		case -1:
 			RWDEBUG("(TLS) ocsp: Invalid URL in certificate.  Not doing OCSP");
-			break;
+			goto skipped;
 
 		case 0:
 			if (conf->ocsp_url) {
