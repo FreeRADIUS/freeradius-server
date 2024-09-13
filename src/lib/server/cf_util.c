@@ -1212,7 +1212,7 @@ char const *cf_section_name(CONF_SECTION const *cs)
  */
 char const *cf_section_argv(CONF_SECTION const *cs, int argc)
 {
-	if (!cs || !cs->argv || (argc < 0) || (argc > cs->argc)) return NULL;
+	if (!cs || !cs->argv || (argc < 0) || (argc >= cs->argc)) return NULL;
 
 	return cs->argv[argc];
 }
