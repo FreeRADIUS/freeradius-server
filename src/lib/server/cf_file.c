@@ -2026,7 +2026,7 @@ static int parse_type_name(cf_stack_t *stack, char const **ptr_p, char const *ty
 	token = gettoken(&ptr, stack->buff[2], stack->bufsize, false);
 	if (token != T_BARE_WORD) {
 		(void) parse_error(stack, ptr2, "Invalid variable name for key in 'foreach'");
-		return NULL;
+		return -1;
 	}
 	fr_skip_whitespace(ptr);
 
