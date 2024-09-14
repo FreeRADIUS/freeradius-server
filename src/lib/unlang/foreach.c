@@ -225,7 +225,7 @@ static int unlang_foreach_xlat_key_update(request_t *request, unlang_frame_state
 {
 	fr_value_box_t box;
 
-	RDEBUG("UPDATE");
+	if (!state->key) return 0;
 
 	fr_value_box_clear_value(&state->key->data);
 
@@ -235,8 +235,6 @@ static int unlang_foreach_xlat_key_update(request_t *request, unlang_frame_state
 		RDEBUG("Failed casting 'foreach' key variable '%s' from %u", state->key->da->name, state->index);
 		return -1;
 	}
-
-	RDEBUG("KEY %pP", state->key);
 
 	return 0;
 }
@@ -339,6 +337,8 @@ static unlang_action_t unlang_foreach_xlat_init(rlm_rcode_t *p_result, request_t
 
 static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_frame_state_foreach_t *state)
 {
+	if (state->key) return;
+
 	fr_value_box_clear_value(&state->key->data);
 	if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
 		fr_value_box_strdup(state->key, &state->key->data, NULL, state->buffer, false);
@@ -381,9 +381,7 @@ next:
 		return UNLANG_ACTION_CALCULATE_RESULT;
 	}
 
-	if (state->key) {
-		unlang_foreach_attr_key_update(request, state);
-	}
+	unlang_foreach_attr_key_update(request, state);
 
 	/*
 	 *	Copy the data.
@@ -463,9 +461,7 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	/*
 	 *	Update the key with the current path or index.
 	 */
-	if (state->key) {
-		unlang_foreach_attr_key_update(request, state);
-	}
+	unlang_foreach_attr_key_update(request, state);
 
 	if (vp->vp_type == FR_TYPE_GROUP) {
 		fr_assert(state->value->vp_type == FR_TYPE_GROUP);
