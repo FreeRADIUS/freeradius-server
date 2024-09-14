@@ -337,7 +337,7 @@ static unlang_action_t unlang_foreach_xlat_init(rlm_rcode_t *p_result, request_t
 
 static void unlang_foreach_attr_key_update(UNUSED request_t *request, unlang_frame_state_foreach_t *state)
 {
-	if (state->key) return;
+	if (!state->key) return;
 
 	fr_value_box_clear_value(&state->key->data);
 	if (tmpl_dcursor_print(&FR_SBUFF_IN(state->buffer, BUFFER_SIZE), &state->cc) > 0) {
