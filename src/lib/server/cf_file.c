@@ -2184,6 +2184,7 @@ parse_expression:
 	 */
 	ptr++;
 	fr_skip_whitespace(ptr);
+	ptr2 = ptr;
 
 	if (cf_get_token(parent, &ptr, &token, stack->buff[1], stack->bufsize,
 			 frame->filename, frame->lineno) < 0) {
