@@ -657,7 +657,6 @@ static xlat_action_t xlat_regex_match(TALLOC_CTX *ctx, request_t *request, fr_va
 			continue;
 
 		case 1:
-			RDEBUG("MATCH");
 			regex_sub_to_request(request, preg, &regmatch);
 			talloc_free(vb);
 			goto done;
