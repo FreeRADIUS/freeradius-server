@@ -1,0 +1,25 @@
+#
+#  PRE: attr-ref-assign
+#
+string total
+
+Tmp-String-0 := { "a", "b", "c", "d" }
+
+Tmp-String-1 := { "a", "b", "c", "d" }
+
+#
+#  Ensure that attributes can be referenced, and
+#  that the count is correct.
+#
+foreach string key, string name (Tmp-String-0[*]) {
+	total += key
+	total += " = '"
+	total += %eval(%{key})
+	total += "', "
+}
+
+if (total != "request.Tmp-String-0[0] = 'a', request.Tmp-String-0[1] = 'b', request.Tmp-String-0[2] = 'c', request.Tmp-String-0[3] = 'd', ") {
+	test_fail
+}
+
+success

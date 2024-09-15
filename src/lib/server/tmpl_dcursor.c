@@ -59,7 +59,6 @@ static void *_tmpl_cursor_child_next(fr_dlist_head_t *list, void *curr, void *uc
 
 	while ((vp = fr_dlist_next(list, vp))) {
 		if (fr_dict_attr_cmp(ns->ar->ar_da, vp->da) == 0) break;
-		ns->num++;
 	}
 
 	return vp;
@@ -218,8 +217,14 @@ fr_pair_t *_tmpl_cursor_eval(fr_pair_t *curr, tmpl_dcursor_ctx_t *cc)
 		/*
 		 *	@todo - arguably we shouldn't try building things here.
 		 */
-		if (!vp) pop = true;	/* pop only when we're done */
+		if (!vp) {
+			pop = true;	/* pop only when we're done */
+
+		} else if (num != NUM_COUNT) {
+			ns->num++;
+		}
 		fr_dcursor_next(&ns->cursor);
+
 		break;
 
 	/*
