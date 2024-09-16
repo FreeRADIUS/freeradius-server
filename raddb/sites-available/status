@@ -64,7 +64,7 @@ server status {
 		#
 		#  Add statistics based on the Vendor-Specific.FreeRADIUS.Stats4-* queries.
 		#
-		status
+		stats
 		ok
 	}
 }
