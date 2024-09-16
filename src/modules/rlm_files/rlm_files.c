@@ -101,7 +101,7 @@ static int pairlist_to_key(uint8_t **out, size_t *outlen, void const *a)
 }
 
 static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **ptree, PAIR_LIST_LIST **pdefault,
-			    fr_type_t data_type, fr_dict_t const *dict)
+			    fr_type_t data_type, fr_dict_attr_t const *key_enum, fr_dict_t const *dict)
 {
 	int			rcode;
 	PAIR_LIST_LIST		users;
@@ -347,7 +347,7 @@ static int getrecv_filename(TALLOC_CTX *ctx, char const *filename, fr_htrie_t **
 		/*
 		 *	Has to be of the correct data type.
 		 */
-		if (fr_value_box_from_str(box, box, data_type, NULL,
+		if (fr_value_box_from_str(box, box, data_type, key_enum,
 					  entry->name, strlen(entry->name), NULL, false) < 0) {
 			ERROR("%s[%d] Failed parsing key %s - %s",
 			      entry->filename, entry->lineno, entry->name, fr_strerror());
@@ -656,6 +656,7 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 	CONF_PAIR const			*to_parse = cf_item_to_pair(ci);
 	rlm_files_data_t		*files_data;
 	fr_type_t			keytype;
+	fr_dict_attr_t const		*key_enum = NULL;
 
 	MEM(files_data = talloc_zero(ctx, rlm_files_data_t));
 
@@ -671,8 +672,12 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 		return -1;
 	}
 
+	if (files_data->key_tmpl->type == TMPL_TYPE_ATTR) {
+		key_enum = tmpl_attr_tail_da(files_data->key_tmpl);
+	}
+
 	if (getrecv_filename(files_data, inst->filename, &files_data->htrie, &files_data->def,
-			     keytype, t_rules->attr.dict_def) < 0) goto error;
+			     keytype, key_enum, t_rules->attr.dict_def) < 0) goto error;
 
 	*(void **)out = files_data;
 	return 0;
