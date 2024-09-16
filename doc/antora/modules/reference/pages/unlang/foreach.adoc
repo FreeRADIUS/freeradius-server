@@ -3,7 +3,7 @@
 .Syntax
 [source,unlang]
 ----
-foreach [<data-type>] <key-name> (<reference>) {
+foreach [<key-type> <key-name>,] [<value-type>] <value-name> (<reference>) {
     [ statements ]
 }
 ----
@@ -12,21 +12,33 @@ The `foreach` statement loops over a set of attributes as given by
 `<attribute-reference>`.  The loop can be exited early by using the
 xref:unlang/break.adoc[break] keyword.
 
-There is no limit on how many `foreach` statements can be nested.
+There is no limit to how many `foreach` statements can be nested.
 
-<data-type>::
+<key-type>::
 
-An optional data tye for the `<key-name>` local variable.  When looping over attributes, the data type can be omitted.  The data type of the local variable is then taken from the attribute reference.
+In conjunction with `<key-name>`, an optional data type for the key or index variable.  The data type should be numeric (e.g. `uint32`) for a `<reference>` which is a dynamic expansion.  The data type should be `string` for a `<reference>` which is an attribute reference.
 
 <key-name>::
 
 The name of the local variable which is used as the name of key when iterating over the attributes.
 
+For numerical data types, the key value starts off at zero (0), and increases by one every round through the loop.  For `string` data types the key value is the full path to the current attribute.
+
+The `<key-type>` and `<key-name>` are optional, and can be omitted.
+
+<value-type>::
+
+An optional data type for the `<value-name>` local variable.  When looping over attributes, the data type can be omitted.  The data type of the local variable is then taken from the attribute reference.
+
+<value-name>::
+
+The name of the local variable which is used as the name of value when iterating over the attributes.
+
 The local variable is created automatically when the `foreach` loop is entered, and is deleted automatically when the `foreach` loop exits.
 
-The `<key-name>` can be modified during the course of the `foreach` loop.  Modifications to the variable are copied back to the referenced attribute when the loop is done.  See below for an example.
+The `<value-name>` can be modified during the course of the `foreach` loop.  Modifications to the variable are copied back to the referenced attribute when the loop is done.  See below for an example.
 
-The only limitation on the `<key-name>` is that it must be unique.
+The only limitation on the `<value-name>` is that it must be unique.
 
 <reference>::
 
@@ -36,7 +48,7 @@ be a subset of attributes.
 
 Alternatively, the `<reference>` can be a xref:reference:xlat/index.adoc[dynamic expansion function],
 such as `%sql("SELECT ...")`.  When the reference is a dynamic
-expansion function, a `<data-type>` must be specified.
+expansion function, a `<value-type>` must be specified.
 
 == Modifying Loop variables
 
@@ -78,6 +90,53 @@ loop over each i in attribute[0..n]
 
     if data type of attribute matches the data type of the key
         copy the key variable back to attribute[i]
+----
+
+=== Keys
+
+Using a key variable allows the loop to determine exactly which attribute is being modified.  Or for dynamic expansions, which of `0..n` values are being examined.
+
+For attributes, the `<key-type>` must be `string`.  For dynamic expansions, it must be a numerical type such as `uint32`.
+
+.Key variable with attribute
+[source,unlang]
+----
+string total
+&Tmp-Integer-0 := { 1, 3, 5, 11 }
+
+foreach string ref, uint32 self (Tmp-Integer-0) {
+	total += ref
+	total += " = "
+	total += (string) self
+	ttoal += ", "
+}
+----
+
+When the loop is finished, the `total` variable will have the following value:
+
+----
+"Tmp-Integer-0[0] = 1, "Tmp-Integer-0[1] = 3, "Tmp-Integer-0[2] = 5, "Tmp-Integer-0[3] = 11, "
+----
+
+A dynamic expansion can use a keyed index.  If the `SELECT` statement below returns a list of `"a", "b", "c", "d"`. then we have the following example:
+
+.Key variable with expansion
+[source,unlang]
+----
+string total
+
+foreach uint32 index, string data (%sql("SELECT ...") {
+	total += (string) index
+	total += ":"
+	total += data
+	ttoal += ", "
+}
+----
+
+When the loop is finished, the `total` variable will have the following value:
+
+----
+"0:a, 1:b, 2:c, 3:d, "
 ----
 
 === Structural Data Types
