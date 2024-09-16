@@ -1,0 +1,6 @@
+::Ethernet	Password.Cleartext := "stuffnsuch"
+	Reply-Message := "success-enum"
+
+::Virtual
+	Reply-Message := "failure-enum"
+

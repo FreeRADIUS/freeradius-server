@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "default"
+User-Password = "stuffnsuch"
+NAS-Port-Type = Ethernet
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == 'success-enum'
