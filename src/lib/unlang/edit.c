@@ -43,6 +43,10 @@ RCSID("$Id$")
 #define XDEBUG DEBUG2
 #endif
 
+#define RDEBUG_ASSIGN(_name, _op, _box) do { \
+	RDEBUG2(((_box)->type == FR_TYPE_STRING) ? "%s %s \"%pV\"" : "%s %s %pV", _name, fr_tokens[_op], _box); \
+} while (0)
+
 typedef struct {
 	fr_value_box_list_t	result;			//!< result of expansion
 	tmpl_t const		*vpt;			//!< expanded tmpl
@@ -196,7 +200,7 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, map_t const *m
 			break;
 
 		default:
-			RDEBUG2("%s %s %pV", map->lhs->name, fr_tokens[vp->op], &vp->data);
+			RDEBUG_ASSIGN(map->lhs->name, vp->op, &vp->data);
 			break;
 		}
 	} else {
@@ -210,7 +214,7 @@ static void edit_debug_attr_vp(request_t *request, fr_pair_t *vp, map_t const *m
 			break;
 
 		default:
-			RDEBUG2("&%s %s %pV", vp->da->name, fr_tokens[vp->op], &vp->data);
+			RDEBUG_ASSIGN(vp->da->name, vp->op, &vp->data);
 			break;
 		}
 	}
@@ -754,7 +758,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		/*
 		 *	There's always at least one LHS vp created.  So we apply that first.
 		 */
-		RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
+		RDEBUG_ASSIGN(current->lhs.vpt->name, map->op, box);
 
 		/*
 		 *	The VP has already been inserted into the edit list, so we don't need to edit it's
@@ -784,7 +788,7 @@ static int apply_edits_to_leaf(request_t *request, unlang_frame_state_edit_t *st
 		 *	Loop over the remaining items, adding the VPs we've just created.
 		 */
 		while ((box = fr_dcursor_next(&cursor)) != NULL) {
-			RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
+			RDEBUG_ASSIGN(current->lhs.vpt->name, map->op, box);
 
 			MEM(vp = fr_pair_afrom_da(current->lhs.vp_parent, da));
 			if (fr_value_box_cast(vp, &vp->data, vp->vp_type, vp->da, box) < 0) goto fail;
@@ -814,7 +818,7 @@ apply_op:
 	 *	All other operators are "modify in place", of the existing current->lhs.vp
 	 */
 	while (box) {
-		RDEBUG2("%s %s %pV", current->lhs.vpt->name, fr_tokens[map->op], box);
+		RDEBUG_ASSIGN(current->lhs.vpt->name, map->op, box);
 
 		/*
 		 *	The apply function also takes care of doing data type upcasting and conversion.  So we don't
