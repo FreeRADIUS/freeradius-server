@@ -479,7 +479,7 @@ xlat_action_t xlat_process_args(TALLOC_CTX *ctx, fr_value_box_list_t *list,
 				switch (arg_p->variadic) {
 				case XLAT_ARG_VARIADIC_EMPTY_SQUASH:
 					fr_value_box_list_talloc_free_head(list);
-					continue;
+					goto do_next;
 
 				case XLAT_ARG_VARIADIC_EMPTY_KEEP:
 					goto empty_ok;
