@@ -151,7 +151,7 @@ static sql_rcode_t sql_check_error(sqlite3 *db, int status)
 	}
 
 	if (status != SQLITE_OK) return sql_error_to_rcode(status);
-	if (hstatus != SQLITE_OK) return sql_error_to_rcode(status);
+	if (hstatus != SQLITE_OK) return sql_error_to_rcode(hstatus);
 
 	return RLM_SQL_OK;
 }
