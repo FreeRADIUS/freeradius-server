@@ -1174,7 +1174,9 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		main_interpreter = PyThreadState_Get();	/* Store reference to the main interpreter */
 		locked = true;
 	}
+#if PY_VERSION_HEX < 0x03090000
 	rad_assert(PyEval_ThreadsInitialized());
+#endif
 
 	/*
 	 *	Increment the reference counter
