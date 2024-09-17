@@ -480,10 +480,15 @@ int mod_conn_alive(void *instance, void *handle)
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->handle;
 
-	long last_socket;
 	CURLcode ret;
 
-	ret = curl_easy_getinfo(candle, CURLINFO_LASTSOCKET, &last_socket);
+#if CURL_AT_LEAST_VERSION(7,45,0)
+	curl_socket_t	socket;
+	ret = curl_easy_getinfo(candle, CURLINFO_ACTIVESOCKET, &socket);
+#else
+	long	socket;
+	ret = curl_easy_getinfo(candle, CURLINFO_LASTSOCKET, &socket);
+#endif
 	if (ret != CURLE_OK) {
 		ERROR("rlm_rest (%s): Couldn't determine socket state: %i - %s", inst->xlat_name, ret,
 		      curl_easy_strerror(ret));
@@ -491,7 +496,7 @@ int mod_conn_alive(void *instance, void *handle)
 		return false;
 	}
 
-	if (last_socket == -1) {
+	if (socket == -1) {
 		return false;
 	}
 
