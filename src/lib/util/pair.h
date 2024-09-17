@@ -538,7 +538,7 @@ int		fr_pair_delete_by_da(fr_pair_list_t *head, fr_dict_attr_t const *da) CC_HIN
 
 int		fr_pair_delete_by_da_nested(fr_pair_list_t *list, fr_dict_attr_t const *da) CC_HINT(nonnull);
 
-fr_pair_t	*fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
+int		fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp) CC_HINT(nonnull);
 
 /* functions for FR_TYPE_STRUCTURAL */
 fr_pair_list_t	*fr_pair_children(fr_pair_t *head) CC_HINT(nonnull);

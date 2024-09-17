@@ -1814,16 +1814,14 @@ int fr_pair_delete_by_child_num(fr_pair_list_t *list, fr_dict_attr_t const *pare
  *
  * @param[in] list	of value pairs to remove VP from.
  * @param[in] vp	to remove
- * @return previous item in the list to the one being removed.
+ * @return
+ *	- <0 on error: pair wasn't deleted
+ *	- 0 on success
  */
-fr_pair_t *fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
+int fr_pair_delete(fr_pair_list_t *list, fr_pair_t *vp)
 {
-	fr_pair_t *prev;
-
-	prev = fr_pair_remove(list, vp);
-	talloc_free(vp);
-
-	return prev;
+	fr_pair_remove(list, vp);
+	return talloc_free(vp);
 }
 
 /** Order attributes by their da, and tag
