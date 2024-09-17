@@ -2679,6 +2679,9 @@ trunk_enqueue_t trunk_request_requeue(trunk_request_t *treq)
 		connection_signals_pause(tconn->pub.conn);
 		trunk_request_enter_cancel(treq, TRUNK_CANCEL_REASON_REQUEUE);
 		trunk_request_enter_pending(treq, tconn, false);
+		if (treq->pub.trunk->conf.always_writable) {
+			trunk_connection_writable(tconn);
+		}
 		connection_signals_resume(tconn->pub.conn);
 		break;
 
