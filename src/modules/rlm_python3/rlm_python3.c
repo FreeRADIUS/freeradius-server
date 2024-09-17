@@ -204,12 +204,12 @@ static void python_error_log(void)
 		return;
 	}
 
-	if (((pStr1 = PyObject_Str(pExcType)) != NULL) && 
+	if (((pStr1 = PyObject_Str(pExcType)) != NULL) &&
 	    ((pStr2 = PyObject_Str(pExcValue)) != NULL)) {
 		ERROR("%s:%d, Exception type: %s, Exception value: %s", __func__, __LINE__, PyUnicode_AsUTF8(pStr1), PyUnicode_AsUTF8(pStr2));
 		Py_DECREF(pStr1);
 		Py_DECREF(pStr2);
-	} 
+	}
 
 	if (pExcTraceback) {
 		PyObject *pRepr = PyObject_Repr(pExcTraceback);
@@ -389,7 +389,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 			python_error_log();
 			PyErr_Clear();
 		}
-		
+
 		return -1;
 	}
 
