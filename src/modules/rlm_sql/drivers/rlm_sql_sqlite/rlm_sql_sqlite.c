@@ -368,6 +368,7 @@ static void _sql_greatest(sqlite3_context *ctx, int num_values, sqlite3_value **
 	sqlite3_result_int64(ctx, max);
 }
 
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
 	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
