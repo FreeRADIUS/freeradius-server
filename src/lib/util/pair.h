@@ -92,7 +92,7 @@ struct value_pair_s {
 			 * This hack allows the majority of the fr_pair_list_t to overlap with the
 			 * fr_value_box_t which gives us much greater packing efficiency.
 			 */
-			uint8_t		pad[offsetof(fr_value_box_t, type) + sizeof(fr_type_t)];
+			uint8_t		pad[offsetof(fr_value_box_t, safe_for)];
 
 			fr_pair_list_t	children;		//!< Nested attributes of this pair.
 		};
@@ -686,17 +686,13 @@ bool		fr_pair_immutable(fr_pair_t const *vp) CC_HINT(nonnull);
 static inline CC_HINT(nonnull, always_inline)
 void fr_pair_set_immutable(fr_pair_t *vp)
 {
-	fr_assert(fr_type_is_leaf(vp->vp_type));
-
-	fr_value_box_set_immutable(&vp->data);
+	vp->vp_immutable = true;
 }
 
 static inline CC_HINT(nonnull, always_inline)
 void fr_pair_clear_immutable(fr_pair_t *vp)
 {
-	fr_assert(fr_type_is_leaf(vp->vp_type));
-
-	fr_value_box_clear_immutable(&vp->data);
+	vp->vp_immutable = false;
 }
 
 

@@ -899,7 +899,7 @@ static xlat_action_t xlat_func_immutable_attr(UNUSED TALLOC_CTX *ctx, UNUSED fr_
 	for (vp = tmpl_dcursor_init(NULL, NULL, &cc, &cursor, request, vpt);
 	     vp;
 	     vp = fr_dcursor_next(&cursor)) {
-		if (fr_type_is_leaf(vp->vp_type)) fr_value_box_set_immutable(&vp->data);
+		fr_pair_set_immutable(vp);
 	}
 	tmpl_dcursor_clear(&cc);
 	REXDENT();

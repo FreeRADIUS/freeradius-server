@@ -162,6 +162,10 @@ typedef uintptr_t fr_value_box_safe_for_t;
  * fr_type_t should be an enumeration of the values in this union.
  *
  * Don't change the order of the fields below without checking that the output of radsize doesn't change.
+ *
+ * The first few fields (before safe_for) are reused in the #fr_pair_t.  This allows structural
+ * data types to have vp->vp_type, and to also use / set the various flags defined below.  Do NOT
+ * change the order of the fields!
  */
 struct value_box_s {
 	/** Type and flags should appear together for packing efficiency
@@ -1068,19 +1072,6 @@ void fr_value_box_set_secret(fr_value_box_t *box, bool secret)
 {
 	box->secret = secret;
 }
-
-static inline CC_HINT(nonnull, always_inline)
-void fr_value_box_set_immutable(fr_value_box_t *box)
-{
-	box->immutable = true;
-}
-
-static inline CC_HINT(nonnull, always_inline)
-void fr_value_box_clear_immutable(fr_value_box_t *box)
-{
-	box->immutable = false;
-}
-
 
 /** @name Assign and manipulate binary-unsafe C strings
  *

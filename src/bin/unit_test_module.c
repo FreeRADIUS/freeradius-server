@@ -117,7 +117,7 @@ static fr_client_t *client_alloc(TALLOC_CTX *ctx, char const *ip, char const *na
 static void pair_mutable(fr_pair_t *vp)
 {
 	if (fr_type_is_leaf(vp->vp_type)) {
-		vp->data.immutable = false;
+		vp->vp_immutable = false;
 
 		return;
 	}
