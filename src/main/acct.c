@@ -150,8 +150,8 @@ int rad_accounting(REQUEST *request)
 
 				vp_prints(buffer, sizeof(buffer), vp);
 				RDEBUG("Proxying due to %s", buffer);
-				return RLM_MODULE_OK;
 			}
+			return RLM_MODULE_OK;
 		}
 	}
 

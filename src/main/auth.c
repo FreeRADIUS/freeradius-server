@@ -596,8 +596,8 @@ autz_redo:
 
 				vp_prints(buffer, sizeof(buffer), tmp);
 				RDEBUG("Proxying due to %s", buffer);
-				return RLM_MODULE_OK;
 			}
+			return RLM_MODULE_OK;
 		}
 	}
 
