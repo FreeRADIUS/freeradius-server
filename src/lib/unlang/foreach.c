@@ -166,8 +166,7 @@ static int _free_unlang_frame_state_foreach(unlang_frame_state_foreach_t *state)
 		fr_assert(vp != NULL);
 
 		do {
-			if (fr_type_is_leaf(vp->vp_type)) fr_pair_clear_immutable(vp);
-		
+			vp->vp_edit = false;
 		} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
 		tmpl_dcursor_clear(&state->cc);
 
@@ -450,8 +449,13 @@ static unlang_action_t unlang_foreach_attr_init(rlm_rcode_t *p_result, request_t
 	 *	under us.
 	 */
 	do {
-		if (fr_type_is_leaf(vp->vp_type)) fr_pair_set_immutable(vp);
-		
+		if (vp->vp_edit) {
+			REDEBUG("Cannot do nested 'foreach' loops over the same attribute %pP", vp);
+			*p_result = RLM_MODULE_FAIL;
+			return UNLANG_ACTION_CALCULATE_RESULT;
+		}
+
+		vp->vp_edit = true;
 	} while ((vp = fr_dcursor_next(&state->cursor)) != NULL);
 	tmpl_dcursor_clear(&state->cc);
 

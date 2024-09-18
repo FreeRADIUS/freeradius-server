@@ -207,8 +207,13 @@ static inline CC_HINT(always_inline) void pair_init_from_da(fr_pair_t *vp, fr_di
 #endif
 
 		/*
+		 *	Make sure that the pad field is initialized.
+		 */
+		if (sizeof(vp->pad)) memset(vp->pad, 0, sizeof(vp->pad));
+
+		/*
 		 *	Hack around const issues...
-		 * 	Here again, the orkaround suffices for the compiler but
+		 * 	Here again, the workaround suffices for the compiler but
 		 * 	not for Coverity, so again we annotate.
 		 */
 		/* coverity[store_writes_const_field] */

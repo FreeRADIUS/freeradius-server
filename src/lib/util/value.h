@@ -176,6 +176,9 @@ struct value_box_s {
 	unsigned int   				secret : 1;		//!< Same as #fr_dict_attr_flags_t secret
 	unsigned int				immutable : 1;		//!< once set, the value cannot be changed
 	unsigned int				talloced : 1;		//!< Talloced, not stack or text allocated.
+
+	unsigned int				edit : 1;		//!< to control foreach / edits
+
 	fr_value_box_safe_for_t	_CONST		safe_for;		//!< A unique value to indicate if that value box is safe
 									///< for consumption by a particular module for a particular
 									///< purpose.  e.g. LDAP, SQL, etc.

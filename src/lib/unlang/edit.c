@@ -389,6 +389,11 @@ static int apply_edits_to_list(request_t *request, unlang_frame_state_edit_t *st
 				continue;
 			}
 
+			if (vp->vp_edit) {
+				RWDEBUG("Attribute cannot be removed, as it is being used in a 'foreach' loop - %pP", vp);
+				continue;
+			}
+
 			if (fr_edit_list_pair_delete(current->el, list, vp) < 0) {
 				tmpl_dcursor_clear(&cc);
 				return -1;
@@ -509,6 +514,22 @@ done:
 	return rcode;
 }
 
+static bool pair_is_editable(request_t *request, fr_pair_t *vp)
+{
+	if (vp->vp_edit) {
+		RWDEBUG("Attribute cannot be removed, as it is being used in a 'foreach' loop - %s", vp->da->name);
+		return false;
+	}
+
+	if (!fr_type_is_structural(vp->vp_type)) return true;
+
+	fr_pair_list_foreach(&vp->vp_group, child) {
+		if (!pair_is_editable(request, child)) return false;
+	}
+
+	return true;
+}
+
 static int edit_delete_lhs(request_t *request, edit_map_t *current, bool delete)
 {
 	tmpl_dcursor_ctx_t cc;
@@ -549,7 +570,10 @@ static int edit_delete_lhs(request_t *request, edit_map_t *current, bool delete)
 		fr_assert(parent != NULL);
 
 		if (!delete) {
+			if (!pair_is_editable(request, vp)) return -1;
+
 			if (fr_type_is_structural(vp->vp_type)) {
+
 				if (fr_edit_list_free_pair_children(current->el, vp) < 0) return -1;
 			} else {
 				/*
@@ -958,7 +982,7 @@ static int check_rhs(request_t *request, unlang_frame_state_edit_t *state, edit_
 	    ((tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) || (tmpl_attr_tail_num(current->lhs.vpt) > 0) ||
 	     !current->map->rhs)) {
 		if (edit_delete_lhs(request, current,
-				(tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) || !current->map->rhs) < 0) return -1;
+				    (tmpl_attr_tail_num(current->lhs.vpt) == NUM_UNSPEC) || !current->map->rhs) < 0) return -1;
 	}
 
 	/*
