@@ -694,7 +694,7 @@ static void generate_triplets(RADIUS_PACKET *packet, VALUE_PAIR *ki, uint8_t con
 		char buffer[33];	/* 32 hexits (16 bytes) + 1 */
 
 		for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-			ess.keys.rand[idx][i] = ch[(idx * EAPSIM_RAND_SIZE) + i];
+			ess.keys.rand[idx][i] = ch ? ch[(idx * EAPSIM_RAND_SIZE) + i] : 0;
 		}
 
 		/*
