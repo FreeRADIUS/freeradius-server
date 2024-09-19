@@ -224,11 +224,32 @@ sub test_call {
 	# Some code goes here
 }
 
+sub log_attributes {
+	my %hash = %{$_[0]};
+	my $indent = $_[1];
+	for (keys %hash) {
+		if (ref $hash{$_} eq 'HASH') {
+			radiusd::log(L_DBG, ' 'x$indent . "$_ =>");
+			log_attributes($hash{$_}, $indent + 2);
+		} elsif (ref $hash{$_} eq 'ARRAY') {
+			foreach my $attr (@{$hash{$_}}) {
+				if (ref $attr eq 'HASH') {
+					radiusd::log(L_DBG, ' 'x$indent . "$_ =>");
+					log_attributes($attr, $indent + 2);
+				} else {
+					radiusd::log(L_DBG, ' 'x$indent . "$_ = $attr");
+				}
+			}
+		} else {
+			radiusd::log(L_DBG, ' 'x$indent . "$_ = $hash{$_}");
+		}
+	}
+}
+
 sub log_request_attributes {
 	# This shouldn't be done in production environments!
 	# This is only meant for debugging!
-	for (keys %RAD_REQUEST) {
-		radiusd::log(L_DBG, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
-	}
+	radiusd::log(L_DBG, "RAD_REQUEST:");
+	log_attributes(\%RAD_REQUEST, 2);
 }
 
