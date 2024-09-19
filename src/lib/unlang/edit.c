@@ -569,9 +569,12 @@ static int edit_delete_lhs(request_t *request, edit_map_t *current, bool delete)
 		parent = fr_pair_parent(vp);
 		fr_assert(parent != NULL);
 
-		if (!delete) {
-			if (!pair_is_editable(request, vp)) return -1;
+		if (!pair_is_editable(request, vp)) {
+			tmpl_dcursor_clear(&cc);
+			return -1;
+		}
 
+		if (!delete) {
 			if (fr_type_is_structural(vp->vp_type)) {
 
 				if (fr_edit_list_free_pair_children(current->el, vp) < 0) return -1;
