@@ -726,6 +726,9 @@ static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 	REXDENT();
 }
 
+static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pair_list_t *vps, const char *list_name,
+			  fr_dict_attr_t const *parent, bool dbg_print);
+
 /*
  *
  *     Verify that a Perl SV is a string and save it in FreeRadius
@@ -733,7 +736,7 @@ static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
  *
  */
 static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, char *key, SV *sv,
-		      const char *hash_name, const char *list_name)
+		      const char *list_name, fr_dict_attr_t const *parent, bool dbg_print)
 {
 	char		*val;
 	fr_pair_t      *vp;
@@ -744,16 +747,17 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 
 	val = SvPV(sv, len);
 
-	da = fr_dict_attr_search_by_qualified_oid(NULL, request->dict, key, true, true);
+	da = fr_dict_attr_by_name(NULL, parent, key);
 	if (!da) {
 		REDEBUG("Ignoring unknown attribute '%s'", key);
 		return -1;
 	}
 	fr_assert(da != NULL);
 
-	vp = fr_pair_afrom_da_nested(ctx, vps, da);
+	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
 	fail:
+		talloc_free(vp);
 		RPEDEBUG("Failed to create pair %s.%s = %s", list_name, key, val);
 		return -1;
 	}
@@ -767,13 +771,27 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 		fr_pair_value_memdup(vp, (uint8_t const *)val, len, true);
 		break;
 
+	case FR_TYPE_STRUCTURAL:
+	{
+		HV	*hv;
+		if (!SvROK(sv) || (SvTYPE(SvRV(sv)) != SVt_PVHV)) {
+			RPEDEBUG("%s should be retuned as a hash", vp->da->name);
+			goto fail;
+		}
+		hv = (HV *)SvRV(sv);
+		if (get_hv_content(vp, request, hv, &vp->vp_group, list_name, da, false) < 0) goto fail;
+		fr_pair_list_sort(&vp->vp_group, fr_pair_cmp_by_da);
+	}
+		break;
+
 	default:
 		if (fr_pair_value_from_str(vp, val, len, NULL, false) < 0) goto fail;
 	}
+	fr_pair_append(vps, vp);
 
 	PAIR_VERIFY(vp);
 
-	RDEBUG2("&%s.%s = $%s{'%s'} -> '%s'", list_name, key, hash_name, key, val);
+	if (dbg_print) RDEBUG2("%s.%pP", list_name, vp);
 	return 0;
 }
 
@@ -781,7 +799,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
  *     Gets the content from hashes
  */
 static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pair_list_t *vps,
-			  const char *hash_name, const char *list_name)
+			  const char *list_name, fr_dict_attr_t const *parent, bool dbg_print)
 {
 	SV		*res_sv, **av_sv;
 	AV		*av;
@@ -796,11 +814,11 @@ static int get_hv_content(TALLOC_CTX *ctx, request_t *request, HV *my_hv, fr_pai
 			len = av_len(av);
 			for (j = 0; j <= len; j++) {
 				av_sv = av_fetch(av, j, 0);
-				if (pairadd_sv(ctx, request, vps, key, *av_sv, hash_name, list_name) < 0) continue;
+				if (pairadd_sv(ctx, request, vps, key, *av_sv, list_name, parent, dbg_print) < 0) continue;
 				ret++;
 			}
 		} else {
-			if (pairadd_sv(ctx, request, vps, key, res_sv, hash_name, list_name) < 0) continue;
+			if (pairadd_sv(ctx, request, vps, key, res_sv, list_name, parent, dbg_print) < 0) continue;
 			ret++;
 		}
 	}
@@ -895,25 +913,29 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 
 		fr_pair_list_init(&vps);
 		if (inst->replace.request &&
-		    (get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "RAD_REQUEST", "request")) > 0) {
+		    (get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "request",
+		    		    fr_dict_root(request->dict), true)) > 0) {
 			fr_pair_list_free(&request->request_pairs);
 			fr_pair_list_append(&request->request_pairs, &vps);
 		}
 
 		if (inst->replace.reply &&
-		    (get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "RAD_REPLY", "reply")) > 0) {
+		    (get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "reply",
+		    		    fr_dict_root(request->dict), true)) > 0) {
 			fr_pair_list_free(&request->reply_pairs);
 			fr_pair_list_append(&request->reply_pairs, &vps);
 		}
 
 		if (inst->replace.control &&
-		    (get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "RAD_CONFIG", "control")) > 0) {
+		    (get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "control",
+		    		    fr_dict_root(request->dict), true)) > 0) {
 			fr_pair_list_free(&request->control_pairs);
 			fr_pair_list_append(&request->control_pairs, &vps);
 		}
 
 		if (inst->replace.session &&
-		    (get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "RAD_STATE", "session-state")) > 0) {
+		    (get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "session-state",
+		    		    fr_dict_root(request->dict), true)) > 0) {
 			fr_pair_list_free(&request->session_state_pairs);
 			fr_pair_list_append(&request->session_state_pairs, &vps);
 		}
