@@ -28,6 +28,14 @@ if (!ok) {
 if !(&reply.Filter-Id == 'Hello') {
 	test_fail
 }
+# Verify that the change to the request and control lists are
+# not copied back.
+if (&User-Name != 'bob') {
+	test_fail
+}
+if (&control.NAS-Identifier) {
+	test_fail
+}
 
 &reply -= &Vendor-Specific.Cisco.h323-credit-amount[*]
 &reply -= &Filter-Id[*]

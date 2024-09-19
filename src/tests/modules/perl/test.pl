@@ -78,7 +78,9 @@ sub authenticate {
 			$RAD_REPLY{'Filter-Id'} = 'Everything'
 		} else {
 #			$RAD_REPLY{'Vendor-Specific.Cisco.h323-credit-amount'} = "100";
-			$RAD_REPLY{'Filter-Id'} = 'Hello'
+			$RAD_REPLY{'Filter-Id'} = 'Hello';
+			$RAD_REQUEST{'User-Name'} = 'tim';
+			$RAD_CONFIG{'NAS-Identifier'} = 'dummy';
 		}
 		return RLM_MODULE_OK;
 	}
