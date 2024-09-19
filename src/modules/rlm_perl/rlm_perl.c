@@ -645,7 +645,7 @@ static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const
  *  	Example for this is Vendor-Specific.Cisco.AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Vendor-Specific.Cisco.AVPair'}
  */
-static void perl_store_vps(UNUSED TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, HV *rad_hv,
+static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 			   const char *hash_name, const char *list_name)
 {
 	fr_pair_t *vp;
@@ -840,10 +840,10 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 		rad_state_hv = get_hv("RAD_STATE", 1);
 
-		perl_store_vps(request->request_ctx, request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", "request");
-		perl_store_vps(request->reply_ctx, request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", "reply");
-		perl_store_vps(request->control_ctx, request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", "control");
-		perl_store_vps(request->session_state_ctx, request, &request->session_state_pairs, rad_state_hv, "RAD_STATE", "session-state");
+		perl_store_vps(request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", "request");
+		perl_store_vps(request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", "reply");
+		perl_store_vps(request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", "control");
+		perl_store_vps(request, &request->session_state_pairs, rad_state_hv, "RAD_STATE", "session-state");
 
 		/*
 		 * Store pointer to request structure globally so radiusd::xlat works
