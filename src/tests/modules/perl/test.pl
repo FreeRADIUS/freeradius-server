@@ -62,7 +62,7 @@ sub authorize {
 # Function to handle authenticate
 sub authenticate {
 	# For debugging purposes only
-#	log_request_attributes();
+	log_request_attributes();
 
 	if ($RAD_REQUEST{'User-Name'} =~ /^baduser/i) {
 		# Reject user and tell him why
@@ -85,7 +85,7 @@ sub authenticate {
 				return RLM_MODULE_REJECT;
 			}
 #			$RAD_REPLY{'Vendor-Specific.Cisco.h323-credit-amount'} = "100";
-			$RAD_REPLY{'Filter-Id'} = 'Hello';
+			$RAD_REPLY{'Filter-Id'} = 'Hello '.$RAD_REQUEST{'Net'}{'Src'}{'IP'}.' '.$RAD_REQUEST{'Vendor-Specific'}{'3GPP2'}{'Remote-IP'}[1]{'Address'};
 			$RAD_REQUEST{'User-Name'} = 'tim';
 			$RAD_CONFIG{'NAS-Identifier'} = 'dummy';
 		}

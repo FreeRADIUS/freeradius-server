@@ -15,6 +15,10 @@ if !(&reply.Reply-Message == "Denied access by rlm_perl function") {
 #  User will not be rejected - an xlat will be called setting a reply attribute
 &User-Name := 'bob'
 
+# Add two instances of a TLV - will result in an array of hashes in Perl
+&Vendor-Specific.3GPP2.Remote-IP = { &Address = 192.168.1.1, &Mask = 24 }
+&request.Vendor-Specific.3GPP2 += { &Remote-IP = { &Address = 172.16.1.1, &Mask = 16 } }
+
 perl.authenticate
 
 if (!ok) {
@@ -25,7 +29,7 @@ if (!ok) {
 #if !(&reply.Vendor-Specific.Cisco.h323-credit-amount == 100) {
 #    test_fail
 #}
-if !(&reply.Filter-Id == 'Hello') {
+if (&reply.Filter-Id != 'Hello 127.0.0.1 172.16.1.1') {
 	test_fail
 }
 # Verify that the change to the request and control lists are
