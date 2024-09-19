@@ -237,7 +237,7 @@ typedef struct {
 							///< running on each connection.  Averaged across
 							///< the 'active' set of connections.
 
-	uint32_t		max_req_per_conn;	//!< Maximum connections per request.
+	uint32_t		max_req_per_conn;	//!< Maximum requests per connection.
 							///< Used to determine if we need to create new connections
 							///< and whether we can enqueue new requests.
 
