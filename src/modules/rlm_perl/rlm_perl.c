@@ -599,7 +599,10 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 	DEBUG("%*s}", indent_section, " ");
 }
 
-static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const *vp,
+static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
+			   const char *hash_name, bool dbg_print);
+
+static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t *vp,
 				     int *i, const char *hash_name, bool dbg_print)
 {
 
@@ -613,6 +616,15 @@ static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const
 
 	case FR_TYPE_OCTETS:
 		sv = newSVpvn((char const *)vp->vp_octets, vp->vp_length);
+		break;
+
+	case FR_TYPE_STRUCTURAL:
+	{
+		HV		*hv;
+		hv = newHV();
+		perl_store_vps(request, &vp->vp_group, hv, vp->da->name, false);
+		sv = newRV_noinc((SV *)hv);
+	}
 		break;
 
 	default:
@@ -688,6 +700,15 @@ static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 		case FR_TYPE_OCTETS:
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn((char const *)vp->vp_octets, vp->vp_length), 0);
+			break;
+
+		case FR_TYPE_STRUCTURAL:
+		{
+			HV *hv;
+			hv = newHV();
+			perl_store_vps(request, &vp->vp_group, hv, vp->da->name, false);
+			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)hv), 0);
+		}
 			break;
 
 		default:
