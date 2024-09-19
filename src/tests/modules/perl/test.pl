@@ -81,6 +81,9 @@ sub authenticate {
 			if ($RAD_REQUEST{'Vendor-Specific'}{'Cisco'}{'AVPair'}[1] ne 'is=crazy') {
 				return RLM_MODULE_DISALLOW;
 			}
+			if ($RAD_REQUEST{'Class'} ne 'abcdef') {
+				return RLM_MODULE_REJECT;
+			}
 #			$RAD_REPLY{'Vendor-Specific.Cisco.h323-credit-amount'} = "100";
 			$RAD_REPLY{'Filter-Id'} = 'Hello';
 			$RAD_REQUEST{'User-Name'} = 'tim';
