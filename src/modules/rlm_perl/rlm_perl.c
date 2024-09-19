@@ -600,12 +600,12 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 }
 
 static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const *vp,
-				     int *i, const char *hash_name)
+				     int *i, const char *hash_name, bool dbg_print)
 {
 
 	SV *sv;
 
-	RDEBUG2("$%s{'%s'}[%i] = %pP", hash_name, vp->da->name, *i, vp);
+	if (dbg_print) RDEBUG2("$%s{'%s'}[%i] = %pP", hash_name, vp->da->name, *i, vp);
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
 		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
@@ -641,7 +641,7 @@ static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const
  *  	Which will be available as array_ref in $RAD_REQUEST{'Vendor-Specific.Cisco.AVPair'}
  */
 static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
-			   const char *hash_name)
+			   const char *hash_name, bool dbg_print)
 {
 	fr_pair_t *vp;
 	fr_dcursor_t cursor;
@@ -666,9 +666,9 @@ static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 			AV *av;
 
 			av = newAV();
-			perl_vp_to_svpvn_element(request, av, vp, &i, hash_name);
+			perl_vp_to_svpvn_element(request, av, vp, &i, hash_name, dbg_print);
 			do {
-				perl_vp_to_svpvn_element(request, av, next, &i, hash_name);
+				perl_vp_to_svpvn_element(request, av, next, &i, hash_name, dbg_print);
 				fr_dcursor_next(&cursor);
 			} while ((next = fr_dcursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
@@ -679,7 +679,7 @@ static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 		/*
 		 *	It's a normal single valued attribute
 		 */
-		RDEBUG2("$%s{'%s'} = %pP'", hash_name, vp->da->name, vp);
+		if (dbg_print) RDEBUG2("$%s{'%s'} = %pP'", hash_name, vp->da->name, vp);
 		switch (vp->vp_type) {
 		case FR_TYPE_STRING:
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
@@ -830,10 +830,10 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 		rad_state_hv = get_hv("RAD_STATE", 1);
 
-		perl_store_vps(request, &request->request_pairs, rad_request_hv, "RAD_REQUEST");
-		perl_store_vps(request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY");
-		perl_store_vps(request, &request->control_pairs, rad_config_hv, "RAD_CONFIG");
-		perl_store_vps(request, &request->session_state_pairs, rad_state_hv, "RAD_STATE");
+		perl_store_vps(request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", true);
+		perl_store_vps(request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", true);
+		perl_store_vps(request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", true);
+		perl_store_vps(request, &request->session_state_pairs, rad_state_hv, "RAD_STATE", true);
 
 		/*
 		 * Store pointer to request structure globally so radiusd::xlat works
