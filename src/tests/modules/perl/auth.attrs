@@ -4,6 +4,8 @@
 Packet-Type = Access-Request
 User-Name = "baduser"
 User-Password = "hello"
+Vendor-Specific.Cisco.AVPair = "cisco=madness"
+Vendor-Specific.Cisco.AVPair = "is=crazy"
 
 #
 #  Expected answer
