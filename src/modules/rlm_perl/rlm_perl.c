@@ -600,21 +600,18 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 }
 
 static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const *vp,
-				     int *i, const char *hash_name, const char *list_name)
+				     int *i, const char *hash_name)
 {
 
 	SV *sv;
 
+	RDEBUG2("$%s{'%s'}[%i] = %pP", hash_name, vp->da->name, *i, vp);
 	switch (vp->vp_type) {
 	case FR_TYPE_STRING:
-		RDEBUG2("$%s{'%s'}[%i] = &%s.%s -> '%s'", hash_name, vp->da->name, *i,
-		        list_name, vp->da->name, vp->vp_strvalue);
 		sv = newSVpvn(vp->vp_strvalue, vp->vp_length);
 		break;
 
 	case FR_TYPE_OCTETS:
-		RDEBUG2("$%s{'%s'}[%i] = &%s.%s -> 0x%pH", hash_name, vp->da->name, *i,
-		        list_name, vp->da->name, &vp->data);
 		sv = newSVpvn((char const *)vp->vp_octets, vp->vp_length);
 		break;
 
@@ -626,8 +623,6 @@ static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const
 		slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
 		if (slen < 0) return;
 
-		RDEBUG2("$%s{'%s'}[%i] = &%s.%s -> '%pV'", hash_name, vp->da->name, *i,
-		        list_name, vp->da->name, fr_box_strvalue_len(buffer, (size_t)slen));
 		sv = newSVpvn(buffer, (size_t)slen);
 	}
 		break;
@@ -646,7 +641,7 @@ static void perl_vp_to_svpvn_element(request_t *request, AV *av, fr_pair_t const
  *  	Which will be available as array_ref in $RAD_REQUEST{'Vendor-Specific.Cisco.AVPair'}
  */
 static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
-			   const char *hash_name, const char *list_name)
+			   const char *hash_name)
 {
 	fr_pair_t *vp;
 	fr_dcursor_t cursor;
@@ -671,9 +666,9 @@ static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 			AV *av;
 
 			av = newAV();
-			perl_vp_to_svpvn_element(request, av, vp, &i, hash_name, list_name);
+			perl_vp_to_svpvn_element(request, av, vp, &i, hash_name);
 			do {
-				perl_vp_to_svpvn_element(request, av, next, &i, hash_name, list_name);
+				perl_vp_to_svpvn_element(request, av, next, &i, hash_name);
 				fr_dcursor_next(&cursor);
 			} while ((next = fr_dcursor_next_peek(&cursor)) && ATTRIBUTE_EQ(vp, next));
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
@@ -684,16 +679,13 @@ static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 		/*
 		 *	It's a normal single valued attribute
 		 */
+		RDEBUG2("$%s{'%s'} = %pP'", hash_name, vp->da->name, vp);
 		switch (vp->vp_type) {
 		case FR_TYPE_STRING:
-			RDEBUG2("$%s{'%s'} = &%s.%s -> '%pV'", hash_name, vp->da->name, list_name,
-			       vp->da->name, &vp->data);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
 			break;
 
 		case FR_TYPE_OCTETS:
-			RDEBUG2("$%s{'%s'} = &%s.%s -> %pV", hash_name, vp->da->name, list_name,
-			       vp->da->name, &vp->data);
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn((char const *)vp->vp_octets, vp->vp_length), 0);
 			break;
@@ -704,8 +696,6 @@ static void perl_store_vps(request_t *request, fr_pair_list_t *vps, HV *rad_hv,
 			ssize_t slen;
 
 			slen = fr_pair_print_value_quoted(&FR_SBUFF_OUT(buffer, sizeof(buffer)), vp, T_BARE_WORD);
-			RDEBUG2("$%s{'%s'} = &%s.%s -> '%pV'", hash_name, vp->da->name,
-			        list_name, vp->da->name, fr_box_strvalue_len(buffer, (size_t)slen));
 			(void)hv_store(rad_hv, name, strlen(name),
 				       newSVpvn(buffer, (size_t)(slen)), 0);
 		}
@@ -840,10 +830,10 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 		rad_state_hv = get_hv("RAD_STATE", 1);
 
-		perl_store_vps(request, &request->request_pairs, rad_request_hv, "RAD_REQUEST", "request");
-		perl_store_vps(request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY", "reply");
-		perl_store_vps(request, &request->control_pairs, rad_config_hv, "RAD_CONFIG", "control");
-		perl_store_vps(request, &request->session_state_pairs, rad_state_hv, "RAD_STATE", "session-state");
+		perl_store_vps(request, &request->request_pairs, rad_request_hv, "RAD_REQUEST");
+		perl_store_vps(request, &request->reply_pairs, rad_reply_hv, "RAD_REPLY");
+		perl_store_vps(request, &request->control_pairs, rad_config_hv, "RAD_CONFIG");
+		perl_store_vps(request, &request->session_state_pairs, rad_state_hv, "RAD_STATE");
 
 		/*
 		 * Store pointer to request structure globally so radiusd::xlat works
