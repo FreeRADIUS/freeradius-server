@@ -95,6 +95,19 @@ perl {
 #	func_detach = detach
 
 	#
+	#  Control which attribute lists are replaced following calls to
+	#  the module.
+	#  The default is to not replace attribute lists.  Only enable
+	#  replacement where it is specifically required.
+	#
+	replace {
+#		request = no
+#		reply = no
+#		control = no
+#		session = no
+	}
+
+	#
 	#  config { ... }::
 	#
 	#  You can define configuration items (and nested sub-sections) in perl `config { ... }`

@@ -54,6 +54,13 @@ extern char **environ;
 #  error perl must be compiled with USE_ITHREADS
 #endif
 
+typedef struct {
+	bool	request;	//!< Should the request list be replaced after module call
+	bool	reply;		//!< Should the reply list be replaced after module call
+	bool	control;	//!< Should the control list be replaced after module call
+	bool	session;	//!< Should the session list be replaced after module call
+} rlm_perl_replace_t;
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -75,6 +82,7 @@ typedef struct {
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
 	bool		perl_parsed;
+	rlm_perl_replace_t	replace;
 	HV		*rad_perlconf_hv;	//!< holds "config" items (perl %RAD_PERLCONF hash).
 
 } rlm_perl_t;
@@ -84,6 +92,14 @@ typedef struct {
 } rlm_perl_thread_t;
 
 static void *perl_dlhandle;		//!< To allow us to load perl's symbols into the global symbol table.
+
+static const conf_parser_t replace_config[] = {
+	{ FR_CONF_OFFSET("request", rlm_perl_replace_t, request) },
+	{ FR_CONF_OFFSET("reply", rlm_perl_replace_t, reply) },
+	{ FR_CONF_OFFSET("control", rlm_perl_replace_t, control) },
+	{ FR_CONF_OFFSET("session", rlm_perl_replace_t, session) },
+	CONF_PARSER_TERMINATOR
+};
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -102,6 +118,8 @@ static const conf_parser_t module_config[] = {
 	RLM_PERL_CONF(detach),
 
 	{ FR_CONF_OFFSET("perl_flags", rlm_perl_t, perl_flags) },
+
+	{ FR_CONF_OFFSET_SUBSECTION("replace", 0, rlm_perl_t, replace, replace_config) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -865,22 +883,26 @@ static unlang_action_t do_perl(rlm_rcode_t *p_result, module_ctx_t const *mctx, 
 		LEAVE;
 
 		fr_pair_list_init(&vps);
-		if ((get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "RAD_REQUEST", "request")) > 0) {
+		if (inst->replace.request &&
+		    (get_hv_content(request->request_ctx, request, rad_request_hv, &vps, "RAD_REQUEST", "request")) > 0) {
 			fr_pair_list_free(&request->request_pairs);
 			fr_pair_list_append(&request->request_pairs, &vps);
 		}
 
-		if ((get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "RAD_REPLY", "reply")) > 0) {
+		if (inst->replace.reply &&
+		    (get_hv_content(request->reply_ctx, request, rad_reply_hv, &vps, "RAD_REPLY", "reply")) > 0) {
 			fr_pair_list_free(&request->reply_pairs);
 			fr_pair_list_append(&request->reply_pairs, &vps);
 		}
 
-		if ((get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "RAD_CONFIG", "control")) > 0) {
+		if (inst->replace.control &&
+		    (get_hv_content(request->control_ctx, request, rad_config_hv, &vps, "RAD_CONFIG", "control")) > 0) {
 			fr_pair_list_free(&request->control_pairs);
 			fr_pair_list_append(&request->control_pairs, &vps);
 		}
 
-		if ((get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "RAD_STATE", "session-state")) > 0) {
+		if (inst->replace.session &&
+		    (get_hv_content(request->session_state_ctx, request, rad_state_hv, &vps, "RAD_STATE", "session-state")) > 0) {
 			fr_pair_list_free(&request->session_state_pairs);
 			fr_pair_list_append(&request->session_state_pairs, &vps);
 		}
