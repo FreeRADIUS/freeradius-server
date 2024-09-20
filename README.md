@@ -1,6 +1,6 @@
 # The FreeRADIUS server
 
-[![CI build status][BuildStatus]][BuildStatusLink] [![Coverity status][CoverityStatus]][CoverityStatusLink] [![OSS-Fuzz status][OssFuzz]][OssFuzzLink]
+[![CI build status](https://github.com/FreeRADIUS/freeradius-server/actions/workflows/ci.yml/badge.svg)][BuildStatusLink] [![Coverity status][CoverityStatus]][CoverityStatusLink] [![OSS-Fuzz status][OssFuzz]][OssFuzzLink]
 
 ## Introduction
 
