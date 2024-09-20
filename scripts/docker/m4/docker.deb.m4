@@ -13,7 +13,7 @@ RUN apt-get install -y devscripts equivs git quilt gcc curl
 #  Set up NetworkRADIUS extras repository
 #
 RUN install -d -o root -g root -m 0755 /etc/apt/keyrings \
- && curl -o /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.networkradius.com/pgp/packages%40networkradius.com" \
+ && curl -o /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com" \
  && echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/OS_NAME/OS_CODENAME OS_CODENAME main" > /etc/apt/sources.list.d/networkradius-extras.list \
  && apt-get update
 
@@ -68,7 +68,7 @@ RUN apt-get update \
 #  Set up NetworkRADIUS extras repository
 #
 RUN install -d -o root -g root -m 0755 /etc/apt/keyrings \
- && curl -o /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.networkradius.com/pgp/packages%40networkradius.com" \
+ && curl -o /etc/apt/keyrings/packages.networkradius.com.asc "https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com" \
  && echo "deb [signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/OS_NAME/OS_CODENAME OS_CODENAME main" > /etc/apt/sources.list.d/networkradius-extras.list
 
 ifelse(ifelse(

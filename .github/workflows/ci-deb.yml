@@ -102,7 +102,7 @@ jobs:
         apt-get install -y --no-install-recommends make gcc libc6-dev equivs file curl gnupg2 lsb-release
 
     - name: NetworkRADIUS signing key
-      run: curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
+      run: curl -sS https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
 
     - name: Set up NetworkRADIUS extras repository
       run: |
@@ -224,7 +224,7 @@ jobs:
         apt-get install -y --no-install-recommends procps curl gnupg2 ca-certificates lsb-release
 
     - name: NetworkRADIUS signing key
-      run: curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
+      run: curl -sS https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
 
     - name: Set up NetworkRADIUS extras repository
       run: |

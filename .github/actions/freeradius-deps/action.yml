@@ -71,7 +71,7 @@ runs:
     - name: NetworkRADIUS signing key
       if: ${{ runner.os != 'macOS' }}
       shell: bash
-      run: sudo /bin/sh -c "curl -sS https://packages.networkradius.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
+      run: sudo /bin/sh -c "curl -sS https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -"
 
     - name: Set up NetworkRADIUS extras repository
       if: ${{ runner.os != 'macOS' }}
