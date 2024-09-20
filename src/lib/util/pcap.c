@@ -486,6 +486,9 @@ bool fr_pcap_link_layer_supported(int link_layer)
 #ifdef DLT_LINUX_SLL
 	case DLT_LINUX_SLL:
 #endif
+#ifdef DLT_LINUX_SLL2
+	case DLT_LINUX_SLL2:
+#endif
 	case DLT_PFLOG:
 		return true;
 
@@ -573,6 +576,15 @@ ssize_t fr_pcap_link_layer_offset(uint8_t const *data, size_t len, int link_laye
 #ifdef DLT_LINUX_SLL
 	case DLT_LINUX_SLL:
 		p += 16;
+		if (((size_t)(p - data)) > len) {
+			goto ood;
+		}
+		break;
+#endif
+
+#ifdef DLT_LINUX_SLL2
+	case DLT_LINUX_SLL2:
+		p += 20;
 		if (((size_t)(p - data)) > len) {
 			goto ood;
 		}
