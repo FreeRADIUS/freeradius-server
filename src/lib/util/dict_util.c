@@ -799,6 +799,7 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 	fr_dict_attr_t const		*child = NULL;
 	fr_dict_attr_t			*copy;
 	fr_dict_attr_ext_enumv_t	*ext;
+	uint				depth_diff = dst->depth - src->depth;
 
 	fr_assert(fr_dict_attr_has_ext(dst, FR_DICT_ATTR_EXT_CHILDREN));
 	fr_assert(dst->type == src->type);
@@ -818,6 +819,7 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
 		}
 
 		copy->parent = dst;
+		copy->depth += depth_diff;
 
 		if (dict_attr_child_add(dst, copy) < 0) return -1;
 
