@@ -73,8 +73,7 @@ sub authenticate {
 		# Accept user and set some attribute
 		if (&radiusd::xlat("%client(group)") eq 'UltraAllInclusive') {
 			# User called from NAS with unlim plan set, set higher limits
-# TODO - re-enabled when nested attributes are handled
-#			$RAD_REPLY{'Vendor-Specific.Cisco.h323-credit-amount'} = "1000000";
+			$RAD_REPLY{'Vendor-Specific'}{'Cisco'}{'h323-credit-amount'} = "1000000";
 			$RAD_REPLY{'Filter-Id'} = 'Everything'
 		} else {
 			# Check we received two values for Cisco.AVPair
@@ -84,7 +83,7 @@ sub authenticate {
 			if ($RAD_REQUEST{'Class'} ne 'abcdef') {
 				return RLM_MODULE_REJECT;
 			}
-#			$RAD_REPLY{'Vendor-Specific.Cisco.h323-credit-amount'} = "100";
+			$RAD_REPLY{'Vendor-Specific'}{'Cisco'}{'h323-credit-amount'} = "100";
 			$RAD_REPLY{'Filter-Id'} = 'Hello '.$RAD_REQUEST{'Net'}{'Src'}{'IP'}.' '.$RAD_REQUEST{'Vendor-Specific'}{'3GPP2'}{'Remote-IP'}[1]{'Address'};
 			$RAD_REQUEST{'User-Name'} = 'tim';
 			$RAD_CONFIG{'NAS-Identifier'} = 'dummy';

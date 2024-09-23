@@ -25,10 +25,9 @@ if (!ok) {
     test_fail
 }
 
-# TODO: Re-enable when nested attributes are handled
-#if !(&reply.Vendor-Specific.Cisco.h323-credit-amount == 100) {
-#    test_fail
-#}
+if (&reply.Vendor-Specific.Cisco.h323-credit-amount != 100) {
+    test_fail
+}
 if (&reply.Filter-Id != 'Hello 127.0.0.1 172.16.1.1') {
 	test_fail
 }
@@ -41,7 +40,7 @@ if (&control.NAS-Identifier) {
 	test_fail
 }
 
-&reply -= &Vendor-Specific.Cisco.h323-credit-amount[*]
+&reply -= &Vendor-Specific[*]
 &reply -= &Filter-Id[*]
 
 test_pass
