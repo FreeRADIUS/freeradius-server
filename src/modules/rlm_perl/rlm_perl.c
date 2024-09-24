@@ -780,7 +780,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, request_t *request, fr_pair_list_t *vps, 
 		}
 		hv = (HV *)SvRV(sv);
 		if (get_hv_content(vp, request, hv, &vp->vp_group, list_name, da, false) < 0) goto fail;
-		fr_pair_list_sort(&vp->vp_group, fr_pair_cmp_by_da);
+		if (vp->vp_type == FR_TYPE_STRUCT) fr_pair_list_sort(&vp->vp_group, fr_pair_cmp_by_da);
 	}
 		break;
 
