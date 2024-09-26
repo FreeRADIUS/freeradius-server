@@ -671,6 +671,7 @@ get_application_data:
 	 */
 	if (sock->state != LISTEN_TLS_RUNNING) {
 		RDEBUG3("(TLS) Holding application data until setup is complete");
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
 	}
 
@@ -687,12 +688,14 @@ read_application_data:
 	if (sock->ssn->clean_out.used < 20) {
 		RDEBUG3("(TLS) Received partial packet (have %zu, want >=20), waiting for more.",
 			sock->ssn->clean_out.used);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
 	}
 
 	if (((int) sock->ssn->clean_out.used) < ((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3])) {
 		RDEBUG3("(TLS) Received partial packet (have %zu, want %u), waiting for more.",
 			sock->ssn->clean_out.used, (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
+		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
 	}
 
