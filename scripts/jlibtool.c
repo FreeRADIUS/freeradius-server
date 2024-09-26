@@ -608,7 +608,7 @@ static void __attribute__((noreturn)) usage(int code)
 	printf("Usage: jlibtool [OPTIONS...] COMMANDS...\n");
 	printf("jlibtool is a replacement for GNU libtool with similar functionality.\n\n");
 
-	printf("  --config	            show all configuration variables\n");
+	printf("  --print-config	            show all configuration variables\n");
 	printf("  --debug	            enable verbose shell tracing\n");
 	printf("  --dry-run	            display commands without modifying any files\n");
 	printf("  --help	            display this help message and exit\n");
@@ -1226,7 +1226,7 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	} else if (strcmp(var, "help") == 0) {
 		usage(0);
 
-	} else if (strcmp(var, "config") == 0) {
+	} else if (strcmp(var, "print-config") == 0) {
 		print_config(value);
 
 		exit(0);
