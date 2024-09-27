@@ -46,6 +46,7 @@ typedef struct request_s request_t;
 #include <freeradius-devel/util/base64.h>
 #include <freeradius-devel/util/calc.h>
 #include <freeradius-devel/util/conf.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/log.h>
@@ -966,6 +967,15 @@ static ssize_t load_test_point_by_command(void **symbol, char *command, char con
 	return p - command;
 }
 
+static fr_dict_t *dictionary_current(command_file_ctx_t *cc)
+{
+	if (cc->tmpl_rules.attr.dict_def) {
+		return UNCONST(fr_dict_t *, cc->tmpl_rules.attr.dict_def);
+	}
+
+	return cc->config->dict;
+}
+
 /** Common dictionary load function
  *
  * Callers call fr_dict_global_ctx_set to set the context
@@ -1737,7 +1747,7 @@ static size_t command_dictionary_attribute_parse(command_result_t *result, comma
 static size_t command_dictionary_dump(command_result_t *result, command_file_ctx_t *cc,
 				      UNUSED char *data, size_t data_used, UNUSED char *in, UNUSED size_t inlen)
 {
-	fr_dict_debug(cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict);
+	fr_dict_debug(dictionary_current(cc));
 
 	/*
 	 *	Don't modify the contents of the data buffer
@@ -1900,8 +1910,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_COMMAND_ERROR();
 	}
 
-	dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
-
+	dict = dictionary_current(cc);
 	root = (fr_pair_parse_t) {
 		.ctx = cc->tmp_ctx,
 		.da = fr_dict_root(dict),
@@ -1943,7 +1952,7 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 
 		for (vp = fr_pair_dcursor_iter_init(&cursor, &head,
 						    tp->next_encodable ? tp->next_encodable : fr_proto_next_encodable,
-						    cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict);
+						    dictionary_current(cc));
 		     vp;
 		     vp = fr_dcursor_current(&cursor)) {
 			slen = tp->func(&FR_DBUFF_TMP(enc_p, enc_end), &cursor, encode_ctx);
@@ -2122,8 +2131,7 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_COMMAND_ERROR();
 	}
 
-	dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
-
+	dict = dictionary_current(cc);
 	root = (fr_pair_parse_t) {
 		.ctx = cc->tmp_ctx,
 		.da = fr_dict_root(dict),
@@ -2476,7 +2484,7 @@ static size_t command_pair(command_result_t *result, command_file_ctx_t *cc,
 {
 	fr_pair_list_t 	head;
 	ssize_t		slen;
-	fr_dict_t const	*dict = cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict;
+	fr_dict_t const	*dict = dictionary_current(cc);
 	fr_pair_parse_t	root, relative;
 
 	fr_pair_list_init(&head);
@@ -2810,8 +2818,7 @@ static size_t command_xlat_normalise(command_result_t *result, command_file_ctx_
 	dec_len = xlat_tokenize(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), &p_rules,
 				&(tmpl_rules_t) {
 					.attr = {
-						.dict_def = cc->tmpl_rules.attr.dict_def ?
-						cc->tmpl_rules.attr.dict_def : cc->config->dict,
+						.dict_def = dictionary_current(cc),
 						.list_def = request_attr_request,
 						.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					},
@@ -2848,8 +2855,7 @@ static size_t command_xlat_expr(command_result_t *result, command_file_ctx_t *cc
 	dec_len = xlat_tokenize_expression(cc->tmp_ctx, &head, &FR_SBUFF_IN(in, input_len), NULL,
 					   &(tmpl_rules_t) {
 					   	.attr = {
-							.dict_def = cc->tmpl_rules.attr.dict_def ?
-							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
+							.dict_def = dictionary_current(cc),
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 							.list_def = request_attr_request,
 						}
@@ -2881,8 +2887,7 @@ static size_t command_xlat_purify(command_result_t *result, command_file_ctx_t *
 	size_t			input_len = strlen(in), escaped_len;
 	tmpl_rules_t		t_rules = (tmpl_rules_t) {
 						   .attr = {
-							   .dict_def = cc->tmpl_rules.attr.dict_def ?
-							   cc->tmpl_rules.attr.dict_def : cc->config->dict,
+							.dict_def = dictionary_current(cc),
 							.allow_unresolved = cc->tmpl_rules.attr.allow_unresolved,
 							.list_def = request_attr_request,
 						   },
@@ -2945,8 +2950,7 @@ static size_t command_xlat_argv(command_result_t *result, command_file_ctx_t *cc
 				  NULL, NULL,
 				  &(tmpl_rules_t) {
 					  .attr = {
-						  .dict_def = cc->tmpl_rules.attr.dict_def ?
-						  cc->tmpl_rules.attr.dict_def : cc->config->dict,
+						  .dict_def = dictionary_current(cc),
 						  .list_def = request_attr_request,
 						  .allow_unresolved = cc->tmpl_rules.attr.allow_unresolved
 					  },
