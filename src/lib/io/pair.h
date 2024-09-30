@@ -26,7 +26,6 @@
 #include <freeradius-devel/util/dcursor.h>
 #include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/pair.h>
-#include <freeradius-devel/server/request.h>
 
 /** @name Encoder errors
  * @{

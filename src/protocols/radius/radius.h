@@ -28,6 +28,7 @@
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/log.h>
 #include <freeradius-devel/util/dbuff.h>
+#include <freeradius-devel/io/test_point.h>
 
 #define RADIUS_AUTH_VECTOR_OFFSET      		4
 #define RADIUS_HEADER_LENGTH			20
@@ -53,25 +54,6 @@
 #define AUTH_PASS_LEN (RADIUS_AUTH_VECTOR_LENGTH)
 
 #define	FR_TUNNEL_FR_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
-
-typedef enum {
-	DECODE_FAIL_NONE = 0,
-	DECODE_FAIL_MIN_LENGTH_PACKET,
-	DECODE_FAIL_MIN_LENGTH_FIELD,
-	DECODE_FAIL_MIN_LENGTH_MISMATCH,
-	DECODE_FAIL_HEADER_OVERFLOW,
-	DECODE_FAIL_UNKNOWN_PACKET_CODE,
-	DECODE_FAIL_INVALID_ATTRIBUTE,
-	DECODE_FAIL_ATTRIBUTE_TOO_SHORT,
-	DECODE_FAIL_ATTRIBUTE_OVERFLOW,
-	DECODE_FAIL_MA_INVALID_LENGTH,
-	DECODE_FAIL_ATTRIBUTE_UNDERFLOW,
-	DECODE_FAIL_TOO_MANY_ATTRIBUTES,
-	DECODE_FAIL_MA_MISSING,
-	DECODE_FAIL_MA_INVALID,
-	DECODE_FAIL_UNKNOWN,
-	DECODE_FAIL_MAX
-} decode_fail_t;
 
 /** Control whether Message-Authenticator is required in Access-Requests
  *

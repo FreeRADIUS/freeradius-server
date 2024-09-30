@@ -169,14 +169,12 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 	vp->vp_uint32 = data[1];
 	if (code) *code = data[1];
 	vp->vp_tainted = true;
-	DEBUG2("&%pP", vp);
 	fr_pair_append(out, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_error_code);
 	if (!vp) goto oom;
 	vp->vp_uint32 = data[2];
 	vp->vp_tainted = true;
-	DEBUG2("&%pP", vp);
 	fr_pair_append(out, vp);
 
 	vp = fr_pair_afrom_da(ctx, attr_sequence_number);
@@ -184,7 +182,6 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 
 	vp->vp_uint32 = fr_nbo_to_uint32(data + 4);
 	vp->vp_tainted = true;
-	DEBUG2("&%pP", vp);
 	fr_pair_append(out, vp);
 
 	ptr = data + FR_VQP_HDR_LEN;
@@ -236,7 +233,6 @@ int fr_vmps_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, si
 
 		ptr += attr_len;
 		vp->vp_tainted = true;
-		DEBUG2("&%pP", vp);
 		fr_pair_append(out, vp);
 	}
 
@@ -325,8 +321,6 @@ ssize_t fr_vmps_encode(fr_dbuff_t *dbuff, uint8_t const *original,
 		}
 
 		if (!fr_type_is_leaf(vp->vp_type)) continue;
-
-		DEBUG2("&%pP", vp);
 
 		/*
 		 *	Type.  Note that we look at only the lower 8
