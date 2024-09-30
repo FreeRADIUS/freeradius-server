@@ -1016,6 +1016,7 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 	if (ret < 0) RETURN_COMMAND_ERROR();
 
 	cc->tmpl_rules.attr.dict_def = dict;
+	cc->tmpl_rules.attr.namespace = fr_dict_root(dict);
 
 	/*
 	 *	Dump the dictionary if we're in super debug mode
@@ -1601,7 +1602,7 @@ static size_t command_decode_pair(command_result_t *result, command_file_ctx_t *
 	 *	point to produce fr_pair_ts.
 	 */
 	while (to_dec < to_dec_end) {
-		slen = tp->func(head, &head->vp_group, fr_dict_root(cc->tmpl_rules.attr.dict_def ? cc->tmpl_rules.attr.dict_def : cc->config->dict),
+		slen = tp->func(head, &head->vp_group, cc->tmpl_rules.attr.namespace,
 				(uint8_t *)to_dec, (to_dec_end - to_dec), decode_ctx);
 		cc->last_ret = slen;
 		if (slen <= 0) {
@@ -1736,7 +1737,7 @@ static size_t command_decode_proto(command_result_t *result, command_file_ctx_t 
 static size_t command_dictionary_attribute_parse(command_result_t *result, command_file_ctx_t *cc,
 					  	 char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
 {
-	if (fr_dict_parse_str(cc->config->dict, in, fr_dict_root(cc->config->dict)) < 0) RETURN_OK_WITH_ERROR();
+	if (fr_dict_parse_str(dictionary_current(cc), in, cc->tmpl_rules.attr.namespace) < 0) RETURN_OK_WITH_ERROR();
 
 	RETURN_OK(strlcpy(data, "ok", COMMAND_OUTPUT_MAX));
 }
@@ -1862,19 +1863,18 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 {
 	fr_test_point_pair_encode_t	*tp = NULL;
 
-	fr_dcursor_t	cursor;
-	void		*encode_ctx = NULL;
-	ssize_t		slen;
-	char		*p = in;
+	fr_dcursor_t			cursor;
+	void				*encode_ctx = NULL;
+	ssize_t				slen;
+	char				*p = in;
 
-	uint8_t		*enc_p, *enc_end;
-	fr_pair_list_t	head;
-	fr_pair_t	*vp;
-	bool		truncate = false;
+	uint8_t				*enc_p, *enc_end;
+	fr_pair_list_t			head;
+	fr_pair_t			*vp;
+	bool				truncate = false;
 
-	size_t		iterations = 0;
-	fr_dict_t const	*dict;
-	fr_pair_parse_t	root, relative;
+	size_t				iterations = 0;
+	fr_pair_parse_t			root, relative;
 
 	fr_pair_list_init(&head);
 
@@ -1910,10 +1910,9 @@ static size_t command_encode_pair(command_result_t *result, command_file_ctx_t *
 		RETURN_COMMAND_ERROR();
 	}
 
-	dict = dictionary_current(cc);
 	root = (fr_pair_parse_t) {
 		.ctx = cc->tmp_ctx,
-		.da = fr_dict_root(dict),
+		.da = cc->tmpl_rules.attr.namespace,
 		.list = &head,
 	};
 	relative = (fr_pair_parse_t) { };
@@ -2111,7 +2110,6 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 	char		*p = in;
 
 	fr_pair_list_t	head;
-	fr_dict_t const *dict;
 	fr_pair_parse_t	root, relative;
 
 	fr_pair_list_init(&head);
@@ -2131,10 +2129,9 @@ static size_t command_encode_proto(command_result_t *result, command_file_ctx_t 
 		RETURN_COMMAND_ERROR();
 	}
 
-	dict = dictionary_current(cc);
 	root = (fr_pair_parse_t) {
 		.ctx = cc->tmp_ctx,
-		.da = fr_dict_root(dict),
+		.da = cc->tmpl_rules.attr.namespace,
 		.list = &head,
 	};
 	relative = (fr_pair_parse_t) { };
@@ -2543,6 +2540,24 @@ static size_t command_proto_dictionary(command_result_t *result, command_file_ct
 {
 	fr_dict_global_ctx_set(cc->config->dict_gctx);
 	return dictionary_load_common(result, cc, in, NULL);
+}
+
+static size_t command_proto_dictionary_root(command_result_t *result, command_file_ctx_t *cc,
+					    UNUSED char *data, UNUSED size_t data_used, char *in, UNUSED size_t inlen)
+{
+	fr_dict_t const		*dict = dictionary_current(cc);
+	fr_dict_attr_t const	*root_da = fr_dict_root(dict);
+	fr_dict_attr_t const	*new_root;
+
+	new_root = fr_dict_attr_by_name(NULL, fr_dict_root(dict), in);
+	if (!new_root) {
+		fr_strerror_printf("dictionary attribute \"%s\" not found in %s", in, root_da->name);
+		RETURN_PARSE_ERROR(0);
+	}
+
+	cc->tmpl_rules.attr.namespace = new_root;
+
+	RETURN_OK(0);
 }
 
 /** Touch a file to indicate a test completed
@@ -3140,6 +3155,13 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "proto-dictionary <proto_name> [<proto_dir>]",
 					.description = "Switch the active dictionary.  Root is set to the default dictionary path, or the one specified with -d.  <proto_dir> is relative to the root.",
 				}},
+
+
+	{ L("proto-dictionary-root "), &(command_entry_t){
+					.func = command_proto_dictionary_root,
+					.usage = "proto-dictionary-root <root_attribute>",
+					.description = "Set the root attribute for the current protocol dictionary",
+				}},
 	{ L("raw "),		&(command_entry_t){
 					.func = command_encode_raw,
 					.usage = "raw <string>",
@@ -3352,6 +3374,7 @@ static command_file_ctx_t *command_ctx_alloc(TALLOC_CTX *ctx,
 	cc->fuzzer_dir = -1;
 
 	cc->tmpl_rules.attr.list_def = request_attr_request;
+	cc->tmpl_rules.attr.namespace = fr_dict_root(cc->config->dict);
 
 	return cc;
 }
