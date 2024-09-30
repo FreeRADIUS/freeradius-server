@@ -1006,6 +1006,11 @@ do {\
 	}
 	version_init_numbers(subcs);
 
+	/*
+	 *	Track the status of the configuration.
+	 */
+	if (rad_debug_lvl) cf_md5_init();
+
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
 	if (cf_file_read(cs, buffer) < 0) {
