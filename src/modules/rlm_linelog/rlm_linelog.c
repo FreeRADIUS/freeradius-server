@@ -121,6 +121,7 @@ typedef struct {
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
+		bool			fsync;			//!< fsync after each write.
 	} file;
 
 	struct {
@@ -143,6 +144,7 @@ static const conf_parser_t file_config[] = {
 	{ FR_CONF_OFFSET("permissions", rlm_linelog_t, file.permissions), .dflt = "0600" },
 	{ FR_CONF_OFFSET("group", rlm_linelog_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_linelog_t, file.escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("fsync", rlm_linelog_t, file.fsync), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -434,6 +436,11 @@ static int linelog_write(rlm_linelog_t const *inst, linelog_call_env_t const *ca
 				/* Assert on the extra fatal errors */
 				fr_assert((errno != EINVAL) && (errno != EFAULT));
 
+				return -1;
+			}
+			if (inst->file.fsync && (fsync(fd) < 0)) {
+				RERROR("Failed syncing \"%pV\" to persistent storage: %s", call_env->filename, fr_syserror(errno));
+				exfile_close(inst->file.ef, fd);
 				return -1;
 			}
 		}
