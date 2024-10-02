@@ -515,7 +515,7 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 {
 	fr_dbuff_t		work_dbuff = FR_DBUFF_MAX(dbuff, 255 - 4 - 1 - 2);
 	fr_dbuff_marker_t	hdr;
-	fr_dict_attr_t const	*da = da_stack->da[depth - 2];
+	fr_dict_attr_t const	*da;
 	fr_dict_attr_t const	*dv = da_stack->da[depth - 1];
 	ssize_t			len;
 	fr_pair_t		*vp;
@@ -529,11 +529,10 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 	}
 
 	/*
-	 *	Check if we have enough for an option header plus the
-	 *	enterprise-number, plus the data length, plus at least
-	 *	one option header.
+	 *	Check if we have enough the enterprise-number,
+	 *	plus the data length, plus at least one option header.
 	 */
-	FR_DBUFF_REMAINING_RETURN(&work_dbuff, DHCPV4_OPT_HDR_LEN + sizeof(uint32_t) + 3);
+	FR_DBUFF_REMAINING_RETURN(&work_dbuff, sizeof(uint32_t) + 3);
 
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
@@ -542,7 +541,6 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 	 *
 	 *	And leave room for data-len1
 	 */
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da->attr, 0x00);
 	FR_DBUFF_IN_RETURN(&work_dbuff, dv->attr);
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) 0x00);
 
@@ -588,10 +586,11 @@ static ssize_t encode_vsio_data(fr_dbuff_t *dbuff,
 		if (vp->da->parent != da->parent) break;
 	}
 
-	fr_dbuff_advance(&hdr, 1);
-	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN));
+	/*
+	 *	Write out "data-len1" for this vendor
+	 */
 	fr_dbuff_advance(&hdr, 4);
-	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN - 4 - 1));
+	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - 4 - 1));
 
 #ifndef NDEBUG
 	FR_PROTO_HEX_DUMP(dbuff->p, fr_dbuff_used(&work_dbuff), "Done VSIO Data");
@@ -608,6 +607,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	fr_pair_t		*vp;
 	fr_dcursor_t		vendor_cursor;
 	fr_dbuff_t		work_dbuff;
+	fr_dbuff_marker_t	hdr;
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
@@ -625,6 +625,14 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 
 	work_dbuff = FR_DBUFF(dbuff);
 	fr_pair_dcursor_init(&vendor_cursor, &vp->vp_group);
+
+	fr_dbuff_marker(&hdr, &work_dbuff);
+
+	/*
+	 *	Copy in the option code
+	 *	And leave room for data-len1
+	 */
+	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da->attr, 0x00);
 
 	/*
 	 *	Loop over all vendors, and inside of that, loop over all VSA attributes.
@@ -657,6 +665,12 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 
 		(void) fr_dcursor_next(&vendor_cursor);
 	}
+
+	/*
+	 *	Write out length for whole option
+	 */
+	fr_dbuff_advance(&hdr, 1);
+	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN));
 
 	/*
 	 *	Skip over the attribute we just encoded.
