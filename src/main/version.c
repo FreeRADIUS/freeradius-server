@@ -514,7 +514,11 @@ void version_init_numbers(CONF_SECTION *cs)
 	snprintf(buffer, sizeof(buffer), "%i.%i.*", talloc_version_major(), talloc_version_minor());
 	version_add_number(cs, "talloc", buffer);
 
+#ifdef OPENSSL_FULL_VERSION_STR
+	version_add_number(cs, "ssl", OPENSSL_FULL_VERSION_STR);
+#else
 	version_add_number(cs, "ssl", ssl_version_num());
+#endif
 
 #if defined(HAVE_REGEX) && defined(HAVE_PCRE)
 	version_add_number(cs, "pcre", pcre_version());
