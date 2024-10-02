@@ -49,6 +49,9 @@ void		cf_file_free(CONF_SECTION *cs);
 bool		cf_file_check(CONF_PAIR *cp, bool check_perms);
 void		cf_file_check_user(uid_t uid, gid_t gid);
 
+void		cf_md5_init(void);
+void		cf_md5_final(uint8_t *digest);
+
 /*
  *	Config file writing
  */

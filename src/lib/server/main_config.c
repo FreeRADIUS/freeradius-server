@@ -1170,6 +1170,11 @@ do {\
 	if (cf_section_rules_push(cs, lib_dir_on_read_config) < 0) goto failure;
 	if (cf_section_rules_push(cs, virtual_servers_on_read_config) < 0) goto failure;
 
+	/*
+	 *	Track the status of the configuration.
+	 */
+	if (fr_debug_lvl) cf_md5_init();
+
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", config->raddb_dir, config->name);
 	if (cf_file_read(cs, buffer) < 0) {

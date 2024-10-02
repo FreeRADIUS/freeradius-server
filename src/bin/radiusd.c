@@ -638,6 +638,18 @@ int main(int argc, char *argv[])
 	INFO("%s", fr_debug_state_to_msg(fr_debug_state));
 
 	/*
+	 *	Track configuration versions.  This lets us know if the configuration changed.
+	 */
+	if (fr_debug_lvl) {
+		uint8_t digest[16];
+
+		cf_md5_final(digest);
+
+		INFO("Configuration version: %02x%02x-%02x%02x-%02x%02x-%02x%02x",
+		     digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7]);
+	}
+
+	/*
 	 *  Call this again now we've loaded the configuration. Yes I know...
 	 */
 	if (talloc_config_set(config) < 0) {

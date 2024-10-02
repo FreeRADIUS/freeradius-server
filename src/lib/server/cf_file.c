@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/perm.h>
+#include <freeradius-devel/util/md5.h>
 #include <freeradius-devel/util/syserror.h>
 
 #include <sys/types.h>
@@ -3058,6 +3059,33 @@ static int frame_readdir(cf_stack_t *stack)
 }
 
 
+static fr_md5_ctx_t *cf_md5_ctx = NULL;
+
+void cf_md5_init(void)
+{
+	cf_md5_ctx = fr_md5_ctx_alloc();
+}
+
+
+static void cf_md5_update(char const *p)
+{
+	if (!cf_md5_ctx) return;
+
+	fr_md5_update(cf_md5_ctx, (uint8_t const *)p, strlen(p));
+}
+
+void cf_md5_final(uint8_t *digest)
+{
+	if (!cf_md5_ctx) {
+		memset(digest, 0, MD5_DIGEST_LENGTH);
+		return;
+	}
+
+	fr_md5_final(digest, cf_md5_ctx);
+	fr_md5_ctx_free(cf_md5_ctx);
+	cf_md5_ctx = NULL;
+}
+
 static int cf_file_fill(cf_stack_t *stack)
 {
 	bool at_eof, has_spaces;
@@ -3073,6 +3101,7 @@ read_continuation:
 	 *	Get data, and remember if we are at EOF.
 	 */
 	at_eof = (fgets(stack->fill, stack->bufsize - (stack->fill - stack->buff[0]), frame->fp) == NULL);
+	cf_md5_update(stack->fill);
 	frame->lineno++;
 
 	/*
