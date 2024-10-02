@@ -1504,7 +1504,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 				     next->item.lineno, name);
 			}
 		}
-										   
+
 		if (multi) {
 			while ((next = cf_pair_find_next(cs, next, name)) != NULL) {
 				/*
@@ -2348,7 +2348,7 @@ static void cf_md5_update(char const *p)
 {
 	if (!cf_md5_initted) return;
 
-	fr_md5_update(&conf_context, p, strlen(p));
+	fr_md5_update(&conf_context, (uint8_t const *)p, strlen(p));
 }
 
 void cf_md5_final(uint8_t *digest)
