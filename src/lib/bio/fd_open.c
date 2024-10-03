@@ -799,16 +799,12 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			fd = dup(STDERR_FILENO);
 
 		} else {
-			if (!cfg->mkdir) {
-				fd = open(cfg->filename, cfg->flags, cfg->perm);
-			} else {
-				if (fr_mkdir(&fd, cfg->filename, fr_mkdir_chown, &(fr_mkdir_chown_t) {
-							.uid = cfg->uid,
-							.gid = cfg->gid,
-						}) < 0) {
-					return -1;
-				}
-			}
+			/*
+			 *	Minor hacks so that we have only _one_ source of open / mkdir
+			 */
+			my->info.socket.fd = -1;
+
+			fd = fr_bio_fd_reopen(bio);
 		}
 		if (fd < 0) {
 			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
@@ -965,4 +961,55 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	}
 
 	return 0;
+}
+
+/** Reopen a file BIO
+ *
+ *  e.g. for log files.
+ */
+int fr_bio_fd_reopen(fr_bio_t *bio)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+	fr_bio_fd_config_t const *cfg = my->info.cfg;
+	int fd;
+
+	if (my->info.socket.af != AF_FILE_BIO) {
+		fr_strerror_const("Cannot reopen a non-file BIO");
+		return -1;
+	}
+
+	if (!cfg->mkdir) {
+		fd = open(cfg->filename, cfg->flags, cfg->perm);
+		if (fd < 0) {
+			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
+			return -1;
+		}
+
+	} else if (fr_mkdir(&fd, cfg->filename, strlen(cfg->filename), cfg->perm,
+			    fr_mkdir_chown, &(fr_mkdir_chown_t) {
+				    .uid = cfg->uid,
+				    .gid = cfg->gid,
+			    }) < 0) {
+		return -1;
+	}
+
+	/*
+	 *	We're boot-strapping, just set the new FD and return.
+	 */
+	if (my->info.socket.fd < 0) {
+		return fd;
+	}
+
+	/*
+	 *	Replace the FD rather than swapping it out with a new one.  This is potentially more
+	 *	thread-safe.
+	 */
+	if (dup2(fd, my->info.socket.fd) < 0) {
+		close(fd);
+		fr_strerror_printf("Failed reopening file - %s", fr_syserror(errno));
+		return -1;
+	}
+
+	close(fd);
+	return my->info.socket.fd;
 }
