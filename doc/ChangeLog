@@ -2,10 +2,15 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
 
 	Feature improvements
+	* Print MD5 hash of the configuration files in debug mode.
+	  This helps people track configuration changes.
 
 	Bug fixes
 	* For EAP-TLS, send TLS start without a length field.
 	  Some clients refuse to do EAP-TLS when this field exists.
+	* Avoid blocking TLS sockets on corner cases during session
+	  setup.
+	* Update home server stats
 
 FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
