@@ -620,12 +620,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
-	vp = fr_dcursor_current(cursor);
-	fr_assert(vp->da == da);
-
 	work_dbuff = FR_DBUFF(dbuff);
-	fr_pair_dcursor_init(&vendor_cursor, &vp->vp_group);
-
 	fr_dbuff_marker(&hdr, &work_dbuff);
 
 	/*
@@ -633,6 +628,41 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	 *	And leave room for data-len1
 	 */
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) da->attr, 0x00);
+
+	/*
+	 *	We are at the VSA.  The next entry in the stack is the vendor.  The entry after that is the vendor data.
+	 */
+	if (da_stack->da[depth + 1]) {
+		ssize_t len;
+		fr_dcursor_t vsa_cursor;
+
+		if (da_stack->da[depth + 2]) {
+			len = encode_vsio_data(&work_dbuff, da_stack, depth + 2, cursor, encode_ctx);
+			if (len <= 0) return len;
+			goto done;
+		}
+
+		vp = fr_dcursor_current(cursor);
+		fr_assert(vp->vp_type == FR_TYPE_VENDOR);
+
+		/*
+		 *	Copied from below.
+		 */
+		fr_pair_dcursor_init(&vsa_cursor, &vp->vp_group);
+		work_dbuff = FR_DBUFF(dbuff);
+
+		while ((vp = fr_dcursor_current(&vsa_cursor)) != NULL) {
+			fr_proto_da_stack_build(da_stack, vp->da);
+			len = encode_vsio_data(&work_dbuff, da_stack, depth + 2, &vsa_cursor, encode_ctx);
+			if (len <= 0) return len;
+		}
+		goto done;
+	}
+
+	vp = fr_dcursor_current(cursor);
+	fr_assert(vp->da == da);
+
+	fr_pair_dcursor_init(&vendor_cursor, &vp->vp_group);
 
 	/*
 	 *	Loop over all vendors, and inside of that, loop over all VSA attributes.
@@ -669,6 +699,7 @@ static ssize_t encode_vsio(fr_dbuff_t *dbuff,
 	/*
 	 *	Write out length for whole option
 	 */
+done:
 	fr_dbuff_advance(&hdr, 1);
 	FR_DBUFF_IN_RETURN(&hdr, (uint8_t)(fr_dbuff_used(&work_dbuff) - DHCPV4_OPT_HDR_LEN));
 
