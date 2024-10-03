@@ -93,6 +93,7 @@ typedef struct {
 	mode_t		perm;		//!< permissions for domain sockets
 	uid_t		uid;		//!< who owns the socket
 	gid_t		gid;		//!< who owns the socket
+	bool		mkdir;		//!< make intermediate directories
 
 	char const	*filename;	//!< for files
 	int		flags;		//!< O_RDONLY, etc.

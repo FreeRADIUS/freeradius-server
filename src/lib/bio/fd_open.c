@@ -799,7 +799,16 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			fd = dup(STDERR_FILENO);
 
 		} else {
-			fd = open(cfg->filename, cfg->flags, cfg->perm);
+			if (!cfg->mkdir) {
+				fd = open(cfg->filename, cfg->flags, cfg->perm);
+			} else {
+				if (fr_mkdir(&fd, cfg->filename, fr_mkdir_chown, &(fr_mkdir_chown_t) {
+							.uid = cfg->uid,
+							.gid = cfg->gid,
+						}) < 0) {
+					return -1;
+				}
+			}
 		}
 		if (fd < 0) {
 			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
