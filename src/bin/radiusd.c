@@ -645,8 +645,17 @@ int main(int argc, char *argv[])
 
 		cf_md5_final(digest);
 
-		INFO("Configuration version: %02x%02x-%02x%02x-%02x%02x-%02x%02x",
-		     digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7]);
+		digest[6] &= 0x0f; /* ver is 0b0100 at bits 48:51 */
+		digest[6] |= 0x40;
+		digest[8] &= ~0xc0; /* var is 0b10 at bits 64:65 */
+		digest[8] |= 0x80;
+
+		/*
+		 *	UUIDv4 format: 4-2-2-2-6
+		 */
+		INFO("Configuration version: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+		     digest[0], digest[1], digest[2], digest[3], digest[4], digest[5], digest[6], digest[7],
+		     digest[8], digest[9], digest[10], digest[11], digest[12], digest[13], digest[14], digest[15]);
 	}
 
 	/*
