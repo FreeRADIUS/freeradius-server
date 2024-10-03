@@ -3082,7 +3082,7 @@ void cf_md5_final(uint8_t *digest)
 	}
 
 	fr_md5_final(digest, cf_md5_ctx);
-	fr_md5_ctx_free(cf_md5_ctx);
+	fr_md5_ctx_free(&cf_md5_ctx);
 	cf_md5_ctx = NULL;
 }
 
