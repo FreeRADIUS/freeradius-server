@@ -1193,6 +1193,15 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 		break;
 
 	case FR_BIO_FD_CONNECTED:
+		/*
+		 *	Further reads are disallowed.
+		 */
+		if (shutdown(my->info.socket.fd, SHUT_RD) < 0) {
+			fr_strerror_printf("Failed shutting down connected socket - %s", fr_syserror(errno));
+			return -1;
+		}
+		break;
+
 	case FR_BIO_FD_ACCEPT:
 		fr_strerror_const("Only unconnected sockets can be marked 'write-only'");
 		return -1;
