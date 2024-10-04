@@ -53,12 +53,12 @@ fr_table_num_sorted_t const sql_rcode_description_table[] = {
 size_t sql_rcode_description_table_len = NUM_ELEMENTS(sql_rcode_description_table);
 
 fr_table_num_sorted_t const sql_rcode_table[] = {
-	{ L("alternate"),		RLM_SQL_ALT_QUERY	},
+	{ L("alternate"),	RLM_SQL_ALT_QUERY	},
 	{ L("empty"),		RLM_SQL_NO_MORE_ROWS	},
 	{ L("error"),		RLM_SQL_ERROR		},
 	{ L("invalid"),		RLM_SQL_QUERY_INVALID	},
-	{ L("ok"),			RLM_SQL_OK		},
-	{ L("reconnect"),		RLM_SQL_RECONNECT	}
+	{ L("ok"),		RLM_SQL_OK		},
+	{ L("reconnect"),	RLM_SQL_RECONNECT	}
 };
 size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
 
