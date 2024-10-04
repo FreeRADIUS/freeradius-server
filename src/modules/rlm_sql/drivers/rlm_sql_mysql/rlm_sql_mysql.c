@@ -696,6 +696,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	if (error && (error[0] != '\0')) {
 		error = talloc_asprintf(ctx, "ERROR %u (%s): %s", mysql_errno(conn->sock), error,
 					mysql_sqlstate(conn->sock));
+	} else {
+		error = NULL;
 	}
 
 	/*
