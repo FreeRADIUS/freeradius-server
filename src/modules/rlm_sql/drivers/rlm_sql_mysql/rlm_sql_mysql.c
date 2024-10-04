@@ -935,6 +935,8 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 				trunk_request_signal_fail(treq);
 				return;
 			}
+		} else {
+			query_ctx->rcode = RLM_SQL_OK;
 		}
 		query_ctx->status = SQL_QUERY_RETURNED;
 
@@ -953,6 +955,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 			return;
 		}
 		query_ctx->status = SQL_QUERY_RESULTS_FETCHED;
+		query_ctx->rcode = RLM_SQL_OK;
 
 		break;
 
