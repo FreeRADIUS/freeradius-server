@@ -537,9 +537,14 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 
 	/*
 	 *  Check pointer before de-referencing it.
+	 *  Lack of conn->result is either an error, or no result returned.
 	 */
 	if (!conn->result) {
-		query_ctx->rcode = RLM_SQL_RECONNECT;
+		query_ctx->rcode = sql_check_error(conn->sock, 0);
+		if (query_ctx->rcode == RLM_SQL_OK) {
+			query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+			RETURN_MODULE_OK;
+		}
 		RETURN_MODULE_FAIL;
 	}
 
