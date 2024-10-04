@@ -552,9 +552,12 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 
 	/*
 	 *  Check pointer before de-referencing it.
+	 *  Lack of conn->result is either an error, or no result returned.
 	 */
 	if (!conn->result) {
-		return RLM_SQL_RECONNECT;
+		rcode = sql_check_error(conn->sock, 0);
+		if (rcode == RLM_SQL_OK) return RLM_SQL_NO_MORE_ROWS;
+		return rcode;
 	}
 
 	TALLOC_FREE(handle->row);		/* Clear previous row set */
