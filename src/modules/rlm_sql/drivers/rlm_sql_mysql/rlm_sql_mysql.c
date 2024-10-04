@@ -453,6 +453,14 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	case ER_NON_UNIQ_ERROR:			/* Column '%s' in %s is ambiguous */
 		return RLM_SQL_QUERY_INVALID;
 
+	/*
+	 *	Constraints errors that signify no data returned.
+	 *
+	 *	This is considered OK as the caller may look for the next result set.
+	 */
+	case ER_SP_FETCH_NO_DATA:
+		return RLM_SQL_OK;
+
 	}
 
 	return RLM_SQL_OK;
