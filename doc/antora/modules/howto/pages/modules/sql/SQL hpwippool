@@ -1,0 +1,111 @@
+Robust dynamic IPv4 pools for FreeRADIUS Server allowing arbitrary groups of NAS's to share IP address blocks in an efficient and flexible manner.
+
+== Features
+
+This module implements dynamic IPv4 address pools with the following features:
+* SQL-based
+* hierarchical
+* prioritized
+* weighted
+
+For this purpose, it integrates with an external project called netvim (which is going to be started soon). However, the module can be used separately.
+
+== Data structures
+
+The module uses following netvim SQL tables:
+* ids - source of ID numbers (just unsigned integer numbers, without any special magic in them)
+* gid_ip - associates IP address ranges with a host group ID
+* host_groups - associates a host group with a short name and parent ID; ie. this is the place where "hierarchical" in feature list come from
+
+Also, the module has it's very own tables as well:
+* pool_names - associates a short name with a pool ID
+* ip_pools - single table row:
+** associates a pool with a host group
+** has an arbitrary IP address range defined - this is the range to select user's IP address from
+** has a priority defined - pools with lower values will be entirely used before trying higher priority values of pools on the same host group
+** has a weight defined - lets sustaining a defined utilization factor with respect to equally prioritized pools on the same host group
+** has a unique pool instance ID
+* ips - tracks single IP addresses, ie. if an IP address is currently being used - if yes: which IP pool uses it, since when, until what time, etc.; it should be kept in sync with definitions in ip_pools (done automatically in implementation)
+
+The MySQL database schema(http://projects.asn.pl/freemods/browser/trunk/rlm_netvim_pool/schema.sql)
+
+== The algorithm
+
+Startup
+* synchronize ips table with FreeRADIUS Server's radacct table, freeing IP address belonging to already finished sessions and adding sessions opened in the meantime
+* synchronize ip_pools by updating number of free IP addresses in each pool instance
+
+Post-authentication
+* if we have already served enough number of IP addresses since last synchronization, run the second step of initialization procedure
+* for each host group the NAS belongs to, ''from most to least specific matches'', do:
+** for increasing pool priorities, do:
+*** select a pool which is the most under-utilized, with respect to the pool weight
+*** select an IP address from the pool in a random way, with uniform distribution
+*** end the priority loop
+** end the host group loop
+* reserve the IP address in ips table and return it in Framed-IP-Address VAP
+** set reservation timeout so the IP address is automatically freed when we don't receive an accounting request
+
+Accounting
+* on Accounting-Start and Accounting-Alive packets, set IP address reservation time to infinity
+* on Accounting-Stop free the IP address (in delayed manner), updating ips and ip_pools tables
+* on Accounting-On/Off free all IP addresses reserved by all sessions on NAS (in delayed manner)
+
+== Configuration 
+
+* string sqlinst_name - name of a rlm_sql module instance to use for communication with the SQL database [sql]
+* string db_name - name of the netvim database netvim
+* bool nofreefail - if true, reject access if no free IP addresses could be found [yes]
+* int freeafter - how many seconds an IP should not be used after freeing [300 = 5 min]
+* int syncafter - how often should post-authentication code synchronize with radacct ![25]
+
+== Limitations 
+
+* *works only with newer versions of MySQL (4.1+ probably)*
+* requires FreeRADIUS' SQL user to have proper permissions on proper tables from netvim database
+* of course uses dirty hacks to get access to the database ;-)
+* queries and table names are not configurable
+* IPv4 only (I don't even care about IPv6 by now)
+* pool names (fetched from database) are not "SQL escaped" (should not be a threat either)
+* you have to set encoding of radius.acctuniqueid to same as netvim.ips.rsv_by
+* new IP addresses have to be inserted into ips table by some other means (will be done by netvim some day)
+
+=== PHP script to generate code to insert new IP addresses 
+
+This script generates MySQL queries to update the ips table after making changes in ip_pools table. You should run the queries each time you add IP pools.
+
+```php
+#!/usr/bin/env php
+<?php
+error_reporting(E_ALL);
+
+mysql_connect("localhost", "root", "password");
+mysql_select_db("netvim");
+
+$rows = mysql_query("select ip_start, ip_stop from ip_pools");
+
+while ($row = mysql_fetch_assoc($rows)) {
+        $todo = $row["ip_stop"] - $row["ip_start"] + 1;
+        $done = 0;
+        $ineach = 100;
+        $startwith = $row["ip_start"];
+
+        echo "LOCK TABLES ips WRITE;\n";
+        while ($done < $todo) {
+                echo "REPLACE INTO ips (ip) VALUES ";
+                for ($i = 1; $i < $ineach && $done < $todo; $i++, $startwith++, $done++) {
+                        echo "($startwith), ";
+                }
+                echo "($startwith);\n";
+                $startwith++; $done++;
+        }
+        echo "UNLOCK TABLES;\n";
+}
+?>
+```
+
+== See Also
+
+* IP Pool
+* rlm_sql
+* Modules

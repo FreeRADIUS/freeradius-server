@@ -1,0 +1,26 @@
+= Alvarion
+
+Alvarion gateways mplement a non-standard version of WiMAX.  If you with to use Alvarion, you *must* use the "master" branch from http://git.freeradius.org.  Then, before you install it, do:
+
+  $ cd share
+  $ vi dictionary
+
+Find the two matching lines with:
+
+  $INCLUDE dictionary.alvarion
+  ...
+  $INCLUDE dictionary.wimax
+
+and change them to:
+
+  $INCLUDE dictionary.alvarion.wimax.v2_2
+  ...
+  $INCLUDE dictionary.wimax.alvarion
+
+Save the file, and then do:
+
+  $ make install
+
+Note that you *cannot* build an RPM or other package if you are using Alvarion.  You *must* install from source.
+
+The reason for the above changes is that they have non-standard versions of the dictionaries.  These dictionaries are incompatible with all other WiMAX equipment, so they are not enabled by default.

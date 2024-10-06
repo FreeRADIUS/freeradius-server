@@ -1,0 +1,134 @@
+# Logging in an eduroam environment
+
+Running an eduroam service will generally mean there is a
+requirement for logging the users of the service. National
+education networks will also likely require that logs are kept of
+who is using the network. This means that logs must be kept of
+both authentication and accounting requests (and likely DHCP as
+well).
+
+The easiest and most basic method of log keeping will be to
+record, in some form or another, every packet that is received or
+sent by the server. This is what is done by the basic [eduroam
+guide](/guide/eduroam) and, while fulfilling the requirements, is
+not necessarily the most efficient.
+
+EAP has many round trips, and keeping a record of all of these
+packets is generally unnecessary. However it is also not
+acceptable to just record Access-Accept or Access-Reject packets
+and their contents. They will generally not include attributes
+such as Calling-Station-Id, and will also not log authentication
+attempts that do not fully complete.
+
+Therefore at least the following should be logged, each with an
+accurate timestamp:
+
+* Initial authentication request, with
+** User-Name (outer)
+** Calling-Station-Id
+** NAS-IP-Address
+
+* When sending an Access-Accept reply
+** Packet-Type ("Accept")
+** User-Name (outer)
+** User-Name (inner)
+** Calling-Station-Id
+** Operator-Name
+** Chargeable-User-Identity
+** NAS-IP-Address
+
+* When sending an Access-Reject reply
+** Packet-Type ("Reject")
+** Reason for rejection (Module-Failure-Message)
+** User-Name (outer)
+** User-Name (inner)
+** Calling-Station-Id
+** Operator-Name
+** Chargeable-User-Identity
+** NAS-IP-Address
+
+
+## Logging the initial EAP request
+
+The `&session-state:` list can be used to determine whether the
+incoming request is the first in an EAP transaction, as on the
+first packet the list will be empty. Update the list at the same
+time to ensure that it is not empty on the next round; we can use
+Tmp-String-1 to note the type of log record.
+
+Make these changes in the default server (`raddb/sites-enabled/default`).
+
+    authorize {
+        if (!&session-state:) {
+            update session-state {
+                &Tmp-String-1 := "request"
+            }
+            linelog
+        }
+        ...
+    }
+
+
+## Recording the inner User-Name
+
+To log the inner User-Name, it needs to be copied from the
+inner-tunnel to the outer. In `raddb/sites-enabled/inner-tunnel`,
+update `post-auth`:
+
+    server inner-tunnel {
+        post-auth {
+            ...
+            update outer.session-state {
+                &User-Name := &User-Name
+            }
+
+            Post-Auth-Type REJECT {
+                ...
+                update outer.session-state {
+                    &User-Name := &User-Name
+                }
+            }
+        }
+    }
+
+
+## Logging Accept or Reject
+
+Once again in the outer server, update the `post-auth` section to
+log the reply with the required attributes.
+
+    server default {
+        post-auth {
+            ...
+            update session-state {
+                &Tmp-String-1 := "accept"
+            }
+            linelog
+
+            Post-Auth-Type REJECT {
+                ...
+                update session-state {
+                    &Tmp-String-1 := "reject"
+                }
+                linelog
+            }
+        }
+    }
+
+
+## Configuring logging
+
+The examples above use the linelog module as an example, but in
+reality many different logging methods could be used in the same
+place. An example linelog configuration could be something like
+
+    linelog {
+        filename = /path/to/log/file
+        permissions = 0600
+        reference = "messages.%{session-state:Tmp-String-1}"
+        messages {
+            request = "%T request %{User-Name} %{Calling-Station-Id} ..."
+            accept = "%T accept %{User-Name} %{session-state:User-Name} %{Calling-Station-Id} ..."
+            reject = "%T reject %{User-Name} %{session-state:User-Name} %{Calling-Station-Id} ..."
+        }
+    }
