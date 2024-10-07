@@ -933,6 +933,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 			default:
 				query_ctx->status = SQL_QUERY_FAILED;
 				trunk_request_signal_fail(treq);
+				if (request) unlang_interpret_mark_runnable(request);
 				return;
 			}
 		} else {
