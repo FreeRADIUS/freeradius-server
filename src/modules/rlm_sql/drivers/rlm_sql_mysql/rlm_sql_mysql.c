@@ -50,6 +50,7 @@ DIAG_ON(strict-prototypes)
 #endif
 
 #include "rlm_sql.h"
+#include "rlm_sql_trunk.h"
 
 typedef enum {
 	SERVER_WARNINGS_AUTO = 0,
@@ -848,35 +849,7 @@ static size_t sql_escape_func(UNUSED request_t *request, char *out, size_t outle
 	return mysql_real_escape_string(&conn->db, out, in, inlen);
 }
 
-/** Allocate an SQL trunk connection
- *
- * @param[in] tconn		Trunk handle.
- * @param[in] el		Event list which will be used for I/O and timer events.
- * @param[in] conn_conf		Configuration of the connection.
- * @param[in] log_prefix	What to prefix log messages with.
- * @param[in] uctx		User context passed to trunk_alloc.
- */
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static connection_t *sql_trunk_connection_alloc(trunk_connection_t *tconn, fr_event_list_t *el,
-						   connection_conf_t const *conn_conf,
-						   char const *log_prefix, void *uctx)
-{
-	connection_t		*conn;
-	rlm_sql_thread_t	*thread = talloc_get_type_abort(uctx, rlm_sql_thread_t);
-
-	conn = connection_alloc(tconn, el,
-				   &(connection_funcs_t){
-				   	.init = _sql_connection_init,
-				   	.close = _sql_connection_close
-				   },
-				   conn_conf, log_prefix, thread->inst);
-	if (!conn) {
-		PERROR("Failed allocating state handler for new SQL connection");
-		return NULL;
-	}
-
-	return conn;
-}
+SQL_TRUNK_CONNECTION_ALLOC
 
 TRUNK_NOTIFY_FUNC(sql_trunk_connection_notify, rlm_sql_mysql_conn_t)
 
@@ -1076,24 +1049,8 @@ static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_
 	}
 }
 
-static void sql_request_fail(request_t *request, void *preq, UNUSED void *rctx,
-			     UNUSED trunk_request_state_t state, UNUSED void *uctx)
-{
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
-
-	query_ctx->treq = NULL;
-	query_ctx->rcode = RLM_SQL_ERROR;
-
-	if (request) unlang_interpret_mark_runnable(request);
-}
-
-static unlang_action_t sql_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
-{
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-
-	if (query_ctx->rcode == RLM_SQL_OK) RETURN_MODULE_OK;
-	RETURN_MODULE_FAIL;
-}
+SQL_QUERY_FAIL
+SQL_QUERY_RESUME
 
 static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
