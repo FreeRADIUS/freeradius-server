@@ -315,6 +315,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 *	Return the packet we wrote, plus any bytes previously
 	 *	left over from previous packets.
 	 */
+	/* coverity[return_overflow] */
 	return data_size + written;
 }
 
