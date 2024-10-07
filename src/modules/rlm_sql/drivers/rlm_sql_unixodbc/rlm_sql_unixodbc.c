@@ -42,7 +42,7 @@ USES_APPLE_DEPRECATED_API
 #include <sqlext.h>
 
 /* Forward declarations */
-static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
+static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle);
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, rlm_sql_config_t const *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *config);
 
@@ -74,20 +74,20 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 
 	/* 1. Allocate environment handle and register version */
 	err_handle = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &conn->env);
-	if (sql_check_error(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle)) {
 		ERROR("Can't allocate environment handle");
 		return RLM_SQL_ERROR;
 	}
 
 	err_handle = SQLSetEnvAttr(conn->env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
-	if (sql_check_error(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle)) {
 		ERROR("Can't register ODBC version");
 		return RLM_SQL_ERROR;
 	}
 
 	/* 2. Allocate connection handle */
 	err_handle = SQLAllocHandle(SQL_HANDLE_DBC, conn->env, &conn->dbc);
-	if (sql_check_error(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle)) {
 		ERROR("Can't allocate connection handle");
 		return RLM_SQL_ERROR;
 	}
@@ -101,14 +101,14 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 				UNCONST(SQLCHAR *, config->sql_login), strlen(config->sql_login),
 				UNCONST(SQLCHAR *, config->sql_password), strlen(config->sql_password));
 
-	if (sql_check_error(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle)) {
 		ERROR("Connection failed");
 		return RLM_SQL_ERROR;
 	}
 
 	/* 4. Allocate the stmt */
 	err_handle = SQLAllocHandle(SQL_HANDLE_STMT, conn->dbc, &conn->stmt);
-	if (sql_check_error(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle)) {
 		ERROR("Can't allocate the stmt");
 		return RLM_SQL_ERROR;
 	}
@@ -124,7 +124,7 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 
 	/* Executing query */
 	err_handle = SQLExecDirect(conn->stmt, UNCONST(SQLCHAR *, query_ctx->query_str), strlen(query_ctx->query_str));
-	if ((query_ctx->rcode = sql_check_error(err_handle, query_ctx->handle, &query_ctx->inst->config))) {
+	if ((query_ctx->rcode = sql_check_error(err_handle, query_ctx->handle))) {
 		if(query_ctx->rcode == RLM_SQL_RECONNECT) {
 			DEBUG("rlm_sql will attempt to reconnect");
 		}
@@ -171,7 +171,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t const *conf
 	SQLSMALLINT num_fields = 0;
 
 	err_handle = SQLNumResultCols(conn->stmt,&num_fields);
-	if (sql_check_error(err_handle, handle, config)) return -1;
+	if (sql_check_error(err_handle, handle)) return -1;
 
 	return num_fields;
 }
@@ -229,7 +229,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		RETURN_MODULE_OK;
 	}
 
-	query_ctx->rcode = sql_check_error(err_handle, handle, &query_ctx->inst->config);
+	query_ctx->rcode = sql_check_error(err_handle, handle);
 	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
 	query_ctx->row = conn->row;
@@ -316,13 +316,12 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED si
  *
  * @param error_handle Return code from a failed unixodbc call.
  * @param handle rlm_sql connection handle.
- * @param config rlm_sql config.
  * @return
  *	- #RLM_SQL_OK on success.
  *	- #RLM_SQL_RECONNECT if reconnect is needed.
  *	- #RLM_SQL_ERROR on error.
  */
-static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle)
 {
 	SQLCHAR state[256];
 	SQLCHAR error[256];
@@ -383,7 +382,7 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, rlm_sql_config_t const *
 	SQLLEN affected_rows;
 
 	error_handle = SQLRowCount(conn->stmt, &affected_rows);
-	if (sql_check_error(error_handle, query_ctx->handle, config)) return -1;
+	if (sql_check_error(error_handle, query_ctx->handle)) return -1;
 
 	return affected_rows;
 }
