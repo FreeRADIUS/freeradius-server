@@ -527,7 +527,7 @@ ssize_t fr_dhcpv4_encode_dbuff(fr_dbuff_t *dbuff, dhcp_packet_t *original, int c
 		if (len <= 0) break;
 	}
 
-	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_END_OF_OPTIONS, 0x00);
+	FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)FR_END_OF_OPTIONS);
 
 	/*
 	 *	FIXME: if (fr_dbuff_used(&work_dbuff) > mms),
