@@ -123,10 +123,12 @@ static inline size_t fr_nbo_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
 	ret = ROUND_UP_DIV((size_t)fr_high_bit_pos(num | 0x80), 8);
 #ifdef __COVERITY__
 	/*
-	 * 	Coverity doesn't realize that ret is necessarily <= 8,
-	 * 	so we give it a hint.
+	 * Coverity doesn't realize that the fr_high_bit_pos() call will always
+	 * return a value between 1 and 8 inclusive, the former thanks to the
+	 * "| 0x80". and this function doesn't specify an error return value,
+	 * so we use a Coverity-only assert.
 	 */
-	if (ret > 8) return 0;
+	fr_assert(ret >= 1 && ret <= 8);
 #endif
 
 	fr_nbo_from_uint64(swapped, num);
