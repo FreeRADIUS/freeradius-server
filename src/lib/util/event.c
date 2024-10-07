@@ -504,7 +504,7 @@ static void event_fd_func_index_build(fr_event_func_map_t *map)
 				 * 	it. Adding a Coverity-only check won't change that,
 				 * 	so we're stuck with annotation.
 				 */
-				/* coverity [overflow_const] */
+				/* coverity[overflow_const] */
 				fflags &= ~(1 << pos);
 			}
 		}
