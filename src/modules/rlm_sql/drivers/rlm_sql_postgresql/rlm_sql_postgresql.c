@@ -168,6 +168,9 @@ static sql_rcode_t sql_classify_error(rlm_sql_postgresql_t *inst, ExecStatusType
 	#ifdef HAVE_PGRES_SINGLE_TUPLE
 		case PGRES_SINGLE_TUPLE:
 	#endif
+	#ifdef HAVE_PGRES_TUPLES_CHUNK
+		case PGRES_TUPLES_CHUNK:
+	#endif
 		case PGRES_TUPLES_OK:
 	#ifdef HAVE_PGRES_COPY_BOTH
 		case PGRES_COPY_BOTH:
@@ -466,6 +469,9 @@ static void sql_trunk_request_demux(UNUSED fr_event_list_t *el, UNUSED trunk_con
 		 */
 #ifdef HAVE_PGRES_SINGLE_TUPLE
 		case PGRES_SINGLE_TUPLE:
+#endif
+#ifdef HAVE_PGRES_TUPLES_CHUNK
+		case PGRES_TUPLES_CHUNK:
 #endif
 		case PGRES_TUPLES_OK:
 			sql_conn->cur_row = 0;
