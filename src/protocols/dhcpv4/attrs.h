@@ -52,3 +52,4 @@ extern HIDDEN fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
 extern HIDDEN fr_dict_attr_t const *attr_dhcp_relay_link_selection;
 extern HIDDEN fr_dict_attr_t const *attr_dhcp_subnet_selection_option;
 extern HIDDEN fr_dict_attr_t const *attr_dhcp_network_subnet;
+extern HIDDEN fr_dict_attr_t const *attr_dhcp_option_82;

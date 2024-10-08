@@ -68,6 +68,7 @@ fr_dict_attr_t const *attr_dhcp_vendor_class_identifier;
 fr_dict_attr_t const *attr_dhcp_relay_link_selection;
 fr_dict_attr_t const *attr_dhcp_subnet_selection_option;
 fr_dict_attr_t const *attr_dhcp_network_subnet;
+fr_dict_attr_t const *attr_dhcp_option_82;
 
 extern fr_dict_attr_autoload_t dhcpv4_dict_attr[];
 fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
@@ -94,6 +95,7 @@ fr_dict_attr_autoload_t dhcpv4_dict_attr[] = {
 	{ .out = &attr_dhcp_relay_link_selection, .name = "Relay-Agent-Information.Relay-Link-Selection", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_subnet_selection_option, .name = "Subnet-Selection-Option", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_dhcpv4 },
 	{ .out = &attr_dhcp_network_subnet, .name = "Network-Subnet", .type = FR_TYPE_IPV4_PREFIX, .dict = &dict_dhcpv4 },
+	{ .out = &attr_dhcp_option_82, .name = "Relay-Agent-Information", .type = FR_TYPE_TLV, .dict = &dict_dhcpv4 },
 	{ NULL }
 };
 
@@ -161,12 +163,10 @@ int dhcp_header_sizes[] = {
 
 uint8_t	eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
-fr_dict_attr_t const *dhcp_option_82;
-
 int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a, *my_b = b;
-	fr_dict_attr_t const *a_82, *b_82;
+	bool a_82, b_82;
 
 	PAIR_VERIFY(my_a);
 	PAIR_VERIFY(my_b);
@@ -191,14 +191,14 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	/*
 	 *	Relay-Agent is last.
 	 *
-	 *	Check if either of the options are descended from option 82.
+	 *	Check if either of the options are option 82
 	 */
-	a_82 = fr_dict_attr_common_parent(dhcp_option_82, my_a->da, true);
-	b_82 = fr_dict_attr_common_parent(dhcp_option_82, my_b->da, true);
+	a_82 = (my_a->da == attr_dhcp_option_82);
+	b_82 = (my_b->da == attr_dhcp_option_82);
 	if (a_82 && !b_82) return +1;
 	if (!a_82 && b_82) return -1;
 
-	return fr_pair_cmp_by_parent_num(my_a, my_b);
+	return fr_dict_attr_cmp(my_a->da, my_b->da);
 }
 
 /** Check received DHCP request is valid and build fr_packet_t structure if it is
