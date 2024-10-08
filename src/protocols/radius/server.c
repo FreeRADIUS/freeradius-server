@@ -40,7 +40,7 @@ fr_bio_packet_t *fr_radius_server_bio_alloc(TALLOC_CTX *ctx, fr_radius_server_co
 	if (fd_cfg->socket_type == SOCK_DGRAM) return fr_radius_server_udp_bio_alloc(ctx, cfg, fd_cfg);
 
 	fr_strerror_const("No TCP for you.");
-	return -1;
+	return NULL;
 
 //	return fr_radius_server_tcp_bio_alloc(ctx, cfg, fd_cfg);
 }
@@ -102,7 +102,7 @@ int fr_radius_server_fd_bio_write(fr_bio_packet_t *bio, UNUSED void *pctx, fr_pa
 	fr_radius_server_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_server_fd_bio_t);
 	fr_packet_t *request = reply->uctx;
 	ssize_t slen;
-	
+
 	fr_assert(!reply->data);
 
 	fr_assert(reply->code > 0);
