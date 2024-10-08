@@ -156,7 +156,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	    fr_time_delta_ispos(cfg->connection_timeout) && cfg->retry_cfg.el) {
 		if (fr_event_timer_in(my, cfg->retry_cfg.el, &my->ev, cfg->connection_timeout, fr_radius_client_bio_connect_timer, my) < 0) {
 			talloc_free(my);
-			return -1;
+			return NULL;
 		}
 	}
 
