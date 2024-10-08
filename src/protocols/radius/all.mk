@@ -17,7 +17,6 @@ SRC_CFLAGS	:= -D_LIBRADIUS -DNO_ASSERT -I$(top_builddir)/src
 
 TGT_PREREQS	:= libfreeradius-util$(L)
 
-ifneq "$(WITH_BIO)" ""
 SOURCES		+= \
 		   client.c \
 		   client_udp.c \
@@ -28,4 +27,3 @@ SOURCES		+= \
 		   server_udp.c
 
 TGT_PREREQS	+= libfreeradius-bio$(L)
-endif
