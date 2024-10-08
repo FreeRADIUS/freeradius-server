@@ -4769,7 +4769,7 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 		    S_ISDIR(stat_buf.st_mode)) continue;
 
 		strcpy(buffer2, buffer);
-		p = strchr(buffer2, '.'); /* which must be there... */
+		p = strrchr(buffer2, '.'); /* which must be there... */
 		if (!p) continue;
 
 		/*
@@ -4778,7 +4778,7 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 		 *	the chain file.
 		 */
 		strcpy(p, ".key");
-		if (stat(buffer2, &stat_buf) != 0) private_key_file = buffer2;
+		if (stat(buffer2, &stat_buf) == 0) private_key_file = buffer2;
 
 		ctx = tls_init_ctx(conf, 1, buffer, private_key_file);
 		if (!ctx) goto error;
