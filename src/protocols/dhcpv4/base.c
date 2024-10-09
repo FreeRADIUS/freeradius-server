@@ -171,21 +171,10 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	PAIR_VERIFY(my_b);
 
 	/*
-	 *	We can only use attribute numbers if we know they're
-	 *	not nested attributes.
-	 *
-	 *	@fixme We should be able to use my_a->da->parent->flags.is_root,
-	 *	but the DHCP attributes are hacked into the server under a vendor
-	 *	dictionary, so we can't.
-	 */
-
-	/*
 	 *	Message-Type is first, for simplicity.
 	 */
-	if (((my_a->da->parent->type != FR_TYPE_TLV) && (my_a->da == attr_dhcp_message_type)) &&
-	    ((my_b->da->parent->type == FR_TYPE_TLV) || (my_b->da != attr_dhcp_message_type))) return -1;
-	if (((my_a->da->parent->type == FR_TYPE_TLV) || (my_a->da != attr_dhcp_message_type)) &&
-	    ((my_b->da->parent->type != FR_TYPE_TLV) && (my_b->da == attr_dhcp_message_type))) return +1;
+	if ((my_a->da == attr_dhcp_message_type) && (my_b->da != attr_dhcp_message_type)) return -1;
+	if ((my_a->da != attr_dhcp_message_type) && (my_b->da == attr_dhcp_message_type)) return +1;
 
 	/*
 	 *	Relay-Agent is last.
