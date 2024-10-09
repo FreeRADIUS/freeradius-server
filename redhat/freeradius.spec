@@ -1053,6 +1053,7 @@ fi
 %{_libdir}/freeradius/libfreeradius-ethernet.so
 %{_libdir}/freeradius/libfreeradius-internal.so
 %{_libdir}/freeradius/libfreeradius-radius.so
+%{_libdir}/freeradius/libfreeradius-radius-bio.so
 %{_libdir}/freeradius/libfreeradius-sim.so
 %{_libdir}/freeradius/libfreeradius-tacacs.so
 %{_libdir}/freeradius/libfreeradius-tftp.so
