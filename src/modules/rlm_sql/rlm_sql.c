@@ -741,7 +741,7 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 		}
 
 		for (j = 0; j < field_cnt; j++) {
-			if (strcmp(fields[j], map_rhs) != 0) continue;
+			if (strcasecmp(fields[j], map_rhs) != 0) continue;
 			field_index[i] = j;
 			found_field = true;
 		}
