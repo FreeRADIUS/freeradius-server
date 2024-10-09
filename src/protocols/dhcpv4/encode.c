@@ -736,8 +736,8 @@ ssize_t fr_dhcpv4_encode_option(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *e
 
 	if (vp->da == attr_dhcp_message_type) goto next; /* already done */
 	if ((vp->da->attr > 255) && (vp->da->attr != FR_DHCP_OPTION_82)) {
-	next:
 		fr_strerror_printf("Attribute \"%s\" is not a DHCP option", vp->da->name);
+	next:
 		(void)fr_dcursor_next(cursor);
 		return 0;
 	}
