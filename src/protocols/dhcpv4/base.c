@@ -166,7 +166,6 @@ uint8_t	eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a, *my_b = b;
-	bool a_82, b_82;
 
 	PAIR_VERIFY(my_a);
 	PAIR_VERIFY(my_b);
@@ -191,12 +190,19 @@ int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 	/*
 	 *	Relay-Agent is last.
 	 *
+	 *	RFC 3046:
+	 *	Servers SHOULD copy the Relay Agent Information
+   	 *	option as the last DHCP option in the response.
+	 *
+	 *	Some crazy DHCP relay agents idea of how to strip option 82 in
+	 *	a reply packet is to simply overwrite the 82 with 255 - the
+	 *	"Eod of Options" option - causing the client to then ignore
+	 *	any subsequent options.
+	 *
 	 *	Check if either of the options are option 82
 	 */
-	a_82 = (my_a->da == attr_dhcp_option_82);
-	b_82 = (my_b->da == attr_dhcp_option_82);
-	if (a_82 && !b_82) return +1;
-	if (!a_82 && b_82) return -1;
+	if ((my_a->da == attr_dhcp_option_82) && (my_b->da != attr_dhcp_option_82)) return +1;
+	if ((my_a->da != attr_dhcp_option_82) && (my_b->da == attr_dhcp_option_82)) return -1;
 
 	return fr_dict_attr_cmp(my_a->da, my_b->da);
 }
