@@ -110,7 +110,6 @@ typedef struct {
 #define DHCP_FILE_FIELD	  	(1)
 #define DHCP_SNAME_FIELD  	(2)
 
-#define FR_DHCP_OPTION_82 (82)
 #define DHCP_PACK_OPTION1(x,y) ((x) | ((y) << 8))
 #define DHCP_UNPACK_OPTION1(x) (((x) & 0xff00) >> 8)
 
