@@ -130,7 +130,8 @@ typedef enum {
 	SQL_QUERY_SUBMITTED,					//!< Submitted for execution.
 	SQL_QUERY_RETURNED,					//!< Query has executed.
 	SQL_QUERY_FETCHING_RESULTS,				//!< Fetching results from server.
-	SQL_QUERY_RESULTS_FETCHED				//!< Results fetched from the server.
+	SQL_QUERY_RESULTS_FETCHED,				//!< Results fetched from the server.
+	SQL_QUERY_CANCELLED					//!< A cancellation has been sent to the server.
 } fr_sql_query_status_t;
 
 typedef struct {

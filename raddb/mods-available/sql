@@ -194,7 +194,7 @@ sql {
 #	logfile = ${logdir}/sqllog.sql
 
 	#
-	#  query_timeout:: Set the maximum query duration for `cassandra`.
+	#  query_timeout:: Set the maximum query duration for `cassandra` and `unixodbc`
 	#
 #	query_timeout = 5
 
