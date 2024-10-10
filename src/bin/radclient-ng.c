@@ -1779,6 +1779,10 @@ int main(int argc, char **argv)
 		.release	= client_packet_release,
 	};
 
+#ifdef STATIC_ANALYZER
+	if (!autofree) fr_exit_now(EXIT_FAILURE);
+#endif
+
 	/*
 	 *	Open the RADIUS client bio, and then get the information associated with it.
 	 */
