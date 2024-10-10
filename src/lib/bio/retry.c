@@ -763,14 +763,18 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	};
 
 	/*
+	 *	Always initialize the retry timer.  That way the sent() callback doesn't have to call
+	 *	fr_time().
+	 *
+	 *	The application can call fr_bio_retry_entry_init() to re-initialize it, but that's fine.
+	 */
+	fr_retry_init(&item->retry, item->retry.start, &my->retry_config);
+
+	/*
 	 *	Tell the application that we've saved the packet.  The "item" pointer allows the application
 	 *	to cancel this packet if necessary.
 	 */
 	my->sent(bio, packet_ctx, buffer, size, item);
-
-	if (!item->retry.config) {
-		fr_retry_init(&item->retry, item->retry.start, &my->retry_config);
-	}
 
 	/*
 	 *	This should never fail.
