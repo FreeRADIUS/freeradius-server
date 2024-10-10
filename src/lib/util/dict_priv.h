@@ -70,7 +70,7 @@ typedef struct {
  *
  * There would also be conflicts for DHCP(v6)/RADIUS attributes etc...
  */
-struct fr_dict {
+struct fr_dict_s {
 	fr_dict_gctx_t	        *gctx;			//!< Global dictionary context this dictionary
 							///< was allocated in.
 	bool			read_only;		//!< If true, disallow modifications.

@@ -44,7 +44,7 @@ extern "C" {
  *	Avoid circular type references.
  */
 typedef struct dict_attr_s fr_dict_attr_t;
-typedef struct fr_dict fr_dict_t;
+typedef struct fr_dict_s fr_dict_t;
 
 typedef struct value_box_s fr_value_box_t;
 
