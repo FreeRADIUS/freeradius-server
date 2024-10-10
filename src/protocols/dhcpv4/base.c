@@ -736,7 +736,9 @@ fr_dict_protocol_t libfreeradius_dhcpv4_dict_protocol = {
 	.default_type_length = 1,
 	.subtype_table = subtype_table,
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
-	.attr_valid = attr_valid,
+	.attr = {
+		.valid = attr_valid
+	},
 
 	.init = fr_dhcpv4_global_init,
 	.free = fr_dhcpv4_global_free,

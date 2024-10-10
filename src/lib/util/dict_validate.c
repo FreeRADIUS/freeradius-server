@@ -696,7 +696,7 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	Run protocol-specific validation functions, BEFORE we
 	 *	do the rest of the checks.
 	 */
-	if (dict->attr_valid && !dict->attr_valid(dict, parent, name, *attr, type, flags)) return false;
+	if (dict->proto->attr.valid && !dict->proto->attr.valid(dict, parent, name, *attr, type, flags)) return false;
 
 	/*
 	 *	Check the flags, data types, and parent data types and flags.

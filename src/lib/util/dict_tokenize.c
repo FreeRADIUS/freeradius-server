@@ -172,8 +172,7 @@ static int dict_root_set(fr_dict_t *dict, char const *name, unsigned int proto_n
 		return -1;
 	}
 
-	da = dict_attr_alloc(dict->pool, NULL, name, proto_number, FR_TYPE_TLV,
-			     &(dict_attr_args_t){ .flags = &flags });
+	da = dict_attr_alloc_root(dict->pool, dict, name, proto_number, &(dict_attr_args_t){ .flags = &flags });
 	if (unlikely(!da)) return -1;
 
 	dict->root = da;
@@ -319,10 +318,10 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 		 *	Allow for "key1,key2".  But is has to be the
 		 *	last string in the flags field.
 		 */
-		if (ctx->dict->subtype_table) {
+		if (ctx->dict->proto->subtype_table) {
 			int subtype;
 
-			subtype = fr_table_value_by_str(ctx->dict->subtype_table, key, -1);
+			subtype = fr_table_value_by_str(ctx->dict->proto->subtype_table, key, -1);
 			if (subtype >= 0) {
 				if (flags->subtype != 0) {
 					fr_strerror_printf("Conflicting flag '%s'", key);
@@ -608,7 +607,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				}
 			}
 
-		} else if (ctx->dict->subtype_table) {
+		} else if (ctx->dict->proto->subtype_table) {
 			int subtype;
 
 			if (value) value[-1] = '='; /* hackity hack */
@@ -624,7 +623,7 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_type
 				return -1;
 			}
 
-			subtype = fr_table_value_by_str(ctx->dict->subtype_table, key, -1);
+			subtype = fr_table_value_by_str(ctx->dict->proto->subtype_table, key, -1);
 			if (subtype < 0) goto unknown_option;
 
 			flags->subtype = subtype;
@@ -1938,8 +1937,8 @@ post_option:
 	mutable = UNCONST(fr_dict_attr_t *, dict->root);
 	dict->string_based = string_based;
 	if (!type_size) {
-		mutable->flags.type_size = dict->default_type_size;
-		mutable->flags.length = dict->default_type_length;
+		mutable->flags.type_size = dict->proto->default_type_size;
+		mutable->flags.length = dict->proto->default_type_length;
 	} else {
 		mutable->flags.type_size = type_size;
 		mutable->flags.length = 1; /* who knows... */
@@ -2607,8 +2606,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 			if (!vendor_da) {
 				memset(&flags, 0, sizeof(flags));
 
-				flags.type_size = ctx->dict->default_type_size;
-				flags.length = ctx->dict->default_type_length;
+				flags.type_size = ctx->dict->proto->default_type_size;
+				flags.length = ctx->dict->proto->default_type_length;
 
 				/*
 				 *	See if this vendor has

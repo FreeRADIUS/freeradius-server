@@ -98,22 +98,15 @@ struct fr_dict_s {
 
 	fr_dict_t const		*next;			//!< for attribute overloading
 
-	fr_table_num_ordered_t const *subtype_table;	//!< table of subtypes for this protocol
-	size_t			subtype_table_len;	//!< length of table of subtypes for this protocol
-
-	unsigned int		vsa_parent;		//!< varies with different protocols
-	int			default_type_size;	//!< for TLVs and VSAs
-	int			default_type_length;	//!< for TLVs and VSAs
-
-	dl_t			*dl;			//!< for validation
-
-	fr_dict_protocol_t const *proto;		//!< protocol-specific validation functions
-
-	fr_dict_attr_valid_func_t attr_valid;		//!< validation function for new attributes
+	unsigned int		vsa_parent;		//!< varies with different protocols.
 
 	fr_dict_attr_t		**fixups;		//!< Attributes that need fixing up.
 
 	fr_rb_tree_t		*dependents;		//!< Which files are using this dictionary.
+
+	dl_t			*dl;			//!< for validation
+
+	fr_dict_protocol_t const *proto;		//!< protocol-specific validation functions
 };
 
 struct fr_dict_gctx_s {
@@ -171,14 +164,20 @@ typedef struct {
 } dict_attr_args_t;
 
 int			dict_attr_init(fr_dict_attr_t **da_p,
+				       fr_dict_t const *dict,
 				       fr_dict_attr_t const *parent,
 				       char const *name, int attr,
-				       fr_type_t type, dict_attr_args_t const *args);
+				       fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(1,2));
+
+fr_dict_attr_t		*dict_attr_alloc_root(TALLOC_CTX *ctx,
+					      fr_dict_t const *dict,
+					      char const *name, int attr,
+					      dict_attr_args_t const *args) CC_HINT(nonnull(2,3));
 
 fr_dict_attr_t		*dict_attr_alloc(TALLOC_CTX *ctx,
 					 fr_dict_attr_t const *parent,
 					 char const *name, int attr,
-					 fr_type_t type, dict_attr_args_t const *args);
+					 fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(2));
 
 fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name);
 

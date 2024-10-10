@@ -786,7 +786,7 @@ ssize_t	fr_dhcpv6_encode(fr_dbuff_t *dbuff, uint8_t const *original, size_t leng
 
 	fr_pair_dcursor_iter_init(&cursor, vps, fr_dhcpv6_next_encodable, dict_dhcpv6);
 	while ((fr_dbuff_extend(&frame_dbuff) > 0) && (fr_dcursor_current(&cursor) != NULL)) {
-		slen = fr_dhcpv6_encode_option(&frame_dbuff, &cursor, &packet_ctx);	
+		slen = fr_dhcpv6_encode_option(&frame_dbuff, &cursor, &packet_ctx);
 		if (slen < 0) return slen - fr_dbuff_used(&frame_dbuff);
 	}
 
@@ -988,7 +988,9 @@ fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.default_type_length = 2,
 	.subtype_table = subtype_table,
 	.subtype_table_len = NUM_ELEMENTS(subtype_table),
-	.attr_valid = attr_valid,
+	.attr = {
+		.valid = attr_valid,
+	},
 
 	.init = fr_dhcpv6_global_init,
 	.free = fr_dhcpv6_global_free,

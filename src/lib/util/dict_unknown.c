@@ -212,7 +212,7 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(&n, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags });
+	dict_attr_init(&n, da->dict, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags });
 	if (type != FR_TYPE_OCTETS) dict_attr_ext_copy_all(&n, da);
 	DA_VERIFY(n);
 
@@ -461,7 +461,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 					our_parent = ni;
 					continue;
 				}
-				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_VENDOR,
+				if (dict_attr_init(&n, our_parent->dict, our_parent, NULL, num, FR_TYPE_VENDOR,
 						   &(dict_attr_args_t){ .flags = &flags }) < 0) goto error;
 			}
 				break;
@@ -493,7 +493,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 							   fr_type_to_str(our_parent->type));
 					goto error;
 				}
-				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_OCTETS,
+				if (dict_attr_init(&n, our_parent->dict, our_parent, NULL, num, FR_TYPE_OCTETS,
 						   &(dict_attr_args_t){ .flags = &flags }) < 0) goto error;
 				break;
 			}

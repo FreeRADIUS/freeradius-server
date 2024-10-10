@@ -27,11 +27,13 @@ RCSID("$Id$")
 #include <freeradius-devel/util/atexit.h>
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dict_ext_priv.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sbuff.h>
 #include <freeradius-devel/util/syserror.h>
+#include <freeradius-devel/util/talloc.h>
 
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
@@ -79,6 +81,18 @@ bool const fr_dict_enum_allowed_chars[UINT8_MAX + 1] = {
 	['p'] = true, ['q'] = true, ['r'] = true, ['s'] = true, ['t'] = true,
 	['u'] = true, ['v'] = true, ['w'] = true, ['x'] = true, ['y'] = true,
 	['z'] = true
+};
+
+/** Default protocol rules set for every dictionary
+ *
+ * This is usually overriden by the public symbol from the protocol library
+ * associated with the dictionary
+ * e.g. libfreeradius-dhcpv6.so -> libfreeradius_dhcpv6_dict_protocol.
+ */
+fr_dict_protocol_t dict_proto_default = {
+	.name = "default",
+	.default_type_size = 2,
+	.default_type_length = 2,
 };
 
 /*
@@ -512,14 +526,19 @@ static inline CC_HINT(always_inline) int dict_attr_namespace_init(fr_dict_attr_t
  * @note This function can only be used _before_ the attribute is inserted into the dictionary.
  *
  * @param[in] da_p		to initialise.
- * @param[in] parent		of the attribute, if none, should be
- *				the dictionary root.
+ * @param[in] dict		the attribute will be used in.
+ * @param[in] parent		of the attribute, if none, this attribute will
+ *				be initialised as a dictionary root.
  * @param[in] name		of attribute.  Pass NULL for auto-generated name.
  * @param[in] attr		number.
  * @param[in] type		of the attribute.
  * @param[in] args		optional initialisation arguments.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
  */
 int dict_attr_init(fr_dict_attr_t **da_p,
+		   fr_dict_t const *dict,
 		   fr_dict_attr_t const *parent,
 		   char const *name, int attr,
 		   fr_type_t type, dict_attr_args_t const *args)
@@ -537,6 +556,14 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 	};
 
 	/*
+	 *	Allocate room for the protocol specific flags
+	 */
+	if (dict->proto && dict->proto->attr.flags_len > 0) {
+		if (unlikely(dict_attr_ext_alloc_size(da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC,
+						      dict->proto->attr.flags_len) == NULL)) return -1;
+	}
+
+	/*
 	 *	Record the parent
 	 */
 	if (parent) {
@@ -552,6 +579,9 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 		} else {
 			dict_attr_ext_copy(da_p, parent, FR_DICT_ATTR_EXT_VENDOR); /* Noop if no vendor extension */
 		}
+	/*
+	 *	This is a root attribute.
+	 */
 	} else {
 		(*da_p)->depth = 0;
 	}
@@ -681,11 +711,41 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx)
 	return da;
 }
 
+/** Allocate a dictionary root attribute on the heap
+ *
+ * @param[in] ctx		to allocate the attribute in.
+ * @param[in] dict		the attribute will be used in.
+ * @param[in] name		of the attribute.  If NULL an OID string
+ *				will be created and set as the name.
+ * @param[in] proto_number		number.  This should be
+ * @param[in] args		optional initialisation arguments.
+ * @return
+ *	- A new fr_dict_attr_t on success.
+ *	- NULL on failure.
+ */
+fr_dict_attr_t *dict_attr_alloc_root(TALLOC_CTX *ctx,
+				     fr_dict_t const *dict,
+				     char const *name, int proto_number,
+				     dict_attr_args_t const *args)
+{
+	fr_dict_attr_t	*n;
+
+	n = dict_attr_alloc_null(ctx);
+	if (unlikely(!n)) return NULL;
+
+	if (dict_attr_init(&n, dict, NULL, name, proto_number, FR_TYPE_TLV, args) < 0) {
+		talloc_free(n);
+		return NULL;
+	}
+
+	return n;
+}
+
+
 /** Allocate a dictionary attribute on the heap
  *
  * @param[in] ctx		to allocate the attribute in.
- * @param[in] parent		of the attribute, if none, should be
- *				the dictionary root.
+ * @param[in] parent		of the attribute.
  * @param[in] name		of the attribute.  If NULL an OID string
  *				will be created and set as the name.
  * @param[in] attr		number.
@@ -705,7 +765,7 @@ fr_dict_attr_t *dict_attr_alloc(TALLOC_CTX *ctx,
 	n = dict_attr_alloc_null(ctx);
 	if (unlikely(!n)) return NULL;
 
-	if (dict_attr_init(&n, parent, name, attr, type, args) < 0) {
+	if (dict_attr_init(&n, parent->dict, parent, name, attr, type, args) < 0) {
 		talloc_free(n);
 		return NULL;
 	}
@@ -753,7 +813,7 @@ static fr_dict_attr_t *dict_attr_acopy_dict(TALLOC_CTX *ctx, fr_dict_attr_t *par
 {
 	fr_dict_attr_t		*n;
 
-	n = dict_attr_alloc(ctx, parent,in->name,
+	n = dict_attr_alloc(ctx, parent, in->name,
 			    in->attr, in->type, &(dict_attr_args_t){ .flags = &in->flags });
 	if (unlikely(!n)) return NULL;
 
@@ -3203,29 +3263,70 @@ fr_slen_t fr_dict_enum_name_from_substr(fr_sbuff_t *out, fr_sbuff_parse_error_t 
 
 int dict_dlopen(fr_dict_t *dict, char const *name)
 {
-	char *module_name;
-	char *p, *q;
+	char			*lib_name;
+	char			*sym_name;
+	fr_dict_protocol_t	*proto;
 
 	if (!name) return 0;
 
-	module_name = talloc_typed_asprintf(NULL, "libfreeradius-%s", name);
-	for (p = module_name, q = p + talloc_array_length(p) - 1; p < q; p++) *p = tolower((uint8_t) *p);
-
-	/*
-	 *	Pass in dict as the uctx so that we can get at it in
-	 *	any callbacks.
-	 *
-	 *	Not all dictionaries have validation functions.  It's
-	 *	a soft error if they don't exist.
-	 */
-	dict->dl = dl_by_name(dict_gctx->dict_loader, module_name, dict, false);
-	if (!dict->dl) {
-		fr_strerror_printf_push("Failed loading dictionary validation library \"%s\"", module_name);
-		talloc_free(module_name);
+	lib_name = talloc_typed_asprintf(NULL, "libfreeradius-%s", name);
+	if (unlikely(lib_name == NULL)) {
+	oom:
+		fr_strerror_const("Out of memory");
 		return -1;
 	}
+	talloc_bstr_tolower(lib_name);
 
-	talloc_free(module_name);
+	dict->dl = dl_by_name(dict_gctx->dict_loader, lib_name, NULL, false);
+	if (!dict->dl) {
+		fr_strerror_printf_push("Failed loading dictionary validation library \"%s\"", lib_name);
+		talloc_free(lib_name);
+		return -1;
+	}
+	talloc_free(lib_name);
+
+	/*
+	 *	The public symbol that contains per-protocol rules
+	 *	and extensions.
+	 *
+	 *	It ends up being easier to do this using dlsym to
+	 *	resolve the symbol and not use the autoloader
+	 *	callbacks as theoretically multiple dictionaries
+	 *	could use the same protocol library, and then the
+	 *	autoloader callback would only run for the first
+	 * 	dictionary which loaded the protocol.
+	 */
+	sym_name = talloc_typed_asprintf(NULL, "libfreeradius_%s_dict_protocol", name);
+	if (unlikely(sym_name == NULL)) {
+		talloc_free(lib_name);
+		goto oom;
+	}
+	talloc_bstr_tolower(sym_name);
+
+	/*
+	 *	De-hyphenate the symbol name
+	 */
+	{
+		char *p, *q;
+
+		for (p = sym_name, q = p + (talloc_array_length(sym_name) - 1); p < q; p++) *p = *p == '-' ? '_' : *p;
+	}
+
+	proto = dlsym(dict->dl->handle, sym_name);
+	talloc_free(sym_name);
+
+	/*
+	 *	Soft failure, not all protocol libraires provide
+	 *	custom validation functions or flats.
+	 */
+	if (!proto) return 0;
+
+	/*
+	 *	Replace the default protocol with the custom one
+	 *	if we have it...
+	 */
+	dict->proto = proto;
+
 	return 0;
 }
 
@@ -3437,7 +3538,7 @@ static int _dict_free(fr_dict_t *dict)
 
 	if (dict_has_dependents(dict)) {
 		fr_rb_iter_inorder_t	iter;
-		fr_dict_dependent_t		*dep;
+		fr_dict_dependent_t	*dep;
 
 		fr_strerror_printf("Refusing to free dictionary \"%s\", still has dependents", dict->root->name);
 
@@ -3542,10 +3643,10 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	dict->dependents = fr_rb_inline_alloc(dict, fr_dict_dependent_t, node, _dict_dependent_cmp, NULL);
 
 	/*
-	 *	Set default type size and length.
+	 *	Set the default dictionary protocol, this can
+	 *	be overriden by the protocol library.
 	 */
-	dict->default_type_size = 1;
-	dict->default_type_length = 1;
+	dict->proto = &dict_proto_default;
 
 	return dict;
 }
@@ -3578,17 +3679,11 @@ fr_dict_t *fr_dict_protocol_alloc(fr_dict_t const *parent)
 	if (!dict) return NULL;
 
 	/*
-	 *	Allow for 64k local attributes.
-	 */
-	dict->default_type_size = 2;
-	dict->default_type_length = 2;
-
-	/*
 	 *	Allocate the root attribute.  This dictionary is
 	 *	always protocol "local", and number "0".
 	 */
-	da = dict_attr_alloc(dict->pool, NULL, "local", 0, FR_TYPE_TLV,
-			     &(dict_attr_args_t){ .flags = &flags });
+	da = dict_attr_alloc_root(dict->pool, parent, "local", 0,
+				  &(dict_attr_args_t){ .flags = &flags });
 	if (unlikely(!da)) {
 		talloc_free(dict);
 		return NULL;
@@ -3917,41 +4012,6 @@ void fr_dl_dict_autofree(UNUSED dl_t const *module, void *symbol, UNUSED void *u
 	fr_dict_autofree(((fr_dict_autoload_t *)symbol));
 }
 
-/** Callback to automatically load validation routines for dictionaries.
- *
- * @param[in] dl	the library we just loaded
- * @param[in] symbol	pointer to a fr_dict_protocol_t table
- * @param[in] user_ctx	the global context which we don't need
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static int _dict_validation_onload(dl_t const *dl, void *symbol, UNUSED void *user_ctx)
-{
-	fr_dict_t *dict = talloc_get_type_abort(dl->uctx, fr_dict_t);
-	fr_dict_protocol_t const *proto = symbol;
-
-
-	/*
-	 *	Set the protocol-specific callbacks.
-	 */
-	dict->proto = proto;
-
-	/*
-	 *	@todo - just use dict->proto->foo, once we get the
-	 *	rest of the code cleaned up.
-	 */
-#undef COPY
-#define COPY(_x) dict->_x = proto->_x
-	COPY(default_type_size);
-	COPY(default_type_length);
-	COPY(subtype_table);
-	COPY(subtype_table_len);
-	COPY(attr_valid);
-
-	return 0;
-}
-
 static int _dict_global_free_at_exit(void *uctx)
 {
 	return talloc_free(uctx);
@@ -4069,8 +4129,6 @@ fr_dict_gctx_t *fr_dict_global_ctx_init(TALLOC_CTX *ctx, bool free_at_exit, char
 	new_ctx->dict_loader = dl_loader_init(new_ctx, NULL, false, false);
 	if (!new_ctx->dict_loader) goto error;
 
-	if (dl_symbol_init_cb_register(new_ctx->dict_loader, 0, "dict_protocol",
-				       _dict_validation_onload, NULL) < 0) goto error;
 	new_ctx->free_at_exit = free_at_exit;
 
 	talloc_set_destructor(new_ctx, _dict_global_free);
