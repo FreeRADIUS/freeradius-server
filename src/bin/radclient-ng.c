@@ -1342,6 +1342,7 @@ int main(int argc, char **argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
+	fr_assert(autofree != NULL);
 
 	talloc_set_log_stderr();
 
