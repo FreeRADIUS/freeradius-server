@@ -205,6 +205,7 @@ static int _rc_request_free(rc_request_t *request)
 	return 0;
 }
 
+#ifdef HAVE_OPENSSL_SSL_H
 #include <openssl/provider.h>
 
 static OSSL_PROVIDER *openssl_default_provider = NULL;
@@ -247,6 +248,10 @@ static void openssl3_free(void)
 	}
 	openssl_legacy_provider = NULL;
 }
+#else
+#define openssl3_init()
+#define openssl3_free()
+#endif
 
 static int _loop_status(UNUSED fr_time_t now, fr_time_delta_t wake, UNUSED void *ctx)
 {
