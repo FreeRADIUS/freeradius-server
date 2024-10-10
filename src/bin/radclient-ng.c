@@ -1342,7 +1342,13 @@ int main(int argc, char **argv)
 		fr_exit_now(EXIT_FAILURE);
 	}
 #endif
-	fr_assert(autofree != NULL);
+
+#ifdef STATIC_ANALYZER
+	/*
+	 *	clang scan thinks that fr_fault_setup() will set autofree=NULL.
+	 */
+	if (!autofree) fr_exit_now(EXIT_FAILURE);
+#endif
 
 	talloc_set_log_stderr();
 
