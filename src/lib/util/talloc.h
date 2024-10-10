@@ -121,6 +121,17 @@ static inline TALLOC_CTX *talloc_init_const(char const *name)
 	return ctx;
 }
 
+/** Convert a talloced string to lowercase
+ *
+ * @param[in] str	to convert.
+ */
+static inline void talloc_bstr_tolower(char *str)
+{
+	char *p, *q;
+
+	for (p = str, q = p + (talloc_array_length(str) - 1); p < q; p++) *p = tolower((uint8_t) *p);
+}
+
 void		talloc_free_data(void *data);
 
 void		*talloc_null_ctx(void);
