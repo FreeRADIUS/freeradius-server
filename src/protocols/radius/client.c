@@ -1,4 +1,4 @@
- /*
+/*
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
  *   License as published by the Free Software Foundation; either
@@ -119,6 +119,9 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 
 	if (cfg->packet_cb_cfg.retry) rewrite = radius_client_retry;
 
+	/*
+	 *	We allocate a retry BIO even for TCP, as we want to be able to timeout the packets.
+	 */
 	my->retry = fr_bio_retry_alloc(my, 256, radius_client_retry_sent, radius_client_retry_response,
 				       rewrite, radius_client_retry_release, &cfg->retry_cfg, my->mem);
 	if (!my->retry) goto fail;
@@ -166,6 +169,8 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 		.secure_transport = false,
 		.proxy_state = my->cfg.proxy_state,
 	};
+
+	my->info.last_idle = fr_time();
 
 	return my;
 }
@@ -382,6 +387,10 @@ static void radius_client_retry_sent(fr_bio_t *bio, void *packet_ctx, const void
 
 	(void) fr_bio_retry_entry_init(bio, retry_ctx, &my->cfg.retry[data[0]]);
 
+	my->info.outstanding++;
+	my->info.last_sent = retry_ctx->retry.start;
+	if (fr_time_lteq(my->info.first_sent, my->info.last_idle)) my->info.first_sent = my->info.last_sent;
+
 	/*
 	 *	For Accounting-Request packets which have Acct-Delay-Time, we need to track where the
 	 *	Acct-Delay-Time is in the packet, along with its original value, and then we can use the
@@ -455,12 +464,19 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 	 *	No reply yet, verify the response packet, and save it for later.
 	 */
 	if (!id_ctx->response) {
+		fr_bio_retry_entry_t *retry;
+
 		if (fr_radius_verify(data, id_ctx->packet->data + 4,
 				     my->cfg.verify.secret, my->cfg.verify.secret_len,
 				     my->cfg.verify.require_message_authenticator,
 				     my->cfg.verify.limit_proxy_state) < 0) {
 			return false;
 		}
+
+		retry = *retry_ctx_p = id_ctx->retry_ctx;
+
+		if (fr_time_gt(retry->retry.start, my->info.mrs_time)) my->info.mrs_time = retry->retry.start;
+		my->info.last_reply = fr_time(); /* @todo - cache this so read() doesn't call time? */
 
 		*retry_ctx_p = id_ctx->retry_ctx;
 		response->uctx = id_ctx->packet;
@@ -477,6 +493,7 @@ static bool radius_client_retry_response(fr_bio_t *bio, fr_bio_retry_entry_t **r
 	 *	Tell the caller that it's a duplicate reply.
 	 */
 	*retry_ctx_p = id_ctx->retry_ctx;
+	my->info.last_reply = fr_time(); /* @todo - cache this so read() doesn't call time? */
 	return false;
 }
 
@@ -509,6 +526,9 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 	 */
 	if (my->cfg.packet_cb_cfg.release && (reason == FR_BIO_RETRY_NO_REPLY)) my->cfg.packet_cb_cfg.release(&my->common, packet);
 
+	fr_assert(my->info.outstanding > 0);
+	my->info.outstanding--;
+
 	/*
 	 *	IO was blocked due to IDs.  We now have a free ID, so perhaps we can resume writes.  But only
 	 *	if the IO handlers didn't mark us as "write blocked".
@@ -517,6 +537,9 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 		my->all_ids_used = false;
 
 		if (!my->common.write_blocked && my->common.cb.write_resume) my->common.cb.write_resume(&my->common);
+
+	} else if (!my->info.outstanding) {
+		my->info.last_idle = fr_time();
 	}
 }
 

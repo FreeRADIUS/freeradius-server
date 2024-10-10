@@ -55,6 +55,14 @@ typedef struct {
 
 	fr_bio_fd_info_t const	*fd_info;
 
+	size_t			outstanding;		//!< total number of outstanding packets.
+
+	fr_time_t		mrs_time;		//!< Most recent sent time which had a reply.
+	fr_time_t		last_reply;		//!< When we last received a reply.
+	fr_time_t		first_sent;		//!< first time we sent a packet since going idle
+	fr_time_t		last_sent;		//!< last time we sent a packet.
+	fr_time_t		last_idle;		//!< last time we had nothing to do
+
 	fr_bio_retry_info_t const	*retry_info;
 } fr_radius_client_bio_info_t;
 
