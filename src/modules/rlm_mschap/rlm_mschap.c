@@ -836,13 +836,13 @@ static void mppe_add_reply(UNUSED rlm_mschap_t const *inst,
  */
 static int write_all(int fd, char const *buf, size_t len) {
 	ssize_t rv;
-	size_t done=0;
+	char const *p = buf;
+	char const *end = p + len;
 
-	while (done < len) {
-		rv = write(fd, buf+done, len-done);
-		if (rv <= 0)
-			break;
-		done += rv;
+	while (p < end) {
+		rv = write(fd, p, (size_t) (end - p));
+		if (rv <= 0) break;
+		p += rv;
 	}
 	rv = write(fd, "\n", 1);
 	if (rv <= 0) return -1;
