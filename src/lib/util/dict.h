@@ -358,10 +358,10 @@ typedef struct fr_dict_gctx_s fr_dict_gctx_t;
 /*
  *	Dictionary constants
  */
-#define FR_DICT_PROTO_MAX_NAME_LEN	(128)			//!< Maximum length of a protocol name.
-#define FR_DICT_ENUM_MAX_NAME_LEN	(128)			//!< Maximum length of a enum value.
-#define FR_DICT_VENDOR_MAX_NAME_LEN	(128)			//!< Maximum length of a vendor name.
-#define FR_DICT_ATTR_MAX_NAME_LEN	(128)			//!< Maximum length of a attribute name.
+#define FR_DICT_PROTO_MAX_NAME_LEN	(128)				//!< Maximum length of a protocol name.
+#define FR_DICT_ENUM_MAX_NAME_LEN	(128)				//!< Maximum length of a enum value.
+#define FR_DICT_VENDOR_MAX_NAME_LEN	(128)				//!< Maximum length of a vendor name.
+#define FR_DICT_ATTR_MAX_NAME_LEN	(128)				//!< Maximum length of a attribute name.
 
 /** Maximum level of TLV nesting allowed
  */

@@ -167,11 +167,11 @@ fr_ext_t const fr_dict_attr_ext_def = {
 							.min = sizeof(char),
 							.has_hdr = true,
 							.fixup = fr_dict_attr_ext_name_fixup,
-							.can_copy = false,	/* Name may change, and we can only set it once */
+							.can_copy = false,		/* Name may change, and we can only set it once */
 						},
 		[FR_DICT_ATTR_EXT_CHILDREN]	= {
 							.min = sizeof(fr_dict_attr_ext_children_t),
-							.can_copy = false,	/* Limitation in hashing scheme we use */
+							.can_copy = false,		/* Limitation in hashing scheme we use */
 						},
 		[FR_DICT_ATTR_EXT_REF]		= {
 							.min = sizeof(fr_dict_attr_ext_ref_t),
@@ -185,7 +185,7 @@ fr_ext_t const fr_dict_attr_ext_def = {
 		[FR_DICT_ATTR_EXT_DA_STACK]	= {
 							.min = sizeof(fr_dict_attr_ext_da_stack_t),
 							.has_hdr = true,
-							.can_copy = false	/* Reinitialised for each new attribute */
+							.can_copy = false		/* Reinitialised for each new attribute */
 						},
 		[FR_DICT_ATTR_EXT_ENUMV]	= {
 							.min = sizeof(fr_dict_attr_ext_enumv_t),
@@ -194,12 +194,12 @@ fr_ext_t const fr_dict_attr_ext_def = {
 						},
 		[FR_DICT_ATTR_EXT_NAMESPACE]	= {
 							.min = sizeof(fr_dict_attr_ext_namespace_t),
-							.can_copy = false,	/* Same limitation as ext_children */
+							.can_copy = false,		/* Same limitation as ext_children */
 						},
 		[FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC] = {
-							.min = FR_EXT_ALIGNMENT,  /* allow for one byte of protocol stuff */
-							.has_hdr = true,	/* variable sized */
-							.can_copy = false	/* only the protocol can copy it */
+							.min = FR_EXT_ALIGNMENT,  	/* allow for one byte of protocol stuff */
+							.has_hdr = true,		/* variable sized */
+							.can_copy = false		/* only the protocol can copy it */
 						},
 		[FR_DICT_ATTR_EXT_MAX]		= {}
 	}
@@ -231,4 +231,3 @@ fr_ext_t const fr_dict_enum_ext_def = {
 		[FR_DICT_ENUM_EXT_MAX]		= {}
 	}
 };
-
