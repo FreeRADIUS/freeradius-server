@@ -38,17 +38,6 @@ typedef struct {
 
 #define RETRY_INIT { fr_time_delta_wrap(0), fr_time_delta_wrap(0), fr_time_delta_wrap(0), 0 }
 
-typedef struct {
-	fr_retry_config_t const	*config;		//!< master configuration
-	fr_time_t		start;			//!< when we started the retransmission
-	fr_time_t		end;			//!< when we will end the retransmissions
-	fr_time_t		next;			//!< when the next timer should be set
-	fr_time_t		updated;		//!< last update, really a cached "now".
-	fr_time_delta_t		rt;			//!< retransmit interval
-	uint32_t		count;			//!< number of sent packets
-	uint32_t		replies;		//!< number of responses received.
-} fr_retry_t;
-
 /*
  *	Anything other than "CONTINUE" means "DONE".  For helpfulness,
  *	we return *why* the timer is done.
@@ -58,6 +47,18 @@ typedef enum {
 	FR_RETRY_MRC,					//!< reached maximum retransmission count
 	FR_RETRY_MRD,					//!< reached maximum retransmission duration
 } fr_retry_state_t;
+
+typedef struct {
+	fr_retry_config_t const	*config;		//!< master configuration
+	fr_time_t		start;			//!< when we started the retransmission
+	fr_time_t		end;			//!< when we will end the retransmissions
+	fr_time_t		next;			//!< when the next timer should be set
+	fr_time_t		updated;		//!< last update, really a cached "now".
+	fr_time_delta_t		rt;			//!< retransmit interval
+	uint32_t		count;			//!< number of sent packets
+	uint32_t		replies;		//!< number of responses received.
+	fr_retry_state_t	state;			//!< so callers can see what state it's in.
+} fr_retry_t;
 
 void		fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config) CC_HINT(nonnull);
 fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now) CC_HINT(nonnull);

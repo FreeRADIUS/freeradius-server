@@ -46,6 +46,7 @@ void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config
 	r->start = now;
 	r->end = fr_time_add(now, config->mrd);
 	r->updated = now;
+	r->state = FR_RETRY_CONTINUE;
 
 	/*
 	 *	Ensure that we always have an end time.
@@ -113,6 +114,7 @@ fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 	 *	We retried too many times.  Fail.
 	 */
 	if (r->config->mrc && (r->count > r->config->mrc)) {
+		r->state = FR_RETRY_MRC;
 		return FR_RETRY_MRC;
 	}
 
@@ -125,6 +127,7 @@ redo:
 
 		end = fr_time_add(r->start, r->config->mrd);
 		if (fr_time_gt(now, end)) {
+			r->state = FR_RETRY_MRD;
 			return FR_RETRY_MRD;
 		}
 	}
