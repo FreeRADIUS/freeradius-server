@@ -87,6 +87,13 @@ void fr_retry_init(fr_retry_t *r, fr_time_t now, fr_retry_config_t const *config
 
 	r->rt = rt;
 	r->next = fr_time_add(now, rt);
+
+	/*
+	 *	Cap the "next" timer at the end.
+	 */
+	if (fr_time_cmp(r->next, r->end) > 0) {
+		r->next = r->end;
+	}
 }
 
 /** Initialize a retransmission counter
@@ -120,16 +127,15 @@ fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 
 redo:
 	/*
-	 *	Cap delay at MRD
+	 *	Cap delay at the end.
+	 *
+	 *	Note that this code can still return MRD, even if MRD
+	 *	wasn't set.  The initialization function above
+	 *	artificially caps MRD at one day.
 	 */
-	if (fr_time_delta_ispos(r->config->mrd)) {
-		fr_time_t end;
-
-		end = fr_time_add(r->start, r->config->mrd);
-		if (fr_time_gt(now, end)) {
-			r->state = FR_RETRY_MRD;
-			return FR_RETRY_MRD;
-		}
+	if (fr_time_cmp(now, r->end) <= 0) {
+		r->state = FR_RETRY_MRD;
+		return FR_RETRY_MRD;
 	}
 
 	/*
@@ -187,6 +193,13 @@ redo:
 	 *	it, and go to the next one.
 	 */
 	if (fr_time_lt(fr_time_add(r->next, fr_time_delta_wrap((fr_time_delta_unwrap(rt) / 2))), now)) goto redo;
+
+	/*
+	 *	Cap the "next" timer at when we stop sending.
+	 */
+	if (fr_time_cmp(r->next, r->end) > 0) {
+		r->next = r->end;
+	}
 
 	return FR_RETRY_CONTINUE;
 }
