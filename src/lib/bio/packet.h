@@ -47,14 +47,14 @@ typedef int (*fr_bio_packet_read_t)(fr_bio_packet_t *bio, void **request_ctx_p, 
 /** Write a packet and pairs from the network
  *
  * @param bio		the packet-based bio
- * @param request_ctx	the request context
+ * @param rctx		the request context
  * @param packet	the request packet.  Contains raw protocol data (IDs, counts, etc.)
  * @param list		the pairs to encode in the packet
  * @return
  *	- <0 on error (EOF, fail, etc,)
  *	- 0 for success
  */
-typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, void *request_ctx, fr_packet_t *packet, fr_pair_list_t *list);
+typedef int (*fr_bio_packet_write_t)(fr_bio_packet_t *bio, void *rctx, fr_packet_t *packet, fr_pair_list_t *list);
 
 /** Signal an outgoing packet.
  *
