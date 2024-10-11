@@ -90,7 +90,7 @@ struct fr_bio_retry_s {
 	FR_BIO_COMMON;
 
 	fr_rb_tree_t		next_retry_tree;	//!< when packets are retried next
-	fr_rb_tree_t		expiry_tree;	//!< when packets expire, so that we expire packets when the socket is blocked.
+	fr_rb_tree_t		expiry_tree;		//!< when packets expire, so that we expire packets when the socket is blocked.
 
 	fr_bio_retry_info_t	info;
 
@@ -106,7 +106,7 @@ struct fr_bio_retry_s {
 	 *	code can just do its work without worrying about timers.  And then when the tree manipulation
 	 *	is done, call the fr_bio_retry_timer_reset() function to reset (or not) the timer.
 	 */
-	fr_bio_retry_entry_t	*timer_item;		//!< for timers
+	fr_bio_retry_entry_t	*next_retry_item;		//!< for timers
 
 	/*
 	 *	Cache a partial write when IO is blocked.  Partial
@@ -131,7 +131,7 @@ static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *it
 
 #define fr_bio_retry_timer_clear(_x) do { \
 		talloc_const_free((_x)->ev); \
-		(_x)->timer_item = NULL; \
+		(_x)->next_retry_item = NULL; \
 	} while (0)
 
 /** Reset the expiry timer after expiring one element
@@ -155,14 +155,14 @@ static int fr_bio_retry_expiry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	The timer is already set correctly, we're done.
 	 */
-	if (first == my->timer_item) return 0;
+	if (first == my->next_retry_item) return 0;
 
 	/*
 	 *	Update the timer.  This should never fail.
 	 */
 	if (fr_event_timer_at(my, my->info.el, &my->ev, first->retry.end, fr_bio_retry_expiry_timer, my) < 0) return -1;
 
-	my->timer_item = first;
+	my->next_retry_item = first;
 	return 0;
 }
 
@@ -195,14 +195,14 @@ static int fr_bio_retry_timer_reset(fr_bio_retry_t *my)
 	/*
 	 *	The timer is already set correctly, we're done.
 	 */
-	if (first == my->timer_item) return 0;
+	if (first == my->next_retry_item) return 0;
 
 	/*
 	 *	Update the timer.  This should never fail.
 	 */
 	if (fr_event_timer_at(my, my->info.el, &my->ev, first->retry.next, fr_bio_retry_timer, my) < 0) return -1;
 
-	my->timer_item = first;
+	my->next_retry_item = first;
 	return 0;
 }
 
@@ -240,7 +240,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	/*
 	 *	We're deleting the timer entry, make sure that we clean up its events,
 	 */
-	if (my->timer_item == item) {
+	if (my->next_retry_item == item) {
 		fr_bio_retry_timer_clear(my);
 		timer_reset = true;
 	}
@@ -268,7 +268,7 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 
 	item->packet_ctx = NULL;
 
-	fr_assert(my->timer_item != item);
+	fr_assert(my->next_retry_item != item);
 	fr_bio_retry_list_insert_head(&my->free, item);
 }
 
@@ -403,7 +403,7 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	fr_bio_t *next;
 	fr_bio_retry_entry_t *item = my->partial;
 
-	fr_assert(!my->timer_item);
+	fr_assert(!my->next_retry_item);
 	fr_assert(!my->ev);
 	fr_assert(my->partial != NULL);
 	fr_assert(my->buffer.start);
@@ -600,14 +600,14 @@ static void fr_bio_retry_expiry_timer(UNUSED fr_event_list_t *el, fr_time_t now,
 	 *	There must also be no partially written entry.  If the IO is blocked, then all timers are
 	 *	suspended.
 	 */
-	fr_assert(my->timer_item != NULL);
+	fr_assert(my->next_retry_item != NULL);
 	fr_assert(!my->partial);
 	fr_assert(my->info.write_blocked);
 
 	/*
 	 *	We should be expiring at least one entry, so nuke the timers.
 	 */
-	my->timer_item = NULL;
+	my->next_retry_item = NULL;
 
 	/*
 	 *	Expire all entries which are within 10ms of "now".  That way we don't reset the event many
@@ -639,11 +639,11 @@ static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	 *	There must also be no partially written entry.  If the IO is blocked, then all timers are
 	 *	suspended.
 	 */
-	fr_assert(my->timer_item != NULL);
+	fr_assert(my->next_retry_item != NULL);
 	fr_assert(my->partial == NULL);
 
-	item = my->timer_item;
-	my->timer_item = NULL;
+	item = my->next_retry_item;
+	my->next_retry_item = NULL;
 
 	/*
 	 *	Retry one item.
@@ -793,7 +793,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	We've just inserted this packet into the timer tree, so it can't be used as the current timer.
 	 *	Once we've inserted it, we update the timer.
 	 */
-	fr_assert(my->timer_item != item);
+	fr_assert(my->next_retry_item != item);
 
 	/*
 	 *	If we can't set the timer, then release this item.
@@ -906,7 +906,13 @@ static ssize_t fr_bio_retry_read(fr_bio_t *bio, void *packet_ctx, void *buffer, 
 	return rcode;
 }
 
-static int8_t _timer_cmp(void const *one, void const *two)
+/*
+ *	Order the retries by what we have to do next.
+ *
+ *	Note that "retry.next" here is capped at "retry.end".  So if we need to expire an entry, it will
+ *	happen at the "next" retry.
+ */
+static int8_t _next_retry_cmp(void const *one, void const *two)
 {
 	fr_bio_retry_entry_t const *a = one;
 	fr_bio_retry_entry_t const *b = two;
@@ -917,6 +923,11 @@ static int8_t _timer_cmp(void const *one, void const *two)
 	return fr_time_cmp(a->retry.next, b->retry.next);
 }
 
+/*
+ *	Order entries by when they expire, when we're not retrying.
+ *
+ *	i.e. the socket is blocked, so all retries are paused.
+ */
 static int8_t _expiry_cmp(void const *one, void const *two)
 {
 	fr_bio_retry_entry_t const *a = one;
@@ -1062,7 +1073,7 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 		fr_bio_retry_list_insert_tail(&my->free, &items[i]);
 	}
 
-	(void) fr_rb_inline_init(&my->next_retry_tree, fr_bio_retry_entry_t, next_retry_node, _timer_cmp, NULL);
+	(void) fr_rb_inline_init(&my->next_retry_tree, fr_bio_retry_entry_t, next_retry_node, _next_retry_cmp, NULL);
 	(void) fr_rb_inline_init(&my->expiry_tree, fr_bio_retry_entry_t, expiry_node, _expiry_cmp, NULL);
 
 	my->sent = sent;
