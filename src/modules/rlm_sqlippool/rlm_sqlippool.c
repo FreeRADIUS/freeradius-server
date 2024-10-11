@@ -717,7 +717,8 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
-			      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) return -1;
+			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+			      &our_rules) < 0) return -1;
 	*(void **)out = parsed_tmpl;
 	return 0;
 }

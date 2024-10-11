@@ -380,7 +380,8 @@ int call_env_parse_pair(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules,
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_strlen(cf_pair_value(to_parse))),
-			      cf_pair_value_quote(to_parse), NULL, t_rules) < 0) {
+			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+			      t_rules) < 0) {
 		return -1;
 	}
 	*(void **)out = parsed_tmpl;

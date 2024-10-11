@@ -1950,7 +1950,8 @@ static int logfile_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 
 	if (tmpl_afrom_substr(parsed_env, &parsed_tmpl,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
-			      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) {
+			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+			      &our_rules) < 0) {
 	error:
 		call_env_parsed_free(out, parsed_env);
 		return -1;
@@ -2021,7 +2022,8 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 
 		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
 					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
-					 cf_pair_value_quote(to_parse), NULL, &our_rules);
+					 cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+					 &our_rules);
 		if (slen <= 0) {
 			cf_canonicalize_error(to_parse, slen, "Failed parsing query", cf_pair_value(to_parse));
 		error:
@@ -2373,7 +2375,8 @@ static int call_env_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rule
 
 	if (tmpl_afrom_substr(ctx, &parsed_tmpl,
 			      &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
-			      cf_pair_value_quote(to_parse), NULL, &our_rules) < 0) return -1;
+			      cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+			      &our_rules) < 0) return -1;
 	*(void **)out = parsed_tmpl;
 	return 0;
 }
