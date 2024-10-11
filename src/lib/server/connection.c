@@ -1312,13 +1312,17 @@ void connection_signal_halt(connection_t *conn)
 	 *	must have completed INIT which means it has
 	 *	an active handle which needs to be closed before
 	 *	the connection is halted.
+	 *
+	 *	The exception is when a connection fails to open
+	 *	so goes from INIT -> FAILED, means is_closed
+	 *	is true, as the connection has never opened.
 	 */
 	case CONNECTION_STATE_CONNECTED:
 	case CONNECTION_STATE_CONNECTING:
 	case CONNECTION_STATE_SHUTDOWN:
 	case CONNECTION_STATE_TIMEOUT:
 	case CONNECTION_STATE_FAILED:
-		connection_state_enter_closed(conn);
+		if (!conn->is_closed) connection_state_enter_closed(conn);
 		fr_assert(conn->is_closed);
 		connection_state_enter_halted(conn);
 		break;
