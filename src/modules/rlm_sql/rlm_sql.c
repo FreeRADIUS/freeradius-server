@@ -72,7 +72,7 @@ static const conf_parser_t module_config[] = {
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{ FR_CONF_OFFSET("query_timeout", rlm_sql_config_t, query_timeout) },
+	{ FR_CONF_OFFSET("query_timeout", rlm_sql_config_t, query_timeout), .dflt = "5" },
 
 	CONF_PARSER_TERMINATOR
 };
