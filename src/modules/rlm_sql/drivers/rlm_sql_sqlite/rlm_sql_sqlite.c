@@ -652,7 +652,7 @@ static void sql_request_fail(UNUSED request_t *request, void *preq, UNUSED void 
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
 
 	query_ctx->treq = NULL;
-	query_ctx->rcode = RLM_SQL_ERROR;
+	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->rcode = RLM_SQL_ERROR;
 }
 
 static void sql_request_complete(UNUSED request_t *request, void *preq, UNUSED void *rctx, UNUSED void *uctx)

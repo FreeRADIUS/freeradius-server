@@ -67,6 +67,6 @@ static void sql_request_fail(request_t *request, void *preq, UNUSED void *rctx, 
 { \
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t); \
 	query_ctx->treq = NULL; \
-	query_ctx->rcode = RLM_SQL_ERROR; \
+	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->rcode = RLM_SQL_ERROR; \
 	if (request) unlang_interpret_mark_runnable(request); \
 }
