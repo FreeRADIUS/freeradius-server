@@ -379,7 +379,7 @@ static void sql_trunk_connection_read_poll(fr_event_list_t *el, UNUSED fr_time_t
 			if (query_ctx->type == SQL_QUERY_SELECT) {
 				if (c->select_interval < fr_time_delta_to_usec(c->config->query_timeout)/2) c->select_interval += 100;
 			} else {
-				if (c->select_interval < fr_time_delta_to_usec(c->config->query_timeout)/2) c->query_interval += 100;
+				if (c->query_interval < fr_time_delta_to_usec(c->config->query_timeout)/2) c->query_interval += 100;
 			}
 		}
 		if (ret == SQL_STILL_EXECUTING) {
