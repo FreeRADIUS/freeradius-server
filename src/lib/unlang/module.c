@@ -40,11 +40,7 @@ RCSID("$Id$")
  */
 typedef struct {
 	request_t			*request;	//!< Request this event pertains to.
-	int				fd;		//!< File descriptor to wait on.
 	unlang_module_timeout_t		timeout;	//!< Function to call on timeout.
-	unlang_module_fd_event_t	fd_read;	//!< Function to call when FD is readable.
-	unlang_module_fd_event_t	fd_write;	//!< Function to call when FD is writable.
-	unlang_module_fd_event_t	fd_error;	//!< Function to call when FD has errored.
 	module_instance_t const		*mi;		//!< Module instance to pass to callbacks.
 							///< Use mi->data to get instance data.
 	void				*thread;	//!< Thread specific module instance.
@@ -54,22 +50,6 @@ typedef struct {
 } unlang_module_event_t;
 
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
-
-/** Call the callback registered for a read I/O event
- *
- * @param[in] el	containing the event (not passed to the callback).
- * @param[in] fd	the I/O event occurred on.
- * @param[in] flags	from kevent.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
- */
-static void unlang_event_fd_read_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
-{
-	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
-
-	fr_assert(ev->fd == fd);
-
-	ev->fd_read(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
-}
 
 /** Frees an unlang event, removing it from the request's event loop
  *
@@ -84,11 +64,6 @@ static int _unlang_event_free(unlang_module_event_t *ev)
 	if (ev->ev) {
 		(void) fr_event_timer_delete(&(ev->ev));
 		return 0;
-	}
-
-	if (ev->fd >= 0) {
-		if (!ev->request) return 0;
-		(void) fr_event_fd_delete(unlang_interpret_event_list(ev->request), ev->fd, FR_EVENT_FILTER_IO);
 	}
 
 	return 0;
@@ -142,7 +117,6 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 
 	*ev = (unlang_module_event_t){
 		.request = request,
-		.fd = -1,
 		.timeout = callback,
 		.mi = m->mmc.mi,
 		.thread = state->thread,
@@ -180,132 +154,6 @@ int unlang_module_timeout_delete(request_t *request, void const *ctx)
 	if (!ev) return -1;
 	talloc_free(ev);
 
-	return 0;
-}
-
-/** Call the callback registered for a write I/O event
- *
- * @param[in] el	containing the event (not passed to the callback).
- * @param[in] fd	the I/O event occurred on.
- * @param[in] flags	from kevent.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
- */
-static void unlang_event_fd_write_handler(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *ctx)
-{
-	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
-	fr_assert(ev->fd == fd);
-
-	ev->fd_write(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
-}
-
-/** Call the callback registered for an I/O error event
- *
- * @param[in] el	containing the event (not passed to the callback).
- * @param[in] fd	the I/O event occurred on.
- * @param[in] flags	from kevent.
- * @param[in] fd_errno	from kevent.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
- */
-static void unlang_event_fd_error_handler(UNUSED fr_event_list_t *el, int fd,
-					  UNUSED int flags, UNUSED int fd_errno, void *ctx)
-{
-	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
-
-	fr_assert(ev->fd == fd);
-
-	ev->fd_error(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, fd);
-}
-
-
-/** Set a callback for the request.
- *
- * Used when a module needs to read from an FD.  Typically the callback is set, and then the
- * module returns unlang_module_yield().
- *
- * @note The callback is automatically removed on unlang_interpret_mark_runnable().
- *
- * @param[in] request		The current request.
- * @param[in] read		callback.  Used for receiving and demuxing/decoding data.
- * @param[in] write		callback.  Used for writing and encoding data.
- *				Where a 3rd party library is used, this should be the function
- *				issuing queries, and writing data to the socket.  This should
- *				not be done in the module itself.
- *				This allows write operations to be retried in some instances,
- *				and means if the write buffer is full, the request is kept in
- *				a suspended state.
- * @param[in] error		callback.  If the fd enters an error state.  Should cleanup any
- *				handles wrapping the file descriptor, and any outstanding requests.
- * @param[in] rctx		for the callback.
- * @param[in] fd		to watch.
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
-int unlang_module_fd_add(request_t *request,
-			unlang_module_fd_event_t read,
-			unlang_module_fd_event_t write,
-			unlang_module_fd_event_t error,
-			void const *rctx, int fd)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_module_event_t		*ev;
-	unlang_module_t			*m;
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state,
-								       unlang_frame_state_module_t);
-
-	fr_assert(stack->depth > 0);
-
-	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
-	m = unlang_generic_to_module(frame->instruction);
-
-	ev = talloc_zero(request, unlang_module_event_t);
-	if (!ev) return -1;
-
-	ev->request = request;
-	ev->fd = fd;
-	ev->fd_read = read;
-	ev->fd_write = write;
-	ev->fd_error = error;
-	ev->mi = m->mmc.mi;
-	ev->thread = state->thread;
-	ev->env_data = state->env_data;
-	ev->rctx = rctx;
-
-	/*
-	 *	Register for events on the file descriptor
-	 */
-	if (fr_event_fd_insert(request, NULL, unlang_interpret_event_list(request), fd,
-			       ev->fd_read ? unlang_event_fd_read_handler : NULL,
-			       ev->fd_write ? unlang_event_fd_write_handler : NULL,
-			       ev->fd_error ? unlang_event_fd_error_handler: NULL,
-			       ev) < 0) {
-		talloc_free(ev);
-		return -1;
-	}
-
-	(void) request_data_talloc_add(request, rctx, fd, unlang_module_event_t, ev, true, false, false);
-	talloc_set_destructor(ev, _unlang_event_free);
-
-	return 0;
-}
-
-/** Delete a previously set file descriptor callback
- *
- * param[in] request the request
- * param[in] fd the file descriptor
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
-int unlang_module_fd_delete(request_t *request, void const *ctx, int fd)
-{
-	unlang_module_event_t *ev;
-
-	ev = request_data_get(request, ctx, fd);
-	if (!ev) return -1;
-
-	talloc_free(ev);
 	return 0;
 }
 

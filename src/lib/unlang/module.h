@@ -84,14 +84,6 @@ int		unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callb
 
 int		unlang_module_timeout_delete(request_t *request, void const *ctx);
 
-int 		unlang_module_fd_add(request_t *request,
-				     unlang_module_fd_event_t read,
-				     unlang_module_fd_event_t write,
-				     unlang_module_fd_event_t error,
-				     void const *rctx, int fd);
-
-int		unlang_module_fd_delete(request_t *request, void const *rctx, int fd);
-
 int		unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 				   module_instance_t *module_instance, module_method_t method, bool top_frame)
 				   CC_HINT(warn_unused_result) CC_HINT(nonnull(2,3,4));
