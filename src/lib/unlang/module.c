@@ -112,7 +112,7 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	m = unlang_generic_to_module(frame->instruction);
 
-	ev = talloc(request, unlang_module_event_t);
+	ev = talloc(state, unlang_module_event_t);
 	if (!ev) return -1;
 
 	*ev = (unlang_module_event_t){

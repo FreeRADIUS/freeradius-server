@@ -128,13 +128,6 @@ static unlang_action_t mod_delay_return(rlm_rcode_t *p_result, module_ctx_t cons
 	RETURN_MODULE_OK;
 }
 
-static void mod_delay_cancel(module_ctx_t const *mctx, request_t *request, UNUSED fr_signal_t action)
-{
-	RDEBUG2("Cancelling delay");
-
-	(void) unlang_module_timeout_delete(request, mctx->rctx);
-}
-
 static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_delay_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_delay_t);
@@ -173,7 +166,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 		RETURN_MODULE_FAIL;
 	}
 
-	return unlang_module_yield(request, mod_delay_return, mod_delay_cancel, ~FR_SIGNAL_CANCEL, yielded_at);
+	return unlang_module_yield(request, mod_delay_return, NULL, 0, yielded_at);
 }
 
 static xlat_action_t xlat_delay_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
