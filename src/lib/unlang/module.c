@@ -35,20 +35,6 @@ RCSID("$Id$")
 
 #include "tmpl.h"
 
-/** Wrap an #fr_event_timer_t providing data needed for unlang events
- *
- */
-typedef struct {
-	request_t			*request;	//!< Request this event pertains to.
-	unlang_module_timeout_t		timeout;	//!< Function to call on timeout.
-	module_instance_t const		*mi;		//!< Module instance to pass to callbacks.
-							///< Use mi->data to get instance data.
-	void				*thread;	//!< Thread specific module instance.
-	void				*env_data;	//!< Per call environment data.
-	void const			*rctx;		//!< rctx data to pass to callbacks.
-	fr_event_timer_t const		*ev;		//!< Event in this worker's event heap.
-} unlang_module_event_t;
-
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
 
 /** Call the callback registered for a timeout event
@@ -60,10 +46,9 @@ static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *re
  */
 static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
 {
-	unlang_module_event_t *ev = talloc_get_type_abort(ctx, unlang_module_event_t);
+	unlang_frame_state_module_t *state = talloc_get_type_abort(ctx, unlang_frame_state_module_t);
 
-	ev->timeout(MODULE_CTX(ev->mi, ev->thread, ev->env_data, UNCONST(void *, ev->rctx)), ev->request, now);
-	talloc_free(ev);
+	state->timeout(MODULE_CTX(state->mi, state->thread, state->env_data, state->timeout_rctx), state->request, now);
 }
 
 /** Set a timeout for the request.
@@ -71,7 +56,7 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
  * Used when a module needs wait for an event.  Typically the callback is set, and then the
  * module returns unlang_module_yield().
  *
- * @note The callback is automatically removed on unlang_interpret_mark_runnable().
+ * @note The callback is automatically removed when the stack frame returns.
  *
  * param[in] request		the current request.
  * param[in] callback		to call.
@@ -82,11 +67,10 @@ static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_t
  *	- <0 on error.
  */
 int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
-			      void const *rctx, fr_time_t when)
+			      void *rctx, fr_time_t when)
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_module_event_t		*me;
 	unlang_module_t			*m;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
@@ -94,22 +78,15 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	m = unlang_generic_to_module(frame->instruction);
 
-	me = talloc(state, unlang_module_event_t);
-	if (!me) return -1;
+	state->timeout = callback;
+	state->timeout_rctx = rctx;
 
-	*me = (unlang_module_event_t) {
-		.request = request,
-		.timeout = callback,
-		.mi = m->mmc.mi,
-		.thread = state->thread,
-		.env_data = state->env_data,
-		.rctx = rctx
-	};
+	state->request = request;
+	state->mi = m->mmc.mi;
 
-	if (fr_event_timer_at(request, unlang_interpret_event_list(request), &me->ev,
-			      when, unlang_module_event_timeout_handler, me) < 0) {
+	if (fr_event_timer_at(request, unlang_interpret_event_list(request), &state->ev,
+			      when, unlang_module_event_timeout_handler, state) < 0) {
 		RPEDEBUG("Failed inserting event");
-		talloc_free(me);
 		return -1;
 	}
 

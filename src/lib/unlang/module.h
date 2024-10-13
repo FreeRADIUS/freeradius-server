@@ -80,7 +80,7 @@ typedef void (*unlang_module_fd_event_t)(module_ctx_t const *mctx, request_t *re
 typedef void (*unlang_module_signal_t)(module_ctx_t const *mctx, request_t *request, fr_signal_t action);
 
 int		unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
-					  void const *rctx, fr_time_t when);
+					  void *rctx, fr_time_t when);
 
 int		unlang_module_push(rlm_rcode_t *p_result, request_t *request,
 				   module_instance_t *module_instance, module_method_t method, bool top_frame)

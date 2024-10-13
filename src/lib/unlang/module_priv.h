@@ -78,8 +78,13 @@ typedef struct {
 	/** @name Retry handlers.
 	 * @{
 	 */
-	fr_event_timer_t const		*ev;		//!< retry timer just for this module.
-	fr_retry_t			retry;		//!< retry timers, etc.
+	unlang_module_timeout_t		timeout;		//!< callback to run on timeout
+	void				*timeout_rctx;		//!< rctx data to pass to timeout callback
+	module_instance_t const		*mi;			//!< Module instance to pass to callbacks.
+	request_t			*request;
+
+	fr_event_timer_t const		*ev;			//!< retry timer just for this module.
+	fr_retry_t			retry;			//!< retry timers, etc.
 
 	/** @} */
 
