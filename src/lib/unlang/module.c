@@ -51,24 +51,6 @@ typedef struct {
 
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
 
-/** Frees an unlang event, removing it from the request's event loop
- *
- * @param[in] ev	The event to free.
- *
- * @return 0
- */
-static int _unlang_event_free(unlang_module_event_t *ev)
-{
-	if (ev->request) (void) request_data_get(ev->request, ev->rctx, UNLANG_TYPE_MODULE);
-
-	if (ev->ev) {
-		(void) fr_event_timer_delete(&(ev->ev));
-		return 0;
-	}
-
-	return 0;
-}
-
 /** Call the callback registered for a timeout event
  *
  * @param[in] el	the event timer was inserted into.
@@ -104,7 +86,7 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 {
 	unlang_stack_t			*stack = request->stack;
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_module_event_t		*ev;
+	unlang_module_event_t		*me;
 	unlang_module_t			*m;
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
@@ -112,10 +94,10 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	m = unlang_generic_to_module(frame->instruction);
 
-	ev = talloc(state, unlang_module_event_t);
-	if (!ev) return -1;
+	me = talloc(state, unlang_module_event_t);
+	if (!me) return -1;
 
-	*ev = (unlang_module_event_t){
+	*me = (unlang_module_event_t) {
 		.request = request,
 		.timeout = callback,
 		.mi = m->mmc.mi,
@@ -124,38 +106,16 @@ int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callba
 		.rctx = rctx
 	};
 
-	if (fr_event_timer_at(request, unlang_interpret_event_list(request), &ev->ev,
-			      when, unlang_module_event_timeout_handler, ev) < 0) {
+	if (fr_event_timer_at(request, unlang_interpret_event_list(request), &me->ev,
+			      when, unlang_module_event_timeout_handler, me) < 0) {
 		RPEDEBUG("Failed inserting event");
-		talloc_free(ev);
+		talloc_free(me);
 		return -1;
 	}
 
-	(void) request_data_talloc_add(request, rctx, UNLANG_TYPE_MODULE, unlang_module_event_t, ev, true, false, false);
-
-	talloc_set_destructor(ev, _unlang_event_free);
-
 	return 0;
 }
 
-/** Delete a previously set timeout callback
- *
- * @param[in] request	The current request.
- * @param[in] ctx	a local context for the callback.
- * @return
- *	- -1 on error.
- *	- 0 on success.
- */
-int unlang_module_timeout_delete(request_t *request, void const *ctx)
-{
-	unlang_module_event_t *ev;
-
-	ev = request_data_get(request, ctx, UNLANG_TYPE_MODULE);
-	if (!ev) return -1;
-	talloc_free(ev);
-
-	return 0;
-}
 
 /** Push a module or submodule onto the stack for evaluation
  *
