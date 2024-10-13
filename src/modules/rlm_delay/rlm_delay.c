@@ -147,7 +147,7 @@ static unlang_action_t CC_HINT(nonnull) mod_delay(rlm_rcode_t *p_result, module_
 	/*
 	 *	Record the time that we yielded the request
 	 */
-	MEM(yielded_at = talloc(request, fr_time_t));
+	MEM(yielded_at = talloc(unlang_interpret_frame_talloc_ctx(request), fr_time_t));
 	*yielded_at = fr_time();
 
 	/*
