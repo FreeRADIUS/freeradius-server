@@ -2008,6 +2008,30 @@ static int dict_finalise(dict_tokenize_ctx_t *ctx)
 	return 0;
 }
 
+/** Maintain a linked list of filenames which we've seen loading this dictionary
+ *
+ * This is used for debug messages, so we have a copy of the original file path
+ * that we can reference from fr_dict_attr_t without having the memory bloat of
+ * assigning a buffer to every attribute.
+ */
+static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char const *filename)
+{
+	fr_dict_filename_t *file;
+
+	file = talloc_zero(dict, fr_dict_filename_t);
+	if (unlikely(file == NULL)) {
+	oom:
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+	*filename_out = file->filename = talloc_typed_strdup(dict, filename);
+	if (unlikely(*filename_out == NULL)) goto oom;
+
+	fr_dlist_insert_tail(&dict->filenames, file);
+
+	return 0;
+}
+
 /** Parse a dictionary file
  *
  * @param[in] ctx	Contains the current state of the dictionary parser.
@@ -2091,7 +2115,13 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		}
 	}
 
-	ctx->stack[ctx->stack_depth].filename = fn;
+	/*
+	 *	Copy the filename into the dictionary and add it to the ctx
+	 *
+	 *	This string is safe to assign to the filename pointer in
+	 *	any attributes added beneath the dictionary.
+	 */
+	if (unlikely(dict_filename_add(&ctx->stack[ctx->stack_depth].filename, ctx->dict, fn) < 0)) return -1;
 
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {

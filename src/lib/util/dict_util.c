@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/dict_ext_priv.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
+#include <freeradius-devel/util/dlist.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sbuff.h>
@@ -3596,6 +3597,11 @@ fr_dict_t *dict_alloc(TALLOC_CTX *ctx)
 	}
 	dict->gctx = dict_gctx;	/* Record which global context this was allocated in */
 	talloc_set_destructor(dict, _dict_free);
+
+	/*
+	 *	A list of all the files that constitute this dictionary
+	 */
+	fr_dlist_talloc_init(&dict->filenames, fr_dict_filename_t, entry);
 
 	/*
 	 *	Pre-Allocate pool memory for rapid startup

@@ -62,6 +62,16 @@ typedef struct {
 	char const	        *dependent;		//!< File holding the reference.
 } fr_dict_dependent_t;
 
+/** Entry in the filename list of files associated with this dictionary
+ *
+ * Mainly used for debugging.
+ */
+typedef struct {
+	fr_dlist_t		entry;			//!< Entry in the list of filenames.
+
+	char			*filename;		//!< Name of the file the dictionary was loaded on.
+} fr_dict_filename_t;
+
 /** Vendors and attribute names
  *
  * It's very likely that the same vendors will operate in multiple
@@ -73,6 +83,9 @@ typedef struct {
 struct fr_dict_s {
 	fr_dict_gctx_t	        *gctx;			//!< Global dictionary context this dictionary
 							///< was allocated in.
+
+	fr_dlist_head_t 	filenames;		//!< Files that this dictionary was loaded from.
+
 	bool			read_only;		//!< If true, disallow modifications.
 
 	bool			in_protocol_by_name;	//!< Whether the dictionary has been inserted into the
