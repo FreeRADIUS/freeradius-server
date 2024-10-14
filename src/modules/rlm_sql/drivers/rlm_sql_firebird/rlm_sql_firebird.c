@@ -34,10 +34,7 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 		fb_free_statement(conn);
 		isc_detach_database(conn->status, &(conn->dbh));
 
-		if (fb_error(conn)) {
-			WARN("Got error "
-			       "when closing socket: %s", conn->error);
-		}
+		if (fb_error(conn)) WARN("Got error when closing socket: %s", conn->error);
 	}
 
 	talloc_free_children(conn);
