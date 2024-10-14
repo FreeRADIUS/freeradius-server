@@ -38,63 +38,6 @@ RCSID("$Id$")
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
 static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx);
 
-/** Call the callback registered for a timeout event
- *
- * @param[in] el	the event timer was inserted into.
- * @param[in] now	The current time, as held by the event_list.
- * @param[in] ctx	unlang_module_event_t structure holding callbacks.
- *
- */
-static void unlang_module_event_timeout_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx)
-{
-	unlang_frame_state_module_t *state = talloc_get_type_abort(ctx, unlang_frame_state_module_t);
-
-	state->timeout(MODULE_CTX(state->mi, state->thread, state->env_data, state->timeout_rctx), state->request, now);
-}
-
-/** Set a timeout for the request.
- *
- * Used when a module needs wait for an event.  Typically the callback is set, and then the
- * module returns unlang_module_yield().
- *
- * @note The callback is automatically removed when the stack frame returns.
- *
- * param[in] request		the current request.
- * param[in] callback		to call.
- * param[in] rctx		to pass to the callback.
- * param[in] timeout		when to call the timeout (i.e. now + timeout).
- * @return
- *	- 0 on success.
- *	- <0 on error.
- */
-int unlang_module_timeout_add(request_t *request, unlang_module_timeout_t callback,
-			      void *rctx, fr_time_t when)
-{
-	unlang_stack_t			*stack = request->stack;
-	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
-	unlang_module_t			*m;
-	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
-
-	fr_assert(stack->depth > 0);
-	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
-	m = unlang_generic_to_module(frame->instruction);
-
-	state->timeout = callback;
-	state->timeout_rctx = rctx;
-
-	state->request = request;
-	state->mi = m->mmc.mi;
-
-	if (fr_event_timer_at(request, unlang_interpret_event_list(request), &state->ev,
-			      when, unlang_module_event_timeout_handler, state) < 0) {
-		RPEDEBUG("Failed inserting event");
-		return -1;
-	}
-
-	return 0;
-}
-
-
 /** Push a module or submodule onto the stack for evaluation
  *
  * @param[out] p_result		Where to write the result of calling the module.
@@ -357,7 +300,7 @@ static unlang_action_t unlang_module_retry_resume(rlm_rcode_t *p_result, module_
 	 */
 	talloc_const_free(state->ev);
 	state->ev = NULL;
-	state->timeout = NULL;
+	state->retry_cb = NULL;
 	state->retry.config = NULL;
 
 	return state->retry_resume(p_result, mctx, request);
@@ -384,7 +327,7 @@ static unlang_action_t unlang_module_retry_resume(rlm_rcode_t *p_result, module_
  *	- UNLANG_ACTION_YIELD on success
  *	- UNLANG_ACTION_FAIL on failure
  */
-unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t resume, unlang_module_timeout_t retry,
+unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t resume, unlang_module_retry_t retry,
 					     unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx,
 					     fr_retry_config_t const *retry_cfg)
 {
@@ -397,9 +340,9 @@ unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t
 	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
 	m = unlang_generic_to_module(frame->instruction);
 
-	fr_assert(!state->timeout);
+	fr_assert(!state->retry_cb);
 
-	state->timeout = retry;
+	state->retry_cb = retry;
 	state->retry_resume = resume;		// so that we can cancel the retry timer
 	state->rctx = rctx;
 
@@ -696,34 +639,34 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
 	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
 
-	/*
-	 *	The module will get either a RETRY signal, or a
-	 *	TIMEOUT signal (also for max count).
-	 *
-	 *	The signal handler should generally change the resume
-	 *	function, and mark the request as runnable.  We
-	 *	probably don't want the module to do tons of work in
-	 *	the signal handler, as it's called from the event
-	 *	loop.  And doing so could affect the other event
-	 *	timers.
-	 *
-	 *	Note also that we call frame->signal(), and not
-	 *	unlang_interpret_signal().  That is because we want to
-	 *	signal only the module.  We know that the other frames
-	 *	on the stack can't handle this particular signal.  So
-	 *	there's no point in calling them.  Or, if sections
-	 *	have their own retry handlers, then we don't want to
-	 *	signal those _other_ retry handles with _our_ signal.
-	 */
 	switch (fr_retry_next(&state->retry, now)) {
 	case FR_RETRY_CONTINUE:
-		/*
-		 *	There's a timeout / retry handler, call that with a cached "now".
-		 */
-		if (state->timeout) {
-			state->timeout(MODULE_CTX(state->mi, state->thread, state->env_data, state->rctx), state->request, now);
+		if (state->retry_cb) {
+			/*
+			 *	Call the module retry handler, with the state of the retry.  On MRD / MRC, the
+			 *	module is made runnable again, and the "resume" function is called.
+			 */
+			state->retry_cb(MODULE_CTX(state->mi, state->thread, state->env_data, state->rctx), state->request, &state->retry);
 		} else {
-
+			/*
+			 *	For signals, the module will get either a RETRY
+			 *	signal, or a TIMEOUT signal (also for max count).
+			 *
+			 *	The signal handler should generally change the resume
+			 *	function, and mark the request as runnable.  We
+			 *	probably don't want the module to do tons of work in
+			 *	the signal handler, as it's called from the event
+			 *	loop.  And doing so could affect the other event
+			 *	timers.
+			 *
+			 *	Note also that we call frame->signal(), and not
+			 *	unlang_interpret_signal().  That is because we want to
+			 *	signal only the module.  We know that the other frames
+			 *	on the stack can't handle this particular signal.  So
+			 *	there's no point in calling them.  Or, if sections
+			 *	have their own retry handlers, then we don't want to
+			 *	signal those _other_ retry handlers with _our_ signal.
+			 */
 			frame->signal(request, frame, FR_SIGNAL_RETRY);
 		}
 
@@ -738,17 +681,29 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 		return;
 
 	case FR_RETRY_MRD:
-		REDEBUG("Reached max_rtx_duration (%pVs > %pVs) - sending timeout signal",
+		REDEBUG("Reached max_rtx_duration (%pVs > %pVs) - sending timeout",
 			fr_box_time_delta(fr_time_sub(now, state->retry.start)), fr_box_time_delta(state->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
-		REDEBUG("Reached max_rtx_count (%u > %u) - sending timeout signal",
+		REDEBUG("Reached max_rtx_count (%u > %u) - sending timeout",
 		        state->retry.count, state->retry.config->mrc);
 		break;
 	}
 
-	frame->signal(request, frame, FR_SIGNAL_TIMEOUT);
+	/*
+	 *	Run the retry handler on MRD / MRC, too.
+	 */
+	if (state->retry_cb) {
+		state->retry_cb(MODULE_CTX(state->mi, state->thread, state->env_data, state->rctx), state->request, &state->retry);
+	} else {
+		frame->signal(request, frame, FR_SIGNAL_TIMEOUT);
+	}
+
+	/*
+	 *	On final timeout, always mark the request as runnable.
+	 */
+	unlang_interpret_mark_runnable(request);
 }
 
 static unlang_action_t unlang_module(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame)

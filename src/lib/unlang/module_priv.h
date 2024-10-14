@@ -79,7 +79,7 @@ typedef struct {
 	 * @{
 	 */
 	module_method_t			retry_resume;  		//!< which stops retries on resume
-	unlang_module_timeout_t		timeout;		//!< callback to run on timeout
+	unlang_module_retry_t       	retry_cb;		//!< callback to run on timeout
 	void				*timeout_rctx;		//!< rctx data to pass to timeout callback
 	module_instance_t const		*mi;			//!< Module instance to pass to callbacks.
 	request_t			*request;
