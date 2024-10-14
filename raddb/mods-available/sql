@@ -44,6 +44,7 @@ sql {
 	#  Allowed dialects are:
 	#
 	#    * cassandra
+	#    * firebird
 	#    * mysql
 	#    * mssql
 	#    * oracle
@@ -71,7 +72,6 @@ sql {
 	#  |===
 	#  | Driver            | Dialect
 	#  | db2               | mssql
-	#  | firebird          | mssql
 	#  | freetds           | mssql
 	#  | null              | any
 	#  | unixodbc          | mssql
