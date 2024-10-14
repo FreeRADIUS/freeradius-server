@@ -419,7 +419,6 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 		}
 	}
 
-	fb_free_statement(conn);
 	if (!conn->stmt) {
 		isc_dsql_allocate_statement(conn->status, &conn->dbh,
 					    &conn->stmt);
@@ -428,7 +427,6 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 		}
 	}
 
-	fb_free_sqlda(conn->sqlda_out);
 	isc_dsql_prepare(conn->status, &conn->trh, &conn->stmt, 0, query,
 			 conn->sql_dialect, conn->sqlda_out);
 	if (IS_ISC_ERROR(conn->status)) {
@@ -515,12 +513,6 @@ int fb_affected_rows(rlm_sql_firebird_conn_t *conn) {
 		}
 	}
 	return affected_rows;
-}
-
-int fb_close_cursor(rlm_sql_firebird_conn_t *conn) {
-	isc_dsql_free_statement(conn->status, &conn->stmt, DSQL_close);
-
-	return fb_error(conn);
 }
 
 void fb_free_statement(rlm_sql_firebird_conn_t *conn) {

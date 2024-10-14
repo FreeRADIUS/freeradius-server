@@ -199,7 +199,8 @@ static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm
 	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) query_ctx->handle->conn;
 
 	fb_commit(conn);
-	fb_close_cursor(conn);
+	fb_free_statement(conn);
+	talloc_free_children(conn->sqlda_out);
 
 	return 0;
 }
@@ -209,6 +210,11 @@ static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm
  */
 static sql_rcode_t sql_finish_query(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
+	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) query_ctx->handle->conn;
+
+	fb_free_statement(conn);
+	talloc_free_children(conn->sqlda_out);
+
 	return 0;
 }
 
