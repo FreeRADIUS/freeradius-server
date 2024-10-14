@@ -31,7 +31,7 @@ static void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...)
 	va_list arg;
 
 	va_start(arg, count);
-	MEM(conn->tpb = malloc(count));
+	MEM(conn->tpb = talloc_array(conn, char, count));
 
 	for (i = 0; i < count; i++) conn->tpb[i] = (char) va_arg(arg, int);
 
@@ -64,13 +64,13 @@ static void fb_set_sqlda(XSQLDA *sqlda) {
 
 	for (i = 0; i < sqlda->sqld; i++) {
 		if ((sqlda->sqlvar[i].sqltype & ~1) == SQL_VARYING) {
-			MEM(sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen + sizeof(short)));
+			MEM(sqlda->sqlvar[i].sqldata = talloc_array(sqlda, char, sqlda->sqlvar[i].sqllen + sizeof(short)));
 		} else {
-			MEM(sqlda->sqlvar[i].sqldata = (char*)malloc(sqlda->sqlvar[i].sqllen));
+			MEM(sqlda->sqlvar[i].sqldata = talloc_array(sqlda, char, sqlda->sqlvar[i].sqllen));
 		}
 
 		if (sqlda->sqlvar[i].sqltype & 1) {
-			MEM(sqlda->sqlvar[i].sqlind = (short*)calloc(1, sizeof(short)));
+			MEM(sqlda->sqlvar[i].sqlind = talloc(sqlda, short));
 		} else {
 			sqlda->sqlvar[i].sqlind = 0;
 		}
@@ -159,8 +159,8 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 	if (conn->row_fcount<conn->sqlda_out->sqld)  {
 		i = conn->row_fcount;
 		conn->row_fcount = conn->sqlda_out->sqld;
-		conn->row = (char **) realloc(conn->row, conn->row_fcount * sizeof(char *));
-		conn->row_sizes = (int *) realloc(conn->row_sizes, conn->row_fcount * sizeof(int));
+		conn->row = (char **) talloc_realloc(conn, conn->row, char *, conn->row_fcount * sizeof(char *));
+		conn->row_sizes = (int *) talloc_realloc(conn, conn->row_sizes, int, conn->row_fcount);
 
 		while( i <conn->row_fcount) {
 			conn->row[i] = 0;
@@ -173,7 +173,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		 *	Initial buffer size to store field's data is 256 bytes
 		 */
 		if (conn->row_sizes[i]<256) {
-			conn->row[i] = (char *) realloc(conn->row[i], 256);
+			conn->row[i] = (char *) talloc_realloc(conn->row, conn->row[i], char, 256);
 			conn->row_sizes[i] = 256;
 		}
 
@@ -188,8 +188,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		case SQL_TEXT:
 			if (conn->row_sizes[i]<= var->sqllen) {
 				conn->row_sizes[i] = var->sqllen + 1;
-				conn->row[i] = realloc(conn->row[i],
-						       conn->row_sizes[i]);
+				conn->row[i] = talloc_realloc(conn->row, conn->row[i], char, conn->row_sizes[i]);
 			}
 
 			memmove(conn->row[i], var->sqldata, var->sqllen);
@@ -200,8 +199,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 			vary = (VARY*) var->sqldata;
 			if (conn->row_sizes[i] <= vary->vary_length) {
 				conn->row_sizes[i] = vary->vary_length + 1;
-				conn->row[i] = realloc(conn->row[i],
-						       conn->row_sizes[i]);
+				conn->row[i] = talloc_realloc(conn->row, conn->row[i], char, conn->row_sizes[i]);
 			}
 			memmove(conn->row[i], vary->vary_string, vary->vary_length);
 			conn->row[i][vary->vary_length] = 0;
@@ -321,8 +319,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 int fb_init_socket(rlm_sql_firebird_conn_t *conn)
 {
-	memset(conn, 0, sizeof(*conn));
-	MEM(conn->sqlda_out = (XSQLDA ISC_FAR *) calloc(1, XSQLDA_LENGTH(5)));
+	MEM(conn->sqlda_out = (XSQLDA *)_talloc_array(conn, 1, XSQLDA_LENGTH(5), "XSQLDA"));
 	conn->sqlda_out->sqln = 5;
 	conn->sqlda_out->version =  SQLDA_VERSION1;
 	conn->sql_dialect = 3;
@@ -356,7 +353,7 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 		conn->dpb_len += strlen(config->sql_password) + 2;
 	}
 
-	MEM(conn->dpb = (char *) malloc(conn->dpb_len));
+	MEM(conn->dpb = talloc_array(conn, char, conn->dpb_len));
 	p = conn->dpb;
 
 	*conn->dpb++= isc_dpb_version1;
@@ -375,22 +372,17 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 	 *	parameter ignored.
 	 */
 	if (strchr(config->sql_server, ':')) {
-		database = strdup(config->sql_server);
+		database = config->sql_server;
 	} else {
 		/*
 		 *	Make database and server to be in the form
 		 *	of server:database
 		 */
-		int ls = strlen(config->sql_server);
-		int ld = strlen(config->sql_db);
-		MEM(database = (char *) calloc(1, ls + ld + 2));
-		strcpy(database, config->sql_server);
-		database[ls] = ':';
-		memmove(database + ls + 1, config->sql_db, ld);
+		database = buff = talloc_asprintf(NULL, "%s:%s", config->sql_server, config->sql_db);
 	}
 	isc_attach_database(conn->status, 0, database, &conn->dbh,
 			    conn->dpb_len, conn->dpb);
-	free(database);
+	talloc_free(buff);
 
 	return fb_error(conn);
 }
@@ -448,8 +440,8 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 
 	if (conn->sqlda_out->sqln<conn->sqlda_out->sqld) {
 		conn->sqlda_out->sqln = conn->sqlda_out->sqld;
-		conn->sqlda_out = (XSQLDA ISC_FAR *) realloc(conn->sqlda_out,
-							     XSQLDA_LENGTH(conn->sqlda_out->sqld));
+		conn->sqlda_out = (XSQLDA ISC_FAR *) _talloc_realloc_array(conn, conn->sqlda_out, 1,
+							     XSQLDA_LENGTH(conn->sqlda_out->sqld), "XSQLDA");
 		isc_dsql_describe(conn->status, &conn->stmt, SQL_DIALECT_V6,
 				  conn->sqlda_out);
 

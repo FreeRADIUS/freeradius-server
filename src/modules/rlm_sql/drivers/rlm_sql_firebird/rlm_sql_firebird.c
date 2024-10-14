@@ -27,8 +27,6 @@ RCSID("$Id$")
 
 static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 {
-	int i;
-
 	DEBUG2("socket destructor called, closing socket");
 
 	fb_commit(conn);
@@ -44,15 +42,7 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 
 	pthread_mutex_destroy (&conn->mut);
 
-	for (i = 0; i < conn->row_fcount; i++) free(conn->row[i]);
-
-	free(conn->row);
-	free(conn->row_sizes);
-	fb_free_sqlda(conn->sqlda_out);
-
-	free(conn->sqlda_out);
-	free(conn->tpb);
-	free(conn->dpb);
+	talloc_free_children(conn);
 
 	return 0;
 }
