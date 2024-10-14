@@ -305,8 +305,9 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 {
 	char		*p, *buff = NULL;
 	char const	*database;
+	uint8_t		timeout;
 
-	conn->dpb_len = 4;
+	conn->dpb_len = 7;
 	if (config->sql_login) conn->dpb_len+= strlen(config->sql_login) + 2;
 
 	if (config->sql_password) conn->dpb_len += strlen(config->sql_password) + 2;
@@ -315,9 +316,22 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 	p = conn->dpb;
 
 	*conn->dpb++= isc_dpb_version1;
+
+	/*
+	 *	Except for the version above, all Database Parameter Buffer options
+	 *	are LTV format, built from:
+	 *	 - 1 byte option code
+	 *	 - 1 byte length of value
+	 *	 - 1 or more bytes of value.  Integers are lsb first.
+	 */
 	*conn->dpb++= isc_dpb_num_buffers;
 	*conn->dpb++= 1;
 	*conn->dpb++= 90;
+
+	timeout = fr_time_delta_to_sec(config->trunk_conf.conn_conf->connection_timeout);
+	*conn->dpb++= isc_dpb_connect_timeout;
+	*conn->dpb++= 1;
+	*conn->dpb++= timeout;
 
 	fb_dpb_add_str(&conn->dpb, isc_dpb_user_name, config->sql_login);
 	fb_dpb_add_str(&conn->dpb, isc_dpb_password, config->sql_password);
