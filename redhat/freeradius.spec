@@ -1167,6 +1167,12 @@ fi
 %attr(640,root,radiusd) %config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/driver/oracle
 %endif
 
+#
+#  Firebird / InterBase
+#
+%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/main/firebird
+%config(noreplace)	%{_sysconfdir}/raddb/mods-config/sql/ippool/firebird
+
 %if %{with rlm_unbound}
 %config(noreplace)	%{_sysconfdir}/raddb/mods-config/unbound/default.conf
 %endif
