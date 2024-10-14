@@ -141,10 +141,9 @@ _our_return_type _our_name(_our_table_type table, size_t table_len, char const *
  * @param[in] _our_def_type	C type of the default value.
  * @param[in] _our_out_type	C type of the return/output value, i.e. the value part of the element.
  */
-#define TABLE_TYPE_NAME_FUNC_RPTR(_func, _our_table_type, _our_name, _our_def_type, _our_return_type) \
-_our_return_type _our_name(__our_out_type **out, our_table_type table, size_t table_len, char const *name, _our_def_type *def) \
+#define TABLE_TYPE_NAME_FUNC_RPTR(_func, _our_table_type, _our_name, _our_def_type, _our_out_type) \
+bool _our_name(_our_out_type *out, _our_table_type table, size_t table_len, char const *name, _our_def_type def) \
 { \
-	_our_return_type ret; \
 	_our_table_type found; \
 	found = (_our_table_type)_func(table, table_len, sizeof(((_our_table_type)0)[0]), name); \
 	if (!found) { \
@@ -204,10 +203,9 @@ _our_return_type _our_name(_our_table_type table, size_t table_len, char const *
  * @param[in] _our_def_type	C type of the default value.
  * @param[in] _our_out_type	C type of the return/output value, i.e. the value part of the element.
  */
-#define TABLE_TYPE_NAME_LEN_FUNC_RPTR(_func, _our_table_type, _our_name, _our_def_type, _our_return_type) \
-bool _our_name(_our_out_type **out, _our_table_type table, size_t table_len, char const *name, ssize_t name_len, _our_def_type *def) \
+#define TABLE_TYPE_NAME_LEN_FUNC_RPTR(_func, _our_table_type, _our_name, _our_def_type, _our_out_type) \
+bool _our_name(_our_out_type *out, _our_table_type table, size_t table_len, char const *name, ssize_t name_len, _our_def_type def) \
 { \
-	_our_return_type ret; \
 	_our_table_type found; \
 	found = (_our_table_type)_func(table, table_len, sizeof(((_our_table_type)0)[0]), name, name_len); \
 	if (!found) { \
@@ -263,10 +261,9 @@ _our_return_type _our_name(size_t *match_len, _our_table_type table, size_t tabl
  * @param[in] _our_def_type	C type of the default value.
  * @param[in] _our_out_type	C type of the return/output value, i.e. the value part of the element.
  */
-#define TABLE_TYPE_NAME_MATCH_LEN_FUNC_RPTR(_func, _our_table_type, _our_name, _our_def_type, _our_return_type) \
-bool _our_name(size_t *match_len, _our_out_type **out, _our_table_type table, size_t table_len, char const *name, ssize_t name_len, _our_def_type *def) \
+#define TABLE_TYPE_NAME_MATCH_LEN_FUNC_RPTR(_func, _our_table_type, _our_name, _our_def_type, _our_out_type) \
+bool _our_name(size_t *match_len, _our_out_type *out, _our_table_type table, size_t table_len, char const *name, ssize_t name_len, _our_def_type def) \
 { \
-	_our_return_type ret; \
 	_our_table_type found; \
 	found = (_our_table_type)_func(match_len, table, table_len, sizeof(((_our_table_type)0)[0]), name, name_len); \
 	if (!found) { \
