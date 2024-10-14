@@ -138,7 +138,6 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 	XSQLVAR		*var;
 	VARY		*vary;
 
-	/* assumed: id, username, attribute, value, op */
 	if (conn->row_fcount < conn->sqlda_out->sqld)  {
 		i = conn->row_fcount;
 		conn->row_fcount = conn->sqlda_out->sqld;
