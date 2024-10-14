@@ -84,7 +84,7 @@ sql {
 	#  exists. These are in a separate configuration file
 	#  in mods-config/sql/driver/<driver>.
 	#
-	$-INCLUDE ${modconfdir}/sql/driver/${dialect}
+	$-INCLUDE ${modconfdir}/sql/driver/${driver}
 
 	#
 	#  .Connection info:
