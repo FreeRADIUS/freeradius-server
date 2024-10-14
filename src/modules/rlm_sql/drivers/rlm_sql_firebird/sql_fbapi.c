@@ -212,23 +212,19 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		case SQL_INT64:
 		{
 			ISC_INT64 value = 0;
-			short field_width = 0;
 			short dscale = 0;
 
 			switch (dtype) {
 			case SQL_SHORT:
 				value = (ISC_INT64) *(short *)var->sqldata;
-				field_width = 6;
 				break;
 
 			case SQL_LONG:
 				value = (ISC_INT64) *(int *)var->sqldata;
-				field_width = 11;
 				break;
 
 			case SQL_INT64:
 				value = (ISC_INT64) *(ISC_INT64 *)var->sqldata;
-				field_width = 21;
 				break;
 			}
 			dscale = var->sqlscale;
@@ -243,34 +239,30 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 				}
 
 				if (value >= 0) {
-					snprintf(conn->row[i], conn->row_sizes[i], "%*lld.%0*lld",
-						 field_width - 1 + dscale,
+					snprintf(conn->row[i], conn->row_sizes[i], "%lld.%0*lld",
 						 (ISC_INT64) value / tens,
 						 -dscale,
 						 (ISC_INT64) value % tens);
 				} else if ((value / tens) != 0) {
-					snprintf(conn->row[i], conn->row_sizes[i], "%*lld.%0*lld",
-						 field_width - 1 + dscale,
+					snprintf(conn->row[i], conn->row_sizes[i], "%lld.%0*lld",
 						 (ISC_INT64) (value / tens),
 						 -dscale,
 						 (ISC_INT64) -(value % tens));
 				} else {
-					snprintf(conn->row[i], conn->row_sizes[i], "%*s.%0*lld", field_width - 1 + dscale,
+					snprintf(conn->row[i], conn->row_sizes[i], "%s.%0*lld",
 						 "-0", -dscale, (ISC_INT64) - (value % tens));
 				}
 			} else if (dscale) {
-				snprintf(conn->row[i], conn->row_sizes[i], "%*lld%0*d", field_width,
-					(ISC_INT64) value, dscale, 0);
+				snprintf(conn->row[i], conn->row_sizes[i], "%lld%0*d", (ISC_INT64) value, dscale, 0);
 			} else {
-				snprintf(conn->row[i], conn->row_sizes[i], "%*lld", field_width,
-					(ISC_INT64) value);
+				snprintf(conn->row[i], conn->row_sizes[i], "%lld", (ISC_INT64) value);
 			}
 		}
 			break;
 
 		case SQL_D_FLOAT:
 		case SQL_DOUBLE:
-			snprintf(conn->row[i], conn->row_sizes[i], "%24f",
+			snprintf(conn->row[i], conn->row_sizes[i], "%f",
 				 *(double ISC_FAR *) (var->sqldata));
 			break;
 
