@@ -186,7 +186,6 @@ struct dict_attr_s {
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
-	fr_dict_attr_t		*fixup;				//!< Attribute has been marked up for fixups.
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
