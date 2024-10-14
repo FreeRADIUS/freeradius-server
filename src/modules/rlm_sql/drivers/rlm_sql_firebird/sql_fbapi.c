@@ -352,6 +352,7 @@ int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
 		 */
 		database = buff = talloc_asprintf(NULL, "%s:%s", config->sql_server, config->sql_db);
 	}
+	DEBUG2("rlm_sql_firebird: Connecting to %s", database);
 	isc_attach_database(conn->status, 0, database, &conn->dbh,
 			    conn->dpb_len, conn->dpb);
 	talloc_free(buff);
