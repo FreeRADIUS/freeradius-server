@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include "tmpl.h"
 
 static unlang_action_t unlang_module_resume(rlm_rcode_t *p_result, request_t *request, unlang_stack_frame_t *frame);
+static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_time_t now, void *ctx);
 
 /** Call the callback registered for a timeout event
  *
@@ -342,6 +343,87 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+/** Cancel the retry timer on resume
+ *
+ */
+static unlang_action_t unlang_module_retry_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	/*
+	 *	Cancel the timers, and clean up any associated retry configuration.
+	 */
+	talloc_const_free(state->ev);
+	state->ev = NULL;
+	state->timeout = NULL;
+	state->retry.config = NULL;
+
+	return state->retry_resume(p_result, mctx, request);
+}
+
+/** Yield a request back to the interpreter, with retries
+ *
+ * This passes control of the request back to the unlang interpreter, setting
+ * callbacks to execute when the request is 'signalled' asynchronously, or when
+ * the retry timer hits.
+ *
+ * @note The module function which calls #unlang_module_yield_to_retry should return control
+ *	of the C stack to the unlang interpreter immediately after calling #unlang_module_yield_to_retry.
+ *	A common pattern is to use ``return unlang_module_yield_to_retry(...)``.
+ *
+ * @param[in] request		The current request.
+ * @param[in] resume		Called on unlang_interpret_mark_runnable().
+ * @param[in] retry		Called on when a retry timer hits
+ * @param[in] signal		Called on unlang_action().
+ * @param[in] sigmask		Set of signals to block.
+ * @param[in] rctx		to pass to the callbacks.
+ * @param[in] retry_cfg		to set up the retries
+ * @return
+ *	- UNLANG_ACTION_YIELD on success
+ *	- UNLANG_ACTION_FAIL on failure
+ */
+unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t resume, unlang_module_timeout_t retry,
+					     unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx,
+					     fr_retry_config_t const *retry_cfg)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_module_t			*m;
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	fr_assert(stack->depth > 0);
+	fr_assert(frame->instruction->type == UNLANG_TYPE_MODULE);
+	m = unlang_generic_to_module(frame->instruction);
+
+	fr_assert(!state->timeout);
+
+	state->timeout = retry;
+	state->retry_resume = resume;		// so that we can cancel the retry timer
+	state->rctx = rctx;
+
+	state->request = request;
+	state->mi = m->mmc.mi;
+
+	/*
+	 *	Allow unlang statements to override the module configuration.  i.e. if we already have a
+	 *	timer from unlang, then just use that.
+	 */
+	if (!state->retry.config) {
+		fr_retry_init(&state->retry, fr_time(), retry_cfg);
+
+		if (fr_event_timer_at(request, unlang_interpret_event_list(request), &state->ev,
+				      state->retry.next, unlang_module_event_retry_handler, request) < 0) {
+			RPEDEBUG("Failed inserting event");
+			return UNLANG_ACTION_FAIL;
+		}
+	}
+
+	return unlang_module_yield(request, unlang_module_retry_resume, signal, sigmask, rctx);
+}
+
+
 /** Yield a request back to the interpreter from within a module
  *
  * This passes control of the request back to the unlang interpreter, setting
@@ -635,7 +717,15 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 	 */
 	switch (fr_retry_next(&state->retry, now)) {
 	case FR_RETRY_CONTINUE:
-		frame->signal(request, frame, FR_SIGNAL_RETRY);
+		/*
+		 *	There's a timeout / retry handler, call that with a cached "now".
+		 */
+		if (state->timeout) {
+			state->timeout(MODULE_CTX(state->mi, state->thread, state->env_data, state->rctx), state->request, now);
+		} else {
+
+			frame->signal(request, frame, FR_SIGNAL_RETRY);
+		}
 
 		/*
 		 *	Reset the timer.
