@@ -316,7 +316,6 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		if (query_ctx->rcode != RLM_SQL_OK) goto error;
 
 		allocation_len = sqlippool_result_process(allocation, sizeof(allocation), query_ctx);
-		sql->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
 		if (allocation_len > 0) goto make_pair;
 
 		/*
@@ -341,7 +340,6 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		if (query_ctx->rcode != RLM_SQL_OK) goto error;
 
 		allocation_len = sqlippool_result_process(allocation, sizeof(allocation), query_ctx);
-		sql->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
 		if (allocation_len > 0) goto make_pair;
 
 	expand_find:
@@ -361,7 +359,6 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 		if (query_ctx->rcode != RLM_SQL_OK) goto error;
 
 		allocation_len = sqlippool_result_process(allocation, sizeof(allocation), query_ctx);
-		sql->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
 
 		if (allocation_len > 0) goto make_pair;
 
@@ -441,7 +438,6 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 	case IPPOOL_ALLOC_POOL_CHECK_RUN:
 		TALLOC_FREE(alloc_ctx->query);
 		allocation_len = sqlippool_result_process(allocation, sizeof(allocation), query_ctx);
-		sql->driver->sql_finish_select_query(query_ctx, &query_ctx->inst->config);
 
 		if (allocation_len) {
 			/*
@@ -473,7 +469,7 @@ static unlang_action_t mod_alloc_resume(rlm_rcode_t *p_result, UNUSED int *prior
 
 	case IPPOOL_ALLOC_UPDATE_RUN:
 		TALLOC_FREE(alloc_ctx->query);
-		sql->driver->sql_finish_query(query_ctx, &query_ctx->inst->config);
+		if (env->update) sql->driver->sql_finish_query(query_ctx, &query_ctx->inst->config);
 
 	finish:
 		if ((env->commit.type == FR_TYPE_STRING) &&
