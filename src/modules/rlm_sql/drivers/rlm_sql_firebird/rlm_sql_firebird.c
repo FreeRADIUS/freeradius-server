@@ -40,8 +40,6 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 		}
 	}
 
-	pthread_mutex_destroy (&conn->mut);
-
 	talloc_free_children(conn);
 
 	return 0;
@@ -82,8 +80,6 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 
 	int deadlock = 0;
 
-	pthread_mutex_lock(&conn->mut);
-
 	try_again:
 	/*
 	 *	Try again query when deadlock, because in any case it
@@ -108,8 +104,6 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 		      (long int) conn->sql_code, conn->error, query_ctx->query_str);
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
-			pthread_mutex_unlock(&conn->mut);
-
 			query_ctx->rcode = RLM_SQL_RECONNECT;
 			RETURN_MODULE_FAIL;
 		}
@@ -130,11 +124,9 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 
 	if (conn->statement_type != isc_info_sql_stmt_select) {
 		if (fb_commit(conn)) {
-			query_ctx->rcode = RLM_SQL_ERROR;	/* fb_commit unlocks the mutex */
+			query_ctx->rcode = RLM_SQL_ERROR;
 			RETURN_MODULE_FAIL;
 		}
-	} else {
-		pthread_mutex_unlock(&conn->mut);
 	}
 
 	query_ctx->rcode = RLM_SQL_OK;

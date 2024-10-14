@@ -62,8 +62,6 @@ typedef struct {
 	rlm_sql_row_t row;
 	int *row_sizes;
 	int row_fcount;
-
-	pthread_mutex_t mut;
 } rlm_sql_firebird_conn_t;
 
 
