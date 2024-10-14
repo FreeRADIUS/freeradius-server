@@ -409,9 +409,9 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 	if (IS_ISC_ERROR(conn->status)) return -2;
 
 	if (conn->sqlda_out->sqln < conn->sqlda_out->sqld) {
-		conn->sqlda_out->sqln = conn->sqlda_out->sqld;
 		conn->sqlda_out = (XSQLDA ISC_FAR *) _talloc_realloc_array(conn, conn->sqlda_out, 1,
 							     XSQLDA_LENGTH(conn->sqlda_out->sqld), "XSQLDA");
+		conn->sqlda_out->sqln = conn->sqlda_out->sqld;
 		isc_dsql_describe(conn->status, &conn->stmt, SQL_DIALECT_V6,
 				  conn->sqlda_out);
 
