@@ -67,7 +67,6 @@ typedef struct {
 
 int fb_free_result(rlm_sql_firebird_conn_t *conn);
 int fb_error(rlm_sql_firebird_conn_t *conn);
-int fb_init_socket(rlm_sql_firebird_conn_t *conn);
 int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config);
 int fb_disconnect(rlm_sql_firebird_conn_t *conn);
 int fb_sql_query(rlm_sql_firebird_conn_t *conn, char const *query);

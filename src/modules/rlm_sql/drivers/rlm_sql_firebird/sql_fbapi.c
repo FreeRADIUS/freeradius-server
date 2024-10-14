@@ -25,22 +25,6 @@ RCSID("$Id$")
 
 #include <stdarg.h>
 
-static void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...)
-{
-	int i;
-	va_list arg;
-
-	va_start(arg, count);
-	MEM(conn->tpb = talloc_array(conn, char, count));
-
-	for (i = 0; i < count; i++) conn->tpb[i] = (char) va_arg(arg, int);
-
-	conn->tpb_len = count;
-
-	va_end(arg);
-}
-
-
 static void fb_dpb_add_str(char **dpb, char name, char const *value)
 {
 	int l;
@@ -313,23 +297,6 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 	if (nulls == i) return RLM_SQL_NO_MORE_ROWS;
 
 	return RLM_SQL_OK;
-}
-
-int fb_init_socket(rlm_sql_firebird_conn_t *conn)
-{
-	MEM(conn->sqlda_out = (XSQLDA *)_talloc_array(conn, 1, XSQLDA_LENGTH(5), "XSQLDA"));
-	conn->sqlda_out->sqln = 5;
-	conn->sqlda_out->version =  SQLDA_VERSION1;
-	conn->sql_dialect = 3;
-
-	/*
-	 *	Set tpb to read_committed/wait/no_rec_version
-	 */
-	fb_set_tpb(conn, 5, isc_tpb_version3, isc_tpb_wait, isc_tpb_write,
-		   isc_tpb_read_committed, isc_tpb_no_rec_version);
-	if (!conn->tpb) return -1;
-
-	return 0;
 }
 
 int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t const *config)
