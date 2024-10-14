@@ -78,6 +78,8 @@ int fb_error(rlm_sql_firebird_conn_t *conn)
 	if (IS_ISC_ERROR(conn->status)) {
 		conn->sql_code = isc_sqlcode(conn->status);
 
+		if (conn->sql_code == DUPLICATE_KEY_SQL_CODE) return conn->sql_code;
+
 		/*
 		 *	pstatus is a pointer into the status array which is
 		 *	advanced by isc_interprete. It's initialised to the

@@ -122,6 +122,10 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 			goto try_again;
 		}
 
+		if (sql_conn->sql_code == DUPLICATE_KEY_SQL_CODE) {
+			query_ctx->rcode = RLM_SQL_ALT_QUERY;
+			goto finish;
+		}
 
 		ROPTIONAL(RERROR, ERROR, "conn_id rlm_sql_firebird,sql_query error: sql_code=%li, error='%s', query=%s",
 		      (long int) sql_conn->sql_code, sql_conn->error, query_ctx->query_str);
@@ -149,6 +153,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	}
 
 	query_ctx->rcode = RLM_SQL_OK;
+finish:
 	query_ctx->status = SQL_QUERY_RETURNED;
 	trunk_request_signal_reapable(treq);
 	if (request) unlang_interpret_mark_runnable(request);
@@ -294,6 +299,7 @@ rlm_sql_driver_t rlm_sql_firebird = {
 		.name				= "sql_firebird",
 		.magic				= MODULE_MAGIC_INIT
 	},
+	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.sql_query_resume		= sql_query_resume,
 	.sql_select_query_resume	= sql_query_resume,
 	.sql_affected_rows		= sql_affected_rows,

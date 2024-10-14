@@ -32,6 +32,7 @@ RCSIDH(sql_fbapi_h, "$Id$")
 
 #define DEADLOCK_SQL_CODE	-913
 #define DOWN_SQL_CODE		-902
+#define DUPLICATE_KEY_SQL_CODE	-803
 
 #if defined(_LP64) || defined(__LP64__) || defined(__arch64__)
 #define ISC_LONG_FMT "d"
