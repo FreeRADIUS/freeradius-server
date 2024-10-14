@@ -77,4 +77,4 @@ void fb_free_sqlda(XSQLDA *sqlda);
 void fb_free_statement(rlm_sql_firebird_conn_t *conn);
 int fb_rollback(rlm_sql_firebird_conn_t *conn);
 int fb_commit(rlm_sql_firebird_conn_t *conn);
-void fb_store_row(rlm_sql_firebird_conn_t *conn);
+sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn);

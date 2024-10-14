@@ -180,11 +180,9 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		conn->statement_type = 0;
 	}
 
-	fb_store_row(conn);
+	query_ctx->rcode = fb_store_row(conn);
+	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->row = conn->row;
 
-	query_ctx->row = conn->row;
-
-	query_ctx->rcode = RLM_SQL_OK;
 	RETURN_MODULE_OK;
 }
 

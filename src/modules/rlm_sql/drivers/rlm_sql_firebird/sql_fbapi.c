@@ -144,9 +144,9 @@ typedef struct {
 } VARY;
 
 //function fb_store_row based on fiebird's apifull example
-void fb_store_row(rlm_sql_firebird_conn_t *conn)
+sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 {
-	int		dtype, i;
+	int		dtype, i, nulls = 0;
 	struct		tm times;
 	ISC_QUAD	bid;
 	XSQLVAR		*var;
@@ -176,6 +176,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		if (IS_NULL(var)) {
 			strcpy(conn->row[i], "NULL");
+			nulls++;
 			continue;
 		}
 
@@ -304,6 +305,14 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 			break;
 		}
 	}
+
+	/*
+	 *	An "UPDATE ... RETURNING" which updated nothing actually returns a row
+	 *	with all fields set to NULL.  This is effectively no rows.
+	 */
+	if (nulls == i) return RLM_SQL_NO_MORE_ROWS;
+
+	return RLM_SQL_OK;
 }
 
 int fb_init_socket(rlm_sql_firebird_conn_t *conn)
