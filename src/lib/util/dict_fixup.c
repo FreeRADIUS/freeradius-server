@@ -443,7 +443,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 			 *	@todo - allow references to other protocols.
 			 */
 			if (root->flags.is_root) {
-				fr_strerror_printf("Too many '.' in clone=%s at %s[%d]",
+				fr_strerror_printf("Too many '.' in 'clone=%s' at %s[%d]",
 						   fixup->ref, fr_cwd_strip(fixup->common.filename), fixup->common.line);
 				return -1;
 			}
@@ -460,7 +460,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	 */
 	da = fr_dict_attr_by_oid(NULL, root, ref);
 	if (!da) {
-		fr_strerror_printf("Unknown attribute reference in clone=%s at parent %s %s[%d]",
+		fr_strerror_printf("Unknown attribute reference 'clone=%s' at parent %s %s[%d]",
 				   fixup->ref, root->name, fr_cwd_strip(fixup->common.filename), fixup->common.line);
 		return -1;
 	}
