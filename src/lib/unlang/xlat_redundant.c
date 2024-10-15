@@ -340,8 +340,6 @@ void xlat_redundant_add_xlat(xlat_redundant_t *xr, xlat_t const *x)
  */
 static int8_t module_xlat_cmp(void const *a, void const *b)
 {
-	int8_t ret;
-
 	module_rlm_xlat_t const *mrx_a = talloc_get_type_abort_const(a, module_rlm_xlat_t);
 	module_rlm_xlat_t const *mrx_b = talloc_get_type_abort_const(b, module_rlm_xlat_t);
 	char const *a_p, *b_p;
@@ -353,13 +351,12 @@ static int8_t module_xlat_cmp(void const *a, void const *b)
 	 */
 	a_p = strchr(mrx_a->xlat->name, '.');
 	b_p = strchr(mrx_b->xlat->name, '.');
-	ret = CMP(a_p == NULL, b_p == NULL);
-	if ((ret != 0)) return 0;
+	if (!a_p && !b_p) return 0;
 
 	/*
 	 *	Compare the bit after the module name
 	 */
-	if (!a_p || !b_p) return 0;
+	if (!a_p || !b_p) return CMP(a_p, b_p);
 
 	return CMP(strcmp(a_p, b_p), 0);
 }
