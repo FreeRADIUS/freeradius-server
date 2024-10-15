@@ -1,0 +1,60 @@
+The *users* file is the FreeRADIUS configuration file that defines user accounts by default.
+
+The users file is not the only source of user account information to FreeRADIUS, it is merely the simplest one.
+
+= Original use
+
+With the original RADIUS server, every user had to be defined in this file. There could be one default entry, where you could for example define that a user not in the radius file would be checked against the UNIX password file and on successful login would get a PPP connection.
+
+= Current usage
+
+In the new style file, you can define multiple DEFAULT entries. All entries are processed in the order as they appear in the users file. If an entry matches the user name, radiusd will stop scanning the users file unless the attribute "Fall-Through = Yes" is set.
+
+You can uses spaces in user names by escaping them with \ or by using quotes. For example, "joe user" or joe\ user.
+
+FreeRADIUS does not trim any spaces from a user name received from the portmaster (livingston does, in perl notation, $user =~ s/\s+.*//;)
+
+= Special attributes used in the users file
+
+|=====
+| Name | Type | Description 
+| Simultaneous-Use   | integer       | Max. number of concurrent logins  
+| Fall-Through       | integer       | Yes/No 
+| Login-Time         | string        | Defines when user may login.  
+| Current-Time       | string        | Allows you to perform time-based checks when a request is received.
+|=====
+
+Login-Time and Current-Time define the time span a user may login to the system. The format of a so-called time string is like the format used by UUCP. A time string may be a list of simple time strings separated by "|" or ",".
+
+Each simple time string must begin with a day definition. That can be just one day, multiple days, or a range of days separated by a hyphen. A day is Mo, Tu, We, Th, Fr, Sa or Su, or Wk for Mo-Fr. "Any" or "Al" means all days. Day definitions can be repeated, to allow the definition of multiple ranges of time within a day.
+
+After that a range of hours follows in hhmm-hhmm format. For example::
+----
+"Wk2305-0855,Sa,Su2305-1655".
+
+"Wk0900-1100,Wk1700-2100".
+----
+
+For Login-Time the `logintime` module calculates the number of seconds left in the time span, and sets the Session-Timeout to that number of seconds. So if Login-Time is set to "Al0800-1800" and a user logs in at 17:30, Session-Timeout is set to 1800 seconds so that the user is kicked off at 18:00.
+
+Current-Time can be used as a control item:
+----
+if (Current-Time == ""Wk2305-0855,Sa,Su2305-1655") {
+----
+
+= Pool-Name
+
+To assign a user an IP from a pool you simply need to have a Pool-Name Attribute
+(Keep in mind that it is a *CHECK* item, not reply) in the required
+configuration file, which is either in files(users), sql or any other
+type of configuration schema.
+----
+DEFAULT Pool-Name := main_pool
+      Fall-Through = Yes
+----
+
+You will of course need to have setup one of the IP Pool modules for this attribute to have any effect at all.
+
+= See also
+
+* unlang

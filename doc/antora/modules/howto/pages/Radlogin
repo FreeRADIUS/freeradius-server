@@ -1,0 +1,82 @@
+= Introduction
+
+radlogin is a `/bin/login` replacement which gets called by a getty to log in a user and to setup the user's login environment.
+
+Normal login programs just check the login name and password which the user entered against the local password file (/etc/passwd, /etc/shadow). In contrast to that Radiusclient also uses the RADIUS protocol to authenticate the user.
+
+== Principles of operation
+
+When `radlogin` gets invoked by your systems's `getty`, it behaves like the normal `login`program to the user.
+	
+First it asks the user for his login name (if not supplied by getty) and his password.
+
+Then it tries to find the login name either through a RADIUS request, in the local passwd file or through both methods.
+	
+If the user is authenticated locally `radlogin` calls the local login program to spawn a standard login environment.
+	
+If the user is successfully authenticated via RADIUS, `radlogin` calls a special login program which gets the information that was passed from the RADIUS server in environment variables.
+	
+In this special login program you can now either start a telnet/rlogin session or start up SLIP/CSLIP or even [[PPP]] based on the information from the RADIUS server.
+You may also send RADIUS accounting information to a RADIUS server using the radacct program which is also part of the Radiusclient package.
+
+== Installation
+
+	
+Install the Radiusclient package
+
+The installation procedure will only install a dummy login.radius script which just outputs all RADIUS_* environment variables and then exits.
+
+You need to write your own login.radius if you want that the script does something useful. See the login.radius directory for example scripts. 
+
+You *will* have to look into radiusclient.conf and edit it.
+
+Add the following two line to /etc/services if you don't already have them:
+
+ radius          1645/udp	# RADIUS access requests
+ radacct         1646/udp	# RADIUS accounting requests
+
+Configure your getty to execute `radlogin` instead of the normal login process. The method of how to do this varies from getty to getty.
+
+If you're using getty_ps you can set the LOGIN directive in the respective config file.
+
+agetty has a command line option (-l) which allows you to specify an alternate login program, i.e. `radlogin`
+
+With mgetty you add the following line to your login.cfg file:
+  *       -       -       <path>/radlogin @
+
+We suggest you use either mgetty or getty_ps. mgetty even has a nice automatic PPP detection feature, which can be useful.
+
+== Appendix: Command line flags
+
+=== radlogin
+
+-f::
+Path to an alternative configuration file
+-i::
+File name of the terminal used to determine what to send in the NAS-Port attribute. Normally the tty of stdin is used.
+-n::
+Disable display if the radlogin issue file. This option is set by default if radlogin is called with an argument.
+-V::
+Display version information
+-h::
+Display usage information
+
+=== radacct
+
+-i::
+File name of the terminal used to determine what to send in the NAS-Port attribute. Normally the tty of stdout is used.
+-V::
+Display version information
+-h::
+Display usage information
+
+=== radstatus
+
+-V::
+Display version information
+-h::
+Display usage information
+
+== See Also
+
+* Radiusclient

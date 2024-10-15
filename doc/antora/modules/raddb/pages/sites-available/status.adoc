@@ -1,15 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
 We recommend that you list ONLY management clients here.
 i.e. NOT your NASes or Access Points, and for an ISP,
 DEFINITELY not any RADIUS servers that are proxying packets
@@ -89,3 +77,53 @@ server status {
 #		Vendor-Specific.FreeRADIUS.Stats4-IPv4-Address = 192.0.2.1
 #		Vendor-Specific.FreeRADIUS.Stats4-port = 1812
 ```
+
+
+
+
+= Status of FreeRADIUS server
+
+Since SNMP support went away in at least in version 2 of the server software (see: SNMP HOWTO), administrators have to gather information about the status and statistics of the server by other means. FreeRADIUS offers a special status server. This (virtual) server can be queried, providing a wide range of information about the actual server state and the packages being processed. So please use it to monitor your installation.
+
+= Configuration
+
+The configuration for the status server is automatically created in the `sites-available` directory.
+By default, this server is enabled and can be queried from every client. This behavior is controlled in the security section of the main config file.
+
+If you want to disable the default status server functionality you need to set the following in `radiusd.conf`::
+----
+status_server = no
+----
+
+FreeRADIUS will only respond to status-server messages, if the status-server virtual server has been enabled. To do this,
+create a link from the `sites-enabled` directory to the status file in the `sites-available` directory::
+----
+cd sites-enabled
+ln -s ../sites-available/status status
+----
+
+and restart/reload your RADIUS server. You will notice that a new server listens on port 18121/udp of localhost. If you want other clients than localhost to query this server, change the listen section of the new server. You should also change the default password in the client section of the server. Add more clients as needed.
+
+= Querying with radclient
+
+The next step is to query the daemon using status-server messages. There are some hints in the manual page of the radclient program and in the configuration file of the status server itself.
+
+Here is an example of querying the server to retrieve authentication counters with radclient::
+----
+echo "Message-Authenticator = 0x00, FreeRADIUS-Statistics-Type = 1, Response-Packet-Type = Access-Accept" | \
+radclient -x localhost:18121 status adminsecret
+Received response ID 180, code 2, length = 140
+FreeRADIUS-Total-Access-Requests = 3
+FreeRADIUS-Total-Access-Accepts = 1
+FreeRADIUS-Total-Access-Rejects = 0
+FreeRADIUS-Total-Access-Challenges = 0
+FreeRADIUS-Total-Auth-Responses = 1
+FreeRADIUS-Total-Auth-Duplicate-Requests = 0
+FreeRADIUS-Total-Auth-Malformed-Requests = 0
+FreeRADIUS-Total-Auth-Invalid-Requests = 0
+FreeRADIUS-Total-Auth-Dropped-Requests = 3
+FreeRADIUS-Total-Auth-Unknown-Types = 0
+----
+
+The same can also be done for accounting packets if you set `FreeRADIUS-Statistics-Type = "2"`. Proxy statistics use the values 4 and 8 respectively.
+
