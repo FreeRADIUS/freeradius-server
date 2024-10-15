@@ -102,6 +102,8 @@ unlang_action_t	unlang_module_yield_to_tmpl(TALLOC_CTX *ctx, fr_value_box_list_t
 					    module_method_t resume,
 					    unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx);
 
+void		unlang_module_retry_now(module_ctx_t const *mctx, request_t *request) CC_HINT(nonnull);
+
 unlang_action_t	unlang_module_yield_to_retry(request_t *request, module_method_t resume, unlang_module_retry_t retry_cb,
 					     unlang_module_signal_t signal, fr_signal_t sigmask, void *rctx,
 					     fr_retry_config_t const *retry_cfg);

@@ -286,6 +286,37 @@ unlang_action_t unlang_module_yield_to_section(rlm_rcode_t *p_result,
 	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
+/** Run the retry handler.  Called from an async signal handler.
+ *
+ */
+void unlang_module_retry_now(module_ctx_t const *mctx, request_t *request)
+{
+	unlang_stack_t			*stack = request->stack;
+	unlang_stack_frame_t		*frame = &stack->frame[stack->depth];
+	unlang_frame_state_module_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_module_t);
+
+	if (!state->retry_cb) return;
+
+	/*
+	 *	Assert that we have the right things.  Note that this function should only be called when the
+	 *	retry is being used as an expiry time, i.e. mrc==1.  If the module has its own retry handlers,
+	 *	then this function must not be called.
+	 */
+	fr_assert(state->retry.config != NULL);
+	fr_assert(state->retry.config->mrc == 1);
+	fr_assert(state->rctx == mctx->rctx);
+	fr_assert(state->request == request);
+
+	/*
+	 *	Update the time as to when the retry is being called.  This is the main purpose of the
+	 *	function.
+	 */
+	state->retry.updated = fr_time();
+
+	state->retry_cb(mctx, request, &state->retry);
+
+}
+
 /** Cancel the retry timer on resume
  *
  */
