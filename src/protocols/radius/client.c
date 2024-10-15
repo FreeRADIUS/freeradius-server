@@ -122,18 +122,27 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	/*
 	 *	We allocate a retry BIO even for TCP, as we want to be able to timeout the packets.
 	 */
-	my->retry = fr_bio_retry_alloc(my, 256, radius_client_retry_sent, radius_client_retry_response,
-				       rewrite, radius_client_retry_release, &cfg->retry_cfg, my->mem);
-	if (!my->retry) goto fail;
+	if (cfg->retry_cfg.el) {
+		my->retry = fr_bio_retry_alloc(my, 256, radius_client_retry_sent, radius_client_retry_response,
+					       rewrite, radius_client_retry_release, &cfg->retry_cfg, my->mem);
+		if (!my->retry) goto fail;
 
-	my->retry->uctx = my;
+		my->retry->uctx = my;
 
-	my->info.retry_info = fr_bio_retry_info(my->retry);
-	fr_assert(my->info.retry_info != NULL);
+		my->info.retry_info = fr_bio_retry_info(my->retry);
+		fr_assert(my->info.retry_info != NULL);
+
+		my->common.bio = my->retry;
+
+	} else {
+		/*
+		 *	No timers for retries, we just use a memory buffer for outbound packets.
+		 */
+		my->common.bio = my->mem;
+	}
 
 	my->cfg = *cfg;
 
-	my->common.bio = my->retry;
 
 	/*
 	 *	Inform all BIOs about the write pause / resume callbacks
@@ -197,7 +206,7 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *pctx, fr_
 		/*
 		 *	Try to cancel the oldest one.
 		 */
-		if (fr_bio_retry_entry_cancel(my->retry, NULL) < 1) {
+		if (!my->retry || fr_bio_retry_entry_cancel(my->retry, NULL) < 1) {
 		all_ids_used:
 			my->all_ids_used = true;
 
@@ -554,15 +563,16 @@ int fr_radius_client_fd_bio_cancel(fr_bio_packet_t *bio, fr_packet_t *packet)
 	fr_radius_id_ctx_t *id_ctx;
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 
-	if (!my->retry) return 0;
-
 	id_ctx = fr_radius_code_id_find(my->codes, packet->code, packet->id);
-	if (!id_ctx || !id_ctx->retry_ctx) return 0;
 
+	if (!id_ctx || !id_ctx->retry_ctx) return 0;
 	fr_assert(id_ctx->packet == packet);
+
+	if (!my->retry) goto done;
 
 	if (fr_bio_retry_entry_cancel(my->retry, id_ctx->retry_ctx) < 0) return -1;
 
+done:
 	id_ctx->retry_ctx = NULL;
 	id_ctx->packet = NULL;
 
@@ -637,6 +647,11 @@ size_t fr_radius_client_bio_outstanding(fr_bio_packet_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
 
+	/*
+	 *	@todo - add API for ID allocation to track this.
+	 */
+	if (!my->retry) return 0;
+
 	return fr_bio_retry_outstanding(my->retry);
 }
 
@@ -701,7 +716,7 @@ static void fr_radius_client_bio_connect_timer(NDEBUG_UNUSED fr_event_list_t *el
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
 
-	fr_assert(my->info.retry_info->el == el);
+	fr_assert(!my->retry || (my->info.retry_info->el == el));
 
 	if (my->ev) talloc_const_free(&my->ev);
 
@@ -714,7 +729,7 @@ void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUS
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
 
 	fr_assert(my->common.cb.activate);
-	fr_assert(my->info.retry_info->el == el);
+	fr_assert(!my->retry || (my->info.retry_info->el == el));
 	fr_assert(my->info.fd_info->socket.fd == fd);
 
 	/*
@@ -761,8 +776,10 @@ static int fr_radius_client_bio_write_blocked(fr_bio_t *bio)
 	/*
 	 *	Mark the retry code as blocked, so that it stops trying to write packets.
 	 */
-	rcode = fr_bio_retry_write_blocked(my->retry);
-	if (rcode < 0) return rcode;
+	if (my->retry) {
+		rcode = fr_bio_retry_write_blocked(my->retry);
+		if (rcode < 0) return rcode;
+	}
 
 	/*
 	 *	The application doesn't want to know that it's blocked, so we just return.
@@ -806,8 +823,10 @@ static int fr_radius_client_bio_write_resume(fr_bio_t *bio)
 	/*
 	 *	Flush the packets which should have been retried, but weren't due to blocking.
 	 */
-	rcode = fr_bio_retry_write_resume(my->retry);
-	if (rcode <= 0) return rcode;
+	if (my->retry) {
+		rcode = fr_bio_retry_write_resume(my->retry);
+		if (rcode <= 0) return rcode;
+	}
 
 	/*
 	 *	IO is unblocked, but we don't have any free IDs.  So
@@ -857,7 +876,7 @@ void fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t 
 	my->common.cb = *cb;
 
 	fr_bio_cb_set(my->mem, &bio_cb);
-	fr_bio_cb_set(my->retry, &bio_cb);
+	if (my->retry) fr_bio_cb_set(my->retry, &bio_cb);
 
 	/*
 	 *	Only the FD bio gets an EOF callback.
