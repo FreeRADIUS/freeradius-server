@@ -69,8 +69,8 @@ ATTRIBUTE	H3C-Acct-IPv6-Input-Octets		144	integer
 ATTRIBUTE	H3C-Acct-IPv6-Output-Octets		145	integer
 ATTRIBUTE	H3C-Acct-IPv6-Input-Packets		146	integer
 ATTRIBUTE	H3C-Acct-IPv6-Output-Packets		147	integer
-ATTRIBUTE	H3C-Acct-IPv6-Input-Gigawords		146	integer
-ATTRIBUTE	H3C-Acct-IPv6-Output-Gigawords		147	integer
+ATTRIBUTE	H3C-Acct-IPv6-Input-Gigawords		148	integer
+ATTRIBUTE	H3C-Acct-IPv6-Output-Gigawords		149	integer
 ATTRIBUTE	H3C-User-Role				155	string
 ATTRIBUTE	H3C-Input-Interval-Octets		201	integer
 ATTRIBUTE	H3C-Output-Interval-Octets		202	integer
