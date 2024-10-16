@@ -35,6 +35,7 @@ typedef struct fr_bio_common_s fr_bio_common_t;
 
 typedef struct {
 	fr_bio_callback_t	eof;
+	fr_bio_shutdown_t	flush;
 } fr_bio_priv_callback_t;
 
 /** Common elements at the start of each private #fr_bio_t

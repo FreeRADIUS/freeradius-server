@@ -75,6 +75,37 @@ static void fr_bio_mem_eof(fr_bio_t *bio)
 	my->bio.read = fr_bio_mem_read_eof;
 }
 
+/*
+ *	Flush any pending writes.
+ */
+static int fr_bio_mem_flush(fr_bio_t *bio)
+{
+	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
+
+	/*
+	 *	We have pending data, try to write it out.
+	 */
+	if (fr_bio_buf_used(&my->write_buffer) > 0) {
+		ssize_t rcode;
+
+		rcode = my->bio.write(bio, NULL, NULL, SIZE_MAX);
+		if (rcode <= 0) return rcode;
+
+		/*
+		 *	There's still pending data?  We didn't flush enough.
+		 */
+		if (fr_bio_buf_used(&my->write_buffer) > 0) return 0;
+	}
+
+	/*
+	 *	Now that we've flushed everything, ensure that the next BIO also flushes its data.
+	 *
+	 *	We have to do this because the call to write() may return that it wrote data, _but_ the next
+	 *	BIO in the chain may still be buffering data to write.
+	 */
+	return fr_bio_write_flush(fr_bio_next(bio));
+}
+
 /** Read from a memory BIO
  *
  *  This bio reads as much data as possible into the memory buffer.  On the theory that a few memcpy() or
@@ -707,6 +738,7 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 		my->bio.write = fr_bio_next_write;
 	}
 	my->priv_cb.eof = fr_bio_mem_eof;
+	my->priv_cb.flush = fr_bio_mem_flush;
 
 	fr_bio_chain(&my->bio, next);
 
