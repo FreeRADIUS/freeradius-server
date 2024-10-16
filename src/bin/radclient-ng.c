@@ -1287,7 +1287,7 @@ static void client_write(fr_event_list_t *el, int fd, UNUSED int flags, void *uc
 	}
 }
 
-static void  client_bio_activate(fr_bio_packet_t *client)
+static void  client_bio_connected(fr_bio_packet_t *client)
 {
 	fr_radius_client_bio_info_t const *info;
 
@@ -1769,7 +1769,7 @@ int main(int argc, char **argv)
 	 *	paused or resumed when the socket becomes writeable.
 	 */
 	client_config.packet_cb_cfg = (fr_bio_packet_cb_funcs_t) {
-		.activate	= client_bio_activate,
+		.connected	= client_bio_connected,
 		.failed		= client_bio_failed,
 
 		.write_blocked	= client_bio_write_pause,

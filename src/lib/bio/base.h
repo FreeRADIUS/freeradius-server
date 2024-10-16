@@ -79,12 +79,12 @@ typedef struct fr_bio_s fr_bio_t;
 typedef ssize_t	(*fr_bio_read_t)(fr_bio_t *bio, void *packet_ctx, void *buffer, size_t size);
 typedef ssize_t	(*fr_bio_write_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t size);
 
-typedef int (*fr_bio_io_t)(fr_bio_t *bio); /* activate / shutdown callbacks */
+typedef int (*fr_bio_io_t)(fr_bio_t *bio); /* connected / shutdown callbacks */
 
-typedef void (*fr_bio_callback_t)(fr_bio_t *bio); /* activate / shutdown callbacks */
+typedef void (*fr_bio_callback_t)(fr_bio_t *bio); /* connected / shutdown callbacks */
 
 typedef struct {
-	fr_bio_callback_t	activate;		//!< called when the BIO is ready to be used
+	fr_bio_callback_t	connected;		//!< called when the BIO is ready to be used
 	fr_bio_callback_t	shutdown;		//!< called when the BIO is being shut down
 	fr_bio_callback_t	eof;			//!< called when the BIO is at EOF
 	fr_bio_callback_t	failed;			//!< called when the BIO fails

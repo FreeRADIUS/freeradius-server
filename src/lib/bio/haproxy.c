@@ -159,7 +159,7 @@ static ssize_t fr_bio_haproxy_read_next(fr_bio_t *bio, UNUSED void *packet_ctx, 
 
 	/*
 	 *	Somehow (magically) we can satisfy the read from our buffer.  Do so.  Note that we do NOT run
-	 *	the activation callback, as there is still data in our buffer
+	 *	the connected callback, as there is still data in our buffer
 	 */
 	if (size < used) {
 		(void) fr_bio_buf_read(&my->buffer, buffer, size);
@@ -172,9 +172,9 @@ static ssize_t fr_bio_haproxy_read_next(fr_bio_t *bio, UNUSED void *packet_ctx, 
 	(void) fr_bio_buf_read(&my->buffer, buffer, used);
 
 	/*
-	 *	Call the users activation function, which might remove us from the proxy chain.
+	 *	Call the users "socket is now usable" function, which might remove us from the proxy chain.
 	 */
-	if (my->cb.activate) my->cb.activate(bio);
+	if (my->cb.connected) my->cb.connected(bio);
 
 	return used;
 }

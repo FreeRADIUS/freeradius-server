@@ -147,7 +147,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	/*
 	 *	Inform all BIOs about the write pause / resume callbacks
 	 *
-	 *	@todo - these callbacks are set AFTER the BIOs have been initialized, so the activate()
+	 *	@todo - these callbacks are set AFTER the BIOs have been initialized, so the connected()
 	 *	callback is never set, and therefore is never run.  We should add all of the callbacks to the
 	 *	various bio "cfg" data structures.
 	 */
@@ -687,10 +687,10 @@ static void fr_radius_client_bio_eof(fr_bio_t *bio)
 	if (my->common.cb.eof) my->common.cb.eof(&my->common);
 }
 
-/** Callback for when the FD is activated, i.e. connected.
+/** Callback for when the FD is connected, and the application can use it
  *
  */
-static void fr_radius_client_bio_activate(fr_bio_t *bio)
+static void fr_radius_client_bio_connected(fr_bio_t *bio)
 {
 	fr_radius_client_fd_bio_t *my = bio->uctx;
 
@@ -704,9 +704,9 @@ static void fr_radius_client_bio_activate(fr_bio_t *bio)
 	if (my->ev) talloc_const_free(&my->ev);
 
 	/*
-	 *	Tell the application that the connection has been activated.
+	 *	Tell the application that the connection has been connected, and is now usable.
 	 */
-	my->common.cb.activate(&my->common);
+	my->common.cb.connected(&my->common);
 }
 
 /** We failed to connect in the given timeout, the connection is dead.
@@ -728,23 +728,23 @@ void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUS
 {
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
 
-	fr_assert(my->common.cb.activate);
+	fr_assert(my->common.cb.connected);
 	fr_assert(!my->retry || (my->info.retry_info->el == el));
 	fr_assert(my->info.fd_info->socket.fd == fd);
 
 	/*
-	 *	The socket is already connected, go activate it.  This happens when the FD bio opens an
-	 *	unconnected socket.  It calls our activation routine before the application has a chance to
+	 *	The socket is already connected, tell the application.  This happens when the FD bio opens an
+	 *	unconnected socket.  It calls our connected routine before the application has a chance to
 	 *	call our connect routine.
 	 */
 	if (my->info.connected) return;
 
 	/*
-	 *	We don't pass the callbacks to fr_bio_fd_alloc(), so it can't call our activate routine.
+	 *	We don't pass the callbacks to fr_bio_fd_alloc(), so it can't call our connected routine.
 	 *	As a result, we have to check if the FD is open, and then call it ourselves.
 	 */
 	if (my->info.fd_info->state == FR_BIO_FD_STATE_OPEN) {
-		fr_radius_client_bio_activate(my->fd);
+		fr_radius_client_bio_connected(my->fd);
 		return;
 	}
 
@@ -863,7 +863,7 @@ void fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t 
 	fr_assert((cb->write_blocked != NULL) == (cb->write_resume != NULL));
 	fr_assert((cb->read_blocked != NULL) == (cb->read_resume != NULL));
 
-	bio_cb.activate = fr_radius_client_bio_activate;
+	bio_cb.connected = fr_radius_client_bio_connected;
 	bio_cb.write_blocked = fr_radius_client_bio_write_blocked;
 	bio_cb.write_resume = fr_radius_client_bio_write_resume;
 

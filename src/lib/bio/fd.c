@@ -650,7 +650,7 @@ static void fr_bio_fd_set_open(fr_bio_fd_t *my)
 	/*
 	 *	Tell the caller that the socket is ready for application data.
 	 */
-	if (my->cb.activate) my->cb.activate(&my->bio);
+	if (my->cb.connected) my->cb.connected(&my->bio);
 }
 
 
