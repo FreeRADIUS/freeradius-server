@@ -36,6 +36,7 @@ typedef struct fr_bio_mem_s {
 	FR_BIO_COMMON;
 
 	fr_bio_verify_t	verify;		//!< verify data to see if we have a packet.
+	void		*verify_ctx;	//!< verify context
 
 	fr_bio_buf_t	read_buffer;	//!< buffering for reads
 	fr_bio_buf_t	write_buffer;	//!< buffering for writes
@@ -330,7 +331,7 @@ static ssize_t fr_bio_mem_read_verify_datagram(fr_bio_t *bio, void *packet_ctx, 
 		 *	@todo - if we're allowed more than one packet in the buffer, we should just call
 		 *	fr_bio_mem_read_verify(), or this function should call fr_bio_mem_call_verify().
 		 */
-		switch (my->verify((fr_bio_t *) my, packet_ctx, buffer, &want)) {
+		switch (my->verify((fr_bio_t *) my, my->verify_ctx, packet_ctx, buffer, &want)) {
 			/*
 			 *	The data in the buffer is exactly a packet.  Return that.
 			 *
@@ -631,7 +632,7 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 
 		want = end - packet;
 
-		switch (my->verify((fr_bio_t *) my, packet_ctx, packet, &want)) {
+		switch (my->verify((fr_bio_t *) my, my->verify_ctx, packet_ctx, packet, &want)) {
 			/*
 			 *	The data in the buffer is exactly a packet.  Return that.
 			 *
@@ -738,7 +739,7 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 		my->bio.write = fr_bio_next_write;
 	}
 	my->priv_cb.eof = fr_bio_mem_eof;
-	my->priv_cb.flush = fr_bio_mem_flush;
+	my->priv_cb.write_resume = fr_bio_mem_write_resume;
 
 	fr_bio_chain(&my->bio, next);
 
@@ -855,7 +856,7 @@ fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
  *	- <0 on error
  *	- 0 on success
  */
-int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram)
+int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, void *verify_ctx, bool datagram)
 {
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 
@@ -865,6 +866,7 @@ int fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram)
 	}
 
 	my->verify = verify;
+	my->verify_ctx = verify_ctx;
 
 	/*
 	 *	If we are writing datagrams, then we cannot buffer individual datagrams.  We must write

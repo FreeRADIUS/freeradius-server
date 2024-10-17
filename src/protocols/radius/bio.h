@@ -42,6 +42,6 @@ typedef struct {
 	bool		limit_proxy_state;
 } fr_radius_bio_verify_t;
 
-fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size);
+fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, void *verify_ctx, void *packet_ctx, const void *data, size_t *size) CC_HINT(nonnull(1,2,4));
 
-fr_bio_verify_action_t fr_radius_bio_verify_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size);
+fr_bio_verify_action_t fr_radius_bio_verify_datagram(fr_bio_t *bio, void *verify_ctx , void *packet_ctx, const void *data, size_t *size) CC_HINT(nonnull(1,2,4));

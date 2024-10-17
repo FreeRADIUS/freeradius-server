@@ -111,7 +111,7 @@ fr_bio_packet_t *fr_radius_server_udp_bio_alloc(TALLOC_CTX *ctx, fr_radius_serve
 	my = fr_radius_server_fd_bio_alloc(ctx, 2 * 4096, cfg, fd_cfg);
 	if (!my) return NULL;
 
-	if (fr_bio_mem_set_verify(my->mem, fr_radius_bio_verify_datagram, true) < 0) {
+	if (fr_bio_mem_set_verify(my->mem, fr_radius_bio_verify_datagram, &my->cfg.verify, true) < 0) {
 	fail:
 		talloc_free(my);
 		return NULL;

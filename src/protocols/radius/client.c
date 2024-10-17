@@ -115,7 +115,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	my->mem = fr_bio_mem_alloc(my, read_size, 2 * 4096, my->fd);
 	if (!my->mem) goto fail;
 
-	my->mem->uctx = &my->cfg.verify;
+	my->mem->uctx = my;
 
 	if (cfg->packet_cb_cfg.retry) rewrite = radius_client_retry;
 

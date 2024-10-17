@@ -42,12 +42,13 @@ typedef enum {
  *  update the packet_ctx to say "dup", and then return OK.
  *
  *  @param	bio	   the bio to read
+ *  @param	verify_ctx data specific for verifying
  *  @param	packet_ctx as passed in to fr_bio_read()
  *  @param	buffer	   pointer to the raw data
  *  @param[in,out] size	   in: size of data in the buffer.  out: size of the packet to return, or data to discard.
  *  @return		   action to take
  */
-typedef fr_bio_verify_action_t (*fr_bio_verify_t)(fr_bio_t *bio, void *packet_ctx, const void *buffer, size_t *size);
+typedef fr_bio_verify_action_t (*fr_bio_verify_t)(fr_bio_t *bio,  void *verify_ctx, void *packet_ctx, const void *buffer, size_t *size);
 
 fr_bio_t	*fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size, fr_bio_t *next) CC_HINT(nonnull);
 
@@ -59,6 +60,6 @@ uint8_t const	*fr_bio_mem_read_peek(fr_bio_t *bio, size_t *size) CC_HINT(nonnull
 
 void		fr_bio_mem_read_discard(fr_bio_t *bio, size_t size) CC_HINT(nonnull);
 
-int		fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, bool datagram) CC_HINT(nonnull);
+int		fr_bio_mem_set_verify(fr_bio_t *bio, fr_bio_verify_t verify, void *verify_ctx, bool datagram) CC_HINT(nonnull);
 
 int		fr_bio_mem_write_resume(fr_bio_t *bio) CC_HINT(nonnull);

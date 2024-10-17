@@ -29,11 +29,11 @@ RCSID("$Id$")
 /** Callback for RADIUS packet verification.
  *
  */
-fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size)
+fr_bio_verify_action_t fr_radius_bio_verify(UNUSED fr_bio_t *bio, void *verify_ctx, UNUSED void *packet_ctx, const void *data, size_t *size)
 {
 	decode_fail_t	failure;
 	size_t		in_buffer = *size;
-	fr_radius_bio_verify_t *uctx = bio->uctx;
+	fr_radius_bio_verify_t *uctx = verify_ctx;
 	uint8_t const	*hdr = data;
 
 	if (in_buffer < 4) {
@@ -61,11 +61,11 @@ fr_bio_verify_action_t fr_radius_bio_verify(fr_bio_t *bio, UNUSED void *packet_c
 /** And verify a datagram packet.
  *
  */
-fr_bio_verify_action_t fr_radius_bio_verify_datagram(fr_bio_t *bio, UNUSED void *packet_ctx, const void *data, size_t *size)
+fr_bio_verify_action_t fr_radius_bio_verify_datagram(UNUSED fr_bio_t *bio, void *verify_ctx, UNUSED void *packet_ctx, const void *data, size_t *size)
 {
 	decode_fail_t	failure;
 	size_t		in_buffer = *size;
-	fr_radius_bio_verify_t *uctx = bio->uctx;
+	fr_radius_bio_verify_t *uctx = verify_ctx;
 	uint8_t const	*hdr = data;
 
 	if (in_buffer < RADIUS_HEADER_LENGTH) return FR_BIO_VERIFY_DISCARD;
