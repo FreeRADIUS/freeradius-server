@@ -2930,22 +2930,22 @@ ocsp_end:
  */
 static char const *cert_attr_names[10][2] = {
 	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
-	{ "TLS-Client-Cert-Expiration",		"TLS-Cert-Expiration" },
-	{ "TLS-Client-Cert-Subject",		"TLS-Cert-Subject" },
+	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
+	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
 	{ "TLS-Client-Cert-Issuer",			"TLS-Cert-Issuer" },
-	{ "TLS-Client-Cert-Common-Name",	"TLS-Cert-Common-Name" },
+	{ "TLS-Client-Cert-Common-Name",		"TLS-Cert-Common-Name" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Uri",	"TLS-Cert-Subject-Alt-Name-Uri" },
-	{ "TLS-Client-Cert-Valid-Since",			"TLS-Cert-Valid-Since" }
+	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" }
 };
 
 #define FR_TLS_SERIAL		(0)
 #define FR_TLS_EXPIRATION	(1)
 #define FR_TLS_SUBJECT		(2)
 #define FR_TLS_ISSUER		(3)
-#define FR_TLS_CN			(4)
+#define FR_TLS_CN		(4)
 #define FR_TLS_SAN_EMAIL	(5)
 #define FR_TLS_SAN_DNS		(6)
 #define FR_TLS_SAN_UPN		(7)
