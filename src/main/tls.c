@@ -3191,7 +3191,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #ifdef GEN_URI
 				case GEN_URI:
 					vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_URI][lookup],
-									(char const *) ASN1_STRING_get0_data(name->d.uniformResourceIdentifier), T_OP_SET);
+						      (char const *) ASN1_STRING_get0_data(name->d.uniformResourceIdentifier), T_OP_SET);
 					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 					break;
 #endif /* GEN_URI */
