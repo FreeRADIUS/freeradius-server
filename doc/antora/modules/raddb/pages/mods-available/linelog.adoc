@@ -480,3 +480,71 @@ linelog log_auth_authentication_fail {
 	format = "Login incorrect (%{Module-Failure-Message}): [%{User-Name}] (from %client(shortname))"
 }
 ```
+
+== Syslog 
+
+For the example we will be using local1 as the facility. 
+
+We will discuss the different priorities with regard to the types of messages that are produced. Keep in mind that the file locations may be different for your distribution.
+
+There are different parts of the configuration that need updating depending on whether the main server or module logs should be sent to the syslog server. The process to get the main FreeRADIUS server logs to use syslog is fairly straight forward.  The basic steps are:
+
+* Modify ``/etc/syslog.conf``
+* Restart the syslog daemon 
+* Modify ``/etc/raddb/radiusd.conf``
+* Restart the FreeRADIUS daemon
+ 
+=== Modify /etc/syslog.conf
+
+Radius logging choices - Commented lines are not required::
+
+ # .=notice will log only authentication messages (L_AUTH)
+ #local1.=notice                     /var/log/radius/radius-notice.log
+ # .=err will log only module errors for radius
+ #local1.=err                         /var/log/radius/radius-errors.log
+ # .* will log all messages in the same log file
+ local1.*                                /var/log/radius/radius.log
+
+=== Restart the syslog daemon
+
+On the distro we use it is - services restart sysklogd
+
+* RedHat - service syslog restart
+* Debian/Ubuntu - /etc/init.d/rsyslog restart
+* FreeBSD - /etc/rc.d/syslogd restart
+
+=== Modify ``/etc/raddb/radiusd.conf``
+
+Set the following options:
+
+  log {
+    destination = syslog
+    syslog_facility = local1
+  }
+
+=== Module configuration
+
+As an example we will use rlm_linelog. Modules differ, but are essentially the same idea. See the documentation in the module configuration.
+
+Update the module config in ``raddb/mods-available/linelog`` and set::
+
+  filename = syslog
+
+You can also set the following, if required::
+
+  syslog_facility = local1
+  syslog_priority = info
+
+=== Syslog Priorities
+
+There are 8 different priorities for syslog - debug, info, notice, warning, err, crit, alert, emerg.
+
+* debug - ?
+* info - ?
+* notice - authentication messages
+* warning - ?
+* err - radius errors
+* crit - ?
+* alert - ?
+* emerg - ?
+

@@ -1,0 +1,100 @@
+The *rlm_digest* FreeRADIUS module enables handling SIP digest authentication requests from Cisco SIP servers.
+
+{{Default in the server source|src/modules/rlm_digest/}}
+
+== Configuration 
+
+=== Default instantiation
+
+{{Default in the server source|raddb/modules/digest}}
+
+----
+	#
+	#  The 'digest' module currently has no configuration.
+	#
+	#  "Digest" authentication against a Cisco SIP server.
+	#  See 'doc/rfc/draft-sterman-aaa-sip-00.txt' for details
+	#  on performing digest authentication for Cisco SIP servers.
+	#
+	digest {
+	}
+----
+
+=== Activation
+
+In the ''authenticate{}'' section : 
+
+ #  "Digest" authentication against a Cisco SIP server.
+ #  See 'doc/rfc/draft-sterman-aaa-sip-00.txt' for details
+ #  on performing digest authentication for Cisco SIP servers.
+ digest
+
+In the _authorize{}_ section : 
+
+ #  If you have a Cisco SIP server authenticating against
+ #  FreeRADIUS, uncomment the following line, and the 'digest'
+ #  line in the 'authenticate' section.
+ digest
+
+=== User configuration 
+
+This module handles SIP digest authentication requests from a SIP server, in which every user belongs to a given ''realm''.
+
+Clear or encrypted passwords can be stored and a _User-Password_ or _Digest-HA1_ attribute will store the value in either case.
+
+The _realm_ value is used in the encrypted password computation, as the actually stored value is :
+ H(username:realm:password)
+
+==== Clear text password storage 
+
+Example for user "bob" with password "zanzibar"
+ bob		Cleartext-Password := "zanzibar"
+
+==== Encrypted (Digest-HA1) password storage 
+
+Example for user "bob" with password "zanzibar" and realm "biloxi.com"
+ bob		Digest-HA1 := "12af60467a33e8518da5c68bbff12b11"
+
+In this case, the ''Digest-HA1'' value can be obtained by issuing the following command :
+ $echo -n 'bob:biloxi.com:zanzibar' | md5sum
+ 12af60467a33e8518da5c68bbff12b11  -
+
+=== Storing passwords in an external database 
+
+==== LDAP 
+
+We assume in this section that the rlm_ldap module is properly configured to connect to an LDAP server and retrieve attributes from it. Check the ''modules{}'' section in radiusd.conf.
+
+You cannot authenticate users who connect from a SIP client directly to an LDAP server, as no LDAP server is able to handle the challenge computation needed in SIP authentication.
+
+However, FreeRADIUS may pull out LDAP attributes during the _authorization_ process, and map them to either ''User-Password'' or ''Digest-HA1'' attributes, which will eventually be used for the actual authentication. Sensitive attributes will be carried over the established LDAP connection, so it is advisable to secure this connection.
+
+In order to trigger the LDAP module during the _authorization_ process, you  need to uncomment the ldap line in the ''authorize{}'' section of the radiusd.conf file : 
+ #
+ #  The ldap module will set Auth-Type to LDAP if it has not
+ #  already been set
+ ldap
+
+The user record in the users file must not contain any password. Example for user "bob" :
+ bob
+===== Clear text password storage 
+
+You can map the _User-Password_ attribute to an LDAP attribute in the _modules{}_ section in radiusd.conf. For example if the password is stored in a ''userPassword'' LDAP attribute :
+ password_attribute = userPassword
+
+In this case, the _userPassword_ value must be in clear text format. It is transmitted to FreeRADIUS over a network connection that should be secured.
+
+===== Encrypted (Digest-HA1) password storage 
+
+Make sure the password_attribute line in the _modules{}_ section has been commented out, as the ''User-Password'' is prefered over ''Digest-HA1'' for authentication. 
+
+Make sure you are using freeradius 1.1.1 or later.
+
+You can map the _Digest-HA1_ attribute to an LDAP attribute by editting the _ldap.attrmap_ file. For example if the HA1 value is stored in a _digestHA1_ LDAP attribute :
+ checkItem	Digest-HA1			digestHA1
+
+In this case, the _digestHA1_ value must be stored as a 32 bytes text string. Example :
+ $echo -n 'bob:biloxi.com:zanzibar' | md5sum
+ 12af60467a33e8518da5c68bbff12b11  -
+
+Again, this value is transmitted to FreeRADIUS over a network connection that should be secured, because it can be reused 'as is' by an attacker.

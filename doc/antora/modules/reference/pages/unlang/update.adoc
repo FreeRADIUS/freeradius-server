@@ -178,3 +178,252 @@ became simpler.
 
 // Copyright (C) 2021 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
+
+
+
+= Update sections in v4
+
+There was a proposal to split the functionality of update sections into
+two keywords 'update' and 'filter'.
+
+Update would handle assignment of new values, and filter would handle 
+removal of old values.
+
+The primary rationale for this, is that it's confusing for users to
+have the filter operators '>=' '<=' '==' '!=' '=~' '!~' '-=' mixed with
+the assignment operators '+=', ':=', '='.
+
+As part of the design of update sections for nested attributes we'll
+be introducing several new set operators.  These will be used to
+calculate the union, intersection and complements between the set
+of existing values/pairs at a given nesting level, and a new set of 
+values/pairs provided in the update section.
+
+== Syntax and examples of set operators
+
+Set operators will be placed after an attribute reference in an update
+section, and after each bracketed level of nesting.
+
+Set operators determine how the set specified by the update section 
+will be merged with existing attribute values.
+
+For set operations, the LHS of the expression will be the attribute
+reference immediate preceding the operator, and the RHS will be
+the set specified within curly braces directly after the operator.
+
+```
+update &<LHS> <set operator> {
+	<RHS>
+}
+```
+
+The following initial operators will be allowed:
+
+- += or ⋃ - Union
+- -= or \ - Relative complement
+- == or ⋂ - Intersection
+- :=      - Assignment
+- =       - Assignment if LHS is an empty set ({})
+- !*	  - Deletion (unary).
+
+The default operator if none was specified, would be ':='
+
+Set operators will function for 'leaf' attributes and for nested attributes.
+
+.Adding values to a leaf attribute
+```
+update &User-Name += {
+	'foo'
+	'bar'
+	'baz'
+}
+```
+
+Would create three additional instances of &User-Name 
+{ (User-Name, 'foo'), (User-Name, 'bar'), (User-Name, 'baz') }.
+
+.Assigning values to a grouping attribute
+```
+update &My-Group := {
+	&A-Child-Attr = 'foo'
+	&B-Child-Attr = 'bar'
+}
+
+```
+
+Would set the first instance of My-Group to be:
+----
+My-Group = {
+	(A-Child-Attr, 'foo'),
+	(B-Child-Attr, 'bar)
+}
+----
+
+.Adding values to a grouping attribute
+```
+update &My-Group += {
+	&A-Child-Attr = 'foo'
+	&B-Child-Attr = 'bar'
+}
+```
+
+Would add children { (A-Child-Attr, 'foo'), (B-Child-Attr, 'bar') to the first
+instance of &My-Group. Creating it if it did not exist.
+
+```
+update &My-Group[*] += {
+	&A-Child-Attr = 'foo'
+	&B-Child-Attr = 'bar'
+}
+```
+
+Would add children { (A-Child-Attr, 'foo'), (B-Child-Attr, 'bar') to all
+instances of &My-Group.
+
+.Removing values from a leaf attribute
+----
+update &User-Name -= {
+	'foo'
+	'bar'
+	'baz'
+}
+----
+
+Would remove the first instance of User-Name if it contained any of
+{ 'foo', 'bar', 'baz' }
+----
+update &User-Name[*] -= {
+	'foo'
+	'bar'
+	'baz'
+}
+----
+
+Would remove any instances of User-Name containing 'foo', 'bar' or
+'baz'.
+
+=== Compatibility with existing update sections
+
+The proposed set operators would be compatible with the current 
+update section behaviour, as the lists themselves would be
+considered grouping attributes.
+
+```
+update request {
+	&User-Name := 'foo'
+}
+```
+
+Would mean overwrite the first instance of (User-Name, 'foo') as it
+does today, and is identical to
+
+```
+update &request.User-Name := {
+	'foo'
+}
+```
+
+=== Operation with deeply nested attributes
+
+Set operators would be allowed at every level of nesting, and would
+exhibit the same behaviour.
+
+```
+update request.my-group += {
+	a-child-group -= {
+		&User-Name = 'foo'
+	}
+}
+```
+
+The first instance of my-group will have a child attribute 'a-child-group' 
+added to its children. 'a-child-group' instance being added will be equal 
+to the current first instance of 'a-child-group' 
+minus the pair (user-name, 'foo').
+
+It makes my head hurt too, but at least its consistent.
+
+For a less painful example:
+
+```
+update &request.my-group.a-child-group.User-Name {
+	'foo'
+}
+```
+
+Set the first instance of my-group to be {(a-child-group, { (User-Name, 'foo') })}.
+
+Which is equivalent to:
+
+```
+update &request {
+	&my-group {
+		&a-child-group {
+			&User-Name := 'foo'
+		}
+	}
+}
+```
+
+== Selectors
+
+With the above examples we can see that using the wildcard selector
+'[*]' produces a very different result to using the default selector
+'[0]'.
+
+Because of the power of selectors when limiting the scope of
+modifications, it would be useful to expand them to operate as full
+conditions.
+
+For example, given the reference and selector `&User-Name[~= /bob/]`,
+the LHS would be all instances of the User-Name attribute, the 
+operator would be '~=' (regex match), and the RHS would be the regex
+`/bob/`.  The reference and selector would evaluate to all instances
+of &User-Name attribute that contained the character sequence 'bob'.
+
+When selectors are combined with assignment operators in an update
+section, they effectively negate the need for a filter keyword,
+because they separate selecting the subset of attributes to operate
+on, from the operation being performed.
+
+== Attribute filtering
+
+```
+update {
+	&User-Name[~= /bob/] !* ANY
+}
+```
+
+Would remove any instances of the `&User-Name` attribute containing 
+'bob'.
+
+== Attribute rewriting
+
+```
+update {
+	&User-Name[~= /^.*@(.*)$/] := "%{1}"
+}
+```
+
+Would strip the user portion from a User-Name string
+leaving only the domain.
+
+== Attribute overwriting
+
+```
+update {
+	&User-Name[~= /bob/] := 'john'
+}
+```
+
+All values containing 'bob' would be set to 'john'
+
+== Selective addition
+
+```
+update {
+	&User-Name[~= /bob/] = 'john'
+}
+```
+
+John would only be added if no User-Name values contained 'bob'

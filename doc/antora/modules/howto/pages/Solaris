@@ -1,0 +1,161 @@
+== Building/Installing
+=== Standard Method
+----
+./configure
+make
+make install
+----
+
+This works on most Solaris systems.  You will need to have a compiler installed, and libraries for any services you intend to use. (OpenSSL, LDAP, Oracle, etc.)
+
+If you're using OpenCSW you can just do `sudo pkg-util -i -y gcc4-core`, to get GCC and the other required utilities.
+
+=== Method 1
+These instructions should also work on Solaris 10 (x86_64) with minimal changes.
+
+The source compiles perfectly once OS dependencies etc. are met. The main additional modules compiled here were ``rlm_ldap`` and ``rlm_sql``.
+
+=== Solaris System Headers
+Solaris 10 will likely require you to fix the system headers.
+
+http://sunfreeware.com/indexsparc10.html
+
+Do the following as root:
+----
+cd /usr/local/lib/gcc-lib/sparc-sun-solaris2.10/3.3.2/install-tools/
+vi mkheaders.conf
+----
+
+Then put the line `SHELL=/bin/sh` on the first line of the `mkheaders.conf` file. It should look something like the following:
+----
+SHELL=/bin/sh
+SYSTEM_HEADER_DIR="/usr/include"
+OTHER_FIXINCLUDES_DIRS=""
+FIXPROTO_DEFINES=""
+STMP_FIXPROTO="stmp-fixproto"
+STMP_FIXINC="stmp-fixinc"
+----
+
+Then run the following command as root. It may take several minutes to rebuild the headers.
+----
+./mkheaders
+----
+
+=== Solaris Packages
+Solaris 10 has versions of Openssl and OpenLDAP installed, however they do not fullfill the compile requirements for freeradius functionality.
+You should go to http://sunfreeware.com/ and get the packages there, and also resolve any unmet dependencies.
+
+If you have other modules you are concerned with that are not building correctly, don't trust the OS packages.  Look for equiv packages and try the build with them installed as well.
+----
+download package
+gunzip packagename.gz
+sudo pkgadd -d packagename
+----
+=== Installing FreeRadius
+Now you can use the standard, configure make sudo make install.
+
+=== Runtime Environment
+In order for the ldap queries to work, the following needs to be set as an environmental variable, OR if you're handy with compiler flags you can take care of it during the compile with the ``-RLIBDIR`` linker flag.
+
+----
+export LD_LIBRARY_PATH="/usr/local/lib/;/usr/local/freeradius/lib"
+----
+
+The two locations in the above path are for access to the ``libgcc_s.so.1`` libraries and the ``rlm_ldap`` libraries respectively.
+
+=== Method 2
+
+Notes for building on Solaris. (SPARC or x86 shouldn't matter)
+
+=== Specific info for this method
+* Many packes are available from [Blastwave](http://www.blastwave.org) which installs everything into the base ``/opt/csw``.
+* For this MySQL was built and installed in ``/usr/local``.
+* Solaris uses a different runtime link loading method than linux (which uses ldconfig). For this reason, you either set -R (runtime flags) alongside -L flags during compilation and loading OR set ``LD_LIBRARY_PATH`` at runtime, which then defines a pathlike structure for loading libs at runtime. 
+If you build most server software from source, -R is recommended if you want to know what, which and where stuff goes and which versions of of libraries are linked to.
+_Note: Setting ``LD_LIBRARY_PATH`` negates and runtime paths already encoded in binaries._
+
+=== Building
+From the above the next few lines can be used to build freeradius on solaris (you can use this approach to build any software).
+
+```bash
+export PATH='/usr/sbin:/usr/bin:/opt/csw/bin:/opt/csw/gcc3/bin:/usr/ccs/bin:/opt/SUNWspro/bin'
+export CFLAGS='-I/usr/local/openldap/include/ -I/usr/local/mysql/include/mysql/ -I/opt/csw/include/'
+export LDFLAGS='-L/usr/local/openldap/lib/ -R/usr/local/openldap/lib -L/usr/local/mysql/lib -R/usr/local/mysql/lib -L/opt/csw/lib -R/opt/csw/lib'
+export LD_OPTIONS='-L/usr/local/openldap/lib/ -R/usr/local/openldap/lib -L/usr/local/mysql/lib -R/usr/local/mysql/lib -L/opt/csw/lib -R/opt/csw/lib'
+./configure --prefix=/usr/local/freeradius-1.1.2-mysql-ldap --with-ldap --with-mysql-dir=/usr/local/mysql-5.0.21
+gmake
+gmake install
+```
+=== Method 3
+Building freeradius3 and dependencies from source
+
+Make sure you use FreeRadius 3.0.11 or later, earlier versions won't compile on Solaris 11.
+
+===  What is covered in this method
+Here, you can find instructions to compile a freeradius on solaris 11,
+with modules for rlm_ldap, rlm_sql_mysql, rlm_perl (threaded), rlm_eap (separate openssl)
+
+=== Buildtools
+Install sunstudio (used for openssl + perl) and gcc(used for LDAP libs + freeradius)
+
+#### Install dependencies
+```bash
+pkg install developer/gcc
+pkgadd -d http://get.opencsw.org/now/opt/csw/bin/pkgutil 
+vim /etc/opt/csw/pkgutil.conf -->  mirror=http://mirror.opencsw.org/opencsw/unstable
+/opt/csw/bin/pkgutil -U
+/opt/csw/bin/pkgutil -i CSWlibtalloc2
+/opt/csw/bin/pkgutil -i CSWlibtalloc-dev
+/opt/csw/bin/pkgutil -i mysql_dev libmysqlclient15 libmysqlclient_r15
+```
+
+#### OpenLDAP libraries
+Solaris LDAP libraries are non-standard and won't work with FreeRadius.
+To compile your own:
+Download OpenLDAP sources(http://www.openldap.org/software/download/) and compile with
+```bash
+./configure --enable-slapd=no --enable-backends=no --enable-overlays=no --prefix=/usr/local/freeradius_ldap
+gmake depend
+gmake
+gmake install
+```
+
+#### Perl with multiplicity and lib files
+Only of you need threaded/multiplicity in your perl module, otherwise standard perl libs will be just fine
+Download[ Perl sources](https://www.perl.org/get.html) and compile with
+```bash
+./Configure -Dprefix='/usr/local/freeradiusperl' -Dusethreads -Duselargefiles -Duse64bitint -Dusemultiplicity  -Dcf_email="your@email.here" -Dldflags="-lsocket -lnsl -ldl -lm -lc" -Duseshrplib -d
+make
+make test
+make install
+```
+
+#### OpenSSL
+Only needed if you want seperate OpenSSL libraries
+Download[ OpenSSL sources](http://openssl.org/source/) and compile with
+```bash
+./Configure solaris-sparcv9-cc -m32 shared --openssldir=/usr/local/ssl --prefix=/usr/local/ssl
+make
+make test
+make install
+```
+
+#### FreeRadius
+To compile FreeRadius with all of the above:
+Download sources and compile with:
+
+Moving the awk command is needed because of a borked/broken awk command is used as standard in Solaris.
+We replace it with a symlink to nawk, so the configure command can use it.
+```bash
+export PATH="/usr/local/freeradiusperl/bin:$PATH"
+mv /usr/bin/awk /usr/bin/awk_old
+ln -s /usr/bin/nawk /usr/bin/awk
+./configure --prefix=/usr/local/freeradius3 --with-ldap --with-mysql-lib-dir=/usr/sfw/lib --with-mysql-include-dir=/usr/sfw/include --with-rlm-perl-lib-dir=/usr/local/freeradiusperl/lib/5.20.1/sun4-solaris-thread-multi-64int/CORE --with-openssl-include=/usr/local/ssl/include --with-openssl-libraries=/usr/local/ssl/lib --includedir=/usr/local/ssl --with-mysql-lib-dir=/opt/csw/lib --with-mysql-include-dir=/opt/csw/include --with-talloc-lib-dir=/opt/csw/lib --with-talloc-include-dir=/opt/csw/include --with-udpfromto=no --with-rlm-ldap-lib-dir=/usr/local/freeradius_ldap/lib --with-rlm-ldap-include-dir=/usr/local/freeradius_ldap/include --enable-developer
+gmake
+gmake test
+gmake install
+```
+
+
+## Running
+SMF manifest and installation instructions for Solaris 10 can be found [here](https://github.com/freeradius/freeradius-server/tree/master/scripts/solaris).

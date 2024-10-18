@@ -1,0 +1,57 @@
+= Disconnect Messages
+
+A Disconnect Message (sometimes known as Packet of Disconnect) is and unsolicited RADIUS Disconnect-Request packet (A special type of Change-of-Authorization packet) sent to a NAS in order to  terminate a user session and discard all associated session context. The Disconnect-Request packet is sent to UDP port 3799 (Although many NAS use port 1700 instead), and is intended to be used in situations where the AAA server wants to disconnect the user after the session has been accepted by the RADIUS Access-Accept packet.
+
+To prevent unauthorized servers from disconnecting users, the authorizing agent that issues the Disconnect-Request packet must include identification attributes (Usually three attributes) in its Disconnect-Request packet. For a session to be disconnected, all parameters must match their expected values at the NAS. If the parameters do not match, the NAS discards the Disconnect-Request packet and sends a Disconnect-NAK (negative acknowledgment message).
+
+== Disconnect Requests 
+
+To centrally control the disconnection of remote access users, RADIUS clients must be able to receive and process unsolicited disconnect requests from RADIUS servers. The RADIUS disconnect feature uses the existing format of RADIUS disconnect request and response messages.
+
+The code field used in disconnect messages has three codes: 
+
+*  [[Disconnect-Request]] (40)
+*  [[Disconnect-ACK]] (41) 
+*  [[Disconnect-NAK]] (42)
+
+== Message Exchange
+
+The RADIUS server (the disconnect client) and the NAS (the disconnect server) exchange messages using UDP. The Disconnect-Request sent from the disconnect client is a RADIUS-formatted packet with the Disconnect-Request and one or more attributes.
+
+The disconnect response is either a Disconnect-ACK or a Disconnect-NAK:
+
+If AAA is successful in disconnecting the user, the response is a RADIUS formatted packet with a Disconnect-ACK.
+
+If AAA is unsuccessful in disconnecting the user, the request is malformed, or the request is missing attributes, the response is a RADIUS-formatted packet with a Disconnect-NAK.
+
+== Example Disconnect-Request
+
+FreeRADIUS server (radiusd) supports sending Disconnect-Request via the ``update coa`` and ``update disconnect`` Unlang statements.  You can also send disconnect packets to a Disconnect enabled NAS with radclient as follows::
+
+  # echo "Acct-Session-Id=D91FE8E51802097" > packet.txt
+  # echo "User-Name=somebody" >> packet.txt
+  # echo "NAS-IP-Address=10.0.0.1" >> packet.txt
+  
+  # cat packet.txt | radclient -x 10.0.0.1:3799 disconnect ''secret''
+  
+  Sending Disconnect-Request of id 214 to 10.0.0.1 port 3799
+        Acct-Session-Id = "D91FE8E51802097"
+        User-Name = "somebody"
+        NAS-IP-Address = 10.0.0.1
+  rad_recv: Disconnect-ACK packet from host 10.0.0.1 port 3799, id=214, length=20
+
+Note: The actual attributes which need to be sent in the Disconnect-Request and the port you send the packet to may vary depending on your brand of NAS and it's configuration. Though the RFC states the destination UDP port should be 3799 for Disconnect-Requests , Cisco brand equipment uses the non standard UDP port 1700 by default for POD. 
+
+For Mikrotik try:
+
+  # cat packet.txt | radclient -r 1 10.0.0.1:1700 disconnect ''secret''
+
+where -r 1 means retry only once and give up.
+
+== See Also
+
+`RADIUS Packet of Disconnect with Cisco equipment
+<https://content.cisco.com/chapter.sjs?uri=/searchable/chapter/content/en/us/td/docs/ios-xml/ios/sec_usr_aaa/configuration/xe-3s/sec-usr-aaa-xe-3s-book/sec-rad-pack-disctnt.html.xml>`_
+
+`RFC 3576
+<http://www.ietf.org/rfc/rfc3576.txt>`_
