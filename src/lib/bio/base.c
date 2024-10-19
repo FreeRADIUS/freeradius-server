@@ -267,13 +267,13 @@ void fr_bio_eof(fr_bio_t *bio)
  */
 int fr_bio_write_flush(fr_bio_t *bio)
 {
-	while (bio) {
+	do {
 		if (((fr_bio_common_t *) bio)->priv_cb.flush) {
 			return ((fr_bio_common_t *) bio)->priv_cb.flush(bio);
 		}
 
 		bio = fr_bio_next(bio);
-	}
+	} while (bio);
 
 	return 1;
 }
