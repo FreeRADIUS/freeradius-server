@@ -50,6 +50,7 @@ typedef struct request_s request_t;
 #include <freeradius-devel/util/dns.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/log.h>
+#include <freeradius-devel/util/misc.h>
 #include <freeradius-devel/util/pair_legacy.h>
 #include <freeradius-devel/util/sha1.h>
 #include <freeradius-devel/util/syserror.h>
@@ -2549,10 +2550,14 @@ static size_t command_proto_dictionary_root(command_result_t *result, command_fi
 	fr_dict_attr_t const	*root_da = fr_dict_root(dict);
 	fr_dict_attr_t const	*new_root;
 
-	new_root = fr_dict_attr_by_name(NULL, fr_dict_root(dict), in);
-	if (!new_root) {
-		fr_strerror_printf("dictionary attribute \"%s\" not found in %s", in, root_da->name);
-		RETURN_PARSE_ERROR(0);
+	if (is_whitespace(in) || (*in == '\0')) {
+		new_root = fr_dict_root(dict);
+	} else {
+		new_root = fr_dict_attr_by_name(NULL, fr_dict_root(dict), in);
+		if (!new_root) {
+			fr_strerror_printf("dictionary attribute \"%s\" not found in %s", in, root_da->name);
+			RETURN_PARSE_ERROR(0);
+		}
 	}
 
 	cc->tmpl_rules.attr.namespace = new_root;
@@ -3159,8 +3164,9 @@ static fr_table_ptr_sorted_t	commands[] = {
 
 	{ L("proto-dictionary-root "), &(command_entry_t){
 					.func = command_proto_dictionary_root,
-					.usage = "proto-dictionary-root <root_attribute>",
-					.description = "Set the root attribute for the current protocol dictionary",
+					.usage = "proto-dictionary-root[ <root_attribute>]",
+					.description = "Set the root attribute for the current protocol dictionary.  "
+						       "If no attribute name is provided, the root will be reset to the root of the current dictionary",
 				}},
 	{ L("raw "),		&(command_entry_t){
 					.func = command_encode_raw,
