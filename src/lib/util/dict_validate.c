@@ -622,16 +622,6 @@ bool dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	is.
 	 */
 	if (*attr == -1) {
-		/*
-		 *	If we don't care about the number, then this attribute is almost always
-		 *	an internal one.  Unless it's a "name only" attribute for string-based
-		 *	protocols.
-		 *
-		 *	We can use DEFINE in number-based protocol dictionaries, and the attributes will be
-		 *	marked up as "internal".
-		 */
-		flags->internal |= !flags->name_only | !dict->string_based;
-
 		v = fr_dict_attr_by_name(NULL, parent, name);
 		if (v) {
 			fr_dict_attr_flags_t cmp;
