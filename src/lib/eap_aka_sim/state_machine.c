@@ -1835,18 +1835,14 @@ static unlang_action_t common_reauthentication_request_compose(rlm_rcode_t *p_re
 		break;
 
 	case FR_EAP_METHOD_AKA_PRIME:
-		switch (eap_aka_sim_session->kdf) {
-		case FR_KDF_VALUE_PRIME_WITH_CK_PRIME_IK_PRIME:
+		if (eap_aka_sim_session->kdf == enum_kdf_prime_with_ck_prime_ik_prime->vb_int16) {
 			if (fr_aka_sim_vector_umts_kdf_1_reauth_from_attrs(request, &request->session_state_pairs,
 									   &eap_aka_sim_session->keys) != 0) {
 				goto request_new_id;
 			}
 			if (fr_aka_sim_crypto_umts_kdf_1_reauth(&eap_aka_sim_session->keys) < 0) goto request_new_id;
-			break;
-
-		default:
+		} else {
 			fr_assert(0);
-			break;
 		}
 		break;
 
@@ -2431,14 +2427,10 @@ RESUME(send_aka_challenge_request)
 		break;
 
 	case FR_EAP_METHOD_AKA_PRIME:
-		switch (eap_aka_sim_session->kdf) {
-		case FR_KDF_VALUE_PRIME_WITH_CK_PRIME_IK_PRIME:
+		if (eap_aka_sim_session->kdf == enum_kdf_prime_with_ck_prime_ik_prime->vb_int16) {
 			fr_aka_sim_crypto_umts_kdf_1(&eap_aka_sim_session->keys);
-			break;
-
-		default:
+		} else {
 			fr_assert(0);
-			break;
 		}
 	}
 	if (RDEBUG_ENABLED3) fr_aka_sim_crypto_keys_log(request, &eap_aka_sim_session->keys);
@@ -3511,7 +3503,7 @@ RESUME(recv_common_identity_response)
 		running = AKA_SIM_METHOD_HINT_AKA_PRIME;
 
 		eap_aka_sim_session->type = FR_EAP_METHOD_AKA_PRIME;
-		eap_aka_sim_session->kdf = FR_KDF_VALUE_PRIME_WITH_CK_PRIME_IK_PRIME;
+		eap_aka_sim_session->kdf = enum_kdf_prime_with_ck_prime_ik_prime->vb_int16;
 		eap_aka_sim_session->mac_md = EVP_sha256();
 		break;
 
