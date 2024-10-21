@@ -733,6 +733,10 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 		map_t *map;
 
 		row = query_ctx->row;
+		if (!row[2] || !row[3] || !row[4]) {
+			RPERROR("SQL query returned NULL values");
+			RETURN_MODULE_FAIL;
+		}
 		if (map_afrom_fields(map_ctx->ctx, &map, &parent, request, row[2], row[4], row[3], &lhs_rules, &rhs_rules) < 0) {
 			RPEDEBUG("Error parsing user data from database result");
 			RETURN_MODULE_FAIL;
