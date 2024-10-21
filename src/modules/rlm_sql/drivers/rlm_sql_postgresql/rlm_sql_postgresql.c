@@ -575,6 +575,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	if ((PQntuples(conn->result) > 0) && (records > 0)) {
 		conn->row = talloc_zero_array(conn, char *, records + 1);
 		for (i = 0; i < records; i++) {
+			if (PQgetisnull(conn->result, conn->cur_row, i)) continue;
 			len = PQgetlength(conn->result, conn->cur_row, i);
 			conn->row[i] = talloc_array(conn->row, char, len + 1);
 			strlcpy(conn->row[i], PQgetvalue(conn->result, conn->cur_row, i), len + 1);
