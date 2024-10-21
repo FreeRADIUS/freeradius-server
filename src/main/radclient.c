@@ -1052,6 +1052,14 @@ static int send_one_packet(rc_request_t *request)
 
 	if (fr_log_fp) {
 		fr_packet_header_print(fr_log_fp, request->packet, false);
+
+		if ((fr_debug_lvl > 0) &&
+		    ((request->packet->code == PW_CODE_ACCESS_REQUEST) ||
+		     (request->packet->code == PW_CODE_STATUS_SERVER)) &&
+		    !fr_pair_find_by_num(request->packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
+			fprintf(fr_log_fp, "\tMessage-Authenticator = 0x\n");
+		}
+
 		if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, request->packet->vps);
 	}
 
