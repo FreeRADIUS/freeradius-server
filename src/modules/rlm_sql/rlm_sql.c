@@ -772,6 +772,10 @@ static unlang_action_t mod_map_resume(rlm_rcode_t *p_result, UNUSED int *priorit
 		     map && (j < MAX_SQL_FIELD_INDEX);
 		     map = map_list_next(maps, map), j++) {
 			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
+			if (!row[field_index[j]]) {
+				RWARN("Database returned NULL for %s", fields[j]);
+				continue;
+			}
 			if (map_to_request(request, map, _sql_map_proc_get_value, row[field_index[j]]) < 0) goto error;
 		}
 	}
