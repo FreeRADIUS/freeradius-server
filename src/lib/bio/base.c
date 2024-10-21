@@ -256,24 +256,3 @@ void fr_bio_eof(fr_bio_t *bio)
 		x = fr_bio_next(x);
 	}
 }
-
-/** Flush any pending writes
- *
- * @param bio	the bio
- * @return
- *	- <0 on error, which is fr_bio_error(FOO).  Usually IO_WOULD_BLOCK
- *	- 0 for couldn't flush, more data is still pending
- *	- 1 for flush was successful, no data is pending.
- */
-int fr_bio_write_flush(fr_bio_t *bio)
-{
-	do {
-		if (((fr_bio_common_t *) bio)->priv_cb.flush) {
-			return ((fr_bio_common_t *) bio)->priv_cb.flush(bio);
-		}
-
-		bio = fr_bio_next(bio);
-	} while (bio);
-
-	return 1;
-}

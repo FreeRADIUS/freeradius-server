@@ -198,6 +198,4 @@ char const *fr_bio_strerror(ssize_t error);
 
 void	fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb) CC_HINT(nonnull(1));
 
-int	fr_bio_write_flush(fr_bio_t *bio) CC_HINT(nonnull);
-
 #undef _CONST
