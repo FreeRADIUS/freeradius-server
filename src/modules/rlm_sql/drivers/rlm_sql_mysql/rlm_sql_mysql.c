@@ -587,6 +587,7 @@ retry_fetch_row:
 
 	MEM(query_ctx->row = talloc_zero_array(query_ctx, char *, num_fields + 1));
 	for (i = 0; i < num_fields; i++) {
+		if (!row[i]) continue;
 		MEM(query_ctx->row[i] = talloc_bstrndup(query_ctx->row, row[i], field_lens[i]));
 	}
 
