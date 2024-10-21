@@ -61,8 +61,6 @@ typedef struct {
 	char *error;
 
 	rlm_sql_row_t row;
-	int *row_sizes;
-	int row_fcount;
 } rlm_sql_firebird_conn_t;
 
 

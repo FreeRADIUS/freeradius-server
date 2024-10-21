@@ -138,29 +138,10 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 	XSQLVAR		*var;
 	VARY		*vary;
 
-	if (conn->row_fcount < conn->sqlda_out->sqld)  {
-		i = conn->row_fcount;
-		conn->row_fcount = conn->sqlda_out->sqld;
-		conn->row = (char **) talloc_realloc(conn, conn->row, char *, conn->row_fcount * sizeof(char *));
-		conn->row_sizes = (int *) talloc_realloc(conn, conn->row_sizes, int, conn->row_fcount);
-
-		while( i <conn->row_fcount) {
-			conn->row[i] = 0;
-			conn->row_sizes[i++] = 0;
-		}
-	}
+	conn->row = talloc_zero_array(conn, char *, conn->sqlda_out->sqld + 1);
 
 	for (i = 0, var = conn->sqlda_out->sqlvar; i < conn->sqlda_out->sqld; var++, i++) {
-		/*
-		 *	Initial buffer size to store field's data is 256 bytes
-		 */
-		if (conn->row_sizes[i]<256) {
-			conn->row[i] = (char *) talloc_realloc(conn->row, conn->row[i], char, 256);
-			conn->row_sizes[i] = 256;
-		}
-
 		if (IS_NULL(var)) {
-			strcpy(conn->row[i], "NULL");
 			nulls++;
 			continue;
 		}
@@ -169,28 +150,16 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		switch (dtype) {
 		case SQL_TEXT:
-			if (conn->row_sizes[i] <= var->sqllen) {
-				conn->row_sizes[i] = var->sqllen + 1;
-				conn->row[i] = talloc_realloc(conn->row, conn->row[i], char, conn->row_sizes[i]);
-			}
-
-			memmove(conn->row[i], var->sqldata, var->sqllen);
-			conn->row[i][var->sqllen] = 0;
+			conn->row[i] = talloc_bstrndup(conn->row, var->sqldata, var->sqllen);
 			break;
 
 		case SQL_VARYING:
 			vary = (VARY *)var->sqldata;
-			if (conn->row_sizes[i] <= vary->vary_length) {
-				conn->row_sizes[i] = vary->vary_length + 1;
-				conn->row[i] = talloc_realloc(conn->row, conn->row[i], char, conn->row_sizes[i]);
-			}
-			memmove(conn->row[i], vary->vary_string, vary->vary_length);
-			conn->row[i][vary->vary_length] = 0;
+			conn->row[i] = talloc_bstrndup(conn->row, vary->vary_string, vary->vary_length);
 			break;
 
 		case SQL_FLOAT:
-			snprintf(conn->row[i], conn->row_sizes[i], "%15g",
-				 *(double ISC_FAR *) (var->sqldata));
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%g", *(double ISC_FAR *) (var->sqldata));
 			break;
 
 		case SQL_SHORT:
@@ -225,36 +194,35 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 				}
 
 				if (value >= 0) {
-					snprintf(conn->row[i], conn->row_sizes[i], "%lld.%0*lld",
+					conn->row[i] = talloc_typed_asprintf(conn->row, "%lld.%0*lld",
 						 (ISC_INT64) value / tens,
 						 -dscale,
 						 (ISC_INT64) value % tens);
 				} else if ((value / tens) != 0) {
-					snprintf(conn->row[i], conn->row_sizes[i], "%lld.%0*lld",
+					conn->row[i] = talloc_typed_asprintf(conn->row, "%lld.%0*lld",
 						 (ISC_INT64) (value / tens),
 						 -dscale,
 						 (ISC_INT64) -(value % tens));
 				} else {
-					snprintf(conn->row[i], conn->row_sizes[i], "%s.%0*lld",
+					conn->row[i] = talloc_typed_asprintf(conn->row, "%s.%0*lld",
 						 "-0", -dscale, (ISC_INT64) - (value % tens));
 				}
 			} else if (dscale) {
-				snprintf(conn->row[i], conn->row_sizes[i], "%lld%0*d", (ISC_INT64) value, dscale, 0);
+				conn->row[i] = talloc_typed_asprintf(conn->row, "%lld%0*d", (ISC_INT64) value, dscale, 0);
 			} else {
-				snprintf(conn->row[i], conn->row_sizes[i], "%lld", (ISC_INT64) value);
+				conn->row[i] = talloc_typed_asprintf(conn->row, "%lld", (ISC_INT64) value);
 			}
 		}
 			break;
 
 		case SQL_D_FLOAT:
 		case SQL_DOUBLE:
-			snprintf(conn->row[i], conn->row_sizes[i], "%f",
-				 *(double ISC_FAR *) (var->sqldata));
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%f", *(double ISC_FAR *) (var->sqldata));
 			break;
 
 		case SQL_TIMESTAMP:
 			isc_decode_timestamp((ISC_TIMESTAMP ISC_FAR *)var->sqldata, &times);
-			snprintf(conn->row[i], conn->row_sizes[i], "%04d-%02d-%02d %02d:%02d:%02d.%04d",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%04d-%02d-%02d %02d:%02d:%02d.%04d",
 				 times.tm_year + 1900,
 				 times.tm_mon + 1,
 				 times.tm_mday,
@@ -266,7 +234,7 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		case SQL_TYPE_DATE:
 			isc_decode_sql_date((ISC_DATE ISC_FAR *)var->sqldata, &times);
-			snprintf(conn->row[i], conn->row_sizes[i], "%04d-%02d-%02d",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%04d-%02d-%02d",
 				 times.tm_year + 1900,
 				 times.tm_mon + 1,
 				 times.tm_mday);
@@ -274,7 +242,7 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 
 		case SQL_TYPE_TIME:
 			isc_decode_sql_time((ISC_TIME ISC_FAR *)var->sqldata, &times);
-			snprintf(conn->row[i], conn->row_sizes[i], "%02d:%02d:%02d.%04d",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%02d:%02d:%02d.%04d",
 				 times.tm_hour,
 				 times.tm_min,
 				 times.tm_sec,
@@ -285,7 +253,7 @@ sql_rcode_t fb_store_row(rlm_sql_firebird_conn_t *conn)
 		case SQL_ARRAY:
 			/* Print the blob id on blobs or arrays */
 			bid = *(ISC_QUAD ISC_FAR *) var->sqldata;
-			snprintf(conn->row[i], conn->row_sizes[i], "%08" ISC_LONG_FMT "x:%08" ISC_LONG_FMT "x",
+			conn->row[i] = talloc_typed_asprintf(conn->row, "%08" ISC_LONG_FMT "x:%08" ISC_LONG_FMT "x",
 				 bid.gds_quad_high, bid.gds_quad_low);
 			break;
 		}

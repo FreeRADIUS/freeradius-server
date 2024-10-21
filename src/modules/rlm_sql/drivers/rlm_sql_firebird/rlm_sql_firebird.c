@@ -227,6 +227,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		conn->statement_type = 0;
 	}
 
+	TALLOC_FREE(conn->row);
 	query_ctx->rcode = fb_store_row(conn);
 	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->row = conn->row;
 
@@ -242,6 +243,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_co
 
 	fb_free_statement(conn);
 	talloc_free_children(conn->sqlda_out);
+	TALLOC_FREE(conn->row);
 	query_ctx->status = SQL_QUERY_PREPARED;
 
 	return 0;
@@ -250,8 +252,11 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_co
 /** Frees memory allocated for a result set.
  *
  */
-static sql_rcode_t sql_free_result(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
+	rlm_sql_firebird_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_firebird_conn_t);
+
+	TALLOC_FREE(conn->row);
 	return 0;
 }
 
