@@ -36,6 +36,7 @@ typedef struct {
 	SQLHSTMT		stmt;		/* Statement handle */
 	SQLSMALLINT		colcount;	/* Number of columns in last result */
 	rlm_sql_row_t		row;		/* Results row */
+	SQLLEN			*ind;		/* Data length / NULL indicators */
 	connection_t		*conn;		/* Generic connection structure for this connection */
 	rlm_sql_config_t const	*config;	/* SQL instance configuration */
 	SQLUSMALLINT		async_mode;	/* What Async mode does this driver support */
@@ -504,13 +505,14 @@ static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int
 
 	/* Reserving memory for result */
 	conn->row = talloc_zero_array(conn, char *, conn->colcount + 1); /* Space for pointers */
+	conn->ind = talloc_zero_array(conn, SQLLEN, conn->colcount); /* Space for indicators */
 
 	for (i = 1; i <= conn->colcount; i++) {
 		len = 0;
 		/* SQLColAttribute can in theory run Async */
 		while (SQLColAttribute(conn->stmt, (SQLUSMALLINT) i, SQL_DESC_LENGTH, NULL, 0, NULL, &len) == SQL_STILL_EXECUTING);
 		conn->row[i - 1] = talloc_array(conn->row, char, ++len);
-		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, NULL);
+		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, &conn->ind[i - 1]);
 	}
 
 	RETURN_MODULE_OK;
@@ -561,6 +563,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_unixodbc_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_unixodbc_conn_t);
 	SQLRETURN		ret = SQL_STILL_EXECUTING;
+	SQLINTEGER		i;
 
 	query_ctx->row = NULL;
 
@@ -575,6 +578,13 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	query_ctx->rcode = sql_check_error(ret, SQL_HANDLE_STMT, conn->stmt);
 	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
 
+	/*
+	 *	If the field is NULL, then SQLFetch doesn't touch pointer, so set it here
+	 */
+	for (i = 0; i < conn->colcount; i++) {
+		if (conn->ind[i] == SQL_NULL_DATA) conn->row[i] = NULL;
+	}
+
 	query_ctx->row = conn->row;
 
 	query_ctx->rcode = RLM_SQL_OK;
@@ -586,6 +596,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 	rlm_sql_unixodbc_conn_t *conn = query_ctx->tconn->conn->h;
 
 	TALLOC_FREE(conn->row);
+	TALLOC_FREE(conn->ind);
 	conn->colcount = 0;
 
 	return RLM_SQL_OK;
