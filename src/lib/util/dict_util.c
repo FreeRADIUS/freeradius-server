@@ -90,7 +90,7 @@ bool const fr_dict_enum_allowed_chars[UINT8_MAX + 1] = {
  * associated with the dictionary
  * e.g. libfreeradius-dhcpv6.so -> libfreeradius_dhcpv6_dict_protocol.
  */
-fr_dict_protocol_t dict_proto_default = {
+static fr_dict_protocol_t dict_proto_default = {
 	.name = "default",
 	.default_type_size = 2,
 	.default_type_length = 2,
