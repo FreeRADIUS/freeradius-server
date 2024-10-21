@@ -133,7 +133,7 @@ redo:
 	 *	wasn't set.  The initialization function above
 	 *	artificially caps MRD at one day.
 	 */
-	if (fr_time_cmp(now, r->end) <= 0) {
+	if (fr_time_cmp(now, r->end) >= 0) {
 		r->state = FR_RETRY_MRD;
 		return FR_RETRY_MRD;
 	}
