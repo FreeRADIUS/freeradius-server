@@ -115,15 +115,17 @@ static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	char errbuff[512];
 
-	if (sql_prints_error(errbuff, sizeof(errbuff), handle, config) < 0) goto unknown;
+	if (sql_prints_error(errbuff, sizeof(errbuff), handle, config) < 0) {
+		ERROR("rlm_sql_oracle: OCI_SERVER_NORMAL");
+		return -1;
+	}
 
 	if (strstr(errbuff, "ORA-03113") || strstr(errbuff, "ORA-03114")) {
 		ERROR("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
 		return RLM_SQL_RECONNECT;
 	}
 
-unknown:
-	ERROR("rlm_sql_oracle: OCI_SERVER_NORMAL");
+	ERROR("rlm_sql_oracle: error %s", errbuff);
 	return -1;
 }
 
@@ -437,6 +439,7 @@ static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_
 
 	if (OCIStmtRelease(conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
 		ERROR("OCI release failed in sql_finish_query");
+		(void) sql_check_error(handle, config);
 		return RLM_SQL_ERROR;
 	}
 
