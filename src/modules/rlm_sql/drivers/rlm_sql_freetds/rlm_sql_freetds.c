@@ -569,7 +569,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 	if (request) unlang_interpret_mark_runnable(request);
 }
 
-static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_freetds_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
 
@@ -812,9 +812,8 @@ rlm_sql_driver_t rlm_sql_freetds = {
 	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.sql_query_resume		= sql_query_resume,
 	.sql_select_query_resume	= sql_query_resume,
-	.sql_num_rows			= sql_num_rows,
 	.sql_fields			= sql_fields,
-	.sql_affected_rows		= sql_num_rows,
+	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
