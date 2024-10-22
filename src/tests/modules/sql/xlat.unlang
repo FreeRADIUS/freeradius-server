@@ -1,0 +1,15 @@
+#
+#  Clear out old data
+#
+%sql("${delete_from_radcheck} 'xlat'")
+%sql("${delete_from_radreply} 'xlat'")
+
+if (%sql("${insert_into_radcheck} ('%{User-Name}', 'Password.Cleartext', ':=', 'password')") != "1") {
+	test_fail
+}
+
+if (%sql("${insert_into_radreply} ('%{User-Name}', 'Reply-Message', ':=', '\"Hello \%{User-Name}\"')") != "1") {
+	test_fail
+}
+
+sql

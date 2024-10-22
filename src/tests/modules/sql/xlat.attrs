@@ -1,0 +1,13 @@
+#
+#  Input packet
+#
+Packet-Type = Access-Request
+User-Name = "xlat"
+User-Password = "password"
+NAS-IP-Address = "1.2.3.4"
+
+#
+#  Expected answer
+#
+Packet-Type == Access-Accept
+Reply-Message == "Hello xlat"
