@@ -455,7 +455,8 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 	conn->col_count = 0;
 
 	if (OCIStmtRelease (conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
-		ERROR("OCI release failed in sql_finish_query");
+		ERROR("OCI release failed in sql_finish_select_query");
+		(void) sql_check_error(handle, config);
 		return RLM_SQL_ERROR;
 	}
 
