@@ -218,6 +218,25 @@ static xlat_exp_t *xlat_exp_func_alloc(TALLOC_CTX *ctx, xlat_t const *func, xlat
 	node->flags.impure_func = !func->flags.pure;
 	xlat_flags_merge(&node->flags, &args->flags);
 
+	if (func->input_type == XLAT_INPUT_ARGS) {
+		xlat_arg_parser_t const	*arg_p;
+		xlat_exp_t		*arg = xlat_exp_head(node->call.args);
+
+		/*
+		 *      The original tokenizing is done using the redundant xlat argument parser
+		 *      so the boxes haven't been marked up with the appropriate "safe for".
+		 */
+		for (arg_p = node->call.func->args; arg_p->type != FR_TYPE_NULL; arg_p++) {
+		        if (!arg) break;
+
+		        xlat_exp_foreach(arg->group, child) {
+		                if (child->type == XLAT_BOX) fr_value_box_mark_safe_for(&child->data, arg_p->safe_for);
+		        }
+
+		        arg = xlat_exp_next(node->call.args, arg);
+		}
+	}
+
 	/*
 	 *	If the function is pure, AND it's arguments are pure,
 	 *	then remember that we need to call a pure function.
