@@ -624,17 +624,6 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	}
 }
 
-static sql_rcode_t sql_free_result(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
-{
-
-	/*
-	 *	Not implemented, never called from rlm_sql anyway result buffer is freed in the
-	 *	finish_query functions.
-	 */
-	return RLM_SQL_OK;
-
-}
-
 static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_freetds_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
@@ -815,7 +804,6 @@ rlm_sql_driver_t rlm_sql_freetds = {
 	.sql_fields			= sql_fields,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
-	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
 	.sql_finish_select_query	= sql_finish_select_query,
