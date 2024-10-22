@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include <ctpublic.h>
 
 #include "rlm_sql.h"
+#include "rlm_sql_trunk.h"
 
 typedef struct {
 	CS_CONTEXT	*context;	//!< Structure FreeTDS uses to avoid creating globals.
@@ -192,15 +193,10 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(CS_CONTEXT *context, UNUSED CS_CO
  *	       the database.
  *
  *************************************************************************/
-static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static sql_rcode_t sql_query(request_t *request, rlm_sql_freetds_conn_t *conn, char const *query)
 {
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_freetds_conn_t	*conn = query_ctx->handle->conn;
-
 	CS_RETCODE	results_ret;
 	CS_INT		result_type;
-
-	query_ctx->rcode = RLM_SQL_ERROR;
 
 	/*
 	 *	Reset rows_affected in case the query fails.
@@ -209,21 +205,18 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 	conn->rows_affected = -1;
 
 	if (ct_cmd_alloc(conn->db, &conn->command) != CS_SUCCEED) {
-		ERROR("Unable to allocate command structure (ct_cmd_alloc())");
-
-		RETURN_MODULE_FAIL;
+		ROPTIONAL(RERROR, ERROR, "Unable to allocate command structure (ct_cmd_alloc())");
+		return RLM_SQL_ERROR;
 	}
 
-	if (ct_command(conn->command, CS_LANG_CMD, query_ctx->query_str, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
-		ERROR("Unable to initialise command structure (ct_command())");
-
-		RETURN_MODULE_FAIL;
+	if (ct_command(conn->command, CS_LANG_CMD, query, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
+		ROPTIONAL(RERROR, ERROR, "Unable to initialise command structure (ct_command())");
+		return RLM_SQL_ERROR;
 	}
 
 	if (ct_send(conn->command) != CS_SUCCEED) {
-		ERROR("Unable to send command (ct_send())");
-
-		RETURN_MODULE_FAIL;
+		ROPTIONAL(RERROR, ERROR, "Unable to send command (ct_send())");
+		return RLM_SQL_ERROR;
 	}
 
 	/*
@@ -234,35 +227,39 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 	/*
 	 *	First call to ct_results, we need returncode CS_SUCCEED and result_type CS_CMD_SUCCEED.
 	 */
-	if ((results_ret = ct_results(conn->command, &result_type)) == CS_SUCCEED) {
-		if (result_type != CS_CMD_SUCCEED) {
-			if  (result_type == CS_ROW_RESULT) {
-				ERROR("sql_query processed a query returning rows. "
-				      "Use sql_select_query instead!");
-			}
-			ERROR("Result failure or unexpected result type from query");
-
-			RETURN_MODULE_FAIL;
-		}
-	} else {
-		switch (results_ret) {
-		case CS_FAIL: /* Serious failure, freetds requires us to cancel and maybe even close db */
-			ERROR("Failure retrieving query results");
-
-			if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) {
-				INFO("Cleaning up");
-			reconnect:
-				query_ctx->rcode = RLM_SQL_RECONNECT;
-				RETURN_MODULE_FAIL;
-			}
-			conn->command = NULL;
-
-			RETURN_MODULE_FAIL;
+	switch(ct_results(conn->command, &result_type)) {
+	case CS_SUCCEED:
+		switch (result_type) {
+		case CS_CMD_SUCCEED:
+			break;
+		case CS_ROW_RESULT:
+			ROPTIONAL(RERROR, ERROR, "sql_query processed a query returning rows. "
+				  "Use sql_select_query instead!");
+			break;
+		case CS_CMD_FAIL:
+			/*
+			 *	If ct_send succeeded and ct_results gives CS_CMD_FAIL,
+			 *	provided the queries are sane, this will be a key constraint
+			 *	conflict.
+			 *	Either way, this is a reasonable cause to go to the alternate query.
+			 */
+			return RLM_SQL_ALT_QUERY;
 		default:
-			ERROR("Unexpected return value from ct_results()");
-
-			RETURN_MODULE_FAIL;
+			ROPTIONAL(RERROR, ERROR, "Result failure or unexpected result type from query, (%d)", result_type);
+			return RLM_SQL_ERROR;
 		}
+		break;
+
+	case CS_FAIL: /* Serious failure, freetds requires us to cancel and maybe even close db */
+		ROPTIONAL(RERROR, ERROR, "Failure retrieving query results");
+
+		if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) return RLM_SQL_RECONNECT;
+		conn->command = NULL;
+		return RLM_SQL_ERROR;
+
+	default:
+		ROPTIONAL(RERROR, ERROR, "Unexpected return value from ct_results()");
+		return RLM_SQL_ERROR;
 	}
 
 	/*
@@ -271,9 +268,8 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 	 *	no longer have access to this.
 	 */
 	if (ct_res_info(conn->command, CS_ROW_COUNT, &conn->rows_affected, CS_UNUSED, NULL) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: error retrieving row count");
-
-		RETURN_MODULE_FAIL;
+		ROPTIONAL(RERROR, ERROR, "rlm_sql_freetds: error retrieving row count");
+		return RLM_SQL_ERROR;
 	}
 
 	/*
@@ -282,23 +278,21 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 	 */
 	if ((results_ret = ct_results(conn->command, &result_type)) == CS_SUCCEED) {
 		if (result_type != CS_CMD_DONE) {
-			ERROR("Result failure or unexpected result type from query");
-
-			RETURN_MODULE_FAIL;
+			ROPTIONAL(RERROR, ERROR, "Result failure or unexpected result type from query");
+			return RLM_SQL_ERROR;
 		}
 	} else {
 		switch (results_ret) {
 		case CS_FAIL: /* Serious failure, freetds requires us to cancel and maybe even close db */
-			ERROR("Failure retrieving query results");
-			if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) goto reconnect;
+			ROPTIONAL(RERROR, ERROR, "Failure retrieving query results");
+			if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) return RLM_SQL_RECONNECT;
 
 			conn->command = NULL;
-			RETURN_MODULE_FAIL;
+			return RLM_SQL_ERROR;
 
 		default:
-			ERROR("Unexpected return value from ct_results()");
-
-			RETURN_MODULE_FAIL;
+			ROPTIONAL(RERROR, ERROR, "Unexpected return value from ct_results()");
+			return RLM_SQL_ERROR;
 		}
 	}
 
@@ -308,23 +302,22 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 	results_ret = ct_results(conn->command, &result_type);
 	switch (results_ret) {
 	case CS_FAIL: /* Serious failure, freetds requires us to cancel and maybe even close db */
-		ERROR("Failure retrieving query results");
-		if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) goto reconnect;
+		ROPTIONAL(RERROR, ERROR, "Failure retrieving query results");
+		if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) return RLM_SQL_RECONNECT;
 		conn->command = NULL;
 
-		RETURN_MODULE_FAIL;
+		return RLM_SQL_ERROR;
 
 	case CS_END_RESULTS:  /* This is where we want to end up */
 		break;
 
 	default:
-		ERROR("Unexpected return value from ct_results()");
+		ROPTIONAL(RERROR, ERROR, "Unexpected return value from ct_results()");
 
-		RETURN_MODULE_FAIL;
+		return RLM_SQL_ERROR;
 	}
 
-	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	return RLM_SQL_OK;
 }
 
 /*************************************************************************
@@ -336,7 +329,7 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
  *************************************************************************/
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_freetds_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_freetds_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
 	CS_DATAFMT datafmt;
 	int fields, i;
 	char const **names;
@@ -392,9 +385,8 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
 			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_freetds_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_freetds_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
 
-	fr_assert(conn && conn->db);
 	fr_assert(outlen > 0);
 
 	if (!conn->error) return 0;
@@ -407,7 +399,7 @@ static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UN
 
 static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_freetds_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_freetds_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
 
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
@@ -425,45 +417,33 @@ static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm
 
 /** Execute a query when we expected a result set
  *
- * @note Only the first row from queries returning several rows will be returned by this function,
- * consecutive rows will be discarded.
- *
  */
-static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static sql_rcode_t sql_select_query(request_t *request, rlm_sql_freetds_conn_t *conn, char const *query)
 {
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_freetds_conn_t	*conn = query_ctx->handle->conn;
-
 	CS_RETCODE	results_ret;
 	CS_INT		result_type;
 	CS_DATAFMT	descriptor;
-
 	int		colcount,i;
 	char		**rowdata;
 
-	query_ctx->rcode = RLM_SQL_ERROR;
-
 	 if (!conn->db) {
-		ERROR("socket not connected");
-
-		RETURN_MODULE_FAIL;
+		ROPTIONAL(RERROR, ERROR, "socket not connected");
+		return RLM_SQL_ERROR;
 	}
 
 	if (ct_cmd_alloc(conn->db, &conn->command) != CS_SUCCEED) {
-		ERROR("unable to allocate command structure (ct_cmd_alloc())");
-
-		RETURN_MODULE_FAIL;
+		ROPTIONAL(RERROR, ERROR, "unable to allocate command structure (ct_cmd_alloc())");
+		return RLM_SQL_ERROR;
 	}
 
-	if (ct_command(conn->command, CS_LANG_CMD, query_ctx->query_str, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
-		ERROR("unable to initiate command structure (ct_command()");
-
-		RETURN_MODULE_FAIL;
+	if (ct_command(conn->command, CS_LANG_CMD, query, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
+		ROPTIONAL(RERROR, ERROR, "unable to initiate command structure (ct_command()");
+		return RLM_SQL_ERROR;
 	}
 
 	if (ct_send(conn->command) != CS_SUCCEED) {
-		ERROR("unable to send command (ct_send())");
-		RETURN_MODULE_FAIL;
+		ROPTIONAL(RERROR, ERROR, "unable to send command (ct_send())");
+		return RLM_SQL_ERROR;
 	}
 
 	results_ret = ct_results(conn->command, &result_type);
@@ -491,12 +471,11 @@ static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *prior
 			descriptor.locale = NULL;		/* Don't do NLS stuff */
 
 			if (ct_res_info(conn->command, CS_NUMDATA, &colcount, CS_UNUSED, NULL) != CS_SUCCEED) {
-				ERROR("Error retrieving column count");
-				RETURN_MODULE_FAIL;
+				ROPTIONAL(RERROR, ERROR, "Error retrieving column count");
+				return RLM_SQL_ERROR;
 			}
 
 			rowdata = talloc_zero_array(conn, char *, colcount + 1); /* Space for pointers */
-			rowdata[colcount] = NULL;
 
 			for (i = 0; i < colcount; i++) {
 				/* Space to hold the result data */
@@ -506,11 +485,9 @@ static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *prior
 				if (ct_bind(conn->command, i + 1, &descriptor, rowdata[i], NULL, NULL) != CS_SUCCEED) {
 					talloc_free(rowdata);
 
-					ERROR("ct_bind() failed)");
-
-					RETURN_MODULE_FAIL;
+					ROPTIONAL(RERROR, ERROR, "ct_bind() failed)");
+					return RLM_SQL_ERROR;
 				}
-
 			}
 
 			rowdata[i] = NULL; /* Terminate the array */
@@ -519,58 +496,90 @@ static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *prior
 
 		case CS_CMD_SUCCEED:
 		case CS_CMD_DONE:
-			ERROR("query returned no data");
+			ROPTIONAL(RWARN, WARN, "query returned no data");
 			break;
 
 		default:
-
-			ERROR("unexpected result type from query");
-			sql_finish_select_query(query_ctx, &query_ctx->inst->config);
-
-			RETURN_MODULE_FAIL;
+			ROPTIONAL(RERROR, ERROR, "unexpected result type from query");
+			return RLM_SQL_ERROR;
 		}
 		break;
 
 	case CS_FAIL:
-
 		/*
 		 * Serious failure, freetds requires us to cancel the results and maybe even close the db.
 		 */
 
-		ERROR("failure retrieving query results");
+		ROPTIONAL(RERROR, ERROR, "failure retrieving query results");
 
-		if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) {
-			ERROR("cleaning up");
-
-			query_ctx->rcode = RLM_SQL_RECONNECT;
-			RETURN_MODULE_FAIL;
-		}
+		if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) return RLM_SQL_RECONNECT;
 		conn->command = NULL;
 
-		RETURN_MODULE_FAIL;
+		return RLM_SQL_ERROR;
 
 	default:
-		ERROR("unexpected return value from ct_results()");
+		ROPTIONAL(RERROR, ERROR, "unexpected return value from ct_results()");
 
-		RETURN_MODULE_FAIL;
+		return RLM_SQL_ERROR;
 	}
 
-	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	return RLM_SQL_OK;
+}
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				  connection_t *conn, UNUSED void *uctx)
+{
+	rlm_sql_freetds_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_freetds_conn_t);
+	trunk_request_t		*treq;
+	request_t		*request;
+	fr_sql_query_t		*query_ctx;
+
+	if (trunk_connection_pop_request(&treq, tconn) != 0) return;
+	if (!treq) return;
+
+	query_ctx = talloc_get_type_abort(treq->preq, fr_sql_query_t);
+	request = query_ctx->request;
+	query_ctx->tconn = tconn;
+
+	ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
+
+	switch (query_ctx->type) {
+	case SQL_QUERY_SELECT:
+		query_ctx->rcode = sql_select_query(request, sql_conn, query_ctx->query_str);
+		break;
+	case SQL_QUERY_OTHER:
+		query_ctx->rcode = sql_query(request, sql_conn, query_ctx->query_str);
+		break;
+	}
+
+	switch (query_ctx->rcode) {
+	case RLM_SQL_OK:
+	case RLM_SQL_ALT_QUERY:
+		break;
+
+	default:
+		trunk_request_signal_fail(treq);
+		if (query_ctx->rcode == RLM_SQL_RECONNECT) connection_signal_reconnect(conn, CONNECTION_FAILED);
+		return;
+	}
+
+	query_ctx->status = SQL_QUERY_RETURNED;
+	trunk_request_signal_reapable(treq);
+	if (request) unlang_interpret_mark_runnable(request);
 }
 
 static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_freetds_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_freetds_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
 
 	return (conn->rows_affected);
 }
 
-static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	rlm_sql_handle_t	*handle = query_ctx->handle;
-	rlm_sql_freetds_conn_t *conn = handle->conn;
+	rlm_sql_freetds_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
 	CS_INT ret, count;
 
 	query_ctx->row = NULL;
@@ -581,9 +590,9 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		/*
 		 *	Serious failure, freetds requires us to cancel the results and maybe even close the db.
 		 */
-		ERROR("failure fetching row data");
+		ROPTIONAL(RERROR, ERROR, "failure fetching row data");
 		if (ct_cancel(NULL, conn->command, CS_CANCEL_ALL) == CS_FAIL) {
-			ERROR("cleaning up");
+			ROPTIONAL(RERROR, ERROR, "cleaning up");
 		} else {
 			conn->command = NULL;
 		}
@@ -602,13 +611,13 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		RETURN_MODULE_OK;
 
 	case CS_ROW_FAIL:
-		ERROR("recoverable failure fetching row data");
+		ROPTIONAL(RERROR, ERROR, "recoverable failure fetching row data");
 
 		query_ctx->rcode = RLM_SQL_RECONNECT;
 		RETURN_MODULE_FAIL;
 
 	default:
-		ERROR("unexpected returncode from ct_fetch");
+		ROPTIONAL(RERROR, ERROR, "unexpected returncode from ct_fetch");
 
 		query_ctx->rcode = RLM_SQL_ERROR;
 		RETURN_MODULE_FAIL;
@@ -628,7 +637,7 @@ static sql_rcode_t sql_free_result(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_
 
 static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_freetds_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_freetds_conn_t *conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
 
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
@@ -642,20 +651,21 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_co
 	return RLM_SQL_OK;
 }
 
-static int _sql_socket_destructor(rlm_sql_freetds_conn_t *conn)
+static void _sql_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
+	rlm_sql_freetds_conn_t	*c = talloc_get_type_abort(h, rlm_sql_freetds_conn_t);
+
 	DEBUG2("socket destructor called, closing socket");
 
-	if (conn->command) {
-		ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
-		if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
+	if (c->command) {
+		ct_cancel(NULL, c->command, CS_CANCEL_ALL);
+		if (ct_cmd_drop(c->command) != CS_SUCCEED) {
 			ERROR("freeing command structure failed");
-
-			return RLM_SQL_ERROR;
+			return;
 		}
 	}
 
-	if (conn->db) {
+	if (c->db) {
 		/*
 		 *	We first try gracefully closing the connection (which informs the server)
 		 *	Then if that fails we force the connection closure.
@@ -664,147 +674,132 @@ static int _sql_socket_destructor(rlm_sql_freetds_conn_t *conn)
 		 *	should not have any pending results at this point, so something else must
 		 *	of gone wrong.
 		 */
-		if (ct_close(conn->db, CS_UNUSED) != CS_SUCCEED) {
-			ct_close(conn->db, CS_FORCE_CLOSE);
-		}
+		if (ct_close(c->db, CS_UNUSED) != CS_SUCCEED) ct_close(c->db, CS_FORCE_CLOSE);
 
-		ct_con_drop(conn->db);
+		ct_con_drop(c->db);
 	}
 
-	if (conn->context) {
-		ct_exit(conn->context, CS_UNUSED);
-		cs_ctx_drop(conn->context);
+	if (c->context) {
+		ct_exit(c->context, CS_UNUSED);
+		cs_ctx_drop(c->context);
 	}
 
-	return RLM_SQL_OK;
+	talloc_free(h);
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config, fr_time_delta_t timeout)
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
-	rlm_sql_freetds_conn_t *conn;
-	unsigned int timeout_ms = fr_time_delta_to_msec(timeout);
-	fr_sql_query_t		*query_ctx;
-	rlm_rcode_t		p_result;
+	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
+	rlm_sql_config_t const	*config = &sql->config;
+	rlm_sql_freetds_conn_t	*c;
+	unsigned int		timeout_ms = fr_time_delta_to_msec(config->trunk_conf.conn_conf->connection_timeout);
+	char			database[128];
 
-	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_freetds_conn_t));
-	talloc_set_destructor(conn, _sql_socket_destructor);
+	MEM(c = talloc_zero(conn, rlm_sql_freetds_conn_t));
 
 	/*
 	 *	Allocate a CS context structure. This should really only be done once, but because of
 	 *	the db pooling design of rlm_sql, we'll have to go with one context per db
 	 */
-	if (cs_ctx_alloc(CS_VERSION_100, &conn->context) != CS_SUCCEED) {
+	if (cs_ctx_alloc(CS_VERSION_100, &c->context) != CS_SUCCEED) {
 		ERROR("unable to allocate CS context structure (cs_ctx_alloc())");
-
-		goto error;
+	error:
+		if (c->error) ERROR("%s", c->error);
+		return CONNECTION_STATE_FAILED;
 	}
 
 	/*
 	 *	Initialize ctlib
 	 */
-	if (ct_init(conn->context, CS_VERSION_100) != CS_SUCCEED) {
+	if (ct_init(c->context, CS_VERSION_100) != CS_SUCCEED) {
 		ERROR("unable to initialize Client-Library");
-
 		goto error;
 	}
 
-	if (ct_config(conn->context, CS_SET, CS_LOGIN_TIMEOUT, (CS_VOID *)&timeout_ms, CS_UNUSED, NULL) != CS_SUCCEED) {
+	if (ct_config(c->context, CS_SET, CS_LOGIN_TIMEOUT, (CS_VOID *)&timeout_ms, CS_UNUSED, NULL) != CS_SUCCEED) {
 		ERROR("Setting connection timeout failed");
-
 		goto error;
 	}
 
 	/*
 	 *	Install callback functions for error-handling
 	 */
-	if (cs_config(conn->context, CS_SET, CS_MESSAGE_CB, (CS_VOID *)csmsg_callback, CS_UNUSED, NULL) != CS_SUCCEED) {
+	if (cs_config(c->context, CS_SET, CS_MESSAGE_CB, (CS_VOID *)csmsg_callback, CS_UNUSED, NULL) != CS_SUCCEED) {
 		ERROR("unable to install CS Library error callback");
-
 		goto error;
 	}
 
-	if (cs_config(conn->context, CS_SET, CS_USERDATA,
-		      (CS_VOID *)&handle->conn, sizeof(handle->conn), NULL) != CS_SUCCEED) {
+	if (cs_config(c->context, CS_SET, CS_USERDATA, (CS_VOID *)&c, sizeof(c), NULL) != CS_SUCCEED) {
 		ERROR("unable to set userdata pointer");
-
 		goto error;
 	}
 
-	if (ct_callback(conn->context, NULL, CS_SET, CS_CLIENTMSG_CB, (CS_VOID *)clientmsg_callback) != CS_SUCCEED) {
+	if (ct_callback(c->context, NULL, CS_SET, CS_CLIENTMSG_CB, (CS_VOID *)clientmsg_callback) != CS_SUCCEED) {
 		ERROR("unable to install client message callback");
-
 		goto error;
 	}
 
-	if (ct_callback(conn->context, NULL, CS_SET, CS_SERVERMSG_CB, (CS_VOID *)servermsg_callback) != CS_SUCCEED) {
+	if (ct_callback(c->context, NULL, CS_SET, CS_SERVERMSG_CB, (CS_VOID *)servermsg_callback) != CS_SUCCEED) {
 		ERROR("unable to install server message callback");
-
 		goto error;
 	}
 
 	/*
 	 *	Allocate a ctlib db structure
 	 */
-	if (ct_con_alloc(conn->context, &conn->db) != CS_SUCCEED) {
+	if (ct_con_alloc(c->context, &c->db) != CS_SUCCEED) {
 		ERROR("unable to allocate db structure");
-
 		goto error;
 	}
 
 	/*
 	 *	Set User and Password properties for the db
 	 */
-	{
-		char database[128];
-
-		if (ct_con_props(conn->db, CS_SET, CS_USERNAME,
-				 UNCONST(CS_VOID *, config->sql_login), strlen(config->sql_login), NULL) != CS_SUCCEED) {
-			ERROR("unable to set username for db");
-
-			goto error;
-		}
-
-		if (ct_con_props(conn->db, CS_SET, CS_PASSWORD,
-				 UNCONST(CS_VOID *, config->sql_password), strlen(config->sql_password), NULL) != CS_SUCCEED) {
-			ERROR("unable to set password for db");
-
-			goto error;
-		}
-
-		/*
-		 *	Connect to the database
-		 */
-		if (ct_connect(conn->db, UNCONST(CS_CHAR *, config->sql_server), strlen(config->sql_server)) != CS_SUCCEED) {
-			ERROR("unable to establish db to symbolic servername %s",
-			      config->sql_server);
-
-			goto error;
-		}
-
-		/*
-		 *	There doesn't appear to be a way to set the database with the API, so use an
-		 *	sql statement when we first open the connection.
-		 */
-		snprintf(database, sizeof(database), "USE %s;", config->sql_db);
-		MEM(query_ctx = fr_sql_query_alloc(NULL, handle->inst, NULL, handle, NULL, database, SQL_QUERY_OTHER));
-		if ((sql_query(&p_result, NULL, NULL, query_ctx) == UNLANG_ACTION_CALCULATE_RESULT) &&
-		    (query_ctx->rcode != RLM_SQL_OK)) {
-			talloc_free(query_ctx);
-			goto error;
-		}
-		talloc_free(query_ctx);
+	if (ct_con_props(c->db, CS_SET, CS_USERNAME,
+			 UNCONST(CS_VOID *, config->sql_login), strlen(config->sql_login), NULL) != CS_SUCCEED) {
+		ERROR("unable to set username for db");
+		goto error;
 	}
 
-	return RLM_SQL_OK;
-
-error:
-	if (conn->context) {
-		sql_log_entry_t	error;
-
-		if (sql_error(NULL, &error, 1, &(fr_sql_query_t){ .handle = handle }, config) > 0) ERROR("%s", error.msg);
+	if (ct_con_props(c->db, CS_SET, CS_PASSWORD,
+			 UNCONST(CS_VOID *, config->sql_password), strlen(config->sql_password), NULL) != CS_SUCCEED) {
+		ERROR("unable to set password for db");
+		goto error;
 	}
 
-	return RLM_SQL_ERROR;
+	/*
+	 *	Connect to the database
+	 */
+	if (ct_connect(c->db, UNCONST(CS_CHAR *, config->sql_server), strlen(config->sql_server)) != CS_SUCCEED) {
+		ERROR("unable to establish db to symbolic servername %s",
+		      config->sql_server);
+		goto error;
+	}
+
+	/*
+	 *	There doesn't appear to be a way to set the database with the API, so use an
+	 *	sql statement when we first open the connection.
+	 */
+	snprintf(database, sizeof(database), "USE %s;", config->sql_db);
+	if (sql_query(NULL, c, database) != RLM_SQL_OK) goto error;
+
+	*h = c;
+	return CONNECTION_STATE_CONNECTED;
+}
+
+SQL_TRUNK_CONNECTION_ALLOC
+
+SQL_QUERY_RESUME
+
+static void sql_request_fail(request_t *request, void *preq, UNUSED void *rctx,
+			     UNUSED trunk_request_state_t state, UNUSED void *uctx)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
+
+	query_ctx->treq = NULL;
+	if (query_ctx->rcode == RLM_SQL_OK) query_ctx->rcode = RLM_SQL_ERROR;
+	if (request) unlang_interpret_mark_runnable(request);
 }
 
 /* Exported to rlm_sql */
@@ -814,9 +809,9 @@ rlm_sql_driver_t rlm_sql_freetds = {
 		.magic				= MODULE_MAGIC_INIT,
 		.name				= "sql_freetds"
 	},
-	.sql_socket_init		= sql_socket_init,
-	.sql_query			= sql_query,
-	.sql_select_query		= sql_select_query,
+	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
+	.sql_query_resume		= sql_query_resume,
+	.sql_select_query_resume	= sql_query_resume,
 	.sql_num_rows			= sql_num_rows,
 	.sql_fields			= sql_fields,
 	.sql_affected_rows		= sql_num_rows,
@@ -824,5 +819,11 @@ rlm_sql_driver_t rlm_sql_freetds = {
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_select_query
+	.sql_finish_select_query	= sql_finish_select_query,
+	.uses_trunks			= true,
+	.trunk_io_funcs = {
+		.connection_alloc	= sql_trunk_connection_alloc,
+		.request_mux		= sql_trunk_request_mux,
+		.request_fail		= sql_request_fail
+	}
 };
