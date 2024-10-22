@@ -42,7 +42,10 @@ typedef struct {
 	CS_CONTEXT	*context;	//!< Structure FreeTDS uses to avoid creating globals.
 	CS_CONNECTION	*db;		//!< Handle specifying a single connection to the database.
 	CS_COMMAND	*command;	//!< A prepared statement.
+	int		colcount;	//!< How many columns are in the current result set.
+	bool		nulls;		//!< Were there any NULL values in the last row.
 	char		**results;	//!< Result strings from statement execution.
+	CS_SMALLINT	*ind;		//!< Indicators of data length / NULL.
 	char		*error;		//!< The last error string created by one of the call backs.
 	bool		established;	//!< Set to false once the connection has been properly established.
 	CS_INT		rows_affected;	//!< Rows affected by last INSERT / UPDATE / DELETE.
@@ -408,6 +411,7 @@ static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm
 		return RLM_SQL_ERROR;
 	}
 	conn->command = NULL;
+	conn->nulls = false;
 
 	TALLOC_FREE(conn->results);
 
@@ -423,7 +427,7 @@ static sql_rcode_t sql_select_query(request_t *request, rlm_sql_freetds_conn_t *
 	CS_RETCODE	results_ret;
 	CS_INT		result_type;
 	CS_DATAFMT	descriptor;
-	int		colcount,i;
+	int		i;
 	char		**rowdata;
 
 	 if (!conn->db) {
@@ -470,20 +474,22 @@ static sql_rcode_t sql_select_query(request_t *request, rlm_sql_freetds_conn_t *
 			descriptor.count = 1;			/* Fetch one row of data */
 			descriptor.locale = NULL;		/* Don't do NLS stuff */
 
-			if (ct_res_info(conn->command, CS_NUMDATA, &colcount, CS_UNUSED, NULL) != CS_SUCCEED) {
+			if (ct_res_info(conn->command, CS_NUMDATA, &conn->colcount, CS_UNUSED, NULL) != CS_SUCCEED) {
 				ROPTIONAL(RERROR, ERROR, "Error retrieving column count");
 				return RLM_SQL_ERROR;
 			}
 
-			rowdata = talloc_zero_array(conn, char *, colcount + 1); /* Space for pointers */
+			rowdata = talloc_zero_array(conn, char *, conn->colcount + 1); /* Space for pointers */
+			conn->ind = talloc_zero_array(conn, CS_SMALLINT, conn->colcount);
 
-			for (i = 0; i < colcount; i++) {
+			for (i = 0; i < conn->colcount; i++) {
 				/* Space to hold the result data */
 				rowdata[i] = talloc_zero_array(rowdata, char, MAX_DATASTR_LEN + 1);
 
 				/* Associate the target buffer with the data */
-				if (ct_bind(conn->command, i + 1, &descriptor, rowdata[i], NULL, NULL) != CS_SUCCEED) {
+				if (ct_bind(conn->command, i + 1, &descriptor, rowdata[i], NULL, &conn->ind[i]) != CS_SUCCEED) {
 					talloc_free(rowdata);
+					talloc_free(conn->ind);
 
 					ROPTIONAL(RERROR, ERROR, "ct_bind() failed)");
 					return RLM_SQL_ERROR;
@@ -580,8 +586,10 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_freetds_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_freetds_conn_t);
-	CS_INT ret, count;
+	CS_INT			ret, count;
+	int			i;
 
+	if (conn->nulls) TALLOC_FREE(query_ctx->row);
 	query_ctx->row = NULL;
 
 	ret = ct_fetch(conn->command, CS_UNUSED, CS_UNUSED, CS_UNUSED, &count);
@@ -605,7 +613,29 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 		RETURN_MODULE_OK;
 
 	case CS_SUCCEED:
-		query_ctx->row = conn->results;
+		/*
+		 *	NULL values are indicated by -1 in the corresponding "indicator"
+		 *	However, the buffer still exists, so if we have any NULL
+		 *	returns, we need to copy the results with the NULL
+		 *	fields left at zero to match behaviour of other drivers.
+		 */
+		conn->nulls = false;
+		for (i = 0; i < conn->colcount; i++) {
+			if (conn->ind[i] < 0) {
+				conn->nulls = true;
+				break;
+			}
+		}
+
+		if (conn->nulls) {
+			query_ctx->row = talloc_zero_array(query_ctx, char *, conn->colcount + 1);
+			for (i = 0; i < conn->colcount; i++) {
+				if (conn->ind[i] < 0) continue;
+				query_ctx->row[i] = talloc_strdup(query_ctx->row, conn->results[i]);
+			}
+		} else {
+			query_ctx->row = conn->results;
+		}
 
 		query_ctx->rcode = RLM_SQL_OK;
 		RETURN_MODULE_OK;
