@@ -52,7 +52,7 @@ typedef struct xlat_thread_inst_s xlat_thread_inst_t;
 
 #include <freeradius-devel/server/request.h>
 
-typedef size_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
+typedef ssize_t (*xlat_escape_legacy_t)(request_t *request, char *out, size_t outlen, char const *in, void *arg);
 
 #include <freeradius-devel/server/cf_util.h>
 #include <freeradius-devel/server/signal.h>

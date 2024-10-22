@@ -236,7 +236,7 @@ extern conf_parser_t const fr_json_format_config[];
 /* jpath .c */
 typedef struct fr_jpath_node fr_jpath_node_t;
 
-size_t		fr_jpath_escape_func(UNUSED request_t *request, char *out, size_t outlen,
+ssize_t		fr_jpath_escape_func(UNUSED request_t *request, char *out, size_t outlen,
 				     char const *in, UNUSED void *arg);
 
 int		fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, fr_value_box_list_t *out,

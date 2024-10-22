@@ -655,7 +655,7 @@ static int sql_affected_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
-static size_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
+static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, char const *in, void *arg)
 {
 	size_t			inlen, ret;
 	connection_t		*c = talloc_get_type_abort(arg, connection_t);
