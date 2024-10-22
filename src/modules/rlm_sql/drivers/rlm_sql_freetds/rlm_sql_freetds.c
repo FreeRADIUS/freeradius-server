@@ -329,28 +329,6 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UN
 
 /*************************************************************************
  *
- *	Function: sql_num_fields
- *
- *	Purpose: database specific num_fields function. Returns number
- *	       of columns from query
- *
- *************************************************************************/
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
-{
-	rlm_sql_freetds_conn_t *conn = handle->conn;
-	CS_INT num = 0;
-
-	if (ct_res_info(conn->command, CS_NUMDATA, &num, CS_UNUSED, NULL) != CS_SUCCEED) {
-		ERROR("Error retrieving column count");
-
-		return RLM_SQL_ERROR;
-	}
-
-	return num;
-}
-
-/*************************************************************************
- *
  *	Function: sql_fields
  *
  *	Purpose:  Return name of regular result columns.
@@ -512,7 +490,10 @@ static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *prior
 			descriptor.count = 1;			/* Fetch one row of data */
 			descriptor.locale = NULL;		/* Don't do NLS stuff */
 
-			colcount = sql_num_fields(query_ctx->handle, &query_ctx->inst->config); /* Get number of elements in row result */
+			if (ct_res_info(conn->command, CS_NUMDATA, &colcount, CS_UNUSED, NULL) != CS_SUCCEED) {
+				ERROR("Error retrieving column count");
+				RETURN_MODULE_FAIL;
+			}
 
 			rowdata = talloc_zero_array(conn, char *, colcount + 1); /* Space for pointers */
 			rowdata[colcount] = NULL;
