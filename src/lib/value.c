@@ -1039,20 +1039,6 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 		memcpy(dst_ptr, src, dst_len);
 		break;
 
-	case PW_TYPE_ABINARY:
-		dst_len = sizeof(dst->filter);
-		dst_ptr = (uint8_t *) dst->filter;
-
-		/*
-		 *	Too little data is OK here.
-		 */
-		if (src_len < dst_len) {
-			memcpy(dst_ptr, src, src_len);
-			memset(dst_ptr + src_len, 0, dst_len - src_len);			
-			break;
-		}
-		goto copy;
-
 	case PW_TYPE_IFID:
 		dst_len = sizeof(dst->ifid);
 		dst_ptr = (uint8_t *) dst->ifid;
@@ -1141,14 +1127,26 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src_len, '\0');
 	}
 
+	if (dst_type == PW_TYPE_ABINARY) {
+		if (src_type != PW_TYPE_OCTETS) goto invalid_cast;
+
+		dst->filter = talloc_memdup(ctx, src->octets, src_len);
+		return src_len;
+	}
+
 	/*
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		dst_len = value_data_hton(dst, src_type, src, src_len);
-		if (dst_len < 0) return -1;
+		if (src_type != PW_TYPE_ABINARY) {
+			dst_len = value_data_hton(dst, src_type, src, src_len);
+			if (dst_len < 0) return -1;
 
-		dst->octets = talloc_memdup(ctx, dst, dst_len);
+			dst->octets = talloc_memdup(ctx, dst, dst_len);
+		} else {
+			dst->octets = talloc_memdup(ctx, src->filter, src_len);
+			dst_len = src_len;
+		}
 		talloc_set_type(dst->octets, uint8_t);
 		return dst_len;
 	}
