@@ -206,18 +206,12 @@ typedef struct ascend_filter_t {
 	uint8_t		fill;
 	union {
 		ascend_ip_filter_t   	 ip;
+//		ascend_ipv6_filter_t   	 ipv6;
 		ascend_ipx_filter_t   	 ipx;
 		ascend_generic_filter_t	generic;
 		uint8_t			data[28]; /* ensure it's 32 bytes */
 	} u;
 } ascend_filter_t;
-
-/*
- *	This is a wild C hack...
- */
-typedef struct _cpp_hack {
-	char data[(sizeof(ascend_filter_t) == 32) ? 1 : -1 ];
-} _cpp_hack;
 
 /*
  * FilterPortType:
@@ -950,14 +944,16 @@ static int ascend_parse_generic(int argc, char **argv,
  * @param len of value.
  * @return -1 for error or 0.
  */
-int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
+int ascend_parse_filter(TALLOC_CTX *ctx, value_data_t *out, char const *value, size_t len)
 {
 	int		token, type;
 	int		rcode;
 	int		argc;
 	char		*argv[32];
-	ascend_filter_t filter;
+	uint8_t		buffer[256];
+	ascend_filter_t *filter;
 	char		*p;
+	size_t		filter_len = 32;
 
 	rcode = -1;
 
@@ -986,7 +982,8 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	 *	Decide which filter type it is: ip, ipx, or generic
 	 */
 	type = fr_str2int(filterType, argv[0], -1);
-	memset(&filter, 0, sizeof(filter));
+	memset(buffer, 0, sizeof(buffer));
+	filter = (ascend_filter_t *) buffer;
 
 	/*
 	 *	Validate the filter type.
@@ -995,7 +992,7 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	case RAD_FILTER_GENERIC:
 	case RAD_FILTER_IP:
 	case RAD_FILTER_IPX:
-		filter.type = type;
+		filter->type = type;
 		break;
 
 	default:
@@ -1010,11 +1007,11 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	token = fr_str2int(filterKeywords, argv[1], -1);
 	switch (token) {
 	case FILTER_IN:
-		filter.direction = 1;
+		filter->direction = 1;
 		break;
 
 	case FILTER_OUT:
-		filter.direction = 0;
+		filter->direction = 0;
 		break;
 
 	default:
@@ -1029,11 +1026,11 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	token = fr_str2int(filterKeywords, argv[2], -1);
 	switch (token) {
 	case FILTER_FORWARD:
-		filter.forward = 1;
+		filter->forward = 1;
 		break;
 
 	case FILTER_DROP:
-		filter.forward = 0;
+		filter->forward = 0;
 		break;
 
 	default:
@@ -1045,25 +1042,29 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 
 	switch (type) {
 	case RAD_FILTER_GENERIC:
-		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter.u.generic);
+		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter->u.generic);
 		break;
 
 	case RAD_FILTER_IP:
-		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.u.ip);
+		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter->u.ip);
 		break;
 
 	case RAD_FILTER_IPX:
-		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter.u.ipx);
+		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter->u.ipx);
 		break;
 	}
+
+	talloc_free(p);
+
+	if (rcode < 0) return rcode;
 
 	/*
 	 *	Touch the VP only if everything was OK.
 	 */
-	if (rcode == 0) memcpy(out->filter, &filter, sizeof(filter));
-	talloc_free(p);
-
-	return rcode;
+	out->filter = talloc_memdup(ctx, buffer, filter_len);
+	if (!out->filter) return -1;
+	talloc_set_type(out->octets, uint8_t);
+	return filter_len;
 }
 
 /*
@@ -1088,7 +1089,7 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 	/*
 	 *  Just for paranoia: wrong size filters get printed as octets
 	 */
-	if (len != sizeof(*filter)) {
+	if ((len < 32) || (data[0] > 3) || ((data[0] < 3) && (len != 32))) {
 		strcpy(p, "0x");
 		p += 2;
 		outlen -= 2;

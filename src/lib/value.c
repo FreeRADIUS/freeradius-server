@@ -586,9 +586,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		return -1;
 
 	/* raw octets: 0x01020304... */
-#ifndef WITH_ASCEND_BINARY
 	do_octets:
-#endif
 	case PW_TYPE_OCTETS:
 	{
 		uint8_t	*p;
@@ -628,25 +626,15 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
 		if ((len > 1) && (strncasecmp(src, "0x", 2) == 0)) {
-			ssize_t bin;
+			goto do_octets;
 
-			if (len > ((sizeof(dst->filter) + 1) * 2)) {
-				fr_strerror_printf("Hex data is too large for ascend filter");
-				return -1;
-			}
-
-			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, src + 2, len - 2);
-			if (bin < ret) {
-				memset(((uint8_t *) &dst->filter) + bin, 0, ret - bin);
-			}
 		} else {
-			if (ascend_parse_filter(dst, src, len) < 0 ) {
+			ret = ascend_parse_filter(ctx, dst, src, len);
+			if (ret < 0) {
 				/* Allow ascend_parse_filter's strerror to bubble up */
 				return -1;
 			}
 		}
-
-		ret = sizeof(dst->filter);
 		goto finish;
 #else
 		/*
@@ -1647,9 +1635,9 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		p = talloc_array(ctx, char, 128);
+		p = talloc_array(ctx, char, 256);
 		if (!p) return NULL;
-		print_abinary(p, 128, (uint8_t const *) &data->filter, inlen, 0);
+		print_abinary(p, 256, data->filter, inlen, 0);
 		break;
 #else
 		  /* FALL THROUGH */
@@ -1860,7 +1848,7 @@ print_int:
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		print_abinary(buf, sizeof(buf), (uint8_t const *) data->filter, inlen, quote);
+		print_abinary(buf, sizeof(buf), data->filter, inlen, quote);
 		a = buf;
 		len = strlen(buf);
 		break;
