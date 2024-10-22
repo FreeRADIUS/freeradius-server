@@ -659,8 +659,15 @@ static ssize_t sql_escape_func(request_t *request, char *out, size_t outlen, cha
 {
 	size_t			inlen, ret;
 	connection_t		*c = talloc_get_type_abort(arg, connection_t);
-	rlm_sql_postgres_conn_t	*conn = talloc_get_type_abort(c->h, rlm_sql_postgres_conn_t);
+	rlm_sql_postgres_conn_t	*conn;
 	int			err;
+
+	if ((c->state == CONNECTION_STATE_HALTED) || (c->state == CONNECTION_STATE_CLOSED)) {
+		ROPTIONAL(RERROR, ERROR, "Connection not available for escaping");
+		return -1;
+	}
+
+	conn = talloc_get_type_abort(c->h, rlm_sql_postgres_conn_t);
 
 	/* Check for potential buffer overflow */
 	inlen = strlen(in);
