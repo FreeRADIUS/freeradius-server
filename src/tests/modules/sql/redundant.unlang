@@ -1,0 +1,15 @@
+#
+#  Clear out old data
+#
+%sql_redundant("${delete_from_radcheck} 'xlat_redundant'")
+%sql_redundant("${delete_from_radreply} 'xlat_redundant'")
+
+if (%sql_redundant("${insert_into_radcheck} ('%{User-Name}', 'Password.Cleartext', ':=', 'password')") != "1") {
+	test_fail
+}
+
+if (%sql_redundant("${insert_into_radreply} ('%{User-Name}', 'Reply-Message', ':=', '\"Hello \%{User-Name}\"')") != "1") {
+	test_fail
+}
+
+sql_redundant
