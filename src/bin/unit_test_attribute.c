@@ -982,9 +982,8 @@ static fr_dict_t *dictionary_current(command_file_ctx_t *cc)
  * Callers call fr_dict_global_ctx_set to set the context
  * the dictionaries will be loaded into.
  */
-static int dictionary_load_common(command_result_t *result, command_file_ctx_t *cc, char *in, char const *default_subdir)
+static int dictionary_load_common(command_result_t *result, command_file_ctx_t *cc, char const *in, char const *default_subdir)
 {
-	char		*name, *tmp = NULL;
 	char const	*dir;
 	char		*q;
 	int		ret;
@@ -3020,7 +3019,7 @@ static fr_table_ptr_sorted_t	commands[] = {
 					.usage = "calc <type1> <value1> <operator> <type2> <value2> -> <output-type>",
 					.description = "Perform calculations on value boxes",
 				}},
-	{ L("calc_nary "), &(command_entry_t){
+	{ L("calc_nary "), 	&(command_entry_t){
 					.func = command_calc_nary,
 					.usage = "calc_nary op <type1> <value1> <type2> <value2> ... -> <output-type>",
 					.description = "Perform calculations on value boxes",
@@ -3113,7 +3112,8 @@ static fr_table_ptr_sorted_t	commands[] = {
 	{ L("load-dictionary "),&(command_entry_t){
 					.func = command_load_dictionary,
 					.usage = "load-dictionary <name> [<dir>]",
-					.description = "Load an additional dictionary from the same directory as the input file.  Optionally you can specify a full path via <dir>",
+					.description = "Load an additional dictionary from the same directory as the input file.  "
+						       "Optionally you can specify a full path via <dir>.  ",
 				}},
 	{ L("match"),		&(command_entry_t){
 					.func = command_match,
