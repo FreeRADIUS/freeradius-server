@@ -788,7 +788,7 @@ static int dict_process_ref(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *pare
 
 		if (dict_fixup_clone(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
 				     fr_dict_attr_unconst(parent), fr_dict_attr_unconst(da),
-				     ref, talloc_array_length(ref) - 1) < 0) {
+				     ref) < 0) {
 		fail:
 			talloc_free(ref);
 			return -1;
@@ -1471,7 +1471,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		ret = dict_fixup_clone(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
 				       fr_dict_attr_unconst(CURRENT_FRAME(ctx)->da),
 				       dict_attr_child_by_num(CURRENT_FRAME(ctx)->da, CURRENT_FRAME(ctx)->member_num),
-				       ref, talloc_array_length(ref) - 1);
+				       ref);
 		talloc_free(ref);
 
 		if (ret < 0) return -1;

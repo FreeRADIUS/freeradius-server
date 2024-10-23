@@ -81,7 +81,6 @@ typedef struct {
 	fr_dict_attr_t		*da;			//!< FR_TYPE_VSA to fix
 } dict_fixup_vsa_t;
 
-
 /** Dictionary attribute namespaces need their hash tables finalised
  *
  */
@@ -384,15 +383,14 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
  * @param[in] line		this fixup relates to.
  * @param[in] parent		for the cloned attribute.
  * @param[in] da		The group dictionary attribute.
- * @param[in] ref		OID string representing what the group references.
- * @param[in] ref_len		Length of the reference string.
+ * @param[in] ref		OID string representing what the group references..
  * @return
  *	- 0 on success.
  *	- -1 on out of memory.
  */
 int dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 		     fr_dict_attr_t *parent, fr_dict_attr_t *da,
-		     char const *ref, size_t ref_len)
+		     char const *ref)
 {
 	dict_fixup_clone_t *fixup;
 
@@ -410,7 +408,7 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, char const *filename, int line,
 	*fixup = (dict_fixup_clone_t) {
 		.parent = parent,
 		.da = da,
-		.ref = talloc_bstrndup(fixup, ref, ref_len)
+		.ref = talloc_typed_strdup(fixup, ref)
 	};
 
 	return dict_fixup_common(filename, line, &fctx->clone, &fixup->common);
