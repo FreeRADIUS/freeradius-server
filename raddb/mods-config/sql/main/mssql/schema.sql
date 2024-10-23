@@ -130,13 +130,18 @@ GO
 --
 -- Table structure for table 'radcheck'
 --
+-- Note: [op] is varchar to allow for "=" as a value -
+-- depending on which driver is used to access the database, if
+-- the field is defined as char, then the trailing space may be
+-- returned, which fails to parse correctly.
+--
 
 CREATE TABLE [radcheck] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
 	[UserName] [varchar] (64) NOT NULL ,
 	[Attribute] [varchar] (32) NOT NULL ,
 	[Value] [varchar] (253) NOT NULL ,
-	[op] [char] (2) NULL
+	[op] [varchar] (2) NULL
 ) ON [PRIMARY]
 GO
 
@@ -164,7 +169,7 @@ CREATE TABLE [radgroupcheck] (
 	[GroupName] [varchar] (64) NOT NULL ,
 	[Attribute] [varchar] (32) NOT NULL ,
 	[Value] [varchar] (253) NOT NULL ,
-	[op] [char] (2) NULL
+	[op] [varchar] (2) NULL
 ) ON [PRIMARY]
 GO
 
@@ -192,7 +197,7 @@ CREATE TABLE [radgroupreply] (
 	[GroupName] [varchar] (64) NOT NULL ,
 	[Attribute] [varchar] (32) NOT NULL ,
 	[Value] [varchar] (253) NOT NULL ,
-	[op] [char] (2) NULL ,
+	[op] [varchar] (2) NULL ,
 	[prio] [int] NOT NULL
 ) ON [PRIMARY]
 GO
@@ -222,7 +227,7 @@ CREATE TABLE [radreply] (
 	[UserName] [varchar] (64) NOT NULL ,
 	[Attribute] [varchar] (32) NOT NULL ,
 	[Value] [varchar] (253) NOT NULL ,
-	[op] [char] (2) NULL
+	[op] [varchar] (2) NULL
 ) ON [PRIMARY]
 GO
 
