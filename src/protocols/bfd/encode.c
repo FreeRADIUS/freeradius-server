@@ -194,7 +194,7 @@ static ssize_t fr_bfd_encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, 
 	if (!vp) return slen;
 
 	fr_dbuff_init(&dbuff, data + slen, data_len - slen);
-	alen =  fr_internal_encode_list(&dbuff, &vp->vp_group, NULL);
+	alen = fr_internal_encode_list(&dbuff, &vp->vp_group, NULL);
 	if (alen <= 0) return slen;
 
 	return slen + alen;
