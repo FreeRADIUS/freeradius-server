@@ -115,8 +115,7 @@ static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t con
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
 	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no 'ref' extension", da->name,
-	   			   fr_type_to_str(da->type));
+		fr_strerror_printf("Contains no 'ref' extension");
 		return -1;
 	}
 	ext->ref = ref;
@@ -130,8 +129,7 @@ static inline int dict_attr_children_set(fr_dict_attr_t const *da, fr_dict_attr_
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
 	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no 'children' extension", da->name,
-	   			   fr_type_to_str(da->type));
+		fr_strerror_printf("Attribute contains no 'children' extension");
 		return -1;
 	}
 	ext->children = children;
@@ -145,8 +143,7 @@ static inline fr_dict_attr_t const **dict_attr_children(fr_dict_attr_t const *da
 
 	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_CHILDREN);
 	if (unlikely(!ext)) {
-		fr_strerror_printf("%s (%s) contains no 'children' extension", da->name,
-	   			   fr_type_to_str(da->type));
+		fr_strerror_printf("Attribute contains no 'children' extension");
 		return NULL;
 	}
 	return ext->children;
