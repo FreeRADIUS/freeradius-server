@@ -67,8 +67,8 @@ ATTRIBUTE	Acct-IPv6-Input-Octets			144	integer
 ATTRIBUTE	Acct-IPv6-Output-Octets			145	integer
 ATTRIBUTE	Acct-IPv6-Input-Packets			146	integer
 ATTRIBUTE	Acct-IPv6-Output-Packets		147	integer
-ATTRIBUTE	Acct-IPv6-Input-Gigawords		146	integer
-ATTRIBUTE	Acct-IPv6-Output-Gigawords		147	integer
+ATTRIBUTE	Acct-IPv6-Input-Gigawords		148	integer
+ATTRIBUTE	Acct-IPv6-Output-Gigawords		149	integer
 ATTRIBUTE	User-Role				155	string
 ATTRIBUTE	Input-Interval-Octets			201	integer
 ATTRIBUTE	Output-Interval-Octets			202	integer
