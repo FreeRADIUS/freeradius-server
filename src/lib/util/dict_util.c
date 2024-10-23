@@ -2038,7 +2038,7 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 
 		child = dict_attr_child_by_num(parent, num);
 		if (!child) {
-			fr_strerror_printf("Failed resolving child %u in context %s",
+			fr_strerror_printf("Failed resolving child %u in namespace '%s'",
 					   num, parent->name);
 			if (err) *err = FR_DICT_ATTR_NOTFOUND;
 			FR_SBUFF_ERROR_RETURN(&our_in);
@@ -2053,11 +2053,8 @@ fr_slen_t fr_dict_oid_component(fr_dict_attr_err_t *err,
 	{
 		fr_dict_attr_err_t	our_err;
 	oid_str:
+		/* Sets its own errors, don't override */
 		if (fr_dict_attr_by_name_substr(&our_err, &child, parent, &our_in, tt) < 0) {
-			fr_strerror_printf("Failed resolving \"%.*s\" in context %s",
-					   (int)fr_sbuff_remaining(&our_in),
-					   fr_sbuff_current(&our_in),
-					   parent->name);
 			if (err) *err = our_err;
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
