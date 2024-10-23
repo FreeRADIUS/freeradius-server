@@ -2687,16 +2687,19 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	/*
 	 *	Setup the cache attribute
 	 */
+
 	if (inst->group.cache_attribute) {
-		fr_dict_attr_flags_t	flags = { .name_only = 1 };
-
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
-				     inst->group.cache_attribute, 0, FR_TYPE_STRING, &flags) < 0) {
-			PERROR("Error creating cache attribute");
-			return -1;
-
-		}
 		boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
+		if (!boot->cache_da) {
+			fr_dict_attr_flags_t	flags = { .name_only = 1 };
+
+			if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+					inst->group.cache_attribute, 0, FR_TYPE_STRING, &flags) < 0) {
+				PERROR("Error creating cache attribute");
+				return -1;
+			}
+			boot->cache_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), inst->group.cache_attribute);
+		}
 	} else {
 		boot->cache_da = boot->group_da;	/* Default to the group_da */
 	}
