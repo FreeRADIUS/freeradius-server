@@ -151,7 +151,6 @@ enum {
 #define da_is_length_field(_da) ((_da)->flags.extra && (((_da)->flags.subtype == FLAG_LENGTH_UINT8) || ((_da)->flags.subtype == FLAG_LENGTH_UINT16)))
 #define da_length_offset(_da) ((_da)->flags.type_size)
 
-
 /** Extension identifier
  *
  * @note New extension structures should also be added to the to the appropriate table in dict_ext.c
@@ -333,44 +332,43 @@ typedef ssize_t(*fr_dict_attr_encode_func_t)(fr_dbuff_t *dbuff, fr_pair_list_t c
 typedef int (*fr_dict_protocol_init_t)(void);
 typedef void (*fr_dict_protocol_free_t)(void);
 
-typedef struct fr_dict_protocol_flag_s fr_dict_protocol_flag_t;
+typedef struct fr_dict_flag_parser_rule_s fr_dict_flag_parser_rule_t;
 
 /** Custom protocol-specific flag parsing function
  *
  * @note This function should be used to implement table based flag parsing.
  *
- * @param[in,out] da	to manipulate directly.  May be used if the flag
- *			alters a standard field in the fr_dict_attr_t.
- * @param[out] out	pointer to a field in the protocol_flags structure that's allocated
- *			as part of the fr_dict_attr_t.
- * @param[in] rules	How to parse the flag.
+ * @param[in] da_p	we're currently populating
+ * @param[in] value	flag value to parse.
+ * @param[in] rule	How to parse the flag.
  */
-typedef int (*fr_dict_protocol_flag_parse_t)(fr_dict_attr_t *da, void *out, fr_dict_protocol_flag_t const *rules);
+typedef int (*fr_dict_flag_parse_func_t)(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule);
+
+struct fr_dict_flag_parser_rule_s {
+	fr_dict_flag_parse_func_t	func;				//!< Custom parsing function to convert a flag value string to a C type value.
+	void				*uctx;				//!< Use context to pass to the custom parsing function.
+};
 
 /** Protocol specific custom flag definitnion
  *
  */
-struct fr_dict_protocol_flag_s {
-	char const			*name;				//!< Name of the flag
-	fr_type_t			type;				//!< Basic output type.  Must map to a C type.
-	size_t				offset;				//!< Where in the protocol specific output structure to write out the result.
-	fr_dict_protocol_flag_parse_t	func;				//!< Custom parsing function to convert a flag value string to a C type value.
-	void				*uctx;				//!< Use context to pass to the custom parsing function.
-};
+typedef struct  {
+	fr_table_elem_name_t		name;				//!< Name of the flag
+	fr_dict_flag_parser_rule_t	value;				//!< Function and context to parse the flag.
+} fr_dict_flag_parser_t;
 
-/** Terminating flag for fr_dict_protocol_flag_t
+/** Terminating flag for fr_dict_flag_parser_t
  *
  */
 #define FR_DICT_PROTOCOL_FLAG_TERMINATOR	{ NULL, FR_TYPE_NULL, 0, false }
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
  *
- * @param[in] _name		of the CONF_PAIR to search for.
+ * @param[in] _name		of the flag search for.
  * @param[in] _struct		containing the field to write the result to.
  * @param[in] _field		to write the flag to
  */
-#  define FR_DICT_PROTOCOL_FLAG(_name, _struct, _field)  \
-	.name = _name, \
+#  define FR_DICT_PROTOCOL_FLAG(_struct, _field)  \
 	.type = FR_CTYPE_TO_TYPE((((_struct *)NULL)->_field)), \
 	.offset = offsetof(_struct, _field)
 
@@ -390,8 +388,8 @@ typedef struct {
 		 * and can either be one of a set of fixed values or a generic type
 		 * like "string".
 		 */
-		fr_dict_protocol_flag_t const	*flags;			//!< Flags for this protocol, an array of
-									///< fr_dict_protocol_flag_t terminated
+		fr_dict_flag_parser_t const	*flags;			//!< Flags for this protocol, an array of
+									///< fr_dict_flag_parser_t terminated
 									///< by FR_DICT_PROTOCOL_FLAG_TERMINATOR.
 		size_t				flags_len;		//!< ength of protocol_flags structure.
 
