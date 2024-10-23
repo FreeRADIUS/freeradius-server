@@ -352,6 +352,7 @@ typedef int (*fr_dict_flag_parse_func_t)(fr_dict_attr_t **da_p, UNUSED char cons
 struct fr_dict_flag_parser_rule_s {
 	fr_dict_flag_parse_func_t	func;				//!< Custom parsing function to convert a flag value string to a C type value.
 	void				*uctx;				//!< Use context to pass to the custom parsing function.
+	bool				needs_value;			//!< This parsing flag must have a value.  Else we error.
 };
 
 /** Protocol specific custom flag definitnion

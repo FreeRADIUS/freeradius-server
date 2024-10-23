@@ -374,7 +374,7 @@ static int dict_flag_key(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED
 	return 0;
 }
 
-static int dict_flag_length(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
+static int dict_flag_length(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
 {
 	fr_dict_attr_t *da = *da_p;
 	if (!value) {
@@ -493,7 +493,7 @@ static int dict_flag_secret(fr_dict_attr_t **da_p, UNUSED char const *value, UNU
 	return 0;
 }
 
-static int dict_flag_subtype(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
+static int dict_flag_subtype(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
 {
 	fr_dict_attr_t *da = *da_p;
 	fr_type_t subtype;
@@ -566,17 +566,17 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict
 {
 	static fr_dict_flag_parser_t dict_common_flags[] = {
 		{ L("array"),		{ .func = dict_flag_array } },
-		{ L("clone"),		{ .func = dict_flag_clone } },
-		{ L("counter"), 	{ .func = dict_flag_counter  } },
-		{ L("enum"),		{ .func = dict_flag_enum } },
+		{ L("clone"),		{ .func = dict_flag_clone, .needs_value = true } },
+		{ L("counter"), 	{ .func = dict_flag_counter } },
+		{ L("enum"),		{ .func = dict_flag_enum, .needs_value = true } },
 		{ L("internal"),	{ .func = dict_flag_internal } },
 		{ L("key"), 		{ .func = dict_flag_key } },
-		{ L("length"), 		{ .func = dict_flag_length } },
-		{ L("offset"), 		{ .func = dict_flag_offset } },
-		{ L("precision"),	{ .func = dict_flag_precision } },
-		{ L("ref"),		{ .func = dict_flag_ref } },
+		{ L("length"), 		{ .func = dict_flag_length, .needs_value = true } },
+		{ L("offset"), 		{ .func = dict_flag_offset, .needs_value = true } },
+		{ L("precision"),	{ .func = dict_flag_precision, .needs_value = true } },
+		{ L("ref"),		{ .func = dict_flag_ref, .needs_value = true } },
 		{ L("secret"), 		{ .func = dict_flag_secret } },
-		{ L("subtype"),		{ .func = dict_flag_subtype } },
+		{ L("subtype"),		{ .func = dict_flag_subtype, .needs_value = true } }
 	};
 	static size_t dict_common_flags_len = NUM_ELEMENTS(dict_common_flags);
 
@@ -651,6 +651,11 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict
 
 		if (!fr_dict_attr_flag_to_parser(&parser, dict_common_flags, dict_common_flags_len, key, NULL)) {
 			fr_strerror_printf("Unknown option '%s'", key);
+			return -1;
+		}
+
+		if (parser->needs_value && !value) {
+			fr_strerror_printf("Flag '%s' requires a value", key);
 			return -1;
 		}
 
