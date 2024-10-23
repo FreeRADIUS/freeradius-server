@@ -54,7 +54,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	if (da) {
 		if (da->attr == unknown->attr) return da;
 
-		fr_strerror_printf("Unknown attribute '%s' conflicts with existing attribute in context %s",
+		fr_strerror_printf("Unknown attribute '%s' conflicts with existing attribute in namespace '%s'",
 				   da->name, unknown->parent->name);
 		return da;
 	}
