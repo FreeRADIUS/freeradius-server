@@ -306,11 +306,6 @@ FLAG_FUNC(array)
 
 static int dict_flag_clone(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
 {
-	if (!value) {
-		fr_strerror_const("Missing attribute name for 'clone=...'");
-		return -1;
-	}
-
 	if (((*da_p)->type != FR_TYPE_TLV) && ((*da_p)->type != FR_TYPE_STRUCT)) {
 		fr_strerror_const("'clone=...' references can only be used for 'tlv' and 'struct' types");
 		return -1;
@@ -337,11 +332,6 @@ static int dict_flag_enum(fr_dict_attr_t **da_p, char const *value, UNUSED fr_di
 	 *	Plus, ENUMs are really just normal attributes
 	 *	in disguise.
 	 */
-	if (!value) {
-		fr_strerror_const("Missing ENUM name for 'enum=...'");
-		return -1;
-	}
-
 	if (!fr_type_is_leaf((*da_p)->type)) {
 		fr_strerror_const("'enum=...' references cannot be used for structural types");
 		return -1;
@@ -377,10 +367,6 @@ static int dict_flag_key(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED
 static int dict_flag_length(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
 {
 	fr_dict_attr_t *da = *da_p;
-	if (!value) {
-		fr_strerror_const("The 'length' flag requires a value");
-		return -1;
-	}
 
 	if (strcmp(value, "uint8") == 0) {
 		da->flags.extra = 1;
@@ -411,11 +397,6 @@ static int dict_flag_offset(fr_dict_attr_t **da_p, char const *value, UNUSED fr_
 
 	if (!da->flags.extra || (!(da->flags.subtype == FLAG_LENGTH_UINT8) || (da->flags.subtype == FLAG_LENGTH_UINT16))) {
 		fr_strerror_const("The 'offset' flag can only be used in combination with 'length=uint8' or 'length=uint16'");
-		return -1;
-	}
-
-	if (!value) {
-		fr_strerror_const("The 'offset' flag requires a value");
 		return -1;
 	}
 
@@ -457,11 +438,6 @@ static int dict_flag_precision(fr_dict_attr_t **da_p, char const *value, UNUSED 
 static int dict_flag_ref(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rule)
 {
 	fr_dict_attr_t *da = *da_p;
-
-	if (!value) {
-		fr_strerror_const("Missing attribute name for 'ref=...'");
-		return -1;
-	}
 
 	if (da->flags.extra) {
 		fr_strerror_const("Cannot use 'ref' with other flags");
