@@ -198,6 +198,8 @@ int			dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_att
 
 int			dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src);
 
+int 			dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref);
+
 int			dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child);
 
 int			dict_protocol_add(fr_dict_t *dict);

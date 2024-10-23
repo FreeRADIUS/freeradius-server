@@ -43,6 +43,19 @@ typedef struct {
 typedef struct {
 	dict_fixup_common_t	common;			//!< Common fields.
 
+	char			*alias;			//!< we need to create.
+	fr_dict_attr_t		*alias_parent;		//!< Where to add the alias.
+
+	char			*ref;			//!< what the alias references.
+	fr_dict_attr_t		*ref_parent;		//!< Parent attribute to resolve the 'attribute' string in.
+} dict_fixup_alias_t;
+
+/** Add an enumeration value to an attribute that wasn't defined at the time the value was parsed
+ *
+ */
+typedef struct {
+	dict_fixup_common_t	common;			//!< Common fields.
+
 	char			*attribute;		//!< we couldn't find (and will need to resolve later).
 	char			*name;			//!< Raw enum name.
 	char			*value;			//!< Raw enum value.  We can't do anything with this until
@@ -655,6 +668,59 @@ static inline CC_HINT(always_inline) int dict_fixup_vsa_apply(UNUSED dict_fixup_
 }
 
 
+/** Resolve a group reference
+ *
+ * This is required as the reference may point to another dictionary which
+ * hasn't been loaded yet.
+ *
+ * @param[in] fctx		Holds current dictionary parsing information.
+ * @param[in] filename		this fixup relates to.
+ * @param[in] line		this fixup relates to.
+ * @param[in] alias_parent	where to add the alias.
+ * @param[in] alias		alias to add.
+ * @param[in] ref_parent	attribute that should contain the reference.
+ * @param[in] ref		OID string representing what the group references.
+ * @return
+ *	- 0 on success.
+ *	- -1 on out of memory.
+ */
+int dict_fixup_alias(dict_fixup_ctx_t *fctx, char const *filename, int line,
+		     fr_dict_attr_t *alias_parent, char const *alias,
+		     fr_dict_attr_t *ref_parent, char const *ref)
+{
+	dict_fixup_alias_t *fixup;
+
+	fixup = talloc(fctx->pool, dict_fixup_alias_t);
+	if (!fixup) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+	*fixup = (dict_fixup_alias_t) {
+		.alias = talloc_typed_strdup(fixup, alias),
+		.alias_parent = alias_parent,
+		.ref = talloc_typed_strdup(fixup, ref),
+		.ref_parent = ref_parent
+	};
+
+	return dict_fixup_common(filename, line, &fctx->alias, &fixup->common);
+}
+
+static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_alias_t *fixup)
+{
+	fr_dict_attr_t const *da;
+
+	/*
+	 *	The <ref> can be a name.
+	 */
+	da = fr_dict_attr_by_oid(NULL, fixup->ref_parent, fixup->ref);
+	if (!da) {
+		fr_strerror_printf("Attribute '%s' aliased by '%s' doesn't exist in namespace '%s'",
+				   fixup->ref, fixup->alias, fixup->ref_parent->name);
+		return -1;
+	}
+
+	return dict_attr_alias_add(fixup->alias_parent, fixup->alias, da);
+}
 
 /** Initialise a fixup ctx
  *
@@ -672,6 +738,7 @@ int dict_fixup_init(TALLOC_CTX *ctx, dict_fixup_ctx_t *fctx)
 	fr_dlist_talloc_init(&fctx->group, dict_fixup_group_t, common.entry);
 	fr_dlist_talloc_init(&fctx->clone, dict_fixup_clone_t, common.entry);
 	fr_dlist_talloc_init(&fctx->vsa, dict_fixup_vsa_t, common.entry);
+	fr_dlist_talloc_init(&fctx->alias, dict_fixup_alias_t, common.entry);
 
 	fctx->pool = talloc_pool(ctx, DICT_FIXUP_POOL_SIZE);
 	if (!fctx->pool) return -1;
@@ -698,16 +765,19 @@ do { \
 	/*
 	 *	Apply all the fctx in order
 	 *
+
 	 *	- Enumerations first as they have no dependencies
 	 *	- Group references next, as group attributes may be cloned.
 	 *	- Clones last as all other references and additions should
 	 *	  be applied before cloning.
-	 *	- Hash table fctx last.
+	 *	- VSAs
+	 *	- Aliases last as all attributes need to be defined.
 	 */
 	APPLY_FIXUP(fctx, enumv, dict_fixup_enumv_apply, dict_fixup_enumv_t);
 	APPLY_FIXUP(fctx, group, dict_fixup_group_apply, dict_fixup_group_t);
 	APPLY_FIXUP(fctx, clone, dict_fixup_clone_apply, dict_fixup_clone_t);
 	APPLY_FIXUP(fctx, vsa,   dict_fixup_vsa_apply,   dict_fixup_vsa_t);
+	APPLY_FIXUP(fctx, alias, dict_fixup_alias_apply, dict_fixup_alias_t);
 
 	TALLOC_FREE(fctx->pool);
 

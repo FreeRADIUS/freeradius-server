@@ -958,6 +958,61 @@ int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 	return copied;
 }
 
+/** Add an alias to an existing attribute
+ *
+ */
+int dict_attr_alias_add(fr_dict_attr_t const *parent, char const *alias, fr_dict_attr_t const *ref)
+{
+	fr_dict_attr_t const *da;
+	fr_dict_attr_t *self;
+	fr_hash_table_t *namespace;
+
+	da = dict_attr_by_name(NULL, parent, alias);
+	if (da) {
+		fr_strerror_printf("ALIAS '%s' conflicts with another attribute in namespace %s",
+				   alias, parent->name);
+		return -1;
+	}
+
+	/*
+	 *	Note that we do NOT call fr_dict_attr_add() here.
+	 *
+	 *	When that function adds two equivalent attributes, the
+	 *	second one is prioritized for printing.  For ALIASes,
+	 *	we want the pre-existing one to be prioritized.
+	 *
+	 *	i.e. you can lookup the ALIAS by "name", but you
+	 *	actually get returned "ref".
+	 */
+	{
+		fr_dict_attr_flags_t flags = ref->flags;
+
+		flags.is_alias = 1;	/* These get followed automatically by public functions */
+
+		self = dict_attr_alloc(parent->dict->pool, parent, alias, ref->attr, ref->type, (&(dict_attr_args_t){ .flags = &flags, .ref = ref }));
+		if (unlikely(!self)) return -1;
+	}
+
+	self->dict = parent->dict;
+
+	fr_assert(fr_dict_attr_ref(self) == ref);
+
+	namespace = dict_attr_namespace(parent);
+	if (!namespace) {
+		fr_strerror_printf("Attribute '%s' does not contain a namespace", parent->name);
+	error:
+		talloc_free(self);
+		return -1;
+	}
+
+	if (!fr_hash_table_insert(namespace, self)) {
+		fr_strerror_const("Internal error storing attribute");
+		goto error;
+	}
+
+	return 0;
+}
+
 /** Add a protocol to the global protocol table
  *
  * Inserts a protocol into the global protocol table.  Uses the root attributes
