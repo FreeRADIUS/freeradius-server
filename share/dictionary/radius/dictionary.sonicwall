@@ -13,8 +13,6 @@ VENDOR		SonicWall			8741
 #  Backwards compatibility.
 BEGIN-VENDOR	SonicWall
 
-ATTRIBUTE	SS3-Firewall-User-Privilege		1	integer
-
 #  New names.
 ATTRIBUTE	User-Privilege				1	integer
 VALUE	User-Privilege			Remote-Access		1 # deprecated
@@ -26,6 +24,9 @@ VALUE	User-Privilege			L2TP-Client-Access	6 # standard
 VALUE	User-Privilege			Wireless-Guest		7 # standard
 VALUE	User-Privilege			Wireless-Add-ACL	8
 VALUE	User-Privilege			Internet-Access		9 # standard
+
+
+ALIAS	SS3-Firewall-User-Privilege		.User-Privilege
 
 # Those values indicated as "standard" are applicable only on a SonicWall
 # firewall running standard firmware and not on one running enhanced firmware.

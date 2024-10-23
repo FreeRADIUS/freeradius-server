@@ -500,17 +500,17 @@ ATTRIBUTE	TLS-Session-Cipher-Suite		1948	string
 #
 #  Attributes for casting
 #
-ATTRIBUTE	Cast-Time-Res-Sec			1950	time_delta	seconds
-ATTRIBUTE	Cast-Time-Res-Min			1951	time_delta	minutes
-ATTRIBUTE	Cast-Time-Res-Hour			1952	time_delta	hours
-ATTRIBUTE	Cast-Time-Res-Day			1953	time_delta	days
-ATTRIBUTE	Cast-Time-Res-Week			1954	time_delta	weeks
-ATTRIBUTE	Cast-Time-Res-Month			1955	time_delta	months
-ATTRIBUTE	Cast-Time-Res-Year			1956	time_delta	years
-ATTRIBUTE	Cast-Time-Res-Centi-Sec			1957	time_delta	centiseconds
-ATTRIBUTE	Cast-Time-Res-Milli-Sec			1958	time_delta	milliseconds
-ATTRIBUTE	Cast-Time-Res-Micro-Sec			1959	time_delta	microseconds
-ATTRIBUTE	Cast-Time-Res-Nano-Sec			1960	time_delta	nanoseconds
+ATTRIBUTE	Cast-Time-Res-Sec			1950	time_delta	precision=seconds
+ATTRIBUTE	Cast-Time-Res-Min			1951	time_delta	precision=minutes
+ATTRIBUTE	Cast-Time-Res-Hour			1952	time_delta	precision=hours
+ATTRIBUTE	Cast-Time-Res-Day			1953	time_delta	precision=days
+ATTRIBUTE	Cast-Time-Res-Week			1954	time_delta	precision=weeks
+ATTRIBUTE	Cast-Time-Res-Month			1955	time_delta	precision=months
+ATTRIBUTE	Cast-Time-Res-Year			1956	time_delta	precision=years
+ATTRIBUTE	Cast-Time-Res-Centi-Sec			1957	time_delta	precision=centiseconds
+ATTRIBUTE	Cast-Time-Res-Milli-Sec			1958	time_delta	precision=milliseconds
+ATTRIBUTE	Cast-Time-Res-Micro-Sec			1959	time_delta	precision=microseconds
+ATTRIBUTE	Cast-Time-Res-Nano-Sec			1960	time_delta	precision=nanoseconds
 
 #
 #	Range:	1951-2199

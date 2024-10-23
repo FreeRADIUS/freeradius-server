@@ -298,17 +298,17 @@ ATTRIBUTE	VSA-255					255	string
 #	And these are what the above attributes should get mapped to,
 #	once we get around to caring.
 #
-ATTRIBUTE	Breezecom-Attr1				1	string
-ATTRIBUTE	Breezecom-Attr2				2	string
-ATTRIBUTE	Breezecom-Attr3				3	string
-ATTRIBUTE	Breezecom-Attr4				4	string
-ATTRIBUTE	Breezecom-Attr5				5	string
-ATTRIBUTE	Breezecom-Attr6				6	string
-ATTRIBUTE	Breezecom-Attr7				7	string
-ATTRIBUTE	Breezecom-Attr8				8	string
-ATTRIBUTE	Breezecom-Attr9				9	string
-ATTRIBUTE	Breezecom-Attr10			10	string
-ATTRIBUTE	Breezecom-Attr11			11	string
+ALIAS	Breezecom-Attr1				.VSA-1
+ALIAS	Breezecom-Attr2				.VSA-2
+ALIAS	Breezecom-Attr3				.VSA-3
+ALIAS	Breezecom-Attr4				.VSA-4
+ALIAS	Breezecom-Attr5				.VSA-5
+ALIAS	Breezecom-Attr6				.VSA-6
+ALIAS	Breezecom-Attr7				.VSA-7
+ALIAS	Breezecom-Attr8				.VSA-8
+ALIAS	Breezecom-Attr9				.VSA-9
+ALIAS	Breezecom-Attr10			.VSA-10
+ALIAS	Breezecom-Attr11			.VSA-11
 
 END-VENDOR	Alvarion
 ALIAS		Alvarion				Vendor-Specific.Alvarion

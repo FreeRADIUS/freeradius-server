@@ -26,11 +26,11 @@ ATTRIBUTE	INM-Role-Aor-List			9	string
 ATTRIBUTE	SI-Context-Role				10	string
 # COA-Command appears to stomp on SI-Context-Role (different departments)
 # https://www.brocade.com/content/html/en/fastiron-os/08-0-60/fastiron-08060-securityguide/GUID-A3193D90-3FF4-4B04-8C6D-084743FDE91C.html
-ATTRIBUTE	COA-Command				10	string
+ALIAS		COA-Command				.SI-Context-Role
 ATTRIBUTE	SI-Role-Template			11	string
 # Voice-Phone-Config appears to stomp on SI-Role-Template (different departments)
 # http://docs.ruckuswireless.com/fastiron/08.0.60/fastiron-08060-securityguide/GUID-7E649B6D-A80B-40FD-A19A-478ED22C3E2A.html
-ATTRIBUTE	Voice-Phone-Config			11	string
+ALIAS		Voice-Phone-Config			.SI-Role-Template
 
 VALUE	INM-Privilege			AAA_pri_0		0
 VALUE	INM-Privilege			AAA_pri_1		1

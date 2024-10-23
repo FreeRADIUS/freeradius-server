@@ -25,6 +25,7 @@
 RCSIDH(dict_ext_priv_h, "$Id$")
 
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/dict_ext.h>
 #include <limits.h>
 
 #ifdef __cplusplus
@@ -109,7 +110,8 @@ static inline void dict_attr_ext_debug(char const *name, fr_dict_attr_t const *d
  *
  * @{
  */
-static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t const *ref)
+
+static inline int dict_attr_ref_null(fr_dict_attr_t const *da)
 {
 	fr_dict_attr_ext_ref_t	*ext;
 
@@ -118,7 +120,107 @@ static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t con
 		fr_strerror_printf("Contains no 'ref' extension");
 		return -1;
 	}
+
+	if (unlikely((ext->type & FR_DICT_ATTR_REF_UNRESOLVED) != 0)) {
+		fr_strerror_printf("Contains an resolved 'ref' extension");
+		return -1;
+	}
+
+	ext->type = 0;
+	ext->ref = NULL;
+
+	return 0;
+}
+
+static inline int dict_attr_ref_aset(fr_dict_attr_t **da_p, fr_dict_attr_t const *ref, fr_dict_attr_ref_type_t type)
+{
+	fr_dict_attr_ext_ref_t	*ext;
+
+	ext = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF);
+	if (unlikely(!ext)) {
+		ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF);
+	}
+
+	/*
+	 *	Check that the attribute ref is unresolved.
+	 */
+	if (unlikely((type & FR_DICT_ATTR_REF_UNRESOLVED) != 0)) {
+		fr_strerror_printf("Reference type cannot be unresolved");
+		return -1;
+	}
+
+	ext->type = type;
 	ext->ref = ref;
+
+	return 0;
+}
+
+static inline int dict_attr_ref_set(fr_dict_attr_t const *da, fr_dict_attr_t const *ref, fr_dict_attr_ref_type_t type)
+{
+	fr_dict_attr_ext_ref_t	*ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	if (unlikely(!ext)) {
+		fr_strerror_printf("Attribute contains no 'ref' extension");
+		return -1;
+	}
+
+	/*
+	 *	Check that the attribute ref is unresolved.
+	 */
+	if (unlikely((type & FR_DICT_ATTR_REF_UNRESOLVED) != 0)) {
+		fr_strerror_printf("Reference type cannot be unresolved");
+		return -1;
+	}
+
+	ext->type = type;
+	ext->ref = ref;
+
+	return 0;
+}
+
+static inline int dict_attr_ref_resolve(fr_dict_attr_t const *da, fr_dict_attr_t const *ref)
+{
+	fr_dict_attr_ext_ref_t	*ext;
+
+	ext = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	if (unlikely(!ext)) {
+		fr_strerror_printf("Contains no 'ref' extension");
+		return -1;
+	}
+
+	/*
+	 *	Check that the attribute ref is unresolved.
+	 */
+	if (unlikely(fr_dict_attr_ref_is_unresolved(ext->type) == false)) {
+		fr_strerror_printf("Contains an resolved 'ref' extension");
+		return -1;
+	}
+
+	ext->type ^= FR_DICT_ATTR_REF_UNRESOLVED;
+	talloc_free(ext->unresolved);
+	ext->ref = ref;
+
+	return 0;
+}
+
+static inline int dict_attr_ref_aunresolved(fr_dict_attr_t **da_p, char const *ref, fr_dict_attr_ref_type_t type)
+{
+	fr_dict_attr_ext_ref_t	*ext;
+	fr_dict_attr_t		*da;
+
+	ext = fr_dict_attr_ext((*da_p), FR_DICT_ATTR_EXT_REF);
+	if (unlikely(!ext)) {
+		ext = dict_attr_ext_alloc(da_p, FR_DICT_ATTR_EXT_REF);
+		if (unlikely(!ext)) return -1;
+	}
+	da = *da_p;
+	if (unlikely(ext->type != 0)) {
+		fr_strerror_printf("Attribute already contains a populatd 'ref' extension");
+		return -1;
+	}
+	ext->type = type | FR_DICT_ATTR_REF_UNRESOLVED;	/* Always unresolved */
+	ext->unresolved = talloc_typed_strdup(da, ref);
 
 	return 0;
 }

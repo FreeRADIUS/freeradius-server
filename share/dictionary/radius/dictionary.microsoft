@@ -25,7 +25,7 @@ VALUE	MPPE-Encryption-Policy		Encryption-Required	2
 # This is referred to as both singular and plural in the RFC.
 # Plural seems to make more sense.
 ATTRIBUTE	MPPE-Encryption-Type			8	integer
-ATTRIBUTE	MPPE-Encryption-Types			8	integer
+ALIAS		MPPE-Encryption-Types			.MPPE-Encryption-Type
 
 VALUE	MPPE-Encryption-Types		RC4-40bit-Allowed	1
 VALUE	MPPE-Encryption-Types		RC4-128bit-Allowed	2
@@ -171,4 +171,3 @@ VALUE	Extended-Quarantine-State	No-Data			4
 END-VENDOR Microsoft
 
 ALIAS		Microsoft				Vendor-Specific.Microsoft
-

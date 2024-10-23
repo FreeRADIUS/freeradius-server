@@ -8,9 +8,7 @@ PROTOCOL	RADIUS		1	verify=lib
 BEGIN-PROTOCOL	RADIUS
 
 #
-#	Include compatibility dictionary for older users file. Move
-#	this directive to the end of this file if you want to see the
-#	old names in the logfiles, instead of the new names.
+#	These are mostly ALIASes
 #
 $INCLUDE dictionary.compat
 

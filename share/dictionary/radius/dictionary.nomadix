@@ -23,7 +23,7 @@ ATTRIBUTE	Subnet					6	string
 ATTRIBUTE	MaxBytesUp				7	integer
 ATTRIBUTE	MaxBytesDown				8	integer
 ATTRIBUTE	EndofSession				9	integer
-ATTRIBUTE	Session-Terminate-End-Of-Day		9	integer
+ALIAS		Session-Terminate-End-Of-Day		.EndofSession
 ATTRIBUTE	Logoff-URL				10	string
 ATTRIBUTE	Net-VLAN				11	integer
 ATTRIBUTE	Config-URL				12	string

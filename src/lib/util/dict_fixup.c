@@ -381,7 +381,7 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 				   fr_cwd_strip(fixup->common.filename), fixup->common.line);
 		return -1;
 	}
-	dict_attr_ref_set(fixup->da, da);
+	if (unlikely(dict_attr_ref_resolve(fixup->da, da) < 0)) return -1;
 
 	return 0;
 }
