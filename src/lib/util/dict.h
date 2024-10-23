@@ -188,6 +188,11 @@ struct dict_attr_s {
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
+	char const		*filename;			//!< Where the attribute was defined.
+								///< this buffer's lifetime is bound to the
+								///< fr_dict_t.
+	int			line;				//!< Line number where the attribute was defined.
+
 	uint8_t			ext[FR_DICT_ATTR_EXT_MAX];	//!< Extensions to the dictionary attribute.
 } CC_HINT(aligned(FR_EXT_ALIGNMENT));
 

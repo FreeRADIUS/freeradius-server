@@ -642,6 +642,14 @@ int dict_attr_init(fr_dict_attr_t **da_p,
 	 *	This attribute is just a reference to another.
 	 */
 	if (args->ref) if (dict_attr_ref_init(da_p, args->ref) < 0) return -1;
+/** Set where the dictionary attribute was defined
+ *
+ */
+void dict_attr_location_init(fr_dict_attr_t *da, char const *filename, int line)
+{
+	da->filename = filename;
+	da->line = line;
+}
 
 	/*
 	 *	Name is a separate talloc chunk.  We allocate
