@@ -512,14 +512,10 @@ static xlat_action_t sql_xlat_select_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 			if (row[0]) break;
 
 			RDEBUG2("NULL value in first column of result");
-			ret = XLAT_ACTION_FAIL;
 			goto finish;
 
 		case RLM_SQL_NO_MORE_ROWS:
-			if (!fetched) {
-				RDEBUG2("SQL query returned no results");
-				ret = XLAT_ACTION_FAIL;
-			}
+			if (!fetched) RDEBUG2("SQL query returned no results");
 			goto finish;
 
 		default:
