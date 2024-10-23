@@ -73,7 +73,10 @@ static ssize_t internal_encode(fr_dbuff_t *dbuff,
 	 *	Silently skip name only attributes if we're writing
 	 *	to a database or cache.
 	 */
-	if (!our_encode_ctx->allow_name_only && vp->da->flags.name_only) return 0;
+	if (!our_encode_ctx->allow_name_only && vp->da->flags.name_only) {
+		fr_dcursor_next(cursor);
+		return 0;
+	}
 
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
