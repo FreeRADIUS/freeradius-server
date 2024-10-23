@@ -162,7 +162,20 @@ fr_slen_t fr_pair_list_afrom_substr(fr_pair_parse_t const *root, fr_pair_parse_t
 	fr_sbuff_marker_t	lhs_m, rhs_m;
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 
-	if (!root->ctx || !root->da || !root->list) return 0;
+	if (unlikely(!root->ctx)) {
+		fr_strerror_const("Missing ctx fr_pair_parse_t");
+		return -1;
+	}
+
+	if (unlikely(!root->da)) {
+		fr_strerror_const("Missing namespace attribute");
+		return -1;
+	}
+
+	if (unlikely(!root->list)) {
+		fr_strerror_const("Missing list");
+		return -1;
+	}
 
 	if (fr_dict_internal()) internal = fr_dict_root(fr_dict_internal());
 	if (internal == root->da) internal = NULL;
