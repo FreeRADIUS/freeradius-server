@@ -134,7 +134,6 @@ $INCLUDE dictionary.ckey
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.cnergee
 $INCLUDE dictionary.colubris
-$INCLUDE dictionary.compatible
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.covaro
 $INCLUDE dictionary.dante

@@ -27,4 +27,5 @@ VALUE	Packet-Type			Up				3
 #
 #  Additional data which gets added to the end of the BFD packet.
 #
-DEFINE	Additional-Data				group
+DEFINE		Additional-Data				group
+ATTRIBUTE	More-Data		1		string
