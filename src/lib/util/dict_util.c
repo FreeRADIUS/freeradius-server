@@ -1617,18 +1617,22 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	if (dict_attr_add_to_namespace(da->parent, da) < 0) return -1;
 
 #ifndef NDEBUG
-	/*
-	 *	Check if we added the attribute
-	 */
-	da = dict_attr_child_by_num(da->parent, da->attr);
-	if (!da) {
-		fr_strerror_printf("FATAL - Failed to find attribute number %u we just added to parent '%s'", da->attr, da->parent->name);
-		return -1;
-	}
+	{
+		fr_dict_attr_t const *found;
 
-	if (!dict_attr_by_name(NULL, da->parent, da->name)) {
-		fr_strerror_printf("FATAL - Failed to find attribute '%s' we just added to parent '%s'", da->name, da->parent->name);
-		return -1;
+		/*
+		 *	Check if we added the attribute
+		 */
+		found = dict_attr_child_by_num(da->parent, da->attr);
+		if (!found) {
+			fr_strerror_printf("FATAL - Failed to find attribute number %u we just added to parent '%s'", da->attr, da->parent->name);
+			return -1;
+		}
+
+		if (!dict_attr_by_name(NULL, da->parent, da->name)) {
+			fr_strerror_printf("FATAL - Failed to find attribute '%s' we just added to parent '%s'", da->name, da->parent->name);
+			return -1;
+		}
 	}
 #endif
 

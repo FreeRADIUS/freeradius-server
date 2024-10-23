@@ -1081,7 +1081,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	if (argc >= 3) if (dict_process_flag_field(ctx, argv[2], &da) < 0) goto error;
 
 #ifdef STATIC_ANALYZER
-	if (!ctx->dict) goto fail;
+	if (!ctx->dict) goto error;
 #endif
 
 	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
@@ -1196,7 +1196,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	 */
 
 #ifdef STATIC_ANALYZER
-	if (!ctx->dict) goto fail;
+	if (!ctx->dict) goto error;
 #endif
 
 	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
