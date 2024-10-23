@@ -1,8 +1,7 @@
 proto radius
 proto-dictionary radius
+load-dictionary dictionary.test
 fuzzer-out radius
-
-load-dictionary dictionary
 
 encode-pair Vendor-Specific = { Starent = { VPN-Name = "foo" } }
 match 1a 0d 00 00 1f e4 00 02 00 07 66 6f 6f

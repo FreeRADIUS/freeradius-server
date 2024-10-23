@@ -1,5 +1,6 @@
 proto radius
 proto-dictionary radius
+load-dictionary dictionary.test
 fuzzer-out radius
 
 encode-pair Extended-Attribute-1 = { Unit-Ext-241-Struct2 = { Unit-Struct2-Int1 = 1, Unit-Struct2-Short = 4 } }
@@ -91,4 +92,4 @@ encode-pair -
 match ff 0d 02 00 00 1a 99 ff fe fd fc fb fa
 
 count
-match 45
+match 46

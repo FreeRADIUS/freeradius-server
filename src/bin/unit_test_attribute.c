@@ -986,6 +986,8 @@ static int dictionary_load_common(command_result_t *result, command_file_ctx_t *
 {
 	char const	*dir;
 	char		*q;
+	char const	*name;
+	char		*tmp = NULL;
 	int		ret;
 	fr_dict_t	*dict;
 
@@ -3867,14 +3869,6 @@ int main(int argc, char *argv[])
 	}
 
 	if (fr_dict_internal_afrom_file(&config.dict, FR_DICTIONARY_INTERNAL_DIR, __FILE__) < 0) {
-		fr_perror("unit_test_attribute");
-		EXIT_WITH_FAILURE;
-	}
-
-	/*
-	 *	Load the custom dictionary
-	 */
-	if (fr_dict_read(config.dict, config.raddb_dir, FR_DICTIONARY_FILE) == -1) {
 		fr_perror("unit_test_attribute");
 		EXIT_WITH_FAILURE;
 	}

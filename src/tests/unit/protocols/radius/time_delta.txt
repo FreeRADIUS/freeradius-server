@@ -3,6 +3,7 @@
 #
 proto radius
 proto-dictionary radius
+load-dictionary dictionary.test
 fuzzer-out radius
 
 #
@@ -119,4 +120,4 @@ decode-pair -
 match Unit-TLV = { Delta-MSec-int32 = 2147483647 }
 
 count
-match 65
+match 66

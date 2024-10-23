@@ -6,6 +6,7 @@
 #
 proto radius
 proto-dictionary radius
+load-dictionary dictionary.test
 fuzzer-out radius
 
 encode-pair Unit-TLV = { Test-Enum-Integer64 = one }
@@ -25,4 +26,4 @@ decode-pair -
 match Unit-TLV = { Test-Enum-Integer32 = ::one }
 
 count
-match 11
+match 12

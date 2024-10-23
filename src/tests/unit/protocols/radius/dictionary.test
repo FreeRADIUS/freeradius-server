@@ -1,6 +1,3 @@
-PROTOCOL RADIUS 1	verify=lib
-BEGIN-PROTOCOL	RADIUS
-
 #
 #  Dictionary for the unit tests
 #
@@ -12,6 +9,11 @@ BEGIN-PROTOCOL	RADIUS
 #  Needed for the extended tests where this dictionary is used instead
 #  of the standard RADIUS dictionary.
 #
+
+#
+#  Add in attributes to the RADIUS dictionary.
+#
+ALIAS Cisco-AVPair 26.9.1
 
 #
 #  Define an ENUM
@@ -34,33 +36,24 @@ ATTRIBUTE	Unit-Integer64		252		integer64
 ATTRIBUTE	Unit-Octets		253		octets
 
 ATTRIBUTE	Unit-TLV		254		tlv
-ATTRIBUTE	Milliseconds		254.1		date milliseconds
-ATTRIBUTE	Delta-MSec		254.2		time_delta milliseconds
-ATTRIBUTE	Delta-Sec		254.3		time_delta seconds
+ATTRIBUTE	Milliseconds		254.1		date precision=milliseconds
+ATTRIBUTE	Delta-MSec		254.2		time_delta precision=milliseconds
+ATTRIBUTE	Delta-Sec		254.3		time_delta precision=seconds
 
-ATTRIBUTE	Delta-MSec-uint16	254.4		time_delta milliseconds,uint16
-ATTRIBUTE	Delta-Sec-uint16	254.5		time_delta seconds,uint16
-ATTRIBUTE	Delta-MSec-int16	254.6		time_delta milliseconds,int16
-ATTRIBUTE	Delta-Sec-int16		254.7		time_delta seconds,int16
+ATTRIBUTE	Delta-MSec-uint16	254.4		time_delta precision=milliseconds,subtype=uint16
+ATTRIBUTE	Delta-Sec-uint16	254.5		time_delta precision=seconds,subtype=uint16
+ATTRIBUTE	Delta-MSec-int16	254.6		time_delta precision=milliseconds,subtype=int16
+ATTRIBUTE	Delta-Sec-int16		254.7		time_delta precision=seconds,subtype=int16
 
-ATTRIBUTE	Delta-MSec-uint32	254.8		time_delta milliseconds,uint32
-ATTRIBUTE	Delta-Sec-uint32	254.9		time_delta seconds,uint32
-ATTRIBUTE	Delta-MSec-int32	254.10		time_delta milliseconds,int32
-ATTRIBUTE	Delta-Sec-int32		254.11		time_delta seconds,int32
+ATTRIBUTE	Delta-MSec-uint32	254.8		time_delta precision=milliseconds,subtype=uint32
+ATTRIBUTE	Delta-Sec-uint32	254.9		time_delta precision=seconds,subtype=uint32
+ATTRIBUTE	Delta-MSec-int32	254.10		time_delta precision=milliseconds,subtype=int32
+ATTRIBUTE	Delta-Sec-int32		254.11		time_delta precision=seconds,subtype=int32
 
 ATTRIBUTE	Test-Enum-Integer64	254.12		uint64 enum=base-enum-uint64
 
 #  and this casting should work
 ATTRIBUTE	Test-Enum-Integer32	254.13		uint32	enum=base-enum-uint64
-
-#
-#  Copied here for simplicity
-#
-ATTRIBUTE	Extended-Attribute-1			241	tlv extended
-ATTRIBUTE	Extended-Attribute-2			242	tlv extended
-ATTRIBUTE	Extended-Attribute-5			245	tlv long-extended
-ATTRIBUTE	Extended-Attribute-6			246	tlv long-extended
-ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa
 
 VENDOR FreeRADIUS 11344
 BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-2.Extended-Vendor-Specific-2
@@ -69,8 +62,6 @@ ATTRIBUTE	Unit-EVS-Integer 1 integer
 ATTRIBUTE	Unit-EVS-Octets	 2 octets
 
 END-Vendor FreeRADIUS
-
-ATTRIBUTE	Extended-Vendor-Specific-6		246.26	vsa
 
 BEGIN-Vendor FreeRADIUS parent=.Extended-Attribute-6.Extended-Vendor-Specific-6
 
@@ -124,5 +115,3 @@ MEMBER         Filler          uint32
 STRUCT Sub-Struct Key-Field 1
 MEMBER	Nested-Sub1 uint8
 MEMBER	Nested-Sub2 uint8
-
-END-PROTOCOL RADIUS
