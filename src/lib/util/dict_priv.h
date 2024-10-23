@@ -165,8 +165,6 @@ fr_dict_t		*dict_alloc(TALLOC_CTX *ctx);
 
 int			dict_dlopen(fr_dict_t *dict, char const *name);
 
-fr_dict_attr_t 		*dict_attr_alloc_null(TALLOC_CTX *ctx);
-
 /** Optional arguments for initialising/allocating attributes
  *
  */
@@ -176,21 +174,62 @@ typedef struct {
 	fr_dict_attr_t const		*ref;		//!< This attribute is a reference to another attribute.
 } dict_attr_args_t;
 
-int			dict_attr_init(fr_dict_attr_t **da_p,
-				       fr_dict_t const *dict,
-				       fr_dict_attr_t const *parent,
-				       char const *name, int attr,
-				       fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(1,2));
+/** Partial initialisation functions
+ *
+ * These functions are used to initialise attributes in stages, i.e. when parsing a dictionary.
+ *
+ * The finalise function must be called to complete the initialisation.
+ *
+ * All functions must be called to fully initialise a dictionary attribute, except
+ * #dict_attr_parent_init this is not necessary for root attributes.
+ *
+ * @{
+ */
+fr_dict_attr_t 		*dict_attr_alloc_null(TALLOC_CTX *ctx, fr_dict_protocol_t const *dict);
 
-fr_dict_attr_t		*dict_attr_alloc_root(TALLOC_CTX *ctx,
-					      fr_dict_t const *dict,
-					      char const *name, int attr,
-					      dict_attr_args_t const *args) CC_HINT(nonnull(2,3));
+int			dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type);
 
-fr_dict_attr_t		*dict_attr_alloc(TALLOC_CTX *ctx,
-					 fr_dict_attr_t const *parent,
-					 char const *name, int attr,
-					 fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(2));
+int			dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent);
+
+int			dict_attr_num_init(fr_dict_attr_t *da, unsigned int num);
+
+void			dict_attr_location_init(fr_dict_attr_t *da, char const *filename, int line);
+
+int			dict_attr_finalise(fr_dict_attr_t **da_p, char const *name);
+/** @} */
+
+/** Full initialisation functions
+ *
+ * These functions either initialise, or allocate and then initialise a
+ * complete dictionary attribute.
+ *
+ * The output of these functions can be added into a dictionary immediately
+ * @{
+ */
+#define 		dict_attr_init(_da_p, _parent, _name, _attr, _type, _args) \
+				_dict_attr_init(__FILE__, __LINE__, _da_p, _parent, _name, _attr, _type, _args)
+
+int			_dict_attr_init(char const *filename, int line,
+					fr_dict_attr_t **da_p, fr_dict_attr_t const *parent,
+				        char const *name, unsigned int attr,
+				        fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(1));
+
+#define			dict_attr_alloc_root(_ctx, _dict, _name, _attr, _args) \
+				_dict_attr_alloc_root(__FILE__, __LINE__, _ctx, _dict, _name, _attr, _args)
+fr_dict_attr_t		*_dict_attr_alloc_root(char const *filename, int line,
+					       TALLOC_CTX *ctx,
+					       fr_dict_t const *dict,
+					       char const *name, int attr,
+					       dict_attr_args_t const *args) CC_HINT(nonnull(4,5));
+
+#define			dict_attr_alloc(_ctx, _parent, _name, _attr, _type, _args) \
+				_dict_attr_alloc(__FILE__, __LINE__, _ctx, _parent, _name, _attr, _type, (_args))
+fr_dict_attr_t		*_dict_attr_alloc(char const *filename, int line,
+					  TALLOC_CTX *ctx,
+					  fr_dict_attr_t const *parent,
+					  char const *name, int attr,
+					  fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(4));
+/** @} */
 
 fr_dict_attr_t		*dict_attr_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *in, char const *new_name);
 
@@ -209,12 +248,10 @@ int			dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num);
 int			dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da) CC_HINT(nonnull);
 
 bool			dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
-					      UNUSED char const *name, int *attr, fr_type_t type,
+					      UNUSED char const *name, int attr, fr_type_t type,
 					      fr_dict_attr_flags_t *flags) CC_HINT(nonnull(1,2,6));
 
-bool			dict_attr_fields_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
-					       char const *name, int *attr, fr_type_t type,
-					       fr_dict_attr_flags_t *flags);
+bool			dict_attr_valid(fr_dict_attr_t *da);
 
 fr_dict_attr_t		*dict_attr_by_name(fr_dict_attr_err_t *err, fr_dict_attr_t const *parent, char const *name);
 
