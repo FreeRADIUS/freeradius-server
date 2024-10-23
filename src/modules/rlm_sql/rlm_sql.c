@@ -35,6 +35,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/module_rlm.h>
 #include <freeradius-devel/server/pairmove.h>
 #include <freeradius-devel/util/debug.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/table.h>
 #include <freeradius-devel/unlang/function.h>
 #include <freeradius-devel/unlang/xlat_func.h>
@@ -2212,7 +2213,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	if (cf_pair_find(conf, "group_membership_query")) {
 		char const *group_attribute;
-		fr_dict_attr_flags_t flags = {};
+		fr_dict_attr_flags_t flags = { .name_only = 1 };
 		char buffer[256];
 
 		if (inst->config.group_attribute) {
@@ -2224,17 +2225,20 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 			group_attribute = "SQL-Group";
 		}
 
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, -1,
-				     FR_TYPE_STRING, &flags) < 0) {
-			cf_log_perr(conf, "Failed defining group attribute");
-			return -1;
-		}
-
-		boot->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
-								      false, false);
+		boot->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
 		if (!boot->group_da) {
-			cf_log_perr(conf, "Failed resolving group attribute");
-			return -1;
+			if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, 0,
+					FR_TYPE_STRING, &flags) < 0) {
+				cf_log_perr(conf, "Failed defining group attribute");
+				return -1;
+			}
+
+			boot->group_da = fr_dict_attr_search_by_qualified_oid(NULL, dict_freeradius, group_attribute,
+									false, false);
+			if (!boot->group_da) {
+				cf_log_perr(conf, "Failed resolving group attribute");
+				return -1;
+			}
 		}
 
 		/*

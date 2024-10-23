@@ -4517,9 +4517,12 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
  *	- -1 on failure.
  */
 int tmpl_attr_tail_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
-			     fr_type_t type, fr_dict_attr_flags_t const *flags)
+				  fr_type_t type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t const *da;
+	fr_dict_attr_flags_t our_flags = *flags;
+
+	our_flags.name_only = true;
 
 	if (!vpt) return -1;
 
@@ -4528,7 +4531,7 @@ int tmpl_attr_tail_unresolved_add(fr_dict_t *dict_def, tmpl_t *vpt,
 	if (!tmpl_is_attr_unresolved(vpt)) return 1;
 
 	if (fr_dict_attr_add(dict_def,
-			     fr_dict_root(fr_dict_internal()), tmpl_attr_tail_unresolved(vpt), -1, type, flags) < 0) {
+			     fr_dict_root(fr_dict_internal()), tmpl_attr_tail_unresolved(vpt), 0, type, &our_flags) < 0) {
 		return -1;
 	}
 	da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_def), tmpl_attr_tail_unresolved(vpt));

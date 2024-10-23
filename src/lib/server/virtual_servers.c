@@ -1260,6 +1260,7 @@ static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t
 
 	fr_dict_attr_flags_t flags = {
 		.internal = true,
+		.name_only = true,
 		.local = true,
 	};
 
@@ -1339,7 +1340,7 @@ static int define_server_attrs(CONF_SECTION *cs, fr_dict_t *dict, fr_dict_attr_t
 			return -1;
 		}
 
-		if (fr_dict_attr_add(dict, parent, value, -1, type, &flags) < 0) {
+		if (fr_dict_attr_add(dict, parent, value, 0, type, &flags) < 0) {
 			cf_log_err(ci, "Failed adding local variable '%s' - %s", value, fr_strerror());
 			return -1;
 		}
