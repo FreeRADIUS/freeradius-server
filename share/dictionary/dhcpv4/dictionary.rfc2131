@@ -176,7 +176,7 @@ ATTRIBUTE	Site-specific-26			250	octets
 ATTRIBUTE	Site-specific-27			251	octets
 ATTRIBUTE	Site-specific-28			252	octets
 ATTRIBUTE	Site-specific-29			253	octets
-ATTRIBUTE	Site-specific-30			253	octets
+ATTRIBUTE	Site-specific-30			254	octets
 
 ATTRIBUTE	End-Of-Options				255	uint8
 
