@@ -1209,18 +1209,6 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 
 	if (unlikely(dict_attr_add_fixups(&ctx->fixup, da) < 0)) return -1;
 
-	/*
-	 *	If we need to set the previous attribute, we have to
-	 *	look it up by number.  This lets us set the
-	 *	*canonical* previous attribute, and not any potential
-	 *	duplicate which was just added.
-	 */
-	da = dict_attr_child_by_num(parent, da->attr);
-	if (!da) {
-		fr_strerror_printf("Failed to find attribute number %u we just added to parent %s", da->attr, parent->name);
-		return -1;
-	}
-
 	memcpy(&ctx->value_attr, &da, sizeof(da));
 
 	return 0;
