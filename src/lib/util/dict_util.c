@@ -4580,6 +4580,11 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 	}
 
 	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
+		if (!da_p) {
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+					     "Depth indicated there should be a parent, but parent is NULL",
+					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
+		}
 		if (i != (int)da_p->depth) {
 			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
 					     "Depth out of sequence, expected %i, got %u",
