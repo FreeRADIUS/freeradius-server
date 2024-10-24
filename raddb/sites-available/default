@@ -1080,6 +1080,10 @@ post-auth {
 #  stage.  This stage can re-write the request, or decide to
 #  cancel the proxy.
 #
+#  Before this section is run, the request list is copied to the
+#  proxy list.  The proxied packet can be edited by examining
+#  or changing attributes in the proxy list.
+#
 #  Only a few modules currently have this method.
 #
 pre-proxy {
@@ -1113,6 +1117,11 @@ pre-proxy {
 #  When the server receives a reply to a request it proxied
 #  to a home server, the request may be massaged here, in the
 #  post-proxy stage.
+#
+#  Before this section is run, all attributes in the reply list
+#  are deleted.  This section can then examine or edit the
+#  proxy_reply list.  Once this section is finished, the attributes
+#  in the proxy_reply list are copied to the reply list.
 #
 post-proxy {
 
