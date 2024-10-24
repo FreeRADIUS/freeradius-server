@@ -1679,12 +1679,13 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
  *				talloc'd object.
  * @param[in] ssl_ctx		containing the base configuration for this session.
  * @param[in] request		The current #request_t.
+ * @param[in] dynamic_mtu	If greater than 100, overrides the MTU configured for the SSL_CTX.
  * @param[in] client_cert	Whether to require a client_cert.
  * @return
  *	- A new session on success.
  *	- NULL on error.
  */
-fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, bool client_cert)
+fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, size_t dynamic_mtu, bool client_cert)
 {
 	fr_tls_session_t	*tls_session = NULL;
 	SSL			*ssl = NULL;
@@ -1855,23 +1856,10 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
 
-	/*
-	 *	We use default fragment size, unless the Framed-MTU
-	 *	tells us it's too big.  Note that we do NOT account
-	 *	for the EAP-TLS headers if conf->fragment_size is
-	 *	large, because that config item looks to be confusing.
-	 *
-	 *	i.e. it should REALLY be called MTU, and the code here
-	 *	should figure out what that means for TLS fragment size.
-	 *	asking the administrator to know the internal details
-	 *	of EAP-TLS in order to calculate fragment sizes is
-	 *	just too much.
-	 */
 	tls_session->mtu = conf->fragment_size;
-	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_framed_mtu);
-	if (vp && (vp->vp_uint32 > 100) && (vp->vp_uint32 < tls_session->mtu)) {
-		RDEBUG2("Setting fragment_len to %u from &Framed-MTU", vp->vp_uint32);
-		tls_session->mtu = vp->vp_uint32;
+	if (dynamic_mtu > 100 && dynamic_mtu < tls_session->mtu) {
+		RDEBUG2("Setting fragment_len to %zu from dynamic_mtu", dynamic_mtu);
+		tls_session->mtu = dynamic_mtu;
 	}
 
 	if (conf->cache.mode != FR_TLS_CACHE_DISABLED) {

@@ -40,6 +40,7 @@ extern HIDDEN fr_dict_attr_t const *attr_eap_channel_binding_message;
 extern HIDDEN fr_dict_attr_t const *attr_eap_message;
 extern HIDDEN fr_dict_attr_t const *attr_eap_msk;
 extern HIDDEN fr_dict_attr_t const *attr_eap_emsk;
+extern HIDDEN fr_dict_attr_t const *attr_framed_mtu;
 extern HIDDEN fr_dict_attr_t const *attr_freeradius_proxied_to;
 extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_send_key;
 extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_recv_key;

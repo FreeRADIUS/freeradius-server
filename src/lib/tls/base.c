@@ -68,7 +68,6 @@ fr_dict_t const *dict_tls;
 extern fr_dict_autoload_t tls_dict[];
 fr_dict_autoload_t tls_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
-	{ .out = &dict_radius, .proto = "radius" },
 	{ .out = &dict_tls, .proto = "tls" },
 	{ NULL }
 };
@@ -106,8 +105,6 @@ fr_dict_attr_t const *attr_tls_session_cert_file;
 fr_dict_attr_t const *attr_tls_session_require_client_cert;
 fr_dict_attr_t const *attr_tls_session_cipher_suite;
 fr_dict_attr_t const *attr_tls_session_version;
-
-fr_dict_attr_t const *attr_framed_mtu;
 
 fr_dict_attr_t const *attr_tls_packet_type;
 fr_dict_attr_t const *attr_tls_session_data;
@@ -150,8 +147,6 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_session_require_client_cert, .name = "TLS-Session-Require-Client-Certificate", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_cipher_suite, .name = "TLS-Session-Cipher-Suite", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_version, .name = "TLS-Session-Version", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
-
-	{ .out = &attr_framed_mtu, .name = "Framed-MTU", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 
 	/*
 	 *	Eventually all TLS attributes will be in the TLS dictionary

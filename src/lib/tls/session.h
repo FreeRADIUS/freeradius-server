@@ -315,7 +315,7 @@ unlang_action_t	fr_tls_session_async_handshake_push(request_t *request, fr_tls_s
 
 fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx);
 
-fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, bool client_cert);
+fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, size_t dynamic_mtu, bool client_cert);
 
 #ifdef __cplusplus
 }

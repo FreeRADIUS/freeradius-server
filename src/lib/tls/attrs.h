@@ -67,8 +67,6 @@ extern HIDDEN fr_dict_attr_t const *attr_tls_session_id;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_resumed;
 extern HIDDEN fr_dict_attr_t const *attr_tls_session_ttl;
 
-extern HIDDEN fr_dict_attr_t const *attr_framed_mtu;
-
 extern fr_value_box_t const *enum_tls_packet_type_load_session;
 extern fr_value_box_t const *enum_tls_packet_type_store_session;
 extern fr_value_box_t const *enum_tls_packet_type_clear_session;
