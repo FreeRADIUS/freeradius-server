@@ -121,6 +121,14 @@ fr_retry_state_t fr_retry_next(fr_retry_t *r, fr_time_t now)
 	 *	We retried too many times.  Fail.
 	 */
 	if (r->config->mrc && (r->count > r->config->mrc)) {
+		/*
+		 *	A count of 1 is really a simple duration.
+		 */
+		if (r->config->mrc == 1) {
+			r->state = FR_RETRY_MRD;
+			return FR_RETRY_MRD;
+		}
+
 		r->state = FR_RETRY_MRC;
 		return FR_RETRY_MRC;
 	}
