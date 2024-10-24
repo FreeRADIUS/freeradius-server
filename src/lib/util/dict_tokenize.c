@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/strerror.h>
 #include <freeradius-devel/util/syserror.h>
 #include <freeradius-devel/util/table.h>
+#include <freeradius-devel/util/types.h>
 #include <freeradius-devel/util/value.h>
 
 #include <sys/stat.h>
@@ -788,6 +789,60 @@ static int dict_attr_add_fixups(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
 	return 0;
 }
 
+/** Check if this definition is a duplicate, and if it is, whether we should skip it error out
+ *
+ * @return
+ *	- 1 if this is not a duplicate.
+ *	- 0 if this is a duplicate, and we should ignore the definition.
+ *	- -1 if this is a duplicate, and we should error out.
+ */
+static int dict_attr_allow_dup(fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t const *dup_name = NULL;
+	fr_dict_attr_t const *dup_num = NULL;
+	fr_dict_attr_t const *found;
+
+	/*
+	 *	Search in the parent for a duplicate by name and then by num
+	 */
+	if (!da->parent) return 1;	/* no parent no conflicts possible */
+
+	/*
+	 *	Not a duplicate...
+	 */
+	if (!(dup_name = fr_dict_attr_by_name(NULL, da->parent, da->name)) &&
+	    (da->flags.name_only || !(dup_num = fr_dict_attr_child_by_num(da->parent, da->attr)))) return 1;
+
+	found = dup_name ? dup_name : dup_num;
+
+	switch (da->type) {
+	/*
+	 *	For certain STRUCTURAL types, we allow strict duplicates
+	 *	as if the user wants to add extra children in the custom
+	 *	dictionary, or wants to avoid ordering issues between
+	 *	multiple dictionaries, we need to support this.
+	 */
+	case FR_TYPE_VSA:
+	case FR_TYPE_VENDOR:
+	case FR_TYPE_TLV:
+		if (fr_dict_attr_cmp_fields(da, found) == 0) return -1;
+		break;
+
+	default:
+		break;
+	}
+
+	if (dup_name) {
+		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  Originally defined %s[%u]",
+				   da->name, da->parent->name, dup_name->filename, dup_name->line);
+		return 0;
+	}
+
+	fr_strerror_printf("Duplicate attribute number %u in parent '%s'.  Originally defined %s[%u]",
+				da->attr, da->parent->name, dup_num->filename, dup_num->line);
+	return 0;
+}
+
 /*
  *	Process the ATTRIBUTE command
  */
@@ -928,10 +983,27 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 #ifdef STATIC_ANALYZER
 	if (!ctx->dict) return -1;
 #endif
+
 	/*
 	 *	Set the attribute name
 	 */
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
+
+	/*
+	 *	Check to see if this is a duplicate attribute
+	 *	and whether we should ignore it or error out...
+	 */
+	switch (dict_attr_allow_dup(da)) {
+	case 1:
+		break;
+
+	case 0:
+		talloc_free(da);
+		return 0;
+
+	default:
+		goto error;
+	}
 
 	/*
 	 *	Add the attribute we allocated earlier
@@ -1071,6 +1143,22 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	Set the attribute name
 	 */
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
+
+	/*
+	 *	Check to see if this is a duplicate attribute
+	 *	and whether we should ignore it or error out...
+	 */
+	switch (dict_attr_allow_dup(da)) {
+	case 1:
+		break;
+
+	case 0:
+		talloc_free(da);
+		return 0;
+
+	default:
+		goto error;
+	}
 
 	/*
 	 *	Add the attribute we allocated earlier
@@ -1412,6 +1500,23 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	if (unlikely(dict_attr_parent_init(&da, ctx->stack[ctx->stack_depth].da) < 0)) goto error;
 	if (unlikely(dict_attr_num_init(da, ++ctx->stack[ctx->stack_depth].member_num) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
+
+	/*
+	 *	Check to see if this is a duplicate attribute
+	 *	and whether we should ignore it or error out...
+	 */
+	switch (dict_attr_allow_dup(da)) {
+	case 1:
+		break;
+
+	case 0:
+		talloc_free(da);
+		return 0;
+
+	default:
+		goto error;
+	}
+
 	if (unlikely(fr_dict_attr_add_initialised(da) < 0)) goto error;
 	if (unlikely(dict_attr_add_fixups(&ctx->fixup, da) < 0)) return -1;
 
@@ -1701,6 +1806,22 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	if (unlikely(dict_attr_num_init(da, attr) < 0)) goto error;
 	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, name) < 0)) goto error;
+
+	/*
+	 *	Check to see if this is a duplicate attribute
+	 *	and whether we should ignore it or error out...
+	 */
+	switch (dict_attr_allow_dup(da)) {
+	case 1:
+		break;
+
+	case 0:
+		talloc_free(da);
+		return 0;
+
+	default:
+		goto error;
+	}
 
 	/*
 	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
