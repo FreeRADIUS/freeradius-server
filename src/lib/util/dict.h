@@ -531,7 +531,7 @@ fr_dict_attr_t const	*fr_dict_attr_unknown_resolve(fr_dict_t const *dict, fr_dic
  *
  * @{
  */
-static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
 {
 	int8_t ret;
 
@@ -557,6 +557,31 @@ static inline  CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a,
 	 *	DAs are unique.
 	 */
 	return CMP(a, b);
+}
+
+/** Compare two dictionary attributes by their contents
+ *
+ * @param[in] a	First attribute to compare.
+ * @param[in] b	Second attribute to compare.
+ * @return
+ *	- 0 if the attributes are equal.
+ *	- -1 if a < b.
+ *	- +1 if a > b.
+ */
+static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp_fields(const fr_dict_attr_t *a, const fr_dict_attr_t *b)
+{
+	int8_t ret;
+
+	ret = CMP(a->attr, b->attr);
+	if (ret != 0) return ret;
+
+	ret = CMP(a->parent, b->parent);
+	if (ret != 0) return ret;
+
+	ret = CMP(fr_dict_vendor_num_by_da(a), fr_dict_vendor_num_by_da(b));
+	if (ret != 0) return ret;
+
+	return CMP(memcmp(&a->flags, &b->flags, sizeof(a->flags)), 0);
 }
 /** @} */
 
