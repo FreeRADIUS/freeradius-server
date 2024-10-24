@@ -68,5 +68,5 @@ RCSIDH(base_h, "$Id$")
 
 #include <freeradius-devel/util/base.h>
 
-int server_init(CONF_SECTION *cs);
+int server_init(CONF_SECTION *cs, char const *dict_dir, fr_dict_t *dict);
 void server_free(void);

@@ -813,7 +813,7 @@ int main(int argc, char *argv[])
 	 */
 	if (unlang_global_init() < 0) EXIT_WITH_FAILURE;
 
-	if (server_init(config->root_cs) < 0) EXIT_WITH_FAILURE;
+	if (server_init(config->root_cs, config->raddb_dir, fr_dict_unconst(fr_dict_internal())) < 0) EXIT_WITH_FAILURE;
 
 	/*
 	 *  Everything seems to have loaded OK, exit gracefully.
