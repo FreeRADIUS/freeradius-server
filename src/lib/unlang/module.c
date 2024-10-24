@@ -712,13 +712,13 @@ static void unlang_module_event_retry_handler(UNUSED fr_event_list_t *el, fr_tim
 		return;
 
 	case FR_RETRY_MRD:
-		REDEBUG("Reached max_rtx_duration (%pVs > %pVs) - sending timeout",
+		RDEBUG("Reached max_rtx_duration (%pVs > %pVs) - sending timeout",
 			fr_box_time_delta(fr_time_sub(now, state->retry.start)), fr_box_time_delta(state->retry.config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
-		REDEBUG("Reached max_rtx_count (%u > %u) - sending timeout",
-		        state->retry.count, state->retry.config->mrc);
+		RDEBUG("Reached max_rtx_count %u- sending timeout",
+		        state->retry.config->mrc);
 		break;
 	}
 
