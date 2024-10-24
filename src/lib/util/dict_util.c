@@ -1507,33 +1507,6 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 	return 0;
 }
 
-static int dict_attr_compatible(fr_dict_attr_t const *parent, fr_dict_attr_t const *old, fr_dict_attr_t const *n)
-{
-	if (old->parent != parent) {
-		fr_strerror_printf_push("Cannot add duplicate attribute \"%s\" with different parent (old %s, new %s)",
-					n->name, old->parent->name, parent->name);
-		return -1;
-	}
-
-	if (old->attr != n->attr) {
-		fr_strerror_printf_push("Cannot add duplicate attribute name \"%s\" with different number (old %u, new %d)",
-					n->name, old->attr, n->attr);
-		return -1;
-	}
-
-	if (old->type != n->type) {
-		fr_strerror_printf_push("Cannot add duplicate attribute with different type "
-					"(old attribute \"%s\" has type %s, new attribute \"%s\" has type %s)",
-					old->name,
-					fr_type_to_str(old->type),
-					n->name,
-					fr_type_to_str(n->type));
-		return -1;
-	}
-
-	return 0;
-}
-
 /** A variant of fr_dict_attr_t that allows a pre-allocated, populated fr_dict_attr_t to be added
  *
  */
