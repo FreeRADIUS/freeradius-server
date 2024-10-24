@@ -456,12 +456,18 @@ static xlat_action_t sql_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, x
 
 	fr_assert(query_ctx->type == SQL_QUERY_OTHER);
 
-	if (query_ctx->rcode != RLM_SQL_OK) {
+	switch (query_ctx->rcode) {
+	case RLM_SQL_QUERY_INVALID:
+	case RLM_SQL_ERROR:
+	case RLM_SQL_RECONNECT:
 		RERROR("SQL query failed: %s", fr_table_str_by_value(sql_rcode_description_table,
 								     query_ctx->rcode, "<INVALID>"));
 		rlm_sql_print_error(inst, request, query_ctx, false);
 		ret = XLAT_ACTION_FAIL;
 		goto finish;
+
+	default:
+		break;
 	}
 
 	numaffected = (inst->driver->sql_affected_rows)(query_ctx, &inst->config);
