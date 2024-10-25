@@ -708,7 +708,7 @@ static inline ssize_t encode_tlv_internal(fr_dbuff_t *dbuff,
 	 *	encrypt the contents of the TLV using AES-CBC-128
 	 *	or another encryption algorithm.
 	 */
-	if (!da->flags.extra && da->flags.subtype) {
+	if (fr_aka_sim_flag_encrypted(da)) {
 		ssize_t	value_len = fr_dbuff_used(&work_dbuff) - 2;
 
 		slen = encode_encrypted_value(&value_dbuff, fr_dbuff_current(&value_start),
@@ -776,7 +776,7 @@ static ssize_t encode_tlv(fr_dbuff_t *dbuff,
 	 *	The ASCII art in the RFCs the attributes in
 	 *	this order.
 	 */
-	if (!da_stack->da[depth]->flags.extra && da_stack->da[depth]->flags.subtype) {
+	if (fr_aka_sim_flag_encrypted(da_stack->da[depth])) {
 		len = encode_iv(&work_dbuff, encode_ctx);
 		if (len < 0) return len;
 	}
