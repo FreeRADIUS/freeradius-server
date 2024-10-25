@@ -41,17 +41,17 @@ ATTRIBUTE	Tunnel-Password-Entry			5	tlv
 # Only the first password and first keyid in this tlv will be used.
 # If you want to provide multiple passwords, you have to send them in separate VSAs.
 
-ATTRIBUTE	Tunnel-Password				.2	string	encrypt=2
+ATTRIBUTE	Tunnel-Password				.2	string	encrypt=Tunnel-Password
 # treat as passphrase if 8~63 characters
 # treat as psk if 64 characters hex
 
-ATTRIBUTE	Tunnel-Password-Keyid			.3	string	encrypt=2
+ATTRIBUTE	Tunnel-Password-Keyid			.3	string	encrypt=Tunnel-Password
 # maximum length 31 characters
 # keyid is consumed by hostapd control interface (AP_STA_CONNECTED event, STA MIB)
 # keyid may be attached to RADIUS accounting message, see UBNT-Station-Keyid below
 # keyid is not available on ubus interface
 
-ATTRIBUTE	Station-Keyid				6	string	encrypt=2
+ATTRIBUTE	Station-Keyid				6	string	encrypt=Tunnel-Password
 # require radius_acct_send_keyid=1 in hostapd configuration
 # aka. aaa.%d.radius_acct_send_keyid.status=enabled in UniFi configuration
 

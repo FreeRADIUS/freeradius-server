@@ -398,7 +398,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (flags->length) {
 			/*
 			 *	Internal attributes can use octets[n]
-			 *	MS-MPPE-Keys use octets[18],encrypt=1
+			 *	MS-MPPE-Keys use octets[18],encrypt=User-Password
 			 *	EAP-SIM-RAND uses array
 			 */
 			ALLOW_FLAG(internal);
@@ -605,7 +605,7 @@ bool dict_attr_valid(fr_dict_attr_t *da)
 	 *	Run protocol-specific validation functions, BEFORE we
 	 *	do the rest of the checks.
 	 */
-	if (da->dict->proto->attr.valid && !da->dict->proto->attr.valid(da->dict, da->parent, da->name, da->attr, da->type, &da->flags)) return false;
+	if (da->dict->proto->attr.valid && !da->dict->proto->attr.valid(da)) return false;
 
 	/*
 	 *	Check the flags, data types, and parent data types and flags.

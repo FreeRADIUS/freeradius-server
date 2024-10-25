@@ -75,7 +75,7 @@ ATTRIBUTE	GMT-Timezone-offset			3	signed
 ATTRIBUTE	AAA-Session-Id				4	octets
 
 # 32 octets in length
-ATTRIBUTE	MSK					5	octets encrypt=2
+ATTRIBUTE	MSK					5	octets encrypt=Tunnel-Password
 ATTRIBUTE	hHA-IP-MIP4				6	ipaddr
 ATTRIBUTE	hHA-IP-MIP6				7	ipv6addr
 ATTRIBUTE	DHCPv4-Server				8	combo-ip
@@ -83,23 +83,23 @@ ATTRIBUTE	DHCPv6-Server				9	combo-ip
 
 # MN-HA-CMIP4 = H(MIP-RK, "CMIP4 MN HA" | HA-IPv4 | MN-NAI), or
 # MN-HA-PMIP4 = H(MIP-RK, "PMIP4 MN HA" | HA-IPv4 | MN-NAI)
-ATTRIBUTE	MN-hHA-MIP4-Key				10	octets encrypt=2
+ATTRIBUTE	MN-hHA-MIP4-Key				10	octets encrypt=Tunnel-Password
 
 # MN-HA-CMIP4-SPI == MIP-SPI, or
 # MN-HA-PIMP4-SPI == MIP-SPI + 1
 ATTRIBUTE	MN-hHA-MIP4-SPI				11	integer
 
 # MN-HA-CMIP6 = H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI)
-ATTRIBUTE	MN-hHA-MIP6-Key				12	octets encrypt=2
+ATTRIBUTE	MN-hHA-MIP6-Key				12	octets encrypt=Tunnel-Password
 
 # MN-HA-CMIP6-SPI == MIP-SPI + 2
 ATTRIBUTE	MN-hHA-MIP6-SPI				13	integer
 
 # FA-RK = H(MIP-RK, "FA-RK")
-ATTRIBUTE	FA-RK-Key				14	octets encrypt=2
+ATTRIBUTE	FA-RK-Key				14	octets encrypt=Tunnel-Password
 
 # 160 bit random number
-ATTRIBUTE	HA-RK-Key				15	octets encrypt=2
+ATTRIBUTE	HA-RK-Key				15	octets encrypt=Tunnel-Password
 # SPI-CMIP4
 ATTRIBUTE	HA-RK-SPI				16	integer
 
@@ -115,7 +115,7 @@ ATTRIBUTE	HA-RK-Lifetime				17	integer
 #  required by the HA to validate the MIP RRQ received from the MS as it does
 #  not contain the actual HA IP address.
 ATTRIBUTE	RRQ-HA-IP				18	combo-ip
-ATTRIBUTE	RRQ-MN-HA-Key				19	octets encrypt=2
+ATTRIBUTE	RRQ-MN-HA-Key				19	octets encrypt=Tunnel-Password
 
 ATTRIBUTE	Time-Of-Day-Time			20	tlv
 
@@ -304,7 +304,7 @@ ATTRIBUTE	Tariff-Switch-Interval			.3	integer #s
 ATTRIBUTE	Time-Interval-After			.4	integer #s
 
 ATTRIBUTE	Active-Time-Duration			39	integer
-ATTRIBUTE	DHCP-RK					40	octets encrypt=2
+ATTRIBUTE	DHCP-RK					40	octets encrypt=Tunnel-Password
 ATTRIBUTE	DHCP-RK-Key-Id				41	integer
 ATTRIBUTE	DHCP-RK-Lifetime			42	integer
 ATTRIBUTE	DHCP-Msg-Server-IP			43	ipaddr
@@ -372,18 +372,18 @@ ATTRIBUTE	Downlink-Granted-QoS			63	tlv
 # These attributes are used by the vCSN.
 ATTRIBUTE	vHA-IP-MIP4				64	ipaddr
 ATTRIBUTE	vHA-IP-MIP6				65	ipv6addr
-ATTRIBUTE	vHA-MIP4-Key				66	octets encrypt=2
-ATTRIBUTE	vHA-RK-Key				67	octets encrypt=2
+ATTRIBUTE	vHA-MIP4-Key				66	octets encrypt=Tunnel-Password
+ATTRIBUTE	vHA-RK-Key				67	octets encrypt=Tunnel-Password
 ATTRIBUTE	vHA-RK-SPI				68	integer
 ATTRIBUTE	vHA-RK-Lifetime				69	integer
 
-ATTRIBUTE	MN-vHA-MIP6-Key				70	octets encrypt=2
+ATTRIBUTE	MN-vHA-MIP6-Key				70	octets encrypt=Tunnel-Password
 ATTRIBUTE	MN-vHA-MIP4-SPI				71	integer
 ATTRIBUTE	MN-vHA-MIP6-SPI				72	integer
 
 ATTRIBUTE	vDHCPv4-Server				73	ipaddr
 ATTRIBUTE	vDHCPv6-Server				74	ipv6addr
-ATTRIBUTE	vDHCP-RK				75	octets encrypt=2
+ATTRIBUTE	vDHCP-RK				75	octets encrypt=Tunnel-Password
 ATTRIBUTE	vDHCP-RK-Key-ID				76	integer
 ATTRIBUTE	vDHCP-RK-Lifetime			77	integer
 

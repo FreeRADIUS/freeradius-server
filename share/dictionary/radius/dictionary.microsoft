@@ -34,12 +34,12 @@ VALUE	MPPE-Encryption-Types		RC4-40or128-bit-Allowed	6
 ATTRIBUTE	RAS-Vendor				9	integer	# content is Vendor-ID
 ATTRIBUTE	CHAP-Domain				10	string
 ATTRIBUTE	CHAP-Challenge				11	octets
-ATTRIBUTE	CHAP-MPPE-Keys				12	octets[24]  encrypt=1
+ATTRIBUTE	CHAP-MPPE-Keys				12	octets[24]  encrypt=User-Password
 ATTRIBUTE	BAP-Usage				13	integer
 ATTRIBUTE	Link-Utilization-Threshold		14	integer # values are 1-100
 ATTRIBUTE	Link-Drop-Time-Limit			15	integer
-ATTRIBUTE	MPPE-Send-Key				16	octets	encrypt=2
-ATTRIBUTE	MPPE-Recv-Key				17	octets	encrypt=2
+ATTRIBUTE	MPPE-Send-Key				16	octets	encrypt=Tunnel-Password
+ATTRIBUTE	MPPE-Recv-Key				17	octets	encrypt=Tunnel-Password
 ATTRIBUTE	RAS-Version				18	string
 ATTRIBUTE	Old-ARAP-Password			19	octets
 ATTRIBUTE	New-ARAP-Password			20	octets

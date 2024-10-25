@@ -49,10 +49,10 @@ ATTRIBUTE	Value-0					112	octets
 ATTRIBUTE	Value-1					113	octets
 ATTRIBUTE	Value-2					114	octets
 ATTRIBUTE	Value-3					115	octets
-ATTRIBUTE	Key-0					116	octets	encrypt=2
-ATTRIBUTE	Key-1					117	octets	encrypt=2
-ATTRIBUTE	Key-2					118	octets	encrypt=2
-ATTRIBUTE	Key-3					119	octets	encrypt=2
+ATTRIBUTE	Key-0					116	octets	encrypt=Tunnel-Password
+ATTRIBUTE	Key-1					117	octets	encrypt=Tunnel-Password
+ATTRIBUTE	Key-2					118	octets	encrypt=Tunnel-Password
+ATTRIBUTE	Key-3					119	octets	encrypt=Tunnel-Password
 ATTRIBUTE	Opaque-0				120	octets
 ATTRIBUTE	Opaque-1				121	octets
 ATTRIBUTE	Opaque-2				122	octets

@@ -1365,7 +1365,7 @@ static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash, uint8_t const *re
 
 	/*
 	 *	dictionary.microsoft defines these attributes as
-	 *	'encrypt=2'.  The functions in src/lib/radius.c will
+	 *	'encrypt=Tunnel-Password'.  The functions in src/lib/radius.c will
 	 *	take care of encrypting/decrypting them as appropriate,
 	 *	so that we don't have to.
 	 */

@@ -889,7 +889,7 @@ static ssize_t decode_extended_fragments(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	while (frag < end) {
 		if (last_frag || ((end - frag) < 4) ||
 		    (frag[0] != attr[0]) ||
-		    (frag[1] < 4) ||		       /* too short for long-extended */
+		    (frag[1] < 4) ||		       /* too short for long_extended */
 		    (frag[2] != attr[2]) ||
 		    ((frag + frag[1]) > end)) {		/* overflow */
 			end = frag;
@@ -923,7 +923,7 @@ static ssize_t decode_extended_fragments(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		fragments--;
 	}
 
-	FR_PROTO_HEX_DUMP(head, fraglen, "long-extended fragments");
+	FR_PROTO_HEX_DUMP(head, fraglen, "long_extended fragments");
 
 	/*
 	 *	Reset the "end" pointer, because we're not passing in
@@ -985,7 +985,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	One byte of type, and N bytes of data.
 	 */
-	if (!flag_long_extended(&da->flags)) {
+	if (!fr_radius_flag_long_extended(da)) {
 		if (fr_pair_find_or_append_by_da(ctx, &vp, out, da) < 0) return PAIR_DECODE_OOM;
 
 		slen = fr_radius_decode_pair_value(vp, &vp->vp_group, child, data + 3, data[1] - 3, packet_ctx);
@@ -1484,6 +1484,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	fr_pair_t		*vp = NULL;
 	uint8_t const		*p = data;
 	uint8_t			buffer[256];
+	fr_radius_attr_flags_encrypt_t encrypt;
 	fr_radius_decode_ctx_t *packet_ctx = decode_ctx;
 
 	if (attr_len > 128 * 1024) {
@@ -1510,7 +1511,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	Hacks for tags.
 	 */
-	if (flag_has_tag(&parent->flags)) {
+	if (fr_radius_flag_has_tag(parent)) {
 		/*
 		 *	Check for valid tags and data types.
 		 */
@@ -1604,11 +1605,12 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 #endif
 	}
 
+	encrypt = fr_radius_flag_encrypted(parent);
 	/*
 	 *	Decrypt the attribute.
 	 */
-	if (flag_encrypted(&parent->flags)) {
-		FR_PROTO_TRACE("Decrypting type %u", parent->flags.subtype);
+	if (encrypt) {
+		FR_PROTO_TRACE("Decrypting type %u", encrypt);
 		/*
 		 *	Encrypted attributes can only exist for the
 		 *	old-style format.  Extended attributes CANNOT
@@ -1619,11 +1621,11 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (p == data) memcpy(buffer, p, attr_len);
 		p = buffer;
 
-		switch (parent->flags.subtype) { /* can't be tagged */
+		switch (encrypt) { /* can't be tagged */
 		/*
 		 *  User-Password
 		 */
-		case FLAG_ENCRYPT_USER_PASSWORD:
+		case RADIUS_FLAG_ENCRYPT_USER_PASSWORD:
 			if (!packet_ctx->request_authenticator) goto raw;
 
 			fr_radius_decode_password((char *)buffer, attr_len, packet_ctx);
@@ -1658,8 +1660,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	except for CoA-Requests.  They can have a tag,
 		 *	so data_len is not the same as attrlen.
 		 */
-		case FLAG_TAGGED_TUNNEL_PASSWORD:
-		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+		case RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD:
 			if (!packet_ctx->request_authenticator) goto raw;
 
 			if (fr_radius_decode_tunnel_password(buffer, &data_len, packet_ctx) < 0) {
@@ -1671,7 +1672,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	Ascend-Send-Secret
 		 *	Ascend-Receive-Secret
 		 */
-		case FLAG_ENCRYPT_ASCEND_SECRET:
+		case RADIUS_FLAG_ENCRYPT_ASCEND_SECRET:
 			if (!packet_ctx->request_authenticator) goto raw;
 
 			fr_radius_ascend_secret(&FR_DBUFF_TMP(buffer, sizeof(buffer)), p, data_len,
@@ -1707,7 +1708,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	VSAs in the RFC space are encoded one way.
 		 *	VSAs in the "extended" space are different.
 		 */
-		if (!parent->parent || !flag_extended(&parent->parent->flags)) {
+		if (!parent->parent || !fr_radius_flag_extended(parent->parent)) {
 			/*
 			 *	VSAs can be WiMAX, in which case they don't
 			 *	fit into one attribute.
@@ -1917,7 +1918,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		break;
 
 	case FR_TYPE_STRING:
-		if (!flag_abinary(&parent->flags)) goto decode;
+		if (!fr_radius_flag_abinary(parent)) goto decode;
 
 		if (fr_radius_decode_abinary(vp, p, data_len) < 0) goto raw;
 		break;
@@ -2051,7 +2052,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		/*
 		 *	Concatenate consecutive top-level attributes together.
 		 */
-		if (flag_concat(&da->flags)) {
+		if (fr_radius_flag_concat(da)) {
 			FR_PROTO_TRACE("Concat attribute");
 			return decode_concat(ctx, out, da, data, packet_ctx->end);
 		}
@@ -2061,7 +2062,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	Try to deal with that here, so that the rest
 		 *	of the code doesn't have to.
 		 */
-		if (flag_extended(&da->flags)) {
+		if (fr_radius_flag_extended(da)) {
 			return decode_extended(ctx, out, da, data, data_len, packet_ctx);
 		}
 

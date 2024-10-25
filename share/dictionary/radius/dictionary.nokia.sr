@@ -374,17 +374,17 @@ ATTRIBUTE	Tunnel-Rx-Window-Size			120	integer	has_tag
 ATTRIBUTE	Nat-Port-Range				121	string
 
 # Lawful intercept VSAs
-ATTRIBUTE	LI-Action				122	integer	encrypt=2
+ATTRIBUTE	LI-Action				122	integer	encrypt=Tunnel-Password
 
 VALUE	LI-Action			no-action		1
 VALUE	LI-Action			enable			2
 VALUE	LI-Action			disable			3
 
-ATTRIBUTE	LI-Destination				123	string	encrypt=2
+ATTRIBUTE	LI-Destination				123	string	encrypt=Tunnel-Password
 
 # This VSA can occur multiple times (for each FC that must be intercepted)
 # If this VSA is not present, all FCs will be intercepted.
-ATTRIBUTE	LI-FC					124	integer	encrypt=2
+ATTRIBUTE	LI-FC					124	integer	encrypt=Tunnel-Password
 
 VALUE	LI-FC				be			0
 VALUE	LI-FC				l2			1
@@ -396,7 +396,7 @@ VALUE	LI-FC				h1			6
 VALUE	LI-FC				nc			7
 
 # If this VSA is not present, both directions will be intercepted.
-ATTRIBUTE	LI-Direction				125	integer	encrypt=2
+ATTRIBUTE	LI-Direction				125	integer	encrypt=Tunnel-Password
 
 VALUE	LI-Direction			ingress			1
 VALUE	LI-Direction			egress			2
@@ -437,15 +437,15 @@ ATTRIBUTE	Onetime-Http-Redirection-Filter-Id	136	string
 ATTRIBUTE	Authentication-Policy-Name		137	string # CoA
 
 # Lawful intercept VSAs continued
-ATTRIBUTE	LI-Intercept-Id				138	integer	encrypt=2
-ATTRIBUTE	LI-Session-Id				139	integer	encrypt=2
+ATTRIBUTE	LI-Intercept-Id				138	integer	encrypt=Tunnel-Password
+ATTRIBUTE	LI-Session-Id				139	integer	encrypt=Tunnel-Password
 
 # NAT
 ATTRIBUTE	Nat-Outside-Serv-Id			140	integer
 ATTRIBUTE	Nat-Outside-Ip-Addr			141	ipaddr
 
 # Mobile-Gateway APN-Password VSA (password used for the next APN AccessReq)
-ATTRIBUTE	APN-Password				142	string	encrypt=2
+ATTRIBUTE	APN-Password				142	string	encrypt=Tunnel-Password
 
 # Mobile-Gateway Next-APN-Name VSA (PGW-APN to be used for the session)
 ATTRIBUTE	APN-Name				143	string

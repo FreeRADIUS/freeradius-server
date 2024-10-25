@@ -22,6 +22,7 @@
  *
  * @copyright 2000-2003,2006-2015 The FreeRADIUS server project
  */
+#include "protocols/radius/radius.h"
 RCSID("$Id$")
 
 #include <freeradius-devel/util/dbuff.h>
@@ -321,15 +322,16 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			    fr_da_stack_t *da_stack, unsigned int depth,
 			    fr_dcursor_t *cursor, void *encode_ctx)
 {
-	ssize_t			slen;
-	size_t			len;
-	fr_pair_t const	*vp = fr_dcursor_current(cursor);
-	fr_dict_attr_t const	*da = da_stack->da[depth];
-	fr_radius_encode_ctx_t	*packet_ctx = encode_ctx;
-	fr_dbuff_t		work_dbuff = FR_DBUFF(dbuff);
-	fr_dbuff_t		value_dbuff;
-	fr_dbuff_marker_t	value_start, src, dest;
-	bool			encrypted = false;
+	ssize_t				slen;
+	size_t				len;
+	fr_pair_t const			*vp = fr_dcursor_current(cursor);
+	fr_dict_attr_t const		*da = da_stack->da[depth];
+	fr_radius_encode_ctx_t		*packet_ctx = encode_ctx;
+	fr_dbuff_t			work_dbuff = FR_DBUFF(dbuff);
+	fr_dbuff_t			value_dbuff;
+	fr_dbuff_marker_t		value_start, src, dest;
+	bool				encrypted = false;
+	fr_radius_attr_flags_encrypt_t	encrypt;
 
 	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -344,7 +346,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	/*
 	 *	Catch errors early on.
 	 */
-	if (flag_encrypted(&vp->da->flags) && !packet_ctx) {
+	if (fr_radius_flag_encrypted(vp->da) && !packet_ctx) {
 		fr_strerror_const("Asked to encrypt attribute, but no packet context provided");
 		return PAIR_ENCODE_FATAL_ERROR;
 	}
@@ -396,7 +398,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	tag, then we always encode a tag byte, even one that
 	 *	is zero.
 	 */
-	if ((vp->vp_type == FR_TYPE_STRING) && flag_has_tag(&vp->da->flags)) {
+	if ((vp->vp_type == FR_TYPE_STRING) && fr_radius_flag_has_tag(vp->da)) {
 		if (packet_ctx->tag) {
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t)packet_ctx->tag);
 		} else if (TAG_VALID(vp->vp_strvalue[0])) {
@@ -455,7 +457,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	through to using the common encoder.
 	 */
 	case FR_TYPE_STRING:
-		if (flag_abinary(&da->flags)) {
+		if (fr_radius_flag_abinary(da)) {
 			slen = fr_radius_encode_abinary(vp, &value_dbuff);
 			if (slen <= 0) return slen;
 			break;
@@ -491,8 +493,9 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	if (flag_encrypted(&da->flags)) switch (vp->da->flags.subtype) {
-	case FLAG_ENCRYPT_USER_PASSWORD:
+	encrypt = fr_radius_flag_encrypted(da);
+	if (encrypt) switch (encrypt) {
+	case RADIUS_FLAG_ENCRYPT_USER_PASSWORD:
 		/*
 		 *	Encode the password in place
 		 */
@@ -501,10 +504,12 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		encrypted = true;
 		break;
 
-	case FLAG_TAGGED_TUNNEL_PASSWORD:
-	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+	case RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD:
+	{
+		bool has_tag = fr_radius_flag_has_tag(vp->da);
+
 		if (packet_ctx->disallow_tunnel_passwords) {
-			fr_strerror_const("Attributes with 'encrypt=2' set cannot go into this packet.");
+			fr_strerror_const("Attributes with 'encrypt=Tunnel-Password' set cannot go into this packet.");
 			goto return_0;
 		}
 
@@ -517,30 +522,31 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	perhaps one of the salt fields could be
 		 *	mistaken for the tag.
 		 */
-		if (flag_has_tag(&vp->da->flags)) fr_dbuff_advance(&work_dbuff, 1);
+		if (has_tag) fr_dbuff_advance(&work_dbuff, 1);
 
 		slen = encode_tunnel_password(&work_dbuff, &value_start, fr_dbuff_used(&value_dbuff), packet_ctx);
 		if (slen < 0) {
 			fr_strerror_printf("%s too long", vp->da->name);
-			return slen - flag_has_tag(&vp->da->flags);
+			return slen - has_tag;
 		}
 
 		/*
 		 *	Do this after so we don't mess up the input
 		 *	value.
 		 */
-		if (flag_has_tag(&vp->da->flags)) {
+		if (has_tag) {
 			fr_dbuff_set_to_start(&value_start);
 			fr_dbuff_in(&value_start, (uint8_t) 0x00);
 		}
 		encrypted = true;
+	}
 		break;
 
 	/*
 	 *	The code above ensures that this attribute
 	 *	always fits.
 	 */
-	case FLAG_ENCRYPT_ASCEND_SECRET:
+	case RADIUS_FLAG_ENCRYPT_ASCEND_SECRET:
 		/*
 		 *	@todo radius decoding also uses fr_radius_ascend_secret() (Vernam cipher
 		 *	is its own inverse). As part of converting decode, make sure the caller
@@ -551,6 +557,13 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		if (slen < 0) return slen;
 		encrypted = true;
 		break;
+
+	case RADIUS_FLAG_ENCRYPT_NONE:
+		break;
+
+	case RADIUS_FLAG_ENCRYPT_INVALID:
+		fr_strerror_const("Invalid encryption type");
+		return PAIR_ENCODE_FATAL_ERROR;
 	}
 
 	if (!encrypted) {
@@ -567,7 +580,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	same tunnel.  Valid values for this field are 0x01 through 0x1F,
 	 *	inclusive.  If the Tag field is unused, it MUST be zero (0x00).
 	 */
-	if ((vp->vp_type == FR_TYPE_UINT32) && flag_has_tag(&vp->da->flags)) {
+	if ((vp->vp_type == FR_TYPE_UINT32) && fr_radius_flag_has_tag(vp->da)) {
 		uint8_t	msb = 0;
 		/*
 		 *	Only 24bit integers are allowed here
@@ -727,7 +740,7 @@ static ssize_t encode_extended(fr_dbuff_t *dbuff,
 	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
 
-	extra = flag_long_extended(&da_stack->da[0]->flags);
+	extra = fr_radius_flag_long_extended(da_stack->da[0]);
 
 	/*
 	 *	The data used here can be more than 255 bytes, but only for the
@@ -1581,7 +1594,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	/*
 	 *	Fast path for the common case.
 	 */
-	if (vp->da->parent->flags.is_root && !vp->da->flags.subtype) {
+	if (vp->da->parent->flags.is_root && fr_radius_flag_encrypted(vp->da)) {
 		switch (vp->vp_type) {
 		case FR_TYPE_LEAF:
 			da_stack.da[0] = vp->da;
@@ -1611,7 +1624,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 	da = da_stack.da[0];
 	switch (da->type) {
 	case FR_TYPE_OCTETS:
-		if (flag_concat(&da->flags)) {
+		if (fr_radius_flag_concat(da)) {
 			/*
 			 *	Attributes like EAP-Message are marked as
 			 *	"concat", which means that they are fragmented
@@ -1635,7 +1648,7 @@ ssize_t fr_radius_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *enc
 		break;
 
 	case FR_TYPE_TLV:
-		if (!flag_extended(&da->flags)) {
+		if (!fr_radius_flag_extended(da)) {
 			slen = encode_child(&work_dbuff, &da_stack, 0, cursor, encode_ctx);
 
 		} else if (vp->da != da) {

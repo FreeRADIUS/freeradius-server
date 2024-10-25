@@ -944,23 +944,22 @@ void fr_dhcpv6_global_free(void)
 	fr_dict_autofree(libfreeradius_dhcpv6_dict);
 }
 
-static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
-		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
 	 *	"arrays" of string/octets are encoded as a 16-bit
 	 *	length, followed by the actual data.
 	 */
-	if (flags->array && ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS))) {
-		flags->is_known_width = true;
+	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
+		da->flags.is_known_width = true;
 
-		if (flags->extra && (flags->subtype != FLAG_LENGTH_UINT16)) {
+		if (da->flags.extra && (da->flags.subtype != FLAG_LENGTH_UINT16)) {
 			fr_strerror_const("string/octets arrays require the 'length=uint16' flag");
 			return false;
 		}
 	}
 
-	if (flags->extra && (flags->subtype == FLAG_LENGTH_UINT8)) {
+	if (da->flags.extra && (da->flags.subtype == FLAG_LENGTH_UINT8)) {
 		fr_strerror_const("The 'length=uint8' flag cannot be used for DHCPv6");
 		return false;
 	}
@@ -969,14 +968,14 @@ static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *pare
 	 *	"extra" signifies that subtype is being used by the
 	 *	dictionaries itself.
 	 */
-	if (flags->extra || !flags->subtype) return true;
+	if (da->flags.extra || !da->flags.subtype) return true;
 
-	if ((type != FR_TYPE_STRING) && ((flags->subtype == FLAG_ENCODE_DNS_LABEL) || (flags->subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
+	if ((da->type != FR_TYPE_STRING) && ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) || (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
 
-	flags->is_known_width = true;
+	da->flags.is_known_width = true;
 
 	return true;
 }

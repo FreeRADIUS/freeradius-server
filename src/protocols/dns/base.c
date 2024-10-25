@@ -438,29 +438,28 @@ static fr_table_num_ordered_t const subtype_table[] = {
 };
 
 
-static bool attr_valid(UNUSED fr_dict_t *dict, UNUSED fr_dict_attr_t const *parent,
-		       UNUSED char const *name, UNUSED int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
 	 *	"arrays" of string/octets are encoded as a 16-bit
 	 *	length, followed by the actual data.
 	 */
-	if (flags->array && ((type == FR_TYPE_STRING) || (type == FR_TYPE_OCTETS))) {
-		flags->is_known_width = true;
+	if (da->flags.array && ((da->type == FR_TYPE_STRING) || (da->type == FR_TYPE_OCTETS))) {
+		da->flags.is_known_width = true;
 	}
 
 	/*
 	 *	"extra" signifies that subtype is being used by the
 	 *	dictionaries itself.
 	 */
-	if (flags->extra || !flags->subtype) return true;
+	if (da->flags.extra || !da->flags.subtype) return true;
 
-	if (type != FR_TYPE_STRING) {
+	if (da->type != FR_TYPE_STRING) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
 
-	flags->is_known_width = true;
+	da->flags.is_known_width = true;
 
 	return true;
 }

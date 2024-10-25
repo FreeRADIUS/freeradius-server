@@ -16,8 +16,8 @@ ATTRIBUTE	Extended-Attribute-1			241	tlv extended
 ATTRIBUTE	Extended-Attribute-2			242	tlv extended
 ATTRIBUTE	Extended-Attribute-3			243	tlv extended
 ATTRIBUTE	Extended-Attribute-4			244	tlv extended
-ATTRIBUTE	Extended-Attribute-5			245	tlv long-extended
-ATTRIBUTE	Extended-Attribute-6			246	tlv long-extended
+ATTRIBUTE	Extended-Attribute-5			245	tlv long_extended
+ATTRIBUTE	Extended-Attribute-6			246	tlv long_extended
 
 ATTRIBUTE	Extended-Vendor-Specific-1		241.26	vsa
 ATTRIBUTE	Extended-Vendor-Specific-2		242.26	vsa

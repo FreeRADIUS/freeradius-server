@@ -288,8 +288,7 @@ typedef enum {
 
 } fr_dict_attr_err_t;
 
-typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_t *dict, fr_dict_attr_t const *parent,
-					  char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t *flags);
+typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_attr_t *da);
 
 /*
  *	Forward declarations to avoid circular references.
@@ -363,10 +362,18 @@ typedef struct  {
 	fr_dict_flag_parser_rule_t	value;				//!< Function and context to parse the flag.
 } fr_dict_flag_parser_t;
 
-/** Terminating flag for fr_dict_flag_parser_t
+/** Define a flag setting function, which sets one bit in a fr_dict_attr_flags_t
  *
+ * This is here, because AFAIK there's no completely portable way to get the bit
+ * offset of a bit field in a structure.
  */
-#define FR_DICT_PROTOCOL_FLAG_TERMINATOR	{ NULL, FR_TYPE_NULL, 0, false }
+#define FR_DICT_ATTR_FLAG_FUNC(_struct, _name) \
+static int dict_flag_##_name(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)\
+{ \
+	_struct *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC); \
+	flags->_name = 1; \
+	return 0; \
+}
 
 /** conf_parser_t which parses a single CONF_PAIR, writing the result to a field in a struct
  *
@@ -394,16 +401,19 @@ typedef struct {
 		 * and can either be one of a set of fixed values or a generic type
 		 * like "string".
 		 */
-		fr_dict_flag_parser_t const	*flags;			//!< Flags for this protocol, an array of
+		fr_dict_flag_parser_t const	*flags_table;		//!< Flags for this protocol, an array of
 									///< fr_dict_flag_parser_t terminated
 									///< by FR_DICT_PROTOCOL_FLAG_TERMINATOR.
-		size_t				flags_len;		//!< ength of protocol_flags structure.
+		size_t				flags_table_len;	//!< Length of protocol_flags table.
+
+		size_t				flags_len;		//!< Length of the flags field in the protocol
+									///< specific structure.
 
 		fr_dict_attr_valid_func_t 	valid;			//!< Validation function to ensure that
 									///< new attributes are valid.
 	} attr;
 
-	fr_table_num_ordered_t		const *subtype_table;		//!< for "encrypt=1", etc.
+	fr_table_num_ordered_t		const *subtype_table;		//!< for "encrypt=User-Password", etc.
 
 	size_t				subtype_table_len;		//!< length of subtype_table
 

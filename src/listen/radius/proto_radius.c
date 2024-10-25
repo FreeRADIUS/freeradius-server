@@ -343,7 +343,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		for (vp = fr_pair_list_head(&request->request_pairs);
 		     vp != NULL;
 		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
-			if (flag_encrypted(&vp->da->flags)) {
+			if (fr_radius_flag_encrypted(vp->da)) {
 				switch (vp->vp_type) {
 				default:
 					break;

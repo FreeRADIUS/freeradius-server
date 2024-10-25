@@ -54,7 +54,7 @@ ATTRIBUTE	Port-Bounce-Host			40	integer
 ATTRIBUTE	Calea-Server-Ip				41	ipaddr
 ATTRIBUTE	Admin-Path				42	string
 ATTRIBUTE	Captive-Portal-URL			43	string
-ATTRIBUTE	MPSK-Passphrase				44	octets encrypt=2
+ATTRIBUTE	MPSK-Passphrase				44	octets encrypt=Tunnel-Password
 ATTRIBUTE	ACL-Server-Query-Info			45	string
 ATTRIBUTE	Command-String				46	string
 ATTRIBUTE	Network-Profile				47	string
@@ -84,7 +84,7 @@ ATTRIBUTE	Device-Traffic-Class			63	integer
 
 ATTRIBUTE	PVLAN-Port-Type				64	integer
 ATTRIBUTE	Network-Test				65	integer
-ATTRIBUTE	MPSK-Lookup-Info			66	string encrypt=1
+ATTRIBUTE	MPSK-Lookup-Info			66	string encrypt=User-Password
 ATTRIBUTE	AVPair					67	string
 ATTRIBUTE	DPP-Service-Type			68	integer
 
@@ -93,7 +93,7 @@ ATTRIBUTE	User-Mgmt-Interface			69	string
 ATTRIBUTE	Poe-Allocate-By-Method			70	integer
 
 ATTRIBUTE	DPP-AKMs				71	string
-ATTRIBUTE	DPP-Passphrase				72	string encrypt=2
+ATTRIBUTE	DPP-Passphrase				72	string encrypt=Tunnel-Password
 
 VALUE	AirGroup-Device-Type		Personal-Device		1
 VALUE	AirGroup-Device-Type		Shared-Device		2

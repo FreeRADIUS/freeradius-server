@@ -86,33 +86,6 @@ typedef enum {
 
 } fr_radius_limit_proxy_state_t;
 
-/** subtype values for RADIUS
- *
- *  Order of the flags is important for the flag_foo() checks.
- */
-enum {
-	FLAG_NONE = 0,					//!< No extra flags
-	FLAG_EXTENDED_ATTR,	      			//!< the attribute is an extended attribute
-	FLAG_LONG_EXTENDED_ATTR,	      		//!< the attribute is a long extended attribute
-	FLAG_CONCAT,					//!< the attribute is concatenated
-	FLAG_HAS_TAG,					//!< the attribute has a tag
-	FLAG_ABINARY,					//!< the attribute is in "abinary" format
-	FLAG_TAGGED_TUNNEL_PASSWORD,   			//!< the attribute has a tag and is encrypted
-
-	FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
-	FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
-	FLAG_ENCRYPT_ASCEND_SECRET,			//!< Encrypt attribute ascend style.
-};
-
-
-#define flag_has_tag(_flags)	     (!(_flags)->extra && (((_flags)->subtype == FLAG_HAS_TAG) || ((_flags)->subtype == FLAG_TAGGED_TUNNEL_PASSWORD)))
-#define flag_concat(_flags)	     (!(_flags)->extra && (_flags)->subtype == FLAG_CONCAT)
-#define flag_abinary(_flags)	     (!(_flags)->extra && (_flags)->subtype == FLAG_ABINARY)
-#define flag_encrypted(_flags)	     (!(_flags)->extra && (_flags)->subtype >= FLAG_TAGGED_TUNNEL_PASSWORD)
-#define flag_extended(_flags)        (!(_flags)->extra && (((_flags)->subtype == FLAG_EXTENDED_ATTR) || (_flags)->subtype == FLAG_LONG_EXTENDED_ATTR))
-#define flag_long_extended(_flags)   (!(_flags)->extra && (_flags)->subtype == FLAG_LONG_EXTENDED_ATTR)
-#define flag_tunnel_password(_flags) (!(_flags)->extra && (((_flags)->subtype == FLAG_ENCRYPT_TUNNEL_PASSWORD) || ((_flags)->subtype == FLAG_TAGGED_TUNNEL_PASSWORD)))
-
 typedef struct {
 	fr_pair_t	*parent;
 	fr_dcursor_t	cursor;
@@ -167,6 +140,46 @@ typedef struct {
 	fr_pair_list_t		*tag_root;		//!< Where to insert tag attributes.
 	TALLOC_CTX		*tag_root_ctx;		//!< Where to allocate new tag attributes.
 } fr_radius_decode_ctx_t;
+
+typedef enum {
+	RADIUS_FLAG_ENCRYPT_INVALID = -1,			//!< Invalid encryption flag.
+	RADIUS_FLAG_ENCRYPT_NONE = 0,				//!< No encryption.
+	RADIUS_FLAG_ENCRYPT_USER_PASSWORD = 1,			//!< Encrypt attribute RFC 2865 style.
+	RADIUS_FLAG_ENCRYPT_TUNNEL_PASSWORD = 2,		//!< Encrypt attribute RFC 2868 style.
+	RADIUS_FLAG_ENCRYPT_ASCEND_SECRET = 3,			//!< Encrypt attribute ascend style.
+} fr_radius_attr_flags_encrypt_t;
+
+typedef struct {
+	unsigned int			long_extended : 1;	//!< Attribute is a long extended attribute
+	unsigned int			extended : 1;		//!< Attribute is an extended attribute
+	unsigned int			concat : 1;		//!< Attribute is concatenated
+	unsigned int			has_tag : 1;		//!< Attribute has a tag
+	unsigned int			abinary : 1;		//!< Attribute is in "abinary" format
+	fr_radius_attr_flags_encrypt_t	encrypt;		//!< Attribute is encrypted
+} fr_radius_attr_flags_t;
+
+DIAG_OFF(unused-function)
+/** Return RADIUS-specific flags for a given attribute
+ */
+static inline fr_radius_attr_flags_t const * fr_radius_attr_flags(fr_dict_attr_t const *da)
+{
+	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+}
+
+#define fr_radius_flag_has_tag(_da)		fr_radius_attr_flags(_da)->has_tag
+#define fr_radius_flag_concat(_da)		fr_radius_attr_flags(_da)->concat
+#define fr_radius_flag_abinary(_da)		fr_radius_attr_flags(_da)->abinary
+#define fr_radius_flag_encrypted(_da)		fr_radius_attr_flags(_da)->encrypt
+
+static bool fr_radius_flag_extended(fr_dict_attr_t const *da)
+{
+	fr_radius_attr_flags_t const *flags = fr_radius_attr_flags(da);
+
+	return flags->extended || flags->long_extended;
+}
+
+#define fr_radius_flag_long_extended(_da)	fr_radius_attr_flags(_da)->long_extended
+DIAG_ON(unused-function)
 
 extern fr_table_num_sorted_t const fr_radius_require_ma_table[];
 extern size_t fr_radius_require_ma_table_len;

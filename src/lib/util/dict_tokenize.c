@@ -576,9 +576,10 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict
 		 */
 		if (ctx->dict->proto->subtype_table) {
 			size_t subtype_len;
+			size_t key_len = strlen(key);
 			int subtype;
 
-			subtype = fr_table_value_by_longest_prefix(&subtype_len, ctx->dict->proto->subtype_table, key, strlen(key), -1);
+			subtype = fr_table_value_by_longest_prefix(&subtype_len, ctx->dict->proto->subtype_table, key, key_len, -1);
 			if (subtype >= 0) {
 				if ((*da_p)->flags.subtype != 0) {
 					fr_strerror_printf("Flag '%s', conflicts with '%s'", key,
@@ -626,8 +627,15 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict
 			}
 		}
 
-		if (!fr_dict_attr_flag_to_parser(&parser, dict_common_flags, dict_common_flags_len, key, NULL)) {
-			fr_strerror_printf("Unknown option '%s'", key);
+		/*
+		 *	Search in the main flags table
+		 *	then the protocol flags table.
+		 */
+		if (!fr_dict_attr_flag_to_parser(&parser, dict_common_flags, dict_common_flags_len, key, NULL) &&
+		    (!ctx->dict->proto->attr.flags_table ||
+		     !fr_dict_attr_flag_to_parser(&parser, ctx->dict->proto->attr.flags_table,
+						  ctx->dict->proto->attr.flags_table_len, key, NULL))) {
+			fr_strerror_printf("Unknown flag '%s'", key);
 			return -1;
 		}
 

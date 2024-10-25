@@ -9,7 +9,7 @@
 #
 
 #  This has been removed.  Too many people get it wrong.
-#ATTRIBUTE	Password				2	string	encrypt=1
+#ATTRIBUTE	Password				2	string	encrypt=User-Password
 ALIAS		Client-Id				NAS-IP-Address
 ALIAS		Client-Port-Id				NAS-Port
 ALIAS		Framed-Address				Framed-IP-Address

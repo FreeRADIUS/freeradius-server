@@ -99,7 +99,7 @@ ATTRIBUTE	S-Key					54	octets
 ATTRIBUTE	S-Request				55	integer
 ATTRIBUTE	S-Lifetime				56	date
 ATTRIBUTE	MN-HA-SPI				57	integer
-ATTRIBUTE	MN-HA-Shared-Key			58	string encrypt=2
+ATTRIBUTE	MN-HA-Shared-Key			58	string encrypt=Tunnel-Password
 
 ATTRIBUTE	Remote-IP				59	tlv
 ATTRIBUTE	Address					.1	ipaddr
