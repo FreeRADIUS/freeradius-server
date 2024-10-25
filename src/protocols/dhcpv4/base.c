@@ -163,6 +163,36 @@ int dhcp_header_sizes[] = {
 
 uint8_t	eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
+FR_DICT_ATTR_FLAG_FUNC(fr_dhcpv4_attr_flags_t, dns_label)
+FR_DICT_ATTR_FLAG_FUNC(fr_dhcpv4_attr_flags_t, exists)
+
+static int dict_flag_prefix(fr_dict_attr_t **da_p, char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)
+{
+	static fr_table_num_sorted_t const table[] = {
+		{ L("bits"),			DHCPV4_FLAG_PREFIX_BITS },
+		{ L("split"),			DHCPV4_FLAG_PREFIX_SPLIT }
+	};
+	static size_t table_len = NUM_ELEMENTS(table);
+
+	fr_dhcpv4_attr_flags_t *flags = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+	fr_dhcpv4_attr_flags_prefix_t flag;
+
+	flag = fr_table_value_by_str(table, value, DHCPV4_FLAG_PREFIX_INVALID);
+	if (flag == DHCPV4_FLAG_PREFIX_INVALID) {
+		fr_strerror_printf("Unknown prefix type '%s'", value);
+		return -1;
+	}
+	flags->prefix = flag;
+
+	return 0;
+}
+
+static fr_dict_flag_parser_t const dhcpv4_flags[] = {
+	{ L("dns_label"),	{ .func = dict_flag_dns_label } },
+	{ L("exists"),		{ .func = dict_flag_exists } },
+	{ L("prefix"),		{ .func = dict_flag_prefix } }
+};
+
 int8_t fr_dhcpv4_attr_cmp(void const *a, void const *b)
 {
 	fr_pair_t const *my_a = a, *my_b = b;
@@ -295,7 +325,7 @@ void *fr_dhcpv4_next_encodable(fr_dlist_head_t *list, void *current, void *uctx)
 		PAIR_VERIFY(c);
 		if (c->da->dict != dict || c->da->flags.internal) continue;
 
-		if (c->vp_type == FR_TYPE_BOOL && da_is_bool_exists(c->da) && !c->vp_bool) continue;
+		if (c->vp_type == FR_TYPE_BOOL && fr_dhcpv4_flag_exists(c->da) && !c->vp_bool) continue;
 
 		break;
 	}
@@ -675,14 +705,6 @@ void fr_dhcpv4_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 	fprintf(fp, "\n");
 }
 
-static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
-	{ L("encode=dns_label"),		FLAG_ENCODE_DNS_LABEL },
-	{ L("prefix=split"),			FLAG_ENCODE_SPLIT_PREFIX },
-	{ L("prefix=bits"),			FLAG_ENCODE_BITS_PREFIX },
-	{ L("encode=exists"),			FLAG_ENCODE_BOOL_EXISTS },
-};
-
 static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
@@ -709,19 +731,19 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 */
 	if (da->flags.extra || !da->flags.subtype) return true;
 
-	if ((da->type != FR_TYPE_STRING) && (da->flags.subtype == FLAG_ENCODE_DNS_LABEL)) {
+	if ((da->type != FR_TYPE_STRING) && (fr_dhcpv4_flag_dns_label(da))) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
 
 	if ((da->type != FR_TYPE_IPV4_PREFIX) &&
-	    ((da->flags.subtype == FLAG_ENCODE_SPLIT_PREFIX) || (da->flags.subtype == FLAG_ENCODE_BITS_PREFIX))) {
+	    (fr_dhcpv4_flag_prefix(da))) {
 		fr_strerror_const("The 'prefix=...' flag can only be used with attributes of type 'ipv4prefix'");
 		return false;
 	}
 
-	if ((da->type != FR_TYPE_BOOL) && (da->flags.subtype == FLAG_ENCODE_BOOL_EXISTS)) {
-		fr_strerror_const("The 'encode=exists' flag can only be used with attributes of type 'bool'");
+	if ((da->type != FR_TYPE_BOOL) && fr_dhcpv4_flag_exists(da)) {
+		fr_strerror_const("The 'exists' flag can only be used with attributes of type 'bool'");
 		return false;
 	}
 
@@ -733,9 +755,10 @@ fr_dict_protocol_t libfreeradius_dhcpv4_dict_protocol = {
 	.name = "dhcpv4",
 	.default_type_size = 1,
 	.default_type_length = 1,
-	.subtype_table = subtype_table,
-	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr = {
+		.flags_table = dhcpv4_flags,
+		.flags_table_len = NUM_ELEMENTS(dhcpv4_flags),
+		.flags_len = sizeof(fr_dhcpv4_attr_flags_t),
 		.valid = attr_valid
 	},
 

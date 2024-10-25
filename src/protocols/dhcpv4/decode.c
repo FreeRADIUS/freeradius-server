@@ -76,7 +76,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	@todo - we might need to limit this to only one DNS label.
 	 */
-	if ((parent->type == FR_TYPE_STRING) && da_is_dns_label(parent)) {
+	if ((parent->type == FR_TYPE_STRING) && fr_dhcpv4_flag_dns_label(parent)) {
 		return fr_pair_dns_labels_from_network(ctx, out, parent, data, data, data_len, NULL, false);
 	}
 
@@ -182,7 +182,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 		 *	4 octets of address
 		 *	4 octets of mask
 		 */
-		if (da_is_split_prefix(da)) {
+		if (fr_dhcpv4_flag_prefix_split(da)) {
 			uint32_t ipaddr, mask;
 
 			if (data_len < 8) goto raw;
@@ -218,7 +218,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 			break;
 		}
 
-		if (da_is_bits_prefix(vp->da)) {
+		if (fr_dhcpv4_flag_prefix_bits(vp->da)) {
 			size_t needs;
 
 			if ((data_len == 0) || (*p > 32)) goto raw;
@@ -485,7 +485,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len);
 
-	} else if ((da->type == FR_TYPE_STRING) && da_is_dns_label(da)) {
+	} else if ((da->type == FR_TYPE_STRING) && fr_dhcpv4_flag_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, data + 2, data + 2, len, NULL, true);
 
 	} else if (da->flags.array) {

@@ -102,14 +102,14 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *	Rapid-Commit does this.  Options 19/20 require encoding as one byte of 0/1.
 		 */
 	case FR_TYPE_BOOL:
-		if (da_is_bool_exists(vp->da)) {
+		if (fr_dhcpv4_flag_exists(vp->da)) {
 			break;
 		}
 		FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) (vp->vp_bool == true));
 		break;
 
 	case FR_TYPE_IPV4_PREFIX:
-		if (da_is_split_prefix(vp->da)) {
+		if (fr_dhcpv4_flag_prefix_split(vp->da)) {
 			uint32_t mask;
 
 			mask = ~((~(uint32_t) 0) >> vp->vp_ip.prefix);
@@ -121,7 +121,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			break;
 		}
 
-		if (da_is_bits_prefix(vp->da)) {
+		if (fr_dhcpv4_flag_prefix_bits(vp->da)) {
 			size_t num_bytes = (vp->vp_ip.prefix + 0x07) >> 3;
 
 			FR_DBUFF_IN_RETURN(&work_dbuff, (uint8_t) vp->vp_ip.prefix);
@@ -144,7 +144,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *
 		 *	https://tools.ietf.org/html/rfc8415#section-10
 		 */
-		if (da_is_dns_label(da)) {
+		if (fr_dhcpv4_flag_dns_label(da)) {
 			fr_dbuff_marker_t	last_byte, src;
 
 			fr_dbuff_marker(&last_byte, &work_dbuff);

@@ -63,22 +63,6 @@ typedef enum {
 
 #define FR_DHCP_PACKET_CODE_VALID(_code) (((_code) > 0) && ((_code) < FR_DHCP_CODE_MAX))
 
-/** subtype values for DHCPv4 and DHCPv6
- *
- */
-enum {
-	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
-	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
-	FLAG_ENCODE_SPLIT_PREFIX,			//!< encode IPv4 prefixes as Policy-Filter, split into IP/mask
-	FLAG_ENCODE_BITS_PREFIX,			//!< encode IPv4 prefixes as prefix bits, followed by IP.
-	FLAG_ENCODE_BOOL_EXISTS,			//!< bool as existence checks
-};
-
-#define da_is_dns_label(_da) (!(_da)->flags.extra && ((_da)->flags.subtype == FLAG_ENCODE_DNS_LABEL))
-#define da_is_split_prefix(_da) (!(_da)->flags.extra && ((_da)->flags.subtype == FLAG_ENCODE_SPLIT_PREFIX))
-#define da_is_bits_prefix(_da) (!(_da)->flags.extra && ((_da)->flags.subtype == FLAG_ENCODE_BITS_PREFIX))
-#define da_is_bool_exists(_da) (!(_da)->flags.extra && ((_da)->flags.subtype == FLAG_ENCODE_BOOL_EXISTS))
-
 typedef struct {
 	uint8_t		opcode;
 	uint8_t		htype;
@@ -151,6 +135,31 @@ typedef struct {
 	fr_dict_attr_t const *root;
 	TALLOC_CTX	*tmp_ctx;		//!< for temporary things cleaned up during decoding
 } fr_dhcpv4_ctx_t;
+
+typedef enum {
+	DHCPV4_FLAG_PREFIX_INVALID = -1,
+	DHCPV4_FLAG_PREFIX_NONE = 0,
+	DHCPV4_FLAG_PREFIX_BITS = 1,
+	DHCPV4_FLAG_PREFIX_SPLIT = 2,
+} fr_dhcpv4_attr_flags_prefix_t;
+
+typedef struct {
+	bool				exists;
+	bool				dns_label;
+	fr_dhcpv4_attr_flags_prefix_t	prefix;
+} fr_dhcpv4_attr_flags_t;
+
+static inline fr_dhcpv4_attr_flags_t const *fr_dhcpv4_attr_flags(fr_dict_attr_t const *da)
+{
+	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+}
+
+#define fr_dhcpv4_flag_dns_label(_da)		(fr_dhcpv4_attr_flags(_da)->dns_label)
+#define fr_dhcpv4_flag_exists(_da)		(fr_dhcpv4_attr_flags(_da)->exists)
+
+#define fr_dhcpv4_flag_prefix(_da)		fr_dhcpv4_attr_flags(_da)->prefix
+#define fr_dhcpv4_flag_prefix_bits(_da)		(fr_dhcpv4_attr_flags(_da)->prefix == DHCPV4_FLAG_PREFIX_BITS)
+#define fr_dhcpv4_flag_prefix_split(_da)	(fr_dhcpv4_attr_flags(_da)->prefix == DHCPV4_FLAG_PREFIX_SPLIT)
 
 /*
  *	base.c

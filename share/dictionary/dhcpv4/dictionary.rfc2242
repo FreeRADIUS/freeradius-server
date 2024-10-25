@@ -20,10 +20,10 @@ ATTRIBUTE	Netware-Sub-Options			63	tlv
 #   sub-option to be present in option 63 encoding. Each of them is
 #   simply a type length pair with length set to zero....
 #
-ATTRIBUTE	NWIP-Does-Not-Exist			.1	bool	encode=exists
-ATTRIBUTE	NWIP-Exist-In-Options-Area		.2	bool	encode=exists
-ATTRIBUTE	NWIP-Exist-In-Same-File			.3	bool	encode=exists
-ATTRIBUTE	NWIP-Exist-But-Too-Big			.4	bool	encode=exists
+ATTRIBUTE	NWIP-Does-Not-Exist			.1	bool	exists
+ATTRIBUTE	NWIP-Exist-In-Options-Area		.2	bool	exists
+ATTRIBUTE	NWIP-Exist-In-Same-File			.3	bool	exists
+ATTRIBUTE	NWIP-Exist-But-Too-Big			.4	bool	exists
 
 # Also from RFC2242:
 #
