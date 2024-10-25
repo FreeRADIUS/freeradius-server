@@ -107,9 +107,12 @@ char const *fr_dhcpv6_packet_names[FR_DHCPV6_CODE_MAX] = {
 	 [FR_PACKET_TYPE_VALUE_CONTACT]			= "Contact"
 };
 
-static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
-	{ L("partial_dns_label"), 		FLAG_ENCODE_PARTIAL_DNS_LABEL }
+FR_DICT_ATTR_FLAG_FUNC(fr_dhcpv6_attr_flags_t, dns_label)
+FR_DICT_ATTR_FLAG_FUNC(fr_dhcpv6_attr_flags_t, partial_dns_label)
+
+static fr_dict_flag_parser_t const dhcpv6_flags[] = {
+	{ L("dns_label"),		{ .func = dict_flag_dns_label } },
+	{ L("partial_dns_label"),	{ .func = dict_flag_partial_dns_label } }
 };
 
 static ssize_t fr_dhcpv6_ok_internal(uint8_t const *packet, uint8_t const *end, size_t max_attributes, int depth);
@@ -970,7 +973,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 	 */
 	if (da->flags.extra || !da->flags.subtype) return true;
 
-	if ((da->type != FR_TYPE_STRING) && ((da->flags.subtype == FLAG_ENCODE_DNS_LABEL) || (da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL))) {
+	if ((da->type != FR_TYPE_STRING) && fr_dhcpv6_flag_any_dns_label(da)) {
 		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 		return false;
 	}
@@ -985,10 +988,12 @@ fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 	.name = "dhcpv6",
 	.default_type_size = 2,
 	.default_type_length = 2,
-	.subtype_table = subtype_table,
-	.subtype_table_len = NUM_ELEMENTS(subtype_table),
+
 	.attr = {
 		.valid = attr_valid,
+		.flags_table = dhcpv6_flags,
+		.flags_table_len = NUM_ELEMENTS(dhcpv6_flags),
+		.flags_len = sizeof(fr_dhcpv6_attr_flags_t)
 	},
 
 	.init = fr_dhcpv6_global_init,

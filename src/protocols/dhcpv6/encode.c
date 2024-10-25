@@ -140,7 +140,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		 *
 		 *	https://tools.ietf.org/html/rfc8415#section-10
 		 */
-		if (da_is_dns_label(da)) {
+		if (fr_dhcpv6_flag_any_dns_label(da)) {
 			fr_dbuff_marker_t	last_byte, src;
 
 			fr_dbuff_marker(&last_byte, &work_dbuff);
@@ -154,7 +154,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 			 *	partial name, and we omit the trailing
 			 *	zero.
 			 */
-			if ((da->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL) && slen > 0) {
+			if (fr_dhcpv6_flag_partial_dns_label(da) && slen > 0) {
 				uint8_t c = 0;
 
 				fr_dbuff_advance(&last_byte, (size_t)(slen - 1));

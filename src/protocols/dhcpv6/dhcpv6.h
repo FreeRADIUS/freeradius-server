@@ -111,14 +111,6 @@ extern char const		*fr_dhcpv6_packet_names[FR_DHCPV6_CODE_MAX];
 /** subtype values for DHCPv4 and DHCPv6
  *
  */
-enum {
-	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DHCPv6 strings
-	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
-	FLAG_ENCODE_PARTIAL_DNS_LABEL, 			//!< encode as a partial DNS label
-};
-
-#define da_is_dns_label(_da) (!(_da)->flags.extra && (((_da)->flags.subtype == FLAG_ENCODE_DNS_LABEL) || ((_da)->flags.subtype == FLAG_ENCODE_PARTIAL_DNS_LABEL)))
-
 typedef struct CC_HINT(__packed__) {
 	uint8_t		code;
 	uint8_t		transaction_id[3];
@@ -143,6 +135,26 @@ typedef struct {
 	uint8_t			*duid;			//!< the expected DUID, in wire format
 	size_t			duid_len;		//!< length of the expected DUID
 } fr_dhcpv6_decode_ctx_t;
+
+typedef struct {
+	bool			dns_label;
+	bool			partial_dns_label;
+} fr_dhcpv6_attr_flags_t;
+
+static inline fr_dhcpv6_attr_flags_t const *fr_dhcpv6_attr_flags(fr_dict_attr_t const *da)
+{
+	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+}
+
+#define fr_dhcpv6_flag_dns_label(_da)			(fr_dhcpv6_attr_flags(_da)->dns_label)
+#define fr_dhcpv6_flag_partial_dns_label(_da)		(fr_dhcpv6_attr_flags(_da)->partial_dns_label)
+
+static inline bool fr_dhcpv6_flag_any_dns_label(fr_dict_attr_t const *da)
+{
+	fr_dhcpv6_attr_flags_t const *flags = fr_dhcpv6_attr_flags(da);
+
+	return flags->dns_label || flags->partial_dns_label;
+}
 
 /*
  *	base.c

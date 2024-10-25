@@ -58,7 +58,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	if ((parent->type == FR_TYPE_STRING) && da_is_dns_label(parent)) {
+	if ((parent->type == FR_TYPE_STRING) && fr_dhcpv6_flag_any_dns_label(parent)) {
 		return fr_pair_dns_labels_from_network(ctx, out, parent, data, data, data_len, NULL, false);
 	}
 
@@ -369,7 +369,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		fr_pair_append(out, vp);
 
-	} else if ((da->type == FR_TYPE_STRING) && da_is_dns_label(da)) {
+	} else if ((da->type == FR_TYPE_STRING) && fr_dhcpv6_flag_any_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, data + 4, data + 4, len, NULL, true);
 		if (slen < 0) return slen;
 
