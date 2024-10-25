@@ -73,6 +73,14 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 	[FR_DNS_STATEFUL_OPERATION] = "Stateful-Operation",
 };
 
+FR_DICT_ATTR_FLAG_FUNC(fr_dns_attr_flags_t, dns_label)
+FR_DICT_ATTR_FLAG_FUNC(fr_dns_attr_flags_t, uncompressed)
+
+static fr_dict_flag_parser_t const dns_flags[] = {
+	{ L("dns_label"),	{ .func = dict_flag_dns_label } },
+	{ L("uncompressed"),	{ .func = dict_flag_uncompressed } }
+};
+
 #define DECODE_FAIL(_reason) if (reason) *reason = FR_DNS_DECODE_FAIL_ ## _reason
 
 static bool fr_dns_tlv_ok(uint8_t const *p, uint8_t const *end, fr_dns_decode_fail_t *reason)
@@ -432,12 +440,6 @@ void fr_dns_global_free(void)
 	fr_dict_autofree(dns_dict);
 }
 
-static fr_table_num_ordered_t const subtype_table[] = {
-	{ L("dns_label"),			FLAG_ENCODE_DNS_LABEL },
-	{ L("uncompressed"),			FLAG_ENCODE_DNS_LABEL_UNCOMPRESSED },
-};
-
-
 static bool attr_valid(fr_dict_attr_t *da)
 {
 	/*
@@ -448,18 +450,13 @@ static bool attr_valid(fr_dict_attr_t *da)
 		da->flags.is_known_width = true;
 	}
 
-	/*
-	 *	"extra" signifies that subtype is being used by the
-	 *	dictionaries itself.
-	 */
-	if (da->flags.extra || !da->flags.subtype) return true;
-
-	if (da->type != FR_TYPE_STRING) {
-		fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
-		return false;
+	if (fr_dns_flag_dns_label(da) || fr_dns_flag_uncompressed(da)) {
+		if (da->type != FR_TYPE_STRING) {
+			fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
+			return false;
+		}
+		da->flags.is_known_width = true;	/* Lie so we don't trip up the main validation checks */
 	}
-
-	da->flags.is_known_width = true;
 
 	return true;
 }
@@ -469,9 +466,10 @@ fr_dict_protocol_t libfreeradius_dns_dict_protocol = {
 	.name = "dns",
 	.default_type_size = 2,
 	.default_type_length = 2,
-	.subtype_table = subtype_table,
-	.subtype_table_len = NUM_ELEMENTS(subtype_table),
 	.attr = {
+		.flags_table = dns_flags,
+		.flags_table_len = NUM_ELEMENTS(dns_flags),
+		.flags_len = sizeof(fr_dns_attr_flags_t),
 		.valid = attr_valid
 	},
 

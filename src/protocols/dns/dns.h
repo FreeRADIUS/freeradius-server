@@ -70,15 +70,6 @@ typedef struct {
 	uint16_t	arcount;
 } CC_HINT(__packed__) fr_dns_packet_t;
 
-/** subtype values for DHCPv4 and DHCPv6
- *
- */
-enum {
-	FLAG_ENCODE_NONE = 0,				//!< no particular encoding for DNS strings
-	FLAG_ENCODE_DNS_LABEL,				//!< encode as DNS label
-	FLAG_ENCODE_DNS_LABEL_UNCOMPRESSED,    		//!< encode as uncompressed DNS label
-};
-
 typedef struct {
 	TALLOC_CTX		*tmp_ctx;		//!< for temporary things cleaned up during decoding
 	uint8_t const		*packet;		//!< DNS labels can point anywhere in the packet :(
@@ -139,6 +130,19 @@ typedef enum {
 #define FR_DNS_PACKET_CODE_VALID(_code) (((_code) < FR_DNS_CODE_MAX) || (((_code & 0x10) != 0) && ((_code & ~0x10) < FR_DNS_CODE_MAX)))
 
 #define DNS_HDR_LEN (12)
+
+typedef struct {
+	bool			dns_label;
+	bool			uncompressed;
+} fr_dns_attr_flags_t;
+
+static inline fr_dns_attr_flags_t const *fr_dns_attr_flags(fr_dict_attr_t const *da)
+{
+	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
+}
+
+#define fr_dns_flag_dns_label(_da)			(fr_dns_attr_flags(_da)->dns_label)
+#define fr_dns_flag_uncompressed(_da)			(fr_dns_attr_flags(_da)->uncompressed)
 
 extern fr_table_num_ordered_t fr_dns_reason_fail_table[];
 extern char const *fr_dns_packet_names[FR_DNS_CODE_MAX];
