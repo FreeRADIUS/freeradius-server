@@ -571,31 +571,6 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict
 		key = p;
 
 		/*
-		 *	Allow for "key1,key2".  But is has to be the
-		 *	last string in the flags field.
-		 */
-		if (ctx->dict->proto->subtype_table) {
-			size_t subtype_len;
-			size_t key_len = strlen(key);
-			int subtype;
-
-			subtype = fr_table_value_by_longest_prefix(&subtype_len, ctx->dict->proto->subtype_table, key, key_len, -1);
-			if (subtype >= 0) {
-				if ((*da_p)->flags.subtype != 0) {
-					fr_strerror_printf("Flag '%s', conflicts with '%s'", key,
-							   fr_table_str_by_value(ctx->dict->proto->subtype_table,
-							   			 (*da_p)->flags.subtype, "<INVALID>"));
-					return -1;
-				}
-
-				(*da_p)->flags.subtype = subtype;
-				next = key + subtype_len;
-				if (*next == ',') next++;
-				continue;
-			}
-		}
-
-		/*
 		 *	Search for the first '=' or ','
 		 */
 		for (next = p + 1; *next && (*next != '=') && (*next != ','); next++) {

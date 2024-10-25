@@ -413,11 +413,6 @@ typedef struct {
 									///< new attributes are valid.
 	} attr;
 
-	fr_table_num_ordered_t		const *subtype_table;		//!< for "encrypt=User-Password", etc.
-
-	size_t				subtype_table_len;		//!< length of subtype_table
-
-
 	fr_dict_protocol_init_t		init;				//!< initialize the library
 	fr_dict_protocol_free_t		free;				//!< free the library
 
