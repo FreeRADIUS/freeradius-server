@@ -75,7 +75,7 @@ ssize_t fr_bfd_decode(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	bfd = (bfd_packet_t const *) packet;
 
-	slen = fr_struct_from_network(ctx, out, attr_bfd_packet, packet, bfd->length, true,
+	slen = fr_struct_from_network(ctx, out, attr_bfd_packet, packet, bfd->length,
 				      &packet_ctx, decode_value, NULL);
 	if (slen < 0) return slen;
 

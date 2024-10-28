@@ -254,7 +254,7 @@ ssize_t fr_arp_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	/*
 	 *	If the packet is too long, we discard any extra data.
 	 */
-	return fr_struct_from_network(ctx, out, attr_arp_packet, packet, FR_ARP_PACKET_SIZE, true,
+	return fr_struct_from_network(ctx, out, attr_arp_packet, packet, FR_ARP_PACKET_SIZE,
 				      NULL, NULL, NULL);
 }
 

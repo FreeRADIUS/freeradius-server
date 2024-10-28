@@ -509,7 +509,7 @@ ssize_t fr_tacacs_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t co
 	/*
 	 *	Call the struct encoder to do the actual work.
 	 */
-	if (fr_struct_from_network(ctx, out, attr_tacacs_packet, buffer, buffer_len, true, NULL, NULL, NULL) < 0) {
+	if (fr_struct_from_network(ctx, out, attr_tacacs_packet, buffer, buffer_len, NULL, NULL, NULL) < 0) {
 		fr_strerror_printf("Failed decoding TACACS header - %s", fr_strerror());
 		return -1;
 	}

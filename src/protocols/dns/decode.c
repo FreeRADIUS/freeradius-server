@@ -141,7 +141,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		break;
 
 	case FR_TYPE_STRUCT:
-		slen = fr_struct_from_network(ctx, out, parent, data, data_len, true,
+		slen = fr_struct_from_network(ctx, out, parent, data, data_len,
 					      decode_ctx, decode_value_trampoline, NULL);
 		if (slen < 0) return slen;
 		return data_len;
@@ -246,7 +246,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 
 		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - %s %d/%d", attr->name, i, count);
 
-		slen = fr_struct_from_network(ctx, out, attr, p, end - p, true,
+		slen = fr_struct_from_network(ctx, out, attr, p, end - p,
 					      packet_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) return slen;
 		if (!slen) break;
@@ -278,7 +278,7 @@ ssize_t	fr_dns_decode(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *packe
 	/*
 	 *	Decode the header.
 	 */
-	slen = fr_struct_from_network(ctx, out, attr_dns_packet, packet, DNS_HDR_LEN, true,
+	slen = fr_struct_from_network(ctx, out, attr_dns_packet, packet, DNS_HDR_LEN,
 				      packet_ctx, decode_value_trampoline, NULL); /* no TLVs in the header */
 	if (slen < 0) {
 		fr_strerror_printf("Failed decoding DNS header - %s", fr_strerror());
@@ -361,7 +361,7 @@ static ssize_t decode_rr(TALLOC_CTX *ctx, fr_pair_list_t *out, UNUSED fr_dict_at
 		return -1;
 	}
 
-	slen = fr_struct_from_network(ctx, out, attr_dns_rr, data, data_len, true,
+	slen = fr_struct_from_network(ctx, out, attr_dns_rr, data, data_len,
 				      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 	if (slen < 0) return slen;
 

@@ -32,7 +32,7 @@ RCSID("$Id$")
  */
 ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			       fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
-			       bool nested, void *decode_ctx,
+			       void *decode_ctx,
 			       fr_pair_decode_value_t decode_value, fr_pair_decode_value_t decode_tlv)
 {
 	unsigned int		child_num;
@@ -55,23 +55,17 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	/*
 	 *	Start a child list.
 	 */
-	if (!nested) {
-		fr_pair_list_init(&child_list_head);
-		child_list = &child_list_head;
-		child_ctx = ctx;
-	} else {
-		fr_assert(parent->type == FR_TYPE_STRUCT);
+	fr_assert(parent->type == FR_TYPE_STRUCT);
 
-		struct_vp = fr_pair_afrom_da(ctx, parent);
-		if (!struct_vp) {
-			fr_strerror_const("out of memory");
-			return -1;
-		}
-
-		fr_pair_list_init(&child_list_head); /* still used elsewhere */
-		child_list = &struct_vp->vp_group;
-		child_ctx = struct_vp;
+	struct_vp = fr_pair_afrom_da(ctx, parent);
+	if (!struct_vp) {
+		fr_strerror_const("out of memory");
+		return -1;
 	}
+
+	fr_pair_list_init(&child_list_head); /* still used elsewhere */
+	child_list = &struct_vp->vp_group;
+	child_ctx = struct_vp;
 	child_num = 1;
 	key_vp = NULL;
 
@@ -315,11 +309,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			FR_PROTO_TRACE("fr_struct_from_network - failed decoding child VP %s", vp->da->name);
 			talloc_free(vp);
 		unknown:
-			if (nested) {
-				TALLOC_FREE(struct_vp);
-			} else {
-				fr_pair_list_free(child_list);
-			}
+			TALLOC_FREE(struct_vp);
 
 			slen = fr_pair_raw_from_network(ctx, out, parent, data, data_len);
 			if (slen < 0) return slen;
@@ -389,7 +379,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		} else {
 			fr_assert(child->type == FR_TYPE_STRUCT);
 
-			slen = fr_struct_from_network(child_ctx, child_list, child, p, end - p, nested,
+			slen = fr_struct_from_network(child_ctx, child_list, child, p, end - p,
 						      decode_ctx, decode_value, decode_tlv);
 			if (slen <= 0) {
 				FR_PROTO_TRACE("substruct %s decoding failed", child->name);
@@ -402,12 +392,8 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 
 done:
-	if (!nested) {
-		fr_pair_list_append(out, child_list);	/* Wind to the end of the new pairs */
-	} else {
-		fr_assert(struct_vp != NULL);
-		fr_pair_append(out, struct_vp);
-	}
+	fr_assert(struct_vp != NULL);
+	fr_pair_append(out, struct_vp);
 
 	FR_PROTO_TRACE("used %zd bytes", data_len);
 	return p - data;

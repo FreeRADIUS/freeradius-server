@@ -102,7 +102,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	 *	Structs create their own VP wrapper.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		slen = fr_struct_from_network(ctx, out, da, data, data_len, true,
+		slen = fr_struct_from_network(ctx, out, da, data, data_len,
 					      decode_ctx, decode_value_trampoline, decode_tlv_trampoline);
 		if (slen < 0) return slen;
 
