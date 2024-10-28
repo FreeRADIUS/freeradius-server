@@ -295,7 +295,7 @@ static int tls_conf_parse_cache_mode(TALLOC_CTX *ctx, void *out, void *parent, C
 			WARN("A virtual_server must be provided for stateful caching. "
 			     "cache.mode = \"auto\" rewritten to cache.mode = \"stateless\"");
 		cache_stateless:
-			conf->cache.mode = FR_TLS_CACHE_STATELESS;
+			cache_mode = FR_TLS_CACHE_STATELESS;
 			break;
 		}
 
