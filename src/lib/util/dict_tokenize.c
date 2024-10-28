@@ -297,7 +297,7 @@ static int dict_process_type_field(dict_tokenize_ctx_t *ctx, char const *name, f
  * offset of a bit field in a structure.
  */
 #define FLAG_FUNC(_name) \
-static int dict_flag_##_name(UNUSED fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)\
+static int dict_flag_##_name(fr_dict_attr_t **da_p, UNUSED char const *value, UNUSED fr_dict_flag_parser_rule_t const *rules)\
 { \
 	(*da_p)->flags._name = 1; \
 	return 0; \
