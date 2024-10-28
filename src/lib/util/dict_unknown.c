@@ -285,6 +285,14 @@ fr_dict_attr_t *fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t 
 		flags.length = 1;
 		break;
 
+		/*
+		 *	We don't know what data type it is, so it's raw.
+		 */
+	case FR_TYPE_NULL:
+		type = FR_TYPE_OCTETS;
+		flags.is_raw = 1;
+		break;
+
 	default:
 		if (!fr_type_is_structural_except_vsa(parent->type)) {
 		fail:
@@ -303,43 +311,6 @@ fr_dict_attr_t *fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t 
 	}
 
 	return dict_attr_alloc(ctx, parent, NULL, num, type,
-			       &(dict_attr_args_t){ .flags = &flags });
-}
-
-/** Initialise a fr_dict_attr_t from a number
- *
- *  Like fr_dict_unknown_typed_afrom_num(), BUT it sets the "is_raw"
- *  flag.  This function is intended to be used by decoders which create "raw" attributes.
- *
- * @param[in] ctx		to allocate the attribute in.
- * @param[in] parent		of the unknown attribute (may also be unknown).
- * @param[in] num		of the unknown attribute.
- * @return
- *	- An fr_dict_attr_t on success.
- *	- NULL on failure.
- */
-fr_dict_attr_t	*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num)
-{
-	fr_dict_attr_flags_t	flags = {
-					.is_unknown = true,
-					.is_raw = true,
-					.internal = parent->flags.internal,
-				};
-
-	if (!fr_type_is_structural_except_vsa(parent->type)) {
-		fr_strerror_printf("%s: Cannot allocate unknown octets attribute (%u) with parent type %s",
-				   __FUNCTION__,
-				   num,
-				   fr_type_to_str(parent->type));
-		return NULL;
-	}
-
-	if (parent->depth >= FR_DICT_MAX_TLV_STACK) {
-		fr_strerror_const("Attribute depth is too large");
-		return NULL;
-	}
-
-	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_OCTETS,
 			       &(dict_attr_args_t){ .flags = &flags });
 }
 
