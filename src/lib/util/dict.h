@@ -492,46 +492,47 @@ int			fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *
  *
  * @{
  */
-fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
+fr_dict_attr_t const	*fr_dict_attr_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old) CC_HINT(nonnull);
 
-void			fr_dict_unknown_free(fr_dict_attr_t const **da);
+void			fr_dict_attr_unknown_free(fr_dict_attr_t const **da);
 
-fr_dict_attr_t		*fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
+fr_dict_attr_t		*fr_dict_attr_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(nonnull(2));
 
-static inline fr_dict_attr_t *fr_dict_unknown_copy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+static inline fr_dict_attr_t *fr_dict_attr_unknown_copy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
 	fr_assert(da->flags.is_unknown);
 
-	return fr_dict_unknown_afrom_da(ctx, da);
+	return fr_dict_attr_unknown_afrom_da(ctx, da);
 }
 
-fr_dict_attr_t		*fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx,
-							 fr_dict_attr_t const *parent, unsigned int num, fr_type_t type)
-							 CC_HINT(nonnull(2));
+fr_dict_attr_t		*fr_dict_attr_unknown_typed_afrom_num(TALLOC_CTX *ctx,
+							      fr_dict_attr_t const *parent,
+							      unsigned int num, fr_type_t type)
+							      CC_HINT(nonnull(2));
 
-static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
-										   fr_dict_attr_t const *parent,
-										   unsigned int vendor)
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
+											fr_dict_attr_t const *parent,
+											unsigned int vendor)
 {
-	return fr_dict_unknown_typed_afrom_num(ctx, parent, vendor, FR_TYPE_VENDOR);
+	return fr_dict_attr_unknown_typed_afrom_num(ctx, parent, vendor, FR_TYPE_VENDOR);
 }
 
-static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx,
-										   fr_dict_attr_t const *parent,
-										   unsigned int attr)
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom_num(TALLOC_CTX *ctx,
+										     fr_dict_attr_t const *parent,
+										     unsigned int attr)
 {
-	return fr_dict_unknown_typed_afrom_num(ctx, parent, attr, FR_TYPE_NULL);
+	return fr_dict_attr_unknown_typed_afrom_num(ctx, parent, attr, FR_TYPE_NULL);
 }
 
-fr_dict_attr_t		*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
-						       CC_HINT(nonnull(2));
+fr_dict_attr_t		*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+		                     	       		   CC_HINT(nonnull(2));
 
 
-fr_slen_t		fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
-							 fr_dict_attr_t const **out,
-							 fr_dict_attr_t const *parent,
-							 fr_sbuff_t *in)
-							 CC_HINT(nonnull(2,3,4));
+fr_slen_t		fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
+							      fr_dict_attr_t const **out,
+							      fr_dict_attr_t const *parent,
+							      fr_sbuff_t *in)
+							      CC_HINT(nonnull(2,3,4));
 
 int			fr_dict_attr_unknown_parent_to_known(fr_dict_attr_t *da, fr_dict_attr_t const *parent);
 

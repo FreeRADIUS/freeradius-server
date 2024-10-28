@@ -387,7 +387,7 @@ next:
 	if (!vendor) {
 		fr_dict_attr_t *n;
 
-		n = fr_dict_unknown_vendor_afrom_num(ctx, parent, pen);
+		n = fr_dict_attr_unknown_vendor_afrom_num(ctx, parent, pen);
 		if (!n) return PAIR_DECODE_OOM;
 		vendor = n;
 	}
@@ -480,7 +480,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	da = fr_dict_attr_child_by_num(parent, option);
 	if (!da) {
-		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
+		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, option);
 		if (!da) return PAIR_DECODE_OOM;
 
 		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len);
@@ -611,7 +611,7 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		da = fr_dict_attr_child_by_num(fr_dict_root(dict_dhcpv4), p[0]);
 		if (!da) {
-			da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
+			da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_dhcpv4), p[0]);
 			if (!da) return -1;
 
 			slen = fr_pair_raw_from_network(ctx, out, da, concat_buffer, q - concat_buffer);

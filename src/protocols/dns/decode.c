@@ -206,7 +206,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	da = fr_dict_attr_child_by_num(parent, option);
 	if (!da) {
-		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, option);
+		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, option);
 		if (!da) return PAIR_DECODE_FATAL_ERROR;
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
@@ -220,7 +220,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	} else {
 		slen = decode_value(ctx, out, da, data + 4, len, decode_ctx);
 	}
-	fr_dict_unknown_free(&da);
+	fr_dict_attr_unknown_free(&da);
 
 	if (slen < 0) return slen;
 

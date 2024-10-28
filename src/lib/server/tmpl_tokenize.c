@@ -1054,7 +1054,7 @@ int tmpl_attr_copy(tmpl_t *dst, tmpl_t const *src)
 			break;
 
 	 	case TMPL_ATTR_TYPE_UNKNOWN:
-	 		dst_ar->ar_unknown = fr_dict_unknown_copy(dst_ar, src_ar->ar_unknown);
+	 		dst_ar->ar_unknown = fr_dict_attr_unknown_copy(dst_ar, src_ar->ar_unknown);
 	 		break;
 
 	 	case TMPL_ATTR_TYPE_UNRESOLVED:
@@ -1102,7 +1102,7 @@ int tmpl_attr_set_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 */
 	if (da->flags.is_unknown) {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_attr_unknown_copy(vpt, da);
 	} else {
 		ref = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ref->da = da;
@@ -1160,7 +1160,7 @@ int tmpl_attr_set_leaf_da(tmpl_t *vpt, fr_dict_attr_t const *da)
 	 *	Unknown attributes get copied
 	 */
 	if (da->flags.is_unknown) {
-		ref->da = ref->ar_unknown = fr_dict_unknown_copy(vpt, da);
+		ref->da = ref->ar_unknown = fr_dict_attr_unknown_copy(vpt, da);
 	} else {
 		ref->da = da;
 	}
@@ -1254,7 +1254,7 @@ int tmpl_attr_afrom_list(TALLOC_CTX *ctx, tmpl_t **out, tmpl_t const *list, fr_d
 
 	if (da->flags.is_unknown) {
 		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_UNKNOWN);
-		ar->da = ar->ar_unknown = fr_dict_unknown_copy(vpt, da);
+		ar->da = ar->ar_unknown = fr_dict_attr_unknown_copy(vpt, da);
 	} else {
 		ar = tmpl_attr_add(vpt, TMPL_ATTR_TYPE_NORMAL);
 		ar->ar_da = da;
@@ -1972,11 +1972,11 @@ static inline int tmpl_attr_afrom_attr_substr(TALLOC_CTX *ctx, tmpl_attr_error_t
 		 */
 		switch (namespace->type) {
 		case FR_TYPE_VSA:
-			da = fr_dict_unknown_vendor_afrom_num(ar, namespace, oid);
+			da = fr_dict_attr_unknown_vendor_afrom_num(ar, namespace, oid);
 			break;
 
 		default:
-			da  = fr_dict_unknown_attr_afrom_num(ar, namespace, oid);
+			da  = fr_dict_attr_unknown_raw_afrom_num(ar, namespace, oid);
 			break;
 		}
 
@@ -2183,7 +2183,7 @@ do_suffix:
  *				- list_def		The default list to set if no #fr_pair_list_t
  *							qualifiers are found in the name.
  *				- allow_unknown		If true attributes in the format accepted by
- *							#fr_dict_unknown_afrom_oid_substr will be allowed,
+ *							#fr_dict_attr_unknown_afrom_oid_substr will be allowed,
  *							even if they're not in the main dictionaries.
  *							If an unknown attribute is found a #TMPL_TYPE_ATTR
  *							#tmpl_t will be produced.
@@ -4374,7 +4374,7 @@ static void attr_to_raw(tmpl_t *vpt, tmpl_attr_t *ref)
 	switch (ref->type) {
 	case TMPL_ATTR_TYPE_NORMAL:
 	{
-		ref->da = ref->ar_unknown = fr_dict_unknown_afrom_da(vpt, ref->da);
+		ref->da = ref->ar_unknown = fr_dict_attr_unknown_afrom_da(vpt, ref->da);
 		ref->ar_unknown->type = FR_TYPE_OCTETS;
 		ref->is_raw = 1;
 		ref->ar_unknown->flags.is_unknown = 1;
@@ -4448,7 +4448,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		}
 
 		unknown = ar->ar_unknown;
-		known = fr_dict_unknown_add(fr_dict_unconst(fr_dict_by_da(unknown)), unknown);
+		known = fr_dict_attr_unknown_add(fr_dict_unconst(fr_dict_by_da(unknown)), unknown);
 		if (!known) return -1;
 
 		/*
@@ -4484,7 +4484,7 @@ int tmpl_attr_unknown_add(tmpl_t *vpt)
 		 *	types for raw attributes.
 		 */
 		if (!ar_is_raw(ar)) {
-			fr_dict_unknown_free(&ar->ar_da);
+			fr_dict_attr_unknown_free(&ar->ar_da);
 			ar->ar_da = known;
 		} else if (!fr_cond_assert(!next)) {
 			fr_strerror_const("Only the leaf may be raw");

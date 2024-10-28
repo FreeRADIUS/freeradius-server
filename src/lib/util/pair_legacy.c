@@ -290,7 +290,7 @@ redo:
 		if (err == FR_DICT_ATTR_NOTFOUND) {
 			if (raw) {
 				if (fr_sbuff_is_digit(&our_in)) {
-					slen = fr_dict_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in);
+					slen = fr_dict_attr_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in);
 					if (slen < 0) return fr_sbuff_error(&our_in) + slen;
 
 					fr_assert(da_unknown);
@@ -300,7 +300,7 @@ redo:
 					 */
 					vp = fr_pair_afrom_da_depth_nested(root->ctx, root->list, da_unknown,
 									   root->da->depth);
-					fr_dict_unknown_free(&da_unknown);
+					fr_dict_attr_unknown_free(&da_unknown);
 
 					if (!vp) return fr_sbuff_error(&our_in);
 
@@ -388,16 +388,16 @@ redo:
 			 *	create the raw attribute.
 			 */
 		} else if (raw_octets) {
-			if (!da_unknown) da_unknown = fr_dict_unknown_attr_afrom_da(NULL, da);
+			if (!da_unknown) da_unknown = fr_dict_attr_unknown_raw_afrom_da(NULL, da);
 			if (!da_unknown) return fr_sbuff_error(&our_in);
 
 			fr_assert(da_unknown->type == FR_TYPE_OCTETS);
 
 			if (fr_pair_append_by_da(relative->ctx, &vp, relative->list, da_unknown) < 0) {
-				fr_dict_unknown_free(&da_unknown);
+				fr_dict_attr_unknown_free(&da_unknown);
 				return fr_sbuff_error(&our_in);
 			}
-			fr_dict_unknown_free(&da_unknown);
+			fr_dict_attr_unknown_free(&da_unknown);
 			fr_assert(vp->vp_type == FR_TYPE_OCTETS);
 
 			/*

@@ -297,7 +297,7 @@ fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 	if (da->flags.is_unknown) {
 		fr_dict_attr_t const *unknown;
 
-		unknown = fr_dict_unknown_copy(vp, da);
+		unknown = fr_dict_attr_unknown_copy(vp, da);
 		da = unknown;
 	}
 
@@ -336,7 +336,7 @@ int fr_pair_reinit_from_da(fr_pair_list_t *list, fr_pair_t *vp, fr_dict_attr_t c
 	/*
 	 *	Only frees unknown fr_dict_attr_t's
 	 */
-	fr_dict_unknown_free(&to_free);
+	fr_dict_attr_unknown_free(&to_free);
 
 	/*
 	 *	Ensure we update the attribute index in the parent.
@@ -380,7 +380,7 @@ fr_pair_t *fr_pair_afrom_child_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent
 	if (!da) {
 		fr_dict_attr_t *unknown;
 
-		unknown = fr_dict_unknown_attr_afrom_num(vp, parent, attr);
+		unknown = fr_dict_attr_unknown_raw_afrom_num(vp, parent, attr);
 		if (!unknown) {
 			talloc_free(vp);
 			return NULL;
@@ -600,7 +600,7 @@ int fr_pair_raw_afrom_pair(fr_pair_t *vp, uint8_t const *data, size_t data_len)
 
 	if (!fr_cond_assert(vp->da->parent != NULL)) return -1;
 
-	unknown = fr_dict_unknown_afrom_da(vp, vp->da);
+	unknown = fr_dict_attr_unknown_afrom_da(vp, vp->da);
 	if (!unknown) return -1;
 
 	vp->da = unknown;

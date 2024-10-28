@@ -452,7 +452,7 @@ static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) {
-		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, attr);
+		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, attr);
 		if (!da) return PAIR_DECODE_FATAL_ERROR;
 		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len - 2);
 		if (slen < 0) return slen;
@@ -685,7 +685,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 *	Child is unknown and not a TLV: build an unknown attr
 			 */
 			if (fr_radius_decode_tlv_ok(p + 2, p[1] - 2, 1, 1) < 0) {
-				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
+				child = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
 				if (!child) {
 				error:
 					talloc_free(vp);
@@ -695,7 +695,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				/*
 				 *	Child is formed as a TLV, decode it as such
 				 */
-				child = fr_dict_unknown_typed_afrom_num(packet_ctx->tmp_ctx, parent, p[0], FR_TYPE_TLV);
+				child = fr_dict_attr_unknown_typed_afrom_num(packet_ctx->tmp_ctx, parent, p[0], FR_TYPE_TLV);
 				if (!child) goto error;
 
 				FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
@@ -817,13 +817,13 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	well formed, so we just go create a raw VP.
 		 */
 	} else if ((dv->length == 0) || (fr_radius_decode_tlv_ok(data + dv->type + dv->length, attrlen - (dv->type + dv->length), dv->type, dv->length) < 0)) {
-		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, attribute);
+		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, attribute);
 		if (!da) return -1;
 
 		goto decode;
 
 	} else {
-		da = fr_dict_unknown_typed_afrom_num(packet_ctx->tmp_ctx, parent, attribute, FR_TYPE_TLV);
+		da = fr_dict_attr_unknown_typed_afrom_num(packet_ctx->tmp_ctx, parent, attribute, FR_TYPE_TLV);
 		if (!da) return -1;
 
 		goto decode;
@@ -976,7 +976,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (!child) {
 		fr_dict_attr_t *unknown;
 		FR_PROTO_TRACE("Unknown extended attribute %u.%u", data[0], data[2]);
-		unknown = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, da, data[2]);
+		unknown = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, da, data[2]);
 		if (!unknown) return -1;
 
 		child = unknown;
@@ -989,7 +989,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if (fr_pair_find_or_append_by_da(ctx, &vp, out, da) < 0) return PAIR_DECODE_OOM;
 
 		slen = fr_radius_decode_pair_value(vp, &vp->vp_group, child, data + 3, data[1] - 3, packet_ctx);
-		fr_dict_unknown_free(&child);
+		fr_dict_attr_unknown_free(&child);
 		if (slen < 0 ) return slen;
 		return 3 + slen;
 	}
@@ -1001,7 +1001,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	set.
 	 */
 	if (data[1] == 4) {
-		fr_dict_unknown_free(&child);
+		fr_dict_attr_unknown_free(&child);
 		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, 2);
 		if (slen < 0) return slen;
 		return 4;
@@ -1014,7 +1014,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 */
 	if ((data[3] & 0x80) == 0) {
 		slen = fr_radius_decode_pair_value(vp, &vp->vp_group, child, data + 4, data[1] - 4, packet_ctx);
-		fr_dict_unknown_free(&child);
+		fr_dict_attr_unknown_free(&child);
 		if (slen < 0 ) return slen;
 		return 4 + slen;
 	}
@@ -1023,7 +1023,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Concatenate all of the fragments together, and decode the resulting thing.
 	 */
 	slen = decode_extended_fragments(vp, &vp->vp_group, child, data + 2, data[1] - 2, packet_ctx);
-	fr_dict_unknown_free(&child);
+	fr_dict_attr_unknown_free(&child);
 	if (slen < 0) return slen;
 	return 2 + slen;
 }
@@ -1081,7 +1081,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	if (fr_pair_find_or_append_by_da(vsa, &vendor, &vsa->vp_group, parent) < 0) return PAIR_DECODE_OOM;
 
 	da = fr_dict_attr_child_by_num(parent, data[4]);
-	if (!da) da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, parent, data[4]);
+	if (!da) da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, data[4]);
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
@@ -1327,7 +1327,7 @@ static ssize_t  CC_HINT(nonnull) decode_vsa(TALLOC_CTX *ctx, fr_pair_list_t *out
 			return -1;
 		}
 
-		n = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor_pen);
+		n = fr_dict_attr_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor_pen);
 		if (!n) return -1;
 		vendor_da = n;
 
@@ -1741,7 +1741,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				 *	decoder exists, which is fine.  Because any unknown attributes which
 				 *	depend on it will copy the entire hierarchy.
 				 */
-				vendor_da = fr_dict_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor_pen);
+				vendor_da = fr_dict_attr_unknown_vendor_afrom_num(packet_ctx->tmp_ctx, parent, vendor_pen);
 				if (!vendor_da) return PAIR_DECODE_OOM;
 			}
 
@@ -1750,7 +1750,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				/*
 				 *	Vendor exists but child didn't, create an unknown child.
 				 */
-				child = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, vendor_da, p[4]);
+				child = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, vendor_da, p[4]);
 				if (!child) {
 					fr_strerror_printf_push("decoder failed creating unknown attribute in %s",
 								parent->name);
@@ -2004,7 +2004,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	da = fr_dict_attr_child_by_num(fr_dict_root(dict_radius), data[0]);
 	if (!da) {
 		FR_PROTO_TRACE("Unknown attribute %u", data[0]);
-		da = fr_dict_unknown_attr_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_radius), data[0]);
+		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, fr_dict_root(dict_radius), data[0]);
 	}
 	if (!da) return -1;
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);

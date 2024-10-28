@@ -93,12 +93,12 @@ ssize_t fr_pair_raw_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_a
 	/*
 	 *	Build an unknown attr of the entire data.
 	 */
-	unknown = fr_dict_unknown_attr_afrom_da(ctx, parent);
+	unknown = fr_dict_attr_unknown_raw_afrom_da(ctx, parent);
 	if (!unknown) return -1;
 
 	vp = fr_pair_afrom_da(ctx, unknown); /* makes a copy of 'unknown' */
 	child = unknown;
-	fr_dict_unknown_free(&child); /* const issues */
+	fr_dict_attr_unknown_free(&child); /* const issues */
 	if (!vp) return -1;
 
 	/*

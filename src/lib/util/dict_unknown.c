@@ -35,7 +35,7 @@ RCSID("$Id$")
  *	- Existing #fr_dict_attr_t if unknown was found in a dictionary.
  *	- A new entry representing unknown.
  */
-fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *unknown)
+fr_dict_attr_t const *fr_dict_attr_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *unknown)
 {
 	fr_dict_attr_t const *da;
 	fr_dict_attr_t const *parent;
@@ -63,7 +63,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 	 *	Define the complete unknown hierarchy
 	 */
 	if (unknown->parent && unknown->parent->flags.is_unknown) {
-		parent = fr_dict_unknown_add(dict, unknown->parent);
+		parent = fr_dict_attr_unknown_add(dict, unknown->parent);
 		if (!parent) {
 			fr_strerror_printf_push("Failed adding parent \"%s\"", unknown->parent->name);
 			return NULL;
@@ -145,7 +145,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
  *
  * @param[in] da to free.
  */
-void fr_dict_unknown_free(fr_dict_attr_t const **da)
+void fr_dict_attr_unknown_free(fr_dict_attr_t const **da)
 {
 	if (!da || !*da) return;
 
@@ -199,7 +199,7 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	 *	the parent from the 'da'.
 	 */
 	if (da->parent && da->parent->flags.is_unknown) {
-		parent = fr_dict_unknown_copy(n, da->parent);
+		parent = fr_dict_attr_unknown_copy(n, da->parent);
 		if (!parent) {
 			talloc_free(n);
 			return NULL;
@@ -223,7 +223,7 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
  *
  * Will copy the complete hierarchy down to the first known attribute.
  */
-fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+fr_dict_attr_t *fr_dict_attr_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
 	fr_type_t type = da->type;
 
@@ -264,7 +264,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
  *	- An fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-fr_dict_attr_t *fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num, fr_type_t type)
+fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num, fr_type_t type)
 {
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
@@ -322,7 +322,7 @@ fr_dict_attr_t *fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t 
  *	- 0 on success.
  *	- -1 on failure.
  */
-fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+fr_dict_attr_t	*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
 	return dict_unknown_alloc(ctx, da, FR_TYPE_OCTETS);
 }
@@ -347,7 +347,7 @@ fr_dict_attr_t	*fr_dict_unknown_attr_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
  *	- The number of bytes parsed on success.
  *	- <= 0 on failure.  Negative offset indicates parse error position.
  */
-fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
+fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 					   fr_dict_attr_t const **out,
 			      		   fr_dict_attr_t const *parent,
 					   fr_sbuff_t *in)
@@ -368,7 +368,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 	 *	Allocate the final attribute first, so that any
 	 *	unknown parents can be freed when this da is freed.
 	 *
-	 *      See fr_dict_unknown_afrom_da() for more details.
+	 *      See fr_dict_attr_unknown_afrom_da() for more details.
 	 *
 	 *	Note also that we copy the input name, even if it is
 	 *	not normalized.
@@ -399,7 +399,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 				fr_dict_attr_t	*ni;
 
 				if (fr_sbuff_next_if_char(&our_in, '.')) {
-					ni = fr_dict_unknown_vendor_afrom_num(n, our_parent, num);
+					ni = fr_dict_attr_unknown_vendor_afrom_num(n, our_parent, num);
 					if (!ni) {
 					error:
 						talloc_free(n);
@@ -422,7 +422,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 				fr_dict_attr_t	*ni;
 
 				if (fr_sbuff_next_if_char(&our_in, '.')) {
-					ni = fr_dict_unknown_typed_afrom_num(n, our_parent, num, FR_TYPE_TLV);
+					ni = fr_dict_attr_unknown_typed_afrom_num(n, our_parent, num, FR_TYPE_TLV);
 					if (!ni) goto error;
 					our_parent = ni;
 					continue;

@@ -490,7 +490,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			/*
 			 *	Build an unknown attr
 			 */
-			unknown_child = fr_dict_unknown_attr_afrom_num(ctx, parent, p[0]);
+			unknown_child = fr_dict_attr_unknown_raw_afrom_num(ctx, parent, p[0]);
 			if (!unknown_child) goto error;
 			child = unknown_child;
 		}
@@ -498,7 +498,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		ret = sim_decode_pair_value(tlv, &tlv->vp_group, child, p + 2, sim_at_len - 2, (end - p) - 2,
 					    decode_ctx);
-		fr_dict_unknown_free(&unknown_child);
+		fr_dict_attr_unknown_free(&unknown_child);
 		if (ret < 0) goto error;
 		p += sim_at_len;
 	}
@@ -876,7 +876,7 @@ static ssize_t sim_decode_pair_internal(TALLOC_CTX *ctx, fr_pair_list_t *out, fr
 			fr_strerror_printf("Unknown (non-skippable) attribute %i", sim_at);
 			return -1;
 		}
-		da = fr_dict_unknown_attr_afrom_num(ctx, parent, sim_at);
+		da = fr_dict_attr_unknown_raw_afrom_num(ctx, parent, sim_at);
 	}
 	if (!da) return -1;
 

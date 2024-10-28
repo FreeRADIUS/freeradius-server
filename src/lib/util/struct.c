@@ -371,7 +371,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 *	incomparable.  And thus can all be
 			 *	given the same number.
 			 */
-			child = fr_dict_unknown_attr_afrom_num(child_ctx, key_vp->da, 0);
+			child = fr_dict_attr_unknown_raw_afrom_num(child_ctx, key_vp->da, 0);
 			if (!child) {
 				FR_PROTO_TRACE("failed allocating unknown child for key VP %s - %s",
 					       key_vp->da->name, fr_strerror());
@@ -381,7 +381,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			slen = fr_pair_raw_from_network(child_ctx, child_list, child, p, end - p);
 			if (slen < 0) {
 				FR_PROTO_TRACE("Failed creating raw VP from malformed or unknown substruct for child %s", child->name);
-				fr_dict_unknown_free(&child);
+				fr_dict_attr_unknown_free(&child);
 				return slen;
 			}
 
@@ -398,7 +398,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			p += slen;
 		}
 
-		fr_dict_unknown_free(&child);
+		fr_dict_attr_unknown_free(&child);
 	}
 
 done:
