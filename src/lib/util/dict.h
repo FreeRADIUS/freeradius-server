@@ -505,13 +505,16 @@ static inline fr_dict_attr_t *fr_dict_unknown_copy(TALLOC_CTX *ctx, fr_dict_attr
 	return fr_dict_unknown_afrom_da(ctx, da);
 }
 
-fr_dict_attr_t		*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
-							  fr_dict_attr_t const *parent, unsigned int vendor)
-							  CC_HINT(nonnull(2));
-
 fr_dict_attr_t		*fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx,
 							 fr_dict_attr_t const *parent, unsigned int num, fr_type_t type)
 							 CC_HINT(nonnull(2));
+
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
+										   fr_dict_attr_t const *parent,
+										   unsigned int vendor)
+{
+	return fr_dict_unknown_typed_afrom_num(ctx, parent, vendor, FR_TYPE_VENDOR);
+}
 
 fr_dict_attr_t		*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx,
 							fr_dict_attr_t const *parent, unsigned int num)

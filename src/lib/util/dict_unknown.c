@@ -254,52 +254,6 @@ fr_dict_attr_t *fr_dict_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *
 	return dict_unknown_alloc(ctx, da, type);
 }
 
-/** Build an unknown vendor, parented by a VSA attribute
- *
- * This allows us to complete the path back to the dictionary root in the case
- * of unknown attributes with unknown vendors.
- *
- * @note Will return known vendors attributes where possible.  Do not free directly,
- *	use #fr_dict_unknown_free.
- *
- * @param[in] ctx to allocate the vendor attribute in.
- * @param[in] parent		of the VSA attribute.
- * @param[in] vendor		id.
- * @return
- *	- An fr_dict_attr_t on success.
- *	- NULL on failure.
- */
-fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
-						  fr_dict_attr_t const *parent, unsigned int vendor)
-{
-	fr_dict_attr_flags_t	flags = {
-					.is_unknown = 1,
-					.type_size = 1,
-					.length = 1,
-					.internal = parent->flags.internal,
-				};
-
-	/*
-	 *	Vendor attributes can occur under VSA attribute.
-	 */
-	switch (parent->type) {
-	case FR_TYPE_VSA:
-		if (!fr_cond_assert(!parent->flags.is_unknown)) return NULL;
-		return dict_attr_alloc(ctx, parent, NULL, vendor, FR_TYPE_VENDOR,
-				       &(dict_attr_args_t){ .flags = &flags });
-
-	case FR_TYPE_VENDOR:
-		if (!fr_cond_assert(!parent->flags.is_unknown)) return NULL;
-		fr_strerror_const("Unknown vendor cannot be parented by another vendor");
-		return NULL;
-
-	default:
-		fr_strerror_printf("Unknown vendors can only be parented by a vsa, not a %s",
-				   fr_type_to_str(parent->type));
-		return NULL;
-	}
-}
-
 /** Initialise a fr_dict_attr_t from a number and a data type
  *
  * @param[in] ctx		to allocate the attribute in.
@@ -317,12 +271,30 @@ fr_dict_attr_t *fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t 
 					.internal = parent->flags.internal,
 				};
 
-	if (!fr_type_is_structural_except_vsa(parent->type)) {
-		fr_strerror_printf("%s: Cannot allocate unknown %s attribute (%u) with parent type %s",
-				   __FUNCTION__,
-				   fr_type_to_str(type), num,
-				   fr_type_to_str(parent->type));
-		return NULL;
+	switch (type) {
+	case FR_TYPE_VENDOR:
+		if (parent->type != FR_TYPE_VSA) goto fail;
+
+		if (!fr_cond_assert(!parent->flags.is_unknown)) return NULL;
+
+		/*
+		 *	These can be reset later if needed.  But these
+		 *	values are most common.
+		 */
+		flags.type_size = 1;
+		flags.length = 1;
+		break;
+
+	default:
+		if (!fr_type_is_structural_except_vsa(parent->type)) {
+		fail:
+			fr_strerror_printf("%s: Cannot allocate unknown %s attribute (%u) with parent type %s",
+					   __FUNCTION__,
+					   fr_type_to_str(type), num,
+					   fr_type_to_str(parent->type));
+			return NULL;
+		}
+		break;
 	}
 
 	if (parent->depth >= FR_DICT_MAX_TLV_STACK) {
