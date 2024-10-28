@@ -41,10 +41,11 @@ encode-proto Packet-Type = Up, Packet = { version = 1, diagnostic = none, state 
 match 20 c4 03 21 de ad be ef 21 12 68 09 00 00 00 1f 00 00 00 7f 00 00 00 ff 00 0a 0f 00 68 65 6c 6c 6f
 
 #
-#  Because auth-type=0, we can't decode the above text.
+#  Because auth-type=0, is unknown, we don't have any matching child struct for type 0,
+#  and the auth-type field is raw.
 #
 decode-proto -
-match Packet-Type = ::Up, raw.Packet = 0x20c40321deadbeef211268090000001f0000007f000000ff000a0f0068656c6c6f
+match Packet-Type = ::Up, Packet = { version = 1, diagnostic = ::none, state = ::up, poll = no, final = no, control-plane-independent = no, auth-present = yes, demand = no, multipoint = no, detect-multi = 3, length = 33, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255, auth-type = 0, raw.auth-type.0 = 0x0a0f0068656c6c6f }
 
 #match Packet = { version = 1, diagnostic = none, state = up, poll = no, final = no, control-plane-independent = no, auth-present = yes, demand = no, multipoint = no, detect-multi = 3, length = 24, my-discriminator = 3735928559, your-discriminator = 554854409, desired-min-tx-interval = 31, required-min-tx-interval = 127, required-min-echo-interval = 255, auth-type.simple-password = { key-id = 0, reserved = 0, password = "hello" } }
 
