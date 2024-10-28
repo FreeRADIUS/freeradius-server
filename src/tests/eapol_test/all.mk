@@ -67,7 +67,7 @@ ifeq "$(PACKAGE_TEST)" ""
 #
 #  Ensure that we run
 #
-$(OUTPUT)/${1}.ok:  $(patsubst %,rlm_eap_%.la,$(subst -,_,${1}))
+$(OUTPUT)/${1}.ok:  $(patsubst %,rlm_eap_%.la,$(word 1,$(subst -, ,${1})))
 endif
 
 endef
@@ -116,7 +116,7 @@ test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
 #
 $(OUTPUT)/%.ok: $(DIR)/%.conf $(if $(POST_INSTALL_MAKEFILE_ARG),,$(BUILD_DIR)/lib/libfreeradius-server.la $(BUILD_DIR)/lib/libfreeradius-util.la) | $(GENERATED_CERT_FILES)
 	$(eval EAPOL_TEST_LOG := $(patsubst %.ok,%.log,$@))
-	$(eval METHOD := $(notdir $(patsubst %.conf,%,$<)))
+	$(eval METHOD := $(notdir $(subst _,-,$(patsubst %.conf,%,$<))))
 	$(eval KEY := $(shell grep key_mgmt=NONE $< | sed 's/key_mgmt=NONE/-n/'))
 	$(eval RADIUS_LOG := $(dir $@)/test.$(METHOD)/radiusd.log)
 	$(eval TEST_PORT := $($(METHOD)_port))
