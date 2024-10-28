@@ -695,7 +695,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				/*
 				 *	Child is formed as a TLV, decode it as such
 				 */
-				child = fr_dict_unknown_tlv_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
+				child = fr_dict_unknown_typed_afrom_num(packet_ctx->tmp_ctx, parent, p[0], FR_TYPE_TLV);
 				if (!child) goto error;
 
 				FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
@@ -823,7 +823,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		goto decode;
 
 	} else {
-		da = fr_dict_unknown_tlv_afrom_num(packet_ctx->tmp_ctx, parent, attribute);
+		da = fr_dict_unknown_typed_afrom_num(packet_ctx->tmp_ctx, parent, attribute, FR_TYPE_TLV);
 		if (!da) return -1;
 
 		goto decode;

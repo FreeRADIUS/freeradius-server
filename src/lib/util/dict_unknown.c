@@ -300,16 +300,17 @@ fr_dict_attr_t	*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 	}
 }
 
-/** Initialise a fr_dict_attr_t from a number
+/** Initialise a fr_dict_attr_t from a number and a data type
  *
  * @param[in] ctx		to allocate the attribute in.
  * @param[in] parent		of the unknown attribute (may also be unknown).
  * @param[in] num		of the unknown attribute.
+ * @param[in] type		data type
  * @return
  *	- An fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num)
+fr_dict_attr_t *fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num, fr_type_t type)
 {
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
@@ -317,9 +318,9 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
 				};
 
 	if (!fr_type_is_structural_except_vsa(parent->type)) {
-		fr_strerror_printf("%s: Cannot allocate unknown tlv attribute (%u) with parent type %s",
+		fr_strerror_printf("%s: Cannot allocate unknown %s attribute (%u) with parent type %s",
 				   __FUNCTION__,
-				   num,
+				   fr_type_to_str(type), num,
 				   fr_type_to_str(parent->type));
 		return NULL;
 	}
@@ -329,11 +330,14 @@ fr_dict_attr_t *fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t co
 		return NULL;
 	}
 
-	return dict_attr_alloc(ctx, parent, NULL, num, FR_TYPE_TLV,
+	return dict_attr_alloc(ctx, parent, NULL, num, type,
 			       &(dict_attr_args_t){ .flags = &flags });
 }
 
 /** Initialise a fr_dict_attr_t from a number
+ *
+ *  Like fr_dict_unknown_typed_afrom_num(), BUT it sets the "is_raw"
+ *  flag.  This function is intended to be used by decoders which create "raw" attributes.
  *
  * @param[in] ctx		to allocate the attribute in.
  * @param[in] parent		of the unknown attribute (may also be unknown).
@@ -475,7 +479,7 @@ fr_slen_t fr_dict_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 				fr_dict_attr_t	*ni;
 
 				if (fr_sbuff_next_if_char(&our_in, '.')) {
-					ni = fr_dict_unknown_tlv_afrom_num(n, our_parent, num);
+					ni = fr_dict_unknown_typed_afrom_num(n, our_parent, num, FR_TYPE_TLV);
 					if (!ni) goto error;
 					our_parent = ni;
 					continue;

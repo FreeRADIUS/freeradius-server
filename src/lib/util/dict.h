@@ -509,9 +509,9 @@ fr_dict_attr_t		*fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 							  fr_dict_attr_t const *parent, unsigned int vendor)
 							  CC_HINT(nonnull(2));
 
-fr_dict_attr_t		*fr_dict_unknown_tlv_afrom_num(TALLOC_CTX *ctx,
-						       fr_dict_attr_t const *parent, unsigned int num)
-						       CC_HINT(nonnull(2));
+fr_dict_attr_t		*fr_dict_unknown_typed_afrom_num(TALLOC_CTX *ctx,
+							 fr_dict_attr_t const *parent, unsigned int num, fr_type_t type)
+							 CC_HINT(nonnull(2));
 
 fr_dict_attr_t		*fr_dict_unknown_attr_afrom_num(TALLOC_CTX *ctx,
 							fr_dict_attr_t const *parent, unsigned int num)
