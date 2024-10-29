@@ -74,11 +74,11 @@ fr_dict_attr_autoload_t dns_dict_attr[] = {
 };
 
 FR_DICT_ATTR_FLAG_FUNC(fr_dns_attr_flags_t, dns_label)
-FR_DICT_ATTR_FLAG_FUNC(fr_dns_attr_flags_t, uncompressed)
+FR_DICT_ATTR_FLAG_FUNC(fr_dns_attr_flags_t, dns_label_uncompressed)
 
 static fr_dict_flag_parser_t const dns_flags[] = {
-	{ L("dns_label"),	{ .func = dict_flag_dns_label } },
-	{ L("uncompressed"),	{ .func = dict_flag_uncompressed } }
+	{ L("dns_label"),		{ .func = dict_flag_dns_label } },
+	{ L("dns_label_uncompressed"),	{ .func = dict_flag_dns_label_uncompressed } }
 };
 
 #define DECODE_FAIL(_reason) if (reason) *reason = FR_DNS_DECODE_FAIL_ ## _reason
@@ -450,7 +450,7 @@ static bool attr_valid(fr_dict_attr_t *da)
 		da->flags.is_known_width = true;
 	}
 
-	if (fr_dns_flag_dns_label(da) || fr_dns_flag_uncompressed(da)) {
+	if (fr_dns_flag_dns_label_any(da)) {
 		if (da->type != FR_TYPE_STRING) {
 			fr_strerror_const("The 'dns_label' flag can only be used with attributes of type 'string'");
 			return false;

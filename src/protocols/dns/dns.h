@@ -133,7 +133,7 @@ typedef enum {
 
 typedef struct {
 	bool			dns_label;
-	bool			uncompressed;
+	bool			dns_label_uncompressed;
 } fr_dns_attr_flags_t;
 
 static inline fr_dns_attr_flags_t const *fr_dns_attr_flags(fr_dict_attr_t const *da)
@@ -141,8 +141,15 @@ static inline fr_dns_attr_flags_t const *fr_dns_attr_flags(fr_dict_attr_t const 
 	return fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC);
 }
 
+static inline bool fr_dns_flag_dns_label_any(fr_dict_attr_t const *da)
+{
+	fr_dns_attr_flags_t const *flags = fr_dns_attr_flags(da);
+
+	return flags->dns_label || flags->dns_label_uncompressed;
+}
+
 #define fr_dns_flag_dns_label(_da)			(fr_dns_attr_flags(_da)->dns_label)
-#define fr_dns_flag_uncompressed(_da)			(fr_dns_attr_flags(_da)->uncompressed)
+#define fr_dns_flag_dns_label_uncompressed(_da)		(fr_dns_attr_flags(_da)->dns_label_uncompressed)
 
 extern fr_table_num_ordered_t fr_dns_reason_fail_table[];
 extern char const *fr_dns_packet_names[FR_DNS_CODE_MAX];

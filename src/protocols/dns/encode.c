@@ -149,11 +149,8 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		/*
 		 *	DNS labels get a special encoder.
 		 */
-		if (!da->flags.extra) {
+		if (fr_dns_flag_dns_label_any(da)) {
 			fr_dbuff_marker_t	last_byte, src;
-
-			fr_assert(fr_dns_flag_dns_label(da) ||
-				  fr_dns_flag_uncompressed(da));
 
 			fr_dbuff_marker(&last_byte, &work_dbuff);
 			fr_dbuff_marker(&src, &work_dbuff);

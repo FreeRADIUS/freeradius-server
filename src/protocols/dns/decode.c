@@ -53,7 +53,7 @@ static ssize_t decode_value_trampoline(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				       fr_dict_attr_t const *parent,
 				       uint8_t const *data, size_t const data_len, void *decode_ctx)
 {
-	if ((parent->type == FR_TYPE_STRING) && !parent->flags.extra && parent->flags.subtype) {
+	if ((parent->type == FR_TYPE_STRING) && fr_dns_flag_dns_label(parent)) {
 		fr_dns_ctx_t		*packet_ctx = decode_ctx;
 
 		return fr_pair_dns_labels_from_network(ctx, out, parent, packet_ctx->packet, data, data_len, packet_ctx->lb, false);
@@ -211,7 +211,7 @@ static ssize_t decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	}
 	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
-	if ((da->type == FR_TYPE_STRING) && !da->flags.extra && da->flags.subtype) {
+	if ((da->type == FR_TYPE_STRING) && fr_dns_flag_dns_label(da)) {
 		slen = fr_pair_dns_labels_from_network(ctx, out, da, packet_ctx->packet, data + 4, len, packet_ctx->lb, true);
 
 	} else if (da->flags.array) {
