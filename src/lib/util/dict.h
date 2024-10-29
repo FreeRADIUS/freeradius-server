@@ -418,25 +418,20 @@ typedef struct {
 
 	struct {
 	        /** Custom flags for this protocol
-		 *
-		 * The flags are used to determine how to encode and decode attributes,
-		 * and can either be one of a set of fixed values or a generic type
-		 * like "string".
 		 */
 		struct {
-			fr_dict_flag_parser_t const	*table;			//!< Flags for this protocol, an array of
-										///< fr_dict_flag_parser_t terminated
-										///< by FR_DICT_PROTOCOL_FLAG_TERMINATOR.
+			fr_dict_flag_parser_t const	*table;			//!< Flags for this protocol, an array of fr_dict_flag_parser_t
 			size_t				table_len;		//!< Length of protocol_flags table.
 
-			size_t				len;			//!< Length of the flags field in the protocol
-										///< specific structure.
+			size_t				len;			//!< Length of the protocol specific flags structure.
+										///< This is used to allocate a FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC
+										///< extension of the specified length.
 
-			fr_dict_flags_copy_func_t	copy;			//!< Copy flags from one attribute to another.
+			fr_dict_flags_copy_func_t	copy;			//!< Copy protocol-specific flags from one attribute to another.
 										///< Called when copying attributes.
 
-			fr_dict_flags_cmp_func_t	cmp;			//!< Compare the flags from two attributes.
-										///< Called when comparing attribute fields.
+			fr_dict_flags_cmp_func_t	cmp;			//!< Compare protocol-specific flags from two attributes.
+										///< Called when comparing attributes by their fields.
 		} flags;
 
 		fr_dict_attr_valid_func_t 	valid;			//!< Validation function to ensure that
