@@ -161,10 +161,10 @@ static int dict_ext_protocol_specific_copy(UNUSED int ext,
 					   TALLOC_CTX const *src_chunk,
 					   void *src_ext_ptr, size_t src_ext_len)
 {
-	fr_dict_attr_t const *from = talloc_get_type_abort_const(src_chunk, fr_dict_attr_t);
-	fr_dict_protocol_t const *from_proto = fr_dict_protocol(from->dict);
-	fr_dict_attr_t *to = talloc_get_type_abort_const(dst_chunk, fr_dict_attr_t);
-	fr_dict_protocol_t const *to_proto = fr_dict_protocol(to->dict);
+	fr_dict_attr_t const		*from = talloc_get_type_abort_const(src_chunk, fr_dict_attr_t);
+	fr_dict_protocol_t const	*from_proto = fr_dict_protocol(from->dict);
+	fr_dict_attr_t			*to = talloc_get_type_abort(dst_chunk, fr_dict_attr_t);
+	fr_dict_protocol_t const	*to_proto = fr_dict_protocol(to->dict);
 
 	/*
 	 *	Whilst it's not strictly disallowed, we can't do anything
