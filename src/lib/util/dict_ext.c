@@ -155,6 +155,58 @@ static int fr_dict_attr_ext_vendor_copy(UNUSED int ext,
 	return -1;
 }
 
+static int dict_ext_protocol_specific_copy(UNUSED int ext,
+			      		   TALLOC_CTX *dst_chunk,
+					   void *dst_ext_ptr, size_t dst_ext_len,
+					   TALLOC_CTX const *src_chunk,
+					   void *src_ext_ptr, size_t src_ext_len)
+{
+	fr_dict_attr_t const *from = talloc_get_type_abort_const(src_chunk, fr_dict_attr_t);
+	fr_dict_protocol_t const *from_proto = fr_dict_protocol(from->dict);
+	fr_dict_attr_t *to = talloc_get_type_abort_const(dst_chunk, fr_dict_attr_t);
+	fr_dict_protocol_t const *to_proto = fr_dict_protocol(to->dict);
+
+	/*
+	 *	Whilst it's not strictly disallowed, we can't do anything
+	 *	sane without an N x N matrix of copy functions for different
+	 *	protocols.  Maybe we should add that at some point, but for
+	 *	now, just ignore the copy.
+	 */
+	if (from->dict != to->dict) return 0;
+
+	/*
+	 *	Sanity checks...
+	 */
+	if (unlikely(from_proto->attr.flags.len != src_ext_len)) {
+		fr_strerror_printf("Protocol specific extension length mismatch in source attribute %s.  Expected %zu, got %zu",
+				   from->name,
+				   fr_dict_protocol(from->dict)->attr.flags.len, fr_dict_protocol(to->dict)->attr.flags.len);
+		return -1;
+	}
+
+	if (unlikely(to_proto->attr.flags.len != dst_ext_len)) {
+		fr_strerror_printf("Protocol specific extension length mismatch in destintion attribute %s.  Expected %zu, got %zu",
+				   to->name,
+				   fr_dict_protocol(to->dict)->attr.flags.len, fr_dict_protocol(to->dict)->attr.flags.len);
+		return -1;
+	}
+
+	/*
+	 *	The simple case... No custom copy function, just memcpy
+	 */
+	if (!to_proto->attr.flags.copy) {
+		memcpy(dst_ext_ptr, src_ext_ptr, src_ext_len);
+		return 0;
+	}
+
+	/*
+	 *	Call the custom copy function.  This is only needed if
+	 *	there are heap allocated values, like strings, which
+	 *	need copying from sources flags to the destination.
+	 */
+	return to_proto->attr.flags.copy(dst_chunk, dst_ext_ptr, src_ext_ptr);
+}
+
 /** Holds additional information about extension structures
  *
  */
@@ -200,7 +252,8 @@ fr_ext_t const fr_dict_attr_ext_def = {
 		[FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC] = {
 							.min = FR_EXT_ALIGNMENT,  	/* allow for one byte of protocol stuff */
 							.has_hdr = true,		/* variable sized */
-							.can_copy = false		/* only the protocol can copy it */
+							.copy = dict_ext_protocol_specific_copy,
+							.can_copy = true		/* Use the attr.flags.copy function */
 						},
 		[FR_DICT_ATTR_EXT_MAX]		= {}
 	}

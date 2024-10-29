@@ -354,6 +354,28 @@ struct fr_dict_flag_parser_rule_s {
 	bool				needs_value;			//!< This parsing flag must have a value.  Else we error.
 };
 
+/** Copy custom flags from one attribute to another
+ *
+ * @param[out] da_to		attribute to copy to.  Use for the talloc_ctx for any heap allocated flag values.
+ * @param[out] flags_to		protocol specific flags struct to copy to.
+ * @param[in] flags_from	protocol specific flags struct to copy from.
+ * @return
+ *  - 0 on success.
+ *  - -1 on error.
+ */
+typedef int (*fr_dict_flags_copy_func_t)(fr_dict_attr_t *da_to, void *flags_to, void *flags_from);
+
+/** Compare the protocol specific flags struct from two attributes
+ *
+ * @para[in] da_a	first attribute to compare.
+ * @para[in] da_b	second attribute to compare.
+ * @return
+ *  - 0 if the flags are equal.
+ *  - < 0 if da_a < da_b.
+ *  - > 0 if da_a > da_b.
+ */
+ typedef int (*fr_dict_flags_cmp_func_t)(fr_dict_attr_t const *da_a, fr_dict_attr_t const *da_b);
+
 /** Protocol specific custom flag definitnion
  *
  */
@@ -410,7 +432,11 @@ typedef struct {
 			size_t				len;			//!< Length of the flags field in the protocol
 										///< specific structure.
 
+			fr_dict_flags_copy_func_t	copy;			//!< Copy flags from one attribute to another.
+										///< Called when copying attributes.
 
+			fr_dict_flags_cmp_func_t	cmp;			//!< Compare the flags from two attributes.
+										///< Called when comparing attribute fields.
 		} flags;
 
 		fr_dict_attr_valid_func_t 	valid;			//!< Validation function to ensure that
@@ -490,6 +516,13 @@ int			fr_dict_enum_add_name_next(fr_dict_attr_t *da, char const *name) CC_HINT(n
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 
 int			fr_dict_attr_acopy_local(fr_dict_attr_t const *dst, fr_dict_attr_t const *src) CC_HINT(nonnull);
+/** @} */
+
+/** @name Dict accessors
+ *
+ * @{
+ */
+fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict);
 /** @} */
 
 /** @name Unknown ephemeral attributes
@@ -587,6 +620,15 @@ static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp(fr_dict_attr_t const *a, 
 static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp_fields(const fr_dict_attr_t *a, const fr_dict_attr_t *b)
 {
 	int8_t ret;
+	fr_dict_protocol_t const *a_proto = fr_dict_protocol(a->dict);
+
+	/*
+	 *	Technically this isn't a property of the attribute
+	 *	but we need them to be the same to be able to
+	 *	compare protocol specific flags successfully.
+	 */
+	ret = CMP(a_proto, fr_dict_protocol(b->dict));
+	if (ret != 0) return ret;
 
 	ret = CMP(a->attr, b->attr);
 	if (ret != 0) return ret;
@@ -596,6 +638,11 @@ static inline CC_HINT(nonnull) int8_t fr_dict_attr_cmp_fields(const fr_dict_attr
 
 	ret = CMP(fr_dict_vendor_num_by_da(a), fr_dict_vendor_num_by_da(b));
 	if (ret != 0) return ret;
+
+	/*
+	 *	Compare protocol specific flags
+	 */
+	if (a_proto->attr.flags.cmp && (ret = a_proto->attr.flags.cmp(a, b))) return ret;
 
 	return CMP(memcmp(&a->flags, &b->flags, sizeof(a->flags)), 0);
 }
@@ -668,8 +715,6 @@ fr_slen_t		fr_dict_by_protocol_substr(fr_dict_attr_err_t *err,
 fr_dict_t const		*fr_dict_by_protocol_name(char const *name);
 
 fr_dict_t const		*fr_dict_by_protocol_num(unsigned int num);
-
-fr_dict_protocol_t const *fr_dict_protocol(fr_dict_t const *dict);
 
 fr_dict_attr_t const	*fr_dict_unlocal(fr_dict_attr_t const *da) CC_HINT(nonnull);
 
