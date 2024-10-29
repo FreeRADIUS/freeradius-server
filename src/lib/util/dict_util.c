@@ -833,9 +833,9 @@ fr_dict_attr_t *dict_attr_alloc_null(TALLOC_CTX *ctx, fr_dict_protocol_t const *
 	/*
 	 *	Allocate room for the protocol specific flags
 	 */
-	if (proto->attr.flags_len > 0) {
+	if (proto->attr.flags.len > 0) {
 		if (unlikely(dict_attr_ext_alloc_size(&da, FR_DICT_ATTR_EXT_PROTOCOL_SPECIFIC,
-						      proto->attr.flags_len) == NULL)) {
+						      proto->attr.flags.len) == NULL)) {
 			talloc_free(da);
 			return NULL;
 		}

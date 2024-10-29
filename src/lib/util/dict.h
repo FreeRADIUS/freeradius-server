@@ -401,13 +401,17 @@ typedef struct {
 		 * and can either be one of a set of fixed values or a generic type
 		 * like "string".
 		 */
-		fr_dict_flag_parser_t const	*flags_table;		//!< Flags for this protocol, an array of
-									///< fr_dict_flag_parser_t terminated
-									///< by FR_DICT_PROTOCOL_FLAG_TERMINATOR.
-		size_t				flags_table_len;	//!< Length of protocol_flags table.
+		struct {
+			fr_dict_flag_parser_t const	*table;			//!< Flags for this protocol, an array of
+										///< fr_dict_flag_parser_t terminated
+										///< by FR_DICT_PROTOCOL_FLAG_TERMINATOR.
+			size_t				table_len;		//!< Length of protocol_flags table.
 
-		size_t				flags_len;		//!< Length of the flags field in the protocol
-									///< specific structure.
+			size_t				len;			//!< Length of the flags field in the protocol
+										///< specific structure.
+
+
+		} flags;
 
 		fr_dict_attr_valid_func_t 	valid;			//!< Validation function to ensure that
 									///< new attributes are valid.

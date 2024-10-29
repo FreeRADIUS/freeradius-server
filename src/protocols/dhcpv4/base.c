@@ -756,9 +756,11 @@ fr_dict_protocol_t libfreeradius_dhcpv4_dict_protocol = {
 	.default_type_size = 1,
 	.default_type_length = 1,
 	.attr = {
-		.flags_table = dhcpv4_flags,
-		.flags_table_len = NUM_ELEMENTS(dhcpv4_flags),
-		.flags_len = sizeof(fr_dhcpv4_attr_flags_t),
+		.flags = {
+			.table = dhcpv4_flags,
+			.table_len = NUM_ELEMENTS(dhcpv4_flags),
+			.len = sizeof(fr_dhcpv4_attr_flags_t)
+		},
 		.valid = attr_valid
 	},
 

@@ -607,9 +607,9 @@ static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict
 		 *	then the protocol flags table.
 		 */
 		if (!fr_dict_attr_flag_to_parser(&parser, dict_common_flags, dict_common_flags_len, key, NULL) &&
-		    (!ctx->dict->proto->attr.flags_table ||
-		     !fr_dict_attr_flag_to_parser(&parser, ctx->dict->proto->attr.flags_table,
-						  ctx->dict->proto->attr.flags_table_len, key, NULL))) {
+		    (!ctx->dict->proto->attr.flags.table ||
+		     !fr_dict_attr_flag_to_parser(&parser, ctx->dict->proto->attr.flags.table,
+						  ctx->dict->proto->attr.flags.table_len, key, NULL))) {
 			fr_strerror_printf("Unknown flag '%s'", key);
 			return -1;
 		}

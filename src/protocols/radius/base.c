@@ -1391,9 +1391,11 @@ fr_dict_protocol_t libfreeradius_radius_dict_protocol = {
 	.default_type_size = 1,
 	.default_type_length = 1,
 	.attr = {
-		.flags_table = radius_flags,
-		.flags_table_len = NUM_ELEMENTS(radius_flags),
-		.flags_len = sizeof(fr_radius_attr_flags_t),
+		.flags = {
+			.table = radius_flags,
+			.table_len = NUM_ELEMENTS(radius_flags),
+			.len = sizeof(fr_radius_attr_flags_t),
+		},
 		.valid = attr_valid,
 	},
 

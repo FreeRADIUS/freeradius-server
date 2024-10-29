@@ -467,9 +467,11 @@ fr_dict_protocol_t libfreeradius_dns_dict_protocol = {
 	.default_type_size = 2,
 	.default_type_length = 2,
 	.attr = {
-		.flags_table = dns_flags,
-		.flags_table_len = NUM_ELEMENTS(dns_flags),
-		.flags_len = sizeof(fr_dns_attr_flags_t),
+		.flags = {
+			.table = dns_flags,
+			.table_len = NUM_ELEMENTS(dns_flags),
+			.len = sizeof(fr_dns_attr_flags_t)
+		},
 		.valid = attr_valid
 	},
 

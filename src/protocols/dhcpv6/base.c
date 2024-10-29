@@ -991,9 +991,11 @@ fr_dict_protocol_t libfreeradius_dhcpv6_dict_protocol = {
 
 	.attr = {
 		.valid = attr_valid,
-		.flags_table = dhcpv6_flags,
-		.flags_table_len = NUM_ELEMENTS(dhcpv6_flags),
-		.flags_len = sizeof(fr_dhcpv6_attr_flags_t)
+		.flags = {
+			.table = dhcpv6_flags,
+			.table_len = NUM_ELEMENTS(dhcpv6_flags),
+			.len = sizeof(fr_dhcpv6_attr_flags_t)
+		}
 	},
 
 	.init = fr_dhcpv6_global_init,
