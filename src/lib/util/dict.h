@@ -558,7 +558,7 @@ static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom
 										     fr_dict_attr_t const *parent,
 										     unsigned int attr)
 {
-	return fr_dict_attr_unknown_typed_afrom_num(ctx, parent, attr, FR_TYPE_NULL);
+	return fr_dict_attr_unknown_typed_afrom_num(ctx, parent, attr, FR_TYPE_OCTETS);
 }
 
 fr_dict_attr_t		*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
