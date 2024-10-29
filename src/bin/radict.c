@@ -380,7 +380,10 @@ int main(int argc, char *argv[])
 		ret = 1;
 		goto finish;
 	}
-
+	/*
+	 *	Don't emit spurious errors...
+	 */
+	fr_strerror_clear();
 	if (load_dicts(dict_dir, protocol) < 0) {
 		fr_perror("radict - Loading dictionaries failed");
 		ret = 1;
