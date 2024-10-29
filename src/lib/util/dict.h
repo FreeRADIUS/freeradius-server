@@ -537,23 +537,31 @@ static inline fr_dict_attr_t *fr_dict_attr_unknown_copy(TALLOC_CTX *ctx, fr_dict
 	return fr_dict_attr_unknown_afrom_da(ctx, da);
 }
 
-fr_dict_attr_t		*fr_dict_attr_unknown_typed_afrom_num(TALLOC_CTX *ctx,
-							      fr_dict_attr_t const *parent,
-							      unsigned int num, fr_type_t type)
-							      CC_HINT(nonnull(2));
+fr_dict_attr_t		*fr_dict_attr_unknown_typed_afrom_num_raw(TALLOC_CTX *ctx,
+								  fr_dict_attr_t const *parent,
+								  unsigned int num, fr_type_t type, bool raw)
+								  CC_HINT(nonnull(2));
+
+static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num(TALLOC_CTX *ctx,
+										       fr_dict_attr_t const *parent,
+										       unsigned int num, fr_type_t type)
+{
+	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, num, type, false);
+}
+
 
 static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_vendor_afrom_num(TALLOC_CTX *ctx,
 											fr_dict_attr_t const *parent,
 											unsigned int vendor)
 {
-	return fr_dict_attr_unknown_typed_afrom_num(ctx, parent, vendor, FR_TYPE_VENDOR);
+	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, vendor, FR_TYPE_VENDOR, false);
 }
 
 static inline CC_HINT(nonnull(2)) fr_dict_attr_t *fr_dict_attr_unknown_raw_afrom_num(TALLOC_CTX *ctx,
 										     fr_dict_attr_t const *parent,
 										     unsigned int attr)
 {
-	return fr_dict_attr_unknown_typed_afrom_num(ctx, parent, attr, FR_TYPE_OCTETS);
+	return fr_dict_attr_unknown_typed_afrom_num_raw(ctx, parent, attr, FR_TYPE_OCTETS, true);
 }
 
 fr_dict_attr_t		*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)

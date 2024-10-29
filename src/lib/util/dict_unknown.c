@@ -260,15 +260,17 @@ fr_dict_attr_t *fr_dict_attr_unknown_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t co
  * @param[in] parent		of the unknown attribute (may also be unknown).
  * @param[in] num		of the unknown attribute.
  * @param[in] type		data type
+ * @param[in] raw		is it raw, i.e. _bad_ value, versus unknown?
  * @return
  *	- An fr_dict_attr_t on success.
  *	- NULL on failure.
  */
-fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num, fr_type_t type)
+fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num_raw(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, unsigned int num, fr_type_t type, bool raw)
 {
 	fr_dict_attr_flags_t	flags = {
 					.is_unknown = true,
 					.internal = parent->flags.internal,
+					.is_raw = raw,
 				};
 
 	switch (type) {
@@ -285,15 +287,18 @@ fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num(TALLOC_CTX *ctx, fr_dict_at
 		flags.length = 1;
 		break;
 
-		/*
-		 *	We don't know what data type it is, so it's raw.
-		 */
 	case FR_TYPE_NULL:
-		type = FR_TYPE_OCTETS;
-		flags.is_raw = 1;
-		break;
+	case FR_TYPE_VALUE_BOX:
+	case FR_TYPE_VOID:
+	case FR_TYPE_MAX:
+		fr_strerror_printf("%s: Cannot allocate unknown %s attribute (%u) - invalid data type",
+				   __FUNCTION__,
+				   fr_type_to_str(type), num);
+		return NULL;
 
 	default:
+		if (fr_dict_attr_is_key_field(parent)) break;
+
 		if (!fr_type_is_structural_except_vsa(parent->type)) {
 		fail:
 			fr_strerror_printf("%s: Cannot allocate unknown %s attribute (%u) with parent type %s",
