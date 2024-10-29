@@ -314,7 +314,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair
 		/*
 		 *	Diameter pads strings (i.e. User-Password) with trailing zeros.
 		 */
-		if (vp->vp_type == FR_TYPE_STRING) fr_pair_value_strdup(vp, vp->vp_strvalue, vp->vp_tainted);
+		if (vp->vp_type == FR_TYPE_STRING) fr_pair_value_strtrim(vp);
 	}
 
 	/*
