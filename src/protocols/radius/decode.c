@@ -452,8 +452,6 @@ static ssize_t decode_rfc(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	da = fr_dict_attr_child_by_num(parent, attr);
 	if (!da) {
-		fprintf(stderr, "RAW %d - %s %u\n", __LINE__, parent->name, attr);
-
 		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, attr);
 		if (!da) return PAIR_DECODE_FATAL_ERROR;
 		slen = fr_pair_raw_from_network(ctx, out, da, data + 2, len - 2);
@@ -687,7 +685,6 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			 *	Child is unknown and not a TLV: build an unknown attr
 			 */
 			if (fr_radius_decode_tlv_ok(p + 2, p[1] - 2, 1, 1) < 0) {
-				fprintf(stderr, "RAW %d - %s %u\n", __LINE__, parent->name, p[0]);
 				child = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, p[0]);
 				if (!child) {
 				error:
@@ -820,7 +817,6 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	well formed, so we just go create a raw VP.
 		 */
 	} else if ((dv->length == 0) || (fr_radius_decode_tlv_ok(data + dv->type + dv->length, attrlen - (dv->type + dv->length), dv->type, dv->length) < 0)) {
-		fprintf(stderr, "RAW %d - %s %u\n", __LINE__, parent->name, attribute);
 		da = fr_dict_attr_unknown_raw_afrom_num(packet_ctx->tmp_ctx, parent, attribute);
 		if (!da) return -1;
 
