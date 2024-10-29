@@ -141,7 +141,7 @@ static int diameter_verify(request_t *request, uint8_t const *data, unsigned int
 /*
  *	Convert diameter attributes to our fr_pair_t's
  */
-static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcursor_t *cursor,
+static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_pair_list_t *out,
 				    fr_dict_attr_t const *parent,
 				    uint8_t const *data, size_t data_len,
 				    void *decode_ctx)
@@ -171,7 +171,7 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 					   p - data, end - p);
 		error:
 			talloc_free(tmp_ctx);
-			fr_dcursor_free_list(cursor);
+			fr_pair_list_free(out);
 			return -1;
 		}
 
@@ -204,8 +204,6 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 
 		value_len -= 8;	/* -= 8 for AVP code (4), flags (1), AVP length (3) */
 
-		MEM(vp = fr_pair_alloc_null(ctx));
-
 		/*
 		 *	Do we have a vendor field?
 		 */
@@ -218,7 +216,6 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 			if (!our_parent) {
 				if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 					fr_strerror_printf("Mandatory bit set and no vendor %u found", vendor);
-					talloc_free(vp);
 					goto error;
 				}
 
@@ -239,24 +236,16 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 		 *	Is the attribute known?
 		 */
 		da = fr_dict_attr_child_by_num(our_parent, attr);
-		if (da) {
-			goto reinit;
-
-		} else {
+		if (!da) {
 			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 				fr_strerror_printf("Mandatory bit set and no attribute %u defined for parent %s", attr, parent->name);
-				talloc_free(vp);
 				goto error;
 			}
 
 			MEM(da = fr_dict_attr_unknown_raw_afrom_num(vp, our_parent, attr));
-
-		reinit:
-			if (fr_pair_reinit_from_da(NULL, vp, da) < 0) {
-				talloc_free(vp);
-				goto error;
-			}
 		}
+
+		MEM(vp =fr_pair_afrom_da_nested(ctx, out, da));
 
 		ret = fr_value_box_from_network(vp, &vp->data, vp->vp_type, vp->da,
 						&FR_DBUFF_TMP(p, (size_t)value_len), value_len, true);
@@ -267,7 +256,6 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 			 */
 			if (flags & FR_DIAMETER_AVP_FLAG_MANDATORY) {
 				fr_strerror_const("Mandatory bit is set and attribute is malformed");
-				talloc_free(vp);
 				goto error;
 			}
 
@@ -280,7 +268,6 @@ static ssize_t eap_ttls_decode_pair(request_t *request, TALLOC_CTX *ctx, fr_dcur
 		 *	to the nearest 4-byte boundary.
 		 */
 		p += (value_len + 0x03) & ~0x03;
-		fr_dcursor_append(cursor, vp);
 
 		if (vp->da->flags.is_unknown) continue;
 
@@ -619,7 +606,6 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 	fr_radius_packet_code_t			code = FR_RADIUS_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	fr_pair_t		*vp = NULL;
-	fr_dcursor_t		cursor;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
 	size_t			data_len;
@@ -664,8 +650,7 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 	/*
 	 *	Add the tunneled attributes to the request request.
 	 */
-	fr_pair_dcursor_init(&cursor, &request->request_pairs);
-	if (eap_ttls_decode_pair(request, request->request_ctx, &cursor, fr_dict_root(fr_dict_internal()),
+	if (eap_ttls_decode_pair(request, request->request_ctx, &request->request_pairs, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
 		code = FR_RADIUS_CODE_ACCESS_REJECT;
