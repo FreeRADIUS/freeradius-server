@@ -4,6 +4,12 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Feature improvements
 	* Print MD5 hash of the configuration files in debug mode.
 	  This helps people track configuration changes.
+	* Add support for IPv6 to "abinary" type.  The fields
+	  are the same as for "ip", but use "ipv6", and IPv6
+	  formatted addresses.
+	* Update radclient to make it clear that Message-Authenticator
+	  is added to all Access-Request packets, even if the
+	  input file does not contain it.
 
 	Bug fixes
 	* For EAP-TLS, send TLS start without a length field.

@@ -257,8 +257,7 @@ typedef union value_data {
 	uint32_t		integer;			//!< 32bit unsigned integer.
 	struct in_addr		ipaddr;				//!< IPv4 Address.
 	uint32_t		date;				//!< Date (32bit Unix timestamp).
-	size_t			filter[32/sizeof(size_t)];	//!< Ascend binary format a packed data
-								//!< structure.
+	uint8_t			*filter;			//!< ascend data filter
 
 	uint8_t			ifid[8];			//!< IPv6 interface ID (should be struct?).
 	struct in6_addr		ipv6addr;			//!< IPv6 Address.
@@ -807,7 +806,7 @@ void		fr_talloc_verify_cb(const void *ptr, int depth,
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
-int		ascend_parse_filter(value_data_t *out, char const *value, size_t len);
+int		ascend_parse_filter(TALLOC_CTX *ctx, value_data_t *out, char const *value, size_t len);
 void		print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, int8_t quote);
 #endif /*WITH_ASCEND_BINARY*/
 

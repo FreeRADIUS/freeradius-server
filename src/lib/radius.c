@@ -863,6 +863,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
+	case PW_TYPE_ABINARY:
 		data = vp->data.ptr;
 		if (!data) return 0;
 		break;
@@ -872,7 +873,6 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	case PW_TYPE_IPV6_ADDR:
 	case PW_TYPE_IPV6_PREFIX:
 	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:	/* just in case */
 		data = (uint8_t const *) &vp->data;
 		break;
@@ -4188,7 +4188,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		break;
 
 	case PW_TYPE_ABINARY:
-		if (datalen > sizeof(vp->vp_filter)) goto raw;
+		if (datalen < 32) goto raw;
 		break;
 
 	case PW_TYPE_INTEGER:
@@ -4401,10 +4401,7 @@ alloc_raw:
 		break;
 
 	case PW_TYPE_ABINARY:
-		if (vp->vp_length > sizeof(vp->vp_filter)) {
-			vp->vp_length = sizeof(vp->vp_filter);
-		}
-		memcpy(vp->vp_filter, data, vp->vp_length);
+		fr_pair_value_memcpy(vp, data, vp->vp_length);
 		break;
 
 	case PW_TYPE_BYTE:
@@ -4598,6 +4595,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
+	case PW_TYPE_ABINARY:
 		memcpy(out, &vp->data.ptr, sizeof(*out));
 		break;
 
@@ -4609,7 +4607,6 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_IPV6_ADDR:
 	case PW_TYPE_IPV6_PREFIX:
 	case PW_TYPE_IPV4_PREFIX:
-	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:
 	case PW_TYPE_COMBO_IP_ADDR:
 	case PW_TYPE_COMBO_IP_PREFIX:

@@ -586,9 +586,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		return -1;
 
 	/* raw octets: 0x01020304... */
-#ifndef WITH_ASCEND_BINARY
 	do_octets:
-#endif
 	case PW_TYPE_OCTETS:
 	{
 		uint8_t	*p;
@@ -628,25 +626,15 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
 		if ((len > 1) && (strncasecmp(src, "0x", 2) == 0)) {
-			ssize_t bin;
+			goto do_octets;
 
-			if (len > ((sizeof(dst->filter) + 1) * 2)) {
-				fr_strerror_printf("Hex data is too large for ascend filter");
-				return -1;
-			}
-
-			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, src + 2, len - 2);
-			if (bin < ret) {
-				memset(((uint8_t *) &dst->filter) + bin, 0, ret - bin);
-			}
 		} else {
-			if (ascend_parse_filter(dst, src, len) < 0 ) {
+			ret = ascend_parse_filter(ctx, dst, src, len);
+			if (ret < 0) {
 				/* Allow ascend_parse_filter's strerror to bubble up */
 				return -1;
 			}
 		}
-
-		ret = sizeof(dst->filter);
 		goto finish;
 #else
 		/*
@@ -1051,20 +1039,6 @@ static ssize_t value_data_hton(value_data_t *dst, PW_TYPE dst_type, void const *
 		memcpy(dst_ptr, src, dst_len);
 		break;
 
-	case PW_TYPE_ABINARY:
-		dst_len = sizeof(dst->filter);
-		dst_ptr = (uint8_t *) dst->filter;
-
-		/*
-		 *	Too little data is OK here.
-		 */
-		if (src_len < dst_len) {
-			memcpy(dst_ptr, src, src_len);
-			memset(dst_ptr + src_len, 0, dst_len - src_len);			
-			break;
-		}
-		goto copy;
-
 	case PW_TYPE_IFID:
 		dst_len = sizeof(dst->ifid);
 		dst_ptr = (uint8_t *) dst->ifid;
@@ -1153,14 +1127,26 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src_len, '\0');
 	}
 
+	if (dst_type == PW_TYPE_ABINARY) {
+		if (src_type != PW_TYPE_OCTETS) goto invalid_cast;
+
+		dst->filter = talloc_memdup(ctx, src->octets, src_len);
+		return src_len;
+	}
+
 	/*
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		dst_len = value_data_hton(dst, src_type, src, src_len);
-		if (dst_len < 0) return -1;
+		if (src_type != PW_TYPE_ABINARY) {
+			dst_len = value_data_hton(dst, src_type, src, src_len);
+			if (dst_len < 0) return -1;
 
-		dst->octets = talloc_memdup(ctx, dst, dst_len);
+			dst->octets = talloc_memdup(ctx, dst, dst_len);
+		} else {
+			dst->octets = talloc_memdup(ctx, src->filter, src_len);
+			dst_len = src_len;
+		}
 		talloc_set_type(dst->octets, uint8_t);
 		return dst_len;
 	}
@@ -1647,9 +1633,9 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		p = talloc_array(ctx, char, 128);
+		p = talloc_array(ctx, char, 256);
 		if (!p) return NULL;
-		print_abinary(p, 128, (uint8_t const *) &data->filter, inlen, 0);
+		print_abinary(p, 256, data->filter, inlen, 0);
 		break;
 #else
 		  /* FALL THROUGH */
@@ -1860,7 +1846,7 @@ print_int:
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		print_abinary(buf, sizeof(buf), (uint8_t const *) data->filter, inlen, quote);
+		print_abinary(buf, sizeof(buf), data->filter, inlen, quote);
 		a = buf;
 		len = strlen(buf);
 		break;

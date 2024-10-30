@@ -35,6 +35,7 @@ RCSID("$Id$")
 #define RAD_FILTER_GENERIC	0
 #define RAD_FILTER_IP		1
 #define RAD_FILTER_IPX		2
+#define RAD_FILTER_IPV6		3
 
 /*
  * Generic filters mask and match up to RAD_MAX_FILTER_LEN bytes
@@ -104,6 +105,19 @@ typedef struct ascend_ip_filter_t {
 	unsigned char   fill[4];	/* used to be fill[2] */
 } ascend_ip_filter_t;
 
+typedef struct ascend_ipv6_filter_t {
+	uint8_t		srcip[16];
+	uint8_t		dstip[16];
+	uint8_t 	srcprefix;	// number of high order bits used in IPv6
+	uint8_t 	dstprefix;	// number of high order bits used in IPv6
+	uint8_t		proto;
+	uint8_t		established;
+	uint16_t	srcport;
+	uint16_t	dstport;
+	uint8_t		srcPortComp;
+	uint8_t		dstPortComp;
+	unsigned char   fill[2];
+} ascend_ipv6_filter_t;
 
 /*
  *	ascend_ipx_net_t
@@ -206,18 +220,12 @@ typedef struct ascend_filter_t {
 	uint8_t		fill;
 	union {
 		ascend_ip_filter_t   	 ip;
+		ascend_ipv6_filter_t   	 ipv6;
 		ascend_ipx_filter_t   	 ipx;
 		ascend_generic_filter_t	generic;
 		uint8_t			data[28]; /* ensure it's 32 bytes */
 	} u;
 } ascend_filter_t;
-
-/*
- *	This is a wild C hack...
- */
-typedef struct _cpp_hack {
-	char data[(sizeof(ascend_filter_t) == 32) ? 1 : -1 ];
-} _cpp_hack;
 
 /*
  * FilterPortType:
@@ -281,12 +289,14 @@ typedef enum {
     FILTER_IPX_DST_IPXSOCK,
     FILTER_IPX_SRC_IPXNET,
     FILTER_IPX_SRC_IPXNODE,
-    FILTER_IPX_SRC_IPXSOCK
+    FILTER_IPX_SRC_IPXSOCK,
+    FILTER_IPV6_TYPE,
 } FilterTokens;
 
 
 static const FR_NAME_NUMBER filterKeywords[] = {
 	{ "ip", 	FILTER_IP_TYPE },
+	{ "ipv6", 	FILTER_IPV6_TYPE },
 	{ "generic",	FILTER_GENERIC_TYPE },
 	{ "in", 	FILTER_IN },
 	{ "out",	FILTER_OUT },
@@ -558,7 +568,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 {
 	int		count = 0;
 	int		ip[4];
-	int	     masklen;
+	int	     	masklen;
 	uint32_t	netmask = 0;
 
 	/*
@@ -833,6 +843,171 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 
 
 /*
+ *	Parse an IP address and optionally a netmask, to a uint32_t.
+ *
+ *	ipaddr should already be initialized to zero.
+ *	ipaddr is in network byte order.
+ *
+ *	Returns -1 on error, or the number of bits in the netmask, otherwise.
+ */
+static int ascend_parse_ipv6addr(uint8_t *ipv6addr, char *str)
+{
+	fr_ipaddr_t ip;
+
+	if (fr_pton6(&ip, str, strlen(str), false, false) < 0) return -1;
+
+	memcpy(ipv6addr, &ip.ipaddr.ip6addr.s6_addr, 16);
+
+	return ip.prefix;
+}
+
+/*
+ *	ascend_parse_ipv6:
+ *
+ *	This routine parses an IP filter string from a RADIUS
+ *	reply. The format of the string is:
+ *
+ *	ipv6 dir action [ dstip addr/mask ] [ srcip addr/mask ]
+ *	    [ proto [ dstport cmp value ] [ srcport cmd value ] [ est ] ]
+ *
+ *	Fields in [...] are optional.
+ *
+ *	dstip:		Keyword for destination IP address.
+ *			addr/mask
+ *
+ *	srcip:		Keyword for source IP address.
+ *			addr/mask
+ *
+ *	proto:		Optional protocol field. Either a name or
+ *			number. Known names are in FilterProtoName[].
+ *
+ *	dstport:	Keyword for destination port. Only valid with tcp
+ *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
+ *			a name or number.
+ *
+ *	srcport:	Keyword for source port. Only valid with tcp
+ *			or udp. 'cmp' are in FilterPortType[]. 'value' can be
+ *			a name or number.
+ *
+ *	est:		Keyword for TCP established. Valid only for tcp.
+ *
+ */
+static int ascend_parse_ipv6(int argc, char **argv, ascend_ipv6_filter_t *filter, size_t *len)
+{
+	int rcode;
+	int token;
+	int flags;
+
+	/*
+	 *	We may have nothing, in which case we simply return.
+	 */
+	if (argc == 0) return 0;
+
+	*len = sizeof(*filter);
+
+	/*
+	 *	There may, or may not, be src & dst IP's in the string.
+	 */
+	flags = 0;
+	while ((argc > 0) && (flags != DONE_FLAGS)) {
+		token = fr_str2int(filterKeywords, argv[0], -1);
+		switch (token) {
+		case FILTER_IP_SRC:
+			if (flags & IP_SRC_ADDR_FLAG) return -1;
+			if (argc < 2) return -1;
+
+			rcode = ascend_parse_ipv6addr(filter->srcip, argv[1]);
+			if (rcode < 0) return rcode;
+
+			filter->srcprefix = rcode;
+			flags |= IP_SRC_ADDR_FLAG;
+			argv += 2;
+			argc -= 2;
+			break;
+
+		case FILTER_IP_DST:
+			if (flags & IP_DEST_ADDR_FLAG) return -1;
+			if (argc < 2) return -1;
+
+			rcode = ascend_parse_ipv6addr(filter->dstip, argv[1]);
+			if (rcode < 0) return rcode;
+
+			filter->dstprefix = rcode;
+			flags |= IP_DEST_ADDR_FLAG;
+			argv += 2;
+			argc -= 2;
+			break;
+
+		case FILTER_IP_SRC_PORT:
+			if (flags & IP_SRC_PORT_FLAG) return -1;
+			if (argc < 3) return -1;
+
+			rcode = ascend_parse_port(&filter->srcport,
+						  argv[1], argv[2]);
+			if (rcode < 0) return rcode;
+			filter->srcPortComp = rcode;
+
+			flags |= IP_SRC_PORT_FLAG;
+			argv += 3;
+			argc -= 3;
+			break;
+
+		case FILTER_IP_DST_PORT:
+			if (flags & IP_DEST_PORT_FLAG) return -1;
+			if (argc < 3) return -1;
+
+			rcode = ascend_parse_port(&filter->dstport,
+						  argv[1], argv[2]);
+			if (rcode < 0) return rcode;
+			filter->dstPortComp = rcode;
+
+			flags |= IP_DEST_PORT_FLAG;
+			argv += 3;
+			argc -= 3;
+			break;
+
+		case FILTER_EST:
+			if (flags & IP_EST_FLAG) return -1;
+			filter->established = 1;
+			argv++;
+			argc--;
+			flags |= IP_EST_FLAG;
+			break;
+
+		default:
+			if (flags & IP_PROTO_FLAG) return -1;
+			if (strspn(argv[0], "0123456789") == strlen(argv[0])) {
+				token = atoi(argv[0]);
+			} else {
+				token = fr_str2int(filterProtoName, argv[0], -1);
+				if (token == -1) {
+					fr_strerror_printf("Unknown IP protocol \"%s\" in IPv6 data filter",
+						   argv[0]);
+					return -1;
+				}
+			}
+			filter->proto = token;
+			flags |= IP_PROTO_FLAG;
+
+			argv++;
+			argc--;
+			break;
+		}
+	}
+
+	/*
+	 *	We should have parsed everything by now.
+	 */
+	if (argc != 0) {
+		fr_strerror_printf("Unknown extra string \"%s\" in IPv6 data filter",
+			   argv[0]);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  *	ascend_parse_generic
  *
  *	This routine parses a Generic filter string from a RADIUS
@@ -950,14 +1125,16 @@ static int ascend_parse_generic(int argc, char **argv,
  * @param len of value.
  * @return -1 for error or 0.
  */
-int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
+int ascend_parse_filter(TALLOC_CTX *ctx, value_data_t *out, char const *value, size_t len)
 {
 	int		token, type;
 	int		rcode;
 	int		argc;
 	char		*argv[32];
-	ascend_filter_t filter;
+	uint8_t		buffer[256];
+	ascend_filter_t *filter;
 	char		*p;
+	size_t		filter_len = 32;
 
 	rcode = -1;
 
@@ -986,7 +1163,8 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	 *	Decide which filter type it is: ip, ipx, or generic
 	 */
 	type = fr_str2int(filterType, argv[0], -1);
-	memset(&filter, 0, sizeof(filter));
+	memset(buffer, 0, sizeof(buffer));
+	filter = (ascend_filter_t *) buffer;
 
 	/*
 	 *	Validate the filter type.
@@ -995,7 +1173,8 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	case RAD_FILTER_GENERIC:
 	case RAD_FILTER_IP:
 	case RAD_FILTER_IPX:
-		filter.type = type;
+	case RAD_FILTER_IPV6:
+		filter->type = type;
 		break;
 
 	default:
@@ -1010,11 +1189,11 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	token = fr_str2int(filterKeywords, argv[1], -1);
 	switch (token) {
 	case FILTER_IN:
-		filter.direction = 1;
+		filter->direction = 1;
 		break;
 
 	case FILTER_OUT:
-		filter.direction = 0;
+		filter->direction = 0;
 		break;
 
 	default:
@@ -1029,11 +1208,11 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	token = fr_str2int(filterKeywords, argv[2], -1);
 	switch (token) {
 	case FILTER_FORWARD:
-		filter.forward = 1;
+		filter->forward = 1;
 		break;
 
 	case FILTER_DROP:
-		filter.forward = 0;
+		filter->forward = 0;
 		break;
 
 	default:
@@ -1045,25 +1224,33 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 
 	switch (type) {
 	case RAD_FILTER_GENERIC:
-		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter.u.generic);
+		rcode = ascend_parse_generic(argc - 3, &argv[3], &filter->u.generic);
 		break;
 
 	case RAD_FILTER_IP:
-		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter.u.ip);
+		rcode = ascend_parse_ip(argc - 3, &argv[3], &filter->u.ip);
 		break;
 
 	case RAD_FILTER_IPX:
-		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter.u.ipx);
+		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter->u.ipx);
+		break;
+
+	case RAD_FILTER_IPV6:
+		rcode = ascend_parse_ipv6(argc - 3, &argv[3], &filter->u.ipv6, &filter_len);
 		break;
 	}
+
+	talloc_free(p);
+
+	if (rcode < 0) return rcode;
 
 	/*
 	 *	Touch the VP only if everything was OK.
 	 */
-	if (rcode == 0) memcpy(out->filter, &filter, sizeof(filter));
-	talloc_free(p);
-
-	return rcode;
+	out->filter = talloc_memdup(ctx, buffer, filter_len);
+	if (!out->filter) return -1;
+	talloc_set_type(out->octets, uint8_t);
+	return filter_len;
 }
 
 /*
@@ -1088,7 +1275,8 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 	/*
 	 *  Just for paranoia: wrong size filters get printed as octets
 	 */
-	if (len != sizeof(*filter)) {
+	if ((len < 32) || (data[0] > 3) || ((data[0] < 3) && (len != 32)) ||
+	    ((data[0] == 3) && (len < 48))) {
 		strcpy(p, "0x");
 		p += 2;
 		outlen -= 2;
@@ -1160,6 +1348,52 @@ void print_abinary(char *out, size_t outlen, uint8_t const *data, size_t len, in
 		}
 
 		if (filter->u.ip.established) {
+			i = snprintf(p, outlen, " est");
+			p += i;
+		}
+
+	} else if (filter->type == RAD_FILTER_IPV6) {
+		static const uint8_t zeros[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+		if (memcmp(zeros, filter->u.ipv6.srcip, 16) != 0) {
+			char const *ip = fr_inet_ntop(AF_INET6, filter->u.ipv6.srcip);
+
+			i = snprintf(p, outlen, " srcip %s/%d",
+				     ip, filter->u.ipv6.srcprefix);
+			p += i;
+			outlen -= i;
+		}
+
+		if (memcmp(zeros, filter->u.ipv6.dstip, 16) != 0) {
+			char const *ip = fr_inet_ntop(AF_INET6, filter->u.ipv6.dstip);
+
+			i = snprintf(p, outlen, " dstip %s/%d",
+				     ip, filter->u.ipv6.dstprefix);
+			p += i;
+			outlen -= i;
+		}
+
+		i = snprintf(p, outlen, " %s", fr_int2str(filterProtoName, filter->u.ipv6.proto, "??"));
+		p += i;
+		outlen -= i;
+
+		if (filter->u.ip.srcPortComp > RAD_NO_COMPARE) {
+			i = snprintf(p, outlen, " srcport %s %d",
+				     fr_int2str(filterCompare, filter->u.ipv6.srcPortComp, "??"),
+				     ntohs(filter->u.ip.srcport));
+			p += i;
+			outlen -= i;
+		}
+
+		if (filter->u.ip.dstPortComp > RAD_NO_COMPARE) {
+			i = snprintf(p, outlen, " dstport %s %d",
+				     fr_int2str(filterCompare, filter->u.ipv6.dstPortComp, "??"),
+				     ntohs(filter->u.ip.dstport));
+			p += i;
+			outlen -= i;
+		}
+
+		if (filter->u.ipv6.established) {
 			i = snprintf(p, outlen, " est");
 			p += i;
 		}
