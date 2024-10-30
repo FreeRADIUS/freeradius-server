@@ -285,7 +285,7 @@ int fr_network_directory_add(fr_network_t *nr, fr_listen_t *li)
 	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_DIRECTORY, &li, sizeof(li));
 }
 
-/** Add a worker to a network
+/** Add a worker to a network in a different thread
  *
  * @param nr the network
  * @param worker the worker
@@ -302,6 +302,19 @@ int fr_network_worker_add(fr_network_t *nr, fr_worker_t *worker)
 
 	return fr_control_message_send(nr->control, rb, FR_CONTROL_ID_WORKER, &worker, sizeof(worker));
 }
+
+static void fr_network_worker_started_callback(void *ctx, void const *data, size_t data_size, fr_time_t now);
+
+/** Add a worker to a network in the same thread
+ *
+ * @param nr the network
+ * @param worker the worker
+ */
+void fr_network_worker_add_self(fr_network_t *nr, fr_worker_t *worker)
+{
+	fr_network_worker_started_callback(nr, &worker, sizeof(worker), fr_time_wrap(0));
+}
+
 
 /** Signal the network to read from a listener
  *
