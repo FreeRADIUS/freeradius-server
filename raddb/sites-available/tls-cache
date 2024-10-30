@@ -31,6 +31,22 @@ server tls-cache {
 	namespace = tls
 
 	#
+	#  This section can be run to verify a client certificate if
+	#  additional checks need to be performed beyond standard
+	#  checks verification against a trust chain, CRLs and OCSP.
+	#
+	#  Attributes extracted from the certificates forming the
+	#  client certificate chain will be in the session state list.
+	#
+	#  Returning 'ok', 'updated' or 'noop' will cause the verification
+	#  to succeed.  Other return codes will cause the verification
+	#  to fail.
+	#
+	verify certificate {
+		ok
+	}
+
+	#
 	#  This section is run whenever the server needs to read an
 	#  entry from the TLS session cache.
 	#
