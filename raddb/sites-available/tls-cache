@@ -43,7 +43,7 @@ server tls-cache {
 	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
-	load tls-session {
+	load session {
 		&control.Cache-Allow-Insert := no
 
 		cache_tls_session
@@ -62,7 +62,7 @@ server tls-cache {
 	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
-	store tls-session {
+	store session {
 		&control.Cache-TTL := 0
 
 		cache_tls_session
@@ -77,7 +77,7 @@ server tls-cache {
 	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
-	clear tls-session {
+	clear session {
 		&control.Cache-TTL := 0
 		&control.Cache-Allow-Insert := no
 
