@@ -28,7 +28,7 @@
 #
 ######################################################################
 server tls-cache {
-	namespace = tls_cache
+	namespace = tls
 
 	#
 	#  This section is run whenever the server needs to read an
