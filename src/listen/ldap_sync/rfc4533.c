@@ -309,7 +309,7 @@ int rfc4533_sync_search_entry(sync_state_t *sync, LDAPMessage *msg, LDAPControl 
 		goto error;
 	}
 
-	if (sync_new_cookie(&new_cookie, sync, ber) < 0) goto error;
+	if (sync_new_cookie(&new_cookie, sync, ber) == -1) goto error;
 
 	if (ber_scanf(ber, "}") == LBER_ERROR ) {
 		ERROR("Malformed syncStatevalue sequence");
@@ -492,7 +492,7 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 	 *	but those changes don't match the search.
 	 */
 	case LDAP_TAG_SYNC_NEW_COOKIE:
-		if (sync_new_cookie(&new_cookie, sync, ber) < 0) {
+		if (sync_new_cookie(&new_cookie, sync, ber) == -1) {
 		error:
 			if (sync_uuids) ber_bvarray_free(sync_uuids);
 			if (ber) ber_free(ber, 1);
@@ -533,7 +533,7 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 			goto error;
 		}
 
-		if (sync_new_cookie(&new_cookie, sync, ber) < 0) goto error;
+		if (sync_new_cookie(&new_cookie, sync, ber) == -1) goto error;
 
 		if (ber_peek_tag(ber, &len) == LDAP_TAG_REFRESHDONE) {
 			if (ber_scanf(ber, "b", &refresh_done) == LBER_ERROR) {
@@ -579,7 +579,7 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 			goto error;
 		}
 
-		if (sync_new_cookie(&new_cookie, sync, ber) < 0) goto error;
+		if (sync_new_cookie(&new_cookie, sync, ber) == -1) goto error;
 
 		if (ber_peek_tag(ber, &len) == LDAP_TAG_REFRESHDONE) {
 			if (ber_scanf(ber, "b", &refresh_done) == LBER_ERROR) {
@@ -609,7 +609,7 @@ int rfc4533_sync_intermediate(sync_state_t *sync, LDAPMessage *msg, UNUSED LDAPC
 			goto error;
 		}
 
-		if (sync_new_cookie(&new_cookie, sync, ber) < 0) goto error;
+		if (sync_new_cookie(&new_cookie, sync, ber) == -1) goto error;
 
 		if (ber_peek_tag(ber, &len) == LDAP_TAG_REFRESHDELETES) {
 			if (ber_scanf(ber, "b", &refresh_deletes) == LBER_ERROR) {
@@ -750,7 +750,7 @@ int rfc4533_sync_refresh_required(sync_state_t *sync, LDAPMessage *msg, LDAPCont
 
 			if (ber_scanf( ber, "{" /*"}"*/) == LBER_ERROR) goto error;
 
-			if (sync_new_cookie(&new_cookie, sync, ber) < 0) goto error;
+			if (sync_new_cookie(&new_cookie, sync, ber) == -1) goto error;
 
 			if (ber_peek_tag(ber, &len) == LDAP_TAG_REFRESHDELETES) {
 				if (ber_scanf(ber, "b", &refresh_deletes) == LBER_ERROR) {
