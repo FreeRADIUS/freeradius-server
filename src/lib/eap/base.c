@@ -63,10 +63,14 @@ RCSID("$Id$")
 #define LOG_PREFIX "eap"
 
 #include <freeradius-devel/eap/base.h>
+#include <freeradius-devel/radius/defs.h>
+#include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/server/pair.h>
 #include <freeradius-devel/server/auth.h>
 #include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/interpret.h>
+#include <freeradius-devel/unlang/function.h>
 #include "types.h"
 #include "attrs.h"
 
@@ -84,7 +88,7 @@ fr_dict_attr_t const *attr_chbind_response_code;
 fr_dict_attr_t const *attr_eap_session_id;
 fr_dict_attr_t const *attr_eap_identity;
 fr_dict_attr_t const *attr_eap_type;
-
+fr_dict_attr_t const *attr_packet_type;
 fr_dict_attr_t const *attr_message_authenticator;
 fr_dict_attr_t const *attr_eap_channel_binding_message;
 fr_dict_attr_t const *attr_eap_message;
@@ -104,7 +108,7 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_eap_session_id, .name = "EAP-Session-Id", .type = FR_TYPE_OCTETS, .dict = &dict_freeradius },
 	{ .out = &attr_eap_type, .name = "EAP-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-
+	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_channel_binding_message, .name = "Vendor-Specific.UKERNA.EAP-Channel-Binding-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
@@ -386,80 +390,56 @@ void eap_add_reply(request_t *request, fr_dict_attr_t const *da, uint8_t const *
 	REXDENT();
 }
 
-/** Run a subrequest through a virtual server, managing the eap_session_t of the child
+/** Handle the result of running a subrequest through a virtual server
  *
- * If eap_session_t has a child, inject that into the request.
+ * Storing the value of the State attribute in readiness for the next round.
+ */
+static unlang_action_t eap_virtual_server_resume(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						 request_t *request, void *uctx)
+{
+	eap_session_t	*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+
+	/*
+	 *	Grab the child's session state for re-use in the next round
+	 */
+	fr_state_store_in_parent(request, eap_session->identity, REQUEST_DATA_EAP_SESSION);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Run a subrequest through a virtual server
  *
- * If after the request has run, the child eap_session_t is no longer present,
- * we assume it has been freed, and fixup the parent eap_session_t.
- *
- * If the eap_session_t pointer changes, this is considered a fatal error.
+ * If eap_session_t has a child_state, inject that as an attribute in the request.
  *
  * @param[in] request		the current (real) request.
  * @param[in] eap_session	representing the outer eap method.
  * @param[in] virtual_server	The default virtual server to send the request to.
- * @return the rcode of the last executed section in the virtual server.
+ * @return
+ * 	- UNLANG_ACTION_PUSHED_CHILD on success
+ *	- UNLANG_ACTION_FAIL on error
  */
-rlm_rcode_t eap_virtual_server(UNUSED request_t *request, UNUSED eap_session_t *eap_session, UNUSED char const *virtual_server)
+unlang_action_t eap_virtual_server(request_t *request, eap_session_t *eap_session, CONF_SECTION *server_cs)
 {
-#if 1
-	return RLM_MODULE_FAIL;
-#else
-	eap_session_t	*eap_session_inner;
-	rlm_rcode_t	rcode;
 	fr_pair_t	*vp;
-	CONF_SECTION	*server_cs;
 
-	vp = fr_pair_find_by_da(&request->control_pairs, NULL, attr_virtual_server);
-	server_cs = vp ? virtual_server_find(vp->vp_strvalue) : virtual_server_find(virtual_server);
+	fr_assert(request->parent);
 
-	if (server_cs) {
-		RDEBUG2("Running request through virtual server \"%s\"", cf_section_name2(unlang_call_current(request)));
-	} else {
-		RDEBUG2("Running request in virtual server");
-	}
+	RDEBUG2("Running request through virtual server \"%s\"", cf_section_name(server_cs));
 
 	/*
-	 *	Add a previously recorded inner eap_session_t back
-	 *	to the request.  This in theory allows infinite
-	 *	nesting, but this is probably limited somewhere.
+	 *	Re-present the previously stored child's session state if there is one
 	 */
-	if (eap_session->child) {
-		RDEBUG4("Adding eap_session_t %p to child request", eap_session->child);
-		request_data_talloc_add(request, NULL, REQUEST_DATA_EAP_SESSION,
-					eap_session_t, eap_session->child, false, false, false);
-	}
+	fr_state_restore_to_child(request, eap_session->identity, REQUEST_DATA_EAP_SESSION);
 
-	rad_virtual_server(&rcode, request);
-	eap_session_inner = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
-	if (eap_session_inner) {
-		/*
-		 *	We assume if the inner eap session has changed
-		 *	then the old one has been freed.
-		 */
-		if (!eap_session->child || (eap_session->child != eap_session_inner)) {
-			RDEBUG4("Binding lifetime of child eap_session %p to parent eap_session %p",
-				eap_session_inner, eap_session);
-			talloc_link_ctx(eap_session, eap_session_inner);
-			eap_session->child = eap_session_inner;
-		} else {
-			RDEBUG4("Got eap_session_t %p back unmolested", eap_session->child);
-		}
-	/*
-	 *	Assume the inner server freed the
-	 *	eap_session_t and remove our reference to it.
-	 *
-	 *	If it didn't actually free the child (due to error)
-	 *	the call to talloc_link_ctx (above) ensures it will
-	 *	be freed when the parent is.
-	 */
-	} else if (eap_session->child) {
-		RDEBUG4("Inner server freed eap_session %p", eap_session->child);
-		eap_session->child = NULL;
-	}
+	fr_pair_prepend_by_da(request->request_ctx, &vp, &request->request_pairs, attr_packet_type);
+	vp->vp_uint32 = FR_RADIUS_CODE_ACCESS_REQUEST;
 
-	return rcode;
-#endif
+	if (unlang_function_push(request, NULL, eap_virtual_server_resume, NULL, 0,
+				 UNLANG_SUB_FRAME, eap_session) < 0) return UNLANG_ACTION_FAIL;
+
+	if (unlang_call_push(request, server_cs, UNLANG_SUB_FRAME) < 0) return UNLANG_ACTION_FAIL;
+
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 
 /** Initialise the lib eap base library

@@ -33,8 +33,7 @@ extern HIDDEN fr_dict_attr_t const *attr_chbind_response_code;
 extern HIDDEN fr_dict_attr_t const *attr_eap_identity;
 extern HIDDEN fr_dict_attr_t const *attr_eap_session_id;
 extern HIDDEN fr_dict_attr_t const *attr_eap_type;
-extern HIDDEN fr_dict_attr_t const *attr_virtual_server;
-
+extern HIDDEN fr_dict_attr_t const *attr_packet_type;
 extern HIDDEN fr_dict_attr_t const *attr_message_authenticator;
 extern HIDDEN fr_dict_attr_t const *attr_eap_channel_binding_message;
 extern HIDDEN fr_dict_attr_t const *attr_eap_message;
