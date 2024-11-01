@@ -246,6 +246,8 @@ static unlang_action_t unlang_subrequest_calculate_result(UNUSED rlm_rcode_t *p_
 {
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
 
+	if (*p_result == RLM_MODULE_NOT_SET) *p_result = RLM_MODULE_NOOP;
+
 	if (state->free_child) unlang_subrequest_detach_and_free(&state->child);
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
