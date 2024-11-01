@@ -452,6 +452,14 @@ static unlang_action_t tls_verify_client_cert_push(request_t *request, fr_tls_se
 	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
 	vp->vp_uint32 = enum_tls_packet_type_verify_certificate->vb_uint32;
 
+	/*
+	 *	Copy certificate pairs to the child session state
+	 */
+	vp = NULL;
+	while ((vp = fr_pair_find_by_da(&request->parent->session_state_pairs, vp, attr_tls_certificate))) {
+		fr_pair_append(&request->session_state_pairs, fr_pair_copy(request->session_state_ctx, vp));
+	}
+
 	MEM(pair_append_request(&vp, attr_tls_session_resumed) >= 0);
 	vp->vp_bool = tls_session->validate.resumed;
 
