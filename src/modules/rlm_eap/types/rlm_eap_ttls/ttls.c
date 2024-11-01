@@ -482,18 +482,18 @@ static int vp2diameter(request_t *request, fr_tls_session_t *tls_session, fr_pai
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *eap_session, fr_tls_session_t *tls_session,
-						  request_t *request,
-						  fr_packet_t *reply, fr_pair_list_t *reply_list)
+static unlang_action_t process_reply(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
-	fr_pair_t	*vp;
-	fr_pair_list_t	tunnel_vps;
-
-	ttls_tunnel_t	*t = tls_session->opaque;
+	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	fr_pair_t		*vp = NULL;
+	fr_pair_list_t		tunnel_vps;
+	ttls_tunnel_t		*t = tls_session->opaque;
+	fr_packet_t		*reply = request->reply;
 
 	fr_pair_list_init(&tunnel_vps);
-	fr_assert(eap_session->request == request);
+	fr_assert(eap_session->request == request->parent);
 
 	/*
 	 *	If the response packet was Access-Accept, then
@@ -518,37 +518,33 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 	 */
 	switch (reply->code) {
 	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-	{
 		RDEBUG2("Got tunneled Access-Accept");
-
-		rcode = RLM_MODULE_OK;
 
 		/*
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_pair_list_head(reply_list);
-		     vp;
-		     vp = fr_pair_list_next(reply_list, vp)) {
-			if (vp->da == attr_ms_chap2_success) {
-				RDEBUG2("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
-
-				rcode = RLM_MODULE_HANDLED;
-				t->authenticated = true;
-				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
-			} else if (vp->da == attr_eap_channel_binding_message) {
-				rcode = RLM_MODULE_HANDLED;
-				t->authenticated = true;
-				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
-			}
+		if ((vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_ms_chap2_success))) {
+			RDEBUG2("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
+		} else {
+			vp = fr_pair_find_by_da_nested(&request->reply_pairs, NULL, attr_eap_channel_binding_message);
 		}
-	}
-		break;
+		if (vp) {
+			t->authenticated = true;
+			fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
+			reply->code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
+			break;
+		}
+
+		/*
+		 *	Success: Automatically return MPPE keys.
+		 */
+		return eap_ttls_success(p_result, request, eap_session);
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 		REDEBUG("Got tunneled Access-Reject");
-		rcode = RLM_MODULE_REJECT;
-		break;
+		eap_tls_fail(request, eap_session);
+		RETURN_MODULE_REJECT;
 
 	/*
 	 *	Handle Access-Challenge, but only if we
@@ -563,22 +559,20 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		 *	Copy what we need into the TTLS tunnel and leave
 		 *	the rest to be cleaned up.
 		 */
-		for (vp = fr_pair_list_head(reply_list);
-		     vp;
-		     vp = fr_pair_list_next(reply_list, vp)) {
+		vp = NULL;
+		while ((vp = fr_pair_list_next(&request->reply_pairs, vp))) {
 		     	if ((vp->da == attr_eap_message) || (vp->da == attr_reply_message)) {
 				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
 		     	} else if (vp->da == attr_eap_channel_binding_message) {
 				fr_pair_prepend(&tunnel_vps, fr_pair_copy(tls_session, vp));
 		     	}
 		}
-		rcode = RLM_MODULE_HANDLED;
 		break;
 
 	default:
 		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
-		rcode = RLM_MODULE_INVALID;
-		break;
+		eap_tls_fail(request, eap_session);
+		RETURN_MODULE_INVALID;
 	}
 
 
@@ -594,17 +588,51 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(NDEBUG_UNUSED eap_session_t *e
 		fr_pair_list_free(&tunnel_vps);
 	}
 
-	return rcode;
+	eap_tls_request(request, eap_session);
+	RETURN_MODULE_OK;
+}
+
+unlang_action_t eap_ttls_success(rlm_rcode_t *p_result, request_t *request, eap_session_t *eap_session)
+{
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	eap_tls_prf_label_t prf_label;
+
+	eap_crypto_prf_label_init(&prf_label, eap_session,
+				  "ttls keying material",
+				  sizeof("ttls keying material") - 1);
+	/*
+	 *	Success: Automatically return MPPE keys.
+	 */
+	if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
+
+	/*
+	 *	Result is always OK, even if we fail to persist the
+	 *	session data.
+	 */
+	*p_result = RLM_MODULE_OK;
+
+	/*
+	 *	Write the session to the session cache
+	 *
+	 *	We do this here (instead of relying on OpenSSL to call the
+	 *	session caching callback), because we only want to write
+	 *	session data to the cache if all phases were successful.
+	 *
+	 *	If we wrote out the cache data earlier, and the server
+	 *	exited whilst the session was in progress, the supplicant
+	 *	could resume the session (and get access) even if phase2
+	 *	never completed.
+	 */
+	return fr_tls_cache_pending_push(request, tls_session);
 }
 
 
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
+unlang_action_t eap_ttls_process(request_t *request, eap_session_t *eap_session, fr_tls_session_t *tls_session)
 {
-	fr_radius_packet_code_t			code = FR_RADIUS_CODE_ACCESS_REJECT;
-	rlm_rcode_t		rcode;
 	fr_pair_t		*vp = NULL;
 	ttls_tunnel_t		*t;
 	uint8_t			const *data;
@@ -629,8 +657,7 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 	if (data_len == 0) {
 		if (t->authenticated) {
 			RDEBUG2("Got ACK, and the user was already authenticated");
-			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-			goto finish;
+			return eap_ttls_success(&request->rcode, request, eap_session);
 		} /* else no session, no data, die. */
 
 		/*
@@ -638,14 +665,10 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 		 *	wrong.
 		 */
 		RDEBUG2("SSL_read Error");
-		code = FR_RADIUS_CODE_ACCESS_REJECT;
-		goto finish;
+		return UNLANG_ACTION_FAIL;
 	}
 
-	if (!diameter_verify(request, data, data_len)) {
-		code = FR_RADIUS_CODE_ACCESS_REJECT;
-		goto finish;
-	}
+	if (!diameter_verify(request, data, data_len)) return UNLANG_ACTION_FAIL;
 
 	/*
 	 *	Add the tunneled attributes to the request request.
@@ -653,8 +676,7 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 	if (eap_ttls_decode_pair(request, request->request_ctx, &request->request_pairs, fr_dict_root(fr_dict_internal()),
 				 data, data_len, tls_session->ssl) < 0) {
 		RPEDEBUG("Decoding TTLS TLVs failed");
-		code = FR_RADIUS_CODE_ACCESS_REJECT;
-		goto finish;
+		return UNLANG_ACTION_FAIL;
 	}
 
 	/*
@@ -732,49 +754,13 @@ fr_radius_packet_code_t eap_ttls_process(request_t *request, eap_session_t *eap_
 		/* clean up chbind req */
 		talloc_free(req);
 
-		if (chbind_code != FR_RADIUS_CODE_ACCESS_ACCEPT) {
-			code = chbind_code;
-			goto finish;
-		}
+		if (chbind_code != FR_RADIUS_CODE_ACCESS_ACCEPT) return UNLANG_ACTION_FAIL;
 	}
 
+	(void) unlang_module_yield(request, process_reply, NULL, 0, eap_session);
 	/*
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	eap_virtual_server(request, eap_session, t->server_cs);
-
-	/*
-	 *	Decide what to do with the reply.
-	 */
-	if (!request->reply->code) {
-		RDEBUG2("No tunneled reply was found for request %" PRIu64 ", and the request was not "
-		       "proxied: rejecting the user", request->number);
-		code = FR_RADIUS_CODE_ACCESS_REJECT;
-	} else {
-		/*
-		 *	Returns RLM_MODULE_FOO, and we want to return FR_FOO
-		 */
-		rcode = process_reply(eap_session, tls_session, request, request->reply, &request->reply_pairs);
-		switch (rcode) {
-		case RLM_MODULE_REJECT:
-			code = FR_RADIUS_CODE_ACCESS_REJECT;
-			break;
-
-		case RLM_MODULE_HANDLED:
-			code = FR_RADIUS_CODE_ACCESS_CHALLENGE;
-			break;
-
-		case RLM_MODULE_OK:
-			code = FR_RADIUS_CODE_ACCESS_ACCEPT;
-			break;
-
-		default:
-			code = FR_RADIUS_CODE_ACCESS_REJECT;
-			break;
-		}
-	}
-
-finish:
-	return code;
+	return eap_virtual_server(request, eap_session, t->server_cs);
 }

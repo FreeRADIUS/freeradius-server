@@ -154,41 +154,10 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	case EAP_TLS_ESTABLISHED:
 		if (SSL_session_reused(tls_session->ssl)) {
 			RDEBUG2("Skipping Phase2 due to session resumption");
-			goto do_keys;
+			return eap_ttls_success(p_result, request, eap_session);
 		}
 
-		if (tunnel && tunnel->authenticated) {
-			eap_tls_prf_label_t prf_label;
-
-		do_keys:
-			eap_crypto_prf_label_init(&prf_label, eap_session,
-						  "ttls keying material",
-						  sizeof("ttls keying material") - 1);
-			/*
-			 *	Success: Automatically return MPPE keys.
-			 */
-			if (eap_tls_success(request, eap_session, &prf_label) < 0) RETURN_MODULE_FAIL;
-
-			/*
-			 *	Result is always OK, even if we fail to persist the
-			 *	session data.
-			 */
-			*p_result = RLM_MODULE_OK;
-
-			/*
-			 *	Write the session to the session cache
-			 *
-			 *	We do this here (instead of relying on OpenSSL to call the
-			 *	session caching callback), because we only want to write
-			 *	session data to the cache if all phases were successful.
-			 *
-			 *	If we wrote out the cache data earlier, and the server
-			 *	exited whilst the session was in progress, the supplicant
-			 *	could resume the session (and get access) even if phase2
-			 *	never completed.
-			 */
-			return fr_tls_cache_pending_push(request, tls_session);
-		}
+		if (tunnel && tunnel->authenticated) return eap_ttls_success(p_result, request, eap_session);
 
 		eap_tls_request(request, eap_session);
 		RETURN_MODULE_OK;
@@ -224,42 +193,7 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	/*
 	 *	Process the TTLS portion of the request.
 	 */
-	switch (eap_ttls_process(request, eap_session, tls_session)) {
-	case FR_RADIUS_CODE_ACCESS_REJECT:
-		eap_tls_fail(request, eap_session);
-		RETURN_MODULE_REJECT;
-
-		/*
-		 *	Access-Challenge, continue tunneled conversation.
-		 */
-	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
-		eap_tls_request(request, eap_session);
-		RETURN_MODULE_OK;
-
-		/*
-		 *	Success: Automatically return MPPE keys.
-		 */
-	case FR_RADIUS_CODE_ACCESS_ACCEPT:
-		goto do_keys;
-
-	/*
-	 *	No response packet, MUST be proxying it.
-	 *	The main EAP module will take care of discovering
-	 *	that the request now has a "proxy" packet, and
-	 *	will proxy it, rather than returning an EAP packet.
-	 */
-	case FR_RADIUS_CODE_STATUS_CLIENT:
-		RETURN_MODULE_OK;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Something we don't understand: Reject it.
-	 */
-	eap_tls_fail(request, eap_session);
-	RETURN_MODULE_INVALID;
+	return eap_ttls_process(request, eap_session, tls_session);
 }
 
 /*
