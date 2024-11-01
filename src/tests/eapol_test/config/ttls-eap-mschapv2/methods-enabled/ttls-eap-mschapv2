@@ -1,5 +1,5 @@
 type = ttls
-## EAP-TTLS
+type = mschapv2
 ttls {
 	tls = tls-common
 	default_eap_type = md5
@@ -7,3 +7,5 @@ ttls {
 	include_length = no
 }
 
+mschapv2 {
+}
