@@ -38,7 +38,10 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/base16.h>
 #include <freeradius-devel/util/misc.h>
+#include <freeradius-devel/util/sbuff.h>
+#include <freeradius-devel/util/value.h>
 #include <freeradius-devel/util/trie.h>
+#include <freeradius-devel/util/token.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -928,14 +931,18 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 {
 	static int	cnt;
 	CONF_SECTION	*cs;
-	char		src_buf[128], buffer[256];
+	char		buffer[256];
 	fr_client_t	*c;
+	fr_sbuff_t	*tmp;
+	fr_token_t	v_token = T_BARE_WORD;
 
 	if (!request) return NULL;
 
-	fr_value_box_print(&FR_SBUFF_OUT(src_buf, sizeof(src_buf)), fr_box_ipaddr(request->packet->socket.inet.src_ipaddr), NULL);
+	FR_SBUFF_TALLOC_THREAD_LOCAL(&tmp, 1024, SIZE_MAX);
 
-	snprintf(buffer, sizeof(buffer), "dynamic_%i_%s", cnt++, src_buf);
+	fr_sbuff_in_sprintf(tmp, "dynamic_%i_", cnt++);
+	fr_value_box_print(tmp, fr_box_ipaddr(request->packet->socket.inet.src_ipaddr), NULL);
+	fr_sbuff_set_to_start(tmp);
 
 	cs = cf_section_alloc(ctx, NULL, "client", buffer);
 
@@ -1042,11 +1049,15 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 			break;
 
 		default:
-			RERROR("Ignoring attribute %s", vp->da->name);
-			continue;
+			RDEBUG2("Adding custom attribute %pP", vp);
+			attr = vp->da->name;
+			fr_value_box_print(tmp, &vp->data, &fr_value_escape_single);
+			value = fr_sbuff_start(tmp);
+			v_token = T_SINGLE_QUOTED_STRING;
+			break;
 		}
 
-		cp = cf_pair_alloc(cs, attr, value, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+		cp = cf_pair_alloc(cs, attr, value, T_OP_SET, T_BARE_WORD, v_token);
 		if (!cp) {
 			RERROR("Error creating equivalent conf pair for %s", vp->da->name);
 			goto error;
