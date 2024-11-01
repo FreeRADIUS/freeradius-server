@@ -44,7 +44,7 @@ RADDB_PATH := $(top_builddir)/raddb
 #
 #	Disabled modules.
 #
-IGNORED_EAP_TYPES := peap ttls
+IGNORED_EAP_TYPES := peap
 
 #
 #   This ensures that FreeRADIUS uses modules from the build directory
