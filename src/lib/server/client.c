@@ -940,8 +940,12 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 
 	FR_SBUFF_TALLOC_THREAD_LOCAL(&tmp, 1024, SIZE_MAX);
 
-	fr_sbuff_in_sprintf(tmp, "dynamic_%i_", cnt++);
-	fr_value_box_print(tmp, fr_box_ipaddr(request->packet->socket.inet.src_ipaddr), NULL);
+	if (unlikely(fr_sbuff_in_sprintf(tmp, "dynamic_%i_", cnt++) <= 0)) {
+	name_error:
+		RERROR("Failed to generate dynamic client name");
+		return NULL;
+	}
+	if (unlikely(fr_value_box_print(tmp, fr_box_ipaddr(request->packet->socket.inet.src_ipaddr), NULL) <= 0)) goto name_error;
 	fr_sbuff_set_to_start(tmp);
 
 	cs = cf_section_alloc(ctx, NULL, "client", buffer);
