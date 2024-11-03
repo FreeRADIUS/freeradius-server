@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/conf.h>
 #include <freeradius-devel/util/dict_fixup_priv.h>
 #include <freeradius-devel/util/dict_priv.h>
+#include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/util/file.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/strerror.h>
@@ -736,7 +737,7 @@ void dict_attr_location_set(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 	da->line = dctx->stack[dctx->stack_depth].line;
 }
 
-static int dict_attr_add_fixups(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
+static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
 {
 	fr_dict_attr_ext_ref_t	*ref;
 
@@ -751,22 +752,32 @@ static int dict_attr_add_fixups(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
 	if (ref && fr_dict_attr_ref_is_unresolved(ref->type)) {
 		switch (fr_dict_attr_ref_type(ref->type)) {
 		case FR_DICT_ATTR_REF_ALIAS:
-			if (dict_fixup_group(fixup, da->filename, da->line,
-					     da, ref->unresolved) < 0) return -1;
+			if (fr_dict_attr_add_initialised(da) < 0) {
+			error:
+				talloc_free(da);
+				return -1;
+			}
+
+			if (dict_fixup_group(fixup, da, ref->unresolved) < 0) return -1;
+
+			break;
+
+		case FR_DICT_ATTR_REF_ENUM:
+			if (fr_dict_attr_add_initialised(da) < 0) goto error;
+
+			if (dict_fixup_clone_enum(fixup, da, ref->unresolved) < 0) return -1;
 			break;
 
 		case FR_DICT_ATTR_REF_CLONE:
-		case FR_DICT_ATTR_REF_ENUM:
-			if (dict_fixup_clone(fixup, da->filename, da->line,
-					     fr_dict_attr_unconst(da->parent), da,
-					     ref->unresolved) < 0) return -1;
-
+			if (dict_fixup_clone(fixup, da, ref->unresolved) < 0) return -1;
 			break;
 
 		default:
 			fr_strerror_const("Unknown reference type");
 			return -1;
 		}
+	} else {
+		if (fr_dict_attr_add_initialised(da) < 0) goto error;
 	}
 
 	return 0;
@@ -991,9 +1002,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	if (fr_dict_attr_add_initialised(da) < 0) goto error;
-
-	if (unlikely(dict_attr_add_fixups(&ctx->fixup, da) < 0)) return -1;
+	if (dict_attr_add_or_fixup(&ctx->fixup, da) < 0) goto error;
 
 	/*
 	 *	Dynamically define where VSAs go.  Note that we CANNOT
@@ -1002,8 +1011,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	if (da->type == FR_TYPE_VSA) {
 		if (parent->flags.is_root) ctx->dict->vsa_parent = attr;
 
-		if (dict_fixup_vsa(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
-				   UNCONST(fr_dict_attr_t *, da)) < 0) {
+		if (dict_fixup_vsa(&ctx->fixup, UNCONST(fr_dict_attr_t *, da)) < 0) {
 			return -1;	/* Leaves attr added */
 		}
 	}
@@ -1146,9 +1154,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	if (fr_dict_attr_add_initialised(da) < 0) goto error;
-
-	if (unlikely(dict_attr_add_fixups(&ctx->fixup, da) < 0)) return -1;
+	if (unlikely(dict_attr_add_or_fixup(&ctx->fixup, da) < 0)) return -1;
 
 	/*
 	 *	Adding an attribute of type 'struct' is an implicit
@@ -1257,9 +1263,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	if (fr_dict_attr_add_initialised(da) < 0) goto error;
-
-	if (unlikely(dict_attr_add_fixups(&ctx->fixup, da) < 0)) return -1;
+	if (unlikely(dict_attr_add_or_fixup(&ctx->fixup, da) < 0)) return -1;
 
 	memcpy(&ctx->value_attr, &da, sizeof(da));
 
@@ -1500,17 +1504,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		goto error;
 	}
 
-	if (unlikely(fr_dict_attr_add_initialised(da) < 0)) goto error;
-	if (unlikely(dict_attr_add_fixups(&ctx->fixup, da) < 0)) return -1;
-
-	/*
-	 *	If we need to set the previous attribute, we have to
-	 *	look it up by number.  This lets us set the
-	 *	*canonical* previous attribute, and not any potential
-	 *	duplicate which was just added.
-	 */
-	da = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da, ctx->stack[ctx->stack_depth].member_num);
-	fr_assert(da != NULL);
+	if (unlikely(dict_attr_add_or_fixup(&ctx->fixup, da) < 0)) return -1;
 
 	/*
 	 *	A 'struct' can have a MEMBER of type 'tlv', but ONLY
@@ -1809,8 +1803,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
 	 */
-	if (unlikely(fr_dict_attr_add_initialised(da) < 0)) goto error;
-	if (unlikely(dict_attr_add_fixups(&ctx->fixup, da) < 0)) return -1;
+	if (unlikely(dict_attr_add_or_fixup(&ctx->fixup, da) < 0)) goto error;
 
 	da = dict_attr_by_name(NULL, parent, name);
 	if (!da) return -1;

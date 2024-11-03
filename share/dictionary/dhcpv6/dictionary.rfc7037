@@ -10,4 +10,4 @@
 #
 ##############################################################################
 
-ATTRIBUTE	RADIUS					81	group ref=..RADIUS
+ATTRIBUTE	RADIUS					81	group ref=@RADIUS

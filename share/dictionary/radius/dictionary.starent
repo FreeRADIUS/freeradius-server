@@ -288,7 +288,7 @@ ATTRIBUTE	Fast-Reauth-Username			304	octets
 ATTRIBUTE	Pseudonym-Username			305	octets
 ATTRIBUTE	WiMAX-Auth-Only				306	integer
 ATTRIBUTE	TrafficSelector-Class			307	integer
-ATTRIBUTE	DHCP-Options				309	group ref=..DHCPv4
+ATTRIBUTE	DHCP-Options				309	group ref=@DHCPv4
 ATTRIBUTE	Handoff-Indicator			310	integer
 ATTRIBUTE	User-Privilege				313	integer
 ATTRIBUTE	IPv6-Alloc-Method			314	integer
