@@ -244,7 +244,7 @@ have_packet:
 
 		if (buffer[1] && buffer[1] <= FR_TAC_PLUS_ACCT) type = packet_name[buffer[1]];
 		else {
-			sprintf(bogus_type, "%d", buffer[1]);
+			snprintf(bogus_type, sizeof(bogus_type), "%d", buffer[1]);
 			type = bogus_type;
 		}
 		DEBUG2("proto_tacacs_tcp - Received %s seq_no %d length %zd %s",
