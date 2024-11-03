@@ -222,6 +222,15 @@ char *fr_trim(char const *str, size_t size)
 	return q;
 }
 
+char *fr_tolower(char *str)
+{
+	char *p;
+
+	for (p = str; *p != '\0'; p++) *p = tolower(*p);
+
+	return str;
+}
+
 #ifdef O_NONBLOCK
 /** Set O_NONBLOCK on a socket
  *
