@@ -19,7 +19,7 @@
  * @file src/lib/util/dict_fixup.c
  *
  * @copyright 2020 The FreeRADIUS server project
- * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2020,2024 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSID("$Id$")
 
@@ -38,9 +38,6 @@ RCSID("$Id$")
  */
 typedef struct {
 	fr_dlist_t		entry;			//!< Entry in linked list of fctx.
-
-	char			*filename;		//!< where the line being fixed up.
-	int			line;			//!< ditto.
 } dict_fixup_common_t;
 
 /** Add an enumeration value to an attribute that wasn't defined at the time the value was parsed
@@ -48,6 +45,9 @@ typedef struct {
  */
 typedef struct {
 	dict_fixup_common_t	common;			//!< Common fields.
+
+	char			*filename;		//!< where the line being fixed up.
+	int			line;			//!< ditto.
 
 	char			*alias;			//!< we need to create.
 	fr_dict_attr_t		*alias_parent;		//!< Where to add the alias.
@@ -61,6 +61,9 @@ typedef struct {
  */
 typedef struct {
 	dict_fixup_common_t	common;			//!< Common fields.
+
+	char			*filename;		//!< where the line being fixed up.
+	int			line;			//!< ditto.
 
 	char			*attribute;		//!< we couldn't find (and will need to resolve later).
 	char			*name;			//!< Raw enum name.
@@ -110,26 +113,14 @@ typedef struct {
 
 /** Initialise common fields in fixup struct, and add it to a fixup list
  *
- * @param[in] filename		this fixup relates to.
- * @param[in] line		this fixup relates to.
  * @param[in] fixup_list	to add fixup to.
  * @param[in] common		common header to populate.
  * @return
  *	- 0 on success.
  *	- -1 on out of memory.
  */
-static inline CC_HINT(always_inline) int dict_fixup_common(char const *filename, int line,
-							   fr_dlist_head_t *fixup_list, dict_fixup_common_t *common)
+static inline CC_HINT(always_inline) int dict_fixup_common(fr_dlist_head_t *fixup_list, dict_fixup_common_t *common)
 {
-	if (filename) {
-		common->filename = talloc_strdup(common, filename);
-		if (!common->filename) {
-			fr_strerror_const("Out of memory");
-			return -1;
-		}
-		common->line = line;
-	}
-
 	fr_dlist_insert_tail(fixup_list, common);
 
 	return 0;
@@ -175,7 +166,11 @@ int dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
 	};
 	if (!fixup->attribute || !fixup->name || !fixup->value) goto oom;
 
-	return dict_fixup_common(filename, line, &fctx->enumv, &fixup->common);
+	fixup->filename = talloc_strdup(fixup, filename);
+	if (!fixup->filename) goto oom;
+	fixup->line = line;
+
+	return dict_fixup_common(&fctx->enumv, &fixup->common);
 }
 
 /** Add a previously defined enumeration value to an existing attribute
@@ -197,7 +192,7 @@ static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixu
 	da_const = fr_dict_attr_by_oid(NULL, fixup->parent, fixup->attribute);
 	if (!da_const) {
 		fr_strerror_printf_push("Failed resolving ATTRIBUTE referenced by VALUE '%s' at %s[%d]",
-					fixup->name, fr_cwd_strip(fixup->common.filename), fixup->common.line);
+					fixup->name, fr_cwd_strip(fixup->filename), fixup->line);
 		return -1;
 	}
 	da = fr_dict_attr_unconst(da_const);
@@ -209,7 +204,7 @@ static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixu
 		fr_strerror_printf_push("Invalid VALUE '%pV' for attribute '%s' at %s[%d]",
 					fr_box_strvalue_buffer(fixup->value),
 					da->name,
-					fr_cwd_strip(fixup->common.filename), fixup->common.line);
+					fr_cwd_strip(fixup->filename), fixup->line);
 		return -1;
 	}
 
@@ -247,7 +242,7 @@ int dict_fixup_group(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref
 		.ref = talloc_strdup(fixup, ref),
 	};
 
-	return dict_fixup_common(NULL, 0, &fctx->group, &fixup->common);
+	return dict_fixup_common(&fctx->group, &fixup->common);
 }
 
 /** Resolve a ref= or copy= value to a dictionary */
@@ -401,7 +396,7 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref
 		.ref = talloc_typed_strdup(fixup, ref)
 	};
 
-	return dict_fixup_common(NULL, 0, &fctx->clone, &fixup->common);
+	return dict_fixup_common(&fctx->clone, &fixup->common);
 }
 
 /** Clone one are of a tree into another
@@ -591,7 +586,7 @@ int dict_fixup_clone_enum(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const
 		.ref = talloc_typed_strdup(fixup, ref)
 	};
 
-	return dict_fixup_common(NULL, 0, &fctx->clone, &fixup->common);
+	return dict_fixup_common(&fctx->clone, &fixup->common);
 }
 
 /** Clone one are of a tree into another
@@ -686,7 +681,7 @@ int dict_fixup_vsa(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da)
 		.da = da,
 	};
 
-	return dict_fixup_common(NULL, 0, &fctx->vsa, &fixup->common);
+	return dict_fixup_common(&fctx->vsa, &fixup->common);
 }
 
 /** Run VSA fixups
@@ -742,6 +737,7 @@ int dict_fixup_alias(dict_fixup_ctx_t *fctx, char const *filename, int line,
 
 	fixup = talloc(fctx->pool, dict_fixup_alias_t);
 	if (!fixup) {
+	oom:
 		fr_strerror_const("Out of memory");
 		return -1;
 	}
@@ -752,7 +748,11 @@ int dict_fixup_alias(dict_fixup_ctx_t *fctx, char const *filename, int line,
 		.ref_parent = ref_parent
 	};
 
-	return dict_fixup_common(filename, line, &fctx->alias, &fixup->common);
+	fixup->filename = talloc_strdup(fixup, filename);
+	if (!fixup->filename) goto oom;
+	fixup->line = line;
+
+	return dict_fixup_common(&fctx->alias, &fixup->common);
 }
 
 static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_alias_t *fixup)
@@ -764,8 +764,8 @@ static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixu
 	 */
 	da = fr_dict_attr_by_oid(NULL, fixup->ref_parent, fixup->ref);
 	if (!da) {
-		fr_strerror_printf("Attribute '%s' aliased by '%s' doesn't exist in namespace '%s'",
-				   fixup->ref, fixup->alias, fixup->ref_parent->name);
+		fr_strerror_printf("Attribute '%s' aliased by '%s' doesn't exist in namespace '%s', at %s[%u]",
+				   fixup->ref, fixup->alias, fixup->ref_parent->name, fixup->filename, fixup->line);
 		return -1;
 	}
 
