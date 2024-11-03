@@ -19,6 +19,7 @@
  * @file src/lib/util/dict_tokenize.c
  *
  * @copyright 2019 The FreeRADIUS server project
+ * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

@@ -19,6 +19,7 @@
  * @file src/lib/util/dict_util.c
  *
  * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 2024 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
  */
 RCSID("$Id$")
 

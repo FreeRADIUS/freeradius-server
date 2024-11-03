@@ -20,7 +20,7 @@
  * @file src/lib/util/dict_fixup_priv.h
  *
  * @copyright 2020 The FreeRADIUS server project
- * @copyright 2020 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2020,2024 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 RCSIDH(dict_fixup_priv_h, "$Id$")
 
