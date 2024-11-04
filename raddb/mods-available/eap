@@ -578,10 +578,6 @@ eap {
 		#
 		#  [NOTE]
 		#  ====
-		#  * Work-arounds for OpenSSL nonsense.  OpenSSL 1.0.1f and 1.0.1g do
-		#  not calculate the `EAP` keys correctly.  The fix is to upgrade
-		#  OpenSSL, or to disable TLS 1.2 here.
-		#
 		#  * SSLv2 and SSLv3 are permanently disabled due to security
 		#  issues.
 		#
