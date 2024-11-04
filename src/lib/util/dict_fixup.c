@@ -258,12 +258,16 @@ static fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *root,
 	 */
 	if (fr_sbuff_next_if_char(&sbuff, '@')) {
 		char proto_name[FR_DICT_ATTR_MAX_NAME_LEN + 1];
+		fr_sbuff_t proto_name_sbuff = FR_SBUFF_OUT(proto_name, sizeof(proto_name));
 
 		slen = dict_by_protocol_substr(NULL, &dict, &sbuff, NULL);
 		/* Need to load it... */
 		if (slen <= 0) {
+			/* Quiet coverity */
+			fr_sbuff_terminate(&proto_name_sbuff);
+
 			/* Fixme, probably want to limit allowed chars */
-			if (fr_sbuff_out_bstrncpy_until(&FR_SBUFF_OUT(proto_name, sizeof(proto_name)), &sbuff, SIZE_MAX,
+			if (fr_sbuff_out_bstrncpy_until(&proto_name_sbuff, &sbuff, SIZE_MAX,
 							&FR_SBUFF_TERMS(L(""), L(".")), NULL) <= 0) {
 			invalid_name:
 				fr_strerror_const("Invalid protocol name");
