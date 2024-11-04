@@ -664,7 +664,7 @@ static fr_radius_packet_code_t eap_fast_eap_payload(request_t *request, eap_sess
 	 * Call authentication recursively, which will
 	 * do PAP, CHAP, MS-CHAP, etc.
 	 */
-	eap_virtual_server(request, eap_session, t->virtual_server);
+	eap_virtual_server(request, eap_session, t->server_cs);
 
 	/*
 	 * Decide what to do with the reply.

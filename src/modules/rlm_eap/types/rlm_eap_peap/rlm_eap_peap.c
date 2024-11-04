@@ -43,6 +43,7 @@ typedef struct {
 							//!< protocol.
 #endif
 	char const		*virtual_server;	//!< Virtual server for inner tunnel session.
+	CONF_SECTION		*server_cs;
 
 	bool			req_client_cert;	//!< Do we do require a client cert?
 } rlm_eap_peap_t;
@@ -108,7 +109,7 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 #ifdef WITH_PROXY
 	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
 #endif
-	t->virtual_server = inst->virtual_server;
+	t->server_cs = inst->server_cs;
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
 
 	return t;
@@ -365,9 +366,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_peap_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_peap_t);
 	CONF_SECTION		*conf = mctx->mi->conf;
+	virtual_server_t const	*virtual_server = virtual_server_find(inst->virtual_server);
 
-	if (!virtual_server_find(inst->virtual_server)) {
+	if (!virtual_server) {
 		cf_log_err_by_child(conf, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		return -1;
+	}
+
+	inst->server_cs = virtual_server_cs(virtual_server);
+	if (!inst->server_cs) {
+		cf_log_err_by_child(conf, "virtual_server", "Virtual server \"%s\" missing", inst->virtual_server);
 		return -1;
 	}
 

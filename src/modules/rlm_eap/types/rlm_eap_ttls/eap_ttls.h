@@ -45,7 +45,7 @@ extern HIDDEN fr_dict_attr_t const *attr_vendor_specific;
 typedef struct {
 	fr_pair_t	*username;
 	bool		authenticated;
-	char const	*virtual_server;
+	CONF_SECTION	*server_cs;
 } ttls_tunnel_t;
 
 /*

@@ -582,7 +582,7 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	eap_virtual_server(request, eap_session, t->virtual_server);
+	eap_virtual_server(request, eap_session, t->server_cs);
 
 	/*
 	 *	Decide what to do with the reply.

@@ -47,7 +47,7 @@ typedef struct {
 	bool		home_access_accept;
 	int		default_method;
 	bool		proxy_tunneled_request_as_eap;
-	char const	*virtual_server;
+	CONF_SECTION	*server_cs;
 	peap_resumption	session_resumption_state;
 } peap_tunnel_t;
 

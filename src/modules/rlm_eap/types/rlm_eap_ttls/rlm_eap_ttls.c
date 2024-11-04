@@ -55,6 +55,7 @@ typedef struct {
 	 *	Virtual server for inner tunnel session.
 	 */
 	char const	*virtual_server;
+	CONF_SECTION	*server_cs;
 
 	/*
 	 * 	Do we do require a client cert?
@@ -123,7 +124,7 @@ static ttls_tunnel_t *ttls_alloc(TALLOC_CTX *ctx, rlm_eap_ttls_t *inst)
 	ttls_tunnel_t *t;
 
 	t = talloc_zero(ctx, ttls_tunnel_t);
-	t->virtual_server = inst->virtual_server;
+	t->server_cs = inst->server_cs;
 
 	return t;
 }
@@ -357,9 +358,16 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	rlm_eap_ttls_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_ttls_t);
 	CONF_SECTION 	*conf = mctx->mi->conf;
+	virtual_server_t const	*virtual_server = virtual_server_find(inst->virtual_server);
 
-	if (!virtual_server_find(inst->virtual_server)) {
+	if (!virtual_server) {
 		cf_log_err_by_child(conf, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
+		return -1;
+	}
+
+	inst->server_cs = virtual_server_cs(virtual_server);
+	if (!inst->server_cs) {
+		cf_log_err_by_child(conf, "virtual_server", "Virtual server \"%s\" missing", inst->virtual_server);
 		return -1;
 	}
 
