@@ -193,7 +193,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 			GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
 
 			switch (name->type) {
-#ifdef GEN_EMAI
+#ifdef GEN_EMAIL
 			case GEN_EMAIL:
 				MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
 							 attr_tls_certificate_subject_alt_name_email) == 0);
