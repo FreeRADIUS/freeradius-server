@@ -270,8 +270,10 @@ void rlm_ldap_check_reply(request_t *request, rlm_ldap_t const *inst, char const
 	warnings:
 		switch (ttrunk->directory->type) {
 		case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
+		case FR_LDAP_DIRECTORY_SAMBA:
 			RWDEBUG2("!!! Found map between LDAP attribute and a FreeRADIUS password attribute");
-			RWDEBUG2("!!! Active Directory does not allow passwords to be read via LDAP");
+			RWDEBUG2("!!! %s does not allow passwords to be read via LDAP",
+				(ttrunk->directory->type == FR_LDAP_DIRECTORY_SAMBA ? "Samba" : "Active Directory"));
 			RWDEBUG2("!!! Remove the password map and either:");
 			RWDEBUG2("!!!  - Configure authentication via ntlm_auth (mschapv2 only)");
 			RWDEBUG2("!!!  - Configure authentication via wbclient (mschapv2 only)");

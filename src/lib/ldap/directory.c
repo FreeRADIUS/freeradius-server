@@ -40,6 +40,7 @@ static fr_table_num_sorted_t const fr_ldap_directory_type_table[] = {
 	{ L("Oracle Internet Directory"),	FR_LDAP_DIRECTORY_ORACLE_INTERNET_DIRECTORY 	},
 	{ L("Oracle Unified Directory"),	FR_LDAP_DIRECTORY_ORACLE_UNIFIED_DIRECTORY	},
 	{ L("Oracle Virtual Directory"),	FR_LDAP_DIRECTORY_ORACLE_VIRTUAL_DIRECTORY	},
+	{ L("Samba"),				FR_LDAP_DIRECTORY_SAMBA				},
 	{ L("Siemens AG"),			FR_LDAP_DIRECTORY_SIEMENS_AG			},
 	{ L("Sun One Directory"),		FR_LDAP_DIRECTORY_SUN_ONE_DIRECTORY		},
 	{ L("Unbound ID"),			FR_LDAP_DIRECTORY_UNBOUND_ID			},
@@ -88,6 +89,8 @@ int fr_ldap_directory_result_parse(fr_ldap_directory_t *directory, LDAP *handle,
 	if (directory->vendor_str) {
 		if (strcasestr(directory->vendor_str, "International Business Machines")) {
 			directory->type = FR_LDAP_DIRECTORY_IBM;
+		} else if (strcasestr(directory->vendor_str, "Samba Team")) {
+			directory->type = FR_LDAP_DIRECTORY_SAMBA;
 		}
 
 		goto found;
@@ -173,6 +176,7 @@ found:
 	switch (directory->type) {
 	case FR_LDAP_DIRECTORY_ACTIVE_DIRECTORY:
 	case FR_LDAP_DIRECTORY_EDIRECTORY:
+	case FR_LDAP_DIRECTORY_SAMBA:
 		directory->cleartext_password = false;
 		break;
 
