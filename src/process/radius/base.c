@@ -592,11 +592,12 @@ RESUME(access_challenge)
 	PROCESS_TRACE;
 
 	/*
-	 *	Cache the state context.
+	 *	Cache the state context, unless this is a subrequest.
+	 *	Subrequest state context will be handled by the caller.
 	 *
 	 *	If this fails, don't respond to the request.
 	 */
-	if (fr_request_to_state(inst->auth.state_tree, request) < 0) {
+	if (!request->parent && fr_request_to_state(inst->auth.state_tree, request) < 0) {
 		return CALL_SEND_TYPE(FR_RADIUS_CODE_DO_NOT_RESPOND);
 	}
 
