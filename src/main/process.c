@@ -5922,6 +5922,23 @@ static void event_new_fd(rad_listen_t *this)
 				fr_assert(home->listeners);
 
 				(void) rbtree_deletebydata(home->listeners, this);
+
+				/*
+				 *	This home server is dynamic, and has no open connections.  Delete it.
+				 *
+				 *	@todo - have a separate lifetime for dynamic home servers.  i.e. the
+				 *	home server will stick around for a period of time, even if it has no
+				 *	open connections.
+				 *
+				 *	And then after that lifetime, we refresh the home server?
+				 */
+				if (home->dynamic && (rbtree_num_elements(home->listeners) == 0)) {
+					if (home_server_delete(home) < 0) {
+						ERROR("Fatal error removing dynamic home server - %s",
+						      fr_strerror());
+						fr_exit(1);
+					}
+				}
 			}
 #endif
 
