@@ -3160,11 +3160,12 @@ home_pool_t *home_pool_byname(char const *name, int type)
 	return rbtree_finddata(home_pools_byname, &mypool);
 }
 
+
 int home_server_afrom_file(char const *filename)
 {
 	CONF_SECTION *cs, *subcs;
 	char const *p;
-	home_server_t *home;
+	home_server_t *home, *old;
 
 	if (!realm_config->dynamic) {
 		fr_strerror_printf("Must set \"dynamic = true\" in proxy.conf for dynamic home servers to work");
@@ -3233,8 +3234,88 @@ int home_server_afrom_file(char const *filename)
 	}
 #endif
 
+	old = home_server_byname(home->name, home->type);
+	if (old) {
+		if (!old->dynamic) {
+			fr_strerror_printf("Cannot replace static home server %s with a dynamic one",
+					   home->name);
+			talloc_free(home);
+			goto error;
+		}
+
+#ifdef WITH_TLS
+		if (!old->tls) {
+			fr_strerror_printf("Cannot replace non-TLS home server %s with a dynamic one",
+					   home->name);
+			talloc_free(home);
+			goto error;
+		}
+#endif
+
+#if 0
+		/*
+		 *	The fr_socket_client_tcp() and fr_socket() functions may change the
+		 *	source IP, i.e. * -> 192.168...., due to issues like FreeBSD jails.
+		 */
+		if (memcmp(&old->src_ipaddr, &home->src_ipaddr, sizeof(home->src_ipaddr)) != 0) {
+			fr_strerror_printf("Cannot change source IP for dynamic home server %s.",
+					   home->name);
+			talloc_free(home);
+			goto error;
+		}
+#endif
+
+		if (old->ipaddr.af != home->ipaddr.af) {
+			fr_strerror_printf("Cannot change IP address families for dynamic home server %s.",
+					   home->name);
+			talloc_free(home);
+			goto error;
+		}
+
+		/*
+		 *	No other thread is writing to it, as we're running in the master thread.  So this
+		 *	memcpy is safe.
+		 *
+		 *	@todo - extend the lifetime?
+		 */
+		if (memcmp(&old->ipaddr, &home->ipaddr, sizeof(home->ipaddr)) == 0) {
+			talloc_free(home);
+			return 0;
+		}
+
+		/*
+		 *	Change the destination IP to the new one.
+		 *
+		 *	This isn't thread-safe.  :(
+		 */
+		switch (old->ipaddr.af) {
+		case AF_INET:
+			old->ipaddr.ipaddr.ip4addr.s_addr = home->ipaddr.ipaddr.ip4addr.s_addr;
+			break;
+
+		case AF_INET6:
+			memcpy(&old->ipaddr.ipaddr.ip6addr.s6_addr,
+			       &home->ipaddr.ipaddr.ip6addr.s6_addr,
+			       sizeof(old->ipaddr.ipaddr.ip6addr.s6_addr));
+			break;
+
+		default:
+			fr_strerror_printf("Bad address family");
+			talloc_free(home);
+			return -1;
+		}
+
+		talloc_free(home);
+		return 0;
+	}
+
+	/*
+	 *	@todo - find the original one.  If it already exists,
+	 *	just change the IP address?
+	 */
+
 	if (!realm_home_server_add(home)) {
-		fr_strerror_printf("Failed adding home_server to the internal data structures");
+		fr_strerror_printf("Failed adding dynamic server");
 		talloc_free(home);
 		goto error;
 	}
