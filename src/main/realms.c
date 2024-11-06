@@ -3213,7 +3213,7 @@ int home_server_afrom_file(char const *filename)
 	 *	check for TLS.
 	 */
 	if (!home->tls) {
-		fr_strerror_printf("Dynamic home_server '%s' does not use TLS - ignoring it.", p, home->virtual_server);
+		fr_strerror_printf("Dynamic home_server '%s' does not use TLS - ignoring it.", p);
 		talloc_free(home);
 		goto error;
 	}
@@ -3242,7 +3242,7 @@ int home_server_afrom_file(char const *filename)
 	return 0;
 }
 
-int home_server_delete(char const *name, char const *type_name)
+int home_server_delete_byname(char const *name, char const *type_name)
 {
 	home_server_t *home;
 	int type;
@@ -3272,14 +3272,19 @@ int home_server_delete(char const *name, char const *type_name)
 		return -1;
 	}
 
+	return home_server_delete(home);
+}
+
+int home_server_delete(home_server_t *home)
+{
 	if (!home->dynamic) {
-		fr_strerror_printf("Cannot delete static home_server %s", p);
+		fr_strerror_printf("Cannot delete static home_server %s", home->name);
 		return -1;
 	}
 
 #ifdef WITH_TLS
 	if (rbtree_num_elements(home->listeners) > 0) {
-		fr_strerror_printf("Cannot delete dynaic home_server %s - it still has open sockets", p);
+		fr_strerror_printf("Cannot delete dynaic home_server %s - it still has open sockets", home->name);
 		return -1;
 	}
 #endif
