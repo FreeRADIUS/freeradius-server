@@ -3642,6 +3642,17 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 
 #ifdef WITH_TCP
+#ifdef SO_KEEPALIVE
+	if (home->proto == IPPROTO_TCP) {
+		int on = 1;
+
+		if (setsockopt(this->fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)) < 0) {
+			ERROR("(TLS) Failed to set SO_KEEPALIVE: %s", fr_syserror(errno));
+			goto error;
+		}
+	}
+#endif
+
 #ifdef WITH_TLS
 	if ((home->proto == IPPROTO_TCP) && home->tls) {
 		DEBUG("(TLS) Trying new outgoing proxy connection to %s", buffer);
