@@ -3205,18 +3205,22 @@ int home_server_afrom_file(char const *filename)
 
 	home->dynamic = true;
 
-	if (home->virtual_server) {
-		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server = %s' configuration item", p, home->virtual_server);
+#ifdef WITH_TLS
+	/*
+	 *	All of the other code assumes that only TLS sockets
+	 *	have child listeners.  See listen.c for references to
+	 *	...->listeners, which are all inside of blocks which
+	 *	check for TLS.
+	 */
+	if (!home->tls) {
+		fr_strerror_printf("Dynamic home_server '%s' does not use TLS - ignoring it.", p, home->virtual_server);
 		talloc_free(home);
 		goto error;
 	}
-
-	if (home->dual
-#ifdef WITH_TLS
-		&& !home->tls
 #endif
-	) {
-		fr_strerror_printf("Dynamic home_server '%s' is missing 'type', or it is set to 'auth+acct'.  Please specify 'type = auth' or 'type = acct', etc.", p);
+
+	if (home->virtual_server) {
+		fr_strerror_printf("Dynamic home_server '%s' cannot have 'server = %s' configuration item", p, home->virtual_server);
 		talloc_free(home);
 		goto error;
 	}
