@@ -3277,6 +3277,13 @@ int home_server_delete(char const *name, char const *type_name)
 		return -1;
 	}
 
+#ifdef WITH_TLS
+	if (rbtree_num_elements(home->listeners) > 0) {
+		fr_strerror_printf("Cannot delete dynaic home_server %s - it still has open sockets", p);
+		return -1;
+	}
+#endif
+
 	(void) rbtree_deletebydata(home_servers_byname, home);
 	(void) rbtree_deletebydata(home_servers_byaddr, home);
 #ifdef WITH_STATS
