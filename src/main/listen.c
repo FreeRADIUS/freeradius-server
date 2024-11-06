@@ -922,8 +922,6 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		close(newfd);
 		return 0;
 	}
-	client->limit.num_connections++;
-	sock->limit.num_connections++;
 
 	/*
 	 *	Add the new listener.  We require a new context here,
@@ -932,6 +930,12 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	 */
 	this = listen_alloc(NULL, listener->type);
 	if (!this) return -1;
+
+	/*
+	 *	Now that we've opened a connection, increment the reference count.
+	 */
+	client->limit.num_connections++;
+	sock->limit.num_connections++;
 
 	/*
 	 *	Copy everything, including the pointer to the socket
