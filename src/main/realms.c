@@ -649,7 +649,7 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 		return false;
 	}
 
-	if (!home->virtual_server && !rbtree_insert(home_servers_byaddr, home)) {
+	if (!home->virtual_server && !home->dynamic && !rbtree_insert(home_servers_byaddr, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
 		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
@@ -691,7 +691,7 @@ bool realm_home_server_add(home_server_t *home)
 		return false;
 	}
 
-	if (!home->virtual_server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
+	if (!home->virtual_server && !home->dynamic && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
 		char buffer[INET6_ADDRSTRLEN + 3];
 
 		inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer));
@@ -978,7 +978,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		home->proto = proto;
 	}
 
-	if (!home->virtual_server && rbtree_finddata(home_servers_byaddr, home)) {
+	if (!home->virtual_server && !home->dynamic && rbtree_finddata(home_servers_byaddr, home)) {
 		cf_log_err_cs(cs, "Duplicate home server");
 		goto error;
 	}
@@ -3290,7 +3290,6 @@ int home_server_delete(home_server_t *home)
 #endif
 
 	(void) rbtree_deletebydata(home_servers_byname, home);
-	(void) rbtree_deletebydata(home_servers_byaddr, home);
 #ifdef WITH_STATS
 	(void) rbtree_deletebydata(home_servers_bynumber, home);
 #endif
