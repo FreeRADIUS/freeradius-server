@@ -28,6 +28,7 @@
 RCSIDH(radsniff_h, "$Id$")
 
 #include <sys/types.h>
+#include <netinet/tcp.h>
 
 #include <freeradius-devel/util/pcap.h>
 #include <freeradius-devel/util/event.h>

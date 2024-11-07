@@ -1020,6 +1020,7 @@ AC_CHECK_HEADERS( \
   net/if_dl.h \
   netdb.h \
   netinet/in.h \
+  netinet/tcp.h \
   netpacket/packet.h \
   prot.h \
   pwd.h \

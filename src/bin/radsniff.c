@@ -1275,6 +1275,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	ip_header_t const	*ip = NULL;		/* The IP header */
 	ip_header6_t const	*ip6 = NULL;		/* The IPv6 header */
 	udp_header_t const	*udp;			/* The UDP header */
+	struct tcphdr const     *tcp=NULL;		/* The TCP header */
 	uint8_t			version;		/* IP header version */
 	bool			response;		/* Was it a response code */
 
@@ -1316,12 +1317,17 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		ip = (ip_header_t const *)p;
 		len = (0x0f & ip->ip_vhl) * 4;	/* ip_hl specifies length in 32bit words */
 		p += len;
+		if (ip->ip_p == IPPROTO_TCP) {
+			tcp=(const struct tcphdr*)p;
+		}
 		break;
 
 	case 6:
 		ip6 = (ip_header6_t const *)p;
 		p += sizeof(ip_header6_t);
-
+		if (ip6->ip_next == IPPROTO_TCP) {
+			tcp=(const struct tcphdr*)p;
+		}
 		break;
 
 	default:
@@ -1329,61 +1335,75 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		return;
 	}
 
-	/*
-	 *	End of variable length bits, do basic check now to see if packet looks long enough
-	 */
-	len = (p - data) + sizeof(udp_header_t) + sizeof(radius_packet_t);	/* length value */
-	if ((size_t) len > header->caplen) {
-		REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
-			(size_t) len, header->caplen);
-		return;
-	}
-
-	/*
-	 *	UDP header validation.
-	 */
-	udp = (udp_header_t const *)p;
-	{
-		uint16_t udp_len;
-		ssize_t actual_len;
-
-		udp_len = ntohs(udp->len);
-		actual_len = header->caplen - (p - data);
-		/* Truncated data */
-		if (udp_len > actual_len) {
-			REDEBUG("Packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
-				udp_len - actual_len, udp_len);
+	if (tcp) {
+		int tcp_header_length = tcp->th_off * 4;
+		p += tcp_header_length;
+		len = (p - data) + sizeof(radius_packet_t);	/* length sanity check */
+		if ((size_t) len > header->caplen) {
+			// REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes", (size_t) len, header->caplen);
 			return;
 		}
+		if (!tcp->psh) { /* Only PSH packets can have radius data ... for simplicity, do this after checking the size */
+			return;
+		}
+	}
+	else {
+		/*
+		 *	End of variable length bits, do basic check now to see if packet looks long enough
+		 */
+		len = (p - data) + sizeof(udp_header_t) + sizeof(radius_packet_t);	/* length value */
+		if ((size_t) len > header->caplen) {
+			REDEBUG("Packet too small, we require at least %zu bytes, captured %i bytes",
+				(size_t) len, header->caplen);
+			return;
+		}
+
+		/*
+		 *	UDP header validation.
+		 */
+		udp = (udp_header_t const *)p;
+		{
+			uint16_t udp_len;
+			ssize_t actual_len;
+
+			udp_len = ntohs(udp->len);
+			actual_len = header->caplen - (p - data);
+			/* Truncated data */
+			if (udp_len > actual_len) {
+				REDEBUG("Packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
+					udp_len - actual_len, udp_len);
+				return;
+			}
 
 #if 0
-		/*
-		 *	It seems many probes add trailing garbage to the end
-		 *	of each capture frame.  This has been observed with
-		 *	F5 load balancers and Netscout.
-		 *
-		 *	Leaving the code here in case it's ever needed for
-		 *	debugging.
-		 */
-		else if (udp_len < actual_len) {
-			REDEBUG("Packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
-				actual_len - udp_len, udp_len);
-			return;
-		}
+			/*
+			 *	It seems many probes add trailing garbage to the end
+			 *	of each capture frame.  This has been observed with
+			 *	F5 load balancers and Netscout.
+			 *
+			 *	Leaving the code here in case it's ever needed for
+			 *	debugging.
+			 */
+			else if (udp_len < actual_len) {
+				REDEBUG("Packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
+					actual_len - udp_len, udp_len);
+				return;
+			}
 #endif
-		if ((version == 4) && conf->verify_udp_checksum) {
-			uint16_t expected;
+			if ((version == 4) && conf->verify_udp_checksum) {
+				uint16_t expected;
 
-			expected = fr_udp_checksum((uint8_t const *) udp, udp_len, udp->checksum,
-						   ip->ip_src, ip->ip_dst);
-			if (udp->checksum != expected) {
-				REDEBUG("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
-					ntohs(udp->checksum), ntohs(expected));
-			/* Not a fatal error */
+				expected = fr_udp_checksum((uint8_t const *) udp, udp_len, udp->checksum,
+					     ip->ip_src, ip->ip_dst);
+				if (udp->checksum != expected) {
+					REDEBUG("UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx",
+						ntohs(udp->checksum), ntohs(expected));
+				/* Not a fatal error */
+				}
 			}
 		}
+		p += sizeof(udp_header_t);
 	}
-	p += sizeof(udp_header_t);
 
 	/*
 	 *	With artificial talloc memory limits there's a good chance we can
@@ -1422,8 +1442,14 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		       sizeof(packet->socket.inet.dst_ipaddr.addr.v6.s6_addr));
 	}
 
-	packet->socket.inet.src_port = ntohs(udp->src);
-	packet->socket.inet.dst_port = ntohs(udp->dst);
+	if (tcp) {
+		packet->socket.inet.src_port = ntohs(tcp->source);
+		packet->socket.inet.dst_port = ntohs(tcp->dest);
+	}
+	else {
+	    packet->socket.inet.src_port = ntohs(udp->src);
+	    packet->socket.inet.dst_port = ntohs(udp->dst);
+	}
 
 	if (!fr_packet_ok(packet, RADIUS_MAX_ATTRIBUTES, false, &reason)) {
 		fr_perror("radsniff");
