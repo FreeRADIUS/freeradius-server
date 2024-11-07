@@ -413,7 +413,7 @@ static unlang_action_t eap_virtual_server_resume(UNUSED rlm_rcode_t *p_result, U
  *
  * @param[in] request		the current (real) request.
  * @param[in] eap_session	representing the outer eap method.
- * @param[in] virtual_server	The default virtual server to send the request to.
+ * @param[in] server_cs		The virtual server to send the request to.
  * @return
  * 	- UNLANG_ACTION_PUSHED_CHILD on success
  *	- UNLANG_ACTION_FAIL on error
