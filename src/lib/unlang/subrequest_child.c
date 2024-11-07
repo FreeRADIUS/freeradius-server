@@ -241,7 +241,7 @@ int unlang_subrequest_child_push_resume(request_t *child, unlang_frame_state_sub
 /** Function to run in the context of the parent on resumption
  *
  */
-static unlang_action_t unlang_subrequest_calculate_result(UNUSED rlm_rcode_t *p_result, UNUSED request_t *request,
+static unlang_action_t unlang_subrequest_calculate_result(rlm_rcode_t *p_result, UNUSED request_t *request,
 							  unlang_stack_frame_t *frame)
 {
 	unlang_frame_state_subrequest_t	*state = talloc_get_type_abort(frame->state, unlang_frame_state_subrequest_t);
