@@ -3701,7 +3701,6 @@ int tls_global_init(TLS_UNUSED bool spawn_flag, TLS_UNUSED bool check)
 		ERROR("(TLS) Failed loading default provider");
 		return -1;
 	}
-	EVP_default_properties_enable_fips(openssl_default_provider, 0);
 
 	/*
 	 *	Needed for MD4
@@ -3713,7 +3712,6 @@ int tls_global_init(TLS_UNUSED bool spawn_flag, TLS_UNUSED bool check)
 		ERROR("(TLS) Failed loading legacy provider");
 		return -1;
 	}
-	EVP_default_properties_enable_fips(openssl_legacy_provider, 0);
 #endif
 
 	return 0;
