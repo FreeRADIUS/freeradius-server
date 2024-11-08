@@ -39,6 +39,11 @@ RestartSec=5
 #  Don't elevate privileges after starting
 NoNewPrivileges=true
 
+# Control socket virtual servers typically create files in
+# the runtime directory.  If this is not kept, FreeRADIUS can't
+# be started in debug mode if those virtual servers are enabled.
+RuntimeDirectoryPreserve=yes
+
 # Allow binding to secure ports, broadcast addresses, and raw interfaces.
 #
 # As the process starts as an unprivileged user, we need to assign all capabilities that
