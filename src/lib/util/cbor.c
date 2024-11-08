@@ -429,7 +429,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	A little bit of sanity check.
 		 */
 		if (value > (1 << 20)) {
-			fr_strerror_printf("cbor data string is too long (%llu)", value);
+			fr_strerror_printf("cbor data string is too long (%lu)", value);
 			return -1;
 		}
 
@@ -462,7 +462,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	A little bit of sanity check.
 		 */
 		if (value > (1 << 20)) {
-			fr_strerror_printf("cbor data string is too long (%llu)", value);
+			fr_strerror_printf("cbor data string is too long (%lu)", value);
 			return -1;
 		}
 
@@ -646,7 +646,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 		if (info == CBOR_4_BYTE) {
 			uint8_t buffer[4];
-			double data;
+			float data;
 
 			FR_DBUFF_OUT_MEMCPY_RETURN(&buffer[0], &work_dbuff, sizeof(buffer));
 			memcpy(&data, &buffer[0], sizeof(data));
@@ -661,7 +661,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 				FALL_THROUGH;
 
 			case FR_TYPE_FLOAT64:
-				vb->vb_float64 = data;
+				vb->vb_float64 = (double) data;
 				break;
 
 			default:
@@ -954,7 +954,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		indefinite = true;
 
 	} else {
-		slen = cbor_decode_integer(value, info, &work_dbuff);
+		slen = cbor_decode_integer(&value, info, &work_dbuff);
 		if (slen < 0) {
 			talloc_free(vp);
 			return slen - fr_dbuff_used(&work_dbuff);
