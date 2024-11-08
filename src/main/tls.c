@@ -3606,6 +3606,10 @@ int tls_global_init(TLS_UNUSED bool spawn_flag, TLS_UNUSED bool check)
 	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
 	CONF_modules_load_file(NULL, NULL, 0);
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+	EVP_set_default_properties(NULL, "fips=no");
+#endif
+
 	/*
 	 *	Initialize the index for the certificates.
 	 */
@@ -3634,6 +3638,7 @@ int tls_global_init(TLS_UNUSED bool spawn_flag, TLS_UNUSED bool check)
 		ERROR("(TLS) Failed loading default provider");
 		return -1;
 	}
+	EVP_default_properties_enable_fips(openssl_default_provider, 0);
 
 	/*
 	 *	Needed for MD4
@@ -3645,6 +3650,7 @@ int tls_global_init(TLS_UNUSED bool spawn_flag, TLS_UNUSED bool check)
 		ERROR("(TLS) Failed loading legacy provider");
 		return -1;
 	}
+	EVP_default_properties_enable_fips(openssl_legacy_provider, 0);
 #endif
 
 	return 0;
