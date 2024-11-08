@@ -7,6 +7,11 @@
 #	This file is designed to be used as an inner tunnel virtual
 #	server for EAP-TTLS-PAP authentication.
 #
+#	Note that Google LDAP does NOT allow FreeRADIUS to read the
+#	password in LDAP.  Which means that it is IMPOSSIBLE to get
+#	PEAP to work with Google LDAP.  It is also IMPOSSIBLE to get
+#	EAP-TTLS with CHAP or MS-CHAP to work.
+#
 #	Use this virtual server in conjunction with the sample Google
 #	Secure LDAP module configuration, which is in
 #	mods-available/ldap_google.
@@ -22,10 +27,11 @@
 #
 #	Typically the caches are beneficial when performing
 #	authentication for 802.1x wifi where repeated authentications
-#	occur as users roam.  We also recommend enabling the "cache"
-#	subsection of mods-available/eap.  Both kinds of caching can
-#	be done at the same time, and both kinds of caching will help
-#	improve system performance and stability.
+#	occur as users roam.  We also recommend enabling session
+#	resumption in the "cache" subsection of mods-available/eap.
+#	Both kinds of caching can be done at the same time, and both
+#	kinds of caching will help to improve system performance and
+#	stability.
 #
 #	$Id$
 #
