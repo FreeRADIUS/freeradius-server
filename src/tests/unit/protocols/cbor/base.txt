@@ -1,0 +1,43 @@
+#
+#  Tests for the cbor encoder / decoder
+#
+proto cbor
+
+# Use the RADIUS dictionary for now.  It doesn't really matter which one we use so long as it has
+# complex attributes.
+proto-dictionary radius
+
+#
+#  a1: map of 1 item
+#  01: integer of value 1
+#  43: string of length 3
+#
+encode-pair User-Name = "bob"
+match 9f a1 01 43 62 6f 62 ff
+
+decode-pair -
+match User-Name = "bob"
+
+encode-pair User-Name = "bob", Framed-IP-Address = 192.0.2.1
+match 9f a1 01 43 62 6f 62 a1 08 d8 34 64 c0 00 02 01 ff
+
+#
+#  tag decode isn't done
+#
+#decode-pair -
+#match User-Name = "bob", Framed-IP-Address = 192.0.2.1
+
+encode-pair User-Name = "bob", NAS-Port = 2112
+match 9f a1 01 43 62 6f 62 a1 05 19 08 40 ff
+
+decode-pair -
+match User-Name = "bob", NAS-Port = 2112
+
+encode-pair Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
+match 9f a1 18 1a 9f a1 09 9f a1 01 43 66 6f 6f a1 18 c0 19 1a 99 ff ff ff
+
+decode-pair -
+match Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
+
+count
+match 16
