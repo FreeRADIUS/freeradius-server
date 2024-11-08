@@ -18,6 +18,7 @@ SOURCES		:= \
 		   calc.c \
 		   cap.c \
 		   chap.c \
+		   cbor.c \
 		   dbuff.c \
 		   debug.c \
 		   decode.c \
