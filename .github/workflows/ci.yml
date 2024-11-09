@@ -274,4 +274,4 @@ jobs:
           git push origin "HEAD:${BRANCH}"
 
           echo "Pushing to master"
-          git push origin HEAD:master || true
+          git push origin HEAD:master
