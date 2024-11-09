@@ -1205,7 +1205,7 @@ ssize_t		fr_value_box_from_str(TALLOC_CTX *ctx, fr_value_box_t *dst,
  */
 ssize_t 	fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   	  char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
-					   	  fr_value_box_list_action_t proc_action, bool flatten)
+					   	  fr_value_box_list_action_t proc_action, fr_value_box_safe_for_t safe_for, bool flatten)
 		CC_HINT(nonnull(3,4));
 
 ssize_t		fr_value_box_list_concat_as_octets(bool *tainted, bool *secret, fr_dbuff_t *dbuff, fr_value_box_list_t *list,

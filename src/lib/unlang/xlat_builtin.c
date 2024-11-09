@@ -1973,7 +1973,7 @@ static xlat_action_t xlat_func_cast(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		MEM(dst = fr_value_box_alloc_null(ctx));
 		if (fr_value_box_list_concat_as_string(NULL, NULL, agg, args, NULL, 0, NULL,
-						       FR_VALUE_BOX_LIST_FREE_BOX, true) < 0) {
+						       FR_VALUE_BOX_LIST_FREE_BOX, 0, true) < 0) {
 			RPEDEBUG("Failed concatenating string");
 			return XLAT_ACTION_FAIL;
 		}
@@ -4158,6 +4158,20 @@ do { \
 	if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex", xlat_func_regex, FR_TYPE_STRING)) == NULL)) return -1;
 	xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
 #endif
+
+	{
+		static xlat_arg_parser_t const xlat_regex_safe_args[] = {
+			{ .type = FR_TYPE_STRING, .variadic = true, .concat = true },
+			XLAT_ARG_PARSER_TERMINATOR
+		};
+
+		if (unlikely((xlat = xlat_func_register(xlat_ctx, "regex.safe",
+							xlat_transparent, FR_TYPE_STRING)) == NULL)) return -1;
+		xlat_func_flags_set(xlat, XLAT_FUNC_FLAG_INTERNAL);
+		xlat_func_args_set(xlat, xlat_regex_safe_args);
+		xlat_func_safe_for_set(xlat, FR_REGEX_SAFE_FOR);
+	}
+
 	XLAT_REGISTER_PURE("sha1", xlat_func_sha1, FR_TYPE_OCTETS, xlat_func_sha_arg);
 
 #ifdef HAVE_OPENSSL_EVP_H

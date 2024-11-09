@@ -3485,7 +3485,7 @@ fr_slen_t tmpl_afrom_substr(TALLOC_CTX *ctx, tmpl_t **out,
 
 		vpt = tmpl_alloc_null(ctx);
 
-		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, t_rules->literals_safe_for);
+		slen = xlat_tokenize(vpt, &head, &our_in, p_rules, t_rules, FR_REGEX_SAFE_FOR);
 		if (slen < 0) FR_SBUFF_ERROR_RETURN(&our_in);
 
 		/*

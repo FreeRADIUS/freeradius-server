@@ -5468,7 +5468,7 @@ ssize_t fr_value_box_print(fr_sbuff_t *out, fr_value_box_t const *data, fr_sbuff
 		FR_SBUFF_RETURN(fr_value_box_list_concat_as_string,
 				NULL, NULL, &our_out, UNCONST(fr_value_box_list_t *, &data->vb_group),
 				", ", (sizeof(", ") - 1), e_rules,
-				0, false);
+				0, 0, false);
 		FR_SBUFF_IN_CHAR_RETURN(&our_out, '}');
 		break;
 
@@ -5536,6 +5536,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  *				Is not currently applied to any other box type.
  * @param[in] proc_action	What to do with the boxes in the list once
  *				they've been processed.
+ * @param[in] safe_for		if value has this safe_for value, don't apply the escape rules.
  * @param[in] flatten		If true and we encounter a #FR_TYPE_GROUP,
  *				we concat the contents of its children together.
  *      			If false, the contents will be cast to #FR_TYPE_STRING.
@@ -5546,7 +5547,7 @@ ssize_t fr_value_box_print_quoted(fr_sbuff_t *out, fr_value_box_t const *data, f
  */
 ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff_t *sbuff, fr_value_box_list_t *list,
 					   char const *sep, size_t sep_len, fr_sbuff_escape_rules_t const *e_rules,
-					   fr_value_box_list_action_t proc_action, bool flatten)
+					   fr_value_box_list_action_t proc_action, fr_value_box_safe_for_t safe_for, bool flatten)
 {
 	fr_sbuff_t our_sbuff = FR_SBUFF(sbuff);
 	ssize_t slen;
@@ -5559,7 +5560,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 			if (!flatten) goto print;
 			slen = fr_value_box_list_concat_as_string(tainted, secret, &our_sbuff, &vb->vb_group,
 								  sep, sep_len, e_rules,
-								  proc_action, flatten);
+								  proc_action, safe_for, flatten);
 			break;
 
 		case FR_TYPE_OCTETS:
@@ -5567,7 +5568,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 			/*
 			 *	Copy the raw string over, if necessary with escaping.
 			 */
-			if (e_rules && (vb->tainted || e_rules->do_oct || e_rules->do_hex)) {
+			if (e_rules && (!fr_value_box_is_safe_for(vb, safe_for) || e_rules->do_oct || e_rules->do_hex)) {
 				slen = fr_sbuff_in_escape(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length, e_rules);
 			} else {
 				slen = fr_sbuff_in_bstrncpy(&our_sbuff, (char const *)vb->vb_strvalue, vb->vb_length);
@@ -5575,7 +5576,7 @@ ssize_t fr_value_box_list_concat_as_string(bool *tainted, bool *secret, fr_sbuff
 			break;
 
 		case FR_TYPE_STRING:
-			if (vb->tainted && e_rules) goto print;
+			if (!fr_value_box_is_safe_for(vb, safe_for) && e_rules) goto print;
 
 			slen = fr_sbuff_in_bstrncpy(&our_sbuff, vb->vb_strvalue, vb->vb_length);
 			break;
@@ -5798,7 +5799,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 */
 			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
-							       FR_VALUE_BOX_LIST_REMOVE, flatten) < 0) {
+							       FR_VALUE_BOX_LIST_REMOVE, 0, flatten) < 0) {
 				fr_strerror_printf("Concatenation exceeded max_size (%zu)", max_size);
 			error:
 				switch (type) {
@@ -5821,7 +5822,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 			 */
 			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
-							       proc_action, flatten) < 0) {
+							       proc_action, 0, flatten) < 0) {
 				fr_value_box_list_insert_head(list, head_vb);
 				goto error;
 			}
@@ -5863,7 +5864,7 @@ int fr_value_box_list_concat_in_place(TALLOC_CTX *ctx,
 		case FR_TYPE_STRING:
 			if (fr_value_box_list_concat_as_string(&tainted, &secret, &sbuff, list,
 							       NULL, 0, NULL,
-							       proc_action, flatten) < 0) goto error;
+							       proc_action, 0, flatten) < 0) goto error;
 			(void)fr_sbuff_trim_talloc(&sbuff, SIZE_MAX);
 
 			entry = out->entry;
