@@ -24,14 +24,14 @@ if (!(&result_string == "Sample text response\n")) {
 }
 
 # Take host from incoming packet
-&result_string := %rest("http://%{Login-IP-Host}:%uri.safe(%{server_port})/test.txt")
+&result_string := %rest('GET', "http://%{Login-IP-Host}:%uri.safe(%{server_port})/test.txt")
 
 if (!(&REST-HTTP-Status-Code == 200) || !(&result_string == "Sample text response\n")) {
 	test_fail
 }
 
 # Port is not allowed from incoming packets
-&result_string := %rest("http://%{server_host}:%{NAS-Port}/test.txt")
+&result_string := %rest('GET', "http://%{server_host}:%{NAS-Port}/test.txt")
 
 if (!(&Module-Failure-Message == "Failed escaping URI: Unsafe input \"8080\" not allowed in URI part port") || &result_string) {
 	test_fail
@@ -160,7 +160,7 @@ group {
 
 	&test_string := ""
 
-	map json %rest(http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/reflect/%{test_string}?station=%{User-Name}) {
+	map json %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/reflect/%{test_string}?station=%{User-Name}") {
 		&headers := '$.reply\.Reply-Message.value[0]'
 		&arguments := '$.reply\.Reply-Message.value[1]'
 	}
@@ -190,7 +190,7 @@ group {
 group {
 	string arguments
 
-	map json %rest("http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/reflect/%{NAS-Identifier}?station=%{Called-Station-Id}") {
+	map json %rest('GET', "http://%{server_host}:%uri.safe(%{server_port})/user/%{User-Name}/reflect/%{NAS-Identifier}?station=%{Called-Station-Id}") {
 		&arguments := '$.reply\.Reply-Message.value[1]'
 	}
 
@@ -202,7 +202,7 @@ group {
 }
 
 # Test against endpoint which will time out
-&result_string := %restshorttimeout("http://%{server_host}:%uri.safe(%{server_port})/delay")
+&result_string := %restshorttimeout('GET', "http://%{server_host}:%uri.safe(%{server_port})/delay")
 
 if (&REST-HTTP-Status-Code) {
 	test_fail

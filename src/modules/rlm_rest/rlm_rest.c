@@ -46,6 +46,7 @@ RCSID("$Id$")
 #include <freeradius-devel/unlang/xlat.h>
 
 #include <curl/curl.h>
+
 #include <talloc.h>
 
 #include "rest.h"
@@ -496,8 +497,9 @@ finish:
 }
 
 static xlat_arg_parser_t const rest_xlat_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
 	{ .required = true, .safe_for = CURL_URI_SAFE_FOR, .type = FR_TYPE_STRING },
-	{ .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP, .type = FR_TYPE_STRING },
+	{ .concat = true, .type = FR_TYPE_STRING },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -505,7 +507,7 @@ static xlat_arg_parser_t const rest_xlat_args[] = {
  *
  * Example:
 @verbatim
-%rest(http://example.com/)
+%rest(POST, http://example.com/, "{ \"key\": \"value\" }")
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -520,11 +522,16 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	fr_curl_io_request_t		*randle = NULL;
 	int				ret;
 	http_method_t			method;
-	fr_value_box_t			*in_vb = fr_value_box_list_pop_head(in), *uri_vb = NULL;
+
+	fr_value_box_t			*method_vb;
+	fr_value_box_t			*uri_vb;
+	fr_value_box_t			*data_vb;
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
+
+	XLAT_ARGS(in, &method_vb, &uri_vb, &data_vb);
 
 	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
 	section = &rctx->section;
@@ -534,37 +541,39 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 */
 	memcpy(&rctx->section, &inst->xlat, sizeof(*section));
 
-	fr_assert(in_vb->type == FR_TYPE_GROUP);
+	/*
+	 *	Set the HTTP verb
+	 */
+	method = fr_table_value_by_substr(http_method_table, method_vb->vb_strvalue, -1, REST_HTTP_METHOD_UNKNOWN);
+	if (method != REST_HTTP_METHOD_UNKNOWN) {
+		section->request.method = method;
+	/*
+	 *	If the method is unknown, it's a custom verb
+	 */
+	} else {
+		section->request.method = REST_HTTP_METHOD_CUSTOM;
+		MEM(section->request.method_str = talloc_bstrndup(rctx, method_vb->vb_strvalue, method_vb->vb_length));
+	}
 
 	/*
-	 *	If we have more than 1 argument, then the first is the method
+	 *	Handle URI component escaping
 	 */
-	if  ((fr_value_box_list_head(in))) {
-		uri_vb = fr_value_box_list_head(&in_vb->vb_group);
-		if (fr_value_box_list_concat_in_place(uri_vb,
-						      uri_vb, &in_vb->vb_group, FR_TYPE_STRING,
-						      FR_VALUE_BOX_LIST_FREE, true,
-						      SIZE_MAX) < 0) {
-			REDEBUG("Failed concatenating argument");
-			return XLAT_ACTION_FAIL;
-		}
-		method = fr_table_value_by_substr(http_method_table, uri_vb->vb_strvalue, -1, REST_HTTP_METHOD_UNKNOWN);
+	if (fr_uri_escape_list(&uri_vb->vb_group, rest_uri_parts, NULL) < 0) {
+		RPEDEBUG("Failed escaping URI");
+	error:
+		talloc_free(section);
+		return XLAT_ACTION_FAIL;
+	}
 
-		if (method != REST_HTTP_METHOD_UNKNOWN) {
-			section->request.method = method;
-		/*
-	 	 *  If the method is unknown, it's a custom verb
-	 	 */
-		} else {
-			section->request.method = REST_HTTP_METHOD_CUSTOM;
-			MEM(section->request.method_str = talloc_bstrndup(rctx, uri_vb->vb_strvalue, uri_vb->vb_length));
-		}
-		/*
-		 *	Move to next argument
-		 */
-		in_vb = fr_value_box_list_pop_head(in);
-	} else {
-		section->request.method = REST_HTTP_METHOD_GET;
+	/*
+	 *	Smush all the URI components together
+	 */
+	if (fr_value_box_list_concat_in_place(uri_vb,
+					      uri_vb, &uri_vb->vb_group, FR_TYPE_STRING,
+					      FR_VALUE_BOX_LIST_FREE, true,
+					      SIZE_MAX) < 0) {
+		REDEBUG("Concatenating URI");
+		goto error;
 	}
 
 	/*
@@ -574,48 +583,8 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	randle = rctx->handle = rest_slab_reserve(t->slab);
 	if (!randle) return XLAT_ACTION_FAIL;
 
-	/*
-	 *	Walk the incoming boxes, assessing where each is in the URI,
-	 *	escaping tainted ones where needed.  Following each space in the
-	 *	input a new VB group is started.
-	 */
-
-	fr_assert(in_vb->type == FR_TYPE_GROUP);
-
 	randle->request = request;	/* Populate the request pointer for escape callbacks */
-
-	if (fr_uri_escape_list(&in_vb->vb_group, rest_uri_parts, NULL) < 0) {
-		RPEDEBUG("Failed escaping URI");
-
-	error:
-		rest_slab_release(randle);
-		talloc_free(section);
-
-		return XLAT_ACTION_FAIL;
-	}
-
-	uri_vb = fr_value_box_list_head(&in_vb->vb_group);
-	if (fr_value_box_list_concat_in_place(uri_vb,
-					      uri_vb, &in_vb->vb_group, FR_TYPE_STRING,
-					      FR_VALUE_BOX_LIST_FREE, true,
-					      SIZE_MAX) < 0) {
-		REDEBUG("Concatenating URI");
-		goto error;
-	}
-
-	/*
-	 *	Any additional arguments are freeform data
-	 */
-	if ((in_vb = fr_value_box_list_head(in))) {
-		if (fr_value_box_list_concat_in_place(in_vb,
-						      in_vb, in, FR_TYPE_STRING,
-						      FR_VALUE_BOX_LIST_FREE, true,
-						      SIZE_MAX) < 0) {
-			REDEBUG("Failed to concatenate freeform data");
-			goto error;
-		}
-		section->request.body = REST_HTTP_BODY_CUSTOM;
-	}
+	if (data_vb) section->request.body = REST_HTTP_BODY_CUSTOM;
 
 	RDEBUG2("Sending HTTP %s to \"%pV\"",
 	       (section->request.method == REST_HTTP_METHOD_CUSTOM) ?
@@ -631,8 +600,12 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	ret = rest_request_config(MODULE_CTX(xctx->mctx->mi, t, xctx->env_data, NULL),
 				  section, request, randle, section->request.method,
 				  section->request.body,
-				  uri_vb->vb_strvalue, in_vb ? in_vb->vb_strvalue : NULL);
-	if (ret < 0) goto error;
+				  uri_vb->vb_strvalue, data_vb ? data_vb->vb_strvalue : NULL);
+	if (ret < 0) {
+	error_release:
+		rest_slab_release(randle);
+		goto error;
+	}
 
 	/*
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
@@ -641,7 +614,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	 * @fixme need to pass in thread to all xlat functions
 	 */
 	ret = fr_curl_io_request_enqueue(t->mhandle, request, randle);
-	if (ret < 0) goto error;
+	if (ret < 0) goto error_release;
 
 	return unlang_xlat_yield(request, rest_xlat_resume, rest_io_xlat_signal, ~FR_SIGNAL_CANCEL, rctx);
 }
