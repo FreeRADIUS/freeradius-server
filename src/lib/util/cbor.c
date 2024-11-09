@@ -660,12 +660,12 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			return -1;
 		}
 		talloc_set_type(ptr, char);
+		FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
 		ptr[value] = '\0';
 
 		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_STRING, NULL, tainted);
-		fr_value_box_strdup_shallow(vb, NULL, (char const *) ptr, false); /* tainted? */
+		fr_value_box_strdup_shallow(vb, NULL, (char const *) ptr, tainted);
 
-		FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
 		break;
 
 	case CBOR_OCTETS:
@@ -1271,6 +1271,8 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 	}
 
 done:
+	PAIR_VERIFY(vp);
+
 	fr_pair_append(out, vp);
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
