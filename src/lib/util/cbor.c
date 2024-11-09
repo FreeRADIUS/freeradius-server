@@ -1046,6 +1046,7 @@ ssize_t fr_cbor_encode_pair(fr_dbuff_t *dbuff, fr_pair_t *vp)
 {
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 	ssize_t		slen;
+	fr_dict_attr_t const *parent;
 
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_MAP << 5) | 1)); /* map of 1 item */
 
@@ -1065,21 +1066,33 @@ ssize_t fr_cbor_encode_pair(fr_dbuff_t *dbuff, fr_pair_t *vp)
 		break;
 
 		/*
+		 *	Groups reparent to the ref.
+		 */
+	case FR_TYPE_GROUP:
+		parent = fr_dict_attr_ref(vp->da);
+		fr_assert(parent != NULL);
+		goto encode_children;
+
+
+		/*
 		 *	The only difference between TLV and VSA is that the children of VSA are all VENDORs.
 		 */
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 	case FR_TYPE_TLV:
+		parent = vp->da;
+
 		/*
 		 *	The value is array(children)
 		 */
+encode_children:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 31)); /* indefinite array */
 
 		fr_pair_list_foreach(&vp->vp_group, child) {
 			/*
 			 *	We don't allow changing dictionaries here.
 			 */
-			if (child->da->parent != vp->da) continue;
+			if (child->da->parent != parent) continue;
 
 			slen = fr_cbor_encode_pair(&work_dbuff, child);
 			if (slen <= 0) return slen; /* @todo - dbuff want more room? */
@@ -1165,13 +1178,22 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		goto done;
 	}
 
-	/*
-	 *	All of these are essentially the same.
-	 */
 	switch (da->type) {
+		/*
+		 *	All of these are essentially the same.
+		 */
 	case FR_TYPE_VENDOR:
 	case FR_TYPE_VSA:
 	case FR_TYPE_TLV:
+		parent = vp->da;
+		break;
+
+		/*
+		 *	Groups reparent to the ref.
+		 */
+	case FR_TYPE_GROUP:
+		parent = fr_dict_attr_ref(vp->da);
+		fr_assert(parent != NULL);
 		break;
 
 	default:
@@ -1241,7 +1263,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 			break;
 		}
 
-		slen = fr_cbor_decode_pair(vp, &vp->vp_group, &work_dbuff, vp->da, tainted);
+		slen = fr_cbor_decode_pair(vp, &vp->vp_group, &work_dbuff, parent, tainted);
 		if (slen <= 0) {
 			talloc_free(vp);
 			return slen - fr_dbuff_used(&work_dbuff);
