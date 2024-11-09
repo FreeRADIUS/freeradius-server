@@ -410,7 +410,7 @@ static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_len, fr_dbuff_
 	if (slen < 0) return slen;
 
 	if (value != dst_len) {
-		fr_strerror_printf("Invalid length for data - expected %lu got %llu", dst_len, value);
+		fr_strerror_printf("Invalid length for data - expected %zu got %" PRIu64, dst_len, value);
 		return -1;
 	}
 
@@ -431,7 +431,7 @@ static ssize_t *cbor_decode_octets_memdup(TALLOC_CTX *ctx, uint8_t **out, fr_dbu
 	if (slen < 0) return slen;
 
 	if (value > (1 << 20)) {
-		fr_strerror_printf("cbor data string is too long (%llu)", value);
+		fr_strerror_printf("cbor data string is too long (%" PRIu64 ")", value);
 		return -1;
 	}
 
@@ -484,7 +484,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
 
 	if (value > 32) {
-		fr_strerror_printf("Invalid IPv4 prefix - expected prefix < 32, got %llu", value);
+		fr_strerror_printf("Invalid IPv4 prefix - expected prefix < 32, got %" PRIu64, value);
 		return -1;
 	}
 
@@ -517,7 +517,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
 
 	if (value > 128) {
-		fr_strerror_printf("Invalid IPv6 prefix - expected prefix < 128, got %llu", value);
+		fr_strerror_printf("Invalid IPv6 prefix - expected prefix < 128, got %" PRIu64, value);
 		return -1;
 	}
 
@@ -650,7 +650,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	A little bit of sanity check.
 		 */
 		if (value > (1 << 20)) {
-			fr_strerror_printf("cbor data string is too long (%llu)", value);
+			fr_strerror_printf("cbor data string is too long (%" PRIu64 ")", value);
 			return -1;
 		}
 
@@ -683,7 +683,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	A little bit of sanity check.
 		 */
 		if (value > (1 << 20)) {
-			fr_strerror_printf("cbor data string is too long (%llu)", value);
+			fr_strerror_printf("cbor data string is too long (%" PRIu64 ")", value);
 			return -1;
 		}
 
@@ -938,7 +938,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	No tag defined for this data type, that's on us.
 		 */
 		if (!cbor_type_to_tag[type]) {
-			fr_strerror_printf("Unknown cbor tag %llu for expected data type %s",
+			fr_strerror_printf("Unknown cbor tag %" PRIu64 " for expected data type %s",
 					   value, fr_type_to_str(type));
 			return -fr_dbuff_used(&work_dbuff);
 		}
@@ -947,7 +947,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	Wrong tag for this data type, that's on them.
 		 */
 		if (cbor_type_to_tag[type] != value) {
-			fr_strerror_printf("Invalid cbor tag %llu for expected data type %s",
+			fr_strerror_printf("Invalid cbor tag %" PRIu64 " for expected data type %s",
 					   value, fr_type_to_str(type));
 			return -fr_dbuff_used(&work_dbuff);
 		}
