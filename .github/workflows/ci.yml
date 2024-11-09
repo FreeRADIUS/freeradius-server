@@ -226,81 +226,19 @@ jobs:
 #                            FREERADIUS CORE DEVELOPERS ONLY
 ##########################################################################################
 #
-#  Direct push access to the main freeradius-server repo will be disabled in an attempt
-#  to keep CI passing reliably.
+#  If the above CI checks pass on a branch named after the developer, then the branch will
+#  automatically be merged into master.
 #
-#  If the above CI checks pass then we auto-merge into the same upstream branch
-#  (only on push) if a PERSONAL_ACCESS_TOKEN secret is defined, i.e. when
-#  the actor claims to be a FreeRADIUS developer with push access.
+#  This allows developers to access the significantly faster self-hosted runners, with
+#  minimal additional work.  It also prevents them inadvertently from introducing changes
+#  that break the CI for everyone else.
 #
-#  Personal access tokens can be generated via the GitHub website:
+#  Note: Changes will ONLY be merged into master if CI passes.
 #
-#  - Click on the Profile menu (top right)
-#    > Settings
-#    > Developer settings
-#    > Personal access tokens
-#    > Generate New Token
-#  - Next, add the following settings and scopes:
-#    Note: FreeRADIUS CI Push
-#    repo (checked)
-#    workflow (checked)
-#
-#  This will allow any git operations using this PERSONAL_ACCESS_TOKEN to commit code to any
-#  public repository you have access to.
-#
-#  As this PERSONAL_ACCESS_TOKEN will only ever be accessible from GitHub actions when they are
-#  running from your fork of the FreeRADIUS repo, this shouldn't be a security issue.
-#
-#  After generating your PERSONAL_ACCESS_TOKEN you will need to add it as a secret to your
-#  repository.
-#
-#  - Copy your new token
-#  - Click on the Profile menu (top right)
-#    > Your repositories
-#  - Search for freeradius-server
-#    > Click freeradius-server
-#  - Click settings in the tabs on the left
-#  - Click secrets in the menu items on the left
-#  - Click New repository secret
-#  - Name: PERSONAL_ACCESS_TOKEN
-#    Value: <value you copied>
-#  - Click Add secret
-#
-#  You may also wish to set a different pushurl for your local repository to make integration
-#  more seamless:
-#
-#  git config remote.origin.pushurl git@github.com:<github_user>/freeradius-server.git
-#
-#  git pull will then pull from the upstream repo, whilst git push will be directed to your fork.
-#
-
-  #
-  #  Needed because secrets are not available for evaluation in if conditions
-  #  at the job level, so we evaluate the existence of the PERSONAL_ACCESS_TOKEN secret
-  #  within a step and export the result instead. We also extract the short
-  #  branch name here because it's convenient to do so.
-  #
-  merge-preflight:
-    needs:
-      - ci
-    if: ( github.event_name == 'push' ) && ( github.repository_owner != 'FreeRADIUS' ) && ( github.ref == 'refs/heads/master' || github.ref == 'refs/heads/v3.0.x' )
-    name: "Merge preflight"
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Report whether PERSONAL_ACCESS_TOKEN secret exists"
-        id: merge-preflight
-        run: |
-          if [ -n "$PERSONAL_ACCESS_TOKEN" ]; then echo "PERSONAL_ACCESS_TOKEN_EXISTS=1" >> $GITHUB_OUTPUT; fi
-        env:
-          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-    outputs:
-      PERSONAL_ACCESS_TOKEN_EXISTS: ${{ steps.merge-preflight.outputs.PERSONAL_ACCESS_TOKEN_EXISTS }}
-
   merge-upstream:
     needs:
       - ci
-      - merge-preflight
-    if: needs.merge-preflight.outputs.PERSONAL_ACCESS_TOKEN_EXISTS == '1'
+    if: ( github.event_name == 'push' ) && ( github.repository_owner == FreeRADIUS' ) && ( github.ref == "refs/heads/developer/${{ github.actor }}")
     runs-on: ubuntu-latest
     name: "Merge into upstream"
     steps:
@@ -309,26 +247,26 @@ jobs:
           fetch-depth: 0
           lfs: false
           persist-credentials: false
-      #  Note: This also opportunistically updates the developer's branch with commits from
-      #  the main repository.
-      #  This update may fail if the developer has pushed additional commits since the
-      #  workflow started.  This is normal, and we ignore the failure.
-      #
-      #  We fixup the origin URL as the default remote fails on push with:
-      #    fatal: could not read Username for 'https://github.com': No such device or address
+
+      - name: Set up Git with `GITHUB_TOKEN`
+        run: |
+          git config --global url."https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
       - name: "Merge into upstream dev branch and update local branch"
         run: |
-          BRANCH=${GITHUB_REF#refs/heads/}
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git remote add upstream https://$USERNAME:$REPO_KEY@github.com/FreeRADIUS/freeradius-server.git
-          git remote set-url origin https://$USERNAME:$REPO_KEY@github.com/$REPO_NAME
-          git fetch --no-recurse-submodules upstream +refs/heads/*:refs/remotes/upstream/* +refs/tags/*:refs/tags/upstream/*
-          git checkout --progress --force -B upstream-branch "refs/remotes/upstream/$BRANCH"
-          git merge "$BRANCH" --ff-only
-          git push upstream "upstream-branch:$BRANCH"
-          git push origin "upstream-branch:$BRANCH" || true
-        env:
-          USERNAME: ${{ github.repository_owner }}
-          REPO_NAME: ${{ github.repository }}
-          REPO_KEY: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git config --global commit.gpgSign true
+          git config --global gpg.format ssh
+
+          # Fetch all the branches
+          git fetch --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
+
+          echo "Rebasing from master"
+          git pull --rebase --ff-only origin master
+
+          echo "Pushing to user branch: ${{ github.actor }}"
+          git push origin "HEAD:developer/${{ github.actor }}"
+
+          echo "Pushing to master"
+          git push origin HEAD:master
