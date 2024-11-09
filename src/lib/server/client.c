@@ -963,6 +963,7 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 		case FR_FREERADIUS_CLIENT_IP_ADDRESS:
 			attr = "ipv4addr";
 		vb_to_str:
+			fr_sbuff_set_to_start(tmp);
 			if (unlikely(fr_pair_print_value_quoted(tmp, vp, T_BARE_WORD) < 0)) {
 				RERROR("Failed to convert %pP to string", vp);
 			error:
@@ -1016,8 +1017,8 @@ fr_client_t *client_afrom_request(TALLOC_CTX *ctx, request_t *request)
 			goto vb_to_str;
 
 		default:
-			RDEBUG2("Adding custom attribute %pP", vp);
 			attr = vp->da->name;
+			fr_sbuff_set_to_start(tmp);
 			fr_value_box_print(tmp, &vp->data, &fr_value_escape_single);
 			value = fr_sbuff_start(tmp);
 			v_token = T_SINGLE_QUOTED_STRING;
