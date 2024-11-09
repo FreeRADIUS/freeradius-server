@@ -24,8 +24,8 @@ match 9f a1 01 43 62 6f 62 a1 08 d8 34 64 c0 00 02 01 ff
 #
 #  tag decode isn't done
 #
-#decode-pair -
-#match User-Name = "bob", Framed-IP-Address = 192.0.2.1
+decode-pair -
+match User-Name = "bob", Framed-IP-Address = 192.0.2.1
 
 encode-pair User-Name = "bob", NAS-Port = 2112
 match 9f a1 01 43 62 6f 62 a1 05 19 08 40 ff
@@ -40,4 +40,4 @@ decode-pair -
 match Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
 
 count
-match 16
+match 18

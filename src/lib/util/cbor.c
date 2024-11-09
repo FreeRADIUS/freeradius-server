@@ -376,6 +376,227 @@ done:
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+typedef ssize_t (*cbor_decode_type_t)(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff);
+
+static ssize_t cbor_expect_integer(uint64_t *value, fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	uint8_t major, info;
+	ssize_t slen;
+
+	FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
+
+	info = major & 0x1f;
+	major >>= 5;
+
+	if (major != CBOR_OCTETS) {
+		fr_strerror_printf("Expected cbor type 'octets', got unexpected type %d ", major);
+		return -1;
+	}
+
+	slen = cbor_decode_integer(value, info, &work_dbuff);
+	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_len, fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	uint64_t value;
+
+	slen = cbor_expect_integer(&value, &work_dbuff);
+	if (slen < 0) return slen;
+
+	if (value != dst_len) {
+		fr_strerror_printf("Invalid length for data - expected %lu got %llu", dst_len, value);
+		return -1;
+	}
+
+	FR_DBUFF_OUT_MEMCPY_RETURN(dst, &work_dbuff, dst_len);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+#if 0
+static ssize_t *cbor_decode_octets_memdup(TALLOC_CTX *ctx, uint8_t **out, fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	uint64_t value;
+	uint8_t *ptr;
+
+	slen = cbor_expect_integer(&value, &work_dbuff);
+	if (slen < 0) return slen;
+
+	if (value > (1 << 20)) {
+		fr_strerror_printf("cbor data string is too long (%llu)", value);
+		return -1;
+	}
+
+	ptr = talloc_array(ctx, uint8_t, value);
+	if (!ptr) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+
+	FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
+	*out = ptr;
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+#endif
+
+static ssize_t cbor_decode_ethernet(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+{
+	return cbor_decode_octets_memcpy(vb->vb_ether, sizeof(vb->vb_ether), dbuff);
+}
+
+static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+{
+	return cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
+					 sizeof(vb->vb_ip.addr.v4.s_addr), dbuff);
+}
+
+static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+{
+	return cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
+					 sizeof(vb->vb_ip.addr.v6.s6_addr), dbuff);
+}
+
+static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	uint8_t header;
+	uint64_t value;
+
+	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
+
+	if (header != ((CBOR_ARRAY << 5) | 2)) {
+		fr_strerror_printf("Invalid IPv4 prefix - expected array of 2 elements, got %02x",
+				   header);
+		return -1;
+	}
+
+	slen = cbor_expect_integer(&value, &work_dbuff);
+	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	if (value > 32) {
+		fr_strerror_printf("Invalid IPv4 prefix - expected prefix < 32, got %llu", value);
+		return -1;
+	}
+
+	/*
+	 *	We encode the entire IP.  But maybe others don't?
+	 */
+	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
+					 sizeof(vb->vb_ip.addr.v4.s_addr), &work_dbuff);
+	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	uint8_t header;
+	uint64_t value;
+
+	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
+
+	if (header != ((CBOR_ARRAY << 5) | 2)) {
+		fr_strerror_printf("Invalid IPv6 prefix - expected array of 2 elements, got %02x",
+				   header);
+		return -1;
+	}
+
+	slen = cbor_expect_integer(&value, &work_dbuff);
+	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	if (value > 128) {
+		fr_strerror_printf("Invalid IPv6 prefix - expected prefix < 128, got %llu", value);
+		return -1;
+	}
+
+	/*
+	 *	We encode the entire IP.  But maybe others don't?
+	 */
+	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
+					 sizeof(vb->vb_ip.addr.v6.s6_addr), &work_dbuff);
+	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+static ssize_t cbor_decode_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	uint8_t major, info;
+	uint64_t value;
+	int64_t neg;
+
+	FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
+
+	info = major & 0x1f;
+	major >>= 5;
+
+	switch (major) {
+	case CBOR_INTEGER:
+		slen = cbor_decode_integer(&value, info, &work_dbuff);
+		if (slen < 0) return slen;
+
+		if (value >= ((uint64_t) 1) << 63) { /* equal! */
+		invalid:
+			fr_strerror_printf("cbor value is too large for output data type date");
+			return -1;
+		}
+
+		vb->vb_date = fr_unix_time_from_sec(value);
+		break;
+
+	case CBOR_NEGATIVE:
+		slen = cbor_decode_integer(&value, info, &work_dbuff);
+		if (slen < 0) return slen;
+
+		if (value > ((uint64_t) 1) << 63) goto invalid; /* less than! */
+
+		/*
+		 *	Convert 0..(2^63-1) into -0..-(2^63-1)
+		 *	then conver to -1..-(2^63)
+		 */
+		neg = -value;
+		neg--;
+
+
+		vb->vb_date = fr_unix_time_from_sec(neg);
+		break;
+
+	default:
+		fr_strerror_printf("cbor data contains invalid content %d for expected data type data",
+				   major);
+		return -1;
+	}
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+
+static cbor_decode_type_t cbor_decode_type[FR_TYPE_MAX] = {
+	[FR_TYPE_ETHERNET] = cbor_decode_ethernet,
+
+	[FR_TYPE_DATE] = cbor_decode_date,
+
+	[FR_TYPE_IPV4_ADDR] = cbor_decode_ipv4_addr,
+	[FR_TYPE_IPV6_ADDR] = cbor_decode_ipv6_addr,
+
+	[FR_TYPE_IPV4_PREFIX] = cbor_decode_ipv4_prefix,
+	[FR_TYPE_IPV6_PREFIX] = cbor_decode_ipv6_prefix,
+};
+
 /*
  *	@todo - fr_cbor_encode_pair_list().  And then if we have da->flags.array, we encode the _value_ as an
  *	array of indeterminate length.  This is a little bit of a special case, but not terrible.
@@ -429,7 +650,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	A little bit of sanity check.
 		 */
 		if (value > (1 << 20)) {
-			fr_strerror_printf("cbor data string is too long (%lu)", value);
+			fr_strerror_printf("cbor data string is too long (%llu)", value);
 			return -1;
 		}
 
@@ -462,7 +683,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	A little bit of sanity check.
 		 */
 		if (value > (1 << 20)) {
-			fr_strerror_printf("cbor data string is too long (%lu)", value);
+			fr_strerror_printf("cbor data string is too long (%llu)", value);
 			return -1;
 		}
 
@@ -708,7 +929,33 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		/*
 		 *	We only support a limited number of tags.
 		 */
-		fr_assert(0);
+		slen = cbor_decode_integer(&value, info, &work_dbuff);
+		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+		fr_assert(type != FR_TYPE_NULL);
+
+		/*
+		 *	No tag defined for this data type, that's on us.
+		 */
+		if (!cbor_type_to_tag[type]) {
+			fr_strerror_printf("Unknown cbor tag %llu for expected data type %s",
+					   value, fr_type_to_str(type));
+			return -fr_dbuff_used(&work_dbuff);
+		}
+
+		/*
+		 *	Wrong tag for this data type, that's on them.
+		 */
+		if (cbor_type_to_tag[type] != value) {
+			fr_strerror_printf("Invalid cbor tag %llu for expected data type %s",
+					   value, fr_type_to_str(type));
+			return -fr_dbuff_used(&work_dbuff);
+		}
+
+		fr_value_box_init(vb, type, NULL, tainted);
+
+		slen = cbor_decode_type[type](ctx, vb, &work_dbuff);
+		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
 		break;
 
 	case CBOR_ARRAY:
@@ -1005,3 +1252,15 @@ done:
 	fr_pair_append(out, vp);
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
+
+/*
+ *	@todo - cbor_print
+ *	[] for array
+ *	[_...] for indefinite array
+ *	{a:b} for map
+ *	digits for integer
+ *	'string' for string
+ *	h'HHHH' for octets
+ *
+ *	@todo - count the number of children, and encode the actual number?
+ */
