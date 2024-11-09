@@ -1282,13 +1282,13 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	fr_sbuff_parse_rules_t const	*our_p_rules;		/* Bareword parse rules */
 	fr_sbuff_parse_rules_t		tmp_p_rules;
 	xlat_exp_head_t			*head;
-	xlat_arg_parser_t const		*arg = NULL;
+	xlat_arg_parser_t const		*arg = NULL, *arg_start;
 
 	if (xlat && xlat->args) {
-		arg = xlat->args;	/* Track the arguments as we parse */
+		arg_start = arg = xlat->args;	/* Track the arguments as we parse */
 	} else {
 		static xlat_arg_parser_t	default_arg = { .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH };
-		arg = &default_arg;
+		arg_start = arg = &default_arg;
 	}
 
 	MEM(head = xlat_exp_head_alloc(ctx));
@@ -1471,7 +1471,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		if (!arg->variadic) {
 			arg++;
 			if (arg->type == FR_TYPE_NULL) {
-				fr_strerror_printf("Too many arguments, expected %u additional", argc - 1);
+				fr_strerror_printf("Too many arguments, expected %zu, got %u", arg - arg_start, argc - 1);
 				goto error;
 			}
 		}
