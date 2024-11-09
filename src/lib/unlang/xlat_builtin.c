@@ -3950,25 +3950,12 @@ static xlat_action_t protocol_encode_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_DONE;
 }
 
-static int xlat_protocol_register(fr_dict_t const *dict)
+static int xlat_protocol_register_by_name(dl_t *dl, char const *name)
 {
 	fr_test_point_pair_decode_t *tp_decode;
 	fr_test_point_pair_encode_t *tp_encode;
 	xlat_t *xlat;
-	dl_t *dl = fr_dict_dl(dict);
-	char *p, buffer[256+32], name[256];
-
-	/*
-	 *	No library for this protocol, skip it.
-	 *
-	 *	Protocol TEST has no libfreeradius-test, so that's OK.
-	 */
-	if (!dl) return 0;
-
-	strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
-	for (p = name; *p != '\0'; p++) {
-		*p = tolower((uint8_t) *p);
-	}
+	char buffer[256+32];
 
 	/*
 	 *	See if there's a decode function for it.
@@ -4008,6 +3995,44 @@ static int xlat_protocol_register(fr_dict_t const *dict)
 	return 0;
 }
 
+static int xlat_protocol_register(fr_dict_t const *dict)
+{
+	dl_t *dl = fr_dict_dl(dict);
+	char *p, name[256];
+
+	/*
+	 *	No library for this protocol, skip it.
+	 *
+	 *	Protocol TEST has no libfreeradius-test, so that's OK.
+	 */
+	if (!dl) return 0;
+
+	strlcpy(name, fr_dict_root(dict)->name, sizeof(name));
+	for (p = name; *p != '\0'; p++) {
+		*p = tolower((uint8_t) *p);
+	}
+
+	return xlat_protocol_register_by_name(dl, name);
+}
+
+static dl_loader_t *cbor_loader = NULL;
+
+static int xlat_protocol_register_cbor(void)
+{
+	dl_t *dl;
+
+	cbor_loader = dl_loader_init(NULL, NULL, false, false);
+	if (!cbor_loader) return 0;
+
+	dl = dl_by_name(cbor_loader, "libfreeradius-cbor", NULL, false);
+	if (!dl) return 0;
+
+	if (xlat_protocol_register_by_name(dl, "cbor") < 0) return -1;
+
+	return 0;
+}
+
+
 /** Register xlats for any loaded dictionaries
  */
 int xlat_protocols_register(void)
@@ -4026,6 +4051,11 @@ int xlat_protocols_register(void)
 	 */
 	if (xlat_protocol_register(fr_dict_internal()) < 0) return -1;
 
+	/*
+	 *	And cbor stuff
+	 */
+	if (xlat_protocol_register_cbor() < 0) return -1;
+
 	return 0;
 }
 
@@ -4037,6 +4067,7 @@ static int _xlat_global_free(UNUSED void *uctx)
 	TALLOC_FREE(xlat_ctx);
 	xlat_func_free();
 	xlat_eval_free();
+	talloc_free(cbor_loader);
 
 	return 0;
 }
