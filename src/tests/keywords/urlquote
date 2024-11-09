@@ -45,7 +45,7 @@ if (!(result_string == test_string3)) {
 	test_fail
 }
 
-result_string := "%urlunquote(%%E,123)"
+result_string := "%urlunquote('%%E, 123')"
 
 # Test decoding invalid encoded string
 if !(result_string == "") {

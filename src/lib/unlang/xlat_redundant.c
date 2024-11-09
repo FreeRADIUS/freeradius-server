@@ -338,7 +338,7 @@ static int xlat_redundant_instantiate(xlat_inst_ctx_t const *xctx)
 }
 
 static xlat_arg_parser_t const xlat_redundant_args[] = {
-	{ .type = FR_TYPE_VOID },
+	{ .type = FR_TYPE_VOID, .variadic = XLAT_ARG_VARIADIC_EMPTY_KEEP },
 	XLAT_ARG_PARSER_TERMINATOR
 };
 

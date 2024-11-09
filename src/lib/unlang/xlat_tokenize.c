@@ -1445,9 +1445,7 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		if (comma) {
 			fr_assert(p_rules && p_rules->terminals);
 
-			if (fr_sbuff_next_if_char(&our_in, ',')) {
-				continue;
-			}
+			if (fr_sbuff_next_if_char(&our_in, ',')) goto next;
 
 			if (fr_sbuff_is_char(&our_in, ')')) break;
 
@@ -1469,11 +1467,11 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 			fr_strerror_const("Unexpected text after argument");
 			goto error;
 		}
-
+	next:
 		if (!arg->variadic) {
 			arg++;
 			if (arg->type == FR_TYPE_NULL) {
-				fr_strerror_printf("Too many arguments, expected %u", argc - 1);
+				fr_strerror_printf("Too many arguments, expected %u additional", argc - 1);
 				goto error;
 			}
 		}
