@@ -23,6 +23,8 @@ LOGDIR="${BUILDDIR}/logs"
 CERTDIR="${BUILDDIR}/certs"
 CERTSRCDIR="${BASEDIR}/raddb/certs"
 PASSWORD="whatever"
+HTTP_PORT=8080
+HTTPS_PORT=8443
 
 # Important files for running openresty
 CONF="${BUILDDIR}/nginx.conf"
@@ -79,7 +81,7 @@ http {
     sendfile      on;
 
     server {
-        listen       8080;
+        listen       ${HTTP_PORT};
 	server_name  localhost;
 
 	location / {
@@ -103,7 +105,7 @@ http {
     }
 
     server {
-        listen       8443 ssl;
+        listen       ${HTTPS_PORT} ssl;
 	server_name  localhost;
 
 	ssl_certificate      ${CERTDIR}/server.pem;
@@ -163,4 +165,9 @@ cp "${CIDIR}/openresty/.htpasswd" "${BUILDDIR}"
 #
 echo "Starting openresty"
 openresty -c ${CONF} -p ${BUILDDIR}
-echo "Running openresty on port 8080 and 8443, accepting all local connections"
+echo "Running openresty on port ${HTTP_PORT} and ${HTTPS_PORT}, accepting all local connections"
+cat << EOF
+export REST_TEST_SERVER=127.0.0.1
+export REST_TEST_SERVER_PORT=${HTTP_PORT}
+export REST_TEST_SERVER_SSL_PORT=${HTTPS_PORT}
+EOF
