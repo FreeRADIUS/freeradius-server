@@ -251,22 +251,27 @@ jobs:
       - name: Set up Git with `GITHUB_TOKEN`
         run: |
           git config --global url."https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-
-      - name: "Merge into upstream dev branch and update local branch"
-        run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git config --global commit.gpgSign true
           git config --global gpg.format ssh
 
-          # Fetch all the branches
-          git fetch --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
+      # First, as this was a shallow checkout, and only the user's branch was fetched, we need
+      # to fetch the rest of the branches, and more history.
+      #
+      # Then, we attempt to checkout the master branch, and merge the user's branch into it.
+      - name: "Merge into upstream dev branch and update local branch"
+        env:
+          BRANCH: developer/${{ github.actor }}
+        run: |
+          git fetch --depth=1000 --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
 
-          echo "Rebasing from master"
-          git pull --rebase --ff-only origin master
+          echo "Merging master into user branch: ${BRANCH}"
+          git checkout --progress --force -B master origin/master
+          git merge --no-commit --no-edit "${BRANCH}"
 
-          echo "Pushing to user branch: ${{ github.actor }}"
-          git push origin "HEAD:developer/${{ github.actor }}"
+          echo "Pushing to user branch: ${BRANCH}"
+          git push origin "HEAD:${BRANCH}"
 
           echo "Pushing to master"
-          git push origin HEAD:master
+          git push origin HEAD:master || true
