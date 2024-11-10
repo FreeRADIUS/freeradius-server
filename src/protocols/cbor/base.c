@@ -5,7 +5,7 @@ static ssize_t decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t 
 			   uint8_t const *data, size_t data_len, UNUSED void *decode_ctx)
 {
 	fr_dbuff_t dbuff;
-	uint8_t field;
+	uint8_t field = 0;
 	ssize_t slen;
 
 	fr_dbuff_init(&dbuff, data, data_len);
