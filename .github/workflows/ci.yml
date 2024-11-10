@@ -235,10 +235,16 @@ jobs:
 #
 #  Note: Changes will ONLY be merged into master if CI passes.
 #
+#  Multiple automatic-merge behaviours are supported:
+#  - If the branch name ends in '/merge', then the branch will be merged into master, potentially
+#    creating a merge commit.
+#  - If the branch name ends in '/ff', then master will be fast forwarded to the HEAD commit of
+#    the branch.  This is the default if no suffix is provided.
+#
   merge-upstream:
     needs:
       - ci
-    if: ( github.event_name == 'push' ) && ( github.repository_owner == FreeRADIUS' ) && ( github.ref == "refs/heads/developer/${{ github.actor }}")
+    if: ( github.event_name == 'push' ) && ( github.repository_owner == FreeRADIUS' ) && (startsWith(github.ref, "refs/heads/developer/${{ github.actor }}"))
     runs-on: ubuntu-latest
     name: "Merge into upstream"
     steps:
@@ -261,17 +267,28 @@ jobs:
       #
       # Then, we attempt to checkout the master branch, and merge the user's branch into it.
       - name: "Merge into upstream dev branch and update local branch"
-        env:
-          BRANCH: developer/${{ github.actor }}
+        if: endsWith(github.ref, '/merge')
         run: |
           git fetch --depth=1000 --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
 
-          echo "Merging master into user branch: ${BRANCH}"
+          echo "Merging master into user branch: ${GITHUB_REF_NAME}"
           git checkout --progress --force -B master origin/master
-          git merge --no-commit --no-edit "${BRANCH}"
+          git merge --no-commit --no-edit "${GITHUB_REF_NAME}"
 
-          echo "Pushing to user branch: ${BRANCH}"
-          git push origin "HEAD:${BRANCH}"
+          echo "Pushing to user branch: ${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+          echo "Pushing to master"
+          git push origin HEAD:master
+
+      - name: "Fast forward upstream"
+        if: endsWith(github.ref, "/${{ github.actor }}") || endsWith(github.ref, '/ff')
+        run: |
+          git fetch --depth=1000 --no-recurse-submodules origin +refs/heads/*:refs/remotes/origin/*
+
+          echo "Fast forwarding local copy of master to match developer's branch: ${GITHUB_REF_NAME}"
+          git checkout --progress --force -B master origin/master
+          git merge --ff-only "${GITHUB_REF_NAME}"
 
           echo "Pushing to master"
           git push origin HEAD:master
