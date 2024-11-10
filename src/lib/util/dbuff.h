@@ -1814,7 +1814,11 @@ FR_DBUFF_OUT_DEF_NO_SWAP(int8)
  *
  * @copydetails fr_dbuff_out
  */
+#ifndef STATIC_ANALYZER
 #define FR_DBUFF_OUT_RETURN(_out, _dbuff_or_marker) FR_DBUFF_RETURN(fr_dbuff_out, _out, _dbuff_or_marker)
+#else
+#define FR_DBUFF_OUT_RETURN(_out, _dbuff_or_marker) do { *_out = 0; FR_DBUFF_RETURN(fr_dbuff_out, _out, _dbuff_or_marker); } while (0)
+#endif
 
 /** Internal function - do not call directly
  * @private
