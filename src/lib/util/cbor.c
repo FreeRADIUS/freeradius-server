@@ -38,6 +38,11 @@ RCSID("$Id$")
 #define CBOR_4_BYTE ((uint8_t) 26)
 #define CBOR_8_BYTE ((uint8_t) 27)
 
+static const char *cbor_type_to_str[8] = {
+	"integer", "negative", "string", "octets",
+	"array", "map", "tag", "float"
+};
+
 /*
  *	Some of our data types need tags.
  *
@@ -52,11 +57,13 @@ static const uint64_t cbor_type_to_tag[FR_TYPE_MAX] = {
 	[FR_TYPE_IPV4_PREFIX] = 52,
 	[FR_TYPE_IPV6_ADDR] = 54,
 	[FR_TYPE_IPV6_PREFIX] = 54,
+	[FR_TYPE_TIME_DELTA] = 1002,
 };
 
 static ssize_t cbor_encode_integer(fr_dbuff_t *dbuff, uint8_t type, uint64_t data)
 {
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
+	uint8_t		value[8];
 
 	type <<= 5;
 
@@ -68,34 +75,36 @@ static ssize_t cbor_encode_integer(fr_dbuff_t *dbuff, uint8_t type, uint64_t dat
 	}
 
 	if (data < (((uint64_t) 1) << 8)) {
-		uint8_t value = data;
+		value[0] = data;
 
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) (type | CBOR_1_BYTE));
-		FR_DBUFF_IN_RETURN(&work_dbuff, value);
+		FR_DBUFF_IN_RETURN(&work_dbuff, value[0]);
 		goto done;
 	}
 
 	if (data < (((uint64_t) 1) << 16)) {
-		uint16_t value = data;
+		fr_nbo_from_uint16(value, data);
 
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) (type | CBOR_2_BYTE));
-		FR_DBUFF_IN_RETURN(&work_dbuff, value);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value, 2);
 		goto done;
 	}
 
 	if (data < (((uint64_t) 1) << 32)) {
-		uint16_t value = data;
+		fr_nbo_from_uint32(value, data);
 
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) (type | CBOR_4_BYTE));
-		FR_DBUFF_IN_RETURN(&work_dbuff, value);
+		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value, 4);
 		goto done;
 	}
+
+	fr_nbo_from_uint64(value, data);
 
 	/*
 	 *	Has to be 8 bytes.
 	 */
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, type | CBOR_8_BYTE);
-	FR_DBUFF_IN_RETURN(&work_dbuff, data);
+	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, value, 8);
 
 done:
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -119,6 +128,27 @@ static ssize_t cbor_encode_octets(fr_dbuff_t *dbuff, uint8_t const *data, size_t
 	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, data, data_len);
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
+
+static ssize_t cbor_encode_int64(fr_dbuff_t *dbuff, int64_t neg)
+{
+	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+
+	if (neg >= 0) {
+		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, neg);
+	} else {
+		uint64_t data;
+
+		neg++;
+		data = -neg;
+		slen = cbor_encode_integer(&work_dbuff, CBOR_NEGATIVE, data);
+	}
+	if (slen <= 0) return slen;
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+#define cbor_encode_key cbor_encode_int64
 
 /** Encode CBOR
  *
@@ -216,8 +246,8 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 *
 		 *	RFC 9581 Section 3.
 		 *
-		 *	A tag with key 1001, and then: a map with key 1 (integer epoch seconds)
-		 *	and key -3 (milliseconds), -6 (microseconds), or -9 (integer nanoseconds).
+		 *	A tag with key 1001, and then: a map with required key 1 (integer epoch seconds) and
+		 *	optional key -3 (milliseconds), -6 (microseconds), or -9 (integer nanoseconds).
 		 *
 		 *	For the encoder, there are a ton of different formats for dates, and we shouldn't
 		 *	bother to parse them all. :(
@@ -227,24 +257,45 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		if (slen <= 0) return slen;
 
 		neg = fr_unix_time_to_sec(vb->vb_date);
-		if (neg >= 0) {
-			slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, neg);
-		} else {
-			neg++;
-			data = -neg;
-			slen = cbor_encode_integer(&work_dbuff, CBOR_NEGATIVE, data);
-		}
+		slen = cbor_encode_int64(&work_dbuff, neg);
 		if (slen <= 0) return slen;
 		break;
 
 		/*
-		 *	@todo - RFC 9581 Section 4.
+		 *	RFC 9581 Section 4.
 		 *
-		 *	A tag with key 1002, and then: a map with key 1 (integer seconds) and key -9 (integer
-		 *	nanoseconds).
+		 *	A tag with key 1002, and then: a map with required key 1 (integer seconds) and
+		 *	optional key -3 (milliseconds), -6 (microseconds), or -9 (integer nanoseconds).
 		 */
 	case FR_TYPE_TIME_DELTA:
+		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
+		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
 
+		neg = fr_time_delta_unwrap(vb->vb_time_delta) % NSEC;
+
+		slen = cbor_encode_integer(&work_dbuff, CBOR_MAP, 1 + (neg != 0));
+		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+
+		/*
+		 *	1: seconds
+		 */
+		slen = cbor_encode_key(&work_dbuff, 1);
+		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+
+		slen = cbor_encode_int64(&work_dbuff, fr_time_delta_to_sec(vb->vb_time_delta));
+		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+
+		/*
+		 *	-9: nanoseconds
+		 */
+		if (neg) {
+			slen = cbor_encode_key(&work_dbuff, -9);
+			if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+
+			slen = cbor_encode_int64(&work_dbuff, neg);
+			if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+		}
+		break;
 
 		/*
 		 *	RFC 9164, Section 3.3
@@ -398,9 +449,7 @@ done:
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-typedef ssize_t (*cbor_decode_type_t)(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff);
-
-static ssize_t cbor_expect_integer(uint64_t *value, fr_dbuff_t *dbuff)
+static ssize_t cbor_decode_count(uint64_t *out, int expected, fr_dbuff_t *dbuff)
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	uint8_t major, info;
@@ -411,16 +460,19 @@ static ssize_t cbor_expect_integer(uint64_t *value, fr_dbuff_t *dbuff)
 	info = major & 0x1f;
 	major >>= 5;
 
-	if (major != CBOR_OCTETS) {
-		fr_strerror_printf("Expected cbor type 'octets', got unexpected type %d ", major);
+	if (major != expected) {
+		fr_strerror_printf("Expected cbor type '%s', got unexpected type %d ",
+				   cbor_type_to_str[expected], major);
 		return -1;
 	}
 
-	slen = cbor_decode_integer(value, info, &work_dbuff);
+	slen = cbor_decode_integer(out, info, &work_dbuff);
 	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
+
+typedef ssize_t (*cbor_decode_type_t)(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff);
 
 static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_len, fr_dbuff_t *dbuff)
 {
@@ -428,7 +480,7 @@ static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_len, fr_dbuff_
 	ssize_t slen;
 	uint64_t value = 0;
 
-	slen = cbor_expect_integer(&value, &work_dbuff);
+	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
 	if (slen < 0) return slen;
 
 	if (value != dst_len) {
@@ -449,7 +501,7 @@ static ssize_t *cbor_decode_octets_memdup(TALLOC_CTX *ctx, uint8_t **out, fr_dbu
 	uint64_t value;
 	uint8_t *ptr;
 
-	slen = cbor_expect_integer(&value, &work_dbuff);
+	slen = cbor_decode_count(&value, CBOR_OCTETS&work_dbuff);
 	if (slen < 0) return slen;
 
 	if (value > (1 << 20)) {
@@ -502,7 +554,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 		return -1;
 	}
 
-	slen = cbor_expect_integer(&value, &work_dbuff);
+	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
 	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
 
 	if (value > 32) {
@@ -535,7 +587,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 		return -1;
 	}
 
-	slen = cbor_expect_integer(&value, &work_dbuff);
+	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
 	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
 
 	if (value > 128) {
@@ -553,7 +605,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-static ssize_t cbor_decode_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+static ssize_t cbor_decode_int64(int64_t *out, fr_dbuff_t *dbuff, fr_type_t type)
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	ssize_t slen;
@@ -573,18 +625,19 @@ static ssize_t cbor_decode_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_d
 
 		if (value >= ((uint64_t) 1) << 63) { /* equal! */
 		invalid:
-			fr_strerror_printf("cbor value is too large for output data type date");
+			fr_strerror_printf("cbor value is too large for output data type %s",
+					   fr_type_to_str(type));
 			return -1;
 		}
 
-		vb->vb_date = fr_unix_time_from_sec(value);
+		*out = value;
 		break;
 
 	case CBOR_NEGATIVE:
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
 		if (slen < 0) return slen;
 
-		if (value > ((uint64_t) 1) << 63) goto invalid; /* less than! */
+		if (value > ((uint64_t) 1) << 63) goto invalid; /* greater than! */
 
 		/*
 		 *	Convert 0..(2^63-1) into -0..-(2^63-1)
@@ -593,14 +646,112 @@ static ssize_t cbor_decode_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_d
 		neg = -value;
 		neg--;
 
-
-		vb->vb_date = fr_unix_time_from_sec(neg);
+		*out = neg;
 		break;
 
 	default:
-		fr_strerror_printf("cbor data contains invalid content %d for expected data type data",
-				   major);
+		fr_strerror_printf("cbor data contains invalid content %d for expected data type %s",
+				   major, fr_type_to_str(type));
 		return -1;
+	}
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+
+}
+
+static ssize_t cbor_decode_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	int64_t neg;
+
+	slen = cbor_decode_int64(&neg, dbuff, FR_TYPE_DATE);
+	if (slen <= 0) return slen;
+
+	vb->vb_date = fr_unix_time_from_sec(neg);
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
+}
+
+/*
+ *	Tag 1002, followed by map of at least 2 elements
+ *	key 1: seconds
+ *	key -9: nanoseconds
+ */
+static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	uint64_t count;
+	ssize_t slen;
+	int64_t key, seconds, fraction, scale;
+
+	slen = cbor_decode_count(&count, CBOR_MAP, &work_dbuff);
+	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	if (!count || (count > 2)) {
+		fr_strerror_printf("Unexpected count %" PRIu64"  for time_delta, expected map of 1-2 elements", count);
+		return -1;
+	}
+
+	/*
+	 *	Expect key 1:seconds
+	 */
+	slen = cbor_decode_int64(&key, &work_dbuff, FR_TYPE_TIME_DELTA);
+	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	if (key != 1) {
+		fr_strerror_printf("Unexpected key %" PRIi64 " for time_delta, expected key 1", key);
+		return -1;
+	}
+
+	slen = cbor_decode_int64(&seconds, &work_dbuff, FR_TYPE_TIME_DELTA);
+	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	if (count > 1) {
+		slen = cbor_decode_int64(&key, &work_dbuff, FR_TYPE_TIME_DELTA);
+		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+		switch (key) {
+		case -3:
+			scale = MSEC;
+			break;
+
+		case -6:
+			scale = USEC;
+			break;
+
+		case -9:
+			scale = NSEC;
+			break;
+
+		default:
+			fr_strerror_printf("Unsupported time_delta key %" PRIi64, key);
+			return -fr_dbuff_used(&work_dbuff); /* point to actual key? */
+
+		}
+
+		slen = cbor_decode_int64(&fraction, &work_dbuff, FR_TYPE_TIME_DELTA);
+		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	} else {
+		scale = NSEC;
+		fraction = 0;
+	}
+
+	if (seconds > (INT64_MAX / scale)) {
+		vb->vb_time_delta = fr_time_delta_max();
+
+	} else if (seconds < (INT64_MIN / scale)) {
+		vb->vb_time_delta = fr_time_delta_min();
+
+	} else {
+		/*
+		 *	We don't worry too much about positive seconds and negative nanoseconds.
+		 *
+		 *	We also don't worry too much about overflow / underflow here.
+		 */
+		fraction += seconds * scale;
+		vb->vb_time_delta = fr_time_delta_wrap(fraction);
 	}
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
@@ -611,6 +762,7 @@ static cbor_decode_type_t cbor_decode_type[FR_TYPE_MAX] = {
 	[FR_TYPE_ETHERNET] = cbor_decode_ethernet,
 
 	[FR_TYPE_DATE] = cbor_decode_date,
+	[FR_TYPE_TIME_DELTA] = cbor_decode_time_delta,
 
 	[FR_TYPE_IPV4_ADDR] = cbor_decode_ipv4_addr,
 	[FR_TYPE_IPV6_ADDR] = cbor_decode_ipv6_addr,

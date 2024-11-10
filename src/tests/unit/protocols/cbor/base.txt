@@ -39,5 +39,23 @@ match 9f a1 18 1a 9f a1 09 9f a1 01 43 66 6f 6f a1 18 c0 19 1a 99 ff ff ff
 decode-pair -
 match Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
 
+#
+#  time delta, seconds
+#
+encode-pair Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600 } }
+match 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ca d9 03 ea a1 01 19 0e 10 ff ff ff
+
+decode-pair -
+match Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600 } }
+
+#
+#  time delta, with partial seconds
+#
+encode-pair Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600.5 } }
+match 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ca d9 03 ea a2 01 19 0e 10 28 1a 1d cd 65 00 ff ff ff
+
+decode-pair -
+match Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600.5 } }
+
 count
-match 18
+match 26
