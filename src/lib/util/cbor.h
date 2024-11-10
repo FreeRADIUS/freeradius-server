@@ -32,7 +32,9 @@ extern "C" {
 
 ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb) CC_HINT(nonnull);
 
-ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff, fr_type_t hint, bool taint) CC_HINT(nonnull);
+ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff,
+				 fr_type_t hint, fr_dict_attr_t const *enumv, bool tainted)
+				 CC_HINT(nonnull(2,3));
 
 ssize_t fr_cbor_encode_pair(fr_dbuff_t *dbuff, fr_pair_t *vp) CC_HINT(nonnull);
 

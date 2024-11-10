@@ -209,6 +209,19 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		if (slen <= 0) return slen;
 		break;
 
+		/*
+		 *	Tag 1, with integer seconds since epoch.
+		 *
+		 *	@todo - if the input has time resolution, then save it in that format.
+		 *
+		 *	RFC 9581 Section 3.
+		 *
+		 *	A tag with key 1001, and then: a map with key 1 (integer epoch seconds)
+		 *	and key -3 (milliseconds), -6 (microseconds), or -9 (integer nanoseconds).
+		 *
+		 *	For the encoder, there are a ton of different formats for dates, and we shouldn't
+		 *	bother to parse them all. :(
+		 */
 	case FR_TYPE_DATE:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
 		if (slen <= 0) return slen;
@@ -223,6 +236,15 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		}
 		if (slen <= 0) return slen;
 		break;
+
+		/*
+		 *	@todo - RFC 9581 Section 4.
+		 *
+		 *	A tag with key 1002, and then: a map with key 1 (integer seconds) and key -9 (integer
+		 *	nanoseconds).
+		 */
+	case FR_TYPE_TIME_DELTA:
+
 
 		/*
 		 *	RFC 9164, Section 3.3
@@ -601,7 +623,8 @@ static cbor_decode_type_t cbor_decode_type[FR_TYPE_MAX] = {
  *	@todo - fr_cbor_encode_pair_list().  And then if we have da->flags.array, we encode the _value_ as an
  *	array of indeterminate length.  This is a little bit of a special case, but not terrible.
  */
-ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff, fr_type_t type, bool tainted)
+ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff,
+				 fr_type_t type, fr_dict_attr_t const *enumv, bool tainted)
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	bool indefinite;
@@ -614,7 +637,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 	FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
 
 	if (type != FR_TYPE_NULL) {
-		fr_value_box_init(vb, type, NULL, tainted);
+		fr_value_box_init(vb, type, enumv, tainted);
 	}
 
 	info = major & 0x1f;
@@ -663,7 +686,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
 		ptr[value] = '\0';
 
-		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_STRING, NULL, tainted);
+		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_STRING, enumv, tainted);
 		fr_value_box_strdup_shallow(vb, NULL, (char const *) ptr, tainted);
 
 		break;
@@ -693,7 +716,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			return -1;
 		}
 
-		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_OCTETS, NULL, tainted);
+		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_OCTETS, enumv, tainted);
 		fr_value_box_memdup_shallow(vb, NULL, (uint8_t const *) ptr, value, false); /* tainted? */
 
 		FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
@@ -725,7 +748,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			break;
 
 		case FR_TYPE_NULL:
-			fr_value_box_init(vb, FR_TYPE_UINT64, NULL, tainted);
+			fr_value_box_init(vb, FR_TYPE_UINT64, enumv, tainted);
 			FALL_THROUGH;
 
 		case FR_TYPE_UINT64:
@@ -793,7 +816,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			break;
 
 		case FR_TYPE_NULL:
-			fr_value_box_init(vb, FR_TYPE_INT64, NULL, tainted);
+			fr_value_box_init(vb, FR_TYPE_INT64, enumv, tainted);
 			FALL_THROUGH;
 
 		case FR_TYPE_INT64:
@@ -816,7 +839,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 				break;
 
 			case FR_TYPE_NULL:
-				fr_value_box_init(vb, FR_TYPE_FLOAT64, NULL, tainted);
+				fr_value_box_init(vb, FR_TYPE_FLOAT64, enumv, tainted);
 				FALL_THROUGH;
 
 			case FR_TYPE_FLOAT64:
@@ -847,7 +870,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 				break;
 
 			case FR_TYPE_NULL:
-				fr_value_box_init(vb, FR_TYPE_FLOAT64, NULL, tainted);
+				fr_value_box_init(vb, FR_TYPE_FLOAT64, enumv, tainted);
 				FALL_THROUGH;
 
 			case FR_TYPE_FLOAT64:
@@ -878,7 +901,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 				break;
 
 			case FR_TYPE_NULL:
-				fr_value_box_init(vb, FR_TYPE_FLOAT64, NULL, tainted);
+				fr_value_box_init(vb, FR_TYPE_FLOAT64, enumv, tainted);
 				FALL_THROUGH;
 
 			case FR_TYPE_FLOAT64:
@@ -905,7 +928,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 				break;
 
 			case FR_TYPE_NULL:
-				fr_value_box_init(vb, FR_TYPE_FLOAT64, NULL, tainted);
+				fr_value_box_init(vb, FR_TYPE_FLOAT64, enumv, tainted);
 				FALL_THROUGH;
 
 			case FR_TYPE_FLOAT64:
@@ -952,7 +975,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			return -fr_dbuff_used(&work_dbuff);
 		}
 
-		fr_value_box_init(vb, type, NULL, tainted);
+		fr_value_box_init(vb, type, enumv, tainted);
 
 		slen = cbor_decode_type[type](ctx, vb, &work_dbuff);
 		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
@@ -961,7 +984,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 	case CBOR_ARRAY:
 		if (type == FR_TYPE_NULL) {
 			type = FR_TYPE_GROUP;
-			fr_value_box_init(vb, type, NULL, tainted);
+			fr_value_box_init(vb, type, enumv, tainted);
 		}
 
 		if (type != FR_TYPE_GROUP) goto invalid_type;
@@ -1019,7 +1042,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			/*
 			 *	We have to decode at least one value.
 			 */
-			slen = fr_cbor_decode_value_box(child, child, &work_dbuff, FR_TYPE_NULL, tainted);
+			slen = fr_cbor_decode_value_box(child, child, &work_dbuff, FR_TYPE_NULL, NULL, tainted);
 			if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
 
 			fr_value_box_list_insert_tail(&vb->vb_group, child);
@@ -1169,7 +1192,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 	 *	Leaf values are easy.
 	 */
 	if (fr_type_is_leaf(da->type)) {
-		slen = fr_cbor_decode_value_box(vp, &vp->data, &work_dbuff, da->type, tainted);
+		slen = fr_cbor_decode_value_box(vp, &vp->data, &work_dbuff, da->type, da, tainted);
 		if (slen <= 0) {
 			talloc_free(vp);
 			return slen - fr_dbuff_used(&work_dbuff);
