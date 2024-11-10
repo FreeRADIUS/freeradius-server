@@ -1175,11 +1175,19 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 
 	da = fr_dict_attr_child_by_num(parent, value);
 	if (!da) {
-		fr_assert(0);	/* @todo - yup! */
+		/*
+		 *	@todo - the value here isn't a cbor octets type, but is instead cbor data.  Since cbor
+		 *	is typed, we _could_ perhaps instead discover the type from the cbor data, and then
+		 *	use that instead.  This would involve creating a function which maps cbor types to our
+		 *	data types.
+		 */
+		da = fr_dict_attr_unknown_raw_afrom_num(ctx, parent, value);
+		if (!da) goto oom;
 	}
 
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
+	oom:
 		fr_strerror_const("Out of memory");
 		return -fr_dbuff_used(&work_dbuff);
 	}
