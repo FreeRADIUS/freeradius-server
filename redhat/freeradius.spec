@@ -1045,6 +1045,7 @@ fi
 # and the majority of utility binaries.
 %{_libdir}/freeradius/libfreeradius-arp.so
 %{_libdir}/freeradius/libfreeradius-bfd.so
+%{_libdir}/freeradius/libfreeradius-cbor.so
 %{_libdir}/freeradius/libfreeradius-dhcpv4.so
 %{_libdir}/freeradius/libfreeradius-dhcpv6.so
 %{_libdir}/freeradius/libfreeradius-dns.so
