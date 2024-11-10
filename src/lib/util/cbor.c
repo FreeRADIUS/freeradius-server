@@ -426,7 +426,7 @@ static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_len, fr_dbuff_
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	ssize_t slen;
-	uint64_t value;
+	uint64_t value = 0;
 
 	slen = cbor_expect_integer(&value, &work_dbuff);
 	if (slen < 0) return slen;
@@ -492,7 +492,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	ssize_t slen;
 	uint8_t header;
-	uint64_t value;
+	uint64_t value = 0;
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
 
@@ -525,7 +525,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	ssize_t slen;
 	uint8_t header;
-	uint64_t value;
+	uint64_t value = 0;
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
 
@@ -558,7 +558,7 @@ static ssize_t cbor_decode_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_d
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	ssize_t slen;
 	uint8_t major, info;
-	uint64_t value;
+	uint64_t value = 0;
 	int64_t neg;
 
 	FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
@@ -889,11 +889,9 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 */
 
 		if (info == CBOR_4_BYTE) {
-			uint8_t buffer[4];
 			float data;
 
-			FR_DBUFF_OUT_MEMCPY_RETURN(&buffer[0], &work_dbuff, sizeof(buffer));
-			memcpy(&data, &buffer[0], sizeof(data));
+			FR_DBUFF_OUT_RETURN(&data, &work_dbuff);
 
 			switch (type) {
 			case FR_TYPE_FLOAT32:
@@ -916,11 +914,9 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		}
 
 		if (info == CBOR_8_BYTE) {
-			uint8_t buffer[8];
 			double data;
 
-			FR_DBUFF_OUT_MEMCPY_RETURN(&buffer[0], &work_dbuff, sizeof(buffer));
-			memcpy(&data, &buffer[0], sizeof(data));
+			FR_DBUFF_OUT_RETURN(&data, &work_dbuff);
 
 			switch (type) {
 			case FR_TYPE_FLOAT32:
@@ -1145,7 +1141,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 	bool indefinite;
 	ssize_t slen;
 	fr_pair_t *vp;
-	uint64_t value;
+	uint64_t value = 0;
 	fr_dict_attr_t const *da;
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
