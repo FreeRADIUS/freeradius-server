@@ -13,6 +13,9 @@
 STRUCT	UUID			Client-ID.DUID			4
 MEMBER		Value					octets[16]
 
+STRUCT	UUID			Server-ID.DUID			4
+MEMBER		Value					octets[16]
+
 #
 #  Defining DUID for the Client-ID will automatically
 #  clone that definition for Server-ID.  See dictionary.rfc3315
