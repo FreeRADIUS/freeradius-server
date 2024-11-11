@@ -740,9 +740,19 @@ void dict_attr_location_set(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 	da->line = dctx->stack[dctx->stack_depth].line;
 }
 
+/** Add an attribute to the dictionary, or add it to a list of attributes to clone later
+ *
+ * @param[in] fixup	context to add an entry to (if needed).
+ * @param[in] da	to either add, or create a fixup for.
+ * @return
+ *	- 0 on success, and an attribute was added.
+ *	- 1 on success, and a deferred entry was added.
+ *	- -1 on failure.
+ */
 static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
 {
 	fr_dict_attr_ext_ref_t	*ref;
+	int ret = 0;
 
 	/*
 	 *	Check for any references associated with the attribute,
@@ -762,7 +772,6 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
 			}
 
 			if (dict_fixup_group(fixup, da, ref->unresolved) < 0) return -1;
-
 			break;
 
 		case FR_DICT_ATTR_REF_ENUM:
@@ -773,6 +782,7 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
 
 		case FR_DICT_ATTR_REF_CLONE:
 			if (dict_fixup_clone(fixup, da, ref->unresolved) < 0) return -1;
+			ret = 1;
 			break;
 
 		default:
@@ -783,7 +793,7 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
 		if (fr_dict_attr_add_initialised(da) < 0) goto error;
 	}
 
-	return 0;
+	return ret;
 }
 
 /** Check if this definition is a duplicate, and if it is, whether we should skip it error out
@@ -1005,32 +1015,42 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	if (dict_attr_add_or_fixup(&ctx->fixup, da) < 0) goto error;
+	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	default:
+		goto error;
 
-	/*
-	 *	Dynamically define where VSAs go.  Note that we CANNOT
-	 *	define VSAs until we define an attribute of type VSA!
-	 */
-	if (da->type == FR_TYPE_VSA) {
-		if (parent->flags.is_root) ctx->dict->vsa_parent = attr;
+	/* New attribute, fixup stack */
+	case 0:
+		/*
+		 *	Dynamically define where VSAs go.  Note that we CANNOT
+		 *	define VSAs until we define an attribute of type VSA!
+		 */
+		if (da->type == FR_TYPE_VSA) {
+			if (parent->flags.is_root) ctx->dict->vsa_parent = attr;
 
-		if (dict_fixup_vsa(&ctx->fixup, UNCONST(fr_dict_attr_t *, da)) < 0) {
-			return -1;	/* Leaves attr added */
+			if (dict_fixup_vsa(&ctx->fixup, UNCONST(fr_dict_attr_t *, da)) < 0) {
+				return -1;	/* Leaves attr added */
+			}
 		}
-	}
 
-	/*
-	 *	Adding an attribute of type 'struct' is an implicit
-	 *	BEGIN-STRUCT.
-	 */
-	if (da->type == FR_TYPE_STRUCT) {
-		if (dict_gctx_push(ctx, da) < 0) return -1;
-		ctx->value_attr = NULL;
-	} else {
-		memcpy(&ctx->value_attr, &da, sizeof(da));
-	}
+		/*
+		 *	Adding an attribute of type 'struct' is an implicit
+		 *	BEGIN-STRUCT.
+		 */
+		if (da->type == FR_TYPE_STRUCT) {
+			if (dict_gctx_push(ctx, da) < 0) return -1;
+			ctx->value_attr = NULL;
+		} else {
+			memcpy(&ctx->value_attr, &da, sizeof(da));
+		}
 
-	if (set_relative_attr) ctx->relative_attr = da;
+		if (set_relative_attr) ctx->relative_attr = da;
+		break;
+
+	/* Deferred attribute, don't begin the TLV section automatically */
+	case 1:
+		break;
+	}
 
 	return 0;
 }
@@ -1157,23 +1177,33 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	if (unlikely(dict_attr_add_or_fixup(&ctx->fixup, da) < 0)) return -1;
+	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	default:
+		goto error;
 
-	/*
-	 *	Adding an attribute of type 'struct' is an implicit
-	 *	BEGIN-STRUCT.
-	 */
-	if (da->type == FR_TYPE_STRUCT) {
-		if (dict_gctx_push(ctx, da) < 0) return -1;
-		ctx->value_attr = NULL;
-	} else {
-		memcpy(&ctx->value_attr, &da, sizeof(da));
-	}
+	/* New attribute, fixup stack */
+	case 0:
+		/*
+		 *	Adding an attribute of type 'struct' is an implicit
+		 *	BEGIN-STRUCT.
+		 */
+		if (da->type == FR_TYPE_STRUCT) {
+			if (dict_gctx_push(ctx, da) < 0) return -1;
+			ctx->value_attr = NULL;
+		} else {
+			memcpy(&ctx->value_attr, &da, sizeof(da));
+		}
 
-	if (da->type == FR_TYPE_TLV) {
-		ctx->relative_attr = da;
-	} else {
-		ctx->relative_attr = NULL;
+		if (da->type == FR_TYPE_TLV) {
+			ctx->relative_attr = da;
+		} else {
+			ctx->relative_attr = NULL;
+		}
+		break;
+
+	/* Deferred attribute, don't begin the TLV section automatically */
+	case 1:
+		break;
 	}
 
 	return 0;
@@ -1266,9 +1296,17 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	if (unlikely(dict_attr_add_or_fixup(&ctx->fixup, da) < 0)) return -1;
+	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	default:
+		goto error;
 
-	memcpy(&ctx->value_attr, &da, sizeof(da));
+	case 0:
+		memcpy(&ctx->value_attr, &da, sizeof(da));
+		break;
+
+	case 1:
+		break;
+	}
 
 	return 0;
 }
@@ -1505,46 +1543,56 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		goto error;
 	}
 
-	if (unlikely(dict_attr_add_or_fixup(&ctx->fixup, da) < 0)) return -1;
+	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	default:
+		goto error;
 
-	/*
-	 *	A 'struct' can have a MEMBER of type 'tlv', but ONLY
-	 *	as the last entry in the 'struct'.  If we see that,
-	 *	set the previous attribute to the TLV we just added.
-	 *	This allows the children of the TLV to be parsed as
-	 *	partial OIDs, so we don't need to know the full path
-	 *	to them.
-	 */
-	if (da->type == FR_TYPE_TLV) {
-		ctx->relative_attr = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
-							    ctx->stack[ctx->stack_depth].member_num);
-		if (ctx->relative_attr && (dict_gctx_push(ctx, ctx->relative_attr) < 0)) return -1;
-
-	} else {
-
+	/* New attribute, fixup stack */
+	case 0:
 		/*
-		 *	Add the size of this member to the parent struct.
-		 */
-		ctx->stack[ctx->stack_depth].struct_size += da->flags.length;
+		*	A 'struct' can have a MEMBER of type 'tlv', but ONLY
+		*	as the last entry in the 'struct'.  If we see that,
+		*	set the previous attribute to the TLV we just added.
+		*	This allows the children of the TLV to be parsed as
+		*	partial OIDs, so we don't need to know the full path
+		*	to them.
+		*/
+		if (da->type == FR_TYPE_TLV) {
+			ctx->relative_attr = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
+								ctx->stack[ctx->stack_depth].member_num);
+			if (ctx->relative_attr && (dict_gctx_push(ctx, ctx->relative_attr) < 0)) return -1;
 
-		/*
-		 *	Check for overflow.
-		 */
-		if (ctx->stack[ctx->stack_depth].da->flags.length &&
-		    (ctx->stack[ctx->stack_depth].struct_size > ctx->stack[ctx->stack_depth].da->flags.length)) {
-			fr_strerror_printf("'struct' %s has fixed size %u, but member %s overflows that length",
-					   ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length,
-					   argv[0]);
-			return -1;
+		} else {
+
+			/*
+			*	Add the size of this member to the parent struct.
+			*/
+			ctx->stack[ctx->stack_depth].struct_size += da->flags.length;
+
+			/*
+			*	Check for overflow.
+			*/
+			if (ctx->stack[ctx->stack_depth].da->flags.length &&
+			(ctx->stack[ctx->stack_depth].struct_size > ctx->stack[ctx->stack_depth].da->flags.length)) {
+				fr_strerror_printf("'struct' %s has fixed size %u, but member %s overflows that length",
+						ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length,
+						argv[0]);
+				return -1;
+			}
 		}
-	}
 
-	/*
-	 *	Adding a member of type 'struct' is an implicit BEGIN-STRUCT.
-	 */
-	if (da->type == FR_TYPE_STRUCT) {
-		if (dict_gctx_push(ctx, da) < 0) return -1;
-		ctx->value_attr = NULL;
+		/*
+		*	Adding a member of type 'struct' is an implicit BEGIN-STRUCT.
+		*/
+		if (da->type == FR_TYPE_STRUCT) {
+			if (dict_gctx_push(ctx, da) < 0) return -1;
+			ctx->value_attr = NULL;
+		}
+		break;
+
+	/* Deferred attribute, don't begin the TLV section automatically */
+	case 1:
+		break;
 	}
 
 	return 0;
@@ -1680,9 +1728,9 @@ static int dict_read_process_flags(UNUSED fr_dict_t *dict, char **argv, int argc
  */
 static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc)
 {
+	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	int				i;
 	fr_dict_attr_t const	       	*parent = NULL;
-	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
 	unsigned int			attr;
 	char				*key_attr = argv[1];
 	char			        *name = argv[0];
@@ -1804,26 +1852,35 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
 	 */
-	if (unlikely(dict_attr_add_or_fixup(&ctx->fixup, da) < 0)) goto error;
+	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	default:
+		goto error;
 
-	da = dict_attr_by_name(NULL, parent, name);
-	if (!da) return -1;
+	/* FIXME: Should dict_attr_enum_add_name also be called in the fixup code? */
+	case 0:
+		da = dict_attr_by_name(NULL, parent, name);
+		if (!da) return -1;
 
-	/*
-	 *	A STRUCT definition is an implicit BEGIN-STRUCT.
-	 */
-	ctx->relative_attr = NULL;
-	if (dict_gctx_push(ctx, da) < 0) return -1;
+		/*
+		*	A STRUCT definition is an implicit BEGIN-STRUCT.
+		*/
+		ctx->relative_attr = NULL;
+		if (dict_gctx_push(ctx, da) < 0) return -1;
 
-	/*
-	 *	Add the VALUE to the parent attribute, and ensure that
-	 *	the VALUE also contains a pointer to the child struct.
-	 */
-	if (dict_attr_enum_add_name(fr_dict_attr_unconst(parent), name, &value, false, true, da) < 0) {
+		/*
+		*	Add the VALUE to the parent attribute, and ensure that
+		*	the VALUE also contains a pointer to the child struct.
+		*/
+		if (dict_attr_enum_add_name(fr_dict_attr_unconst(parent), name, &value, false, true, da) < 0) {
+			fr_value_box_clear(&value);
+			return -1;
+		}
 		fr_value_box_clear(&value);
-		return -1;
+		break;
+
+	case 1:
+		break;
 	}
-	fr_value_box_clear(&value);
 
 	return 0;
 }
