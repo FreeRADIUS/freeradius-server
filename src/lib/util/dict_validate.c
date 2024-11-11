@@ -508,17 +508,15 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			fr_dict_attr_t const *sibling;
 
 			sibling = fr_dict_attr_child_by_num(parent, (attr) - 1);
-			if (!sibling) {
-				fr_strerror_printf("Child \"%s\" of 'struct' attribute \"%s\" MUST be "
-						   "numbered consecutively %u.",
-						   name, parent->name, attr);
-				return false;
-			}
+
+			/*
+			 *	sibling might not exist, if it's a deferred 'tlv clone=...'
+			 */
 
 			/*
 			 *	Variable sized elements cannot have anything after them in a struct.
 			 */
-			if (!sibling->flags.length && !sibling->flags.is_known_width) {
+			if (sibling && !sibling->flags.length && !sibling->flags.is_known_width) {
 				fr_strerror_const("No other field can follow a struct MEMBER which is variable sized");
 				return false;
 			}
@@ -526,7 +524,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			/*
 			 *	The same goes for arrays.
 			 */
-			if (sibling->flags.array) {
+			if (sibling && sibling->flags.array) {
 				fr_strerror_const("No other field can follow a struct MEMBER which is 'array'");
 				return false;
 			}

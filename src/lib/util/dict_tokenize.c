@@ -1418,16 +1418,14 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 		previous = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
 						  ctx->stack[ctx->stack_depth].member_num);
-		if (!previous) {
-			fr_strerror_const("Failed to find previous MEMBER");
-			goto error;
-		}
-
 		/*
 		 *	Check that the previous bit field ended on a
 		 *	byte boundary.
+		 *
+		 *	Note that the previous attribute might be a deferred TLV, in which case it doesn't
+		 *	exist.  That's fine.
 		 */
-		if (previous->flags.extra && (previous->flags.subtype == FLAG_BIT_FIELD)) {
+		if (previous && previous->flags.extra && (previous->flags.subtype == FLAG_BIT_FIELD)) {
 			/*
 			 *	This attribute is a bit field.  Keep
 			 *	track of where in the byte we are
