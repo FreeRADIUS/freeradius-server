@@ -2120,6 +2120,24 @@ static inline int dict_filename_add(char **filename_out, fr_dict_t *dict, char c
 	return 0;
 }
 
+#ifndef NDEBUG
+/** See if we have already loaded the file,
+ *
+ */
+static inline bool dict_filename_loaded(fr_dict_t *dict, char const *filename)
+{
+	fr_dict_filename_t *file;
+
+	for (file = (fr_dict_filename_t *) fr_dlist_head(&dict->filenames);
+	     file != NULL;
+	     file = (fr_dict_filename_t *) fr_dlist_next(&dict->filenames, &file->entry)) {
+		if (strcmp(file->filename, filename) == 0) return true;
+	}
+
+	return false;
+}
+#endif
+
 /** Parse a dictionary file
  *
  * @param[in] ctx	Contains the current state of the dictionary parser.
@@ -2204,12 +2222,14 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 	}
 
 	/*
-	 *	Copy the filename into the dictionary and add it to the ctx
-	 *
-	 *	This string is safe to assign to the filename pointer in
-	 *	any attributes added beneath the dictionary.
+	 *	See if we have already loaded this filename.  If so, suppress it.
 	 */
-	if (unlikely(dict_filename_add(&ctx->stack[ctx->stack_depth].filename, ctx->dict, fn) < 0)) return -1;
+#ifndef NDEBUG
+	if (unlikely(dict_filename_loaded(ctx->dict, fn))) {
+		fr_strerror_printf("ERROR - we have a recursive $INCLUDE or load of dictionary %s", fn);
+		return -1;
+	}
+#endif
 
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
@@ -2249,6 +2269,16 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 		goto perm_error;
 	}
 #endif
+
+	/*
+	 *	Now that we've opened the file, copy the filename into the dictionary and add it to the ctx
+	 *	This string is safe to assign to the filename pointer in any attributes added beneath the
+	 *	dictionary.
+	 */
+	if (unlikely(dict_filename_add(&ctx->stack[ctx->stack_depth].filename, ctx->dict, fn) < 0)) {
+		fr_strerror_const("Out of memory");
+		goto perm_error;
+	}
 
 	memset(&base_flags, 0, sizeof(base_flags));
 
