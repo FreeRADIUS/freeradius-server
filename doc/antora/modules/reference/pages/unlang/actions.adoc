@@ -28,9 +28,14 @@ following keywords:
 * `if`
 * `else`
 * `elsif`
+* `foreach`
 * `group`
+* `limit`
+* `switch`
 * `timeout`
 * `transaction`
+
+The `actions` block cannot be used for `redundant`, `redundant-load-balance`, or `load-balance` keywords.  Those sections already have default actions to take for the various return codes.  Allowing the `actions` block to over-ride those default actions would cause those sections to operate incorrectly.
 
 == Priorities
 

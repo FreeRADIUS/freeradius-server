@@ -2014,7 +2014,7 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 
 	/*
 	 *	Over-riding the actions can be done in certain limited
-	 *	situations.  In other situations (e.g. "switch",
+	 *	situations.  In other situations (e.g. "redundant", 
 	 *	"load-balance"), it doesn't make sense.
 	 *
 	 *	Note that this limitation also applies to "retry"
@@ -2029,7 +2029,10 @@ static bool compile_action_subsection(unlang_t *c, CONF_SECTION *cs, CONF_SECTIO
 	case UNLANG_TYPE_IF:
 	case UNLANG_TYPE_ELSE:
 	case UNLANG_TYPE_ELSIF:
+	case UNLANG_TYPE_FOREACH:
 	case UNLANG_TYPE_GROUP:
+	case UNLANG_TYPE_LIMIT:
+	case UNLANG_TYPE_SWITCH:
 	case UNLANG_TYPE_TIMEOUT:
 	case UNLANG_TYPE_TRANSACTION:
 		break;
