@@ -652,6 +652,8 @@ static int dict_gctx_push(dict_tokenize_ctx_t *ctx, fr_dict_attr_t const *da)
 		return -1;
 	}
 
+	fr_assert(da != NULL);
+
 	ctx->stack_depth++;
 	memset(&ctx->stack[ctx->stack_depth], 0, sizeof(ctx->stack[ctx->stack_depth]));
 
@@ -1518,7 +1520,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	if (da->type == FR_TYPE_TLV) {
 		ctx->relative_attr = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
 							    ctx->stack[ctx->stack_depth].member_num);
-		if (dict_gctx_push(ctx, ctx->relative_attr) < 0) return -1;
+		if (ctx->relative_attr && (dict_gctx_push(ctx, ctx->relative_attr) < 0)) return -1;
 
 	} else {
 
