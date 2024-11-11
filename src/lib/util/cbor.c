@@ -1285,6 +1285,104 @@ encode_children:
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
+/** Guess the data type of the CBOR data.
+ *
+ *  We've parsed the attribute number, and found that we don't have a dictionary entry for it.  But rather
+ *  than create an attribute of type octets, we try to guess the data type.
+ */
+static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff)
+{
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	uint8_t major, info;
+	uint64_t value;
+
+	/*
+	 *	get the next byte, which is a CBOR header.
+	 */
+	FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
+
+	info = major & 0x1f;
+	major >>= 5;
+
+	switch (major) {
+	case CBOR_INTEGER:
+		return FR_TYPE_UINT64;
+
+	case CBOR_NEGATIVE:
+		return FR_TYPE_UINT64;
+
+	case CBOR_STRING:
+		return FR_TYPE_STRING;
+
+	case CBOR_OCTETS:
+		return FR_TYPE_OCTETS;
+
+	case CBOR_ARRAY:
+		break;		/* this shouldn't happen??? */
+
+	case CBOR_MAP:
+		return FR_TYPE_TLV;
+
+		/*
+		 *	Look at the tag to determine what it is
+		 */
+	case CBOR_TAG:
+		slen = cbor_decode_integer(&value, info, &work_dbuff);
+		if (slen < 0) break;
+
+		switch (value) {
+		case 1:
+		case 1001:
+			return FR_TYPE_DATE;
+
+		case 1002:
+			return FR_TYPE_TIME_DELTA;
+
+		case 48:
+			return FR_TYPE_ETHERNET;
+
+		case 52:
+			FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
+
+			major >>= 5;
+
+			if (major == CBOR_ARRAY) {
+				return FR_TYPE_IPV4_PREFIX;
+			}
+			return FR_TYPE_IPV4_ADDR;
+
+		case 54:
+			FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
+
+			major >>= 5;
+
+			if (major == CBOR_ARRAY) {
+				return FR_TYPE_IPV6_PREFIX;
+			}
+			return FR_TYPE_IPV6_ADDR;
+
+		default:
+			break;
+		}
+
+		break;
+
+	case CBOR_FLOAT:
+		return FR_TYPE_FLOAT64;
+	}
+
+
+	/*
+	 *	No idea.  :(
+	 *
+	 *	@todo - also check the cbor data, and return the length of cbor data which needs to be
+	 *	converted to data type 'octets'.  This work involves mostly parsing the cbor data, which isn't
+	 *	trivial.
+	 */
+	return FR_TYPE_OCTETS;
+}
+
 ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *dbuff,
 			    fr_dict_attr_t const *parent, bool tainted)
 {
@@ -1327,13 +1425,17 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 
 	da = fr_dict_attr_child_by_num(parent, value);
 	if (!da) {
+		fr_type_t type;
+
+		type = cbor_guess_type(&work_dbuff);
+
 		/*
 		 *	@todo - the value here isn't a cbor octets type, but is instead cbor data.  Since cbor
 		 *	is typed, we _could_ perhaps instead discover the type from the cbor data, and then
 		 *	use that instead.  This would involve creating a function which maps cbor types to our
 		 *	data types.
 		 */
-		da = fr_dict_attr_unknown_raw_afrom_num(ctx, parent, value);
+		da = fr_dict_attr_unknown_typed_afrom_num(ctx, parent, value, type);
 		if (!da) goto oom;
 	}
 
