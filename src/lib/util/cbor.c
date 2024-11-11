@@ -1152,6 +1152,10 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			indefinite = false;
 		}
 
+#ifdef STATIC_ANALYZER
+		if (value > fr_dbuff_remaining(&work_dbuff)) return -1;
+#endif
+
 		/*
 		 *	Loop until we decode everything.  For simplicity, we handle indefinite and definite
 		 *	length arrays in the same loop.
@@ -1513,6 +1517,10 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 
 		indefinite = false;
 	}
+
+#ifdef STATIC_ANALYZER
+	if (value > fr_dbuff_remaining(&work_dbuff)) return -1;
+#endif
 
 	/*
 	 *	Loop until we decode everything.  For simplicity, we handle indefinite and definite
