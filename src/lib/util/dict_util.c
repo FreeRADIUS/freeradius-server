@@ -643,13 +643,29 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
  */
 int dict_attr_num_init(fr_dict_attr_t *da, unsigned int num)
 {
-	if (da->attr != 0) {
+	if (da->attr_set) {
 		fr_strerror_const("Attribute number already set");
 		return -1;
 	}
 	da->attr = num;
+	da->attr_set = true;
 
 	return 0;
+}
+
+/** Set the attribute number (if any)
+ *
+ * @note Must have a parent set.
+ *
+ * @param[in] da		to set the attribute number for.
+ */
+int dict_attr_num_init_name_only(fr_dict_attr_t *da)
+{
+	if (!da->parent) {
+		fr_strerror_const("Attribute must have parent set before automatically setting attribute number");
+		return -1;
+	}
+	return dict_attr_num_init(da, ++fr_dict_attr_unconst(da->parent)->last_child_attr);
 }
 
 /** Set where the dictionary attribute was defined
@@ -737,6 +753,25 @@ int dict_attr_finalise(fr_dict_attr_t **da_p, char const *name)
 	return 0;
 }
 
+static inline CC_HINT(always_inline)
+int dict_attr_init_common(char const *filename, int line,
+			  fr_dict_attr_t **da_p,
+			  fr_dict_attr_t const *parent,
+			  fr_type_t type, dict_attr_args_t const *args)
+{
+	dict_attr_location_init((*da_p), filename, line);
+
+	if (unlikely(dict_attr_type_init(da_p, type) < 0)) return -1;
+
+	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;;
+
+	if (args->ref && (dict_attr_ref_aset(da_p, args->ref, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
+
+	if (args->flags) (*da_p)->flags = *args->flags;
+
+	return 0;
+}
+
 /** Initialise fields in a dictionary attribute structure
  *
  * This function is a wrapper around the other initialisation functions.
@@ -769,17 +804,53 @@ int _dict_attr_init(char const *filename, int line,
 		    char const *name, unsigned int attr,
 		    fr_type_t type, dict_attr_args_t const *args)
 {
-	dict_attr_location_init((*da_p), filename, line);
-
-	if (unlikely(dict_attr_type_init(da_p, type) < 0)) return -1;
-
-	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;;
+	if (unlikely(dict_attr_init_common(filename, line, da_p, parent, type, args) < 0)) return -1;
 
 	if (unlikely(dict_attr_num_init(*da_p, attr) < 0)) return -1;
 
-	if (args->ref && (dict_attr_ref_aset(da_p, args->ref, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
+	if (unlikely(dict_attr_finalise(da_p, name) < 0)) return -1;
 
-	if (args->flags) (*da_p)->flags = *args->flags;
+	return 0;
+}
+
+/** Initialise fields in a dictionary attribute structure
+ *
+ * This function is a wrapper around the other initialisation functions.
+ *
+ * The reason for the separation, is that sometimes we're initialising a dictionary attribute
+ * by parsing an actual dictionary file, and other times we're copying attribute, or initialising
+ * them programatically.
+ *
+ * This function should only be used for the second case, where we have a complet attribute
+ * definition already.
+ *
+ * @note This function can only be used _before_ the attribute is inserted into the dictionary.
+ *
+ * @param[in] filename		file.
+ * @param[in] line		number.
+ * @param[in] da_p		to initialise.
+ * @param[in] parent		of the attribute, if none, this attribute will
+ *				be initialised as a dictionary root.
+ * @param[in] name		of attribute.  Pass NULL for auto-generated name.
+ *				automatically generated.
+ * @param[in] type		of the attribute.
+ * @param[in] args		optional initialisation arguments.
+ * @return
+ *	- 0 on success.
+ *	- <0 on error.
+ */
+int _dict_attr_init_name_only(char const *filename, int line,
+			 fr_dict_attr_t **da_p,
+			 fr_dict_attr_t const *parent,
+			 char const *name,
+			 fr_type_t type, dict_attr_args_t const *args)
+{
+	if (unlikely(dict_attr_init_common(filename, line, da_p, parent, type, args) < 0)) return -1;
+
+	/*
+	 *	Automatically generate the attribute number when the attribut is added.
+	 */
+	(*da_p)->flags.name_only = true;
 
 	if (unlikely(dict_attr_finalise(da_p, name) < 0)) return -1;
 
@@ -1526,6 +1597,32 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	}
 
 	/*
+	 *	In some cases name_only attributes may have explicitly
+	 *	assigned numbers. Ensure that there are no conflicts
+	 *	between auto-assigned and explkicitly assigned.
+	 */
+	if (da->flags.name_only) {
+		if (da->attr_set) {
+			fr_dict_attr_t *parent = fr_dict_attr_unconst(da->parent);
+
+			if (da->attr > da->parent->last_child_attr) {
+				parent->last_child_attr = da->attr;
+
+				/*
+				*	If the attribute is outside of the bounds of
+				*	the type size, then it MUST be an internal
+				*	attribute.  Set the flag in this attribute, so
+				*	that the encoder doesn't have to do complex
+				*	checks.
+				*/
+				if ((da->attr >= (((uint64_t)1) << (8 * parent->flags.type_size)))) da->flags.internal = true;
+			}
+		} else if (unlikely(dict_attr_num_init_name_only(da)) < 0) {
+			return -1;
+		}
+	}
+
+	/*
 	 *	Attributes can also be indexed by number.  Ensure that
 	 *	all attributes of the same number have the same
 	 *	properties.
@@ -1536,30 +1633,6 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 				   "Originally defined by '%s' at %s[%u]",
 				   da->attr, exists->name, exists->filename, exists->line);
 		return -1;
-	}
-
-	/*
-	 *	In some cases name_only attributes may have explicitly
-	 *	assigned numbers. Ensure that there are no conflicts
-	 *	between auto-assigned and explkicitly assigned.
-	 */
-	if (da->flags.name_only) {
-		fr_dict_attr_t *parent = fr_dict_attr_unconst(da->parent);
-
-		if (da->attr > da->parent->last_child_attr) {
-			parent->last_child_attr = da->attr;
-
-			/*
-			*	If the attribute is outside of the bounds of
-			*	the type size, then it MUST be an internal
-			*	attribute.  Set the flag in this attribute, so
-			*	that the encoder doesn't have to do complex
-			*	checks.
-			*/
-			if ((da->attr >= (((uint64_t)1) << (8 * parent->flags.type_size)))) da->flags.internal = true;
-		} else {
-			if (unlikely(dict_attr_num_init(da, ++fr_dict_attr_unconst(da->parent)->last_child_attr)) < 0) return -1;
-		}
 	}
 
 	/*
@@ -1621,6 +1694,32 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	return fr_dict_attr_add_initialised(da);
 }
+
+/** Add an attribute to the dictionary
+ *
+ * @param[in] dict		of protocol context we're operating in.
+ *				If NULL the internal dictionary will be used.
+ * @param[in] parent		to add attribute under.
+ * @param[in] name		of the attribute.
+ * @param[in] type		of attribute.
+ * @param[in] flags		to set in the attribute.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_attr_add_name_only(fr_dict_t *dict, fr_dict_attr_t const *parent,
+			       char const *name, fr_type_t type, fr_dict_attr_flags_t const *flags)
+{
+	fr_dict_attr_t *da;
+
+	da = dict_attr_alloc_null(dict->pool, dict->proto);
+	if (unlikely(!da)) return -1;
+
+	if (dict_attr_init_name_only(&da, parent, name,type, &(dict_attr_args_t){ .flags = flags}) < 0) return -1;
+
+	return fr_dict_attr_add_initialised(da);
+}
+
 
 int dict_attr_enum_add_name(fr_dict_attr_t *da, char const *name,
 			    fr_value_box_t const *value,

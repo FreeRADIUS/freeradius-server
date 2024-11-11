@@ -542,8 +542,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static inline int attr_check(CONF_SECTION *conf, tmpl_t *tmpl, char const *name, fr_dict_attr_flags_t *flags)
 {
 	if (tmpl_is_attr_unresolved(tmpl) && !fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), tmpl_attr_tail_unresolved(tmpl))) {
-		if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
-				     tmpl_attr_tail_unresolved(tmpl), 0, FR_TYPE_UINT64, flags) < 0) {
+		if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius),
+					       tmpl_attr_tail_unresolved(tmpl), FR_TYPE_UINT64, flags) < 0) {
 			cf_log_perr(conf, "Failed defining %s attribute", name);
 			return -1;
 		}

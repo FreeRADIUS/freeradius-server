@@ -193,6 +193,8 @@ int			dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 
 int			dict_attr_num_init(fr_dict_attr_t *da, unsigned int num);
 
+int			dict_attr_num_init_name_only(fr_dict_attr_t *da);
+
 void			dict_attr_location_init(fr_dict_attr_t *da, char const *filename, int line);
 
 int			dict_attr_finalise(fr_dict_attr_t **da_p, char const *name);
@@ -207,15 +209,23 @@ int			dict_attr_finalise(fr_dict_attr_t **da_p, char const *name);
  * @{
  */
 #define 		dict_attr_init(_da_p, _parent, _name, _attr, _type, _args) \
-				_dict_attr_init(__FILE__, __LINE__, _da_p, _parent, _name, _attr, _type, _args)
+				       _dict_attr_init(__FILE__, __LINE__, _da_p, _parent, _name, _attr, _type, _args)
 
 int			_dict_attr_init(char const *filename, int line,
 					fr_dict_attr_t **da_p, fr_dict_attr_t const *parent,
 				        char const *name, unsigned int attr,
 				        fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(1));
 
+#define 		dict_attr_init_name_only(_da_p, _parent, _name, _type, _args) \
+					    _dict_attr_init_name_only(__FILE__, __LINE__, _da_p, _parent, _name,  _type, _args)
+
+int			_dict_attr_init_name_only(char const *filename, int line,
+					     fr_dict_attr_t **da_p, fr_dict_attr_t const *parent,
+					     char const *name,
+					     fr_type_t type, dict_attr_args_t const *args) CC_HINT(nonnull(1));
+
 #define			dict_attr_alloc_root(_ctx, _dict, _name, _attr, _args) \
-				_dict_attr_alloc_root(__FILE__, __LINE__, _ctx, _dict, _name, _attr, _args)
+					     _dict_attr_alloc_root(__FILE__, __LINE__, _ctx, _dict, _name, _attr, _args)
 fr_dict_attr_t		*_dict_attr_alloc_root(char const *filename, int line,
 					       TALLOC_CTX *ctx,
 					       fr_dict_t const *dict,

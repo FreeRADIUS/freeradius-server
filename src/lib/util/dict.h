@@ -95,7 +95,10 @@ typedef struct {
 
 	unsigned int		counter : 1;       		//!< integer attribute is actually an impulse / counter
 
-	unsigned int		name_only : 1;			//!< this attribute should always be referred to by name, not by number
+	unsigned int		name_only : 1;			//!< this attribute should always be referred to by name.
+								///< A number will be allocated, but the allocation scheme
+								///< will depend on the parent, and definition type, and
+								///< may not be stable in all instances.
 
 	unsigned int		secret : 1;			//!< this attribute should be omitted in debug mode
 
@@ -187,6 +190,11 @@ struct dict_attr_s {
 	fr_dict_attr_t const	*next;				//!< Next child in bin.
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
+
+	bool			attr_set:1;			//!< Attribute number has been set.
+								//!< We need the full range of values 0-UINT32_MAX
+								///< so we can't use any attr values to indicate
+								///< "unsetness".
 
 	char const		*filename;			//!< Where the attribute was defined.
 								///< this buffer's lifetime is bound to the
@@ -502,6 +510,9 @@ int 			fr_dict_attr_add_initialised(fr_dict_attr_t *da) CC_HINT(nonnull);
 
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, unsigned int attr,
 					 fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
+
+int			fr_dict_attr_add_name_only(fr_dict_t *dict, fr_dict_attr_t const *parent,
+						   char const *name, fr_type_t type, fr_dict_attr_flags_t const *flags) CC_HINT(nonnull(1,2,3));
 
 int			fr_dict_enum_add_name(fr_dict_attr_t *da, char const *name,
 					      fr_value_box_t const *value, bool coerce, bool replace);

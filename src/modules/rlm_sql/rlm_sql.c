@@ -2213,7 +2213,6 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	if (cf_pair_find(conf, "group_membership_query")) {
 		char const *group_attribute;
-		fr_dict_attr_flags_t flags = { .name_only = 1 };
 		char buffer[256];
 
 		if (inst->config.group_attribute) {
@@ -2227,8 +2226,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 		boot->group_da = fr_dict_attr_by_name(NULL, fr_dict_root(dict_freeradius), group_attribute);
 		if (!boot->group_da) {
-			if (fr_dict_attr_add(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, 0,
-					FR_TYPE_STRING, &flags) < 0) {
+			if (fr_dict_attr_add_name_only(fr_dict_unconst(dict_freeradius), fr_dict_root(dict_freeradius), group_attribute, FR_TYPE_STRING, NULL) < 0) {
 				cf_log_perr(conf, "Failed defining group attribute");
 				return -1;
 			}

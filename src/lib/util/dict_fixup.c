@@ -728,8 +728,7 @@ static inline CC_HINT(always_inline) int dict_fixup_vsa_apply(UNUSED dict_fixup_
 	     dv = fr_hash_table_iter_next(dict->vendors_by_num, &iter)) {
 		if (dict_attr_child_by_num(fixup->da, dv->pen)) continue;
 
-		if (fr_dict_attr_add(dict, fixup->da, dv->name, dv->pen,
-				     FR_TYPE_VENDOR, &(fr_dict_attr_flags_t) {}) < 0) return -1;
+		if (fr_dict_attr_add(dict, fixup->da, dv->name, dv->pen, FR_TYPE_VENDOR, NULL) < 0) return -1;
 	}
 
 	return 0;
