@@ -125,7 +125,8 @@ static ssize_t cbor_encode_octets(fr_dbuff_t *dbuff, uint8_t const *data, size_t
 	slen = cbor_encode_integer(&work_dbuff, CBOR_OCTETS, data_len);
 	if (slen <= 0) return slen;
 
-	FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, data, data_len);
+	if (data_len > 0) FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, data, data_len);
+
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
@@ -224,7 +225,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_integer(&work_dbuff, CBOR_STRING, vb->vb_length);
 		if (slen <= 0) return slen;
 
-		FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vb->vb_strvalue, vb->vb_length);
+		if (vb->vb_length) FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vb->vb_strvalue, vb->vb_length);
 		break;
 
 		/*
@@ -835,7 +836,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			return -1;
 		}
 		talloc_set_type(ptr, char);
-		FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
+		if (value) FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
 		ptr[value] = '\0';
 
 		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_STRING, enumv, tainted);
@@ -871,7 +872,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_OCTETS, enumv, tainted);
 		fr_value_box_memdup_shallow(vb, NULL, (uint8_t const *) ptr, value, false); /* tainted? */
 
-		FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
+		if (value) FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
 		break;
 
 	case CBOR_INTEGER:

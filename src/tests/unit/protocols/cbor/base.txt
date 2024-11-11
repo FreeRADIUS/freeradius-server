@@ -72,5 +72,20 @@ match Vendor-Specific = { Nokia-SR = { raw.255 = 3600.5 } }
 encode-pair Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
 match 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ff 66 33 36 30 30 2e 35 ff ff ff
 
+#
+#  Zero-length strings and octets
+#
+encode-pair User-Name = ""
+match 9f a1 01 40 ff
+
+decode-pair -
+match User-Name = ""
+
+encode-pair Class = 0x
+match 9f a1 18 19 60 ff
+
+decode-pair -
+match Class = 0x
+
 count
-match 30
+match 38
