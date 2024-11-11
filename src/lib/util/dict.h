@@ -191,10 +191,16 @@ struct dict_attr_s {
 
 	fr_dict_attr_flags_t	flags;				//!< Flags.
 
-	bool			attr_set:1;			//!< Attribute number has been set.
+	struct {
+		bool			attr_set : 1;		//!< Attribute number has been set.
 								//!< We need the full range of values 0-UINT32_MAX
 								///< so we can't use any attr values to indicate
 								///< "unsetness".
+
+		bool			finalised : 1;		//!< Attribute definition is complete and modifications
+								///< that would change the address of the memory chunk
+								///< of the attribute are no longer permitted.
+	} state;
 
 	char const		*filename;			//!< Where the attribute was defined.
 								///< this buffer's lifetime is bound to the

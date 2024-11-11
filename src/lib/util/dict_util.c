@@ -523,6 +523,11 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 		return -1;
 	}
 
+	if (unlikely((*da_p)->state.finalised == true)) {
+		fr_strerror_const("Can't perform type initialisation on finalised attribute");
+		return -1;
+	}
+
 	/*
 	 *	Structural types can have children
 	 *	so add the extension for them.
@@ -601,6 +606,7 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 {
 	fr_dict_attr_t *da = *da_p;
 
+
 	if (unlikely((*da_p)->type == FR_TYPE_NULL)) {
 		fr_strerror_const("Attribute type must be set before initialising parent.  Use dict_attr_type_init() first");
 		return -1;
@@ -611,6 +617,13 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
 				   da->name, parent->name, da->parent->name);
 		return -1;
 	}
+
+	if (unlikely((*da_p)->state.finalised == true)) {
+		fr_strerror_printf("Attempting to set parent for '%s' to '%s', but attribute already finalised",
+				   da->name, parent->name);
+		return -1;
+	}
+
 	da->parent = parent;
 	da->dict = parent->dict;
 	da->depth = parent->depth + 1;
@@ -643,12 +656,12 @@ int dict_attr_parent_init(fr_dict_attr_t **da_p, fr_dict_attr_t const *parent)
  */
 int dict_attr_num_init(fr_dict_attr_t *da, unsigned int num)
 {
-	if (da->attr_set) {
+	if (da->state.attr_set) {
 		fr_strerror_const("Attribute number already set");
 		return -1;
 	}
 	da->attr = num;
-	da->attr_set = true;
+	da->state.attr_set = true;
 
 	return 0;
 }
@@ -749,6 +762,8 @@ int dict_attr_finalise(fr_dict_attr_t **da_p, char const *name)
 	if (dict_attr_name_set(da_p, name) < 0) return -1;
 
 	DA_VERIFY(*da_p);
+
+	(*da_p)->state.finalised = true;
 
 	return 0;
 }
@@ -1573,6 +1588,11 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 		return -1;
 	}
 
+	if (unlikely(da->state.finalised == false)) {
+		fr_strerror_const("Attribute has not been finalised");
+		return -1;
+	}
+
 	/*
 	 *	Check that the definition is valid.
 	 */
@@ -1602,7 +1622,7 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	 *	between auto-assigned and explkicitly assigned.
 	 */
 	if (da->flags.name_only) {
-		if (da->attr_set) {
+		if (da->state.attr_set) {
 			fr_dict_attr_t *parent = fr_dict_attr_unconst(da->parent);
 
 			if (da->attr > da->parent->last_child_attr) {
