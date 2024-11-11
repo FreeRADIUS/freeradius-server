@@ -126,127 +126,8 @@ static inline CC_HINT(always_inline) int dict_fixup_common(fr_dlist_head_t *fixu
 	return 0;
 }
 
-/** Add an enumeration value to an attribute which has not yet been defined
- *
- * @param[in] fctx		Holds current dictionary parsing information.
- * @param[in] filename		this fixup relates to.
- * @param[in] line		this fixup relates to.
- * @param[in] attr		The OID string pointing to the attribute
- *				to add the enumeration value to.
- * @param[in] attr_len		The length of the attr string.
- * @param[in] name		The name of the enumv.
- * @param[in] name_len		Length of the name string.
- * @param[in] value		Value string.  This is kept as a string until we know
- *				what type we want to transform it into.
- * @param[in] value_len		Length of the value string.
- * @param[in] parent		of this attribute.
- * @return
- *	- 0 on success.
- *	- -1 on out of memory.
- */
-int dict_fixup_enumv(dict_fixup_ctx_t *fctx, char const *filename, int line,
-		     char const *attr, size_t attr_len,
-		     char const *name, size_t name_len,
-		     char const *value, size_t value_len,
-		     fr_dict_attr_t const *parent)
-{
-	dict_fixup_enumv_t *fixup;
-
-	fixup = talloc(fctx->pool, dict_fixup_enumv_t);
-	if (!fixup) {
-	oom:
-		fr_strerror_const("Out of memory");
-		return -1;
-	}
-	*fixup = (dict_fixup_enumv_t) {
-		.attribute = talloc_bstrndup(fixup, attr, attr_len),
-		.name = talloc_bstrndup(fixup, name, name_len),
-		.value = talloc_bstrndup(fixup, value, value_len),
-		.parent = parent
-	};
-	if (!fixup->attribute || !fixup->name || !fixup->value) goto oom;
-
-	fixup->filename = talloc_strdup(fixup, filename);
-	if (!fixup->filename) goto oom;
-	fixup->line = line;
-
-	return dict_fixup_common(&fctx->enumv, &fixup->common);
-}
-
-/** Add a previously defined enumeration value to an existing attribute
- *
- * @param[in] fctx		Holds current dictionary parsing information.
- * @param[in] fixup		Hash table to fill.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
- */
-static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_enumv_t *fixup)
-{
-	fr_dict_attr_t 		*da;
-	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
-	fr_type_t		type;
-	int			ret;
-	fr_dict_attr_t const	*da_const;
-
-	da_const = fr_dict_attr_by_oid(NULL, fixup->parent, fixup->attribute);
-	if (!da_const) {
-		fr_strerror_printf_push("Failed resolving ATTRIBUTE referenced by VALUE '%s' at %s[%d]",
-					fixup->name, fr_cwd_strip(fixup->filename), fixup->line);
-		return -1;
-	}
-	da = fr_dict_attr_unconst(da_const);
-	type = da->type;
-
-	if (fr_value_box_from_str(fixup, &value, type, NULL,
-				  fixup->value, talloc_array_length(fixup->value) - 1,
-				  NULL, false) < 0) {
-		fr_strerror_printf_push("Invalid VALUE '%pV' for attribute '%s' at %s[%d]",
-					fr_box_strvalue_buffer(fixup->value),
-					da->name,
-					fr_cwd_strip(fixup->filename), fixup->line);
-		return -1;
-	}
-
-	ret = fr_dict_enum_add_name(da, fixup->name, &value, false, false);
-	fr_value_box_clear(&value);
-
-	if (ret < 0) return -1;
-
-	return 0;
-}
-
-/** Resolve a group reference
- *
- * This is required as the reference may point to another dictionary which
- * hasn't been loaded yet.
- *
- * @param[in] fctx		Holds current dictionary parsing information.
- * @param[in] da		The group dictionary attribute.
- * @param[in] ref		OID string representing what the group references.
- * @return
- *	- 0 on success.
- *	- -1 on out of memory.
- */
-int dict_fixup_group(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref)
-{
-	dict_fixup_group_t *fixup;
-
-	fixup = talloc(fctx->pool, dict_fixup_group_t);
-	if (!fixup) {
-		fr_strerror_const("Out of memory");
-		return -1;
-	}
-	*fixup = (dict_fixup_group_t) {
-		.da = da,
-		.ref = talloc_strdup(fixup, ref),
-	};
-
-	return dict_fixup_common(&fctx->group, &fixup->common);
-}
-
 /** Resolve a ref= or copy= value to a dictionary */
-static fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *root, char const *ref)
+fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *root, char const *ref)
 {
 	fr_dict_t			*dict = fr_dict_unconst(root->dict);
 	fr_dict_attr_t const		*da = root, *found;
@@ -333,6 +214,125 @@ static fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *root,
 	return found;
 }
 
+/** Add an enumeration value to an attribute which has not yet been defined
+ *
+ * @param[in] fctx		Holds current dictionary parsing information.
+ * @param[in] filename		this fixup relates to.
+ * @param[in] line		this fixup relates to.
+ * @param[in] attr		The OID string pointing to the attribute
+ *				to add the enumeration value to.
+ * @param[in] attr_len		The length of the attr string.
+ * @param[in] name		The name of the enumv.
+ * @param[in] name_len		Length of the name string.
+ * @param[in] value		Value string.  This is kept as a string until we know
+ *				what type we want to transform it into.
+ * @param[in] value_len		Length of the value string.
+ * @param[in] parent		of this attribute.
+ * @return
+ *	- 0 on success.
+ *	- -1 on out of memory.
+ */
+int dict_fixup_enumv_enqueue(dict_fixup_ctx_t *fctx, char const *filename, int line,
+			     char const *attr, size_t attr_len,
+			     char const *name, size_t name_len,
+			     char const *value, size_t value_len,
+			     fr_dict_attr_t const *parent)
+{
+	dict_fixup_enumv_t *fixup;
+
+	fixup = talloc(fctx->pool, dict_fixup_enumv_t);
+	if (!fixup) {
+	oom:
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+	*fixup = (dict_fixup_enumv_t) {
+		.attribute = talloc_bstrndup(fixup, attr, attr_len),
+		.name = talloc_bstrndup(fixup, name, name_len),
+		.value = talloc_bstrndup(fixup, value, value_len),
+		.parent = parent
+	};
+	if (!fixup->attribute || !fixup->name || !fixup->value) goto oom;
+
+	fixup->filename = talloc_strdup(fixup, filename);
+	if (!fixup->filename) goto oom;
+	fixup->line = line;
+
+	return dict_fixup_common(&fctx->enumv, &fixup->common);
+}
+
+/** Add a previously defined enumeration value to an existing attribute
+ *
+ * @param[in] fctx		Holds current dictionary parsing information.
+ * @param[in] fixup		Hash table to fill.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline CC_HINT(always_inline) int dict_fixup_enumv_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_enumv_t *fixup)
+{
+	fr_dict_attr_t 		*da;
+	fr_value_box_t		value = FR_VALUE_BOX_INITIALISER_NULL(value);
+	fr_type_t		type;
+	int			ret;
+	fr_dict_attr_t const	*da_const;
+
+	da_const = fr_dict_attr_by_oid(NULL, fixup->parent, fixup->attribute);
+	if (!da_const) {
+		fr_strerror_printf_push("Failed resolving ATTRIBUTE referenced by VALUE '%s' at %s[%d]",
+					fixup->name, fr_cwd_strip(fixup->filename), fixup->line);
+		return -1;
+	}
+	da = fr_dict_attr_unconst(da_const);
+	type = da->type;
+
+	if (fr_value_box_from_str(fixup, &value, type, NULL,
+				  fixup->value, talloc_array_length(fixup->value) - 1,
+				  NULL, false) < 0) {
+		fr_strerror_printf_push("Invalid VALUE '%pV' for attribute '%s' at %s[%d]",
+					fr_box_strvalue_buffer(fixup->value),
+					da->name,
+					fr_cwd_strip(fixup->filename), fixup->line);
+		return -1;
+	}
+
+	ret = fr_dict_enum_add_name(da, fixup->name, &value, false, false);
+	fr_value_box_clear(&value);
+
+	if (ret < 0) return -1;
+
+	return 0;
+}
+
+/** Resolve a group reference
+ *
+ * This is required as the reference may point to another dictionary which
+ * hasn't been loaded yet.
+ *
+ * @param[in] fctx		Holds current dictionary parsing information.
+ * @param[in] da		The group dictionary attribute.
+ * @param[in] ref		OID string representing what the group references.
+ * @return
+ *	- 0 on success.
+ *	- -1 on out of memory.
+ */
+int dict_fixup_group_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref)
+{
+	dict_fixup_group_t *fixup;
+
+	fixup = talloc(fctx->pool, dict_fixup_group_t);
+	if (!fixup) {
+		fr_strerror_const("Out of memory");
+		return -1;
+	}
+	*fixup = (dict_fixup_group_t) {
+		.da = da,
+		.ref = talloc_strdup(fixup, ref),
+	};
+
+	return dict_fixup_common(&fctx->group, &fixup->common);
+}
+
 /** Resolve a group reference
  *
  * @param[in] fctx		Holds current dictionary parsing information.
@@ -380,7 +380,7 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
  *	- 0 on success.
  *	- -1 on out of memory.
  */
-int dict_fixup_clone(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref)
+int dict_fixup_clone_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref)
 {
 	dict_fixup_clone_t *fixup;
 
@@ -403,30 +403,25 @@ int dict_fixup_clone(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref
 	return dict_fixup_common(&fctx->clone, &fixup->common);
 }
 
-/** Clone one are of a tree into another
+/** Clone a dictionary attribute from a ref
  *
- * @param[in] fctx		Holds current dictionary parsing information.
- * @param[in] fixup		Containing source/destination of the clone.
+ * @param[in] dst_p	will either be inserted directly, with fields from the clone, or will be
+ *			cloned, and then inserted.  In this case the original dst da will be freed
+ *			and the new cloned attribute will be written back to dst_p.
+ * @param[in] src	to clone.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
+int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 {
-	fr_dict_t		*dict = fr_dict_unconst(fixup->da->dict);
-	fr_dict_attr_t const	*src;
+	fr_dict_attr_t		*dst = *dst_p;
+	fr_dict_t		*dict = fr_dict_unconst(dst->dict);
 	fr_dict_attr_t		*cloned;
 
-	src = dict_protocol_reference(fixup->da, fixup->ref);
-	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%u]",
-					fr_cwd_strip(fixup->da->filename), fixup->da->line);
-		return -1;
-	}
-
-	if (src->dict->proto != fixup->da->dict->proto) {
+	if (src->dict->proto != dst->dict->proto) {
 		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%u]",
-				   src->dict->proto->name, fixup->da->dict->proto->name, fixup->da->filename, fixup->da->line);
+				   src->dict->proto->name, dst->dict->proto->name, dst->filename, dst->line);
 		return -1;
 	}
 
@@ -434,13 +429,13 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	 *	The referenced DA is higher than the one we're
 	 *	creating.  Ensure it's not a parent.
 	 */
-	if (src->depth < fixup->da->depth) {
+	if (src->depth < dst->depth) {
 		fr_dict_attr_t const *parent;
 
-		for (parent = fixup->da->parent; !parent->flags.is_root; parent = parent->parent) {
+		for (parent = dst->parent; !parent->flags.is_root; parent = parent->parent) {
 			if (parent == src) {
 				fr_strerror_printf("References MUST NOT refer to a parent attribute %s at %s[%d]",
-						   parent->name, fr_cwd_strip(fixup->da->filename), fixup->da->line);
+						   parent->name, fr_cwd_strip(dst->filename), dst->line);
 				return -1;
 			}
 		}
@@ -448,7 +443,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 
 	if (fr_dict_attr_ref(src)) {
 		fr_strerror_printf("References MUST NOT refer to an ATTRIBUTE which itself has a 'ref=...' at %s[%d]",
-				   fr_cwd_strip(fixup->da->filename), fixup->da->line);
+				   fr_cwd_strip(dst->filename), dst->line);
 		return -1;
 	}
 
@@ -463,8 +458,8 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	 *	types are different, or the destination has no
 	 *	children.
 	 */
-	if (!fr_type_is_non_leaf(fixup->da->type) &&
-	    ((src->type != fixup->da->type) || !dict_attr_children(src))) {
+	if (!fr_type_is_non_leaf(dst->type) &&
+	    ((src->type != dst->type) || !dict_attr_children(src))) {
 		int copied;
 
 		/*
@@ -474,11 +469,11 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		 *	different types.  But only if they don't have
 		 *	children (i.e. key fields).
 		 */
-		if (fr_type_is_non_leaf(src->type) || fr_type_is_non_leaf(fixup->da->type) ||
-		    dict_attr_children(src) || dict_attr_children(fixup->da)) {
+		if (fr_type_is_non_leaf(src->type) || fr_type_is_non_leaf(dst->type) ||
+		    dict_attr_children(src) || dict_attr_children(dst)) {
 			fr_strerror_printf("Reference MUST be to a simple data type of type '%s' at %s[%d]",
-					   fr_type_to_str(fixup->da->type),
-					   fr_cwd_strip(fixup->da->filename), fixup->da->line);
+					   fr_type_to_str(dst->type),
+					   fr_cwd_strip(dst->filename), dst->line);
 			return -1;
 		}
 
@@ -491,28 +486,24 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		 *	copies the VALUE with the *source* data type,
 		 *	where we need the *destination* data type.
 		 */
-		copied = dict_attr_acopy_enumv(fixup->da, src);
+		copied = dict_attr_acopy_enumv(dst, src);
 		if (copied < 0) return -1;
 
 		if (!copied) {
 			fr_strerror_printf("Reference copied no VALUEs from type type '%s' at %s[%d]",
-					   fr_type_to_str(fixup->da->type),
-					   fr_cwd_strip(fixup->da->filename), fixup->da->line);
+					   fr_type_to_str(dst->type),
+					   fr_cwd_strip(dst->filename), dst->line);
 			return -1;
 		}
 
-		/*
-		 *	We don't need to copy any children, so leave
-		 *	fixup->da in the dictionary.
-		 */
 		return 0;
 	}
 
 	/*
 	 *	Can't clone KEY fields directly, you MUST clone the parent struct.
 	 */
-	if (!fr_type_is_non_leaf(src->type) || fr_dict_attr_is_key_field(src) || fr_dict_attr_is_key_field(fixup->da)) {
-		fr_strerror_printf("Invalid reference from '%s' to %s", fixup->ref, src->name);
+	if (!fr_type_is_non_leaf(src->type) || fr_dict_attr_is_key_field(src) || fr_dict_attr_is_key_field(dst)) {
+		fr_strerror_printf("Invalid reference from '%s' to %s", dst->name, src->name);
 		return -1;
 	}
 
@@ -520,22 +511,22 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	 *	Copy the source attribute, but with a
 	 *	new name and a new attribute number.
 	 */
-	cloned = dict_attr_acopy(dict->pool, src, fixup->da->name);
+	cloned = dict_attr_acopy(dict->pool, src, dst->name);
 	if (!cloned) {
-		fr_strerror_printf("Failed copying attribute '%s' to %s", src->name, fixup->ref);
+		fr_strerror_printf("Failed copying attribute '%s' to %s", src->name, dst->name);
 		return -1;
 	}
 
-	cloned->attr = fixup->da->attr;
-	cloned->parent = fixup->da->parent; /* we need to re-parent this attribute */
+	cloned->attr = dst->attr;
+	cloned->parent = dst->parent; /* we need to re-parent this attribute */
 	cloned->depth = cloned->parent->depth + 1;
 
 	/*
 	 *	Copy any pre-existing children over.
 	 */
-	if (dict_attr_children(fixup->da)) {
-		if (dict_attr_acopy_children(dict, cloned, fixup->da) < 0) {
-			fr_strerror_printf("Failed copying attribute '%s' from children of %s", src->name, fixup->ref);
+	if (dict_attr_children(dst)) {
+		if (dict_attr_acopy_children(dict, cloned, dst) < 0) {
+			fr_strerror_printf("Failed populating attribute '%s' with children of %s", src->name, dst->name);
 			return -1;
 		}
 	}
@@ -545,7 +536,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 	 */
 	if (dict_attr_children(src)) {
 		if (dict_attr_acopy_children(dict, cloned, src) < 0) {
-			fr_strerror_printf("Failed copying attribute '%s' from children of %s", src->name, fixup->ref);
+			fr_strerror_printf("Failed populating attribute '%s' with children of %s", src->name, dst->name);
 			return -1;
 		}
 	}
@@ -555,7 +546,35 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 		return -1;
 	}
 
+	/*
+	 *	Free the original and pass back our new cloned attribute
+	 */
+	talloc_free(dst);
+	*dst_p = cloned;
+
 	return 0;
+}
+
+/** Clone one are of a tree into another
+ *
+ * @param[in] fctx		Holds current dictionary parsing information.
+ * @param[in] fixup		Containing source/destination of the clone.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixup_ctx_t *fctx, dict_fixup_clone_t *fixup)
+{
+	fr_dict_attr_t const	*src;
+
+	src = dict_protocol_reference(fixup->da, fixup->ref);
+	if (!src) {
+		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%u]",
+					fr_cwd_strip(fixup->da->filename), fixup->da->line);
+		return -1;
+	}
+
+	return dict_fixup_clone(&fixup->da, src);
 }
 
 /** Clone enumeration values from one attribute to another
@@ -570,7 +589,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
  *	- 0 on success.
  *	- -1 on out of memory.
  */
-int dict_fixup_clone_enum(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref)
+int dict_fixup_clone_enum_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da, char const *ref)
 {
 	dict_fixup_clone_t *fixup;
 
@@ -672,7 +691,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
  *	- 0 on success.
  *	- -1 on out of memory.
  */
-int dict_fixup_vsa(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da)
+int dict_fixup_vsa_enqueue(dict_fixup_ctx_t *fctx, fr_dict_attr_t *da)
 {
 	dict_fixup_vsa_t *fixup;
 
@@ -733,9 +752,9 @@ static inline CC_HINT(always_inline) int dict_fixup_vsa_apply(UNUSED dict_fixup_
  *	- 0 on success.
  *	- -1 on out of memory.
  */
-int dict_fixup_alias(dict_fixup_ctx_t *fctx, char const *filename, int line,
-		     fr_dict_attr_t *alias_parent, char const *alias,
-		     fr_dict_attr_t *ref_parent, char const *ref)
+int dict_fixup_alias_enqueue(dict_fixup_ctx_t *fctx, char const *filename, int line,
+			     fr_dict_attr_t *alias_parent, char const *alias,
+			     fr_dict_attr_t *ref_parent, char const *ref)
 {
 	dict_fixup_alias_t *fixup;
 

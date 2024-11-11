@@ -725,7 +725,7 @@ static int dict_read_process_alias(dict_tokenize_ctx_t *ctx, char **argv, int ar
 		 *	been allowed before the ALIASed
 		 *	attributes.
 		 */
-		return dict_fixup_alias(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
+		return dict_fixup_alias_enqueue(&ctx->fixup, CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
 					fr_dict_attr_unconst(parent), argv[0],
 					fr_dict_attr_unconst(ref_namespace), argv[1]);
 	}
@@ -743,15 +743,16 @@ void dict_attr_location_set(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 /** Add an attribute to the dictionary, or add it to a list of attributes to clone later
  *
  * @param[in] fixup	context to add an entry to (if needed).
- * @param[in] da	to either add, or create a fixup for.
+ * @param[in] da_p	to either add, or create a fixup for.
  * @return
  *	- 0 on success, and an attribute was added.
  *	- 1 on success, and a deferred entry was added.
  *	- -1 on failure.
  */
-static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
+static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t **da_p)
 {
 	fr_dict_attr_ext_ref_t	*ref;
+	fr_dict_attr_t *da = *da_p;
 	int ret = 0;
 
 	/*
@@ -761,28 +762,40 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t *da)
 	 *	We do this now, as we know the attribute memory chunk
 	 * 	is stable, and we can safely add the fixups.
 	 */
-	ref = fr_dict_attr_ext(da, FR_DICT_ATTR_EXT_REF);
+	ref = fr_dict_attr_ext(*da_p, FR_DICT_ATTR_EXT_REF);
 	if (ref && fr_dict_attr_ref_is_unresolved(ref->type)) {
 		switch (fr_dict_attr_ref_type(ref->type)) {
 		case FR_DICT_ATTR_REF_ALIAS:
 			if (fr_dict_attr_add_initialised(da) < 0) {
 			error:
 				talloc_free(da);
+				*da_p = NULL;
 				return -1;
 			}
 
-			if (dict_fixup_group(fixup, da, ref->unresolved) < 0) return -1;
+			if (dict_fixup_group_enqueue(fixup, da, ref->unresolved) < 0) return -1;
 			break;
 
 		case FR_DICT_ATTR_REF_ENUM:
 			if (fr_dict_attr_add_initialised(da) < 0) goto error;
 
-			if (dict_fixup_clone_enum(fixup, da, ref->unresolved) < 0) return -1;
+			if (dict_fixup_clone_enum_enqueue(fixup, da, ref->unresolved) < 0) return -1;
 			break;
 
 		case FR_DICT_ATTR_REF_CLONE:
-			if (dict_fixup_clone(fixup, da, ref->unresolved) < 0) return -1;
+		{
+			/*
+			 *	See if we can immediately apply the clone
+			 */
+			fr_dict_attr_t const *src = dict_protocol_reference(da, ref->unresolved);
+			if (src) {
+				if (dict_fixup_clone(da_p, src) < 0) return -1;
+				break;
+			}
+
+			if (dict_fixup_clone_enqueue(fixup, da, ref->unresolved) < 0) return -1;
 			ret = 1;
+		}
 			break;
 
 		default:
@@ -1015,7 +1028,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
 	default:
 		goto error;
 
@@ -1028,7 +1041,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 		if (da->type == FR_TYPE_VSA) {
 			if (parent->flags.is_root) ctx->dict->vsa_parent = attr;
 
-			if (dict_fixup_vsa(&ctx->fixup, UNCONST(fr_dict_attr_t *, da)) < 0) {
+			if (dict_fixup_vsa_enqueue(&ctx->fixup, UNCONST(fr_dict_attr_t *, da)) < 0) {
 				return -1;	/* Leaves attr added */
 			}
 		}
@@ -1177,7 +1190,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
 	default:
 		goto error;
 
@@ -1296,7 +1309,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 	/*
 	 *	Add the attribute we allocated earlier
 	 */
-	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
 	default:
 		goto error;
 
@@ -1543,7 +1556,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		goto error;
 	}
 
-	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
 	default:
 		goto error;
 
@@ -1653,7 +1666,7 @@ static int dict_read_process_value(dict_tokenize_ctx_t *ctx, char **argv, int ar
 	fixup:
 		if (!fr_cond_assert_msg(ctx->fixup.pool, "fixup pool context invalid")) return -1;
 
-		if (dict_fixup_enumv(&ctx->fixup,
+		if (dict_fixup_enumv_enqueue(&ctx->fixup,
 				     CURRENT_FRAME(ctx)->filename, CURRENT_FRAME(ctx)->line,
 				     argv[0], strlen(argv[0]),
 				     argv[1], strlen(argv[1]),
@@ -1852,7 +1865,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 	/*
 	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
 	 */
-	switch (dict_attr_add_or_fixup(&ctx->fixup, da)) {
+	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
 	default:
 		goto error;
 
