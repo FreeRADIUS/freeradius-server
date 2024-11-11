@@ -27,19 +27,12 @@ RCSID("$Id$")
 
 /** Validate a set of flags
  *
- * @param[in] dict		of protocol context we're operating in.
- *				If NULL the internal dictionary will be used.
- * @param[in] parent		to add attribute under.
- * @param[in] name		of the attribute.
- * @param[in] attr		number.
- * @param[in] type		of attribute.
- * @param[in] flags		to check in the attribute.
+ * @param[in] da		to check.
  * @return
  *	- true if attribute definition is valid.
  *	- false if attribute definition is not valid.
  */
-bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
-			   char const *name, int attr, fr_type_t type, fr_dict_attr_flags_t *flags)
+bool dict_attr_flags_valid(fr_dict_attr_t *da)
 {
 	int bit;
 	uint32_t all_flags;
@@ -48,6 +41,12 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	uint32_t shift_subtype, shift_extra;
 	uint32_t shift_counter;
 	fr_dict_attr_t const *v;
+	fr_dict_t		*dict = da->dict;
+	fr_dict_attr_t const	*parent = da->parent;
+	char const		*name = da->name;
+	int			attr = da->attr;
+	fr_type_t		type = da->type;
+	fr_dict_attr_flags_t	*flags = &da->flags;
 
 	/*
 	 *	Convert the 1-bit fields into bits numbers, so that we
@@ -65,7 +64,14 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	SET_FLAG(counter);
 	SET_FLAG(subtype);
 
-#define FORBID_OTHER_FLAGS(_flag) do { if (all_flags & ~shift_ ## _flag) { fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag"); return false; } } while (0)
+#define FORBID_OTHER_FLAGS(_flag, _allowed) \
+	do { \
+		if (all_flags & ~shift_ ## _flag & ~(_allowed)) { \
+			fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag (%u) %s[%u]", all_flags, da->filename, da->line); \
+			return false; \
+		} \
+	} while (0)
+
 #define ALLOW_FLAG(_flag) do { all_flags &= ~shift_ ## _flag; } while (0)
 
 	// is_root
@@ -79,7 +85,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	// type_size
 
 	if (flags->is_root) {
-		FORBID_OTHER_FLAGS(is_root);
+		FORBID_OTHER_FLAGS(is_root, 0);
 	}
 
 	if (flags->is_unknown) {
@@ -139,7 +145,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		ALLOW_FLAG(extra);
 		ALLOW_FLAG(subtype);
 
-		FORBID_OTHER_FLAGS(array);
+		FORBID_OTHER_FLAGS(array, 0);
 	}
 
 	/*
@@ -153,7 +159,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		FORBID_OTHER_FLAGS(has_value);
+		FORBID_OTHER_FLAGS(has_value, shift_internal);
 	}
 
 	/*
@@ -245,7 +251,7 @@ bool dict_attr_flags_valid(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return false;
 		}
 
-		FORBID_OTHER_FLAGS(extra);
+		FORBID_OTHER_FLAGS(extra, 0);
 	}
 
 	/*
@@ -609,7 +615,7 @@ bool dict_attr_valid(fr_dict_attr_t *da)
 	/*
 	 *	Check the flags, data types, and parent data types and flags.
 	 */
-	if (!dict_attr_flags_valid(da->dict, da->parent, da->name, da->attr, da->type, &da->flags)) return false;
+	if (!dict_attr_flags_valid(da)) return false;
 
 	return true;
 }
