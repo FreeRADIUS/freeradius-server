@@ -3360,13 +3360,9 @@ void fr_pair_verify(char const *file, int line, fr_pair_list_t const *list, fr_p
 	}
 
 	if (vp->vp_raw || vp->da->flags.is_unknown) {
-		if ((vp->da->parent->type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_VSA) && (vp->vp_type != FR_TYPE_OCTETS) && (vp->vp_type != FR_TYPE_TLV)) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_pair_t (raw/unknown) attribute %p \"%s\" "
-					     "data type incorrect.  Expected %s, got %s",
-					     file, line, vp->da, vp->da->name,
-					     fr_type_to_str(FR_TYPE_OCTETS),
-					     fr_type_to_str(vp->vp_type));
-		}
+		/*
+		 *	Raw or unknown attributes can have specific data types.  See DER and CBOR.
+		 */
 
 	} else if (fr_type_is_leaf(vp->vp_type) && (vp->vp_type != vp->da->type) &&
 		   !((vp->da->type == FR_TYPE_COMBO_IP_ADDR) && ((vp->vp_type == FR_TYPE_IPV4_ADDR) || (vp->vp_type == FR_TYPE_IPV6_ADDR))) &&
