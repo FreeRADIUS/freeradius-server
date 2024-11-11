@@ -32,6 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/util/dict_fixup_priv.h>
 #include <freeradius-devel/util/dict_ext.h>
 #include <freeradius-devel/util/dlist.h>
+#include <freeradius-devel/util/hash.h>
 #include <freeradius-devel/util/proto.h>
 #include <freeradius-devel/util/rand.h>
 #include <freeradius-devel/util/sbuff.h>
@@ -1044,16 +1045,12 @@ int dict_attr_acopy_children(fr_dict_t *dict, fr_dict_attr_t *dst, fr_dict_attr_
  * @param[in] dst		where to cast the VALUEs to
  * @param[in] src		where to cast the VALUEs from
  * @return
- *	- 0 on success (but copied no values)
- *	- 1 on success (but copied at least one value)
+ *	- 0 on success
  *	- <0 on error
  */
 int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 {
-	fr_dict_enum_value_t const	*enumv;
 	fr_dict_attr_ext_enumv_t	*ext;
-	fr_hash_iter_t  		iter;
-	int				copied = 0;
 
 	fr_assert(!fr_type_is_non_leaf(dst->type));
 	fr_assert(!fr_type_is_non_leaf(src->type));
@@ -1072,24 +1069,9 @@ int dict_attr_acopy_enumv(fr_dict_attr_t *dst, fr_dict_attr_t const *src)
 		return -1;
 	}
 
-	/*
-	 *	Loop over the VALUEs, adding names from the old
-	 *	attribute to the new one.
-	 *
-	 *	If a value can't be cast, then just ignore it.
-	 */
-	for (enumv = fr_hash_table_iter_init(ext->name_by_value, &iter);
-	     enumv;
-	     enumv = fr_hash_table_iter_next(ext->name_by_value, &iter)) {
-		if (dict_attr_enum_add_name(dst, enumv->name, enumv->value, true,
-					    false, NULL) < 0) {
-			continue;
-		}
+	if (dict_attr_ext_copy(&dst, src, FR_DICT_ATTR_EXT_ENUMV)) return fr_hash_table_num_elements(ext->name_by_value);
 
-		copied++;
-	}
-
-	return copied;
+	return -1;
 }
 
 /** Add an alias to an existing attribute
