@@ -307,6 +307,25 @@ fr_dict_attr_t *fr_dict_attr_unknown_typed_afrom_num_raw(TALLOC_CTX *ctx, fr_dic
 					   fr_type_to_str(parent->type));
 			return NULL;
 		}
+
+		/*
+		 *	We can convert anything to 'octets'.  But we shouldn't be able to create a raw
+		 *	attribute which is a _different_ type than an existing one.
+		 */
+		if (type != FR_TYPE_OCTETS) {
+			fr_dict_attr_t const *child;
+
+			child = fr_dict_attr_child_by_num(parent, num);
+			if (child && (child->type != type)) {
+				fr_strerror_printf("%s: Cannot allocate unknown attribute (%u) which changes type from %s to %s",
+						   __FUNCTION__,
+						   num,
+						   fr_type_to_str(child->type),
+						   fr_type_to_str(type));
+				return NULL;
+			}
+		}
+
 		break;
 	}
 
