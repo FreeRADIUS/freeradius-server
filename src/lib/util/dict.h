@@ -571,7 +571,7 @@ fr_dict_attr_t		*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr
 fr_slen_t		fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 							      fr_dict_attr_t const **out,
 							      fr_dict_attr_t const *parent,
-							      fr_sbuff_t *in)
+							      fr_sbuff_t *in, fr_type_t type)
 							      CC_HINT(nonnull(2,3,4));
 
 int			fr_dict_attr_unknown_parent_to_known(fr_dict_attr_t *da, fr_dict_attr_t const *parent);

@@ -289,48 +289,49 @@ redo:
 		slen = fr_dict_oid_component(&err, &da, relative->da, &our_in, &bareword_terminals);
 		if (err == FR_DICT_ATTR_NOTFOUND) {
 			if (raw) {
-				if (fr_sbuff_is_digit(&our_in)) {
-					slen = fr_dict_attr_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in);
-					if (slen < 0) return fr_sbuff_error(&our_in) + slen;
+				/*
+				 *	We looked up raw.FOO, and FOO wasn't found.  The component must be a number.
+				 */
+				if (!fr_sbuff_is_digit(&our_in)) goto notfound;
 
-					fr_assert(da_unknown);
+				slen = fr_dict_attr_unknown_afrom_oid_substr(NULL, &da_unknown, relative->da, &our_in, FR_TYPE_OCTETS);
+				if (slen < 0) return fr_sbuff_error(&our_in) + slen;
 
-					/*
-					 *	Append from the root list, starting at the root depth.
-					 */
-					vp = fr_pair_afrom_da_depth_nested(root->ctx, root->list, da_unknown,
-									   root->da->depth);
-					fr_dict_attr_unknown_free(&da_unknown);
+				fr_assert(da_unknown);
 
-					if (!vp) return fr_sbuff_error(&our_in);
+				/*
+				 *	Append from the root list, starting at the root depth.
+				 */
+				vp = fr_pair_afrom_da_depth_nested(root->ctx, root->list, da_unknown,
+								   root->da->depth);
+				fr_dict_attr_unknown_free(&da_unknown);
 
-					PAIR_VERIFY(vp);
+				if (!vp) return fr_sbuff_error(&our_in);
 
-					/*
-					 *	The above function MAY have jumped ahead a few levels.  Ensure
-					 *	that the relative structure is set correctly for the parent,
-					 *	but only if the parent changed.
-					 */
-					if (relative->da != vp->da->parent) {
-						fr_pair_t *parent_vp;
+				PAIR_VERIFY(vp);
 
-						parent_vp = fr_pair_parent(vp);
-						fr_assert(parent_vp);
+				/*
+				 *	The above function MAY have jumped ahead a few levels.  Ensure
+				 *	that the relative structure is set correctly for the parent,
+				 *	but only if the parent changed.
+				 */
+				if (relative->da != vp->da->parent) {
+					fr_pair_t *parent_vp;
 
-						relative->ctx = parent_vp;
-						relative->da = parent_vp->da;
-						relative->list = &parent_vp->vp_group;
-					}
+					parent_vp = fr_pair_parent(vp);
+					fr_assert(parent_vp);
 
-					/*
-					 *	Update the new relative information for the current VP, which
-					 *	may be structural, or a key field.
-					 */
-					fr_assert(!fr_sbuff_is_char(&our_in, '.')); /* be sure the loop exits */
-					goto update_relative;
+					relative->ctx = parent_vp;
+					relative->da = parent_vp->da;
+					relative->list = &parent_vp->vp_group;
 				}
 
-				goto notfound;
+				/*
+				 *	Update the new relative information for the current VP, which
+				 *	may be structural, or a key field.
+				 */
+				fr_assert(!fr_sbuff_is_char(&our_in, '.')); /* be sure the loop exits */
+				goto update_relative;
 			}
 
 			if (internal) {

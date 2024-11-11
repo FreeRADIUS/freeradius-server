@@ -347,7 +347,8 @@ fr_dict_attr_t	*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_
  *				dictionary attributes.
  * @param[in] parent		Attribute to use as the root for resolving OIDs in.
  *				Usually the root of a protocol dictionary.
- * @param[in] in		of attribute.
+ * @param[in] in		OID string to parse
+ * @param[in] type		data type of the unknown attribute
  * @return
  *	- The number of bytes parsed on success.
  *	- <= 0 on failure.  Negative offset indicates parse error position.
@@ -355,7 +356,7 @@ fr_dict_attr_t	*fr_dict_attr_unknown_raw_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_
 fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 					   fr_dict_attr_t const **out,
 			      		   fr_dict_attr_t const *parent,
-					   fr_sbuff_t *in)
+					   fr_sbuff_t *in, fr_type_t type)
 {
 	fr_sbuff_t		our_in = FR_SBUFF(in);
 	fr_dict_attr_t const	*our_parent = parent;
@@ -445,7 +446,7 @@ fr_slen_t fr_dict_attr_unknown_afrom_oid_substr(TALLOC_CTX *ctx,
 							   fr_type_to_str(our_parent->type));
 					goto error;
 				}
-				if (dict_attr_init(&n, our_parent, NULL, num, FR_TYPE_OCTETS,
+				if (dict_attr_init(&n, our_parent, NULL, num, type,
 						   &(dict_attr_args_t){ .flags = &flags }) < 0) goto error;
 				break;
 			}
