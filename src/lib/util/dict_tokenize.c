@@ -1107,12 +1107,6 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	memcpy(&da->flags, base_flags, sizeof(da->flags));
 
 	/*
-	 *	Since there is no number, the attribute cannot be
-	 *	encoded as a number.
-	 */
-	da->flags.name_only = true;
-
-	/*
 	 *	Set the base type of the attribute.
 	 */
 	if (dict_process_type_field(ctx, argv[1], &da) < 0) {
@@ -1165,7 +1159,18 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	if (!ctx->dict) goto error;
 #endif
 
+	/*
+	 *	Since there is no number, the attribute cannot be
+	 *	encoded as a number.
+	 */
+	da->flags.name_only = true;
+
 	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
+
+	/*
+	 *	Add an attribute number now so the allocations occur in order
+	 */
+	if (unlikely(dict_attr_num_init_name_only(da) < 0)) goto error;
 
 	/*
 	 *	Set the attribute name
