@@ -7,6 +7,8 @@ proto cbor
 # complex attributes.
 proto-dictionary radius
 
+fuzzer-out cbor
+
 #
 #  a1: map of 1 item
 #  01: integer of value 1
@@ -88,4 +90,4 @@ decode-pair -
 match Class = 0x
 
 count
-match 38
+match 39
