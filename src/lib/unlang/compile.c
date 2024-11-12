@@ -672,9 +672,7 @@ static int compile_map_name(unlang_group_t *g)
 	unlang_map_t	*gext = unlang_group_to_map(g);
 
 	/*
-	 *	If the section has arguments beyond
-	 *	name1 and name2, they form input
-	 *	arguments into the map.
+	 *	map <module-name> <arg>
 	 */
 	if (gext->vpt) {
 		char	quote;
