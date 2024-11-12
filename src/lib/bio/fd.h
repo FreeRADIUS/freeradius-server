@@ -129,6 +129,6 @@ fr_bio_fd_info_t const *fr_bio_fd_info(fr_bio_t *bio) CC_HINT(nonnull);
 
 int		fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg) CC_HINT(nonnull);
 
-int		fr_bio_fd_write_only(fr_bio_t *bio);
+int		fr_bio_fd_write_only(fr_bio_t *bio) CC_HINT(nonnull);
 
-int		fr_bio_fd_reopen(fr_bio_t *bio);
+int		fr_bio_fd_reopen(fr_bio_t *bio) CC_HINT(nonnull);
