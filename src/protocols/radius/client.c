@@ -143,15 +143,15 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 
 	my->cfg = *cfg;
 
+	/*
+	 *	Inform the packet BIO about our application callbacks.
+	 */
+	my->common.cb = cfg->packet_cb_cfg;
 
 	/*
-	 *	Inform all BIOs about the write pause / resume callbacks
-	 *
-	 *	@todo - these callbacks are set AFTER the BIOs have been initialized, so the connected()
-	 *	callback is never set, and therefore is never run.  We should add all of the callbacks to the
-	 *	various bio "cfg" data structures.
+	 *	Initialize the packet handlers in each BIO.
 	 */
-	fr_radius_client_bio_cb_set(&my->common, &cfg->packet_cb_cfg);
+	fr_bio_packet_init(&my->common);
 
 	talloc_set_destructor(my, _radius_client_fd_bio_free);
 
@@ -166,7 +166,7 @@ fr_radius_client_fd_bio_t *fr_radius_client_fd_bio_alloc(TALLOC_CTX *ctx, size_t
 	 */
 	if ((my->info.fd_info->type == FR_BIO_FD_CONNECTED) && !my->info.connected &&
 	    fr_time_delta_ispos(cfg->connection_timeout) && cfg->retry_cfg.el) {
-		if (fr_event_timer_in(my, cfg->retry_cfg.el, &my->ev, cfg->connection_timeout, fr_radius_client_bio_connect_timer, my) < 0) {
+		if (fr_event_timer_in(my, cfg->el, &my->common.ev, cfg->connection_timeout, fr_radius_client_bio_connect_timer, my) < 0) {
 			talloc_free(my);
 			return NULL;
 		}
@@ -210,6 +210,9 @@ int fr_radius_client_fd_bio_write(fr_radius_client_fd_bio_t *my, void *pctx, fr_
 		all_ids_used:
 			my->all_ids_used = true;
 
+			/*
+			 *	Tell the application to stop writing data to the BIO.
+			 */
 			if (my->common.cb.write_blocked) my->common.cb.write_blocked(&my->common);
 
 			fr_strerror_const("All IDs are in use");
@@ -539,13 +542,15 @@ static void radius_client_retry_release(fr_bio_t *bio, fr_bio_retry_entry_t *ret
 	my->info.outstanding--;
 
 	/*
-	 *	IO was blocked due to IDs.  We now have a free ID, so perhaps we can resume writes.  But only
-	 *	if the IO handlers didn't mark us as "write blocked".
+	 *	IO was blocked due to IDs.  We now have a free ID, so we resume the normal write process.
 	 */
 	if (my->all_ids_used) {
 		my->all_ids_used = false;
 
-		if (!my->common.write_blocked && my->common.cb.write_resume) my->common.cb.write_resume(&my->common);
+		/*
+		 *	Tell the application to resume writing to the BIO.
+		 */
+		if (my->common.cb.write_resume) my->common.cb.write_resume(&my->common);
 
 	} else if (!my->info.outstanding) {
 		my->info.last_idle = fr_time();
@@ -680,35 +685,6 @@ int fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id)
 	return fr_radius_code_id_force(my->codes, code, id);
 }
 
-static void fr_radius_client_bio_eof(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-
-	if (my->common.cb.eof) my->common.cb.eof(&my->common);
-}
-
-/** Callback for when the FD is connected, and the application can use it
- *
- */
-static void fr_radius_client_bio_connected(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-
-	fr_assert(!my->info.connected);
-
-	my->info.connected = true;
-
-	/*
-	 *	Stop any connection timeout.
-	 */
-	if (my->ev) talloc_const_free(&my->ev);
-
-	/*
-	 *	Tell the application that the connection has been connected, and is now usable.
-	 */
-	my->common.cb.connected(&my->common);
-}
-
 /** We failed to connect in the given timeout, the connection is dead.
  *
  */
@@ -717,8 +693,6 @@ static void fr_radius_client_bio_connect_timer(NDEBUG_UNUSED fr_event_list_t *el
 	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(uctx, fr_radius_client_fd_bio_t);
 
 	fr_assert(!my->retry || (my->info.retry_info->el == el));
-
-	if (my->ev) talloc_const_free(&my->ev);
 
 	if (my->common.cb.failed) my->common.cb.failed(&my->common);
 }
@@ -744,7 +718,7 @@ void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUS
 	 *	As a result, we have to check if the FD is open, and then call it ourselves.
 	 */
 	if (my->info.fd_info->state == FR_BIO_FD_STATE_OPEN) {
-		fr_radius_client_bio_connected(my->fd);
+		fr_bio_packet_connected(my->fd);
 		return;
 	}
 
@@ -755,132 +729,4 @@ void fr_radius_client_bio_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUS
 	 *	Try to connect it.  Any magic handling is done in the callbacks.
 	 */
 	(void) fr_bio_fd_connect(my->fd);
-}
-
-
-
-/** Callback for when the writes are blocked.
- *
- */
-static int fr_radius_client_bio_write_blocked(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-	int rcode;
-
-	/*
-	 *	This function must be callable multiple times, as different portions of the BIOs can block at
-	 *	different times.
-	 */
-	if (my->common.write_blocked) return 1;
-
-	/*
-	 *	Mark the retry code as blocked, so that it stops trying to write packets.
-	 */
-	if (my->retry) {
-		rcode = fr_bio_retry_write_blocked(my->retry);
-		if (rcode < 0) return rcode;
-	}
-
-	/*
-	 *	The application doesn't want to know that it's blocked, so we just return.
-	 */
-	if (!my->common.cb.write_blocked) {
-		my->common.write_blocked = true;
-		return 1;
-	}
-
-	/*
-	 *	Tell the application that IO is blocked.
-	 */
-	rcode = my->common.cb.write_blocked(&my->common);
-	if (rcode <= 0) return rcode;
-
-	my->common.write_blocked = true;
-	return 1;
-}
-
-
-/** Callback for when the writes can be resumed
- *
- */
-static int fr_radius_client_bio_write_resume(fr_bio_t *bio)
-{
-	fr_radius_client_fd_bio_t *my = bio->uctx;
-	int rcode;
-
-	/*
-	 *	This function must be callable multiple times, as different portions of the BIOs can block or
-	 *	resume at different times.
-	 */
-	if (!my->common.write_blocked) return 1;
-
-	/*
-	 *	Flush the outgoing memory buffers.
-	 */
-	rcode = fr_bio_mem_write_resume(my->mem);
-	if (rcode <= 0) return rcode;
-
-	/*
-	 *	Flush the packets which should have been retried, but weren't due to blocking.
-	 */
-	if (my->retry) {
-		rcode = fr_bio_retry_write_resume(my->retry);
-		if (rcode <= 0) return rcode;
-	}
-
-	/*
-	 *	IO is unblocked, but we don't have any free IDs.  So
-	 *	we can't yet resume application-layer writes.
-	 */
-	if (my->all_ids_used) return 0;
-
-	/*
-	 *	The application doesn't want to know that it's resumed, so we just return.
-	 */
-	if (!my->common.cb.write_resume) {
-		my->common.write_blocked = false;
-		return 1;
-	}
-
-	/*
-	 *	Tell the application that IO has resumed.
-	 */
-	rcode = my->common.cb.write_resume(&my->common);
-	if (rcode <= 0) return rcode;
-
-	my->common.write_blocked = false;
-	return 1;
-}
-
-void fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t const *cb)
-{
-	fr_radius_client_fd_bio_t *my = talloc_get_type_abort(bio, fr_radius_client_fd_bio_t);
-	fr_bio_cb_funcs_t bio_cb = {};
-
-	/*
-	 *	If we have a "blocked" function, we must have a "resume" function, and vice versa.
-	 */
-	fr_assert((cb->write_blocked != NULL) == (cb->write_resume != NULL));
-	fr_assert((cb->read_blocked != NULL) == (cb->read_resume != NULL));
-
-	bio_cb.connected = fr_radius_client_bio_connected;
-	bio_cb.write_blocked = fr_radius_client_bio_write_blocked;
-	bio_cb.write_resume = fr_radius_client_bio_write_resume;
-
-#undef SET
-#define SET(_x) if (cb->_x) bio_cb._x = fr_bio_packet_ ## _x
-
-	SET(read_blocked);
-	SET(read_resume);
-
-	my->common.cb = *cb;
-
-	fr_bio_cb_set(my->mem, &bio_cb);
-	if (my->retry) fr_bio_cb_set(my->retry, &bio_cb);
-
-	/*
-	 *	Only the FD bio gets an EOF callback.
-	 */
-	bio_cb.eof = fr_radius_client_bio_eof;
-	fr_bio_cb_set(my->fd, &bio_cb);
 }

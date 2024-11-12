@@ -168,9 +168,8 @@ void fr_bio_packet_connected(fr_bio_t *bio)
 	my->cb.connected(my);
 }
 
-static void fr_bio_packet_shutdown(fr_bio_t *bio)
+static void fr_bio_packet_shutdown(UNUSED fr_bio_t *bio)
 {
-	fr_assert(bio);
 }
 
 static void fr_bio_packet_eof(fr_bio_t *bio)
@@ -180,9 +179,8 @@ static void fr_bio_packet_eof(fr_bio_t *bio)
 	if (my->cb.eof) my->cb.eof(my);
 }
 
-static void fr_bio_packet_failed(fr_bio_t *bio)
+static void fr_bio_packet_failed(UNUSED fr_bio_t *bio)
 {
-	fr_assert(bio);
 }
 
 

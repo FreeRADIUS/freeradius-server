@@ -32,6 +32,7 @@ RCSIDH(radius_client_h, "$Id$")
 #include <freeradius-devel/bio/retry.h>
 
 typedef struct {
+	fr_event_list_t		*el;
 	fr_log_t		*log;
 
 	fr_radius_bio_verify_t	verify;
@@ -75,7 +76,5 @@ fr_radius_client_bio_info_t const *fr_radius_client_bio_info(fr_bio_packet_t *bi
 size_t		fr_radius_client_bio_outstanding(fr_bio_packet_t *bio) CC_HINT(nonnull);
 
 int		fr_radius_client_bio_force_id(fr_bio_packet_t *bio, int code, int id);
-
-void		fr_radius_client_bio_cb_set(fr_bio_packet_t *bio, fr_bio_packet_cb_funcs_t const *cb);
 
 void		fr_radius_client_bio_connect(fr_event_list_t *el, int fd, int flags, void *uctx);

@@ -1756,13 +1756,14 @@ int main(int argc, char **argv)
 	 *
 	 ***********************************************************************/
 
-	client_config.retry_cfg.el = fr_event_list_alloc(autofree,
-							 (fr_debug_lvl >= 2) ? _loop_status : NULL,
-							 NULL);
-	if (!client_config.retry_cfg.el) {
+	client_config.el = fr_event_list_alloc(autofree,
+					       (fr_debug_lvl >= 2) ? _loop_status : NULL,
+					       NULL);
+	if (!client_config.el) {
 		ERROR("Failed opening event list: %s", fr_strerror());
 		fr_exit_now(EXIT_FAILURE);
 	}
+	client_config.retry_cfg.el = client_config.el;
 
 	/*
 	 *	Set callbacks so that the socket is automatically
