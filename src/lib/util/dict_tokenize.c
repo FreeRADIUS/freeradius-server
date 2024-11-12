@@ -1585,7 +1585,20 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		/*
 		 *	Add the size of this member to the parent struct.
 		 */
-		ctx->stack[ctx->stack_depth].struct_size += da->flags.length;
+		if (ctx->stack[ctx->stack_depth].da->flags.length) {
+			/*
+			 *	Fixed-size struct can't have MEMBERs of unknown sizes.
+			 */
+			if (!da->flags.is_known_width) {
+				fr_strerror_printf("'struct' %s has fixed size %u, but member %s is of unknown size",
+						   ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length,
+						   argv[0]);
+				return -1;
+			}
+
+			ctx->stack[ctx->stack_depth].struct_size += da->flags.length;
+
+		}
 
 		/*
 		 *	Check for overflow.
@@ -2442,8 +2455,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *ctx,
 				 */
 				if (da->flags.length &&
 				    (ctx->stack[ctx->stack_depth].struct_size != da->flags.length)) {
-					fr_strerror_printf("MEMBERs of 'struct' %s do not exactly fill the fixed-size structure",
-							   da->name);
+					fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
+							   da->name, da->flags.length);
 					goto error;
 				}
 
