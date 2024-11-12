@@ -807,7 +807,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	switch (major) {
 	case CBOR_STRING:
-		if (major != CBOR_STRING) {
+		if ((type != FR_TYPE_NULL) && (type != FR_TYPE_STRING)) {
 		mismatch:
 			fr_strerror_printf("cbor data contains invalid content %d for expected data type %s",
 					   major, fr_type_to_str(type));
@@ -845,7 +845,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		break;
 
 	case CBOR_OCTETS:
-		if (major != CBOR_OCTETS) goto mismatch;
+		if ((type != FR_TYPE_NULL) && (type != FR_TYPE_OCTETS)) goto mismatch;
 
 		fr_assert(info != 31);
 
