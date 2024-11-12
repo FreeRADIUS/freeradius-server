@@ -91,10 +91,13 @@ struct fr_bio_packet_s {
 
 	fr_bio_packet_cb_funcs_t cb;
 
+	fr_event_timer_t const	*ev;		//!< connection timeout
+
+	bool			connected;
 	bool			write_blocked;
 	bool			read_blocked;
 
-	fr_bio_t		*bio;		//!< underlying bio for IO
+	fr_bio_t		*bio;		//!< underlying BIO(s) for IO
 };
 
 
@@ -171,16 +174,16 @@ static inline CC_HINT(nonnull) int fr_bio_packet_write_flush(fr_bio_packet_t *my
 	slen = my->bio->write(my->bio, NULL, NULL, SIZE_MAX);
 	if (slen >= 0) {
 		my->write_blocked = false;
-		return 0;
 	}
 
-	/*
-	 *	Likely a fatal bio error.
-	 */
 	return slen;
 }
 
-int	fr_bio_packet_write_blocked(fr_bio_t *bio);
-int	fr_bio_packet_write_resume(fr_bio_t *bio);
-int	fr_bio_packet_read_blocked(fr_bio_t *bio);
-int	fr_bio_packet_read_resume(fr_bio_t *bio);
+void	fr_bio_packet_connected(fr_bio_t *bio) CC_HINT(nonnull);
+int	fr_bio_packet_connect(fr_bio_t *bio) CC_HINT(nonnull);
+int	fr_bio_packet_write_blocked(fr_bio_t *bio) CC_HINT(nonnull);
+int	fr_bio_packet_write_resume(fr_bio_t *bio) CC_HINT(nonnull);
+int	fr_bio_packet_read_blocked(fr_bio_t *bio) CC_HINT(nonnull);
+int	fr_bio_packet_read_resume(fr_bio_t *bio) CC_HINT(nonnull);
+
+void	fr_bio_packet_init(fr_bio_packet_t *my) CC_HINT(nonnull);
