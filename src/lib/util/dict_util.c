@@ -575,6 +575,8 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 		break;
 	}
 
+	(*da_p)->flags.is_known_width = fr_type_fixed_size[type];
+
 	/*
 	 *	Set default type-based flags
 	 */
@@ -583,6 +585,12 @@ int dict_attr_type_init(fr_dict_attr_t **da_p, fr_type_t type)
 	case FR_TYPE_TIME_DELTA:
 		(*da_p)->flags.length = 4;
 		(*da_p)->flags.flag_time_res = FR_TIME_RES_SEC;
+		break;
+
+
+	case FR_TYPE_OCTETS:
+	case FR_TYPE_STRING:
+		(*da_p)->flags.is_known_width = ((*da_p)->flags.length != 0);
 		break;
 
 	default:

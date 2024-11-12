@@ -60,6 +60,7 @@ typedef struct {
 	fr_dict_attr_t const	*da;			//!< the da we care about
 	dict_nest_t		nest;			//!< for manual vs automatic begin / end things
 	int			member_num;		//!< structure member numbers
+	fr_dict_attr_t const	*struct_is_closed;	//!< no more members are allowed
 	ssize_t			struct_size;		//!< size of the struct.
 } dict_tokenize_frame_t;
 
@@ -1499,12 +1500,10 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	 *	Check if the parent 'struct' is fixed size.  And if
 	 *	so, complain if we're adding a variable sized member.
 	 */
-	if (ctx->stack[ctx->stack_depth].da->flags.length && ctx->stack[ctx->stack_depth].da->flags.is_known_width &&
-	    ((da->type == FR_TYPE_TLV) || da->flags.is_known_width ||
-	     ((da->type == FR_TYPE_STRING) && !da->flags.length) ||
-	     ((da->type == FR_TYPE_OCTETS) && !da->flags.length))) {
-		fr_strerror_printf("'struct' %s has fixed size %u, we cannot add a variable-sized member.",
-				   ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length);
+	if (ctx->stack[ctx->stack_depth].struct_is_closed) {
+		fr_strerror_printf("Cannot add MEMBER to 'struct' %s after a variable sized member %s",
+				   ctx->stack[ctx->stack_depth].da->name,
+				   ctx->stack[ctx->stack_depth].struct_is_closed->name);
 		goto error;
 	}
 
@@ -1574,32 +1573,45 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 			ctx->relative_attr = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
 								ctx->stack[ctx->stack_depth].member_num);
 			if (ctx->relative_attr && (dict_gctx_push(ctx, ctx->relative_attr) < 0)) return -1;
+			return 0;
 
-		} else {
-
-			/*
-			*	Add the size of this member to the parent struct.
-			*/
-			ctx->stack[ctx->stack_depth].struct_size += da->flags.length;
-
-			/*
-			*	Check for overflow.
-			*/
-			if (ctx->stack[ctx->stack_depth].da->flags.length &&
-			(ctx->stack[ctx->stack_depth].struct_size > ctx->stack[ctx->stack_depth].da->flags.length)) {
-				fr_strerror_printf("'struct' %s has fixed size %u, but member %s overflows that length",
-						ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length,
-						argv[0]);
-				return -1;
-			}
 		}
 
 		/*
-		*	Adding a member of type 'struct' is an implicit BEGIN-STRUCT.
-		*/
+		 *	Add the size of this member to the parent struct.
+		 */
+		ctx->stack[ctx->stack_depth].struct_size += da->flags.length;
+
+		/*
+		 *	Check for overflow.
+		 */
+		if (ctx->stack[ctx->stack_depth].da->flags.length &&
+		    (ctx->stack[ctx->stack_depth].struct_size > ctx->stack[ctx->stack_depth].da->flags.length)) {
+			fr_strerror_printf("'struct' %s has fixed size %u, but member %s overflows that length",
+					   ctx->stack[ctx->stack_depth].da->name, ctx->stack[ctx->stack_depth].da->flags.length,
+					   argv[0]);
+			return -1;
+		}
+
+		/*
+		 *	Adding a member of type 'struct' is an implicit BEGIN-STRUCT.
+		 */
 		if (da->type == FR_TYPE_STRUCT) {
 			if (dict_gctx_push(ctx, da) < 0) return -1;
 			ctx->value_attr = NULL;
+
+		} else {
+			/*
+			 *	Check if this MEMBER closes the structure.
+			 *
+			 *	@todo - close this struct if the child struct is variable sized.  For now, it
+			 *	looks like most child structs are at the end of the parent.
+			 *
+			 *	The solution is to update the unwind() function to check if the da we've
+			 *	unwound to is a struct, and then if so... get the last child, and mark it
+			 *	closed.
+			 */
+			if (!da->flags.is_known_width) ctx->stack[ctx->stack_depth].struct_is_closed = da;
 		}
 		break;
 
