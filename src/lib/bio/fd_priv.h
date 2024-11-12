@@ -38,13 +38,13 @@ typedef struct fr_bio_fd_s {
 
 	fr_bio_fd_info_t  info;
 
-	int		max_tries;	//!< how many times we retry on EINTR
-	size_t		offset;		//!< where #fr_bio_fd_packet_ctx_t is stored
+	int		max_tries;		//!< how many times we retry on EINTR
+	size_t		offset;			//!< where #fr_bio_fd_packet_ctx_t is stored
 
 #if defined(IP_PKTINFO) || defined(IP_RECVDSTADDR) || defined(IPV6_PKTINFO)
-	struct iovec	iov;		//!< for recvfromto
-	struct msghdr	msgh;		//!< for recvfromto
-	uint8_t		cbuf[256];	//!< for recvfromto
+	struct iovec	iov;			//!< for recvfromto
+	struct msghdr	msgh;			//!< for recvfromto
+	uint8_t		cbuf[256];		//!< for recvfromto
 #endif
 } fr_bio_fd_t;
 

@@ -116,6 +116,14 @@ static void fr_bio_fd_eof(fr_bio_t *bio)
 	my->info.eof = true;
 }
 
+static int fr_bio_fd_write_resume(fr_bio_t *bio)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+	my->info.write_blocked = false;
+	return 1;
+}
+
 /** Stream read.
  *
  *	Stream sockets return 0 at EOF.  However, we want to distinguish that from the case of datagram
@@ -1031,6 +1039,7 @@ fr_bio_t *fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t
 	}
 
 	my->priv_cb.eof = fr_bio_fd_eof;
+	my->priv_cb.write_resume = fr_bio_fd_write_resume;
 
 	talloc_set_destructor(my, fr_bio_fd_destructor);
 	return (fr_bio_t *) my;

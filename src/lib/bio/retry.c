@@ -1094,6 +1094,9 @@ fr_bio_t *fr_bio_retry_alloc(TALLOC_CTX *ctx, size_t max_saved,
 	my->bio.write = fr_bio_retry_write;
 	my->bio.read = fr_bio_retry_read;
 
+	my->priv_cb.write_blocked = fr_bio_retry_write_blocked;
+	my->priv_cb.write_resume = fr_bio_retry_write_resume;
+
 	fr_bio_chain(&my->bio, next);
 
 	talloc_set_destructor(my, fr_bio_retry_destructor);
