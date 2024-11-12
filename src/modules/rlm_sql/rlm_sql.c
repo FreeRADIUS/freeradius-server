@@ -612,6 +612,79 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	return XLAT_ACTION_PUSH_UNLANG;
 }
 
+/** Execute an arbitrary SQL query, expecting results to be returned
+ *
+@verbatim
+%sql.fetch(<sql statement>)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t sql_fetch_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out, xlat_ctx_t const *xctx,
+				    request_t *request, fr_value_box_list_t *in)
+{
+	sql_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, sql_xlat_call_env_t);
+	rlm_sql_handle_t	*handle = NULL;
+	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_sql_thread_t);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	fr_sql_query_t		*query_ctx = NULL;
+
+	if (!inst->driver->uses_trunks) {
+		handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
+		if (!handle) return XLAT_ACTION_FAIL;
+	}
+
+	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
+		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
+	}
+
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, handle,
+					   thread->trunk, arg->vb_strvalue, SQL_QUERY_SELECT));
+
+	unlang_xlat_yield(request, sql_xlat_select_resume, NULL, 0, query_ctx);
+	if (unlang_function_push(request, inst->select, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx) != UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_FAIL;
+
+	return XLAT_ACTION_PUSH_UNLANG;
+}
+
+/** Execute an arbitrary SQL query, returning the number of rows affected
+ *
+@verbatim
+%sql.modify(<sql statement>)
+@endverbatim
+ *
+ * @ingroup xlat_functions
+ */
+static xlat_action_t sql_modify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
+				     request_t *request, fr_value_box_list_t *in)
+{
+	sql_xlat_call_env_t	*call_env = talloc_get_type_abort(xctx->env_data, sql_xlat_call_env_t);
+	rlm_sql_handle_t	*handle = NULL;
+	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
+	rlm_sql_thread_t	*thread = talloc_get_type_abort(xctx->mctx->thread, rlm_sql_thread_t);
+	fr_value_box_t		*arg = fr_value_box_list_head(in);
+	fr_sql_query_t		*query_ctx = NULL;
+	rlm_rcode_t		p_result;
+
+	if (!inst->driver->uses_trunks) {
+		handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
+		if (!handle) return XLAT_ACTION_FAIL;
+	}
+
+	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
+		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
+	}
+
+	MEM(query_ctx = fr_sql_query_alloc(unlang_interpret_frame_talloc_ctx(request), inst, request, handle,
+					   thread->trunk, arg->vb_strvalue, SQL_QUERY_OTHER));
+
+	unlang_xlat_yield(request, sql_xlat_query_resume, NULL, 0, query_ctx);
+	if (inst->query(&p_result, NULL, request, query_ctx) == UNLANG_ACTION_PUSHED_CHILD) return XLAT_ACTION_PUSH_UNLANG;
+
+	return sql_xlat_query_resume(ctx, out, &(xlat_ctx_t){.rctx = query_ctx, .inst = inst}, request, in);
+}
+
 /** Converts a string value into a #fr_pair_t
  *
  * @param[in,out] ctx to allocate #fr_pair_t (s).
@@ -2278,9 +2351,11 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 
 	/*
 	 *	The xlat escape function needs access to inst - so
-	 *	argument parser details need to be defined here
+	 *	argument parser details need to be defined here.
+	 *	Parented off the module instance "boot" so it can be shared
+	 *	between three xlats.
 	 */
-	MEM(sql_xlat_arg = talloc_zero_array(xlat, xlat_arg_parser_t, 2));
+	MEM(sql_xlat_arg = talloc_zero_array(boot, xlat_arg_parser_t, 2));
 	MEM(uctx = talloc_zero(sql_xlat_arg, rlm_sql_escape_uctx_t));
 	*uctx = (rlm_sql_escape_uctx_t){ .sql = inst, .handle = NULL };
 	sql_xlat_arg[0] = (xlat_arg_parser_t){
@@ -2293,6 +2368,17 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	};
 	sql_xlat_arg[1] = (xlat_arg_parser_t)XLAT_ARG_PARSER_TERMINATOR;
 
+	xlat_func_args_set(xlat, sql_xlat_arg);
+
+	/*
+	 *	Register instances of the SQL xlat with pre-determined output types
+	 */
+	if (unlikely(!(xlat = module_rlm_xlat_register(boot, mctx, "fetch", sql_fetch_xlat, FR_TYPE_VOID)))) return -1;
+	xlat_func_call_env_set(xlat, &xlat_method_env);
+	xlat_func_args_set(xlat, sql_xlat_arg);
+
+	if (unlikely(!(xlat = module_rlm_xlat_register(boot, mctx, "modify", sql_modify_xlat, FR_TYPE_UINT32)))) return -1;
+	xlat_func_call_env_set(xlat, &xlat_method_env);
 	xlat_func_args_set(xlat, sql_xlat_arg);
 
 	if (unlikely(!(xlat = module_rlm_xlat_register(boot, mctx, "escape", sql_escape_xlat, FR_TYPE_STRING)))) return -1;
