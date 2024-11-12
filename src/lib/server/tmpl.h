@@ -1334,9 +1334,7 @@ int			tmpl_eval_cast_in_place(fr_value_box_list_t *out, request_t *request, tmpl
 /** @} */
 
 ssize_t			tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
-				      fr_token_t *type,
-				      fr_dict_attr_t const **castda, bool require_regex,
-				      bool allow_xlat) CC_HINT(nonnull(1,2,3,5));
+				      fr_token_t *type) CC_HINT(nonnull(1,2,3,5));
 
 bool			tmpl_async_required(tmpl_t const *vpt) CC_HINT(nonnull);
 

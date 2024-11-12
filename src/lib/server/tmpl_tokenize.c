@@ -5341,16 +5341,12 @@ void tmpl_verify(char const *file, int line, tmpl_t const *vpt)
  * @param      in	where we start looking for the string
  * @param      inlen	length of the input string
  * @param[out] type	token type of the string.
- * @param[out] castda	NULL if casting is not allowed, otherwise the cast
- * @param   require_regex whether or not to require regular expressions
- * @param   allow_xlat  whether or not "bare" xlat's are allowed
  * @return
  *	- > 0, amount of parsed string to skip, to get to the next token
  *	- <=0, -offset in 'start' where the parse error was located
  */
 ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t inlen,
-		      fr_token_t *type,
-		      fr_dict_attr_t const **castda, bool require_regex, bool allow_xlat)
+		      fr_token_t *type)
 {
 	char const *p = in, *end = in + inlen;
 	char quote;
@@ -5358,50 +5354,22 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 	int depth;
 
 	*type = T_INVALID;
-	if (castda) *castda = NULL;
 
 	while (isspace((uint8_t) *p) && (p < end)) p++;
 	if (p >= end) return p - in;
-
-	if (require_regex) {
-		if (castda && *castda) {
-			p++;
-			fr_strerror_const("Invalid cast before regular expression");
-		return_p:
-			return -(p - in);
-		}
-
-		/*
-		 *	Allow this which is sometimes clearer.
-		 */
-		if (*p == 'm') {
-			p++;
-			quote = *(p++);
-			*type = T_OP_REG_EQ;
-			goto skip_string;
-		}
-
-		if (*p != '/') {
-			return_P("Expected regular expression");
-		}
-	} /* else treat '/' as any other character */
 
 	switch (*p) {
 		/*
 		 *	Allow bare xlat's
 		 */
 	case '%':
-		if (!allow_xlat) {
-			return_P("Unexpected expansion");
-		}
-
 		if (p[1] != '{') {
 			char const *q;
 
 			q = p + 1;
 
 			/*
-			 *	New xlat syntax: %foo(...)
+			 *	Function syntax: %foo(...)
 			 */
 			while ((q < end) && (isalnum((int) *q) || (*q == '.') || (*q == '_') || (*q == '-'))) {
 				q++;
@@ -5409,7 +5377,9 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 
 			if (*q != '(') {
 				p++;
-				return_P("Invalid character after '%'");
+				fr_strerror_const("Invalid character after '%'");
+			return_p:
+				return -(p - in);
 			}
 
 			/*
@@ -5501,11 +5471,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		return_P("Unterminated expansion");
 
 	case '/':
-		if (!require_regex) goto bare_word;
-
-		quote = *(p++);
-		*type = T_OP_REG_EQ;
-		goto skip_string;
+		goto bare_word;
 
 	case '\'':
 		quote = *(p++);

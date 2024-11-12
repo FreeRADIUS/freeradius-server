@@ -830,7 +830,7 @@ static int cf_get_token(CONF_SECTION *parent, char const **ptr_p, fr_token_t *to
 	 *	Don't allow casts or regexes.  But do allow bare
 	 *	%{...} expansions.
 	 */
-	slen = tmpl_preparse(&out, &outlen, ptr, strlen(ptr), token, NULL, false, true);
+	slen = tmpl_preparse(&out, &outlen, ptr, strlen(ptr), token);
 	if (slen <= 0) {
 		char *spaces, *text;
 
