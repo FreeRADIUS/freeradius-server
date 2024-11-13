@@ -115,12 +115,73 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	return t;
 }
 
+/*
+ *	Construct the reply appropriately based on the rcode from PEAP processing.
+ */
+static unlang_action_t process_rcode(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+
+	switch (eap_session->submodule_rcode) {
+	case RLM_MODULE_REJECT:
+		eap_tls_fail(request, eap_session);
+		break;
+
+	case RLM_MODULE_HANDLED:
+		eap_tls_request(request, eap_session);
+		break;
+
+	case RLM_MODULE_OK:
+	{
+		eap_tls_prf_label_t prf_label;
+
+		eap_crypto_prf_label_init(&prf_label, eap_session,
+					  "client EAP encryption",
+					  sizeof("client EAP encryption") - 1);
+
+		/*
+		 *	Success: Automatically return MPPE keys.
+		 */
+		if (eap_tls_success(request, eap_session, &prf_label) > 0) RETURN_MODULE_FAIL;
+		*p_result = RLM_MODULE_OK;
+
+		/*
+		 *	Write the session to the session cache
+		 *
+		 *	We do this here (instead of relying on OpenSSL to call the
+		 *	session caching callback), because we only want to write
+		 *	session data to the cache if all phases were successful.
+		 *
+		 *	If we wrote out the cache data earlier, and the server
+		 *	exited whilst the session was in progress, the supplicant
+		 *	could resume the session (and get access) even if phase2
+		 *	never completed.
+		 */
+		return fr_tls_cache_pending_push(request, tls_session);
+	}
+
+	/*
+	 *	No response packet, MUST be proxying it.
+	 *	The main EAP module will take care of discovering
+	 *	that the request now has a "proxy" packet, and
+	 *	will proxy it, rather than returning an EAP packet.
+	 */
+	case RLM_MODULE_UPDATED:
+		break;
+
+	default:
+		eap_tls_fail(request, eap_session);
+		break;
+	}
+
+	RETURN_MODULE_RCODE(eap_session->submodule_rcode);
+}
+
 static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_peap_t		*inst = talloc_get_type(mctx->mi->data, rlm_eap_peap_t);
-
-	rlm_rcode_t		rcode;
-
 	eap_session_t		*eap_session = talloc_get_type_abort(mctx->rctx, eap_session_t);
 	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
 	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
@@ -191,62 +252,15 @@ static unlang_action_t mod_handshake_resume(rlm_rcode_t *p_result, module_ctx_t 
 	if (!tls_session->opaque) tls_session->opaque = peap_alloc(tls_session, inst);
 
 	/*
-	 *	Process the PEAP portion of the request.
+	 *	Setup the resume point to prepare the correct reply based on
+	 *	the rcode coming back from PEAP processing.
 	 */
-	eap_peap_process(&rcode, request, eap_session, tls_session);
-	switch (rcode) {
-	case RLM_MODULE_REJECT:
-		eap_tls_fail(request, eap_session);
-		break;
-
-	case RLM_MODULE_HANDLED:
-		eap_tls_request(request, eap_session);
-		break;
-
-	case RLM_MODULE_OK:
-	{
-		eap_tls_prf_label_t prf_label;
-
-		eap_crypto_prf_label_init(&prf_label, eap_session,
-					  "client EAP encryption",
-					  sizeof("client EAP encryption") - 1);
-
-		/*
-		 *	Success: Automatically return MPPE keys.
-		 */
-		if (eap_tls_success(request, eap_session, &prf_label) > 0) RETURN_MODULE_FAIL;
-		*p_result = rcode;
-
-		/*
-		 *	Write the session to the session cache
-		 *
-		 *	We do this here (instead of relying on OpenSSL to call the
-		 *	session caching callback), because we only want to write
-		 *	session data to the cache if all phases were successful.
-		 *
-		 *	If we wrote out the cache data earlier, and the server
-		 *	exited whilst the session was in progress, the supplicant
-		 *	could resume the session (and get access) even if phase2
-		 *	never completed.
-		 */
-		return fr_tls_cache_pending_push(request, tls_session);
-	}
+	(void) unlang_module_yield(request, process_rcode, NULL, 0, eap_session);
 
 	/*
-	 *	No response packet, MUST be proxying it.
-	 *	The main EAP module will take care of discovering
-	 *	that the request now has a "proxy" packet, and
-	 *	will proxy it, rather than returning an EAP packet.
+	 *	Process the PEAP portion of the request.
 	 */
-	case RLM_MODULE_UPDATED:
-		break;
-
-	default:
-		eap_tls_fail(request, eap_session);
-		break;
-	}
-
-	RETURN_MODULE_RCODE(rcode);
+	return eap_peap_process(&eap_session->submodule_rcode, request, eap_session, tls_session);
 }
 
 /*
