@@ -1116,7 +1116,7 @@ fr_client_t *client_from_request(request_t *request)
 
 	do {
 		client = parent->client;
-	} while (!client && (parent = request->parent));
+	} while (!client && (parent = parent->parent));
 
 	return client;
 }
