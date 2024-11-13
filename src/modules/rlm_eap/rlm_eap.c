@@ -606,7 +606,7 @@ static unlang_action_t eap_method_select(rlm_rcode_t *p_result, module_ctx_t con
 	 *	parent.  If the outer session exists, and doesn't have
 	 *	a home server, then it's multiple layers of tunneling.
 	 */
-	if (eap_session->request->parent &&
+	if (type->num == FR_EAP_METHOD_TLS && eap_session->request->parent &&
 	    eap_session->request->parent->parent) {
 		RERROR("Multiple levels of TLS nesting are invalid");
 		goto is_invalid;
