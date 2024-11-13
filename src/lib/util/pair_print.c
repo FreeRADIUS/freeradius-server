@@ -284,7 +284,7 @@ static void fr_pair_list_log_sbuff(fr_log_t const *log, int lvl, fr_pair_t *pare
 
 		default:
 			(void) fr_sbuff_in_strcpy(sbuff, " = ");
-			fr_value_box_print_quoted(sbuff, &vp->data, T_DOUBLE_QUOTED_STRING);
+			if (fr_value_box_print_quoted(sbuff, &vp->data, T_DOUBLE_QUOTED_STRING)< 0) break;
 
 			fr_log(log, L_DBG, file, line, "%*s%*s", lvl * 2, "",
 			       (int) fr_sbuff_used(sbuff), fr_sbuff_start(sbuff));
