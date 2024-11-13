@@ -324,14 +324,18 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 
 	if (inst->character_set) mysql_options(&(c->db), MYSQL_SET_CHARSET_NAME, inst->character_set);
 
+#if MYSQL_VERSION_ID < 80034
 	/*
 	 *	We need to know about connection errors, and are capable
 	 *	of reconnecting automatically.
+	 *
+	 *	This deprecated as of 8.0.34.
 	 */
 	{
 		bool reconnect = 0;
 		mysql_options(&(c->db), MYSQL_OPT_RECONNECT, &reconnect);
 	}
+#endif
 
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
 
