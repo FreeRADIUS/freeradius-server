@@ -30,11 +30,9 @@ RCSIDH(eap_ttls_h, "$Id$")
 #include <freeradius-devel/radius/defs.h>
 
 extern HIDDEN fr_dict_attr_t const *attr_eap_tls_require_client_cert;
-extern HIDDEN fr_dict_attr_t const *attr_proxy_to_realm;
 extern HIDDEN fr_dict_attr_t const *attr_chap_challenge;
 extern HIDDEN fr_dict_attr_t const *attr_ms_chap2_success;
 extern HIDDEN fr_dict_attr_t const *attr_eap_message;
-extern HIDDEN fr_dict_attr_t const *attr_freeradius_proxied_to;
 extern HIDDEN fr_dict_attr_t const *attr_ms_chap_challenge;
 extern HIDDEN fr_dict_attr_t const *attr_reply_message;
 extern HIDDEN fr_dict_attr_t const *attr_eap_channel_binding_message;
