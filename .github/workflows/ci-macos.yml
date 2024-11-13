@@ -98,7 +98,6 @@ jobs:
           mariadb \
           make \
           mruby \
-          openssl@1.1 \
           openssl \
           python@3.10 \
           talloc
