@@ -38,10 +38,7 @@ typedef struct {
 
 	bool			copy_request_to_tunnel;	//!< Use SOME of the request attributes from outside of the
 							//!< tunneled session in the tunneled request.
-#ifdef WITH_PROXY
-	bool			proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
-							//!< protocol.
-#endif
+
 	char const		*virtual_server;	//!< Virtual server for inner tunnel session.
 	CONF_SECTION		*server_cs;
 
@@ -54,10 +51,6 @@ static conf_parser_t submodule_config[] = {
 	{ FR_CONF_DEPRECATED("copy_request_to_tunnel", rlm_eap_peap_t, NULL), .dflt = "no" },
 
 	{ FR_CONF_DEPRECATED("use_tunneled_reply", rlm_eap_peap_t, NULL), .dflt = "no" },
-
-#ifdef WITH_PROXY
-	{ FR_CONF_OFFSET("proxy_tunneled_request_as_eap", rlm_eap_peap_t, proxy_tunneled_request_as_eap), .dflt = "yes" },
-#endif
 
 	{ FR_CONF_OFFSET_FLAGS("virtual_server", CONF_FLAG_REQUIRED | CONF_FLAG_NOT_EMPTY, rlm_eap_peap_t, virtual_server) },
 
@@ -102,9 +95,6 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 
 	t = talloc_zero(ctx, peap_tunnel_t);
 
-#ifdef WITH_PROXY
-	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
-#endif
 	t->server_cs = inst->server_cs;
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
 
