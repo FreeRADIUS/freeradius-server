@@ -50,7 +50,7 @@ static const char *cbor_type_to_str[8] = {
  *	number, which includes our data type.  If the tag type doesn't match the value here, then something is
  *	wrong.
  */
-static const uint64_t cbor_type_to_tag[FR_TYPE_MAX] = {
+static const uint64_t cbor_type_to_tag[FR_TYPE_MAX + 1] = {
 	[FR_TYPE_DATE] = 1,
 	[FR_TYPE_ETHERNET] = 48,
 	[FR_TYPE_IPV4_ADDR] = 52,
