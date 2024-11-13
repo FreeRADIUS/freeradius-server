@@ -273,12 +273,15 @@ static int eap_peap_check_tlv(request_t *request, uint8_t const *data, size_t da
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr_tls_session_t *tls_session,
-						  request_t *request,
-						  fr_packet_t *reply, fr_pair_list_t *reply_list)
+static unlang_action_t process_reply(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
 {
-	fr_pair_list_t vps;
-	peap_tunnel_t *t = tls_session->opaque;
+	eap_session_t		*eap_session = talloc_get_type_abort(uctx, eap_session_t);
+	eap_tls_session_t	*eap_tls_session = talloc_get_type_abort(eap_session->opaque, eap_tls_session_t);
+	fr_tls_session_t	*tls_session = eap_tls_session->tls_session;
+	fr_pair_list_t		vps;
+	peap_tunnel_t		*t = tls_session->opaque;
+	request_t		*parent = request->parent;
+	fr_packet_t		*reply = request->reply;
 
 	if (RDEBUG_ENABLED2) {
 
@@ -291,7 +294,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		} else {
 			RDEBUG2("Got tunneled reply code %i", reply->code);
 		}
-		log_request_pair_list(L_DBG_LVL_2, request, NULL, reply_list, NULL);
+		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
 	}
 
 	switch (reply->code) {
@@ -316,14 +319,14 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		 *	Access-Challenge is ignored.
 		 */
 		fr_pair_list_init(&vps);
-		MEM(fr_pair_list_copy_by_da(t, &vps, reply_list, attr_eap_message, 0) >= 0);
+		MEM(fr_pair_list_copy_by_da(t, &vps, &request->reply_pairs, attr_eap_message, 0) >= 0);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
 		 *	VP's back to the client.
 		 */
 		if (!fr_pair_list_empty(&vps)) {
-			eap_peap_inner_from_pairs(request, tls_session, &vps);
+			eap_peap_inner_from_pairs(parent, tls_session, &vps);
 			fr_pair_list_free(&vps);
 		}
 
@@ -576,24 +579,20 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		RDEBUG2("No tunnel username (SSL resumption?)");
 	}
 
+	if (unlang_subrequest_child_push(&eap_session->submodule_rcode, child,
+					 &(unlang_subrequest_session_t){ .enable = true, .unique_ptr = child },
+					 false, UNLANG_SUB_FRAME) < 0) goto finish;
+	if (unlang_function_push(child, NULL, process_reply, NULL, 0,
+				 UNLANG_SUB_FRAME, eap_session) != UNLANG_ACTION_PUSHED_CHILD) goto finish;
+
 	/*
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	eap_virtual_server(request, eap_session, t->server_cs);
-
-	/*
-	 *	Decide what to do with the reply.
-	 */
-	if (!fake->reply->code) {
-		REDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", fake->reply->code);
-		rcode = RLM_MODULE_REJECT;
-	} else {
-		rcode = process_reply(eap_session, tls_session, request, fake->reply, &fake->reply_pairs);
-	}
+	return eap_virtual_server(child, eap_session, t->server_cs);
 
 finish:
-	talloc_free(child);
+	if (child) request_detach(child);
 
 	RETURN_MODULE_RCODE(rcode);
 }
