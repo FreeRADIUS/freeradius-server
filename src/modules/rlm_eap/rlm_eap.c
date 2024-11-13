@@ -923,15 +923,6 @@ static unlang_action_t mod_authorize(rlm_rcode_t *p_result, module_ctx_t const *
 	rlm_eap_t const		*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_eap_t);
 	int			status;
 
-#ifdef WITH_PROXY
-	/*
-	 *	We don't do authorization again, once we've seen the
-	 *	proxy reply (or the proxied packet)
-	 */
-	if (request->proxy != NULL)
-		RETURN_MODULE_NOOP;
-#endif
-
 	if (!inst->auth_type) {
 		WARN("No 'authenticate %s {...}' section or 'Auth-Type = %s' set.  Cannot setup EAP authentication",
 		     mctx->mi->name, mctx->mi->name);
