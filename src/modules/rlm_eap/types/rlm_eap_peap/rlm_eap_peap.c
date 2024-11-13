@@ -78,20 +78,16 @@ fr_dict_autoload_t rlm_eap_peap_dict[] = {
 
 fr_dict_attr_t const *attr_auth_type;
 fr_dict_attr_t const *attr_eap_tls_require_client_cert;
-fr_dict_attr_t const *attr_proxy_to_realm;
 
 fr_dict_attr_t const *attr_eap_message;
-fr_dict_attr_t const *attr_freeradius_proxied_to;
 fr_dict_attr_t const *attr_user_name;
 
 extern fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[];
 fr_dict_attr_autoload_t rlm_eap_peap_dict_attr[] = {
 	{ .out = &attr_auth_type, .name = "Auth-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 	{ .out = &attr_eap_tls_require_client_cert, .name = "EAP-TLS-Require-Client-Cert", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
-	{ .out = &attr_proxy_to_realm, .name = "Proxy-To-Realm", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 
 	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
-	{ .out = &attr_freeradius_proxied_to, .name = "Vendor-Specific.FreeRADIUS.Proxied-To", .type = FR_TYPE_IPV4_ADDR, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
 	{ NULL }
 };
