@@ -541,8 +541,7 @@ static int dict_flag_subtype(fr_dict_attr_t **da_p, char const *value, UNUSED fr
 static TABLE_TYPE_NAME_FUNC_RPTR(table_sorted_value_by_str, fr_dict_flag_parser_t const *,
 				 fr_dict_attr_flag_to_parser, fr_dict_flag_parser_rule_t const *, fr_dict_flag_parser_rule_t const *)
 
-static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict_attr_t **da_p) CC_HINT(nonnull);
-static int dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict_attr_t **da_p)
+static int CC_HINT(nonnull) dict_process_flag_field(dict_tokenize_ctx_t *ctx, char *name, fr_dict_attr_t **da_p)
 {
 	static fr_dict_flag_parser_t dict_common_flags[] = {
 		{ L("array"),		{ .func = dict_flag_array } },
@@ -864,29 +863,36 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 	return 0;
 }
 
-/*
- *	Process the ATTRIBUTE command
- */
-static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, int argc, fr_dict_attr_flags_t const *base_flags)
+static int dict_set_value_attr(dict_tokenize_ctx_t *ctx, fr_dict_attr_t *da)
 {
-	bool			set_relative_attr;
-
-	ssize_t			slen;
-	unsigned int		attr;
-
-	fr_dict_attr_t const	*parent;
-	fr_dict_attr_t		*da;
-
-	if ((argc < 3) || (argc > 4)) {
-		fr_strerror_const("Invalid ATTRIBUTE syntax");
-		return -1;
+	/*
+	 *	Adding an attribute of type 'struct' is an implicit
+	 *	BEGIN-STRUCT.
+	 */
+	if (da->type == FR_TYPE_STRUCT) {
+		if (dict_gctx_push(ctx, da) < 0) return -1;
+		ctx->value_attr = NULL;
+	} else if (fr_type_is_leaf(da->type)) {
+		memcpy(&ctx->value_attr, &da, sizeof(da));
+	} else {
+		ctx->value_attr = NULL;
 	}
+
+	return 0;
+}
+
+static int dict_read_process_common(dict_tokenize_ctx_t *ctx, fr_dict_attr_t **da_p,
+				    char const *name,
+				    char const *type_name, char *flag_name,
+				    fr_dict_attr_flags_t const *base_flags)
+{
+	fr_dict_attr_t *da;
 
 	/*
 	 *	Dictionaries need to have real names, not shitty ones.
 	 */
-	if (strncmp(argv[0], "Attr-", 5) == 0) {
-		fr_strerror_const("Invalid ATTRIBUTE name");
+	if (strncmp(name, "Attr-", 5) == 0) {
+		fr_strerror_const("Invalid name");
 		return -1;
 	};
 
@@ -906,10 +912,51 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	/*
 	 *	Set the base type of the attribute.
 	 */
-	if (dict_process_type_field(ctx, argv[2], &da) < 0) {
+	if (dict_process_type_field(ctx, type_name, &da) < 0) {
 	error:
 		talloc_free(da);
 		return -1;
+	}
+
+	/*
+	 *	Parse optional flags.  We pass in the partially allocated
+	 *	attribute so that flags can be set directly.
+	 *
+	 *	Where flags contain variable length fields, this is
+	 *	significantly easier than populating a temporary struct.
+	 */
+	if (flag_name) if (dict_process_flag_field(ctx, flag_name, &da) < 0) goto error;
+
+	*da_p = da;
+	return 0;
+}
+
+/*
+ *	Process the ATTRIBUTE command
+ */
+static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, int argc, fr_dict_attr_flags_t const *base_flags)
+{
+	bool			set_relative_attr;
+
+	ssize_t			slen;
+	unsigned int		attr;
+
+	fr_dict_attr_t const	*parent;
+	fr_dict_attr_t		*da;
+
+	if ((argc < 3) || (argc > 4)) {
+		fr_strerror_const("Invalid ATTRIBUTE syntax");
+		return -1;
+	}
+
+	if (dict_read_process_common(ctx, &da, argv[0], argv[2],
+				     (argc > 3) ? argv[3] : NULL, base_flags) < 0) {
+		return -1;
+	}
+
+	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
+		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
+		goto error;
 	}
 
 	/*
@@ -957,7 +1004,11 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	/*
 	 *	Record the attribute number
 	 */
-	if (unlikely(dict_attr_num_init(da, attr) < 0)) goto error;
+	if (unlikely(dict_attr_num_init(da, attr) < 0)) {
+	error:
+		talloc_free(da);
+		return -1;
+	}
 
 	/*
 	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
@@ -974,20 +1025,6 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	 *	Set the parent we just determined...
 	 */
 	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
-
-	/*
-	 *	Parse optional flags.  We pass in the partially allocated
-	 *	attribute so that flags can be set directly.
-	 *
-	 *	Where flags contain variable length fields, this is
-	 *	significantly easier than populating a temporary struct.
-	 */
-	if (argc >= 4) if (dict_process_flag_field(ctx, argv[3], &da) < 0) goto error;
-
-	if (da->flags.extra && (da->flags.subtype == FLAG_BIT_FIELD)) {
-		fr_strerror_const("Bit fields can only be defined as a MEMBER of a STRUCT");
-		goto error;
-	}
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
@@ -1085,33 +1122,8 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 		return -1;
 	}
 
-	/*
-	 *	Dictionaries need to have real names, not shitty ones.
-	 */
-	if (strncmp(argv[0], "Attr-", 5) == 0) {
-		fr_strerror_const("Invalid DEFINE name");
-		return -1;
-	}
-
-	/*
-	 *	Allocate the attribute here, and then fill in the fields
-	 *	as we start parsing the various elements of the definition.
-	 */
-	da = dict_attr_alloc_null(ctx->dict->pool, ctx->dict->proto);
-	if (unlikely(da == NULL)) return -1;
-	dict_attr_location_set(ctx, da);
-
-	/*
-	 *	Set the attribute flags from the base flags.
-	 */
-	memcpy(&da->flags, base_flags, sizeof(da->flags));
-
-	/*
-	 *	Set the base type of the attribute.
-	 */
-	if (dict_process_type_field(ctx, argv[1], &da) < 0) {
-	error:
-		talloc_free(da);
+	if (dict_read_process_common(ctx, &da, argv[0], argv[1],
+				     (argc > 2) ? argv[2] : NULL, base_flags) < 0) {
 		return -1;
 	}
 
@@ -1122,7 +1134,9 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	case FR_TYPE_VSA:
 	case FR_TYPE_VENDOR:
 		fr_strerror_printf("DEFINE cannot be used for type '%s'", argv[1]);
-		goto error;
+	error:
+		talloc_free(da);
+		return -1;
 
 	default:
 		break;
@@ -1145,15 +1159,6 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 				   argv[0], parent->name);
 		goto error;
 	}
-
-	/*
-	 *	Parse optional flags.  We pass in the partially allocated
-	 *	attribute so that flags can be set directly.
-	 *
-	 *	Where flags contain variable length fields, this is
-	 *	significantly easier than populating a temporary struct.
-	 */
-	if (argc >= 3) if (dict_process_flag_field(ctx, argv[2], &da) < 0) goto error;
 
 #ifdef STATIC_ANALYZER
 	if (!ctx->dict) goto error;
@@ -1202,16 +1207,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 
 	/* New attribute, fixup stack */
 	case 0:
-		/*
-		 *	Adding an attribute of type 'struct' is an implicit
-		 *	BEGIN-STRUCT.
-		 */
-		if (da->type == FR_TYPE_STRUCT) {
-			if (dict_gctx_push(ctx, da) < 0) return -1;
-			ctx->value_attr = NULL;
-		} else {
-			memcpy(&ctx->value_attr, &da, sizeof(da));
-		}
+		if (dict_set_value_attr(ctx, da) < 0) return -1;
 
 		if (da->type == FR_TYPE_TLV) {
 			ctx->relative_attr = da;
@@ -1420,52 +1416,19 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		return -1;
 	}
 
-	/*
-	 *	Dictionaries need to have real names, not shitty ones.
-	 */
-	if (strncmp(argv[0], "Attr-", 5) == 0) {
-		fr_strerror_const("Invalid MEMBER name");
+	if (dict_read_process_common(ctx, &da, argv[0], argv[1],
+				     (argc > 2) ? argv[2] : NULL, base_flags) < 0) {
 		return -1;
 	}
-
-	/*
-	 *	Allocate the attribute here, and then fill in the fields
-	 *	as we start parsing the various elements of the definition.
-	 */
-	da = dict_attr_alloc_null(ctx->dict->pool, ctx->dict->proto);
-	if (unlikely(da == NULL)) return -1;
-	dict_attr_location_set(ctx, da);
-
-	/*
-	 *	Set the attribute flags from the base flags.
-	 */
-	memcpy(&da->flags, base_flags, sizeof(da->flags));
-	/*
-	 *	If our parent is a fixed-size struct, then we have to be fixed-size, too.
-	 */
-	da->flags.is_known_width |= ctx->stack[ctx->stack_depth].da->flags.is_known_width;
-
-	/*
-	 *	Set the base type of the attribute.
-	 */
-	if (dict_process_type_field(ctx, argv[1], &da) < 0) {
-	error:
-		talloc_free(da);
-		return -1;
-	}
-
-	/*
-	 *	Parse optional flags.  We pass in the partially allocated
-	 *	attribute so that flags can be set directly.
-	 *
-	 *	Where flags contain variable length fields, this is
-	 *	significantly easier than populating a temporary struct.
-	 */
-	if (argc >= 3) if (dict_process_flag_field(ctx, argv[2], &da) < 0) goto error;
 
 #ifdef STATIC_ANALYZER
 	if (!ctx->dict) goto error;
 #endif
+
+	/*
+	 *	If our parent is a fixed-size struct, then we have to be fixed-size, too.
+	 */
+	da->flags.is_known_width |= ctx->stack[ctx->stack_depth].da->flags.is_known_width;
 
 	/*
 	 *	Double check bit field magic
@@ -1495,7 +1458,9 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 				if (previous->flags.flag_byte_offset != 0) {
 					fr_strerror_printf("Previous bitfield %s did not end on a byte boundary",
 							   previous->name);
-					goto error;
+				error:
+					talloc_free(da);
+					return -1;
 				}
 			}
 		}
@@ -1576,7 +1541,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		*/
 		if (da->type == FR_TYPE_TLV) {
 			ctx->relative_attr = dict_attr_child_by_num(ctx->stack[ctx->stack_depth].da,
-								ctx->stack[ctx->stack_depth].member_num);
+								    ctx->stack[ctx->stack_depth].member_num);
 			if (ctx->relative_attr && (dict_gctx_push(ctx, ctx->relative_attr) < 0)) return -1;
 			return 0;
 
@@ -1611,26 +1576,19 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 			return -1;
 		}
 
-		/*
-		 *	Adding a member of type 'struct' is an implicit BEGIN-STRUCT.
-		 */
-		if (da->type == FR_TYPE_STRUCT) {
-			if (dict_gctx_push(ctx, da) < 0) return -1;
-			ctx->value_attr = NULL;
+		if (dict_set_value_attr(ctx, da) < 0) return -1;
 
-		} else {
-			/*
-			 *	Check if this MEMBER closes the structure.
-			 *
-			 *	@todo - close this struct if the child struct is variable sized.  For now, it
-			 *	looks like most child structs are at the end of the parent.
-			 *
-			 *	The solution is to update the unwind() function to check if the da we've
-			 *	unwound to is a struct, and then if so... get the last child, and mark it
-			 *	closed.
-			 */
-			if (!da->flags.is_known_width) ctx->stack[ctx->stack_depth].struct_is_closed = da;
-		}
+		/*
+		 *	Check if this MEMBER closes the structure.
+		 *
+		 *	@todo - close this struct if the child struct is variable sized.  For now, it
+		 *	looks like most child structs are at the end of the parent.
+		 *
+		 *	The solution is to update the unwind() function to check if the da we've
+		 *	unwound to is a struct, and then if so... get the last child, and mark it
+		 *	closed.
+		 */
+		if (!da->flags.is_known_width) ctx->stack[ctx->stack_depth].struct_is_closed = da;
 		break;
 
 	/* Deferred attribute, don't begin the TLV section automatically */
@@ -1905,8 +1863,8 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int a
 		if (!da) return -1;
 
 		/*
-		*	A STRUCT definition is an implicit BEGIN-STRUCT.
-		*/
+		 *	A STRUCT definition is an implicit BEGIN-STRUCT.
+		 */
 		ctx->relative_attr = NULL;
 		if (dict_gctx_push(ctx, da) < 0) return -1;
 
