@@ -40,15 +40,17 @@
 ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_token_t quote)
 {
 	fr_sbuff_t	our_out;
+	ssize_t		slen;
 
 	PAIR_VERIFY(vp);
+
+	our_out = FR_SBUFF(out);
 
 	switch (vp->vp_type) {
 	/*
 	 *	For structural types descend down
 	 */
 	case FR_TYPE_STRUCTURAL:
-		our_out = FR_SBUFF(out);
 		if (fr_pair_list_empty(&vp->vp_group)) {
 			FR_SBUFF_IN_CHAR_RETURN(&our_out, '{', ' ', '}');
 
@@ -66,8 +68,21 @@ ssize_t fr_pair_print_value_quoted(fr_sbuff_t *out, fr_pair_t const *vp, fr_toke
 	 *	For simple types just print the box
 	 */
 	default:
-		return fr_value_box_print_quoted(out, &vp->data, quote);
+		/*
+		 *	If it's raw / unknown and not octets, print the cast before the type.
+		 *
+		 *	Otherwise on parsing, we don't know how to interpret the value. :(
+		 */
+		if ((vp->da->flags.is_raw || vp->da->flags.is_unknown) &&
+		    (vp->vp_type != FR_TYPE_OCTETS)) {
+			FR_SBUFF_IN_SPRINTF_RETURN(&our_out, "(%s) ", fr_type_to_str(vp->vp_type));
+		}
+
+		slen = fr_value_box_print_quoted(&our_out, &vp->data, quote);
+		if (slen <= 0) return slen;
 	}
+
+	FR_SBUFF_SET_RETURN(out, &our_out);
 }
 
 /** Print one attribute and value to a string
