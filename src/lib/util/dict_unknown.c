@@ -201,6 +201,7 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	if (da->parent && da->parent->flags.is_unknown) {
 		parent = fr_dict_attr_unknown_copy(n, da->parent);
 		if (!parent) {
+		error:
 			talloc_free(n);
 			return NULL;
 		}
@@ -212,7 +213,9 @@ static fr_dict_attr_t *dict_unknown_alloc(TALLOC_CTX *ctx, fr_dict_attr_t const 
 	/*
 	 *	Initialize the rest of the fields.
 	 */
-	dict_attr_init(&n, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags });
+	if (dict_attr_init(&n, parent, da->name, da->attr, type, &(dict_attr_args_t){ .flags = &flags }) < 0) {
+		goto error;
+	}
 	if (type != FR_TYPE_OCTETS) dict_attr_ext_copy_all(&n, da);
 	DA_VERIFY(n);
 
