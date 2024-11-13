@@ -277,7 +277,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 						  request_t *request,
 						  fr_packet_t *reply, fr_pair_list_t *reply_list)
 {
-	rlm_rcode_t rcode = RLM_MODULE_REJECT;
 	fr_pair_list_t vps;
 	peap_tunnel_t *t = tls_session->opaque;
 
@@ -300,15 +299,13 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 		RDEBUG2("Tunneled authentication was successful");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eap_peap_success(request, eap_session, tls_session);
-		rcode = RLM_MODULE_HANDLED;
-		break;
+		RETURN_MODULE_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_REJECT:
 		RDEBUG2("Tunneled authentication was rejected");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 		eap_peap_failure(request, eap_session, tls_session);
-		rcode = RLM_MODULE_HANDLED;
-		break;
+		RETURN_MODULE_HANDLED;
 
 	case FR_RADIUS_CODE_ACCESS_CHALLENGE:
 		RDEBUG2("Got tunneled Access-Challenge");
@@ -330,16 +327,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, fr
 			fr_pair_list_free(&vps);
 		}
 
-		rcode = RLM_MODULE_HANDLED;
-		break;
+		RETURN_MODULE_HANDLED;
 
 	default:
 		RDEBUG2("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
-		rcode = RLM_MODULE_REJECT;
-		break;
+		RETURN_MODULE_REJECT;
 	}
-
-	return rcode;
 }
 
 
