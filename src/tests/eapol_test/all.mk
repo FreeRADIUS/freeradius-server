@@ -42,16 +42,10 @@ TEST_BIN := $(BUILD_DIR)/bin/local
 RADDB_PATH := $(top_builddir)/raddb
 
 #
-#	Disabled modules.
-#
-IGNORED_EAP_TYPES := peap
-
-#
 #   This ensures that FreeRADIUS uses modules from the build directory
 #
 EAP_TARGETS      := $(filter rlm_eap_%,$(ALL_TGTS))
-EAP_TYPES_LIST   := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
-EAP_TYPES        := $(filter-out $(IGNORED_EAP_TYPES),$(EAP_TYPES_LIST))
+EAP_TYPES        := $(patsubst rlm_eap_%.la,%,$(EAP_TARGETS))
 EAPOL_TEST_FILES := $(foreach x,$(EAP_TYPES),$(wildcard $(DIR)/$(x)*.conf))
 EAPOL_OK_FILES	 := $(patsubst $(DIR)/%.conf,$(OUTPUT)/%.ok,$(EAPOL_TEST_FILES))
 EAP_TESTS        := $(sort $(patsubst $(DIR)/%.conf,%,$(EAPOL_TEST_FILES)))
@@ -100,15 +94,9 @@ $(foreach TEST,$(addprefix test., $(subst _,-,$(EAP_TESTS))),$(eval $(call RADIU
 TEST := test.eap
 
 #
-#	Print the disabled list.
-#
-$(IGNORED_EAP_TYPES):
-	@echo "EAPOL-TEST $@ - Disabled.  Enable by removing '$@' from 'IGNORED_EAP_TYPES' in src/tests/eapol_test/all.mk"
-
-#
 #  Separate the dependencies here just to keep a bit clear.
 #
-test.eap.check: $(IGNORED_EAP_TYPES) | $(OUTPUT) $(GENERATED_CERT_FILES)
+test.eap.check: $(OUTPUT) $(GENERATED_CERT_FILES)
 
 #
 #  Run EAP tests.
