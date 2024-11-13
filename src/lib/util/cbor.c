@@ -60,6 +60,8 @@ static const uint64_t cbor_type_to_tag[FR_TYPE_MAX] = {
 	[FR_TYPE_TIME_DELTA] = 1002,
 };
 
+static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair);
+
 static ssize_t cbor_encode_integer(fr_dbuff_t *dbuff, uint8_t type, uint64_t data)
 {
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
@@ -165,8 +167,11 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 
 	switch (vb->type) {
 	case FR_TYPE_BOOL:
-		data = vb->vb_bool;
-		goto encode_int;
+		/*
+		 *	One byte of FLOAT (i.e. special value), and the boolean as a "simple value".
+		 */
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_FLOAT << 5) | (20 + vb->vb_bool)));
+		break;
 
 	case FR_TYPE_UINT8:
 		data = vb->vb_uint8;
@@ -378,6 +383,14 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		break;
 
 	case FR_TYPE_GROUP:
+		/*
+		 *	Zero-length array.
+		 */
+		if (fr_value_box_list_num_elements(&vb->vb_group) == 0) {
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 0));
+			break;
+		}
+
 		/*
 		 *	The value is array(children)
 		 */
@@ -789,9 +802,15 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
 
-	if (type != FR_TYPE_NULL) {
-		fr_value_box_init(vb, type, enumv, tainted);
+	if (type == FR_TYPE_NULL) {
+		type = cbor_guess_type(&work_dbuff, false);
+		if (type == FR_TYPE_NULL) {
+			fr_strerror_printf("Invalid cbor - unable to determine data type");
+			return 0;
+		}
 	}
+
+	fr_value_box_init(vb, type, enumv, tainted);
 
 	info = major & 0x1f;
 	major >>= 5;
@@ -802,12 +821,12 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 	if (((info >= 28) && (info <= 30)) ||
 	    ((info == 31) && ((major == 0) || (major == 1) || (major == 6)))) {
 		fr_strerror_const("Invalid cbor data - input is not 'well formed'");
-		return -1;
+		return 0;
 	}
 
 	switch (major) {
 	case CBOR_STRING:
-		if ((type != FR_TYPE_NULL) && (type != FR_TYPE_STRING)) {
+		if (type != FR_TYPE_STRING) {
 		mismatch:
 			fr_strerror_printf("cbor data contains invalid content %d for expected data type %s",
 					   major, fr_type_to_str(type));
@@ -839,13 +858,12 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		if (value) FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
 		ptr[value] = '\0';
 
-		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_STRING, enumv, tainted);
 		fr_value_box_strdup_shallow(vb, NULL, (char const *) ptr, tainted);
 
 		break;
 
 	case CBOR_OCTETS:
-		if ((type != FR_TYPE_NULL) && (type != FR_TYPE_OCTETS)) goto mismatch;
+		if (type != FR_TYPE_OCTETS) goto mismatch;
 
 		fr_assert(info != 31);
 
@@ -869,7 +887,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			return -1;
 		}
 
-		if (type == FR_TYPE_NULL) fr_value_box_init(vb, FR_TYPE_OCTETS, enumv, tainted);
 		fr_value_box_memdup_shallow(vb, NULL, (uint8_t const *) ptr, value, false); /* tainted? */
 
 		if (value) FR_DBUFF_OUT_MEMCPY_RETURN(ptr, &work_dbuff, value);
@@ -880,6 +897,11 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		if (slen < 0) return slen;
 
 		switch (type) {
+		case FR_TYPE_BOOL:
+			if (value > 1) goto invalid_bool;
+			vb->vb_bool = value;
+			break;
+
 		case FR_TYPE_UINT8:
 			if (value > UINT8_MAX) {
 			invalid:
@@ -899,10 +921,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			if (value > UINT32_MAX) goto invalid;
 			vb->vb_uint32 = value;
 			break;
-
-		case FR_TYPE_NULL:
-			fr_value_box_init(vb, FR_TYPE_UINT64, enumv, tainted);
-			FALL_THROUGH;
 
 		case FR_TYPE_UINT64:
 			vb->vb_uint64 = value;
@@ -968,10 +986,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			vb->vb_int32 = neg;
 			break;
 
-		case FR_TYPE_NULL:
-			fr_value_box_init(vb, FR_TYPE_INT64, enumv, tainted);
-			FALL_THROUGH;
-
 		case FR_TYPE_INT64:
 			vb->vb_int64 = neg;
 			break;
@@ -983,29 +997,48 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	case CBOR_FLOAT:
 		/*
-		 *	Floats can be encoded as integers.
+		 *	Simple values.  See RFC 8489 Section 3.3.
+		 *
+		 *	20 - false
+		 *	21 - true
+		 *	22 - NULL
 		 */
 		if (info < 24) {
 			switch (type) {
-			case FR_TYPE_FLOAT32:
-				vb->vb_float32 = info;
-				break;
+			case FR_TYPE_BOOL:
+				if (info == 20) {
+					vb->vb_bool = false;
+					break;
+				}
 
-			case FR_TYPE_NULL:
-				fr_value_box_init(vb, FR_TYPE_FLOAT64, enumv, tainted);
+				if (info == 21) {
+					vb->vb_bool = true;
+					break;
+				}
+
+			invalid_bool:
+				fr_strerror_printf("Invalid cbor - boolean is not encoded as 'true' or 'false'");
+				return -fr_dbuff_used(&work_dbuff);
+
+			case FR_TYPE_OCTETS:
+			case FR_TYPE_STRING:
+			case FR_TYPE_TLV:
+			case FR_TYPE_VENDOR:
+			case FR_TYPE_GROUP:
+			case FR_TYPE_STRUCT:
+				/*
+				 *	Be a little forgiving.  22 is NULL, so we treat that as "nothing".
+				 *
+				 *	i.e. empty string, empty set, etc.
+				 */
+				if (info == 22) break;
+
 				FALL_THROUGH;
 
-			case FR_TYPE_FLOAT64:
-				vb->vb_float64 = info;
-				break;
-
 			default:
-			float_type_mismatch:
-				fr_strerror_printf("Unexpected cbor type 'float' when decoding data type %s",
-						   fr_type_to_str(type));
-				return -1;
+				fr_strerror_printf("Invalid cbor - unexpected 'simple value' %u", info);
+				return -fr_dbuff_used(&work_dbuff);
 			}
-
 			break;
 		}
 
@@ -1022,16 +1055,15 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 				vb->vb_float32 = data;
 				break;
 
-			case FR_TYPE_NULL:
-				fr_value_box_init(vb, FR_TYPE_FLOAT64, enumv, tainted);
-				FALL_THROUGH;
-
 			case FR_TYPE_FLOAT64:
 				vb->vb_float64 = data;
 				break;
 
 			default:
-				goto float_type_mismatch;
+			float_type_mismatch:
+				fr_strerror_printf("Unexpected cbor type 'float' when decoding data type %s",
+						   fr_type_to_str(type));
+				return -1;
 			}
 
 			break;
@@ -1050,10 +1082,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			case FR_TYPE_FLOAT32:
 				vb->vb_float32 = data;
 				break;
-
-			case FR_TYPE_NULL:
-				fr_value_box_init(vb, FR_TYPE_FLOAT64, enumv, tainted);
-				FALL_THROUGH;
 
 			case FR_TYPE_FLOAT64:
 				vb->vb_float64 = (double) data;
@@ -1075,10 +1103,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			case FR_TYPE_FLOAT32:
 				vb->vb_float32 = data; /* maybe loses precision? */
 				break;
-
-			case FR_TYPE_NULL:
-				fr_value_box_init(vb, FR_TYPE_FLOAT64, enumv, tainted);
-				FALL_THROUGH;
 
 			case FR_TYPE_FLOAT64:
 				vb->vb_float64 = data;
@@ -1131,11 +1155,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		break;
 
 	case CBOR_ARRAY:
-		if (type == FR_TYPE_NULL) {
-			type = FR_TYPE_GROUP;
-			fr_value_box_init(vb, type, enumv, tainted);
-		}
-
 		if (type != FR_TYPE_GROUP) goto invalid_type;
 
 		/*
@@ -1200,7 +1219,6 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 			fr_value_box_list_insert_tail(&vb->vb_group, child);
 		}
-
 		break;
 
 		/*
@@ -1249,7 +1267,6 @@ ssize_t fr_cbor_encode_pair(fr_dbuff_t *dbuff, fr_pair_t *vp)
 		fr_assert(parent != NULL);
 		goto encode_children;
 
-
 		/*
 		 *	The only difference between TLV and VSA is that the children of VSA are all VENDORs.
 		 */
@@ -1262,6 +1279,11 @@ ssize_t fr_cbor_encode_pair(fr_dbuff_t *dbuff, fr_pair_t *vp)
 		 *	The value is array(children)
 		 */
 encode_children:
+		if (fr_pair_list_num_elements(&vp->vp_group) == 0) {
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_FLOAT << 5) | 22)); /* NULL */
+			break;
+		}
+
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 31)); /* indefinite array */
 
 		fr_pair_list_foreach(&vp->vp_group, child) {
@@ -1295,7 +1317,7 @@ encode_children:
  *  We've parsed the attribute number, and found that we don't have a dictionary entry for it.  But rather
  *  than create an attribute of type octets, we try to guess the data type.
  */
-static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff)
+static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair)
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	ssize_t slen;
@@ -1324,7 +1346,8 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff)
 		return FR_TYPE_OCTETS;
 
 	case CBOR_ARRAY:
-		break;		/* this shouldn't happen??? */
+		if (!pair) return FR_TYPE_GROUP;
+		break;
 
 	case CBOR_MAP:
 		return FR_TYPE_TLV;
@@ -1374,6 +1397,15 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff)
 		break;
 
 	case CBOR_FLOAT:
+		/*
+		 *	In-place values are special. false / true / NULL
+		 */
+		if (info < 24) {
+			if ((info == 20) || (info == 21)) return FR_TYPE_BOOL;
+
+			return FR_TYPE_NULL;
+		}
+
 		return FR_TYPE_FLOAT64;
 	}
 
@@ -1385,7 +1417,7 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff)
 	 *	converted to data type 'octets'.  This work involves mostly parsing the cbor data, which isn't
 	 *	trivial.
 	 */
-	return FR_TYPE_OCTETS;
+	return FR_TYPE_NULL;
 }
 
 ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *dbuff,
@@ -1432,7 +1464,11 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 	if (!da) {
 		fr_type_t type;
 
-		type = cbor_guess_type(&work_dbuff);
+		type = cbor_guess_type(&work_dbuff, true);
+		if (type == FR_TYPE_NULL) {
+			fr_strerror_printf("Invalid cbor - unable to determine data type");
+			return -fr_dbuff_used(&work_dbuff);
+		}
 
 		/*
 		 *	@todo - the value here isn't a cbor octets type, but is instead cbor data.  Since cbor
@@ -1498,6 +1534,11 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 	major >>= 5;
 
 	if (major != CBOR_ARRAY) {
+		/*
+		 *	Allow NULL as a synonym for "no children".
+		 */
+		if ((major == CBOR_FLOAT) && (info == 22)) goto done;
+
 		talloc_free(vp);
 		fr_strerror_printf("Invalid cbor - expected 'array', got major type %d",
 				   major);

@@ -89,5 +89,14 @@ match 9f a1 18 19 60 ff
 decode-pair -
 match Class = 0x
 
+#
+#  Nokia-SR is empty, so it's encoded as "f6"
+#
+encode-pair Vendor-Specific = { Nokia-SR = { } }
+match 9f a1 18 1a 9f a1 19 19 7f f6 ff ff
+
+decode-pair -
+match Vendor-Specific = { Nokia-SR = { } }
+
 count
-match 39
+match 43
