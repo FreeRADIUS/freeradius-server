@@ -29,8 +29,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_peap.h"
 
-static int setup_fake_request(request_t *request, request_t *fake, peap_tunnel_t *t);
-
 /*
  *	Send protected EAP-Failure
  *
@@ -576,7 +574,14 @@ unlang_action_t eap_peap_process(rlm_rcode_t *p_result, request_t *request,
 		}
 	} /* else there WAS a t->username */
 
-	setup_fake_request(request, fake, t);
+	if (t->username) {
+		vp = fr_pair_copy(fake->request_ctx, t->username);
+		fr_pair_append(&fake->request_pairs, vp);
+		RDEBUG2("Setting &request.User-Name from tunneled (inner) identity \"%s\"",
+			vp->vp_strvalue);
+	} else {
+		RDEBUG2("No tunnel username (SSL resumption?)");
+	}
 
 	/*
 	 *	Call authentication recursively, which will
@@ -598,26 +603,4 @@ finish:
 	talloc_free(fake);
 
 	RETURN_MODULE_RCODE(rcode);
-}
-
-static int CC_HINT(nonnull) setup_fake_request(request_t *request, request_t *fake, peap_tunnel_t *t) {
-
-	fr_pair_t *vp;
-
-	/*
-	 *	Tell the request that it's a fake one.
-	 */
-	MEM(fr_pair_prepend_by_da(fake->request_ctx, &vp, &fake->request_pairs, attr_freeradius_proxied_to) >= 0);
-	(void) fr_pair_value_from_str(vp, "127.0.0.1", sizeof("127.0.0.1") - 1, NULL, false);
-
-	if (t->username) {
-		vp = fr_pair_copy(fake->request_ctx, t->username);
-		fr_pair_append(&fake->request_pairs, vp);
-		RDEBUG2("Setting &request.User-Name from tunneled (inner) identity \"%s\"",
-			vp->vp_strvalue);
-	} else {
-		RDEBUG2("No tunnel username (SSL resumption?)");
-	}
-
-	return 0;
 }
