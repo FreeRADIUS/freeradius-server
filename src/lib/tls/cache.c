@@ -492,7 +492,11 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	fr_pair_t		*vp;
 	SSL_SESSION		*sess = tls_session->cache->store.sess;
 	unlang_action_t		ua;
+#if OPENSSL_VERSION_NUMBER >= 0x30400000L
+	fr_time_t		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time_ex(sess) + SSL_get_timeout(sess)));
+#else
 	fr_time_t		expires = fr_time_from_sec((time_t)(SSL_SESSION_get_time(sess) + SSL_get_timeout(sess)));
+#endif
 	fr_time_t		now = fr_time();
 
 	fr_assert(tls_cache->store.sess);
