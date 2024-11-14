@@ -970,3 +970,24 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?(objectClass=radiusprofile)"
 #  ```
 #
+#  ### %ldap.group(...)
+#
+#  Check whether the current user is a member of a the given group.  If the attribute
+#  `control.LDAP-UserDN` exists, that will be used as the "user" object.  If it does
+#  not then the user is first looked up using the filter form the `user { }` section
+#  of the module configuration.
+#
+#  Groups can be specified either as a name or a DN, with a lookup used if necessary
+#  to convert to the required format.
+#
+#  .Return: _bool_
+#
+#  .Example
+#
+#  [source,unlang]
+#  ---
+#  if (%ldap.group('cn=group1,ou=Groups,dc=example,dc=org')) {
+#    ...
+#  }
+#  ---
+#
