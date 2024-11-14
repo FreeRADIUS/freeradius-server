@@ -38,6 +38,12 @@ typedef struct fr_bio_fd_s {
 
 	fr_bio_fd_info_t  info;
 
+	fr_bio_callback_t  connect_success;    	//!< for fr_bio_fd_connect()
+	fr_bio_fd_connect_error_t  connect_error;	//!< for fr_bio_fd_connect()
+	fr_bio_callback_t  connect_timeout;	//!< for fr_bio_fd_connect()
+	fr_event_list_t	   *connect_el;		//!< for fr_bio_fd_connect()
+	fr_event_timer_t const *connect_ev;		//!< for fr_bio_fd_connect()
+
 	int		max_tries;		//!< how many times we retry on EINTR
 	size_t		offset;			//!< where #fr_bio_fd_packet_ctx_t is stored
 

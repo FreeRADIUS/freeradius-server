@@ -102,6 +102,16 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 
 	if (!my->info.eof && my->cb.eof) my->cb.eof(&my->bio);
 
+	if (my->connect_ev) {
+		talloc_const_free(my->connect_ev);
+		my->connect_ev = NULL;
+	}
+
+	if (my->connect_el) {
+		(void) fr_event_fd_delete(my->connect_el, my->info.socket.fd, FR_EVENT_FILTER_IO);
+		my->connect_el = NULL;
+	}
+
 	if (my->cb.shutdown) my->cb.shutdown(&my->bio);
 
 	return fr_bio_fd_close(&my->bio);
@@ -1106,52 +1116,204 @@ retry:
 	return 0;
 }
 
+/** FD error when trying to connect, give up on the BIO.
+ *
+ */
+static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
+
+	if (my->connect_error) {
+		my->connect_error(&my->bio, fd_errno);
+	}
+
+	fr_bio_shutdown(&my->bio);
+}
+
+/** Connect callback for when the socket is writable.
+ *
+ *  We try to connect the socket, and if so, call the application which should update the BIO status.
+ */
+static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSED int fd, NDEBUG_UNUSED int flags, void *uctx)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
+
+	fr_assert(my->info.type == FR_BIO_FD_CONNECTED);
+	fr_assert(my->info.state == FR_BIO_FD_STATE_CONNECTING);
+	fr_assert(my->connect_el == el); /* and not NULL */
+	fr_assert(my->connect_success != NULL);
+	fr_assert(my->info.socket.fd == fd);
+
+#ifndef NDEBUG
+	/*
+	 *	This check shouldn't be necessary, as we have a kqeueue error callback.  That should be called
+	 *	when there's a connect error.
+	 */
+	{
+		int error;
+		socklen_t socklen = sizeof(error);
+
+		/*
+		 *	The socket is writeable.  Let's see if there's an error.
+		 *
+		 *	Unix Network Programming says:
+		 *
+		 *	""If so_error is nonzero when the process calls write, -1 is returned with errno set to the
+		 *	value of SO_ERROR (p. 495 of TCPv2) and SO_ERROR is reset to 0.  We have to check for the
+		 *	error, and if there's no error, set the state to "open". ""
+		 *
+		 *	The same applies to connect().  If a non-blocking connect returns INPROGRESS, it may later
+		 *	become writable.  It will be writable even if the connection fails.  Rather than writing some
+		 *	random application data, we call SO_ERROR, and get the underlying error.
+		 */
+		if (getsockopt(my->info.socket.fd, SOL_SOCKET, SO_ERROR, (void *)&error, &socklen) < 0) {
+			fr_bio_fd_el_error(el, fd, flags, errno, uctx);
+			return;
+		}
+
+		fr_assert(error == 0);
+
+		/*
+		 *	There was an error, we call the error handler.
+		 */
+		if (error) {
+			fr_bio_fd_el_error(el, fd, flags, error, uctx);
+			return;
+		}
+	}
+#endif
+
+	/*
+	 *	Try to connect it.  Any magic handling is done in the callbacks.
+	 */
+	if (fr_bio_fd_try_connect(my) < 0) return;
+
+	fr_assert(my->connect_success);
+
+	if (my->connect_ev) {
+		talloc_const_free(my->connect_ev);
+		my->connect_ev = NULL;
+	}
+	my->connect_el = NULL;
+
+	/*
+	 *	This function MUST change the read/write/error callbacks for the FD.
+	 */
+	my->connect_success(&my->bio);
+}
+
+/**  We have a timeout on the conenction
+ *
+ */
+static void fr_bio_fd_el_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
+
+	fr_assert(my->connect_timeout);
+
+	my->connect_timeout(&my->bio);
+
+	fr_bio_shutdown(&my->bio);
+}
+
+
 /** Finalize a connect()
  *
  *  connect() said "come back when the socket is writeable".  It's now writeable, so we check if there was a
  *  connection error.
+ *
+ *  @param bio		the binary IO handler
+ *  @param el		the event list
+ *  @param connected_cb	callback to run when the BIO is connected
+ *  @param error_cb	callback to run when the FD has an error
+ *  @param timeout	when to time out the connect() attempt
+ *  @param timeout_cb	to call when the timeout runs.
+ *  @return
+ *	- <0 on error
+ *	- 0 for "try again later".  If callbacks are set, the callbacks will try again.  Otherwise the application has to try again.
+ *	- 1 for "we are now connected".
  */
-int fr_bio_fd_connect(fr_bio_t *bio)
+int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t connected_cb,
+			   fr_bio_fd_connect_error_t error_cb,
+			   fr_time_delta_t *timeout, fr_bio_callback_t timeout_cb)
 {
-	int error;
-	socklen_t socklen = sizeof(error);
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
-	if (my->info.state == FR_BIO_FD_STATE_OPEN) return 0;
+	/*
+	 *	We shouldn't be connected an unconnected socket.
+	 */
+	if (my->info.type == FR_BIO_FD_UNCONNECTED) {
+	error:
+		fr_bio_shutdown(&my->bio);
+		return fr_bio_error(GENERIC);
+	}
 
 	/*
-	 *	The caller may just call us without caring about the underlying bio.
+	 *	The initial open may have succeeded in connecting the socket.  In which case we just run the
+	 *	callbacks and return.
+	 */
+	if (my->info.state == FR_BIO_FD_STATE_OPEN) {
+	connected:
+		if (connected_cb) connected_cb(bio);
+
+		return 1;
+	}
+
+	/*
+	 *	The caller may just call us without caring about what the underlying BIO is.  In which case we
+	 *	need to be safe.
 	 */
 	if ((my->info.socket.af == AF_FILE_BIO) || (my->info.type == FR_BIO_FD_ACCEPT)) {
 		fr_bio_fd_set_open(my);
-		return 0;
-	}
-
-	if (my->info.state != FR_BIO_FD_STATE_CONNECTING) return fr_bio_error(GENERIC);
-
-	/*
-	 *	The socket is writeable.  Let's see if there's an error.
-	 *
-	 *	Unix Network Programming says:
-	 *
-	 *	""If so_error is nonzero when the process calls write, -1 is returned with errno set to the
-	 *	value of SO_ERROR (p. 495 of TCPv2) and SO_ERROR is reset to 0.  We have to check for the
-	 *	error, and if there's no error, set the state to "open". ""
-	 *
-	 *	The same applies to connect().  If a non-blocking connect returns INPROGRESS, it may later
-	 *	become writable.  It will be writable even if the connection fails.  Rather than writing some
-	 *	random application data, we call SO_ERROR, and get the underlying error.
-	 */
-	if (getsockopt(my->info.socket.fd, SOL_SOCKET, SO_ERROR, (void *)&error, &socklen) < 0) {
-	fail:
-		fr_bio_shutdown(bio);
-		return fr_bio_error(IO);
+		goto connected;
 	}
 
 	/*
-	 *	The socket is connected, so initialize the normal IO handlers.
+	 *	It must be in the connecting state, i.e. not INVALID or CLOSED.
 	 */
-	if (fr_bio_fd_init_common(my) < 0) goto fail;
+	if (my->info.state != FR_BIO_FD_STATE_CONNECTING) goto error;
+
+	/*
+	 *	No callback
+	 */
+	if (!connected_cb) {
+		ssize_t rcode;
+
+		rcode = fr_bio_fd_try_connect(my);
+		if (rcode < 0) return rcode; /* it already called shutdown */
+
+		return 1;
+	}
+
+	/*
+	 *	It's not connected, the caller has to try again.
+	 */
+	if (!el) return 0;
+
+	/*
+	 *	Set the callbacks to run when something happens.
+	 */
+	my->connect_success = connected_cb;
+	my->connect_error = error_cb;
+	my->connect_timeout = timeout_cb;
+
+	/*
+	 *	Set the timeout callback if asked.
+	 */
+	if (timeout_cb) {
+		if (fr_event_timer_in(my, el, &my->connect_ev, *timeout, fr_bio_fd_el_timeout, my) < 0) {
+			goto error;
+		}
+	}
+
+	/*
+	 *	Set the FD callbacks, and tell the caller that we're not connected.
+	 */
+	if (fr_event_fd_insert(my, NULL, el, my->info.socket.fd, NULL,
+			       fr_bio_fd_el_connect, fr_bio_fd_el_error, my) < 0) {
+		goto error;
+	}
+	my->connect_el = el;
 
 	return 0;
 }
