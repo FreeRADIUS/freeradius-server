@@ -914,7 +914,7 @@ ldap {
 #
 #  The rlm_ldap provides the below xlat's functions.
 #
-#  ### %ldap.uri.escape(...}
+#  ### %ldap.uri.escape(...)
 #
 #  Escape a string for use in an LDAP filter or DN.  The value will then be marked as safe for use
 #  in LDAP URIs and DNs, and will not be escaped or modified.
@@ -935,7 +935,7 @@ ldap {
 #  "The LDAP url is ldap:///ou=profiles,dc=example,dc=com??sub?\28objectClass=radiusprofile\29"
 #  ```
 #
-#  ### %ldap.uri.safe(...}
+#  ### %ldap.uri.safe(...)
 #
 #  Mark a string as safe for use in an LDAP filter or DN.  Values marked as safe for use in LDAP
 #  URIs will not be escaped or modified, and will be allowed in places where dynamic values are
