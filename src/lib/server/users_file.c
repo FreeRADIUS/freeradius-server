@@ -468,7 +468,7 @@ check_item:
 		 */
 		if (!fr_sbuff_is_char(&sbuff, '\n')) {
 		add_entry:
-			fr_dlist_insert_tail(&list->head, &t);
+			fr_dlist_insert_tail(&list->head, t);
 			break;
 		}
 
