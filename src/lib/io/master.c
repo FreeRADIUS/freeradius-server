@@ -2465,6 +2465,7 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	COPY_FIELD(require_message_authenticator);
 	COPY_FIELD(limit_proxy_state);
 	COPY_FIELD(use_connected);
+	COPY_FIELD(cs);
 
 	// @todo - fill in other fields?
 
@@ -2473,7 +2474,12 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	radclient = client->radclient; /* laziness */
 	radclient->server_cs = inst->server_cs;
 	radclient->server = cf_section_name2(inst->server_cs);
-	radclient->cs = NULL;
+
+	/*
+	 *	Re-parent the conf section used to build this client
+	 *	so its lifetime is linked to the client
+	 */
+	talloc_steal(radclient, radclient->cs);
 
 	/*
 	 *	This is a connected socket, and it's just been
