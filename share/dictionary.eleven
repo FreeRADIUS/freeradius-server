@@ -28,26 +28,26 @@ ATTRIBUTE	Eleven-Authentication-Find-Key		3	tlv
 #
 # The second EAPoL frame of the 4-way handshake
 #
-ATTRIBUTE	Eleven-EAPOL-Frame-2			.1	octets
+ATTRIBUTE	Eleven-EAPOL-Frame-2			3.1	octets
 
 #
 #  The first EAPoL frame of the 4-way handshake.
 #
-ATTRIBUTE	Eleven-EAPOL-Anonce			.2	octets
+ATTRIBUTE	Eleven-EAPOL-Anonce			3.2	octets
 
 #
 #  SSID name
 #
-ATTRIBUTE	Eleven-EAPOL-SSID			.3	string
+ATTRIBUTE	Eleven-EAPOL-SSID			3.3	string
 
 #
 #  BSSID
 #
-ATTRIBUTE	Eleven-EAPOL-APMAC			.4	octets
+ATTRIBUTE	Eleven-EAPOL-APMAC			3.4	octets
 
 #
 #  Wireless client MAC address.
 #
-ATTRIBUTE	Eleven-EAPOL-STMAC			.5	octets
+ATTRIBUTE	Eleven-EAPOL-STMAC			3.5	octets
 
 END-VENDOR Eleven
