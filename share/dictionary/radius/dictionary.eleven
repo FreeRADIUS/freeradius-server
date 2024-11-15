@@ -23,31 +23,31 @@ BEGIN-VENDOR Eleven
 #	Cisco-AVPair = "psk=<passphrase>"
 #
 #
-ATTRIBUTE	Eleven-Authentication-Find-Key		3	tlv
+ATTRIBUTE	Authentication-Find-Key			3	tlv
 
 #
 # The second EAPoL frame of the 4-way handshake
 #
-ATTRIBUTE	Eleven-EAPOL-Frame-2			.1	octets
+ATTRIBUTE	EAPOL-Frame-2				.1	octets
 
 #
 #  The first EAPoL frame of the 4-way handshake.
 #
-ATTRIBUTE	Eleven-EAPOL-Anonce			.2	octets
+ATTRIBUTE	EAPOL-Anonce				.2	octets
 
 #
 #  SSID name
 #
-ATTRIBUTE	Eleven-EAPOL-SSID			.3	string
+ATTRIBUTE	EAPOL-SSID				.3	string
 
 #
 #  BSSID
 #
-ATTRIBUTE	Eleven-EAPOL-APMAC			.4	octets
+ATTRIBUTE	EAPOL-APMAC				.4	octets
 
 #
 #  Wireless client MAC address.
 #
-ATTRIBUTE	Eleven-EAPOL-STMAC			.5	octets
+ATTRIBUTE	EAPOL-STMAC				.5	octets
 
 END-VENDOR Eleven
