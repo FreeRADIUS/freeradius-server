@@ -376,13 +376,6 @@ server tacacs {
 	}
 
 	#
-	#	An error processing the request
-	#
-	send Authorization-Fail {
-		&reply.Authorization-Status := Error
-	}
-
-	#
 	#	## Accounting
 	#
 
