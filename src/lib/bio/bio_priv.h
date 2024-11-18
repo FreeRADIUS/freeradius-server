@@ -36,7 +36,7 @@ typedef struct fr_bio_common_s fr_bio_common_t;
 typedef struct {
 	fr_bio_io_t		connected;
 	fr_bio_callback_t	shutdown;
-	fr_bio_callback_t	eof;
+	fr_bio_io_t		eof;
 	fr_bio_callback_t	failed;
 
 	fr_bio_io_t		read_blocked;

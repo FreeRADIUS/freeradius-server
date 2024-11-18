@@ -100,8 +100,6 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	fr_assert(!fr_bio_prev(&my->bio));
 	fr_assert(!fr_bio_next(&my->bio));
 
-	if (!my->info.eof && my->cb.eof) my->cb.eof(&my->bio);
-
 	if (my->connect.ev) {
 		talloc_const_free(my->connect.ev);
 		my->connect.ev = NULL;
@@ -117,13 +115,15 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 	return fr_bio_fd_close(&my->bio);
 }
 
-static void fr_bio_fd_eof(fr_bio_t *bio)
+static int fr_bio_fd_eof(fr_bio_t *bio)
 {
-	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
-
 	bio->read = fr_bio_null_read;
 	bio->write = fr_bio_null_write;
-	my->info.eof = true;
+
+	/*
+	 *	Nothing more for us to do, tell fr_bio_eof() that it can continue with poking other BIOs.
+	 */
+	return 1;
 }
 
 static int fr_bio_fd_write_resume(fr_bio_t *bio)
@@ -150,7 +150,6 @@ retry:
 	rcode = read(my->info.socket.fd, buffer, size);
 	if (rcode == 0) {
 		fr_bio_eof(bio);
-		if (my->cb.eof) my->cb.eof(&my->bio); /* inform the application that we're at EOF */
 		return 0;
 	}
 

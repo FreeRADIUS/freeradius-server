@@ -231,28 +231,48 @@ void fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb)
 
 /** Internal BIO function to run EOF callbacks.
  *
- *  The EOF callbacks are _internal_, and tell the various BIOs that there is nothing more to read from the
- *  BIO.
- *
- *  @todo - do we need to have separate _write_ EOF?  Likely not.
+ *  When a BIO hits EOF, it MUST call this function.  This function will take care of changing the read()
+ *  function to return nothing.  It will also take care of walking back up the hierarchy, and calling any
  */
 void fr_bio_eof(fr_bio_t *bio)
 {
-	fr_bio_t *x = bio;
+	fr_bio_common_t *this = (fr_bio_common_t *) bio;
 
 	/*
-	 *	Start from the first BIO.
+	 *	This BIO is at EOF.  So we can't call read() any more.
 	 */
-	while (fr_bio_prev(x) != NULL) x = fr_bio_prev(x);
+	this->bio.read = fr_bio_null_read;
 
-	/*
-	 *	Shut each one down, including the one which called us.
-	 */
-	while (x) {
-		fr_bio_common_t *this = (fr_bio_common_t *) x;
+	while (true) {
+		fr_bio_common_t *prev = (fr_bio_common_t *) fr_bio_prev(&this->bio);
 
-		if (this->priv_cb.eof) this->priv_cb.eof((fr_bio_t *) this);
+		/*
+		 *	There are no more BIOs. Tell the application that the entire BIO chain is at EOF.
+		 */
+		if (!prev) {
+			if (this->cb.eof) {
+				this->cb.eof(&this->bio);
+				this->cb.eof = NULL;
+			}
+			break;
+		}
 
-		x = fr_bio_next(x);
+		/*
+		 *	Go to the previous BIO.  If it doesn't have an EOF handler, then keep going back up
+		 *	the chain until we're at the top.
+		 */
+		this = prev;
+		if (!this->priv_cb.eof) continue;
+
+		/*
+		 *	The EOF handler said it's NOT at EOF, so we stop processing here.
+		 */
+		if (this->priv_cb.eof((fr_bio_t *) this) == 0) break;
+
+		/*
+		 *	Don't run the EOF callback multiple times.
+		 */
+		this->priv_cb.eof = NULL;
+		break;
 	}
 }

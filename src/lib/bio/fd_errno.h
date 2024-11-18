@@ -44,7 +44,6 @@ case EPIPE:
 	 *	and set EOF on the BIO.
 	 */
 	fr_bio_eof(&my->bio);
-	if (my->cb.eof) my->cb.eof(&my->bio); /* inform the application that we're at EOF */
 	return 0;
 
 default:

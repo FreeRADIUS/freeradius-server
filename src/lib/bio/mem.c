@@ -59,7 +59,12 @@ static ssize_t fr_bio_mem_read_eof(fr_bio_t *bio, UNUSED void *packet_ctx, void 
 	 *	No more data: return EOF from now on.
 	 */
 	if (fr_bio_buf_used(&my->read_buffer) == 0) {
-		my->bio.read = fr_bio_null_read;
+
+		/*
+		 *	Don't call our EOF function.  But do tell the other BIOs that we're at EOF.
+		 */
+		my->priv_cb.eof = NULL;
+		fr_bio_eof(&my->bio);
 		return 0;
 	}
 
@@ -69,11 +74,20 @@ static ssize_t fr_bio_mem_read_eof(fr_bio_t *bio, UNUSED void *packet_ctx, void 
 	return fr_bio_buf_read(&my->read_buffer, buffer, size);
 }
 
-static void fr_bio_mem_eof(fr_bio_t *bio)
+static int fr_bio_mem_eof(fr_bio_t *bio)
 {
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
 
+	/*
+	 *	Nothing more for us to read, tell fr_bio_eof() that it can continue with poking other BIOs.
+	 */
+	if (fr_bio_buf_used(&my->read_buffer) == 0) {
+		return 1;
+	}
+
 	my->bio.read = fr_bio_mem_read_eof;
+
+	return 0;
 }
 
 /** Read from a memory BIO
