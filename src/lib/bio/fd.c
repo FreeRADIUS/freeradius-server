@@ -102,14 +102,14 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 
 	if (!my->info.eof && my->cb.eof) my->cb.eof(&my->bio);
 
-	if (my->connect_ev) {
-		talloc_const_free(my->connect_ev);
-		my->connect_ev = NULL;
+	if (my->connect.ev) {
+		talloc_const_free(my->connect.ev);
+		my->connect.ev = NULL;
 	}
 
-	if (my->connect_el) {
-		(void) fr_event_fd_delete(my->connect_el, my->info.socket.fd, FR_EVENT_FILTER_IO);
-		my->connect_el = NULL;
+	if (my->connect.el) {
+		(void) fr_event_fd_delete(my->connect.el, my->info.socket.fd, FR_EVENT_FILTER_IO);
+		my->connect.el = NULL;
 	}
 
 	if (my->cb.shutdown) my->cb.shutdown(&my->bio);
@@ -1123,8 +1123,10 @@ static void fr_bio_fd_el_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
 
-	if (my->connect_error) {
-		my->connect_error(&my->bio, fd_errno);
+	my->info.connect_errno = fd_errno;
+
+	if (my->connect.error) {
+		my->connect.error(&my->bio);
 	}
 
 	fr_bio_shutdown(&my->bio);
@@ -1140,8 +1142,8 @@ static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSE
 
 	fr_assert(my->info.type == FR_BIO_FD_CONNECTED);
 	fr_assert(my->info.state == FR_BIO_FD_STATE_CONNECTING);
-	fr_assert(my->connect_el == el); /* and not NULL */
-	fr_assert(my->connect_success != NULL);
+	fr_assert(my->connect.el == el); /* and not NULL */
+	fr_assert(my->connect.success != NULL);
 	fr_assert(my->info.socket.fd == fd);
 
 #ifndef NDEBUG
@@ -1188,18 +1190,18 @@ static void fr_bio_fd_el_connect(NDEBUG_UNUSED fr_event_list_t *el, NDEBUG_UNUSE
 	 */
 	if (fr_bio_fd_try_connect(my) < 0) return;
 
-	fr_assert(my->connect_success);
+	fr_assert(my->connect.success);
 
-	if (my->connect_ev) {
-		talloc_const_free(my->connect_ev);
-		my->connect_ev = NULL;
+	if (my->connect.ev) {
+		talloc_const_free(my->connect.ev);
+		my->connect.ev = NULL;
 	}
-	my->connect_el = NULL;
+	my->connect.el = NULL;
 
 	/*
 	 *	This function MUST change the read/write/error callbacks for the FD.
 	 */
-	my->connect_success(&my->bio);
+	my->connect.success(&my->bio);
 }
 
 /**  We have a timeout on the conenction
@@ -1209,9 +1211,9 @@ static void fr_bio_fd_el_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t no
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(uctx, fr_bio_fd_t);
 
-	fr_assert(my->connect_timeout);
+	fr_assert(my->connect.timeout);
 
-	my->connect_timeout(&my->bio);
+	my->connect.timeout(&my->bio);
 
 	fr_bio_shutdown(&my->bio);
 }
@@ -1234,7 +1236,7 @@ static void fr_bio_fd_el_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t no
  *	- 1 for "we are now connected".
  */
 int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t connected_cb,
-			   fr_bio_fd_connect_error_t error_cb,
+			   fr_bio_callback_t error_cb,
 			   fr_time_delta_t *timeout, fr_bio_callback_t timeout_cb)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
@@ -1293,15 +1295,15 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 	/*
 	 *	Set the callbacks to run when something happens.
 	 */
-	my->connect_success = connected_cb;
-	my->connect_error = error_cb;
-	my->connect_timeout = timeout_cb;
+	my->connect.success = connected_cb;
+	my->connect.error = error_cb;
+	my->connect.timeout = timeout_cb;
 
 	/*
 	 *	Set the timeout callback if asked.
 	 */
 	if (timeout_cb) {
-		if (fr_event_timer_in(my, el, &my->connect_ev, *timeout, fr_bio_fd_el_timeout, my) < 0) {
+		if (fr_event_timer_in(my, el, &my->connect.ev, *timeout, fr_bio_fd_el_timeout, my) < 0) {
 			goto error;
 		}
 	}
@@ -1313,7 +1315,7 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 			       fr_bio_fd_el_connect, fr_bio_fd_el_error, my) < 0) {
 		goto error;
 	}
-	my->connect_el = el;
+	my->connect.el = el;
 
 	return 0;
 }

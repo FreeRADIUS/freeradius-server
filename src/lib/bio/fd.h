@@ -117,17 +117,17 @@ typedef struct {
 	bool		write_blocked;	//!< did we block on write?
 	bool		eof;		//!< are we at EOF?
 
+	int		connect_errno;	//!< from connect() or other APIs
+
 	fr_bio_fd_config_t const *cfg;	//!< so we know what was asked, vs what was granted.
 } fr_bio_fd_info_t;
-
-typedef void (*fr_bio_fd_connect_error_t)(fr_bio_t *bio, int fd_errno);
 
 fr_bio_t	*fr_bio_fd_alloc(TALLOC_CTX *ctx, fr_bio_fd_config_t const *cfg, size_t offset) CC_HINT(nonnull(1));
 
 int		fr_bio_fd_close(fr_bio_t *bio) CC_HINT(nonnull);
 
 int		fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el,
-				       fr_bio_callback_t connected_cb, fr_bio_fd_connect_error_t error_cb,
+				       fr_bio_callback_t connected_cb, fr_bio_callback_t error_cb,
 				       fr_time_delta_t *timeout, fr_bio_callback_t timeout_cb) CC_HINT(nonnull(1));
 
 #define fr_bio_fd_connect(_x) fr_bio_fd_connect_full(_x, NULL, NULL, NULL, NULL, NULL)
