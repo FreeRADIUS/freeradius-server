@@ -2217,26 +2217,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	/*
-	 *	Driver must be instantiated before we call pool init
-	 *	else any configuration elements dynamically produced
-	 *	by the driver's instantiate function won't be available.
-	 *
-	 *	This is absolutely fine, and was taken into account in
-	 *	the design of the module code.  The main instantiation
-	 *	loop, will not call the driver's instantiate function,
-	 *	twice.
-	 *
-	 *	This is only a problem in rlm_sql.  The other users of
-	 *	connection pool either don't have submodules or have
-	 *	the submodules call module_rlm_connection_pool_init()
-	 *	themselves.
-	 */
-	if (unlikely(module_instantiate(inst->driver_submodule) < 0)) {
-		cf_log_err(conf, "Failed instantiating driver module");
-		return -1;
-	}
-
 	if (inst->driver->uses_trunks) {
 		CONF_SECTION	*cs;
 
@@ -2258,8 +2238,29 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (!inst->driver->trunk_io_funcs.connection_notify) {
 			inst->config.trunk_conf.always_writable = true;
 		}
-		return 0;
 	}
+
+	/*
+	 *	Driver must be instantiated before we call pool init
+	 *	else any configuration elements dynamically produced
+	 *	by the driver's instantiate function won't be available.
+	 *
+	 *	This is absolutely fine, and was taken into account in
+	 *	the design of the module code.  The main instantiation
+	 *	loop, will not call the driver's instantiate function,
+	 *	twice.
+	 *
+	 *	This is only a problem in rlm_sql.  The other users of
+	 *	connection pool either don't have submodules or have
+	 *	the submodules call module_rlm_connection_pool_init()
+	 *	themselves.
+	 */
+	if (unlikely(module_instantiate(inst->driver_submodule) < 0)) {
+		cf_log_err(conf, "Failed instantiating driver module");
+		return -1;
+	}
+
+	if (inst->driver->uses_trunks) return 0;
 
 	/*
 	 *	Initialise the connection pool for this instance
