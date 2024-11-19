@@ -90,7 +90,7 @@ typedef struct {
 	fr_bio_callback_t	failed;			//!< called when the BIO fails
 
 	fr_bio_io_t		read_blocked;
-	fr_bio_io_t		write_blocked;
+	fr_bio_io_t		write_blocked;		//!< returns 0 for "couldn't block", 1 for "did block".
 
 	fr_bio_io_t		read_resume;		//!< "unblocked" is too similar to "blocked"
 	fr_bio_io_t		write_resume;

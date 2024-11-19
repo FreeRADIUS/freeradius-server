@@ -27,13 +27,12 @@
 
 /** Inform all of the BIOs that the write is blocked.
  *
- *  This function should be set as the application-layer "write_blocked" callback for all BIOs created as part
+ *  This function should be set as the BIO layer "write_blocked" callback for all BIOs created as part
  *  of a #fr_bio_packet_t.  The application should also set bio->uctx=bio_packet for all BIOs.
  */
-int fr_bio_packet_write_blocked(fr_bio_t *bio)
+static int fr_bio_packet_write_blocked(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
-	fr_bio_t *next;
 
 	/*
 	 *	This function must be callable multiple times, as different portions of the BIOs can block at
@@ -41,24 +40,6 @@ int fr_bio_packet_write_blocked(fr_bio_t *bio)
 	 */
 	if (my->write_blocked) return 1;
 	my->write_blocked = true;
-
-	/*
-	 *	Inform each underlying BIO that it is blocked.  Note that we might be called from a
-	 *	lower-layer BIO, so we have to start from the top of the chain.
-	 *
-	 *	Note that if the callback returns 0, saying "I couldn't block", then we _still_ mark the
-	 *	overall BIO as blocked.
-	 */
-	for (next = my->bio;
-	     next != NULL;
-	     next = fr_bio_next(next)) {
-		int rcode;
-
-		if (!((fr_bio_common_t *) next)->priv_cb.write_blocked) continue;
-
-		rcode = ((fr_bio_common_t *) next)->priv_cb.write_blocked(next);
-		if (rcode < 0) return rcode;
-	}
 
 	/*
 	 *	The application doesn't want to know that it's blocked, so we just return.
@@ -71,7 +52,7 @@ int fr_bio_packet_write_blocked(fr_bio_t *bio)
 	return my->cb.write_blocked(my);
 }
 
-int fr_bio_packet_write_resume(fr_bio_t *bio)
+static int fr_bio_packet_write_resume(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
 	fr_bio_t *next;
@@ -110,7 +91,7 @@ int fr_bio_packet_write_resume(fr_bio_t *bio)
 	return rcode;
 }
 
-int fr_bio_packet_read_blocked(fr_bio_t *bio)
+static int fr_bio_packet_read_blocked(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
 
@@ -119,7 +100,7 @@ int fr_bio_packet_read_blocked(fr_bio_t *bio)
 	return my->cb.read_blocked(my);
 }
 
-int fr_bio_packet_read_resume(fr_bio_t *bio)
+static int fr_bio_packet_read_resume(fr_bio_t *bio)
 {
 	fr_bio_packet_t *my = bio->uctx;
 
@@ -168,8 +149,12 @@ void fr_bio_packet_connected(fr_bio_t *bio)
 	my->cb.connected(my);
 }
 
-static void fr_bio_packet_shutdown(UNUSED fr_bio_t *bio)
+static void fr_bio_packet_shutdown(fr_bio_t *bio)
 {
+	fr_bio_packet_t *my = bio->uctx;
+
+	if (my->cb.shutdown) my->cb.shutdown(my);
+	my->cb.shutdown = NULL;
 }
 
 static void fr_bio_packet_eof(fr_bio_t *bio)
@@ -177,10 +162,15 @@ static void fr_bio_packet_eof(fr_bio_t *bio)
 	fr_bio_packet_t *my = bio->uctx;
 
 	if (my->cb.eof) my->cb.eof(my);
+	my->cb.eof = NULL;
 }
 
-static void fr_bio_packet_failed(UNUSED fr_bio_t *bio)
+static void fr_bio_packet_failed(fr_bio_t *bio)
 {
+	fr_bio_packet_t *my = bio->uctx;
+
+	if (my->cb.failed) my->cb.failed(my);
+	my->cb.failed = NULL;
 }
 
 
@@ -201,9 +191,9 @@ void fr_bio_packet_init(fr_bio_packet_t *my)
 	};
 
 	/*
-	 *	Every participating BIO has us, and our callbacks set as the application-layer.
+	 *	Every participating BIO has us set as the bio->uctx, and we handle all BIO callbacks.
 	 *
-	 *	The application sets itself as my->uctx and as our callbacks.
+	 *	The application sets its own pointer my->uctx and sets itself via our callbacks.
 	 */
 	while (bio) {
 		bio->uctx = my;

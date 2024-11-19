@@ -544,16 +544,43 @@ static ssize_t fr_bio_mem_write_buffer(fr_bio_t *bio, UNUSED void *packet_ctx, v
 	room = fr_bio_buf_write_room(&my->write_buffer);
 
 	/*
-	 *	The buffer is full.  We're now blocked.
+	 *	The buffer is full, we can't write anything.
 	 */
 	if (!room) return fr_bio_error(IO_WOULD_BLOCK);
 
-	if (room < size) size = room;
+	/*
+	 *	If we're asked to write more bytes than are available in the buffer, then tell the caller that
+	 *	writes are now blocked, and we can't write any more data.
+	 *
+	 *	Return an WOULD_BLOCK error instead of breaking our promise by writing part of the data,
+	 *	instead of accepting a full application write.
+	 */
+	if (room < size) {
+		int rcode;
+
+		rcode = fr_bio_write_blocked(bio);
+		if (rcode < 0) return rcode;
+
+		return fr_bio_error(IO_WOULD_BLOCK);
+	}
 
 	/*
 	 *	As we have clamped the write, we know that this call must succeed.
 	 */
-	return fr_bio_buf_write(&my->write_buffer, buffer, size);
+	(void) fr_bio_buf_write(&my->write_buffer, buffer, size);
+
+	/*
+	 *	If we've filled the buffer, tell the caller that writes are now blocked, and we can't write
+	 *	any more data.  However, we still return the amount of data we wrote.
+	 */
+	if (room == size) {
+		int rcode;
+
+		rcode = fr_bio_write_blocked(bio);
+		if (rcode < 0) return rcode;
+	}
+
+	return size;
 }
 
 /** Peek at the data in the read buffer

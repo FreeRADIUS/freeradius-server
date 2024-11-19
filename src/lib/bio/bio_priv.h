@@ -93,3 +93,5 @@ static inline void CC_HINT(nonnull) fr_bio_unchain(fr_bio_t *bio)
 }
 
 void	fr_bio_eof(fr_bio_t *bio) CC_HINT(nonnull);
+
+int	fr_bio_write_blocked(fr_bio_t *bio) CC_HINT(nonnull);

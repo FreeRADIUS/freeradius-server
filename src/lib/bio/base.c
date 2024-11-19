@@ -233,6 +233,9 @@ void fr_bio_cb_set(fr_bio_t *bio, fr_bio_cb_funcs_t const *cb)
  *
  *  When a BIO hits EOF, it MUST call this function.  This function will take care of changing the read()
  *  function to return nothing.  It will also take care of walking back up the hierarchy, and calling any
+ *  BIO EOF callbacks.
+ *
+ *  Once all of the BIOs have been marked as blocked, it will call the application EOF callback.
  */
 void fr_bio_eof(fr_bio_t *bio)
 {
@@ -274,4 +277,50 @@ void fr_bio_eof(fr_bio_t *bio)
 		 */
 		this->priv_cb.eof = NULL;
 	}
+}
+
+/** Internal BIO function to tell all BIOs that it's blocked.
+ *
+ *  When a BIO blocks on write, it MUST call this function.  This function will take care of walking back up
+ *  the hierarchy, and calling any write_blocked callbacks.
+ *
+ *  Once all of the BIOs have been marked as blocked, it will call the application write_blocked callback.
+ */
+int fr_bio_write_blocked(fr_bio_t *bio)
+{
+	fr_bio_common_t *this = (fr_bio_common_t *) bio;
+	int is_blocked = 1;
+
+	while (true) {
+		fr_bio_common_t *prev = (fr_bio_common_t *) fr_bio_prev(&this->bio);
+		int rcode;
+
+		/*
+		 *	There are no more BIOs. Tell the application that the entire BIO chain is blocked.
+		 */
+		if (!prev) {
+			if (this->cb.write_blocked) {
+				rcode = this->cb.write_blocked(&this->bio);
+				if (rcode < 0) return rcode;
+				is_blocked &= (rcode == 1);
+			}
+			break;
+		}
+
+		/*
+		 *	Go to the previous BIO.  If it doesn't have a write_blocked handler, then keep going
+		 *	back up the chain until we're at the top.
+		 */
+		this = prev;
+		if (!this->priv_cb.write_blocked) continue;
+
+		/*
+		 *	The EOF handler said it's NOT at EOF, so we stop processing here.
+		 */
+		rcode = this->priv_cb.write_blocked((fr_bio_t *) this);
+		if (rcode < 0) return rcode;
+		is_blocked &= (rcode == 1);
+	}
+
+	return is_blocked;
 }

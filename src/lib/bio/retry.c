@@ -127,7 +127,7 @@ struct fr_bio_retry_s {
 static void fr_bio_retry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx);
 static void fr_bio_retry_expiry_timer(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx);
 static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size);
-static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, ssize_t rcode);
+static ssize_t fr_bio_retry_save_write(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, ssize_t rcode);
 
 #define fr_bio_retry_timer_clear(_x) do { \
 		talloc_const_free((_x)->ev); \
@@ -352,7 +352,7 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	 *	We didn't write the whole packet, we're blocked.
 	 */
 	if ((size_t) rcode < item->size) {
-		if (fr_bio_retry_blocked(my, item, rcode) < 0) return fr_bio_error(GENERIC); /* oom */
+		if (fr_bio_retry_save_write(my, item, rcode) < 0) return fr_bio_error(GENERIC); /* oom */
 
 		return 0;
 	}
@@ -498,14 +498,9 @@ static ssize_t fr_bio_retry_write_partial(fr_bio_t *bio, void *packet_ctx, const
 	return fr_bio_retry_write(bio, packet_ctx, buffer, size);
 }
 
-/** The write is blocked.
- *
- *  We couldn't write out the entire packet, the bio is blocked.  Don't write anything else until we become
- *  unblocked!
- *
- *  And free the timer.  There's no point in trying to write things if the socket is blocked.
+/** Save a partial packet when the write becomes blocked.
  */
-static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, ssize_t rcode)
+static ssize_t fr_bio_retry_save_write(fr_bio_retry_t *my, fr_bio_retry_entry_t *item, ssize_t rcode)
 {
 	fr_assert(!my->partial);
 	fr_assert(rcode > 0);
@@ -525,12 +520,12 @@ static ssize_t fr_bio_retry_blocked(fr_bio_retry_t *my, fr_bio_retry_entry_t *it
 	fr_bio_buf_write(&my->buffer, item->buffer + rcode, item->size - rcode);
 
 	my->partial = item;
-	my->info.write_blocked = true;
 
 	/*
-	 *	There's no timer, as the write is blocked, so we can't retry.
+	 *	If the "next" BIO blocked, then the call to fr_bio_write_blocked() will have already called
+	 *	this function.
 	 */
-	fr_bio_retry_timer_clear(my);
+	if (fr_bio_retry_write_blocked(&my->bio) < 0) return fr_bio_error(GENERIC);
 
 	my->bio.write = fr_bio_retry_write_partial;
 
@@ -612,7 +607,7 @@ ssize_t fr_bio_retry_rewrite(fr_bio_t *bio, fr_bio_retry_entry_t *item, const vo
 	/*
 	 *	We had previously written the packet, so save the re-sent one, too.
 	 */
-	return fr_bio_retry_blocked(my, item, rcode);
+	return fr_bio_retry_save_write(my, item, rcode);
 }
 
 /** A previous timer write had a fatal error, so we forbid further writes.
@@ -830,7 +825,7 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	We only wrote part of the packet, remember to write the rest of it.
 	 */
 	if ((size_t) rcode < size) {
-		return fr_bio_retry_blocked(my, item, rcode);
+		return fr_bio_retry_save_write(my, item, rcode);
 	}
 
 	/*

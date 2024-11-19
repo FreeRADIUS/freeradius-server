@@ -20,12 +20,12 @@ if (rcode > 0) {
 		fr_assert((size_t) rcode < size);
 
 		/*
-		 *	Set the flag and run the callback.
+		 *	Set the flag, and tell the other BIOs that we're blocked.
 		 */
 		my->info.write_blocked = true;
 
 		if (my->cb.write_blocked) {
-			error = my->cb.write_blocked((fr_bio_t *) my);
+			error = fr_bio_write_blocked((fr_bio_t *) my);
 			if (error < 0) return error;
 		}
 
