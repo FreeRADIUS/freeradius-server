@@ -272,6 +272,27 @@ static void fr_bio_retry_release(fr_bio_retry_t *my, fr_bio_retry_entry_t *item,
 	fr_bio_retry_list_insert_head(&my->free, item);
 }
 
+/** Writes are blocked.
+ *
+ */
+static int fr_bio_retry_write_blocked(fr_bio_t *bio)
+{
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+
+	if (my->info.write_blocked) {
+		fr_assert(!my->ev);
+		return 1;
+	}
+
+	my->info.write_blocked = true;
+
+	fr_bio_retry_timer_clear(my);
+	if (fr_bio_retry_expiry_timer_reset(my) < 0) return fr_bio_error(GENERIC);
+
+	return 1;
+}
+
+
 /** Write one item.
  *
  * @return
@@ -384,6 +405,29 @@ static int fr_bio_retry_write_delayed(fr_bio_retry_t *my, fr_time_t now)
 	 *
 	 *	@todo - set generic write error?
 	 */
+	(void) fr_bio_retry_timer_reset(my);
+
+	return 1;
+}
+
+
+/** Resume writes.
+ *
+ *  On resume, we try to flush any pending packets which should have been sent.
+ */
+static int fr_bio_retry_write_resume(fr_bio_t *bio)
+{
+	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
+	int rcode;
+
+	if (!my->info.write_blocked) return 1;
+
+	rcode = fr_bio_retry_write_delayed(my, fr_time());
+	if (rcode <= 0) return rcode;
+
+	my->info.write_blocked = false;
+
+	fr_bio_retry_timer_clear(my);
 	(void) fr_bio_retry_timer_reset(my);
 
 	return 1;
@@ -1147,45 +1191,3 @@ fr_bio_retry_entry_t *fr_bio_retry_item_reserve(fr_bio_t *bio)
 	return item;
 }
 
-
-/** Writes are blocked.
- *
- */
-int fr_bio_retry_write_blocked(fr_bio_t *bio)
-{
-	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
-
-	if (my->info.write_blocked) {
-		fr_assert(!my->ev);
-		return 1;
-	}
-
-	my->info.write_blocked = true;
-
-	fr_bio_retry_timer_clear(my);
-	(void) fr_bio_retry_expiry_timer_reset(my);
-
-	return 1;
-}
-
-/** Resume writes.
- *
- *  On resume, we try to flush any pending packets which should have been sent.
- */
-int fr_bio_retry_write_resume(fr_bio_t *bio)
-{
-	fr_bio_retry_t *my = talloc_get_type_abort(bio, fr_bio_retry_t);
-	int rcode;
-
-	if (!my->info.write_blocked) return 1;
-
-	rcode = fr_bio_retry_write_delayed(my, fr_time());
-	if (rcode <= 0) return rcode;
-
-	my->info.write_blocked = false;
-
-	fr_bio_retry_timer_clear(my);
-	(void) fr_bio_retry_timer_reset(my);
-
-	return 1;
-}
