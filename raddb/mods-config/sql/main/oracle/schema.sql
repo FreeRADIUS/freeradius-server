@@ -101,6 +101,17 @@ CREATE TABLE radgroupcheck (
 );
 CREATE SEQUENCE radgroupcheck_seq START WITH 1 INCREMENT BY 1;
 
+-- Trigger to emulate a serial # on the primary key
+CREATE OR REPLACE TRIGGER radgroupcheck_serialnumber
+	BEFORE INSERT OR UPDATE OF id ON radgroupcheck
+	FOR EACH ROW
+	BEGIN
+		if ( :new.id = 0 or :new.id is null ) then
+			SELECT radgroupcheck_seq.nextval into :new.id from dual;
+		end if;
+	END;
+/
+
 --
 -- Table structure for table 'radgroupreply'
 --
@@ -112,6 +123,17 @@ CREATE TABLE radgroupreply (
 	Value		VARCHAR(40)
 );
 CREATE SEQUENCE radgroupreply_seq START WITH 1 INCREMENT BY 1;
+
+-- Trigger to emulate a serial # on the primary key
+CREATE OR REPLACE TRIGGER radgroupreply_serialnumber
+	BEFORE INSERT OR UPDATE OF id ON radgroupreply
+	FOR EACH ROW
+	BEGIN
+		if ( :new.id = 0 or :new.id is null ) then
+			SELECT radgroupreply_seq.nextval into :new.id from dual;
+		end if;
+	END;
+/
 
 --
 -- Table structure for table 'radreply'
@@ -241,4 +263,15 @@ CREATE TABLE nas (
 	description     VARCHAR(200)
 );
 CREATE SEQUENCE nas_seq START WITH 1 INCREMENT BY 1;
+
+-- Trigger to emulate a serial # on the primary key
+CREATE OR REPLACE TRIGGER nas_serialnumber
+	BEFORE INSERT OR UPDATE OF id ON nas
+	FOR EACH ROW
+	BEGIN
+		if ( :new.id = 0 or :new.id is null ) then
+			SELECT nas_seq.nextval into :new.id from dual;
+		end if;
+	END;
+/
 
