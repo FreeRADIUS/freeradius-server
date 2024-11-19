@@ -751,10 +751,19 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			}
 		}
 
-		fd = socket(my->info.socket.af, my->info.socket.type, protocol);
-		if (fd < 0) {
-			fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
-			return -1;
+		/*
+		 *	It's already opened, so we don't need to do that.
+		 */
+		if (cfg->type == FR_BIO_FD_ACCEPTED) {
+			fd = my->info.socket.fd;
+			fr_assert(fd >= 0);
+
+		} else {
+			fd = socket(my->info.socket.af, my->info.socket.type, protocol);
+			if (fd < 0) {
+				fr_strerror_printf("Failed opening socket: %s", fr_syserror(errno));
+				return -1;
+			}
 		}
 
 	} else if (cfg->path) {
@@ -928,10 +937,31 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		if (fr_bio_fd_init_connected(my) < 0) goto fail;
 		break;
 
+	case FR_BIO_FD_ACCEPTED:
+#ifdef SO_NOSIGPIPE
+		/*
+		 *	Although the server ignore SIGPIPE, some operating systems like BSD and OSX ignore the
+		 *	ignoring.
+		 *
+		 *	Fortunately, those operating systems usually support SO_NOSIGPIPE.  We set that to prevent
+		 *	them raising the signal in the first place.
+		 */
+		{
+			int on = 1;
+
+			setsockopt(my->info.socket.fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+		}
+#endif
+
+		my->info.type = FR_BIO_FD_CONNECTED;
+
+                if (fr_bio_fd_init_common(my) < 0) goto fail;
+		break;
+
 		/*
 		 *	Server socket which listens for new stream connections
 		 */
-	case FR_BIO_FD_ACCEPT:
+	case FR_BIO_FD_LISTEN:
 		fr_assert(my->info.socket.type == SOCK_STREAM);
 
 		switch (my->info.socket.af) {
@@ -956,7 +986,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 			goto fail;
 		}
 
-		if (fr_bio_fd_init_accept(my) < 0) goto fail;
+		if (fr_bio_fd_init_listen(my) < 0) goto fail;
 		break;
 	}
 

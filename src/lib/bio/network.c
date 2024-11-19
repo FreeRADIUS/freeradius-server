@@ -133,9 +133,10 @@ fr_bio_t *fr_bio_network_alloc(TALLOC_CTX *ctx, fr_ipaddr_t const *allow, fr_ipa
 		break;
 
 	case FR_BIO_FD_CONNECTED:
+	case FR_BIO_FD_ACCEPTED:
 		return NULL;
 
-	case FR_BIO_FD_ACCEPT:
+	case FR_BIO_FD_LISTEN:
 		break;
 	}
 

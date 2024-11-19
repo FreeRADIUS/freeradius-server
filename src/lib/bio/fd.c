@@ -961,7 +961,7 @@ retry:
 }
 
 
-int fr_bio_fd_init_accept(fr_bio_fd_t *my)
+int fr_bio_fd_init_listen(fr_bio_fd_t *my)
 {
 	my->bio.read = fr_bio_fd_read_accept;
 	my->bio.write = fr_bio_null_write;
@@ -1262,7 +1262,7 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 	 *	The caller may just call us without caring about what the underlying BIO is.  In which case we
 	 *	need to be safe.
 	 */
-	if ((my->info.socket.af == AF_FILE_BIO) || (my->info.type == FR_BIO_FD_ACCEPT)) {
+	if ((my->info.socket.af == AF_FILE_BIO) || (my->info.type == FR_BIO_FD_LISTEN)) {
 		fr_bio_fd_set_open(my);
 		goto connected;
 	}
@@ -1363,6 +1363,7 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 		break;
 
 	case FR_BIO_FD_CONNECTED:
+	case FR_BIO_FD_ACCEPTED:
 		/*
 		 *	Further reads are disallowed.
 		 */
@@ -1372,11 +1373,114 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 		}
 		break;
 
-	case FR_BIO_FD_ACCEPT:
+	case FR_BIO_FD_LISTEN:
 		fr_strerror_const("Only unconnected sockets can be marked 'write-only'");
 		return -1;
 	}
 
 	my->bio.read = fr_bio_fd_read_discard;
 	return 0;
+}
+
+/** Alternative to calling fr_bio_read() on new socket.
+ *
+ */
+int fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out_p, fr_bio_t *bio)
+{
+	int fd, tries = 0;
+	int rcode;
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+	socklen_t salen;
+	struct sockaddr_storage sockaddr;
+	fr_bio_fd_t *out;
+	fr_bio_fd_config_t *cfg;
+
+	salen = sizeof(sockaddr);
+	*out_p = NULL;
+
+	fr_assert(my->info.type == FR_BIO_FD_LISTEN);
+	fr_assert(my->info.socket.type == SOCK_STREAM);
+
+retry:
+#ifdef __linux__
+	/*
+	 *	Set these flags immediately on the new socket.
+	 */
+	fd = accept4(my->info.socket.fd, (struct sockaddr *) &sockaddr, &salen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+#else
+	fd = accept(my->info.socket.fd, (struct sockaddr *) &sockaddr, &salen);
+#endif
+	if (fd < 0) {
+		switch (errno) {
+		case EINTR:
+			/*
+			 *	Try a few times before giving up.
+			 */
+			tries++;
+			if (tries <= my->max_tries) goto retry;
+			return 0;
+
+			/*
+			 *	We can ignore these errors.
+			 */
+		case ECONNABORTED:
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+		case EWOULDBLOCK:
+#endif
+		case EAGAIN:
+#ifdef EPERM
+		case EPERM:
+#endif
+#ifdef ETIMEDOUT
+		case ETIMEDOUT:
+#endif
+			return 0;
+
+		default:
+			/*
+			 *	Some other error, it's fatal.
+			 */
+			fr_bio_shutdown(&my->bio);
+			break;
+		}
+
+		return fr_bio_error(IO);
+	}
+
+	/*
+	 *	Allocate the base BIO and set it up.
+	 */
+	out = (fr_bio_fd_t *) fr_bio_fd_alloc(ctx, NULL, my->offset);
+	if (!out) {
+		close(fd);
+		return fr_bio_error(GENERIC);
+	}
+
+	/*
+	 *	We have a file descriptor.  Initialize the configuration with the new information.
+	 */
+	cfg = talloc_memdup(out, my->info.cfg, sizeof(*my->info.cfg));
+	if (!cfg) {
+		fr_strerror_const("Out of memory");
+		close(fd);
+		talloc_free(out);
+		return fr_bio_error(GENERIC);
+	}
+
+	/*
+	 *	Set the type to ACCEPTED, and set up the rest of the callbacks to match.
+	 */
+	cfg->type = FR_BIO_FD_ACCEPTED;
+	out->info.socket.fd = fd;
+
+	rcode = fr_bio_fd_open(bio, cfg);
+	if (rcode < 0) {
+		talloc_free(out);
+		return rcode;
+	}
+
+	fr_assert(out->info.type == FR_BIO_FD_CONNECTED);
+
+	*out_p = (fr_bio_t *) out;
+	return 1;
 }

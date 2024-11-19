@@ -63,8 +63,9 @@ typedef enum {
 					// updates #fr_bio_fd_packet_ctx_t for reads,
 					// uses #fr_bio_fd_packet_ctx_t for writes
 	FR_BIO_FD_CONNECTED,		//!< connected client sockets (UDP or TCP)
-	FR_BIO_FD_ACCEPT,		//!< returns new fd in buffer on fr_bio_read()
+	FR_BIO_FD_LISTEN,		//!< returns new fd in buffer on fr_bio_read() or fr_bio_fd_accept()
 					// updates #fr_bio_fd_packet_ctx_t on successful FD read.
+	FR_BIO_FD_ACCEPTED,		//!< temporarily until it's connected.
 } fr_bio_fd_type_t;
 
 /** Configuration for sockets
@@ -139,3 +140,5 @@ int		fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg) CC_HINT(nonnul
 int		fr_bio_fd_write_only(fr_bio_t *bio) CC_HINT(nonnull);
 
 int		fr_bio_fd_reopen(fr_bio_t *bio) CC_HINT(nonnull);
+
+int		fr_bio_fd_accept(TALLOC_CTX *ctx, fr_bio_t **out, fr_bio_t *bio)  CC_HINT(nonnull);
