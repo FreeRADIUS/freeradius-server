@@ -728,12 +728,10 @@ retry:
                  */
         case EINPROGRESS:
 		if (!my->info.write_blocked) {
-			if (my->cb.write_blocked) {
-				rcode = my->cb.write_blocked((fr_bio_t *) my);
-				if (rcode < 0) return rcode;
-			}
-
 			my->info.write_blocked = true;
+
+			rcode = fr_bio_write_blocked((fr_bio_t *) my);
+			if (rcode < 0) return rcode;
 		}
 
 		return fr_bio_error(IO_WOULD_BLOCK);

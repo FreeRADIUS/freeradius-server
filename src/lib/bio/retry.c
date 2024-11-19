@@ -764,7 +764,10 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 			my->info.write_blocked = true;
 			my->all_used = true;
 
-			rcode = my->cb.write_blocked(bio);
+			/*
+			 *	Previous BIOs are blocked, but we still try to write retries.
+			 */
+			rcode = fr_bio_write_blocked(bio);
 			if (rcode < 0) return rcode;
 
 			return fr_bio_error(IO_WOULD_BLOCK);

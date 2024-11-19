@@ -24,10 +24,8 @@ if (rcode > 0) {
 		 */
 		my->info.write_blocked = true;
 
-		if (my->cb.write_blocked) {
-			error = fr_bio_write_blocked((fr_bio_t *) my);
-			if (error < 0) return error;
-		}
+		error = fr_bio_write_blocked((fr_bio_t *) my);
+		if (error < 0) return error;
 
 		return rcode;	
 	}

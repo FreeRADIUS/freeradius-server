@@ -369,6 +369,7 @@ fail:
  */
 static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const *buffer, size_t size)
 {
+	int error;
 	ssize_t rcode;
 	size_t room, leftover;
 	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
@@ -410,14 +411,13 @@ static ssize_t fr_bio_mem_write_next(fr_bio_t *bio, void *packet_ctx, void const
 		return rcode;
 	}
 
-	if (my->cb.write_blocked) {
-		int error;
+	/*
+	 *	Tell previous BIOs in the chain that they are blocked.
+	 */
+	error = fr_bio_write_blocked(bio);
+	if (error < 0) return error;
 
-		error = my->cb.write_blocked(bio);
-		if (error < 0) return error;
-
-		fr_assert(error != 0); /* what to do? */
-	}
+	fr_assert(error != 0); /* what to do? */
 
 	/*
 	 *	We had WOULD BLOCK, or wrote partial bytes.  Save the data to the memory buffer, and ensure
