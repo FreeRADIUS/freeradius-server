@@ -166,9 +166,11 @@ CREATE OR REPLACE TRIGGER radreply_serialnumber
 --
 CREATE TABLE radusergroup (
 	id		INT PRIMARY KEY,
-	UserName	VARCHAR(30) UNIQUE NOT NULL,
-	GroupName	VARCHAR(30)
+	UserName	VARCHAR(30) NOT NULL,
+	GroupName	VARCHAR(30),
+	Priority	INT
 );
+CREATE INDEX radusergroup_idx1 ON radusergroup(UserName);
 CREATE SEQUENCE radusergroup_seq START WITH 1 INCREMENT BY 1;
 
 --
