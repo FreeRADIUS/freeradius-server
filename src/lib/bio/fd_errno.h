@@ -18,11 +18,11 @@ case EAGAIN:
 	 *	The operation would block, return that.
 	 */
 	if (!my->info.flag_blocked) {
+		my->info.flag_blocked = true;
+
 		if (my->cb.flag_blocked) {
 			rcode = my->cb.flag_blocked((fr_bio_t *) my);
 			if (rcode < 0) return rcode;
-
-			my->info.flag_blocked = true;
 		}
 	}
 	return fr_bio_error(IO_WOULD_BLOCK);

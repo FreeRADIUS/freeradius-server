@@ -32,6 +32,11 @@ if (rcode > 0) {
 	return rcode;
 }
 
+/*
+ *	Don't check for rcode==0, the caller has to do that.  This is because
+ *	read of 0 is different for datagram and stream sockets.
+ */
+
 #undef flag_blocked
 #define flag_blocked read_blocked
 #include "fd_errno.h"
