@@ -270,9 +270,8 @@ void fr_bio_eof(fr_bio_t *bio)
 		if (this->priv_cb.eof((fr_bio_t *) this) == 0) break;
 
 		/*
-		 *	Don't run the EOF callback multiple times.
+		 *	Don't run the EOF callback multiple times, and continue the loop.
 		 */
 		this->priv_cb.eof = NULL;
-		break;
 	}
 }
