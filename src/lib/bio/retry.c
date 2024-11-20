@@ -352,7 +352,7 @@ static int fr_bio_retry_write_item(fr_bio_retry_t *my, fr_bio_retry_entry_t *ite
 	 *	We didn't write the whole packet, we're blocked.
 	 */
 	if ((size_t) rcode < item->size) {
-		if (fr_bio_retry_save_write(my, item, rcode) < 0) return fr_bio_error(GENERIC); /* oom */
+		if (fr_bio_retry_save_write(my, item, rcode) < 0) return fr_bio_error(OOM);
 
 		return 0;
 	}
@@ -511,7 +511,7 @@ static ssize_t fr_bio_retry_save_write(fr_bio_retry_t *my, fr_bio_retry_entry_t 
 	 */
 	if (!my->buffer.start ||
 	    (item->size > fr_bio_buf_size(&my->buffer))) {
-		if (fr_bio_buf_alloc(my, &my->buffer, item->size)) return fr_bio_error(GENERIC);
+		if (fr_bio_buf_alloc(my, &my->buffer, item->size)) return fr_bio_error(OOM);
 	}
 
 	fr_assert(fr_bio_buf_used(&my->buffer) == 0);
@@ -841,8 +841,6 @@ static ssize_t fr_bio_retry_write(fr_bio_t *bio, void *packet_ctx, void const *b
 	 *	If we can't set the timer, then release this item.
 	 */
 	if (fr_bio_retry_timer_reset(my) < 0) {
-		fr_strerror_const("Failed adding timer for packet");
-
 		fr_bio_retry_release(my, item, FR_BIO_RETRY_CANCELLED);
 		return fr_bio_error(GENERIC);
 	}

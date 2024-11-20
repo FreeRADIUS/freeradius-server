@@ -654,7 +654,7 @@ static ssize_t fr_bio_dedup_blocked(fr_bio_dedup_t *my, fr_bio_dedup_entry_t *it
 	fr_assert(rcode > 0);
 	fr_assert((size_t) rcode < item->reply_size);
 
-	if (fr_bio_dedup_buffer_save(my, item->reply, item->reply_size, rcode) < 0) return fr_bio_error(GENERIC);
+	if (fr_bio_dedup_buffer_save(my, item->reply, item->reply_size, rcode) < 0) return fr_bio_error(OOM);
 
 	switch (item->state) {
 	case FR_BIO_DEDUP_STATE_ACTIVE:
@@ -742,7 +742,7 @@ static ssize_t fr_bio_dedup_blocked_data(fr_bio_dedup_t *my, uint8_t const *buff
 	fr_assert(rcode > 0);
 	fr_assert((size_t) rcode < size);
 
-	if (fr_bio_dedup_buffer_save(my, buffer, size, rcode) < 0) return fr_bio_error(GENERIC);
+	if (fr_bio_dedup_buffer_save(my, buffer, size, rcode) < 0) return fr_bio_error(OOM);
 
 	/*
 	 *	Reset the write routine, so that if the application tries any more writes, the data

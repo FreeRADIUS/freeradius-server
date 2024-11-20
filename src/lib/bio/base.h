@@ -50,6 +50,7 @@ typedef enum {
 
 	FR_BIO_ERROR_IO,				//!< IO error - check errno
 	FR_BIO_ERROR_GENERIC,				//!< generic "failed" error - check fr_strerror()
+	FR_BIO_ERROR_OOM,				//!< out of memory
 	FR_BIO_ERROR_VERIFY,				//!< some packet verification error
 	FR_BIO_ERROR_BUFFER_FULL,      			//!< the buffer is full
 	FR_BIO_ERROR_BUFFER_TOO_SMALL,			//!< the output buffer is too small for the data
