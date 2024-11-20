@@ -70,6 +70,8 @@ general) more secure.
 $ vi ca.cnf
 ```
 
+Edit `default_days` to set the desired lifetime of the CA certificate.
+
 Edit the `input_password` and `output_password` fields to be the
 password for the CA certificate.
 
@@ -99,6 +101,9 @@ EAP-TLS that is tunneled inside of another TLS-based EAP method.
 ```
 $ vi server.cnf
 ```
+
+Edit `default_days` to set the lifetime of the server certificate.
+The maximum for this is 825 for compatibility with all client devices.
 
 Edit the `input_password` and `output_password` fields to be the
 password for the server certificate.
@@ -139,6 +144,8 @@ will have to have the password for the CA certificate in the
 ```
 $ vi client.cnf
 ```
+
+Edit `default_days` to set the lifetime of the client certificate.
 
 Edit the `input_password` and `output_password` fields to be the
 password for the client certificate.  You will have to give these
