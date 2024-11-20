@@ -135,42 +135,46 @@ int fr_bio_free(fr_bio_t *bio)
 
 /** Shut down a set of BIOs
  *
- *  Must be called from the top-most bio.
- *
- *  Will shut down the bios from the bottom-up.
- *
- *  The shutdown function MUST be callable multiple times without breaking.
+ *  We shut down the BIOs from the top to the bottom.  This gives the TLS BIO an opportunity to
+ *  call the SSL_shutdown() routine, which should then write to the FD BIO.
  */
 int fr_bio_shutdown(fr_bio_t *bio)
 {
-	fr_bio_t *last;
+	fr_bio_t *this, *first;
+	fr_bio_common_t *my;
 
 	fr_assert(!fr_bio_prev(bio));
 
 	/*
-	 *	Find the last bio in the chain.
+	 *	Find the first bio in the chain.
 	 */
-	for (last = bio; fr_bio_next(last) != NULL; last = fr_bio_next(last)) {
+	for (this = bio; fr_bio_prev(this) != NULL; this = fr_bio_prev(this)) {
 		/* nothing */
+	}
+	first = this;
+
+	/*
+	 *	Walk back down the chain, calling the shutdown functions.
+	 */
+	for (/* nothing */; this != NULL; this = fr_bio_next(this)) {
+		my = (fr_bio_common_t *) this;
+
+		if (!my->priv_cb.shutdown) continue;
+
+		/*
+		 *	The EOF handler said it's NOT at EOF, so we stop processing here.
+		 */
+		my->priv_cb.shutdown(&my->bio);
+		my->priv_cb.shutdown = NULL;
 	}
 
 	/*
-	 *	Walk back up the chain, calling the shutdown functions.
+	 *	Call the application shutdown routine
 	 */
-	do {
-		fr_bio_common_t *my = (fr_bio_common_t *) last;
+	my = (fr_bio_common_t *) first;
 
-		/*
-		 *	Call user shutdown before the bio shutdown.
-		 *
-		 *	Then set it to NULL so that it doesn't get called again on talloc cleanups.
-		 */
-		if (my->cb.shutdown) my->cb.shutdown(last);
-
-		my->cb.shutdown = NULL;
-
-		last = fr_bio_prev(last);
-	} while (last);
+	if (my->cb.shutdown) my->cb.shutdown(first);
+	my->cb.shutdown = NULL;
 
 	return 0;
 }

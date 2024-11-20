@@ -52,3 +52,8 @@ default:
 	 */
 	break;
 }
+
+/*
+ *	Shut down the BIO.  It's no longer useable.
+ */
+fr_bio_shutdown(&my->bio);

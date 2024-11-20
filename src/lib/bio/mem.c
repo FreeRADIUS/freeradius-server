@@ -491,19 +491,15 @@ static ssize_t fr_bio_mem_write_flush(fr_bio_mem_t *my, size_t size)
 	rcode = next->write(next, NULL, my->write_buffer.write, used);
 
 	/*
-	 *	The next bio returned an error.  Anything other than WOULD BLOCK is fatal.  We can read from
-	 *	the memory buffer until it's empty, but we can no longer write to the memory buffer.
-	 */
-	if ((rcode < 0) && (rcode != fr_bio_error(IO_WOULD_BLOCK))) {
-		my->bio.read = fr_bio_mem_read_eof;
-		my->bio.write = fr_bio_null_write;
-		return rcode;
-	}
-
-	/*
-	 *	We didn't write anything, the bio is still blocked.
+	 *	We didn't write anything, the bio is blocked.
 	 */
 	if ((rcode == 0) || (rcode == fr_bio_error(IO_WOULD_BLOCK))) return fr_bio_error(IO_WOULD_BLOCK);
+
+	/*
+	 *	All other errors are fatal.  We can read from the memory buffer until it's empty, but we can
+	 *	no longer write to the memory buffer.
+	 */
+	if (rcode < 0) return rcode;
 
 	/*
 	 *	Tell the buffer that we've read a certain amount of data from it.
@@ -682,6 +678,15 @@ static int fr_bio_mem_call_verify(fr_bio_t *bio, void *packet_ctx, size_t *size)
 	return -1;
 }
 
+/*
+ *	The application can read from the BIO until EOF, but cannot write to it.
+ */
+static void fr_bio_mem_shutdown(fr_bio_t *bio)
+{
+	bio->read = fr_bio_mem_read_eof;
+	bio->write = fr_bio_null_write;
+}
+
 /** Allocate a memory buffer bio for either reading or writing.
  */
 static bool fr_bio_mem_buf_alloc(fr_bio_mem_t *my, fr_bio_buf_t *buf, size_t size)
@@ -750,6 +755,7 @@ fr_bio_t *fr_bio_mem_alloc(TALLOC_CTX *ctx, size_t read_size, size_t write_size,
 	}
 	my->priv_cb.eof = fr_bio_mem_eof;
 	my->priv_cb.write_resume = fr_bio_mem_write_resume;
+	my->priv_cb.shutdown = fr_bio_mem_shutdown;
 
 	fr_bio_chain(&my->bio, next);
 
@@ -782,6 +788,11 @@ fr_bio_t *fr_bio_mem_source_alloc(TALLOC_CTX *ctx, size_t write_size, fr_bio_t *
 
 	my->bio.read = fr_bio_null_read; /* reading FROM this bio is not possible */
 	my->bio.write = fr_bio_mem_write_next;
+
+	/*
+	 *	@todo - have write pause / write resume callbacks?
+	 */
+	my->priv_cb.shutdown = fr_bio_mem_shutdown;
 
 	fr_bio_chain(&my->bio, next);
 
@@ -829,7 +840,7 @@ static ssize_t fr_bio_mem_write_read_buffer(fr_bio_t *bio, UNUSED void *packet_c
 
 /** Allocate a memory buffer which sinks data from a bio system into the callers application.
  *
- *  The caller reads data from this bio, but never writes to it.  Upstream bios will source the data.
+ *  The caller reads data from this bio, but never writes to it.  Upstream BIOs will source the data.
  */
 fr_bio_t *fr_bio_mem_sink_alloc(TALLOC_CTX *ctx, size_t read_size)
 {
