@@ -726,8 +726,8 @@ security {
 	#
 	#  Global configuration for limiting the combination of
 	#  Proxy-State and Message-Authenticator.  This flag only
-	#  applies to packets sent over UDP or TCP.  This flag is
-	#  ignored for TLS.
+	#  applies to Access-Request packets sent from a client, over
+	#  UDP or TCP.  This flag is ignored for TLS.
 	#
 	#  This flag sets the global default for all clients.  It can
 	#  be over-ridden in an individual client definition by adding
@@ -741,13 +741,13 @@ security {
 	#
 	#  The possible values and meanings for "limit_proxy_state" are;
 	#
-	#  * "no" - allow any packets from the client, even packets
-	#    which contain the BlastRADIUS attack.  Please be aware
-	#    that in this configuration the server will complain for
-	#    EVERY packet which it receives.
+	#  * "no" - allow any Access-Request packets from the client,
+	#    even packets which contain the BlastRADIUS attack.
+	#    Please be aware that in this configuration the server
+	#    will complain for EVERY packet which it receives.
 	#
 	#    The only reason to set this flag to "no" is when the
-	#    client is a proxy, AND the proxy does not send
+	#    client is a proxy, AND it does not send
 	#    Message-Authenticator in Access-Request packets.  Even
 	#    then, the best approach to fix the issue is to (1) update
 	#    the proxy to send Message-Authenticator, and if that
@@ -757,14 +757,17 @@ security {
 	#
 	#    WARNING: Setting both this flag and the
 	#    "require_message_authenticator" flag to "no" will allow
-	#    MITM attackers to create fake Access-Accept packets to the
-	#    NAS!  At least one of them MUST be set to "yes" for the
-	#    system to have any protection against the attack.
+	#    MITM attackers to spoof Access-Request packets, and then
+	#    to create fake Access-Accept packets to the NAS!  At
+	#    least one of these configuration items MUST be set to
+	#    "yes" for the system to have any protection against the
+	#    attack.
 	#
-	#  * "yes" - Allow packets without Message-Authenticator,
-	#    but only when they do not contain Proxy-State.
-	#    packets which contain Proxy-State MUST also contain
-	#    Message-Authenticator, otherwise they are discarded.
+	#  * "yes" - Allow Access-Request packets without
+	#    Message-Authenticator, but only when they do not contain
+	#    Proxy-State.  Packets which contain Proxy-State MUST also
+	#    contain Message-Authenticator, otherwise they are
+	#    discarded.
 	#
 	#    This setting is safe for most NASes, GGSNs, BRAS, etc.
 	#    Most regular RADIUS clients do not send Proxy-State
@@ -778,7 +781,8 @@ security {
 	#    the WLC, and set "require_message_authenticator" to "yes".
 	#
 	#  * "auto" - Automatically determine the value of the flag,
-	#    based on the first packet received from that client.
+	#    based on the first Access-Request packet received from
+	#    that client.
 	#
 	#    If the packet contains Proxy-State but no
 	#    Message-Authenticator, then the value of the flag is
