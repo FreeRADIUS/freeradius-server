@@ -454,7 +454,18 @@ mschap {
 #		chap_challenge = &MS-CHAP-Challenge
 #		chap_response = &MS-CHAP-Response
 #		chap2_response = &MS-CHAP2-Response
-#		chap2_success = &Data
-#		chap_error = &Server-Message
+
+		#
+		#  TACACS+ puts the MS-CHAP2-Success information in the Data field,
+		#  but we call it MS-CHAP2-Success for simplicity.
+		#  See the ALIAS definition in dictionary/tacacs/dictionary.freeradius.internal
+		#
+#		chap2_success = &MS-CHAP2-Success
+
+		#
+		#  Similarly, TACACS+ puts the MS-CHAP-Error into the Server-Message
+		#  field.
+		#
+#		chap_error = &MS-CHAP-Error
 #	}
 }

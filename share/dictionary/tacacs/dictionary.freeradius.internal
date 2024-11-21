@@ -43,3 +43,10 @@ VALUE	Packet-Type			Accounting-Success		17
 VALUE	Packet-Type			Accounting-Error		18
 
 DEFINE	State					octets
+
+#
+#  Use v3 names for aliases, so that the mschap module can be used
+#  for both TACACS+ and RADIUS.
+#
+ALIAS	MS-CHAP2-Success		Data
+ALIAS	MS-CHAP-Error			Server-Message
