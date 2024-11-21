@@ -67,6 +67,7 @@ static ssize_t cbor_encode_integer(fr_dbuff_t *dbuff, uint8_t type, uint64_t dat
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 	uint8_t		value[8];
 
+	fr_assert(type < 8);
 	type <<= 5;
 
 	if (data < 24) {
@@ -164,6 +165,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 	uint64_t	data;
 	int64_t		neg;
 	ssize_t		slen;
+	uint8_t		const *p, *end;
 
 	switch (vb->type) {
 	case FR_TYPE_BOOL:
@@ -344,7 +346,24 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.prefix);
 		if (slen <= 0) return slen;
 
-		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v4.s_addr, 4);
+		p = (uint8_t const *) &vb->vb_ip.addr.v4.s_addr;
+		end = p + 3;
+
+		/*
+		 *	RFC 9164 Section 4.2 - Drop lower octets which are all zero.
+		 *
+		 *	If this results in a zero-length string, so be it.
+		 *
+		 *	Note also that "There is no relationship between the number of bytes omitted and the
+		 *	prefix length."
+		 */
+		do {
+			if (*end != 0) break;
+
+			end--;
+		} while (end != p);
+
+		slen = cbor_encode_octets(&work_dbuff, p, (end - p) + (*end != 0));
 		if (slen <= 0) return slen;
 		break;
 
@@ -363,7 +382,24 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.prefix);
 		if (slen <= 0) return slen;
 
-		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr, 16);
+		p = (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr;
+		end = p + 15;
+
+		/*
+		 *	RFC 9164 Section 4.2 - Drop lower octets which are all zero.
+		 *
+		 *	If this results in a zero-length string, so be it.
+		 *
+		 *	Note also that "There is no relationship between the number of bytes omitted and the
+		 *	prefix length."
+		 */
+		do {
+			if (*end != 0) break;
+
+			end--;
+		} while (end != p);
+
+		slen = cbor_encode_octets(&work_dbuff, p, (end - p) + (*end != 0));
 		if (slen <= 0) return slen;
 
 		break;
@@ -488,7 +524,7 @@ static ssize_t cbor_decode_count(uint64_t *out, int expected, fr_dbuff_t *dbuff)
 
 typedef ssize_t (*cbor_decode_type_t)(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff);
 
-static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_len, fr_dbuff_t *dbuff)
+static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_min, size_t dst_max, fr_dbuff_t *dbuff)
 {
 	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
 	ssize_t slen;
@@ -497,12 +533,17 @@ static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_len, fr_dbuff_
 	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
 	if (slen < 0) return slen;
 
-	if (value != dst_len) {
-		fr_strerror_printf("Invalid length for data - expected %zu got %" PRIu64, dst_len, value);
+	if (value < dst_min) {
+		fr_strerror_printf("Invalid length for data - expected at least %zu got %" PRIu64, dst_min, value);
 		return -1;
 	}
 
-	FR_DBUFF_OUT_MEMCPY_RETURN(dst, &work_dbuff, dst_len);
+	if (value > dst_max) {
+		fr_strerror_printf("Invalid length for data - expected no more than %zu got %" PRIu64, dst_max, value);
+		return -1;
+	}
+
+	FR_DBUFF_OUT_MEMCPY_RETURN(dst, &work_dbuff, value);
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -515,7 +556,7 @@ static ssize_t *cbor_decode_octets_memdup(TALLOC_CTX *ctx, uint8_t **out, fr_dbu
 	uint64_t value;
 	uint8_t *ptr;
 
-	slen = cbor_decode_count(&value, CBOR_OCTETS&work_dbuff);
+	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
 	if (slen < 0) return slen;
 
 	if (value > (1 << 20)) {
@@ -538,18 +579,20 @@ static ssize_t *cbor_decode_octets_memdup(TALLOC_CTX *ctx, uint8_t **out, fr_dbu
 
 static ssize_t cbor_decode_ethernet(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
 {
-	return cbor_decode_octets_memcpy(vb->vb_ether, sizeof(vb->vb_ether), dbuff);
+	return cbor_decode_octets_memcpy(vb->vb_ether, sizeof(vb->vb_ether), sizeof(vb->vb_ether), dbuff);
 }
 
 static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
 {
 	return cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
+					 sizeof(vb->vb_ip.addr.v4.s_addr),
 					 sizeof(vb->vb_ip.addr.v4.s_addr), dbuff);
 }
 
 static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
 {
 	return cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
+					 sizeof(vb->vb_ip.addr.v6.s6_addr),
 					 sizeof(vb->vb_ip.addr.v6.s6_addr), dbuff);
 }
 
@@ -559,6 +602,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	ssize_t slen;
 	uint8_t header;
 	uint64_t value = 0;
+	uint8_t buffer[sizeof(vb->vb_ip.addr.v4.s_addr)];
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
 
@@ -568,8 +612,8 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 		return -1;
 	}
 
-	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
+	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
 
 	if (value > 32) {
 		fr_strerror_printf("Invalid IPv4 prefix - expected prefix < 32, got %" PRIu64, value);
@@ -577,11 +621,18 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	}
 
 	/*
-	 *	We encode the entire IP.  But maybe others don't?
+	 *	RFC 9164 Section 4.3 - Trailing bytes of zero are omitted, so we
+	 *	first copy the data to a fixed-sized buffer which was
+	 *	zeroed out, and then (@todo) also check that unused bits in
+	 *	the last byte are all zero.
 	 */
-	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
-					 sizeof(vb->vb_ip.addr.v4.s_addr), &work_dbuff);
+	memset(buffer, 0, sizeof(buffer));
+
+	slen = cbor_decode_octets_memcpy(buffer, 0, sizeof(buffer), &work_dbuff);
 	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr, buffer, sizeof(vb->vb_ip.addr.v4.s_addr));
+	vb->vb_ip.prefix = value;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -592,6 +643,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	ssize_t slen;
 	uint8_t header;
 	uint64_t value = 0;
+	uint8_t buffer[sizeof(vb->vb_ip.addr.v6.s6_addr)];
 
 	FR_DBUFF_OUT_RETURN(&header, &work_dbuff);
 
@@ -601,8 +653,8 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 		return -1;
 	}
 
-	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
+	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
 
 	if (value > 128) {
 		fr_strerror_printf("Invalid IPv6 prefix - expected prefix < 128, got %" PRIu64, value);
@@ -610,11 +662,18 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	}
 
 	/*
-	 *	We encode the entire IP.  But maybe others don't?
+	 *	RFC 9164 Section 4.3 - Trailing bytes of zero are omitted, so we
+	 *	first copy the data to a fixed-sized buffer which was
+	 *	zeroed out, and then (@todo) also check that unused bits in
+	 *	the last byte are all zero.
 	 */
-	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
-					 sizeof(vb->vb_ip.addr.v6.s6_addr), &work_dbuff);
+	memset(buffer, 0, sizeof(buffer));
+
+	slen = cbor_decode_octets_memcpy(buffer, 0, sizeof(buffer), &work_dbuff);
 	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+
+	memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr, buffer, sizeof(vb->vb_ip.addr.v6.s6_addr));
+	vb->vb_ip.prefix = value;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }

@@ -7,11 +7,11 @@ cbor = %cbor.encode(User-Name)
 #  9f		array of indefinite length
 #    a1		map of lenght 1
 #      01	key is integer, value 1 (User-Name)
-#      43	value is string, of length 3
+#      63	value is string, of length 3
 #        626f62 string 'bob'
 #  ff		end of indefinite array
 #
-if (cbor != 0x9fa10143626f62ff) {
+if (cbor != 0x9fa10163626f62ff) {
 	test_fail
 }
 

@@ -98,5 +98,36 @@ match 9f a1 18 1a 9f a1 19 19 7f f6 ff ff
 decode-pair -
 match Vendor-Specific = { Nokia-SR = { } }
 
+# 97 is the attribute number
+encode-pair PMIP6-Home-HN-Prefix = ::/8
+match 9f a1 18 97 d8 36 82 08 40 ff
+
+# 9b is the attribute number
+encode-pair PMIP6-Home-IPv4-HoA = 0/8
+match 9f a1 18 9b d8 34 82 08 40 ff
+
+#
+#  Prefixes get trailing zeros dropped, no matter what the prefix says.
+#
+#  e.g. ::/128 gets encoded as prefix=128, octets=""
+#
+encode-pair PMIP6-Home-IPv4-HoA = 192/8
+match 9f a1 18 9b d8 34 82 08 41 c0 ff
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 192.0.0.0/8
+
+encode-pair PMIP6-Home-IPv4-HoA = 192.0.2/24
+match 9f a1 18 9b d8 34 82 18 18 43 c0 00 02 ff
+
+decode-pair -
+match PMIP6-Home-IPv4-HoA = 192.0.2.0/24
+
+encode-pair PMIP6-Home-HN-Prefix = ::/128
+match 9f a1 18 97 d8 36 82 18 80 40 ff
+
+decode-pair -
+match PMIP6-Home-HN-Prefix = ::/128
+
 count
-match 43
+match 59
