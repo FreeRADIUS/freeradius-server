@@ -1706,7 +1706,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 
 		num_rows = (inst->module->sql_num_fields)(handle, inst->config);
 		if (num_rows < 8) {
-			RDEBUG("Too few rows returned.  Please do not edit 'simul_verify_query'");
+			WARN("SELECT returned too few fields.  Please do not edit 'simul_verify_query'");
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
