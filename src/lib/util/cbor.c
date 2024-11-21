@@ -26,8 +26,8 @@ RCSID("$Id$")
 
 #define CBOR_INTEGER	(0)
 #define CBOR_NEGATIVE	(1)
-#define CBOR_STRING	(2)
-#define CBOR_OCTETS	(3)
+#define CBOR_OCTETS	(2)
+#define CBOR_STRING	(3)
 #define CBOR_ARRAY	(4)
 #define CBOR_MAP	(5)
 #define CBOR_TAG	(6)
@@ -39,7 +39,7 @@ RCSID("$Id$")
 #define CBOR_8_BYTE ((uint8_t) 27)
 
 static const char *cbor_type_to_str[8] = {
-	"integer", "negative", "string", "octets",
+	"integer", "negative", "octets", "string",
 	"array", "map", "tag", "float"
 };
 

@@ -15,13 +15,13 @@ fuzzer-out cbor
 #  43: string of length 3
 #
 encode-pair User-Name = "bob"
-match 9f a1 01 43 62 6f 62 ff
+match 9f a1 01 63 62 6f 62 ff
 
 decode-pair -
 match User-Name = "bob"
 
 encode-pair User-Name = "bob", Framed-IP-Address = 192.0.2.1
-match 9f a1 01 43 62 6f 62 a1 08 d8 34 64 c0 00 02 01 ff
+match 9f a1 01 63 62 6f 62 a1 08 d8 34 44 c0 00 02 01 ff
 
 #
 #  tag decode isn't done
@@ -30,13 +30,13 @@ decode-pair -
 match User-Name = "bob", Framed-IP-Address = 192.0.2.1
 
 encode-pair User-Name = "bob", NAS-Port = 2112
-match 9f a1 01 43 62 6f 62 a1 05 19 08 40 ff
+match 9f a1 01 63 62 6f 62 a1 05 19 08 40 ff
 
 decode-pair -
 match User-Name = "bob", NAS-Port = 2112
 
 encode-pair Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
-match 9f a1 18 1a 9f a1 09 9f a1 01 43 66 6f 6f a1 18 c0 19 1a 99 ff ff ff
+match 9f a1 18 1a 9f a1 09 9f a1 01 63 66 6f 6f a1 18 c0 19 1a 99 ff ff ff
 
 decode-pair -
 match Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
@@ -72,19 +72,19 @@ match Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
 #  Otherwise the "3600.5" is interpreted as a bare word / string.
 #
 encode-pair Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
-match 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ff 66 33 36 30 30 2e 35 ff ff ff
+match 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ff 46 33 36 30 30 2e 35 ff ff ff
 
 #
 #  Zero-length strings and octets
 #
 encode-pair User-Name = ""
-match 9f a1 01 40 ff
+match 9f a1 01 60 ff
 
 decode-pair -
 match User-Name = ""
 
 encode-pair Class = 0x
-match 9f a1 18 19 60 ff
+match 9f a1 18 19 40 ff
 
 decode-pair -
 match Class = 0x
