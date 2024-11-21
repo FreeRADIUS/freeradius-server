@@ -228,17 +228,18 @@ server tacacs {
 	#
 	#  ### Recv
 	#
+	#
+	#  In general, it is not necessary to set `Auth-Type` in this section.  The packet header
+	#  contains a TACACS `Authentication-Type` with value `PAP`, `CHAP`, etc.  That value will
+	#  be used automatically by the server to set `Auth-Type`.
+	#
+	#  The only reason to set `Auth-Type` here is when you want to use a custom
+	#  authentication method, such as `ldap`.  You should ONLY set `Auth-Type := ldap` when
+	#  the packet contains `Authentication-Type = PAP` _and_ the passwords in LDAP are stored
+	#  in "crypt" or hashed form.
+	#
 	recv Authentication-Start {
 		-sql
-
-		#
-		#  In general, it is not necessary to set `Auth-Type` here.  The packet header
-		#  contains a TACACS `Authentication-Type` with value `PAP`, `CHAP`, etc.  That value will
-		#  be used automatically.
-		#
-		#  The only reason to set `Auth-Type` here is when you want to use a custom
-		#  authentication method, such as `ldap`.
-		#
 	}
 
 	authenticate PAP {
@@ -256,6 +257,17 @@ server tacacs {
 	authenticate MSCHAPv2 {
 		mschap
 	}
+
+	#
+	#  LDAP authentication will only work with PAP authentication
+	#
+#	authenticate ldap {
+#		if (Authentication-Type != PAP) {
+#			%log.warn("The packet is not PAP.  LDAP authentication is likely to fail!")
+#		}
+#
+#		ldap
+#	}
 
 	#
 	#  The automatic state machine will ensure that both User-Name
@@ -313,11 +325,28 @@ server tacacs {
 	#
 	#  ## Authentication-Continue
 	#
-	#  This should handle ASCII methods as PAP with challenge-response.
+	#  This section handles responses to challenges for `Authentication-Type = ASCII`
+	#
+	#  i.e. The server receives an `Authentication-Start` packet
+	#  with `Authentication-Type = ASCII`, and replies with a
+	#  challenge.  The client returns the username or password in
+	#  an `Authentication-Continue` packet.  The server should
+	#  then check the username or password.
+	#
+	#  The TACACS+ protocol puts the response username or password
+	#  into the "data" field.  For simplicity, the server copies
+	#  that field into the User-Name or User-Password attribute as
+	#  appropriate.  This automatic copyinh means that it is a lot
+	#  easier to understand and configure TACACS+.
 	#
 
 	#
 	#  ### Recv
+	#
+	#  Receive `Authentication-Continue` packet.  When this
+	#  section is done and has a User-Password, the server will
+	#  run an `authenticate ... { }` section.  It will then call
+	#  one of the `send` sections to send the reply.
 	#
 	recv Authentication-Continue {
 		#
