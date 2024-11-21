@@ -72,6 +72,10 @@ This configuration option should only be used when the IMAP server being contact
 is not known ahead of time (using a URL from an external source), and/or the CA used
 to sign the IMAP server certificate is unknown.
 
+If not set, then whatever libcurl has as its default will be used, which typically
+will be the operating system's set of trusted CAs.  This will be visible in the debug
+output when FreeRADIUS starts.
+
 
 
 private_key_file:: PEM formatted file containing the private key for the specified `certificate_file`

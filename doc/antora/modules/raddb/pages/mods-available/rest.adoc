@@ -53,6 +53,10 @@ This configuration option should only be used when the HTTPS server being contac
 is not known ahead of time (using a URL from an external source), and/or the CA used
 to sign the HTTPS server certificate is unknown.
 
+If not set, then whatever libcurl has as its default will be used, which typically
+will be the operating system's set of trusted CAs.  This will be visible in the debug
+output when FreeRADIUS starts.
+
 
 
 certificate_file:: PEM formatted file containing the certificate we present to the HTTPS server
@@ -114,6 +118,16 @@ Default is `yes`
 extract_cert_attrs:: Extract OIDs from presented certificates as OIDs.
 
 Default is `no`
+
+
+
+keylog_file:: Write out session keys in SSLKEYLOGFILE format
+
+The SSLKEYLOGFILE format is specified here https://www.ietf.org/archive/id/draft-thomson-tls-keylogfile-00.html.
+
+The contents of the keylog file allows wireshark captures to be decrypted for debugging purposes.
+
+Note:: keylog_file is not expanded at runtime.
 
 
 
@@ -201,7 +215,7 @@ In the `request { ... }` subsection, the following config items may be listed:
                    may be specified with `body`. Will be expanded.
                    Values from expansion will not be escaped, this should be
       done using the appropriate `xlat` method e.g.
-      `%url.quote(<attr>)`
+      `%urlquote(<attr>)`
 | `auth`         | HTTP auth method to use, one of 'none', 'srp', 'basic',			| yes
                    'digest', 'digest-ie', 'gss-negotiate', 'ntlm',
                    'ntlm-winbind', 'any', 'safe'. defaults to _'none'_.
@@ -319,6 +333,8 @@ any calls to this module's `xlat` function.
 
 ### Authorize { ... }
 
+Default action when called in `recv` sections except `recv Accounting-Request`.
+
 [options="header,autowidth"]
 |===
 | Code | Meaning      | Process body? | Module code
@@ -336,11 +352,15 @@ any calls to this module's `xlat` function.
 
 ### Authenticate { ... }
 
-Same as `Authorize { ... }`
+Default action when called in `authenticate` sections.
+
+Return codes handled the same as `Authorize { ... }`
 
 
 
 ### Accounting { ... }
+
+Default action when called in `recv Accounting-Request` or `accounting` sections.
 
 [options="header,autowidth"]
 |===
@@ -355,7 +375,9 @@ Same as `Authorize { ... }`
 
 ### Post-Auth { ... }
 
-Same as `Accounting { ... }`
+Default action when called in `send` sections.
+
+Return codes handled the same as `Accounting { ... }`
 
 
 
@@ -417,6 +439,7 @@ rest {
 #		check_cert = no
 #		check_cert_cn = no
 #		extract_cert_attrs = no
+#		keylog_file = '/path/to/keylog_file'
 	}
 	connect_uri = "http://127.0.0.1:9090/"
 #	connect_proxy = "socks://127.0.0.1"
@@ -427,23 +450,31 @@ rest {
 		tls = ${..tls}
 	}
 	authorize {
-		uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
-		method = 'GET'
+		request {
+			uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
+			method = 'GET'
+		}
 		tls = ${..tls}
 	}
 	authenticate {
-		uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
-		method = 'GET'
+		request {
+			uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
+			method = 'GET'
+		}
 		tls = ${..tls}
 	}
 	accounting {
-		uri = "${...connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
-		method = 'POST'
+		request {
+			uri = "${...connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
+			method = 'POST'
+		}
 		tls = ${..tls}
 	}
 	post-auth {
-		uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
-		method = 'POST'
+		request {
+			uri = "${...connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
+			method = 'POST'
+		}
 		tls = ${..tls}
 	}
 	connection {

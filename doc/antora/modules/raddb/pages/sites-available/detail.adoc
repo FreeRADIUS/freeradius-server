@@ -210,6 +210,13 @@ A special value of "0" means "retransmit forever".
 The detail file reader runs the normal RADIUS / DHCP / etc. processing sections.
 
 
+If there's an Acct-Delay-Time, increase its value based on the
+difference between when the packet was written, and the current time.
+
+Note that we do NOT rely on any Event-Timestamp in the original packet,
+it could be wrong.
+
+
 
 
 We handled the packet successfully.  Run the "send ok" section.
@@ -271,11 +278,11 @@ server detail {
 		}
 	}
 recv Accounting-Request {
+	if (&Acct-Delay-Time) {
+		&Acct-Delay-Time += %l - &Packet-Original-Timestamp
+	}
 	if (!&Event-Timestamp) {
 		&Event-Timestamp := &Packet-Original-Timestamp
-	}
-	if (&Event-Timestamp < %c) {
-		&request.Acct-Delay-Time += %c - &Event-Timestamp
 	}
 	ok
 }

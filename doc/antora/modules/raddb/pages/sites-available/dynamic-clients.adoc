@@ -192,6 +192,7 @@ the request just received
 require_message_authenticator
 
 
+
 shortname
 
 nas_type
@@ -272,6 +273,7 @@ server dynamic_clients {
 		&control += {
 			&FreeRADIUS-Client-IP-Address = "%{Net.Src.IP}"
 			&FreeRADIUS-Client-Require-MA = no
+			&FreeRADIUS-Client-Limit-Proxy-State = "auto"
 			&FreeRADIUS-Client-Secret = "testing123"
 			&FreeRADIUS-Client-Shortname = "%{Net.Src.IP}"
 			&FreeRADIUS-Client-NAS-Type = "other"

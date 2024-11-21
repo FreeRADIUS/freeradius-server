@@ -198,7 +198,7 @@ connection.
 
 
 
-requests { ... }:: Per-request configuration.
+request { ... }:: Per-request configuration.
 
 
 per_connection_max:: The maximum number of requests
@@ -279,7 +279,7 @@ tacacs {
 			connection_timeout = 3.0
 			reconnect_delay = 5
 		}
-		requests {
+		request {
 			per_connection_max = 255
 			per_connection_target = 255
 			free_delay = 10

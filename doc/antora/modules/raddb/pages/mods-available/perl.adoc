@@ -81,6 +81,13 @@ want to use function names other than the defaults.
 
 
 
+Control which attribute lists are replaced following calls to
+the module.
+The default is to not replace attribute lists.  Only enable
+replacement where it is specifically required.
+
+
+
 config { ... }::
 
 You can define configuration items (and nested sub-sections) in perl `config { ... }`
@@ -110,6 +117,12 @@ perl {
 #	func_post_proxy = post_proxy
 #	func_post_auth = post_auth
 #	func_detach = detach
+	replace {
+#		request = no
+#		reply = no
+#		control = no
+#		session = no
+	}
 #	config {
 #		name = "value"
 #		sub-config {

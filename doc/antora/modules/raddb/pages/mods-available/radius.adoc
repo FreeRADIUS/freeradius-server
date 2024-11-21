@@ -102,6 +102,22 @@ In some cases, such as originating a CoA or Disconnect request,
 including Proxy-State may confuse the receiving NAS.
 
 
+require_message_authenticator::Require Message-Authenticator
+in responses.
+
+Including a Message-Authenticator attribute first in response
+packet, mitigates against the blastradius prefix attack.
+
+If value is auto, then if any packet received from the client
+contains a valid Message-Authenticator attribute, then the server
+will require it from all future packets from that client.
+
+Allowed values: yes, no, auto
+
+The default is "no".
+
+
+
 status_check { ... }:: For "are you alive?" queries.
 
 If the home server does not respond to proxied packets, the
@@ -303,7 +319,7 @@ connection.
 
 
 
-requests { ... }:: Per-request configuration.
+request { ... }:: Per-request configuration.
 
 
 per_connection_max:: The maximum number of requests
@@ -446,6 +462,7 @@ radius {
 #	replicate = no
 #	synchronous = no
 #	originate = no
+	require_message_authenticator = auto
 	status_check {
 		type = Status-Server
 #		update request {
@@ -472,7 +489,7 @@ radius {
 			connection_timeout = 3.0
 			reconnect_delay = 5
 		}
-		requests {
+		request {
 			per_connection_max = 255
 			per_connection_target = 255
 			free_delay = 10

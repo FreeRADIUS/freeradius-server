@@ -147,7 +147,7 @@ All of the v3 compatibility names are in the RADIUS namespace.
 #DEFINE	My-Local-String		string
 #DEFINE	My-Local-IPAddr		ipaddr
 #DEFINE	My-Local-Integer	integer
-#BEGIN-PROTOCOL RADIUS
-#$INCLUDE ${dictdir}/radius/alias/cisco.txt
-#END-PROTOCOL RADIUS
+BEGIN-PROTOCOL RADIUS
+$INCLUDE ${dictdir}/radius/alias/microsoft.txt
+END-PROTOCOL RADIUS
 ```
