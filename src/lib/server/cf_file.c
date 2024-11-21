@@ -2559,7 +2559,15 @@ check_for_eol:
 		 */
 	parse_name2:
 		if (!(isalpha((uint8_t) *ptr) || isdigit((uint8_t) *ptr) || (*(uint8_t const *) ptr >= 0x80))) {
-			return parse_error(stack, ptr, "Invalid second name for configuration section");
+			/*
+			 *	Maybe they missed a closing brace somewhere?
+			 */
+			name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
+			if (fr_assignment_op[name2_token]) {
+				return parse_error(stack, ptr2, "Unexpected operator, was expecting a configuration section.  Is there a missing '}' somewhere?");
+			}
+
+			return parse_error(stack, ptr2, "Invalid second name for configuration section");
 		}
 
 		name2_token = gettoken(&ptr, buff[2], stack->bufsize, false); /* can't be EOL */
