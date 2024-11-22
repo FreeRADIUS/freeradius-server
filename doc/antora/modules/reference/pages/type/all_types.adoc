@@ -36,7 +36,7 @@ possible to write values in the format you expect, The server will do
 | ipv4prefix    | IPv4 network with address and prefix length
 | ipv6prefix    | IPv6 network with address and prefix length
 | octets        | raw binary, printed as hex strings
-| string        | printable strings
+| xref:type/string/index.adoc[string]        | printable strings
 | time_delta	| difference between two calendar dates
 | uint8		| 8-bit unsigned integer
 | uint16	| 16-bit unsigned integer

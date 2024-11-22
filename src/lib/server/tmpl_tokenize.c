@@ -5352,6 +5352,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 	char quote;
 	char close;
 	int depth;
+	bool triple;
 
 	*type = T_INVALID;
 
@@ -5496,8 +5497,17 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	more rigorous check.
 		 */
 	skip_string:
+		if ((inlen > 3) && (p[0] == quote) && (p[1] == quote)) {
+			triple = true;
+			p += 2;
+		} else {
+			triple = false;
+		}
 		*out = p;
+
 		while (*p) {
+			if (p >= end) goto unterminated;
+
 			/*
 			 *	End of string.  Tell the caller the
 			 *	length of the data inside of the
@@ -5505,9 +5515,21 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 			 *	characters to skip.
 			 */
 			if (*p == quote) {
-				*outlen = p - (*out);
+				if (!triple) {
+					*outlen = p - (*out);
+					p++;
+					return p - in;
+
+				}
+
+				if (((end - p) >= 3) && (p[1] == quote) && (p[2] == quote)) {
+					*outlen = p - (*out);
+					p += 3;
+					return p - in;
+				}
+
 				p++;
-				return p - in;
+				continue;
 			}
 
 			if (*p == '\\') {
@@ -5523,6 +5545,7 @@ ssize_t tmpl_preparse(char const **out, size_t *outlen, char const *in, size_t i
 		 *	End of input without end of string.
 		 *	Point the error to the start of the string.
 		 */
+		unterminated:
 		p = *out;
 		return_P("Unterminated string");
 
