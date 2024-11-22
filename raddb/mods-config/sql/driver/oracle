@@ -7,21 +7,6 @@
 # $Id$
 #
 oracle {
-	spool {
-		#  Minimum number of sessions in the session pool.
-		min = 1
-
-		#  Maximum number of sessions in the session pool.
-		#  Defaults to the number of threads if not set.
-#		max = 2
-
-		#  Increment for sessions to be started
-		inc = 1
-
-		#  Session ide time (0 means no timeout)
-		timeout = 0
-
-		#  Statement cache size for each session.
-		statement_cache_size = 64
-	}
+	#  Statement cache size for each session.
+	statement_cache_size = 64
 }
