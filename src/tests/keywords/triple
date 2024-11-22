@@ -1,0 +1,14 @@
+#
+#  triple-quoted strings
+#
+string foo
+
+foo = """bar"""
+
+foo += """ baz "quote" stuff"""
+
+if (foo != """bar baz "quote" stuff""") {
+	test_fail
+}
+
+success

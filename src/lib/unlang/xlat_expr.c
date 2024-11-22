@@ -2413,6 +2413,7 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	tmpl_rules_t		our_t_rules = *t_rules;
 	tmpl_t			*vpt = NULL;
 	fr_token_t		quote;
+	int			triple = 1;
 	fr_type_t		cast_type = FR_TYPE_NULL;
 	xlat_exp_t		*cast = NULL;
 
@@ -2516,6 +2517,24 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 		if (cast_type != FR_TYPE_NULL) our_t_rules.cast = FR_TYPE_NULL;
 
 		p_rules = value_parse_rules_quoted[quote];
+
+		/*
+		 *	Triple-quoted strings have different terminal conditions.
+		 */
+		if (fr_sbuff_remaining(&our_in) >= 2) {
+			char const *p = fr_sbuff_current(&our_in);
+			char c = fr_token_quote[quote];
+
+			/*
+			 *	"""foo "quote" and end"""
+			 */
+			if ((p[0] == c) && (p[1] == c)) {
+				triple = 3;
+				(void) fr_sbuff_advance(&our_in, 2);
+				p_rules = value_parse_rules_3quoted[quote];
+			}
+		}
+
 		break;
 	}
 
@@ -2545,13 +2564,18 @@ static fr_slen_t tokenize_field(xlat_exp_head_t *head, xlat_exp_t **out, fr_sbuf
 	}
 
 	if (quote != T_BARE_WORD) {
-		if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
-			fr_strerror_const("Unterminated string");
-			fr_sbuff_set(&our_in, &opand_m);
-			goto error;
-		}
+		/*
+		 *	Ensure that the string ends with the correct number of quotes.
+		 */
+		do {
+			if (!fr_sbuff_is_char(&our_in, fr_token_quote[quote])) {
+				fr_strerror_const("Unterminated string");
+				fr_sbuff_set(&our_in, &opand_m);
+				goto error;
+			}
 
-		fr_sbuff_advance(&our_in, 1);
+			fr_sbuff_advance(&our_in, 1);
+		} while (--triple > 0);
 
 		/*
 		 *	Quoted strings just get resolved now.
