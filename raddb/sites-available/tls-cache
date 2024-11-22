@@ -43,6 +43,60 @@ server tls-cache {
 	#  to fail.
 	#
 	verify certificate {
+		#
+		#  Check the client certificate matches a string, and reject otherwise
+		#
+#		if ("%{session-state.TLS-Client-Cert-Common-Name}" != 'client.example.com') {
+#			reject
+#		}
+
+		#
+		#  Check the client certificate common name against the supplied identity
+		#
+#		if (&EAP-Identity != "host/%{session-state.TLS-Client-Cert-Common-Name}") {
+#			reject
+#		}
+
+		#
+		#  This is a convenient place to call LDAP, for example, when using
+		#  EAP-TLS, as it will only be called once, after all certificates as
+		#  part of the EAP-TLS challenge process have been verified.
+		#
+		#  An example could be to use LDAP to check that the connecting host, as
+		#  well as presenting a valid certificate, is also in a group based on
+		#  the EAP-Identity (assuming this contains the service principal name).
+		#  Settings such as the following could be used in the ldap module
+		#  configuration:
+		#
+		#  basedn = "dc=example, dc=com"
+		#  filter = "(servicePrincipalName=%{EAP-Identity})"
+		#  base_filter = "(objectClass=computer)"
+		#  groupname_attribute = cn
+		#  groupmembership_filter = "(&(objectClass=group)(member=%{control.Ldap-UserDn}))"
+		#
+
+#		ldap
+
+		#
+		#  Now let's test membership of an LDAP group (the ldap bind user will
+		#  need permission to read this group membership):
+		#
+
+#		if (!%ldap.group("Permitted-Laptops")) {
+#			reject
+#		}
+
+		#  or, to be more specific, you could use the group's full DN:
+		#  if (!%ldap.group("CN=Permitted-Laptops,OU=Groups,DC=example,DC=org")) {
+
+		#
+		#  This may be a better place to call the files modules when using
+		#  EAP-TLS, as it will only be called once, after the challenge-response
+		#  iteration has completed.
+		#
+
+#		files
+
 		ok
 	}
 
