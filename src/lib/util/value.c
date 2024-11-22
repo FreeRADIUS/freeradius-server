@@ -568,6 +568,33 @@ fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted = {
 		L(""), L("\n"), L("\r"), L("`"))
 };
 
+/*
+ *	And triple-quoted versions of the above.
+ */
+fr_sbuff_parse_rules_t const value_parse_rules_double_3quoted = {
+	.escapes = &fr_value_unescape_double,
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("\"\"\""))
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_single_3quoted = {
+	.escapes = &fr_value_unescape_single,
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("'''"))
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_solidus_3quoted = {
+	.escapes = &fr_value_unescape_solidus,
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("///"))
+};
+
+fr_sbuff_parse_rules_t const value_parse_rules_backtick_3quoted = {
+	.escapes = &fr_value_unescape_backtick,
+	.terminals = &FR_SBUFF_TERMS(
+		L(""), L("\n"), L("\r"), L("```"))
+};
+
 /** Parse rules for quoted strings
  *
  * These parse rules should be used for internal parsing functions that
@@ -591,6 +618,15 @@ fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX] = {
 	['/']				= &value_parse_rules_solidus_quoted,
 	['`']				= &value_parse_rules_backtick_quoted
 };
+
+fr_sbuff_parse_rules_t const *value_parse_rules_3quoted[T_TOKEN_LAST] = {
+	[T_BARE_WORD]			= &value_parse_rules_bareword_quoted,
+	[T_DOUBLE_QUOTED_STRING]	= &value_parse_rules_double_3quoted,
+	[T_SINGLE_QUOTED_STRING]	= &value_parse_rules_single_3quoted,
+	[T_SOLIDUS_QUOTED_STRING]	= &value_parse_rules_solidus_3quoted,
+	[T_BACK_QUOTED_STRING]		= &value_parse_rules_backtick_3quoted
+};
+
 /* clang-format on */
 /** @} */
 

@@ -466,6 +466,12 @@ extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_quoted;
 extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_quoted;
 extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted[T_TOKEN_LAST];
 extern fr_sbuff_parse_rules_t const *value_parse_rules_quoted_char[UINT8_MAX];
+
+extern fr_sbuff_parse_rules_t const value_parse_rules_double_3quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_single_3quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_solidus_3quoted;
+extern fr_sbuff_parse_rules_t const value_parse_rules_backtick_3quoted;
+extern fr_sbuff_parse_rules_t const *value_parse_rules_3quoted[T_TOKEN_LAST];
 /** @} */
 
 /** @name Allocation and initialisation functions
