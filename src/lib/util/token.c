@@ -322,6 +322,7 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 		 */
 		if ((buflen >= 3) && (p[1] == quote) && (p[2] == quote)) {
 			p += 3;
+			triple = true;
 		}
 
 		p++;
@@ -363,7 +364,6 @@ static fr_token_t getthing(char const **ptr, char *buf, int buflen, bool tok,
 				p++;
 				*s++ = 0;
 				goto done;
-
 			}
 
 			if ((buflen >= 3) && (p[1] == quote) && (p[2] == quote)) {
