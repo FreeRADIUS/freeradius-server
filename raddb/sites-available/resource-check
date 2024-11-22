@@ -16,7 +16,7 @@
 #  system status this virtual server is able to manipulate the outcome of the
 #  controlled virtual server.
 #
-#  Firstly, the authorize section of this virtual server will need to be
+#  Firstly, the "recv Status-Server" section of this virtual server will need to be
 #  amended to check the status of the external resources and to set the status
 #  of the control module appropriately, as described in the inline comments
 #  below...

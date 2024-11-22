@@ -5,7 +5,7 @@
 #
 server channel_bindings {
 	#
-	#  Only the "authorize" section is needed.
+	#  Only the "recv Access-Request" section is needed.
 	#
 	recv Access-Request {
 		#  In general this section should include a policy for each type

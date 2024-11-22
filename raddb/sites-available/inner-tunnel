@@ -159,7 +159,7 @@ recv Access-Request {
 #
 #  This section lists which modules are available for authentication.
 #  Note that it does NOT mean 'try each module in order'.  It means
-#  that a module from the 'authorize' section adds a configuration
+#  that a module from the 'recv Access-Request' section adds a configuration
 #  attribute 'Auth-Type := ::FOO'.  That authentication type is then
 #  used to pick the appropriate module from the list below.
 #
@@ -177,7 +177,7 @@ recv Access-Request {
 
 #
 #  PAP authentication, when a back-end database listed
-#  in the 'authorize' section supplies a password.  The
+#  in the 'recv Access-Request' section supplies a password.  The
 #  password can be clear-text, or encrypted.
 authenticate pap {
 	pap
@@ -185,7 +185,7 @@ authenticate pap {
 
 #
 #  Most people want CHAP authentication
-#  A back-end database listed in the 'authorize' section
+#  A back-end database listed in the 'recv Access-Request' section
 #  MUST supply a CLEAR TEXT password.  Encrypted passwords
 #  won't work.
 authenticate chap {

@@ -40,7 +40,7 @@ Xeap.authenticate {
 
 #
 #       Forbid all EAP types.  Enable this by putting "forbid_eap"
-#       into the "authorize" section.
+#       into the "recv Access-Request" section.
 #
 forbid_eap {
 	if (&EAP-Message) {
