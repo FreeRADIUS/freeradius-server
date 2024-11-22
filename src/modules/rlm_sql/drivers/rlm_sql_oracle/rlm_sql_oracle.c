@@ -47,57 +47,36 @@ DIAG_OFF(unused-macros)
 DIAG_ON(unused-macros)
 
 #include "rlm_sql.h"
-
-static int max_dflt(CONF_PAIR **out, void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule);
+#include "rlm_sql_trunk.h"
 
 typedef struct {
-	OCIEnv		*env;	//!< Number of columns associated with the result set
-	OCIError	*error;	//!< Oracle error handle
-	OCISPool	*pool;	//!< Oracle session pool handle
-	char		*pool_name;	//!< The name of the session pool returned by OCISessionPoolCreate
-	ub4		pool_name_len;	//!< Length of pool_name in bytes.
-
-	uint32_t	stmt_cache_size;	//!< Statement cache size for each of the sessions in a session pool
-	uint32_t	spool_timeout;	//!< The sessions idle time (in seconds) (0 disable).
-	uint32_t	spool_min;	//!< Specifies the minimum number of sessions in the session pool.
-	uint32_t	spool_max;	//!< Specifies the maximum number of sessions that can be opened in the session pool
-	uint32_t	spool_inc;	//!< Specifies the increment for sessions to be started if the current number of sessions are less than sessMax
+	OCIEnv		*env;			//!< Environment handle
+	uint32_t	stmt_cache_size;	//!< Statement cache size
 } rlm_sql_oracle_t;
 
 typedef struct {
-	OCIStmt		*query;
-	OCIError	*error;
-	OCISvcCtx	*ctx;
-	sb2		*ind;
-	char		**row;
-	int		id;
-	int		col_count;	//!< Number of columns associated with the result set
+	OCIStmt			*query;		//!< Query handle
+	OCIError		*error; 	//!< Error handle
+	OCIServer		*srv;		//!< Server handle
+	OCISvcCtx		*ctx;		//!< Service handle
+	OCISession		*sess;		//!< Session handle
+	sb2			*ind;		//!< Indicators regarding contents of the results row.
+	rlm_sql_row_t		row;		//!< Results row
+	int			col_count;	//!< Number of columns associated with the result set
+	connection_t		*conn;		//!< Generic connection structure for this connection.
+	rlm_sql_config_t const	*config;	//!< SQL instance configuration.
+	fr_sql_query_t		*query_ctx;	//!< Current request running on the connection.
+	fr_event_timer_t const	*read_ev;	//!< Timer event for polling reading this connection
+	fr_event_timer_t const	*write_ev;	//!< Timer event for polling writing this connection
+	uint			select_interval;	//!< How frequently this connection gets polled for select queries.
+	uint			query_interval;	//!< How frequently this connection gets polled for other queries.
+	uint			poll_count;	//!< How many polls have been done for the current query.
 } rlm_sql_oracle_conn_t;
 
-static const conf_parser_t spool_config[] = {
-	{ FR_CONF_OFFSET("stmt_cache_size", rlm_sql_oracle_t, stmt_cache_size), .dflt = "32" },
-	{ FR_CONF_OFFSET("timeout", rlm_sql_oracle_t, spool_timeout), .dflt = "0" },
-	{ FR_CONF_OFFSET("min", rlm_sql_oracle_t, spool_min), .dflt = "1" },
-	{ FR_CONF_OFFSET("max", rlm_sql_oracle_t, spool_max), .dflt_func = max_dflt },
-	{ FR_CONF_OFFSET("inc", rlm_sql_oracle_t, spool_inc), .dflt = "1" },
-	CONF_PARSER_TERMINATOR
-};
-
 static const conf_parser_t driver_config[] = {
-	{ FR_CONF_POINTER("spool", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) spool_config },
+	{ FR_CONF_OFFSET("stmt_cache_size", rlm_sql_oracle_t, stmt_cache_size), .dflt = "32" },
 	CONF_PARSER_TERMINATOR
 };
-
-static int max_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_token_t quote, conf_parser_t const *rule)
-{
-	char		*strvalue;
-
-	strvalue = talloc_asprintf(NULL, "%u", main_config->max_workers);
-	*out = cf_pair_alloc(cs, rule->name1, strvalue, T_OP_EQ, T_BARE_WORD, quote);
-	talloc_free(strvalue);
-
-	return 0;
-}
 
 #define	MAX_DATASTR_LEN	64
 
@@ -105,16 +84,14 @@ static int max_dflt(CONF_PAIR **out, UNUSED void *parent, CONF_SECTION *cs, fr_t
  *
  * @param out Where to write the error (should be at least 512 bytes).
  * @param outlen The length of the error buffer.
- * @param handle sql handle.
- * @param config Instance config.
+ * @param conn Oracle connection.
  * @return
- *	- 0 on success.
+ *	- Oracle error code on success.
  *	- -1 if there was no error.
  */
-static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config)
+static int sql_snprint_error(char *out, size_t outlen, rlm_sql_oracle_conn_t *conn)
 {
-	sb4			errcode = 0;
-	rlm_sql_oracle_conn_t	*conn = handle->conn;
+	sb4	errcode = 0;
 
 	fr_assert(conn);
 
@@ -124,7 +101,7 @@ static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle,
 		    outlen, OCI_HTYPE_ERROR);
 	if (!errcode) return -1;
 
-	return 0;
+	return errcode;
 }
 
 /** Retrieves any errors associated with the query context
@@ -139,14 +116,15 @@ static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle,
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
-		        fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
+		        fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	char errbuff[512];
 	int ret;
+	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
 
 	fr_assert(outlen > 0);
 
-	ret = sql_snprint_error(errbuff, sizeof(errbuff), query_ctx->handle, config);
+	ret = sql_snprint_error(errbuff, sizeof(errbuff), conn);
 	if (ret < 0) return 0;
 
 	out[0].type = L_ERR;
@@ -159,8 +137,6 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_sql_oracle_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_oracle_t);
 
-	if (inst->pool) OCISessionPoolDestroy((dvoid *)inst->pool, (dvoid *)inst->error, OCI_DEFAULT );
-	if (inst->error) OCIHandleFree((dvoid *)inst->error, OCI_HTYPE_ERROR);
 	if (inst->env) OCIHandleFree((dvoid *)inst->env, OCI_HTYPE_ENV);
 
 	return 0;
@@ -168,93 +144,24 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
-	rlm_sql_t const		*parent = talloc_get_type_abort(mctx->mi->parent->data, rlm_sql_t);
-	rlm_sql_config_t const	*config = &parent->config;
 	rlm_sql_oracle_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_sql_oracle_t);
-	char  			errbuff[512];
-	sb4 			errcode = 0;
-	OraText 		*sql_password = NULL;
-	OraText 		*sql_login = NULL;
-
-	if (!cf_section_find(mctx->mi->conf, "spool", NULL)) {
-		ERROR("Couldn't load mctx->configuration of session pool(\"spool\" section in driver mctx->config)");
-		return RLM_SQL_ERROR;
-	}
 
 	/*
 	 *	Initialises the oracle environment
 	 */
 	if (OCIEnvCreate(&inst->env, OCI_DEFAULT | OCI_THREADED, NULL, NULL, NULL, NULL, 0, NULL)) {
 		ERROR("Couldn't init Oracle OCI environment (OCIEnvCreate())");
-
-		return RLM_SQL_ERROR;
-	}
-
-	/*
-	 *	Allocates an error handle
-	 */
-	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&inst->error, OCI_HTYPE_ERROR, 0, NULL)) {
-		ERROR("Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
-
-		return RLM_SQL_ERROR;
-	}
-
-	/*
-	 *	Allocates an session pool handle
-	 */
-	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&inst->pool, OCI_HTYPE_SPOOL, 0, NULL)) {
-		ERROR("Couldn't init Oracle session pool (OCIHandleAlloc())");
-		return RLM_SQL_ERROR;
-	}
-
-	/*
-	 *	Create session pool
-	 */
-	DEBUG2("OCISessionPoolCreate min=%d max=%d inc=%d", inst->spool_min, inst->spool_max, inst->spool_inc);
-
-	/* We need it to fix const issues between 'const char *' vs 'unsigned char *' */
-	memcpy(&sql_login, &config->sql_login, sizeof(sql_login));
-	memcpy(&sql_password, &config->sql_password, sizeof(sql_password));
-
-	if (OCISessionPoolCreate((dvoid *)inst->env, (dvoid *)inst->error, (dvoid *)inst->pool,
-				 (OraText**)&inst->pool_name, (ub4*)&inst->pool_name_len,
-				 (CONST OraText *)config->sql_db, strlen(config->sql_db),
-				 inst->spool_min, inst->spool_max, inst->spool_inc,
-				 sql_login, strlen(config->sql_login),
-				 sql_password, strlen(config->sql_password),
-				 OCI_SPC_STMTCACHE | OCI_SPC_HOMOGENEOUS)) {
-
-		errbuff[0] = '\0';
-		OCIErrorGet((dvoid *) inst->error, 1, (OraText *) NULL, &errcode, (OraText *) errbuff,
-		    sizeof(errbuff), OCI_HTYPE_ERROR);
-		if (!errcode) return RLM_SQL_ERROR;
-
-		ERROR("Oracle create session pool failed: '%s'", errbuff);
-		return RLM_SQL_ERROR;
-	}
-
-	if (inst->spool_timeout > 0) {
-		if (OCIAttrSet(inst->pool, OCI_HTYPE_SPOOL, &inst->spool_timeout, 0,
-		      OCI_ATTR_SPOOL_TIMEOUT, inst->error) != OCI_SUCCESS) {
-			ERROR("Couldn't set Oracle session idle time");
-			return RLM_SQL_ERROR;
-		}
-	}
-
-	if (OCIAttrSet(inst->pool, OCI_HTYPE_SPOOL, &inst->stmt_cache_size, 0,
-	      OCI_ATTR_SPOOL_STMTCACHESIZE, inst->error) != OCI_SUCCESS) {
-		ERROR("Couldn't set Oracle default statement cache size");
-		return RLM_SQL_ERROR;
+		return -1;
 	}
 
 	return 0;
 }
 
-static sql_rcode_t sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_t const *config)
+static sql_rcode_t sql_check_reconnect(rlm_sql_oracle_conn_t *conn)
 {
 	char errbuff[512];
 
-	if (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) < 0) return -1;
+	if (sql_snprint_error(errbuff, sizeof(errbuff), conn) < 0) return -1;
 
 	if (strstr(errbuff, "ORA-03113") || strstr(errbuff, "ORA-03114")) {
 		ERROR("OCI_SERVER_NOT_CONNECTED");
@@ -264,53 +171,513 @@ static sql_rcode_t sql_check_reconnect(rlm_sql_handle_t *handle, rlm_sql_config_
 	return RLM_SQL_ERROR;
 }
 
-static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
+static void _sql_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED void *uctx)
 {
-	if (conn->ctx) OCISessionRelease(conn->ctx, conn->error, NULL, 0, OCI_DEFAULT);
+	rlm_sql_oracle_conn_t *conn = talloc_get_type_abort(h, rlm_sql_oracle_conn_t);
+
+	if (conn->sess) {
+		OCISessionEnd(conn->ctx, conn->error, conn->sess, OCI_DEFAULT);
+		OCIHandleFree((dvoid *)conn->sess, OCI_HTYPE_SESSION);
+	}
+	if (conn->ctx) OCIHandleFree((dvoid *)conn->ctx, OCI_HTYPE_SVCCTX);
+	if (conn->srv) {
+		OCIServerDetach(conn->srv, conn->error, OCI_DEFAULT);
+		OCIHandleFree((dvoid *)conn->srv, OCI_HTYPE_SERVER);
+	}
 	if (conn->error) OCIHandleFree((dvoid *)conn->error, OCI_HTYPE_ERROR);
-	return 0;
+
+	talloc_free(h);
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
-				   UNUSED fr_time_delta_t timeout)
+#define ORACLE_ERROR(_message) \
+	sql_snprint_error(errbuff, sizeof(errbuff), c); \
+	ERROR(_message ": %s", errbuff); \
+	return CONNECTION_STATE_FAILED
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
-	char errbuff[512];
+	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
+	rlm_sql_oracle_t	*inst = talloc_get_type_abort(sql->driver_submodule->data, rlm_sql_oracle_t);
+	rlm_sql_oracle_conn_t	*c;
+	char			errbuff[512];
+	OraText 		*sql_password = NULL;
+	OraText 		*sql_login = NULL;
 
-	rlm_sql_oracle_t	*inst = talloc_get_type_abort(handle->inst->driver_submodule->data, rlm_sql_oracle_t);
-	rlm_sql_oracle_conn_t	*conn;
-
-	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_oracle_conn_t));
-	talloc_set_destructor(conn, _sql_socket_destructor);
+	MEM(c = talloc_zero(conn, rlm_sql_oracle_conn_t));
+	*c = (rlm_sql_oracle_conn_t) {
+		.conn = conn,
+		.config = &sql->config,
+		.select_interval = 1000,	/* Default starting poll interval - 1ms */
+		.query_interval = 1000,
+	};
 
 	/*
-	 *	Allocates an error handle
+	 *	Although there are simpler methods to start a connection using a connection
+	 *	pool, since we need to set an option on the server handle, to enable
+	 *	non-blocking mode, we have to follow this overly complicated sequence of
+	 *	handle creation.
 	 */
-	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&conn->error, OCI_HTYPE_ERROR, 0, NULL)) {
+
+	/*
+	 *	Allocate an error handle
+	 */
+	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&c->error, OCI_HTYPE_ERROR, 0, NULL) != OCI_SUCCESS) {
 		ERROR("Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
-
-		return RLM_SQL_ERROR;
+		return CONNECTION_STATE_FAILED;
 	}
 
 	/*
-	 *	Get session from pool
+	 *	Allocate a server handle and attache to a connection from the pool
 	 */
-	if (OCISessionGet((dvoid *)inst->env, conn->error, &conn->ctx, NULL,
-		     (OraText *)inst->pool_name, inst->pool_name_len,
-		     NULL, 0, NULL, NULL, NULL,
-		     OCI_SESSGET_SPOOL | OCI_SESSGET_STMTCACHE) != OCI_SUCCESS) {
-		ERROR("Oracle get sessin from pool[%s] failed: '%s'",
-		      inst->pool_name,
-		      (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
-
-		return RLM_SQL_ERROR;
+	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&c->srv, (ub4)OCI_HTYPE_SERVER, 0, NULL) != OCI_SUCCESS) {
+		ERROR("Couldn't allocate Oracle SERVER handle");
+		return CONNECTION_STATE_FAILED;
+	}
+	if (OCIServerAttach(c->srv, c->error, (CONST OraText *)sql->config.sql_db, strlen(sql->config.sql_db), (ub4)OCI_DEFAULT) != OCI_SUCCESS) {
+		ORACLE_ERROR("Failed to attach");
 	}
 
-	return RLM_SQL_OK;
+	/*
+	 *	Allocate the service handle (which queries are run on) and associate it with the server
+	 */
+	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&c->ctx, OCI_HTYPE_SVCCTX, 0, NULL) != OCI_SUCCESS) {
+		ERROR("Couldn't allocate Oracle SERVICE handle");
+		return CONNECTION_STATE_FAILED;
+	}
+	if (OCIAttrSet((dvoid *)c->ctx, OCI_HTYPE_SVCCTX, (dvoid *)c->srv, 0, OCI_ATTR_SERVER, c->error) != OCI_SUCCESS) {
+		ORACLE_ERROR("Failed to link service and server handles");
+	}
+
+
+	if (OCIHandleAlloc((dvoid *)inst->env, (dvoid **)&c->sess, OCI_HTYPE_SESSION, 0, NULL) != OCI_SUCCESS) {
+		ERROR("Couldn't allocate Oracle SESSION handle");
+		return CONNECTION_STATE_FAILED;
+	}
+
+	/*
+	 *	We need to fix const issues between 'const char *' vs 'unsigned char *'
+	 */
+	memcpy(&sql_login, &c->config->sql_login, sizeof(sql_login));
+	memcpy(&sql_password, &c->config->sql_password, sizeof(sql_password));
+	if (OCIAttrSet((dvoid *)c->sess, OCI_HTYPE_SESSION, sql_login, strlen(c->config->sql_login),
+		       OCI_ATTR_USERNAME, c->error) != OCI_SUCCESS) {
+		ORACLE_ERROR("Failed to set username");
+	}
+	if (OCIAttrSet((dvoid *)c->sess, OCI_HTYPE_SESSION, sql_password, strlen(c->config->sql_password),
+		       OCI_ATTR_PASSWORD, c->error) != OCI_SUCCESS) {
+		ORACLE_ERROR("Failed to set password");
+	}
+
+ 	if (OCISessionBegin((dvoid *)c->ctx, c->error, c->sess, OCI_CRED_RDBMS, OCI_STMT_CACHE) != OCI_SUCCESS) {
+		ORACLE_ERROR("Failed to start session");
+	}
+
+	if (OCIAttrSet((dvoid *)c->ctx, OCI_HTYPE_SVCCTX, (dvoid *)c->sess, 0, OCI_ATTR_SESSION, c->error) != OCI_SUCCESS) {
+		ORACLE_ERROR("Failed to link service and session handles");
+	}
+
+	if (OCIAttrSet((dvoid *)c->ctx, OCI_HTYPE_SVCCTX, (dvoid *)&inst->stmt_cache_size, 0,
+		       OCI_ATTR_STMTCACHESIZE, c->error) != OCI_SUCCESS) {
+		ORACLE_ERROR("Failed to set statement cache size");
+	}
+
+	/*
+	 *	Set the server to be non-blocking if we can.
+	 */
+	if (OCIAttrSet((dvoid *)c->srv, OCI_HTYPE_SERVER, (dvoid *)0, 0, OCI_ATTR_NONBLOCKING_MODE, c->error) != OCI_SUCCESS) {
+		sql_snprint_error(errbuff, sizeof(errbuff), c);
+		WARN("Cound not set non-blocking mode: %s", errbuff);
+  	}
+
+	*h = c;
+
+	return CONNECTION_STATE_CONNECTED;
+}
+
+SQL_TRUNK_CONNECTION_ALLOC
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
+{
+	rlm_sql_oracle_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_oracle_conn_t);
+	request_t		*request;
+	trunk_request_t		*treq;
+	fr_sql_query_t		*query_ctx;
+	sword			ret;
+	char			errbuff[512];
+
+	if (trunk_connection_pop_request(&treq, tconn) != 0) return;
+	if (!treq) return;
+
+	query_ctx = talloc_get_type_abort(treq->preq, fr_sql_query_t);
+	request = query_ctx->request;
+
+	switch(query_ctx->status) {
+	case SQL_QUERY_PREPARED:
+		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
+		if (OCIStmtPrepare2(sql_conn->ctx, &sql_conn->query, sql_conn->error,
+				    (const OraText *)query_ctx->query_str, strlen(query_ctx->query_str),
+	        		    NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
+			sql_snprint_error(errbuff, sizeof(errbuff), sql_conn);
+			ERROR("Failed to prepare query: %s", errbuff);
+			trunk_request_signal_fail(treq);
+			return;
+		}
+
+		switch (query_ctx->type) {
+		case SQL_QUERY_SELECT:
+			ret = OCIStmtExecute(sql_conn->ctx, sql_conn->query, sql_conn->error, 0, 0, NULL, NULL, OCI_DEFAULT);
+			break;
+
+		default:
+			ret = OCIStmtExecute(sql_conn->ctx, sql_conn->query, sql_conn->error, 1, 0, NULL, NULL,
+					     OCI_COMMIT_ON_SUCCESS);
+			break;
+		}
+		query_ctx->tconn = tconn;
+
+		switch (ret) {
+		case OCI_STILL_EXECUTING:
+			ROPTIONAL(RDEBUG3, DEBUG3, "Awaiting response");
+			query_ctx->status = SQL_QUERY_SUBMITTED;
+			sql_conn->query_ctx = query_ctx;
+			sql_conn->poll_count = 0;
+			trunk_request_signal_sent(treq);
+			return;
+
+		case OCI_SUCCESS:
+			query_ctx->rcode = RLM_SQL_OK;
+			break;
+
+		case OCI_NO_DATA:
+			query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;
+			break;
+
+		default:
+			/*
+			 *	Error code 1 is unique contraint violated
+			 */
+			if (sql_snprint_error(errbuff, sizeof(errbuff), sql_conn) == 1) {
+				query_ctx->rcode = RLM_SQL_ALT_QUERY;
+				break;
+			}
+			ERROR("SQL query failed: %s", errbuff);
+			trunk_request_signal_fail(treq);
+			if (sql_check_reconnect(sql_conn) == RLM_SQL_RECONNECT) {
+				connection_signal_reconnect(sql_conn->conn, CONNECTION_FAILED);
+			}
+			return;
+		}
+		query_ctx->status = SQL_QUERY_RETURNED;
+		break;
+
+	default:
+		return;
+	}
+
+	ROPTIONAL(RDEBUG3, DEBUG3, "Got immediate response");
+	trunk_request_signal_reapable(treq);
+	if (request) unlang_interpret_mark_runnable(request);
+}
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_request_cancel(connection_t *conn, void *preq, trunk_cancel_reason_t reason,
+			       UNUSED void *uctx)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(preq, fr_sql_query_t);
+	rlm_sql_oracle_conn_t	*sql_conn= talloc_get_type_abort(conn->h, rlm_sql_oracle_conn_t);
+
+	if (!query_ctx->treq) return;
+	if (reason != TRUNK_CANCEL_REASON_SIGNAL) return;
+	if (sql_conn->query_ctx == query_ctx) sql_conn->query_ctx = NULL;
+}
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_request_cancel_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				   connection_t *conn, UNUSED void *uctx)
+{
+	trunk_request_t		*treq;
+	rlm_sql_oracle_conn_t	*sql_conn = talloc_get_type_abort(conn->h, rlm_sql_oracle_conn_t);
+	sword			status;
+
+	if ((trunk_connection_pop_cancellation(&treq, tconn)) != 0) return;
+	if (!treq) return;
+
+	/*
+	 *	Oracle cancels non-blocking operations with this pair of calls
+	 *	They operate on the service context handle, and since only one
+	 *	query will be on a connection at a time, that is what will be cancelled.
+	 *
+	 *	It's not clear from the documentation as to whether this can return
+	 *	OCI_STILL_EXECUTING - so we allow for that.
+	 */
+	status = OCIBreak(sql_conn->ctx, sql_conn->error);
+	switch (status) {
+	case OCI_STILL_EXECUTING:
+		trunk_request_signal_cancel_sent(treq);
+		return;
+
+	case OCI_SUCCESS:
+		break;
+
+	default:
+	{
+		char	errbuff[512];
+		sql_snprint_error(errbuff, sizeof(errbuff), sql_conn);
+		ERROR("Failed cancelling query: %s", errbuff);
+	}
+	}
+	OCIReset(sql_conn->ctx, sql_conn->error) ;
+
+	trunk_request_signal_cancel_complete(treq);
+}
+
+static void sql_trunk_connection_read_poll(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	rlm_sql_oracle_conn_t	*c = talloc_get_type_abort(uctx, rlm_sql_oracle_conn_t);
+	fr_sql_query_t		*query_ctx = c->query_ctx;
+	trunk_request_t		*treq = query_ctx->treq;
+	request_t		*request = query_ctx->request;
+	sword			ret = OCI_SUCCESS;
+
+	switch (query_ctx->status) {
+	case SQL_QUERY_SUBMITTED:
+		switch (query_ctx->type) {
+		case SQL_QUERY_SELECT:
+			ret = OCIStmtExecute(c->ctx, c->query, c->error, 0, 0, NULL, NULL, OCI_DEFAULT);
+			break;
+
+		default:
+			ret = OCIStmtExecute(c->ctx, c->query, c->error, 1, 0, NULL, NULL, OCI_COMMIT_ON_SUCCESS);
+			break;
+		}
+		c->poll_count++;
+		/* Back off the poll interval, up to half the query timeout */
+		if (c->poll_count > 2) {
+			if (query_ctx->type == SQL_QUERY_SELECT) {
+				if (c->select_interval < fr_time_delta_to_usec(c->config->query_timeout)/2) c->select_interval += 100;
+			} else {
+				if (c->query_interval < fr_time_delta_to_usec(c->config->query_timeout)/2) c->query_interval += 100;
+			}
+		}
+
+		switch (ret) {
+		case OCI_STILL_EXECUTING:
+			ROPTIONAL(RDEBUG3, DEBUG3, "Still awaiting response");
+			if (fr_event_timer_in(c, el, &c->read_ev,
+					      fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
+					      sql_trunk_connection_read_poll, c) < 0) {
+				ERROR("Unable to insert polling event");
+			}
+			return;
+
+		case OCI_SUCCESS:
+		case OCI_NO_DATA:
+			query_ctx->rcode = ret == OCI_NO_DATA ? RLM_SQL_NO_MORE_ROWS : RLM_SQL_OK;
+			/* If we only polled once, reduce the interval*/
+			if (c->poll_count == 1) {
+				if (query_ctx->type == SQL_QUERY_SELECT) {
+					c->select_interval /= 2;
+				} else {
+					c->query_interval /= 2;
+				}
+			}
+			break;
+
+		default:
+		{
+			char errbuff[512];
+			if (sql_snprint_error(errbuff, sizeof(errbuff), c) == 1) {
+				query_ctx->rcode = RLM_SQL_ALT_QUERY;
+				break;
+			}
+			ROPTIONAL(RERROR, ERROR, "Query failed: %s", errbuff);
+			query_ctx->status = SQL_QUERY_FAILED;
+			trunk_request_signal_fail(treq);
+			if (query_ctx->rcode == RLM_SQL_RECONNECT) connection_signal_reconnect(c->conn, CONNECTION_FAILED);
+			return;
+		}
+		}
+		break;
+
+	case SQL_QUERY_CANCELLED:
+		ret = OCIBreak(c->ctx, c->error);
+		if (ret == OCI_STILL_EXECUTING) {
+			ROPTIONAL(RDEBUG3, DEBUG3, "Still awaiting response");
+			if (fr_event_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(query_ctx->type == SQL_QUERY_SELECT ? c->select_interval : c->query_interval),
+					      sql_trunk_connection_read_poll, c) < 0) {
+				ERROR("Unable to insert polling event");
+			}
+			return;
+		}
+		OCIReset(c->ctx, c->error);
+		trunk_request_signal_cancel_complete(treq);
+		return;
+
+	default:
+		return;
+	}
+
+	if (request) unlang_interpret_mark_runnable(request);
+}
+
+static void sql_trunk_connection_write_poll(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+{
+	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
+
+	trunk_connection_signal_writable(tconn);
+}
+
+/*
+ *	Oracle doesn't support event driven async, so in this case
+ *	we have to resort to polling.
+ *
+ *	This "notify" callback sets up the appropriate polling events.
+ */
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_trunk_connection_notify(UNUSED trunk_connection_t *tconn, connection_t *conn, UNUSED fr_event_list_t *el,
+					trunk_connection_event_t notify_on, UNUSED void *uctx)
+{
+	rlm_sql_oracle_conn_t	*c = talloc_get_type_abort(conn->h, rlm_sql_oracle_conn_t);
+	fr_sql_query_t		*query_ctx = c->query_ctx;
+	uint			poll_interval = (query_ctx && query_ctx->type != SQL_QUERY_SELECT) ? c->query_interval : c->select_interval;
+	switch (notify_on) {
+	case TRUNK_CONN_EVENT_NONE:
+		if (c->read_ev) fr_event_timer_delete(&c->read_ev);
+		if (c->write_ev) fr_event_timer_delete(&c->write_ev);
+		return;
+
+	case TRUNK_CONN_EVENT_BOTH:
+	case TRUNK_CONN_EVENT_READ:
+		if (c->query_ctx) {
+			if (fr_event_timer_in(c, el, &c->read_ev, fr_time_delta_from_usec(poll_interval),
+					      sql_trunk_connection_read_poll, c) < 0) {
+				ERROR("Unable to insert polling event");
+			}
+		}
+		if (notify_on == TRUNK_CONN_EVENT_READ) return;
+
+		FALL_THROUGH;
+
+	case TRUNK_CONN_EVENT_WRITE:
+		if (fr_event_timer_in(c, el, &c->write_ev, fr_time_delta_from_usec(0),
+				      sql_trunk_connection_write_poll, tconn) < 0) {
+			ERROR("Unable to insert polling event");
+		}
+		return;
+	}
+}
+
+SQL_QUERY_FAIL
+SQL_QUERY_RESUME
+
+static unlang_action_t sql_select_query_resume(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+{
+	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
+	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
+	rlm_sql_row_t		row = NULL;
+	sb2			*ind;
+	int			i;
+	OCIParam		*param;
+	OCIDefine		*define;
+	ub2			dtype, dsize;
+
+	if (query_ctx->rcode != RLM_SQL_OK) RETURN_MODULE_FAIL;
+
+	/*
+	 *	We only need to do this once per result set, because
+	 *	the number of columns won't change.
+	 */
+	if (conn->col_count == 0) {
+		if (OCIAttrGet((dvoid *)conn->query, OCI_HTYPE_STMT, (dvoid *)&conn->col_count, NULL,
+			       OCI_ATTR_PARAM_COUNT, conn->error)) goto error;
+
+		if (conn->col_count == 0) goto error;
+	}
+
+	MEM(row = talloc_zero_array(conn, char*, conn->col_count + 1));
+	MEM(ind = talloc_zero_array(row, sb2, conn->col_count + 1));
+
+	for (i = 0; i < conn->col_count; i++) {
+		if (OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1) != OCI_SUCCESS) {
+			ERROR("OCIParamGet() failed in sql_select_query");
+			goto error;
+		}
+
+		if (OCIAttrGet((dvoid*)param, OCI_DTYPE_PARAM, (dvoid*)&dtype, NULL, OCI_ATTR_DATA_TYPE,
+			       conn->error) != OCI_SUCCESS) {
+			ERROR("OCIAttrGet() failed in sql_select_query");
+			goto error;
+		}
+
+		dsize = MAX_DATASTR_LEN;
+
+		/*
+		 *	Use the retrieved length of dname to allocate an output buffer, and then define the output
+		 *	variable (but only for char/string type columns).
+		 */
+		switch (dtype) {
+#ifdef SQLT_AFC
+		case SQLT_AFC:	/* ansii fixed char */
+#endif
+#ifdef SQLT_AFV
+		case SQLT_AFV:	/* ansii var char */
+#endif
+		case SQLT_VCS:	/* var char */
+		case SQLT_CHR:	/* char */
+		case SQLT_STR:	/* string */
+			if (OCIAttrGet((dvoid *)param, OCI_DTYPE_PARAM, (dvoid *)&dsize, NULL,
+				       OCI_ATTR_DATA_SIZE, conn->error) != OCI_SUCCESS) {
+				ERROR("OCIAttrGet() failed in sql_select_query");
+				goto error;
+			}
+
+			FALL_THROUGH;
+		case SQLT_DAT:
+		case SQLT_INT:
+		case SQLT_UIN:
+		case SQLT_FLT:
+		case SQLT_PDN:
+		case SQLT_BIN:
+		case SQLT_NUM:
+			MEM(row[i] = talloc_zero_array(row, char, dsize + 1));
+
+			break;
+		default:
+			dsize = 0;
+			row[i] = NULL;
+			break;
+		}
+
+		ind[i] = 0;
+
+		/*
+		 *	Grab the actual row value and write it to the buffer we allocated.
+		 */
+		if (OCIDefineByPos(conn->query, &define, conn->error, i + 1, (ub1 *)row[i], dsize + 1, SQLT_STR,
+				   (dvoid *)&ind[i], NULL, NULL, OCI_DEFAULT) != OCI_SUCCESS) {
+			ERROR("OCIDefineByPos() failed in sql_select_query");
+			goto error;
+		}
+	}
+
+	conn->row = row;
+	conn->ind = ind;
+
+	query_ctx->rcode = RLM_SQL_OK;
+	RETURN_MODULE_OK;
+
+ error:
+	talloc_free(row);
+
+	query_ctx->rcode = RLM_SQL_ERROR;
+	RETURN_MODULE_FAIL;
 }
 
 static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
 	int		fields, i, status;
 	char const	**names;
 	OCIParam	*param;
@@ -350,184 +717,9 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
-{
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	int			status;
-	rlm_sql_oracle_conn_t	*conn = query_ctx->handle->conn;
-
-	if (!conn->ctx) {
-		ERROR("Socket not connected");
-
-		query_ctx->rcode = RLM_SQL_RECONNECT;
-		RETURN_MODULE_FAIL;
-	}
-
-	query_ctx->rcode = RLM_SQL_ERROR;
-
-	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query_ctx->query_str, strlen(query_ctx->query_str),
-	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
-		ERROR("prepare failed in sql_query");
-
-		RETURN_MODULE_FAIL;
-	}
-
-	status = OCIStmtExecute(conn->ctx, conn->query, conn->error, 1, 0,
-				NULL, NULL, OCI_COMMIT_ON_SUCCESS);
-
-	if (status == OCI_SUCCESS) {
-		query_ctx->rcode = RLM_SQL_OK;
-		RETURN_MODULE_OK;
-	}
-	if (status == OCI_ERROR) {
-		ERROR("execute query failed in sql_query");
-
-		query_ctx->rcode = sql_check_reconnect(query_ctx->handle, &query_ctx->inst->config);
-	}
-
-	RETURN_MODULE_FAIL;
-}
-
-static unlang_action_t sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
-{
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	int		status;
-	char		**row = NULL;
-
-	int		i;
-	OCIParam	*param;
-	OCIDefine	*define;
-
-	ub2		dtype;
-	ub2		dsize;
-
-	sb2		*ind;
-
-	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
-
-	if (OCIStmtPrepare2(conn->ctx, &conn->query, conn->error, (const OraText *)query_ctx->query_str, strlen(query_ctx->query_str),
-	           NULL, 0, OCI_NTV_SYNTAX, OCI_DEFAULT)) {
-		ERROR("prepare failed in sql_select_query");
-
-		goto error;
-	}
-
-	/*
-	 *	Retrieve a single row
-	 */
-	status = OCIStmtExecute(conn->ctx, conn->query, conn->error, 0, 0, NULL, NULL, OCI_DEFAULT);
-	if (status == OCI_NO_DATA) goto finish;
-	if (status != OCI_SUCCESS) {
-		ERROR("query failed in sql_select_query");
-
-		query_ctx->rcode = sql_check_reconnect(query_ctx->handle, &query_ctx->inst->config);
-		RETURN_MODULE_FAIL;
-	}
-
-	/*
-	 *	We only need to do this once per result set, because
-	 *	the number of columns won't change.
-	 */
-	if (conn->col_count == 0) {
-		if (OCIAttrGet((dvoid *)conn->query, OCI_HTYPE_STMT, (dvoid *)&conn->col_count, NULL,
-			       OCI_ATTR_PARAM_COUNT, conn->error)) goto error;
-
-		if (conn->col_count == 0) goto error;
-	}
-
-	MEM(row = talloc_zero_array(conn, char*, conn->col_count + 1));
-	MEM(ind = talloc_zero_array(row, sb2, conn->col_count + 1));
-
-	for (i = 0; i < conn->col_count; i++) {
-		status = OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1);
-		if (status != OCI_SUCCESS) {
-			ERROR("OCIParamGet() failed in sql_select_query");
-
-			goto error;
-		}
-
-		status = OCIAttrGet((dvoid*)param, OCI_DTYPE_PARAM, (dvoid*)&dtype, NULL, OCI_ATTR_DATA_TYPE,
-				    conn->error);
-		if (status != OCI_SUCCESS) {
-			ERROR("OCIAttrGet() failed in sql_select_query");
-
-			goto error;
-		}
-
-		dsize = MAX_DATASTR_LEN;
-
-		/*
-		 *	Use the retrieved length of dname to allocate an output buffer, and then define the output
-		 *	variable (but only for char/string type columns).
-		 */
-		switch (dtype) {
-#ifdef SQLT_AFC
-		case SQLT_AFC:	/* ansii fixed char */
-#endif
-#ifdef SQLT_AFV
-		case SQLT_AFV:	/* ansii var char */
-#endif
-		case SQLT_VCS:	/* var char */
-		case SQLT_CHR:	/* char */
-		case SQLT_STR:	/* string */
-			status = OCIAttrGet((dvoid *)param, OCI_DTYPE_PARAM, (dvoid *)&dsize, NULL,
-					    OCI_ATTR_DATA_SIZE, conn->error);
-			if (status != OCI_SUCCESS) {
-				ERROR("OCIAttrGet() failed in sql_select_query");
-
-				goto error;
-			}
-
-			MEM(row[i] = talloc_zero_array(row, char, dsize + 1));
-
-			break;
-		case SQLT_DAT:
-		case SQLT_INT:
-		case SQLT_UIN:
-		case SQLT_FLT:
-		case SQLT_PDN:
-		case SQLT_BIN:
-		case SQLT_NUM:
-			MEM(row[i] = talloc_zero_array(row, char, dsize + 1));
-
-			break;
-		default:
-			dsize = 0;
-			row[i] = NULL;
-			break;
-		}
-
-		ind[i] = 0;
-
-		/*
-		 *	Grab the actual row value and write it to the buffer we allocated.
-		 */
-		status = OCIDefineByPos(conn->query, &define, conn->error, i + 1, (ub1 *)row[i], dsize + 1, SQLT_STR,
-					(dvoid *)&ind[i], NULL, NULL, OCI_DEFAULT);
-
-		if (status != OCI_SUCCESS) {
-			ERROR("OCIDefineByPos() failed in sql_select_query");
-			goto error;
-		}
-	}
-
-	conn->row = row;
-	conn->ind = ind;
-
-finish:
-	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
-
- error:
-	talloc_free(row);
-
-	query_ctx->rcode = RLM_SQL_ERROR;
-	RETURN_MODULE_FAIL;
-}
-
 static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
 	ub4 rows = 0;
 	ub4 size = sizeof(ub4);
 
@@ -539,9 +731,8 @@ static int sql_num_rows(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const
 static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	int			status;
-	rlm_sql_handle_t	*handle = query_ctx->handle;
-	rlm_sql_oracle_conn_t	*conn = handle->conn;
+	int			status = OCI_STILL_EXECUTING;
+	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
 
 	if (!conn->ctx) {
 		ERROR("Socket not connected");
@@ -552,7 +743,9 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 
 	query_ctx->row = NULL;
 
-	status = OCIStmtFetch(conn->query, conn->error, 1, OCI_FETCH_NEXT, OCI_DEFAULT);
+	while (status == OCI_STILL_EXECUTING) {
+		status = OCIStmtFetch(conn->query, conn->error, 1, OCI_FETCH_NEXT, OCI_DEFAULT);
+	}
 	if (status == OCI_SUCCESS) {
 		query_ctx->row = conn->row;
 
@@ -567,7 +760,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 
 	if (status == OCI_ERROR) {
 		ERROR("fetch failed in sql_fetch_row");
-		query_ctx->rcode = sql_check_reconnect(handle, &query_ctx->inst->config);
+		query_ctx->rcode = sql_check_reconnect(conn);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -577,16 +770,20 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
+	int			status = OCI_STILL_EXECUTING;
 
 	/* Cancel the cursor first */
-	(void) OCIStmtFetch(conn->query, conn->error, 0, OCI_FETCH_NEXT, OCI_DEFAULT);
+	while (status == OCI_STILL_EXECUTING) {
+		status = OCIStmtFetch(conn->query, conn->error, 1, OCI_FETCH_NEXT, OCI_DEFAULT);
+	}
 
 	TALLOC_FREE(conn->row);
 	conn->ind = NULL;	/* ind is a child of row */
 	conn->col_count = 0;
+	conn->query_ctx = NULL;
 
-	if (OCIStmtRelease (conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
+	if (OCIStmtRelease(conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
 		ERROR("OCI release failed in sql_finish_query");
 		return RLM_SQL_ERROR;
 	}
@@ -596,7 +793,9 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 
 static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
+
+	conn->query_ctx = NULL;
 
 	if (OCIStmtRelease(conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
 		ERROR("OCI release failed in sql_finish_query");
@@ -608,11 +807,12 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_co
 
 static sql_rcode_t sql_finish_select_query(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_oracle_conn_t *conn = query_ctx->handle->conn;
+	rlm_sql_oracle_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_oracle_conn_t);
 
 	TALLOC_FREE(conn->row);
 	conn->ind = NULL;	/* ind is a child of row */
 	conn->col_count = 0;
+	conn->query_ctx = NULL;
 
 	if (OCIStmtRelease (conn->query, conn->error, NULL, 0, OCI_DEFAULT) != OCI_SUCCESS ) {
 		ERROR("OCI release failed in sql_finish_query");
@@ -633,9 +833,9 @@ rlm_sql_driver_t rlm_sql_oracle = {
 		.instantiate			= mod_instantiate,
 		.detach				= mod_detach
 	},
-	.sql_socket_init		= sql_socket_init,
-	.sql_query			= sql_query,
-	.sql_select_query		= sql_select_query,
+	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
+	.sql_query_resume		= sql_query_resume,
+	.sql_select_query_resume	= sql_select_query_resume,
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_num_rows,
 	.sql_fetch_row			= sql_fetch_row,
@@ -643,5 +843,14 @@ rlm_sql_driver_t rlm_sql_oracle = {
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_select_query
+	.sql_finish_select_query	= sql_finish_select_query,
+	.uses_trunks			= true,
+	.trunk_io_funcs = {
+		.connection_alloc	= sql_trunk_connection_alloc,
+		.connection_notify	= sql_trunk_connection_notify,
+		.request_mux		= sql_trunk_request_mux,
+		.request_cancel_mux	= sql_request_cancel_mux,
+		.request_cancel		= sql_request_cancel,
+		.request_fail		= sql_request_fail,
+	}
 };
