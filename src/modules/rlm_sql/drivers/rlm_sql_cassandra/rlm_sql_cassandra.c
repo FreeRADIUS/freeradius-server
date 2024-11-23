@@ -204,7 +204,7 @@ static const conf_parser_t driver_config[] = {
 	{ FR_CONF_OFFSET("tcp_keepalive", rlm_sql_cassandra_t, tcp_keepalive) },
 	{ FR_CONF_OFFSET("tcp_nodelay", rlm_sql_cassandra_t, tcp_nodelay), .dflt = "no" },
 
-	{ FR_CONF_POINTER("tls", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OK_MISSING, NULL), .subcs = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
 };
 
