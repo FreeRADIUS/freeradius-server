@@ -118,6 +118,11 @@ done:
 #define cbor_encode_tag(_dbuff, _tag) cbor_encode_integer(_dbuff, CBOR_TAG, _tag);
 
 /*
+ *	Make many things easier
+ */
+#define return_slen return slen - fr_dbuff_used(&work_dbuff)
+
+/*
  *	Octets is length + data
  */
 static ssize_t cbor_encode_octets(fr_dbuff_t *dbuff, uint8_t const *data, size_t data_len)
@@ -126,7 +131,7 @@ static ssize_t cbor_encode_octets(fr_dbuff_t *dbuff, uint8_t const *data, size_t
 	ssize_t slen;
 
 	slen = cbor_encode_integer(&work_dbuff, CBOR_OCTETS, data_len);
-	if (slen <= 0) return slen;
+	if (slen <= 0) return_slen;
 
 	if (data_len > 0) FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, data, data_len);
 
@@ -147,7 +152,7 @@ static ssize_t cbor_encode_int64(fr_dbuff_t *dbuff, int64_t neg)
 		data = -neg;
 		slen = cbor_encode_integer(&work_dbuff, CBOR_NEGATIVE, data);
 	}
-	if (slen <= 0) return slen;
+	if (slen <= 0) return_slen;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -230,7 +235,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 
 	case FR_TYPE_STRING:
 		slen = cbor_encode_integer(&work_dbuff, CBOR_STRING, vb->vb_length);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		if (vb->vb_length) FR_DBUFF_IN_MEMCPY_RETURN(&work_dbuff, vb->vb_strvalue, vb->vb_length);
 		break;
@@ -241,10 +246,10 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 */
 	case FR_TYPE_ETHERNET:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_octets(&work_dbuff, vb->vb_ether, sizeof(vb->vb_ether));
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		break;
 
 		/*
@@ -262,11 +267,11 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 */
 	case FR_TYPE_DATE:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		neg = fr_unix_time_to_sec(vb->vb_date);
 		slen = cbor_encode_int64(&work_dbuff, neg);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		break;
 
 		/*
@@ -277,31 +282,31 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 */
 	case FR_TYPE_TIME_DELTA:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
-		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen <= 0) return_slen;
 
 		neg = fr_time_delta_unwrap(vb->vb_time_delta) % NSEC;
 
 		slen = cbor_encode_integer(&work_dbuff, CBOR_MAP, 1 + (neg != 0));
-		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen <= 0) return_slen;
 
 		/*
 		 *	1: seconds
 		 */
 		slen = cbor_encode_key(&work_dbuff, 1);
-		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_int64(&work_dbuff, fr_time_delta_to_sec(vb->vb_time_delta));
-		if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen <= 0) return_slen;
 
 		/*
 		 *	-9: nanoseconds
 		 */
 		if (neg) {
 			slen = cbor_encode_key(&work_dbuff, -9);
-			if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+			if (slen <= 0) return_slen;
 
 			slen = cbor_encode_int64(&work_dbuff, neg);
-			if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+			if (slen <= 0) return_slen;
 		}
 		break;
 
@@ -312,10 +317,10 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 */
 	case FR_TYPE_IPV4_ADDR:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v4.s_addr, 4);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		break;
 
 		/*
@@ -325,10 +330,10 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 */
 	case FR_TYPE_IPV6_ADDR:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr, 16);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		break;
 
 		/*
@@ -338,13 +343,13 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 */
 	case FR_TYPE_IPV4_PREFIX:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_array(&work_dbuff, 2);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.prefix);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		p = (uint8_t const *) &vb->vb_ip.addr.v4.s_addr;
 		end = p + 3;
@@ -364,7 +369,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		} while (end != p);
 
 		slen = cbor_encode_octets(&work_dbuff, p, (end - p) + (*end != 0));
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		break;
 
 		/*
@@ -374,13 +379,13 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 */
 	case FR_TYPE_IPV6_PREFIX:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_array(&work_dbuff, 2);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.prefix);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		p = (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr;
 		end = p + 15;
@@ -400,7 +405,7 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		} while (end != p);
 
 		slen = cbor_encode_octets(&work_dbuff, p, (end - p) + (*end != 0));
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 		break;
 
@@ -408,14 +413,14 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_FLOAT << 5) | CBOR_4_BYTE));
 
 		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_float32, 4);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		break;
 
 	case FR_TYPE_FLOAT64:
 		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_FLOAT << 5) | CBOR_8_BYTE));
 
 		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_float64, 8);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		break;
 
 	case FR_TYPE_GROUP:
@@ -432,12 +437,12 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		 */
 		slen = cbor_encode_integer(&work_dbuff, CBOR_ARRAY,
 					   fr_value_box_list_num_elements(&vb->vb_group));
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 
 
 		fr_value_box_list_foreach(&vb->vb_group, child) {
 			slen = fr_cbor_encode_value_box(&work_dbuff, child);
-			if (slen <= 0) return slen;
+			if (slen <= 0) return_slen;
 		}
 		break;
 
@@ -518,7 +523,7 @@ static ssize_t cbor_decode_count(uint64_t *out, int expected, fr_dbuff_t *dbuff)
 	}
 
 	slen = cbor_decode_integer(out, info, &work_dbuff);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen < 0) return_slen;
 
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
@@ -532,7 +537,7 @@ static ssize_t cbor_decode_octets_memcpy(uint8_t *dst, size_t dst_min, size_t ds
 	uint64_t value = 0;
 
 	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
-	if (slen < 0) return slen;
+	if (slen < 0) return_slen;
 
 	if (value < dst_min) {
 		fr_strerror_printf("Invalid length for data - expected at least %zu got %" PRIu64, dst_min, value);
@@ -558,7 +563,7 @@ static ssize_t *cbor_decode_octets_memdup(TALLOC_CTX *ctx, uint8_t **out, fr_dbu
 	uint8_t *ptr;
 
 	slen = cbor_decode_count(&value, CBOR_OCTETS, &work_dbuff);
-	if (slen < 0) return slen;
+	if (slen < 0) return_slen;
 
 	if (value > (1 << 20)) {
 		fr_strerror_printf("cbor data string is too long (%" PRIu64 ")", value);
@@ -614,7 +619,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	}
 
 	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
-	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen <= 0) return_slen;
 
 	if (value > 32) {
 		fr_strerror_printf("Invalid IPv4 prefix - expected prefix < 32, got %" PRIu64, value);
@@ -630,7 +635,7 @@ static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	memset(buffer, 0, sizeof(buffer));
 
 	slen = cbor_decode_octets_memcpy(buffer, 0, sizeof(buffer), &work_dbuff);
-	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen <= 0) return_slen;
 
 	memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr, buffer, sizeof(vb->vb_ip.addr.v4.s_addr));
 	vb->vb_ip.prefix = value;
@@ -655,7 +660,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	}
 
 	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
-	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen <= 0) return_slen;
 
 	if (value > 128) {
 		fr_strerror_printf("Invalid IPv6 prefix - expected prefix < 128, got %" PRIu64, value);
@@ -671,7 +676,7 @@ static ssize_t cbor_decode_ipv6_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *v
 	memset(buffer, 0, sizeof(buffer));
 
 	slen = cbor_decode_octets_memcpy(buffer, 0, sizeof(buffer), &work_dbuff);
-	if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen <= 0) return_slen;
 
 	memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr, buffer, sizeof(vb->vb_ip.addr.v6.s6_addr));
 	vb->vb_ip.prefix = value;
@@ -695,7 +700,7 @@ static ssize_t cbor_decode_int64(int64_t *out, fr_dbuff_t *dbuff, fr_type_t type
 	switch (major) {
 	case CBOR_INTEGER:
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
-		if (slen < 0) return slen;
+		if (slen < 0) return_slen;
 
 		if (value >= ((uint64_t) 1) << 63) { /* equal! */
 		invalid:
@@ -709,7 +714,7 @@ static ssize_t cbor_decode_int64(int64_t *out, fr_dbuff_t *dbuff, fr_type_t type
 
 	case CBOR_NEGATIVE:
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
-		if (slen < 0) return slen;
+		if (slen < 0) return_slen;
 
 		if (value > ((uint64_t) 1) << 63) goto invalid; /* greater than! */
 
@@ -740,7 +745,7 @@ static ssize_t cbor_decode_date(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_d
 	int64_t neg;
 
 	slen = cbor_decode_int64(&neg, dbuff, FR_TYPE_DATE);
-	if (slen <= 0) return slen;
+	if (slen <= 0) return_slen;
 
 	vb->vb_date = fr_unix_time_from_sec(neg);
 
@@ -760,7 +765,7 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 	int64_t key, seconds, fraction, scale;
 
 	slen = cbor_decode_count(&count, CBOR_MAP, &work_dbuff);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen < 0) return_slen;
 
 	if (!count || (count > 2)) {
 		fr_strerror_printf("Unexpected count %" PRIu64"  for time_delta, expected map of 1-2 elements", count);
@@ -771,7 +776,7 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 	 *	Expect key 1:seconds
 	 */
 	slen = cbor_decode_int64(&key, &work_dbuff, FR_TYPE_TIME_DELTA);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen < 0) return_slen;
 
 	if (key != 1) {
 		fr_strerror_printf("Unexpected key %" PRIi64 " for time_delta, expected key 1", key);
@@ -779,11 +784,11 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 	}
 
 	slen = cbor_decode_int64(&seconds, &work_dbuff, FR_TYPE_TIME_DELTA);
-	if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+	if (slen < 0) return_slen;
 
 	if (count > 1) {
 		slen = cbor_decode_int64(&key, &work_dbuff, FR_TYPE_TIME_DELTA);
-		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen < 0) return_slen;
 
 		switch (key) {
 		case -3:
@@ -805,7 +810,7 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 		}
 
 		slen = cbor_decode_int64(&fraction, &work_dbuff, FR_TYPE_TIME_DELTA);
-		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen < 0) return_slen;
 
 	} else {
 		scale = NSEC;
@@ -899,7 +904,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	@todo - undefinite length strings.  Which are really "chunked" strings.
 		 */
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
-		if (slen < 0) return slen;
+		if (slen < 0) return_slen;
 
 		/*
 		 *	A little bit of sanity check.
@@ -931,7 +936,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	@todo - undefinite length octet strings.  Which are really "chunked" octet strings.
 		 */
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
-		if (slen < 0) return slen;
+		if (slen < 0) return_slen;
 
 		/*
 		 *	A little bit of sanity check.
@@ -954,7 +959,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	case CBOR_INTEGER:
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
-		if (slen < 0) return slen;
+		if (slen < 0) return_slen;
 
 		switch (type) {
 		case FR_TYPE_BOOL:
@@ -1016,7 +1021,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	case CBOR_NEGATIVE:
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
-		if (slen < 0) return slen;
+		if (slen < 0) return_slen;
 
 		/*
 		 *	Signed numbers only go down to -2^63
@@ -1186,7 +1191,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		 *	We only support a limited number of tags.
 		 */
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
-		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen < 0) return_slen;
 
 		fr_assert(type != FR_TYPE_NULL);
 
@@ -1211,7 +1216,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 		fr_value_box_init(vb, type, enumv, tainted);
 
 		slen = cbor_decode_type[type](ctx, vb, &work_dbuff);
-		if (slen < 0) return slen - fr_dbuff_used(&work_dbuff);
+		if (slen < 0) return_slen;
 		break;
 
 	case CBOR_ARRAY:
@@ -1226,7 +1231,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 		} else {
 			slen = cbor_decode_integer(&value, info, &work_dbuff);
-			if (slen < 0) return slen;
+			if (slen < 0) return_slen;
 
 			indefinite = false;
 		}
@@ -1275,7 +1280,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			 *	We have to decode at least one value.
 			 */
 			slen = fr_cbor_decode_value_box(child, child, &work_dbuff, FR_TYPE_NULL, NULL, tainted);
-			if (slen <= 0) return slen - fr_dbuff_used(&work_dbuff);
+			if (slen <= 0) return_slen;
 
 			fr_value_box_list_insert_tail(&vb->vb_group, child);
 		}
@@ -1308,7 +1313,7 @@ ssize_t fr_cbor_encode_pair(fr_dbuff_t *dbuff, fr_pair_t *vp)
 	 *	Key is the attribute number.
 	 */
 	slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vp->da->attr);
-	if (slen <= 0) return slen;
+	if (slen <= 0) return_slen;
 
 	/*
 	 *	Value is the actual value of the leaf, or the array of children.
@@ -1316,7 +1321,7 @@ ssize_t fr_cbor_encode_pair(fr_dbuff_t *dbuff, fr_pair_t *vp)
 	switch (vp->vp_type) {
 	case FR_TYPE_LEAF:
 		slen = fr_cbor_encode_value_box(&work_dbuff, &vp->data);
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		break;
 
 		/*
@@ -1346,7 +1351,7 @@ encode_children:
 
 		slen = cbor_encode_integer(&work_dbuff, CBOR_ARRAY,
 					   fr_pair_list_num_elements(&vp->vp_group));
-		if (slen <= 0) return slen;
+		if (slen <= 0) return_slen;
 		
 		fr_pair_list_foreach(&vp->vp_group, child) {
 			/*
@@ -1355,7 +1360,7 @@ encode_children:
 			if (child->da->parent != parent) continue;
 
 			slen = fr_cbor_encode_pair(&work_dbuff, child);
-			if (slen <= 0) return slen;
+			if (slen <= 0) return_slen;
 		}
 		break;
 
@@ -1517,7 +1522,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 
 	slen = cbor_decode_integer(&value, info, &work_dbuff);
 	if (slen < 0) {
-		return slen - fr_dbuff_used(&work_dbuff);
+		return_slen;
 	}
 
 	da = fr_dict_attr_child_by_num(parent, value);
@@ -1554,7 +1559,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		slen = fr_cbor_decode_value_box(vp, &vp->data, &work_dbuff, da->type, da, tainted);
 		if (slen <= 0) {
 			talloc_free(vp);
-			return slen - fr_dbuff_used(&work_dbuff);
+			return_slen;
 		}
 
 		goto done;
@@ -1613,7 +1618,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
 		if (slen < 0) {
 			talloc_free(vp);
-			return slen - fr_dbuff_used(&work_dbuff);
+			return_slen;
 		}
 
 		indefinite = false;
@@ -1657,7 +1662,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		slen = fr_cbor_decode_pair(vp, &vp->vp_group, &work_dbuff, parent, tainted);
 		if (slen <= 0) {
 			talloc_free(vp);
-			return slen - fr_dbuff_used(&work_dbuff);
+			return_slen;
 		}
 	}
 
