@@ -668,7 +668,7 @@ do {\
 	CassError _ret;\
 	if ((_ret = (_x)) != CASS_OK) {\
 		ERROR("Error setting " _opt ": %s", cass_error_desc(_ret));\
-		return RLM_SQL_ERROR;\
+		return -1;\
 	}\
 } while (0)
 
@@ -687,7 +687,7 @@ do {\
 
 	DEBUG4("Configuring CassCluster structure");
 	cluster = inst->cluster = cass_cluster_new();
-	if (!cluster) return RLM_SQL_ERROR;
+	if (!cluster) return -1;
 
 	/*
 	 *	Parameters inherited from the top level SQL module config
@@ -774,7 +774,7 @@ do {\
 		CassSsl	*ssl;
 
 		ssl = inst->ssl = cass_ssl_new();
-		if (!ssl) return RLM_SQL_ERROR;
+		if (!ssl) return -1;
 
 		if (inst->tls_verify_cert_str) {
 			int	verify_cert;
@@ -807,7 +807,7 @@ do {\
 	}
 
 	inst->session = cass_session_new();
-	if (!inst->session) return RLM_SQL_ERROR;
+	if (!inst->session) return -1;
 
 	return 0;
 }
