@@ -62,6 +62,9 @@ struct virtual_server_s {
 								///< cached for convenience.
 
 	fr_rb_tree_t			*sections;		//!< List of sections that need to be compiled.
+
+	fr_log_t			*log;			//!< log destination
+	char const			*log_name;		//!< name of log destination
 };
 
 static fr_dict_t const *dict_freeradius;
@@ -145,6 +148,8 @@ static const conf_parser_t server_config[] = {
 			 .name2 = CF_IDENT_ANY,
 			 .subcs_size = sizeof(fr_virtual_listen_t), .subcs_type = "fr_virtual_listen_t",
 			 .func = listen_parse },
+
+	{ FR_CONF_OFFSET("log", virtual_server_t, log_name), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -679,6 +684,11 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 		cf_log_err(server_cs, "server_cs does not contain virtual server data");
 		return UNLANG_ACTION_FAIL;
 	}
+
+	/*
+	 *	Log here, too.
+	 */
+	if (server->log) request_log_prepend(request, server->log, fr_debug_lvl);
 
 	/*
 	 *	Bootstrap the stack with a module instance.
@@ -1512,9 +1522,27 @@ int virtual_servers_instantiate(void)
 		CONF_ITEM			*ci = NULL;
 		CONF_SECTION			*server_cs = virtual_servers[i]->server_cs;
 		fr_dict_t const			*dict;
-		virtual_server_t const		*vs = virtual_servers[i];
+		virtual_server_t		*vs = virtual_servers[i];
 		fr_process_module_t const	*process = (fr_process_module_t const *)
 							    vs->process_mi->module->exported;
+
+		/*
+		 *	Set up logging before doing anything else.
+		 */
+		if (vs->log_name) {
+			vs->log = log_dst_by_name(vs->log_name);
+			if (!vs->log) {
+				CONF_PAIR *cp = cf_pair_find(server_cs, "log");
+
+				if (cp) {
+					cf_log_err(cp, "Unknown log destination '%s'", vs->log_name);
+				} else {
+					cf_log_err(server_cs, "Unknown log destination '%s'", vs->log_name);
+				}
+
+				return -1;
+			}
+		}
 
 		dict = virtual_server_local_dict(server_cs, *(process)->dict);
 		if (!dict) return -1;

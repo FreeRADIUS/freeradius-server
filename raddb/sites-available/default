@@ -62,7 +62,7 @@
 #
 server default {
 	#
-	#  namespace::
+	#  namespace:: The protocol namespace (i.e. dictionary) to use.
 	#
 	#  In v4, all "server" sections MUST start with a "namespace"
 	#  parameter.  This tells the server which protocol is being used.
@@ -71,6 +71,23 @@ server default {
 	#  only accept packets for that protocol.
 	#
 	namespace = radius
+
+	#
+	#  log:: The name of the logging section to use.
+	#
+	#  The top configuration section can contain multiple section "log foo { ... }".
+	#  Each of those sections is a different named logging destination.
+	#
+	#  This configuration item allows setting a different logging destination for an
+	#  individual virtual server.
+	#
+	#  There are some limitations.
+	#
+	#  * this logging is in _addition_ to the default logging to "log { .... }".
+	#  * it is not currently possible to _replace_ the default logging destination
+	#  * the name given here _must_ be a fixed string, and is not dynamically expanded.
+	#
+#	log = some_other_logging_destination
 
 	#
 	#  ### RADIUS Configuration
