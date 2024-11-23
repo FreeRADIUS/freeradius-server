@@ -141,7 +141,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 	proto_dhcpv4_t		*inst = talloc_get_type_abort(parent, proto_dhcpv4_t);
 	module_instance_t	*mi;
 
-	if (unlikely(virtual_sever_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
+	if (unlikely(virtual_server_listen_transport_parse(ctx, out, parent, ci, rule) < 0)) {
 		return -1;
 	}
 

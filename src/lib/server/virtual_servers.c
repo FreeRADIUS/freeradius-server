@@ -193,7 +193,7 @@ module_instance_t *virtual_server_listerner_by_data(void const *data)
 /** Generic conf_parser_t func for loading drivers
  *
  */
-int virtual_sever_listen_transport_parse(TALLOC_CTX *ctx, void *out, void *parent,
+int virtual_server_listen_transport_parse(TALLOC_CTX *ctx, void *out, void *parent,
 					 CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	conf_parser_t our_rule = *rule;
