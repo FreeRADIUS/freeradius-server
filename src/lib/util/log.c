@@ -1089,7 +1089,13 @@ int fr_log_init_file(fr_log_t *log, char const *file)
 		return -1;
 	}
 
-	return fr_log_init_fp(log, fp);
+	if (fr_log_init_fp(log, fp) < 0) return -1;
+
+	/*
+	 *	The init over-rode any filename, so we reset it here.
+	 */
+	log->file = file;
+	return 0;
 }
 
 /** Write complete lines to syslog
