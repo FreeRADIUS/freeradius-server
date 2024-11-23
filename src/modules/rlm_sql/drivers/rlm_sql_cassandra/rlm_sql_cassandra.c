@@ -479,6 +479,11 @@ do {\
 	if (!conn->iterator) conn->iterator = cass_iterator_from_result(conn->result);
 	if (!conn->iterator) RETURN_MODULE_OK;				/* no result */
 
+	/*
+	 *	Free the previous result (also gets called on finish_query)
+	 */
+	TALLOC_FREE(query_ctx->row);
+
 	if (!cass_iterator_next(conn->iterator)) {
 		query_ctx->rcode = RLM_SQL_NO_MORE_ROWS;		/* no more rows */
 		RETURN_MODULE_OK;
@@ -487,10 +492,6 @@ do {\
 	cass_row = cass_iterator_get_row(conn->iterator);		/* this shouldn't fail ? */
 	fields = cass_result_column_count(conn->result);		/* get the number of fields... */
 
-	/*
-	 *	Free the previous result (also gets called on finish_query)
-	 */
-	talloc_free(query_ctx->row);
 	MEM(row = query_ctx->row = talloc_zero_array(query_ctx, char *, fields + 1));
 
 	for (i = 0; i < fields; i++) {
