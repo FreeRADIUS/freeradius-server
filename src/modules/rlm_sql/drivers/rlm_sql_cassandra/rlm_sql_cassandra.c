@@ -62,6 +62,12 @@ typedef struct {
 	sql_log_entry_t		last_error;
 } rlm_sql_cassandra_conn_t;
 
+typedef struct {
+	bool			done_connect_keyspace;		//!< Whether we've connected to a keyspace.
+	pthread_mutex_t		connect_mutex;			//!< Mutex to prevent multiple connections attempting
+								///< to connect to a keyspace concurrently.
+} rlm_sql_cassandra_mutable_t;
+
 /** Cassandra driver instance
  *
  */
@@ -69,10 +75,7 @@ typedef struct {
 	CassCluster		*cluster;			//!< Configuration of the cassandra cluster connection.
 	CassSession		*session;			//!< Cluster's connection pool.
 	CassSsl			*ssl;				//!< Connection's SSL context.
-	bool			done_connect_keyspace;		//!< Whether we've connected to a keyspace.
-
-	pthread_mutex_t		connect_mutex;			//!< Mutex to prevent multiple connections attempting
-								//!< to connect a keyspace concurrently.
+	rlm_sql_cassandra_mutable_t	*mutable;		//!< Instance data which needs to change post instantiation.
 
 	/*
 	 *	Configuration options
@@ -329,12 +332,12 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	 *	work as expected (allow the server to start if Cassandra is
 	 *	unavailable).
 	 */
-	if (!inst->done_connect_keyspace) {
+	if (!inst->mutable->done_connect_keyspace) {
 		CassFuture	*future;
 		CassError	ret;
 
-		pthread_mutex_lock(&inst->connect_mutex);
-		if (!inst->done_connect_keyspace) {
+		pthread_mutex_lock(&inst->mutable->connect_mutex);
+		if (!inst->mutable->done_connect_keyspace) {
 			/*
 			 *	Easier to do this here instead of mod_instantiate
 			 *	as we don't have a pointer to the pool.
@@ -351,14 +354,14 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 				cass_future_error_message(future, &msg, &msg_len);
 				ERROR("Unable to connect: [%x] %s", (int)ret, msg);
 				cass_future_free(future);
-				pthread_mutex_unlock(&inst->connect_mutex);
+				pthread_mutex_unlock(&inst->mutable->connect_mutex);
 
 				return RLM_SQL_ERROR;
 			}
 			cass_future_free(future);
-			inst->done_connect_keyspace = true;
+			inst->mutable->done_connect_keyspace = true;
 		}
-		pthread_mutex_unlock(&inst->connect_mutex);
+		pthread_mutex_unlock(&inst->mutable->connect_mutex);
 	}
 	conn->log_ctx = talloc_pool(conn, 1024);	/* Pre-allocate some memory for log messages */
 
@@ -648,7 +651,8 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	if (inst->session) cass_session_free(inst->session);	/* also synchronously closes the session */
 	if (inst->cluster) cass_cluster_free(inst->cluster);
 
-	pthread_mutex_destroy(&inst->connect_mutex);
+	pthread_mutex_destroy(&inst->mutable->connect_mutex);
+	talloc_free(inst->mutable);
 
 	return 0;
 }
@@ -672,7 +676,8 @@ do {\
 	}\
 } while (0)
 
-	if ((ret = pthread_mutex_init(&inst->connect_mutex, NULL)) < 0) {
+	MEM(inst->mutable = talloc_zero(NULL, rlm_sql_cassandra_mutable_t));
+	if ((ret = pthread_mutex_init(&inst->mutable->connect_mutex, NULL)) < 0) {
 		ERROR("Failed initializing mutex: %s", fr_syserror(ret));
 		TALLOC_FREE(inst);
 		return -1;
