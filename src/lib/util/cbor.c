@@ -430,14 +430,15 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		/*
 		 *	The value is array(children)
 		 */
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 31)); /* indefinite array */
+		slen = cbor_encode_integer(&work_dbuff, CBOR_ARRAY,
+					   fr_value_box_list_num_elements(&vb->vb_group));
+		if (slen <= 0) return slen;
+
 
 		fr_value_box_list_foreach(&vb->vb_group, child) {
 			slen = fr_cbor_encode_value_box(&work_dbuff, child);
-			if (slen <= 0) return slen; /* @todo - dbuff want more room? */
+			if (slen <= 0) return slen;
 		}
-
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) 0xff); /* break */
 		break;
 
 
@@ -1343,8 +1344,10 @@ encode_children:
 			break;
 		}
 
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 31)); /* indefinite array */
-
+		slen = cbor_encode_integer(&work_dbuff, CBOR_ARRAY,
+					   fr_pair_list_num_elements(&vp->vp_group));
+		if (slen <= 0) return slen;
+		
 		fr_pair_list_foreach(&vp->vp_group, child) {
 			/*
 			 *	We don't allow changing dictionaries here.
@@ -1352,10 +1355,8 @@ encode_children:
 			if (child->da->parent != parent) continue;
 
 			slen = fr_cbor_encode_pair(&work_dbuff, child);
-			if (slen <= 0) return slen; /* @todo - dbuff want more room? */
+			if (slen <= 0) return slen;
 		}
-
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) 0xff); /* break */
 		break;
 
 	/*
@@ -1675,6 +1676,4 @@ done:
  *	digits for integer
  *	'string' for string
  *	h'HHHH' for octets
- *
- *	@todo - count the number of children, and encode the actual number?
  */

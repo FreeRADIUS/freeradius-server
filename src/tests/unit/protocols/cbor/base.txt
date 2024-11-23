@@ -36,7 +36,7 @@ decode-pair -
 match User-Name = "bob", NAS-Port = 2112
 
 encode-pair Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
-match 9f a1 18 1a 9f a1 09 9f a1 01 63 66 6f 6f a1 18 c0 19 1a 99 ff ff ff
+match 9f a1 18 1a 81 a1 09 82 a1 01 63 66 6f 6f a1 18 c0 19 1a 99 ff
 
 decode-pair -
 match Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
@@ -45,7 +45,7 @@ match Vendor-Specific = { Cisco = { AVPair = "foo", Pre-Input-Packets = 6809 } }
 #  time delta, seconds
 #
 encode-pair Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600 } }
-match 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ca d9 03 ea a1 01 19 0e 10 ff ff ff
+match 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a1 01 19 0e 10 ff
 
 decode-pair -
 match Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600 } }
@@ -54,7 +54,7 @@ match Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600 } }
 #  time delta, with partial seconds
 #
 encode-pair Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600.5 } }
-match 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ca d9 03 ea a2 01 19 0e 10 28 1a 1d cd 65 00 ff ff ff
+match 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ca d9 03 ea a2 01 19 0e 10 28 1a 1d cd 65 00 ff
 
 decode-pair -
 match Vendor-Specific = { Nokia-SR = { Dhcp6-Renew-Time = 3600.5 } }
@@ -72,7 +72,7 @@ match Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
 #  Otherwise the "3600.5" is interpreted as a bare word / string.
 #
 encode-pair Vendor-Specific = { Nokia-SR = { raw.255 = (time_delta) 3600.5 } }
-match 9f a1 18 1a 9f a1 19 19 7f 9f a1 18 ff 46 33 36 30 30 2e 35 ff ff ff
+match 9f a1 18 1a 81 a1 19 19 7f 81 a1 18 ff 46 33 36 30 30 2e 35 ff
 
 #
 #  Zero-length strings and octets
@@ -93,7 +93,7 @@ match Class = 0x
 #  Nokia-SR is empty, so it's encoded as "f6"
 #
 encode-pair Vendor-Specific = { Nokia-SR = { } }
-match 9f a1 18 1a 9f a1 19 19 7f f6 ff ff
+match 9f a1 18 1a 81 a1 19 19 7f f6 ff
 
 decode-pair -
 match Vendor-Specific = { Nokia-SR = { } }
