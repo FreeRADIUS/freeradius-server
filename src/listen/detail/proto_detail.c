@@ -169,7 +169,7 @@ static int transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *
 
 		inst->work_submodule = NULL;
 
-		mi = virtual_server_listerner_by_data(parent);
+		mi = virtual_server_listener_by_data(parent);
 		fr_assert(mi);
 
 		transport_cs = cf_section_find(mi->conf, "work", NULL);

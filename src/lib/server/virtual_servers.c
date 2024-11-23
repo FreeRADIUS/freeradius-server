@@ -185,7 +185,7 @@ void virtual_server_process_debug(void)
  *	- The module instance for the proto data.
  *	- NULL if no data matches.
  */
-module_instance_t *virtual_server_listerner_by_data(void const *data)
+module_instance_t *virtual_server_listener_by_data(void const *data)
 {
 	return module_instance_by_data(proto_modules, data);
 }
