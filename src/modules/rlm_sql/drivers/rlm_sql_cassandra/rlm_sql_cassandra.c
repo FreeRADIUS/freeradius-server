@@ -84,49 +84,13 @@ typedef struct {
 
 	uint32_t		connections_per_host;		//!< Number of connections to each server in each
 								//!< IO thread.
-	uint32_t		connections_per_host_max;	//!< Maximum  number of connections to each server
-								//!< in each IO threads.
 	uint32_t		io_threads;			//!< Number of IO threads.
 
 	uint32_t		io_queue_size;			//!< Size of the the fixed size queue that stores
 								//!< pending requests.
 
-	uint32_t		io_flush_requests_max;		//!< Maximum number of requests processed by an
-								//!< IO worker per flush.
-
-	uint32_t		pending_requests_high;		//!< Sets the high water mark for the number of requests
-								//!< queued waiting for a connection in a connection
-								//!< pool. Disables writes to a host on an IO worker
-								//!< if the number of requests queued exceed this value.
-
-	uint32_t		pending_requests_low;		//!< Sets the low water mark for the number of requests
-								//!< queued waiting for a connection in a connection
-								//!< pool. After exceeding high water mark requests,
-								//!< writes to a host will only resume once the number
-								//!< of requests fall below this value.
-
-	uint32_t		write_bytes_high;		//!< High water mark for the number of bytes
-								//!< outstanding on a connection. Disables writes to
-								//!< a connection if the number of bytes queued exceed
-								//!< this value.
-
-	uint32_t		write_bytes_low;		//!< Low water mark for number of bytes outstanding on
-								//!< a connection. After exceeding high water mark
-								//!< bytes, writes will only resume once the number of
-								//!< bytes fall below this value.
-
 	uint32_t		event_queue_size;		//!< Sets the size of the the fixed size queue
 								//!< that stores events.
-
-	uint32_t		spawn_threshold;		//!< Threshold for the maximum number of concurrent
-								//!< requests in-flight on a connection before creating
-								//!< a new connection.
-	uint32_t		spawn_max;			//!< The maximum number of connections that
-								//!< will be created concurrently.
-
-	fr_time_delta_t		spawn_retry_delay;		//!< Amount of time to wait before attempting
-								//!< to reconnect.
-	bool			spawn_retry_delay_is_set;
 
 	bool			load_balance_round_robin;	//!< Enable round robin load balancing.
 
@@ -225,37 +189,6 @@ static const conf_parser_t driver_config[] = {
 	{ FR_CONF_OFFSET("protocol_version", rlm_sql_cassandra_t, protocol_version) },
 
 	{ FR_CONF_OFFSET("connections_per_host", rlm_sql_cassandra_t, connections_per_host) },
-
-/*
- * The below functions was deprecated in 2.10
- */
-#if (CASS_VERSION_MAJOR >= 2 && CASS_VERSION_MINOR >= 10)
-	{ FR_CONF_DEPRECATED("connections_per_host_max", rlm_sql_cassandra_t, connections_per_host_max) },
-	{ FR_CONF_DEPRECATED("io_flush_requests_max", rlm_sql_cassandra_t, io_flush_requests_max) },
-
-	{ FR_CONF_DEPRECATED("pending_requests_high", rlm_sql_cassandra_t, pending_requests_high) },
-	{ FR_CONF_DEPRECATED("pending_requests_low", rlm_sql_cassandra_t, pending_requests_low) },
-
-	{ FR_CONF_DEPRECATED("write_bytes_high", rlm_sql_cassandra_t, write_bytes_high) },
-	{ FR_CONF_DEPRECATED("write_bytes_low", rlm_sql_cassandra_t, write_bytes_low) },
-
-	{ FR_CONF_DEPRECATED("spawn_threshold", rlm_sql_cassandra_t, spawn_threshold) },
-	{ FR_CONF_DEPRECATED("spawn_max", rlm_sql_cassandra_t, spawn_max) },
-	{ FR_CONF_DEPRECATED("spawn_retry_delay", rlm_sql_cassandra_t, spawn_retry_delay) },
-#else
-	{ FR_CONF_OFFSET("connections_per_host_max", rlm_sql_cassandra_t, connections_per_host_max) },
-	{ FR_CONF_OFFSET("io_flush_requests_max", rlm_sql_cassandra_t, io_flush_requests_max) },
-
-	{ FR_CONF_OFFSET("pending_requests_high", rlm_sql_cassandra_t, pending_requests_high) },
-	{ FR_CONF_OFFSET("pending_requests_low", rlm_sql_cassandra_t, pending_requests_low) },
-
-	{ FR_CONF_OFFSET("write_bytes_high", rlm_sql_cassandra_t, write_bytes_high) },
-	{ FR_CONF_OFFSET("write_bytes_low", rlm_sql_cassandra_t, write_bytes_low) },
-
-	{ FR_CONF_OFFSET("spawn_threshold", rlm_sql_cassandra_t, spawn_threshold) },
-	{ FR_CONF_OFFSET("spawn_max", rlm_sql_cassandra_t, spawn_max) },
-	{ FR_CONF_OFFSET_IS_SET("spawn_retry_delay", FR_TYPE_TIME_DELTA, 0, rlm_sql_cassandra_t, spawn_retry_delay) },
-#endif
 
 	{ FR_CONF_OFFSET("io_threads", rlm_sql_cassandra_t, io_threads) },
 	{ FR_CONF_OFFSET("io_queue_size", rlm_sql_cassandra_t, io_queue_size) },
@@ -794,62 +727,6 @@ do {\
 			       cass_cluster_set_core_connections_per_host(inst->cluster,
 			       						  inst->connections_per_host));
 	}
-
-	/*
-	 *	The below functions was deprecated in 2.10
-	 */
-#if (CASS_VERSION_MAJOR <= 2 && CASS_VERSION_MINOR < 10)
-	if (inst->connections_per_host_max) {
-		DO_CASS_OPTION("connections_per_host_max",
-				cass_cluster_set_max_connections_per_host(inst->cluster,
-									  inst->connections_per_host_max));
-	}
-
-	if (inst->io_flush_requests_max) {
-		DO_CASS_OPTION("io_flush_requests_max",
-			       cass_cluster_set_max_requests_per_flush(inst->cluster,
-			       					       inst->io_flush_requests_max));
-	}
-
-	if (inst->pending_requests_high) {
-		DO_CASS_OPTION("pending_requests_high",
-			       cass_cluster_set_pending_requests_high_water_mark(inst->cluster,
-			       							 inst->pending_requests_high));
-	}
-
-	if (inst->pending_requests_low) {
-		DO_CASS_OPTION("pending_requests_low",
-			       cass_cluster_set_pending_requests_high_water_mark(inst->cluster,
-			       							 inst->pending_requests_low));
-	}
-
-	if (inst->write_bytes_high) {
-		DO_CASS_OPTION("write_bytes_high",
-			       cass_cluster_set_write_bytes_high_water_mark(inst->cluster,
-			       						    inst->write_bytes_high));
-	}
-
-	if (inst->write_bytes_low) {
-		DO_CASS_OPTION("write_bytes_low",
-			       cass_cluster_set_write_bytes_low_water_mark(inst->cluster,
-			       						   inst->write_bytes_low));
-	}
-
-	if (inst->spawn_threshold) {
-		DO_CASS_OPTION("spawn_threshold",
-			       cass_cluster_set_max_concurrent_requests_threshold(inst->cluster,
-			       							  inst->spawn_threshold));
-	}
-
-	if (inst->spawn_max) {
-		DO_CASS_OPTION("spawn_max",
-			       cass_cluster_set_max_concurrent_creation(inst->cluster, inst->spawn_max));
-	}
-
-	if (inst->spawn_retry_delay_is_set) {
-		cass_cluster_set_reconnect_wait_time(inst->cluster, fr_time_delta_to_msec(inst->spawn_retry_delay));
-	}
-#endif
 
 	if (inst->event_queue_size) {
 		DO_CASS_OPTION("event_queue_size",
