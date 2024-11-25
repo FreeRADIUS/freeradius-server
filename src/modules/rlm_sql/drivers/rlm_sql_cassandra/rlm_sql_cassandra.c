@@ -818,16 +818,6 @@ do {\
 	return 0;
 }
 
-static void mod_unload(void)
-{
-	/*
-	 *	The function cass_log_cleanup() was deprecated in 2.0.1
-	 */
-#if (CASS_VERSION_MAJOR <= 2 && CASS_VERSION_MINOR <= 0)
-	cass_log_cleanup();	/* must be last call to libcassandra */
-#endif
-}
-
 static int mod_load(void)
 {
 	INFO("Built against libcassandra version %d.%d.%d%s",
@@ -850,7 +840,6 @@ rlm_sql_driver_t rlm_sql_cassandra = {
 		.magic				= MODULE_MAGIC_INIT,
 		.inst_size			= sizeof(rlm_sql_cassandra_t),
 		.onload				= mod_load,
-		.unload				= mod_unload,
 		.config				= driver_config,
 		.instantiate			= mod_instantiate,
 		.detach				= mod_detach
