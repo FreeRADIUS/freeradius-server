@@ -313,26 +313,53 @@ ssize_t fr_cbor_encode_value_box(fr_dbuff_t *dbuff, fr_value_box_t *vb)
 		/*
 		 *	RFC 9164, Section 3.3
 		 *
-		 *	tag=IPv4 + address
+		 *
+		 *	tag=IPv4 + address + optional (prefix + scope)
 		 */
 	case FR_TYPE_IPV4_ADDR:
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
 		if (slen <= 0) return_slen;
 
+		if (vb->vb_ip.scope_id != 0) {
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 3));
+
+		}
+
 		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v4.s_addr, 4);
+		if (slen <= 0) return_slen;
+
+		if (vb->vb_ip.scope_id == 0) break;
+
+		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, (uint8_t) 32);
+		if (slen <= 0) return_slen;
+
+		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.scope_id);
 		if (slen <= 0) return_slen;
 		break;
 
 		/*
 		 *	RFC 9164, Section 3.2
 		 *
-		 *	tag=IPv6 + address
+		 *	tag=IPv6 + address + optional (prefix + scope)
 		 */
 	case FR_TYPE_IPV6_ADDR:
+		if (vb->vb_ip.scope_id != 0) {
+			FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_ARRAY << 5) | 3));
+
+		}
+
 		slen = cbor_encode_tag(&work_dbuff, cbor_type_to_tag[vb->type]);
 		if (slen <= 0) return_slen;
 
 		slen = cbor_encode_octets(&work_dbuff, (uint8_t const *) &vb->vb_ip.addr.v6.s6_addr, 16);
+		if (slen <= 0) return_slen;
+
+		if (vb->vb_ip.scope_id == 0) break;
+
+		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, (uint8_t) 32);
+		if (slen <= 0) return_slen;
+
+		slen = cbor_encode_integer(&work_dbuff, CBOR_INTEGER, vb->vb_ip.scope_id);
 		if (slen <= 0) return_slen;
 		break;
 
@@ -590,20 +617,119 @@ static ssize_t cbor_decode_ethernet(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, 
 
 static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
 {
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	uint8_t header;
+	size_t count = 0;
+	uint64_t value = 0;
+
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, 1);
+
+	header = *fr_dbuff_current(&work_dbuff);
+	if ((header >> 5) == CBOR_ARRAY) {
+		count = header & 0x1f;
+
+		if ((count != 2) && (count != 3)) {
+			fr_strerror_printf("Invalid IPv4 interface - expected array of 2-3 elements, got %02x",
+					   header);
+			return -1;
+		}
+
+		fr_dbuff_advance(&work_dbuff, 1);
+	}
+
 	vb->vb_ip.prefix = 32;
 
-	return cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
+	/*
+	 *	Get the IP address.
+	 */
+	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
 					 sizeof(vb->vb_ip.addr.v4.s_addr),
-					 sizeof(vb->vb_ip.addr.v4.s_addr), dbuff);
+					 sizeof(vb->vb_ip.addr.v4.s_addr), &work_dbuff);
+	if (slen <= 0) return_slen;
+
+	if (!count) return fr_dbuff_set(dbuff, &work_dbuff);
+
+	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
+	if (slen <= 0) return_slen;
+
+	if (value > 32) {
+		fr_strerror_printf("Invalid IPv4 interface - expected prefix <= 32 got %" PRIu64, value);
+		return -fr_dbuff_used(&work_dbuff);
+	}
+
+	vb->vb_ip.prefix = value;
+
+	if (count == 2) return fr_dbuff_set(dbuff, &work_dbuff);
+
+	/*
+	 *	Get the scope ID
+	 */
+	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
+	if (slen <= 0) return_slen;
+
+	vb->vb_ip.scope_id = value;
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
 {
+	fr_dbuff_t work_dbuff = FR_DBUFF(dbuff);
+	ssize_t slen;
+	uint8_t header;
+	size_t count = 0;
+	uint64_t value = 0;
+
+	FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, 1);
+
+	header = *fr_dbuff_current(&work_dbuff);
+	if ((header >> 5) == CBOR_ARRAY) {
+		count = header & 0x1f;
+
+		if ((count != 2) && (count != 3)) {
+			fr_strerror_printf("Invalid IPv4 interface - expected array of 2-3 elements, got %02x",
+					   header);
+			return -1;
+		}
+
+		fr_dbuff_advance(&work_dbuff, 1);
+	}
+
 	vb->vb_ip.prefix = 128;
 
-	return cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
+	/*
+	 *	Get the IP address.
+	 */
+	slen = cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
 					 sizeof(vb->vb_ip.addr.v6.s6_addr),
 					 sizeof(vb->vb_ip.addr.v6.s6_addr), dbuff);
+
+	if (slen <= 0) return_slen;
+
+	if (!count) return fr_dbuff_set(dbuff, &work_dbuff);
+
+	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
+	if (slen <= 0) return_slen;
+
+	if (value > 128) {
+		fr_strerror_printf("Invalid IPv6 interface - expected prefix <= 128 got %" PRIu64, value);
+		return -fr_dbuff_used(&work_dbuff);
+	}
+
+	vb->vb_ip.prefix = value;
+
+	if (count == 2) return fr_dbuff_set(dbuff, &work_dbuff);
+
+	/*
+	 *	Get the scope ID
+	 */
+	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
+	if (slen <= 0) return_slen;
+
+	vb->vb_ip.scope_id = value;
+
+	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
 static ssize_t cbor_decode_ipv4_prefix(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
@@ -1257,7 +1383,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			/*
 			 *	Require at least one byte in the buffer.
 			 */
-			if (fr_dbuff_extend_lowat(NULL, &work_dbuff, 1) == 0) return -fr_dbuff_used(&work_dbuff);
+			FR_DBUFF_EXTEND_LOWAT_OR_RETURN(&work_dbuff, 1);
 
 			/*
 			 *	Peek ahead for a break.
@@ -1312,6 +1438,7 @@ ssize_t fr_cbor_encode_pair(fr_dbuff_t *dbuff, fr_pair_t *vp)
 	fr_dbuff_t	work_dbuff = FR_DBUFF(dbuff);
 	ssize_t		slen;
 	fr_dict_attr_t const *parent;
+	size_t		count;
 
 	FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, (uint8_t) ((CBOR_MAP << 5) | 1)); /* map of 1 item */
 
@@ -1355,8 +1482,16 @@ encode_children:
 			break;
 		}
 
-		slen = cbor_encode_integer(&work_dbuff, CBOR_ARRAY,
-					   fr_pair_list_num_elements(&vp->vp_group));
+		/*
+		 *	The groups, etc. may contain internal attributes.  We don't yet deal with those.
+		 */
+		count = 0;
+		fr_pair_list_foreach(&vp->vp_group, child) {
+			if (child->da->parent != parent) continue;
+			count++;
+		}
+
+		slen = cbor_encode_integer(&work_dbuff, CBOR_ARRAY, count);
 		if (slen <= 0) return_slen;
 
 		fr_pair_list_foreach(&vp->vp_group, child) {
