@@ -163,7 +163,7 @@ jobs:
         libyubikey-dev \
         lintian \
         pbuilder \
-        python-dev \
+        python2-dev \
         python3-dev \
         ruby-dev \
         snmp \
