@@ -105,7 +105,7 @@ typedef struct sql_inst rlm_sql_t;
  *	Per-thread instance data structure
  */
 typedef struct {
-	trunk_t		*trunk;				//!< Trunk connection for this thread.
+	trunk_t			*trunk;				//!< Trunk connection for this thread.
 	rlm_sql_t const		*inst;				//!< Module instance data.
 	void			*sql_escape_arg;		//!< Thread specific argument to be passed to escape function.
 } rlm_sql_thread_t;
@@ -138,9 +138,9 @@ typedef struct {
 	rlm_sql_t const		*inst;				//!< Module instance for this query.
 	request_t		*request;			//!< Request this query relates to.
 	rlm_sql_handle_t	*handle;			//!< Connection handle this query is being run on.
-	trunk_t		*trunk;				//!< Trunk this query is being run on.
+	trunk_t			*trunk;				//!< Trunk this query is being run on.
 	trunk_connection_t	*tconn;				//!< Trunk connection this query is being run on.
-	trunk_request_t	*treq;				//!< Trunk request for this query.
+	trunk_request_t		*treq;				//!< Trunk request for this query.
 	char const		*query_str;			//!< Query string to run.
 	fr_sql_query_type_t	type;				//!< Type of query.
 	fr_sql_query_status_t	status;				//!< Status of the query.
