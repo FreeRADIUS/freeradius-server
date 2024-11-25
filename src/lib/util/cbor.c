@@ -772,6 +772,8 @@ static ssize_t cbor_decode_time_delta(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb
 		return -1;
 	}
 
+	key = seconds = fraction = 0;
+
 	/*
 	 *	Expect key 1:seconds
 	 */
@@ -1352,7 +1354,7 @@ encode_children:
 		slen = cbor_encode_integer(&work_dbuff, CBOR_ARRAY,
 					   fr_pair_list_num_elements(&vp->vp_group));
 		if (slen <= 0) return_slen;
-		
+
 		fr_pair_list_foreach(&vp->vp_group, child) {
 			/*
 			 *	We don't allow changing dictionaries here.
