@@ -146,6 +146,7 @@ typedef struct {
 	fr_sql_query_status_t	status;				//!< Status of the query.
 	sql_rcode_t		rcode;				//!< Result code.
 	rlm_sql_row_t		row;				//!< Row data from the last query.
+	void			*uctx;				//!< Driver specific data.
 } fr_sql_query_t;
 
 /** Context used when fetching attribute value pairs as a map list
