@@ -57,7 +57,20 @@ int ssl_check_consistency(void)
 	ssl_linked = SSLeay();
 
 	/*
-	 *	Major and minor versions mismatch, that's bad.
+	 *	Major mismatch, that's bad.
+	 */
+	if ((ssl_linked & 0xff000000) != (ssl_built & 0xff000000)) goto mismatch;
+
+	/*
+	 *	For OpenSSL 3, the minor versions are API/ABI compatible.
+	 *
+	 *	https://openssl-library.org/policies/releasestrat/index.html
+	 */
+	if ((ssl_linked & 0xff000000) >= 0x30000000) return 0;
+
+	/*
+	 *	For other versions of OpenSSL, the minor versions have
+	 *	to match, too.
 	 */
 	if ((ssl_linked & 0xfff00000) != (ssl_built & 0xfff00000)) goto mismatch;
 
