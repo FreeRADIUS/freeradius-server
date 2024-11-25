@@ -193,8 +193,7 @@ extern size_t sql_rcode_table_len;
  *	0  - If no error messages are available.
  *	>0 - Number of log entries
  */
-typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, fr_sql_query_t *handle,
-			      rlm_sql_config_t const *config);
+typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, fr_sql_query_t *handle);
 
 typedef struct {
 	rlm_sql_t const		*sql;

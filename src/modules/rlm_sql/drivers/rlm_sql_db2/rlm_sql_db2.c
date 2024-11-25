@@ -235,7 +235,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_, UNUSED rlm_sql_config
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
-			fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx)
 {
 	char			state[6];
 	char			errbuff[1024];

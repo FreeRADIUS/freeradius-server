@@ -635,7 +635,7 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
  *	- -1 on failure.
  */
 static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			   rlm_sql_mysql_conn_t *conn, UNUSED rlm_sql_config_t const *config)
+			   rlm_sql_mysql_conn_t *conn)
 {
 	MYSQL_RES		*result;
 	MYSQL_ROW		row;
@@ -699,7 +699,7 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			fr_sql_query_t *query_ctx, rlm_sql_config_t const *config)
+			fr_sql_query_t *query_ctx)
 {
 	rlm_sql_mysql_t const	*inst = talloc_get_type_abort_const(query_ctx->inst->driver_submodule->data, rlm_sql_mysql_t);
 	rlm_sql_mysql_conn_t	*conn;
@@ -746,7 +746,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 
 		FALL_THROUGH;
 		case SERVER_WARNINGS_YES:
-			ret = sql_warnings(ctx, out, outlen - 1, conn, config);
+			ret = sql_warnings(ctx, out, outlen - 1, conn);
 			if (ret > 0) i += ret;
 			break;
 

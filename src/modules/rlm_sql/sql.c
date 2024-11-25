@@ -356,7 +356,7 @@ void rlm_sql_print_error(rlm_sql_t const *inst, request_t *request, fr_sql_query
 	size_t		num, i;
 	TALLOC_CTX	*log_ctx = talloc_new(NULL);
 
-	num = (inst->driver->sql_error)(log_ctx, log, (NUM_ELEMENTS(log)), query_ctx, &inst->config);
+	num = (inst->driver->sql_error)(log_ctx, log, (NUM_ELEMENTS(log)), query_ctx);
 	if (num == 0) {
 		ROPTIONAL(RERROR, ERROR, "Unknown error");
 		talloc_free(log_ctx);
