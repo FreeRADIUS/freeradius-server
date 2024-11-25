@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/virtual_servers.h>
 
 #include <freeradius-devel/unlang/compile.h>
+#include <freeradius-devel/unlang/function.h>
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/io/master.h>
@@ -671,6 +672,26 @@ int virtual_server_has_namespace(CONF_SECTION **out,
 	return 0;
 }
 
+/*
+ *	If we pushed a log destination, we need to pop it/
+ */
+static unlang_action_t server_remove_log_destination(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						     request_t *request, void *uctx)
+{
+	virtual_server_t *server = uctx;
+
+	request_log_prepend(request, server->log, L_DBG_LVL_DISABLE);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+static void server_signal_remove_log_destination(request_t *request, UNUSED fr_signal_t action, void *uctx)
+{
+	virtual_server_t *server = uctx;
+
+	request_log_prepend(request, server->log, L_DBG_LVL_DISABLE);
+}
+
 /** Set the request processing function.
  *
  *	Short-term hack
@@ -686,9 +707,37 @@ unlang_action_t virtual_server_push(request_t *request, CONF_SECTION *server_cs,
 	}
 
 	/*
-	 *	Log here, too.
+	 *	Add a log destination specific to this virtual server.
+	 *
+	 *	If we add a log destination, make sure to remove it when we walk back up the stack.
+	 *	But ONLY if we're not at the top of the stack.
+	 *
+	 *	When a brand new request comes in, it has a "call" frame pushed, and then this function is
+	 *	called.  So if we're at the top of the stack, we don't need to pop any logging function,
+	 *	because the request will die immediately after the top "call" frame is popped.
+	 *
+	 *	However, if we're being reached from a "call" frame in the middle of the stack, then
+	 *	we do have to pop the log destination when we return.
 	 */
-	if (server->log) request_log_prepend(request, server->log, fr_debug_lvl);
+	if (server->log) {
+		request_log_prepend(request, server->log, fr_debug_lvl);
+
+		if (unlang_interpret_stack_depth(request) > 1) {
+			unlang_action_t action;
+
+			action = unlang_function_push(request, NULL, /* don't call it immediately */
+						      server_remove_log_destination, /* but when we pop the frame */
+						      server_signal_remove_log_destination, FR_SIGNAL_CANCEL,
+						      top_frame, server);
+			if (action != UNLANG_ACTION_PUSHED_CHILD) return action;
+
+			/*
+			 *	The pushed function may be a top frame, but the virtual server
+			 *	we're about to push is now definitely a sub frame.
+			 */
+			top_frame = UNLANG_SUB_FRAME;
+		}
+	}
 
 	/*
 	 *	Bootstrap the stack with a module instance.
