@@ -590,6 +590,8 @@ static ssize_t cbor_decode_ethernet(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, 
 
 static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
 {
+	vb->vb_ip.prefix = 32;
+
 	return cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v4.s_addr,
 					 sizeof(vb->vb_ip.addr.v4.s_addr),
 					 sizeof(vb->vb_ip.addr.v4.s_addr), dbuff);
@@ -597,6 +599,8 @@ static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 
 static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t *dbuff)
 {
+	vb->vb_ip.prefix = 128;
+
 	return cbor_decode_octets_memcpy((uint8_t *) &vb->vb_ip.addr.v6.s6_addr,
 					 sizeof(vb->vb_ip.addr.v6.s6_addr),
 					 sizeof(vb->vb_ip.addr.v6.s6_addr), dbuff);
