@@ -554,7 +554,7 @@ static void sql_trunk_query_cancel(UNUSED request_t *request, UNUSED fr_signal_t
 	 *	The query_ctx needs to be parented by the treq so that it still exists
 	 *	when the cancel_mux callback is run.
 	 */
-	talloc_steal(query_ctx->treq, query_ctx);
+	if (query_ctx->inst->driver->trunk_io_funcs.request_cancel_mux) talloc_steal(query_ctx->treq, query_ctx);
 
 	trunk_request_signal_cancel(query_ctx->treq);
 
