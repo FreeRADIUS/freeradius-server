@@ -170,6 +170,7 @@ extern size_t sql_rcode_table_len;
  */
 #define RLM_SQL_RCODE_FLAGS_ALT_QUERY	1			//!< Can distinguish between other errors and those
 								//!< resulting from a unique key violation.
+#define RLM_SQL_MULTI_QUERY_CONN	2			//!< Can support multiple queries on a single connection.
 
 /** Retrieve errors from the last query operation
  *

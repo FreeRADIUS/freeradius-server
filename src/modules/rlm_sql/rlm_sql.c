@@ -2231,10 +2231,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		if (cf_section_parse(&inst->config, &inst->config.trunk_conf, cs) < 0) return -1;
 
 		/*
-		 *	SQL trunks can only have one running request per connection.
+		 *	Most SQL trunks can only have one running request per connection.
 		 */
-		inst->config.trunk_conf.target_req_per_conn = 1;
-		inst->config.trunk_conf.max_req_per_conn = 1;
+		if (!(inst->driver->flags & RLM_SQL_MULTI_QUERY_CONN)) {
+			inst->config.trunk_conf.target_req_per_conn = 1;
+			inst->config.trunk_conf.max_req_per_conn = 1;
+		}
 		if (!inst->driver->trunk_io_funcs.connection_notify) {
 			inst->config.trunk_conf.always_writable = true;
 		}
