@@ -416,7 +416,6 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 	for (i = 0; i < (count + 1); i++) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query_ctx->query_str);
 
-		(inst->driver->sql_query)(p_result, NULL, request, query_ctx);
 		query_ctx->status = SQL_QUERY_SUBMITTED;
 		switch (query_ctx->rcode) {
 		case RLM_SQL_OK:
@@ -608,7 +607,6 @@ unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority
 	for (i = 0; i < (count + 1); i++) {
 		ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", query_ctx->query_str);
 
-		(inst->driver->sql_select_query)(p_result, NULL, request, query_ctx);
 		query_ctx->status = SQL_QUERY_SUBMITTED;
 		switch (query_ctx->rcode) {
 		case RLM_SQL_OK:

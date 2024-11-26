@@ -203,12 +203,6 @@ typedef struct {
 
 	int		flags;
 
-	sql_rcode_t	(*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t const *config,
-					   fr_time_delta_t timeout);
-
-	unlang_function_t	sql_query;			//!< Run an SQL query on a pool connection.
-	unlang_function_t	sql_select_query;		//!< Run an SQL select query on a pool connection.
-
 	unlang_function_t	sql_query_resume;		//!< Callback run after an SQL trunk query is run.
 	unlang_function_t	sql_select_query_resume;	//!< Callback run after an SQL select trunk query is run.
 
