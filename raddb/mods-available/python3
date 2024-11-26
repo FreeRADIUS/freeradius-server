@@ -20,6 +20,10 @@ python3 {
 	#  - "append" - append to system path
 	#  - "prepend" - prepend to the system path
 	#  - "overwrite" - overwrite the system path
+	#
+	#  Note: Take care when using "prepend" - the paths searched
+	#  should not be writeable by any un-trusted users or services
+	#  to avoid overriding standard functionality with malicious code.
 #	python_path_mode = append
 
 	module = example
