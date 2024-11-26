@@ -1114,7 +1114,6 @@ static unlang_action_t sql_get_grouplist(sql_group_ctx_t *group_ctx, trunk_t *tr
 typedef struct {
 	fr_value_box_list_t	query;
 	sql_group_ctx_t		*group_ctx;
-	rlm_sql_handle_t	*handle;
 } sql_group_xlat_ctx_t;
 
 /**  Compare list of groups returned from SQL query to xlat argument.
@@ -1122,12 +1121,10 @@ typedef struct {
  * Called after the SQL query has completed and group list has been built.
  */
 static xlat_action_t sql_group_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ctx_t const *xctx,
-					   request_t *request, fr_value_box_list_t *in)
+						 UNUSED request_t *request, fr_value_box_list_t *in)
 {
-	rlm_sql_t const		*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_sql_t);
 	sql_group_xlat_ctx_t	*xlat_ctx = talloc_get_type_abort(xctx->rctx, sql_group_xlat_ctx_t);
 	sql_group_ctx_t		*group_ctx = talloc_get_type_abort(xlat_ctx->group_ctx, sql_group_ctx_t);
-	rlm_sql_handle_t	*handle = xlat_ctx->handle;
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	char const		*name = arg->vb_strvalue;
 	fr_value_box_t		*vb;
@@ -1145,7 +1142,6 @@ static xlat_action_t sql_group_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *
 	fr_dcursor_append(out, vb);
 
 	talloc_free(xlat_ctx);
-	if (handle) fr_pool_connection_release(inst->pool, request, handle);
 
 	return XLAT_ACTION_DONE;
 }
