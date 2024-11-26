@@ -93,8 +93,7 @@ typedef struct {
 	request_t		*request;	//!< Current request.
 	ippool_alloc_status_t	status;		//!< Status of the allocation.
 	ippool_alloc_call_env_t	*env;		//!< Call environment for the allocation.
-	rlm_sql_handle_t	*handle;	//!< SQL handle being used for queries.
-	trunk_t		*trunk;		//!< Trunk connection for queries.
+	trunk_t			*trunk;		//!< Trunk connection for queries.
 	rlm_sql_t const		*sql;		//!< SQL module instance.
 	fr_value_box_list_t	values;		//!< Where to put the expanded queries ready for execution.
 	fr_value_box_t		*query;		//!< Current query being run.
@@ -107,7 +106,6 @@ typedef struct {
 typedef struct {
 	request_t			*request;	//!< Current request.
 	ippool_common_call_env_t	*env;		//!< Call environment for the update.
-	rlm_sql_handle_t		*handle;	//!< SQL handle being used for queries.
 	rlm_sql_t const			*sql;		//!< SQL module instance.
 	fr_sql_query_t			*query_ctx;	//!< Query context for allocation queries.
 } ippool_common_ctx_t;
@@ -223,7 +221,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 static int sqlippool_alloc_ctx_free(ippool_alloc_ctx_t *to_free)
 {
 	if (!to_free->sql->sql_escape_arg) (void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
-	if (to_free->handle) fr_pool_connection_release(to_free->sql->pool, to_free->request, to_free->handle);
 	return 0;
 }
 
@@ -495,7 +492,6 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	rlm_sqlippool_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_sqlippool_t);
 	ippool_alloc_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_alloc_call_env_t);
 	rlm_sql_t const		*sql = inst->sql;
-	rlm_sql_handle_t	*handle = NULL;
 	ippool_alloc_ctx_t	*alloc_ctx = NULL;
 	rlm_sql_thread_t	*thread = talloc_get_type_abort(module_thread(sql->mi)->data, rlm_sql_thread_t);
 
@@ -512,13 +508,9 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		RETURN_MODULE_NOOP;
 	}
 
-	if (!sql->sql_escape_arg && !thread->sql_escape_arg && handle)
-		request_data_add(request, (void *)sql_escape_uctx_alloc, 0, handle, false, false, false);
-
 	MEM(alloc_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ippool_alloc_ctx_t));
 	*alloc_ctx = (ippool_alloc_ctx_t) {
 		.env = env,
-		.handle = handle,
 		.trunk = thread->trunk,
 		.sql = inst->sql,
 		.request = request,
@@ -600,14 +592,6 @@ static unlang_action_t mod_common_free_resume(rlm_rcode_t *p_result, UNUSED int 
 	return unlang_function_push(request, sql->query, NULL, NULL, 0, UNLANG_SUB_FRAME, query_ctx);
 }
 
-/** Return connection to pool when mod_common context is freed.
- */
-static int sqlippool_common_ctx_free(ippool_common_ctx_t *to_free)
-{
-	if (to_free->handle) fr_pool_connection_release(to_free->sql->pool, to_free->request, to_free->handle);
-	return 0;
-}
-
 /** Common function used by module methods which perform an optional "free" then "update"
  *	- update
  *	- release
@@ -620,7 +604,6 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	ippool_common_call_env_t	*env = talloc_get_type_abort(mctx->env_data, ippool_common_call_env_t);
 	rlm_sql_t const			*sql = inst->sql;
 	rlm_sql_thread_t		*thread = talloc_get_type_abort(module_thread(sql->mi)->data, rlm_sql_thread_t);
-	rlm_sql_handle_t		*handle = NULL;
 	ippool_common_ctx_t		*common_ctx = NULL;
 
 	if ((env->free.type != FR_TYPE_STRING) && (env->update.type != FR_TYPE_STRING)) RETURN_MODULE_NOOP;
@@ -629,10 +612,8 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	*common_ctx = (ippool_common_ctx_t) {
 		.request = request,
 		.env = env,
-		.handle = handle,
 		.sql = sql,
 	};
-	talloc_set_destructor(common_ctx, sqlippool_common_ctx_free);
 
 	MEM(common_ctx->query_ctx = sql->query_alloc(common_ctx, sql, request, thread->trunk, "", SQL_QUERY_OTHER));
 
