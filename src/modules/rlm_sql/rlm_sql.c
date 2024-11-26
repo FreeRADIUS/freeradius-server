@@ -234,8 +234,7 @@ static const call_env_method_t send_method_env = {
 typedef struct {
 	rlm_sql_t const			*inst;		//!< Module instance.
 	request_t			*request;	//!< Request being processed.
-	rlm_sql_handle_t		*handle;	//!< Database connection handle.
-	trunk_t			*trunk;		//!< Trunk connection for queries.
+	trunk_t				*trunk;		//!< Trunk connection for queries.
 	sql_redundant_call_env_t	*call_env;	//!< Call environment data.
 	size_t				query_no;	//!< Current query number.
 	fr_value_box_list_t		query;		//!< Where expanded query tmpl will be written.
@@ -1750,7 +1749,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 static int sql_redundant_ctx_free(sql_redundant_ctx_t *to_free)
 {
 	if (!to_free->inst->sql_escape_arg) (void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
-	if (to_free->handle) fr_pool_connection_release(to_free->inst->pool, to_free->request, to_free->handle);
 	sql_unset_user(to_free->inst, to_free->request);
 
 	return 0;
@@ -1897,9 +1895,6 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 		.query_no = 0
 	};
 	talloc_set_destructor(redundant_ctx, sql_redundant_ctx_free);
-
-	if (!inst->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
-									       redundant_ctx->handle, false, false, false);
 
 	sql_set_user(inst, request, &call_env->user);
 
