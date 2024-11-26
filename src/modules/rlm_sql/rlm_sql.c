@@ -279,7 +279,7 @@ static int _sql_escape_uxtx_free(void *uctx)
  *	Create a thread local uctx which is used in SQL value box escaping
  *	so that an already reserved connection can be used.
  */
-static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
+static void *sql_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
 {
 	static _Thread_local rlm_sql_escape_uctx_t	*t_ctx;
 
@@ -290,7 +290,6 @@ static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
 		fr_atexit_thread_local(t_ctx, _sql_escape_uxtx_free, ctx);
 	}
 	t_ctx->sql = uctx;
-	t_ctx->handle = request_data_reference(request, (void *)sql_escape_uctx_alloc, 0);
 
 	return t_ctx;
 }
@@ -372,8 +371,6 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 		arg = inst->sql_escape_arg;
 	} else if (thread->sql_escape_arg) {
 		arg = thread->sql_escape_arg;
-	} else {
-		arg = ctx->handle ? ctx->handle : fr_pool_connection_get(inst->pool, request);
 	}
 	if (!arg) {
 	error:
@@ -414,7 +411,6 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	fr_value_box_mark_safe_for(vb, inst->driver);
 	vb->entry = entry;
 
-	if (!inst->sql_escape_arg && !thread->sql_escape_arg && !ctx->handle) fr_pool_connection_release(inst->pool, request, arg);
 	return 0;
 }
 
@@ -2267,7 +2263,7 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	 */
 	MEM(sql_xlat_arg = talloc_zero_array(boot, xlat_arg_parser_t, 2));
 	MEM(uctx = talloc_zero(sql_xlat_arg, rlm_sql_escape_uctx_t));
-	*uctx = (rlm_sql_escape_uctx_t){ .sql = inst, .handle = NULL };
+	*uctx = (rlm_sql_escape_uctx_t){ .sql = inst };
 	sql_xlat_arg[0] = (xlat_arg_parser_t){
 		.type = FR_TYPE_STRING,
 		.required = true,

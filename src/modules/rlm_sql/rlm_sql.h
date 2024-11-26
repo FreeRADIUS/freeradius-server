@@ -196,7 +196,6 @@ typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t out
 
 typedef struct {
 	rlm_sql_t const		*sql;
-	rlm_sql_handle_t	*handle;
 } rlm_sql_escape_uctx_t;
 
 typedef struct {

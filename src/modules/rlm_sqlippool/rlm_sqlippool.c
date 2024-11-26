@@ -121,7 +121,7 @@ static int _sql_escape_uxtx_free(void *uctx)
 	return talloc_free(uctx);
 }
 
-static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
+static void *sql_escape_uctx_alloc(UNUSED request_t *request, void const *uctx)
 {
 	static _Thread_local rlm_sql_escape_uctx_t	*t_ctx;
 
@@ -132,7 +132,6 @@ static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
 		fr_atexit_thread_local(t_ctx, _sql_escape_uxtx_free, ctx);
 	}
 	t_ctx->sql = uctx;
-	t_ctx->handle = request_data_reference(request, (void *)sql_escape_uctx_alloc, 0);
 
 	return t_ctx;
 }
