@@ -1222,16 +1222,14 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 			memcpy(&p, &inst->python_path, sizeof(path));
 
 			for (path = strtok(p, ":"); path != NULL; path = strtok(NULL, ":")) {
+#if PY_VERSION_HEX > 0x03000000
+				wchar_t *py_path;
+
 #if PY_VERSION_HEX > 0x03050000
-				wchar_t *py_path;
-
 				MEM(py_path = Py_DecodeLocale(path, NULL));
-				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
-				PyMem_RawFree(py_path);
-#elif PY_VERSION_HEX > 0x03000000
-				wchar_t *py_path;
-
+#else
 				MEM(py_path = _Py_char2wchar(path, NULL));
+#endif
 				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
 				PyMem_RawFree(py_path);
 #else
