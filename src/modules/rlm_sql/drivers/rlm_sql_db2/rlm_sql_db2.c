@@ -106,7 +106,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t co
 	return RLM_SQL_OK;
 }
 
-static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx)
+static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
 {
 	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	SQLRETURN row;
@@ -125,9 +125,9 @@ static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, re
 		row = SQLExecDirect(conn->stmt, db2_query, SQL_NTS);
 		if(row != SQL_SUCCESS) {
 			/* XXX Check if row means we should return RLM_SQL_RECONNECT */
-			ERROR("Could not execute statement \"%s\"", query);
+			ERROR("Could not execute statement \"%s\"", query_ctx->query_str);
 			query_ctx->rcode = RLM_SQL_ERROR;
-			RETURN_MODULE_FAIL
+			RETURN_MODULE_FAIL;
 		}
 	}
 
@@ -212,7 +212,7 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 	RETURN_MODULE_OK;
 }
 
-static sql_rcode_t sql_free_result(fr_sql_query_t *query_, UNUSED rlm_sql_config_t const *config)
+static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
 	rlm_sql_db2_conn_t *conn;
 
