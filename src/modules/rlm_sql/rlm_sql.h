@@ -230,7 +230,6 @@ typedef struct {
 	void		*(*sql_escape_arg_alloc)(TALLOC_CTX *ctx, fr_event_list_t *el, void *uctx);
 	void		(*sql_escape_arg_free)(void *uctx);
 
-	bool			uses_trunks;		//!< Transitional flag for drivers which use trunks.
 	trunk_io_funcs_t	trunk_io_funcs;		//!< Trunk callback functions for this driver.
 } rlm_sql_driver_t;
 

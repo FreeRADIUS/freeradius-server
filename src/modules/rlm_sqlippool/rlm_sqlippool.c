@@ -140,18 +140,6 @@ static void *sql_escape_uctx_alloc(request_t *request, void const *uctx)
 }
 
 /*
- *	Don't repeat yourself
- */
-#define RESERVE_CONNECTION(_handle, _sql, _request) if (!_sql->driver->uses_trunks) { \
-	handle = fr_pool_connection_get(_sql->pool, _request); \
-	if (!_handle) { \
-		REDEBUG("Failed reserving SQL connection"); \
-		RETURN_MODULE_FAIL; \
-	} \
-}
-
-
-/*
  *	Process the results of an SQL query expected to return a single row
  */
 static int sqlippool_result_process(char *out, int outlen, fr_sql_query_t *query_ctx)
@@ -524,7 +512,6 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 		RETURN_MODULE_NOOP;
 	}
 
-	RESERVE_CONNECTION(handle, inst->sql, request);
 	if (!sql->sql_escape_arg && !thread->sql_escape_arg && handle)
 		request_data_add(request, (void *)sql_escape_uctx_alloc, 0, handle, false, false, false);
 
@@ -638,7 +625,6 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 
 	if ((env->free.type != FR_TYPE_STRING) && (env->update.type != FR_TYPE_STRING)) RETURN_MODULE_NOOP;
 
-	RESERVE_CONNECTION(handle, inst->sql, request);
 	MEM(common_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), ippool_common_ctx_t));
 	*common_ctx = (ippool_common_ctx_t) {
 		.request = request,

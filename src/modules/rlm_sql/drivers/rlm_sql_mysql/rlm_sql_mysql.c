@@ -1162,7 +1162,6 @@ rlm_sql_driver_t rlm_sql_mysql = {
 	.sql_escape_func		= sql_escape_func,
 	.sql_escape_arg_alloc		= sql_escape_arg_alloc,
 	.sql_escape_arg_free		= sql_escape_arg_free,
-	.uses_trunks			= true,
 	.trunk_io_funcs = {
 		.connection_alloc	= sql_trunk_connection_alloc,
 		.connection_notify	= sql_trunk_connection_notify,

@@ -1058,7 +1058,6 @@ rlm_sql_driver_t rlm_sql_cassandra = {
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
 	.sql_finish_select_query	= sql_finish_query,
-	.uses_trunks			= true,
 	.trunk_io_funcs = {
 		.connection_alloc	= sql_trunk_connection_alloc,
 		.connection_notify	= sql_trunk_connection_notify,

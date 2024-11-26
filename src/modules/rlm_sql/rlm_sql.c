@@ -75,6 +75,11 @@ static const conf_parser_t module_config[] = {
 	 */
 	{ FR_CONF_OFFSET("query_timeout", rlm_sql_config_t, query_timeout), .dflt = "5" },
 
+	/*
+	 *	The pool section is used for trunk config
+	 */
+	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_sql_config_t, trunk_conf, trunk_config) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -452,7 +457,6 @@ static xlat_action_t sql_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, x
 	rlm_sql_t const		*inst = query_ctx->inst;
 	fr_value_box_t		*vb;
 	xlat_action_t		ret = XLAT_ACTION_DONE;
-	rlm_sql_handle_t	*handle = query_ctx->handle;
 	int			numaffected;
 
 	fr_assert(query_ctx->type == SQL_QUERY_OTHER);
@@ -483,7 +487,6 @@ static xlat_action_t sql_xlat_query_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, x
 
 finish:
 	talloc_free(query_ctx);
-	if (!inst->driver->uses_trunks) fr_pool_connection_release(inst->pool, request, handle);
 
 	return ret;
 }
@@ -495,7 +498,6 @@ static xlat_action_t sql_xlat_select_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 	rlm_sql_t const		*inst = query_ctx->inst;
 	fr_value_box_t		*vb;
 	xlat_action_t		ret = XLAT_ACTION_DONE;
-	rlm_sql_handle_t	*handle = query_ctx->handle;
 	rlm_rcode_t		p_result;
 	rlm_sql_row_t		row;
 	bool			fetched = false;
@@ -539,7 +541,6 @@ static xlat_action_t sql_xlat_select_resume(TALLOC_CTX *ctx, fr_dcursor_t *out, 
 
 finish:
 	talloc_free(query_ctx);
-	if (!inst->driver->uses_trunks) fr_pool_connection_release(inst->pool, request, handle);
 
 	return ret;
 }
@@ -569,11 +570,6 @@ static xlat_action_t sql_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_sql_query_t		*query_ctx = NULL;
 	rlm_rcode_t		p_result;
 	unlang_action_t		query_ret = UNLANG_ACTION_CALCULATE_RESULT;
-
-	if (!inst->driver->uses_trunks) {
-		handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
-		if (!handle) return XLAT_ACTION_FAIL;
-	}
 
 	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
@@ -630,11 +626,6 @@ static xlat_action_t sql_fetch_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t 
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_sql_query_t		*query_ctx = NULL;
 
-	if (!inst->driver->uses_trunks) {
-		handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
-		if (!handle) return XLAT_ACTION_FAIL;
-	}
-
 	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
 	}
@@ -666,11 +657,6 @@ static xlat_action_t sql_modify_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out, xlat_ct
 	fr_value_box_t		*arg = fr_value_box_list_head(in);
 	fr_sql_query_t		*query_ctx = NULL;
 	rlm_rcode_t		p_result;
-
-	if (!inst->driver->uses_trunks) {
-		handle = fr_pool_connection_get(inst->pool, request);	/* connection pool should produce error */
-		if (!handle) return XLAT_ACTION_FAIL;
-	}
 
 	if (call_env->filename.type == FR_TYPE_STRING && call_env->filename.vb_length > 0) {
 		rlm_sql_query_log(inst, call_env->filename.vb_strvalue, arg->vb_strvalue);
@@ -915,11 +901,6 @@ static unlang_action_t mod_map_proc(rlm_rcode_t *p_result, void const *mod_inst,
 					      SIZE_MAX) < 0) {
 		RPEDEBUG("Failed concatenating input string");
 		RETURN_MODULE_FAIL;
-	}
-
-	if (!inst->driver->uses_trunks) {
-		handle = fr_pool_connection_get(inst->pool, request);		/* connection pool should produce error */
-		if (!handle) RETURN_MODULE_FAIL;
 	}
 
 	MEM(map_ctx = talloc(unlang_interpret_frame_talloc_ctx(request), sql_map_ctx_t));
@@ -1198,14 +1179,6 @@ static xlat_action_t sql_group_xlat_resume(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 		.inst = inst,
 		.query = query,
 	};
-
-	if (!inst->driver->uses_trunks) {
-		xlat_ctx->handle = fr_pool_connection_get(inst->pool, request);
-		if (!xlat_ctx->handle) {
-			REDEBUG("Failed getting conneciton handle");
-			return XLAT_ACTION_FAIL;
-		}
-	}
 
 	if (unlang_xlat_yield(request, sql_group_xlat_query_resume, NULL, 0, xlat_ctx) != XLAT_ACTION_YIELD) return XLAT_ACTION_FAIL;
 
@@ -1745,16 +1718,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	MEM(autz_ctx->map_ctx = talloc_zero(autz_ctx, fr_sql_map_ctx_t));
 	talloc_set_destructor(autz_ctx, sql_autz_ctx_free);
 
-	/*
-	 *	Reserve a socket
-	 *
-	 *	This is freed by the talloc destructor for autz_ctx
-	 */
-	if (!inst->driver->uses_trunks) {
-		autz_ctx->handle = fr_pool_connection_get(inst->pool, request);
-		if (!autz_ctx->handle) RETURN_MODULE_FAIL;
-	}
-
 	if (!inst->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
 						    			       autz_ctx->handle, false, false, false);
 
@@ -1860,7 +1823,6 @@ static unlang_action_t mod_sql_redundant_query_resume(rlm_rcode_t *p_result, UNU
 	case RLM_SQL_NO_MORE_ROWS:
 		break;
 	}
-	fr_assert(inst->driver->uses_trunks || redundant_ctx->handle);
 
 	/*
 	 *	We need to have updated something for the query to have been
@@ -1947,11 +1909,6 @@ static unlang_action_t CC_HINT(nonnull) mod_sql_redundant(rlm_rcode_t *p_result,
 		.query_no = 0
 	};
 	talloc_set_destructor(redundant_ctx, sql_redundant_ctx_free);
-
-	if (!inst->driver->uses_trunks) {
-		redundant_ctx->handle = fr_pool_connection_get(inst->pool, request);
-		if (!redundant_ctx->handle) RETURN_MODULE_FAIL;
-	}
 
 	if (!inst->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
 									       redundant_ctx->handle, false, false, false);
@@ -2189,15 +2146,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
 	 */
-	if (inst->driver->uses_trunks) {
-		inst->query		= rlm_sql_trunk_query;
-		inst->select		= rlm_sql_trunk_query;
-	} else {
-		inst->query		= rlm_sql_query;
-		inst->select		= rlm_sql_select_query;
-	}
-	inst->fetch_row			= rlm_sql_fetch_row;
-	inst->query_alloc		= fr_sql_query_alloc;
+	inst->query		= rlm_sql_trunk_query;
+	inst->select		= rlm_sql_trunk_query;
+	inst->fetch_row		= rlm_sql_fetch_row;
+	inst->query_alloc	= fr_sql_query_alloc;
 
 	/*
 	 *	Either use the module specific escape function
@@ -2217,29 +2169,15 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (inst->driver->uses_trunks) {
-		CONF_SECTION	*cs;
-
-		/*
-		 *	The "pool" conf section is either used for legacy pool
-		 *	connections or trunk connections depending on the
-		 *	driver configuration.
-		 */
-		cs = cf_section_find(conf, "pool", NULL);
-		if (!cs) cs = cf_section_alloc(conf, conf, "pool", NULL);
-		if (cf_section_rules_push(cs, trunk_config) < 0) return -1;
-		if (cf_section_parse(&inst->config, &inst->config.trunk_conf, cs) < 0) return -1;
-
-		/*
-		 *	Most SQL trunks can only have one running request per connection.
-		 */
-		if (!(inst->driver->flags & RLM_SQL_MULTI_QUERY_CONN)) {
-			inst->config.trunk_conf.target_req_per_conn = 1;
-			inst->config.trunk_conf.max_req_per_conn = 1;
-		}
-		if (!inst->driver->trunk_io_funcs.connection_notify) {
-			inst->config.trunk_conf.always_writable = true;
-		}
+	/*
+	 *	Most SQL trunks can only have one running request per connection.
+	 */
+	if (!(inst->driver->flags & RLM_SQL_MULTI_QUERY_CONN)) {
+		inst->config.trunk_conf.target_req_per_conn = 1;
+		inst->config.trunk_conf.max_req_per_conn = 1;
+	}
+	if (!inst->driver->trunk_io_funcs.connection_notify) {
+		inst->config.trunk_conf.always_writable = true;
 	}
 
 	/*
@@ -2261,16 +2199,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		cf_log_err(conf, "Failed instantiating driver module");
 		return -1;
 	}
-
-	if (inst->driver->uses_trunks) return 0;
-
-	/*
-	 *	Initialise the connection pool for this instance
-	 */
-	INFO("Attempting to connect to database \"%s\"", inst->config.sql_db);
-
-	inst->pool = module_rlm_connection_pool_init(conf, inst, sql_mod_conn_create, NULL, NULL, NULL, NULL);
-	if (!inst->pool) return -1;
 
 	return 0;
 }
@@ -2430,8 +2358,6 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	}
 
 	t->inst = inst;
-
-	if (!inst->driver->uses_trunks) return 0;
 
 	t->trunk = trunk_alloc(t, mctx->el, &inst->driver->trunk_io_funcs,
 				  &inst->config.trunk_conf, inst->name, t, false);

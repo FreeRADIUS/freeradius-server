@@ -310,8 +310,7 @@ unlang_action_t rlm_sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority, r
 	fr_sql_query_t	*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
 	rlm_sql_t const	*inst = query_ctx->inst;
 
-	if ((inst->driver->uses_trunks && !query_ctx->tconn) ||
-	    (!inst->driver->uses_trunks && (!query_ctx->handle || !query_ctx->handle->conn))) {
+	if (!query_ctx->tconn) {
 		ROPTIONAL(RERROR, ERROR, "Invalid connection");
 		query_ctx->rcode = RLM_SQL_ERROR;
 		RETURN_MODULE_FAIL;
