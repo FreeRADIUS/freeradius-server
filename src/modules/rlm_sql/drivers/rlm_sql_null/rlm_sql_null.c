@@ -25,22 +25,45 @@ RCSID("$Id$")
 #include <freeradius-devel/server/base.h>
 
 #include	"rlm_sql.h"
-
+#include	"rlm_sql_trunk.h"
 
 static const void *fake = "fake";
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t const *config,
-				   UNUSED fr_time_delta_t timeout)
+static void _sql_connection_close(UNUSED fr_event_list_t *el, UNUSED void *h, UNUSED void *uctx)
 {
-	memcpy(&handle->conn, &fake, sizeof(handle->conn));
-	return 0;
+	return;
 }
 
-static unlang_action_t sql_query(rlm_rcode_t *p_result, UNUSED int *priority, UNUSED request_t *request, void *uctx)
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static connection_state_t _sql_connection_init(void **h, UNUSED connection_t *conn, UNUSED void *uctx)
 {
-	fr_sql_query_t		*query_ctx = talloc_get_type_abort(uctx, fr_sql_query_t);
-	query_ctx->rcode = RLM_SQL_OK;
-	RETURN_MODULE_OK;
+	memcpy(*h, &fake, sizeof(h));
+	return CONNECTION_STATE_CONNECTED;
+}
+
+SQL_TRUNK_CONNECTION_ALLOC
+
+SQL_QUERY_RESUME
+
+CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
+static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
+				  UNUSED connection_t *conn, UNUSED void *uctx)
+{
+	trunk_request_t	*treq;
+	request_t	*request;
+	fr_sql_query_t	*query_ctx;
+
+	while (trunk_connection_pop_request(&treq, tconn) != 0) {
+		if (!treq) return;
+
+		query_ctx = talloc_get_type_abort(treq->preq, fr_sql_query_t);
+		request = query_ctx->request;
+		query_ctx->tconn = tconn;
+		query_ctx->rcode = RLM_SQL_OK;
+
+		trunk_request_signal_reapable(treq);
+		if (request) unlang_interpret_mark_runnable(request);
+	}
 }
 
 static int sql_num_rows(UNUSED fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
@@ -87,14 +110,17 @@ rlm_sql_driver_t rlm_sql_null = {
 		.magic				= MODULE_MAGIC_INIT,
 		.name				= "sql_null"
 	},
-	.sql_socket_init		= sql_socket_init,
-	.sql_query			= sql_query,
-	.sql_select_query		= sql_query,
+	.sql_query_resume		= sql_query_resume,
+	.sql_select_query_resume	= sql_query_resume,
 	.sql_num_rows			= sql_num_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
 	.sql_finish_select_query	= sql_finish_query,
-	.sql_affected_rows		= sql_affected_rows
+	.sql_affected_rows		= sql_affected_rows,
+	.trunk_io_funcs = {
+		.connection_alloc	= sql_trunk_connection_alloc,
+		.request_mux		= sql_trunk_request_mux,
+	}
 };
