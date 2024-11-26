@@ -180,8 +180,7 @@ typedef struct {
 	rlm_sql_t const		*inst;		//!< Module instance.
 	request_t		*request;	//!< Request being processed.
 	rlm_rcode_t		rcode;		//!< Module return code.
-	rlm_sql_handle_t	*handle;	//!< Database connection handle in use for current authorization.
-	trunk_t		*trunk;		//!< Trunk connection for current authorization.
+	trunk_t			*trunk;		//!< Trunk connection for current authorization.
 	sql_autz_call_env_t	*call_env;	//!< Call environment data.
 	map_list_t		check_tmp;	//!< List to store check items before processing.
 	map_list_t		reply_tmp;	//!< List to store reply items before processing.
@@ -1269,7 +1268,6 @@ static int check_map_process(request_t *request, map_list_t *check_map, map_list
 static int sql_autz_ctx_free(sql_autz_ctx_t *to_free)
 {
 	if (!to_free->inst->sql_escape_arg) (void) request_data_get(to_free->request, (void *)sql_escape_uctx_alloc, 0);
-	if (to_free->handle) fr_pool_connection_release(to_free->inst->pool, to_free->request, to_free->handle);
 	map_list_talloc_free(&to_free->check_tmp);
 	map_list_talloc_free(&to_free->reply_tmp);
 	sql_unset_user(to_free->inst, to_free->request);
@@ -1711,9 +1709,6 @@ static unlang_action_t CC_HINT(nonnull) mod_authorize(rlm_rcode_t *p_result, mod
 	map_list_init(&autz_ctx->reply_tmp);
 	MEM(autz_ctx->map_ctx = talloc_zero(autz_ctx, fr_sql_map_ctx_t));
 	talloc_set_destructor(autz_ctx, sql_autz_ctx_free);
-
-	if (!inst->sql_escape_arg && !thread->sql_escape_arg) request_data_add(request, (void *)sql_escape_uctx_alloc, 0,
-						    			       autz_ctx->handle, false, false, false);
 
 	if (unlang_function_push(request, NULL,
 				 (call_env->check_query || call_env->reply_query) ? mod_authorize_resume : mod_autz_group_resume,
