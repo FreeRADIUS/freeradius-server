@@ -255,7 +255,6 @@ struct sql_inst {
 	module_instance_t const	*mi;			//!< Module instance data for thread lookups.
 };
 
-void		*sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
 unlang_action_t	sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk);
 void 		rlm_sql_query_log(rlm_sql_t const *inst, char const *filename, char const *query) CC_HINT(nonnull);
 unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, void *uctx);

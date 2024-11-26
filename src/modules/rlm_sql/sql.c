@@ -62,56 +62,6 @@ fr_table_num_sorted_t const sql_rcode_table[] = {
 };
 size_t sql_rcode_table_len = NUM_ELEMENTS(sql_rcode_table);
 
-void *sql_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout)
-{
-	int rcode;
-	rlm_sql_t *inst = talloc_get_type_abort(instance, rlm_sql_t);
-	rlm_sql_handle_t *handle;
-
-	/*
-	 *	Connections cannot be alloced from the inst or
-	 *	pool contexts due to threading issues.
-	 */
-	handle = talloc_zero(ctx, rlm_sql_handle_t);
-	if (!handle) return NULL;
-
-	handle->log_ctx = talloc_pool(handle, 2048);
-	if (!handle->log_ctx) {
-		talloc_free(handle);
-		return NULL;
-	}
-
-	/*
-	 *	Handle requires a pointer to the SQL inst so the
-	 *	destructor has access to the module configuration.
-	 */
-	handle->inst = inst;
-
-	rcode = (inst->driver->sql_socket_init)(handle, &inst->config, timeout);
-	if (rcode != 0) {
-	fail:
-		/*
-		 *	Destroy any half opened connections.
-		 */
-		talloc_free(handle);
-		return NULL;
-	}
-
-	if (inst->config.connect_query) {
-		fr_sql_query_t	*query_ctx;
-		rlm_rcode_t	p_result;
-		MEM(query_ctx = fr_sql_query_alloc(ctx, inst, NULL, handle, NULL, inst->config.connect_query, SQL_QUERY_OTHER));
-		inst->query(&p_result, NULL, NULL, query_ctx);
-		if (query_ctx->rcode != RLM_SQL_OK) {
-			talloc_free(query_ctx);
-			goto fail;
-		}
-		talloc_free(query_ctx);
-	}
-
-	return handle;
-}
-
 #if 0
 /*************************************************************************
  *
