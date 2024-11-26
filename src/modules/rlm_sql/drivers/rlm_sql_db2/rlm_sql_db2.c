@@ -36,7 +36,7 @@ RCSID("$Id$")
 
 #include <sys/stat.h>
 
-#include <sqlcli.h>
+#include <sqlcli1.h>
 #include <sqlstate.h>
 #include "rlm_sql.h"
 #include "rlm_sql_trunk.h"
@@ -66,12 +66,10 @@ static void _sql_connection_close(UNUSED fr_event_list_t *el, void *h, UNUSED vo
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
 static connection_state_t _sql_connection_init(void **h, connection_t *conn, void *uctx)
 {
-#if 0
-	uint32_t timeout_ms = FR_TIMEVAL_TO_MS(timeout);
-#endif
 	rlm_sql_db2_conn_t	*c;
 	rlm_sql_t const		*sql = talloc_get_type_abort_const(uctx, rlm_sql_t);
 	rlm_sql_config_t const	*config = &sql->config;
+	uint32_t		timeout_ms = fr_time_delta_to_msec(config->trunk_conf.conn_conf->connection_timeout);
 	SQLRETURN		ret;
 
 	MEM(c = talloc_zero(conn, rlm_sql_db2_conn_t));
@@ -81,10 +79,7 @@ static connection_state_t _sql_connection_init(void **h, connection_t *conn, voi
 	SQLAllocHandle(SQL_HANDLE_DBC, c->env_handle, &(c->dbc_handle));
 
 	/* Set the connection timeout */
-#if 0
-	/* Not supported ? */
-	SQLSetConnectAttr(conn->dbc_handle, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
-#endif
+	SQLSetConnectAttr(c->dbc_handle, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 
 	/*
 	 *	We probably want to use SQLDriverConnect, which connects
