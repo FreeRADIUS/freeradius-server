@@ -240,9 +240,8 @@ static unlang_action_t sql_fetch_row(rlm_rcode_t *p_result, UNUSED int *priority
 
 static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_config_t const *config)
 {
-	rlm_sql_db2_conn_t *conn;
+	rlm_sql_db2_conn_t	*conn = talloc_get_type_abort(query_ctx->tconn->conn->h, rlm_sql_db2_conn_t);
 
-	conn = query_ctx->handle->conn;
 	TALLOC_FREE(query_ctx->row);
 	SQLFreeHandle(SQL_HANDLE_STMT, conn->stmt);
 

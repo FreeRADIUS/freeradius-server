@@ -530,7 +530,7 @@ static unlang_action_t CC_HINT(nonnull) mod_alloc(rlm_rcode_t *p_result, module_
 	 *	Since they typically form an SQL transaction, they all need to be on the same
 	 *	connection, and use the same trunk request if using trunks.
 	 */
-	MEM(alloc_ctx->query_ctx = sql->query_alloc(alloc_ctx, sql, request, handle, thread->trunk, "", SQL_QUERY_OTHER));
+	MEM(alloc_ctx->query_ctx = sql->query_alloc(alloc_ctx, sql, request, thread->trunk, "", SQL_QUERY_OTHER));
 
 	fr_value_box_list_init(&alloc_ctx->values);
 	if (unlang_function_push(request, NULL, mod_alloc_resume, NULL, 0, UNLANG_SUB_FRAME, alloc_ctx) < 0 ) {
@@ -634,7 +634,7 @@ static unlang_action_t CC_HINT(nonnull) mod_common(rlm_rcode_t *p_result, module
 	};
 	talloc_set_destructor(common_ctx, sqlippool_common_ctx_free);
 
-	MEM(common_ctx->query_ctx = sql->query_alloc(common_ctx, sql, request, handle, thread->trunk, "", SQL_QUERY_OTHER));
+	MEM(common_ctx->query_ctx = sql->query_alloc(common_ctx, sql, request, thread->trunk, "", SQL_QUERY_OTHER));
 
 	/*
 	 *  An optional query which can be used to tidy up before updates

@@ -409,14 +409,13 @@ static int fr_sql_query_free(fr_sql_query_t *to_free)
 /** Allocate an sql query structure
  *
  */
-fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request, rlm_sql_handle_t *handle,
+fr_sql_query_t *fr_sql_query_alloc(TALLOC_CTX *ctx, rlm_sql_t const *inst, request_t *request,
 				   trunk_t *trunk, char const *query_str, fr_sql_query_type_t type)
 {
 	fr_sql_query_t	*query;
 	MEM(query = talloc(ctx, fr_sql_query_t));
 	*query = (fr_sql_query_t) {
 		.inst = inst,
-		.handle = handle,
 		.request = request,
 		.trunk = trunk,
 		.query_str = query_str,
@@ -449,9 +448,6 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 	rlm_sql_t const	*inst = query_ctx->inst;
 	int		i, count;
 
-	/* Caller should check they have a valid handle */
-	fr_assert(query_ctx->handle);
-
 	/* There's no query to run, return an error */
 	if (query_ctx->query_str[0] == '\0') {
 		if (request) REDEBUG("Zero length query");
@@ -481,11 +477,7 @@ unlang_action_t rlm_sql_query(rlm_rcode_t *p_result, UNUSED int *priority, reque
 		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
 		case RLM_SQL_RECONNECT:
-			query_ctx->handle = fr_pool_connection_reconnect(inst->pool, request, query_ctx->handle);
-			/* Reconnection failed */
-			if (!query_ctx->handle) RETURN_MODULE_FAIL;
-			/* Reconnection succeeded, try again with the new handle */
-			continue;
+			RETURN_MODULE_FAIL;
 
 		/*
 		 *	These are bad and should make rlm_sql return invalid
@@ -648,9 +640,6 @@ unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority
 	rlm_sql_t const	*inst = query_ctx->inst;
 	int i, count;
 
-	/* Caller should check they have a valid handle */
-	fr_assert(query_ctx->handle);
-
 	/* There's no query to run, return an error */
 	if (query_ctx->query_str[0] == '\0') {
 		if (request) REDEBUG("Zero length query");
@@ -680,11 +669,7 @@ unlang_action_t rlm_sql_select_query(rlm_rcode_t *p_result, UNUSED int *priority
 		 *	sockets in the pool and fail to establish a *new* connection.
 		 */
 		case RLM_SQL_RECONNECT:
-			query_ctx->handle = fr_pool_connection_reconnect(inst->pool, request, query_ctx->handle);
-			/* Reconnection failed */
-			if (!query_ctx->handle) RETURN_MODULE_FAIL;
-			/* Reconnection succeeded, try again with the new handle */
-			continue;
+			RETURN_MODULE_FAIL;
 
 		case RLM_SQL_QUERY_INVALID:
 		case RLM_SQL_ERROR:
@@ -752,14 +737,13 @@ static unlang_action_t sql_get_map_list_resume(rlm_rcode_t *p_result, UNUSED int
 /** Submit the query to get any user / group check or reply pairs
  *
  */
-unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, rlm_sql_handle_t **handle,
-				 trunk_t *trunk)
+unlang_action_t sql_get_map_list(request_t *request, fr_sql_map_ctx_t *map_ctx, trunk_t *trunk)
 {
 	rlm_sql_t const	*inst = map_ctx->inst;
 
 	fr_assert(request);
 
-	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, *handle, trunk,
+	MEM(map_ctx->query_ctx = fr_sql_query_alloc(map_ctx->ctx, inst, request, trunk,
 						    map_ctx->query->vb_strvalue, SQL_QUERY_SELECT));
 
 	if (unlang_function_push(request, NULL, sql_get_map_list_resume, NULL, 0, UNLANG_SUB_FRAME, map_ctx) < 0) return UNLANG_ACTION_FAIL;
