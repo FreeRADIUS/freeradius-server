@@ -90,6 +90,7 @@ static CONF_PARSER module_config[] = {
 #undef A
 
         { "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
+	{ "python_path_mode", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path_mode_str), "append" },
         { "cext_compat", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, cext_compat), "yes" },
         { "pass_all_vps", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, pass_all_vps), "no" },
         { "pass_all_vps_dict", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_python_t, pass_all_vps_dict), "no" },
@@ -131,6 +132,19 @@ static struct {
 #undef A
 
 	{ NULL, 0 },
+};
+
+typedef enum {
+	PYTHON_PATH_MODE_APPEND,
+	PYTHON_PATH_MODE_PREPEND,
+	PYTHON_PATH_MODE_OVERWRITE
+} py_path_mode;
+
+FR_NAME_NUMBER const python_path_mode[] = {
+	{ "append",	PYTHON_PATH_MODE_APPEND    },
+	{ "prepend",	PYTHON_PATH_MODE_PREPEND   },
+	{ "overwrite",	PYTHON_PATH_MODE_OVERWRITE },
+	{ NULL, -1 }
 };
 
 /*
@@ -1217,9 +1231,16 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 		if (inst->python_path) {
 			char *p, *path;
 			PyObject *sys = PyImport_ImportModule("sys");
-			PyObject *sys_path = PyObject_GetAttrString(sys, "path");
+			PyObject *sys_path;
+			Py_ssize_t i = 0;
 
 			memcpy(&p, &inst->python_path, sizeof(path));
+
+			if (inst->python_path_mode == PYTHON_PATH_MODE_OVERWRITE) {
+				sys_path = PyList_New(0);
+			} else {
+				sys_path = PyObject_GetAttrString(sys, "path");
+			}
 
 			for (path = strtok(p, ":"); path != NULL; path = strtok(NULL, ":")) {
 #if PY_VERSION_HEX > 0x03000000
@@ -1230,10 +1251,18 @@ static int python_interpreter_init(rlm_python_t *inst, CONF_SECTION *conf)
 #else
 				MEM(py_path = _Py_char2wchar(path, NULL));
 #endif
-				PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
+				if (inst->python_path_mode == PYTHON_PATH_MODE_PREPEND) {
+					PyList_Insert(sys_path, i++, PyUnicode_FromWideChar(py_path, -1));
+				} else {
+					PyList_Append(sys_path, PyUnicode_FromWideChar(py_path, -1));
+				}
 				PyMem_RawFree(py_path);
 #else
-				PyList_Append(sys_path, PyLong_FromString(path));
+				if (inst->python_path_mode == PYTHON_PATH_PREPEND) {
+					PyList_Insert(sys_path, i++, PyLong_FromString(path));
+				} ekse {
+					PyList_Append(sys_path, PyLong_FromString(path));
+				}
 #endif
 			}
 
@@ -1271,6 +1300,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	inst->python_path_mode = fr_str2int(python_path_mode, inst->python_path_mode_str, -1);
+	if (inst->python_path_mode < 0) {
+		cf_log_err_cs(conf, "Invalid 'python_path_mode' value \"%s\", expected 'append', "
+			      "'prepend' or 'overwrite'", inst->python_path_mode_str);
+		return -1;
+	}
 
 	/*
 	 *	Load the python code required for this module instance
