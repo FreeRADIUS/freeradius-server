@@ -110,13 +110,6 @@ typedef struct {
 	void			*sql_escape_arg;		//!< Thread specific argument to be passed to escape function.
 } rlm_sql_thread_t;
 
-typedef struct {
-	void			*conn;				//!< Database specific connection handle.
-	rlm_sql_t const		*inst;				//!< The rlm_sql instance this connection belongs to.
-	TALLOC_CTX		*log_ctx;			//!< Talloc pool used to avoid allocing memory
-								//!< when log strings need to be copied.
-} rlm_sql_handle_t;
-
 typedef enum {
 	SQL_QUERY_SELECT,
 	SQL_QUERY_OTHER
