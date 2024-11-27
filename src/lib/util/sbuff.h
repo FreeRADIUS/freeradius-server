@@ -1804,6 +1804,11 @@ void	fr_sbuff_terminal_debug(fr_sbuff_term_t const *tt);
 
 void 	fr_sbuff_parse_rules_debug(fr_sbuff_parse_rules_t const *p_rules);
 
+/*
+ *	...printf("foo %.*s", fr_sbuff_as_percent_s(&sbuff));
+ */
+#define fr_sbuff_as_percent_s(_sbuff) (int) fr_sbuff_remaining(_sbuff), fr_sbuff_current(_sbuff)
+
 #ifdef __cplusplus
 }
 #endif
