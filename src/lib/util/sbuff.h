@@ -63,8 +63,8 @@ struct fr_sbuff_ptr_s {
 		char const *p_i;				//!< Immutable position pointer.
 		char *p;					//!< Mutable position pointer.
 	};
-	fr_sbuff_marker_t	*next;			//!< Next m in the list.
-	fr_sbuff_t		*parent;		//!< Owner of the marker
+	fr_sbuff_marker_t	*next;					//!< Next m in the list.
+	fr_sbuff_t		*parent;				//!< Owner of the marker
 };
 
 struct fr_sbuff_s {
@@ -88,22 +88,22 @@ struct fr_sbuff_s {
 		char *p;					//!< Mutable position pointer.
 	};
 
-	char const *err;				//!< Where the last error occurred.
+	char const *err;					//!< Where the last error occurred.
 
-	uint8_t			is_const:1;		//!< Can't be modified.
-	uint8_t			adv_parent:1;		//!< If true, advance the parent.
+	uint8_t				is_const:1;		//!< Can't be modified.
+	uint8_t				adv_parent:1;		//!< If true, advance the parent.
+	size_t				shifted;		//!< How many bytes this sbuff has been
+								///< shifted since its creation.
 
-	size_t			shifted;		//!< How many bytes this sbuff has been
-							///< shifted since its creation.
+	fr_sbuff_extend_t		extend;			//!< Function to re-populate or extend
+								///< the buffer.
 
-	fr_sbuff_extend_t	extend;			//!< Function to re-populate or extend
-							///< the buffer.
-	void			*uctx;			//!< Extend uctx data.
+	void				*uctx;			//!< Extend uctx data.
 
-	fr_sbuff_t		*parent;		//!< sbuff this sbuff was copied from.
+	fr_sbuff_t			*parent;		//!< sbuff this sbuff was copied from.
 
-	fr_sbuff_marker_t	*m;			//!< Pointers to update if the underlying
-							///< buffer changes.
+	fr_sbuff_marker_t		*m;			//!< Pointers to update if the underlying
+								///< buffer changes.
 };
 
 /** Talloc sbuff extension structure
