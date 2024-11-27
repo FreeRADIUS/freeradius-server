@@ -438,6 +438,7 @@ static void sql_trunk_request_mux(UNUSED fr_event_list_t *el, trunk_connection_t
 			 */
 			cass_query->future = cass_session_execute(inst->session, statement);
 			cass_query->query_ctx = query_ctx;
+			cass_statement_free(statement);
 
 			/*
 			 *	Insert the tracking structure into the list of outstanding queries.
