@@ -335,25 +335,6 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 }
 
 
-static void mod_radius_signal(module_ctx_t const *mctx, request_t *request, fr_signal_t action)
-{
-	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
-	rlm_radius_io_t	const	*io = (rlm_radius_io_t const *)inst->io_submodule->exported;		/* Public symbol exported by the module */
-
-	/*
-	 *	We received a duplicate packet, but we're not doing
-	 *	synchronous proxying.  Ignore the dup, and rely on the
-	 *	IO submodule to time it's own retransmissions.
-	 */
-	if ((action == FR_SIGNAL_DUP) && !inst->synchronous) return;
-
-	if (!io->signal) return;
-
-	io->signal(MODULE_CTX(inst->io_submodule,
-			      module_thread(inst->io_submodule)->data, mctx->env_data,
-			      mctx->rctx), request, action);
-}
-
 /** Do any RADIUS-layer fixups for proxying.
  *
  */
@@ -396,10 +377,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
 	rlm_rcode_t		rcode;
-	unlang_action_t		ua;
 	fr_client_t		*client;
-
-	void			*rctx = NULL;
 
 	if (!request->packet->code) {
 		REDEBUG("You MUST specify a packet code");
@@ -447,14 +425,8 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	return another code which indicates what happened to
 	 *	the request...
 	 */
-	ua = inst->io->enqueue(&rcode, &rctx, inst->io_submodule->data,
-			       module_thread(inst->io_submodule)->data, request);
-	if (ua != UNLANG_ACTION_YIELD) {
-		fr_assert(rctx == NULL);
-		RETURN_MODULE_RCODE(rcode);
-	}
-
-	return unlang_module_yield(request, inst->io->resume, mod_radius_signal, 0, rctx);
+	return inst->io->enqueue(&rcode, inst->io_submodule->data,
+				 module_thread(inst->io_submodule)->data, request);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)

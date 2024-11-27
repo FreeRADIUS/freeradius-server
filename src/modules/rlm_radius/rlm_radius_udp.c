@@ -2437,8 +2437,17 @@ static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mct
 
 static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action)
 {
-	udp_thread_t		*t = talloc_get_type_abort(mctx->thread, udp_thread_t);
+	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
+
+	udp_thread_t		*t = talloc_get_type_abort(module_thread(inst->io_submodule)->data, udp_thread_t);
 	udp_result_t		*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
+
+	/*
+	 *	We received a duplicate packet, but we're not doing
+	 *	synchronous proxying.  Ignore the dup, and rely on the
+	 *	IO submodule to time it's own retransmissions.
+	 */
+	if ((action == FR_SIGNAL_DUP) && !inst->synchronous) return;
 
 	/*
 	 *	If we don't have a treq associated with the
@@ -2526,7 +2535,7 @@ static int _udp_request_free(udp_request_t *u)
 	return 0;
 }
 
-static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void *instance, void *thread, request_t *request)
+static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void *instance, void *thread, request_t *request)
 {
 	rlm_radius_udp_t		*inst = talloc_get_type_abort(instance, rlm_radius_udp_t);
 	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);
@@ -2603,9 +2612,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void **rctx_out, void 
 
 	talloc_set_destructor(u, _udp_request_free);
 
-	*rctx_out = r;
-
-	return UNLANG_ACTION_YIELD;
+	return unlang_module_yield(request, mod_resume, mod_signal, 0, r);
 }
 
 /** Instantiate thread data for the submodule.
@@ -2767,6 +2774,4 @@ rlm_radius_io_t rlm_radius_udp = {
 		.thread_instantiate 	= mod_thread_instantiate,
 	},
 	.enqueue		= mod_enqueue,
-	.signal			= mod_signal,
-	.resume			= mod_resume,
 };

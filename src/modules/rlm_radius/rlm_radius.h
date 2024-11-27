@@ -75,7 +75,7 @@ struct rlm_radius_s {
 /** Enqueue a request_t to an IO submodule
  *
  */
-typedef unlang_action_t (*rlm_radius_io_enqueue_t)(rlm_rcode_t *p_result, void **rctx, void *instance, void *thread, request_t *request);
+typedef unlang_action_t (*rlm_radius_io_enqueue_t)(rlm_rcode_t *p_result, void *instance, void *thread, request_t *request);
 
 /** Public structure describing an I/O path for an outgoing socket.
  *
@@ -84,6 +84,4 @@ typedef unlang_action_t (*rlm_radius_io_enqueue_t)(rlm_rcode_t *p_result, void *
 struct rlm_radius_io_s {
 	module_t		common;			//!< Common fields to all loadable modules.
 	rlm_radius_io_enqueue_t	enqueue;		//!< Enqueue a request_t with an IO submodule.
-	unlang_module_signal_t	signal;			//!< Send a signal to an IO module.
-	module_method_t	resume;			//!< Resume a request, and get rcode.
 };
