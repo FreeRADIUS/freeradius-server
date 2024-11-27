@@ -179,13 +179,12 @@ extern size_t sql_rcode_table_len;
  * @param[out] out a pre-allocated array of log entries to fill. Need not be NULL terminated.
  * @param[in] outlen Number of log entries available for populating. Do not write to index
  *	out[outlen] or higher.
- * @param[in] handle to retrieve errors from.
- * @param[in] config of the SQL instance.
+ * @param[in] query_ctx to retrieve errors from.
  * @return
  *	0  - If no error messages are available.
  *	>0 - Number of log entries
  */
-typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, fr_sql_query_t *handle);
+typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, fr_sql_query_t *query_ctx);
 
 typedef struct {
 	rlm_sql_t const		*sql;

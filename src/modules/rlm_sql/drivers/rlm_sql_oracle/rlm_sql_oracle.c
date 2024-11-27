@@ -112,7 +112,6 @@ static int sql_snprint_error(char *out, size_t outlen, rlm_sql_oracle_conn_t *co
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
  * @param query_ctx Query context to retrieve error for.
- * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,

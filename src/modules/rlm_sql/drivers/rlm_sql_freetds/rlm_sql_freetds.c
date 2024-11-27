@@ -382,7 +382,6 @@ static sql_rcode_t sql_fields(char const **out[], fr_sql_query_t *query_ctx, UNU
  * @param out Array of sql_log_entrys to fill.
  * @param outlen Length of out array.
  * @param query_ctx Query context to retrieve error for.
- * @param config rlm_sql config.
  * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], NDEBUG_UNUSED size_t outlen,
