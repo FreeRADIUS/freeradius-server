@@ -342,7 +342,7 @@ static int CC_HINT(nonnull(2,3)) sql_xlat_escape(request_t *request, fr_value_bo
 	fr_sbuff_uctx_talloc_t		sbuff_ctx;
 
 	ssize_t				len;
-	void				*arg;
+	void				*arg = NULL;
 	rlm_sql_escape_uctx_t		*ctx = uctx;
 	rlm_sql_t const			*inst = talloc_get_type_abort_const(ctx->sql, rlm_sql_t);
 	fr_value_box_entry_t		entry;
