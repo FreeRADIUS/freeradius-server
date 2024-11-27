@@ -1,0 +1,8 @@
+# Adapted test file from https://github.com/FreeRADIUS/freeradius-server/issues/5462
+# The issue here was caused by a bug in the sbuff extension code
+large_file
+
+# Should return updated, but has a bug...
+if (ok || updated) {
+	test_pass
+}

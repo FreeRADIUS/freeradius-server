@@ -1,0 +1,1278 @@
+# Adapted test file from https://github.com/FreeRADIUS/freeradius-server/issues/5462
+# Configuration for 10.8.0.0
+00:11:22:33:00:01
+	Framed-IP-Address := 10.8.0.0,
+	Reply-Message := host1.example.com
+
+# Configuration for 10.8.0.1
+00:11:22:33:00:02
+	Framed-IP-Address := 10.8.0.1,
+	Reply-Message := host2.example.com
+
+# Configuration for 10.8.0.2
+00:11:22:33:00:03
+	Framed-IP-Address := 10.8.0.2,
+	Reply-Message := host3.example.com
+
+# Configuration for 10.8.0.3
+00:11:22:33:00:04
+	Framed-IP-Address := 10.8.0.3,
+	Reply-Message := host4.example.com
+
+# Configuration for 10.8.0.4
+00:11:22:33:00:05
+	Framed-IP-Address := 10.8.0.4,
+	Reply-Message := host5.example.com
+
+# Configuration for 10.8.0.5
+00:11:22:33:00:06
+	Framed-IP-Address := 10.8.0.5,
+	Reply-Message := host6.example.com
+
+# Configuration for 10.8.0.6
+00:11:22:33:00:07
+	Framed-IP-Address := 10.8.0.6,
+	Reply-Message := host7.example.com
+
+# Configuration for 10.8.0.7
+00:11:22:33:00:08
+	Framed-IP-Address := 10.8.0.7,
+	Reply-Message := host8.example.com
+
+# Configuration for 10.8.0.8
+00:11:22:33:00:09
+	Framed-IP-Address := 10.8.0.8,
+	Reply-Message := host9.example.com
+
+# Configuration for 10.8.0.9
+00:11:22:33:00:0A
+	Framed-IP-Address := 10.8.0.9,
+	Reply-Message := host10.example.com
+
+# Configuration for 10.8.0.10
+00:11:22:33:00:0B
+	Framed-IP-Address := 10.8.0.10,
+	Reply-Message := host11.example.com
+
+# Configuration for 10.8.0.11
+00:11:22:33:00:0C
+	Framed-IP-Address := 10.8.0.11,
+	Reply-Message := host12.example.com
+
+# Configuration for 10.8.0.12
+00:11:22:33:00:0D
+	Framed-IP-Address := 10.8.0.12,
+	Reply-Message := host13.example.com
+
+# Configuration for 10.8.0.13
+00:11:22:33:00:0E
+	Framed-IP-Address := 10.8.0.13,
+	Reply-Message := host14.example.com
+
+# Configuration for 10.8.0.14
+00:11:22:33:00:0F
+	Framed-IP-Address := 10.8.0.14,
+	Reply-Message := host15.example.com
+
+# Configuration for 10.8.0.15
+00:11:22:33:00:10
+	Framed-IP-Address := 10.8.0.15,
+	Reply-Message := host16.example.com
+
+# Configuration for 10.8.0.16
+00:11:22:33:00:11
+	Framed-IP-Address := 10.8.0.16,
+	Reply-Message := host17.example.com
+
+# Configuration for 10.8.0.17
+00:11:22:33:00:12
+	Framed-IP-Address := 10.8.0.17,
+	Reply-Message := host18.example.com
+
+# Configuration for 10.8.0.18
+00:11:22:33:00:13
+	Framed-IP-Address := 10.8.0.18,
+	Reply-Message := host19.example.com
+
+# Configuration for 10.8.0.19
+00:11:22:33:00:14
+	Framed-IP-Address := 10.8.0.19,
+	Reply-Message := host20.example.com
+
+# Configuration for 10.8.0.20
+00:11:22:33:00:15
+	Framed-IP-Address := 10.8.0.20,
+	Reply-Message := host21.example.com
+
+# Configuration for 10.8.0.21
+00:11:22:33:00:16
+	Framed-IP-Address := 10.8.0.21,
+	Reply-Message := host22.example.com
+
+# Configuration for 10.8.0.22
+00:11:22:33:00:17
+	Framed-IP-Address := 10.8.0.22,
+	Reply-Message := host23.example.com
+
+# Configuration for 10.8.0.23
+00:11:22:33:00:18
+	Framed-IP-Address := 10.8.0.23,
+	Reply-Message := host24.example.com
+
+# Configuration for 10.8.0.24
+00:11:22:33:00:19
+	Framed-IP-Address := 10.8.0.24,
+	Reply-Message := host25.example.com
+
+# Configuration for 10.8.0.25
+00:11:22:33:00:1A
+	Framed-IP-Address := 10.8.0.25,
+	Reply-Message := host26.example.com
+
+# Configuration for 10.8.0.26
+00:11:22:33:00:1B
+	Framed-IP-Address := 10.8.0.26,
+	Reply-Message := host27.example.com
+
+# Configuration for 10.8.0.27
+00:11:22:33:00:1C
+	Framed-IP-Address := 10.8.0.27,
+	Reply-Message := host28.example.com
+
+# Configuration for 10.8.0.28
+00:11:22:33:00:1D
+	Framed-IP-Address := 10.8.0.28,
+	Reply-Message := host29.example.com
+
+# Configuration for 10.8.0.29
+00:11:22:33:00:1E
+	Framed-IP-Address := 10.8.0.29,
+	Reply-Message := host30.example.com
+
+# Configuration for 10.8.0.30
+00:11:22:33:00:1F
+	Framed-IP-Address := 10.8.0.30,
+	Reply-Message := host31.example.com
+
+# Configuration for 10.8.0.31
+00:11:22:33:00:20
+	Framed-IP-Address := 10.8.0.31,
+	Reply-Message := host32.example.com
+
+# Configuration for 10.8.0.32
+00:11:22:33:00:21
+	Framed-IP-Address := 10.8.0.32,
+	Reply-Message := host33.example.com
+
+# Configuration for 10.8.0.33
+00:11:22:33:00:22
+	Framed-IP-Address := 10.8.0.33,
+	Reply-Message := host34.example.com
+
+# Configuration for 10.8.0.34
+00:11:22:33:00:23
+	Framed-IP-Address := 10.8.0.34,
+	Reply-Message := host35.example.com
+
+# Configuration for 10.8.0.35
+00:11:22:33:00:24
+	Framed-IP-Address := 10.8.0.35,
+	Reply-Message := host36.example.com
+
+# Configuration for 10.8.0.36
+00:11:22:33:00:25
+	Framed-IP-Address := 10.8.0.36,
+	Reply-Message := host37.example.com
+
+# Configuration for 10.8.0.37
+00:11:22:33:00:26
+	Framed-IP-Address := 10.8.0.37,
+	Reply-Message := host38.example.com
+
+# Configuration for 10.8.0.38
+00:11:22:33:00:27
+	Framed-IP-Address := 10.8.0.38,
+	Reply-Message := host39.example.com
+
+# Configuration for 10.8.0.39
+00:11:22:33:00:28
+	Framed-IP-Address := 10.8.0.39,
+	Reply-Message := host40.example.com
+
+# Configuration for 10.8.0.40
+00:11:22:33:00:29
+	Framed-IP-Address := 10.8.0.40,
+	Reply-Message := host41.example.com
+
+# Configuration for 10.8.0.41
+00:11:22:33:00:2A
+	Framed-IP-Address := 10.8.0.41,
+	Reply-Message := host42.example.com
+
+# Configuration for 10.8.0.42
+00:11:22:33:00:2B
+	Framed-IP-Address := 10.8.0.42,
+	Reply-Message := host43.example.com
+
+# Configuration for 10.8.0.43
+00:11:22:33:00:2C
+	Framed-IP-Address := 10.8.0.43,
+	Reply-Message := host44.example.com
+
+# Configuration for 10.8.0.44
+00:11:22:33:00:2D
+	Framed-IP-Address := 10.8.0.44,
+	Reply-Message := host45.example.com
+
+# Configuration for 10.8.0.45
+00:11:22:33:00:2E
+	Framed-IP-Address := 10.8.0.45,
+	Reply-Message := host46.example.com
+
+# Configuration for 10.8.0.46
+00:11:22:33:00:2F
+	Framed-IP-Address := 10.8.0.46,
+	Reply-Message := host47.example.com
+
+# Configuration for 10.8.0.47
+00:11:22:33:00:30
+	Framed-IP-Address := 10.8.0.47,
+	Reply-Message := host48.example.com
+
+# Configuration for 10.8.0.48
+00:11:22:33:00:31
+	Framed-IP-Address := 10.8.0.48,
+	Reply-Message := host49.example.com
+
+# Configuration for 10.8.0.49
+00:11:22:33:00:32
+	Framed-IP-Address := 10.8.0.49,
+	Reply-Message := host50.example.com
+
+# Configuration for 10.8.0.50
+00:11:22:33:00:33
+	Framed-IP-Address := 10.8.0.50,
+	Reply-Message := host51.example.com
+
+# Configuration for 10.8.0.51
+00:11:22:33:00:34
+	Framed-IP-Address := 10.8.0.51,
+	Reply-Message := host52.example.com
+
+# Configuration for 10.8.0.52
+00:11:22:33:00:35
+	Framed-IP-Address := 10.8.0.52,
+	Reply-Message := host53.example.com
+
+# Configuration for 10.8.0.53
+00:11:22:33:00:36
+	Framed-IP-Address := 10.8.0.53,
+	Reply-Message := host54.example.com
+
+# Configuration for 10.8.0.54
+00:11:22:33:00:37
+	Framed-IP-Address := 10.8.0.54,
+	Reply-Message := host55.example.com
+
+# Configuration for 10.8.0.55
+00:11:22:33:00:38
+	Framed-IP-Address := 10.8.0.55,
+	Reply-Message := host56.example.com
+
+# Configuration for 10.8.0.56
+00:11:22:33:00:39
+	Framed-IP-Address := 10.8.0.56,
+	Reply-Message := host57.example.com
+
+# Configuration for 10.8.0.57
+00:11:22:33:00:3A
+	Framed-IP-Address := 10.8.0.57,
+	Reply-Message := host58.example.com
+
+# Configuration for 10.8.0.58
+00:11:22:33:00:3B
+	Framed-IP-Address := 10.8.0.58,
+	Reply-Message := host59.example.com
+
+# Configuration for 10.8.0.59
+00:11:22:33:00:3C
+	Framed-IP-Address := 10.8.0.59,
+	Reply-Message := host60.example.com
+
+# Configuration for 10.8.0.60
+00:11:22:33:00:3D
+	Framed-IP-Address := 10.8.0.60,
+	Reply-Message := host61.example.com
+
+# Configuration for 10.8.0.61
+00:11:22:33:00:3E
+	Framed-IP-Address := 10.8.0.61,
+	Reply-Message := host62.example.com
+
+# Configuration for 10.8.0.62
+00:11:22:33:00:3F
+	Framed-IP-Address := 10.8.0.62,
+	Reply-Message := host63.example.com
+
+# Configuration for 10.8.0.63
+00:11:22:33:00:40
+	Framed-IP-Address := 10.8.0.63,
+	Reply-Message := host64.example.com
+
+# Configuration for 10.8.0.64
+00:11:22:33:00:41
+	Framed-IP-Address := 10.8.0.64,
+	Reply-Message := host65.example.com
+
+# Configuration for 10.8.0.65
+00:11:22:33:00:42
+	Framed-IP-Address := 10.8.0.65,
+	Reply-Message := host66.example.com
+
+# Configuration for 10.8.0.66
+00:11:22:33:00:43
+	Framed-IP-Address := 10.8.0.66,
+	Reply-Message := host67.example.com
+
+# Configuration for 10.8.0.67
+00:11:22:33:00:44
+	Framed-IP-Address := 10.8.0.67,
+	Reply-Message := host68.example.com
+
+# Configuration for 10.8.0.68
+00:11:22:33:00:45
+	Framed-IP-Address := 10.8.0.68,
+	Reply-Message := host69.example.com
+
+# Configuration for 10.8.0.69
+00:11:22:33:00:46
+	Framed-IP-Address := 10.8.0.69,
+	Reply-Message := host70.example.com
+
+# Configuration for 10.8.0.70
+00:11:22:33:00:47
+	Framed-IP-Address := 10.8.0.70,
+	Reply-Message := host71.example.com
+# Configuration for 10.8.0.71
+00:11:22:33:00:48
+	Framed-IP-Address := 10.8.0.71,
+	Reply-Message := host72.example.com
+# Configura
+00:11:22:33:00:49
+	Framed-IP-Address := 10.8.0.72,
+	Reply-Message := host73.example.com
+
+# Configuration for 10.8.0.73
+00:11:22:33:00:4A
+	Framed-IP-Address := 10.8.0.73,
+	Reply-Message := host74.example.com
+
+# Configuration for 10.8.0.74
+00:11:22:33:00:4B
+	Framed-IP-Address := 10.8.0.74,
+	Reply-Message := host75.example.com
+
+# Configuration for 10.8.0.75
+00:11:22:33:00:4C
+	Framed-IP-Address := 10.8.0.75,
+	Reply-Message := host76.example.com
+
+# Configuration for 10.8.0.76
+00:11:22:33:00:4D
+	Framed-IP-Address := 10.8.0.76,
+	Reply-Message := host77.example.com
+
+# Configuration for 10.8.0.77
+00:11:22:33:00:4E
+	Framed-IP-Address := 10.8.0.77,
+	Reply-Message := host78.example.com
+
+# Configuration for 10.8.0.78
+00:11:22:33:00:4F
+	Framed-IP-Address := 10.8.0.78,
+	Reply-Message := host79.example.com
+
+# Configuration for 10.8.0.79
+00:11:22:33:00:50
+	Framed-IP-Address := 10.8.0.79,
+	Reply-Message := host80.example.com
+
+# Configuration for 10.8.0.80
+00:11:22:33:00:51
+	Framed-IP-Address := 10.8.0.80,
+	Reply-Message := host81.example.com
+
+# Configuration for 10.8.0.81
+00:11:22:33:00:52
+	Framed-IP-Address := 10.8.0.81,
+	Reply-Message := host82.example.com
+
+# Configuration for 10.8.0.82
+00:11:22:33:00:53
+	Framed-IP-Address := 10.8.0.82,
+	Reply-Message := host83.example.com
+
+# Configuration for 10.8.0.83
+00:11:22:33:00:54
+	Framed-IP-Address := 10.8.0.83,
+	Reply-Message := host84.example.com
+
+# Configuration for 10.8.0.84
+00:11:22:33:00:55
+	Framed-IP-Address := 10.8.0.84,
+	Reply-Message := host85.example.com
+
+# Configuration for 10.8.0.85
+00:11:22:33:00:56
+	Framed-IP-Address := 10.8.0.85,
+	Reply-Message := host86.example.com
+
+# Configuration for 10.8.0.86
+00:11:22:33:00:57
+	Framed-IP-Address := 10.8.0.86,
+	Reply-Message := host87.example.com
+
+# Configuration for 10.8.0.87
+00:11:22:33:00:58
+	Framed-IP-Address := 10.8.0.87,
+	Reply-Message := host88.example.com
+
+# Configuration for 10.8.0.88
+00:11:22:33:00:59
+	Framed-IP-Address := 10.8.0.88,
+	Reply-Message := host89.example.com
+
+# Configuration for 10.8.0.89
+00:11:22:33:00:5A
+	Framed-IP-Address := 10.8.0.89,
+	Reply-Message := host90.example.com
+
+# Configuration for 10.8.0.90
+00:11:22:33:00:5B
+	Framed-IP-Address := 10.8.0.90,
+	Reply-Message := host91.example.com
+
+# Configuration for 10.8.0.91
+00:11:22:33:00:5C
+	Framed-IP-Address := 10.8.0.91,
+	Reply-Message := host92.example.com
+
+# Configuration for 10.8.0.92
+00:11:22:33:00:5D
+	Framed-IP-Address := 10.8.0.92,
+	Reply-Message := host93.example.com
+
+# Configuration for 10.8.0.93
+00:11:22:33:00:5E
+	Framed-IP-Address := 10.8.0.93,
+	Reply-Message := host94.example.com
+
+# Configuration for 10.8.0.94
+00:11:22:33:00:5F
+	Framed-IP-Address := 10.8.0.94,
+	Reply-Message := host95.example.com
+
+# Configuration for 10.8.0.95
+00:11:22:33:00:60
+	Framed-IP-Address := 10.8.0.95,
+	Reply-Message := host96.example.com
+
+# Configuration for 10.8.0.96
+00:11:22:33:00:61
+	Framed-IP-Address := 10.8.0.96,
+	Reply-Message := host97.example.com
+
+# Configuration for 10.8.0.97
+00:11:22:33:00:62
+	Framed-IP-Address := 10.8.0.97,
+	Reply-Message := host98.example.com
+
+# Configuration for 10.8.0.98
+00:11:22:33:00:63
+	Framed-IP-Address := 10.8.0.98,
+	Reply-Message := host99.example.com
+
+# Configuration for 10.8.0.99
+00:11:22:33:00:64
+	Framed-IP-Address := 10.8.0.99,
+	Reply-Message := host100.example.com
+
+# Configuration for 10.8.0.100
+00:11:22:33:00:65
+	Framed-IP-Address := 10.8.0.100,
+	Reply-Message := host101.example.com
+
+# Configuration for 10.8.0.101
+00:11:22:33:00:66
+	Framed-IP-Address := 10.8.0.101,
+	Reply-Message := host102.example.com
+
+# Configuration for 10.8.0.102
+00:11:22:33:00:67
+	Framed-IP-Address := 10.8.0.102,
+	Reply-Message := host103.example.com
+
+# Configuration for 10.8.0.103
+00:11:22:33:00:68
+	Framed-IP-Address := 10.8.0.103,
+	Reply-Message := host104.example.com
+
+# Configuration for 10.8.0.104
+00:11:22:33:00:69
+	Framed-IP-Address := 10.8.0.104,
+	Reply-Message := host105.example.com
+
+# Configuration for 10.8.0.105
+00:11:22:33:00:6A
+	Framed-IP-Address := 10.8.0.105,
+	Reply-Message := host106.example.com
+
+# Configuration for 10.8.0.106
+00:11:22:33:00:6B
+	Framed-IP-Address := 10.8.0.106,
+	Reply-Message := host107.example.com
+
+# Configuration for 10.8.0.107
+00:11:22:33:00:6C
+	Framed-IP-Address := 10.8.0.107,
+	Reply-Message := host108.example.com
+
+# Configuration for 10.8.0.108
+00:11:22:33:00:6D
+	Framed-IP-Address := 10.8.0.108,
+	Reply-Message := host109.example.com
+
+# Configuration for 10.8.0.109
+00:11:22:33:00:6E
+	Framed-IP-Address := 10.8.0.109,
+	Reply-Message := host110.example.com
+
+# Configuration for 10.8.0.110
+00:11:22:33:00:6F
+	Framed-IP-Address := 10.8.0.110,
+	Reply-Message := host111.example.com
+
+# Configuration for 10.8.0.111
+00:11:22:33:00:70
+	Framed-IP-Address := 10.8.0.111,
+	Reply-Message := host112.example.com
+
+# Configuration for 10.8.0.112
+00:11:22:33:00:71
+	Framed-IP-Address := 10.8.0.112,
+	Reply-Message := host113.example.com
+
+# Configuration for 10.8.0.113
+00:11:22:33:00:72
+	Framed-IP-Address := 10.8.0.113,
+	Reply-Message := host114.example.com
+
+# Configuration for 10.8.0.114
+00:11:22:33:00:73
+	Framed-IP-Address := 10.8.0.114,
+	Reply-Message := host115.example.com
+
+# Configuration for 10.8.0.115
+00:11:22:33:00:74
+	Framed-IP-Address := 10.8.0.115,
+	Reply-Message := host116.example.com
+
+# Configuration for 10.8.0.116
+00:11:22:33:00:75
+	Framed-IP-Address := 10.8.0.116,
+	Reply-Message := host117.example.com
+
+# Configuration for 10.8.0.117
+00:11:22:33:00:76
+	Framed-IP-Address := 10.8.0.117,
+	Reply-Message := host118.example.com
+
+# Configuration for 10.8.0.118
+00:11:22:33:00:77
+	Framed-IP-Address := 10.8.0.118,
+	Reply-Message := host119.example.com
+
+# Configuration for 10.8.0.119
+00:11:22:33:00:78
+	Framed-IP-Address := 10.8.0.119,
+	Reply-Message := host120.example.com
+
+# Configuration for 10.8.0.120
+00:11:22:33:00:79
+	Framed-IP-Address := 10.8.0.120,
+	Reply-Message := host121.example.com
+
+# Configuration for 10.8.0.121
+00:11:22:33:00:7A
+	Framed-IP-Address := 10.8.0.121,
+	Reply-Message := host122.example.com
+
+# Configuration for 10.8.0.122
+00:11:22:33:00:7B
+	Framed-IP-Address := 10.8.0.122,
+	Reply-Message := host123.example.com
+
+# Configuration for 10.8.0.123
+00:11:22:33:00:7C
+	Framed-IP-Address := 10.8.0.123,
+	Reply-Message := host124.example.com
+
+# Configuration for 10.8.0.124
+00:11:22:33:00:7D
+	Framed-IP-Address := 10.8.0.124,
+	Reply-Message := host125.example.com
+
+# Configuration for 10.8.0.125
+00:11:22:33:00:7E
+	Framed-IP-Address := 10.8.0.125,
+	Reply-Message := host126.example.com
+
+# Configuration for 10.8.0.126
+00:11:22:33:00:7F
+	Framed-IP-Address := 10.8.0.126,
+	Reply-Message := host127.example.com
+
+# Configuration for 10.8.0.127
+00:11:22:33:00:80
+	Framed-IP-Address := 10.8.0.127,
+	Reply-Message := host128.example.com
+
+# Configuration for 10.8.0.128
+00:11:22:33:00:81
+	Framed-IP-Address := 10.8.0.128,
+	Reply-Message := host129.example.com
+
+# Configuration for 10.8.0.129
+00:11:22:33:00:82
+	Framed-IP-Address := 10.8.0.129,
+	Reply-Message := host130.example.com
+
+# Configuration for 10.8.0.130
+00:11:22:33:00:83
+	Framed-IP-Address := 10.8.0.130,
+	Reply-Message := host131.example.com
+
+# Configuration for 10.8.0.131
+00:11:22:33:00:84
+	Framed-IP-Address := 10.8.0.131,
+	Reply-Message := host132.example.com
+
+# Configuration for 10.8.0.132
+00:11:22:33:00:85
+	Framed-IP-Address := 10.8.0.132,
+	Reply-Message := host133.example.com
+
+# Configuration for 10.8.0.133
+00:11:22:33:00:86
+	Framed-IP-Address := 10.8.0.133,
+	Reply-Message := host134.example.com
+
+# Configuration for 10.8.0.134
+00:11:22:33:00:87
+	Framed-IP-Address := 10.8.0.134,
+	Reply-Message := host135.example.com
+
+# Configuration for 10.8.0.135
+00:11:22:33:00:88
+	Framed-IP-Address := 10.8.0.135,
+	Reply-Message := host136.example.com
+
+# Configuration for 10.8.0.136
+00:11:22:33:00:89
+	Framed-IP-Address := 10.8.0.136,
+	Reply-Message := host137.example.com
+
+# Configuration for 10.8.0.137
+00:11:22:33:00:8A
+	Framed-IP-Address := 10.8.0.137,
+	Reply-Message := host138.example.com
+
+# Configuration for 10.8.0.138
+00:11:22:33:00:8B
+	Framed-IP-Address := 10.8.0.138,
+	Reply-Message := host139.example.com
+
+# Configuration for 10.8.0.139
+00:11:22:33:00:8C
+	Framed-IP-Address := 10.8.0.139,
+	Reply-Message := host140.example.com
+
+# Configuration for 10.8.0.140
+00:11:22:33:00:8D
+	Framed-IP-Address := 10.8.0.140,
+	Reply-Message := host141.example.com
+
+# Configuration for 10.8.0.141
+00:11:22:33:00:8E
+	Framed-IP-Address := 10.8.0.141,
+	Reply-Message := host142.example.com
+
+# Configuration for 10.8.0.142
+00:11:22:33:00:8F
+	Framed-IP-Address := 10.8.0.142,
+	Reply-Message := host143.example.com
+
+# Configuration for 10.8.0.143
+00:11:22:33:00:90
+	Framed-IP-Address := 10.8.0.143,
+	Reply-Message := host144.example.com
+
+# Configuration for 10.8.0.144
+00:11:22:33:00:91
+	Framed-IP-Address := 10.8.0.144,
+	Reply-Message := host145.example.com
+
+# Configuration for 10.8.0.145
+00:11:22:33:00:92
+	Framed-IP-Address := 10.8.0.145,
+	Reply-Message := host146.example.com
+
+# Configuration for 10.8.0.146
+00:11:22:33:00:93
+	Framed-IP-Address := 10.8.0.146,
+	Reply-Message := host147.example.com
+
+# Configuration for 10.8.0.147
+00:11:22:33:00:94
+	Framed-IP-Address := 10.8.0.147,
+	Reply-Message := host148.example.com
+
+# Configuration for 10.8.0.148
+00:11:22:33:00:95
+	Framed-IP-Address := 10.8.0.148,
+	Reply-Message := host149.example.com
+
+# Configuration for 10.8.0.149
+00:11:22:33:00:96
+	Framed-IP-Address := 10.8.0.149,
+	Reply-Message := host150.example.com
+
+# Configuration for 10.8.0.150
+00:11:22:33:00:97
+	Framed-IP-Address := 10.8.0.150,
+	Reply-Message := host151.example.com
+
+# Configuration for 10.8.0.151
+00:11:22:33:00:98
+	Framed-IP-Address := 10.8.0.151,
+	Reply-Message := host152.example.com
+
+# Configuration for 10.8.0.152
+00:11:22:33:00:99
+	Framed-IP-Address := 10.8.0.152,
+	Reply-Message := host153.example.com
+
+# Configuration for 10.8.0.153
+00:11:22:33:00:9A
+	Framed-IP-Address := 10.8.0.153,
+	Reply-Message := host154.example.com
+
+# Configuration for 10.8.0.154
+00:11:22:33:00:9B
+	Framed-IP-Address := 10.8.0.154,
+	Reply-Message := host155.example.com
+
+# Configuration for 10.8.0.155
+00:11:22:33:00:9C
+	Framed-IP-Address := 10.8.0.155,
+	Reply-Message := host156.example.com
+
+# Configuration for 10.8.0.156
+00:11:22:33:00:9D
+	Framed-IP-Address := 10.8.0.156,
+	Reply-Message := host157.example.com
+
+# Configuration for 10.8.0.157
+00:11:22:33:00:9E
+	Framed-IP-Address := 10.8.0.157,
+	Reply-Message := host158.example.com
+
+# Configuration for 10.8.0.158
+00:11:22:33:00:9F
+	Framed-IP-Address := 10.8.0.158,
+	Reply-Message := host159.example.com
+
+# Configuration for 10.8.0.159
+00:11:22:33:00:A0
+	Framed-IP-Address := 10.8.0.159,
+	Reply-Message := host160.example.com
+
+# Configuration for 10.8.0.160
+00:11:22:33:00:A1
+	Framed-IP-Address := 10.8.0.160,
+	Reply-Message := host161.example.com
+
+# Configuration for 10.8.0.161
+00:11:22:33:00:A2
+	Framed-IP-Address := 10.8.0.161,
+	Reply-Message := host162.example.com
+
+# Configuration for 10.8.0.162
+00:11:22:33:00:A3
+	Framed-IP-Address := 10.8.0.162,
+	Reply-Message := host163.example.com
+
+# Configuration for 10.8.0.163
+00:11:22:33:00:A4
+	Framed-IP-Address := 10.8.0.163,
+	Reply-Message := host164.example.com
+
+# Configuration for 10.8.0.164
+00:11:22:33:00:A5
+	Framed-IP-Address := 10.8.0.164,
+	Reply-Message := host165.example.com
+
+# Configuration for 10.8.0.165
+00:11:22:33:00:A6
+	Framed-IP-Address := 10.8.0.165,
+	Reply-Message := host166.example.com
+
+# Configuration for 10.8.0.166
+00:11:22:33:00:A7
+	Framed-IP-Address := 10.8.0.166,
+	Reply-Message := host167.example.com
+
+# Configuration for 10.8.0.167
+00:11:22:33:00:A8
+	Framed-IP-Address := 10.8.0.167,
+	Reply-Message := host168.example.com
+
+# Configuration for 10.8.0.168
+00:11:22:33:00:A9
+	Framed-IP-Address := 10.8.0.168,
+	Reply-Message := host169.example.com
+
+# Configuration for 10.8.0.169
+00:11:22:33:00:AA
+	Framed-IP-Address := 10.8.0.169,
+	Reply-Message := host170.example.com
+
+# Configuration for 10.8.0.170
+00:11:22:33:00:AB
+	Framed-IP-Address := 10.8.0.170,
+	Reply-Message := host171.example.com
+
+# Configuration for 10.8.0.171
+00:11:22:33:00:AC
+	Framed-IP-Address := 10.8.0.171,
+	Reply-Message := host172.example.com
+
+# Configuration for 10.8.0.172
+00:11:22:33:00:AD
+	Framed-IP-Address := 10.8.0.172,
+	Reply-Message := host173.example.com
+
+# Configuration for 10.8.0.173
+00:11:22:33:00:AE
+	Framed-IP-Address := 10.8.0.173,
+	Reply-Message := host174.example.com
+
+# Configuration for 10.8.0.174
+00:11:22:33:00:AF
+	Framed-IP-Address := 10.8.0.174,
+	Reply-Message := host175.example.com
+
+# Configuration for 10.8.0.175
+00:11:22:33:00:B0
+	Framed-IP-Address := 10.8.0.175,
+	Reply-Message := host176.example.com
+
+# Configuration for 10.8.0.176
+00:11:22:33:00:B1
+	Framed-IP-Address := 10.8.0.176,
+	Reply-Message := host177.example.com
+
+# Configuration for 10.8.0.177
+00:11:22:33:00:B2
+	Framed-IP-Address := 10.8.0.177,
+	Reply-Message := host178.example.com
+
+# Configuration for 10.8.0.178
+00:11:22:33:00:B3
+	Framed-IP-Address := 10.8.0.178,
+	Reply-Message := host179.example.com
+
+# Configuration for 10.8.0.179
+00:11:22:33:00:B4
+	Framed-IP-Address := 10.8.0.179,
+	Reply-Message := host180.example.com
+
+# Configuration for 10.8.0.180
+00:11:22:33:00:B5
+	Framed-IP-Address := 10.8.0.180,
+	Reply-Message := host181.example.com
+
+# Configuration for 10.8.0.181
+00:11:22:33:00:B6
+	Framed-IP-Address := 10.8.0.181,
+	Reply-Message := host182.example.com
+
+# Configuration for 10.8.0.182
+00:11:22:33:00:B7
+	Framed-IP-Address := 10.8.0.182,
+	Reply-Message := host183.example.com
+
+# Configuration for 10.8.0.183
+00:11:22:33:00:B8
+	Framed-IP-Address := 10.8.0.183,
+	Reply-Message := host184.example.com
+
+# Configuration for 10.8.0.184
+00:11:22:33:00:B9
+	Framed-IP-Address := 10.8.0.184,
+	Reply-Message := host185.example.com
+
+# Configuration for 10.8.0.185
+00:11:22:33:00:BA
+	Framed-IP-Address := 10.8.0.185,
+	Reply-Message := host186.example.com
+
+# Configuration for 10.8.0.186
+00:11:22:33:00:BB
+	Framed-IP-Address := 10.8.0.186,
+	Reply-Message := host187.example.com
+
+# Configuration for 10.8.0.187
+00:11:22:33:00:BC
+	Framed-IP-Address := 10.8.0.187,
+	Reply-Message := host188.example.com
+
+# Configuration for 10.8.0.188
+00:11:22:33:00:BD
+	Framed-IP-Address := 10.8.0.188,
+	Reply-Message := host189.example.com
+
+# Configuration for 10.8.0.189
+00:11:22:33:00:BE
+	Framed-IP-Address := 10.8.0.189,
+	Reply-Message := host190.example.com
+
+# Configuration for 10.8.0.190
+00:11:22:33:00:BF
+	Framed-IP-Address := 10.8.0.190,
+	Reply-Message := host191.example.com
+
+# Configuration for 10.8.0.191
+00:11:22:33:00:C0
+	Framed-IP-Address := 10.8.0.191,
+	Reply-Message := host192.example.com
+
+# Configuration for 10.8.0.192
+00:11:22:33:00:C1
+	Framed-IP-Address := 10.8.0.192,
+	Reply-Message := host193.example.com
+
+# Configuration for 10.8.0.193
+00:11:22:33:00:C2
+	Framed-IP-Address := 10.8.0.193,
+	Reply-Message := host194.example.com
+
+# Configuration for 10.8.0.194
+00:11:22:33:00:C3
+	Framed-IP-Address := 10.8.0.194,
+	Reply-Message := host195.example.com
+
+# Configuration for 10.8.0.195
+00:11:22:33:00:C4
+	Framed-IP-Address := 10.8.0.195,
+	Reply-Message := host196.example.com
+
+# Configuration for 10.8.0.196
+00:11:22:33:00:C5
+	Framed-IP-Address := 10.8.0.196,
+	Reply-Message := host197.example.com
+
+# Configuration for 10.8.0.197
+00:11:22:33:00:C6
+	Framed-IP-Address := 10.8.0.197,
+	Reply-Message := host198.example.com
+
+# Configuration for 10.8.0.198
+00:11:22:33:00:C7
+	Framed-IP-Address := 10.8.0.198,
+	Reply-Message := host199.example.com
+
+# Configuration for 10.8.0.199
+00:11:22:33:00:C8
+	Framed-IP-Address := 10.8.0.199,
+	Reply-Message := host200.example.com
+
+# Configuration for 10.8.0.200
+00:11:22:33:00:C9
+	Framed-IP-Address := 10.8.0.200,
+	Reply-Message := host201.example.com
+
+# Configuration for 10.8.0.201
+00:11:22:33:00:CA
+	Framed-IP-Address := 10.8.0.201,
+	Reply-Message := host202.example.com
+
+# Configuration for 10.8.0.202
+00:11:22:33:00:CB
+	Framed-IP-Address := 10.8.0.202,
+	Reply-Message := host203.example.com
+
+# Configuration for 10.8.0.203
+00:11:22:33:00:CC
+	Framed-IP-Address := 10.8.0.203,
+	Reply-Message := host204.example.com
+
+# Configuration for 10.8.0.204
+00:11:22:33:00:CD
+	Framed-IP-Address := 10.8.0.204,
+	Reply-Message := host205.example.com
+
+# Configuration for 10.8.0.205
+00:11:22:33:00:CE
+	Framed-IP-Address := 10.8.0.205,
+	Reply-Message := host206.example.com
+
+# Configuration for 10.8.0.206
+00:11:22:33:00:CF
+	Framed-IP-Address := 10.8.0.206,
+	Reply-Message := host207.example.com
+
+# Configuration for 10.8.0.207
+00:11:22:33:00:D0
+	Framed-IP-Address := 10.8.0.207,
+	Reply-Message := host208.example.com
+
+# Configuration for 10.8.0.208
+00:11:22:33:00:D1
+	Framed-IP-Address := 10.8.0.208,
+	Reply-Message := host209.example.com
+
+# Configuration for 10.8.0.209
+00:11:22:33:00:D2
+	Framed-IP-Address := 10.8.0.209,
+	Reply-Message := host210.example.com
+
+# Configuration for 10.8.0.210
+00:11:22:33:00:D3
+	Framed-IP-Address := 10.8.0.210,
+	Reply-Message := host211.example.com
+
+# Configuration for 10.8.0.211
+00:11:22:33:00:D4
+	Framed-IP-Address := 10.8.0.211,
+	Reply-Message := host212.example.com
+
+# Configuration for 10.8.0.212
+00:11:22:33:00:D5
+	Framed-IP-Address := 10.8.0.212,
+	Reply-Message := host213.example.com
+
+# Configuration for 10.8.0.213
+00:11:22:33:00:D6
+	Framed-IP-Address := 10.8.0.213,
+	Reply-Message := host214.example.com
+
+# Configuration for 10.8.0.214
+00:11:22:33:00:D7
+	Framed-IP-Address := 10.8.0.214,
+	Reply-Message := host215.example.com
+
+# Configuration for 10.8.0.215
+00:11:22:33:00:D8
+	Framed-IP-Address := 10.8.0.215,
+	Reply-Message := host216.example.com
+
+# Configuration for 10.8.0.216
+00:11:22:33:00:D9
+	Framed-IP-Address := 10.8.0.216,
+	Reply-Message := host217.example.com
+
+# Configuration for 10.8.0.217
+00:11:22:33:00:DA
+	Framed-IP-Address := 10.8.0.217,
+	Reply-Message := host218.example.com
+
+# Configuration for 10.8.0.218
+00:11:22:33:00:DB
+	Framed-IP-Address := 10.8.0.218,
+	Reply-Message := host219.example.com
+
+# Configuration for 10.8.0.219
+00:11:22:33:00:DC
+	Framed-IP-Address := 10.8.0.219,
+	Reply-Message := host220.example.com
+
+# Configuration for 10.8.0.220
+00:11:22:33:00:DD
+	Framed-IP-Address := 10.8.0.220,
+	Reply-Message := host221.example.com
+
+# Configuration for 10.8.0.221
+00:11:22:33:00:DE
+	Framed-IP-Address := 10.8.0.221,
+	Reply-Message := host222.example.com
+
+# Configuration for 10.8.0.222
+00:11:22:33:00:DF
+	Framed-IP-Address := 10.8.0.222,
+	Reply-Message := host223.example.com
+
+# Configuration for 10.8.0.223
+00:11:22:33:00:E0
+	Framed-IP-Address := 10.8.0.223,
+	Reply-Message := host224.example.com
+
+# Configuration for 10.8.0.224
+00:11:22:33:00:E1
+	Framed-IP-Address := 10.8.0.224,
+	Reply-Message := host225.example.com
+
+# Configuration for 10.8.0.225
+00:11:22:33:00:E2
+	Framed-IP-Address := 10.8.0.225,
+	Reply-Message := host226.example.com
+
+# Configuration for 10.8.0.226
+00:11:22:33:00:E3
+	Framed-IP-Address := 10.8.0.226,
+	Reply-Message := host227.example.com
+
+# Configuration for 10.8.0.227
+00:11:22:33:00:E4
+	Framed-IP-Address := 10.8.0.227,
+	Reply-Message := host228.example.com
+
+# Configuration for 10.8.0.228
+00:11:22:33:00:E5
+	Framed-IP-Address := 10.8.0.228,
+	Reply-Message := host229.example.com
+
+# Configuration for 10.8.0.229
+00:11:22:33:00:E6
+	Framed-IP-Address := 10.8.0.229,
+	Reply-Message := host230.example.com
+
+# Configuration for 10.8.0.230
+00:11:22:33:00:E7
+	Framed-IP-Address := 10.8.0.230,
+	Reply-Message := host231.example.com
+
+# Configuration for 10.8.0.231
+00:11:22:33:00:E8
+	Framed-IP-Address := 10.8.0.231,
+	Reply-Message := host232.example.com
+
+# Configuration for 10.8.0.232
+00:11:22:33:00:E9
+	Framed-IP-Address := 10.8.0.232,
+	Reply-Message := host233.example.com
+
+# Configuration for 10.8.0.233
+00:11:22:33:00:EA
+	Framed-IP-Address := 10.8.0.233,
+	Reply-Message := host234.example.com
+
+# Configuration for 10.8.0.234
+00:11:22:33:00:EB
+	Framed-IP-Address := 10.8.0.234,
+	Reply-Message := host235.example.com
+
+# Configuration for 10.8.0.235
+00:11:22:33:00:EC
+	Framed-IP-Address := 10.8.0.235,
+	Reply-Message := host236.example.com
+
+# Configuration for 10.8.0.236
+00:11:22:33:00:ED
+	Framed-IP-Address := 10.8.0.236,
+	Reply-Message := host237.example.com
+
+# Configuration for 10.8.0.237
+00:11:22:33:00:EE
+	Framed-IP-Address := 10.8.0.237,
+	Reply-Message := host238.example.com
+
+# Configuration for 10.8.0.238
+00:11:22:33:00:EF
+	Framed-IP-Address := 10.8.0.238,
+	Reply-Message := host239.example.com
+
+# Configuration for 10.8.0.239
+00:11:22:33:00:F0
+	Framed-IP-Address := 10.8.0.239,
+	Reply-Message := host240.example.com
+
+# Configuration for 10.8.0.240
+00:11:22:33:00:F1
+	Framed-IP-Address := 10.8.0.240,
+	Reply-Message := host241.example.com
+
+# Configuration for 10.8.0.241
+00:11:22:33:00:F2
+	Framed-IP-Address := 10.8.0.241,
+	Reply-Message := host242.example.com
+
+# Configuration for 10.8.0.242
+00:11:22:33:00:F3
+	Framed-IP-Address := 10.8.0.242,
+	Reply-Message := host243.example.com
+
+# Configuration for 10.8.0.243
+00:11:22:33:00:F4
+	Framed-IP-Address := 10.8.0.243,
+	Reply-Message := host244.example.com
+
+# Configuration for 10.8.0.244
+00:11:22:33:00:F5
+	Framed-IP-Address := 10.8.0.244,
+	Reply-Message := host245.example.com
+
+# Configuration for 10.8.0.245
+00:11:22:33:00:F6
+	Framed-IP-Address := 10.8.0.245,
+	Reply-Message := host246.example.com
+
+# Configuration for 10.8.0.246
+00:11:22:33:00:F7
+	Framed-IP-Address := 10.8.0.246,
+	Reply-Message := host247.example.com
+
+# Configuration for 10.8.0.247
+00:11:22:33:00:F8
+	Framed-IP-Address := 10.8.0.247,
+	Reply-Message := host248.example.com
+
+# Configuration for 10.8.0.248
+00:11:22:33:00:F9
+	Framed-IP-Address := 10.8.0.248,
+	Reply-Message := host249.example.com
+
+# Configuration for 10.8.0.249
+00:11:22:33:00:FA
+	Framed-IP-Address := 10.8.0.249,
+	Reply-Message := host250.example.com
+
+# Configuration for 10.8.0.250
+00:11:22:33:00:FB
+	Framed-IP-Address := 10.8.0.250,
+	Reply-Message := host251.example.com
+
+# Configuration for 10.8.0.251
+00:11:22:33:00:FC
+	Framed-IP-Address := 10.8.0.251,
+	Reply-Message := host252.example.com
+
+# Configuration for 10.8.0.252
+00:11:22:33:00:FD
+	Framed-IP-Address := 10.8.0.252,
+	Reply-Message := host253.example.com
+
+# Configuration for 10.8.0.253
+00:11:22:33:00:FE
+	Framed-IP-Address := 10.8.0.253,
+	Reply-Message := host254.example.com
+
+# Configuration for 10.8.0.254
+00:11:22:33:00:FF
+	Framed-IP-Address := 10.8.0.254,
+	Reply-Message := host255.example.com
+
+# Configuration for 10.8.0.255
+00:11:22:33:01:00
+	Framed-IP-Address := 10.8.0.255,
+	Reply-Message := host256.example.com
