@@ -1064,7 +1064,7 @@ size_t fr_sbuff_out_unescape_until(fr_sbuff_t *out, fr_sbuff_t *in, size_t len,
 		}
 
 	next:
-		if (tt && fr_sbuff_terminal_search(in, fr_sbuff_current(&our_in), idx, tt, needle_len)) break;
+		if (tt && fr_sbuff_terminal_search(&our_in, fr_sbuff_current(&our_in), idx, tt, needle_len)) break;
 		fr_sbuff_advance(&our_in, 1);
 	}
 
