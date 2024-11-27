@@ -804,9 +804,9 @@ static sql_rcode_t sql_free_result(fr_sql_query_t *query_ctx, UNUSED rlm_sql_con
 	}
 
 	if (query_ctx->uctx) {
-		CassResult const *result = query_ctx->uctx;
-		cass_result_free(result);
-		query_ctx->uctx = NULL;
+		cassandra_query_ctx_t *cass_query_ctx = talloc_get_type_abort(query_ctx->uctx, cassandra_query_ctx_t);
+		if (cass_query_ctx->result) cass_result_free(cass_query_ctx->result);
+		cass_query_ctx->result = NULL;
 	}
 
 	return RLM_SQL_OK;
@@ -831,6 +831,7 @@ static sql_rcode_t sql_finish_query(fr_sql_query_t *query_ctx, rlm_sql_config_t 
 {
 	cassandra_query_ctx_t	*cass_query_ctx = talloc_get_type_abort(query_ctx->uctx, cassandra_query_ctx_t);
 
+	cass_result_free(cass_query_ctx->result);
 	talloc_const_free(cass_query_ctx->error.msg);
 
 	return sql_free_result(query_ctx, config);
