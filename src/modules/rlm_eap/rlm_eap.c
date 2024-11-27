@@ -1008,6 +1008,15 @@ static unlang_action_t mod_post_auth(rlm_rcode_t *p_result, module_ctx_t const *
 	}
 
 	/*
+	 *	If this reject is before eap has been called in authenticate
+	 *	the eap_round will not have been populated.
+	 */
+	if (!eap_session->this_round) {
+		eap_packet_raw_t	*eap_packet = eap_packet_from_vp(request, &request->request_pairs);
+		eap_session->this_round  = eap_round_build(eap_session, &eap_packet);
+	}
+
+	/*
 	 *	This should never happen, but we may be here
 	 *	because there was an unexpected error in the
 	 *	EAP module.
