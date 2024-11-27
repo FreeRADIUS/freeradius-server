@@ -818,7 +818,7 @@ recv Access-Request {
 	#  The module also sets the EAP-Type attribute in the request
 	#  list, to the incoming EAP type.
 	#
-	#  The `eap` module returns `ok` if it is not yet ready to
+	#  The `eap` module returns `ok` or `updated` if it is not yet ready to
 	#  authenticate the user. The configuration below checks for
 	#  that return value, and if so, stops processing the current
 	#  section.
@@ -832,6 +832,7 @@ recv Access-Request {
 	#
 	eap {
 		ok = return
+		updated = return
 	}
 
 	#
