@@ -560,14 +560,14 @@ static inline bool fr_sbuff_terminal_search(fr_sbuff_t *in, char const *p,
 	mid = term_idx - 1;				/* Inform the mid point from the index */
 
 	while (start <= end) {
-		char const	*elem;
-		size_t		tlen;
-		int		ret;
+		fr_sbuff_term_elem_t const 	*elem;
+		size_t				tlen;
+		int				ret;
 
-		elem = term->elem[mid].str;
-		tlen = strlen(elem);
+		elem = &term->elem[mid];
+		tlen = elem->len;
 
-		ret = strncmp(p, elem, tlen < (size_t)remaining ? tlen : (size_t)remaining);
+		ret = memcmp(p, elem->str, tlen < (size_t)remaining ? tlen : (size_t)remaining);
 		if (ret == 0) {
 			/*
 			 *	If we have more text than the table element, that's fine
