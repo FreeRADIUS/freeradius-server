@@ -1691,6 +1691,41 @@ error:
 	return -1;
 }
 
+/** Adds an additional header to a handle to use in the next reques
+ *
+ * @param[in] request	Current request.
+ * @param[in] randle	used for the next request.
+ * @param[in] header	to add.
+ * @param[in] validate	whether to perform basic checks on the header
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int rest_request_config_add_header(request_t *request, fr_curl_io_request_t *randle, char const *header, bool validate)
+{
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
+	struct curl_slist	*headers;
+
+	if (validate && !strchr(header, ':')) {
+		RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
+			header);
+		return -1;
+	}
+
+	RINDENT();
+	RDEBUG3("%s", header);
+	REXDENT();
+
+	headers = curl_slist_append(ctx->headers, header);
+	if (unlikely(!headers)) {
+		REDEBUG("Failed to add header \"%s\"", header);
+		return -1;
+	}
+	ctx->headers = headers;
+
+	return 0;
+}
+
 /** Configures request curlopts.
  *
  * Configures libcurl handle setting various curlopts for things like local
@@ -1776,19 +1811,10 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	 */
 	RDEBUG3("Adding custom headers:");
 	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Section: %s", section->name);
-
-	RINDENT();
-	RDEBUG3("%s", buffer);
-	REXDENT();
-	ctx->headers = curl_slist_append(ctx->headers, buffer);
-	if (!ctx->headers) goto error_header;
+	if (unlikely(rest_request_config_add_header(request, randle, buffer, false) < 0)) return -1;
 
 	snprintf(buffer, sizeof(buffer), "X-FreeRADIUS-Server: %s", cf_section_name2(unlang_call_current(request)));
-	RINDENT();
-	RDEBUG3("%s", buffer);
-	REXDENT();
-	ctx->headers = curl_slist_append(ctx->headers, buffer);
-	if (!ctx->headers) goto error_header;
+	if (unlikely(rest_request_config_add_header(request, randle, buffer, false) < 0)) return -1;
 
 	/*
 	 *	Add in the section headers
@@ -1797,11 +1823,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 		size_t len = talloc_array_length(call_env->request.header), i;
 		for (i = 0; i < len; i++) {
 			fr_value_box_list_foreach(&call_env->request.header[i], header) {
-				RINDENT();
-				RDEBUG3("%pV", header);
-				REXDENT();
-
-				ctx->headers = curl_slist_append(ctx->headers, header->vb_strvalue);
+				if (unlikely(rest_request_config_add_header(request, randle, header->vb_strvalue, true) < 0)) return -1;
 			}
 		}
 	}
@@ -1811,23 +1833,13 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	 */
 	{
 		fr_pair_t 	*header;
-		fr_dcursor_t	headers;
+		fr_dcursor_t	header_cursor;
 
-		for (header =  fr_pair_dcursor_by_da_init(&headers, &request->control_pairs, attr_rest_http_header);
+		for (header =  fr_pair_dcursor_by_da_init(&header_cursor, &request->control_pairs, attr_rest_http_header);
 		     header;
-		     header = fr_dcursor_current(&headers)) {
-			header = fr_dcursor_remove(&headers);
-			if (!strchr(header->vp_strvalue, ':')) {
-				RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",
-					header->vp_strvalue);
-				talloc_free(header);
-				continue;
-			}
-			RINDENT();
-			RDEBUG3("%pV", &header->data);
-			REXDENT();
-
-			ctx->headers = curl_slist_append(ctx->headers, header->vp_strvalue);
+		     header = fr_dcursor_current(&header_cursor)) {
+			header = fr_dcursor_remove(&header_cursor);
+			if (unlikely(rest_request_config_add_header(request, randle, header->vp_strvalue, true) < 0)) return -1;
 
 			/*
 			 *  Set content-type based on a corresponding REST-HTTP-Header attribute, if provided.
@@ -1855,12 +1867,7 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 		if (type != REST_HTTP_BODY_NONE) {
 			char const *content_type = fr_table_str_by_value(http_content_type_table, type, section->request.body_str);
 			snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
-			ctx->headers = curl_slist_append(ctx->headers, buffer);
-			if (!ctx->headers) {
-			error_header:
-				REDEBUG("Failed creating header");
-				return -1;
-			}
+			if (unlikely(rest_request_config_add_header(request, randle, buffer, false) < 0)) return -1;
 
 			RDEBUG3("Request body content-type will be \"%s\"", content_type);
 		}
@@ -1973,11 +1980,7 @@ do {\
 		if (section->request.chunk > 0) {
 			ctx->request.chunk = section->request.chunk;
 
-			ctx->headers = curl_slist_append(ctx->headers, "Expect:");
-			if (!ctx->headers) goto error_header;
-
-			ctx->headers = curl_slist_append(ctx->headers, "Transfer-Encoding: chunked");
-			if (!ctx->headers) goto error_header;
+			if (unlikely(rest_request_config_add_header(request, randle, "Transfer-Encoding: chunked", false) < 0)) return -1;
 		}
 
 		break;

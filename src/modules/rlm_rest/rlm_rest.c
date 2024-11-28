@@ -497,9 +497,10 @@ finish:
 }
 
 static xlat_arg_parser_t const rest_xlat_args[] = {
-	{ .required = true, .single = true, .type = FR_TYPE_STRING },
-	{ .required = true, .safe_for = CURL_URI_SAFE_FOR, .type = FR_TYPE_STRING },
-	{ .concat = true, .type = FR_TYPE_STRING },
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },			/* HTTP Method */
+	{ .required = true, .safe_for = CURL_URI_SAFE_FOR, .type = FR_TYPE_STRING },	/* URL */
+	{ .concat = true, .type = FR_TYPE_STRING },					/* Data */
+	{ .type = FR_TYPE_STRING },							/* Headers */
 	XLAT_ARG_PARSER_TERMINATOR
 };
 
@@ -507,7 +508,7 @@ static xlat_arg_parser_t const rest_xlat_args[] = {
  *
  * Example:
 @verbatim
-%rest(POST, http://example.com/, "{ \"key\": \"value\" }")
+%rest(POST, http://example.com/, "{ \"key\": \"value\" }", [<headers>])
 @endverbatim
  *
  * @ingroup xlat_functions
@@ -526,12 +527,13 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	fr_value_box_t			*method_vb;
 	fr_value_box_t			*uri_vb;
 	fr_value_box_t			*data_vb;
+	fr_value_box_t			*header_vb;
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_xlat_rctx_t		*rctx;
 	rlm_rest_section_t		*section;
 
-	XLAT_ARGS(in, &method_vb, &uri_vb, &data_vb);
+	XLAT_ARGS(in, &method_vb, &uri_vb, &data_vb, &header_vb);
 
 	MEM(rctx = talloc(request, rlm_rest_xlat_rctx_t));
 	section = &rctx->section;
@@ -591,6 +593,16 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 	       	section->request.method_str : fr_table_str_by_value(http_method_table, section->request.method, NULL),
 	        uri_vb);
 
+	if (header_vb) {
+		fr_value_box_list_foreach(&header_vb->vb_group, header) {
+			if (unlikely(rest_request_config_add_header(request, randle, header->vb_strvalue, true) < 0)) {
+			error_release:
+				rest_slab_release(randle);
+				goto error;
+			}
+		}
+	}
+
 	/*
 	 *  Configure various CURL options, and initialise the read/write
 	 *  context data.
@@ -601,11 +613,7 @@ static xlat_action_t rest_xlat(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
 				  section, request, randle, section->request.method,
 				  section->request.body,
 				  uri_vb->vb_strvalue, data_vb ? data_vb->vb_strvalue : NULL);
-	if (ret < 0) {
-	error_release:
-		rest_slab_release(randle);
-		goto error;
-	}
+	if (ret < 0) goto error_release;
 
 	/*
 	 *  Send the CURL request, pre-parse headers, aggregate incoming

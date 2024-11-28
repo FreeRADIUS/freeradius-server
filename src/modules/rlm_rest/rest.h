@@ -301,6 +301,10 @@ void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t time
 /*
  *	Request processing API
  */
+
+int rest_request_config_add_header(request_t *request, fr_curl_io_request_t *randle,
+				   char const *header, bool validate) CC_HINT(nonnull(1,2,3));
+
 int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *section,
 			request_t *request, fr_curl_io_request_t *randle, http_method_t method,
 			http_body_type_t type,
