@@ -660,7 +660,7 @@ static dict_tokenize_frame_t const *dict_dctx_find_frame(dict_tokenize_ctx_t *dc
 	return NULL;
 }
 
-static int dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da)
+static int dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
 {
 	if ((dctx->stack_depth + 1) >= DICT_MAX_STACK) {
 		fr_strerror_const_push("Attribute definitions are nested too deep.");
@@ -669,13 +669,13 @@ static int dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da)
 
 	fr_assert(da != NULL);
 
-	dctx->stack_depth++;
-	memset(&dctx->stack[dctx->stack_depth], 0, sizeof(dctx->stack[dctx->stack_depth]));
-
-	dctx->stack[dctx->stack_depth].dict = dctx->stack[dctx->stack_depth - 1].dict;
-	dctx->stack[dctx->stack_depth].da = da;
-	dctx->stack[dctx->stack_depth].filename = dctx->stack[dctx->stack_depth - 1].filename;
-	dctx->stack[dctx->stack_depth].line = dctx->stack[dctx->stack_depth - 1].line;
+	dctx->stack[++dctx->stack_depth] = (dict_tokenize_frame_t){
+		.dict = dctx->stack[dctx->stack_depth - 1].dict,
+		.da = da,
+		.filename = dctx->stack[dctx->stack_depth - 1].filename,
+		.line = dctx->stack[dctx->stack_depth - 1].line,
+		.nest = nest
+	};
 
 	return 0;
 }
@@ -837,7 +837,7 @@ static int dict_set_value_attr(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 	 *	BEGIN-STRUCT.
 	 */
 	if (da->type == FR_TYPE_STRUCT) {
-		if (dict_dctx_push(dctx, da) < 0) return -1;
+		if (dict_dctx_push(dctx, da, 0) < 0) return -1;
 		dctx->value_attr = NULL;
 	} else if (fr_type_is_leaf(da->type)) {
 		memcpy(&dctx->value_attr, &da, sizeof(da));
@@ -1247,7 +1247,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		 *	BEGIN-STRUCT.
 		 */
 		if (da->type == FR_TYPE_STRUCT) {
-			if (dict_dctx_push(dctx, da) < 0) return -1;
+			if (dict_dctx_push(dctx, da, 0) < 0) return -1;
 			dctx->value_attr = NULL;
 		} else {
 			memcpy(&dctx->value_attr, &da, sizeof(da));
@@ -1317,8 +1317,7 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 
 	dctx->dict = found;
 
-	if (dict_dctx_push(dctx, dctx->dict->root) < 0) goto error;
-	dctx->stack[dctx->stack_depth].nest = NEST_PROTOCOL;
+	if (dict_dctx_push(dctx, dctx->dict->root, NEST_PROTOCOL) < 0) goto error;
 
 	return 0;
 }
@@ -1359,8 +1358,7 @@ static int dict_read_process_begin_tlv(dict_tokenize_ctx_t *dctx, char **argv, i
 		goto error;
 	}
 
-	if (dict_dctx_push(dctx, da) < 0) goto error;
-	dctx->stack[dctx->stack_depth].nest = NEST_TLV;
+	if (dict_dctx_push(dctx, da, NEST_TLV) < 0) goto error;
 
 	return 0;
 }
@@ -1497,8 +1495,7 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 		fr_assert(vendor_da->type == FR_TYPE_VENDOR);
 	}
 
-	if (dict_dctx_push(dctx, vendor_da) < 0) goto error;
-	dctx->stack[dctx->stack_depth].nest = NEST_VENDOR;
+	if (dict_dctx_push(dctx, vendor_da, NEST_VENDOR) < 0) goto error;
 
 	return 0;
 }
@@ -2058,7 +2055,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		if (da->type == FR_TYPE_TLV) {
 			dctx->relative_attr = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da,
 								    dctx->stack[dctx->stack_depth].member_num);
-			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr) < 0)) return -1;
+			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, 0) < 0)) return -1;
 			return 0;
 
 		}
@@ -2261,7 +2258,7 @@ static int dict_read_process_struct(dict_tokenize_ctx_t *dctx, char **argv, int 
 		 *	A STRUCT definition is an implicit BEGIN-STRUCT.
 		 */
 		dctx->relative_attr = NULL;
-		if (dict_dctx_push(dctx, da) < 0) return -1;
+		if (dict_dctx_push(dctx, da, 0) < 0) return -1;
 
 		/*
 		*	Add the VALUE to the parent attribute, and ensure that
