@@ -1538,64 +1538,9 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 	check_for_zombie(unlang_interpret_event_list(request), tconn, now, retry->start);
 }
 
-static void status_check_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
-{
-	trunk_request_t	*treq = talloc_get_type_abort(uctx, trunk_request_t);
-	udp_handle_t		*h;
-	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
-	request_t		*request = treq->request;
-	trunk_connection_t	*tconn = treq->tconn;
-
-	fr_assert(treq->state == TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
-	fr_assert(treq->preq);						/* Must still have a protocol request */
-	fr_assert(u->rr);
-	fr_assert(tconn);
-
-	h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
-
-	fr_assert(u->status_check);
-
-	switch (fr_retry_next(&u->retry, now)) {
-
-	/*
-	 *	Queue the request for retransmission.
-	 *
-	 *	@todo - set up "next" timer here, instead of in
-	 *	request_mux() ?  That way we can catch the case of
-	 *	packets sitting in the queue for extended periods of
-	 *	time, and still run the timers.
-	 */
-	case FR_RETRY_CONTINUE:
-		trunk_request_requeue(treq);
-		return;
-
-	case FR_RETRY_MRD:
-		REDEBUG("Reached maximum_retransmit_duration (%pVs > %pVs), failing request",
-			fr_box_time_delta(fr_time_sub(now, u->retry.start)), fr_box_time_delta(u->retry.config->mrd));
-		break;
-
-	case FR_RETRY_MRC:
-		REDEBUG("Reached maximum_retransmit_count (%u > %u), failing request",
-		        u->retry.count, u->retry.config->mrc);
-		break;
-	}
-
-	r->rcode = RLM_MODULE_FAIL;
-	trunk_request_signal_complete(treq);
-
-        WARN("%s - No response to status check, marking connection as dead - %s", h->module_name, h->name);
-
-	/*
-	 *	We're no longer status checking, reconnect the
-	 *	connection.
-	 */
-        h->status_checking = false;
-        trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-}
 
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static void request_mux(fr_event_list_t *el,
+static void request_mux(UNUSED fr_event_list_t *el,
 			trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
@@ -1626,14 +1571,7 @@ static void request_mux(fr_event_list_t *el,
 		request = treq->request;
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
 
-		/*
-		 *	Start retransmissions from when the socket is writable.
-		 */
-		if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
-			fr_retry_init(&u->retry, fr_time(), &h->inst->parent->retry[u->code]);
-			fr_assert(fr_time_delta_ispos(u->retry.rt));
-			fr_assert(fr_time_gt(u->retry.next, fr_time_wrap(0)));
-		}
+		fr_assert(!u->status_check);
 
 		/*
 		 *	No previous packet, OR can't retransmit the
@@ -1778,11 +1716,10 @@ static void request_mux(fr_event_list_t *el,
 	 *	start the request timer.
 	 */
 	for (i = 0; i < sent; i++) {
-		trunk_request_t	*treq = h->coalesced[i].treq;
+		trunk_request_t		*treq = h->coalesced[i].treq;
 		udp_request_t		*u;
 		request_t		*request;
 		char const		*action;
-		udp_result_t		*r;
 
 		/*
 		 *	It's UDP so there should never be partial writes
@@ -1793,7 +1730,6 @@ static void request_mux(fr_event_list_t *el,
 
 		request = treq->request;
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
-		r = talloc_get_type_abort(treq->rctx, udp_result_t);
 
 		/*
 		 *	Tell the admin what's going on
@@ -1807,22 +1743,9 @@ static void request_mux(fr_event_list_t *el,
 			action = "Retransmitted";
 		}
 
-		if (u->status_check) {
-			RDEBUG("%s status check.  Expecting response within %pVs", action,
-			       fr_box_time_delta(u->retry.rt));
+		fr_assert(!u->status_check);
 
-			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, status_check_retry, treq) < 0) {
-				RERROR("Failed inserting retransmit timeout for connection");
-				trunk_request_signal_fail(treq);
-				continue;
-			}
-
-		} else if (r->is_retry) {
-			/*
-			 *	Do nothing
-			 */
-
-		} else if (!inst->parent->synchronous) {
+		if (!inst->parent->synchronous) {
 			RDEBUG("%s request.  Expecting response within %pVs", action,
 			       fr_box_time_delta(u->retry.rt));
 
