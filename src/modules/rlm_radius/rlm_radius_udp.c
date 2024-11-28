@@ -33,6 +33,8 @@ RCSID("$Id$")
 #include <freeradius-devel/util/heap.h>
 #include <freeradius-devel/util/udp.h>
 
+#include <freeradius-devel/unlang/module.h>
+
 #include <sys/socket.h>
 
 #include "rlm_radius.h"
@@ -72,6 +74,8 @@ typedef struct {
 	fr_radius_ctx_t		common_ctx;
 
 	trunk_conf_t		trunk_conf;		//!< trunk configuration
+
+	fr_retry_config_t	retry_config;		//!< for originating packets
 } rlm_radius_udp_t;
 
 typedef struct {
@@ -83,8 +87,9 @@ typedef struct {
 } udp_thread_t;
 
 typedef struct {
-	trunk_request_t	*treq;
+	trunk_request_t		*treq;
 	rlm_rcode_t		rcode;			//!< from the transport
+	bool			is_retry;
 } udp_result_t;
 
 typedef struct udp_request_s udp_request_t;
@@ -259,6 +264,10 @@ static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 			       uint8_t *data, size_t data_len);
 
 static void		protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t *h);
+
+static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request);
+static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action);
+
 
 #ifndef NDEBUG
 /** Log additional information about a tracking entry
@@ -516,7 +525,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
-	trunk_t		*trunk = h->thread->trunk;
+	trunk_t			*trunk = h->thread->trunk;
 	rlm_radius_t const 	*inst = h->inst->parent;
 	udp_request_t		*u = h->status_u;
 	ssize_t			slen;
@@ -536,12 +545,17 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		case EINTR:
 			return;		/* Wait to be signalled again */
 
+		case ECONNREFUSED:
+			ERROR("%s - Failed reading response from socket: there is no server listening on %pV port %u",
+			      h->module_name, fr_box_ipaddr(h->inst->dst_ipaddr), h->inst->dst_port);
+			break;
+
 		default:
+			ERROR("%s - Failed reading response from socket: %s",
+			      h->module_name, fr_syserror(errno));
 			break;
 		}
 
-		ERROR("%s - Failed reading response from socket: %s",
-		      h->module_name, fr_syserror(errno));
 		connection_signal_reconnect(conn, CONNECTION_FAILED);
 		return;
 	}
@@ -1447,75 +1461,81 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	return true;
 }
 
-/** Handle timeouts when a request is being sent synchronously
+/** Handle retries.
  *
  */
-static void request_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t const *retry)
 {
-	trunk_request_t	*treq = talloc_get_type_abort(uctx, trunk_request_t);
-	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+	udp_result_t		*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
+	rlm_radius_t const     	*parent = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
+	fr_time_t		now = retry->updated;
+
+	trunk_request_t		*treq = talloc_get_type_abort(r->treq, trunk_request_t);
 	trunk_connection_t	*tconn = treq->tconn;
 
-	fr_assert(treq->state == TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
+	fr_assert(request == treq->request);
 	fr_assert(treq->preq);						/* Must still have a protocol request */
-	fr_assert(u->rr);
-	fr_assert(tconn);
 
-	r->rcode = RLM_MODULE_FAIL;
-	trunk_request_signal_complete(treq);
+	switch (retry->state) {
 
-	fr_assert(!u->status_check);
-
-	check_for_zombie(el, tconn, now, u->retry.start);
-}
-
-/** Handle retries when a request is being sent asynchronously
- *
- */
-static void request_retry(fr_event_list_t *el, fr_time_t now, void *uctx)
-{
-	trunk_request_t	*treq = talloc_get_type_abort(uctx, trunk_request_t);
-	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
-	request_t		*request = treq->request;
-	trunk_connection_t	*tconn = treq->tconn;
-
-	fr_assert(treq->state == TRUNK_REQUEST_STATE_SENT);		/* No other states should be timing out */
-	fr_assert(treq->preq);						/* Must still have a protocol request */
-	fr_assert(u->rr);
-	fr_assert(tconn);
-
-	fr_assert(!u->status_check);
-
-	switch (fr_retry_next(&u->retry, now)) {
-	/*
-	 *	Queue the request for retransmission.
-	 *
-	 *	@todo - set up "next" timer here, instead of in
-	 *	request_mux() ?  That way we can catch the case of
-	 *	packets sitting in the queue for extended periods of
-	 *	time, and still run the timers.
-	 */
 	case FR_RETRY_CONTINUE:
-		trunk_request_requeue(treq);
-		return;
+		switch (treq->state) {
+
+		case TRUNK_REQUEST_STATE_INIT:
+		case TRUNK_REQUEST_STATE_UNASSIGNED:
+			fr_assert(0);
+			break;
+
+		case TRUNK_REQUEST_STATE_BACKLOG:
+			RDEBUG("Request is still in the backlog queue to be sent - suppressing retransmission");
+			return;
+
+		case TRUNK_REQUEST_STATE_PENDING:
+			RDEBUG("Request is still in the pending queue to be sent - suppressing retransmission");
+			return;
+
+		case TRUNK_REQUEST_STATE_PARTIAL:
+			RDEBUG("Request was partially written, as IO is blocked - suppressing retransmission");
+			return;
+
+		case TRUNK_REQUEST_STATE_SENT:
+			fr_assert(tconn);
+			r->is_retry = true;
+			trunk_request_requeue(treq);
+			return;
+
+		case TRUNK_REQUEST_STATE_REAPABLE:
+		case TRUNK_REQUEST_STATE_COMPLETE:
+		case TRUNK_REQUEST_STATE_FAILED:
+		case TRUNK_REQUEST_STATE_CANCEL:
+		case TRUNK_REQUEST_STATE_CANCEL_SENT:
+		case TRUNK_REQUEST_STATE_CANCEL_PARTIAL:
+		case TRUNK_REQUEST_STATE_CANCEL_COMPLETE:
+			fr_assert(0);
+			break;
+		}
+		break;
 
 	case FR_RETRY_MRD:
 		REDEBUG("Reached maximum_retransmit_duration (%pVs > %pVs), failing request",
-			fr_box_time_delta(fr_time_sub(now, u->retry.start)), fr_box_time_delta(u->retry.config->mrd));
+			fr_box_time_delta(fr_time_sub(now, retry->start)), fr_box_time_delta(retry->config->mrd));
 		break;
 
 	case FR_RETRY_MRC:
 		REDEBUG("Reached maximum_retransmit_count (%u > %u), failing request",
-		        u->retry.count, u->retry.config->mrc);
+		        retry->count, retry->config->mrc);
 		break;
 	}
 
 	r->rcode = RLM_MODULE_FAIL;
-	trunk_request_signal_complete(treq);
+	trunk_request_signal_fail(treq);
 
-	check_for_zombie(el, tconn, now, u->retry.start);
+	/*
+	 *	We don't do zombie stuff!
+	 */
+	if (!tconn || parent->replicate) return;
+
+	check_for_zombie(unlang_interpret_event_list(request), tconn, now, retry->start);
 }
 
 static void status_check_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *uctx)
@@ -1537,6 +1557,7 @@ static void status_check_retry(UNUSED fr_event_list_t *el, fr_time_t now, void *
 	fr_assert(u->status_check);
 
 	switch (fr_retry_next(&u->retry, now)) {
+
 	/*
 	 *	Queue the request for retransmission.
 	 *
@@ -1588,7 +1609,7 @@ static void request_mux(fr_event_list_t *el,
 	 *      for transmission with sendmmsg.
 	 */
 	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
-		trunk_request_t	*treq;
+		trunk_request_t		*treq;
 		udp_request_t		*u;
 		request_t		*request;
 
@@ -1761,6 +1782,7 @@ static void request_mux(fr_event_list_t *el,
 		udp_request_t		*u;
 		request_t		*request;
 		char const		*action;
+		udp_result_t		*r;
 
 		/*
 		 *	It's UDP so there should never be partial writes
@@ -1771,6 +1793,7 @@ static void request_mux(fr_event_list_t *el,
 
 		request = treq->request;
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
+		r = talloc_get_type_abort(treq->rctx, udp_result_t);
 
 		/*
 		 *	Tell the admin what's going on
@@ -1794,25 +1817,16 @@ static void request_mux(fr_event_list_t *el,
 				continue;
 			}
 
+		} else if (r->is_retry) {
+			/*
+			 *	Do nothing
+			 */
+
 		} else if (!inst->parent->synchronous) {
 			RDEBUG("%s request.  Expecting response within %pVs", action,
 			       fr_box_time_delta(u->retry.rt));
 
-			if (fr_event_timer_at(u, el, &u->ev, u->retry.next, request_retry, treq) < 0) {
-				RERROR("Failed inserting retransmit timeout for connection");
-				trunk_request_signal_fail(treq);
-				continue;
-			}
-
-		} else if (u->retry.count == 1) {
-			if (fr_event_timer_at(u, el, &u->ev,
-					      fr_time_add(u->retry.start, h->inst->parent->response_window),
-					      request_timeout, treq) < 0) {
-				RERROR("Failed inserting timeout for connection");
-				trunk_request_signal_fail(treq);
-				continue;
-			}
-
+		} else {
 			/*
 			 *	If the packet doesn't get a response,
 			 *	then udp_request_free() will notice, and run conn_zombie()
@@ -2541,7 +2555,8 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void *instance, void *
 	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);
 	udp_result_t			*r;
 	udp_request_t			*u;
-	trunk_request_t		*treq;
+	trunk_request_t			*treq;
+	fr_retry_config_t		*retry_config;
 
 	fr_assert(request->packet->code > 0);
 	fr_assert(request->packet->code < FR_RADIUS_CODE_MAX);
@@ -2609,10 +2624,23 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void *instance, void *
 	}
 
 	r->treq = treq;	/* Remember for signalling purposes */
+	fr_assert(treq->rctx == r);
 
 	talloc_set_destructor(u, _udp_request_free);
 
-	return unlang_module_yield(request, mod_resume, mod_signal, 0, r);
+
+	if (inst->parent->synchronous || inst->parent->replicate) { /* @todo - or if stream! */
+		retry_config = &inst->retry_config;
+
+	} else {
+		retry_config = &inst->parent->retry[u->code];
+	}
+
+	/*
+	 *	The event loop will take care of demux && sending the
+	 *	packet, along with any retransmissions.
+	 */
+	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, 0, r, retry_config);
 }
 
 /** Instantiate thread data for the submodule.
@@ -2669,6 +2697,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	inst->parent = parent;
 	inst->replicate = parent->replicate;
+
+	inst->retry_config = (fr_retry_config_t) {
+		.mrc = 1,
+		.mrd = inst->parent->response_window,
+	};
 
 	/*
 	 *	Always need at least one mmsgvec
