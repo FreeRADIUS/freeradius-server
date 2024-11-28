@@ -682,6 +682,16 @@ static fr_dict_attr_t const *dict_gctx_unwind(dict_tokenize_ctx_t *ctx)
 	return ctx->stack[ctx->stack_depth].da;
 }
 
+static int dict_finalise(dict_tokenize_ctx_t *ctx)
+{
+	if (dict_fixup_apply(&ctx->fixup) < 0) return -1;
+
+	ctx->value_attr = NULL;
+	ctx->relative_attr = NULL;
+
+	return 0;
+}
+
 static inline CC_HINT(always_inline)
 void dict_attr_location_set(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 {
@@ -1246,6 +1256,245 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *ctx, char **argv, in
 	return 0;
 }
 
+static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+				    	    UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	fr_dict_t			*found;
+	dict_tokenize_frame_t const	*frame;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
+
+	if (argc != 1) {
+		fr_strerror_const_push("Invalid BEGIN-PROTOCOL entry");
+	error:
+		return -1;
+	}
+
+	/*
+	 *	If we're not parsing in the context of the internal
+	 *	dictionary, then we don't allow BEGIN-PROTOCOL
+	 *	statements.
+	 */
+	if (dctx->dict != dict_gctx->internal) {
+		fr_strerror_const_push("Nested BEGIN-PROTOCOL statements are not allowed");
+		goto error;
+	}
+
+	found = dict_by_protocol_name(argv[0]);
+	if (!found) {
+		fr_strerror_printf("Unknown protocol '%s'", argv[0]);
+		goto error;
+	}
+
+	frame = dict_gctx_find_frame(dctx, NEST_PROTOCOL);
+	if (frame) {
+		fr_strerror_printf_push("Nested BEGIN-PROTOCOL is forbidden.  Previous definition is at %s[%d]",
+					frame->filename, frame->line);
+		goto error;
+	}
+
+	/*
+	 *	Add a temporary fixup pool
+	 *
+	 *	@todo - make a nested ctx?
+	 */
+	dict_fixup_init(NULL, &dctx->fixup);
+
+	/*
+	 *	We're in the middle of loading this dictionary.  Tell
+	 *	fr_dict_protocol_afrom_file() to suppress recursive references.
+	 */
+	found->loading = true;
+
+	dctx->dict = found;
+
+	if (dict_gctx_push(dctx, dctx->dict->root) < 0) goto error;
+	dctx->stack[dctx->stack_depth].nest = NEST_PROTOCOL;
+
+	return 0;
+}
+
+static int dict_read_process_begin_tlv(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+				       UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *common;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
+
+	if (argc != 1) {
+		fr_strerror_const_push("Invalid BEGIN-TLV entry");
+	error:
+		return -1;
+	}
+
+	da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da, argv[0]);
+	if (!da) {
+		fr_strerror_const_push("Failed resolving attribute in BEGIN-TLV entry");
+		goto error;
+	}
+
+	if (da->type != FR_TYPE_TLV) {
+		fr_strerror_printf_push("Attribute '%s' should be a 'tlv', but is a '%s'",
+					argv[0],
+					fr_type_to_str(da->type));
+		goto error;
+	}
+
+	common = fr_dict_attr_common_parent(dctx->stack[dctx->stack_depth].da, da, true);
+	if (!common ||
+		(common->type == FR_TYPE_VSA)) {
+		fr_strerror_printf_push("Attribute '%s' should be a child of '%s'",
+					argv[0], dctx->stack[dctx->stack_depth].da->name);
+		goto error;
+	}
+
+	if (dict_gctx_push(dctx, da) < 0) goto error;
+	dctx->stack[dctx->stack_depth].nest = NEST_TLV;
+
+	return 0;
+}
+
+static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+				    	  UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	fr_dict_vendor_t const		*vendor;
+	fr_dict_attr_flags_t		flags;
+
+	fr_dict_attr_t const		*vsa_da;
+	fr_dict_attr_t const		*vendor_da;
+	fr_dict_attr_t			*new;
+	dict_tokenize_frame_t const	*frame;
+	char				*p;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
+
+	if (argc < 1) {
+		fr_strerror_const_push("Invalid BEGIN-VENDOR entry");
+	error:
+		return 01;
+	}
+
+	vendor = fr_dict_vendor_by_name(dctx->dict, argv[0]);
+	if (!vendor) {
+		fr_strerror_printf_push("Unknown vendor '%s'", argv[0]);
+		goto error;
+	}
+
+	/*
+	 *	Check for extended attr VSAs
+	 *
+	 *	BEGIN-VENDOR foo parent=Foo-Encapsulation-Attr
+	 */
+	if (argc > 1) {
+		fr_dict_attr_t const *da;
+
+		if (strncmp(argv[1], "parent=", 7) != 0) {
+			fr_strerror_printf_push("BEGIN-VENDOR invalid argument (%s)", argv[1]);
+			goto error;
+		}
+
+		p = argv[1] + 7;
+		da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da, p);
+		if (!da) {
+			fr_strerror_printf_push("BEGIN-VENDOR invalid argument (%s)", argv[1]);
+			goto error;
+		}
+
+		if (da->type != FR_TYPE_VSA) {
+			fr_strerror_printf_push("Invalid parent for BEGIN-VENDOR.  "
+						"Attribute '%s' should be 'vsa' but is '%s'", p,
+						fr_type_to_str(da->type));
+			goto error;
+		}
+
+		vsa_da = da;
+
+	} else if (dctx->dict->vsa_parent) {
+		/*
+		 *	Check that the protocol-specific VSA parent exists.
+		 */
+		vsa_da = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da, dctx->dict->vsa_parent);
+		if (!vsa_da) {
+			fr_strerror_printf_push("Failed finding VSA parent for Vendor %s",
+						vendor->name);
+			goto error;
+		}
+
+	} else if (dctx->dict->string_based) {
+		vsa_da = dctx->dict->root;
+
+	} else {
+		fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
+					dctx->dict->root->name);
+		goto error;
+	}
+
+	frame = dict_gctx_find_frame(dctx, NEST_VENDOR);
+	if (frame) {
+		fr_strerror_printf_push("Nested BEGIN-VENDOR is forbidden.  Previous definition is at %s[%d]",
+					frame->filename, frame->line);
+		goto error;
+	}
+
+	/*
+	 *	Create a VENDOR attribute on the fly, either in the context
+	 *	of the VSA (26) attribute.
+	 */
+	vendor_da = dict_attr_child_by_num(vsa_da, vendor->pen);
+	if (!vendor_da) {
+		memset(&flags, 0, sizeof(flags));
+
+		flags.type_size = dctx->dict->proto->default_type_size;
+		flags.length = dctx->dict->proto->default_type_length;
+
+		/*
+		 *	See if this vendor has
+		 *	specific sizes for type /
+		 *	length.
+		 *
+		 *	@todo - Make this more protocol agnostic!
+		 */
+		if ((vsa_da->type == FR_TYPE_VSA) &&
+			(vsa_da->parent->flags.is_root)) {
+			fr_dict_vendor_t const *dv;
+
+			dv = fr_dict_vendor_by_num(dctx->dict, vendor->pen);
+			if (dv) {
+				flags.type_size = dv->type;
+				flags.length = dv->length;
+			}
+		}
+
+		new = dict_attr_alloc(dctx->dict->pool,
+				      vsa_da, argv[0], vendor->pen, FR_TYPE_VENDOR,
+				      &(dict_attr_args_t){ .flags = &flags });
+		if (unlikely(!new)) goto error;
+
+		if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
+			talloc_free(new);
+			goto error;
+		}
+
+		if (dict_attr_add_to_namespace(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
+			talloc_free(new);
+			goto error;
+		}
+
+		vendor_da = new;
+	} else {
+		fr_assert(vendor_da->type == FR_TYPE_VENDOR);
+	}
+
+	if (dict_gctx_push(dctx, vendor_da) < 0) goto error;
+	dctx->stack[dctx->stack_depth].nest = NEST_VENDOR;
+
+	return 0;
+}
+
 /*
  *	Process the DEFINE command
  *
@@ -1364,10 +1613,128 @@ static int dict_read_process_define(dict_tokenize_ctx_t *ctx, char **argv, int a
 	return 0;
 }
 
+static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+					  UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	fr_dict_t const *found;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
+
+	if (argc != 1) {
+		fr_strerror_const("Invalid END-PROTOCOL entry");
+	error:
+		return -1;
+	}
+
+	found = dict_by_protocol_name(argv[0]);
+	if (!found) {
+		fr_strerror_printf("END-PROTOCOL %s does not refer to a valid protocol", argv[0]);
+		goto error;
+	}
+
+	if (found != dctx->dict) {
+		fr_strerror_printf("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s",
+				   argv[0], found->root->name);
+		goto error;
+	}
+
+	/*
+	 *	Pop the stack until we get to a PROTOCOL nesting.
+	 */
+	while ((dctx->stack_depth > 0) && (dctx->stack[dctx->stack_depth].nest != NEST_PROTOCOL)) {
+		if (dctx->stack[dctx->stack_depth].nest != NEST_NONE) {
+			fr_strerror_printf_push("END-PROTOCOL %s with mismatched BEGIN-??? %s", argv[0],
+				dctx->stack[dctx->stack_depth].da->name);
+			goto error;
+		}
+
+		dctx->stack_depth--;
+	}
+
+	if (dctx->stack_depth == 0) {
+		fr_strerror_printf_push("END-PROTOCOL %s with no previous BEGIN-PROTOCOL", argv[0]);
+		goto error;
+	}
+
+	if (found->root != dctx->stack[dctx->stack_depth].da) {
+		fr_strerror_printf_push("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s", argv[0],
+					dctx->stack[dctx->stack_depth].da->name);
+		goto error;
+	}
+
+	/*
+	 *	Applies fixups to any attributes added
+	 *	to the protocol dictionary.  Note that
+	 *	the finalise function prints out the
+	 *	original filename / line of the
+	 *	error. So we don't need to do that
+	 *	here.
+	 */
+	if (dict_finalise(dctx) < 0) goto error;
+
+	dctx->stack_depth--;
+	dctx->dict = dctx->stack[dctx->stack_depth].dict;
+
+	return 0;
+}
+
+static int dict_read_process_end_tlv(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+				     UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	fr_dict_attr_t const *da;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
+
+	if (argc != 1) {
+		fr_strerror_const_push("Invalid END-TLV entry");
+	error:
+		return -1;
+	}
+
+	da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth - 1].da, argv[0]);
+	if (!da) {
+		fr_strerror_const_push("Failed resolving attribute in END-TLV entry");
+		goto error;
+	}
+
+	/*
+		*	Pop the stack until we get to a TLV nesting.
+		*/
+	while ((dctx->stack_depth > 0) && (dctx->stack[dctx->stack_depth].nest != NEST_TLV)) {
+		if (dctx->stack[dctx->stack_depth].nest != NEST_NONE) {
+			fr_strerror_printf_push("END-TLV %s with mismatched BEGIN-??? %s", argv[0],
+				dctx->stack[dctx->stack_depth].da->name);
+			goto error;
+		}
+
+		dctx->stack_depth--;
+	}
+
+	if (dctx->stack_depth == 0) {
+		fr_strerror_printf_push("END-TLV %s with no previous BEGIN-TLV", argv[0]);
+		goto error;
+	}
+
+	if (da != dctx->stack[dctx->stack_depth].da) {
+		fr_strerror_printf_push("END-TLV %s does not match previous BEGIN-TLV %s", argv[0],
+					dctx->stack[dctx->stack_depth].da->name);
+		goto error;
+	}
+
+	dctx->stack_depth--;
+
+	return 0;
+}
+
 static int dict_read_process_end_vendor(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 					UNUSED fr_dict_attr_flags_t *base_flags)
 {
 	fr_dict_vendor_t const *vendor;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
 
 	if (argc != 1) {
 		fr_strerror_const_push("Invalid END-VENDOR entry");
@@ -1515,7 +1882,8 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *ctx, char **argv, int arg
 /*
  *	Process the FLAGS command
  */
-static int dict_read_process_flags(UNUSED dict_tokenize_ctx_t *dctx, char **argv, int argc, fr_dict_attr_flags_t *base_flags)
+static int dict_read_process_flags(UNUSED dict_tokenize_ctx_t *dctx, char **argv, int argc,
+				   fr_dict_attr_flags_t *base_flags)
 {
 	bool sense = true;
 
@@ -1536,6 +1904,172 @@ static int dict_read_process_flags(UNUSED dict_tokenize_ctx_t *dctx, char **argv
 
 	fr_strerror_const("Invalid FLAGS syntax");
 	return -1;
+}
+
+/** Process a STRUCT name attr value
+ *
+ * Define struct 'name' when key 'attr' has 'value'.
+ *
+ *  Which MUST be a sub-structure of another struct
+ */
+static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc,
+				    UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
+	int				i;
+	fr_dict_attr_t const	       	*parent = NULL;
+	unsigned int			attr;
+	char				*key_attr = argv[1];
+	char			        *name = argv[0];
+	fr_dict_attr_t			*da;
+
+	if ((argc < 3) || (argc > 4)) {
+		fr_strerror_const("Invalid STRUCT syntax");
+		return -1;
+	}
+
+	fr_assert(ctx->stack_depth > 0);
+
+	/*
+	 *	Unwind the stack until we find a parent which has a child named "key_attr"
+	 */
+	for (i = ctx->stack_depth; i > 0; i--) {
+		parent = dict_attr_by_name(NULL, ctx->stack[i].da, key_attr);
+		if (parent) {
+			ctx->stack_depth = i;
+			break;
+		}
+	}
+
+	/*
+	 *	Else maybe it's a fully qualified name?
+	 */
+	if (!parent) {
+		parent = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth].da->dict->root, key_attr);
+	}
+
+	if (!parent) {
+		fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
+				   key_attr);
+		return -1;
+	}
+
+	if (!fr_dict_attr_is_key_field(parent)) {
+		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
+		return -1;
+	}
+
+	/*
+	 *	Rely on dict_attr_flags_valid() to ensure that
+	 *	da->type is an unsigned integer, AND that da->parent->type == struct
+	 */
+	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
+
+	/*
+	 *	Parse the value.
+	 */
+	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], strlen(argv[2]), NULL, false) < 0) {
+		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
+		return -1;
+	}
+
+	/*
+	 *	Allocate the attribute here, and then fill in the fields
+	 *	as we start parsing the various elements of the definition.
+	 */
+	da = dict_attr_alloc_null(ctx->dict->pool, ctx->dict->proto);
+	if (unlikely(da == NULL)) return -1;
+	dict_attr_location_set(ctx, da);
+
+	if (unlikely(dict_attr_type_init(&da, FR_TYPE_STRUCT) < 0)) {
+	error:
+		talloc_free(da);
+		return -1;
+	}
+
+	/*
+	 *	Structs can be prefixed with 16-bit lengths, but not
+	 *	with any other type of length.
+	 */
+	if (argc == 4) {
+		if (dict_process_flag_field(ctx, argv[3], &da) < 0) goto error;
+	}
+
+	/*
+	 *	@todo - auto-number from a parent UNION, instead of overloading the value.
+	 */
+	switch (parent->type) {
+	case FR_TYPE_UINT8:
+		attr = value.vb_uint8;
+		break;
+
+	case FR_TYPE_UINT16:
+		attr = value.vb_uint16;
+		break;
+
+	case FR_TYPE_UINT32:
+		attr = value.vb_uint32;
+		break;
+
+	default:
+		fr_strerror_printf("Invalid data type in attribute '%s'", key_attr);
+		return -1;
+	}
+
+	if (unlikely(dict_attr_num_init(da, attr) < 0)) goto error;
+	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
+	if (unlikely(dict_attr_finalise(&da, name) < 0)) goto error;
+
+	/*
+	 *	Check to see if this is a duplicate attribute
+	 *	and whether we should ignore it or error out...
+	 */
+	switch (dict_attr_allow_dup(da)) {
+	case 1:
+		break;
+
+	case 0:
+		talloc_free(da);
+		return 0;
+
+	default:
+		goto error;
+	}
+
+	/*
+	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
+	 */
+	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
+	default:
+		goto error;
+
+	/* FIXME: Should dict_attr_enum_add_name also be called in the fixup code? */
+	case 0:
+		da = dict_attr_by_name(NULL, parent, name);
+		if (!da) return -1;
+
+		/*
+		 *	A STRUCT definition is an implicit BEGIN-STRUCT.
+		 */
+		ctx->relative_attr = NULL;
+		if (dict_gctx_push(ctx, da) < 0) return -1;
+
+		/*
+		*	Add the VALUE to the parent attribute, and ensure that
+		*	the VALUE also contains a pointer to the child struct.
+		*/
+		if (dict_attr_enum_add_name(fr_dict_attr_unconst(parent), name, &value, false, true, da) < 0) {
+			fr_value_box_clear(&value);
+			return -1;
+		}
+		fr_value_box_clear(&value);
+		break;
+
+	case 1:
+		break;
+	}
+
+	return 0;
 }
 
 /*
@@ -1739,171 +2273,6 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 	return 0;
 }
 
-/** Process a STRUCT name attr value
- *
- * Define struct 'name' when key 'attr' has 'value'.
- *
- *  Which MUST be a sub-structure of another struct
- */
-static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc)
-{
-	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
-	int				i;
-	fr_dict_attr_t const	       	*parent = NULL;
-	unsigned int			attr;
-	char				*key_attr = argv[1];
-	char			        *name = argv[0];
-	fr_dict_attr_t			*da;
-
-	if ((argc < 3) || (argc > 4)) {
-		fr_strerror_const("Invalid STRUCT syntax");
-		return -1;
-	}
-
-	fr_assert(ctx->stack_depth > 0);
-
-	/*
-	 *	Unwind the stack until we find a parent which has a child named "key_attr"
-	 */
-	for (i = ctx->stack_depth; i > 0; i--) {
-		parent = dict_attr_by_name(NULL, ctx->stack[i].da, key_attr);
-		if (parent) {
-			ctx->stack_depth = i;
-			break;
-		}
-	}
-
-	/*
-	 *	Else maybe it's a fully qualified name?
-	 */
-	if (!parent) {
-		parent = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth].da->dict->root, key_attr);
-	}
-
-	if (!parent) {
-		fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
-				   key_attr);
-		return -1;
-	}
-
-	if (!fr_dict_attr_is_key_field(parent)) {
-		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
-		return -1;
-	}
-
-	/*
-	 *	Rely on dict_attr_flags_valid() to ensure that
-	 *	da->type is an unsigned integer, AND that da->parent->type == struct
-	 */
-	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
-
-	/*
-	 *	Parse the value.
-	 */
-	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], strlen(argv[2]), NULL, false) < 0) {
-		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
-		return -1;
-	}
-
-	/*
-	 *	Allocate the attribute here, and then fill in the fields
-	 *	as we start parsing the various elements of the definition.
-	 */
-	da = dict_attr_alloc_null(ctx->dict->pool, ctx->dict->proto);
-	if (unlikely(da == NULL)) return -1;
-	dict_attr_location_set(ctx, da);
-
-	if (unlikely(dict_attr_type_init(&da, FR_TYPE_STRUCT) < 0)) {
-	error:
-		talloc_free(da);
-		return -1;
-	}
-
-	/*
-	 *	Structs can be prefixed with 16-bit lengths, but not
-	 *	with any other type of length.
-	 */
-	if (argc == 4) {
-		if (dict_process_flag_field(ctx, argv[3], &da) < 0) goto error;
-	}
-
-	/*
-	 *	@todo - auto-number from a parent UNION, instead of overloading the value.
-	 */
-	switch (parent->type) {
-	case FR_TYPE_UINT8:
-		attr = value.vb_uint8;
-		break;
-
-	case FR_TYPE_UINT16:
-		attr = value.vb_uint16;
-		break;
-
-	case FR_TYPE_UINT32:
-		attr = value.vb_uint32;
-		break;
-
-	default:
-		fr_strerror_printf("Invalid data type in attribute '%s'", key_attr);
-		return -1;
-	}
-
-	if (unlikely(dict_attr_num_init(da, attr) < 0)) goto error;
-	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
-	if (unlikely(dict_attr_finalise(&da, name) < 0)) goto error;
-
-	/*
-	 *	Check to see if this is a duplicate attribute
-	 *	and whether we should ignore it or error out...
-	 */
-	switch (dict_attr_allow_dup(da)) {
-	case 1:
-		break;
-
-	case 0:
-		talloc_free(da);
-		return 0;
-
-	default:
-		goto error;
-	}
-
-	/*
-	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
-	 */
-	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
-	default:
-		goto error;
-
-	/* FIXME: Should dict_attr_enum_add_name also be called in the fixup code? */
-	case 0:
-		da = dict_attr_by_name(NULL, parent, name);
-		if (!da) return -1;
-
-		/*
-		 *	A STRUCT definition is an implicit BEGIN-STRUCT.
-		 */
-		ctx->relative_attr = NULL;
-		if (dict_gctx_push(ctx, da) < 0) return -1;
-
-		/*
-		*	Add the VALUE to the parent attribute, and ensure that
-		*	the VALUE also contains a pointer to the child struct.
-		*/
-		if (dict_attr_enum_add_name(fr_dict_attr_unconst(parent), name, &value, false, true, da) < 0) {
-			fr_value_box_clear(&value);
-			return -1;
-		}
-		fr_value_box_clear(&value);
-		break;
-
-	case 1:
-		break;
-	}
-
-	return 0;
-}
-
 /** Process a value alias
  *
  */
@@ -2010,6 +2379,9 @@ static int dict_read_process_vendor(dict_tokenize_ctx_t *dctx, char **argv, int 
 	fr_dict_vendor_t		*mutable;
 	fr_dict_t			*dict = dctx->dict;
 
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
+
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_const("Invalid VENDOR syntax");
 		return -1;
@@ -2022,9 +2394,6 @@ static int dict_read_process_vendor(dict_tokenize_ctx_t *dctx, char **argv, int 
 		fr_strerror_const("Invalid number in VENDOR");
 		return -1;
 	}
-
-	dctx->value_attr = NULL;
-	dctx->relative_attr = NULL;
 
 	/*
 	 *	Look for a format statement.  Allow it to over-ride the hard-coded formats below.
@@ -2057,7 +2426,7 @@ static int dict_read_process_vendor(dict_tokenize_ctx_t *dctx, char **argv, int 
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
  */
-static int dict_read_process_protocol(char **argv, int argc)
+static int dict_read_process_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc, UNUSED fr_dict_attr_flags_t *base_flag)
 {
 	unsigned int	value;
 	unsigned int	type_size = 0;
@@ -2065,6 +2434,9 @@ static int dict_read_process_protocol(char **argv, int argc)
 	fr_dict_attr_t	*mutable;
 	bool		require_dl = false;
 	bool		string_based = false;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_const("Missing arguments after PROTOCOL.  Expected PROTOCOL <num> <name>");
@@ -2197,16 +2569,6 @@ post_option:
 	return 0;
 }
 
-static int dict_finalise(dict_tokenize_ctx_t *ctx)
-{
-	if (dict_fixup_apply(&ctx->fixup) < 0) return -1;
-
-	ctx->value_attr = NULL;
-	ctx->relative_attr = NULL;
-
-	return 0;
-}
-
 /** Maintain a linked list of filenames which we've seen loading this dictionary
  *
  * This is used for debug messages, so we have a copy of the original file path
@@ -2294,10 +2656,17 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	static fr_dict_keyword_t const keywords[] = {
 		{ L("ALIAS"),			{ dict_read_process_alias } },
 		{ L("ATTRIBUTE"),		{ dict_read_process_attribute } },
+		{ L("BEGIN-PROTOCOL"),		{ dict_read_process_begin_protocol } },
+		{ L("BEGIN-TLV"),		{ dict_read_process_begin_tlv } },
+		{ L("BEGIN-VENDOR"),		{ dict_read_process_begin_vendor } },
 		{ L("DEFINE"),			{ dict_read_process_define } },
+		{ L("END-PROTOCOL"),		{ dict_read_process_end_protocol } },
+		{ L("END-TLV"),			{ dict_read_process_end_tlv } },
 		{ L("END-VENDOR"),		{ dict_read_process_end_vendor } },
 		{ L("ENUM"),			{ dict_read_process_enum } },
 		{ L("FLAGS"),			{ dict_read_process_flags } },
+		{ L("PROTOCOL"),		{ dict_read_process_protocol }},
+		{ L("STRUCT"),			{ dict_read_process_struct } },
 		{ L("VALUE"),			{ dict_read_process_value } },
 		{ L("VENDOR"),			{ dict_read_process_vendor } },
 	};
@@ -2430,8 +2799,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		fr_dict_keyword_parser_t const	*parser;
-		dict_tokenize_frame_t const	*frame;
-
 
 		dctx->stack[dctx->stack_depth].line = ++line;
 
@@ -2523,14 +2890,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		}
 
 		/*
-		 *	Process STRUCT lines.
-		 */
-		if (strcasecmp(argv[0], "STRUCT") == 0) {
-			if (dict_read_process_struct(dctx, argv + 1, argc - 1) == -1) goto error;
-			continue;
-		}
-
-		/*
 		 *	See if we need to import another dictionary.
 		 */
 		if (strncasecmp(argv[0], "$INCLUDE", 8) == 0) {
@@ -2547,348 +2906,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			if (dict_read_process_include(dctx, argv, argc, dir) < 0) goto error;
 			continue;
 		} /* $INCLUDE */
-
-		/*
-		 *	Reset the previous attribute when we see
-		 *	VENDOR or PROTOCOL or BEGIN/END-VENDOR, etc.
-		 */
-		dctx->value_attr = NULL;
-		dctx->relative_attr = NULL;
-
-		/*
-		 *	Process PROTOCOL line.  Defines a new protocol.
-		 */
-		if (strcasecmp(argv[0], "PROTOCOL") == 0) {
-			if (argc < 2) {
-				fr_strerror_const_push("Invalid PROTOCOL entry");
-				goto error;
-			}
-			if (dict_read_process_protocol(argv + 1, argc - 1) == -1) goto error;
-			continue;
-		}
-
-		/*
-		 *	Switches the current protocol context
-		 */
-		if (strcasecmp(argv[0], "BEGIN-PROTOCOL") == 0) {
-			fr_dict_t *found;
-
-			if (argc != 2) {
-				fr_strerror_const_push("Invalid BEGIN-PROTOCOL entry");
-				goto error;
-			}
-
-			/*
-			 *	If we're not parsing in the context of the internal
-			 *	dictionary, then we don't allow BEGIN-PROTOCOL
-			 *	statements.
-			 */
-			if (dctx->dict != dict_gctx->internal) {
-				fr_strerror_const_push("Nested BEGIN-PROTOCOL statements are not allowed");
-				goto error;
-			}
-
-			found = dict_by_protocol_name(argv[1]);
-			if (!found) {
-				fr_strerror_printf("Unknown protocol '%s'", argv[1]);
-				goto error;
-			}
-
-			frame = dict_gctx_find_frame(dctx, NEST_PROTOCOL);
-			if (frame) {
-				fr_strerror_printf_push("Nested BEGIN-PROTOCOL is forbidden.  Previous definition is at %s[%d]",
-							frame->filename, frame->line);
-				goto error;
-			}
-
-			/*
-			 *	Add a temporary fixup pool
-			 *
-			 *	@todo - make a nested ctx?
-			 */
-			dict_fixup_init(NULL, &dctx->fixup);
-
-			/*
-			 *	We're in the middle of loading this dictionary.  Tell
-			 *	fr_dict_protocol_afrom_file() to suppress recursive references.
-			 */
-			found->loading = true;
-
-			dctx->dict = found;
-
-			if (dict_gctx_push(dctx, dctx->dict->root) < 0) goto error;
-			dctx->stack[dctx->stack_depth].nest = NEST_PROTOCOL;
-			continue;
-		}
-
-		/*
-		 *	Switches back to the previous protocol context
-		 */
-		if (strcasecmp(argv[0], "END-PROTOCOL") == 0) {
-			fr_dict_t const *found;
-
-			if (argc != 2) {
-				fr_strerror_const("Invalid END-PROTOCOL entry");
-				goto error;
-			}
-
-			found = dict_by_protocol_name(argv[1]);
-			if (!found) {
-				fr_strerror_printf("END-PROTOCOL %s does not refer to a valid protocol", argv[1]);
-				goto error;
-			}
-
-			if (found != dctx->dict) {
-				fr_strerror_printf("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s",
-						   argv[1], found->root->name);
-				goto error;
-			}
-
-			/*
-			 *	Pop the stack until we get to a PROTOCOL nesting.
-			 */
-			while ((dctx->stack_depth > 0) && (dctx->stack[dctx->stack_depth].nest != NEST_PROTOCOL)) {
-				if (dctx->stack[dctx->stack_depth].nest != NEST_NONE) {
-					fr_strerror_printf_push("END-PROTOCOL %s with mismatched BEGIN-??? %s", argv[1],
-						dctx->stack[dctx->stack_depth].da->name);
-					goto error;
-				}
-
-				dctx->stack_depth--;
-			}
-
-			if (dctx->stack_depth == 0) {
-				fr_strerror_printf_push("END-PROTOCOL %s with no previous BEGIN-PROTOCOL", argv[1]);
-				goto error;
-			}
-
-			if (found->root != dctx->stack[dctx->stack_depth].da) {
-				fr_strerror_printf_push("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s", argv[1],
-							dctx->stack[dctx->stack_depth].da->name);
-				goto error;
-			}
-
-			/*
-			 *	Applies fixups to any attributes added
-			 *	to the protocol dictionary.  Note that
-			 *	the finalise function prints out the
-			 *	original filename / line of the
-			 *	error. So we don't need to do that
-			 *	here.
-			 */
-			if (dict_finalise(dctx) < 0) goto error;
-
-			dctx->stack_depth--;
-			dctx->dict = dctx->stack[dctx->stack_depth].dict;
-			continue;
-		}
-
-		/*
-		 *	Switches TLV parent context
-		 */
-		if (strcasecmp(argv[0], "BEGIN-TLV") == 0) {
-			fr_dict_attr_t const *common;
-
-			if (argc != 2) {
-				fr_strerror_const_push("Invalid BEGIN-TLV entry");
-				goto error;
-			}
-
-			da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da, argv[1]);
-			if (!da) {
-				fr_strerror_const_push("Failed resolving attribute in BEGIN-TLV entry");
-				goto error;
-			}
-
-			if (da->type != FR_TYPE_TLV) {
-				fr_strerror_printf_push("Attribute '%s' should be a 'tlv', but is a '%s'",
-							argv[1],
-							fr_type_to_str(da->type));
-				goto error;
-			}
-
-			common = fr_dict_attr_common_parent(dctx->stack[dctx->stack_depth].da, da, true);
-			if (!common ||
-			    (common->type == FR_TYPE_VSA)) {
-				fr_strerror_printf_push("Attribute '%s' should be a child of '%s'",
-							argv[1], dctx->stack[dctx->stack_depth].da->name);
-				goto error;
-			}
-
-			if (dict_gctx_push(dctx, da) < 0) goto error;
-			dctx->stack[dctx->stack_depth].nest = NEST_TLV;
-			continue;
-		} /* BEGIN-TLV */
-
-		/*
-		 *	Switches back to previous TLV parent
-		 */
-		if (strcasecmp(argv[0], "END-TLV") == 0) {
-			if (argc != 2) {
-				fr_strerror_const_push("Invalid END-TLV entry");
-				goto error;
-			}
-
-			da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth - 1].da, argv[1]);
-			if (!da) {
-				fr_strerror_const_push("Failed resolving attribute in END-TLV entry");
-				goto error;
-			}
-
-			/*
-			 *	Pop the stack until we get to a TLV nesting.
-			 */
-			while ((dctx->stack_depth > 0) && (dctx->stack[dctx->stack_depth].nest != NEST_TLV)) {
-				if (dctx->stack[dctx->stack_depth].nest != NEST_NONE) {
-					fr_strerror_printf_push("END-TLV %s with mismatched BEGIN-??? %s", argv[1],
-						dctx->stack[dctx->stack_depth].da->name);
-					goto error;
-				}
-
-				dctx->stack_depth--;
-			}
-
-			if (dctx->stack_depth == 0) {
-				fr_strerror_printf_push("END-TLV %s with no previous BEGIN-TLV", argv[1]);
-				goto error;
-			}
-
-			if (da != dctx->stack[dctx->stack_depth].da) {
-				fr_strerror_printf_push("END-TLV %s does not match previous BEGIN-TLV %s", argv[1],
-							dctx->stack[dctx->stack_depth].da->name);
-				goto error;
-			}
-
-			dctx->stack_depth--;
-			continue;
-		} /* END-VENDOR */
-
-		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
-			fr_dict_vendor_t const	*vendor;
-			fr_dict_attr_flags_t	flags;
-
-			fr_dict_attr_t const	*vsa_da;
-			fr_dict_attr_t const	*vendor_da;
-			fr_dict_attr_t		*new;
-
-			if (argc < 2) {
-				fr_strerror_const_push("Invalid BEGIN-VENDOR entry");
-				goto error;
-			}
-
-			vendor = fr_dict_vendor_by_name(dctx->dict, argv[1]);
-			if (!vendor) {
-				fr_strerror_printf_push("Unknown vendor '%s'", argv[1]);
-				goto error;
-			}
-
-			/*
-			 *	Check for extended attr VSAs
-			 *
-			 *	BEGIN-VENDOR foo parent=Foo-Encapsulation-Attr
-			 */
-			if (argc > 2) {
-				if (strncmp(argv[2], "parent=", 7) != 0) {
-					fr_strerror_printf_push("BEGIN-VENDOR invalid argument (%s)", argv[2]);
-					goto error;
-				}
-
-				p = argv[2] + 7;
-				da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da, p);
-				if (!da) {
-					fr_strerror_printf_push("BEGIN-VENDOR invalid argument (%s)", argv[2]);
-					goto error;
-				}
-
-				if (da->type != FR_TYPE_VSA) {
-					fr_strerror_printf_push("Invalid parent for BEGIN-VENDOR.  "
-								"Attribute '%s' should be 'vsa' but is '%s'", p,
-								fr_type_to_str(da->type));
-					goto error;
-				}
-
-				vsa_da = da;
-
-			} else if (dctx->dict->vsa_parent) {
-				/*
-				 *	Check that the protocol-specific VSA parent exists.
-				 */
-				vsa_da = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da, dctx->dict->vsa_parent);
-				if (!vsa_da) {
-					fr_strerror_printf_push("Failed finding VSA parent for Vendor %s",
-								vendor->name);
-					goto error;
-				}
-
-			} else if (dctx->dict->string_based) {
-				vsa_da = dctx->dict->root;
-
-			} else {
-				fr_strerror_printf_push("BEGIN-VENDOR is forbidden for protocol %s - it has no ATTRIBUTE of type 'vsa'",
-							dctx->dict->root->name);
-				goto error;
-			}
-
-			frame = dict_gctx_find_frame(dctx, NEST_VENDOR);
-			if (frame) {
-				fr_strerror_printf_push("Nested BEGIN-VENDOR is forbidden.  Previous definition is at %s[%d]",
-							frame->filename, frame->line);
-				goto error;
-			}
-
-			/*
-			 *	Create a VENDOR attribute on the fly, either in the context
-			 *	of the VSA (26) attribute.
-			 */
-			vendor_da = dict_attr_child_by_num(vsa_da, vendor->pen);
-			if (!vendor_da) {
-				memset(&flags, 0, sizeof(flags));
-
-				flags.type_size = dctx->dict->proto->default_type_size;
-				flags.length = dctx->dict->proto->default_type_length;
-
-				/*
-				 *	See if this vendor has
-				 *	specific sizes for type /
-				 *	length.
-				 *
-				 *	@todo - Make this more protocol agnostic!
-				 */
-				if ((vsa_da->type == FR_TYPE_VSA) &&
-				    (vsa_da->parent->flags.is_root)) {
-					fr_dict_vendor_t const *dv;
-
-					dv = fr_dict_vendor_by_num(dctx->dict, vendor->pen);
-					if (dv) {
-						flags.type_size = dv->type;
-						flags.length = dv->length;
-					}
-				}
-
-				new = dict_attr_alloc(dctx->dict->pool,
-						      vsa_da, argv[1], vendor->pen, FR_TYPE_VENDOR,
-						      &(dict_attr_args_t){ .flags = &flags });
-				if (unlikely(!new)) goto error;
-
-				if (dict_attr_child_add(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
-					talloc_free(new);
-					goto error;
-				}
-
-				if (dict_attr_add_to_namespace(UNCONST(fr_dict_attr_t *, vsa_da), new) < 0) {
-					talloc_free(new);
-					goto error;
-				}
-
-				vendor_da = new;
-			} else {
-				fr_assert(vendor_da->type == FR_TYPE_VENDOR);
-			}
-
-			if (dict_gctx_push(dctx, vendor_da) < 0) goto error;
-			dctx->stack[dctx->stack_depth].nest = NEST_VENDOR;
-			continue;
-		} /* BEGIN-VENDOR */
 
 		/*
 		 *	Any other string: We don't recognize it.
