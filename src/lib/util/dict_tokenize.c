@@ -1197,7 +1197,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 #endif
 
 #ifdef STATIC_ANALYZER
-	if (!ctx->dict) return -1;
+	if (!dctx->dict) return -1;
 #endif
 
 	/*
@@ -1555,7 +1555,7 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 	}
 
 #ifdef STATIC_ANALYZER
-	if (!ctx->dict) goto error;
+	if (!dctx->dict) goto error;
 #endif
 
 	/*
@@ -1860,7 +1860,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 	 */
 
 #ifdef STATIC_ANALYZER
-	if (!ctx->dict) goto error;
+	if (!dctx->dict) goto error;
 #endif
 
 	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
@@ -1935,7 +1935,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	}
 
 #ifdef STATIC_ANALYZER
-	if (!ctx->dict) goto error;
+	if (!dctx->dict) goto error;
 #endif
 
 	/*
