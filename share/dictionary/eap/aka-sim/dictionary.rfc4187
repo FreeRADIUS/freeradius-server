@@ -51,14 +51,14 @@ ATTRIBUTE	Encr-Data				130	tlv encrypt=aes-cbc
 #
 #  These attributes are reversibly encrypted
 #
-BEGIN-TLV	Encr-Data
+BEGIN	Encr-Data
 ATTRIBUTE	Padding					6	octets		# 4, 8, 12 bytes
 ATTRIBUTE	Counter					19	short
 ATTRIBUTE	Counter-Too-Small			20	bool
 ATTRIBUTE	Nonce-S					21	octets[16]
 ATTRIBUTE	Next-Pseudonym				132	string
 ATTRIBUTE	Next-Reauth-ID				133	string
-END-TLV		Encr-Data
+END		Encr-Data
 
 ATTRIBUTE	Checkcode				134	octets		# 0, 20 or 32 bytes
 ATTRIBUTE	Result-Ind				135	bool
@@ -66,4 +66,3 @@ ATTRIBUTE	Bidding					136	short
 
 VALUE	Bidding				Prefer-AKA		0
 VALUE	Bidding				Prefer-AKA-Prime	32768	# D Bit
-

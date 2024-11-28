@@ -64,6 +64,15 @@ typedef enum CC_HINT(flag_enum) {
 } dict_nest_t;
 DIAG_ON(attributes)
 
+fr_table_num_sorted_t const dict_nest_table[] = {
+	{ L("ATTRIBUTE"),	NEST_ATTRIBUTE },
+	{ L("NONE"),		NEST_NONE },
+	{ L("PROTOCOL"),	NEST_PROTOCOL },
+	{ L("ROOT"),		NEST_ROOT },
+	{ L("VENDOR"),		NEST_VENDOR }
+};
+size_t const dict_nest_table_len = NUM_ELEMENTS(dict_nest_table);
+
 /** Parser context for dict_from_file
  *
  * Allows vendor and TLV context to persist across $INCLUDEs
@@ -79,7 +88,7 @@ typedef struct {
 	ssize_t			struct_size;		//!< size of the struct.
 } dict_tokenize_frame_t;
 
-typedef struct {
+struct dict_tokenize_ctx_s {
 	fr_dict_t		*dict;			//!< Protocol dictionary we're inserting attributes into.
 
 	dict_tokenize_frame_t	stack[DICT_MAX_STACK];	//!< stack of attributes to track
@@ -88,7 +97,7 @@ typedef struct {
 	fr_dict_attr_t		*value_attr;		//!< Cache of last attribute to speed up value processing.
 	fr_dict_attr_t const   	*relative_attr;		//!< for ".82" instead of "1.2.3.82". only for parents of type "tlv"
 	dict_fixup_ctx_t	fixup;
-} dict_tokenize_ctx_t;
+};
 
 static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			   char  const *dir_name, char const *filename,
@@ -97,6 +106,100 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 #define CURRENT_FRAME(_dctx)	(&(_dctx)->stack[(_dctx)->stack_depth])
 #define CURRENT_FILENAME(_dctx)	(CURRENT_FRAME(_dctx)->filename)
 #define CURRENT_LINE(_dctx)	(CURRENT_FRAME(_dctx)->line)
+
+void dict_dctx_debug(dict_tokenize_ctx_t *dctx)
+{
+	int i;
+
+	for (i = 0; i <= dctx->stack_depth; i++) {
+		FR_FAULT_LOG("[%d]: %s %s (%s): %s[%u]",
+			     i,
+			     fr_table_str_by_value(dict_nest_table, dctx->stack[i].nest, "<INVALID>"),
+			     dctx->stack[i].da->name,
+			     fr_type_to_str(dctx->stack[i].da->type),
+			     dctx->stack[i].filename, dctx->stack[i].line);
+	}
+}
+
+static dict_tokenize_frame_t const *dict_dctx_find_frame(dict_tokenize_ctx_t *dctx, dict_nest_t nest)
+{
+	int i;
+
+	for (i = dctx->stack_depth; i >= 0; i--) {
+		if (dctx->stack[i].nest & nest) return &dctx->stack[i];
+	}
+
+	return NULL;
+}
+
+static int dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
+{
+	if ((dctx->stack_depth + 1) >= DICT_MAX_STACK) {
+		fr_strerror_const_push("Attribute definitions are nested too deep.");
+		return -1;
+	}
+
+	fr_assert(da != NULL);
+
+	dctx->stack[++dctx->stack_depth] = (dict_tokenize_frame_t){
+		.dict = dctx->stack[dctx->stack_depth - 1].dict,
+		.da = da,
+		.filename = dctx->stack[dctx->stack_depth - 1].filename,
+		.line = dctx->stack[dctx->stack_depth - 1].line,
+		.nest = nest
+	};
+
+	return 0;
+}
+
+/** Pop the current stack frame
+ *
+ * @param[in] dctx		Stack to pop from.
+ * @preturn
+ *	- Pointer to the current stack frame.
+ *	- NULL, if we're already at the root.
+ */
+static dict_tokenize_frame_t const *dict_dctx_pop(dict_tokenize_ctx_t *dctx)
+{
+	if (dctx->stack_depth == 0) return NULL;
+
+	return &dctx->stack[dctx->stack_depth--];
+}
+
+/** Unwind the entire stack, returning the root frame
+ *
+ * @param[in] dctx		Stack to unwind.
+ * @return Pointer to the root frame.
+ */
+static dict_tokenize_frame_t const *dict_dctx_unwind(dict_tokenize_ctx_t *dctx)
+{
+	while ((dctx->stack_depth > 0) &&
+	       (dctx->stack[dctx->stack_depth].nest == NEST_NONE)) {
+		dctx->stack_depth--;
+	}
+
+	return &dctx->stack[dctx->stack_depth];
+}
+
+/** Unwind the stack until it points to a particular type of stack frame
+ *
+ * @param[in] dctx		Stack to unwind.
+ * @param[in] nest		Frame type to unwind to.
+ * @return
+ *	- Pointer to the frame matching nest
+ *	- NULL, if we unwound the complete stack and didn't find the frame.
+ */
+static dict_tokenize_frame_t const *dict_dctx_unwind_until(dict_tokenize_ctx_t *dctx, dict_nest_t nest)
+{
+	while ((dctx->stack_depth > 0) &&
+	       !(dctx->stack[dctx->stack_depth].nest & nest)) {
+		dctx->stack_depth--;
+	}
+
+	if (!(dctx->stack[dctx->stack_depth].nest & nest)) return NULL;
+
+	return &dctx->stack[dctx->stack_depth];
+}
 
 /*
  *	String split routine.  Splits an input string IN PLACE
@@ -653,47 +756,6 @@ static int CC_HINT(nonnull) dict_process_flag_field(dict_tokenize_ctx_t *dctx, c
 	return 0;
 }
 
-static dict_tokenize_frame_t const *dict_dctx_find_frame(dict_tokenize_ctx_t *dctx, dict_nest_t nest)
-{
-	int i;
-
-	for (i = dctx->stack_depth; i > 0; i--) {
-		if (dctx->stack[i].nest == nest) return &dctx->stack[i];
-	}
-
-	return NULL;
-}
-
-static int dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
-{
-	if ((dctx->stack_depth + 1) >= DICT_MAX_STACK) {
-		fr_strerror_const_push("Attribute definitions are nested too deep.");
-		return -1;
-	}
-
-	fr_assert(da != NULL);
-
-	dctx->stack[++dctx->stack_depth] = (dict_tokenize_frame_t){
-		.dict = dctx->stack[dctx->stack_depth - 1].dict,
-		.da = da,
-		.filename = dctx->stack[dctx->stack_depth - 1].filename,
-		.line = dctx->stack[dctx->stack_depth - 1].line,
-		.nest = nest
-	};
-
-	return 0;
-}
-
-static fr_dict_attr_t const *dict_gctx_unwind(dict_tokenize_ctx_t *ctx)
-{
-	while ((ctx->stack_depth > 0) &&
-	       (ctx->stack[ctx->stack_depth].nest == NEST_NONE)) {
-		ctx->stack_depth--;
-	}
-
-	return ctx->stack[ctx->stack_depth].da;
-}
-
 static int dict_finalise(dict_tokenize_ctx_t *dctx)
 {
 	if (dict_fixup_apply(&dctx->fixup) < 0) return -1;
@@ -758,7 +820,7 @@ static int dict_attr_add_or_fixup(dict_fixup_ctx_t *fixup, fr_dict_attr_t **da_p
 			/*
 			 *	See if we can immediately apply the clone
 			 */
-			fr_dict_attr_t const *src = dict_protocol_reference(da, ref->unresolved);
+			fr_dict_attr_t const *src = dict_protocol_reference(da->parent, ref->unresolved, true);
 			if (src) {
 				if (dict_fixup_clone(da_p, src) < 0) return -1;
 				break;
@@ -1127,7 +1189,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	 *	unwind the stack to match.
 	 */
 	if (argv[1][0] != '.') {
-		parent = dict_gctx_unwind(dctx);
+		parent = dict_dctx_unwind(dctx)->da;
 
 		/*
 		 *	Allow '0xff00' as attribute numbers, but only
@@ -1268,6 +1330,59 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 	return 0;
 }
 
+static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int argc, UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	dict_tokenize_frame_t const	*frame;
+	fr_dict_attr_t const		*da;
+	fr_dict_attr_t const		*common;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
+
+	if (argc != 1) {
+		fr_strerror_const_push("Invalid BEGIN entry");
+	error:
+		return -1;
+	}
+
+	frame = dict_dctx_find_frame(dctx, NEST_ROOT | NEST_PROTOCOL | NEST_ATTRIBUTE);
+	if (!fr_cond_assert_msg(frame, "Context stack doesn't have an attribute or dictionary "
+				"root to begin searching from %s[%u]", CURRENT_FILENAME(dctx), CURRENT_LINE(dctx)) ||
+	    !fr_cond_assert_msg(fr_type_is_structural(frame->da->type), "Context attribute is not structural %s[%u]",
+	    			CURRENT_FILENAME(dctx), CURRENT_LINE(dctx))) {
+		return -1;
+	}
+
+	/*
+	 *	Not really a reference as we don't support any of the
+	 *	fancy syntaxes like refs do.  A straight OID string
+	 *	resolved from the current level of nesting is all we support.
+	 */
+	da = fr_dict_attr_by_oid(NULL, frame->da, argv[0]);
+	if (!da) {
+		fr_strerror_printf_push("BEGIN '%s' not resolvable in context '%s'", argv[0], frame->da->name);
+		goto error;
+	}
+
+	if (!fr_type_is_tlv(da->type) && !fr_type_is_struct(da->type)) {
+		fr_strerror_printf_push("BEGIN %s should be a 'tlv' or 'struct', but is a '%s'",
+					argv[0],
+					fr_type_to_str(da->type));
+		goto error;
+	}
+
+	common = fr_dict_attr_common_parent(frame->da, da, true);
+	if (!common) {
+		fr_strerror_printf_push("BEGIN %s should be a child of '%s'",
+					argv[0], dctx->stack[dctx->stack_depth].da->name);
+		goto error;
+	}
+
+	if (dict_dctx_push(dctx, da, NEST_ATTRIBUTE) < 0) goto error;
+
+	return 0;
+}
+
 static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 				    	    UNUSED fr_dict_attr_flags_t *base_flags)
 {
@@ -1322,47 +1437,6 @@ static int dict_read_process_begin_protocol(dict_tokenize_ctx_t *dctx, char **ar
 	dctx->dict = found;
 
 	if (dict_dctx_push(dctx, dctx->dict->root, NEST_PROTOCOL) < 0) goto error;
-
-	return 0;
-}
-
-static int dict_read_process_begin_tlv(dict_tokenize_ctx_t *dctx, char **argv, int argc,
-				       UNUSED fr_dict_attr_flags_t *base_flags)
-{
-	fr_dict_attr_t const *da;
-	fr_dict_attr_t const *common;
-
-	dctx->value_attr = NULL;
-	dctx->relative_attr = NULL;
-
-	if (argc != 1) {
-		fr_strerror_const_push("Invalid BEGIN-TLV entry");
-	error:
-		return -1;
-	}
-
-	da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth].da, argv[0]);
-	if (!da) {
-		fr_strerror_const_push("Failed resolving attribute in BEGIN-TLV entry");
-		goto error;
-	}
-
-	if (da->type != FR_TYPE_TLV) {
-		fr_strerror_printf_push("Attribute '%s' should be a 'tlv', but is a '%s'",
-					argv[0],
-					fr_type_to_str(da->type));
-		goto error;
-	}
-
-	common = fr_dict_attr_common_parent(dctx->stack[dctx->stack_depth].da, da, true);
-	if (!common ||
-		(common->type == FR_TYPE_VSA)) {
-		fr_strerror_printf_push("Attribute '%s' should be a child of '%s'",
-					argv[0], dctx->stack[dctx->stack_depth].da->name);
-		goto error;
-	}
-
-	if (dict_dctx_push(dctx, da, NEST_TLV) < 0) goto error;
 
 	return 0;
 }
@@ -1512,8 +1586,9 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 				    fr_dict_attr_flags_t *base_flags)
 {
-	fr_dict_attr_t const	*parent;
-	fr_dict_attr_t		*da;
+	fr_dict_attr_t const		*parent;
+	fr_dict_attr_t			*da;
+	dict_tokenize_frame_t const	*frame;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_const("Invalid DEFINE syntax");
@@ -1545,9 +1620,10 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 		goto error;
 	}
 
-	parent = dict_gctx_unwind(dctx);
+	frame = dict_dctx_unwind(dctx);
+	if (!fr_cond_assert(frame && frame->da)) goto error;	/* Should have provided us with a parent */
 
-	if (!fr_cond_assert(parent)) goto error;	/* Should have provided us with a parent */
+	parent = frame->da;
 
 	/*
 	 *	Members of a 'struct' MUST use MEMBER, not ATTRIBUTE.
@@ -1622,6 +1698,62 @@ static int dict_read_process_define(dict_tokenize_ctx_t *dctx, char **argv, int 
 	return 0;
 }
 
+static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int argc,
+				 UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	fr_dict_attr_t const *current;
+	fr_dict_attr_t const *da;
+	dict_tokenize_frame_t const *frame;
+
+	dctx->value_attr = NULL;
+	dctx->relative_attr = NULL;
+
+	if (argc > 2) {
+		fr_strerror_const("Invalid END syntax, expected END <ref>");
+		goto error;
+	}
+
+	/*
+	 *	Unwind until we hit an attribute nesting section
+	 */
+	if (!dict_dctx_unwind_until(dctx, NEST_ATTRIBUTE)) {
+		fr_strerror_const("Unbalanced BEGIN and END keywords");
+	error:
+		return -1;
+	}
+
+	/*
+	 *	Pop the stack to get the attribute we're ending.
+	 */
+	current = dict_dctx_pop(dctx)->da;;
+
+	/*
+	 *	No checks on the attribute, we're just popping _A_ frame,
+	 *	we don't care what attribute it represents.
+	 */
+	if (argc == 1) return 0;
+
+	/*
+	 *	This is where we'll have begun the previous search to
+	 *	evaluate the BEGIN keyword.
+	 */
+	frame = dict_dctx_find_frame(dctx, NEST_ROOT | NEST_PROTOCOL | NEST_ATTRIBUTE);
+	if (!fr_cond_assert(frame)) goto error;
+
+	da = fr_dict_attr_by_oid(NULL, frame->da, argv[0]);
+	if (!da) {
+		fr_strerror_const_push("Failed resolving attribute in BEGIN entry");
+		goto error;
+	}
+
+	if (da != current) {
+		fr_strerror_printf_push("END %s does not match previous BEGIN %s", argv[0], current->name);
+		goto error;
+	}
+
+	return 0;
+}
+
 static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 					  UNUSED fr_dict_attr_flags_t *base_flags)
 {
@@ -1684,55 +1816,6 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 
 	dctx->stack_depth--;
 	dctx->dict = dctx->stack[dctx->stack_depth].dict;
-
-	return 0;
-}
-
-static int dict_read_process_end_tlv(dict_tokenize_ctx_t *dctx, char **argv, int argc,
-				     UNUSED fr_dict_attr_flags_t *base_flags)
-{
-	fr_dict_attr_t const *da;
-
-	dctx->value_attr = NULL;
-	dctx->relative_attr = NULL;
-
-	if (argc != 1) {
-		fr_strerror_const_push("Invalid END-TLV entry");
-	error:
-		return -1;
-	}
-
-	da = fr_dict_attr_by_oid(NULL, dctx->stack[dctx->stack_depth - 1].da, argv[0]);
-	if (!da) {
-		fr_strerror_const_push("Failed resolving attribute in END-TLV entry");
-		goto error;
-	}
-
-	/*
-		*	Pop the stack until we get to a TLV nesting.
-		*/
-	while ((dctx->stack_depth > 0) && (dctx->stack[dctx->stack_depth].nest != NEST_TLV)) {
-		if (dctx->stack[dctx->stack_depth].nest != NEST_NONE) {
-			fr_strerror_printf_push("END-TLV %s with mismatched BEGIN-??? %s", argv[0],
-				dctx->stack[dctx->stack_depth].da->name);
-			goto error;
-		}
-
-		dctx->stack_depth--;
-	}
-
-	if (dctx->stack_depth == 0) {
-		fr_strerror_printf_push("END-TLV %s with no previous BEGIN-TLV", argv[0]);
-		goto error;
-	}
-
-	if (da != dctx->stack[dctx->stack_depth].da) {
-		fr_strerror_printf_push("END-TLV %s does not match previous BEGIN-TLV %s", argv[0],
-					dctx->stack[dctx->stack_depth].da->name);
-		goto error;
-	}
-
-	dctx->stack_depth--;
 
 	return 0;
 }
@@ -2703,12 +2786,12 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	static fr_dict_keyword_t const keywords[] = {
 		{ L("ALIAS"),			{ dict_read_process_alias } },
 		{ L("ATTRIBUTE"),		{ dict_read_process_attribute } },
+		{ L("BEGIN"),			{ dict_read_process_begin } },
 		{ L("BEGIN-PROTOCOL"),		{ dict_read_process_begin_protocol } },
-		{ L("BEGIN-TLV"),		{ dict_read_process_begin_tlv } },
 		{ L("BEGIN-VENDOR"),		{ dict_read_process_begin_vendor } },
 		{ L("DEFINE"),			{ dict_read_process_define } },
+		{ L("END"),			{ dict_read_process_end } },
 		{ L("END-PROTOCOL"),		{ dict_read_process_end_protocol } },
-		{ L("END-TLV"),			{ dict_read_process_end_tlv } },
 		{ L("END-VENDOR"),		{ dict_read_process_end_vendor } },
 		{ L("ENUM"),			{ dict_read_process_enum } },
 		{ L("FLAGS"),			{ dict_read_process_flags } },

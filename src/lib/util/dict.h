@@ -66,6 +66,7 @@ typedef struct value_box_s fr_value_box_t;
 #  define DA_VERIFY(_x)		fr_cond_assert(_x)
 #endif
 
+typedef struct dict_tokenize_ctx_s dict_tokenize_ctx_t;
 typedef struct fr_dict_autoload_talloc_s fr_dict_autoload_talloc_t;
 
 /** Values of the encryption flags
@@ -913,6 +914,8 @@ fr_dict_t const		*fr_dict_internal(void);
  *
  * @{
  */
+void			dict_dctx_debug(dict_tokenize_ctx_t *dctx);
+
 int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
 					  fr_dict_attr_t const *parent);
 
