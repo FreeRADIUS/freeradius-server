@@ -1045,48 +1045,10 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 
 	}
 
-	if (fr_event_fd_insert(h, NULL, el, h->fd,
-			       read_fn,
-			       write_fn,
-			       conn_error,
-			       tconn) < 0) {
-		PERROR("%s - Failed inserting FD event", h->module_name);
-
-		/*
-		 *	May free the connection!
-		 */
-		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-	}
-}
-
-/** A special version of the trunk/event loop glue function which always discards incoming data
- *
- */
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static void thread_conn_notify_replicate(trunk_connection_t *tconn, connection_t *conn,
-					 fr_event_list_t *el,
-					 trunk_connection_event_t notify_on, UNUSED void *uctx)
-{
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
-	fr_event_fd_cb_t	read_fn = NULL;
-	fr_event_fd_cb_t	write_fn = NULL;
-
-	switch (notify_on) {
-	case TRUNK_CONN_EVENT_NONE:
-		read_fn = conn_discard;
-		write_fn = NULL;
-		break;
-
-	case TRUNK_CONN_EVENT_READ:
-		read_fn = conn_discard;
-		break;
-
-	case TRUNK_CONN_EVENT_BOTH:
-	case TRUNK_CONN_EVENT_WRITE:
-		read_fn = conn_discard;
-		write_fn = trunk_connection_callback_writable;
-		break;
-	}
+	/*
+	 *	Over-ride read for replication.
+	 */
+	if (h->inst->parent->replicate) read_fn = conn_discard;
 
 	if (fr_event_fd_insert(h, NULL, el, h->fd,
 			       read_fn,
@@ -1712,8 +1674,8 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	}
 
 	/*
-	 *	For all messages that were actually sent by sendmmsg
-	 *	start the request timer.
+	 *	For all messages that were actually sent by sendmmsg,
+	 *	say what's up.
 	 */
 	for (i = 0; i < sent; i++) {
 		trunk_request_t		*treq = h->coalesced[i].treq;
@@ -1732,6 +1694,16 @@ static void request_mux(UNUSED fr_event_list_t *el,
 		u = talloc_get_type_abort(treq->preq, udp_request_t);
 
 		/*
+		 *	Don't print anything more for replicated requests.
+		 */
+		if (inst->parent->replicate) {
+			udp_result_t *r = talloc_get_type_abort(treq->rctx, udp_result_t);
+
+			r->rcode = RLM_MODULE_OK;
+			trunk_request_signal_complete(treq);
+		}
+
+		/*
 		 *	Tell the admin what's going on
 		 */
 		if (u->retry.count == 1) {
@@ -1744,6 +1716,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 		}
 
 		fr_assert(!u->status_check);
+
 
 		if (!inst->parent->synchronous) {
 			RDEBUG("%s request.  Expecting response within %pVs", action,
@@ -1764,135 +1737,6 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	 *	The cancel logic runs as per-normal and cleans up
 	 *	the request ready for sending again...
 	 */
-	for (i = sent; i < queued; i++) trunk_request_requeue(h->coalesced[i].treq);
-}
-
-CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
-static void request_mux_replicate(UNUSED fr_event_list_t *el,
-				  trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
-{
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
-	rlm_radius_udp_t const	*inst = h->inst;
-
-	uint16_t		i = 0, queued;
-	int			sent;
-	size_t			total_len = 0;
-
-	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
-		trunk_request_t	*treq;
-		udp_request_t		*u;
-		request_t			*request;
-
- 		if (unlikely(trunk_connection_pop_request(&treq, tconn) < 0)) return;
-
-		/*
-		 *	No more requests to send
-		 */
-		if (!treq) break;
-
- 		fr_assert((treq->state == TRUNK_REQUEST_STATE_PENDING) ||
-			   (treq->state == TRUNK_REQUEST_STATE_PARTIAL));
-
-		request = treq->request;
-		u = talloc_get_type_abort(treq->preq, udp_request_t);
-
-		if (!u->packet) {
-			u->id = h->last_id++;
-
-			if (encode(h->inst, request, u, u->id) < 0) {
-				trunk_request_signal_fail(treq);
-				continue;
-			}
-		}
-
-		RDEBUG("Sending %s ID %d length %ld over connection %s",
-		       fr_radius_packet_name[u->code], u->id, u->packet_len, h->name);
-		RHEXDUMP3(u->packet, u->packet_len, "Encoded packet");
-
-		h->coalesced[queued].treq = treq;
-		h->coalesced[queued].out.iov_base = u->packet;
-		h->coalesced[queued].out.iov_len = u->packet_len;
-
-		/*
-		 *	Record how much data we have in total.
-		 *
-		 *	Try not to exceed the SO_SNDBUF value of the
-		 *	socket as we potentially just waste CPU
-		 *	time re-encoding the packets.
-		 */
-		total_len += u->packet_len;
-
-		trunk_request_signal_sent(treq);
-		queued++;
-	}
-	if (queued == 0) return;	/* No work */
-
-	/*
-	 *	Verify nothing accidentally freed the connection handle
-	 */
-	(void)talloc_get_type_abort(h, udp_handle_t);
-
-	sent = sendmmsg(h->fd, h->mmsgvec, queued, 0);
-	if (sent < 0) {		/* Error means no messages were sent */
-		sent = 0;
-
-		/*
-		 *	Temporary conditions
-		 */
-		switch (errno) {
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-		case EWOULDBLOCK:	/* No outbound packet buffers, maybe? */
-#endif
-		case EAGAIN:		/* No outbound packet buffers, maybe? */
-		case EINTR:		/* Interrupted by signal */
-		case ENOBUFS:		/* No outbound packet buffers, maybe? */
-		case ENOMEM:		/* malloc failure in kernel? */
-			WARN("%s - Failed sending data over connection %s: %s",
-			     h->module_name, h->name, fr_syserror(errno));
-			break;
-
-		/*
-		 *	Fatal, request specific conditions
-		 *
-		 *	sendmmsg will only return an error condition if the
-		 *	first packet being sent errors.
-		 *
-		 *	When we get request specific errors, we need to fail
-		 *	the first request in the set, and move the rest of
-		 *	the packets back to the pending state.
-		 */
-		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
-			ERROR("%s - Failed sending data over connection %s: %s",
-			      h->module_name, h->name, fr_syserror(errno));
-			trunk_request_signal_fail(h->coalesced[0].treq);
-			sent = 1;
-			break;
-
-		/*
-		 *	Will re-queue any 'sent' requests, so we don't
-		 *	have to do any cleanup.
-		 */
-		default:
-			ERROR("%s - Failed sending data over connection %s: %s",
-			      h->module_name, h->name, fr_syserror(errno));
-			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
-			return;
-		}
-	}
-
-	for (i = 0; i < sent; i++) {
-		trunk_request_t	*treq = h->coalesced[i].treq;
-		udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
-
-		/*
-		 *	It's UDP so there should never be partial writes
-		 */
-		fr_assert((size_t)h->mmsgvec[i].msg_len == h->mmsgvec[i].msg_hdr.msg_iov->iov_len);
-
-		r->rcode = RLM_MODULE_OK;
-		trunk_request_signal_complete(treq);
-	}
-
 	for (i = sent; i < queued; i++) trunk_request_requeue(h->coalesced[i].treq);
 }
 
@@ -2283,6 +2127,8 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	if (u->ev) (void)fr_event_timer_delete(&u->ev);
 	if (u->packet) udp_request_reset(u);
 
+	if (h->inst->parent->replicate) return;
+
 	u->num_replies = 0;
 
 	/*
@@ -2290,18 +2136,6 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	 *	allocated then the connection is "idle".
 	 */
 	if (!h->tt || (h->tt->num_requests == 0)) h->last_idle = fr_time();
-}
-
-/** Clear out anything associated with the handle from the request
- *
- */
-static void request_conn_release_replicate(UNUSED connection_t *conn, void *preq_to_reset, UNUSED void *uctx)
-{
-	udp_request_t		*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
-
-	fr_assert(!u->ev);
-
-	if (u->packet) udp_request_reset(u);
 }
 
 /** Write out a canned failure
@@ -2587,21 +2421,10 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 						.request_free = request_free
 					};
 
-	static trunk_io_funcs_t	io_funcs_replicate = {
-						.connection_alloc = thread_conn_alloc,
-						.connection_notify = thread_conn_notify_replicate,
-						.request_prioritise = request_prioritise,
-						.request_mux = request_mux_replicate,
-						.request_conn_release = request_conn_release_replicate,
-						.request_complete = request_complete,
-						.request_fail = request_fail,
-						.request_free = request_free
-					};
-
 	thread->el = mctx->el;
 	thread->inst = inst;
-	thread->trunk = trunk_alloc(thread, mctx->el, inst->replicate ? &io_funcs_replicate : &io_funcs,
-				       &inst->trunk_conf, inst->parent->name, thread, false);
+	thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
+				    &inst->trunk_conf, inst->parent->name, thread, false);
 	if (!thread->trunk) return -1;
 
 	return 0;
