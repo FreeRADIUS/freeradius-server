@@ -2611,6 +2611,44 @@ static inline bool dict_filename_loaded(fr_dict_t *dict, char const *filename)
 }
 #endif
 
+static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
+{
+	fr_dict_attr_t const *da;
+
+	da = dctx->stack[dctx->stack_depth].da;
+	if (da->type == FR_TYPE_STRUCT) {
+		/*
+		 *	The structure was fixed-size,
+		 *	but the fields don't fill it.
+		 *	That's an error.
+		 *
+		 *	Since process_member() checks
+		 *	for overflow, the check here
+		 *	is really only for underflow.
+		 */
+		if (da->flags.length && (dctx->stack[dctx->stack_depth].struct_size != da->flags.length)) {
+			fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
+					da->name, da->flags.length);
+			return -1;
+		}
+
+		/*
+		 *	If the structure is fixed
+		 *	size, AND small enough to fit
+		 *	into an 8-bit length field,
+		 *	then update the length field
+		 *	with the structure size/
+		 */
+		if (dctx->stack[dctx->stack_depth].struct_size <= 255) {
+			UNCONST(fr_dict_attr_t *, da)->flags.length = dctx->stack[dctx->stack_depth].struct_size;
+		} /* else length 0 means "unknown / variable size / too large */
+	} else {
+		fr_assert_msg(da->type == FR_TYPE_TLV, "Expected parent type of 'tlv', got '%s'", fr_type_to_str(da->type));
+	}
+
+	return 0;
+}
+
 /** Keyword parser
  *
  * @param[in] ctx		containing the dictionary we're currently parsing.
@@ -2682,7 +2720,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	struct stat		statbuf;
 	char			*argv[MAX_ARGV];
 	int			argc;
-	fr_dict_attr_t const	*da;
 
 	/*
 	 *	Base flags are only set for the current file
@@ -2833,43 +2870,11 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			 *	Note: This is broken.  It won't apply correctly to deferred
 			 *	definitions of attributes we need some kind of proper
 			 *	finalisation API.
-			 *
-			 *	This also doesn't work if there's no trailing new lines...
 			 */
 			if (parser->parse == dict_read_process_member) {
 				was_member = true;
 			} else if (was_member) {
-				da = dctx->stack[dctx->stack_depth].da;
-				if (da->type == FR_TYPE_STRUCT) {
-					/*
-					 *	The structure was fixed-size,
-					 *	but the fields don't fill it.
-					 *	That's an error.
-					 *
-					 *	Since process_member() checks
-					 *	for overflow, the check here
-					 *	is really only for underflow.
-					 */
-					if (da->flags.length &&
-					(dctx->stack[dctx->stack_depth].struct_size != da->flags.length)) {
-						fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
-								da->name, da->flags.length);
-						goto error;
-					}
-
-					/*
-					 *	If the structure is fixed
-					 *	size, AND small enough to fit
-					 *	into an 8-bit length field,
-					 *	then update the length field
-					 *	with the structure size/
-					 */
-					if (dctx->stack[dctx->stack_depth].struct_size <= 255) {
-						UNCONST(fr_dict_attr_t *, da)->flags.length = dctx->stack[dctx->stack_depth].struct_size;
-					} /* else length 0 means "unknown / variable size / too large */
-				} else {
-					fr_assert_msg(da->type == FR_TYPE_TLV, "Expected parent type of 'tlv', got '%s'", fr_type_to_str(da->type));
-				}
+				if (unlikely(dict_struct_finalise(dctx) < 0)) goto error;
 				was_member = false;
 			}
 			if (unlikely(parser->parse(dctx, argv + 1 , argc - 1, &base_flags) < 0)) goto error;
@@ -2902,6 +2907,8 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		goto error;
 	}
 
+	if (was_member && unlikely(dict_struct_finalise(dctx) < 0)) goto error;
+
 	/*
 	 *	Note that we do NOT walk back up the stack to check
 	 *	for missing END-FOO to match BEGIN-FOO.  The context
@@ -2909,6 +2916,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	 *	be missing things.
 	 */
 	fclose(fp);
+
 
 	return 0;
 }
