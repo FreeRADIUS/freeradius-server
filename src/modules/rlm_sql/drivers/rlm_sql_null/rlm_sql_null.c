@@ -37,7 +37,7 @@ static void _sql_connection_close(UNUSED fr_event_list_t *el, UNUSED void *h, UN
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function */
 static connection_state_t _sql_connection_init(void **h, UNUSED connection_t *conn, UNUSED void *uctx)
 {
-	memcpy(*h, &fake, sizeof(h));
+	*h = UNCONST(void *, fake);
 	return CONNECTION_STATE_CONNECTED;
 }
 
