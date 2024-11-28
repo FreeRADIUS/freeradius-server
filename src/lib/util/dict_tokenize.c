@@ -1906,177 +1906,11 @@ static int dict_read_process_flags(UNUSED dict_tokenize_ctx_t *dctx, char **argv
 	return -1;
 }
 
-/** Process a STRUCT name attr value
- *
- * Define struct 'name' when key 'attr' has 'value'.
- *
- *  Which MUST be a sub-structure of another struct
- */
-static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc,
-				    UNUSED fr_dict_attr_flags_t *base_flags)
-{
-	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
-	int				i;
-	fr_dict_attr_t const	       	*parent = NULL;
-	unsigned int			attr;
-	char				*key_attr = argv[1];
-	char			        *name = argv[0];
-	fr_dict_attr_t			*da;
-
-	if ((argc < 3) || (argc > 4)) {
-		fr_strerror_const("Invalid STRUCT syntax");
-		return -1;
-	}
-
-	fr_assert(ctx->stack_depth > 0);
-
-	/*
-	 *	Unwind the stack until we find a parent which has a child named "key_attr"
-	 */
-	for (i = ctx->stack_depth; i > 0; i--) {
-		parent = dict_attr_by_name(NULL, ctx->stack[i].da, key_attr);
-		if (parent) {
-			ctx->stack_depth = i;
-			break;
-		}
-	}
-
-	/*
-	 *	Else maybe it's a fully qualified name?
-	 */
-	if (!parent) {
-		parent = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth].da->dict->root, key_attr);
-	}
-
-	if (!parent) {
-		fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
-				   key_attr);
-		return -1;
-	}
-
-	if (!fr_dict_attr_is_key_field(parent)) {
-		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
-		return -1;
-	}
-
-	/*
-	 *	Rely on dict_attr_flags_valid() to ensure that
-	 *	da->type is an unsigned integer, AND that da->parent->type == struct
-	 */
-	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
-
-	/*
-	 *	Parse the value.
-	 */
-	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], strlen(argv[2]), NULL, false) < 0) {
-		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
-		return -1;
-	}
-
-	/*
-	 *	Allocate the attribute here, and then fill in the fields
-	 *	as we start parsing the various elements of the definition.
-	 */
-	da = dict_attr_alloc_null(ctx->dict->pool, ctx->dict->proto);
-	if (unlikely(da == NULL)) return -1;
-	dict_attr_location_set(ctx, da);
-
-	if (unlikely(dict_attr_type_init(&da, FR_TYPE_STRUCT) < 0)) {
-	error:
-		talloc_free(da);
-		return -1;
-	}
-
-	/*
-	 *	Structs can be prefixed with 16-bit lengths, but not
-	 *	with any other type of length.
-	 */
-	if (argc == 4) {
-		if (dict_process_flag_field(ctx, argv[3], &da) < 0) goto error;
-	}
-
-	/*
-	 *	@todo - auto-number from a parent UNION, instead of overloading the value.
-	 */
-	switch (parent->type) {
-	case FR_TYPE_UINT8:
-		attr = value.vb_uint8;
-		break;
-
-	case FR_TYPE_UINT16:
-		attr = value.vb_uint16;
-		break;
-
-	case FR_TYPE_UINT32:
-		attr = value.vb_uint32;
-		break;
-
-	default:
-		fr_strerror_printf("Invalid data type in attribute '%s'", key_attr);
-		return -1;
-	}
-
-	if (unlikely(dict_attr_num_init(da, attr) < 0)) goto error;
-	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
-	if (unlikely(dict_attr_finalise(&da, name) < 0)) goto error;
-
-	/*
-	 *	Check to see if this is a duplicate attribute
-	 *	and whether we should ignore it or error out...
-	 */
-	switch (dict_attr_allow_dup(da)) {
-	case 1:
-		break;
-
-	case 0:
-		talloc_free(da);
-		return 0;
-
-	default:
-		goto error;
-	}
-
-	/*
-	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
-	 */
-	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
-	default:
-		goto error;
-
-	/* FIXME: Should dict_attr_enum_add_name also be called in the fixup code? */
-	case 0:
-		da = dict_attr_by_name(NULL, parent, name);
-		if (!da) return -1;
-
-		/*
-		 *	A STRUCT definition is an implicit BEGIN-STRUCT.
-		 */
-		ctx->relative_attr = NULL;
-		if (dict_gctx_push(ctx, da) < 0) return -1;
-
-		/*
-		*	Add the VALUE to the parent attribute, and ensure that
-		*	the VALUE also contains a pointer to the child struct.
-		*/
-		if (dict_attr_enum_add_name(fr_dict_attr_unconst(parent), name, &value, false, true, da) < 0) {
-			fr_value_box_clear(&value);
-			return -1;
-		}
-		fr_value_box_clear(&value);
-		break;
-
-	case 1:
-		break;
-	}
-
-	return 0;
-}
-
 /*
  *	Process the MEMBER command
  */
 static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int argc,
-				    fr_dict_attr_flags_t const *base_flags)
+				    fr_dict_attr_flags_t *base_flags)
 {
 	fr_dict_attr_t		*da;
 
@@ -2266,6 +2100,172 @@ static int dict_read_process_member(dict_tokenize_ctx_t *ctx, char **argv, int a
 		break;
 
 	/* Deferred attribute, don't begin the TLV section automatically */
+	case 1:
+		break;
+	}
+
+	return 0;
+}
+
+/** Process a STRUCT name attr value
+ *
+ * Define struct 'name' when key 'attr' has 'value'.
+ *
+ *  Which MUST be a sub-structure of another struct
+ */
+static int dict_read_process_struct(dict_tokenize_ctx_t *ctx, char **argv, int argc,
+				    UNUSED fr_dict_attr_flags_t *base_flags)
+{
+	fr_value_box_t			value = FR_VALUE_BOX_INITIALISER_NULL(value);
+	int				i;
+	fr_dict_attr_t const	       	*parent = NULL;
+	unsigned int			attr;
+	char				*key_attr = argv[1];
+	char			        *name = argv[0];
+	fr_dict_attr_t			*da;
+
+	if ((argc < 3) || (argc > 4)) {
+		fr_strerror_const("Invalid STRUCT syntax");
+		return -1;
+	}
+
+	fr_assert(ctx->stack_depth > 0);
+
+	/*
+	 *	Unwind the stack until we find a parent which has a child named "key_attr"
+	 */
+	for (i = ctx->stack_depth; i > 0; i--) {
+		parent = dict_attr_by_name(NULL, ctx->stack[i].da, key_attr);
+		if (parent) {
+			ctx->stack_depth = i;
+			break;
+		}
+	}
+
+	/*
+	 *	Else maybe it's a fully qualified name?
+	 */
+	if (!parent) {
+		parent = fr_dict_attr_by_oid(NULL, ctx->stack[ctx->stack_depth].da->dict->root, key_attr);
+	}
+
+	if (!parent) {
+		fr_strerror_printf("Invalid STRUCT definition, unknown key attribute %s",
+				   key_attr);
+		return -1;
+	}
+
+	if (!fr_dict_attr_is_key_field(parent)) {
+		fr_strerror_printf("Attribute '%s' is not a 'key' attribute", key_attr);
+		return -1;
+	}
+
+	/*
+	 *	Rely on dict_attr_flags_valid() to ensure that
+	 *	da->type is an unsigned integer, AND that da->parent->type == struct
+	 */
+	if (!fr_cond_assert(parent->parent->type == FR_TYPE_STRUCT)) return -1;
+
+	/*
+	 *	Parse the value.
+	 */
+	if (fr_value_box_from_str(NULL, &value, parent->type, NULL, argv[2], strlen(argv[2]), NULL, false) < 0) {
+		fr_strerror_printf_push("Invalid value for STRUCT \"%s\"", argv[2]);
+		return -1;
+	}
+
+	/*
+	 *	Allocate the attribute here, and then fill in the fields
+	 *	as we start parsing the various elements of the definition.
+	 */
+	da = dict_attr_alloc_null(ctx->dict->pool, ctx->dict->proto);
+	if (unlikely(da == NULL)) return -1;
+	dict_attr_location_set(ctx, da);
+
+	if (unlikely(dict_attr_type_init(&da, FR_TYPE_STRUCT) < 0)) {
+	error:
+		talloc_free(da);
+		return -1;
+	}
+
+	/*
+	 *	Structs can be prefixed with 16-bit lengths, but not
+	 *	with any other type of length.
+	 */
+	if (argc == 4) {
+		if (dict_process_flag_field(ctx, argv[3], &da) < 0) goto error;
+	}
+
+	/*
+	 *	@todo - auto-number from a parent UNION, instead of overloading the value.
+	 */
+	switch (parent->type) {
+	case FR_TYPE_UINT8:
+		attr = value.vb_uint8;
+		break;
+
+	case FR_TYPE_UINT16:
+		attr = value.vb_uint16;
+		break;
+
+	case FR_TYPE_UINT32:
+		attr = value.vb_uint32;
+		break;
+
+	default:
+		fr_strerror_printf("Invalid data type in attribute '%s'", key_attr);
+		return -1;
+	}
+
+	if (unlikely(dict_attr_num_init(da, attr) < 0)) goto error;
+	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
+	if (unlikely(dict_attr_finalise(&da, name) < 0)) goto error;
+
+	/*
+	 *	Check to see if this is a duplicate attribute
+	 *	and whether we should ignore it or error out...
+	 */
+	switch (dict_attr_allow_dup(da)) {
+	case 1:
+		break;
+
+	case 0:
+		talloc_free(da);
+		return 0;
+
+	default:
+		goto error;
+	}
+
+	/*
+	 *	Add the keyed STRUCT to the global namespace, and as a child of "parent".
+	 */
+	switch (dict_attr_add_or_fixup(&ctx->fixup, &da)) {
+	default:
+		goto error;
+
+	/* FIXME: Should dict_attr_enum_add_name also be called in the fixup code? */
+	case 0:
+		da = dict_attr_by_name(NULL, parent, name);
+		if (!da) return -1;
+
+		/*
+		 *	A STRUCT definition is an implicit BEGIN-STRUCT.
+		 */
+		ctx->relative_attr = NULL;
+		if (dict_gctx_push(ctx, da) < 0) return -1;
+
+		/*
+		*	Add the VALUE to the parent attribute, and ensure that
+		*	the VALUE also contains a pointer to the child struct.
+		*/
+		if (dict_attr_enum_add_name(fr_dict_attr_unconst(parent), name, &value, false, true, da) < 0) {
+			fr_value_box_clear(&value);
+			return -1;
+		}
+		fr_value_box_clear(&value);
+		break;
+
 	case 1:
 		break;
 	}
@@ -2665,6 +2665,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		{ L("END-VENDOR"),		{ dict_read_process_end_vendor } },
 		{ L("ENUM"),			{ dict_read_process_enum } },
 		{ L("FLAGS"),			{ dict_read_process_flags } },
+		{ L("MEMBER"),			{ dict_read_process_member } },
 		{ L("PROTOCOL"),		{ dict_read_process_protocol }},
 		{ L("STRUCT"),			{ dict_read_process_struct } },
 		{ L("VALUE"),			{ dict_read_process_value } },
@@ -2686,7 +2687,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	/*
 	 *	Base flags are only set for the current file
 	 */
-	fr_dict_attr_flags_t	base_flags;
+	fr_dict_attr_flags_t	base_flags = {};
 
 	if (!fr_cond_assert(!dctx->dict->root || dctx->stack[dctx->stack_depth].da)) return -1;
 
@@ -2795,8 +2796,6 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		goto perm_error;
 	}
 
-	memset(&base_flags, 0, sizeof(base_flags));
-
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
 		fr_dict_keyword_parser_t const	*parser;
 
@@ -2830,63 +2829,52 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 		}
 
 		if (fr_dict_keyword(&parser, keywords, NUM_ELEMENTS(keywords), argv[0], NULL)) {
-			if (unlikely(parser->parse(dctx, argv + 1 , argc - 1, &base_flags) < 0)) goto error;
-			continue;
-		}
+			/*
+			 *	Note: This is broken.  It won't apply correctly to deferred
+			 *	definitions of attributes we need some kind of proper
+			 *	finalisation API.
+			 *
+			 *	This also doesn't work if there's no trailing new lines...
+			 */
+			if (parser->parse == dict_read_process_member) {
+				was_member = true;
+			} else if (was_member) {
+				da = dctx->stack[dctx->stack_depth].da;
+				if (da->type == FR_TYPE_STRUCT) {
+					/*
+					 *	The structure was fixed-size,
+					 *	but the fields don't fill it.
+					 *	That's an error.
+					 *
+					 *	Since process_member() checks
+					 *	for overflow, the check here
+					 *	is really only for underflow.
+					 */
+					if (da->flags.length &&
+					(dctx->stack[dctx->stack_depth].struct_size != da->flags.length)) {
+						fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
+								da->name, da->flags.length);
+						goto error;
+					}
 
-		/*
-		 *	Perhaps this is a MEMBER of a struct
-		 *
-		 *	@todo - create child ctx, so that we can have
-		 *	nested structs.
-		 */
-		if (strcasecmp(argv[0], "MEMBER") == 0) {
-			if (dict_read_process_member(dctx,
-						     argv + 1, argc - 1,
-						     &base_flags) == -1) goto error;
-			was_member = true;
-			continue;
-		}
-
-		/*
-		 *	Finalise a STRUCT.
-		 */
-		if (was_member) {
-			da = dctx->stack[dctx->stack_depth].da;
-
-			if (da->type == FR_TYPE_STRUCT) {
-
-				/*
-				 *	The structure was fixed-size,
-				 *	but the fields don't fill it.
-				 *	That's an error.
-				 *
-				 *	Since process_member() checks
-				 *	for overflow, the check here
-				 *	is really only for underflow.
-				 */
-				if (da->flags.length &&
-				    (dctx->stack[dctx->stack_depth].struct_size != da->flags.length)) {
-					fr_strerror_printf("MEMBERs of %s struct[%u] do not exactly fill the fixed-size structure",
-							   da->name, da->flags.length);
-					goto error;
+					/*
+					 *	If the structure is fixed
+					 *	size, AND small enough to fit
+					 *	into an 8-bit length field,
+					 *	then update the length field
+					 *	with the structure size/
+					 */
+					if (dctx->stack[dctx->stack_depth].struct_size <= 255) {
+						UNCONST(fr_dict_attr_t *, da)->flags.length = dctx->stack[dctx->stack_depth].struct_size;
+					} /* else length 0 means "unknown / variable size / too large */
+				} else {
+					fr_assert_msg(da->type == FR_TYPE_TLV, "Expected parent type of 'tlv', got '%s'", fr_type_to_str(da->type));
 				}
-
-				/*
-				 *	If the structure is fixed
-				 *	size, AND small enough to fit
-				 *	into an 8-bit length field,
-				 *	then update the length field
-				 *	with the structure size/
-				 */
-				if (dctx->stack[dctx->stack_depth].struct_size <= 255) {
-					UNCONST(fr_dict_attr_t *, da)->flags.length = dctx->stack[dctx->stack_depth].struct_size;
-				} /* else length 0 means "unknown / variable size / too large */
-			} else {
-				fr_assert_msg(da->type == FR_TYPE_TLV, "Expected parent type of 'tlv', got '%s'", fr_type_to_str(da->type));
+				was_member = false;
 			}
+			if (unlikely(parser->parse(dctx, argv + 1 , argc - 1, &base_flags) < 0)) goto error;
 
-			was_member = false;
+			continue;
 		}
 
 		/*
