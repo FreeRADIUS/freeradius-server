@@ -51,14 +51,18 @@ RCSID("$Id$")
 #define DICT_MAX_STACK (32)
 
 /** This represents explicit BEGIN/END frames pushed onto the stack
+ *
+ * These are flags to allow multiple nesting types to be passed to the search function.
  */
-typedef enum {
-	NEST_NONE = 0,
-	NEST_ROOT,
-	NEST_PROTOCOL,
-	NEST_VENDOR,
-	NEST_TLV,
+DIAG_OFF(attributes)
+typedef enum CC_HINT(flag_enum) {
+	NEST_NONE	= 0x00,
+	NEST_ROOT	= 0x01,
+	NEST_PROTOCOL	= 0x02,
+	NEST_VENDOR	= 0x04,
+	NEST_ATTRIBUTE	= 0x08
 } dict_nest_t;
+DIAG_ON(attributes)
 
 /** Parser context for dict_from_file
  *
