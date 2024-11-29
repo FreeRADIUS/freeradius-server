@@ -756,7 +756,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
 	h->buflen = h->max_packet_size;
 
-	if (!h->inst->replicate) MEM(h->tt = radius_track_alloc(h));
+	MEM(h->tt = radius_track_alloc(h));
 
 	/*
 	 *	Open the outgoing socket.
