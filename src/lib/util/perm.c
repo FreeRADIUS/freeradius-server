@@ -59,6 +59,24 @@ char const *fr_perm_mode_to_oct(char out[static 5], mode_t mode)
 	return out;
 }
 
+int fr_perm_mode_from_str(mode_t *out, char const *str)
+{
+	if (*str == '0') {
+		unsigned long mode;
+		char *end = NULL;
+
+		mode = strtoul(str, &end, 7);
+		if (*end || (mode == ULONG_MAX)) {
+			return -1;
+		}
+
+		*out = mode;
+		return 0;
+	}
+
+	return -1;
+}
+
 /** Resolve a uid to a passwd entry
  *
  * Resolves a uid to a passwd entry. The memory to hold the
