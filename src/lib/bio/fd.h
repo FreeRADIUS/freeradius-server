@@ -30,6 +30,8 @@ RCSIDH(lib_bio_fd_h, "$Id$")
 #include <freeradius-devel/util/socket.h>
 #include <freeradius-devel/util/event.h>
 
+#include <freeradius-devel/server/cf_parse.h>
+
 #include <fcntl.h>
 
 /*
@@ -102,7 +104,15 @@ typedef struct {
 
 	bool		async;		//!< is it async
 	bool		tcp_delay;	//!< We do tcp_nodelay by default.
+
+	/*
+	 *	Extra fields for conf_parser_t
+	 */
+	bool		recv_buff_is_set;	//!< Whether we were provided with a recv_buf
+	bool		send_buff_is_set;	//!< Whether we were provided with a send_buf
 } fr_bio_fd_config_t;
+
+extern const conf_parser_t fr_bio_fd_config[];
 
 /** Run-time status of the socket.
  *
