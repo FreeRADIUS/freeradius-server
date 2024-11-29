@@ -1287,8 +1287,9 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 	if (xlat && xlat->args) {
 		arg_start = arg = xlat->args;	/* Track the arguments as we parse */
 	} else {
-		static xlat_arg_parser_t	default_arg = { .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH };
-		arg_start = arg = &default_arg;
+		static xlat_arg_parser_t const	default_arg[] = { { .variadic = XLAT_ARG_VARIADIC_EMPTY_SQUASH },
+								  XLAT_ARG_PARSER_TERMINATOR };
+		arg_start = arg = &default_arg[0];
 	}
 
 	MEM(head = xlat_exp_head_alloc(ctx));
