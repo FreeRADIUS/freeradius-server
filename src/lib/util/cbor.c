@@ -1001,6 +1001,10 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	if (type == FR_TYPE_NULL) {
 		type = cbor_guess_type(&work_dbuff, false);
+		if (type < 0) {
+			fr_strerror_printf("Invalid cbor - insufficient data");
+			return type;
+		}
 		if (type == FR_TYPE_NULL) {
 			fr_strerror_printf("Invalid cbor - unable to determine data type");
 			return 0;
