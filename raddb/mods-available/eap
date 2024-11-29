@@ -84,6 +84,14 @@ eap {
 	#
 	#  type:: Only EAP types listed below with a `type = <EAP-Type>` pair will be allowed.
 	#
+	#  If the `control.EAP-Type` attribute is set, then that is used to form the list of
+	#  allowed EAP types, with the first instance being the default type and others also
+	#  being allowed.
+	#
+	#  Setting an EAP type in `control.EAP-Type` which is not allowed below, will not have
+	#  any effect, since this list determines which methods are loaded and potentially
+	#  available.
+	#
 	type = md5
 #	type = pwd
 	type = gtc
