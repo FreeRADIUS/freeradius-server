@@ -1001,14 +1001,7 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 	if (type == FR_TYPE_NULL) {
 		type = cbor_guess_type(&work_dbuff, false);
-		if (type < 0) {
-			fr_strerror_printf("Invalid cbor - insufficient data");
-			return type;
-		}
-		if (type == FR_TYPE_NULL) {
-			fr_strerror_printf("Invalid cbor - unable to determine data type");
-			return 0;
-		}
+		if (type == FR_TYPE_NULL) return 0;
 	}
 
 	fr_value_box_init(vb, type, enumv, tainted);
@@ -1537,7 +1530,12 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair)
 	/*
 	 *	get the next byte, which is a CBOR header.
 	 */
-	FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
+	slen = fr_dbuff_out(&major, &work_dbuff);
+	if (slen <= 0) {
+	no_data:
+		fr_strerror_const("Invalid cbor - insufficient data");
+		return FR_TYPE_NULL;
+	}
 
 	info = major & 0x1f;
 	major >>= 5;
@@ -1581,7 +1579,8 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair)
 			return FR_TYPE_ETHERNET;
 
 		case 52:
-			FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
+			slen = fr_dbuff_out(&major, &work_dbuff);
+			if (slen <= 0) goto no_data;
 
 			major >>= 5;
 
@@ -1627,6 +1626,7 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair)
 	 *	converted to data type 'octets'.  This work involves mostly parsing the cbor data, which isn't
 	 *	trivial.
 	 */
+	fr_strerror_const("Invalid cbor - unable to determine data type");
 	return FR_TYPE_NULL;
 }
 
@@ -1675,10 +1675,7 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		fr_type_t type;
 
 		type = cbor_guess_type(&work_dbuff, true);
-		if (type == FR_TYPE_NULL) {
-			fr_strerror_printf("Invalid cbor - unable to determine data type");
-			return -fr_dbuff_used(&work_dbuff);
-		}
+		if (type == FR_TYPE_NULL) return -fr_dbuff_used(&work_dbuff);
 
 		/*
 		 *	@todo - the value here isn't a cbor octets type, but is instead cbor data.  Since cbor
