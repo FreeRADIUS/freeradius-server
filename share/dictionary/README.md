@@ -29,7 +29,7 @@ The following is a list of protocols currently supported in the
 dictionaries.  It is here for informational purposes only.
 
 ```
-git grep -h '^PROTOCOL' | sort -nk 3
+git grep -E -h '^(BEGIN )?PROTOCOL' | sort -nk 3
 ```
 
 ## Current Protocols

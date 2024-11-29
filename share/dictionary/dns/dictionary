@@ -8,8 +8,7 @@
 # Version:	$Id$
 #
 
-PROTOCOL	DNS		11	format=2
-BEGIN-PROTOCOL	DNS
+BEGIN PROTOCOL	DNS		11	format=2
 
 $INCLUDE dictionary.freeradius.internal
 $INCLUDE dictionary.rfc1034

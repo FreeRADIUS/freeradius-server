@@ -1,5 +1,4 @@
-PROTOCOL	DHCPv6		3
-BEGIN-PROTOCOL	DHCPv6
+BEGIN PROTOCOL	DHCPv6		3
 
 #
 #	Basic options needed by the DHCPv6 pair encoder and decoder

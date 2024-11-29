@@ -17,8 +17,7 @@
 #	On top of that, a number of options are really TLV's.
 #	We need to be able to understand them, too.
 #
-PROTOCOL	Ethernet	4
-BEGIN-PROTOCOL	Ethernet
+BEGIN PROTOCOL	Ethernet	4
 
 $INCLUDE dictionary.ethernet
 

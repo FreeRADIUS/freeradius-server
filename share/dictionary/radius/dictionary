@@ -4,8 +4,7 @@
 # Version $Id$
 #
 
-PROTOCOL	RADIUS		1	verify=lib
-BEGIN-PROTOCOL	RADIUS
+BEGIN PROTOCOL	RADIUS		1	verify=lib
 
 #
 #	These are mostly ALIASes

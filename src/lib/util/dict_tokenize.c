@@ -104,8 +104,12 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			   char const *src_file, int src_line);
 
 #define CURRENT_FRAME(_dctx)	(&(_dctx)->stack[(_dctx)->stack_depth])
+#define CURRENT_DA(_dctx)	(CURRENT_FRAME(_dctx)->da)
 #define CURRENT_FILENAME(_dctx)	(CURRENT_FRAME(_dctx)->filename)
 #define CURRENT_LINE(_dctx)	(CURRENT_FRAME(_dctx)->line)
+
+#define ASSERT_CURRENT_NEST(_dctx, _nest) fr_assert_msg(CURRENT_FRAME(_dctx)->nest == (_nest), "Expected frame type %s, got %s", \
+						fr_table_str_by_value(dict_nest_table, (_nest), "<INVALID>"), fr_table_str_by_value(dict_nest_table, CURRENT_FRAME(_dctx)->nest, "<INVALID>"))
 
 void dict_dctx_debug(dict_tokenize_ctx_t *dctx)
 {
@@ -151,6 +155,27 @@ static int dict_dctx_push(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, d
 
 	return 0;
 }
+
+/** Either updates the da in the current stack frame if 'nest' matches, or pushes a new frame of type 'nest'
+ *
+ * @param[in] dctx		Stack to push to.
+ * @param[in] da		Attribute to push.
+ * @param[in] nest		Frame type to push.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int CC_HINT(nonnull)
+dict_dctx_push_or_update(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
+{
+	if (dctx->stack[++dctx->stack_depth].nest == nest) {
+		dctx->stack[dctx->stack_depth].da = da;
+		return 0;
+	}
+
+	return dict_dctx_push(dctx, da, nest);
+}
+
 
 /** Pop the current stack frame
  *
@@ -1340,7 +1365,7 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 	dctx->relative_attr = NULL;
 
 	if (argc != 1) {
-		fr_strerror_const_push("Invalid BEGIN entry");
+		fr_strerror_const_push("Invalid BEGIN keyword.  Expected BEGIN <name>");
 	error:
 		return -1;
 	}
@@ -1776,7 +1801,7 @@ static int dict_read_process_end_protocol(dict_tokenize_ctx_t *dctx, char **argv
 
 	if (found != dctx->dict) {
 		fr_strerror_printf("END-PROTOCOL %s does not match previous BEGIN-PROTOCOL %s",
-				   argv[0], found->root->name);
+				   argv[0], dctx->dict->root->name);
 		goto error;
 	}
 
@@ -2625,7 +2650,7 @@ post_option:
 					   dict->root->name, dict->root->flags.type_size, type_size);
 			return -1;
 		}
-		return 0;
+		goto done;
 	}
 
 	dict = dict_alloc(dict_gctx);
@@ -2657,6 +2682,13 @@ post_option:
 		mutable->flags.type_size = type_size;
 		mutable->flags.length = 1; /* who knows... */
 	}
+
+done:
+	/*
+	 *	Make the root available on the stack, in case
+	 *	something wants to begin it...
+	 */
+	if (unlikely(dict_dctx_push_or_update(dctx, dict->root, NEST_NONE) < 0)) goto error;
 
 	return 0;
 }
@@ -2741,9 +2773,28 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
 	return 0;
 }
 
+/** Process an inline BEGIN PROTOCOL block
+ */
+static int dict_begin_protocol(dict_tokenize_ctx_t *dctx)
+{
+	fr_dict_attr_t const *da;
+
+	ASSERT_CURRENT_NEST(dctx, NEST_NONE);
+	da = CURRENT_DA(dctx);
+	fr_assert_msg(fr_type_is_tlv(da->type), "Expected dictionary root to be a tlv, got '%s'", fr_type_to_str(da->type));
+	fr_assert(da->flags.is_root);
+
+	dctx->dict = da->dict;
+
+	/*
+	 *	Push a PROTOCOL block onto the stack
+	 */
+	return dict_dctx_push(dctx, da, NEST_PROTOCOL);
+}
+
 /** Keyword parser
  *
- * @param[in] ctx		containing the dictionary we're currently parsing.
+ * @param[in] dctx		containing the dictionary we're currently parsing.
  * @param[in] argv		arguments to the keyword.
  * @param[in] argc		number of arguments.
  * @param[in] base_flags	set in the context of the current file.
@@ -2751,10 +2802,29 @@ static int dict_struct_finalise(dict_tokenize_ctx_t *dctx)
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*fr_dict_keyword_parse_t)(dict_tokenize_ctx_t *ctx, char **argv, int argc, fr_dict_attr_flags_t *base_flags);
+typedef int (*fr_dict_keyword_parse_t)(dict_tokenize_ctx_t *dctx, char **argv, int argc, fr_dict_attr_flags_t *base_flags);
+
+/** Pushes a new frame onto the top of the stack based on the current frame
+ *
+ * Whenever a protocol, vendor, or attribute is defined in the dictionary it either mutates or
+ * pushes a new NONE frame onto the stack.  This holds the last defined object at a given level
+ * of nesting.
+ *
+ * This function is used to push an additional frame onto the stack, effectively entering the
+ * context of the last defined object at a given level of nesting
+ *
+ * @param[in] dctx	Contains the current state of the dictionary parser.
+ *			Used to track what PROTOCOL, VENDOR or TLV block
+ *			we're in.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*fr_dict_section_begin_t)(dict_tokenize_ctx_t *dctx);
 
 typedef struct {
 	fr_dict_keyword_parse_t		parse;				//!< Function to parse the keyword with.
+	fr_dict_section_begin_t		begin;				//!< Can have a BEGIN prefix
 } fr_dict_keyword_parser_t;
 
 typedef struct {
@@ -2784,22 +2854,21 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			   char const *src_file, int src_line)
 {
 	static fr_dict_keyword_t const keywords[] = {
-		{ L("ALIAS"),			{ dict_read_process_alias } },
-		{ L("ATTRIBUTE"),		{ dict_read_process_attribute } },
-		{ L("BEGIN"),			{ dict_read_process_begin } },
-		{ L("BEGIN-PROTOCOL"),		{ dict_read_process_begin_protocol } },
-		{ L("BEGIN-VENDOR"),		{ dict_read_process_begin_vendor } },
-		{ L("DEFINE"),			{ dict_read_process_define } },
-		{ L("END"),			{ dict_read_process_end } },
-		{ L("END-PROTOCOL"),		{ dict_read_process_end_protocol } },
-		{ L("END-VENDOR"),		{ dict_read_process_end_vendor } },
-		{ L("ENUM"),			{ dict_read_process_enum } },
-		{ L("FLAGS"),			{ dict_read_process_flags } },
-		{ L("MEMBER"),			{ dict_read_process_member } },
-		{ L("PROTOCOL"),		{ dict_read_process_protocol }},
-		{ L("STRUCT"),			{ dict_read_process_struct } },
-		{ L("VALUE"),			{ dict_read_process_value } },
-		{ L("VENDOR"),			{ dict_read_process_vendor } },
+		{ L("ALIAS"),			{ .parse = dict_read_process_alias } },
+		{ L("ATTRIBUTE"),		{ .parse = dict_read_process_attribute } },
+		{ L("BEGIN-PROTOCOL"),		{ .parse = dict_read_process_begin_protocol } },
+		{ L("BEGIN-VENDOR"),		{ .parse = dict_read_process_begin_vendor } },
+		{ L("DEFINE"),			{ .parse = dict_read_process_define } },
+		{ L("END"),			{ .parse = dict_read_process_end } },
+		{ L("END-PROTOCOL"),		{ .parse = dict_read_process_end_protocol } },
+		{ L("END-VENDOR"),		{ .parse = dict_read_process_end_vendor } },
+		{ L("ENUM"),			{ .parse = dict_read_process_enum } },
+		{ L("FLAGS"),			{ .parse = dict_read_process_flags } },
+		{ L("MEMBER"),			{ .parse = dict_read_process_member } },
+		{ L("PROTOCOL"),		{ .parse = dict_read_process_protocol, .begin = dict_begin_protocol }},
+		{ L("STRUCT"),			{ .parse = dict_read_process_struct } },
+		{ L("VALUE"),			{ .parse = dict_read_process_value } },
+		{ L("VENDOR"),			{ .parse = dict_read_process_vendor } },
 	};
 
 	FILE			*fp;
@@ -2926,7 +2995,9 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 	}
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
+		bool do_begin = false;
 		fr_dict_keyword_parser_t const	*parser;
+		char **argv_p = argv;
 
 		dctx->stack[dctx->stack_depth].line = ++line;
 
@@ -2957,7 +3028,24 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			return -1;
 		}
 
-		if (fr_dict_keyword(&parser, keywords, NUM_ELEMENTS(keywords), argv[0], NULL)) {
+		/*
+		 *	Special prefix for "beginnable" keywords.
+		 *	These are keywords that can automatically change
+		 *	the context of subsequent definitions if they're
+		 *	prefixed with a BEGIN keyword.
+		 */
+		if (strcasecmp(argv_p[0], "BEGIN") == 0) {
+			do_begin = true;
+			argv_p++;
+			argc--;
+		};
+
+		if (fr_dict_keyword(&parser, keywords, NUM_ELEMENTS(keywords), argv_p[0], NULL)) {
+			if (do_begin && !parser->begin) {
+				fr_strerror_printf_push("BEGIN not allowed with %s", argv_p[0]);
+				goto error;
+			}
+
 			/*
 			 *	Note: This is broken.  It won't apply correctly to deferred
 			 *	definitions of attributes we need some kind of proper
@@ -2969,15 +3057,27 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 				if (unlikely(dict_struct_finalise(dctx) < 0)) goto error;
 				was_member = false;
 			}
-			if (unlikely(parser->parse(dctx, argv + 1 , argc - 1, &base_flags) < 0)) goto error;
+			if (unlikely(parser->parse(dctx, argv_p + 1 , argc - 1, &base_flags) < 0)) goto error;
 
+			/*
+			 *	We've processed the definition, now enter the section
+			 */
+			if (do_begin && unlikely(parser->begin(dctx) < 0)) goto error;
+			continue;
+		}
+
+		/*
+		 *	It's a naked BEGIN keyword
+		 */
+		if (do_begin) {
+			if (unlikely(dict_read_process_begin(dctx, argv_p, argc, &base_flags) < 0)) goto error;
 			continue;
 		}
 
 		/*
 		 *	See if we need to import another dictionary.
 		 */
-		if (strncasecmp(argv[0], "$INCLUDE", 8) == 0) {
+		if (strncasecmp(argv_p[0], "$INCLUDE", 8) == 0) {
 			/*
 			 *	Included files operate on a copy of the context.
 			 *
@@ -2988,14 +3088,14 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			 *	attribute", then it won't affect the
 			 *	parent.
 			 */
-			if (dict_read_process_include(dctx, argv, argc, dir) < 0) goto error;
+			if (dict_read_process_include(dctx, argv_p, argc, dir) < 0) goto error;
 			continue;
 		} /* $INCLUDE */
 
 		/*
 		 *	Any other string: We don't recognize it.
 		 */
-		fr_strerror_printf_push("Invalid keyword '%s'", argv[0]);
+		fr_strerror_printf_push("Invalid keyword '%s'", argv_p[0]);
 		goto error;
 	}
 

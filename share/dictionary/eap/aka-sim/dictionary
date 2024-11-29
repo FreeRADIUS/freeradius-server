@@ -6,8 +6,7 @@
 #	Protocol dictionary for EAP-AKA, EAP-AKA', and EAP-SIM
 #
 #
-PROTOCOL	EAP-AKA-SIM	102
-BEGIN-PROTOCOL	EAP-AKA-SIM
+BEGIN PROTOCOL	EAP-AKA-SIM	102
 
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.rfc4187
