@@ -417,7 +417,7 @@ static int mod_open(fr_listen_t *li)
 		.path = inst->filename,
 		.uid = inst->uid,
 		.gid = inst->gid,
-		.perm = 0x700,
+		.perm = 0600,
 		.async = true,
 	};
 
