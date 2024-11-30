@@ -952,7 +952,7 @@ static int dict_read_process_common(dict_tokenize_ctx_t *dctx, fr_dict_attr_t **
 	if (strncmp(name, "Attr-", 5) == 0) {
 		fr_strerror_const("Invalid name");
 		return -1;
-	};
+	}
 
 	/*
 	 *	Allocate the attribute here, and then fill in the fields
@@ -1750,7 +1750,7 @@ static int dict_read_process_end(dict_tokenize_ctx_t *dctx, char **argv, int arg
 	/*
 	 *	Pop the stack to get the attribute we're ending.
 	 */
-	current = dict_dctx_pop(dctx)->da;;
+	current = dict_dctx_pop(dctx)->da;
 
 	/*
 	 *	No checks on the attribute, we're just popping _A_ frame,
@@ -3038,7 +3038,7 @@ static int _dict_from_file(dict_tokenize_ctx_t *dctx,
 			do_begin = true;
 			argv_p++;
 			argc--;
-		};
+		}
 
 		if (fr_dict_keyword(&parser, keywords, NUM_ELEMENTS(keywords), argv_p[0], NULL)) {
 			if (do_begin && !parser->begin) {

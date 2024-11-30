@@ -1104,7 +1104,7 @@ CONF_SECTION *_cf_section_find_parent(CONF_ITEM const *ci,
 		found = cf_item_to_section(ci);
 
 		if (cf_section_name_cmp(found, name1, name2) == 0) return found;
-	};
+	}
 
 	return NULL;
 }

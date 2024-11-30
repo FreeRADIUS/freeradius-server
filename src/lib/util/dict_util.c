@@ -786,7 +786,7 @@ int dict_attr_init_common(char const *filename, int line,
 
 	if (unlikely(dict_attr_type_init(da_p, type) < 0)) return -1;
 
-	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;;
+	if (parent && (dict_attr_parent_init(da_p, parent) < 0)) return -1;
 
 	if (args->ref && (dict_attr_ref_aset(da_p, args->ref, FR_DICT_ATTR_REF_ALIAS) < 0)) return -1;
 

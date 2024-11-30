@@ -212,7 +212,7 @@ fr_dict_attr_t const *dict_protocol_reference(fr_dict_attr_t const *rel, char co
 				return NULL;
 			}
 			da = da->parent;
-		};
+		}
 	} else {
 		da = absolute_root ? dict->root : rel;
 	}

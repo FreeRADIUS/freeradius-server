@@ -113,9 +113,9 @@ done:
 	return fr_dbuff_set(dbuff, &work_dbuff);
 }
 
-#define cbor_encode_array(_dbuff, _size) cbor_encode_integer(_dbuff, CBOR_ARRAY, _size);
+#define cbor_encode_array(_dbuff, _size) cbor_encode_integer(_dbuff, CBOR_ARRAY, _size)
 
-#define cbor_encode_tag(_dbuff, _tag) cbor_encode_integer(_dbuff, CBOR_TAG, _tag);
+#define cbor_encode_tag(_dbuff, _tag) cbor_encode_integer(_dbuff, CBOR_TAG, _tag)
 
 /*
  *	Make many things easier

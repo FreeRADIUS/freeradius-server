@@ -781,7 +781,7 @@ fr_client_t *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_SECTION *se
 	 *	Find the virtual server for this client.
 	 */
 	if (c->server) {
-		virtual_server_t const *vs;;
+		virtual_server_t const *vs;
 		if (server_cs) {
 			cf_log_err(cs, "Clients inside of a 'server' section cannot point to a server");
 			goto error;
