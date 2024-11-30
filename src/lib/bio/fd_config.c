@@ -17,7 +17,7 @@
 /**
  * $Id$
  * @file lib/bio/fd_config.c
- * @brief BIO abstractions for configuring file descriptors
+ * @brief BIO abstractions for configuring file descriptors.
  *
  * @copyright 2024 Network RADIUS SAS (legal@networkradius.com)
  */
@@ -37,7 +37,6 @@ static fr_table_num_sorted_t socket_type_names[] = {
 static size_t socket_type_names_len = NUM_ELEMENTS(socket_type_names);
 
 
-
 static int socket_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
 	int type;
@@ -54,35 +53,6 @@ static int socket_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *par
 	return 0;
 }
 
-
-static int uid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
-{
-	struct passwd *pwd;
-	uid_t *uid = (uid_t *) out;
-	char const *name = cf_pair_value(cf_item_to_pair(ci));
-
-	if (fr_perm_getpwnam(ctx, &pwd, name) < 0) {
-		cf_log_perr(ci, "Failed getting uid from name %s", name);
-		return -1;
-	}
-
-	*uid = pwd->pw_uid;
-	talloc_free(pwd);
-	return 0;
-}
-
-static int gid_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
-{
-	gid_t *gid = (gid_t *) out;
-	char const *name = cf_pair_value(cf_item_to_pair(ci));
-
-	if (fr_perm_gid_from_str(ctx, gid, name) < 0) {
-		cf_log_perr(ci, "Failed getting gid from name %s", name);
-		return -1;
-	}
-
-	return 0;
-}
 
 #define FR_READ  (1)
 #define FR_WRITE (2)
@@ -115,24 +85,8 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CO
 	return 0;
 }
 
-static int perm_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
-{
-	mode_t mode;
-	char const *name = cf_pair_value(cf_item_to_pair(ci));
-
-	if (fr_perm_mode_from_str(&mode, name) < 0) {
-		cf_log_perr(ci, "Invalid permissions string");
-		return -1;
-	}
-
-	*(mode_t *) out = mode;
-
-	return 0;
-}
-
-
 const conf_parser_t fr_bio_fd_config[] = {
-	{ FR_CONF_OFFSET("uid", fr_bio_fd_config_t, socket_type), .func = socket_type_parse },
+	{ FR_CONF_OFFSET("proto", fr_bio_fd_config_t, socket_type), .func = socket_type_parse },
 
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
@@ -156,12 +110,12 @@ const conf_parser_t fr_bio_fd_config[] = {
 	 */
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
 
-	{ FR_CONF_OFFSET("uid", fr_bio_fd_config_t, uid), .func = uid_parse },
-	{ FR_CONF_OFFSET("gid", fr_bio_fd_config_t, gid), .func = gid_parse },
+	{ FR_CONF_OFFSET("uid", fr_bio_fd_config_t, uid), .func = cf_parse_uid },
+	{ FR_CONF_OFFSET("gid", fr_bio_fd_config_t, gid), .func = cf_parse_gid },
 
-	{ FR_CONF_OFFSET("perm", fr_bio_fd_config_t, perm), .func = perm_parse, .dflt = "0600" },
+	{ FR_CONF_OFFSET("perm", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
 
-	{ FR_CONF_OFFSET("mode", fr_bio_fd_config_t, flags), .func = mode_parse, .dflt = "read-only" },
+	{ FR_CONF_OFFSET("mode", fr_bio_fd_config_t, flags), .dflt = "read-only", .func = mode_parse },
 
 	{ FR_CONF_OFFSET("mkdir", fr_bio_fd_config_t, mkdir) },
 

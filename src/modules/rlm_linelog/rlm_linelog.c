@@ -116,7 +116,7 @@ typedef struct {
 	} syslog;
 
 	struct {
-		uint32_t		permissions;		//!< Permissions to use when creating new files.
+		mode_t			permissions;		//!< Permissions to use when creating new files.
 		char const		*group_str;		//!< Group to set on new files.
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
@@ -141,7 +141,7 @@ typedef struct {
 
 
 static const conf_parser_t file_config[] = {
-	{ FR_CONF_OFFSET("permissions", rlm_linelog_t, file.permissions), .dflt = "0600" },
+	{ FR_CONF_OFFSET("permissions", rlm_linelog_t, file.permissions), .dflt = "0600", .func = cf_parse_permissions },
 	{ FR_CONF_OFFSET("group", rlm_linelog_t, file.group_str) },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_linelog_t, file.escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("fsync", rlm_linelog_t, file.fsync), .dflt = "no" },

@@ -115,12 +115,10 @@ redo:
 		p += 2;
 
 	} else if (*p == 'o') {
-		/*
-		 *	People may do this, and we don't want them to be able to make configuration files
-		 *	world-writeable.
-		 */
-		fr_strerror_const("It is not possible to set 'o+...' for secure files");
-		return -1;
+		if (p[1] != '=') goto expected_set;
+
+		shift = 6;
+		p += 2;
 
 	} /* else 'rwx' is implicitly "u=rwx" */
 

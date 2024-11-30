@@ -1548,3 +1548,23 @@ int cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 
 	return 0;
 }
+
+/** Generic function for resolving permissions to a mode-t
+ *
+ * Type should be FR_TYPE_VOID, struct field should be a gid_t.
+ */
+int cf_parse_permissions(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+			 CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+{
+	mode_t mode;
+	char const *name = cf_pair_value(cf_item_to_pair(ci));
+
+	if (fr_perm_mode_from_str(&mode, name) < 0) {
+		cf_log_perr(ci, "Invalid permissions string");
+		return -1;
+	}
+
+	*(mode_t *) out = mode;
+
+	return 0;
+}

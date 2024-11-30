@@ -677,6 +677,9 @@ int		cf_parse_uid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 int		cf_parse_gid(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 			     CONF_ITEM *ci, conf_parser_t const *rule);
 
+int		cf_parse_permissions(TALLOC_CTX *ctx, void *out, UNUSED void *parent,
+				     CONF_ITEM *ci, conf_parser_t const *rule);
+
 #ifdef __cplusplus
 }
 #endif

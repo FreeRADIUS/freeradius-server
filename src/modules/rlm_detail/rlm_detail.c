@@ -47,7 +47,7 @@ RCSID("$Id$")
  * Holds the configuration and preparsed data for a instance of rlm_detail.
  */
 typedef struct {
-	uint32_t	perm;		//!< Permissions to use for new files.
+	mode_t		perm;		//!< Permissions to use for new files.
 	gid_t		group;		//!< Resolved group.
 	bool		group_is_set;	//!< Whether group was set.
 
@@ -67,12 +67,13 @@ typedef struct {
 	fr_hash_table_t	*ht;		//!< Holds suppressed attributes.
 } rlm_detail_env_t;
 
-int detail_group_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
-		       CONF_ITEM *ci, conf_parser_t const *rule);
+/*
+ *	@todo - put this into common function in cf_parse.c ?
+ */
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET("permissions", rlm_detail_t, perm), .dflt = "0600" },
-	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, 0, rlm_detail_t, group), .func = detail_group_parse },
+	{ FR_CONF_OFFSET("permissions", rlm_detail_t, perm), .dflt = "0600", .func = cf_parse_permissions },
+	{ FR_CONF_OFFSET_IS_SET("group", FR_TYPE_VOID, 0, rlm_detail_t, group), .func = cf_parse_gid },
 	{ FR_CONF_OFFSET("locking", rlm_detail_t, locking), .dflt = "no" },
 	{ FR_CONF_OFFSET("escape_filenames", rlm_detail_t, escape), .dflt = "no" },
 	{ FR_CONF_OFFSET("log_packet_header", rlm_detail_t, log_srcdst), .dflt = "no" },
@@ -137,32 +138,6 @@ static void CC_HINT(nonnull) fr_pair_fprint(FILE *fp, fr_pair_t const *vp)
 }
 
 
-
-/** Generic function for parsing conf pair values as int
- *
- * @note This should be used for enum types as c99 6.4.4.3 states that the enumeration
- * constants are of type int.
- *
- */
-int detail_group_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
-		       CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
-{
-	char const 			*group;
-	char				*endptr;
-	gid_t				gid;
-
-	group = cf_pair_value(cf_item_to_pair(ci));
-	gid = strtol(group, &endptr, 10);
-	if (*endptr != '\0') {
-		if (fr_perm_gid_from_str(parent, &gid, group) < 0) {
-			cf_log_err(ci, "Unable to find system group '%s'", group);
-			return -1;
-		}
-	}
-	*((gid_t *)out) = gid;
-
-	return 0;
-}
 
 static uint32_t detail_hash(void const *data)
 {
