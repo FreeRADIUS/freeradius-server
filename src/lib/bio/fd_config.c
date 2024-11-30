@@ -85,6 +85,13 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CO
 	return 0;
 }
 
+static const conf_parser_t peercred_config[] = {
+	{ FR_CONF_OFFSET("uid", fr_bio_fd_config_t, uid), .func = cf_parse_uid },
+	{ FR_CONF_OFFSET("gid", fr_bio_fd_config_t, gid), .func = cf_parse_gid },
+
+	CONF_PARSER_TERMINATOR
+};
+
 const conf_parser_t fr_bio_fd_config[] = {
 	{ FR_CONF_OFFSET("proto", fr_bio_fd_config_t, socket_type), .func = socket_type_parse },
 
@@ -110,10 +117,7 @@ const conf_parser_t fr_bio_fd_config[] = {
 	 */
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
 
-	{ FR_CONF_OFFSET("uid", fr_bio_fd_config_t, uid), .func = cf_parse_uid },
-	{ FR_CONF_OFFSET("gid", fr_bio_fd_config_t, gid), .func = cf_parse_gid },
-
-	{ FR_CONF_OFFSET("perm", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
+	{ FR_CONF_OFFSET("permissions", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
 
 	{ FR_CONF_OFFSET("mode", fr_bio_fd_config_t, flags), .dflt = "read-only", .func = mode_parse },
 
@@ -122,6 +126,8 @@ const conf_parser_t fr_bio_fd_config[] = {
 	{ FR_CONF_OFFSET("async", fr_bio_fd_config_t, async), .dflt = "true" },
 
 	{ FR_CONF_OFFSET("delay_tcp_writes", fr_bio_fd_config_t, tcp_delay) },
+
+	{ FR_CONF_POINTER("peercred", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) peercred_config },
 
 	CONF_PARSER_TERMINATOR
 };
