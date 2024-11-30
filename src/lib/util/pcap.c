@@ -120,7 +120,7 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 	fr_pcap_t	*this;
 
 	if (!fr_cond_assert(type >= PCAP_INTERFACE_IN && type <= PCAP_INTERFACE_IN_OUT)) {
-		fr_strerror_printf("Invalid PCAP type: %d", type);
+		fr_strerror_printf("Invalid PCAP type: %u", type);
 		return NULL;
 	}
 
@@ -352,7 +352,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 	case PCAP_INVALID:
 	default:
 		(void)fr_cond_assert(0);
-		fr_strerror_printf("Bad handle type (%i)", pcap->type);
+		fr_strerror_printf("Bad handle type (%u)", pcap->type);
 		return -1;
 	}
 

@@ -306,7 +306,7 @@ int fr_sem_wait(int sem_id, char const *file, bool undo_on_exit, bool nonblock)
 
 		fr_strerror_printf("Failed waiting on semaphore bound to \"%s\" - %s.  Semaphore "
 				   "owned by %s:%s PID %u%s", file, fr_syserror(semop_err),
-				   uid_str, gid_str, sem_pid, dead ? " (dead)" : "");
+				   uid_str, gid_str, (unsigned int) sem_pid, dead ? " (dead)" : "");
 
 		talloc_free(uid_str);
 		talloc_free(gid_str);
@@ -348,7 +348,7 @@ static bool sem_check_uid(char const *file, int proj_id,
 	if (unlikely(!expected_str)) {
 	simple_error:
 		fr_strerror_printf("Semaphore on \"%s\" ID 0x%x - %s is incorrect",
-				   file, proj_id, thing);
+				   file, (unsigned int) proj_id, thing);
 		return false;
 	}
 
@@ -359,7 +359,7 @@ static bool sem_check_uid(char const *file, int proj_id,
 		goto simple_error;
 	}
 	fr_strerror_printf("Semaphore on \"%s\" ID 0x%x - %s is incorrect.  Expected \"%s\", got \"%s\"",
-			   file, proj_id, thing, expected_str, got_str);
+			   file, (unsigned int) proj_id, thing, expected_str, got_str);
 
 	talloc_free(expected_str);
 	talloc_free(got_str);
@@ -378,7 +378,7 @@ static bool sem_check_gid(char const *file, int proj_id,
 	if (unlikely(!expected_str)) {
 	simple_error:
 		fr_strerror_printf("Semaphore on \"%s\" ID 0x%x - %s is incorrect",
-				   file, proj_id, thing);
+				   file, (unsigned int) proj_id, thing);
 		return false;
 	}
 
@@ -389,7 +389,7 @@ static bool sem_check_gid(char const *file, int proj_id,
 		goto simple_error;
 	}
 	fr_strerror_printf("Semaphore on \"%s\" ID 0x%x - %s is incorrect.  Expected \"%s\", got \"%s\"",
-			   file, proj_id, thing, expected_str, got_str);
+			   file, (unsigned int) proj_id, thing, expected_str, got_str);
 
 	talloc_free(expected_str);
 	talloc_free(got_str);
@@ -429,7 +429,7 @@ int fr_sem_get(char const *file, int proj_id, uid_t uid, gid_t gid, bool check_p
 	sem_key = ftok(file, proj_id);
 	if (sem_key < 0) {
 		fr_strerror_printf("Failed associating semaphore with \"%s\" ID 0x%x: %s",
-				   file, proj_id, fr_syserror(errno));
+				   file, (unsigned int) proj_id, fr_syserror(errno));
 		return -1;
 	}
 
@@ -443,7 +443,7 @@ again:
 
 		if (errno != ENOENT) {	/* Semaphore existed but we ran into an error */
 			fr_strerror_printf("Failed getting semaphore on \"%s\" ID 0x%x: %s",
-					   file, proj_id, fr_syserror(errno));
+					   file, (unsigned int) proj_id, fr_syserror(errno));
 			return -2;
 		}
 
@@ -463,7 +463,7 @@ again:
 			}
 
 			fr_strerror_printf("Failed creating semaphore on \"%s\" ID 0x%x: %s",
-					   file, proj_id, fr_syserror(errno));
+					   file, (unsigned int) proj_id, fr_syserror(errno));
 			return -3;
 		}
 
@@ -481,7 +481,7 @@ again:
 
 			if (semctl(sem_id, 0, IPC_SET, &info) < 0) {
 				fr_strerror_printf("Failed setting permissions for semaphore on \"%s\" ID 0x%x: %s",
-						   file, proj_id, fr_syserror(errno));
+						   file, (unsigned int) proj_id, fr_syserror(errno));
 				fr_sem_close(sem_id, file);
 				return -3;
 			}
@@ -498,13 +498,13 @@ again:
 		ret = semctl(sem_id, 0, IPC_STAT, &info);
 		if (ret < 0) {
 			fr_strerror_printf("Failed getting semaphore permissions on \"%s\" ID 0x%x: %s",
-					   file, proj_id, fr_syserror(errno));
+					   file, (unsigned int) proj_id, fr_syserror(errno));
 			return -2;
 		}
 
 		if (info.sem_perm.mode & S_IWOTH) {
 			fr_strerror_printf("Semaphore on \"%s\" ID 0x%x is world writable (insecure)",
-					   file, proj_id);
+					   file, (unsigned int) proj_id);
 			return -2;
 		}
 

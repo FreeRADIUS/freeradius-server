@@ -1257,7 +1257,7 @@ int dict_protocol_add(fr_dict_t *dict)
 	dict->in_protocol_by_name = true;
 
 	if (!fr_hash_table_insert(dict_gctx->protocol_by_num, dict)) {
-		fr_strerror_printf("%s: Duplicate protocol number %i", __FUNCTION__, dict->root->attr);
+		fr_strerror_printf("%s: Duplicate protocol number %u", __FUNCTION__, dict->root->attr);
 		return -1;
 	}
 	dict->in_protocol_by_num = true;
@@ -1560,7 +1560,7 @@ int dict_attr_add_to_namespace(fr_dict_attr_t const *parent, fr_dict_attr_t *da)
 		if (a && (strcasecmp(a->name, da->name) == 0)) {
 			if ((a->attr != da->attr) || (a->type != da->type) || (a->parent != da->parent)) {
 				fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  "
-				   		   "Originally defined %s[%u]",
+				   		   "Originally defined %s[%d]",
 						   da->name, parent->name,
 						   a->filename, a->line);
 				goto error;
@@ -1619,7 +1619,7 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	exists = fr_dict_attr_by_name(NULL, da->parent, da->name);
 	if (exists) {
 		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  "
-				   "Originally defined %s[%u]", da->name, da->parent->name,
+				   "Originally defined %s[%d]", da->name, da->parent->name,
 				   exists->filename, exists->line);
 		return -1;
 	}
@@ -1658,7 +1658,7 @@ int fr_dict_attr_add_initialised(fr_dict_attr_t *da)
 	exists = fr_dict_attr_child_by_num(da->parent, da->attr);
 	if (exists) {
 		fr_strerror_printf("Duplicate attribute number %u.  "
-				   "Originally defined by '%s' at %s[%u]",
+				   "Originally defined by '%s' at %s[%d]",
 				   da->attr, exists->name, exists->filename, exists->line);
 		return -1;
 	}
@@ -2154,7 +2154,7 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 
 	default:
 		if (dict_attr_can_have_children(*parent)) break;
-		fr_strerror_printf("Attribute %s (%i) is not a TLV, so cannot contain a child attribute.  "
+		fr_strerror_printf("Attribute %s (%u) is not a TLV, so cannot contain a child attribute.  "
 				   "Error at sub OID \"%s\"", (*parent)->name, (*parent)->attr, oid);
 		return 0;	/* We parsed nothing */
 	}
@@ -2182,7 +2182,7 @@ ssize_t fr_dict_attr_by_oid_legacy(fr_dict_t const *dict, fr_dict_attr_t const *
 
 		child = dict_attr_child_by_num(*parent, num);
 		if (!child) {
-			fr_strerror_printf("Unknown attribute '%i' in OID string \"%s\" for parent %s",
+			fr_strerror_printf("Unknown attribute '%u' in OID string \"%s\" for parent %s",
 					   num, oid, (*parent)->name);
 			return 0;	/* We parsed nothing */
 		}
@@ -2709,7 +2709,7 @@ fr_dict_attr_t const *fr_dict_vendor_da_by_num(fr_dict_attr_t const *vendor_root
 
 	vendor = dict_attr_child_by_num(vendor_root, vendor_pen);
 	if (!vendor) {
-		fr_strerror_printf("Vendor %i not defined", vendor_pen);
+		fr_strerror_printf("Vendor %u not defined", vendor_pen);
 		return NULL;
 	}
 
@@ -3753,7 +3753,7 @@ static void dependent_debug(fr_dict_t *dict)
 	for (dep = fr_rb_iter_init_inorder(&iter, dict->dependents);
 	     dep;
 	     dep = fr_rb_iter_next_inorder(&iter)) {
-		fprintf(stderr, "\t<- %s (%u)\n", dep->dependent, dep->count);
+		fprintf(stderr, "\t<- %s (%d)\n", dep->dependent, dep->count);
 	}
 }
 #endif
@@ -3836,7 +3836,7 @@ static int _dict_free(fr_dict_t *dict)
 		for (dep = fr_rb_iter_init_inorder(&iter, dict->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&iter)) {
-			fr_strerror_printf_push("%s (%u)", dep->dependent, dep->count);
+			fr_strerror_printf_push("%s (%d)", dep->dependent, dep->count);
 		}
 
 		return -1;
@@ -4548,7 +4548,7 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, dict->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s is referenced from %s count (%u)", dict->root->name, dep->dependent, dep->count);
+			FR_FAULT_LOG("\t%s is referenced from %s count (%d)", dict->root->name, dep->dependent, dep->count);
 		}
 	}
 
@@ -4556,7 +4556,7 @@ void fr_dict_global_ctx_debug(fr_dict_gctx_t const *gctx)
 		for (dep = fr_rb_iter_init_inorder(&dep_iter, gctx->internal->dependents);
 		     dep;
 		     dep = fr_rb_iter_next_inorder(&dep_iter)) {
-			FR_FAULT_LOG("\t%s is referenced from %s count (%u)", gctx->internal->root->name, dep->dependent, dep->count);
+			FR_FAULT_LOG("\t%s is referenced from %s count (%d)", gctx->internal->root->name, dep->dependent, dep->count);
 		}
 	}
 }
@@ -4785,19 +4785,19 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 	int i;
 	fr_dict_attr_t const *da_p;
 
-	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t pointer was NULL", file, line);
+	if (!da) fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t pointer was NULL", file, line);
 
 	(void) talloc_get_type_abort_const(da, fr_dict_attr_t);
 
 	if ((!da->flags.is_root) && (da->depth == 0)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
 				     "Is not root, but depth is 0",
 				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
 	}
 
 	if (da->depth > FR_DICT_MAX_TLV_STACK) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
-				     "Indicated depth (%u) greater than TLV stack depth (%u)",
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
+				     "Indicated depth (%u) greater than TLV stack depth (%d)",
 				     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr,
 				     da->depth, FR_DICT_MAX_TLV_STACK);
 	}
@@ -4808,12 +4808,12 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 
 	for (i = da->depth, da_p = da; (i >= 0) && da; i--, da_p = da_p->parent) {
 		if (!da_p) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
 					     "Depth indicated there should be a parent, but parent is NULL",
 					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr);
 		}
 		if (i != (int)da_p->depth) {
-			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
+			fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t %s vendor: %u, attr %u: "
 					     "Depth out of sequence, expected %i, got %u",
 					     file, line, da->name, fr_dict_vendor_num_by_da(da), da->attr, i, da_p->depth);
 		}
@@ -4821,12 +4821,12 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 	}
 
 	if ((i + 1) < 0) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t top of hierarchy was not at depth 0",
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: fr_dict_attr_t top of hierarchy was not at depth 0",
 				     file, line);
 	}
 
 	if (da->parent && (da->parent->type == FR_TYPE_VENDOR) && !fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_VENDOR)) {
-		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: VSA missing 'vendor' extension", file, line);
+		fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: VSA missing 'vendor' extension", file, line);
 	}
 
 	switch (da->type) {
@@ -4837,12 +4837,12 @@ void fr_dict_attr_verify(char const *file, int line, fr_dict_attr_t const *da)
 		if (da->type == FR_TYPE_GROUP) break;
 
 		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_CHILDREN),
-			      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'children' extension",
+			      "CONSISTENCY CHECK FAILED %s[%d]: %s missing 'children' extension",
 			      file, line,
 			      fr_type_to_str(da->type));
 
 		fr_assert_msg(fr_dict_attr_has_ext(da, FR_DICT_ATTR_EXT_NAMESPACE),
-			      "CONSISTENCY CHECK FAILED %s[%u]: %s missing 'namespace' extension",
+			      "CONSISTENCY CHECK FAILED %s[%d]: %s missing 'namespace' extension",
 			      file, line,
 			      fr_type_to_str(da->type));
 

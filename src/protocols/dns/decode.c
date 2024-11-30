@@ -231,7 +231,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 			     uint8_t const *rr, uint8_t const *end,
 			     fr_dns_ctx_t *packet_ctx, uint8_t const *counter)
 {
-	int i, count;
+	unsigned int i, count;
 	uint8_t const *p = rr;
 
 	/*
@@ -244,7 +244,7 @@ static ssize_t decode_record(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_
 	for (i = 0; (i < count) && (p < end); i++) {
 		ssize_t slen;
 
-		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - %s %d/%d", attr->name, i, count);
+		FR_PROTO_HEX_DUMP(p, end - p, "fr_dns_decode - %s %u/%u", attr->name, i, count);
 
 		slen = fr_struct_from_network(ctx, out, attr, p, end - p,
 					      packet_ctx, decode_value_trampoline, decode_tlv_trampoline);

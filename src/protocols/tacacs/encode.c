@@ -959,7 +959,7 @@ ssize_t fr_tacacs_encode(fr_dbuff_t *dbuff, uint8_t const *original_packet, char
 		return -1;
 
 	default:
-		fr_strerror_printf("encode: unknown packet type %u", packet->hdr.type);
+		fr_strerror_printf("encode: unknown packet type %d", packet->hdr.type);
 		return -1;
 	}
 

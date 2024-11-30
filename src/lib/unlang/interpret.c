@@ -420,7 +420,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 				if (retry->count >= instruction->actions.retry.mrc) {
 					retry->state = FR_RETRY_MRC;
 
-					REDEBUG("Retries hit max_rtx_count (%d) - returning 'fail'", instruction->actions.retry.mrc);
+					REDEBUG("Retries hit max_rtx_count (%u) - returning 'fail'", instruction->actions.retry.mrc);
 
 				fail:
 					*result = RLM_MODULE_FAIL;
@@ -431,7 +431,7 @@ unlang_frame_action_t result_calculate(request_t *request, unlang_stack_frame_t 
 
 		RINDENT();
 		if (instruction->actions.retry.mrc) {
-			RDEBUG("... retrying (%d/%d)", retry->count, instruction->actions.retry.mrc);
+			RDEBUG("... retrying (%u/%u)", retry->count, instruction->actions.retry.mrc);
 		} else {
 			RDEBUG("... retrying");
 		}

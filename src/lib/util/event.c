@@ -534,7 +534,7 @@ static inline CC_HINT(always_inline) fr_event_fd_cb_t event_fd_func(fr_event_fd_
 
 	switch (map->idx_type) {
 	default:
-		fr_assert_fail("Invalid index type %i", map->idx_type);
+		fr_assert_fail("Invalid index type %u", map->idx_type);
 		return NULL;
 
 	case FR_EVENT_FUNC_IDX_FILTER:
@@ -1152,7 +1152,7 @@ int _fr_event_filter_insert(NDEBUG_LOCATION_ARGS
 		 */
 		if ((filter > (NUM_ELEMENTS(filter_maps) - 1))) {
 		not_supported:
-			fr_strerror_printf("Filter %i not supported", filter);
+			fr_strerror_printf("Filter %u not supported", filter);
 			goto free;
 		}
 		ef->map = &filter_maps[filter];
@@ -1263,7 +1263,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int fd, fr_event_filter_t filter)
 
 	ef = fr_rb_find(el->fds, &(fr_event_fd_t){ .fd = fd, .filter = filter });
 	if (unlikely(!ef)) {
-		fr_strerror_printf("No events are registered for fd %i, filter %d", fd, filter);
+		fr_strerror_printf("No events are registered for fd %d, filter %u", fd, filter);
 		return -1;
 	}
 
@@ -1418,7 +1418,7 @@ static int _event_timer_free(fr_event_timer_t *ev)
 		 *	Events MUST be in the lst (or the insertion list).
 		 */
 		if (!fr_cond_assert_msg(ret == 0,
-					"Event %p, lst_id %i, allocd %s[%u], was not found in the event lst or "
+					"Event %p, lst_id %u, allocd %s[%d], was not found in the event lst or "
 					"insertion list when freed: %s", ev, ev->lst_id, err_file, err_line,
 					 fr_strerror())) return -1;
 	}
@@ -1538,7 +1538,7 @@ int _fr_event_timer_at(NDEBUG_LOCATION_ARGS
 			 *	Events MUST be in the lst (or the insertion list).
 			 */
 			if (!fr_cond_assert_msg(ret == 0,
-						"Event %p, lst_id %i, allocd %s[%u], was not found in the event "
+						"Event %p, lst_id %u, allocd %s[%d], was not found in the event "
 						"lst or insertion list when freed: %s", ev, ev->lst_id,
 						err_file, err_line, fr_strerror())) return -1;
 		}
@@ -1836,7 +1836,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 			case CLD_EXITED:
 			case CLD_KILLED:
 			case CLD_DUMPED:
-				EVENT_DEBUG("%p - PID %ld early exit - code %s (%i), status %i",
+				EVENT_DEBUG("%p - PID %ld early exit - code %s (%d), status %d",
 					    el, (long)pid, fr_table_str_by_value(si_codes, info.si_code, "<UNKOWN>"),
 					    info.si_code, info.si_status);
 
@@ -1871,7 +1871,7 @@ int _fr_event_pid_wait(NDEBUG_LOCATION_ARGS
 				break;
 
 			default:
-				fr_strerror_printf("Unexpected code %s (%u) whilst waiting on PID %ld",
+				fr_strerror_printf("Unexpected code %s (%d) whilst waiting on PID %ld",
 						   fr_table_str_by_value(si_codes, info.si_code, "<UNKOWN>"),
 						   info.si_code, (long) pid);
 
@@ -3102,7 +3102,7 @@ void fr_event_report(fr_event_list_t *el, fr_time_t now, void *uctx)
 		     node = fr_rb_iter_next_inorder(&event_iter)) {
 			fr_event_counter_t	*counter = talloc_get_type_abort(node, fr_event_counter_t);
 
-			EVENT_DEBUG("                         : %u allocd at %s[%u]",
+			EVENT_DEBUG("                         : %u allocd at %s[%d]",
 				    counter->count, counter->file, counter->line);
 		}
 	}
@@ -3127,7 +3127,7 @@ void fr_event_timer_dump(fr_event_list_t *el)
 	     ev;
 	     ev = fr_lst_iter_next(el->times, &iter)) {
 		(void)talloc_get_type_abort(ev, fr_event_timer_t);
-		EVENT_DEBUG("%s[%u]: %p time=%" PRId64 " (%c), callback=%p",
+		EVENT_DEBUG("%s[%d]: %p time=%" PRId64 " (%c), callback=%p",
 			    ev->file, ev->line, ev, fr_time_unwrap(ev->when),
 			    fr_time_gt(now, ev->when) ? '<' : '>', ev->callback);
 	}

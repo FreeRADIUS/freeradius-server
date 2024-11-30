@@ -82,7 +82,7 @@ static _Thread_local bool		thread_is_exiting;
  */
 static int _atexit_entry_free(fr_atexit_entry_t *e)
 {
-	ATEXIT_DEBUG("%s - Thread %u freeing %p/%p func=%p, uctx=%p (alloced %s:%u)",
+	ATEXIT_DEBUG("%s - Thread %u freeing %p/%p func=%p, uctx=%p (alloced %s:%d)",
 		     __FUNCTION__, (unsigned int)pthread_self(),
 		     e->list, e, e->func, e->uctx, e->file, e->line);
 
@@ -114,7 +114,7 @@ static fr_atexit_entry_t *atexit_entry_alloc(char const *file, int line,
 	e->file = file;
 	e->line = line;
 
-	ATEXIT_DEBUG("%s - Thread %u arming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+	ATEXIT_DEBUG("%s - Thread %u arming %p/%p func=%p, uctx=%p (alloced %s:%d)",
 		     __FUNCTION__, (unsigned int)pthread_self(),
 		     list, e, e->func, e->uctx, e->file, e->line);
 
@@ -236,7 +236,7 @@ unsigned int fr_atexit_global_disarm(bool uctx_scope, fr_atexit_t func, void con
 
 		if ((e->func != func) || ((e->uctx != uctx) && uctx_scope)) continue;
 
-		ATEXIT_DEBUG("%s - Disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+		ATEXIT_DEBUG("%s - Disarming %p/%p func=%p, uctx=%p (alloced %s:%d)",
 			     __FUNCTION__,
 			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
 
@@ -263,7 +263,7 @@ void fr_atexit_global_disarm_all(void)
 	if (!fr_atexit_global) return;
 
 	while ((e = fr_dlist_pop_head(&fr_atexit_global->head))) {
-		ATEXIT_DEBUG("%s - Disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+		ATEXIT_DEBUG("%s - Disarming %p/%p func=%p, uctx=%p (alloced %s:%d)",
 			     __FUNCTION__,
 			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
 
@@ -294,7 +294,7 @@ int fr_atexit_global_trigger_all(void)
 	 *	destructors.
 	 */
 	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
-		ATEXIT_DEBUG("%s - Triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
+		ATEXIT_DEBUG("%s - Triggering %p/%p func=%p, uctx=%p (alloced %s:%d)",
 			     __FUNCTION__,
 			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
 
@@ -303,7 +303,7 @@ int fr_atexit_global_trigger_all(void)
 		e = fr_dlist_remove(&fr_atexit_global->head, e);
 		if (talloc_free(to_free) < 0) {
 			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
-						" (alloced %s:%u)",
+						" (alloced %s:%d)",
 						fr_atexit_global, to_free,
 						to_free->func, to_free->uctx,
 						to_free->file, to_free->line);
@@ -345,7 +345,7 @@ int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx)
 	while ((e = fr_dlist_next(&fr_atexit_global->head, e))) {
 		if ((e->func != func) || ((e->uctx != uctx) && uctx_scope)) continue;
 
-		ATEXIT_DEBUG("%s - Triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
+		ATEXIT_DEBUG("%s - Triggering %p/%p func=%p, uctx=%p (alloced %s:%d)",
 			     __FUNCTION__,
 			     fr_atexit_global, e, e->func, e->uctx, e->file, e->line);
 
@@ -354,7 +354,7 @@ int fr_atexit_trigger(bool uctx_scope, fr_atexit_t func, void const *uctx)
 		e = fr_dlist_remove(&fr_atexit_global->head, e);
 		if (talloc_free(to_free) < 0) {
 			fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
-						" (alloced %s:%u)",
+						" (alloced %s:%d)",
 						fr_atexit_global, to_free,
 						to_free->func, to_free->uctx,
 						to_free->file, to_free->line);
@@ -380,7 +380,7 @@ do_threads:
 		while ((ee = fr_dlist_next(&list->head, ee))) {
 			if ((ee->func != func) || ((ee->uctx != uctx) && uctx_scope)) continue;
 
-			ATEXIT_DEBUG("%s - Thread %u triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			ATEXIT_DEBUG("%s - Thread %u triggering %p/%p func=%p, uctx=%p (alloced %s:%d)",
 				     __FUNCTION__,
 				     (unsigned int)pthread_self(),
 				     list, ee, ee->func, ee->uctx, ee->file, ee->line);
@@ -390,7 +390,7 @@ do_threads:
 			ee = fr_dlist_remove(&list->head, ee);
 			if (talloc_free(to_free) < 0) {
 				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
-							" (alloced %s:%u)",
+							" (alloced %s:%d)",
 							list, to_free,
 							to_free->func, to_free->uctx,
 							to_free->file, to_free->line);
@@ -548,7 +548,7 @@ unsigned int fr_atexit_thread_local_disarm(bool uctx_scope, fr_atexit_t func, vo
 
 		if ((e->func != func) || ((e->uctx != uctx) && uctx_scope)) continue;
 
-		ATEXIT_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+		ATEXIT_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%d)",
 			     __FUNCTION__,
 			     (unsigned int)pthread_self(),
 			     fr_atexit_thread_local, e, e->func, e->uctx, e->file, e->line);
@@ -575,7 +575,7 @@ void fr_atexit_thread_local_disarm_all(void)
 	if (!fr_atexit_thread_local) return;
 
 	while ((e = fr_dlist_pop_head(&fr_atexit_thread_local->head))) {
-		ATEXIT_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%u)",
+		ATEXIT_DEBUG("%s - Thread %u disarming %p/%p func=%p, uctx=%p (alloced %s:%d)",
 			     __FUNCTION__,
 			     (unsigned int)pthread_self(),
 			     fr_atexit_thread_local, e, e->func, e->uctx, e->file, e->line);
@@ -614,7 +614,7 @@ int fr_atexit_thread_trigger_all(void)
 		list = talloc_get_type_abort(e->uctx, fr_atexit_list_t);
 		ee = NULL;
 		while ((ee = fr_dlist_next(&list->head, ee))) {
-			ATEXIT_DEBUG("%s - Thread %u triggering %p/%p func=%p, uctx=%p (alloced %s:%u)",
+			ATEXIT_DEBUG("%s - Thread %u triggering %p/%p func=%p, uctx=%p (alloced %s:%d)",
 				     __FUNCTION__,
 				     (unsigned int)pthread_self(),
 				     list, ee, ee->func, ee->uctx, ee->file, ee->line);
@@ -624,7 +624,7 @@ int fr_atexit_thread_trigger_all(void)
 			ee = fr_dlist_remove(&list->head, ee);
 			if (talloc_free(to_free) < 0) {
 				fr_strerror_printf_push("atexit handler failed %p/%p func=%p, uctx=%p"
-							" (alloced %s:%u)",
+							" (alloced %s:%d)",
 							list, to_free,
 							to_free->func, to_free->uctx,
 							to_free->file, to_free->line

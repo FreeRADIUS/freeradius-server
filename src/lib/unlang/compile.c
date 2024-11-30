@@ -4843,7 +4843,7 @@ static unlang_t *compile_item(unlang_t *parent, unlang_compile_t *unlang_ctx, CO
 			if (!op->thread_inst_size) return c;
 
 			if (!fr_rb_insert(unlang_instruction_tree, c)) {
-				cf_log_err(ci, "Instruction \"%s\" number %i has conflict with previous one.",
+				cf_log_err(ci, "Instruction \"%s\" number %u has conflict with previous one.",
 					   c->debug_name, c->number);
 				talloc_free(c);
 				return NULL;
@@ -5285,7 +5285,7 @@ static void unlang_perf_dump(fr_log_t *log, unlang_t const *instruction, int dep
 
 	t = &unlang_thread_array[instruction->number];
 
-	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRIu64 " yielded_time=%" PRIu64 ,
+	fr_log(log, L_DBG, file, line, "count=%" PRIu64 " cpu_time=%" PRId64 " yielded_time=%" PRId64 ,
 	       t->use_count, fr_time_delta_unwrap(t->tracking.running_total), fr_time_delta_unwrap(t->tracking.waiting_total));
 
 	if (g->children) {

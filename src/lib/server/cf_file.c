@@ -259,8 +259,8 @@ char const *cf_expand_variables(char const *cf, int lineno,
 
 				if (buf.st_size >= ((output + outsize) - p)) {
 					close(fd);
-					ERROR("%s[%d]: Reference \"${%s}\" file is too large (%zd >= %zd)", cf, lineno, name,
-					      (size_t) buf.st_size, ((output + outsize) - p));
+					ERROR("%s[%d]: Reference \"${%s}\" file is too large (%zu >= %zu)", cf, lineno, name,
+					      (size_t) buf.st_size, (size_t) ((output + outsize) - p));
 					return NULL;
 				}
 
@@ -696,30 +696,30 @@ bool cf_file_check(CONF_PAIR *cp, bool check_perms)
 
 		if ((conf_check_gid != (gid_t)-1) && ((egid = getegid()) != conf_check_gid)) {
 			if (setegid(conf_check_gid) < 0) {
-				cf_log_perr(cp, "Failed setting effective group ID (%i) for file check: %s",
-					    conf_check_gid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed setting effective group ID (%d) for file check: %s",
+					    (int) conf_check_gid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		if ((conf_check_uid != (uid_t)-1) && ((euid = geteuid()) != conf_check_uid)) {
 			if (seteuid(conf_check_uid) < 0) {
-				cf_log_perr(cp, "Failed setting effective user ID (%i) for file check: %s",
-					    conf_check_uid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed setting effective user ID (%d) for file check: %s",
+					    (int) conf_check_uid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		fd = open(filename, O_RDONLY);
 		if (conf_check_uid != euid) {
 			if (seteuid(euid) < 0) {
-				cf_log_perr(cp, "Failed restoring effective user ID (%i) after file check: %s",
-					    euid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed restoring effective user ID (%d) after file check: %s",
+					    (int) euid, fr_syserror(errno));
 				goto error;
 			}
 		}
 		if (conf_check_gid != egid) {
 			if (setegid(egid) < 0) {
-				cf_log_perr(cp, "Failed restoring effective group ID (%i) after file check: %s",
-					    egid, fr_syserror(errno));
+				cf_log_perr(cp, "Failed restoring effective group ID (%d) after file check: %s",
+					    (int) egid, fr_syserror(errno));
 				goto error;
 			}
 		}

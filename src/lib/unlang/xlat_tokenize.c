@@ -132,7 +132,7 @@ static inline int xlat_tokenize_regex(xlat_exp_head_t *head, fr_sbuff_t *in)
 	(void) fr_sbuff_out(&err, &num, in);
 	if (err != FR_SBUFF_PARSE_OK) {
 	invalid_ref:
-		fr_strerror_printf("Invalid regex reference.  Must be in range 0-%u", REQUEST_MAX_REGEX);
+		fr_strerror_printf("Invalid regex reference.  Must be in range 0-%d", REQUEST_MAX_REGEX);
 		fr_sbuff_marker_release(&m_s);
 		return -1;
 	}
@@ -958,7 +958,7 @@ static void _xlat_debug_node(xlat_exp_t const *node, int depth)
 				 */
 				list = tmpl_request(node->vpt);
 				while ((rr = tmpl_request_list_next(list, rr))) {
-					INFO_INDENT("ref  %d", rr->request);
+					INFO_INDENT("ref  %u", rr->request);
 				}
 				INFO_INDENT("list %s", tmpl_list_name(tmpl_list(node->vpt), "<INVALID>"));
 				if (tmpl_attr_tail_num(node->vpt) != NUM_UNSPEC) {
@@ -1472,7 +1472,8 @@ fr_slen_t xlat_tokenize_argv(TALLOC_CTX *ctx, xlat_exp_head_t **out, fr_sbuff_t 
 		if (!arg->variadic) {
 			arg++;
 			if (arg->type == FR_TYPE_NULL) {
-				fr_strerror_printf("Too many arguments, expected %zu, got %u", arg - arg_start, argc - 1);
+				fr_strerror_printf("Too many arguments, expected %zu, got %d",
+						   (size_t) (arg - arg_start), argc - 1);
 				goto error;
 			}
 		}

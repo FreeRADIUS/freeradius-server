@@ -461,7 +461,7 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
  */
 void fr_vmps_print_hex(FILE *fp, uint8_t const *packet, size_t packet_len)
 {
-	int length;
+	uint32_t length;
 	uint8_t const *attr, *end;
 	uint32_t id;
 

@@ -531,8 +531,8 @@ int fr_aka_sim_id_3gpp_pseudonym_encrypt(char out[AKA_SIM_3GPP_PSEUDONYM_LEN + 1
 		u_p += 3;
 	}
 	if ((out_p - out) != AKA_SIM_3GPP_PSEUDONYM_LEN) {
-		fr_strerror_printf("Base64 output length invalid, expected %i bytes, got %zu bytes",
-				   AKA_SIM_3GPP_PSEUDONYM_LEN, out_p - out);
+		fr_strerror_printf("Base64 output length invalid, expected %u bytes, got %zu bytes",
+				   AKA_SIM_3GPP_PSEUDONYM_LEN, (size_t) (out_p - out));
 		return -1;
 	}
 
@@ -645,7 +645,7 @@ int fr_aka_sim_id_3gpp_pseudonym_decrypt(char out[AKA_SIM_IMSI_MAX_LEN + 1],
 	 *	some sort of memory corruption has occurred.
 	 */
 	if (unlikely(decr_len > (AKA_SIM_IMSI_MAX_LEN + 1))) {
-		fr_strerror_printf("Decrypted data len invalid.  Expected %i bytes, got %zu bytes",
+		fr_strerror_printf("Decrypted data len invalid.  Expected %u bytes, got %zu bytes",
 				   (AKA_SIM_IMSI_MAX_LEN + 1), decr_len);
 		goto error;
 	}

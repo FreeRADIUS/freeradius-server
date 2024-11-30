@@ -519,7 +519,7 @@ void fr_tls_session_info_cb(SSL const *ssl, int where, int ret)
 			}
 #  endif
 		} else {
-			ROPTIONAL(RDEBUG2, DEBUG2, "Handshake state - %s%s (%i)", role, state, SSL_get_state(ssl));
+			ROPTIONAL(RDEBUG2, DEBUG2, "Handshake state - %s%s (%u)", role, state, SSL_get_state(ssl));
 		}
 		return;
 	}
@@ -619,7 +619,8 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 
 	if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
 	    !tls_version_str[tls_session->info.version]) {
-		snprintf(unknown_version, sizeof(unknown_version), "unknown_tls_version_0x%04x", tls_session->info.version);
+		snprintf(unknown_version, sizeof(unknown_version), "unknown_tls_version_0x%04x",
+			 (unsigned int) tls_session->info.version);
 		version = unknown_version;
 	} else {
 		version = tls_version_str[tls_session->info.version];
@@ -631,7 +632,7 @@ static void session_msg_log(request_t *request, fr_tls_session_t *tls_session, u
 	if (((size_t)tls_session->info.content_type >= NUM_ELEMENTS(tls_content_type_str)) ||
 	    !tls_content_type_str[tls_session->info.content_type]) {
 		snprintf(unknown_content_type, sizeof(unknown_content_type),
-			 "unknown_content_type_0x%04x", tls_session->info.content_type);
+			 "unknown_content_type_0x%04x", (unsigned int) tls_session->info.content_type);
 		content_type = unknown_content_type;
 	} else {
 		content_type = tls_content_type_str[tls_session->info.content_type];
@@ -954,7 +955,7 @@ int fr_tls_session_recv(request_t *request, fr_tls_session_t *tls_session)
 		ret = BIO_write(tls_session->into_ssl, tls_session->dirty_in.data, tls_session->dirty_in.used);
 		if (ret != (int) tls_session->dirty_in.used) {
 			record_init(&tls_session->dirty_in);
-			REDEBUG("Failed writing %zd bytes to SSL BIO: %d", tls_session->dirty_in.used, ret);
+			REDEBUG("Failed writing %zu bytes to SSL BIO: %d", tls_session->dirty_in.used, ret);
 			goto error;
 		}
 
@@ -1542,7 +1543,7 @@ static unlang_action_t tls_session_async_handshake(rlm_rcode_t *p_result, int *p
 	if (tls_session->dirty_in.used) {
 		ret = BIO_write(tls_session->into_ssl, tls_session->dirty_in.data, tls_session->dirty_in.used);
 		if (ret != (int)tls_session->dirty_in.used) {
-			REDEBUG("Failed writing %zd bytes to TLS BIO: %d", tls_session->dirty_in.used, ret);
+			REDEBUG("Failed writing %zu bytes to TLS BIO: %d", tls_session->dirty_in.used, ret);
 			record_init(&tls_session->dirty_in);
 			goto error;
 		}

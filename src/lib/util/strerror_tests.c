@@ -200,7 +200,7 @@ static void strerror_printf_benchmark(void)
 
 	start = fr_time();
 	for (i = 0; i < 100000; i++) {
-		fr_strerror_printf("I am a test %u string %u %s", i, i, "benchmark");
+		fr_strerror_printf("I am a test %d string %d %s", i, i, "benchmark");
 		fr_strerror_clear();	/* Clear */
 	}
 	stop = fr_time();

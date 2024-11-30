@@ -852,7 +852,7 @@ ssize_t fr_dns_label_from_value_box(size_t *need, uint8_t *buf, size_t buf_len, 
 		} else if (buf != where) {
 			if (dns_label_compress(buf, buf, where, NULL, where, &data)) {
 				FR_PROTO_TRACE("Compressed single label %s to %zu bytes",
-					       value->vb_strvalue, data - where);
+					       value->vb_strvalue, (size_t) (data - where));
 			} else {
 				FR_PROTO_TRACE("Did not compress single label");
 			}
@@ -991,7 +991,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (offset >= (p - packet)) {
 				fr_strerror_printf("Pointer %04x at offset %04x is an invalid forward reference",
-						   offset, (int) (p - packet));
+						   offset, (unsigned int) (p - packet));
 				return -(p - packet);
 			}
 
@@ -1010,7 +1010,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (q >= current) {
 				fr_strerror_printf("Pointer %04x at offset %04x creates a loop within a label",
-						   offset, (int) (p - packet));
+						   offset, (unsigned int) (p - packet));
 				return -(p - packet);
 			}
 
@@ -1020,7 +1020,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (!dns_pointer_valid(lb, offset)) {
 				fr_strerror_printf("Pointer %04x at offset %04x does not point to a DNS label",
-						   offset, (int) (p - packet));
+						   offset, (unsigned int) (p - packet));
 				return -(p - packet);
 			}
 
@@ -1031,7 +1031,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (*q > 63) {
 				fr_strerror_printf("Pointer %04x at offset %04x does not point to the start of a label",
-						   offset, (int) (p - packet));
+						   offset, (unsigned int) (p - packet));
 				return -(p - packet);
 			}
 
@@ -1040,7 +1040,7 @@ ssize_t fr_dns_label_uncompressed_length(uint8_t const *packet, uint8_t const *b
 			 */
 			if (!*q) {
 				fr_strerror_printf("Pointer %04x at offset %04x refers to an invalid field", offset,
-						   (int) (p - packet));
+						   (unsigned int) (p - packet));
 				return -(p - packet);
 			}
 

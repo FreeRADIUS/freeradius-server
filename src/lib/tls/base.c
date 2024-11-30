@@ -239,7 +239,7 @@ static void *fr_openssl_talloc(size_t len, char const *file, NDEBUG_UNUSED int l
 
 	chunk = talloc_array(ssl_talloc_ctx, uint8_t, len);
 #ifndef NDEBUG
-	talloc_set_name(chunk, "%s:%u", file, line);
+	talloc_set_name(chunk, "%s:%d", file, line);
 #endif
 	return chunk;
 }
@@ -256,7 +256,7 @@ static void *fr_openssl_talloc_realloc(void *old, size_t len, NDEBUG_UNUSED char
 
 	chunk = talloc_realloc_size(ssl_talloc_ctx, old, len);
 #ifndef NDEBUG
-	talloc_set_name(chunk, "%s:%u", file, line);
+	talloc_set_name(chunk, "%s:%d", file, line);
 #endif
 	return chunk;
 }

@@ -299,7 +299,7 @@ ssize_t fr_radius_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src
 	if (data_len < 4) {
 		char buffer[INET6_ADDRSTRLEN];
 
-		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
+		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zd bytes", data_len);
 invalid:
 		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s",
 					 inet_ntop(src_ipaddr->af, &src_ipaddr->addr, buffer, sizeof(buffer)));
@@ -319,7 +319,7 @@ invalid:
 	 */
 	if (packet_len < RADIUS_HEADER_LENGTH) {
 		FR_DEBUG_STRERROR_PRINTF("Expected at least " STRINGIFY(RADIUS_HEADER_LENGTH)  " bytes of packet "
-					 "data, got %zu bytes", packet_len);
+					 "data, got %zd bytes", packet_len);
 		goto invalid;
 	}
 
@@ -329,7 +329,7 @@ invalid:
 	 */
 	if (packet_len > MAX_PACKET_LEN) {
 		FR_DEBUG_STRERROR_PRINTF("Length field value too large, expected maximum of "
-					 STRINGIFY(MAX_PACKET_LEN) " bytes, got %zu bytes", packet_len);
+					 STRINGIFY(MAX_PACKET_LEN) " bytes, got %zd bytes", packet_len);
 		goto invalid;
 	}
 
@@ -366,7 +366,8 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
 	 *	to catch uninitialised fields.
 	 */
 	if (!fr_cond_assert(secret_len <= UINT16_MAX)) {
-		fr_strerror_printf("Secret is too long.  Expected <= %u, got %zu", UINT16_MAX, secret_len);
+		fr_strerror_printf("Secret is too long.  Expected <= %u, got %zu",
+				   (unsigned int) UINT16_MAX, secret_len);
 		return -1;
 	}
 
@@ -724,7 +725,7 @@ bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
 	 */
 	if ((max_attributes > 0) &&
 	    (num_attributes > max_attributes)) {
-		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack - too many attributes in request (received %d, max %d are allowed).",
+		FR_DEBUG_STRERROR_PRINTF("Possible DoS attack - too many attributes in request (received %u, max %u are allowed).",
 					 num_attributes, max_attributes);
 		failure = DECODE_FAIL_TOO_MANY_ATTRIBUTES;
 		goto finish;
@@ -788,7 +789,7 @@ int fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 	uint8_t		message_authenticator[RADIUS_AUTH_VECTOR_LENGTH];
 
 	if (packet_len < RADIUS_HEADER_LENGTH) {
-		fr_strerror_printf("invalid packet length %zd", packet_len);
+		fr_strerror_printf("invalid packet length %zu", packet_len);
 		return -1;
 	}
 

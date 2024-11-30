@@ -357,7 +357,7 @@ int unlang_subrequest_child_push(rlm_rcode_t *out, request_t *child,
 	state->free_child = free_child;
 
 	if (!fr_cond_assert_msg(stack_depth_current(child) == 0,
-				"Child stack depth must be 0 (not %u), when subrequest_child_push is called",
+				"Child stack depth must be 0 (not %d), when subrequest_child_push is called",
 				stack_depth_current(child))) return -1;
 
 	/*

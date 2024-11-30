@@ -419,7 +419,7 @@ static ssize_t sim_decode_tlv(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		if ((p + sim_at_len) > end) {
 			fr_strerror_printf("%s: Malformed nested attribute %d: Length field (%zu bytes) value "
 					   "longer than remaining data in parent (%zu bytes)",
-					   __FUNCTION__, sim_at, sim_at_len, end - p);
+					   __FUNCTION__, sim_at, sim_at_len, (size_t) (end - p));
 
 		error:
 			talloc_free(decr);
@@ -597,13 +597,13 @@ static ssize_t sim_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_di
 		res_len /= 8;
 
 		if (res_len > (attr_len - 2)) {
-			fr_strerror_printf("%s: RES Length field value (%u bits) > attribute value length (%zu bits)",
+			fr_strerror_printf("%s: RES Length field value (%d bits) > attribute value length (%zu bits)",
 					   __FUNCTION__, res_len * 8, (attr_len - 2) * 8);
 			return -1;
 		}
 
 		if ((res_len < 4) || (res_len > 16)) {
-			fr_strerror_printf("%s: RES Length field value must be between 32-128 bits, got %u bits",
+			fr_strerror_printf("%s: RES Length field value must be between 32-128 bits, got %d bits",
 					   __FUNCTION__, (res_len * 8));
 			return -1;
 		}

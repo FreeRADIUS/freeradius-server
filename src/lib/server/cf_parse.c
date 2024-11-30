@@ -370,7 +370,7 @@ static int cf_pair_unescape(CONF_PAIR *cp, conf_parser_t const *rule)
 	p = cp->value;
 	q = str;
 	while (*p) {
-		int x;
+		unsigned int x;
 
 		if (*p != '\\') {
 			*(q++) = *(p++);

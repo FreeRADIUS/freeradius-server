@@ -319,14 +319,14 @@ static xlat_action_t xlat_binary_op(TALLOC_CTX *ctx, fr_dcursor_t *out,
 	fr_assert(!fr_comparison_op[op]);
 
 	if (fr_value_box_list_num_elements(&a->vb_group) > 1) {
-		REDEBUG("Expected one value as the first argument, got %d",
+		REDEBUG("Expected one value as the first argument, got %u",
 			fr_value_box_list_num_elements(&a->vb_group));
 		return XLAT_ACTION_FAIL;
 	}
 	a = fr_value_box_list_head(&a->vb_group);
 
 	if (fr_value_box_list_num_elements(&b->vb_group) > 1) {
-		REDEBUG("Expected one value as the second argument, got %d",
+		REDEBUG("Expected one value as the second argument, got %u",
 			fr_value_box_list_num_elements(&b->vb_group));
 		return XLAT_ACTION_FAIL;
 	}

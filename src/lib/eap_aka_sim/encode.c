@@ -823,7 +823,7 @@ ssize_t fr_aka_sim_encode_pair(fr_dbuff_t *dbuff, fr_dcursor_t *cursor, void *en
 	PAIR_VERIFY(vp);
 
 	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
-		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
+		fr_strerror_printf("%s: Attribute depth %u exceeds maximum nesting depth %d",
 				   __FUNCTION__, vp->da->depth, FR_DICT_MAX_TLV_STACK);
 		return PAIR_ENCODE_FATAL_ERROR;
 	}

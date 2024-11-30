@@ -92,7 +92,7 @@ call_env_result_t call_env_result(TALLOC_CTX *ctx, request_t *request, void *out
 	}
 
 	if (call_env_single(env->rule->flags) && (fr_value_box_list_num_elements(tmpl_expanded) > 1)) {
-		RPEDEBUG("%d values found for %s.  Only one is allowed",
+		RPEDEBUG("%u values found for %s.  Only one is allowed",
 			 fr_value_box_list_num_elements(tmpl_expanded), env->rule->name);
 		return CALL_ENV_INVALID;
 	}

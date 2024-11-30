@@ -1344,7 +1344,7 @@ static void _connection_error(UNUSED fr_event_list_t *el, int fd, UNUSED int fla
 {
 	connection_t *conn = talloc_get_type_abort(uctx, connection_t);
 
-	ERROR("Connection failed for fd (%u): %s", fd, fr_syserror(fd_errno));
+	ERROR("Connection failed for fd (%d): %s", fd, fr_syserror(fd_errno));
 	connection_state_enter_failed(conn);
 }
 
@@ -1415,7 +1415,7 @@ int connection_signal_on_fd(connection_t *conn, int fd)
 			       _connection_writable,
 			       _connection_error,
 			       conn) < 0) {
-		PERROR("Failed inserting fd (%u) into event loop %p",
+		PERROR("Failed inserting fd (%d) into event loop %p",
 		       fd, conn->pub.el);
 		connection_state_enter_failed(conn);
 		return -1;

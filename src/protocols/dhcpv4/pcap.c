@@ -181,7 +181,7 @@ fr_packet_t *fr_dhcpv4_pcap_recv(fr_pcap_t *pcap)
 	 */
 	len = (p - data) + UDP_HDR_SIZE;	/* length value */
 	if ((size_t) len > header->caplen) {
-		fr_strerror_printf("Payload (%zu) smaller than required for layers 2+3+4", len);
+		fr_strerror_printf("Payload (%zd) smaller than required for layers 2+3+4", len);
 		return NULL;
 	}
 

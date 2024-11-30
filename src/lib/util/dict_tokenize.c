@@ -64,14 +64,14 @@ typedef enum CC_HINT(flag_enum) {
 } dict_nest_t;
 DIAG_ON(attributes)
 
-fr_table_num_sorted_t const dict_nest_table[] = {
+static fr_table_num_sorted_t const dict_nest_table[] = {
 	{ L("ATTRIBUTE"),	NEST_ATTRIBUTE },
 	{ L("NONE"),		NEST_NONE },
 	{ L("PROTOCOL"),	NEST_PROTOCOL },
 	{ L("ROOT"),		NEST_ROOT },
 	{ L("VENDOR"),		NEST_VENDOR }
 };
-size_t const dict_nest_table_len = NUM_ELEMENTS(dict_nest_table);
+static size_t const dict_nest_table_len = NUM_ELEMENTS(dict_nest_table);
 
 /** Parser context for dict_from_file
  *
@@ -116,7 +116,7 @@ void dict_dctx_debug(dict_tokenize_ctx_t *dctx)
 	int i;
 
 	for (i = 0; i <= dctx->stack_depth; i++) {
-		FR_FAULT_LOG("[%d]: %s %s (%s): %s[%u]",
+		FR_FAULT_LOG("[%d]: %s %s (%s): %s[%d]",
 			     i,
 			     fr_table_str_by_value(dict_nest_table, dctx->stack[i].nest, "<INVALID>"),
 			     dctx->stack[i].da->name,
@@ -911,12 +911,12 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 	}
 
 	if (dup_name) {
-		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  Originally defined %s[%u]",
+		fr_strerror_printf("Duplicate attribute name '%s' in namespace '%s'.  Originally defined %s[%d]",
 				   da->name, da->parent->name, dup_name->filename, dup_name->line);
 		return 0;
 	}
 
-	fr_strerror_printf("Duplicate attribute number %u in parent '%s'.  Originally defined %s[%u]",
+	fr_strerror_printf("Duplicate attribute number %u in parent '%s'.  Originally defined %s[%d]",
 				da->attr, da->parent->name, dup_num->filename, dup_num->line);
 	return 0;
 }
@@ -1372,8 +1372,8 @@ static int dict_read_process_begin(dict_tokenize_ctx_t *dctx, char **argv, int a
 
 	frame = dict_dctx_find_frame(dctx, NEST_ROOT | NEST_PROTOCOL | NEST_ATTRIBUTE);
 	if (!fr_cond_assert_msg(frame, "Context stack doesn't have an attribute or dictionary "
-				"root to begin searching from %s[%u]", CURRENT_FILENAME(dctx), CURRENT_LINE(dctx)) ||
-	    !fr_cond_assert_msg(fr_type_is_structural(frame->da->type), "Context attribute is not structural %s[%u]",
+				"root to begin searching from %s[%d]", CURRENT_FILENAME(dctx), CURRENT_LINE(dctx)) ||
+	    !fr_cond_assert_msg(fr_type_is_structural(frame->da->type), "Context attribute is not structural %s[%d]",
 	    			CURRENT_FILENAME(dctx), CURRENT_LINE(dctx))) {
 		return -1;
 	}
@@ -2646,7 +2646,7 @@ post_option:
 	 */
 	if (dict) {
 		if (type_size && (dict->root->flags.type_size != type_size)) {
-			fr_strerror_printf("Conflicting flags for PROTOCOL \"%s\" (current %d versus new %d)",
+			fr_strerror_printf("Conflicting flags for PROTOCOL \"%s\" (current %d versus new %u)",
 					   dict->root->name, dict->root->flags.type_size, type_size);
 			return -1;
 		}

@@ -109,7 +109,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 		if (calc_len > (size_t) (end - p)) {
 			FR_PROTO_TRACE("Length header (%zu) is larger than remaining data (%zu)",
-				       claimed_len + field_len, (end - p));
+				       claimed_len + field_len, (size_t) (end - p));
 			goto unknown;
 		}
 
@@ -233,7 +233,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		 *	of the input is suspect.
 		 */
 		if (child_length > (size_t) (end - p)) {
-			FR_PROTO_TRACE("fr_struct_from_network - child length %zd overflows buffer", child_length);
+			FR_PROTO_TRACE("fr_struct_from_network - child length %zu overflows buffer", child_length);
 			goto unknown;
 		}
 
@@ -245,7 +245,7 @@ ssize_t fr_struct_from_network(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			child_length = end - p;
 
 		} else if ((size_t) (end - p) < child_length) {
-			FR_PROTO_TRACE("fr_struct_from_network - child length %zd underflows buffer", child_length);
+			FR_PROTO_TRACE("fr_struct_from_network - child length %zu underflows buffer", child_length);
 			goto unknown;
 		}
 
@@ -395,7 +395,7 @@ done:
 	fr_assert(struct_vp != NULL);
 	fr_pair_append(out, struct_vp);
 
-	FR_PROTO_TRACE("used %zd bytes", data_len);
+	FR_PROTO_TRACE("used %zu bytes", data_len);
 	return p - data;
 }
 

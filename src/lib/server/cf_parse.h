@@ -479,7 +479,7 @@ do {\
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
 do {\
 	if (!(_cond)) {\
-		WARN("Ignoring \"" _name " = %i\", forcing to \"" _name " = %i\"", _var, _new);\
+		WARN("Ignoring \"" _name " = %u\", forcing to \"" _name " = %u\"", (unsigned int) (_var), (unsigned int) (_new));\
 		_var = _new;\
 	}\
 } while (0)

@@ -195,7 +195,7 @@ static int dict_attr_debug(fr_dict_attr_t const *da, void *uctx)
 			      our_uctx->dict, da->type, &da->flags);
 
 	snprintf(our_uctx->prefix, sizeof(our_uctx->prefix),
-		 "[%02i] 0x%016" PRIxPTR "%*s",
+		 "[%02u] 0x%016" PRIxPTR "%*s",
 		 da->depth,
 		 (unsigned long)da,
 		 (da->depth - our_uctx->start_depth) * 4, "");

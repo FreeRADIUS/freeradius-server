@@ -122,7 +122,7 @@ int fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 	if (asn1->type == V_ASN1_UTCTIME) {/* two digit year */
 		if ((end - p) < 2) {
 			fr_strerror_printf("ASN1 date string too short, expected 2 additional bytes, got %zu bytes",
-					   end - p);
+					   (size_t) (end - p));
 			return -1;
 		}
 
@@ -132,7 +132,7 @@ int fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 	} else if (asn1->type == V_ASN1_GENERALIZEDTIME) {/* four digit year */
 		if ((end - p) < 4) {
 			fr_strerror_printf("ASN1 string too short, expected 4 additional bytes, got %zu bytes",
-					   end - p);
+					   (size_t) (end - p));
 			return -1;
 		}
 
@@ -145,7 +145,7 @@ int fr_tls_utils_asn1time_to_epoch(time_t *out, ASN1_TIME const *asn1)
 
 	if ((end - p) < 4) {
 		fr_strerror_printf("ASN1 string too short, expected 10 additional bytes, got %zu bytes",
-				   end - p);
+				   (size_t) (end - p));
 		return -1;
 	}
 

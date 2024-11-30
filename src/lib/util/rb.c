@@ -151,7 +151,7 @@ int _fr_rb_init(fr_rb_tree_t *tree, TALLOC_CTX *node_ctx,
 
 	if (unlikely(offset >= UINT16_MAX)) {
 		fr_strerror_printf("Inline fr_rb_node_t offset too large.  "
-				   "Expected <= %u, got %zd", UINT16_MAX, offset);
+				   "Expected <= %zu, got %zd", (size_t) UINT16_MAX, offset);
 		return -1;
 	}
 

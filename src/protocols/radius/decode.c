@@ -1499,7 +1499,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 
 	FR_PROTO_HEX_DUMP(data, attr_len, "%s", __FUNCTION__ );
 
-	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, packet_ctx->end - data);
+	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attr_len, (size_t) (packet_ctx->end - data));
 
 	data_len = attr_len;
 
@@ -1610,7 +1610,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 	 *	Decrypt the attribute.
 	 */
 	if (encrypt) {
-		FR_PROTO_TRACE("Decrypting type %u", encrypt);
+		FR_PROTO_TRACE("Decrypting type %d", encrypt);
 		/*
 		 *	Encrypted attributes can only exist for the
 		 *	old-style format.  Extended attributes CANNOT

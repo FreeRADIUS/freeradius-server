@@ -2153,8 +2153,8 @@ static int fr_value_box_fixed_size_from_octets(fr_value_box_t *dst,
 	if (!fr_type_is_fixed_size(dst_type)) if (!fr_cond_assert(false)) return -1;
 
 	if (src->vb_length > network_max_size(dst_type)) {
-		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
-				   "destination type size %zd",
+		fr_strerror_printf("Invalid cast from %s to %s.  Source length %zu is greater than "
+				   "destination type size %zu",
 				   fr_type_to_str(src->type),
 				   fr_type_to_str(dst_type),
 				   src->vb_length,
@@ -3512,8 +3512,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		fr_value_box_t tmp;
 
 		if (src->vb_length < network_min_size(dst_type)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zd is smaller than "
-					   "destination type size %zd",
+			fr_strerror_printf("Invalid cast from %s to %s.  Source is length %zu is smaller than "
+					   "destination type size %zu",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type),
 					   src->vb_length,
@@ -3522,8 +3522,8 @@ int fr_value_box_cast(TALLOC_CTX *ctx, fr_value_box_t *dst,
 		}
 
 		if (src->vb_length > network_max_size(dst_type)) {
-			fr_strerror_printf("Invalid cast from %s to %s.  Source length %zd is greater than "
-					   "destination type size %zd",
+			fr_strerror_printf("Invalid cast from %s to %s.  Source length %zu is greater than "
+					   "destination type size %zu",
 					   fr_type_to_str(src->type),
 					   fr_type_to_str(dst_type),
 					   src->vb_length,
@@ -6245,7 +6245,7 @@ DIAG_ON(nonnull-compare)
 #endif
 	switch (vb->type) {
 	case FR_TYPE_STRING:
-		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
+		fr_fatal_assert_msg(vb->vb_strvalue, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t strvalue field "
 				    "was NULL", file, line);
 		fr_fatal_assert_msg(vb->vb_strvalue[vb->vb_length] == '\0',
 				    "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t strvalue field "
@@ -6255,7 +6255,7 @@ DIAG_ON(nonnull-compare)
 
 			/* We always \0 terminate to be safe, even though most things should use the len field */
 			if (len <= vb->vb_length) {
-				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%u]: Expected fr_value_box_t->vb_strvalue talloc buffer "
+				fr_fatal_assert_fail("CONSISTENCY CHECK FAILED %s[%d]: Expected fr_value_box_t->vb_strvalue talloc buffer "
 						    "len >= %zu, got %zu",
 						    file, line, vb->vb_length + 1, len);
 			}
@@ -6263,12 +6263,12 @@ DIAG_ON(nonnull-compare)
 		break;
 
 	case FR_TYPE_OCTETS:
-		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t octets field "
+		fr_fatal_assert_msg(vb->vb_octets, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t octets field "
 				    "was NULL", file, line);
 		break;
 
 	case FR_TYPE_VOID:
-		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%i]: fr_value_box_t ptr field "
+		fr_fatal_assert_msg(vb->vb_void, "CONSISTENCY CHECK FAILED %s[%d]: fr_value_box_t ptr field "
 				    "was NULL", file, line);
 		break;
 

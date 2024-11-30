@@ -67,7 +67,7 @@ bool dict_attr_flags_valid(fr_dict_attr_t *da)
 #define FORBID_OTHER_FLAGS(_flag, _allowed) \
 	do { \
 		if (all_flags & ~shift_ ## _flag & ~(_allowed)) { \
-			fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag (%u) %s[%u]", all_flags, da->filename, da->line); \
+			fr_strerror_printf("The '" STRINGIFY(_flag) "' flag cannot be used with any other flag (%u) %s[%d]", all_flags, da->filename, da->line); \
 			return false; \
 		} \
 	} while (0)

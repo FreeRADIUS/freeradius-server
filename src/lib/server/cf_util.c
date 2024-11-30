@@ -2286,7 +2286,7 @@ void _cf_item_debug(CONF_ITEM const *ci)
 		DEBUG("  name1         : %s", cs->name1);
 		DEBUG("  name2         : %s", cs->name2 ? cs->name2 : "<none>");
 		DEBUG("  name2_quote   : %s", fr_table_str_by_value(fr_token_quotes_table, cs->name2_quote, "<INVALID>"));
-		DEBUG("  argc          : %u", cs->argc);
+		DEBUG("  argc          : %d", cs->argc);
 
 		for (i = 0; i < cs->argc; i++) {
 			char const *quote = fr_table_str_by_value(fr_token_quotes_table, cs->argv_quote[i], "<INVALID>");

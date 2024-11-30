@@ -167,7 +167,7 @@ static xlat_action_t aka_sim_id_3gpp_temporary_id_key_index_xlat(TALLOC_CTX *ctx
 	fr_value_box_t	*vb;
 
 	if (id->vb_length != AKA_SIM_3GPP_PSEUDONYM_LEN) {
-		REDEBUG2("3gpp pseudonym incorrect length, expected %i bytes, got %zu bytes",
+		REDEBUG2("3gpp pseudonym incorrect length, expected %u bytes, got %zu bytes",
 			 AKA_SIM_3GPP_PSEUDONYM_LEN, id->vb_length);
 		return XLAT_ACTION_FAIL;
 	}
@@ -250,7 +250,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_decrypt_xlat(TALLOC_CTX *ctx, fr_
 	if (tag_vb) include_tag = tag_vb->vb_bool;
 
 	if (id_len != (AKA_SIM_3GPP_PSEUDONYM_LEN)) {
-		REDEBUG2("3gpp pseudonym incorrect length, expected %i bytes, got %zu bytes",
+		REDEBUG2("3gpp pseudonym incorrect length, expected %u bytes, got %zu bytes",
 			 AKA_SIM_3GPP_PSEUDONYM_LEN, id_len);
 	error:
 		return XLAT_ACTION_FAIL;
@@ -471,7 +471,7 @@ static xlat_action_t aka_sim_3gpp_temporary_id_encrypt_xlat(TALLOC_CTX *ctx, fr_
 		id_p = id;
 		id_end = id_p + id_len;
 	} else {
-		REDEBUG2("IMSI incorrect length, expected %i bytes, got %zu bytes", AKA_SIM_IMSI_MAX_LEN + 1,
+		REDEBUG2("IMSI incorrect length, expected %u bytes, got %zu bytes", AKA_SIM_IMSI_MAX_LEN + 1,
 			 id_len);
 		goto error;
 

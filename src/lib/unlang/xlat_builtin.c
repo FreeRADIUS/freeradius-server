@@ -166,7 +166,7 @@ void xlat_debug_attr_vp(request_t *request, fr_pair_t *vp, tmpl_t const *vpt)
 	}
 	RIDEBUG3("attr       : %u", vp->da->attr);
 	vendor = fr_dict_vendor_by_da(vp->da);
-	if (vendor) RIDEBUG2("vendor     : %i (%s)", vendor->pen, vendor->name);
+	if (vendor) RIDEBUG2("vendor     : %u (%s)", vendor->pen, vendor->name);
 	RIDEBUG3("type       : %s", fr_type_to_str(vp->vp_type));
 
 	switch (vp->vp_type) {

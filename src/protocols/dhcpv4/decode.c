@@ -288,7 +288,7 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dict_attr_t
 	}
 
 finish:
-	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", p - data);
+	FR_PROTO_TRACE("decoding value complete, adding new pair and returning %zu byte(s)", (size_t) (p - data));
 	fr_pair_append(out, vp);
 
 	return p - data;
@@ -634,14 +634,14 @@ ssize_t fr_dhcpv4_decode_option(TALLOC_CTX *ctx, fr_pair_list_t *out,
 		/*
 		 *	The actual amount of data we decoded, including the various headers.
 		 */
-		FR_PROTO_TRACE("decoding option complete, %zu decoded, returning %zu byte(s)", slen, (size_t) (next - data));
+		FR_PROTO_TRACE("decoding option complete, %zd decoded, returning %zu byte(s)", slen, (size_t) (next - data));
 		return next - data;
 	}
 
 	slen = decode_option(ctx, out, fr_dict_root(dict_dhcpv4), data, data[1] + 2, decode_ctx);
 	if (slen < 0) return slen;
 
-	FR_PROTO_TRACE("decoding option complete, %zu decoded, returning %u byte(s)", slen, data[1] + 2);
+	FR_PROTO_TRACE("decoding option complete, %zd decoded, returning %u byte(s)", slen, (unsigned int) data[1] + 2);
 	return data[1] + 2;
 }
 

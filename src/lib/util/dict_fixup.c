@@ -358,7 +358,7 @@ static inline CC_HINT(always_inline) int dict_fixup_group_apply(UNUSED dict_fixu
 
 	da = dict_protocol_reference(fixup->da->parent, fixup->ref, true);
 	if (!da) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%u]",
+		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
@@ -431,7 +431,7 @@ int dict_fixup_clone(fr_dict_attr_t **dst_p, fr_dict_attr_t const *src)
 	fr_dict_attr_t		*cloned;
 
 	if (src->dict->proto != dst->dict->proto) {
-		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%u]",
+		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
 				   src->dict->proto->name, dst->dict->proto->name, dst->filename, dst->line);
 		return -1;
 	}
@@ -580,7 +580,7 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_apply(UNUSED dict_fixu
 
 	src = dict_protocol_reference(fixup->da->parent, fixup->ref, true);
 	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%u]",
+		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
@@ -638,13 +638,13 @@ static inline CC_HINT(always_inline) int dict_fixup_clone_enum_apply(UNUSED dict
 
 	src = dict_protocol_reference(fixup->da->parent, fixup->ref, true);
 	if (!src) {
-		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%u]",
+		fr_strerror_printf_push("Failed resolving reference for attribute at %s[%d]",
 					fr_cwd_strip(fixup->da->filename), fixup->da->line);
 		return -1;
 	}
 
 	if (src->dict->proto != fixup->da->dict->proto) {
-		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%u]",
+		fr_strerror_printf("Incompatible protocols.  Referenced '%s', referencing '%s'.  Defined at %s[%d]",
 				   src->dict->proto->name, fixup->da->dict->proto->name, fixup->da->filename, fixup->da->line);
 		return -1;
 	}
@@ -797,7 +797,7 @@ static inline CC_HINT(always_inline) int dict_fixup_alias_apply(UNUSED dict_fixu
 	 */
 	da = fr_dict_attr_by_oid(NULL, fixup->ref_parent, fixup->ref);
 	if (!da) {
-		fr_strerror_printf("Attribute '%s' aliased by '%s' doesn't exist in namespace '%s', at %s[%u]",
+		fr_strerror_printf("Attribute '%s' aliased by '%s' doesn't exist in namespace '%s', at %s[%d]",
 				   fixup->ref, fixup->alias, fixup->ref_parent->name, fixup->filename, fixup->line);
 		return -1;
 	}
