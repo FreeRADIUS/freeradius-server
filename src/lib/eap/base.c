@@ -76,11 +76,13 @@ RCSID("$Id$")
 
 fr_dict_t const *dict_freeradius;
 fr_dict_t const *dict_radius;
+fr_dict_t const *dict_tls;
 
 extern fr_dict_autoload_t eap_base_dict[];
 fr_dict_autoload_t eap_base_dict[] = {
 	{ .out = &dict_freeradius, .proto = "freeradius" },
 	{ .out = &dict_radius, .proto = "radius" },
+	{ .out = &dict_tls, .proto = "tls" },
 	{ NULL }
 };
 
@@ -100,6 +102,8 @@ fr_dict_attr_t const *attr_ms_mppe_send_key;
 fr_dict_attr_t const *attr_ms_mppe_recv_key;
 fr_dict_attr_t const *attr_state;
 fr_dict_attr_t const *attr_user_name;
+fr_dict_attr_t const *attr_tls_min_version;
+fr_dict_attr_t const *attr_tls_max_version;
 
 extern fr_dict_attr_autoload_t eap_base_dict_attr[];
 fr_dict_attr_autoload_t eap_base_dict_attr[] = {
@@ -119,6 +123,8 @@ fr_dict_attr_autoload_t eap_base_dict_attr[] = {
 	{ .out = &attr_ms_mppe_send_key, .name = "Vendor-Specific.Microsoft.MPPE-Send-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_ms_mppe_recv_key, .name = "Vendor-Specific.Microsoft.MPPE-Recv-Key", .type = FR_TYPE_OCTETS, .dict = &dict_radius },
 	{ .out = &attr_user_name, .name = "User-Name", .type = FR_TYPE_STRING, .dict = &dict_radius },
+	{ .out = &attr_tls_min_version, .name = "Min-Version", .type = FR_TYPE_FLOAT32, .dict = &dict_tls },
+	{ .out = &attr_tls_max_version, .name = "Max-Version", .type = FR_TYPE_FLOAT32, .dict = &dict_tls },
 
 	{ NULL }
 };

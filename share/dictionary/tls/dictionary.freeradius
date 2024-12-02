@@ -28,3 +28,6 @@ ATTRIBUTE	Session-Id				10	octets
 ATTRIBUTE	Session-Data				11	octets
 ATTRIBUTE	Session-Resumed				12	bool
 ATTRIBUTE	Session-TTL				13	time_delta
+
+ATTRIBUTE	Min-Version				14	float32
+ATTRIBUTE	Max-Version				15	float32

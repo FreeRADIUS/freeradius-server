@@ -45,3 +45,5 @@ extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_send_key;
 extern HIDDEN fr_dict_attr_t const *attr_ms_mppe_recv_key;
 extern HIDDEN fr_dict_attr_t const *attr_user_name;
 extern HIDDEN fr_dict_attr_t const *attr_state;
+extern HIDDEN fr_dict_attr_t const *attr_tls_max_version;
+extern HIDDEN fr_dict_attr_t const *attr_tls_min_version;
