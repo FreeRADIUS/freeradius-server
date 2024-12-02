@@ -47,7 +47,6 @@ static conf_parser_t submodule_config[] = {
 
 	{ FR_CONF_OFFSET("require_client_cert", rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
 	{ FR_CONF_OFFSET("include_length", rlm_eap_tls_t, include_length), .dflt = "yes" },
-	{ FR_CONF_OFFSET("virtual_server", rlm_eap_tls_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -259,11 +258,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->tls_conf = eap_tls_conf_parse(conf, "tls");
 	if (!inst->tls_conf) {
 		cf_log_err(conf, "Failed initializing SSL context");
-		return -1;
-	}
-
-	if (inst->virtual_server && !virtual_server_find(inst->virtual_server)) {
-		cf_log_err_by_child(conf, "virtual_server", "Unknown virtual server '%s'", inst->virtual_server);
 		return -1;
 	}
 
