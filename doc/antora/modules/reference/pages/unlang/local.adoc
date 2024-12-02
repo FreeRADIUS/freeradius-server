@@ -16,7 +16,7 @@ section (i.e. scope), and cannot be sent in a packet over the network.
 }
 ----
 
-<keyword>:: An `unlang` keywords which does not create create a subrequest.  i.e.  One of:
+<keyword>:: An `unlang` keywords which does not create a subrequest.  i.e.  One of:
 
 * xref:unlang/case.adoc[case]
 * xref:unlang/else.adoc[else]
@@ -32,7 +32,7 @@ section (i.e. scope), and cannot be sent in a packet over the network.
 
 Local variables are forbidden in all other locations.
 
-For the xref:unlang/redundant.adoc[redundant] and unlang/redundant-load-balance.adoc[redundant-load-balance] keyword, local variables are keep their value across the different subsections.  This behavior can be used to track state inside of the xref:unlang/redundant.adoc[redundant] section.
+For the xref:unlang/redundant.adoc[redundant] and xref:unlang/redundant-load-balance.adoc[redundant-load-balance] keyword, local variables are keep their value across the different subsections.  This behavior can be used to track state inside of the xref:unlang/redundant.adoc[redundant] section.
 
 <data-type>:: A "leaf" xref:type/all_types.adoc[data type].  Structural types such as `group`, `struct`, `tlv`, etc. are not allowed.
 
