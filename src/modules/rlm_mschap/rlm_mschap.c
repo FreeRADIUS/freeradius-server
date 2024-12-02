@@ -1732,20 +1732,15 @@ static int mschap_cpw_prepare(request_t *request, mschap_auth_ctx_t *auth_ctx)
 	return 0;
 }
 
-static CC_HINT(nonnull(1,2,3,4,5,8,9)) unlang_action_t mschap_process_response(rlm_rcode_t *p_result,
-									       int *mschap_version,
-									       uint8_t nthashhash[static NT_DIGEST_LENGTH],
-									       rlm_mschap_t const *inst,
-									       request_t *request,
-									       fr_pair_t *smb_ctrl,
-									       fr_pair_t *nt_password,
-									       fr_pair_t *challenge,
-									       fr_pair_t *response,
-									       MSCHAP_AUTH_METHOD method,
-									       mschap_auth_call_env_t *env_data)
+static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_result, int *mschap_version,
+								uint8_t nthashhash[static NT_DIGEST_LENGTH],
+								rlm_mschap_t const *inst, request_t *request,
+								mschap_auth_ctx_t *auth_ctx,
+								fr_pair_t *challenge, fr_pair_t *response)
 {
 	int			offset;
 	rlm_rcode_t		mschap_result;
+	mschap_auth_call_env_t	*env_data = auth_ctx->env_data;
 
 	*mschap_version = 1;
 
@@ -1781,13 +1776,13 @@ static CC_HINT(nonnull(1,2,3,4,5,8,9)) unlang_action_t mschap_process_response(r
 	/*
 	 *	Do the MS-CHAP authentication.
 	 */
-	mschap_result = do_mschap(inst, request, nt_password, challenge->vp_octets,
-				  response->vp_octets + offset, nthashhash, method, env_data);
+	mschap_result = do_mschap(inst, request, auth_ctx->nt_password, challenge->vp_octets,
+				  response->vp_octets + offset, nthashhash, auth_ctx->method, auth_ctx->env_data);
 
 	/*
 	 *	Check for errors, and add MSCHAP-Error if necessary.
 	 */
-	return mschap_error(p_result, inst, request, *response->vp_octets, mschap_result, *mschap_version, smb_ctrl, env_data);
+	return mschap_error(p_result, inst, request, *response->vp_octets, mschap_result, *mschap_version, auth_ctx->smb_ctrl, env_data);
 }
 
 static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_response(rlm_rcode_t *p_result,
@@ -2022,9 +2017,8 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 		mschap_process_response(&rcode,
 					&mschap_version, nthashhash,
 					inst, request,
-					auth_ctx->smb_ctrl, auth_ctx->nt_password,
-					challenge, response,
-					auth_ctx->method, auth_ctx->env_data);
+					auth_ctx,
+					challenge, response);
 		if (rcode != RLM_MODULE_OK) goto finish;
 	} else if ((response = fr_pair_find_by_da_nested(&parent->vp_group, NULL, tmpl_attr_tail_da(env_data->chap2_response)))) {
 		mschap_process_v2_response(&rcode,
