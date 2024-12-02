@@ -69,3 +69,39 @@ extern fr_test_point_pair_decode_t cbor_tp_decode_pair;
 fr_test_point_pair_decode_t cbor_tp_decode_pair = {
 	.func		= decode_pair
 };
+
+static int decode_test_ctx(void **out, UNUSED TALLOC_CTX *ctx, fr_dict_t const *dict)
+{
+	*out = UNCONST(fr_dict_t *, dict);
+
+	return 0;
+}
+
+static ssize_t encode_proto(UNUSED TALLOC_CTX *ctx, fr_pair_list_t *vps, uint8_t *data, size_t data_len, UNUSED void *proto_ctx)
+{
+	fr_dbuff_t dbuff;
+	fr_dcursor_t cursor;
+
+	FR_DBUFF_INIT(&dbuff, data, data_len);
+
+	fr_pair_dcursor_init(&cursor, vps);
+	return encode_pair(&dbuff, &cursor, NULL);
+}
+
+static ssize_t decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out, uint8_t const *data, size_t data_len, void *proto_ctx)
+{
+	fr_dict_t *dict = proto_ctx;
+
+	return decode_pair(ctx, out, fr_dict_root(dict), data, data_len, proto_ctx);
+}
+
+extern fr_test_point_proto_encode_t cbor_tp_encode_proto;
+fr_test_point_proto_encode_t cbor_tp_encode_proto = {
+	.func		= encode_proto
+};
+
+extern fr_test_point_proto_decode_t cbor_tp_decode_proto;
+fr_test_point_proto_decode_t cbor_tp_decode_proto = {
+	.test_ctx	= decode_test_ctx,
+	.func		= decode_proto
+};
