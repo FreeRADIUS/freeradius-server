@@ -1027,7 +1027,12 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 			return -1;
 		}
 
-		fr_assert(info != 31);
+		if (info == 31) {
+		no_chunks:
+			fr_strerror_const("Chunked strings are not supported");
+			return 0;
+		}
+
 
 		/*
 		 *	@todo - undefinite length strings.  Which are really "chunked" strings.
@@ -1059,10 +1064,10 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 	case CBOR_OCTETS:
 		if (type != FR_TYPE_OCTETS) goto mismatch;
 
-		fr_assert(info != 31);
+		if (info == 31) goto no_chunks;
 
 		/*
-		 *	@todo - undefinite length octet strings.  Which are really "chunked" octet strings.
+		 *	@todo - indefinite length octet strings.  Which are really "chunked" octet strings.
 		 */
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
 		if (slen < 0) return_slen;
@@ -1590,7 +1595,8 @@ static fr_type_t cbor_guess_type(fr_dbuff_t *dbuff, bool pair)
 			return FR_TYPE_IPV4_ADDR;
 
 		case 54:
-			FR_DBUFF_OUT_RETURN(&major, &work_dbuff);
+			slen = fr_dbuff_out(&major, &work_dbuff);
+			if (slen <= 0) goto no_data;
 
 			major >>= 5;
 
@@ -1726,9 +1732,9 @@ ssize_t fr_cbor_decode_pair(TALLOC_CTX *ctx, fr_pair_list_t *out, fr_dbuff_t *db
 		break;
 
 	default:
-		talloc_free(vp);
 		fr_strerror_printf("Invalid data type %s for child %s of %s",
 				   fr_type_to_str(da->type), vp->da->name, parent->name);
+		talloc_free(vp);
 		return -1;
 	}
 
