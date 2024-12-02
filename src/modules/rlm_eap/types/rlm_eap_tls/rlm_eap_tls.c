@@ -178,10 +178,7 @@ static unlang_action_t mod_handshake_process(UNUSED rlm_rcode_t *p_result, UNUSE
 	return eap_tls_process(request, eap_session);
 }
 
-/*
- *	Send an initial eap-tls request to the peer, using the libeap functions.
- */
-static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+static unlang_action_t mod_session_init_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_tls_t);
 	rlm_eap_tls_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_eap_tls_thread_t);
@@ -190,8 +187,6 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 
 	fr_pair_t		*vp;
 	bool			client_cert;
-
-	eap_session->tls = true;
 
 	/*
 	 *	EAP-TLS-Require-Client-Cert attribute will override
@@ -224,6 +219,23 @@ static unlang_action_t mod_session_init(rlm_rcode_t *p_result, module_ctx_t cons
 	eap_session->process = mod_handshake_process;
 
 	RETURN_MODULE_HANDLED;
+}
+
+/*
+ *	Send an initial eap-tls request to the peer, using the libeap functions.
+ */
+static unlang_action_t mod_session_init(UNUSED rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
+{
+	rlm_eap_tls_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_eap_tls_t);
+	eap_session_t		*eap_session = eap_session_get(request->parent);
+
+	eap_session->tls = true;
+
+	(void) unlang_module_yield(request, mod_session_init_resume, NULL, 0, NULL);
+
+	if (inst->tls_conf->new_session) return fr_tls_new_session_push(request, inst->tls_conf);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
