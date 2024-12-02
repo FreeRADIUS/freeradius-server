@@ -34,6 +34,8 @@ static _Thread_local bool fr_rand_initialized = false;
 void fr_rand_init(void)
 {
 	int fd;
+	uint8_t *p = (uint8_t *) &fr_rand_pool.randrsl[0];
+	uint8_t *end = p + sizeof(fr_rand_pool.randrsl);
 
 	if (fr_rand_initialized) return;
 
@@ -42,15 +44,12 @@ void fr_rand_init(void)
 
 	fd = open("/dev/urandom", O_RDONLY);
 	if (fd >= 0) {
-		size_t total;
-		ssize_t this;
+		ssize_t rcode;
 
-		total = 0;
-		while (total < sizeof(fr_rand_pool.randrsl)) {
-			this = read(fd, fr_rand_pool.randrsl,
-				    sizeof(fr_rand_pool.randrsl) - total);
-			if ((this < 0) && (errno != EINTR)) break;
-			if (this > 0) total += this;
+		while (p < end) {
+			rcode = read(fd, p, (size_t) (end - p));
+			if ((rcode < 0) && (errno != EINTR)) break;
+			if (rcode > 0) p += rcode;
 		}
 		close(fd);
 	} else {
