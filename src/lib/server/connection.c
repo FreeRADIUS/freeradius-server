@@ -39,6 +39,9 @@ typedef struct connection_s connection_t;
 
 #ifdef HAVE_STDATOMIC_H
 #  include <stdatomic.h>
+#  ifndef ATOMIC_VAR_INIT
+#    define ATOMIC_VAR_INIT(_x) (_x)
+#  endif
 #else
 #  include <freeradius-devel/util/stdatomic.h>
 #endif
