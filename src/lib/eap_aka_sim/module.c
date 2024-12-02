@@ -302,7 +302,7 @@ unlang_action_t eap_aka_sim_process(rlm_rcode_t *p_result, module_ctx_t const *m
 									     eap_aka_sim_mod_session_t);
 	fr_pair_t			*subtype_vp;
 	fr_dcursor_t			cursor;
-	int				ret;
+	ssize_t				ret;
 	fr_aka_sim_ctx_t		decode_ctx;
 
 	switch (eap_session->this_round->response->type.num) {
