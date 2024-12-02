@@ -1177,13 +1177,12 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 		RDEBUG2("Cipher suite: %s", cipher_desc_clean);
 
 		RDEBUG2("Adding TLS session information to request");
+		RINDENT();
 		vp = fr_pair_afrom_da(request->session_state_ctx, attr_tls_session_cipher_suite);
 		if (vp) {
 			fr_pair_value_strdup(vp,  SSL_CIPHER_get_name(cipher), false);
 			fr_pair_append(&request->session_state_pairs, vp);
-			RINDENT();
 			RDEBUG2("&session-state.%pP", vp);
-			REXDENT();
 		}
 
 		if (((size_t)tls_session->info.version >= NUM_ELEMENTS(tls_version_str)) ||
@@ -1197,10 +1196,9 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 		if (vp) {
 			fr_pair_value_strdup(vp, version, false);
 			fr_pair_append(&request->session_state_pairs, vp);
-			RINDENT();
 			RDEBUG2("&session-state.%pP", vp);
-			REXDENT();
 		}
+		REXDENT();
 
 		/*
 		 *	Cache the SSL_SESSION pointer.
