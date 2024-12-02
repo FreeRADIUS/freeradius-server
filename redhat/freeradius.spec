@@ -1062,6 +1062,7 @@ fi
 
 # Utility libraries
 %{_libdir}/freeradius/libfreeradius-bio.so
+%{_libdir}/freeradius/libfreeradius-bio-config.so
 %{_libdir}/freeradius/libfreeradius-util.so
 
 # dictionaries
