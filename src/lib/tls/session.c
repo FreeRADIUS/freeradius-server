@@ -1198,7 +1198,7 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 			fr_pair_value_strdup(vp, version, false);
 			fr_pair_append(&request->session_state_pairs, vp);
 			RINDENT();
-			RDEBUG2("&session-state.TLS-Session-Version := \"%s\"", version);
+			RDEBUG2("&session-state.%pP", vp);
 			REXDENT();
 		}
 
