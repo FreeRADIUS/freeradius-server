@@ -244,7 +244,7 @@ jobs:
   merge-upstream:
     needs:
       - ci
-    if: ( github.event_name == 'push' ) && ( github.repository_owner == FreeRADIUS' ) && (startsWith(github.ref, "refs/heads/developer/${{ github.actor }}"))
+    if: ( github.event_name == 'push' ) && ( github.repository_owner == 'FreeRADIUS' ) && (startsWith(github.ref, "refs/heads/developer/${{ github.actor }}"))
     runs-on: ubuntu-latest
     name: "Merge into upstream"
     steps:
