@@ -71,7 +71,7 @@ type.
 NOTE: If another module is NOT configured to handle the request, then the
 request will still end up being rejected.
 
-
+NOTE: There can only be one instance of the EAP module.
 
 ## Allowed EAP-types
 

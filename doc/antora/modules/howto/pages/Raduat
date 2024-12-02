@@ -1,0 +1,249 @@
+# raduat
+
+Note: only ``radclient`` from version >= 3.0.7 will work correctly with ``raduat``
+
+Latest version is available at https://raw.githubusercontent.com/FreeRADIUS/freeradius-server/v3.1.x/scripts/raduat
+
+## Overview
+
+Bundled with the server source is a small shell script for writing test suites. It uses ``radclient`` to send test requests, and validate responses.
+
+It currently supports PAP and CHAP, no EAP methods. Because of this raduat is only really useful for ISPs and carriers, as they generally use simple authentication methods, but need to perform end to end testing involving complex business logic.
+
+## Creating a test request
+
+A test request consists of ``<attribute><op><value>`` pairs, separated by newlines.
+
+### Attribute
+
+Every request must contain a ``Packet-Type=[Access-Request|Accounting-Request]`` pair, to set the type of test request.
+
+In addition to ``Packet-Type`` it may contain any attribute (including VSAs) found in the FreeRADIUS dictionaries.
+
+Commonly used attributes are:
+- ``User-Name``
+- ``User-Password``
+- ``NAS-IP-Address``
+- ``Acct-Session-Id``
+- ``NAS-Port-ID``
+- ``Acct-Session-Time``
+
+### Op
+
+Op should be one of the assignment operators:
+
+- ``=``
+- ``:=``
+- ``+=``
+
+### Value
+
+Only static values are currently supported, though backtick (exec) expansion may be added in the future.
+
+Only strings should be wrapped in single quotes, other values should be left unquoted.
+
+For binary attributes the value may be specified as an unquoted string with a 0x prefix e.g. ``0xffffff``
+
+### Tags
+
+The following comment tags are supported. They should be placed at the top of the request file.
+
+- ``# serial`` - Ensures this test is not executed in parallel with other tests
+
+### Comments
+
+Any line starting with ``#`` is treated as a comment.
+
+### Example
+
+An example test request might look like this:
+
+```bash
+# serial
+# My test access request
+Packet-Type=Access-Request
+User-Name='test_user001@test.realm'
+User-Password='testing123'
+NAS-IP-Address=127.0.0.1
+```
+
+This test file would produce an ``Access-Request``, with the attributes ``User-Name``, ``User-Password`` and ``NAS-IP-Address``.
+
+## Creating a response filter
+
+A response filter consists of ``<attribute><op><value>`` pairs, separated by newlines.
+
+Response filters verify that the response from the server matches what's expected.
+
+The pairs in the response filter do not need to be in the same order as the response, but every attribute in the response must be matched by a line in the response filter.
+
+### Attribute
+
+Every response filter must contain a ``Response-Packet-Type=[Access-Accept|Access-Reject|Accounting-Response]`` pair, to set the type of response expected.
+
+In addition to ``Response-Packet-Type`` it may contain any attribute (including VSAs) found in the FreeRADIUS dictionaries.
+
+Commonly used attributes are:
+- ``Reply-Message``
+- ``User-Name``
+- ``Class``
+- ``Framed-IP-Address``
+- ``Framed-Route``
+- ``Session-Timeout``
+
+### Op
+
+Op should be one of the comparison operators:
+- ``<`` - Less than
+- ``>`` - Greater than
+- ``<=`` - Less than or equal to
+- ``>=`` - Greater than or equal to
+- ``==`` - Equality
+- ``!=`` - Inequality
+- ``=~`` - Matches
+- ``!~`` - Does not match
+- ``=* ANY`` - Present
+- ``!* ANY`` - Not present
+
+### Value
+
+Value format is the same as the request.
+
+### Example
+
+An example test response might look like this:
+```bash
+Response-Packet-Type==Access-Accept
+Reply-Message=='Welcome to foocorp'
+```
+
+## Creating a test suite
+
+By default ``raduat`` will look for a folder relative to itself called ``tests``.
+
+If it finds one, it will attempt to execute each of the test requests in lexicographical order. ``raduat`` will also work with fine with a directory hierarchy, in which case the tests are executed depth first then in lexicographical order. This is to allow easy organisation of tests.
+
+Only files with names that match the pattern ``test[0-9]{3}.*`` will be processed. Each request file must also be paired with a response file. A response file has the same name as the request, with an ``_expected`` suffix.
+
+For example the response file for ``test000_check_static_ip`` would be ``test000_check_static_ip_expected``.
+
+### Example
+
+```bash
+mkdir -p ./tests/static_ip
+
+echo "Packet-Type=Access-Request
+User-Name=test_user001@test.realm
+User-Password=testing123" >> ./tests/static_ip/test000_check_static_ip
+
+echo "Response-Packet-Type==Access-Accept
+Framed-IP-address==192.168.0.1" >> ./tests/static_ip/test000_check_static_ip_expected
+
+echo "Packet-Type=Access-Request
+User-Name=test_user002@test.realm
+User-Password=testing123" >> ./tests/static_ip/test001_check_static_ip
+
+echo "Response-Packet-Type==Access-Accept
+Framed-IP-address==192.168.0.2" >> ./tests/static_ip/test001_check_static_ip_expected
+```
+
+## Running the tests
+
+By default radaut will execute tests in parallel batches of 20. If you want to execute tests one at a time, either add ``# serial`` to the top of the file, or pass ``-p 1``.
+
+### Arguments
+
+Command line arguments can be found with ``raduat -h``. They can be used to specify the server/port/secret to run the tests against. By default the server is ``127.0.0.1`` the port is automatically determined by ``Packet-Type`` and the secret is ``testing123``.
+
+### Environmental variables
+
+- ``TESTDIR`` - The directory containing the tests.
+- ``RADCLIENT`` - Path to the radclient binary.
+- ``FILTER_SUFFIX`` - The suffix added to the request file name to find response filters. Defaults to ``_expected``.
+- ``DICTPATH`` - Path to alternative RADIUS dictionaries.
+
+### Example
+
+Running the above test requests/response filters against a dummy configuration:
+
+```text
+authorize {
+	switch &User-Name {
+		case 'test_user001@test.realm' {
+			update reply {
+				Framed-IP-Address := 192.168.0.1
+			}
+		}
+		case 'test_user002@test.realm' {
+			update reply {
+				Framed-IP-Address := 192.168.0.3
+			}
+		}
+	}
+	update control {
+		Auth-Type := Accept
+	}
+}
+```
+
+Produces the following output:
+```text
+$ ./raduat
+Executing 2 test(s) from ./tests
+Executing specified tests
+Use -v to see full list
+Sent Access-Request Id 197 from 0.0.0.0:55331 to 127.0.0.1:1812 length 63
+Sent Access-Request Id 149 from 0.0.0.0:55331 to 127.0.0.1:1812 length 63
+Received Access-Accept Id 197 from 127.0.0.1:1812 to 0.0.0.0:0 length 26
+Received Access-Accept Id 149 from 127.0.0.1:1812 to 0.0.0.0:0 length 26
+(1) ./tests/static_ip/test001_check_static_ip: Response for failed filter: Attribute value "192.168.0.3" didn't match filter: Framed-IP-Address == 192.168.0.2
+(Parallelised tests)
+
+One or more tests failed (radclient exited with 1)
+$ echo $?
+1
+```
+
+Which is correct, as ``192.168.0.3`` != ``192.168.0.2``.
+
+Adding ``-v`` gives us more verbose output, and also a summary of packets sent/received:
+```text
+./raduat -v
+Executing 2 test(s) from ./tests
+Executing specified tests:
+./tests/static_ip/test000_check_static_ip
+./tests/static_ip/test001_check_static_ip
+Executing: radclient  -f "/var/folders/5_/k_q1ccb94p3gcgk8r9yc8ssh0000gn/T/raduatXXX.f2cB3Kek:/var/folders/5_/k_q1ccb94p3gcgk8r9yc8ssh0000gn/T/raduatXXX.1RX7R8aL" -x -s -t "2" -r "3" -p "40" "127.0.0.1" auto "testing123"
+Sent Access-Request Id 63 from 0.0.0.0:51512 to 127.0.0.1:1812 length 63
+	Packet-Type = Access-Request
+	User-Name = 'test_user001@test.realm'
+	User-Password = 'testing123'
+	Radclient-Test-Name := './tests/static_ip/test000_check_static_ip'
+Sent Access-Request Id 147 from 0.0.0.0:51512 to 127.0.0.1:1812 length 63
+	Packet-Type = Access-Request
+	User-Name = 'test_user002@test.realm'
+	User-Password = 'testing123'
+	Radclient-Test-Name := './tests/static_ip/test001_check_static_ip'
+Received Access-Accept Id 63 from 127.0.0.1:1812 to 0.0.0.0:0 length 26
+	Framed-IP-Address = 192.168.0.1
+(0) ./tests/static_ip/test000_check_static_ip: Response passed filter
+Received Access-Accept Id 147 from 127.0.0.1:1812 to 0.0.0.0:0 length 26
+	Framed-IP-Address = 192.168.0.3
+(1) ./tests/static_ip/test001_check_static_ip: Response for failed filter: Attribute value "192.168.0.3" didn't match filter: Framed-IP-Address == 192.168.0.2
+Packet summary:
+	Accepted      : 2
+	Rejected      : 0
+	Lost          : 0
+	Passed filter : 1
+	Failed filter : 1
+(Parallelised tests)
+
+One or more tests failed (radclient exited with 1)
+```
+
+The tests to run can be filtered using glob patterns:
+
+- ``./raduat -- 'static_ip/test000*'`` would execute only the first test in the static_ip suite.
+- ``./raduat -- 'static_ip/*'`` would execute all the static_ip tests.
+
+This can be used to drill down, and only run the failing tests.

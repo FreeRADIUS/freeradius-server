@@ -1,0 +1,20 @@
+This is the driver of the rlm_sql module that connects to PostgreSQL SQL databases.
+
+{{Default in the server source|src/modules/rlm_sql/drivers/rlm_sql_postgresql/}}
+{{Default in the server source|raddb/sql/postgresql/}}
+
+See also:
+* PostgreSQL DDL script
+
+== VoIP
+
+For Cisco VoIP specific accounting with PostgreSQL, use:
+
+raddb/sql/postgresql/voip-postpaid.conf
+
+You will also need the sql schema from:
+
+raddb/sql/postgresql/cisco_h323_db_schema.sql
+
+Note: This config can be use AS WELL AS the standard sql
+config if you need SQL based Auth

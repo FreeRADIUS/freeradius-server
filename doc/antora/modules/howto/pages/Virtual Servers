@@ -1,0 +1,200 @@
+= Virtual Servers
+
+The idea of virtual servers (or virtual hosts) was first
+introduced in web servers such as Apache. FreeRADIUS is the first RADIUS
+server to implement this functionality.
+
+This functionality is different from running a RADIUS server inside of a
+virtual machine such as
+Xen or VMware. It does not offer the same protection as a virtual
+machine, but it is often much easier to configure and maintain.
+
+== Background
+
+RADIUS servers have traditionally had one configuration, and one global
+policy that was applied to all incoming requests. That global policy was
+usually configured to select one or more sub-policies (e.g. per-client
+or per-user). The process of creating and maintaining those policies has
+often been difficult.
+
+The largest problem in creating and maintaining these policies was in
+ensuring that changes to one sub-policy did not affect another
+independent sub-policy. As the number of users, devices, and policies
+increases, the effort required to debug these policies becomes
+significant. Virtual servers simplify this process considerably.
+
+In FreeRADIUS 2.0, virtual servers can be configured independently for
+each of server IP address, client IP address, home
+server pool, and inner TLS tunnel.
+
+IP based
+--------
+
+The server can listen on multiple IP addresses, and each IP address can
+have it's own independent policy for incoming packets. For example, the
+following configuration enables the server to listen on two IP
+addresses, and to apply independent policies to packets received on each
+IP address.
+----
+listen {
+    ipaddr = 192.0.2.1
+    port = 1812
+    type = auth
+    virtual_server = one
+}
+    
+listen {
+    ipaddr = 192.0.2.2
+    port = 1812
+    type = auth
+    virtual_server = two
+}
+    
+server one {
+    ...
+}
+    
+server two {
+    ...
+}
+----
+
+When packets are received on the IP address `192.0.2.1`, they will be
+processed through the `server one` virtual server. When packets are
+received on the IP address `192.0.2.2`, they will be processed through
+the `server two` virtual server.
+
+The contents of the `server one` and `server two` sections are
+`authorize`, `authenticate`, etc. sections used to process packets in
+version 1.x.
+
+Client based
+------------
+
+The server identifies RADIUS clients by IP address, and each client can
+have it's own independent policy based on client source IP address. For
+example, the following configuration enables the server to have two
+clients, and to apply independent policies to packets received from each
+IP address.
+----
+listen {
+    ipaddr = 192.0.2.3
+    port = 1812
+    type = auth
+    # no server section is defined here
+    clients = disambiguate
+}
+    
+clients disambiguate {
+    client one {
+        ipaddr = 192.0.2.4
+        secret = testing123
+        virtual_server = one
+    }
+    client two {
+        ipaddr = 192.0.2.5
+        secret = testing567
+        virtual_server = two
+    }
+}
+...
+# server one as above
+# server two as above
+----
+
+When packets are received on the IP address `192.0.2.3`, they will be
+processed through the `server one` virtual server if they are received
+from `client one`. When packets are received on the same IP address
+(`192.0.2.3`), they will be processed through the `server two` virtual
+server if they are received from `client two`.
+
+Both *IP based* and *client based* servers can be used at the same time,
+so long as there is only one way to map an incoming request to a virtual
+server. If the same request can map to multiple virtual servers,
+FreeRADIUS will return an error, and will refuse to start.
+
+Home Server Pool based
+----------------------
+
+The server identifies RADIUS home servers by server pools for fail-over
+and redundancy. Each home server pool can have it's own independent
+policy based on where the packet is being proxied. For example, the
+following configuration enables the server to have two home server
+pools, and to apply independent policies to packets that are proxied to
+home servers in each pool.
+
+        ...
+        home_server_pool one {
+            type = fail-over
+            home_server = 192.0.2.10
+            home_server = 192.0.2.11
+            home_server = 192.0.2.12
+            virtual_server = proxy-pool-one
+        }
+        home_server_pool two {
+            type = fail-over
+            home_server = 192.0.2.13
+            home_server = 192.0.2.14
+            home_server = 192.0.2.15
+            virtual_server = proxy-pool-two
+        }
+        ...
+    }
+    ...
+    server proxy-pool-one {
+        pre-proxy {
+            ...
+        }
+        post-proxy {
+            ...
+        }
+    }
+    server proxy-pool-two {
+        pre-proxy {
+            ...
+        }
+        post-proxy {
+            ...
+        }
+    }
+
+When requests are sent to one of the home servers listed in the pool,
+they will be processed through the `server proxy-pool-one`, or the
+`server proxy-pool-two` virtual server.
+
+TLS Tunnels
+-----------
+
+The EAP tunneled methods present an authentication request
+to FreeRADIUS inside of the TLS tunnel. The `eap` module can map these
+tunneled requests to a virtual server. This mapping enables *completely
+independent* policies for each of the outer and inner tunneled sessions.
+This configuration was not possible in earlier versions of FreeRADIUS.
+
+    modules {
+        ...
+        eap {
+            ttls {
+                ...
+                virtual_server = inner-tunnel
+            }
+            peap {
+                ...
+                virtual_server = inner-tunnel
+            }
+        }
+        ...
+    }
+    ...
+    server inner-tunnel {
+        ...
+    }
+
+When requests are received inside of a TTLS or PEAP tunnel, they will be
+processed through the `server inner-tunnel` virtual server.
+
+More examples
+-------------
+
+For more examples, see the `raddb/sites-enabled/` directory that is
+included in the server distribution.

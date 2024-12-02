@@ -1,0 +1,18 @@
+= Vendor-Specific Attributes
+
+The IETF specifies Vendor-Specific Attributes (VSA) as a method for communicating vendor-specific information between NAS's and RADIUS servers. Attribute 26 encapsulates vendor specific attributes, thereby, allowing vendors to support their own extended attributes otherwise not suitable for general use.
+
+Servers not equipped to interpret the vendor-specific information sent by a client are supposed to ignore it (although it may be reported).
+
+RADIUS Clients which do not receive desired vendor-specific information
+are supposed to make an attempt to operate without it, although possibly in a degraded mode.
+
+Multiple sub-attributes MAY be encoded within a single Vendor-Specific attribute, although they do not have to be.
+
+Any Vendor who has a http://www.iana.org/assignments/enterprise-numbers Private Enterprise Number http://www.iana.org/cgi-bin/enterprise.pl registered with IANA] may create their own Vendor-Specific Attributes. Support for these VSA's can be added to FreeRADIUS simply by creating their own dictionary.
+
+== See Also
+
+* RADIUS Attributes
+* RADIUS VSA Voice Implementation Guide (http://www.cisco.com/univercd/cc/td/doc/product/access/acs_serv/vapp_dev/vsaig3.htm) 
+* RFC

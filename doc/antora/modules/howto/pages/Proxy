@@ -1,0 +1,134 @@
+= Proxying
+
+The server can proxy any request to
+other RADIUS servers. Proxying can be done via the common RADIUS
+`realms` method, which is completely under the control of the local
+administrator. Both prefixes and suffixes are support, as are other
+arbitrary methods of selecting a realm.
+
+Policies can be executed before, and after proxying. This
+capability enables the administrator to re-write requests before they
+are proxied, and also to re-write replies from home servers. For
+example, IP addresses may be assigned locally, so any IP
+address assignment received from a home server needs to be deleted.
+
+Home servers are grouped into pools, which permit multiple kinds of
+fail-over and load-balancing:
+
+-   Simple fail-over. The first home server is used, unless it is down.
+    In which case the second is used, and so on.
+-   Load-balancing. Requests are split evenly among all home servers in
+    the pool.
+-   Load-balancing by client. Requests from a client are automatically
+    mapped to one home server by hashing the client IP address. There
+    can be a different number of clients and home servers, in which case
+    many clients may map to one home server.
+-   Load balancing by client port. As above, except that the source port
+    is included in the hash calculation.
+-   Keyed hashing. Similar to the two previous methods, but the hash key
+    can be created dynamically by the administrator. This configuration
+    permits, for example, EAP requests to be sent to one home server,
+    and all other authentication requests be sent to another.
+
+It is possible to use FreeRADIUS as a proxy RADIUS server. This
+means that it can consult a remote RADIUS server to validate a user.
+This is handy for roaming setups, or for renting ports to someone else.
+
+This article is based on doc/proxy from the server distribution.
+
+== Files
+
+If a user logs in with a defined realm syntax, the "realm" portion is matched against the configuration to determine how the request should be handled. Common realm formats are:
+----
+username@realm
+realm/username
+username%realm
+realm\username
+----
+
+The realm parsing syntax is user definable via the realm module config - see `mods-available/realm`.
+
+You can define multiple instances of the realm module to support multiple realm syntaxes at the same time.
+Be sure to pay close attention to the order that these instances are called from the virtual server configuration, as you may inadvertently get unexpected  behaviour (by having a user use `realm1/username@realm2` for instance).
+If you need to proxy to IPASS, it should be called first, because usernames will  be in the form `IPASS/username@realm` and you want to proxy these users to  IPASS, not to the realm behind the '@'.
+
+The realms are configured in the file proxy.conf, which is  included by radiusd.conf. The formats and sample configurations are included as comments. Realms in proxy.conf must be unique. It is possible to define a realm by regular expression; realms that directly match will be used in precedence to a realm matched by regex.
+
+The realm `DEFAULT` matches all realms.
+
+The realm `NULL` matches any requests WITHOUT a realm.
+
+If you set the remote server to `LOCAL`, the request will be handled  locally as usual, without sending it to a remote radius server.
+
+There are several options you can add in both files:
+
+nostrip ::
+By default the realm is stripped from the username before sending it on to the remote radius server. By specifying the "nostrip" option the @realm suffix will not be stripped.
+
+hints ::
+By default the original username is sent to the remote radius server. By specifying the "hints" option the username will be sent as it is after the "hints" file was processed.
+
+notrealm ::
+By default if a realm is matched, it will be proxied to the server specified.  However, if you are using Replication functionality, you may want to override this behaviour.  This option will prevent a user who enters 'user@foobar' from being proxied if the 'foobar' realm configuration contains 'notrealm'. This function used to be called 'notsuffix', and the old syntax is still supported.
+
+=== Deprecated Files
+
+*The realms file is deprecated and should not be used anymore.* Please convert your configuration to use the proxy.conf file.
+*Do not* use both the realms file and the proxy.conf file, as it will cause confusion.
+
+== Accounting
+
+All accounting data for proxied requests does NOT get stored in the standard logfiles, but in a separate directory. The name of this directory is the name of the remote radius server, and if you want you can define a nickname for it in */etc/raddb/naslist* just as for normal NASes.
+
+== Remote Server
+
+When your server proxies requests to another server, it acts as a NAS for the remote server. On the remote server, you need to add the hostname of your server and the same secret to clients.conf as well.
+
+As you might not control the remote RADIUS server, you might want to control the attributes sent back by the remote server in an Access-Accept packet. Have a look at the attrs file for this!
+
+== What Happens
+
+The exact thing that happens is this:
+
+* A user logs in (with a realm).
+* The "preprocess" module causes the [[hints]] and [[huntgroups]] files to get processed. At this point the user _might_ already be rejected.
+* The "suffix" module causes the realm to be looked up in the list of realms.
+* If the realm isn't defined, "files" module causes the [[users]] file to be processed normally.
+* If the matched realm is defined with the 'notrealm' option, the user is processed locally.
+* If the matched realm is ''not'' defined with the 'nostrip' option, the realm is stripped.
+* If the matched realm is defined with the 'hints' option, the [[hints]] file stripping is applied on the username.
+* The request is sent to a remote RADIUS server, as defined in the realm setup.
+* The remote server replies with ACK or REJECT
+** On ACK: The initial Auth-Type is set to Accept
+** On REJECT: The initial Auth-Type is set to Reject
+
+* Then the users file is processed as usual. The username used at this point is the one after hints file processing (regardless of the "hints" option). It also includes the realm (regardless of the setting of the "nostrip" option) unless the realm is LOCAL.
+
+=== Proxying from unlang
+
+Behind the scenes, the rlm_realm module is setting the `Proxy-To-Realm` control attribute to tell the server which realm to proxy to. If this attribute is set at the end of processing the `authorize` section, the server will initiate proxying the request (sending via the `pre-proxy` section), rather than authenticating locally.
+
+Therefore it can sometimes be useful or easier to skip use of the realm module entirely, and control proxying only by unlang. For example to proxy all unknown realms you may use something like:
+----
+if ("%{User-Name}" =~ /@local\.domain\.example$/) {
+    noop
+}
+else {
+    update control {
+        Proxy-To-Realm := 'offsite'
+    }
+}
+----
+
+Then you may define a realm in [[proxy.conf]]:
+----
+realm offsite {
+    auth_pool = offsite_pool
+    ...
+}
+----
+
+== See Also
+
+* Configuration files
+* proxy.conf
