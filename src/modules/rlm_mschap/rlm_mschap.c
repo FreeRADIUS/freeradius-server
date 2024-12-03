@@ -1797,145 +1797,145 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 									    	  MSCHAP_AUTH_METHOD method,
 										  mschap_auth_call_env_t *env_data)
 {
-		uint8_t		mschap_challenge[16];
-		fr_pair_t	*user_name, *name_vp, *response_name, *peer_challenge_attr;
-		uint8_t const	*peer_challenge;
-		char const	*username_str;
-		size_t		username_len;
-		int		mschap_result;
-		rlm_rcode_t	rcode;
-		char		msch2resp[42];
+	uint8_t		mschap_challenge[16];
+	fr_pair_t	*user_name, *name_vp, *response_name, *peer_challenge_attr;
+	uint8_t const	*peer_challenge;
+	char const	*username_str;
+	size_t		username_len;
+	int		mschap_result;
+	rlm_rcode_t	rcode;
+	char		msch2resp[42];
 
-		*mschap_version = 2;
+	*mschap_version = 2;
 
-		RDEBUG2("Processing MS-CHAPv2 response");
+	RDEBUG2("Processing MS-CHAPv2 response");
 
-		/*
-		 *	MS-CHAPv2 challenges are 16 octets.
-		 */
-		if (challenge->vp_length < 16) {
-			REDEBUG("%s has the wrong format", env_data->chap_challenge->name);
-			RETURN_MODULE_INVALID;
-		}
+	/*
+	 *	MS-CHAPv2 challenges are 16 octets.
+	 */
+	if (challenge->vp_length < 16) {
+		REDEBUG("%s has the wrong format", env_data->chap_challenge->name);
+		RETURN_MODULE_INVALID;
+	}
 
-		/*
-		 *	Responses are 50 octets.
-		 */
-		if (response->vp_length < 50) {
-			REDEBUG("%s has the wrong format", env_data->chap2_response->name);
-			RETURN_MODULE_INVALID;
-		}
+	/*
+	 *	Responses are 50 octets.
+	 */
+	if (response->vp_length < 50) {
+		REDEBUG("%s has the wrong format", env_data->chap2_response->name);
+		RETURN_MODULE_INVALID;
+	}
 
-		/*
-		 *	We also require a User-Name
-		 */
-		user_name = mschap_identity_find(request, tmpl_attr_tail_da(env_data->username));
-		if (!user_name) RETURN_MODULE_FAIL;
+	/*
+	 *	We also require a User-Name
+	 */
+	user_name = mschap_identity_find(request, tmpl_attr_tail_da(env_data->username));
+	if (!user_name) RETURN_MODULE_FAIL;
 
-		/*
-		 *      Check for MS-CHAP-User-Name and if found, use it
-		 *      to construct the MSCHAPv1 challenge.  This is
-		 *      set by rlm_eap_mschap to the MS-CHAP Response
-		 *      packet Name field.
-		 *
-		 *	We prefer this to the User-Name in the
-		 *	packet.
-		 */
-		response_name = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_user_name);
-		name_vp = response_name ? response_name : user_name;
+	/*
+	 *      Check for MS-CHAP-User-Name and if found, use it
+	 *      to construct the MSCHAPv1 challenge.  This is
+	 *      set by rlm_eap_mschap to the MS-CHAP Response
+	 *      packet Name field.
+	 *
+	 *	We prefer this to the User-Name in the
+	 *	packet.
+	 */
+	response_name = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_user_name);
+	name_vp = response_name ? response_name : user_name;
 
-		/*
-		 *	with_ntdomain_hack moved here, too.
-		 */
-		if ((username_str = strchr(name_vp->vp_strvalue, '\\')) != NULL) {
-			if (inst->with_ntdomain_hack) {
-				username_str++;
-			} else {
-				RWDEBUG2("NT Domain delimiter found, should 'with_ntdomain_hack' be enabled?");
-				username_str = name_vp->vp_strvalue;
-			}
+	/*
+	 *	with_ntdomain_hack moved here, too.
+	 */
+	if ((username_str = strchr(name_vp->vp_strvalue, '\\')) != NULL) {
+		if (inst->with_ntdomain_hack) {
+			username_str++;
 		} else {
+			RWDEBUG2("NT Domain delimiter found, should 'with_ntdomain_hack' be enabled?");
 			username_str = name_vp->vp_strvalue;
 		}
-		username_len = name_vp->vp_length - (username_str - name_vp->vp_strvalue);
+	} else {
+		username_str = name_vp->vp_strvalue;
+	}
+	username_len = name_vp->vp_length - (username_str - name_vp->vp_strvalue);
 
-		if (response_name && ((user_name->vp_length != response_name->vp_length) ||
-		    (strncasecmp(user_name->vp_strvalue, response_name->vp_strvalue, user_name->vp_length) != 0))) {
-			RWDEBUG("%pP is not the same as %pP from EAP-MSCHAPv2", user_name, response_name);
-		}
+	if (response_name && ((user_name->vp_length != response_name->vp_length) ||
+	    (strncasecmp(user_name->vp_strvalue, response_name->vp_strvalue, user_name->vp_length) != 0))) {
+		RWDEBUG("%pP is not the same as %pP from EAP-MSCHAPv2", user_name, response_name);
+	}
 
 #ifdef __APPLE__
-		/*
-		 *  No "known good" Password.NT attribute.  Try to do
-		 *  OpenDirectory authentication.
-		 *
-		 *  If OD determines the user is an AD user it will return noop, which
-		 *  indicates the auth process should continue directly to AD.
-		 *  Otherwise OD will determine auth success/fail.
-		 */
-		if (!nt_password && inst->open_directory) {
-			RDEBUG2("No Password.NT available. Trying OpenDirectory Authentication");
-			od_mschap_auth(&rcode, request, challenge, user_name, env_data);
-			if (rcode != RLM_MODULE_NOOP) RETURN_MODULE_RCODE(rcode);
-		}
+	/*
+	 *  No "known good" Password.NT attribute.  Try to do
+	 *  OpenDirectory authentication.
+	 *
+	 *  If OD determines the user is an AD user it will return noop, which
+	 *  indicates the auth process should continue directly to AD.
+	 *  Otherwise OD will determine auth success/fail.
+	 */
+	if (!nt_password && inst->open_directory) {
+		RDEBUG2("No Password.NT available. Trying OpenDirectory Authentication");
+		od_mschap_auth(&rcode, request, challenge, user_name, env_data);
+		if (rcode != RLM_MODULE_NOOP) RETURN_MODULE_RCODE(rcode);
+	}
 #endif
-		peer_challenge = response->vp_octets + 2;
+	peer_challenge = response->vp_octets + 2;
 
-		peer_challenge_attr = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ms_chap_peer_challenge);
-		if (peer_challenge_attr) {
-			RDEBUG2("Overriding peer challenge");
-			peer_challenge = peer_challenge_attr->vp_octets;
-		}
+	peer_challenge_attr = fr_pair_find_by_da(&request->control_pairs, NULL, attr_ms_chap_peer_challenge);
+	if (peer_challenge_attr) {
+		RDEBUG2("Overriding peer challenge");
+		peer_challenge = peer_challenge_attr->vp_octets;
+	}
 
-		/*
-		 *	The old "mschapv2" function has been moved to
-		 *	here.
-		 *
-		 *	MS-CHAPv2 takes some additional data to create an
-		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
-		 */
-		RDEBUG2("Creating challenge with username \"%pV\"",
-			fr_box_strvalue_len(username_str, username_len));
-		mschap_challenge_hash(mschap_challenge,		/* resulting challenge */
-				      peer_challenge,			/* peer challenge */
-				      challenge->vp_octets,		/* our challenge */
-				      username_str, username_len);	/* user name */
+	/*
+	 *	The old "mschapv2" function has been moved to
+	 *	here.
+	 *
+	 *	MS-CHAPv2 takes some additional data to create an
+	 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
+	 */
+	RDEBUG2("Creating challenge with username \"%pV\"",
+		fr_box_strvalue_len(username_str, username_len));
+	mschap_challenge_hash(mschap_challenge,		/* resulting challenge */
+			      peer_challenge,			/* peer challenge */
+			      challenge->vp_octets,		/* our challenge */
+			      username_str, username_len);	/* user name */
 
-		mschap_result = do_mschap(inst, request, nt_password, mschap_challenge,
-					  response->vp_octets + 26, nthashhash, method, env_data);
+	mschap_result = do_mschap(inst, request, nt_password, mschap_challenge,
+				  response->vp_octets + 26, nthashhash, method, env_data);
 
-		/*
-		 *	Check for errors, and add MSCHAP-Error if necessary.
-		 */
-		mschap_error(&rcode, inst, request, *response->vp_octets,
-			     mschap_result, *mschap_version, smb_ctrl, env_data);
-		if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
+	/*
+	 *	Check for errors, and add MSCHAP-Error if necessary.
+	 */
+	mschap_error(&rcode, inst, request, *response->vp_octets,
+		     mschap_result, *mschap_version, smb_ctrl, env_data);
+	if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
 
 #ifdef WITH_AUTH_WINBIND
-		if (inst->wb_retry_with_normalised_username) {
-			response_name = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_user_name);
-			if (response_name) {
-				if (strcmp(username_str, response_name->vp_strvalue)) {
-					RDEBUG2("Normalising username %pV -> %pV",
-						fr_box_strvalue_len(username_str, username_len),
-						&response_name->data);
-					username_str = response_name->vp_strvalue;
-				}
+	if (inst->wb_retry_with_normalised_username) {
+		response_name = fr_pair_find_by_da(&request->request_pairs, NULL, attr_ms_chap_user_name);
+		if (response_name) {
+			if (strcmp(username_str, response_name->vp_strvalue)) {
+				RDEBUG2("Normalising username %pV -> %pV",
+					fr_box_strvalue_len(username_str, username_len),
+					&response_name->data);
+				username_str = response_name->vp_strvalue;
 			}
 		}
+	}
 #endif
 
-		mschap_auth_response(username_str,		/* without the domain */
-				     username_len,		/* Length of username str */
-				     nthashhash,		/* nt-hash-hash */
-				     response->vp_octets + 26,	/* peer response */
-				     peer_challenge,		/* peer challenge */
-				     challenge->vp_octets,	/* our challenge */
-				     msch2resp);		/* calculated MPPE key */
-		if (env_data->chap2_success) mschap_add_reply(request, *response->vp_octets,
-							      tmpl_attr_tail_da(env_data->chap2_success), msch2resp, 42);
+	mschap_auth_response(username_str,		/* without the domain */
+			     username_len,		/* Length of username str */
+			     nthashhash,		/* nt-hash-hash */
+			     response->vp_octets + 26,	/* peer response */
+			     peer_challenge,		/* peer challenge */
+			     challenge->vp_octets,	/* our challenge */
+			     msch2resp);		/* calculated MPPE key */
+	if (env_data->chap2_success) mschap_add_reply(request, *response->vp_octets,
+						      tmpl_attr_tail_da(env_data->chap2_success), msch2resp, 42);
 
-		RETURN_MODULE_OK;
+	RETURN_MODULE_OK;
 }
 
 /** Complete mschap authentication after any tmpls have been expanded.
