@@ -1916,6 +1916,10 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 		return -1;
 	}
 
+#ifdef STATIC_ANALYZER
+	if (!dctx->dict) goto error;
+#endif
+
 	/*
 	 *	Allocate the attribute here, and then fill in the fields
 	 *	as we start parsing the various elements of the definition.
@@ -1970,10 +1974,6 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 	 *
 	 *	Maybe we do want a flag field for named time deltas?
 	 */
-
-#ifdef STATIC_ANALYZER
-	if (!dctx->dict) goto error;
-#endif
 
 	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
