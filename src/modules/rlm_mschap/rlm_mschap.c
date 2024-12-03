@@ -48,7 +48,6 @@ RCSID("$Id$")
 #include <sys/wait.h>
 
 #include "rlm_mschap.h"
-#include "mschap.h"
 #include "smbdes.h"
 
 #ifdef WITH_AUTH_WINBIND
@@ -212,26 +211,6 @@ static const call_env_parser_t autz_call_env[] = {
 };
 
 MSCHAP_CALL_ENV(autz);
-
-typedef struct {
-	fr_value_box_list_t	cpw_user;
-	fr_value_box_list_t	cpw_domain;
-	fr_value_box_list_t	local_cpw_result;
-	uint8_t			new_nt_encrypted[516];
-	uint8_t			old_nt_hash[NT_DIGEST_LENGTH];
-	fr_pair_t		*new_hash;
-} mschap_cpw_ctx_t;
-
-typedef struct {
-	char const		*name;
-	rlm_mschap_t const	*inst;
-	mschap_auth_call_env_t	*env_data;
-	MSCHAP_AUTH_METHOD	method;
-	fr_pair_t		*nt_password;
-	fr_pair_t		*smb_ctrl;
-	fr_pair_t		*cpw;
-	mschap_cpw_ctx_t	*cpw_ctx;
-} mschap_auth_ctx_t;
 
 static fr_dict_t const *dict_freeradius;
 static fr_dict_t const *dict_radius;

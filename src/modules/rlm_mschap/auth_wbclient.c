@@ -92,7 +92,7 @@ static char *wbclient_normalise_username(TALLOC_CTX *ctx, struct wbcContext *wb_
  */
 int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 		     uint8_t const *challenge, uint8_t const *response,
-		     uint8_t nthashhash[NT_DIGEST_LENGTH], mschap_auth_call_env_t *env_data)
+		     uint8_t nthashhash[NT_DIGEST_LENGTH], mschap_auth_ctx_t *auth_ctx)
 {
 	int				ret = -1;
 	struct wbcContext		*wb_ctx = NULL;
@@ -101,6 +101,7 @@ int do_auth_wbclient(rlm_mschap_t const *inst, request_t *request,
 	struct wbcAuthUserInfo		*info = NULL;
 	struct wbcAuthErrorInfo		*error = NULL;
 	uint8_t				resp[NT_LENGTH];
+	mschap_auth_call_env_t		*env_data = auth_ctx->env_data;
 
 	/*
 	 * Clear the auth parameters - this is important, as

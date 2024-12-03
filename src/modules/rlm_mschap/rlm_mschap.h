@@ -3,6 +3,7 @@
 RCSIDH(rlm_mschap_h, "$Id$")
 
 #include "config.h"
+#include "mschap.h"
 
 #include <freeradius-devel/util/dict.h>
 #include <freeradius-devel/server/tmpl.h>
@@ -85,3 +86,26 @@ typedef struct {
 	tmpl_t const	*ntlm_cpw_domain;
 	tmpl_t const	*local_cpw;
 } mschap_auth_call_env_t;
+
+typedef struct {
+	fr_value_box_list_t	cpw_user;
+	fr_value_box_list_t	cpw_domain;
+	fr_value_box_list_t	local_cpw_result;
+	uint8_t			new_nt_encrypted[516];
+	uint8_t			old_nt_hash[NT_DIGEST_LENGTH];
+	fr_pair_t		*new_hash;
+} mschap_cpw_ctx_t;
+
+typedef struct {
+	char const		*name;
+	rlm_mschap_t const	*inst;
+	mschap_auth_call_env_t	*env_data;
+	MSCHAP_AUTH_METHOD	method;
+	fr_pair_t		*nt_password;
+	fr_pair_t		*smb_ctrl;
+	fr_pair_t		*cpw;
+	mschap_cpw_ctx_t	*cpw_ctx;
+#ifdef WITH_AUTH_WINBIND
+	rlm_mschap_thread_t	*t;
+#endif
+} mschap_auth_ctx_t;
