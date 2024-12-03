@@ -6,12 +6,11 @@ RCSIDH(rlm_mschap_h, "$Id$")
 #include "mschap.h"
 
 #include <freeradius-devel/util/dict.h>
+#include <freeradius-devel/util/slab.h>
 #include <freeradius-devel/server/tmpl.h>
 
 #ifdef WITH_AUTH_WINBIND
 #  include <wbclient.h>
-
-#include <freeradius-devel/server/pool.h>
 #endif
 
 /* Method of authentication we are going to use */
@@ -58,14 +57,27 @@ typedef struct {
 	MSCHAP_AUTH_METHOD	method;
 	char const		*wb_username;
 #ifdef WITH_AUTH_WINBIND
-	fr_pool_t		*wb_pool;
 	bool			wb_retry_with_normalised_username;
+	fr_slab_config_t	reuse;
 #endif
 #ifdef __APPLE__
 	bool			open_directory;
 #endif
 } rlm_mschap_t;
 
+#ifdef WITH_AUTH_WINBIND
+typedef struct {
+	struct wbcContext	*ctx;
+} winbind_ctx_t;
+
+FR_SLAB_TYPES(mschap, winbind_ctx_t);
+FR_SLAB_FUNCS(mschap, winbind_ctx_t)
+
+typedef struct {
+	rlm_mschap_t const	*inst;		//!< Instance of rlm_mschap.
+	mschap_slab_list_t	*slab;		//!< Slab list for winbind handles.
+} rlm_mschap_thread_t;
+#endif
 typedef struct {
 	tmpl_t const	*username;
 	tmpl_t const	*chap_error;

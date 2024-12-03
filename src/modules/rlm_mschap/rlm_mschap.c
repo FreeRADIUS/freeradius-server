@@ -84,10 +84,20 @@ static const conf_parser_t passchange_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+#ifdef WITH_AUTH_WINBIND
+static conf_parser_t reuse_winbind_config[] = {
+	{ FR_CONF_OFFSET("min", fr_slab_config_t, min_elements), .dflt = "10" },
+	{ FR_CONF_OFFSET("max", fr_slab_config_t, max_elements), .dflt = "100" },
+	{ FR_CONF_OFFSET("cleanup_interval", fr_slab_config_t, interval), .dflt = "30s" },
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
 static const conf_parser_t winbind_config[] = {
 	{ FR_CONF_OFFSET("username", rlm_mschap_t, wb_username) },
 #ifdef WITH_AUTH_WINBIND
 	{ FR_CONF_OFFSET("retry_with_normalised_username", rlm_mschap_t, wb_retry_with_normalised_username), .dflt = "no" },
+	{ FR_CONF_OFFSET_SUBSECTION("reuse", 0, rlm_mschap_t, reuse, reuse_winbind_config) },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -762,36 +772,26 @@ static xlat_action_t mschap_xlat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 #ifdef WITH_AUTH_WINBIND
 /*
- *	Free connection pool winbind context
+ *	Free winbind context
  */
-static int _mod_conn_free(struct wbcContext **wb_ctx)
+static int _mod_ctx_free(winbind_ctx_t *wbctx)
 {
-	wbcCtxFree(*wb_ctx);
-
+	wbcCtxFree(wbctx->ctx);
 	return 0;
 }
 
 /*
- *	Create connection pool winbind context
+ *	Create winbind context
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance, UNUSED fr_time_delta_t timeout)
+static int winbind_ctx_alloc(winbind_ctx_t *wbctx, UNUSED void *uctx)
 {
-	/* Needed by ERROR() */
-	module_inst_ctx_t	*mctx = MODULE_INST_CTX(talloc_get_type_abort(instance, module_instance_t));
-	struct wbcContext	**wb_ctx;
-
-	wb_ctx = talloc_zero(ctx, struct wbcContext *);
-	*wb_ctx = wbcCtxCreate();
-
-	if (*wb_ctx == NULL) {
-		ERROR("failed to create winbind context");
-		talloc_free(wb_ctx);
-		return NULL;
+	wbctx->ctx = wbcCtxCreate();
+	if (!wbctx->ctx) {
+		fr_strerror_printf("Unable to create winbind context");
+		return -1;
 	}
-
-	talloc_set_destructor(wb_ctx, _mod_conn_free);
-
-	return *wb_ctx;
+	talloc_set_destructor(wbctx, _mod_ctx_free);
+	return 0;
 }
 #endif
 
@@ -1216,7 +1216,7 @@ static int CC_HINT(nonnull) do_mschap(rlm_mschap_t const *inst, request_t *reque
 	/*
 	 *	Process auth via the wbclient library
 	 */
-		return do_auth_wbclient(inst, request, challenge, response, nthashhash, auth_ctx->env_data);
+		return do_auth_wbclient(inst, request, challenge, response, nthashhash, auth_ctx);
 #endif
 	default:
 		/* We should never reach this line */
@@ -2224,6 +2224,9 @@ static int mschap_new_pass_decrypt(request_t *request, mschap_auth_ctx_t *auth_c
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_mschap_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_mschap_t);
+#ifdef WITH_AUTH_WINBIND
+	rlm_mschap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_mschap_thread_t);
+#endif
 	mschap_auth_call_env_t	*env_data = talloc_get_type_abort(mctx->env_data, mschap_auth_call_env_t);
 	mschap_auth_ctx_t	*auth_ctx;
 
@@ -2238,6 +2241,9 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 		.inst = inst,
 		.method = inst->method,
 		.env_data = env_data,
+#ifdef WITH_AUTH_WINBIND
+		.t = t,
+#endif
 	};
 
 	/*
@@ -2365,12 +2371,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (inst->wb_username) {
 #ifdef WITH_AUTH_WINBIND
 		inst->method = AUTH_WBCLIENT;
-
-		inst->wb_pool = module_rlm_connection_pool_init(conf, UNCONST(module_instance_t *, mctx->mi), mod_conn_create, NULL, NULL, NULL, NULL);
-		if (!inst->wb_pool) {
-			cf_log_err(conf, "Unable to initialise winbind connection pool");
-			return -1;
-		}
 #else
 		cf_log_err(conf, "'winbind' auth not enabled at compiled time");
 		return -1;
@@ -2457,24 +2457,28 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	return 0;
 }
 
-/*
- *	Tidy up instance
- */
-static int mod_detach(
-#ifndef WITH_AUTH_WINBIND
-		      UNUSED
-#endif
-		      module_detach_ctx_t const *mctx)
-{
 #ifdef WITH_AUTH_WINBIND
-	rlm_mschap_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_mschap_t);
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_mschap_t const	*inst = talloc_get_type_abort(mctx->mi->data, rlm_mschap_t);
+	rlm_mschap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_mschap_thread_t);
 
-	fr_pool_free(inst->wb_pool);
-#endif
+	t->inst = inst;
+	if (!(t->slab = mschap_slab_list_alloc(t, mctx->el, &inst->reuse, winbind_ctx_alloc, NULL, NULL, false, false))) {
+		ERROR("Connection handle pool instantiation failed");
+		return -1;
+	}
 
 	return 0;
 }
 
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_mschap_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_mschap_thread_t);
+	talloc_free(t->slab);
+	return 0;
+}
+#endif
 
 extern module_rlm_t rlm_mschap;
 module_rlm_t rlm_mschap = {
@@ -2485,7 +2489,11 @@ module_rlm_t rlm_mschap = {
 		.config		= module_config,
 		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
-		.detach		= mod_detach
+#ifdef WITH_AUTH_WINBIND
+		.thread_inst_size	= sizeof(rlm_mschap_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach
+#endif
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){
