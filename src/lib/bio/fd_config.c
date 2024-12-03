@@ -28,6 +28,7 @@
 
 #include <freeradius-devel/bio/fd_priv.h>
 
+#if 0
 static fr_table_num_sorted_t socket_type_names[] = {
 	{ L("udp"),		SOCK_DGRAM			},
 	{ L("datagram"),	SOCK_DGRAM			},
@@ -35,7 +36,6 @@ static fr_table_num_sorted_t socket_type_names[] = {
 	{ L("stream"),		SOCK_STREAM			},
 };
 static size_t socket_type_names_len = NUM_ELEMENTS(socket_type_names);
-
 
 static int socket_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
 {
@@ -52,7 +52,7 @@ static int socket_type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *par
 
 	return 0;
 }
-
+#endif
 
 #define FR_READ  (1)
 #define FR_WRITE (2)
@@ -92,9 +92,7 @@ static const conf_parser_t peercred_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-const conf_parser_t fr_bio_fd_config[] = {
-	{ FR_CONF_OFFSET("proto", fr_bio_fd_config_t, socket_type), .func = socket_type_parse },
-
+static const conf_parser_t udp_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
@@ -112,9 +110,33 @@ const conf_parser_t fr_bio_fd_config[] = {
 	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
 	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
 
-	/*
-	 *	Unix socket information
-	 */
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t tcp_config[] = {
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr), },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
+
+	{ FR_CONF_OFFSET("port", fr_bio_fd_config_t, dst_port) },
+
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+
+	{ FR_CONF_OFFSET("src_port", fr_bio_fd_config_t, src_port) },
+
+	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
+
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
+
+	{ FR_CONF_OFFSET("delay_tcp_writes", fr_bio_fd_config_t, tcp_delay) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t unix_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
 
 	{ FR_CONF_OFFSET("permissions", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
@@ -123,11 +145,63 @@ const conf_parser_t fr_bio_fd_config[] = {
 
 	{ FR_CONF_OFFSET("mkdir", fr_bio_fd_config_t, mkdir) },
 
-	{ FR_CONF_OFFSET("async", fr_bio_fd_config_t, async), .dflt = "true" },
-
-	{ FR_CONF_OFFSET("delay_tcp_writes", fr_bio_fd_config_t, tcp_delay) },
-
 	{ FR_CONF_POINTER("peercred", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) peercred_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t file_config[] = {
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
+
+	{ FR_CONF_OFFSET("permissions", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
+
+	{ FR_CONF_OFFSET("mkdir", fr_bio_fd_config_t, mkdir) },
+
+
+	CONF_PARSER_TERMINATOR
+};
+
+static fr_table_ptr_sorted_t transport_names[] = {
+	{ L("file"),		file_config },
+	{ L("tcp"),		tcp_config },
+	{ L("unix"),		unix_config },
+	{ L("udp"),		udp_config },
+};
+static size_t transport_names_len = NUM_ELEMENTS(transport_names);
+
+/** Parse "transport" and then set the subconfig
+ *
+ */
+static int transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+{
+	int socket_type = SOCK_STREAM;
+	conf_parser_t const *rules;
+	char const *name = cf_pair_value(cf_item_to_pair(ci));
+	fr_bio_fd_config_t *fd_config = parent;
+
+	rules = fr_table_value_by_str(transport_names, name, NULL);
+	if (!rules) {
+		cf_log_err(ci, "Invalid transport name \"%s\"", name);
+		return -1;
+	}
+
+	if (cf_section_rules_push(cf_item_to_section(cf_parent(ci)), rules) < 0) {
+		cf_log_perr(ci, "Failed updating parse rules");
+		return -1;
+	}
+
+	if (strcmp(name, "udp") == 0) socket_type = SOCK_DGRAM;
+
+	fd_config->socket_type = socket_type;
+	*(char const **) out = name;
+
+	return 0;
+}
+
+const conf_parser_t fr_bio_fd_config[] = {
+	{ FR_CONF_OFFSET("transport", fr_bio_fd_config_t, socket_type), .func = transport_parse },
+
+	{ FR_CONF_OFFSET("async", fr_bio_fd_config_t, async), .dflt = "true" },
 
 	CONF_PARSER_TERMINATOR
 };
