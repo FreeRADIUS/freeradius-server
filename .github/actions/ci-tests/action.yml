@@ -229,6 +229,7 @@ runs:
         PERSISTENT_SEARCH_TEST_SERVER: ldap://${{ inputs.ldap389_test_server }}:${{ inputs.ldap389_test_server_port }}/
         ACTIVE_DIRECTORY_TEST_SERVER: ${{ inputs.active_directory_test_server }}
         WINBIND_TEST_SERVER: ${{ inputs.active_directory_test_server }}
+        MSCHAP_TEST_SERVER: ${{ inputs.active_directory_test_server }}
         REST_TEST_SERVER: ${{ inputs.rest_test_server }}
         REST_TEST_SERVER_PORT: ${{ inputs.rest_test_port }}
         REST_TEST_SERVER_SSL_PORT: ${{ inputs.rest_test_ssl_port }}
