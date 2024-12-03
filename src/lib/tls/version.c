@@ -85,40 +85,7 @@ char const *fr_openssl_version_str_from_num(uint32_t v)
 	char *p = buffer, *end = buffer + sizeof(buffer);
 
 	/*
-	 *	If OpenSSL major version is less than three
-	 *	use the old version number layout.
-	 */
-	if (((v & 0xf0000000) >> 28) < 3) {
-		p += snprintf(p, end - p, "%u.%u.%u",
-			      (0xf0000000 & v) >> 28,
-			      (0x0ff00000 & v) >> 20,
-			      (0x000ff000 & v) >> 12);
-
-		if ((0x00000ff0 & v) >> 4) {
-			*p++ =  (char) (0x60 + ((0x00000ff0 & v) >> 4));
-		}
-
-		*p++ = ' ';
-
-		/*
-		 *	Development (0)
-		 */
-		if ((0x0000000f & v) == 0) {
-			strlcpy(p, "dev", end - p);
-		/*
-		 *	Beta (1-14)
-		 */
-		} else if ((0x0000000f & v) <= 14) {
-			snprintf(p, end - p, "beta %u", 0x0000000f & v);
-		} else {
-			strlcpy(p, "release", end - p);
-		}
-
-		return buffer;
-	}
-
-	/*
-	 *	If OpenSSL major version is >= 3 us the
+	 *	OpenSSL major versions >= 3 (which FreeRADIUS requires) use the
 	 *	new version number layout
 	 *
 	 * 	OPENSSL_VERSION_NUMBER is a combination of the major, minor
