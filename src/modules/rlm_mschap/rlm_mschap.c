@@ -1785,17 +1785,11 @@ static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_r
 	return mschap_error(p_result, inst, request, *response->vp_octets, mschap_result, *mschap_version, auth_ctx->smb_ctrl, env_data);
 }
 
-static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_response(rlm_rcode_t *p_result,
-										  int *mschap_version,
-									    	  uint8_t nthashhash[static NT_DIGEST_LENGTH],
-									    	  rlm_mschap_t const *inst,
-									    	  request_t *request,
-									    	  fr_pair_t *smb_ctrl,
-									   	  fr_pair_t *nt_password,
-									    	  fr_pair_t *challenge,
-									    	  fr_pair_t *response,
-									    	  MSCHAP_AUTH_METHOD method,
-										  mschap_auth_call_env_t *env_data)
+static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *p_result, int *mschap_version,
+								   uint8_t nthashhash[static NT_DIGEST_LENGTH],
+								   rlm_mschap_t const *inst, request_t *request,
+								   mschap_auth_ctx_t *auth_ctx,
+								   fr_pair_t *challenge, fr_pair_t *response)
 {
 	uint8_t		mschap_challenge[16];
 	fr_pair_t	*user_name, *name_vp, *response_name, *peer_challenge_attr;
@@ -1805,6 +1799,7 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 	int		mschap_result;
 	rlm_rcode_t	rcode;
 	char		msch2resp[42];
+	mschap_auth_call_env_t	*env_data = auth_ctx->env_data;
 
 	*mschap_version = 2;
 
@@ -1873,7 +1868,7 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 	 *  indicates the auth process should continue directly to AD.
 	 *  Otherwise OD will determine auth success/fail.
 	 */
-	if (!nt_password && inst->open_directory) {
+	if (!auth_ctx->nt_password && inst->open_directory) {
 		RDEBUG2("No Password.NT available. Trying OpenDirectory Authentication");
 		od_mschap_auth(&rcode, request, challenge, user_name, env_data);
 		if (rcode != RLM_MODULE_NOOP) RETURN_MODULE_RCODE(rcode);
@@ -1901,14 +1896,14 @@ static unlang_action_t CC_HINT(nonnull(1,2,3,4,5,8,9)) mschap_process_v2_respons
 			      challenge->vp_octets,		/* our challenge */
 			      username_str, username_len);	/* user name */
 
-	mschap_result = do_mschap(inst, request, nt_password, mschap_challenge,
-				  response->vp_octets + 26, nthashhash, method, env_data);
+	mschap_result = do_mschap(inst, request, auth_ctx->nt_password, mschap_challenge,
+				  response->vp_octets + 26, nthashhash, auth_ctx->method, env_data);
 
 	/*
 	 *	Check for errors, and add MSCHAP-Error if necessary.
 	 */
 	mschap_error(&rcode, inst, request, *response->vp_octets,
-		     mschap_result, *mschap_version, smb_ctrl, env_data);
+		     mschap_result, *mschap_version, auth_ctx->smb_ctrl, env_data);
 	if (rcode != RLM_MODULE_OK) RETURN_MODULE_RCODE(rcode);
 
 #ifdef WITH_AUTH_WINBIND
@@ -2024,9 +2019,8 @@ static unlang_action_t mod_authenticate_resume(rlm_rcode_t *p_result, UNUSED int
 		mschap_process_v2_response(&rcode,
 					   &mschap_version, nthashhash,
 					   inst, request,
-					   auth_ctx->smb_ctrl, auth_ctx->nt_password,
-					   challenge, response,
-					   auth_ctx->method, auth_ctx->env_data);
+					   auth_ctx,
+					   challenge, response);
 		if (rcode != RLM_MODULE_OK) goto finish;
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
 		REDEBUG("&control.Auth-Type = %s set for a request that does not contain &%s or &%s attributes",
