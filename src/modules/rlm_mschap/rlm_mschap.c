@@ -1065,24 +1065,17 @@ ntlm_auth_err:
  *	authentication is in one place, and we can perhaps later replace
  *	it with code to call winbindd, or something similar.
  */
-static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
-						      request_t *request,
-						      fr_pair_t *password,
-						      uint8_t const *challenge,
-						      uint8_t const *response,
-						      uint8_t nthashhash[static NT_DIGEST_LENGTH],
-						      MSCHAP_AUTH_METHOD method,
-#ifdef WITH_AUTH_WINBIND
-						      mschap_auth_call_env_t *env_data)
-#else
-						      UNUSED mschap_auth_call_env_t *env_data)
-#endif
+static int CC_HINT(nonnull) do_mschap(rlm_mschap_t const *inst, request_t *request,
+				      mschap_auth_ctx_t *auth_ctx,
+				      uint8_t const *challenge, uint8_t const *response,
+				      uint8_t nthashhash[static NT_DIGEST_LENGTH])
 {
-	uint8_t	calculated[24];
+	uint8_t		calculated[24];
+	fr_pair_t	*password = auth_ctx->nt_password;
 
 	memset(nthashhash, 0, NT_DIGEST_LENGTH);
 
-	switch (method) {
+	switch (auth_ctx->method) {
 	case AUTH_INTERNAL:
 	case AUTH_AUTO:
 	/*
@@ -1093,7 +1086,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 		 *	No password: can't do authentication.
 		 */
 		if (!password) {
-			if (method == AUTH_AUTO) goto do_ntlm;
+			if (auth_ctx->method == AUTH_AUTO) goto do_ntlm;
 
 			REDEBUG("FAILED: No Password.NT/LM.  Cannot perform authentication");
 			return -1;
@@ -1244,11 +1237,11 @@ static int CC_HINT(nonnull (1, 2, 4, 5, 6)) do_mschap(rlm_mschap_t const *inst,
 	/*
 	 *	Process auth via the wbclient library
 	 */
-		return do_auth_wbclient(inst, request, challenge, response, nthashhash, env_data);
+		return do_auth_wbclient(inst, request, challenge, response, nthashhash, auth_ctx->env_data);
 #endif
 	default:
 		/* We should never reach this line */
-		RERROR("Internal error: Unknown mschap auth method (%d)", method);
+		RERROR("Internal error: Unknown mschap auth method (%d)", auth_ctx->method);
 		return -1;
 	}
 
@@ -1776,8 +1769,7 @@ static CC_HINT(nonnull) unlang_action_t mschap_process_response(rlm_rcode_t *p_r
 	/*
 	 *	Do the MS-CHAP authentication.
 	 */
-	mschap_result = do_mschap(inst, request, auth_ctx->nt_password, challenge->vp_octets,
-				  response->vp_octets + offset, nthashhash, auth_ctx->method, auth_ctx->env_data);
+	mschap_result = do_mschap(inst, request, auth_ctx, challenge->vp_octets, response->vp_octets + offset, nthashhash);
 
 	/*
 	 *	Check for errors, and add MSCHAP-Error if necessary.
@@ -1896,8 +1888,7 @@ static unlang_action_t CC_HINT(nonnull) mschap_process_v2_response(rlm_rcode_t *
 			      challenge->vp_octets,		/* our challenge */
 			      username_str, username_len);	/* user name */
 
-	mschap_result = do_mschap(inst, request, auth_ctx->nt_password, mschap_challenge,
-				  response->vp_octets + 26, nthashhash, auth_ctx->method, env_data);
+	mschap_result = do_mschap(inst, request, auth_ctx, mschap_challenge, response->vp_octets + 26, nthashhash);
 
 	/*
 	 *	Check for errors, and add MSCHAP-Error if necessary.
