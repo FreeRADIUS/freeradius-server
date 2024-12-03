@@ -53,15 +53,15 @@ int fr_openssl_version_consistent(void)
 
 	ssl_linked = OpenSSL_version_num();
 
+
 	/*
-	 *	Major and minor versions mismatch, that's bad.
+	 *	Major mismatch, that's bad.
 	 *
-	 *	We still allow mismatches between patch versions
-	 *	as they should be ABI compatible.
+	 *	For OpenSSL 3, the minor versions are API/ABI compatible.
 	 *
-	 *	This should work for >= 1.1.0 including 3.0.0
+	 *	https://openssl-library.org/policies/releasestrat/index.html
 	 */
-	if ((ssl_linked & 0xfff00000) != (ssl_built & 0xfff00000)) {
+	if ((ssl_linked & 0xff000000) != (ssl_built & 0xff000000)) {
 		ERROR("libssl version mismatch.  built: %lx linked: %lx",
 		      (unsigned long) ssl_built,
 		      (unsigned long) ssl_linked);
