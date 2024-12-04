@@ -157,15 +157,14 @@ static const conf_parser_t file_config[] = {
 
 	{ FR_CONF_OFFSET("mkdir", fr_bio_fd_config_t, mkdir) },
 
-
 	CONF_PARSER_TERMINATOR
 };
 
 static fr_table_ptr_sorted_t transport_names[] = {
 	{ L("file"),		file_config },
 	{ L("tcp"),		tcp_config },
-	{ L("unix"),		unix_config },
 	{ L("udp"),		udp_config },
+	{ L("unix"),		unix_config },
 };
 static size_t transport_names_len = NUM_ELEMENTS(transport_names);
 
@@ -178,6 +177,7 @@ static int transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF
 	conf_parser_t const *rules;
 	char const *name = cf_pair_value(cf_item_to_pair(ci));
 	fr_bio_fd_config_t *fd_config = parent;
+	CONF_SECTION *subcs;
 
 	rules = fr_table_value_by_str(transport_names, name, NULL);
 	if (!rules) {
@@ -185,7 +185,16 @@ static int transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF
 		return -1;
 	}
 
-	if (cf_section_rules_push(cf_item_to_section(cf_parent(ci)), rules) < 0) {
+	/*
+	 *	Find the relevant subsection.
+	 */
+	subcs = cf_section_find(cf_item_to_section(cf_parent(ci)), name, NULL);
+	if (!subcs) {
+		cf_log_perr(ci, "Failed finding transport configuration section %s { ... }", name);
+		return -1;
+	}
+
+	if (cf_section_rules_push(subcs, rules) < 0) {
 		cf_log_perr(ci, "Failed updating parse rules");
 		return -1;
 	}
@@ -199,7 +208,7 @@ static int transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF
 }
 
 const conf_parser_t fr_bio_fd_config[] = {
-	{ FR_CONF_OFFSET("transport", fr_bio_fd_config_t, socket_type), .func = transport_parse },
+	{ FR_CONF_OFFSET("transport", fr_bio_fd_config_t, transport), .func = transport_parse },
 
 	{ FR_CONF_OFFSET("async", fr_bio_fd_config_t, async), .dflt = "true" },
 
