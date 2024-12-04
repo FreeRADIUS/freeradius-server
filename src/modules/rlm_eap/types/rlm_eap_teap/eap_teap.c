@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <openssl/rand.h>
 
 #define PW_EAP_TEAP_TLV_IDENTITY (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY << 8))
-#define PW_EAP_TEAP_TLV_PAC (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_PAC << 8))
 
 #define EAPTLS_MPPE_KEY_LEN 32
 
@@ -216,69 +215,6 @@ static void eap_teap_append_eap_identity_request(REQUEST *request, tls_session_t
 	eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_EAP_PAYLOAD, true, sizeof(eap_packet), &eap_packet);
 }
 
-#if 0
-static void eap_teap_send_pac_tunnel(REQUEST *request, tls_session_t *tls_session)
-{
-	teap_tunnel_t			*t = tls_session->opaque;
-	eap_teap_pac_t				pac;
-	eap_teap_attr_pac_opaque_plaintext_t	opaque_plaintext;
-	int					alen, dlen;
-
-	memset(&pac, 0, sizeof(pac));
-	memset(&opaque_plaintext, 0, sizeof(opaque_plaintext));
-
-	RDEBUG("Sending Tunnel PAC");
-
-	pac.key.hdr.type = htons(EAP_TEAP_TLV_MANDATORY | PAC_INFO_PAC_KEY);
-	pac.key.hdr.length = htons(sizeof(pac.key.data));
-	rad_assert(sizeof(pac.key.data) % sizeof(uint32_t) == 0);
-	RANDFILL(pac.key.data);
-
-	pac.info.lifetime.hdr.type = htons(PAC_INFO_PAC_LIFETIME);
-	pac.info.lifetime.hdr.length = htons(sizeof(pac.info.lifetime.data));
-	pac.info.lifetime.data = htonl(time(NULL) + t->pac_lifetime);
-
-	pac.info.a_id.hdr.type = htons(EAP_TEAP_TLV_MANDATORY | PAC_INFO_A_ID);
-	pac.info.a_id.hdr.length = htons(sizeof(pac.info.a_id.data));
-	memcpy(pac.info.a_id.data, t->a_id, sizeof(pac.info.a_id.data));
-
-	pac.info.a_id_info.hdr.type = htons(PAC_INFO_A_ID_INFO);
-	pac.info.a_id_info.hdr.length = htons(sizeof(pac.info.a_id_info.data));
-	#define MIN(a,b) (((a)>(b)) ? (b) : (a))
-	alen = MIN(talloc_array_length(t->authority_identity) - 1, sizeof(pac.info.a_id_info.data));
-	memcpy(pac.info.a_id_info.data, t->authority_identity, alen);
-
-	pac.info.type.hdr.type = htons(EAP_TEAP_TLV_MANDATORY | PAC_INFO_PAC_TYPE);
-	pac.info.type.hdr.length = htons(sizeof(pac.info.type.data));
-	pac.info.type.data = htons(PAC_TYPE_TUNNEL);
-
-	pac.info.hdr.type = htons(EAP_TEAP_TLV_MANDATORY | PAC_INFO_PAC_INFO);
-	pac.info.hdr.length = htons(sizeof(pac.info.lifetime)
-				+ sizeof(pac.info.a_id)
-				+ sizeof(pac.info.a_id_info)
-				+ sizeof(pac.info.type));
-
-	memcpy(&opaque_plaintext.type, &pac.info.type, sizeof(opaque_plaintext.type));
-	memcpy(&opaque_plaintext.lifetime, &pac.info.lifetime, sizeof(opaque_plaintext.lifetime));
-	memcpy(&opaque_plaintext.key, &pac.key, sizeof(opaque_plaintext.key));
-
-
-	rad_assert(PAC_A_ID_LENGTH <= EVP_GCM_TLS_TAG_LEN);
-	memcpy(pac.opaque.aad, t->a_id, PAC_A_ID_LENGTH);
-	rad_assert(RAND_bytes(pac.opaque.iv, sizeof(pac.opaque.iv)) != 0);
-	dlen = eap_teap_encrypt((unsigned const char *)&opaque_plaintext, sizeof(opaque_plaintext),
-				t->a_id, PAC_A_ID_LENGTH, t->pac_opaque_key, pac.opaque.iv,
-				pac.opaque.data, pac.opaque.tag);
-	if (dlen < 0) return;
-
-	pac.opaque.hdr.type = htons(EAP_TEAP_TLV_MANDATORY | PAC_INFO_PAC_OPAQUE);
-	pac.opaque.hdr.length = htons(sizeof(pac.opaque) - sizeof(pac.opaque.hdr) - sizeof(pac.opaque.data) + dlen);
-
-	eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_MANDATORY | EAP_TEAP_TLV_PAC, true,
-			    sizeof(pac) - sizeof(pac.opaque.data) + dlen, &pac);
-}
-#endif
-
 /*
  * RFC7170 and the consequences of EID5768, EID5770 and EID5775 makes the path forward unclear,
  * so just do what hostapd does...which the IETF probably agree with anyway:
@@ -365,7 +301,6 @@ static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 		case EAP_TEAP_TLV_VENDOR_SPECIFIC:
 		case EAP_TEAP_TLV_EAP_PAYLOAD:
 		case EAP_TEAP_TLV_INTERMED_RESULT:
-		case EAP_TEAP_TLV_PAC:
 		case EAP_TEAP_TLV_CRYPTO_BINDING:
 			num[attr]++;
 			present |= 1 << attr;
@@ -497,7 +432,7 @@ unexpected:
 		}
 		break;
 	case PROVISIONING:
-		if (present & ~((1 << EAP_TEAP_TLV_PAC) | (1 << EAP_TEAP_TLV_RESULT))) {
+		if (present & ~(1 << EAP_TEAP_TLV_RESULT)) {
 			RDEBUG("Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
@@ -1279,27 +1214,6 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				talloc_free(value);
 			}
 			break;
-		case PW_EAP_TEAP_TLV_PAC:
-			switch ( ( vp->da->attr >> 16 )) {
-			case PAC_INFO_PAC_ACK:
-				if (vp->vp_integer == EAP_TEAP_TLV_RESULT_SUCCESS) {
-					t->pac.expires = UINT32_MAX;
-					t->pac.expired = false;
-				}
-				break;
-			case PAC_INFO_PAC_TYPE:
-				if (vp->vp_integer != PAC_TYPE_TUNNEL) {
-					RDEBUG("only able to serve Tunnel PAC's, ignoring request");
-					break;
-				}
-				t->pac.send = true;
-				break;
-			default:
-				value = vp_aprints(request->packet, vp, '"');
-				RDEBUG2("ignoring unknown EAP-TEAP-PAC-TLV %s", value);
-				talloc_free(value);
-			}
-			break;
 		default:
 			value = vp_aprints(request->packet, vp, '"');
 			RDEBUG2("ignoring EAP-TEAP TLV %s", value);
@@ -1384,21 +1298,13 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 			/* FIXME enforce MSCHAPv2 - RFC 7170 */
 			RDEBUG2("Using anonymous provisioning");
 			t->mode = EAP_TEAP_PROVISIONING_ANON;
-			t->pac.send = true;
 		} else {
 			if (SSL_session_reused(tls_session->ssl)) {
-				RDEBUG("Session Resumed from PAC");
+				RDEBUG("Session Resumed");
 				t->mode = EAP_TEAP_NORMAL_AUTH;
 			} else {
 				RDEBUG2("Using authenticated provisioning");
 				t->mode = EAP_TEAP_PROVISIONING_AUTH;
-			}
-
-			/*
-			 *	Send a new pac at ~0.6 times the lifetime.
-			 */
-			if (!t->pac.expires || t->pac.expired || t->pac.expires < (time(NULL) + (t->pac_lifetime >> 1) + (t->pac_lifetime >> 3))) {
-				t->pac.send = true;
 			}
 		}
 
@@ -1438,35 +1344,9 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 			t->result_final = true;
 			eap_teap_append_result(tls_session, code);
 		}
-
-#if 0
-		if (t->pac.send) {
-			RDEBUG("Peer requires new PAC");
-			eap_teap_send_pac_tunnel(request, tls_session);
-			code = PW_CODE_ACCESS_CHALLENGE;
-			break;
-		}
-#endif
-
 		/* FALL-THROUGH */
 
 	case COMPLETE:
-#if 0
-		/*
-		 * RFC 7170 - Network Access after EAP-TEAP Provisioning
-		 */
-		if (t->pac.type && t->pac.expired) {
-			REDEBUG("Rejecting expired PAC.");
-			code = PW_CODE_ACCESS_REJECT;
-			break;
-		}
-
-		if (t->mode == EAP_TEAP_PROVISIONING_ANON) {
-			REDEBUG("Rejecting unauthenticated provisioning");
-			code = PW_CODE_ACCESS_REJECT;
-			break;
-		}
-#endif
 		/*
 		 * TEAP wants to use it's own MSK, so boo to eap_tls_gen_mppe_keys()
 		 */

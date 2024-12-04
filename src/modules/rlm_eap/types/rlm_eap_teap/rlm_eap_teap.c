@@ -56,9 +56,7 @@ typedef struct rlm_eap_teap_t {
 	 */
 	bool req_client_cert;
 
-	uint32_t pac_lifetime;
 	char const *authority_identity;
-	char const *pac_opaque_key;
 
 	/*
 	 *	Virtual server for inner tunnel session.
@@ -73,9 +71,7 @@ static CONF_PARSER module_config[] = {
 	{ "copy_request_to_tunnel", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_teap_t, copy_request_to_tunnel), "no" },
 	{ "use_tunneled_reply", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_teap_t, use_tunneled_reply), "no" },
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_teap_t, req_client_cert), "no" },
-	{ "pac_lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_teap_t, pac_lifetime), "604800" },
 	{ "authority_identity", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_teap_t, authority_identity), NULL },
-	{ "pac_opaque_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_teap_t, pac_opaque_key), NULL },
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, virtual_server), NULL },
 	CONF_PARSER_TERMINATOR
 };
