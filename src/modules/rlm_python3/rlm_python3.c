@@ -1050,7 +1050,7 @@ static void *dlopen_libpython(int flags)
 /*
  * creates a module "radiusd"
  */
-#if PY_MINOR_VERSION > 9
+#if PY_MINOR_VERSION >= 9
 PyMODINIT_FUNC PyInit_radiusd(void);
 PyMODINIT_FUNC PyInit_radiusd(void)
 #else
