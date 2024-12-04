@@ -242,9 +242,9 @@ jobs:
 #    the branch.  This is the default if no suffix is provided.
 #
   merge-upstream:
+    if: ${{ ( github.repository_owner == 'FreeRADIUS' ) && ( github.event_name == 'push' ) && (startsWith(github.ref, format('refs/heads/developer/{0}', github.actor))) }}
     needs:
       - ci
-    if: ( github.event_name == 'push' ) && ( github.repository_owner == 'FreeRADIUS' ) && (startsWith(github.ref, "refs/heads/developer/${{ github.actor }}"))
     runs-on: ubuntu-latest
     name: "Merge into upstream"
     steps:
