@@ -646,6 +646,7 @@ VALUE_PAIR	*fr_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
 void		fr_pair_delete_by_num(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		fr_pair_delete_by_da(VALUE_PAIR **first, DICT_ATTR const *da);
+void		fr_pair_delete(VALUE_PAIR **first, VALUE_PAIR *vp);
 void		fr_pair_add(VALUE_PAIR **, VALUE_PAIR *);
 void		fr_pair_prepend(VALUE_PAIR **, VALUE_PAIR *);
 void		fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *add);

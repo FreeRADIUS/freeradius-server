@@ -259,6 +259,29 @@ void fr_pair_delete_by_da(VALUE_PAIR **first, DICT_ATTR const *da)
 	}
 }
 
+/** Delete matching pair
+ *
+ * @param[in,out] first VP in list.
+ * @param[in] vp to delete
+ */
+void fr_pair_delete(VALUE_PAIR **first, VALUE_PAIR *vp)
+{
+	VALUE_PAIR *i, *next;
+	VALUE_PAIR **last = first;
+
+	for(i = *first; i; i = next) {
+		VERIFY_VP(i);
+		next = i->next;
+		if (i == vp) {
+			*last = next;
+			talloc_free(i);
+			break;
+		} else {
+			last = &i->next;
+		}
+	}
+}
+
 /** Add a VP to the end of the list.
  *
  * Locates the end of 'first', and links an additional VP 'add' at the end.
