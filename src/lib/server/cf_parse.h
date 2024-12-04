@@ -307,8 +307,8 @@ _Generic(&(_ct), \
  * @param[in] _field		containing the sub-struct to populate.
  * @param[in] _subcs		conf_parser_t to include in-line in this section
  */
-#  define FR_CONF_OFFSET_REF(__struct, _field, _subcs) \
-	.name1 = CF_IDENT_NONE, \
+#  define FR_CONF_OFFSET_REF(_struct, _field, _subcs) \
+	.name1 = CF_IDENT_ANY, \
 	.flags = CONF_FLAG_REF, \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs
