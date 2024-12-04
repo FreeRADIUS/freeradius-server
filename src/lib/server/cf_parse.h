@@ -300,6 +300,19 @@ _Generic(&(_ct), \
 	.offset = offsetof(_struct, _field), \
 	.subcs = _subcs
 
+/** conf_parser_t which populates a sub-struct using a CONF_SECTION
+ *
+ * @param[in] _name		of the CONF_SECTION to search for.
+ * @param[in] _struct		containing the sub-struct to populate.
+ * @param[in] _field		containing the sub-struct to populate.
+ * @param[in] _subcs		conf_parser_t to include in-line in this section
+ */
+#  define FR_CONF_OFFSET_REF(__struct, _field, _subcs) \
+	.name1 = CF_IDENT_NONE, \
+	.flags = CONF_FLAG_REF, \
+	.offset = offsetof(_struct, _field), \
+	.subcs = _subcs
+
 /** conf_parser_t which parses a single CONF_PAIR producing a single global result
  *
  * @param[in] _name		of the CONF_PAIR to search for.
@@ -427,6 +440,7 @@ typedef enum CC_HINT(flag_enum) {
 	CONF_FLAG_OK_MISSING     	= (1 << 22), 			//!< OK if it's missing
 	CONF_FLAG_HIDDEN		= (1 << 23),			//!< Used by scripts to omit items from the
 									///< generated documentation.
+	CONF_FLAG_REF			= (1 << 24),			//!< reference another conf_parser_t inline in this one
 } conf_parser_flags_t;
 DIAG_ON(attributes)
 

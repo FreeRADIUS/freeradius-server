@@ -723,6 +723,9 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 {
 	CONF_PAIR *cp;
 
+	/*
+	 *	This rule refers to a named subsection
+	 */
 	if ((rule->flags & CONF_FLAG_SUBSECTION)) {
 		char const	*name2 = NULL;
 		CONF_SECTION	*subcs;
@@ -782,6 +785,14 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 		subcs = cf_section_alloc(cs, cs, rule->name1, name2);
 		if (!subcs) return -1;
 
+		return 0;
+	}
+
+	/*
+	 *	This rule refers to another conf_parse_t which is included in-line in
+	 *	this section.
+	 */
+	if ((rule->flags & CONF_FLAG_REF) != 0) {
 		return 0;
 	}
 
@@ -971,7 +982,7 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 	return 0;
 }
 
-static int cf_section_parse_rule(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, conf_parser_t *rule)
+static int cf_section_parse_rule(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, conf_parser_t const *rule)
 {
 	int		ret;
 	bool		*is_set = NULL;
@@ -999,7 +1010,40 @@ static int cf_section_parse_rule(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, 
 	 */
 	if (rule->flags & CONF_FLAG_SUBSECTION) {
 		return cf_subsection_parse(ctx, data, base, cs, rule);
-	} /* else it's a CONF_PAIR */
+	}
+
+	/*
+	 *	Ignore this rule if it's a reference, as the
+	 *	rules it points to have been pushed by the
+	 *	above function.
+	 */
+	if ((rule->flags & CONF_FLAG_REF) != 0) {
+		conf_parser_t const *rule_p;
+		uint8_t *sub_base = base;
+
+		fr_assert(rule->subcs != NULL);
+
+		sub_base += rule->offset;
+
+		for (rule_p = rule->subcs; rule_p->name1; rule_p++) {
+			if (rule_p->flags & CONF_FLAG_DEPRECATED) continue;	/* Skip deprecated */
+
+			ret = cf_section_parse_rule(ctx, sub_base, cs, rule_p);
+			if (ret < 0) return ret;
+		}
+
+		/*
+		 *	Ensure we have a proper terminator, type so we catch
+		 *	missing terminators reliably
+		 */
+		fr_cond_assert(rule_p->type == conf_term.type);
+
+		return 0;
+	}
+
+	/*
+	 *	Else it's a CONF_PAIR
+	 */
 
 	/*
 	 *	Pair either needs an output destination or
