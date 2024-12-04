@@ -118,7 +118,7 @@ else
 			#include <Python.h>
 		]],
 		[[
-			Py_SetProgramName("test")
+			Py_IsInitialized()
 		]])],
 		[LINKS="yes"],
 		[LINKS="no"]
