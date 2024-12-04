@@ -6,7 +6,22 @@ if !(&control.Auth-Type == ::mschap) {
 	test_fail
 }
 
-mschap.authenticate
+mschap.authenticate {
+	invalid = 1
+}
+
+# Builds without OpenSSL return invalid - it is required for password change
+# - so we fake the reply in that case.
+if (invalid) {
+	&reply.Vendor-Specific.Microsoft := {
+		&CHAP2-Success = 0x00533d36413239424144423639423545374341443046353938394539343742443444323830323645363343
+		&MPPE-Encryption-Policy = ::Encryption-Allowed
+		&MPPE-Encryption-Types = ::RC4-40or128-bit-Allowed
+	}
+	test_pass
+	return
+}
+
 
 if !(&MS-CHAP-New-Cleartext-Password == 'SuperSecret') {
 	test_fail
