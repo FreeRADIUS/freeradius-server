@@ -684,6 +684,7 @@ static int python_function_load(module_inst_ctx_t const *mctx, python_func_def_t
 		goto error;
 	}
 
+	DEBUG2("Loaded function '%s.%s'", def->module_name, def->function_name);
 	return 0;
 }
 
