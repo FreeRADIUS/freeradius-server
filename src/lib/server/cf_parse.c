@@ -971,6 +971,83 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
 	return 0;
 }
 
+static int cf_section_parse_rule(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs, conf_parser_t *rule)
+{
+	int		ret;
+	bool		*is_set = NULL;
+	void		*data = NULL;
+
+	/*
+	 *	Ignore ON_READ parse rules if there's no subsequent
+	 *	parse functions.
+	 */
+	if (!rule->func && rule->on_read) return 0;
+
+	/*
+	 *	Pre-allocate the config structure to hold default values
+	 */
+	if (cf_section_parse_init(cs, base, rule) < 0) return -1;
+
+	if (rule->data) {
+		data = rule->data; /* prefer this. */
+	} else if (base) {
+		data = ((uint8_t *)base) + rule->offset;
+	}
+
+	/*
+	 *	Handle subsections specially
+	 */
+	if (rule->flags & CONF_FLAG_SUBSECTION) {
+		return cf_subsection_parse(ctx, data, base, cs, rule);
+	} /* else it's a CONF_PAIR */
+
+	/*
+	 *	Pair either needs an output destination or
+	 *	there needs to be a function associated with
+	 *	it.
+	 */
+	if (!data && !rule->func) {
+		cf_log_err(cs, "Rule doesn't specify output destination");
+		return -1;
+	}
+
+	/*
+	 *	Get pointer to where we need to write out
+	 *	whether the pointer was set.
+	 */
+	if (rule->flags & CONF_FLAG_IS_SET) {
+		is_set = rule->data ? rule->is_set_ptr : ((uint8_t *)base) + rule->is_set_offset;
+	}
+
+	/*
+	 *	Parse the pair we found, or a default value.
+	 */
+	ret = cf_pair_parse_internal(ctx, data, base, cs, rule);
+	switch (ret) {
+	case 1:		/* Used default (or not present) */
+		if (is_set) *is_set = false;
+		ret = 0;
+		break;
+
+	case 0:		/* OK */
+		if (is_set) *is_set = true;
+		break;
+
+	case -1:	/* Parse error */
+		break;
+
+	case -2:	/* Deprecated CONF ITEM */
+		if (((rule + 1)->offset && ((rule + 1)->offset == rule->offset)) ||
+		    ((rule + 1)->data && ((rule + 1)->data == rule->data))) {
+			cf_log_err(cs, "Replace \"%s\" with \"%s\"", rule->name1,
+				   (rule + 1)->name1);
+		}
+		break;
+	}
+
+	return ret;
+}
+
 /** Parse a configuration section into user-supplied variables
  *
  * @param[in] ctx		to allocate any strings, or additional structures in.
@@ -984,8 +1061,6 @@ static int cf_subsection_parse(TALLOC_CTX *ctx, void *out, void *base, CONF_SECT
  */
 int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 {
-	int		ret = 0;
-	void		*data = NULL;
 	CONF_DATA const	*rule_cd = NULL;
 
 	if (!cs->name2) {
@@ -995,83 +1070,16 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 	}
 
 	/*
-	 *	Loop over all the children of the section
+	 *	Loop over all the child rules of the section
 	 */
 	while ((rule_cd = cf_data_find_next(cs, rule_cd, conf_parser_t, CF_IDENT_ANY))) {
+		int		ret;
 		conf_parser_t	*rule;
-		bool		*is_set = NULL;
 
 		rule = cf_data_value(rule_cd);
 
-		/*
-		 *	Ignore ON_READ parse rules if there's no subsequent
-		 *	parse functions.
-		 */
-		if (!rule->func && rule->on_read) continue;
-
-		/*
-		 *	Pre-allocate the config structure to hold default values
-		 */
-		if (cf_section_parse_init(cs, base, rule) < 0) return -1;
-
-		if (rule->data) {
-			data = rule->data; /* prefer this. */
-		} else if (base) {
-			data = ((uint8_t *)base) + rule->offset;
-		}
-
-		/*
-		 *	Handle subsections specially
-		 */
-		if (rule->flags & CONF_FLAG_SUBSECTION) {
-			ret = cf_subsection_parse(ctx, data, base, cs, rule);
-			if (ret < 0) goto finish;
-			continue;
-		} /* else it's a CONF_PAIR */
-
-		/*
-		 *	Pair either needs an output destination or
-		 *	there needs to be a function associated with
-		 *	it.
-		 */
-		if (!data && !rule->func) {
-			cf_log_err(cs, "Rule doesn't specify output destination");
-			return -1;
-		}
-
-		/*
-		 *	Get pointer to where we need to write out
-		 *	whether the pointer was set.
-		 */
-		if (rule->flags & CONF_FLAG_IS_SET) {
-			is_set = rule->data ? rule->is_set_ptr : ((uint8_t *)base) + rule->is_set_offset;
-		}
-
-		/*
-		 *	Parse the pair we found, or a default value.
-		 */
-		ret = cf_pair_parse_internal(ctx, data, base, cs, rule);
-		switch (ret) {
-		case 1:		/* Used default (or not present) */
-			if (is_set) *is_set = false;
-			ret = 0;
-			break;
-
-		case 0:		/* OK */
-			if (is_set) *is_set = true;
-			break;
-
-		case -1:	/* Parse error */
-			goto finish;
-
-		case -2:	/* Deprecated CONF ITEM */
-			if (((rule + 1)->offset && ((rule + 1)->offset == rule->offset)) ||
-			    ((rule + 1)->data && ((rule + 1)->data == rule->data))) {
-				cf_log_err(cs, "Replace \"%s\" with \"%s\"", rule->name1,
-					   (rule + 1)->name1);
-			}
-			goto finish;
-		}
+		ret = cf_section_parse_rule(ctx, base, cs, rule);
+		if (ret < 0) return ret;
 	}
 
 	cs->base = base;
@@ -1084,8 +1092,7 @@ int cf_section_parse(TALLOC_CTX *ctx, void *base, CONF_SECTION *cs)
 
 	cf_log_debug(cs, "%.*s}", SECTION_SPACE(cs), parse_spaces);
 
-finish:
-	return ret;
+	return 0;
 }
 
 /*
