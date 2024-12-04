@@ -132,6 +132,8 @@ typedef struct teap_tunnel_t {
 	uint8_t			emsk[EAP_TEAP_EMSK_LEN];
 
 	int			default_method;
+	int			user_method;
+	int			machine_method;
 
 	bool			result_final;
 	bool			auto_chain;		//!< do we automatically chain identities

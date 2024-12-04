@@ -1149,6 +1149,23 @@ eap {
 
 	#	default_eap_type = mschapv2
 
+		#
+		#  Set the EAP type for user / machine authentication.
+		#
+		#  If set, these values over-ride "default_eap_type"
+		#
+		#  These values can be over-ridden at run time by setting
+		#
+		#	&session-state:TEAP-Type-User = ...
+		#
+		#  and
+		#	&session-state:TEAP-Type-Machine = ...
+		#
+		#  The values for those attributes are the same as for EAP-Type.
+		#
+	#	user_eap_type = mschapv2
+	#	machine_eap_type = tls
+
 		#  If 'cipher_list' is set here, it will over-ride the
 		#  'cipher_list' configuration from the 'tls-common'
 		#  configuration.  The EAP-TEAP module has it's own

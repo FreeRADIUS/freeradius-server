@@ -929,8 +929,9 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	PW_CODE			code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	VALUE_PAIR		*vp;
-	teap_tunnel_t	*t;
+	teap_tunnel_t		*t;
 	REQUEST			*fake;
+	int			eap_method = 0;
 
 	RDEBUG("Processing received EAP Payload");
 
@@ -1006,13 +1007,77 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	if (t->stage == AUTHENTICATION) {
 		VALUE_PAIR *tvp;
 
+		eap_method = t->default_method;
+
 		RDEBUG2("AUTHENTICATION");
 
-		if (t->default_method) {
+		/*
+		 *	See which method we're doing.  If we're told to do a particular kind of identity
+		 *	check, AND there's not any EAP-Type already set, THEN do it.
+		 */
+		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+		if (vp && (fr_pair_find_by_num(request->config, PW_EAP_TYPE, 0, TAG_ANY)) != NULL) {
+			VALUE_PAIR *teap_type;
+
+			/*
+			 *	User auth.  Prefer:
+			 *		* values set by the admin for this session.
+			 *	 	* otherwise configured in the TEAP module
+			 *		* otherwise default_eap_type
+			 *		* otherwise ???
+			 */
+			if (vp->vp_short == 1) {
+				teap_type = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_USER, 0, TAG_ANY);
+				if (teap_type) {
+					eap_method = teap_type->vp_integer;
+
+					RDEBUG("Setting User EAP-Type = %s from &config:TEAP-Type-User",
+					       eap_type2name(eap_method));
+
+				} else if (t->user_method) {
+					eap_method = t->user_method;
+
+					RDEBUG("Setting User EAP-Type = %s from TEAP configuration user_eap_type",
+					       eap_type2name(eap_method));
+
+				} else if (eap_method) {
+					RDEBUG("Setting User EAP-Type = %s from TEAP configuration default_eap_type",
+					       eap_type2name(eap_method));
+
+				} else {
+					RWDEBUG("Not setting User EAP-Type");
+				}
+			}
+
+			if (vp->vp_short == 2) {
+				teap_type = fr_pair_find_by_num(request->state, PW_TEAP_TYPE_MACHINE, 0, TAG_ANY);
+				if (teap_type) {
+					eap_method = teap_type->vp_integer;
+
+					RDEBUG("Setting Machine EAP-Type = %s from &config:TEAP-Type-Machine",
+					       eap_type2name(eap_method));
+
+				} else if (t->machine_method) {
+					eap_method = t->machine_method;
+
+					RDEBUG("Setting Machine EAP-Type = %s from TEAP configuration machine_eap_type",
+					       eap_type2name(eap_method));
+
+				} else if (eap_method) {
+					RDEBUG("Using Machine EAP-Type = %s from TEAP configuration default_eap_type",
+					       eap_type2name(eap_method));
+
+				} else {
+					RWDEBUG("Not setting Machine EAP-Type");
+				}
+			}
+		}
+
+		if (eap_method) {
 			/*
 			 *	RFC 7170 - Authenticating Using EAP-TEAP-MSCHAPv2
 			 */
-			if (t->default_method == PW_EAP_MSCHAPV2 && t->mode == EAP_TEAP_PROVISIONING_ANON) {
+			if (eap_method == PW_EAP_MSCHAPV2 && t->mode == EAP_TEAP_PROVISIONING_ANON) {
 				tvp = fr_pair_afrom_num(fake, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
 				//fr_pair_value_memcpy(tvp, t->keyblock->server_challenge, CHAP_VALUE_LENGTH);
 				fr_pair_add(&fake->config, tvp);
@@ -1021,6 +1086,13 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 				//fr_pair_value_memcpy(tvp, t->keyblock->client_challenge, CHAP_VALUE_LENGTH);
 				fr_pair_add(&fake->config, tvp);
 			}
+
+			/*
+			 *	Set the configuration to force a particular EAP-Type.
+			 */
+			vp = pair_make_config("EAP-Type", NULL, T_OP_SET);
+			if (vp) vp->vp_integer = eap_method;
+
 		}
 	}
 

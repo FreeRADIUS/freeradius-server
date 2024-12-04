@@ -40,6 +40,18 @@ typedef struct rlm_eap_teap_t {
 	int default_method;
 
 	/*
+	 *	User tunneled EAP type
+	 */
+	char const *user_method_name;
+	int user_method;
+
+	/*
+	 *	Machine tunneled EAP type
+	 */
+	char const *machine_method_name;
+	int machine_method;
+
+	/*
 	 *	Use the reply attributes from the tunneled session in
 	 *	the non-tunneled reply to the client.
 	 */
@@ -78,6 +90,9 @@ static CONF_PARSER module_config[] = {
 	{ "authority_identity", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_teap_t, authority_identity), NULL },
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, virtual_server), NULL },
 	{ "identity_types", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, identity_type_name), NULL },
+
+	{ "user_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, user_method_name), },
+	{ "machine_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, machine_method_name), },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -113,6 +128,24 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		if (inst->default_method < 0) {
 			ERROR("rlm_eap_teap: Unknown EAP type %s",
 			      inst->default_method_name);
+			return -1;
+		}
+	}
+
+	if (inst->user_method_name && *inst->user_method_name) {
+		inst->user_method = eap_name2type(inst->user_method_name);
+		if (inst->user_method < 0) {
+			ERROR("rlm_eap_teap: Unknown User EAP type %s",
+			      inst->user_method_name);
+			return -1;
+		}
+	}
+
+	if (inst->machine_method_name && *inst->machine_method_name) {
+		inst->machine_method = eap_name2type(inst->machine_method_name);
+		if (inst->machine_method < 0) {
+			ERROR("rlm_eap_teap: Unknown Machine EAP type %s",
+			      inst->machine_method_name);
 			return -1;
 		}
 	}
@@ -184,6 +217,8 @@ static teap_tunnel_t *teap_alloc(TALLOC_CTX *ctx, rlm_eap_teap_t *inst)
 
 	t->received_version = -1;
 	t->default_method = inst->default_method;
+	t->user_method = inst->user_method;
+	t->machine_method = inst->machine_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 	t->virtual_server = inst->virtual_server;
