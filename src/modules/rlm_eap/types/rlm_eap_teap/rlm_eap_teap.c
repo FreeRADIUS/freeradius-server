@@ -91,8 +91,8 @@ static CONF_PARSER module_config[] = {
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, virtual_server), NULL },
 	{ "identity_types", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, identity_type_name), NULL },
 
-	{ "user_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, user_method_name), },
-	{ "machine_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, machine_method_name), },
+	{ "user_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, user_method_name), .dflt = "" },
+	{ "machine_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, machine_method_name), .dflt = "" },
 	CONF_PARSER_TERMINATOR
 };
 
