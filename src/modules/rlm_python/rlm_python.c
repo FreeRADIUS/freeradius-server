@@ -960,6 +960,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		case RLM_MODULE_REJECT:
 		error:
 			fr_cond_assert(PyEval_SaveThread() == inst->interpreter);
+			python_interpreter_free(inst, inst->interpreter);
 			return -1;
 
 		default:
