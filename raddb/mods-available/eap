@@ -1173,6 +1173,25 @@ eap {
 		#
 	#	authority_identity = "1234"
 
+
+		#
+		#  Automatically go through the workflow of first machine, then user
+		#  authentication.
+		#
+		#  allowed values:  	"machine,user"
+		#  	   		"user,machine"
+		#			"user"
+		#			"machine"
+		#
+		#  If this isn't set, then TEAP likely won't work.
+		#
+		#  This configuration sets &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type with the
+		#  relevant values.  The TEAP module then picks those values, in order, to authenticate the
+		#  chosen identity.  You can set &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
+		#  manually, but that is substantially more complicated.
+		#
+	#	identity_types = "machine,user"
+
 		#  Same as for TTLS, PEAP, etc.
 		#
 	#	virtual_server = inner-tunnel

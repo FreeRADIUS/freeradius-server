@@ -46,6 +46,8 @@ RCSIDH(eap_teap_h, "$Id$")
 #define EAP_TEAP_TLV_RESULT_SUCCESS		1
 #define EAP_TEAP_TLV_RESULT_FAILURE		2
 
+#define PW_EAP_TEAP_TLV_IDENTITY (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY << 8))
+
 typedef enum eap_teap_stage_t {
 	TLS_SESSION_HANDSHAKE = 0,
 	AUTHENTICATION,
@@ -132,6 +134,7 @@ typedef struct teap_tunnel_t {
 	int			default_method;
 
 	bool			result_final;
+	bool			auto_chain;		//!< do we automatically chain identities
 
 #ifdef WITH_PROXY
 	bool		proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated

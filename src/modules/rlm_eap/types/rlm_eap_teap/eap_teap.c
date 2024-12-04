@@ -29,8 +29,6 @@ RCSID("$Id$")
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 
-#define PW_EAP_TEAP_TLV_IDENTITY (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY << 8))
-
 #define EAPTLS_MPPE_KEY_LEN 32
 
 #define RDEBUGHEX(_label, _data, _length) \
@@ -853,6 +851,15 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			/* RFC7170, Appendix C.6 */
 			eap_teap_append_identity(tls_session, vp->vp_short);
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
+
+			/*
+			 *	Delete the &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
+			 *	which we found.
+			 *
+			 *	If there are more than one, then the
+			 *	next round will pick up the next one.
+			 */
+			if (t->auto_chain) fr_pair_delete(&request->state, vp);
 
 			goto challenge;
 		}

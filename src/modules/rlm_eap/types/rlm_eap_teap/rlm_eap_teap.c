@@ -58,6 +58,10 @@ typedef struct rlm_eap_teap_t {
 
 	char const *authority_identity;
 
+	uint16_t	identity_type[2];
+
+	char const	*identity_type_name;
+
 	/*
 	 *	Virtual server for inner tunnel session.
 	 */
@@ -73,6 +77,7 @@ static CONF_PARSER module_config[] = {
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_teap_t, req_client_cert), "no" },
 	{ "authority_identity", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_eap_teap_t, authority_identity), NULL },
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, virtual_server), NULL },
+	{ "identity_types", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, identity_type_name), NULL },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -108,7 +113,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		if (inst->default_method < 0) {
 			ERROR("rlm_eap_teap: Unknown EAP type %s",
 			      inst->default_method_name);
-		return -1;
+			return -1;
 		}
 	}
 
@@ -121,6 +126,48 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	if (!inst->tls_conf) {
 		ERROR("rlm_eap_teap: Failed initializing SSL context");
 		return -1;
+	}
+
+	/*
+	 *	Parse default identities
+	 */
+	if (inst->identity_type_name) {
+		char const *p;
+		int i;
+
+		p = inst->identity_type_name;
+		i = 0;
+
+		while (*p) {
+			while (isspace((uint8_t) *p)) p++;
+
+			if (strncasecmp(p, "user", 5) == 0) {
+				inst->identity_type[i] = 2;
+				p += 5;
+
+			} else if (strncasecmp(p, "machine", 7) == 0) {
+				inst->identity_type[i] = 2;
+				p += 7;
+			} else {
+			invalid_identity:
+				cf_log_err_cs(cs, "Invalid value in identity_types = '%s'",
+					      inst->identity_type_name);
+				return -1;
+			}
+
+			i++;
+
+			while (isspace((uint8_t) *p)) p++;
+
+			/*
+			 *	We only support two things.
+			 */
+			if ((i == 2) && *p) goto invalid_identity;
+
+			if (!*p) break;
+
+			if (*p != ',') goto invalid_identity;
+		}
 	}
 
 	return 0;
@@ -206,6 +253,48 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 
 	vp = fr_pair_make(ssn, NULL, "FreeRADIUS-EAP-TEAP-Authority-ID", inst->authority_identity, T_OP_EQ);
 	fr_pair_add(&ssn->outer_tlvs, vp);
+
+	/*
+	 *	Be nice about identity types.
+	 */
+	vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+	if (vp) {
+		RDEBUG("Found &session-state:FreeRADIUS-EAP-TEAP-Identity-Type, not setting from configuration");
+
+	} else if (!inst->identity_type[0]) {
+		RWDEBUG("No &session-state:FreeRADIUS-EAP-TEAP-Identity-Type was found.");
+		RWDEBUG("No 'identity_types' was set in the configuration.  TEAP will likely not work.");
+
+	} else {
+		teap_tunnel_t *t;
+
+		fr_assert(ssn->opaque == NULL);
+
+		ssn->opaque = teap_alloc(ssn, inst);
+		t = (teap_tunnel_t *) ssn->opaque;
+
+		/*
+		 *	We automatically add &session-state:FreeRADIUS-EAP-TEAP-Identity-Type
+		 *	to control the flow.
+		 */
+		t->auto_chain = true;
+
+		vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_SET);
+		if (vp) {
+			vp->vp_short = inst->identity_type[0];
+			RDEBUG("Setting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
+			       (vp->vp_short == 1) ? "User" : "Machine");
+		}
+
+		if (inst->identity_type[1]) {
+			vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_ADD);
+			if (vp) {
+				vp->vp_short = inst->identity_type[1];
+				RDEBUG("Setting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
+				       (vp->vp_short == 1) ? "User" : "Machine");
+			}
+		}
+	}
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
