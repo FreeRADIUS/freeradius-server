@@ -1183,6 +1183,8 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	for (vp = fr_cursor_init(&cursor, &teap_vps); vp; vp = fr_cursor_next(&cursor)) {
 		char *value;
 		DICT_ATTR const *parent_da = NULL;
+		VALUE_PAIR *vp_config;
+
 		parent_da = dict_parent(vp->da->attr, vp->da->vendor);
 		if (parent_da == NULL || vp->da->vendor != VENDORPEC_FREERADIUS ||
 			((vp->da->attr & 0xff) != PW_FREERADIUS_EAP_TEAP_TLV)) {
@@ -1197,6 +1199,16 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 			switch (vp->da->attr >> 8) {
 			case EAP_TEAP_TLV_IDENTITY:
 				vp_type = vp;
+
+				vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+				if (vp_config && (vp_config->vp_short != vp->vp_short)) {
+					RWDEBUG("We requested &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %s",
+						(vp_config->vp_short == 1) ? "User" : "Machine");
+					RWDEBUG("But the supplicant returned FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %u",
+						vp->vp_short);
+					RWDEBUG("Authentication will likely fail.");
+				}
+
 				break;
 			case EAP_TEAP_TLV_EAP_PAYLOAD:
 				vp_eap = vp;
