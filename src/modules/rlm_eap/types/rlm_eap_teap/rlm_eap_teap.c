@@ -456,8 +456,8 @@ phase2:
 	if (!tls_session->opaque) {
 		tls_session->opaque = teap_alloc(tls_session, inst);
 		t = (teap_tunnel_t *) tls_session->opaque;
-		if (t->received_version < 0) t->received_version = handler->eap_ds->response->type.data[0] & 0x07;
 	}
+	if (t->received_version < 0) t->received_version = handler->eap_ds->response->type.data[0] & 0x07;
 
 	/*
 	 *	Process the TEAP portion of the request.
