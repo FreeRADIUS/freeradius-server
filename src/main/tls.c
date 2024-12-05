@@ -3306,23 +3306,29 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		tls_session_t *ssn = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		STACK_OF(X509)* untrusted = NULL;
+		int num_untrusted = X509_STORE_CTX_get_num_untrusted(ctx);
 #endif
 
 		rad_assert(ssn != NULL);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
 		/*
-		 *	See if there are any untrusted certificates.
-		 *	If so, complain about them.
+		 *	"Untrusted" certificates are those presented by the client
+		 *	so we always expect there to be one.
+		 *
+		 *	If there's more than one, then the client is presenting
+		 *	intermediate CAs as well.
 		 */
-		untrusted = X509_STORE_CTX_get0_untrusted(ctx);
-		if (untrusted) {
+		if (num_untrusted > 1) {
+			untrusted = X509_STORE_CTX_get0_untrusted(ctx);
 			if (conf->disallow_untrusted || RDEBUG_ENABLED2) {
 				int  i;
 
-				WARN("Certificate chain - %i cert(s) untrusted",
-				     X509_STORE_CTX_get_num_untrusted(ctx));
-				for (i = sk_X509_num(untrusted); i > 0 ; i--) {
+				WARN("Certificate chain - %i intermediate CA cert(s) untrusted",
+				     num_untrusted - 1);
+				if (!conf->disallow_untrusted) WARN("To forbid these certificates set 'reject_unknown_intermediate_ca'");
+
+				for (i = num_untrusted; i > 1 ; i--) {
 					X509 *this_cert = sk_X509_value(untrusted, i - 1);
 
 					X509_NAME_oneline(X509_get_subject_name(this_cert), subject, sizeof(subject));
