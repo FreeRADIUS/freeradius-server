@@ -104,7 +104,7 @@ static conf_parser_t const module_config[] = {
 	 *	transport, and push the transport-specific rules to
 	 *	the submodule CONF_SECTION.
 	 */
-	{ FR_CONF_OFFSET_REF(rlm_radius_t, fd_config, fr_bio_fd_config) },
+	{ FR_CONF_OFFSET_REF(rlm_radius_t, fd_config, fr_bio_fd_client_config) },
 
 	{ FR_CONF_OFFSET_TYPE_FLAGS("submodule", FR_TYPE_VOID, 0, rlm_radius_t, io_submodule),
 	  .func = module_rlm_submodule_parse },

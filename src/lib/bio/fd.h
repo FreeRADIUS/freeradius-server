@@ -113,7 +113,8 @@ typedef struct {
 	bool		send_buff_is_set;	//!< Whether we were provided with a send_buf
 } fr_bio_fd_config_t;
 
-extern const conf_parser_t fr_bio_fd_config[];
+extern const conf_parser_t fr_bio_fd_client_config[];
+extern const conf_parser_t fr_bio_fd_server_config[];
 
 /** Run-time status of the socket.
  *
