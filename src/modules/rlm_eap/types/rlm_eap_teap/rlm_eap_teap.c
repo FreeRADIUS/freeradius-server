@@ -328,7 +328,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 			vp = fr_pair_make(request->state_ctx, &request->state, "FreeRADIUS-EAP-TEAP-Identity-Type", NULL, T_OP_ADD);
 			if (vp) {
 				vp->vp_short = inst->identity_type[1];
-				RDEBUG("Setting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
+				RDEBUG("Followed by &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
 				       (vp->vp_short == 1) ? "User" : "Machine");
 			}
 		}

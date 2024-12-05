@@ -859,7 +859,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			 *	If there are more than one, then the
 			 *	next round will pick up the next one.
 			 */
-			if (t->auto_chain) fr_pair_delete(&request->state, vp);
+			if (t->auto_chain) {
+				RDEBUG("Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
+				       (vp->vp_short == 1) ? "User" : "Machine");
+				fr_pair_delete(&request->state, vp);
+			}
 
 			goto challenge;
 		}
@@ -1173,8 +1177,15 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 
 	cbb = (struct crypto_binding_buffer *)buf;
 
+	/*
+	 *	binding->version is what they are using.
+	 *	binding->received_version is what they got from us.
+	 */
 	if (binding->version != t->received_version || binding->received_version != EAP_TEAP_VERSION) {
 		RDEBUG2("Crypto-Binding TLV version mis-match (possible downgrade attack!)");
+		RDEBUG2("Expected client to send %d, got %d.  We sent %d, they echoed back %d",
+			t->received_version, binding->version,
+			EAP_TEAP_VERSION, binding->received_version);
 		return PW_CODE_ACCESS_REJECT;
 	}
 	if ((binding->subtype & 0xf) != EAP_TEAP_TLV_CRYPTO_BINDING_SUBTYPE_RESPONSE) {
