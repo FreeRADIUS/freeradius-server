@@ -206,11 +206,13 @@ static ssize_t decode_value(TALLOC_CTX *ctx, fr_pair_list_t *out,
 			vp->vp_tainted = true;
 
 		} else {
+			if (!ref) ref = fr_dict_root(dict_dhcpv6);
+
 			/*
 			 *	Child VPs go into the child group, not in the main parent list.  BUT, we start
-			 *	decoding attributes from the dictionary root, not from this parent.
+			 *	decoding attributes from the ref, and not from the group parent.
 			 */
-			slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, fr_dict_root(dict_dhcpv6), data, data_len, decode_ctx, decode_option, NULL, false);
+			slen = fr_pair_tlvs_from_network(vp, &vp->vp_group, ref, data, data_len, decode_ctx, decode_option, NULL, false);
 			if (slen < 0) goto raw_free;
 		}
 

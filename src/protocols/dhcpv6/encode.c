@@ -292,6 +292,11 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 		if (!fr_pair_list_empty(&vp->vp_group)) {
 			(void) fr_pair_dcursor_child_iter_init(&child_cursor, &vp->vp_group, cursor);
 
+			/*
+			 *	@todo - encode from "ref" and not from the root?  But that's hard,
+			 *	due to the whole proto stack thing, which we largely don't need
+			 *	any more.
+			 */
 			while (fr_dcursor_current(&child_cursor) != NULL) {
 				slen = fr_dhcpv6_encode_option(&work_dbuff, &child_cursor, encode_ctx);
 
