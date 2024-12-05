@@ -1681,6 +1681,7 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 	{ "ca_path_reload_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, ca_path_reload_interval), "0" },
 	{ "allow_expired_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, allow_expired_crl), NULL },
+	{ "allow_missing_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, allow_missing_crl), NULL },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
 	{ "cipher_server_preference", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, cipher_server_preference), NULL },
@@ -3202,6 +3203,16 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if (!my_ok &&
 	    (conf->allow_expired_crl) &&
 	    (err == X509_V_ERR_CRL_HAS_EXPIRED)) {
+		my_ok = 1;
+		X509_STORE_CTX_set_error( ctx, 0 );
+	}
+
+	/*
+	 *	If the CRL is missing, that might still be OK
+	 */
+	if (!my_ok &&
+	    (conf->allow_missing_crl) &&
+	    (err == X509_V_ERR_UNABLE_TO_GET_CRL)) {
 		my_ok = 1;
 		X509_STORE_CTX_set_error( ctx, 0 );
 	}
