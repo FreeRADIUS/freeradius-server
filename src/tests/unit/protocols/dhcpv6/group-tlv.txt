@@ -1,0 +1,30 @@
+#  -*- text -*-
+#  Copyright (C) 2019 Network RADIUS SARL (legal@networkradius.com)
+#  This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+#
+#  Version $Id$
+#
+
+proto dhcpv6
+proto-dictionary dhcpv6
+load-dictionary dictionary
+fuzzer-out dhcpv6
+
+pair test-group = { child1 = 1 }
+match test-group = { child1 = 1 }
+
+
+encode-pair	test-group = { child1 = 1 }
+match 1a 9a 00 0c 1a 99 00 08 00 01 00 04 00 00 00 01
+
+#
+#  Yeah, this is wrong.  The decoder can only handle group refs which
+#  point to the top of the tree.
+#
+#  @todo - fix it!
+#
+decode-pair -
+match test-group = {  = { child1 = 1 } }
+
+count
+match 10

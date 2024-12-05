@@ -78,6 +78,10 @@ missing, then the relevant field is filled with zeros.
 
 group: A `group` contains an arbitrary collection of children, in any order.
 +
+A `group` is really a reference to some other attribute elsewhere in
+the same protocol dictionary, or to a different protocol dictionary.
+The `group` allows for dictionaries to contain cross-references.
++
 The `group` can contain any child attributes, so long as they are
 within the same protocol namespace.  See the
 dictionary/attribute.adoc[ATTRIBUTE] documentation for more
@@ -86,7 +90,7 @@ information.
 The `group` only encodes the child attributes which have been created
 and stored within the `group`.  The order of children does not matter.
 
-tlv:: A `tlv` is a `group` which has a limited subset of children.
+tlv:: A `tlv` defines a hierarchy of children, which can only be contained in the `tlv`.
 +
 The `tlv` can only contain child attributes which have been defined as
 children of the `tlv.`

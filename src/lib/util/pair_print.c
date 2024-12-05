@@ -14,6 +14,16 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+/*
+ *	Groups are printed from the referenced attribute.
+ */
+#define fr_pair_reset_parent(parent) do { \
+	if (parent && (parent->type == FR_TYPE_GROUP)) { \
+		parent = fr_dict_attr_ref(parent); \
+		if (parent->flags.is_root) parent = NULL; \
+	} \
+  } while (0)
+
 /** Pair serialisation API
  *
  * @file src/lib/util/pair_print.c
@@ -114,10 +124,7 @@ ssize_t fr_pair_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pair_t c
 		token = "<INVALID-TOKEN>";
 	}
 
-	/*
-	 *	Groups are printed from the root.
-	 */
-	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
+	fr_pair_reset_parent(parent);
 
 	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
@@ -176,10 +183,7 @@ ssize_t fr_pair_print_secure(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_p
 		token = "<INVALID-TOKEN>";
 	}
 
-	/*
-	 *	Groups are printed from the root.
-	 */
-	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
+	fr_pair_reset_parent(parent);
 
 	if (vp->vp_raw) FR_SBUFF_IN_STRCPY_LITERAL_RETURN(&our_out, "raw.");
 	FR_DICT_ATTR_OID_PRINT_RETURN(&our_out, parent, vp->da, false);
@@ -241,10 +245,7 @@ ssize_t fr_pair_list_print(fr_sbuff_t *out, fr_dict_attr_t const *parent, fr_pai
 		return fr_sbuff_used(out);
 	}
 
-	/*
-	 *	Groups are printed from the root.
-	 */
-	if (parent && (parent->type == FR_TYPE_GROUP)) parent = NULL;
+	fr_pair_reset_parent(parent);
 
 	while (true) {
 		FR_SBUFF_RETURN(fr_pair_print, &our_out, parent, vp);
