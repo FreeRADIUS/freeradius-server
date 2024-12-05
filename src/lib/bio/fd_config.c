@@ -194,6 +194,12 @@ static int transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF
 		return -1;
 	}
 
+	/*
+	 *	Note that these offsets will get interpreted as being
+	 *	offsets from base of the subsection.  i.e. the parent
+	 *	section and the subsection have to be parsed with the
+	 *	same base pointer.
+	 */
 	if (cf_section_rules_push(subcs, rules) < 0) {
 		cf_log_perr(ci, "Failed updating parse rules");
 		return -1;
