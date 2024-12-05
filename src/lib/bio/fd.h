@@ -82,6 +82,7 @@ typedef struct {
 
 	int		socket_type;   	//!< SOCK_STREAM or SOCK_DGRAM
 	char const	*transport;	//!< name of the transport protocol
+	bool		server;		//!< is this a client or a server?
 
 	fr_ipaddr_t	src_ipaddr;	//!< our IP address
 	fr_ipaddr_t	dst_ipaddr;	//!< their IP address

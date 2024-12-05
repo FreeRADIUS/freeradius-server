@@ -162,6 +162,10 @@ static int client_transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *paren
 
 	if (strcmp(name, "udp") == 0) socket_type = SOCK_DGRAM;
 
+	/*
+	 *	Client sockets are always connected.
+	 */
+	fd_config->type = FR_BIO_FD_CONNECTED;
 	fd_config->socket_type = socket_type;
 	*(char const **) out = name;
 
@@ -302,6 +306,8 @@ static int server_transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *paren
 	if (strcmp(name, "udp") == 0) socket_type = SOCK_DGRAM;
 
 	fd_config->socket_type = socket_type;
+	fd_config->server = true;
+
 	*(char const **) out = name;
 
 	return 0;
