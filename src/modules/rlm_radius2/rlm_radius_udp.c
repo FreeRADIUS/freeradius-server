@@ -51,24 +51,17 @@ RCSID("$Id$")
  *
  */
 typedef struct {
+	fr_bio_fd_config_t	fd_config;		//!< for now MUST be at the start!
+
 	rlm_radius_t		*parent;		//!< rlm_radius instance.
 	CONF_SECTION		*config;
 
-	fr_ipaddr_t		dst_ipaddr;		//!< IP of the home server.
-	fr_ipaddr_t		src_ipaddr;		//!< IP we open our socket on.
-	uint16_t		dst_port;		//!< Port of the home server.
 	char const		*secret;		//!< Shared secret.
 
 	char const		*interface;		//!< Interface to bind to.
-
-	uint32_t		recv_buff;		//!< How big the kernel's receive buffer should be.
-	uint32_t		send_buff;		//!< How big the kernel's send buffer should be.
-
 	uint32_t		max_packet_size;	//!< Maximum packet size.
 	uint16_t		max_send_coalesce;	//!< Maximum number of packets to coalesce into one mmsg call.
 
-	bool			recv_buff_is_set;	//!< Whether we were provided with a recv_buf
-	bool			send_buff_is_set;	//!< Whether we were provided with a send_buf
 	bool			replicate;		//!< Copied from parent->replicate
 
 	fr_radius_ctx_t		common_ctx;
@@ -175,25 +168,10 @@ struct udp_request_s {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_radius_udp_t, dst_ipaddr), },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_radius_udp_t, dst_ipaddr) },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_radius_udp_t, dst_ipaddr) },
-
-	{ FR_CONF_OFFSET("port", rlm_radius_udp_t, dst_port) },
-
 	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED, rlm_radius_udp_t, secret) },
-
-	{ FR_CONF_OFFSET("interface", rlm_radius_udp_t, interface) },
-
-	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, rlm_radius_udp_t, recv_buff) },
-	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, rlm_radius_udp_t, send_buff) },
 
 	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_udp_t, max_packet_size), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_udp_t, max_send_coalesce), .dflt = "1024" },
-
-	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
-	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, rlm_radius_udp_t, src_ipaddr) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -547,7 +525,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 
 		case ECONNREFUSED:
 			ERROR("%s - Failed reading response from socket: there is no server listening on %pV port %u",
-			      h->module_name, fr_box_ipaddr(h->inst->dst_ipaddr), h->inst->dst_port);
+			      h->module_name, fr_box_ipaddr(h->inst->fd_config.dst_ipaddr), h->inst->fd_config.dst_port);
 			break;
 
 		default:
@@ -735,7 +713,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->thread = thread;
 	h->inst = thread->inst;
 	h->module_name = h->inst->parent->name;
-	h->src_ipaddr = h->inst->src_ipaddr;
+	h->src_ipaddr = h->inst->fd_config.src_ipaddr;
 	h->src_port = 0;
 	h->max_packet_size = h->inst->max_packet_size;
 	h->last_idle = fr_time();
@@ -761,8 +739,8 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	/*
 	 *	Open the outgoing socket.
 	 */
-	fd = fr_socket_client_udp(h->inst->interface, &h->src_ipaddr, &h->src_port,
-				  &h->inst->dst_ipaddr, h->inst->dst_port, true);
+	fd = fr_socket_client_udp(h->inst->fd_config.interface, &h->src_ipaddr, &h->src_port,
+				  &h->inst->fd_config.dst_ipaddr, h->inst->fd_config.dst_port, true);
 	if (fd < 0) {
 		PERROR("%s - Failed opening socket", h->module_name);
 	fail:
@@ -775,15 +753,15 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 */
 	h->name = fr_asprintf(h, "proto udp local %pV port %u remote %pV port %u",
 			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
-			      fr_box_ipaddr(h->inst->dst_ipaddr), h->inst->dst_port);
+			      fr_box_ipaddr(h->inst->fd_config.dst_ipaddr), h->inst->fd_config.dst_port);
 
 	talloc_set_destructor(h, _udp_handle_free);
 
 #ifdef SO_RCVBUF
-	if (h->inst->recv_buff_is_set) {
+	if (h->inst->fd_config.recv_buff_is_set) {
 		int opt;
 
-		opt = h->inst->recv_buff;
+		opt = h->inst->fd_config.recv_buff;
 		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
 			WARN("%s - Failed setting 'SO_RCVBUF': %s", h->module_name, fr_syserror(errno));
 		}
@@ -795,8 +773,8 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		int opt;
 		socklen_t socklen = sizeof(int);
 
-		if (h->inst->send_buff_is_set) {
-			opt = h->inst->send_buff;
+		if (h->inst->fd_config.send_buff_is_set) {
+			opt = h->inst->fd_config.send_buff;
 			if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
 				WARN("%s - Failed setting 'SO_SNDBUF', write performance may be sub-optimal: %s",
 				     h->module_name, fr_syserror(errno));
@@ -813,8 +791,8 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 			 *	we get it wrong, but the user may see
 			 *	ENOBUFS errors at high packet rates.
 			 */
-			h->send_buff_actual = h->inst->send_buff_is_set ?
-					      h->inst->send_buff : h->max_packet_size * h->inst->max_send_coalesce;
+			h->send_buff_actual = h->inst->fd_config.send_buff_is_set ?
+					      h->inst->fd_config.send_buff : h->max_packet_size * h->inst->max_send_coalesce;
 
 			WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name,
 			     h->send_buff_actual);
@@ -831,12 +809,12 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		}
 	}
 #else
-	h->send_buff_actual = h->inst->send_buff_is_set ?
+	h->send_buff_actual = h->inst->fd_config.send_buff_is_set ?
 			      h->inst_send_buff : h->max_packet_size * h->inst->max_send_coalesce;
 
 	WARN("%s - Modifying 'SO_SNDBUF' value is not supported on this system, "
 	     "write performance may be sub-optimal", h->module_name);
-	WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name, h->inst->send_buff_actual);
+	WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name, h->inst->fd_config.send_buff_actual);
 #endif
 
 	h->fd = fd;
@@ -2457,7 +2435,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Ensure that we have a destination address.
 	 */
-	if (inst->dst_ipaddr.af == AF_UNSPEC) {
+	if (inst->fd_config.dst_ipaddr.af == AF_UNSPEC) {
 		cf_log_err(conf, "A value must be given for 'ipaddr'");
 		return -1;
 	}
@@ -2472,25 +2450,25 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	If src_ipaddr isn't set, make sure it's INADDR_ANY, of
 	 *	the same address family as dst_ipaddr.
 	 */
-	if (inst->src_ipaddr.af == AF_UNSPEC) {
-		memset(&inst->src_ipaddr, 0, sizeof(inst->src_ipaddr));
+	if (inst->fd_config.src_ipaddr.af == AF_UNSPEC) {
+		memset(&inst->fd_config.src_ipaddr, 0, sizeof(inst->fd_config.src_ipaddr));
 
-		inst->src_ipaddr.af = inst->dst_ipaddr.af;
+		inst->fd_config.src_ipaddr.af = inst->fd_config.dst_ipaddr.af;
 
-		if (inst->src_ipaddr.af == AF_INET) {
-			inst->src_ipaddr.prefix = 32;
+		if (inst->fd_config.src_ipaddr.af == AF_INET) {
+			inst->fd_config.src_ipaddr.prefix = 32;
 		} else {
-			inst->src_ipaddr.prefix = 128;
+			inst->fd_config.src_ipaddr.prefix = 128;
 		}
 	}
 
-	else if (inst->src_ipaddr.af != inst->dst_ipaddr.af) {
+	else if (inst->fd_config.src_ipaddr.af != inst->fd_config.dst_ipaddr.af) {
 		cf_log_err(conf, "The 'ipaddr' and 'src_ipaddr' configuration items must "
 			   "be both of the same address family");
 		return -1;
 	}
 
-	if (!inst->dst_port) {
+	if (!inst->fd_config.dst_port) {
 		cf_log_err(conf, "A value must be given for 'port'");
 		return -1;
 	}
@@ -2507,7 +2485,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		/*
 		 *	Replicating: Set the receive buffer to zero.
 		 */
-		inst->recv_buff_is_set = true;
+		inst->fd_config.recv_buff_is_set = true;
 
 		/*
 		 *	On Linux this has the effect of discarding
@@ -2515,20 +2493,20 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	With macOS and others it's an invalid value.
 		 */
 
-		inst->recv_buff = 0;
+		inst->fd_config.recv_buff = 0;
 	} else {
 #endif
-		if (inst->recv_buff_is_set) {
-			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, >=, inst->max_packet_size);
-			FR_INTEGER_BOUND_CHECK("recv_buff", inst->recv_buff, <=, (1 << 30));
+		if (inst->fd_config.recv_buff_is_set) {
+			FR_INTEGER_BOUND_CHECK("recv_buff", inst->fd_config.recv_buff, >=, inst->max_packet_size);
+			FR_INTEGER_BOUND_CHECK("recv_buff", inst->fd_config.recv_buff, <=, (1 << 30));
 		}
 #ifdef __linux__
 	}
 #endif
 
-	if (inst->send_buff_is_set) {
-		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, >=, inst->max_packet_size);
-		FR_INTEGER_BOUND_CHECK("send_buff", inst->send_buff, <=, (1 << 30));
+	if (inst->fd_config.send_buff_is_set) {
+		FR_INTEGER_BOUND_CHECK("send_buff", inst->fd_config.send_buff, >=, inst->max_packet_size);
+		FR_INTEGER_BOUND_CHECK("send_buff", inst->fd_config.send_buff, <=, (1 << 30));
 	}
 
 	memcpy(&inst->trunk_conf, &inst->parent->trunk_conf, sizeof(inst->trunk_conf));

@@ -24,6 +24,8 @@
 #include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/radius/radius.h>
 
+#include <freeradius-devel/bio/fd.h>
+
 /*
  * $Id$
  *
@@ -40,6 +42,8 @@ typedef struct rlm_radius_io_s rlm_radius_io_t;
  *	Define a structure for our module configuration.
  */
 struct rlm_radius_s {
+	fr_bio_fd_config_t	fd_config;		//!< for now MUST be at the start!
+
 	char const		*name;
 	module_instance_t	*io_submodule;
 	rlm_radius_io_t	const	*io;			//!< Public symbol exported by the submodule.

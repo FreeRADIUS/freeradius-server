@@ -99,7 +99,14 @@ static conf_parser_t disconnect_config[] = {
  *	A mapping of configuration file names to internal variables.
  */
 static conf_parser_t const module_config[] = {
-	{ FR_CONF_OFFSET_TYPE_FLAGS("transport", FR_TYPE_VOID, 0, rlm_radius_t, io_submodule),
+	/*
+	 *	This ref needs to be first, so it can load the
+	 *	transport, and push the transport-specific rules to
+	 *	the submodule CONF_SECTION.
+	 */
+	{ FR_CONF_OFFSET_REF(rlm_radius_t, fd_config, fr_bio_fd_config) },
+
+	{ FR_CONF_OFFSET_TYPE_FLAGS("submodule", FR_TYPE_VOID, 0, rlm_radius_t, io_submodule),
 	  .func = module_rlm_submodule_parse },
 
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
@@ -217,7 +224,7 @@ static int type_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent,
 	 */
 	cf_section_rule_push(cs, &type_interval_config[code]);
 
-	memcpy(out, &code, sizeof(code));
+	*(uint32_t *) out = code;
 
 	return 0;
 }
