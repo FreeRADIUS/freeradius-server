@@ -100,6 +100,8 @@ typedef struct {
 	char const		*module_name;		//!< the module that opened the connection
 
 	int			fd;			//!< File descriptor.
+	fr_bio_t		*bio;
+	fr_bio_fd_info_t const	*fd_info;
 
 	struct mmsghdr		*mmsgvec;		//!< Vector of inbound/outbound packets.
 	udp_coalesced_t		*coalesced;		//!< Outbound coalesced requests.
@@ -644,6 +646,8 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %ld over connection %s: %s",
 		      h->module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
+
+
 		goto fail;
 	}
 	fr_assert((size_t)slen == u->packet_len);
@@ -736,22 +740,24 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h->tt = radius_track_alloc(h));
 
-	/*
-	 *	Open the outgoing socket.
-	 */
-	fd = fr_socket_client_udp(h->inst->fd_config.interface, &h->src_ipaddr, &h->src_port,
-				  &h->inst->fd_config.dst_ipaddr, h->inst->fd_config.dst_port, true);
-	if (fd < 0) {
+	h->bio = fr_bio_fd_alloc(h, &h->inst->fd_config, 0);
+	if (!h->bio) {
 		PERROR("%s - Failed opening socket", h->module_name);
 	fail:
 		talloc_free(h);
 		return CONNECTION_STATE_FAILED;
 	}
 
+	h->fd_info = fr_bio_fd_info(h->bio);
+	fd = h->fd_info->socket.fd;
+
+	fr_assert(fd >= 0);
+
 	/*
 	 *	Set the connection name.
 	 */
-	h->name = fr_asprintf(h, "proto udp local %pV port %u remote %pV port %u",
+	h->name = fr_asprintf(h, "proto %s local %pV port %u remote %pV port %u",
+			      h->inst->fd_config.transport,
 			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
 			      fr_box_ipaddr(h->inst->fd_config.dst_ipaddr), h->inst->fd_config.dst_port);
 
@@ -2431,6 +2437,17 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	Always need at least one mmsgvec
 	 */
 	if (inst->max_send_coalesce == 0) inst->max_send_coalesce = 1;
+
+	/*
+	 *	Hackity hack.
+	 *
+	 *	These are set in fd_config.c, transport_parse() in the parent fd_config,
+	 *	before the rest of it is parsed in the client udp{...} section.
+	 */
+	inst->fd_config.type = inst->parent->fd_config.type;
+	inst->fd_config.socket_type = inst->parent->fd_config.socket_type;
+	inst->fd_config.transport = inst->parent->fd_config.transport;
+	inst->fd_config.async = true;
 
 	/*
 	 *	Ensure that we have a destination address.
