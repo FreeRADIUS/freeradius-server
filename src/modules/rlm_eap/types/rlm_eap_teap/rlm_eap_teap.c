@@ -174,17 +174,18 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		while (*p) {
 			while (isspace((uint8_t) *p)) p++;
 
-			if (strncasecmp(p, "user", 5) == 0) {
+			if (strncasecmp(p, "user", 4) == 0) {
 				inst->identity_type[i] = 2;
-				p += 5;
+				p += 4;
 
 			} else if (strncasecmp(p, "machine", 7) == 0) {
 				inst->identity_type[i] = 2;
 				p += 7;
+
 			} else {
 			invalid_identity:
-				cf_log_err_cs(cs, "Invalid value in identity_types = '%s'",
-					      inst->identity_type_name);
+				cf_log_err_cs(cs, "Invalid value in identity_types = '%s' %s",
+					      inst->identity_type_name, p);
 				return -1;
 			}
 
@@ -200,6 +201,8 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 			if (!*p) break;
 
 			if (*p != ',') goto invalid_identity;
+
+			p++;
 		}
 	}
 
