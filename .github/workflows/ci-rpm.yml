@@ -15,9 +15,8 @@ jobs:
     strategy:
       matrix:
         env:
-          - { NAME: "centos-7",  OS: "centos:7",                BADNODE: true  }
-          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8", BADNODE: false }
-          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9", BADNODE: false }
+          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
+          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -28,35 +27,15 @@ jobs:
     env:
       HOSTAPD_BUILD_DIR: /tmp/eapol_test.ci
       HOSTAPD_GIT_TAG: hostapd_2_8
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ matrix.env.BADNODE }}
 
     name: "RPM build"
 
     steps:
 
-    - name: Fix up CentOS 7 repositories
-      if: ${{ matrix.env.NAME == 'centos-7' }}
-      run: |
-        sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
-        sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
-
-    # Required so that the checkout action uses git protocol rather than the GitHub REST API.
-    # make rpm requires the FR directory to be a git repository.
-    - name: Install recent git for CentOS 7
-      if: ${{ matrix.env.NAME == 'centos-7' }}
-      run: |
-        yum install -y https://packages.endpointdev.com/rhel/7/os/x86_64/git-core-2.30.1-1.ep7.x86_64.rpm
-
-    # Rocky 9 uses dnf by default.  CentOS 7 doesn't have dnf.  Install yum on Rocky 9 so all distros work
-    - name: Install yum
-      if: ${{ matrix.env.NAME == 'rocky-9'}}
-      run: |
-        dnf install -y yum
-
     - name: Install distro git for Rocky.
       if: ${{ startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
-        yum install -y git-core
+        dnf install -y git-core
 
     - uses: actions/checkout@v3
       with:
@@ -69,8 +48,8 @@ jobs:
         mkdir rpms
         ls -la
 
-    - name: LTB repo for CentOS and Rocky Linux 8
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') || matrix.env.NAME == 'rocky-8' }}
+    - name: LTB repo for Rocky Linux 8
+      if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -80,27 +59,27 @@ jobs:
         echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
 
-    - name: Enable EPEL for CentOS and Rocky Linux
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+    - name: Enable EPEL for Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
-        yum install -y epel-release
+        dnf install -y epel-release
 
     - name: Enable PowerTools on Rocky 8.
       if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
-        yum install -y yum-utils
-        yum config-manager --enable PowerTools || :
-        yum config-manager --enable powertools || :
+        dnf install -y yum-utils
+        dnf config-manager --enable PowerTools || :
+        dnf config-manager --enable powertools || :
 
     - name: Enable Code Ready Builer on Rocky 9.
       if: ${{ matrix.env.NAME == 'rocky-9' }}
       run: |
-        yum install -y yum-utils
-        yum config-manager --enable crb
+        dnf install -y yum-utils
+        dnf config-manager --enable crb
 
     - name: Install common tools
       run: |
-        yum install -y \
+        dnf install -y \
           bzip2 \
           gcc \
           make \
@@ -119,7 +98,7 @@ jobs:
 
     - name: Install build dependencies
       run: |
-        yum-builddep -y freeradius/redhat/freeradius.spec
+        dnf builddep -y freeradius/redhat/freeradius.spec
 
     #
     #  It has been observed that sometimes not all the dependencies are
@@ -127,7 +106,7 @@ jobs:
     #
     - name: Second run of install build dependencies
       run: |
-        yum-builddep -y redhat/freeradius.spec
+        dnf builddep -y redhat/freeradius.spec
       working-directory: freeradius
 
     - name: Show versions
@@ -141,7 +120,7 @@ jobs:
     - name: Enable procps-ng on Rocky
       if: ${{ startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
-        yum install -y procps-ng
+        dnf install -y procps-ng
 
     - name: Build RPMs
       run: |
@@ -163,7 +142,7 @@ jobs:
 
     - name: Build eapol_test
       run: |
-        yum install -y libnl3-devel which
+        dnf install -y libnl3-devel which
         [ -r /opt/rh/devtoolset-8/enable ] && source /opt/rh/devtoolset-8/enable || :
         scripts/ci/eapol_test-build.sh
         mv scripts/ci/eapol_test/eapol_test ../rpms/
@@ -181,7 +160,7 @@ jobs:
     #
     - name: "Debug: Package dependancies for tmate"
       run: |
-        yum install -y xz
+        dnf install -y xz
         ln -s /bin/true /bin/apt-get
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
@@ -201,9 +180,8 @@ jobs:
     strategy:
       matrix:
         env:
-          - { NAME: "centos-7",  OS: "centos:7",                BADNODE: true  }
-          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8", BADNODE: false }
-          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9", BADNODE: false }
+          - { NAME: "rocky-8",   OS: "rockylinux/rockylinux:8" }
+          - { NAME: "rocky-9",   OS: "rockylinux/rockylinux:9" }
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -211,26 +189,12 @@ jobs:
     container:
       image: ${{ matrix.env.OS }}
 
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: ${{ matrix.env.BADNODE }}
-
     name: "RPM install test"
 
     steps:
 
-    - name: Fix up CentOS 7 repositories
-      if: ${{ matrix.env.NAME == 'centos-7' }}
-      run: |
-        sed -i "s/^mirrorlist/#mirrorlist/g" /etc/yum.repos.d/CentOS-*
-        sed -i "s|#\s*baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
-
-    - name: Install yum
-      if: ${{ matrix.env.NAME == 'rocky-9'}}
-      run: |
-        dnf install -y yum
-
-    - name: LTB repo for CentOS and Rocky 8
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') || matrix.env.NAME == 'rocky-8' }}
+    - name: LTB repo for Rocky 8
+      if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
         echo '[ltb-project]'                                              >  /etc/yum.repos.d/ltb-project.repo
         echo 'name=LTB project packages'                                  >> /etc/yum.repos.d/ltb-project.repo
@@ -240,29 +204,29 @@ jobs:
         echo 'gpgkey=https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project' >> /etc/yum.repos.d/ltb-project.repo
         rpm --import https://www.ltb-project.org/documentation/_static/RPM-GPG-KEY-LTB-project
 
-    - name: Enable EPEL for CentOS and Rocky Linux
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+    - name: Enable EPEL for Rocky Linux
+      if: ${{ startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
-        yum install -y epel-release
+        dnf install -y epel-release
 
     - name: Enable PowerTools on Rocky 8
       if: ${{ matrix.env.NAME == 'rocky-8' }}
       run: |
-        yum install -y yum-utils
-        yum config-manager --enable PowerTools || :
-        yum config-manager --enable powertools || :
+        dnf install -y yum-utils
+        dnf config-manager --enable PowerTools || :
+        dnf config-manager --enable powertools || :
 
     - name: Enable Code Ready Builer on Rocky 9.
       if: ${{ matrix.env.NAME == 'rocky-9' }}
       run: |
-        yum install -y yum-utils
-        yum config-manager --enable crb
+        dnf install -y yum-utils
+        dnf config-manager --enable crb
 
     # For pkill
-    - name: Enable procps-ng on Centos and Rocky
-      if: ${{ startsWith(matrix.env.NAME, 'centos-') || startsWith(matrix.env.NAME, 'rocky-') }}
+    - name: Enable procps-ng on Rocky
+      if: ${{ startsWith(matrix.env.NAME, 'rocky-') }}
       run: |
-        yum install -y procps-ng
+        dnf install -y procps-ng
 
     - name: Load RPMs
       uses: actions/download-artifact@v3
@@ -271,7 +235,7 @@ jobs:
 
     - name: Install RPMs
       run: |
-        yum install -y *.rpm
+        dnf install -y *.rpm
 
     - name: Config check
       run: |
@@ -283,7 +247,7 @@ jobs:
     #
     - name: Install pre-built eapol_test
       run: |
-        yum install -y libnl3 make gdb which
+        dnf install -y libnl3 make gdb which
         mv eapol_test /usr/local/bin
         chmod +x /usr/local/bin/eapol_test
 
@@ -312,7 +276,7 @@ jobs:
     #
     - name: "Debug: Package dependancies for tmate"
       run: |
-        yum install -y xz
+        dnf install -y xz
         ln -s /bin/true /bin/apt-get
       if: ${{ github.ref == 'refs/heads/ci-debug' && failure() }}
 
