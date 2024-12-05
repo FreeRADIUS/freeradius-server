@@ -16,12 +16,15 @@
 
 /*
  *	Groups are printed from the referenced attribute.
+ *
+ *	@todo - parent should _never_ be vp->da.
  */
 #define fr_pair_reset_parent(parent) do { \
 	if (parent && (parent->type == FR_TYPE_GROUP)) { \
 		parent = fr_dict_attr_ref(parent); \
 		if (parent->flags.is_root) parent = NULL; \
 	} \
+	if (parent && (parent == vp->da)) parent = NULL; \
   } while (0)
 
 /** Pair serialisation API

@@ -13,7 +13,6 @@ fuzzer-out dhcpv6
 pair test-group = { child1 = 1 }
 match test-group = { child1 = 1 }
 
-
 encode-pair	test-group = { child1 = 1 }
 match 1a 9a 00 0c 1a 99 00 08 00 01 00 04 00 00 00 01
 
@@ -24,7 +23,7 @@ match 1a 9a 00 0c 1a 99 00 08 00 01 00 04 00 00 00 01
 #  @todo - fix it!
 #
 decode-pair -
-match test-group = {  = { child1 = 1 } }
+match test-group = { test-tlv = { child1 = 1 } }
 
 count
 match 10
