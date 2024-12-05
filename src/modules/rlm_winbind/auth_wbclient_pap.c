@@ -37,9 +37,9 @@ RCSID("$Id$")
 
 /** PAP authentication direct to winbind via Samba's libwbclient library
  *
- * @param[in] inst Module instance
  * @param[in] request The current request
  * @param[in] env The call_env for the current winbind authentication
+ * @param[in] t The module thread instance data.
  *
  * @return
  *	- 0	Success
@@ -47,9 +47,10 @@ RCSID("$Id$")
  *	- -648	Password expired
  *
  */
-int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, winbind_auth_call_env_t *env)
+int do_auth_wbclient_pap(request_t *request, winbind_auth_call_env_t *env, rlm_winbind_thread_t *t)
 {
 	int				ret = -1;
+	winbind_ctx_t			*wbctx;
 	struct wbcContext		*wb_ctx;
 	struct wbcAuthUserParams	authparams;
 	wbcErr				err;
@@ -94,19 +95,19 @@ int do_auth_wbclient_pap(rlm_winbind_t const *inst, request_t *request, winbind_
 	/*
 	 * Send auth request across to winbind
 	 */
-	wb_ctx = fr_pool_connection_get(inst->wb_pool, request);
-	if (wb_ctx == NULL) {
-		RERROR("Unable to get winbind connection from pool");
+	wbctx = winbind_slab_reserve(t->slab);
+	if (!wbctx) {
+		RERROR("Unable to get winbind context");
 		goto done;
 	}
+	wb_ctx = wbctx->ctx;
 
 	RDEBUG2("Sending authentication request user='%s' domain='%s'", authparams.account_name,
 									authparams.domain_name);
 
 	err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
 
-	fr_pool_connection_release(inst->wb_pool, request, wb_ctx);
-
+	winbind_slab_release(wbctx);
 
 	/*
 	 * Try and give some useful feedback on what happened. There are only
