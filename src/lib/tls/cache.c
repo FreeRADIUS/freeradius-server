@@ -400,7 +400,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 /** Push a `session load { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
@@ -474,7 +474,7 @@ static unlang_action_t tls_cache_store_result(UNUSED rlm_rcode_t *p_result, UNUS
  *
  * @param[in] request		The current request.
  * @param[in] conf		TLS configuration.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
@@ -610,7 +610,7 @@ static unlang_action_t tls_cache_clear_result(UNUSED rlm_rcode_t *p_result, UNUS
  *
  * @param[in] request		The current request.
  * @param[in] conf		TLS configuration.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
@@ -660,7 +660,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 /** Push a `session store { ... }` or session clear { ... }` or `session load { ... }` depending on what operations are pending
  *
  * @param[in] request		The current request.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT	- No pending actions
  *	- UNLANG_ACTION_PUSHED_CHILD		- Pending operations to evaluate.

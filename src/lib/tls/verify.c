@@ -424,7 +424,7 @@ static unlang_action_t tls_verify_client_cert_result(UNUSED rlm_rcode_t *p_resul
 /** Push a `verify certificate { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *      - UNLANG_ACTION_CALCULATE_RESULT on noop.
  *	- UNLANG_ACTION_PUSHED_CHILD on success.
@@ -523,7 +523,7 @@ void fr_tls_verify_cert_request(fr_tls_session_t *tls_session, bool session_resu
 /** Push a `verify certificate { ... }` section
  *
  * @param[in] request		The current request.
- * @Param[in] tls_session	The current TLS session.
+ * @param[in] tls_session	The current TLS session.
  * @return
  *	- UNLANG_ACTION_CALCULATE_RESULT	- No pending actions
  *	- UNLANG_ACTION_PUSHED_CHILD		- Pending operations to evaluate.
