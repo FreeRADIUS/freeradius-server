@@ -880,6 +880,14 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 			fd = dup(STDERR_FILENO);
 
+		} else if (strcmp(cfg->filename, "/dev/stdin") == 0) {
+			if (cfg->flags != O_RDONLY) {
+				fr_strerror_printf("Cannot write to %s", cfg->filename);
+				return -1;
+			}
+
+			fd = dup(STDIN_FILENO);
+
 		} else {
 			/*
 			 *	Minor hacks so that we have only _one_ source of open / mkdir
