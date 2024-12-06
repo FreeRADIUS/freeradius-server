@@ -1365,12 +1365,29 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 	case FR_BIO_FD_CONNECTED:
 	case FR_BIO_FD_ACCEPTED:
 		/*
-		 *	Further reads are disallowed.
+		 *	Further reads are disallowed.  However, this likely has no effect for UDP sockets.
 		 */
 		if (shutdown(my->info.socket.fd, SHUT_RD) < 0) {
 			fr_strerror_printf("Failed shutting down connected socket - %s", fr_syserror(errno));
 			return -1;
 		}
+
+#ifdef __linux__
+#ifdef SO_RCVBUF
+		/*
+		 *	On Linux setting the receive buffer to zero has the effect of discarding all incoming
+		 *	data in the kernel.  With macOS and others it's an invalid value.
+		 */
+		{
+			int opt = my->info.cfg->recv_buff;
+
+			if (setsockopt(my->info.socket.fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
+				fr_strerror_printf("Failed setting SO_RCVBUF: %s", fr_syserror(errno));
+				return -1;
+			}
+		}
+#endif
+#endif
 		break;
 
 	case FR_BIO_FD_LISTEN:
@@ -1378,6 +1395,10 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 		return -1;
 	}
 
+	/*
+	 *	No matter what the possibilities above, we replace the read function with a "discard"
+	 *	function.
+	 */
 	my->bio.read = fr_bio_fd_read_discard;
 	return 0;
 }
