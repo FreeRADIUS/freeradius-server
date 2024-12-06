@@ -175,7 +175,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 			while (isspace((uint8_t) *p)) p++;
 
 			if (strncasecmp(p, "user", 4) == 0) {
-				inst->identity_type[i] = 2;
+				inst->identity_type[i] = 1;
 				p += 4;
 
 			} else if (strncasecmp(p, "machine", 7) == 0) {
