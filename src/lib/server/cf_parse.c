@@ -793,6 +793,17 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 	 *	this section.
 	 */
 	if ((rule->flags & CONF_FLAG_REF) != 0) {
+		conf_parser_t const *rule_p;
+		uint8_t *sub_base = base;
+
+		fr_assert(rule->subcs != NULL);
+
+		sub_base += rule->offset;
+
+		for (rule_p = rule->subcs; rule_p->name1; rule_p++) {
+			int ret = cf_section_parse_init(cs, sub_base, rule_p);
+			if (ret < 0) return ret;
+		}
 		return 0;
 	}
 
