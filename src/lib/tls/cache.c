@@ -338,7 +338,7 @@ static void tls_cache_delete_request(SSL_SESSION *sess)
 	if (tls_session->can_pause) ASYNC_pause_job();
 }
 
-/** Process the result of `session load { ... }`
+/** Process the result of `load session { ... }`
  */
 static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 					     request_t *request, void *uctx)
@@ -397,7 +397,7 @@ static unlang_action_t tls_cache_load_result(UNUSED rlm_rcode_t *p_result, UNUSE
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Push a `session load { ... }` call into the current request, using a subrequest
+/** Push a `load session { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
  * @param[in] tls_session	The current TLS session.
@@ -448,7 +448,7 @@ static unlang_action_t tls_cache_load_push(request_t *request, fr_tls_session_t 
 	return ua;
 }
 
-/** Process the result of `session store { ... }`
+/** Process the result of `store session { ... }`
  */
 static unlang_action_t tls_cache_store_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 					      request_t *request, void *uctx)
@@ -470,7 +470,7 @@ static unlang_action_t tls_cache_store_result(UNUSED rlm_rcode_t *p_result, UNUS
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Push a `session store { ... }` call into the current request, using a subrequest
+/** Push a `store session { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
  * @param[in] conf		TLS configuration.
@@ -584,7 +584,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	return ua;
 }
 
-/** Process the result of `session clear { ... }`
+/** Process the result of `clear session { ... }`
  */
 static unlang_action_t tls_cache_clear_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
 					      request_t *request, void *uctx)
@@ -606,7 +606,7 @@ static unlang_action_t tls_cache_clear_result(UNUSED rlm_rcode_t *p_result, UNUS
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
-/** Push a `session clear { ... }` call into the current request, using a subrequest
+/** Push a `clear session { ... }` call into the current request, using a subrequest
  *
  * @param[in] request		The current request.
  * @param[in] conf		TLS configuration.
@@ -657,7 +657,7 @@ unlang_action_t tls_cache_clear_push(request_t *request, fr_tls_conf_t *conf, fr
 	return ua;
 }
 
-/** Push a `session store { ... }` or session clear { ... }` or `session load { ... }` depending on what operations are pending
+/** Push a `store session { ... }` or `clear session { ... }` or `load session { ... }` depending on what operations are pending
  *
  * @param[in] request		The current request.
  * @param[in] tls_session	The current TLS session.
