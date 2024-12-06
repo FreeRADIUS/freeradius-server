@@ -747,6 +747,68 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		my->info.socket.inet.src_port = cfg->src_port;
 		my->info.socket.inet.dst_port = cfg->dst_port;
 
+		/*
+		 *	Sanitize the IP addresses.
+		 *
+		 */
+		switch (cfg->type) {
+		case FR_BIO_FD_CONNECTED:
+			/*
+			 *	Ensure that we have a destination address.
+			 */
+			if (my->info.socket.inet.dst_ipaddr.af == AF_UNSPEC) {
+				fr_strerror_const("No destination IP address was specified");
+				return -1;
+			}
+
+			if (!my->info.socket.inet.dst_port) {
+				fr_strerror_const("No destination port was specified");
+				return -1;
+			}
+
+			/*
+			 *	No source specified, just bootstrap it from the destination.
+			 */
+			if (my->info.socket.inet.src_ipaddr.af == AF_UNSPEC) {
+				my->info.socket.inet.src_ipaddr = (fr_ipaddr_t) {
+					.af = my->info.socket.inet.dst_ipaddr.af,
+					.prefix = (my->info.socket.inet.dst_ipaddr.af == AF_INET) ? 32 : 128,
+				};
+
+				/*
+				 *	Set the main socket AF too.
+				 */
+				my->info.socket.af = my->info.socket.inet.dst_ipaddr.af;
+			}
+
+			/*
+			 *	The source IP has to be the same address family as the destination IP.
+			 */
+			if (my->info.socket.inet.src_ipaddr.af != my->info.socket.inet.dst_ipaddr.af) {
+				fr_strerror_const("Source and destination IP addresses are not from the same IP address family");
+				return -1;
+			}
+			break;
+
+		case FR_BIO_FD_UNCONNECTED:
+		case FR_BIO_FD_LISTEN:
+			if (my->info.socket.inet.src_ipaddr.af == AF_UNSPEC) {
+				fr_strerror_const("No source IP address was specified");
+				return -1;
+			}
+
+			if (!my->info.socket.inet.src_port) {
+				fr_strerror_const("No source port was specified");
+				return -1;
+			}
+			break;
+
+		case FR_BIO_FD_ACCEPTED:
+			fr_assert(my->info.socket.inet.src_ipaddr.af != AF_UNSPEC);
+			fr_assert(my->info.socket.inet.dst_ipaddr.af != AF_UNSPEC);
+			break;
+		}
+
 		if (cfg->socket_type == SOCK_STREAM) {
 			protocol = IPPROTO_TCP;
 		} else {
