@@ -95,6 +95,11 @@ static conf_parser_t disconnect_config[] = {
 };
 
 
+static conf_parser_t const udp_config[] = {
+
+	CONF_PARSER_TERMINATOR
+};
+
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -105,9 +110,6 @@ static conf_parser_t const module_config[] = {
 	 *	the submodule CONF_SECTION.
 	 */
 	{ FR_CONF_OFFSET_REF(rlm_radius_t, fd_config, fr_bio_fd_client_config) },
-
-	{ FR_CONF_OFFSET_TYPE_FLAGS("submodule", FR_TYPE_VOID, 0, rlm_radius_t, io_submodule),
-	  .func = module_rlm_submodule_parse },
 
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
@@ -124,6 +126,8 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET("originate", rlm_radius_t, originate) },
 
 	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
+
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) udp_config },
 
 	{ FR_CONF_OFFSET("max_attributes", rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
@@ -165,14 +169,37 @@ static fr_dict_attr_t const *attr_chap_password;
 static fr_dict_attr_t const *attr_packet_type;
 static fr_dict_attr_t const *attr_proxy_state;
 
+static fr_dict_attr_t const *attr_error_cause;
+static fr_dict_attr_t const *attr_event_timestamp;
+static fr_dict_attr_t const *attr_extended_attribute_1;
+static fr_dict_attr_t const *attr_message_authenticator;
+static fr_dict_attr_t const *attr_eap_message;
+static fr_dict_attr_t const *attr_nas_identifier;
+static fr_dict_attr_t const *attr_original_packet_code;
+static fr_dict_attr_t const *attr_response_length;
+static fr_dict_attr_t const *attr_user_password;
+
 extern fr_dict_attr_autoload_t rlm_radius_dict_attr[];
 fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 	{ .out = &attr_chap_challenge, .name = "CHAP-Challenge", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_chap_password, .name = "CHAP-Password", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_packet_type, .name = "Packet-Type", .type = FR_TYPE_UINT32, .dict = &dict_radius },
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+
+	{ .out = &attr_error_cause, .name = "Error-Cause", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_event_timestamp, .name = "Event-Timestamp", .type = FR_TYPE_DATE, .dict = &dict_radius},
+	{ .out = &attr_extended_attribute_1, .name = "Extended-Attribute-1", .type = FR_TYPE_TLV, .dict = &dict_radius},
+	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_nas_identifier, .name = "NAS-Identifier", .type = FR_TYPE_STRING, .dict = &dict_radius},
+	{ .out = &attr_original_packet_code, .name = "Extended-Attribute-1.Original-Packet-Code", .type = FR_TYPE_UINT32, .dict = &dict_radius},
+	{ .out = &attr_response_length, .name = "Extended-Attribute-1.Response-Length", .type = FR_TYPE_UINT32, .dict = &dict_radius },
+	{ .out = &attr_user_password, .name = "User-Password", .type = FR_TYPE_STRING, .dict = &dict_radius},
+
 	{ NULL }
 };
+
+#include "rlm_radius_udp.c"
 
 /** Set which types of packets we can parse
  *
@@ -407,7 +434,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 
 	if ((request->packet->code >= FR_RADIUS_CODE_MAX) ||
 	    !fr_time_delta_ispos(inst->retry[request->packet->code].irt)) { /* can't be zero */
-		REDEBUG("Invalid packet code %d", request->packet->code);
+		REDEBUG("Invalid packet code %u", request->packet->code);
 		RETURN_MODULE_FAIL;
 	}
 
@@ -437,8 +464,8 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	return another code which indicates what happened to
 	 *	the request...
 	 */
-	return inst->io->enqueue(&rcode, inst->io_submodule->data,
-				 module_thread(inst->io_submodule)->data, request);
+	return mod_enqueue(&rcode, inst,
+			   module_thread(mctx->mi)->data, request);
 }
 
 static int mod_instantiate(module_inst_ctx_t const *mctx)
@@ -447,7 +474,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_radius_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
 	CONF_SECTION *conf = mctx->mi->conf;
 
-	inst->io = (rlm_radius_io_t const *)inst->io_submodule->exported;	/* Public symbol exported by the module */
 	inst->name = mctx->mi->name;
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
@@ -489,6 +515,10 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		.proxy_state = inst->proxy_state,
 	};
 
+	/*
+	 *	We're always async
+	 */
+	inst->fd_config.async = true;
 
 	/*
 	 *	Allow for O(1) lookup later...
@@ -680,7 +710,11 @@ module_rlm_t rlm_radius = {
 		.unload		= mod_unload,
 
 		.instantiate	= mod_instantiate,
-		.detach		= mod_detach
+		.detach		= mod_detach,
+
+		.thread_inst_size	= sizeof(udp_thread_t),
+		.thread_inst_type	= "udp_thread_t",
+		.thread_instantiate 	= mod_thread_instantiate,
 	},
 	.method_group = {
 		.bindings = (module_method_binding_t[]){

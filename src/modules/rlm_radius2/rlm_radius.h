@@ -36,7 +36,6 @@
  */
 
 typedef struct rlm_radius_s rlm_radius_t;
-typedef struct rlm_radius_io_s rlm_radius_io_t;
 
 /*
  *	Define a structure for our module configuration.
@@ -45,8 +44,6 @@ struct rlm_radius_s {
 	fr_bio_fd_config_t	fd_config;		//!< for now MUST be at the start!
 
 	char const		*name;
-	module_instance_t	*io_submodule;
-	rlm_radius_io_t	const	*io;			//!< Public symbol exported by the submodule.
 
 	fr_time_delta_t		response_window;
 	fr_time_delta_t		zombie_period;
@@ -83,18 +80,4 @@ struct rlm_radius_s {
 	fr_retry_config_t      	retry[FR_RADIUS_CODE_MAX];
 
 	trunk_conf_t		trunk_conf;		//!< trunk configuration
-};
-
-/** Enqueue a request_t to an IO submodule
- *
- */
-typedef unlang_action_t (*rlm_radius_io_enqueue_t)(rlm_rcode_t *p_result, void *instance, void *thread, request_t *request);
-
-/** Public structure describing an I/O path for an outgoing socket.
- *
- * This structure is exported by client I/O modules e.g. rlm_radius_udp.
- */
-struct rlm_radius_io_s {
-	module_t		common;			//!< Common fields to all loadable modules.
-	rlm_radius_io_enqueue_t	enqueue;		//!< Enqueue a request_t with an IO submodule.
 };
