@@ -54,21 +54,7 @@ typedef struct {
 	fr_bio_fd_config_t	fd_config;		//!< for now MUST be at the start!
 
 	rlm_radius_t		*parent;		//!< rlm_radius instance.
-	CONF_SECTION		*config;
 
-	char const		*secret;		//!< Shared secret.
-
-	char const		*interface;		//!< Interface to bind to.
-	uint32_t		max_packet_size;	//!< Maximum packet size.
-	uint16_t		max_send_coalesce;	//!< Maximum number of packets to coalesce into one mmsg call.
-
-	bool			replicate;		//!< Copied from parent->replicate
-
-	fr_radius_ctx_t		common_ctx;
-
-	trunk_conf_t		trunk_conf;		//!< trunk configuration
-
-	fr_retry_config_t	retry_config;		//!< for originating packets
 } rlm_radius_udp_t;
 
 typedef struct {
@@ -170,12 +156,7 @@ struct udp_request_s {
 };
 
 static const conf_parser_t module_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED, rlm_radius_udp_t, secret) },
-
-	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_udp_t, max_packet_size), .dflt = "4096" },
-	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_udp_t, max_send_coalesce), .dflt = "1024" },
-
-	CONF_PARSER_TERMINATOR
+       CONF_PARSER_TERMINATOR
 };
 
 static fr_dict_t const *dict_radius;
@@ -719,7 +700,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->module_name = h->inst->parent->name;
 	h->src_ipaddr = h->inst->fd_config.src_ipaddr;
 	h->src_port = 0;
-	h->max_packet_size = h->inst->max_packet_size;
+	h->max_packet_size = h->inst->parent->max_packet_size;
 	h->last_idle = fr_time();
 
 	/*
@@ -728,9 +709,9 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	just need to setup the iovec, and pass how
 	 *      many messages we want to send to sendmmsg.
 	 */
-	h->mmsgvec = talloc_zero_array(h, struct mmsghdr, h->inst->max_send_coalesce);
-	h->coalesced = talloc_zero_array(h, udp_coalesced_t, h->inst->max_send_coalesce);
-	for (i = 0; i < h->inst->max_send_coalesce; i++) {
+	h->mmsgvec = talloc_zero_array(h, struct mmsghdr, h->inst->parent->max_send_coalesce);
+	h->coalesced = talloc_zero_array(h, udp_coalesced_t, h->inst->parent->max_send_coalesce);
+	for (i = 0; i < h->inst->parent->max_send_coalesce; i++) {
 		h->mmsgvec[i].msg_hdr.msg_iov = &h->coalesced[i].out;
 		h->mmsgvec[i].msg_hdr.msg_iovlen = 1;
 	}
@@ -798,7 +779,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 			 *	ENOBUFS errors at high packet rates.
 			 */
 			h->send_buff_actual = h->inst->fd_config.send_buff_is_set ?
-					      h->inst->fd_config.send_buff : h->max_packet_size * h->inst->max_send_coalesce;
+					      h->inst->fd_config.send_buff : h->max_packet_size * h->inst->parent->max_send_coalesce;
 
 			WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name,
 			     h->send_buff_actual);
@@ -816,7 +797,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	}
 #else
 	h->send_buff_actual = h->inst->fd_config.send_buff_is_set ?
-			      h->inst_send_buff : h->max_packet_size * h->inst->max_send_coalesce;
+			      h->inst_send_buff : h->max_packet_size * h->inst->parent->max_send_coalesce;
 
 	WARN("%s - Modifying 'SO_SNDBUF' value is not supported on this system, "
 	     "write performance may be sub-optimal", h->module_name);
@@ -1032,7 +1013,15 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	/*
 	 *	Over-ride read for replication.
 	 */
-	if (h->inst->parent->replicate) read_fn = conn_discard;
+	if (h->inst->parent->replicate) {
+		read_fn = conn_discard;
+
+		if (fr_bio_fd_write_only(h->bio) < 0) {
+			PERROR("%s - Failed setting socket to write-only", h->module_name);
+			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+			return;
+		}
+	}
 
 	if (fr_event_fd_insert(h, NULL, el, h->fd,
 			       read_fn,
@@ -1111,7 +1100,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	RHEXDUMP3(data, data_len, "Read packet");
 
 	decode_ctx = (fr_radius_decode_ctx_t) {
-		.common = &inst->common_ctx,
+		.common = &inst->parent->common_ctx,
 		.request_code = u->code,
 		.request_authenticator = request_authenticator,
 		.tmp_ctx = talloc(ctx, uint8_t),
@@ -1178,7 +1167,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	 *	This is essentially free, as this memory was
 	 *	pre-allocated as part of the treq.
 	 */
-	u->packet_len = inst->max_packet_size;
+	u->packet_len = inst->parent->max_packet_size;
 	MEM(u->packet = talloc_array(u, uint8_t, u->packet_len));
 
 	/*
@@ -1188,7 +1177,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	fr_assert(u->packet_len >= (size_t) RADIUS_HEADER_LENGTH);
 
 	encode_ctx = (fr_radius_encode_ctx_t) {
-		.common = &inst->common_ctx,
+		.common = &inst->parent->common_ctx,
 		.rand_ctx = (fr_fast_rand_t) {
 			.a = fr_rand(),
 			.b = fr_rand(),
@@ -1258,7 +1247,7 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 		fr_pair_t	*vp;
 
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
-		fr_pair_value_memdup(vp, (uint8_t const *) &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
+		fr_pair_value_memdup(vp, (uint8_t const *) &inst->parent->common_ctx.proxy_state, sizeof(inst->parent->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
 	}
 
@@ -1270,8 +1259,8 @@ static int encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_
 	/*
 	 *	Now that we're done mangling the packet, sign it.
 	 */
-	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->secret,
-			   talloc_array_length(inst->secret) - 1) < 0) {
+	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->parent->secret,
+			   talloc_array_length(inst->parent->secret) - 1) < 0) {
 		RERROR("Failed signing packet");
 		goto error;
 	}
@@ -1361,7 +1350,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	 *	We're replicating, and don't care about the health of
 	 *	the home server, and this function should not be called.
 	 */
-	fr_assert(!h->inst->replicate);
+	fr_assert(!h->inst->parent->replicate);
 
 	/*
 	 *	If we're status checking OR already zombie, don't go to zombie
@@ -1499,7 +1488,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	 *	Encode multiple packets in preparation
 	 *      for transmission with sendmmsg.
 	 */
-	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
+	for (i = 0, queued = 0; (i < inst->parent->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
 		trunk_request_t		*treq;
 		udp_request_t		*u;
 		request_t		*request;
@@ -2371,7 +2360,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, void *instance, void *
 
 
 	if (inst->parent->synchronous || inst->parent->replicate) { /* @todo - or if stream! */
-		retry_config = &inst->retry_config;
+		retry_config = &inst->parent->synchronous_retry;
 
 	} else {
 		retry_config = &inst->parent->retry[u->code];
@@ -2408,7 +2397,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->el = mctx->el;
 	thread->inst = inst;
 	thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-				    &inst->trunk_conf, inst->parent->name, thread, false);
+				    &inst->parent->trunk_conf, inst->parent->name, thread, false);
 	if (!thread->trunk) return -1;
 
 	return 0;
@@ -2426,17 +2415,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	}
 
 	inst->parent = parent;
-	inst->replicate = parent->replicate;
-
-	inst->retry_config = (fr_retry_config_t) {
-		.mrc = 1,
-		.mrd = inst->parent->response_window,
-	};
 
 	/*
 	 *	Always need at least one mmsgvec
 	 */
-	if (inst->max_send_coalesce == 0) inst->max_send_coalesce = 1;
+	if (inst->parent->max_send_coalesce == 0) inst->parent->max_send_coalesce = 1;
 
 	/*
 	 *	Hackity hack.
@@ -2448,87 +2431,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->fd_config.socket_type = inst->parent->fd_config.socket_type;
 	inst->fd_config.transport = inst->parent->fd_config.transport;
 	inst->fd_config.async = true;
-
-	/*
-	 *	Ensure that we have a destination address.
-	 */
-	if (inst->fd_config.dst_ipaddr.af == AF_UNSPEC) {
-		cf_log_err(conf, "A value must be given for 'ipaddr'");
-		return -1;
-	}
-
-	inst->common_ctx = (fr_radius_ctx_t) {
-		.secret = inst->secret,
-		.secret_length = talloc_array_length(inst->secret) - 1,
-		.proxy_state = inst->parent->proxy_state,
-	};
-
-	/*
-	 *	If src_ipaddr isn't set, make sure it's INADDR_ANY, of
-	 *	the same address family as dst_ipaddr.
-	 */
-	if (inst->fd_config.src_ipaddr.af == AF_UNSPEC) {
-		memset(&inst->fd_config.src_ipaddr, 0, sizeof(inst->fd_config.src_ipaddr));
-
-		inst->fd_config.src_ipaddr.af = inst->fd_config.dst_ipaddr.af;
-
-		if (inst->fd_config.src_ipaddr.af == AF_INET) {
-			inst->fd_config.src_ipaddr.prefix = 32;
-		} else {
-			inst->fd_config.src_ipaddr.prefix = 128;
-		}
-	}
-
-	else if (inst->fd_config.src_ipaddr.af != inst->fd_config.dst_ipaddr.af) {
-		cf_log_err(conf, "The 'ipaddr' and 'src_ipaddr' configuration items must "
-			   "be both of the same address family");
-		return -1;
-	}
-
-	if (!inst->fd_config.dst_port) {
-		cf_log_err(conf, "A value must be given for 'port'");
-		return -1;
-	}
-
-	/*
-	 *	Clamp max_packet_size first before checking recv_buff and send_buff
-	 */
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
-	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
-
-
-#ifdef __linux__
-	if (inst->replicate) {
-		/*
-		 *	Replicating: Set the receive buffer to zero.
-		 */
-		inst->fd_config.recv_buff_is_set = true;
-
-		/*
-		 *	On Linux this has the effect of discarding
-		 *	all incoming data in the kernel.
-		 *	With macOS and others it's an invalid value.
-		 */
-
-		inst->fd_config.recv_buff = 0;
-	} else {
-#endif
-		if (inst->fd_config.recv_buff_is_set) {
-			FR_INTEGER_BOUND_CHECK("recv_buff", inst->fd_config.recv_buff, >=, inst->max_packet_size);
-			FR_INTEGER_BOUND_CHECK("recv_buff", inst->fd_config.recv_buff, <=, (1 << 30));
-		}
-#ifdef __linux__
-	}
-#endif
-
-	if (inst->fd_config.send_buff_is_set) {
-		FR_INTEGER_BOUND_CHECK("send_buff", inst->fd_config.send_buff, >=, inst->max_packet_size);
-		FR_INTEGER_BOUND_CHECK("send_buff", inst->fd_config.send_buff, <=, (1 << 30));
-	}
-
-	memcpy(&inst->trunk_conf, &inst->parent->trunk_conf, sizeof(inst->trunk_conf));
-	inst->trunk_conf.req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
-	inst->trunk_conf.req_pool_size = sizeof(udp_request_t) + inst->max_packet_size + sizeof(radius_track_entry_t ***) + sizeof(fr_pair_t) + 20;
 
 	return 0;
 }

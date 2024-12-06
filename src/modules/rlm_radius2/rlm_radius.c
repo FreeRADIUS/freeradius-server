@@ -112,6 +112,11 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED, rlm_radius_t, secret) },
+
+	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_t, max_packet_size), .dflt = "4096" },
+	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_t, max_send_coalesce), .dflt = "1024" },
+
 	{ FR_CONF_OFFSET("replicate", rlm_radius_t, replicate) },
 
 	{ FR_CONF_OFFSET("synchronous", rlm_radius_t, synchronous) },
@@ -447,6 +452,12 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
 	/*
+	 *	Clamp max_packet_size first before checking recv_buff and send_buff
+	 */
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
+	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
+
+	/*
 	 *	These limits are specific to RADIUS, and cannot be over-ridden
 	 */
 	FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
@@ -466,6 +477,18 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	num_types = talloc_array_length(inst->types);
 	fr_assert(num_types > 0);
+
+	inst->synchronous_retry = (fr_retry_config_t) {
+		.mrc = 1,
+		.mrd = inst->response_window,
+	};
+
+	inst->common_ctx = (fr_radius_ctx_t) {
+		.secret = inst->secret,
+		.secret_length = talloc_array_length(inst->secret) - 1,
+		.proxy_state = inst->proxy_state,
+	};
+
 
 	/*
 	 *	Allow for O(1) lookup later...
@@ -492,7 +515,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		inst->status_check = 0;
 	}
 
-
 	/*
 	 *	If we have status checks, then do some sanity checks.
 	 *	Status-Server is always allowed.  Otherwise, the
@@ -515,6 +537,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	contains User-Name, etc.
 		 */
 	}
+
+	inst->trunk_conf.req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */
+	inst->trunk_conf.req_pool_size = 1024 + sizeof(fr_pair_t) + 20;
 
 	/*
 	 *	Don't sanity check the async timers if we're doing

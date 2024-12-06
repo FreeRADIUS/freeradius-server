@@ -52,6 +52,13 @@ struct rlm_radius_s {
 	fr_time_delta_t		zombie_period;
 	fr_time_delta_t		revive_interval;
 
+	char const		*secret;		//!< Shared secret.
+
+	uint32_t		max_packet_size;	//!< Maximum packet size.
+	uint16_t		max_send_coalesce;	//!< Maximum number of packets to coalesce into one mmsg call.
+
+	fr_radius_ctx_t		common_ctx;
+
 	bool			replicate;		//!< Ignore responses.
 	bool			synchronous;		//!< Retransmit when receiving a duplicate request.
 	bool			originate;  		//!< Originating packets, instead of proxying existing ones.
@@ -71,6 +78,8 @@ struct rlm_radius_s {
 							///< mark the connection as alive.
 
 	bool			allowed[FR_RADIUS_CODE_MAX];
+
+	fr_retry_config_t	synchronous_retry;
 	fr_retry_config_t      	retry[FR_RADIUS_CODE_MAX];
 
 	trunk_conf_t		trunk_conf;		//!< trunk configuration
