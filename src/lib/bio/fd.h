@@ -124,8 +124,9 @@ typedef struct {
 	fr_socket_t	socket;		//!< as connected socket
 
 	fr_bio_fd_type_t type;		//!< type of the socket
-
 	fr_bio_fd_state_t state;	//!< connecting, open, closed, etc.
+
+	char const	*name;		//!< printable name of this BIO
 
 	bool		read_blocked;	//!< did we block on read?
 	bool		write_blocked;	//!< did we block on write?

@@ -719,11 +719,112 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	return fr_bio_fd_socket_name(my);
 }
 
+static void fr_bio_fd_name(fr_bio_fd_t *my)
+{
+	fr_bio_fd_config_t const *cfg = my->info.cfg;
+
+	switch (my->info.type) {
+	case FR_BIO_FD_UNCONNECTED:
+		fr_assert(cfg->socket_type == SOCK_DGRAM);
+
+		switch (my->info.socket.af) {
+		case AF_INET:
+		case AF_INET6:
+			my->info.name = fr_asprintf(my, "proto udp local %pV port %u",
+						    fr_box_ipaddr(my->info.socket.inet.src_ipaddr),
+						    my->info.socket.inet.src_port);
+			break;
+
+		case AF_LOCAL:
+			my->info.name = fr_asprintf(my, "proto unix (datagram) filename %s",
+						    cfg->path);
+			break;
+
+		default:
+			fr_assert(0);
+			my->info.name = "??? invalid BIO ???";
+			break;
+		}
+		break;
+
+	case FR_BIO_FD_CONNECTED:
+	case FR_BIO_FD_ACCEPTED:
+		switch (my->info.socket.af) {
+		case AF_INET:
+		case AF_INET6:
+			my->info.name = fr_asprintf(my, "proto %s local %pV port %u remote %pV port %u",
+						    (cfg->socket_type == SOCK_DGRAM) ? "udp" : "tcp",
+						    fr_box_ipaddr(my->info.socket.inet.src_ipaddr),
+						    my->info.socket.inet.src_port,
+						    fr_box_ipaddr(my->info.socket.inet.dst_ipaddr),
+						    my->info.socket.inet.dst_port);
+			break;
+
+		case AF_LOCAL:
+			my->info.name = fr_asprintf(my, "proto unix %sfilename %s",
+						    (cfg->socket_type == SOCK_DGRAM) ? "(datagram) " : "",
+						    cfg->path);
+			break;
+
+		case AF_FILE_BIO:
+			fr_assert(cfg->socket_type == SOCK_STREAM);
+
+			if (cfg->flags == O_RDONLY) {
+				my->info.name = fr_asprintf(my, "proto file (read-only) filename %s ",
+							    cfg->filename);
+
+			} else if (cfg->flags == O_WRONLY) {
+				my->info.name = fr_asprintf(my, "proto file (write-only) filename %s",
+							    cfg->filename);
+			} else {
+				my->info.name = fr_asprintf(my, "proto file (read-write) filename %s",
+							    cfg->filename);
+			}
+			break;
+
+		default:
+			fr_assert(0);
+			my->info.name = "??? invalid BIO ???";
+			break;
+		}
+		break;
+
+	case FR_BIO_FD_LISTEN:
+		fr_assert(cfg->socket_type == SOCK_STREAM);
+
+		switch (my->info.socket.af) {
+		case AF_INET:
+		case AF_INET6:
+			my->info.name = fr_asprintf(my, "proto %s local %pV port %u",
+						    (cfg->socket_type == SOCK_DGRAM) ? "udp" : "tcp",
+						    fr_box_ipaddr(my->info.socket.inet.src_ipaddr),
+						    my->info.socket.inet.src_port);
+			break;
+
+		case AF_LOCAL:
+			my->info.name = fr_asprintf(my, "proto unix filename %s",
+						    cfg->path);
+			break;
+
+		default:
+			fr_assert(0);
+			my->info.name = "??? invalid BIO ???";
+			break;
+		}
+		break;
+	}
+}
+
 /** Checks the configuration without modifying anything.
  *
  */
 int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 {
+	/*
+	 *	Unix sockets and files are OK.
+	 */
+	if (cfg->path || cfg->filename) return 0;
+
 	/*
 	 *	Sanitize the IP addresses.
 	 *
@@ -1106,6 +1207,11 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		if (fr_bio_fd_init_listen(my) < 0) goto fail;
 		break;
 	}
+
+	/*
+	 *	Set the name of the BIO.
+	 */
+	fr_bio_fd_name(my);
 
 	return 0;
 }
