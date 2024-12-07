@@ -59,7 +59,56 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CO
 	return 0;
 }
 
-static const conf_parser_t client_udp_config[] = {
+/** Parse "transport" and then set the subconfig
+ *
+ */
+static int common_transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule, fr_table_ptr_sorted_t const *transport_table, size_t transport_table_len)
+{
+	int socket_type = SOCK_STREAM;
+	conf_parser_t const *rules;
+	char const *name = cf_pair_value(cf_item_to_pair(ci));
+	fr_bio_fd_config_t *fd_config = parent;
+	CONF_SECTION *cs, *subcs;
+
+	rules = fr_table_value_by_str(transport_table, name, NULL);
+	if (!rules) {
+		cf_log_err(ci, "Invalid transport name \"%s\"", name);
+		return -1;
+	}
+
+	cs = cf_item_to_section(cf_parent(ci));
+
+	/*
+	 *      Find the relevant subsection.  Note that we don't do anything with it, as we push a parse
+	 *      rule in the parent which then points to the subsection.
+	 */
+	subcs = cf_section_find(cs, name, NULL);
+	if (!subcs) {
+		cf_log_perr(ci, "Failed finding transport configuration section %s { ... }", name);
+		return -1;
+	}
+
+	/*
+	 *	Note that these offsets will get interpreted as being offsets from base of the subsection.
+	 *	i.e. the parent section and the subsection have to be parsed with the same base pointer.
+	 */
+	if (cf_section_rules_push(cs, rules) < 0) {
+		cf_log_perr(ci, "Failed updating parse rules");
+		return -1;
+	}
+
+	if (strcmp(name, "udp") == 0) socket_type = SOCK_DGRAM;
+
+	/*
+	 *	Client sockets are always connected.
+	 */
+	fd_config->socket_type = socket_type;
+	*(char const **) out = name;
+
+	return 0;
+}
+
+static const conf_parser_t client_udp_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
@@ -80,7 +129,14 @@ static const conf_parser_t client_udp_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const conf_parser_t client_tcp_config[] = {
+static conf_parser_t const client_udp_config[] = {
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) client_udp_sub_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
+static const conf_parser_t client_tcp_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
@@ -103,14 +159,32 @@ static const conf_parser_t client_tcp_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const conf_parser_t client_file_config[] = {
+static conf_parser_t const client_tcp_config[] = {
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) client_tcp_sub_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t client_file_sub_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
 
 	CONF_PARSER_TERMINATOR
 };
 
-static const conf_parser_t client_unix_config[] = {
+static conf_parser_t const client_file_config[] = {
+	{ FR_CONF_POINTER("file", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) client_file_sub_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t client_unix_sub_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static conf_parser_t const client_unix_config[] = {
+	{ FR_CONF_POINTER("unix", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) client_unix_sub_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -126,50 +200,14 @@ static size_t client_transport_names_len = NUM_ELEMENTS(client_transport_names);
 /** Parse "transport" and then set the subconfig
  *
  */
-static int client_transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+static int client_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
-	int socket_type = SOCK_STREAM;
-	conf_parser_t const *rules;
-	char const *name = cf_pair_value(cf_item_to_pair(ci));
 	fr_bio_fd_config_t *fd_config = parent;
-	CONF_SECTION *subcs;
 
-	rules = fr_table_value_by_str(client_transport_names, name, NULL);
-	if (!rules) {
-		cf_log_err(ci, "Invalid transport name \"%s\"", name);
-		return -1;
-	}
-
-	/*
-	 *	Find the relevant subsection.
-	 */
-	subcs = cf_section_find(cf_item_to_section(cf_parent(ci)), name, NULL);
-	if (!subcs) {
-		cf_log_perr(ci, "Failed finding transport configuration section %s { ... }", name);
-		return -1;
-	}
-
-	/*
-	 *	Note that these offsets will get interpreted as being
-	 *	offsets from base of the subsection.  i.e. the parent
-	 *	section and the subsection have to be parsed with the
-	 *	same base pointer.
-	 */
-	if (cf_section_rules_push(subcs, rules) < 0) {
-		cf_log_perr(ci, "Failed updating parse rules");
-		return -1;
-	}
-
-	if (strcmp(name, "udp") == 0) socket_type = SOCK_DGRAM;
-
-	/*
-	 *	Client sockets are always connected.
-	 */
 	fd_config->type = FR_BIO_FD_CONNECTED;
-	fd_config->socket_type = socket_type;
-	*(char const **) out = name;
 
-	return 0;
+	return common_transport_parse(ctx, out, parent, ci, rule,
+				      client_transport_names, client_transport_names_len);
 }
 
 /*
@@ -192,7 +230,7 @@ const conf_parser_t fr_bio_fd_client_config[] = {
  *	Files have permissions which can be set.
  */
 
-static const conf_parser_t server_udp_config[] = {
+static const conf_parser_t server_udp_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, src_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
@@ -207,7 +245,13 @@ static const conf_parser_t server_udp_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const conf_parser_t server_tcp_config[] = {
+static conf_parser_t const server_udp_config[] = {
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) server_udp_sub_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t server_tcp_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, src_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
@@ -224,12 +268,24 @@ static const conf_parser_t server_tcp_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const conf_parser_t server_file_config[] = {
+static conf_parser_t const server_tcp_config[] = {
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) server_tcp_sub_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static const conf_parser_t server_file_sub_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
 
 	{ FR_CONF_OFFSET("permissions", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
 
 	{ FR_CONF_OFFSET("mkdir", fr_bio_fd_config_t, mkdir) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static conf_parser_t const server_file_config[] = {
+	{ FR_CONF_POINTER("file", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) server_file_sub_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -241,7 +297,7 @@ static const conf_parser_t server_peercred_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static const conf_parser_t server_unix_config[] = {
+static const conf_parser_t server_unix_sub_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
 
 	{ FR_CONF_OFFSET("permissions", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
@@ -251,6 +307,12 @@ static const conf_parser_t server_unix_config[] = {
 	{ FR_CONF_OFFSET("mkdir", fr_bio_fd_config_t, mkdir) },
 
 	{ FR_CONF_POINTER("peercred", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) server_peercred_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static conf_parser_t const server_unix_config[] = {
+	{ FR_CONF_POINTER("unix", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) server_unix_sub_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -269,46 +331,25 @@ static size_t server_transport_names_len = NUM_ELEMENTS(server_transport_names);
 /** Parse "transport" and then set the subconfig
  *
  */
-static int server_transport_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+static int server_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
-	int socket_type = SOCK_STREAM;
-	conf_parser_t const *rules;
-	char const *name = cf_pair_value(cf_item_to_pair(ci));
+	int rcode;
 	fr_bio_fd_config_t *fd_config = parent;
-	CONF_SECTION *subcs;
 
-	rules = fr_table_value_by_str(server_transport_names, name, NULL);
-	if (!rules) {
-		cf_log_err(ci, "Invalid transport name \"%s\"", name);
-		return -1;
-	}
-
-	/*
-	 *	Find the relevant subsection.
-	 */
-	subcs = cf_section_find(cf_item_to_section(cf_parent(ci)), name, NULL);
-	if (!subcs) {
-		cf_log_perr(ci, "Failed finding transport configuration section %s { ... }", name);
-		return -1;
-	}
-
-	/*
-	 *	Note that these offsets will get interpreted as being
-	 *	offsets from base of the subsection.  i.e. the parent
-	 *	section and the subsection have to be parsed with the
-	 *	same base pointer.
-	 */
-	if (cf_section_rules_push(subcs, rules) < 0) {
-		cf_log_perr(ci, "Failed updating parse rules");
-		return -1;
-	}
-
-	if (strcmp(name, "udp") == 0) socket_type = SOCK_DGRAM;
-
-	fd_config->socket_type = socket_type;
 	fd_config->server = true;
 
-	*(char const **) out = name;
+	rcode = common_transport_parse(ctx, out, parent, ci, rule,
+				       server_transport_names, server_transport_names_len);
+	if (rcode < 0) return rcode;
+
+	/*
+	 *	Automatically set the BIO type, too.
+	 */
+	if (fd_config->socket_type == SOCK_DGRAM) {
+		fd_config->type = FR_BIO_FD_UNCONNECTED;
+	} else {
+		fd_config->type = FR_BIO_FD_LISTEN;
+	}
 
 	return 0;
 }
