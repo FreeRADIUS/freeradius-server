@@ -719,6 +719,61 @@ static int fr_bio_fd_socket_bind(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 	return fr_bio_fd_socket_name(my);
 }
 
+/** Checks the configuration without modifying anything.
+ *
+ */
+int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
+{
+	/*
+	 *	Sanitize the IP addresses.
+	 *
+	 */
+	switch (cfg->type) {
+	case FR_BIO_FD_CONNECTED:
+		/*
+		 *	Ensure that we have a destination address.
+		 */
+		if (cfg->dst_ipaddr.af == AF_UNSPEC) {
+			fr_strerror_const("No destination IP address was specified");
+			return -1;
+		}
+
+		if (!cfg->dst_port) {
+			fr_strerror_const("No destination port was specified");
+			return -1;
+		}
+
+		/*
+		 *	The source IP has to be the same address family as the destination IP.
+		 */
+		if ((cfg->src_ipaddr.af != AF_UNSPEC) && (cfg->src_ipaddr.af != cfg->dst_ipaddr.af)) {
+			fr_strerror_printf("Source and destination IP addresses are not from the same IP address family");
+			return -1;
+		}
+		break;
+
+	case FR_BIO_FD_UNCONNECTED:
+	case FR_BIO_FD_LISTEN:
+		if (cfg->src_ipaddr.af == AF_UNSPEC) {
+			fr_strerror_const("No source IP address was specified");
+			return -1;
+		}
+
+		if (!cfg->src_port) {
+			fr_strerror_const("No source port was specified");
+			return -1;
+		}
+		break;
+
+	case FR_BIO_FD_ACCEPTED:
+		fr_assert(cfg->src_ipaddr.af != AF_UNSPEC);
+		fr_assert(cfg->dst_ipaddr.af != AF_UNSPEC);
+		break;
+	}
+
+	return 0;
+}
+
 /** Opens a socket and updates sock->fd
  *
  *  If the socket is asynchronous, it also calls connect()
@@ -747,25 +802,14 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		my->info.socket.inet.src_port = cfg->src_port;
 		my->info.socket.inet.dst_port = cfg->dst_port;
 
+		if (fr_bio_fd_check_config(cfg) < 0) return -1;
+
 		/*
 		 *	Sanitize the IP addresses.
 		 *
 		 */
 		switch (cfg->type) {
 		case FR_BIO_FD_CONNECTED:
-			/*
-			 *	Ensure that we have a destination address.
-			 */
-			if (my->info.socket.inet.dst_ipaddr.af == AF_UNSPEC) {
-				fr_strerror_const("No destination IP address was specified");
-				return -1;
-			}
-
-			if (!my->info.socket.inet.dst_port) {
-				fr_strerror_const("No destination port was specified");
-				return -1;
-			}
-
 			/*
 			 *	No source specified, just bootstrap it from the destination.
 			 */
@@ -792,15 +836,7 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 
 		case FR_BIO_FD_UNCONNECTED:
 		case FR_BIO_FD_LISTEN:
-			if (my->info.socket.inet.src_ipaddr.af == AF_UNSPEC) {
-				fr_strerror_const("No source IP address was specified");
-				return -1;
-			}
-
-			if (!my->info.socket.inet.src_port) {
-				fr_strerror_const("No source port was specified");
-				return -1;
-			}
+			fr_assert(my->info.socket.inet.src_ipaddr.af != AF_UNSPEC);
 			break;
 
 		case FR_BIO_FD_ACCEPTED:

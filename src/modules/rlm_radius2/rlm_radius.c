@@ -477,6 +477,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->name = mctx->mi->name;
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
+	if (fr_bio_fd_check_config(&inst->fd_config) < 0) {
+		cf_log_perr(conf, "Invalid configuration");
+		return -1;
+	}
+
 	/*
 	 *	Clamp max_packet_size first before checking recv_buff and send_buff
 	 */
