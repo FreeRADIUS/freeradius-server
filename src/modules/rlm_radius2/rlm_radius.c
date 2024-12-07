@@ -95,11 +95,6 @@ static conf_parser_t disconnect_config[] = {
 };
 
 
-static conf_parser_t const udp_config[] = {
-
-	CONF_PARSER_TERMINATOR
-};
-
 /*
  *	A mapping of configuration file names to internal variables.
  */
@@ -126,8 +121,6 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET("originate", rlm_radius_t, originate) },
 
 	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
-
-	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) udp_config },
 
 	{ FR_CONF_OFFSET("max_attributes", rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
@@ -519,11 +512,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		.secret_length = talloc_array_length(inst->secret) - 1,
 		.proxy_state = inst->proxy_state,
 	};
-
-	/*
-	 *	We're always async
-	 */
-	inst->fd_config.async = true;
 
 	/*
 	 *	Allow for O(1) lookup later...
