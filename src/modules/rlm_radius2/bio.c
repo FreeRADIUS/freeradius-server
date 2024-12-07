@@ -68,7 +68,6 @@ typedef struct {
  *
  */
 typedef struct {
-	char const     		*name;			//!< From IP PORT to IP PORT.
 	char const		*module_name;		//!< the module that opened the connection
 
 	int			fd;			//!< File descriptor.
@@ -352,7 +351,7 @@ static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, U
 
 	h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed: %s", h->module_name, h->fd_info->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -449,7 +448,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 
 		case ECONNREFUSED:
 			ERROR("%s - Failed reading response from socket: there is no server listening on outgoing connection %s",
-			      h->module_name, h->name);
+			      h->module_name, h->fd_info->name);
 			break;
 
 		default:
@@ -506,7 +505,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		 *	the next status check.
 		 */
 		DEBUG("%s - Received %u / %u replies for status check, on connection - %s",
-		      h->module_name, u->num_replies, inst->num_answers_to_alive, h->name);
+		      h->module_name, u->num_replies, inst->num_answers_to_alive, h->fd_info->name);
 		DEBUG("%s - Next status check packet will be in %pVs",
 		      h->module_name, fr_box_time_delta(fr_time_sub(u->retry.next, fr_time())));
 
@@ -524,7 +523,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 */
 	status_check_reset(h, u);
 
-	DEBUG("%s - Connection open - %s", h->module_name, h->name);
+	DEBUG("%s - Connection open - %s", h->module_name, h->fd_info->name);
 
 	connection_signal_connected(conn);
 }
@@ -554,7 +553,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	}
 
 	DEBUG("%s - Sending %s ID %d over connection %s",
-	      h->module_name, fr_radius_packet_name[u->code], u->id, h->name);
+	      h->module_name, fr_radius_packet_name[u->code], u->id, h->fd_info->name);
 
 	if (encode(h->inst, h->status_request, u, u->id) < 0) {
 	fail:
@@ -567,7 +566,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	slen = write(h->fd, u->packet, u->packet_len);
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: %s",
-		      h->module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->name, fr_syserror(errno));
+		      h->module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name, fr_syserror(errno));
 
 
 		goto fail;
@@ -606,17 +605,17 @@ static int _bio_handle_free(bio_handle_t *h)
 
 	if (shutdown(h->fd, SHUT_RDWR) < 0) {
 		DEBUG3("%s - Failed shutting down connection %s: %s",
-		       h->module_name, h->name, fr_syserror(errno));
+		       h->module_name, h->fd_info->name, fr_syserror(errno));
 	}
 
 	if (close(h->fd) < 0) {
 		DEBUG3("%s - Failed closing connection %s: %s",
-		       h->module_name, h->name, fr_syserror(errno));
+		       h->module_name, h->fd_info->name, fr_syserror(errno));
 	}
 
 	h->fd = -1;
 
-	DEBUG("%s - Connection closed - %s", h->module_name, h->name);
+	DEBUG("%s - Connection closed - %s", h->module_name, h->fd_info->name);
 
 	return 0;
 }
@@ -908,7 +907,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_t		*conn = tconn->conn;
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed: %s", h->module_name, h->fd_info->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -1058,7 +1057,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	code = data[0];
 
 	RDEBUG("Received %s ID %d length %zu reply packet on connection %s",
-	       fr_radius_packet_name[code], data[1], data_len, h->name);
+	       fr_radius_packet_name[code], data[1], data_len, h->fd_info->name);
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
 
 	/*
@@ -1215,7 +1214,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
-	INFO("%s - Reviving connection %s", h->module_name, h->name);
+	INFO("%s - Reviving connection %s", h->module_name, h->fd_info->name);
 	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 }
 
@@ -1227,7 +1226,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
-	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->module_name, h->name);
+	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->module_name, h->fd_info->name);
 
 	/*
 	 *	Don't use this connection, and re-queue all of its
@@ -1308,7 +1307,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	if (h->inst->synchronous && fr_time_gt(last_sent, fr_time_wrap(0)) &&
 	    (fr_time_lt(fr_time_add(last_sent, h->inst->response_window), now))) return false;
 
-	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->name);
+	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->fd_info->name);
 	if (h->inst->status_check) {
 		h->status_checking = true;
 
@@ -1471,7 +1470,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 			u->id = u->rr->id;
 
 			RDEBUG("Sending %s ID %d length %zu over connection %s",
-			       fr_radius_packet_name[u->code], u->id, u->packet_len, h->name);
+			       fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name);
 
 			if (encode(h->inst, request, u, u->id) < 0) {
 				/*
@@ -1492,7 +1491,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 			(void) radius_track_entry_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 		} else {
 			RDEBUG("Retransmitting %s ID %d length %zu over connection %s",
-			       fr_radius_packet_name[u->code], u->id, u->packet_len, h->name);
+			       fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name);
 		}
 
 		log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
@@ -1552,7 +1551,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 		case ENOBUFS:		/* No outbound packet buffers, maybe? */
 		case ENOMEM:		/* malloc failure in kernel? */
 			WARN("%s - Failed sending data over connection %s: %s",
-			     h->module_name, h->name, fr_syserror(errno));
+			     h->module_name, h->fd_info->name, fr_syserror(errno));
 			break;
 
 		/*
@@ -1567,7 +1566,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 		 */
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
 			ERROR("%s - Failed sending data over connection %s: %s",
-			      h->module_name, h->name, fr_syserror(errno));
+			      h->module_name, h->fd_info->name, fr_syserror(errno));
 			trunk_request_signal_fail(h->coalesced[0].treq);
 			sent = 1;
 			break;
@@ -1578,7 +1577,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 		 */
 		default:
 			ERROR("%s - Failed sending data over connection %s: %s",
-			      h->module_name, h->name, fr_syserror(errno));
+			      h->module_name, h->fd_info->name, fr_syserror(errno));
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
@@ -1739,7 +1738,7 @@ static void protocol_error_reply(bio_request_t *u, bio_result_t *r, bio_handle_t
 		if (response_length < 4096) response_length = 4096;
 		if (response_length > 65535) response_length = 65535;
 
-		DEBUG("%s - Increasing buffer size to %u for connection %s", h->module_name, response_length, h->name);
+		DEBUG("%s - Increasing buffer size to %u for connection %s", h->module_name, response_length, h->fd_info->name);
 
 		/*
 		 *	Make sure to copy the packet over!
@@ -1803,7 +1802,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 
 	if (u->num_replies < inst->num_answers_to_alive) {
 		DEBUG("Received %u / %u replies for status check, on connection - %s",
-		      u->num_replies, inst->num_answers_to_alive, h->name);
+		      u->num_replies, inst->num_answers_to_alive, h->fd_info->name);
 		DEBUG("Next status check packet will be in %pVs", fr_box_time_delta(fr_time_sub(u->retry.next, now)));
 
 		/*
@@ -1815,7 +1814,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 		return;
 	}
 
-	DEBUG("Received enough replies to status check, marking connection as active - %s", h->name);
+	DEBUG("Received enough replies to status check, marking connection as active - %s", h->fd_info->name);
 
 	/*
 	 *	Set the "last idle" time to now, so that we don't
@@ -1837,7 +1836,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 {
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	DEBUG3("%s - Reading data for connection %s", h->module_name, h->name);
+	DEBUG3("%s - Reading data for connection %s", h->module_name, h->fd_info->name);
 
 	while (true) {
 		ssize_t			slen;
