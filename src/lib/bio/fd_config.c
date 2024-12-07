@@ -28,14 +28,11 @@
 
 #include <freeradius-devel/bio/fd_priv.h>
 
-#define FR_READ  (1)
-#define FR_WRITE (2)
-
 static fr_table_num_sorted_t mode_names[] = {
-	{ L("read-only"),		FR_READ			},
-	{ L("read-write"),		FR_READ | FR_WRITE	},
-	{ L("ro"),			FR_READ			},
-	{ L("rw"),			FR_READ | FR_WRITE	}
+	{ L("read-only"),		O_RDONLY       	},
+	{ L("read-write"),		O_RDWR		},
+	{ L("ro"),			O_RDONLY       	},
+	{ L("rw"),			O_RDWR		},
 };
 static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 
@@ -44,17 +41,13 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, UNUSED void *parent, CO
 	int mode;
 	char const *name = cf_pair_value(cf_item_to_pair(ci));
 
-	mode = fr_table_value_by_str(mode_names, name, 0);
-	if (!mode) {
+	mode = fr_table_value_by_str(mode_names, name, -1);
+	if (mode < 0) {
 		cf_log_err(ci, "Invalid mode name \"%s\"", name);
 		return -1;
 	}
 
-	if ((mode & FR_WRITE) == 0) {
-		*(int *) out = O_RDWR;
-	} else {
-		*(int *) out = O_RDONLY;
-	}
+	*(int *) out = mode;
 
 	return 0;
 }
@@ -168,6 +161,10 @@ static conf_parser_t const client_tcp_config[] = {
 static const conf_parser_t client_file_sub_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
 
+	{ FR_CONF_OFFSET("permissions", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
+
+	{ FR_CONF_OFFSET("mode", fr_bio_fd_config_t, flags), .dflt = "read-write", .func = mode_parse },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -178,7 +175,7 @@ static conf_parser_t const client_file_config[] = {
 };
 
 static const conf_parser_t client_unix_sub_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, path), },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -298,7 +295,7 @@ static const conf_parser_t server_peercred_config[] = {
 };
 
 static const conf_parser_t server_unix_sub_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, filename), },
+	{ FR_CONF_OFFSET_FLAGS("filename", CONF_FLAG_REQUIRED, fr_bio_fd_config_t, path), },
 
 	{ FR_CONF_OFFSET("permissions", fr_bio_fd_config_t, perm), .dflt = "0600", .func = cf_parse_permissions },
 
