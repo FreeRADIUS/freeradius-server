@@ -470,6 +470,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->name = mctx->mi->name;
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
+	/*
+	 *	Replication is write-only, and append by default.
+	 */
+	if (inst->replicate) inst->fd_config.flags = O_WRONLY | O_APPEND;
+
 	if (fr_bio_fd_check_config(&inst->fd_config) < 0) {
 		cf_log_perr(conf, "Invalid configuration");
 		return -1;
@@ -502,7 +507,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	num_types = talloc_array_length(inst->types);
 	fr_assert(num_types > 0);
 
-	inst->synchronous_retry = (fr_retry_config_t) {
+	inst->timeout_retry = (fr_retry_config_t) {
 		.mrc = 1,
 		.mrd = inst->response_window,
 	};
@@ -559,6 +564,18 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		 *	section, to be sure that (e.g.) Access-Request
 		 *	contains User-Name, etc.
 		 */
+
+		if (inst->fd_config.filename) {
+			cf_log_info(conf, "Disabling status checks for output file %s", inst->fd_config.filename);
+			inst->status_check = 0;
+		}
+	}
+
+	/*
+	 *	Files and unix sockets can just have us call write().
+	 */
+	if (inst->fd_config.filename || inst->fd_config.path) {
+		inst->max_send_coalesce = 1;
 	}
 
 	inst->trunk_conf.req_pool_headers = 4;	/* One for the request, one for the buffer, one for the tracking binding, one for Proxy-State VP */

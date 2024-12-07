@@ -672,75 +672,10 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	fr_assert(fd >= 0);
 
-	/*
-	 *	Set the connection name.
-	 */
-	h->name = fr_asprintf(h, "proto %s local %pV port %u remote %pV port %u",
-			      h->inst->fd_config.transport,
-			      fr_box_ipaddr(h->fd_info->socket.inet.src_ipaddr), h->fd_info->socket.inet.src_port,
-			      fr_box_ipaddr(h->fd_info->socket.inet.dst_ipaddr), h->fd_info->socket.inet.dst_port);
-
 	talloc_set_destructor(h, _bio_handle_free);
 
-#ifdef SO_RCVBUF
-	if (h->inst->fd_config.recv_buff_is_set) {
-		int opt;
-
-		opt = h->inst->fd_config.recv_buff;
-		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(int)) < 0) {
-			WARN("%s - Failed setting 'SO_RCVBUF': %s", h->module_name, fr_syserror(errno));
-		}
-	}
-#endif
-
-#ifdef SO_SNDBUF
-	{
-		int opt;
-		socklen_t socklen = sizeof(int);
-
-		if (h->inst->fd_config.send_buff_is_set) {
-			opt = h->inst->fd_config.send_buff;
-			if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, sizeof(int)) < 0) {
-				WARN("%s - Failed setting 'SO_SNDBUF', write performance may be sub-optimal: %s",
-				     h->module_name, fr_syserror(errno));
-			}
-		}
-
-		if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &opt, &socklen) < 0) {
-			WARN("%s - Failed getting 'SO_SNDBUF', write performance may be sub-optimal: %s",
-			     h->module_name, fr_syserror(errno));
-
-			/*
-			 *	This controls how many packets we attempt
-			 *	to send at once.  Nothing bad happens if
-			 *	we get it wrong, but the user may see
-			 *	ENOBUFS errors at high packet rates.
-			 */
-			h->send_buff_actual = h->inst->fd_config.send_buff_is_set ?
-					      h->inst->fd_config.send_buff : h->max_packet_size * h->inst->max_send_coalesce;
-
-			WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name,
-			     h->send_buff_actual);
-		} else {
-#ifdef __linux__
-			/*
-			 *	Linux doubles the buffer when you set it
-			 *	to account for "overhead".
-			 */
-			h->send_buff_actual = ((size_t)opt) / 2;
-#else
-			h->send_buff_actual = (size_t)opt;
-#endif
-		}
-	}
-#else
 	h->send_buff_actual = h->inst->fd_config.send_buff_is_set ?
-			      h->inst_send_buff : h->max_packet_size * h->inst->max_send_coalesce;
-
-	WARN("%s - Modifying 'SO_SNDBUF' value is not supported on this system, "
-	     "write performance may be sub-optimal", h->module_name);
-	WARN("%s - Max coalesced outbound data will be %zu bytes", h->module_name, h->inst->fd_config.send_buff_actual);
-#endif
+		h->inst->fd_config.send_buff : h->max_packet_size * h->inst->max_send_coalesce;
 
 	h->fd = fd;
 
@@ -1345,12 +1280,16 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 	trunk_request_t		*treq = talloc_get_type_abort(r->treq, trunk_request_t);
 	trunk_connection_t	*tconn = treq->tconn;
 
+	bio_request_t		*u = talloc_get_type_abort(treq->preq, bio_request_t);
+
 	fr_assert(request == treq->request);
 	fr_assert(treq->preq);						/* Must still have a protocol request */
 
 	switch (retry->state) {
 
 	case FR_RETRY_CONTINUE:
+		u->retry = *retry;
+
 		switch (treq->state) {
 
 		case TRUNK_REQUEST_STATE_INIT:
@@ -1532,10 +1471,31 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	 */
 	(void)talloc_get_type_abort(h, bio_handle_t);
 
+	switch (h->fd_info->socket.af) {
+		ssize_t slen;
+
+	case AF_INET:
+	case AF_INET6:
+		sent = sendmmsg(h->fd, h->mmsgvec, queued, 0);
+		fr_assert(0);
+		break;
+
+	default:
+		fr_assert(inst->max_send_coalesce == 1);
+
+		slen = fr_bio_write(h->bio, NULL, h->coalesced[0].out.iov_base, h->coalesced[0].out.iov_len);
+		if (slen < 0) {
+			sent = -1;
+		} else {
+			sent = 1;
+			h->mmsgvec[0].msg_len = slen;
+		}
+		break;
+	}
+
 	/*
 	 *	Send the coalesced datagrams
 	 */
-	sent = sendmmsg(h->fd, h->mmsgvec, queued, 0);
 	if (sent < 0) {		/* Error means no messages were sent */
 		sent = 0;
 
@@ -2250,6 +2210,8 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	u->recv_time = request->async->recv_time;
 	fr_pair_list_init(&u->extra);
 
+	u->retry.count = 1;
+
 	r->rcode = RLM_MODULE_FAIL;
 
 	/*
@@ -2294,9 +2256,11 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 
 	talloc_set_destructor(u, _bio_request_free);
 
-
-	if (inst->synchronous || inst->replicate) { /* @todo - or if stream! */
-		retry_config = &inst->synchronous_retry;
+	/*
+	 *	For many cases, we just time out instead of retrying.
+	 */
+	if (inst->synchronous || inst->replicate || (inst->fd_config.socket_type == SOCK_STREAM)) {
+		retry_config = &inst->timeout_retry;
 
 	} else {
 		retry_config = &inst->retry[u->code];

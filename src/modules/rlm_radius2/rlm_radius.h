@@ -76,7 +76,7 @@ struct rlm_radius_s {
 
 	bool			allowed[FR_RADIUS_CODE_MAX];
 
-	fr_retry_config_t	synchronous_retry;
+	fr_retry_config_t	timeout_retry;
 	fr_retry_config_t      	retry[FR_RADIUS_CODE_MAX];
 
 	trunk_conf_t		trunk_conf;		//!< trunk configuration
