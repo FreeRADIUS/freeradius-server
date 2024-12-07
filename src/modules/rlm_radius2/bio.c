@@ -93,12 +93,6 @@ typedef struct {
 
 	uint32_t		max_packet_size;	//!< Our max packet size. may be different from the parent.
 
-	fr_ipaddr_t		src_ipaddr;		//!< Source IP address.  May be altered on bind
-							//!< to be the actual IP address packets will be
-							//!< sent on.  This is why we can't use the inst
-							//!< src_ipaddr field.
-	uint16_t		src_port;		//!< Source port specific to this connection.
-
 	uint8_t			*buffer;		//!< Receive buffer.
 	size_t			buflen;			//!< Receive buffer length.
 
@@ -457,8 +451,8 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 			return;		/* Wait to be signalled again */
 
 		case ECONNREFUSED:
-			ERROR("%s - Failed reading response from socket: there is no server listening on %pV port %u",
-			      h->module_name, fr_box_ipaddr(h->inst->fd_config.dst_ipaddr), h->inst->fd_config.dst_port);
+			ERROR("%s - Failed reading response from socket: there is no server listening on outgoing connection %s",
+			      h->module_name, h->name);
 			break;
 
 		default:
@@ -648,8 +642,6 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->thread = thread;
 	h->inst = thread->inst;
 	h->module_name = h->inst->name;
-	h->src_ipaddr = h->inst->fd_config.src_ipaddr;
-	h->src_port = 0;
 	h->max_packet_size = h->inst->max_packet_size;
 	h->last_idle = fr_time();
 
@@ -689,8 +681,8 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 */
 	h->name = fr_asprintf(h, "proto %s local %pV port %u remote %pV port %u",
 			      h->inst->fd_config.transport,
-			      fr_box_ipaddr(h->src_ipaddr), h->src_port,
-			      fr_box_ipaddr(h->inst->fd_config.dst_ipaddr), h->inst->fd_config.dst_port);
+			      fr_box_ipaddr(h->fd_info->socket.inet.src_ipaddr), h->fd_info->socket.inet.src_port,
+			      fr_box_ipaddr(h->fd_info->socket.inet.dst_ipaddr), h->fd_info->socket.inet.dst_port);
 
 	talloc_set_destructor(h, _udp_handle_free);
 

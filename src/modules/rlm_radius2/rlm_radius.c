@@ -192,7 +192,7 @@ fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 	{ NULL }
 };
 
-#include "rlm_radius_udp.c"
+#include "bio.c"
 
 /** Set which types of packets we can parse
  *
