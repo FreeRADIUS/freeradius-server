@@ -1224,25 +1224,34 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 {
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 	fr_bio_fd_config_t const *cfg = my->info.cfg;
-	int fd;
+	int fd, flags;
 
 	if (my->info.socket.af != AF_FILE_BIO) {
 		fr_strerror_const("Cannot reopen a non-file BIO");
 		return -1;
 	}
 
-	if (!cfg->mkdir) {
-		fd = open(cfg->filename, cfg->flags, cfg->perm);
-		if (fd < 0) {
-			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
-			return -1;
-		}
+	if (cfg->mkdir &&
+	    (fr_mkdir(&fd, cfg->filename, strlen(cfg->filename), cfg->perm, fr_mkdir_chown,
+		      &(fr_mkdir_chown_t) {
+			      .uid = cfg->uid,
+			      .gid = cfg->gid,
+		      }) < 0)) {
+		return -1;
+	}
 
-	} else if (fr_mkdir(&fd, cfg->filename, strlen(cfg->filename), cfg->perm,
-			    fr_mkdir_chown, &(fr_mkdir_chown_t) {
-				    .uid = cfg->uid,
-				    .gid = cfg->gid,
-			    }) < 0) {
+	/*
+	 *	Create it if necessary.
+	 */
+	flags = cfg->flags;
+	if (flags != O_RDONLY) flags |= O_CREAT;
+
+	/*
+	 *	Client BIOs writing to a file, and therefore need to create it.
+	 */
+	fd = open(cfg->filename, flags, cfg->perm);
+	if (fd < 0) {
+		fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
 		return -1;
 	}
 
