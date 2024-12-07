@@ -705,8 +705,8 @@ module_rlm_t rlm_radius = {
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach,
 
-		.thread_inst_size	= sizeof(udp_thread_t),
-		.thread_inst_type	= "udp_thread_t",
+		.thread_inst_size	= sizeof(bio_thread_t),
+		.thread_inst_type	= "bio_thread_t",
 		.thread_instantiate 	= mod_thread_instantiate,
 	},
 	.method_group = {

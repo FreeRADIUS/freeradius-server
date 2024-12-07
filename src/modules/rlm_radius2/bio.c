@@ -30,9 +30,6 @@
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
-#include <freeradius-devel/util/udp.h>
-
-#include <freeradius-devel/unlang/module.h>
 
 #include <sys/socket.h>
 
@@ -52,20 +49,20 @@ typedef struct {
 	rlm_radius_t const	*inst;			//!< our instance
 
 	trunk_t			*trunk;			//!< trunk handler
-} udp_thread_t;
+} bio_thread_t;
 
 typedef struct {
 	trunk_request_t		*treq;
 	rlm_rcode_t		rcode;			//!< from the transport
 	bool			is_retry;
-} udp_result_t;
+} bio_result_t;
 
-typedef struct udp_request_s udp_request_t;
+typedef struct bio_request_s bio_request_t;
 
 typedef struct {
 	struct iovec		out;			//!< Describes buffer to send.
 	trunk_request_t	*treq;				//!< Used for signalling.
-} udp_coalesced_t;
+} bio_coalesced_t;
 
 /** Track the handle, which is tightly correlated with the FD
  *
@@ -79,14 +76,14 @@ typedef struct {
 	fr_bio_fd_info_t const	*fd_info;
 
 	struct mmsghdr		*mmsgvec;		//!< Vector of inbound/outbound packets.
-	udp_coalesced_t		*coalesced;		//!< Outbound coalesced requests.
+	bio_coalesced_t		*coalesced;		//!< Outbound coalesced requests.
 
 	size_t			send_buff_actual;	//!< What we believe the maximum SO_SNDBUF size to be.
 							///< We don't try and encode more packet data than this
 							///< in one go.
 
 	rlm_radius_t const	*inst;			//!< Our module instance.
-	udp_thread_t		*thread;
+	bio_thread_t		*thread;
 
 	uint8_t			last_id;		//!< Used when replicating to ensure IDs are distributed
 							///< evenly.
@@ -107,16 +104,16 @@ typedef struct {
 	fr_event_timer_t const	*zombie_ev;		//!< Zombie timeout.
 
 	bool			status_checking;       	//!< whether we're doing status checks
-	udp_request_t		*status_u;		//!< for sending status check packets
-	udp_result_t		*status_r;		//!< for faking out status checks as real packets
+	bio_request_t		*status_u;		//!< for sending status check packets
+	bio_result_t		*status_r;		//!< for faking out status checks as real packets
 	request_t		*status_request;
-} udp_handle_t;
+} bio_handle_t;
 
 
 /** Connect request_t to local tracking structure
  *
  */
-struct udp_request_s {
+struct bio_request_s {
 	uint32_t		priority;		//!< copied from request->async->priority
 	fr_time_t		recv_time;		//!< copied from request->async->recv_time
 
@@ -161,14 +158,14 @@ static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_CODE_MAX] = {
 static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int fd,
 						   UNUSED int flags, void *uctx);
 
-static int 		encode(rlm_radius_t const *inst, request_t *request, udp_request_t *u, uint8_t id);
+static int 		encode(rlm_radius_t const *inst, request_t *request, bio_request_t *u, uint8_t id);
 
 static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
-			       udp_handle_t *h, request_t *request, udp_request_t *u,
+			       bio_handle_t *h, request_t *request, bio_request_t *u,
 			       uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			       uint8_t *data, size_t data_len);
 
-static void		protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t *h);
+static void		protocol_error_reply(bio_request_t *u, bio_result_t *r, bio_handle_t *h);
 
 static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request);
 static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action);
@@ -183,7 +180,7 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
  * @param[in] file	the logging request was made in.
  * @param[in] line 	logging request was made on.
  */
-static void udp_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
+static void bio_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, char const *file, int line,
 				   radius_track_entry_t *te)
 {
 	request_t			*request;
@@ -202,7 +199,7 @@ static void udp_tracking_entry_log(fr_log_t const *log, fr_log_type_t log_type, 
 /** Clear out any connection specific resources from a udp request
  *
  */
-static void udp_request_reset(udp_request_t *u)
+static void bio_request_reset(bio_request_t *u)
 {
 	TALLOC_FREE(u->packet);
 	fr_pair_list_init(&u->extra);	/* Freed with packet */
@@ -217,7 +214,7 @@ static void udp_request_reset(udp_request_t *u)
 /** Reset a status_check packet, ready to reuse
  *
  */
-static void status_check_reset(udp_handle_t *h, udp_request_t *u)
+static void status_check_reset(bio_handle_t *h, bio_request_t *u)
 {
 	fr_assert(u->status_check == true);
 
@@ -227,23 +224,23 @@ static void status_check_reset(udp_handle_t *h, udp_request_t *u)
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
-	udp_request_reset(u);
+	bio_request_reset(u);
 }
 
 /*
  *	Status-Server checks.  Manually build the packet, and
  *	all of its associated glue.
  */
-static void CC_HINT(nonnull) status_check_alloc(udp_handle_t *h)
+static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 {
-	udp_request_t		*u;
+	bio_request_t		*u;
 	request_t		*request;
 	rlm_radius_t const	*inst = h->inst;
 	map_t			*map = NULL;
 
 	fr_assert(!h->status_u && !h->status_r && !h->status_request);
 
-	u = talloc_zero(h, udp_request_t);
+	u = talloc_zero(h, bio_request_t);
 	fr_pair_list_init(&u->extra);
 
 	/*
@@ -328,7 +325,7 @@ static void CC_HINT(nonnull) status_check_alloc(udp_handle_t *h)
 	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_radius_packet_name[u->code]);
 	log_request_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
 
-	MEM(h->status_r = talloc_zero(request, udp_result_t));
+	MEM(h->status_r = talloc_zero(request, bio_result_t));
 	h->status_u = u;
 	h->status_request = request;
 }
@@ -346,14 +343,14 @@ static void CC_HINT(nonnull) status_check_alloc(udp_handle_t *h)
 static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
-	udp_handle_t		*h;
+	bio_handle_t		*h;
 
 	/*
 	 *	Connection must be in the connecting state when this fires
 	 */
 	fr_assert(conn->state == CONNECTION_STATE_CONNECTING);
 
-	h = talloc_get_type_abort(conn->h, udp_handle_t);
+	h = talloc_get_type_abort(conn->h, bio_handle_t);
 
 	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
@@ -367,15 +364,15 @@ static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, U
 static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
-	udp_handle_t		*h;
-	udp_request_t		*u;
+	bio_handle_t		*h;
+	bio_request_t		*u;
 
 	/*
 	 *	Connection must be in the connecting state when this fires
 	 */
 	fr_assert(conn->state == CONNECTION_STATE_CONNECTING);
 
-	h = talloc_get_type_abort(conn->h, udp_handle_t);
+	h = talloc_get_type_abort(conn->h, bio_handle_t);
 	u = h->status_u;
 
 	/*
@@ -415,7 +412,7 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 static void conn_status_check_again(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
 	if (fr_event_fd_insert(h, NULL, el, h->fd, conn_writable_status_check, NULL, conn_error_status_check, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->module_name);
@@ -429,10 +426,10 @@ static void conn_status_check_again(fr_event_list_t *el, UNUSED fr_time_t now, v
 static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 	trunk_t			*trunk = h->thread->trunk;
 	rlm_radius_t const 	*inst = h->inst;
-	udp_request_t		*u = h->status_u;
+	bio_request_t		*u = h->status_u;
 	ssize_t			slen;
 	fr_pair_list_t		reply;
 	uint8_t			code = 0;
@@ -538,8 +535,8 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
-	udp_request_t		*u = h->status_u;
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
+	bio_request_t		*u = h->status_u;
 	ssize_t			slen;
 
 	if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
@@ -552,7 +549,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 *	So increment the ID here.
 	 */
 	} else {
-		udp_request_reset(u);
+		bio_request_reset(u);
 		u->id++;
 	}
 
@@ -599,7 +596,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 /** Free a connection handle, closing associated resources
  *
  */
-static int _udp_handle_free(udp_handle_t *h)
+static int _bio_handle_free(bio_handle_t *h)
 {
 	fr_assert(h->fd >= 0);
 
@@ -628,17 +625,17 @@ static int _udp_handle_free(udp_handle_t *h)
  *
  * @param[out] h_out	Where to write the new file descriptor.
  * @param[in] conn	to initialise.
- * @param[in] uctx	A #udp_thread_t
+ * @param[in] uctx	A #bio_thread_t
  */
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx)
 {
 	int			fd;
-	udp_handle_t		*h;
-	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
+	bio_handle_t		*h;
+	bio_thread_t		*thread = talloc_get_type_abort(uctx, bio_thread_t);
 	uint16_t		i;
 
-	MEM(h = talloc_zero(conn, udp_handle_t));
+	MEM(h = talloc_zero(conn, bio_handle_t));
 	h->thread = thread;
 	h->inst = thread->inst;
 	h->module_name = h->inst->name;
@@ -652,7 +649,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *      many messages we want to send to sendmmsg.
 	 */
 	h->mmsgvec = talloc_zero_array(h, struct mmsghdr, h->inst->max_send_coalesce);
-	h->coalesced = talloc_zero_array(h, udp_coalesced_t, h->inst->max_send_coalesce);
+	h->coalesced = talloc_zero_array(h, bio_coalesced_t, h->inst->max_send_coalesce);
 	for (i = 0; i < h->inst->max_send_coalesce; i++) {
 		h->mmsgvec[i].msg_hdr.msg_iov = &h->coalesced[i].out;
 		h->mmsgvec[i].msg_hdr.msg_iovlen = 1;
@@ -684,7 +681,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 			      fr_box_ipaddr(h->fd_info->socket.inet.src_ipaddr), h->fd_info->socket.inet.src_port,
 			      fr_box_ipaddr(h->fd_info->socket.inet.dst_ipaddr), h->fd_info->socket.inet.dst_port);
 
-	talloc_set_destructor(h, _udp_handle_free);
+	talloc_set_destructor(h, _bio_handle_free);
 
 #ifdef SO_RCVBUF
 	if (h->inst->fd_config.recv_buff_is_set) {
@@ -791,7 +788,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
  */
 static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uctx)
 {
-	udp_handle_t *h = talloc_get_type_abort(handle, udp_handle_t);
+	bio_handle_t *h = talloc_get_type_abort(handle, bio_handle_t);
 
 	/*
 	 *	There's tracking entries still allocated
@@ -800,7 +797,7 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 	 */
 	if (h->tt && (h->tt->num_requests != 0)) {
 #ifndef NDEBUG
-		radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__, h->tt, udp_tracking_entry_log);
+		radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__, h->tt, bio_tracking_entry_log);
 #endif
 		fr_assert_fail("%u tracking entries still allocated at conn close", h->tt->num_requests);
 	}
@@ -826,7 +823,7 @@ static connection_state_t conn_failed(void *handle, connection_state_t state, UN
 	 */
 	case CONNECTION_STATE_CONNECTED:
 	{
-		udp_handle_t	*h = talloc_get_type_abort(handle, udp_handle_t); /* h only available if connected */
+		bio_handle_t	*h = talloc_get_type_abort(handle, bio_handle_t); /* h only available if connected */
 
 		/*
 		 *	Reset the Status-Server checks.
@@ -848,7 +845,7 @@ static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_
 					  char const *log_prefix, void *uctx)
 {
 	connection_t		*conn;
-	udp_thread_t		*thread = talloc_get_type_abort(uctx, udp_thread_t);
+	bio_thread_t		*thread = talloc_get_type_abort(uctx, bio_thread_t);
 
 	conn = connection_alloc(tconn, el,
 				   &(connection_funcs_t){
@@ -873,7 +870,7 @@ static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_
 static void conn_discard(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	udp_handle_t		*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 	uint8_t			buffer[4096];
 	ssize_t			slen;
 
@@ -909,7 +906,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	connection_t		*conn = tconn->conn;
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
 	ERROR("%s - Connection %s failed: %s", h->module_name, h->name, fr_syserror(fd_errno));
 
@@ -921,7 +918,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 			       fr_event_list_t *el,
 			       trunk_connection_event_t notify_on, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 	fr_event_fd_cb_t	read_fn = NULL;
 	fr_event_fd_cb_t	write_fn = NULL;
 
@@ -988,8 +985,8 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
  */
 static int8_t request_prioritise(void const *one, void const *two)
 {
-	udp_request_t const *a = one;
-	udp_request_t const *b = two;
+	bio_request_t const *a = one;
+	bio_request_t const *b = two;
 	int8_t ret;
 
 	// @todo - prioritize packets if there's a state?
@@ -1028,7 +1025,7 @@ static int8_t request_prioritise(void const *one, void const *two)
  *	- DECODE_FAIL_* on failure.
  */
 static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
-			    udp_handle_t *h, request_t *request, udp_request_t *u,
+			    bio_handle_t *h, request_t *request, bio_request_t *u,
 			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			    uint8_t *data, size_t data_len)
 {
@@ -1096,7 +1093,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	return DECODE_FAIL_NONE;
 }
 
-static int encode(rlm_radius_t const *inst, request_t *request, udp_request_t *u, uint8_t id)
+static int encode(rlm_radius_t const *inst, request_t *request, bio_request_t *u, uint8_t id)
 {
 	ssize_t			packet_len;
 	fr_radius_encode_ctx_t	encode_ctx;
@@ -1216,7 +1213,7 @@ static int encode(rlm_radius_t const *inst, request_t *request, udp_request_t *u
 static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
 	INFO("%s - Reviving connection %s", h->module_name, h->name);
 	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
@@ -1228,7 +1225,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	udp_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
 	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->module_name, h->name);
 
@@ -1285,7 +1282,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
  */
 static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_time_t now, fr_time_t last_sent)
 {
-	udp_handle_t	*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	bio_handle_t	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
 	/*
 	 *	We're replicating, and don't care about the health of
@@ -1342,7 +1339,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
  */
 static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t const *retry)
 {
-	udp_result_t		*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
+	bio_result_t		*r = talloc_get_type_abort(mctx->rctx, bio_result_t);
 	rlm_radius_t const     	*inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
 	fr_time_t		now = retry->updated;
 
@@ -1419,7 +1416,7 @@ CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t 
 static void request_mux(UNUSED fr_event_list_t *el,
 			trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 	rlm_radius_t const	*inst = h->inst;
 	int			sent;
 	uint16_t		i, queued;
@@ -1431,7 +1428,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	 */
 	for (i = 0, queued = 0; (i < inst->max_send_coalesce) && (total_len < h->send_buff_actual); i++) {
 		trunk_request_t		*treq;
-		udp_request_t		*u;
+		bio_request_t		*u;
 		request_t		*request;
 
  		if (unlikely(trunk_connection_pop_request(&treq, tconn) < 0)) return;
@@ -1445,7 +1442,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 			   (treq->state == TRUNK_REQUEST_STATE_PARTIAL));
 
 		request = treq->request;
-		u = talloc_get_type_abort(treq->preq, udp_request_t);
+		u = talloc_get_type_abort(treq->preq, bio_request_t);
 
 		fr_assert(!u->status_check);
 
@@ -1465,7 +1462,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 			if (unlikely(radius_track_entry_reserve(&u->rr, treq, h->tt, request, u->code, treq) < 0)) {
 #ifndef NDEBUG
 				radius_track_state_log(&default_log, L_ERR, __FILE__, __LINE__,
-						       h->tt, udp_tracking_entry_log);
+						       h->tt, bio_tracking_entry_log);
 #endif
 				fr_assert_fail("Tracking entry allocation failed: %s", fr_strerror());
 				trunk_request_signal_fail(treq);
@@ -1481,7 +1478,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 				 *	Need to do this because request_conn_release
 				 *	may not be called.
 				 */
-				udp_request_reset(u);
+				bio_request_reset(u);
 				if (u->ev) (void) fr_event_timer_delete(&u->ev);
 				trunk_request_signal_fail(treq);
 				continue;
@@ -1534,7 +1531,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	/*
 	 *	Verify nothing accidentally freed the connection handle
 	 */
-	(void)talloc_get_type_abort(h, udp_handle_t);
+	(void)talloc_get_type_abort(h, bio_handle_t);
 
 	/*
 	 *	Send the coalesced datagrams
@@ -1593,7 +1590,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	 */
 	for (i = 0; i < sent; i++) {
 		trunk_request_t		*treq = h->coalesced[i].treq;
-		udp_request_t		*u;
+		bio_request_t		*u;
 		request_t		*request;
 		char const		*action;
 
@@ -1605,13 +1602,13 @@ static void request_mux(UNUSED fr_event_list_t *el,
 		fr_assert(treq->state == TRUNK_REQUEST_STATE_SENT);
 
 		request = treq->request;
-		u = talloc_get_type_abort(treq->preq, udp_request_t);
+		u = talloc_get_type_abort(treq->preq, bio_request_t);
 
 		/*
 		 *	Don't print anything more for replicated requests.
 		 */
 		if (inst->replicate) {
-			udp_result_t *r = talloc_get_type_abort(treq->rctx, udp_result_t);
+			bio_result_t *r = talloc_get_type_abort(treq->rctx, bio_result_t);
 
 			r->rcode = RLM_MODULE_OK;
 			trunk_request_signal_complete(treq);
@@ -1639,7 +1636,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 		} else {
 			/*
 			 *	If the packet doesn't get a response,
-			 *	then udp_request_free() will notice, and run conn_zombie()
+			 *	then bio_request_free() will notice, and run conn_zombie()
 			 */
 			RDEBUG("%s request.  Relying on NAS to perform more retransmissions", action);
 		}
@@ -1657,7 +1654,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 /** Deal with Protocol-Error replies, and possible negotiation
  *
  */
-static void protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t *h)
+static void protocol_error_reply(bio_request_t *u, bio_result_t *r, bio_handle_t *h)
 {
 	bool	  	error_601 = false;
 	uint32_t  	response_length = 0;
@@ -1775,7 +1772,7 @@ static void protocol_error_reply(udp_request_t *u, udp_result_t *r, udp_handle_t
 static void status_check_next(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
-	udp_handle_t		*h = talloc_get_type_abort(tconn->conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
 	if (trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
 					     h->status_u, h->status_r, true) != TRUNK_ENQUEUE_OK) {
@@ -1789,10 +1786,10 @@ static void status_check_next(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, 
  */
 static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 {
-	udp_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, bio_handle_t);
 	rlm_radius_t const 	*inst = h->inst;
-	udp_request_t		*u = talloc_get_type_abort(treq->preq, udp_request_t);
-	udp_result_t		*r = talloc_get_type_abort(treq->rctx, udp_result_t);
+	bio_request_t		*u = talloc_get_type_abort(treq->preq, bio_request_t);
+	bio_result_t		*r = talloc_get_type_abort(treq->rctx, bio_result_t);
 
 	fr_assert(treq->preq == h->status_u);
 	fr_assert(treq->rctx == h->status_r);
@@ -1838,7 +1835,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 CC_NO_UBSAN(function) /* UBSAN: false positive - public vs private connection_t trips --fsanitize=function*/
 static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn, connection_t *conn, UNUSED void *uctx)
 {
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
 	DEBUG3("%s - Reading data for connection %s", h->module_name, h->name);
 
@@ -1847,8 +1844,8 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 
 		trunk_request_t	*treq;
 		request_t		*request;
-		udp_request_t		*u;
-		udp_result_t		*r;
+		bio_request_t		*u;
+		bio_result_t		*r;
 		radius_track_entry_t	*rr;
 		decode_fail_t		reason;
 		uint8_t			code = 0;
@@ -1894,8 +1891,8 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		treq = talloc_get_type_abort(rr->uctx, trunk_request_t);
 		request = treq->request;
 		fr_assert(request != NULL);
-		u = talloc_get_type_abort(treq->preq, udp_request_t);
-		r = talloc_get_type_abort(treq->rctx, udp_result_t);
+		u = talloc_get_type_abort(treq->preq, bio_request_t);
+		r = talloc_get_type_abort(treq->rctx, bio_result_t);
 
 		/*
 		 *	Validate and decode the incoming packet
@@ -2004,7 +2001,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 static void request_cancel(UNUSED connection_t *conn, void *preq_to_reset,
 			   trunk_cancel_reason_t reason, UNUSED void *uctx)
 {
-	udp_request_t	*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
+	bio_request_t	*u = talloc_get_type_abort(preq_to_reset, bio_request_t);
 
 	/*
 	 *	Request has been requeued on the same
@@ -2035,11 +2032,11 @@ static void request_cancel(UNUSED connection_t *conn, void *preq_to_reset,
  */
 static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED void *uctx)
 {
-	udp_request_t		*u = talloc_get_type_abort(preq_to_reset, udp_request_t);
-	udp_handle_t		*h = talloc_get_type_abort(conn->h, udp_handle_t);
+	bio_request_t		*u = talloc_get_type_abort(preq_to_reset, bio_request_t);
+	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
 	if (u->ev) (void)fr_event_timer_delete(&u->ev);
-	if (u->packet) udp_request_reset(u);
+	if (u->packet) bio_request_reset(u);
 
 	if (h->inst->replicate) return;
 
@@ -2058,8 +2055,8 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 static void request_fail(request_t *request, void *preq, void *rctx,
 			 NDEBUG_UNUSED trunk_request_state_t state, UNUSED void *uctx)
 {
-	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
-	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
+	bio_result_t		*r = talloc_get_type_abort(rctx, bio_result_t);
+	bio_request_t		*u = talloc_get_type_abort(preq, bio_request_t);
 
 	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
@@ -2078,8 +2075,8 @@ static void request_fail(request_t *request, void *preq, void *rctx,
  */
 static void request_complete(request_t *request, void *preq, void *rctx, UNUSED void *uctx)
 {
-	udp_result_t		*r = talloc_get_type_abort(rctx, udp_result_t);
-	udp_request_t		*u = talloc_get_type_abort(preq, udp_request_t);
+	bio_result_t		*r = talloc_get_type_abort(rctx, bio_result_t);
+	bio_request_t		*u = talloc_get_type_abort(preq, bio_request_t);
 
 	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
@@ -2095,7 +2092,7 @@ static void request_complete(request_t *request, void *preq, void *rctx, UNUSED 
  */
 static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED void *uctx)
 {
-	udp_request_t		*u = talloc_get_type_abort(preq_to_free, udp_request_t);
+	bio_request_t		*u = talloc_get_type_abort(preq_to_free, bio_request_t);
 
 	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
@@ -2112,7 +2109,7 @@ static void request_free(UNUSED request_t *request, void *preq_to_free, UNUSED v
  */
 static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	udp_result_t	*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
+	bio_result_t	*r = talloc_get_type_abort(mctx->rctx, bio_result_t);
 	rlm_rcode_t	rcode = r->rcode;
 
 	talloc_free(r);
@@ -2124,8 +2121,8 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
 
-	udp_thread_t		*t = talloc_get_type_abort(module_thread(mctx->mi)->data, udp_thread_t);
-	udp_result_t		*r = talloc_get_type_abort(mctx->rctx, udp_result_t);
+	bio_thread_t		*t = talloc_get_type_abort(module_thread(mctx->mi)->data, bio_thread_t);
+	bio_result_t		*r = talloc_get_type_abort(mctx->rctx, bio_result_t);
 
 	/*
 	 *	We received a duplicate packet, but we're not doing
@@ -2189,29 +2186,29 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 }
 
 #ifndef NDEBUG
-/** Free a udp_result_t
+/** Free a bio_result_t
  *
  * Allows us to set break points for debugging.
  */
-static int _udp_result_free(udp_result_t *r)
+static int _bio_result_free(bio_result_t *r)
 {
 	trunk_request_t	*treq;
-	udp_request_t		*u;
+	bio_request_t		*u;
 
 	if (!r->treq) return 0;
 
 	treq = talloc_get_type_abort(r->treq, trunk_request_t);
-	u = talloc_get_type_abort(treq->preq, udp_request_t);
+	u = talloc_get_type_abort(treq->preq, bio_request_t);
 
-	fr_assert_msg(!u->ev, "udp_result_t freed with active timer");
+	fr_assert_msg(!u->ev, "bio_result_t freed with active timer");
 
 	return 0;
 }
 #endif
 
-/** Free a udp_request_t
+/** Free a bio_request_t
  */
-static int _udp_request_free(udp_request_t *u)
+static int _bio_request_free(bio_request_t *u)
 {
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
@@ -2222,9 +2219,9 @@ static int _udp_request_free(udp_request_t *u)
 
 static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *inst, void *thread, request_t *request)
 {
-	udp_thread_t			*t = talloc_get_type_abort(thread, udp_thread_t);
-	udp_result_t			*r;
-	udp_request_t			*u;
+	bio_thread_t			*t = talloc_get_type_abort(thread, bio_thread_t);
+	bio_result_t			*r;
+	bio_request_t			*u;
 	trunk_request_t			*treq;
 	fr_retry_config_t const		*retry_config;
 
@@ -2239,15 +2236,15 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	treq = trunk_request_alloc(t->trunk, request);
 	if (!treq) RETURN_MODULE_FAIL;
 
-	MEM(r = talloc_zero(request, udp_result_t));
+	MEM(r = talloc_zero(request, bio_result_t));
 #ifndef NDEBUG
-	talloc_set_destructor(r, _udp_result_free);
+	talloc_set_destructor(r, _bio_result_free);
 #endif
 
 	/*
 	 *	Can't use compound literal - const issues.
 	 */
-	MEM(u = talloc_zero(treq, udp_request_t));
+	MEM(u = talloc_zero(treq, bio_request_t));
 	u->code = request->packet->code;
 	u->synchronous = inst->synchronous;
 	u->priority = request->async->priority;
@@ -2296,7 +2293,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	r->treq = treq;	/* Remember for signalling purposes */
 	fr_assert(treq->rctx == r);
 
-	talloc_set_destructor(u, _udp_request_free);
+	talloc_set_destructor(u, _bio_request_free);
 
 
 	if (inst->synchronous || inst->replicate) { /* @todo - or if stream! */
@@ -2319,7 +2316,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_radius_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
-	udp_thread_t			*thread = talloc_get_type_abort(mctx->thread, udp_thread_t);
+	bio_thread_t			*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
 
 	static trunk_io_funcs_t	io_funcs = {
 						.connection_alloc = thread_conn_alloc,
