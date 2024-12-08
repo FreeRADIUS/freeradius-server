@@ -1243,6 +1243,12 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 	 */
 	if (my->info.type == FR_BIO_FD_UNCONNECTED) {
 	error:
+#ifdef ECONNABORTED
+		my->info.connect_errno = ECONNABORTED;
+#else
+		my->info.connect_errno = ECONNREFUSED;
+#endif
+		if (error_cb) error_cb(bio);
 		fr_bio_shutdown(&my->bio);
 		return fr_bio_error(GENERIC);
 	}
@@ -1279,7 +1285,10 @@ int fr_bio_fd_connect_full(fr_bio_t *bio, fr_event_list_t *el, fr_bio_callback_t
 		ssize_t rcode;
 
 		rcode = fr_bio_fd_try_connect(my);
-		if (rcode < 0) return rcode; /* it already called shutdown */
+		if (rcode < 0) {
+			if (error_cb) error_cb(bio);
+			return rcode; /* it already called shutdown */
+		}
 
 		return 1;
 	}
