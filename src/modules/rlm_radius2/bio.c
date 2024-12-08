@@ -76,6 +76,7 @@ typedef struct {
 
 	rlm_radius_t const	*inst;			//!< Our module instance.
 	bio_thread_t		*thread;
+	connection_t		*conn;
 
 	uint8_t			last_id;		//!< Used when replicating to ensure IDs are distributed
 							///< evenly.
@@ -614,6 +615,25 @@ static int _bio_handle_free(bio_handle_t *h)
 	return 0;
 }
 
+static void bio_connected(fr_bio_t *bio)
+{
+	bio_handle_t		*h = bio->uctx;
+
+	DEBUG("%s - Connection open - %s", h->module_name, h->fd_info->name);
+
+	connection_signal_connected(h->conn);
+}
+
+static void bio_error(fr_bio_t *bio)
+{
+	bio_handle_t		*h = bio->uctx;
+
+	DEBUG("%s - Connection failed - %s - %s", h->module_name, h->fd_info->name,
+	      fr_syserror(h->fd_info->connect_errno));
+
+	connection_signal_reconnect(h->conn, CONNECTION_FAILED);
+}
+
 /** Initialise a new outbound connection
  *
  * @param[out] h_out	Where to write the new file descriptor.
@@ -629,6 +649,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h = talloc_zero(conn, bio_handle_t));
 	h->thread = thread;
+	h->conn = conn;
 	h->inst = thread->inst;
 	h->module_name = h->inst->name;
 	h->max_packet_size = h->inst->max_packet_size;
@@ -647,6 +668,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		return CONNECTION_STATE_FAILED;
 	}
 
+	h->bio->uctx = h;
 	h->fd_info = fr_bio_fd_info(h->bio);
 	fd = h->fd_info->socket.fd;
 
@@ -657,15 +679,34 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	h->fd = fd;
 
 	/*
-	 *	If we're doing status checks, then we want at least
-	 *	one positive response before signalling that the
-	 *	connection is open.
-	 *
-	 *	To do this we install special I/O handlers that
-	 *	only signal the connection as open once we get a
-	 *	status-check response.
+	 *	If the socket isn't connected, then do that first.
 	 */
-	if (h->inst->status_check) {
+	if (h->fd_info->state != FR_BIO_FD_STATE_OPEN) {
+		int rcode;
+
+		fr_assert(h->fd_info->state == FR_BIO_FD_STATE_CONNECTING);
+
+		/*
+		 *	@todo - call connect_full() with callbacks, timeouts, etc.
+		 */
+		rcode = fr_bio_fd_connect_full(h->bio, conn->el, bio_connected, bio_error, NULL, NULL);
+		if (rcode < 0) goto fail;
+
+		if (rcode == 0) return CONNECTION_STATE_CONNECTING;
+
+		fr_assert(rcode == 1);
+		return CONNECTION_STATE_CONNECTED;
+
+		/*
+		 *	If we're doing status checks, then we want at least
+		 *	one positive response before signalling that the
+		 *	connection is open.
+		 *
+		 *	To do this we install special I/O handlers that
+		 *	only signal the connection as open once we get a
+		 *	status-check response.
+		 */
+	} if (h->inst->status_check) {
 		status_check_alloc(h);
 
 		/*
@@ -677,19 +718,16 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		 */
 		if (fr_event_fd_insert(h, NULL, conn->el, h->fd, NULL,
 				       conn_writable_status_check, conn_error_status_check, conn) < 0) goto fail;
-	/*
-	 *	If we're not doing status-checks, signal the connection
-	 *	as open as soon as it becomes writable.
-	 */
+
+		/*
+		 *	If we're not doing status-checks, signal the connection
+		 *	as open as soon as it becomes writable.
+		 */
 	} else {
 		connection_signal_on_fd(conn, fd);
 	}
 
 	*h_out = h;
-
-	// @todo - initialize the tracking memory, etc.
-	// i.e. histograms (or hyperloglog) of packets, so we can see
-	// which connections / home servers are fast / slow.
 
 	return CONNECTION_STATE_CONNECTING;
 }

@@ -540,7 +540,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	if (inst->replicate && inst->status_check) {
 		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'replicate = true'",
 			    fr_radius_packet_name[inst->status_check]);
-		inst->status_check = 0;
+		inst->status_check = false;
 	}
 
 	/*
