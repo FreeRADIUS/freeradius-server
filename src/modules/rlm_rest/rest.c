@@ -266,7 +266,7 @@ void *rest_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta
 	randle = fr_curl_io_request_alloc(ctx);
 	if (!randle) return NULL;
 
-	curl_ctx = talloc_zero(randle, rlm_rest_curl_context_t);
+	MEM(curl_ctx = talloc_zero(randle, rlm_rest_curl_context_t));
 
 	curl_ctx->headers = NULL; /* CURL needs this to be NULL */
 	curl_ctx->request.instance = inst;
@@ -1726,6 +1726,34 @@ int rest_request_config_add_header(request_t *request, fr_curl_io_request_t *ran
 	return 0;
 }
 
+/** See if the list of headers already contains a header
+ *
+ * @note Only compares the header name, not the value.
+ *
+ * @param[in] randle	to check headers for.
+ * @param[in] header	to find.
+ * @return
+ *	- true if yes
+ *	- false if no
+ */
+static bool rest_request_contains_header(fr_curl_io_request_t *randle, char const *header)
+{
+	rlm_rest_curl_context_t *ctx = talloc_get_type_abort(randle->uctx, rlm_rest_curl_context_t);
+	struct curl_slist	*headers = ctx->headers;
+	char const 		*sep;
+	size_t			cmp_len;
+
+	sep = strchr(header, ':');
+	cmp_len = sep ? (size_t)(sep - header) : strlen(header);
+
+	while (headers) {
+		if (strncasecmp(headers->data, header, cmp_len) == 0) return true;
+		headers = headers->next;
+	}
+
+	return false;
+}
+
 /** Configures request curlopts.
  *
  * Configures libcurl handle setting various curlopts for things like local
@@ -1770,7 +1798,6 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 	char const		*option;
 
 	char			buffer[512];
-	bool			content_type_set = false;
 
 	fr_assert(candle);
 
@@ -1841,24 +1868,11 @@ int rest_request_config(module_ctx_t const *mctx, rlm_rest_section_t const *sect
 			header = fr_dcursor_remove(&header_cursor);
 			if (unlikely(rest_request_config_add_header(request, randle, header->vp_strvalue, true) < 0)) return -1;
 
-			/*
-			 *  Set content-type based on a corresponding REST-HTTP-Header attribute, if provided.
-			 */
-			if (!content_type_set && (strncasecmp(header->vp_strvalue, "content-type:", sizeof("content-type:") - 1) == 0)) {
-				char const *content_type = header->vp_strvalue + (sizeof("content-type:") - 1);
-
-				while (isspace((uint8_t)*content_type)) content_type++;
-
-				RDEBUG3("Request body content-type provided as \"%s\"", content_type);
-
-				content_type_set = true;
-			}
-
 			talloc_free(header);
 		}
 	}
 
-	if (!content_type_set) {
+	if (!rest_request_contains_header(randle, "Content-Type:")) {
 		/*
 		 *  HTTP/1.1 doesn't require a content type so only set it
 		 *  if where body type requires it, and we haven't set one
