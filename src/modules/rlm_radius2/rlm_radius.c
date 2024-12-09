@@ -473,7 +473,22 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	/*
 	 *	Replication is write-only, and append by default.
 	 */
-	if (inst->replicate) inst->fd_config.flags = O_WRONLY | O_APPEND;
+	if (inst->replicate) {
+		if (inst->fd_config.filename && (inst->fd_config.flags != O_WRONLY)) {
+			cf_log_info(conf, "Setting 'flags = write-only' for writing to a file");
+		}
+		inst->fd_config.flags = O_WRONLY | O_APPEND;
+
+	} else if (inst->fd_config.filename) {
+		cf_log_err(conf, "When using an output 'filename', you MUST set 'replicate = true'");
+		return -1;
+
+	} else {
+		/*
+		 *	All other IO is read+write.
+		 */
+		inst->fd_config.flags = O_RDWR;
+	}
 
 	if (fr_bio_fd_check_config(&inst->fd_config) < 0) {
 		cf_log_perr(conf, "Invalid configuration");
