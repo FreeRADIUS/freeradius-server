@@ -1,0 +1,39 @@
+= Overview
+
+FreeRADIUS is a modular, high performance and feature-rich RADIUS suite including server, radius client, development libraries and numerous additional RADIUS related utilities.
+
+As the premiere open source RADIUS suite it is included as a standard package with numerous Operating Systems, has binary packages for many others and has source available which is known to build on almost anything. Production deployments include large scale installations comprising multiple AAA servers with over ten million users and millions of requests per day. It supports request proxying, with fail-over and load balancing, as well as the ability to access many types of back-end databases. Different classes of authentication requests can trigger access of different authentication and authorization databases (with cascaded fall back), and Accounting records can be simultaneously recorded in multiple different storage databases and directories.
+
+Other RADIUS Servers are available.
+
+We also keep a list of acknowledgements of contributions to FreeRADIUS development.
+
+= Features
+
+* Complete support for RFC 2865 and RFC 2866 attributes.
+* EAP with EAP-MD5, EAP-SIM, EAP-TLS, EAP-TTLS, EAP-PEAP, and Cisco LEAP|protocol EAP sub-types
+* Vendor Specific Attributes for almost one hundred vendors, including BinTec, Foundry, Cisco, Juniper, Lucent/Ascend, HP ProCurve, Microsoft, USR/3Com, Acc/Newbridge and many more.
+
+All known RADIUS Clients are supported.
+
+* RADIUS Clients
+* EAP Clients
+
+= Flexible Configuration
+
+FreeRADIUS provides a wide range of methods to select user configurations. The server can select a configuration based on any of the following criteria : 
+
+* attributes which have a given value
+* attributes which do not have a given value
+* attributes which are in the request (independent of their value)
+* attributes which are not in the request
+* String attributes which match a regular expression
+* Integer attributes which match a range (e.g. , =)
+* Source IP address of the request. (This can be different from the NAS-IP-Address)
+* Shortname defined for a NAS box. (This can be different from the NAS-Identifier)
+* Group of NAS boxes. (These may be grouped based on Source IP address, NAS-IP-Address, or any other configuration)
+* User-Name
+* DEFAULT template configuration
+* multiple cascading DEFAULT template configurations
+
+In addition, FreeRADIUS supports virtual servers which allow several separate sets of configuration data to coexist inside the same server instance.

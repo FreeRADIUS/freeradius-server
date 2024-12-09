@@ -1,0 +1,65 @@
+NAME
+       radsqlrelay - relay SQL queries to a central database server
+
+
+SYNOPSIS
+       radsqlrelay [-d sql_driver] [-b database] [-f file] [-h host] [-u user]
+       [-p password] [-1] file_path
+
+
+DESCRIPTION
+       radsqlrelay tails a SQL logfile and forwards the queries to a  database
+       server. Used to replicate accounting records to one (central) database,
+       even if the database has extended downtime.
+
+       The SQL logfile is created by the rlm_sql_log module. The  module  must
+       be configured in the radiusd server before you can use radsqlrelay.
+
+
+OPTIONS
+       -d sql_driver
+	      Driver to use: mysql, pg, oracle.
+
+       -b database
+	      Name of the database to use.
+
+       -f file
+	      Read password from file, instead of command line.
+
+       -h host
+	      Connect to host.
+
+       -u user
+	      User for login.
+
+       -p password
+	      Password to use when connecting to server.
+
+       -1     One-shot mode: push the file to database and exit.
+
+       file_path
+	      The pathname of the SQL logfile to use.
+
+
+NOTES
+   Oracle driver
+       The  command  "radsqlrelay  -d oracle -b db.domain.tld sql-relay" reads
+       the database description stored in $TNS_ADMIN/tnsnames.ora:
+
+       db.domain.tld =
+	 (DESCRIPTION =
+	   (ADDRESS_LIST =
+	     (ADDRESS = (PROTOCOL = TCP)(HOST = db.domain.tld)(PORT = 1521))
+	   )
+	   (CONNECT_DATA =
+	     (SERVICE_NAME = <DB SID>)
+	   )
+	 )
+
+
+SEE ALSO
+       rlm_sql_log(5)
+
+
+AUTHOR
+       Nicolas Baradakis <nicolas.baradakis@cegetel.net>
