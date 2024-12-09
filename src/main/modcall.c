@@ -1096,6 +1096,12 @@ calculate_result:
 	}
 
 	if (entry->unwind == MOD_RETURN) {
+		if ((entry->c->type == MOD_GROUP && main_config.group_stop_return) ||
+		    (entry->c->type == MOD_POLICY && main_config.policy_stop_return)) {
+			entry->unwind = 0;
+			goto next_sibling;
+		}
+
 		goto finish;
 	}
 

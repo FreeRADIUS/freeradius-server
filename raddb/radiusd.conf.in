@@ -291,6 +291,27 @@ hostname_lookups = no
 #proxy_dedup_window = 1
 
 #
+#  Unlang behavior options
+#
+unlang {
+	#
+	#  By default, the "return" keyword will cause the current process
+	#  section to complete.  These two options allow "return" to be
+	#  used to just exit "group" sections or "policy" sections
+	#
+	#  Setting this to yes, will cause "return" within a group to
+	#  exit the group but continue processing after that.
+	#
+#	group_stop_return = no
+
+	#
+	#  Setting this to yes, will cause "return" within a policy to
+	#  exit the policy but continue processing after that.
+	#
+#	policy_stop_return = no
+}
+
+#
 #  Logging section.  The various "log_*" configuration items
 #  will eventually be moved here.
 #

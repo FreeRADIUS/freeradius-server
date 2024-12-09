@@ -183,6 +183,9 @@ typedef struct main_config {
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
+
+	bool		group_stop_return;		//!< "return" stops at end of group
+	bool		policy_stop_return;		//!< "return" stops at end of policy
 } main_config_t;
 
 #if defined(WITH_VERIFY_PTR)

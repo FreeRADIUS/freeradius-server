@@ -230,6 +230,15 @@ static const CONF_PARSER resources[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const CONF_PARSER unlang_config[] = {
+	/*
+	 *	Unlang behaviour options
+	 */
+	{ "group_stop_return", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.group_stop_return), "no" },
+	{ "policy_stop_return", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.policy_stop_return), "no" },
+	CONF_PARSER_TERMINATOR
+};
+
 static const CONF_PARSER server_config[] = {
 	/*
 	 *	FIXME: 'prefix' is the ONLY one which should be
@@ -282,6 +291,8 @@ static const CONF_PARSER server_config[] = {
 	{ "log_stripped_names", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &log_stripped_names), NULL },
 
 	{  "security", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) security_config },
+
+	{  "unlang", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) unlang_config },
 	CONF_PARSER_TERMINATOR
 };
 
