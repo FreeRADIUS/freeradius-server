@@ -252,9 +252,9 @@ eap {
 		#  |===
 		#
 		#  More information about the various sections can be found in the virtual server
-		#  `sites-available/tls-cache`.
+		#  `sites-available/tls-session`.
 		#
-#		virtual_server = tls-cache
+#		virtual_server = tls-session
 
 		#  auto_chain::
 		#

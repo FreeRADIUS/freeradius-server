@@ -1,6 +1,6 @@
 ######################################################################
 #
-#  This virtual server controls caching of TLS sessions.
+#  This virtual server controls TLS sessions.
 #
 #  When a TLS session is used, the server will automatically create
 #  the following attributes in the session-state list.  These attributes
@@ -27,7 +27,7 @@
 #	$Id$
 #
 ######################################################################
-server tls-cache {
+server tls-session {
 	namespace = tls
 
 	#
