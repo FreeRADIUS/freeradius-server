@@ -367,7 +367,7 @@ _Generic(&(_ct), \
  *
  * @param[in] _name		name of pair to search for.
  * @param[in] _type		base type to parse pair as.
- * @param[in] _flags	f	lags controlling parsing behaviour.
+ * @param[in] _flags		flags controlling parsing behaviour.
  * @param[in] _func		to use to record value.
  * @param[in] _dflt_func	to use to get defaults from a 3rd party library.
  */
