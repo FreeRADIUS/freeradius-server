@@ -495,7 +495,10 @@ VALUE	TLS-Client-Error-Code		No-Application-Protocol	120
 
 ATTRIBUTE	TLS-Session-Version			1947	string
 ATTRIBUTE	TLS-Session-Cipher-Suite		1948	string
-# 1949
+ATTRIBUTE	TLS-Session-Resume-Type			1949	integer
+
+VALUE	TLS-Session-Resume-Type		stateful		1
+VALUE	TLS-Session-Resume-Type		stateless		2
 
 #
 #  Attributes for casting

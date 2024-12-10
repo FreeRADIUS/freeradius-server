@@ -163,14 +163,20 @@ void _tls_cache_clear_state_reset(request_t *request, fr_tls_cache_t *cache, cha
 /** Serialize the session-state list and store it in the SSL_SESSION *
  *
  */
-static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess)
+static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess, uint32_t resumption_type)
 {
 	fr_dbuff_t		dbuff;
 	fr_dbuff_uctx_talloc_t	tctx;
 	fr_dcursor_t		dcursor;
-	fr_pair_t		*vp;
+	fr_pair_t		*vp, *type_vp;
 	ssize_t			slen;
 	int			ret;
+
+	/*
+	 *	Add a temporary pair for the type of session resumption
+	 */
+	MEM(pair_append_session_state(&type_vp, attr_tls_session_resume_type) >= 0);
+	type_vp->vp_uint32 = resumption_type;
 
 	if (RDEBUG_ENABLED2) {
 		SESSION_ID(sess_id, sess);
@@ -204,6 +210,8 @@ static int tls_cache_app_data_set(request_t *request, SSL_SESSION *sess)
 			return 0;
 		}
 	}
+
+	fr_pair_remove(&request->session_state_pairs, type_vp);
 
 	RHEXDUMP4(fr_dbuff_start(&dbuff), fr_dbuff_used(&dbuff), "session-ticket application data");
 
@@ -514,7 +522,7 @@ unlang_action_t tls_cache_store_push(request_t *request, fr_tls_conf_t *conf, fr
 	 *	Add the current session-state list
 	 *	contents to the ssl-data
 	 */
-	if (tls_cache_app_data_set(request, sess) < 0) return UNLANG_ACTION_FAIL;
+	if (tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateful->vb_uint32) < 0) return UNLANG_ACTION_FAIL;
 
 	MEM(child = unlang_subrequest_alloc(request, dict_tls));
 	request = child;
@@ -1233,7 +1241,7 @@ static int tls_cache_session_ticket_app_data_set(SSL *ssl, void *arg)
 		return 0;
 	}
 
-	if (tls_cache_app_data_set(request, sess) < 0) return 0;
+	if (tls_cache_app_data_set(request, sess, enum_tls_session_resumed_stateless->vb_uint32) < 0) return 0;
 
 	return 1;
 }

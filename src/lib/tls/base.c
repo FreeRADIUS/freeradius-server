@@ -105,6 +105,7 @@ fr_dict_attr_t const *attr_tls_session_cert_file;
 fr_dict_attr_t const *attr_tls_session_require_client_cert;
 fr_dict_attr_t const *attr_tls_session_cipher_suite;
 fr_dict_attr_t const *attr_tls_session_version;
+fr_dict_attr_t const *attr_tls_session_resume_type;
 
 fr_dict_attr_t const *attr_tls_packet_type;
 fr_dict_attr_t const *attr_tls_session_data;
@@ -147,6 +148,7 @@ fr_dict_attr_autoload_t tls_dict_attr[] = {
 	{ .out = &attr_tls_session_require_client_cert, .name = "TLS-Session-Require-Client-Certificate", .type = FR_TYPE_BOOL, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_cipher_suite, .name = "TLS-Session-Cipher-Suite", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
 	{ .out = &attr_tls_session_version, .name = "TLS-Session-Version", .type = FR_TYPE_STRING, .dict = &dict_freeradius },
+	{ .out = &attr_tls_session_resume_type, .name = "TLS-Session-Resume-Type", .type = FR_TYPE_UINT32, .dict = &dict_freeradius },
 
 	/*
 	 *	Eventually all TLS attributes will be in the TLS dictionary
@@ -176,6 +178,12 @@ fr_value_box_t const	*enum_tls_packet_type_success;
 fr_value_box_t const	*enum_tls_packet_type_failure;
 fr_value_box_t const	*enum_tls_packet_type_notfound;
 
+/*
+ *	session resumption
+ */
+fr_value_box_t const	*enum_tls_session_resumed_stateful;
+fr_value_box_t const	*enum_tls_session_resumed_stateless;
+
 extern fr_dict_enum_autoload_t tls_dict_enum[];
 fr_dict_enum_autoload_t tls_dict_enum[] = {
 	{ .out = &enum_tls_packet_type_load_session, .name = "Load-Session", .attr = &attr_tls_packet_type },
@@ -188,6 +196,9 @@ fr_dict_enum_autoload_t tls_dict_enum[] = {
 	{ .out = &enum_tls_packet_type_success, .name = "Success", .attr = &attr_tls_packet_type },
 	{ .out = &enum_tls_packet_type_failure, .name = "Failure", .attr = &attr_tls_packet_type },
 	{ .out = &enum_tls_packet_type_notfound, .name = "Notfound", .attr = &attr_tls_packet_type },
+
+	{ .out = &enum_tls_session_resumed_stateful, .name = "stateful", .attr = &attr_tls_session_resume_type },
+	{ .out = &enum_tls_session_resumed_stateless, .name = "stateless", .attr = &attr_tls_session_resume_type },
 	{ NULL }
 };
 
