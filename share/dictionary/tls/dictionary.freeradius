@@ -15,6 +15,7 @@ VALUE	Packet-Type			Store-Session		2
 VALUE	Packet-Type			Clear-Session		3
 VALUE	Packet-Type			Verify-Certificate	4
 VALUE	Packet-Type			New-Session		5
+VALUE	Packet-Type			Establish-Session	6
 
 #
 #  We use response packet types instead of rcodes so that

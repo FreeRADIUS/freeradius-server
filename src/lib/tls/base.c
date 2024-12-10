@@ -167,6 +167,7 @@ fr_value_box_t const	*enum_tls_packet_type_store_session;
 fr_value_box_t const	*enum_tls_packet_type_clear_session;
 fr_value_box_t const	*enum_tls_packet_type_verify_certificate;
 fr_value_box_t const	*enum_tls_packet_type_new_session;
+fr_value_box_t const	*enum_tls_packet_type_establish_session;
 
 /*
  *	response types
@@ -182,6 +183,7 @@ fr_dict_enum_autoload_t tls_dict_enum[] = {
 	{ .out = &enum_tls_packet_type_clear_session, .name = "Clear-Session", .attr = &attr_tls_packet_type },
 	{ .out = &enum_tls_packet_type_verify_certificate, .name = "Verify-Certificate", .attr = &attr_tls_packet_type },
 	{ .out = &enum_tls_packet_type_new_session, .name = "New-Session", .attr = &attr_tls_packet_type },
+	{ .out = &enum_tls_packet_type_establish_session, .name = "Establish-Session", .attr = &attr_tls_packet_type },
 
 	{ .out = &enum_tls_packet_type_success, .name = "Success", .attr = &attr_tls_packet_type },
 	{ .out = &enum_tls_packet_type_failure, .name = "Failure", .attr = &attr_tls_packet_type },

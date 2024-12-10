@@ -253,6 +253,7 @@ static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent,
 
 	conf->verify_certificate = cf_section_find(conf->virtual_server, "verify", "certificate") ? true : false;
 	conf->new_session = cf_section_find(conf->virtual_server, "new", "session") ? true : false;
+	conf->establish_session = cf_section_find(conf->virtual_server, "establish", "session") ? true : false;
 	return 0;
 }
 

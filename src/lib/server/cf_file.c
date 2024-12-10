@@ -2694,6 +2694,7 @@ alloc_section:
 		    (strcmp(css->name1, "recv") == 0) ||
 		    (strcmp(css->name1, "send") == 0) ||
 		    (strcmp(css->name1, "store") == 0) ||
+		    (strcmp(css->name1, "establish") == 0) ||
 		    (strcmp(css->name1, "verify") == 0)) {
 			css->unlang = CF_UNLANG_ALLOW;
 			css->allow_locals = true;

@@ -1131,6 +1131,54 @@ static void fr_tls_session_alert_send(request_t *request, fr_tls_session_t *sess
 	session_msg_log(request, session, session->dirty_out.data, session->dirty_out.used);
 }
 
+/** Process the result of `establish session { ... }`
+ *
+ * As this is just a logging session, it's result doesn't affect the parent.
+ */
+static unlang_action_t tls_establish_session_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority,
+						    UNUSED request_t *request, UNUSED void *uctx)
+{
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+/** Push an `establish session { ... }` call into the current request, using a subrequest
+ *
+ * @param[in] request		The current request.
+ * @param[in] conf		TLS configuration.
+ * @param[in] tls_session	The current TLS session.
+ * @return
+ *	- UNLANG_ACTION_PUSHED_CHILD on success.
+ *      - UNLANG_ACTION_FAIL on failure.
+ */
+static inline CC_HINT(always_inline)
+unlang_action_t tls_establish_session_push(request_t *request, fr_tls_conf_t *conf, fr_tls_session_t *tls_session)
+{
+	request_t	*child;
+	fr_pair_t	*vp;
+	unlang_action_t	ua;
+
+	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	request = child;
+
+	/*
+	 *	Setup the child request for reporting session
+	 */
+	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
+	vp->vp_uint32 = enum_tls_packet_type_establish_session->vb_uint32;
+
+	/*
+	 *	Allocate a child, and set it up to call
+	 *      the TLS virtual server.
+	 */
+	ua = fr_tls_call_push(child, tls_establish_session_result, conf, tls_session);
+	if (ua < 0) {
+		talloc_free(child);
+		return UNLANG_ACTION_FAIL;
+	}
+
+	return ua;
+}
+
 /** Finish off a handshake round, possibly adding attributes to the request
  *
  */
@@ -1270,6 +1318,10 @@ static unlang_action_t tls_session_async_handshake_done_round(UNUSED rlm_rcode_t
 
 	tls_session->result = FR_TLS_RESULT_SUCCESS;
 	fr_tls_session_request_unbind(tls_session->ssl);
+	if (SSL_is_init_finished(tls_session->ssl)) {
+		fr_tls_conf_t	*conf = fr_tls_session_conf(tls_session->ssl);
+		if (conf->establish_session) return tls_establish_session_push(request, conf, tls_session);
+	}
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
 
