@@ -1,5 +1,14 @@
 FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
+	* The dpsk module now supports dynamic expansion of the
+	  "filename" parameter.
+	* radiusd.conf now contains an "unlang" section, which
+	  controls new behavior for the "return" statement.
+	* New configuration parameters for TEAP which makes it
+	  much easier to configure.  See the "teap" section of
+	  the "eap" module.
+	* Change idle timeout for incoming radsec connections, to
+	  better match behavior of radsecproxy.
 
 	Feature improvements
 	* Print MD5 hash of the configuration files in debug mode.
@@ -10,6 +19,12 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Update radclient to make it clear that Message-Authenticator
 	  is added to all Access-Request packets, even if the
 	  input file does not contain it.
+	* Add support for Subject AltName URI.  Closes #5450.
+	* Add python_path_mode option to python3 module.
+	* Relax checks on OpenSSL minor versions.
+	* Add API for deleting dynamic home servers.
+	* set SO_KEEPALIVE on outbound sockets, so firewalls are
+	  less likly to close TCP connections.
 
 	Bug fixes
 	* For EAP-TLS, send TLS start without a length field.
@@ -17,6 +32,10 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Avoid blocking TLS sockets on corner cases during session
 	  setup.
 	* Update home server stats
+	* Correct error message about untrusted certs.  Fixes #5466.
+	* Use PyEval_RestoreThread to swap to main thread.
+	  Fixes #5111
+	* Don't run Python detach function on config check
 
 FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
