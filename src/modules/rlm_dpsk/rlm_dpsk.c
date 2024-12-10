@@ -121,6 +121,7 @@ typedef struct {
 struct rlm_dpsk_s {
 	char const		*xlat_name;
 	bool			ruckus;
+	bool			dynamic;
 
 	rbtree_t		*cache;
 
@@ -471,10 +472,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	if (inst->filename && !psk) {
 		FR_TOKEN token;
-		char const *q;
+		char const *q, *filename;
 		char token_psk[256];
 		char token_mac[256];
 		char buffer[1024];
+		char filename_buffer[1024];
 
 		/*
 		 *	If there's a cached entry, we don't read the file.
@@ -485,18 +487,29 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			goto make_digest;
 		}
 
-		RDEBUG3("Looking for PSK in file %s", inst->filename);
+		if (!inst->dynamic) {
+			filename = inst->filename;
+		} else {
+			if (radius_xlat(filename_buffer, sizeof(filename_buffer),
+					request, inst->filename, NULL, NULL) < 0) {
+				return RLM_MODULE_FAIL;
+			}
 
-		fp = fopen(inst->filename, "r");
+			filename = filename_buffer;
+		}
+
+		RDEBUG3("Looking for PSK in file %s", filename);
+
+		fp = fopen(filename, "r");
 		if (!fp) {
-			REDEBUG("Failed opening %s - %s", inst->filename, fr_syserror(errno));
+			REDEBUG("Failed opening %s - %s", filename, fr_syserror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
 get_next_psk:
 		q = fgets(buffer, sizeof(buffer), fp);
 		if (!q) {
-			RDEBUG("Failed to find matching key in %s", inst->filename);
+			RDEBUG("Failed to find matching key in %s", filename);
 		fail:
 			fclose(fp);
 			return RLM_MODULE_FAIL;
@@ -507,19 +520,19 @@ get_next_psk:
 		 */
 		token = getstring(&q, token_identity, sizeof(token_identity), true);
 		if (token == T_INVALID) {
-			RDEBUG("%s[%d] Failed parsing identity", inst->filename, lineno);
+			RDEBUG("%s[%d] Failed parsing identity", filename, lineno);
 			goto fail;
 		}
 
 		if (*q != ',') {
-			RDEBUG("%s[%d] Failed to find ',' after identity", inst->filename, lineno);
+			RDEBUG("%s[%d] Failed to find ',' after identity", filename, lineno);
 			goto fail;
 		}
 		q++;
 
 		token = getstring(&q, token_psk, sizeof(token_psk), true);
 		if (token == T_INVALID) {
-			RDEBUG("%s[%d] Failed parsing PSK", inst->filename, lineno);
+			RDEBUG("%s[%d] Failed parsing PSK", filename, lineno);
 			goto fail;
 		}
 
@@ -528,7 +541,7 @@ get_next_psk:
 
 			token = getstring(&q, token_mac, sizeof(token_mac), true);
 			if (token == T_INVALID) {
-				RDEBUG("%s[%d] Failed parsing MAC", inst->filename, lineno);
+				RDEBUG("%s[%d] Failed parsing MAC", filename, lineno);
 				goto fail;
 			}
 
@@ -538,7 +551,7 @@ get_next_psk:
 			 */
 			if ((strlen(token_mac) != 12) ||
 			    (fr_hex2bin((uint8_t *) token_mac, 6, token_mac, 12) != 12)) {
-				RDEBUG("%s[%d] Failed parsing MAC", inst->filename, lineno);
+				RDEBUG("%s[%d] Failed parsing MAC", filename, lineno);
 				goto fail;
 			}
 
@@ -563,7 +576,7 @@ get_next_psk:
 		/*
 		 *	Generate the PMK using the SSID, this MAC, and the PSK we just read.
 		 */
-		RDEBUG3("%s[%d] Trying PSK %s", inst->filename, lineno, token_psk);
+		RDEBUG3("%s[%d] Trying PSK %s", filename, lineno, token_psk);
 		if (generate_pmk(request, inst, pmk, sizeof(pmk), ssid, s_mac, token_psk, strlen(token_psk)) == 0) {
 			RDEBUG("No &config:Pairwise-Master-Key or &config:Pre-Shared-Key found");
 			return RLM_MODULE_NOOP;
@@ -840,6 +853,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		cf_log_err_cs(conf, "Failed to find attributes in the dictionary.  Please do not edit the default dictionaries!");
 		return -1;
 	}
+
+	inst->dynamic = inst->filename && (strchr(inst->filename, '%') != NULL);
 
 	return 0;
 }
