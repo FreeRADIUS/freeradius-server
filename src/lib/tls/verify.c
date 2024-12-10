@@ -274,7 +274,7 @@ done:
 	 *	have been added by this point.
 	 */
 	if (my_ok && (depth == 0)) {
-		if (conf->virtual_server && tls_session->verify_client_cert) {
+		if (conf->verify_certificate && tls_session->verify_client_cert) {
 			RDEBUG2("Requesting certificate validation");
 
 			/*
