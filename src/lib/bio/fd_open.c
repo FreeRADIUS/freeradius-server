@@ -1231,28 +1231,46 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 		return -1;
 	}
 
-	if (cfg->mkdir &&
-	    (fr_mkdir(&fd, cfg->filename, strlen(cfg->filename), cfg->perm, fr_mkdir_chown,
-		      &(fr_mkdir_chown_t) {
-			      .uid = cfg->uid,
-			      .gid = cfg->gid,
-		      }) < 0)) {
-		return -1;
-	}
-
 	/*
 	 *	Create it if necessary.
 	 */
 	flags = cfg->flags;
 	if (flags != O_RDONLY) flags |= O_CREAT;
 
-	/*
-	 *	Client BIOs writing to a file, and therefore need to create it.
-	 */
-	fd = open(cfg->filename, flags, cfg->perm);
-	if (fd < 0) {
-		fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
-		return -1;
+	if (!cfg->mkdir) {
+		/*
+		 *	Client BIOs writing to a file, and therefore need to create it.
+		 */
+	do_open:
+		fd = open(cfg->filename, flags, cfg->perm);
+		if (fd < 0) {
+		failed_open:
+			fr_strerror_printf("Failed opening file %s: %s", cfg->filename, fr_syserror(errno));
+			return -1;
+		}
+	
+	} else {
+		/*
+		 *	We make the parent directory if told to, AND if there's a '/' in the path.
+		 */
+		char *p = strrchr(cfg->filename, '/');
+		int dir_fd;
+
+		if (!p) goto do_open;
+
+		if (fr_mkdir(&dir_fd, cfg->filename, (size_t) (p - cfg->filename), cfg->perm, fr_mkdir_chown,
+			      &(fr_mkdir_chown_t) {
+				      .uid = cfg->uid,
+				      .gid = cfg->gid,
+			      }) < 0) {
+			return -1;
+		}
+
+		fd = openat(dir_fd, p + 1, flags, cfg->perm);
+		if (fd < 0) {
+			close(dir_fd);
+			goto failed_open;
+		}
 	}
 
 	/*
