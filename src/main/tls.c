@@ -2928,7 +2928,7 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[9][2] = {
+static char const *cert_attr_names[10][2] = {
 	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
 	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
 	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
@@ -2937,6 +2937,7 @@ static char const *cert_attr_names[9][2] = {
 	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" },
+	{ "TLS-Client-Cert-Subject-Alt-Name-Uri",	"TLS-Cert-Subject-Alt-Name-Uri" },
 	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" }
 };
 
@@ -2945,10 +2946,11 @@ static char const *cert_attr_names[9][2] = {
 #define FR_TLS_SUBJECT		(2)
 #define FR_TLS_ISSUER		(3)
 #define FR_TLS_CN		(4)
-#define FR_TLS_SAN_EMAIL       	(5)
-#define FR_TLS_SAN_DNS          (6)
-#define FR_TLS_SAN_UPN          (7)
-#define FR_TLS_VALID_SINCE	(8)
+#define FR_TLS_SAN_EMAIL	(5)
+#define FR_TLS_SAN_DNS		(6)
+#define FR_TLS_SAN_UPN		(7)
+#define FR_TLS_SAN_URI		(8)
+#define FR_TLS_VALID_SINCE	(9)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -3186,6 +3188,13 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					}
 					break;
 #endif	/* GEN_OTHERNAME */
+#ifdef GEN_URI
+				case GEN_URI:
+					vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_URI][lookup],
+						      (char const *) ASN1_STRING_get0_data(name->d.uniformResourceIdentifier), T_OP_SET);
+					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+					break;
+#endif /* GEN_URI */
 				default:
 					/* XXX TODO handle other SAN types */
 					break;
@@ -5452,4 +5461,3 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 	}
 }
 #endif	/* WITH_TLS */
-
