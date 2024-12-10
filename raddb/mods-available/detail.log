@@ -27,7 +27,7 @@
 #  `recv Access-Request` section of `raddb/sites-enabled/default`.
 #
 detail auth_log {
-	filename = ${radacctdir}/%{Net.Src.IP}/auth-detail-%Y-%m-%d
+	filename = "${radacctdir}/%{Net.Src.IP}/auth-detail-%Y-%m-%d"
 
 	permissions = 0600
 
@@ -49,7 +49,7 @@ detail auth_log {
 #  `send Access-Accept` section of `raddb/sites-enabled/default`.
 #
 detail reply_log {
-	filename = ${radacctdir}/%{Net.Src.IP}/reply-detail-%Y-%m-%d
+	filename = "${radacctdir}/%{Net.Src.IP}/reply-detail-%Y-%m-%d"
 
 	permissions = 0600
 }
@@ -63,7 +63,7 @@ detail reply_log {
 #  proxying. See the example in `raddb/sites-available/default`.
 #
 detail pre_proxy_log {
-	filename = ${radacctdir}/%{Net.Src.IP}/pre-proxy-detail-%Y-%m-%d
+	filename = "${radacctdir}/%{Net.Src.IP}/pre-proxy-detail-%Y-%m-%d"
 
 	permissions = 0600
 
@@ -81,7 +81,7 @@ detail pre_proxy_log {
 #  See the example in `raddb/sites-available/default`.
 #
 detail post_proxy_log {
-	filename = ${radacctdir}/%{Net.Src.IP}/post-proxy-detail-%Y-%m-%d
+	filename = "${radacctdir}/%{Net.Src.IP}/post-proxy-detail-%Y-%m-%d"
 
 	permissions = 0600
 }

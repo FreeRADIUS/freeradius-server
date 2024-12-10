@@ -46,7 +46,7 @@ detail {
 	#  That is, only *one* `listen { ... }` section can read
 	#  detail files from a particular directory.
 	#
-	filename = ${radacctdir}/%{Net.Src.IP}/detail-%Y-%m-%d
+	filename = "${radacctdir}/%{Net.Src.IP}/detail-%Y-%m-%d"
 
 	#
 	#  NOTE: If you are using `radrelay`, delete the above line for `file`,
