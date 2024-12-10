@@ -1239,6 +1239,7 @@ int fr_bio_fd_reopen(fr_bio_t *bio)
 		      }) < 0)) {
 		return -1;
 	}
+	if (cfg->mkdir) close(fd);
 
 	/*
 	 *	Create it if necessary.
