@@ -163,6 +163,16 @@ server tls-session {
 	}
 
 	#
+	#  This section is run after the TLS session is established.
+	#
+	#  It is intended for logging session details such as
+	#  TLS version or cipher suite.
+	#
+#	establish session {
+#
+#	}
+
+	#
 	#  This section is run after certificate attributes are added
 	#  to the request list, and before performing OCSP validation.
 	#
