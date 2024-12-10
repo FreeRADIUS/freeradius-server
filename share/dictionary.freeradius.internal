@@ -581,6 +581,8 @@ ATTRIBUTE	TLS-Client-Cert-X509v3-Basic-Constraints 1930	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
 ATTRIBUTE	TLS-PSK-Identity			1933	string
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Uri		1934	string
+ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Uri	1935	string
 ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage-OID 1936	string
 ATTRIBUTE	TLS-Client-Cert-Valid-Since		1937	string
 ATTRIBUTE	TLS-Cache-Method			1938	integer
