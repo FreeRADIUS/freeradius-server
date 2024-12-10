@@ -3,26 +3,24 @@
 #  This virtual server controls TLS sessions.
 #
 #  When a TLS session is used, the server will automatically create
-#  the following attributes in the session-state list.  These attributes
-#  are the ones for the *server* certificate.
+#  attributes in the session-state list with details extracted from
+#  the client certificate chain.
 #
-#	       TLS-Cert-Serial
-#	       TLS-Cert-Expiration
-#	       TLS-Cert-Subject
-#	       TLS-Cert-Issuer
-#	       TLS-Cert-Common-Name
-#	       TLS-Cert-Subject-Alt-Name-Email
+#  The number of certificates decoded depends on the setting of
+#  setting of `attriubte_mode` in the `verify` section of the
+#  appropriate TLS configuration.
 #
-#  If a client certificate is required (e.g. EAP-TLS or sometimes PEAP / TTLS),
-#  the following attributes are also created in the session-state list:
+#  Certificates are decoded into nested attributes e.g.
 #
-#	       TLS-Client-Cert-Serial
-#	       TLS-Client-Cert-Expiration
-#	       TLS-Client-Cert-Subject
-#	       TLS-Client-Cert-Issuer
-#	       TLS-Client-Cert-Common-Name
-#	       TLS-Client-Cert-Subject-Alt-Name-Email
+#	TLS-Certificate = {
+#		Subject = '...',
+#		Common-Name = '...',
+#		Issuer = '...'
+#	}
 #
+#  When more than one certificate is decoded, the first ( i.e.
+#  &session-state.TLS-Certificate[0] ) will be the client certificate,
+#  with the next being its issuer.
 #
 #	$Id$
 #
@@ -46,14 +44,14 @@ server tls-session {
 		#
 		#  Check the client certificate matches a string, and reject otherwise
 		#
-#		if ("%{session-state.TLS-Client-Cert-Common-Name}" != 'client.example.com') {
+#		if ("%{session-state.TLS-Certificate.Common-Name}" != 'client.example.com') {
 #			reject
 #		}
 
 		#
 		#  Check the client certificate common name against the supplied identity
 		#
-#		if (&EAP-Identity != "host/%{session-state.TLS-Client-Cert-Common-Name}") {
+#		if (&EAP-Identity != "host/%{session-state.TLS-Certificate.Common-Name}") {
 #			reject
 #		}
 
