@@ -1163,8 +1163,14 @@ eap {
 		#
 		#  The values for those attributes are the same as for EAP-Type.
 		#
-	#	user_eap_type = mschapv2
-	#	machine_eap_type = tls
+		#  Note that if you try to use "EAP-Type := TEAP" in the
+		#  "inner-tunnel" virtual server, it will not work.
+		#
+		#  Supported authentication methods inside of TEAP are
+		#  EAP-TLS, EAP-MSCHAPv2, and PAP.
+		#
+#		user_eap_type = mschapv2
+#		machine_eap_type = tls
 
 		#  If 'cipher_list' is set here, it will over-ride the
 		#  'cipher_list' configuration from the 'tls-common'

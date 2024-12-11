@@ -184,7 +184,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 			} else {
 			invalid_identity:
-				cf_log_err_cs(cs, "Invalid value in identity_types = '%s' %s",
+				cf_log_err_cs(cs, "Invalid value in identity_types = '%s' at %s",
 					      inst->identity_type_name, p);
 				return -1;
 			}
@@ -244,6 +244,14 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	inst = type_arg;
 
 	handler->tls = true;
+
+	if (request->parent) {
+		RWDEBUG("----------------------------------------------------------------------");
+		RWDEBUG("You have configured TEAP to run inside of TEAP.  THIS WILL NOT WORK.");
+		RWDEBUG("Supported inner methods for TEAP are EAP-TLS, EAP-MSCHAPv2, and PAP.");
+		RWDEBUG("Other methods may work, but are not actively supported.");
+		RWDEBUG("----------------------------------------------------------------------");
+	}
 
 	/*
 	 *	Check if we need a client certificate.
