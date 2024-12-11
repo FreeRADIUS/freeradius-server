@@ -179,6 +179,7 @@ struct fr_tls_conf_s {
 	fr_tls_verify_conf_t	verify;
 
 	bool		verify_certificate;		//!< Does the "verify certificate" section exist.
+	bool		new_session;			//!< Does the "new session" section exist.
 };
 
 fr_tls_conf_t	*fr_tls_conf_alloc(TALLOC_CTX *ctx);
