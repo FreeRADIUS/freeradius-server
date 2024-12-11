@@ -37,6 +37,8 @@
 
 #include <freeradius-devel/protocol/freeradius/freeradius.internal.h>
 
+#include <freeradius-devel/unlang/call.h>
+#include <freeradius-devel/unlang/subrequest.h>
 #include <freeradius-devel/unlang/interpret.h>
 
 #include <sys/stat.h>
@@ -1869,5 +1871,45 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	fr_tls_session_request_unbind(tls_session->ssl);	/* Was bound in this function */
 
 	return tls_session;
+}
+
+static unlang_action_t tls_new_session_result(UNUSED rlm_rcode_t *p_result, UNUSED int *priority, request_t *request, UNUSED void *uctx)
+{
+	request_t	*parent = request->parent;
+
+	fr_assert(parent);
+
+	/*
+	 *	Copy control attributes back to the parent.
+	 */
+	fr_pair_list_copy(parent->control_ctx, &parent->control_pairs, &request->control_pairs);
+
+	return UNLANG_ACTION_CALCULATE_RESULT;
+}
+
+unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const *tls_conf) {
+	request_t	*child;
+	fr_pair_t	*vp;
+
+	MEM(child = unlang_subrequest_alloc(request, dict_tls));
+	request = child;
+
+	MEM(pair_prepend_request(&vp, attr_tls_packet_type) >= 0);
+	vp->vp_uint32 = enum_tls_packet_type_new_session->vb_uint32;
+
+	if (unlang_subrequest_child_push(NULL, child,
+					&(unlang_subrequest_session_t){
+						.enable = true,
+						.unique_ptr = child->parent
+					},
+					true, UNLANG_SUB_FRAME) < 0) {
+		return UNLANG_ACTION_FAIL;
+	}
+	if (unlang_function_push(child, NULL, tls_new_session_result, NULL, 0, UNLANG_SUB_FRAME, NULL) < 0) return UNLANG_ACTION_FAIL;
+
+	if (unlang_call_push(child, tls_conf->virtual_server, UNLANG_SUB_FRAME) < 0) {
+		return UNLANG_ACTION_FAIL;
+	}
+	return UNLANG_ACTION_PUSHED_CHILD;
 }
 #endif /* WITH_TLS */

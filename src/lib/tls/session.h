@@ -317,6 +317,8 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 
 fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx, request_t *request, size_t dynamic_mtu, bool client_cert);
 
+unlang_action_t fr_tls_new_session_push(request_t *request, fr_tls_conf_t const *tls_conf);
+
 #ifdef __cplusplus
 }
 #endif
