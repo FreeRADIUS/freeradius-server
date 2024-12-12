@@ -143,8 +143,6 @@ void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED fr_time_delta
 	krb5_verify_opt_set_secure(&conn->options, true);
 
 	if (inst->service) krb5_verify_opt_set_service(&conn->options, inst->service);
-#else
-	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, true);
 #endif
 	return conn;
 

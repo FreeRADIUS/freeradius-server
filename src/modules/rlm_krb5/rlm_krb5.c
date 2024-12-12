@@ -216,6 +216,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	MEM(inst->vic_options = talloc_zero(inst, krb5_verify_init_creds_opt));
 	krb5_verify_init_creds_opt_init(inst->vic_options);
+	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, true);
 #endif
 
 #ifdef KRB5_IS_THREAD_SAFE
