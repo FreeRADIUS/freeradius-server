@@ -1,0 +1,38 @@
+# -*- text -*-
+# Copyright (C) 2024 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+##############################################################################
+#
+#	Juniper commands
+#
+#	https://www.juniper.net/documentation/en_US/junos13.1/topics/task/configuration/tacacs-authentication-configuring.html
+#
+#	$Id$
+#
+##############################################################################
+
+#
+#  The username local to the router
+#
+DEFINE	local-user-name					string
+
+#
+# Regular expression to match allowed commands
+#
+DEFINE	allow-commands					string
+
+#
+# Regular expression to match allowed configurations
+#
+DEFINE	allow-configurations				string
+
+#
+# Regular expression to match denied commands
+#
+DEFINE	deny-commands					string
+
+#
+# Regular expression to match denied configurations
+#
+DEFINE	deny-configuration				string
