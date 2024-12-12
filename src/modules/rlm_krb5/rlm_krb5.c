@@ -33,9 +33,19 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 #include "krb5.h"
 
+#ifdef KRB5_IS_THREAD_SAFE
+static const conf_parser_t reuse_krb5_config[] = {
+	FR_SLAB_CONFIG_CONF_PARSER
+	CONF_PARSER_TERMINATOR
+};
+#endif
+
 static const conf_parser_t module_config[] = {
 	{ FR_CONF_OFFSET("keytab", rlm_krb5_t, keytabname) },
 	{ FR_CONF_OFFSET("service_principal", rlm_krb5_t, service_princ) },
+#ifdef KRB5_IS_THREAD_SAFE
+	{ FR_CONF_OFFSET_SUBSECTION("reuse", 0, rlm_krb5_t, reuse, reuse_krb5_config) },
+#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -57,6 +67,29 @@ fr_dict_attr_autoload_t rlm_krb5_dict_attr[] = {
 	{ NULL }
 };
 
+#ifdef KRB5_IS_THREAD_SAFE
+static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_krb5_t 		*inst = talloc_get_type_abort(mctx->mi->data, rlm_krb5_t);
+	rlm_krb5_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_krb5_thread_t);
+
+	t->inst = inst;
+	if (!(t->slab = krb5_slab_list_alloc(t, mctx->el, &inst->reuse, krb5_handle_init, NULL, inst, false, true))) {
+		ERROR("Handle pool instantiation failed");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int mod_thread_detach(module_thread_inst_ctx_t const *mctx)
+{
+	rlm_krb5_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_krb5_thread_t);
+	talloc_free(t->slab);
+	return 0;
+}
+#endif
+
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_krb5_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_krb5_t);
@@ -72,9 +105,6 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	talloc_free(inst->service);
 
 	if (inst->context) krb5_free_context(inst->context);
-#ifdef KRB5_IS_THREAD_SAFE
-	fr_pool_free(inst->pool);
-#endif
 
 	return 0;
 }
@@ -219,13 +249,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, true);
 #endif
 
-#ifdef KRB5_IS_THREAD_SAFE
-	/*
-	 *	Initialize the socket pool.
-	 */
-	inst->pool = module_rlm_connection_pool_init(mctx->mi->conf, inst, krb5_mod_conn_create, NULL, NULL, NULL, NULL);
-	if (!inst->pool) return -1;
-#else
+#ifndef KRB5_IS_THREAD_SAFE
 	inst->conn = krb5_mod_conn_create(inst, inst, fr_time_delta_wrap(0));
 	if (!inst->conn) return -1;
 #endif
@@ -319,6 +343,9 @@ static rlm_rcode_t krb5_process_error(rlm_krb5_t const *inst, request_t *request
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_krb5_t);
+#  ifdef KRB5_IS_THREAD_SAFE
+	rlm_krb5_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_krb5_thread_t);
+#  endif
 	rlm_rcode_t		rcode;
 	krb5_error_code		ret;
 	rlm_krb5_handle_t	*conn;
@@ -350,7 +377,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	}
 
 #  ifdef KRB5_IS_THREAD_SAFE
-	conn = fr_pool_connection_get(inst->pool, request);
+	conn = krb5_slab_reserve(t->slab);
 	if (!conn) RETURN_MODULE_FAIL;
 #  else
 	conn = inst->conn;
@@ -397,7 +424,7 @@ cleanup:
 	}
 
 #  ifdef KRB5_IS_THREAD_SAFE
-	fr_pool_connection_release(inst->pool, request, conn);
+	krb5_slab_release(conn);
 #  endif
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -410,6 +437,9 @@ cleanup:
 static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_krb5_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_krb5_t);
+#  ifdef KRB5_IS_THREAD_SAFE
+	rlm_krb5_thread_t	*t = talloc_get_type_abort(mctx->thread, rlm_krb5_thread_t);
+#  endif
 	rlm_rcode_t		rcode;
 	krb5_error_code		ret;
 
@@ -444,7 +474,7 @@ static unlang_action_t CC_HINT(nonnull) mod_authenticate(rlm_rcode_t *p_result, 
 	}
 
 #  ifdef KRB5_IS_THREAD_SAFE
-	conn = fr_pool_connection_get(inst->pool, request);
+	conn = krb5_slab_reserve(t->slab);
 	if (!conn) RETURN_MODULE_FAIL;
 #  else
 	conn = inst->conn;
@@ -482,7 +512,7 @@ cleanup:
 	krb5_free_cred_contents(conn->context, &init_creds);
 
 #  ifdef KRB5_IS_THREAD_SAFE
-	fr_pool_connection_release(inst->pool, request, conn);
+	krb5_slab_release(conn);
 #  endif
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -499,6 +529,10 @@ module_rlm_t rlm_krb5 = {
 		 */
 #ifndef KRB5_IS_THREAD_SAFE
 		.flags		= MODULE_TYPE_THREAD_UNSAFE,
+#else
+		.thread_inst_size	= sizeof(rlm_krb5_thread_t),
+		.thread_instantiate	= mod_thread_instantiate,
+		.thread_detach		= mod_thread_detach,
 #endif
 		.inst_size	= sizeof(rlm_krb5_t),
 		.config		= module_config,

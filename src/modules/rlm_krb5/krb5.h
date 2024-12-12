@@ -30,7 +30,7 @@ USES_APPLE_DEPRECATED_API
 #include <krb5.h>
 
 #ifdef KRB5_IS_THREAD_SAFE
-#  include <freeradius-devel/server/pool.h>
+#  include <freeradius-devel/util/slab.h>
 #endif
 
 typedef struct {
@@ -49,7 +49,7 @@ typedef struct {
  */
 typedef struct {
 #ifdef KRB5_IS_THREAD_SAFE
-	fr_pool_t	*pool;		//!< Connection pool instance.
+	fr_slab_config_t	reuse;
 #else
 	rlm_krb5_handle_t	*conn;
 #endif
@@ -76,6 +76,16 @@ typedef struct {
 #endif
 } rlm_krb5_t;
 
+#ifdef KRB5_IS_THREAD_SAFE
+FR_SLAB_TYPES(krb5, rlm_krb5_handle_t)
+FR_SLAB_FUNCS(krb5, rlm_krb5_handle_t)
+
+typedef struct {
+	rlm_krb5_t const	*inst;
+	krb5_slab_list_t	*slab;
+} rlm_krb5_thread_t;
+#endif
+
 /*
  *	MIT Kerberos uses comm_err, so the macro just expands to a call
  *	to error_message.
@@ -93,4 +103,5 @@ char const *rlm_krb5_error(rlm_krb5_t const *inst, krb5_context context, krb5_er
 # define KRB5_UNUSED
 #endif
 
+int krb5_handle_init(rlm_krb5_handle_t *conn, void *uctx);
 void *krb5_mod_conn_create(TALLOC_CTX *ctx, void *instance, fr_time_delta_t timeout);
