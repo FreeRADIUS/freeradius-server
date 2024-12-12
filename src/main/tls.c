@@ -2937,8 +2937,8 @@ static char const *cert_attr_names[10][2] = {
 	{ "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Dns",	"TLS-Cert-Subject-Alt-Name-Dns" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" },
+	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Uri",	"TLS-Cert-Subject-Alt-Name-Uri" },
-	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" }
 };
 
 #define FR_TLS_SERIAL		(0)
