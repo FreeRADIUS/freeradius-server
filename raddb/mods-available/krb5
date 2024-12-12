@@ -27,6 +27,17 @@ krb5 {
 	service_principal = name_of_principle
 
 	#
+	#  username:: The username (principal) to authenticate as
+	#
+	#  If this is just a user name, then the default Kerberos realm will
+	#  automatically be added.
+#	username = &User-Name
+
+	#
+	#  password:: The password to use in user authentication
+#	password = &User-Password
+
+	#
 	#  .Reusable Handles
 	#
 	#  Reusable krb5 handles are allocated in blocks.  These
