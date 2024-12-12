@@ -86,9 +86,7 @@ static const conf_parser_t passchange_config[] = {
 
 #ifdef WITH_AUTH_WINBIND
 static conf_parser_t reuse_winbind_config[] = {
-	{ FR_CONF_OFFSET("min", fr_slab_config_t, min_elements), .dflt = "10" },
-	{ FR_CONF_OFFSET("max", fr_slab_config_t, max_elements), .dflt = "100" },
-	{ FR_CONF_OFFSET("cleanup_interval", fr_slab_config_t, interval), .dflt = "30s" },
+	FR_SLAB_CONFIG_CONF_PARSER
 	CONF_PARSER_TERMINATOR
 };
 #endif
