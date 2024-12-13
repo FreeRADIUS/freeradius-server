@@ -710,8 +710,8 @@ static ssize_t cbor_decode_ipv6_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
 	if (slen <= 0) return_slen;
 
-	if (value > 128) {
-		fr_strerror_printf("Invalid IPv6 interface - expected prefix <= 128 got %" PRIu64, value);
+	if (value != 128) {
+		fr_strerror_printf("Invalid IPv6 address - expected prefix = 128 got %" PRIu64, value);
 		return -fr_dbuff_used(&work_dbuff);
 	}
 
