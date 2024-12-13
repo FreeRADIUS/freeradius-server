@@ -653,12 +653,10 @@ static ssize_t cbor_decode_ipv4_addr(UNUSED TALLOC_CTX *ctx, fr_value_box_t *vb,
 	slen = cbor_decode_count(&value, CBOR_INTEGER, &work_dbuff);
 	if (slen <= 0) return_slen;
 
-	if (value > 32) {
-		fr_strerror_printf("Invalid IPv4 interface - expected prefix <= 32 got %" PRIu64, value);
+	if (value != 32) {
+		fr_strerror_printf("Invalid IPv4 address - expected prefix = 32 got %" PRIu64, value);
 		return -fr_dbuff_used(&work_dbuff);
 	}
-
-	vb->vb_ip.prefix = value;
 
 	if (count == 2) return fr_dbuff_set(dbuff, &work_dbuff);
 
