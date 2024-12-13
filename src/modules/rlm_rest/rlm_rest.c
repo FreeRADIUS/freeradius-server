@@ -202,7 +202,7 @@ static const call_env_method_t _var = { \
 	.env = (call_env_parser_t[]){ \
 		{ FR_CALL_ENV_SUBSECTION(_section, NULL, CALL_ENV_FLAG_NONE, \
 			((call_env_parser_t[]) { \
-				{ FR_CALL_ENV_SUBSECTION("request", NULL, CALL_ENV_FLAG_NONE, \
+				{ FR_CALL_ENV_SUBSECTION("request", NULL, CALL_ENV_FLAG_REQUIRED, \
 							((call_env_parser_t[]) { \
 								{ FR_CALL_ENV_OFFSET("uri", FR_TYPE_STRING, CALL_ENV_FLAG_REQUIRED | CALL_ENV_FLAG_CONCAT, rlm_rest_call_env_t, request.uri), \
 										     .pair.escape = { \
