@@ -441,6 +441,7 @@ typedef enum CC_HINT(flag_enum) {
 	CONF_FLAG_HIDDEN		= (1 << 23),			//!< Used by scripts to omit items from the
 									///< generated documentation.
 	CONF_FLAG_REF			= (1 << 24),			//!< reference another conf_parser_t inline in this one
+	CONF_FLAG_OPTIONAL     		= (1 << 25),			//!< subsection is pushed only if a non-optional matching one is pushed
 } conf_parser_flags_t;
 DIAG_ON(attributes)
 

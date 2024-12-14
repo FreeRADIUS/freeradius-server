@@ -94,6 +94,12 @@ static conf_parser_t disconnect_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static conf_parser_t const transport_config[] = {
+	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED, rlm_radius_t, secret) },
+
+	CONF_PARSER_TERMINATOR
+};
+
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -108,8 +114,6 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
-
-	{ FR_CONF_OFFSET_FLAGS("secret", CONF_FLAG_REQUIRED, rlm_radius_t, secret) },
 
 	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_t, max_packet_size), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_t, max_send_coalesce), .dflt = "1024" },
@@ -137,6 +141,10 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_radius_t, trunk_conf, trunk_config ) },
 
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config },
+
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config }
+,
 	CONF_PARSER_TERMINATOR
 };
 

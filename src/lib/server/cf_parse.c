@@ -730,6 +730,13 @@ static int cf_section_parse_init(CONF_SECTION *cs, void *base, conf_parser_t con
 		char const	*name2 = NULL;
 		CONF_SECTION	*subcs;
 
+		/*
+		 *	Optional MUST be listed before required ones
+		 */
+		if ((rule->flags & CONF_FLAG_OPTIONAL) != 0) {
+			return 0;
+		}
+
 		subcs = cf_section_find(cs, rule->name1, rule->name2);
 
 		/*
@@ -1481,6 +1488,13 @@ int _cf_section_rule_push(CONF_SECTION *cs, conf_parser_t const *rule, char cons
 				cf_log_err(cs, "Failed finding '%s' subsection", name1);
 				cf_item_debug(cs);
 				return -1;
+			}
+
+			/*
+			 *	The old rules were delayed until we pushed a matching subsection which is actually used.
+			 */
+			if ((old->flags & CONF_FLAG_OPTIONAL) != 0) {
+				if (cf_section_rules_push(subcs, old->subcs) < 0) return -1;
 			}
 
 			return cf_section_rules_push(subcs, rule->subcs);
