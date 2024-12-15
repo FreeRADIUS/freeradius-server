@@ -31,6 +31,7 @@ RCSID("$Id$")
 
 #include "rlm_radius.h"
 
+static int mode_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
@@ -105,24 +106,21 @@ static conf_parser_t const transport_config[] = {
  *	A mapping of configuration file names to internal variables.
  */
 static conf_parser_t const module_config[] = {
-	/*
-	 *	This ref needs to be first, so it can load the
-	 *	transport, and push the transport-specific rules to
-	 *	the submodule CONF_SECTION.
-	 */
+	{ FR_CONF_OFFSET("mode", rlm_radius_t, mode), .func = mode_parse },
+
 	{ FR_CONF_OFFSET_REF(rlm_radius_t, fd_config, fr_bio_fd_client_config) },
 
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
+	{ FR_CONF_OFFSET_FLAGS("replicate", CONF_FLAG_DEPRECATED, rlm_radius_t, replicate) },
+
+	{ FR_CONF_OFFSET_FLAGS("synchronous", CONF_FLAG_DEPRECATED, rlm_radius_t, synchronous) },
+
+	{ FR_CONF_OFFSET_FLAGS("originate", CONF_FLAG_DEPRECATED, rlm_radius_t, originate) },
+
 	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_t, max_packet_size), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_t, max_send_coalesce), .dflt = "1024" },
-
-	{ FR_CONF_OFFSET("replicate", rlm_radius_t, replicate) },
-
-	{ FR_CONF_OFFSET("synchronous", rlm_radius_t, synchronous) },
-
-	{ FR_CONF_OFFSET("originate", rlm_radius_t, originate) },
 
 	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
 
@@ -201,6 +199,55 @@ fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 };
 
 #include "bio.c"
+
+static fr_table_num_sorted_t mode_names[] = {
+	{ L("client"),		RLM_RADIUS_MODE_CLIENT   	},
+	{ L("proxy"),		RLM_RADIUS_MODE_PROXY    	},
+	{ L("replicate"),	RLM_RADIUS_MODE_REPLICATE   	},
+};
+static size_t mode_names_len = NUM_ELEMENTS(mode_names);
+
+
+/** Set the mode of operation
+ *
+ * @param[in] ctx	to allocate data in (instance of rlm_radius).
+ * @param[out] out	Where to write the parsed data.
+ * @param[in] parent	Base structure address.
+ * @param[in] ci	#CONF_PAIR specifying the name of the type module.
+ * @param[in] rule	unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
+		      CONF_ITEM *ci, UNUSED conf_parser_t const *rule)
+{
+	char const		*name = cf_pair_value(cf_item_to_pair(ci));
+	rlm_radius_mode_t	mode;
+	rlm_radius_t		*inst = talloc_get_type_abort(parent, rlm_radius_t);
+
+	mode = fr_table_value_by_str(mode_names, name, RLM_RADIUS_MODE_INVALID);
+
+#if 0
+	/*
+	 *	Commented out until we upgrade the old configurations.
+	 */
+	if (mode == RLM_RADIUS_MODE_INVALID) {
+		cf_log_err(ci, "Invalid mode name \"%s\"", name);
+		return -1;
+	}
+#endif
+
+	*(rlm_radius_mode_t *) out = mode;
+
+	/*
+	 *	Normally we want connected sockets.
+	 */
+	inst->fd_config.type = FR_BIO_FD_CONNECTED;
+
+	return 0;
+}
+
 
 /** Set which types of packets we can parse
  *
@@ -385,7 +432,7 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 	/*
 	 *	Check for proxy loops.
 	 */
-	if (!inst->originate && RDEBUG_ENABLED) {
+	if ((inst->mode == RLM_RADIUS_MODE_PROXY) && RDEBUG_ENABLED) {
 		fr_dcursor_t cursor;
 
 		for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
@@ -393,12 +440,18 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 		     vp = fr_dcursor_next(&cursor)) {
 			if (vp->vp_length != 4) continue;
 
-			if (memcmp(&inst->proxy_state, vp->vp_octets, 4) == 0) {
+			if (memcmp(&inst->common_ctx.proxy_state, vp->vp_octets, 4) == 0) {
 				RWARN("Possible proxy loop - please check server configuration.");
 				break;
 			}
 		}
 	}
+
+	/*
+	 *	@todo - check for proxy loops for client && replicate, too.
+	 *
+	 *	This only catches "self loops", but it may be worth doing.
+	 */
 
 	if (request->packet->code != FR_RADIUS_CODE_ACCESS_REQUEST) return;
 
@@ -469,6 +522,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 			   module_thread(mctx->mi)->data, request);
 }
 
+
 static int mod_instantiate(module_inst_ctx_t const *mctx)
 {
 	size_t i, num_types;
@@ -479,9 +533,48 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->received_message_authenticator = talloc_zero(NULL, bool);		/* Allocated outside of inst to default protection */
 
 	/*
-	 *	Replication is write-only, and append by default.
+	 *	Allow explicit setting of mode.
+	 */
+	if (inst->mode != RLM_RADIUS_MODE_INVALID) goto check_others;
+
+	/*
+	 *	If not set, try to insinuate it from context.
 	 */
 	if (inst->replicate) {
+		if (inst->originate) {
+			cf_log_err(conf, "Cannot set 'replicate=true' and 'originate=true' at the same time.");
+			return -1;
+		}
+
+		if (inst->synchronous) {
+			cf_log_warn(conf, "Ignoring 'synchronous=true' due to 'replicate=true'");
+		}
+
+		inst->mode = RLM_RADIUS_MODE_REPLICATE;
+		goto check_others;
+	}
+
+	/*
+	 *	Argubly we should be allowed to do synchronous proxying _and_ originating client packets.
+	 *
+	 *	However, the previous code didn't really do that consistently.
+	 */
+	if (inst->synchronous && inst->originate) {
+		cf_log_err(conf, "Cannot set 'synchronous=true' and 'originate=true'");
+		return -1;
+	}
+
+	if (inst->synchronous) {
+		inst->mode = RLM_RADIUS_MODE_PROXY;
+	} else {
+		inst->mode = RLM_RADIUS_MODE_CLIENT;
+	}
+
+check_others:
+	/*
+	 *	Replication is write-only, and append by default.
+	 */
+	if (inst->mode == RLM_RADIUS_MODE_REPLICATE) {
 		if (inst->fd_config.filename && (inst->fd_config.flags != O_WRONLY)) {
 			cf_log_info(conf, "Setting 'flags = write-only' for writing to a file");
 		}
@@ -538,7 +631,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
 		.secret_length = talloc_array_length(inst->secret) - 1,
-		.proxy_state = inst->proxy_state,
+		.proxy_state = fr_rand(),
 	};
 
 	/*
@@ -560,8 +653,8 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	 *	If we're replicating, we don't care if the other end
 	 *	is alive.
 	 */
-	if (inst->replicate && inst->status_check) {
-		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'replicate = true'",
+	if (inst->status_check && (inst->mode == RLM_RADIUS_MODE_REPLICATE)) {
+		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'mode = replicate'",
 			    fr_radius_packet_name[inst->status_check]);
 		inst->status_check = false;
 	}
@@ -605,10 +698,9 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	inst->trunk_conf.req_pool_size = 1024 + sizeof(fr_pair_t) + 20;
 
 	/*
-	 *	Don't sanity check the async timers if we're doing
-	 *	synchronous proxying.
+	 *	Only check the async timers when we're acting as a client.
 	 */
-	if (inst->synchronous) goto setup_io_submodule;
+	if (inst->mode != RLM_RADIUS_MODE_CLIENT) return 0;
 
 	/*
 	 *	Set limits on retransmission timers
@@ -690,12 +782,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		FR_INTEGER_BOUND_CHECK("Disconnect-Request.max_rtx_count", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrc, <=, 10);
 		FR_TIME_DELTA_BOUND_CHECK("Disconnect-Request.max_rtx_duration", inst->retry[FR_RADIUS_CODE_DISCONNECT_REQUEST].mrd, <=, fr_time_delta_from_sec(30));
 	}
-
-setup_io_submodule:
-	/*
-	 *	Get random Proxy-State identifier for this module.
-	 */
-	inst->proxy_state = fr_rand();
 
 	return 0;
 }

@@ -112,7 +112,6 @@ struct bio_request_s {
 
 	uint32_t		num_replies;		//!< number of reply packets, sent is in retry.count
 
-	bool			synchronous;		//!< cached from inst->synchronous
 	bool			require_message_authenticator;		//!< saved from the original packet.
 	bool			status_check;		//!< is this packet a status check?
 
@@ -901,7 +900,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	/*
 	 *	Over-ride read for replication.
 	 */
-	if (h->inst->replicate) {
+	if (h->inst->mode == RLM_RADIUS_MODE_REPLICATE) {
 		read_fn = conn_discard;
 
 		if (fr_bio_fd_write_only(h->bio) < 0) {
@@ -1071,7 +1070,7 @@ static int encode(rlm_radius_t const *inst, request_t *request, bio_request_t *u
 		},
 		.code = u->code,
 		.id = id,
-		.add_proxy_state = !inst->originate,
+		.add_proxy_state = (inst->mode == RLM_RADIUS_MODE_PROXY),
 	};
 
 	/*
@@ -1236,7 +1235,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	 *	We're replicating, and don't care about the health of
 	 *	the home server, and this function should not be called.
 	 */
-	fr_assert(!h->inst->replicate);
+	fr_assert(h->inst->mode != RLM_RADIUS_MODE_REPLICATE);
 
 	/*
 	 *	If we're status checking OR already zombie, don't go to zombie
@@ -1253,7 +1252,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	/*
 	 *	If we've seen ANY response in the allowed window, then the connection is still alive.
 	 */
-	if (h->inst->synchronous && fr_time_gt(last_sent, fr_time_wrap(0)) &&
+	if ((h->inst->mode == RLM_RADIUS_MODE_PROXY) && fr_time_gt(last_sent, fr_time_wrap(0)) &&
 	    (fr_time_lt(fr_time_add(last_sent, h->inst->response_window), now))) return false;
 
 	/*
@@ -1372,7 +1371,7 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 	/*
 	 *	We don't do zombie stuff!
 	 */
-	if (!tconn || inst->replicate) return;
+	if (!tconn || (inst->mode == RLM_RADIUS_MODE_REPLICATE)) return;
 
 	check_for_zombie(unlang_interpret_event_list(request), tconn, now, retry->start);
 }
@@ -1553,7 +1552,7 @@ do_write:
 	/*
 	 *	Don't print anything extra for replication.
 	 */
-	if (inst->replicate) {
+	if (inst->mode == RLM_RADIUS_MODE_REPLICATE) {
 		bio_result_t *r = talloc_get_type_abort(treq->rctx, bio_result_t);
 
 		r->rcode = RLM_MODULE_OK;
@@ -1573,7 +1572,7 @@ do_write:
 
 		trunk_request_signal_sent(treq);
 
-		action = inst->originate ? "Originated" : "Proxied";
+		action = inst->mode == (RLM_RADIUS_MODE_CLIENT) ? "Originated" : "Proxied";
 
 	} else {
 		/*
@@ -1584,7 +1583,7 @@ do_write:
 
 	fr_assert(!u->status_check);
 
-	if (!inst->synchronous) {
+	if (inst->mode != RLM_RADIUS_MODE_PROXY) {
 		RDEBUG("%s request.  Expecting response within %pVs", action,
 		       fr_box_time_delta(u->retry.rt));
 
@@ -1796,10 +1795,12 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		decode_fail_t		reason;
 		uint8_t			code = 0;
 		fr_pair_list_t		reply;
+		fr_pair_t		*vp;
 
 		fr_time_t		now;
 
 		fr_pair_list_init(&reply);
+
 		/*
 		 *	Drain the socket of all packets.  If we're busy, this
 		 *	saves a round through the event loop.  If we're not
@@ -1901,8 +1902,6 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	returning an ok/fail packet code.
 		 */
 		if ((u->code == FR_RADIUS_CODE_ACCESS_REQUEST) && (code == FR_RADIUS_CODE_ACCESS_CHALLENGE)) {
-			fr_pair_t	*vp;
-
 			vp = fr_pair_find_by_da(&request->reply_pairs, NULL, attr_packet_type);
 			if (!vp) {
 				MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_packet_type));
@@ -1917,20 +1916,11 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		fr_pair_delete_by_da(&reply, attr_proxy_state);
 
 		/*
-		 *	If the reply has Message-Authenticator, delete
-		 *	it from the proxy reply so that it isn't
-		 *	copied over to our reply.  But also create a
-		 *	reply.Message-Authenticator attribute, so that
-		 *	it ends up in our reply.
+		 *	If the reply has Message-Authenticator, then over-ride its value with all zeros, so
+		 *	that we don't confuse anyone reading the debug output.
 		 */
-		if (fr_pair_find_by_da(&reply, NULL, attr_message_authenticator)) {
-			fr_pair_t *vp;
-
-			fr_pair_delete_by_da(&reply, attr_message_authenticator);
-
-			MEM(vp = fr_pair_afrom_da(request->reply_ctx, attr_message_authenticator));
+		if ((vp = fr_pair_find_by_da(&reply, NULL, attr_message_authenticator)) != NULL) {
 			(void) fr_pair_value_memdup(vp, (uint8_t const *) "", 1, false);
-			fr_pair_append(&request->reply_pairs, vp);
 		}
 
 		treq->request->reply->code = code;
@@ -1984,7 +1974,7 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	if (u->ev) (void)fr_event_timer_delete(&u->ev);
 	if (u->packet) bio_request_reset(u);
 
-	if (h->inst->replicate) return;
+	if (h->inst->mode == RLM_RADIUS_MODE_REPLICATE) return;
 
 	u->num_replies = 0;
 
@@ -2067,7 +2057,6 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
 
-	bio_thread_t		*t = talloc_get_type_abort(module_thread(mctx->mi)->data, bio_thread_t);
 	bio_result_t		*r = talloc_get_type_abort(mctx->rctx, bio_result_t);
 	bio_handle_t		*h;
 
@@ -2076,7 +2065,7 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	 *	synchronous proxying.  Ignore the dup, and rely on the
 	 *	IO submodule to time it's own retransmissions.
 	 */
-	if ((action == FR_SIGNAL_DUP) && !inst->synchronous) return;
+	if ((action == FR_SIGNAL_DUP) && (inst->mode != RLM_RADIUS_MODE_PROXY)) return;
 
 	/*
 	 *	If we don't have a treq associated with the
@@ -2110,12 +2099,6 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	 *	has already been sent out.
 	 */
 	case FR_SIGNAL_DUP:
-		/*
-		 *	If we're not synchronous, then rely on
-		 *	request_retry() to do the retransmissions.
-		 */
-		if (!t->inst->synchronous) return;
-
 		h = r->treq->tconn->conn->h;
 
 		if (h->fd_info->write_blocked) {
@@ -2125,8 +2108,8 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 		r->is_retry = true;
 
 		/*
-		 *	We are synchronous, retransmit the current
-		 *	request on the same connection.
+		 *	We are doing synchronous proxying, retransmit
+		 *	the current request on the same connection.
 		 *
 		 *	If it's zombie, we still resend it.  If the
 		 *	connection is dead, then a callback will move
@@ -2201,7 +2184,6 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	 */
 	MEM(u = talloc_zero(treq, bio_request_t));
 	u->code = request->packet->code;
-	u->synchronous = inst->synchronous;
 	u->priority = request->async->priority;
 	u->recv_time = request->async->recv_time;
 	fr_pair_list_init(&u->extra);
@@ -2253,13 +2235,13 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	talloc_set_destructor(u, _bio_request_free);
 
 	/*
-	 *	For many cases, we just time out instead of retrying.
+	 *	We do our own retries if we're a client, and a datagram socket.
 	 */
-	if (inst->synchronous || inst->replicate || (inst->fd_config.socket_type == SOCK_STREAM)) {
-		retry_config = &inst->timeout_retry;
+	if ((inst->mode == RLM_RADIUS_MODE_CLIENT) && (inst->fd_config.socket_type == SOCK_DGRAM)) {
+		retry_config = &inst->retry[u->code];
 
 	} else {
-		retry_config = &inst->retry[u->code];
+		retry_config = &inst->timeout_retry;
 	}
 
 	/*

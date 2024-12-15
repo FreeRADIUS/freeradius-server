@@ -37,6 +37,13 @@
 
 typedef struct rlm_radius_s rlm_radius_t;
 
+typedef enum {
+	RLM_RADIUS_MODE_INVALID = 0,
+	RLM_RADIUS_MODE_PROXY,
+	RLM_RADIUS_MODE_CLIENT,
+	RLM_RADIUS_MODE_REPLICATE,
+} rlm_radius_mode_t;
+
 /*
  *	Define a structure for our module configuration.
  */
@@ -58,16 +65,16 @@ struct rlm_radius_s {
 
 	bool			replicate;		//!< Ignore responses.
 	bool			synchronous;		//!< Retransmit when receiving a duplicate request.
-	bool			originate;  		//!< Originating packets, instead of proxying existing ones.
+	bool			originate;		//!< Originating packets, instead of proxying existing ones.
 							///< Controls whether Proxy-State is added to the outbound
-							///< request.
+							///< request
+	rlm_radius_mode_t	mode;			//!< proxy, client, etc.
 
 	uint32_t		max_attributes;   	//!< Maximum number of attributes to decode in response.
 
 	fr_radius_require_ma_t	require_message_authenticator;	//!< Require Message-Authenticator in responses.
 	bool			*received_message_authenticator;	//!< Received Message-Authenticator in responses.
 
-	uint32_t		proxy_state;  		//!< Unique ID (mostly) of this module.
 	uint32_t		*types;			//!< array of allowed packet types
 	uint32_t		status_check;  		//!< code of status-check type
 	map_list_t		status_check_map;	//!< attributes for the status-server checks
