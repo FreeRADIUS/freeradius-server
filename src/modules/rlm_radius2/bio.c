@@ -114,6 +114,7 @@ struct bio_request_s {
 
 	bool			require_message_authenticator;		//!< saved from the original packet.
 	bool			status_check;		//!< is this packet a status check?
+	bool			proxied;		//!< is this request being proxied
 
 	fr_pair_list_t		extra;			//!< VPs for debugging, like Proxy-State.
 
@@ -1070,7 +1071,7 @@ static int encode(rlm_radius_t const *inst, request_t *request, bio_request_t *u
 		},
 		.code = u->code,
 		.id = id,
-		.add_proxy_state = (inst->mode == RLM_RADIUS_MODE_PROXY),
+		.add_proxy_state = u->proxied,
 	};
 
 	/*
@@ -1572,7 +1573,7 @@ do_write:
 
 		trunk_request_signal_sent(treq);
 
-		action = inst->mode == (RLM_RADIUS_MODE_CLIENT) ? "Originated" : "Proxied";
+		action = u->proxied ? "Proxied" : "Originated";
 
 	} else {
 		/*
@@ -1583,7 +1584,7 @@ do_write:
 
 	fr_assert(!u->status_check);
 
-	if (inst->mode != RLM_RADIUS_MODE_PROXY) {
+	if (!u->proxied) {
 		RDEBUG("%s request.  Expecting response within %pVs", action,
 		       fr_box_time_delta(u->retry.rt));
 
@@ -2235,13 +2236,60 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	talloc_set_destructor(u, _bio_request_free);
 
 	/*
-	 *	We do our own retries if we're a client, and a datagram socket.
+	 *	Figure out if we're originating the packet or proxying it.  And also figure out if we have to
+	 *	retry.
 	 */
-	if ((inst->mode == RLM_RADIUS_MODE_CLIENT) && (inst->fd_config.socket_type == SOCK_DGRAM)) {
-		retry_config = &inst->retry[u->code];
+	switch (inst->mode) {
+	case RLM_RADIUS_MODE_INVALID:
+		RETURN_MODULE_FAIL;
 
-	} else {
+		/*
+		 *	We originate this packet if it was taken from the detail module, which doesn't have a
+		 *	real client.  @todo - do a better check here.
+		 *
+		 *	We originate this packet if the parent request is not compatible with this one
+		 *	(i.e. it's from a different protocol).
+		 *
+		 *	We originate the packet if the parent is from the same dictionary, but has a different
+		 *	packet code.  This lets us receive Accounting-Request, and originate
+		 *	Disconnect-Request.
+		 */
+	case RLM_RADIUS_MODE_PROXY:
+		if (!request->parent) {
+			u->proxied = (request->client->cs != NULL);
+
+		} else if (!fr_dict_compatible(request->parent->dict, request->dict)) {
+			u->proxied = false;
+
+		} else {
+			u->proxied = (request->parent->packet->code == request->packet->code);
+		}
+
+		/*
+		 *	Proxied packets get a final timeout, as we retry only on DUP packets.
+		 */
+		if (u->proxied) goto timeout_retry;
+
+		FALL_THROUGH;
+
+		/*
+		 *	Client packets (i.e. packets we originate) get retries for UDP.  And no retries for TCP.
+		 */
+	case RLM_RADIUS_MODE_CLIENT:
+		if (inst->fd_config.socket_type == SOCK_DGRAM) {
+			retry_config = &inst->retry[u->code];
+			break;
+		}
+		FALL_THROUGH;
+
+		/*
+		 *	Replicated packets are never retried, but they have a timeout if the socket isn't
+		 *	ready for writing.
+		 */
+	case RLM_RADIUS_MODE_REPLICATE:
+	timeout_retry:
 		retry_config = &inst->timeout_retry;
+		break;
 	}
 
 	/*
