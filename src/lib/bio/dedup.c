@@ -19,10 +19,11 @@
  * @file lib/bio/dedup.c
  * @brief Binary IO abstractions for deduping packets.
  *
- * The dedup BIO receives packets from the network, and allows for deduplication of replies.  The actual
- * deduplication tree / table has to be maintained by the calling application, as packet dedup is very
- * protocol-specific.  The purpose of the dedup BIO is to abstract all of the common support functions around
- * this requirement.
+ * The dedup BIO receives packets from the network, and allows for deduplication of requests, so that
+ * duplicate requests are only processed once.  In addition, if a reply is available, a duplicate request will
+ * result in a duplicate reply.  The actual deduplication tree / table has to be maintained by the calling
+ * application, as packet comparisons for deduplication is very protocol-specific.  The purpose of the dedup
+ * BIO is to abstract all of the common support functions around this limitation.
  *
  * When packets are read() from the next bio, the #fr_bio_dedup_receive_t callback is run.  It tells the BIO
  * whether or not the packet should be received, and whether or not the packet should be returned to the
