@@ -1364,6 +1364,9 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
 
 	switch (my->info.type) {
+	case FR_BIO_FD_INVALID:
+		return -1;
+
 	case FR_BIO_FD_UNCONNECTED:
 		if (my->info.socket.type != SOCK_DGRAM) {
 			fr_strerror_const("Only datagram sockets can be marked 'write-only'");

@@ -201,7 +201,7 @@ static int client_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF
 {
 	fr_bio_fd_config_t *fd_config = parent;
 
-	fd_config->type = FR_BIO_FD_CONNECTED;
+	if (fd_config->type == FR_BIO_FD_INVALID) fd_config->type = FR_BIO_FD_CONNECTED;
 
 	return common_transport_parse(ctx, out, parent, ci, rule,
 				      client_transport_names, client_transport_names_len);

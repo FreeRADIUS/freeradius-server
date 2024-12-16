@@ -724,6 +724,9 @@ static void fr_bio_fd_name(fr_bio_fd_t *my)
 	fr_bio_fd_config_t const *cfg = my->info.cfg;
 
 	switch (my->info.type) {
+	case FR_BIO_FD_INVALID:
+		return;
+
 	case FR_BIO_FD_UNCONNECTED:
 		fr_assert(cfg->socket_type == SOCK_DGRAM);
 
@@ -830,6 +833,10 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 	 *
 	 */
 	switch (cfg->type) {
+	case FR_BIO_FD_INVALID:
+		fr_strerror_const("No connection type was specified");
+		return -1;
+
 	case FR_BIO_FD_CONNECTED:
 		/*
 		 *	Ensure that we have a destination address.
@@ -910,6 +917,9 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 		 *
 		 */
 		switch (cfg->type) {
+		case FR_BIO_FD_INVALID:
+			return -1;
+
 		case FR_BIO_FD_CONNECTED:
 			/*
 			 *	No source specified, just bootstrap it from the destination.
@@ -1088,6 +1098,9 @@ int fr_bio_fd_open(fr_bio_t *bio, fr_bio_fd_config_t const *cfg)
 	 *	/ write functions.
 	 */
 	switch (cfg->type) {
+	case FR_BIO_FD_INVALID:
+		return -1;
+
 		/*
 		 *	Unconnected UDP or datagram AF_LOCAL server sockets.
 		 */

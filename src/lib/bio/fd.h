@@ -61,6 +61,7 @@ typedef enum {
 } fr_bio_fd_state_t;
 
 typedef enum {
+	FR_BIO_FD_INVALID,		//!< not set
 	FR_BIO_FD_UNCONNECTED,		//!< unconnected UDP / datagram only
 					// updates #fr_bio_fd_packet_ctx_t for reads,
 					// uses #fr_bio_fd_packet_ctx_t for writes
