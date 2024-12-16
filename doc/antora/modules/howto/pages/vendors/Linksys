@@ -1,0 +1,33 @@
+= Linksys
+
+While Linksys is now a divison of Cisco Systems it's RADIUS support works a little different to Cisco NAS equipment.
+
+To use RADIUS to authenticate your console, telnet & web access you need to configure the your RADIUS servers IP address and shared secret. This can usually be easily acomplished via the Linksys Web Admin interface.
+
+Note: These instructions are tested on a Linksys SRW224P switch
+
+== Standard Access
+
+Any standard RADIUS user configured will by default have **Read Only** access to the device
+
+You can do this with an entry in your users file similar to the following
+
+    youruser   Cleartext-Password := "somepass"
+
+== Administrative Access
+
+Quite likely, at some point you will also need administrative access to your Linksys (Even if only to disable RADIUS Authentication). This requires that you send "Service-Type = Administrative-User" to the device as a reply attribute. (I cannot find this documented ANYWHERE on the Linksys website!)
+
+You can do this with an entry in your users file similar to the following
+
+    youruser   Cleartext-Password := "somepass"
+        Service-Type = Administrative-User
+
+== Problems
+
+According to some reports(https://list.xs4all.nl/pipermail/freeradius-users/2006-November/058449.html), the Linksys family of equipment does not honor the Session-Timeout(http://freeradius.org/rfc/rfc2865.html#Session-Timeout) attribute.
+
+== See Also
+
+* HP
+* Cisco

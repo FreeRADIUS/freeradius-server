@@ -1,0 +1,78 @@
+== Creating DEFAULT entries to assign unknown client's a pool address ==
+
+Specifically, the issue I was solving is how to assign an ip from a specific pool to a specific radius client that was configured to route that pool, but have no knowledge of the clients details like user or pass.
+
+Why would anyone want to do such a thing? If you have a wireless device that is authenticating to a sperate process or might even authenticate to the same freeradius server, yet the wireless device itself doesn't request an address. A router or other ethernet device behind the wireless device does this. So, maybe you don't care what device is asking for the ip since you already know the device allowing it onto the network is allowed to be there. Having to enter the MAC of every client and for equipment which you don't own or care to know about would only increase user confusion and add to user downtime if they didn't inform you of an equipment change.
+
+The following is the result of a [http://mikrotik.com Mikrotik router] running a DHCP server that has been asked by a connected client for an IP address and the resultant response freeradius gave after proper configuration.
+
+ rad_recv: Access-Request packet from host 69.39.32.134:1024, id=26, length=149
+         NAS-Port-Type = Ethernet
+         NAS-Port = 2203058228
+         Calling-Station-Id = "1:0:d:56:b3:c2:2"
+         Called-Station-Id = "testdhcpserver"
+         User-Name = "00:0D:56:B3:C2:02"
+         User-Password = ""
+         NAS-Identifier = "rtr-system-identity"
+         NAS-IP-Address = 69.39.32.134
+         Mikrotik-Realm = "rtr-uctest2"
+ rlm_ippool: Searching for an entry for nas/port: 69.39.32.134/2203058228
+ rlm_ippool: num: 1
+ rlm_ippool: Allocated ip 192.168.10.131 to client on nas 69.39.32.134,port 2203058228
+ Sending Access-Accept of id 26 to 69.39.32.134 port 1024
+         Service-Type = Framed-User
+         Framed-Protocol = PPP
+         Framed-Routing = Broadcast-Listen
+         Framed-Filter-Id = "std.ppp"
+         Framed-MTU = 1500
+         Framed-Compression = Van-Jacobson-TCP-IP
+         Framed-Route = "192.168.10.1"
+         Framed-IP-Address = 192.168.10.131
+         Framed-IP-Netmask = 255.255.255.0
+
+The example here is based on a using a [http://mikrotik.com Mikrotik router] client but the principles are the same as for any client.
+
+#Make entries in the radius.conf file for an [[ippool]]. See the link on how to do that since this is strictly about the users file portion of the config.
+#Configure your client software or device to authenticate to your radius server
+#Configure the [[clients.conf]] file with the same ip, type, and secret from above
+#Start the radius server in debug mode
+#: radiusd -X
+# Create a DEFAULT entry which contains a check attribute that matches an attribute the client configured in step 2 above is sending in it's access request packet. Using the above as an example, you can see the [http://mikrotik.com Mikrotik router] actually has four different request attributes that you may use to check against that may be unique to the NAS, interface, or even dhcp server.
+#* Called-Station-Id = "testdhcpserver"   <- name given to the DHCP server during its' setup
+#* NAS-Identifier = "rtr-system-identity" <- host name of the router
+#* NAS-IP-Address = 69.39.32.134          <- take a guess
+#* Mikrotik-Realm = "rtr-uctest2"         <- Realm assigned to this specific RADIUS config on the Mikrotik
+
+Other NAS will likely have different attributes. All will at least have the NAS-IP-Address. Any of the above may be used  as a check attribute to assign an address from one of many pools. The following entry in the users file would assign an ip to any client whose MAC wasn't specifically listed AND whose client request contained the Called-Station-Id of "testdhcpserver". Note that all entries on the first line are check attributes and all following are reply attributes.
+
+ DEFAULT Called-Station-Id == "testdhcpserver", Auth-Type := Accept, Pool-Name := "main_pool"
+       Service-Type = Framed-User,
+       Framed-Protocol = PPP,
+       Framed-Routing = Broadcast-Listen,
+       Framed-Filter-Id = "std.ppp",
+       Framed-MTU = 1500,
+       Framed-Compression = Van-Jacobsen-TCP-IP,
+
+The DEFAULT keyword means not matched by anything else The "==" operator is a check attribute operator that requires a match. Note also here that Auth-Type is set to Accept since in this instance, we just want to hand out IP's. Another example follows with some other settings for this attribute to check for a specific client. Not also that in this case we are returning some specific attributes which may be used by the radius client. They also might not be used. An example here is the Framed-Route attribute is missing from the above config. The reason is that the [http://mikrotik.com Mikrotik router] DHCP server chooses to ignore this attribute and must be configured with its' own gateway. You ma use whatever reply attributes your client accepts.
+
+The following entry shows an example of a specific entry in the users file that will match the listed MAC address and return, in this case, an address from the pool. One might also decide to return a specific address, netmask, or whatever attribute one might desire as long as it is a valid reply attribute.
+
+ 00:0D:56:B3:C2:02  Cleartext-Password == "", Pool-Name := "main_pool"
+       Service-Type = Framed-User,
+       Framed-Protocol = PPP,
+       Framed-Routing = Broadcast-Listen,
+       Framed-Filter-Id = "std.ppp",
+       Framed-MTU = 1500,
+       Framed-Compression = Van-Jacobsen-TCP-IP,
+       Framed-Route = 192.168.10.1
+
+Hopefully this would give you some ideas on how to use this flexible and powerful feaure of the freeradius server.
+
+By the way, it is possible to interpolate variables, and put them in reply attributes.
+
+example:
+
+ DEFAULT Realm == xyz.net
+    Framed-Protocol = PPP,
+    Reply-Message = "Hello, %{User-Name}",
+    Fall-Through = Yes

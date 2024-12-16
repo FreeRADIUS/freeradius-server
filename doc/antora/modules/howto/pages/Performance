@@ -1,0 +1,39 @@
+= Performance
+
+When all configuration and policies are stored in RAM, the server is
+capable of performing 10's of 1000's of PAP authentications per second
+on commodity hardware. Specific performance capabilities depend on a
+number of factors, including:
+
+-   Database usage (flat-text files, LDAP, SQL)
+-   RAM, CPU, disk, network speed and latencies
+-   Use of EAP (SSL has significant CPU overhead)
+-   complexity of policies
+
+In general, any commodity hardware will be sufficient for systems up to
+a few hundred thousand users. For a larger number of users, issues such
+as high-availability and fail-over will control the choice of hardware.
+Once sufficient hardware has been deployed to meet high-availability
+requirements, RADIUS performance will not be an issue.
+
+Some commercial servers claim surprisingly high numbers for their
+performance. In our tests, the security overhead of RADIUS (MD5 hashes)
+can account for up to fifty percent (50%) of the time spent processing a
+packet. Any claims that a product has more than double the performance
+of a tuned FreeRADIUS installation are best viewed with skepticism.
+
+The choice of database can strongly affect server performance. Each
+accounting packet may result in one or more write requests to a
+database. The database performance then limits how many accounting
+packets can be processed, and therefore limits the performance of the
+RADIUS server. Many database cannot perform more than a few hundred to a
+few thousand writes per second. This database limitation in turn lowers
+RADIUS performance to about the same number of packets per second.
+
+The best way to determine the performance of a server is via testing.
+FreeRADIUS comes with a tool called `radclient`, which can be used for
+basic peformance testing. A third party tool called [RadPerf]() is also
+available. It uses the FreeRADIUS libraries to implement the RADIUS
+portion, and then builds more complex functionality on top of that. It
+can be used to simulate user logins, and can auto-generate accounting
+packets for user sessions.

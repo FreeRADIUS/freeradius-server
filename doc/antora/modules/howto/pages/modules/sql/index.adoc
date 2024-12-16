@@ -349,3 +349,46 @@ process Accounting-Request {
     ...
 }
 ----
+
+## SQL xlat
+The SQL module now supports SQL queries in [rlm_expr](rlm_expr). That is you can extract  the
+value of a single field and use it, either as a check item, a request item or a reply item.
+The strings will be of the following form:
+
+```sql
+%{sql:SELECT mytable.field1 FROM `mytable` WHERE 1}
+```
+
+and you may nest xlat statements within SQL strings:
+
+```sql
+%{sql:SELECT mytable.field1 FROM `mytable` WHERE mytable.user = %{User-Name}}
+```
+
+In case the returned field is multi valued which value is returned is considered UNDEFINED. If there
+are multiple instances of the module, the instance name can be used instead of the string 'sql', to
+decide which instance will return the information. The xlat string will be of the form:
+
+```sql
+%{instance_name:SELECT mytable.field1 FROM `mytable` WHERE 1}
+```
+For example:
+
+```sql
+%{sql_clients:SELECT mytable.field1 FROM `mytable` WHERE 1}
+```
+
+## Virtual Modules
+
+In version 3, any redundant modules with an instance name, e.g.
+
+```text
+redundant sql_inst {
+	sql1
+	sql2
+}
+```
+
+Can also be referenced in an xlat string expansion.
+
+In version <= 2 they cannot, and the expansion will fail.

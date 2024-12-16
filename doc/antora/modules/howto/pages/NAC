@@ -1,0 +1,29 @@
+*Network Access Control* (NAC) aims to do exactly what the name implies: control access to a network. The term NAC is also sometimes used for Network Admission Control, which is focused on authenticating users and performing a posture check on the connecting device. The broader definition of NAC, as access control, includes pre-admission endpoint security policy checks and post-admission controls over where users can go on a network and what they can do.
+
+NAC's roots trace back to the trusted computing movement, and the work of the Trusted Computing Platform Alliance. The TCPA morphed and reappeared as the Trusted Computing Group (TCG). The TCG has created the Trusted Network Connect (TNC) sub group to create an open-architecture alternative to proprietary NAC initiatives. The Trusted Network Connect Sub Group (TNC-SG) aims at enabling network operators to provide endpoint integrity at every network connection, thus enabling interoperability among multi-vendor network endpoints.
+
+It is still an emerging technology space, and many vendors are taking advantage of this lack of definition to jump on the NAC bandwagon. But if we boil down NAC to its essence, we are referring to the ability to: 
+
+* Enforce security policy and restrict prohibited traffic types 
+* Identify and contain users that break rules or are noncompliant with policy 
+* Stop and mitigate zero-day malware and other threats
+
+Multiple companies (such as NeoAccel, StillSecure, Cisco Systems, Microsoft, Symantec, Trend Micro, FireEye, Mirage Networks, Lockdown Networks, Endforce and Juniper Networks) have deployed NAC products, each providing different layers.
+
+Alternatively, the Free and Open Source PacketFence project is also a complete NAC product. It leverages FreeRADIUS for AAA over wireless Mac-Auth and 802.1X (aka WPA Enterprise) but also wired Mac-Auth and 802.1X.
+
+Layers of a compelete NAC security deployment 
+* Agent-Based or Agentless Posture Check
+* Zero-Day Threat Prevention
+* Dynamic Policy Enforcement
+* Surgical Quarantining and Remediation
+* Network Intelligence
+* Policy Decision and Policy Enforcement (inline or out of band)
+
+Policy decision may be separate from policy enforcement - this architecture is often called an out-of-band deployment. When policy decision and policy enforcement occur in the same device, this is called an inline deployment.
+
+== See Also
+
+* Network Access Protection
+* Network Admission Control
+* Trusted Network Connect

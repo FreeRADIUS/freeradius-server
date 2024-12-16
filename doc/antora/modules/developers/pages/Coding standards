@@ -1,0 +1,729 @@
+# Coding standards
+
+The goal is to have consistent, clear code.  All code should share a common style, format, choice of function / variable names, etc.  This means that people looking at the code see the *code*, and not the wildly different coding styles.
+
+Code should be commented.  There are over 100K LoC in the server, and it's impossible to always remember *why* things are done the way they are.  The comments should explain the choices behind the code, the goal, philosophy, or the "gotcha's".
+
+Function documentation should be doxygen style.  Below is an example of doxygen function documentation, use it as a guide when writing your own.
+
+```c
+/** Simple wrapper to decide whether an IP value is v4 or v6 and call the appropriate parser
+ *
+ * @param[out] out	Where to write the parsed ip address.
+ * @param[in] value	to parse.
+ * @param[in] inlen	Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve	If true and value doesn't look like an IP address, try and resolve value as
+ *	a hostname.
+ * @return
+ *	- 0 if ip address was parsed successfully.
+ *	- -1 on failure.
+ */
+int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
+{
+}
+```
+
+## Function naming conventions
+### Verb / noun order
+
+Nouns should always precede verbs `<prefix>_<noun>_<verb>[_<verb qualifiers>]`.
+
+*Good*
+```c
+fr_request_alloc()
+fr_dict_find_by_name()
+python_interp_exec()
+```
+
+*Bad*
+```c
+do_python()
+rest_parse_pairs()
+```
+
+### Name component separation 
+
+Name components should be separated by underscores.
+
+*Good*
+```c
+fr_pair_find
+```
+
+*Bad*
+```c
+frPairFind
+frpairfind
+fr_pairfind
+```
+
+### Variable names
+
+Variable names should be unambiguous, and should describe the thing they represent in plain english.  Contractions should be avoided in the majority of cases, especially if there are multiple ways of writing them.
+
+If acronyms must be used, they should usually be formed of the first letter of each of the name components of the structure they represent.
+
+*Good*
+```c
+eap_session_t *eap_session;
+eap_session_t *es;
+```
+
+[NOTE]
+====
+There's internal debate about which one of these is more appropriate, this is one of the few cases where you'll likely see inconsistency, if in doubt, stick with whatever format is used in the source file you're editing.
+====
+
+*Bad*
+```c
+eap_session_t *eps;
+eap_session_t *eap_sess;
+```
+
+### Function names
+
+Should describe the operation they perform in plain english.  Contractions should be avoided in the majority of cases, especially if there are multiple ways of writing them.
+
+Generally function names should not contain acronyms, unless they are in general use, required by a protocol, or match a common acronym used for variables representing a particular type of structure (``da`` is a very common one here, and expands to dictionary attribute, or `fr_dict_attr_t`.
+
+Search functions will generally be in the format of `<prefix>_<noun>_<preposition>_<noun>`, e.g. `fr_pair_find_by_da`.
+
+Conversion or wrapping functions will generally be in the same form, but with `from` and `to` used as the preposition, e.g. `fr_tmpl_from_str`.  Where the preposition is prefixed with an 'a' (alloc) it means the resulting object will be allocated on the heap.
+
+In all cases unnecessary acronyms and contractions should be avoided, i.e. if you're using calling the function once, and the rest of the body of the code you're working in doesn't contain contractions or acronyms, don't use then.
+
+*Good*
+```c
+fr_pair_find_by_num
+fr_packet_list_alloc
+map_proc_find_by_name
+fr_pair_afrom_da
+```
+
+*Bad*
+```c
+fr_pair_search  	/* What are we searching with? */
+fr_packet_list  	/* No idea what action is being performed */
+proc_find_by_name	/* Proc is ambiguous - Stands for processor in this context, but what kind of processor? */
+fr_pair_alloc_with_da   /* Non standard preposition */
+mod_ms_aa               /* Gratuitous and unnecessary use of non-standard and ambiguous acronyms */
+```
+
+### Prefixes / namespaces
+
+#### Protocol library `fr_`
+All functions in the protocol library should be prefixed with ``fr``. The rationale is that as libfreeradius is a library intended to be used by 3rd party applications it requires a namespace to avoid conflicts.
+
+#### Server library `<group>_`
+Functions in the server library should not have a global prefix, but should use a common prefix i.e. functions which manipulate value pairs should use the ``pair_`` prefix, dictionary functions should use the `dict_` prefix.
+
+#### Modules
+Public functions should use the `mod_` prefix, e.g. `mod_authorize`, `mod_authentication`, `mod_instantiate`. If the module uses its own library, those functions should be prefixed with the name of the module e.g. `python_`, `rest_`, `eap_`.
+
+Ideally, all of the functions in a module should be `static`.  If they cannot be that, the function name prefixes given above are *required*.
+
+### Instantiation and destruction
+Library and structure initialisations functions should use the verb `init`. Functions that initialise structures should expect them to contain garbage values (be uninitialised).
+
+Structure allocation functions should use the verb `alloc`. `create` should not be used.
+
+Explicit `free` or `destroy` functions should be avoided, and talloc destructors used wherever possible. Talloc destructor functions should be static and be prefixed with `_` to mark them as private e.g. `_fr_pair_free()`
+
+### Callbacks
+
+Callbacks should be prefixed with a `_` to mark them as private e.g. ``int _my_comparator(int a, int b)``.
+
+## Return types
+
+### Boolean
+
+``bool`` is used where the function is answering a true/false question (is a predicate). A good example is the ``is_whitespace`` function, which checks if the entire string is made up of whitespace.
+
+```c
+bool is_whitespace(char const *value)
+{
+	do {
+		if (!isspace(*value)) return false;
+	} while (*++value);
+
+	return true;
+}
+```
+
+### Integer
+``int`` should be used for most functions. Negative integers indicate failure, zero indicates success, positive integers indicate success with caveats.
+
+If you find a function returns significant (>= 4) numbers of different integer values, you should define an enum type so that it's clear in calling code what the different values mean.
+
+```c
+typedef enum {
+	FUNC_RCODE_SUCCESS = 0,
+	FUNC_RCODE_NO_MEMORY = -1,
+	FUNC_RCODE_BAD_ARGUMENTS_0 = -2,
+	FUNC_RCODE_BAD_ARGUMENTS_1 = -3
+} func_rcode_t;
+
+func_rcode_t my_function(int arg0, int arg1)
+{
+	void *mem;
+
+	mem = talloc(NULL, void);
+	if (!mem) return FUNC_RCODE_NO_MEMORY;
+
+	if (arg0 > 10) return FUNC_RCODE_BAD_ARGUMENTS_0;
+	if (arg1 > 10) return FUNC_RCODE_BAD_ARGUMENTS_1;
+
+	return FUNC_RCODE_SUCCESS;
+}
+```
+
+### Pointer
+Used only for allocation functions where there's a single simple failure mode (in which case NULL is returned).
+
+```c
+my_structure_t *simple_memory_alloc(TALLOC_CTX *ctx, int arg0, int arg1)
+{
+	return talloc(ctx, my_structure_t);
+}
+```
+
+For more complicated failures the function should return an integer, and write a pointer to the allocated memory via one of the arguments.
+
+```c
+int complicated_memory_alloc(TALLOC_CTX *ctx, my_structure_t **out, int arg0, int arg1)
+{
+	my_structure_t *structure.
+
+	if (arg0 == 0) {
+		fr_strerror_printf("Invalid parameter, arg0 must be greater than 0");
+		return -2;
+	}	
+
+	structure = talloc(ctx, my_structure_t);
+	if (!structure) return -1;
+
+	return 0;
+}
+```
+
+## Argument order
+
+Arguments should be in the following order
+
+- TALLOC_CTX (if used).
+- Arguments that return data to the caller ([out] arguments in doxygen parlence).
+- Arguments for passing data to the function.
+
+For modules the instance data pointer should be directly before the ``REQUEST *`` pointer.
+
+## Code style
+
+FreeRADIUS code style is very similar to 1TBS (one true brace style) with two major differences.
+
+- Bodies may be collapsed i.e. ``if (foo) bar();`` is acceptable.
+- Case statements don't require indentation.
+
+**Good**
+```c
+if (foo) bar();
+```
+```c
+if (foo) {
+	bar();
+	baz();
+}
+```
+```c
+for (i = 0; i < 10; i++) bar();
+```
+```c
+for (i = 0; i < 10; i++) {
+	bar();
+	baz();
+}
+```
+```c
+switch (foo) {
+case 'bar':
+	break;
+
+case 'baz':
+	break;
+}
+```
+
+**Bad**
+```c
+if (foo)
+	bar();
+```
+```c
+if (foo)
+	bar();
+else
+	baz();
+```
+```c
+for (i = 0; i < 10; i++)
+	bar();
+```
+```c
+switch (foo)
+{
+	case 'bar':
+		break;
+
+	case 'baz':
+		break;
+}
+```
+
+If in doubt the files below are good examples to follow:
+
+- https://github.com/FreeRADIUS/freeradius-server/blob/master/src/modules/rlm_ldap/rlm_ldap.c
+- https://github.com/FreeRADIUS/freeradius-server/blob/master/src/lib/util/dict.c
+- https://github.com/FreeRADIUS/freeradius-server/blob/master/src/lib/protocol/radius/encode.c
+
+
+### No trailing whitespace, newline at the end of the file
+
+Many editors support trimming trailing whitespace and adding a newline at the end of the file automatically.
+
+You should enable these features.
+
+### Arguments align with the end of the function name
+
+This is true for function declarations, definitions, and calls. Grouping related arguments together on the same line is also preferred.
+
+**Good**
+```c
+int my_function_with_lots_of_args(fr_ipaddr_t *src, uint16_t src_port,
+				  fr_ipaddr_t *dst, uint16_t dst_port,
+				  struct timeval timeout)
+{
+	return 0;
+}
+```
+
+**Bad**
+```c
+int my_function_with_lots_of_args(fr_ipaddr_t *src, uint16_t src_port, fr_ipaddr_t *dst, uint16_t dst_port,
+	struct timeval timeout)
+{
+	return 0;
+}
+
+```
+
+### Hard break at 120 columns
+
+It's not 1978, 80x24 VT100 terminals have long been consigned to the electronics recycling bin (hopefully).
+
+We believe code is perfectly readable up to 120 columns, that and over application of hard line breaking at 80 columns reduces code readability instead of increasing it.
+
+Strings should also be broken at 120 columns for consistency.
+
+### Always collapse or omit bodies (where possible)
+
+If a condition or loop and its body can be collapsed onto a single line, or omitted, then do so.
+
+**Good**
+```c
+if (foo && bar) baz();
+```
+```c
+while (foo()) baz();
+```
+```c
+for (i = 0; i < 10; i++);
+```
+
+**Bad**
+```c
+if (foo && bar) {
+	baz();
+}
+```
+```c
+if (foo && bar)
+	baz();
+```
+```c
+while (foo()) {
+	baz();
+}
+```
+```c
+while (foo())
+	baz();
+```
+```c
+for (i = 0; i < 10; i++) {}
+```
+
+### Return early
+
+Avoid unnecessary condition nesting by returning as soon as there's an error, or the function has done its useful work.
+
+Gotos are a perfectly acceptable way to reduce the number of exit points.  You'll often see the ``finish`` or ``release``
+label used in module code for this purpose.
+
+**Good**
+```c
+int my_func(char const *value)
+{
+	void *out;
+
+	if (input_parse(&out, value) < 0) return -1;
+	if (output_write(out) < 0) return -1;
+
+	return 0;
+}
+```
+
+**Bad**
+```c
+int my_func(char const *value)
+{
+	void *out;
+
+	if (input_parse(&out, value) == 0) {
+		if (output_write(out) < 0) return -1;
+	} else {
+		return -1;
+	}
+
+	return 0;
+}
+```
+
+### Outdent goto labels
+
+Goto labels are one level of indentation lower than the code they label.
+
+**Good**
+```c
+int my_func(char const *value)
+{
+	void *out;
+
+	if (input_parse(&out, value) < 0) {
+	error:
+		ERROR("Something bad happened");
+		return -1;
+	}
+	if (output_write(out) < 0) goto error;
+
+	return 0;
+}
+```
+
+**Bad**
+```c
+int my_func(char const *value)
+{
+	void *out;
+
+	if (input_parse(&out, value) < 0) {
+		error:
+		ERROR("Something bad happened");
+		return -1;
+	}
+	if (output_write(out) < 0) goto error;
+
+	return 0;
+}
+```
+
+
+### Error gotos jump backwards
+
+Error exit points and their goto labels should be defined the first time they occur in a function.
+
+The exception is when all uses of the goto are in a macro, in which case the goto label should be placed after the last return statement in the function.
+
+**Good**
+```c
+int my_func(char const *value)
+{
+	void *out;
+
+	if (input_parse(&out, value) < 0) {
+	error:
+		ERROR("Something bad happened");
+		return -1;
+	}
+	if (output_write(out) < 0) goto error;
+
+	return 0;
+}
+```
+
+**Bad**
+```c
+int my_func(char const *value)
+{
+	void *out;
+
+	if (input_parse(&out, value) < 0) goto error;
+	if (output_write(out) < 0) goto error;
+
+	return 0;
+
+error:
+	ERROR("Something bad happened");
+	return -1;
+}
+```
+
+### Const on the right
+
+Allows const to be read consistently as applying to the type on the left.
+
+**Good**
+```c
+char const * const *
+```
+
+**Bad**
+```c
+const char * const *
+```
+
+### Variable declarations at the top of blocks
+
+Variables don't have to be defined at the start of the function, but they should be defined at the start of a block.
+This can be any type of block, even an anonymous one ``{}``.
+
+Grouping declarations helps make the code more readable, and makes it easier to see the variables in use within certain areas of the code.
+
+**Good**
+```c
+int func(int a, int b)
+{
+	char *my_func_var;
+	
+	if (a) {
+		char *my_if_var;
+		
+		if (b) return -1;
+		my_if_var = "bar";
+	}
+
+	my_func_var = "foo";
+	return 0;
+}
+```
+
+**Bad**
+```c
+inf func(int a, int b)
+{
+	if (a) {
+		if (b) return 0;
+		char *my_if_var = "bar";
+	}
+
+	char *my_func_var = "foo";
+	return 0;
+}
+```
+
+### If arguments should never be NULL, mark with `CC_HINT(nonnull)`
+
+If an argument should never be NULL, the function declaration should be marked up with `CC_HINT(nonnull)`.
+The function should not test the arguments for NULLness.
+
+The rationale for this, is marking arguments as `nonnull` makes it easier for static analysis tools to find code paths where `nonnull` arguments are NULL, and produce diagnostic errors at build time.
+
+For runtime evaluation, llvm's ubsan can be used to catch NULL `nonnull` arguments.  If you're developing code, pass `--enable-undefined-behaviour-sanitizer` to `./configure`, ubsan will then abort if it finds a NULL pointer which should not be NULL.
+
+**Good**
+```c
+/* foo.h */
+int func(void *a, char *b) CC_HINT(nonnull);
+
+/* foo.c */
+int func(void *a, char *b)
+{
+
+}
+```
+
+**Bad**
+```c
+int func (void *a, char *b)
+{
+    if (!a || !b) return -1;
+}
+```
+
+## Managing compiler warnings and behaviour
+
+### Use of `+__attribute__+` (`CC_HINT()`)
+
+The `CC_HINT(<attribute>)` macro is used in FreeRADIUS code to pass `+__attribute__+` hints to the compiler.
+
+We wrap `+__attribute__+` with `CC_HINT` for legacy reasons, as it provides compatibility with compilers that did not support the `+__attribute__+` markup.  The majority of compilers now support `+__attribute__+` markup but `CC_HINT` has been retained as it's shorter and easier to type.
+
+The macros below are defined in `build.h` which is automatically included by the build system in all compilation units.  You do not need to include any headers to use these macros.
+
+Common compiler attributes/equivalent macros in the FreeRADIUS source are:
+
+#### `CC_HINT(nonnull)`
+Marks up all arguments to a function as being `nonnull`. The compiler will warn if a NULL pointer value is passed explicitly to a `nonnull` argument i.e. `foo(NULL)`. Clang's `ubsan` (if enabled) will abort executing the program if a NULL pointer is passed to a `nonnull` argument.
+
+.Marking all function arguments up as non-null
+[example]
+====
+```c
+int fr_control_message_push(fr_control_t *c, fr_ring_buffer_t *rb, uint32_t id, void *data, size_t data_size) CC_HINT(nonnull);
+```
+
+All arguments (`c`, `rb, `data`) must be non-NULL.
+====
+
+#### `CC_HINT(nonnull(<arg_num0>, <arg_num1>, <arg_numN>))`
+Marks up select arguments as being non-NULL.  The compiler will warn if a NULL pointer value is passed explicitly to a `nonnull` argument i.e. `foo(NULL)`. Clang's `ubsan` (if enabled) will abort executing the program if a NULL pointer is passed to a `nonnull` argument. arg_nums are indexed from 1.
+
+.Marking up select function arguments as non-null
+[example]
+====
+```c
+int fr_control_callback_add(fr_control_t *c, uint32_t id, void *ctx, fr_control_callback_t callback) CC_HINT(nonnull(1,4));
+```
+
+Arguments `c` and `callback` are required to be non-NULL. `ctx` may still be NULL.
+====
+
+#### `CC_HINT(warn_unused_result)`
+Requires that the return value of a function be assigned to something.  This is particularly useful for:
+
+* functions returning resources such as handles which will need to be released.
+* functions returning memory that will need to be freed.
+* functions returning error codes which must be checked.
+
+.`fr_pair_afrom_da` returns a new `fr_pair_t` which must be recorded somewhere otherwise there'll be a memory leak.
+[example]
+====
+```c
+fr_pair_t *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da) CC_HINT(warn_unused_result) CC_HINT(nonnull(2));
+```
+====
+
+#### `+CC_HINT(format (printf, <arg_num_fmt>, <arg_num_variadic>))+`
+Marks up a function as accepting a fmt string and arguments. `<arg_num_fmt>` is the argument number of the format string, `<arg_num_variadic>` is the argument number variadic arguments start at (`...` in the function signature).  arg_nums are indexed from 1.
+
+.Hinting to the compiler that the `cf_log` function accepts printf style arguments
+[example]
+====
+```c
+void cf_log(fr_log_type_t type, CONF_ITEM const *ci, char const *file, int line, char const *fmt, ...) CC_HINT(format (printf, 5, 6));
+```
+====
+#### `NEVER_RETURNS`
+Marks up a function as causing the process to exit.
+
+.Usage functions generally never return and cause the program to exit
+[example]
+====
+```c
+static void NEVER_RETURNS usage(void)
+{
+	DEBUG("Usage: dhcpclient [options] server[:port] [<command>]");
+	DEBUG("Send a DHCP request with provided RADIUS attrs and output response.");
+
+	DEBUG("  <command>              One of: discover, request, decline, release, inform; or: auto.");
+	DEBUG("  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").");
+        ...
+}
+```
+====
+
+#### `UNUSED`
+Marks up an argument as being unused (thus avoiding unused argument warnings).
+
+.`radmin_help` is a callback in the control socket API, it doesn't use all the arguments passed to it
+
+[example]
+====
+```
+static int radmin_help(UNUSED int count, UNUSED int key)
+{
+```
+====
+
+#### `NDEBUG_UNUSED`
+Marks up an argument as being unused for non-debug builds only.
+
+.In this function the `verify` argument is only used in debug builds
+
+[example]
+====
+```
+static uint64_t trunk_requests_per_connection(uint16_t *conn_count_out, uint32_t *req_conn_out,
+					      fr_trunk_t *trunk, fr_time_t now, NDEBUG_UNUSED bool verify)
+{
+```
+====
+
+#### `UNCONST`
+The `UNCONST(_type, _ptr)` macro works by first casting `_ptr` to a `uintptr_t` i.e. a integer type wide enough to hold a pointer value, and then to the type specified by `_type`.
+
+Our `UNCONST` macro has a `_type` argument, as it's slightly safer than casting to `void *` in terms of having the compiler find type issues, and that it allows inline dereferencing of fields in the `UNCONST` 'd pointer.
+
+Think carefully before using the `UNCONST` macro.  Try and solve the `const` issues in another way first.  For dictionaries and dictionary attributes `fr_dict_attr_unconst` and `fr_dict_unconst` should be used instead.  These functions will ensure the dictionaries are not in the read-only state before passing back a mutable pointer.
+
+If `UNCONST` is used to remove const protection to a const'd global, and you then attempt to write to that `UNCONST` 'd pointer, you're likely to either trip UBSAN or receive a `SIGBUS` or `SIGSEGV`.
+
+.Using `UNCONST` to pass `const` strings to 3rd party API
+
+[example]
+====
+```c
+row = SQLConnect(conn->dbc_handle,
+		 UNCONST(SQLCHAR *, config->sql_server), SQL_NTS,
+		 UNCONST(SQLCHAR *, config->sql_login), SQL_NTS,
+		 UNCONST(SQLCHAR *, config->sql_password), SQL_NTS);
+```
+====
+
+### Disabling compiler warnings
+
+The only time it's acceptable to disable compiler warnings is where they're being produced by 3rd party libraries, or when there is absolutely no other way to deal with them. If at all possible code in FreeRADIUS should be fixed not to produce compiler warnings.
+
+Four diagnostic control macros are available to all FreeRADIUS source files:
+
+- `DIAG_OFF(<diagnostic>)` ignores a diagnostic.
+- `DIAG_ON(<diagnostic>)` sets the specified diagnostic to produce a warning.
+- `DIAG_PUSH()` stores the current state of all diagnostics.
+- `DIAG_POP()` restores the previous state of all diagnostics.
+
+[NOTE]
+====
+For compilers other than GCC > 4.2 and clang > 2.8 `DIAG_*` macros will be disabled.
+====
+
+`DIAG_ON` and `DIAG_OFF` macros should be used to wrap an area of code producing warnings.  They should used in balanced pairs in the vast majority of cases.
+
+If a diagnostic that may not be implemented by the compiler is being used, `DIAG_ON`, `DIAG_OFF` calls can be wrapped with `DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)` and `DIAG_ON(DIAG_UNKNOWN_PRAGMAS)`.
+
+.Disabling `-Wdocumentation` diagnostics for 3rd party headers
+[example]
+====
+```c
+DIAG_OFF(DIAG_UNKNOWN_PRAGMAS) /* -Wdocumentation is not available in GCC */
+DIAG_OFF(documentation)
+#include <mruby.h>
+#include <mruby/compile.h>
+#include <mruby/array.h>
+#include <mruby/hash.h>
+#include <mruby/numeric.h>
+#include <mruby/string.h>
+#include <mruby/variable.h>
+DIAG_ON(documentation)
+DIAG_ON(DIAG_UNKNOWN_PRAGMAS)
+```
+
+The macro calls above disable and re-enable the `-Wdocumentation` diagnostic for mruby headers. `-Wdocumentation` will produce a warning if doxygen style comment blocks are not correctly composed.  We don't control the mruby headers and we will not be calling doxygen to build documentation based on them, so it's fine to disable the warning.  `-Wdocumentation` is only emitted by clang hence the use of `DIAG_(OFF|ON)_OPTIONAL`.
+====

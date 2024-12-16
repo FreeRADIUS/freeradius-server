@@ -1,0 +1,12 @@
+Freeradius is able to use several backends to ultimately provide authentication. One of these is MySQL.
+
+If you are compiling your own FreeRADIUS, it is important that install the MySQL library files before compiling. Freeradius should then automatically detect the necessary libmysqlclient* libraries in order to connect to it.
+
+Once your FreeRADIUS server is compiled and running, you then need to edit the configuration, specifically the sql.conf file. This provides FreeRADIUS with the information that it needs to connect to the server and also to define the queries it uses to query the database.
+
+The MySQL DDL script can be used as a base for creating your mysql database backend. 
+
+The default configuration is good for accounting dial-up etc.
+
+{{Default in the server source|src/modules/rlm_sql/drivers/rlm_sql_mysql/}}
+{{Default in the server source|raddb/sql/mysql/}}

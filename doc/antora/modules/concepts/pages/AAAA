@@ -1,0 +1,5 @@
+An AAAA Server is a server or servers that provide authentication, authorization, accounting, and auditing services. These may be co-located with the NAS, or more typically, are located on a separate server and communicate with the NAS's User Management Interface via an AAAA protocol.  The four AAAA functions may be located on a single server, or may be broken up among multiple servers.
+
+== See Also
+
+* AAA

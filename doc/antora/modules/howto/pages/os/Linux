@@ -1,0 +1,36 @@
+FreeRADIUS is expected to be compatible with all [http://www.linux.org/ Linux]  versions and distributions
+= Linux Distributions Shipping with FreeRADIUS
+
+* http://www.debian.org Debian GNU/Linux (all current releases)
+* http://www.gentoo.org/ Gentoo Linux offers an ebuild for freeradius.
+* Novell / SUSE Linux
+
+* Enterprise Editions:
+** Novell Open Enterprise Server 10
+** SUSE Linux Enterprise Server 9
+** SUSE Linux Enterprise Server 10
+
+* Standard Editions:
+** SUSE Linux Professional 9.0
+** SUSE Linux Professional 9.1
+** SUSE Linux Professional 9.2
+** SUSE Linux Professional 9.3
+** SUSE Linux 10.0
+** SUSE Linux 10.1
+** openSUSE 10.2
+** openSUSE 10.3
+** openSUSE 11
+
+* Ubuntu (all current releases)
+* CentOS 5.x (v 1.1.3) (also, FreeRadius 2.1.7 is available via: yum install freeradius2)
+
+== Linux Distributions Confirmed to work with FreeRADIUS
+
+* RedHat 9
+* Fedora Core 1
+* Fedora Core 2
+* Fedora Core 3
+* Fedora Core 7
+* Slackware 10.2
+* Slackware 11
+* CentOS 5.x

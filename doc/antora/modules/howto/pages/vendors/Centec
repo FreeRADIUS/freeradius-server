@@ -1,0 +1,19 @@
+= Centec
+
+----
+"Alexander Liu" <xliu@centecnetworks.com>
+----
+
+# Version:  $Id: $
+
+  VENDOR      Centec              27975
+
+   Standard attribute
+
+BEGIN-VENDOR    Centec
+----
+# Privilege Level: pri-level=4
+ATTRIBUTE       Ctc-AVPair         1    string
+----
+
+END-VENDOR  Centec
