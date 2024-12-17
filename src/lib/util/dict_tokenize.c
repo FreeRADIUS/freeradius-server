@@ -1485,7 +1485,7 @@ static int dict_read_process_begin_vendor(dict_tokenize_ctx_t *dctx, char **argv
 	if (argc < 1) {
 		fr_strerror_const_push("Invalid BEGIN-VENDOR entry");
 	error:
-		return 01;
+		return -1;
 	}
 
 	vendor = fr_dict_vendor_by_name(dctx->dict, argv[0]);
