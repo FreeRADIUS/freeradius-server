@@ -126,8 +126,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	char				buffer[256];
 	rlm_cache_t const		*inst = talloc_get_type_abort(mctx->mi->parent->data, rlm_cache_t);
 
-	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->mi->parent->name);
-
 	ret = libmemcached_check_configuration(driver->options, talloc_array_length(driver->options) -1,
 					       buffer, sizeof(buffer));
 	if (ret != MEMCACHED_SUCCESS) {
