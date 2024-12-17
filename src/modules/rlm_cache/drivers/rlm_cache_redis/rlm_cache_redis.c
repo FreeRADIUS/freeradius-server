@@ -75,8 +75,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_cache_redis_t		*driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_redis_t);
 	char				buffer[256];
 
-	buffer[0] = '\0';
-
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->mi->parent->name);
 
 	driver->cluster = fr_redis_cluster_alloc(driver, mctx->mi->conf, &driver->conf, true,
