@@ -169,6 +169,7 @@ static int CC_HINT(nonnull)
 dict_dctx_push_or_update(dict_tokenize_ctx_t *dctx, fr_dict_attr_t const *da, dict_nest_t nest)
 {
 	if (dctx->stack[++dctx->stack_depth].nest == nest) {
+		dctx->stack[dctx->stack_depth].filename = dctx->stack[dctx->stack_depth - 1].filename;
 		dctx->stack[dctx->stack_depth].da = da;
 		return 0;
 	}
