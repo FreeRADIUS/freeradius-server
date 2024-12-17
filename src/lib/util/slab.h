@@ -78,14 +78,14 @@ typedef struct { \
 	typedef int (*_type ## _slab_reserve_t)(_type *elem, void *uctx); \
 \
 	typedef struct { \
-		FR_DLIST_HEAD(_name ## _slab)	reserved; \
-		FR_DLIST_HEAD(_name ## _slab)	avail; \
+		FR_DLIST_HEAD(_name ## _slab)		reserved; \
+		FR_DLIST_HEAD(_name ## _slab)		avail; \
 		fr_event_list_t				*el; \
 		fr_event_timer_t const			*ev; \
 		fr_slab_config_t			config; \
 		unsigned int				in_use; \
 		unsigned int				high_water_mark; \
-		_type ## _slab_alloc_t		alloc; \
+		_type ## _slab_alloc_t			alloc; \
 		_type ## _slab_reserve_t		reserve; \
 		void					*uctx; \
 		bool					release_reset; \
@@ -95,18 +95,18 @@ typedef struct { \
 	typedef struct { \
 		FR_DLIST_ENTRY(_name ## _slab)		entry; \
 		_name ## _slab_list_t			*list; \
-		TALLOC_CTX					*pool; \
+		TALLOC_CTX				*pool; \
 		FR_DLIST_HEAD(_name ## _slab_element)	reserved; \
 		FR_DLIST_HEAD(_name ## _slab_element)	avail; \
 	} _name ## _slab_t; \
 \
 	typedef struct { \
-		_type						elem; \
+		_type					elem; \
 		FR_DLIST_ENTRY(_name ## _slab_element)	entry; \
-		bool						in_use; \
+		bool					in_use; \
 		_name ## _slab_t 			*slab; \
 		_type ## _slab_free_t 			free; \
-		void						*uctx; \
+		void					*uctx; \
 	} _name ## _slab_element_t;
 
 /** Define type specific wrapper functions for slabs and slab elements
