@@ -124,9 +124,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	rlm_cache_memcached_t		*driver = talloc_get_type_abort(mctx->mi->data, rlm_cache_memcached_t);
 	memcached_return_t		ret;
 	char				buffer[256];
-	rlm_cache_config_t const	*config = talloc_get_type_abort(mctx->mi->parent->data, rlm_cache_config_t);
-
-	fr_assert(config);
+	rlm_cache_t const		*inst = talloc_get_type_abort(mctx->mi->parent->data, rlm_cache_t);
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->mi->parent->name);
 
@@ -137,7 +135,7 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		return -1;
 	}
 
-	if (config->max_entries > 0) {
+	if (inst->config.max_entries > 0) {
 		ERROR("max_entries is not supported by this driver");
 		return -1;
 	}
