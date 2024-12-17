@@ -77,9 +77,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 
 	buffer[0] = '\0';
 
-	if (cf_section_rules_push(mctx->mi->conf, driver_config) < 0) return -1;
-	if (cf_section_parse(driver, driver, mctx->mi->conf) < 0) return -1;
-
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", mctx->mi->parent->name);
 
 	driver->cluster = fr_redis_cluster_alloc(driver, mctx->mi->conf, &driver->conf, true,
