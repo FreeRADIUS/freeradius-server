@@ -860,15 +860,24 @@ int fr_bio_fd_check_config(fr_bio_fd_config_t const *cfg)
 		}
 		break;
 
-	case FR_BIO_FD_UNCONNECTED:
 	case FR_BIO_FD_LISTEN:
-		if (cfg->src_ipaddr.af == AF_UNSPEC) {
-			fr_strerror_const("No source IP address was specified");
+		if (!cfg->src_port) {
+			fr_strerror_const("No source port was specified");
+			return -1;
+		}
+		FALL_THROUGH;
+
+		/*
+		 *	Unconnected sockets can use a source port, but don't need one.
+		 */
+	case FR_BIO_FD_UNCONNECTED:
+		if (cfg->path && cfg->filename) {
+			fr_strerror_const("Unconnected sockets cannot be used with Unix sockets or files");
 			return -1;
 		}
 
-		if (!cfg->src_port) {
-			fr_strerror_const("No source port was specified");
+		if (cfg->src_ipaddr.af == AF_UNSPEC) {
+			fr_strerror_const("No source IP address was specified");
 			return -1;
 		}
 		break;
