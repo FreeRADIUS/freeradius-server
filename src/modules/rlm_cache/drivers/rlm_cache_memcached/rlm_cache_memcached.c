@@ -183,7 +183,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		RERROR("Failed retrieving entry: %s: %s", memcached_strerror(mandle->handle, mret),
 		       memcached_last_error_message(mandle->handle));
 
-		return CACHE_ERROR;
+		return memcached_fatal(mret) ? CACHE_RECONNECT : CACHE_ERROR;
 	}
 	RDEBUG2("Retrieved %zu bytes from memcached", len);
 	RDEBUG2("%s", from_store);
@@ -239,7 +239,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		RERROR("Failed storing entry: %s: %s", memcached_strerror(mandle->handle, ret),
 		       memcached_last_error_message(mandle->handle));
 
-		return CACHE_ERROR;
+		return memcached_fatal(ret) ? CACHE_RECONNECT : CACHE_ERROR;
 	}
 
 	return CACHE_OK;
@@ -266,7 +266,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 
 	default:
 		RERROR("Failed deleting entry: %s", memcached_last_error_message(mandle->handle));
-		return CACHE_ERROR;
+		return memcached_fatal(ret) ? CACHE_RECONNECT : CACHE_ERROR;
 	}
 }
 
