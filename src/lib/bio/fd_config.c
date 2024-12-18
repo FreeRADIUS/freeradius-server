@@ -129,6 +129,26 @@ static conf_parser_t const client_udp_config[] = {
 };
 
 
+static const conf_parser_t client_udp_unconnected_sub_config[] = {
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+	{ FR_CONF_OFFSET_TYPE_FLAGS("src_ipv6addr", FR_TYPE_IPV6_ADDR, 0, fr_bio_fd_config_t, src_ipaddr) },
+
+	{ FR_CONF_OFFSET("interface", fr_bio_fd_config_t, interface) },
+
+	{ FR_CONF_OFFSET_IS_SET("recv_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, recv_buff) },
+	{ FR_CONF_OFFSET_IS_SET("send_buff", FR_TYPE_UINT32, 0, fr_bio_fd_config_t, send_buff) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+static conf_parser_t const client_udp_unconnected_config[] = {
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) client_udp_unconnected_sub_config },
+
+	CONF_PARSER_TERMINATOR
+};
+
+
 static const conf_parser_t client_tcp_sub_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipaddr", FR_TYPE_COMBO_IP_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr), },
 	{ FR_CONF_OFFSET_TYPE_FLAGS("ipv4addr", FR_TYPE_IPV4_ADDR, 0, fr_bio_fd_config_t, dst_ipaddr) },
@@ -200,6 +220,29 @@ static size_t client_transport_names_len = NUM_ELEMENTS(client_transport_names);
 static int client_transport_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
 {
 	fr_bio_fd_config_t *fd_config = parent;
+
+	/*
+	 *	Unconnected UDP sockets can only take src_ipaddr, but not port, and not dst_ipaddr.
+	 */
+	if (fd_config->type == FR_BIO_FD_UNCONNECTED) {
+		char const *name = cf_pair_value(cf_item_to_pair(ci));
+		CONF_SECTION *cs = cf_item_to_section(cf_parent(ci));
+
+		if (strcmp(name, "udp") != 0) {
+			cf_log_err(ci, "Invalid transport for unconnected UDP socket");
+			return -1;
+		}
+
+		if (cf_section_rules_push(cs, client_udp_unconnected_config) < 0) {
+			cf_log_perr(ci, "Failed updating parse rules");
+			return -1;
+		}
+
+		fd_config->socket_type = SOCK_DGRAM;
+		*(char const **) out = name;
+
+		return 0;
+	}
 
 	if (fd_config->type == FR_BIO_FD_INVALID) fd_config->type = FR_BIO_FD_CONNECTED;
 
