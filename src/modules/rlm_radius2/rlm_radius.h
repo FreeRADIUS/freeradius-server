@@ -23,6 +23,7 @@
 #include <freeradius-devel/util/retry.h>
 #include <freeradius-devel/unlang/module.h>
 #include <freeradius-devel/radius/radius.h>
+#include <freeradius-devel/radius/bio.h>
 
 #include <freeradius-devel/bio/fd.h>
 

@@ -71,7 +71,13 @@ typedef struct {
 	char const		*module_name;		//!< the module that opened the connection
 
 	int			fd;			//!< File descriptor.
-	fr_bio_t		*bio;
+
+	struct {
+		fr_bio_t		*read;     	//!< what we use for input
+		fr_bio_t		*write;    	//!< what we use for output
+		fr_bio_t		*fd;		//!< raw FD
+		fr_bio_t		*mem;		//!< memory wrappers for stream sockets
+	} bio;
 	fr_bio_fd_info_t const	*fd_info;
 
 	rlm_radius_t const	*inst;			//!< Our module instance.
@@ -634,6 +640,40 @@ static void bio_error(fr_bio_t *bio)
 	connection_signal_reconnect(h->conn, CONNECTION_FAILED);
 }
 
+static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *verify_ctx, UNUSED void *packet_ctx, const void *data, size_t *size)
+{
+	decode_fail_t	failure;
+	size_t		in_buffer = *size;
+	bio_handle_t	*h = verify_ctx;
+
+	if (in_buffer < 4) {
+		*size = RADIUS_HEADER_LENGTH;
+		return FR_BIO_VERIFY_WANT_MORE;
+	}
+
+	/*
+	 *	See if we need to discard the packet.
+	 *
+	 *	@todo - fix Message-Authenticator handling.
+	 */
+	if (!fr_radius_ok(data, size, h->inst->max_attributes, true, &failure)) {
+		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
+
+		return FR_BIO_VERIFY_ERROR_CLOSE;
+	}
+
+	/*
+	 *	@todo - check if the reply is allowed.  Bad replies are discarded later, but it might be worth
+	 *	checking them here.
+	 */
+
+	/*
+	 *	On input, *size is how much data we have.  On output, *size is how much data we want.
+	 */
+	return (in_buffer >= *size) ? FR_BIO_VERIFY_OK : FR_BIO_VERIFY_WANT_MORE;
+}
+
+
 /** Initialise a new outbound connection
  *
  * @param[out] h_out	Where to write the new file descriptor.
@@ -646,6 +686,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	int			fd;
 	bio_handle_t		*h;
 	bio_thread_t		*thread = talloc_get_type_abort(uctx, bio_thread_t);
+	rlm_radius_t const	*inst = thread->inst;
 
 	MEM(h = talloc_zero(conn, bio_handle_t));
 	h->thread = thread;
@@ -660,19 +701,52 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h->tt = radius_track_alloc(h));
 
-	h->bio = fr_bio_fd_alloc(h, &h->inst->fd_config, 0);
-	if (!h->bio) {
-		PERROR("%s - ", h->module_name);
+	h->bio.fd = fr_bio_fd_alloc(h, &h->inst->fd_config, 0);
+	if (!h->bio.fd) {
+		PERROR("%s - failed opening socket - ", h->module_name);
 	fail:
 		talloc_free(h);
 		return CONNECTION_STATE_FAILED;
 	}
 
-	h->bio->uctx = h;
-	h->fd_info = fr_bio_fd_info(h->bio);
-	fd = h->fd_info->socket.fd;
+	h->bio.fd->uctx = h;
+	h->fd_info = fr_bio_fd_info(h->bio.fd);
 
+	fd = h->fd_info->socket.fd;
 	fr_assert(fd >= 0);
+
+	/*
+	 *	We normally read and write to the FD BIO.
+	 */
+	h->bio.read = h->bio.write = h->bio.fd;
+
+	/*
+	 *	Create a memory BIO for stream sockets.  We want to return only complete packets, and not
+	 *	partial packets.
+	 *
+	 *	@todo - maybe we want to have a fr_bio_verify_t which is independent of fr_bio_mem_t.  That
+	 *	way we don't need a memory BIO for UDP sockets, but we can still add a verification layer for
+	 *	UDP sockets?
+	 */
+	if (inst->fd_config.socket_type == SOCK_STREAM) {
+		h->bio.mem = fr_bio_mem_alloc(h, 8192, 0, h->bio.fd);
+		if (!h->bio.mem) {
+			PERROR("%s - Failed allocating memory buffer - ", h->module_name);
+			goto fail;
+		}
+
+		if (fr_bio_mem_set_verify(h->bio.mem, rlm_radius_verify, h, false) < 0) {
+			PERROR("%s - Failed setting validation callback - ", h->module_name);
+			goto fail;
+		}
+
+		/*
+		 *	For stream sockets, we read into the memory buffer, and then return only one packet at
+		 *	a time.
+		 */
+		h->bio.read = h->bio.mem;
+		h->bio.mem->uctx = h;
+	}
 
 	talloc_set_destructor(h, _bio_handle_free);
 
@@ -689,7 +763,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		/*
 		 *	@todo - call connect_full() with callbacks, timeouts, etc.
 		 */
-		rcode = fr_bio_fd_connect_full(h->bio, conn->el, bio_connected, bio_error, NULL, NULL);
+		rcode = fr_bio_fd_connect_full(h->bio.fd, conn->el, bio_connected, bio_error, NULL, NULL);
 		if (rcode < 0) goto fail;
 
 		if (rcode == 0) return CONNECTION_STATE_CONNECTING;
@@ -904,7 +978,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	if (h->inst->mode == RLM_RADIUS_MODE_REPLICATE) {
 		read_fn = conn_discard;
 
-		if (fr_bio_fd_write_only(h->bio) < 0) {
+		if (fr_bio_fd_write_only(h->bio.fd) < 0) {
 			PERROR("%s - Failed setting socket to write-only", h->module_name);
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
@@ -1476,7 +1550,7 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 	packet_len = u->packet_len;
 
 do_write:
-	slen = fr_bio_write(h->bio, NULL, packet, packet_len);
+	slen = fr_bio_write(h->bio.write, NULL, packet, packet_len);
 	if (slen < 0) {
 		/*
 		 *	@todo - check slen for fr_bio_error(FOO)
@@ -1807,7 +1881,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	saves a round through the event loop.  If we're not
 		 *	busy, a few extra system calls don't matter.
 		 */
-		slen = read(h->fd, h->buffer, h->buflen);
+		slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
 		if (slen == 0) return;
 
 		if (slen < 0) {
