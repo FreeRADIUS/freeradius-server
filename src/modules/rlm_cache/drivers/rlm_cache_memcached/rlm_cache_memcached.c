@@ -189,7 +189,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	RDEBUG2("%s", from_store);
 
 	MEM(c = talloc_zero(NULL, rlm_cache_entry_t));
-	ret = cache_deserialize(c, request->dict, from_store, len);
+	ret = cache_deserialize(request, c, request->dict, from_store, len);
 	free(from_store);
 	if (ret < 0) {
 		RPERROR("Invalid entry");
