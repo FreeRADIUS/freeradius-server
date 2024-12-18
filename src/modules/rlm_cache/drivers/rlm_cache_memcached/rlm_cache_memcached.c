@@ -189,6 +189,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	RDEBUG2("%s", from_store);
 
 	MEM(c = talloc_zero(NULL, rlm_cache_entry_t));
+	map_list_init(&c->maps);
 	ret = cache_deserialize(request, c, request->dict, from_store, len);
 	free(from_store);
 	if (ret < 0) {
