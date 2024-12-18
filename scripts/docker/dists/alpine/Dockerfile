@@ -3,7 +3,7 @@
 #
 # Rebuild this file with `make docker.alpine.regen`
 #
-ARG from=alpine:3.13
+ARG from=alpine:3.20
 FROM ${from} as build
 
 #
