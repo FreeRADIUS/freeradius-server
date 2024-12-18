@@ -118,7 +118,6 @@ struct bio_request_s {
 
 	uint32_t		num_replies;		//!< number of reply packets, sent is in retry.count
 
-	bool			require_message_authenticator;		//!< saved from the original packet.
 	bool			status_check;		//!< is this packet a status check?
 	bool			proxied;		//!< is this request being proxied
 
@@ -645,19 +644,40 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	decode_fail_t	failure;
 	size_t		in_buffer = *size;
 	bio_handle_t	*h = verify_ctx;
+	uint8_t const	*hdr = data;
+	size_t		want;
 
-	if (in_buffer < 4) {
+	if (in_buffer < 20) {
 		*size = RADIUS_HEADER_LENGTH;
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
 
 	/*
-	 *	See if we need to discard the packet.
-	 *
-	 *	@todo - fix Message-Authenticator handling.
+	 *	Packet is too large, discard it.
 	 */
-	if (!fr_radius_ok(data, size, h->inst->max_attributes, true, &failure)) {
+	want = fr_nbo_to_uint16(hdr + 2);
+	if (want > h->inst->max_packet_size) {
+		ERROR("%s - Connection %s received too long packet", h->module_name, h->fd_info->name);
+		return FR_BIO_VERIFY_ERROR_CLOSE;
+	}
+
+	/*
+	 *	Not a full packet, we want more data.
+	 */
+	if (want < *size) {
+		*size = want;
+		return FR_BIO_VERIFY_WANT_MORE;
+	}
+
+#define REQUIRE_MA(_h) (((_h)->inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || (_h)->inst->received_message_authenticator)
+
+	/*
+	 *	See if we need to discard the packet.
+	 */
+	if (!fr_radius_ok(data, size, h->inst->max_attributes, REQUIRE_MA(h), &failure)) {
 		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
+
+		PERROR("%s - Connection %s received bad packet", h->module_name, h->fd_info->name);
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
@@ -1067,8 +1087,7 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 		.tmp_ctx = talloc(ctx, uint8_t),
 		.end = data + data_len,
 		.verify = true,
-		.require_message_authenticator = ((*(inst->received_message_authenticator) & inst->require_message_authenticator) |
-						  (inst->require_message_authenticator & FR_RADIUS_REQUIRE_MA_YES)) > 0
+		.require_message_authenticator = REQUIRE_MA(h),
 	};
 
 	if (fr_radius_decode(ctx, reply, data, data_len, &decode_ctx) < 0) {
@@ -1091,14 +1110,13 @@ static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *res
 	 *	but the home server doesn't support it or require it, in which case
 	 *	the response can be manipulated by an attacker.
 	 */
-	if (u->code == FR_RADIUS_CODE_ACCESS_REQUEST) {
-		if ((inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
-		    !*(inst->received_message_authenticator) &&
-		    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator) &&
-		    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
-			RINFO("Packet contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"");
-			*(inst->received_message_authenticator) = true;
-		}
+	if ((u->code == FR_RADIUS_CODE_ACCESS_REQUEST) &&
+	    (inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
+	    !*(inst->received_message_authenticator) &&
+	    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator) &&
+	    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
+		RINFO("Packet contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"");
+		*(inst->received_message_authenticator) = true;
 	}
 
 	*response_code = code;
@@ -1543,6 +1561,9 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 		       fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name);
 	}
 
+	/*
+	 *	@todo - When logging Message-Authenticator, don't print its' value.
+	 */
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->request_pairs, NULL);
 	if (!fr_pair_list_empty(&u->extra)) log_request_pair_list(L_DBG_LVL_2, request, NULL, &u->extra, NULL);
 
@@ -2266,21 +2287,6 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	u->retry.count = 1;
 
 	r->rcode = RLM_MODULE_FAIL;
-
-	/*
-	 *	Make sure that we print out the actual encoded value
-	 *	of the Message-Authenticator attribute.  If the caller
-	 *	asked for one, delete theirs (which has a bad value),
-	 *	and remember to add one manually when we encode the
-	 *	packet.  This is the only editing we do on the input
-	 *	request.
-	 *
-	 *	@todo - don't edit the input packet!
-	 */
-	if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
-		u->require_message_authenticator = true;
-		pair_delete_request(attr_message_authenticator);
-	}
 
 	switch(trunk_request_enqueue(&treq, t->trunk, request, u, r)) {
 	case TRUNK_ENQUEUE_OK:
