@@ -46,8 +46,8 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 
 	char		*to_store = NULL;
 
-	to_store = talloc_typed_asprintf(ctx, "Cache-Expires = %pV\nCache-Created = %pV\n",
-					 fr_box_date(c->expires), fr_box_date(c->created));
+	to_store = fr_asprintf(ctx, "Cache-Expires = '%pV'\nCache-Created = '%pV'\n",
+			       fr_box_date(c->expires), fr_box_date(c->created));
 	if (!to_store) return -1;
 
 	/*
