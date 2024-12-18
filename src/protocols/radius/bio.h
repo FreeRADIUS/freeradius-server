@@ -35,6 +35,7 @@ typedef struct {
 	size_t		secret_len;
 
 	uint32_t	max_attributes;
+	uint32_t	max_packet_size;
 
 	bool		allowed[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
 

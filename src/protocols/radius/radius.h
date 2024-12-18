@@ -158,6 +158,28 @@ typedef struct {
 	fr_radius_attr_flags_encrypt_t	encrypt;		//!< Attribute is encrypted
 } fr_radius_attr_flags_t;
 
+/** Failure reasons */
+typedef enum {
+	DECODE_FAIL_NONE = 0,
+	DECODE_FAIL_MIN_LENGTH_PACKET,
+	DECODE_FAIL_MAX_LENGTH_PACKET,
+	DECODE_FAIL_MIN_LENGTH_FIELD,
+	DECODE_FAIL_MIN_LENGTH_MISMATCH,
+	DECODE_FAIL_HEADER_OVERFLOW,
+	DECODE_FAIL_UNKNOWN_PACKET_CODE,
+	DECODE_FAIL_INVALID_ATTRIBUTE,
+	DECODE_FAIL_ATTRIBUTE_TOO_SHORT,
+	DECODE_FAIL_ATTRIBUTE_OVERFLOW,
+	DECODE_FAIL_MA_INVALID_LENGTH,
+	DECODE_FAIL_ATTRIBUTE_UNDERFLOW,
+	DECODE_FAIL_TOO_MANY_ATTRIBUTES,
+	DECODE_FAIL_MA_MISSING,
+	DECODE_FAIL_MA_INVALID,
+	DECODE_FAIL_UNKNOWN,
+	DECODE_FAIL_MAX
+} fr_radius_decode_fail_t;
+
+
 DIAG_OFF(unused-function)
 /** Return RADIUS-specific flags for a given attribute
  */
@@ -205,7 +227,7 @@ int		fr_radius_verify(uint8_t *packet, uint8_t const *vector,
 				 bool require_message_authenticator, bool limit_proxy_state) CC_HINT(nonnull (1,3));
 
 bool		fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
-			     uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason) CC_HINT(nonnull (1,2));
+			     uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason) CC_HINT(nonnull (1,2));
 
 ssize_t		fr_radius_ascend_secret(fr_dbuff_t *dbuff, uint8_t const *in, size_t inlen,
 					char const *secret, uint8_t const *vector);
@@ -234,7 +256,7 @@ ssize_t		fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
 					char const *secret) CC_HINT(nonnull (1,2,4));
 
 bool		fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator,
-				    decode_fail_t *reason) CC_HINT(nonnull (1));
+				    fr_radius_decode_fail_t *reason) CC_HINT(nonnull (1));
 
 int		fr_packet_verify(fr_packet_t *packet, fr_packet_t *original,
 					char const *secret) CC_HINT(nonnull (1,3));

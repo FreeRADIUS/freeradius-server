@@ -258,7 +258,7 @@ static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int f
 
 static int 		encode(rlm_radius_udp_t const *inst, request_t *request, udp_request_t *u, uint8_t id);
 
-static decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
+static fr_radius_decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
 			       udp_handle_t *h, request_t *request, udp_request_t *u,
 			       uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			       uint8_t *data, size_t data_len);
@@ -1112,7 +1112,7 @@ static int8_t request_prioritise(void const *one, void const *two)
  *	- DECODE_FAIL_NONE on success.
  *	- DECODE_FAIL_* on failure.
  */
-static decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
+static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, uint8_t *response_code,
 			    udp_handle_t *h, request_t *request, udp_request_t *u,
 			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			    uint8_t *data, size_t data_len)
@@ -1936,7 +1936,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		udp_request_t		*u;
 		udp_result_t		*r;
 		radius_track_entry_t	*rr;
-		decode_fail_t		reason;
+		fr_radius_decode_fail_t	reason;
 		uint8_t			code = 0;
 		fr_pair_list_t		reply;
 

@@ -31,14 +31,20 @@ RCSID("$Id$")
  */
 fr_bio_verify_action_t fr_radius_bio_verify(UNUSED fr_bio_t *bio, void *verify_ctx, UNUSED void *packet_ctx, const void *data, size_t *size)
 {
-	decode_fail_t	failure;
+	fr_radius_decode_fail_t	failure;
 	size_t		in_buffer = *size;
 	fr_radius_bio_verify_t *uctx = verify_ctx;
 	uint8_t const	*hdr = data;
+	size_t		want;
 
 	if (in_buffer < 4) {
 		*size = RADIUS_HEADER_LENGTH;
 		return FR_BIO_VERIFY_WANT_MORE;
+	}
+
+	want = fr_nbo_to_uint16(hdr + 2);
+	if (uctx->max_packet_size && (want > uctx->max_packet_size)) {
+		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
 
 	/*
@@ -63,12 +69,18 @@ fr_bio_verify_action_t fr_radius_bio_verify(UNUSED fr_bio_t *bio, void *verify_c
  */
 fr_bio_verify_action_t fr_radius_bio_verify_datagram(UNUSED fr_bio_t *bio, void *verify_ctx, UNUSED void *packet_ctx, const void *data, size_t *size)
 {
-	decode_fail_t	failure;
+	fr_radius_decode_fail_t	failure;
 	size_t		in_buffer = *size;
 	fr_radius_bio_verify_t *uctx = verify_ctx;
 	uint8_t const	*hdr = data;
+	size_t		want;
 
 	if (in_buffer < RADIUS_HEADER_LENGTH) return FR_BIO_VERIFY_DISCARD;
+
+	want = fr_nbo_to_uint16(hdr + 2);
+	if (uctx->max_packet_size && (want > uctx->max_packet_size)) {
+		return FR_BIO_VERIFY_ERROR_DISCARD;
+	}
 
 	/*
 	 *	See if we need to discard the packet.

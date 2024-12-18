@@ -1396,6 +1396,7 @@ int main(int argc, char **argv)
 		.verify = {
 			.require_message_authenticator = false,
 			.max_attributes = RADIUS_MAX_ATTRIBUTES,
+			.max_packet_size = 4096,
 		},
 	};
 

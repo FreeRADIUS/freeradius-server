@@ -116,7 +116,7 @@ ssize_t fr_packet_encode(fr_packet_t *packet, fr_pair_list_t *list,
  *	- True on success.
  *	- False on failure.
  */
-bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason)
+bool fr_packet_ok(fr_packet_t *packet, uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
 {
 	char host_ipaddr[INET6_ADDRSTRLEN];
 

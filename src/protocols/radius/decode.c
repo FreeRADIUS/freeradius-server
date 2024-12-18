@@ -2165,6 +2165,7 @@ static int decode_test_ctx(void **out, TALLOC_CTX *ctx, UNUSED fr_dict_t const *
 static const char *reason_name[DECODE_FAIL_MAX] = {
 	[ DECODE_FAIL_NONE ] = "all OK",
 	[ DECODE_FAIL_MIN_LENGTH_PACKET ] = "packet is too small",
+	[ DECODE_FAIL_MAX_LENGTH_PACKET ] = "packet is too large",
 	[ DECODE_FAIL_MIN_LENGTH_FIELD ] = "length field is too small",
 	[ DECODE_FAIL_MIN_LENGTH_MISMATCH ] = "length mismatch",
 	[ DECODE_FAIL_HEADER_OVERFLOW ] = "header overflow",
@@ -2184,7 +2185,7 @@ static ssize_t fr_radius_decode_proto(TALLOC_CTX *ctx, fr_pair_list_t *out,
 				      uint8_t const *data, size_t data_len, void *proto_ctx)
 {
 	fr_radius_decode_ctx_t	*test_ctx = talloc_get_type_abort(proto_ctx, fr_radius_decode_ctx_t);
-	decode_fail_t	reason;
+	fr_radius_decode_fail_t	reason;
 	fr_pair_t	*vp;
 	size_t		packet_len = data_len;
 

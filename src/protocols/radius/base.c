@@ -513,13 +513,13 @@ int fr_radius_sign(uint8_t *packet, uint8_t const *vector,
  *	- False on failure.
  */
 bool fr_radius_ok(uint8_t const *packet, size_t *packet_len_p,
-		  uint32_t max_attributes, bool require_message_authenticator, decode_fail_t *reason)
+		  uint32_t max_attributes, bool require_message_authenticator, fr_radius_decode_fail_t *reason)
 {
 	uint8_t	const		*attr, *end;
 	size_t			totallen;
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
-	decode_fail_t		failure = DECODE_FAIL_NONE;
+	fr_radius_decode_fail_t failure = DECODE_FAIL_NONE;
 	size_t			packet_len = *packet_len_p;
 
 	/*
