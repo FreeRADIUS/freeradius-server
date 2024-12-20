@@ -79,7 +79,7 @@ fr_bio_verify_action_t fr_radius_bio_verify_datagram(UNUSED fr_bio_t *bio, void 
 
 	want = fr_nbo_to_uint16(hdr + 2);
 	if (uctx->max_packet_size && (want > uctx->max_packet_size)) {
-		return FR_BIO_VERIFY_ERROR_DISCARD;
+		return FR_BIO_VERIFY_DISCARD;
 	}
 
 	/*

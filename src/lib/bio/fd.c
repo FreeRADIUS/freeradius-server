@@ -427,14 +427,13 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 		.msg_flags	= 0,
 	};
 
-	cmsg = CMSG_FIRSTHDR(&my->msgh);
-
 	{
 #ifdef IP_PKTINFO
 		struct in_pktinfo *pkt;
 
 		my->msgh.msg_controllen = CMSG_SPACE(sizeof(*pkt));
 
+		cmsg = CMSG_FIRSTHDR(&my->msgh);
 		cmsg->cmsg_level = SOL_IP;
 		cmsg->cmsg_type = IP_PKTINFO;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*pkt));
@@ -449,6 +448,7 @@ static ssize_t fr_bio_fd_sendfromto4(fr_bio_t *bio, void *packet_ctx, const void
 
 		my->msgh.msg_controllen = CMSG_SPACE(sizeof(*in));
 
+		cmsg = CMSG_FIRSTHDR(&my->msgh);
 		cmsg->cmsg_level = IPPROTO_IP;
 		cmsg->cmsg_type = IP_SENDSRCADDR;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*in));
@@ -575,13 +575,12 @@ static ssize_t fr_bio_fd_sendfromto6(fr_bio_t *bio, void *packet_ctx, const void
 		.msg_flags	= 0,
 	};
 
-	cmsg = CMSG_FIRSTHDR(&my->msgh);
-
 	{
 		struct in6_pktinfo *pkt;
 
 		my->msgh.msg_controllen = CMSG_SPACE(sizeof(*pkt));
 
+		cmsg = CMSG_FIRSTHDR(&my->msgh);
 		cmsg->cmsg_level = IPPROTO_IPV6;
 		cmsg->cmsg_type = IPV6_PKTINFO;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*pkt));
