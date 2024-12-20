@@ -634,7 +634,10 @@ int fr_bio_fd_socket_name(fr_bio_fd_t *my)
 	/*
 	 *	Already set: do nothing.
 	 */
-	if (!fr_ipaddr_is_inaddr_any(&my->info.socket.inet.src_ipaddr)) return 0;
+	if (!fr_ipaddr_is_inaddr_any(&my->info.socket.inet.src_ipaddr) &&
+	    (my->info.socket.inet.src_port != 0)) {
+		return 0;
+	}
 
 	/*
 	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
