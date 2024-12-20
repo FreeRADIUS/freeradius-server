@@ -1015,12 +1015,21 @@ xlat_action_t xlat_frame_eval_repeat(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 		case XLAT_ACTION_DONE:				/* Process the result */
 			fr_dcursor_next(out);
-			REXDENT();
-			xlat_debug_log_result(request, *in, fr_dcursor_current(out));
-			if (!xlat_process_return(request, node->call.func,
-						 (fr_value_box_list_t *)out->dlist,
-						 fr_dcursor_current(out))) return XLAT_ACTION_FAIL;
-			RINDENT();
+
+			/*
+			 *	Don't print out results if there are no results.
+			 */
+			if (!fr_type_is_void(node->call.func->return_type)) {
+				REXDENT();
+				xlat_debug_log_result(request, *in, fr_dcursor_current(out));
+				if (!xlat_process_return(request, node->call.func,
+							 (fr_value_box_list_t *)out->dlist,
+							 fr_dcursor_current(out))) {
+					RINDENT();
+					return XLAT_ACTION_FAIL;
+				}
+				RINDENT();
+			}
 			break;
 		}
 	}
