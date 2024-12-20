@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/io/application.h>
 #include <freeradius-devel/server/modpriv.h>
+#include <freeradius-devel/unlang/xlat_func.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/dlist.h>
 
@@ -101,6 +102,20 @@ static conf_parser_t const transport_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+/*
+ *	We only parse the pool options if we're connected.
+ */
+static conf_parser_t const connected_config[] = {
+	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
+
+	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_radius_t, trunk_conf, trunk_config ) },
+
+	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config },
+
+	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config },
+
+	CONF_PARSER_TERMINATOR
+};
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -113,7 +128,7 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("replicate", CONF_FLAG_DEPRECATED, rlm_radius_t, replicate) },
+	{ FR_CONF_OFFSET_FLAGS("replicate", 0, rlm_radius_t, replicate) },
 
 	{ FR_CONF_OFFSET_FLAGS("synchronous", CONF_FLAG_DEPRECATED, rlm_radius_t, synchronous) },
 
@@ -121,8 +136,6 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET("max_packet_size", rlm_radius_t, max_packet_size), .dflt = "4096" },
 	{ FR_CONF_OFFSET("max_send_coalesce", rlm_radius_t, max_send_coalesce), .dflt = "1024" },
-
-	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
 
 	{ FR_CONF_OFFSET("max_attributes", rlm_radius_t, max_attributes), .dflt = STRINGIFY(RADIUS_MAX_ATTRIBUTES) },
 
@@ -137,12 +150,6 @@ static conf_parser_t const module_config[] = {
 
 	{ FR_CONF_OFFSET("revive_interval", rlm_radius_t, revive_interval) },
 
-	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_radius_t, trunk_conf, trunk_config ) },
-
-	{ FR_CONF_POINTER("udp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config },
-
-	{ FR_CONF_POINTER("tcp", 0, CONF_FLAG_SUBSECTION | CONF_FLAG_OPTIONAL, NULL), .subcs = (void const *) transport_config }
-,
 	CONF_PARSER_TERMINATOR
 };
 
@@ -204,6 +211,7 @@ static fr_table_num_sorted_t mode_names[] = {
 	{ L("client"),		RLM_RADIUS_MODE_CLIENT   	},
 	{ L("proxy"),		RLM_RADIUS_MODE_PROXY    	},
 	{ L("replicate"),	RLM_RADIUS_MODE_REPLICATE   	},
+	{ L("unconnected"),	RLM_RADIUS_MODE_UNCONNECTED  	},
 };
 static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 
@@ -241,9 +249,18 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	*(rlm_radius_mode_t *) out = mode;
 
 	/*
-	 *	Normally we want connected sockets.
+	 *	Normally we want connected sockets, in which case we push additional configuration for connected sockets.
 	 */
-	inst->fd_config.type = FR_BIO_FD_CONNECTED;
+	if (mode != RLM_RADIUS_MODE_UNCONNECTED) {
+		CONF_SECTION *cs = cf_item_to_section(cf_parent(ci));
+
+		inst->fd_config.type = FR_BIO_FD_CONNECTED;
+
+		if (cf_section_rules_push(cs, connected_config) < 0) return -1;
+
+	} else {
+		inst->fd_config.type = FR_BIO_FD_UNCONNECTED;
+	}
 
 	return 0;
 }
@@ -492,6 +509,15 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		RETURN_MODULE_FAIL;
 	}
 
+	/*
+	 *	Unconnected sockets use %radius.replicate(ip, port, secret),
+	 *	or %radius.sendto(ip, port, secret)
+	 */
+	if (inst->mode == RLM_RADIUS_MODE_UNCONNECTED) {
+		REDEBUG("When using 'mode = unconnected', this module cannot be used in-place.  Instead, it must be called via a function call");
+		RETURN_MODULE_FAIL;
+	}
+
 	if (!inst->allowed[request->packet->code]) {
 		REDEBUG("Packet code %s is disallowed by the configuration",
 		       fr_radius_packet_name[request->packet->code]);
@@ -602,12 +628,24 @@ check_others:
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
-	/*
-	 *	These limits are specific to RADIUS, and cannot be over-ridden
-	 */
-	FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
-	FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
-	FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
+	if (inst->mode != RLM_RADIUS_MODE_UNCONNECTED) {
+		/*
+		 *	These limits are specific to RADIUS, and cannot be over-ridden
+		 */
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
+		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
+	} else {
+		if (inst->fd_config.src_port != 0) {
+			cf_log_err(conf, "Cannot set 'src_port' when using 'mode = unconnected'");
+			return -1;
+		}
+
+		if (!inst->replicate) {
+			cf_log_err(conf, "Using 'mode = unconnected' also requires 'replicate = true'");
+			return -1;
+		}
+	}
 
 	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, >=, fr_time_delta_from_sec(1));
 	FR_TIME_DELTA_BOUND_CHECK("response_window", inst->zombie_period, <=, fr_time_delta_from_sec(120));
@@ -630,7 +668,7 @@ check_others:
 
 	inst->common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
-		.secret_length = talloc_array_length(inst->secret) - 1,
+		.secret_length = inst->secret ? talloc_array_length(inst->secret) - 1 : 0,
 		.proxy_state = fr_rand(),
 	};
 
@@ -653,10 +691,17 @@ check_others:
 	 *	If we're replicating, we don't care if the other end
 	 *	is alive.
 	 */
-	if (inst->status_check && (inst->mode == RLM_RADIUS_MODE_REPLICATE)) {
-		cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'mode = replicate'",
-			    fr_radius_packet_name[inst->status_check]);
-		inst->status_check = false;
+	if (inst->status_check) {
+		if (inst->mode == RLM_RADIUS_MODE_REPLICATE) {
+			cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'mode = replicate'",
+				    fr_radius_packet_name[inst->status_check]);
+			inst->status_check = false;
+
+		} else if (inst->mode == RLM_RADIUS_MODE_UNCONNECTED) {
+			cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'mode = unconnected'",
+				    fr_radius_packet_name[inst->status_check]);
+			inst->status_check = false;
+		}
 	}
 
 	/*
@@ -700,7 +745,7 @@ check_others:
 	/*
 	 *	Only check the async timers when we're acting as a client.
 	 */
-	if (inst->mode != RLM_RADIUS_MODE_CLIENT) return 0;
+	if ((inst->mode != RLM_RADIUS_MODE_CLIENT) && (inst->mode != RLM_RADIUS_MODE_UNCONNECTED)) return 0;
 
 	/*
 	 *	Set limits on retransmission timers
@@ -786,6 +831,20 @@ check_others:
 	return 0;
 }
 
+static int mod_bootstrap(module_inst_ctx_t const *mctx)
+{
+	xlat_t 		*xlat;
+	rlm_radius_t const *inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
+
+	if (inst->mode != RLM_RADIUS_MODE_UNCONNECTED) return 0;
+
+	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "sendto.ipaddr", xlat_radius_replicate, FR_TYPE_VOID);
+	xlat_func_args_set(xlat, xlat_radius_send_args);
+
+	return 0;
+}
+
+
 static int mod_detach(module_detach_ctx_t const *mctx)
 {
 	rlm_radius_t *inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
@@ -828,6 +887,7 @@ module_rlm_t rlm_radius = {
 		.onload		= mod_load,
 		.unload		= mod_unload,
 
+		.bootstrap	= mod_bootstrap,
 		.instantiate	= mod_instantiate,
 		.detach		= mod_detach,
 

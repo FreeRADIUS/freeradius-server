@@ -48,7 +48,14 @@ typedef struct {
 
 	rlm_radius_t const	*inst;			//!< our instance
 
-	trunk_t			*trunk;			//!< trunk handler
+	union {
+		trunk_t		*trunk;			//!< trunk handler
+		struct {
+			fr_bio_t *fd;			//!< writing
+			fr_bio_fd_info_t const *info;	//!< for replication
+			uint32_t id;			//!< for replication
+		} bio;
+	};
 } bio_thread_t;
 
 typedef struct {
@@ -58,11 +65,6 @@ typedef struct {
 } bio_result_t;
 
 typedef struct bio_request_s bio_request_t;
-
-typedef struct {
-	struct iovec		out;			//!< Describes buffer to send.
-	trunk_request_t	*treq;				//!< Used for signalling.
-} bio_coalesced_t;
 
 /** Track the handle, which is tightly correlated with the FD
  *
@@ -2321,6 +2323,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	 */
 	switch (inst->mode) {
 	case RLM_RADIUS_MODE_INVALID:
+	case RLM_RADIUS_MODE_UNCONNECTED: /* unconnected sockets are UDP, and bypass the trunk */
 		RETURN_MODULE_FAIL;
 
 		/*
@@ -2385,7 +2388,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 {
 	rlm_radius_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
-	bio_thread_t			*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
+	bio_thread_t		*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
 
 	static trunk_io_funcs_t	io_funcs = {
 						.connection_alloc = thread_conn_alloc,
@@ -2402,9 +2405,127 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 
 	thread->el = mctx->el;
 	thread->inst = inst;
-	thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
-				    &inst->trunk_conf, inst->name, thread, false);
-	if (!thread->trunk) return -1;
+
+	if (inst->mode != RLM_RADIUS_MODE_UNCONNECTED) {
+		thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
+					    &inst->trunk_conf, inst->name, thread, false);
+		if (!thread->trunk) return -1;
+		return 0;
+	}
+
+	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->inst->fd_config, 0);
+	if (!thread->bio.fd) {
+		PERROR("%s - failed opening socket - ", inst->name);
+		return CONNECTION_STATE_FAILED;
+	}
+
+	thread->bio.fd->uctx = thread;
+	thread->bio.info = fr_bio_fd_info(thread->bio.fd);
+
+	DEBUG("Opened replication socket %s", thread->bio.info->name);
 
 	return 0;
+}
+
+static xlat_arg_parser_t const xlat_radius_send_args[] = {
+	{ .required = true, .single = true, .type = FR_TYPE_COMBO_IP_ADDR },
+	{ .required = true, .single = true, .type = FR_TYPE_UINT16 },
+	{ .required = true, .single = true, .type = FR_TYPE_STRING },
+	XLAT_ARG_PARSER_TERMINATOR
+};
+
+/*
+ *	%replicate.sendto.ipaddr(ipaddr, port, secret)
+ */
+static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					   xlat_ctx_t const *xctx,
+					   request_t *request, fr_value_box_list_t *args)
+{
+	bio_thread_t		*thread = talloc_get_type_abort(xctx->mctx->thread, bio_thread_t);
+	fr_value_box_t		*ipaddr, *port, *secret;
+	ssize_t			packet_len;
+	uint8_t			buffer[4096];
+	fr_radius_ctx_t		radius_ctx;
+	fr_radius_encode_ctx_t	encode_ctx;
+	fr_bio_fd_packet_ctx_t	addr;
+
+	XLAT_ARGS(args, &ipaddr, &port, &secret);
+
+	/*
+	 *	Can't change IP address families.
+	 */
+	if (ipaddr->vb_ip.af != thread->bio.info->socket.af) {
+		RDEBUG("Invalid destination IP address family in %pV", ipaddr);
+		return -1;
+	}
+
+	/*
+	 *	Warn if we're not replicating accounting data.  It likely won't wokr/
+	 */
+	if (request->packet->code != FR_RADIUS_CODE_ACCOUNTING_REQUEST) {
+		RWDEBUG("Replication of packets other then Accounting-Request will likely not do what you want.");
+	}
+
+	/*
+	 *	Set up various context things.
+	 */
+	radius_ctx = (fr_radius_ctx_t) {
+		.secret = secret->vb_strvalue,
+		.secret_length = secret->vb_length,
+		.proxy_state = 0,
+	};
+
+	encode_ctx = (fr_radius_encode_ctx_t) {
+		.common = &radius_ctx,
+		.rand_ctx = (fr_fast_rand_t) {
+			.a = fr_rand(),
+			.b = fr_rand(),
+		},
+		.code = request->packet->code,
+		.id = thread->bio.id++ & 0xff,
+		.add_proxy_state = false,
+	};
+
+	/*
+	 *	Encode the entire packet.
+	 */
+	packet_len = fr_radius_encode(&FR_DBUFF_TMP(buffer, sizeof(buffer)),
+				      &request->request_pairs, &encode_ctx);
+	if (fr_pair_encode_is_error(packet_len)) {
+		RPERROR("Failed encoding packet");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Sign it.
+	 */
+	if (fr_radius_sign(buffer, NULL, (uint8_t const *) radius_ctx.secret, radius_ctx.secret_length) < 0) {
+		RERROR("Failed signing packet");
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	Prepare destination address.
+	 */
+	addr = (fr_bio_fd_packet_ctx_t) {
+		.socket = thread->bio.info->socket,
+	};
+	addr.socket.inet.dst_ipaddr = ipaddr->vb_ip;
+	addr.socket.inet.dst_port = port->vb_uint16;
+
+	RDEBUG("Replicating packet to %pV:%u", ipaddr, port->vb_uint16);
+
+	/*
+	 *	We either send it, or fail.
+	 */
+	packet_len = fr_bio_write(thread->bio.fd, &addr, buffer, packet_len);
+	if (packet_len < 0) {
+		RPERROR("Failed sending packet to %pV:%u", ipaddr, port->vb_uint16);
+		return XLAT_ACTION_FAIL;
+	}
+
+	/*
+	 *	No return value.
+	 */
+	return XLAT_ACTION_DONE;
 }
