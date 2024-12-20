@@ -1374,7 +1374,7 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 			fr_strerror_const("Only datagram sockets can be marked 'write-only'");
 			return -1;
 		}
-		break;
+		goto set_recv_buff_zero;
 
 	case FR_BIO_FD_CONNECTED:
 	case FR_BIO_FD_ACCEPTED:
@@ -1386,6 +1386,7 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 			return -1;
 		}
 
+	set_recv_buff_zero:
 #ifdef __linux__
 #ifdef SO_RCVBUF
 		/*
