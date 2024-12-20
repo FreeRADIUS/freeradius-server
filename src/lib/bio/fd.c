@@ -1394,7 +1394,7 @@ int fr_bio_fd_write_only(fr_bio_t *bio)
 		 *	data in the kernel.  With macOS and others it's an invalid value.
 		 */
 		{
-			int opt = my->info.cfg->recv_buff;
+			int opt = 0;
 
 			if (setsockopt(my->info.socket.fd, SOL_SOCKET, SO_RCVBUF, &opt, sizeof(opt)) < 0) {
 				fr_strerror_printf("Failed setting SO_RCVBUF: %s", fr_syserror(errno));
