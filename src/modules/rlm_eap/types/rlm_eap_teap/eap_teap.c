@@ -861,6 +861,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			eap_teap_append_identity(tls_session, vp->vp_short);
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 
+			if (!t->auto_chain) goto challenge;
+
 			/*
 			 *	Delete the &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
 			 *	which we found.
@@ -868,13 +870,18 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			 *	If there are more than one, then the
 			 *	next round will pick up the next one.
 			 */
-			if (t->auto_chain) {
-				RDEBUG("Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
+			RDEBUG("Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
+			       (vp->vp_short == 1) ? "User" : "Machine");
+			fr_pair_delete(&request->state, vp);
+
+			vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+			if (vp) {
+				RDEBUG("Continuing phase 2 due to &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
 				       (vp->vp_short == 1) ? "User" : "Machine");
-				fr_pair_delete(&request->state, vp);
+				goto challenge;
 			}
 
-			goto challenge;
+			RDEBUG("All inner authentications have succeeded");
 		}
 
 		t->result_final = true;
@@ -1344,8 +1351,22 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (t->stage == PROVISIONING && !gotresult && vp) t->stage = AUTHENTICATION;
 	}
+
 	if (t->stage == PROVISIONING) {
 		if (gotcryptobinding && gotresult) t->stage = COMPLETE;
+	}
+
+	if (t->stage == COMPLETE) {
+		if (!gotcryptobinding) {
+			RWDEBUG("Client did not send FreeRADIUS-EAP-TEAP-Crypto-Binding - rejecting");
+			return PW_CODE_ACCESS_REJECT;
+		}
+
+		if (!gotresult) {
+			RWDEBUG("Client did not send FreeRADIUS-EAP-TEAP-Result - rejecting");
+			return PW_CODE_ACCESS_REJECT;
+		}
+		return code;
 	}
 
 	if (vp_eap)
