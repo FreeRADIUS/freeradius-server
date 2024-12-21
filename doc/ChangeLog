@@ -25,6 +25,9 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Add API for deleting dynamic home servers.
 	* set SO_KEEPALIVE on outbound sockets, so firewalls are
 	  less likly to close TCP connections.
+	* Update the TEAP module so that it is usable by mere
+	  humans.  See mods-available/eap, and the "teap"
+	  subsection for new configuration and documentation.
 
 	Bug fixes
 	* For EAP-TLS, send TLS start without a length field.
