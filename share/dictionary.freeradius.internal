@@ -591,8 +591,7 @@ VALUE	TLS-Cache-Method		load			2
 VALUE	TLS-Cache-Method		clear			3
 VALUE	TLS-Cache-Method		refresh			4
 
-
-ATTRIBUTE	TLS-Client-Cert-X509v3-Certificate-Policies	1939 string
+ATTRIBUTE	TLS-Client-Cert-X509v3-Certificate-Policies 1939	string
 
 # 1940 - 1959: reserved for TLS session caching, mostly in 4.0
 
@@ -904,7 +903,6 @@ VALUE	EAP-Code			Failure			4
 VALUE	MS-CHAP-Use-NTLM-Auth		No			0
 VALUE	MS-CHAP-Use-NTLM-Auth		Yes			1
 
-
 #
 #  Copies of the above for TEAP.  In v4 we have "enum=foo" which clones
 #  a set of VALUES.  Oh well.
@@ -991,77 +989,77 @@ VALUE	TEAP-Type-User			MSCHAPv2		26
 #
 #  TEAP Machine
 #
-VALUE	TEAP-Type-Machine			None			0
-VALUE	TEAP-Type-Machine			Identity		1
-VALUE	TEAP-Type-Machine			Notification		2
-VALUE	TEAP-Type-Machine			NAK			3
-VALUE	TEAP-Type-Machine			MD5-Challenge		4
-VALUE	TEAP-Type-Machine			EAP-MD5			4
-VALUE	TEAP-Type-Machine			MD5			4
-VALUE	TEAP-Type-Machine			One-Time-Password	5
-VALUE	TEAP-Type-Machine			OTP			5
-VALUE	TEAP-Type-Machine			Generic-Token-Card	6
-VALUE	TEAP-Type-Machine			EAP-GTC			6
-VALUE	TEAP-Type-Machine			GTC			6
-VALUE	TEAP-Type-Machine			RSA-Public-Key		9
-VALUE	TEAP-Type-Machine			DSS-Unilateral		10
-VALUE	TEAP-Type-Machine			KEA			11
-VALUE	TEAP-Type-Machine			KEA-Validate		12
-VALUE	TEAP-Type-Machine			EAP-TLS			13
-VALUE	TEAP-Type-Machine			TLS			13
-VALUE	TEAP-Type-Machine			Defender-Token		14
-VALUE	TEAP-Type-Machine			RSA-SecurID-EAP		15
-VALUE	TEAP-Type-Machine			Arcot-Systems-EAP	16
-VALUE	TEAP-Type-Machine			Cisco-LEAP		17
-VALUE	TEAP-Type-Machine			LEAP			17
-VALUE	TEAP-Type-Machine			Nokia-IP-Smart-Card	18
-VALUE	TEAP-Type-Machine			EAP-SIM			18
-VALUE	TEAP-Type-Machine			SIM			18
-VALUE	TEAP-Type-Machine			SRP-SHA1		19
+VALUE	TEAP-Type-Machine		None			0
+VALUE	TEAP-Type-Machine		Identity		1
+VALUE	TEAP-Type-Machine		Notification		2
+VALUE	TEAP-Type-Machine		NAK			3
+VALUE	TEAP-Type-Machine		MD5-Challenge		4
+VALUE	TEAP-Type-Machine		EAP-MD5			4
+VALUE	TEAP-Type-Machine		MD5			4
+VALUE	TEAP-Type-Machine		One-Time-Password	5
+VALUE	TEAP-Type-Machine		OTP			5
+VALUE	TEAP-Type-Machine		Generic-Token-Card	6
+VALUE	TEAP-Type-Machine		EAP-GTC			6
+VALUE	TEAP-Type-Machine		GTC			6
+VALUE	TEAP-Type-Machine		RSA-Public-Key		9
+VALUE	TEAP-Type-Machine		DSS-Unilateral		10
+VALUE	TEAP-Type-Machine		KEA			11
+VALUE	TEAP-Type-Machine		KEA-Validate		12
+VALUE	TEAP-Type-Machine		EAP-TLS			13
+VALUE	TEAP-Type-Machine		TLS			13
+VALUE	TEAP-Type-Machine		Defender-Token		14
+VALUE	TEAP-Type-Machine		RSA-SecurID-EAP		15
+VALUE	TEAP-Type-Machine		Arcot-Systems-EAP	16
+VALUE	TEAP-Type-Machine		Cisco-LEAP		17
+VALUE	TEAP-Type-Machine		LEAP			17
+VALUE	TEAP-Type-Machine		Nokia-IP-Smart-Card	18
+VALUE	TEAP-Type-Machine		EAP-SIM			18
+VALUE	TEAP-Type-Machine		SIM			18
+VALUE	TEAP-Type-Machine		SRP-SHA1		19
 # 20 is unassigned
-VALUE	TEAP-Type-Machine			EAP-TTLS		21
-VALUE	TEAP-Type-Machine			TTLS			21
-VALUE	TEAP-Type-Machine			Remote-Access-Service	22
-VALUE	TEAP-Type-Machine			EAP-AKA			23
-VALUE	TEAP-Type-Machine			AKA			23
-VALUE	TEAP-Type-Machine			3Com-Wireless		24
-VALUE	TEAP-Type-Machine			PEAP			25
-VALUE	TEAP-Type-Machine			Microsoft-MS-CHAPv2	26
-VALUE	TEAP-Type-Machine			MAKE			27
-VALUE	TEAP-Type-Machine			CRYPTOCard		28
-VALUE	TEAP-Type-Machine			Cisco-MS-CHAPv2		29
-VALUE	TEAP-Type-Machine			DynamID			30
-VALUE	TEAP-Type-Machine			Rob-EAP			31
-VALUE	TEAP-Type-Machine			SecurID-EAP		32
-VALUE	TEAP-Type-Machine			MS-Authentication-TLV	33
-VALUE	TEAP-Type-Machine			SentriNET		34
-VALUE	TEAP-Type-Machine			Actiontec-Wireless	35
-VALUE	TEAP-Type-Machine			Cogent-Biomentric-EAP	36
-VALUE	TEAP-Type-Machine			AirFortress-EAP		37
-VALUE	TEAP-Type-Machine			HTTP-Digest		38
-VALUE	TEAP-Type-Machine			TNC			38
-VALUE	TEAP-Type-Machine			SecuriSuite-EAP		39
-VALUE	TEAP-Type-Machine			DeviceConnect-EAP	40
-VALUE	TEAP-Type-Machine			SPEKE			41
-VALUE	TEAP-Type-Machine			MOBAC			42
-VALUE	TEAP-Type-Machine			EAP-FAST		43
-VALUE	TEAP-Type-Machine			FAST			43
-VALUE	TEAP-Type-Machine			Zonelabs		44
-VALUE	TEAP-Type-Machine			Link			45
-VALUE	TEAP-Type-Machine			PAX			46
-VALUE	TEAP-Type-Machine			PSK			47
-VALUE	TEAP-Type-Machine			SAKE			48
-VALUE	TEAP-Type-Machine			EAP-IKEv2		49
-VALUE	TEAP-Type-Machine			IKEv2			49
-VALUE	TEAP-Type-Machine			AKA2			50
-VALUE	TEAP-Type-Machine			GPSK			51
-VALUE	TEAP-Type-Machine			PWD			52
-VALUE	TEAP-Type-Machine			EKEv1			53
-VALUE	TEAP-Type-Machine			PT-EAP			54
-VALUE	TEAP-Type-Machine			TEAP			55
+VALUE	TEAP-Type-Machine		EAP-TTLS		21
+VALUE	TEAP-Type-Machine		TTLS			21
+VALUE	TEAP-Type-Machine		Remote-Access-Service	22
+VALUE	TEAP-Type-Machine		EAP-AKA			23
+VALUE	TEAP-Type-Machine		AKA			23
+VALUE	TEAP-Type-Machine		3Com-Wireless		24
+VALUE	TEAP-Type-Machine		PEAP			25
+VALUE	TEAP-Type-Machine		Microsoft-MS-CHAPv2	26
+VALUE	TEAP-Type-Machine		MAKE			27
+VALUE	TEAP-Type-Machine		CRYPTOCard		28
+VALUE	TEAP-Type-Machine		Cisco-MS-CHAPv2		29
+VALUE	TEAP-Type-Machine		DynamID			30
+VALUE	TEAP-Type-Machine		Rob-EAP			31
+VALUE	TEAP-Type-Machine		SecurID-EAP		32
+VALUE	TEAP-Type-Machine		MS-Authentication-TLV	33
+VALUE	TEAP-Type-Machine		SentriNET		34
+VALUE	TEAP-Type-Machine		Actiontec-Wireless	35
+VALUE	TEAP-Type-Machine		Cogent-Biomentric-EAP	36
+VALUE	TEAP-Type-Machine		AirFortress-EAP		37
+VALUE	TEAP-Type-Machine		HTTP-Digest		38
+VALUE	TEAP-Type-Machine		TNC			38
+VALUE	TEAP-Type-Machine		SecuriSuite-EAP		39
+VALUE	TEAP-Type-Machine		DeviceConnect-EAP	40
+VALUE	TEAP-Type-Machine		SPEKE			41
+VALUE	TEAP-Type-Machine		MOBAC			42
+VALUE	TEAP-Type-Machine		EAP-FAST		43
+VALUE	TEAP-Type-Machine		FAST			43
+VALUE	TEAP-Type-Machine		Zonelabs		44
+VALUE	TEAP-Type-Machine		Link			45
+VALUE	TEAP-Type-Machine		PAX			46
+VALUE	TEAP-Type-Machine		PSK			47
+VALUE	TEAP-Type-Machine		SAKE			48
+VALUE	TEAP-Type-Machine		EAP-IKEv2		49
+VALUE	TEAP-Type-Machine		IKEv2			49
+VALUE	TEAP-Type-Machine		AKA2			50
+VALUE	TEAP-Type-Machine		GPSK			51
+VALUE	TEAP-Type-Machine		PWD			52
+VALUE	TEAP-Type-Machine		EKEv1			53
+VALUE	TEAP-Type-Machine		PT-EAP			54
+VALUE	TEAP-Type-Machine		TEAP			55
 
 #
 #	And this is what most people mean by MS-CHAPv2
 #
-VALUE	TEAP-Type-Machine			EAP-MSCHAPv2		26
-VALUE	TEAP-Type-Machine			MSCHAPv2		26
+VALUE	TEAP-Type-Machine		EAP-MSCHAPv2		26
+VALUE	TEAP-Type-Machine		MSCHAPv2		26
