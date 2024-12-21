@@ -1029,7 +1029,7 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		 *	check, AND there's not any EAP-Type already set, THEN do it.
 		 */
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (vp && (fr_pair_find_by_num(request->config, PW_EAP_TYPE, 0, TAG_ANY)) != NULL) {
+		if (vp) {
 			VALUE_PAIR *teap_type;
 
 			/*
@@ -1103,9 +1103,12 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 			/*
 			 *	Set the configuration to force a particular EAP-Type.
 			 */
-			vp = pair_make_config("EAP-Type", NULL, T_OP_SET);
-			if (vp) vp->vp_integer = eap_method;
-
+			RDEBUG("Forcing inner TEAP authentication to &control:EAP-Type = %s", eap_type2name(eap_method));
+			vp = fr_pair_afrom_num(fake, PW_EAP_TYPE, 0);
+			if (vp) {
+				fr_pair_add(&fake->config, vp);
+				vp->vp_integer = eap_method;
+			}
 		}
 	}
 
