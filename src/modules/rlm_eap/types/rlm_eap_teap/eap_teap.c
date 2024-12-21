@@ -306,9 +306,18 @@ static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 			if (num[EAP_TEAP_TLV_EAP_PAYLOAD] > 1) {
 				RDEBUG("Too many EAP-Payload TLVs");
 unexpected:
-				for (int i = 0; i < EAP_TEAP_TLV_MAX; i++)
-					if (present & (1 << i))
+				for (int i = 0; i < EAP_TEAP_TLV_MAX; i++) {
+					DICT_ATTR const *da;
+
+					if (!(present & (1 << i))) continue;
+
+					da = dict_attrbyvalue((i << 8) | PW_FREERADIUS_EAP_TEAP_TLV, VENDORPEC_FREERADIUS);
+					if (da) {
+						RDEBUG(" - attribute %s is present", da->name);
+					} else {
 						RDEBUG(" - attribute %d is present", i);
+					}
+				}
 				eap_teap_send_error(tls_session, EAP_TEAP_ERR_UNEXPECTED_TLV);
 				return 0;
 			}
