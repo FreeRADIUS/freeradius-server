@@ -382,18 +382,24 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		 */
 		vp = fr_pair_find_by_num(handler->request->config, PW_EAP_TYPE, 0,
 			      TAG_ANY);
-		if (vp) next = vp->vp_integer;
+		if (vp) {
+			next = vp->vp_integer;
 
-		/*
-		 *	Ensure it's valid.
-		 */
-		if ((next < PW_EAP_MD5) ||
-		    (next >= PW_EAP_MAX_TYPES) ||
-		    (!inst->methods[next])) {
-			REDEBUG2("Tried to start unsupported EAP type %s (%d)",
-				 eap_type2name(next), next);
+			/*
+			 *	Ensure it's valid.
+			 */
+			if ((next < PW_EAP_MD5) ||
+			    (next >= PW_EAP_MAX_TYPES) ||
+			    (!inst->methods[next])) {
+				REDEBUG2("Tried to start unsupported EAP type %s (%d)",
+					 eap_type2name(next), next);
 
-			return EAP_INVALID;
+				return EAP_INVALID;
+			}
+
+			RDEBUG("Found &control:EAP-Type = %s", eap_type2name(next));
+		} else {
+			RDEBUG("Using default_eap_type = %s", eap_type2name(next));
 		}
 
 	do_initiate:
@@ -442,6 +448,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			return EAP_INVALID;
 		}
 
+		RDEBUG("Found compatible type in NAK - EAP-Type = %s", eap_type2name(next));
 		goto do_initiate;
 
 		/*
