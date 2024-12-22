@@ -121,7 +121,7 @@ static conf_parser_t const connected_config[] = {
  *	A mapping of configuration file names to internal variables.
  */
 static conf_parser_t const module_config[] = {
-	{ FR_CONF_OFFSET("mode", rlm_radius_t, mode), .func = mode_parse },
+	{ FR_CONF_OFFSET_FLAGS("mode", CONF_FLAG_REQUIRED, rlm_radius_t, mode), .func = mode_parse, .dflt = "proxy" },
 
 	{ FR_CONF_OFFSET_REF(rlm_radius_t, fd_config, fr_bio_fd_client_config) },
 
@@ -211,7 +211,8 @@ static fr_table_num_sorted_t mode_names[] = {
 	{ L("client"),		RLM_RADIUS_MODE_CLIENT   	},
 	{ L("proxy"),		RLM_RADIUS_MODE_PROXY    	},
 	{ L("replicate"),	RLM_RADIUS_MODE_REPLICATE   	},
-	{ L("unconnected"),	RLM_RADIUS_MODE_UNCONNECTED  	},
+	{ L("unconnected-replicate"),	RLM_RADIUS_MODE_UNCONNECTED_REPLICATE  	},
+//	{ L("unconnected-proxy"),	RLM_RADIUS_MODE_UNCONNECTED_PROXY  	},
 };
 static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 
@@ -251,7 +252,8 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	/*
 	 *	Normally we want connected sockets, in which case we push additional configuration for connected sockets.
 	 */
-	if (mode != RLM_RADIUS_MODE_UNCONNECTED) {
+	if ((mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
+	    (mode != RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
 		CONF_SECTION *cs = cf_item_to_section(cf_parent(ci));
 
 		inst->fd_config.type = FR_BIO_FD_CONNECTED;
@@ -513,8 +515,9 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	Unconnected sockets use %radius.replicate(ip, port, secret),
 	 *	or %radius.sendto(ip, port, secret)
 	 */
-	if (inst->mode == RLM_RADIUS_MODE_UNCONNECTED) {
-		REDEBUG("When using 'mode = unconnected', this module cannot be used in-place.  Instead, it must be called via a function call");
+	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
+	    (inst->mode == RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
+		REDEBUG("When using 'mode = unconnected-*', this module cannot be used in-place.  Instead, it must be called via a function call");
 		RETURN_MODULE_FAIL;
 	}
 
@@ -628,7 +631,8 @@ check_others:
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
-	if (inst->mode != RLM_RADIUS_MODE_UNCONNECTED) {
+	if ((inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
+	    (inst->mode != RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
 		/*
 		 *	These limits are specific to RADIUS, and cannot be over-ridden
 		 */
@@ -697,8 +701,9 @@ check_others:
 				    fr_radius_packet_name[inst->status_check]);
 			inst->status_check = false;
 
-		} else if (inst->mode == RLM_RADIUS_MODE_UNCONNECTED) {
-			cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'mode = unconnected'",
+		} else if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
+			   (inst->mode == RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
+				   cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'mode = unconnected-*'",
 				    fr_radius_packet_name[inst->status_check]);
 			inst->status_check = false;
 		}
@@ -745,7 +750,9 @@ check_others:
 	/*
 	 *	Only check the async timers when we're acting as a client.
 	 */
-	if ((inst->mode != RLM_RADIUS_MODE_CLIENT) && (inst->mode != RLM_RADIUS_MODE_UNCONNECTED)) return 0;
+	if (inst->mode != RLM_RADIUS_MODE_CLIENT) {
+		return 0;
+	}
 
 	/*
 	 *	Set limits on retransmission timers
@@ -836,10 +843,19 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 	xlat_t 		*xlat;
 	rlm_radius_t const *inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
 
-	if (inst->mode != RLM_RADIUS_MODE_UNCONNECTED) return 0;
+	switch (inst->mode) {
+	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
+		xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "sendto.ipaddr", xlat_radius_replicate, FR_TYPE_VOID);
+		xlat_func_args_set(xlat, xlat_radius_send_args);
+		break;
 
-	xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "sendto.ipaddr", xlat_radius_replicate, FR_TYPE_VOID);
-	xlat_func_args_set(xlat, xlat_radius_send_args);
+	case RLM_RADIUS_MODE_UNCONNECTED_PROXY:
+		fr_assert(0);	/* not implemented */
+		break;
+
+	default:
+		break;
+	}
 
 	return 0;
 }

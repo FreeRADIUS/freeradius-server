@@ -136,7 +136,6 @@ struct bio_request_s {
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
-
 /** Turn a reply code into a module rcode;
  *
  */
@@ -2323,7 +2322,8 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	 */
 	switch (inst->mode) {
 	case RLM_RADIUS_MODE_INVALID:
-	case RLM_RADIUS_MODE_UNCONNECTED: /* unconnected sockets are UDP, and bypass the trunk */
+	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE: /* unconnected sockets are UDP, and bypass the trunk */
+	case RLM_RADIUS_MODE_UNCONNECTED_PROXY: /* unconnected sockets are UDP, and bypass the trunk */
 		RETURN_MODULE_FAIL;
 
 		/*
@@ -2406,7 +2406,8 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->el = mctx->el;
 	thread->inst = inst;
 
-	if (inst->mode != RLM_RADIUS_MODE_UNCONNECTED) {
+	if ((inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
+	    (inst->mode != RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
 		thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
 					    &inst->trunk_conf, inst->name, thread, false);
 		if (!thread->trunk) return -1;
@@ -2422,7 +2423,16 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	thread->bio.fd->uctx = thread;
 	thread->bio.info = fr_bio_fd_info(thread->bio.fd);
 
-	DEBUG("Opened replication socket %s", thread->bio.info->name);
+	/*
+	 *	We don't care about replies.
+	 */
+	if (inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) {
+		(void) fr_bio_fd_write_only(thread->bio.fd);
+
+		DEBUG("%s - Opened unconnected replication socket %s", inst->name, thread->bio.info->name);
+	} else {
+		DEBUG("%s - Opened unconnected proxy socket %s", inst->name, thread->bio.info->name);
+	}
 
 	return 0;
 }
