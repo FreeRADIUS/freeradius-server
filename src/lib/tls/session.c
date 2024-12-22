@@ -1928,7 +1928,7 @@ static unlang_action_t tls_new_session_result(UNUSED rlm_rcode_t *p_result, UNUS
 	/*
 	 *	Copy control attributes back to the parent.
 	 */
-	fr_pair_list_copy(parent->control_ctx, &parent->control_pairs, &request->control_pairs);
+	if (fr_pair_list_copy(parent->control_ctx, &parent->control_pairs, &request->control_pairs) < 0) return UNLANG_ACTION_FAIL;
 
 	return UNLANG_ACTION_CALCULATE_RESULT;
 }
