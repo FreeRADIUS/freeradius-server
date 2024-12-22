@@ -97,6 +97,7 @@ struct dict_tokenize_ctx_s {
 	fr_dict_attr_t		*value_attr;		//!< Cache of last attribute to speed up value processing.
 	fr_dict_attr_t const   	*relative_attr;		//!< for ".82" instead of "1.2.3.82". only for parents of type "tlv"
 	dict_fixup_ctx_t	fixup;
+	bool 			supress_auto_begin;		//!< Automatically begin a new block.
 };
 
 static int _dict_from_file(dict_tokenize_ctx_t *dctx,
@@ -928,7 +929,7 @@ static int dict_set_value_attr(dict_tokenize_ctx_t *dctx, fr_dict_attr_t *da)
 	 *	Adding an attribute of type 'struct' is an implicit
 	 *	BEGIN-STRUCT.
 	 */
-	if (da->type == FR_TYPE_STRUCT) {
+	if (da->type == FR_TYPE_STRUCT && !dctx->supress_auto_begin) {
 		if (dict_dctx_push(dctx, da, 0) < 0) return -1;
 		dctx->value_attr = NULL;
 	} else if (fr_type_is_leaf(da->type)) {
@@ -1338,7 +1339,7 @@ static int dict_read_process_attribute(dict_tokenize_ctx_t *dctx, char **argv, i
 		 *	Adding an attribute of type 'struct' is an implicit
 		 *	BEGIN-STRUCT.
 		 */
-		if (da->type == FR_TYPE_STRUCT) {
+		if (da->type == FR_TYPE_STRUCT && !dctx->supress_auto_begin) {
 			if (dict_dctx_push(dctx, da, 0) < 0) return -1;
 			dctx->value_attr = NULL;
 		} else {
@@ -2000,7 +2001,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 /*
  *	Process the FLAGS command
  */
-static int dict_read_process_flags(UNUSED dict_tokenize_ctx_t *dctx, char **argv, int argc,
+static int dict_read_process_flags(dict_tokenize_ctx_t *dctx, char **argv, int argc,
 				   fr_dict_attr_flags_t *base_flags)
 {
 	bool sense = true;
@@ -2016,6 +2017,11 @@ static int dict_read_process_flags(UNUSED dict_tokenize_ctx_t *dctx, char **argv
 
 		if (strcmp(p, "internal") == 0) {
 			base_flags->internal = sense;
+			return 0;
+		}
+
+		if (strcmp(p, "supress-auto-begin") == 0) {
+			dctx->supress_auto_begin = sense;
 			return 0;
 		}
 	}
@@ -2168,7 +2174,7 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 		if (da->type == FR_TYPE_TLV) {
 			dctx->relative_attr = dict_attr_child_by_num(dctx->stack[dctx->stack_depth].da,
 								    dctx->stack[dctx->stack_depth].member_num);
-			if (dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, 0) < 0)) return -1;
+			if (!dctx->supress_auto_begin && dctx->relative_attr && (dict_dctx_push(dctx, dctx->relative_attr, 0) < 0)) return -1;
 			return 0;
 
 		}
@@ -3127,6 +3133,7 @@ static int dict_from_file(fr_dict_t *dict,
 	dctx.stack[0].dict = dict;
 	dctx.stack[0].da = dict->root;
 	dctx.stack[0].nest = NEST_ROOT;
+	dctx.supress_auto_begin = false; /* By default we should not suppress auto-begin */
 
 	ret = _dict_from_file(&dctx, dir_name, filename, src_file, src_line);
 	if (ret < 0) {
