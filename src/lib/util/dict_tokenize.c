@@ -1902,7 +1902,7 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 				  fr_dict_attr_flags_t *base_flags)
 {
 	fr_dict_attr_t const	*parent;
-	fr_dict_attr_t		*da;
+	fr_dict_attr_t		*da = NULL;
 
 	if (argc != 2) {
 		fr_strerror_const("Invalid ENUM syntax");
@@ -1916,6 +1916,10 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 		fr_strerror_const("Invalid ENUM name");
 		return -1;
 	}
+
+#ifdef STATIC_ANALYZER
+	if (!dctx->dict) goto error;
+#endif
 
 	/*
 	 *	Allocate the attribute here, and then fill in the fields
@@ -1971,10 +1975,6 @@ static int dict_read_process_enum(dict_tokenize_ctx_t *dctx, char **argv, int ar
 	 *
 	 *	Maybe we do want a flag field for named time deltas?
 	 */
-
-#ifdef STATIC_ANALYZER
-	if (!dctx->dict) goto error;
-#endif
 
 	if (unlikely(dict_attr_parent_init(&da, parent) < 0)) goto error;
 	if (unlikely(dict_attr_finalise(&da, argv[0]) < 0)) goto error;
