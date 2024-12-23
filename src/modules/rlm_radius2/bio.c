@@ -435,7 +435,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	uint8_t			code = 0;
 
 	fr_pair_list_init(&reply);
-	slen = read(h->fd, h->buffer, h->buflen);
+	slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
 	if (slen == 0) return;
 
 	if (slen < 0) {
@@ -911,14 +911,14 @@ static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_
 /** Read and discard data
  *
  */
-static void conn_discard(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
+static void conn_discard(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 	uint8_t			buffer[4096];
 	ssize_t			slen;
 
-	while ((slen = read(fd, buffer, sizeof(buffer))) > 0);
+	while ((slen = fr_bio_read(h->bio.read, NULL, buffer, sizeof(buffer))) > 0);
 
 	if (slen < 0) {
 		switch (errno) {

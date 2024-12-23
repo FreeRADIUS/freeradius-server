@@ -128,7 +128,7 @@ static conf_parser_t const module_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("type", CONF_FLAG_NOT_EMPTY | CONF_FLAG_MULTI | CONF_FLAG_REQUIRED, rlm_radius_t, types),
 	  .func = type_parse },
 
-	{ FR_CONF_OFFSET_FLAGS("replicate", 0, rlm_radius_t, replicate) },
+	{ FR_CONF_OFFSET_FLAGS("replicate", CONF_FLAG_DEPRECATED, rlm_radius_t, replicate) },
 
 	{ FR_CONF_OFFSET_FLAGS("synchronous", CONF_FLAG_DEPRECATED, rlm_radius_t, synchronous) },
 
@@ -610,7 +610,7 @@ check_others:
 		inst->fd_config.flags = O_WRONLY | O_APPEND;
 
 	} else if (inst->fd_config.filename) {
-		cf_log_err(conf, "When using an output 'filename', you MUST set 'replicate = true'");
+		cf_log_err(conf, "When using an output 'filename', you MUST set 'mode = replicate'");
 		return -1;
 
 	} else {
@@ -642,11 +642,6 @@ check_others:
 	} else {
 		if (inst->fd_config.src_port != 0) {
 			cf_log_err(conf, "Cannot set 'src_port' when using 'mode = unconnected'");
-			return -1;
-		}
-
-		if (!inst->replicate) {
-			cf_log_err(conf, "Using 'mode = unconnected' also requires 'replicate = true'");
 			return -1;
 		}
 	}
