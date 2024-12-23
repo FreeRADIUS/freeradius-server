@@ -30,7 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/util/debug.h>
 
 #include "track.h"
-#include "rlm_radius.h"
 
 /** Create an radius_track_t
  *
@@ -57,24 +56,9 @@ radius_track_t *radius_track_alloc(TALLOC_CTX *ctx)
 		fr_dlist_insert_tail(&tt->free_list, &tt->id[i]);
 	}
 
-	tt->next_id = fr_rand() & 0xff;
-
 	return tt;
 }
 
-
-/** Compare two radius_track_entry_t
- *
- */
-static int8_t te_cmp(void const *one, void const *two)
-{
-	radius_track_entry_t const *a = one;
-	radius_track_entry_t const *b = two;
-	int ret;
-
-	ret = memcmp(a->vector, b->vector, sizeof(a->vector));
-	return CMP(ret, 0);
-}
 
 /** Ensures the entry is released when the ctx passed to radius_track_entry_reserve is freed
  *
@@ -132,7 +116,7 @@ retry:
 		 *	don't use it".  Ensure that we only return IDs
 		 *	which are in the static array.
 		 */
-		if (!tt->use_authenticator && (te != &tt->id[te->id])) {
+		if (te != &tt->id[te->id]) {
 			talloc_free(te);
 			goto retry;
 		}
@@ -144,31 +128,8 @@ retry:
 	 *	There are no free entries, and we can't use the
 	 *	Request Authenticator.  Oh well...
 	 */
-	if (!tt->use_authenticator) {
-		fr_strerror_const("No free entries");
-		return -1;
-	}
-
-	/*
-	 *	Get a new ID.  It's value doesn't matter at this
-	 *	point.
-	 */
-	tt->next_id++;
-	tt->next_id &= 0xff;
-
-	/*
-	 *	If needed, allocate a subtree.
-	 */
-	if (!tt->subtree[tt->next_id]) {
-		MEM(tt->subtree[tt->next_id] = fr_rb_inline_talloc_alloc(tt, radius_track_entry_t, node,
-									 te_cmp, NULL));
-	}
-
-	/*
-	 *	Allocate a new one, and insert it into the appropriate subtree.
-	 */
-	te = talloc_zero(tt, radius_track_entry_t);
-	te->id = tt->next_id;
+	fr_strerror_const("No free entries");
+	return -1;
 
 done:
 	te->tt = tt;
@@ -238,43 +199,8 @@ int radius_track_entry_release(
 	/*
 	 *	We're freeing a static ID, just go do that...
 	 */
-	if (te == &tt->id[te->id]) {
-		/*
-		 *	This entry MAY be in a subtree.  If so, delete
-		 *	it.
-		 */
-		if (tt->subtree[te->id]) (void) fr_rb_delete(tt->subtree[te->id], te);
+	fr_assert(te == &tt->id[te->id]);
 
-		goto done;
-	}
-
-	/*
-	 *	At this point, it MUST be talloc'd.
-	 */
-	(void) talloc_get_type_abort(te, radius_track_entry_t);
-
-	/*
-	 *	Delete it from the tracking subtree.
-	 */
-	fr_assert(tt->subtree[te->id] != NULL);
-	(void) fr_rb_delete(tt->subtree[te->id], te);
-
-	/*
-	 *	Try to free memory if the system gets idle.  If the
-	 *	system is busy, we will try to keep entries in the
-	 *	free list.  If the system becomes completely idle, we
-	 *	will clear the free list.
-	 */
-	if (fr_dlist_num_elements(&tt->free_list) > tt->num_requests) {
-		talloc_free(te);
-		*te_to_free = NULL;
-		return 0;
-	}
-
-	/*
-	 *	Otherwise put it back on the free list.
-	 */
-done:
 	fr_dlist_insert_tail(&tt->free_list, te);
 
 	*te_to_free = NULL;
@@ -292,14 +218,11 @@ done:
  */
 int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 {
+#ifndef NDEBUG
 	radius_track_t *tt = te->tt;
+#endif
 
 	fr_assert(tt);
-
-	/*
-	 *	The authentication vector may have changed.
-	 */
-	if (tt->subtree[te->id]) (void) fr_rb_delete(tt->subtree[te->id], te);
 
 	memcpy(te->vector, vector, sizeof(te->vector));
 
@@ -309,20 +232,7 @@ int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
 	 *
 	 *	@todo - gracefully handle fallback if the server screws up.
 	 */
-	if (!tt->use_authenticator) {
-		fr_assert(te == &tt->id[te->id]);
-		return 0;
-	}
-
-	/*
-	 *	Insert it into the tree of authenticators
-	 *
-	 *	We do this even if it was allocated from the static
-	 *	array.  That way if the server responds with
-	 *	Original-Request-Authenticator, we can easily find it.
-	 */
-	if (!fr_rb_insert(tt->subtree[te->id], te)) return -1;
-
+	fr_assert(te == &tt->id[te->id]);
 	return 0;
 }
 
@@ -337,80 +247,39 @@ int radius_track_entry_update(radius_track_entry_t *te, uint8_t const *vector)
  */
 radius_track_entry_t *radius_track_entry_find(radius_track_t *tt, uint8_t packet_id, uint8_t const *vector)
 {
-	radius_track_entry_t my_te, *te;
+	radius_track_entry_t *te;
 
 	(void) talloc_get_type_abort(tt, radius_track_t);
 
 	/*
 	 *	Just use the static array.
 	 */
-	if (!tt->use_authenticator || !vector) {
-		te = &tt->id[packet_id];
-
-		/*
-		 *	Not in use, die.
-		 */
-		if (!te->request) return NULL;
-
-		/*
-		 *	Ignore the Request Authenticator, as the
-		 *	caller doesn't have it.
-		 */
-		return te;
-	}
+	te = &tt->id[packet_id];
 
 	/*
-	 *	The entry MAY be in the subtree!
+	 *	Not in use, die.
 	 */
-	memcpy(&my_te.vector, vector, sizeof(my_te.vector));
+	if (!te->request) return NULL;
 
-	te = fr_rb_find(tt->subtree[packet_id], &my_te);
+	if (!vector) return te;
 
 	/*
-	 *	Not found, the packet MAY have been allocated in the
-	 *	old-style method prior to negotiation of
-	 *	Original-Request-Identifier.
+	 *	Protocol-Error and Original-Packet-Vector <sigh>
+	 *
+	 *	This should arguably have been Original-Packet-Code, but we are stupid.
+	 *
+	 *	@todo - Allow for multiple ID arrays, one for each packet code.  Or, just switch to using
+	 *	src/protocols/radius/id.[ch].
 	 */
-	if (!te) {
-		te = &tt->id[packet_id];
+	if (memcmp(te->vector, vector, sizeof(te->vector)) != 0) return NULL;
 
-		/*
-		 *	Not in use, die.
-		 */
-		if (!te->request) return NULL;
-
-		// @todo - add a "generation" count for packets, so we can skip this after all outstanding packets
-		// are using the new method.  Hmm... probably just a timer "last sent packet with old-style"
-		// and then compare it to te->start
-
-		/*
-		 *	We have the vector, so we need to check it.
-		 */
-		if (memcmp(te->vector, vector, sizeof(te->vector)) != 0) {
-			return NULL;
-		}
-
-		return te;
-	}
-
-	(void) talloc_get_type_abort(te, radius_track_entry_t);
-	fr_assert(te->request != NULL);
-
+	/*
+	 *	Ignore the Request Authenticator, as the
+	 *	caller doesn't have it.
+	 */
 	return te;
 }
 
-
-/** Use Request Authenticator (or not) as an Identifier
- *
- * @param tt		The radius_track_t tracking table
- * @param flag		Whether or not to use it.
- */
-void radius_track_use_authenticator(radius_track_t *tt, bool flag)
-{
-	(void) talloc_get_type_abort(tt, radius_track_t);
-
-	tt->use_authenticator = flag;
-}
 
 #ifndef NDEBUG
 /** Print out the state of every tracking entry

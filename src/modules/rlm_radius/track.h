@@ -42,7 +42,7 @@ struct radius_track_entry_s {
 						///< when its parent is freed.  We also zero
 						///< out the tracking entry field in the parent.
 
-	request_t		*request;		//!< as always...
+	request_t		*request;	//!< as always...
 
 	void		*uctx;			//!< Result/resumption context.
 
@@ -66,12 +66,7 @@ struct radius_track_s {
 
 	fr_dlist_head_t	free_list;     		//!< so we allocate by least recently used
 
-	bool		use_authenticator;	//!< whether to use the request authenticator as an ID
-	int		next_id;		//!< next ID to allocate
-
 	radius_track_entry_t	id[UINT8_MAX + 1];	//!< which ID was used
-
-	fr_rb_tree_t	*subtree[UINT8_MAX + 1];	//!< for Original-Request-Authenticator
 
 #ifndef NDEBUG
 	uint64_t	operation;		//!< Incremented each alloc and de-alloc
@@ -119,5 +114,3 @@ int			radius_track_entry_update(radius_track_entry_t *te,
 
 radius_track_entry_t	*radius_track_entry_find(radius_track_t *tt, uint8_t packet_id,
 						 uint8_t const *vector) CC_HINT(nonnull(1));
-
-void			radius_track_use_authenticator(radius_track_t *te, bool flag) CC_HINT(nonnull);
