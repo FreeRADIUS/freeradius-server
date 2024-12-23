@@ -847,8 +847,8 @@ void request_stats_reply(REQUEST *request)
 	if (((flag->vp_integer & 0x80) != 0) &&		/* home-server */
 	    ((flag->vp_integer & 0x03) != 0)) {		/* auth or accounting */
 		home_server_t *home;
-		VALUE_PAIR *server_ip, *server_port;
-		fr_ipaddr_t ipaddr;
+		VALUE_PAIR *server_ip, *server_port, *server_src_ip;
+		fr_ipaddr_t ipaddr, src_ipaddr;
 
 		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) {
@@ -879,12 +879,32 @@ void request_stats_reply(REQUEST *request)
 			return;
 		}
 
+		memset(&src_ipaddr, 0, sizeof(src_ipaddr));
+		src_ipaddr.af = ipaddr.af;
+
+		if (ipaddr.af == AF_INET) {
+			server_src_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_SRC_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+			if (server_src_ip) {
+				src_ipaddr.prefix = 32;
+				src_ipaddr.ipaddr.ip4addr.s_addr = server_src_ip->vp_ipaddr;
+			}
+#ifdef AF_INET6
+		} else if (ipaddr.af == AF_INET6) {
+			server_src_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_SRC_IPV6_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+			if (server_src_ip) {
+				src_ipaddr.af = AF_INET6;
+				src_ipaddr.ipaddr.ip6addr = server_src_ip->vp_ipv6addr;
+#endif	/* AF_INET6 */
+			}
+		}
+
+
 		/*
 		 *	Not found: don't do anything
 		 */
-		home = home_server_find(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+		home = home_server_find_bysrc(&ipaddr, server_port->vp_integer, IPPROTO_UDP, &src_ipaddr);
 #ifdef WITH_TCP
-		if (!home) home = home_server_find(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+		if (!home) home = home_server_find_bysrc(&ipaddr, server_port->vp_integer, IPPROTO_TCP, &src_ipaddr);
 #endif
 		if (!home) {
 			stats_error(request, "Failed to find home server IP");
