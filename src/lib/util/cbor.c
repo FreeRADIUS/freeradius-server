@@ -1157,8 +1157,9 @@ ssize_t fr_cbor_decode_value_box(TALLOC_CTX *ctx, fr_value_box_t *vb, fr_dbuff_t
 
 		/*
 		 *	Signed numbers only go down to -2^63
+		 *	so value must be less than 2^63
 		 */
-		if (value > ((uint64_t) 1) << 63) goto invalid;
+		if (value >= ((uint64_t) 1) << 63) goto invalid;
 
 		/*
 		 *	Convert 0..(2^63-1) into -0..-(2^63-1)
