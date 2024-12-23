@@ -464,7 +464,7 @@ static int send_with_pcap(fr_packet_t **reply, fr_packet_t *request, fr_pair_lis
 
 static void dhcp_packet_debug(fr_packet_t *packet, fr_pair_list_t *list, bool received)
 {
-	char		buffer[2048];
+	char		buffer[2048] = "";
 
 	char		src_ipaddr[INET6_ADDRSTRLEN];
 	char		dst_ipaddr[INET6_ADDRSTRLEN];
