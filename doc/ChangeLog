@@ -28,6 +28,9 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Update the TEAP module so that it is usable by mere
 	  humans.  See mods-available/eap, and the "teap"
 	  subsection for new configuration and documentation.
+	* Allow querying of statistics when home_server has
+	  src_ipaddr set.  See FreeRADIUS-Stats-Server-Src-IP-Address.
+	  Fixes #5483
 
 	Bug fixes
 	* For EAP-TLS, send TLS start without a length field.
