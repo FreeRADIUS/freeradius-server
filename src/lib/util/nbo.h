@@ -126,7 +126,7 @@ static inline size_t fr_nbo_from_uint64v(uint8_t out[static sizeof(uint64_t)], u
 	 * 	Coverity doesn't realize that ret is necessarily <= 8,
 	 * 	so we give it a hint.
 	 */
-	if (ret > 8) return 0;
+	if (ret > 8) return 1;
 #endif
 
 	fr_nbo_from_uint64(swapped, num);
