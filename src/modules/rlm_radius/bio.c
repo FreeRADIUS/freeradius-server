@@ -16,8 +16,8 @@
 
 /**
  * $Id$
- * @file rlm_radius_udp.c
- * @brief RADIUS UDP transport
+ * @file src/modules/rlm_radius/bio.c
+ * @brief RADIUS BIO transport
  *
  * @copyright 2017 Network RADIUS SAS
  * @copyright 2020 Arran Cudbard-Bell (a.cudbardb@freeradius.org)
@@ -846,7 +846,7 @@ static void conn_close(UNUSED fr_event_list_t *el, void *handle, UNUSED void *uc
 		fr_assert_fail("%u tracking entries still allocated at conn close", h->tt->num_requests);
 	}
 
-	DEBUG4("Freeing rlm_radius_udp handle %p", handle);
+	DEBUG4("Freeing handle %p", handle);
 
 	talloc_free(h);
 }
