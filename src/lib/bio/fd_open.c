@@ -684,6 +684,8 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_con
  */
 static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, fr_bio_fd_config_t const *cfg)
 {
+	if (!my->info.socket.inet.ifindex) return 0;
+
 	fr_strerror_const("Bind to interface is not supported on this platform");
 	return -1;
 }
