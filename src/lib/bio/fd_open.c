@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <libgen.h>
 #include <netinet/tcp.h>
+#include <netinet/in.h>
 
 /** Initialize common datagram information
  *
@@ -600,6 +601,13 @@ static int fr_bio_fd_socket_bind_unix(fr_bio_fd_t *my, fr_bio_fd_config_t const 
 	return 0;
 }
 
+/*
+ *	Use the OSX native versions on OSX.
+ */
+#ifdef __APPLE__
+#undef SO_BINDTODEVICE
+#endif
+
 #ifdef SO_BINDTODEVICE
 /** Linux bind to device by name.
  *
@@ -633,7 +641,7 @@ static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, fr_bio_fd_config_t c
 }
 
 #elif defined(IP_BOUND_IF) || defined(IPV6_BOUND_IF)
-/** *BSD bind to interface by index.
+/** OSX bind to interface by index.
  *
  */
 static int fr_bio_fd_socket_bind_to_device(fr_bio_fd_t *my, UNUSED fr_bio_fd_config_t const *cfg)
