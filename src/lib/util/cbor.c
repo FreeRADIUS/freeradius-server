@@ -844,7 +844,7 @@ static ssize_t cbor_decode_int64(int64_t *out, fr_dbuff_t *dbuff, fr_type_t type
 		slen = cbor_decode_integer(&value, info, &work_dbuff);
 		if (slen < 0) return_slen;
 
-		if (value > ((uint64_t) 1) << 63) goto invalid; /* greater than! */
+		if (value >= ((uint64_t) 1) << 63) goto invalid; /* greater than! */
 
 		/*
 		 *	Convert 0..(2^63-1) into -0..-(2^63-1)
