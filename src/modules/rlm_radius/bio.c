@@ -158,8 +158,8 @@ static rlm_rcode_t radius_code_to_rcode[FR_RADIUS_CODE_MAX] = {
 	[FR_RADIUS_CODE_PROTOCOL_ERROR]	= RLM_MODULE_HANDLED,
 };
 
-static void		conn_writable_status_check(UNUSED fr_event_list_t *el, UNUSED int fd,
-						   UNUSED int flags, void *uctx);
+static void		conn_init_writable(UNUSED fr_event_list_t *el, UNUSED int fd,
+					   UNUSED int flags, void *uctx);
 
 static int 		encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t id);
 
@@ -351,7 +351,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
  * @param[in] fd_errno	The nature of the error.
  * @param[in] uctx	The trunk connection handle (tconn).
  */
-static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
+static void conn_init_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, int fd_errno, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h;
@@ -372,7 +372,7 @@ static void conn_error_status_check(UNUSED fr_event_list_t *el, UNUSED int fd, U
  *
  * Setup retries, or fail the connection.
  */
-static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
+static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h;
@@ -406,8 +406,8 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 		return;
 
 	case FR_RETRY_CONTINUE:
-		if (fr_event_fd_insert(h, NULL, el, h->fd, conn_writable_status_check, NULL,
-				       conn_error_status_check, conn) < 0) {
+		if (fr_event_fd_insert(h, NULL, el, h->fd, conn_init_writable, NULL,
+				       conn_init_error, conn) < 0) {
 			PERROR("%s - Failed inserting FD event", h->module_name);
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
 		}
@@ -417,24 +417,24 @@ static void conn_status_check_timeout(fr_event_list_t *el, fr_time_t now, void *
 	fr_assert(0);
 }
 
-/** Send the next status check packet
+/** Perform the next step of init and negotiation.
  *
  */
-static void conn_status_check_again(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
+static void conn_init_next(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	if (fr_event_fd_insert(h, NULL, el, h->fd, conn_writable_status_check, NULL, conn_error_status_check, conn) < 0) {
+	if (fr_event_fd_insert(h, NULL, el, h->fd, conn_init_writable, NULL, conn_init_error, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->module_name);
 		connection_signal_reconnect(conn, CONNECTION_FAILED);
 	}
 }
 
-/** Read the incoming status-check response.  If it's correct mark the connection as connected
+/** Read the connection during the init and negotiation stage.
  *
  */
-static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
@@ -524,7 +524,7 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 		/*
 		 *	Set the timer for the next retransmit.
 		 */
-		if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_status_check_again, conn) < 0) {
+		if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_init_next, conn) < 0) {
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
 		}
 		return;
@@ -540,10 +540,10 @@ static void conn_readable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	connection_signal_connected(conn);
 }
 
-/** Send our status-check packet as soon as the connection becomes writable
+/** Send initial negotiation.
  *
  */
-static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
+static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
@@ -575,7 +575,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	DEBUG3("Encoded packet");
 	HEXDUMP3(u->packet, u->packet_len, NULL);
 
-	slen = write(h->fd, u->packet, u->packet_len);
+	slen = fr_bio_write(h->bio.write, NULL, u->packet, u->packet_len);
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: %s",
 		      h->module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name, fr_syserror(errno));
@@ -589,7 +589,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	 *	Switch to waiting on read and insert the event
 	 *	for the response timeout.
 	 */
-	if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_readable_status_check, NULL, conn_error_status_check, conn) < 0) {
+	if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_init_readable, NULL, conn_init_error, conn) < 0) {
 		PERROR("%s - Failed inserting FD event", h->module_name);
 		goto fail;
 	}
@@ -598,7 +598,7 @@ static void conn_writable_status_check(fr_event_list_t *el, UNUSED int fd, UNUSE
 	      h->module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted",
 	      fr_box_time_delta(u->retry.rt));
 
-	if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_status_check_timeout, conn) < 0) {
+	if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_init_timeout, conn) < 0) {
 		PERROR("%s - Failed inserting timer event", h->module_name);
 		goto fail;
 	}
@@ -823,7 +823,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		 *	otherwise we need inst->num_answers_to_alive
 		 */
 		if (fr_event_fd_insert(h, NULL, conn->el, h->fd, NULL,
-				       conn_writable_status_check, conn_error_status_check, conn) < 0) goto fail;
+				       conn_init_writable, conn_init_error, conn) < 0) goto fail;
 
 		/*
 		 *	If we're not doing status-checks, signal the connection
