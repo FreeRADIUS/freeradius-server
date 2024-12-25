@@ -1279,6 +1279,9 @@ static void trunk_request_enter_sent(trunk_request_t *treq)
 	 *	first time this request is being sent.
 	 */
 	if (!treq->sent) {
+		trunk->pub.last_write_success = fr_time();
+
+		tconn->pub.last_write_success = trunk->pub.last_write_success;
 		tconn->sent_count++;
 		treq->sent = true;
 
@@ -2102,7 +2105,12 @@ void trunk_request_signal_complete(trunk_request_t *treq)
 	 *	then we need to add an argument to signal_complete
 	 *	to indicate if this is a successful read.
 	 */
-	if (IN_REQUEST_DEMUX(trunk)) trunk->pub.last_read_success = fr_time();
+	if (IN_REQUEST_DEMUX(trunk)) {
+		trunk_connection_t *tconn = treq->pub.tconn;
+
+		trunk->pub.last_read_success = fr_time();
+		tconn->pub.last_read_success = trunk->pub.last_read_success;
+	}
 
 	switch (treq->pub.state) {
 	case TRUNK_REQUEST_STATE_SENT:

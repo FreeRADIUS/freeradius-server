@@ -309,6 +309,8 @@ struct trunk_pub_s {
 
 	fr_time_t _CONST	last_failed;		//!< Last time a connection failed.
 
+	fr_time_t _CONST	last_write_success;	//!< Last time we wrote to the connection
+
 	fr_time_t _CONST	last_read_success;	//!< Last time we read a response.
 	/** @} */
 
@@ -363,6 +365,10 @@ struct trunk_connection_pub_s {
 	trunk_connection_state_t _CONST state;		//!< What state the connection is in.
 
 	connection_t		* _CONST conn;		//!< The underlying connection.
+
+	fr_time_t _CONST	last_write_success;	//!< Last time we wrote to the connection
+
+	fr_time_t _CONST	last_read_success;	//!< Last time we read from the connection
 
 	trunk_t			* _CONST trunk;		//!< Trunk this connection belongs to.
 };
