@@ -247,6 +247,8 @@ typedef struct {
 
 	fr_time_delta_t		lifetime;		//!< Time between reconnects.
 
+	fr_time_delta_t		idle_timeout;		//!< how long a connection can remain idle for
+
 	fr_time_delta_t		open_delay;		//!< How long we must be above target utilisation
 							///< to spawn a new connection.
 

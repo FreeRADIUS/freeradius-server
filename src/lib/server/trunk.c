@@ -319,6 +319,7 @@ conf_parser_t const trunk_config[] = {
 	{ FR_CONF_OFFSET("connecting", trunk_conf_t, connecting), .dflt = "2" },
 	{ FR_CONF_OFFSET("uses", trunk_conf_t, max_uses), .dflt = "0" },
 	{ FR_CONF_OFFSET("lifetime", trunk_conf_t, lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("idle_timeout", trunk_conf_t, idle_timeout), .dflt = "0" },
 
 	{ FR_CONF_OFFSET("open_delay", trunk_conf_t, open_delay), .dflt = "0.2" },
 	{ FR_CONF_OFFSET("close_delay", trunk_conf_t, close_delay), .dflt = "10.0" },
@@ -4168,6 +4169,34 @@ static void trunk_manage(trunk_t *trunk, fr_time_t now)
 	       fr_time_lteq(fr_time_add(treq->last_freed, trunk->conf.req_cleanup_delay), now)) talloc_free(treq);
 
 	/*
+	 *	If we have idle connections, then close them.
+	 */
+	if (fr_time_delta_ispos(trunk->conf.idle_timeout)) {
+		fr_minmax_heap_iter_t	iter;
+		fr_time_t idle_cutoff = fr_time_sub(now, trunk->conf.idle_timeout);
+
+		for (tconn = fr_minmax_heap_iter_init(trunk->active, &iter);
+		     tconn;
+		     tconn = fr_minmax_heap_iter_next(trunk->active, &iter)) {
+			/*
+			 *	The connection has outstanding requests without replies, don't do anything.
+			 */
+			if (fr_heap_num_elements(tconn->pending) > 0) continue;
+
+			/*
+			 *	The connection was last active after the idle cutoff time, don't do anything.
+			 */
+			if (fr_time_gt(tconn->pub.last_write_success, idle_cutoff)) continue;
+
+			/*
+			 *	This connection has been inactive since before the idle timeout.  Drain it,
+			 *	and free it.
+			 */
+			trunk_connection_enter_draining_to_free(tconn);
+		}
+	}
+
+	/*
 	 *	Free any connections which have drained
 	 *	and we didn't reactivate during the last
 	 *	round of management.
@@ -4734,6 +4763,16 @@ int trunk_start(trunk_t *trunk)
 	for (i = 0; i < trunk->conf.start; i++) {
 		DEBUG("[%i] Starting initial connection", i);
 		if (trunk_connection_spawn(trunk, fr_time()) != 0) return -1;
+	}
+
+	/*
+	 *	If the idle timeout is set, AND there's no management interval, OR the management interval is
+	 *	less than the idle timeout, update the management interval.
+	 */
+	if (fr_time_delta_ispos(trunk->conf.idle_timeout) &&
+	    (!fr_time_delta_ispos(trunk->conf.manage_interval) ||
+	    fr_time_delta_gt(trunk->conf.manage_interval, trunk->conf.idle_timeout))) {
+		trunk->conf.manage_interval = trunk->conf.idle_timeout;
 	}
 
 	if (fr_time_delta_ispos(trunk->conf.manage_interval)) {
