@@ -24,8 +24,6 @@
  */
 RCSID("$Id$")
 
-#include <talloc.h>
-
 #include <freeradius-devel/unlang/interpret.h>
 #include <freeradius-devel/unlang/xlat_redundant.h>
 #include <freeradius-devel/unlang/xlat_func.h>
