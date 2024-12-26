@@ -1025,6 +1025,9 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 		struct dirent	*dp;
 		struct stat	stat_buf;
 		cf_file_heap_t	*h;
+#ifdef S_IWOTH
+		int		my_fd;
+#endif
 
 		/*
 		 *	We need to keep a copy of parent while the
@@ -1043,11 +1046,15 @@ static int process_include(cf_stack_t *stack, CONF_SECTION *parent, char const *
 			talloc_free(directory);
 			return -1;
 		}
+
 #ifdef S_IWOTH
+		my_fd = dirfd(dir);
+		fr_assert(my_fd >= 0);
+
 		/*
 		 *	Security checks.
 		 */
-		if (fstat(dirfd(dir), &stat_buf) < 0) {
+		if (fstat(my_fd, &stat_buf) < 0) {
 			ERROR("%s[%d]: Failed reading directory %s: %s", frame->filename, frame->lineno,
 			      directory, fr_syserror(errno));
 			goto error;
