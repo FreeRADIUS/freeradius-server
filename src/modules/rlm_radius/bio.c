@@ -41,21 +41,26 @@
  * it gets a known valid length and no longer calls fr_radius_ok() itself.
  */
 #define check(_handle, _len_p) fr_radius_ok((_handle)->buffer, (size_t *)(_len_p), \
-					    (_handle)->thread->inst->max_attributes, false, NULL)
+					    (_handle)->ctx.inst->max_attributes, false, NULL)
 
 typedef struct {
-	fr_event_list_t		*el;			//!< Event list.
+	char const		*module_name;	//!< the module that opened the connection
+	rlm_radius_t const	*inst;		//!< our instance
+	fr_event_list_t		*el;	       	//!< Event list.
+	trunk_t			*trunk;	       	//!< trunk handler
+	fr_bio_fd_config_t	*fd_config;	//!< for threads or sockets
+	fr_radius_ctx_t		radius_ctx;
+} bio_handle_ctx_t;
 
-	rlm_radius_t const	*inst;			//!< our instance
+typedef struct {
+	bio_handle_ctx_t	ctx;		//!< for copying to bio_handle_t
 
-	union {
-		trunk_t		*trunk;			//!< trunk handler
-		struct {
-			fr_bio_t *fd;			//!< writing
-			fr_bio_fd_info_t const *info;	//!< for replication
-			uint32_t id;			//!< for replication
-		} bio;
-	};
+
+	struct {
+		fr_bio_t *fd;			//!< writing
+		fr_bio_fd_info_t const *info;	//!< for replication
+		uint32_t id;			//!< for replication
+	} bio;
 } bio_thread_t;
 
 typedef struct bio_request_s bio_request_t;
@@ -64,7 +69,7 @@ typedef struct bio_request_s bio_request_t;
  *
  */
 typedef struct {
-	char const		*module_name;		//!< the module that opened the connection
+	bio_handle_ctx_t	ctx;		//! from thread or home server
 
 	int			fd;			//!< File descriptor.
 
@@ -76,8 +81,6 @@ typedef struct {
 	} bio;
 	fr_bio_fd_info_t const	*fd_info;
 
-	rlm_radius_t const	*inst;			//!< Our module instance.
-	bio_thread_t		*thread;
 	connection_t		*conn;
 
 	uint8_t			last_id;		//!< Used when replicating to ensure IDs are distributed
@@ -236,7 +239,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 {
 	bio_request_t		*u;
 	request_t		*request;
-	rlm_radius_t const	*inst = h->inst;
+	rlm_radius_t const	*inst = h->ctx.inst;
 	map_t			*map = NULL;
 
 	fr_assert(!h->status_u && !h->status_request);
@@ -266,7 +269,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	 */
 	request->async = talloc_zero(request, fr_async_t);
 	talloc_const_free(request->name);
-	request->name = talloc_strdup(request, h->module_name);
+	request->name = talloc_strdup(request, h->ctx.module_name);
 
 	request->packet = fr_packet_alloc(request, false);
 	request->reply = fr_packet_alloc(request, false);
@@ -328,7 +331,7 @@ static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 	u->code = inst->status_check;
 	request->packet->code = u->code;
 
-	DEBUG3("%s - Status check packet type will be %s", h->module_name, fr_radius_packet_name[u->code]);
+	DEBUG3("%s - Status check packet type will be %s", h->ctx.module_name, fr_radius_packet_name[u->code]);
 	log_request_pair_list(L_DBG_LVL_3, request, NULL, &request->request_pairs, NULL);
 }
 
@@ -354,7 +357,7 @@ static void conn_init_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED in
 
 	h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->module_name, h->fd_info->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->fd_info->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -385,13 +388,13 @@ static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	switch (fr_retry_next(&u->retry, now)) {
 	case FR_RETRY_MRD:
 		DEBUG("%s - Reached maximum_retransmit_duration (%pVs > %pVs), failing status checks",
-		      h->module_name, fr_box_time_delta(fr_time_sub(now, u->retry.start)),
+		      h->ctx.module_name, fr_box_time_delta(fr_time_sub(now, u->retry.start)),
 		      fr_box_time_delta(u->retry.config->mrd));
 		goto fail;
 
 	case FR_RETRY_MRC:
 		DEBUG("%s - Reached maximum_retransmit_count (%u > %u), failing status checks",
-		      h->module_name, u->retry.count, u->retry.config->mrc);
+		      h->ctx.module_name, u->retry.count, u->retry.config->mrc);
 	fail:
 		connection_signal_reconnect(conn, CONNECTION_FAILED);
 		return;
@@ -399,7 +402,7 @@ static void conn_init_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	case FR_RETRY_CONTINUE:
 		if (fr_event_fd_insert(h, NULL, el, h->fd, conn_init_writable, NULL,
 				       conn_init_error, conn) < 0) {
-			PERROR("%s - Failed inserting FD event", h->module_name);
+			PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 			connection_signal_reconnect(conn, CONNECTION_FAILED);
 		}
 		return;
@@ -417,7 +420,7 @@ static void conn_init_next(fr_event_list_t *el, UNUSED fr_time_t now, void *uctx
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
 	if (fr_event_fd_insert(h, NULL, el, h->fd, conn_init_writable, NULL, conn_init_error, conn) < 0) {
-		PERROR("%s - Failed inserting FD event", h->module_name);
+		PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 		connection_signal_reconnect(conn, CONNECTION_FAILED);
 	}
 }
@@ -429,8 +432,8 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 {
 	connection_t		*conn = talloc_get_type_abort(uctx, connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
-	trunk_t			*trunk = h->thread->trunk;
-	rlm_radius_t const 	*inst = h->inst;
+	trunk_t			*trunk = h->ctx.trunk;
+	rlm_radius_t const 	*inst = h->ctx.inst;
 	bio_request_t		*u = h->status_u;
 	ssize_t			slen;
 	fr_pair_list_t		reply;
@@ -451,12 +454,12 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 
 		case ECONNREFUSED:
 			ERROR("%s - Failed reading response from socket: there is no server listening on outgoing connection %s",
-			      h->module_name, h->fd_info->name);
+			      h->ctx.module_name, h->fd_info->name);
 			break;
 
 		default:
 			ERROR("%s - Failed reading response from socket: %s",
-			      h->module_name, fr_syserror(errno));
+			      h->ctx.module_name, fr_syserror(errno));
 			break;
 		}
 
@@ -471,13 +474,13 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 */
 	if (slen < RADIUS_HEADER_LENGTH) {
 		ERROR("%s - Packet too short, expected at least %zu bytes got %zd bytes",
-		      h->module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
+		      h->ctx.module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
 		return;
 	}
 
 	if (u->id != h->buffer[1]) {
 		ERROR("%s - Received response with incorrect or expired ID.  Expected %u, got %u",
-		      h->module_name, u->id, h->buffer[1]);
+		      h->ctx.module_name, u->id, h->buffer[1]);
 		return;
 	}
 
@@ -508,9 +511,9 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 		 *	the next status check.
 		 */
 		DEBUG("%s - Received %u / %u replies for status check, on connection - %s",
-		      h->module_name, u->num_replies, inst->num_answers_to_alive, h->fd_info->name);
+		      h->ctx.module_name, u->num_replies, inst->num_answers_to_alive, h->fd_info->name);
 		DEBUG("%s - Next status check packet will be in %pVs",
-		      h->module_name, fr_box_time_delta(fr_time_sub(u->retry.next, fr_time())));
+		      h->ctx.module_name, fr_box_time_delta(fr_time_sub(u->retry.next, fr_time())));
 
 		/*
 		 *	Set the timer for the next retransmit.
@@ -526,7 +529,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 */
 	status_check_reset(h, u);
 
-	DEBUG("%s - Connection open - %s", h->module_name, h->fd_info->name);
+	DEBUG("%s - Connection open - %s", h->ctx.module_name, h->fd_info->name);
 
 	connection_signal_connected(conn);
 }
@@ -544,7 +547,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	if (fr_time_eq(u->retry.start, fr_time_wrap(0))) {
 		u->id = fr_rand() & 0xff;	/* We don't care what the value is here */
 		h->status_checking = true;	/* Ensure this is valid */
-		fr_retry_init(&u->retry, fr_time(), &h->inst->retry[u->code]);
+		fr_retry_init(&u->retry, fr_time(), &h->ctx.inst->retry[u->code]);
 
 	/*
 	 *	Status checks can never be retransmitted
@@ -556,7 +559,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	}
 
 	DEBUG("%s - Sending %s ID %d over connection %s",
-	      h->module_name, fr_radius_packet_name[u->code], u->id, h->fd_info->name);
+	      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, h->fd_info->name);
 
 	if (encode(h, h->status_request, u, u->id) < 0) {
 	fail:
@@ -569,7 +572,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	slen = fr_bio_write(h->bio.write, NULL, u->packet, u->packet_len);
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: %s",
-		      h->module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name, fr_syserror(errno));
+		      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name, fr_syserror(errno));
 
 
 		goto fail;
@@ -581,16 +584,16 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 *	for the response timeout.
 	 */
 	if (fr_event_fd_insert(h, NULL, conn->el, h->fd, conn_init_readable, NULL, conn_init_error, conn) < 0) {
-		PERROR("%s - Failed inserting FD event", h->module_name);
+		PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 		goto fail;
 	}
 
 	DEBUG("%s - %s request.  Expecting response within %pVs",
-	      h->module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted",
+	      h->ctx.module_name, (u->retry.count == 1) ? "Originated" : "Retransmitted",
 	      fr_box_time_delta(u->retry.rt));
 
 	if (fr_event_timer_at(h, el, &u->ev, u->retry.next, conn_init_timeout, conn) < 0) {
-		PERROR("%s - Failed inserting timer event", h->module_name);
+		PERROR("%s - Failed inserting timer event", h->ctx.module_name);
 		goto fail;
 	}
 }
@@ -600,25 +603,30 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
  */
 static int _bio_handle_free(bio_handle_t *h)
 {
+	fr_assert(h != NULL);
+
 	fr_assert(h->fd >= 0);
 
 	if (h->status_u) fr_event_timer_delete(&h->status_u->ev);
 
-	fr_event_fd_delete(h->thread->el, h->fd, FR_EVENT_FILTER_IO);
+	fr_event_fd_delete(h->ctx.el, h->fd, FR_EVENT_FILTER_IO);
 
 	if (shutdown(h->fd, SHUT_RDWR) < 0) {
 		DEBUG3("%s - Failed shutting down connection %s: %s",
-		       h->module_name, h->fd_info->name, fr_syserror(errno));
+		       h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
 	}
 
+	/*
+	 *	@todo - free the BIOs?
+	 */
 	if (close(h->fd) < 0) {
 		DEBUG3("%s - Failed closing connection %s: %s",
-		       h->module_name, h->fd_info->name, fr_syserror(errno));
+		       h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
 	}
 
 	h->fd = -1;
 
-	DEBUG("%s - Connection closed - %s", h->module_name, h->fd_info->name);
+	DEBUG("%s - Connection closed - %s", h->ctx.module_name, h->fd_info->name);
 
 	return 0;
 }
@@ -627,7 +635,7 @@ static void bio_connected(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
 
-	DEBUG("%s - Connection open - %s", h->module_name, h->fd_info->name);
+	DEBUG("%s - Connection open - %s", h->ctx.module_name, h->fd_info->name);
 
 	connection_signal_connected(h->conn);
 }
@@ -636,7 +644,7 @@ static void bio_error(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
 
-	DEBUG("%s - Connection failed - %s - %s", h->module_name, h->fd_info->name,
+	DEBUG("%s - Connection failed - %s - %s", h->ctx.module_name, h->fd_info->name,
 	      fr_syserror(h->fd_info->connect_errno));
 
 	connection_signal_reconnect(h->conn, CONNECTION_FAILED);
@@ -659,8 +667,8 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	 *	Packet is too large, discard it.
 	 */
 	want = fr_nbo_to_uint16(hdr + 2);
-	if (want > h->inst->max_packet_size) {
-		ERROR("%s - Connection %s received too long packet", h->module_name, h->fd_info->name);
+	if (want > h->ctx.inst->max_packet_size) {
+		ERROR("%s - Connection %s received too long packet", h->ctx.module_name, h->fd_info->name);
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
 
@@ -672,15 +680,15 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 		return FR_BIO_VERIFY_WANT_MORE;
 	}
 
-#define REQUIRE_MA(_h) (((_h)->inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || (_h)->inst->received_message_authenticator)
+#define REQUIRE_MA(_h) (((_h)->ctx.inst->require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) || (_h)->ctx.inst->received_message_authenticator)
 
 	/*
 	 *	See if we need to discard the packet.
 	 */
-	if (!fr_radius_ok(data, size, h->inst->max_attributes, REQUIRE_MA(h), &failure)) {
+	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {
 		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
 
-		PERROR("%s - Connection %s received bad packet", h->module_name, h->fd_info->name);
+		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->fd_info->name);
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
@@ -708,15 +716,12 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 {
 	int			fd;
 	bio_handle_t		*h;
-	bio_thread_t		*thread = talloc_get_type_abort(uctx, bio_thread_t);
-	rlm_radius_t const	*inst = thread->inst;
+	bio_handle_ctx_t	*ctx = uctx; /* thread or home server */
 
 	MEM(h = talloc_zero(conn, bio_handle_t));
-	h->thread = thread;
+	h->ctx = *ctx;
 	h->conn = conn;
-	h->inst = thread->inst;
-	h->module_name = h->inst->name;
-	h->max_packet_size = h->inst->max_packet_size;
+	h->max_packet_size = h->ctx.inst->max_packet_size;
 	h->last_idle = fr_time();
 
 	MEM(h->buffer = talloc_array(h, uint8_t, h->max_packet_size));
@@ -724,9 +729,9 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	MEM(h->tt = radius_track_alloc(h));
 
-	h->bio.fd = fr_bio_fd_alloc(h, &h->inst->fd_config, 0);
+	h->bio.fd = fr_bio_fd_alloc(h, h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
-		PERROR("%s - failed opening socket - ", h->module_name);
+		PERROR("%s - failed opening socket - ", h->ctx.module_name);
 	fail:
 		talloc_free(h);
 		return CONNECTION_STATE_FAILED;
@@ -751,15 +756,15 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	 *	way we don't need a memory BIO for UDP sockets, but we can still add a verification layer for
 	 *	UDP sockets?
 	 */
-	if (inst->fd_config.socket_type == SOCK_STREAM) {
+	if (h->ctx.fd_config->socket_type == SOCK_STREAM) {
 		h->bio.mem = fr_bio_mem_alloc(h, 8192, 0, h->bio.fd);
 		if (!h->bio.mem) {
-			PERROR("%s - Failed allocating memory buffer - ", h->module_name);
+			PERROR("%s - Failed allocating memory buffer - ", h->ctx.module_name);
 			goto fail;
 		}
 
 		if (fr_bio_mem_set_verify(h->bio.mem, rlm_radius_verify, h, false) < 0) {
-			PERROR("%s - Failed setting validation callback - ", h->module_name);
+			PERROR("%s - Failed setting validation callback - ", h->ctx.module_name);
 			goto fail;
 		}
 
@@ -771,9 +776,9 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		h->bio.mem->uctx = h;
 	}
 
-	talloc_set_destructor(h, _bio_handle_free);
-
 	h->fd = fd;
+
+	talloc_set_destructor(h, _bio_handle_free);
 
 	/*
 	 *	If the socket isn't connected, then do that first.
@@ -803,7 +808,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		 *	only signal the connection as open once we get a
 		 *	status-check response.
 		 */
-	} if (h->inst->status_check) {
+	} if (h->ctx.inst->status_check) {
 		status_check_alloc(h);
 
 		/*
@@ -891,7 +896,7 @@ static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_
 					  char const *log_prefix, void *uctx)
 {
 	connection_t		*conn;
-	bio_thread_t		*thread = talloc_get_type_abort(uctx, bio_thread_t);
+	bio_handle_ctx_t	*ctx = uctx; /* thread or home server */
 
 	conn = connection_alloc(tconn, el,
 				   &(connection_funcs_t){
@@ -901,9 +906,9 @@ static connection_t *thread_conn_alloc(trunk_connection_t *tconn, fr_event_list_
 				   },
 				   conf,
 				   log_prefix,
-				   thread);
+				   uctx);
 	if (!conn) {
-		PERROR("%s - Failed allocating state handler for new connection", thread->inst->name);
+		PERROR("%s - Failed allocating state handler for new connection", ctx->inst->name);
 		return NULL;
 	}
 
@@ -928,7 +933,7 @@ static void conn_discard(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int f
 		case ECONNRESET:
 		case ENOTCONN:
 		case ETIMEDOUT:
-			ERROR("%s - Failed draining socket: %s", h->module_name, fr_syserror(errno));
+			ERROR("%s - Failed draining socket: %s", h->ctx.module_name, fr_syserror(errno));
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			break;
 
@@ -954,7 +959,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_t		*conn = tconn->conn;
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->module_name, h->fd_info->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->fd_info->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -998,11 +1003,11 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 	/*
 	 *	Over-ride read for replication.
 	 */
-	if (h->inst->mode == RLM_RADIUS_MODE_REPLICATE) {
+	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) {
 		read_fn = conn_discard;
 
 		if (fr_bio_fd_write_only(h->bio.fd) < 0) {
-			PERROR("%s - Failed setting socket to write-only", h->module_name);
+			PERROR("%s - Failed setting socket to write-only", h->ctx.module_name);
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
@@ -1013,7 +1018,7 @@ static void thread_conn_notify(trunk_connection_t *tconn, connection_t *conn,
 			       write_fn,
 			       conn_error,
 			       tconn) < 0) {
-		PERROR("%s - Failed inserting FD event", h->module_name);
+		PERROR("%s - Failed inserting FD event", h->ctx.module_name);
 
 		/*
 		 *	May free the connection!
@@ -1075,7 +1080,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 			    uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			    uint8_t *data, size_t data_len)
 {
-	rlm_radius_t const	*inst = talloc_get_type_abort_const(h->thread->inst, rlm_radius_t);
+	rlm_radius_t const	*inst = talloc_get_type_abort_const(h->ctx.inst, rlm_radius_t);
 	uint8_t			code;
 	fr_radius_decode_ctx_t	decode_ctx;
 
@@ -1084,7 +1089,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	RHEXDUMP3(data, data_len, "Read packet");
 
 	decode_ctx = (fr_radius_decode_ctx_t) {
-		.common = &inst->common_ctx,
+		.common = &h->ctx.radius_ctx,
 		.request_code = u->code,
 		.request_authenticator = request_authenticator,
 		.tmp_ctx = talloc(ctx, uint8_t),
@@ -1141,7 +1146,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 {
 	ssize_t			packet_len;
 	fr_radius_encode_ctx_t	encode_ctx;
-	rlm_radius_t const	*inst = h->inst;
+	rlm_radius_t const	*inst = h->ctx.inst;
 
 	fr_assert(inst->allowed[u->code]);
 	fr_assert(!u->packet);
@@ -1156,7 +1161,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	fr_assert(u->packet_len >= (size_t) RADIUS_HEADER_LENGTH);
 
 	encode_ctx = (fr_radius_encode_ctx_t) {
-		.common = &inst->common_ctx,
+		.common = &h->ctx.radius_ctx,
 		.rand_ctx = (fr_fast_rand_t) {
 			.a = fr_rand(),
 			.b = fr_rand(),
@@ -1239,8 +1244,8 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	/*
 	 *	Now that we're done mangling the packet, sign it.
 	 */
-	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) inst->common_ctx.secret,
-			   inst->common_ctx.secret_length) < 0) {
+	if (fr_radius_sign(u->packet, NULL, (uint8_t const *) h->ctx.radius_ctx.secret,
+			   h->ctx.radius_ctx.secret_length) < 0) {
 		RERROR("Failed signing packet");
 		goto error;
 	}
@@ -1264,7 +1269,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
-	INFO("%s - Reviving connection %s", h->module_name, h->fd_info->name);
+	INFO("%s - Reviving connection %s", h->ctx.module_name, h->fd_info->name);
 	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 }
 
@@ -1276,7 +1281,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
-	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->module_name, h->fd_info->name);
+	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->ctx.module_name, h->fd_info->name);
 
 	/*
 	 *	Don't use this connection, and re-queue all of its
@@ -1289,7 +1294,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	connection immediately.  If the status checks pass,
 	 *	then the connection will be marked "alive"
 	 */
-	if (h->inst->status_check) {
+	if (h->ctx.inst->status_check) {
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		return;
 	}
@@ -1298,7 +1303,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	 *	Revive the connection after a time.
 	 */
 	if (fr_event_timer_at(h, el, &h->zombie_ev,
-			      fr_time_add(now, h->inst->revive_interval), revive_timeout, tconn) < 0) {
+			      fr_time_add(now, h->ctx.inst->revive_interval), revive_timeout, tconn) < 0) {
 		ERROR("Failed inserting revive timeout for connection");
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
@@ -1336,7 +1341,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	 *	We're replicating, and don't care about the health of
 	 *	the home server, and this function should not be called.
 	 */
-	fr_assert(h->inst->mode != RLM_RADIUS_MODE_REPLICATE);
+	fr_assert(h->ctx.inst->mode != RLM_RADIUS_MODE_REPLICATE);
 
 	/*
 	 *	If we're status checking OR already zombie, don't go to zombie
@@ -1353,16 +1358,16 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	/*
 	 *	If we've seen ANY response in the allowed window, then the connection is still alive.
 	 */
-	if ((h->inst->mode == RLM_RADIUS_MODE_PROXY) && fr_time_gt(last_sent, fr_time_wrap(0)) &&
-	    (fr_time_lt(fr_time_add(last_sent, h->inst->response_window), now))) return false;
+	if ((h->ctx.inst->mode == RLM_RADIUS_MODE_PROXY) && fr_time_gt(last_sent, fr_time_wrap(0)) &&
+	    (fr_time_lt(fr_time_add(last_sent, h->ctx.inst->response_window), now))) return false;
 
 	/*
 	 *	Stop using it for new requests.
 	 */
-	WARN("%s - Entering Zombie state - connection %s", h->module_name, h->fd_info->name);
+	WARN("%s - Entering Zombie state - connection %s", h->ctx.module_name, h->fd_info->name);
 	trunk_connection_signal_inactive(tconn);
 
-	if (h->inst->status_check) {
+	if (h->ctx.inst->status_check) {
 		h->status_checking = true;
 
 		/*
@@ -1377,7 +1382,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 	} else {
-		if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->inst->zombie_period),
+		if (fr_event_timer_at(h, el, &h->zombie_ev, fr_time_add(now, h->ctx.inst->zombie_period),
 				      zombie_timeout, tconn) < 0) {
 			ERROR("Failed inserting zombie timeout for connection");
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
@@ -1495,7 +1500,7 @@ static void request_mux(UNUSED fr_event_list_t *el,
 
 static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h)
 {
-	rlm_radius_t const	*inst = h->inst;
+	rlm_radius_t const	*inst = h->ctx.inst;
 	bio_request_t		*u;
 	char const		*action;
 	uint8_t const		*packet;
@@ -1541,6 +1546,7 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 			trunk_request_signal_fail(treq);
 			return;
 		}
+		fr_assert(u->rr);
 		u->id = u->rr->id;
 
 		RDEBUG("Sending %s ID %d length %zu over connection %s",
@@ -1600,7 +1606,7 @@ do_write:
 		case ENOBUFS:		/* No outbound packet buffers, maybe? */
 		case ENOMEM:		/* malloc failure in kernel? */
 			RWARN("%s - Failed sending data over connection %s: %s",
-			      h->module_name, h->fd_info->name, fr_syserror(errno));
+			      h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
 			trunk_request_signal_fail(treq);
 			break;
 
@@ -1609,7 +1615,7 @@ do_write:
 		 */
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
 			ERROR("%s - Failed sending data over connection %s: %s",
-			      h->module_name, h->fd_info->name, fr_syserror(errno));
+			      h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
 			trunk_request_signal_fail(treq);
 			break;
 
@@ -1619,7 +1625,7 @@ do_write:
 		 */
 		default:
 			ERROR("%s - Failed sending data over connection %s: %s",
-			      h->module_name, h->fd_info->name, fr_syserror(errno));
+			      h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
 			trunk_connection_signal_reconnect(treq->tconn, CONNECTION_FAILED);
 			break;
 		}
@@ -1634,7 +1640,7 @@ do_write:
 		if (u->partial) return;
 
 		RWARN("%s - Failed sending data over connection %s: sent zero bytes",
-		      h->module_name, h->fd_info->name);
+		      h->ctx.module_name, h->fd_info->name);
 		trunk_request_requeue(treq);
 		return;
 	}
@@ -1784,7 +1790,7 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 		if (response_length < 4096) response_length = 4096;
 		if (response_length > 65535) response_length = 65535;
 
-		DEBUG("%s - Increasing buffer size to %u for connection %s", h->module_name, response_length, h->fd_info->name);
+		DEBUG("%s - Increasing buffer size to %u for connection %s", h->ctx.module_name, response_length, h->fd_info->name);
 
 		/*
 		 *	Make sure to copy the packet over!
@@ -1832,7 +1838,7 @@ static void status_check_next(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, 
 static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 {
 	bio_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, bio_handle_t);
-	rlm_radius_t const 	*inst = h->inst;
+	rlm_radius_t const 	*inst = h->ctx.inst;
 	bio_request_t		*u = talloc_get_type_abort(treq->rctx, bio_request_t);
 
 	fr_assert(treq->preq == h->status_u);
@@ -1853,7 +1859,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 		/*
 		 *	Set the timer for the next retransmit.
 		 */
-		if (fr_event_timer_at(h, h->thread->el, &u->ev, u->retry.next, status_check_next, treq->tconn) < 0) {
+		if (fr_event_timer_at(h, h->ctx.el, &u->ev, u->retry.next, status_check_next, treq->tconn) < 0) {
 			trunk_connection_signal_reconnect(treq->tconn, CONNECTION_FAILED);
 		}
 		return;
@@ -1881,7 +1887,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 {
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	DEBUG3("%s - Reading data for connection %s", h->module_name, h->fd_info->name);
+	DEBUG3("%s - Reading data for connection %s", h->ctx.module_name, h->fd_info->name);
 
 	while (true) {
 		ssize_t			slen;
@@ -1911,14 +1917,14 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
 
 			ERROR("%s - Failed reading response from socket: %s",
-			      h->module_name, fr_syserror(errno));
+			      h->ctx.module_name, fr_syserror(errno));
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 			return;
 		}
 
 		if (slen < RADIUS_HEADER_LENGTH) {
 			ERROR("%s - Packet too short, expected at least %zu bytes got %zd bytes",
-			      h->module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
+			      h->ctx.module_name, (size_t)RADIUS_HEADER_LENGTH, slen);
 			continue;
 		}
 
@@ -1929,7 +1935,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		rr = radius_track_entry_find(h->tt, h->buffer[1], NULL);
 		if (!rr) {
 			WARN("%s - Ignoring reply with ID %i that arrived too late",
-			     h->module_name, h->buffer[1]);
+			     h->ctx.module_name, h->buffer[1]);
 			continue;
 		}
 
@@ -2072,7 +2078,7 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 	if (u->ev) (void)fr_event_timer_delete(&u->ev);
 	if (u->packet) bio_request_reset(u);
 
-	if (h->inst->mode == RLM_RADIUS_MODE_REPLICATE) return;
+	if (h->ctx.inst->mode == RLM_RADIUS_MODE_REPLICATE) return;
 
 	u->num_replies = 0;
 
@@ -2243,7 +2249,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 		RETURN_MODULE_NOOP;
 	}
 
-	treq = trunk_request_alloc(t->trunk, request);
+	treq = trunk_request_alloc(t->ctx.trunk, request);
 	if (!treq) RETURN_MODULE_FAIL;
 
 	MEM(u = talloc_zero(request, bio_request_t));
@@ -2261,7 +2267,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 
 	u->rcode = RLM_MODULE_FAIL;
 
-	switch(trunk_request_enqueue(&treq, t->trunk, request, u, u)) {
+	switch(trunk_request_enqueue(&treq, t->ctx.trunk, request, u, u)) {
 	case TRUNK_ENQUEUE_OK:
 	case TRUNK_ENQUEUE_IN_BACKLOG:
 		break;
@@ -2372,18 +2378,20 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 						.request_cancel = request_cancel,
 					};
 
-	thread->el = mctx->el;
-	thread->inst = inst;
+	thread->ctx.el = mctx->el;
+	thread->ctx.inst = inst;
+	thread->ctx.fd_config = &inst->fd_config;
+	thread->ctx.radius_ctx = inst->common_ctx;
 
 	if ((inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
 	    (inst->mode != RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
-		thread->trunk = trunk_alloc(thread, mctx->el, &io_funcs,
+		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
 					    &inst->trunk_conf, inst->name, thread, false);
-		if (!thread->trunk) return -1;
+		if (!thread->ctx.trunk) return -1;
 		return 0;
 	}
 
-	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->inst->fd_config, 0);
+	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->ctx.inst->fd_config, 0);
 	if (!thread->bio.fd) {
 		PERROR("%s - failed opening socket - ", inst->name);
 		return CONNECTION_STATE_FAILED;
