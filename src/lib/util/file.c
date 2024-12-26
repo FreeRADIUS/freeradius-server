@@ -329,10 +329,10 @@ ssize_t fr_touch(int *fd_out, char const *filename, mode_t mode, bool mkdir, mod
 		char	*q;
 
 		if (mkdir && (errno == ENOENT) && (q = strrchr(filename, FR_DIR_SEP))) {
-			int dir_fd;
+			int dir_fd = -1;
 
 			slen = fr_mkdir(&dir_fd, filename, q - filename, dir_mode, NULL, NULL);
-			if (slen <= 0) return slen;
+			if((slen <= 0) || (dir_fd < 0)) return slen;
 
 			fd = openat(dir_fd, q + 1, O_WRONLY | O_CREAT, mode);
 			if (fd >= 0) {
