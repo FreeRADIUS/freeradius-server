@@ -2089,7 +2089,7 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 /** Write out a canned failure
  *
  */
-static void request_fail(request_t *request, void *preq, void *rctx,
+static void request_fail(request_t *request, NDEBUG_UNUSED void *preq, void *rctx,
 			 NDEBUG_UNUSED trunk_request_state_t state, UNUSED void *uctx)
 {
 	bio_request_t		*u = talloc_get_type_abort(rctx, bio_request_t);
@@ -2111,7 +2111,7 @@ static void request_fail(request_t *request, void *preq, void *rctx,
 /** Response has already been written to the rctx at this point
  *
  */
-static void request_complete(request_t *request, void *preq, void *rctx, UNUSED void *uctx)
+static void request_complete(request_t *request, NDEBUG_UNUSED void *preq, void *rctx, UNUSED void *uctx)
 {
 	bio_request_t		*u = talloc_get_type_abort(rctx, bio_request_t);
 
@@ -2219,12 +2219,15 @@ static void do_signal(rlm_radius_t const *inst, bio_request_t *u, UNUSED request
  */
 static int _bio_request_free(bio_request_t *u)
 {
-	trunk_request_t	*treq;
-
 	if (!u->treq) return 0;
 
-	treq = talloc_get_type_abort(u->treq, trunk_request_t);
-	fr_assert(treq->preq == u);
+#ifndef NDEBUG
+	{
+		trunk_request_t	*treq;
+		treq = talloc_get_type_abort(u->treq, trunk_request_t);
+		fr_assert(treq->preq == u);
+	}
+#endif
 
 	fr_assert_msg(!u->ev, "bio_request_t freed with active timer");
 
