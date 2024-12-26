@@ -1067,12 +1067,11 @@ authenticate eap {
 #  The following example shows how proxying to three remote servers
 #  can be configured.
 #
-#  The `Auth-Type` attribute would need to be set to
-#  `proxy-example.com`.  The home servers MUST be defined in
-#  `mods-available/radius`.
+#  Proxying will be done by setting `Auth-Type := example.com`, and
+#  defining the home servers in `mods-available/radius`.
 #
 
-#authenticate proxy-example.com {
+#authenticate example.com {
 #	#
 #	#  Log the request before proxying.
 #	#
