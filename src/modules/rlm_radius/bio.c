@@ -587,7 +587,15 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 
 		goto fail;
 	}
-	fr_assert((size_t)slen == u->packet_len);
+
+	/*
+	 *	@todo - write partial packets, too. <sigh>x
+	 */
+	if ((size_t)slen < u->packet_len) {
+		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: writing is blocked",
+		      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name);
+		goto fail;
+	}
 
 	/*
 	 *	Switch to waiting on read and insert the event
@@ -728,7 +736,7 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 
 	h->bio.fd = fr_bio_fd_alloc(h, h->ctx.fd_config, 0);
 	if (!h->bio.fd) {
-		PERROR("%s - failed opening socket - ", h->ctx.module_name);
+		PERROR("%s - failed opening socket", h->ctx.module_name);
 	fail:
 		talloc_free(h);
 		return CONNECTION_STATE_FAILED;
@@ -1419,21 +1427,26 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 			break;
 
 		case TRUNK_REQUEST_STATE_BACKLOG:
-			RDEBUG("Request is still in the backlog queue to be sent - suppressing retransmission");
+			RDEBUG("Packet is still in the backlog queue to be sent - suppressing retransmission");
 			return;
 
 		case TRUNK_REQUEST_STATE_PENDING:
-			RDEBUG("Request is still in the pending queue to be sent - suppressing retransmission");
+			RDEBUG("Packet is still in the pending queue to be sent - suppressing retransmission");
 			return;
 
 		case TRUNK_REQUEST_STATE_PARTIAL:
-			RDEBUG("Request was partially written, as IO is blocked - suppressing retransmission");
+			RDEBUG("Packet was partially written, as IO is blocked - suppressing retransmission");
 			return;
 
 		case TRUNK_REQUEST_STATE_SENT:
 			fr_assert(tconn);
 
 			h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
+
+			/*
+			 *	We only retry on datagram sockets.
+			 */
+			fr_assert(h->ctx.fd_config->socket_type == SOCK_DGRAM);
 
 			if (h->fd_info->write_blocked) {
 				RDEBUG("IO is blocked - suppressing retransmission");
@@ -2415,7 +2428,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	 */
 	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->ctx.inst->fd_config, 0);
 	if (!thread->bio.fd) {
-		PERROR("%s - failed opening socket - ", inst->name);
+		PERROR("%s - failed opening socket", inst->name);
 		return CONNECTION_STATE_FAILED;
 	}
 
@@ -2719,6 +2732,13 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	}
 	fr_assert(u != NULL);
 	fr_assert(retry_config != NULL);
+
+	/*
+	 *	Start the retry.
+	 *
+	 *	@todo - change unlang_xlat_timeout_add() to unlang_xlat_retry_add().
+	 */
+	fr_retry_init(&u->retry, fr_time(), retry_config);
 
 	timeout = fr_time_add(fr_time(), fr_time_delta_from_sec(2));
 
