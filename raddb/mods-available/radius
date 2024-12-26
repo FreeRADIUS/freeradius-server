@@ -21,6 +21,40 @@
 #  open multiple source ports, depending on how many packets are being
 #  proxied.
 #
+#  ## Recommendations
+#
+#  In most cases, the v3 configuration be moved to v4 without too many
+#  problems.  For each `home_server foo { ... }` in v3, create a v4
+#  module `radius foo { ... } `.  Copy over the IP address, port, and
+#  secret configuration items.  When this step is finished, the bulk
+#  of the basic work is done.
+#
+#  Converting a `home_server_pool foo { ... }` can be done by
+#  creating a module in `mods-enabled`, either `load-balance foo {
+#  ... }`, or `redundant foo { ... }`.  i.e. the v3 module
+#  configuration does not have any `instantiate` section.  You can
+#  just list "virtual" modules directly in the `modules` directory!
+#
+#  The contents of the `load-balance` or `redundant` section will be
+#  the list of home servers which will part of that `load-balance` or
+#  `redundant` pool.
+#
+#  Then, anywhere you want to use a home server, just list it's name
+#  in an `unlang` processing section.  Anywhere you want to list a
+#  home server pool, just list it's name in an `unlang` processing
+#  section.
+#
+#  Unlike v3, there is no `Proxy-To-Realm` attribute, or
+#  `Home-Server-Pool`, or `Home-Server-Name`.  Instead, you just
+#  configure a module (`radius`, or `load-balance`), and then use the
+#  module anywhere you want to proxy packets.
+#
+#  In most cases, you can just set something like `Auth-Type :=
+#  example.com`, and then have a section `authenticate example.com {
+#  ... }`, which contains the `radius` modules which do proxying.  See
+#  `sites-available/default` for sample configuration which uses this
+#  pattern.
+#
 #  ## Behavior
 #
 #  The module adds a Proxy-State attribute to all proxied packets.
