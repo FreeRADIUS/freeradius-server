@@ -589,7 +589,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	}
 
 	/*
-	 *	@todo - write partial packets, too. <sigh>x
+	 *	@todo - write partial packets, too. <sigh>
 	 */
 	if ((size_t)slen < u->packet_len) {
 		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: writing is blocked",
@@ -1395,6 +1395,36 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	return true;
 }
 
+static void mod_dup(request_t *request, bio_request_t *u)
+{
+	bio_handle_t *h;
+
+	h = talloc_get_type_abort(u->treq->tconn->conn->h, bio_handle_t);
+
+	if (h->ctx.fd_config->socket_type != SOCK_DGRAM) {
+		RDEBUG("Using stream sockets - suppressing retransmission");
+		return;
+	}
+
+	/*
+	 *	Arguably this should never happen for UDP sockets.
+	 */
+	if (h->fd_info->write_blocked) {
+		RDEBUG("IO is blocked - suppressing retransmission");
+		return;
+	}
+	u->is_retry = true;
+
+	/*
+	 *	We are doing synchronous proxying, retransmit
+	 *	the current request on the same connection.
+	 *
+	 *	If it's zombie, we still resend it.  If the
+	 *	connection is dead, then a callback will move
+	 *	this request to a new connection.
+	 */
+	mod_write(request, u->treq, h);
+}
 
 /** Handle retries.
  *
@@ -1407,8 +1437,6 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 
 	trunk_request_t		*treq = talloc_get_type_abort(u->treq, trunk_request_t);
 	trunk_connection_t	*tconn = treq->tconn;
-
-	bio_handle_t		*h;
 
 	fr_assert(request == treq->request);
 	fr_assert(treq->preq);						/* Must still have a protocol request */
@@ -1439,20 +1467,7 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 		case TRUNK_REQUEST_STATE_SENT:
 			fr_assert(tconn);
 
-			h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
-
-			/*
-			 *	We only retry on datagram sockets.
-			 */
-			fr_assert(h->ctx.fd_config->socket_type == SOCK_DGRAM);
-
-			if (h->fd_info->write_blocked) {
-				RDEBUG("IO is blocked - suppressing retransmission");
-				return;
-			}
-
-			u->is_retry = true;
-			mod_write(request, treq, h);
+			mod_dup(request, u);
 			return;
 
 		case TRUNK_REQUEST_STATE_REAPABLE:
@@ -1717,7 +1732,7 @@ do_write:
 	/*
 	 *	We don't retransmit over TCP.
 	 */
-	if (h->ctx.fd_config->type != SOCK_DGRAM) return;
+	if (h->ctx.fd_config->socket_type != SOCK_DGRAM) return;
 
 	/*
 	 *	If we only send one datagram packet, then don't bother saving it.
@@ -2180,8 +2195,6 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 
 static void do_signal(rlm_radius_t const *inst, bio_request_t *u, UNUSED request_t *request, fr_signal_t action)
 {
-	bio_handle_t		*h;
-
 	/*
 	 *	We received a duplicate packet, but we're not doing
 	 *	synchronous proxying.  Ignore the dup, and rely on the
@@ -2217,23 +2230,7 @@ static void do_signal(rlm_radius_t const *inst, bio_request_t *u, UNUSED request
 	 *	has already been sent out.
 	 */
 	case FR_SIGNAL_DUP:
-		h = u->treq->tconn->conn->h;
-
-		if (h->fd_info->write_blocked) {
-			RDEBUG("IO is blocked - suppressing retransmission");
-			return;
-		}
-		u->is_retry = true;
-
-		/*
-		 *	We are doing synchronous proxying, retransmit
-		 *	the current request on the same connection.
-		 *
-		 *	If it's zombie, we still resend it.  If the
-		 *	connection is dead, then a callback will move
-		 *	this request to a new connection.
-		 */
-		mod_write(request, u->treq, h);
+		mod_dup(request, u);
 		return;
 
 	default:
