@@ -299,8 +299,10 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		 *	server is low. That said, 'auto' should likely
 		 * 	not be enabled for internet facing servers.
 		 */
-		if ((limit_proxy_state == FR_RADIUS_LIMIT_PROXY_STATE_AUTO) && client->active && !client->seen_first_packet) {
-		    	client->seen_first_packet = true;
+		if (!client->received_message_authenticator &&
+		    (limit_proxy_state == FR_RADIUS_LIMIT_PROXY_STATE_AUTO) &&
+		    client->active && !client->seen_first_packet) {
+			client->seen_first_packet = true;
 			client->first_packet_no_proxy_state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state) == NULL;
 
 			RINFO("First packet from %pV (%pV) %s Proxy-State.  Setting \"limit_proxy_state = %s\"",
