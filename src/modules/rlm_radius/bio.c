@@ -2366,6 +2366,13 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	return 1;
 }
 
+static void home_server_free(void *data)
+{
+	home_server_t *home = data;
+
+	talloc_free(home);
+}
+
 static const trunk_io_funcs_t	io_funcs = {
 	.connection_alloc = thread_conn_alloc,
 	.connection_notify = thread_conn_notify,
@@ -2427,7 +2434,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	/*
 	 *	@todo - make lifetime configurable?
 	 */
-	fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, NULL,
+	fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, home_server_free,
 					fr_time_delta_from_sec(60));
 
 	return 0;
@@ -2584,7 +2591,6 @@ static void xlat_sendto_signal(xlat_ctx_t const *xctx, request_t *request, fr_si
  */
 static void xlat_sendto_timeout(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_time_t fired)
 {
-//	rlm_radius_t const     	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_radius_t);
 	bio_request_t   	*u = talloc_get_type_abort(xctx->rctx, bio_request_t);
 
 	RDEBUG2("XXX Timeout sending packet");
@@ -2656,7 +2662,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 		/*
 		 *	Allocate the trunk and start it up.
 		 */
-		home->ctx.trunk = trunk_alloc(thread, unlang_interpret_event_list(request), &io_funcs,
+		home->ctx.trunk = trunk_alloc(home, unlang_interpret_event_list(request), &io_funcs,
 					      &inst->trunk_conf, inst->name, home, false);
 		if (!home->ctx.trunk) {
 		fail:
@@ -2666,11 +2672,38 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 
 		if (!fr_rb_expire_insert(&thread->bio.expires, home, fr_time())) goto fail;
 	} else {
-		fr_rb_expire_update(&thread->bio.expires, home, fr_time());
+		fr_rb_expire_t *expire = &thread->bio.expires;
+		fr_time_t now = fr_time();
+		fr_dlist_t *entry;
 
-		/*
-		 *	@todo - expire old entries, but only if they're not used?
-		 */
+		fr_rb_expire_update(expire, home, now);
+
+		while ((entry = fr_dlist_head(&expire->head)) != NULL) {
+			home_server_t *old;
+
+			old = fr_dlist_entry_to_item(expire->head.offset, entry);
+			(void) talloc_get_type_abort(old, home_server_t);
+
+			fr_assert(old->ctx.trunk);
+
+			/*
+			 *	Don't delete the home server we're about to use.
+			 */
+			if (old == home) break;
+
+			/*
+			 *	It still has a request allocated, do nothing.
+			 */
+			if (old->ctx.trunk->req_alloc) break;
+
+			/*
+			 *	Not yet time to expire.
+			 */
+			if (fr_time_gt(old->expire.when, now)) break;
+
+			fr_dlist_remove(&expire->head, entry);
+			fr_rb_delete(&expire->tree, old);
+		}
 	}
 
 	/*
