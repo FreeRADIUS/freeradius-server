@@ -58,7 +58,6 @@ typedef struct {
 	};
 } bio_thread_t;
 
-typedef struct bio_result_s bio_result_t;
 typedef struct bio_request_s bio_request_t;
 
 /** Track the handle, which is tightly correlated with the FD
@@ -101,7 +100,6 @@ typedef struct {
 
 	bool			status_checking;       	//!< whether we're doing status checks
 	bio_request_t		*status_u;		//!< for sending status check packets
-	bio_result_t		*status_r;		//!< for faking out status checks as real packets
 	request_t		*status_request;
 } bio_handle_t;
 
@@ -110,6 +108,10 @@ typedef struct {
  *
  */
 struct bio_request_s {
+	trunk_request_t		*treq;
+	rlm_rcode_t		rcode;			//!< from the transport
+	bool			is_retry;
+
 	uint32_t		priority;		//!< copied from request->async->priority
 	fr_time_t		recv_time;		//!< copied from request->async->recv_time
 
@@ -130,14 +132,6 @@ struct bio_request_s {
 	fr_event_timer_t const	*ev;			//!< timer for retransmissions
 	fr_retry_t		retry;			//!< retransmission timers
 };
-
-typedef struct bio_result_s {
-	trunk_request_t		*treq;
-	rlm_rcode_t		rcode;			//!< from the transport
-	bool			is_retry;
-
-	bio_request_t		u;
-} bio_result_t;
 
 /** Turn a reply code into a module rcode;
  *
@@ -168,13 +162,13 @@ static fr_radius_decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 			       uint8_t const request_authenticator[static RADIUS_AUTH_VECTOR_LENGTH],
 			       uint8_t *data, size_t data_len);
 
-static void		protocol_error_reply(bio_request_t *u, bio_result_t *r, bio_handle_t *h);
+static void		protocol_error_reply(bio_request_t *u, bio_handle_t *h);
 
 static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request);
 static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action);
 static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h);
 
-static int _bio_result_free(bio_result_t *r);
+static int _bio_request_free(bio_request_t *u);
 
 #ifndef NDEBUG
 /** Log additional information about a tracking entry
@@ -240,20 +234,17 @@ static void status_check_reset(bio_handle_t *h, bio_request_t *u)
  */
 static void CC_HINT(nonnull) status_check_alloc(bio_handle_t *h)
 {
-	bio_result_t		*r;
 	bio_request_t		*u;
 	request_t		*request;
 	rlm_radius_t const	*inst = h->inst;
 	map_t			*map = NULL;
 
-	fr_assert(!h->status_u && !h->status_r && !h->status_request);
+	fr_assert(!h->status_u && !h->status_request);
 
 	MEM(request = request_local_alloc_external(h, NULL));
-	MEM(r = talloc_zero(request, bio_result_t));
-	talloc_set_destructor(r, _bio_result_free);
+	MEM(u = talloc_zero(request, bio_request_t));
+	talloc_set_destructor(u, _bio_request_free);
 
-	h->status_r = r;
-	u = &r->u;
 	h->status_u = u;
 
 	h->status_request = request;
@@ -503,7 +494,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 *	This is usually used for dynamic configuration
 	 *	on startup.
 	 */
-	if (code == FR_RADIUS_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
+	if (code == FR_RADIUS_CODE_PROTOCOL_ERROR) protocol_error_reply(u, h);
 
 	/*
 	 *	Last trunk event was a failure, be more careful about
@@ -1150,18 +1141,10 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 {
 	ssize_t			packet_len;
 	fr_radius_encode_ctx_t	encode_ctx;
-	bio_result_t		*r;
 	rlm_radius_t const	*inst = h->inst;
 
 	fr_assert(inst->allowed[u->code]);
 	fr_assert(!u->packet);
-
-	/*
-	 *	This is essentially free, as this memory was
-	 *	pre-allocated as part of the treq.
-	 */
-	r = (bio_result_t *)(((uintptr_t) u) - offsetof(bio_result_t, u));
-	(void) talloc_get_type_abort(r, bio_result_t);
 
 	u->packet_len = inst->max_packet_size;
 	u->packet = h->buffer;
@@ -1267,7 +1250,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 	 *
 	 *	@todo - do this only for UDP.
 	 */
-	MEM(u->packet = talloc_memdup(r, h->buffer, packet_len));
+	MEM(u->packet = talloc_memdup(u, h->buffer, packet_len));
 
 	return 0;
 }
@@ -1387,10 +1370,10 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 		 *	when the connection is writable.
 		 */
 		h->status_u->retry.start = fr_time_wrap(0);
-		h->status_r->treq = NULL;
+		h->status_u->treq = NULL;
 
-		if (trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
-						     h->status_u, h->status_r, true) != TRUNK_ENQUEUE_OK) {
+		if (trunk_request_enqueue_on_conn(&h->status_u->treq, tconn, h->status_request,
+						     h->status_u, h->status_u, true) != TRUNK_ENQUEUE_OK) {
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 		}
 	} else {
@@ -1410,20 +1393,18 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
  */
 static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t const *retry)
 {
-	bio_result_t		*r = talloc_get_type_abort(mctx->rctx, bio_result_t);
+	bio_request_t		*u = talloc_get_type_abort(mctx->rctx, bio_request_t);
 	rlm_radius_t const     	*inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
 	fr_time_t		now = retry->updated;
 
-	trunk_request_t		*treq = talloc_get_type_abort(r->treq, trunk_request_t);
+	trunk_request_t		*treq = talloc_get_type_abort(u->treq, trunk_request_t);
 	trunk_connection_t	*tconn = treq->tconn;
-
-	bio_request_t		*u = treq->preq;
 
 	bio_handle_t		*h;
 
 	fr_assert(request == treq->request);
 	fr_assert(treq->preq);						/* Must still have a protocol request */
-	fr_assert(u = &r->u);
+	fr_assert(treq->preq == u);
 
 	switch (retry->state) {
 	case FR_RETRY_CONTINUE:
@@ -1457,7 +1438,7 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 				return;
 			}
 
-			r->is_retry = true;
+			u->is_retry = true;
 			mod_write(request, treq, h);
 			return;
 
@@ -1484,7 +1465,7 @@ static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t c
 		break;
 	}
 
-	r->rcode = RLM_MODULE_FAIL;
+	u->rcode = RLM_MODULE_FAIL;
 	trunk_request_signal_fail(treq);
 
 	/*
@@ -1674,9 +1655,7 @@ do_write:
 	 *	Don't print anything extra for replication.
 	 */
 	if (inst->mode == RLM_RADIUS_MODE_REPLICATE) {
-		bio_result_t *r = talloc_get_type_abort(treq->rctx, bio_result_t);
-
-		r->rcode = RLM_MODULE_OK;
+		u->rcode = RLM_MODULE_OK;
 		trunk_request_signal_complete(treq);
 		return;
 	}
@@ -1720,7 +1699,7 @@ do_write:
 /** Deal with Protocol-Error replies, and possible negotiation
  *
  */
-static void protocol_error_reply(bio_request_t *u, bio_result_t *r, bio_handle_t *h)
+static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 {
 	bool	  	error_601 = false;
 	uint32_t  	response_length = 0;
@@ -1777,7 +1756,7 @@ static void protocol_error_reply(bio_request_t *u, bio_result_t *r, bio_handle_t
 			if ((attr[3] != 0) ||
 			    (attr[4] != 0) ||
 			    (attr[5] != 0)) {
-				if (r) r->rcode = RLM_MODULE_FAIL;
+				u->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 
@@ -1789,7 +1768,7 @@ static void protocol_error_reply(bio_request_t *u, bio_result_t *r, bio_handle_t
 			 *	and for sanity.
 			 */
 			if (attr[6] != u->code) {
-				if (r) r->rcode = RLM_MODULE_FAIL;
+				u->rcode = RLM_MODULE_FAIL;
 				return;
 			}
 	}
@@ -1828,7 +1807,7 @@ static void protocol_error_reply(bio_request_t *u, bio_result_t *r, bio_handle_t
 	 *	error, and the response is valid, but not useful for
 	 *	anything.
 	 */
-	if (r) r->rcode = RLM_MODULE_HANDLED;
+	u->rcode = RLM_MODULE_HANDLED;
 }
 
 
@@ -1840,8 +1819,8 @@ static void status_check_next(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, 
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t		*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
-	if (trunk_request_enqueue_on_conn(&h->status_r->treq, tconn, h->status_request,
-					     h->status_u, h->status_r, true) != TRUNK_ENQUEUE_OK) {
+	if (trunk_request_enqueue_on_conn(&h->status_u->treq, tconn, h->status_request,
+					     h->status_u, h->status_u, true) != TRUNK_ENQUEUE_OK) {
 		trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 	}
 }
@@ -1854,18 +1833,17 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 {
 	bio_handle_t		*h = talloc_get_type_abort(treq->tconn->conn->h, bio_handle_t);
 	rlm_radius_t const 	*inst = h->inst;
-	bio_request_t		*u = treq->preq;
-	bio_result_t		*r = talloc_get_type_abort(treq->rctx, bio_result_t);
+	bio_request_t		*u = talloc_get_type_abort(treq->rctx, bio_request_t);
 
 	fr_assert(treq->preq == h->status_u);
-	fr_assert(treq->rctx == h->status_r);
+	fr_assert(treq->rctx == h->status_u);
 
-	r->treq = NULL;
+	u->treq = NULL;
 
 	/*
 	 *	@todo - do other negotiation and signaling.
 	 */
-	if (h->buffer[0] == FR_RADIUS_CODE_PROTOCOL_ERROR) protocol_error_reply(u, NULL, h);
+	if (h->buffer[0] == FR_RADIUS_CODE_PROTOCOL_ERROR) protocol_error_reply(u, h);
 
 	if (u->num_replies < inst->num_answers_to_alive) {
 		DEBUG("Received %u / %u replies for status check, on connection - %s",
@@ -1911,9 +1889,8 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		trunk_request_t	*treq;
 		request_t		*request;
 		bio_request_t		*u;
-		bio_result_t		*r;
 		radius_track_entry_t	*rr;
-		fr_radius_decode_fail_t		reason;
+		fr_radius_decode_fail_t	reason;
 		uint8_t			code = 0;
 		fr_pair_list_t		reply;
 		fr_pair_t		*vp;
@@ -1959,8 +1936,8 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		treq = talloc_get_type_abort(rr->uctx, trunk_request_t);
 		request = treq->request;
 		fr_assert(request != NULL);
-		u = treq->preq;
-		r = talloc_get_type_abort(treq->rctx, bio_result_t);
+		u = talloc_get_type_abort(treq->rctx, bio_request_t);
+		fr_assert(u == treq->preq);
 
 		/*
 		 *	Validate and decode the incoming packet
@@ -2006,7 +1983,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 */
 		switch (code) {
 		case FR_RADIUS_CODE_PROTOCOL_ERROR:
-			protocol_error_reply(u, r, h);
+			protocol_error_reply(u, h);
 			break;
 
 		default:
@@ -2045,7 +2022,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		}
 
 		treq->request->reply->code = code;
-		r->rcode = radius_code_to_rcode[code];
+		u->rcode = radius_code_to_rcode[code];
 		fr_pair_list_append(&request->reply_pairs, &reply);
 		trunk_request_signal_complete(treq);
 	}
@@ -2112,8 +2089,9 @@ static void request_conn_release(connection_t *conn, void *preq_to_reset, UNUSED
 static void request_fail(request_t *request, void *preq, void *rctx,
 			 NDEBUG_UNUSED trunk_request_state_t state, UNUSED void *uctx)
 {
-	bio_result_t		*r = talloc_get_type_abort(rctx, bio_result_t);
-	bio_request_t		*u = preq;
+	bio_request_t		*u = talloc_get_type_abort(rctx, bio_request_t);
+
+	fr_assert(u == preq);
 
 	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
@@ -2121,8 +2099,8 @@ static void request_fail(request_t *request, void *preq, void *rctx,
 
 	if (u->status_check) return;
 
-	r->rcode = RLM_MODULE_FAIL;
-	r->treq = NULL;
+	u->rcode = RLM_MODULE_FAIL;
+	u->treq = NULL;
 
 	unlang_interpret_mark_runnable(request);
 }
@@ -2132,14 +2110,15 @@ static void request_fail(request_t *request, void *preq, void *rctx,
  */
 static void request_complete(request_t *request, void *preq, void *rctx, UNUSED void *uctx)
 {
-	bio_result_t		*r = talloc_get_type_abort(rctx, bio_result_t);
-	bio_request_t		*u = preq;
+	bio_request_t		*u = talloc_get_type_abort(rctx, bio_request_t);
+
+	fr_assert(u == preq);
 
 	fr_assert(!u->rr && !u->packet && fr_pair_list_empty(&u->extra) && !u->ev);	/* Dealt with by request_conn_release */
 
 	if (u->status_check) return;
 
-	r->treq = NULL;
+	u->treq = NULL;
 
 	unlang_interpret_mark_runnable(request);
 }
@@ -2149,10 +2128,10 @@ static void request_complete(request_t *request, void *preq, void *rctx, UNUSED 
  */
 static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request)
 {
-	bio_result_t	*r = talloc_get_type_abort(mctx->rctx, bio_result_t);
-	rlm_rcode_t	rcode = r->rcode;
+	bio_request_t	*u = talloc_get_type_abort(mctx->rctx, bio_request_t);
+	rlm_rcode_t	rcode = u->rcode;
 
-	talloc_free(r);
+	talloc_free(u);
 
 	RETURN_MODULE_RCODE(rcode);
 }
@@ -2161,7 +2140,7 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
 
-	bio_result_t		*r = talloc_get_type_abort(mctx->rctx, bio_result_t);
+	bio_request_t		*u = talloc_get_type_abort(mctx->rctx, bio_request_t);
 	bio_handle_t		*h;
 
 	/*
@@ -2181,8 +2160,8 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	 *	unlang_request_is_scheduled will return false
 	 *	(don't use it).
 	 */
-	if (!r->treq) {
-		talloc_free(r);
+	if (!u->treq) {
+		talloc_free(u);
 		return;
 	}
 
@@ -2192,9 +2171,9 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	 *	trunk so it can clean up the treq.
 	 */
 	case FR_SIGNAL_CANCEL:
-		trunk_request_signal_cancel(r->treq);
-		r->treq = NULL;
-		talloc_free(r);		/* Should be freed soon anyway, but better to be explicit */
+		trunk_request_signal_cancel(u->treq);
+		u->treq = NULL;
+		talloc_free(u);		/* Should be freed soon anyway, but better to be explicit */
 		return;
 
 	/*
@@ -2203,13 +2182,13 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	 *	has already been sent out.
 	 */
 	case FR_SIGNAL_DUP:
-		h = r->treq->tconn->conn->h;
+		h = u->treq->tconn->conn->h;
 
 		if (h->fd_info->write_blocked) {
 			RDEBUG("IO is blocked - suppressing retransmission");
 			return;
 		}
-		r->is_retry = true;
+		u->is_retry = true;
 
 		/*
 		 *	We are doing synchronous proxying, retransmit
@@ -2219,7 +2198,7 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 		 *	connection is dead, then a callback will move
 		 *	this request to a new connection.
 		 */
-		mod_write(request, r->treq, h);
+		mod_write(request, u->treq, h);
 		return;
 
 	default:
@@ -2227,22 +2206,20 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	}
 }
 
-/** Free a bio_result_t
+/** Free a bio_request_t
  *
  * Allows us to set break points for debugging.
  */
-static int _bio_result_free(bio_result_t *r)
+static int _bio_request_free(bio_request_t *u)
 {
 	trunk_request_t	*treq;
-	bio_request_t		*u;
 
-	if (!r->treq) return 0;
+	if (!u->treq) return 0;
 
-	treq = talloc_get_type_abort(r->treq, trunk_request_t);
-	u = treq->preq;
-	fr_assert(u == &r->u);
+	treq = talloc_get_type_abort(u->treq, trunk_request_t);
+	fr_assert(treq->preq == u);
 
-	fr_assert_msg(!u->ev, "bio_result_t freed with active timer");
+	fr_assert_msg(!u->ev, "bio_request_t freed with active timer");
 
 	if (u->ev) (void) fr_event_timer_delete(&u->ev);
 
@@ -2254,7 +2231,6 @@ static int _bio_result_free(bio_result_t *r)
 static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *inst, void *thread, request_t *request)
 {
 	bio_thread_t			*t = talloc_get_type_abort(thread, bio_thread_t);
-	bio_result_t			*r;
 	bio_request_t			*u;
 	trunk_request_t			*treq;
 	fr_retry_config_t const		*retry_config;
@@ -2270,13 +2246,12 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	treq = trunk_request_alloc(t->trunk, request);
 	if (!treq) RETURN_MODULE_FAIL;
 
-	MEM(r = talloc_zero(request, bio_result_t));
-	talloc_set_destructor(r, _bio_result_free);
+	MEM(u = talloc_zero(request, bio_request_t));
+	talloc_set_destructor(u, _bio_request_free);
 
 	/*
 	 *	Can't use compound literal - const issues.
 	 */
-	u = &r->u;
 	u->code = request->packet->code;
 	u->priority = request->async->priority;
 	u->recv_time = request->async->recv_time;
@@ -2284,9 +2259,9 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 
 	u->retry.count = 1;
 
-	r->rcode = RLM_MODULE_FAIL;
+	u->rcode = RLM_MODULE_FAIL;
 
-	switch(trunk_request_enqueue(&treq, t->trunk, request, u, r)) {
+	switch(trunk_request_enqueue(&treq, t->trunk, request, u, u)) {
 	case TRUNK_ENQUEUE_OK:
 	case TRUNK_ENQUEUE_IN_BACKLOG:
 		break;
@@ -2296,7 +2271,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	fail:
 		fr_assert(!u->rr && !u->packet);	/* Should not have been fed to the muxer */
 		trunk_request_free(&treq);		/* Return to the free list */
-		talloc_free(r);
+		talloc_free(u);
 		RETURN_MODULE_FAIL;
 
 	case TRUNK_ENQUEUE_DST_UNAVAILABLE:
@@ -2308,8 +2283,8 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 		goto fail;
 	}
 
-	r->treq = treq;	/* Remember for signalling purposes */
-	fr_assert(treq->rctx == r);
+	u->treq = treq;	/* Remember for signalling purposes */
+	fr_assert(treq->rctx == u);
 
 	/*
 	 *	Figure out if we're originating the packet or proxying it.  And also figure out if we have to
@@ -2374,7 +2349,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	 *	The event loop will take care of demux && sending the
 	 *	packet, along with any retransmissions.
 	 */
-	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, 0, r, retry_config);
+	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, 0, u, retry_config);
 }
 
 /** Instantiate thread data for the submodule.
