@@ -564,7 +564,7 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 	if (from_dir) {
 		cf_file_t my_file;
 		char const *r;
-		int dirfd;
+		int my_fd;
 
 		my_file.cs = cs;
 		my_file.filename = filename;
@@ -573,12 +573,12 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		 *	Find and open the directory containing filename so we can use
 		 * 	 the "at"functions to avoid time of check/time of use insecurities.
 		 */
-		if (fr_dirfd(&dirfd, &r, filename) < 0) {
+		if (fr_dirfd(&my_fd, &r, filename) < 0) {
 			ERROR("Failed to open directory containing %s", filename);
 			return -1;
 		}
 
-		if (fstatat(dirfd, r, &my_file.buf, 0) < 0) goto error;
+		if (fstatat(my_fd, r, &my_file.buf, 0) < 0) goto error;
 
 		file = fr_rb_find(tree, &my_file);
 
@@ -592,12 +592,12 @@ static int cf_file_open(CONF_SECTION *cs, char const *filename, bool from_dir, F
 		 *	$INCLUDE directory, then we read it again.
 		 */
 		if (file && !file->from_dir) {
-			if (dirfd != AT_FDCWD) close(dirfd);
+			if (my_fd != AT_FDCWD) close(my_fd);
 			return 1;
 		}
-		fd = openat(dirfd, r, O_RDONLY, 0);
+		fd = openat(my_fd, r, O_RDONLY, 0);
 		fp = (fd < 0) ? NULL : fdopen(fd, "r");
-		if (dirfd != AT_FDCWD) close(dirfd);
+		if (my_fd != AT_FDCWD) close(my_fd);
 	} else {
 		fp = fopen(filename, "r");
 		if (fp) fd = fileno(fp);
