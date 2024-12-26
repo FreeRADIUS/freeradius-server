@@ -1828,4 +1828,6 @@ done:
  *	digits for integer
  *	'string' for string
  *	h'HHHH' for octets
+ *
+ *	https://datatracker.ietf.org/doc/html/draft-ietf-cbor-edn-literals
  */

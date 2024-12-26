@@ -72,6 +72,7 @@ SOURCES		:= \
 		   proto.c \
 		   rand.c \
 		   rb.c \
+		   rb_expire.c \
 		   regex.c \
 		   retry.c \
 		   sbuff.c \
