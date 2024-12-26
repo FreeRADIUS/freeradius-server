@@ -101,12 +101,11 @@ radius {
 	#	- You CANNOT use the module "in place" as with normal proxying.
 	#	- It is only supported via the function %replicate.sendto.ipaddr(ipaddr, port, secret)
 	#
-	#  unconnected-proxy - proxy packets to dynamic destinations
-	#	- For unconnected UDP sockets only.
-	#       - It MUST have `transport = udp`
+	#  dynamic-proxy - proxy packets to dynamic destinations
+	#	- RFC 7585 dynamic DNS lookups are not supported
 	#	- It MUST have `src_ipaddr = *` and no `src_port`
 	#	- You CANNOT use the module "in place" as with normal proxying.
-	#	- It is only supported via the function %proxy.sendto.ipaddr(ipaddr, port, secret)
+	#	- Proxying is only supported via the function %proxy.sendto.ipaddr(ipaddr, port, secret)
 	#
 	#  The server can still be used to create (i.e. originate)
 	#  packets via this module when `mode = proxy` is set.  The
@@ -731,4 +730,183 @@ radius replicate {
 	#  The `pool` configuration is ignored, as is `status-check`,
 	#  along with all per-packet timeouts.
 	#
+}
+
+#
+#  A dynamic proxy module
+#
+radius proxy {
+	type = Access-Request
+
+	#
+	#  We are not opening a socket from our server to their
+	#  server.  We are replicating packets.
+	#
+	mode = dynamic-proxy
+
+	#
+	#  Both UDP and TCP are supported.
+	#
+	transport = udp
+
+	#
+	#  ### UDP Transport
+	#
+	udp {
+		#
+		#  src_ipaddr:: The source IP address used by the module.
+		#
+		src_ipaddr = *
+
+		#
+		#  `src_port` cannot be used.  If it is used here, the
+		#  module will refuse to start.  Instead, the module
+		#  will open a unique source port per thread.
+		#
+		#  `secret` cannot be used.  If it is used, the value
+		#  will be ignored.
+		#
+	}
+
+	#
+	#  ## Connection trunking
+	#
+	#  See above for documentation on connection trunking.
+	#
+	pool {
+		#
+		#  start:: Connections to create during module instantiation.
+		#
+		#  If the server cannot create specified number of connections during instantiation
+		#  it will exit.
+		#
+		#  Set to `0` to allow the server to start without the database being available.
+		#
+		start = 0
+
+		#
+		#  min:: Minimum number of connections to keep open.
+		#
+		min = 1
+
+		#
+		#  max:: Maximum number of connections.
+		#
+		#  If these connections are all in use and a new one is requested, the request
+		#  will NOT get a connection.
+		#
+		max = 8
+
+		#
+		#  connecting:: Maximum number of sockets to have in the "connecting" state.
+		#
+		#  If a home server goes down, the module will close
+		#  old / broken connections, and try to open new ones.
+		#  In order to avoid flooding the home server with
+		#  connection attempts, set the `connecting` value to
+		#  a small number.
+		#
+		connecting = 1
+
+		#
+		#  uses:: number of packets which will use the connection.
+		#
+		#  After `uses` packets have been sent the connection
+		#  will be closed, and a new one opened.  For no
+		#  limits, set `uses = 0`.
+		#
+		uses = 0
+
+		#
+		#  lifetime:: lifetime of a connection, in seconds.
+		#
+		#  After `lifetime` seconds have passed, no new
+		#  packets will be sent on the connection.  When all
+		#  replies have been received, the connection will be
+		#  closed.
+		#
+		#  For no limits, set `lifetime = 0`.
+		#
+		#  It is possible to use precise times, such as
+		#  `lifetime = 1.023`, or even qualifiers such as
+		#  `lifetime = 400ms`.
+		#
+		lifetime = 0
+
+		#
+		#  open_delay:: How long (in seconds) a connection
+		#  must be above `per_connection_target` before a new
+		#  connection is opened.
+		#
+		#  Parsing of this field is the same as for
+		#  `lifetime`.
+		#
+		open_delay = 0.2
+
+		#
+		#  close_delay:: How long (in seconds) a connection
+		#  must be below `per_connection_target` before a
+		#  connection is closed.
+		#
+		close_delay = 1.0
+
+		#
+		#  manage_interval:: How often (in seconds) the
+		#  connections are checked for limits, in order to
+		#  open / close connections.
+		#
+		manage_interval = 0.2
+
+		#
+		#  connection { ... }:: Per-connection configuration.
+		#
+		connection {
+			#
+			#  connection_timeout:: How long to wait
+			#  before giving up on a connection which is
+			#  being opened.
+			#
+			connection_timeout = 3.0
+
+			#
+			#  reconnect_delay:: If opening a connection
+			#  fails, or an open connection fails,
+			#  we wait `reconnect_delay` seconds before
+			#  attempting to open another
+			#  connection.
+			#
+			reconnect_delay = 5
+		}
+
+		#
+		#  request { ... }:: Per-request configuration.
+		#
+		request {
+			#
+			#  per_connection_max:: The maximum number of requests
+			#  which are "live" on a particular connection.
+			#
+			per_connection_max = 255
+
+			#
+			#  per_connection_target:: The target number
+			#  of requests which are "live" on a
+			#  particular connection.
+			#
+			#  There can be a balance between overloading
+			#  a connection, and under-utilizing it.  The
+			#  default is to fill each connection before
+			#  opening a new one.
+			#
+			per_connection_target = 255
+
+			#
+			#  free_delay:: How long to wait before
+			#  freeing internal resources associated with
+			#  the connection.
+			#
+			free_delay = 10
+		}
+
+	}
 }

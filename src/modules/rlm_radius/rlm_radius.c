@@ -118,6 +118,17 @@ static conf_parser_t const connected_config[] = {
 };
 
 /*
+ *	We only parse the pool options if we're connected.
+ */
+static conf_parser_t const pool_config[] = {
+	{ FR_CONF_POINTER("status_check", 0, CONF_FLAG_SUBSECTION, NULL), .subcs = (void const *) status_check_config },
+
+	{ FR_CONF_OFFSET_SUBSECTION("pool", 0, rlm_radius_t, trunk_conf, trunk_config ) },
+
+	CONF_PARSER_TERMINATOR
+};
+
+/*
  *	A mapping of configuration file names to internal variables.
  */
 static conf_parser_t const module_config[] = {
@@ -209,10 +220,10 @@ fr_dict_attr_autoload_t rlm_radius_dict_attr[] = {
 
 static fr_table_num_sorted_t mode_names[] = {
 	{ L("client"),		RLM_RADIUS_MODE_CLIENT   	},
+	{ L("dynamic-proxy"),	RLM_RADIUS_MODE_XLAT_PROXY  	},
 	{ L("proxy"),		RLM_RADIUS_MODE_PROXY    	},
 	{ L("replicate"),	RLM_RADIUS_MODE_REPLICATE   	},
 	{ L("unconnected-replicate"),	RLM_RADIUS_MODE_UNCONNECTED_REPLICATE  	},
-//	{ L("unconnected-proxy"),	RLM_RADIUS_MODE_UNCONNECTED_PROXY  	},
 };
 static size_t mode_names_len = NUM_ELEMENTS(mode_names);
 
@@ -234,6 +245,7 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	char const		*name = cf_pair_value(cf_item_to_pair(ci));
 	rlm_radius_mode_t	mode;
 	rlm_radius_t		*inst = talloc_get_type_abort(parent, rlm_radius_t);
+	CONF_SECTION		*cs = cf_item_to_section(cf_parent(ci));
 
 	mode = fr_table_value_by_str(mode_names, name, RLM_RADIUS_MODE_INVALID);
 
@@ -248,18 +260,25 @@ static int mode_parse(UNUSED TALLOC_CTX *ctx, void *out, void *parent,
 	*(rlm_radius_mode_t *) out = mode;
 
 	/*
-	 *	Normally we want connected sockets, in which case we push additional configuration for connected sockets.
+	 *	Normally we want connected sockets, in which case we push additional configuration for
+	 *	connected sockets.
 	 */
-	if ((mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
-	    (mode != RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
-		CONF_SECTION *cs = cf_item_to_section(cf_parent(ci));
-
+	switch (mode) {
+	default:
 		inst->fd_config.type = FR_BIO_FD_CONNECTED;
 
 		if (cf_section_rules_push(cs, connected_config) < 0) return -1;
+		break;
 
-	} else {
+	case RLM_RADIUS_MODE_XLAT_PROXY:
+		inst->fd_config.type = FR_BIO_FD_UNCONNECTED; /* reset later when the home server is allocated */
+
+		if (cf_section_rules_push(cs, pool_config) < 0) return -1;
+		break;
+
+	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE:
 		inst->fd_config.type = FR_BIO_FD_UNCONNECTED;
+		break;
 	}
 
 	return 0;
@@ -486,8 +505,11 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, module_ctx_t const *mctx, request_t *request)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
-	rlm_rcode_t		rcode;
+	bio_thread_t		*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
 	fr_client_t		*client;
+	int			rcode;
+	bio_request_t		*u = NULL;
+	fr_retry_config_t const	*retry_config = NULL;
 
 	if (!request->packet->code) {
 		REDEBUG("You MUST specify a packet code");
@@ -514,7 +536,7 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	or %radius.sendto(ip, port, secret)
 	 */
 	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
-	    (inst->mode == RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
+	    (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
 		REDEBUG("When using 'mode = unconnected-*', this module cannot be used in-place.  Instead, it must be called via a function call");
 		RETURN_MODULE_FAIL;
 	}
@@ -545,8 +567,11 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 	 *	return another code which indicates what happened to
 	 *	the request...
 	 */
-	return mod_enqueue(&rcode, inst,
-			   module_thread(mctx->mi)->data, request);
+	rcode = mod_enqueue(&u, &retry_config, inst, thread->ctx.trunk, request);
+	if (rcode == 0) RETURN_MODULE_NOOP;
+	if (rcode < 0) RETURN_MODULE_FAIL;
+
+	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, 0, u, retry_config);
 }
 
 
@@ -629,17 +654,19 @@ check_others:
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, >=, 64);
 	FR_INTEGER_BOUND_CHECK("max_packet_size", inst->max_packet_size, <=, 65535);
 
-	if ((inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
-	    (inst->mode != RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
+	if (inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) {
 		/*
 		 *	These limits are specific to RADIUS, and cannot be over-ridden
 		 */
 		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, >=, 2);
 		FR_INTEGER_BOUND_CHECK("trunk.per_connection_max", inst->trunk_conf.max_req_per_conn, <=, 255);
 		FR_INTEGER_BOUND_CHECK("trunk.per_connection_target", inst->trunk_conf.target_req_per_conn, <=, inst->trunk_conf.max_req_per_conn / 2);
-	} else {
+	}
+
+	if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
+	    (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
 		if (inst->fd_config.src_port != 0) {
-			cf_log_err(conf, "Cannot set 'src_port' when using 'mode = unconnected'");
+			cf_log_err(conf, "Cannot set 'src_port' when using this 'mode'");
 			return -1;
 		}
 	}
@@ -695,8 +722,8 @@ check_others:
 			inst->status_check = false;
 
 		} else if ((inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) ||
-			   (inst->mode == RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
-				   cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'mode = unconnected-*'",
+			   (inst->mode == RLM_RADIUS_MODE_XLAT_PROXY)) {
+				   cf_log_warn(conf, "Ignoring 'status_check = %s' due to 'mode' setting",
 				    fr_radius_packet_name[inst->status_check]);
 			inst->status_check = false;
 		}
@@ -842,8 +869,9 @@ static int mod_bootstrap(module_inst_ctx_t const *mctx)
 		xlat_func_args_set(xlat, xlat_radius_send_args);
 		break;
 
-	case RLM_RADIUS_MODE_UNCONNECTED_PROXY:
-		fr_assert(0);	/* not implemented */
+	case RLM_RADIUS_MODE_XLAT_PROXY:
+		xlat = module_rlm_xlat_register(mctx->mi->boot, mctx, "sendto.ipaddr", xlat_radius_client, FR_TYPE_UINT32);
+		xlat_func_args_set(xlat, xlat_radius_send_args);
 		break;
 
 	default:

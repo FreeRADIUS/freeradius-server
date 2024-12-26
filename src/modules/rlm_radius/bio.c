@@ -30,6 +30,7 @@
 #include <freeradius-devel/server/connection.h>
 #include <freeradius-devel/util/debug.h>
 #include <freeradius-devel/util/heap.h>
+#include <freeradius-devel/util/rb_expire.h>
 
 #include <sys/socket.h>
 
@@ -60,6 +61,7 @@ typedef struct {
 		fr_bio_t *fd;			//!< writing
 		fr_bio_fd_info_t const *info;	//!< for replication
 		uint32_t id;			//!< for replication
+		fr_rb_expire_t	expires;       	//!< for proxying / client sending
 	} bio;
 } bio_thread_t;
 
@@ -136,6 +138,14 @@ struct bio_request_s {
 	fr_retry_t		retry;			//!< retransmission timers
 };
 
+typedef struct {
+	bio_handle_ctx_t	ctx;		//!< for copying to bio_handle_t
+
+	fr_bio_fd_config_t	fd_config;	//!< fil descriptor configuration
+
+	fr_rb_expire_node_t	expire;
+} home_server_t;
+
 /** Turn a reply code into a module rcode;
  *
  */
@@ -167,11 +177,11 @@ static fr_radius_decode_fail_t	decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 
 static void		protocol_error_reply(bio_request_t *u, bio_handle_t *h);
 
-static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mctx, UNUSED request_t *request);
-static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action);
 static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h);
 
 static int _bio_request_free(bio_request_t *u);
+
+static int8_t home_server_cmp(void const *one, void const *two);
 
 #ifndef NDEBUG
 /** Log additional information about a tracking entry
@@ -609,22 +619,9 @@ static int _bio_handle_free(bio_handle_t *h)
 
 	if (h->status_u) fr_event_timer_delete(&h->status_u->ev);
 
-	fr_event_fd_delete(h->ctx.el, h->fd, FR_EVENT_FILTER_IO);
-
-	if (shutdown(h->fd, SHUT_RDWR) < 0) {
-		DEBUG3("%s - Failed shutting down connection %s: %s",
-		       h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
-	}
-
 	/*
-	 *	@todo - free the BIOs?
+	 *	The connection code will take care of deleting the FD from the event loop.
 	 */
-	if (close(h->fd) < 0) {
-		DEBUG3("%s - Failed closing connection %s: %s",
-		       h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
-	}
-
-	h->fd = -1;
 
 	DEBUG("%s - Connection closed - %s", h->ctx.module_name, h->fd_info->name);
 
@@ -2142,11 +2139,19 @@ static unlang_action_t mod_resume(rlm_rcode_t *p_result, module_ctx_t const *mct
 	RETURN_MODULE_RCODE(rcode);
 }
 
+static void do_signal(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_signal_t action);
+
 static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_signal_t action)
 {
 	rlm_radius_t const	*inst = talloc_get_type_abort_const(mctx->mi->data, rlm_radius_t);
 
 	bio_request_t		*u = talloc_get_type_abort(mctx->rctx, bio_request_t);
+
+	do_signal(inst, u, request, action);
+}
+
+static void do_signal(rlm_radius_t const *inst, bio_request_t *u, UNUSED request_t *request, fr_signal_t action)
+{
 	bio_handle_t		*h;
 
 	/*
@@ -2166,10 +2171,7 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	 *	unlang_request_is_scheduled will return false
 	 *	(don't use it).
 	 */
-	if (!u->treq) {
-		talloc_free(u);
-		return;
-	}
+	if (!u->treq) return;
 
 	switch (action) {
 	/*
@@ -2179,7 +2181,6 @@ static void mod_signal(module_ctx_t const *mctx, UNUSED request_t *request, fr_s
 	case FR_SIGNAL_CANCEL:
 		trunk_request_signal_cancel(u->treq);
 		u->treq = NULL;
-		talloc_free(u);		/* Should be freed soon anyway, but better to be explicit */
 		return;
 
 	/*
@@ -2234,9 +2235,9 @@ static int _bio_request_free(bio_request_t *u)
 	return 0;
 }
 
-static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *inst, void *thread, request_t *request)
+static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_config,
+		       rlm_radius_t const *inst, trunk_t *trunk, request_t *request)
 {
-	bio_thread_t			*t = talloc_get_type_abort(thread, bio_thread_t);
 	bio_request_t			*u;
 	trunk_request_t			*treq;
 	fr_retry_config_t const		*retry_config;
@@ -2246,11 +2247,14 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 
 	if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) {
 		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
-		RETURN_MODULE_NOOP;
+		return 0;
 	}
 
-	treq = trunk_request_alloc(t->ctx.trunk, request);
-	if (!treq) RETURN_MODULE_FAIL;
+	treq = trunk_request_alloc(trunk, request);
+	if (!treq) {
+		REDEBUG("Failed allocating handler for request");
+		return -1;
+	}
 
 	MEM(u = talloc_zero(request, bio_request_t));
 	talloc_set_destructor(u, _bio_request_free);
@@ -2267,7 +2271,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 
 	u->rcode = RLM_MODULE_FAIL;
 
-	switch(trunk_request_enqueue(&treq, t->ctx.trunk, request, u, u)) {
+	switch(trunk_request_enqueue(&treq, trunk, request, u, u)) {
 	case TRUNK_ENQUEUE_OK:
 	case TRUNK_ENQUEUE_IN_BACKLOG:
 		break;
@@ -2278,7 +2282,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 		fr_assert(!u->rr && !u->packet);	/* Should not have been fed to the muxer */
 		trunk_request_free(&treq);		/* Return to the free list */
 		talloc_free(u);
-		RETURN_MODULE_FAIL;
+		return -1;
 
 	case TRUNK_ENQUEUE_DST_UNAVAILABLE:
 		REDEBUG("All destinations are down - cannot send packet");
@@ -2299,8 +2303,8 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	switch (inst->mode) {
 	case RLM_RADIUS_MODE_INVALID:
 	case RLM_RADIUS_MODE_UNCONNECTED_REPLICATE: /* unconnected sockets are UDP, and bypass the trunk */
-	case RLM_RADIUS_MODE_UNCONNECTED_PROXY: /* unconnected sockets are UDP, and bypass the trunk */
-		RETURN_MODULE_FAIL;
+		REDEBUG("Internal sanity check failed - connection trunking cannot be used for replication");
+		return -1;
 
 		/*
 		 *	We originate this packet if it was taken from the detail module, which doesn't have a
@@ -2313,6 +2317,7 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 		 *	packet code.  This lets us receive Accounting-Request, and originate
 		 *	Disconnect-Request.
 		 */
+	case RLM_RADIUS_MODE_XLAT_PROXY:
 	case RLM_RADIUS_MODE_PROXY:
 		if (!request->parent) {
 			u->proxied = (request->client->cs != NULL);
@@ -2355,8 +2360,24 @@ static unlang_action_t mod_enqueue(rlm_rcode_t *p_result, rlm_radius_t const *in
 	 *	The event loop will take care of demux && sending the
 	 *	packet, along with any retransmissions.
 	 */
-	return unlang_module_yield_to_retry(request, mod_resume, mod_retry, mod_signal, 0, u, retry_config);
+	*p_u = u;
+	*p_retry_config = retry_config;
+
+	return 1;
 }
+
+static const trunk_io_funcs_t	io_funcs = {
+	.connection_alloc = thread_conn_alloc,
+	.connection_notify = thread_conn_notify,
+	.request_prioritise = request_prioritise,
+	.request_mux = request_mux,
+	.request_demux = request_demux,
+	.request_conn_release = request_conn_release,
+	.request_complete = request_complete,
+	.request_fail = request_fail,
+	.request_cancel = request_cancel,
+};
+
 
 /** Instantiate thread data for the submodule.
  *
@@ -2366,31 +2387,22 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	rlm_radius_t		*inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
 	bio_thread_t		*thread = talloc_get_type_abort(mctx->thread, bio_thread_t);
 
-	static trunk_io_funcs_t	io_funcs = {
-						.connection_alloc = thread_conn_alloc,
-						.connection_notify = thread_conn_notify,
-						.request_prioritise = request_prioritise,
-						.request_mux = request_mux,
-						.request_demux = request_demux,
-						.request_conn_release = request_conn_release,
-						.request_complete = request_complete,
-						.request_fail = request_fail,
-						.request_cancel = request_cancel,
-					};
-
 	thread->ctx.el = mctx->el;
 	thread->ctx.inst = inst;
 	thread->ctx.fd_config = &inst->fd_config;
 	thread->ctx.radius_ctx = inst->common_ctx;
 
 	if ((inst->mode != RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) &&
-	    (inst->mode != RLM_RADIUS_MODE_UNCONNECTED_PROXY)) {
+	    (inst->mode != RLM_RADIUS_MODE_XLAT_PROXY)) {
 		thread->ctx.trunk = trunk_alloc(thread, mctx->el, &io_funcs,
 					    &inst->trunk_conf, inst->name, thread, false);
 		if (!thread->ctx.trunk) return -1;
 		return 0;
 	}
 
+	/*
+	 *	Allocate the unconnected replication socket.
+	 */
 	thread->bio.fd = fr_bio_fd_alloc(thread, &thread->ctx.inst->fd_config, 0);
 	if (!thread->bio.fd) {
 		PERROR("%s - failed opening socket - ", inst->name);
@@ -2407,9 +2419,16 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 		(void) fr_bio_fd_write_only(thread->bio.fd);
 
 		DEBUG("%s - Opened unconnected replication socket %s", inst->name, thread->bio.info->name);
-	} else {
-		DEBUG("%s - Opened unconnected proxy socket %s", inst->name, thread->bio.info->name);
+		return 0;
 	}
+
+	DEBUG("%s - Opened unconnected proxy socket %s", inst->name, thread->bio.info->name);
+
+	/*
+	 *	@todo - make lifetime configurable?
+	 */
+	fr_rb_expire_inline_talloc_init(&thread->bio.expires, home_server_t, expire, home_server_cmp, NULL,
+					fr_time_delta_from_sec(60));
 
 	return 0;
 }
@@ -2515,4 +2534,162 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	No return value.
 	 */
 	return XLAT_ACTION_DONE;
+}
+
+// **********************************************************************
+
+/** Dynamic home server code
+ *
+ */
+
+static int8_t home_server_cmp(void const *one, void const *two)
+{
+	home_server_t const *a = one;
+	home_server_t const *b = two;
+	int8_t rcode;
+
+	rcode = fr_ipaddr_cmp(&a->fd_config.dst_ipaddr, &b->fd_config.dst_ipaddr);
+	if (rcode != 0) return rcode;
+
+	return CMP(a->fd_config.dst_port, b->fd_config.dst_port);
+}
+
+static xlat_action_t xlat_sendto_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
+					xlat_ctx_t const *xctx,
+					UNUSED request_t *request, UNUSED fr_value_box_list_t *in)
+{
+	bio_request_t	*u = talloc_get_type_abort(xctx->rctx, bio_request_t);
+	fr_value_box_t *dst;
+
+	if (u->rcode == RLM_MODULE_FAIL) return XLAT_ACTION_FAIL;
+
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL)); /* @todo - attr for rcode? */
+	dst->vb_uint32 = u->rcode;
+
+	fr_dcursor_append(out, dst);
+
+	return XLAT_ACTION_DONE;
+}
+
+static void xlat_sendto_signal(xlat_ctx_t const *xctx, request_t *request, fr_signal_t action)
+{
+	rlm_radius_t const     	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_radius_t);
+	bio_request_t   	*u = talloc_get_type_abort(xctx->rctx, bio_request_t);
+
+	do_signal(inst, u, request, action);
+}
+
+/*
+ *	@todo - change this to mod_retry
+ */
+static void xlat_sendto_timeout(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_time_t fired)
+{
+//	rlm_radius_t const     	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_radius_t);
+	bio_request_t   	*u = talloc_get_type_abort(xctx->rctx, bio_request_t);
+
+	RDEBUG2("XXX Timeout sending packet");
+
+	fr_assert(u->treq != NULL);
+
+	u->rcode = RLM_MODULE_FAIL;
+	trunk_request_signal_fail(u->treq);
+
+	unlang_interpret_mark_runnable(request);
+}
+
+/*
+ *	%proxy.sendto.ipaddr(ipaddr, port, secret)
+ */
+static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcursor_t *out,
+					xlat_ctx_t const *xctx,
+					request_t *request, fr_value_box_list_t *args)
+{
+	rlm_radius_t const     	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_radius_t);
+	bio_thread_t		*thread = talloc_get_type_abort(xctx->mctx->thread, bio_thread_t);
+	fr_value_box_t		*ipaddr, *port, *secret;
+	home_server_t		*home;
+	bio_request_t		*u = NULL;
+	fr_retry_config_t const	*retry_config = NULL;
+	fr_time_t		timeout;
+	int			rcode;
+
+	XLAT_ARGS(args, &ipaddr, &port, &secret);
+
+	/*
+	 *	Can't change IP address families.
+	 */
+	if (ipaddr->vb_ip.af != thread->bio.info->socket.af) {
+		RDEBUG("Invalid destination IP address family in %pV", ipaddr);
+		return -1;
+	}
+
+	home = fr_rb_find(&thread->bio.expires.tree, &(home_server_t) {
+			.fd_config = (fr_bio_fd_config_t) {
+				.dst_ipaddr = ipaddr->vb_ip,
+				.dst_port = port->vb_uint16,
+			},
+		});
+	if (!home) {
+		MEM(home = talloc(thread, home_server_t));
+
+		*home = (home_server_t) {
+			.ctx = (bio_handle_ctx_t) {
+				.el = unlang_interpret_event_list(request),
+				.module_name = inst->name,
+				.inst = inst,
+			},
+		};
+
+		home->fd_config = inst->fd_config;
+		home->ctx.fd_config = &home->fd_config;
+
+		home->fd_config.type = FR_BIO_FD_CONNECTED;
+		home->fd_config.dst_ipaddr = ipaddr->vb_ip;
+		home->fd_config.dst_port = port->vb_uint32;
+
+		home->ctx.radius_ctx = (fr_radius_ctx_t) {
+			.secret = talloc_strdup(home, secret->vb_strvalue),
+			.secret_length = secret->vb_length,
+			.proxy_state = inst->common_ctx.proxy_state,
+		};
+
+		/*
+		 *	Allocate the trunk and start it up.
+		 */
+		home->ctx.trunk = trunk_alloc(thread, unlang_interpret_event_list(request), &io_funcs,
+					      &inst->trunk_conf, inst->name, home, false);
+		if (!home->ctx.trunk) {
+		fail:
+			talloc_free(home);
+			return XLAT_ACTION_FAIL;
+		}
+
+		if (!fr_rb_expire_insert(&thread->bio.expires, home, fr_time())) goto fail;
+	} else {
+		fr_rb_expire_update(&thread->bio.expires, home, fr_time());
+
+		/*
+		 *	@todo - expire old entries, but only if they're not used?
+		 */
+	}
+
+	/*
+	 *	Enqueue the packet on the per-home-server trunk.
+	 */
+	rcode = mod_enqueue(&u, &retry_config, inst, home->ctx.trunk, request);
+	if (rcode <= 0) {
+		REDEBUG("Failed enqueuing packet");
+		return XLAT_ACTION_FAIL;
+	}
+	fr_assert(u != NULL);
+	fr_assert(retry_config != NULL);
+
+	timeout = fr_time_add(fr_time(), fr_time_delta_from_sec(2));
+
+	if (unlang_xlat_timeout_add(request, xlat_sendto_timeout, u, timeout) < 0) {
+		RPEDEBUG("Adding event failed");
+		return XLAT_ACTION_FAIL;
+	}
+
+	return unlang_xlat_yield(request, xlat_sendto_resume, xlat_sendto_signal, ~(FR_SIGNAL_CANCEL | FR_SIGNAL_DUP), u);
 }
