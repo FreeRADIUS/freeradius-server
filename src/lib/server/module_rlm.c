@@ -1236,12 +1236,17 @@ int modules_rlm_bootstrap(CONF_SECTION *root)
 		static_cs = cf_section_alloc(modules, NULL, "static", NULL);
 		cf_section_foreach(modules, mod_cs) {
 			CONF_ITEM *prev;
+			char const *name1 = cf_section_name1(mod_cs);
 
 			/*
 			 *	Skip over the dynamic section
 			 */
-			if ((strcmp(cf_section_name1(mod_cs), "dynamic") == 0) &&
-			    cf_section_name2(mod_cs) == NULL) continue;
+			if ((strcmp(name1, "dynamic") == 0) && !cf_section_name2(mod_cs)) continue;
+
+			/*
+			 *	Ignore this section if it is commented out with a magic name.
+			 */
+			if (*name1 == '-') continue;
 
 			/*
 			 *	Move all modules which are not in
