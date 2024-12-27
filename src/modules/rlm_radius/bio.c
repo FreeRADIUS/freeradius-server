@@ -1517,7 +1517,6 @@ static void request_mux(UNUSED fr_event_list_t *el,
 {
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 	trunk_request_t		*treq;
-	bio_request_t		*u;
 	request_t		*request;
 
 	if (unlikely(trunk_connection_pop_request(&treq, tconn) < 0)) return;
@@ -1528,42 +1527,6 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	if (!treq) return;
 
 	request = treq->request;
-
-	u = treq->preq;
-	fr_assert(u != NULL);
-
-	/*
-	 *	Warn people about misconfigurations and loops.
-	 *
-	 *	There should _never_ be two instances of the same Proxy-State in the packet.
-	 */
-	if (RDEBUG_ENABLED && u->proxied) {
-		unsigned int count = 0;
-
-		fr_pair_list_foreach(&request->request_pairs, vp) {
-			if (vp->vp_length != sizeof(h->ctx.radius_ctx.proxy_state)) continue;
-
-			if (memcmp(vp->vp_octets, &h->ctx.radius_ctx.proxy_state,
-				   sizeof(h->ctx.radius_ctx.proxy_state)) == 0) {
-
-				/*
-				 *	Cancel proxying when there are two instances of the same Proxy-State
-				 *	in the packet.  This limitation could be configurable, but it likely
-				 *	doesn't make sense to make it configurable.
-				 */
-				if (count == 1) {
-					RWARN("Canceling proxy due to loop of multiple %pV", vp);
-					trunk_request_signal_cancel(treq);
-					u->treq = NULL;
-					return;
-				}
-
-				RWARN("Proxied packet contains our own %pV", vp);
-				RWARN("Check if there is a proxy loop.  Perhaps the server has been configured to proxy to itself.");
-				count++;
-			}
-		}
-	}
 
 	mod_write(request, treq, h);
 }
@@ -2320,10 +2283,12 @@ static int mod_enqueue(bio_request_t **p_u, fr_retry_config_t const **p_retry_co
 	fr_assert(request->packet->code > 0);
 	fr_assert(request->packet->code < FR_RADIUS_CODE_MAX);
 
-	if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) {
-		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
-		return 0;
-	}
+	/*
+	 *	Do any necessary RADIUS level fixups
+	 *	- check Proxy-State
+	 *	- do CHAP-Challenge fixups
+	 */
+	if (radius_fixups(inst, request) < 0) return 0;
 
 	treq = trunk_request_alloc(trunk, request);
 	if (!treq) {
@@ -2694,7 +2659,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	 */
 	if (ipaddr->vb_ip.af != thread->bio.info->socket.af) {
 		RDEBUG("Invalid destination IP address family in %pV", ipaddr);
-		return -1;
+		return XLAT_ACTION_DONE;
 	}
 
 	home = fr_rb_find(&thread->bio.expires.tree, &(home_server_t) {
@@ -2778,7 +2743,9 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	 *	Enqueue the packet on the per-home-server trunk.
 	 */
 	rcode = mod_enqueue(&u, &retry_config, inst, home->ctx.trunk, request);
-	if (rcode <= 0) {
+	if (rcode == 0) return XLAT_ACTION_DONE;
+
+	if (rcode < 0) {
 		REDEBUG("Failed enqueuing packet");
 		return XLAT_ACTION_FAIL;
 	}

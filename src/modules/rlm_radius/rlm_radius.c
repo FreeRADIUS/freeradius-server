@@ -36,6 +36,7 @@ static int mode_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM
 static int type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int status_check_type_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int radius_fixups(rlm_radius_t const *inst, request_t *request);
 
 static conf_parser_t const status_check_config[] = {
 	{ FR_CONF_OFFSET_TYPE_FLAGS("type", FR_TYPE_VOID, 0, rlm_radius_t, status_check),
@@ -461,35 +462,64 @@ static int status_check_update_parse(TALLOC_CTX *ctx, void *out, UNUSED void *pa
 /** Do any RADIUS-layer fixups for proxying.
  *
  */
-static void radius_fixups(rlm_radius_t const *inst, request_t *request)
+static int radius_fixups(rlm_radius_t const *inst, request_t *request)
 {
 	fr_pair_t *vp;
 
+	if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) {
+		RWDEBUG("Status-Server is reserved for internal use, and cannot be sent manually.");
+		return 0;
+	}
+
+	if (!inst->allowed[request->packet->code]) {
+		REDEBUG("Packet code %s is disallowed by the configuration",
+		       fr_radius_packet_name[request->packet->code]);
+		return -1;
+	}
+
 	/*
 	 *	Check for proxy loops.
+	 *
+	 *	There should _never_ be two instances of the same Proxy-State in the packet.
 	 */
 	if ((inst->mode == RLM_RADIUS_MODE_PROXY) && RDEBUG_ENABLED) {
+		unsigned int count = 0;
 		fr_dcursor_t cursor;
 
 		for (vp = fr_pair_dcursor_by_da_init(&cursor, &request->request_pairs, attr_proxy_state);
 		     vp;
 		     vp = fr_dcursor_next(&cursor)) {
-			if (vp->vp_length != 4) continue;
+			if (vp->vp_length != sizeof(inst->common_ctx.proxy_state)) continue;
 
-			if (memcmp(&inst->common_ctx.proxy_state, vp->vp_octets, 4) == 0) {
-				RWARN("Possible proxy loop - please check server configuration.");
-				break;
+			if (memcmp(vp->vp_octets, &inst->common_ctx.proxy_state,
+				   sizeof(inst->common_ctx.proxy_state)) == 0) {
+
+				/*
+				 *	Cancel proxying when there are two instances of the same Proxy-State
+				 *	in the packet.  This limitation could be configurable, but it likely
+				 *	doesn't make sense to make it configurable.
+				 */
+				if (count == 1) {
+					RWARN("Canceling proxy due to loop of multiple %pV", vp);
+					return -1;
+				}
+
+				RWARN("Proxied packet contains our own %pV", vp);
+				RWARN("Check if there is a proxy loop.  Perhaps the server has been configured to proxy to itself.");
+				count++;
 			}
 		}
 	}
 
-	if (request->packet->code != FR_RADIUS_CODE_ACCESS_REQUEST) return;
+	if (request->packet->code != FR_RADIUS_CODE_ACCESS_REQUEST) return 0;
 
 	if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_password) &&
 	    !fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_challenge)) {
 	    	MEM(pair_append_request(&vp, attr_chap_challenge) >= 0);
 		fr_pair_value_memdup(vp, request->packet->vector, sizeof(request->packet->vector), true);
 	}
+
+	return 0;
 }
 
 
@@ -510,15 +540,6 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		RETURN_MODULE_FAIL;
 	}
 
-	/*
-	 *	Reserve Status-Server for ourselves, for link-specific
-	 *	signaling.
-	 */
-	if (request->packet->code == FR_RADIUS_CODE_STATUS_SERVER) {
-		REDEBUG("Cannot proxy Status-Server packets");
-		RETURN_MODULE_FAIL;
-	}
-
 	if ((request->packet->code >= FR_RADIUS_CODE_MAX) ||
 	    !fr_time_delta_ispos(inst->retry[request->packet->code].irt)) { /* can't be zero */
 		REDEBUG("Invalid packet code %u", request->packet->code);
@@ -535,24 +556,11 @@ static unlang_action_t CC_HINT(nonnull) mod_process(rlm_rcode_t *p_result, modul
 		RETURN_MODULE_FAIL;
 	}
 
-	if (!inst->allowed[request->packet->code]) {
-		REDEBUG("Packet code %s is disallowed by the configuration",
-		       fr_radius_packet_name[request->packet->code]);
-		RETURN_MODULE_FAIL;
-	}
-
 	client = client_from_request(request);
 	if (client && client->dynamic && !client->active) {
 		REDEBUG("Cannot proxy packets which define dynamic clients");
 		RETURN_MODULE_FAIL;
 	}
-
-	/*
-	 *	Do any necessary RADIUS level fixups
-	 *	- check Proxy-State
-	 *	- do CHAP-Challenge fixups
-	 */
-	radius_fixups(inst, request);
 
 	/*
 	 *	Push the request and it's data to the IO submodule.
