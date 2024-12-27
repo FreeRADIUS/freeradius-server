@@ -2598,7 +2598,7 @@ static xlat_action_t xlat_sendto_resume(TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 	if (u->rcode == RLM_MODULE_FAIL) return XLAT_ACTION_FAIL;
 
-	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_UINT32, NULL)); /* @todo - attr for rcode? */
+	MEM(dst = fr_value_box_alloc(ctx, FR_TYPE_UINT32, attr_packet_type));
 	dst->vb_uint32 = u->rcode;
 
 	fr_dcursor_append(out, dst);
