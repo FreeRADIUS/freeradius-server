@@ -31,59 +31,32 @@ RCSIDH(stats_h, "$Id$")
 extern "C" {
 #endif
 
-#ifdef WITH_STATS_64BIT
-typedef uint64_t fr_uint_t;
-#else
-typedef uint32_t fr_uint_t;
-#endif
-
-#ifdef WITH_STATS
 typedef struct {
-	fr_uint_t	total_requests;
-	fr_uint_t	total_invalid_requests;
-	fr_uint_t	total_dup_requests;
-	fr_uint_t	total_responses;
-	fr_uint_t	total_access_accepts;
-	fr_uint_t	total_access_rejects;
-	fr_uint_t	total_access_challenges;
-	fr_uint_t	total_malformed_requests;
-	fr_uint_t	total_bad_authenticators;
-	fr_uint_t	total_packets_dropped;
-	fr_uint_t	total_no_records;
-	fr_uint_t	total_unknown_types;
-	fr_uint_t	total_timeouts;
+	uint64_t	total_requests;
+	uint64_t	total_invalid_requests;
+	uint64_t	total_dup_requests;
+	uint64_t	total_responses;
+	uint64_t	total_access_accepts;
+	uint64_t	total_access_rejects;
+	uint64_t	total_access_challenges;
+	uint64_t	total_malformed_requests;
+	uint64_t	total_bad_authenticators;
+	uint64_t	total_packets_dropped;
+	uint64_t	total_no_records;
+	uint64_t	total_unknown_types;
+	uint64_t	total_timeouts;
 	time_t		last_packet;
-	fr_uint_t	elapsed[8];
+	uint64_t	elapsed[8];
 } fr_stats_t;
-
-typedef struct {
-	uint32_t	window;
-
-	uint32_t	f1, f10;
-	uint32_t	ema1, ema10;
-} fr_stats_ema_t;
 
 extern fr_stats_t	radius_auth_stats;
 extern fr_stats_t	radius_acct_stats;
 
-void radius_stats_init(int flag);
 void request_stats_final(request_t *request);
-void radius_stats_ema(fr_stats_ema_t *ema,
-		      fr_time_t start, fr_time_t end);
 void fr_stats_bins(fr_stats_t *stats, fr_time_t start, fr_time_t end);
 
 #define FR_STATS_INC(_x, _y) radius_ ## _x ## _stats._y++;if (listener) listener->stats._y++;if (client) client->_x._y++;
 #define FR_STATS_TYPE_INC(_x) _x++
-
-#else  /* WITH_STATS */
-#define request_stats_init(_x)
-#define request_stats_final(_x)
-#define fr_stats_bins(_x, _y, _z)
-
-#define FR_STATS_INC(_x, _y)
-#define FR_STATS_TYPE_INC(_x)
-
-#endif
 
 #ifdef __cplusplus
 }

@@ -932,10 +932,6 @@ int main(int argc, char *argv[])
 	if (fr_set_signal(SIGHUP, sig_hup) < 0) goto set_signal_error;
 	if (fr_set_signal(SIGTERM, sig_fatal) < 0) goto set_signal_error;
 
-#ifdef WITH_STATS
-	radius_stats_init(0);
-#endif
-
 	/*
 	 *  Write the PID after we've forked, so that we write the correct one.
 	 */
@@ -1004,9 +1000,6 @@ int main(int argc, char *argv[])
 	 */
 	INFO("Ready to process requests");	/* we were actually ready a while ago, but oh well */
 	while ((status = main_loop_start()) == 0x80) {
-#ifdef WITH_STATS
-		radius_stats_init(1);
-#endif
 		main_config_hup(config);
 	}
 
