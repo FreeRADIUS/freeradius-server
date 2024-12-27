@@ -1426,17 +1426,24 @@ static void mod_dup(request_t *request, bio_request_t *u)
 	mod_write(request, u->treq, h);
 }
 
-/** Handle retries.
+static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_retry_t const *retry);
+
+/** Handle module retries.
  *
  */
 static void mod_retry(module_ctx_t const *mctx, request_t *request, fr_retry_t const *retry)
 {
 	bio_request_t		*u = talloc_get_type_abort(mctx->rctx, bio_request_t);
 	rlm_radius_t const     	*inst = talloc_get_type_abort(mctx->mi->data, rlm_radius_t);
-	fr_time_t		now = retry->updated;
 
+	do_retry(inst, u, request, retry);
+}
+
+static void do_retry(rlm_radius_t const *inst, bio_request_t *u, request_t *request, fr_retry_t const *retry)
+{
 	trunk_request_t		*treq = talloc_get_type_abort(u->treq, trunk_request_t);
 	trunk_connection_t	*tconn = treq->tconn;
+	fr_time_t		now = retry->updated;
 
 	fr_assert(request == treq->request);
 	fr_assert(treq->preq);						/* Must still have a protocol request */
@@ -2657,18 +2664,12 @@ static void xlat_sendto_signal(xlat_ctx_t const *xctx, request_t *request, fr_si
 /*
  *	@todo - change this to mod_retry
  */
-static void xlat_sendto_timeout(xlat_ctx_t const *xctx, request_t *request, UNUSED fr_time_t fired)
+static void xlat_sendto_retry(xlat_ctx_t const *xctx, request_t *request, fr_retry_t const *retry)
 {
+	rlm_radius_t const     	*inst = talloc_get_type_abort(xctx->mctx->mi->data, rlm_radius_t);
 	bio_request_t   	*u = talloc_get_type_abort(xctx->rctx, bio_request_t);
 
-	RDEBUG2("XXX Timeout sending packet");
-
-	fr_assert(u->treq != NULL);
-
-	u->rcode = RLM_MODULE_FAIL;
-	trunk_request_signal_fail(u->treq);
-
-	unlang_interpret_mark_runnable(request);
+	do_retry(inst, u, request, retry);
 }
 
 /*
@@ -2684,7 +2685,6 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	home_server_t		*home;
 	bio_request_t		*u = NULL;
 	fr_retry_config_t const	*retry_config = NULL;
-	fr_time_t		timeout;
 	int			rcode;
 
 	XLAT_ARGS(args, &ipaddr, &port, &secret);
@@ -2792,12 +2792,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	 */
 	fr_retry_init(&u->retry, fr_time(), retry_config);
 
-	timeout = fr_time_add(fr_time(), fr_time_delta_from_sec(2));
-
-	if (unlang_xlat_timeout_add(request, xlat_sendto_timeout, u, timeout) < 0) {
-		RPEDEBUG("Adding event failed");
-		return XLAT_ACTION_FAIL;
-	}
-
-	return unlang_xlat_yield(request, xlat_sendto_resume, xlat_sendto_signal, ~(FR_SIGNAL_CANCEL | FR_SIGNAL_DUP), u);
+	return unlang_xlat_yield_to_retry(request, xlat_sendto_resume, xlat_sendto_retry,
+					  xlat_sendto_signal, ~(FR_SIGNAL_CANCEL | FR_SIGNAL_DUP),
+					  u, retry_config);
 }

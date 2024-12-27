@@ -483,12 +483,6 @@ static void radius_fixups(rlm_radius_t const *inst, request_t *request)
 		}
 	}
 
-	/*
-	 *	@todo - check for proxy loops for client && replicate, too.
-	 *
-	 *	This only catches "self loops", but it may be worth doing.
-	 */
-
 	if (request->packet->code != FR_RADIUS_CODE_ACCESS_REQUEST) return;
 
 	if (fr_pair_find_by_da(&request->request_pairs, NULL, attr_chap_password) &&
