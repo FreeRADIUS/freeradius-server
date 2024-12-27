@@ -1510,6 +1510,8 @@ static void request_mux(UNUSED fr_event_list_t *el,
 {
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 	trunk_request_t		*treq;
+	bio_request_t		*u;
+	request_t		*request;
 
 	if (unlikely(trunk_connection_pop_request(&treq, tconn) < 0)) return;
 
@@ -1518,7 +1520,29 @@ static void request_mux(UNUSED fr_event_list_t *el,
 	 */
 	if (!treq) return;
 
-	mod_write(treq->request, treq, h);
+	request = treq->request;
+
+	u = treq->preq;
+	fr_assert(u != NULL);
+
+	/*
+	 *	Warn people about misconfigurations and loops.
+	 */
+	if (RDEBUG_ENABLED && u->proxied) {
+		fr_pair_list_foreach(&request->request_pairs, vp) {
+			if (vp->vp_length != sizeof(h->ctx.radius_ctx.proxy_state)) continue;
+
+			if (memcmp(vp->vp_octets, &h->ctx.radius_ctx.proxy_state,
+				   sizeof(h->ctx.radius_ctx.proxy_state)) == 0) {
+				RWARN("Proxied packet contains our own %pV", vp);
+				RWARN("Check if there is a proxy loop.  Perhaps the server has been configured to proxy to itself.");
+				break;
+			}
+		}
+	}
+
+
+	mod_write(request, treq, h);
 }
 
 static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h)
