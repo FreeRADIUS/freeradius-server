@@ -1070,7 +1070,7 @@ ssize_t fr_radius_encode(fr_dbuff_t *dbuff, fr_pair_list_t *vps, fr_radius_encod
 	 *	Add Proxy-State to the end of the packet if the caller requested it.
 	 */
 	if (packet_ctx->add_proxy_state) {
-		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_PROXY_STATE, 6);
+		FR_DBUFF_IN_BYTES_RETURN(&work_dbuff, FR_PROXY_STATE, (uint8_t) (2 + sizeof(packet_ctx->common->proxy_state)));
 		FR_DBUFF_IN_RETURN(&work_dbuff, packet_ctx->common->proxy_state);
 	}
 

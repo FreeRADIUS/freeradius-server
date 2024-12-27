@@ -1243,7 +1243,7 @@ static int encode(bio_handle_t *h, request_t *request, bio_request_t *u, uint8_t
 		MEM(vp = fr_pair_afrom_da(u->packet, attr_proxy_state));
 		fr_pair_value_memdup(vp, (uint8_t const *) &inst->common_ctx.proxy_state, sizeof(inst->common_ctx.proxy_state), false);
 		fr_pair_append(&u->extra, vp);
-		packet_len += 6;
+		packet_len += 2 + sizeof(inst->common_ctx.proxy_state);
 	}
 
 	/*
@@ -1527,20 +1527,36 @@ static void request_mux(UNUSED fr_event_list_t *el,
 
 	/*
 	 *	Warn people about misconfigurations and loops.
+	 *
+	 *	There should _never_ be two instances of the same Proxy-State in the packet.
 	 */
 	if (RDEBUG_ENABLED && u->proxied) {
+		unsigned int count = 0;
+
 		fr_pair_list_foreach(&request->request_pairs, vp) {
 			if (vp->vp_length != sizeof(h->ctx.radius_ctx.proxy_state)) continue;
 
 			if (memcmp(vp->vp_octets, &h->ctx.radius_ctx.proxy_state,
 				   sizeof(h->ctx.radius_ctx.proxy_state)) == 0) {
+
+				/*
+				 *	Cancel proxying when there are two instances of the same Proxy-State
+				 *	in the packet.  This limitation could be configurable, but it likely
+				 *	doesn't make sense to make it configurable.
+				 */
+				if (count == 1) {
+					RWARN("Canceling proxy due to loop of multiple %pV", vp);
+					trunk_request_signal_cancel(treq);
+					u->treq = NULL;
+					return;
+				}
+
 				RWARN("Proxied packet contains our own %pV", vp);
 				RWARN("Check if there is a proxy loop.  Perhaps the server has been configured to proxy to itself.");
-				break;
+				count++;
 			}
 		}
 	}
-
 
 	mod_write(request, treq, h);
 }

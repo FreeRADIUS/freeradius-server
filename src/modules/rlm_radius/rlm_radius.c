@@ -693,7 +693,7 @@ check_others:
 	inst->common_ctx = (fr_radius_ctx_t) {
 		.secret = inst->secret,
 		.secret_length = inst->secret ? talloc_array_length(inst->secret) - 1 : 0,
-		.proxy_state = fr_rand(),
+		.proxy_state = ((uint64_t) fr_rand()) << 32 | fr_rand(),
 	};
 
 	/*

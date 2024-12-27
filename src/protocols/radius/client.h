@@ -44,7 +44,7 @@ typedef struct {
 	fr_time_delta_t		connection_timeout;
 
 	bool			add_proxy_state;
-	uint32_t		proxy_state;
+	uint64_t		proxy_state;
 
 	bool			outgoing[FR_RADIUS_CODE_MAX];	//!< allowed outgoing packet types
 
