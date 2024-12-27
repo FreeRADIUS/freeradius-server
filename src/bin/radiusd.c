@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/server/map_proc.h>
 #include <freeradius-devel/server/module.h>
 #include <freeradius-devel/server/radmin.h>
+#include <freeradius-devel/server/snmp.h>
 #include <freeradius-devel/server/state.h>
 #include <freeradius-devel/server/virtual_servers.h>
 #include <freeradius-devel/util/debug.h>
