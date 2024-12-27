@@ -229,6 +229,8 @@ home_server_t	*home_server_bynumber(int number);
 #endif
 home_pool_t	*home_pool_byname(char const *name, int type);
 
+int		home_server_pool_afrom_file(char const *filename);
+int		home_server_pool_delete_byname(char const *name, char const *type);
 int		home_server_afrom_file(char const *filename);
 int		home_server_delete_byname(char const *name, char const *type);
 int		home_server_delete(home_server_t *home);

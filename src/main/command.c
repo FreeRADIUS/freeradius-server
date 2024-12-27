@@ -2828,6 +2828,36 @@ static int command_add_home_server_file(rad_listen_t *listener, int argc, char *
 	return CMD_OK;
 }
 
+static int command_del_home_server_pool(rad_listen_t *listener, int argc, char *argv[])
+{
+	if (argc < 2) {
+		cprintf_error(listener, "<name> and <type> are required\n");
+		return 0;
+	}
+
+	if (home_server_pool_delete_byname(argv[0], argv[1]) < 0) {
+		cprintf_error(listener, "Failed deleted home server pool %s - %s\n", argv[1], fr_strerror());
+		return 0;
+	}
+
+	return CMD_OK;
+}
+
+static int command_add_home_server_pool_file(rad_listen_t *listener, int argc, char *argv[])
+{
+	if (argc < 1) {
+		cprintf_error(listener, "<file> is required\n");
+		return 0;
+	}
+
+	if (home_server_pool_afrom_file(argv[0]) < 0) {
+		cprintf_error(listener, "Unable to add home server pool - %s\n", fr_strerror());
+		return 0;
+	}
+
+	return CMD_OK;
+}
+
 static fr_command_table_t command_table_del_client[] = {
 	{ "ipaddr", FR_WRITE,
 	  "del client ipaddr <ipaddr> [udp|tcp] [listen <ipaddr> <port>] - Delete a dynamically created client",
@@ -2844,6 +2874,14 @@ static fr_command_table_t command_table_del_home_server[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_del_home_server_pool[] = {
+	{ "file", FR_WRITE,
+	  "del home_server_pool file <filename> - Delete a dynamically created home server pool",
+	  command_del_home_server_pool, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
 static fr_command_table_t command_table_del[] = {
 	{ "client", FR_WRITE,
 	  "del client <command> - Delete client configuration commands",
@@ -2852,6 +2890,10 @@ static fr_command_table_t command_table_del[] = {
 	{ "home_server", FR_WRITE,
 	  "del home_server <command> - Delete home_server configuration commands",
 	  NULL, command_table_del_home_server },
+
+	{ "home_server_pool", FR_WRITE,
+	  "del home_server_pool <command> - Delete home server pool configuration commands",
+	  NULL, command_table_del_home_server_pool },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -2872,6 +2914,14 @@ static fr_command_table_t command_table_add_home_server[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_add_home_server_pool[] = {
+	{ "file", FR_WRITE,
+	  "add home_server_pool file <filename> - Add new home server pool definition from <filename>",
+	  command_add_home_server_pool_file, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
 static fr_command_table_t command_table_add[] = {
 	{ "client", FR_WRITE,
 	  "add client <command> - Add client configuration commands",
@@ -2880,6 +2930,10 @@ static fr_command_table_t command_table_add[] = {
 	{ "home_server", FR_WRITE,
 	  "add home_server <command> - Add home server configuration commands",
 	  NULL, command_table_add_home_server },
+
+	{ "home_server_pool", FR_WRITE,
+		"add home_server_pool <command> - Add home server pool configuration commands",
+		NULL, command_table_add_home_server_pool },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
