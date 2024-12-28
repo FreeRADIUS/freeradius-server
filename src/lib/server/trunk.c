@@ -3457,20 +3457,20 @@ static void _trunk_connection_on_connected(UNUSED connection_t *conn,
 
 	/*
 	 *	If a connection was just connected, it should only
-	 *	have a backlog of requests.  This state is found in
-	 *	the rlm_radius module, which starts a new trunk, and
-	 *	then immediately enqueues a request onto it.  The
+	 *	have a pending list of requests.  This state is found
+	 *	in the rlm_radius module, which starts a new trunk,
+	 *	and then immediately enqueues a request onto it.  The
 	 *	alternative for rlm_radius is to keep it's own queue
 	 *	of pending requests before the trunk is fully
 	 *	initialized.  And then enqueue them onto the trunk
 	 *	when the trunk is connected.
 	 *
 	 *	It's instead easier (and makes more sense) to allow
-	 *	the trunk to accept packets into its backlog.  If
-	 *	there are no connections within a period of time, then
-	 *	the requests will retry, or will time out.
+	 *	the trunk to accept packets into its queue.  If there
+	 *	are no connections within a period of time, then the
+	 *	requests will retry, or will time out.
 	 */
-	fr_assert(trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_ALL) == trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_BACKLOG));
+	fr_assert(trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_ALL) == trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_PENDING));
 
  	/*
 	 *	Set here, as the active state can
