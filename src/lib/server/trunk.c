@@ -3261,7 +3261,7 @@ static void trunk_connection_enter_active(trunk_connection_t *tconn)
 	case TRUNK_CONN_INIT:
 	case TRUNK_CONN_CONNECTING:
 		trunk_connection_remove(tconn);
-		fr_assert(trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_ALL) == 0);
+		fr_assert(trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_ALL) == trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_PENDING));
 		break;
 
 	default:
