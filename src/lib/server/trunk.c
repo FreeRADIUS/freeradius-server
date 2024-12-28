@@ -3456,11 +3456,21 @@ static void _trunk_connection_on_connected(UNUSED connection_t *conn,
 	trunk_t		*trunk = tconn->pub.trunk;
 
 	/*
-	 *	If a connection was just connected,
-	 *	it should have no requests associated
-	 *	with it.
+	 *	If a connection was just connected, it should only
+	 *	have a backlog of requests.  This state is found in
+	 *	the rlm_radius module, which starts a new trunk, and
+	 *	then immediately enqueues a request onto it.  The
+	 *	alternative for rlm_radius is to keep it's own queue
+	 *	of pending requests before the trunk is fully
+	 *	initialized.  And then enqueue them onto the trunk
+	 *	when the trunk is connected.
+	 *
+	 *	It's instead easier (and makes more sense) to allow
+	 *	the trunk to accept packets into its backlog.  If
+	 *	there are no connections within a period of time, then
+	 *	the requests will retry, or will time out.
 	 */
-	fr_assert(trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_ALL) == 0);
+	fr_assert(trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_ALL) == trunk_request_count_by_connection(tconn, TRUNK_REQUEST_STATE_BACKLOG));
 
  	/*
 	 *	Set here, as the active state can
