@@ -117,6 +117,10 @@ static int fr_bio_fd_destructor(fr_bio_fd_t *my)
 
 static int fr_bio_fd_eof(fr_bio_t *bio)
 {
+	fr_bio_fd_t *my = talloc_get_type_abort(bio, fr_bio_fd_t);
+
+	my->info.eof = true;
+
 	bio->read = fr_bio_null_read;
 	bio->write = fr_bio_null_write;
 
