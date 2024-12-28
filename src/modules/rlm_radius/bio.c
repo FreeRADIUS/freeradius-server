@@ -50,6 +50,7 @@ typedef struct {
 	fr_event_list_t		*el;	       	//!< Event list.
 	trunk_t			*trunk;	       	//!< trunk handler
 	fr_bio_fd_config_t	*fd_config;	//!< for threads or sockets
+	fr_bio_fd_info_t const	*fd_info;	//!< status of the FD.
 	fr_radius_ctx_t		radius_ctx;
 } bio_handle_ctx_t;
 
@@ -59,7 +60,6 @@ typedef struct {
 
 	struct {
 		fr_bio_t *fd;			//!< writing
-		fr_bio_fd_info_t const *info;	//!< for replication
 		uint32_t id;			//!< for replication
 		fr_rb_expire_t	expires;       	//!< for proxying / client sending
 	} bio;
@@ -81,7 +81,6 @@ typedef struct {
 		fr_bio_t		*fd;		//!< raw FD
 		fr_bio_t		*mem;		//!< memory wrappers for stream sockets
 	} bio;
-	fr_bio_fd_info_t const	*fd_info;
 
 	connection_t		*conn;
 
@@ -367,7 +366,7 @@ static void conn_init_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED in
 
 	h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->fd_info->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->ctx.fd_info->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -451,20 +450,24 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 
 	fr_pair_list_init(&reply);
 	slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
-	if (slen == 0) return;
+	if (slen == 0) {
+		/*
+		 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
+		 */
+		if (h->ctx.fd_info->eof) goto failed;
+		return;
+	}
+
+	/*
+	 *	We're done reading, return.
+	 */
+	if (slen == fr_bio_error(IO_WOULD_BLOCK)) return;
 
 	if (slen < 0) {
 		switch (errno) {
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-		case EWOULDBLOCK:
-#endif
-		case EAGAIN:
-		case EINTR:
-			return;		/* Wait to be signalled again */
-
 		case ECONNREFUSED:
 			ERROR("%s - Failed reading response from socket: there is no server listening on outgoing connection %s",
-			      h->ctx.module_name, h->fd_info->name);
+			      h->ctx.module_name, h->ctx.fd_info->name);
 			break;
 
 		default:
@@ -473,6 +476,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 			break;
 		}
 
+	failed:
 		connection_signal_reconnect(conn, CONNECTION_FAILED);
 		return;
 	}
@@ -521,7 +525,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 		 *	the next status check.
 		 */
 		DEBUG("%s - Received %u / %u replies for status check, on connection - %s",
-		      h->ctx.module_name, u->num_replies, inst->num_answers_to_alive, h->fd_info->name);
+		      h->ctx.module_name, u->num_replies, inst->num_answers_to_alive, h->ctx.fd_info->name);
 		DEBUG("%s - Next status check packet will be in %pVs",
 		      h->ctx.module_name, fr_box_time_delta(fr_time_sub(u->retry.next, fr_time())));
 
@@ -539,7 +543,7 @@ static void conn_init_readable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	 */
 	status_check_reset(h, u);
 
-	DEBUG("%s - Connection open - %s", h->ctx.module_name, h->fd_info->name);
+	DEBUG("%s - Connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
 
 	connection_signal_connected(conn);
 }
@@ -569,7 +573,7 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	}
 
 	DEBUG("%s - Sending %s ID %d over connection %s",
-	      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, h->fd_info->name);
+	      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, h->ctx.fd_info->name);
 
 	if (encode(h, h->status_request, u, u->id) < 0) {
 	fail:
@@ -580,20 +584,24 @@ static void conn_init_writable(fr_event_list_t *el, UNUSED int fd, UNUSED int fl
 	HEXDUMP3(u->packet, u->packet_len, NULL);
 
 	slen = fr_bio_write(h->bio.write, NULL, u->packet, u->packet_len);
+
+	if (slen == fr_bio_error(IO_WOULD_BLOCK)) goto blocked;
+
 	if (slen < 0) {
 		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: %s",
-		      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name, fr_syserror(errno));
+		      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name, fr_syserror(errno));
 
 
 		goto fail;
 	}
 
 	/*
-	 *	@todo - write partial packets, too. <sigh>
+	 *	@todo - handle partial packets and blocked writes.
 	 */
 	if ((size_t)slen < u->packet_len) {
+	blocked:
 		ERROR("%s - Failed sending %s ID %d length %zu over connection %s: writing is blocked",
-		      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name);
+		      h->ctx.module_name, fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name);
 		goto fail;
 	}
 
@@ -636,7 +644,7 @@ static int _bio_handle_free(bio_handle_t *h)
 	 *	The connection code will take care of deleting the FD from the event loop.
 	 */
 
-	DEBUG("%s - Connection closed - %s", h->ctx.module_name, h->fd_info->name);
+	DEBUG("%s - Connection closed - %s", h->ctx.module_name, h->ctx.fd_info->name);
 
 	return 0;
 }
@@ -645,7 +653,7 @@ static void bio_connected(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
 
-	DEBUG("%s - Connection open - %s", h->ctx.module_name, h->fd_info->name);
+	DEBUG("%s - Connection open - %s", h->ctx.module_name, h->ctx.fd_info->name);
 
 	connection_signal_connected(h->conn);
 }
@@ -654,8 +662,8 @@ static void bio_error(fr_bio_t *bio)
 {
 	bio_handle_t		*h = bio->uctx;
 
-	DEBUG("%s - Connection failed - %s - %s", h->ctx.module_name, h->fd_info->name,
-	      fr_syserror(h->fd_info->connect_errno));
+	DEBUG("%s - Connection failed - %s - %s", h->ctx.module_name, h->ctx.fd_info->name,
+	      fr_syserror(h->ctx.fd_info->connect_errno));
 
 	connection_signal_reconnect(h->conn, CONNECTION_FAILED);
 }
@@ -678,7 +686,7 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	 */
 	want = fr_nbo_to_uint16(hdr + 2);
 	if (want > h->ctx.inst->max_packet_size) {
-		ERROR("%s - Connection %s received too long packet", h->ctx.module_name, h->fd_info->name);
+		ERROR("%s - Connection %s received too long packet", h->ctx.module_name, h->ctx.fd_info->name);
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
 
@@ -698,7 +706,7 @@ static fr_bio_verify_action_t rlm_radius_verify(UNUSED fr_bio_t *bio, void *veri
 	if (!fr_radius_ok(data, size, h->ctx.inst->max_attributes, REQUIRE_MA(h), &failure)) {
 		if (failure == DECODE_FAIL_UNKNOWN_PACKET_CODE) return FR_BIO_VERIFY_DISCARD;
 
-		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->fd_info->name);
+		PERROR("%s - Connection %s received bad packet", h->ctx.module_name, h->ctx.fd_info->name);
 
 		return FR_BIO_VERIFY_ERROR_CLOSE;
 	}
@@ -748,9 +756,9 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	}
 
 	h->bio.fd->uctx = h;
-	h->fd_info = fr_bio_fd_info(h->bio.fd);
+	h->ctx.fd_info = fr_bio_fd_info(h->bio.fd);
 
-	fd = h->fd_info->socket.fd;
+	fd = h->ctx.fd_info->socket.fd;
 	fr_assert(fd >= 0);
 
 	/*
@@ -793,13 +801,13 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 	/*
 	 *	If the socket isn't connected, then do that first.
 	 */
-	if (h->fd_info->state != FR_BIO_FD_STATE_OPEN) {
+	if (h->ctx.fd_info->state != FR_BIO_FD_STATE_OPEN) {
 		int rcode;
 
-		fr_assert(h->fd_info->state == FR_BIO_FD_STATE_CONNECTING);
+		fr_assert(h->ctx.fd_info->state == FR_BIO_FD_STATE_CONNECTING);
 
 		/*
-		 *	@todo - call connect_full() with callbacks, timeouts, etc.
+		 *	We don't pass timeouts here because the trunk has it's own connection timeouts.
 		 */
 		rcode = fr_bio_fd_connect_full(h->bio.fd, conn->el, bio_connected, bio_error, NULL, NULL);
 		if (rcode < 0) goto fail;
@@ -969,7 +977,7 @@ static void conn_error(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int fla
 	connection_t		*conn = tconn->conn;
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->fd_info->name, fr_syserror(fd_errno));
+	ERROR("%s - Connection %s failed: %s", h->ctx.module_name, h->ctx.fd_info->name, fr_syserror(fd_errno));
 
 	connection_signal_reconnect(conn, CONNECTION_FAILED);
 }
@@ -1050,8 +1058,6 @@ static int8_t request_prioritise(void const *one, void const *two)
 	bio_request_t const *b = two;
 	int8_t ret;
 
-	// @todo - prioritize packets if there's a state?
-
 	/*
 	 *	Prioritise status check packets
 	 */
@@ -1118,7 +1124,7 @@ static fr_radius_decode_fail_t decode(TALLOC_CTX *ctx, fr_pair_list_t *reply, ui
 	code = data[0];
 
 	RDEBUG("Received %s ID %d length %zu reply packet on connection %s",
-	       fr_radius_packet_name[code], data[1], data_len, h->fd_info->name);
+	       fr_radius_packet_name[code], data[1], data_len, h->ctx.fd_info->name);
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, reply, NULL);
 
 	/*
@@ -1272,7 +1278,7 @@ static void revive_timeout(UNUSED fr_event_list_t *el, UNUSED fr_time_t now, voi
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
-	INFO("%s - Reviving connection %s", h->ctx.module_name, h->fd_info->name);
+	INFO("%s - Reviving connection %s", h->ctx.module_name, h->ctx.fd_info->name);
 	trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
 }
 
@@ -1284,7 +1290,7 @@ static void zombie_timeout(fr_event_list_t *el, fr_time_t now, void *uctx)
 	trunk_connection_t	*tconn = talloc_get_type_abort(uctx, trunk_connection_t);
 	bio_handle_t	 	*h = talloc_get_type_abort(tconn->conn->h, bio_handle_t);
 
-	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->ctx.module_name, h->fd_info->name);
+	INFO("%s - No replies during 'zombie_period', marking connection %s as dead", h->ctx.module_name, h->ctx.fd_info->name);
 
 	/*
 	 *	Don't use this connection, and re-queue all of its
@@ -1367,7 +1373,7 @@ static bool check_for_zombie(fr_event_list_t *el, trunk_connection_t *tconn, fr_
 	/*
 	 *	Stop using it for new requests.
 	 */
-	WARN("%s - Entering Zombie state - connection %s", h->ctx.module_name, h->fd_info->name);
+	WARN("%s - Entering Zombie state - connection %s", h->ctx.module_name, h->ctx.fd_info->name);
 	trunk_connection_signal_inactive(tconn);
 
 	if (h->ctx.inst->status_check) {
@@ -1409,7 +1415,7 @@ static void mod_dup(request_t *request, bio_request_t *u)
 	/*
 	 *	Arguably this should never happen for UDP sockets.
 	 */
-	if (h->fd_info->write_blocked) {
+	if (h->ctx.fd_info->write_blocked) {
 		RDEBUG("IO is blocked - suppressing retransmission");
 		return;
 	}
@@ -1583,7 +1589,7 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 		u->id = u->rr->id;
 
 		RDEBUG("Sending %s ID %d length %zu over connection %s",
-		       fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name);
+		       fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name);
 
 		if (encode(h, request, u, u->id) < 0) {
 			/*
@@ -1603,7 +1609,7 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 		(void) radius_track_entry_update(u->rr, u->packet + RADIUS_AUTH_VECTOR_OFFSET);
 	} else {
 		RDEBUG("Retransmitting %s ID %d length %zu over connection %s",
-		       fr_radius_packet_name[u->code], u->id, u->packet_len, h->fd_info->name);
+		       fr_radius_packet_name[u->code], u->id, u->packet_len, h->ctx.fd_info->name);
 	}
 
 	/*
@@ -1617,48 +1623,30 @@ static void mod_write(request_t *request, trunk_request_t *treq, bio_handle_t *h
 
 do_write:
 	slen = fr_bio_write(h->bio.write, NULL, packet, packet_len);
+
+	/*
+	 *	Can't write anything, requeue it on a different socket.
+	 */
+	if (slen == fr_bio_error(IO_WOULD_BLOCK)) goto requeue;
+
 	if (slen < 0) {
-		/*
-		 *	@todo - check slen for fr_bio_error(FOO)
-		 */
-
-		/*
-		 *	Temporary conditions
-		 */
 		switch (errno) {
-			/*
-			 *	The BIO code should catch EAGAIN, EWOULDBLOCK, EINTR,
-			 *	and return "0 bytes written".
-			 */
-#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
-		case EWOULDBLOCK:	/* No outbound packet buffers, maybe? */
-#endif
-		case EAGAIN:		/* No outbound packet buffers, maybe? */
-		case EINTR:		/* Interrupted by signal */
-
-		case ENOBUFS:		/* No outbound packet buffers, maybe? */
-		case ENOMEM:		/* malloc failure in kernel? */
-			RWARN("%s - Failed sending data over connection %s: %s",
-			      h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
-			trunk_request_signal_fail(treq);
-			break;
-
 		/*
-		 *	Fatal, request specific conditions
+		 *	There is an error in the request.
 		 */
 		case EMSGSIZE:		/* Packet size exceeds max size allowed on socket */
 			ERROR("%s - Failed sending data over connection %s: %s",
-			      h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
+			      h->ctx.module_name, h->ctx.fd_info->name, fr_syserror(errno));
 			trunk_request_signal_fail(treq);
 			break;
 
 		/*
-		 *	Will re-queue any 'sent' requests, so we don't
-		 *	have to do any cleanup.
+		 *	There is an error in the connection.  The reconnection will re-queue any pending or
+		 *	sent requests, so we don't have to do any cleanup.
 		 */
 		default:
 			ERROR("%s - Failed sending data over connection %s: %s",
-			      h->ctx.module_name, h->fd_info->name, fr_syserror(errno));
+			      h->ctx.module_name, h->ctx.fd_info->name, fr_syserror(errno));
 			trunk_connection_signal_reconnect(treq->tconn, CONNECTION_FAILED);
 			break;
 		}
@@ -1672,8 +1660,9 @@ do_write:
 	if (slen == 0) {
 		if (u->partial) return;
 
+	requeue:
 		RWARN("%s - Failed sending data over connection %s: sent zero bytes",
-		      h->ctx.module_name, h->fd_info->name);
+		      h->ctx.module_name, h->ctx.fd_info->name);
 		trunk_request_requeue(treq);
 		return;
 	}
@@ -1840,7 +1829,7 @@ static void protocol_error_reply(bio_request_t *u, bio_handle_t *h)
 		if (response_length < 4096) response_length = 4096;
 		if (response_length > 65535) response_length = 65535;
 
-		DEBUG("%s - Increasing buffer size to %u for connection %s", h->ctx.module_name, response_length, h->fd_info->name);
+		DEBUG("%s - Increasing buffer size to %u for connection %s", h->ctx.module_name, response_length, h->ctx.fd_info->name);
 
 		/*
 		 *	Make sure to copy the packet over!
@@ -1903,7 +1892,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 
 	if (u->num_replies < inst->num_answers_to_alive) {
 		DEBUG("Received %u / %u replies for status check, on connection - %s",
-		      u->num_replies, inst->num_answers_to_alive, h->fd_info->name);
+		      u->num_replies, inst->num_answers_to_alive, h->ctx.fd_info->name);
 		DEBUG("Next status check packet will be in %pVs", fr_box_time_delta(fr_time_sub(u->retry.next, now)));
 
 		/*
@@ -1915,7 +1904,7 @@ static void status_check_reply(trunk_request_t *treq, fr_time_t now)
 		return;
 	}
 
-	DEBUG("Received enough replies to status check, marking connection as active - %s", h->fd_info->name);
+	DEBUG("Received enough replies to status check, marking connection as active - %s", h->ctx.fd_info->name);
 
 	/*
 	 *	Set the "last idle" time to now, so that we don't
@@ -1937,7 +1926,7 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 {
 	bio_handle_t		*h = talloc_get_type_abort(conn->h, bio_handle_t);
 
-	DEBUG3("%s - Reading data for connection %s", h->ctx.module_name, h->fd_info->name);
+	DEBUG3("%s - Reading data for connection %s", h->ctx.module_name, h->ctx.fd_info->name);
 
 	while (true) {
 		ssize_t			slen;
@@ -1961,11 +1950,20 @@ static void request_demux(UNUSED fr_event_list_t *el, trunk_connection_t *tconn,
 		 *	busy, a few extra system calls don't matter.
 		 */
 		slen = fr_bio_read(h->bio.read, NULL, h->buffer, h->buflen);
-		if (slen == 0) return;
+		if (slen == 0) {
+			/*
+			 *	@todo - set BIO FD EOF callback, so that we don't have to check it here.
+			 */
+			if (h->ctx.fd_info->eof) trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
+			return;
+		}
+
+		/*
+		 *	We're done reading, return.
+		 */
+		if (slen == fr_bio_error(IO_WOULD_BLOCK)) return;
 
 		if (slen < 0) {
-			if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) return;
-
 			ERROR("%s - Failed reading response from socket: %s",
 			      h->ctx.module_name, fr_syserror(errno));
 			trunk_connection_signal_reconnect(tconn, CONNECTION_FAILED);
@@ -2457,7 +2455,7 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	}
 
 	thread->bio.fd->uctx = thread;
-	thread->bio.info = fr_bio_fd_info(thread->bio.fd);
+	thread->ctx.fd_info = fr_bio_fd_info(thread->bio.fd);
 
 	/*
 	 *	We don't care about replies.
@@ -2465,11 +2463,11 @@ static int mod_thread_instantiate(module_thread_inst_ctx_t const *mctx)
 	if (inst->mode == RLM_RADIUS_MODE_UNCONNECTED_REPLICATE) {
 		(void) fr_bio_fd_write_only(thread->bio.fd);
 
-		DEBUG("%s - Opened unconnected replication socket %s", inst->name, thread->bio.info->name);
+		DEBUG("%s - Opened unconnected replication socket %s", inst->name, thread->ctx.fd_info->name);
 		return 0;
 	}
 
-	DEBUG("%s - Opened unconnected proxy socket %s", inst->name, thread->bio.info->name);
+	DEBUG("%s - Opened unconnected proxy socket %s", inst->name, thread->ctx.fd_info->name);
 
 	/*
 	 *	@todo - make lifetime configurable?
@@ -2507,7 +2505,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	/*
 	 *	Can't change IP address families.
 	 */
-	if (ipaddr->vb_ip.af != thread->bio.info->socket.af) {
+	if (ipaddr->vb_ip.af != thread->ctx.fd_info->socket.af) {
 		RDEBUG("Invalid destination IP address family in %pV", ipaddr);
 		return -1;
 	}
@@ -2561,7 +2559,7 @@ static xlat_action_t xlat_radius_replicate(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcu
 	 *	Prepare destination address.
 	 */
 	addr = (fr_bio_fd_packet_ctx_t) {
-		.socket = thread->bio.info->socket,
+		.socket = thread->ctx.fd_info->socket,
 	};
 	addr.socket.inet.dst_ipaddr = ipaddr->vb_ip;
 	addr.socket.inet.dst_port = port->vb_uint16;
@@ -2657,7 +2655,7 @@ static xlat_action_t xlat_radius_client(UNUSED TALLOC_CTX *ctx, UNUSED fr_dcurso
 	/*
 	 *	Can't change IP address families.
 	 */
-	if (ipaddr->vb_ip.af != thread->bio.info->socket.af) {
+	if (ipaddr->vb_ip.af != thread->ctx.fd_info->socket.af) {
 		RDEBUG("Invalid destination IP address family in %pV", ipaddr);
 		return XLAT_ACTION_DONE;
 	}
