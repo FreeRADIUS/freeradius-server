@@ -96,6 +96,12 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const bool allowed[PW_EAP_MAX_TYPES] = {
+	[PW_EAP_SIM] = true,
+	[PW_EAP_TLS] = true,
+	[PW_EAP_MSCHAPV2] = true,
+	[PW_EAP_PWD] = true,
+};
 
 /*
  *	Attach the module.
@@ -132,10 +138,25 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		}
 	}
 
+	/*
+	 *	@todo - allow a special value like 'basic-password', which
+	 *	means that we propose the Basic-Password-Auth-Req TLV during Phase 2.
+	 *
+	 *	@todo - and then also track the username across
+	 *	multiple rounds, including some kind of State which
+	 *	can be used to signal where we are in the negotiation
+	 *	process.
+	 */
 	if (inst->user_method_name && *inst->user_method_name) {
 		inst->user_method = eap_name2type(inst->user_method_name);
 		if (inst->user_method < 0) {
 			ERROR("rlm_eap_teap: Unknown User EAP type %s",
+			      inst->user_method_name);
+			return -1;
+		}
+
+		if (!allowed[inst->user_method]) {
+			ERROR("rlm_eap_teap: Invalid User EAP type %s",
 			      inst->user_method_name);
 			return -1;
 		}
@@ -145,6 +166,12 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		inst->machine_method = eap_name2type(inst->machine_method_name);
 		if (inst->machine_method < 0) {
 			ERROR("rlm_eap_teap: Unknown Machine EAP type %s",
+			      inst->machine_method_name);
+			return -1;
+		}
+
+		if (!allowed[inst->machine_method]) {
+			ERROR("rlm_eap_teap: Invalid Machine EAP type %s",
 			      inst->machine_method_name);
 			return -1;
 		}
