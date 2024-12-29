@@ -134,6 +134,12 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 			{ (void *)length, sizeof(length) }
 		};
 
+		/*
+		 *	IMSK[j] = First 32 octets of TLS-PRF(
+		 *			EMSK[j],
+		 *			"TEAPbindkey@ietf.org",
+		 *			0x00 | 0x00 | 0x40)
+		 */
 		TLS_PRF(tls_session->ssl,
 			emsk, emsklen,
 			emsk_seed, ARRAY_SIZE(emsk_seed),
@@ -141,6 +147,11 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 
 		RDEBUGHEX("IMSK from EMSK", imsk_emsk, EAP_TEAP_IMSK_LEN);
 
+		/*
+		 *	IMCK[j] = the first 60 octets of TLS-PRF(S-IMCK[j-1],
+		 *			"Inner Methods Compound Keys",
+		 *			IMSK[j])
+		 */
 		imck_seed[1].iov_base = imsk_emsk;
 		TLS_PRF(tls_session->ssl,
 			t->imck_emsk.simck, sizeof(t->imck_emsk.simck),
@@ -150,10 +161,11 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 		/* IMCK[j] 60 octets => S-IMCK[j] first 40 octets, CMK[j] last 20 octets */
 		RDEBUGHEX("EMSK S-IMCK[j]", imck_emsk.simck, sizeof(imck_emsk.simck));
 		RDEBUGHEX("EMSK CMK[j]", imck_emsk.cmk, sizeof(imck_emsk.cmk));
+
+		memcpy(&t->imck_emsk, &imck_emsk, sizeof(imck_emsk));
 	}
 
 	memcpy(&t->imck_msk, &imck_msk, sizeof(imck_msk));
-	if (emsklen) memcpy(&t->imck_emsk, &imck_emsk, sizeof(imck_emsk));
 }
 
 static void eap_teap_tlv_append(tls_session_t *tls_session, int tlv, bool mandatory, int length, const void *data)
@@ -1226,7 +1238,12 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	 * https://github.com/emu-wg/teap-errata/pull/13
 	 */
 	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(SSL_get_current_cipher(tls_session->ssl));
-	if (flags != EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) {
+
+	/*
+	 *	We verify cryptobinding MSK and EMSK, but we prefer
+	 *	EMSK for the later IMCK deriviation.
+	 */
+	if ((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK) != 0) {
 		HMAC(md, &t->imck_msk.cmk, sizeof(t->imck_msk.cmk), buf, talloc_array_length(buf), mac, &maclen);
 		if (memcmp(binding->msk_compound_mac, mac, sizeof(binding->msk_compound_mac))) {
 			RDEBUG2("Crypto-Binding TLV (MSK) mis-match");
@@ -1234,7 +1251,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 		}
 		imck = &t->imck_msk;
 	}
-	if (flags != EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK && t->imck_emsk_available) {
+	if (((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) != 0) && t->imck_emsk_available) {
 		HMAC(md, &t->imck_emsk.cmk, sizeof(t->imck_emsk.cmk), buf, talloc_array_length(buf), mac, &maclen);
 		if (memcmp(binding->emsk_compound_mac, mac, sizeof(binding->emsk_compound_mac))) {
 			RDEBUG2("Crypto-Binding TLV (EMSK) mis-match");
