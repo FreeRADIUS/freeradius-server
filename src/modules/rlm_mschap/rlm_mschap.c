@@ -819,6 +819,15 @@ static int write_all(int fd, char const *buf, size_t len) {
 		rv = write(fd, buf+done, len-done);
 		if (rv <= 0)
 			break;
+
+#ifdef STATIC_ANALYZER
+		/*
+		 *	Coverity doesn't appear to know the limits on the
+		 *	return value of write() - so beleives an overflow can happen
+		 */
+		if (rv > (len - done)) break;
+#endif
+
 		done += rv;
 	}
 	rv = write(fd, "\n", 1);
