@@ -32,12 +32,12 @@ RCSID("$Id$")
 #define EAPTLS_MPPE_KEY_LEN 32
 
 #define RDEBUGHEX(_label, _data, _length) \
-do {\
+if (fr_debug_lvl > 2) {\
 	char __buf[8192];\
 	for (size_t i = 0; (i < (size_t) _length) && (3*i < sizeof(__buf)); i++) {\
 		sprintf(&__buf[3*i], " %02x", (uint8_t)(_data)[i]);\
 	}\
-	RDEBUG("%s - hexdump(len=%zu):%s", _label, (size_t)_length, __buf);\
+	RDEBUG2("%s - hexdump(len=%zu):%s", _label, (size_t)_length, __buf);\
 } while (0)
 
 #define RANDFILL(x) do { rad_assert(sizeof(x) % sizeof(uint32_t) == 0); for (size_t i = 0; i < sizeof(x); i += sizeof(uint32_t)) *((uint32_t *)&x[i]) = fr_rand(); } while(0)
@@ -70,9 +70,9 @@ static void eap_teap_init_keys(REQUEST *request, tls_session_t *tls_session)
 	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(SSL_get_current_cipher(tls_session->ssl));
 	const int md_type = EVP_MD_type(md);
 
-	RDEBUG("Using MAC %s (%d)", OBJ_nid2sn(md_type), md_type);
+	RDEBUG3("Phase 2: Using MAC %s (%d)", OBJ_nid2sn(md_type), md_type);
 
-	RDEBUG2("Deriving EAP-TEAP keys");
+	RDEBUG3("Phase 2: Deriving EAP-TEAP keys");
 
 	rad_assert(t->received_version > -1);
 	rad_assert(t->imckc == 0);
@@ -80,7 +80,7 @@ static void eap_teap_init_keys(REQUEST *request, tls_session_t *tls_session)
 	/* S-IMCK[0] = session_key_seed (RFC7170, Section 5.1) */
 	eaptls_gen_keys_only(request, tls_session->ssl, "EXPORTER: teap session key seed", NULL, 0, t->imck_msk.simck, sizeof(t->imck_msk.simck));
 	memcpy(t->imck_emsk.simck, t->imck_msk.simck, sizeof(t->imck_msk.simck));
-	RDEBUGHEX("S-IMCK[0]", t->imck_msk.simck, sizeof(t->imck_msk.simck));
+	RDEBUGHEX("Phase 2: S-IMCK[0]", t->imck_msk.simck, sizeof(t->imck_msk.simck));
 }
 
 /**
@@ -96,7 +96,7 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 	teap_tunnel_t *t = tls_session->opaque;
 
 	t->imckc++;
-	RDEBUG2("Updating ICMK (j = %d)", t->imckc);
+	RDEBUG2("Phase 2: Calculating ICMK for round (j = %d)", t->imckc);
 
 	uint8_t imsk_msk[EAP_TEAP_IMSK_LEN] = {0};
 	uint8_t imsk_emsk[EAP_TEAP_IMSK_LEN + 32];	// +32 for EMSK overflow
@@ -110,9 +110,9 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 
 	if (msklen) {
 		memcpy(imsk_msk, msk, MIN(msklen, EAP_TEAP_IMSK_LEN));
-		RDEBUGHEX("IMSK from MSK", imsk_msk, EAP_TEAP_IMSK_LEN);
+		RDEBUGHEX("Phase 2: IMSK from MSK", imsk_msk, EAP_TEAP_IMSK_LEN);
 	} else {
-		RDEBUGHEX("IMSK Zero", imsk_msk, EAP_TEAP_IMSK_LEN);
+		RDEBUGHEX("Phase 2: IMSK Zero", imsk_msk, EAP_TEAP_IMSK_LEN);
 	}
 	imck_seed[1].iov_base = imsk_msk;
 	TLS_PRF(tls_session->ssl,
@@ -121,8 +121,8 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 		(uint8_t *)&imck_msk, sizeof(imck_msk));
 
 	/* IMCK[j] 60 octets => S-IMCK[j] first 40 octets, CMK[j] last 20 octets */
-	RDEBUGHEX("MSK S-IMCK[j]", imck_msk.simck, sizeof(imck_msk.simck));
-	RDEBUGHEX("MSK CMK[j]", imck_msk.cmk, sizeof(imck_msk.cmk));
+	RDEBUGHEX("Phase 2: MSK S-IMCK[j]", imck_msk.simck, sizeof(imck_msk.simck));
+	RDEBUGHEX("Phase 2: MSK CMK[j]", imck_msk.cmk, sizeof(imck_msk.cmk));
 
 	if (emsklen) {
 		uint8_t emsk_label[20] = "TEAPbindkey@ietf.org";
@@ -145,7 +145,7 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 			emsk_seed, ARRAY_SIZE(emsk_seed),
 			imsk_emsk, sizeof(imsk_emsk));
 
-		RDEBUGHEX("IMSK from EMSK", imsk_emsk, EAP_TEAP_IMSK_LEN);
+		RDEBUGHEX("Phase 2: IMSK from EMSK", imsk_emsk, EAP_TEAP_IMSK_LEN);
 
 		/*
 		 *	IMCK[j] = the first 60 octets of TLS-PRF(S-IMCK[j-1],
@@ -159,8 +159,8 @@ static void eap_teap_derive_imck(REQUEST *request, tls_session_t *tls_session,
 			(uint8_t *)&imck_emsk, sizeof(imck_emsk));
 
 		/* IMCK[j] 60 octets => S-IMCK[j] first 40 octets, CMK[j] last 20 octets */
-		RDEBUGHEX("EMSK S-IMCK[j]", imck_emsk.simck, sizeof(imck_emsk.simck));
-		RDEBUGHEX("EMSK CMK[j]", imck_emsk.cmk, sizeof(imck_emsk.cmk));
+		RDEBUGHEX("Phase 2: EMSK S-IMCK[j]", imck_emsk.simck, sizeof(imck_emsk.simck));
+		RDEBUGHEX("Phase 2: EMSK CMK[j]", imck_emsk.cmk, sizeof(imck_emsk.cmk));
 
 		memcpy(&t->imck_emsk, &imck_emsk, sizeof(imck_emsk));
 	}
@@ -195,7 +195,7 @@ static void eap_teap_append_identity_type(tls_session_t *tls_session, int value)
 	eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_IDENTITY_TYPE, false, sizeof(identity), &identity);
 }
 
-static void eap_teap_append_result(tls_session_t *tls_session, PW_CODE code)
+static void eap_teap_append_result(REQUEST *request, tls_session_t *tls_session, PW_CODE code)
 {
 	teap_tunnel_t *t = (teap_tunnel_t *) tls_session->opaque;
 
@@ -203,10 +203,16 @@ static void eap_teap_append_result(tls_session_t *tls_session, PW_CODE code)
 			? EAP_TEAP_TLV_RESULT
 			: EAP_TEAP_TLV_INTERMED_RESULT;
 
+	char const *name = (t->result_final) ? "Result" : "Intermediate-Result";
+
 	uint16_t state = (code == PW_CODE_ACCESS_REJECT)
 			? EAP_TEAP_TLV_RESULT_FAILURE
 			: EAP_TEAP_TLV_RESULT_SUCCESS;
 	state = htons(state);
+
+	char const *state_name = (code == PW_CODE_ACCESS_REJECT) ? "Failure" : "Success";
+
+	RDEBUG("Phase 2: %s = %s", name, state_name);
 
 	eap_teap_tlv_append(tls_session, type, true, sizeof(state), &state);
 }
@@ -242,7 +248,7 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	unsigned int			olen;
 	struct crypto_binding_buffer	*cbb;
 
-	RDEBUG("Sending Cryptobinding");
+	RDEBUG("Phase 2: Sending Cryptobinding");
 
 	eap_teap_derive_imck(request, tls_session, msk, msklen, emsk, emsklen);
 
@@ -267,7 +273,7 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 
 	if (olen) memcpy(cbb->outer_tlvs, tls_session->outer_tlvs_octets_server, olen);
 
-	RDEBUGHEX("BUFFER for Compound MAC calculation", buf, talloc_array_length(buf));
+	RDEBUGHEX("Phase 2: BUFFER for Compound MAC calculation", buf, talloc_array_length(buf));
 
 	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(SSL_get_current_cipher(tls_session->ssl));
 	HMAC(md, &t->imck_msk.cmk, EAP_TEAP_CMK_LEN, buf, talloc_array_length(buf), mac_msk, &maclen);
@@ -797,7 +803,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 					return RLM_MODULE_INVALID;
 				}
 
-				RDEBUGHEX("MSCHAP_MPPE_SEND_KEY [low MSK]", vp->vp_octets, vp->length);
+				RDEBUGHEX("Phase 2: MSCHAP-MPPE-SEND-KEY [low MSK]", vp->vp_octets, vp->length);
 				break;
 
 			case PW_MSCHAP_MPPE_RECV_KEY:
@@ -814,7 +820,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 					goto wrong_length;
 				}
 
-				RDEBUGHEX("MSCHAP_MPPE_RECV_KEY [high MSK]", vp->vp_octets, vp->vp_length);
+				RDEBUGHEX("Phase 2: MSCHAP-MPPE-RECV-KEY [high MSK]", vp->vp_octets, vp->vp_length);
 				break;
 
 			case PW_MSCHAP2_SUCCESS:
@@ -856,7 +862,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			fr_pair_delete_by_num(&reply->vps, PW_EAP_SESSION_ID, 0, TAG_ANY);
 		}
 
-		eap_teap_append_result(tls_session, reply->code);
+		eap_teap_append_result(request, tls_session, reply->code);
 		eap_teap_append_crypto_binding(request, tls_session, msk, msklen, emsk, emsklen);
 
 		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
@@ -906,7 +912,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		}
 
 		t->result_final = true;
-		eap_teap_append_result(tls_session, reply->code);
+		eap_teap_append_result(request, tls_session, reply->code);
 
 		tls_session->authentication_success = true;
 		rcode = RLM_MODULE_OK;
@@ -917,7 +923,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		RDEBUG("Phase 2: Got tunneled Access-Reject");
 
 	fail:
-		eap_teap_append_result(tls_session, reply->code);
+		eap_teap_append_result(request, tls_session, reply->code);
 		rcode = RLM_MODULE_REJECT;
 		break;
 
@@ -1241,7 +1247,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	memcpy(&cbb->binding, binding, sizeof(cbb->binding) - sizeof(cbb->binding.emsk_compound_mac) - sizeof(cbb->binding.msk_compound_mac));
 	if (olen) memcpy(cbb->outer_tlvs, tls_session->outer_tlvs_octets_server, olen);
 
-	RDEBUGHEX("BUFFER for Compound MAC calculation", buf, talloc_array_length(buf));
+	RDEBUGHEX("Phase 2: BUFFER for Compound MAC calculation", buf, talloc_array_length(buf));
 
 	/*
 	 * we carry forward the S-IMCK[j] based on what we verified for session key generation
@@ -1275,7 +1281,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	if (!imck) imck = &imck_zeros;
 
 	/* IMCK[j] 60 octets => S-IMCK[j] first 40 octets, CMK[j] last 20 octets */
-	RDEBUGHEX("S-IMCK[j]", imck->simck, sizeof(imck->simck));
+	RDEBUGHEX("Phase 2: S-IMCK[j]", imck->simck, sizeof(imck->simck));
 
 	uint8_t mk_msk_label[31] = "Session Key Generating Function";
 
@@ -1286,7 +1292,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 		imck->simck, sizeof(imck->simck),
 		mk_msk_seed, ARRAY_SIZE(mk_msk_seed),
 		(uint8_t *)&t->msk, sizeof(t->msk));
-	RDEBUGHEX("Derived key (MSK)", t->msk, sizeof(t->msk));
+	RDEBUGHEX("Phase 2: Derived key (MSK)", t->msk, sizeof(t->msk));
 
 	uint8_t mk_emsk_label[40] = "Extended Session Key Generating Function";
 	struct iovec mk_emsk_seed[1] = {
@@ -1296,7 +1302,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 		imck->simck, sizeof(imck->simck),
 		mk_emsk_seed, ARRAY_SIZE(mk_emsk_seed),
 		(uint8_t *)&t->emsk, sizeof(t->emsk));
-	RDEBUGHEX("Derived key (EMSK)", t->emsk, sizeof(t->emsk));
+	RDEBUGHEX("Phase 2:Derived key (EMSK)", t->emsk, sizeof(t->emsk));
 
 	return PW_CODE_ACCESS_ACCEPT;
 }
@@ -1460,14 +1466,14 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		if (strstr(SSL_CIPHER_description(SSL_get_current_cipher(tls_session->ssl),
 						  buf, sizeof(buf)), "Au=None")) {
 			/* FIXME enforce MSCHAPv2 - RFC 7170 */
-			RDEBUG2("Using anonymous provisioning");
+			RDEBUG2("Phase 2: Using anonymous provisioning");
 			t->mode = EAP_TEAP_PROVISIONING_ANON;
 		} else {
 			if (SSL_session_reused(tls_session->ssl)) {
-				RDEBUG("Session Resumed");
+				RDEBUG("Phase 2: Outer session was resumed");
 				t->mode = EAP_TEAP_NORMAL_AUTH;
 			} else {
-				RDEBUG2("Using authenticated provisioning");
+				RDEBUG2("Phase 2: Using authenticated provisioning");
 				t->mode = EAP_TEAP_PROVISIONING_AUTH;
 			}
 		}
@@ -1521,7 +1527,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 	case PROVISIONING:
 		if (!t->result_final) {
 			t->result_final = true;
-			eap_teap_append_result(tls_session, code);
+			eap_teap_append_result(request, tls_session, code);
 		}
 		/* FALL-THROUGH */
 
