@@ -1059,7 +1059,7 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		 *	See which method we're doing.  If we're told to do a particular kind of identity
 		 *	check, AND there's not any EAP-Type already set, THEN do it.
 		 */
-		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
+		vp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
 			VALUE_PAIR *teap_type;
 
