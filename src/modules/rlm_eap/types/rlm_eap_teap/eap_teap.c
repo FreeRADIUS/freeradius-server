@@ -748,6 +748,13 @@ static void eapteap_copy_request_to_tunnel(REQUEST *request, REQUEST *fake) {
 	}
 }
 
+static const char *stage_name[] = {
+	"TLS session handshake",
+	"Authentication",
+	"Provisioning",
+	"Complete"
+};
+
 /*
  * Use a reply packet to determine what to do.
  */
@@ -764,6 +771,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	teap_tunnel_t	*t = tls_session->opaque;
 
 	rad_assert(eap_session->request == request);
+
+	RDEBUG("Phase 2: Stage %s", stage_name[t->stage]);
 
 	/*
 	 * If the response packet was Access-Accept, then
@@ -901,15 +910,13 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			       (vp->vp_short == 1) ? "User" : "Machine");
 			fr_pair_delete(&request->state, vp);
 
-			vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
-			if (vp) {
-				RDEBUG("Phase 2: Continuing due to &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
-				       (vp->vp_short == 1) ? "User" : "Machine");
-				goto challenge;
-			}
-
-			RDEBUG("Phase 2: All inner authentications have succeeded");
+			/*
+			 *	Always challenge, as we're sending EAP-Identity.
+			 */
+			goto challenge;
 		}
+
+		RDEBUG("Phase 2: All inner authentications have succeeded");
 
 		t->result_final = true;
 		eap_teap_append_result(request, tls_session, reply->code);
@@ -1380,10 +1387,12 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 			return PW_CODE_ACCESS_REJECT;
 	}
 
-	if (t->stage == AUTHENTICATION) {
+	/*
+	 *	Move to the provisioning stage only if we have a final result.
+	 */
+	if ((t->stage == AUTHENTICATION) && t->result_final) {
 		if (gotcryptobinding && gotintermedresult) t->stage = PROVISIONING;
 		/* rollback if we have an EAP sequence (chaining) */
-		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (t->stage == PROVISIONING && !gotresult && vp) t->stage = AUTHENTICATION;
 	}
 
