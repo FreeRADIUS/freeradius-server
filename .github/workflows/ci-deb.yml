@@ -102,7 +102,9 @@ jobs:
         apt-get install -y --no-install-recommends make gcc libc6-dev equivs file curl gnupg2 lsb-release
 
     - name: NetworkRADIUS signing key
-      run: curl -sS https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
+      run: |
+        install -d -o root -g root -m 0755 /etc/apt/keyrings
+        curl -s 'https://packages.inkbridgenetworks.com/pgp/packages.networkradius.com.asc' | tee /etc/apt/keyrings/packages.networkradius.com.asc > /dev/null
 
     - name: Set up NetworkRADIUS extras repository
       run: |
@@ -112,7 +114,7 @@ jobs:
             RELEASE=$(cat /etc/debian_version | awk -F \/ '{ print $(NF) }')
         fi
         [ "$RELEASE" != "trixie" ] || RELEASE=sid
-        echo "deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
 
     - name: Update apt repository lists
@@ -224,7 +226,9 @@ jobs:
         apt-get install -y --no-install-recommends procps curl gnupg2 ca-certificates lsb-release
 
     - name: NetworkRADIUS signing key
-      run: curl -sS https://packages.inkbridgenetworks.com/pgp/packages%40networkradius.com | APT_KEY_DONT_WARN_ON_DANGEROUS_USAGE=yes apt-key add -
+      run: |
+        install -d -o root -g root -m 0755 /etc/apt/keyrings
+        curl -s 'https://packages.inkbridgenetworks.com/pgp/packages.networkradius.com.asc' | tee /etc/apt/keyrings/packages.networkradius.com.asc > /dev/null
 
     - name: Set up NetworkRADIUS extras repository
       run: |
@@ -234,7 +238,7 @@ jobs:
             RELEASE=$(cat /etc/debian_version | awk -F \/ '{ print $(NF) }')
         fi
         [ "$RELEASE" != "trixie" ] || RELEASE=sid
-        echo "deb http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.networkradius.com.asc] http://packages.networkradius.com/extras/${DIST}/${RELEASE} ${RELEASE} main" \
           > /etc/apt/sources.list.d/networkradius-extras.list
 
     - name: Update apt repository lists

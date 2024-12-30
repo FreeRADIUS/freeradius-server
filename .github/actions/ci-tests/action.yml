@@ -94,8 +94,9 @@ runs:
     - name: Set up repositories
       shell: bash
       run: |
-        wget -O - https://openresty.org/package/pubkey.gpg | sudo apt-key add -
-        echo "deb http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
+        sudo install -d -o root -g root -m 0755 /etc/apt/keyrings
+        curl -s https://openresty.org/package/pubkey.gpg | sudo tee /etc/apt/keyrings/openresty.gpg
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
 
         sudo apt-get update
 
