@@ -812,6 +812,8 @@ static connection_state_t conn_init(void **h_out, connection_t *conn, void *uctx
 		rcode = fr_bio_fd_connect_full(h->bio.fd, conn->el, bio_connected, bio_error, NULL, NULL);
 		if (rcode < 0) goto fail;
 
+		*h_out = h;
+
 		if (rcode == 0) return CONNECTION_STATE_CONNECTING;
 
 		fr_assert(rcode == 1);
