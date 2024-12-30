@@ -95,8 +95,8 @@ runs:
       shell: bash
       run: |
         sudo install -d -o root -g root -m 0755 /etc/apt/keyrings
-        curl -s https://openresty.org/package/pubkey.gpg | sudo tee /etc/apt/keyrings/openresty.gpg
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
+        curl -s https://openresty.org/package/pubkey.gpg | sudo tee /etc/apt/keyrings/openresty.asc
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/openresty.asc] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
 
         sudo apt-get update
 
