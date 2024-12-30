@@ -64,7 +64,6 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 	uint8_t	const			*request_hmac_extra = NULL;
 	size_t				request_hmac_extra_len = 0;
 	fr_pair_t			*vp;
-	int				ret;
 
 	/*
 	 *	If there's no subtype vp, we look at the rcode
@@ -260,8 +259,7 @@ static unlang_action_t mod_encode(rlm_rcode_t *p_result, module_ctx_t const *mct
 
 	RDEBUG2("Encoding attributes");
 	log_request_pair_list(L_DBG_LVL_2, request, NULL, &request->reply_pairs, NULL);
-	ret = fr_aka_sim_encode(request, &request->reply_pairs, &encode_ctx);
-	if (ret <= 0) RETURN_MODULE_FAIL;
+	if (fr_aka_sim_encode(request, &request->reply_pairs, &encode_ctx) <= 0) RETURN_MODULE_FAIL;
 
 	switch (subtype_vp->vp_uint16) {
 	case FR_SUBTYPE_VALUE_AKA_IDENTITY:
