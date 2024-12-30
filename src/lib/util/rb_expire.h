@@ -38,8 +38,8 @@ typedef struct {
 } fr_rb_expire_t;
 
 /** dlist for expiring old entries
- *	
- *  This structure should be inside of the 
+ *
+ *  This structure should be inside of the
  */
 typedef struct {
 	fr_rb_node_t	node;
@@ -55,9 +55,9 @@ typedef struct {
 		(_expire)->last_expiry = fr_time(); \
  	} while (0)
 
-bool		fr_rb_expire_insert(fr_rb_expire_t *expire, void const *data, fr_time_t now) CC_HINT(nonnull);
+bool		fr_rb_expire_insert(fr_rb_expire_t *expire, void *data, fr_time_t now) CC_HINT(nonnull);
 
-void		fr_rb_expire_update(fr_rb_expire_t *expire, void const *data, fr_time_t now) CC_HINT(nonnull);
+void		fr_rb_expire_update(fr_rb_expire_t *expire, void *data, fr_time_t now) CC_HINT(nonnull);
 
 #ifdef __cplusplus
 }
