@@ -325,7 +325,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	ssn->length_flag = false;
 
 	vp = fr_pair_make(ssn, NULL, "FreeRADIUS-EAP-TEAP-Authority-ID", inst->authority_identity, T_OP_EQ);
-	fr_pair_add(&ssn->outer_tlvs, vp);
+	fr_pair_add(&ssn->outer_tlvs_server, vp);
 
 	/*
 	 *	Be nice about identity types.

@@ -278,8 +278,8 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 	 *	This is included in the first fragment, and then never
 	 *	afterwards.
 	 */
-	if (start && ssn->outer_tlvs) {
-		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs);
+	if (start && ssn->outer_tlvs_server) {
+		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs_server);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da->type != PW_TYPE_OCTETS) {
@@ -338,15 +338,15 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 
 	if (obit) {
 		nlen = 0;
-		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs);
+		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs_server);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da->type != PW_TYPE_OCTETS) continue;
 			nlen += sizeof(ohdr) + vp->vp_length;
 		}
 
-		ssn->outer_tlvs_octets = talloc_array(ssn, uint8_t, olen);
-		if (!ssn->outer_tlvs_octets) return 0;
+		ssn->outer_tlvs_octets_server = talloc_array(ssn, uint8_t, olen);
+		if (!ssn->outer_tlvs_octets_server) return 0;
 
 		nlen = htonl(nlen);
 		memcpy(reply.data + lbit, &nlen, sizeof(nlen));
@@ -360,7 +360,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 	 */
 	if (obit) {
 		olen = 0;
-		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs);
+		for (vp = fr_cursor_init(&cursor, &ssn->outer_tlvs_server);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (vp->da->type != PW_TYPE_OCTETS) continue;
@@ -374,9 +374,9 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn, bool start)
 			ohdr[1] = htons(vp->vp_length);
 
 			/* use by Crypto-Binding TLV */
-			memcpy(ssn->outer_tlvs_octets + olen, ohdr, sizeof(ohdr));
+			memcpy(ssn->outer_tlvs_octets_server + olen, ohdr, sizeof(ohdr));
 			olen += sizeof(ohdr);
-			memcpy(ssn->outer_tlvs_octets + olen, vp->vp_octets, vp->vp_length);
+			memcpy(ssn->outer_tlvs_octets_server + olen, vp->vp_octets, vp->vp_length);
 			olen += vp->vp_length;
 
 			memcpy(reply.data + lbit + obit + size, ohdr, sizeof(ohdr));
@@ -763,6 +763,8 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 
 		memcpy(tlspacket->data, data, data_len);
 	}
+
+	fr_assert(!obit);
 
 	return tlspacket;
 }

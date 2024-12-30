@@ -152,8 +152,11 @@ typedef struct _tls_session_t {
 							//!< If set to no then only the first fragment contains length.
 	int		peap_flag;
 
-	VALUE_PAIR	*outer_tlvs;			//!< only for TEAP, and only for the first fragment.
-	uint8_t		*outer_tlvs_octets;		//!< only for TEAP, needed for Crypto-Binding TLV
+	VALUE_PAIR	*outer_tlvs_server;		//!< only for TEAP, and only for the first packert.
+	uint8_t		*outer_tlvs_octets_server;	//!< only for TEAP, needed for Crypto-Binding TLV
+
+	VALUE_PAIR	*outer_tlvs_peer;		//!< only for TEAP, and only for the first packet.
+	uint8_t		*outer_tlvs_octets_peer;	//!< only for TEAP, needed for Crypto-Binding TLV
 
 	size_t		tls_record_in_total_len;	//!< How long the peer indicated the complete tls record
 							//!< would be.

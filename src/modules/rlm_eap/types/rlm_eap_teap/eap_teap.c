@@ -247,7 +247,7 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 
 	t->imck_emsk_available = emsklen > 0;
 
-	olen = tls_session->outer_tlvs_octets ? talloc_array_length(tls_session->outer_tlvs_octets) : 0;
+	olen = tls_session->outer_tlvs_octets_server ? talloc_array_length(tls_session->outer_tlvs_octets_server) : 0;
 
 	buf = talloc_zero_array(request, uint8_t, sizeof(struct crypto_binding_buffer) - 1/*outer_tlvs*/ + olen);
 	rad_assert(buf != NULL);
@@ -264,7 +264,7 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	RANDFILL(cbb->binding.nonce);
 	cbb->binding.nonce[sizeof(cbb->binding.nonce) - 1] &= ~0x01; /* RFC 7170, Section 4.2.13 */
 
-	if (olen) memcpy(cbb->outer_tlvs, tls_session->outer_tlvs_octets, olen);
+	if (olen) memcpy(cbb->outer_tlvs, tls_session->outer_tlvs_octets_server, olen);
 
 	RDEBUGHEX("BUFFER for Compound MAC calculation", buf, talloc_array_length(buf));
 
@@ -1202,7 +1202,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	unsigned int			flags;
 	struct teap_imck_t	 	*imck = NULL;
 
-	olen = tls_session->outer_tlvs_octets ? talloc_array_length(tls_session->outer_tlvs_octets) : 0;
+	olen = tls_session->outer_tlvs_octets_server ? talloc_array_length(tls_session->outer_tlvs_octets_server) : 0;
 	/* FIXME: include client outer TLVs */
 
 	buf = talloc_zero_array(request, uint8_t, sizeof(struct crypto_binding_buffer) - 1/*outer_tlvs*/ + olen);
@@ -1229,7 +1229,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 
 	CRYPTO_BINDING_BUFFER_INIT(cbb);
 	memcpy(&cbb->binding, binding, sizeof(cbb->binding) - sizeof(cbb->binding.emsk_compound_mac) - sizeof(cbb->binding.msk_compound_mac));
-	if (olen) memcpy(cbb->outer_tlvs, tls_session->outer_tlvs_octets, olen);
+	if (olen) memcpy(cbb->outer_tlvs, tls_session->outer_tlvs_octets_server, olen);
 
 	RDEBUGHEX("BUFFER for Compound MAC calculation", buf, talloc_array_length(buf));
 
