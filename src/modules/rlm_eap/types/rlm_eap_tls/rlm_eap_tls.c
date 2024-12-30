@@ -172,6 +172,8 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			fake = request_alloc_fake(request);
 			rad_assert(!fake->packet->vps);
 
+			fake->eap_inner_tunnel = true;
+
 			fake->packet->vps = fr_pair_list_copy(fake->packet, request->packet->vps);
 
 			/* set the virtual server to use */

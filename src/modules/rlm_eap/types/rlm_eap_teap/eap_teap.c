@@ -973,6 +973,8 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	fake = request_alloc_fake(request);
 	rad_assert(!fake->packet->vps);
 
+	fake->eap_inner_tunnel = true;
+
 	t = (teap_tunnel_t *) tls_session->opaque;
 
 	/*

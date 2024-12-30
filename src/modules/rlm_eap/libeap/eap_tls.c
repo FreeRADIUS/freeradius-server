@@ -102,6 +102,13 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC, handler);
 
+	/*
+	 *	It makes no sense to do session resumption for TLS
+	 */
+	if (request->parent && request->parent->eap_inner_tunnel) {
+		ssn->allow_session_resumption = false;
+	}
+
 	return talloc_steal(handler, ssn); /* ssn */
 }
 

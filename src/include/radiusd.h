@@ -287,6 +287,7 @@ struct rad_request {
 	bool			max_time;	//!< did we hit max time?
 
 	bool			in_request_hash;
+	bool			eap_inner_tunnel;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
 
