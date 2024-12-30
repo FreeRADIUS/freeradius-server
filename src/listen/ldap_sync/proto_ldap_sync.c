@@ -135,7 +135,7 @@ static int mod_decode(UNUSED void const *instance, request_t *request, uint8_t *
 	 */
 	ret = fr_internal_decode_list_dbuff(request->pair_list.request, &request->request_pairs,
 					   fr_dict_root(request->dict), &dbuff, NULL);
-	if (ret < 0) return ret;
+	if (ret < 0) return -1;
 
 	vp = fr_pair_find_by_da(&request->request_pairs, NULL, attr_packet_type);
 	fr_assert(vp);
