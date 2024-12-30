@@ -2892,13 +2892,7 @@ redo:
 	 */
 	XLAT_DEBUG("    operator <-- %pV", fr_box_strvalue_len(fr_sbuff_current(&our_in), fr_sbuff_remaining(&our_in)));
 	fr_sbuff_out_by_longest_prefix(&slen, &op, expr_assignment_op_table, &our_in, T_INVALID);
-	if (op == T_INVALID) {
-		fr_strerror_const("Invalid operator");
-		talloc_free(lhs);
-		FR_SBUFF_ERROR_RETURN(&our_in);
-	}
-
-	if (!binary_ops[op].str) {
+	if ((op == T_INVALID) || !binary_ops[op].str) {
 		fr_strerror_const("Invalid operator");
 		fr_sbuff_set(&our_in, &m_op);
 		talloc_free(lhs);
@@ -2951,7 +2945,7 @@ redo:
 	 */
 	if ((lhs->type == XLAT_TMPL) && tmpl_is_attr(lhs->vpt) && fr_type_is_structural(tmpl_attr_tail_da(lhs->vpt)->type)) {
 		if ((op != T_OP_CMP_EQ) && (op != T_OP_NE)) {
-			fr_strerror_printf("Invalid operatord '%s' for left hand side structural attribute", fr_tokens[op]);
+			fr_strerror_printf("Invalid operator '%s' for left hand side structural attribute", fr_tokens[op]);
 			fr_sbuff_set(&our_in, &m_op);
 			FR_SBUFF_ERROR_RETURN(&our_in);
 		}
