@@ -46,7 +46,7 @@ RCSIDH(eap_teap_h, "$Id$")
 #define EAP_TEAP_TLV_RESULT_SUCCESS		1
 #define EAP_TEAP_TLV_RESULT_FAILURE		2
 
-#define PW_EAP_TEAP_TLV_IDENTITY (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY << 8))
+#define PW_EAP_TEAP_TLV_IDENTITY_TYPE (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY_TYPE << 8))
 
 typedef enum eap_teap_stage_t {
 	TLS_SESSION_HANDSHAKE = 0,
@@ -76,7 +76,7 @@ typedef struct eap_tlv_crypto_binding_tlv_t {
 typedef enum eap_teap_tlv_type_t {
 	EAP_TEAP_TLV_RESERVED_0 = 0,		// 0
 	EAP_TEAP_TLV_AUTHORITY,  		// 1
-	EAP_TEAP_TLV_IDENTITY,  		// 2
+	EAP_TEAP_TLV_IDENTITY_TYPE,  		// 2
 	EAP_TEAP_TLV_RESULT,     		// 3
 	EAP_TEAP_TLV_NAK,        		// 4
 	EAP_TEAP_TLV_ERROR,      		// 5
@@ -122,6 +122,9 @@ typedef struct teap_tunnel_t {
 
 	int			mode;
 	eap_teap_stage_t	stage;
+
+	int			num_identities;
+	uint16_t		identity_types[2];
 
 	int			imckc;
 	bool			imck_emsk_available;

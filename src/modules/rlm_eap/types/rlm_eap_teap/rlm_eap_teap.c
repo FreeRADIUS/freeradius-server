@@ -330,7 +330,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	/*
 	 *	Be nice about identity types.
 	 */
-	vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+	vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 	if (vp) {
 		RDEBUG("Found &session-state:FreeRADIUS-EAP-TEAP-Identity-Type, not setting from configuration");
 

@@ -187,11 +187,12 @@ static void eap_teap_send_error(tls_session_t *tls_session, int error)
 	eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_ERROR, true, sizeof(value), &value);
 }
 
-static void eap_teap_append_identity(tls_session_t *tls_session, int value) {
+static void eap_teap_append_identity_type(tls_session_t *tls_session, int value)
+{
 	uint16_t identity;
 	identity = htons(value);
 
-	eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_IDENTITY, false, sizeof(identity), &identity);
+	eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_IDENTITY_TYPE, false, sizeof(identity), &identity);
 }
 
 static void eap_teap_append_result(tls_session_t *tls_session, PW_CODE code)
@@ -214,7 +215,7 @@ static void eap_teap_append_eap_identity_request(REQUEST *request, tls_session_t
 {
 	eap_packet_raw_t eap_packet;
 
-	RDEBUG("Sending EAP-Identity");
+	RDEBUG("Phase 2: Sending EAP-Identity");
 
 	eap_packet.code = PW_EAP_REQUEST;
 	eap_packet.id = eap_session->eap_ds->response->id + 1;
@@ -858,9 +859,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		eap_teap_append_result(tls_session, reply->code);
 		eap_teap_append_crypto_binding(request, tls_session, msk, msklen, emsk, emsklen);
 
-		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
-			RDEBUG("&session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type set so continuing EAP sequence/chaining");
+			RDEBUG("Phase 2: Continuing with Identity-Type = %s",
+			       (vp->vp_short == 1) ? "User" : "Machine");
 
 			/* RFC3748, Section 2.1 - does not explictly tell us to but we need to eat the EAP-Success */
 			fr_pair_delete_by_num(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
@@ -869,8 +871,15 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			talloc_free(t->username);
 			t->username = NULL;
 
+			if (t->num_identities == 2) {
+				RDEBUG("Phase 2: Configured to send too many identities, failing the session");
+				goto fail;
+			}
+
+			t->identity_types[t->num_identities++] = vp->vp_short;
+
 			/* RFC7170, Appendix C.6 */
-			eap_teap_append_identity(tls_session, vp->vp_short);
+			eap_teap_append_identity_type(tls_session, vp->vp_short);
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 
 			if (!t->auto_chain) goto challenge;
@@ -882,18 +891,18 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			 *	If there are more than one, then the
 			 *	next round will pick up the next one.
 			 */
-			RDEBUG("Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
+			RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
 			       (vp->vp_short == 1) ? "User" : "Machine");
 			fr_pair_delete(&request->state, vp);
 
-			vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+			vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 			if (vp) {
-				RDEBUG("Continuing phase 2 due to &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
+				RDEBUG("Phase 2: Continuing due to &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
 				       (vp->vp_short == 1) ? "User" : "Machine");
 				goto challenge;
 			}
 
-			RDEBUG("All inner authentications have succeeded");
+			RDEBUG("Phase 2: All inner authentications have succeeded");
 		}
 
 		t->result_final = true;
@@ -905,8 +914,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		break;
 
 	case PW_CODE_ACCESS_REJECT:
-		RDEBUG("Got tunneled Access-Reject");
+		RDEBUG("Phase 2: Got tunneled Access-Reject");
 
+	fail:
 		eap_teap_append_result(tls_session, reply->code);
 		rcode = RLM_MODULE_REJECT;
 		break;
@@ -1049,7 +1059,7 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		 *	See which method we're doing.  If we're told to do a particular kind of identity
 		 *	check, AND there's not any EAP-Type already set, THEN do it.
 		 */
-		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
 			VALUE_PAIR *teap_type;
 
@@ -1318,10 +1328,10 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 		switch (parent_da->attr) {
 		case PW_FREERADIUS_EAP_TEAP_TLV:
 			switch (vp->da->attr >> 8) {
-			case EAP_TEAP_TLV_IDENTITY:
+			case EAP_TEAP_TLV_IDENTITY_TYPE:
 				vp_type = vp;
 
-				vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+				vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 				if (vp_config && (vp_config->vp_short != vp->vp_short)) {
 					RWDEBUG("We requested &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %s",
 						(vp_config->vp_short == 1) ? "User" : "Machine");
@@ -1367,7 +1377,7 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	if (t->stage == AUTHENTICATION) {
 		if (gotcryptobinding && gotintermedresult) t->stage = PROVISIONING;
 		/* rollback if we have an EAP sequence (chaining) */
-		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (t->stage == PROVISIONING && !gotresult && vp) t->stage = AUTHENTICATION;
 	}
 
@@ -1464,9 +1474,24 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 		eap_teap_init_keys(request, tls_session);
 
+
 		/* RFC7170, Appendix C.6 */
-		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
-		if (vp) eap_teap_append_identity(tls_session, vp->vp_short);
+		vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
+		if (vp) {
+			RDEBUG("Phase 2: Sending Identity-Type = %s", (vp->vp_short == 1) ? "User" : "Machine");
+			eap_teap_append_identity_type(tls_session, vp->vp_short);
+
+			if (t->num_identities == 2) {
+				RDEBUG("Phase 2: Configured to send too many identities, failing the session");
+				goto fail;
+			}
+
+			t->identity_types[t->num_identities++] = vp->vp_short;
+
+			RDEBUG("Phase 2: Deleting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
+			       (vp->vp_short == 1) ? "User" : "Machine");
+			fr_pair_delete(&request->state, vp);
+		}
 
 		eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 
@@ -1513,6 +1538,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	default:
 		RERROR("Internal sanity check failed in EAP-TEAP at %d", t->stage);
+	fail:
 		code = PW_CODE_ACCESS_REJECT;
 	}
 
