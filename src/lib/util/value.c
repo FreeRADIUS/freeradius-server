@@ -2103,7 +2103,7 @@ int fr_value_box_to_key(uint8_t **out, size_t *outlen, fr_value_box_t const *val
 		fr_dbuff_init(&dbuff, *out, *outlen >> 3);
 
 		slen = fr_value_box_to_network(&dbuff, value);
-		if (slen < 0) return slen;
+		if (slen < 0) return -1;
 		*outlen = slen * 8; /* bits not bytes */
 		break;
 
