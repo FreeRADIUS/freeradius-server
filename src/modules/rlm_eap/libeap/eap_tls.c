@@ -948,8 +948,6 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *	send that alert to the client and then send the EAP-Failure
 	 */
 	status = eaptls_verify(handler);
-	ERROR("VERIFY returned %d", status);
-
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("(TLS) EAP Verification failed with %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
