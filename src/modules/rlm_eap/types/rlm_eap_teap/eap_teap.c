@@ -72,7 +72,7 @@ static void eap_teap_init_keys(REQUEST *request, tls_session_t *tls_session)
 
 	RDEBUG3("Phase 2: Using MAC %s (%d)", OBJ_nid2sn(md_type), md_type);
 
-	RDEBUG3("Phase 2: Deriving EAP-TEAP keys");
+	RDEBUG3("Phase 2: Deriving keys");
 
 	rad_assert(t->received_version > -1);
 	rad_assert(t->imckc == 0);
@@ -304,7 +304,7 @@ static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 
 	while (remaining > 0) {
 		if (remaining < 4) {
-			RDEBUG2("EAP-TEAP TLV is too small (%u) to contain a EAP-TEAP TLV header", remaining);
+			RDEBUG2("Phase 2: Data is too small (%u) to contain a TLV header", remaining);
 			return 0;
 		}
 
@@ -323,7 +323,7 @@ static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 			present |= 1 << attr;
 
 			if (num[EAP_TEAP_TLV_EAP_PAYLOAD] > 1) {
-				RDEBUG("Too many EAP-Payload TLVs");
+				RDEBUG("Phase 2: Too many EAP-Payload TLVs");
 unexpected:
 				for (int i = 0; i < EAP_TEAP_TLV_MAX; i++) {
 					DICT_ATTR const *da;
@@ -332,9 +332,9 @@ unexpected:
 
 					da = dict_attrbyvalue((i << 8) | PW_FREERADIUS_EAP_TEAP_TLV, VENDORPEC_FREERADIUS);
 					if (da) {
-						RDEBUG(" - attribute %s is present", da->name);
+						RDEBUG("Phase 2: - attribute %s is present", da->name);
 					} else {
-						RDEBUG(" - attribute %d is present", i);
+						RDEBUG("Phase 2: - attribute %d is present", i);
 					}
 				}
 				eap_teap_send_error(tls_session, EAP_TEAP_ERR_UNEXPECTED_TLV);
@@ -342,13 +342,13 @@ unexpected:
 			}
 
 			if (num[EAP_TEAP_TLV_INTERMED_RESULT] > 1) {
-				RDEBUG("Too many Intermediate-Result TLVs");
+				RDEBUG("Phase 2: Too many Intermediate-Result TLVs");
 				goto unexpected;
 			}
 			break;
 		default:
 			if ((data[0] & 0x80) != 0) {
-				RDEBUG("Unknown mandatory TLV %02x", attr);
+				RDEBUG("Phase 2: Unknown mandatory TLV %02x", attr);
 				goto unexpected;
 			}
 
@@ -364,7 +364,7 @@ unexpected:
 		remaining -= 4;
 
 		if (length > remaining) {
-			RDEBUG2("EAP-TEAP TLV %u is longer than room remaining in the packet (%u > %u).", attr,
+			RDEBUG2("Phase 2: TLV %u is longer than room remaining in the packet (%u > %u).", attr,
 				length, remaining);
 			return 0;
 		}
@@ -377,7 +377,7 @@ unexpected:
 		 * of the TLCs, die.
 		 */
 		if (remaining < length) {
-			RDEBUG2("EAP-TEAP TLV overflows packet!");
+			RDEBUG2("Phase 2: TLV overflows packet.");
 			return 0;
 		}
 
@@ -394,7 +394,7 @@ unexpected:
 		if ((attr == EAP_TEAP_TLV_INTERMED_RESULT) || (attr == EAP_TEAP_TLV_RESULT)) {
 			if (length < 2) {
 			fail_length:
-				RDEBUG("EAP-TEAP TLV %u is too short.  Expected 2, got %d.", attr, length);
+				RDEBUG("Phase 2: TLV %u is too short.  Expected 2, got %d.", attr, length);
 				return 0;
 			}
 
@@ -415,16 +415,16 @@ unexpected:
 	if (status) {
 		if (status == EAP_TEAP_TLV_RESULT_FAILURE) {
 			if (!error) {
-				RDEBUG("EAP-TEAP TLV Status indicates failure with error %u.  Rejecting request.", error);
+				RDEBUG("Phase 2: Received Result from peer which indicates failure with error %u.  Rejecting request.", error);
 			} else {
-				RDEBUG("EAP-TEAP TLV Status indicates failure.  Rejecting request.");
+				RDEBUG("Phase 2: Received Result from peer which indicates failure.  Rejecting request.");
 			}
 			return 0;
 		}
 
 		if (status != EAP_TEAP_TLV_RESULT_SUCCESS) {
 		unknown_value:
-			RDEBUG("EAP-TEAP TLV Status contains unknown value %u.  Rejecting request.", status);
+			RDEBUG("Phase 2: Received Result from peer with unknown value %u.  Rejecting request.", status);
 			goto unexpected;
 		}
 	}
@@ -433,7 +433,7 @@ unexpected:
 	 * Check if the peer mixed & matched TLVs.
 	 */
 	if ((num[EAP_TEAP_TLV_NAK] > 0) && (num[EAP_TEAP_TLV_NAK] != total)) {
-		RDEBUG("NAK TLV sent with non-NAK TLVs.  Rejecting request.");
+		RDEBUG("{Phase 2: NAK TLV was sent along with non-NAK TLVs.  Rejecting request.");
 		goto unexpected;
 	}
 
@@ -447,30 +447,30 @@ unexpected:
 	switch (t->stage) {
 	case TLS_SESSION_HANDSHAKE:
 		if (present) {
-			RDEBUG("Unexpected TLVs in TLS Session Handshake stage");
+			RDEBUG("Phase 2: Unexpected TLVs in TLS Session Handshake stage");
 			goto unexpected;
 		}
 		break;
 	case AUTHENTICATION:
 		if (present & ~((1 << EAP_TEAP_TLV_EAP_PAYLOAD) | (1 << EAP_TEAP_TLV_CRYPTO_BINDING) | (1 << EAP_TEAP_TLV_INTERMED_RESULT) | (1 << EAP_TEAP_TLV_RESULT))) {
-			RDEBUG("Unexpected TLVs in authentication stage");
+			RDEBUG("Phase 2: Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
 		break;
 	case PROVISIONING:
 		if (present & ~(1 << EAP_TEAP_TLV_RESULT)) {
-			RDEBUG("Unexpected TLVs in provisioning stage");
+			RDEBUG("Phase 2: Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
 		break;
 	case COMPLETE:
 		if (present) {
-			RDEBUG("Unexpected TLVs in complete stage");
+			RDEBUG("Phase 2: Unexpected TLVs in complete stage");
 			goto unexpected;
 		}
 		break;
 	default:
-		RDEBUG("Unexpected stage %d", t->stage);
+		RDEBUG("Phase 2: Internal error, invalid stage %d", t->stage);
 		return 0;
 	}
 
@@ -649,14 +649,13 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 		data_left -= 4;
 
 		/*
-		 * Look up the TLV.
+		 *	Look up the TLV.
 		 *
-		 * For now, if it doesn't exist, ignore it.
+		 *	For now, if it doesn't exist, ignore it.
 		 */
 		da = dict_attrbyparent(teap_da, attr, teap_da->vendor);
 		if (!da) {
-			RDEBUG("eap_teap_teap2vp: no sub attribute found %s attr: %u vendor: %u",
-					teap_da->name, attr, teap_da->vendor);
+			RDEBUG3("Phase 2: Skipping unknown attribute %u", attr);
 			goto next_attr;
 		}
 		if (da->type == PW_TYPE_TLV) {
@@ -665,7 +664,7 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 		}
 		decoded = eap_teap_decode_vp(request, da, data, length, &vp);
 		if (decoded < 0) {
-			RERROR("Failed decoding %s: %s", da->name, fr_strerror());
+			RDEBUG3("Phase 2: Failed decoding %s: %s", da->name, fr_strerror());
 			goto next_attr;
 		}
 
@@ -783,7 +782,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	 */
 	switch (reply->code) {
 	case PW_CODE_ACCESS_ACCEPT:
-		RDEBUG("Got tunneled Access-Accept");
+		RDEBUG("Phase 2: Got tunneled Access-Accept");
 
 		for (vp = fr_cursor_init(&cursor, &reply->vps); vp; vp = fr_cursor_next(&cursor)) {
 			if (vp->da->attr == PW_EAP_EMSK) {
@@ -807,7 +806,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 					memcpy(msk, vp->vp_octets, CHAP_VALUE_LENGTH);
 				} else {
 				wrong_length:
-					REDEBUG("Found %s with incorrect length.  Expected %u or %u, got %zu",
+					REDEBUG("Phase 2: Found %s with incorrect length.  Expected %u or %u, got %zu",
 						vp->da->name, CHAP_VALUE_LENGTH, EAPTLS_MPPE_KEY_LEN, vp->vp_length);
 					return RLM_MODULE_INVALID;
 				}
@@ -833,7 +832,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 				break;
 
 			case PW_MSCHAP2_SUCCESS:
-				RDEBUG("Got %s, tunneling it to the client in a challenge", vp->da->name);
+				RDEBUG("Phase 2: Got %s, tunneling it to the client in a challenge", vp->da->name);
 				if (t->use_tunneled_reply) {
 					t->authenticated = true;
 					/*
@@ -941,7 +940,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	 * a Reply-Message to the client.
 	 */
 	case PW_CODE_ACCESS_CHALLENGE:
-		RDEBUG("Got tunneled Access-Challenge");
+		RDEBUG("Phase 2: Got tunneled Access-Challenge");
 challenge:
 		/*
 		 *	Keep the State attribute, if necessary.
@@ -968,7 +967,7 @@ challenge:
 		break;
 
 	default:
-		RDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		RDEBUG("Phase 2: Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		rcode = RLM_MODULE_INVALID;
 		break;
 	}
@@ -988,7 +987,7 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	REQUEST			*fake;
 	int			eap_method = 0;
 
-	RDEBUG("Processing received EAP Payload");
+	RDEBUG3("Phase 2: Processing received EAP Payload");
 
 	/*
 	 * Allocate a fake REQUEST structure.
@@ -1009,7 +1008,7 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 
 	if (vp_type) fr_pair_add(&fake->packet->vps, fr_pair_copy(fake->packet, vp_type));
 
-	RDEBUG("Got tunneled request");
+	RDEBUG("Phase 2: Got tunneled request");
 	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
 	/*
@@ -1036,14 +1035,14 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 
 			fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
-			RDEBUG("Got tunneled identity of %s", t->username->vp_strvalue);
+			RDEBUG("Phase 2: Got tunneled identity of %s", t->username->vp_strvalue);
 		} else {
 			/*
 			 * Don't reject the request outright,
 			 * as it's permitted to do EAP without
 			 * user-name.
 			 */
-			RWDEBUG2("No EAP-Identity found to start EAP conversation");
+			RWDEBUG2("Phase 2: No EAP-Identity found to start EAP conversation");
 		}
 	} /* else there WAS a t->username */
 
@@ -1066,7 +1065,7 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 
 		eap_method = t->default_method;
 
-		RDEBUG2("AUTHENTICATION");
+		RDEBUG2("Phase 2: Authentication");
 
 		/*
 		 *	See which method we're doing.  If we're told to do a particular kind of identity
@@ -1088,21 +1087,21 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 				if (teap_type) {
 					eap_method = teap_type->vp_integer;
 
-					RDEBUG("Setting User EAP-Type = %s from &config:TEAP-Type-User",
+					RDEBUG("Phase 2: Setting User EAP-Type = %s from &config:TEAP-Type-User",
 					       eap_type2name(eap_method));
 
 				} else if (t->user_method) {
 					eap_method = t->user_method;
 
-					RDEBUG("Setting User EAP-Type = %s from TEAP configuration user_eap_type",
+					RDEBUG("Phase 2: Setting User EAP-Type = %s from TEAP configuration user_eap_type",
 					       eap_type2name(eap_method));
 
 				} else if (eap_method) {
-					RDEBUG("Setting User EAP-Type = %s from TEAP configuration default_eap_type",
+					RDEBUG("ySetting User EAP-Type = %s from TEAP configuration default_eap_type",
 					       eap_type2name(eap_method));
 
 				} else {
-					RWDEBUG("Not setting User EAP-Type");
+					RWDEBUG("Phase 2: Not setting User EAP-Type");
 				}
 			}
 
@@ -1111,21 +1110,21 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 				if (teap_type) {
 					eap_method = teap_type->vp_integer;
 
-					RDEBUG("Setting Machine EAP-Type = %s from &config:TEAP-Type-Machine",
+					RDEBUG("Phase 2: Setting Machine EAP-Type = %s from &config:TEAP-Type-Machine",
 					       eap_type2name(eap_method));
 
 				} else if (t->machine_method) {
 					eap_method = t->machine_method;
 
-					RDEBUG("Setting Machine EAP-Type = %s from TEAP configuration machine_eap_type",
+					RDEBUG("Phase 2: Setting Machine EAP-Type = %s from TEAP configuration machine_eap_type",
 					       eap_type2name(eap_method));
 
 				} else if (eap_method) {
-					RDEBUG("Using Machine EAP-Type = %s from TEAP configuration default_eap_type",
+					RDEBUG("Phase 2: Using Machine EAP-Type = %s from TEAP configuration default_eap_type",
 					       eap_type2name(eap_method));
 
 				} else {
-					RWDEBUG("Not setting Machine EAP-Type");
+					RWDEBUG("Phase 2: Not setting Machine EAP-Type");
 				}
 			}
 		}
@@ -1147,7 +1146,7 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 			/*
 			 *	Set the configuration to force a particular EAP-Type.
 			 */
-			RDEBUG("Forcing inner TEAP authentication to &control:EAP-Type = %s", eap_type2name(eap_method));
+			RDEBUG("Phase 2: Forcing inner TEAP authentication to &control:EAP-Type = %s", eap_type2name(eap_method));
 			vp = fr_pair_afrom_num(fake, PW_EAP_TYPE, 0);
 			if (vp) {
 				fr_pair_add(&fake->config, vp);
@@ -1179,7 +1178,7 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	 */
 	switch (fake->reply->code) {
 	case 0:
-		RDEBUG("No tunneled reply was found, rejecting the user.");
+		RDEBUG("Phase 2: No tunneled reply was found, rejecting the user.");
 		code = PW_CODE_ACCESS_REJECT;
 		break;
 
@@ -1238,14 +1237,14 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	 *	binding->received_version is what they got from us.
 	 */
 	if (binding->version != t->received_version || binding->received_version != EAP_TEAP_VERSION) {
-		RDEBUG2("Crypto-Binding TLV version mis-match (possible downgrade attack!)");
-		RDEBUG2("Expected client to send %d, got %d.  We sent %d, they echoed back %d",
+		RDEBUG2("Phase 2: Crypto-Binding TLV version mis-match (possible downgrade attack!)");
+		RDEBUG2("Phase 2: Expected client to send %d, got %d.  We sent %d, they echoed back %d",
 			t->received_version, binding->version,
 			EAP_TEAP_VERSION, binding->received_version);
 		return PW_CODE_ACCESS_REJECT;
 	}
 	if ((binding->subtype & 0xf) != EAP_TEAP_TLV_CRYPTO_BINDING_SUBTYPE_RESPONSE) {
-		RDEBUG2("Crypto-Binding TLV unexpected non-response");
+		RDEBUG2("Phase 2: Crypto-Binding TLV contains unexpected response");
 		return PW_CODE_ACCESS_REJECT;
 	}
 	flags = binding->subtype >> 4;
@@ -1271,7 +1270,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	if ((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK) != 0) {
 		HMAC(md, &t->imck_msk.cmk, sizeof(t->imck_msk.cmk), buf, talloc_array_length(buf), mac, &maclen);
 		if (memcmp(binding->msk_compound_mac, mac, sizeof(binding->msk_compound_mac))) {
-			RDEBUG2("Crypto-Binding TLV (MSK) mis-match");
+			RDEBUG2("Phase 2: Crypto-Binding TLV (MSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
 		}
 		imck = &t->imck_msk;
@@ -1279,7 +1278,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	if (((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) != 0) && t->imck_emsk_available) {
 		HMAC(md, &t->imck_emsk.cmk, sizeof(t->imck_emsk.cmk), buf, talloc_array_length(buf), mac, &maclen);
 		if (memcmp(binding->emsk_compound_mac, mac, sizeof(binding->emsk_compound_mac))) {
-			RDEBUG2("Crypto-Binding TLV (EMSK) mis-match");
+			RDEBUG2("Phase 2: Crypto-Binding TLV (EMSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
 		}
 		imck = &t->imck_emsk;
@@ -1309,7 +1308,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 		imck->simck, sizeof(imck->simck),
 		mk_emsk_seed, ARRAY_SIZE(mk_emsk_seed),
 		(uint8_t *)&t->emsk, sizeof(t->emsk));
-	RDEBUGHEX("Phase 2:Derived key (EMSK)", t->emsk, sizeof(t->emsk));
+	RDEBUGHEX("Phase 2: Derived key (EMSK)", t->emsk, sizeof(t->emsk));
 
 	return PW_CODE_ACCESS_ACCEPT;
 }
@@ -1331,10 +1330,7 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 
 		parent_da = dict_parent(vp->da->attr, vp->da->vendor);
 		if (parent_da == NULL || vp->da->vendor != VENDORPEC_FREERADIUS ||
-			((vp->da->attr & 0xff) != PW_FREERADIUS_EAP_TEAP_TLV)) {
-			value = vp_aprints(request->packet, vp, '"');
-			RDEBUG2("ignoring non-EAP-TEAP TLV %s", value);
-			talloc_free(value);
+		    ((vp->da->attr & 0xff) != PW_FREERADIUS_EAP_TEAP_TLV)) {
 			continue;
 		}
 
@@ -1371,15 +1367,17 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 					code = eap_teap_crypto_binding(request, eap_session, tls_session,
 								       (eap_tlv_crypto_binding_tlv_t const *)vp->vp_octets);
 				break;
+
 			default:
 				value = vp_aprints_value(request->packet, vp, '"');
-				RDEBUG2("ignoring unknown %s", value);
+				RDEBUG2("Ignoring unknown attribute %s", value);
 				talloc_free(value);
 			}
 			break;
+
 		default:
 			value = vp_aprints(request->packet, vp, '"');
-			RDEBUG2("ignoring EAP-TEAP TLV %s", value);
+			RDEBUG2("Ignoring TEAP TLV %s", value);
 			talloc_free(value);
 		}
 
@@ -1402,12 +1400,12 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 
 	if (t->stage == COMPLETE) {
 		if (!gotcryptobinding) {
-			RWDEBUG("Client did not send FreeRADIUS-EAP-TEAP-Crypto-Binding - rejecting");
+			RWDEBUG("Phase 2: Peer did not send Crypto-Binding - rejecting");
 			return PW_CODE_ACCESS_REJECT;
 		}
 
 		if (!gotresult) {
-			RWDEBUG("Client did not send FreeRADIUS-EAP-TEAP-Result - rejecting");
+			RWDEBUG("Phase 2: Perr did not send Result - rejecting");
 			return PW_CODE_ACCESS_REJECT;
 		}
 		return code;
@@ -1519,7 +1517,7 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 
 	teap_vps = eap_teap_teap2vp(request, tls_session->ssl, data, data_len, NULL, NULL);
 
-	RDEBUG("Got Tunneled TEAP TLVs");
+	RDEBUG("Phase 2: Got Tunneled TEAP TLVs");
 	rdebug_pair_list(L_DBG_LVL_1, request, teap_vps, NULL);
 
 	code = eap_teap_process_tlvs(request, eap_session, tls_session, teap_vps);
