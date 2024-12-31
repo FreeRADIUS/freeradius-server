@@ -484,20 +484,27 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 			 */
 			if (TLS_OUTER_TLV_INCLUDED(eap_packet->data[1])) {
 				uint32_t tlv_len;
+				uint16_t offset;
 
+			check_outer_tlv:
 				if (!allow_o) {
 					fr_strerror_printf("Malformed EAP packet - TLS 'O' bit is set, but EAP method does not use it.");
 					talloc_free(eap_packet);
 					return NULL;
 				}
 
-				if (len <= (2 + 4 + 4)) {
+				/*
+				 *	Type + flags + potentially a message length.
+				 */
+				offset = 2 + (TLS_LENGTH_INCLUDED(eap_packet->data[1]) << 2);
+
+				if (len <= (offset + 4)) {
 					fr_strerror_printf("Malformed EAP packet - TLS 'O' bit is set, but packet is too small to contain 'outer tlv length' field");
 					talloc_free(eap_packet);
 					return NULL;
 				}
 
-				memcpy(&tlv_len, eap_packet->data + 2 + 4, 4);
+				memcpy(&tlv_len, eap_packet->data + offset, 4);
 				tlv_len = ntohl(tlv_len);
 
 				/*
@@ -508,20 +515,14 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 				 *	flags, length field, or outer
 				 *	tlv length field.
 				 */
-				if ((int)tlv_len > (len - (2 + 4 + 4))) {
+				if ((int)tlv_len > (len - (offset + 4))) {
 					fr_strerror_printf("Malformed EAP packet - TLS 'O' bit is set, but 'outer tlv length' field is larger than the current fragment");
 					talloc_free(eap_packet);
 					return NULL;
 				}
 			}
-		} else {
-#if 0
-			if (TLS_OUTER_TLV_INCLUDED(eap_packet->data[1])) {
-				fr_strerror_printf("Malformed TEAP packet - TLS 'O' bit is set, but 'L' bit is not set.");
-				talloc_free(eap_packet);
-				return NULL;
-			}
-#endif
+		} else if (TLS_OUTER_TLV_INCLUDED(eap_packet->data[1])) {
+			goto check_outer_tlv;
 		}
 		break;
 
