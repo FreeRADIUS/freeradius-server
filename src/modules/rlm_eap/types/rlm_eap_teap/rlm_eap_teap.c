@@ -492,7 +492,18 @@ phase2:
 		tls_session->opaque = teap_alloc(tls_session, inst);
 		t = (teap_tunnel_t *) tls_session->opaque;
 	}
-	if (t->received_version < 0) t->received_version = handler->eap_ds->response->type.data[0] & 0x07;
+
+	if (t->received_version < 0) {
+		t->received_version = handler->eap_ds->response->type.data[0] & 0x07;
+
+		/*
+		 *	We only support TEAPv1.
+		 */
+		if (t->received_version != EAP_TEAP_VERSION) {
+			RDEBUG("Invalid TEAP version received.  Expected 1, got %u", t->received_version);
+			goto fail;
+		}
+	}
 
 	/*
 	 *	Process the TEAP portion of the request.
@@ -500,6 +511,7 @@ phase2:
 	rcode = eap_teap_process(handler, tls_session);
 	switch (rcode) {
 	case PW_CODE_ACCESS_REJECT:
+	fail:
 		eaptls_fail(handler, 0);
 		ret = 0;
 		goto done;
