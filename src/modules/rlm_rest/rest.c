@@ -1955,7 +1955,7 @@ do {\
 			if (call_env->request.username) SET_AUTH_OPTION(CURLOPT_USERNAME, call_env->request.username->vb_strvalue);
 			if (call_env->request.password) SET_AUTH_OPTION(CURLOPT_PASSWORD, call_env->request.password->vb_strvalue);
 		} else if (auth == REST_HTTP_AUTH_TLS_SRP) {
-			SET_AUTH_OPTION(CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
+			SET_AUTH_OPTION(CURLOPT_TLSAUTH_TYPE, "SRP");
 			if (call_env->request.username) SET_AUTH_OPTION(CURLOPT_TLSAUTH_USERNAME, call_env->request.username->vb_strvalue);
 			if (call_env->request.password) SET_AUTH_OPTION(CURLOPT_TLSAUTH_PASSWORD, call_env->request.password->vb_strvalue);
 		}
