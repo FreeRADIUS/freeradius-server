@@ -59,6 +59,10 @@ if ((!&control.Callback-Id) || (&control.Callback-Id != 'aabbccddeeff')) {
 	test_fail
 }
 
+if ((!&reply.Filter-Id) || (&reply.Filter-Id != 'tony')) {
+	test_fail
+}
+
 #
 #  Call a module which returns status code 7 - mapped to module exit
 #  code "notfound".  Attributes in its output should be ignored.
@@ -85,4 +89,5 @@ if !(&control.Filter-Id == 'TONY') {
 	test_fail
 }
 
+&reply -= &Filter-Id[*]
 test_pass
