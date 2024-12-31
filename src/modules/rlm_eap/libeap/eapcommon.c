@@ -63,6 +63,13 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include "eap_types.h"
 
+#ifndef TLS_LENGTH_INCLUDED
+#define TLS_LENGTH_INCLUDED(x) 	(((x) & 0x80) != 0)
+#endif
+#ifndef TLS_OUTER_TLV_INCLUDED
+#define TLS_OUTER_TLV_INCLUDED(x) (((x) & 0x10) != 0)
+#endif
+
 const FR_NAME_NUMBER eap_rcode_table[] = {
 	{ "notfound",		EAP_NOTFOUND		},
 	{ "found",		EAP_OK			},
