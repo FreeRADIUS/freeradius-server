@@ -68,8 +68,8 @@
 #  define PIC_FLAG			"-fPIC -fno-common"
 #  define SHARED_OPTS			"-dynamiclib"
 #  define MODULE_OPTS			"-bundle -dynamic"
-#  define DYNAMIC_LINK_OPTS		"-flat_namespace"
-#  define DYNAMIC_LINK_UNDEFINED	"-undefined suppress"
+#  define DYNAMIC_LINK_OPTS		"-bind_at_load"
+#  define DYNAMIC_LINK_UNDEFINED	"-Wl,-w -undefined dynamic_lookup"
 #  define dynamic_link_version_func	darwin_dynamic_link_function
 #  define DYNAMIC_INSTALL_NAME		"-install_name"
 #  define DYNAMIC_LINK_NO_INSTALL	"-dylib_file"
