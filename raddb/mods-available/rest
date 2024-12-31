@@ -191,6 +191,12 @@ rest {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=authenticate"
 		method = 'get'
 		tls = ${..tls}
+
+		#
+		#  Note that you CANNOT set 'username' or 'password'
+		#  here.  When doing user authentication, the module
+		#  uses the User-Name and User-Password.
+		#
 	}
 
 	#  Preacct/Accounting/Post-auth/Pre-Proxy/Post-Proxy
