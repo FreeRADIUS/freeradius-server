@@ -1,4 +1,3 @@
-
 /*
  * eap_tls.c
  *
@@ -597,6 +596,14 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		tls_session->tls_record_in_recvd_len = frag_len;
 		RDEBUG2("(TLS) EAP Got all data (%zu bytes)", frag_len);
 		return FR_TLS_LENGTH_INCLUDED;
+
+	} else if (TLS_OUTER_TLV_INCLUDED(eaptls_packet->flags)) {
+		if (handler->trips > 1) {
+			REDEBUG("(TLS) EAP Peer set 'O' bit after initial TEAP fragment");
+			return FR_TLS_INVALID;
+		}
+
+		return FR_TLS_FIRST_FRAGMENT;
 	}
 
 	/*
@@ -669,12 +676,13 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
  *  packet including the Code, Identifir, Length, Type, and TLS data
  *  fields.
  */
-static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t status)
+static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t *status_p)
 {
 	EAPTLS_PACKET	*tlspacket;
 	uint32_t	data_len = 0;
-	uint32_t	obit = 0;
+	uint32_t	skip = 0;
 	uint8_t		*data = NULL;
+	fr_tls_status_t status = *status_p;
 
 	if (status == FR_TLS_INVALID) return NULL;
 
@@ -709,6 +717,22 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	tlspacket->flags = eap_ds->response->type.data[0];
 
 	/*
+	 *	Skip extra fields in the header, depending on the flags.
+	 */
+	skip = TLS_OUTER_TLV_INCLUDED(tlspacket->flags) << 2;
+	skip += TLS_LENGTH_INCLUDED(tlspacket->flags) << 2;
+
+	/*
+	 *	'O' without 'L'.  It's the first fragment, but also the last one.
+	 *
+	 *	@todo - cache and save the outer client TLVs.  We need
+	 *	them to calculate the TEAP Crypto-Binding TLV.
+	 */
+	if (TLS_OUTER_TLV_INCLUDED(tlspacket->flags) && !TLS_LENGTH_INCLUDED(tlspacket->flags)) {
+		*status_p = FR_TLS_OK;
+	}
+
+	/*
 	 *	eaptls_verify() ensures that all of the flags are correct.
 	 */
 	switch (status) {
@@ -722,26 +746,13 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	 *	length should solve the problem.
 	 */
 	case FR_TLS_FIRST_FRAGMENT:
-		obit = TLS_OUTER_TLV_INCLUDED(tlspacket->flags) << 2;
-
-		/*
-		 *	@todo - decode outer TLVs, too
-		 */
-
-		/* FALL-THROUGH */
-
 	case FR_TLS_LENGTH_INCLUDED:
 	case FR_TLS_MORE_FRAGMENTS_WITH_LENGTH:
-		eap_ds->response->type.data += 4 + obit;
-		eap_ds->response->type.length -= 4 + obit;
-
-		/* FALL-THROUGH */
-
-		/*
-		 *	Data length is implicit, from the EAP header.
-		 */
 	case FR_TLS_MORE_FRAGMENTS:
 	case FR_TLS_OK:
+		eap_ds->response->type.data += skip;
+		eap_ds->response->type.length -= skip;
+
 		data_len = eap_ds->response->type.length - 1;
 		data = eap_ds->response->type.data + 1;
 		break;
@@ -763,8 +774,6 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 
 		memcpy(tlspacket->data, data, data_len);
 	}
-
-	fr_assert(!obit);
 
 	return tlspacket;
 }
@@ -939,6 +948,8 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *	send that alert to the client and then send the EAP-Failure
 	 */
 	status = eaptls_verify(handler);
+	ERROR("VERIFY returned %d", status);
+
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("(TLS) EAP Verification failed with %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
@@ -988,7 +999,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	/*
 	 *	Extract the TLS packet from the buffer.
 	 */
-	if ((tlspacket = eaptls_extract(request, handler->eap_ds, status)) == NULL) {
+	if ((tlspacket = eaptls_extract(request, handler->eap_ds, &status)) == NULL) {
 		REDEBUG("(TLS) EAP Failed extracting TLS packet from EAP-Message");
 		status = FR_TLS_FAIL;
 		goto done;

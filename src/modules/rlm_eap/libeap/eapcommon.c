@@ -508,11 +508,13 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 				}
 			}
 		} else {
+#if 0
 			if (TLS_OUTER_TLV_INCLUDED(eap_packet->data[1])) {
 				fr_strerror_printf("Malformed TEAP packet - TLS 'O' bit is set, but 'L' bit is not set.");
 				talloc_free(eap_packet);
 				return NULL;
 			}
+#endif
 		}
 		break;
 
