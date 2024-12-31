@@ -422,11 +422,19 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 			return NULL;
 		}
 
+#if 0
+		DEBUG("(TLS) EAP Peer sent flags %c%c%c%c",
+		      TLS_START(eap_packet->data[1]) ? 'S' : '-',
+		      TLS_MORE_FRAGMENTS(eap_packet->data[1]) ? 'M' : '-',
+		      TLS_OUTER_TLV_INCLUDED(eap_packet->data[1]) ? 'O' : '-',
+		      TLS_LENGTH_INCLUDED(eap_packet->data[1]) ? 'L' : '-');
+#endif
+
 		/*
 		 *	L bit set means we have 4 octets of Length
 		 *	following the flags field.
 		 */
-		if ((eap_packet->data[1] & 0x80) != 0) {
+		if (TLS_LENGTH_INCLUDED(eap_packet->data[1])) {
 			uint32_t tls_len;
 
 			if (len <= (2 + 4)) {
@@ -452,8 +460,22 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 			/*
 			 *	O bit set means we have 4 octets of Outer TLV Length
 			 *	following the Length field.
+			 *
+			 * 0                   1                   2                   3
+			 * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+			 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+			 * |     Code      |   Identifier  |            Length             |
+			 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+			 * |     Type      |   Flags | Ver |        Message Length         :
+			 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+			 * :         Message Length        |         Outer TLV Length
+			 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+			 * :     Outer TLV Length          |         TLS Data...
+			 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+			 * |       Outer TLVs...
+			 * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 			 */
-			if ((eap_packet->data[1] & 0x10) != 0) {
+			if (TLS_OUTER_TLV_INCLUDED(eap_packet->data[1])) {
 				uint32_t tlv_len;
 
 				if (!allow_o) {
@@ -486,12 +508,11 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 				}
 			}
 		} else {
-			if ((eap_packet->data[1] & 0x10) != 0) {
-				fr_strerror_printf("Malformed EAP packet - TLS 'O' bit is set, but 'L' bit is not set.");
+			if (TLS_OUTER_TLV_INCLUDED(eap_packet->data[1])) {
+				fr_strerror_printf("Malformed TEAP packet - TLS 'O' bit is set, but 'L' bit is not set.");
 				talloc_free(eap_packet);
 				return NULL;
 			}
-
 		}
 		break;
 
