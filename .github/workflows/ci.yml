@@ -56,10 +56,10 @@ jobs:
 # docker  - the docker image name, if containers are being used
 # name    - used in the job name only
 #
-          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-20.04' }}"
-            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:20.04' }}"
-            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu20"
-            code: "ubuntu2004"
+          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
+            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
+            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
+            code: "ubuntu2404"
 
         env:
           - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_ALT: no,  REPRODUCIBLE: no,  SANITIZER: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
@@ -174,7 +174,7 @@ jobs:
         quilt
 
     - name: Install LLVM 15 for 20.04
-      if: ${{ matrix.os.code == 'ubuntu2004' && matrix.env.CC == 'clang' }}
+      if: ${{ matrix.os.code == 'ubuntu2404' && matrix.env.CC == 'clang' }}
       run: |
         install -d -m 0755 -o root -g root /etc/apt/keyrings
         wget -O /etc/apt/keyrings/llvm-snapshot.asc https://apt.llvm.org/llvm-snapshot.gpg.key
