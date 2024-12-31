@@ -176,22 +176,11 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	char			*p , *q;
 	fr_pair_list_t		cert_vps;
 
-	/*
-	 *	Examples and documentation show cert_info being
-	 *	a struct curl_certinfo *, but CPP checks require
-	 *	it to be a struct curl_slist *.
-	 *
-	 *	https://curl.haxx.se/libcurl/c/certinfo.html
-	 */
-	union {
-		struct curl_slist    *to_info;
-		struct curl_certinfo *to_certinfo;
-	} ptr;
-	ptr.to_info = NULL;
+	struct curl_certinfo *to_certinfo = NULL;
 
 	fr_pair_list_init(&cert_vps);
 
-	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &ptr.to_info);
+	ret = curl_easy_getinfo(candle, CURLINFO_CERTINFO, &to_certinfo);
 	if (ret != CURLE_OK) {
 		REDEBUG("Getting certificate info failed: %i - %s", ret, curl_easy_strerror(ret));
 
@@ -203,10 +192,10 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 	 *	the session uses ssl or not, so if no certs are
 	 *	returned, we assume it's not an ssl session.
 	 */
-	if (ptr.to_certinfo->num_of_certs == 0) return 0;
+	if (!to_certinfo || to_certinfo->num_of_certs == 0) return 0;
 
-	RDEBUG2("Chain has %i certificate(s)", ptr.to_certinfo->num_of_certs);
-	for (i = 0; i < ptr.to_certinfo->num_of_certs; i++) {
+	RDEBUG2("Chain has %i certificate(s)", to_certinfo->num_of_certs);
+	for (i = 0; i < to_certinfo->num_of_certs; i++) {
 		struct curl_slist *cert_attrs;
 		fr_pair_t *container;
 
@@ -215,7 +204,7 @@ int fr_curl_response_certinfo(request_t *request, fr_curl_io_request_t *randle)
 
 		RDEBUG2("Processing certificate %i",i);
 
-		for (cert_attrs = ptr.to_certinfo->certinfo[i];
+		for (cert_attrs = to_certinfo->certinfo[i];
 		     cert_attrs;
 		     cert_attrs = cert_attrs->next) {
 		     	fr_pair_t		*vp;
