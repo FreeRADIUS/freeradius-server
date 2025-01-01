@@ -321,7 +321,7 @@ static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 
 	while (remaining > 0) {
 		if (remaining < 4) {
-			RDEBUG2("Phase 2: Data is too small (%u) to contain a TLV header", remaining);
+			REDEBUG("Phase 2: Data is too small (%u) to contain a TLV header", remaining);
 			return 0;
 		}
 
@@ -341,7 +341,7 @@ static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 			present |= 1 << attr;
 
 			if (num[EAP_TEAP_TLV_EAP_PAYLOAD] > 1) {
-				RDEBUG("Phase 2: Too many EAP-Payload TLVs");
+				REDEBUG("Phase 2: Too many EAP-Payload TLVs");
 unexpected:
 				for (int i = 0; i < EAP_TEAP_TLV_MAX; i++) {
 					DICT_ATTR const *da;
@@ -360,13 +360,13 @@ unexpected:
 			}
 
 			if (num[EAP_TEAP_TLV_INTERMED_RESULT] > 1) {
-				RDEBUG("Phase 2: Too many Intermediate-Result TLVs");
+				REDEBUG("Phase 2: Too many Intermediate-Result TLVs");
 				goto unexpected;
 			}
 			break;
 		default:
 			if ((data[0] & 0x80) != 0) {
-				RDEBUG("Phase 2: Unknown mandatory TLV %02x", attr);
+				REDEBUG("Phase 2: Unknown mandatory TLV %02x", attr);
 				goto unexpected;
 			}
 
@@ -382,7 +382,7 @@ unexpected:
 		remaining -= 4;
 
 		if (length > remaining) {
-			RDEBUG2("Phase 2: TLV %u is longer than room remaining in the packet (%u > %u).", attr,
+			REDEBUG2("Phase 2: TLV %u is longer than room remaining in the packet (%u > %u).", attr,
 				length, remaining);
 			return 0;
 		}
@@ -395,7 +395,7 @@ unexpected:
 		 * of the TLCs, die.
 		 */
 		if (remaining < length) {
-			RDEBUG2("Phase 2: TLV overflows packet.");
+			REDEBUG2("Phase 2: TLV overflows packet.");
 			return 0;
 		}
 
@@ -410,9 +410,9 @@ unexpected:
 		 * memory.
 		 */
 		if ((attr == EAP_TEAP_TLV_INTERMED_RESULT) || (attr == EAP_TEAP_TLV_RESULT)) {
-			if (length < 2) {
+			if (length != 2) {
 			fail_length:
-				RDEBUG("Phase 2: TLV %u is too short.  Expected 2, got %d.", attr, length);
+				REDEBUG("Phase 2: TLV %u is too short.  Expected 2, got %d.", attr, length);
 				return 0;
 			}
 
@@ -429,7 +429,7 @@ unexpected:
 			uint16_t vlen = length;
 
 			if (vlen <= 2) {
-				RDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is too short.  Expected >2, got %d.", vlen);
+				REDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is too short.  Expected >2, got %d.", vlen);
 				return 0;
 			}
 
@@ -437,19 +437,29 @@ unexpected:
 			 *	Can't be zero.  We must have MORE than "1 octet length + User-Name"
 			 */
 			if (!p[0] || ((p[0] + 1) >= vlen)) {
-				RDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  User-Name field has bad lenth %u", p[0]);
+				REDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  User-Name field has bad lenth %u", p[0]);
 				return 0;
 			}
 
 			vlen -= p[0] + 1;
 			if (!vlen) {
-				RDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  Password field is missing");
+				REDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  Password field is missing");
 				return 0;
 			}
 
 			p += p[0] + 1;
 			if (!p[0] || (p[0] >= vlen)) {
-				RDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  Password field has bad lenth %u", p[0]);
+				REDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  Password field has bad lenth %u", p[0]);
+				return 0;
+			}
+		}
+
+		if (attr == EAP_TEAP_TLV_IDENTITY_TYPE) {
+			if (length != 2) goto fail_length;
+
+			if ((data[0] != 0) || (data[1] == 0) || (data[1] > 2)) {
+				REDEBUG("Phase 2: Identity-Type TLV contains invalid value %02x%02x",
+				       data[0], data[1]);
 				return 0;
 			}
 		}
@@ -467,16 +477,16 @@ unexpected:
 	if (status) {
 		if (status == EAP_TEAP_TLV_RESULT_FAILURE) {
 			if (!error) {
-				RDEBUG("Phase 2: Received Result from peer which indicates failure with error %u.  Rejecting request.", error);
+				REDEBUG("Phase 2: Received Result from peer which indicates failure with error %u.  Rejecting request.", error);
 			} else {
-				RDEBUG("Phase 2: Received Result from peer which indicates failure.  Rejecting request.");
+				REDEBUG("Phase 2: Received Result from peer which indicates failure.  Rejecting request.");
 			}
 			return 0;
 		}
 
 		if (status != EAP_TEAP_TLV_RESULT_SUCCESS) {
 		unknown_value:
-			RDEBUG("Phase 2: Received Result from peer with unknown value %u.  Rejecting request.", status);
+			REDEBUG("Phase 2: Received Result from peer with unknown value %u.  Rejecting request.", status);
 			goto unexpected;
 		}
 	}
@@ -485,7 +495,7 @@ unexpected:
 	 * Check if the peer mixed & matched TLVs.
 	 */
 	if ((num[EAP_TEAP_TLV_NAK] > 0) && (num[EAP_TEAP_TLV_NAK] != total)) {
-		RDEBUG("{Phase 2: NAK TLV was sent along with non-NAK TLVs.  Rejecting request.");
+		REDEBUG("Phase 2: NAK TLV was sent along with non-NAK TLVs.  Rejecting request.");
 		goto unexpected;
 	}
 
@@ -499,13 +509,13 @@ unexpected:
 	switch (t->stage) {
 	case TLS_SESSION_HANDSHAKE:
 		if (present) {
-			RDEBUG("Phase 2: Unexpected TLVs in TLS Session Handshake stage");
+			REDEBUG("Phase 2: Unexpected TLVs in TLS Session Handshake stage");
 			goto unexpected;
 		}
 		break;
 	case AUTHENTICATION:
 		if (present & ~((1 << EAP_TEAP_TLV_EAP_PAYLOAD) | (1 << EAP_TEAP_TLV_CRYPTO_BINDING) | (1 << EAP_TEAP_TLV_INTERMED_RESULT) | (1 << EAP_TEAP_TLV_RESULT) | (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP))) {
-			RDEBUG("Phase 2: Unexpected TLVs in authentication stage");
+			REDEBUG("Phase 2: Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
 
@@ -513,7 +523,7 @@ unexpected:
 		 *	A password request must yield a password response.
 		 */
 		if (t->sent_basic_password && ((present & (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP)) == 0)) {
-			RDEBUG("Phase 2: Sent Basic-Password-Auth-Req but reply does not contain Basic-Password-Auth-Resp");
+			REDEBUG("Phase 2: Sent Basic-Password-Auth-Req but reply does not contain Basic-Password-Auth-Resp");
 			goto unexpected;
 		}
 
@@ -525,25 +535,25 @@ unexpected:
 		if (((present & (1 << EAP_TEAP_TLV_IDENTITY_TYPE)) != 0) &&
 		    ((present & (1 << EAP_TEAP_TLV_EAP_PAYLOAD)) == 0) &&
 		    ((present & (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP)) == 0)) {
-			RDEBUG("Phase 2: Received Identity-Type without EAP-Payload or Basic-Password-Auth-Resp");
+			REDEBUG("Phase 2: Received Identity-Type without EAP-Payload or Basic-Password-Auth-Resp");
 			goto unexpected;
 		}
 
 		break;
 	case PROVISIONING:
 		if (present & ~(1 << EAP_TEAP_TLV_RESULT)) {
-			RDEBUG("Phase 2: Unexpected TLVs in provisioning stage");
+			REDEBUG("Phase 2: Unexpected TLVs in provisioning stage");
 			goto unexpected;
 		}
 		break;
 	case COMPLETE:
 		if (present) {
-			RDEBUG("Phase 2: Unexpected TLVs in complete stage");
+			REDEBUG("Phase 2: Unexpected TLVs in complete stage");
 			goto unexpected;
 		}
 		break;
 	default:
-		RDEBUG("Phase 2: Internal error, invalid stage %d", t->stage);
+		REDEBUG("Phase 2: Internal error, invalid stage %d", t->stage);
 		return 0;
 	}
 
@@ -738,7 +748,7 @@ VALUE_PAIR *eap_teap_teap2vp(REQUEST *request, SSL *ssl, uint8_t const *data, si
 		}
 		decoded = eap_teap_decode_vp(request, da, data, length, &vp);
 		if (decoded < 0) {
-			RDEBUG3("Phase 2: Failed decoding %s: %s", da->name, fr_strerror());
+			REDEBUG3("Phase 2: Failed decoding %s: %s", da->name, fr_strerror());
 			goto next_attr;
 		}
 
