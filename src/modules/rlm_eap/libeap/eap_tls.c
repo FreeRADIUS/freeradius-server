@@ -696,7 +696,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
  *  packet including the Code, Identifir, Length, Type, and TLS data
  *  fields.
  */
-static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t *status_p)
+static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t *status_p, tls_session_t *tls_session)
 {
 	EAPTLS_PACKET	*tlspacket;
 	uint32_t	data_len = 0;
@@ -761,6 +761,12 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 
 		memcpy(&chop, p, sizeof(chop));
 		chop = ntohl(chop);
+
+		tls_session->outer_tlvs_octets_peer = talloc_memdup(tls_session,
+								    eap_ds->response->type.data + eap_ds->response->type.length - chop,
+								    chop);
+
+		fr_assert(tls_session->outer_tlvs_octets_peer != NULL);
 	}
 
 	/*
@@ -1028,7 +1034,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	/*
 	 *	Extract the TLS packet from the buffer.
 	 */
-	if ((tlspacket = eaptls_extract(request, handler->eap_ds, &status)) == NULL) {
+	if ((tlspacket = eaptls_extract(request, handler->eap_ds, &status, tls_session)) == NULL) {
 		REDEBUG("(TLS) EAP Failed extracting TLS packet from EAP-Message");
 		status = FR_TLS_FAIL;
 		goto done;

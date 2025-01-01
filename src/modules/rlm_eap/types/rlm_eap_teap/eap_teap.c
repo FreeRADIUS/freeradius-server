@@ -245,8 +245,9 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	uint8_t				mac_msk[EVP_MAX_MD_SIZE], mac_emsk[EVP_MAX_MD_SIZE];
 	unsigned int			maclen = EVP_MAX_MD_SIZE;
 	uint8_t				*buf;
-	unsigned int			olen;
+	size_t				olen, buflen;
 	struct crypto_binding_buffer	*cbb;
+	uint8_t				*outer_tlvs;
 
 	RDEBUG("Phase 2: Sending Cryptobinding");
 
@@ -255,8 +256,11 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	t->imck_emsk_available = emsklen > 0;
 
 	olen = tls_session->outer_tlvs_octets_server ? talloc_array_length(tls_session->outer_tlvs_octets_server) : 0;
+	olen += tls_session->outer_tlvs_octets_peer ? talloc_array_length(tls_session->outer_tlvs_octets_peer) : 0;
 
-	buf = talloc_zero_array(request, uint8_t, sizeof(struct crypto_binding_buffer) - 1/*outer_tlvs*/ + olen);
+	buflen = sizeof(struct crypto_binding_buffer) - 1/*outer_tlvs*/ + olen;
+
+	buf = talloc_zero_array(request, uint8_t, buflen);
 	rad_assert(buf != NULL);
 
 	cbb = (struct crypto_binding_buffer *)buf;
@@ -271,14 +275,27 @@ static void eap_teap_append_crypto_binding(REQUEST *request, tls_session_t *tls_
 	RANDFILL(cbb->binding.nonce);
 	cbb->binding.nonce[sizeof(cbb->binding.nonce) - 1] &= ~0x01; /* RFC 7170, Section 4.2.13 */
 
-	if (olen) memcpy(cbb->outer_tlvs, tls_session->outer_tlvs_octets_server, olen);
+	outer_tlvs = &cbb->outer_tlvs[0];
 
-	RDEBUGHEX("Phase 2: BUFFER for Compound MAC calculation", buf, talloc_array_length(buf));
+	if (tls_session->outer_tlvs_octets_server) {
+		size_t len = talloc_array_length(tls_session->outer_tlvs_octets_server);
+
+		memcpy(outer_tlvs, tls_session->outer_tlvs_octets_server, len);
+		outer_tlvs += len;
+	}
+
+	if (tls_session->outer_tlvs_octets_peer) {
+		size_t len = talloc_array_length(tls_session->outer_tlvs_octets_peer);
+
+		memcpy(outer_tlvs, tls_session->outer_tlvs_octets_peer, len);
+	}
+
+	RDEBUGHEX("Phase 2: BUFFER for Compound MAC calculation", buf, buflen);
 
 	const EVP_MD *md = SSL_CIPHER_get_handshake_digest(SSL_get_current_cipher(tls_session->ssl));
-	HMAC(md, &t->imck_msk.cmk, EAP_TEAP_CMK_LEN, buf, talloc_array_length(buf), mac_msk, &maclen);
+	HMAC(md, &t->imck_msk.cmk, EAP_TEAP_CMK_LEN, buf, buflen, mac_msk, &maclen);
 	if (t->imck_emsk_available) {
-		HMAC(md, &t->imck_emsk.cmk, EAP_TEAP_CMK_LEN, buf, talloc_array_length(buf), mac_emsk, &maclen);
+		HMAC(md, &t->imck_emsk.cmk, EAP_TEAP_CMK_LEN, buf, buflen, mac_emsk, &maclen);
 	}
 	memcpy(cbb->binding.msk_compound_mac, &mac_msk, sizeof(cbb->binding.msk_compound_mac));
 	if (t->imck_emsk_available) {
@@ -1303,17 +1320,23 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 {
 	teap_tunnel_t			*t = tls_session->opaque;
 	uint8_t				*buf;
-	unsigned int			olen;
+	size_t				olen, buflen;
 	struct crypto_binding_buffer	*cbb;
 	uint8_t				mac[EVP_MAX_MD_SIZE];
 	unsigned int			maclen = sizeof(mac);
 	unsigned int			flags;
 	struct teap_imck_t	 	*imck = NULL;
+	uint8_t				*outer_tlvs;
 
+	/*
+	 *	@todo - put crypto binding calculations into a common function,
+	 */
 	olen = tls_session->outer_tlvs_octets_server ? talloc_array_length(tls_session->outer_tlvs_octets_server) : 0;
-	/* FIXME: include client outer TLVs */
+	olen += tls_session->outer_tlvs_octets_peer ? talloc_array_length(tls_session->outer_tlvs_octets_peer) : 0;
 
-	buf = talloc_zero_array(request, uint8_t, sizeof(struct crypto_binding_buffer) - 1/*outer_tlvs*/ + olen);
+	buflen = sizeof(struct crypto_binding_buffer) - 1/*outer_tlvs*/ + olen;
+
+	buf = talloc_zero_array(request, uint8_t, buflen);
 	rad_assert(buf != NULL);
 
 	cbb = (struct crypto_binding_buffer *)buf;
@@ -1337,9 +1360,23 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 
 	CRYPTO_BINDING_BUFFER_INIT(cbb);
 	memcpy(&cbb->binding, binding, sizeof(cbb->binding) - sizeof(cbb->binding.emsk_compound_mac) - sizeof(cbb->binding.msk_compound_mac));
-	if (olen) memcpy(cbb->outer_tlvs, tls_session->outer_tlvs_octets_server, olen);
 
-	RDEBUGHEX("Phase 2: BUFFER for Compound MAC calculation", buf, talloc_array_length(buf));
+	outer_tlvs = &cbb->outer_tlvs[0];
+
+	if (tls_session->outer_tlvs_octets_server) {
+		size_t len = talloc_array_length(tls_session->outer_tlvs_octets_server);
+
+		memcpy(outer_tlvs, tls_session->outer_tlvs_octets_server, len);
+		outer_tlvs += len;
+	}
+
+	if (tls_session->outer_tlvs_octets_peer) {
+		size_t len = talloc_array_length(tls_session->outer_tlvs_octets_peer);
+
+		memcpy(outer_tlvs, tls_session->outer_tlvs_octets_peer, len);
+	}
+
+	RDEBUGHEX("Phase 2: BUFFER for Compound MAC calculation", buf, buflen);
 
 	/*
 	 * we carry forward the S-IMCK[j] based on what we verified for session key generation
@@ -1354,7 +1391,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 	 *	EMSK for the later IMCK deriviation.
 	 */
 	if ((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_MSK) != 0) {
-		HMAC(md, &t->imck_msk.cmk, sizeof(t->imck_msk.cmk), buf, talloc_array_length(buf), mac, &maclen);
+		HMAC(md, &t->imck_msk.cmk, sizeof(t->imck_msk.cmk), buf, buflen, mac, &maclen);
 		if (memcmp(binding->msk_compound_mac, mac, sizeof(binding->msk_compound_mac))) {
 			RDEBUG2("Phase 2: Crypto-Binding TLV (MSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
@@ -1362,7 +1399,7 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 		imck = &t->imck_msk;
 	}
 	if (((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) != 0) && t->imck_emsk_available) {
-		HMAC(md, &t->imck_emsk.cmk, sizeof(t->imck_emsk.cmk), buf, talloc_array_length(buf), mac, &maclen);
+		HMAC(md, &t->imck_emsk.cmk, sizeof(t->imck_emsk.cmk), buf, buflen, mac, &maclen);
 		if (memcmp(binding->emsk_compound_mac, mac, sizeof(binding->emsk_compound_mac))) {
 			RDEBUG2("Phase 2: Crypto-Binding TLV (EMSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
