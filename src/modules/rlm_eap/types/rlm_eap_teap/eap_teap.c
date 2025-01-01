@@ -319,6 +319,7 @@ static int eap_teap_verify(REQUEST *request, tls_session_t *tls_session, uint8_t
 		case EAP_TEAP_TLV_EAP_PAYLOAD:
 		case EAP_TEAP_TLV_INTERMED_RESULT:
 		case EAP_TEAP_TLV_CRYPTO_BINDING:
+		case EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP:
 			num[attr]++;
 			present |= 1 << attr;
 
@@ -403,6 +404,40 @@ unexpected:
 		}
 
 		/*
+		 *	1 octet length + User-Name
+		 *	1 octet length + User-Password
+		 */
+		if (attr == EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP) {
+			uint8_t const *p = data;
+			uint16_t vlen = length;
+
+			if (vlen <= 2) {
+				RDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is too short.  Expected >2, got %d.", vlen);
+				return 0;
+			}
+
+			/*
+			 *	Can't be zero.  We must have MORE than "1 octet length + User-Name"
+			 */
+			if (!p[0] || ((p[0] + 1) >= vlen)) {
+				RDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  User-Name field has bad lenth %u", p[0]);
+				return 0;
+			}
+
+			vlen -= p[0] + 1;
+			if (!vlen) {
+				RDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  Password field is missing");
+				return 0;
+			}
+
+			p += p[0] + 1;
+			if (!p[0] || (p[0] >= vlen)) {
+				RDEBUG("Phase 2: Basic-Password-Auth-Resp TLV is invalid.  Password field has bad lenth %u", p[0]);
+				return 0;
+			}
+		}
+
+		/*
 		 * remaining > length, continue.
 		 */
 		remaining -= length;
@@ -452,7 +487,7 @@ unexpected:
 		}
 		break;
 	case AUTHENTICATION:
-		if (present & ~((1 << EAP_TEAP_TLV_EAP_PAYLOAD) | (1 << EAP_TEAP_TLV_CRYPTO_BINDING) | (1 << EAP_TEAP_TLV_INTERMED_RESULT) | (1 << EAP_TEAP_TLV_RESULT))) {
+		if (present & ~((1 << EAP_TEAP_TLV_EAP_PAYLOAD) | (1 << EAP_TEAP_TLV_CRYPTO_BINDING) | (1 << EAP_TEAP_TLV_INTERMED_RESULT) | (1 << EAP_TEAP_TLV_RESULT) | (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP))) {
 			RDEBUG("Phase 2: Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
@@ -626,6 +661,7 @@ static ssize_t eap_teap_decode_vp(TALLOC_CTX *request, DICT_ATTR const *parent,
 		fr_pair_list_free(&vp);
 		return -1;
 	}
+
 	vp->type = VT_DATA;
 	*out = vp;
 	return attr_len;
@@ -787,6 +823,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 	vp_cursor_t			cursor;
 	uint8_t				msk[2 * CHAP_VALUE_LENGTH] = {0}, emsk[2 * EAPTLS_MPPE_KEY_LEN] = {0};
 	size_t				msklen = 0, emsklen = 0;
+	bool				doing_eap;
 
 	teap_tunnel_t	*t = tls_session->opaque;
 
@@ -971,12 +1008,15 @@ challenge:
 		fr_pair_list_free(&t->state);
 		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
 
+		t->sent_basic_password = false;
+		doing_eap = false;
+
 		/*
 		 *	Copy the EAP-Message back to the tunnel.
 		 */
 		(void) fr_cursor_init(&cursor, &reply->vps);
-
 		while ((vp = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY)) != NULL) {
+			doing_eap = true;
 			eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
 		}
 
@@ -988,7 +1028,19 @@ challenge:
 		 */
 		rcode = reply->code == PW_CODE_ACCESS_CHALLENGE ? RLM_MODULE_HANDLED : RLM_MODULE_OK;
 
-		t->sent_basic_password = (fr_pair_find_by_num(reply->vps, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, VENDORPEC_FREERADIUS, TAG_ANY) != NULL);
+		if (!doing_eap) {
+			vp = fr_pair_find_by_num(reply->vps, PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, VENDORPEC_FREERADIUS, TAG_ANY);
+			if (!vp) {
+				RWDEBUG("Phase 2: Not configured to use EAP or passwords.  Authentication will likely fail.");
+				break;
+			}
+
+			t->sent_basic_password = true;
+
+			RDEBUG("Phase 2: Sending Basic-Password-Auth-Req");
+			eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, vp->vp_length, vp->vp_strvalue);
+		}
+
 		break;
 
 	default:
@@ -1177,6 +1229,8 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 				fr_pair_add(&fake->config, vp);
 				vp->vp_integer = eap_method;
 			}
+		} else {
+			RWDEBUG("No explicit EAP-Type set.");
 		}
 	}
 
@@ -1203,11 +1257,18 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 	 */
 	switch (fake->reply->code) {
 	case 0:
+		vp = fr_pair_find_by_num(fake->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
+		if (vp && (vp->vp_integer == PW_CODE_ACCESS_CHALLENGE)) {
+			fake->reply->code = PW_CODE_ACCESS_CHALLENGE;
+			goto do_reply;
+		}
+
 		RDEBUG("Phase 2: No tunneled reply was found, rejecting the user.");
 		code = PW_CODE_ACCESS_REJECT;
 		break;
 
 	default:
+	do_reply:
 		/*
 		 * Returns RLM_MODULE_FOO, and we want to return PW_FOO
 		 */
