@@ -456,6 +456,27 @@ unexpected:
 			RDEBUG("Phase 2: Unexpected TLVs in authentication stage");
 			goto unexpected;
 		}
+
+		/*
+		 *	A password request must yield a password response.
+		 */
+		if (t->sent_basic_password && ((present & (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP)) == 0)) {
+			RDEBUG("Phase 2: Sent Basic-Password-Auth-Req but reply does not contain Basic-Password-Auth-Resp");
+			goto unexpected;
+		}
+
+		/*
+		 *	If we have Identity-Type, the packet must also
+		 *	contain either EAP-Payload or
+		 *	Basic-Password-Auth-Resp.
+		 */
+		if (((present & (1 << EAP_TEAP_TLV_IDENTITY_TYPE)) != 0) &&
+		    ((present & (1 << EAP_TEAP_TLV_EAP_PAYLOAD)) == 0) &&
+		    ((present & (1 << EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP)) == 0)) {
+			RDEBUG("Phase 2: Received Identity-Type without EAP-Payload or Basic-Password-Auth-Resp");
+			goto unexpected;
+		}
+
 		break;
 	case PROVISIONING:
 		if (present & ~(1 << EAP_TEAP_TLV_RESULT)) {
@@ -960,10 +981,14 @@ challenge:
 		}
 
 		/*
-		 * When chaining, we 'goto challenge' and can use that to now signal back
-		 * to unlang that a method has completed and we can now move to the next
+		 *	When chaining, we 'goto challenge' and can use
+		 *	that to now signal back to unlang that a
+		 *	method has completed and we can now move to
+		 *	the next
 		 */
 		rcode = reply->code == PW_CODE_ACCESS_CHALLENGE ? RLM_MODULE_HANDLED : RLM_MODULE_OK;
+
+		t->sent_basic_password = (fr_pair_find_by_num(reply->vps, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, VENDORPEC_FREERADIUS, TAG_ANY) != NULL);
 		break;
 
 	default:

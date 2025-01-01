@@ -140,6 +140,7 @@ typedef struct teap_tunnel_t {
 
 	bool			result_final;
 	bool			auto_chain;		//!< do we automatically chain identities
+	bool			sent_basic_password;
 
 #ifdef WITH_PROXY
 	bool		proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated
