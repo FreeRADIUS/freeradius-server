@@ -1100,26 +1100,17 @@ challenge:
 	return rcode;
 }
 
-static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session,
-				    tls_session_t *tls_session,
-				    VALUE_PAIR *vp_eap, VALUE_PAIR *vp_type)
+static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
+			       tls_session_t *tls_session,
+			       VALUE_PAIR *vp_eap, VALUE_PAIR *vp_type, REQUEST *fake)
 {
 	PW_CODE			code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
 	VALUE_PAIR		*vp;
 	teap_tunnel_t		*t;
-	REQUEST			*fake;
 	int			eap_method = 0;
 
 	RDEBUG3("Phase 2: Processing received EAP Payload");
-
-	/*
-	 * Allocate a fake REQUEST structure.
-	 */
-	fake = request_alloc_fake(request);
-	rad_assert(!fake->packet->vps);
-
-	fake->eap_inner_tunnel = true;
 
 	t = (teap_tunnel_t *) tls_session->opaque;
 
@@ -1342,8 +1333,6 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		break;
 	}
 
-	talloc_free(fake);
-
 	return code;
 }
 
@@ -1475,8 +1464,17 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	teap_tunnel_t			*t = (teap_tunnel_t *) tls_session->opaque;
 	VALUE_PAIR			*vp, *vp_eap = NULL, *vp_type = NULL;
 	vp_cursor_t			cursor;
-	PW_CODE code			= PW_CODE_ACCESS_ACCEPT;
-	bool gotintermedresult = false, gotresult = false, gotcryptobinding = false;
+	PW_CODE				code = PW_CODE_ACCESS_ACCEPT;
+	bool				gotintermedresult = false, gotresult = false, gotcryptobinding = false;
+	REQUEST				*fake;
+
+	/*
+	 * Allocate a fake REQUEST structure.
+	 */
+	fake = request_alloc_fake(request);
+	rad_assert(!fake->packet->vps);
+
+	fake->eap_inner_tunnel = true;
 
 	for (vp = fr_cursor_init(&cursor, &teap_vps); vp; vp = fr_cursor_next(&cursor)) {
 		char *value;
@@ -1536,8 +1534,10 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 			talloc_free(value);
 		}
 
-		if (code == PW_CODE_ACCESS_REJECT)
+		if (code == PW_CODE_ACCESS_REJECT) {
+			talloc_free(fake);
 			return PW_CODE_ACCESS_REJECT;
+		}
 	}
 
 	/*
@@ -1556,19 +1556,21 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 	if (t->stage == COMPLETE) {
 		if (!gotcryptobinding) {
 			RWDEBUG("Phase 2: Peer did not send Crypto-Binding - rejecting");
+			talloc_free(fake);
 			return PW_CODE_ACCESS_REJECT;
 		}
 
 		if (!gotresult) {
-			RWDEBUG("Phase 2: Perr did not send Result - rejecting");
+			RWDEBUG("Phase 2: Peer did not send Result - rejecting");
+			talloc_free(fake);
 			return PW_CODE_ACCESS_REJECT;
 		}
-		return code;
+
+	}  else {
+		code = eap_teap_phase2(request, eap_session, tls_session, vp_eap, vp_type, fake);
 	}
 
-	if (vp_eap)
-		code = eap_teap_eap_payload(request, eap_session, tls_session, vp_eap, vp_type);
-
+	talloc_free(fake);
 	return code;
 }
 
