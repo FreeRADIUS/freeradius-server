@@ -191,6 +191,16 @@ static void eap_teap_append_identity_type(tls_session_t *tls_session, int value)
 {
 	uint16_t identity;
 	identity = htons(value);
+	teap_tunnel_t *t = (teap_tunnel_t *) tls_session->opaque;
+
+	fr_assert(value != 0);
+	fr_assert(value <= 2);
+
+	/*
+	 *	If we send this, it's required.
+	 */
+	t->auths[value].required = true;
+	t->auths[value].sent = true;
 
 	eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_IDENTITY_TYPE, false, sizeof(identity), &identity);
 }
@@ -1000,6 +1010,16 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 			goto challenge;
 		}
 
+		if (t->auths[1].required && !t->auths[1].received) {
+			REDEBUG("Phase 2: We required Identity-Type = User, but we did not see it - rejecting the session");
+			goto fail;
+		}
+
+		if (t->auths[2].required && !t->auths[2].received) {
+			REDEBUG("Phase 2: We required Identity-Type = Machine, but we did not see it - rejecting the session");
+			goto fail;
+		}
+
 		RDEBUG("Phase 2: All inner authentications have succeeded");
 
 		t->result_final = true;
@@ -1014,7 +1034,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		RDEBUG("Phase 2: Got tunneled Access-Reject");
 
 	fail:
-		eap_teap_append_result(request, tls_session, reply->code);
+		eap_teap_append_result(request, tls_session, PW_CODE_ACCESS_REJECT);
 		rcode = RLM_MODULE_REJECT;
 		break;
 
@@ -1178,6 +1198,8 @@ static PW_CODE eap_teap_eap_payload(REQUEST *request, eap_handler_t *eap_session
 		vp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
 			VALUE_PAIR *teap_type;
+
+			t->auths[vp->vp_short].received++;
 
 			/*
 			 *	User auth.  Prefer:

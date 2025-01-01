@@ -357,6 +357,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 			vp->vp_short = inst->identity_type[0];
 			RDEBUG("Setting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
 			       (vp->vp_short == 1) ? "User" : "Machine");
+
+			t->auths[vp->vp_short].required = true;
 		}
 
 		if (inst->identity_type[1]) {
@@ -365,6 +367,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 				vp->vp_short = inst->identity_type[1];
 				RDEBUG("Followed by &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
 				       (vp->vp_short == 1) ? "User" : "Machine");
+
+				t->auths[vp->vp_short].required = true;
 			}
 		}
 	}

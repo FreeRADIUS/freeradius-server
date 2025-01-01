@@ -112,6 +112,13 @@ typedef struct teap_imck_t {
 	uint8_t		simck[EAP_TEAP_SIMCK_LEN];
 	uint8_t		cmk[EAP_TEAP_CMK_LEN];
 } CC_HINT(__packed__) teap_imck_t;
+
+typedef struct {
+	bool		required;
+	bool		sent;
+	uint8_t		received;
+} teap_auth_t;
+
 typedef struct teap_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
@@ -127,6 +134,8 @@ typedef struct teap_tunnel_t {
 
 	int			num_identities;
 	uint16_t		identity_types[2];
+
+	teap_auth_t		auths[3]; /* so we can index by Identity-Type */
 
 	int			imckc;
 	bool			imck_emsk_available;
