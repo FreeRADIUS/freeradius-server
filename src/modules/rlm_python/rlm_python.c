@@ -462,7 +462,39 @@ static int mod_populate_vptuple(module_ctx_t const *mctx, request_t *request, Py
 		break;
 
 	case FR_TYPE_NON_LEAF:
-		return 0;
+	{
+		fr_pair_t	*child_vp;
+		int		child_len, i = 0;
+
+		child_len = fr_pair_list_num_elements(&vp->vp_group);
+		if (child_len == 0) {
+			Py_INCREF(Py_None);
+			value = Py_None;
+			break;
+		}
+
+		if ((value = PyTuple_New(child_len)) == NULL) goto error;
+
+		for (child_vp = fr_pair_list_head(&vp->vp_group);
+		     child_vp;
+		     child_vp = fr_pair_list_next(&vp->vp_group, child_vp), i++) {
+			PyObject *child_pp;
+
+			if ((child_pp = PyTuple_New(2)) == NULL) {
+				Py_DECREF(value);
+				goto error;
+			}
+
+			if (mod_populate_vptuple(mctx, request, child_pp, child_vp) == 0) {
+				PyTuple_SET_ITEM(value, i, child_pp);
+			} else {
+				Py_INCREF(Py_None);
+				PyTuple_SET_ITEM(value, i, Py_None);
+				Py_DECREF(child_pp);
+			}
+		}
+	}
+		break;
 	}
 
 	if (value == NULL) goto error;
