@@ -311,7 +311,10 @@ skip_alt:
 
 			fr_tls_bio_dbuff_reset(bd);	/* 'free' any data used */
 
-			X509V3_EXT_print(bio, ext, 0, 0);
+			if (X509V3_EXT_print(bio, ext, 0, 0) != 1) {
+				REDEBUG("Failed extracting data for \"%s\"", da->name);
+				goto again;
+			}
 
 			MEM(vp = fr_pair_afrom_da(ctx, da));
 			if (fr_pair_value_from_str(vp, (char *)fr_dbuff_current(out), fr_dbuff_remaining(out),
