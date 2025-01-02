@@ -311,7 +311,7 @@ skip_alt:
 
 			fr_tls_bio_dbuff_reset(bd);	/* 'free' any data used */
 
-			if (X509V3_EXT_print(bio, ext, 0, 0) != 1) {
+			if (X509V3_EXT_print(bio, ext, X509V3_EXT_PARSE_UNKNOWN, 0) != 1) {
 				REDEBUG("Failed extracting data for \"%s\"", da->name);
 				goto again;
 			}
