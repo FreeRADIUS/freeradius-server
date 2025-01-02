@@ -475,6 +475,21 @@ unexpected:
 		}
 
 		/*
+		 *	Check the size of Crypto-Binding TLV, and the TEAP version.
+		 */
+		if (attr == EAP_TEAP_TLV_CRYPTO_BINDING) {
+			if (length != sizeof(eap_tlv_crypto_binding_tlv_t)) {
+				REDEBUG("Phase 2: Crypto-Binding TLV has incorrect length %u", length);
+				return 0;
+			}
+
+			if (data[1] != EAP_TEAP_VERSION) {
+				REDEBUG("Phase 2: Crypto-Binding TLV has incorrect version %u", data[1]);
+				return 0;
+			}
+		}
+
+		/*
 		 * remaining > length, continue.
 		 */
 		remaining -= length;
@@ -1023,6 +1038,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 		RDEBUG("Phase 2: All inner authentications have succeeded");
 
 		t->result_final = true;
+		t->sent_basic_password = false;
 		eap_teap_append_result(request, tls_session, reply->code);
 
 		tls_session->authentication_success = true;
@@ -1059,10 +1075,17 @@ challenge:
 		doing_eap = false;
 
 		/*
-		 *	Copy the EAP-Message back to the tunnel.
+		 *	Copy the EAP-Message back to the tunnel.  Note
+		 *	that there can only be one EAP-Message
+		 *	attribute.  The RADIUS encoder takes care of
+		 *	splitting it into multiple chunks in a RADIUS
+		 *	packet.
+		 *
+		 *	For TEAP, we can only send one EAP-Payload TLV
+		 *	in a packet.
 		 */
-		(void) fr_cursor_init(&cursor, &reply->vps);
-		while ((vp = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY)) != NULL) {
+		vp = fr_pair_find_by_num(reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		if (vp) {
 			doing_eap = true;
 			eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_EAP_PAYLOAD, true, vp->vp_length, vp->vp_octets);
 		}
@@ -1101,8 +1124,7 @@ challenge:
 }
 
 static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
-			       tls_session_t *tls_session,
-			       VALUE_PAIR *vp_eap, VALUE_PAIR *vp_type, REQUEST *fake)
+			       tls_session_t *tls_session, REQUEST *fake)
 {
 	PW_CODE			code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t		rcode;
@@ -1113,15 +1135,6 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 	RDEBUG3("Phase 2: Processing received EAP Payload");
 
 	t = (teap_tunnel_t *) tls_session->opaque;
-
-	/*
-	 * Add the tunneled attributes to the fake request.
-	 */
-
-	fake->packet->vps = fr_pair_afrom_num(fake->packet, PW_EAP_MESSAGE, 0);
-	fr_pair_value_memcpy(fake->packet->vps, vp_eap->vp_octets, vp_eap->vp_length);
-
-	if (vp_type) fr_pair_add(&fake->packet->vps, fr_pair_copy(fake->packet, vp_type));
 
 	RDEBUG("Phase 2: Got tunneled request");
 	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
@@ -1269,8 +1282,11 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 				fr_pair_add(&fake->config, vp);
 				vp->vp_integer = eap_method;
 			}
+
+		} else if (!fake->password) {
+			RWDEBUG("Phase 2: No explicit EAP-Type set.");
 		} else {
-			RWDEBUG("No explicit EAP-Type set.");
+			RDEBUG("Phase 2: Using password authentication");
 		}
 	}
 
@@ -1470,9 +1486,10 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 				     tls_session_t *tls_session, VALUE_PAIR *teap_vps)
 {
 	teap_tunnel_t			*t = (teap_tunnel_t *) tls_session->opaque;
-	VALUE_PAIR			*vp, *vp_eap = NULL, *vp_type = NULL;
+	VALUE_PAIR			*vp, *copy;
 	vp_cursor_t			cursor;
 	PW_CODE				code = PW_CODE_ACCESS_ACCEPT;
+	uint8_t const			*p;
 	bool				gotintermedresult = false, gotresult = false, gotcryptobinding = false;
 	REQUEST				*fake;
 
@@ -1499,8 +1516,6 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 		case PW_FREERADIUS_EAP_TEAP_TLV:
 			switch (vp->da->attr >> 8) {
 			case EAP_TEAP_TLV_IDENTITY_TYPE:
-				vp_type = vp;
-
 				vp_config = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 				if (vp_config && (vp_config->vp_short != vp->vp_short)) {
 					RWDEBUG("We requested &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type = %s",
@@ -1510,23 +1525,67 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 					RWDEBUG("Authentication will likely fail.");
 				}
 
+				fr_pair_add(&fake->packet->vps, fr_pair_copy(fake->packet, vp));
 				break;
+
+				/*
+				 *	Copy EAP-Payload to EAP-Message
+				 */
 			case EAP_TEAP_TLV_EAP_PAYLOAD:
-				vp_eap = vp;
+				copy = fr_pair_afrom_num(fake->packet, PW_EAP_MESSAGE, 0);
+				fr_pair_value_memcpy(copy, vp->vp_octets, vp->vp_length);
+				fr_pair_add(&fake->packet->vps, copy);
 				break;
+
+				/*
+				 *	We copy the full attribute, even if the administrator
+				 *	isn't ever going to use it.  The existence of the attribute
+				 *	is a signal that we have a password response, and not an EAP-Message.
+				 */
+			case EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP:
+				fr_pair_add(&fake->packet->vps, fr_pair_copy(fake->packet, vp));
+
+				p = vp->vp_octets;
+
+				copy = fr_pair_afrom_num(fake->packet, PW_USER_NAME, 0);
+				fr_pair_value_bstrncpy(copy, p + 1, p[0]);
+				fr_pair_add(&fake->packet->vps, copy);
+				fake->username = copy;
+
+				p += p[0] + 1;
+
+				copy = fr_pair_afrom_num(fake->packet, PW_USER_PASSWORD, 0);
+				fr_pair_value_bstrncpy(copy, p + 1, p[0]);
+				fr_pair_add(&fake->packet->vps, copy);
+				fake->password = copy;
+				break;
+
+				/*
+				 *	The rest of the TEAP
+				 *	attributes are signalling, and
+				 *	aren't needed by the inner-tunnel virtual server.
+				 */
 			case EAP_TEAP_TLV_RESULT:
 				gotresult = true;
-				if (vp->vp_short != EAP_TEAP_TLV_RESULT_SUCCESS) code = PW_CODE_ACCESS_REJECT;
+				if (vp->vp_short != EAP_TEAP_TLV_RESULT_SUCCESS) {
+					REDEBUG("Phase 2: Peer sent Result = Failure - rejecting the session");
+					code = PW_CODE_ACCESS_REJECT;
+				}
 				break;
+
 			case EAP_TEAP_TLV_INTERMED_RESULT:
 				gotintermedresult = true;
-				if (vp->vp_short != EAP_TEAP_TLV_RESULT_SUCCESS) code = PW_CODE_ACCESS_REJECT;
+				if (vp->vp_short != EAP_TEAP_TLV_RESULT_SUCCESS) {
+					REDEBUG("Phase 2: Peer sent Intermediate-Result = Failure - rejecting the session");
+					code = PW_CODE_ACCESS_REJECT;
+				}
 				break;
+
 			case EAP_TEAP_TLV_CRYPTO_BINDING:
 				gotcryptobinding = true;
-				if (vp->vp_length >= sizeof(eap_tlv_crypto_binding_tlv_t))
-					code = eap_teap_crypto_binding(request, eap_session, tls_session,
-								       (eap_tlv_crypto_binding_tlv_t const *)vp->vp_octets);
+
+				code = eap_teap_crypto_binding(request, eap_session, tls_session,
+							       (eap_tlv_crypto_binding_tlv_t const *)vp->vp_octets);
 				break;
 
 			default:
@@ -1575,7 +1634,7 @@ static PW_CODE eap_teap_process_tlvs(REQUEST *request, eap_handler_t *eap_sessio
 		}
 
 	}  else {
-		code = eap_teap_phase2(request, eap_session, tls_session, vp_eap, vp_type, fake);
+		code = eap_teap_phase2(request, eap_session, tls_session, fake);
 	}
 
 	talloc_free(fake);
