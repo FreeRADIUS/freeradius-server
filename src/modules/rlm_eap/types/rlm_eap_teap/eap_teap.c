@@ -1419,16 +1419,24 @@ static PW_CODE eap_teap_crypto_binding(REQUEST *request, UNUSED eap_handler_t *e
 		}
 		imck = &t->imck_msk;
 	}
+
 	if (((flags & EAP_TEAP_TLV_CRYPTO_BINDING_FLAGS_CMAC_EMSK) != 0) && t->imck_emsk_available) {
 		HMAC(md, &t->imck_emsk.cmk, sizeof(t->imck_emsk.cmk), buf, buflen, mac, &maclen);
 		if (memcmp(binding->emsk_compound_mac, mac, sizeof(binding->emsk_compound_mac))) {
 			RDEBUG2("Phase 2: Crypto-Binding TLV (EMSK) mis-match");
 			return PW_CODE_ACCESS_REJECT;
 		}
-		imck = &t->imck_emsk;
-	}
 
-	if (!imck) imck = &imck_zeros;
+		RDEBUG3("Phase 2: Using all EMSK for ICMK");
+		imck = &t->imck_emsk;
+
+	} else if (imck) {
+		RDEBUG3("Phase 2: Using all MSK for ICMK");
+
+	} else {
+		RDEBUG3("Phase 2: Using all zeroes for ICMK");
+		imck = &imck_zeros;
+	}
 
 	/* IMCK[j] 60 octets => S-IMCK[j] first 40 octets, CMK[j] last 20 octets */
 	RDEBUGHEX("Phase 2: S-IMCK[j]", imck->simck, sizeof(imck->simck));
