@@ -45,6 +45,67 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 DIAG_OFF(DIAG_UNKNOWN_PRAGMAS)
 DIAG_OFF(used-but-marked-unused)	/* fix spurious warnings for sk macros */
+/** Extract session pairs from the Subject Alternate Name extension
+ *
+ */
+static bool tls_session_pairs_from_san(fr_pair_list_t *pair_list, TALLOC_CTX *ctx, request_t *request, X509_EXTENSION *ext)
+{
+	GENERAL_NAMES	*names = NULL;
+	int		i;
+	fr_pair_t	*vp;
+
+	if (!(names = X509V3_EXT_d2i(ext))) return false;
+
+	for (i = 0; i < sk_GENERAL_NAME_num(names); i++) {
+		GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
+
+		switch (name->type) {
+#ifdef GEN_EMAIL
+		case GEN_EMAIL:
+			MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
+						 attr_tls_certificate_subject_alt_name_email) == 0);
+			MEM(fr_pair_value_bstrndup(vp,
+						   (char const *)ASN1_STRING_get0_data(name->d.rfc822Name),
+						   ASN1_STRING_length(name->d.rfc822Name), true) == 0);
+			break;
+#endif	/* GEN_EMAIL */
+#ifdef GEN_DNS
+		case GEN_DNS:
+			MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
+						 attr_tls_certificate_subject_alt_name_dns) == 0);
+			MEM(fr_pair_value_bstrndup(vp,
+						   (char const *)ASN1_STRING_get0_data(name->d.dNSName),
+						   ASN1_STRING_length(name->d.dNSName), true) == 0);
+			break;
+#endif	/* GEN_DNS */
+#ifdef GEN_OTHERNAME
+		case GEN_OTHERNAME:
+			/* look for a MS UPN */
+			if (NID_ms_upn != OBJ_obj2nid(name->d.otherName->type_id)) break;
+
+			/* we've got a UPN - Must be ASN1-encoded UTF8 string */
+			if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
+				MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
+							 attr_tls_certificate_subject_alt_name_upn) == 0);
+				MEM(fr_pair_value_bstrndup(vp,
+							   (char const *)ASN1_STRING_get0_data(name->d.otherName->value->value.utf8string),
+							   ASN1_STRING_length(name->d.otherName->value->value.utf8string),
+							   true) == 0);
+				break;
+			}
+			RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)");
+				break;
+#endif	/* GEN_OTHERNAME */
+			default:
+				/* XXX TODO handle other SAN types */
+				break;
+		}
+	}
+	if (names != NULL) GENERAL_NAMES_free(names);
+
+	return true;
+}
+
 /** Extract attributes from an X509 certificate
  *
  * @param[out] pair_list	to copy attributes to.
@@ -68,6 +129,7 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 
 	fr_pair_t	*vp = NULL;
 	ssize_t		slen;
+	bool		san_found = false;
 
 	/*
 	 *	Subject
@@ -181,63 +243,10 @@ int fr_tls_session_pairs_from_x509_cert(fr_pair_list_t *pair_list, TALLOC_CTX *c
 	 */
 	loc = X509_get_ext_by_NID(cert, NID_subject_alt_name, 0);
 	if (loc >= 0) {
-		X509_EXTENSION	*ext = NULL;
-		GENERAL_NAMES	*names = NULL;
-		int		i;
-
-		ext = X509_get_ext(cert, loc);
-		if (!ext || !(names = X509V3_EXT_d2i(ext))) goto skip_alt;
-
-
-		for (i = 0; i < sk_GENERAL_NAME_num(names); i++) {
-			GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
-
-			switch (name->type) {
-#ifdef GEN_EMAIL
-			case GEN_EMAIL:
-				MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
-							 attr_tls_certificate_subject_alt_name_email) == 0);
-				MEM(fr_pair_value_bstrndup(vp,
-							   (char const *)ASN1_STRING_get0_data(name->d.rfc822Name),
-							   ASN1_STRING_length(name->d.rfc822Name), true) == 0);
-				break;
-#endif	/* GEN_EMAIL */
-#ifdef GEN_DNS
-			case GEN_DNS:
-				MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
-							 attr_tls_certificate_subject_alt_name_dns) == 0);
-				MEM(fr_pair_value_bstrndup(vp,
-							   (char const *)ASN1_STRING_get0_data(name->d.dNSName),
-							   ASN1_STRING_length(name->d.dNSName), true) == 0);
-				break;
-#endif	/* GEN_DNS */
-#ifdef GEN_OTHERNAME
-			case GEN_OTHERNAME:
-				/* look for a MS UPN */
-				if (NID_ms_upn != OBJ_obj2nid(name->d.otherName->type_id)) break;
-
-				/* we've got a UPN - Must be ASN1-encoded UTF8 string */
-				if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
-					MEM(fr_pair_append_by_da(ctx, &vp, pair_list,
-								 attr_tls_certificate_subject_alt_name_upn) == 0);
-					MEM(fr_pair_value_bstrndup(vp,
-								   (char const *)ASN1_STRING_get0_data(name->d.otherName->value->value.utf8string),
-								   ASN1_STRING_length(name->d.otherName->value->value.utf8string),
-								   true) == 0);
-					break;
-				}
-				RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)");
-					break;
-#endif	/* GEN_OTHERNAME */
-				default:
-					/* XXX TODO handle other SAN types */
-					break;
-			}
-		}
-		if (names != NULL) GENERAL_NAMES_free(names);
+		X509_EXTENSION	*ext = X509_get_ext(cert, loc);
+		if (ext) san_found = tls_session_pairs_from_san(pair_list, ctx, request, ext);
 	}
 
-skip_alt:
 	/*
 	 *	Only add extensions for the actual client certificate
 	 */
@@ -270,6 +279,20 @@ skip_alt:
 			ext = sk_X509_EXTENSION_value(ext_list, i);
 
 			obj = X509_EXTENSION_get_object(ext);
+
+			/*
+			 *	If this is extension is Subject Alternate Name have we already
+			 *	handled it?  If not, do that now.
+			 *
+			 *	Some certificate encodings have been observed where the SAN extension
+			 *	was not found by X509_get_ext_by_NID() but then seen when the list
+			 *	of extensions is handled here.
+			 */
+			if (OBJ_obj2nid(obj) == NID_subject_alt_name) {
+				if (!san_found) san_found = tls_session_pairs_from_san(pair_list, ctx, request, ext);
+				goto again;
+			}
+
 			if (i2a_ASN1_OBJECT(bio, obj) <= 0) {
 				RPWDEBUG("Skipping X509 Extension (%i) conversion to attribute. "
 					 "Conversion from ASN1 failed...", i);
