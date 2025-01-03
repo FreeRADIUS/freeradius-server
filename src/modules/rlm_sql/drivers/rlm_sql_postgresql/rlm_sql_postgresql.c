@@ -411,6 +411,9 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 #ifdef HAVE_PGRES_SINGLE_TUPLE
 	case PGRES_SINGLE_TUPLE:
 #endif
+#ifdef HAVE_PGRES_TUPLES_CHUNK
+	case PGRES_TUPLES_CHUNK:
+#endif
 	case PGRES_TUPLES_OK:
 		conn->cur_row = 0;
 		conn->affected_rows = PQntuples(conn->result);
