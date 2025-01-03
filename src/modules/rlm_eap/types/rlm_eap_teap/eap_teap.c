@@ -1227,7 +1227,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 					       eap_type2name(eap_method));
 
 				} else if (eap_method) {
-					RDEBUG("ySetting User EAP-Type = %s from TEAP configuration default_eap_type",
+					RDEBUG("Setting User EAP-Type = %s from TEAP configuration default_eap_type",
 					       eap_type2name(eap_method));
 
 				} else {
