@@ -1004,9 +1004,20 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 
 			/* RFC7170, Appendix C.6 */
 			eap_teap_append_identity_type(tls_session, vp->vp_short);
-			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
+
+			if (t->default_method || t->eap_method[vp->vp_short]) {
+				eap_teap_append_eap_identity_request(request, tls_session, eap_session);
+			}
 
 			if (!t->auto_chain) goto challenge;
+
+			if (!(t->default_method || t->eap_method[vp->vp_short])) {
+				RDEBUG("Phase 2: No %s EAP methods configured - assuming password",
+				       (vp->vp_short == 1) ? "User" : "Machine");
+
+				vp = fr_pair_afrom_num(reply, PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, VENDORPEC_FREERADIUS);
+				if (vp) fr_pair_add(&reply->vps, vp);
+			}
 
 			/*
 			 *	Delete the &session-state:FreeRADIUS-EAP-TEAP-TLV-Identity-Type
@@ -1164,7 +1175,8 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 			fr_pair_value_bstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
 			RDEBUG("Phase 2: Got tunneled identity of %s", t->username->vp_strvalue);
-		} else {
+
+		} else if (!fake->username) {
 			/*
 			 * Don't reject the request outright,
 			 * as it's permitted to do EAP without
@@ -1174,7 +1186,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 		}
 	} /* else there WAS a t->username */
 
-	if (t->username) {
+	if (t->username && !fake->username) {
 		vp = fr_pair_list_copy(fake->packet, t->username);
 		fr_pair_add(&fake->packet->vps, vp);
 		fake->username = vp;
@@ -1227,8 +1239,11 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 					       eap_type2name(eap_method));
 
 				} else if (eap_method) {
-					RDEBUG("Setting User EAP-Type = %s from TEAP configuration default_eap_type",
+					RDEBUG("Phase 2: Setting User EAP-Type = %s from TEAP configuration default_eap_type",
 					       eap_type2name(eap_method));
+
+				} else if (fake->password) {
+					RDEBUG("Phase 2: User is not doing EAP, but instead is doing User-Password authentication");
 
 				} else {
 					RWDEBUG("Phase 2: Not setting User EAP-Type");
@@ -1252,6 +1267,9 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 				} else if (eap_method) {
 					RDEBUG("Phase 2: Using Machine EAP-Type = %s from TEAP configuration default_eap_type",
 					       eap_type2name(eap_method));
+
+				} else if (fake->password) {
+					RDEBUG("Phase 2: Machine is not doing EAP, but instead is doing User-Password authentication");
 
 				} else {
 					RWDEBUG("Phase 2: Not setting Machine EAP-Type");
@@ -1286,7 +1304,7 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 		} else if (!fake->password) {
 			RWDEBUG("Phase 2: No explicit EAP-Type set.");
 		} else {
-			RDEBUG("Phase 2: Using password authentication");
+			/* else it's User-Password authentication */
 		}
 	}
 
@@ -1730,7 +1748,16 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 			fr_pair_delete(&request->state, vp);
 		}
 
-		eap_teap_append_eap_identity_request(request, tls_session, eap_session);
+		/*
+		 *	We always start off with an EAP-Identity-Request.
+		 */
+		if (t->default_method || t->eap_method[vp->vp_short]) {
+			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
+		} else {
+			RDEBUG("Phase 2: No %s EAP method configured - sending Basic-Password-Auth-Req = \"\"",
+			       (vp->vp_short == 1) ? "User" : "Machine");
+			eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, 0, "");
+		}
 
 		t->stage = AUTHENTICATION;
 
