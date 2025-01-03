@@ -761,8 +761,6 @@ int dual_tls_recv(rad_listen_t *listener)
 	bool		is_reply = false;
 #endif
 
-	fr_assert(listener->status == RAD_LISTEN_STATUS_KNOWN);
-
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
 redo:
