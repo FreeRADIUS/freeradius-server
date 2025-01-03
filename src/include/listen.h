@@ -43,13 +43,13 @@ typedef enum RAD_LISTEN_TYPE {
 } RAD_LISTEN_TYPE;
 
 typedef enum RAD_LISTEN_STATUS {
-	RAD_LISTEN_STATUS_INIT = 0,
-	RAD_LISTEN_STATUS_KNOWN,
-	RAD_LISTEN_STATUS_PAUSE,
-	RAD_LISTEN_STATUS_RESUME,
-	RAD_LISTEN_STATUS_FROZEN,
-	RAD_LISTEN_STATUS_EOL,
-	RAD_LISTEN_STATUS_REMOVE_NOW
+	RAD_LISTEN_STATUS_INIT = 0,		//!< starting up
+	RAD_LISTEN_STATUS_KNOWN,		//!< alive and operating normally
+	RAD_LISTEN_STATUS_PAUSE,		//!< TLS connection checking: don't read normal packets
+	RAD_LISTEN_STATUS_RESUME,		//!< TLS connection checking: resume reading normal packets
+	RAD_LISTEN_STATUS_FROZEN,		//!< alive, but we're not sending any more packets to it
+	RAD_LISTEN_STATUS_EOL,			//!< we're trying to delete it.
+	RAD_LISTEN_STATUS_REMOVE_NOW		//!< no request is using it, delete the listener.
 } RAD_LISTEN_STATUS;
 
 typedef struct rad_listen rad_listen_t;
