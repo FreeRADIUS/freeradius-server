@@ -1220,8 +1220,8 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 					RDEBUG("Phase 2: Setting User EAP-Type = %s from &config:TEAP-Type-User",
 					       eap_type2name(eap_method));
 
-				} else if (t->user_method) {
-					eap_method = t->user_method;
+				} else if (t->eap_method[vp->vp_short]) {
+					eap_method = t->eap_method[vp->vp_short];
 
 					RDEBUG("Phase 2: Setting User EAP-Type = %s from TEAP configuration user_eap_type",
 					       eap_type2name(eap_method));
@@ -1243,8 +1243,8 @@ static PW_CODE eap_teap_phase2(REQUEST *request, eap_handler_t *eap_session,
 					RDEBUG("Phase 2: Setting Machine EAP-Type = %s from &config:TEAP-Type-Machine",
 					       eap_type2name(eap_method));
 
-				} else if (t->machine_method) {
-					eap_method = t->machine_method;
+				} else if (t->eap_method[vp->vp_short]) {
+					eap_method = t->eap_method[vp->vp_short];
 
 					RDEBUG("Phase 2: Setting Machine EAP-Type = %s from TEAP configuration machine_eap_type",
 					       eap_type2name(eap_method));

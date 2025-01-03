@@ -46,6 +46,9 @@ RCSIDH(eap_teap_h, "$Id$")
 #define EAP_TEAP_TLV_RESULT_SUCCESS		1
 #define EAP_TEAP_TLV_RESULT_FAILURE		2
 
+#define EAP_TEAP_IDENTITY_TYPE_USER		1
+#define EAP_TEAP_IDENTITY_TYPE_MACHINE		2
+
 #define PW_EAP_TEAP_TLV_IDENTITY_TYPE (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY_TYPE << 8))
 #define PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ << 8))
 #define PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP << 8))
@@ -146,8 +149,7 @@ typedef struct teap_tunnel_t {
 	uint8_t			emsk[EAP_TEAP_EMSK_LEN];
 
 	int			default_method;
-	int			user_method;
-	int			machine_method;
+	int			eap_method[3];
 
 	bool			result_final;
 	bool			auto_chain;		//!< do we automatically chain identities
