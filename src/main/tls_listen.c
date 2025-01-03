@@ -750,16 +750,7 @@ read_application_data:
 	return 1;
 }
 
-static int dual_tls_recv_internal(rad_listen_t *listener);
-
 int dual_tls_recv(rad_listen_t *listener)
-{
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-
-	return dual_tls_recv_internal(listener);
-}
-
-static int dual_tls_recv_internal(rad_listen_t *listener)
 {
 	RADIUS_PACKET *packet;
 	RAD_REQUEST_FUNP fun = NULL;
@@ -769,6 +760,8 @@ static int dual_tls_recv_internal(rad_listen_t *listener)
 #ifdef WITH_COA_TUNNEL
 	bool		is_reply = false;
 #endif
+
+	fr_assert(listener->status == RAD_LISTEN_STATUS_KNOWN);
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
 
@@ -946,7 +939,6 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (sock->state == LISTEN_TLS_SETUP) {
 		RDEBUG("(TLS) Finishing session setup");
-		(void) dual_tls_recv_internal(listener);
 		return 0;
 	}
 
@@ -971,12 +963,14 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 		 */
 		RDEBUG("(TLS) Connection checks succeeded - continuing with normal reads");
 		listener->status = RAD_LISTEN_STATUS_RESUME;
+		sock->state = LISTEN_TLS_SETUP;
+
+		/*
+		 *	The master thread then has to read from the socket.
+		 */
 		radius_update_listener(listener);
 
 		rad_assert(sock->request->packet != request->packet);
-
-		sock->state = LISTEN_TLS_SETUP;
-		(void) dual_tls_recv(listener);
 		return 0;
 	}
 

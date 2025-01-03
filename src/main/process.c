@@ -5735,12 +5735,25 @@ static void event_new_fd(rad_listen_t *this)
 		goto listener_is_eol;
 	} /* end of INIT */
 
+	/*
+	 *	We're doing TLS connection checks.  Don't read normal packets.
+	 */
 	if (this->status == RAD_LISTEN_STATUS_PAUSE) {
 		fr_event_fd_delete(el, 0, this->fd);
 		return;
 	}
 
-	if (this->status == RAD_LISTEN_STATUS_RESUME) goto insert_fd;
+	/*
+	 *	TLS connection checks are done.  Read the pending
+	 *	packet, then add the listener to the event loop.
+	 */
+	if (this->status == RAD_LISTEN_STATUS_RESUME) {
+		this->status = RAD_LISTEN_STATUS_KNOWN;
+
+		fr_assert(this->tls);
+		(void) this->recv(this);
+		goto insert_fd;
+	}
 
 #ifdef WITH_TCP
 	/*
