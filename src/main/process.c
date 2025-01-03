@@ -5735,6 +5735,7 @@ static void event_new_fd(rad_listen_t *this)
 		goto listener_is_eol;
 	} /* end of INIT */
 
+#ifdef WITH_TLS
 	/*
 	 *	We're doing TLS connection checks.  Don't read normal packets.
 	 */
@@ -5754,6 +5755,7 @@ static void event_new_fd(rad_listen_t *this)
 		(void) this->recv(this);
 		goto insert_fd;
 	}
+#endif
 
 #ifdef WITH_TCP
 	/*
