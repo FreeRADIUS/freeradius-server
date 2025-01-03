@@ -1016,7 +1016,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *eap_session,
 				       (vp->vp_short == 1) ? "User" : "Machine");
 
 				vp = fr_pair_afrom_num(reply, PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, VENDORPEC_FREERADIUS);
-				if (vp) fr_pair_add(&reply->vps, vp);
+				if (vp) {
+					fr_pair_add(&reply->vps, vp);
+				} else {
+					RERROR("Failed adding attribute &reply:FreeRADIUS-EAP-TEAP-Basic-Password-Auth-Req");
+					goto fail;
+				}
 			}
 
 			/*
@@ -1751,11 +1756,11 @@ PW_CODE eap_teap_process(eap_handler_t *eap_session, tls_session_t *tls_session)
 		/*
 		 *	We always start off with an EAP-Identity-Request.
 		 */
-		if (t->default_method || t->eap_method[vp->vp_short]) {
+		if (t->default_method || (vp && t->eap_method[vp->vp_short])) {
 			eap_teap_append_eap_identity_request(request, tls_session, eap_session);
 		} else {
 			RDEBUG("Phase 2: No %s EAP method configured - sending Basic-Password-Auth-Req = \"\"",
-			       (vp->vp_short == 1) ? "User" : "Machine");
+			       !vp ? "" : (vp->vp_short == 1) ? "User" : "Machine");
 			eap_teap_tlv_append(tls_session, EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ, true, 0, "");
 		}
 
