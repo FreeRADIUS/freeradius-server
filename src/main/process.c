@@ -5702,7 +5702,9 @@ static void event_new_fd(rad_listen_t *this)
 		/*
 		 *	All sockets: add the FD to the event handler.
 		 */
+#ifdef WITH_TLS
 	insert_fd:
+#endif
 		if (fr_event_fd_insert(el, 0, this->fd,
 				       event_socket_handler, this)) {
 			this->status = RAD_LISTEN_STATUS_KNOWN;
