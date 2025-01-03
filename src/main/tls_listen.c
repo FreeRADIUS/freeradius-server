@@ -750,8 +750,16 @@ read_application_data:
 	return 1;
 }
 
+static int dual_tls_recv_internal(rad_listen_t *listener);
 
 int dual_tls_recv(rad_listen_t *listener)
+{
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+
+	return dual_tls_recv_internal(listener);
+}
+
+static int dual_tls_recv_internal(rad_listen_t *listener)
 {
 	RADIUS_PACKET *packet;
 	RAD_REQUEST_FUNP fun = NULL;
@@ -914,7 +922,33 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == dual_tls_send);
 
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
+	/*
+	 *	If the socket is vaguely alive, then write to it.
+	 *	Otherwise it's dead, and we don't do anything.
+	 */
+	switch (listener->status) {
+	case RAD_LISTEN_STATUS_KNOWN:
+	case RAD_LISTEN_STATUS_FROZEN:
+	case RAD_LISTEN_STATUS_PAUSE:
+	case RAD_LISTEN_STATUS_RESUME:
+		break;
+
+	case RAD_LISTEN_STATUS_INIT:
+	case RAD_LISTEN_STATUS_EOL:
+	case RAD_LISTEN_STATUS_REMOVE_NOW:
+		return 0;
+	}
+
+	/*
+	 *	We're trying to send a reply to the "check
+	 *	client connection" packet.  Instead, just
+	 *	finish the session setup.
+	 */
+	if (sock->state == LISTEN_TLS_SETUP) {
+		RDEBUG("(TLS) Finishing session setup");
+		(void) dual_tls_recv_internal(listener);
+		return 0;
+	}
 
 	/*
 	 *	See if the policies allowed this connection.
