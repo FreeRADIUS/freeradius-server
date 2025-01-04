@@ -21,13 +21,10 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	  input file does not contain it.
 	* Add support for Subject AltName URI.  Closes #5450.
 	* Add python_path_mode option to python3 module.
-	* Relax checks on OpenSSL minor versions.
+	* Relax checks on OpenSSL minor versions for OpenSSL 3.x.
 	* Add API for deleting dynamic home servers.
 	* set SO_KEEPALIVE on outbound sockets, so firewalls are
 	  less likly to close TCP connections.
-	* Update the TEAP module so that it is usable by mere
-	  humans.  See mods-available/eap, and the "teap"
-	  subsection for new configuration and documentation.
 	* Allow querying of statistics when home_server has
 	  src_ipaddr set.  See FreeRADIUS-Stats-Server-Src-IP-Address.
 	  Fixes #5483
@@ -44,7 +41,7 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Don't run Python detach function on config check
 	* Fix a number of issues with TLS connections and
 	  "check_client_connections = yes".
-	* Be more careful about managing the incoming queue when database
+	* Be more careful about managing the incoming queue when databases
 	  block the server.  The server will still be unable to make
 	  progress, but it should crash less.  Whether or not this is a
 	  good thing is unknown.
