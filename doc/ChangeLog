@@ -42,6 +42,12 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Use PyEval_RestoreThread to swap to main thread.
 	  Fixes #5111
 	* Don't run Python detach function on config check
+	* Fix a number of issues with TLS connections and
+	  "check_client_connections = yes".
+	* Be more careful about managing the incoming queue when database
+	  block the server.  The server will still be unable to make
+	  progress, but it should crash less.  Whether or not this is a
+	  good thing is unknown.
 
 FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
