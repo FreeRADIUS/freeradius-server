@@ -516,7 +516,6 @@ int request_enqueue(REQUEST *request)
 	if ((thread_pool.num_queued >= thread_pool.max_queue_size) &&
 	    (request_discard_lower_priority(request->priority) == 0)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
-
 		RATE_LIMIT(ERROR("Something is blocking the server.  There are %d packets in the queue, "
 				 "waiting to be processed.  Ignoring the new request.", thread_pool.num_queued));
 		return 0;
@@ -526,6 +525,7 @@ int request_enqueue(REQUEST *request)
 	 *	Push the request onto the appropriate fifo for that priority.
 	 */
 	if (!fr_fifo_push(thread_pool.fifo[request->priority], request)) {
+		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		RATE_LIMIT(ERROR("Something is blocking the server.  There are too many packets in the queue, "
 				 "waiting to be processed.  Ignoring the new request."));
 		return 0;
