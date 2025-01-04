@@ -62,6 +62,12 @@ time_t fr_start_time = (time_t)-1;
 static rbtree_t *pl = NULL;
 static fr_event_list_t *el = NULL;
 
+/*
+ *	These are shared with threads.c, and nothing else.
+ */
+void request_free(REQUEST *request) CC_HINT(nonnull);
+void request_done(REQUEST *request, int original) CC_HINT(nonnull);
+
 fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
 	/* Currently we do not run a second event loop for modules. */
 	return el;
@@ -100,7 +106,7 @@ static char const *master_state_names[REQUEST_MASTER_NUM_STATES] = {
 	"?",
 	"active",
 	"stop-processing",
-	"counted"
+	"in-queue-waiting-to-free",
 };
 
 static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
@@ -396,7 +402,6 @@ STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_cleanup_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
-STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
 
 STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
@@ -590,13 +595,22 @@ static void request_timer(void *ctx)
  *	request.  If there is a parent, free the parent INSTEAD of the
  *	request.
  */
-static void request_free(REQUEST *request)
+void request_free(REQUEST *request)
 {
 	void *ptr;
 
 	rad_assert(request->ev == NULL);
 	rad_assert(!request->in_request_hash);
 	rad_assert(!request->in_proxy_hash);
+
+	/*
+	 *	Don't free requests which are in the queue.  The code
+	 *	in threads.c will take care of doing that.
+	 */
+	if (request->child_state == REQUEST_QUEUED) {
+		request->master_state = REQUEST_TO_FREE;
+		return;
+	}
 
 	if ((request->options & RAD_REQUEST_OPTION_CTX) == 0) {
 		talloc_free(request);
@@ -687,7 +701,7 @@ static void proxy_reply_too_late(REQUEST *request)
  *	}
  *  \enddot
  */
-static void request_done(REQUEST *request, int original)
+void request_done(REQUEST *request, int original)
 {
 	struct timeval now, when;
 	int action = original;
@@ -802,7 +816,17 @@ static void request_done(REQUEST *request, int original)
 	case FR_ACTION_DONE:
 #ifdef HAVE_PTHREAD_H
 		/*
-		 *	If the child is still running, leave it alone.
+		 *	If the child is still queued or running, don't
+		 *	mark it as DONE.
+		 *
+		 *	For queued requests, the request_free()
+		 *	function will mark up the request so that the
+		 *	queue will free it.
+		 *
+		 *	For running requests, the child thread will
+		 *	eventually call request_done().  A timer in
+		 *	the master thread will then take care of
+		 *	cleaning up the request.
 		 */
 		if (spawn_flag && (request->child_state <= REQUEST_RUNNING)) {
 			break;
@@ -2013,6 +2037,7 @@ skip_dup:
 		/*
 		 *	Don't do delayed reject.  Oh well.
 		 */
+		request->child_state = REQUEST_DONE;
 		request_free(request);
 		return 1;
 	}
@@ -6527,9 +6552,25 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	/*
 	 *	Not done, or the child thread is still processing it.
 	 */
-	if (request->child_state < REQUEST_RESPONSE_DELAY) return 0; /* continue */
+	switch (request->child_state) {
+	default:
+	case REQUEST_QUEUED:
+	case REQUEST_RESPONSE_DELAY:
+	case REQUEST_CLEANUP_DELAY:
+	case REQUEST_DONE:
+		break;
+
+	case REQUEST_RUNNING:
+	case REQUEST_PROXIED:
+		return 0;
+	}
 
 #ifdef HAVE_PTHREAD_H
+	/*
+	 *	The request is being processed by a child thread.
+	 *	This should never happen, but perhaps race condition
+	 *	could cause this to be set?
+	 */
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 #endif
 
@@ -6566,6 +6607,16 @@ void radius_event_free(void)
 {
 	ASSERT_MASTER;
 
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	Stop all threads from processing requests.  Do this
+	 *	before trying to clean up or free outstanding requests.
+	 */
+	if (spawn_flag) {
+		thread_pool_stop();
+	}
+#endif
+
 #ifdef WITH_PROXY
 	/*
 	 *	There are requests in the proxy hash that aren't
@@ -6584,7 +6635,7 @@ void radius_event_free(void)
 		 *	ensure that all of the threads have exited.
 		 */
 #ifdef HAVE_PTHREAD_H
-		thread_pool_stop();
+		thread_pool_free();
 #endif
 
 		/*

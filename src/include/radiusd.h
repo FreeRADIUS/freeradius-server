@@ -202,6 +202,7 @@ typedef struct main_config {
 typedef enum {
 	REQUEST_ACTIVE = 1,
 	REQUEST_STOP_PROCESSING,
+	REQUEST_TO_FREE,			//!< in the queue, and the queue should free it
 } rad_master_state_t;
 #define REQUEST_MASTER_NUM_STATES (REQUEST_STOP_PROCESSING + 1)
 
@@ -548,6 +549,7 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 /* threads.c */
 int	thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);
 void	thread_pool_stop(void);
+void	thread_pool_free(void);
 int	thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 pid_t	rad_fork(void);
 pid_t	rad_waitpid(pid_t pid, int *status);

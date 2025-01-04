@@ -136,6 +136,16 @@ typedef struct fr_pps_t {
 } fr_pps_t;
 #endif
 
+/*
+ *	In process.c, but no one else should be calling these
+ *	functions.
+ */
+extern void request_free(REQUEST *request);
+extern void request_done(REQUEST *request, int original);
+
+#ifndef HAVE_STDATOMIC_H
+static int request_discard_lower_priority(int priority);
+#endif
 
 /*
  *	A data structure to manage the thread pool.  There's no real
@@ -375,6 +385,13 @@ int request_enqueue(REQUEST *request)
 		managed = true;
 	}
 
+	/*
+	 *	Update the request state.
+	 */
+	request->component = "<core>";
+	request->module = "<queue>";
+	request->child_state = REQUEST_QUEUED;
+
 #ifdef HAVE_STDATOMIC_H
 	if (!managed) {
 		uint32_t num;
@@ -394,17 +411,11 @@ int request_enqueue(REQUEST *request)
 	}
 
 	/*
-	 *	Use atomic queues where possible.  They're substantially faster than mutexes.
-	 */
-	request->component = "<core>";
-	request->module = "<queue>";
-	request->child_state = REQUEST_QUEUED;
-
-	/*
 	 *	Push the request onto the appropriate fifo for that
 	 */
 	if (!fr_atomic_queue_push(thread_pool.queue[request->priority], request)) {
-		ERROR("!!! ERROR !!! Failed inserting request %d into the queue", request->number);
+		RATE_LIMIT(ERROR("Something is blocking the server.  There are too many packets in the queue, "
+				 "waiting to be processed.  Ignoring the new request."));
 		return 0;
 	}
 
@@ -499,27 +510,24 @@ int request_enqueue(REQUEST *request)
 
 	thread_pool.request_count++;
 
-	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
+	/*
+	 *	If there are too many packets _overall_, then try to delete a lower priority one.
+	 */
+	if ((thread_pool.num_queued >= thread_pool.max_queue_size) &&
+	    (request_discard_lower_priority(request->priority) == 0)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 
-		/*
-		 *	Mark the request as done.
-		 */
 		RATE_LIMIT(ERROR("Something is blocking the server.  There are %d packets in the queue, "
 				 "waiting to be processed.  Ignoring the new request.", thread_pool.num_queued));
 		return 0;
 	}
 
-	request->component = "<core>";
-	request->module = "<queue>";
-	request->child_state = REQUEST_QUEUED;
-
 	/*
-	 *	Push the request onto the appropriate fifo for that
+	 *	Push the request onto the appropriate fifo for that priority.
 	 */
 	if (!fr_fifo_push(thread_pool.fifo[request->priority], request)) {
-		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		ERROR("!!! ERROR !!! Failed inserting request %d into the queue", request->number);
+		RATE_LIMIT(ERROR("Something is blocking the server.  There are too many packets in the queue, "
+				 "waiting to be processed.  Ignoring the new request."));
 		return 0;
 	}
 
@@ -541,6 +549,31 @@ int request_enqueue(REQUEST *request)
 
 	return 1;
 }
+
+#ifndef HAVE_STDATOMIC_H
+/*
+ *	Try to free up requests by discarding requests of lower priority.
+ */
+static int request_discard_lower_priority(int priority)
+{
+	int i;
+	REQUEST *request;
+
+	if (priority == 0) return 0;
+
+	for (i = NUM_FIFOS - 1; i < priority; i--) {
+		request = fr_fifo_pop(thread_pool.fifo[i]);
+		if (!request) continue;
+
+		fr_assert(request->child_state == REQUEST_QUEUED);
+		request->child_state = REQUEST_DONE;
+		request_done(request, FR_ACTION_DONE);
+		return 1;
+	}
+
+	return 0;
+}
+#endif
 
 /*
  *	Remove a request from the queue.
@@ -575,8 +608,32 @@ retry:
 
 		/*
 		 *	This entry was marked to be stopped.  Acknowledge it.
+		 *
+		 *	If we own the request, we delete it. Otherwise
+		 *	we run the "done" callback now, which will
+		 *	stop timers, remove it from the request hash,
+		 *	update listener counts, etc.
+		 *
+		 *	Running request_done() here means that old
+		 *	requests are cleaned up immediately, which
+		 *	frees up more resources for new requests.  It
+		 *	also means that we don't need to rely on
+		 *	timers to free up the old requests, as those
+		 *	timers will run much much later.
+		 *
+		 *	Catching this corner case doesn't change the
+		 *	normal operation of the server.  Most requests
+		 *	should NOT be marked "stop processing" when
+		 *	they're in the queue.  This situation
+		 *	generally happens when the server is blocked,
+		 *	due to a slow back-end database.
 		 */
 		request->child_state = REQUEST_DONE;
+		if (request->master_state == REQUEST_TO_FREE) {
+			request_free(request);
+		} else {
+			request_done(request, REQUEST_DONE);
+		}
 	}
 
 	/*
@@ -631,7 +688,13 @@ retry:
 		request = fr_fifo_pop(thread_pool.fifo[i]);
 		rad_assert(request != NULL);
 		VERIFY_REQUEST(request);
+
 		request->child_state = REQUEST_DONE;
+		if (request->master_state == REQUEST_TO_FREE) {
+			request_free(request);
+		} else {
+			request_done(request, REQUEST_DONE);
+		}
 		thread_pool.num_queued--;
 	}
 
@@ -663,6 +726,7 @@ retry:
 
 	rad_assert(*prequest != NULL);
 	rad_assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->child_state == REQUEST_QUEUED);
 
 	request->component = "<core>";
 	request->module = "";
@@ -1196,10 +1260,30 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 }
 DIAG_ON(deprecated-declarations)
 
-/*
- *	Stop all threads in the pool.
- */
 void thread_pool_stop(void)
+{
+	int i, total_threads;
+
+	if (!pool_initialized) return;
+
+	/*
+	 *	Set pool stop flag.
+	 */
+	thread_pool.stop_flag = true;
+
+	/*
+	 *	Wakeup all threads to make them see stop flag.
+	 */
+	total_threads = thread_pool.total_threads;
+	for (i = 0; i != total_threads; i++) {
+		sem_post(&thread_pool.semaphore);
+	}
+}
+
+/*
+ *	Free all thread-related information
+ */
+void thread_pool_free(void)
 {
 #ifndef WITH_GCD
 	int i;
@@ -1229,6 +1313,19 @@ void thread_pool_stop(void)
 		next = handle->next;
 		pthread_join(handle->pthread_id, NULL);
 		delete_thread(handle);
+	}
+
+	/*
+	 *	Free any requests which were blocked in the queue, but
+	 *	only if we're checking that no memory leaked.
+	 */
+	if (main_config.memory_report) {
+		REQUEST *request;
+
+		while (request_dequeue(&request) == 1) {
+			request->child_state = REQUEST_DONE;
+			request_free(request);
+		}
 	}
 
 	for (i = 0; i < NUM_FIFOS; i++) {
