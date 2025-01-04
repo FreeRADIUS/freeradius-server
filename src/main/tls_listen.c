@@ -941,36 +941,12 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	}
 
 	/*
-	 *	See if the policies allowed this connection.
+	 *	The code in rad_status_server() looks for this state,
+	 *	and either swaps it to LISTEN_TLS_SETUP, or else
+	 *	changes listener->status to EOL.  As a result, this
+	 *	state should never be reachable in the send() routine.
 	 */
-	if (sock->state == LISTEN_TLS_CHECKING) {
-		if (request->reply->code != PW_CODE_ACCESS_ACCEPT) {
-			RDEBUG("(TLS) Connection checks failed - closing connection");
-			listener->status = RAD_LISTEN_STATUS_EOL;
-			listener->tls = NULL; /* parent owns this! */
-
-			/*
-			 *	Tell the event handler that an FD has disappeared.
-			 */
-			radius_update_listener(listener);
-			return 0;
-		}
-
-		/*
-		 *	Resume reading from the listener.
-		 */
-		RDEBUG("(TLS) Connection checks succeeded - continuing with normal reads");
-		listener->status = RAD_LISTEN_STATUS_RESUME;
-		sock->state = LISTEN_TLS_SETUP;
-
-		/*
-		 *	The master thread then has to read from the socket.
-		 */
-		radius_update_listener(listener);
-
-		rad_assert(sock->request->packet != request->packet);
-		return 0;
-	}
+	fr_assert(sock->state != LISTEN_TLS_CHECKING);
 
 	/*
 	 *	Accounting reject's are silently dropped.
