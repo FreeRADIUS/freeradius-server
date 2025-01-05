@@ -1905,11 +1905,32 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		 *	Only report as double quoted if it contained valid
 		 *	a valid xlat expansion.
 		 */
+		raw->quote = T_SINGLE_QUOTED_STRING;
 		p = strchr(raw->r_opand, '%');
-		if (p && (p[1] == '{')) {
-			raw->quote = quote;
-		} else {
-			raw->quote = T_SINGLE_QUOTED_STRING;
+
+		while (p) {
+			/*
+			 *	%{...}
+			 */
+			if (p[1] == '{') {
+				raw->quote = T_DOUBLE_QUOTED_STRING;
+				break;
+			}
+
+			/*
+			 *	Single-character expansions.  See src/main/xlat.c
+			 */
+			if (strchr("cdelmntCDGHIMSTYv", p[1])) {
+				raw->quote = T_DOUBLE_QUOTED_STRING;
+				break;
+			}
+
+			/*
+			 *	Skip %%
+			 */
+			if (p[1] == '%') p++;
+
+			p = strchr(p + 1, '%');
 		}
 
 		break;
