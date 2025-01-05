@@ -6519,14 +6519,6 @@ static int proxy_delete_cb(UNUSED void *ctx, void *data)
 	if (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0) return 0;
 #endif
 
-	/*
-	 *	If it's queued we can't delete it from the queue.
-	 *
-	 *	Otherwise, it's OK to delete it.  Even RUNNING, because
-	 *	that will get caught by the check above.
-	 */
-	if (request->child_state == REQUEST_QUEUED) return 0;
-
 	request->in_proxy_hash = false;
 
 	if (!request->in_request_hash) {
