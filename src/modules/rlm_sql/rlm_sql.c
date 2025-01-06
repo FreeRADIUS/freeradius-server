@@ -2006,10 +2006,15 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 	}
 	subcs = cf_section_find(cf_item_to_section(ci), section2, CF_IDENT_ANY);
 	if (!subcs) {
-		cf_log_debug(ci, "No query found for \"%s\", this query will be disabled...", section2);
+	no_query:
+		cf_log_warn(ci, "No query found for \"%s.%s\", this query will be disabled",
+			    section_name_str(cec->asked->name1), section2);
 		talloc_free(section2);
 		return 0;
 	}
+	count = cf_pair_count(subcs, "query");
+	if (count == 0) goto no_query;
+
 	talloc_free(section2);
 
 	/*
@@ -2023,8 +2028,6 @@ static int query_call_env_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tm
 		.mode = TMPL_ESCAPE_PRE_CONCAT,
 	};
 	our_rules.literals_safe_for = our_rules.escape.safe_for;
-
-	count = cf_pair_count(subcs, "query");
 
 	while ((to_parse = cf_pair_find_next(subcs, to_parse, "query"))) {
 		MEM(parsed_env = call_env_parsed_add(ctx, out,
