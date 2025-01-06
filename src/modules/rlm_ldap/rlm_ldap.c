@@ -66,8 +66,14 @@ typedef struct {
 } ldap_auth_call_env_t;
 
 typedef struct {
+	char const	*attr;
+	fr_token_t	op;
+	tmpl_t const	*tmpl;
+} ldap_mod_tmpl_t;
+typedef struct {
 	fr_value_box_t	user_base;
 	fr_value_box_t	user_filter;
+	ldap_mod_tmpl_t	**mod;
 } ldap_usermod_call_env_t;
 
 /** Call environment used in the profile xlat
@@ -78,6 +84,7 @@ typedef struct {
 } ldap_xlat_profile_call_env_t;
 
 static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
+static int ldap_mod_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, call_env_parser_t const *rule);
 
 static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule);
 
@@ -248,18 +255,20 @@ static const call_env_method_t authorize_method_env = {
 	}
 };
 
-static const call_env_method_t usermod_method_env = {
-	FR_CALL_ENV_METHOD_OUT(ldap_usermod_call_env_t),
-	.env = (call_env_parser_t[]) {
-		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED,
-					 ((call_env_parser_t[]) {
-						USER_CALL_ENV_COMMON(ldap_usermod_call_env_t),
-						CALL_ENV_TERMINATOR
-					 })) },
+#define USERMOD_ENV(_section) static const call_env_method_t _section ## _usermod_method_env = { \
+	FR_CALL_ENV_METHOD_OUT(ldap_usermod_call_env_t), \
+	.env = (call_env_parser_t[]) { \
+		{ FR_CALL_ENV_SUBSECTION("user", NULL, CALL_ENV_FLAG_REQUIRED, \
+					 ((call_env_parser_t[]) { \
+						USER_CALL_ENV_COMMON(ldap_usermod_call_env_t), CALL_ENV_TERMINATOR \
+					 })) }, \
+		{ FR_CALL_ENV_SUBSECTION_FUNC(STRINGIFY(_section), CF_IDENT_ANY, CALL_ENV_FLAG_SUBSECTION | CALL_ENV_FLAG_PARSE_MISSING, ldap_mod_section_parse) }, \
+		CALL_ENV_TERMINATOR \
+	} \
+}
 
-		CALL_ENV_TERMINATOR
-	}
-};
+USERMOD_ENV(accounting);
+USERMOD_ENV(send);
 
 static const call_env_method_t xlat_memberof_method_env = {
 	FR_CALL_ENV_METHOD_OUT(ldap_xlat_memberof_call_env_t),
@@ -2349,6 +2358,108 @@ static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *ou
 	return 0;
 }
 
+static int ldap_mod_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
+				  CONF_ITEM *ci, call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
+{
+	CONF_SECTION const	*subcs = NULL;
+	CONF_PAIR const		*to_parse = NULL;
+	tmpl_t			*parsed_tmpl;
+	call_env_parsed_t	*parsed_env;
+	char			*section2, *p;
+	ssize_t			count, slen, multi_index = 0;
+	ldap_mod_tmpl_t		*mod;
+
+	fr_assert(cec->type == CALL_ENV_CTX_TYPE_MODULE);
+
+	section2 = talloc_strdup(NULL, section_name_str(cec->asked->name2));
+	p = section2;
+	while (*p != '\0') {
+		*(p) = tolower((uint8_t)*p);
+		p++;
+	}
+
+	if (!ci) {
+	not_found:
+		cf_log_warn(ci, "No section found for \"%s.%s\" in module \"%s\", this call will have no effect.",
+			    section_name_str(cec->asked->name1), section2, cec->mi->name);
+	free:
+		talloc_free(section2);
+		return 0;
+	}
+
+	subcs = cf_section_find(cf_item_to_section(ci), section2, CF_IDENT_ANY);
+	if (!subcs) goto not_found;
+
+	subcs = cf_section_find(subcs, "update", CF_IDENT_ANY);
+	if (!subcs) {
+		cf_log_warn(ci, "No update found inside \"%s -> %s\" in module \"%s\"",
+			    section_name_str(cec->asked->name1), section2, cec->mi->name);
+		goto free;
+	}
+
+	count = cf_pair_count_descendents(subcs);
+	if (count == 0) {
+		cf_log_warn(ci, "No modifications found for \"%s.%s\" in module \"%s\"",
+			    section_name_str(cec->asked->name1), section2, cec->mi->name);
+		goto free;
+	}
+	talloc_free(section2);
+
+	while ((to_parse = cf_pair_next(subcs, to_parse))) {
+		if (multi_index == LDAP_MAX_ATTRMAP) {
+			cf_log_perr(to_parse, "Too many LDAP mods. Max is %d", LDAP_MAX_ATTRMAP);
+			return -1;
+		}
+
+		switch (cf_pair_operator(to_parse)) {
+		case T_OP_SET:
+		case T_OP_ADD_EQ:
+		case T_OP_SUB_EQ:
+		case T_OP_CMP_FALSE:
+		case T_OP_INCRM:
+			break;
+
+		default:
+			cf_log_perr(to_parse, "Invalid operator for LDAP modification");
+			return -1;
+		}
+
+		MEM(parsed_env = call_env_parsed_add(ctx, out,
+						     &(call_env_parser_t){
+							FR_CALL_ENV_PARSE_ONLY_OFFSET(cf_pair_attr(to_parse), FR_TYPE_VOID,
+										      CALL_ENV_FLAG_MULTI,
+										      ldap_usermod_call_env_t, mod)
+						     }));
+
+		slen = tmpl_afrom_substr(parsed_env, &parsed_tmpl,
+					 &FR_SBUFF_IN(cf_pair_value(to_parse), talloc_array_length(cf_pair_value(to_parse)) - 1),
+					 cf_pair_value_quote(to_parse), value_parse_rules_quoted[cf_pair_value_quote(to_parse)],
+					 t_rules);
+
+		if (slen <= 0) {
+			cf_canonicalize_error(to_parse, slen, "Failed parsing LDAP modification \"%s\"", cf_pair_value(to_parse));
+		error:
+			call_env_parsed_free(out, parsed_env);
+			return -1;
+		}
+		if (tmpl_needs_resolving(parsed_tmpl) &&
+		    (tmpl_resolve(parsed_tmpl, &(tmpl_res_rules_t){ .dict_def = t_rules->attr.dict_def }) <0)) {
+			cf_log_perr(to_parse, "Failed resolving LDAP modification \"%s\"", cf_pair_value(to_parse));
+			goto error;
+		}
+
+		MEM(mod = talloc(parsed_env, ldap_mod_tmpl_t));
+		mod->attr = cf_pair_attr(to_parse);
+		mod->tmpl = parsed_tmpl;
+		mod->op = cf_pair_operator(to_parse);
+
+		call_env_parsed_set_multi_index(parsed_env, count, multi_index++);
+		call_env_parsed_set_data(parsed_env, mod);
+	}
+
+	return 0;
+}
+
 static int ldap_group_filter_parse(TALLOC_CTX *ctx, void *out, tmpl_rules_t const *t_rules, UNUSED CONF_ITEM *ci,
 				   call_env_ctx_t const *cec, UNUSED call_env_parser_t const *rule)
 {
@@ -2772,12 +2883,12 @@ module_rlm_t rlm_ldap = {
 			/*
 			 *	Hack to support old configurations
 			 */
-			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &usermod_method_env },
+			{ .section = SECTION_NAME("accounting", CF_IDENT_ANY), .method = mod_accounting, .method_env = &accounting_usermod_method_env },
 			{ .section = SECTION_NAME("authenticate", CF_IDENT_ANY), .method = mod_authenticate, .method_env = &authenticate_method_env },
 			{ .section = SECTION_NAME("authorize", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
 
 			{ .section = SECTION_NAME("recv", CF_IDENT_ANY), .method = mod_authorize, .method_env = &authorize_method_env },
-			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &usermod_method_env },
+			{ .section = SECTION_NAME("send", CF_IDENT_ANY), .method = mod_post_auth, .method_env = &send_usermod_method_env },
 			MODULE_BINDING_TERMINATOR
 		}
 	}
