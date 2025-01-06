@@ -28,6 +28,9 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	* Allow querying of statistics when home_server has
 	  src_ipaddr set.  See FreeRADIUS-Stats-Server-Src-IP-Address.
 	  Fixes #5483
+	* Update dictionary "man" page.  Fixes #4346.
+	* Change jlibtool to use --show-config, to avoid conflicts with
+	  clang --config.  Fixes #5442.
 
 	Bug fixes
 	* For EAP-TLS, send TLS start without a length field.
@@ -45,6 +48,8 @@ FreeRADIUS 3.2.7 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	  block the server.  The server will still be unable to make
 	  progress, but it should crash less.  Whether or not this is a
 	  good thing is unknown.
+	* Better handler single-character expansions.  Fixes #2216.
+	* Correct calculation of EAP length in pre-proxy.  Fixes #5486.
 
 FreeRADIUS 3.2.6 Sat 24 Aug 2024 12:00:00 UTC urgency=low
 	Configuration changes
