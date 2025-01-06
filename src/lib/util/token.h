@@ -108,7 +108,7 @@ typedef enum fr_token {
 	T_OP_CMP_NE_TYPE,      		/* !== */
 
 	/*
-	 *	Only used by LDAP ???
+	 *	Unary calc operator.
 	 */
 	T_OP_INCRM,			/* ++ */
 
