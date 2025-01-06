@@ -304,6 +304,7 @@ typedef enum {
 } fr_dict_attr_err_t;
 
 typedef bool (*fr_dict_attr_valid_func_t)(fr_dict_attr_t *da);
+typedef bool (*fr_dict_attr_type_parse_t)(fr_type_t *type, fr_dict_attr_flags_t *flags, char const *name);
 
 /*
  *	Forward declarations to avoid circular references.
@@ -449,6 +450,7 @@ typedef struct {
 										///< Called when comparing attributes by their fields.
 		} flags;
 
+		fr_dict_attr_type_parse_t	type_parse;		//!< parse unknown type names
 		fr_dict_attr_valid_func_t 	valid;			//!< Validation function to ensure that
 									///< new attributes are valid.
 	} attr;
