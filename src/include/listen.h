@@ -196,6 +196,8 @@ typedef struct listen_socket_t {
 		LISTEN_TLS_RUNNING,
 	} state;
 
+	bool		client_closed;
+
 #ifdef WITH_RADIUSV11
 	bool		alpn_checked;
 	bool		radiusv11;		//!< defaults to "no"!

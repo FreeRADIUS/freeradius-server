@@ -72,8 +72,9 @@ static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
+	REQUEST *request = sock->request;
 
-	SSL_shutdown(sock->ssn->ssl);
+	if (!sock->client_closed) SSL_shutdown(sock->ssn->ssl);
 
 	listener->status = RAD_LISTEN_STATUS_EOL;
 	listener->tls = NULL; /* parent owns this! */
@@ -81,7 +82,7 @@ static void tls_socket_close(rad_listen_t *listener)
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
-	DEBUG("(TLS) Closing connection");
+	RDEBUG3("(TLS) Closing connection");
 	radius_update_listener(listener);
 
 	/*
@@ -125,7 +126,6 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 
 
 		ERROR("(TLS) Error writing to socket: %s", fr_syserror(errno));
-
 		tls_socket_close(listener);
 		return -1;
 	}
@@ -520,7 +520,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 			     sizeof(sock->ssn->dirty_in.data));
 		if ((rcode < 0) && (errno == ECONNRESET)) {
 		do_close:
-			DEBUG("(TLS) Closing socket from client port %u", sock->other_port);
+			RDEBUG("(TLS) Closing socket from client port %u", sock->other_port);
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
@@ -536,6 +536,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		 */
 		if (rcode == 0) {
 			RDEBUG("(TLS) Client has closed the TCP connection");
+			sock->client_closed = true;
 			goto do_close;
 		}
 
