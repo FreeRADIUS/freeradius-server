@@ -364,7 +364,8 @@ typedef struct {
 	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query;
 	fr_value_box_list_t	expanded;
-	int unsigned		current_mod;
+	size_t			num_mods;
+	size_t			current_mod;
 } ldap_user_modify_ctx_t;
 
 /** Holds state of in progress LDAP map
@@ -2069,7 +2070,7 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 	usermod_ctx->current_mod++;
 	usermod_ctx->mod_p[usermod_ctx->current_mod] = NULL;
 
-	if (usermod_ctx->total_mods < talloc_array_length(call_env->mod)) {
+	if (usermod_ctx->current_mod < usermod_ctx->num_mods) {
 		if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) RETURN_MODULE_FAIL;
 		if (unlang_tmpl_push(usermod_ctx, &usermod_ctx->expanded, request,
 			     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL) < 0) RETURN_MODULE_FAIL;
@@ -2141,7 +2142,8 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(rlm_rcode_t *p_result, module
 					       (sizeof(struct berval) + (sizeof(struct berval *) * 2)) * num_mods));
 	*usermod_ctx = (ldap_user_modify_ctx_t) {
 		.inst = inst,
-		.call_env = call_env
+		.call_env = call_env,
+		.num_mods = num_mods
 	};
 
 	usermod_ctx->ttrunk = fr_thread_ldap_trunk_get(thread, inst->handle_config.server,
