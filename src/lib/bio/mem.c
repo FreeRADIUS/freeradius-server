@@ -942,3 +942,22 @@ int fr_bio_mem_write_resume(fr_bio_t *bio)
 
 	return my->cb.write_resume(bio);
 }
+
+/** Pause writes.
+ *
+ *  Calls to fr_bio_write() will write to the memory buffer, and not
+ *  to the next bio.  You MUST call fr_bio_mem_write_resume() after
+ *  this to flush any data.
+ */
+int fr_bio_mem_write_pause(fr_bio_t *bio)
+{
+	fr_bio_mem_t *my = talloc_get_type_abort(bio, fr_bio_mem_t);
+
+	if (my->bio.write == fr_bio_mem_write_buffer) return 0;
+
+	if (my->bio.write != fr_bio_mem_write_buffer) return -1;
+
+	my->bio.write = fr_bio_mem_write_buffer;
+
+	return 0;
+}
