@@ -617,6 +617,9 @@ ATTRIBUTE	TLS-Session-Cert-Private-Key-File	1950	string
 
 ATTRIBUTE	TLS-Server-Name-Indication		1951	string
 
+ATTRIBUTE	TLS-Cert-CRL-Distribution-Points	1960	string
+ATTRIBUTE	TLS-Client-Cert-CRL-Distribution-Points	1961	string
+
 #
 #	Range:	1960-2099
 #		Free
