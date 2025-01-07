@@ -585,35 +585,33 @@ ldap {
 	#  replaced with a single attribute.
 	#
 	accounting {
-		reference = "%tolower(type.%{Acct-Status-Type})"
-
-		type {
-			start {
-				update {
-					description := "Online at %S"
-				}
+		start {
+			update {
+				description := "Online at %S"
 			}
+		}
 
-			interim-update {
-				update {
-					description := "Last seen at %S"
-				}
+		interim-update {
+			update {
+				description := "Last seen at %S"
 			}
+		}
 
-			stop {
-				update {
-					description := "Offline at %S"
-				}
+		stop {
+			update {
+				description := "Offline at %S"
 			}
 		}
 	}
 
 	#
-	#  ### Post-Auth can modify LDAP objects too
+	#  ### "send" sections can modify LDAP objects too
 	#
-	post-auth {
-		update {
-			description := "Authenticated at %S"
+	send {
+		access-accept {
+			update {
+				description := "Authenticated at %S"
+			}
 		}
 	}
 
