@@ -131,25 +131,25 @@ void request_stats_final(REQUEST *request)
 	client = request->client;
 
 #undef INC_AUTH
-#define INC_AUTH(_x) radius_auth_stats._x++;if (listener) listener->stats._x++;if (client) client->auth._x++;
+#define INC_AUTH(_x) do { radius_auth_stats._x++;if (listener) listener->stats._x++;if (client) client->auth._x++; if (request->listener->parent) request->listener->parent->stats._x++; } while (0)
 
 #undef INC_ACCT
 #ifdef WITH_ACCOUNTING
-#define INC_ACCT(_x) radius_acct_stats._x++;if (listener) listener->stats._x++;if (client) client->acct._x++
+#define INC_ACCT(_x) do { radius_acct_stats._x++;if (listener) listener->stats._x++;if (client) client->acct._x++; if (request->listener->parent) request->listener->parent->stats._x++; } while (0)
 #else
 #define INC_ACCT(_x)
 #endif
 
 #undef INC_COA
 #ifdef WITH_COA
-#define INC_COA(_x) radius_coa_stats._x++;if (listener) listener->stats._x++;if (client) client->coa._x++
+#define INC_COA(_x) do { radius_coa_stats._x++;if (listener) listener->stats._x++;if (client) client->coa._x++; if (request->listener->parent) request->listener->parent->stats._x++; } while (0)
 #else
 #define INC_COA(_x)
 #endif
 
 #undef INC_DSC
 #ifdef WITH_DSC
-#define INC_DSC(_x) radius_dsc_stats._x++;if (listener) listener->stats._x++;if (client) client->dsc._x++
+#define INC_DSC(_x) do { radius_dsc_stats._x++;if (listener) listener->stats._x++;if (client) client->dsc._x++; if (request->listener->parent) request->listener->parent->stats._x++; } while (0)
 #else
 #define INC_DSC(_x)
 #endif
@@ -623,7 +623,7 @@ void request_stats_reply(REQUEST *request)
 		fr_ipaddr_t ipaddr;
 		VALUE_PAIR *server_ip, *server_port = NULL;
 		RADCLIENT *client = NULL;
-		RADCLIENT_LIST *cl = NULL;
+		RADCLIENT_LIST *cl =  NULL;
 
 		/*
 		 *	See if we need to look up the client by server
@@ -637,6 +637,10 @@ void request_stats_reply(REQUEST *request)
 				ipaddr.af = AF_INET;
 				ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
 				cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+
+#ifdef WITH_TCP
+				if (!cl) cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+#endif
 
 				/*
 				 *	Not found: don't do anything
@@ -652,6 +656,10 @@ void request_stats_reply(REQUEST *request)
 					ipaddr.af = AF_INET6;
 					ipaddr.ipaddr.ip6addr = server_ip->vp_ipv6addr;
 					cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+
+#ifdef WITH_TCP
+					if (!cl) cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+#endif
 
 					/*
 					 *	Not found: don't do anything
