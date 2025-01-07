@@ -131,25 +131,25 @@ void request_stats_final(REQUEST *request)
 	client = request->client;
 
 #undef INC_AUTH
-#define INC_AUTH(_x) do { radius_auth_stats._x++;if (listener) listener->stats._x++;if (client) client->auth._x++; if (request->listener->parent) request->listener->parent->stats._x++; } while (0)
+#define INC_AUTH(_x) radius_auth_stats._x++;if (listener) listener->stats._x++;if (client) client->auth._x++;
 
 #undef INC_ACCT
 #ifdef WITH_ACCOUNTING
-#define INC_ACCT(_x) do { radius_acct_stats._x++;if (listener) listener->stats._x++;if (client) client->acct._x++; if (request->listener->parent) request->listener->parent->stats._x++; } while (0)
+#define INC_ACCT(_x) radius_acct_stats._x++;if (listener) listener->stats._x++;if (client) client->acct._x++
 #else
 #define INC_ACCT(_x)
 #endif
 
 #undef INC_COA
 #ifdef WITH_COA
-#define INC_COA(_x) do { radius_coa_stats._x++;if (listener) listener->stats._x++;if (client) client->coa._x++; if (request->listener->parent) request->listener->parent->stats._x++; } while (0)
+#define INC_COA(_x) radius_coa_stats._x++;if (listener) listener->stats._x++;if (client) client->coa._x++
 #else
 #define INC_COA(_x)
 #endif
 
 #undef INC_DSC
 #ifdef WITH_DSC
-#define INC_DSC(_x) do { radius_dsc_stats._x++;if (listener) listener->stats._x++;if (client) client->dsc._x++; if (request->listener->parent) request->listener->parent->stats._x++; } while (0)
+#define INC_DSC(_x) radius_dsc_stats._x++;if (listener) listener->stats._x++;if (client) client->dsc._x++
 #else
 #define INC_DSC(_x)
 #endif
