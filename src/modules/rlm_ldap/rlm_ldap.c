@@ -364,7 +364,7 @@ typedef struct {
 	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query;
 	fr_value_box_list_t	expanded;
-	int unsigned		total_mods;
+	int unsigned		current_mod;
 } ldap_user_modify_ctx_t;
 
 /** Holds state of in progress LDAP map
@@ -1973,7 +1973,7 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 	LDAPMod			**modify;
 	ldap_mod_tmpl_t		*mod;
 	fr_value_box_t		*vb = NULL;
-	int			mod_no = usermod_ctx->total_mods, i = 0;
+	int			mod_no = usermod_ctx->current_mod, i = 0;
 	struct berval		**value_refs;
 	struct berval		*values;
 
@@ -2066,13 +2066,13 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 	usermod_ctx->mod_s[mod_no].mod_bvalues = value_refs;
 	usermod_ctx->mod_p[mod_no] = &usermod_ctx->mod_s[mod_no];
 
-	usermod_ctx->total_mods++;
-	usermod_ctx->mod_p[usermod_ctx->total_mods] = NULL;
+	usermod_ctx->current_mod++;
+	usermod_ctx->mod_p[usermod_ctx->current_mod] = NULL;
 
 	if (usermod_ctx->total_mods < talloc_array_length(call_env->mod)) {
 		if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) RETURN_MODULE_FAIL;
 		if (unlang_tmpl_push(usermod_ctx, &usermod_ctx->expanded, request,
-			     usermod_ctx->call_env->mod[usermod_ctx->total_mods]->tmpl, NULL) < 0) RETURN_MODULE_FAIL;
+			     usermod_ctx->call_env->mod[usermod_ctx->current_mod]->tmpl, NULL) < 0) RETURN_MODULE_FAIL;
 		return UNLANG_ACTION_PUSHED_CHILD;
 	}
 
