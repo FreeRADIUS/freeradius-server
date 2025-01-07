@@ -3643,17 +3643,26 @@ int home_server_pool_delete(home_pool_t *pool) {
 	bool can_remove = true;
 	for (int i = 0; i < pool->num_home_servers; ++i) {
 		home_server_t *home = pool->servers[i];
+		if (home == NULL) {
+			continue;
+		}
 		if (home->currently_outstanding > 0) {
 			DEBUG("Home server %s still has outstanding requests", home->name);
 			can_remove = false;
 			break;
 		}
-		home_server_delete(home);
-		talloc_free(home);
-		pool->servers[i] = NULL;
 	}
 
 	if (can_remove) {
+		for (int i = 0; i < pool->num_home_servers; ++i) {
+			home_server_t *home = pool->servers[i];
+			if (home == NULL) {
+				continue;
+			}
+			home_server_delete(home);
+			talloc_free(home);
+			pool->servers[i] = NULL;
+		}
 		DEBUG("Removing home server pool %s", pool->name);
 		pool->num_home_servers = 0;
 		(void) rbtree_deletebydata(home_pools_byname, pool);
