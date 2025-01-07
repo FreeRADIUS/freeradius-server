@@ -260,6 +260,7 @@ fr_ldap_rcode_t fr_ldap_error_check(LDAPControl ***ctrls, fr_ldap_connection_t c
 	case LDAP_RES_SEARCH_RESULT:	/* The result of a search */
 	case LDAP_RES_BIND:		/* The result of a bind operation */
 	case LDAP_RES_EXTENDED:
+	case LDAP_RES_MODIFY:
 		lib_errno = ldap_parse_result(conn->handle, msg,
 					      &srv_errno, &part_dn, &srv_err,
 					      NULL, ctrls, 0);
