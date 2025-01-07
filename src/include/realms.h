@@ -1,5 +1,6 @@
 #ifndef REALMS_H
 #define REALMS_H
+#include <stdbool.h>
 
 /*
  * realms.h	Structures, prototypes and global variables
@@ -173,9 +174,11 @@ typedef enum home_pool_type_t {
 typedef struct home_pool_t {
 	char const		*name;
 	home_pool_type_t	type;
+	bool			dynamic;
 
 	home_type_t    		server_type;
 	CONF_SECTION		*cs;
+	CONF_SECTION		*root_config;
 
 	char const		*virtual_server; /* for pre/post-proxy */
 
@@ -183,7 +186,7 @@ typedef struct home_pool_t {
 	int			in_fallback;
 	time_t			time_all_dead;
 	time_t			last_serviced;
-
+	fr_event_t		*ev;
 	int			num_home_servers;
 	home_server_t		*servers[1];
 } home_pool_t;
@@ -234,7 +237,7 @@ int		home_server_pool_delete_byname(char const *name, char const *type);
 int		home_server_afrom_file(char const *filename);
 int		home_server_delete_byname(char const *name, char const *type);
 int		home_server_delete(home_server_t *home);
-
+int		home_server_pool_delete(home_pool_t *pool);
 #ifdef __cplusplus
 }
 #endif

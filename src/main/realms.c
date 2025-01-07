@@ -424,6 +424,90 @@ static ssize_t xlat_home_server_dynamic(UNUSED void *instance, REQUEST *request,
 
 	return 1;
 }
+
+/*
+ *	Xlat for %{home_server_dynamic:foo}
+ */
+static ssize_t xlat_home_server_pool_dynamic(UNUSED void *instance, REQUEST *request,
+					char const *fmt, char *out, size_t outlen)
+{
+	int type;
+	char const *p, *name;
+	home_pool_t *pool;
+	char buffer[1024];
+
+	if (outlen < 2) return 0;
+
+	switch (request->packet->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		type = HOME_TYPE_AUTH;
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_REQUEST:
+		type = HOME_TYPE_ACCT;
+		break;
+#endif
+
+#ifdef WITH_COA
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+		type = HOME_TYPE_COA;
+		break;
+#endif
+
+	default:
+		*out = '\0';
+		return 0;
+	}
+
+	p = fmt;
+	while (isspace((uint8_t) *p)) p++;
+
+	/*
+	 *	Allow for dynamic strings as arguments.
+	 */
+	if (*p == '&') {
+		VALUE_PAIR *vp;
+
+		if ((radius_get_vp(&vp, request, p) < 0) || !vp ||
+		    (vp->da->type != PW_TYPE_STRING)) {
+			return -1;
+		    }
+		name = vp->vp_strvalue;
+
+	} else if (*p == '%') {
+		if (radius_xlat(buffer, sizeof(buffer), request, p, NULL, NULL) < 0) {
+			return -1;
+		}
+		name = buffer;
+
+	} else {
+		name = p;
+	}
+
+	pool = home_pool_byname(name, type);
+
+	/*
+	 *	If we're looking for an auth / acct homeserver, allow for auth+acct
+	 */
+	if (!pool && ((type == HOME_TYPE_AUTH) || (type == HOME_TYPE_ACCT))) {
+		pool = home_pool_byname(name, HOME_TYPE_AUTH_ACCT);
+	}
+
+	if (!pool) {
+		*out = '\0';
+		return 0;
+	}
+
+	/*
+	 *	1 for dynamic, 0 for static
+	 */
+	out[0] = '0' + pool->dynamic;
+	out[1] = '\0';
+
+	return 1;
+}
 #endif
 
 void realms_free(void)
@@ -1266,7 +1350,7 @@ static home_pool_t *server_pool_alloc(char const *name, home_pool_type_t type,
 {
 	home_pool_t *pool;
 
-	pool = rad_malloc(sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
+	pool = talloc_zero_size(NULL, sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
 	if (!pool) return NULL;	/* just for pairanoia */
 
 	memset(pool, 0, sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
@@ -1465,7 +1549,7 @@ int realm_pool_add(home_pool_t *pool, CONF_SECTION *cs)
 }
 
 static int server_pool_add(realm_config_t *rc,
-			   CONF_SECTION *cs, home_type_t server_type, bool do_print)
+			   CONF_SECTION *cs, home_type_t server_type, bool do_print, bool dynamic, CONF_SECTION *root)
 {
 	char const *name2;
 	home_pool_t *pool = NULL;
@@ -1518,6 +1602,8 @@ static int server_pool_add(realm_config_t *rc,
 		goto error;
 	}
 	pool->cs = cs;
+	pool->dynamic = dynamic;
+	pool->root_config = root;
 
 
 	/*
@@ -1653,7 +1739,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	if (do_print) cf_log_info(cs, " }");
 
-	cf_data_add(cs, "home_server_pool", pool, free);
+	cf_data_add(cs, "home_server_pool", pool, null_free);
 
 	rad_assert(pool->server_type != 0);
 
@@ -1661,7 +1747,7 @@ static int server_pool_add(realm_config_t *rc,
 
  error:
 	if (do_print) cf_log_info(cs, " }");
-	free(pool);
+	talloc_free(pool);
 	return 0;
 }
 #endif
@@ -2085,7 +2171,7 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 			return 0;
 		}
 
-		if (!server_pool_add(rc, pool_cs, server_type, do_print)) {
+		if (!server_pool_add(rc, pool_cs, server_type, do_print, false, NULL)) {
 			return 0;
 		}
 
@@ -2535,7 +2621,7 @@ int realms_init(CONF_SECTION *config)
 
 		type = pool_peek_type(config, cs);
 		if (type == HOME_TYPE_INVALID) goto error;
-		if (!server_pool_add(rc, cs, type, true)) goto error;
+		if (!server_pool_add(rc, cs, type, true, false, NULL)) goto error;
 	}
 #endif
 
@@ -2543,6 +2629,7 @@ int realms_init(CONF_SECTION *config)
 	xlat_register("home_server", xlat_home_server, NULL, NULL);
 	xlat_register("home_server_pool", xlat_server_pool, NULL, NULL);
 	xlat_register("home_server_dynamic", xlat_home_server_dynamic, NULL, NULL);
+	xlat_register("home_server_pool_dynamic", xlat_home_server_pool_dynamic, NULL, NULL);
 #endif
 
 	realm_config = rc;
@@ -3370,6 +3457,11 @@ int home_server_delete(home_server_t *home)
 	}
 #endif
 
+	if (home->currently_outstanding > 0) {
+		fr_strerror_printf("Cannot delete dynamic home_server %s - it still has outstanding requests", home->name);
+		return -1;
+	}
+
 	(void) rbtree_deletebydata(home_servers_byname, home);
 #ifdef WITH_STATS
 	(void) rbtree_deletebydata(home_servers_bynumber, home);
@@ -3382,7 +3474,7 @@ int home_server_delete(home_server_t *home)
 }
 
 int home_server_pool_afrom_file(char const *filename) {
-	CONF_SECTION *cs, *subcs;
+	CONF_SECTION *cs, *subcs = NULL;
 	char const *p;
 	home_server_t *home, *old;
 	home_type_t server_type = HOME_TYPE_INVALID;
@@ -3402,6 +3494,9 @@ int home_server_pool_afrom_file(char const *filename) {
 	if (cf_file_read(cs, filename) < 0) {
 		fr_strerror_printf("Failed reading file %s", filename);
 	error:
+		if (subcs != NULL) {
+			talloc_free(subcs);
+		}
 		talloc_free(cs);
 		return -1;
 	}
@@ -3420,7 +3515,6 @@ int home_server_pool_afrom_file(char const *filename) {
 
 		p = home->name;
 		home->dynamic = true;
-		home->cs = cf_section_dup(NULL, subcs, "home_server", p, true);
 
 		if (server_type == HOME_TYPE_INVALID) {
 			server_type = home->type;
@@ -3508,7 +3602,7 @@ int home_server_pool_afrom_file(char const *filename) {
 	}
 
 	subcs = cf_subsection_find_next(cs, NULL, "home_server_pool");
-	if (!server_pool_add(realm_config, subcs, HOME_TYPE_AUTH, true)) {
+	if (!server_pool_add(realm_config, subcs, HOME_TYPE_AUTH, true, true, cs)) {
 		goto error;
 	}
 	return 0;
@@ -3536,14 +3630,37 @@ int home_server_pool_delete_byname(char const *name, char const *type_name)
 		return -1;
 	}
 
-        for (int i = 0; i < pool->num_home_servers; ++i) {
-        	home_server_t *home = pool->servers[i];
-        	home_server_delete(home);
-        	pool->servers[i] = NULL;
-        }
-	pool->num_home_servers = 0;
-	(void) rbtree_deletebydata(home_pools_byname, pool);
-	realm_pool_free(pool);
+	if (home_server_pool_delete(pool) != 1) {
+		return -1;
+	}
+	return 0;
+}
+
+
+int home_server_pool_delete(home_pool_t *pool) {
+	DEBUG("Trying to delete home server %s", pool->name);
+	// If there is no outstanding requests or all the home server is marked dead, this pool can be removed
+	bool can_remove = true;
+	for (int i = 0; i < pool->num_home_servers; ++i) {
+		home_server_t *home = pool->servers[i];
+		if (home->currently_outstanding > 0) {
+			DEBUG("Home server %s still has outstanding requests", home->name);
+			can_remove = false;
+			break;
+		}
+		home_server_delete(home);
+		talloc_free(home);
+		pool->servers[i] = NULL;
+	}
+
+	if (can_remove) {
+		DEBUG("Removing home server pool %s", pool->name);
+		pool->num_home_servers = 0;
+		(void) rbtree_deletebydata(home_pools_byname, pool);
+		talloc_free(pool->root_config);
+		realm_pool_free(pool);
+		return 1;
+	}
 	return 0;
 }
 #endif

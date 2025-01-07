@@ -669,6 +669,32 @@ static void proxy_reply_too_late(REQUEST *request)
 			  buffer, sizeof(buffer)),
 		request->proxy->dst_port, request->proxy->id);
 }
+
+static void timer_proxy_reply(home_pool_t *pool);
+
+static void home_server_pool_cleanup(void *ctx) {
+	home_pool_t *pool = ctx;
+	for (int i = 0; i < pool->num_home_servers; i++) {
+		home_server_t *home = pool->servers[i];
+		if (home != NULL) {
+			fr_event_delete(el, &home->ev);
+		}
+	}
+	if (home_server_pool_delete(ctx) != 1) {
+		timer_proxy_reply(ctx);
+	}
+}
+
+static void timer_proxy_reply(home_pool_t *pool) {
+	DEBUG("Cleaning up home pool %p in 10 seconds", pool);
+	struct timeval when;
+	fr_event_now(el, &when);
+	when.tv_sec += 10;
+	fr_event_delete(el, &pool->ev);
+	if (!fr_event_insert(el, home_server_pool_cleanup, pool, &when, &pool->ev)) {
+		ERROR("Failed to insert home pool cleanup event");
+	}
+}
 #endif
 
 
@@ -749,6 +775,9 @@ static void request_done(REQUEST *request, int original)
 					mark_home_server_dead(home, &now, false);
 				}
 			}
+		}
+		if (request->home_pool->dynamic) {
+			timer_proxy_reply(request->home_pool);
 		}
 	}
 #endif
