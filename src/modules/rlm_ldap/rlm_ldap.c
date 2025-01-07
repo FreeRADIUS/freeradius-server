@@ -140,14 +140,6 @@ static conf_parser_t group_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-/*
- *	Reference for accounting updates
- */
-static const conf_parser_t acct_section_config[] = {
-	{ FR_CONF_OFFSET_FLAGS("reference", CONF_FLAG_XLAT, ldap_acct_section_t, reference), .dflt = "." },
-	CONF_PARSER_TERMINATOR
-};
-
 static const conf_parser_t module_config[] = {
 	/*
 	 *	Pool config items
@@ -2186,46 +2178,6 @@ static int mod_detach(module_detach_ctx_t const *mctx)
 	return 0;
 }
 
-/** Parse an accounting sub section.
- *
- * Allocate a new ldap_acct_section_t and write the config data into it.
- *
- * @param[in] mctx rlm_ldap configuration.
- * @param[in] parent of the config section.
- * @param[out] config to write the sub section parameters to.
- * @return
- *	- 0 on success.
- *	- < 0 on failure.
- */
-static int parse_sub_section(module_inst_ctx_t const *mctx,
-			     CONF_SECTION *parent, ldap_acct_section_t **config,
-			     char const *name)
-{
-	rlm_ldap_t	*inst = talloc_get_type_abort(mctx->mi->data, rlm_ldap_t);
-	CONF_SECTION 	*cs;
-
-	cs = cf_section_find(parent, name, NULL);
-	if (!cs) {
-		DEBUG2("rlm_ldap (%s) - Couldn't find configuration for %s, will return NOOP for calls "
-		       "from this section", mctx->mi->name, name);
-
-		return 0;
-	}
-
-	if (cf_section_rules_push(cs, acct_section_config) < 0) return -1;
-
-	*config = talloc_zero(inst, ldap_acct_section_t);
-	if (cf_section_parse(*config, *config, cs) < 0) {
-		PERROR("rlm_ldap (%s) - Failed parsing configuration for section %s", mctx->mi->name, name);
-
-		return -1;
-	}
-
-	(*config)->cs = cs;
-
-	return 0;
-}
-
 static int ldap_update_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, tmpl_rules_t const *t_rules,
 				     CONF_ITEM *ci,
 				     UNUSED call_env_ctx_t const *cec, call_env_parser_t const *rule)
@@ -2516,16 +2468,6 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 	options = cf_section_find(conf, "options", NULL);
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
 		inst->handle_config.chase_referrals_unset = true;	 /* use OpenLDAP defaults */
-	}
-
-	/*
-	 *	If the configuration parameters can't be parsed, then fail.
-	 */
-	if ((parse_sub_section(mctx, conf, &inst->accounting, "accounting") < 0) ||
-	    (parse_sub_section(mctx, conf, &inst->postauth, "post-auth") < 0)) {
-		cf_log_err(conf, "Failed parsing configuration");
-
-		goto error;
 	}
 
 	/*

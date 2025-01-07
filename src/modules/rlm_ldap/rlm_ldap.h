@@ -18,12 +18,6 @@
 #include <freeradius-devel/ldap/base.h>
 
 typedef struct {
-	CONF_SECTION	*cs;				//!< Section configuration.
-
-	char const	*reference;			//!< Configuration reference string.
-} ldap_acct_section_t;
-
-typedef struct {
 	/*
 	 *	Options
 	 */
@@ -107,12 +101,6 @@ typedef struct {
 							//!< in userobj or groupobj.
 	char const	*profile_attr_suspend;		//!< Attribute that identifies profiles to apply when the user's
 							///< account is suspended. May appear in userobj or groupobj.
-
-	/*
-	 *	Accounting
-	 */
-	ldap_acct_section_t *postauth;			//!< Modify mappings for post-auth.
-	ldap_acct_section_t *accounting;		//!< Modify mappings for accounting.
 
 #ifdef WITH_EDIR
 	/*
