@@ -48,7 +48,7 @@ if !(&control.Vendor-Specific.Cisco.AVPair[*] == 'bar') {
 # Attempt a bind authentication
 ldap.authenticate
 
-ldap.send
+ldap.send.access-accept
 
 &test_string := %ldap("ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?description")
 

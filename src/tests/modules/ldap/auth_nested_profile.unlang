@@ -22,7 +22,7 @@ if (!(&reply.Acct-Interim-Interval == 7200)) {
 # Attempt a bind authentication
 ldap.authenticate
 
-ldap.send
+ldap.send.access-accept
 
 &test_string := %ldap("ldap://$ENV{TEST_SERVER}/uid=peter,ou=people,dc=example,dc=com?description")
 

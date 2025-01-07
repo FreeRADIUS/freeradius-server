@@ -26,7 +26,7 @@ if (!(&reply.Session-Timeout == 7200)) {
 # Attempt a bind authentication
 ldapssl.authenticate
 
-ldapssl.send
+ldapssl.send.access-accept
 
 &test_string := %ldapssl("ldaps:///uid=fred,ou=people,dc=subdept,dc=example,dc=com?description")
 
