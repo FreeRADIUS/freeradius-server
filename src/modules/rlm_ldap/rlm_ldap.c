@@ -359,8 +359,8 @@ typedef struct {
 	rlm_ldap_t const	*inst;
 	ldap_usermod_call_env_t	*call_env;
 	char const		*dn;
-	LDAPMod			*mod_p[LDAP_MAX_ATTRMAP + 1];
-	LDAPMod			mod_s[LDAP_MAX_ATTRMAP];
+	LDAPMod			**mod_p;
+	LDAPMod			*mod_s;
 	fr_ldap_thread_trunk_t	*ttrunk;
 	fr_ldap_query_t		*query;
 	fr_value_box_list_t	expanded;
@@ -2106,6 +2106,11 @@ static unlang_action_t user_modify_resume(rlm_rcode_t *p_result, UNUSED int *pri
 		RETURN_MODULE_FAIL;
 	}
 
+	/*
+	 *	Allocate arrays to hold mods.  mod_p is one element longer to hold a terminating NULL entry
+	 */
+	MEM(usermod_ctx->mod_p = talloc_zero_array(usermod_ctx, LDAPMod *, usermod_ctx->num_mods + 1));
+	MEM(usermod_ctx->mod_s = talloc_array(usermod_ctx, LDAPMod, usermod_ctx->num_mods));
 	fr_value_box_list_init(&usermod_ctx->expanded);
 
 	if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) goto fail;
@@ -2138,8 +2143,9 @@ static unlang_action_t CC_HINT(nonnull) mod_modify(rlm_rcode_t *p_result, module
 	 *	Include a talloc pool allowing for one value per modification
 	 */
 	MEM(usermod_ctx = talloc_pooled_object(unlang_interpret_frame_talloc_ctx(request), ldap_user_modify_ctx_t,
-					       2 * num_mods,
-					       (sizeof(struct berval) + (sizeof(struct berval *) * 2)) * num_mods));
+					       2 * num_mods + 2,
+					       (sizeof(struct berval) + (sizeof(struct berval *) * 2) +
+					        (sizeof(LDAPMod) + sizeof(LDAPMod *))) * num_mods));
 	*usermod_ctx = (ldap_user_modify_ctx_t) {
 		.inst = inst,
 		.call_env = call_env,
@@ -2307,11 +2313,6 @@ static int ldap_mod_section_parse(TALLOC_CTX *ctx, call_env_parsed_head_t *out, 
 	talloc_free(section2);
 
 	while ((to_parse = cf_pair_next(subcs, to_parse))) {
-		if (multi_index == LDAP_MAX_ATTRMAP) {
-			cf_log_perr(to_parse, "Too many LDAP mods. Max is %d", LDAP_MAX_ATTRMAP);
-			return -1;
-		}
-
 		switch (cf_pair_operator(to_parse)) {
 		case T_OP_SET:
 		case T_OP_ADD_EQ:
