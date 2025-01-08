@@ -650,7 +650,7 @@ static int run_command(command_t *cmd, count_chars *cc)
  * print configuration
  * shlibpath_var is used in configure.
  */
-#define printc(_x,_y) if (!value || !strcmp(value, _x)) printf(_x "=\"%s\"\n", _y)
+#define printc(_x,_y) if (!value || !*value || !strcmp(value, _x)) printf(_x "=\"%s\"\n", _y)
 
 static void print_config(char const *value)
 {
