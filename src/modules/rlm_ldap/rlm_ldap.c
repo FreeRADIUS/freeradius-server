@@ -366,6 +366,7 @@ typedef struct {
 	fr_value_box_list_t	expanded;
 	size_t			num_mods;
 	size_t			current_mod;
+	size_t			expanded_mods;
 } ldap_user_modify_ctx_t;
 
 /** Holds state of in progress LDAP map
@@ -1974,11 +1975,19 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 	LDAPMod			**modify;
 	ldap_mod_tmpl_t		*mod;
 	fr_value_box_t		*vb = NULL;
-	int			mod_no = usermod_ctx->current_mod, i = 0;
+	int			mod_no = usermod_ctx->expanded_mods, i = 0;
 	struct berval		**value_refs;
 	struct berval		*values;
 
-	mod = call_env->mod[mod_no];
+	mod = call_env->mod[usermod_ctx->current_mod];
+
+	/*
+	 *	If the tmpl produced no boxes, skip
+	 */
+	if ((mod->op != T_OP_CMP_FALSE) && (fr_value_box_list_num_elements(&usermod_ctx->expanded) == 0)) {
+		RDEBUG2("Expansion \"%s\" produced no value, skipping attribute \"%s\"", mod->tmpl->name, mod->attr);
+		goto next;
+	}
 
 	switch (mod->op) {
 	/*
@@ -2067,9 +2076,11 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 	usermod_ctx->mod_s[mod_no].mod_bvalues = value_refs;
 	usermod_ctx->mod_p[mod_no] = &usermod_ctx->mod_s[mod_no];
 
-	usermod_ctx->current_mod++;
-	usermod_ctx->mod_p[usermod_ctx->current_mod] = NULL;
+	usermod_ctx->expanded_mods++;
+	usermod_ctx->mod_p[usermod_ctx->expanded_mods] = NULL;
 
+next:
+	usermod_ctx->current_mod++;
 	if (usermod_ctx->current_mod < usermod_ctx->num_mods) {
 		if (unlang_function_repeat_set(request, user_modify_mod_build_resume) < 0) RETURN_MODULE_FAIL;
 		if (unlang_tmpl_push(usermod_ctx, &usermod_ctx->expanded, request,
