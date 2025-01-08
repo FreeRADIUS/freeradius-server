@@ -2031,12 +2031,14 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 		while ((vb = fr_value_box_list_pop_head(&usermod_ctx->expanded))) {
 			switch (vb->type) {
 			case FR_TYPE_OCTETS:
+				if (vb->vb_length == 0) continue;
 				memcpy(&values[i].bv_val, &vb->vb_octets, sizeof(values[i].bv_val));
 				values[i].bv_len = vb->vb_length;
 				break;
 
 			case FR_TYPE_STRING:
 			populate_string:
+				if (vb->vb_length == 0) continue;
 				memcpy(&values[i].bv_val, &vb->vb_strvalue, sizeof(values[i].bv_val));
 				values[i].bv_len = vb->vb_length;
 				break;
@@ -2066,6 +2068,10 @@ static unlang_action_t user_modify_mod_build_resume(rlm_rcode_t *p_result, UNUSE
 			}
 			value_refs[i] = &values[i];
 			i++;
+		}
+		if (i == 0) {
+			RDEBUG2("Expansion \"%s\" produced zero length value, skipping attribute \"%s\"", mod->tmpl->name, mod->attr);
+			goto next;
 		}
 	}
 
