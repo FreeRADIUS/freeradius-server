@@ -608,10 +608,9 @@ static void __attribute__((noreturn)) usage(int code)
 	printf("Usage: jlibtool [OPTIONS...] COMMANDS...\n");
 	printf("jlibtool is a replacement for GNU libtool with similar functionality.\n\n");
 
-	printf("  --show-config	 show all configuration variables\n");
-	printf("                 Or --show-config=VALUE to see just one value\n");
 	printf("  --debug	            enable verbose shell tracing\n");
 	printf("  --dry-run	            display commands without modifying any files\n");
+	printf("  --export-all	           Try to export 'def' file on some platforms\n");
 	printf("  --help	            display this help message and exit\n");
 	printf("  --target=TARGET           specify a target for cross-compilation\n");
 	printf("  --toolset=(host|target)   which set of utilities we use\n");
@@ -619,10 +618,11 @@ static void __attribute__((noreturn)) usage(int code)
 
 	printf("  --silent	           don't print informational messages\n");
 	printf("  --tag=TAG	           Ignored for libtool compatibility\n");
-	printf("  --version	           print version information\n");
 
 	printf("  --shared	           Build shared libraries when using --mode=link\n");
-	printf("  --export-all	           Try to export 'def' file on some platforms\n");
+	printf("  --show-config	           show all configuration variables\n");
+	printf("                           Or --show-config=VALUE to see just one value\n");
+	printf("  --version	           print version information\n");
 
 	printf("\nMODE must be one of the following:\n\n");
 	printf("  compile	           compile a source file into a jlibtool object\n");
