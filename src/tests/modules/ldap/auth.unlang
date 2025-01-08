@@ -1,4 +1,5 @@
 string test_string
+octets test_octets
 
 #
 #  Run the "ldap" module
@@ -53,6 +54,33 @@ ldap.send.access-accept
 &test_string := %ldap("ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?description")
 
 if (!(&test_string == "User %{User-Name} authenticated")) {
+	test_fail
+}
+
+# userPKCS12 is set to be updated from Class - which doesn't exist - check nothing was added
+&test_octets := %ldap("ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?userPKCS12")
+
+if (&test_octets) {
+	test_fail
+}
+
+# Add dummy octet data and re-run the LDAP update to check the data is added
+&Class := 0x01020304
+ldap.send.access-accept
+
+&test_octets := %ldap("ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?userPKCS12")
+
+if (&test_octets != 0x01020304) {
+	test_fail
+}
+
+# Remove the RADIUS attribute and check that the update doesn't clear the LDAP attribute
+&request -= &Class[*]
+ldap.send.access-accept
+
+&test_octets := %ldap("ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?userPKCS12")
+
+if (&test_octets != 0x01020304) {
 	test_fail
 }
 
