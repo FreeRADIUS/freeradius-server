@@ -84,4 +84,10 @@ if (&test_octets != 0x01020304) {
 	test_fail
 }
 
+# carLicense is being populated with += - so there should be 3 instances now
+&control.Filter-Id := %ldap("ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?carLicense")
+if (&control.Filter-Id[#] != 3) {
+	test_fail
+}
+
 test_pass
