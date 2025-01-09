@@ -1693,6 +1693,14 @@ fr_tls_session_t *fr_tls_session_alloc_client(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx)
 	SSL_set_info_callback(tls_session->ssl, fr_tls_session_info_cb);
 
 	/*
+	 *	In Client mode we only accept.
+	 *
+	 *	This sets up the SSL session to work correctly with
+	 *	fr_tls_session_handshake.
+	 */
+	SSL_set_connect_state(tls_session->ssl);
+
+	/*
 	 *	Always verify the peer certificate.
 	 */
 	DEBUG2("Requiring Server certificate");
@@ -1884,7 +1892,7 @@ fr_tls_session_t *fr_tls_session_alloc_server(TALLOC_CTX *ctx, SSL_CTX *ssl_ctx,
 	 *	In Server mode we only accept.
 	 *
 	 *	This sets up the SSL session to work correctly with
-	 *	fr_tls_session_handhsake.
+	 *	fr_tls_session_handshake.
 	 */
 	SSL_set_accept_state(tls_session->ssl);
 
