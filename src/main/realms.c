@@ -204,7 +204,7 @@ static int home_pool_name_cmp(void const *one, void const *two)
 	home_pool_t const *b = two;
 
 	if (a->server_type < b->server_type) return -1;
-	if (a->server_type > b->server_type) return +1;
+	// if (a->server_type > b->server_type) return +1;
 
 	return strcasecmp(a->name, b->name);
 }
@@ -3667,9 +3667,14 @@ int home_server_pool_delete(home_pool_t *pool) {
 		if (home == NULL) {
 			continue;
 		}
-		if (home->currently_outstanding > 0) {
+		if (home->currently_outstanding > 0 || home->ev != NULL) {
 			DEBUG("Home server %s still has outstanding requests", home->name);
 			can_remove = false;
+
+			struct timeval now;
+
+			gettimeofday(&now, NULL);
+			mark_home_server_dead(home, &now, true);
 			break;
 		}
 	}
