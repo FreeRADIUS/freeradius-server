@@ -63,16 +63,16 @@ As of the time of writing this documentation, the server has the
 following limitations:
 
 * RADIUS/TLS (RadSec) is not implemented.
-* TTLS, PEAP, TEAP, and EAP-FAST are not implemented.
+* TEAP, and EAP-FAST are not implemented.
 * The "haproxy" and "reverse CoA' features are not implemented
-* The Perl, Python, and Lua modules do not fully support the v4 "nested" attributes.
+* The Python, and Lua modules do not fully support the v4 "nested" attributes.
 * Enums are now prefixed with `::`, as in `Service-Type == ::Framed-User`.
   * The server still does not always require (or print) the `::` prefix.  That will change.
 * As a result of adding `::` for enums, we can then remove the requirement to use `&` as a prefix for attribute names.
   * This change may require changes to all of the configuration.  We will try to allow `&` or not, but that may not be possible.
-* Dynamic expansions have changed from `%{md5:foo}` to `%md5(foo)`.
+* Dynamic expansions have changed from `%{md5:foo}` to a slightly more standard syntax of `%md5(foo)`.
   * The new syntax is much clearer, and supports multiple comma-separated arguments: `%function(a, b, c)`
-  * Expansions such as `%{User-Name}` will still work.  We plan on making `%{1+2}` work, too.
+  * Expansions such as `%{User-Name}` will still work.  Expressions like `%{1+2}` now work, too.
   * Alternation `%{%{foo}:-%{bar}}` has been replaced by `%{&foo || &bar}`, which is clearer and uses less nesting.
 
 Please be aware that v4 is in "alpha" right now.  If it works, great.
