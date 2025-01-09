@@ -107,7 +107,7 @@ done
 #  and we don't want to allow a partial install of build dependencies, as the
 #  point is to enable the developer to build as many modules as possible.
 #
-#  If they want the dependencies installed they can damn well fix git-lfs support.
+#  If they want the dependencies installed, they need to fix git-lfs support first.
 #
 for i in $packages; do
     if ! brew list "$i" > /dev/null 2>&1; then
