@@ -623,7 +623,7 @@ void request_stats_reply(REQUEST *request)
 		fr_ipaddr_t ipaddr;
 		VALUE_PAIR *server_ip, *server_port = NULL;
 		RADCLIENT *client = NULL;
-		RADCLIENT_LIST *cl = NULL;
+		RADCLIENT_LIST *cl =  NULL;
 
 		/*
 		 *	See if we need to look up the client by server
@@ -637,6 +637,10 @@ void request_stats_reply(REQUEST *request)
 				ipaddr.af = AF_INET;
 				ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
 				cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+
+#ifdef WITH_TCP
+				if (!cl) cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+#endif
 
 				/*
 				 *	Not found: don't do anything
@@ -652,6 +656,10 @@ void request_stats_reply(REQUEST *request)
 					ipaddr.af = AF_INET6;
 					ipaddr.ipaddr.ip6addr = server_ip->vp_ipv6addr;
 					cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_UDP);
+
+#ifdef WITH_TCP
+					if (!cl) cl = listener_find_client_list(&ipaddr, server_port->vp_integer, IPPROTO_TCP);
+#endif
 
 					/*
 					 *	Not found: don't do anything

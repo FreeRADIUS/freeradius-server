@@ -72,8 +72,9 @@ static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
+	REQUEST *request = sock->request;
 
-	SSL_shutdown(sock->ssn->ssl);
+	if (!sock->client_closed) SSL_shutdown(sock->ssn->ssl);
 
 	listener->status = RAD_LISTEN_STATUS_EOL;
 	listener->tls = NULL; /* parent owns this! */
@@ -81,7 +82,7 @@ static void tls_socket_close(rad_listen_t *listener)
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
-	DEBUG("(TLS) Closing connection");
+	RDEBUG3("(TLS) Closing connection");
 	radius_update_listener(listener);
 
 	/*
@@ -125,7 +126,6 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener)
 
 
 		ERROR("(TLS) Error writing to socket: %s", fr_syserror(errno));
-
 		tls_socket_close(listener);
 		return -1;
 	}
@@ -520,7 +520,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 			     sizeof(sock->ssn->dirty_in.data));
 		if ((rcode < 0) && (errno == ECONNRESET)) {
 		do_close:
-			DEBUG("(TLS) Closing socket from client port %u", sock->other_port);
+			RDEBUG("(TLS) Closing socket from client port %u", sock->other_port);
 			tls_socket_close(listener);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
@@ -536,6 +536,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		 */
 		if (rcode == 0) {
 			RDEBUG("(TLS) Client has closed the TCP connection");
+			sock->client_closed = true;
 			goto do_close;
 		}
 
@@ -750,7 +751,6 @@ read_application_data:
 	return 1;
 }
 
-
 int dual_tls_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET *packet;
@@ -914,37 +914,40 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == dual_tls_send);
 
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-
 	/*
-	 *	See if the policies allowed this connection.
+	 *	If the socket is vaguely alive, then write to it.
+	 *	Otherwise it's dead, and we don't do anything.
 	 */
-	if (sock->state == LISTEN_TLS_CHECKING) {
-		if (request->reply->code != PW_CODE_ACCESS_ACCEPT) {
-			RDEBUG("(TLS) Connection checks failed - closing connection");
-			listener->status = RAD_LISTEN_STATUS_EOL;
-			listener->tls = NULL; /* parent owns this! */
+	switch (listener->status) {
+	case RAD_LISTEN_STATUS_KNOWN:
+	case RAD_LISTEN_STATUS_FROZEN:
+	case RAD_LISTEN_STATUS_PAUSE:
+	case RAD_LISTEN_STATUS_RESUME:
+		break;
 
-			/*
-			 *	Tell the event handler that an FD has disappeared.
-			 */
-			radius_update_listener(listener);
-			return 0;
-		}
-
-		/*
-		 *	Resume reading from the listener.
-		 */
-		RDEBUG("(TLS) Connection checks succeeded - continuing with normal reads");
-		listener->status = RAD_LISTEN_STATUS_RESUME;
-		radius_update_listener(listener);
-
-		rad_assert(sock->request->packet != request->packet);
-
-		sock->state = LISTEN_TLS_SETUP;
-		(void) dual_tls_recv(listener);
+	case RAD_LISTEN_STATUS_INIT:
+	case RAD_LISTEN_STATUS_EOL:
+	case RAD_LISTEN_STATUS_REMOVE_NOW:
 		return 0;
 	}
+
+	/*
+	 *	We're trying to send a reply to the "check
+	 *	client connection" packet.  Instead, just
+	 *	finish the session setup.
+	 */
+	if (sock->state == LISTEN_TLS_SETUP) {
+		RDEBUG("(TLS) Finishing session setup");
+		return 0;
+	}
+
+	/*
+	 *	The code in rad_status_server() looks for this state,
+	 *	and either swaps it to LISTEN_TLS_SETUP, or else
+	 *	changes listener->status to EOL.  As a result, this
+	 *	state should never be reachable in the send() routine.
+	 */
+	fr_assert(sock->state != LISTEN_TLS_CHECKING);
 
 	/*
 	 *	Accounting reject's are silently dropped.

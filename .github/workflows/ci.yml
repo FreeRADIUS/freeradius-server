@@ -56,10 +56,10 @@ jobs:
 # docker  - the docker image name, if containers are being used
 # name    - used in the job name only
 #
-          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-20.04' }}"
-            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:20.04' }}"
-            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu20"
-            code: "ubuntu2004"
+          - runs_on: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self-hosted' || 'ubuntu-24.04' }}"
+            docker: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'docker.internal.networkradius.com/self-hosted' || 'ubuntu:24.04' }}"
+            name: "${{ needs.pre-ci.outputs.selfhosted == '1' && 'self' || 'gh' }}-ubuntu24"
+            code: "ubuntu2404"
 
         env:
           - { CC: gcc,   DO_BUILD: yes, LIBS_OPTIONAL: no,  LIBS_ALT: no,  REPRODUCIBLE: no,  SANITIZER: no,  BUILD_CFLAGS: "-DWITH_EVAL_DEBUG",         NAME: linux-gcc-lean           }
@@ -174,7 +174,7 @@ jobs:
         quilt
 
     - name: Install LLVM 15 for 20.04
-      if: ${{ matrix.os.code == 'ubuntu2004' && matrix.env.CC == 'clang' }}
+      if: ${{ matrix.os.code == 'ubuntu2404' && matrix.env.CC == 'clang' }}
       run: |
         install -d -m 0755 -o root -g root /etc/apt/keyrings
         wget -O /etc/apt/keyrings/llvm-snapshot.asc https://apt.llvm.org/llvm-snapshot.gpg.key
@@ -193,39 +193,41 @@ jobs:
     #  Build using some alternative libraries
     #
     #    MIT Kerberos -> HEIMDAL Kerberos
-    #    OpenSSL 1.0  -> OpenSSL 3.0
     #
-    - name: 'Fetch OpenSSL 3.0 SHA'
-      id: opensslshasum
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      run: |
-        wget -qO- http://www.openssl.org/source/$ALT_OPENSSL_PATH/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
+    #  Now runners are Ubuntu 24, OpenSSL 3.0 is default
+    #  The sections below are left for future testing with other versions.
+    #
+#    - name: 'Fetch OpenSSL 3.0 SHA'
+#      id: opensslshasum
+#      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+#      run: |
+#        wget -qO- http://www.openssl.org/source/$ALT_OPENSSL_PATH/openssl-$ALT_OPENSSL.tar.gz.sha256 | sed -ne 's/^\s\+/shasum=/p' >> $GITHUB_OUTPUT
 
-    - name: 'Restore OpenSSL 3.0 from the cache'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
-      uses: actions/cache@v4
-      id: openssl-cache
-      with:
-        path: /opt/openssl/
-        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
+#    - name: 'Restore OpenSSL 3.0 from the cache'
+#      if: ${{ matrix.env.LIBS_ALT == 'yes' }}
+#      uses: actions/cache@v4
+#      id: openssl-cache
+#      with:
+#        path: /opt/openssl/
+#        key: openssl3-${{ steps.opensslshasum.outputs.shasum }}
 
-    - name: 'Build OpenSSL 3.0 (if cache stale)'
-      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
-      run: |
-        cd ~
-        wget https://www.openssl.org/source/$ALT_OPENSSL_PATH/openssl-$ALT_OPENSSL.tar.gz
-        tar xzf openssl-$ALT_OPENSSL.tar.gz
-        cd openssl-$ALT_OPENSSL
-        ./Configure --prefix=/opt/openssl --openssldir=.
-        make -j `nproc`
-        make install
+#    - name: 'Build OpenSSL 3.0 (if cache stale)'
+#      if: ${{ matrix.env.LIBS_ALT == 'yes' && steps.openssl-cache.outputs.cache-hit != 'true' }}
+#      run: |
+#        cd ~
+#        wget https://www.openssl.org/source/$ALT_OPENSSL_PATH/openssl-$ALT_OPENSSL.tar.gz
+#        tar xzf openssl-$ALT_OPENSSL.tar.gz
+#        cd openssl-$ALT_OPENSSL
+#        ./Configure --prefix=/opt/openssl --openssldir=.
+#        make -j `nproc`
+#        make install
 
     - name: Use alternative libraries
       if: ${{ matrix.env.LIBS_ALT == 'yes' }}
       run: |
-        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
-        sudo ldconfig
         sudo apt-get install ${APT_OPTS} heimdal-dev
+#        echo /opt/openssl/lib64 | sudo tee /etc/ld.so.conf.d/openssl3.conf >/dev/null
+#        sudo ldconfig
 
     - name: Show versions
       run: |

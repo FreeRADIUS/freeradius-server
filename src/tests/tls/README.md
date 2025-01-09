@@ -38,3 +38,8 @@ You can also send accounting packets:
 ./radacct.sh
 ```
 
+Try many many TLS connections:
+
+```
+./stress.py
+```

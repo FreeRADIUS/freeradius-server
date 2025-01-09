@@ -43,13 +43,14 @@ typedef struct rlm_eap_teap_t {
 	 *	User tunneled EAP type
 	 */
 	char const *user_method_name;
-	int user_method;
 
 	/*
 	 *	Machine tunneled EAP type
 	 */
 	char const *machine_method_name;
-	int machine_method;
+
+	int eap_method[3];
+
 
 	/*
 	 *	Use the reply attributes from the tunneled session in
@@ -83,7 +84,7 @@ typedef struct rlm_eap_teap_t {
 
 static CONF_PARSER module_config[] = {
 	{ "tls", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, tls_conf_name), NULL },
-	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, default_method_name), "md5" },
+	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_teap_t, default_method_name), .dflt = "" },
 	{ "copy_request_to_tunnel", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_teap_t, copy_request_to_tunnel), "no" },
 	{ "use_tunneled_reply", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_teap_t, use_tunneled_reply), "no" },
 	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_teap_t, req_client_cert), "no" },
@@ -96,6 +97,12 @@ static CONF_PARSER module_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
+static const bool allowed[PW_EAP_MAX_TYPES] = {
+	[PW_EAP_SIM] = true,
+	[PW_EAP_TLS] = true,
+	[PW_EAP_MSCHAPV2] = true,
+	[PW_EAP_PWD] = true,
+};
 
 /*
  *	Attach the module.
@@ -132,22 +139,50 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		}
 	}
 
+	/*
+	 *	@todo - allow a special value like 'basic-password', which
+	 *	means that we propose the Basic-Password-Auth-Req TLV during Phase 2.
+	 *
+	 *	@todo - and then also track the username across
+	 *	multiple rounds, including some kind of State which
+	 *	can be used to signal where we are in the negotiation
+	 *	process.
+	 */
 	if (inst->user_method_name && *inst->user_method_name) {
-		inst->user_method = eap_name2type(inst->user_method_name);
-		if (inst->user_method < 0) {
+		int method = eap_name2type(inst->user_method_name);
+
+		if (method < 0) {
 			ERROR("rlm_eap_teap: Unknown User EAP type %s",
 			      inst->user_method_name);
 			return -1;
 		}
+
+		if (!allowed[method]) {
+			ERROR("rlm_eap_teap: Invalid User EAP type %s",
+			      inst->user_method_name);
+			return -1;
+		}
+
+		inst->eap_method[EAP_TEAP_IDENTITY_TYPE_USER] = method;
 	}
 
 	if (inst->machine_method_name && *inst->machine_method_name) {
-		inst->machine_method = eap_name2type(inst->machine_method_name);
-		if (inst->machine_method < 0) {
+		int method;
+
+		method = eap_name2type(inst->machine_method_name);
+		if (method < 0) {
 			ERROR("rlm_eap_teap: Unknown Machine EAP type %s",
 			      inst->machine_method_name);
 			return -1;
 		}
+
+		if (!allowed[method]) {
+			ERROR("rlm_eap_teap: Invalid Machine EAP type %s",
+			      inst->machine_method_name);
+			return -1;
+		}
+
+		inst->eap_method[EAP_TEAP_IDENTITY_TYPE_MACHINE] = method;
 	}
 
 	/*
@@ -220,8 +255,7 @@ static teap_tunnel_t *teap_alloc(TALLOC_CTX *ctx, rlm_eap_teap_t *inst)
 
 	t->received_version = -1;
 	t->default_method = inst->default_method;
-	t->user_method = inst->user_method;
-	t->machine_method = inst->machine_method;
+	memcpy(&t->eap_method, &inst->eap_method, sizeof(t->eap_method));
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 	t->virtual_server = inst->virtual_server;
@@ -298,12 +332,12 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	ssn->length_flag = false;
 
 	vp = fr_pair_make(ssn, NULL, "FreeRADIUS-EAP-TEAP-Authority-ID", inst->authority_identity, T_OP_EQ);
-	fr_pair_add(&ssn->outer_tlvs, vp);
+	fr_pair_add(&ssn->outer_tlvs_server, vp);
 
 	/*
 	 *	Be nice about identity types.
 	 */
-	vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY, VENDORPEC_FREERADIUS, TAG_ANY);
+	vp = fr_pair_find_by_num(request->state, PW_EAP_TEAP_TLV_IDENTITY_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 	if (vp) {
 		RDEBUG("Found &session-state:FreeRADIUS-EAP-TEAP-Identity-Type, not setting from configuration");
 
@@ -330,6 +364,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 			vp->vp_short = inst->identity_type[0];
 			RDEBUG("Setting &session-state:FreeRADIUS-EAP-TEAP-Identity-Type = %s",
 			       (vp->vp_short == 1) ? "User" : "Machine");
+
+			t->auths[vp->vp_short].required = true;
 		}
 
 		if (inst->identity_type[1]) {
@@ -338,6 +374,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 				vp->vp_short = inst->identity_type[1];
 				RDEBUG("Followed by &session-state:FreeRADIUS-EAP-TEAP-Identity-Type += %s",
 				       (vp->vp_short == 1) ? "User" : "Machine");
+
+				t->auths[vp->vp_short].required = true;
 			}
 		}
 	}
@@ -465,7 +503,18 @@ phase2:
 		tls_session->opaque = teap_alloc(tls_session, inst);
 		t = (teap_tunnel_t *) tls_session->opaque;
 	}
-	if (t->received_version < 0) t->received_version = handler->eap_ds->response->type.data[0] & 0x07;
+
+	if (t->received_version < 0) {
+		t->received_version = handler->eap_ds->response->type.data[0] & 0x07;
+
+		/*
+		 *	We only support TEAPv1.
+		 */
+		if (t->received_version != EAP_TEAP_VERSION) {
+			RDEBUG("Invalid TEAP version received.  Expected 1, got %u", t->received_version);
+			goto fail;
+		}
+	}
 
 	/*
 	 *	Process the TEAP portion of the request.
@@ -473,6 +522,7 @@ phase2:
 	rcode = eap_teap_process(handler, tls_session);
 	switch (rcode) {
 	case PW_CODE_ACCESS_REJECT:
+	fail:
 		eaptls_fail(handler, 0);
 		ret = 0;
 		goto done;

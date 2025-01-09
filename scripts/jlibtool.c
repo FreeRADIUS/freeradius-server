@@ -68,8 +68,8 @@
 #  define PIC_FLAG			"-fPIC -fno-common"
 #  define SHARED_OPTS			"-dynamiclib"
 #  define MODULE_OPTS			"-bundle -dynamic"
-#  define DYNAMIC_LINK_OPTS		"-flat_namespace"
-#  define DYNAMIC_LINK_UNDEFINED	"-undefined suppress"
+#  define DYNAMIC_LINK_OPTS		"-bind_at_load"
+#  define DYNAMIC_LINK_UNDEFINED	"-Wl,-w -undefined dynamic_lookup"
 #  define dynamic_link_version_func	darwin_dynamic_link_function
 #  define DYNAMIC_INSTALL_NAME		"-install_name"
 #  define DYNAMIC_LINK_NO_INSTALL	"-dylib_file"
@@ -327,25 +327,26 @@ static void usage(int code)
 	printf("Usage: jlibtool [OPTIONS...] COMMANDS...\n");
 	printf("jlibtool is a replacement for GNU libtool with similar functionality.\n\n");
 
-	printf("  --config	 show all configuration variables\n");
-	printf("  --debug	  enable verbose shell tracing\n");
-	printf("  --dry-run	display commands without modifying any files\n");
-	printf("  --help	   display this help message and exit\n");
-	printf("  --mode=MODE	   use operational mode MODE (you *must* set mode)\n");
+	printf("  --debug	 enable verbose shell tracing\n");
+	printf("  --dry-run	 display commands without modifying any files\n");
+	printf("  --help	 display this help message and exit\n");
+	printf("  --mode=MODE	 use operational mode MODE (you *must* set mode)\n");
 
 	printf("  --silent	 don't print informational messages\n");
-	printf("  --tag=TAG	Ignored for libtool compatibility\n");
-	printf("  --version	print version information\n");
+	printf("  --tag=TAG	 Ignored for libtool compatibility\n");
+	printf("  --version	 print version information\n");
 
 
 	printf("  --shared	 Build shared libraries when using --mode=link\n");
-	printf("  --export-all	   Try to export 'def' file on some platforms\n");
+	printf("  --show-config	 show all configuration variables\n");
+	printf("                 Or --show-config=VALUE to see just one value\n");
+	printf("  --export-all	 Try to export 'def' file on some platforms\n");
 
 	printf("\nMODE must be one of the following:\n\n");
-	printf("  compile	  compile a source file into a jlibtool object\n");
-	printf("  execute	  automatically set library path, then run a program\n");
-	printf("  install	  install libraries or executables\n");
-	printf("  link	     create a library or an executable\n");
+	printf("  compile	 compile a source file into a jlibtool object\n");
+	printf("  execute	 automatically set library path, then run a program\n");
+	printf("  install	 install libraries or executables\n");
+	printf("  link	         create a library or an executable\n");
 
 	printf("\nMODE-ARGS can be the following:\n\n");
 	printf("  -export-dynamic  accepted and ignored\n");
@@ -649,7 +650,7 @@ static int run_command(command_t *cmd, count_chars *cc)
  * print configuration
  * shlibpath_var is used in configure.
  */
-#define printc(_x,_y) if (!value || !strcmp(value, _x)) printf(_x "=\"%s\"\n", _y)
+#define printc(_x,_y) if (!value || !*value || !strcmp(value, _x)) printf(_x "=\"%s\"\n", _y)
 
 static void print_config(char const *value)
 {
@@ -780,7 +781,7 @@ static int parse_long_opt(char const *arg, command_t *cmd)
 	} else if (strcmp(var, "help") == 0) {
 		usage(0);
 
-	} else if (strcmp(var, "config") == 0) {
+	} else if (strcmp(var, "show-config") == 0) {
 		print_config(value);
 
 		exit(0);

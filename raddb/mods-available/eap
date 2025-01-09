@@ -1166,6 +1166,24 @@ eap {
 		#  Note that if you try to use "EAP-Type := TEAP" in the
 		#  "inner-tunnel" virtual server, it will not work.
 		#
+		#
+		#  PASSWORDS
+		#
+		#  Some supplicants support password authentication inside of
+		#  TEAP.  This can be configured automatically by setting
+		#
+		#	identity_type = "user"
+		#
+		#  and then not setting "default_eap_type" or
+		#  "user_eap_type".  The TEAP module will then
+		#  automatically initiate password authentication.
+		#
+		#  The user credentials are placed into the User-Name
+		#  and User-Password attributes inside of the
+		#  "inner-tunnel" virtual server.  These attributes
+		#  are not sent in TEAP, but are created by the module
+		#  from the Basic-Password-Auth-Resp TLV which is in TEAP.
+		#
 		#  Supported authentication methods inside of TEAP are
 		#  EAP-TLS, EAP-MSCHAPv2, and PAP.
 		#

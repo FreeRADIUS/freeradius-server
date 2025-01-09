@@ -196,6 +196,8 @@ ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer
 
 VALUE	FreeRADIUS-Client-Require-MA	no			0
 VALUE	FreeRADIUS-Client-Require-MA	yes			1
+VALUE	FreeRADIUS-Client-Require-MA	false			0
+VALUE	FreeRADIUS-Client-Require-MA	true			1
 
 ATTRIBUTE	FreeRADIUS-Client-Secret		1123	string secret
 ATTRIBUTE	FreeRADIUS-Client-Shortname		1124	string
@@ -614,6 +616,9 @@ ATTRIBUTE	TLS-Session-Cert-File			1949	string
 ATTRIBUTE	TLS-Session-Cert-Private-Key-File	1950	string
 
 ATTRIBUTE	TLS-Server-Name-Indication		1951	string
+
+ATTRIBUTE	TLS-Cert-CRL-Distribution-Points	1960	string
+ATTRIBUTE	TLS-Client-Cert-CRL-Distribution-Points	1961	string
 
 #
 #	Range:	1960-2099

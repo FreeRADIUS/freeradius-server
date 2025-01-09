@@ -2709,7 +2709,7 @@ static ocsp_status_t ocsp_check(REQUEST *request, X509_STORE *store, X509 *issue
 		switch (ret) {
 		case -1:
 			RWDEBUG("(TLS) ocsp: Invalid URL in certificate.  Not doing OCSP");
-			break;
+			goto skipped;
 
 		case 0:
 			if (conf->ocsp_url) {
@@ -2928,7 +2928,7 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static char const *cert_attr_names[10][2] = {
+static char const *cert_attr_names[11][2] = {
 	{ "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
 	{ "TLS-Client-Cert-Expiration",			"TLS-Cert-Expiration" },
 	{ "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
@@ -2939,6 +2939,7 @@ static char const *cert_attr_names[10][2] = {
 	{ "TLS-Client-Cert-Subject-Alt-Name-Upn",	"TLS-Cert-Subject-Alt-Name-Upn" },
 	{ "TLS-Client-Cert-Valid-Since",		"TLS-Cert-Valid-Since" },
 	{ "TLS-Client-Cert-Subject-Alt-Name-Uri",	"TLS-Cert-Subject-Alt-Name-Uri" },
+	{ "TLS-Client-Cert-CRL-Distribution-Points",	"TLS-Cert-CRL-Distribution-Points"},
 };
 
 #define FR_TLS_SERIAL		(0)
@@ -2951,6 +2952,36 @@ static char const *cert_attr_names[10][2] = {
 #define FR_TLS_SAN_UPN          (7)
 #define FR_TLS_VALID_SINCE	(8)
 #define FR_TLS_SAN_URI		(9)
+#define FR_TLS_CDP		(10)
+
+/*
+ *	Extract Certification Distribution point URL from the certificate
+ */
+static const char *get_cdp_url(DIST_POINT *dp)
+{
+	GENERAL_NAMES *gens;
+	GENERAL_NAME *gen;
+	int i, gtype;
+	ASN1_STRING *uri;
+
+	if (!dp->distpoint || (dp->distpoint->type != 0)) {
+		return NULL;
+	}
+
+	gens = dp->distpoint->name.fullname;
+
+	for (i = 0; i < sk_GENERAL_NAME_num(gens); i++) {
+		gen = sk_GENERAL_NAME_value(gens, i);
+		uri = GENERAL_NAME_get0_value(gen, &gtype);
+
+		if ((gtype == GEN_URI) && (ASN1_STRING_length(uri) > 6)) {
+			return (const char *) ASN1_STRING_get0_data(uri);
+		}
+	}
+
+	return NULL;
+}
+
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -3008,6 +3039,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #endif
 	VALUE_PAIR	*vp;
 	TALLOC_CTX	*talloc_ctx;
+	STACK_OF(DIST_POINT) *crl_dp;
 
 	REQUEST		*request;
 
@@ -3140,6 +3172,34 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if (certs && (lookup <= 1) && common_name[0] && subject[0]) {
 		vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+	}
+
+	/*
+	 *	Get the Certificate Distribution points
+	 */
+	crl_dp = X509_get_ext_d2i(client_cert, NID_crl_distribution_points, NULL, NULL);
+	if (crl_dp) {
+		DIST_POINT *dp;
+		const char *url_ptr;
+
+		for (int i = 0; i < sk_DIST_POINT_num(crl_dp); i++) {
+			size_t len;
+			char cdp[1024];
+
+			dp = sk_DIST_POINT_value(crl_dp, i);
+			if (!dp) continue;
+
+			url_ptr = get_cdp_url(dp);
+			if (!url_ptr) continue;
+
+			len = strlen(url_ptr);
+			if (len >= sizeof(cdp)) continue;
+
+			memcpy(cdp, url_ptr, len + 1);
+
+			vp = fr_pair_make(talloc_ctx, certs, cert_attr_names[FR_TLS_CDP][lookup], cdp, T_OP_ADD);
+			rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		}
 	}
 
 	/*
@@ -4786,7 +4846,7 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 		    S_ISDIR(stat_buf.st_mode)) continue;
 
 		strcpy(buffer2, buffer);
-		p = strchr(buffer2, '.'); /* which must be there... */
+		p = strrchr(buffer2, '.'); /* which must be there... */
 		if (!p) continue;
 
 		/*
@@ -4795,7 +4855,7 @@ static int tls_realms_load(fr_tls_server_conf_t *conf)
 		 *	the chain file.
 		 */
 		strcpy(p, ".key");
-		if (stat(buffer2, &stat_buf) != 0) private_key_file = buffer2;
+		if (stat(buffer2, &stat_buf) == 0) private_key_file = buffer2;
 
 		ctx = tls_init_ctx(conf, 1, buffer, private_key_file);
 		if (!ctx) goto error;

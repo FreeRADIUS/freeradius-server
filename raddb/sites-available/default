@@ -1153,17 +1153,15 @@ post-proxy {
 #	attr_filter.post-proxy
 
 	#
-	#  If you are proxying LEAP, you MUST configure the EAP
-	#  module, and you MUST list it here, in the post-proxy
-	#  stage.
+	#  The EAP module will perform some validation of proxied EAP
+	#  packets.  Malformed EAP packets will be rejected, and will
+	#  not be proxied.
 	#
-	#  You MUST also use the 'nostrip' option in the 'realm'
-	#  configuration.  Otherwise, the User-Name attribute
-	#  in the proxied request will not match the user name
-	#  hidden inside of the EAP packet, and the end server will
-	#  reject the EAP request.
+	#  This configuration is most useful to prevent bad
+	#  supplicants or APs from attacking the proxies and home
+	#  servers.
 	#
-	eap
+#	eap
 
 	#
 	#  If the server tries to proxy a request and fails, then the

@@ -46,7 +46,12 @@ RCSIDH(eap_teap_h, "$Id$")
 #define EAP_TEAP_TLV_RESULT_SUCCESS		1
 #define EAP_TEAP_TLV_RESULT_FAILURE		2
 
-#define PW_EAP_TEAP_TLV_IDENTITY (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY << 8))
+#define EAP_TEAP_IDENTITY_TYPE_USER		1
+#define EAP_TEAP_IDENTITY_TYPE_MACHINE		2
+
+#define PW_EAP_TEAP_TLV_IDENTITY_TYPE (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_IDENTITY_TYPE << 8))
+#define PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_REQ << 8))
+#define PW_EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP (PW_FREERADIUS_EAP_TEAP_TLV | (EAP_TEAP_TLV_BASIC_PASSWORD_AUTH_RESP << 8))
 
 typedef enum eap_teap_stage_t {
 	TLS_SESSION_HANDSHAKE = 0,
@@ -76,7 +81,7 @@ typedef struct eap_tlv_crypto_binding_tlv_t {
 typedef enum eap_teap_tlv_type_t {
 	EAP_TEAP_TLV_RESERVED_0 = 0,		// 0
 	EAP_TEAP_TLV_AUTHORITY,  		// 1
-	EAP_TEAP_TLV_IDENTITY,  		// 2
+	EAP_TEAP_TLV_IDENTITY_TYPE,  		// 2
 	EAP_TEAP_TLV_RESULT,     		// 3
 	EAP_TEAP_TLV_NAK,        		// 4
 	EAP_TEAP_TLV_ERROR,      		// 5
@@ -110,6 +115,13 @@ typedef struct teap_imck_t {
 	uint8_t		simck[EAP_TEAP_SIMCK_LEN];
 	uint8_t		cmk[EAP_TEAP_CMK_LEN];
 } CC_HINT(__packed__) teap_imck_t;
+
+typedef struct {
+	bool		required;
+	bool		sent;
+	uint8_t		received;
+} teap_auth_t;
+
 typedef struct teap_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
@@ -123,6 +135,11 @@ typedef struct teap_tunnel_t {
 	int			mode;
 	eap_teap_stage_t	stage;
 
+	int			num_identities;
+	uint16_t		identity_types[2];
+
+	teap_auth_t		auths[3]; /* so we can index by Identity-Type */
+
 	int			imckc;
 	bool			imck_emsk_available;
 	struct teap_imck_t	imck_msk;
@@ -132,11 +149,11 @@ typedef struct teap_tunnel_t {
 	uint8_t			emsk[EAP_TEAP_EMSK_LEN];
 
 	int			default_method;
-	int			user_method;
-	int			machine_method;
+	int			eap_method[3];
 
 	bool			result_final;
 	bool			auto_chain;		//!< do we automatically chain identities
+	bool			sent_basic_password;
 
 #ifdef WITH_PROXY
 	bool		proxy_tunneled_request_as_eap;	//!< Proxy tunneled session as EAP, or as de-capsulated

@@ -785,6 +785,7 @@ static void sig_fatal(int sig)
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 			break;
 		}
+		fr_strerror_printf(NULL); /* clear old errors */
 		/* FALL-THROUGH */
 
 	default:
