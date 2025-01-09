@@ -1,0 +1,10 @@
+# -*- text -*-
+# Copyright (C) 2022 The FreeRADIUS Server project and contributors
+# This work is licensed under CC-BY version 4.0 https://creativecommons.org/licenses/by/4.0
+# Version $Id$
+
+#
+#  If this attribute exists, then the reply is sent to the relay agent on the given
+#  port, and not to port 547.
+#
+ATTRIBUTE	Relay-Source-Port			135	uint16

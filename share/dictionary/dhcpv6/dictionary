@@ -64,6 +64,7 @@ $INCLUDE dictionary.rfc7839
 $INCLUDE dictionary.rfc8026
 $INCLUDE dictionary.rfc8115
 $INCLUDE dictionary.rfc8156
+$INCLUDE dictionary.rfc8357
 
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.microsoft
