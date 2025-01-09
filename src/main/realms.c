@@ -3473,7 +3473,7 @@ int home_server_delete(home_server_t *home)
 	return 0;
 }
 
-int home_server_pool_afrom_file(char const *filename) {
+int home_server_pool_afrom_file(char const *filename, char const *type_name) {
 	CONF_SECTION *cs, *subcs = NULL;
 	char const *p;
 	home_server_t *home, *old;
@@ -3482,6 +3482,12 @@ int home_server_pool_afrom_file(char const *filename) {
 	if (!realm_config->dynamic) {
 		fr_strerror_printf("Must set \"dynamic = true\" in proxy.conf for dynamic "
 			"home servers to work");
+		return -1;
+	}
+
+	server_type = fr_str2int(home_server_types, type_name, HOME_TYPE_INVALID);
+	if (server_type == HOME_TYPE_INVALID) {
+		fr_strerror_printf("Unknown home_server type '%s'", type_name);
 		return -1;
 	}
 
@@ -3494,11 +3500,26 @@ int home_server_pool_afrom_file(char const *filename) {
 	if (cf_file_read(cs, filename) < 0) {
 		fr_strerror_printf("Failed reading file %s", filename);
 	error:
-		if (subcs != NULL) {
-			talloc_free(subcs);
-		}
 		talloc_free(cs);
 		return -1;
+	}
+
+
+	subcs = cf_subsection_find_next(cs, NULL, "home_server_pool");
+	if (!subcs) {
+		fr_strerror_printf("No 'home_server_pool' definition in the file.");
+		goto error;
+	}
+
+	p = cf_section_name2(subcs);
+	if (!p) {
+		fr_strerror_printf("Server pool section is missing a name");
+		goto error;
+	}
+
+	if (home_pool_byname(p, server_type) != NULL) {
+		fr_strerror_printf("Home server pool \"%s\" already exists", p);
+		goto error;
 	}
 
 	// add home_server first
@@ -3602,7 +3623,7 @@ int home_server_pool_afrom_file(char const *filename) {
 	}
 
 	subcs = cf_subsection_find_next(cs, NULL, "home_server_pool");
-	if (!server_pool_add(realm_config, subcs, HOME_TYPE_AUTH, true, true, cs)) {
+	if (!server_pool_add(realm_config, subcs, server_type, true, true, cs)) {
 		goto error;
 	}
 	return 0;

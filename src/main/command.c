@@ -2845,12 +2845,12 @@ static int command_del_home_server_pool(rad_listen_t *listener, int argc, char *
 
 static int command_add_home_server_pool_file(rad_listen_t *listener, int argc, char *argv[])
 {
-	if (argc < 1) {
-		cprintf_error(listener, "<file> is required\n");
+	if (argc < 2) {
+		cprintf_error(listener, "<file> and <type> are required\n");
 		return 0;
 	}
 
-	if (home_server_pool_afrom_file(argv[0]) < 0) {
+	if (home_server_pool_afrom_file(argv[0], argv[1]) < 0) {
 		cprintf_error(listener, "Unable to add home server pool - %s\n", fr_strerror());
 		return 0;
 	}
