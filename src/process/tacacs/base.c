@@ -155,6 +155,10 @@ typedef struct {
 	CONF_SECTION	*acct_error;
 
 	CONF_SECTION	*do_not_respond;
+
+	CONF_SECTION	*new_client;
+	CONF_SECTION	*add_client;
+	CONF_SECTION	*deny_client;
 } process_tacacs_sections_t;
 
 typedef struct {
@@ -191,8 +195,10 @@ typedef struct {
 
 #define PROCESS_PACKET_TYPE		fr_tacacs_packet_code_t
 #define PROCESS_CODE_MAX		FR_TACACS_CODE_MAX
+#define PROCESS_CODE_DO_NOT_RESPOND	FR_TACACS_CODE_DO_NOT_RESPOND
 #define PROCESS_PACKET_CODE_VALID	FR_TACACS_PACKET_CODE_VALID
 #define PROCESS_INST			process_tacacs_t
+#define PROCESS_CODE_DYNAMIC_CLIENT	FR_TACACS_CODE_AUTH_PASS
 
 #include <freeradius-devel/server/process.h>
 
@@ -1047,6 +1053,10 @@ static unlang_action_t mod_process(rlm_rcode_t *p_result, module_ctx_t const *mc
 	// @todo - debug stuff!
 //	tacacs_packet_debug(request, request->packet, &request->request_pairs, true);
 
+	if (unlikely(request_is_dynamic_client(request))) {
+		return new_client(p_result, mctx, request);
+	}
+
 	return state->recv(p_result, mctx, request);
 }
 
@@ -1433,6 +1443,8 @@ static virtual_server_compile_t compile_list[] = {
 		.actions = &mod_actions_postauth,
 		.offset = PROCESS_CONF_OFFSET(do_not_respond),
 	},
+
+	DYNAMIC_CLIENT_SECTIONS,
 
 	COMPILE_TERMINATOR
 };
