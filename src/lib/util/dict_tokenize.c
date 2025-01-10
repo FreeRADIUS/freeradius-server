@@ -900,7 +900,7 @@ static int dict_attr_allow_dup(fr_dict_attr_t const *da)
 	/*
 	 *	Not a duplicate...
 	 */
-	if (!dup_name || dup_num) return 1;
+	if (!dup_name && !dup_num) return 1;
 
 	found = dup_name ? dup_name : dup_num;
 
