@@ -2046,7 +2046,9 @@ static int dict_read_process_member(dict_tokenize_ctx_t *dctx, char **argv, int 
 	}
 
 	if (dctx->stack[dctx->stack_depth].da->type != FR_TYPE_STRUCT) {
-		fr_strerror_const("MEMBER can only be used for ATTRIBUTEs of type 'struct'");
+		fr_strerror_printf("MEMBER can only be used for ATTRIBUTEs of type 'struct', not %s of type %s",
+				   dctx->stack[dctx->stack_depth].da->name,
+				   fr_type_to_str(dctx->stack[dctx->stack_depth].da->type));
 		return -1;
 	}
 
