@@ -264,45 +264,6 @@ skip_decode:
 
 	REQUEST_VERIFY(request);
 
-	/*
-	 *	If we're defining a dynamic client, this packet is
-	 *	fake.  We don't have a secret, so we mash all of the
-	 *	encrypted attributes to sane (i.e. non-hurtful)
-	 *	values.
-	 */
-	if (!client->active) {
-		fr_pair_t *vp;
-
-		fr_assert(client->dynamic);
-
-		for (vp = fr_pair_list_head(&request->request_pairs);
-		     vp != NULL;
-		     vp = fr_pair_list_next(&request->request_pairs, vp)) {
-			if (!vp->da->flags.subtype) {
-				switch (vp->vp_type) {
-				default:
-					break;
-
-				case FR_TYPE_UINT32:
-					vp->vp_uint32 = 0;
-					break;
-
-				case FR_TYPE_IPV4_ADDR:
-					vp->vp_ipv4addr = INADDR_ANY;
-					break;
-
-				case FR_TYPE_OCTETS:
-					fr_pair_value_memdup(vp, (uint8_t const *) "", 1, true);
-					break;
-
-				case FR_TYPE_STRING:
-					fr_pair_value_strdup(vp, "", true);
-					break;
-				}
-			}
-		}
-	}
-
 	if (RDEBUG_ENABLED) {
 		fr_pair_t *vp;
 
