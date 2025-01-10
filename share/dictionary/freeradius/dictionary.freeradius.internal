@@ -157,15 +157,15 @@ ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	uint8
 
 # Ordering is important here, as the values are a bitmask.
 VALUE	FreeRADIUS-Client-Require-MA		No			0
-VALUE	FreeRADIUS-Client-Require-MA		Auto			1
-VALUE	FreeRADIUS-Client-Require-MA		Yes			2
+VALUE	FreeRADIUS-Client-Require-MA		Yes			1
+VALUE	FreeRADIUS-Client-Require-MA		Auto			2
 
 ATTRIBUTE	FreeRADIUS-Client-Limit-Proxy-State	1123	uint8
 
 # Ordering is important here, as the values are a bitmask.
 VALUE	FreeRADIUS-Client-Limit-Proxy-State	No			0
-VALUE	FreeRADIUS-Client-Limit-Proxy-State	Auto			1
-VALUE	FreeRADIUS-Client-Limit-Proxy-State	Yes			2
+VALUE	FreeRADIUS-Client-Limit-Proxy-State	Yes			1
+VALUE	FreeRADIUS-Client-Limit-Proxy-State	Auto			2
 
 ATTRIBUTE	FreeRADIUS-Client-Secret		1124	string
 ATTRIBUTE	FreeRADIUS-Client-Shortname		1125	string

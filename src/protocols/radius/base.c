@@ -82,19 +82,19 @@ fr_dict_attr_autoload_t libfreeradius_radius_dict_attr[] = {
 
 fr_table_num_sorted_t const fr_radius_require_ma_table[] = {
 	{ L("auto"),		FR_RADIUS_REQUIRE_MA_AUTO		},
-	{ L("no"),		FR_RADIUS_REQUIRE_MA_NO			},
-	{ L("yes"),		FR_RADIUS_REQUIRE_MA_YES		},
 	{ L("false"),		FR_RADIUS_REQUIRE_MA_NO			},
+	{ L("no"),		FR_RADIUS_REQUIRE_MA_NO			},
 	{ L("true"),		FR_RADIUS_REQUIRE_MA_YES		},
+	{ L("yes"),		FR_RADIUS_REQUIRE_MA_YES		},
 };
 size_t fr_radius_require_ma_table_len = NUM_ELEMENTS(fr_radius_require_ma_table);
 
 fr_table_num_sorted_t const fr_radius_limit_proxy_state_table[] = {
 	{ L("auto"),		FR_RADIUS_LIMIT_PROXY_STATE_AUTO	},
-	{ L("no"),		FR_RADIUS_LIMIT_PROXY_STATE_NO		},
-	{ L("yes"),		FR_RADIUS_LIMIT_PROXY_STATE_YES		},
 	{ L("false"),		FR_RADIUS_LIMIT_PROXY_STATE_NO		},
+	{ L("no"),		FR_RADIUS_LIMIT_PROXY_STATE_NO		},
 	{ L("true"),		FR_RADIUS_LIMIT_PROXY_STATE_YES		},
+	{ L("yes"),		FR_RADIUS_LIMIT_PROXY_STATE_YES		},
 };
 size_t fr_radius_limit_proxy_state_table_len = NUM_ELEMENTS(fr_radius_limit_proxy_state_table);
 

@@ -61,11 +61,11 @@
  */
 typedef enum {
 	FR_RADIUS_REQUIRE_MA_NO			= 0x00,		//!< Do not require Message-Authenticator
-	FR_RADIUS_REQUIRE_MA_AUTO		= 0x01,		//!< Only require Message-Authenticator if we've previously
+	FR_RADIUS_REQUIRE_MA_YES		= 0x01,		//!< Require Message-Authenticator
+	FR_RADIUS_REQUIRE_MA_AUTO		= 0x02,		//!< Only require Message-Authenticator if we've previously
 								///< received a packet from this client with Message-Authenticator.
 								///< @note This isn't used by the radius protocol code, but may be used
 								///< to drive logic in modules.
-	FR_RADIUS_REQUIRE_MA_YES		= 0x02		//!< Require Message-Authenticator
 
 } fr_radius_require_ma_t;
 
@@ -76,14 +76,14 @@ typedef enum {
 typedef enum {
 	FR_RADIUS_LIMIT_PROXY_STATE_NO		= 0x00,		//!< Do not limit Proxy-State.  Allow proxy-state to be sent in
 								///< all packets.
-	FR_RADIUS_LIMIT_PROXY_STATE_AUTO	= 0x01,		//!< Do not allow Proxy-State unless:
+	FR_RADIUS_LIMIT_PROXY_STATE_YES		= 0x01,		//!< Limit Proxy-State.  Do not allow Proxy-State to be sent in
+								///< packets which do not have a Message-Authenticator attribute.
+
+	FR_RADIUS_LIMIT_PROXY_STATE_AUTO	= 0x02,		//!< Do not allow Proxy-State unless:
 								///< - All packets received from a client have containted proxy state.
 								///< - The client has sent a packet with a Message-Authenticator.
 								///< @note This isn't used by the radius protocol code, but may be used
 								///< to drive logic in modules.
-	FR_RADIUS_LIMIT_PROXY_STATE_YES		= 0x02,		//!< Limit Proxy-State.  Do not allow Proxy-State to be sent in
-								///< packets which do not have a Message-Authenticator attribute.
-
 } fr_radius_limit_proxy_state_t;
 
 typedef struct {
