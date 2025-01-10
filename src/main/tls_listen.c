@@ -51,6 +51,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
+#define LOG_PREFIX "TLS"
+
 static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 {
 	size_t i;
@@ -82,7 +84,7 @@ static void tls_socket_close(rad_listen_t *listener)
 	/*
 	 *	Tell the event handler that an FD has disappeared.
 	 */
-	RDEBUG3("(TLS) Closing connection");
+	ROPTIONAL(RDEBUG3, DEBUG3, "(TLS) Closing connection");
 	radius_update_listener(listener);
 
 	/*
