@@ -430,19 +430,26 @@ RESUME(new_client)
 	switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
+		RDEBUG("new client was successful.");
 		cs = inst->sections.add_client;
 		request->reply->code = PROCESS_CODE_DYNAMIC_CLIENT;
 		break;
 
 	default:
+		RDEBUG("new client was denied.");
 		cs = inst->sections.deny_client;
 		request->reply->code = PROCESS_CODE_DO_NOT_RESPOND;
 		break;
 	}
-	fr_assert(cs != NULL);
 
 	request->component = NULL;
 	request->module = NULL;
+
+	if (!cs) {
+		*p_result = RLM_MODULE_OK;
+		request->reply->timestamp = fr_time();
+		return UNLANG_ACTION_CALCULATE_RESULT;
+	}
 
 	RDEBUG("Running '%s %s' from file %s", cf_section_name1(cs), cf_section_name2(cs), cf_filename(cs));
 	return unlang_module_yield_to_section(p_result, request,

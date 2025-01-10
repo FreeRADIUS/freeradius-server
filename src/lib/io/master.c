@@ -2702,13 +2702,11 @@ static int mod_instantiate(module_inst_ctx_t const *mctx)
 		}
 
 		if (!cf_section_find(server, "add", "client")) {
-			cf_log_err(conf, "Cannot use 'dynamic_clients = yes' as the virtual server has no 'add client { ... }' section defined.");
-			return -1;
+			cf_log_warn(conf, "No 'add client { ... }' section was defined.");
 		}
 
 		if (!cf_section_find(server, "deny", "client")) {
-			cf_log_err(conf, "Cannot use 'dynamic_clients = yes' as the virtual server has no 'deny client { ... }' section defined.");
-			return -1;
+			cf_log_warn(conf, "No 'deny client { ... }' section was defined.");
 		}
 	}
 
