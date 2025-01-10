@@ -46,7 +46,7 @@ xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 			       	      UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
 				      fr_value_box_list_t *in)
 {
-	fr_value_box_t	*to_escape = fr_value_box_list_head(in);
+	fr_value_box_t	*to_escape = fr_value_box_list_pop_head(in);
 	char		*escaped;
 
 	escaped = curl_easy_escape(fr_curl_tmp_handle(), to_escape->vb_strvalue, to_escape->vb_length);
@@ -62,8 +62,6 @@ xlat_action_t fr_curl_xlat_uri_escape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *out,
 
 done:
 	curl_free(escaped);
-
-	fr_value_box_list_remove(in, to_escape);
 	fr_dcursor_insert(out, to_escape);
 
 	return XLAT_ACTION_DONE;
@@ -76,11 +74,9 @@ xlat_action_t fr_curl_xlat_uri_unescape(UNUSED TALLOC_CTX *ctx, fr_dcursor_t *ou
 					UNUSED xlat_ctx_t const *xctx, UNUSED request_t *request,
 					fr_value_box_list_t *in)
 {
-	fr_value_box_t	*to_unescape = fr_value_box_list_head(in);
+	fr_value_box_t	*to_unescape = fr_value_box_list_pop_head(in);
 	int		unescaped_len;
 	char		*unescaped;
-
-	fr_value_box_list_remove(in, to_unescape);
 
 	unescaped = curl_easy_unescape(fr_curl_tmp_handle(), to_unescape->vb_strvalue, to_unescape->vb_length, &unescaped_len);
 	if (!unescaped) {
