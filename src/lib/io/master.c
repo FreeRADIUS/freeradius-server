@@ -2897,27 +2897,6 @@ fr_trie_t *fr_master_io_network(TALLOC_CTX *ctx, int af, fr_ipaddr_t *allow, fr_
 }
 
 
-static int _thread_io_free(fr_io_thread_t *thread)
-{
-	fr_io_client_t *client;
-
-	/*
-	 *	Each client is it's own talloc context, so we have to
-	 *	clean them up individually.
-	 *
-	 *	The client destructor will remove them from the heap,
-	 *	so we don't need to do that here.
-	 *
-	 *	Note that the clients *also* use thread->trie, so we
-	 *	have to free the clients *before* freeing thread->trie.
-	 */
-	while ((client = fr_heap_peek(thread->alive_clients)) != NULL) {
-		talloc_free(client);
-	}
-
-	return 0;
-}
-
 int fr_io_listen_free(fr_listen_t *li)
 {
 	if (!li->thread_instance) return 0;
@@ -2981,8 +2960,6 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	thread = talloc_zero(NULL, fr_io_thread_t);
 	thread->listen = li;
 	thread->sc = sc;
-
-	talloc_set_destructor(thread, _thread_io_free);
 
 	/*
 	 *	Create the trie of clients for this socket.
