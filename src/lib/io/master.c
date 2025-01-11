@@ -400,6 +400,7 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 	COPY_FIELD(server_cs);
 	COPY_FIELD(cs);
 	COPY_FIELD(proto);
+	COPY_FIELD(active);
 
 	COPY_FIELD(use_connected);
 
@@ -2493,8 +2494,6 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 
 		client->state = PR_CLIENT_CONNECTED;
 
-		radclient->active = true;
-
 		/*
 		 *	Connections can't spawn new connections.
 		 */
@@ -2513,6 +2512,18 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 						      FR_EVENT_FILTER_IO, resume_read);
 		}
 
+		connection->parent->radclient->active = true;
+		fr_assert(connection->parent->state == PR_CLIENT_PENDING);
+		connection->parent->state = PR_CLIENT_DYNAMIC;
+
+		connection->parent->radclient->secret = talloc_strdup(connection->parent->radclient,
+								      radclient->secret);
+
+		/*
+		 *	The client has been allowed.
+		 */
+		client->state = PR_CLIENT_DYNAMIC;
+		client->radclient->active = true;
 		goto finish;
 	}
 
@@ -2551,6 +2562,15 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 		MEM(client->ht = fr_hash_table_alloc(client, connection_hash, connection_cmp, NULL));
 
 	} else {
+		if (connection) {
+			connection->parent->radclient->active = true;
+			fr_assert(connection->parent->state == PR_CLIENT_PENDING);
+			connection->parent->state = PR_CLIENT_DYNAMIC;
+
+			connection->parent->radclient->secret = talloc_strdup(connection->parent->radclient,
+									      radclient->secret);
+		}
+
 		/*
 		 *	The client has been allowed.
 		 */
@@ -2965,8 +2985,11 @@ int fr_master_io_listen(fr_io_instance_t *inst, fr_schedule_t *sc,
 	 *	Create the trie of clients for this socket.
 	 */
 	MEM(thread->trie = fr_trie_alloc(thread, NULL, NULL));
-	MEM(thread->alive_clients = fr_heap_alloc(thread, alive_client_cmp,
-						   fr_io_client_t, alive_id, 0));
+
+	if (inst->dynamic_clients) {
+		MEM(thread->alive_clients = fr_heap_alloc(thread, alive_client_cmp,
+							  fr_io_client_t, alive_id, 0));
+	}
 
 	/*
 	 *	Set the listener to call our master trampoline function.
