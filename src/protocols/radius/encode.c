@@ -331,7 +331,6 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	fr_dbuff_t			value_dbuff;
 	fr_dbuff_marker_t		value_start, src, dest;
 	bool				encrypted = false;
-	fr_radius_attr_flags_encrypt_t	encrypt;
 
 	PAIR_VERIFY(vp);
 	FR_PROTO_STACK_PRINT(da_stack, depth);
@@ -493,8 +492,7 @@ static ssize_t encode_value(fr_dbuff_t *dbuff,
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	encrypt = fr_radius_flag_encrypted(da);
-	if (encrypt) switch (encrypt) {
+	switch (fr_radius_flag_encrypted(da)) {
 	case RADIUS_FLAG_ENCRYPT_USER_PASSWORD:
 		/*
 		 *	Encode the password in place
