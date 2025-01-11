@@ -110,6 +110,7 @@ static fr_dict_attr_t const *attr_user_name;
 static fr_dict_attr_t const *attr_state;
 static fr_dict_attr_t const *attr_proxy_state;
 static fr_dict_attr_t const *attr_message_authenticator;
+static fr_dict_attr_t const *attr_eap_message;
 
 extern fr_dict_attr_autoload_t proto_radius_dict_attr[];
 fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
@@ -118,6 +119,7 @@ fr_dict_attr_autoload_t proto_radius_dict_attr[] = {
 	{ .out = &attr_state, .name = "State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_proxy_state, .name = "Proxy-State", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ .out = &attr_message_authenticator, .name = "Message-Authenticator", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
+	{ .out = &attr_eap_message, .name = "EAP-Message", .type = FR_TYPE_OCTETS, .dict = &dict_radius},
 	{ NULL }
 };
 
@@ -185,6 +187,7 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 	fr_client_t			*client = UNCONST(fr_client_t *, address->radclient);
 	fr_radius_ctx_t			common_ctx;
 	fr_radius_decode_ctx_t		decode_ctx;
+
 	fr_radius_require_ma_t		require_message_authenticator = client->require_message_authenticator_is_set ?
 									client->require_message_authenticator:
 									inst->require_message_authenticator;
@@ -277,14 +280,28 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 		 *	auto mode could break things (dealing with
 		 *	multiple clients behind a NAT for example).
 		 */
-		if ((require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) &&
-		    !client->received_message_authenticator &&
+		if (!client->received_message_authenticator &&
 		    fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
-			client->received_message_authenticator = true;
+			/*
+			 *	Don't print debugging messages if all is OK.
+			 */
+			if (require_message_authenticator == FR_RADIUS_REQUIRE_MA_YES) {
+				client->received_message_authenticator = true;
 
-			RINFO("Packet from client %pV (%pV) contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"",
-			      fr_box_ipaddr(client->ipaddr),
-			      fr_box_strvalue_buffer(client->shortname));
+			} else if (require_message_authenticator == FR_RADIUS_REQUIRE_MA_AUTO) {
+				if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_eap_message)) {
+					client->received_message_authenticator = true;
+
+					RINFO("Packet from client %pV (%pV) contained a valid Message-Authenticator.  Setting \"require_message_authenticator = yes\"",
+					      fr_box_ipaddr(client->ipaddr),
+					      fr_box_strvalue_buffer(client->shortname));
+				} else {
+					RINFO("Packet from client %pV (%pV) contained a valid Message-Authenticator but also EAP-Message",
+					      fr_box_ipaddr(client->ipaddr),
+					      fr_box_strvalue_buffer(client->shortname));
+					RINFO("Not changing the value of 'require_message_authenticator = auto'");
+				}
+			}
 		}
 
 		/*
@@ -305,24 +322,31 @@ static int mod_decode(void const *instance, request_t *request, uint8_t *const d
 			client->seen_first_packet = true;
 			client->first_packet_no_proxy_state = fr_pair_find_by_da(&request->request_pairs, NULL, attr_proxy_state) == NULL;
 
+			if (!fr_pair_find_by_da(&request->request_pairs, NULL, attr_message_authenticator)) {
+				RERROR("Packet from %pV (%pV) did not contain Message-Authenticator:",
+				      fr_box_ipaddr(client->ipaddr),
+				      fr_box_strvalue_buffer(client->shortname));
+				RERROR("- Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
+				RERROR("- Then set 'require_message_authenticator = yes' in the client definition");
+			} else {
+				RWARN("Packet from %pV (%pV) contains Message-Authenticator:",
+				      fr_box_ipaddr(client->ipaddr),
+				      fr_box_strvalue_buffer(client->shortname));
+				RWARN("- Then set 'require_message_authenticator = yes' in the client definition");
+			}
+
 			RINFO("First packet from %pV (%pV) %s Proxy-State.  Setting \"limit_proxy_state = %s\"",
 			      fr_box_ipaddr(client->ipaddr),
 			      fr_box_strvalue_buffer(client->shortname),
 			      client->first_packet_no_proxy_state ? "did not contain" : "contained",
 			      client->first_packet_no_proxy_state ? "yes" : "no");
 
-			if (!client->received_message_authenticator) {
-				RWARN("Received packet from %pV (%pV) which did not contain Message-Authenticator:",
-				      fr_box_ipaddr(client->ipaddr),
-				      fr_box_strvalue_buffer(client->shortname));
-				RWARN("- Enable Message-Authenticator on the client");
-				RWARN("- Require Message-Authenticator in the client definition (client { require_message_authenticator = yes })");
-			}
-
 			if (!client->first_packet_no_proxy_state) {
-				RWARN("As configured, your client HIGHLY VULNERABLE to the BlastRADIUS response spoofing attack, TAKE ACTION IMMEDIATELY!");
-			} else {
-				RWARN("As configured, your client is vulnerable to the BlastRADIUS response spoofing attack");
+				RERROR("Packet from %pV (%pV) contains Proxy-State, but no Message-Authenticator:",
+				       fr_box_ipaddr(client->ipaddr),
+				       fr_box_strvalue_buffer(client->shortname));
+				RERROR("- Upgrade the client, as your network is vulnerable to the BlastRADIUS attack.");
+				RERROR("- Then set 'require_message_authenticator = yes' in the client definition");
 			}
 		}
 	}
