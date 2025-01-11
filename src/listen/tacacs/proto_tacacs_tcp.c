@@ -269,6 +269,7 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 */
 	fr_assert(buffer_len >= sizeof(fr_tacacs_packet_hdr_t));
 	fr_assert(written < buffer_len);
+	fr_assert(buffer_len < (1 << 20)); /* shut up coverity */
 
 	/*
 	 *	@todo - share a stats interface with the parent?  or
@@ -285,6 +286,8 @@ static ssize_t mod_write(fr_listen_t *li, UNUSED void *packet_ctx, UNUSED fr_tim
 	 */
 	data_size = write(thread->sockfd, buffer + written, buffer_len - written);
 	if (data_size <= 0) return data_size;
+
+	fr_assert((size_t) data_size <= buffer_len); /* shut up coverity */
 
 	/*
 	 *	If we're supposed to close the socket, then go do that.
