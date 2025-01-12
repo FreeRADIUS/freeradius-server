@@ -393,7 +393,9 @@ static fr_client_t *radclient_clone(TALLOC_CTX *ctx, fr_client_t const *parent)
 	DUP_FIELD(nas_type);
 
 	COPY_FIELD(require_message_authenticator);
+	COPY_FIELD(require_message_authenticator_is_set);
 	COPY_FIELD(limit_proxy_state);
+	COPY_FIELD(limit_proxy_state_is_set);
 	COPY_FIELD(received_message_authenticator);
 	COPY_FIELD(first_packet_no_proxy_state);
 	/* dynamic MUST be false */
@@ -2464,7 +2466,9 @@ static ssize_t mod_write(fr_listen_t *li, void *packet_ctx, fr_time_t request_ti
 	COPY_FIELD(ipaddr);
 	COPY_FIELD(src_ipaddr);
 	COPY_FIELD(require_message_authenticator);
+	COPY_FIELD(require_message_authenticator_is_set);
 	COPY_FIELD(limit_proxy_state);
+	COPY_FIELD(limit_proxy_state_is_set);
 	COPY_FIELD(use_connected);
 	COPY_FIELD(cs);
 
