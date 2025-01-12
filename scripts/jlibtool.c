@@ -1932,6 +1932,7 @@ static int explode_static_lib(command_t *cmd, char const *lib)
 
 	if (lib[0] == '/') {
 		libname = lib;
+		libname_cc.vals = NULL;
 	}
 	else {
 		init_count_chars(&libname_cc);
