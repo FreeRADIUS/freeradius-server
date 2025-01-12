@@ -1003,19 +1003,19 @@ static int run_command(command_t *cmd, count_chars *cc)
 	char *tmp;
 	char const *raw;
 	char const *spawn_args[4];
-	count_chars tmpcc;
+	count_chars cctmp;
 
-	init_count_chars(&tmpcc);
+	init_count_chars(&cctmp);
 
 	if (cmd->program) {
-		push_count_chars(&tmpcc, cmd->program);
+		push_count_chars(&cctmp, cmd->program);
 	}
 
-	append_count_chars(&tmpcc, cmd->program_opts);
+	append_count_chars(&cctmp, cmd->program_opts);
 
-	append_count_chars(&tmpcc, cc);
+	append_count_chars(&cctmp, cc);
 
-	raw = flatten_count_chars(&tmpcc, ' ');
+	raw = flatten_count_chars(&cctmp, ' ');
 	command = shell_esc(raw);
 
 	memcpy(&tmp, &raw, sizeof(tmp));
@@ -1028,6 +1028,7 @@ static int run_command(command_t *cmd, count_chars *cc)
 	ret = external_spawn(cmd, spawn_args[0], spawn_args);
 
 	free(command);
+	free(cctmp.vals);
 
 	return ret;
 }
@@ -1925,7 +1926,7 @@ static int explode_static_lib(command_t *cmd, char const *lib)
 
 	if (chdir(tmpdir) != 0) {
 		NOTICE("Warning: could not explode %s\n", lib);
-
+		free(tmpdir_cc.vals);
 		return 1;
 	}
 
@@ -1974,6 +1975,8 @@ static int explode_static_lib(command_t *cmd, char const *lib)
 	}
 
 	closedir(dir);
+	free(tmpdir_cc.vals);
+	free(libname_cc.vals);
 	return 0;
 }
 
@@ -2581,10 +2584,10 @@ static void post_parse_fixup(command_t *cmd)
 static int run_mode(command_t *cmd)
 {
 	int rv = 0;
-	count_chars *cctemp;
+	count_chars *cctmp;
 
-	cctemp = (count_chars*)lt_malloc(sizeof(count_chars));
-	init_count_chars(cctemp);
+	cctmp = (count_chars*)lt_malloc(sizeof(count_chars));
+	init_count_chars(cctmp);
 
 	switch (cmd->mode) {
 	case MODE_COMPILE:
@@ -2601,20 +2604,20 @@ static int run_mode(command_t *cmd)
 			if (rv) goto finish;
 		}
 		if (cmd->output_name) {
-			append_count_chars(cctemp, cmd->arglist);
-			insert_count_chars(cctemp,
+			append_count_chars(cctmp, cmd->arglist);
+			insert_count_chars(cctmp,
 							   cmd->output_name,
-							   cctemp->num - 1);
-			rv = run_command(cmd, cctemp);
+							   cctmp->num - 1);
+			rv = run_command(cmd, cctmp);
 			if (rv) goto finish;
-			clear_count_chars(cctemp);
+			clear_count_chars(cctmp);
 		}
 		if (cmd->static_name.install) {
-			append_count_chars(cctemp, cmd->arglist);
-			insert_count_chars(cctemp,
+			append_count_chars(cctmp, cmd->arglist);
+			insert_count_chars(cctmp,
 							   cmd->static_name.install,
-							   cctemp->num - 1);
-			rv = run_command(cmd, cctemp);
+							   cctmp->num - 1);
+			rv = run_command(cmd, cctmp);
 			if (rv) goto finish;
 
 			/* From the Apple libtool(1) manpage on Tiger/10.4:
@@ -2658,23 +2661,23 @@ static int run_mode(command_t *cmd)
 					free(tmp);
 				}
 			}
-			clear_count_chars(cctemp);
+			clear_count_chars(cctmp);
 		}
 		if (cmd->shared_name.install) {
-			append_count_chars(cctemp, cmd->arglist);
-			insert_count_chars(cctemp, cmd->shared_name.install,
-					   cctemp->num - 1);
-			rv = run_command(cmd, cctemp);
+			append_count_chars(cctmp, cmd->arglist);
+			insert_count_chars(cctmp, cmd->shared_name.install,
+					   cctmp->num - 1);
+			rv = run_command(cmd, cctmp);
 			if (rv) goto finish;
-			clear_count_chars(cctemp);
+			clear_count_chars(cctmp);
 		}
 		if (cmd->module_name.install) {
-			append_count_chars(cctemp, cmd->arglist);
-			insert_count_chars(cctemp, cmd->module_name.install,
-					   cctemp->num - 1);
-			rv = run_command(cmd, cctemp);
+			append_count_chars(cctmp, cmd->arglist);
+			insert_count_chars(cctmp, cmd->module_name.install,
+					   cctmp->num - 1);
+			rv = run_command(cmd, cctmp);
 			if (rv) goto finish;
-			clear_count_chars(cctemp);
+			clear_count_chars(cctmp);
 		}
 		break;
 	case MODE_LINK:
@@ -2785,7 +2788,8 @@ static int run_mode(command_t *cmd)
 
 	finish:
 
-	free(cctemp);
+	free(cctmp->vals);
+	free(cctmp);
 	return rv;
 }
 
