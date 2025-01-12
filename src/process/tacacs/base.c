@@ -1314,6 +1314,24 @@ static fr_process_state_t const process_state[] = {
 		.resume = resume_send_generic,
 		.section_offset = offsetof(process_tacacs_sections_t, acct_error),
 	},
+	[ FR_TACACS_CODE_DO_NOT_RESPOND ] = {
+		.packet_type = {
+			[RLM_MODULE_NOOP]	= FR_TACACS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_OK]		= FR_TACACS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_UPDATED]	= FR_TACACS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_HANDLED]	= FR_TACACS_CODE_DO_NOT_RESPOND,
+
+			[RLM_MODULE_NOTFOUND]	= FR_TACACS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_FAIL]	= FR_TACACS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_INVALID]	= FR_TACACS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_REJECT]	= FR_TACACS_CODE_DO_NOT_RESPOND,
+			[RLM_MODULE_DISALLOW]	= FR_TACACS_CODE_DO_NOT_RESPOND
+		},
+		.rcode = RLM_MODULE_NOOP,
+		.send = send_generic,
+		.resume = resume_send_generic,
+		.section_offset = offsetof(process_tacacs_sections_t, do_not_respond),
+	}
 };
 
 
